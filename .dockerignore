@@ -1,0 +1,30 @@
+# Build context is the repo root — exclude everything not needed for the sib Docker build.
+
+# Dependencies (reinstalled inside the image)
+node_modules/
+**/node_modules/
+
+# TypeScript compiled output (rebuilt inside the image)
+dist/
+**/dist/
+
+# SIB local data (never baked into the image; lives on the Render disk at runtime)
+**/.sib-data/
+
+# iOS app — not part of the server build
+ios-app/
+
+# AR client — not part of the server build
+ar-client/src/
+ar-client/public/
+
+# Docs and config files not needed at runtime
+docs/
+skills/
+*.md
+.git/
+.gitignore
+
+# Secrets
+.env
+.env.*

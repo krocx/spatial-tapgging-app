@@ -96,9 +96,12 @@ Fill in the form exactly as follows:
 | **Name** | `sib-server` (or any name you like) |
 | **Region** | Choose the one closest to your team |
 | **Branch** | `main` |
-| **Root Directory** | `sib` |
-| **Runtime** | **Docker** ← Render auto-detects our `Dockerfile` |
+| **Root Directory** | *(leave blank)* — the build context must be the repo root |
+| **Runtime** | **Docker** |
+| **Dockerfile Path** | `sib/Dockerfile` ← click the pencil icon next to this field and set it |
 | **Instance Type** | **Starter** ($7/month) is fine for dev/testing |
+
+> **Why root directory must be blank:** The SIB server depends on `@spatial/shared`, a sibling package in the monorepo. Docker needs to see both `sib/` and `shared/` in the same build context. If Root Directory is set to `sib`, Docker can only see inside that folder and can't resolve the shared types.
 
 Leave everything else at its default. Scroll down to the **Environment Variables** section — do NOT click Deploy yet.
 
