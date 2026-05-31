@@ -1,0 +1,339 @@
+// Training & Validation routes — Author / Operator workflow
+//
+// POST /perception/train        — Author submits pass-state images for a tag
+// POST /perception/validate     — Operator submits a live frame; SIB returns PASS/FAIL
+// POST /perception/validate-all — Operator validates all tags for an anchor in one call
+// GET  /perception/pass-state/:tagId — load pass-state for Operator mode
+
+import { createDecipheriv } from 'crypto';
+import { Router, type Request, type Response } from 'express';
+import { v4 as uuidv4 } from 'uuid';
+import type {
+  PassState,
+  PassStateImage,
+  ValidationResult,
+  CreatePassStateRequest,
+  ValidateRequest,
+  BatchValidateRequest,
+  TagValidationSummary,
+  AnchorValidationResult,
+  AnchorStatus,
+  ApiResponse,
+} from '@spatial/shared';
+import { passStateStore, findPassStateByTag } from '../stores/pass-state-store.js';
+import { compareAgainstPassState } from '../perception/image-comparator.js';
+import { tagStore } from './tags.js';
+import { logInspection } from '../logging/inspection-logger.js';
+
+const router = Router();
+
+// ── AES-256-GCM decryption (Phase 2.5) ───────────────────────────────────────
+// Stored images may be AES-256-GCM encrypted by the iOS client (CryptoKit).
+// Format: base64(nonce[12] || ciphertext || authTag[16])
+// The decryption key is sent by the Operator in BatchValidateRequest.encryptionKey
+// (a base64-encoded 32-byte SymmetricKey from the QR code).
+// Decryption happens in-memory; plaintext is never persisted.
+
+function decryptImageBase64(encryptedBase64: string, keyBase64: string): string {
+  const combined    = Buffer.from(encryptedBase64, 'base64');
+  const key         = Buffer.from(keyBase64, 'base64');
+  const nonce       = combined.subarray(0, 12);
+  const authTag     = combined.subarray(combined.length - 16);
+  const ciphertext  = combined.subarray(12, combined.length - 16);
+
+  const decipher = createDecipheriv('aes-256-gcm', key, nonce);
+  decipher.setAuthTag(authTag);
+  const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+  return plaintext.toString('base64');
+}
+
+// POST /perception/train
+// Receives multi-viewpoint images (honeycomb capture) and stores as the
+// canonical Pass state for the given tag.
+router.post('/train', (req: Request, res: Response) => {
+  const body = req.body as CreatePassStateRequest;
+
+  if (!body.tagId || !body.anchorId || !body.assetId || !Array.isArray(body.images)) {
+    return res.status(400).json({
+      error: 'Missing required fields: tagId, anchorId, assetId, images[]',
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  if (body.images.length === 0) {
+    return res.status(400).json({
+      error: 'images[] must contain at least one capture',
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  const now = new Date().toISOString();
+
+  // Stamp each image with an id and timestamp if not already set
+  const images: PassStateImage[] = body.images.map(img => ({
+    ...img,
+    id: img.id ?? uuidv4(),
+    capturedAt: img.capturedAt ?? now,
+  }));
+
+  // Upsert — replace any existing pass state for this tag
+  const existing = findPassStateByTag(body.tagId);
+  const passState: PassState = {
+    id: existing?.id ?? uuidv4(),
+    tagId: body.tagId,
+    anchorId: body.anchorId,
+    assetId: body.assetId,
+    images,
+    createdAt: existing?.createdAt ?? now,
+    updatedAt: now,
+  };
+
+  passStateStore.save(passState);
+
+  const response: ApiResponse<PassState> = {
+    data: passState,
+    timestamp: now,
+  };
+
+  console.log(`[SIB] Pass state trained: tag=${body.tagId}, images=${images.length}`);
+  return res.status(201).json(response);
+});
+
+// POST /perception/validate
+// Compares the live operator frame against the stored pass-state reference images
+// using SSIM + histogram intersection. Returns PASS or FAIL with a confidence score.
+router.post('/validate', async (req: Request, res: Response) => {
+  const body = req.body as ValidateRequest;
+
+  const required = ['tagId', 'anchorId', 'assetId', 'sessionId', 'imageBase64'];
+  const missing = required.filter(k => !body[k as keyof ValidateRequest]);
+  if (missing.length > 0) {
+    return res.status(400).json({
+      error: `Missing required fields: ${missing.join(', ')}`,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  const passState = findPassStateByTag(body.tagId);
+  if (!passState) {
+    return res.status(404).json({
+      error: `No pass state found for tag ${body.tagId}. Run Author mode first.`,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  const now = new Date().toISOString();
+
+  // Real comparison — SSIM + histogram intersection
+  let comparison: Awaited<ReturnType<typeof compareAgainstPassState>>;
+  try {
+    comparison = await compareAgainstPassState(
+      passState.images.map(img => img.imageBase64),
+      body.imageBase64,
+    );
+  } catch (err) {
+    console.error('[SIB] Image comparison error:', err);
+    return res.status(500).json({
+      error: `Image comparison failed: ${err instanceof Error ? err.message : String(err)}`,
+      timestamp: now,
+    });
+  }
+
+  const result: ValidationResult = {
+    id:         uuidv4(),
+    tagId:      body.tagId,
+    anchorId:   body.anchorId,
+    assetId:    body.assetId,
+    sessionId:  body.sessionId,
+    status:     comparison.status,
+    confidence: parseFloat(comparison.score.toFixed(4)),
+    evaluatedAt: now,
+  };
+
+  console.log(
+    `[SIB] Validation: tag=${body.tagId} refs=${passState.images.length} ` +
+    `score=${comparison.score.toFixed(3)} → ${result.status}`,
+  );
+  return res.status(200).json({ data: result, timestamp: now });
+});
+
+// POST /perception/validate-all
+// Validates every tag attached to an anchor against a single operator frame.
+// Optional body fields:
+//   threshold  — override global PASS_THRESHOLD (0.0–1.0, default 0.60)
+//   tagIds     — validate only this subset (for failed-only re-inspection)
+// Returns an AnchorValidationResult with per-tag PASS/FAIL summaries.
+router.post('/validate-all', async (req: Request, res: Response) => {
+  const body = req.body as BatchValidateRequest;
+
+  const required = ['anchorId', 'assetId', 'sessionId', 'imageBase64'];
+  const missing = required.filter(k => !body[k as keyof BatchValidateRequest]);
+  if (missing.length > 0) {
+    return res.status(400).json({
+      error: `Missing required fields: ${missing.join(', ')}`,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  // Resolve threshold: body param → env var → hardcoded default
+  const threshold =
+    typeof body.threshold === 'number' && body.threshold > 0 && body.threshold <= 1
+      ? body.threshold
+      : parseFloat(process.env.PASS_THRESHOLD ?? '0.60');
+
+  // All tags registered for this anchor
+  let tags = tagStore.findAll().filter(t => t.anchorId === body.anchorId);
+  if (tags.length === 0) {
+    return res.status(404).json({
+      error: `No tags found for anchor ${body.anchorId}. Author mode must run first.`,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  // If caller supplied a tagIds filter, restrict to those tags only
+  if (Array.isArray(body.tagIds) && body.tagIds.length > 0) {
+    const filterSet = new Set(body.tagIds);
+    tags = tags.filter(t => filterSet.has(t.id));
+  }
+
+  const startedAt  = new Date().toISOString();
+  const startMs    = Date.now();
+
+  // Optional AES-256-GCM encryption key (base64, from QR scan on Operator device)
+  const encryptionKey: string | undefined =
+    typeof (body as any).encryptionKey === 'string'
+      ? (body as any).encryptionKey
+      : undefined;
+
+  // Run comparisons in parallel; tags with no pass-state get PENDING
+  const tagResults: TagValidationSummary[] = await Promise.all(
+    tags.map(async (tag): Promise<TagValidationSummary> => {
+      const passState = findPassStateByTag(tag.id);
+      if (!passState || passState.images.length === 0) {
+        return {
+          tagId:      tag.id,
+          tagLabel:   tag.label,
+          tagType:    tag.type,
+          status:     'PENDING',
+          confidence: 0,
+        };
+      }
+
+      try {
+        // Decrypt pass-state images in-memory if an encryption key was supplied.
+        // Plaintext images are never re-stored; they exist only for this comparison.
+        let refImages = passState.images.map(img => img.imageBase64);
+        if (encryptionKey) {
+          refImages = refImages.map(enc => {
+            try { return decryptImageBase64(enc, encryptionKey); }
+            catch { return enc; } // fall back to stored blob if decryption fails
+          });
+        }
+
+        const comparison = await compareAgainstPassState(
+          refImages,
+          body.imageBase64,
+          threshold,
+        );
+        return {
+          tagId:      tag.id,
+          tagLabel:   tag.label,
+          tagType:    tag.type,
+          status:     comparison.status,
+          confidence: parseFloat(comparison.score.toFixed(4)),
+        };
+      } catch (err) {
+        console.error(`[SIB] Comparison failed for tag ${tag.id}:`, err);
+        return {
+          tagId:      tag.id,
+          tagLabel:   tag.label,
+          tagType:    tag.type,
+          status:     'FAIL',
+          confidence: 0,
+        };
+      }
+    }),
+  );
+
+  const durationMs   = Date.now() - startMs;
+  const passCount    = tagResults.filter(r => r.status === 'PASS').length;
+  const failCount    = tagResults.filter(r => r.status === 'FAIL').length;
+  const pendingCount = tagResults.filter(r => r.status === 'PENDING').length;
+  const totalCount   = tagResults.length;
+
+  let anchorStatus: AnchorStatus;
+  if (failCount === 0 && pendingCount === 0) {
+    anchorStatus = 'PASS';
+  } else if (passCount === 0 && pendingCount === 0) {
+    anchorStatus = 'FAIL';
+  } else if (pendingCount === totalCount) {
+    anchorStatus = 'PENDING';
+  } else {
+    anchorStatus = 'PARTIAL';
+  }
+
+  const now = new Date().toISOString();
+  const result: AnchorValidationResult = {
+    id:          uuidv4(),
+    anchorId:    body.anchorId,
+    assetId:     body.assetId,
+    sessionId:   body.sessionId,
+    status:      anchorStatus,
+    passCount,
+    failCount,
+    totalCount,
+    tagResults,
+    evaluatedAt: now,
+  };
+
+  console.log(
+    `[SIB] validate-all: anchor=${body.anchorId} threshold=${threshold} ` +
+    `tags=${totalCount} pass=${passCount} fail=${failCount} pending=${pendingCount} ` +
+    `→ ${anchorStatus} (${durationMs}ms)`,
+  );
+
+  // Persist to inspection log (fire-and-forget — never blocks the response)
+  try {
+    logInspection({
+      sessionId:     body.sessionId,
+      anchorId:      body.anchorId,
+      assetId:       body.assetId,
+      operatorIP:    req.ip ?? 'unknown',
+      threshold,
+      startedAt,
+      durationMs,
+      overallStatus: anchorStatus,
+      passCount,
+      failCount,
+      pendingCount,
+      totalCount,
+      tagResults: tagResults.map(r => ({
+        tagId:      r.tagId,
+        tagLabel:   r.tagLabel,
+        tagType:    r.tagType,
+        status:     r.status,
+        confidence: r.confidence,
+      })),
+    });
+  } catch (logErr) {
+    // Never let logging failure affect the API response
+    console.error('[logger] Failed to write inspection log:', logErr);
+  }
+
+  return res.status(200).json({ data: result, timestamp: now });
+});
+
+// GET /perception/pass-state/:tagId
+// Operator mode loads the pass state to display the honeycomb reference.
+router.get('/pass-state/:tagId', (req: Request, res: Response) => {
+  const passState = findPassStateByTag(req.params.tagId);
+  if (!passState) {
+    return res.status(404).json({
+      error: `No pass state for tag ${req.params.tagId}`,
+      timestamp: new Date().toISOString(),
+    });
+  }
+  return res.status(200).json({ data: passState, timestamp: new Date().toISOString() });
+});
+
+export default router;
