@@ -201,9 +201,20 @@ router.post('/validate-all', async (req: Request, res: Response) => {
 
   // Optional AES-256-GCM encryption key (base64, from QR scan on Operator device)
   const encryptionKey: string | undefined =
-    typeof (body as any).encryptionKey === 'string'
-      ? (body as any).encryptionKey
+    typeof body.encryptionKey === 'string' && body.encryptionKey.length > 0
+      ? body.encryptionKey
       : undefined;
+
+  if (!encryptionKey) {
+    // This means the Operator scanned a QR that didn't contain the encryption key
+    // (e.g. the original physical QR rather than the app-generated one).
+    // SSIM will run on raw ciphertext → confidence will be ~0. Log clearly.
+    console.warn(
+      `[SIB] validate-all: NO encryptionKey received for anchor=${body.anchorId}. ` +
+      `If images were encrypted on upload, all results will show ~0% confidence. ` +
+      `Operator must scan the app-generated QR (Author → QR icon) not the original physical QR.`
+    );
+  }
 
   // Run comparisons in parallel; tags with no pass-state get PENDING
   const tagResults: TagValidationSummary[] = await Promise.all(
@@ -224,9 +235,18 @@ router.post('/validate-all', async (req: Request, res: Response) => {
         // Plaintext images are never re-stored; they exist only for this comparison.
         let refImages = passState.images.map(img => img.imageBase64);
         if (encryptionKey) {
-          refImages = refImages.map(enc => {
-            try { return decryptImageBase64(enc, encryptionKey); }
-            catch { return enc; } // fall back to stored blob if decryption fails
+          refImages = refImages.map((enc, i) => {
+            try {
+              return decryptImageBase64(enc, encryptionKey);
+            } catch (decErr) {
+              // Decryption failed — likely wrong key or unencrypted legacy image.
+              // Log clearly; falling back to the raw stored blob (SSIM will score ~0).
+              console.error(
+                `[SIB] Decryption failed for image[${i}] tag=${tag.id}: ` +
+                `${decErr instanceof Error ? decErr.message : String(decErr)}`
+              );
+              return enc;
+            }
           });
         }
 

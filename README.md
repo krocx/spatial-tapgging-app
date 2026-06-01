@@ -194,23 +194,9 @@ Full step-by-step instructions are in **`docs/RENDER-DEPLOYMENT.md`**, including
 
 All routes except `/health` require `X-API-Key` header when `SIB_API_KEY` is set.
 
----
-
-## Cowork Guidelines (for Claude Sessions)
-
-When starting a new Cowork session on this project:
-
-1. Read this `README.md` for project context and phase history
-2. Read `STATUS.md` for the current task list and what's in progress
-3. Read the relevant docs in `/docs/` for the area you're working on
-4. Read `/skills/cowork-guidelines.md` for coding standards
-5. Keep the iOS app and SIB in sync — shared types live in `shared/src/index.ts`
-6. Never send plaintext images from SIB to the client; decryption is in-memory only
-7. All new SIB routes must be added after the `apiKeyAuth` middleware in `app.ts`
 
 ---
 
 ## Ownership
 
-Vision & architecture: Karthik
-Implementation: Karthik + Claude Cowork
+Vision, Architecture & Code: Karthik
