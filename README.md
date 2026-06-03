@@ -118,9 +118,15 @@ In Xcode: select the `SpatialTaggingApp` target → **Signing & Capabilities** �
 ### 4. Configure the server URL
 
 In the app, tap the **gear icon** (Settings):
-- **SIB Server URL:** `https://your-server.onrender.com` (or `http://your-mac-ip:3001` for local)
-- **API Key:** your `SIB_API_KEY` value
-- Tap **Save** → **Test Connection** — you should see a green "Connected" banner
+
+| Field | Value |
+|---|---|
+| **SIB Server URL** | `https://sib-server-hiul.onrender.com` |
+| **API Key** | `sk-sib-a8f3d2e1b4c7f9a0d3e6b2c5f8a1d4e7` |
+
+Tap **Save** → **Test Connection** — you should see a green "Connected" banner.
+
+> For local development, use `http://<your-mac-ip>:3001` as the URL and leave the API Key blank.
 
 ---
 

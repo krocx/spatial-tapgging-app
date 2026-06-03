@@ -94,6 +94,8 @@ export interface UpdateTagRequest {
   expectedOutcome?: string;
   checkDescription?: string;
   order?: number;
+  /** Deep-merged into tag.metadata — existing keys are preserved. */
+  metadata?: Record<string, unknown>;
 }
 
 // ============================================================

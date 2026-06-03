@@ -95,6 +95,9 @@ router.patch('/:id', (req: Request, res: Response) => {
     ...(body.expectedOutcome  !== undefined && { expectedOutcome:  body.expectedOutcome }),
     ...(body.checkDescription !== undefined && { checkDescription: body.checkDescription }),
     ...(body.order            !== undefined && { order:            body.order }),
+    // Deep-merge incoming metadata so existing keys (anchor_rel_*, etc.) are preserved.
+    // Feature prints and OCR text are stored this way without touching other fields.
+    ...(body.metadata !== undefined && { metadata: { ...tag.metadata, ...body.metadata } }),
     updatedAt: now,
   };
 
