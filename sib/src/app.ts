@@ -1,11 +1,15 @@
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import anchorRouter from './routes/anchors.js';
 import tagRouter from './routes/tags.js';
 import sessionRouter from './routes/sessions.js';
 import perceptionRouter from './routes/perception.js';
 import trainingRouter from './routes/training.js';
 import { apiKeyAuth } from './middleware/auth.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export function createApp(): express.Express {
   const app = express();
@@ -17,6 +21,13 @@ export function createApp(): express.Express {
   // --- Health check (no auth — used by Render for container health probes) ---
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
+
+  // --- Anchor Directory portal (no auth — team members enter their own API key) ---
+  // Served at /portal — a browser-based anchor browser + QR generator
+  app.use('/portal', express.static(path.join(__dirname, '../../portal')));
+  app.get('/portal', (_req, res) => {
+    res.sendFile(path.join(__dirname, '../../portal/index.html'));
   });
 
   // --- API key auth — protects all routes below this point ---

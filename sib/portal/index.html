@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spatial Tagging · Anchor Directory</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    :root {
+      --bg:       #0a0a0f;
+      --surface:  #13131c;
+      --border:   #22223a;
+      --text:     #e8e8f0;
+      --muted:    #7070a0;
+      --accent:   #4f8ef7;
+      --green:    #3dd68c;
+      --orange:   #f5a623;
+      --red:      #f05656;
+      --radius:   14px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100vh; }
+
+    /* ── Header ── */
+    header { padding: 20px 24px 0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+    .logo { display: flex; align-items: center; gap: 10px; }
+    .logo svg { width: 28px; height: 28px; }
+    .logo h1 { font-size: 1.15rem; font-weight: 700; letter-spacing: -0.3px; }
+    .logo span { color: var(--muted); font-weight: 400; }
+    header .actions { display: flex; gap: 10px; align-items: center; }
+
+    /* ── Buttons ── */
+    button, .btn { cursor: pointer; border: none; border-radius: 8px; font-size: 0.85rem; font-weight: 600; padding: 8px 16px; transition: opacity 0.15s, transform 0.1s; }
+    button:active, .btn:active { transform: scale(0.97); }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-ghost   { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-sm { padding: 5px 12px; font-size: 0.78rem; }
+    .btn-danger { background: var(--red); color: #fff; }
+
+    /* ── Setup banner ── */
+    #setup-banner { margin: 24px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; }
+    #setup-banner h2 { font-size: 1rem; margin-bottom: 6px; }
+    #setup-banner p  { font-size: 0.85rem; color: var(--muted); margin-bottom: 16px; }
+    .field { margin-bottom: 12px; }
+    .field label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .field input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; color: var(--text); font-size: 0.9rem; outline: none; }
+    .field input:focus { border-color: var(--accent); }
+
+    /* ── Toolbar ── */
+    #toolbar { padding: 16px 24px 0; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    #search { flex: 1; min-width: 180px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 9px 14px; color: var(--text); font-size: 0.9rem; outline: none; }
+    #search:focus { border-color: var(--accent); }
+    #search::placeholder { color: var(--muted); }
+
+    /* ── Anchor grid ── */
+    #anchor-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 16px; padding: 16px 24px 48px; }
+
+    /* ── Anchor card ── */
+    .anchor-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; transition: border-color 0.2s; }
+    .anchor-card:hover { border-color: var(--accent); }
+    .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+    .card-ids h3 { font-size: 0.92rem; font-weight: 700; margin-bottom: 2px; word-break: break-all; }
+    .card-ids .asset { font-size: 0.78rem; color: var(--muted); font-family: monospace; }
+    .badge { display: inline-block; font-size: 0.70rem; font-weight: 700; padding: 2px 8px; border-radius: 100px; }
+    .badge-green  { background: rgba(61,214,140,0.12); color: var(--green); }
+    .badge-orange { background: rgba(245,166,35,0.12);  color: var(--orange); }
+    .badge-muted  { background: var(--border); color: var(--muted); }
+
+    .qr-wrap { display: flex; justify-content: center; margin: 12px 0; }
+    .qr-wrap canvas, .qr-wrap img { border-radius: 8px; border: 4px solid #fff; }
+
+    .card-meta { font-size: 0.75rem; color: var(--muted); margin-bottom: 12px; }
+    .card-meta span + span::before { content: ' · '; }
+
+    .card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .qr-size-select { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; color: var(--text); font-size: 0.78rem; outline: none; }
+
+    /* ── Spinner ── */
+    .spinner { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 60px 0; color: var(--muted); }
+    .spin { width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Empty ── */
+    .empty { text-align: center; padding: 60px 24px; color: var(--muted); }
+    .empty p { margin-top: 8px; font-size: 0.85rem; }
+
+    /* ── Modal ── */
+    .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.72); z-index: 100; align-items: center; justify-content: center; padding: 24px; }
+    .overlay.open { display: flex; }
+    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; width: 100%; max-width: 440px; }
+    .modal h2 { font-size: 1rem; margin-bottom: 16px; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+    /* ── Toast ── */
+    #toast { position: fixed; bottom: 24px; right: 24px; background: #222; border: 1px solid var(--border); border-radius: 10px; padding: 10px 18px; font-size: 0.85rem; opacity: 0; transition: opacity 0.25s; pointer-events: none; z-index: 200; }
+    #toast.show { opacity: 1; }
+
+    /* ── Key warning ── */
+    .key-warn { font-size: 0.72rem; color: var(--orange); margin-top: 8px; line-height: 1.4; }
+
+    /* ── Responsive ── */
+    @media (max-width: 480px) {
+      #anchor-grid { grid-template-columns: 1fr; padding: 12px; }
+      header { padding: 16px 12px 0; }
+      #toolbar { padding: 12px 12px 0; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="28" height="28" rx="7" fill="#4f8ef7" fill-opacity="0.15"/>
+      <path d="M14 4L24 10V18L14 24L4 18V10L14 4Z" stroke="#4f8ef7" stroke-width="1.5" fill="none"/>
+      <circle cx="14" cy="14" r="3" fill="#4f8ef7"/>
+    </svg>
+    <h1>Spatial Tagging <span>· Anchor Directory</span></h1>
+  </div>
+  <div class="actions">
+    <button class="btn btn-ghost btn-sm" onclick="showSettings()">⚙ Settings</button>
+    <button class="btn btn-primary btn-sm" onclick="openCreateModal()">+ New Anchor</button>
+  </div>
+</header>
+
+<!-- Setup banner (shown when API key not set) -->
+<div id="setup-banner" style="display:none">
+  <h2>🔑 Connect to your SIB server</h2>
+  <p>Enter the API key to browse and manage anchors. The key is stored locally in your browser.</p>
+  <div class="field">
+    <label>API Key</label>
+    <input type="password" id="setup-key" placeholder="sk-…" autocomplete="off" />
+  </div>
+  <button class="btn btn-primary" onclick="saveSettings()">Connect</button>
+</div>
+
+<!-- Toolbar -->
+<div id="toolbar" style="display:none">
+  <input id="search" type="search" placeholder="🔍 Search by anchor ID or asset…" oninput="renderAnchors()" />
+  <button class="btn btn-ghost btn-sm" onclick="loadAnchors()">⟳ Refresh</button>
+</div>
+
+<!-- Anchor grid -->
+<div id="anchor-grid"></div>
+
+<!-- Create anchor modal -->
+<div id="create-modal" class="overlay">
+  <div class="modal">
+    <h2>✦ Create New Anchor</h2>
+    <div class="field">
+      <label>Asset ID <span style="color:var(--red)">*</span></label>
+      <input type="text" id="new-asset-id" placeholder="e.g. pump-station-A" />
+    </div>
+    <div class="field">
+      <label>Anchor ID <span style="color:var(--muted)">(optional — auto-generated)</span></label>
+      <input type="text" id="new-anchor-id" placeholder="Leave blank to auto-generate" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeCreateModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitCreateAnchor()">Create Anchor</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings modal -->
+<div id="settings-modal" class="overlay">
+  <div class="modal">
+    <h2>⚙ Settings</h2>
+    <div class="field">
+      <label>API Key</label>
+      <input type="password" id="settings-key" placeholder="sk-…" autocomplete="off" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeSettings()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSettings()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+let allAnchors  = [];
+let tagCounts   = {}; // anchorId → count
+
+// ── Bootstrap ─────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const key = localStorage.getItem('sib_api_key');
+  if (!key) {
+    document.getElementById('setup-banner').style.display = 'block';
+  } else {
+    document.getElementById('toolbar').style.display    = 'flex';
+    loadAnchors();
+  }
+});
+
+// ── Auth helpers ───────────────────────────────────────────────────────────────
+function apiKey() { return localStorage.getItem('sib_api_key') || ''; }
+
+async function apiFetch(path, opts = {}) {
+  const res = await fetch(path, {
+    ...opts,
+    headers: {
+      'Content-Type': 'application/json',
+      'X-API-Key': apiKey(),
+      ...(opts.headers || {}),
+    },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+// ── Load anchors ──────────────────────────────────────────────────────────────
+async function loadAnchors() {
+  const grid = document.getElementById('anchor-grid');
+  grid.innerHTML = `<div class="spinner" style="grid-column:1/-1"><div class="spin"></div><span>Loading anchors…</span></div>`;
+  try {
+    const resp = await apiFetch('/anchors');
+    allAnchors = resp.data || [];
+    // Load tag counts for all anchors in parallel
+    const counts = await Promise.allSettled(
+      allAnchors.map(a => apiFetch(`/tags?anchorId=${encodeURIComponent(a.id)}`))
+    );
+    counts.forEach((r, i) => {
+      tagCounts[allAnchors[i].id] = r.status === 'fulfilled' ? (r.value.data || []).length : 0;
+    });
+    renderAnchors();
+  } catch (e) {
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1">⚠ ${e.message}<br/><p>Check your API key in Settings.</p></div>`;
+  }
+}
+
+// ── Render anchors ─────────────────────────────────────────────────────────────
+function renderAnchors() {
+  const q = (document.getElementById('search')?.value || '').toLowerCase();
+  const filtered = allAnchors.filter(a =>
+    !q ||
+    a.id.toLowerCase().includes(q) ||
+    a.assetId.toLowerCase().includes(q)
+  );
+
+  const grid = document.getElementById('anchor-grid');
+
+  if (!filtered.length) {
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1">
+      <div style="font-size:2rem">📭</div>
+      <p>${allAnchors.length ? 'No anchors match your search.' : 'No anchors yet. Create one to get started.'}</p>
+    </div>`;
+    return;
+  }
+
+  // Sort newest first
+  const sorted = [...filtered].sort((a,b) => b.createdAt.localeCompare(a.createdAt));
+  grid.innerHTML = '';
+  sorted.forEach(a => grid.appendChild(buildCard(a)));
+}
+
+// ── Build anchor card ──────────────────────────────────────────────────────────
+function buildCard(anchor) {
+  const count = tagCounts[anchor.id] ?? 0;
+  const card  = document.createElement('div');
+  card.className = 'anchor-card';
+  card.id = `card-${anchor.id}`;
+
+  const short  = anchor.id.length > 22 ? anchor.id.slice(0,10)+'…'+anchor.id.slice(-8) : anchor.id;
+  const date   = new Date(anchor.createdAt).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
+  const badge  = count > 0
+    ? `<span class="badge badge-green">${count} tag${count!==1?'s':''}</span>`
+    : `<span class="badge badge-orange">No tags</span>`;
+
+  card.innerHTML = `
+    <div class="card-header">
+      <div class="card-ids">
+        <h3 title="${anchor.id}">${short}</h3>
+        <div class="asset">${anchor.assetId}</div>
+      </div>
+      ${badge}
+    </div>
+    <div class="qr-wrap" id="qr-${anchor.id.replace(/[^a-z0-9]/gi,'_')}"></div>
+    <div class="card-meta">
+      <span>Created ${date}</span>
+      <span>${anchor.coordinateSystem}</span>
+    </div>
+    <p class="key-warn">⚠ QR codes from this portal do not include an encryption key. For secure inspections, use the iOS app's QR generator (Author mode → QR icon).</p>
+    <div class="card-actions" style="margin-top:10px">
+      <select class="qr-size-select" id="size-${anchor.id.replace(/[^a-z0-9]/gi,'_')}" onchange="regenerateQR('${anchor.id}')">
+        <option value="5">5 cm</option>
+        <option value="8">8 cm</option>
+        <option value="10" selected>10 cm</option>
+        <option value="15">15 cm</option>
+        <option value="20">20 cm</option>
+      </select>
+      <button class="btn btn-ghost btn-sm" onclick="downloadQR('${anchor.id}')">⬇ Download QR</button>
+      <button class="btn btn-ghost btn-sm" onclick="copyAnchorId('${anchor.id}')">Copy ID</button>
+    </div>
+  `;
+
+  // Generate QR after DOM insertion
+  setTimeout(() => generateQR(anchor, 10), 0);
+  return card;
+}
+
+// ── QR generation ──────────────────────────────────────────────────────────────
+function qrPayload(anchor, sizeCm) {
+  return JSON.stringify({
+    assetId: anchor.assetId,
+    anchorId: anchor.id,
+    qrSizeCm: sizeCm
+  });
+}
+
+function generateQR(anchor, sizeCm) {
+  const safeId = anchor.id.replace(/[^a-z0-9]/gi,'_');
+  const container = document.getElementById(`qr-${safeId}`);
+  if (!container) return;
+  container.innerHTML = '';
+  new QRCode(container, {
+    text:          qrPayload(anchor, sizeCm),
+    width:         180,
+    height:        180,
+    colorDark:     '#000000',
+    colorLight:    '#ffffff',
+    correctLevel:  QRCode.CorrectLevel.M,
+  });
+}
+
+function regenerateQR(anchorId) {
+  const anchor = allAnchors.find(a => a.id === anchorId);
+  if (!anchor) return;
+  const safeId = anchorId.replace(/[^a-z0-9]/gi,'_');
+  const sizeCm = parseInt(document.getElementById(`size-${safeId}`)?.value || '10', 10);
+  generateQR(anchor, sizeCm);
+}
+
+function downloadQR(anchorId) {
+  const safeId = anchorId.replace(/[^a-z0-9]/gi,'_');
+  const container = document.getElementById(`qr-${safeId}`);
+  const img = container?.querySelector('img') || container?.querySelector('canvas');
+  if (!img) return;
+  const link = document.createElement('a');
+  if (img.tagName === 'CANVAS') {
+    link.href = img.toDataURL('image/png');
+  } else {
+    link.href = img.src;
+  }
+  link.download = `qr-${anchorId.slice(0,12)}.png`;
+  link.click();
+}
+
+function copyAnchorId(id) {
+  navigator.clipboard.writeText(id).then(() => toast('Anchor ID copied!'));
+}
+
+// ── Create anchor ──────────────────────────────────────────────────────────────
+function openCreateModal() {
+  if (!apiKey()) { alert('Enter your API key in Settings first.'); return; }
+  document.getElementById('create-modal').classList.add('open');
+}
+function closeCreateModal() {
+  document.getElementById('create-modal').classList.remove('open');
+  document.getElementById('new-asset-id').value = '';
+  document.getElementById('new-anchor-id').value = '';
+}
+
+async function submitCreateAnchor() {
+  const assetId  = document.getElementById('new-asset-id').value.trim();
+  const anchorId = document.getElementById('new-anchor-id').value.trim();
+  if (!assetId) { alert('Asset ID is required.'); return; }
+  try {
+    const body = {
+      assetId,
+      coordinateSystem: 'ASSET_FRAME',
+      position: { x:0, y:0, z:0 },
+      rotation: { x:0, y:0, z:0, w:1 },
+      metadata: {},
+    };
+    if (anchorId) body.id = anchorId;
+    const resp = await apiFetch('/anchors', { method:'POST', body: JSON.stringify(body) });
+    const newAnchor = resp.data;
+    allAnchors.unshift(newAnchor);
+    tagCounts[newAnchor.id] = 0;
+    renderAnchors();
+    closeCreateModal();
+    toast(`Anchor created: ${newAnchor.id.slice(0,16)}…`);
+    // Scroll to new card
+    setTimeout(() => {
+      document.getElementById(`card-${newAnchor.id}`)?.scrollIntoView({behavior:'smooth', block:'center'});
+    }, 100);
+  } catch(e) {
+    alert(`Failed to create anchor: ${e.message}`);
+  }
+}
+
+// ── Settings ───────────────────────────────────────────────────────────────────
+function showSettings() {
+  document.getElementById('settings-key').value = apiKey();
+  document.getElementById('settings-modal').classList.add('open');
+}
+function closeSettings() {
+  document.getElementById('settings-modal').classList.remove('open');
+}
+function saveSettings() {
+  // Read from whichever input the user actually typed into
+  const setupVal    = (document.getElementById('setup-key')?.value    || '').trim();
+  const settingsVal = (document.getElementById('settings-key')?.value || '').trim();
+  const k = settingsVal || setupVal;
+  if (!k) { alert('API key cannot be empty.'); return; }
+  localStorage.setItem('sib_api_key', k);
+  document.getElementById('settings-modal').classList.remove('open');
+  document.getElementById('setup-banner').style.display = 'none';
+  document.getElementById('toolbar').style.display = 'flex';
+  loadAnchors();
+}
+
+// Close modals on overlay click
+document.querySelectorAll('.overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+});
+
+// ── Toast ──────────────────────────────────────────────────────────────────────
+function toast(msg, duration=2200) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), duration);
+}
+</script>
+</body>
+</html>
