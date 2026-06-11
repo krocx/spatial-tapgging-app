@@ -25,9 +25,9 @@ export function createApp(): express.Express {
 
   // --- Anchor Directory portal (no auth — team members enter their own API key) ---
   // Served at /portal — a browser-based anchor browser + QR generator
-  app.use('/portal', express.static(path.join(__dirname, '../../portal')));
+  app.use('/portal', express.static(path.join(__dirname, '../portal')));
   app.get('/portal', (_req, res) => {
-    res.sendFile(path.join(__dirname, '../../portal/index.html'));
+    res.sendFile(path.join(__dirname, '../portal/index.html'));
   });
 
   // --- API key auth — protects all routes below this point ---
