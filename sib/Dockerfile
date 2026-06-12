@@ -45,6 +45,9 @@ RUN npm ci --omit=dev
 # Copy compiled sib output from builder.
 COPY --from=builder /app/sib/dist ./sib/dist
 
+# Copy static portal files (served at /portal, no auth required).
+COPY sib/portal/ ./sib/portal/
+
 # Persistent data directory — mount a Render disk at /data.
 # SIB writes anchor/tag data here so it survives container restarts and redeploys.
 RUN mkdir -p /data/.sib-data
