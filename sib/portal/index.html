@@ -334,15 +334,14 @@ function buildCard(anchor) {
 
 // ── QR generation ──────────────────────────────────────────────────────────────
 function qrPayload(anchor, sizeCm) {
-  // Mirror the iOS QRAnchorContext exactly: { assetId, anchorId, encryptionKey?, qrSizeCm }
-  // encryptionKey is stored in SIB when the anchor is created via the iOS wizard.
-  // When present the portal QR is byte-for-byte compatible with the iOS-generated QR.
-  const payload = {
-    assetId:  anchor.assetId,
-    anchorId: anchor.id,
-    qrSizeCm: sizeCm,
-  };
+  // Mirror the iOS QRAnchorContext property order exactly:
+  //   { assetId, anchorId, encryptionKey?, qrSizeCm? }
+  // JSON.stringify preserves insertion order, so we must insert keys in the same
+  // order as the Swift struct so the resulting JSON string — and therefore the QR
+  // pixel pattern — is byte-for-byte identical to the iOS-generated code.
+  const payload = { assetId: anchor.assetId, anchorId: anchor.id };
   if (anchor.encryptionKey) payload.encryptionKey = anchor.encryptionKey;
+  payload.qrSizeCm = sizeCm;
   return JSON.stringify(payload);
 }
 
