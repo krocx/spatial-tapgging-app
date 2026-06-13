@@ -314,21 +314,18 @@ function buildCard(anchor) {
     </div>
     ${keyHtml}
     <div class="card-actions" style="margin-top:10px">
-      <select class="qr-size-select" id="size-${anchor.id.replace(/[^a-z0-9]/gi,'_')}" onchange="regenerateQR('${anchor.id}')">
-        <option value="5">5 cm</option>
-        <option value="8">8 cm</option>
-        <option value="10" selected>10 cm</option>
-        <option value="15">15 cm</option>
-        <option value="20">20 cm</option>
-      </select>
+      <span class="qr-size-label" style="font-size:11px;color:#888;align-self:center">
+        📐 ${anchor.qrSizeCm ?? 10} cm print size
+      </span>
       <button class="btn btn-ghost btn-sm" onclick="downloadQR('${anchor.id}')">⬇ Download QR</button>
       <button class="btn btn-ghost btn-sm" onclick="copyAnchorId('${anchor.id}')">Copy ID</button>
       <button class="btn btn-danger btn-sm" onclick="openDeleteModal('${anchor.id}','${anchor.assetId.replace(/'/g,"\\'")}')">🗑 Delete</button>
     </div>
   `;
 
-  // Generate QR after DOM insertion
-  setTimeout(() => generateQR(anchor, 10), 0);
+  // Generate QR using the anchor's canonical size (set once at creation)
+  const canonicalSize = anchor.qrSizeCm ?? 10;
+  setTimeout(() => generateQR(anchor, canonicalSize), 0);
   return card;
 }
 
@@ -360,12 +357,11 @@ function generateQR(anchor, sizeCm) {
   });
 }
 
+// regenerateQR kept for backward-compat but now always uses the canonical size
 function regenerateQR(anchorId) {
   const anchor = allAnchors.find(a => a.id === anchorId);
   if (!anchor) return;
-  const safeId = anchorId.replace(/[^a-z0-9]/gi,'_');
-  const sizeCm = parseInt(document.getElementById(`size-${safeId}`)?.value || '10', 10);
-  generateQR(anchor, sizeCm);
+  generateQR(anchor, anchor.qrSizeCm ?? 10);
 }
 
 function downloadQR(anchorId) {

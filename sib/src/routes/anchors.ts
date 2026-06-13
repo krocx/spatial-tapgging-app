@@ -42,6 +42,9 @@ router.post('/', (req: Request, res: Response) => {
     // Phase 3: persist the encryption key so any authorised device can
     // retrieve it and regenerate the full QR (with key embedded) later.
     ...(body.encryptionKey ? { encryptionKey: body.encryptionKey } : {}),
+    // Physical QR print size (cm) — locked at creation so all subsequent
+    // QR generators (app + portal) produce the same pixel pattern.
+    qrSizeCm: typeof (body as any).qrSizeCm === 'number' ? (body as any).qrSizeCm : 10.0,
     createdAt: now,
     updatedAt: now,
   };

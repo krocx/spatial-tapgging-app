@@ -72,6 +72,14 @@ export interface Anchor {
    * Optional so legacy anchors without keys remain backward-compatible.
    */
   encryptionKey?: string;
+  /**
+   * Physical width of the printed QR code in centimetres.
+   * Stored once at anchor creation so every subsequent QR generation —
+   * in-app and in the portal — uses the same size, producing the same QR pixels.
+   * ARKit uses this to compute accurate 6DOF pose from the QR corners.
+   * Default: 10.0 cm.
+   */
+  qrSizeCm?: number;
   createdAt: string; // ISO 8601
   updatedAt: string;
 }
@@ -85,6 +93,8 @@ export interface CreateAnchorRequest {
   metadata: Record<string, unknown>;
   /** Phase 3: encryption key generated at anchor creation time. */
   encryptionKey?: string;
+  /** Physical QR print size in cm — locked at creation. Default: 10.0. */
+  qrSizeCm?: number;
 }
 
 // ============================================================
