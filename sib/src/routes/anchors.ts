@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { Anchor, CreateAnchorRequest, ApiResponse } from '@spatial/shared';
 import { JsonFileStore } from '../stores/json-file-store.js';
 import { tagStore } from './tags.js';
-import { findPassStateByTag } from '../stores/pass-state-store.js';
+import { passStateStore, findPassStateByTag } from '../stores/pass-state-store.js';
 
 export const anchorStore = new JsonFileStore<Anchor>('anchors');
 
@@ -39,6 +39,9 @@ router.post('/', (req: Request, res: Response) => {
     position: body.position,
     rotation: body.rotation,
     metadata: body.metadata ?? {},
+    // Phase 3: persist the encryption key so any authorised device can
+    // retrieve it and regenerate the full QR (with key embedded) later.
+    ...(body.encryptionKey ? { encryptionKey: body.encryptionKey } : {}),
     createdAt: now,
     updatedAt: now,
   };
@@ -125,6 +128,40 @@ router.get('/:id/readiness', (req: Request, res: Response) => {
         ? 'Anchor is ready for inspection.'
         : `${untrainedTagIds.length} of ${totalTags} tags are not yet trained.`,
     },
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// DELETE /anchors/:id — remove anchor and cascade-delete all its tags + pass-states
+router.delete('/:id', (req: Request, res: Response) => {
+  const anchor = anchorStore.findById(req.params.id);
+  if (!anchor) {
+    return res.status(404).json({
+      error: `Anchor ${req.params.id} not found`,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  // Cascade: delete every tag (and its pass-state) that belongs to this anchor
+  const tags = tagStore.findAll().filter(t => t.anchorId === req.params.id);
+  let deletedTags = 0;
+  let deletedPassStates = 0;
+  for (const tag of tags) {
+    const ps = findPassStateByTag(tag.id);
+    if (ps) { passStateStore.delete(ps.id); deletedPassStates++; }
+    tagStore.delete(tag.id);
+    deletedTags++;
+  }
+
+  anchorStore.delete(req.params.id);
+
+  console.log(
+    `[SIB] Deleted anchor ${req.params.id} ` +
+    `(+${deletedTags} tags, +${deletedPassStates} pass-states)`
+  );
+
+  return res.status(200).json({
+    data: { id: req.params.id, deletedTags, deletedPassStates },
     timestamp: new Date().toISOString(),
   });
 });

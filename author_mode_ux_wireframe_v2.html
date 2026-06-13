@@ -1,0 +1,491 @@
+<h2 class="sr-only">Author mode UX wireframe v2 — 10 screens with revised QR and session flow</h2>
+<style>
+.pscr{display:flex;flex-direction:column;height:100%;background:#080810;color:#f0f0f8;font-size:13px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow:hidden;}
+.pnav{display:flex;justify-content:space-between;align-items:center;padding:10px 14px 8px;}
+.pback{color:#4f8ef7;font-size:14px;}
+.ptitle{font-size:16px;font-weight:500;}
+.pact{color:#4f8ef7;font-size:14px;}
+.pcard{background:#14141e;border-radius:13px;margin:4px 13px;padding:11px 13px;}
+.pbtn{border-radius:13px;margin:5px 13px;padding:13px;text-align:center;font-size:14px;font-weight:500;}
+.pbtn.pri{background:#4f8ef7;color:#fff;}
+.pbtn.gho{border:1px solid rgba(255,255,255,0.16);color:#f0f0f8;}
+.psec{color:rgba(240,240,248,0.38);font-size:10px;letter-spacing:0.6px;padding:10px 16px 3px;}
+.ptag-row{display:flex;justify-content:space-between;align-items:center;margin:2px 13px;padding:10px 13px;background:#14141e;border-radius:13px;}
+.gbadge{background:rgba(61,214,140,0.14);color:#3dd68c;font-size:10px;font-weight:600;padding:3px 8px;border-radius:20px;}
+.obadge{background:rgba(245,166,35,0.14);color:#f5a623;font-size:10px;font-weight:600;padding:3px 8px;border-radius:20px;}
+.bbadge{background:rgba(79,142,247,0.14);color:#4f8ef7;font-size:10px;font-weight:600;padding:3px 7px;border-radius:20px;cursor:pointer;}
+.ar-bg{flex:1;background:#090914;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;}
+.qrf{width:110px;height:110px;position:relative;}
+.qrf::before,.qrf::after{content:'';position:absolute;width:22px;height:22px;border-color:#3dd68c;border-style:solid;}
+.qrf::before{top:0;left:0;border-width:3px 0 0 3px;border-radius:4px 0 0 0;}
+.qrf::after{top:0;right:0;border-width:3px 3px 0 0;border-radius:0 4px 0 0;}
+.qrf2::before,.qrf2::after{content:'';position:absolute;width:22px;height:22px;border-color:#3dd68c;border-style:solid;}
+.qrf2::before{bottom:0;left:0;border-width:0 0 3px 3px;border-radius:0 0 0 4px;}
+.qrf2::after{bottom:0;right:0;border-width:0 3px 3px 0;border-radius:0 0 4px 0;}
+.ring{width:22px;height:22px;border-radius:50%;border:2px solid #4f8ef7;position:absolute;}
+.ring.tr{border-color:#3dd68c;}
+.ring.hi{border-color:#f5a623;border-width:3px;width:28px;height:28px;}
+.ring.dm{border-color:rgba(79,142,247,0.25);}
+.xhair-dot{width:8px;height:8px;border-radius:50%;background:#22ddff;position:absolute;}
+.xhair-ring{width:36px;height:36px;border-radius:50%;border:1.5px solid #22ddff;position:absolute;}
+.sheet{background:#11111c;border-radius:22px 22px 0 0;padding:14px 14px 20px;}
+.sh-hdl{width:38px;height:4px;background:rgba(255,255,255,0.18);border-radius:2px;margin:0 auto 14px;}
+.step-row{display:flex;align-items:center;gap:0;padding:10px 20px 6px;}
+.sdot{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;flex-shrink:0;}
+.sdot.act{background:#4f8ef7;color:#fff;}
+.sdot.don{background:#3dd68c;color:#fff;}
+.sdot.pen{background:#1e1e30;color:rgba(240,240,248,0.35);border:1.5px solid rgba(240,240,248,0.15);}
+.sline{flex:1;height:1.5px;}
+.sline.act{background:#4f8ef7;}.sline.pen{background:rgba(255,255,255,0.1);}
+.inp{background:#1a1a28;border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:9px 12px;color:#f0f0f8;font-size:13px;margin:3px 0 6px;width:100%;box-sizing:border-box;}
+.inpw{margin:0 13px;}
+.flbl{color:rgba(240,240,248,0.45);font-size:10px;letter-spacing:0.5px;margin:8px 13px 2px;}
+.qrbox{width:90px;height:90px;background:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-direction:column;}
+</style>
+
+<div style="font-family:var(--font-sans);padding:1rem 0;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;gap:12px;flex-wrap:wrap;">
+    <div>
+      <div style="display:inline-block;background:var(--color-background-success);color:var(--color-text-success);font-size:11px;font-weight:500;padding:2px 8px;border-radius:4px;margin-bottom:5px;">v2 — updated</div>
+      <h3 style="font-size:16px;font-weight:500;margin:0;color:var(--color-text-primary);">Author mode — revised UX</h3>
+      <p style="font-size:13px;color:var(--color-text-secondary);margin:3px 0 0;">Screen <span id="snum">1</span> of 10 — <span id="slbl">Anchor directory</span></p>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="pS()" id="bprev" style="font-size:13px;">← Prev</button>
+      <button onclick="nS()" id="bnext" style="font-size:13px;">Next →</button>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:20px;align-items:flex-start;">
+    <div style="flex-shrink:0;">
+      <div style="background:var(--color-background-secondary);border-radius:38px;padding:10px;border:0.5px solid var(--color-border-tertiary);width:274px;">
+        <div style="display:flex;justify-content:center;margin-bottom:4px;">
+          <div style="background:#0a0a14;border-radius:18px;width:110px;height:26px;display:flex;align-items:center;justify-content:center;">
+            <div style="background:#1c1c2c;border-radius:8px;width:72px;height:14px;"></div>
+          </div>
+        </div>
+        <div id="pscreen" style="background:#080810;border-radius:22px;overflow:hidden;height:514px;"></div>
+        <div style="display:flex;justify-content:center;margin-top:8px;">
+          <div style="background:#555;border-radius:3px;width:110px;height:4px;"></div>
+        </div>
+      </div>
+    </div>
+    <div style="flex:1;min-width:0;"><div id="apanel"></div></div>
+  </div>
+
+  <div style="margin-top:1.25rem;padding-top:1rem;border-top:0.5px solid var(--color-border-tertiary);">
+    <p style="font-size:11px;color:var(--color-text-tertiary);margin-bottom:8px;font-weight:500;">FLOW</p>
+    <div id="fcrumb" style="display:flex;gap:3px;flex-wrap:wrap;align-items:center;"></div>
+  </div>
+</div>
+
+<script>
+const SC=[
+{
+  title:'Anchor directory',sub:'Author mode entry point',
+  flow:'Mode selection → anchor directory → create new OR open existing anchor',
+  tag:'unchanged',
+  notes:[
+    ['ti-layout-list','Lists all anchors with training status — no need to enter AR just to check progress.'],
+    ['ti-badge','Green = all trained, orange = gaps. Author plans their visit from this screen.'],
+    ['ti-world','Web portal shortcut for team anchor management.'],
+  ],
+  why:'No change from v1. Landing screen gives Author full visibility before committing to AR.',
+  html:`<div class="pscr">
+    <div class="pnav"><span class="pback">‹ Back</span><span class="ptitle">Anchors</span><span class="pact" style="font-size:20px;font-weight:300;">+</span></div>
+    <div style="margin:4px 13px;background:#1a1a28;border-radius:10px;padding:8px 11px;display:flex;gap:8px;align-items:center;">
+      <i class="ti ti-search" style="font-size:13px;color:rgba(240,240,248,0.3);"></i>
+      <span style="color:rgba(240,240,248,0.3);font-size:13px;">Search anchors...</span>
+    </div>
+    <div style="margin:4px 13px;background:#0d1620;border-radius:12px;padding:10px 13px;display:flex;justify-content:space-between;align-items:center;border:1px solid rgba(79,142,247,0.2);">
+      <div style="display:flex;gap:8px;align-items:center;"><i class="ti ti-world" style="font-size:14px;color:#4f8ef7;"></i><span style="color:#4f8ef7;font-size:13px;">Open web portal</span></div>
+      <i class="ti ti-chevron-right" style="font-size:13px;color:rgba(79,142,247,0.5);"></i>
+    </div>
+    <div class="psec">ANCHORS (2)</div>
+    <div class="pcard" style="display:flex;justify-content:space-between;align-items:center;margin-top:3px;">
+      <div><div style="font-weight:500;font-size:14px;">Pump-Station-A</div><div style="color:rgba(240,240,248,0.4);font-size:11px;margin-top:2px;">3 tags</div></div>
+      <div style="display:flex;gap:7px;align-items:center;"><span class="gbadge">Trained</span><i class="ti ti-chevron-right" style="font-size:13px;color:rgba(240,240,248,0.2);"></i></div>
+    </div>
+    <div class="pcard" style="display:flex;justify-content:space-between;align-items:center;margin-top:3px;">
+      <div><div style="font-weight:500;font-size:14px;">Conveyor-01</div><div style="color:rgba(240,240,248,0.4);font-size:11px;margin-top:2px;">1 tag</div></div>
+      <div style="display:flex;gap:7px;align-items:center;"><span class="obadge">1 untrained</span><i class="ti ti-chevron-right" style="font-size:13px;color:rgba(240,240,248,0.2);"></i></div>
+    </div>
+  </div>`
+},
+{
+  title:'New anchor — step 1 of 2',sub:'Name the anchor location',
+  flow:'Anchor directory → new anchor step 1 → step 2',
+  tag:'revised',
+  notes:[
+    ['ti-pencil','Wizard reduced to 2 steps — name then print QR. No initial scan step.'],
+    ['ti-key','Encryption key is generated now (on-device or server-side) and embedded in the QR in step 2. The key is also stored in SIB — QR never needs to change.'],
+  ],
+  why:'2-step wizard keeps anchor creation fast. Key generation happens here, silently.',
+  html:`<div class="pscr">
+    <div class="pnav"><span class="pback">‹ Cancel</span><span class="ptitle">New anchor</span><span></span></div>
+    <div class="step-row">
+      <div class="sdot act">1</div><div class="sline pen"></div>
+      <div class="sdot pen">2</div>
+    </div>
+    <div style="padding:2px 20px 10px;color:rgba(240,240,248,0.45);font-size:11px;">Step 1 of 2 · Name your anchor</div>
+    <div class="flbl">LOCATION / ASSET NAME</div>
+    <div class="inpw"><input class="inp" value="Pump Station A" readonly style="border-color:rgba(79,142,247,0.4);"/></div>
+    <div style="margin:2px 13px 8px;color:rgba(240,240,248,0.3);font-size:11px;">e.g. "Pump-A", "Control Panel 3"</div>
+    <div class="flbl">ANCHOR ID (OPTIONAL)</div>
+    <div class="inpw"><input class="inp" placeholder="auto-generated" readonly style="color:rgba(240,240,248,0.35);"/></div>
+    <div style="margin:12px 13px;background:#0d1620;border-radius:11px;padding:10px 12px;display:flex;gap:9px;border:1px solid rgba(79,142,247,0.15);">
+      <i class="ti ti-lock" style="font-size:15px;color:#4f8ef7;flex-shrink:0;margin-top:1px;"></i>
+      <span style="font-size:12px;color:rgba(240,240,248,0.6);line-height:1.5;">An encryption key is generated for this anchor. It will be embedded in the QR code in the next step and stored securely in SIB.</span>
+    </div>
+    <div class="pbtn pri" style="margin-top:8px;">Continue →</div>
+  </div>`
+},
+{
+  title:'New anchor — step 2 of 2',sub:'Print the QR and place it on-site',
+  flow:'Step 1 → step 2 → anchor hub (no initial scan needed)',
+  tag:'revised',
+  notes:[
+    ['ti-qrcode','QR already contains the encryption key — generated in step 1. This is the permanent QR, never replaced.'],
+    ['ti-map-pin','Author prints this, mounts it at the inspection point, then goes to the hub. No scan needed now.'],
+    ['ti-arrow-right','Tapping "Go to anchor" lands on the anchor hub immediately — scan happens when "Enter AR session" is tapped.'],
+  ],
+  why:'Scan step removed from creation flow. The QR scan is deferred to session start, not anchor creation.',
+  html:`<div class="pscr">
+    <div class="pnav"><span class="pback">‹ Back</span><span class="ptitle">New anchor</span><span></span></div>
+    <div class="step-row">
+      <div class="sdot don" style="font-size:10px;">✓</div><div class="sline act"></div>
+      <div class="sdot act">2</div>
+    </div>
+    <div style="padding:2px 20px 8px;color:rgba(240,240,248,0.45);font-size:11px;">Step 2 of 2 · Print &amp; place the QR anchor</div>
+    <div style="margin:4px 13px;background:#14141e;border-radius:12px;padding:10px 13px;">
+      <div style="display:flex;gap:9px;align-items:flex-start;margin-bottom:7px;"><span style="background:#4f8ef7;color:#fff;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0;">1</span><span style="font-size:12px;color:rgba(240,240,248,0.8);">Print or save the QR below</span></div>
+      <div style="display:flex;gap:9px;align-items:flex-start;margin-bottom:7px;"><span style="background:#4f8ef7;color:#fff;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0;">2</span><span style="font-size:12px;color:rgba(240,240,248,0.8);">Mount it at your inspection point</span></div>
+      <div style="display:flex;gap:9px;align-items:flex-start;"><span style="background:#4f8ef7;color:#fff;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;flex-shrink:0;">3</span><span style="font-size:12px;color:rgba(240,240,248,0.8);">Scan it when you start an AR session</span></div>
+    </div>
+    <div style="display:flex;justify-content:center;margin:8px 0 4px;">
+      <div style="text-align:center;">
+        <div class="qrbox" style="margin:0 auto;"><i class="ti ti-qrcode" style="font-size:50px;color:#111;"></i></div>
+        <div style="display:flex;align-items:center;gap:5px;justify-content:center;margin-top:5px;">
+          <i class="ti ti-lock" style="font-size:11px;color:#3dd68c;"></i>
+          <span style="color:#3dd68c;font-size:10px;">Key embedded — permanent QR</span>
+        </div>
+        <div style="color:rgba(240,240,248,0.35);font-size:11px;margin-top:2px;">Pump-Station-A · <select style="background:#1c1c2c;color:#f0f0f8;border:1px solid rgba(255,255,255,0.15);border-radius:6px;font-size:11px;padding:1px 4px;"><option>10 cm</option><option>8 cm</option><option>15 cm</option></select></div>
+      </div>
+    </div>
+    <div class="pbtn gho" style="margin-top:2px;display:flex;justify-content:center;gap:8px;align-items:center;"><i class="ti ti-printer" style="font-size:14px;"></i>Print / Share QR</div>
+    <div class="pbtn pri" style="margin-top:4px;">Go to anchor hub →</div>
+  </div>`
+},
+{
+  title:'Anchor hub',sub:'Management center — no lock status shown yet',
+  flow:'Anchor directory → anchor hub → enter AR session → QR scan gate',
+  tag:'revised',
+  notes:[
+    ['ti-layout-dashboard','Hub shows tag list and training status — but no "origin locked" indicator. The origin is locked per-session, not per-anchor.'],
+    ['ti-qrcode','"Share QR" always available — generates the full QR (with embedded key) from the stored SIB key.'],
+    ['ti-player-play','"Enter AR session" is the only path into AR — this is where the QR scan happens.'],
+    ['ti-player-play-filled','Individual "Train →" taps also go through the QR scan gate before opening AR.'],
+  ],
+  why:'Lock status removed from hub — it\'s a session concept, not an anchor concept. Cleaner mental model.',
+  html:`<div class="pscr">
+    <div class="pnav"><span class="pback">‹ Anchors</span><span class="ptitle">Pump-Station-A</span><span class="pact">⋯</span></div>
+    <div class="pcard" style="display:flex;gap:12px;align-items:center;margin-top:5px;">
+      <div class="qrbox" style="width:54px;height:54px;flex-shrink:0;border-radius:6px;"><i class="ti ti-qrcode" style="font-size:28px;color:#111;"></i></div>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:500;">QR anchor</div>
+        <div style="color:rgba(240,240,248,0.4);font-size:11px;margin-top:2px;">10 cm · permanent</div>
+      </div>
+      <span class="bbadge" style="font-size:10px;display:flex;gap:4px;align-items:center;"><i class="ti ti-share" style="font-size:11px;"></i>Share QR</span>
+    </div>
+    <div class="psec" style="margin-top:4px;">TAGS (3)</div>
+    <div class="ptag-row">
+      <div style="display:flex;gap:8px;align-items:center;"><span style="color:#4f8ef7;font-size:14px;">●</span><div><div style="font-size:13px;">Pressure Gauge</div><div style="color:rgba(240,240,248,0.35);font-size:10px;">Honeycomb</div></div></div>
+      <span class="gbadge">✓ Trained</span>
+    </div>
+    <div class="ptag-row" style="margin-top:2px;">
+      <div style="display:flex;gap:8px;align-items:center;"><span style="color:#4f8ef7;font-size:14px;">●</span><div><div style="font-size:13px;">Control Panel</div><div style="color:rgba(240,240,248,0.35);font-size:10px;">Honeycomb</div></div></div>
+      <span class="gbadge">✓ Trained</span>
+    </div>
+    <div class="ptag-row" style="margin-top:2px;">
+      <div style="display:flex;gap:8px;align-items:center;"><span style="color:#f5a623;font-size:14px;">●</span><div><div style="font-size:13px;">Valve Label</div><div style="color:rgba(240,240,248,0.35);font-size:10px;">OCR</div></div></div>
+      <span class="bbadge">Train →</span>
+    </div>
+    <div style="margin-top:10px;">
+      <div class="pbtn pri" style="display:flex;justify-content:center;gap:8px;align-items:center;"><i class="ti ti-player-play" style="font-size:13px;"></i>Enter AR session</div>
+      <div style="text-align:center;margin-top:5px;color:rgba(240,240,248,0.35);font-size:11px;">Scan QR to lock origin for this session</div>
+    </div>
+  </div>`
+},
+{
+  title:'QR scan gate',sub:'Shared by Author and Operator — locks session origin',
+  flow:'Anchor hub → QR scan gate → AR placement (Author) or AR inspection (Operator)',
+  tag:'key screen',
+  notes:[
+    ['ti-lock','One scan locks the origin for the entire session. No further QR prompts for placing, training, or inspecting.'],
+    ['ti-users','Identical screen for both Author and Operator. Same QR, same physical anchor, consistent experience.'],
+    ['ti-key','The key is read from the QR here — used to encrypt outgoing data (Author) or decrypt incoming data (Operator).'],
+    ['ti-refresh','Next visit = new session = new scan. Guarantees accuracy across different devices and sessions.'],
+  ],
+  why:'Single session-initialisation step. After this, the author/operator works freely with no further interruptions.',
+  html:`<div class="pscr" style="position:relative;">
+    <div class="pnav" style="background:rgba(0,0,0,0.55);position:relative;z-index:2;"><span class="pback">‹ Cancel</span><span class="ptitle">Pump-Station-A</span><span></span></div>
+    <div class="ar-bg">
+      <div style="color:rgba(240,240,248,0.9);font-size:16px;font-weight:500;margin-bottom:5px;">Scan anchor QR</div>
+      <div style="color:rgba(240,240,248,0.45);font-size:12px;margin-bottom:22px;">to start this session</div>
+      <div style="position:relative;width:130px;height:130px;margin-bottom:20px;">
+        <div class="qrf" style="width:130px;height:130px;"></div>
+        <div class="qrf2" style="position:absolute;inset:0;"></div>
+        <div style="position:absolute;top:50%;left:13px;right:13px;height:1.5px;background:rgba(61,214,140,0.5);transform:translateY(-50%);"></div>
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;"><i class="ti ti-qrcode" style="font-size:44px;color:rgba(61,214,140,0.2);"></i></div>
+      </div>
+      <div style="color:rgba(240,240,248,0.5);font-size:12px;text-align:center;max-width:180px;line-height:1.5;">Point at the QR mounted at your inspection point</div>
+      <div style="display:flex;gap:6px;align-items:center;margin-top:14px;">
+        <div style="width:6px;height:6px;border-radius:50%;background:#4f8ef7;"></div>
+        <span style="font-size:12px;color:rgba(240,240,248,0.5);">Scanning...</span>
+      </div>
+      <div style="margin-top:10px;background:rgba(255,255,255,0.05);border-radius:20px;padding:4px 14px;">
+        <span style="color:rgba(240,240,248,0.25);font-size:10px;">Author · placing tags</span>
+      </div>
+    </div>
+  </div>`
+},
+{
+  title:'AR placement — session active',sub:'Place and manage tags with origin locked',
+  flow:'QR scan gate → AR placement → tag details sheet',
+  tag:'unchanged',
+  notes:[
+    ['ti-crosshair','Crosshair cyan = surface locked. Tap FAB to place a tag here — no further QR interaction needed.'],
+    ['ti-circle-dashed','Existing tags shown at their stored anchor-relative positions — correct because origin was just locked by QR scan.'],
+    ['ti-list','"Tag list" opens the train-later sheet without leaving the session.'],
+  ],
+  why:'Free-form AR work — no interruptions until the author taps Done or the session ends.',
+  html:`<div class="pscr" style="position:relative;">
+    <div class="pnav" style="background:rgba(0,0,0,0.55);position:relative;z-index:2;">
+      <span style="color:rgba(240,240,248,0.7);font-size:14px;">Done</span>
+      <span class="ptitle">Pump-Station-A</span>
+      <span class="pact">Tag list</span>
+    </div>
+    <div class="ar-bg" style="position:relative;">
+      <div class="ring tr" style="top:28%;left:22%;transform:translate(-50%,-50%);"></div>
+      <div class="ring tr" style="top:52%;left:68%;transform:translate(-50%,-50%);"></div>
+      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);">
+        <div class="xhair-ring" style="transform:translate(-50%,-50%);top:50%;left:50%;position:absolute;"></div>
+        <div class="xhair-dot" style="transform:translate(-50%,-50%);top:50%;left:50%;position:absolute;"></div>
+        <div style="position:absolute;top:-14px;left:-1px;width:2px;height:10px;background:#22ddff;opacity:0.6;"></div>
+        <div style="position:absolute;bottom:-14px;left:-1px;width:2px;height:10px;background:#22ddff;opacity:0.6;"></div>
+        <div style="position:absolute;left:-14px;top:-1px;height:2px;width:10px;background:#22ddff;opacity:0.6;"></div>
+        <div style="position:absolute;right:-14px;top:-1px;height:2px;width:10px;background:#22ddff;opacity:0.6;"></div>
+      </div>
+      <div style="position:absolute;bottom:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.6);border-radius:20px;padding:5px 12px;white-space:nowrap;">
+        <span style="color:rgba(240,240,248,0.7);font-size:11px;">Tap surface to place a tag</span>
+      </div>
+    </div>
+    <div style="background:#0a0a14;padding:10px 13px 14px;display:flex;justify-content:space-between;align-items:center;">
+      <div style="display:flex;align-items:center;gap:6px;"><span style="color:#3dd68c;font-size:11px;">●</span><span style="color:rgba(240,240,248,0.55);font-size:12px;">Origin locked · 2 tags</span></div>
+      <div style="width:42px;height:42px;border-radius:50%;background:#4f8ef7;display:flex;align-items:center;justify-content:center;"><i class="ti ti-plus" style="font-size:20px;color:#fff;"></i></div>
+    </div>
+  </div>`
+},
+{
+  title:'Tag details sheet',sub:'Train now or save for later',
+  flow:'AR placement → tag details → training flow OR back to AR placement',
+  tag:'unchanged',
+  notes:[
+    ['ti-player-play','"Train now" keeps context while the author is physically at the location — recommended path.'],
+    ['ti-bookmark','"Save & train later" stores the tag and returns to AR immediately for the next placement.'],
+    ['ti-map-pin','Position already stored as anchor-relative at tap time — no re-scan needed.'],
+  ],
+  why:'Split here is the right UX moment — immediately after placement, with context still fresh.',
+  html:`<div class="pscr" style="position:relative;">
+    <div class="ar-bg" style="height:190px;min-height:0;flex:0 0 190px;">
+      <div class="ring" style="top:40%;left:35%;transform:translate(-50%,-50%);opacity:0.4;"></div>
+      <div class="ring tr" style="top:60%;left:65%;transform:translate(-50%,-50%);opacity:0.4;"></div>
+      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);">
+        <div style="width:26px;height:26px;border-radius:50%;border:3px solid #c084fc;"></div>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:8px;height:8px;border-radius:50%;background:#c084fc;"></div>
+      </div>
+      <div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);"><span class="bbadge" style="font-size:10px;">● Tag placed</span></div>
+    </div>
+    <div class="sheet" style="flex:1;">
+      <div class="sh-hdl"></div>
+      <div style="font-size:16px;font-weight:500;margin-bottom:12px;">New tag</div>
+      <div style="color:rgba(240,240,248,0.4);font-size:10px;letter-spacing:0.5px;margin-bottom:6px;">TAG TYPE</div>
+      <div style="display:flex;gap:6px;margin-bottom:12px;">
+        <div style="flex:1;padding:8px 6px;background:#1a2235;border-radius:9px;text-align:center;font-size:11px;color:#4f8ef7;border:1px solid rgba(79,142,247,0.4);">● Honeycomb</div>
+        <div style="flex:1;padding:8px 6px;background:#14141e;border-radius:9px;text-align:center;font-size:11px;color:rgba(240,240,248,0.4);">▲ Cone</div>
+        <div style="flex:1;padding:8px 6px;background:#14141e;border-radius:9px;text-align:center;font-size:11px;color:rgba(240,240,248,0.4);">T OCR</div>
+      </div>
+      <div style="color:rgba(240,240,248,0.4);font-size:10px;letter-spacing:0.5px;margin-bottom:5px;">LABEL</div>
+      <input style="background:#1a1a28;border:1px solid rgba(79,142,247,0.4);border-radius:9px;padding:8px 11px;color:#f0f0f8;font-size:13px;width:100%;box-sizing:border-box;margin-bottom:12px;" value="Pressure Gauge" readonly/>
+      <div class="pbtn pri" style="margin:0 0 5px;font-size:13px;padding:12px;display:flex;justify-content:center;gap:8px;align-items:center;"><i class="ti ti-player-play" style="font-size:12px;"></i>Train now</div>
+      <div class="pbtn gho" style="margin:0 0 5px;font-size:13px;padding:12px;">Save &amp; train later</div>
+      <div style="text-align:center;color:rgba(240,240,248,0.3);font-size:12px;margin-top:4px;">✕ Cancel</div>
+    </div>
+  </div>`
+},
+{
+  title:'Tag list — train later',sub:'Sheet over AR, opens from "Tag list" button',
+  flow:'AR placement → tag list → tap "Train →" → tag navigation in AR',
+  tag:'unchanged',
+  notes:[
+    ['ti-list','Full status overview within the session — trained and untrained tags side by side.'],
+    ['ti-player-play','"Train →" closes the sheet and highlights that tag in the live AR view.'],
+    ['ti-layers-intersect','Stays within the session — no re-scan, no new session needed.'],
+  ],
+  why:'Train-later deferred from tag creation to here. No session restart required.',
+  html:`<div class="pscr" style="position:relative;">
+    <div class="ar-bg" style="height:130px;min-height:0;flex:0 0 130px;">
+      <div class="ring tr" style="top:40%;left:30%;transform:translate(-50%,-50%);opacity:0.5;"></div>
+      <div class="ring tr" style="top:55%;left:65%;transform:translate(-50%,-50%);opacity:0.5;"></div>
+    </div>
+    <div class="sheet" style="flex:1;">
+      <div class="sh-hdl"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <div style="font-size:15px;font-weight:500;">Tags — Pump-Station-A</div>
+        <i class="ti ti-x" style="font-size:16px;color:rgba(240,240,248,0.45);"></i>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.07);">
+        <div style="display:flex;gap:9px;align-items:center;"><div style="width:30px;height:30px;border-radius:8px;background:#1a2235;display:flex;align-items:center;justify-content:center;"><span style="color:#4f8ef7;font-size:13px;">●</span></div><div><div style="font-size:13px;">Pressure Gauge</div><div style="color:rgba(240,240,248,0.35);font-size:10px;">Honeycomb</div></div></div>
+        <span class="gbadge">✓ Trained</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.07);">
+        <div style="display:flex;gap:9px;align-items:center;"><div style="width:30px;height:30px;border-radius:8px;background:#1a2235;display:flex;align-items:center;justify-content:center;"><span style="color:#4f8ef7;font-size:13px;">●</span></div><div><div style="font-size:13px;">Control Panel</div><div style="color:rgba(240,240,248,0.35);font-size:10px;">Honeycomb</div></div></div>
+        <span class="gbadge">✓ Trained</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;">
+        <div style="display:flex;gap:9px;align-items:center;"><div style="width:30px;height:30px;border-radius:8px;background:#201a0e;display:flex;align-items:center;justify-content:center;"><span style="color:#f5a623;font-size:13px;">T</span></div><div><div style="font-size:13px;">Valve Label</div><div style="color:rgba(240,240,248,0.35);font-size:10px;">OCR · Not trained</div></div></div>
+        <span class="bbadge">Train →</span>
+      </div>
+      <div style="margin-top:10px;color:rgba(240,240,248,0.3);font-size:11px;text-align:center;">Tap Train to navigate to that tag in AR</div>
+    </div>
+  </div>`
+},
+{
+  title:'Tag navigation in AR',sub:'Walk to the selected tag',
+  flow:'Tag list → tag highlighted in AR → proximity → training flow',
+  tag:'unchanged',
+  notes:[
+    ['ti-focus-2','Target tag pulses. Other tags dimmed. Distance pill shows how far to walk.'],
+    ['ti-player-play','"Start training" appears when within proximity. No QR re-scan required.'],
+  ],
+  why:'AR navigation replaces verbal directions. Clear path from tag list to training without session restart.',
+  html:`<div class="pscr" style="position:relative;">
+    <div class="pnav" style="background:rgba(0,0,0,0.55);position:relative;z-index:2;">
+      <span class="pback">‹ Tag list</span><span class="ptitle">Valve Label</span><span></span>
+    </div>
+    <div class="ar-bg" style="position:relative;">
+      <div class="ring dm" style="top:30%;left:22%;transform:translate(-50%,-50%);"></div>
+      <div class="ring dm" style="top:55%;left:70%;transform:translate(-50%,-50%);"></div>
+      <div style="position:absolute;top:42%;left:50%;transform:translate(-50%,-50%);">
+        <div style="width:34px;height:34px;border-radius:50%;border:3px solid #f5a623;"></div>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:10px;height:10px;border-radius:50%;background:#f5a623;"></div>
+        <div style="position:absolute;top:-22px;left:50%;transform:translateX(-50%);white-space:nowrap;background:rgba(0,0,0,0.6);border-radius:6px;padding:2px 7px;font-size:11px;color:rgba(240,240,248,0.9);">Valve Label</div>
+      </div>
+      <div style="position:absolute;top:20px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.6);border-radius:20px;padding:4px 12px;display:flex;gap:6px;align-items:center;">
+        <span style="color:#f5a623;font-size:11px;font-weight:500;">1.8 m</span>
+        <i class="ti ti-arrow-right" style="font-size:11px;color:#f5a623;"></i>
+      </div>
+      <div style="position:absolute;bottom:14px;left:50%;transform:translateX(-50%);white-space:nowrap;"><span style="color:rgba(240,240,248,0.55);font-size:12px;">Walk to the highlighted tag</span></div>
+    </div>
+    <div style="background:#0a0a14;padding:12px 13px 16px;">
+      <div class="pbtn pri" style="margin:0 0 5px;display:flex;justify-content:center;gap:8px;align-items:center;font-size:13px;padding:13px;"><i class="ti ti-player-play" style="font-size:12px;"></i>Start training</div>
+      <div style="text-align:center;color:#3dd68c;font-size:11px;margin-top:4px;">You're close enough — ready to train</div>
+    </div>
+  </div>`
+},
+{
+  title:'Operator mode — AR inspection',sub:'Same QR scan gate, then inspect',
+  flow:'Operator selects anchor → QR scan gate (same screen) → operator AR view',
+  tag:'operator',
+  notes:[
+    ['ti-users','Operator uses the exact same QR scan gate (screen 5). Consistent experience across both modes.'],
+    ['ti-lock','Scan reads the encryption key → decrypts tag training data from SIB for this session.'],
+    ['ti-circle-check','Tags shown at correct anchor-relative positions. Operator inspects, results reported to SIB.'],
+    ['ti-player-play','One scan per session — no further QR prompts during inspection of any tag.'],
+  ],
+  why:'Consistency: one mental model for all users. QR = session start. After that, free-form work.',
+  html:`<div class="pscr" style="position:relative;">
+    <div class="pnav" style="background:rgba(0,0,0,0.55);position:relative;z-index:2;">
+      <span style="color:rgba(240,240,248,0.7);font-size:14px;">Done</span>
+      <span class="ptitle">Pump-Station-A</span>
+      <span style="color:#f5a623;font-size:12px;">Operator</span>
+    </div>
+    <div class="ar-bg" style="position:relative;">
+      <div class="ring tr" style="top:28%;left:24%;transform:translate(-50%,-50%);"></div>
+      <div style="position:absolute;top:28%;left:24%;transform:translate(-50%,-50%);">
+        <div style="position:absolute;top:-22px;left:50%;transform:translateX(-50%);white-space:nowrap;background:rgba(0,0,0,0.55);border-radius:5px;padding:2px 6px;font-size:10px;color:rgba(240,240,248,0.7);">Pressure Gauge</div>
+      </div>
+      <div class="ring tr" style="top:52%;left:68%;transform:translate(-50%,-50%);"></div>
+      <div style="position:absolute;top:52%;left:68%;transform:translate(-50%,-50%);">
+        <div style="position:absolute;top:-22px;left:50%;transform:translateX(-50%);white-space:nowrap;background:rgba(0,0,0,0.55);border-radius:5px;padding:2px 6px;font-size:10px;color:rgba(240,240,248,0.7);">Control Panel</div>
+      </div>
+      <div style="position:absolute;top:38%;left:48%;transform:translate(-50%,-50%);">
+        <div style="width:28px;height:28px;border-radius:50%;border:2.5px solid #f5a623;"></div>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:8px;height:8px;border-radius:50%;background:#f5a623;"></div>
+        <div style="position:absolute;top:-22px;left:50%;transform:translateX(-50%);white-space:nowrap;background:rgba(0,0,0,0.55);border-radius:5px;padding:2px 6px;font-size:10px;color:#f5a623;">Valve Label</div>
+      </div>
+      <div style="position:absolute;bottom:14px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.6);border-radius:20px;padding:5px 12px;white-space:nowrap;">
+        <span style="color:rgba(240,240,248,0.7);font-size:11px;">Approach a tag to begin inspection</span>
+      </div>
+    </div>
+    <div style="background:#0a0a14;padding:10px 13px 14px;display:flex;justify-content:space-between;align-items:center;">
+      <div style="display:flex;align-items:center;gap:6px;"><span style="color:#3dd68c;font-size:11px;">●</span><span style="color:rgba(240,240,248,0.55);font-size:12px;">Origin locked · 3 tags loaded</span></div>
+      <span style="background:rgba(245,166,35,0.12);color:#f5a623;font-size:10px;font-weight:600;padding:4px 10px;border-radius:20px;">Inspect mode</span>
+    </div>
+  </div>`
+}
+];
+
+const TAGS={unchanged:'',revised:'revised',operator:'operator','key screen':'key screen'};
+const FNAMES=['Directory','New anchor 1','New anchor 2','Anchor hub','QR gate','AR placement','Tag details','Tag list','Tag navigation','Operator mode'];
+
+let cur=0;
+
+function render(){
+  const s=SC[cur];
+  document.getElementById('snum').textContent=cur+1;
+  document.getElementById('slbl').textContent=s.title;
+  document.getElementById('pscreen').innerHTML=s.html;
+  document.getElementById('bprev').disabled=cur===0;
+  document.getElementById('bnext').disabled=cur===SC.length-1;
+
+  const tagColors={revised:'var(--color-background-warning)',operator:'var(--color-background-info)','key screen':'var(--color-background-success)'};
+  const tagTextColors={revised:'var(--color-text-warning)',operator:'var(--color-text-info)','key screen':'var(--color-text-success)'};
+  const tagBadge=s.tag&&s.tag!=='unchanged'?`<span style="background:${tagColors[s.tag]};color:${tagTextColors[s.tag]};font-size:11px;font-weight:500;padding:2px 8px;border-radius:4px;margin-left:8px;">${s.tag}</span>`:'';
+
+  const notes=s.notes.map(([ic,txt])=>`
+    <div style="display:flex;gap:10px;padding:9px 0;border-bottom:0.5px solid var(--color-border-tertiary);">
+      <i class="ti ti-${ic}" style="font-size:16px;color:var(--color-text-secondary);flex-shrink:0;margin-top:1px;" aria-hidden="true"></i>
+      <span style="font-size:13px;color:var(--color-text-primary);line-height:1.5;">${txt}</span>
+    </div>`).join('');
+
+  document.getElementById('apanel').innerHTML=`
+    <div style="background:var(--color-background-primary);border-radius:var(--border-radius-lg);border:0.5px solid var(--color-border-tertiary);padding:1rem 1.25rem;">
+      <p style="font-size:12px;color:var(--color-text-tertiary);font-weight:500;letter-spacing:0.4px;margin:0 0 3px;">SCREEN ${cur+1} OF 10</p>
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:3px;">
+        <h3 style="font-size:18px;font-weight:500;margin:0;color:var(--color-text-primary);">${s.title}</h3>${tagBadge}
+      </div>
+      <p style="font-size:13px;color:var(--color-text-secondary);margin:0 0 14px;">${s.sub}</p>
+      ${notes}
+      ${s.why?`<div style="margin-top:12px;background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:10px 12px;border-left:3px solid var(--color-border-info);">
+        <p style="font-size:12px;color:var(--color-text-secondary);margin:0 0 2px;font-weight:500;">Design rationale</p>
+        <p style="font-size:13px;color:var(--color-text-primary);margin:0;line-height:1.5;">${s.why}</p>
+      </div>`:''}
+      <div style="margin-top:12px;">
+        <p style="font-size:12px;color:var(--color-text-tertiary);margin:0 0 4px;font-weight:500;">FLOW PATH</p>
+        <p style="font-size:12px;color:var(--color-text-secondary);margin:0;line-height:1.6;">${s.flow}</p>
+      </div>
+    </div>`;
+
+  document.getElementById('fcrumb').innerHTML=FNAMES.map((n,i)=>{
+    const active=i===cur;
+    const parts=[`<span onclick="go(${i})" style="cursor:pointer;font-size:11px;padding:4px 8px;border-radius:6px;white-space:nowrap;${active?'background:var(--color-background-info);color:var(--color-text-info);font-weight:500;':'color:var(--color-text-tertiary);'}">${n}</span>`];
+    if(i<FNAMES.length-1) parts.push(`<span style="color:var(--color-text-tertiary);font-size:11px;">›</span>`);
+    return parts.join('');
+  }).join('');
+}
+function nS(){if(cur<SC.length-1){cur++;render();}}
+function pS(){if(cur>0){cur--;render();}}
+function go(i){cur=i;render();}
+render();
+</script>

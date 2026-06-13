@@ -63,11 +63,29 @@ export interface Anchor {
   position: Vector3;
   rotation: Quaternion;
   metadata: Record<string, unknown>;
+  /**
+   * Phase 3: base64-encoded AES-256-GCM key for this anchor.
+   * Generated on-device when the anchor is created; stored in SIB so that
+   * any authorised device can retrieve the key and generate the full QR code
+   * (with the key embedded) without needing the Author's Keychain.
+   * The physical printed QR embeds this key from day one — it never changes.
+   * Optional so legacy anchors without keys remain backward-compatible.
+   */
+  encryptionKey?: string;
   createdAt: string; // ISO 8601
   updatedAt: string;
 }
 
-export type CreateAnchorRequest = Omit<Anchor, 'id' | 'createdAt' | 'updatedAt'>;
+export interface CreateAnchorRequest {
+  id?: string;
+  assetId: string;
+  coordinateSystem: CoordinateSystem;
+  position: Vector3;
+  rotation: Quaternion;
+  metadata: Record<string, unknown>;
+  /** Phase 3: encryption key generated at anchor creation time. */
+  encryptionKey?: string;
+}
 
 // ============================================================
 // Tag — semantic label attached to an anchor

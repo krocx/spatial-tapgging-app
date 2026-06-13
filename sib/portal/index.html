@@ -96,8 +96,13 @@
     #toast { position: fixed; bottom: 24px; right: 24px; background: #222; border: 1px solid var(--border); border-radius: 10px; padding: 10px 18px; font-size: 0.85rem; opacity: 0; transition: opacity 0.25s; pointer-events: none; z-index: 200; }
     #toast.show { opacity: 1; }
 
-    /* ── Key warning ── */
+    /* ── Key status ── */
+    .key-ok   { font-size: 0.72rem; color: var(--green);  margin-top: 8px; line-height: 1.4; }
     .key-warn { font-size: 0.72rem; color: var(--orange); margin-top: 8px; line-height: 1.4; }
+
+    /* ── Delete confirm modal ── */
+    #delete-modal .modal { max-width: 380px; }
+    #delete-modal h2 { color: var(--red); }
 
     /* ── Responsive ── */
     @media (max-width: 480px) {
@@ -174,6 +179,22 @@
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeSettings()">Cancel</button>
       <button class="btn btn-primary" onclick="saveSettings()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete anchor confirmation modal -->
+<div id="delete-modal" class="overlay">
+  <div class="modal">
+    <h2>⚠ Delete Anchor?</h2>
+    <p style="font-size:0.875rem;color:var(--muted);margin-bottom:10px">
+      This will permanently delete the anchor, all its tags, and all trained pass-state images.
+      This action <strong style="color:var(--text)">cannot be undone</strong>.
+    </p>
+    <p id="delete-anchor-label" style="font-size:0.8rem;font-family:monospace;color:var(--text);background:var(--bg);padding:8px 12px;border-radius:8px;border:1px solid var(--border);word-break:break-all"></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeDeleteModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmDeleteAnchor()">Delete Permanently</button>
     </div>
   </div>
 </div>
@@ -273,6 +294,11 @@ function buildCard(anchor) {
     ? `<span class="badge badge-green">${count} tag${count!==1?'s':''}</span>`
     : `<span class="badge badge-orange">No tags</span>`;
 
+  const hasKey   = !!anchor.encryptionKey;
+  const keyHtml  = hasKey
+    ? `<p class="key-ok">🔑 Encryption key included — QR matches the iOS-generated code.</p>`
+    : `<p class="key-warn">⚠ No encryption key stored for this anchor. For secure inspections, regenerate the QR from the iOS app (Author mode → QR icon) to embed the key.</p>`;
+
   card.innerHTML = `
     <div class="card-header">
       <div class="card-ids">
@@ -286,7 +312,7 @@ function buildCard(anchor) {
       <span>Created ${date}</span>
       <span>${anchor.coordinateSystem}</span>
     </div>
-    <p class="key-warn">⚠ QR codes from this portal do not include an encryption key. For secure inspections, use the iOS app's QR generator (Author mode → QR icon).</p>
+    ${keyHtml}
     <div class="card-actions" style="margin-top:10px">
       <select class="qr-size-select" id="size-${anchor.id.replace(/[^a-z0-9]/gi,'_')}" onchange="regenerateQR('${anchor.id}')">
         <option value="5">5 cm</option>
@@ -297,6 +323,7 @@ function buildCard(anchor) {
       </select>
       <button class="btn btn-ghost btn-sm" onclick="downloadQR('${anchor.id}')">⬇ Download QR</button>
       <button class="btn btn-ghost btn-sm" onclick="copyAnchorId('${anchor.id}')">Copy ID</button>
+      <button class="btn btn-danger btn-sm" onclick="openDeleteModal('${anchor.id}','${anchor.assetId.replace(/'/g,"\\'")}')">🗑 Delete</button>
     </div>
   `;
 
@@ -307,11 +334,16 @@ function buildCard(anchor) {
 
 // ── QR generation ──────────────────────────────────────────────────────────────
 function qrPayload(anchor, sizeCm) {
-  return JSON.stringify({
-    assetId: anchor.assetId,
+  // Mirror the iOS QRAnchorContext exactly: { assetId, anchorId, encryptionKey?, qrSizeCm }
+  // encryptionKey is stored in SIB when the anchor is created via the iOS wizard.
+  // When present the portal QR is byte-for-byte compatible with the iOS-generated QR.
+  const payload = {
+    assetId:  anchor.assetId,
     anchorId: anchor.id,
-    qrSizeCm: sizeCm
-  });
+    qrSizeCm: sizeCm,
+  };
+  if (anchor.encryptionKey) payload.encryptionKey = anchor.encryptionKey;
+  return JSON.stringify(payload);
 }
 
 function generateQR(anchor, sizeCm) {
@@ -421,6 +453,36 @@ function saveSettings() {
 document.querySelectorAll('.overlay').forEach(el => {
   el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
 });
+
+// ── Delete anchor ─────────────────────────────────────────────────────────────
+let pendingDeleteId = null;
+
+function openDeleteModal(anchorId, assetId) {
+  pendingDeleteId = anchorId;
+  document.getElementById('delete-anchor-label').textContent =
+    `${assetId}  ·  ${anchorId}`;
+  document.getElementById('delete-modal').classList.add('open');
+}
+function closeDeleteModal() {
+  pendingDeleteId = null;
+  document.getElementById('delete-modal').classList.remove('open');
+}
+
+async function confirmDeleteAnchor() {
+  if (!pendingDeleteId) return;
+  const id = pendingDeleteId;
+  closeDeleteModal();
+  try {
+    await apiFetch(`/anchors/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    // Remove from local state and re-render
+    allAnchors = allAnchors.filter(a => a.id !== id);
+    delete tagCounts[id];
+    renderAnchors();
+    toast('Anchor deleted.');
+  } catch (e) {
+    alert(`Failed to delete anchor: ${e.message}`);
+  }
+}
 
 // ── Toast ──────────────────────────────────────────────────────────────────────
 function toast(msg, duration=2200) {
