@@ -1,5 +1,8 @@
-import { Router, type Request, type Response } from 'express';
+import express, { Router, type Request, type Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
+import fs   from 'fs';
+import path from 'path';
+import QRCode from 'qrcode';
 import type { Anchor, CreateAnchorRequest, ApiResponse } from '@spatial/shared';
 import { JsonFileStore } from '../stores/json-file-store.js';
 import { tagStore } from './tags.js';
@@ -7,10 +10,52 @@ import { passStateStore, findPassStateByTag } from '../stores/pass-state-store.j
 
 export const anchorStore = new JsonFileStore<Anchor>('anchors');
 
+// ── File storage directories ──────────────────────────────────────────────────
+// Mirror DATA_DIR logic from JsonFileStore so all binary blobs live next to JSON.
+const DATA_DIR      = process.env.SIB_DATA_DIR ?? path.join(process.cwd(), '.sib-data');
+const QRIMAGES_DIR  = path.join(DATA_DIR, 'qrimages');
+const WORLDMAPS_DIR = path.join(DATA_DIR, 'worldmaps');
+fs.mkdirSync(QRIMAGES_DIR,  { recursive: true });
+fs.mkdirSync(WORLDMAPS_DIR, { recursive: true });
+
 const router = Router();
 
-// POST /anchors — create a new spatial anchor
-router.post('/', (req: Request, res: Response) => {
+// ── QR payload builder ────────────────────────────────────────────────────────
+// Must produce byte-for-byte identical JSON to the iOS QRAnchorContext.buildCanonicalPayload()
+// and the portal's qrPayload():
+//   { assetId, anchorId, encryptionKey?, qrSizeCm }
+// Key insertion order is preserved by JSON.stringify and matters for QR pattern identity.
+function buildCanonicalQRPayload(anchor: Anchor): string {
+  const obj: Record<string, unknown> = {
+    assetId:  anchor.assetId,
+    anchorId: anchor.id,
+  };
+  if (anchor.encryptionKey) obj.encryptionKey = anchor.encryptionKey;
+  obj.qrSizeCm = anchor.qrSizeCm ?? 10;
+  return JSON.stringify(obj);
+}
+
+// ── QR image generation ───────────────────────────────────────────────────────
+// Generates a 512×512 PNG with ECC level M (matching iOS CIQRCodeGenerator setting)
+// and stores it in QRIMAGES_DIR/{anchorId}.png.
+// Using `qrcode` npm package as the canonical generator — both portal and iOS fetch
+// this file so all clients always display the same pixel pattern.
+async function generateAndStoreQRImage(anchor: Anchor): Promise<void> {
+  const payload = buildCanonicalQRPayload(anchor);
+  const pngBuffer = await QRCode.toBuffer(payload, {
+    errorCorrectionLevel: 'M',
+    type: 'png',
+    width: 512,
+    margin: 4,   // 4-module quiet zone per QR spec
+    color: { dark: '#000000', light: '#ffffff' },
+  });
+  const filePath = path.join(QRIMAGES_DIR, `${anchor.id}.png`);
+  fs.writeFileSync(filePath, pngBuffer);
+  console.log(`[SIB] QR image generated for anchor ${anchor.id} (${pngBuffer.length} bytes)`);
+}
+
+// ── POST /anchors — create a new spatial anchor ───────────────────────────────
+router.post('/', async (req: Request, res: Response) => {
   const body = req.body as CreateAnchorRequest;
 
   // Validate required fields
@@ -21,9 +66,7 @@ router.post('/', (req: Request, res: Response) => {
     });
   }
 
-  // If the client provides an id (e.g. the QR's anchorId), honour it so that
-  // Operator mode can look up tags using the same anchorId from the QR scan.
-  // If the anchor already exists with that id, return it (idempotent upsert).
+  // If the client provides an id honour it; if already exists return it (idempotent upsert).
   if (typeof (body as any).id === 'string') {
     const existing = anchorStore.findById((body as any).id as string);
     if (existing) {
@@ -39,17 +82,18 @@ router.post('/', (req: Request, res: Response) => {
     position: body.position,
     rotation: body.rotation,
     metadata: body.metadata ?? {},
-    // Phase 3: persist the encryption key so any authorised device can
-    // retrieve it and regenerate the full QR (with key embedded) later.
     ...(body.encryptionKey ? { encryptionKey: body.encryptionKey } : {}),
-    // Physical QR print size (cm) — locked at creation so all subsequent
-    // QR generators (app + portal) produce the same pixel pattern.
     qrSizeCm: typeof (body as any).qrSizeCm === 'number' ? (body as any).qrSizeCm : 10.0,
     createdAt: now,
     updatedAt: now,
   };
 
   anchorStore.save(anchor);
+
+  // Generate canonical QR PNG in the background — don't block the response.
+  generateAndStoreQRImage(anchor).catch(err =>
+    console.error(`[SIB] QR image generation failed for ${anchor.id}: ${err}`)
+  );
 
   const response: ApiResponse<Anchor> = {
     data: anchor,
@@ -59,7 +103,7 @@ router.post('/', (req: Request, res: Response) => {
   return res.status(201).json(response);
 });
 
-// GET /anchors — list all anchors
+// ── GET /anchors — list all anchors ───────────────────────────────────────────
 router.get('/', (_req: Request, res: Response) => {
   const anchors = anchorStore.findAll();
   return res.json({
@@ -68,7 +112,7 @@ router.get('/', (_req: Request, res: Response) => {
   });
 });
 
-// GET /anchors/:id — get a single anchor
+// ── GET /anchors/:id — get a single anchor ────────────────────────────────────
 router.get('/:id', (req: Request, res: Response) => {
   const anchor = anchorStore.findById(req.params.id);
   if (!anchor) {
@@ -80,9 +124,57 @@ router.get('/:id', (req: Request, res: Response) => {
   return res.json({ data: anchor, timestamp: new Date().toISOString() });
 });
 
-// GET /anchors/:id/readiness — G1: check whether an anchor is ready for Operator mode.
-// "Ready" means every tag associated with the anchor has at least one trained pass-state.
-// Returns: { isReady, totalTags, trainedTags, untrainedTagIds }
+// ── GET /anchors/:id/qrimage — serve the canonical QR PNG ────────────────────
+// The QR PNG is generated once at anchor creation time using a single canonical
+// algorithm (qrcode npm, ECC level M).  Both the portal and the iOS app fetch
+// this image so all platforms always display the identical pixel pattern.
+// If the file is missing (e.g. anchor pre-dates this feature), it is regenerated
+// on-the-fly before serving.
+router.get('/:id/qrimage', async (req: Request, res: Response) => {
+  const anchor = anchorStore.findById(req.params.id);
+  if (!anchor) {
+    return res.status(404).json({
+      error: `Anchor ${req.params.id} not found`,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  const filePath = path.join(QRIMAGES_DIR, `${anchor.id}.png`);
+  if (!fs.existsSync(filePath)) {
+    // Back-fill QR image for anchors created before this feature shipped.
+    try {
+      await generateAndStoreQRImage(anchor);
+    } catch (err) {
+      return res.status(500).json({ error: 'Failed to generate QR image', timestamp: new Date().toISOString() });
+    }
+  }
+
+  res.setHeader('Content-Type', 'image/png');
+  res.setHeader('Cache-Control', 'public, max-age=86400');  // 24 h — QR only changes if regenerated
+  return res.sendFile(filePath);
+});
+
+// ── POST /anchors/:id/qrimage — (re)generate canonical QR PNG ────────────────
+// Call this after updating an anchor's encryptionKey or qrSizeCm to refresh the
+// stored QR so the portal and iOS app get the updated image.
+router.post('/:id/qrimage', async (req: Request, res: Response) => {
+  const anchor = anchorStore.findById(req.params.id);
+  if (!anchor) {
+    return res.status(404).json({
+      error: `Anchor ${req.params.id} not found`,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  try {
+    await generateAndStoreQRImage(anchor);
+    return res.json({ data: { regenerated: true, anchorId: anchor.id }, timestamp: new Date().toISOString() });
+  } catch (err) {
+    return res.status(500).json({ error: `QR generation failed: ${err}`, timestamp: new Date().toISOString() });
+  }
+});
+
+// ── GET /anchors/:id/readiness ────────────────────────────────────────────────
 router.get('/:id/readiness', (req: Request, res: Response) => {
   const anchor = anchorStore.findById(req.params.id);
   if (!anchor) {
@@ -135,7 +227,75 @@ router.get('/:id/readiness', (req: Request, res: Response) => {
   });
 });
 
-// DELETE /anchors/:id — remove anchor and cascade-delete all its tags + pass-states
+// ── POST /anchors/:id/worldmap — store an ARWorldMap binary blob ──────────────
+// The iOS app serialises an ARWorldMap (NSKeyedArchiver binary plist) and uploads
+// it here after a successful QR lock.  On the next session for the same anchor,
+// the app downloads this blob and passes it as config.initialWorldMap so ARKit
+// relocates into the same feature-point cloud — giving scan-position-independent
+// tag placement across sessions and across devices.
+//
+// Body: raw application/octet-stream binary (ARWorldMap NSKeyedArchiver data).
+// Typical size: 2–10 MB.
+router.post(
+  '/:id/worldmap',
+  express.raw({ limit: '50mb', type: 'application/octet-stream' }),
+  (req: Request, res: Response) => {
+    const anchor = anchorStore.findById(req.params.id);
+    if (!anchor) {
+      return res.status(404).json({
+        error: `Anchor ${req.params.id} not found`,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    const mapData = req.body as Buffer;
+    if (!Buffer.isBuffer(mapData) || mapData.length === 0) {
+      return res.status(400).json({
+        error: 'Request body must be a non-empty application/octet-stream binary',
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    const filePath = path.join(WORLDMAPS_DIR, `${anchor.id}.worldmap`);
+    try {
+      fs.writeFileSync(filePath, mapData);
+      console.log(`[SIB] World map stored for anchor ${anchor.id} (${mapData.length} bytes)`);
+      return res.status(201).json({
+        data: { anchorId: anchor.id, bytes: mapData.length },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (err) {
+      return res.status(500).json({ error: `Failed to store world map: ${err}`, timestamp: new Date().toISOString() });
+    }
+  }
+);
+
+// ── GET /anchors/:id/worldmap — retrieve a stored ARWorldMap ──────────────────
+// Returns 404 if no world map has been stored yet for this anchor (first session).
+// The iOS app interprets a 404 as "no map available" and starts a fresh session.
+router.get('/:id/worldmap', (req: Request, res: Response) => {
+  const anchor = anchorStore.findById(req.params.id);
+  if (!anchor) {
+    return res.status(404).json({
+      error: `Anchor ${req.params.id} not found`,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  const filePath = path.join(WORLDMAPS_DIR, `${anchor.id}.worldmap`);
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({
+      error: `No world map stored for anchor ${req.params.id}`,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  res.setHeader('Content-Type', 'application/octet-stream');
+  res.setHeader('Cache-Control', 'no-store');  // always serve the freshest map
+  return res.sendFile(filePath);
+});
+
+// ── DELETE /anchors/:id — cascade-delete anchor + tags + pass-states ──────────
 router.delete('/:id', (req: Request, res: Response) => {
   const anchor = anchorStore.findById(req.params.id);
   if (!anchor) {
@@ -157,6 +317,12 @@ router.delete('/:id', (req: Request, res: Response) => {
   }
 
   anchorStore.delete(req.params.id);
+
+  // Clean up binary blobs (QR image + world map) — ignore errors if files don't exist
+  const qrPath  = path.join(QRIMAGES_DIR,  `${req.params.id}.png`);
+  const mapPath = path.join(WORLDMAPS_DIR, `${req.params.id}.worldmap`);
+  try { fs.unlinkSync(qrPath);  } catch { /* not present */ }
+  try { fs.unlinkSync(mapPath); } catch { /* not present */ }
 
   console.log(
     `[SIB] Deleted anchor ${req.params.id} ` +
