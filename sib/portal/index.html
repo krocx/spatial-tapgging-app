@@ -44,8 +44,10 @@
     #setup-banner p  { font-size: 0.85rem; color: var(--muted); margin-bottom: 16px; }
     .field { margin-bottom: 12px; }
     .field label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.5px; }
-    .field input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; color: var(--text); font-size: 0.9rem; outline: none; }
-    .field input:focus { border-color: var(--accent); }
+    .field input, .field select { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 9px 12px; color: var(--text); font-size: 0.9rem; outline: none; }
+    .field input:focus, .field select:focus { border-color: var(--accent); }
+    .field select { appearance: none; cursor: pointer; }
+    .field input[type=number] { width: 100%; }
 
     /* ── Toolbar ── */
     #toolbar { padding: 16px 24px 0; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
@@ -101,9 +103,73 @@
     .key-ok   { font-size: 0.72rem; color: var(--green);  margin-top: 8px; line-height: 1.4; }
     .key-warn { font-size: 0.72rem; color: var(--orange); margin-top: 8px; line-height: 1.4; }
 
-    /* ── Delete confirm modal ── */
+    /* ── Delete anchor confirm modal ── */
     #delete-modal .modal { max-width: 380px; }
     #delete-modal h2 { color: var(--red); }
+
+    /* ── T96: Tag section ── */
+    .tag-section { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; }
+
+    .tag-section-hdr {
+      display: flex; align-items: center; gap: 7px;
+      cursor: pointer; user-select: none; padding: 2px 0;
+    }
+    .tag-section-title {
+      font-size: 0.74rem; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.5px; flex: 1;
+      transition: color 0.15s;
+    }
+    .tag-section-hdr:hover .tag-section-title { color: var(--text); }
+
+    .tag-count-chip {
+      font-size: 0.68rem; font-weight: 700; padding: 1px 7px;
+      border-radius: 100px; background: var(--border); color: var(--muted);
+      flex-shrink: 0;
+    }
+    .tag-chevron { font-size: 0.60rem; color: var(--muted); transition: transform 0.2s; flex-shrink: 0; }
+    .tag-chevron.open { transform: rotate(180deg); }
+
+    .tag-body { margin-top: 8px; }
+    .tag-list { display: flex; flex-direction: column; gap: 3px; }
+
+    .tag-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 7px; border-radius: 7px;
+      background: rgba(255,255,255,0.02);
+      transition: background 0.12s;
+    }
+    .tag-row:hover { background: rgba(255,255,255,0.05); }
+
+    .tag-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+
+    .tag-info { flex: 1; min-width: 0; }
+    .tag-lbl { font-size: 0.81rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tag-typ { font-size: 0.67rem; color: var(--muted); }
+
+    .badge-trained   { font-size: 0.63rem; font-weight: 700; padding: 1px 6px; border-radius: 100px; background: rgba(61,214,140,0.12); color: var(--green); flex-shrink: 0; }
+    .badge-untrained { font-size: 0.63rem; font-weight: 700; padding: 1px 6px; border-radius: 100px; background: rgba(245,166,35,0.12); color: var(--orange); flex-shrink: 0; }
+
+    /* Source chip — scalable: "manual" (portal), "excel" (batch import), "mes" (MES REST sync) */
+    .source-chip { font-size: 0.59rem; font-weight: 700; padding: 1px 5px; border-radius: 4px; background: var(--border); color: var(--muted); flex-shrink: 0; letter-spacing: 0.3px; }
+    .source-chip.excel { background: rgba(61,214,140,0.12); color: var(--green); }
+    .source-chip.mes   { background: rgba(79,142,247,0.12); color: var(--accent); }
+
+    .tag-acts { display: flex; gap: 3px; opacity: 0; transition: opacity 0.15s; }
+    .tag-row:hover .tag-acts { opacity: 1; }
+
+    .btn-icon {
+      background: transparent; border: 1px solid var(--border);
+      border-radius: 5px; padding: 2px 6px; font-size: 0.68rem;
+      cursor: pointer; color: var(--muted);
+      transition: color 0.12s, border-color 0.12s;
+    }
+    .btn-icon:hover        { color: var(--text); border-color: var(--muted); }
+    .btn-icon.danger:hover { color: var(--red);  border-color: var(--red); }
+
+    .tags-empty {
+      font-size: 0.75rem; color: var(--muted); text-align: center; padding: 12px 8px;
+      border: 1px dashed var(--border); border-radius: 7px; margin-bottom: 2px;
+    }
 
     /* ── Responsive ── */
     @media (max-width: 480px) {
@@ -149,6 +215,10 @@
 
 <!-- Anchor grid -->
 <div id="anchor-grid"></div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     ANCHOR MODALS
+══════════════════════════════════════════════════════════════ -->
 
 <!-- Create anchor modal -->
 <div id="create-modal" class="overlay">
@@ -200,20 +270,167 @@
   </div>
 </div>
 
+<!-- ══════════════════════════════════════════════════════════════
+     T96: TAG MODALS
+══════════════════════════════════════════════════════════════ -->
+
+<!-- Create tag modal -->
+<div id="create-tag-modal" class="overlay">
+  <div class="modal">
+    <h2>🏷 New Tag</h2>
+    <div class="field">
+      <label>Type <span style="color:var(--red)">*</span></label>
+      <select id="ct-type"></select>
+    </div>
+    <div class="field">
+      <label>Label <span style="color:var(--red)">*</span></label>
+      <input type="text" id="ct-label" placeholder="e.g. Valve Position" />
+    </div>
+    <div class="field">
+      <label>Expected Outcome</label>
+      <input type="text" id="ct-outcome" placeholder="e.g. Green indicator lit" />
+    </div>
+    <div class="field">
+      <label>Check Description</label>
+      <input type="text" id="ct-desc" placeholder="Optional operator instructions" />
+    </div>
+    <div class="field">
+      <label>Order
+        <span style="color:var(--muted);font-size:0.72rem;font-weight:400;text-transform:none;letter-spacing:0">
+          (inspection sequence — optional)
+        </span>
+      </label>
+      <input type="number" id="ct-order" placeholder="e.g. 1" min="1" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeCreateTagModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitCreateTag()">Create Tag</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit tag modal -->
+<div id="edit-tag-modal" class="overlay">
+  <div class="modal">
+    <h2>✏️ Edit Tag</h2>
+    <div class="field">
+      <label>Type
+        <span style="color:var(--muted);font-size:0.72rem;font-weight:400;text-transform:none;letter-spacing:0">
+          (set at creation — cannot change)
+        </span>
+      </label>
+      <input type="text" id="et-type-display" disabled
+             style="background:var(--bg);color:var(--muted);cursor:not-allowed;opacity:0.7" />
+    </div>
+    <div class="field">
+      <label>Label <span style="color:var(--red)">*</span></label>
+      <input type="text" id="et-label" />
+    </div>
+    <div class="field">
+      <label>Expected Outcome</label>
+      <input type="text" id="et-outcome" />
+    </div>
+    <div class="field">
+      <label>Check Description</label>
+      <input type="text" id="et-desc" />
+    </div>
+    <div class="field">
+      <label>Order
+        <span style="color:var(--muted);font-size:0.72rem;font-weight:400;text-transform:none;letter-spacing:0">
+          (inspection sequence — optional)
+        </span>
+      </label>
+      <input type="number" id="et-order" min="1" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeEditTagModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitEditTag()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete tag confirmation modal -->
+<div id="delete-tag-modal" class="overlay">
+  <div class="modal" style="max-width:370px">
+    <h2 style="color:var(--red)">⚠ Delete Tag?</h2>
+    <p style="font-size:0.875rem;color:var(--muted);margin-bottom:10px">
+      This will permanently delete the tag and its trained pass-state images.
+      This action <strong style="color:var(--text)">cannot be undone</strong>.
+    </p>
+    <p id="delete-tag-label" style="font-size:0.8rem;font-family:monospace;color:var(--text);background:var(--bg);padding:8px 12px;border-radius:8px;border:1px solid var(--border);word-break:break-all"></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeDeleteTagModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmDeleteTag()">Delete Tag</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
+// ══════════════════════════════════════════════════════════════════════════════
+// T96: Tag type registry
+// Mirrors TagType enum in SIBTypes.swift.  Add new entries here when the iOS
+// app gains new types — no other changes required.
+//
+// Scalability note — tag metadata.source tracks origin:
+//   "manual"  → created in this portal  (default for all portal-created tags)
+//   "excel"   → imported via Excel batch upload  (future)
+//   "mes"     → synced from MES REST API          (future)
+// The source chip is shown only for non-manual sources so the UI stays clean
+// for everyday use while future import/sync flows are immediately identifiable.
+// ══════════════════════════════════════════════════════════════════════════════
+const TAG_TYPES = [
+  { value: 'INSPECTION_POINT',    label: 'Inspection Point',    color: '#4f8ef7' },
+  { value: 'PRESENCE_CHECK',      label: 'Presence Check',      color: '#3dd68c' },
+  { value: 'LANGUAGE_CHECK',      label: 'Language Check',      color: '#818cf8' },
+  { value: 'ROUTING_CHECK',       label: 'Routing Check',       color: '#facc15' },
+  { value: 'CONFIGURATION_CHECK', label: 'Configuration Check', color: '#9ca3af' },
+  { value: 'PART_CHECK',          label: 'Part Check',          color: '#2dd4bf' },
+  { value: 'MEASUREMENT',         label: 'Measurement',         color: '#22d3ee' },
+  { value: 'INSTRUCTION',         label: 'Instruction',         color: '#a855f7' },
+  { value: 'WARNING',             label: 'Warning',             color: '#f97316' },
+  { value: 'DEFECT',              label: 'Defect',              color: '#f05656' },
+];
+
+function tagTypeInfo(typeValue) {
+  return TAG_TYPES.find(t => t.value === typeValue)
+      || { value: typeValue, label: typeValue, color: '#7070a0' };
+}
+
 // ── State ─────────────────────────────────────────────────────────────────────
-let allAnchors  = [];
-let tagCounts   = {}; // anchorId → count
+let allAnchors       = [];
+let tagsByAnchor     = {};       // { anchorId: Tag[] }  full objects from GET /tags
+let tagCounts        = {};       // anchorId → count  (derived from tagsByAnchor)
+let expandedAnchors  = new Set(); // anchorIds whose tag section is currently open
+
+// Tag CRUD pending state
+let pendingTagAnchorId      = null;   // for create modal
+let pendingEditTag          = null;   // full tag object for edit modal
+let pendingDeleteTagId      = null;
+let pendingDeleteTagAnchorId = null;
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
+  // Populate tag type <select> for the create-tag modal
+  const ctType = document.getElementById('ct-type');
+  TAG_TYPES.forEach(t => {
+    const opt = document.createElement('option');
+    opt.value       = t.value;
+    opt.textContent = t.label;
+    ctType.appendChild(opt);
+  });
+
+  // Backdrop-click closes any modal
+  document.querySelectorAll('.overlay').forEach(el => {
+    el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+  });
+
   const key = localStorage.getItem('sib_api_key');
   if (!key) {
     document.getElementById('setup-banner').style.display = 'block';
   } else {
-    document.getElementById('toolbar').style.display    = 'flex';
+    document.getElementById('toolbar').style.display = 'flex';
     loadAnchors();
   }
 });
@@ -237,6 +454,25 @@ async function apiFetch(path, opts = {}) {
   return res.json();
 }
 
+// ── String helpers ─────────────────────────────────────────────────────────────
+/** HTML-escape for use in innerHTML template strings */
+function esc(str) {
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
+/** Escape for embedding inside a JS single-quoted onclick="fn('VALUE')" attribute */
+function jsEsc(str) {
+  return String(str).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+}
+
+/** Make an id safe for use as a DOM id segment */
+function safeId(id) { return id.replace(/[^a-z0-9]/gi,'_'); }
+
 // ── Load anchors ──────────────────────────────────────────────────────────────
 async function loadAnchors() {
   const grid = document.getElementById('anchor-grid');
@@ -244,13 +480,19 @@ async function loadAnchors() {
   try {
     const resp = await apiFetch('/anchors');
     allAnchors = resp.data || [];
-    // Load tag counts for all anchors in parallel
-    const counts = await Promise.allSettled(
+
+    // Load full tag objects (not just counts) for all anchors in parallel.
+    // GET /tags enriches each tag with server-computed `isTrained` (T93).
+    const tagResponses = await Promise.allSettled(
       allAnchors.map(a => apiFetch(`/tags?anchorId=${encodeURIComponent(a.id)}`))
     );
-    counts.forEach((r, i) => {
-      tagCounts[allAnchors[i].id] = r.status === 'fulfilled' ? (r.value.data || []).length : 0;
+    tagResponses.forEach((r, i) => {
+      const anchorId = allAnchors[i].id;
+      const tags     = r.status === 'fulfilled' ? (r.value.data || []) : [];
+      tagsByAnchor[anchorId] = tags;
+      tagCounts[anchorId]    = tags.length;
     });
+
     renderAnchors();
   } catch (e) {
     grid.innerHTML = `<div class="empty" style="grid-column:1/-1">⚠ ${e.message}<br/><p>Check your API key in Settings.</p></div>`;
@@ -295,8 +537,8 @@ function buildCard(anchor) {
     ? `<span class="badge badge-green">${count} tag${count!==1?'s':''}</span>`
     : `<span class="badge badge-orange">No tags</span>`;
 
-  const hasKey   = !!anchor.encryptionKey;
-  const keyHtml  = hasKey
+  const hasKey  = !!anchor.encryptionKey;
+  const keyHtml = hasKey
     ? `<p class="key-ok">🔑 Encryption key included — QR matches the iOS-generated code.</p>`
     : `<p class="key-warn">⚠ No encryption key stored for this anchor. For secure inspections, regenerate the QR from the iOS app (Author mode → QR icon) to embed the key.</p>`;
 
@@ -308,25 +550,124 @@ function buildCard(anchor) {
       </div>
       ${badge}
     </div>
-    <div class="qr-wrap" id="qr-${anchor.id.replace(/[^a-z0-9]/gi,'_')}"></div>
+    <div class="qr-wrap" id="qr-${safeId(anchor.id)}"></div>
     <div class="card-meta">
       <span>Created ${date}</span>
       <span>${anchor.coordinateSystem}</span>
     </div>
     ${keyHtml}
-    <div class="card-actions" style="margin-top:10px">
+    ${buildTagSection(anchor)}
+    <div class="card-actions" style="margin-top:12px">
       <span class="qr-size-label" style="font-size:11px;color:#888;align-self:center">
         📐 ${anchor.qrSizeCm ?? 10} cm print size
       </span>
       <button class="btn btn-ghost btn-sm" onclick="downloadQR('${anchor.id}')">⬇ Download QR</button>
       <button class="btn btn-ghost btn-sm" onclick="copyAnchorId('${anchor.id}')">Copy ID</button>
-      <button class="btn btn-danger btn-sm" onclick="openDeleteModal('${anchor.id}','${anchor.assetId.replace(/'/g,"\\'")}')">🗑 Delete</button>
+      <button class="btn btn-danger btn-sm" onclick="openDeleteModal('${anchor.id}','${jsEsc(anchor.assetId)}')">🗑 Delete</button>
     </div>
   `;
 
   // Fetch canonical QR image from server
   setTimeout(() => loadQRImage(anchor), 0);
   return card;
+}
+
+// ── Rebuild a single card after tag CRUD ──────────────────────────────────────
+// Replaces the card node in-place. Expand state is preserved via expandedAnchors.
+function rebuildCard(anchorId) {
+  const anchor = allAnchors.find(a => a.id === anchorId);
+  if (!anchor) return;
+  const old = document.getElementById(`card-${anchorId}`);
+  if (!old) return;
+  tagCounts[anchorId] = (tagsByAnchor[anchorId] || []).length;
+  old.replaceWith(buildCard(anchor));
+}
+
+// ── T96: Build tag section HTML string ───────────────────────────────────────
+function buildTagSection(anchor) {
+  const anchorId = anchor.id;
+  const safe     = safeId(anchorId);
+
+  // Sort by order (ascending), then by createdAt
+  const tags = [...(tagsByAnchor[anchorId] || [])].sort((a, b) => {
+    const ao = a.order != null ? a.order : Infinity;
+    const bo = b.order != null ? b.order : Infinity;
+    if (ao !== bo) return ao - bo;
+    return (a.createdAt || '').localeCompare(b.createdAt || '');
+  });
+
+  const isExpanded   = expandedAnchors.has(anchorId);
+  const trainedCount = tags.filter(t => t.isTrained).length;
+
+  // Build tag rows
+  let listHtml;
+  if (tags.length === 0) {
+    listHtml = `<div class="tags-empty">No tags yet — tap "+ Add" to create the first one.</div>`;
+  } else {
+    listHtml = '<div class="tag-list">' + tags.map(tag => {
+      const ti         = tagTypeInfo(tag.type);
+      const trainBadge = tag.isTrained
+        ? `<span class="badge-trained">Trained</span>`
+        : `<span class="badge-untrained">Untrained</span>`;
+
+      // Source chip — visible only for non-manual sources (excel / mes / unknown)
+      const src = tag.metadata && tag.metadata.source;
+      let srcChip = '';
+      if      (src === 'excel') srcChip = `<span class="source-chip excel">EXCEL</span>`;
+      else if (src === 'mes')   srcChip = `<span class="source-chip mes">MES</span>`;
+
+      const orderNote = tag.order != null ? ` · #${tag.order}` : '';
+
+      return `<div class="tag-row">
+        <div class="tag-dot" style="background:${ti.color}"></div>
+        <div class="tag-info">
+          <div class="tag-lbl" title="${esc(tag.label)}">${esc(tag.label)}</div>
+          <div class="tag-typ">${esc(ti.label)}${orderNote}</div>
+        </div>
+        ${trainBadge}
+        ${srcChip}
+        <div class="tag-acts">
+          <button class="btn-icon" title="Edit tag"   onclick="openEditTagModal('${tag.id}')">✏</button>
+          <button class="btn-icon danger" title="Delete tag" onclick="openDeleteTagModal('${tag.id}','${anchorId}','${jsEsc(tag.label)}')">🗑</button>
+        </div>
+      </div>`;
+    }).join('') + '</div>';
+  }
+
+  const chipLabel = tags.length > 0 ? `${trainedCount}/${tags.length} trained` : '0 tags';
+
+  return `
+    <div class="tag-section">
+      <div class="tag-section-hdr" onclick="toggleTagSection('${anchorId}')">
+        <span class="tag-section-title">Tags</span>
+        <span class="tag-count-chip">${chipLabel}</span>
+        <button class="btn btn-ghost btn-sm"
+                style="padding:3px 10px;font-size:0.72rem;flex-shrink:0"
+                onclick="event.stopPropagation();openCreateTagModal('${anchorId}')">+ Add</button>
+        <span id="tag-chevron-${safe}" class="tag-chevron${isExpanded ? ' open' : ''}">▼</span>
+      </div>
+      <div id="tag-body-${safe}" class="tag-body" style="display:${isExpanded ? 'block' : 'none'}">
+        ${listHtml}
+      </div>
+    </div>`;
+}
+
+// ── T96: Toggle tag section open/closed (instant DOM, no rebuild) ─────────────
+function toggleTagSection(anchorId) {
+  const safe    = safeId(anchorId);
+  const body    = document.getElementById(`tag-body-${safe}`);
+  const chevron = document.getElementById(`tag-chevron-${safe}`);
+  if (!body || !chevron) return;
+
+  if (expandedAnchors.has(anchorId)) {
+    expandedAnchors.delete(anchorId);
+    body.style.display = 'none';
+    chevron.classList.remove('open');
+  } else {
+    expandedAnchors.add(anchorId);
+    body.style.display = 'block';
+    chevron.classList.add('open');
+  }
 }
 
 // ── QR image — fetched from the server ────────────────────────────────────────
@@ -338,8 +679,7 @@ function buildCard(anchor) {
 // libraries select different mask patterns for the same payload, producing
 // visually different codes that confuse operators comparing App vs Portal QRs.
 async function loadQRImage(anchor) {
-  const safeId    = anchor.id.replace(/[^a-z0-9]/gi, '_');
-  const container = document.getElementById(`qr-${safeId}`);
+  const container = document.getElementById(`qr-${safeId(anchor.id)}`);
   if (!container) return;
 
   container.innerHTML = '<div class="qr-loading">Loading…</div>';
@@ -349,12 +689,12 @@ async function loadQRImage(anchor) {
       headers: { 'X-API-Key': apiKey() },
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const blob    = await res.blob();
-    const objUrl  = URL.createObjectURL(blob);
-    const img     = document.createElement('img');
-    img.src       = objUrl;
-    img.alt       = `QR code for anchor ${anchor.assetId}`;
-    // Store blob URL on the element so downloadQR can access it
+    const blob   = await res.blob();
+    const objUrl = URL.createObjectURL(blob);
+    const img    = document.createElement('img');
+    img.src      = objUrl;
+    img.alt      = `QR code for anchor ${anchor.assetId}`;
+    // Store blob URL so downloadQR can access it without re-fetching
     img.dataset.blobUrl = objUrl;
     container.innerHTML = '';
     container.appendChild(img);
@@ -365,10 +705,8 @@ async function loadQRImage(anchor) {
 }
 
 function downloadQR(anchorId) {
-  const safeId = anchorId.replace(/[^a-z0-9]/gi, '_');
-  const container = document.getElementById(`qr-${safeId}`);
+  const container = document.getElementById(`qr-${safeId(anchorId)}`);
   const img = container?.querySelector('img');
-  // Use the stored blob URL (set when the image was fetched)
   const href = img?.dataset.blobUrl || img?.src;
   if (!href) { toast('QR image not loaded yet — please wait.'); return; }
   const link = document.createElement('a');
@@ -408,11 +746,11 @@ async function submitCreateAnchor() {
     const resp = await apiFetch('/anchors', { method:'POST', body: JSON.stringify(body) });
     const newAnchor = resp.data;
     allAnchors.unshift(newAnchor);
-    tagCounts[newAnchor.id] = 0;
+    tagsByAnchor[newAnchor.id] = [];
+    tagCounts[newAnchor.id]    = 0;
     renderAnchors();
     closeCreateModal();
     toast(`Anchor created: ${newAnchor.id.slice(0,16)}…`);
-    // Scroll to new card
     setTimeout(() => {
       document.getElementById(`card-${newAnchor.id}`)?.scrollIntoView({behavior:'smooth', block:'center'});
     }, 100);
@@ -430,7 +768,6 @@ function closeSettings() {
   document.getElementById('settings-modal').classList.remove('open');
 }
 function saveSettings() {
-  // Read from whichever input the user actually typed into
   const setupVal    = (document.getElementById('setup-key')?.value    || '').trim();
   const settingsVal = (document.getElementById('settings-key')?.value || '').trim();
   const k = settingsVal || setupVal;
@@ -441,11 +778,6 @@ function saveSettings() {
   document.getElementById('toolbar').style.display = 'flex';
   loadAnchors();
 }
-
-// Close modals on overlay click
-document.querySelectorAll('.overlay').forEach(el => {
-  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
-});
 
 // ── Delete anchor ─────────────────────────────────────────────────────────────
 let pendingDeleteId = null;
@@ -467,13 +799,175 @@ async function confirmDeleteAnchor() {
   closeDeleteModal();
   try {
     await apiFetch(`/anchors/${encodeURIComponent(id)}`, { method: 'DELETE' });
-    // Remove from local state and re-render
     allAnchors = allAnchors.filter(a => a.id !== id);
+    delete tagsByAnchor[id];
     delete tagCounts[id];
+    expandedAnchors.delete(id);
     renderAnchors();
     toast('Anchor deleted.');
   } catch (e) {
     alert(`Failed to delete anchor: ${e.message}`);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// T96: Tag CRUD
+// REST: POST /tags · PATCH /tags/:id · DELETE /tags/:id
+// All use the same apiFetch() helper with the stored API key.
+// ══════════════════════════════════════════════════════════════════════════════
+
+// ── Create tag ────────────────────────────────────────────────────────────────
+function openCreateTagModal(anchorId) {
+  if (!apiKey()) { alert('Enter your API key in Settings first.'); return; }
+  pendingTagAnchorId = anchorId;
+  document.getElementById('ct-type').selectedIndex = 0;
+  document.getElementById('ct-label').value   = '';
+  document.getElementById('ct-outcome').value = '';
+  document.getElementById('ct-desc').value    = '';
+  document.getElementById('ct-order').value   = '';
+  document.getElementById('create-tag-modal').classList.add('open');
+  setTimeout(() => document.getElementById('ct-label').focus(), 80);
+}
+
+function closeCreateTagModal() {
+  pendingTagAnchorId = null;
+  document.getElementById('create-tag-modal').classList.remove('open');
+}
+
+async function submitCreateTag() {
+  if (!pendingTagAnchorId) return;
+  const anchorId = pendingTagAnchorId;
+
+  const type     = document.getElementById('ct-type').value;
+  const label    = document.getElementById('ct-label').value.trim();
+  const outcome  = document.getElementById('ct-outcome').value.trim();
+  const desc     = document.getElementById('ct-desc').value.trim();
+  const orderRaw = document.getElementById('ct-order').value.trim();
+  const order    = orderRaw !== '' ? parseInt(orderRaw, 10) : undefined;
+
+  if (!label) { alert('Label is required.'); return; }
+
+  const body = {
+    anchorId,
+    type,
+    label,
+    expectedOutcome: outcome || '',
+    ...(desc  ? { checkDescription: desc }  : {}),
+    ...(order != null && !isNaN(order) ? { order } : {}),
+    // metadata.source tracks creation origin for scalable future import flows
+    metadata: { source: 'manual' },
+  };
+
+  try {
+    const resp   = await apiFetch('/tags', { method: 'POST', body: JSON.stringify(body) });
+    const newTag = resp.data;
+    newTag.isTrained = newTag.isTrained ?? false;
+
+    tagsByAnchor[anchorId] = [...(tagsByAnchor[anchorId] || []), newTag];
+
+    closeCreateTagModal();
+    expandedAnchors.add(anchorId); // keep section open after adding
+    rebuildCard(anchorId);
+    toast(`Tag "${label}" created.`);
+  } catch(e) {
+    alert(`Failed to create tag: ${e.message}`);
+  }
+}
+
+// ── Edit tag ──────────────────────────────────────────────────────────────────
+function openEditTagModal(tagId) {
+  // Find tag anywhere in tagsByAnchor
+  let found = null;
+  for (const tags of Object.values(tagsByAnchor)) {
+    const t = tags.find(t => t.id === tagId);
+    if (t) { found = t; break; }
+  }
+  if (!found) { toast('Tag not found — try refreshing.'); return; }
+
+  pendingEditTag = found;
+  const ti = tagTypeInfo(found.type);
+  document.getElementById('et-type-display').value = ti.label;
+  document.getElementById('et-label').value         = found.label             || '';
+  document.getElementById('et-outcome').value       = found.expectedOutcome   || '';
+  document.getElementById('et-desc').value          = found.checkDescription  || '';
+  document.getElementById('et-order').value         = found.order != null ? found.order : '';
+
+  document.getElementById('edit-tag-modal').classList.add('open');
+  setTimeout(() => document.getElementById('et-label').focus(), 80);
+}
+
+function closeEditTagModal() {
+  pendingEditTag = null;
+  document.getElementById('edit-tag-modal').classList.remove('open');
+}
+
+async function submitEditTag() {
+  if (!pendingEditTag) return;
+  const tag = pendingEditTag;
+
+  const label    = document.getElementById('et-label').value.trim();
+  const outcome  = document.getElementById('et-outcome').value.trim();
+  const desc     = document.getElementById('et-desc').value.trim();
+  const orderRaw = document.getElementById('et-order').value.trim();
+  const order    = orderRaw !== '' ? parseInt(orderRaw, 10) : null;
+
+  if (!label) { alert('Label is required.'); return; }
+
+  const patchBody = {
+    label,
+    expectedOutcome:  outcome,
+    checkDescription: desc  || null,
+    order:            (order != null && !isNaN(order)) ? order : null,
+  };
+
+  try {
+    const resp    = await apiFetch(`/tags/${encodeURIComponent(tag.id)}`, {
+      method: 'PATCH',
+      body:   JSON.stringify(patchBody),
+    });
+    const updated = resp.data;
+    // Preserve isTrained from local state — PATCH response doesn't re-enrich
+    updated.isTrained = tag.isTrained;
+
+    const anchorId = tag.anchorId;
+    tagsByAnchor[anchorId] = (tagsByAnchor[anchorId] || []).map(t =>
+      t.id === tag.id ? { ...t, ...updated } : t
+    );
+
+    closeEditTagModal();
+    rebuildCard(anchorId);
+    toast(`Tag "${label}" updated.`);
+  } catch(e) {
+    alert(`Failed to update tag: ${e.message}`);
+  }
+}
+
+// ── Delete tag ────────────────────────────────────────────────────────────────
+function openDeleteTagModal(tagId, anchorId, label) {
+  pendingDeleteTagId       = tagId;
+  pendingDeleteTagAnchorId = anchorId;
+  document.getElementById('delete-tag-label').textContent = label;
+  document.getElementById('delete-tag-modal').classList.add('open');
+}
+
+function closeDeleteTagModal() {
+  pendingDeleteTagId       = null;
+  pendingDeleteTagAnchorId = null;
+  document.getElementById('delete-tag-modal').classList.remove('open');
+}
+
+async function confirmDeleteTag() {
+  if (!pendingDeleteTagId) return;
+  const tagId    = pendingDeleteTagId;
+  const anchorId = pendingDeleteTagAnchorId;
+  closeDeleteTagModal();
+  try {
+    await apiFetch(`/tags/${encodeURIComponent(tagId)}`, { method: 'DELETE' });
+    tagsByAnchor[anchorId] = (tagsByAnchor[anchorId] || []).filter(t => t.id !== tagId);
+    rebuildCard(anchorId);
+    toast('Tag deleted.');
+  } catch (e) {
+    alert(`Failed to delete tag: ${e.message}`);
   }
 }
 

@@ -54,13 +54,19 @@ router.post('/', (req: Request, res: Response) => {
 });
 
 // GET /tags — list all tags (optionally filter by anchorId)
+// Each tag is enriched with a server-computed `isTrained` boolean so clients
+// can display trained/untrained status without a separate readiness call.
 router.get('/', (req: Request, res: Response) => {
   const { anchorId } = req.query;
   let tags = tagStore.findAll();
   if (typeof anchorId === 'string') {
     tags = tags.filter((t) => t.anchorId === anchorId);
   }
-  return res.json({ data: tags, timestamp: new Date().toISOString() });
+  const enriched = tags.map(tag => ({
+    ...tag,
+    isTrained: findPassStateByTag(tag.id) !== null,
+  }));
+  return res.json({ data: enriched, timestamp: new Date().toISOString() });
 });
 
 // GET /tags/:id — get a single tag
