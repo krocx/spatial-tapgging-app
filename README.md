@@ -49,6 +49,7 @@ This is a monorepo — the iOS app, the server, and shared types all live in one
 | Deploy the SIB server for the team (Render) | **[docs/RENDER-DEPLOYMENT.md](docs/RENDER-DEPLOYMENT.md)** |
 | Look up server env vars / endpoints | **[docs/SERVER-REFERENCE.md](docs/SERVER-REFERENCE.md)** |
 | Read how we got here, phase by phase | **[docs/PHASE-HISTORY.md](docs/PHASE-HISTORY.md)** |
+| See the whole app's features, including how the AR components work | **[docs/APP-FEATURES.md](docs/APP-FEATURES.md)** |
 | See what SIB Training can do today vs. what's still planned | **[docs/SIB-TRAINING-FEATURES.md](docs/SIB-TRAINING-FEATURES.md)** |
 | Understand why we're on Render, and how it stacks up against a local/in-house server | **[docs/WHY-RENDER.md](docs/WHY-RENDER.md)** |
 | Move the SIB server off Render to an in-house server | **[docs/RENDER-TO-INHOUSE-MIGRATION.md](docs/RENDER-TO-INHOUSE-MIGRATION.md)** |
