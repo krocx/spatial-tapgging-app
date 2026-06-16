@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SpatialTaggingApp — Interactive Wireframe</title>
+<style>
+  :root{
+    --page-bg:#f4f3ef; --panel:#ffffff; --border:#ddd9cd; --text:#2c2c2a; --text2:#5f5e5a; --text3:#888780;
+    --accent:#185fa5; --accent-bg:#e6f1fb; --accent-text:#0c447c;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:24px; background:var(--page-bg); color:var(--text);
+    font-family:-apple-system,"Helvetica Neue",Arial,sans-serif; font-size:14px; line-height:1.5;
+  }
+  h1{font-size:20px; font-weight:600; margin:0 0 4px;}
+  .sub{color:var(--text2); margin:0 0 20px; font-size:13px;}
+  .tabs{display:flex; gap:8px; margin-bottom:16px;}
+  .tab{
+    padding:8px 16px; border:1px solid var(--border); border-radius:8px; background:var(--panel);
+    cursor:pointer; font-weight:500; color:var(--text2);
+  }
+  .tab.active{background:var(--accent-bg); color:var(--accent-text); border-color:var(--accent);}
+  .flowmap{
+    display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px; padding:14px;
+    background:var(--panel); border:1px solid var(--border); border-radius:10px;
+  }
+  .flownode{
+    padding:6px 10px; border-radius:6px; background:#f1efe8; color:var(--text2);
+    font-size:12px; cursor:pointer; border:1px solid transparent; white-space:nowrap;
+  }
+  .flownode.current{background:var(--accent-bg); color:var(--accent-text); border-color:var(--accent); font-weight:600;}
+  .flowarrow{color:var(--text3); align-self:center; font-size:12px;}
+  .stage{display:flex; gap:24px; flex-wrap:wrap; align-items:flex-start;}
+
+  /* ---- phone shell ---- */
+  .phone{
+    width:320px; min-height:600px; border-radius:34px; padding:8px;
+    background:#000; box-shadow:0 6px 24px rgba(0,0,0,0.18);
+  }
+  .phone-screen{
+    border-radius:27px; overflow:hidden; min-height:584px; display:flex; flex-direction:column;
+    position:relative; background:#f2f2f7; color:#1c1c1e;
+  }
+  .phone.dark .phone-screen{ background:linear-gradient(180deg,#15151a,#1f1f24); color:#fff; }
+  .statusbar{
+    height:18px; display:flex; align-items:center; justify-content:center;
+    font-size:10px; font-weight:600; color:inherit; opacity:0.7; flex-shrink:0;
+  }
+  .meta{padding:10px 16px 4px;}
+  .meta .t{font-size:15px; font-weight:700; margin:0;}
+  .meta .s{font-size:11px; opacity:0.55; margin:2px 0 0;}
+  .body-scroll{flex:1; overflow:auto; padding:10px 14px 6px;}
+  .actions{display:flex; flex-direction:column; gap:7px; padding:8px 14px 14px;}
+
+  /* ---- generic buttons (wireframe controls, not in-app chrome) ---- */
+  .btn{
+    padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:var(--panel);
+    color:var(--text); font-size:12.5px; cursor:pointer; text-align:left; font-weight:500;
+  }
+  .phone.dark ~ .btn, .phone.dark .btn{ }
+  .btn:hover{border-color:var(--accent);}
+  .btn.primary{background:var(--accent-bg); color:var(--accent-text); border-color:var(--accent);}
+
+  /* ---- iOS-ish building blocks ---- */
+  .ios-list{border-radius:12px; overflow:hidden; background:#fff; margin-bottom:12px;}
+  .phone.dark .ios-list{background:rgba(255,255,255,0.06);}
+  .ios-row{
+    display:flex; align-items:center; gap:10px; padding:11px 12px;
+    border-bottom:1px solid #e5e5ea;
+  }
+  .phone.dark .ios-row{border-bottom:1px solid rgba(255,255,255,0.08);}
+  .ios-row:last-child{border-bottom:none;}
+  .ios-section-header{font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.04em; opacity:0.5; margin:14px 2px 6px;}
+  .icon-circle{
+    width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-size:14px; flex-shrink:0;
+  }
+  .row-main{flex:1; min-width:0;}
+  .row-title{font-size:13.5px; font-weight:600; margin:0;}
+  .row-sub{font-size:11px; opacity:0.55; margin:1px 0 0;}
+  .chev{opacity:0.3; font-size:14px;}
+
+  .badge{display:inline-flex; align-items:center; gap:3px; padding:3px 9px; border-radius:20px; font-size:10.5px; font-weight:700; white-space:nowrap;}
+  .badge-green{background:#d2f4da; color:#1c7d34;}
+  .badge-orange{background:#ffe7c2; color:#ad6800;}
+  .badge-red{background:#ffd9d9; color:#c41e3a;}
+  .badge-blue{background:#d9e8ff; color:#1456c9;}
+  .badge-gray{background:#e6e6ea; color:#6b6b70;}
+  .phone.dark .badge-green{background:rgba(52,199,89,0.22); color:#67e08a;}
+  .phone.dark .badge-orange{background:rgba(255,149,0,0.22); color:#ffb454;}
+  .phone.dark .badge-red{background:rgba(255,59,48,0.22); color:#ff8a82;}
+  .phone.dark .badge-blue{background:rgba(52,120,246,0.22); color:#7da9ff;}
+  .phone.dark .badge-gray{background:rgba(255,255,255,0.12); color:rgba(255,255,255,0.6);}
+
+  .search-mock{
+    background:rgba(118,118,128,0.12); border-radius:10px; padding:8px 10px; font-size:12.5px;
+    color:#8e8e93; margin-bottom:10px;
+  }
+  .portal-card{
+    display:flex; align-items:center; gap:10px; background:#fff; border:1px solid #d9e8ff;
+    border-radius:12px; padding:11px 12px; margin-bottom:12px;
+  }
+
+  .topbar{
+    position:absolute; top:0; left:0; right:0; padding:14px 14px 22px;
+    background:linear-gradient(180deg, rgba(0,0,0,0.7), rgba(0,0,0,0));
+    display:flex; align-items:center; justify-content:space-between; z-index:3;
+  }
+  .topbar .center{text-align:center; flex:1;}
+  .topbar .center .t{font-size:13px; font-weight:700; color:#fff; margin:0;}
+  .topbar .center .s{font-size:10.5px; color:rgba(255,255,255,0.6); margin:1px 0 0;}
+  .chip{
+    padding:5px 11px; border-radius:20px; background:rgba(255,255,255,0.15);
+    backdrop-filter:blur(6px); color:#fff; font-size:11px; font-weight:600;
+  }
+  .icon-btn-dark{
+    width:30px; height:30px; border-radius:50%; background:rgba(255,255,255,0.15);
+    display:flex; align-items:center; justify-content:center; color:#fff; font-size:13px;
+  }
+
+  .ar-bg{
+    flex:1; position:relative; min-height:420px; overflow:hidden;
+    background:
+      radial-gradient(circle at 30% 20%, rgba(255,255,255,0.05), transparent 40%),
+      repeating-linear-gradient(135deg, #1a1a1f, #1a1a1f 14px, #232328 14px, #232328 28px);
+  }
+  .marker{
+    position:absolute; width:26px; height:26px; border-radius:50%; transform:translate(-50%,-50%);
+    border:2.5px solid #3478F6; background:rgba(52,120,246,0.18);
+    display:flex; align-items:center; justify-content:center; font-size:11px; color:#fff;
+  }
+  .marker.green{border-color:#34C759; background:rgba(52,199,89,0.25);}
+  .marker.red{border-color:#FF3B30; background:rgba(255,59,48,0.3); animation:pulse 1.4s infinite;}
+  .marker.pending{border-color:rgba(255,255,255,0.5); background:rgba(255,255,255,0.08);}
+  @keyframes pulse{0%,100%{opacity:1;} 50%{opacity:0.45;}}
+
+  .qr-frame{
+    position:absolute; top:50%; left:50%; width:160px; height:160px; transform:translate(-50%,-50%);
+    border-radius:18px;
+  }
+  .qr-frame .corner{position:absolute; width:26px; height:26px; border:3px solid #32ADE6;}
+  .qr-frame .tl{top:0;left:0;border-right:none;border-bottom:none;border-radius:8px 0 0 0;}
+  .qr-frame .tr{top:0;right:0;border-left:none;border-bottom:none;border-radius:0 8px 0 0;}
+  .qr-frame .bl{bottom:0;left:0;border-right:none;border-top:none;border-radius:0 0 0 8px;}
+  .qr-frame .br{bottom:0;right:0;border-left:none;border-top:none;border-radius:0 0 8px 0;}
+
+  .status-card{
+    position:absolute; top:46%; left:50%; transform:translate(-50%,-50%); width:230px;
+    background:rgba(40,40,46,0.72); backdrop-filter:blur(10px); border-radius:16px; padding:16px;
+    text-align:center; color:#fff; z-index:2;
+  }
+  .status-card .icon{font-size:26px; margin-bottom:8px;}
+  .status-card .msg{font-size:12.5px; font-weight:600;}
+
+  .bottom-sheet-bar{
+    position:absolute; left:0; right:0; bottom:0; padding:14px;
+    background:linear-gradient(0deg, rgba(0,0,0,0.78), rgba(0,0,0,0)); z-index:3;
+  }
+  .glass-card{
+    background:rgba(255,255,255,0.10); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,0.14);
+    border-radius:14px; padding:12px 14px; color:#fff;
+  }
+
+  .fab{
+    position:absolute; right:16px; bottom:88px; width:50px; height:50px; border-radius:50%;
+    background:#3478F6; color:#fff; font-size:22px; display:flex; align-items:center; justify-content:center;
+    box-shadow:0 4px 10px rgba(0,0,0,0.4); z-index:3;
+  }
+
+  /* dark sheet (Add Tag, Tag List) */
+  .dark-sheet{ background:#11121b; color:#fff; border-radius:18px 18px 0 0; padding:14px; flex:1; }
+  .drag-handle{width:36px; height:4px; background:rgba(255,255,255,0.2); border-radius:3px; margin:0 auto 12px;}
+  .chip-row{display:flex; gap:8px; margin-bottom:10px;}
+  .mode-chip{
+    flex:1; text-align:center; padding:9px 4px; border-radius:10px; font-size:12px; font-weight:600;
+    background:rgba(255,255,255,0.06); color:rgba(255,255,255,0.5); border:1px solid transparent;
+  }
+  .mode-chip.selected{background:#162043; color:#7da9ff; border-color:rgba(52,120,246,0.45);}
+  .suggest-row{display:flex; gap:6px; overflow:auto; padding-bottom:8px; margin-bottom:10px;}
+  .suggest-chip{
+    flex-shrink:0; padding:6px 12px; border-radius:20px; font-size:11.5px; font-weight:600;
+    background:rgba(52,120,246,0.14); color:#7da9ff; white-space:nowrap;
+  }
+  .suggest-chip.sel{background:#3478F6; color:#fff;}
+  .field-label{font-size:10.5px; font-weight:700; letter-spacing:0.05em; color:rgba(255,255,255,0.4); margin-bottom:5px;}
+  .field-mock{background:rgba(255,255,255,0.07); border-radius:9px; padding:11px 12px; font-size:13px; color:rgba(255,255,255,0.4); margin-bottom:12px;}
+
+  /* capture HUD */
+  .zone-ring{
+    width:120px; height:120px; border-radius:50%; margin:0 auto 12px; position:relative;
+    background:conic-gradient(#34C759 0deg 265deg, rgba(255,255,255,0.15) 265deg 360deg);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .zone-ring::before{content:""; position:absolute; width:96px; height:96px; border-radius:50%; background:#1a1a1f;}
+  .zone-ring .num{position:relative; z-index:1; font-size:20px; font-weight:700; color:#fff;}
+  .hold-bar{height:6px; border-radius:4px; background:rgba(255,255,255,0.15); overflow:hidden; margin-top:10px;}
+  .hold-bar .fill{height:100%; width:62%; background:#FFD60A;}
+
+  /* QR generator */
+  .qr-card{
+    width:200px; height:200px; margin:18px auto 14px; background:#fff; border-radius:18px;
+    box-shadow:0 4px 14px rgba(0,0,0,0.12); display:flex; align-items:center; justify-content:center;
+  }
+  .qr-svg{width:150px; height:150px;}
+
+  /* validation results */
+  .status-hero{text-align:center; padding:14px 0 8px;}
+  .status-hero .icon{font-size:46px; line-height:1;}
+  .status-hero .label{font-size:18px; font-weight:800; letter-spacing:0.03em; margin-top:4px;}
+  .status-hero .desc{font-size:12px; opacity:0.6; margin-top:2px;}
+  .progress-track{height:7px; border-radius:4px; background:#ffd9d9; overflow:hidden; margin:10px 0 4px;}
+  .progress-fill{height:100%; background:#34C759; width:50%;}
+
+  .threshold-mock{
+    position:absolute; top:54px; right:14px; background:rgba(255,214,10,0.22); color:#FFD60A;
+    border-radius:20px; padding:5px 11px; font-size:11px; font-weight:700; backdrop-filter:blur(6px); z-index:3;
+  }
+
+  .notes{
+    width:300px; min-height:600px; background:var(--panel); border:1px solid var(--border);
+    border-radius:14px; padding:18px;
+  }
+  .notes h2{font-size:15px; margin:0 0 8px; font-weight:600;}
+  .notes p{color:var(--text2); margin:0 0 12px;}
+  .notes ul{margin:0 0 12px; padding-left:18px; color:var(--text2);}
+  .notes li{margin-bottom:6px;}
+  .legend{display:flex; gap:14px; margin-top:16px; font-size:12px; color:var(--text2); flex-wrap:wrap;}
+  .legend span{display:inline-flex; align-items:center; gap:5px;}
+  .dot{width:9px; height:9px; border-radius:50%; display:inline-block;}
+  .sr-only{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0);}
+</style>
+</head>
+<body>
+<h2 class="sr-only">Interactive wireframe of the SpatialTaggingApp showing the Author tag-training flow and the Operator inspection flow, screen by screen, rendered with the app's actual colors, text, and layout, with clickable mock buttons to step through each path.</h2>
+
+<h1>SpatialTaggingApp — App Flow Wireframe</h1>
+<p class="sub">Click the buttons below each phone screen to walk through the flow. Click a node in the map to jump directly to a screen. Phone screens mirror the real app's colors, copy, and layout — the buttons underneath are wireframe navigation controls, not part of the app itself.</p>
+
+<div class="tabs">
+  <div class="tab active" id="tab-author" onclick="setFlow('author')">Author flow</div>
+  <div class="tab" id="tab-operator" onclick="setFlow('operator')">Operator flow</div>
+</div>
+
+<div class="flowmap" id="flowmap"></div>
+
+<div class="stage">
+  <div>
+    <div class="phone" id="phoneShell">
+      <div class="phone-screen" id="screen"></div>
+    </div>
+    <div class="actions" id="actions" style="padding-left:0;"></div>
+  </div>
+  <div class="notes" id="notes"></div>
+</div>
+
+<div class="legend">
+  <span><span class="dot" style="background:#34C759"></span>Trained / PASS</span>
+  <span><span class="dot" style="background:#FF3B30"></span>FAIL</span>
+  <span><span class="dot" style="background:#8E8E93"></span>Pending / untrained</span>
+</div>
+
+<script>
+function qrSvg(stroke){
+  stroke = stroke || "#111";
+  // simple decorative QR-like pattern, not a real scannable code
+  var cells = [
+    "1110101110111","1000101000101","1011101011101","1011101011101",
+    "1000100000101","1110101110111","0000000000000","1011100010110",
+    "0101011101001","1110100101010","1000101110111","1011100000101",
+    "1110111011101"
+  ];
+  var size = 13, cell = 150/size, rects = "";
+  for (var r=0;r<size;r++){
+    for (var c=0;c<size;c++){
+      if (cells[r][c]==="1"){
+        rects += '<rect x="'+(c*cell)+'" y="'+(r*cell)+'" width="'+cell+'" height="'+cell+'" fill="'+stroke+'"/>';
+      }
+    }
+  }
+  return '<svg class="qr-svg" viewBox="0 0 150 150" xmlns="http://www.w3.org/2000/svg">'+rects+'</svg>';
+}
+
+const screens = {
+  "mode-select": {
+    title: "Mode Selection", sub: "Always the first screen on launch", dark: true,
+    body: `
+      <div class="meta" style="padding-top:18px;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div class="icon-circle" style="background:linear-gradient(135deg,#3478F6,#32ADE6); font-size:16px;">▦</div>
+          <div>
+            <p class="t" style="margin:0;">Spatial Tagging</p>
+            <p class="s" style="margin:0;">Cleanroom Inspection · Phase 2</p>
+          </div>
+          <div style="flex:1;"></div>
+          <div class="icon-btn-dark" style="background:transparent; color:rgba(255,255,255,0.5);">?</div>
+          <div class="icon-btn-dark" style="background:transparent; color:rgba(255,255,255,0.5);">⚙</div>
+        </div>
+      </div>
+      <div class="body-scroll">
+        <div class="glass-card" style="border-color:rgba(52,120,246,0.3); background:rgba(255,255,255,0.08); margin-bottom:10px; display:flex; align-items:center; gap:12px;">
+          <div class="icon-circle" style="background:rgba(52,120,246,0.18); color:#7da9ff;">✎</div>
+          <div class="row-main">
+            <p class="row-title" style="color:#fff;">Author Mode</p>
+            <p class="row-sub" style="color:rgba(255,255,255,0.55);">Create and train inspection tags</p>
+          </div>
+          <span class="chev" style="color:#7da9ff;">›</span>
+        </div>
+        <div class="glass-card" style="border-color:rgba(52,199,89,0.3); background:rgba(255,255,255,0.08); margin-bottom:14px; display:flex; align-items:center; gap:12px;">
+          <div class="icon-circle" style="background:rgba(52,199,89,0.18); color:#67e08a;">◉</div>
+          <div class="row-main">
+            <p class="row-title" style="color:#fff;">Operator Mode</p>
+            <p class="row-sub" style="color:rgba(255,255,255,0.55);">Run inspections and view results</p>
+          </div>
+          <span class="chev" style="color:#67e08a;">›</span>
+        </div>
+        <div class="glass-card" style="background:rgba(88,86,214,0.12); border-color:rgba(88,86,214,0.3); display:flex; align-items:center; gap:10px;">
+          <div class="icon-circle" style="background:rgba(88,86,214,0.2); color:#a6a4ff; font-size:12px;">▦</div>
+          <div class="row-main">
+            <p class="row-title" style="color:#fff; font-size:12.5px;">Share Anchor QR</p>
+            <p class="row-sub" style="color:rgba(255,255,255,0.5);">Acme Pump Station · tap to generate team QR</p>
+          </div>
+        </div>
+      </div>
+      <div class="bottom-sheet-bar" style="position:relative; background:none; padding:0 14px 16px;">
+        <div style="display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.06); border-radius:10px; padding:9px 12px;">
+          <span class="dot" style="background:#34C759; width:8px; height:8px; border-radius:50%; display:inline-block;"></span>
+          <span style="font-size:11px; color:rgba(255,255,255,0.6); flex:1;">SIB Connected · sib-server-hiul.onrender.com</span>
+          <span style="font-size:11px; color:#7da9ff; font-weight:600;">Test</span>
+        </div>
+      </div>`,
+    actions: [
+      {label:"Tap “Author Mode”", to:"directory-author", flow:"author", primary:true},
+      {label:"Tap “Operator Mode”", to:"directory-operator", flow:"operator"},
+    ],
+    note: "Entry point for both roles. No QR scan happens here — that's gated later, per anchor, once you've picked an anchor in the directory."
+  },
+
+  "directory-author": {
+    title: "Anchor Directory", sub: "List of all anchors on the server",
+    body: `
+      <div class="meta"><p class="t">Anchor Directory</p></div>
+      <div class="body-scroll">
+        <div class="search-mock">🔍 Search by anchor or asset ID</div>
+        <div class="portal-card">
+          <div class="icon-circle" style="background:#d9e8ff; color:#1456c9;">🌐</div>
+          <div class="row-main">
+            <p class="row-title" style="color:#1456c9;">Anchor Directory Portal</p>
+            <p class="row-sub">Browse anchors from any browser</p>
+          </div>
+          <span style="color:#1456c9;">↗</span>
+        </div>
+        <div class="ios-section-header">Anchors</div>
+        <div class="ios-list">
+          <div class="ios-row">
+            <div class="icon-circle" style="background:#e6e6ea;">📍</div>
+            <div class="row-main"><p class="row-title">Acme Pump Station</p></div>
+            <span class="badge badge-blue">3 tags</span>
+            <span class="chev">›</span>
+          </div>
+          <div class="ios-row">
+            <div class="icon-circle" style="background:#e6e6ea;">📍</div>
+            <div class="row-main"><p class="row-title">Line 4 Conveyor</p></div>
+            <span class="badge badge-orange">0 tags</span>
+            <span class="chev">›</span>
+          </div>
+        </div>
+      </div>`,
+    actions: [
+      {label:"Tap “Acme Pump Station”", to:"hub-author", primary:true},
+      {label:"Tap + (new anchor wizard)", to:"hub-author"},
+    ],
+    note: "Shared screen — same component for both roles. The toolbar + (Author only) opens a 2-step wizard: name the asset, then print/place the generated QR, which lands back here."
+  },
+  "directory-operator": {
+    title: "Anchor Directory", sub: "Same shared screen, Operator context",
+    body: `
+      <div class="meta"><p class="t">Anchor Directory</p></div>
+      <div class="body-scroll">
+        <div class="search-mock">🔍 Search by anchor or asset ID</div>
+        <div class="portal-card">
+          <div class="icon-circle" style="background:#d9e8ff; color:#1456c9;">🌐</div>
+          <div class="row-main">
+            <p class="row-title" style="color:#1456c9;">Anchor Directory Portal</p>
+            <p class="row-sub">Browse anchors from any browser</p>
+          </div>
+          <span style="color:#1456c9;">↗</span>
+        </div>
+        <div class="ios-section-header">Anchors</div>
+        <div class="ios-list">
+          <div class="ios-row">
+            <div class="icon-circle" style="background:#e6e6ea;">📍</div>
+            <div class="row-main"><p class="row-title">Acme Pump Station</p></div>
+            <span class="badge badge-blue">3 tags</span>
+            <span class="chev">›</span>
+          </div>
+          <div class="ios-row">
+            <div class="icon-circle" style="background:#e6e6ea;">📍</div>
+            <div class="row-main"><p class="row-title">Line 4 Conveyor</p></div>
+            <span class="badge badge-orange">0 tags</span>
+            <span class="chev">›</span>
+          </div>
+        </div>
+      </div>`,
+    actions: [{label:"Tap “Acme Pump Station”", to:"hub-operator", primary:true}],
+    note: "Identical component to the Author directory — no + button here, and it routes to the Operator-mode hub next."
+  },
+
+  "hub-author": {
+    title: "Anchor Hub", sub: "Acme Pump Station — tag list + entry point to AR",
+    body: `
+      <div class="meta"><p class="t">Acme Pump Station</p></div>
+      <div class="body-scroll">
+        <div class="ios-list">
+          <div class="ios-row">
+            <div class="icon-circle" style="background:#e6e6ea; color:#1c1c1e;">▦</div>
+            <div class="row-main">
+              <p class="row-title">Anchor QR Code</p>
+              <p class="row-sub">Permanent · key embedded</p>
+            </div>
+          </div>
+          <div class="ios-row">
+            <span style="color:#1c7d34; font-size:12px;">🔒 AES-256 encrypted</span>
+            <div style="flex:1;"></div>
+            <span style="color:#1456c9; font-size:12px; font-weight:600;">Share</span>
+          </div>
+        </div>
+        <div class="ios-section-header">Tags · 1/2 trained</div>
+        <div class="ios-list">
+          <div class="ios-row">
+            <div class="icon-circle" style="background:rgba(50,173,230,0.16); color:#1f8fb8;">📟</div>
+            <div class="row-main"><p class="row-title">Pressure Gauge A</p></div>
+            <span class="badge badge-green">Trained</span>
+          </div>
+          <div class="ios-row">
+            <div class="icon-circle" style="background:rgba(52,120,246,0.14); color:#1456c9;">🔧</div>
+            <div class="row-main"><p class="row-title">Valve Handle B</p></div>
+            <span class="badge badge-orange">Untrained</span>
+          </div>
+        </div>
+      </div>
+      <div class="actions" style="padding:8px 16px 16px;">
+        <div style="background:#3478F6; color:#fff; border-radius:12px; padding:12px 14px;">
+          <p style="margin:0; font-weight:700; font-size:13.5px;">▶ Enter AR Session</p>
+          <p style="margin:2px 0 0; font-size:11px; opacity:0.85;">Scan anchor QR to lock origin for this session</p>
+        </div>
+      </div>`,
+    actions: [{label:"Tap “Enter AR Session”", to:"qrgate-author", primary:true}],
+    note: "Shows each tag's training status before you walk into AR. The QR row up top is the same code an Operator would scan to start an inspection."
+  },
+  "hub-operator": {
+    title: "Anchor Hub", sub: "Readiness warning shown if any tag is untrained",
+    body: `
+      <div class="meta"><p class="t">Acme Pump Station</p></div>
+      <div class="body-scroll">
+        <div class="ios-list">
+          <div class="ios-row">
+            <div class="icon-circle" style="background:#e6e6ea; color:#1c1c1e;">▦</div>
+            <div class="row-main">
+              <p class="row-title">Anchor QR Code</p>
+              <p class="row-sub">Permanent · key embedded</p>
+            </div>
+          </div>
+        </div>
+        <div class="ios-section-header">Tags · 1/2 trained</div>
+        <div class="ios-list">
+          <div class="ios-row">
+            <div class="icon-circle" style="background:rgba(50,173,230,0.16); color:#1f8fb8;">📟</div>
+            <div class="row-main"><p class="row-title">Pressure Gauge A</p></div>
+            <span class="badge badge-green">Trained</span>
+          </div>
+          <div class="ios-row">
+            <div class="icon-circle" style="background:rgba(52,120,246,0.14); color:#1456c9;">🔧</div>
+            <div class="row-main"><p class="row-title">Valve Handle B</p></div>
+            <span class="badge badge-orange">Untrained</span>
+          </div>
+        </div>
+        <div style="background:#fff3da; border:1px solid #ffd9a0; border-radius:10px; padding:10px 12px; display:flex; gap:8px; align-items:flex-start;">
+          <span style="color:#ad6800;">⚠</span>
+          <span style="font-size:11.5px; color:#8a5400;">1 of 2 tag(s) not yet trained — they will show as PENDING.</span>
+        </div>
+      </div>
+      <div class="actions" style="padding:8px 16px 16px;">
+        <div style="background:#3478F6; color:#fff; border-radius:12px; padding:12px 14px;">
+          <p style="margin:0; font-weight:700; font-size:13.5px;">▶ Enter AR Session</p>
+          <p style="margin:2px 0 0; font-size:11px; opacity:0.85;">Scan anchor QR to lock origin for this session</p>
+        </div>
+      </div>`,
+    actions: [{label:"Tap “Enter AR Session”", to:"qrgate-operator", primary:true}],
+    note: "Operators see an orange (warn) or red (block) readiness banner if tags aren't fully trained yet — this is a non-blocking warning here since one tag is still untrained."
+  },
+
+  "qrgate-author": {
+    title: "QR Scan Gate", sub: "Mandatory AR camera lock — Author Mode", dark: true,
+    body: `
+      <div class="ar-bg">
+        <div class="topbar" style="background:linear-gradient(180deg, rgba(0,0,0,0.55), rgba(0,0,0,0));">
+          <span style="color:#fff; font-size:18px;">✕</span>
+          <div class="center"></div>
+          <span class="chip">✎ Author Mode</span>
+        </div>
+        <div class="qr-frame">
+          <div class="corner tl"></div><div class="corner tr"></div>
+          <div class="corner bl"></div><div class="corner br"></div>
+        </div>
+        <div class="status-card">
+          <div class="icon">▦</div>
+          <div class="msg">Point at the anchor QR code</div>
+        </div>
+      </div>`,
+    actions: [
+      {label:"Scan correct QR → origin locks", to:"ar-author", primary:true},
+      {label:"Scan wrong QR (shows error, retry)", to:"qrgate-author"},
+    ],
+    note: "Full-screen AR camera passthrough. Downloads any saved ARWorldMap first and relocalises (orange spinner) before showing this viewfinder, so tags land in the same spot every session. A wrong QR shows a red error banner — “Wrong QR — this code belongs to a different anchor” — for a few seconds, then lets you retry."
+  },
+  "qrgate-operator": {
+    title: "QR Scan Gate", sub: "Mandatory AR camera lock — Operator Mode", dark: true,
+    body: `
+      <div class="ar-bg">
+        <div class="topbar" style="background:linear-gradient(180deg, rgba(0,0,0,0.55), rgba(0,0,0,0));">
+          <span style="color:#fff; font-size:18px;">✕</span>
+          <div class="center"></div>
+          <span class="chip">◉ Operator Mode</span>
+        </div>
+        <div class="qr-frame">
+          <div class="corner tl"></div><div class="corner tr"></div>
+          <div class="corner bl"></div><div class="corner br"></div>
+        </div>
+        <div class="status-card">
+          <div class="icon">▦</div>
+          <div class="msg">Point at the anchor QR code</div>
+        </div>
+      </div>`,
+    actions: [{label:"Scan correct QR → origin locks", to:"ar-operator", primary:true}],
+    note: "Identical mechanism to the Author gate — locks this device's AR session to the same physical anchor and world frame."
+  },
+
+  "ar-author": {
+    title: "Author AR View", sub: "Tap a surface to place a tag", dark: true,
+    body: `
+      <div class="ar-bg">
+        <div class="topbar">
+          <span style="color:rgba(255,255,255,0.85); font-size:12.5px; font-weight:600;">Done</span>
+          <div class="center"><p class="t">Acme Pump Station</p></div>
+          <span style="color:#7da9ff; font-size:12.5px; font-weight:600;">Tag list</span>
+        </div>
+        <div class="marker green" style="top:34%; left:24%;">✓</div>
+        <div class="marker pending" style="top:58%; left:68%;"></div>
+        <div class="fab">+</div>
+        <div class="bottom-sheet-bar">
+          <div class="glass-card">
+            <p style="margin:0; font-size:12px; font-weight:600;">🔒 Origin locked · 2 tag(s) · 1/2 trained</p>
+            <p style="margin:4px 0 0; font-size:11.5px; opacity:0.75;">👆 Tap a surface to place a tag</p>
+          </div>
+        </div>
+      </div>`,
+    actions: [
+      {label:"Tap surface → place tag", to:"addtag", primary:true},
+      {label:"Open tag list", to:"taglist"},
+      {label:"Tap Share QR icon", to:"qrgen"},
+      {label:"Tap Done (end session)", to:"mode-select"},
+    ],
+    note: "Green ring + checkmark = trained; faint ring = pending/untrained. This is home base — every sheet and capture screen returns here. The blue + FAB places a pending marker; a separate panel (not shown) appears instead when you're navigating back to re-train an existing tag."
+  },
+
+  "addtag": {
+    title: "New Tag", sub: "Dark sheet shown right after placing a marker", dark: true,
+    body: `
+      <div class="dark-sheet">
+        <div class="drag-handle"></div>
+        <p style="font-weight:700; font-size:15px; margin:0 0 12px;">New tag</p>
+        <div class="chip-row">
+          <div class="mode-chip">⬡ Honeycomb</div>
+          <div class="mode-chip selected">▲ Cone</div>
+          <div class="mode-chip">T OCR</div>
+        </div>
+        <div class="suggest-row">
+          <div class="suggest-chip sel">Pressure Gauge</div>
+          <div class="suggest-chip">Safety Label</div>
+          <div class="suggest-chip">Hazard Sign</div>
+          <div class="suggest-chip">Valve Status</div>
+          <div class="suggest-chip">Seal Integrity</div>
+        </div>
+        <div class="field-label">LABEL</div>
+        <div class="field-mock">Pressure Gauge A</div>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <div style="background:#3478F6; color:#fff; text-align:center; border-radius:11px; padding:11px; font-weight:700; font-size:13px;">▶ Train now</div>
+          <div style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.16); color:#fff; text-align:center; border-radius:11px; padding:11px; font-weight:600; font-size:13px;">Save &amp; train later</div>
+          <div style="text-align:center; color:rgba(255,255,255,0.32); font-size:12.5px; padding:4px;">✕  Cancel</div>
+        </div>
+      </div>`,
+    actions: [
+      {label:"Tap “Train now”", to:"capture", primary:true},
+      {label:"Tap “Save & train later”", to:"ar-author"},
+    ],
+    note: "The 3-way chip (Honeycomb / Cone / OCR) picks which capture screen opens next. Quick-suggestion chips below pre-fill common label names. Sheet is blocked from saving if no AR surface was actually captured at tap time — shown as an inline orange warning."
+  },
+
+  "capture": {
+    title: "Cone Capture", sub: "Walk the guided sweep to record reference images", dark: true,
+    body: `
+      <div class="ar-bg">
+        <div class="topbar" style="background:linear-gradient(180deg, rgba(0,0,0,0.72), rgba(0,0,0,0));">
+          <span style="color:#fff; font-size:16px;">✕</span>
+          <div class="center">
+            <p class="t">Pressure Gauge A</p>
+            <p class="s">Cone · 14/19 zones <span style="color:#67e08a;">🔒</span></p>
+          </div>
+          <div style="width:24px;"></div>
+        </div>
+        <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-58%); text-align:center;">
+          <div class="zone-ring"><span class="num">14/19</span></div>
+          <p style="color:#fff; font-size:12px; font-weight:600; margin:0;">Hold distance · slowly slide across each sphere</p>
+          <p style="color:rgba(255,255,255,0.55); font-size:11px; margin:4px 0 0;">Keep sliding — 5 more zones needed</p>
+          <div class="hold-bar" style="width:160px; margin:10px auto 0;"><div class="fill"></div></div>
+        </div>
+        <div class="bottom-sheet-bar">
+          <div style="background:rgba(255,255,255,0.12); color:#fff; text-align:center; border-radius:11px; padding:11px; font-weight:700; font-size:13px; opacity:0.5;">Done Training</div>
+          <p style="text-align:center; color:rgba(255,255,255,0.45); font-size:10.5px; margin:6px 0 0;">Cover 5 more zone(s) to enable Done</p>
+        </div>
+      </div>`,
+    actions: [
+      {label:"Finish sweep → Done Training", to:"ar-author", primary:true},
+      {label:"Capture fails → inline error, retry", to:"capture"},
+    ],
+    note: "Shown here: Cone capture, the most common of the three modes (19 zones on a dome guide rendered directly in the AR scene). Honeycomb shows a 7-point mini-map and compass hint instead; OCR is a single still-photo + editable text review. All three end the same way — a green checkmark success overlay, then back to the AR view."
+  },
+
+  "taglist": {
+    title: "Tag List", sub: "Dark sheet — every tag on this anchor", dark: true,
+    body: `
+      <div class="dark-sheet">
+        <div class="drag-handle"></div>
+        <p style="font-weight:700; font-size:15px; margin:0 0 2px;">Tags — Acme Pump Station</p>
+        <p style="font-size:11.5px; opacity:0.5; margin:0 0 14px;">1 of 2 trained</p>
+        <div class="ios-list" style="background:rgba(255,255,255,0.06); margin-bottom:14px;">
+          <div class="ios-row" style="border-bottom:1px solid rgba(255,255,255,0.1);">
+            <div class="icon-circle" style="background:rgba(50,173,230,0.18); color:#5fc7ec;">📟</div>
+            <div class="row-main"><p class="row-title" style="color:#fff;">Pressure Gauge A</p></div>
+            <span class="badge badge-green">Trained</span>
+          </div>
+          <div class="ios-row">
+            <div class="icon-circle" style="background:rgba(52,120,246,0.18); color:#7da9ff;">🔧</div>
+            <div class="row-main">
+              <p class="row-title" style="color:#fff;">Valve Handle B</p>
+            </div>
+            <span class="badge badge-blue">Train →</span>
+          </div>
+        </div>
+        <p style="font-size:10.5px; color:rgba(255,255,255,0.4); text-align:center; margin:0;">Tap Train to navigate to that tag in AR · swipe a row for Edit / Delete</p>
+      </div>`,
+    actions: [
+      {label:"Swipe row → Edit", to:"edittag"},
+      {label:"Tap “Train →” (navigate + re-enter capture)", to:"capture"},
+      {label:"Close sheet", to:"ar-author", primary:true},
+    ],
+    note: "Lives inside Author Mode as a draggable sheet (medium/large detents). Tapping Train → on an unpositioned/untrained tag re-enters the AR view in navigation mode — a pulsing target + distance readout guides you back to that tag's location — then opens the capture screen."
+  },
+
+  "edittag": {
+    title: "Edit Tag", sub: "Standard Form — label, description, re-capture",
+    body: `
+      <div class="meta" style="display:flex; align-items:center; justify-content:space-between; padding-top:14px;">
+        <span style="color:#1456c9; font-size:13px;">Cancel</span>
+        <p class="t" style="font-size:14px;">Edit Tag</p>
+        <span style="color:#1456c9; font-size:13px; font-weight:700; opacity:0.4;">Save</span>
+      </div>
+      <div class="body-scroll">
+        <div class="ios-section-header">Tag Info</div>
+        <div class="ios-list">
+          <div class="ios-row"><span class="row-title" style="font-weight:500;">Type</span><div style="flex:1;"></div><span class="row-sub">Cone Capture</span></div>
+          <div class="ios-row"><span class="row-title" style="font-weight:500;">ID</span><div style="flex:1;"></div><span class="row-sub">a1c4e9f0b2d3…</span></div>
+        </div>
+        <div class="ios-section-header">Edit Details</div>
+        <div class="ios-list">
+          <div class="ios-row"><div class="row-main"><p class="row-sub" style="margin:0 0 2px;">Label</p><p class="row-title" style="font-weight:500;">Pressure Gauge A</p></div></div>
+          <div class="ios-row"><div class="row-main"><p class="row-sub" style="margin:0 0 2px;">Check Description</p><p class="row-title" style="font-weight:500;">Verify amber connector is seated</p></div></div>
+          <div class="ios-row"><div class="row-main"><p class="row-sub" style="margin:0 0 2px;">Expected Outcome</p><p class="row-title" style="font-weight:500;">Gauge reads in normal (green) range</p></div></div>
+        </div>
+        <p style="font-size:11px; color:var(--text3); margin:6px 4px 14px;">Changes are saved to SIB immediately.</p>
+        <div class="ios-section-header">Training</div>
+        <div class="ios-list">
+          <div class="ios-row">
+            <span style="color:#1456c9;">📷</span>
+            <span style="color:#1456c9; font-weight:600; font-size:13px;">Re-capture Pass Images</span>
+          </div>
+        </div>
+        <p style="font-size:11px; color:var(--text3); margin:6px 4px;">This tag has been trained. Re-capturing will replace the current pass state.</p>
+      </div>`,
+    actions: [
+      {label:"Tap “Re-capture Pass Images”", to:"capture", primary:true},
+      {label:"Tap Cancel", to:"taglist"},
+    ],
+    note: "Standard system Form (light), unlike the dark AR/sheet screens — only reachable from the Author tag list, never used in Operator mode."
+  },
+
+  "qrgen": {
+    title: "Anchor QR Code", sub: "Sheet — share this anchor's QR",
+    body: `
+      <div class="meta" style="display:flex; align-items:center; justify-content:space-between; padding-top:14px;">
+        <span style="color:#1456c9; font-size:13px;">Close</span>
+        <p class="t" style="font-size:14px;">Anchor QR Code</p>
+        <span style="width:36px;"></span>
+      </div>
+      <div class="body-scroll" style="text-align:center;">
+        <div class="qr-card">${qrSvg("#111")}</div>
+        <div class="ios-list" style="text-align:left;">
+          <div class="ios-row"><span class="row-sub">Asset</span><div style="flex:1;"></div><span class="row-title" style="font-weight:500;">Acme Pump Station</span></div>
+          <div class="ios-row"><span class="row-sub">Anchor</span><div style="flex:1;"></div><span class="row-title" style="font-weight:500;">a1c4e9f0b2d3…</span></div>
+          <div class="ios-row"><span class="row-sub">Encryption</span><div style="flex:1;"></div><span class="row-title" style="font-weight:500; font-size:11.5px;">AES-256-GCM (embedded)</span></div>
+          <div class="ios-row"><span class="row-sub">Print size</span><div style="flex:1;"></div><span class="row-title" style="font-weight:500;">10 cm (locked)</span></div>
+        </div>
+        <p style="text-align:left; font-size:11px; color:var(--text3); margin:10px 2px;">Print or display this code near the physical anchor location. Operator devices scan it to begin inspection. The code contains the encryption key — treat it like a physical key to the anchor.</p>
+        <div style="background:#3478F6; color:#fff; text-align:center; border-radius:11px; padding:11px; font-weight:700; font-size:13px;">↑ Share QR Code</div>
+      </div>`,
+    actions: [
+      {label:"Tap “Share QR Code”", to:"qrgen"},
+      {label:"Tap Close", to:"ar-author", primary:true},
+    ],
+    note: "Fetches the canonical PNG generated server-side at anchor creation, so every client — iOS app and web portal — shows the pixel-identical code."
+  },
+
+  "ar-operator": {
+    title: "Operator AR View", sub: "Walk near a tag to auto-validate, or inspect all at once", dark: true,
+    body: `
+      <div class="ar-bg">
+        <div class="topbar">
+          <span style="color:#fff; font-size:18px;">✕</span>
+          <div class="center">
+            <p class="t">Operator Mode</p>
+            <p class="s">Acme Pump Station · a1c4e9f0b2…</p>
+          </div>
+          <span class="badge badge-green" style="background:rgba(52,199,89,0.3); color:#fff;">2 tags</span>
+        </div>
+        <div class="threshold-mock">85%</div>
+        <div class="marker green" style="top:30%; left:22%;">✓</div>
+        <div class="marker red" style="top:55%; left:64%;">✕</div>
+        <div class="bottom-sheet-bar">
+          <div class="glass-card" style="margin-bottom:8px;">
+            <p style="margin:0; font-size:12px; font-weight:600;">1 / 2 tags inspected</p>
+            <p style="margin:3px 0 0; font-size:11px; opacity:0.7;">Keep walking to reach remaining tags</p>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <div style="flex:1; background:rgba(255,255,255,0.12); color:#fff; text-align:center; border-radius:11px; padding:10px; font-weight:700; font-size:12.5px;">⌖ Inspect All</div>
+            <div style="flex:1; background:#34C759; color:#fff; text-align:center; border-radius:11px; padding:10px; font-weight:700; font-size:12.5px;">End Inspection</div>
+          </div>
+        </div>
+      </div>`,
+    actions: [
+      {label:"Tap “Inspect All”", to:"results", primary:true},
+      {label:"Tap “End Inspection”", to:"results"},
+    ],
+    note: "Markers update live: gray = pending, type-colored = not yet inspected this session, green = PASS, red = FAIL (pulses). The yellow chip top-right opens a PASS-threshold slider (40% lenient — 90% strict)."
+  },
+
+  "results": {
+    title: "Inspection Results", sub: "Sheet — per-tag summary",
+    body: `
+      <div class="meta" style="display:flex; align-items:center; justify-content:space-between; padding-top:14px;">
+        <span style="color:#1456c9; font-size:13px;">Close</span>
+        <p class="t" style="font-size:14px;">Inspection Results</p>
+        <span style="color:#1456c9; font-size:13px; font-weight:700;">New Scan</span>
+      </div>
+      <div class="body-scroll">
+        <div class="status-hero">
+          <div class="icon" style="color:#ad6800;">◐</div>
+          <div class="label" style="color:#ad6800;">PARTIAL</div>
+          <div class="desc">1 of 2 checks passed</div>
+          <div class="desc" style="color:#c41e3a;">1 check(s) need attention</div>
+          <div class="progress-track"><div class="progress-fill"></div></div>
+        </div>
+        <div class="ios-section-header">Checks</div>
+        <div class="ios-list">
+          <div class="ios-row">
+            <div class="icon-circle" style="background:rgba(255,217,217,1); color:#c41e3a;">🔧</div>
+            <div class="row-main">
+              <p class="row-title">Valve Handle B</p>
+              <p class="row-sub">41% confidence</p>
+            </div>
+            <span class="badge badge-red">FAIL</span>
+          </div>
+          <div class="ios-row">
+            <div class="icon-circle" style="background:rgba(210,244,218,1); color:#1c7d34;">📟</div>
+            <div class="row-main">
+              <p class="row-title">Pressure Gauge A</p>
+              <p class="row-sub">94% confidence</p>
+            </div>
+            <span class="badge badge-green">PASS</span>
+          </div>
+        </div>
+      </div>
+      <div class="actions" style="padding:6px 16px 16px;">
+        <div style="background:#ffd9d9; color:#c41e3a; text-align:center; border-radius:11px; padding:11px; font-weight:700; font-size:12.5px;">↻ Re-inspect 1 Failed Tag(s)</div>
+        <div style="border:1px solid #d9e8ff; color:#1456c9; text-align:center; border-radius:11px; padding:11px; font-weight:600; font-size:12.5px;">Re-inspect All Tags</div>
+      </div>`,
+    actions: [
+      {label:"Tap Close", to:"ar-operator", primary:true},
+      {label:"Tap “Re-inspect Failed Tags”", to:"ar-operator"},
+      {label:"Tap “New Scan” (different anchor)", to:"directory-operator"},
+      {label:"Tap exit (X) anytime", to:"mode-select"},
+    ],
+    note: "Fail-first sorted list, standard light Form/List (not the dark AR theme). Re-inspect resets just the relevant markers and loops back into the AR view; New Scan exits to the directory for a different anchor."
+  },
+};
+
+const flows = {
+  author: ["mode-select","directory-author","hub-author","qrgate-author","ar-author","addtag","capture","taglist","edittag","qrgen"],
+  operator: ["mode-select","directory-operator","hub-operator","qrgate-operator","ar-operator","results"],
+};
+
+let currentFlow = "author";
+let currentScreen = "mode-select";
+
+function setFlow(flow){
+  currentFlow = flow;
+  document.getElementById("tab-author").classList.toggle("active", flow==="author");
+  document.getElementById("tab-operator").classList.toggle("active", flow==="operator");
+  currentScreen = flows[flow][0];
+  render();
+}
+
+function goTo(id, flow){
+  if (flow && flow !== currentFlow){
+    currentFlow = flow;
+    document.getElementById("tab-author").classList.toggle("active", flow==="author");
+    document.getElementById("tab-operator").classList.toggle("active", flow==="operator");
+  }
+  currentScreen = id;
+  render();
+}
+
+function renderFlowmap(){
+  const map = document.getElementById("flowmap");
+  map.innerHTML = "";
+  const seq = flows[currentFlow];
+  seq.forEach((id, i) => {
+    const node = document.createElement("div");
+    node.className = "flownode" + (id === currentScreen ? " current" : "");
+    node.textContent = screens[id].title;
+    node.onclick = () => goTo(id);
+    map.appendChild(node);
+    if (i < seq.length - 1){
+      const arrow = document.createElement("div");
+      arrow.className = "flowarrow";
+      arrow.textContent = "→";
+      map.appendChild(arrow);
+    }
+  });
+}
+
+function render(){
+  renderFlowmap();
+  const s = screens[currentScreen];
+  const phoneShell = document.getElementById("phoneShell");
+  phoneShell.className = "phone" + (s.dark ? " dark" : "");
+  document.getElementById("screen").innerHTML = s.body;
+  const actionsEl = document.getElementById("actions");
+  actionsEl.innerHTML = s.actions.map(a =>
+    `<button class="btn${a.primary ? ' primary' : ''}" data-to="${a.to}" data-flow="${a.flow||''}">${a.label}</button>`
+  ).join("");
+  actionsEl.querySelectorAll(".btn").forEach(btn => {
+    btn.onclick = () => goTo(btn.dataset.to, btn.dataset.flow || null);
+  });
+  document.getElementById("notes").innerHTML = `
+    <h2>${s.title}</h2>
+    <p style="font-size:12px; color:var(--text3); margin:-6px 0 12px;">${s.sub}</p>
+    <p>${s.note}</p>
+    <p style="font-size:12px; color:var(--text3)">Flow: ${currentFlow === "author" ? "Author (tag creation & training)" : "Operator (inspection)"}</p>
+  `;
+}
+
+setFlow("author");
+</script>
+</body>
+</html>
