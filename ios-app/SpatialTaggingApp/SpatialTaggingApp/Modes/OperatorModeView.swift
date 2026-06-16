@@ -1,0 +1,1774 @@
+// OperatorModeView.swift — Phase 3
+// Operator inspection flow:
+//   1. AR camera — tag markers visible (floating label + dot, show/hide toggle)
+//   2. Adjust threshold slider (default 0.60, range 0.40–0.90)
+//   3. Tap "Inspect Now" → snapshot → POST /perception/validate-all
+//   4. Markers update to green (PASS) / red (FAIL) in AR
+//   5. "End Inspection" button → ValidationResultsView summary sheet
+//   6a. "Re-inspect Failed Tags" → only FAIL/PENDING re-validated (PASS markers stay green)
+//   6b. "Re-inspect All Tags"   → full reset + new snapshot
+//       "New Scan"              → AnchorDirectoryView → hub → QR gate → new session
+//
+// Phase 3 entry contract:
+//   • appState.activeAnchor, activeTags, anchorNormalisedTransform are pre-set by QRScanGateView.
+//   • No QR scanning happens inside Operator mode — session origin is already locked.
+
+import SwiftUI
+import ARKit
+import SceneKit
+import Vision
+
+struct OperatorModeView: View {
+
+    @EnvironmentObject private var settings: AppSettings
+    @EnvironmentObject private var appState:  AppState
+
+    @StateObject private var arManager = ARSessionManager()
+
+    // ── Inspection state machine ──────────────────────────────────────────────
+
+    private enum Phase { case idle, validating, reviewing }
+    @State private var phase: Phase = .idle
+
+    // ── AR marker state ───────────────────────────────────────────────────────
+
+    @State private var showTagMarkers = true
+    @State private var tagMarkerNodes: [String: SCNNode] = [:]
+
+    // ── Cone guides (one per cone-trained tag) ────────────────────────────────
+    @State private var coneGuides: [String: ConeARGuide] = [:]
+
+    // ── Proximity / Disney UX ─────────────────────────────────────────────────
+    @State private var nearestTagId:   String?  = nil    // tag closest to camera
+    @State private var nearestTagDist: Float    = .infinity
+    @State private var inConeZone:     Bool     = false  // inside a cone alignment zone
+    private let proximityTicker = Timer.publish(every: 0.10, on: .main, in: .common).autoconnect()
+
+    // ── Pass state reference preview ──────────────────────────────────────────
+    @State private var passPreviewImage:  UIImage? = nil
+    @State private var passPreviewTagId:  String?  = nil
+    @State private var passPreviewLabel:  String   = ""
+
+    // ── Threshold (Q4) ────────────────────────────────────────────────────────
+
+    @State private var passThreshold: Double = 0.60
+    @State private var showThresholdSlider   = false
+
+    // ── Re-inspect filter (Q2) ────────────────────────────────────────────────
+    // When set, only these tag IDs are sent to the next validate-all call.
+
+    @State private var reInspectTagIds: [String]? = nil
+
+    // ── Auto-inspect state (T94/T95) ──────────────────────────────────────────
+    // Operator walks within cone/proximity FOV → auto-capture per tag.
+    // No "Inspect Now" button needed; operator just walks.
+
+    /// Per-tag cooldown: a tag won't be re-auto-inspected for 30 s after its last capture.
+    @State private var tagCooldowns:        [String: Date]                 = [:]
+    /// Accumulated per-tag results from all auto-inspections in this session.
+    @State private var autoInspectedResults: [String: TagValidationSummary] = [:]
+    /// True while a single-tag auto-inspection network call is in flight.
+    @State private var isAutoInspecting:    Bool                           = false
+    private let autoCooldownSecs: Double = 30
+
+    // ── UI state ──────────────────────────────────────────────────────────────
+
+    @State private var validateError: String? = nil
+    @State private var showResults   = false
+    @State private var showNewScan   = false
+    @State private var showHelpSheet  = false
+    @State private var flashOpacity: Double = 0
+
+    // ── Diagnostic / debug state ──────────────────────────────────────────────
+    /// Bright sphere placed at the anchor QR world position — always visible when
+    /// anchorNormalisedTransform is set.  Lets the operator confirm AR is working
+    /// and navigate to the anchor before looking for smaller tag markers.
+    @State private var anchorDebugSphere: SCNNode? = nil
+    /// On-screen toast shown for 3 s after appear, summarising placement status.
+    @State private var debugToastMessage: String? = nil
+    @State private var debugToastVisible: Bool    = false
+
+    /// True once the QR anchor has been detected and locked in THIS session's
+    /// world frame. Tag markers and cone guides are only placed after this is set.
+    /// Phase 3 fix: each ARSessionManager starts with a fresh world coordinate
+    /// frame (resetTracking), so we must re-detect the anchor QR here to get the
+    /// current-session transform before converting anchor-relative positions.
+    @State private var anchorLocated = false
+
+    // ── Session-preserving AR container ──────────────────────────────────────
+    // OwnSCNViewContainer intentionally omits dismantleUIView.  ARContainerView's
+    // dismantleUIView calls session.pause(), which would pause the SHARED session
+    // handed off from QRScanGateView — corrupting the coordinate frame mid-inspection.
+    // Lifecycle ownership: QRScanGateView starts the session; OperatorModeView.onDisappear
+    // explicitly pauses it via arManager.pauseSession().
+    private struct OwnSCNViewContainer: UIViewRepresentable {
+        let sceneView: ARSCNView
+        func makeUIView(context: Context) -> ARSCNView { sceneView }
+        func updateUIView(_ uiView: ARSCNView, context: Context) {}
+        // Intentionally no dismantleUIView — session lifecycle owned by AppState.
+    }
+
+    // ── Body ──────────────────────────────────────────────────────────────────
+
+    var body: some View {
+        ZStack {
+            // Live AR camera — uses OwnSCNViewContainer so the shared session is
+            // never paused by a SwiftUI dismantleUIView call during inspection.
+            OwnSCNViewContainer(sceneView: arManager.sceneView)
+                .ignoresSafeArea()
+
+            // Capture flash
+            Color.white.opacity(flashOpacity)
+                .ignoresSafeArea()
+                .allowsHitTesting(false)
+
+            VStack(spacing: 0) {
+                topBar
+                Spacer()
+                bottomPanel
+            }
+
+            // ── Anchor scanning overlay ───────────────────────────────────────
+            // Shown until the anchor QR is re-detected in this session's world frame.
+            // Disappears automatically as soon as the QR is locked (usually < 1 s
+            // since the user just came from QRScanGateView and the QR is nearby).
+            if !anchorLocated {
+                VStack {
+                    Spacer()
+                    HStack(spacing: 10) {
+                        Image(systemName: "qrcode.viewfinder")
+                            .foregroundStyle(.cyan)
+                            .font(.subheadline)
+                        Text("Point at the anchor QR to start")
+                            .font(.subheadline)
+                            .foregroundStyle(.white)
+                        ProgressView()
+                            .tint(.white)
+                            .scaleEffect(0.75)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 12)
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+                    .padding(.bottom, 110)
+                }
+                .transition(.opacity)
+                .animation(.easeInOut(duration: 0.4), value: anchorLocated)
+            }
+
+            // ── Cone zone indicator ────────────────────────────────────────────
+            // "Disney moment": glowing ring that pulses when the operator steps
+            // into the perfect inspection position inside the cone.
+            if inConeZone && phase == .idle {
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        VStack(spacing: 6) {
+                            Image(systemName: isAutoInspecting ? "camera.circle.fill" : "scope")
+                                .font(.system(size: 28, weight: .semibold))
+                                .foregroundStyle(.green)
+                                .symbolEffect(.pulse)
+                            Text(isAutoInspecting ? "Capturing…" : "In zone")
+                                .font(.caption.bold())
+                                .foregroundStyle(.green)
+                        }
+                        .padding(14)
+                        .background(.black.opacity(0.60), in: RoundedRectangle(cornerRadius: 14))
+                        .padding(.trailing, 20)
+                    }
+                    .padding(.bottom, 130)
+                }
+                .transition(.scale.combined(with: .opacity))
+                .animation(.spring(response: 0.35, dampingFraction: 0.75), value: inConeZone)
+            }
+
+            // ── Diagnostic toast (auto-hides after 3 s) ───────────────────────
+            // Shows tag placement status immediately after appear so the operator
+            // knows whether markers were found and placed — no Xcode needed.
+            if debugToastVisible, let msg = debugToastMessage {
+                VStack {
+                    HStack(spacing: 8) {
+                        Image(systemName: "info.circle.fill")
+                            .font(.caption).foregroundStyle(.cyan)
+                        Text(msg)
+                            .font(.caption2.monospaced())
+                            .foregroundStyle(.white)
+                            .lineLimit(3)
+                    }
+                    .padding(.horizontal, 14).padding(.vertical, 8)
+                    .background(.black.opacity(0.80), in: RoundedRectangle(cornerRadius: 10))
+                    .padding(.horizontal, 16).padding(.top, 100)
+                    Spacer()
+                }
+                .transition(.opacity)
+                .animation(.easeInOut(duration: 0.4), value: debugToastVisible)
+                .allowsHitTesting(false)
+            }
+
+            // ── Pass state reference preview ───────────────────────────────────
+            // Small thumbnail of the training image so the operator knows exactly
+            // what pass state looks like before capturing.
+            if let preview = passPreviewImage, phase == .idle {
+                VStack {
+                    Spacer()
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("PASS REF")
+                                .font(.system(size: 8, weight: .bold))
+                                .foregroundStyle(.green)
+                                .padding(.horizontal, 6).padding(.vertical, 2)
+                                .background(Color.green.opacity(0.85), in: Capsule())
+                            Image(uiImage: preview)
+                                .resizable().scaledToFill()
+                                .frame(width: 88, height: 88)
+                                .clipShape(RoundedRectangle(cornerRadius: 10))
+                                .overlay(RoundedRectangle(cornerRadius: 10)
+                                    .stroke(Color.green.opacity(0.8), lineWidth: 1.5))
+                            Text(passPreviewLabel)
+                                .font(.system(size: 8, weight: .medium))
+                                .foregroundStyle(.white.opacity(0.75))
+                                .lineLimit(1)
+                                .frame(width: 88)
+                        }
+                        .padding(8)
+                        .background(.black.opacity(0.70), in: RoundedRectangle(cornerRadius: 12))
+                        .padding(.leading, 16)
+                        Spacer()
+                    }
+                    .padding(.bottom, 130)
+                }
+                .transition(.move(edge: .leading).combined(with: .opacity))
+                .animation(.spring(response: 0.4, dampingFraction: 0.8), value: passPreviewImage != nil)
+            }
+        }
+        .onAppear {
+            if let existingSession = appState.activeARSession {
+                // ── Session continuity path ────────────────────────────────────
+                // Link to QRScanGateView's already-running session.  The live
+                // ARImageAnchor is still tracked — no QR re-scan needed.
+                arManager.linkToExistingSession(existingSession)
+                arManager.disableQRScanning()
+
+                // ── Immediate placement using already-known anchor transform ───
+                // appState.anchorNormalisedTransform is set by QRScanGateView's
+                // lockSession() before navigation to Operator mode.
+                attemptInitialMarkerPlacement()
+
+                // ── Deferred safety-net retry ─────────────────────────────────
+                // linkToExistingSession reassigns sceneView.session on the current
+                // run loop tick.  SceneKit may not deliver the first rendering frame
+                // from the newly-linked session until the NEXT display-link cycle.
+                // If no nodes were placed (e.g. tags loaded async, frame not yet
+                // ready), retry after 300 ms to guarantee visibility.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.30) {
+                    if tagMarkerNodes.isEmpty {
+                        print("[OperatorMode] ⚠️ Safety-net retry: no nodes placed yet — retrying placeTagMarkers()")
+                        attemptInitialMarkerPlacement()
+                    }
+                }
+            } else {
+                // ── Fallback path ──────────────────────────────────────────────
+                // No shared session available (legacy / unusual entry).
+                // Start a fresh session and wait for QR re-lock via onChange below.
+                print("[OperatorMode] ⚠️ No activeARSession — starting fresh session (QR re-scan needed)")
+                arManager.startSession()
+                // QR scanning stays enabled — onChange(lockedAnchorTransform) handles placement.
+            }
+        }
+        .onDisappear {
+            coneGuides.values.forEach { $0.cleanup() }
+            coneGuides.removeAll()
+            anchorDebugSphere?.removeFromParentNode()
+            anchorDebugSphere = nil
+            arManager.pauseSession()
+            // Clear the shared session — this AR session is finished.
+            appState.activeARSession = nil
+        }
+        // ── Anchor transform change: initial placement OR live refinement ─────
+        // Fires from:
+        //   • linkToExistingSession() restoring the live ARImageAnchor (~150 ms)
+        //   • processImageAnchors() continuous refinement while QR is visible
+        //   • Legacy QR re-lock path (onChange scanState below) via lockedAnchorTransform
+        .onChange(of: arManager.lockedAnchorTransform) { newTransform in
+            guard let t = newTransform else { return }
+            appState.anchorNormalisedTransform = t
+            if !anchorLocated {
+                // First valid transform arriving via QR re-scan (fallback path) —
+                // do full placement.
+                arManager.disableQRScanning()
+                attemptInitialMarkerPlacement()
+            } else {
+                // Subsequent refinements from live ARImageAnchor tracking —
+                // smoothly reposition existing marker nodes and move debug sphere.
+                repositionTagMarkerNodes()
+                let col = t.columns.3
+                anchorDebugSphere?.simdPosition = simd_float3(col.x, col.y, col.z)
+            }
+        }
+        // ── Legacy fallback: QR re-scan path ──────────────────────────────────
+        // Handles the case where no activeARSession was available and the operator
+        // manually scanned the QR in a fresh session.
+        .onChange(of: arManager.scanState) { state in
+            guard case .locked(let ctx) = state else { return }
+            guard ctx.anchorId == appState.activeAnchor?.id else { return }
+            // lockedAnchorTransform is already set by lockAnchor(); the
+            // onChange(lockedAnchorTransform) above handles placement.
+            // Nothing extra needed here except the anchorId safety check above.
+        }
+        .onReceive(proximityTicker) { _ in tickProximity() }
+        .onChange(of: showTagMarkers) { visible in
+            tagMarkerNodes.values.forEach { $0.isHidden = !visible }
+        }
+        // Summary sheet — slides up after "End Inspection"
+        .sheet(isPresented: $showResults) {
+            if let result = appState.lastValidationResult,
+               let anchor = appState.activeAnchor {
+                ValidationResultsView(
+                    result:  result,
+                    anchor:  anchor,
+                    onClose: { showResults = false },
+                    onReInspect: { failedOnly in
+                        showResults = false
+                        resetForReInspect(failedOnly: failedOnly)
+                    },
+                    onNewScan: {
+                        showResults = false
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                            resetForNewScan()
+                            showNewScan = true
+                        }
+                    }
+                )
+                .environmentObject(settings)
+                .environmentObject(appState)
+            }
+        }
+        // New Scan: directory → hub → QR gate → new OperatorModeView session
+        .fullScreenCover(isPresented: $showNewScan) {
+            AnchorDirectoryView(
+                mode: .operator,
+                onSessionReady: { anchor, tags in
+                    showNewScan = false
+                    appState.activeAnchor         = anchor
+                    appState.activeTags           = tags
+                    appState.activeSession        = nil
+                    appState.lastValidationResult = nil
+                    // Phase 3 fix: clear stale markers and reset QR detection so the
+                    // new anchor is re-scanned in this session's coordinate frame.
+                    // onChange(of: arManager.scanState) will call placeTagMarkers()
+                    // and buildConeGuides() once the QR is locked.
+                    tagMarkerNodes.values.forEach { $0.removeFromParentNode() }
+                    tagMarkerNodes.removeAll()
+                    coneGuides.values.forEach { $0.cleanup() }
+                    coneGuides.removeAll()
+                    anchorLocated = false
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        arManager.resetScan()   // fresh world frame for new anchor
+                    }
+                },
+                onCancel: { showNewScan = false }
+            )
+            .environmentObject(settings)
+            .environmentObject(appState)
+        }
+        .sheet(isPresented: $showHelpSheet) {
+            HelpSheet(steps: HelpContent.operatorMode)
+        }
+    }
+
+    // ── Top bar ───────────────────────────────────────────────────────────────
+
+    private var topBar: some View {
+        ZStack(alignment: .top) {
+            LinearGradient(colors: [.black.opacity(0.65), .clear],
+                           startPoint: .top, endPoint: .bottom)
+                .frame(height: 130)
+                .allowsHitTesting(false)
+
+            HStack(alignment: .center, spacing: 14) {
+                // Exit
+                Button {
+                    appState.reset()
+                    appState.mode = .none
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title2)
+                        .foregroundStyle(.white, Color.black.opacity(0.4))
+                }
+
+                Spacer()
+
+                VStack(spacing: 3) {
+                    Text("Operator Mode")
+                        .font(.subheadline.bold())
+                        .foregroundColor(.white)
+                    if let anchor = appState.activeAnchor {
+                        Text("\(anchor.assetId) · \(String(anchor.id.prefix(10)))…")
+                            .font(.caption)
+                            .foregroundStyle(.white.opacity(0.65))
+                            .lineLimit(1)
+                    }
+                    // G6: Session ID visible in top bar once a session is active
+                    if let sessionId = appState.activeSession?.id {
+                        Text("Session \(String(sessionId.prefix(12)))…")
+                            .font(.caption2.monospaced())
+                            .foregroundStyle(.white.opacity(0.45))
+                            .lineLimit(1)
+                    }
+                }
+
+                Spacer()
+
+                // Threshold adjust button
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) { showThresholdSlider.toggle() }
+                } label: {
+                    HStack(spacing: 3) {
+                        Image(systemName: "dial.medium")
+                            .font(.caption.bold())
+                        Text(String(format: "%.0f%%", passThreshold * 100))
+                            .font(.caption2.monospacedDigit().bold())
+                    }
+                    .foregroundColor(showThresholdSlider ? .yellow : .white)
+                    .padding(.horizontal, 8).padding(.vertical, 6)
+                    .background(.ultraThinMaterial, in: Capsule())
+                }
+
+                // Show/hide tag markers toggle
+                Button {
+                    showTagMarkers.toggle()
+                } label: {
+                    Image(systemName: showTagMarkers ? "eye.fill" : "eye.slash.fill")
+                        .font(.body)
+                        .foregroundColor(.white)
+                        .padding(8)
+                        .background(.ultraThinMaterial, in: Circle())
+                }
+                .accessibilityLabel(showTagMarkers ? "Hide tags" : "Show tags")
+
+                // Help
+                Button { showHelpSheet = true } label: {
+                    Image(systemName: "questionmark.circle")
+                        .font(.body)
+                        .foregroundColor(.white)
+                        .padding(8)
+                        .background(.ultraThinMaterial, in: Circle())
+                }
+
+                // Tag count badge
+                Label("\(appState.activeTags.count)", systemImage: "tag.fill")
+                    .font(.caption.bold())
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 10).padding(.vertical, 5)
+                    .background(Color.green.opacity(0.35), in: Capsule())
+            }
+            .padding(.horizontal, 20)
+            .padding(.top, 56)
+        }
+    }
+
+    // ── Bottom panel — switches on phase ─────────────────────────────────────
+
+    @ViewBuilder
+    private var bottomPanel: some View {
+        VStack(spacing: 14) {
+            switch phase {
+
+            case .idle:
+                // Threshold slider (shown when toggled)
+                if showThresholdSlider {
+                    VStack(spacing: 6) {
+                        HStack {
+                            Image(systemName: "dial.medium")
+                                .foregroundStyle(.yellow)
+                                .font(.caption)
+                            Text("PASS threshold")
+                                .font(.caption)
+                                .foregroundColor(.white.opacity(0.75))
+                            Spacer()
+                            Text(String(format: "%.0f%%", passThreshold * 100))
+                                .font(.caption.monospacedDigit().bold())
+                                .foregroundColor(.yellow)
+                        }
+                        Slider(value: $passThreshold, in: 0.40...0.90, step: 0.05)
+                            .tint(.yellow)
+                        HStack {
+                            Text("40% (lenient)").font(.caption2).foregroundColor(.white.opacity(0.4))
+                            Spacer()
+                            Text("90% (strict)").font(.caption2).foregroundColor(.white.opacity(0.4))
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.top, 4)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                }
+
+                // Error (if any)
+                if let err = validateError {
+                    Text(err)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 24)
+                        .onTapGesture { validateError = nil }
+                }
+                // Previous result mini-banner
+                if let prev = appState.lastValidationResult {
+                    lastResultBanner(prev)
+                }
+
+                // Re-inspect filter banner (when coming from failed-only re-inspect)
+                if let ids = reInspectTagIds {
+                    HStack(spacing: 8) {
+                        Image(systemName: "scope")
+                            .foregroundStyle(.orange)
+                            .font(.caption)
+                        Text("Re-inspecting \(ids.count) failed tag\(ids.count == 1 ? "" : "s") only")
+                            .font(.caption.bold())
+                            .foregroundColor(.orange)
+                        Spacer()
+                        Button("Clear") { reInspectTagIds = nil }
+                            .font(.caption2)
+                            .foregroundStyle(.white.opacity(0.5))
+                    }
+                    .padding(.horizontal, 20)
+                }
+
+                // ── Walking mode: auto-inspect progress ───────────────────────
+                // Tags are captured automatically when the operator enters their
+                // FOV. "Inspect All" is the fallback for non-proximity validation.
+                let inspectedCount = autoInspectedResults.count
+                let totalCount     = appState.activeTags.count
+
+                HStack(spacing: 14) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        if inspectedCount == 0 {
+                            Label("Walk to each tag to inspect",
+                                  systemImage: "figure.walk")
+                                .font(.subheadline.bold())
+                                .foregroundColor(.white)
+                            Text("Auto-captures on zone entry")
+                                .font(.caption)
+                                .foregroundStyle(.white.opacity(0.55))
+                        } else {
+                            Label("\(inspectedCount) / \(totalCount) tags inspected",
+                                  systemImage: "checkmark.circle.fill")
+                                .font(.subheadline.bold())
+                                .foregroundColor(.white)
+                            Text("Keep walking to reach remaining tags")
+                                .font(.caption)
+                                .foregroundStyle(.white.opacity(0.55))
+                        }
+                    }
+                    Spacer()
+                    // Force-all as secondary compact action
+                    Button { Task { await runValidation() } } label: {
+                        Label("Inspect All", systemImage: "viewfinder.circle.fill")
+                            .font(.caption.bold())
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(.ultraThinMaterial, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.white)
+                }
+                .padding(.horizontal, 20)
+
+                // "End Inspection" once at least one tag is done
+                if inspectedCount > 0 {
+                    Button { showResults = true } label: {
+                        Label("End Inspection", systemImage: "checkmark.seal.fill")
+                            .font(.title3.bold())
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 18)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.green)
+                    .padding(.horizontal, 20)
+                }
+
+            case .validating:
+                HStack(spacing: 10) {
+                    ProgressView().tint(.white)
+                    Text("Analysing…")
+                        .foregroundColor(.white)
+                        .font(.subheadline)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 18)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+                .padding(.horizontal, 20)
+
+            case .reviewing:
+                reviewingPanel
+            }
+        }
+        .padding(.vertical, 16)
+        .background(
+            LinearGradient(colors: [.clear, .black.opacity(0.75)],
+                           startPoint: .top, endPoint: .bottom)
+        )
+    }
+
+    // ── Reviewing panel ───────────────────────────────────────────────────────
+
+    private var reviewingPanel: some View {
+        VStack(spacing: 14) {
+            if let result = appState.lastValidationResult {
+                // AR legend + counts
+                HStack(spacing: 20) {
+                    Label("\(result.passCount) passed", systemImage: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                    if result.failCount > 0 {
+                        Label("\(result.failCount) failed", systemImage: "xmark.circle.fill")
+                            .foregroundStyle(.red)
+                    }
+                    let pending = result.tagResults.filter { $0.status == .pending }.count
+                    if pending > 0 {
+                        Label("\(pending) pending", systemImage: "clock")
+                            .foregroundStyle(.gray)
+                    }
+                }
+                .font(.subheadline.bold())
+                .foregroundColor(.white)
+
+                // End Inspection
+                Button { showResults = true } label: {
+                    Label("End Inspection", systemImage: "checkmark.seal.fill")
+                        .font(.title3.bold())
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 20)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(result.status == .pass ? .green : .red)
+                .padding(.horizontal, 20)
+            }
+        }
+    }
+
+    // ── Last-result mini banner ───────────────────────────────────────────────
+
+    private func lastResultBanner(_ result: AnchorValidationResult) -> some View {
+        Button { showResults = true } label: {
+            HStack(spacing: 10) {
+                Image(systemName: result.status.iconName)
+                    .foregroundStyle(result.status.color)
+                Text("Last: \(result.passCount)/\(result.totalCount) passed")
+                    .font(.caption.bold())
+                    .foregroundColor(.white)
+                Spacer()
+                Text("View →")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.6))
+            }
+            .padding(.horizontal, 16).padding(.vertical, 10)
+            .background(result.status.color.opacity(0.18), in: RoundedRectangle(cornerRadius: 10))
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(result.status.color.opacity(0.4), lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 20)
+    }
+
+    // ── AR marker placement ───────────────────────────────────────────────────
+
+    /// Called from onAppear (and its 300 ms retry) to lock anchorLocated and
+    /// place all markers.  Guards against double-placement with the anchorLocated flag.
+    private func attemptInitialMarkerPlacement() {
+        guard let anchorT = appState.anchorNormalisedTransform else {
+            print("[OperatorMode] ⚠️ attemptInitialMarkerPlacement — anchorNormalisedTransform is nil, cannot place markers")
+            showDebugToast("⚠️ anchorTransform=NIL  tags=\(appState.activeTags.count)  — scan QR to locate anchor")
+            return
+        }
+        guard !appState.activeTags.isEmpty else {
+            print("[OperatorMode] ⚠️ attemptInitialMarkerPlacement — activeTags is empty")
+            showDebugToast("⚠️ activeTags=EMPTY  No tags loaded yet")
+            return
+        }
+        if !anchorLocated { anchorLocated = true }
+
+        // ── Always-visible anchor sphere ──────────────────────────────────────
+        // A bright cyan sphere placed at the QR code's world origin.
+        // Confirms AR tracking is live and the coordinate frame is correct.
+        // Helps the operator navigate to the anchor region.
+        placeAnchorDebugSphere(anchorTransform: anchorT)
+
+        placeTagMarkers()
+        buildConeGuides()
+        coneGuides.values.forEach { $0.setVisible(false, animated: false) }
+
+        let placed  = tagMarkerNodes.count
+        let total   = appState.activeTags.count
+        print("[OperatorMode] ✓ attemptInitialMarkerPlacement complete — \(placed)/\(total) markers placed")
+
+        if placed == 0 && total > 0,
+           let firstSkipped = appState.activeTags.first(where: { tagMarkerNodes[$0.id] == nil }) {
+            let keys = firstSkipped.metadata.keys.sorted().joined(separator: ",")
+            showDebugToast("⚠️ 0/\(total) placed — '\(firstSkipped.label)' keys: [\(keys)]")
+        } else {
+            showDebugToast("anchor=SET  tags=\(total)  placed=\(placed)  — look for cyan sphere at QR")
+        }
+    }
+
+    /// Creates a bright cyan sphere at the anchor's world-space origin.
+    /// The sphere has a slow pulse animation so it's easy to spot.
+    private func placeAnchorDebugSphere(anchorTransform: simd_float4x4) {
+        anchorDebugSphere?.removeFromParentNode()
+
+        let sphere    = SCNSphere(radius: 0.05)          // 10 cm diameter
+        let mat       = SCNMaterial()
+        mat.diffuse.contents  = UIColor.cyan
+        mat.emission.contents = UIColor.cyan.withAlphaComponent(0.7)
+        mat.lightingModel     = .constant
+        sphere.firstMaterial  = mat
+
+        let node = SCNNode(geometry: sphere)
+        // Position at the anchor origin (translation component of the 4×4 matrix)
+        let t    = anchorTransform.columns.3
+        node.simdPosition = simd_float3(t.x, t.y, t.z)
+
+        // Gentle pulse: scale 1 → 1.4 → 1, 1.5 s period
+        let pulse = SCNAction.sequence([
+            SCNAction.scale(to: 1.4, duration: 0.75),
+            SCNAction.scale(to: 1.0, duration: 0.75)
+        ])
+        node.runAction(SCNAction.repeatForever(pulse))
+
+        arManager.sceneView.scene.rootNode.addChildNode(node)
+        anchorDebugSphere = node
+        print("[OperatorMode] ✓ Anchor debug sphere placed at world \(String(format:"(%.2f, %.2f, %.2f)", t.x, t.y, t.z))")
+    }
+
+    /// Shows the debug toast for 3 seconds then fades it out.
+    private func showDebugToast(_ message: String) {
+        debugToastMessage = message
+        withAnimation { debugToastVisible = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
+            withAnimation { debugToastVisible = false }
+        }
+    }
+
+    private func placeTagMarkers() {
+        tagMarkerNodes.values.forEach { $0.removeFromParentNode() }
+        tagMarkerNodes.removeAll()
+
+        print("[OperatorMode] placeTagMarkers — \(appState.activeTags.count) tags, anchorTransform=\(appState.anchorNormalisedTransform != nil ? "set" : "NIL")")
+
+        for tag in appState.activeTags {
+            let worldPos: simd_float3
+
+            // Prefer anchor-relative position (session-independent)
+            if let rx = metaDouble(tag.metadata["anchor_rel_x"]),
+               let ry = metaDouble(tag.metadata["anchor_rel_y"]),
+               let rz = metaDouble(tag.metadata["anchor_rel_z"]),
+               let wp = appState.toWorldSpace(simd_float3(Float(rx), Float(ry), Float(rz))) {
+                worldPos = wp
+                print("[OperatorMode]   ✓ tag '\(tag.label)': anchor_rel → world \(String(format: "(%.2f, %.2f, %.2f)", wp.x, wp.y, wp.z))")
+            } else if let x = metaDouble(tag.metadata["pos_x"]),
+                      let y = metaDouble(tag.metadata["pos_y"]),
+                      let z = metaDouble(tag.metadata["pos_z"]) {
+                // Fallback: legacy world-space position stored by AddTagSheet before
+                // anchor_rel was introduced.  Valid ONLY when session frames match
+                // (same ARWorldMap relocalized correctly).
+                worldPos = simd_float3(Float(x), Float(y), Float(z))
+                print("[OperatorMode]   ⚠️ tag '\(tag.label)': no anchor_rel — using legacy pos_xyz \(String(format: "(%.2f, %.2f, %.2f)", x, y, z))")
+            } else {
+                let keys = tag.metadata.keys.sorted().joined(separator: ", ")
+                print("[OperatorMode]   ✗ tag '\(tag.label)': no position metadata — SKIPPED. Keys: [\(keys)]")
+                continue
+            }
+
+            let node = makeMarkerNode(for: tag, status: nil)
+            node.simdPosition = worldPos
+            node.isHidden = !showTagMarkers
+            arManager.sceneView.scene.rootNode.addChildNode(node)
+            tagMarkerNodes[tag.id] = node
+        }
+        print("[OperatorMode] placeTagMarkers done — \(tagMarkerNodes.count) nodes in scene")
+    }
+
+    /// Smoothly reposition marker nodes when the live ARImageAnchor refines
+    /// the anchor pose.  Called from onChange(lockedAnchorTransform) after
+    /// initial placement is complete.
+    ///
+    /// Cone guides are NOT rebuilt here — rebuilding during active inspection
+    /// would be disruptive.  The small per-frame anchor refinements (sub-mm)
+    /// do not justify cone reconstruction; only the initial placement matters.
+    private func repositionTagMarkerNodes() {
+        guard let anchorTransform = arManager.lockedAnchorTransform else { return }
+        for tag in appState.activeTags {
+            guard let node = tagMarkerNodes[tag.id],
+                  let rx = metaDouble(tag.metadata["anchor_rel_x"]),
+                  let ry = metaDouble(tag.metadata["anchor_rel_y"]),
+                  let rz = metaDouble(tag.metadata["anchor_rel_z"])
+            else { continue }
+            let worldPos = ARCoordinateFrame.toWorldSpace(
+                anchorRelativePos: simd_float3(Float(rx), Float(ry), Float(rz)),
+                anchorTransform: anchorTransform
+            )
+            SCNTransaction.begin()
+            SCNTransaction.animationDuration = 0.15
+            node.simdPosition = worldPos
+            SCNTransaction.commit()
+        }
+    }
+
+    private func updateMarkersForResult(_ result: AnchorValidationResult) {
+        for tagResult in result.tagResults {
+            guard let existingNode = tagMarkerNodes[tagResult.tagId] else { continue }
+            let worldPos = existingNode.simdWorldPosition
+            existingNode.removeFromParentNode()
+
+            guard let tag = appState.activeTags.first(where: { $0.id == tagResult.tagId }) else { continue }
+
+            let newNode = makeMarkerNode(for: tag, status: tagResult.status)
+            newNode.simdPosition = worldPos
+            newNode.isHidden = !showTagMarkers
+            arManager.sceneView.scene.rootNode.addChildNode(newNode)
+            tagMarkerNodes[tagResult.tagId] = newNode
+
+            // Pulse red markers to draw attention
+            if tagResult.status == .fail {
+                newNode.runAction(.repeatForever(.sequence([
+                    .scale(to: 1.35, duration: 0.45),
+                    .scale(to: 1.00, duration: 0.45),
+                ])))
+            }
+        }
+    }
+
+    // ── AR marker factory ─────────────────────────────────────────────────────
+
+    /// Returns the UIColor for a tag type — used to colour uninspected markers so
+    /// each type is visually distinct before inspection results arrive.
+    private func uiColor(for type: TagType) -> UIColor {
+        switch type {
+        case .inspectionPoint:    return .systemBlue
+        case .defect:             return .systemRed
+        case .instruction:        return .systemPurple
+        case .warning:            return .systemOrange
+        case .measurement:        return .systemCyan
+        case .presenceCheck:      return .systemGreen
+        case .languageCheck:      return .systemIndigo
+        case .routingCheck:       return .systemYellow
+        case .configurationCheck: return .systemGray
+        case .partCheck:          return .systemMint
+        }
+    }
+
+    /// Builds a root SCNNode containing a coloured sphere + floating label billboard.
+    /// When `status` is nil (not yet inspected), the sphere and accent bar are
+    /// coloured by tag type so operators can identify them at a glance in AR.
+    private func makeMarkerNode(for tag: Tag, status: ValidationStatus?) -> SCNNode {
+        let root  = SCNNode()
+        let label = tag.label
+
+        // Sphere colour: result-driven when inspected, type-driven when not
+        let color: UIColor
+        switch status {
+        case .pass:    color = .systemGreen
+        case .fail:    color = .systemRed
+        case .pending: color = .systemGray
+        case nil:      color = uiColor(for: tag.type)
+        }
+
+        // ── Ring marker — 2.5× larger than original for easy visibility ─────────
+        // Torus ring (3.5 cm radius) + inner glow dot (1.5 cm radius).
+        // At 2 m the ring subtends ~2° — clearly visible without squinting.
+        let ring    = SCNTorus(ringRadius: 0.035, pipeRadius: 0.010)
+        let ringMat = SCNMaterial()
+        ringMat.diffuse.contents  = color
+        ringMat.emission.contents = color.withAlphaComponent(0.65)
+        ringMat.lightingModel     = .constant
+        ring.firstMaterial        = ringMat
+        let ringNode = SCNNode(geometry: ring)
+        ringNode.eulerAngles = SCNVector3(Float.pi / 2, 0, 0)  // face camera (lie flat)
+        root.addChildNode(ringNode)
+
+        let dot    = SCNSphere(radius: 0.015)
+        let dotMat = SCNMaterial()
+        dotMat.diffuse.contents  = color
+        dotMat.emission.contents = color.withAlphaComponent(0.9)
+        dotMat.lightingModel     = .constant
+        dot.firstMaterial        = dotMat
+        root.addChildNode(SCNNode(geometry: dot))
+
+        // Floating label — positioned above ring, always faces camera.
+        // Accent bar uses the type color when uninspected so labels are visually
+        // distinct before results arrive, and switches to the result color after.
+        let accentColor = status == nil ? uiColor(for: tag.type) : color
+        let labelNode = makeLabelNode(text: label, color: accentColor)
+        labelNode.position = SCNVector3(0, 0.065, 0)   // 6.5 cm above centre
+        root.addChildNode(labelNode)
+
+        return root
+    }
+
+    /// Renders tag name as a UIImage pill → SCNPlane texture with billboard constraint.
+    private func makeLabelNode(text: String, color: UIColor) -> SCNNode {
+        let image  = makeLabelImage(text, accentColor: color)
+        let aspect = image.size.width / image.size.height
+        let height: CGFloat = 0.044                    // 4.4 cm tall in world space (2× for visibility)
+        let width  = height * aspect
+
+        let plane = SCNPlane(width: width, height: height)
+        let pMat  = SCNMaterial()
+        pMat.diffuse.contents  = image
+        pMat.isDoubleSided     = true
+        pMat.lightingModel     = .constant             // unlit — always legible
+        plane.materials        = [pMat]
+
+        let node = SCNNode(geometry: plane)
+        node.constraints = [SCNBillboardConstraint()]  // always faces camera
+        return node
+    }
+
+    /// Draws a dark pill with the tag label text and a status-coloured left bar.
+    private func makeLabelImage(_ text: String, accentColor: UIColor) -> UIImage {
+        let displayText = text.count > 16 ? String(text.prefix(15)) + "…" : text
+        let font  = UIFont.boldSystemFont(ofSize: 26)
+        let attrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: UIColor.white]
+        let textSize = (displayText as NSString).size(withAttributes: attrs)
+
+        let hPad: CGFloat = 14
+        let vPad: CGFloat = 9
+        let barW: CGFloat = 5
+        let size = CGSize(
+            width:  textSize.width + hPad * 2 + barW + 6,
+            height: textSize.height + vPad * 2
+        )
+
+        UIGraphicsBeginImageContextWithOptions(size, false, 2.0)
+        defer { UIGraphicsEndImageContext() }
+        guard let ctx = UIGraphicsGetCurrentContext() else { return UIImage() }
+
+        let rect = CGRect(origin: .zero, size: size)
+        let corner = size.height / 2
+
+        // Dark background pill
+        ctx.setFillColor(UIColor.black.withAlphaComponent(0.78).cgColor)
+        UIBezierPath(roundedRect: rect, cornerRadius: corner).fill()
+
+        // Coloured accent bar on left
+        ctx.setFillColor(accentColor.withAlphaComponent(0.9).cgColor)
+        UIBezierPath(
+            roundedRect: CGRect(x: 0, y: 0, width: barW, height: size.height),
+            byRoundingCorners: [.topLeft, .bottomLeft],
+            cornerRadii: CGSize(width: corner, height: corner)
+        ).fill()
+
+        // Label text
+        (displayText as NSString).draw(
+            at: CGPoint(x: barW + hPad, y: vPad),
+            withAttributes: attrs
+        )
+
+        return UIGraphicsGetImageFromCurrentImageContext() ?? UIImage()
+    }
+
+    // ── Validation ────────────────────────────────────────────────────────────
+
+    private func runValidation() async {
+        phase         = .validating
+        validateError = nil
+
+        let snapshot = arManager.sceneView.snapshot()
+        guard let jpeg   = snapshot.jpegData(compressionQuality: 0.80),
+              let anchor = appState.activeAnchor
+        else { phase = .idle; return }
+
+        // Shutter flash + haptic
+        flashOpacity = 0.55
+        withAnimation(.easeOut(duration: 0.30)) { flashOpacity = 0 }
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+
+        let client = SIBClient(settings: settings)
+
+        let session: SIBSession
+        if let existing = appState.activeSession {
+            session = existing
+        } else {
+            do {
+                session = try await client.createSession(userId: "operator",
+                                                          assetId: anchor.assetId)
+                appState.activeSession = session
+            } catch {
+                validateError = "Session error: \(error.localizedDescription)"
+                phase = .idle
+                return
+            }
+        }
+
+        // Phase 2.5: pass the anchor's AES-256-GCM key so SIB can decrypt stored
+        // pass-state images in-memory during SSIM comparison.
+        let encKey = appState.anchorEncryptionKey.map { AnchorEncryption.base64(for: $0) }
+
+        let req = BatchValidateRequest(
+            anchorId:      anchor.id,
+            assetId:       anchor.assetId,
+            sessionId:     session.id,
+            imageBase64:   jpeg.base64EncodedString(),
+            mimeType:      "image/jpeg",
+            threshold:     passThreshold,
+            tagIds:        reInspectTagIds,
+            encryptionKey: encKey
+        )
+
+        // Begin debug log session (records per-tag metric breakdowns for export)
+        if let anchor = appState.activeAnchor {
+            InspectionDebugLog.shared.beginSession(
+                sessionId: session.id,
+                anchorId:  anchor.id,
+                assetId:   anchor.assetId)
+        }
+
+        // Capture current ARKit frame for depth + cone alignment (before async SIB call)
+        let currentFrame = arManager.sceneView.session.currentFrame
+
+        do {
+            var result = try await client.validateAll(req)
+
+            // ── Cone + depth validation (cone-trained tags) ───────────────────
+            // Applies alignment factor and depth similarity score.
+            // Must run with the frame captured BEFORE the async SIB round-trip
+            // so alignment angle reflects where the operator was standing.
+            if let frame = currentFrame {
+                result = applyConeAndDepthValidation(to: result,
+                                                     snapshot: snapshot,
+                                                     frame: frame)
+            }
+
+            // ── Feature print validation (primary metric) ─────────────────────
+            // For all visual tags — overrides SSIM if FP score is higher.
+            result = await applyFeaturePrintValidation(to: result, snapshot: snapshot)
+
+            // ── OCR validation for languageCheck tags ─────────────────────────
+            result = await applyOCRValidation(to: result, jpeg: jpeg)
+
+            appState.lastValidationResult = result
+
+            // ── Debug log ─────────────────────────────────────────────────────
+            InspectionDebugLog.shared.finish(
+                overallStatus: result.status.rawValue.uppercased())
+
+            // Update AR markers with PASS/FAIL colours before showing summary
+            updateMarkersForResult(result)
+
+            UINotificationFeedbackGenerator()
+                .notificationOccurred(result.status == .pass ? .success : .error)
+            phase = .reviewing
+
+        } catch {
+            validateError = error.localizedDescription
+            phase = .idle
+        }
+    }
+
+    // ── Cone guide placement ──────────────────────────────────────────────────
+
+    /// Build a read-only ConeARGuide for each cone-trained tag.
+    /// Called on appear and when a new anchor is locked.
+    /// Multi-anchor: when multiple anchors are supported, iterate appState.activeTags
+    /// grouped by anchorId and use the correct locked transform for each group.
+    private func buildConeGuides() {
+        guard let anchorTransform = appState.anchorNormalisedTransform else { return }
+        coneGuides.values.forEach { $0.cleanup() }
+        coneGuides.removeAll()
+
+        for tag in appState.activeTags where tag.type.captureMode == .cone {
+            // ── Require cone quaternion ───────────────────────────────────────
+            guard
+                let qxAny = tag.metadata["cone_qx"], let qyAny = tag.metadata["cone_qy"],
+                let qzAny = tag.metadata["cone_qz"], let qwAny = tag.metadata["cone_qw"],
+                let qx = metaDouble(qxAny), let qy = metaDouble(qyAny),
+                let qz = metaDouble(qzAny), let qw = metaDouble(qwAny)
+            else { continue }
+
+            // ── Resolve tag world position: anchor_rel preferred, pos_xyz fallback ─
+            // anchor_rel_x/y/z is session-independent (stored relative to gravity-
+            // aligned anchor frame) — always use this when available.
+            // Legacy pos_x/y/z is the session-frame world position saved by older
+            // Author sessions.  Converting via toAnchorRelative here gives the right
+            // anchor-frame position IF the world frames match (same session or same
+            // ARWorldMap relocated correctly) — which is the case when the user just
+            // came through QRScanGateView with a successfully loaded WorldMap.
+            let tagWorldPos: simd_float3
+            if let rx = metaDouble(tag.metadata["anchor_rel_x"]),
+               let ry = metaDouble(tag.metadata["anchor_rel_y"]),
+               let rz = metaDouble(tag.metadata["anchor_rel_z"]) {
+                tagWorldPos = ARCoordinateFrame.toWorldSpace(
+                    anchorRelativePos: simd_float3(Float(rx), Float(ry), Float(rz)),
+                    anchorTransform: anchorTransform)
+            } else if let px = metaDouble(tag.metadata["pos_x"]),
+                      let py = metaDouble(tag.metadata["pos_y"]),
+                      let pz = metaDouble(tag.metadata["pos_z"]) {
+                // Legacy fallback — use stored world-space position directly.
+                // Valid only when session world frames match.
+                tagWorldPos = simd_float3(Float(px), Float(py), Float(pz))
+                print("[OperatorMode] buildConeGuides '\(tag.label)': using pos_xyz fallback (no anchor_rel)")
+            } else {
+                print("[OperatorMode] buildConeGuides '\(tag.label)': SKIPPED — no position metadata")
+                continue
+            }
+
+            let storedQuat = simd_quatf(ix: Float(qx), iy: Float(qy),
+                                         iz: Float(qz),  r:  Float(qw))
+
+            let guide = ConeARGuide(
+                sceneView: arManager.sceneView,
+                tagWorldPosition: tagWorldPos,
+                anchorRelativeQuat: storedQuat,
+                anchorTransform: anchorTransform)
+            coneGuides[tag.id] = guide
+        }
+    }
+
+    // ── Cone + depth alignment validation ────────────────────────────────────
+
+    /// For each cone-trained tag:
+    ///  1. Compute alignment angle between camera and stored cone direction.
+    ///  2. Apply alignment factor to the current score:
+    ///       adjustedScore = currentScore × alignmentFactor
+    ///       alignmentFactor = clamp(1 − angle / 90°, 0, 1)
+    ///  3. Add depth comparison score (if depth map stored) weighted at 0.4.
+    ///
+    /// This rewards being in the correct inspection zone and penalises
+    /// off-angle captures, making pass/fail results far more reliable.
+    private func applyConeAndDepthValidation(
+        to result: AnchorValidationResult,
+        snapshot: UIImage,
+        frame: ARFrame
+    ) -> AnchorValidationResult {
+
+        var patched = result
+
+        for i in patched.tagResults.indices {
+            let tr = patched.tagResults[i]
+            guard tr.status != .pending else { continue }
+            guard let tag = appState.activeTags.first(where: { $0.id == tr.tagId }),
+                  tag.type.captureMode == .cone else { continue }
+
+            var score = tr.confidence
+
+            // ── Alignment factor ──────────────────────────────────────────────
+            let alignFactor: Double
+            if let guide = coneGuides[tr.tagId],
+               let currentFrame = arManager.sceneView.session.currentFrame {
+                let angleDeg = guide.alignmentAngle(cameraTransform: currentFrame.camera.transform)
+                alignFactor  = Double(max(0, 1 - angleDeg / 90))
+                print("[ConeValidation] tag=\(tr.tagLabel) angle=\(String(format:"%.1f",angleDeg))° factor=\(String(format:"%.2f",alignFactor))")
+            } else {
+                alignFactor = 1.0   // no guide available — apply no penalty
+            }
+            score = score * alignFactor
+
+            // ── Depth comparison ──────────────────────────────────────────────
+            if let depthB64 = metaDouble(tag.metadata["cone_depth_width"]).flatMap({ w -> String? in
+                guard let h = metaDouble(tag.metadata["cone_depth_height"]),
+                      let b = (tag.metadata["cone_depth_map"]?.value as? String),
+                      let lidar = tag.metadata["cone_depth_is_lidar"]?.value as? Bool
+                else { return nil }
+                return b
+            }) {
+                // Reconstruct stored depth and compare with live depth
+                if let liveDepth = DepthCapture.capture(from: frame),
+                   let wAny = metaDouble(tag.metadata["cone_depth_width"]),
+                   let hAny = metaDouble(tag.metadata["cone_depth_height"]),
+                   let lidar = tag.metadata["cone_depth_is_lidar"]?.value as? Bool,
+                   let storedDepth = DepthCapture(base64: depthB64,
+                                                  width: Int(wAny), height: Int(hAny),
+                                                  isLiDAR: lidar) {
+                    let depthScore = storedDepth.similarity(to: liveDepth)
+                    // Weighted blend: 60% feature-print/SSIM, 40% depth
+                    score = 0.60 * score + 0.40 * depthScore
+                    print("[ConeValidation] tag=\(tr.tagLabel) depthScore=\(String(format:"%.3f",depthScore)) blended=\(String(format:"%.3f",score)) lidar=\(lidar)")
+                }
+            }
+
+            if score != tr.confidence {
+                patched.tagResults[i].confidence = score
+                patched.tagResults[i].status     = score >= passThreshold ? .pass : .fail
+            }
+        }
+
+        // Recompute aggregates
+        let passes  = patched.tagResults.filter { $0.status == .pass    }.count
+        let fails   = patched.tagResults.filter { $0.status == .fail    }.count
+        let pending = patched.tagResults.filter { $0.status == .pending }.count
+        patched.passCount = passes
+        patched.failCount = fails
+        patched.status = fails == 0 && pending == 0 ? .pass
+                       : passes == 0 && pending == 0 ? .fail
+                       : pending == patched.totalCount ? .pending
+                       : .partial
+        return patched
+    }
+
+    // ── Feature print validation ──────────────────────────────────────────────
+
+    /// Extracts a VNGenerateImageFeaturePrint embedding from the live snapshot and
+    /// compares it against the 7 stored reference prints in each tag's metadata.
+    /// Overrides the SIB SSIM score when the feature print score is higher —
+    /// giving the Operator credit for being at the right location even when they're
+    /// not at an exact training viewpoint position.
+    private func applyFeaturePrintValidation(
+        to result: AnchorValidationResult,
+        snapshot: UIImage
+    ) async -> AnchorValidationResult {
+
+        // Extract full-frame live feature print (used by most tag types)
+        let livePrint = await TagFeaturePrint.extract(from: snapshot)
+
+        // Pre-compute center-crop print for PartCheck tags — more sensitive to
+        // part presence/absence than a full-frame comparison because the part
+        // occupies most of the central region when the operator is in the cone zone.
+        // We use a 50 % × 50 % center crop: background edges don't contribute.
+        let centerCropSnapshot   = centerCrop(of: snapshot, fraction: 0.50)
+        let liveCenterCropPrint  = await TagFeaturePrint.extract(from: centerCropSnapshot)
+
+        if livePrint == nil && liveCenterCropPrint == nil {
+            print("[FeaturePrint] Could not extract any live feature print — skipping")
+            return result
+        }
+
+        var patched = result
+
+        for i in patched.tagResults.indices {
+            let tr = patched.tagResults[i]
+            guard tr.status != .pending else { continue }
+            guard let tag = appState.activeTags.first(where: { $0.id == tr.tagId }) else { continue }
+
+            // ── PartCheck: center-crop comparison (part presence / absence) ────
+            // If the tag was trained with part_check_center_fps (stored during
+            // ConeCaptureView training for .partCheck type), run a dedicated
+            // comparison on the center-cropped inspection image.
+            //
+            // Why: a missing PS5 controller leaves only the couch surface in the
+            // center of frame.  Full-frame SSIM / feature prints can still score
+            // high because the background fills most of the image.  But the center
+            // crop at the right inspection distance is filled by the part itself —
+            // so its absence changes the crop dramatically.
+            if tag.type == .partCheck,
+               let ccAny = tag.metadata["part_check_center_fps"],
+               let ccArray = ccAny.value as? [Any],
+               !ccArray.isEmpty,
+               let cropPrint = liveCenterCropPrint {
+
+                let ccRefs: [TagFeaturePrint] = ccArray.compactMap { item in
+                    guard let s = item as? String else { return nil }
+                    return TagFeaturePrint(base64: s)
+                }
+
+                if !ccRefs.isEmpty {
+                    // Use per-tag calibrated ceiling if stored during training.
+                    let ccMaxDist = metaFloat(tag.metadata, key: "part_check_fp_max_dist")
+                    let ccScore   = TagFeaturePrint.bestScore(live: cropPrint, references: ccRefs,
+                                                              maxDist: ccMaxDist)
+                    print("[FeaturePrint][PartCheck] tag=\(tr.tagLabel) " +
+                          "center_crop=\(String(format:"%.3f", ccScore)) " +
+                          "ssim=\(String(format:"%.3f", tr.confidence)) " +
+                          "cc_max_dist=\(ccMaxDist.map { String(format:"%.3f", $0) } ?? "global")")
+
+                    // For PartCheck the center-crop score IS the authoritative metric.
+                    // It overrides SSIM in both directions: a high score means
+                    // the part is present; a low score means it's absent (FAIL).
+                    patched.tagResults[i].confidence = ccScore
+                    patched.tagResults[i].status     = ccScore >= passThreshold ? .pass : .fail
+                    continue   // skip full-frame comparison for this tag
+                }
+            }
+
+            // ── Standard full-frame feature print comparison (all other types) ─
+            guard let live = livePrint else { continue }
+
+            guard let fpAny = tag.metadata["feature_prints"],
+                  let fpArray = fpAny.value as? [Any],
+                  !fpArray.isEmpty
+            else { continue }
+
+            let refs: [TagFeaturePrint] = fpArray.compactMap { item in
+                guard let s = item as? String else { return nil }
+                return TagFeaturePrint(base64: s)
+            }
+            guard !refs.isEmpty else { continue }
+
+            // Use per-tag calibrated ceiling if stored during training.
+            let tagMaxDist = metaFloat(tag.metadata, key: "fp_max_dist")
+            let fpScore    = TagFeaturePrint.bestScore(live: live, references: refs,
+                                                       maxDist: tagMaxDist)
+
+            print("[FeaturePrint] tag=\(tr.tagLabel) " +
+                  "fp=\(String(format:"%.3f", fpScore)) " +
+                  "ssim=\(String(format:"%.3f", tr.confidence)) " +
+                  "max_dist=\(tagMaxDist.map { String(format:"%.3f", $0) } ?? "global")")
+
+            // Use the better of the two scores — SSIM works well when angle matches,
+            // feature print works well when it doesn't
+            guard fpScore > tr.confidence else { continue }
+
+            patched.tagResults[i].confidence = fpScore
+            patched.tagResults[i].status     = fpScore >= passThreshold ? .pass : .fail
+        }
+
+        // Recompute aggregate counts
+        let passes  = patched.tagResults.filter { $0.status == .pass    }.count
+        let fails   = patched.tagResults.filter { $0.status == .fail    }.count
+        let pending = patched.tagResults.filter { $0.status == .pending }.count
+        patched.passCount = passes
+        patched.failCount = fails
+        patched.status = fails == 0 && pending == 0 ? .pass
+                       : passes == 0 && pending == 0 ? .fail
+                       : pending == patched.totalCount ? .pending
+                       : .partial
+        return patched
+    }
+
+    /// Returns a center-cropped UIImage at `fraction` × `fraction` of the original
+    /// (e.g. fraction 0.50 gives the middle 50 % × 50 % region).
+    private func centerCrop(of image: UIImage, fraction: CGFloat) -> UIImage {
+        let size   = image.size
+        let cropW  = size.width  * fraction
+        let cropH  = size.height * fraction
+        let cropX  = (size.width  - cropW) / 2
+        let cropY  = (size.height - cropH) / 2
+        let rect   = CGRect(x: cropX * image.scale, y: cropY * image.scale,
+                            width: cropW * image.scale, height: cropH * image.scale)
+
+        guard let cgImage = image.cgImage,
+              let cropped  = cgImage.cropping(to: rect)
+        else { return image }
+        return UIImage(cgImage: cropped, scale: image.scale, orientation: image.imageOrientation)
+    }
+
+    // ── OCR validation ────────────────────────────────────────────────────────
+
+    /// Runs on-device Vision OCR on `jpeg` and patches the SIB result for any
+    /// languageCheck tag whose expectedOutcome text is a keyword-subset of the
+    /// detected text.  Only overrides if OCR confidence > SSIM confidence.
+    private func applyOCRValidation(to result: AnchorValidationResult,
+                                    jpeg: Data) async -> AnchorValidationResult {
+        // Collect languageCheck tags that have stored expected text
+        let ocrTags = appState.activeTags.filter {
+            $0.type.usesOCR &&
+            !($0.expectedOutcome.trimmingCharacters(in: .whitespaces).isEmpty)
+        }
+        guard !ocrTags.isEmpty else { return result }
+        guard let uiImage = UIImage(data: jpeg), let cgImage = uiImage.cgImage else { return result }
+
+        // Run Vision OCR — accurate mode, language correction on
+        let detected: String = await withCheckedContinuation { cont in
+            let req = VNRecognizeTextRequest { r, _ in
+                let obs  = r.results as? [VNRecognizedTextObservation] ?? []
+                let text = obs.sorted { $0.boundingBox.maxY > $1.boundingBox.maxY }
+                              .compactMap { $0.topCandidates(1).first?.string }
+                              .joined(separator: " ")
+                cont.resume(returning: text)
+            }
+            req.recognitionLevel       = .accurate
+            req.usesLanguageCorrection = true
+            let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+            do    { try handler.perform([req]) }
+            catch { cont.resume(returning: "") }
+        }
+
+        print("[OCR] Detected text: \"\(detected)\"")
+
+        // Patch tagResults
+        var patched = result
+        for i in patched.tagResults.indices {
+            let tr = patched.tagResults[i]
+            guard let tag = ocrTags.first(where: { $0.id == tr.tagId }) else { continue }
+            let expected  = tag.expectedOutcome.trimmingCharacters(in: .whitespaces)
+            guard !expected.isEmpty else { continue }
+
+            let ocrScore = textMatchScore(expected: expected, detected: detected)
+            print("[OCR] tag=\(tr.tagLabel) expected=\"\(expected)\" ocrScore=\(String(format:"%.2f",ocrScore)) ssim=\(String(format:"%.2f",tr.confidence))")
+
+            guard ocrScore > tr.confidence else { continue }
+            patched.tagResults[i].confidence = ocrScore
+            patched.tagResults[i].status     = ocrScore >= passThreshold ? .pass : .fail
+        }
+
+        // Recompute aggregate totals
+        let passes  = patched.tagResults.filter { $0.status == .pass    }.count
+        let fails   = patched.tagResults.filter { $0.status == .fail    }.count
+        let pending = patched.tagResults.filter { $0.status == .pending }.count
+        patched.passCount = passes
+        patched.failCount = fails
+        patched.status = fails == 0 && pending == 0 ? .pass
+                       : passes == 0 && pending == 0 ? .fail
+                       : pending == patched.totalCount ? .pending
+                       : .partial
+        return patched
+    }
+
+    /// Keyword presence score: fraction of expected words found in detected text.
+    /// Case-insensitive, substring match (handles plurals and partial words).
+    private func textMatchScore(expected: String, detected: String) -> Double {
+        let words = expected
+            .lowercased()
+            .components(separatedBy: .whitespacesAndNewlines)
+            .filter { $0.count >= 2 }           // skip 1-char noise words
+        guard !words.isEmpty else { return 0 }
+        let detectedLower = detected.lowercased()
+        let matched = words.filter { detectedLower.contains($0) }.count
+        return Double(matched) / Double(words.count)
+    }
+
+    // ── State transitions ─────────────────────────────────────────────────────
+
+    /// Return to idle for a fresh snapshot on the same anchor.
+    /// failedOnly = true  → keep PASS markers green, only reset FAIL/PENDING to blue
+    /// failedOnly = false → reset everything to blue (full re-inspection)
+    private func resetForReInspect(failedOnly: Bool) {
+        if failedOnly, let result = appState.lastValidationResult {
+            // Collect IDs of failed/pending tags for the next validate-all call
+            let failIds = result.tagResults
+                .filter { $0.status == .fail || $0.status == .pending }
+                .map { $0.tagId }
+            reInspectTagIds = failIds.isEmpty ? nil : failIds
+
+            // Reset only failed/pending markers → blue; leave PASS markers green
+            for tagResult in result.tagResults where tagResult.status != .pass {
+                guard let node = tagMarkerNodes[tagResult.tagId] else { continue }
+                let worldPos = node.simdWorldPosition
+                node.removeFromParentNode()
+                guard let tag = appState.activeTags.first(where: { $0.id == tagResult.tagId }) else { continue }
+                let newNode = makeMarkerNode(for: tag, status: nil)
+                newNode.simdPosition = worldPos
+                newNode.isHidden = !showTagMarkers
+                arManager.sceneView.scene.rootNode.addChildNode(newNode)
+                tagMarkerNodes[tagResult.tagId] = newNode
+            }
+
+            // Reset auto-inspect state for failed/pending tags so they can be re-inspected.
+            // Keep PASS results — those markers stay green and don't need re-inspection.
+            for id in failIds {
+                autoInspectedResults.removeValue(forKey: id)
+                tagCooldowns.removeValue(forKey: id)     // allow immediate re-capture
+            }
+        } else {
+            // Full reset
+            reInspectTagIds = nil
+            autoInspectedResults.removeAll()
+            tagCooldowns.removeAll()
+            placeTagMarkers()
+        }
+        appState.lastValidationResult = nil
+        validateError = nil
+        phase = .idle
+    }
+
+    private func resetForNewScan() {
+        tagMarkerNodes.values.forEach { $0.removeFromParentNode() }
+        tagMarkerNodes.removeAll()
+        coneGuides.values.forEach { $0.cleanup() }
+        coneGuides.removeAll()
+        appState.activeAnchor         = nil
+        appState.activeTags           = []
+        appState.activeSession        = nil
+        appState.lastValidationResult = nil
+        validateError                 = nil
+        reInspectTagIds               = nil
+        autoInspectedResults.removeAll()
+        tagCooldowns.removeAll()
+        isAutoInspecting              = false
+        anchorLocated                 = false
+        phase                         = .idle
+    }
+
+    // ── Proximity ticker — Disney UX ──────────────────────────────────────────
+    //
+    // Distance zones per tag:
+    //   > 2.0 m  → sphere only, gentle slow pulse        (discovery)
+    //   1.0–2.0m → sphere faster pulse + distance label  (approaching)
+    //   < 1.0 m  → cone fades in, sphere brightens       (engagement)
+    //   < 0.5 m + cone aligned → cone ring glows green, haptic (capture zone)
+    //
+    // Only one cone is shown at a time (nearest tag) to avoid visual clutter.
+
+    private func tickProximity() {
+        guard let frame = arManager.sceneView.session.currentFrame else { return }
+        let cam = simd_float3(frame.camera.transform.columns.3.x,
+                               frame.camera.transform.columns.3.y,
+                               frame.camera.transform.columns.3.z)
+
+        var closestDist: Float    = .infinity
+        var closestTagId: String? = nil
+
+        for tag in appState.activeTags {
+            guard let markerNode = tagMarkerNodes[tag.id] else { continue }
+            let dist = simd_length(cam - markerNode.simdWorldPosition)
+
+            if dist < closestDist {
+                closestDist  = dist
+                closestTagId = tag.id
+            }
+
+            // Pulse speed reflects proximity (faster = closer)
+            let pulseSpeed: Double = dist > 2.0 ? 1.2 : (dist > 1.0 ? 0.65 : 0.35)
+            if !markerNode.actionKeys.contains("pulse") {
+                markerNode.runAction(.repeatForever(.sequence([
+                    .fadeOpacity(to: 0.45, duration: pulseSpeed),
+                    .fadeOpacity(to: 1.00, duration: pulseSpeed),
+                ])), forKey: "pulse")
+            }
+        }
+
+        // Show cone ONLY for the nearest cone-trained tag within 1m
+        for (tagId, guide) in coneGuides {
+            let shouldShow = tagId == closestTagId && closestDist < 1.0
+            if shouldShow != guide.isVisible {
+                guide.setVisible(shouldShow, animated: true)
+            }
+        }
+
+        nearestTagDist = closestDist
+        let prevNearest = nearestTagId
+        nearestTagId   = closestTagId
+
+        // Alignment check for nearest cone-trained tag
+        if let nearId = closestTagId,
+           let guide  = coneGuides[nearId],
+           closestDist < 1.0 {
+            let angle = guide.alignmentAngle(cameraTransform: frame.camera.transform)
+            let nowInZone = angle < 25 && closestDist < 0.8
+            if nowInZone && !inConeZone {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                // T94: auto-capture when operator enters the cone alignment zone
+                autoTriggerIfReady(tagId: nearId)
+            }
+            inConeZone = nowInZone
+        } else {
+            inConeZone = false
+        }
+
+        // T95: auto-capture non-cone tags (honeycomb, OCR) when physically very close
+        if let nearId = closestTagId,
+           coneGuides[nearId] == nil,          // not a cone tag (those handled above)
+           closestDist < 0.5,
+           (phase == .idle || phase == .reviewing) {
+            autoTriggerIfReady(tagId: nearId)
+        }
+
+        // Load pass state preview for newly nearest tag
+        if closestTagId != prevNearest, let tagId = closestTagId,
+           let tag = appState.activeTags.first(where: { $0.id == tagId }),
+           tag.type.captureMode == .cone && closestDist < 1.5 {
+            Task { await loadPassPreview(for: tag) }
+        }
+        if closestDist > 2.0 {
+            passPreviewImage = nil
+            passPreviewTagId = nil
+        }
+    }
+
+    private func loadPassPreview(for tag: Tag) async {
+        guard tag.id != passPreviewTagId else { return }
+        passPreviewTagId = tag.id
+        passPreviewLabel = tag.label
+
+        do {
+            let ps  = try await SIBClient(settings: settings).fetchPassState(tagId: tag.id)
+            guard let firstImg = ps.images.first else { return }
+
+            // Decrypt if encryption key available, else use raw
+            let imageB64: String
+            if let key = appState.anchorEncryptionKey,
+               let decrypted = try? AnchorEncryption.decrypt(
+                   encryptedBase64: firstImg.imageBase64, using: key) {
+                imageB64 = decrypted
+            } else {
+                imageB64 = firstImg.imageBase64
+            }
+
+            guard let data  = Data(base64Encoded: imageB64),
+                  let image = UIImage(data: data) else { return }
+            passPreviewImage = image
+        } catch {
+            // Non-fatal — preview is optional
+            print("[PassPreview] Could not load for tag \(tag.id): \(error.localizedDescription)")
+        }
+    }
+
+    // ── Auto-inspect (T94/T95) ────────────────────────────────────────────────
+
+    /// Gate check before auto-triggering a single-tag inspection.
+    /// Silently returns if: another inspection is in flight, the tag is on cooldown,
+    /// or a full validate-all (phase == .validating) is running.
+    private func autoTriggerIfReady(tagId: String) {
+        guard !isAutoInspecting, phase != .validating else { return }
+        if let lastTime = tagCooldowns[tagId],
+           Date().timeIntervalSince(lastTime) < autoCooldownSecs { return }
+        tagCooldowns[tagId] = Date()
+        Task { await runSingleTagValidation(tagId: tagId) }
+    }
+
+    /// Validate a single tag in-place using the existing `validate-all` endpoint
+    /// with `tagIds: [tagId]`. Merges the result into `autoInspectedResults` and
+    /// rebuilds `appState.lastValidationResult` so the reviewing panel stays live.
+    private func runSingleTagValidation(tagId: String) async {
+        guard !isAutoInspecting else { return }
+        isAutoInspecting = true
+        defer { isAutoInspecting = false }
+
+        let snapshot = arManager.sceneView.snapshot()
+        guard let jpeg   = snapshot.jpegData(compressionQuality: 0.80),
+              let anchor = appState.activeAnchor else { return }
+
+        // Brief shutter flash + haptic so operator knows capture happened
+        flashOpacity = 0.35
+        withAnimation(.easeOut(duration: 0.25)) { flashOpacity = 0 }
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+
+        let client = SIBClient(settings: settings)
+
+        // Ensure session exists
+        let session: SIBSession
+        if let existing = appState.activeSession {
+            session = existing
+        } else {
+            guard let s = try? await client.createSession(userId: "operator",
+                                                           assetId: anchor.assetId) else { return }
+            appState.activeSession = s
+            session = s
+        }
+
+        let encKey = appState.anchorEncryptionKey.map { AnchorEncryption.base64(for: $0) }
+        let req = BatchValidateRequest(
+            anchorId:      anchor.id,
+            assetId:       anchor.assetId,
+            sessionId:     session.id,
+            imageBase64:   jpeg.base64EncodedString(),
+            mimeType:      "image/jpeg",
+            threshold:     passThreshold,
+            tagIds:        [tagId],       // single-tag validation
+            encryptionKey: encKey
+        )
+
+        let currentFrame = arManager.sceneView.session.currentFrame
+
+        do {
+            var result = try await client.validateAll(req)
+            if let frame = currentFrame {
+                result = applyConeAndDepthValidation(to: result, snapshot: snapshot, frame: frame)
+            }
+            result = await applyFeaturePrintValidation(to: result, snapshot: snapshot)
+            result = await applyOCRValidation(to: result, jpeg: jpeg)
+
+            // Persist this tag's result into the running accumulator
+            for tr in result.tagResults { autoInspectedResults[tr.tagId] = tr }
+
+            // Update the AR marker to PASS/FAIL immediately
+            updateMarkersForResult(result)
+
+            // Haptic feedback on result
+            if let tr = result.tagResults.first(where: { $0.tagId == tagId }) {
+                UINotificationFeedbackGenerator()
+                    .notificationOccurred(tr.status == .pass ? .success : .error)
+                print("[AutoInspect] tag=\(tr.tagLabel) status=\(tr.status.rawValue) conf=\(String(format:"%.2f",tr.confidence))")
+            }
+
+            // Rebuild the combined session result so the reviewing panel reflects progress
+            rebuildCombinedResult()
+
+            // Transition to reviewing so "End Inspection" becomes available
+            if phase == .idle { phase = .reviewing }
+
+        } catch {
+            print("[AutoInspect] Failed for tag \(tagId): \(error.localizedDescription)")
+        }
+    }
+
+    /// Build a combined `AnchorValidationResult` from all per-tag auto-inspections.
+    /// Tags not yet inspected appear as `.pending`. Stored in `appState.lastValidationResult`
+    /// so `reviewingPanel` and `ValidationResultsView` both reflect live progress.
+    private func rebuildCombinedResult() {
+        guard let anchor  = appState.activeAnchor,
+              let session = appState.activeSession else { return }
+
+        let tagResults: [TagValidationSummary] = appState.activeTags.map { tag in
+            autoInspectedResults[tag.id] ?? TagValidationSummary(
+                tagId:      tag.id,
+                tagLabel:   tag.label,
+                tagType:    tag.type,
+                status:     .pending,
+                confidence: 0
+            )
+        }
+
+        let passes  = tagResults.filter { $0.status == .pass    }.count
+        let fails   = tagResults.filter { $0.status == .fail    }.count
+        let pending = tagResults.filter { $0.status == .pending }.count
+        let total   = tagResults.count
+
+        let status: AnchorStatus = fails == 0 && pending == 0 ? .pass
+                                 : passes == 0 && pending == 0 ? .fail
+                                 : pending == total ? .pending
+                                 : .partial
+
+        appState.lastValidationResult = AnchorValidationResult(
+            id:          UUID().uuidString,
+            anchorId:    anchor.id,
+            assetId:     anchor.assetId,
+            sessionId:   session.id,
+            status:      status,
+            passCount:   passes,
+            failCount:   fails,
+            totalCount:  total,
+            tagResults:  tagResults,
+            evaluatedAt: ISO8601DateFormatter().string(from: Date())
+        )
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private func metaDouble(_ any: AnyCodable?) -> Double? {
+        guard let any else { return nil }
+        if let d = any.value as? Double { return d }
+        if let i = any.value as? Int    { return Double(i) }
+        return nil
+    }
+
+    // Overload accepting AnyCodable directly (used inside cone validation closures)
+    private func metaDouble(_ any: AnyCodable) -> Double? { metaDouble(Optional(any)) }
+
+    /// Read a Float from a metadata dict by key.
+    /// Handles Double, Float, and Int storage (AnyCodable decodes JSON numbers
+    /// as Double or Int depending on value, so we must try both).
+    private func metaFloat(_ meta: [String: AnyCodable], key: String) -> Float? {
+        guard let any = meta[key] else { return nil }
+        if let d = any.value as? Double { return Float(d) }
+        if let f = any.value as? Float  { return f }
+        if let i = any.value as? Int    { return Float(i) }
+        return nil
+    }
+}
+
+// ── AnchorStatus display helpers ──────────────────────────────────────────────
+
+extension AnchorStatus {
+    var color: Color {
+        switch self {
+        case .pass:    return .green
+        case .fail:    return .red
+        case .partial: return .orange
+        case .pending: return .gray
+        }
+    }
+    var iconName: String {
+        switch self {
+        case .pass:    return "checkmark.circle.fill"
+        case .fail:    return "xmark.circle.fill"
+        case .partial: return "exclamationmark.circle.fill"
+        case .pending: return "questionmark.circle.fill"
+        }
+    }
+    var displayText: String {
+        switch self {
+        case .pass:    return "PASS"
+        case .fail:    return "FAIL"
+        case .partial: return "PARTIAL"
+        case .pending: return "PENDING"
+        }
+    }
+}

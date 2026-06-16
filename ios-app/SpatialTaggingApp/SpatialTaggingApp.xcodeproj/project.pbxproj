@@ -1,0 +1,569 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXContainerItemProxy section */
+		258D58ED2FC55E130068CCCA /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 258D58D72FC55E110068CCCA /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 258D58DE2FC55E110068CCCA;
+			remoteInfo = SpatialTaggingApp;
+		};
+		258D58F72FC55E130068CCCA /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 258D58D72FC55E110068CCCA /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 258D58DE2FC55E110068CCCA;
+			remoteInfo = SpatialTaggingApp;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		258D58DF2FC55E110068CCCA /* SpatialTaggingApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SpatialTaggingApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		258D58EC2FC55E130068CCCA /* SpatialTaggingAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SpatialTaggingAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		258D58F62FC55E130068CCCA /* SpatialTaggingAppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SpatialTaggingAppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		258D58E12FC55E110068CCCA /* SpatialTaggingApp */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = SpatialTaggingApp;
+			sourceTree = "<group>";
+		};
+		258D58EF2FC55E130068CCCA /* SpatialTaggingAppTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = SpatialTaggingAppTests;
+			sourceTree = "<group>";
+		};
+		258D58F92FC55E130068CCCA /* SpatialTaggingAppUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = SpatialTaggingAppUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		258D58DC2FC55E110068CCCA /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		258D58E92FC55E130068CCCA /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		258D58F32FC55E130068CCCA /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		258D58D62FC55E110068CCCA = {
+			isa = PBXGroup;
+			children = (
+				258D58E12FC55E110068CCCA /* SpatialTaggingApp */,
+				258D58EF2FC55E130068CCCA /* SpatialTaggingAppTests */,
+				258D58F92FC55E130068CCCA /* SpatialTaggingAppUITests */,
+				258D58E02FC55E110068CCCA /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		258D58E02FC55E110068CCCA /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				258D58DF2FC55E110068CCCA /* SpatialTaggingApp.app */,
+				258D58EC2FC55E130068CCCA /* SpatialTaggingAppTests.xctest */,
+				258D58F62FC55E130068CCCA /* SpatialTaggingAppUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		258D58DE2FC55E110068CCCA /* SpatialTaggingApp */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 258D59002FC55E130068CCCA /* Build configuration list for PBXNativeTarget "SpatialTaggingApp" */;
+			buildPhases = (
+				258D58DB2FC55E110068CCCA /* Sources */,
+				258D58DC2FC55E110068CCCA /* Frameworks */,
+				258D58DD2FC55E110068CCCA /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				258D58E12FC55E110068CCCA /* SpatialTaggingApp */,
+			);
+			name = SpatialTaggingApp;
+			packageProductDependencies = (
+			);
+			productName = SpatialTaggingApp;
+			productReference = 258D58DF2FC55E110068CCCA /* SpatialTaggingApp.app */;
+			productType = "com.apple.product-type.application";
+		};
+		258D58EB2FC55E130068CCCA /* SpatialTaggingAppTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 258D59032FC55E130068CCCA /* Build configuration list for PBXNativeTarget "SpatialTaggingAppTests" */;
+			buildPhases = (
+				258D58E82FC55E130068CCCA /* Sources */,
+				258D58E92FC55E130068CCCA /* Frameworks */,
+				258D58EA2FC55E130068CCCA /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				258D58EE2FC55E130068CCCA /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				258D58EF2FC55E130068CCCA /* SpatialTaggingAppTests */,
+			);
+			name = SpatialTaggingAppTests;
+			packageProductDependencies = (
+			);
+			productName = SpatialTaggingAppTests;
+			productReference = 258D58EC2FC55E130068CCCA /* SpatialTaggingAppTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		258D58F52FC55E130068CCCA /* SpatialTaggingAppUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 258D59062FC55E130068CCCA /* Build configuration list for PBXNativeTarget "SpatialTaggingAppUITests" */;
+			buildPhases = (
+				258D58F22FC55E130068CCCA /* Sources */,
+				258D58F32FC55E130068CCCA /* Frameworks */,
+				258D58F42FC55E130068CCCA /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				258D58F82FC55E130068CCCA /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				258D58F92FC55E130068CCCA /* SpatialTaggingAppUITests */,
+			);
+			name = SpatialTaggingAppUITests;
+			packageProductDependencies = (
+			);
+			productName = SpatialTaggingAppUITests;
+			productReference = 258D58F62FC55E130068CCCA /* SpatialTaggingAppUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		258D58D72FC55E110068CCCA /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2650;
+				LastUpgradeCheck = 2650;
+				TargetAttributes = {
+					258D58DE2FC55E110068CCCA = {
+						CreatedOnToolsVersion = 26.5;
+					};
+					258D58EB2FC55E130068CCCA = {
+						CreatedOnToolsVersion = 26.5;
+						TestTargetID = 258D58DE2FC55E110068CCCA;
+					};
+					258D58F52FC55E130068CCCA = {
+						CreatedOnToolsVersion = 26.5;
+						TestTargetID = 258D58DE2FC55E110068CCCA;
+					};
+				};
+			};
+			buildConfigurationList = 258D58DA2FC55E110068CCCA /* Build configuration list for PBXProject "SpatialTaggingApp" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 258D58D62FC55E110068CCCA;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 258D58E02FC55E110068CCCA /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				258D58DE2FC55E110068CCCA /* SpatialTaggingApp */,
+				258D58EB2FC55E130068CCCA /* SpatialTaggingAppTests */,
+				258D58F52FC55E130068CCCA /* SpatialTaggingAppUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		258D58DD2FC55E110068CCCA /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		258D58EA2FC55E130068CCCA /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		258D58F42FC55E130068CCCA /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		258D58DB2FC55E110068CCCA /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		258D58E82FC55E130068CCCA /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		258D58F22FC55E130068CCCA /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		258D58EE2FC55E130068CCCA /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 258D58DE2FC55E110068CCCA /* SpatialTaggingApp */;
+			targetProxy = 258D58ED2FC55E130068CCCA /* PBXContainerItemProxy */;
+		};
+		258D58F82FC55E130068CCCA /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 258D58DE2FC55E110068CCCA /* SpatialTaggingApp */;
+			targetProxy = 258D58F72FC55E130068CCCA /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		258D58FE2FC55E130068CCCA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 3S9YQ55ABD;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		258D58FF2FC55E130068CCCA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 3S9YQ55ABD;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		258D59012FC55E130068CCCA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 3S9YQ55ABD;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.krocx.SpatialTaggingApp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		258D59022FC55E130068CCCA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 3S9YQ55ABD;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.krocx.SpatialTaggingApp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		258D59042FC55E130068CCCA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 3S9YQ55ABD;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.krocx.SpatialTaggingAppTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SpatialTaggingApp.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SpatialTaggingApp";
+			};
+			name = Debug;
+		};
+		258D59052FC55E130068CCCA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 3S9YQ55ABD;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.krocx.SpatialTaggingAppTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/SpatialTaggingApp.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/SpatialTaggingApp";
+			};
+			name = Release;
+		};
+		258D59072FC55E130068CCCA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 3S9YQ55ABD;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.krocx.SpatialTaggingAppUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = SpatialTaggingApp;
+			};
+			name = Debug;
+		};
+		258D59082FC55E130068CCCA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 3S9YQ55ABD;
+				GENERATE_INFOPLIST_FILE = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.krocx.SpatialTaggingAppUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = SpatialTaggingApp;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		258D58DA2FC55E110068CCCA /* Build configuration list for PBXProject "SpatialTaggingApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				258D58FE2FC55E130068CCCA /* Debug */,
+				258D58FF2FC55E130068CCCA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		258D59002FC55E130068CCCA /* Build configuration list for PBXNativeTarget "SpatialTaggingApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				258D59012FC55E130068CCCA /* Debug */,
+				258D59022FC55E130068CCCA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		258D59032FC55E130068CCCA /* Build configuration list for PBXNativeTarget "SpatialTaggingAppTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				258D59042FC55E130068CCCA /* Debug */,
+				258D59052FC55E130068CCCA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		258D59062FC55E130068CCCA /* Build configuration list for PBXNativeTarget "SpatialTaggingAppUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				258D59072FC55E130068CCCA /* Debug */,
+				258D59082FC55E130068CCCA /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 258D58D72FC55E110068CCCA /* Project object */;
+}

@@ -1,0 +1,625 @@
+// AnchorDirectoryView.swift — Phase 3 (Team Sharing)
+//
+// Entry point for both Author and Operator modes.
+// Authors and Operators pick an anchor from the live SIB list (or Authors create a new one).
+//
+// Phase 3 UX flow:
+//   ModeSelectionView → AnchorDirectoryView → AnchorHubView → QRScanGateView → AR
+//
+// Key links:
+//   "Open Portal" → Render web URL + /portal (full browser interface)
+//   Row tap       → navigates to AnchorHubView within this NavigationStack
+
+import SwiftUI
+
+struct AnchorDirectoryView: View {
+
+    let mode: AppMode                           // .author or .operator
+    let onSessionReady: (Anchor, [Tag]) -> Void // called when QR scan gate completes
+    let onCancel: () -> Void
+
+    @EnvironmentObject private var settings: AppSettings
+    @EnvironmentObject private var appState:  AppState
+
+    // ── List state ────────────────────────────────────────────────────────────
+    @State private var anchors:     [Anchor] = []
+    @State private var tagCounts:   [String: Int] = [:]   // anchorId → count
+    @State private var isLoading    = false
+    @State private var loadError:   String? = nil
+    @State private var searchText   = ""
+
+    // ── Delete confirmation ───────────────────────────────────────────────────
+    @State private var anchorToDelete: Anchor? = nil
+    @State private var isDeletingAnchor = false
+    @State private var deleteError: String? = nil
+
+    // ── Phase 3: NavigationStack destination (anchor hub) ────────────────────
+    @State private var hubAnchor: Anchor? = nil
+
+    // ── Sheets ────────────────────────────────────────────────────────────────
+    @State private var showCreateSheet = false
+    @State private var showHelpSheet   = false
+
+    // ── Computed ──────────────────────────────────────────────────────────────
+    private var filtered: [Anchor] {
+        if searchText.isEmpty { return anchors }
+        let q = searchText.lowercased()
+        return anchors.filter {
+            $0.id.lowercased().contains(q) ||
+            $0.assetId.lowercased().contains(q)
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            Group {
+                if isLoading && anchors.isEmpty {
+                    loadingView
+                } else if let err = loadError {
+                    errorView(err)
+                } else if anchors.isEmpty {
+                    emptyView
+                } else {
+                    anchorList
+                }
+            }
+            .navigationTitle("Anchor Directory")
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel", action: onCancel)
+                }
+                ToolbarItemGroup(placement: .primaryAction) {
+                    Button { showHelpSheet = true } label: {
+                        Image(systemName: "questionmark.circle")
+                    }
+                    // Author only: create new anchor
+                    if mode == .author {
+                        Button { showCreateSheet = true } label: {
+                            Image(systemName: "plus")
+                        }
+                    }
+                }
+            }
+            .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always),
+                        prompt: "Search by anchor or asset ID")
+            // ── AnchorHubView destination ──────────────────────────────────────
+            .navigationDestination(item: $hubAnchor) { anchor in
+                AnchorHubView(
+                    anchor: anchor,
+                    mode: mode,
+                    onSessionReady: { anchor, tags in
+                        onSessionReady(anchor, tags)
+                    },
+                    onBack: { hubAnchor = nil }
+                )
+                .environmentObject(settings)
+                .environmentObject(appState)
+            }
+        }
+        .onAppear { Task { await loadAnchors() } }
+        .refreshable { await loadAnchors() }
+
+        // ── Delete confirmation alert ──────────────────────────────────────────
+        .alert(
+            "Delete Anchor?",
+            isPresented: Binding(
+                get: { anchorToDelete != nil },
+                set: { if !$0 { anchorToDelete = nil } }
+            ),
+            presenting: anchorToDelete
+        ) { anchor in
+            Button("Cancel", role: .cancel) { anchorToDelete = nil }
+            Button("Delete", role: .destructive) {
+                Task { await deleteAnchor(anchor) }
+            }
+        } message: { anchor in
+            Text("\"\(anchor.assetId)\" and all its tags and training data will be permanently deleted. This cannot be undone.")
+        }
+
+        // ── Delete error toast ────────────────────────────────────────────────
+        .overlay(alignment: .top) {
+            if let err = deleteError {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.white)
+                    Text(err).font(.caption.bold()).foregroundStyle(.white).lineLimit(2)
+                    Spacer()
+                    Button { deleteError = nil } label: {
+                        Image(systemName: "xmark").font(.caption).foregroundStyle(.white.opacity(0.7))
+                    }
+                }
+                .padding(.horizontal, 14).padding(.vertical, 10)
+                .background(Color.red.opacity(0.9), in: RoundedRectangle(cornerRadius: 10))
+                .padding(.horizontal, 16).padding(.top, 8)
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .animation(.easeInOut(duration: 0.3), value: deleteError != nil)
+            }
+        }
+
+        // Create anchor sheet (Author only — navigates to hub on creation)
+        .sheet(isPresented: $showCreateSheet) {
+            CreateAnchorSheet { newAnchor in
+                anchors.insert(newAnchor, at: 0)
+                tagCounts[newAnchor.id] = 0
+                showCreateSheet = false
+                // Navigate directly to the hub for the new anchor
+                hubAnchor = newAnchor
+            }
+            .environmentObject(settings)
+            .environmentObject(appState)
+        }
+
+        // Help sheet
+        .sheet(isPresented: $showHelpSheet) {
+            HelpSheet(steps: HelpContent.anchorDirectory)
+        }
+    }
+
+    // ── Anchor list ───────────────────────────────────────────────────────────
+
+    private var anchorList: some View {
+        List {
+            // Web portal link card
+            portalCard
+                .listRowBackground(Color.clear)
+                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
+
+            Section {
+                ForEach(filtered) { anchor in
+                    AnchorDirectoryRow(
+                        anchor:    anchor,
+                        tagCount:  tagCounts[anchor.id] ?? 0,
+                        isLoading: false
+                    ) {
+                        selectAnchor(anchor)
+                    }
+                    // Author-only swipe-to-delete
+                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        if mode == .author {
+                            Button(role: .destructive) {
+                                anchorToDelete = anchor
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
+                    }
+                }
+            } header: {
+                HStack {
+                    Text("Anchors")
+                    Spacer()
+                    Text("\(filtered.count)")
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+        }
+        .listStyle(.insetGrouped)
+        .animation(.default, value: anchors.count)
+    }
+
+    // ── Portal card ───────────────────────────────────────────────────────────
+
+    private var portalCard: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                Circle().fill(Color.blue.opacity(0.14)).frame(width: 40, height: 40)
+                Image(systemName: "globe")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(.blue)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Anchor Directory Portal")
+                    .font(.subheadline.bold())
+                if let url = portalURL {
+                    Text(url).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                }
+            }
+            Spacer()
+            Image(systemName: "arrow.up.right").foregroundStyle(.secondary).font(.caption)
+        }
+        .padding(.horizontal, 16).padding(.vertical, 12)
+        .background(Color(.systemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.blue.opacity(0.25), lineWidth: 1))
+        .padding(.horizontal, 16).padding(.vertical, 8)
+        .contentShape(Rectangle())
+        .onTapGesture { openPortal() }
+    }
+
+    private var portalURL: String? {
+        guard !settings.sibBaseURL.isEmpty else { return nil }
+        return settings.normalizedBaseURL + "/portal"
+    }
+
+    private func openPortal() {
+        guard let urlStr = portalURL, let url = URL(string: urlStr) else { return }
+        UIApplication.shared.open(url)
+    }
+
+    // ── Empty state ───────────────────────────────────────────────────────────
+
+    private var emptyView: some View {
+        ContentUnavailableView {
+            Label("No Anchors Yet", systemImage: "qrcode")
+        } description: {
+            Text("Create your first anchor using the + button, or visit the portal on your Render server.")
+        } actions: {
+            Button("Create Anchor") { showCreateSheet = true }
+                .buttonStyle(.borderedProminent)
+        }
+    }
+
+    // ── Loading / Error ───────────────────────────────────────────────────────
+
+    private var loadingView: some View {
+        VStack(spacing: 16) {
+            ProgressView()
+            Text("Loading anchors…").font(.subheadline).foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func errorView(_ message: String) -> some View {
+        ContentUnavailableView {
+            Label("Connection Failed", systemImage: "wifi.exclamationmark")
+        } description: {
+            Text(message)
+        } actions: {
+            Button("Retry") { Task { await loadAnchors() } }
+                .buttonStyle(.borderedProminent)
+        }
+    }
+
+    // ── Network ───────────────────────────────────────────────────────────────
+
+    private func loadAnchors() async {
+        isLoading = true
+        loadError = nil
+        let client = SIBClient(settings: settings)
+        do {
+            let fetched = try await client.fetchAnchors()
+            // Sort newest first
+            anchors = fetched.sorted { $0.createdAt > $1.createdAt }
+            // Fetch tag counts in parallel
+            await withTaskGroup(of: (String, Int).self) { group in
+                for anchor in anchors {
+                    group.addTask {
+                        let count = (try? await client.fetchTags(anchorId: anchor.id).count) ?? 0
+                        return (anchor.id, count)
+                    }
+                }
+                for await (id, count) in group {
+                    tagCounts[id] = count
+                }
+            }
+        } catch {
+            loadError = error.localizedDescription
+        }
+        isLoading = false
+    }
+
+    private func deleteAnchor(_ anchor: Anchor) async {
+        isDeletingAnchor = true
+        let client = SIBClient(settings: settings)
+        do {
+            try await client.deleteAnchor(id: anchor.id)
+            anchors.removeAll { $0.id == anchor.id }
+            tagCounts.removeValue(forKey: anchor.id)
+            // Also clear Keychain entry for this anchor
+            AnchorEncryption.deleteKey(anchorId: anchor.id)
+        } catch {
+            deleteError = "Delete failed: \(error.localizedDescription)"
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5) { deleteError = nil }
+        }
+        isDeletingAnchor = false
+        anchorToDelete = nil
+    }
+
+    private func selectAnchor(_ anchor: Anchor) {
+        // Phase 3: navigate to AnchorHubView — hub owns tag loading and QR scan gate.
+        // Pre-cache the encryption key if available (Keychain → SIB payload).
+        if let kbKey = AnchorEncryption.loadExistingKey(anchorId: anchor.id) {
+            appState.anchorEncryptionKey = kbKey
+        } else if let keyB64 = anchor.encryptionKey,
+                  let symKey = AnchorEncryption.key(fromBase64: keyB64) {
+            appState.anchorEncryptionKey = symKey
+        }
+        hubAnchor = anchor
+    }
+}
+
+// ── Anchor directory row ──────────────────────────────────────────────────────
+
+private struct AnchorDirectoryRow: View {
+    let anchor:    Anchor
+    let tagCount:  Int
+    let isLoading: Bool
+    let onSelect:  () -> Void
+
+    private var shortId: String {
+        anchor.id.count > 20
+            ? String(anchor.id.prefix(10)) + "…" + String(anchor.id.suffix(6))
+            : anchor.id
+    }
+
+    private var relativeDate: String {
+        guard let date = ISO8601DateFormatter().date(from: anchor.createdAt) else { return "" }
+        let f = RelativeDateTimeFormatter()
+        f.unitsStyle = .abbreviated
+        return f.localizedString(for: date, relativeTo: Date())
+    }
+
+    var body: some View {
+        Button(action: onSelect) {
+            HStack(spacing: 14) {
+                // Tag count badge
+                ZStack {
+                    Circle()
+                        .fill(tagCount > 0 ? Color.blue.opacity(0.12) : Color.orange.opacity(0.12))
+                        .frame(width: 40, height: 40)
+                    if isLoading {
+                        ProgressView().scaleEffect(0.7)
+                    } else {
+                        Text("\(tagCount)")
+                            .font(.system(size: 15, weight: .bold))
+                            .foregroundStyle(tagCount > 0 ? .blue : .orange)
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(anchor.assetId)
+                        .font(.subheadline.bold())
+                        .lineLimit(1)
+                    Text(shortId)
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+
+                Spacer()
+
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text(tagCount == 1 ? "1 tag" : "\(tagCount) tags")
+                        .font(.caption.bold())
+                        .foregroundStyle(tagCount > 0 ? .blue : .orange)
+                        .padding(.horizontal, 8).padding(.vertical, 3)
+                        .background(tagCount > 0 ? Color.blue.opacity(0.10) : Color.orange.opacity(0.10))
+                        .clipShape(Capsule())
+
+                    Text(relativeDate)
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+            .padding(.vertical, 2)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// ── Create anchor sheet ───────────────────────────────────────────────────────
+// Phase 3: 2-step wizard.
+//   Step 1: Asset name + optional anchor ID.
+//   Step 2: Print / share the permanent QR (encryption key embedded from day one).
+//
+// The encryption key is generated client-side before the SIB request and stored
+// both in iOS Keychain and in SIB.  The physical QR never changes after printing.
+
+struct CreateAnchorSheet: View {
+
+    let onCreated: (Anchor) -> Void
+
+    @EnvironmentObject private var settings: AppSettings
+    @EnvironmentObject private var appState:  AppState
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var assetId    = ""
+    @State private var anchorId   = ""
+    @State private var isCreating = false
+    @State private var createError: String? = nil
+
+    // Step 2: shown after anchor is created
+    @State private var createdAnchor: Anchor? = nil
+    @State private var createdKeyB64: String? = nil
+
+    var body: some View {
+        NavigationStack {
+            if let anchor = createdAnchor, let keyB64 = createdKeyB64 {
+                step2View(anchor: anchor, keyB64: keyB64)
+            } else {
+                step1View
+            }
+        }
+    }
+
+    // ── Step 1: Name ──────────────────────────────────────────────────────────
+
+    private var step1View: some View {
+        Form {
+            Section {
+                stepProgress(currentStep: 1)
+            }
+            .listRowBackground(Color.clear)
+
+            Section {
+                TextField("e.g. Pump-Station-A", text: $assetId)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+            } header: {
+                Text("Asset / Location Name (required)")
+            } footer: {
+                Text("Identifies the physical asset this anchor is attached to.")
+            }
+
+            Section {
+                TextField("Leave blank to auto-generate", text: $anchorId)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .font(.body.monospaced())
+            } header: {
+                Text("Anchor ID (optional)")
+            } footer: {
+                Text("Custom ID to match a physical QR you've already printed.")
+            }
+
+            Section {
+                HStack(spacing: 10) {
+                    Image(systemName: "lock.fill").foregroundStyle(.blue).font(.subheadline)
+                    Text("An AES-256 encryption key is generated for this anchor and embedded in the QR in the next step.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+
+            if let err = createError {
+                Section {
+                    Label(err, systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption).foregroundStyle(.red)
+                }
+            }
+        }
+        .navigationTitle("New Anchor")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Cancel") { dismiss() }
+            }
+            ToolbarItem(placement: .confirmationAction) {
+                if isCreating { ProgressView() }
+                else {
+                    Button("Continue") { Task { await createAnchor() } }
+                        .disabled(assetId.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+            }
+        }
+    }
+
+    // ── Step 2: Print & place QR ──────────────────────────────────────────────
+
+    private func step2View(anchor: Anchor, keyB64: String) -> some View {
+        VStack(spacing: 0) {
+            // Progress + instructions header
+            VStack(spacing: 12) {
+                stepProgress(currentStep: 2)
+                    .padding(.horizontal, 32).padding(.top, 8)
+
+                VStack(alignment: .leading, spacing: 8) {
+                    instructionRow(n: 1, text: "Print or save the QR below")
+                    instructionRow(n: 2, text: "Mount it at the physical inspection point")
+                    instructionRow(n: 3, text: "Scan it when you tap \"Enter AR Session\" from the Anchor Hub")
+                }
+                .padding(.horizontal, 20)
+            }
+            .padding(.bottom, 8)
+
+            // Reuse QRGeneratorView for the actual QR image + size picker + share
+            QRGeneratorView(anchor: anchor, encryptionKey: keyB64, showDoneButton: false)
+        }
+        .navigationTitle("Print & Place QR")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Go to Anchor Hub") {
+                    dismiss()
+                    onCreated(anchor)
+                }
+            }
+        }
+    }
+
+    // ── Create anchor (network) ───────────────────────────────────────────────
+
+    private func createAnchor() async {
+        isCreating  = true
+        createError = nil
+        let client  = SIBClient(settings: settings)
+
+        // Generate the anchor ID client-side so the encryption key can be derived
+        // before the SIB call.  Physical QR embeds this key from day one.
+        let resolvedId = anchorId.trimmingCharacters(in: .whitespaces).isEmpty
+            ? UUID().uuidString.lowercased()
+            : anchorId.trimmingCharacters(in: .whitespaces)
+
+        let encKey = AnchorEncryption.getOrCreateKey(for: resolvedId)
+        let keyB64 = AnchorEncryption.base64(for: encKey)
+        appState.anchorEncryptionKey = encKey
+
+        do {
+            let req = CreateAnchorRequest(
+                id:               resolvedId,
+                assetId:          assetId.trimmingCharacters(in: .whitespaces),
+                coordinateSystem: .assetFrame,
+                position:         .zero,
+                rotation:         .identity,
+                metadata:         [:],
+                encryptionKey:    keyB64,
+                qrSizeCm:         10.0   // canonical size — stored in SIB, never changes
+            )
+            let anchor = try await client.createAnchor(req)
+            isCreating    = false
+            createdAnchor = anchor
+            createdKeyB64 = keyB64
+        } catch {
+            createError = error.localizedDescription
+            isCreating  = false
+        }
+    }
+
+    // ── Step progress UI ──────────────────────────────────────────────────────
+
+    private func stepProgress(currentStep: Int) -> some View {
+        HStack(spacing: 0) {
+            stepDot(n: 1, done: currentStep > 1, active: currentStep == 1)
+            stepLine(filled: currentStep > 1)
+            stepDot(n: 2, done: currentStep > 2, active: currentStep == 2)
+        }
+    }
+
+    private func stepDot(n: Int, done: Bool, active: Bool) -> some View {
+        ZStack {
+            Circle()
+                .fill(done ? Color.green : (active ? Color.blue : Color(.systemGray5)))
+                .frame(width: 26, height: 26)
+            if done {
+                Image(systemName: "checkmark").font(.system(size: 12, weight: .bold)).foregroundStyle(.white)
+            } else {
+                Text("\(n)").font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(active ? .white : Color(.systemGray))
+            }
+        }
+    }
+
+    private func stepLine(filled: Bool) -> some View {
+        Rectangle()
+            .fill(filled ? Color.green : Color(.systemGray4))
+            .frame(maxWidth: .infinity).frame(height: 2)
+    }
+
+    private func instructionRow(n: Int, text: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            ZStack {
+                Circle().fill(Color.blue).frame(width: 20, height: 20)
+                Text("\(n)").font(.system(size: 10, weight: .bold)).foregroundStyle(.white)
+            }
+            .padding(.top, 2)
+            Text(text).font(.subheadline).foregroundStyle(.primary)
+            Spacer()
+        }
+    }
+}
+
+// ── Help content ──────────────────────────────────────────────────────────────
+
+extension HelpContent {
+    static let anchorDirectory: [HelpStep] = [
+        HelpStep(icon: "list.bullet", title: "Browse Anchors",
+                 detail: "All registered anchors on your SIB server appear here. Tap any anchor to open its hub."),
+        HelpStep(icon: "plus.circle", title: "Create a New Anchor",
+                 detail: "Authors tap + to create an anchor. Give it an asset ID matching the physical equipment. A unique QR code with an embedded encryption key is generated immediately."),
+        HelpStep(icon: "qrcode.viewfinder", title: "QR Scan at Session Start",
+                 detail: "Tapping 'Enter AR Session' from the Anchor Hub always requires a QR scan first. This locks the 3D origin for the session — both Author and Operator modes use the same gate."),
+        HelpStep(icon: "globe", title: "Web Portal",
+                 detail: "Tap 'Anchor Directory Portal' to open the browser-based view on your Render server."),
+    ]
+}
