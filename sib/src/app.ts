@@ -16,7 +16,11 @@ export function createApp(): express.Express {
 
   // --- Middleware ---
   app.use(cors());
-  app.use(express.json({ limit: '10mb' })); // allow base64 image payloads
+  // 30mb — a full 19-image training sweep (800px JPEGs, q0.65, base64 +
+  // AES-GCM re-base64) plus per-tag depth-map metadata PATCHes can run
+  // several MB; 10mb was tripping "payload too large" even at the
+  // 14-image minimum on busier/noisier camera frames.
+  app.use(express.json({ limit: '30mb' })); // allow base64 image payloads
 
   // --- Health check (no auth — used by Render for container health probes) ---
   app.get('/health', (_req, res) => {
