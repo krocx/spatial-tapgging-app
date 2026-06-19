@@ -64,4 +64,10 @@ EXPOSE 3001
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD wget -qO- http://localhost:3001/health || exit 1
 
-CMD ["node", "sib/dist/index.js"]
+# --max-old-space-size caps the V8 JS heap at 384MB, leaving ~128MB of headroom
+# on the 512MB Render Starter instance for native/off-heap memory (Buffers from
+# world-map uploads, Jimp image decoding, etc., which V8's own heap limit does
+# not account for). Without this, V8 sizes its default heap off total system
+# memory, which can leave too little headroom for that off-heap usage and lets
+# RSS creep right up to the container's hard 512MB OOM kill with no warning.
+CMD ["node", "--max-old-space-size=384", "sib/dist/index.js"]

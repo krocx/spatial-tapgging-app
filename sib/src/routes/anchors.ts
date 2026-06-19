@@ -236,39 +236,93 @@ router.get('/:id/readiness', (req: Request, res: Response) => {
 //
 // Body: raw application/octet-stream binary (ARWorldMap NSKeyedArchiver data).
 // Typical size: 2–10 MB.
-router.post(
-  '/:id/worldmap',
-  express.raw({ limit: '50mb', type: 'application/octet-stream' }),
-  (req: Request, res: Response) => {
-    const anchor = anchorStore.findById(req.params.id);
-    if (!anchor) {
-      return res.status(404).json({
-        error: `Anchor ${req.params.id} not found`,
-        timestamp: new Date().toISOString(),
-      });
-    }
+//
+// NOTE: this route deliberately does NOT use express.raw()/bodyParser. Those
+// buffer the *entire* upload into one in-memory Buffer before the handler even
+// runs, so a handful of concurrent 5–10MB world-map uploads (which we observed
+// happening within seconds of each other on the same anchor) can transiently
+// hold tens of MB on top of everything else the process already has resident —
+// a direct contributor to the Render Starter 512MB OOM. Streaming the request
+// straight to a file keeps peak memory to a small fixed buffer regardless of
+// upload size.
+const MAX_WORLDMAP_BYTES = 50 * 1024 * 1024; // 50mb cap, matches previous express.raw limit
 
-    const mapData = req.body as Buffer;
-    if (!Buffer.isBuffer(mapData) || mapData.length === 0) {
+router.post('/:id/worldmap', (req: Request, res: Response) => {
+  const anchor = anchorStore.findById(req.params.id);
+  if (!anchor) {
+    return res.status(404).json({
+      error: `Anchor ${req.params.id} not found`,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  const finalPath = path.join(WORLDMAPS_DIR, `${anchor.id}.worldmap`);
+  const tmpPath   = `${finalPath}.tmp-${Date.now()}`;
+  const writeStream = fs.createWriteStream(tmpPath);
+
+  let bytesReceived = 0;
+  let aborted = false;
+
+  const cleanupTmp = () => fs.unlink(tmpPath, () => { /* best-effort */ });
+
+  req.on('data', (chunk: Buffer) => {
+    if (aborted) return;
+    bytesReceived += chunk.length;
+    if (bytesReceived > MAX_WORLDMAP_BYTES) {
+      aborted = true;
+      writeStream.destroy();
+      cleanupTmp();
+      if (!res.headersSent) {
+        res.status(413).json({
+          error: `World map exceeds ${MAX_WORLDMAP_BYTES} byte limit`,
+          timestamp: new Date().toISOString(),
+        });
+      }
+      req.destroy();
+    }
+  });
+
+  req.on('error', (err) => {
+    aborted = true;
+    writeStream.destroy();
+    cleanupTmp();
+    if (!res.headersSent) {
+      res.status(400).json({ error: `Upload stream error: ${err}`, timestamp: new Date().toISOString() });
+    }
+  });
+
+  writeStream.on('error', (err) => {
+    aborted = true;
+    cleanupTmp();
+    if (!res.headersSent) {
+      res.status(500).json({ error: `Failed to store world map: ${err}`, timestamp: new Date().toISOString() });
+    }
+  });
+
+  writeStream.on('finish', () => {
+    if (aborted) return;
+    if (bytesReceived === 0) {
+      cleanupTmp();
       return res.status(400).json({
         error: 'Request body must be a non-empty application/octet-stream binary',
         timestamp: new Date().toISOString(),
       });
     }
-
-    const filePath = path.join(WORLDMAPS_DIR, `${anchor.id}.worldmap`);
-    try {
-      fs.writeFileSync(filePath, mapData);
-      console.log(`[SIB] World map stored for anchor ${anchor.id} (${mapData.length} bytes)`);
+    fs.rename(tmpPath, finalPath, (err) => {
+      if (err) {
+        cleanupTmp();
+        return res.status(500).json({ error: `Failed to store world map: ${err}`, timestamp: new Date().toISOString() });
+      }
+      console.log(`[SIB] World map stored for anchor ${anchor.id} (${bytesReceived} bytes, streamed)`);
       return res.status(201).json({
-        data: { anchorId: anchor.id, bytes: mapData.length },
+        data: { anchorId: anchor.id, bytes: bytesReceived },
         timestamp: new Date().toISOString(),
       });
-    } catch (err) {
-      return res.status(500).json({ error: `Failed to store world map: ${err}`, timestamp: new Date().toISOString() });
-    }
-  }
-);
+    });
+  });
+
+  req.pipe(writeStream);
+});
 
 // ── GET /anchors/:id/worldmap — retrieve a stored ARWorldMap ──────────────────
 // Returns 404 if no world map has been stored yet for this anchor (first session).

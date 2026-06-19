@@ -59,8 +59,33 @@ interface DecodedFrame {
 // Live operator frames are NEVER cached: all camera JPEGs share the same JFIF
 // header prefix, causing cache-key collisions that would return stale pixels
 // and produce SSIM = 1.0 (100 % confidence) on every comparison.
+//
+// Bounded LRU — each decoded frame holds ~1.5MB of Float32Array data
+// (gray + center + tight crops). Left unbounded, this cache grows forever as
+// new tags/anchors are trained and never releases memory — a slow leak that
+// was a contributing cause of the Render OOM ("ran out of memory, used over
+// 512MB"). Cap it and evict the least-recently-used entry on overflow.
+const REF_CACHE_MAX = 150; // ~150 × 1.5MB ≈ 225MB worst case, well under the 512MB instance limit
 
 const refCache = new Map<string, DecodedFrame>();
+
+function refCacheGet(key: string): DecodedFrame | undefined {
+  const hit = refCache.get(key);
+  if (hit) {
+    // Refresh recency: re-insert so it moves to the end (Map preserves insertion order)
+    refCache.delete(key);
+    refCache.set(key, hit);
+  }
+  return hit;
+}
+
+function refCacheSet(key: string, frame: DecodedFrame): void {
+  if (refCache.size >= REF_CACHE_MAX) {
+    const oldestKey = refCache.keys().next().value;
+    if (oldestKey !== undefined) refCache.delete(oldestKey);
+  }
+  refCache.set(key, frame);
+}
 
 function refCacheKey(base64: string): string {
   const raw = base64.includes(',') ? base64.split(',')[1] : base64;
@@ -114,10 +139,10 @@ async function decodeFrame(base64: string): Promise<DecodedFrame> {
 
 async function decodeReference(base64: string): Promise<DecodedFrame> {
   const key    = refCacheKey(base64);
-  const cached = refCache.get(key);
+  const cached = refCacheGet(key);
   if (cached) return cached;
   const frame = await decodeFrame(base64);
-  refCache.set(key, frame);
+  refCacheSet(key, frame);
   return frame;
 }
 
