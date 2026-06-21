@@ -215,14 +215,25 @@ struct UpdateTagRequest: Codable {
     let order:            Int?
     /// Optional inspection-region crop. Omit (nil) to leave any existing ROI
     /// on the server untouched; set a value to create/replace it.
-    /// Defaulted to nil so every pre-existing call site that never mentions
-    /// `roi` keeps compiling unchanged (Swift's synthesized memberwise init
-    /// only makes a parameter optional-to-omit when the property itself has
-    /// a default value — Optional types are NOT auto-defaulted to nil).
-    let roi:              RegionOfInterest? = nil
+    let roi:              RegionOfInterest?
     /// Deep-merged into tag.metadata on the server.
     /// Used to store feature prints, OCR text, and other per-tag payload.
     let metadata:         [String: AnyCodable]?
+
+    /// Explicit initializer (rather than relying on the synthesized
+    /// memberwise init) so `roi` has a real default of `nil` for every
+    /// pre-existing call site that never mentions it, while still allowing
+    /// new call sites to pass `roi:` explicitly. This does not affect
+    /// Codable's separately-synthesized init(from:)/encode(to:).
+    init(label: String?, expectedOutcome: String?, checkDescription: String?,
+         order: Int?, roi: RegionOfInterest? = nil, metadata: [String: AnyCodable]?) {
+        self.label = label
+        self.expectedOutcome = expectedOutcome
+        self.checkDescription = checkDescription
+        self.order = order
+        self.roi = roi
+        self.metadata = metadata
+    }
 }
 
 // ── QR payload ────────────────────────────────────────────────────────────────
