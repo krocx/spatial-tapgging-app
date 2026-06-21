@@ -43,6 +43,20 @@ export class JsonFileStore<T extends { id: string }> extends InMemoryStore<T> {
     return removed;
   }
 
+  // Remove every record for which `shouldRemove` returns true, in a single
+  // flush. Used for bounded-retention pruning (e.g. expiring old sessions)
+  // so the in-memory Map — and the JSON file it's mirrored to — don't grow
+  // forever. Returns the number of records removed.
+  pruneWhere(shouldRemove: (record: T) => boolean): number {
+    const toRemove = this.findAll().filter(shouldRemove);
+    if (toRemove.length === 0) return 0;
+    for (const record of toRemove) {
+      super.delete(record.id);
+    }
+    this.flush();
+    return toRemove.length;
+  }
+
   // ── Private helpers ───────────────────────────────────────────────────────
 
   private hydrate(): void {

@@ -5,6 +5,41 @@ import { JsonFileStore } from '../stores/json-file-store.js';
 
 export const sessionStore = new JsonFileStore<Session>('sessions');
 
+// ── Bounded retention ────────────────────────────────────────────────────────
+// Sessions are never deleted by the normal API flow (close only sets endTime),
+// so without pruning sessions.json — and the in-memory Map behind it — grows
+// forever (407 records and counting as of this writing, each holding a
+// growing `observations[]` array). Prune closed sessions older than the
+// retention window, and also prune sessions that were opened but never
+// closed (abandoned/crashed clients) past a longer grace period so a stuck
+// client can't pin a session in memory indefinitely either.
+const SESSION_RETENTION_DAYS = parseFloat(process.env.SESSION_RETENTION_DAYS ?? '7');
+const STALE_OPEN_SESSION_DAYS = parseFloat(process.env.STALE_OPEN_SESSION_DAYS ?? '30');
+const PRUNE_INTERVAL_MS = 60 * 60 * 1000; // hourly
+
+export function pruneOldSessions(): number {
+  const now = Date.now();
+  const closedCutoffMs = SESSION_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+  const openCutoffMs = STALE_OPEN_SESSION_DAYS * 24 * 60 * 60 * 1000;
+
+  const removed = sessionStore.pruneWhere((session) => {
+    const referenceTime = session.endTime ?? session.updatedAt ?? session.createdAt;
+    const ageMs = now - new Date(referenceTime).getTime();
+    if (Number.isNaN(ageMs)) return false;
+    return session.endTime ? ageMs > closedCutoffMs : ageMs > openCutoffMs;
+  });
+
+  if (removed > 0) {
+    console.log(`[SIB] Pruned ${removed} old session(s) (retention=${SESSION_RETENTION_DAYS}d closed / ${STALE_OPEN_SESSION_DAYS}d stale-open)`);
+  }
+  return removed;
+}
+
+// Prune once at startup (handles sessions that piled up while pruning didn't
+// exist yet) and then on an hourly timer for the life of the process.
+pruneOldSessions();
+setInterval(pruneOldSessions, PRUNE_INTERVAL_MS).unref();
+
 const router = Router();
 
 // POST /sessions — open a new session

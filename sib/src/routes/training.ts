@@ -88,6 +88,10 @@ router.post('/train', (req: Request, res: Response) => {
     updatedAt: now,
   };
 
+  // Re-training a tag fully replaces its honeycomb image set — drop the old
+  // image blobs from disk first so retraining a tag repeatedly doesn't leak
+  // orphaned image files under .sib-data/pass-state-images/.
+  if (existing) passStateStore.delete(existing.id);
   passStateStore.save(passState);
 
   const response: ApiResponse<PassState> = {

@@ -16,6 +16,7 @@
 import SwiftUI
 import ARKit
 import SceneKit
+import CoreImage
 import Vision
 
 struct OperatorModeView: View {
@@ -70,6 +71,27 @@ struct OperatorModeView: View {
     /// True while a single-tag auto-inspection network call is in flight.
     @State private var isAutoInspecting:    Bool                           = false
     private let autoCooldownSecs: Double = 30
+
+    // ── Continuous real-time validation loop ──────────────────────────────────
+    // Replaces the old single-shot "capture once on cone-zone entry, then wait
+    // out a 30 s cooldown" behaviour. Per the desired UX flow, once the operator
+    // is inside a tag's cone FOV the app must keep re-checking continuously so
+    // that a state change (e.g. operator fixes a loose cable) is detected and
+    // shown as PASS immediately — without requiring the operator to back out of
+    // the zone, re-enter it, or press a button again.
+    /// The tag currently being continuously validated (nil when not in any cone zone).
+    @State private var liveLoopTagId: String? = nil
+    /// The actual repeating task; cancelled whenever the operator leaves the zone
+    /// or the loop is restarted for a different tag.
+    @State private var liveLoopTask: Task<Void, Never>? = nil
+    /// Recent consecutive statuses per tag, used to debounce/hysteresis the
+    /// displayed Pass/Fail so a single noisy frame near the threshold doesn't
+    /// flicker the AR marker back and forth.
+    @State private var statusStreak: [String: (status: ValidationStatus, count: Int)] = [:]
+    /// How often the loop re-captures + re-validates while inside the cone zone.
+    private let liveLoopIntervalSecs: Double = 0.7
+    /// Consecutive identical results required before flipping the displayed status.
+    private let hysteresisFrames = 2
 
     // ── UI state ──────────────────────────────────────────────────────────────
 
@@ -276,6 +298,7 @@ struct OperatorModeView: View {
             }
         }
         .onDisappear {
+            stopLiveLoop()
             coneGuides.values.forEach { $0.cleanup() }
             coneGuides.removeAll()
             anchorDebugSphere?.removeFromParentNode()
@@ -965,13 +988,51 @@ struct OperatorModeView: View {
         return UIGraphicsGetImageFromCurrentImageContext() ?? UIImage()
     }
 
+    // ── Raw camera capture (zero AR artifacts) ───────────────────────────────
+    //
+    // `sceneView.snapshot()` renders the *composited* AR scene — camera feed
+    // PLUS every visible SceneKit overlay (cone guide mesh, glow rings, tag
+    // marker spheres). Training (ConeCaptureView) deliberately avoids this:
+    // it captures `ARFrame.capturedImage` directly and hides the cone guide
+    // first, so the stored reference images are "zero AR artifacts" raw
+    // camera frames. Validation was comparing those clean references against
+    // live snapshots that still had the cone/markers baked into the pixels —
+    // which can tank SSIM/feature-print scores regardless of how well the
+    // Operator is actually positioned. Mirror the training capture path here
+    // so live and reference images are visually comparable.
+    private func captureRawCamera(from frame: ARFrame) -> UIImage? {
+        let ci       = CIImage(cvPixelBuffer: frame.capturedImage)
+        let oriented = ci.oriented(.right)  // sensor is always landscape-right
+        let ctx      = CIContext(options: [.useSoftwareRenderer: false])
+        guard let cg = ctx.createCGImage(oriented, from: oriented.extent) else { return nil }
+        let full = UIImage(cgImage: cg)
+        return downsample(full, maxDimension: 800)
+    }
+
+    /// Scales `image` so neither dimension exceeds `maxDimension`.
+    /// Returns the original image unchanged if it already fits.
+    private func downsample(_ image: UIImage, maxDimension: CGFloat) -> UIImage {
+        let w = image.size.width, h = image.size.height
+        let longestSide = max(w, h)
+        guard longestSide > maxDimension else { return image }
+        let scale   = maxDimension / longestSide
+        let newSize = CGSize(width:  (w * scale).rounded(),
+                             height: (h * scale).rounded())
+        let renderer = UIGraphicsImageRenderer(size: newSize)
+        return renderer.image { _ in
+            image.draw(in: CGRect(origin: .zero, size: newSize))
+        }
+    }
+
     // ── Validation ────────────────────────────────────────────────────────────
 
     private func runValidation() async {
         phase         = .validating
         validateError = nil
 
-        let snapshot = arManager.sceneView.snapshot()
+        guard let captureFrame = arManager.sceneView.session.currentFrame,
+              let snapshot     = captureRawCamera(from: captureFrame)
+        else { phase = .idle; return }
         guard let jpeg   = snapshot.jpegData(compressionQuality: 0.80),
               let anchor = appState.activeAnchor
         else { phase = .idle; return }
@@ -1021,8 +1082,11 @@ struct OperatorModeView: View {
                 assetId:   anchor.assetId)
         }
 
-        // Capture current ARKit frame for depth + cone alignment (before async SIB call)
-        let currentFrame = arManager.sceneView.session.currentFrame
+        // Reuse the exact frame the snapshot was captured from (rather than
+        // re-querying session.currentFrame here) so the alignment angle
+        // reflects precisely where the operator was standing when the image
+        // was taken, not some slightly-later frame.
+        let currentFrame = captureFrame
 
         do {
             var result = try await client.validateAll(req)
@@ -1031,11 +1095,9 @@ struct OperatorModeView: View {
             // Applies alignment factor and depth similarity score.
             // Must run with the frame captured BEFORE the async SIB round-trip
             // so alignment angle reflects where the operator was standing.
-            if let frame = currentFrame {
-                result = applyConeAndDepthValidation(to: result,
-                                                     snapshot: snapshot,
-                                                     frame: frame)
-            }
+            result = applyConeAndDepthValidation(to: result,
+                                                 snapshot: snapshot,
+                                                 frame: currentFrame)
 
             // ── Feature print validation (primary metric) ─────────────────────
             // For all visual tags — overrides SSIM if FP score is higher.
@@ -1218,16 +1280,12 @@ struct OperatorModeView: View {
         // Extract full-frame live feature print (used by most tag types)
         let livePrint = await TagFeaturePrint.extract(from: snapshot)
 
-        // Pre-compute center-crop print for PartCheck tags — more sensitive to
-        // part presence/absence than a full-frame comparison because the part
-        // occupies most of the central region when the operator is in the cone zone.
-        // We use a 50 % × 50 % center crop: background edges don't contribute.
-        let centerCropSnapshot   = centerCrop(of: snapshot, fraction: 0.50)
-        let liveCenterCropPrint  = await TagFeaturePrint.extract(from: centerCropSnapshot)
+        // Live camera frame — used below to normalise the PartCheck crop fraction
+        // for the Operator's actual standing distance vs the distance trained at.
+        let liveFrame = arManager.sceneView.session.currentFrame
 
-        if livePrint == nil && liveCenterCropPrint == nil {
-            print("[FeaturePrint] Could not extract any live feature print — skipping")
-            return result
+        if livePrint == nil {
+            print("[FeaturePrint] Could not extract live full-frame feature print")
         }
 
         var patched = result
@@ -1250,8 +1308,29 @@ struct OperatorModeView: View {
             if tag.type == .partCheck,
                let ccAny = tag.metadata["part_check_center_fps"],
                let ccArray = ccAny.value as? [Any],
-               !ccArray.isEmpty,
-               let cropPrint = liveCenterCropPrint {
+               !ccArray.isEmpty {
+
+                // ── Distance-normalised crop fraction ───────────────────────
+                // Training always crops a fixed 50 % × 50 % center region, but
+                // that 50 % was only "correct" at the distance the Operator was
+                // standing at during training (cone_dist_m). Apparent object
+                // size scales ~ 1/distance, so if the live Operator is farther
+                // away than training, the part now occupies a SMALLER fraction
+                // of the frame — comparing against a fixed 50 % crop pulls in
+                // extra background and tanks the score. Scale the crop fraction
+                // by (trainingDistance / liveDistance) so the crop always
+                // isolates roughly the same real-world region regardless of
+                // exactly where the Operator is standing.
+                let trainingDist = metaFloat(tag.metadata, key: "cone_dist_m") ?? 0.30
+                let liveDist     = liveDistance(toTag: tag.id, frame: liveFrame) ?? trainingDist
+                let rawFraction  = 0.50 * (trainingDist / max(liveDist, 0.05))
+                let adjustedFraction = CGFloat(min(0.85, max(0.15, rawFraction)))
+
+                let cropSnapshot = centerCrop(of: snapshot, fraction: adjustedFraction)
+                guard let cropPrint = await TagFeaturePrint.extract(from: cropSnapshot) else {
+                    print("[FeaturePrint][PartCheck] tag=\(tr.tagLabel) could not extract crop print — skipping")
+                    continue
+                }
 
                 let ccRefs: [TagFeaturePrint] = ccArray.compactMap { item in
                     guard let s = item as? String else { return nil }
@@ -1266,7 +1345,10 @@ struct OperatorModeView: View {
                     print("[FeaturePrint][PartCheck] tag=\(tr.tagLabel) " +
                           "center_crop=\(String(format:"%.3f", ccScore)) " +
                           "ssim=\(String(format:"%.3f", tr.confidence)) " +
-                          "cc_max_dist=\(ccMaxDist.map { String(format:"%.3f", $0) } ?? "global")")
+                          "cc_max_dist=\(ccMaxDist.map { String(format:"%.3f", $0) } ?? "global") " +
+                          "train_dist=\(String(format:"%.2f", trainingDist))m " +
+                          "live_dist=\(String(format:"%.2f", liveDist))m " +
+                          "crop_frac=\(String(format:"%.2f", Double(adjustedFraction)))")
 
                     // For PartCheck the center-crop score IS the authoritative metric.
                     // It overrides SSIM in both directions: a high score means
@@ -1320,6 +1402,21 @@ struct OperatorModeView: View {
                        : pending == patched.totalCount ? .pending
                        : .partial
         return patched
+    }
+
+    /// Live straight-line distance (meters) from the current camera position to
+    /// a tag's AR marker, used to normalise the PartCheck center-crop fraction.
+    /// Mirrors the cam/markerNode distance computation already used in
+    /// `tickProximity()`. `coneGuides[tagId].currentDistanceM` is NOT used here
+    /// because Operator-mode cone guides are constructed locked (`isLocked = true`)
+    /// and never receive `updateForCamera` calls, so that property stays frozen
+    /// at its default 0.30 — it would silently defeat this normalisation.
+    private func liveDistance(toTag tagId: String, frame: ARFrame?) -> Float? {
+        guard let frame = frame, let markerNode = tagMarkerNodes[tagId] else { return nil }
+        let cam = simd_float3(frame.camera.transform.columns.3.x,
+                               frame.camera.transform.columns.3.y,
+                               frame.camera.transform.columns.3.z)
+        return simd_length(cam - markerNode.simdWorldPosition)
     }
 
     /// Returns a center-cropped UIImage at `fraction` × `fraction` of the original
@@ -1459,6 +1556,7 @@ struct OperatorModeView: View {
     }
 
     private func resetForNewScan() {
+        stopLiveLoop()
         tagMarkerNodes.values.forEach { $0.removeFromParentNode() }
         tagMarkerNodes.removeAll()
         coneGuides.values.forEach { $0.cleanup() }
@@ -1514,9 +1612,26 @@ struct OperatorModeView: View {
             }
         }
 
-        // Show cone ONLY for the nearest cone-trained tag within 1m
+        // Alignment check for the nearest cone-trained tag — computed BEFORE
+        // the cone-visibility decision below, since whether the operator is
+        // already aligned now determines whether the cone should still be
+        // shown.
+        var nowInZone = false
+        if let nearId = closestTagId,
+           let guide  = coneGuides[nearId],
+           closestDist < 1.0 {
+            let angle = guide.alignmentAngle(cameraTransform: frame.camera.transform)
+            nowInZone = angle < 25 && closestDist < 0.8
+        }
+
+        // Show the cone for the nearest cone-trained tag while the operator is
+        // approaching (within 1m) but NOT once they've actually achieved
+        // alignment — at that point the cone mesh has no more guidance value
+        // and is just sitting in front of the camera, covering the exact part
+        // the operator is there to inspect. It reappears immediately if they
+        // drift back out of alignment.
         for (tagId, guide) in coneGuides {
-            let shouldShow = tagId == closestTagId && closestDist < 1.0
+            let shouldShow = tagId == closestTagId && closestDist < 1.0 && !nowInZone
             if shouldShow != guide.isVisible {
                 guide.setVisible(shouldShow, animated: true)
             }
@@ -1526,20 +1641,27 @@ struct OperatorModeView: View {
         let prevNearest = nearestTagId
         nearestTagId   = closestTagId
 
-        // Alignment check for nearest cone-trained tag
         if let nearId = closestTagId,
-           let guide  = coneGuides[nearId],
+           coneGuides[nearId] != nil,
            closestDist < 1.0 {
-            let angle = guide.alignmentAngle(cameraTransform: frame.camera.transform)
-            let nowInZone = angle < 25 && closestDist < 0.8
             if nowInZone && !inConeZone {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                // T94: auto-capture when operator enters the cone alignment zone
-                autoTriggerIfReady(tagId: nearId)
             }
             inConeZone = nowInZone
+
+            // T94 (continuous): instead of a single capture on zone entry followed
+            // by a cooldown, keep re-validating this tag for as long as the
+            // operator remains in its cone zone. This is what makes a fix (e.g.
+            // reconnecting a cable) show up as PASS immediately, with no button
+            // press and no waiting out a cooldown.
+            if nowInZone {
+                startLiveLoop(forTag: nearId)
+            } else if liveLoopTagId == nearId {
+                stopLiveLoop()
+            }
         } else {
             inConeZone = false
+            if liveLoopTagId != nil { stopLiveLoop() }
         }
 
         // T95: auto-capture non-cone tags (honeycomb, OCR) when physically very close
@@ -1590,6 +1712,51 @@ struct OperatorModeView: View {
         }
     }
 
+    // ── Continuous real-time validation loop ──────────────────────────────────
+
+    /// Starts a repeating validation loop for `tagId`, re-capturing and
+    /// re-scoring roughly every `liveLoopIntervalSecs` for as long as the loop
+    /// keeps running. Idempotent — calling this again for the tag already being
+    /// looped is a no-op so it's safe to call on every `tickProximity()` tick.
+    private func startLiveLoop(forTag tagId: String) {
+        guard liveLoopTagId != tagId else { return }
+        stopLiveLoop()
+        liveLoopTagId = tagId
+        liveLoopTask = Task {
+            while !Task.isCancelled {
+                if phase != .validating {
+                    await runSingleTagValidation(tagId: tagId, isContinuous: true)
+                }
+                try? await Task.sleep(nanoseconds: UInt64(liveLoopIntervalSecs * 1_000_000_000))
+            }
+        }
+    }
+
+    /// Cancels the in-flight continuous loop, if any. Called when the operator
+    /// steps out of the cone zone (or moves to a different tag's zone).
+    private func stopLiveLoop() {
+        liveLoopTask?.cancel()
+        liveLoopTask = nil
+        liveLoopTagId = nil
+        statusStreak.removeAll()   // fresh hysteresis state on next zone entry
+    }
+
+    /// Hysteresis gate: only allow a tag's *displayed* status to flip after
+    /// `hysteresisFrames` consecutive identical raw results. This is what keeps
+    /// a borderline frame (motion blur, brief glare as the operator moves) from
+    /// bouncing the AR marker between PASS and FAIL on every tick.
+    /// Returns true once enough consecutive agreement has accumulated.
+    private func shouldCommitStatus(tagId: String, rawStatus: ValidationStatus) -> Bool {
+        if let existing = statusStreak[tagId], existing.status == rawStatus {
+            let newCount = existing.count + 1
+            statusStreak[tagId] = (rawStatus, newCount)
+            return newCount >= hysteresisFrames
+        } else {
+            statusStreak[tagId] = (rawStatus, 1)
+            return hysteresisFrames <= 1
+        }
+    }
+
     // ── Auto-inspect (T94/T95) ────────────────────────────────────────────────
 
     /// Gate check before auto-triggering a single-tag inspection.
@@ -1606,19 +1773,32 @@ struct OperatorModeView: View {
     /// Validate a single tag in-place using the existing `validate-all` endpoint
     /// with `tagIds: [tagId]`. Merges the result into `autoInspectedResults` and
     /// rebuilds `appState.lastValidationResult` so the reviewing panel stays live.
-    private func runSingleTagValidation(tagId: String) async {
+    ///
+    /// - Parameter isContinuous: true when called from the real-time cone-zone
+    ///   loop (`startLiveLoop`). Continuous calls skip the shutter flash/haptic
+    ///   (firing every ~0.7s would be distracting) and have their raw status
+    ///   passed through the hysteresis gate before being committed, so a single
+    ///   borderline frame can't flicker the AR marker.
+    private func runSingleTagValidation(tagId: String, isContinuous: Bool = false) async {
         guard !isAutoInspecting else { return }
         isAutoInspecting = true
         defer { isAutoInspecting = false }
 
-        let snapshot = arManager.sceneView.snapshot()
+        guard let captureFrame = arManager.sceneView.session.currentFrame,
+              let snapshot     = captureRawCamera(from: captureFrame)
+        else { return }
         guard let jpeg   = snapshot.jpegData(compressionQuality: 0.80),
               let anchor = appState.activeAnchor else { return }
 
-        // Brief shutter flash + haptic so operator knows capture happened
-        flashOpacity = 0.35
-        withAnimation(.easeOut(duration: 0.25)) { flashOpacity = 0 }
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        // Brief shutter flash + haptic so operator knows capture happened —
+        // only for the discrete (non-continuous) triggers; the continuous loop
+        // re-captures multiple times a second and a repeated flash/buzz would
+        // just be noise.
+        if !isContinuous {
+            flashOpacity = 0.35
+            withAnimation(.easeOut(duration: 0.25)) { flashOpacity = 0 }
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        }
 
         let client = SIBClient(settings: settings)
 
@@ -1645,15 +1825,32 @@ struct OperatorModeView: View {
             encryptionKey: encKey
         )
 
-        let currentFrame = arManager.sceneView.session.currentFrame
+        // Reuse the exact frame the snapshot was captured from, same reasoning
+        // as runValidation() above.
+        let currentFrame = captureFrame
 
         do {
             var result = try await client.validateAll(req)
-            if let frame = currentFrame {
-                result = applyConeAndDepthValidation(to: result, snapshot: snapshot, frame: frame)
-            }
+            result = applyConeAndDepthValidation(to: result, snapshot: snapshot, frame: currentFrame)
             result = await applyFeaturePrintValidation(to: result, snapshot: snapshot)
             result = await applyOCRValidation(to: result, jpeg: jpeg)
+
+            // ── Hysteresis (continuous loop only) ───────────────────────────
+            // The raw per-frame status can be noisy right at the Pass/Fail
+            // boundary (motion blur, brief glare). Require `hysteresisFrames`
+            // consecutive identical raw results before letting the *displayed*
+            // status change; until then, keep showing the last committed status
+            // for this tag so the AR marker doesn't flicker.
+            var statusChanged = true
+            if isContinuous, let idx = result.tagResults.firstIndex(where: { $0.tagId == tagId }) {
+                let rawStatus = result.tagResults[idx].status
+                let committed = shouldCommitStatus(tagId: tagId, rawStatus: rawStatus)
+                let previouslyCommitted = autoInspectedResults[tagId]?.status
+                if !committed, let lastStatus = previouslyCommitted {
+                    result.tagResults[idx].status = lastStatus
+                }
+                statusChanged = result.tagResults[idx].status != previouslyCommitted
+            }
 
             // Persist this tag's result into the running accumulator
             for tr in result.tagResults { autoInspectedResults[tr.tagId] = tr }
@@ -1661,11 +1858,14 @@ struct OperatorModeView: View {
             // Update the AR marker to PASS/FAIL immediately
             updateMarkersForResult(result)
 
-            // Haptic feedback on result
-            if let tr = result.tagResults.first(where: { $0.tagId == tagId }) {
+            // Haptic feedback on result — for the continuous loop, only fire
+            // when the committed status actually changed (e.g. operator just
+            // fixed the issue and it flipped to PASS), not on every poll.
+            if let tr = result.tagResults.first(where: { $0.tagId == tagId }),
+               !isContinuous || statusChanged {
                 UINotificationFeedbackGenerator()
                     .notificationOccurred(tr.status == .pass ? .success : .error)
-                print("[AutoInspect] tag=\(tr.tagLabel) status=\(tr.status.rawValue) conf=\(String(format:"%.2f",tr.confidence))")
+                print("[AutoInspect] tag=\(tr.tagLabel) status=\(tr.status.rawValue) conf=\(String(format:"%.2f",tr.confidence)) continuous=\(isContinuous)")
             }
 
             // Rebuild the combined session result so the reviewing panel reflects progress
