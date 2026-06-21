@@ -18,6 +18,7 @@ import ARKit
 import SceneKit
 import CoreImage
 import Vision
+import Photos
 
 struct OperatorModeView: View {
 
@@ -49,6 +50,36 @@ struct OperatorModeView: View {
     @State private var passPreviewImage:  UIImage? = nil
     @State private var passPreviewTagId:  String?  = nil
     @State private var passPreviewLabel:  String   = ""
+    /// Reference preview is only shown within this distance of a cone tag.
+    /// Beyond it, the gizmo (below) guides the operator instead — this single
+    /// threshold replaces the old dual 1.5 m / 2.0 m dead-zone that let a
+    /// stale, previously-visited tag's image linger on screen.
+    private let maxPreviewDistance: Float = 1.6
+
+    // ── "No tag nearby" gizmo ──────────────────────────────────────────────────
+    // Compass-style arrow shown when the operator isn't close to any tag,
+    // pointing toward whichever tag is nearest in the scene.
+    @State private var gizmoTagLabel: String  = ""
+    @State private var gizmoBearing:  CGFloat? = nil   // radians, 0 = straight ahead
+    @State private var gizmoDistance: Float    = 0
+
+    // ── Auto-captured Pass/Fail reference images ───────────────────────────────
+    // One thumbnail per tag, captured the first time that tag's live-validated
+    // status commits to PASS or FAIL. Tappable to view fullscreen.
+    @State private var capturedPreviewByTag: [String: UIImage]          = [:]
+    @State private var capturedStatusByTag:  [String: ValidationStatus] = [:]
+
+    struct SavedConfirmation: Equatable {
+        let tagId:  String
+        let label:  String
+        let status: ValidationStatus
+    }
+    /// Shows a brief "Pass/Fail image captured & saved" toast; cleared after ~2.5 s.
+    @State private var savedConfirmation: SavedConfirmation? = nil
+
+    // ── Fullscreen image viewer (pinch-zoom) ────────────────────────────────────
+    @State private var fullScreenImage: UIImage? = nil
+    @State private var fullScreenTitle: String   = ""
 
     // ── Threshold (Q4) ────────────────────────────────────────────────────────
 
@@ -130,6 +161,82 @@ struct OperatorModeView: View {
         // Intentionally no dismantleUIView — session lifecycle owned by AppState.
     }
 
+    /// Fullscreen image viewer preserving iOS's native pinch-to-zoom behaviour.
+    /// Backed by UIScrollView (not a SwiftUI gesture reimplementation) so zoom,
+    /// double-tap-to-zoom, and momentum all feel exactly like Photos.app.
+    /// Single tap (when not zoomed in) calls `onTap` to dismiss.
+    private struct ZoomableImageView: UIViewRepresentable {
+        let image: UIImage
+        let onTap: () -> Void
+
+        func makeUIView(context: Context) -> UIScrollView {
+            let scrollView = UIScrollView()
+            scrollView.delegate = context.coordinator
+            scrollView.minimumZoomScale = 1.0
+            scrollView.maximumZoomScale = 5.0
+            scrollView.showsHorizontalScrollIndicator = false
+            scrollView.showsVerticalScrollIndicator = false
+            scrollView.bouncesZoom = true
+
+            let imageView = UIImageView(image: image)
+            imageView.contentMode = .scaleAspectFit
+            imageView.isUserInteractionEnabled = true
+            imageView.translatesAutoresizingMaskIntoConstraints = true
+            imageView.frame = scrollView.bounds
+            imageView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+
+            scrollView.addSubview(imageView)
+            context.coordinator.imageView = imageView
+
+            let doubleTap = UITapGestureRecognizer(target: context.coordinator,
+                                                    action: #selector(Coordinator.handleDoubleTap(_:)))
+            doubleTap.numberOfTapsRequired = 2
+            scrollView.addGestureRecognizer(doubleTap)
+
+            let singleTap = UITapGestureRecognizer(target: context.coordinator,
+                                                    action: #selector(Coordinator.handleSingleTap(_:)))
+            singleTap.numberOfTapsRequired = 1
+            singleTap.require(toFail: doubleTap)
+            scrollView.addGestureRecognizer(singleTap)
+
+            return scrollView
+        }
+
+        func updateUIView(_ scrollView: UIScrollView, context: Context) {
+            context.coordinator.imageView?.image = image
+        }
+
+        func makeCoordinator() -> Coordinator { Coordinator(onTap: onTap) }
+
+        final class Coordinator: NSObject, UIScrollViewDelegate {
+            weak var imageView: UIImageView?
+            let onTap: () -> Void
+            init(onTap: @escaping () -> Void) { self.onTap = onTap }
+
+            func viewForZooming(in scrollView: UIScrollView) -> UIView? { imageView }
+
+            @objc func handleDoubleTap(_ gesture: UITapGestureRecognizer) {
+                guard let scrollView = gesture.view as? UIScrollView else { return }
+                if scrollView.zoomScale > scrollView.minimumZoomScale {
+                    scrollView.setZoomScale(scrollView.minimumZoomScale, animated: true)
+                } else {
+                    let point = gesture.location(in: imageView)
+                    let zoomRect = CGRect(x: point.x - 50, y: point.y - 50, width: 100, height: 100)
+                    scrollView.zoom(to: zoomRect, animated: true)
+                }
+            }
+
+            @objc func handleSingleTap(_ gesture: UITapGestureRecognizer) {
+                guard let scrollView = gesture.view as? UIScrollView else { return }
+                // Only dismiss-on-tap while not zoomed in, so a tap meant to pan
+                // a zoomed image doesn't accidentally close the viewer.
+                if scrollView.zoomScale <= scrollView.minimumZoomScale {
+                    onTap()
+                }
+            }
+        }
+    }
+
     // ── Body ──────────────────────────────────────────────────────────────────
 
     var body: some View {
@@ -177,31 +284,65 @@ struct OperatorModeView: View {
                 .animation(.easeInOut(duration: 0.4), value: anchorLocated)
             }
 
-            // ── Cone zone indicator ────────────────────────────────────────────
-            // "Disney moment": glowing ring that pulses when the operator steps
-            // into the perfect inspection position inside the cone.
-            if inConeZone && phase == .idle {
+            // ── Live Pass/Fail status card ──────────────────────────────────────
+            // Replaces the old plain "In zone" / "Capturing…" badge. As soon as
+            // the operator is in a tag's cone zone, the continuous live loop
+            // (startLiveLoop) is already running detection — this card makes
+            // that obvious by showing a real-time check/X for the tag currently
+            // being inspected, sourced straight from autoInspectedResults.
+            if inConeZone && phase != .validating, let activeTagId = liveLoopTagId ?? nearestTagId {
+                liveStatusCard(forTagId: activeTagId)
+                    .transition(.scale.combined(with: .opacity))
+                    .animation(.spring(response: 0.35, dampingFraction: 0.75), value: inConeZone)
+            }
+
+            // ── "No tag nearby" gizmo ────────────────────────────────────────────
+            // Shown instead of a (possibly stale) pass-reference preview whenever
+            // the operator isn't within range of any tag — points toward the
+            // nearest one so they know which way to walk.
+            if phase == .idle, passPreviewImage == nil, let bearing = gizmoBearing {
                 VStack {
                     Spacer()
-                    HStack {
-                        Spacer()
-                        VStack(spacing: 6) {
-                            Image(systemName: isAutoInspecting ? "camera.circle.fill" : "scope")
-                                .font(.system(size: 28, weight: .semibold))
-                                .foregroundStyle(.green)
-                                .symbolEffect(.pulse)
-                            Text(isAutoInspecting ? "Capturing…" : "In zone")
-                                .font(.caption.bold())
-                                .foregroundStyle(.green)
-                        }
-                        .padding(14)
-                        .background(.black.opacity(0.60), in: RoundedRectangle(cornerRadius: 14))
-                        .padding(.trailing, 20)
+                    VStack(spacing: 6) {
+                        Image(systemName: "location.north.fill")
+                            .font(.system(size: 30, weight: .bold))
+                            .foregroundStyle(.cyan)
+                            .rotationEffect(.radians(Double(bearing)))
+                        Text(gizmoTagLabel)
+                            .font(.caption.bold())
+                            .foregroundStyle(.white)
+                        Text(String(format: "%.1f m", gizmoDistance))
+                            .font(.caption2.monospacedDigit())
+                            .foregroundStyle(.white.opacity(0.6))
                     }
-                    .padding(.bottom, 130)
+                    .padding(14)
+                    .background(.black.opacity(0.55), in: RoundedRectangle(cornerRadius: 14))
+                    .padding(.bottom, 220)
                 }
-                .transition(.scale.combined(with: .opacity))
-                .animation(.spring(response: 0.35, dampingFraction: 0.75), value: inConeZone)
+                .transition(.opacity)
+                .animation(.easeInOut(duration: 0.3), value: gizmoBearing != nil)
+                .allowsHitTesting(false)
+            }
+
+            // ── "Saved" confirmation toast ───────────────────────────────────────
+            if let saved = savedConfirmation {
+                VStack {
+                    HStack(spacing: 8) {
+                        Image(systemName: saved.status == .pass ? "checkmark.circle.fill" : "xmark.circle.fill")
+                            .foregroundStyle(saved.status == .pass ? .green : .red)
+                        Text("\(saved.status == .pass ? "Pass" : "Fail") image captured for \(saved.label) — saved")
+                            .font(.caption.bold())
+                            .foregroundStyle(.white)
+                            .lineLimit(2)
+                    }
+                    .padding(.horizontal, 14).padding(.vertical, 10)
+                    .background(.black.opacity(0.80), in: RoundedRectangle(cornerRadius: 12))
+                    .padding(.horizontal, 24).padding(.top, 130)
+                    Spacer()
+                }
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .animation(.spring(response: 0.35, dampingFraction: 0.8), value: savedConfirmation)
+                .allowsHitTesting(false)
             }
 
             // ── Diagnostic toast (auto-hides after 3 s) ───────────────────────
@@ -229,11 +370,12 @@ struct OperatorModeView: View {
 
             // ── Pass state reference preview ───────────────────────────────────
             // Small thumbnail of the training image so the operator knows exactly
-            // what pass state looks like before capturing.
+            // what pass state looks like before capturing. Tappable → fullscreen
+            // (with native pinch-zoom), matching the captured-image thumbnail below.
             if let preview = passPreviewImage, phase == .idle {
                 VStack {
                     Spacer()
-                    HStack {
+                    HStack(alignment: .bottom, spacing: 10) {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("PASS REF")
                                 .font(.system(size: 8, weight: .bold))
@@ -254,13 +396,79 @@ struct OperatorModeView: View {
                         }
                         .padding(8)
                         .background(.black.opacity(0.70), in: RoundedRectangle(cornerRadius: 12))
-                        .padding(.leading, 16)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            fullScreenTitle = "Pass reference — \(passPreviewLabel)"
+                            fullScreenImage = preview
+                        }
+
+                        // ── Captured Pass/Fail reference thumbnail ──────────────────
+                        // Shown once the live loop has captured+saved one image for
+                        // this tag's currently-committed status. Tap → fullscreen.
+                        if let activeId = passPreviewTagId,
+                           let captured = capturedPreviewByTag[activeId],
+                           let capturedStatus = capturedStatusByTag[activeId] {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(capturedStatus == .pass ? "CAPTURED PASS" : "CAPTURED FAIL")
+                                    .font(.system(size: 8, weight: .bold))
+                                    .foregroundStyle(capturedStatus == .pass ? .green : .red)
+                                    .padding(.horizontal, 6).padding(.vertical, 2)
+                                    .background((capturedStatus == .pass ? Color.green : Color.red).opacity(0.85), in: Capsule())
+                                Image(uiImage: captured)
+                                    .resizable().scaledToFill()
+                                    .frame(width: 88, height: 88)
+                                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                                    .overlay(RoundedRectangle(cornerRadius: 10)
+                                        .stroke((capturedStatus == .pass ? Color.green : Color.red).opacity(0.8), lineWidth: 1.5))
+                            }
+                            .padding(8)
+                            .background(.black.opacity(0.70), in: RoundedRectangle(cornerRadius: 12))
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                fullScreenTitle = "\(capturedStatus == .pass ? "Pass" : "Fail") capture — \(passPreviewLabel)"
+                                fullScreenImage = captured
+                            }
+                        }
+
                         Spacer()
                     }
+                    .padding(.leading, 16)
                     .padding(.bottom, 130)
                 }
                 .transition(.move(edge: .leading).combined(with: .opacity))
                 .animation(.spring(response: 0.4, dampingFraction: 0.8), value: passPreviewImage != nil)
+            }
+
+            // ── Fullscreen image viewer ──────────────────────────────────────────
+            // Native pinch-zoom (UIScrollView-backed) + tap-to-dismiss, shared by
+            // both the pass-reference thumbnail and the captured-image thumbnail.
+            if let image = fullScreenImage {
+                ZStack {
+                    Color.black.ignoresSafeArea()
+                    ZoomableImageView(image: image) {
+                        fullScreenImage = nil
+                    }
+                    .ignoresSafeArea()
+                    VStack {
+                        HStack {
+                            Spacer()
+                            Button { fullScreenImage = nil } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.title2)
+                                    .foregroundStyle(.white, Color.black.opacity(0.5))
+                            }
+                            .padding(.trailing, 20).padding(.top, 56)
+                        }
+                        Spacer()
+                        Text(fullScreenTitle)
+                            .font(.caption.bold())
+                            .foregroundStyle(.white.opacity(0.8))
+                            .padding(.bottom, 30)
+                    }
+                }
+                .transition(.opacity)
+                .animation(.easeInOut(duration: 0.25), value: fullScreenImage != nil)
+                .zIndex(10)
             }
         }
         .onAppear {
@@ -690,6 +898,56 @@ struct OperatorModeView: View {
         }
         .buttonStyle(.plain)
         .padding(.horizontal, 20)
+    }
+
+    // ── Live Pass/Fail status card ────────────────────────────────────────────
+
+    /// The on-screen indicator for requirement #1/#4: as soon as the operator
+    /// is in a tag's cone zone, `startLiveLoop` is already continuously
+    /// re-validating it (no button press needed) — this card surfaces that
+    /// result live with a check/X, confidence, and tag label, replacing the
+    /// old ambiguous "In zone" / "Capturing…" badge.
+    @ViewBuilder
+    private func liveStatusCard(forTagId tagId: String) -> some View {
+        let result = autoInspectedResults[tagId]
+        let tagLabel = appState.activeTags.first(where: { $0.id == tagId })?.label ?? ""
+
+        VStack {
+            Spacer()
+            HStack {
+                Spacer()
+                VStack(spacing: 6) {
+                    if let result, result.status != .pending {
+                        Image(systemName: result.status == .pass ? "checkmark.circle.fill" : "xmark.circle.fill")
+                            .font(.system(size: 30, weight: .bold))
+                            .foregroundStyle(result.status == .pass ? .green : .red)
+                            .symbolEffect(.pulse)
+                        Text(result.status == .pass ? "PASS" : "FAIL")
+                            .font(.caption.bold())
+                            .foregroundStyle(result.status == .pass ? .green : .red)
+                        Text(String(format: "%.0f%%", result.confidence * 100))
+                            .font(.caption2.monospacedDigit())
+                            .foregroundStyle(.white.opacity(0.7))
+                    } else {
+                        Image(systemName: "scope")
+                            .font(.system(size: 28, weight: .semibold))
+                            .foregroundStyle(.yellow)
+                            .symbolEffect(.pulse)
+                        Text("Checking…")
+                            .font(.caption.bold())
+                            .foregroundStyle(.yellow)
+                    }
+                    Text(tagLabel)
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.6))
+                        .lineLimit(1)
+                }
+                .padding(14)
+                .background(.black.opacity(0.60), in: RoundedRectangle(cornerRadius: 14))
+                .padding(.trailing, 20)
+            }
+            .padding(.bottom, 130)
+        }
     }
 
     // ── AR marker placement ───────────────────────────────────────────────────
@@ -1672,16 +1930,51 @@ struct OperatorModeView: View {
             autoTriggerIfReady(tagId: nearId)
         }
 
-        // Load pass state preview for newly nearest tag
-        if closestTagId != prevNearest, let tagId = closestTagId,
+        // ── Pass reference preview vs. "no tag nearby" gizmo ────────────────────
+        // Single distance threshold replaces the old 1.5 m (load) / 2.0 m (clear)
+        // dead zone, which let a previously-visited tag's stale image linger on
+        // screen for up to half a metre of travel before being cleared. Below
+        // the threshold: show (and keep fresh) the reference preview for
+        // whichever tag is nearest. At/above it: clear the preview and instead
+        // point a compass gizmo at the nearest tag so the operator knows which
+        // way to walk.
+        if closestDist < maxPreviewDistance, let tagId = closestTagId,
            let tag = appState.activeTags.first(where: { $0.id == tagId }),
-           tag.type.captureMode == .cone && closestDist < 1.5 {
-            Task { await loadPassPreview(for: tag) }
-        }
-        if closestDist > 2.0 {
+           tag.type.captureMode == .cone {
+            gizmoBearing = nil
+            if tagId != prevNearest {
+                Task { await loadPassPreview(for: tag) }
+            }
+        } else {
             passPreviewImage = nil
             passPreviewTagId = nil
+            if let tagId = closestTagId, let markerNode = tagMarkerNodes[tagId],
+               let tag = appState.activeTags.first(where: { $0.id == tagId }) {
+                gizmoTagLabel = tag.label
+                gizmoDistance = closestDist
+                gizmoBearing  = bearingToTag(markerNode.simdWorldPosition, cameraFrame: frame)
+            } else {
+                gizmoBearing = nil
+            }
         }
+    }
+
+    /// Yaw (radians) from the camera's forward direction to `targetWorldPos`,
+    /// projected onto the camera's local horizontal plane. 0 = straight ahead,
+    /// positive = target is to the right, negative = to the left — matches the
+    /// rotation convention used to spin the on-screen compass arrow. This is a
+    /// pragmatic 2D compass rather than a true 3D AR-anchored gizmo node, since
+    /// it only needs camera-space vectors already available every tick.
+    private func bearingToTag(_ targetWorldPos: simd_float3, cameraFrame frame: ARFrame) -> CGFloat {
+        let camTransform = frame.camera.transform
+        let camPos = simd_float3(camTransform.columns.3.x, camTransform.columns.3.y, camTransform.columns.3.z)
+        let camForward = -simd_normalize(simd_float3(camTransform.columns.2.x, camTransform.columns.2.y, camTransform.columns.2.z))
+        let camRight   =  simd_normalize(simd_float3(camTransform.columns.0.x, camTransform.columns.0.y, camTransform.columns.0.z))
+
+        let toTag = simd_normalize(targetWorldPos - camPos)
+        let x = simd_dot(toTag, camRight)
+        let z = simd_dot(toTag, camForward)
+        return CGFloat(atan2(x, z))
     }
 
     private func loadPassPreview(for tag: Tag) async {
@@ -1868,6 +2161,27 @@ struct OperatorModeView: View {
                 print("[AutoInspect] tag=\(tr.tagLabel) status=\(tr.status.rawValue) conf=\(String(format:"%.2f",tr.confidence)) continuous=\(isContinuous)")
             }
 
+            // ── Auto-capture one reference image per Pass/Fail status ────────
+            // Per requirement #5: the first time this tag's *committed* status
+            // settles on PASS (or separately, FAIL), save that frame as the
+            // reference image for that status — to the device photo library —
+            // and show a thumbnail + "saved" toast. Only re-captures if the
+            // committed status actually changes (e.g. FAIL → PASS after a
+            // fix), so it never spams the photo library on every 0.7 s tick.
+            if isContinuous, statusChanged,
+               let tr = result.tagResults.first(where: { $0.tagId == tagId }),
+               tr.status == .pass || tr.status == .fail,
+               capturedStatusByTag[tagId] != tr.status {
+                capturedPreviewByTag[tagId] = snapshot
+                capturedStatusByTag[tagId]  = tr.status
+                saveImageToPhotoLibrary(snapshot)
+                let confirmation = SavedConfirmation(tagId: tagId, label: tr.tagLabel, status: tr.status)
+                savedConfirmation = confirmation
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
+                    if savedConfirmation == confirmation { savedConfirmation = nil }
+                }
+            }
+
             // Rebuild the combined session result so the reviewing panel reflects progress
             rebuildCombinedResult()
 
@@ -1918,6 +2232,28 @@ struct OperatorModeView: View {
             tagResults:  tagResults,
             evaluatedAt: ISO8601DateFormatter().string(from: Date())
         )
+    }
+
+    // ── Photo library save (requirement #5) ───────────────────────────────────
+
+    /// Saves `image` to the device's photo library. Requires
+    /// `NSPhotoLibraryAddUsageDescription` in Info.plist (add-only access —
+    /// the app never reads the existing library). Silently logs failures
+    /// rather than surfacing an error UI, since this is a "nice to have"
+    /// reference capture and shouldn't block or interrupt live inspection.
+    private func saveImageToPhotoLibrary(_ image: UIImage) {
+        PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
+            guard status == .authorized || status == .limited else {
+                print("[AutoInspect] Photo library access not granted (status=\(status.rawValue)) — skipping save")
+                return
+            }
+            PHPhotoLibrary.shared().performChanges({
+                PHAssetChangeRequest.creationRequestForAsset(from: image)
+            }, completionHandler: { success, error in
+                if let error { print("[AutoInspect] Photo save failed: \(error.localizedDescription)") }
+                else if success { print("[AutoInspect] Reference image saved to photo library") }
+            })
+        }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

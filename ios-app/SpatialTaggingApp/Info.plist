@@ -31,6 +31,8 @@
 	<string>Camera is required for AR anchor tracking and QR code scanning in cleanroom inspections.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Microphone access may be requested by ARKit. No audio is recorded by this app.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Operator Mode saves a reference photo to your library each time a tag's pass/fail status is captured, so you can review what was inspected.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
