@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import type { PassState, PassStateImage } from '@spatial/shared';
+import type { PassState, PassStateImage, PassStateKind } from '@spatial/shared';
 import { JsonFileStore } from './json-file-store.js';
 
 // ── Why this file looks the way it does ─────────────────────────────────────
@@ -139,8 +139,14 @@ export const passStateStore = {
   },
 };
 
-export function findPassStateByTag(tagId: string): PassState | undefined {
-  const stored = metaStore.findAll().find((p) => p.tagId === tagId);
+// `state` defaults to 'PASS' for both the lookup arg and any stored record
+// that predates this field, so every existing call site (and every tag
+// trained before fail-state support existed) keeps working unchanged.
+export function findPassStateByTag(
+  tagId: string,
+  state: PassStateKind = 'PASS',
+): PassState | undefined {
+  const stored = metaStore.findAll().find((p) => p.tagId === tagId && (p.state ?? 'PASS') === state);
   return stored ? hydrate(stored) : undefined;
 }
 
@@ -149,6 +155,6 @@ export function findPassStateByTag(tagId: string): PassState | undefined {
 // does NOT hydrate image bytes: calling findPassStateByTag for that purpose
 // was reading every honeycomb image (up to 19 per tag) into memory just to
 // throw the result away, which is what was driving the server back into OOM.
-export function hasPassStateForTag(tagId: string): boolean {
-  return metaStore.findAll().some((p) => p.tagId === tagId);
+export function hasPassStateForTag(tagId: string, state: PassStateKind = 'PASS'): boolean {
+  return metaStore.findAll().some((p) => p.tagId === tagId && (p.state ?? 'PASS') === state);
 }

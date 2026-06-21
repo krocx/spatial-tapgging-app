@@ -64,7 +64,11 @@ router.get('/', (req: Request, res: Response) => {
   }
   const enriched = tags.map(tag => ({
     ...tag,
-    isTrained: hasPassStateForTag(tag.id),
+    isTrained: hasPassStateForTag(tag.id, 'PASS'),
+    // Optional: whether the Author additionally trained a Fail-state for
+    // this tag. Absent/false on every tag trained before this feature
+    // existed — the client should treat it as "no fail-state" by default.
+    hasFailState: hasPassStateForTag(tag.id, 'FAIL'),
   }));
   return res.json({ data: enriched, timestamp: new Date().toISOString() });
 });
@@ -101,6 +105,9 @@ router.patch('/:id', (req: Request, res: Response) => {
     ...(body.expectedOutcome  !== undefined && { expectedOutcome:  body.expectedOutcome }),
     ...(body.checkDescription !== undefined && { checkDescription: body.checkDescription }),
     ...(body.order            !== undefined && { order:            body.order }),
+    // Optional inspection-region crop. Pass `roi: null` explicitly to clear
+    // a previously-set ROI and go back to full-frame validation for this tag.
+    ...(body.roi !== undefined && { roi: body.roi === null ? undefined : body.roi }),
     // Deep-merge incoming metadata so existing keys (anchor_rel_*, etc.) are preserved.
     // Feature prints and OCR text are stored this way without touching other fields.
     ...(body.metadata !== undefined && { metadata: { ...tag.metadata, ...body.metadata } }),
@@ -125,13 +132,15 @@ router.delete('/:id', (req: Request, res: Response) => {
     });
   }
 
-  // Cascade: remove pass-state if one exists
-  const ps = findPassStateByTag(req.params.id);
+  // Cascade: remove pass-state and (if trained) fail-state
+  const ps = findPassStateByTag(req.params.id, 'PASS');
   if (ps) passStateStore.delete(ps.id);
+  const fs = findPassStateByTag(req.params.id, 'FAIL');
+  if (fs) passStateStore.delete(fs.id);
 
   tagStore.delete(req.params.id);
 
-  console.log(`[SIB] Deleted tag ${req.params.id}${ps ? ' (+ pass-state)' : ''}`);
+  console.log(`[SIB] Deleted tag ${req.params.id}${ps ? ' (+ pass-state)' : ''}${fs ? ' (+ fail-state)' : ''}`);
   return res.status(200).json({ data: { id: req.params.id }, timestamp: new Date().toISOString() });
 });
 
@@ -150,8 +159,10 @@ router.delete('/', (req: Request, res: Response) => {
   let deletedPassStates = 0;
 
   for (const tag of tags) {
-    const ps = findPassStateByTag(tag.id);
+    const ps = findPassStateByTag(tag.id, 'PASS');
     if (ps) { passStateStore.delete(ps.id); deletedPassStates++; }
+    const fs = findPassStateByTag(tag.id, 'FAIL');
+    if (fs) { passStateStore.delete(fs.id); deletedPassStates++; }
     tagStore.delete(tag.id);
     deletedTags++;
   }

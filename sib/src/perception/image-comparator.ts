@@ -94,11 +94,41 @@ function refCacheKey(base64: string): string {
 
 // ── Image decoding ────────────────────────────────────────────────────────────
 
-async function decodeFrame(base64: string): Promise<DecodedFrame> {
+// Optional normalised crop applied BEFORE the SIZE×SIZE resize. When present,
+// every metric below (full-frame SSIM, center-crop SSIM, tight-crop colour
+// histogram) operates only within this region instead of the whole frame —
+// this is what lets a tag focus on the specific feature being inspected
+// (a cable, a switch, a valve) rather than scoring the whole scene, where a
+// missing/changed part is diluted by an otherwise-unchanged background.
+// Absent ROI = today's full-frame behaviour, unchanged.
+export interface ComparatorRoi {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+function roiKeySuffix(roi?: ComparatorRoi): string {
+  if (!roi) return '';
+  return `:roi:${roi.x.toFixed(4)},${roi.y.toFixed(4)},${roi.w.toFixed(4)},${roi.h.toFixed(4)}`;
+}
+
+async function decodeFrame(base64: string, roi?: ComparatorRoi): Promise<DecodedFrame> {
   const raw = base64.includes(',') ? base64.split(',')[1] : base64;
   const buf = Buffer.from(raw, 'base64');
 
   const img = await Jimp.read(buf);
+
+  if (roi) {
+    const nativeW = img.bitmap.width;
+    const nativeH = img.bitmap.height;
+    const cx = Math.max(0, Math.min(nativeW - 1, Math.round(roi.x * nativeW)));
+    const cy = Math.max(0, Math.min(nativeH - 1, Math.round(roi.y * nativeH)));
+    const cw = Math.max(1, Math.min(nativeW - cx, Math.round(roi.w * nativeW)));
+    const ch = Math.max(1, Math.min(nativeH - cy, Math.round(roi.h * nativeH)));
+    img.crop(cx, cy, cw, ch);
+  }
+
   img.resize(SIZE, SIZE);          // keep colour — do NOT greyscale yet
 
   const { data } = img.bitmap;     // RGBA Uint8Array, length = SIZE*SIZE*4
@@ -137,11 +167,11 @@ async function decodeFrame(base64: string): Promise<DecodedFrame> {
   return { gray, center, tightR, tightG, tightB };
 }
 
-async function decodeReference(base64: string): Promise<DecodedFrame> {
-  const key    = refCacheKey(base64);
+async function decodeReference(base64: string, roi?: ComparatorRoi): Promise<DecodedFrame> {
+  const key    = refCacheKey(base64) + roiKeySuffix(roi);
   const cached = refCacheGet(key);
   if (cached) return cached;
-  const frame = await decodeFrame(base64);
+  const frame = await decodeFrame(base64, roi);
   refCacheSet(key, frame);
   return frame;
 }
@@ -208,32 +238,27 @@ export interface CompareResult {
   }>;
 }
 
-export async function compareAgainstPassState(
+// Shared scoring core — decodes the live frame once and every reference
+// (cached), then returns the best (highest-combined-score) match. Used by
+// both the single-reference absolute-threshold path (compareAgainstPassState)
+// and the optional dual Pass/Fail nearest-match path (compareDualState).
+async function scoreAgainstRefs(
   referenceBase64s: string[],
-  liveBase64: string,
-  /** Optional per-call override; falls back to PASS_THRESHOLD env var → 0.60 */
-  thresholdOverride?: number,
-): Promise<CompareResult & { status: 'PASS' | 'FAIL' }> {
-  const threshold =
-    typeof thresholdOverride === 'number' && thresholdOverride > 0 && thresholdOverride <= 1
-      ? thresholdOverride
-      : parseFloat(process.env.PASS_THRESHOLD ?? '0.60');
-
+  liveFrame: DecodedFrame,
+  roi?: ComparatorRoi,
+): Promise<CompareResult> {
   if (referenceBase64s.length === 0) {
-    return { score: 0, bestRefIndex: 0, details: [], status: 'FAIL' };
+    return { score: 0, bestRefIndex: 0, details: [] };
   }
 
-  // Live frame: always freshly decoded — never cached
-  // Reference frames: decoded once and cached by SHA-256
-  const [liveFrame, ...refFrames] = await Promise.all([
-    decodeFrame(liveBase64),
-    ...referenceBase64s.map((ref, i) =>
-      decodeReference(ref).catch(err => {
+  const refFrames = await Promise.all(
+    referenceBase64s.map((ref, i) =>
+      decodeReference(ref, roi).catch(err => {
         console.warn(`[comparator] Could not decode reference #${i}:`, err);
         return null;
       })
     ),
-  ]);
+  );
 
   let bestScore = -Infinity;
   let bestIndex = 0;
@@ -264,20 +289,93 @@ export async function compareAgainstPassState(
   }
 
   const finalScore = Math.max(0, bestScore);
+  return { score: parseFloat(finalScore.toFixed(4)), bestRefIndex: bestIndex, details };
+}
+
+export async function compareAgainstPassState(
+  referenceBase64s: string[],
+  liveBase64: string,
+  /** Optional per-call override; falls back to PASS_THRESHOLD env var → 0.60 */
+  thresholdOverride?: number,
+  /** Optional inspection-region crop — see ComparatorRoi. Absent = full frame (unchanged). */
+  roi?: ComparatorRoi,
+): Promise<CompareResult & { status: 'PASS' | 'FAIL' }> {
+  const threshold =
+    typeof thresholdOverride === 'number' && thresholdOverride > 0 && thresholdOverride <= 1
+      ? thresholdOverride
+      : parseFloat(process.env.PASS_THRESHOLD ?? '0.60');
+
+  if (referenceBase64s.length === 0) {
+    return { score: 0, bestRefIndex: 0, details: [], status: 'FAIL' };
+  }
+
+  // Live frame: always freshly decoded — never cached
+  const liveFrame = await decodeFrame(liveBase64, roi);
+  const { score, bestRefIndex, details } = await scoreAgainstRefs(referenceBase64s, liveFrame, roi);
 
   console.log(
-    `[comparator] best ref #${bestIndex}: ` +
-    `ssim=${details[bestIndex]?.ssimFull.toFixed(3)} ` +
-    `color_tight=${details[bestIndex]?.colorTight.toFixed(3)} ` +
-    `ssim_center=${details[bestIndex]?.ssimCenter.toFixed(3)} ` +
-    `→ combined=${finalScore.toFixed(3)} (threshold=${threshold}) ` +
-    `→ ${finalScore >= threshold ? 'PASS' : 'FAIL'}`,
+    `[comparator] best ref #${bestRefIndex}: ` +
+    `ssim=${details[bestRefIndex]?.ssimFull.toFixed(3)} ` +
+    `color_tight=${details[bestRefIndex]?.colorTight.toFixed(3)} ` +
+    `ssim_center=${details[bestRefIndex]?.ssimCenter.toFixed(3)} ` +
+    `→ combined=${score.toFixed(3)} (threshold=${threshold}) ` +
+    `→ ${score >= threshold ? 'PASS' : 'FAIL'}` +
+    (roi ? ` [roi]` : ''),
   );
 
   return {
-    score:        parseFloat(finalScore.toFixed(4)),
-    bestRefIndex: bestIndex,
+    score,
+    bestRefIndex,
     details,
-    status:       finalScore >= threshold ? 'PASS' : 'FAIL',
+    status: score >= threshold ? 'PASS' : 'FAIL',
   };
+}
+
+// ── Dual-state (optional Fail-state) comparison ──────────────────────────────
+// When an Author has also trained a Fail-state for a tag, this gives a
+// relative ("nearest-match") decision instead of an absolute threshold:
+// the live frame is scored against BOTH the Pass and Fail reference sets,
+// and whichever it's more similar to wins. This is more robust than a single
+// absolute threshold because a real fail condition doesn't need to look
+// dramatically different from Pass in an absolute sense — it only needs to
+// look more like the trained Fail example than the trained Pass example.
+//
+// Only called when failBase64s.length > 0; callers should fall back to
+// compareAgainstPassState (today's behaviour) whenever no Fail-state exists.
+export interface DualCompareResult {
+  status: 'PASS' | 'FAIL';
+  /** 0.0–1.0: confidence the live frame matches the WINNING side. */
+  confidence: number;
+  simToPass: number;
+  simToFail: number;
+}
+
+export async function compareDualState(
+  passBase64s: string[],
+  failBase64s: string[],
+  liveBase64: string,
+  roi?: ComparatorRoi,
+): Promise<DualCompareResult> {
+  const liveFrame = await decodeFrame(liveBase64, roi);
+
+  const [passResult, failResult] = await Promise.all([
+    scoreAgainstRefs(passBase64s, liveFrame, roi),
+    scoreAgainstRefs(failBase64s, liveFrame, roi),
+  ]);
+
+  const simToPass = passResult.score;
+  const simToFail = failResult.score;
+  const denom = simToPass + simToFail;
+  // Margin-based confidence: how much closer the live frame is to the winning
+  // reference set, normalised to 0.0–1.0. Falls back to 0.5 (no signal) if
+  // both sides scored exactly zero (e.g. totally unrelated frame).
+  const confidence = denom > 0 ? Math.max(simToPass, simToFail) / denom : 0.5;
+  const status: 'PASS' | 'FAIL' = simToPass >= simToFail ? 'PASS' : 'FAIL';
+
+  console.log(
+    `[comparator] dual-state: simToPass=${simToPass.toFixed(3)} simToFail=${simToFail.toFixed(3)} ` +
+    `→ ${status} (confidence=${confidence.toFixed(3)})` + (roi ? ` [roi]` : ''),
+  );
+
+  return { status, confidence: parseFloat(confidence.toFixed(4)), simToPass, simToFail };
 }

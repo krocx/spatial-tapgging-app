@@ -161,6 +161,19 @@ struct CreateAnchorRequest: Codable {
 
 // ── Tag ───────────────────────────────────────────────────────────────────────
 
+/// Normalised inspection-region crop (fractions 0.0–1.0 of frame width/height,
+/// origin top-left). Optional — absent means full-frame validation, today's
+/// unchanged behaviour. When present, both training references and live
+/// frames are cropped to this rectangle before scoring, so a tag can focus on
+/// the specific feature being inspected (a cable, a switch, a valve) instead
+/// of the whole scene.
+struct RegionOfInterest: Codable, Equatable {
+    let x: Double
+    let y: Double
+    let w: Double
+    let h: Double
+}
+
 struct Tag: Codable, Identifiable {
     let id: String
     let anchorId: String
@@ -169,10 +182,16 @@ struct Tag: Codable, Identifiable {
     let expectedOutcome: String
     let checkDescription: String?
     let order: Int?
+    /// Optional inspection-region crop. Nil = full-frame validation.
+    let roi: RegionOfInterest?
     let metadata: [String: AnyCodable]
     /// Server-computed: true when a pass-state exists for this tag.
     /// Optional for backward compatibility with older SIB responses.
     let isTrained: Bool?
+    /// Server-computed: true when an optional Fail-state has also been
+    /// trained for this tag. Nil/false on tags trained before this feature
+    /// existed — the client should treat that as "no fail-state".
+    let hasFailState: Bool?
     let createdAt: String
     let updatedAt: String
 }
@@ -194,6 +213,13 @@ struct UpdateTagRequest: Codable {
     let expectedOutcome:  String?
     let checkDescription: String?
     let order:            Int?
+    /// Optional inspection-region crop. Omit (nil) to leave any existing ROI
+    /// on the server untouched; set a value to create/replace it.
+    /// Defaulted to nil so every pre-existing call site that never mentions
+    /// `roi` keeps compiling unchanged (Swift's synthesized memberwise init
+    /// only makes a parameter optional-to-omit when the property itself has
+    /// a default value — Optional types are NOT auto-defaulted to nil).
+    let roi:              RegionOfInterest? = nil
     /// Deep-merged into tag.metadata on the server.
     /// Used to store feature prints, OCR text, and other per-tag payload.
     let metadata:         [String: AnyCodable]?
@@ -272,6 +298,17 @@ struct CameraPose: Codable {
     let rotation: SIBQuaternion
 }
 
+/// Which reference a set of training images represents. 'pass' (the default
+/// — and the only kind that existed before this case was added) trains the
+/// "correct" appearance. 'fail' is optional — an Author may additionally
+/// train what the *wrong* condition looks like (cable unplugged, valve
+/// closed, switch off, part misoriented). Tags with no fail-state trained
+/// validate exactly as they did before this feature existed.
+enum PassStateKind: String, Codable {
+    case pass = "PASS"
+    case fail = "FAIL"
+}
+
 struct PassStateImage: Codable {
     let id: String?
     let tagId: String
@@ -287,7 +324,17 @@ struct CreatePassStateRequest: Codable {
     let tagId: String
     let anchorId: String
     let assetId: String
+    /// Omitted (nil) = train the Pass state, matching pre-existing behaviour.
+    let state: PassStateKind?
     let images: [PassStateImage]
+
+    init(tagId: String, anchorId: String, assetId: String, state: PassStateKind? = nil, images: [PassStateImage]) {
+        self.tagId = tagId
+        self.anchorId = anchorId
+        self.assetId = assetId
+        self.state = state
+        self.images = images
+    }
 }
 
 struct PassState: Codable {
@@ -295,6 +342,7 @@ struct PassState: Codable {
     let tagId: String
     let anchorId: String
     let assetId: String
+    let state: PassStateKind?
     let images: [PassStateImage]
     let createdAt: String
     let updatedAt: String

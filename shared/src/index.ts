@@ -101,6 +101,22 @@ export interface CreateAnchorRequest {
 // Tag — semantic label attached to an anchor
 // ============================================================
 
+/**
+ * Normalised region-of-interest within the captured frame, expressed as
+ * fractions (0.0–1.0) of image width/height, origin at top-left.
+ * Optional. When absent, validation considers the entire frame (today's
+ * behaviour, unchanged). When present, both training references and live
+ * frames are cropped to this rectangle before similarity scoring — this is
+ * what lets a tag focus on the specific feature being inspected (a cable,
+ * a switch, a valve) instead of the whole scene.
+ */
+export interface RegionOfInterest {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 export interface Tag {
   id: string;
   anchorId: string;
@@ -109,6 +125,8 @@ export interface Tag {
   expectedOutcome: string;
   checkDescription?: string;   // optional human-readable check instruction
   order?: number;              // optional step order within an anchor
+  /** Optional inspection-region crop — see RegionOfInterest. Backward-compatible. */
+  roi?: RegionOfInterest;
   metadata: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
@@ -122,6 +140,8 @@ export interface UpdateTagRequest {
   expectedOutcome?: string;
   checkDescription?: string;
   order?: number;
+  /** Optional inspection-region crop. Set to null to clear an existing ROI. */
+  roi?: RegionOfInterest | null;
   /** Deep-merged into tag.metadata — existing keys are preserved. */
   metadata?: Record<string, unknown>;
 }
@@ -229,11 +249,24 @@ export interface PassStateImage {
   capturedAt: string;          // ISO 8601
 }
 
+/**
+ * Which reference this set of images represents.
+ * 'PASS' (the default, and the only kind that existed before this field was
+ * added) trains the "correct" appearance. 'FAIL' is optional — an Author may
+ * additionally train what the *wrong* state looks like (cable unplugged,
+ * valve closed, switch off, part misoriented, etc.). When a tag has no FAIL
+ * state trained, validation falls back to today's single-reference
+ * absolute-threshold behaviour, unchanged.
+ */
+export type PassStateKind = 'PASS' | 'FAIL';
+
 export interface PassState {
   id: string;
   tagId: string;
   anchorId: string;
   assetId: string;
+  /** Defaults to 'PASS' when omitted, for backward compatibility. */
+  state?: PassStateKind;
   images: PassStateImage[];    // multi-viewpoint samples from honeycomb
   createdAt: string;
   updatedAt: string;

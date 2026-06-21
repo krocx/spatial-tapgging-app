@@ -21,7 +21,7 @@ import type {
   ApiResponse,
 } from '@spatial/shared';
 import { passStateStore, findPassStateByTag } from '../stores/pass-state-store.js';
-import { compareAgainstPassState } from '../perception/image-comparator.js';
+import { compareAgainstPassState, compareDualState, type ComparatorRoi } from '../perception/image-comparator.js';
 import { tagStore } from './tags.js';
 import { logInspection } from '../logging/inspection-logger.js';
 
@@ -69,6 +69,13 @@ router.post('/train', (req: Request, res: Response) => {
 
   const now = new Date().toISOString();
 
+  // Optional: which reference this set of images represents. Defaults to
+  // 'PASS' — every existing Author client that never sends `state` keeps
+  // training the single Pass reference exactly as before. An Author may
+  // additionally POST here with state: 'FAIL' to train what the *wrong*
+  // condition looks like (cable unplugged, valve closed, switch off, etc.).
+  const state = body.state === 'FAIL' ? 'FAIL' : 'PASS';
+
   // Stamp each image with an id and timestamp if not already set
   const images: PassStateImage[] = body.images.map(img => ({
     ...img,
@@ -76,13 +83,15 @@ router.post('/train', (req: Request, res: Response) => {
     capturedAt: img.capturedAt ?? now,
   }));
 
-  // Upsert — replace any existing pass state for this tag
-  const existing = findPassStateByTag(body.tagId);
+  // Upsert — replace any existing state of the SAME kind for this tag.
+  // Training a Fail-state never touches the tag's Pass-state, and vice versa.
+  const existing = findPassStateByTag(body.tagId, state);
   const passState: PassState = {
     id: existing?.id ?? uuidv4(),
     tagId: body.tagId,
     anchorId: body.anchorId,
     assetId: body.assetId,
+    state,
     images,
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
@@ -99,7 +108,7 @@ router.post('/train', (req: Request, res: Response) => {
     timestamp: now,
   };
 
-  console.log(`[SIB] Pass state trained: tag=${body.tagId}, images=${images.length}`);
+  console.log(`[SIB] ${state} state trained: tag=${body.tagId}, images=${images.length}`);
   return res.status(201).json(response);
 });
 
@@ -118,13 +127,15 @@ router.post('/validate', async (req: Request, res: Response) => {
     });
   }
 
-  const passState = findPassStateByTag(body.tagId);
+  const passState = findPassStateByTag(body.tagId, 'PASS');
   if (!passState) {
     return res.status(404).json({
       error: `No pass state found for tag ${body.tagId}. Run Author mode first.`,
       timestamp: new Date().toISOString(),
     });
   }
+
+  const tagForRoi = tagStore.findById(body.tagId);
 
   const now = new Date().toISOString();
 
@@ -134,6 +145,8 @@ router.post('/validate', async (req: Request, res: Response) => {
     comparison = await compareAgainstPassState(
       passState.images.map(img => img.imageBase64),
       body.imageBase64,
+      undefined,
+      tagForRoi?.roi,
     );
   } catch (err) {
     console.error('[SIB] Image comparison error:', err);
@@ -220,10 +233,29 @@ router.post('/validate-all', async (req: Request, res: Response) => {
     );
   }
 
+  // Decrypt one image set in-memory if an encryption key was supplied.
+  // Plaintext images are never re-stored; they exist only for this comparison.
+  const decryptAll = (images: string[], tagId: string): string[] => {
+    if (!encryptionKey) return images;
+    return images.map((enc, i) => {
+      try {
+        return decryptImageBase64(enc, encryptionKey);
+      } catch (decErr) {
+        // Decryption failed — likely wrong key or unencrypted legacy image.
+        // Log clearly; falling back to the raw stored blob (SSIM will score ~0).
+        console.error(
+          `[SIB] Decryption failed for image[${i}] tag=${tagId}: ` +
+          `${decErr instanceof Error ? decErr.message : String(decErr)}`
+        );
+        return enc;
+      }
+    });
+  };
+
   // Run comparisons in parallel; tags with no pass-state get PENDING
   const tagResults: TagValidationSummary[] = await Promise.all(
     tags.map(async (tag): Promise<TagValidationSummary> => {
-      const passState = findPassStateByTag(tag.id);
+      const passState = findPassStateByTag(tag.id, 'PASS');
       if (!passState || passState.images.length === 0) {
         return {
           tagId:      tag.id,
@@ -234,30 +266,34 @@ router.post('/validate-all', async (req: Request, res: Response) => {
         };
       }
 
+      // Optional per-tag inspection-region crop — absent means full frame,
+      // identical to today's behaviour.
+      const roi: ComparatorRoi | undefined = tag.roi;
+
       try {
-        // Decrypt pass-state images in-memory if an encryption key was supplied.
-        // Plaintext images are never re-stored; they exist only for this comparison.
-        let refImages = passState.images.map(img => img.imageBase64);
-        if (encryptionKey) {
-          refImages = refImages.map((enc, i) => {
-            try {
-              return decryptImageBase64(enc, encryptionKey);
-            } catch (decErr) {
-              // Decryption failed — likely wrong key or unencrypted legacy image.
-              // Log clearly; falling back to the raw stored blob (SSIM will score ~0).
-              console.error(
-                `[SIB] Decryption failed for image[${i}] tag=${tag.id}: ` +
-                `${decErr instanceof Error ? decErr.message : String(decErr)}`
-              );
-              return enc;
-            }
-          });
+        const passImages = decryptAll(passState.images.map(img => img.imageBase64), tag.id);
+
+        // Optional Fail-state: only present if the Author explicitly trained
+        // one for this tag. When present, use the relative nearest-match
+        // comparison instead of an absolute threshold against Pass alone.
+        const failState = findPassStateByTag(tag.id, 'FAIL');
+        if (failState && failState.images.length > 0) {
+          const failImages = decryptAll(failState.images.map(img => img.imageBase64), tag.id);
+          const dual = await compareDualState(passImages, failImages, body.imageBase64, roi);
+          return {
+            tagId:      tag.id,
+            tagLabel:   tag.label,
+            tagType:    tag.type,
+            status:     dual.status,
+            confidence: dual.confidence,
+          };
         }
 
         const comparison = await compareAgainstPassState(
-          refImages,
+          passImages,
           body.imageBase64,
           threshold,
+          roi,
         );
         return {
           tagId:      tag.id,

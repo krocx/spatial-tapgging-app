@@ -40,6 +40,12 @@ struct ConeCaptureView: View {
     let anchor:          Anchor
     let parentArManager: ARSessionManager
     let onTrained:       (String) -> Void
+    /// Which reference this capture session trains. Defaults to `.pass` so
+    /// every existing call site (which never mentions `state`) is unaffected.
+    /// Pass `.fail` to recursively reuse this entire view to capture what the
+    /// WRONG condition looks like (cable unplugged, valve closed, switch off)
+    /// — see the "Train Fail State" button in `successOverlay`.
+    var state: PassStateKind = .pass
 
     @EnvironmentObject private var settings: AppSettings
     @EnvironmentObject private var appState:  AppState
@@ -118,6 +124,17 @@ struct ConeCaptureView: View {
     // ── Upload / error ────────────────────────────────────────────────────────
     @State private var uploadError:   String? = nil
     @State private var flashOpacity:  Double  = 0
+
+    // ── Optional post-training steps (Pass-state captures only) ──────────────
+    // Author may optionally train a Fail-state reference (what the WRONG
+    // condition looks like) and/or mark a region-of-interest crop so
+    // validation focuses on just the inspected feature instead of the whole
+    // frame. Both are fully optional — skipping either leaves the tag exactly
+    // as it behaved before this feature existed.
+    @State private var showFailCapture: Bool = false
+    @State private var showRoiPicker:   Bool = false
+    @State private var roiSaveError:    String? = nil
+    @State private var roiSaving:       Bool = false
 
     private let ticker = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
 
@@ -484,10 +501,43 @@ struct ConeCaptureView: View {
         do {
             try await client.trainPassState(
                 CreatePassStateRequest(tagId: tag.id, anchorId: anchor.id,
-                                       assetId: anchor.assetId, images: psImages))
+                                       assetId: anchor.assetId, state: state, images: psImages))
         } catch {
             uploadError = "Upload failed: \(error.localizedDescription)"
             phase = .sweeping; return
+        }
+
+        // Fail-state training is a second, independent reference for the SAME
+        // tag — geometry (cone quaternion/aperture/distance), depth, and the
+        // primary feature-print keys were already written when the Pass-state
+        // was trained, so skip all of that here and only stash the Fail-state's
+        // own feature prints under parallel `fail_*` keys for the Operator's
+        // client-side validation to optionally consult.
+        if state == .fail {
+            var meta: [String: AnyCodable] = tag.metadata
+            if !featurePrints.isEmpty {
+                meta["fail_feature_prints"] = AnyCodable(featurePrints.map { $0.base64 })
+                let calibMaxDist = TagFeaturePrint.calibratedMaxDist(for: featurePrints)
+                meta["fail_fp_max_dist"] = AnyCodable(Double(calibMaxDist))
+            }
+            if tag.type == .partCheck && !centerCropPrints.isEmpty {
+                meta["fail_part_check_center_fps"] = AnyCodable(centerCropPrints.map { $0.base64 })
+                let ccMaxDist = TagFeaturePrint.calibratedMaxDist(for: centerCropPrints)
+                meta["fail_part_check_fp_max_dist"] = AnyCodable(Double(ccMaxDist))
+            }
+            if !meta.isEmpty {
+                _ = try? await client.updateTag(
+                    id: tag.id,
+                    req: UpdateTagRequest(label: nil, expectedOutcome: nil,
+                                          checkDescription: nil, order: nil, metadata: meta))
+            }
+
+            // Fail-state capture reuses the same dome/cone guide as the Pass
+            // capture — bring the cone back for the success overlay and stop;
+            // none of the Pass-only geometry/depth metadata below applies.
+            guide?.setVisible(true, animated: false)
+            withAnimation { phase = .done }
+            return
         }
 
         // Store cone quaternion + all feature prints in tag metadata.
@@ -835,7 +885,8 @@ struct ConeCaptureView: View {
             VStack(spacing: 24) {
                 Image(systemName: "checkmark.seal.fill")
                     .font(.system(size: 80)).foregroundStyle(tag.type.color)
-                Text("Tag Trained!").font(.title.bold()).foregroundColor(.white)
+                Text(state == .fail ? "Fail Reference Trained!" : "Tag Trained!")
+                    .font(.title.bold()).foregroundColor(.white)
                 Text("\"\(tag.label)\" — \(capturedFrames.count) angle\(capturedFrames.count == 1 ? "" : "s") captured across the cone.")
                     .font(.subheadline).foregroundStyle(.white.opacity(0.75))
                     .multilineTextAlignment(.center).padding(.horizontal, 32)
@@ -852,11 +903,79 @@ struct ConeCaptureView: View {
                     }
                 }
                 .font(.caption.bold())
+
+                // Optional follow-up steps — only offered after training the
+                // PRIMARY Pass-state. Both are entirely skippable; skipping
+                // leaves the tag validating exactly as it did before this
+                // feature existed (full-frame, Pass-only).
+                if state == .pass {
+                    VStack(spacing: 10) {
+                        Button {
+                            showRoiPicker = true
+                        } label: {
+                            Label("Mark Inspection Region (Optional)", systemImage: "viewfinder")
+                                .font(.subheadline.bold())
+                                .frame(maxWidth: .infinity).padding(.vertical, 14)
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(.white)
+
+                        Button {
+                            showFailCapture = true
+                        } label: {
+                            Label("Train Fail State (Optional)", systemImage: "xmark.seal")
+                                .font(.subheadline.bold())
+                                .frame(maxWidth: .infinity).padding(.vertical, 14)
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(.orange)
+
+                        if roiSaving {
+                            ProgressView().tint(.white)
+                        }
+                        if let roiErr = roiSaveError {
+                            Text(roiErr).font(.caption2).foregroundStyle(.red)
+                        }
+                    }
+                    .padding(.horizontal, 28)
+                }
+
                 Button("Done") { onTrained(tag.id); dismiss() }
                     .buttonStyle(.borderedProminent).tint(tag.type.color).controlSize(.large)
             }
         }
         .transition(.opacity)
+        .fullScreenCover(isPresented: $showFailCapture) {
+            ConeCaptureView(tag: tag, anchor: anchor, parentArManager: parentArManager,
+                            onTrained: { _ in showFailCapture = false }, state: .fail)
+                .environmentObject(settings).environmentObject(appState)
+        }
+        .fullScreenCover(isPresented: $showRoiPicker) {
+            if let refImage = capturedFrames.first(where: { $0.image != nil })?.image {
+                ROIPickerView(referenceImage: refImage, tagLabel: tag.label, accentColor: tag.type.color) { roi in
+                    guard let roi else { return }
+                    Task { await saveRoi(roi) }
+                }
+            }
+        }
+    }
+
+    // ── Save ROI ──────────────────────────────────────────────────────────────
+
+    private func saveRoi(_ roi: RegionOfInterest) async {
+        roiSaving = true
+        roiSaveError = nil
+        let client = SIBClient(settings: settings)
+        do {
+            _ = try await client.updateTag(
+                id: tag.id,
+                req: UpdateTagRequest(label: nil, expectedOutcome: nil,
+                                      checkDescription: nil, order: nil,
+                                      roi: roi, metadata: nil))
+        } catch {
+            roiSaveError = "Couldn't save region: \(error.localizedDescription)"
+        }
+        roiSaving = false
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

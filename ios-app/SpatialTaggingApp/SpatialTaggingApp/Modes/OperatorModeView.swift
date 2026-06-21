@@ -1467,6 +1467,13 @@ struct OperatorModeView: View {
             guard let tag = appState.activeTags.first(where: { $0.id == tr.tagId }),
                   tag.type.captureMode == .cone else { continue }
 
+            // When the Author also trained a Fail-state, the SIB has already
+            // made a relative nearest-match PASS/FAIL decision (compareDualState)
+            // that's more reliable than this client-side absolute-threshold
+            // alignment/depth blend — applying that blend here could flip an
+            // already-correct dual-state result. Leave those tags untouched.
+            if tag.hasFailState == true { continue }
+
             var score = tr.confidence
 
             // ── Alignment factor ──────────────────────────────────────────────
@@ -1553,6 +1560,22 @@ struct OperatorModeView: View {
             guard tr.status != .pending else { continue }
             guard let tag = appState.activeTags.first(where: { $0.id == tr.tagId }) else { continue }
 
+            // When a Fail-state was trained, the SIB's relative nearest-match
+            // decision (compareDualState) is already authoritative for this
+            // tag — don't let an absolute-threshold feature-print comparison
+            // override it.
+            if tag.hasFailState == true { continue }
+
+            // ── Optional inspection-region crop ─────────────────────────────────
+            // When the Author marked a ROI for this tag, feature prints should
+            // be extracted from just that region — not the whole frame — so
+            // the comparison focuses on the specific feature being inspected
+            // (matches the server's ROI-aware SSIM/histogram cropping).
+            let liveForTag: UIImage = tag.roi.map { cropToROI(snapshot, roi: $0) } ?? snapshot
+            let livePrintForTag: TagFeaturePrint? = tag.roi == nil
+                ? livePrint
+                : await TagFeaturePrint.extract(from: liveForTag)
+
             // ── PartCheck: center-crop comparison (part presence / absence) ────
             // If the tag was trained with part_check_center_fps (stored during
             // ConeCaptureView training for .partCheck type), run a dedicated
@@ -1579,12 +1602,20 @@ struct OperatorModeView: View {
                 // by (trainingDistance / liveDistance) so the crop always
                 // isolates roughly the same real-world region regardless of
                 // exactly where the Operator is standing.
-                let trainingDist = metaFloat(tag.metadata, key: "cone_dist_m") ?? 0.30
-                let liveDist     = liveDistance(toTag: tag.id, frame: liveFrame) ?? trainingDist
-                let rawFraction  = 0.50 * (trainingDist / max(liveDist, 0.05))
-                let adjustedFraction = CGFloat(min(0.85, max(0.15, rawFraction)))
-
-                let cropSnapshot = centerCrop(of: snapshot, fraction: adjustedFraction)
+                // An explicit Author-marked ROI is a more precise region than the
+                // distance-normalised heuristic crop below — prefer it when present.
+                let cropSnapshot: UIImage
+                var trainingDist: Float = metaFloat(tag.metadata, key: "cone_dist_m") ?? 0.30
+                var liveDist: Float = trainingDist
+                var adjustedFraction: CGFloat = 0.50
+                if let roi = tag.roi {
+                    cropSnapshot = cropToROI(snapshot, roi: roi)
+                } else {
+                    liveDist     = liveDistance(toTag: tag.id, frame: liveFrame) ?? trainingDist
+                    let rawFraction  = 0.50 * (trainingDist / max(liveDist, 0.05))
+                    adjustedFraction = CGFloat(min(0.85, max(0.15, rawFraction)))
+                    cropSnapshot = centerCrop(of: snapshot, fraction: adjustedFraction)
+                }
                 guard let cropPrint = await TagFeaturePrint.extract(from: cropSnapshot) else {
                     print("[FeaturePrint][PartCheck] tag=\(tr.tagLabel) could not extract crop print — skipping")
                     continue
@@ -1618,7 +1649,9 @@ struct OperatorModeView: View {
             }
 
             // ── Standard full-frame feature print comparison (all other types) ─
-            guard let live = livePrint else { continue }
+            // Uses the ROI-cropped print (computed above) when this tag has a
+            // marked inspection region; otherwise the shared full-frame print.
+            guard let live = livePrintForTag else { continue }
 
             guard let fpAny = tag.metadata["feature_prints"],
                   let fpArray = fpAny.value as? [Any],
@@ -1675,6 +1708,23 @@ struct OperatorModeView: View {
                                frame.camera.transform.columns.3.y,
                                frame.camera.transform.columns.3.z)
         return simd_length(cam - markerNode.simdWorldPosition)
+    }
+
+    /// Crops `image` to an Author-marked RegionOfInterest — normalised
+    /// (0.0–1.0) fractions of the image's width/height, origin top-left.
+    /// Mirrors the server's ROI cropping in image-comparator.ts so client-side
+    /// feature-print extraction stays consistent with the server's SSIM/
+    /// histogram scoring for the same tag.
+    private func cropToROI(_ image: UIImage, roi: RegionOfInterest) -> UIImage {
+        let size  = image.size
+        let cropX = max(0, min(size.width  - 1, size.width  * CGFloat(roi.x)))
+        let cropY = max(0, min(size.height - 1, size.height * CGFloat(roi.y)))
+        let cropW = max(1, min(size.width  - cropX, size.width  * CGFloat(roi.w)))
+        let cropH = max(1, min(size.height - cropY, size.height * CGFloat(roi.h)))
+        let rect  = CGRect(x: cropX * image.scale, y: cropY * image.scale,
+                           width: cropW * image.scale, height: cropH * image.scale)
+        guard let cgImage = image.cgImage, let cropped = cgImage.cropping(to: rect) else { return image }
+        return UIImage(cgImage: cropped, scale: image.scale, orientation: image.imageOrientation)
     }
 
     /// Returns a center-cropped UIImage at `fraction` × `fraction` of the original
@@ -1734,6 +1784,10 @@ struct OperatorModeView: View {
             guard let tag = ocrTags.first(where: { $0.id == tr.tagId }) else { continue }
             let expected  = tag.expectedOutcome.trimmingCharacters(in: .whitespaces)
             guard !expected.isEmpty else { continue }
+
+            // Dual-state tags already have an authoritative SIB decision —
+            // don't let an absolute-threshold OCR score override it.
+            if tag.hasFailState == true { continue }
 
             let ocrScore = textMatchScore(expected: expected, detected: detected)
             print("[OCR] tag=\(tr.tagLabel) expected=\"\(expected)\" ocrScore=\(String(format:"%.2f",ocrScore)) ssim=\(String(format:"%.2f",tr.confidence))")
