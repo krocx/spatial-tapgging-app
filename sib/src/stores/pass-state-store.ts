@@ -50,13 +50,56 @@ type StoredPassState = Omit<PassState, 'images'> & { images: StoredPassStateImag
 
 const metaStore = new JsonFileStore<StoredPassState>('pass-states');
 
+// ── One-time migration for pre-refactor data ────────────────────────────────
+// pass-states.json records written before this store split out image blobs
+// still have `imageBase64` embedded inline on each image entry (TS types are
+// erased at runtime, so old JSON on disk doesn't match StoredPassState — it
+// matches the old, fatter shape). Without this migration, hydrate() would try
+// to read a blob file that was never written for those images and throw
+// ENOENT on every read. Walk the metadata once at startup, write out any
+// inline bytes as blobs, and rewrite the record without them so the store
+// converges to the new on-disk shape permanently (this only does real work
+// once — after the first run, every record has been stripped).
+function migrateLegacyInlineImages(): void {
+  let migrated = 0;
+  for (const stored of metaStore.findAll()) {
+    const hasInline = stored.images.some(
+      (img) => typeof (img as Partial<PassStateImage>).imageBase64 === 'string',
+    );
+    if (!hasInline) continue;
+
+    const cleanedImages = stored.images.map((img) => {
+      const { imageBase64, ...meta } = img as PassStateImage;
+      if (typeof imageBase64 === 'string' && imageBase64.length > 0) {
+        writeImageBlob(meta.id, imageBase64);
+      }
+      return meta;
+    });
+    metaStore.save({ ...stored, images: cleanedImages });
+    migrated++;
+  }
+  if (migrated > 0) {
+    console.log(`[SIB] Migrated ${migrated} legacy pass-state(s) to on-disk image blobs`);
+  }
+}
+migrateLegacyInlineImages();
+
 function hydrate(stored: StoredPassState): PassState {
   return {
     ...stored,
-    images: stored.images.map((meta) => ({
-      ...meta,
-      imageBase64: readImageBlob(meta.id),
-    })),
+    images: stored.images.map((meta) => {
+      try {
+        return { ...meta, imageBase64: readImageBlob(meta.id) };
+      } catch (err) {
+        // Defensive fallback — should be unreachable after migration, but
+        // avoids a hard crash (and the resulting request failures we saw)
+        // if a blob is ever missing for any other reason.
+        const inline = (meta as Partial<PassStateImage>).imageBase64;
+        if (typeof inline === 'string') return { ...meta, imageBase64: inline };
+        console.error(`[SIB] Missing image blob for ${meta.id}:`, err);
+        return { ...meta, imageBase64: '' };
+      }
+    }),
   };
 }
 
@@ -99,4 +142,13 @@ export const passStateStore = {
 export function findPassStateByTag(tagId: string): PassState | undefined {
   const stored = metaStore.findAll().find((p) => p.tagId === tagId);
   return stored ? hydrate(stored) : undefined;
+}
+
+// Lightweight existence check — used anywhere we only need to know
+// "is this tag trained?" (e.g. the tags list's isTrained flag). Deliberately
+// does NOT hydrate image bytes: calling findPassStateByTag for that purpose
+// was reading every honeycomb image (up to 19 per tag) into memory just to
+// throw the result away, which is what was driving the server back into OOM.
+export function hasPassStateForTag(tagId: string): boolean {
+  return metaStore.findAll().some((p) => p.tagId === tagId);
 }

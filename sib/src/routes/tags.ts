@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { Tag, CreateTagRequest, UpdateTagRequest, ApiResponse } from '@spatial/shared';
 import { JsonFileStore } from '../stores/json-file-store.js';
 import { anchorStore } from './anchors.js';
-import { passStateStore, findPassStateByTag } from '../stores/pass-state-store.js';
+import { passStateStore, findPassStateByTag, hasPassStateForTag } from '../stores/pass-state-store.js';
 
 export const tagStore = new JsonFileStore<Tag>('tags');
 
@@ -64,7 +64,7 @@ router.get('/', (req: Request, res: Response) => {
   }
   const enriched = tags.map(tag => ({
     ...tag,
-    isTrained: findPassStateByTag(tag.id) !== null,
+    isTrained: hasPassStateForTag(tag.id),
   }));
   return res.json({ data: enriched, timestamp: new Date().toISOString() });
 });
