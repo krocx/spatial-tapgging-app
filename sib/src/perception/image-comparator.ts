@@ -13,6 +13,13 @@
 // combined = 0.25 × ssim_full + 0.50 × color_tight + 0.25 × ssim_center
 // PASS when combined ≥ PASS_THRESHOLD (env var, default 0.60)
 //
+// ROI-active tags use different inner sub-crop fractions, a wider/padded
+// crop, and different weights (see ROI_*_FRAC, ROI_PADDING_FRAC, and the
+// wFull/wColor/wCenter weights in scoreAgainstRefs) — the frame handed in is
+// already a tight crop of the part, so re-applying the full-frame tuning
+// on top of it was double-zooming and amplifying capture noise, which is
+// what caused low validation scores on ROI-trained tags.
+//
 // Why tight-crop for colour?
 //   The outer disc and background are identical in pass and fail frames, so a
 //   full-image colour histogram is ~75 % identical regardless of whether the
@@ -34,24 +41,45 @@ const C1   = (0.01 * 255) ** 2;             // SSIM stability constants
 const C2   = (0.03 * 255) ** 2;
 const BINS = 64;                             // histogram bins per colour channel
 
-// Medium crop — inner 50 % — for SSIM
-const MED_START = Math.floor(SIZE / 4);      // 64
-const MED_END   = Math.floor(3 * SIZE / 4); // 192
-const MED_W     = MED_END - MED_START;       // 128
+// Inner sub-crop fractions for the "center" (SSIM) and "tight" (colour
+// histogram) metrics. These exist to zoom past an unchanged background that
+// would otherwise dilute the signal — but that's only true for a FULL-FRAME
+// capture. When an ROI is already active, the ROI crop has already done
+// that job: the frame handed to decodeFrame is already just the inspected
+// component (plus the padding margin below). Re-applying the same narrow
+// 25 %/50 % inner crop on top of an already-tight ROI crop was the root
+// cause of low ROI validation scores — it zoomed into a tiny sliver of the
+// part, making the colour-histogram metric (50 % of the score) extremely
+// sensitive to minor angle/distance/lighting drift between the trained
+// reference and a live capture. When ROI is active we use much wider inner
+// fractions so the metrics still see the whole part.
+const FULLFRAME_MED_FRAC   = 0.50; // inner 50 % — today's full-frame behaviour
+const FULLFRAME_TIGHT_FRAC = 0.25; // inner 25 % — today's full-frame behaviour
+const ROI_MED_FRAC   = 0.90; // inner 90 % — ROI crop already isolated the part
+const ROI_TIGHT_FRAC = 0.70; // inner 70 % — ROI crop already isolated the part
 
-// Tight crop — inner 25 % — for colour histogram
-const TIGHT_START = Math.floor(SIZE * 3 / 8); // 96
-const TIGHT_END   = Math.floor(SIZE * 5 / 8); // 160
-const TIGHT_W     = TIGHT_END - TIGHT_START;   // 64
+// Padding added around an Author-drawn ROI before cropping, as a fraction of
+// the ROI's own width/height. Guards against the part being clipped by minor
+// camera angle/position drift between the trained reference and a live
+// Operator capture, which would otherwise tank the score for reasons
+// unrelated to the part itself.
+const ROI_PADDING_FRAC = 0.10;
+
+function subCropBounds(frac: number): { start: number; end: number; w: number } {
+  const margin = (1 - frac) / 2;
+  const start  = Math.floor(SIZE * margin);
+  const end    = SIZE - start;
+  return { start, end, w: end - start };
+}
 
 // ── Decoded-frame type ────────────────────────────────────────────────────────
 
 interface DecodedFrame {
   gray:   Float32Array;  // grayscale BT.601, SIZE×SIZE
-  center: Float32Array;  // grayscale medium crop, MED_W×MED_W
-  tightR: Float32Array;  // R channel tight crop, TIGHT_W×TIGHT_W
-  tightG: Float32Array;  // G channel tight crop, TIGHT_W×TIGHT_W
-  tightB: Float32Array;  // B channel tight crop, TIGHT_W×TIGHT_W
+  center: Float32Array;  // grayscale medium crop, size depends on ROI-active fraction
+  tightR: Float32Array;  // R channel tight crop, size depends on ROI-active fraction
+  tightG: Float32Array;  // G channel tight crop, size depends on ROI-active fraction
+  tightB: Float32Array;  // B channel tight crop, size depends on ROI-active fraction
 }
 
 // ── Reference-frame cache (SHA-256) ──────────────────────────────────────────
@@ -160,23 +188,54 @@ async function decodeFrame(base64: string, roi?: ComparatorRoi): Promise<Decoded
   if (roi) {
     const nativeW = img.bitmap.width;
     const nativeH = img.bitmap.height;
-    const cx = Math.max(0, Math.min(nativeW - 1, Math.round(roi.x * nativeW)));
-    const cy = Math.max(0, Math.min(nativeH - 1, Math.round(roi.y * nativeH)));
-    const cw = Math.max(1, Math.min(nativeW - cx, Math.round(roi.w * nativeW)));
-    const ch = Math.max(1, Math.min(nativeH - cy, Math.round(roi.h * nativeH)));
+    // Pad the Author-drawn box by ROI_PADDING_FRAC on every side before
+    // cropping, so a live frame that's slightly rotated/shifted/closer than
+    // the trained reference doesn't clip the part right at the ROI edge.
+    const padW = roi.w * nativeW * ROI_PADDING_FRAC;
+    const padH = roi.h * nativeH * ROI_PADDING_FRAC;
+    const x1 = Math.max(0, roi.x * nativeW - padW);
+    const y1 = Math.max(0, roi.y * nativeH - padH);
+    const x2 = Math.min(nativeW, (roi.x + roi.w) * nativeW + padW);
+    const y2 = Math.min(nativeH, (roi.y + roi.h) * nativeH + padH);
+    const cx = Math.round(x1);
+    const cy = Math.round(y1);
+    const cw = Math.max(1, Math.round(x2 - x1));
+    const ch = Math.max(1, Math.round(y2 - y1));
     img.crop(cx, cy, cw, ch);
   }
 
-  img.resize(SIZE, SIZE);          // keep colour — do NOT greyscale yet
+  // Resize preserving aspect ratio, then letterbox onto a neutral-gray
+  // SIZE×SIZE canvas. A plain resize(SIZE, SIZE) stretches non-square crops
+  // — virtually all ROI crops, and many full-frame ones — into a square,
+  // distorting the part's proportions before every downstream metric runs.
+  // This was a secondary contributor to the low ROI scores.
+  const srcW  = img.bitmap.width;
+  const srcH  = img.bitmap.height;
+  const scale = Math.min(SIZE / srcW, SIZE / srcH);
+  const fitW  = Math.max(1, Math.round(srcW * scale));
+  const fitH  = Math.max(1, Math.round(srcH * scale));
+  img.resize(fitW, fitH);           // keep colour — do NOT greyscale yet
 
-  const { data } = img.bitmap;     // RGBA Uint8Array, length = SIZE*SIZE*4
+  const canvas  = new Jimp(SIZE, SIZE, 0x808080ff);
+  const offsetX = Math.floor((SIZE - fitW) / 2);
+  const offsetY = Math.floor((SIZE - fitH) / 2);
+  canvas.composite(img, offsetX, offsetY);
+
+  // Inner sub-crop bounds for the "center"/"tight" metrics — wider when an
+  // ROI is active, since the frame is already a tight crop of the part.
+  const medFrac   = roi ? ROI_MED_FRAC   : FULLFRAME_MED_FRAC;
+  const tightFrac = roi ? ROI_TIGHT_FRAC : FULLFRAME_TIGHT_FRAC;
+  const med   = subCropBounds(medFrac);
+  const tight = subCropBounds(tightFrac);
+
+  const { data } = canvas.bitmap;  // RGBA Uint8Array, length = SIZE*SIZE*4
   const n = SIZE * SIZE;
 
   const gray   = new Float32Array(n);
-  const center = new Float32Array(MED_W * MED_W);
-  const tightR = new Float32Array(TIGHT_W * TIGHT_W);
-  const tightG = new Float32Array(TIGHT_W * TIGHT_W);
-  const tightB = new Float32Array(TIGHT_W * TIGHT_W);
+  const center = new Float32Array(med.w * med.w);
+  const tightR = new Float32Array(tight.w * tight.w);
+  const tightG = new Float32Array(tight.w * tight.w);
+  const tightB = new Float32Array(tight.w * tight.w);
 
   let ci = 0;  // center index
   let ti = 0;  // tight index
@@ -190,11 +249,11 @@ async function decodeFrame(base64: string, roi?: ComparatorRoi): Promise<Decoded
 
       gray[row * SIZE + col] = 0.299 * r + 0.587 * g + 0.114 * b;
 
-      if (row >= MED_START && row < MED_END && col >= MED_START && col < MED_END) {
+      if (row >= med.start && row < med.end && col >= med.start && col < med.end) {
         center[ci++] = gray[row * SIZE + col];
       }
 
-      if (row >= TIGHT_START && row < TIGHT_END && col >= TIGHT_START && col < TIGHT_END) {
+      if (row >= tight.start && row < tight.end && col >= tight.start && col < tight.end) {
         tightR[ti]   = r;
         tightG[ti]   = g;
         tightB[ti++] = b;
@@ -303,6 +362,21 @@ async function scoreAgainstRefs(
   let bestIndex = 0;
   const details: CompareResult['details'] = [];
 
+  // Composite weights. Full-frame default: 50 % weight on tight-crop colour
+  // — the key discriminator for part presence, since grayscale SSIM alone
+  // can't distinguish e.g. an amber part from silver metal (similar
+  // luminance) but the colour histogram in the tight crop can.
+  //
+  // When an ROI is active, the frame is already a tight crop of the part —
+  // leaning so heavily on a colour histogram over an even-tighter inner
+  // sub-crop (now widened, but still a crop of a crop) amplifies capture
+  // noise (angle/distance/lighting drift) rather than detecting genuine
+  // presence/absence. Shift weight toward the two SSIM terms, which are
+  // more tolerant of that kind of variance.
+  const wFull   = roi ? 0.35 : 0.25;
+  const wColor  = roi ? 0.30 : 0.50;
+  const wCenter = roi ? 0.35 : 0.25;
+
   for (let i = 0; i < refFrames.length; i++) {
     const ref = refFrames[i];
     if (!ref) {
@@ -314,10 +388,7 @@ async function scoreAgainstRefs(
     const colorTight = computeTightColorHist(ref, liveFrame);
     const ssimCenter = computeSSIM(ref.center,   liveFrame.center);
 
-    // 50 % weight on tight-crop colour — the key discriminator for part presence.
-    // Grayscale SSIM alone cannot distinguish an amber part from silver metal
-    // (similar luminance) but the colour histogram in the tight crop can.
-    const combined = 0.25 * ssimFull + 0.50 * colorTight + 0.25 * ssimCenter;
+    const combined = wFull * ssimFull + wColor * colorTight + wCenter * ssimCenter;
 
     details.push({ ssimFull, colorTight, ssimCenter, combined });
 
