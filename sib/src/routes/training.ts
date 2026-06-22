@@ -21,7 +21,12 @@ import type {
   ApiResponse,
 } from '@spatial/shared';
 import { passStateStore, findPassStateByTag } from '../stores/pass-state-store.js';
-import { compareAgainstPassState, compareDualState, type ComparatorRoi } from '../perception/image-comparator.js';
+import {
+  compareAgainstPassState,
+  compareDualState,
+  mapWithConcurrency,
+  type ComparatorRoi,
+} from '../perception/image-comparator.js';
 import { tagStore } from './tags.js';
 import { logInspection } from '../logging/inspection-logger.js';
 
@@ -252,9 +257,17 @@ router.post('/validate-all', async (req: Request, res: Response) => {
     });
   };
 
-  // Run comparisons in parallel; tags with no pass-state get PENDING
-  const tagResults: TagValidationSummary[] = await Promise.all(
-    tags.map(async (tag): Promise<TagValidationSummary> => {
+  // Run comparisons with bounded concurrency; tags with no pass-state get
+  // PENDING. Each tag comparison can itself trigger up to ~28 simultaneous
+  // full-resolution JPEG decodes when a Fail-state is trained (see
+  // image-comparator.ts), so letting every tag in the anchor run fully in
+  // parallel here on top of that was the multiplier behind the OOM crashes —
+  // cap how many tags are compared at once instead.
+  const TAG_VALIDATION_CONCURRENCY = 2;
+  const tagResults: TagValidationSummary[] = await mapWithConcurrency(
+    tags,
+    TAG_VALIDATION_CONCURRENCY,
+    async (tag): Promise<TagValidationSummary> => {
       const passState = findPassStateByTag(tag.id, 'PASS');
       if (!passState || passState.images.length === 0) {
         return {
@@ -312,7 +325,7 @@ router.post('/validate-all', async (req: Request, res: Response) => {
           confidence: 0,
         };
       }
-    }),
+    },
   );
 
   const durationMs   = Date.now() - startMs;

@@ -113,6 +113,44 @@ function roiKeySuffix(roi?: ComparatorRoi): string {
   return `:roi:${roi.x.toFixed(4)},${roi.y.toFixed(4)},${roi.w.toFixed(4)},${roi.h.toFixed(4)}`;
 }
 
+// ── Bounded-concurrency decode pool ──────────────────────────────────────────
+// Jimp.read() decodes a JPEG into a full native-resolution RGBA bitmap BEFORE
+// resize(SIZE, SIZE) shrinks it down — for a multi-megapixel camera frame
+// that's tens of MB held momentarily per image, even though the final cached
+// DecodedFrame is tiny (~1.5MB of Float32Arrays). scoreAgainstRefs used to
+// kick off every reference decode in one unbounded Promise.all, and
+// compareDualState ran the Pass-side and Fail-side decode batches
+// *concurrently* on top of that. With a Fail-state trained, a single
+// validate-all call across N tags could trigger up to
+// N × 2 states × ~14 images = 28N simultaneous full-resolution JPEG decodes —
+// easily enough to blow past the 512MB instance limit in a momentary spike,
+// even though every decoded frame is immediately downsized and (for
+// references) cached. mapWithConcurrency caps how many decodes are in flight
+// at once so peak memory stays roughly constant regardless of how many
+// tags/images/states are involved in a given request.
+const DECODE_CONCURRENCY = 4;
+
+export async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let nextIndex = 0;
+
+  async function worker(): Promise<void> {
+    for (;;) {
+      const i = nextIndex++;
+      if (i >= items.length) return;
+      results[i] = await fn(items[i], i);
+    }
+  }
+
+  const workers = Array.from({ length: Math.min(limit, items.length) }, () => worker());
+  await Promise.all(workers);
+  return results;
+}
+
 async function decodeFrame(base64: string, roi?: ComparatorRoi): Promise<DecodedFrame> {
   const raw = base64.includes(',') ? base64.split(',')[1] : base64;
   const buf = Buffer.from(raw, 'base64');
@@ -251,13 +289,14 @@ async function scoreAgainstRefs(
     return { score: 0, bestRefIndex: 0, details: [] };
   }
 
-  const refFrames = await Promise.all(
-    referenceBase64s.map((ref, i) =>
+  const refFrames = await mapWithConcurrency(
+    referenceBase64s,
+    DECODE_CONCURRENCY,
+    (ref, i) =>
       decodeReference(ref, roi).catch(err => {
         console.warn(`[comparator] Could not decode reference #${i}:`, err);
         return null;
-      })
-    ),
+      }),
   );
 
   let bestScore = -Infinity;
@@ -358,10 +397,14 @@ export async function compareDualState(
 ): Promise<DualCompareResult> {
   const liveFrame = await decodeFrame(liveBase64, roi);
 
-  const [passResult, failResult] = await Promise.all([
-    scoreAgainstRefs(passBase64s, liveFrame, roi),
-    scoreAgainstRefs(failBase64s, liveFrame, roi),
-  ]);
+  // Sequential, not Promise.all — scoreAgainstRefs already decodes its own
+  // reference batch with bounded concurrency (DECODE_CONCURRENCY); running
+  // the Pass-side and Fail-side batches concurrently on top of that would
+  // double the number of simultaneous full-resolution JPEG decodes for every
+  // tag that has a Fail-state trained, which is exactly the spike that was
+  // driving the server OOM.
+  const passResult = await scoreAgainstRefs(passBase64s, liveFrame, roi);
+  const failResult = await scoreAgainstRefs(failBase64s, liveFrame, roi);
 
   const simToPass = passResult.score;
   const simToFail = failResult.score;
