@@ -1,17 +1,32 @@
-// image-comparator.ts — v3
+// image-comparator.ts — v4
 //
 // Three metrics combined for robust presence/absence detection:
 //
-//  1. ssim_full   — grayscale SSIM on full image (overall structural context)
-//  2. color_tight — RGB histogram intersection on the inner 25 % crop
-//                   (directly detects a coloured part being removed; the tight
-//                   crop isolates the inspected component from the unchanged
-//                   background that would otherwise dominate a full-frame hist)
-//  3. ssim_center — grayscale SSIM on the inner 50 % crop
-//                   (structural detail of the component area)
+//  1. ssim_full   — grayscale SSIM on full image, scored as one whole region
+//                   (overall structural context — not patch-graded; this term
+//                   is meant to capture general scene match, not localize a
+//                   defect)
+//  2. color_tight — RGB histogram intersection on the inner 25 % crop, scored
+//                   as a worst-percentile patch grid (TIGHT_GRID cells) rather
+//                   than one number over the whole crop — see "Patch-grid
+//                   aggregation" below
+//  3. ssim_center — grayscale SSIM on the inner 50 % crop, also scored as a
+//                   worst-percentile patch grid (CENTER_GRID cells)
 //
 // combined = 0.25 × ssim_full + 0.50 × color_tight + 0.25 × ssim_center
 // PASS when combined ≥ PASS_THRESHOLD (env var, default 0.60)
+//
+// Why patch-grid instead of whole-region averaging for #2 and #3?
+//   A single number averaged over an entire crop lets a small, localized
+//   change (a missing/rotated/swapped part) get diluted by everything around
+//   it that's unchanged — even within an already-tight ROI, the inspected
+//   feature is rarely 100 % of the pixels. This was the root cause of
+//   dual-state confidence clustering near ~50 % even on visually clear
+//   pass/fail cases: simToPass and simToFail both landed high and nearly
+//   equal because most of the crop matched in both comparisons regardless of
+//   the part's actual state. Splitting into a small grid and aggregating via
+//   the worst-scoring cells (not the mean) lets one bad region drag the score
+//   down instead of being smoothed away.
 //
 // ROI-active tags use different inner sub-crop fractions, a wider/padded
 // crop, and different weights (see ROI_*_FRAC, ROI_PADDING_FRAC, and the
@@ -72,14 +87,123 @@ function subCropBounds(frac: number): { start: number; end: number; w: number } 
   return { start, end, w: end - start };
 }
 
+// ── Patch-grid aggregation ───────────────────────────────────────────────────
+// Whole-region averaging (one SSIM/histogram number over an entire crop)
+// dilutes a small, localized change — a missing/rotated/swapped part — against
+// a much larger area of unchanged background. That dilution is what was
+// causing simToPass and simToFail to land high and nearly equal (driving
+// dual-state confidence toward ~50%) even on test cases with a clearly
+// different part state, because the inspected feature is rarely 100% of the
+// pixels in even a tight crop. Splitting the center/tight crops into a small
+// grid and aggregating via the worst-scoring cells (not the mean) lets a
+// single bad region drag the score down instead of being smoothed away by
+// everything around it that still matches.
+const CENTER_GRID   = 4;    // 4×4 = 16 cells for the SSIM center-crop metric
+const TIGHT_GRID    = 2;    // 2×2 = 4 cells for the colour-histogram metric —
+                             // kept coarser than the SSIM grid because
+                             // histogram intersection needs enough pixels per
+                             // cell for BINS=64 to be meaningful; a finer grid
+                             // here would add quantisation noise rather than
+                             // real sensitivity.
+const WORST_FRACTION = 0.25; // aggregate = average of the worst 25% of cells
+
+function gridBounds(width: number, gridN: number): number[] {
+  const pts: number[] = [];
+  for (let i = 0; i <= gridN; i++) pts.push(Math.round((i * width) / gridN));
+  return pts;
+}
+
+function extractPatch(
+  arr: Float32Array, width: number, r0: number, r1: number, c0: number, c1: number,
+): Float32Array {
+  const h = r1 - r0, w = c1 - c0;
+  const out = new Float32Array(h * w);
+  let k = 0;
+  for (let r = r0; r < r1; r++) {
+    const rowBase = r * width;
+    for (let c = c0; c < c1; c++) out[k++] = arr[rowBase + c];
+  }
+  return out;
+}
+
+function worstPercentileAvg(scores: number[], frac: number): number {
+  if (scores.length === 0) return 0;
+  const sorted = [...scores].sort((a, b) => a - b);
+  const count  = Math.max(1, Math.round(sorted.length * frac));
+  let sum = 0;
+  for (let i = 0; i < count; i++) sum += sorted[i];
+  return sum / count;
+}
+
+function computeSSIMGrid(a: Float32Array, b: Float32Array, width: number, gridN: number): number {
+  const pts = gridBounds(width, gridN);
+  const scores: number[] = [];
+  for (let gr = 0; gr < gridN; gr++) {
+    for (let gc = 0; gc < gridN; gc++) {
+      const r0 = pts[gr], r1 = pts[gr + 1], c0 = pts[gc], c1 = pts[gc + 1];
+      if (r1 <= r0 || c1 <= c0) continue;
+      scores.push(computeSSIM(
+        extractPatch(a, width, r0, r1, c0, c1),
+        extractPatch(b, width, r0, r1, c0, c1),
+      ));
+    }
+  }
+  return worstPercentileAvg(scores, WORST_FRACTION);
+}
+
+function histIntersection(ca: Float32Array, cb: Float32Array): number {
+  const n  = ca.length;
+  const bw = 256 / BINS;
+  const hA = new Float32Array(BINS);
+  const hB = new Float32Array(BINS);
+  for (let i = 0; i < n; i++) {
+    hA[Math.min(BINS - 1, Math.floor(ca[i] / bw))]++;
+    hB[Math.min(BINS - 1, Math.floor(cb[i] / bw))]++;
+  }
+  let intersection = 0;
+  for (let k = 0; k < BINS; k++) intersection += Math.min(hA[k], hB[k]);
+  return intersection / n;
+}
+
+function computeTightColorHistGrid(
+  a: DecodedFrame, b: DecodedFrame, width: number, gridN: number,
+): number {
+  const pts = gridBounds(width, gridN);
+  const scores: number[] = [];
+  for (let gr = 0; gr < gridN; gr++) {
+    for (let gc = 0; gc < gridN; gc++) {
+      const r0 = pts[gr], r1 = pts[gr + 1], c0 = pts[gc], c1 = pts[gc + 1];
+      if (r1 <= r0 || c1 <= c0) continue;
+      const cellScore = (
+        histIntersection(
+          extractPatch(a.tightR, width, r0, r1, c0, c1),
+          extractPatch(b.tightR, width, r0, r1, c0, c1),
+        ) +
+        histIntersection(
+          extractPatch(a.tightG, width, r0, r1, c0, c1),
+          extractPatch(b.tightG, width, r0, r1, c0, c1),
+        ) +
+        histIntersection(
+          extractPatch(a.tightB, width, r0, r1, c0, c1),
+          extractPatch(b.tightB, width, r0, r1, c0, c1),
+        )
+      ) / 3;
+      scores.push(cellScore);
+    }
+  }
+  return worstPercentileAvg(scores, WORST_FRACTION);
+}
+
 // ── Decoded-frame type ────────────────────────────────────────────────────────
 
 interface DecodedFrame {
-  gray:   Float32Array;  // grayscale BT.601, SIZE×SIZE
-  center: Float32Array;  // grayscale medium crop, size depends on ROI-active fraction
-  tightR: Float32Array;  // R channel tight crop, size depends on ROI-active fraction
-  tightG: Float32Array;  // G channel tight crop, size depends on ROI-active fraction
-  tightB: Float32Array;  // B channel tight crop, size depends on ROI-active fraction
+  gray:    Float32Array; // grayscale BT.601, SIZE×SIZE
+  center:  Float32Array; // grayscale medium crop, size depends on ROI-active fraction
+  centerW: number;       // side length of the (square) center crop, for grid scoring
+  tightR:  Float32Array; // R channel tight crop, size depends on ROI-active fraction
+  tightG:  Float32Array; // G channel tight crop, size depends on ROI-active fraction
+  tightB:  Float32Array; // B channel tight crop, size depends on ROI-active fraction
+  tightW:  number;       // side length of the (square) tight crop, for grid scoring
 }
 
 // ── Reference-frame cache (SHA-256) ──────────────────────────────────────────
@@ -261,7 +385,7 @@ async function decodeFrame(base64: string, roi?: ComparatorRoi): Promise<Decoded
     }
   }
 
-  return { gray, center, tightR, tightG, tightB };
+  return { gray, center, centerW: med.w, tightR, tightG, tightB, tightW: tight.w };
 }
 
 async function decodeReference(base64: string, roi?: ComparatorRoi): Promise<DecodedFrame> {
@@ -291,35 +415,6 @@ function computeSSIM(a: Float32Array, b: Float32Array): number {
   const num = (2 * muA * muB + C1) * (2 * cv + C2);
   const den = (muA * muA + muB * muB + C1) * (vA + vB + C2);
   return den === 0 ? 0 : num / den;
-}
-
-// ── RGB colour histogram on tight crop ───────────────────────────────────────
-// Computes per-channel histogram intersection and averages across R, G, B.
-// Using the tight crop means the background (unchanged outer disc) is excluded,
-// so only the component region drives the colour similarity score.
-
-function computeTightColorHist(a: DecodedFrame, b: DecodedFrame): number {
-  const channels: Array<[Float32Array, Float32Array]> = [
-    [a.tightR, b.tightR],
-    [a.tightG, b.tightG],
-    [a.tightB, b.tightB],
-  ];
-  const n      = a.tightR.length;
-  const bw     = 256 / BINS;
-  let totalSim = 0;
-
-  for (const [ca, cb] of channels) {
-    const hA = new Float32Array(BINS);
-    const hB = new Float32Array(BINS);
-    for (let i = 0; i < n; i++) {
-      hA[Math.min(BINS - 1, Math.floor(ca[i] / bw))]++;
-      hB[Math.min(BINS - 1, Math.floor(cb[i] / bw))]++;
-    }
-    let intersection = 0;
-    for (let k = 0; k < BINS; k++) intersection += Math.min(hA[k], hB[k]);
-    totalSim += intersection / n;
-  }
-  return totalSim / 3;
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -384,9 +479,9 @@ async function scoreAgainstRefs(
       continue;
     }
 
-    const ssimFull   = computeSSIM(ref.gray,    liveFrame.gray);
-    const colorTight = computeTightColorHist(ref, liveFrame);
-    const ssimCenter = computeSSIM(ref.center,   liveFrame.center);
+    const ssimFull   = computeSSIM(ref.gray, liveFrame.gray);
+    const colorTight = computeTightColorHistGrid(ref, liveFrame, ref.tightW, TIGHT_GRID);
+    const ssimCenter = computeSSIMGrid(ref.center, liveFrame.center, ref.centerW, CENTER_GRID);
 
     const combined = wFull * ssimFull + wColor * colorTight + wCenter * ssimCenter;
 
