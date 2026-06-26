@@ -426,7 +426,7 @@ struct OCRCaptureView: View {
             )
             withAnimation(.easeIn(duration: 0.3)) { showSuccess = true }
         } catch {
-            trainError = error.localizedDescription
+            trainError = friendlyMessage(for: error) // #75: actionable copy, not raw error text
             phase = .review
         }
     }

@@ -43,6 +43,14 @@ struct QRScanGateView: View {
     // UX state
     @State private var scanPhase: ScanPhase = .waiting
     @State private var scanError: String? = nil
+    // #63: safety net for the wrong-QR path. The scanner itself is fixed to
+    // recognise a re-scan now (see ARSessionManager.resetScan), but a user who
+    // keeps scanning the wrong physical QR (e.g. wrong asset entirely) would
+    // otherwise be stuck on this screen indefinitely with only a Cancel button.
+    // Auto-return to anchor selection after a short idle window so they're not
+    // left stranded.
+    @State private var wrongQRTimeoutWorkItem: DispatchWorkItem? = nil
+    private let wrongQRTimeoutSeconds: TimeInterval = 45
 
     // ── SIBClient — used for world-map upload/download ────────────────────────
     private var sibClient: SIBClient { SIBClient(settings: settings) }
@@ -194,6 +202,10 @@ struct QRScanGateView: View {
             if appState.activeARSession == nil {
                 arManager.pauseSession()
             }
+            // #63: this view is already gone one way or another — don't let a
+            // pending auto-return fire onCancel() a second time later.
+            wrongQRTimeoutWorkItem?.cancel()
+            wrongQRTimeoutWorkItem = nil
         }
         .onChange(of: arManager.scanState) { state in
             if case .detected = state { scanPhase = .detected }
@@ -362,8 +374,21 @@ struct QRScanGateView: View {
             DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
                 if case .error = scanPhase { scanPhase = .waiting }
             }
+            // #63: arm (or re-arm) the auto-return safety net on every wrong-QR
+            // hit. Cancelled below once the correct QR locks successfully.
+            wrongQRTimeoutWorkItem?.cancel()
+            let workItem = DispatchWorkItem { [onCancel] in
+                onCancel()
+            }
+            wrongQRTimeoutWorkItem = workItem
+            DispatchQueue.main.asyncAfter(deadline: .now() + wrongQRTimeoutSeconds, execute: workItem)
             return
         }
+
+        // Correct anchor — cancel any pending auto-return from an earlier
+        // wrong-QR scan in this session.
+        wrongQRTimeoutWorkItem?.cancel()
+        wrongQRTimeoutWorkItem = nil
 
         // ── Extract encryption key ─────────────────────────────────────────────
         if let keyB64 = context.encryptionKey, let symKey = AnchorEncryption.key(fromBase64: keyB64) {

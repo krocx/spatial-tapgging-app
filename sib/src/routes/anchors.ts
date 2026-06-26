@@ -20,6 +20,25 @@ fs.mkdirSync(WORLDMAPS_DIR, { recursive: true });
 
 const router = Router();
 
+// ── #64: enforce unique anchor names (assetId) ────────────────────────────────
+// assetId is the free-text "anchor name" an Author types when creating an
+// anchor (e.g. "Pump-Station-A"). Two anchors with the identical name are
+// confusing in the directory list and QR scans (both portal and iOS match on
+// assetId for the "Wrong QR" check), so collisions are disambiguated here by
+// appending the current time as an HH:MM:SS suffix — done server-side so it
+// applies uniformly regardless of which client (iOS or portal) created it.
+function ensureUniqueAssetId(assetId: string): string {
+  const collision = anchorStore.findAll().some(
+    a => a.assetId.toLowerCase() === assetId.toLowerCase()
+  );
+  if (!collision) return assetId;
+
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const suffix = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  return `${assetId} ${suffix}`;
+}
+
 // ── QR payload builder ────────────────────────────────────────────────────────
 // Must produce byte-for-byte identical JSON to the iOS QRAnchorContext.buildCanonicalPayload()
 // and the portal's qrPayload():
@@ -77,7 +96,7 @@ router.post('/', async (req: Request, res: Response) => {
   const now = new Date().toISOString();
   const anchor: Anchor = {
     id: (body as any).id ?? uuidv4(),
-    assetId: body.assetId,
+    assetId: ensureUniqueAssetId(body.assetId),
     coordinateSystem: body.coordinateSystem,
     position: body.position,
     rotation: body.rotation,

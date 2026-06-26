@@ -327,6 +327,13 @@ export interface TagValidationSummary {
   tagType: TagType;
   status: ValidationStatus;
   confidence: number;         // 0.0 – 1.0
+  /**
+   * #66: distinguishes a genuine visual mismatch from a pipeline failure
+   * (e.g. AES decrypt error on the stored pass-state images) that would
+   * otherwise also show up as an ordinary ~0% confidence FAIL with no way
+   * for the Operator to tell the two apart. Omitted for normal results.
+   */
+  errorReason?: 'DECRYPT_FAILED';
 }
 
 export interface AnchorValidationResult {
@@ -340,6 +347,14 @@ export interface AnchorValidationResult {
   totalCount: number;
   tagResults: TagValidationSummary[];
   evaluatedAt: string;        // ISO 8601
+  /**
+   * #67: set when the request had no encryptionKey at all (Operator scanned
+   * the original physical QR instead of the app-generated one). Previously
+   * this was only a server console.warn — every tag would silently show
+   * ~0% confidence with no indication that the cause was a missing key
+   * rather than an actual mismatch. Omitted when a key was supplied.
+   */
+  warning?: string;
 }
 
 // --- QR anchor context ---

@@ -115,6 +115,11 @@ struct OperatorModeView: View {
     /// The actual repeating task; cancelled whenever the operator leaves the zone
     /// or the loop is restarted for a different tag.
     @State private var liveLoopTask: Task<Void, Never>? = nil
+    // #71/#73: per-stage status text shown during the "Analysing…" wait, and
+    // a cancellable handle for the in-flight validation request/task so a
+    // hung request isn't a dead end for the operator.
+    @State private var validationStage: String = "Analysing…"
+    @State private var validationTask:  Task<Void, Never>? = nil
     /// Recent consecutive statuses per tag, used to debounce/hysteresis the
     /// displayed Pass/Fail so a single noisy frame near the threshold doesn't
     /// flicker the AR marker back and forth.
@@ -131,6 +136,14 @@ struct OperatorModeView: View {
     @State private var showNewScan   = false
     @State private var showHelpSheet  = false
     @State private var flashOpacity: Double = 0
+
+    // ── #69: AR session interruption banner ────────────────────────────────────
+    // Shown when arManager.isInterrupted toggles (phone call, Control Center,
+    // app switcher, etc.). A capture/validation that completes during an
+    // interruption is scoring/training against a frozen frame, so we cancel
+    // anything in flight and prompt the operator to re-check alignment once
+    // tracking resumes, instead of silently trusting a stale result.
+    @State private var interruptionMsg: String? = nil
 
     // ── Diagnostic / debug state ──────────────────────────────────────────────
     /// Bright sphere placed at the anchor QR world position — always visible when
@@ -250,6 +263,28 @@ struct OperatorModeView: View {
             Color.white.opacity(flashOpacity)
                 .ignoresSafeArea()
                 .allowsHitTesting(false)
+
+            // #69: AR session interruption banner
+            if let msg = interruptionMsg {
+                VStack {
+                    Spacer().frame(height: 100)
+                    HStack(spacing: 10) {
+                        Image(systemName: "pause.circle").foregroundStyle(.white)
+                        Text(msg).font(.caption.bold()).foregroundStyle(.white).lineLimit(2)
+                        Spacer()
+                        Button { interruptionMsg = nil } label: {
+                            Image(systemName: "xmark").font(.caption).foregroundStyle(.white.opacity(0.7))
+                        }
+                    }
+                    .padding(.horizontal, 14).padding(.vertical, 10)
+                    .background(Color.blue.opacity(0.85), in: RoundedRectangle(cornerRadius: 10))
+                    .padding(.horizontal, 16)
+                    Spacer()
+                }
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .animation(.easeInOut(duration: 0.3), value: interruptionMsg != nil)
+                .zIndex(20)
+            }
 
             VStack(spacing: 0) {
                 topBar
@@ -503,6 +538,23 @@ struct OperatorModeView: View {
                 print("[OperatorMode] ⚠️ No activeARSession — starting fresh session (QR re-scan needed)")
                 arManager.startSession()
                 // QR scanning stays enabled — onChange(lockedAnchorTransform) handles placement.
+            }
+        }
+        // #69: an interruption (phone call, Control Center, app switcher) freezes
+        // the camera feed without tearing down the session. Cancel anything
+        // in-flight scoring/training against a now-stale frame, and prompt the
+        // operator to re-verify alignment once tracking resumes — instead of
+        // silently trusting a result computed during/just after the interruption.
+        .onChange(of: arManager.isInterrupted) { interrupted in
+            if interrupted {
+                validationTask?.cancel()
+                stopLiveLoop()
+                interruptionMsg = "Session interrupted — paused inspection."
+            } else {
+                interruptionMsg = "Tracking resumed — tap Inspect All to re-verify alignment."
+                DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                    if interruptionMsg?.hasPrefix("Tracking resumed") == true { interruptionMsg = nil }
+                }
             }
         }
         .onDisappear {
@@ -793,7 +845,7 @@ struct OperatorModeView: View {
                     }
                     Spacer()
                     // Force-all as secondary compact action
-                    Button { Task { await runValidation() } } label: {
+                    Button { validationTask = Task { await runValidation() } } label: {
                         Label("Inspect All", systemImage: "viewfinder.circle.fill")
                             .font(.caption.bold())
                             .padding(.horizontal, 12)
@@ -821,12 +873,23 @@ struct OperatorModeView: View {
             case .validating:
                 HStack(spacing: 10) {
                     ProgressView().tint(.white)
-                    Text("Analysing…")
+                    Text(validationStage) // #71: per-stage status instead of a fixed string
                         .foregroundColor(.white)
                         .font(.subheadline)
+                    Spacer()
+                    // #73: lets the operator back out of a hung request instead
+                    // of being stuck waiting with no way to recover.
+                    Button {
+                        validationTask?.cancel()
+                    } label: {
+                        Text("Cancel")
+                            .font(.subheadline.bold())
+                            .foregroundColor(.white.opacity(0.8))
+                    }
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 18)
+                .padding(.horizontal, 16)
                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
                 .padding(.horizontal, 20)
 
@@ -1287,6 +1350,7 @@ struct OperatorModeView: View {
     private func runValidation() async {
         phase         = .validating
         validateError = nil
+        validationStage = "Capturing frame…"
 
         guard let captureFrame = arManager.sceneView.session.currentFrame,
               let snapshot     = captureRawCamera(from: captureFrame)
@@ -1307,11 +1371,13 @@ struct OperatorModeView: View {
             session = existing
         } else {
             do {
+                validationStage = "Starting session…"
                 session = try await client.createSession(userId: "operator",
                                                           assetId: anchor.assetId)
                 appState.activeSession = session
             } catch {
-                validateError = "Session error: \(error.localizedDescription)"
+                if Task.isCancelled { phase = .idle; return } // #73: user-cancelled, not an error
+                validateError = "Session error: \(friendlyMessage(for: error))"
                 phase = .idle
                 return
             }
@@ -1347,21 +1413,26 @@ struct OperatorModeView: View {
         let currentFrame = captureFrame
 
         do {
+            validationStage = "Uploading & comparing…"
             var result = try await client.validateAll(req)
+            if Task.isCancelled { phase = .idle; return }
 
             // ── Cone + depth validation (cone-trained tags) ───────────────────
             // Applies alignment factor and depth similarity score.
             // Must run with the frame captured BEFORE the async SIB round-trip
             // so alignment angle reflects where the operator was standing.
+            validationStage = "Checking alignment…"
             result = applyConeAndDepthValidation(to: result,
                                                  snapshot: snapshot,
                                                  frame: currentFrame)
 
             // ── Feature print validation (primary metric) ─────────────────────
             // For all visual tags — overrides SSIM if FP score is higher.
+            validationStage = "Scoring features…"
             result = await applyFeaturePrintValidation(to: result, snapshot: snapshot)
 
             // ── OCR validation for languageCheck tags ─────────────────────────
+            validationStage = "Reading text…"
             result = await applyOCRValidation(to: result, jpeg: jpeg)
 
             appState.lastValidationResult = result
@@ -1377,8 +1448,11 @@ struct OperatorModeView: View {
                 .notificationOccurred(result.status == .pass ? .success : .error)
             phase = .reviewing
 
+        } catch is CancellationError {
+            phase = .idle // #73: user tapped Cancel — not an error, no toast needed
         } catch {
-            validateError = error.localizedDescription
+            if Task.isCancelled { phase = .idle; return } // URLError(.cancelled) from a cancelled Task
+            validateError = friendlyMessage(for: error)
             phase = .idle
         }
     }
@@ -1710,17 +1784,37 @@ struct OperatorModeView: View {
         return simd_length(cam - markerNode.simdWorldPosition)
     }
 
+    // #74: the server pads an Author-drawn ROI by 10% of the ROI's own
+    // width/height on every side before cropping (image-comparator.ts,
+    // ROI_PADDING_FRAC), so a live frame that's slightly rotated/shifted/
+    // closer than the trained reference doesn't clip the part right at the
+    // ROI edge. This client-side crop was NOT applying that same padding —
+    // a real drift between what feeds client-side feature-print extraction
+    // and what feeds the server's SSIM/histogram scoring for the same tag.
+    // Keep this constant numerically identical to ROI_PADDING_FRAC in
+    // sib/src/perception/image-comparator.ts if either ever changes.
+    private let roiPaddingFrac: CGFloat = 0.10
+
     /// Crops `image` to an Author-marked RegionOfInterest — normalised
-    /// (0.0–1.0) fractions of the image's width/height, origin top-left.
-    /// Mirrors the server's ROI cropping in image-comparator.ts so client-side
+    /// (0.0–1.0) fractions of the image's width/height, origin top-left —
+    /// padded by `roiPaddingFrac` exactly as the server does. Mirrors the
+    /// server's ROI cropping in image-comparator.ts so client-side
     /// feature-print extraction stays consistent with the server's SSIM/
     /// histogram scoring for the same tag.
     private func cropToROI(_ image: UIImage, roi: RegionOfInterest) -> UIImage {
-        let size  = image.size
-        let cropX = max(0, min(size.width  - 1, size.width  * CGFloat(roi.x)))
-        let cropY = max(0, min(size.height - 1, size.height * CGFloat(roi.y)))
-        let cropW = max(1, min(size.width  - cropX, size.width  * CGFloat(roi.w)))
-        let cropH = max(1, min(size.height - cropY, size.height * CGFloat(roi.h)))
+        let size = image.size
+        let padW = CGFloat(roi.w) * size.width  * roiPaddingFrac
+        let padH = CGFloat(roi.h) * size.height * roiPaddingFrac
+
+        let x1 = max(0, CGFloat(roi.x) * size.width  - padW)
+        let y1 = max(0, CGFloat(roi.y) * size.height - padH)
+        let x2 = min(size.width,  CGFloat(roi.x + roi.w) * size.width  + padW)
+        let y2 = min(size.height, CGFloat(roi.y + roi.h) * size.height + padH)
+
+        let cropX = x1
+        let cropY = y1
+        let cropW = max(1, x2 - x1)
+        let cropH = max(1, y2 - y1)
         let rect  = CGRect(x: cropX * image.scale, y: cropY * image.scale,
                            width: cropW * image.scale, height: cropH * image.scale)
         guard let cgImage = image.cgImage, let cropped = cgImage.cropping(to: rect) else { return image }

@@ -46,6 +46,12 @@ struct ConeCaptureView: View {
     /// WRONG condition looks like (cable unplugged, valve closed, switch off)
     /// — see the "Train Fail State" button in `successOverlay`.
     var state: PassStateKind = .pass
+    /// #65: when training the Fail-state, the parent Pass-state capture
+    /// passes its already-locked sphere distance here so both references
+    /// share identical dome geometry. Left `nil` for the Pass-state's own
+    /// capture (and any other call site), which falls back to measuring the
+    /// Author's live stance distance at `startSweep()` as before.
+    var forcedDistanceM: Float? = nil
 
     @EnvironmentObject private var settings: AppSettings
     @EnvironmentObject private var appState:  AppState
@@ -403,8 +409,17 @@ struct ConeCaptureView: View {
         // the Author — between them and the tag, inside their view — d
         // must be SMALLER than the raw distance, not larger. Floor it at
         // kMinDist so the disc never collapses onto the tag itself.
-        let rawDist = guide?.currentDistanceM ?? 0.3
-        let d = max(ConeARGuide.kMinDist, rawDist - Self.kForwardOffsetM)
+        let d: Float
+        if let forced = forcedDistanceM {
+            // #65: reuse the Pass-state's locked distance verbatim so the
+            // Fail-state dome is identical in size/position rather than
+            // being re-measured from wherever the Author happens to be
+            // standing for this second capture session.
+            d = forced
+        } else {
+            let rawDist = guide?.currentDistanceM ?? 0.3
+            d = max(ConeARGuide.kMinDist, rawDist - Self.kForwardOffsetM)
+        }
         lockedDistanceM = d
 
         // Sweet-spot aperture for sphere placement — narrower than the full
@@ -503,7 +518,7 @@ struct ConeCaptureView: View {
                 CreatePassStateRequest(tagId: tag.id, anchorId: anchor.id,
                                        assetId: anchor.assetId, state: state, images: psImages))
         } catch {
-            uploadError = "Upload failed: \(error.localizedDescription)"
+            uploadError = "Upload failed: \(friendlyMessage(for: error))" // #75: actionable copy
             phase = .sweeping; return
         }
 
@@ -946,8 +961,11 @@ struct ConeCaptureView: View {
         }
         .transition(.opacity)
         .fullScreenCover(isPresented: $showFailCapture) {
+            // #65: pass this Pass-state capture's already-locked sphere
+            // distance through so the Fail-state dome matches it exactly.
             ConeCaptureView(tag: tag, anchor: anchor, parentArManager: parentArManager,
-                            onTrained: { _ in showFailCapture = false }, state: .fail)
+                            onTrained: { _ in showFailCapture = false }, state: .fail,
+                            forcedDistanceM: lockedDistanceM)
                 .environmentObject(settings).environmentObject(appState)
         }
         .fullScreenCover(isPresented: $showRoiPicker) {

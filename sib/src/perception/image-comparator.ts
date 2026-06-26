@@ -105,7 +105,17 @@ const TIGHT_GRID    = 2;    // 2×2 = 4 cells for the colour-histogram metric �
                              // cell for BINS=64 to be meaningful; a finer grid
                              // here would add quantisation noise rather than
                              // real sensitivity.
-const WORST_FRACTION = 0.25; // aggregate = average of the worst 25% of cells
+const WORST_FRACTION = 0.5;  // aggregate = average of the worst 50% of cells —
+                             // widened from 0.25 after field testing showed
+                             // pure worst-quartile aggregation was intolerant
+                             // of normal camera angle/distance drift: a single
+                             // cell thrown off by viewpoint-driven parallax
+                             // (not an actual part-state change) was enough to
+                             // flip a PASS to a confident FAIL. Averaging over
+                             // a larger share of cells dilutes one bad cell's
+                             // influence while still weighting toward the
+                             // worse-scoring half, so genuine multi-cell
+                             // defects still get caught.
 
 function gridBounds(width: number, gridN: number): number[] {
   const pts: number[] = [];

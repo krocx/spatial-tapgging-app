@@ -240,9 +240,13 @@ router.post('/validate-all', async (req: Request, res: Response) => {
 
   // Decrypt one image set in-memory if an encryption key was supplied.
   // Plaintext images are never re-stored; they exist only for this comparison.
-  const decryptAll = (images: string[], tagId: string): string[] => {
-    if (!encryptionKey) return images;
-    return images.map((enc, i) => {
+  // #66: also report whether ANY image in the set failed to decrypt, so the
+  // caller can mark the result with errorReason: 'DECRYPT_FAILED' instead of
+  // letting it surface as an indistinguishable ~0% confidence FAIL.
+  const decryptAll = (images: string[], tagId: string): { images: string[]; failed: boolean } => {
+    if (!encryptionKey) return { images, failed: false };
+    let failed = false;
+    const out = images.map((enc, i) => {
       try {
         return decryptImageBase64(enc, encryptionKey);
       } catch (decErr) {
@@ -252,9 +256,11 @@ router.post('/validate-all', async (req: Request, res: Response) => {
           `[SIB] Decryption failed for image[${i}] tag=${tagId}: ` +
           `${decErr instanceof Error ? decErr.message : String(decErr)}`
         );
+        failed = true;
         return enc;
       }
     });
+    return { images: out, failed };
   };
 
   // Run comparisons with bounded concurrency; tags with no pass-state get
@@ -284,26 +290,32 @@ router.post('/validate-all', async (req: Request, res: Response) => {
       const roi: ComparatorRoi | undefined = tag.roi;
 
       try {
-        const passImages = decryptAll(passState.images.map(img => img.imageBase64), tag.id);
+        const passDecrypt = decryptAll(passState.images.map(img => img.imageBase64), tag.id);
+        let decryptFailed = passDecrypt.failed;
 
         // Optional Fail-state: only present if the Author explicitly trained
         // one for this tag. When present, use the relative nearest-match
         // comparison instead of an absolute threshold against Pass alone.
         const failState = findPassStateByTag(tag.id, 'FAIL');
         if (failState && failState.images.length > 0) {
-          const failImages = decryptAll(failState.images.map(img => img.imageBase64), tag.id);
-          const dual = await compareDualState(passImages, failImages, body.imageBase64, roi);
+          const failDecrypt = decryptAll(failState.images.map(img => img.imageBase64), tag.id);
+          decryptFailed ||= failDecrypt.failed;
+          const dual = await compareDualState(passDecrypt.images, failDecrypt.images, body.imageBase64, roi);
           return {
             tagId:      tag.id,
             tagLabel:   tag.label,
             tagType:    tag.type,
-            status:     dual.status,
-            confidence: dual.confidence,
+            // #66: a decrypt failure makes the comparison meaningless — force
+            // FAIL with a distinct reason rather than trusting whatever score
+            // the comparator happened to produce against still-encrypted bytes.
+            status:        decryptFailed ? 'FAIL' : dual.status,
+            confidence:    decryptFailed ? 0 : dual.confidence,
+            ...(decryptFailed ? { errorReason: 'DECRYPT_FAILED' as const } : {}),
           };
         }
 
         const comparison = await compareAgainstPassState(
-          passImages,
+          passDecrypt.images,
           body.imageBase64,
           threshold,
           roi,
@@ -312,8 +324,9 @@ router.post('/validate-all', async (req: Request, res: Response) => {
           tagId:      tag.id,
           tagLabel:   tag.label,
           tagType:    tag.type,
-          status:     comparison.status,
-          confidence: parseFloat(comparison.score.toFixed(4)),
+          status:     decryptFailed ? 'FAIL' : comparison.status,
+          confidence: decryptFailed ? 0 : parseFloat(comparison.score.toFixed(4)),
+          ...(decryptFailed ? { errorReason: 'DECRYPT_FAILED' as const } : {}),
         };
       } catch (err) {
         console.error(`[SIB] Comparison failed for tag ${tag.id}:`, err);
@@ -357,6 +370,13 @@ router.post('/validate-all', async (req: Request, res: Response) => {
     totalCount,
     tagResults,
     evaluatedAt: now,
+    // #67: previously this was only a server console.warn — the Operator had
+    // no way to know a uniform ~0% confidence across every tag was caused by
+    // a missing encryption key (wrong QR scanned) rather than real mismatches.
+    ...(!encryptionKey ? {
+      warning: 'No encryption key received — scan the app-generated QR (Author → QR icon), ' +
+               'not the original physical QR. Results below may show as FAIL with ~0% confidence.',
+    } : {}),
   };
 
   console.log(

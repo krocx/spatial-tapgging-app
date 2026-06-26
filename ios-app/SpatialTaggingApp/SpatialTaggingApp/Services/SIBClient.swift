@@ -19,6 +19,41 @@ enum SIBClientError: LocalizedError {
         case .decodingError(let e):   return "Bad response: \(e.localizedDescription)"
         }
     }
+
+    // #75: short, actionable copy for display in the UI. errorDescription
+    // above stays as-is for logs/debugging (it leaks raw status text/server
+    // messages, which isn't useful or reassuring to an Author/Operator).
+    var userFacingMessage: String {
+        switch self {
+        case .notConfigured:
+            return "Server not set up yet. Open Settings and enter the SIB URL."
+        case .invalidURL:
+            return "That server address looks invalid. Check it in Settings."
+        case .networkError(let e):
+            if (e as? URLError)?.code == .timedOut {
+                return "Upload timed out — check your connection and try again."
+            }
+            return "Couldn't reach the server. Check your connection and try again."
+        case .httpError(let c, _) where c >= 500:
+            return "Server is having trouble right now. Try again in a moment."
+        case .httpError(413, _):
+            return "That upload was too large for the server to accept."
+        case .httpError:
+            return "The server rejected that request. Try again, and reach out if it keeps happening."
+        case .decodingError:
+            return "Got an unexpected response from the server. Try again."
+        }
+    }
+}
+
+/// Maps any error (SIBClientError or otherwise) to short, actionable copy
+/// for display in alerts/toasts, instead of a raw localizedDescription.
+func friendlyMessage(for error: Error) -> String {
+    if let sibError = error as? SIBClientError { return sibError.userFacingMessage }
+    if (error as? URLError)?.code == .timedOut {
+        return "Request timed out — check your connection and try again."
+    }
+    return "Something went wrong: \(error.localizedDescription)"
 }
 
 final class SIBClient {
@@ -29,7 +64,13 @@ final class SIBClient {
     init(settings: AppSettings) {
         self.settings = settings
         let config = URLSessionConfiguration.default
-        config.timeoutIntervalForRequest = 60   // validate-all runs SSIM on many tags
+        // #73: 20s default covers ordinary CRUD calls (tags, sessions) so a
+        // dropped connection fails fast instead of hanging for a minute.
+        // The few genuinely heavy operations (training upload, validate-all,
+        // world-map transfer) override this per-request below — see
+        // makeRequest(timeout:) and the explicit overrides in
+        // trainPassState/validateAll/uploadWorldMap/fetchWorldMap.
+        config.timeoutIntervalForRequest = 20
         self.session = URLSession(configuration: config)
     }
 
@@ -84,6 +125,7 @@ final class SIBClient {
     /// feature-point cloud, giving scan-position-independent tag placement.
     func uploadWorldMap(anchorId: String, data: Data) async throws {
         var req = try makeRequest(method: "POST", path: "/anchors/\(anchorId)/worldmap")
+        req.timeoutInterval = 90 // #73: large binary payload, needs more than the 20s CRUD default
         req.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
         req.httpBody = data
         let (_, response): (Data, URLResponse)
@@ -98,7 +140,8 @@ final class SIBClient {
     /// Returns nil (does NOT throw) on 404 — meaning no map has been saved yet
     /// and the caller should start a fresh session instead.
     func fetchWorldMap(anchorId: String) async throws -> Data? {
-        let req = try makeRequest(method: "GET", path: "/anchors/\(anchorId)/worldmap")
+        var req = try makeRequest(method: "GET", path: "/anchors/\(anchorId)/worldmap")
+        req.timeoutInterval = 45 // #73: larger-than-CRUD binary download
         let (data, response): (Data, URLResponse)
         do { (data, response) = try await session.data(for: req) }
         catch { throw SIBClientError.networkError(error) }
@@ -136,7 +179,9 @@ final class SIBClient {
 
     func trainPassState(_ req: CreatePassStateRequest) async throws {
         struct R: Codable { let id: String }
-        _ = try await post(R.self, path: "/perception/train", body: req)
+        // #73: multi-image honeycomb upload is the largest payload the app
+        // sends — the 20s CRUD default isn't enough on a slow connection.
+        _ = try await post(R.self, path: "/perception/train", body: req, timeout: 90)
     }
 
     func fetchPassState(tagId: String) async throws -> PassState {
@@ -146,7 +191,9 @@ final class SIBClient {
     // ── Validation ────────────────────────────────────────────────────────────
 
     func validateAll(_ req: BatchValidateRequest) async throws -> AnchorValidationResult {
-        try await post(AnchorValidationResult.self, path: "/perception/validate-all", body: req)
+        // #73: validate-all runs SSIM/patch-grid scoring across many tags —
+        // kept at the previous 60s budget rather than the new 20s CRUD default.
+        try await post(AnchorValidationResult.self, path: "/perception/validate-all", body: req, timeout: 60)
     }
 
     // ── Sessions ──────────────────────────────────────────────────────────────
@@ -176,8 +223,11 @@ final class SIBClient {
         return data
     }
 
-    private func post<B: Encodable, R: Decodable>(_ type: R.Type, path: String, body: B) async throws -> R {
+    private func post<B: Encodable, R: Decodable>(
+        _ type: R.Type, path: String, body: B, timeout: TimeInterval? = nil
+    ) async throws -> R {
         var req = try makeRequest(method: "POST", path: path)
+        if let timeout { req.timeoutInterval = timeout } // #73: per-operation override
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.httpBody = try JSONEncoder().encode(body)
         return try await perform(req, decoding: type)

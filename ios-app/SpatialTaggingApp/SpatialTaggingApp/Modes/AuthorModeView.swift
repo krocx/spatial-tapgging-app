@@ -27,8 +27,23 @@ struct AuthorModeView: View {
     @StateObject private var arManager = ARSessionManager()
 
     // ── Tap-to-place ──────────────────────────────────────────────────────────
-    @State private var showPlacementSheet = false
-    @State private var pendingPosition: SIBVector3? = nil
+    // #62: placement is presented via .sheet(item:) instead of a separate
+    // Bool + optional position pair. With two independent @State vars, the
+    // sheet's content closure could occasionally be built from a stale
+    // pre-update snapshot the first time it ever presented in this view's
+    // lifecycle (handleTap is invoked from a UIKit gesture callback outside
+    // SwiftUI's normal render cycle) — AddTagSheet would receive
+    // placement == nil and show "No surface detected" even though a valid
+    // raycast hit had just been captured. Closing and tapping again worked
+    // because the second presentation no longer raced. Driving the sheet
+    // off a single Identifiable item makes that nil-placement state
+    // unrepresentable: the sheet can only appear already holding real data.
+    private struct PendingPlacement: Identifiable {
+        let id = UUID()
+        let position: SIBVector3
+    }
+    @State private var pendingPlacement: PendingPlacement? = nil
+    private var pendingPosition: SIBVector3? { pendingPlacement?.position }
     @State private var pendingNode:     SCNNode?    = nil
     @State private var tagSaved         = false
 
@@ -46,6 +61,11 @@ struct AuthorModeView: View {
 
     // ── G3: network error toast ────────────────────────────────────────────────
     @State private var networkErrorMsg: String? = nil
+
+    // ── Info toast (non-error, explanatory) ──────────────────────────────────
+    // Used e.g. to explain the silent "Train" → re-anchor redirect (#70) so it
+    // reads as expected behavior rather than the app appearing broken.
+    @State private var infoMsg: String? = nil
 
     // ── AR marker registry ────────────────────────────────────────────────────
     @State private var persistedNodes: [String: SCNNode] = [:]
@@ -150,6 +170,21 @@ struct AuthorModeView: View {
                         autoPromptForBrokenTags()
                     }
                 }
+                // #69: a phone call / Control Center / app-switch interruption
+                // freezes the camera feed without tearing down the session.
+                // Surface it so a tap-to-place or training capture made right
+                // after tracking resumes isn't silently trusted against a
+                // possibly stale anchor pose.
+                .onChange(of: arManager.isInterrupted) { interrupted in
+                    if interrupted {
+                        infoMsg = "Session interrupted — placement paused."
+                    } else {
+                        infoMsg = "Tracking resumed — re-check tag positions before training."
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                            if infoMsg?.hasPrefix("Tracking resumed") == true { infoMsg = nil }
+                        }
+                    }
+                }
 
             // Top bar (Screen 6)
             topBar
@@ -175,6 +210,27 @@ struct AuthorModeView: View {
                 .animation(.easeInOut(duration: 0.3), value: networkErrorMsg != nil)
             }
 
+            // Info toast — explanatory, non-error (e.g. #70 redirect notice)
+            if let msg = infoMsg {
+                VStack {
+                    Spacer().frame(height: 100)
+                    HStack(spacing: 10) {
+                        Image(systemName: "info.circle").foregroundStyle(.white)
+                        Text(msg).font(.caption.bold()).foregroundStyle(.white).lineLimit(2)
+                        Spacer()
+                        Button { infoMsg = nil } label: {
+                            Image(systemName: "xmark").font(.caption).foregroundStyle(.white.opacity(0.7))
+                        }
+                    }
+                    .padding(.horizontal, 14).padding(.vertical, 10)
+                    .background(Color.blue.opacity(0.85), in: RoundedRectangle(cornerRadius: 10))
+                    .padding(.horizontal, 16)
+                    Spacer()
+                }
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .animation(.easeInOut(duration: 0.3), value: infoMsg != nil)
+            }
+
             // Note: 3D focus ring (ARFocusRing) is rendered directly in the AR
             // scene — no 2D overlay needed here.
 
@@ -196,16 +252,21 @@ struct AuthorModeView: View {
                             Image(systemName: "xmark")
                                 .font(.caption).foregroundStyle(.white.opacity(0.6))
                         }
+                        // Explicitly re-enabled: the banner's own .allowsHitTesting(false)
+                        // (added so AR taps pass through to place/re-anchor) was also
+                        // disabling this dismiss button, making it unreachable. (#68)
+                        .allowsHitTesting(true)
                     }
                     .padding(.horizontal, 14).padding(.vertical, 10)
                     .background(Color.orange.opacity(0.85), in: RoundedRectangle(cornerRadius: 10))
                     .padding(.horizontal, 16)
                     .padding(.top, 100)
+                    .allowsHitTesting(true)
                     Spacer()
+                        .allowsHitTesting(false)
                 }
                 .transition(.move(edge: .top).combined(with: .opacity))
                 .animation(.easeInOut(duration: 0.3), value: reanchorTag?.id)
-                .allowsHitTesting(false)
             }
 
             // Bottom panel — switches between placement and navigation mode
@@ -224,25 +285,25 @@ struct AuthorModeView: View {
         }
 
         // ── Placement sheet (Screen 7) ─────────────────────────────────────────
-        .sheet(isPresented: $showPlacementSheet, onDismiss: {
+        // #62: .sheet(item:) — see PendingPlacement declaration for why.
+        .sheet(item: $pendingPlacement, onDismiss: {
             if !tagSaved {
                 pendingNode?.removeFromParentNode()
                 pendingNode = nil
             }
-            pendingPosition = nil
             tagSaved = false
-        }) {
+        }) { placement in
             if let anchor = appState.activeAnchor {
                 AddTagSheet(
                     anchor: anchor,
-                    placement: pendingPosition,
+                    placement: placement.position,
                     onSaveAndTrain: { newTag in
                         tagSaved = true
                         if let node = pendingNode { upgradeMarker(node, forTagId: newTag.id, trained: false) }
                         pendingNode = nil
                         appState.activeTags.append(newTag)
                         appState.saveLastAuthorSession()
-                        showPlacementSheet = false
+                        pendingPlacement = nil
                         // Delay so the sheet finishes dismissing before the cover appears
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
                             captureTag = newTag
@@ -254,7 +315,7 @@ struct AuthorModeView: View {
                         pendingNode = nil
                         appState.activeTags.append(newTag)
                         appState.saveLastAuthorSession()
-                        showPlacementSheet = false
+                        pendingPlacement = nil
                     }
                 )
                 .environmentObject(settings)
@@ -712,7 +773,7 @@ struct AuthorModeView: View {
     // ── Tap handler ───────────────────────────────────────────────────────────
 
     private func handleTap(at screenPoint: CGPoint) {
-        guard !showPlacementSheet else { return }
+        guard pendingPlacement == nil else { return }
         let sv = arManager.sceneView
 
         // Resolve world position via modern raycast (preferred) or legacy hitTest.
@@ -793,7 +854,7 @@ struct AuthorModeView: View {
                 }
             } catch {
                 await MainActor.run {
-                    networkErrorMsg = "Could not restore position: \(error.localizedDescription)"
+                    networkErrorMsg = "Could not restore position: \(friendlyMessage(for: error))"
                     DispatchQueue.main.asyncAfter(deadline: .now() + 4) { networkErrorMsg = nil }
                 }
             }
@@ -805,10 +866,9 @@ struct AuthorModeView: View {
         let node = makePendingMarker()
         node.simdPosition = worldPos
         arManager.sceneView.scene.rootNode.addChildNode(node)
-        pendingNode        = node
-        pendingPosition    = sibPos
-        tagSaved           = false
-        showPlacementSheet = true
+        pendingNode      = node
+        tagSaved         = false
+        pendingPlacement = PendingPlacement(position: sibPos)
     }
 
     // ── Tag navigation (Screen 9) ─────────────────────────────────────────────
@@ -826,6 +886,12 @@ struct AuthorModeView: View {
         } else {
             pendingTrainAfterReanchor = true
             reanchorTag = tag
+            // #70: explain the redirect so it doesn't read as the app
+            // silently ignoring the "Train" tap or appearing broken.
+            infoMsg = "\"\(tag.label)\" lost its position — tap its location to restore it, then training will start automatically."
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                if infoMsg?.hasPrefix("\"\(tag.label)\"") == true { infoMsg = nil }
+            }
         }
     }
 
@@ -1002,7 +1068,7 @@ struct AuthorModeView: View {
             catch {
                 print("[Author] deleteTag failed: \(error.localizedDescription)")
                 await MainActor.run {
-                    networkErrorMsg = "Could not delete tag: \(error.localizedDescription)"
+                    networkErrorMsg = "Could not delete tag: \(friendlyMessage(for: error))"
                     DispatchQueue.main.asyncAfter(deadline: .now() + 5) { networkErrorMsg = nil }
                 }
             }
@@ -1014,7 +1080,7 @@ struct AuthorModeView: View {
     // Paused while the placement sheet is open (user can't place while editing).
 
     private func updateCrosshair() {
-        guard !showPlacementSheet else { return }
+        guard pendingPlacement == nil else { return }
         focusRing?.update(sceneView: arManager.sceneView)
     }
 

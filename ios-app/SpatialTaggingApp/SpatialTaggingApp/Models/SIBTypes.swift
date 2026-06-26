@@ -393,6 +393,10 @@ struct TagValidationSummary: Codable, Identifiable {
     var tagType:    TagType
     var status:     ValidationStatus
     var confidence: Double
+    // #66: distinguishes a genuine visual mismatch from a server-side pipeline
+    // failure (decrypt error) that would otherwise look like an ordinary ~0%
+    // confidence FAIL with no indication anything unusual happened.
+    var errorReason: String? = nil
     var id: String { tagId }
 }
 
@@ -407,6 +411,10 @@ struct AnchorValidationResult: Codable, Identifiable {
     let totalCount: Int
     var tagResults: [TagValidationSummary] // var — patched with OCR scores
     let evaluatedAt: String
+    // #67: set by the server when no encryptionKey was supplied — explains a
+    // uniform ~0% confidence across every tag as a missing-key condition
+    // rather than the Operator scanning a part that genuinely fails every check.
+    var warning: String? = nil
 }
 
 // ── Last Author Session (UserDefaults persistence) ────────────────────────────

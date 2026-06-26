@@ -26,6 +26,20 @@ struct ValidationResultsView: View {
     var body: some View {
         NavigationStack {
             List {
+                // #67: missing-encryption-key warning from the server — explains
+                // a uniform ~0% confidence across every tag.
+                if let warning = result.warning {
+                    Section {
+                        HStack(alignment: .top, spacing: 10) {
+                            Image(systemName: "key.slash")
+                                .foregroundStyle(.orange)
+                            Text(warning)
+                                .font(.caption)
+                                .foregroundStyle(.primary)
+                        }
+                        .padding(.vertical, 4)
+                    }
+                }
                 overallSection
                 tagResultsSection
             }
@@ -194,8 +208,18 @@ private struct TagResultRow: View {
 
     let tagResult: TagValidationSummary
 
+    // #72: PENDING has exactly one cause today (no Pass reference trained
+    // yet for this tag) — tapping the row surfaces that explicitly instead
+    // of leaving the operator with an unexplained "Not trained" dead end.
+    @State private var showingRecoveryInfo = false
+
     private var isPending: Bool { tagResult.status == .pending }
     private var isPass:    Bool { tagResult.status == .pass    }
+    // #66: a decrypt failure is a pipeline error, not a real visual mismatch —
+    // tapping the row explains that distinctly instead of leaving it looking
+    // like an ordinary (and confusing) ~0% confidence FAIL.
+    private var isDecryptFailure: Bool { tagResult.errorReason == "DECRYPT_FAILED" }
+    private var isTappableForInfo: Bool { isPending || isDecryptFailure }
 
     var body: some View {
         HStack(spacing: 14) {
@@ -238,10 +262,22 @@ private struct TagResultRow: View {
             }
         }
         .padding(.vertical, 2)
-        .listRowBackground(isPending ? Color.clear : rowColor.opacity(0.05))
+        .listRowBackground((isPending || isDecryptFailure) ? Color.clear : rowColor.opacity(0.05))
+        .contentShape(Rectangle())
+        .onTapGesture { if isTappableForInfo { showingRecoveryInfo = true } }
+        .alert(isDecryptFailure ? "Couldn't Verify This Tag" : "Tag Not Trained", isPresented: $showingRecoveryInfo) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            if isDecryptFailure {
+                Text("\"\(tagResult.tagLabel)\"'s stored reference images couldn't be decrypted, so this isn't a real mismatch — it's a key problem. Make sure you scanned the app-generated QR (Author → QR icon) and that the part wasn't trained under a different key, then re-run this inspection.")
+            } else {
+                Text("\"\(tagResult.tagLabel)\" has no Pass reference recorded yet, so it can't be validated. Switch to Author Mode and tap Train on this tag, then re-run this inspection.")
+            }
+        }
     }
 
     private var rowColor: Color {
+        if isDecryptFailure { return .orange }
         switch tagResult.status {
         case .pass:    return .green
         case .fail:    return .red
@@ -251,19 +287,27 @@ private struct TagResultRow: View {
 
     @ViewBuilder
     private var statusBadge: some View {
-        switch tagResult.status {
-        case .pass:
-            Label("PASS", systemImage: "checkmark.circle.fill")
-                .font(.caption.bold())
-                .foregroundStyle(.green)
-        case .fail:
-            Label("FAIL", systemImage: "xmark.circle.fill")
-                .font(.caption.bold())
-                .foregroundStyle(.red)
-        case .pending:
-            Label("Not trained", systemImage: "clock")
+        // #66: check decrypt failure first — it overrides the FAIL badge with
+        // a distinct one so it doesn't read as an ordinary visual mismatch.
+        if isDecryptFailure {
+            Label("Couldn't verify — tap for details", systemImage: "lock.trianglebadge.exclamationmark")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.orange)
+        } else {
+            switch tagResult.status {
+            case .pass:
+                Label("PASS", systemImage: "checkmark.circle.fill")
+                    .font(.caption.bold())
+                    .foregroundStyle(.green)
+            case .fail:
+                Label("FAIL", systemImage: "xmark.circle.fill")
+                    .font(.caption.bold())
+                    .foregroundStyle(.red)
+            case .pending:
+                Label("Not trained — tap for details", systemImage: "clock")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 }

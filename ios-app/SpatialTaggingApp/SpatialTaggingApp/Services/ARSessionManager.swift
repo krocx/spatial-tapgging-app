@@ -58,6 +58,14 @@ final class ARSessionManager: NSObject, ObservableObject {
     /// True while ARKit is relocalizing into a previously saved ARWorldMap.
     /// QRScanGateView shows a "Relocalizing…" hint while this is true.
     @Published var isRelocalizing: Bool = false
+    /// True between ARSessionDelegate's sessionWasInterrupted/sessionInterruptionEnded
+    /// callbacks — e.g. a phone call, Control Center, or multitasking switch.
+    /// #69: previously nothing observed these callbacks, so a capture or
+    /// validation in flight during an interruption had no way to know its
+    /// result might be against a stale/frozen frame. Author/Operator views
+    /// watch this to cancel in-flight work and prompt the user to verify
+    /// alignment once tracking resumes.
+    @Published var isInterrupted: Bool = false
 
     // ── Internal ──────────────────────────────────────────────────────────────
     private(set) var sceneView = ARSCNView()
@@ -240,6 +248,13 @@ final class ARSessionManager: NSObject, ObservableObject {
         detectedQRCorners     = []
         qrIndicatorNode?.removeFromParentNode()
         qrIndicatorNode = nil
+        // #63: every successful detection — right anchor or wrong — runs through
+        // lockAnchor(), which pauses qrScanner so it stops burning CPU once
+        // locked. A wrong-QR result resets scanState back to .scanning here,
+        // but without resuming the scanner too, isPaused stays true forever
+        // and no future QR (including the correct one) is ever detected again
+        // — the session looks alive but is permanently deaf to new codes.
+        qrScanner.resume()
         startSession()
     }
 
@@ -501,5 +516,26 @@ extension ARSessionManager: ARSessionDelegate {
 
     nonisolated func session(_ session: ARSession, didFailWithError error: Error) {
         print("[ARSessionManager] failed: \(error.localizedDescription)")
+    }
+
+    // #69: fires on phone calls, Control Center, app-switcher gestures, etc.
+    // The camera feed freezes/stops updating for the duration — any capture
+    // or validation that completes "successfully" during this window is
+    // scoring/training against a stale frame, not what's actually in view.
+    nonisolated func sessionWasInterrupted(_ session: ARSession) {
+        print("[ARSessionManager] session interrupted")
+        Task { @MainActor [weak self] in
+            self?.isInterrupted = true
+        }
+    }
+
+    // ARKit resumes tracking automatically where possible; we only need to
+    // clear the flag so views can prompt the user to re-verify alignment
+    // before trusting the next capture/validation result.
+    nonisolated func sessionInterruptionEnded(_ session: ARSession) {
+        print("[ARSessionManager] session interruption ended")
+        Task { @MainActor [weak self] in
+            self?.isInterrupted = false
+        }
     }
 }
