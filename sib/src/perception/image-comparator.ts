@@ -1,4 +1,10 @@
-// image-comparator.ts — v4
+// image-comparator.ts — v5
+//
+// #83: before any metric runs, the live frame is coarsely re-aligned (small
+// integer pixel translation, search-bounded) onto each reference individually
+// — see "Coarse translation registration" below. This fixes viewpoint/
+// parallax sensitivity at the source instead of only diluting it via
+// WORST_FRACTION.
 //
 // Three metrics combined for robust presence/absence detection:
 //
@@ -116,6 +122,117 @@ const WORST_FRACTION = 0.5;  // aggregate = average of the worst 50% of cells �
                              // influence while still weighting toward the
                              // worse-scoring half, so genuine multi-cell
                              // defects still get caught.
+
+// ── Coarse translation registration (#83) ────────────────────────────────────
+// WORST_FRACTION (above) widened the worst-percentile aggregate to tolerate
+// viewpoint/parallax drift, but that's a dilution band-aid, not a fix: it
+// just averages over more cells so one misaligned cell hurts less. The root
+// problem is that a few pixels of camera shift between the trained reference
+// and a live capture shifts WHERE the part's edges land in the patch grid,
+// so cells that should compare "part vs part" end up comparing "part vs
+// background" at the boundary — that's what produced near-identical
+// combined scores (66% vs 68%) straddling the threshold on the same physical
+// setup. Correcting that shift before grid scoring addresses it at the
+// source instead of just softening the aggregation.
+//
+// Search is done on a small downsampled grayscale grid (cheap exhaustive SSD
+// search), then the resulting integer (dx, dy) is applied to the live frame's
+// full-resolution gray/center/tight arrays before any metric is computed.
+// The search window is intentionally narrow (ALIGN_MAX_SHIFT_FRAC) — wide
+// enough to absorb ordinary handheld camera jitter, far too narrow to let an
+// actually-missing/different part "find" a shift that fakes a match.
+const ALIGN_SEARCH_DS       = 32;   // downsampled side length used for the correlation search
+const ALIGN_MAX_SHIFT_FRAC  = 0.06; // search window, as a fraction of SIZE, in each direction
+
+function downsampleAvg(arr: Float32Array, width: number, dsN: number): Float32Array {
+  const out = new Float32Array(dsN * dsN);
+  const block = width / dsN;
+  for (let by = 0; by < dsN; by++) {
+    const r0 = Math.floor(by * block), r1 = Math.floor((by + 1) * block);
+    for (let bx = 0; bx < dsN; bx++) {
+      const c0 = Math.floor(bx * block), c1 = Math.floor((bx + 1) * block);
+      let sum = 0, count = 0;
+      for (let r = r0; r < r1; r++) {
+        const rowBase = r * width;
+        for (let c = c0; c < c1; c++) { sum += arr[rowBase + c]; count++; }
+      }
+      out[by * dsN + bx] = count > 0 ? sum / count : 0;
+    }
+  }
+  return out;
+}
+
+function ssdAtShift(ref: Float32Array, live: Float32Array, dsN: number, dx: number, dy: number): number {
+  let sum = 0, n = 0;
+  for (let r = 0; r < dsN; r++) {
+    const sr = r + dy;
+    if (sr < 0 || sr >= dsN) continue;
+    const refRowBase = r * dsN, liveRowBase = sr * dsN;
+    for (let c = 0; c < dsN; c++) {
+      const sc = c + dx;
+      if (sc < 0 || sc >= dsN) continue;
+      const diff = ref[refRowBase + c] - live[liveRowBase + sc];
+      sum += diff * diff; n++;
+    }
+  }
+  return n > 0 ? sum / n : Infinity;
+}
+
+// Returns the (dx, dy) full-resolution pixel shift that best aligns `live`
+// onto `ref`, restricted to the narrow search window above.
+function bestShift(refGray: Float32Array, liveGray: Float32Array, width: number): { dx: number; dy: number } {
+  const dsN = ALIGN_SEARCH_DS;
+  const refDs  = downsampleAvg(refGray, width, dsN);
+  const liveDs = downsampleAvg(liveGray, width, dsN);
+  const maxShiftDs = Math.max(1, Math.round(dsN * ALIGN_MAX_SHIFT_FRAC));
+
+  let bestDx = 0, bestDy = 0, bestScore = Infinity;
+  for (let dy = -maxShiftDs; dy <= maxShiftDs; dy++) {
+    for (let dx = -maxShiftDs; dx <= maxShiftDs; dx++) {
+      const score = ssdAtShift(refDs, liveDs, dsN, dx, dy);
+      if (score < bestScore) { bestScore = score; bestDx = dx; bestDy = dy; }
+    }
+  }
+
+  const scale = width / dsN;
+  return { dx: Math.round(bestDx * scale), dy: Math.round(bestDy * scale) };
+}
+
+// Samples `arr` (a w×w array) shifted by (dx, dy), clamping at the border —
+// equivalent to aligning `arr`'s content the way bestShift() measured it.
+function shift2D(arr: Float32Array, w: number, dx: number, dy: number): Float32Array {
+  if (dx === 0 && dy === 0) return arr;
+  const out = new Float32Array(arr.length);
+  for (let r = 0; r < w; r++) {
+    let sr = r + dy;
+    if (sr < 0) sr = 0; else if (sr >= w) sr = w - 1;
+    const srcRowBase = sr * w, dstRowBase = r * w;
+    for (let c = 0; c < w; c++) {
+      let sc = c + dx;
+      if (sc < 0) sc = 0; else if (sc >= w) sc = w - 1;
+      out[dstRowBase + c] = arr[srcRowBase + sc];
+    }
+  }
+  return out;
+}
+
+// Returns a copy of `live` with gray/center/tight content shifted to align
+// onto `ref`. centerW/tightW are unchanged — the shift is in shared
+// full-resolution pixel units, since center/tight are unscaled crops of the
+// same SIZE×SIZE canvas as gray (see decodeFrame).
+function alignLiveToRef(ref: DecodedFrame, live: DecodedFrame): DecodedFrame {
+  const { dx, dy } = bestShift(ref.gray, live.gray, SIZE);
+  if (dx === 0 && dy === 0) return live;
+  return {
+    gray:    shift2D(live.gray, SIZE, dx, dy),
+    center:  shift2D(live.center, live.centerW, dx, dy),
+    centerW: live.centerW,
+    tightR:  shift2D(live.tightR, live.tightW, dx, dy),
+    tightG:  shift2D(live.tightG, live.tightW, dx, dy),
+    tightB:  shift2D(live.tightB, live.tightW, dx, dy),
+    tightW:  live.tightW,
+  };
+}
 
 function gridBounds(width: number, gridN: number): number[] {
   const pts: number[] = [];
@@ -489,9 +606,15 @@ async function scoreAgainstRefs(
       continue;
     }
 
-    const ssimFull   = computeSSIM(ref.gray, liveFrame.gray);
-    const colorTight = computeTightColorHistGrid(ref, liveFrame, ref.tightW, TIGHT_GRID);
-    const ssimCenter = computeSSIMGrid(ref.center, liveFrame.center, ref.centerW, CENTER_GRID);
+    // #83: coarsely re-align the live frame onto THIS reference before
+    // scoring — each reference may have been trained from a slightly
+    // different stance, so the correction is computed per-reference rather
+    // than once against a single "canonical" pose.
+    const aligned = alignLiveToRef(ref, liveFrame);
+
+    const ssimFull   = computeSSIM(ref.gray, aligned.gray);
+    const colorTight = computeTightColorHistGrid(ref, aligned, ref.tightW, TIGHT_GRID);
+    const ssimCenter = computeSSIMGrid(ref.center, aligned.center, ref.centerW, CENTER_GRID);
 
     const combined = wFull * ssimFull + wColor * colorTight + wCenter * ssimCenter;
 
