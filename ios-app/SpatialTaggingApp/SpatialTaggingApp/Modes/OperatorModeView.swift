@@ -46,6 +46,43 @@ struct OperatorModeView: View {
     @State private var inConeZone:     Bool     = false  // inside a cone alignment zone
     private let proximityTicker = Timer.publish(every: 0.10, on: .main, in: .common).autoconnect()
 
+    /// Shown instead of the live status card whenever the operator is near a
+    /// cone-trained tag (cone guide visible) but hasn't yet aligned into its
+    /// zone — replaces the previous "nothing shown" gap with an explicit nudge
+    /// so a stale PASS/FAIL is never implied while they're still walking up.
+    /// nil when no such tag is nearby (handled by the gizmo instead).
+    @State private var approachHintText:     String? = nil
+    @State private var approachHintTagLabel: String  = ""
+
+    // ── #88: distance-based marker scaling ────────────────────────────────────
+    /// Below this distance the marker is at full (1.0×) scale — normal
+    /// walking-up/inspection range. Closer than this, it progressively shrinks.
+    private let markerFullScaleDist: Float = 0.45
+    /// Closer than this, the marker stops shrinking further (floor scale).
+    private let markerMinScaleDist:  Float = 0.15
+    private let markerMinScale:      CGFloat = 0.45
+    /// Closer than this, show the "too close — move back" hint.
+    private let tooCloseDist: Float = 0.18
+    /// Set when the operator is right up against the nearest tag — drives a
+    /// "move back a bit" hint so the AR marker (now shrunk) doesn't end up
+    /// being mistaken for the reason they can't see the part clearly.
+    @State private var tooCloseTagLabel: String? = nil
+
+    // ── #89: stuck/idle nudge ──────────────────────────────────────────────────
+    // If the operator hasn't made any progress (no zone entered, nothing
+    // inspected yet) for a while, offer a gentle, encouraging nudge instead
+    // of leaving them wondering whether the app is working at all.
+    @State private var lastProgressAt:  Date   = Date()
+    @State private var idleNudgeText:   String? = nil
+    @State private var idleNudgeShown:  Bool    = false
+    private let idleNudgeDelaySecs: Double = 25
+
+    // ── #84: collapsible interactive 3D tag ───────────────────────────────────
+    // Tapping a tag's 3D label (small pill + chevron affordance) expands a
+    // SwiftUI info card with its full details. Tapping again, tapping a
+    // different tag, or tapping empty space collapses/switches it.
+    @State private var expandedTagId: String? = nil
+
     // ── Pass state reference preview ──────────────────────────────────────────
     @State private var passPreviewImage:  UIImage? = nil
     @State private var passPreviewTagId:  String?  = nil
@@ -120,6 +157,13 @@ struct OperatorModeView: View {
     // hung request isn't a dead end for the operator.
     @State private var validationStage: String = "Analysing…"
     @State private var validationTask:  Task<Void, Never>? = nil
+    /// Granular staging text for the *continuous* in-zone loop's "Checking…"
+    /// card (distinct from `validationStage`, which drives the discrete
+    /// "Inspect All" progress UI). Cycles through connection/analysis steps
+    /// so the operator sees the app is actively working rather than a static
+    /// label, especially during the first few seconds before a tag's initial
+    /// result commits.
+    @State private var liveLoopStage: String = "Getting ready…"
     /// Recent consecutive statuses per tag, used to debounce/hysteresis the
     /// displayed Pass/Fail so a single noisy frame near the threshold doesn't
     /// flicker the AR marker back and forth.
@@ -259,6 +303,20 @@ struct OperatorModeView: View {
             OwnSCNViewContainer(sceneView: arManager.sceneView)
                 .ignoresSafeArea()
 
+            // ── #84: tag tap catcher ─────────────────────────────────────────────
+            // Invisible layer over the camera feed that hit-tests taps against
+            // the 3D tag markers, so tapping a tag's label expands its info
+            // card. Sits below all the buttons/cards added later in this ZStack,
+            // so it only intercepts taps that land on empty camera space.
+            Color.clear
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .gesture(
+                    SpatialTapGesture().onEnded { value in
+                        handleMarkerTap(at: value.location)
+                    }
+                )
+
             // Capture flash
             Color.white.opacity(flashOpacity)
                 .ignoresSafeArea()
@@ -325,10 +383,106 @@ struct OperatorModeView: View {
             // (startLiveLoop) is already running detection — this card makes
             // that obvious by showing a real-time check/X for the tag currently
             // being inspected, sourced straight from autoInspectedResults.
-            if inConeZone && phase != .validating, let activeTagId = liveLoopTagId ?? nearestTagId {
+            if phase != .validating, let label = tooCloseTagLabel {
+                // #88: right up against the tag — the shrunk marker alone
+                // isn't enough feedback, tell them directly to step back.
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        VStack(spacing: 6) {
+                            Image(systemName: "arrow.down.backward.and.arrow.up.forward")
+                                .font(.system(size: 26, weight: .semibold))
+                                .foregroundStyle(.orange)
+                                .symbolEffect(.pulse)
+                            Text("A little too close — step back a bit")
+                                .font(.caption.bold())
+                                .foregroundStyle(.orange)
+                                .multilineTextAlignment(.center)
+                                .frame(maxWidth: 140)
+                            Text(label)
+                                .font(.caption2)
+                                .foregroundStyle(.white.opacity(0.6))
+                                .lineLimit(1)
+                        }
+                        .padding(14)
+                        .background(.black.opacity(0.60), in: RoundedRectangle(cornerRadius: 14))
+                        .padding(.trailing, 20)
+                    }
+                    .padding(.bottom, 130)
+                }
+                .transition(.opacity)
+                .animation(.easeInOut(duration: 0.25), value: tooCloseTagLabel)
+                .allowsHitTesting(false)
+            } else if inConeZone && phase != .validating, let activeTagId = liveLoopTagId ?? nearestTagId {
                 liveStatusCard(forTagId: activeTagId)
                     .transition(.scale.combined(with: .opacity))
                     .animation(.spring(response: 0.35, dampingFraction: 0.75), value: inConeZone)
+            } else if phase != .validating, let hint = approachHintText {
+                // Near a cone tag but not yet aligned — guide them in instead
+                // of showing nothing or a leftover PASS/FAIL.
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        VStack(spacing: 6) {
+                            Image(systemName: "arrow.down.forward.and.arrow.up.backward")
+                                .font(.system(size: 26, weight: .semibold))
+                                .foregroundStyle(.cyan)
+                                .symbolEffect(.pulse)
+                            Text(hint)
+                                .font(.caption.bold())
+                                .foregroundStyle(.cyan)
+                                .multilineTextAlignment(.center)
+                                .frame(maxWidth: 140)
+                            Text(approachHintTagLabel)
+                                .font(.caption2)
+                                .foregroundStyle(.white.opacity(0.6))
+                                .lineLimit(1)
+                        }
+                        .padding(14)
+                        .background(.black.opacity(0.60), in: RoundedRectangle(cornerRadius: 14))
+                        .padding(.trailing, 20)
+                    }
+                    .padding(.bottom, 130)
+                }
+                .transition(.opacity)
+                .animation(.easeInOut(duration: 0.25), value: approachHintText)
+                .allowsHitTesting(false)
+            }
+
+            // ── #84: expanded tag info card ───────────────────────────────────────
+            if let tagId = expandedTagId,
+               let tag = appState.activeTags.first(where: { $0.id == tagId }) {
+                expandedTagCard(for: tag)
+                    .transition(.scale(scale: 0.92).combined(with: .opacity))
+                    .animation(.spring(response: 0.3, dampingFraction: 0.8), value: expandedTagId)
+                    .zIndex(5)
+            }
+
+            // ── #89: stuck/idle nudge banner ──────────────────────────────────────
+            if let nudge = idleNudgeText {
+                VStack {
+                    Spacer().frame(height: 100)
+                    HStack(spacing: 10) {
+                        Image(systemName: "hand.wave.fill").foregroundStyle(.yellow)
+                        Text(nudge)
+                            .font(.caption.bold())
+                            .foregroundStyle(.white)
+                            .lineLimit(3)
+                            .multilineTextAlignment(.leading)
+                        Spacer()
+                        Button { idleNudgeText = nil } label: {
+                            Image(systemName: "xmark").font(.caption).foregroundStyle(.white.opacity(0.7))
+                        }
+                    }
+                    .padding(.horizontal, 14).padding(.vertical, 10)
+                    .background(.black.opacity(0.7), in: RoundedRectangle(cornerRadius: 12))
+                    .padding(.horizontal, 16)
+                    Spacer()
+                }
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .animation(.easeInOut(duration: 0.3), value: idleNudgeText)
             }
 
             // ── "No tag nearby" gizmo ────────────────────────────────────────────
@@ -507,6 +661,7 @@ struct OperatorModeView: View {
             }
         }
         .onAppear {
+            lastProgressAt = Date()   // #89: start the idle clock fresh for this session
             if let existingSession = appState.activeARSession {
                 // ── Session continuity path ────────────────────────────────────
                 // Link to QRScanGateView's already-running session.  The live
@@ -996,9 +1151,11 @@ struct OperatorModeView: View {
                             .font(.system(size: 28, weight: .semibold))
                             .foregroundStyle(.yellow)
                             .symbolEffect(.pulse)
-                        Text("Checking…")
+                        Text(liveLoopStage)
                             .font(.caption.bold())
                             .foregroundStyle(.yellow)
+                            .multilineTextAlignment(.center)
+                            .frame(maxWidth: 140)
                     }
                     Text(tagLabel)
                         .font(.caption2)
@@ -1010,6 +1167,60 @@ struct OperatorModeView: View {
                 .padding(.trailing, 20)
             }
             .padding(.bottom, 130)
+        }
+    }
+
+    // ── #84: expanded tag info card ───────────────────────────────────────────
+
+    /// Full info for a tapped tag — description, type, and (once inspected)
+    /// its current result. Collapses on a second tap of the same marker, a
+    /// tap on a different marker, or a tap on empty space.
+    @ViewBuilder
+    private func expandedTagCard(for tag: Tag) -> some View {
+        VStack {
+            Spacer()
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Image(systemName: tag.type.iconName)
+                        .foregroundStyle(tag.type.color)
+                    Text(tag.label)
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.white)
+                    Spacer()
+                    Button {
+                        withAnimation(.easeOut(duration: 0.2)) { expandedTagId = nil }
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.white.opacity(0.5))
+                    }
+                }
+                Text(tag.type.displayName)
+                    .font(.caption.bold())
+                    .foregroundStyle(tag.type.color)
+                if let desc = tag.checkDescription, !desc.isEmpty {
+                    Text(desc)
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.85))
+                }
+                Divider().background(.white.opacity(0.2))
+                Text("Expected: \(tag.expectedOutcome)")
+                    .font(.caption2)
+                    .foregroundStyle(.white.opacity(0.6))
+                if let result = autoInspectedResults[tag.id], result.status != .pending {
+                    HStack(spacing: 6) {
+                        Image(systemName: result.status == .pass ? "checkmark.circle.fill" : "xmark.circle.fill")
+                            .foregroundStyle(result.status == .pass ? .green : .red)
+                        Text(result.status == .pass ? "Currently passing" : "Currently failing")
+                            .font(.caption2.bold())
+                            .foregroundStyle(result.status == .pass ? .green : .red)
+                    }
+                }
+            }
+            .padding(16)
+            .frame(maxWidth: 280, alignment: .leading)
+            .background(.black.opacity(0.78), in: RoundedRectangle(cornerRadius: 16))
+            .padding(.horizontal, 24)
+            .padding(.bottom, 160)
         }
     }
 
@@ -1180,6 +1391,42 @@ struct OperatorModeView: View {
         }
     }
 
+    // ── #84: tag tap → expand/collapse info card ──────────────────────────────
+
+    /// Hit-tests `location` (in `arManager.sceneView`'s coordinate space)
+    /// against the live 3D tag markers. Tapping a tag's marker toggles its
+    /// expanded info card; tapping a different tag's marker switches to it;
+    /// tapping empty space collapses whatever's currently expanded.
+    private func handleMarkerTap(at location: CGPoint) {
+        let hits = arManager.sceneView.hitTest(location, options: [.searchMode: SCNHitTestSearchMode.all.rawValue])
+        for hit in hits {
+            var candidate: SCNNode? = hit.node
+            while let node = candidate {
+                if let tagId = tagMarkerNodes.first(where: { $0.value === node })?.key {
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                        expandedTagId = (expandedTagId == tagId) ? nil : tagId
+                    }
+                    return
+                }
+                candidate = node.parent
+            }
+        }
+        if expandedTagId != nil {
+            withAnimation(.easeOut(duration: 0.2)) { expandedTagId = nil }
+        }
+    }
+
+    // ── #88: distance-based marker scaling ────────────────────────────────────
+
+    /// Linearly interpolates marker scale between `markerMinScale` (at/below
+    /// `markerMinScaleDist`) and 1.0 (at/above `markerFullScaleDist`).
+    private func markerScale(forDistance dist: Float) -> CGFloat {
+        guard dist < markerFullScaleDist else { return 1.0 }
+        guard dist > markerMinScaleDist else { return markerMinScale }
+        let t = (dist - markerMinScaleDist) / (markerFullScaleDist - markerMinScaleDist)
+        return markerMinScale + (1.0 - markerMinScale) * CGFloat(t)
+    }
+
     // ── AR marker factory ─────────────────────────────────────────────────────
 
     /// Returns the UIColor for a tag type — used to colour uninspected markers so
@@ -1204,6 +1451,7 @@ struct OperatorModeView: View {
     /// coloured by tag type so operators can identify them at a glance in AR.
     private func makeMarkerNode(for tag: Tag, status: ValidationStatus?) -> SCNNode {
         let root  = SCNNode()
+        root.name = tag.id   // #88: lets distance-scaling identify the root by name
         let label = tag.label
 
         // Sphere colour: result-driven when inspected, type-driven when not
@@ -1248,10 +1496,13 @@ struct OperatorModeView: View {
     }
 
     /// Renders tag name as a UIImage pill → SCNPlane texture with billboard constraint.
+    /// #84: slightly smaller than before (was 4.4 cm) — the pill is now a
+    /// compact "collapsed" label by design; full details live in the
+    /// tap-to-expand SwiftUI card instead of being crammed into the 3D pill.
     private func makeLabelNode(text: String, color: UIColor) -> SCNNode {
         let image  = makeLabelImage(text, accentColor: color)
         let aspect = image.size.width / image.size.height
-        let height: CGFloat = 0.044                    // 4.4 cm tall in world space (2× for visibility)
+        let height: CGFloat = 0.036                    // 3.6 cm tall in world space
         let width  = height * aspect
 
         let plane = SCNPlane(width: width, height: height)
@@ -1266,7 +1517,10 @@ struct OperatorModeView: View {
         return node
     }
 
-    /// Draws a dark pill with the tag label text and a status-coloured left bar.
+    /// Draws a dark pill with the tag label text, a status-coloured left bar,
+    /// and a small chevron on the right (#84) — a visible cue that the label
+    /// is tappable, since the interaction itself (tap to expand) isn't
+    /// otherwise discoverable on a 3D AR marker.
     private func makeLabelImage(_ text: String, accentColor: UIColor) -> UIImage {
         let displayText = text.count > 16 ? String(text.prefix(15)) + "…" : text
         let font  = UIFont.boldSystemFont(ofSize: 26)
@@ -1276,8 +1530,9 @@ struct OperatorModeView: View {
         let hPad: CGFloat = 14
         let vPad: CGFloat = 9
         let barW: CGFloat = 5
+        let chevronW: CGFloat = 22   // reserved width for the tappable-affordance chevron
         let size = CGSize(
-            width:  textSize.width + hPad * 2 + barW + 6,
+            width:  textSize.width + hPad * 2 + barW + 6 + chevronW,
             height: textSize.height + vPad * 2
         )
 
@@ -1305,6 +1560,21 @@ struct OperatorModeView: View {
             at: CGPoint(x: barW + hPad, y: vPad),
             withAttributes: attrs
         )
+
+        // Tappable-affordance chevron (small downward "v") on the right
+        let chevronCenterX = size.width - chevronW / 2 - 2
+        let chevronCenterY = size.height / 2
+        let chevronHalfW: CGFloat = 6
+        let chevronH: CGFloat = 5
+        let chevron = UIBezierPath()
+        chevron.move(to: CGPoint(x: chevronCenterX - chevronHalfW, y: chevronCenterY - chevronH / 2))
+        chevron.addLine(to: CGPoint(x: chevronCenterX, y: chevronCenterY + chevronH / 2))
+        chevron.addLine(to: CGPoint(x: chevronCenterX + chevronHalfW, y: chevronCenterY - chevronH / 2))
+        chevron.lineWidth = 2.5
+        chevron.lineCapStyle = .round
+        chevron.lineJoinStyle = .round
+        UIColor.white.withAlphaComponent(0.75).setStroke()
+        chevron.stroke()
 
         return UIGraphicsGetImageFromCurrentImageContext() ?? UIImage()
     }
@@ -2016,6 +2286,28 @@ struct OperatorModeView: View {
                     .fadeOpacity(to: 1.00, duration: pulseSpeed),
                 ])), forKey: "pulse")
             }
+
+            // #88: shrink the marker as the operator gets very close. The
+            // ring/label are a fixed world-space size, so up close they fill
+            // the screen and get in the way of the actual visual inspection.
+            // Scale only kicks in below `markerFullScaleDist` — at normal
+            // walking/inspection distance the marker is unaffected.
+            let scale = markerScale(forDistance: dist)
+            if abs(CGFloat(markerNode.scale.x) - CGFloat(scale)) > 0.01 {
+                SCNTransaction.begin()
+                SCNTransaction.animationDuration = 0.12
+                markerNode.scale = SCNVector3(scale, scale, scale)
+                SCNTransaction.commit()
+            }
+        }
+
+        // #88: "too close" hint — once the marker has shrunk to its floor
+        // scale, a literal physical step back is what actually helps (rather
+        // than continuing to shrink the marker indefinitely).
+        if closestDist < tooCloseDist, let nearId = closestTagId {
+            tooCloseTagLabel = appState.activeTags.first(where: { $0.id == nearId })?.label ?? "the tag"
+        } else {
+            tooCloseTagLabel = nil
         }
 
         // Alignment check for the nearest cone-trained tag — computed BEFORE
@@ -2023,11 +2315,31 @@ struct OperatorModeView: View {
         // already aligned now determines whether the cone should still be
         // shown.
         var nowInZone = false
+        var approachAngle: Float? = nil
         if let nearId = closestTagId,
            let guide  = coneGuides[nearId],
            closestDist < 1.0 {
             let angle = guide.alignmentAngle(cameraTransform: frame.camera.transform)
+            approachAngle = angle
             nowInZone = angle < 25 && closestDist < 0.8
+        }
+
+        // ── "Move into the tag" approach hint ───────────────────────────────
+        // Nearby cone-trained tag, cone guide visible, but not yet aligned —
+        // tell the operator what to do instead of showing nothing (or a stale
+        // PASS/FAIL from a previous visit).
+        if let nearId = closestTagId, coneGuides[nearId] != nil, closestDist < 1.0, !nowInZone {
+            let label = appState.activeTags.first(where: { $0.id == nearId })?.label ?? "the tag"
+            approachHintTagLabel = label
+            if closestDist >= 0.8 {
+                approachHintText = "Move closer to inspect"
+            } else if let angle = approachAngle, angle >= 25 {
+                approachHintText = "Center the tag in view"
+            } else {
+                approachHintText = "Move into the tag to inspect"
+            }
+        } else {
+            approachHintText = nil
         }
 
         // Show the cone for the nearest cone-trained tag while the operator is
@@ -2052,6 +2364,10 @@ struct OperatorModeView: View {
            closestDist < 1.0 {
             if nowInZone && !inConeZone {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                // #89: reaching a zone is real progress — reset the idle clock
+                // and clear any nudge that's currently showing.
+                lastProgressAt = Date()
+                idleNudgeText  = nil
             }
             inConeZone = nowInZone
 
@@ -2104,6 +2420,19 @@ struct OperatorModeView: View {
             } else {
                 gizmoBearing = nil
             }
+        }
+
+        // ── #89: stuck/idle nudge ────────────────────────────────────────────
+        // Only relevant while still hunting for the first tag — once at least
+        // one tag has been inspected, the progress counter in bottomPanel
+        // already tells the operator the app is working. Shown once per
+        // session so it nudges, not nags.
+        if !autoInspectedResults.isEmpty {
+            idleNudgeText = nil   // real progress made — stop nudging
+        } else if phase == .idle, !idleNudgeShown,
+                  Date().timeIntervalSince(lastProgressAt) > idleNudgeDelaySecs {
+            idleNudgeText = "Still looking for the first tag? Walk toward one of the markers — I'll start checking as soon as you're close."
+            idleNudgeShown = true
         }
     }
 
@@ -2163,6 +2492,7 @@ struct OperatorModeView: View {
         guard liveLoopTagId != tagId else { return }
         stopLiveLoop()
         liveLoopTagId = tagId
+        liveLoopStage = "Getting ready…"
         liveLoopTask = Task {
             while !Task.isCancelled {
                 if phase != .validating {
@@ -2225,6 +2555,12 @@ struct OperatorModeView: View {
         isAutoInspecting = true
         defer { isAutoInspecting = false }
 
+        // Only bother updating the staging text while this tag has no
+        // committed result yet — once a PASS/FAIL is showing, the card no
+        // longer reads "Checking…" so the staging text isn't visible.
+        let stillWaitingOnFirstResult = autoInspectedResults[tagId] == nil
+        if isContinuous, stillWaitingOnFirstResult { liveLoopStage = "Lining up the shot…" }
+
         guard let captureFrame = arManager.sceneView.session.currentFrame,
               let snapshot     = captureRawCamera(from: captureFrame)
         else { return }
@@ -2248,11 +2584,18 @@ struct OperatorModeView: View {
         if let existing = appState.activeSession {
             session = existing
         } else {
+            if isContinuous, stillWaitingOnFirstResult { liveLoopStage = "Connecting to the server…" }
             guard let s = try? await client.createSession(userId: "operator",
-                                                           assetId: anchor.assetId) else { return }
+                                                           assetId: anchor.assetId) else {
+                if isContinuous, stillWaitingOnFirstResult {
+                    liveLoopStage = "Having trouble reaching the server — still trying…"
+                }
+                return
+            }
             appState.activeSession = s
             session = s
         }
+        if isContinuous, stillWaitingOnFirstResult { liveLoopStage = "Uploading & comparing…" }
 
         let encKey = appState.anchorEncryptionKey.map { AnchorEncryption.base64(for: $0) }
         let req = BatchValidateRequest(
@@ -2272,8 +2615,11 @@ struct OperatorModeView: View {
 
         do {
             var result = try await client.validateAll(req)
+            if isContinuous, stillWaitingOnFirstResult { liveLoopStage = "Checking alignment…" }
             result = applyConeAndDepthValidation(to: result, snapshot: snapshot, frame: currentFrame)
+            if isContinuous, stillWaitingOnFirstResult { liveLoopStage = "Comparing details…" }
             result = await applyFeaturePrintValidation(to: result, snapshot: snapshot)
+            if isContinuous, stillWaitingOnFirstResult { liveLoopStage = "Reading any text…" }
             result = await applyOCRValidation(to: result, jpeg: jpeg)
 
             // ── Hysteresis (continuous loop only) ───────────────────────────
@@ -2337,6 +2683,9 @@ struct OperatorModeView: View {
             if phase == .idle { phase = .reviewing }
 
         } catch {
+            if isContinuous, stillWaitingOnFirstResult {
+                liveLoopStage = "Having trouble reaching the server — still trying…"
+            }
             print("[AutoInspect] Failed for tag \(tagId): \(error.localizedDescription)")
         }
     }
