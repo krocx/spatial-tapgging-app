@@ -52,7 +52,13 @@ struct AuthorModeView: View {
     @State private var captureTag:     Tag? = nil
     @State private var editTag:        Tag? = nil
     @State private var showQRGenerator = false
-    @State private var showHelpSheet   = false
+    @State private var showHelpSheet   = false   // kept for legacy; use showOnboarding
+    @State private var showOnboarding  = false
+
+    // ── Contextual in-AR hint ─────────────────────────────────────────────────
+    /// Animated tap hint shown on first entry when no tags exist yet.
+    /// Dismissed on first tap or after 8 s — session-level only, never persisted.
+    @State private var showTapHint = true
 
     // ── Tag navigation (Screen 9) ──────────────────────────────────────────────
     /// Non-nil while the author is walking toward a specific tag to train.
@@ -278,6 +284,15 @@ struct AuthorModeView: View {
                     placementBottomPanel
                 }
             }
+
+            // ── Tap hint — appears on first entry when anchor has no tags yet ──
+            if showTapHint && appState.activeTags.isEmpty && navigatingToTag == nil {
+                AuthorTapHint {
+                    withAnimation(.easeOut(duration: 0.3)) { showTapHint = false }
+                }
+                .transition(.opacity.combined(with: .scale(scale: 0.94)))
+                .animation(.easeInOut(duration: 0.35), value: showTapHint)
+            }
         }
         .onReceive(crosshairTicker) { _ in
             updateCrosshair()
@@ -370,9 +385,11 @@ struct AuthorModeView: View {
             }
         }
 
-        // ── Help ──────────────────────────────────────────────────────────────
-        .sheet(isPresented: $showHelpSheet) {
-            HelpSheet(steps: HelpContent.authorMode)
+        // ── Help / FTUE ───────────────────────────────────────────────────────
+        // Auto-show is handled by AnchorDirectoryView (fires when mode is selected).
+        // This sheet is kept so the ? button inside AR always works too.
+        .sheet(isPresented: $showOnboarding) {
+            OnboardingSheet(context: .author)
         }
 
         // ── Training cover — routes by TagCaptureMode ──────────────────────────
@@ -621,7 +638,7 @@ struct AuthorModeView: View {
                             .font(.subheadline)
                             .foregroundStyle(.white.opacity(0.5))
                     }
-                    Button { showHelpSheet = true; showTagList = false } label: {
+                    Button { showOnboarding = true; showTagList = false } label: {
                         Image(systemName: "questionmark.circle")
                             .font(.subheadline)
                             .foregroundStyle(.white.opacity(0.5))
@@ -773,6 +790,8 @@ struct AuthorModeView: View {
     // ── Tap handler ───────────────────────────────────────────────────────────
 
     private func handleTap(at screenPoint: CGPoint) {
+        // Dismiss tap hint on first interaction regardless of outcome
+        if showTapHint { withAnimation(.easeOut(duration: 0.3)) { showTapHint = false } }
         guard pendingPlacement == nil else { return }
         let sv = arManager.sceneView
 
@@ -1139,5 +1158,77 @@ struct AuthorModeView: View {
         if let d = any.value as? Double { return d }
         if let i = any.value as? Int    { return Double(i) }
         return nil
+    }
+}
+
+// ── AuthorTapHint ─────────────────────────────────────────────────────────────
+// Floating animated hint shown when Author enters an empty anchor for the first
+// time. Non-blocking — AR camera and surfaces remain fully interactive beneath it.
+// Auto-dismisses after 8 s; also dismissed on first tap (handleTap sets showTapHint = false).
+
+private struct AuthorTapHint: View {
+    let onDismiss: () -> Void
+
+    @State private var pulse = false
+    @State private var ripple = false
+
+    var body: some View {
+        VStack {
+            Spacer()
+            Spacer()
+
+            VStack(spacing: 14) {
+                // Animated tap icon with ripple
+                ZStack {
+                    // Outer ripple ring — expands and fades
+                    Circle()
+                        .strokeBorder(Color.white.opacity(ripple ? 0 : 0.45), lineWidth: 1.5)
+                        .frame(width: ripple ? 90 : 58, height: ripple ? 90 : 58)
+                        .animation(.easeOut(duration: 1.0).repeatForever(autoreverses: false),
+                                   value: ripple)
+
+                    // Inner glow circle
+                    Circle()
+                        .fill(Color.white.opacity(0.10))
+                        .frame(width: 58, height: 58)
+
+                    // Hand icon — gentle scale pulse
+                    Image(systemName: "hand.tap.fill")
+                        .font(.system(size: 30, weight: .semibold))
+                        .foregroundStyle(.white)
+                        .scaleEffect(pulse ? 0.85 : 1.0)
+                        .offset(y: pulse ? 3 : 0)
+                        .animation(.easeInOut(duration: 0.65).repeatForever(autoreverses: true),
+                                   value: pulse)
+                }
+                .frame(width: 90, height: 90)
+
+                VStack(spacing: 4) {
+                    Text("Tap any surface to place a tag")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.white)
+                    Text("Point at a flat surface and tap")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.60))
+                }
+            }
+            .padding(.horizontal, 28)
+            .padding(.vertical, 20)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 24))
+            .overlay(
+                RoundedRectangle(cornerRadius: 24)
+                    .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
+            )
+            .padding(.horizontal, 40)
+            .onAppear {
+                pulse  = true
+                ripple = true
+                // Auto-dismiss after 8 s
+                DispatchQueue.main.asyncAfter(deadline: .now() + 8) { onDismiss() }
+            }
+
+            Spacer()
+        }
+        .allowsHitTesting(false)   // tap passes through to AR layer beneath
     }
 }

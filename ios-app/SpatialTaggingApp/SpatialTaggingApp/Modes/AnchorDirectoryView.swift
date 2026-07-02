@@ -39,6 +39,7 @@ struct AnchorDirectoryView: View {
     // ── Sheets ────────────────────────────────────────────────────────────────
     @State private var showCreateSheet = false
     @State private var showHelpSheet   = false
+    @State private var showOnboarding  = false
 
     // ── Computed ──────────────────────────────────────────────────────────────
     private var filtered: [Anchor] {
@@ -70,7 +71,7 @@ struct AnchorDirectoryView: View {
                     Button("Cancel", action: onCancel)
                 }
                 ToolbarItemGroup(placement: .primaryAction) {
-                    Button { showHelpSheet = true } label: {
+                    Button { showOnboarding = true } label: {
                         Image(systemName: "questionmark.circle")
                     }
                     // Author only: create new anchor
@@ -97,7 +98,18 @@ struct AnchorDirectoryView: View {
                 .environmentObject(appState)
             }
         }
-        .onAppear { Task { await loadAnchors() } }
+        .onAppear {
+            Task { await loadAnchors() }
+            // FTUE: auto-show the mode-appropriate walkthrough on first entry
+            guard settings.ftueEnabled else { return }
+            if mode == .author, !settings.ftueAuthorSeen {
+                settings.ftueAuthorSeen = true    // mark now — won't repeat
+                showOnboarding = true
+            } else if mode != .author, !settings.ftueOperatorSeen {
+                settings.ftueOperatorSeen = true  // mark now — won't repeat
+                showOnboarding = true
+            }
+        }
         .refreshable { await loadAnchors() }
 
         // ── Delete confirmation alert ──────────────────────────────────────────
@@ -149,9 +161,13 @@ struct AnchorDirectoryView: View {
             .environmentObject(appState)
         }
 
-        // Help sheet
+        // Help sheet (legacy reference) — kept for future use
         .sheet(isPresented: $showHelpSheet) {
             HelpSheet(steps: HelpContent.anchorDirectory)
+        }
+        // FTUE / Help — context-aware walkthrough
+        .sheet(isPresented: $showOnboarding) {
+            OnboardingSheet(context: mode == .author ? .author : .operatorMode)
         }
     }
 

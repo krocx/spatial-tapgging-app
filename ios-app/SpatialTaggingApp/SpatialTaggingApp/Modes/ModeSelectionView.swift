@@ -13,11 +13,11 @@ struct ModeSelectionView: View {
     @EnvironmentObject private var settings: AppSettings
     @EnvironmentObject private var appState:  AppState
 
-    @State private var showAuthorDirectory = false
+    @State private var showAuthorDirectory  = false
     @State private var showOperatorDirectory = false
-    @State private var showSettings        = false
-    @State private var showHelpSheet       = false
-    @State private var isTesting           = false
+    @State private var showSettings         = false
+    @State private var showOnboarding       = false
+    @State private var isTesting            = false
 
     // Continue-last-session state
     @State private var lastSession: LastAuthorSession? = nil
@@ -48,7 +48,7 @@ struct ModeSelectionView: View {
                             .foregroundStyle(LinearGradient(colors: [.blue, .cyan],
                                                            startPoint: .top, endPoint: .bottom))
                         Spacer()
-                        Button { showHelpSheet = true } label: {
+                        Button { showOnboarding = true } label: {
                             Image(systemName: "questionmark.circle")
                                 .font(.title2).foregroundColor(.white.opacity(0.6))
                         }
@@ -58,7 +58,7 @@ struct ModeSelectionView: View {
                         }
                     }
                     Text("Spatial Tagging").font(.largeTitle.bold()).foregroundColor(.white)
-                    Text("Cleanroom Inspection · Phase 2")
+                    Text("Cleanroom Inspection · v\(AppVersion.current)")
                         .font(.subheadline).foregroundColor(.white.opacity(0.5))
                 }
                 .padding(.top, 48).padding(.horizontal, 24)
@@ -207,8 +207,8 @@ struct ModeSelectionView: View {
             .environmentObject(appState)
         }
         .sheet(isPresented: $showSettings) { SettingsView() }
-        .sheet(isPresented: $showHelpSheet) {
-            HelpSheet(steps: HelpContent.home)
+        .sheet(isPresented: $showOnboarding) {
+            OnboardingSheet(context: .home)
         }
         // Share Anchor QR sheet — opened from the home-screen ShareQRCard
         .sheet(isPresented: $showQRSheet, onDismiss: { qrAnchor = nil; qrKeyB64 = nil }) {
@@ -219,6 +219,12 @@ struct ModeSelectionView: View {
         .onAppear {
             // Load last Author session for "Continue" card
             lastSession = appState.loadLastAuthorSession()
+
+            // FTUE: auto-show home walkthrough on first launch
+            if settings.ftueEnabled && !settings.ftueHomeSeen {
+                settings.ftueHomeSeen = true   // mark immediately — won't repeat
+                showOnboarding = true
+            }
 
             guard settings.isConfigured, !appState.connectionState.isConnected else { return }
             isTesting = true

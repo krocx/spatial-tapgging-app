@@ -178,7 +178,8 @@ struct OperatorModeView: View {
     @State private var validateError: String? = nil
     @State private var showResults   = false
     @State private var showNewScan   = false
-    @State private var showHelpSheet  = false
+    @State private var showHelpSheet  = false   // kept for legacy; use showOnboarding
+    @State private var showOnboarding = false
     @State private var flashOpacity: Double = 0
 
     // ── #69: AR session interruption banner ────────────────────────────────────
@@ -662,6 +663,8 @@ struct OperatorModeView: View {
         }
         .onAppear {
             lastProgressAt = Date()   // #89: start the idle clock fresh for this session
+            // FTUE auto-show handled by AnchorDirectoryView; ? button here still works.
+
             if let existingSession = appState.activeARSession {
                 // ── Session continuity path ────────────────────────────────────
                 // Link to QRScanGateView's already-running session.  The live
@@ -809,8 +812,8 @@ struct OperatorModeView: View {
             .environmentObject(settings)
             .environmentObject(appState)
         }
-        .sheet(isPresented: $showHelpSheet) {
-            HelpSheet(steps: HelpContent.operatorMode)
+        .sheet(isPresented: $showOnboarding) {
+            OnboardingSheet(context: .operatorMode)
         }
     }
 
@@ -885,7 +888,7 @@ struct OperatorModeView: View {
                 .accessibilityLabel(showTagMarkers ? "Hide tags" : "Show tags")
 
                 // Help
-                Button { showHelpSheet = true } label: {
+                Button { showOnboarding = true } label: {
                     Image(systemName: "questionmark.circle")
                         .font(.body)
                         .foregroundColor(.white)

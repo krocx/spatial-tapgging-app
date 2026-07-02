@@ -135,8 +135,29 @@ struct SettingsView: View {
                     }
                 }
 
+                // ── Introduction (FTUE) ───────────────────────────────────
+                Section {
+                    Toggle(isOn: Binding(
+                        get: { settings.ftueEnabled },
+                        set: { settings.ftueEnabled = $0 }
+                    )) {
+                        Label("Show introduction on first entry", systemImage: "hand.wave.fill")
+                    }
+                    if settings.ftueHomeSeen || settings.ftueAuthorSeen || settings.ftueOperatorSeen {
+                        Button(role: .destructive) {
+                            settings.resetFTUE()
+                        } label: {
+                            Label("Reset introduction", systemImage: "arrow.counterclockwise")
+                        }
+                    }
+                } header: {
+                    Text("Introduction")
+                } footer: {
+                    Text("When enabled, a walkthrough appears the first time you enter each mode. Tap ? in any mode to replay it any time.")
+                }
+
                 Section("App Info") {
-                    LabeledContent("Version", value: "Phase 2.5")
+                    LabeledContent("Version", value: AppVersion.current)
                     LabeledContent("Stack",   value: "Swift + ARKit + CryptoKit + SIB v0.3")
                 }
             }

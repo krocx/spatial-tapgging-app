@@ -142,6 +142,10 @@ struct ConeCaptureView: View {
     @State private var roiSaveError:    String? = nil
     @State private var roiSaving:       Bool = false
 
+    // ── Contextual in-AR hints (session-only, never persisted) ────────────────
+    @State private var showPositioningHint = true   // shown during .positioning phase
+    @State private var showSweepHint       = true   // shown when .sweeping phase starts
+
     private let ticker = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
 
     // ── SceneView holder ──────────────────────────────────────────────────────
@@ -194,6 +198,30 @@ struct ConeCaptureView: View {
             }
 
             if phase == .done { successOverlay }
+
+            // ── Contextual in-AR hints ────────────────────────────────────────
+            if phase == .positioning && showPositioningHint {
+                ConePositioningHint {
+                    withAnimation(.easeOut(duration: 0.3)) { showPositioningHint = false }
+                }
+                .transition(.opacity.combined(with: .move(edge: .top)))
+                .animation(.easeInOut(duration: 0.35), value: showPositioningHint)
+            }
+            if phase == .sweeping && showSweepHint {
+                ConeSweepHint {
+                    withAnimation(.easeOut(duration: 0.3)) { showSweepHint = false }
+                }
+                .transition(.opacity.combined(with: .move(edge: .top)))
+                .animation(.easeInOut(duration: 0.35), value: showSweepHint)
+            }
+        }
+        .onChange(of: phase) { newPhase in
+            // Auto-dismiss hints when their phase activates
+            if newPhase == .sweeping && showSweepHint {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                    withAnimation(.easeOut(duration: 0.4)) { showSweepHint = false }
+                }
+            }
         }
         .onAppear {
             svHolder.sceneView.session = parentArManager.sceneView.session
@@ -1003,5 +1031,92 @@ struct ConeCaptureView: View {
         if let d = any.value as? Double { return d }
         if let i = any.value as? Int    { return Double(i) }
         return nil
+    }
+}
+
+// ── ConePositioningHint ───────────────────────────────────────────────────────
+// Shown during the .positioning phase to teach pinch-to-resize and distance control.
+// Auto-dismisses after 6 seconds; also has a tap-to-dismiss × button.
+
+private struct ConePositioningHint: View {
+    let onDismiss: () -> Void
+
+    var body: some View {
+        VStack {
+            HStack(spacing: 10) {
+                // Gesture icons
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.up.and.down")
+                        .font(.caption.bold())
+                        .foregroundStyle(.white.opacity(0.8))
+                    Text("Move closer/farther to resize")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.85))
+                }
+                Text("·")
+                    .foregroundStyle(.white.opacity(0.4))
+                HStack(spacing: 6) {
+                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                        .font(.caption.bold())
+                        .foregroundStyle(.white.opacity(0.8))
+                    Text("Pinch to adjust cone size")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.85))
+                }
+                Spacer(minLength: 0)
+                Button { onDismiss() } label: {
+                    Image(systemName: "xmark")
+                        .font(.caption2.bold())
+                        .foregroundStyle(.white.opacity(0.5))
+                        .padding(4)
+                }
+            }
+            .padding(.horizontal, 14).padding(.vertical, 10)
+            .background(Color.black.opacity(0.55), in: Capsule())
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+
+            Spacer()
+        }
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 6) { onDismiss() }
+        }
+    }
+}
+
+// ── ConeSweepHint ─────────────────────────────────────────────────────────────
+// Shown when the sweep phase begins to explain the auto-capture mechanic.
+// Auto-dismisses after 5 seconds.
+
+private struct ConeSweepHint: View {
+    let onDismiss: () -> Void
+
+    var body: some View {
+        VStack {
+            HStack(spacing: 8) {
+                Image(systemName: "arrow.triangle.2.circlepath")
+                    .font(.caption.bold())
+                    .foregroundStyle(.yellow)
+                Text("Move slowly to aim at each zone — hold steady to capture")
+                    .font(.caption)
+                    .foregroundStyle(.white.opacity(0.9))
+                Spacer(minLength: 0)
+                Button { onDismiss() } label: {
+                    Image(systemName: "xmark")
+                        .font(.caption2.bold())
+                        .foregroundStyle(.white.opacity(0.5))
+                        .padding(4)
+                }
+            }
+            .padding(.horizontal, 14).padding(.vertical, 10)
+            .background(Color.black.opacity(0.55), in: Capsule())
+            .padding(.horizontal, 16)
+            .padding(.top, 8)
+
+            Spacer()
+        }
+        .onAppear {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5) { onDismiss() }
+        }
     }
 }
