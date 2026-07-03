@@ -515,13 +515,28 @@ async function decodeFrame(base64: string, roi?: ComparatorRoi): Promise<Decoded
   return { gray, center, centerW: med.w, tightR, tightG, tightB, tightW: tight.w };
 }
 
+// In-flight decode deduplication. If two callers (e.g. a background
+// post-training warm-up and a concurrent operator inspection) request the
+// same reference image while a Jimp decode is still in progress, the second
+// caller awaits the existing Promise instead of starting a redundant decode.
+// On success the resolved frame is stored in refCache; on failure the entry
+// is removed so the next caller can retry cleanly.
+const pendingDecodes = new Map<string, Promise<DecodedFrame>>();
+
 async function decodeReference(base64: string, roi?: ComparatorRoi): Promise<DecodedFrame> {
   const key    = refCacheKey(base64) + roiKeySuffix(roi);
   const cached = refCacheGet(key);
   if (cached) return cached;
-  const frame = await decodeFrame(base64, roi);
-  refCacheSet(key, frame);
-  return frame;
+
+  // Another caller is already decoding this image — share its Promise.
+  const pending = pendingDecodes.get(key);
+  if (pending) return pending;
+
+  const promise = decodeFrame(base64, roi)
+    .then(frame  => { refCacheSet(key, frame); pendingDecodes.delete(key); return frame; })
+    .catch(err   => { pendingDecodes.delete(key); throw err; });
+  pendingDecodes.set(key, promise);
+  return promise;
 }
 
 // ── SSIM ──────────────────────────────────────────────────────────────────────

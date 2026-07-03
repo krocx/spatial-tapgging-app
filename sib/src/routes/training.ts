@@ -108,6 +108,30 @@ router.post('/train', (req: Request, res: Response) => {
   if (existing) passStateStore.delete(existing.id);
   passStateStore.save(passState);
 
+  // Fire-and-forget post-training reference-cache warm-up.
+  // Waits 5 s before decoding so the Author's ROI PATCH (which typically
+  // arrives ~3 s after training) can land first — the ROI is baked into the
+  // cache key, so we need to read it AFTER it's stored, not at training time.
+  // For AES-256-GCM encrypted images this silently fails (no decryption key
+  // available at training time); the first Operator inspection will pay the
+  // decode cost in that case, same as before this change.
+  if (state === 'PASS') {
+    setTimeout(() => {
+      void (async () => {
+        try {
+          const tag  = tagStore.findById(body.tagId);
+          const roi  = tag?.roi;
+          const refs = images.map(img => img.imageBase64);
+          await compareAgainstPassState(refs, refs[0], undefined, roi);
+          console.log(`[warmup] Reference cache pre-warmed: tag=${body.tagId} images=${refs.length}`);
+        } catch {
+          // Encrypted images, Jimp decode error, etc. — never affects the
+          // training response that has already been sent.
+        }
+      })();
+    }, 5_000);
+  }
+
   const response: ApiResponse<PassState> = {
     data: passState,
     timestamp: now,

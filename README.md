@@ -72,6 +72,96 @@ The server persists data to `.sib-data/` in the `sib/` folder (git-ignored). For
 
 ---
 
+## Expected Behaviour — What to Know Before Your First Trial
+
+### Inspection speed
+
+Under normal conditions, each inspection takes **1–3 seconds** from the moment you tap Inspect to seeing the PASS/FAIL result on screen. This is the benchmark to hold in your head when evaluating the app.
+
+There are two specific situations where a first inspection takes noticeably longer. Both are one-time costs — every inspection after the first is fast.
+
+**1. After a fresh server deployment**
+
+When the server restarts (e.g. after a code update is pushed to Render), it runs a brief self-warm-up in the background. From that point, the very first person to trigger an inspection on any tag may see a slightly longer result — typically under 5 seconds, not the 1–3 second norm. After that single inspection, the server is fully warmed and all subsequent inspections across all tags are back to 1–3 seconds.
+
+*What this means in practice:* Before sharing the app with a new group of testers after a deployment, do one inspection yourself on any tag to absorb the warm-up cost. Your team will then see consistent speeds.
+
+**2. After an Author trains a brand-new tag**
+
+When a new tag is trained for the first time, the server has to process its reference images before it can run comparisons. Because the images are stored in encrypted form, this processing can only happen when an Operator triggers the first inspection — not during training. That first inspection may take up to **20–25 seconds**. Every inspection after that is back to 1–3 seconds.
+
+*What this means in practice:* The Author (or someone acting as a "seed" tester) should always run one inspection on a newly-trained tag before the tag is handed over to the wider team. This is a one-time action per tag, per training session. If a tag is re-trained, the first inspection of the re-trained version will again be slow.
+
+### Summary table
+
+| Situation | First inspection | All subsequent |
+|---|---|---|
+| After a server deployment | ~3–5 s (slightly longer) | 1–3 s |
+| Brand-new tag (just trained) | Up to ~25 s (one time only) | 1–3 s |
+| Normal operation | 1–3 s | 1–3 s |
+
+---
+
+## How to Review the App Thoroughly
+
+This is a suggested walk-through for anyone assessing the app for the first time. Go through it in order — each section builds on the one before.
+
+### 1. Author flow — training a new tag
+
+- Open the app and navigate to Author mode.
+- Select (or create) an anchor on a physical asset.
+- Place a new tag at a specific inspection point — something with a visible, repeatable state, like a switch, valve, cable, or indicator light.
+- Complete the honeycomb capture (the multi-angle photo sequence). Aim to hold the phone steady and capture from the angles the app prompts.
+- If the app offers an ROI (region of interest) step — a box you draw around the specific feature — use it. This meaningfully improves inspection accuracy by telling the server exactly where to look.
+- Generate the QR code for this anchor and note it.
+
+*What to check:* the training flow feels smooth, the QR generates without errors, and the app confirms the tag has been saved.
+
+### 2. Seed inspection — absorbing the first-time cost
+
+- Switch to Operator mode on the same device (or a second device that has scanned the QR).
+- Run one inspection on the newly-trained tag. **Expect up to 25 seconds for this first result.** This is normal — see the explanation above.
+- Confirm you get a PASS result (since the asset is in the trained reference state).
+
+*What to check:* the result arrives (even if slow), and it correctly shows PASS.
+
+### 3. Operator flow — normal inspection speed
+
+- Run three or four more inspections in quick succession on the same tag.
+- Each should complete in 1–3 seconds.
+- Physically change the state of the inspected feature (remove a cable, flip a switch, cover a valve) and run another inspection — expect a FAIL result.
+- Restore the correct state and inspect again — expect PASS.
+
+*What to check:* PASS/FAIL results are accurate, response times are consistent, and the confidence score (shown alongside the result) is meaningfully different between a real PASS and a real FAIL.
+
+### 4. Multi-tag anchor
+
+- Train a second tag on the same anchor, pointing at a different feature.
+- Run a validate-all inspection (which checks all tags on the anchor from a single image).
+- Confirm both tags return independent results.
+- Deliberately leave one feature in the wrong state and confirm only that tag shows FAIL while the other remains PASS.
+
+*What to check:* the multi-tag result is accurate per-tag, not a single blanket result.
+
+### 5. Lighting and angle tolerance
+
+- Inspect the same PASS tag under different lighting (bright, dim, a different room if possible).
+- Inspect from slightly different angles and distances compared to where the reference was trained.
+- The result should still be PASS, with confidence staying comfortably above 60 %.
+
+*What to check:* if a PASS tag consistently FAILs under reasonable real-world variation, the ROI may need to be redrawn more tightly, or the tag may need more reference images.
+
+### 6. Confidence score as a health check
+
+Each inspection reports a confidence score (0–100 %). Use this as a signal, not just the binary result:
+
+- A PASS at 85 %+ is a strong, reliable match.
+- A PASS at 60–70 % is valid but borderline — consider re-training with better lighting or more varied angles.
+- A FAIL at under 30 % is a clear mismatch.
+- A FAIL at 50–59 % is close to the threshold — the trained reference may be ambiguous, or the live shot may have had a large angle/lighting shift.
+
+---
+
 ## Ownership
 
 Vision, Architecture & Code: Karthik
