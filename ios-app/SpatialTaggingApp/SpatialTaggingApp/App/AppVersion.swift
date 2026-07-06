@@ -1,4 +1,5 @@
 // AppVersion.swift
+import Foundation
 // Reads the display version directly from the app bundle at runtime so the
 // landing screen, Settings, and Onboarding always reflect what was set in Xcode
 // — no source-code edits needed when bumping the build counter.
