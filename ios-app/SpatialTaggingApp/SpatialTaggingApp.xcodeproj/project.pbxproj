@@ -407,7 +407,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2026.3.35.01;
+				MARKETING_VERSION = 2026.3.36;
 				PRODUCT_BUNDLE_IDENTIFIER = com.krocx.SpatialTaggingApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -434,7 +434,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 2026.3.35.01;
+				MARKETING_VERSION = 2026.3.36;
 				PRODUCT_BUNDLE_IDENTIFIER = com.krocx.SpatialTaggingApp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;

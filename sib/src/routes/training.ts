@@ -333,7 +333,13 @@ router.post('/validate-all', async (req: Request, res: Response) => {
             // FAIL with a distinct reason rather than trusting whatever score
             // the comparator happened to produce against still-encrypted bytes.
             status:        decryptFailed ? 'FAIL' : dual.status,
-            confidence:    decryptFailed ? 0 : dual.confidence,
+            // #103: always expose the pass-similarity score (0–1) so the
+            // displayed % means "how well the frame matched PASS references."
+            // For dual-state, dual.confidence is the normalised margin
+            // (0.5–1.0, can show FAIL 71%) which confuses non-tech users
+            // who expect higher % = more likely PASS.  Using simToPass gives
+            // FAIL 45% / PASS 71% — the direction is always intuitive.
+            confidence:    decryptFailed ? 0 : parseFloat(dual.simToPass.toFixed(4)),
             ...(decryptFailed ? { errorReason: 'DECRYPT_FAILED' as const } : {}),
           };
         }

@@ -40,6 +40,12 @@
 	</dict>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- App uses AES-256-GCM via Apple's CryptoKit framework only.
+	     No proprietary or third-party encryption is implemented.
+	     This key tells App Store Connect to skip the export compliance
+	     questionnaire on every upload. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UIRequiredDeviceCapabilities</key>

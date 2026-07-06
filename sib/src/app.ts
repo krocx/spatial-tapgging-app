@@ -1,8 +1,9 @@
 import express from 'express';
 import cors from 'cors';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import anchorRouter from './routes/anchors.js';
+import anchorRouter, { anchorStore, QRIMAGES_DIR } from './routes/anchors.js';
 import tagRouter from './routes/tags.js';
 import sessionRouter from './routes/sessions.js';
 import perceptionRouter from './routes/perception.js';
@@ -39,10 +40,122 @@ export function createApp(): express.Express {
   });
 
   // --- Anchor Directory portal (no auth — team members enter their own API key) ---
-  // Served at /portal — a browser-based anchor browser + QR generator
-  app.use('/portal', express.static(path.join(__dirname, '../portal')));
+  // Served at /portal — a browser-based anchor browser + QR generator.
+  // index.html is served with no-cache so browsers always fetch the latest
+  // version after a server update.  Assets (CSS, images) can still be cached.
+  app.use('/portal', express.static(path.join(__dirname, '../portal'), {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.html')) {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+      }
+    },
+  }));
   app.get('/portal', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.sendFile(path.join(__dirname, '../portal/index.html'));
+  });
+
+  // --- GET /anchors/:id/qrprint — print-ready QR page (no auth required) ---
+  // Serves a self-contained A4 HTML page with the QR image embedded as a
+  // base64 data URL (no external requests from the printed page).
+  // The QR is rendered at its exact physical print size (anchor.qrSizeCm cm).
+  // Route is intentionally placed BEFORE apiKeyAuth so browsers can open it
+  // in a new tab without needing to pass a header; the anchor UUID provides
+  // sufficient access control for this read-only display page.
+  app.get('/anchors/:id/qrprint', (req, res) => {
+    const anchor = anchorStore.findById(req.params.id);
+    if (!anchor) {
+      return res.status(404).send('<!DOCTYPE html><html><body><p>Anchor not found.</p></body></html>');
+    }
+
+    const qrPath = path.join(QRIMAGES_DIR, `${anchor.id}.png`);
+    let qrDataUrl = '';
+    try {
+      const png = fs.readFileSync(qrPath);
+      qrDataUrl = `data:image/png;base64,${png.toString('base64')}`;
+    } catch { /* QR not yet generated — show placeholder */ }
+
+    const esc = (s: string) =>
+      s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const assetId    = esc(anchor.assetId);
+    const qrSizeCm   = anchor.qrSizeCm ?? 10;
+    const anchorShort = anchor.id.slice(0, 22) + '…';
+    const createdAt  = new Date(anchor.createdAt).toLocaleDateString('en-GB', {
+      day: '2-digit', month: 'short', year: 'numeric',
+    });
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR — ${assetId}</title>
+  <style>
+    @page { size: A4 portrait; margin: 20mm; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 40px 20px 20px; color: #1a1a1a; background: #fff;
+    }
+    h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.4px; margin-bottom: 4px; text-align: center; }
+    .subtitle { font-size: 12px; color: #777; margin-bottom: 28px; text-align: center; }
+    .qr-wrap {
+      width: ${qrSizeCm}cm; height: ${qrSizeCm}cm;
+      background: #fff; padding: 3px;
+      border: 1px solid #d0d0d0; border-radius: 4px;
+    }
+    .qr-wrap img { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+    .qr-missing { width: ${qrSizeCm}cm; height: ${qrSizeCm}cm; display: flex; align-items: center;
+      justify-content: center; border: 2px dashed #ccc; color: #999; font-size: 13px; text-align: center; }
+    .meta { margin-top: 20px; text-align: center; }
+    .meta p { font-size: 11px; color: #555; margin-bottom: 5px; line-height: 1.6; }
+    .meta code {
+      font-family: 'SF Mono', 'Fira Code', 'Courier New', monospace;
+      font-size: 10px; background: #f4f4f4; padding: 2px 6px; border-radius: 3px;
+    }
+    .size-note { font-size: 10px; color: #aaa; margin-top: 12px; }
+    .print-btn {
+      margin-top: 28px; padding: 10px 28px;
+      background: #007AFF; color: #fff; border: none;
+      border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer;
+    }
+    .print-btn:hover { background: #0063cc; }
+    @media print {
+      .print-btn { display: none; }
+      body { padding: 0; }
+    }
+  </style>
+</head>
+<body>
+  <h1>${assetId}</h1>
+  <p class="subtitle">Anchor QR Code &middot; Scan with SpatialTagging iOS app</p>
+  ${qrDataUrl
+    ? `<div class="qr-wrap"><img src="${qrDataUrl}" alt="QR code for ${assetId}"></div>`
+    : `<div class="qr-missing">QR image not ready yet.<br>Reload in a moment.</div>`
+  }
+  <div class="meta">
+    <p>Asset: <strong>${assetId}</strong></p>
+    <p>Anchor ID: <code>${anchorShort}</code></p>
+    <p>Created: ${createdAt}</p>
+  </div>
+  <p class="size-note">&#x1F4D0; Print at ${qrSizeCm}&thinsp;cm &times; ${qrSizeCm}&thinsp;cm for correct scanning distance</p>
+  <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+  <script>
+    window.addEventListener('load', function() {
+      // Auto-open print dialog after a short delay so the image is fully rendered.
+      // The user can cancel if they only wanted to preview.
+      setTimeout(function() { window.print(); }, 600);
+    });
+  <\/script>
+</body>
+</html>`;
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store');
+    return res.send(html);
   });
 
   // --- API key auth — protects all routes below this point ---

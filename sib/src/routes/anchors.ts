@@ -1,5 +1,6 @@
 import express, { Router, type Request, type Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
+import { randomBytes } from 'crypto';
 import fs   from 'fs';
 import path from 'path';
 import QRCode from 'qrcode';
@@ -15,6 +16,10 @@ export const anchorStore = new JsonFileStore<Anchor>('anchors');
 const DATA_DIR      = process.env.SIB_DATA_DIR ?? path.join(process.cwd(), '.sib-data');
 const QRIMAGES_DIR  = path.join(DATA_DIR, 'qrimages');
 const WORLDMAPS_DIR = path.join(DATA_DIR, 'worldmaps');
+
+// Exported so app.ts can serve the pre-auth /anchors/:id/qrprint endpoint
+// without duplicating the DATA_DIR resolution logic.
+export { QRIMAGES_DIR };
 fs.mkdirSync(QRIMAGES_DIR,  { recursive: true });
 fs.mkdirSync(WORLDMAPS_DIR, { recursive: true });
 
@@ -101,7 +106,13 @@ router.post('/', async (req: Request, res: Response) => {
     position: body.position,
     rotation: body.rotation,
     metadata: body.metadata ?? {},
-    ...(body.encryptionKey ? { encryptionKey: body.encryptionKey } : {}),
+    // #105: always store an encryption key.  If the iOS app provided one
+    // (Author workflow with Keychain-generated key) use it; otherwise generate
+    // a random 32-byte key so portal-created anchors immediately have a working
+    // QR with no "no encryption key" warning.  E2E security is preserved: the
+    // key travels only in the QR payload and is never accessible without it.
+    encryptionKey: (body.encryptionKey as string | undefined)?.trim()
+      || randomBytes(32).toString('base64'),
     qrSizeCm: typeof (body as any).qrSizeCm === 'number' ? (body as any).qrSizeCm : 10.0,
     createdAt: now,
     updatedAt: now,

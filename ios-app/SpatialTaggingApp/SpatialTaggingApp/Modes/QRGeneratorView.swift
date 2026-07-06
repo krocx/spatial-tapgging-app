@@ -37,6 +37,8 @@ struct QRGeneratorView: View {
 
     @State private var qrImage: UIImage? = nil
     @State private var showShareSheet = false
+    /// Items prepared for the share sheet — a PDF URL (primary) or UIImage fallback.
+    @State private var shareItems: [Any] = []
 
     var body: some View {
         NavigationStack {
@@ -102,10 +104,15 @@ struct QRGeneratorView: View {
 
                 // ── Actions ────────────────────────────────────────────────────
                 VStack(spacing: 12) {
+                    // #104: shares a print-ready PDF (A4, QR at true physical
+                    // size) so the operator can open in Files → print, or
+                    // AirDrop to a printer.  Falls back to the UIImage when
+                    // PDF generation fails (e.g. disk full).
                     Button {
-                        showShareSheet = true
+                        shareItems = buildShareItems()
+                        if !shareItems.isEmpty { showShareSheet = true }
                     } label: {
-                        Label("Share QR Code", systemImage: "square.and.arrow.up")
+                        Label("Share QR / Print PDF", systemImage: "printer")
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
                     }
@@ -130,9 +137,103 @@ struct QRGeneratorView: View {
         }
         .onAppear { generateQR() }
         .sheet(isPresented: $showShareSheet) {
-            if let img = qrImage {
-                ShareSheet(items: [img])
+            if !shareItems.isEmpty {
+                ShareSheet(items: shareItems)
             }
+        }
+    }
+
+    // ── PDF generation (#104) ─────────────────────────────────────────────────
+
+    /// Returns a PDF file URL (primary) or the raw UIImage (fallback).
+    private func buildShareItems() -> [Any] {
+        if let url = generateQRPDF() { return [url] }
+        if let img = qrImage         { return [img] }
+        return []
+    }
+
+    /// Renders the QR at its true physical size on an A4 page and writes a
+    /// temporary PDF file.  Returns the file URL, or nil on failure.
+    /// Physical size: 1 cm = 72 / 2.54 ≈ 28.346 PDF points.
+    private func generateQRPDF() -> URL? {
+        guard let image = qrImage else { return nil }
+
+        // A4 in PDF points at 72 dpi
+        let pageWidth:  CGFloat = 595   // 8.27 in × 72
+        let pageHeight: CGFloat = 842   // 11.69 in × 72
+
+        // QR at true physical size
+        let pointsPerCm: CGFloat = 72.0 / 2.54
+        let qrSizePts = CGFloat(qrSizeCm) * pointsPerCm
+        let topMargin: CGFloat = 60
+        let qrOriginX = (pageWidth  - qrSizePts) / 2
+        let qrOriginY = topMargin + 52
+
+        let renderer = UIGraphicsPDFRenderer(
+            bounds: CGRect(x: 0, y: 0, width: pageWidth, height: pageHeight)
+        )
+
+        let pdfData = renderer.pdfData { ctx in
+            ctx.beginPage()
+
+            // Asset name — title
+            let titleAttrs: [NSAttributedString.Key: Any] = [
+                .font:            UIFont.boldSystemFont(ofSize: 18),
+                .foregroundColor: UIColor.black,
+            ]
+            let title = NSAttributedString(string: anchor.assetId, attributes: titleAttrs)
+            let titleW = title.size().width
+            title.draw(at: CGPoint(x: (pageWidth - titleW) / 2, y: topMargin))
+
+            // Subtitle
+            let subAttrs: [NSAttributedString.Key: Any] = [
+                .font:            UIFont.systemFont(ofSize: 11),
+                .foregroundColor: UIColor(white: 0.45, alpha: 1),
+            ]
+            let subtitle = NSAttributedString(
+                string: "Anchor QR Code \u{00B7} Scan with SpatialTagging iOS app",
+                attributes: subAttrs
+            )
+            subtitle.draw(at: CGPoint(
+                x: (pageWidth - subtitle.size().width) / 2,
+                y: topMargin + 26
+            ))
+
+            // QR image — UIGraphicsPDFRenderer uses UIKit coordinates (y=0 top-left)
+            image.draw(in: CGRect(x: qrOriginX, y: qrOriginY,
+                                  width: qrSizePts, height: qrSizePts))
+
+            // Metadata lines below QR
+            let metaAttrs: [NSAttributedString.Key: Any] = [
+                .font:            UIFont.monospacedSystemFont(ofSize: 10, weight: .regular),
+                .foregroundColor: UIColor(white: 0.35, alpha: 1),
+            ]
+            let lines = [
+                "Anchor ID: \(String(anchor.id.prefix(22)))\u{2026}",
+                "Print at \(Int(qrSizeCm)) cm \u{00D7} \(Int(qrSizeCm)) cm",
+            ]
+            let metaY = qrOriginY + qrSizePts + 18
+            for (i, text) in lines.enumerated() {
+                let str = NSAttributedString(string: text, attributes: metaAttrs)
+                str.draw(at: CGPoint(
+                    x: (pageWidth - str.size().width) / 2,
+                    y: metaY + CGFloat(i) * 16
+                ))
+            }
+        }
+
+        // Write to a unique temporary file
+        let safeName = anchor.assetId
+            .replacingOccurrences(of: "/", with: "-")
+            .replacingOccurrences(of: ":", with: "-")
+        let fileName = "QR-\(safeName.prefix(40))-\(anchor.id.prefix(8)).pdf"
+        let tempURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent(String(fileName))
+        do {
+            try pdfData.write(to: tempURL)
+            return tempURL
+        } catch {
+            return nil
         }
     }
 

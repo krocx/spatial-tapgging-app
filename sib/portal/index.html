@@ -581,7 +581,7 @@ function buildCard(anchor) {
       <span class="qr-size-label" style="font-size:11px;color:#888;align-self:center">
         📐 ${anchor.qrSizeCm ?? 10} cm print size
       </span>
-      <button class="btn btn-ghost btn-sm" onclick="downloadQR('${anchor.id}')">⬇ Download QR</button>
+      <button class="btn btn-ghost btn-sm" onclick="openQRPrint('${anchor.id}')">📄 Print / PDF</button>
       <button class="btn btn-ghost btn-sm" onclick="copyAnchorId('${anchor.id}')">Copy ID</button>
       <button class="btn btn-danger btn-sm" onclick="openDeleteModal('${anchor.id}','${jsEsc(anchor.assetId)}')">🗑 Delete</button>
     </div>
@@ -724,15 +724,12 @@ async function loadQRImage(anchor) {
   }
 }
 
-function downloadQR(anchorId) {
-  const container = document.getElementById(`qr-${safeId(anchorId)}`);
-  const img = container?.querySelector('img');
-  const href = img?.dataset.blobUrl || img?.src;
-  if (!href) { toast('QR image not loaded yet — please wait.'); return; }
-  const link = document.createElement('a');
-  link.href     = href;
-  link.download = `qr-${anchorId.slice(0, 12)}.png`;
-  link.click();
+// #104: openQRPrint — opens the server-side print page in a new tab.
+// The page embeds the QR at its true physical print size and auto-opens
+// the browser's Print dialog so the user can Save as PDF in one step.
+// Placed before apiKeyAuth on the server so no auth header is needed.
+function openQRPrint(anchorId) {
+  window.open(`/anchors/${encodeURIComponent(anchorId)}/qrprint`, '_blank');
 }
 
 function copyAnchorId(id) {
