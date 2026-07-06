@@ -27,6 +27,17 @@ export function createApp(): express.Express {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
+  // --- Server config (no auth — read by the portal to auto-detect auth mode) ---
+  // authRequired: true  → SIB_API_KEY is set (Render / any externally-accessible server)
+  // authRequired: false → SIB_API_KEY not set (company network / local dev)
+  // The portal uses this to decide whether to show the API key setup banner.
+  app.get('/config', (_req, res) => {
+    res.json({
+      authRequired: !!(process.env.SIB_API_KEY?.trim()),
+      timestamp: new Date().toISOString(),
+    });
+  });
+
   // --- Anchor Directory portal (no auth — team members enter their own API key) ---
   // Served at /portal — a browser-based anchor browser + QR generator
   app.use('/portal', express.static(path.join(__dirname, '../portal')));

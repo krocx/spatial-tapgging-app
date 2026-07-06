@@ -398,6 +398,11 @@ function tagTypeInfo(typeValue) {
       || { value: typeValue, label: typeValue, color: '#7070a0' };
 }
 
+// ── Auth mode (populated from /config on load) ────────────────────────────────
+// true  → SIB_API_KEY set on server (Render / externally-accessible deployments)
+// false → no key required (company network / local server / dev)
+let authRequired = true;
+
 // ── State ─────────────────────────────────────────────────────────────────────
 let allAnchors       = [];
 let tagsByAnchor     = {};       // { anchorId: Tag[] }  full objects from GET /tags
@@ -411,7 +416,7 @@ let pendingDeleteTagId      = null;
 let pendingDeleteTagAnchorId = null;
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   // Populate tag type <select> for the create-tag modal
   const ctType = document.getElementById('ct-type');
   TAG_TYPES.forEach(t => {
@@ -426,12 +431,27 @@ document.addEventListener('DOMContentLoaded', () => {
     el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
   });
 
-  const key = localStorage.getItem('sib_api_key');
-  if (!key) {
-    document.getElementById('setup-banner').style.display = 'block';
-  } else {
+  // Probe server auth mode.
+  // /config is always public so this works on every deployment type.
+  // Falls back to authRequired=true (safest default) if the request fails.
+  try {
+    const cfg = await fetch('/config').then(r => r.json());
+    authRequired = cfg.authRequired !== false;
+  } catch { /* keep authRequired = true */ }
+
+  if (!authRequired) {
+    // Company network / local server — no key needed, load straight in.
     document.getElementById('toolbar').style.display = 'flex';
     loadAnchors();
+  } else {
+    // Render / externally-accessible server — require a stored API key.
+    const key = localStorage.getItem('sib_api_key');
+    if (!key) {
+      document.getElementById('setup-banner').style.display = 'block';
+    } else {
+      document.getElementById('toolbar').style.display = 'flex';
+      loadAnchors();
+    }
   }
 });
 
@@ -721,7 +741,7 @@ function copyAnchorId(id) {
 
 // ── Create anchor ──────────────────────────────────────────────────────────────
 function openCreateModal() {
-  if (!apiKey()) { alert('Enter your API key in Settings first.'); return; }
+  if (authRequired && !apiKey()) { alert('Enter your API key in Settings first.'); return; }
   document.getElementById('create-modal').classList.add('open');
 }
 function closeCreateModal() {
@@ -771,8 +791,8 @@ function saveSettings() {
   const setupVal    = (document.getElementById('setup-key')?.value    || '').trim();
   const settingsVal = (document.getElementById('settings-key')?.value || '').trim();
   const k = settingsVal || setupVal;
-  if (!k) { alert('API key cannot be empty.'); return; }
-  localStorage.setItem('sib_api_key', k);
+  if (authRequired && !k) { alert('API key cannot be empty.'); return; }
+  if (k) localStorage.setItem('sib_api_key', k);
   document.getElementById('settings-modal').classList.remove('open');
   document.getElementById('setup-banner').style.display = 'none';
   document.getElementById('toolbar').style.display = 'flex';
@@ -818,7 +838,7 @@ async function confirmDeleteAnchor() {
 
 // ── Create tag ────────────────────────────────────────────────────────────────
 function openCreateTagModal(anchorId) {
-  if (!apiKey()) { alert('Enter your API key in Settings first.'); return; }
+  if (authRequired && !apiKey()) { alert('Enter your API key in Settings first.'); return; }
   pendingTagAnchorId = anchorId;
   document.getElementById('ct-type').selectedIndex = 0;
   document.getElementById('ct-label').value   = '';
