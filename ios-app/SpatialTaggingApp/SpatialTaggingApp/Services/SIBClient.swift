@@ -203,6 +203,25 @@ final class SIBClient {
                        body: CreateSessionRequest(userId: userId, assetId: assetId))
     }
 
+    // ── Phase 4: Inspection reporting ────────────────────────────────────────
+
+    /// Submit the full inspection report on End Session.
+    /// Patches the existing SIBSession record with ownerName, per-tag results,
+    /// overall status, end time, and duration.
+    func submitReport(sessionId: String, report: SubmitReportRequest) async throws -> SIBSession {
+        try await patch(SIBSession.self, path: "/sessions/\(sessionId)/report", body: report)
+    }
+
+    /// Upload one evidence image for a tag.
+    /// Called per-tag when the Operator taps "Tag Inspected".
+    /// Returns the `imagePath` (filename) stored on the server.
+    func uploadEvidence(sessionId: String, tagId: String, request: UploadEvidenceRequest) async throws -> EvidenceUploadResponse {
+        try await post(EvidenceUploadResponse.self,
+                       path: "/sessions/\(sessionId)/evidence/\(tagId)",
+                       body: request,
+                       timeout: 30)
+    }
+
     // ── HTTP helpers ──────────────────────────────────────────────────────────
 
     private func get<T: Decodable>(_ type: T.Type, path: String) async throws -> T {

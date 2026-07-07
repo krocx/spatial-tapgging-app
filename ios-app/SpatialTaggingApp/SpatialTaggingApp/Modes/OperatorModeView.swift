@@ -115,6 +115,29 @@ struct OperatorModeView: View {
     /// Shows a brief "Pass/Fail image captured & saved" toast; cleared after ~2.5 s.
     @State private var savedConfirmation: SavedConfirmation? = nil
 
+    // ── Phase 4: Per-tag inspection tracking ──────────────────────────────────
+    // Drives the 5-state lifecycle:
+    //   notVisited → validating → awaitingConfirmation → inspectedPass / inspectedFail
+    @State private var tagInspectionStates: [String: TagInspectionState]  = [:]
+    @State private var tagInspectionImages: [String: UIImage]             = [:]
+    @State private var tagInspectionNotes:  [String: String]              = [:]
+    @State private var tagFixedInSession:   [String: Bool]                = [:]
+    /// Server-side filename returned after evidence upload (AnchorID_TagID_YYYYMMDD_HHMMSS.jpg).
+    @State private var tagImagePaths:       [String: String]              = [:]
+
+    /// FAIL 6-second timer — fires once after 6 s of persistent FAIL to show
+    /// the Tag Inspected sheet. Cancelled immediately if PASS fires first.
+    @State private var failTimerTask: Task<Void, Never>? = nil
+
+    /// Tag Inspected bottom sheet presentation state.
+    @State private var showTagInspectedSheet = false
+    @State private var sheetTagId:  String?           = nil
+    @State private var sheetImage:  UIImage?           = nil
+    @State private var sheetStatus: ValidationStatus?  = nil   // .pass or .fail
+
+    /// Wall-clock session start — used for duration in the inspection report.
+    @State private var sessionStartTime: Date = Date()
+
     // ── Fullscreen image viewer (pinch-zoom) ────────────────────────────────────
     @State private var fullScreenImage: UIImage? = nil
     @State private var fullScreenTitle: String   = ""
@@ -663,7 +686,8 @@ struct OperatorModeView: View {
             }
         }
         .onAppear {
-            lastProgressAt = Date()   // #89: start the idle clock fresh for this session
+            lastProgressAt  = Date()   // #89: start the idle clock fresh for this session
+            sessionStartTime = Date()  // Phase 4: wall-clock start for duration calculation
             // FTUE auto-show handled by AnchorDirectoryView; ? button here still works.
 
             if let existingSession = appState.activeARSession {
@@ -717,6 +741,8 @@ struct OperatorModeView: View {
             }
         }
         .onDisappear {
+            failTimerTask?.cancel()   // Phase 4: ensure FAIL timer doesn't fire after leaving
+            failTimerTask = nil
             stopLiveLoop()
             coneGuides.values.forEach { $0.cleanup() }
             coneGuides.removeAll()
@@ -766,9 +792,9 @@ struct OperatorModeView: View {
             if let result = appState.lastValidationResult,
                let anchor = appState.activeAnchor {
                 ValidationResultsView(
-                    result:  result,
-                    anchor:  anchor,
-                    onClose: { showResults = false },
+                    result:      result,
+                    anchor:      anchor,
+                    onClose:     { showResults = false },
                     onReInspect: { failedOnly in
                         showResults = false
                         resetForReInspect(failedOnly: failedOnly)
@@ -779,7 +805,9 @@ struct OperatorModeView: View {
                             resetForNewScan()
                             showNewScan = true
                         }
-                    }
+                    },
+                    tagInspectionStates: tagInspectionStates,
+                    tagInspectionNotes:  tagInspectionNotes
                 )
                 .environmentObject(settings)
                 .environmentObject(appState)
@@ -816,6 +844,24 @@ struct OperatorModeView: View {
         }
         .sheet(isPresented: $showOnboarding) {
             OnboardingSheet(context: .operatorMode)
+        }
+        // ── Phase 4: Tag Inspected bottom sheet ───────────────────────────────
+        .sheet(isPresented: $showTagInspectedSheet) {
+            if let tagId = sheetTagId, let status = sheetStatus {
+                let tagLabel = appState.activeTags
+                    .first(where: { $0.id == tagId })?.label ?? tagId
+                TagInspectedSheet(
+                    tagLabel:      tagLabel,
+                    status:        status,
+                    image:         sheetImage,
+                    fixedInSession: tagFixedInSession[tagId] ?? false,
+                    onReInspect: { handleReInspectFromSheet(tagId: tagId) },
+                    onConfirm:   { note in handleConfirmFromSheet(tagId: tagId, status: status, note: note) }
+                )
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.hidden)
+                .presentationBackground(Color(white: 0.10))
+            }
         }
         // ── Tour banner (Operator step) ────────────────────────────────────────
         .overlay {
@@ -1034,7 +1080,10 @@ struct OperatorModeView: View {
 
                 // "End Inspection" once at least one tag is done
                 if inspectedCount > 0 {
-                    Button { showResults = true } label: {
+                    Button {
+                        submitSessionReport()   // Phase 4: fire-and-forget report upload
+                        showResults = true
+                    } label: {
                         Label("End Inspection", systemImage: "checkmark.seal.fill")
                             .font(.title3.bold())
                             .frame(maxWidth: .infinity)
@@ -1102,7 +1151,10 @@ struct OperatorModeView: View {
                 .foregroundColor(.white)
 
                 // End Inspection
-                Button { showResults = true } label: {
+                Button {
+                    submitSessionReport()   // Phase 4: fire-and-forget report upload
+                    showResults = true
+                } label: {
                     Label("End Inspection", systemImage: "checkmark.seal.fill")
                         .font(.title3.bold())
                         .frame(maxWidth: .infinity)
@@ -1166,6 +1218,14 @@ struct OperatorModeView: View {
                         Text(String(format: "%.0f%%", result.confidence * 100))
                             .font(.caption2.monospacedDigit())
                             .foregroundStyle(.white.opacity(0.7))
+                        // Phase 4: FAIL hint — shown while the 6s timer is counting down
+                        if result.status == .fail, failTimerTask != nil {
+                            Text("Adjust & hold to correct,\nor wait for inspection note")
+                                .font(.system(size: 9, weight: .semibold))
+                                .foregroundStyle(.orange)
+                                .multilineTextAlignment(.center)
+                                .frame(maxWidth: 130)
+                        }
                     } else {
                         Image(systemName: "scope")
                             .font(.system(size: 28, weight: .semibold))
@@ -2207,6 +2267,117 @@ struct OperatorModeView: View {
         return Double(matched) / Double(words.count)
     }
 
+    // ── Phase 4: Sheet callbacks ──────────────────────────────────────────────
+
+    /// Called when the operator taps "Re-inspect" in the Tag Inspected sheet.
+    /// Dismisses the sheet and restarts the live validation loop for that tag.
+    private func handleReInspectFromSheet(tagId: String) {
+        showTagInspectedSheet = false
+        sheetTagId = nil; sheetImage = nil; sheetStatus = nil
+        failTimerTask?.cancel()
+        failTimerTask = nil
+        // Reset to validating so tickProximity re-starts the loop on next tick
+        tagInspectionStates[tagId] = .validating
+        statusStreak.removeValue(forKey: tagId)   // clear hysteresis for a clean restart
+    }
+
+    /// Called when the operator taps "Tag Inspected" — finalises evidence upload.
+    private func handleConfirmFromSheet(tagId: String, status: ValidationStatus, note: String?) {
+        showTagInspectedSheet = false
+        sheetTagId = nil; sheetImage = nil; sheetStatus = nil
+        failTimerTask?.cancel()
+        failTimerTask = nil
+
+        // Set the final confirmed state
+        tagInspectionStates[tagId] = status == .pass ? .inspectedPass : .inspectedFail
+        if let note { tagInspectionNotes[tagId] = note }
+
+        // Save evidence image to the device photo library
+        if let img = tagInspectionImages[tagId] {
+            saveImageToPhotoLibrary(img)
+        }
+
+        // Upload evidence image to SIB in the background
+        guard let img = tagInspectionImages[tagId],
+              let jpeg = img.jpegData(compressionQuality: 0.80),
+              let anchor  = appState.activeAnchor,
+              let session = appState.activeSession else { return }
+
+        let capturedAt = ISO8601DateFormatter().string(from: Date())
+        let req = UploadEvidenceRequest(
+            anchorId:    anchor.id,
+            imageBase64: jpeg.base64EncodedString(),
+            capturedAt:  capturedAt
+        )
+        let capturedTagId = tagId
+        Task {
+            do {
+                let resp = try await SIBClient(settings: settings)
+                    .uploadEvidence(sessionId: session.id, tagId: capturedTagId, request: req)
+                tagImagePaths[capturedTagId] = resp.imagePath
+                print("[TagInspected] Evidence uploaded: \(resp.imagePath)")
+            } catch {
+                print("[TagInspected] Evidence upload failed for \(capturedTagId): \(error.localizedDescription)")
+            }
+        }
+    }
+
+    /// Builds and submits the Phase 4 inspection report to SIB (fire-and-forget).
+    /// Called when the operator taps "End Inspection".
+    private func submitSessionReport() {
+        guard let anchor  = appState.activeAnchor,
+              let session = appState.activeSession else { return }
+
+        let endTime  = Date()
+        let duration = endTime.timeIntervalSince(sessionStartTime)
+
+        // Use the guided tour owner name if available, else fall back to userId
+        let ownerName = tour.ownerName != "there" ? tour.ownerName : session.userId
+
+        let tagRecords: [TagInspectionRecord] = appState.activeTags.map { tag in
+            let state = tagInspectionStates[tag.id] ?? .notVisited
+            let inspStatus: TagInspectionStatus = {
+                switch state {
+                case .inspectedPass: return .pass
+                case .inspectedFail: return .fail
+                default:             return .notVisited
+                }
+            }()
+            return TagInspectionRecord(
+                tagId:          tag.id,
+                tagLabel:       tag.label,
+                status:         inspStatus,
+                note:           tagInspectionNotes[tag.id],
+                imagePath:      tagImagePaths[tag.id],
+                fixedInSession: tagFixedInSession[tag.id] ?? false
+            )
+        }
+
+        let failCount  = tagRecords.filter { $0.status == .fail }.count
+        let passCount  = tagRecords.filter { $0.status == .pass }.count
+        let overall: TagInspectionStatus = failCount > 0 ? .fail : (passCount > 0 ? .pass : .notVisited)
+
+        let report = SubmitReportRequest(
+            ownerName:       ownerName,
+            anchorId:        anchor.id,
+            anchorName:      anchor.assetId,
+            endTime:         ISO8601DateFormatter().string(from: endTime),
+            durationSeconds: duration,
+            tagRecords:      tagRecords,
+            overallStatus:   overall
+        )
+
+        Task {
+            do {
+                _ = try await SIBClient(settings: settings)
+                    .submitReport(sessionId: session.id, report: report)
+                print("[Session] Inspection report submitted for session \(session.id)")
+            } catch {
+                print("[Session] Report submission failed: \(error.localizedDescription)")
+            }
+        }
+    }
+
     // ── State transitions ─────────────────────────────────────────────────────
 
     /// Return to idle for a fresh snapshot on the same anchor.
@@ -2239,13 +2410,33 @@ struct OperatorModeView: View {
                 autoInspectedResults.removeValue(forKey: id)
                 tagCooldowns.removeValue(forKey: id)     // allow immediate re-capture
             }
+            // Phase 4: reset inspection state only for failed tags
+            for id in failIds {
+                tagInspectionStates.removeValue(forKey: id)
+                tagInspectionImages.removeValue(forKey: id)
+                tagInspectionNotes.removeValue(forKey: id)
+                tagFixedInSession.removeValue(forKey: id)
+                tagImagePaths.removeValue(forKey: id)
+            }
         } else {
             // Full reset
             reInspectTagIds = nil
             autoInspectedResults.removeAll()
             tagCooldowns.removeAll()
             placeTagMarkers()
+            // Phase 4: clear all inspection state
+            tagInspectionStates.removeAll()
+            tagInspectionImages.removeAll()
+            tagInspectionNotes.removeAll()
+            tagFixedInSession.removeAll()
+            tagImagePaths.removeAll()
         }
+        // Phase 4: cancel timer + dismiss sheet on any re-inspect
+        failTimerTask?.cancel()
+        failTimerTask = nil
+        showTagInspectedSheet = false
+        sheetTagId = nil; sheetImage = nil; sheetStatus = nil
+        sessionStartTime = Date()
         appState.lastValidationResult = nil
         validateError = nil
         phase = .idle
@@ -2253,6 +2444,18 @@ struct OperatorModeView: View {
 
     private func resetForNewScan() {
         stopLiveLoop()
+        // Phase 4: cancel FAIL timer + clear all inspection state
+        failTimerTask?.cancel()
+        failTimerTask = nil
+        showTagInspectedSheet  = false
+        sheetTagId = nil; sheetImage = nil; sheetStatus = nil
+        tagInspectionStates.removeAll()
+        tagInspectionImages.removeAll()
+        tagInspectionNotes.removeAll()
+        tagFixedInSession.removeAll()
+        tagImagePaths.removeAll()
+        sessionStartTime = Date()
+        // end Phase 4 reset
         tagMarkerNodes.values.forEach { $0.removeFromParentNode() }
         tagMarkerNodes.removeAll()
         coneGuides.values.forEach { $0.cleanup() }
@@ -2396,8 +2599,15 @@ struct OperatorModeView: View {
             // operator remains in its cone zone. This is what makes a fix (e.g.
             // reconnecting a cable) show up as PASS immediately, with no button
             // press and no waiting out a cooldown.
+            //
+            // Phase 4: skip re-starting the loop for tags that are already
+            // confirmed (inspectedPass/inspectedFail) or awaiting sheet confirmation.
             if nowInZone {
-                startLiveLoop(forTag: nearId)
+                let state = tagInspectionStates[nearId] ?? .notVisited
+                if state != .inspectedPass && state != .inspectedFail && state != .awaitingConfirmation {
+                    if state == .notVisited { tagInspectionStates[nearId] = .validating }
+                    startLiveLoop(forTag: nearId)
+                }
             } else if liveLoopTagId == nearId {
                 stopLiveLoop()
             }
@@ -2675,25 +2885,77 @@ struct OperatorModeView: View {
                 print("[AutoInspect] tag=\(tr.tagLabel) status=\(tr.status.rawValue) conf=\(String(format:"%.2f",tr.confidence)) continuous=\(isContinuous)")
             }
 
-            // ── Auto-capture one reference image per Pass/Fail status ────────
-            // Per requirement #5: the first time this tag's *committed* status
-            // settles on PASS (or separately, FAIL), save that frame as the
-            // reference image for that status — to the device photo library —
-            // and show a thumbnail + "saved" toast. Only re-captures if the
-            // committed status actually changes (e.g. FAIL → PASS after a
-            // fix), so it never spams the photo library on every 0.7 s tick.
+            // ── Phase 4: Tag Inspected sheet workflow ────────────────────────
+            // On PASS: cancel FAIL timer (if any), pause loop, show sheet after 1s.
+            // On FAIL: start the 6s countdown timer (once); if PASS arrives first
+            //          the timer is cancelled and the PASS path takes over.
+            // Either path keeps the most recent frame as evidence for the sheet.
             if isContinuous, statusChanged,
                let tr = result.tagResults.first(where: { $0.tagId == tagId }),
-               tr.status == .pass || tr.status == .fail,
-               capturedStatusByTag[tagId] != tr.status {
+               tr.status == .pass || tr.status == .fail {
+
+                let currentState = tagInspectionStates[tagId] ?? .notVisited
+                // Skip if this tag is already confirmed or showing the sheet
+                let isAlreadyHandled = (currentState == .inspectedPass ||
+                                        currentState == .inspectedFail ||
+                                        currentState == .awaitingConfirmation)
+                if !isAlreadyHandled {
+
+                // Track the previous committed status for FAIL→PASS fix detection
+                let previousCapturedStatus = capturedStatusByTag[tagId]
+
+                // Always keep the most recent evidence frame
                 capturedPreviewByTag[tagId] = snapshot
                 capturedStatusByTag[tagId]  = tr.status
-                saveImageToPhotoLibrary(snapshot)
-                let confirmation = SavedConfirmation(tagId: tagId, label: tr.tagLabel, status: tr.status)
-                savedConfirmation = confirmation
-                DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) {
-                    if savedConfirmation == confirmation { savedConfirmation = nil }
+                tagInspectionImages[tagId]  = snapshot
+
+                if tr.status == .pass {
+                    // PASS path ──────────────────────────────────────────────
+                    // Cancel any in-flight FAIL timer, pause the loop, show sheet.
+                    failTimerTask?.cancel()
+                    failTimerTask = nil
+
+                    // Mark as "fixed" if it was FAIL in this session before now
+                    if previousCapturedStatus == .fail {
+                        tagFixedInSession[tagId] = true
+                    }
+
+                    stopLiveLoop()
+                    tagInspectionStates[tagId] = .awaitingConfirmation
+
+                    let capturedSnapshot = snapshot
+                    let capturedTagId    = tagId
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                        guard !showTagInspectedSheet else { return }  // don't interrupt another tag
+                        sheetTagId  = capturedTagId
+                        sheetImage  = capturedSnapshot
+                        sheetStatus = .pass
+                        showTagInspectedSheet = true
+                    }
+
+                } else if tr.status == .fail, failTimerTask == nil {
+                    // FAIL path ──────────────────────────────────────────────
+                    // Start the 6s timer only once; loop keeps running so a fix
+                    // can cancel it and take the PASS path instead.
+                    let capturedTagId = tagId
+                    failTimerTask = Task {
+                        try? await Task.sleep(nanoseconds: 6_000_000_000)
+                        guard !Task.isCancelled else { return }
+                        // 6s of persistent FAIL — pause loop and show sheet
+                        stopLiveLoop()
+                        tagInspectionStates[capturedTagId] = .awaitingConfirmation
+                        guard !showTagInspectedSheet else { return }  // don't interrupt another tag
+                        sheetTagId  = capturedTagId
+                        sheetImage  = tagInspectionImages[capturedTagId]  // latest FAIL frame
+                        sheetStatus = .fail
+                        showTagInspectedSheet = true
+                        failTimerTask = nil
+                    }
                 }
+                // (Subsequent FAIL ticks with timer already running:
+                //  tagInspectionImages[tagId] is updated above so the sheet
+                //  always shows the most recent FAIL frame when it fires.)
+                } // end if !isAlreadyHandled
             }
 
             // Rebuild the combined session result so the reviewing panel reflects progress

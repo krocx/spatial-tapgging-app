@@ -1,7 +1,23 @@
+import fs from 'fs';
+import path from 'path';
 import { Router, type Request, type Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import type { Session, CreateSessionRequest, ApiResponse } from '@spatial/shared';
+import type {
+  Session,
+  CreateSessionRequest,
+  ApiResponse,
+  SubmitReportRequest,
+  UploadEvidenceRequest,
+  EvidenceUploadResponse,
+} from '@spatial/shared';
 import { JsonFileStore } from '../stores/json-file-store.js';
+
+// ── Evidence storage directory ────────────────────────────────────────────────
+// Images are stored as JPEG files: AnchorID_TagID_YYYYMMDD_HHMMSS.jpg
+// DATA_DIR mirrors the pattern used in json-file-store.ts.
+const DATA_DIR = process.env.SIB_DATA_DIR ?? path.join(process.cwd(), '.sib-data');
+const EVIDENCE_DIR = path.join(DATA_DIR, 'evidence');
+fs.mkdirSync(EVIDENCE_DIR, { recursive: true });
 
 export const sessionStore = new JsonFileStore<Session>('sessions');
 
@@ -95,7 +111,7 @@ router.get('/:id', (req: Request, res: Response) => {
   return res.json({ data: session, timestamp: new Date().toISOString() });
 });
 
-// PATCH /sessions/:id/close — close a session
+// PATCH /sessions/:id/close — close a session (legacy / backward-compat)
 router.patch('/:id/close', (req: Request, res: Response) => {
   const session = sessionStore.update(req.params.id, {
     endTime: new Date().toISOString(),
@@ -110,6 +126,99 @@ router.patch('/:id/close', (req: Request, res: Response) => {
   }
 
   return res.json({ data: session, timestamp: new Date().toISOString() });
+});
+
+// PATCH /sessions/:id/report — submit Phase 4 inspection report
+// Called by the iOS app on "End Session": stores ownerName, anchorId, tagRecords,
+// overallStatus, endTime, and durationSeconds on the existing session record.
+router.patch('/:id/report', (req: Request, res: Response) => {
+  const existing = sessionStore.findById(req.params.id);
+  if (!existing) {
+    return res.status(404).json({
+      error: `Session ${req.params.id} not found`,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  const body = req.body as SubmitReportRequest;
+  if (!body.ownerName || !body.anchorId || !Array.isArray(body.tagRecords)) {
+    return res.status(400).json({
+      error: 'Missing required fields: ownerName, anchorId, tagRecords',
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  const now = new Date().toISOString();
+  const session = sessionStore.update(req.params.id, {
+    ownerName:       body.ownerName,
+    anchorId:        body.anchorId,
+    anchorName:      body.anchorName,
+    endTime:         body.endTime ?? now,
+    durationSeconds: body.durationSeconds,
+    tagRecords:      body.tagRecords,
+    overallStatus:   body.overallStatus,
+    updatedAt:       now,
+  });
+
+  return res.json({ data: session, timestamp: now });
+});
+
+// POST /sessions/:id/evidence/:tagId — upload one evidence image
+// Body: { anchorId, imageBase64, mimeType, capturedAt }
+// Stores the image as a file: EVIDENCE_DIR/AnchorID_TagID_YYYYMMDD_HHMMSS.jpg
+// Returns: { imagePath: "AnchorID_TagID_YYYYMMDD_HHMMSS.jpg" }
+router.post('/:id/evidence/:tagId', (req: Request, res: Response) => {
+  const body = req.body as UploadEvidenceRequest;
+
+  if (!body.anchorId || !body.imageBase64) {
+    return res.status(400).json({
+      error: 'Missing required fields: anchorId, imageBase64',
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  // Build filename: AnchorID_TagID_YYYYMMDD_HHMMSS.jpg
+  const capturedAt = body.capturedAt ? new Date(body.capturedAt) : new Date();
+  const datePart = capturedAt.toISOString()
+    .replace(/[-:]/g, '')     // remove hyphens and colons
+    .replace('T', '_')        // replace T separator with underscore
+    .replace(/\.\d{3}Z$/, ''); // remove milliseconds and Z
+  const filename = `${body.anchorId}_${req.params.tagId}_${datePart}.jpg`;
+  const filePath = path.join(EVIDENCE_DIR, filename);
+
+  try {
+    // Decode base64 and write JPEG to disk
+    const imageBuffer = Buffer.from(body.imageBase64, 'base64');
+    fs.writeFileSync(filePath, imageBuffer);
+  } catch (err) {
+    console.error(`[Sessions] Failed to write evidence image: ${err}`);
+    return res.status(500).json({
+      error: 'Failed to store evidence image',
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  const response: EvidenceUploadResponse = { imagePath: filename };
+  return res.status(201).json({ data: response, timestamp: new Date().toISOString() });
+});
+
+// GET /sessions/evidence/:filename — serve an evidence image
+// Used by the portal to display evidence thumbnails.
+router.get('/evidence/:filename', (req: Request, res: Response) => {
+  // Sanitise: allow only alphanumeric, dash, underscore, dot
+  const filename = req.params.filename.replace(/[^a-zA-Z0-9_\-\.]/g, '');
+  if (!filename.endsWith('.jpg') && !filename.endsWith('.jpeg') && !filename.endsWith('.png')) {
+    return res.status(400).json({ error: 'Invalid filename', timestamp: new Date().toISOString() });
+  }
+
+  const filePath = path.join(EVIDENCE_DIR, filename);
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: 'Evidence image not found', timestamp: new Date().toISOString() });
+  }
+
+  res.setHeader('Content-Type', 'image/jpeg');
+  res.setHeader('Cache-Control', 'public, max-age=86400'); // evidence images are immutable
+  return res.sendFile(filePath);
 });
 
 export default router;

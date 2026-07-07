@@ -20,6 +20,11 @@ struct ValidationResultsView: View {
     let onClose:     () -> Void
     let onReInspect: (_ failedOnly: Bool) -> Void
     let onNewScan:   () -> Void
+    /// Phase 4: per-tag operator-confirmation states from the live AR session.
+    /// Empty dict for callers that don't use the inspection workflow.
+    var tagInspectionStates: [String: TagInspectionState] = [:]
+    /// Phase 4: per-tag operator notes (optional, keyed by tagId).
+    var tagInspectionNotes:  [String: String]             = [:]
 
     @EnvironmentObject private var appState: AppState
 
@@ -132,7 +137,11 @@ struct ValidationResultsView: View {
                 statusOrder(a.status) < statusOrder(b.status)
             }
             ForEach(sorted) { tagResult in
-                TagResultRow(tagResult: tagResult)
+                TagResultRow(
+                    tagResult:       tagResult,
+                    inspectionState: tagInspectionStates[tagResult.tagId],
+                    note:            tagInspectionNotes[tagResult.tagId]
+                )
             }
         } header: {
             HStack {
@@ -206,7 +215,11 @@ struct ValidationResultsView: View {
 
 private struct TagResultRow: View {
 
-    let tagResult: TagValidationSummary
+    let tagResult:       TagValidationSummary
+    /// Phase 4: nil when the tag was never entered through the inspection sheet workflow.
+    var inspectionState: TagInspectionState? = nil
+    /// Phase 4: operator note recorded when tapping "Tag Inspected".
+    var note:            String?             = nil
 
     // #72: PENDING has exactly one cause today (no Pass reference trained
     // yet for this tag) — tapping the row surfaces that explicitly instead
@@ -220,6 +233,10 @@ private struct TagResultRow: View {
     // like an ordinary (and confusing) ~0% confidence FAIL.
     private var isDecryptFailure: Bool { tagResult.errorReason == "DECRYPT_FAILED" }
     private var isTappableForInfo: Bool { isPending || isDecryptFailure }
+
+    // Phase 4 — whether the operator explicitly confirmed this result via the sheet.
+    private var isConfirmedPass: Bool { inspectionState == .inspectedPass }
+    private var isConfirmedFail: Bool { inspectionState == .inspectedFail }
 
     var body: some View {
         HStack(spacing: 14) {
@@ -248,6 +265,14 @@ private struct TagResultRow: View {
                 .padding(.horizontal, 7)
                 .padding(.vertical, 3)
                 .background(tagResult.tagType.color.opacity(0.10), in: Capsule())
+
+                // Phase 4: operator note if one was recorded
+                if let note {
+                    Text(""\(note)"")
+                        .font(.caption2.italic())
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
             }
 
             Spacer()
@@ -308,6 +333,17 @@ private struct TagResultRow: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+        }
+
+        // Phase 4: show confirmation chip when operator explicitly signed off
+        if isConfirmedPass || isConfirmedFail {
+            let tint: Color = isConfirmedPass ? .green : .red
+            Label("Confirmed", systemImage: "checkmark.seal.fill")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(tint)
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(tint.opacity(0.12), in: Capsule())
         }
     }
 }

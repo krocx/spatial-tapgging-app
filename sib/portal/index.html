@@ -177,6 +177,59 @@
       header { padding: 16px 12px 0; }
       #toolbar { padding: 12px 12px 0; }
     }
+
+    /* ── Phase 4: Nav tabs ── */
+    #nav-tabs { display: none; padding: 0 24px; gap: 4px; border-bottom: 1px solid var(--border); }
+    #nav-tabs.visible { display: flex; }
+    .nav-tab { background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--muted); font-size: 0.85rem; font-weight: 600; padding: 10px 14px; cursor: pointer; transition: color 0.15s, border-color 0.15s; margin-bottom: -1px; }
+    .nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+    .nav-tab:hover:not(.active) { color: var(--text); }
+
+    /* ── Phase 4: Sessions panel ── */
+    #sessions-panel { display: none; padding: 20px 24px 56px; }
+    #sessions-panel.visible { display: block; }
+    .sessions-toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+    .sessions-list { display: flex; flex-direction: column; gap: 10px; max-width: 860px; margin: 0 auto; }
+
+    /* Session card */
+    .session-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; transition: border-color 0.2s; }
+    .session-card:hover { border-color: rgba(79,142,247,0.4); }
+    .session-hdr { display: flex; align-items: center; gap: 12px; padding: 13px 16px; cursor: pointer; user-select: none; }
+    .s-icon { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+    .s-icon.pass    { background: rgba(61,214,140,0.15);  color: var(--green); }
+    .s-icon.fail    { background: rgba(240,86,86,0.15);   color: var(--red); }
+    .s-icon.partial { background: rgba(245,166,35,0.15);  color: var(--orange); }
+    .s-meta { flex: 1; min-width: 0; }
+    .s-owner { font-size: 0.88rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .s-sub   { font-size: 0.73rem; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .s-chips { display: flex; gap: 5px; flex-shrink: 0; align-items: center; }
+    .s-chevron { color: var(--muted); font-size: 0.6rem; transition: transform 0.2s; flex-shrink: 0; }
+    .s-chevron.open { transform: rotate(180deg); }
+
+    /* Session body */
+    .session-body { display: none; border-top: 1px solid var(--border); padding: 12px 16px; }
+    .session-body.open { display: block; }
+
+    /* Tag result rows */
+    .tr-rows { display: flex; flex-direction: column; gap: 6px; }
+    .tr-row { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px; border-radius: 8px; background: rgba(255,255,255,0.02); }
+    .tr-thumb { width: 64px; height: 48px; border-radius: 6px; object-fit: cover; flex-shrink: 0; border: 1px solid var(--border); cursor: zoom-in; }
+    .tr-thumb-ph { width: 64px; height: 48px; border-radius: 6px; background: var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 0.6rem; }
+    .tr-info { flex: 1; min-width: 0; }
+    .tr-label { font-size: 0.82rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .tr-note  { font-size: 0.72rem; color: var(--muted); margin-top: 2px; font-style: italic; }
+    .tr-badges { display: flex; gap: 4px; align-items: center; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+
+    /* Evidence lightbox */
+    #evidence-lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 300; align-items: center; justify-content: center; padding: 20px; }
+    #evidence-lightbox.open { display: flex; }
+    #evidence-lightbox img { max-width: 100%; max-height: 90vh; border-radius: 10px; }
+
+    /* Status badges */
+    .b-pass    { font-size: 0.68rem; font-weight: 700; padding: 2px 8px; border-radius: 100px; background: rgba(61,214,140,0.12); color: var(--green); }
+    .b-fail    { font-size: 0.68rem; font-weight: 700; padding: 2px 8px; border-radius: 100px; background: rgba(240,86,86,0.12); color: var(--red); }
+    .b-none    { font-size: 0.68rem; font-weight: 700; padding: 2px 8px; border-radius: 100px; background: var(--border); color: var(--muted); }
+    .b-fixed   { font-size: 0.63rem; font-weight: 700; padding: 1px 6px; border-radius: 100px; background: rgba(245,166,35,0.12); color: var(--orange); }
   </style>
 </head>
 <body>
@@ -195,6 +248,12 @@
     <button class="btn btn-primary btn-sm" onclick="openCreateModal()">+ New Anchor</button>
   </div>
 </header>
+
+<!-- Phase 4: View nav tabs (hidden until authenticated) -->
+<div id="nav-tabs">
+  <button class="nav-tab active" data-view="anchors"  onclick="switchView('anchors')">Anchors</button>
+  <button class="nav-tab"        data-view="sessions" onclick="switchView('sessions')">Sessions</button>
+</div>
 
 <!-- Setup banner (shown when API key not set) -->
 <div id="setup-banner" style="display:none">
@@ -215,6 +274,20 @@
 
 <!-- Anchor grid -->
 <div id="anchor-grid"></div>
+
+<!-- Phase 4: Sessions panel -->
+<div id="sessions-panel">
+  <div class="sessions-toolbar" style="max-width:860px;margin:0 auto">
+    <span style="font-size:0.78rem;color:var(--muted);flex:1">Inspection reports uploaded from the iOS app. Most recent first.</span>
+    <button class="btn btn-ghost btn-sm" onclick="loadSessions()">⟳ Refresh</button>
+  </div>
+  <div class="sessions-list"></div>
+</div>
+
+<!-- Evidence image lightbox -->
+<div id="evidence-lightbox" onclick="closeLightbox()">
+  <img id="evidence-lightbox-img" src="" alt="Evidence" />
+</div>
 
 <!-- ══════════════════════════════════════════════════════════════
      ANCHOR MODALS
@@ -442,6 +515,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (!authRequired) {
     // Company network / local server — no key needed, load straight in.
     document.getElementById('toolbar').style.display = 'flex';
+    document.getElementById('nav-tabs').classList.add('visible');
     loadAnchors();
   } else {
     // Render / externally-accessible server — require a stored API key.
@@ -450,6 +524,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.getElementById('setup-banner').style.display = 'block';
     } else {
       document.getElementById('toolbar').style.display = 'flex';
+      document.getElementById('nav-tabs').classList.add('visible');
       loadAnchors();
     }
   }
@@ -986,6 +1061,162 @@ async function confirmDeleteTag() {
   } catch (e) {
     alert(`Failed to delete tag: ${e.message}`);
   }
+}
+
+// ── Phase 4: Sessions view ────────────────────────────────────────────────────
+
+let sessionsData      = [];
+let expandedSessions  = new Set();
+
+function switchView(view) {
+  document.querySelectorAll('.nav-tab').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.view === view);
+  });
+  const anchorGrid = document.getElementById('anchor-grid');
+  const toolbar    = document.getElementById('toolbar');
+  const sessPanel  = document.getElementById('sessions-panel');
+
+  if (view === 'sessions') {
+    anchorGrid.style.display = 'none';
+    toolbar.style.display    = 'none';
+    sessPanel.classList.add('visible');
+    if (sessionsData.length === 0) loadSessions();
+  } else {
+    anchorGrid.style.display = '';
+    toolbar.style.display    = 'flex';
+    sessPanel.classList.remove('visible');
+  }
+}
+
+async function loadSessions() {
+  const list = document.querySelector('.sessions-list');
+  list.innerHTML = '<p style="color:var(--muted);padding:24px;text-align:center;font-size:0.82rem;">Loading…</p>';
+  try {
+    const resp = await apiFetch('/sessions');
+    sessionsData = (resp.data || []).sort((a, b) =>
+      new Date(b.startTime) - new Date(a.startTime)
+    );
+    renderSessions();
+  } catch (e) {
+    list.innerHTML = `<p style="color:var(--red);padding:24px;text-align:center;font-size:0.82rem;">Failed to load sessions: ${e.message}</p>`;
+  }
+}
+
+function renderSessions() {
+  const list = document.querySelector('.sessions-list');
+  if (!sessionsData.length) {
+    list.innerHTML = '<p style="color:var(--muted);padding:24px;text-align:center;font-size:0.82rem;">No inspection sessions yet. Sessions are uploaded from the iOS app when an operator taps End Session.</p>';
+    return;
+  }
+  list.innerHTML = sessionsData.map(buildSessionCard).join('');
+}
+
+function buildSessionCard(s) {
+  const hasReport  = Array.isArray(s.tagRecords) && s.tagRecords.length > 0;
+  const overall    = s.overallStatus || null;
+  const iconClass  = overall === 'PASS' ? 'pass' : overall === 'FAIL' ? 'fail' : 'partial';
+  const iconEmoji  = overall === 'PASS' ? '✓'   : overall === 'FAIL' ? '✕'   : '○';
+  const badgeClass = overall === 'PASS' ? 'b-pass' : overall === 'FAIL' ? 'b-fail' : 'b-none';
+  const badgeText  = overall || 'NO REPORT';
+
+  const owner    = esc(s.ownerName  || s.userId || 'Unknown operator');
+  const anchor   = esc(s.anchorName || (s.anchorId ? s.anchorId.slice(0,12) + '…' : 'Unknown anchor'));
+  const dateStr  = new Date(s.startTime).toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' });
+  const timeStr  = new Date(s.startTime).toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit' });
+  const dur      = s.durationSeconds != null ? formatDuration(s.durationSeconds) : null;
+  const subParts = [anchor, dateStr + ' ' + timeStr, dur ? dur + ' duration' : null].filter(Boolean);
+
+  const passCount = hasReport ? s.tagRecords.filter(r => r.status === 'PASS').length : 0;
+  const failCount = hasReport ? s.tagRecords.filter(r => r.status === 'FAIL').length : 0;
+  const fixCount  = hasReport ? s.tagRecords.filter(r => r.fixedInSession).length   : 0;
+
+  const chipsHtml = [
+    `<span class="${badgeClass}">${badgeText}</span>`,
+    passCount > 0 ? `<span class="b-pass">${passCount} PASS</span>` : '',
+    failCount > 0 ? `<span class="b-fail">${failCount} FAIL</span>` : '',
+    fixCount  > 0 ? `<span class="b-fixed">${fixCount} FIXED</span>` : '',
+  ].join('');
+
+  const isOpen   = expandedSessions.has(s.id);
+  const bodyHtml = `
+    <div class="session-body${isOpen ? ' open' : ''}" id="sb-${s.id}">
+      ${hasReport
+        ? `<div class="tr-rows">${buildTagResultRows(s.tagRecords)}</div>`
+        : `<p style="font-size:0.78rem;color:var(--muted);margin:0">No inspection report attached to this session.</p>`
+      }
+    </div>`;
+
+  return `
+    <div class="session-card" id="sc-${esc(s.id)}">
+      <div class="session-hdr" onclick="toggleSession('${esc(s.id)}')">
+        <div class="s-icon ${iconClass}">${iconEmoji}</div>
+        <div class="s-meta">
+          <div class="s-owner">${owner}</div>
+          <div class="s-sub">${subParts.join(' · ')}</div>
+        </div>
+        <div class="s-chips">${chipsHtml}</div>
+        <span class="s-chevron${isOpen ? ' open' : ''}">▼</span>
+      </div>
+      ${bodyHtml}
+    </div>`;
+}
+
+function buildTagResultRows(tagRecords) {
+  return tagRecords.map(r => {
+    const badgeClass = r.status === 'PASS' ? 'b-pass' : r.status === 'FAIL' ? 'b-fail' : 'b-none';
+    const imgUrl     = r.imagePath ? `/sessions/evidence/${encodeURIComponent(r.imagePath)}` : null;
+    const thumbHtml  = imgUrl
+      ? `<img class="tr-thumb" src="${imgUrl}" alt="${esc(r.tagLabel)}" onclick="event.stopPropagation();openLightbox('${imgUrl}')" />`
+      : `<div class="tr-thumb-ph">no img</div>`;
+    const noteHtml   = r.note           ? `<div class="tr-note">"${esc(r.note)}"</div>` : '';
+    const fixedBadge = r.fixedInSession ? `<span class="b-fixed">FIXED</span>` : '';
+    return `
+      <div class="tr-row">
+        ${thumbHtml}
+        <div class="tr-info">
+          <div class="tr-label">${esc(r.tagLabel)}</div>
+          ${noteHtml}
+        </div>
+        <div class="tr-badges">
+          <span class="${badgeClass}">${r.status}</span>
+          ${fixedBadge}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function toggleSession(id) {
+  const body    = document.getElementById(`sb-${id}`);
+  const chevron = document.querySelector(`#sc-${id} .s-chevron`);
+  if (!body) return;
+  if (expandedSessions.has(id)) {
+    expandedSessions.delete(id);
+    body.classList.remove('open');
+    if (chevron) chevron.classList.remove('open');
+  } else {
+    expandedSessions.add(id);
+    body.classList.add('open');
+    if (chevron) chevron.classList.add('open');
+  }
+}
+
+function formatDuration(secs) {
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = Math.floor(secs % 60);
+  if (h > 0) return `${h}h ${String(m).padStart(2,'0')}m`;
+  if (m > 0) return `${m}m ${String(s).padStart(2,'0')}s`;
+  return `${s}s`;
+}
+
+function openLightbox(url) {
+  document.getElementById('evidence-lightbox-img').src = url;
+  document.getElementById('evidence-lightbox').classList.add('open');
+}
+
+function closeLightbox() {
+  document.getElementById('evidence-lightbox').classList.remove('open');
+  document.getElementById('evidence-lightbox-img').src = '';
 }
 
 // ── Toast ──────────────────────────────────────────────────────────────────────

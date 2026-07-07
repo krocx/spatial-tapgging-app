@@ -199,6 +199,45 @@ export type CreateProcedureRequest = Omit<Procedure, 'id' | 'createdAt' | 'updat
 // Session — a single technician (or cobot) run
 // ============================================================
 
+// ── Phase 4: Inspection reporting types ──────────────────────
+
+export type TagInspectionStatus = 'PASS' | 'FAIL' | 'NOT_VISITED';
+
+export interface TagInspectionRecord {
+  tagId:           string;
+  tagLabel:        string;
+  status:          TagInspectionStatus;
+  note?:           string;
+  /** Filename on SIB evidence store: AnchorID_TagID_YYYYMMDD_HHMMSS.jpg */
+  imagePath?:      string;
+  /** True when this tag was FAIL during the session but corrected to PASS. */
+  fixedInSession?: boolean;
+}
+
+export interface SubmitReportRequest {
+  ownerName:       string;
+  anchorId:        string;
+  anchorName:      string;    // assetId — human-readable label
+  endTime:         string;    // ISO 8601
+  durationSeconds: number;
+  tagRecords:      TagInspectionRecord[];
+  overallStatus:   TagInspectionStatus;
+}
+
+export interface UploadEvidenceRequest {
+  anchorId:    string;
+  imageBase64: string;
+  mimeType:    'image/jpeg';
+  capturedAt:  string;        // ISO 8601
+}
+
+export interface EvidenceUploadResponse {
+  /** Filename on SIB server: AnchorID_TagID_YYYYMMDD_HHMMSS.jpg */
+  imagePath: string;
+}
+
+// ── End Phase 4 types ─────────────────────────────────────────
+
 export interface Session {
   id: string;
   userId: string;
@@ -207,6 +246,14 @@ export interface Session {
   endTime?: string;         // set on close
   observations: Observation[];
   completedSteps: string[]; // stepIds
+  // ── Phase 4: Inspection report fields (set via PATCH /sessions/:id/report) ──
+  ownerName?:       string;
+  anchorId?:        string;
+  anchorName?:      string;
+  durationSeconds?: number;
+  tagRecords?:      TagInspectionRecord[];
+  overallStatus?:   TagInspectionStatus;
+  // ── end report fields ────────────────────────────────────────────────────────
   createdAt: string;
   updatedAt: string;
 }
