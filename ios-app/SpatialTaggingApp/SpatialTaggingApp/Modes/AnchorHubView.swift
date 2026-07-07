@@ -34,6 +34,9 @@ struct AnchorHubView: View {
     // QR scan gate
     @State private var showScanGate = false
 
+    // Tour frame capture
+    @State private var tourFrames: [TourStep: CGRect] = [:]
+
     // Readiness (Operator only)
     @State private var readinessWarning: String? = nil
     @State private var isReadinessBlocked = false
@@ -124,16 +127,41 @@ struct AnchorHubView: View {
         .navigationTitle(anchor.assetId)
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button(action: onBack) { Image(systemName: "chevron.left") }
-            }
             ToolbarItem(placement: .primaryAction) {
                 Button { showQRSheet = true } label: {
                     Image(systemName: "qrcode")
                 }
             }
         }
-        .onAppear { Task { await loadTags() } }
+        .onAppear {
+            Task { await loadTags() }
+            // Tour: advance to anchorHub.
+            // advancePast(.createAnchor) handles edge cases where the directory step
+            // wasn't already advanced (e.g. re-entry). advancePast(.anchorQR) handles
+            // the normal flow where existing-anchor selection skips CreateAnchorSheet,
+            // or the user dismissed the sheet without tapping "Next" on the QR banner.
+            tour.advancePast(.createAnchor)
+            tour.advancePast(.anchorQR)
+        }
+        // ── Tour: collect spotlight target frames ─────────────────────────────
+        .onPreferenceChange(TourFrameKey.self) { frames in
+            tourFrames.merge(frames) { _, new in new }
+        }
+        // ── Tour: overlay for anchorHub (banner) + shareQR (spotlight) steps ──
+        .overlay {
+            if tour.isActive && tour.currentStep.screen == .anchorHub {
+                CoachMarkOverlay(
+                    step:       tour.currentStep,
+                    targetRect: tourFrames[tour.currentStep],
+                    ownerName:  tour.ownerName,
+                    onNext:     { tour.advance() },
+                    onSkip:     { tour.skip() }
+                )
+                .ignoresSafeArea()
+                .transition(.opacity)
+                .animation(.easeInOut(duration: 0.25), value: tour.currentStep)
+            }
+        }
         // ── QR generator ─────────────────────────────────────────────────────
         .sheet(isPresented: $showQRSheet) {
             qrGeneratorSheet
@@ -192,6 +220,14 @@ struct AnchorHubView: View {
                     .clipShape(Capsule())
             }
             .buttonStyle(.plain)
+            .background(
+                GeometryReader { geo in
+                    Color.clear.preference(
+                        key: TourFrameKey.self,
+                        value: [.shareQR: geo.frame(in: .global)]
+                    )
+                }
+            )
         }
     }
 

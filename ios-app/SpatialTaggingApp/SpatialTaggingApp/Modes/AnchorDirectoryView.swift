@@ -180,6 +180,7 @@ struct AnchorDirectoryView: View {
             }
             .environmentObject(settings)
             .environmentObject(appState)
+            .environmentObject(tour)
         }
 
         // Help sheet (legacy reference) — kept for future use
@@ -450,6 +451,7 @@ struct CreateAnchorSheet: View {
 
     @EnvironmentObject private var settings: AppSettings
     @EnvironmentObject private var appState:  AppState
+    @EnvironmentObject private var tour:      GuidedTourManager
     @Environment(\.dismiss) private var dismiss
 
     @State private var assetId    = ""
@@ -467,6 +469,22 @@ struct CreateAnchorSheet: View {
                 step2View(anchor: anchor, keyB64: keyB64)
             } else {
                 step1View
+            }
+        }
+        // Tour: show anchorQR banner on step 2 (QR first displayed after anchor creation)
+        .overlay {
+            if tour.isActive && tour.currentStep.screen == .createAnchorSheet,
+               createdAnchor != nil {
+                CoachMarkOverlay(
+                    step:       tour.currentStep,
+                    targetRect: nil,
+                    ownerName:  tour.ownerName,
+                    onNext:     { tour.advance() },
+                    onSkip:     { tour.skip() }
+                )
+                .ignoresSafeArea()
+                .transition(.opacity)
+                .animation(.easeInOut(duration: 0.25), value: tour.currentStep)
             }
         }
     }
@@ -558,6 +576,7 @@ struct CreateAnchorSheet: View {
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Go to Anchor Hub") {
+                    tour.advancePast(.anchorQR)
                     dismiss()
                     onCreated(anchor)
                 }

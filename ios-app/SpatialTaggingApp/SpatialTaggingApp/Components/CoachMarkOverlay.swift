@@ -48,7 +48,7 @@ struct CoachMarkOverlay: View {
 
     private var fullScreenCard: some View {
         ZStack {
-            Color.black.opacity(0.85)
+            Color.black.opacity(0.96)
                 .ignoresSafeArea()
 
             VStack(spacing: 24) {
