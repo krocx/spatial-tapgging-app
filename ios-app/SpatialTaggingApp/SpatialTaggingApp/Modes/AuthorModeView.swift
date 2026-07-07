@@ -93,6 +93,8 @@ struct AuthorModeView: View {
 
     // ── 3D focus ring (iOS Measure App-style surface-tracking crosshair) ──────
     @State private var focusRing: ARFocusRing? = nil
+    // Tour: baseline tag count recorded at first appear; advance only when a NEW tag is added
+    @State private var tourBaselineTagCount: Int = -1
     private let crosshairTicker = Timer.publish(every: 0.10, on: .main, in: .common).autoconnect()
 
     // ── Body ──────────────────────────────────────────────────────────────────
@@ -119,6 +121,11 @@ struct AuthorModeView: View {
                     }
 
                     // ── True first appearance ──────────────────────────────────
+                    // Tour: record how many tags already exist so placeTag only
+                    // advances when a GENUINELY new tag is added in this session.
+                    if tourBaselineTagCount < 0 {
+                        tourBaselineTagCount = appState.activeTags.count
+                    }
                     if let existingSession = appState.activeARSession {
                         // QRScanGateView kept its ARSession alive; link to it so
                         // we skip world-frame reset and keep the live ARImageAnchor.
@@ -440,9 +447,12 @@ struct AuthorModeView: View {
                 .animation(.spring(response: 0.4, dampingFraction: 0.8), value: authorStep)
             }
         }
-        // Tour: advance from placeTag → trainTag when first tag is placed (tags count increases)
+        // Tour: advance from placeTag → trainTag when a NEW tag is placed in this session.
+        // Compare against tourBaselineTagCount (set at first appear) to avoid spuriously
+        // advancing when returning to an anchor that already had tags.
         .onChange(of: appState.activeTags.count) { count in
-            if count > 0 { tour.advancePast(.placeTag) }
+            let baseline = tourBaselineTagCount >= 0 ? tourBaselineTagCount : 0
+            if count > baseline { tour.advancePast(.placeTag) }
         }
     }
 

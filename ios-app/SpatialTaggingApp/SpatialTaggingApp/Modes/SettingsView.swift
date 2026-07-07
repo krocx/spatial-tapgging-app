@@ -345,19 +345,22 @@ struct SettingsView: View {
             .onPreferenceChange(TourFrameKey.self) { frames in
                 tourFrames.merge(frames) { _, new in new }
             }
-            // Tour overlay — shown for Settings steps
-            .overlay {
-                if tour.isActive && tour.currentStep.screen == .settings {
-                    CoachMarkOverlay(
-                        step:       tour.currentStep,
-                        targetRect: tourFrames[tour.currentStep],
-                        ownerName:  tour.ownerName,
-                        onNext:     { tour.advance() },
-                        onSkip:     { tour.skip() }
-                    )
-                    .ignoresSafeArea()
-                    .transition(.opacity)
-                }
+        }
+        // Tour overlay on NavigationStack root — canvas origin (0,0) aligns with
+        // global coordinate space so spotlight holes land on the correct elements.
+        // (If placed on the Form instead, the canvas starts 44pt below the nav bar,
+        //  shifting every spotlight one row too low.)
+        .overlay {
+            if tour.isActive && tour.currentStep.screen == .settings {
+                CoachMarkOverlay(
+                    step:       tour.currentStep,
+                    targetRect: tourFrames[tour.currentStep],
+                    ownerName:  tour.ownerName,
+                    onNext:     { tour.advance() },
+                    onSkip:     { tour.skip() }
+                )
+                .ignoresSafeArea()
+                .transition(.opacity)
             }
         }
     }

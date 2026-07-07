@@ -456,6 +456,10 @@ struct QRScanGateView: View {
         arManager.disableQRScanning()
 
         // ── Brief visual feedback then auto-proceed ───────────────────────────
+        // Tour: advance past QR scan step on successful lock (before the view
+        // dismisses so the successor view starts on the correct next step).
+        let qrStep: TourStep = mode == .author ? .scanQRAuthor : .scanQROperator
+        tour.advancePast(qrStep)
         withAnimation { scanPhase = .locked }
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
             onSessionReady()
