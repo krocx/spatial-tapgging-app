@@ -268,7 +268,7 @@ private struct TagResultRow: View {
 
                 // Phase 4: operator note if one was recorded
                 if let note {
-                    Text(""\(note)"")
+                    Text("\u{201C}\(note)\u{201D}")
                         .font(.caption2.italic())
                         .foregroundStyle(.secondary)
                         .lineLimit(2)
