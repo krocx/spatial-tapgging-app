@@ -188,37 +188,36 @@
     /* ── Phase 4: Sessions panel ── */
     #sessions-panel { display: none; padding: 20px 24px 56px; }
     #sessions-panel.visible { display: block; }
-    .sessions-toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
-    .sessions-list { display: flex; flex-direction: column; gap: 10px; max-width: 860px; margin: 0 auto; }
+    .sessions-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; max-width: 960px; margin-left: auto; margin-right: auto; }
+    .sessions-list { display: flex; flex-direction: column; gap: 12px; max-width: 960px; margin: 0 auto; }
 
-    /* Session card */
-    .session-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; transition: border-color 0.2s; }
-    .session-card:hover { border-color: rgba(79,142,247,0.4); }
-    .session-hdr { display: flex; align-items: center; gap: 12px; padding: 13px 16px; cursor: pointer; user-select: none; }
-    .s-icon { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
-    .s-icon.pass    { background: rgba(61,214,140,0.15);  color: var(--green); }
-    .s-icon.fail    { background: rgba(240,86,86,0.15);   color: var(--red); }
-    .s-icon.partial { background: rgba(245,166,35,0.15);  color: var(--orange); }
-    .s-meta { flex: 1; min-width: 0; }
-    .s-owner { font-size: 0.88rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .s-sub   { font-size: 0.73rem; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .s-chips { display: flex; gap: 5px; flex-shrink: 0; align-items: center; }
-    .s-chevron { color: var(--muted); font-size: 0.6rem; transition: transform 0.2s; flex-shrink: 0; }
-    .s-chevron.open { transform: rotate(180deg); }
+    /* Anchor groups */
+    .anchor-group { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .ag-hdr { display: flex; align-items: center; gap: 10px; padding: 12px 16px; cursor: pointer; user-select: none; }
+    .ag-hdr:hover { background: rgba(255,255,255,0.03); }
+    .ag-title { font-size: 0.88rem; font-weight: 700; flex: 1; }
+    .ag-chips { display: flex; gap: 5px; align-items: center; flex-shrink: 0; }
+    .ag-chevron { color: var(--muted); font-size: 0.6rem; transition: transform 0.2s; flex-shrink: 0; }
+    .ag-chevron.open { transform: rotate(180deg); }
+    .ag-body { display: none; border-top: 1px solid var(--border); }
+    .ag-body.open { display: block; }
+    .ag-toolbar { display: flex; justify-content: flex-end; gap: 6px; padding: 7px 12px; background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); }
 
-    /* Session body */
-    .session-body { display: none; border-top: 1px solid var(--border); padding: 12px 16px; }
-    .session-body.open { display: block; }
+    /* Sessions table */
+    .sessions-tbl-wrap { overflow-x: auto; }
+    .sessions-tbl { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+    .sessions-tbl thead tr { border-bottom: 1px solid var(--border); }
+    .sessions-tbl th { text-align: left; padding: 7px 11px; color: var(--muted); font-weight: 600; font-size: 0.68rem; letter-spacing: 0.02em; white-space: nowrap; }
+    .sessions-tbl td { padding: 8px 11px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
+    .sessions-tbl tbody tr:last-child td { border-bottom: none; }
+    .sessions-tbl tbody tr:hover td { background: rgba(255,255,255,0.03); cursor: pointer; }
+    .sessions-tbl .detail-tr:hover td { background: transparent; cursor: default; }
+    .sessions-tbl .detail-tr td { padding: 0; }
+    .detail-inner { padding: 10px 14px; background: rgba(255,255,255,0.02); border-top: 1px solid var(--border); }
 
-    /* Tag result rows */
-    .tr-rows { display: flex; flex-direction: column; gap: 6px; }
-    .tr-row { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px; border-radius: 8px; background: rgba(255,255,255,0.02); }
-    .tr-thumb { width: 64px; height: 48px; border-radius: 6px; object-fit: cover; flex-shrink: 0; border: 1px solid var(--border); cursor: zoom-in; }
-    .tr-thumb-ph { width: 64px; height: 48px; border-radius: 6px; background: var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 0.6rem; }
-    .tr-info { flex: 1; min-width: 0; }
-    .tr-label { font-size: 0.82rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .tr-note  { font-size: 0.72rem; color: var(--muted); margin-top: 2px; font-style: italic; }
-    .tr-badges { display: flex; gap: 4px; align-items: center; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+    /* Thumbnail in table cell */
+    .td-thumb    { display: block; width: 44px; height: 33px; border-radius: 4px; object-fit: cover; border: 1px solid var(--border); cursor: zoom-in; margin-bottom: 4px; }
+    .td-thumb-ph { display: block; width: 44px; height: 33px; border-radius: 4px; background: var(--border); }
 
     /* Evidence lightbox */
     #evidence-lightbox { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 300; align-items: center; justify-content: center; padding: 20px; }
@@ -277,8 +276,9 @@
 
 <!-- Phase 4: Sessions panel -->
 <div id="sessions-panel">
-  <div class="sessions-toolbar" style="max-width:860px;margin:0 auto">
-    <span style="font-size:0.78rem;color:var(--muted);flex:1">Inspection reports uploaded from the iOS app. Most recent first.</span>
+  <div class="sessions-toolbar">
+    <span style="font-size:0.78rem;color:var(--muted);flex:1">Grouped by anchor · most recent first</span>
+    <button class="btn btn-ghost btn-sm" onclick="exportAllCSV()" title="Export all sessions as CSV">⬇ Export All</button>
     <button class="btn btn-ghost btn-sm" onclick="loadSessions()">⟳ Refresh</button>
   </div>
   <div class="sessions-list"></div>
@@ -1066,7 +1066,10 @@ async function confirmDeleteTag() {
 // ── Phase 4: Sessions view ────────────────────────────────────────────────────
 
 let sessionsData      = [];
-let expandedSessions  = new Set();
+let expandedGroups    = new Set();        // anchorId keys of open accordion groups
+let evidenceBlobCache = {};               // evidence URL → blob URL (avoids re-fetching)
+
+// ── View switching ────────────────────────────────────────────────────────────
 
 function switchView(view) {
   document.querySelectorAll('.nav-tab').forEach(btn => {
@@ -1088,6 +1091,8 @@ function switchView(view) {
   }
 }
 
+// ── Data loading ──────────────────────────────────────────────────────────────
+
 async function loadSessions() {
   const list = document.querySelector('.sessions-list');
   list.innerHTML = '<p style="color:var(--muted);padding:24px;text-align:center;font-size:0.82rem;">Loading…</p>';
@@ -1102,103 +1107,240 @@ async function loadSessions() {
   }
 }
 
+// ── Rendering — grouped by anchor ─────────────────────────────────────────────
+
 function renderSessions() {
   const list = document.querySelector('.sessions-list');
   if (!sessionsData.length) {
     list.innerHTML = '<p style="color:var(--muted);padding:24px;text-align:center;font-size:0.82rem;">No inspection sessions yet. Sessions are uploaded from the iOS app when an operator taps End Session.</p>';
     return;
   }
-  list.innerHTML = sessionsData.map(buildSessionCard).join('');
+
+  // Build anchor groups (preserve newest-first order within each group)
+  const groups = new Map(); // anchorKey → { anchorName, sessions[] }
+  for (const s of sessionsData) {
+    const key  = s.anchorId   || '__none__';
+    const name = s.anchorName || s.anchorId || 'Unknown anchor';
+    if (!groups.has(key)) groups.set(key, { anchorName: name, sessions: [] });
+    groups.get(key).sessions.push(s);
+  }
+
+  const html = [];
+  for (const [anchorKey, group] of groups) {
+    // Union of tag labels across all sessions in this group
+    const tagLabelSet = new Set();
+    for (const s of group.sessions)
+      for (const r of (s.tagRecords || [])) tagLabelSet.add(r.tagLabel);
+    html.push(buildAnchorGroup(anchorKey, group, [...tagLabelSet]));
+  }
+  list.innerHTML = html.join('');
 }
 
-function buildSessionCard(s) {
-  const hasReport  = Array.isArray(s.tagRecords) && s.tagRecords.length > 0;
-  const overall    = s.overallStatus || null;
-  const iconClass  = overall === 'PASS' ? 'pass' : overall === 'FAIL' ? 'fail' : 'partial';
-  const iconEmoji  = overall === 'PASS' ? '✓'   : overall === 'FAIL' ? '✕'   : '○';
-  const badgeClass = overall === 'PASS' ? 'b-pass' : overall === 'FAIL' ? 'b-fail' : 'b-none';
-  const badgeText  = overall || 'NO REPORT';
+function buildAnchorGroup(anchorKey, group, tagLabels) {
+  const { anchorName, sessions } = group;
+  const isOpen = expandedGroups.has(anchorKey);
 
-  const owner    = esc(s.ownerName  || s.userId || 'Unknown operator');
-  const anchor   = esc(s.anchorName || (s.anchorId ? s.anchorId.slice(0,12) + '…' : 'Unknown anchor'));
-  const dateStr  = new Date(s.startTime).toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' });
-  const timeStr  = new Date(s.startTime).toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit' });
-  const dur      = s.durationSeconds != null ? formatDuration(s.durationSeconds) : null;
-  const subParts = [anchor, dateStr + ' ' + timeStr, dur ? dur + ' duration' : null].filter(Boolean);
-
-  const passCount = hasReport ? s.tagRecords.filter(r => r.status === 'PASS').length : 0;
-  const failCount = hasReport ? s.tagRecords.filter(r => r.status === 'FAIL').length : 0;
-  const fixCount  = hasReport ? s.tagRecords.filter(r => r.fixedInSession).length   : 0;
-
+  let totalPass = 0, totalFail = 0;
+  for (const s of sessions) {
+    if (s.overallStatus === 'PASS') totalPass++;
+    else if (s.overallStatus === 'FAIL') totalFail++;
+  }
+  const countLabel = `${sessions.length} session${sessions.length !== 1 ? 's' : ''}`;
   const chipsHtml = [
-    `<span class="${badgeClass}">${badgeText}</span>`,
-    passCount > 0 ? `<span class="b-pass">${passCount} PASS</span>` : '',
-    failCount > 0 ? `<span class="b-fail">${failCount} FAIL</span>` : '',
-    fixCount  > 0 ? `<span class="b-fixed">${fixCount} FIXED</span>` : '',
+    `<span style="font-size:0.7rem;color:var(--muted)">${countLabel}</span>`,
+    totalPass > 0 ? `<span class="b-pass">${totalPass} PASS</span>` : '',
+    totalFail > 0 ? `<span class="b-fail">${totalFail} FAIL</span>` : '',
   ].join('');
 
-  const isOpen   = expandedSessions.has(s.id);
-  const bodyHtml = `
-    <div class="session-body${isOpen ? ' open' : ''}" id="sb-${s.id}">
-      ${hasReport
-        ? `<div class="tr-rows">${buildTagResultRows(s.tagRecords)}</div>`
-        : `<p style="font-size:0.78rem;color:var(--muted);margin:0">No inspection report attached to this session.</p>`
-      }
+  // Table header — fixed cols + one col per tag + Overall + Export
+  const tagThs = tagLabels.map(l => `<th>${esc(l)}</th>`).join('');
+  const thead = `<tr><th>Date / Time</th><th>Operator</th><th>Duration</th>${tagThs}<th>Overall</th><th></th></tr>`;
+
+  const tbody = sessions.map(s => buildSessionRow(s, tagLabels, tagLabels.length)).join('');
+
+  const safeKey = esc(anchorKey);
+  return `
+    <div class="anchor-group" id="ag-${safeKey}">
+      <div class="ag-hdr" onclick="toggleAnchorGroup('${safeKey}')">
+        <span class="ag-title">${esc(anchorName)}</span>
+        <div class="ag-chips">${chipsHtml}</div>
+        <span class="ag-chevron${isOpen ? ' open' : ''}">▼</span>
+      </div>
+      <div class="ag-body${isOpen ? ' open' : ''}" id="agb-${safeKey}">
+        <div class="ag-toolbar">
+          <button class="btn btn-ghost btn-sm" onclick="exportGroupCSV('${safeKey}')">⬇ CSV</button>
+        </div>
+        <div class="sessions-tbl-wrap">
+          <table class="sessions-tbl">
+            <thead>${thead}</thead>
+            <tbody>${tbody}</tbody>
+          </table>
+        </div>
+      </div>
     </div>`;
+}
+
+function buildSessionRow(s, tagLabels, colCount) {
+  const d       = new Date(s.startTime);
+  const dateStr = d.toLocaleDateString(undefined, { day:'2-digit', month:'short', year:'numeric' });
+  const timeStr = d.toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit' });
+  const dur     = s.durationSeconds != null ? formatDuration(s.durationSeconds) : '—';
+  const op      = esc(s.ownerName || s.userId || '—');
+
+  // Index tag records by label for this session
+  const byLabel = {};
+  for (const r of (s.tagRecords || [])) byLabel[r.tagLabel] = r;
+
+  const tagCells = tagLabels.map(label => {
+    const r = byLabel[label];
+    if (!r) return '<td style="color:var(--muted)">—</td>';
+    const cls   = r.status === 'PASS' ? 'b-pass' : r.status === 'FAIL' ? 'b-fail' : 'b-none';
+    const fixed = r.fixedInSession ? ` <span class="b-fixed">FIXED</span>` : '';
+    const thumb = r.imagePath
+      ? `<img class="td-thumb" data-evidence-url="/sessions/evidence/${encodeURIComponent(r.imagePath)}" src="" alt="${esc(label)}" />`
+      : `<div class="td-thumb-ph"></div>`;
+    return `<td>${thumb}<span class="${cls}">${r.status}</span>${fixed}</td>`;
+  }).join('');
+
+  const ovCls  = s.overallStatus === 'PASS' ? 'b-pass' : s.overallStatus === 'FAIL' ? 'b-fail' : 'b-none';
+  const overall = s.overallStatus ? `<span class="${ovCls}">${s.overallStatus}</span>` : '—';
+  const sid    = esc(s.id);
+  const totalCols = 3 + tagLabels.length + 2;
+
+  // Detail row (notes, hidden by default)
+  const noted = (s.tagRecords || []).filter(r => r.note);
+  const detailContent = noted.length
+    ? noted.map(r => `<div style="font-size:0.76rem;margin-bottom:4px"><strong>${esc(r.tagLabel)}</strong>: <em style="color:var(--muted)">“${esc(r.note)}”</em></div>`).join('')
+    : '<span style="font-size:0.75rem;color:var(--muted)">No operator notes recorded for this session.</span>';
 
   return `
-    <div class="session-card" id="sc-${esc(s.id)}">
-      <div class="session-hdr" onclick="toggleSession('${esc(s.id)}')">
-        <div class="s-icon ${iconClass}">${iconEmoji}</div>
-        <div class="s-meta">
-          <div class="s-owner">${owner}</div>
-          <div class="s-sub">${subParts.join(' · ')}</div>
-        </div>
-        <div class="s-chips">${chipsHtml}</div>
-        <span class="s-chevron${isOpen ? ' open' : ''}">▼</span>
-      </div>
-      ${bodyHtml}
-    </div>`;
+    <tr data-sid="${sid}" onclick="toggleSessionDetail('${sid}')">
+      <td style="white-space:nowrap">${dateStr}<br><span style="color:var(--muted);font-size:0.68rem">${timeStr}</span></td>
+      <td>${op}</td>
+      <td style="white-space:nowrap">${dur}</td>
+      ${tagCells}
+      <td>${overall}</td>
+      <td onclick="event.stopPropagation()"><button class="btn btn-ghost btn-sm" style="font-size:0.68rem;padding:2px 7px" onclick="exportSessionCSV('${sid}')">CSV</button></td>
+    </tr>
+    <tr class="detail-tr" id="dtr-${sid}" style="display:none">
+      <td colspan="${totalCols}"><div class="detail-inner">${detailContent}</div></td>
+    </tr>`;
 }
 
-function buildTagResultRows(tagRecords) {
-  return tagRecords.map(r => {
-    const badgeClass = r.status === 'PASS' ? 'b-pass' : r.status === 'FAIL' ? 'b-fail' : 'b-none';
-    const imgUrl     = r.imagePath ? `/sessions/evidence/${encodeURIComponent(r.imagePath)}` : null;
-    const thumbHtml  = imgUrl
-      ? `<img class="tr-thumb" src="${imgUrl}" alt="${esc(r.tagLabel)}" onclick="event.stopPropagation();openLightbox('${imgUrl}')" />`
-      : `<div class="tr-thumb-ph">no img</div>`;
-    const noteHtml   = r.note           ? `<div class="tr-note">"${esc(r.note)}"</div>` : '';
-    const fixedBadge = r.fixedInSession ? `<span class="b-fixed">FIXED</span>` : '';
-    return `
-      <div class="tr-row">
-        ${thumbHtml}
-        <div class="tr-info">
-          <div class="tr-label">${esc(r.tagLabel)}</div>
-          ${noteHtml}
-        </div>
-        <div class="tr-badges">
-          <span class="${badgeClass}">${r.status}</span>
-          ${fixedBadge}
-        </div>
-      </div>`;
-  }).join('');
-}
+// ── Accordion ─────────────────────────────────────────────────────────────────
 
-function toggleSession(id) {
-  const body    = document.getElementById(`sb-${id}`);
-  const chevron = document.querySelector(`#sc-${id} .s-chevron`);
+function toggleAnchorGroup(anchorKey) {
+  const body    = document.getElementById(`agb-${anchorKey}`);
+  const chevron = document.querySelector(`#ag-${anchorKey} .ag-chevron`);
   if (!body) return;
-  if (expandedSessions.has(id)) {
-    expandedSessions.delete(id);
+  if (expandedGroups.has(anchorKey)) {
+    expandedGroups.delete(anchorKey);
     body.classList.remove('open');
     if (chevron) chevron.classList.remove('open');
   } else {
-    expandedSessions.add(id);
+    expandedGroups.add(anchorKey);
     body.classList.add('open');
     if (chevron) chevron.classList.add('open');
+    // Lazy-load evidence thumbnails with auth header now that the group is visible
+    loadEvidenceImagesIn(body);
   }
 }
+
+function toggleSessionDetail(sid) {
+  const row = document.getElementById(`dtr-${sid}`);
+  if (!row) return;
+  row.style.display = row.style.display === 'none' ? '' : 'none';
+}
+
+// ── Evidence image loading (auth-aware blob fetch) ────────────────────────────
+
+async function loadEvidenceImagesIn(container) {
+  const imgs = [...container.querySelectorAll('img[data-evidence-url]')]
+    .filter(img => !img.dataset.loaded);
+  await Promise.allSettled(imgs.map(async img => {
+    const url = img.dataset.evidenceUrl;
+    if (!url) return;
+    if (evidenceBlobCache[url]) {
+      img.src = evidenceBlobCache[url];
+      img.dataset.loaded = '1';
+      img.onclick = e => { e.stopPropagation(); openLightbox(evidenceBlobCache[url]); };
+      return;
+    }
+    try {
+      const res = await fetch(url, { headers: { 'X-API-Key': apiKey() } });
+      if (!res.ok) { img.remove(); return; }
+      const blobUrl = URL.createObjectURL(await res.blob());
+      evidenceBlobCache[url] = blobUrl;
+      img.src = blobUrl;
+      img.dataset.loaded = '1';
+      img.onclick = e => { e.stopPropagation(); openLightbox(blobUrl); };
+    } catch { img.remove(); }
+  }));
+}
+
+// ── CSV export ────────────────────────────────────────────────────────────────
+
+function buildCSV(sessions) {
+  const tagLabelSet = new Set();
+  for (const s of sessions) for (const r of (s.tagRecords || [])) tagLabelSet.add(r.tagLabel);
+  const tagLabels = [...tagLabelSet];
+
+  const cols = [
+    'Session ID','Date','Time','Operator','Anchor','Duration (s)','Overall',
+    ...tagLabels,
+    ...tagLabels.map(l => l + ' (Fixed)'),
+    ...tagLabels.map(l => l + ' (Note)'),
+  ];
+
+  const rows = sessions.map(s => {
+    const d = new Date(s.startTime);
+    const byLabel = {};
+    for (const r of (s.tagRecords || [])) byLabel[r.tagLabel] = r;
+    return [
+      s.id,
+      d.toLocaleDateString('en-GB', { year:'numeric', month:'2-digit', day:'2-digit' }),
+      d.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit', second:'2-digit' }),
+      s.ownerName || s.userId || '',
+      s.anchorName || s.anchorId || '',
+      s.durationSeconds ?? '',
+      s.overallStatus || '',
+      ...tagLabels.map(l => byLabel[l]?.status || ''),
+      ...tagLabels.map(l => byLabel[l]?.fixedInSession ? 'Yes' : ''),
+      ...tagLabels.map(l => byLabel[l]?.note || ''),
+    ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(',');
+  });
+
+  return [cols.map(h => `"${h}"`).join(','), ...rows].join('\r\n');
+}
+
+function downloadCSV(csv, filename) {
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement('a'), { href: url, download: filename });
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+function exportSessionCSV(sid) {
+  const s = sessionsData.find(x => x.id === sid);
+  if (!s) return;
+  const date = new Date(s.startTime).toISOString().slice(0,10);
+  downloadCSV(buildCSV([s]), `session_${date}_${sid.slice(0,8)}.csv`);
+}
+
+function exportGroupCSV(anchorKey) {
+  const sessions = sessionsData.filter(s => (s.anchorId || '__none__') === anchorKey);
+  if (!sessions.length) return;
+  const name = (sessions[0].anchorName || anchorKey).replace(/[^a-zA-Z0-9_-]/g,'_');
+  downloadCSV(buildCSV(sessions), `sessions_${name}.csv`);
+}
+
+function exportAllCSV() {
+  if (!sessionsData.length) { toast('No sessions to export.'); return; }
+  downloadCSV(buildCSV(sessionsData), `all_sessions_${new Date().toISOString().slice(0,10)}.csv`);
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function formatDuration(secs) {
   const h = Math.floor(secs / 3600);
