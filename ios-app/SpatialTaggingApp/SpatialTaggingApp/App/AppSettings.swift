@@ -45,6 +45,22 @@ final class AppSettings: ObservableObject {
         ftueOperatorSeen = false
     }
 
+    // ── Guided Tour ──────────────────────────────────────────────────────────
+
+    /// When true the interactive spotlight tour auto-starts on first launch.
+    @Published var guidedTourEnabled: Bool {
+        didSet { UserDefaults.standard.set(guidedTourEnabled, forKey: "guided_tour_enabled") }
+    }
+
+    /// Set to true once the tour has been seen (so it doesn't auto-start again).
+    @Published var guidedTourSeen: Bool {
+        didSet { UserDefaults.standard.set(guidedTourSeen, forKey: "guided_tour_seen") }
+    }
+
+    func resetGuidedTour() {
+        guidedTourSeen = false
+    }
+
     init() {
         sibBaseURL     = UserDefaults.standard.string(forKey: "sib_base_url")     ?? ""
         defaultAssetId = UserDefaults.standard.string(forKey: "default_asset_id") ?? ""
@@ -54,6 +70,8 @@ final class AppSettings: ObservableObject {
         ftueHomeSeen     = UserDefaults.standard.bool(forKey: "ftue_home_seen")
         ftueAuthorSeen   = UserDefaults.standard.bool(forKey: "ftue_author_seen")
         ftueOperatorSeen = UserDefaults.standard.bool(forKey: "ftue_operator_seen")
+        guidedTourEnabled = (UserDefaults.standard.object(forKey: "guided_tour_enabled") as? Bool) ?? true
+        guidedTourSeen    = UserDefaults.standard.bool(forKey: "guided_tour_seen")
     }
 
     /// True when the user has entered a non-empty SIB URL

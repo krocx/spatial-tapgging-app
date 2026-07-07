@@ -6,12 +6,14 @@ struct SpatialTaggingAppApp: App {
 
     @StateObject private var appSettings = AppSettings()
     @StateObject private var appState    = AppState()
+    @StateObject private var tour        = GuidedTourManager()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(appSettings)
                 .environmentObject(appState)
+                .environmentObject(tour)
         }
     }
 }

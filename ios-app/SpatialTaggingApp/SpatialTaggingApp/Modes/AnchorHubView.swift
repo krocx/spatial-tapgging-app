@@ -21,6 +21,7 @@ struct AnchorHubView: View {
 
     @EnvironmentObject private var settings: AppSettings
     @EnvironmentObject private var appState:  AppState
+    @EnvironmentObject private var tour:      GuidedTourManager
 
     // Tags (refreshed from SIB on appear)
     @State private var tags: [Tag] = []
@@ -149,6 +150,7 @@ struct AnchorHubView: View {
             )
             .environmentObject(settings)
             .environmentObject(appState)
+            .environmentObject(tour)
         }
     }
 

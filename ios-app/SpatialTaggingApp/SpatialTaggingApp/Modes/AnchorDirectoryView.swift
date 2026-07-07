@@ -20,6 +20,7 @@ struct AnchorDirectoryView: View {
 
     @EnvironmentObject private var settings: AppSettings
     @EnvironmentObject private var appState:  AppState
+    @EnvironmentObject private var tour:      GuidedTourManager
 
     // ── List state ────────────────────────────────────────────────────────────
     @State private var anchors:     [Anchor] = []
@@ -96,6 +97,7 @@ struct AnchorDirectoryView: View {
                 )
                 .environmentObject(settings)
                 .environmentObject(appState)
+                .environmentObject(tour)
             }
         }
         .onAppear {
@@ -110,6 +112,25 @@ struct AnchorDirectoryView: View {
                 showOnboarding = true
             }
         }
+        // Tour: auto-advance when + Create sheet opens or a row is tapped
+        .onChange(of: showCreateSheet) { if $0 { tour.advancePast(.createAnchor) } }
+        .onChange(of: hubAnchor)       { if $0 != nil { tour.advancePast(.createAnchor) } }
+        // Tour: banner overlay for createAnchor step
+        .overlay {
+            if tour.isActive && tour.currentStep == .createAnchor {
+                CoachMarkOverlay(
+                    step:       .createAnchor,
+                    targetRect: nil,
+                    ownerName:  tour.ownerName,
+                    onNext:     { tour.advance() },
+                    onSkip:     { tour.skip() }
+                )
+                .ignoresSafeArea()
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.spring(response: 0.4, dampingFraction: 0.8),
+                   value: tour.currentStep == .createAnchor)
         .refreshable { await loadAnchors() }
 
         // ── Delete confirmation alert ──────────────────────────────────────────

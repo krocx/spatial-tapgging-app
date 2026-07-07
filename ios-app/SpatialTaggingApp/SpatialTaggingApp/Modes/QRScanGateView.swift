@@ -37,6 +37,7 @@ struct QRScanGateView: View {
 
     @EnvironmentObject private var settings: AppSettings
     @EnvironmentObject private var appState:  AppState
+    @EnvironmentObject private var tour:      GuidedTourManager
 
     @StateObject private var arManager = ARSessionManager()
 
@@ -215,6 +216,22 @@ struct QRScanGateView: View {
             }
         }
         .overlay(cornerDots)
+        // Tour: banner shown while waiting for QR scan
+        .overlay {
+            let qrStep: TourStep = mode == .author ? .scanQRAuthor : .scanQROperator
+            if tour.isActive && tour.currentStep == qrStep {
+                CoachMarkOverlay(
+                    step:       qrStep,
+                    targetRect: nil,
+                    ownerName:  tour.ownerName,
+                    onNext:     { tour.advance() },
+                    onSkip:     { tour.skip() }
+                )
+                .ignoresSafeArea()
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .animation(.spring(response: 0.4, dampingFraction: 0.8), value: tour.currentStep)
+            }
+        }
     }
 
     // ── Sub-views ─────────────────────────────────────────────────────────────

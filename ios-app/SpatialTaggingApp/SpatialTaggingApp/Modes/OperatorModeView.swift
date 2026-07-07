@@ -24,6 +24,7 @@ struct OperatorModeView: View {
 
     @EnvironmentObject private var settings: AppSettings
     @EnvironmentObject private var appState:  AppState
+    @EnvironmentObject private var tour:      GuidedTourManager
 
     @StateObject private var arManager = ARSessionManager()
 
@@ -811,9 +812,25 @@ struct OperatorModeView: View {
             )
             .environmentObject(settings)
             .environmentObject(appState)
+            .environmentObject(tour)
         }
         .sheet(isPresented: $showOnboarding) {
             OnboardingSheet(context: .operatorMode)
+        }
+        // ── Tour banner (Operator step) ────────────────────────────────────────
+        .overlay {
+            if tour.isActive && tour.currentStep == .runInspection {
+                CoachMarkOverlay(
+                    step:       .runInspection,
+                    targetRect: nil,
+                    ownerName:  tour.ownerName,
+                    onNext:     { tour.advance() },   // advances to .done
+                    onSkip:     { tour.skip() }
+                )
+                .ignoresSafeArea()
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .animation(.spring(response: 0.4, dampingFraction: 0.8), value: tour.currentStep)
+            }
         }
     }
 

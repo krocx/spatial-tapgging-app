@@ -12,6 +12,10 @@ struct ModeSelectionView: View {
 
     @EnvironmentObject private var settings: AppSettings
     @EnvironmentObject private var appState:  AppState
+    @EnvironmentObject private var tour:      GuidedTourManager
+
+    // Collected screen-space frames for tour spotlights
+    @State private var tourFrames: [TourStep: CGRect] = [:]
 
     @State private var showAuthorDirectory  = false
     @State private var showOperatorDirectory = false
@@ -52,10 +56,20 @@ struct ModeSelectionView: View {
                             Image(systemName: "questionmark.circle")
                                 .font(.title2).foregroundColor(.white.opacity(0.6))
                         }
-                        Button { showSettings = true } label: {
+                        Button {
+                            showSettings = true
+                        } label: {
                             Image(systemName: "gearshape.fill")
                                 .font(.title2).foregroundColor(.white.opacity(0.6))
                         }
+                        .background(
+                            GeometryReader { geo in
+                                Color.clear.preference(
+                                    key: TourFrameKey.self,
+                                    value: [.tapSettings: geo.frame(in: .global)]
+                                )
+                            }
+                        )
                     }
                     Text("Spatial Tagging").font(.largeTitle.bold()).foregroundColor(.white)
                     Text("Cleanroom Inspection · v\(AppVersion.current)")
@@ -71,11 +85,27 @@ struct ModeSelectionView: View {
                                subtitle: "Create and train inspection tags",
                                icon: "pencil.circle.fill", accentColor: .blue,
                                isEnabled: settings.isConfigured) { showAuthorDirectory = true }
+                    .background(
+                        GeometryReader { geo in
+                            Color.clear.preference(
+                                key: TourFrameKey.self,
+                                value: [.tapAuthor: geo.frame(in: .global)]
+                            )
+                        }
+                    )
 
                     ModeButton(title: "Operator Mode",
                                subtitle: "Run inspections and view results",
                                icon: "eye.circle.fill", accentColor: .green,
                                isEnabled: settings.isConfigured) { showOperatorDirectory = true }
+                    .background(
+                        GeometryReader { geo in
+                            Color.clear.preference(
+                                key: TourFrameKey.self,
+                                value: [.tapOperator: geo.frame(in: .global)]
+                            )
+                        }
+                    )
 
                     // ── Continue last Author session ───────────────────────────
                     if let session = lastSession, settings.isConfigured {
@@ -155,6 +185,37 @@ struct ModeSelectionView: View {
                 .padding(.horizontal, 24).padding(.bottom, 40)
             }
         }
+        // ── Tour: collect spotlight target frames ──────────────────────────────
+        .onPreferenceChange(TourFrameKey.self) { frames in
+            tourFrames.merge(frames) { _, new in new }
+        }
+        // ── Tour: auto-advance when Settings sheet opens ───────────────────────
+        .onChange(of: showSettings) { isOpen in
+            if isOpen { tour.advancePast(.tapSettings) }
+        }
+        // ── Tour: auto-advance when Author directory opens ─────────────────────
+        .onChange(of: showAuthorDirectory) { isOpen in
+            if isOpen { tour.advancePast(.tapAuthor) }
+        }
+        // ── Tour: auto-advance when Operator directory opens ───────────────────
+        .onChange(of: showOperatorDirectory) { isOpen in
+            if isOpen { tour.advancePast(.tapOperator) }
+        }
+        // ── Tour overlay (home-screen steps) ──────────────────────────────────
+        .overlay {
+            if tour.isActive && tour.currentStep.screen == .home {
+                CoachMarkOverlay(
+                    step:       tour.currentStep,
+                    targetRect: tourFrames[tour.currentStep],
+                    ownerName:  tour.ownerName,
+                    onNext:     { tour.advance() },
+                    onSkip:     { tour.skip() }
+                )
+                .ignoresSafeArea()
+                .transition(.opacity)
+                .animation(.easeInOut(duration: 0.25), value: tour.currentStep)
+            }
+        }
         // Author: directory → hub → QR gate → AuthorModeView
         .fullScreenCover(isPresented: $showAuthorDirectory) {
             AnchorDirectoryView(
@@ -169,6 +230,7 @@ struct ModeSelectionView: View {
             )
             .environmentObject(settings)
             .environmentObject(appState)
+            .environmentObject(tour)
         }
         // Operator: directory → hub → QR gate → OperatorModeView
         .fullScreenCover(isPresented: $showOperatorDirectory) {
@@ -184,6 +246,7 @@ struct ModeSelectionView: View {
             )
             .environmentObject(settings)
             .environmentObject(appState)
+            .environmentObject(tour)
         }
         // Continue: hub → QR gate → AuthorModeView (skips directory)
         // AnchorHubView doesn't carry its own NavigationStack, so we wrap it here.
@@ -202,11 +265,18 @@ struct ModeSelectionView: View {
                 )
                 .environmentObject(settings)
                 .environmentObject(appState)
+                .environmentObject(tour)
             }
             .environmentObject(settings)
             .environmentObject(appState)
+            .environmentObject(tour)
         }
-        .sheet(isPresented: $showSettings) { SettingsView() }
+        .sheet(isPresented: $showSettings) {
+            SettingsView()
+                .environmentObject(settings)
+                .environmentObject(appState)
+                .environmentObject(tour)
+        }
         .sheet(isPresented: $showOnboarding) {
             OnboardingSheet(context: .home)
         }
@@ -220,9 +290,16 @@ struct ModeSelectionView: View {
             // Load last Author session for "Continue" card
             lastSession = appState.loadLastAuthorSession()
 
-            // FTUE: auto-show home walkthrough on first launch
-            if settings.ftueEnabled && !settings.ftueHomeSeen {
-                settings.ftueHomeSeen = true   // mark immediately — won't repeat
+            // Guided tour: auto-start on very first launch (takes priority over FTUE home page)
+            if settings.guidedTourEnabled && !settings.guidedTourSeen {
+                settings.guidedTourSeen = true
+                // Small delay so the view is fully laid out before spotlighting
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                    tour.start()
+                }
+            } else if settings.ftueEnabled && !settings.ftueHomeSeen {
+                // Fallback: show swipeable FTUE on first entry when tour is disabled
+                settings.ftueHomeSeen = true
                 showOnboarding = true
             }
 

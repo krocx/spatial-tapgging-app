@@ -23,6 +23,7 @@ struct AuthorModeView: View {
 
     @EnvironmentObject private var settings: AppSettings
     @EnvironmentObject private var appState:  AppState
+    @EnvironmentObject private var tour:      GuidedTourManager
 
     @StateObject private var arManager = ARSessionManager()
 
@@ -401,22 +402,47 @@ struct AuthorModeView: View {
                     if let node = persistedNodes[tagId] {
                         upgradeMarker(node, forTagId: tagId, trained: true)
                     }
+                    // Tour: after first successful training, advance past trainTag
+                    tour.advancePast(.trainTag)
                 }
                 switch tag.type.captureMode {
                 case .honeycomb:
                     HoneycombCaptureView(tag: tag, anchor: anchor,
                                          parentArManager: arManager, onTrained: onTrained)
                         .environmentObject(settings).environmentObject(appState)
+                        .environmentObject(tour)
                 case .cone:
                     ConeCaptureView(tag: tag, anchor: anchor,
                                     parentArManager: arManager, onTrained: onTrained)
                         .environmentObject(settings).environmentObject(appState)
+                        .environmentObject(tour)
                 case .ocr:
                     OCRCaptureView(tag: tag, anchor: anchor,
                                    parentArManager: arManager, onTrained: onTrained)
                         .environmentObject(settings).environmentObject(appState)
+                        .environmentObject(tour)
                 }
             }
+        }
+        // ── Tour banners (Author steps) ────────────────────────────────────────
+        .overlay {
+            let authorStep = tour.currentStep
+            if tour.isActive && (authorStep == .placeTag || authorStep == .trainTag) {
+                CoachMarkOverlay(
+                    step:       authorStep,
+                    targetRect: nil,
+                    ownerName:  tour.ownerName,
+                    onNext:     { tour.advance() },
+                    onSkip:     { tour.skip() }
+                )
+                .ignoresSafeArea()
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .animation(.spring(response: 0.4, dampingFraction: 0.8), value: authorStep)
+            }
+        }
+        // Tour: advance from placeTag → trainTag when first tag is placed (tags count increases)
+        .onChange(of: appState.activeTags.count) { count in
+            if count > 0 { tour.advancePast(.placeTag) }
         }
     }
 
