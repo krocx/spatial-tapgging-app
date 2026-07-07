@@ -121,7 +121,7 @@ struct SettingsView: View {
                             GeometryReader { geo in
                                 Color.clear.preference(
                                     key: TourFrameKey.self,
-                                    value: [.selectServer: geo.frame(in: .named("settingsTour"))]
+                                    value: [.selectServer: geo.frame(in: .global)]
                                 )
                             }
                         )
@@ -240,7 +240,7 @@ struct SettingsView: View {
                         GeometryReader { geo in
                             Color.clear.preference(
                                 key: TourFrameKey.self,
-                                value: [.testConnection: geo.frame(in: .named("settingsTour"))]
+                                value: [.testConnection: geo.frame(in: .global)]
                             )
                         }
                     )
@@ -322,7 +322,7 @@ struct SettingsView: View {
                         GeometryReader { geo in
                             Color.clear.preference(
                                 key: TourFrameKey.self,
-                                value: [.saveSettings: geo.frame(in: .named("settingsTour"))]
+                                value: [.saveSettings: geo.frame(in: .global)]
                             )
                         }
                     )
@@ -346,11 +346,6 @@ struct SettingsView: View {
                 tourFrames.merge(frames) { _, new in new }
             }
         }
-        // Named coordinate space anchors all frame captures to the NavigationStack's
-        // top-left corner. The overlay canvas draws in this same local space, so
-        // spotlight holes land exactly on their targets regardless of where the sheet
-        // sits on screen (sheet y-offset would otherwise shift every spotlight down).
-        .coordinateSpace(name: "settingsTour")
         .overlay {
             if tour.isActive && tour.currentStep.screen == .settings {
                 CoachMarkOverlay(

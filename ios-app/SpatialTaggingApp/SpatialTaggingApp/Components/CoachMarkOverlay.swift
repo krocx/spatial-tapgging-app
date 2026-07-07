@@ -116,15 +116,31 @@ struct CoachMarkOverlay: View {
     }
 
     // ── Spotlight view ─────────────────────────────────────────────────────────
+    //
+    // `rect` arrives in GLOBAL (screen) coordinates from the preference-key capture.
+    // The GeometryReader + ignoresSafeArea combination may shift its local origin
+    // relative to screen (0,0) by the sheet top-inset / safe-area amount.
+    // We compensate by reading geo.frame(in: .global).origin and subtracting it
+    // from `rect` so that `hole` is always in the GeometryReader's local space,
+    // which is the same space used by Canvas drawing and .position() modifiers.
 
     private func spotlightView(_ rect: CGRect) -> some View {
         let pad:     CGFloat = 10
-        let hole:    CGRect  = rect.insetBy(dx: -pad, dy: -pad)
         let radius:  CGFloat = 14
         let bubbleW: CGFloat = 310
         let bubbleH: CGFloat = 160   // estimated; actual height varies
 
         return GeometryReader { geo in
+            // Convert targetRect from screen coordinates to GeometryReader-local
+            // coordinates. geo.frame(in: .global).origin is the screen position
+            // of the GeometryReader's (0,0), accounting for ignoresSafeArea expansion.
+            let origin   = geo.frame(in: .global).origin
+            let localRect = CGRect(x: rect.minX - origin.x,
+                                   y: rect.minY - origin.y,
+                                   width: rect.width,
+                                   height: rect.height)
+            let hole = localRect.insetBy(dx: -pad, dy: -pad)
+
             ZStack {
                 // ── Dim layer with spotlight hole ──────────────────────────────
                 Canvas { ctx, size in
