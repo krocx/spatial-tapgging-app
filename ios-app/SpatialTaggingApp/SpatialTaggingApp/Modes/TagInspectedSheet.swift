@@ -28,8 +28,10 @@ struct TagInspectedSheet: View {
 
     // ── Callbacks ──────────────────────────────────────────────────────────────
 
-    let onReInspect: () -> Void
-    let onConfirm:   (_ note: String?) -> Void
+    let onReInspect:    () -> Void
+    let onConfirm:      (_ note: String?) -> Void
+    /// Operator wants to re-frame the shot — dismiss sheet, show live AR with a capture button.
+    let onRetakeImage:  () -> Void
 
     // ── Local state ────────────────────────────────────────────────────────────
 
@@ -89,6 +91,21 @@ struct TagInspectedSheet: View {
                         RoundedRectangle(cornerRadius: 12)
                             .stroke((status == .pass ? Color.green : Color.red).opacity(0.6), lineWidth: 2)
                     )
+                    // ── Retake button ─────────────────────────────────────────────
+                    .overlay(alignment: .bottomTrailing) {
+                        Button {
+                            noteFieldFocused = false
+                            onRetakeImage()
+                        } label: {
+                            Label("Retake", systemImage: "camera.fill")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 9)
+                                .padding(.vertical, 5)
+                                .background(Color.black.opacity(0.65), in: Capsule())
+                        }
+                        .padding(8)
+                    }
                     .padding(.horizontal, 20)
                     .padding(.bottom, 14)
             }

@@ -135,6 +135,10 @@ struct OperatorModeView: View {
     @State private var sheetImage:  UIImage?           = nil
     @State private var sheetStatus: ValidationStatus?  = nil   // .pass or .fail
 
+    /// Retake photo overlay — operator dismissed sheet to re-frame the evidence shot.
+    @State private var showRetakeOverlay = false
+    @State private var retakeTagId: String? = nil
+
     /// Wall-clock session start — used for duration in the inspection report.
     @State private var sessionStartTime: Date = Date()
 
@@ -684,6 +688,16 @@ struct OperatorModeView: View {
                 .animation(.easeInOut(duration: 0.25), value: fullScreenImage != nil)
                 .zIndex(10)
             }
+
+            // ── Retake photo overlay ────────────────────────────────────────────
+            // Operator tapped "Retake" in the Tag Inspected sheet. The sheet is
+            // dismissed and the live AR feed is fully visible. This minimal overlay
+            // shows a native-style shutter button so the operator can stabilise
+            // then capture a fresh frame. The validation loop stays paused.
+            if showRetakeOverlay, let tagId = retakeTagId {
+                retakeCaptureOverlay(tagId: tagId)
+                    .zIndex(11)
+            }
         }
         .onAppear {
             lastProgressAt  = Date()   // #89: start the idle clock fresh for this session
@@ -851,12 +865,13 @@ struct OperatorModeView: View {
                 let tagLabel = appState.activeTags
                     .first(where: { $0.id == tagId })?.label ?? tagId
                 TagInspectedSheet(
-                    tagLabel:      tagLabel,
-                    status:        status,
-                    image:         sheetImage,
+                    tagLabel:       tagLabel,
+                    status:         status,
+                    image:          sheetImage,
                     fixedInSession: tagFixedInSession[tagId] ?? false,
-                    onReInspect: { handleReInspectFromSheet(tagId: tagId) },
-                    onConfirm:   { note in handleConfirmFromSheet(tagId: tagId, status: status, note: note) }
+                    onReInspect:    { handleReInspectFromSheet(tagId: tagId) },
+                    onConfirm:      { note in handleConfirmFromSheet(tagId: tagId, status: status, note: note) },
+                    onRetakeImage:  { handleRetakeFromSheet(tagId: tagId) }
                 )
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.hidden)
@@ -2324,6 +2339,126 @@ struct OperatorModeView: View {
 
     /// Builds and submits the Phase 4 inspection report to SIB (fire-and-forget).
     /// Called when the operator taps "End Inspection".
+    // ── Retake photo ──────────────────────────────────────────────────────────
+
+    /// Operator tapped "Retake" in the Tag Inspected sheet.
+    /// Dismiss the sheet and reveal the live AR feed with a shutter overlay.
+    private func handleRetakeFromSheet(tagId: String) {
+        showTagInspectedSheet = false
+        sheetTagId = nil; sheetImage = nil; sheetStatus = nil
+        // Keep failTimerTask cancelled — loop stays paused during retake.
+        retakeTagId       = tagId
+        showRetakeOverlay = true
+    }
+
+    /// Operator tapped the shutter button in the retake overlay.
+    /// Grab a fresh raw-camera frame and re-open the sheet with the new image.
+    private func captureRetakeImage() {
+        guard let tagId = retakeTagId,
+              let frame  = arManager.sceneView.session.currentFrame,
+              let image  = captureRawCamera(from: frame)
+        else { return }
+
+        tagInspectionImages[tagId] = image
+        showRetakeOverlay = false
+        retakeTagId       = nil
+
+        // Brief pause so the overlay fade-out completes before the sheet rises.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+            let status = tagInspectionStates[tagId] == .inspectedPass
+                ? ValidationStatus.pass : ValidationStatus.fail
+            sheetTagId    = tagId
+            sheetImage    = image
+            sheetStatus   = status
+            showTagInspectedSheet = true
+        }
+    }
+
+    /// Operator cancelled the retake — reopen the sheet with the original image.
+    private func cancelRetake() {
+        guard let tagId = retakeTagId else { return }
+        showRetakeOverlay = false
+        retakeTagId       = nil
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+            let status = tagInspectionStates[tagId] == .inspectedPass
+                ? ValidationStatus.pass : ValidationStatus.fail
+            sheetTagId    = tagId
+            sheetImage    = tagInspectionImages[tagId]
+            sheetStatus   = status
+            showTagInspectedSheet = true
+        }
+    }
+
+    /// Full-screen overlay shown while the operator re-frames the shot.
+    /// The live AR camera feed is fully visible through this overlay.
+    @ViewBuilder
+    private func retakeCaptureOverlay(tagId: String) -> some View {
+        let tagLabel = appState.activeTags.first(where: { $0.id == tagId })?.label ?? tagId
+        ZStack {
+            // Top bar — instruction + cancel
+            VStack {
+                HStack(alignment: .center) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Retake Photo")
+                            .font(.headline)
+                            .foregroundStyle(.white)
+                        Text(tagLabel)
+                            .font(.caption)
+                            .foregroundStyle(.white.opacity(0.7))
+                            .lineLimit(1)
+                    }
+                    Spacer()
+                    Button("Cancel") { cancelRetake() }
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 7)
+                        .background(Color.white.opacity(0.18), in: Capsule())
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 56)
+                .padding(.bottom, 16)
+                .background(
+                    LinearGradient(colors: [.black.opacity(0.72), .clear],
+                                   startPoint: .top, endPoint: .bottom)
+                )
+                Spacer()
+
+                // Instruction hint + shutter button
+                VStack(spacing: 18) {
+                    Text("Stabilise device, then capture")
+                        .font(.caption.bold())
+                        .foregroundStyle(.white.opacity(0.85))
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 7)
+                        .background(Color.black.opacity(0.5), in: Capsule())
+
+                    // Native-style shutter ring + inner disc
+                    Button { captureRetakeImage() } label: {
+                        ZStack {
+                            Circle()
+                                .strokeBorder(.white, lineWidth: 3.5)
+                                .frame(width: 76, height: 76)
+                            Circle()
+                                .fill(.white)
+                                .frame(width: 62, height: 62)
+                            Image(systemName: "camera.fill")
+                                .font(.system(size: 26, weight: .semibold))
+                                .foregroundStyle(.black)
+                        }
+                    }
+                    .padding(.bottom, 52)
+                }
+                .background(
+                    LinearGradient(colors: [.clear, .black.opacity(0.65)],
+                                   startPoint: .top, endPoint: .bottom)
+                )
+            }
+        }
+        .ignoresSafeArea()
+        .transition(.opacity.animation(.easeInOut(duration: 0.2)))
+    }
+
     private func submitSessionReport() {
         guard let anchor  = appState.activeAnchor,
               let session = appState.activeSession else { return }
@@ -2436,6 +2571,7 @@ struct OperatorModeView: View {
         failTimerTask = nil
         showTagInspectedSheet = false
         sheetTagId = nil; sheetImage = nil; sheetStatus = nil
+        showRetakeOverlay = false; retakeTagId = nil
         sessionStartTime = Date()
         appState.lastValidationResult = nil
         validateError = nil
@@ -2449,6 +2585,7 @@ struct OperatorModeView: View {
         failTimerTask = nil
         showTagInspectedSheet  = false
         sheetTagId = nil; sheetImage = nil; sheetStatus = nil
+        showRetakeOverlay = false; retakeTagId = nil
         tagInspectionStates.removeAll()
         tagInspectionImages.removeAll()
         tagInspectionNotes.removeAll()
