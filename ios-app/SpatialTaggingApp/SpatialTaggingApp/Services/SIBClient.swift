@@ -265,14 +265,41 @@ final class SIBClient {
         try await get([LocTagCompletion].self, path: "/loc-tags/\(locTagId)/completions")
     }
 
+    /// Author: update mutable fields of an existing Loc-Tag.
+    func updateLocTag(id: String, req: UpdateLocTagRequest) async throws -> LocTag {
+        try await patch(LocTag.self, path: "/loc-tags/\(id)", body: req)
+    }
+
+    /// Author: delete a Loc-Tag and all its completion records.
+    func deleteLocTag(id: String) async throws {
+        try await delete(path: "/loc-tags/\(id)")
+    }
+
     // ── Loc-Tag ARWorldMap (Phase 2) ─────────────────────────────────────────
 
     /// Author: save the ARWorldMap captured at the end of a Gemba audit walk.
+    /// Optionally includes a reference photo (captured at first tag save) so
+    /// Operators can visually confirm their starting position during re-localization.
     /// Body is base64-encoded to fit JSON transport; 90s timeout for large maps.
-    func uploadLocTagWorldMap(anchorId: String, mapData: Data) async throws {
-        struct UploadResponse: Decodable { let anchorId: String; let sizeBytes: Int }
-        let req = WorldMapUploadRequest(anchorId: anchorId, mapData: mapData)
+    func uploadLocTagWorldMap(anchorId: String, mapData: Data, referencePhoto: Data? = nil) async throws {
+        struct UploadResponse: Decodable { let anchorId: String; let sizeBytes: Int; let refPhotoSaved: Bool }
+        let req = WorldMapUploadRequest(anchorId: anchorId, mapData: mapData, referencePhoto: referencePhoto)
         _ = try await post(UploadResponse.self, path: "/worldmap/upload", body: req, timeout: 90)
+    }
+
+    /// Download the reference photo for a Loc-Tag anchor.
+    /// Returns nil on 404 (no photo was saved — older anchors or Author skipped it).
+    func fetchLocTagReferencePhoto(anchorId: String) async throws -> Data? {
+        let req = try makeRequest(method: "GET", path: "/worldmap/\(anchorId)/reference-photo")
+        let (data, response): (Data, URLResponse)
+        do { (data, response) = try await session.data(for: req) }
+        catch { throw SIBClientError.networkError(error) }
+        guard let http = response as? HTTPURLResponse else { return nil }
+        if http.statusCode == 404 { return nil }
+        if !(200...299).contains(http.statusCode) {
+            throw SIBClientError.httpError(http.statusCode, "Reference photo download failed (\(http.statusCode))")
+        }
+        return data
     }
 
     /// Operator: download the ARWorldMap for an anchor to re-localize.

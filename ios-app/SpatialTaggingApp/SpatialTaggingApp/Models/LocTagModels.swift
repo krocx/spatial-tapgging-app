@@ -206,18 +206,51 @@ struct LocTagSummary: Codable {
 }
 
 // ============================================================
+// MARK: - Update Loc-Tag (Author edit)
+// ============================================================
+
+/// Request body for PATCH /loc-tags/:id.
+/// All fields are optional — only send what changed.
+struct UpdateLocTagRequest: Codable {
+    var title:              String?
+    var description:        String?
+    var severity:           Severity?
+    var defectCategory:     DefectCategory?
+    var defectCategoryNote: String?
+
+    init(
+        title:              String?        = nil,
+        description:        String?        = nil,
+        severity:           Severity?      = nil,
+        defectCategory:     DefectCategory? = nil,
+        defectCategoryNote: String?        = nil
+    ) {
+        self.title              = title
+        self.description        = description
+        self.severity           = severity
+        self.defectCategory     = defectCategory
+        self.defectCategoryNote = defectCategoryNote
+    }
+}
+
+// ============================================================
 // MARK: - Worldmap upload request
 // ============================================================
 
 /// Request body for POST /worldmap/upload.
+/// `referencePhotoBase64` is a JPEG snapshot taken at the moment the Author
+/// saved their first tag — gives Operators a visual landmark for where to
+/// stand when re-localizing.  It is optional and non-fatal if absent.
 struct WorldMapUploadRequest: Codable {
-    let anchorId:       String
-    let worldMapBase64: String
-    let capturedAt:     String
+    let anchorId:              String
+    let worldMapBase64:        String
+    let capturedAt:            String
+    let referencePhotoBase64:  String?
 
-    init(anchorId: String, mapData: Data) {
-        self.anchorId       = anchorId
-        self.worldMapBase64 = mapData.base64EncodedString()
-        self.capturedAt     = ISO8601DateFormatter().string(from: Date())
+    init(anchorId: String, mapData: Data, referencePhoto: Data? = nil) {
+        self.anchorId             = anchorId
+        self.worldMapBase64       = mapData.base64EncodedString()
+        self.capturedAt           = ISO8601DateFormatter().string(from: Date())
+        self.referencePhotoBase64 = referencePhoto?.base64EncodedString()
     }
 }

@@ -25,8 +25,13 @@ struct AnchorHubView: View {
 
     // Tags (refreshed from SIB on appear)
     @State private var tags: [Tag] = []
+    // Loc-tags for Gemba Walk anchors (fetched instead of regular tags)
+    @State private var locTags: [LocTag] = []
     @State private var isLoadingTags = false
     @State private var tagLoadError: String? = nil
+
+    // Loc-Tag editing
+    @State private var editingLocTag: LocTag? = nil
 
     // QR generator sheet
     @State private var showQRSheet = false
@@ -66,25 +71,58 @@ struct AnchorHubView: View {
                 }
             } else {
                 Section {
-                    if tags.isEmpty {
-                        ContentUnavailableView {
-                            Label("No Tags Yet", systemImage: "tag.slash")
-                        } description: {
-                            Text(mode == .author
-                                 ? "Enter AR session to place your first tag."
-                                 : "The Author must add and train tags before inspection.")
+                    if anchor.anchorType == .locTag {
+                        // ── Gemba Walk: show LocTag issues ─────────────────────
+                        if locTags.isEmpty {
+                            ContentUnavailableView {
+                                Label("No Issues Placed", systemImage: "mappin.slash")
+                            } description: {
+                                Text(mode == .author
+                                     ? "Enter the AR walk to place your first issue."
+                                     : "The Author must complete the walk before inspection.")
+                            }
+                            .listRowBackground(Color.clear)
+                        } else {
+                            ForEach(locTags) { tag in
+                                LocTagHubRow(tag: tag)
+                                    .contentShape(Rectangle())
+                                    .onTapGesture { editingLocTag = tag }
+                                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                        Button(role: .destructive) {
+                                            Task { await deleteLocTag(tag) }
+                                        } label: {
+                                            Label("Delete", systemImage: "trash")
+                                        }
+                                    }
+                            }
                         }
-                        .listRowBackground(Color.clear)
                     } else {
-                        ForEach(tags) { tag in HubTagRow(tag: tag) }
+                        // ── QR anchor: show regular trained/untrained tags ──────
+                        if tags.isEmpty {
+                            ContentUnavailableView {
+                                Label("No Tags Yet", systemImage: "tag.slash")
+                            } description: {
+                                Text(mode == .author
+                                     ? "Enter AR session to place your first tag."
+                                     : "The Author must add and train tags before inspection.")
+                            }
+                            .listRowBackground(Color.clear)
+                        } else {
+                            ForEach(tags) { tag in HubTagRow(tag: tag) }
+                        }
                     }
                 } header: {
                     HStack {
-                        Text("Tags")
+                        Text(anchor.anchorType == .locTag ? "Issues" : "Tags")
                         Spacer()
-                        let trained = tags.filter { isTagTrained($0) }.count
-                        Text("\(trained)/\(tags.count) trained")
-                            .foregroundStyle(.secondary)
+                        if anchor.anchorType == .locTag {
+                            Text("\(locTags.count) issue\(locTags.count == 1 ? "" : "s")")
+                                .foregroundStyle(.secondary)
+                        } else {
+                            let trained = tags.filter { isTagTrained($0) }.count
+                            Text("\(trained)/\(tags.count) trained")
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
             }
@@ -116,7 +154,9 @@ struct AnchorHubView: View {
                         Spacer()
                         Label(
                             anchor.anchorType == .locTag
-                                ? (mode == .author ? "Start Audit Walk" : "Load Walk")
+                                ? (mode == .author
+                                    ? (locTags.isEmpty ? "Start Audit Walk" : "Edit Walk")
+                                    : "Load Walk")
                                 : "Enter AR Session",
                             systemImage: anchor.anchorType == .locTag ? "figure.walk" : "play.fill"
                         )
@@ -185,6 +225,15 @@ struct AnchorHubView: View {
                 .transition(.opacity)
                 .animation(.easeInOut(duration: 0.25), value: tour.currentStep)
             }
+        }
+        // ── Edit loc-tag sheet ────────────────────────────────────────────────
+        .sheet(item: $editingLocTag) { tag in
+            LocTagEditSheet(locTag: tag) { updated in
+                if let idx = locTags.firstIndex(where: { $0.id == updated.id }) {
+                    locTags[idx] = updated
+                }
+            }
+            .environmentObject(settings)
         }
         // ── QR generator ─────────────────────────────────────────────────────
         .sheet(isPresented: $showQRSheet) {
@@ -314,37 +363,54 @@ struct AnchorHubView: View {
 
     // ── Network ───────────────────────────────────────────────────────────────
 
+    private func deleteLocTag(_ tag: LocTag) async {
+        let client = SIBClient(settings: settings)
+        do {
+            try await client.deleteLocTag(id: tag.id)
+            locTags.removeAll { $0.id == tag.id }
+        } catch {
+            // Surface the error inline — can't show an alert from here easily so
+            // we append it to tagLoadError, which already has an error UI.
+            tagLoadError = "Delete failed: \(friendlyMessage(for: error))"
+        }
+    }
+
     private func loadTags() async {
         isLoadingTags = true
         tagLoadError  = nil
         let client    = SIBClient(settings: settings)
         do {
-            let fetched = try await client.fetchTags(anchorId: anchor.id)
-            tags = fetched
+            if anchor.anchorType == .locTag {
+                // ── Gemba Walk: fetch loc-tags (issues) ───────────────────────
+                let fetched = try await client.fetchLocTags(anchorId: anchor.id)
+                locTags = fetched.sorted { $0.order < $1.order }
+            } else {
+                // ── QR anchor: fetch regular tags + optional readiness check ──
+                let fetched = try await client.fetchTags(anchorId: anchor.id)
+                tags = fetched
 
-            // Seed trainedTagIds from server-computed isTrained field so the Author
-            // tag list and Operator list show accurate trained status after re-entry.
-            // This fixes the bug where trainedTagIds was only populated during the
-            // current session and was empty on every fresh app launch.
-            let trained = fetched.filter { $0.isTrained == true }.map { $0.id }
-            for id in trained { appState.trainedTagIds.insert(id) }
+                // Seed trainedTagIds from server-computed isTrained field so the Author
+                // tag list and Operator list show accurate trained status after re-entry.
+                let trained = fetched.filter { $0.isTrained == true }.map { $0.id }
+                for id in trained { appState.trainedTagIds.insert(id) }
 
-            // Operator: check readiness
-            if mode == .operator, !fetched.isEmpty {
-                do {
-                    let readiness = try await client.fetchAnchorReadiness(id: anchor.id)
-                    if !readiness.isReady {
-                        if readiness.trainedTags == 0 {
-                            readinessWarning = "No tags trained yet — Author must train all tags before inspection."
-                            isReadinessBlocked = true
-                        } else {
-                            let n = readiness.untrainedTagIds.count
-                            readinessWarning = "\(n) of \(readiness.totalTags) tag\(n == 1 ? "" : "s") not yet trained — they will show as PENDING."
-                            isReadinessBlocked = false
+                // Operator: check readiness
+                if mode == .operator, !fetched.isEmpty {
+                    do {
+                        let readiness = try await client.fetchAnchorReadiness(id: anchor.id)
+                        if !readiness.isReady {
+                            if readiness.trainedTags == 0 {
+                                readinessWarning = "No tags trained yet — Author must train all tags before inspection."
+                                isReadinessBlocked = true
+                            } else {
+                                let n = readiness.untrainedTagIds.count
+                                readinessWarning = "\(n) of \(readiness.totalTags) tag\(n == 1 ? "" : "s") not yet trained — they will show as PENDING."
+                                isReadinessBlocked = false
+                            }
                         }
+                    } catch {
+                        print("[AnchorHub] Readiness check failed (non-fatal): \(error.localizedDescription)")
                     }
-                } catch {
-                    print("[AnchorHub] Readiness check failed (non-fatal): \(error.localizedDescription)")
                 }
             }
         } catch {
@@ -399,6 +465,35 @@ private struct HubTagRow: View {
                     .background(Color.orange.opacity(0.10))
                     .clipShape(Capsule())
             }
+        }
+        .padding(.vertical, 2)
+    }
+}
+
+// ── Hub row for Gemba Walk (LocTag) issues ────────────────────────────────────
+
+private struct LocTagHubRow: View {
+    let tag: LocTag
+
+    var body: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .fill(Color.orange.opacity(0.14))
+                    .frame(width: 36, height: 36)
+                Image(systemName: "mappin.circle.fill")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(.orange)
+            }
+            VStack(alignment: .leading, spacing: 3) {
+                Text(tag.title).font(.subheadline.bold()).lineLimit(1)
+                Text(tag.defectCategory.displayName)
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Spacer()
+            Text("#\(tag.order)")
+                .font(.caption.bold().monospacedDigit())
+                .foregroundStyle(.orange.opacity(0.8))
         }
         .padding(.vertical, 2)
     }

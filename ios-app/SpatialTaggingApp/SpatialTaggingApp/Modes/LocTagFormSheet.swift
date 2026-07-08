@@ -18,13 +18,14 @@ struct LocTagFormSheet: View {
     // ── Form fields ───────────────────────────────────────────────────────────
     @State private var title          = ""
     @State private var description    = ""
-    @State private var severity:        Severity?       = nil
-    @State private var defectCategory: DefectCategory  = .others
+    @State private var severity:        Severity?      = nil
+    @State private var defectCategory: DefectCategory = .others
     @State private var categoryNote   = ""
 
     // ── Photo ─────────────────────────────────────────────────────────────────
-    @State private var selectedItem:    PhotosPickerItem? = nil
-    @State private var referenceImage:  UIImage?          = nil
+    @State private var selectedItem:   PhotosPickerItem? = nil
+    @State private var referenceImage: UIImage?          = nil
+    @State private var showCamera                        = false
 
     // ── Submission ────────────────────────────────────────────────────────────
     @State private var isSubmitting = false
@@ -60,7 +61,7 @@ struct LocTagFormSheet: View {
                         }
                     }
 
-                    // Show note field only for "Others" — avoids cluttering the form
+                    // Note field only for "Others"
                     if defectCategory == .others {
                         TextField("Category note (optional)", text: $categoryNote)
                     }
@@ -68,6 +69,7 @@ struct LocTagFormSheet: View {
 
                 // ── Reference photo ────────────────────────────────────────────
                 Section("Reference Photo") {
+                    // Thumbnail + remove when a photo is attached
                     if let image = referenceImage {
                         HStack {
                             Image(uiImage: image)
@@ -86,10 +88,21 @@ struct LocTagFormSheet: View {
                         }
                     }
 
+                    // Take photo — primary action while walking the space
+                    Button {
+                        showCamera = true
+                    } label: {
+                        Label(
+                            referenceImage == nil ? "Take Photo" : "Retake Photo",
+                            systemImage: "camera"
+                        )
+                    }
+
+                    // Choose from library — secondary / fallback
                     PhotosPicker(selection: $selectedItem, matching: .images) {
                         Label(
-                            referenceImage == nil ? "Add Photo" : "Change Photo",
-                            systemImage: "photo"
+                            referenceImage == nil ? "Choose from Library" : "Replace from Library",
+                            systemImage: "photo.on.rectangle"
                         )
                     }
                     .onChange(of: selectedItem) { item in
@@ -127,6 +140,14 @@ struct LocTagFormSheet: View {
                     }
                 }
             }
+            // Camera sheet — fullScreenCover so it can use the full screen
+            .fullScreenCover(isPresented: $showCamera) {
+                CameraPickerView { image in
+                    referenceImage = image
+                    selectedItem   = nil   // clear any library selection
+                }
+                .ignoresSafeArea()
+            }
         }
     }
 
@@ -160,3 +181,5 @@ struct LocTagFormSheet: View {
         }
     }
 }
+
+// CameraPickerView is defined in Components/CameraPickerView.swift

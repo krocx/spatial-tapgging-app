@@ -3,6 +3,9 @@
 // Endpoints:
 //   POST   /loc-tags                    — Author: create a LocTag
 //   GET    /loc-tags?anchorId=xxx       — List LocTags for an anchor
+//   GET    /loc-tags/image/:filename    — Serve a reference or completion photo
+//   PATCH  /loc-tags/:id               — Author: update mutable fields of a LocTag
+//   DELETE /loc-tags/:id               — Author: remove a LocTag + its completions
 //   POST   /loc-tags/:id/completion     — Operator: submit completion record
 //   GET    /loc-tags/:id/completions    — List all completions for a LocTag
 
@@ -173,6 +176,60 @@ router.post('/:id/completion', async (req: Request, res: Response): Promise<void
 
   const resp: ApiResponse<LocTagCompletion> = { data: completion, timestamp: now };
   res.status(201).json(resp);
+});
+
+// PATCH /loc-tags/:id — Author updates mutable fields of an existing LocTag
+router.patch('/:id', (req: Request, res: Response): void => {
+  const { id } = req.params;
+  const locTag = locTagStore.findById(id);
+  if (!locTag) {
+    res.status(404).json({ error: `LocTag ${id} not found` });
+    return;
+  }
+
+  const body = req.body as {
+    title?:              string;
+    description?:        string;
+    severity?:           string | null;
+    defectCategory?:     string;
+    defectCategoryNote?: string | null;
+  };
+
+  const updated: LocTag = {
+    ...locTag,
+    title:              body.title              ?? locTag.title,
+    description:        body.description        ?? locTag.description,
+    severity:           'severity' in body      ? (body.severity as any) : locTag.severity,
+    defectCategory:     (body.defectCategory as any) ?? locTag.defectCategory,
+    defectCategoryNote: 'defectCategoryNote' in body
+                          ? (body.defectCategoryNote ?? undefined)
+                          : locTag.defectCategoryNote,
+    updatedAt:          new Date().toISOString(),
+  };
+
+  locTagStore.save(updated);
+  console.log(`[SIB] LocTag updated: ${id}`);
+
+  const resp: ApiResponse<LocTag> = { data: updated, timestamp: new Date().toISOString() };
+  res.json(resp);
+});
+
+// DELETE /loc-tags/:id — Author removes a LocTag
+router.delete('/:id', (req: Request, res: Response): void => {
+  const { id } = req.params;
+  const locTag = locTagStore.findById(id);
+  if (!locTag) {
+    res.status(404).json({ error: `LocTag ${id} not found` });
+    return;
+  }
+
+  locTagStore.delete(id);
+  // Also remove completions for this tag
+  const completions = locTagCompletionStore.findAll().filter(c => c.locTagId === id);
+  for (const c of completions) locTagCompletionStore.delete(c.id);
+
+  console.log(`[SIB] LocTag deleted: ${id} (${completions.length} completions removed)`);
+  res.status(204).send();
 });
 
 // GET /loc-tags/:id/completions — list all completions for a LocTag

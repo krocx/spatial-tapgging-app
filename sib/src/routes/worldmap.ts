@@ -5,8 +5,9 @@
 // efficient; the client sends/receives it as base64 over the REST API.
 //
 // Endpoints:
-//   POST  /worldmap/upload              — Author saves map after walk
-//   GET   /worldmap/:anchorId           — Operator downloads map to re-localize
+//   POST  /worldmap/upload                        — Author saves map (+ optional reference photo)
+//   GET   /worldmap/:anchorId                     — Operator downloads map to re-localize
+//   GET   /worldmap/:anchorId/reference-photo     — Serve the reference photo (JPEG)
 
 import { Router } from 'express';
 import type { Request, Response } from 'express';
@@ -24,17 +25,28 @@ function worldMapPath(anchorId: string): string {
   return path.join(WORLDMAPS_DIR, `${anchorId}.arworldmap`);
 }
 
+function refPhotoPath(anchorId: string): string {
+  return path.join(WORLDMAPS_DIR, `${anchorId}.refphoto.jpg`);
+}
+
+function isValidAnchorId(anchorId: string): boolean {
+  return !anchorId.includes('..') && !anchorId.includes('/');
+}
+
 // ── Router ────────────────────────────────────────────────────────────────────
 
 const router = Router();
 
 // POST /worldmap/upload
-// Body: { anchorId: string, worldMapBase64: string, capturedAt: string }
+// Body: { anchorId: string, worldMapBase64: string, capturedAt: string, referencePhotoBase64?: string }
+// referencePhotoBase64 is a JPEG snapshot taken at the moment the Author saved their
+// first tag, giving Operators a visual landmark for where to stand when re-localizing.
 router.post('/upload', (req: Request, res: Response): void => {
-  const { anchorId, worldMapBase64, capturedAt } = req.body as {
-    anchorId:       string;
-    worldMapBase64: string;
-    capturedAt:     string;
+  const { anchorId, worldMapBase64, capturedAt, referencePhotoBase64 } = req.body as {
+    anchorId:              string;
+    worldMapBase64:        string;
+    capturedAt:            string;
+    referencePhotoBase64?: string;
   };
 
   if (!anchorId || !worldMapBase64) {
@@ -58,13 +70,48 @@ router.post('/upload', (req: Request, res: Response): void => {
     return;
   }
 
+  // Optional: save reference photo for Operator re-localization guidance
+  let refPhotoSaved = false;
+  if (referencePhotoBase64) {
+    try {
+      const photoBuf = Buffer.from(referencePhotoBase64, 'base64');
+      fs.writeFileSync(refPhotoPath(anchorId), photoBuf);
+      refPhotoSaved = true;
+      console.log(`[SIB] Reference photo saved for anchor ${anchorId} (${photoBuf.length} bytes)`);
+    } catch (err) {
+      // Non-fatal: log but don't fail the whole upload
+      console.error('[SIB] Failed to save reference photo (non-fatal):', err);
+    }
+  }
+
   console.log(`[SIB] ARWorldMap saved for anchor ${anchorId} (${buf.length} bytes, captured ${capturedAt})`);
 
-  const resp: ApiResponse<{ anchorId: string; sizeBytes: number }> = {
-    data:      { anchorId, sizeBytes: buf.length },
+  const resp: ApiResponse<{ anchorId: string; sizeBytes: number; refPhotoSaved: boolean }> = {
+    data:      { anchorId, sizeBytes: buf.length, refPhotoSaved },
     timestamp: new Date().toISOString(),
   };
   res.status(201).json(resp);
+});
+
+// GET /worldmap/:anchorId/reference-photo
+// Returns the reference JPEG captured at the Author's first tag save.
+// 404 if no photo was uploaded (older anchors or Author skipped it).
+router.get('/:anchorId/reference-photo', (req: Request, res: Response): void => {
+  const { anchorId } = req.params;
+
+  if (!isValidAnchorId(anchorId)) {
+    res.status(400).json({ error: 'Invalid anchorId' });
+    return;
+  }
+
+  const filePath = refPhotoPath(anchorId);
+  if (!fs.existsSync(filePath)) {
+    res.status(404).json({ error: `No reference photo found for anchor ${anchorId}` });
+    return;
+  }
+
+  res.setHeader('Content-Type', 'image/jpeg');
+  res.sendFile(filePath);
 });
 
 // GET /worldmap/:anchorId
@@ -73,8 +120,7 @@ router.post('/upload', (req: Request, res: Response): void => {
 router.get('/:anchorId', (req: Request, res: Response): void => {
   const { anchorId } = req.params;
 
-  // Basic path-traversal guard
-  if (anchorId.includes('..') || anchorId.includes('/')) {
+  if (!isValidAnchorId(anchorId)) {
     res.status(400).json({ error: 'Invalid anchorId' });
     return;
   }

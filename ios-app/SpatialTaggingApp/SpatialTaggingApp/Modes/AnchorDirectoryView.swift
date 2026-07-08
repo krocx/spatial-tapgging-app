@@ -319,12 +319,18 @@ struct AnchorDirectoryView: View {
             let fetched = try await client.fetchAnchors()
             // Sort newest first
             anchors = fetched.sorted { $0.createdAt > $1.createdAt }
-            // Fetch tag counts in parallel
+            // Fetch tag counts in parallel.
+            // LOC_TAG anchors store issues in /loc-tags; QR anchors use /tags.
             await withTaskGroup(of: (String, Int).self) { group in
                 for anchor in anchors {
                     group.addTask {
-                        let count = (try? await client.fetchTags(anchorId: anchor.id).count) ?? 0
-                        return (anchor.id, count)
+                        if anchor.anchorType == .locTag {
+                            let count = (try? await client.fetchLocTags(anchorId: anchor.id).count) ?? 0
+                            return (anchor.id, count)
+                        } else {
+                            let count = (try? await client.fetchTags(anchorId: anchor.id).count) ?? 0
+                            return (anchor.id, count)
+                        }
                     }
                 }
                 for await (id, count) in group {
