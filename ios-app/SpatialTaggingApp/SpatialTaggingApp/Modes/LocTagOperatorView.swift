@@ -48,6 +48,8 @@ struct LocTagOperatorView: View {
     @State private var userConfirmedRelocalize:  Bool     = false
     /// True after 20 seconds in .relocalizing phase — shows extra hint
     @State private var showRelocalizingTimeout:  Bool     = false
+    /// Opacity of the ghost reference-photo overlay (0.15–0.65, adjustable via slider)
+    @State private var ghostOpacity:             Double   = 0.38
 
     // ── Completion ────────────────────────────────────────────────────────────
     @State private var completingTag:   LocTag?        = nil
@@ -92,6 +94,19 @@ struct LocTagOperatorView: View {
                         highlightTag(index: 0)
                     }
                 }
+
+            // ── Ghost reference-photo overlay (re-localization phase only) ──────
+            if case .relocalizing = phase, let img = referencePhoto {
+                Image(uiImage: img)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .opacity(ghostOpacity)
+                    .ignoresSafeArea()
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
+                    .animation(.easeOut(duration: 0.6), value: phase)
+            }
 
             // ── Phase-specific UI ──────────────────────────────────────────────
             Group {
@@ -197,89 +212,74 @@ struct LocTagOperatorView: View {
     // so the Operator knows exactly where to stand before ARKit re-localizes.
 
     private var relocalizingOverlay: some View {
-        ZStack {
-            Color.black.opacity(0.55).ignoresSafeArea()
+        VStack(spacing: 0) {
+            Spacer()
 
-            VStack(spacing: 0) {
-                Spacer()
+            VStack(spacing: 16) {
+                // Header
+                VStack(spacing: 4) {
+                    Text("Go to the Starting Point")
+                        .font(.title3.bold()).foregroundStyle(.white)
+                    Text(referencePhoto != nil
+                         ? "Align the live view with the ghost image, then tap \"I'm Here\"."
+                         : "Stand where the walk started, then tap \"I'm Here\".")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.7))
+                        .multilineTextAlignment(.center)
+                }
 
-                VStack(spacing: 16) {
-                    // Header
-                    VStack(spacing: 4) {
-                        Text("Go to the Starting Point")
-                            .font(.title3.bold()).foregroundStyle(.white)
-                        Text("Stand where this photo was taken, then tap \"I'm Here\".")
-                            .font(.caption)
-                            .foregroundStyle(.white.opacity(0.7))
-                            .multilineTextAlignment(.center)
-                    }
+                // ARKit re-localization progress (small, secondary)
+                HStack(spacing: 8) {
+                    ProgressView().scaleEffect(0.8).tint(.orange)
+                    Text("ARKit is matching the space…")
+                        .font(.caption).foregroundStyle(.white.opacity(0.55))
+                }
 
-                    // Reference photo or placeholder
-                    if let img = referencePhoto {
-                        Image(uiImage: img)
-                            .resizable()
-                            .scaledToFill()
-                            .frame(height: 220)
-                            .clipShape(RoundedRectangle(cornerRadius: 14))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 14)
-                                    .stroke(Color.orange.opacity(0.6), lineWidth: 1.5)
-                            )
-                    } else {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 14)
-                                .fill(Color.white.opacity(0.06))
-                                .frame(height: 160)
-                            VStack(spacing: 8) {
-                                Image(systemName: "photo.fill")
-                                    .font(.system(size: 36)).foregroundStyle(.white.opacity(0.3))
-                                Text("No reference photo")
-                                    .font(.caption).foregroundStyle(.white.opacity(0.4))
-                            }
-                        }
-                    }
+                // 20-second timeout hint
+                if showRelocalizingTimeout {
+                    Text("Still searching. Try moving closer to where the photo was taken, or walk around the area.")
+                        .font(.caption)
+                        .foregroundStyle(.orange.opacity(0.85))
+                        .multilineTextAlignment(.center)
+                        .transition(.opacity)
+                }
 
-                    // ARKit re-localization progress (small, secondary)
-                    HStack(spacing: 8) {
-                        ProgressView().scaleEffect(0.8).tint(.orange)
-                        Text("ARKit is matching the space…")
-                            .font(.caption).foregroundStyle(.white.opacity(0.55))
-                    }
-
-                    // 20-second timeout hint
-                    if showRelocalizingTimeout {
-                        Text("Still searching. Try moving closer to where the photo was taken, or walk around the area.")
-                            .font(.caption)
-                            .foregroundStyle(.orange.opacity(0.85))
-                            .multilineTextAlignment(.center)
-                            .transition(.opacity)
-                    }
-
-                    // "I'm Here" — manual position confirmation
-                    Button {
-                        userConfirmedRelocalize = true
-                        placePins()
-                        if locTags.isEmpty {
-                            phase = .done
-                        } else {
-                            phase = .navigating(index: 0)
-                            highlightTag(index: 0)
-                        }
-                    } label: {
-                        Label("I'm Here", systemImage: "mappin.and.ellipse")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 13)
-                            .background(Color.orange)
-                            .foregroundStyle(.white)
-                            .clipShape(RoundedRectangle(cornerRadius: 13))
+                // Ghost opacity slider — lets user dial the overlay up/down
+                if referencePhoto != nil {
+                    HStack(spacing: 10) {
+                        Image(systemName: "photo.fill")
+                            .font(.caption).foregroundStyle(.white.opacity(0.4))
+                        Slider(value: $ghostOpacity, in: 0.15...0.65)
+                            .tint(.orange)
+                        Image(systemName: "eye.fill")
+                            .font(.caption).foregroundStyle(.white.opacity(0.4))
                     }
                 }
-                .padding(20)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
-                .padding(.horizontal, 16)
-                .padding(.bottom, 48)
+
+                // "I'm Here" — manual position confirmation
+                Button {
+                    userConfirmedRelocalize = true
+                    placePins()
+                    if locTags.isEmpty {
+                        phase = .done
+                    } else {
+                        phase = .navigating(index: 0)
+                        highlightTag(index: 0)
+                    }
+                } label: {
+                    Label("I'm Here", systemImage: "mappin.and.ellipse")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 13)
+                        .background(Color.orange)
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 13))
+                }
             }
+            .padding(20)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+            .padding(.horizontal, 16)
+            .padding(.bottom, 48)
         }
         .animation(.easeInOut(duration: 0.3), value: showRelocalizingTimeout)
     }

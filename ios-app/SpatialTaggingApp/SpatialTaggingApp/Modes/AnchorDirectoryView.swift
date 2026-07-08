@@ -390,17 +390,17 @@ private struct AnchorDirectoryRow: View {
     var body: some View {
         Button(action: onSelect) {
             HStack(spacing: 14) {
-                // Tag count badge
+                // Tag count badge — orange for Gemba Walk anchors, blue for QR anchors (incl. legacy nil)
                 ZStack {
                     Circle()
-                        .fill(tagCount > 0 ? Color.blue.opacity(0.12) : Color.orange.opacity(0.12))
+                        .fill(anchor.anchorType == .locTag ? Color.orange.opacity(0.12) : Color.blue.opacity(0.12))
                         .frame(width: 40, height: 40)
                     if isLoading {
                         ProgressView().scaleEffect(0.7)
                     } else {
                         Text("\(tagCount)")
                             .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(tagCount > 0 ? .blue : .orange)
+                            .foregroundStyle(anchor.anchorType == .locTag ? Color.orange : Color.blue)
                     }
                 }
 
@@ -419,9 +419,9 @@ private struct AnchorDirectoryRow: View {
                 VStack(alignment: .trailing, spacing: 4) {
                     Text(tagCount == 1 ? "1 tag" : "\(tagCount) tags")
                         .font(.caption.bold())
-                        .foregroundStyle(tagCount > 0 ? .blue : .orange)
+                        .foregroundStyle(anchor.anchorType == .locTag ? Color.orange : Color.blue)
                         .padding(.horizontal, 8).padding(.vertical, 3)
-                        .background(tagCount > 0 ? Color.blue.opacity(0.10) : Color.orange.opacity(0.10))
+                        .background(anchor.anchorType == .locTag ? Color.orange.opacity(0.10) : Color.blue.opacity(0.10))
                         .clipShape(Capsule())
 
                     Text(relativeDate)

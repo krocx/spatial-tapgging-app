@@ -460,7 +460,11 @@ struct LocTagAuthorView: View {
             appState.mode = .none
         } catch {
             isSavingWalk = false
-            showToast(friendlyMessage(for: error))
+            if let arErr = error as? ARError, arErr.code == .insufficientFeatures {
+                showToast("Not enough features mapped yet — slowly pan the camera around the room, focusing on textured objects or surfaces, then tap Finish again.")
+            } else {
+                showToast(friendlyMessage(for: error))
+            }
         }
     }
 
