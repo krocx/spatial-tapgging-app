@@ -229,6 +229,19 @@
     .b-fail    { font-size: 0.68rem; font-weight: 700; padding: 2px 8px; border-radius: 100px; background: rgba(240,86,86,0.12); color: var(--red); }
     .b-none    { font-size: 0.68rem; font-weight: 700; padding: 2px 8px; border-radius: 100px; background: var(--border); color: var(--muted); }
     .b-fixed   { font-size: 0.63rem; font-weight: 700; padding: 1px 6px; border-radius: 100px; background: rgba(245,166,35,0.12); color: var(--orange); }
+
+    /* ── Gemba Walk completion status badges ── */
+    .b-resolved      { font-size:0.68rem;font-weight:700;padding:2px 8px;border-radius:100px;background:rgba(61,214,140,0.12);color:var(--green); }
+    .b-still-present { font-size:0.68rem;font-weight:700;padding:2px 8px;border-radius:100px;background:rgba(240,86,86,0.12);color:var(--red); }
+    .b-escalated     { font-size:0.68rem;font-weight:700;padding:2px 8px;border-radius:100px;background:rgba(245,166,35,0.12);color:var(--orange); }
+    .b-no-completion { font-size:0.68rem;font-weight:700;padding:2px 8px;border-radius:100px;background:var(--border);color:var(--muted); }
+    .stop-badge { display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--orange);color:#fff;font-size:0.68rem;font-weight:700;flex-shrink:0; }
+    .sev-low  { color:var(--green);font-weight:700;font-size:0.75rem; }
+    .sev-med  { color:var(--orange);font-weight:700;font-size:0.75rem; }
+    .sev-high { color:var(--red);font-weight:700;font-size:0.75rem; }
+    #gemba-panel { display:none; padding:20px 24px 56px; }
+    #gemba-panel.visible { display:block; }
+    .gemba-list { display:flex;flex-direction:column;gap:12px;max-width:960px;margin:0 auto; }
   </style>
 </head>
 <body>
@@ -252,6 +265,7 @@
 <div id="nav-tabs">
   <button class="nav-tab active" data-view="anchors"  onclick="switchView('anchors')">Anchors</button>
   <button class="nav-tab"        data-view="sessions" onclick="switchView('sessions')">Sessions</button>
+  <button class="nav-tab"        data-view="gemba"    onclick="switchView('gemba')">Gemba Walks</button>
 </div>
 
 <!-- Setup banner (shown when API key not set) -->
@@ -282,6 +296,16 @@
     <button class="btn btn-ghost btn-sm" onclick="loadSessions()">⟳ Refresh</button>
   </div>
   <div class="sessions-list"></div>
+</div>
+
+<!-- Gemba Walk panel -->
+<div id="gemba-panel">
+  <div class="sessions-toolbar">
+    <span style="font-size:0.78rem;color:var(--muted);flex:1">Gemba audit walk completions · grouped by anchor</span>
+    <button class="btn btn-ghost btn-sm" onclick="exportAllGembaCSV()" title="Export all walks as CSV">⬇ Export All</button>
+    <button class="btn btn-ghost btn-sm" onclick="loadGembaWalks()">⟳ Refresh</button>
+  </div>
+  <div class="gemba-list"></div>
 </div>
 
 <!-- Evidence image lightbox -->
@@ -1078,16 +1102,25 @@ function switchView(view) {
   const anchorGrid = document.getElementById('anchor-grid');
   const toolbar    = document.getElementById('toolbar');
   const sessPanel  = document.getElementById('sessions-panel');
+  const gembaPanel = document.getElementById('gemba-panel');
 
   if (view === 'sessions') {
     anchorGrid.style.display = 'none';
     toolbar.style.display    = 'none';
     sessPanel.classList.add('visible');
+    gembaPanel.classList.remove('visible');
     if (sessionsData.length === 0) loadSessions();
+  } else if (view === 'gemba') {
+    anchorGrid.style.display = 'none';
+    toolbar.style.display    = 'none';
+    sessPanel.classList.remove('visible');
+    gembaPanel.classList.add('visible');
+    if (Object.keys(gembaLocTags).length === 0) loadGembaWalks();
   } else {
     anchorGrid.style.display = '';
     toolbar.style.display    = 'flex';
     sessPanel.classList.remove('visible');
+    gembaPanel.classList.remove('visible');
   }
 }
 
@@ -1359,6 +1392,281 @@ function openLightbox(url) {
 function closeLightbox() {
   document.getElementById('evidence-lightbox').classList.remove('open');
   document.getElementById('evidence-lightbox-img').src = '';
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Gemba Walk (Loc-Tag) view
+// Endpoints used:
+//   GET /loc-tags?anchorId=xxx        — list LocTags for an anchor
+//   GET /loc-tags/:id/completions     — list completions for a LocTag
+//   GET /loc-tags/image/:filename     — serve completion/reference photo
+// ══════════════════════════════════════════════════════════════════════════════
+
+let gembaLocTags     = {};  // anchorId → LocTag[]
+let gembaCompletions = {};  // locTagId → LocTagCompletion[]
+let expandedGembaGroups = new Set();
+
+async function loadGembaWalks() {
+  const list = document.querySelector('.gemba-list');
+  list.innerHTML = '<p style="color:var(--muted);padding:24px;text-align:center;font-size:0.82rem;">Loading…</p>';
+  try {
+    // Ensure anchors are loaded (needed if user lands on Gemba tab first)
+    if (allAnchors.length === 0) {
+      const resp = await apiFetch('/anchors');
+      allAnchors = resp.data || [];
+    }
+
+    // Fetch loc-tags for every anchor in parallel
+    const tagResults = await Promise.allSettled(
+      allAnchors.map(a => apiFetch(`/loc-tags?anchorId=${encodeURIComponent(a.id)}`))
+    );
+    gembaLocTags = {};
+    tagResults.forEach((r, i) => {
+      const anchorId = allAnchors[i].id;
+      const tags     = r.status === 'fulfilled' ? (r.value.data || []) : [];
+      if (tags.length > 0) gembaLocTags[anchorId] = tags;
+    });
+
+    // Fetch completions for every loc-tag in parallel
+    const allLocTags    = Object.values(gembaLocTags).flat();
+    const compResults   = await Promise.allSettled(
+      allLocTags.map(t => apiFetch(`/loc-tags/${encodeURIComponent(t.id)}/completions`))
+    );
+    gembaCompletions = {};
+    compResults.forEach((r, i) => {
+      const locTagId    = allLocTags[i].id;
+      const completions = r.status === 'fulfilled' ? (r.value.data || []) : [];
+      gembaCompletions[locTagId] = completions;
+    });
+
+    renderGembaWalks();
+  } catch (e) {
+    list.innerHTML = `<p style="color:var(--red);padding:24px;text-align:center;font-size:0.82rem;">Failed to load Gemba data: ${e.message}</p>`;
+  }
+}
+
+function renderGembaWalks() {
+  const list      = document.querySelector('.gemba-list');
+  const anchorIds = Object.keys(gembaLocTags);
+
+  if (anchorIds.length === 0) {
+    list.innerHTML = '<p style="color:var(--muted);padding:24px;text-align:center;font-size:0.82rem;">No Gemba Walk data yet. Walks are created in the iOS app in Loc-Tag (Gemba) mode.</p>';
+    return;
+  }
+
+  list.innerHTML = anchorIds.map(anchorId => {
+    const anchor     = allAnchors.find(a => a.id === anchorId);
+    const anchorName = anchor ? anchor.assetId : anchorId;
+    return buildGembaGroup(anchorId, anchorName, gembaLocTags[anchorId]);
+  }).join('');
+}
+
+function buildGembaGroup(anchorId, anchorName, locTags) {
+  const safe   = safeId(anchorId);
+  const isOpen = expandedGembaGroups.has(anchorId);
+
+  // Tally latest-completion statuses across all stops
+  let nResolved = 0, nStillPresent = 0, nEscalated = 0, nPending = 0;
+  for (const tag of locTags) {
+    const comps = gembaCompletions[tag.id] || [];
+    if (comps.length === 0) { nPending++; continue; }
+    const latest = comps[comps.length - 1];
+    if      (latest.status === 'RESOLVED')      nResolved++;
+    else if (latest.status === 'STILL_PRESENT') nStillPresent++;
+    else if (latest.status === 'ESCALATED')     nEscalated++;
+    else                                        nPending++;
+  }
+
+  const chipsHtml = [
+    `<span style="font-size:0.7rem;color:var(--muted)">${locTags.length} stop${locTags.length !== 1 ? 's' : ''}</span>`,
+    nResolved     > 0 ? `<span class="b-resolved">${nResolved} Resolved</span>`          : '',
+    nStillPresent > 0 ? `<span class="b-still-present">${nStillPresent} Still Present</span>` : '',
+    nEscalated    > 0 ? `<span class="b-escalated">${nEscalated} Escalated</span>`        : '',
+    nPending      > 0 ? `<span class="b-no-completion">${nPending} Pending</span>`        : '',
+  ].join('');
+
+  const rows = locTags.map(tag => buildGembaRow(tag)).join('');
+
+  return `
+    <div class="anchor-group" id="gg-${safe}">
+      <div class="ag-hdr" onclick="toggleGembaGroup('${safe}','${esc(anchorId)}')">
+        <span class="ag-title">${esc(anchorName)}</span>
+        <div class="ag-chips">${chipsHtml}</div>
+        <span class="ag-chevron${isOpen ? ' open' : ''}">▼</span>
+      </div>
+      <div class="ag-body${isOpen ? ' open' : ''}" id="ggb-${safe}">
+        <div class="ag-toolbar">
+          <button class="btn btn-ghost btn-sm" onclick="exportGembaGroupCSV('${esc(anchorId)}')">⬇ CSV</button>
+        </div>
+        <div class="sessions-tbl-wrap">
+          <table class="sessions-tbl">
+            <thead>
+              <tr>
+                <th>Stop</th>
+                <th>Issue Title</th>
+                <th>Category</th>
+                <th>Severity</th>
+                <th>Status</th>
+                <th>Operator</th>
+                <th>Completed At</th>
+                <th>Photo</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      </div>
+    </div>`;
+}
+
+function buildGembaRow(tag) {
+  const comps  = gembaCompletions[tag.id] || [];
+  // Completions are sorted ascending by completedAt — latest is last
+  const latest = comps.length > 0 ? comps[comps.length - 1] : null;
+  const tid    = esc(tag.id);
+
+  // Stop badge
+  const stopBadge = `<span class="stop-badge">${tag.order + 1}</span>`;
+
+  // Severity
+  let sevHtml = '<span style="color:var(--muted)">—</span>';
+  if      (tag.severity === 'low')    sevHtml = '<span class="sev-low">Low</span>';
+  else if (tag.severity === 'medium') sevHtml = '<span class="sev-med">Medium</span>';
+  else if (tag.severity === 'high')   sevHtml = '<span class="sev-high">High</span>';
+
+  // Latest completion cells
+  let statusHtml   = '<span class="b-no-completion">Pending</span>';
+  let operatorHtml = '<span style="color:var(--muted)">—</span>';
+  let dateHtml     = '<span style="color:var(--muted)">—</span>';
+  let photoHtml    = '<div class="td-thumb-ph"></div>';
+
+  if (latest) {
+    const statusMap = {
+      RESOLVED:      ['b-resolved',      'Resolved'],
+      STILL_PRESENT: ['b-still-present', 'Still Present'],
+      ESCALATED:     ['b-escalated',     'Escalated'],
+    };
+    const [cls, lbl] = statusMap[latest.status] || ['b-no-completion', latest.status];
+    statusHtml   = `<span class="${cls}">${lbl}</span>`;
+    operatorHtml = esc(latest.operatorName || '—');
+    const d      = new Date(latest.completedAt);
+    dateHtml     = `${d.toLocaleDateString(undefined,{day:'2-digit',month:'short'})} `
+                 + `<span style="color:var(--muted);font-size:0.68rem">${d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}</span>`;
+    if (latest.completionImagePath) {
+      photoHtml = `<img class="td-thumb" data-evidence-url="/loc-tags/image/${encodeURIComponent(latest.completionImagePath)}" src="" alt="completion" />`;
+    }
+  }
+
+  // Build history/notes content for the expandable detail row
+  let historyContent;
+  if (comps.length === 0) {
+    historyContent = '<span style="font-size:0.75rem;color:var(--muted)">Not yet completed.</span>';
+  } else {
+    const statusMap = {
+      RESOLVED:      ['b-resolved',      'Resolved'],
+      STILL_PRESENT: ['b-still-present', 'Still Present'],
+      ESCALATED:     ['b-escalated',     'Escalated'],
+    };
+    historyContent = [...comps].reverse().map(c => {
+      const [cls, lbl] = statusMap[c.status] || ['b-no-completion', c.status];
+      const d          = new Date(c.completedAt);
+      const dateStr    = `${d.toLocaleDateString()} ${d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}`;
+      const noteStr    = c.note
+        ? `<em style="color:var(--muted);font-size:0.73rem;margin-left:6px">"${esc(c.note)}"</em>`
+        : '';
+      return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:0.76rem">
+        <span class="${cls}">${lbl}</span>
+        <span style="color:var(--text)">${esc(c.operatorName || '—')}</span>
+        <span style="color:var(--muted)">${dateStr}</span>
+        ${noteStr}
+      </div>`;
+    }).join('');
+  }
+
+  return `
+    <tr onclick="toggleGembaHistory('${tid}')" style="cursor:pointer">
+      <td style="white-space:nowrap">${stopBadge}</td>
+      <td style="font-weight:600;font-size:0.81rem">${esc(tag.title)}</td>
+      <td style="font-size:0.73rem;color:var(--muted)">${esc(tag.defectCategory || '—')}</td>
+      <td>${sevHtml}</td>
+      <td>${statusHtml}</td>
+      <td style="font-size:0.78rem">${operatorHtml}</td>
+      <td style="font-size:0.78rem;white-space:nowrap">${dateHtml}</td>
+      <td onclick="event.stopPropagation()">${photoHtml}</td>
+    </tr>
+    <tr class="detail-tr" id="ghr-${tid}" style="display:none">
+      <td colspan="8"><div class="detail-inner">${historyContent}</div></td>
+    </tr>`;
+}
+
+// ── Accordion ─────────────────────────────────────────────────────────────────
+
+function toggleGembaGroup(safe, anchorId) {
+  const body    = document.getElementById(`ggb-${safe}`);
+  const chevron = document.querySelector(`#gg-${safe} .ag-chevron`);
+  if (!body) return;
+  if (expandedGembaGroups.has(anchorId)) {
+    expandedGembaGroups.delete(anchorId);
+    body.classList.remove('open');
+    if (chevron) chevron.classList.remove('open');
+  } else {
+    expandedGembaGroups.add(anchorId);
+    body.classList.add('open');
+    if (chevron) chevron.classList.add('open');
+    // Lazy-load completion photo thumbnails (auth-aware blob fetch)
+    loadEvidenceImagesIn(body);
+  }
+}
+
+function toggleGembaHistory(tagId) {
+  const row = document.getElementById(`ghr-${tagId}`);
+  if (!row) return;
+  row.style.display = row.style.display === 'none' ? '' : 'none';
+}
+
+// ── CSV export ────────────────────────────────────────────────────────────────
+
+function buildGembaCSV(anchorIds) {
+  const header = [
+    'Anchor', 'Stop #', 'Issue Title', 'Defect Category', 'Severity',
+    'Status', 'Operator', 'Completed At', 'Note', 'Has Photo',
+  ];
+  const rows = [];
+  for (const anchorId of anchorIds) {
+    const anchor     = allAnchors.find(a => a.id === anchorId);
+    const anchorName = anchor ? anchor.assetId : anchorId;
+    const tags       = gembaLocTags[anchorId] || [];
+    for (const tag of tags) {
+      const comps = gembaCompletions[tag.id] || [];
+      if (comps.length === 0) {
+        rows.push([anchorName, tag.order + 1, tag.title, tag.defectCategory || '', tag.severity || '', 'PENDING', '', '', '', 'No']);
+      } else {
+        for (const c of comps) {
+          rows.push([
+            anchorName, tag.order + 1, tag.title,
+            tag.defectCategory || '', tag.severity || '',
+            c.status, c.operatorName || '', c.completedAt,
+            c.note || '', c.completionImagePath ? 'Yes' : 'No',
+          ]);
+        }
+      }
+    }
+  }
+  return [header, ...rows].map(row =>
+    row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')
+  ).join('\r\n');
+}
+
+function exportGembaGroupCSV(anchorId) {
+  const anchor = allAnchors.find(a => a.id === anchorId);
+  const name   = (anchor ? anchor.assetId : anchorId).replace(/[^a-zA-Z0-9_-]/g, '_');
+  downloadCSV(buildGembaCSV([anchorId]), `gemba_${name}.csv`);
+}
+
+function exportAllGembaCSV() {
+  const anchorIds = Object.keys(gembaLocTags);
+  if (!anchorIds.length) { toast('No Gemba Walk data to export.'); return; }
+  downloadCSV(buildGembaCSV(anchorIds), `all_gemba_walks_${new Date().toISOString().slice(0, 10)}.csv`);
 }
 
 // ── Toast ──────────────────────────────────────────────────────────────────────

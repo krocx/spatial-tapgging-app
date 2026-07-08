@@ -99,7 +99,7 @@ struct LocTagAuthorView: View {
                             VStack(spacing: 4) {
                                 Text("Return to the Starting Point")
                                     .font(.title3.bold()).foregroundStyle(.white)
-                                Text("Stand where this photo was taken, then tap "I'm Here".")
+                                Text("Stand where this photo was taken, then tap \"I'm Here\".")
                                     .font(.caption)
                                     .foregroundStyle(.white.opacity(0.7))
                                     .multilineTextAlignment(.center)
