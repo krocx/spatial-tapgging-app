@@ -222,6 +222,76 @@ final class SIBClient {
                        timeout: 30)
     }
 
+    // ── Loc-Tags (Phase 2) ───────────────────────────────────────────────────
+
+    /// Author: create a Loc-Tag during a Gemba audit walk.
+    /// Includes optional reference image (base64 JPEG) — use a 30s timeout for the upload.
+    func createLocTag(_ req: CreateLocTagRequest) async throws -> LocTag {
+        try await post(LocTag.self, path: "/loc-tags", body: req, timeout: 30)
+    }
+
+    /// Fetch all Loc-Tags for an anchor, sorted by author-defined order.
+    func fetchLocTags(anchorId: String) async throws -> [LocTag] {
+        try await get([LocTag].self, path: "/loc-tags?anchorId=\(anchorId)")
+    }
+
+    /// Fetch the reference or completion photo for a Loc-Tag by its stored filename.
+    func fetchLocTagImage(filename: String) async throws -> Data {
+        let req = try makeRequest(method: "GET", path: "/loc-tags/image/\(filename)")
+        let (data, response): (Data, URLResponse)
+        do { (data, response) = try await session.data(for: req) }
+        catch { throw SIBClientError.networkError(error) }
+        if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+            let msg = (try? JSONDecoder().decode(APIError.self, from: data))?.error ?? "HTTP \(http.statusCode)"
+            throw SIBClientError.httpError(http.statusCode, msg)
+        }
+        return data
+    }
+
+    /// Operator: submit a completion record for a Loc-Tag visit.
+    /// Includes optional completion photo — 30s timeout.
+    func submitLocTagCompletion(
+        locTagId: String,
+        req: SubmitLocTagCompletionRequest
+    ) async throws -> LocTagCompletion {
+        try await post(LocTagCompletion.self,
+                       path: "/loc-tags/\(locTagId)/completion",
+                       body: req,
+                       timeout: 30)
+    }
+
+    /// Fetch all completion records for a Loc-Tag (newest last).
+    func fetchLocTagCompletions(locTagId: String) async throws -> [LocTagCompletion] {
+        try await get([LocTagCompletion].self, path: "/loc-tags/\(locTagId)/completions")
+    }
+
+    // ── Loc-Tag ARWorldMap (Phase 2) ─────────────────────────────────────────
+
+    /// Author: save the ARWorldMap captured at the end of a Gemba audit walk.
+    /// Body is base64-encoded to fit JSON transport; 90s timeout for large maps.
+    func uploadLocTagWorldMap(anchorId: String, mapData: Data) async throws {
+        struct UploadResponse: Decodable { let anchorId: String; let sizeBytes: Int }
+        let req = WorldMapUploadRequest(anchorId: anchorId, mapData: mapData)
+        _ = try await post(UploadResponse.self, path: "/worldmap/upload", body: req, timeout: 90)
+    }
+
+    /// Operator: download the ARWorldMap for an anchor to re-localize.
+    /// Returns nil on 404 (no map saved yet — fresh session).
+    /// The response is raw binary (application/octet-stream), not a JSON envelope.
+    func fetchLocTagWorldMap(anchorId: String) async throws -> Data? {
+        var req = try makeRequest(method: "GET", path: "/worldmap/\(anchorId)")
+        req.timeoutInterval = 45
+        let (data, response): (Data, URLResponse)
+        do { (data, response) = try await session.data(for: req) }
+        catch { throw SIBClientError.networkError(error) }
+        guard let http = response as? HTTPURLResponse else { return nil }
+        if http.statusCode == 404 { return nil }
+        if !(200...299).contains(http.statusCode) {
+            throw SIBClientError.httpError(http.statusCode, "World map download failed (\(http.statusCode))")
+        }
+        return data
+    }
+
     // ── HTTP helpers ──────────────────────────────────────────────────────────
 
     private func get<T: Decodable>(_ type: T.Type, path: String) async throws -> T {

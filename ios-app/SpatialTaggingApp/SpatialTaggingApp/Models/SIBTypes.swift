@@ -137,6 +137,9 @@ struct Anchor: Codable, Identifiable, Hashable {
     /// never changed — every QR generator reads this value so the QR is identical
     /// on every device and in the portal. Nil = legacy anchor, default to 10.0.
     let qrSizeCm: Double?
+    /// Phase 2 (Loc-Tag): distinguishes QR-scanned anchors from surface-tap anchors.
+    /// Nil / absent on legacy anchors — treat as .qr.
+    let anchorType: AnchorType?
     let createdAt: String
     let updatedAt: String
 
@@ -157,6 +160,30 @@ struct CreateAnchorRequest: Codable {
     let encryptionKey: String?
     /// Physical QR print size in cm — set once, never changed.
     let qrSizeCm: Double?
+    /// Phase 2 (Loc-Tag): omit or pass nil/.qr for the default QR-scan flow.
+    let anchorType: AnchorType?
+
+    init(
+        id:               String?              = nil,
+        assetId:          String,
+        coordinateSystem: CoordinateSystem     = .assetFrame,
+        position:         SIBVector3           = .zero,
+        rotation:         SIBQuaternion        = .identity,
+        metadata:         [String: AnyCodable] = [:],
+        encryptionKey:    String?              = nil,
+        qrSizeCm:         Double?              = nil,
+        anchorType:       AnchorType?          = nil
+    ) {
+        self.id               = id
+        self.assetId          = assetId
+        self.coordinateSystem = coordinateSystem
+        self.position         = position
+        self.rotation         = rotation
+        self.metadata         = metadata
+        self.encryptionKey    = encryptionKey
+        self.qrSizeCm         = qrSizeCm
+        self.anchorType       = anchorType
+    }
 }
 
 // ── Tag ───────────────────────────────────────────────────────────────────────
