@@ -458,8 +458,10 @@ struct CreateAnchorSheet: View {
     @State private var anchorId   = ""
     @State private var isCreating = false
     @State private var createError: String? = nil
+    /// Phase 2: anchor type — QR (default) or Loc-Tag (Gemba walk, no QR required)
+    @State private var selectedAnchorType: AnchorType = .qr
 
-    // Step 2: shown after anchor is created
+    // Step 2: shown after QR anchor is created (not used for Loc-Tag)
     @State private var createdAnchor: Anchor? = nil
     @State private var createdKeyB64: String? = nil
 
@@ -489,41 +491,60 @@ struct CreateAnchorSheet: View {
         }
     }
 
-    // ── Step 1: Name ──────────────────────────────────────────────────────────
+    // ── Step 1: Name + type picker ────────────────────────────────────────────
 
     private var step1View: some View {
         Form {
-            Section {
-                stepProgress(currentStep: 1)
+            // QR only: step progress (Gemba walk is single-step, no need to show progress)
+            if selectedAnchorType == .qr {
+                Section { stepProgress(currentStep: 1) }
+                    .listRowBackground(Color.clear)
             }
-            .listRowBackground(Color.clear)
 
+            // ── Anchor type picker ──────────────────────────────────────────────
             Section {
-                TextField("e.g. Pump-Station-A", text: $assetId)
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.never)
+                anchorTypePicker
             } header: {
-                Text("Asset / Location Name (required)")
+                Text("Anchor Type")
             } footer: {
-                Text("Identifies the physical asset this anchor is attached to.")
+                Text(selectedAnchorType == .qr
+                     ? "A QR code is printed and mounted at the inspection point. AR sessions begin by scanning it."
+                     : "Tap any surface in AR to place issue tags. No QR code needed — the space itself is the anchor.")
             }
 
+            // ── Name ────────────────────────────────────────────────────────────
             Section {
-                TextField("Leave blank to auto-generate", text: $anchorId)
-                    .autocorrectionDisabled()
-                    .textInputAutocapitalization(.never)
-                    .font(.body.monospaced())
+                TextField(
+                    selectedAnchorType == .qr ? "e.g. Pump-Station-A" : "e.g. Assembly-Line-3-Bay-7",
+                    text: $assetId
+                )
+                .autocorrectionDisabled()
+                .textInputAutocapitalization(.never)
             } header: {
-                Text("Anchor ID (optional)")
+                Text("Location Name (required)")
             } footer: {
-                Text("Custom ID to match a physical QR you've already printed.")
+                Text("Identifies the physical location this anchor covers.")
             }
 
-            Section {
-                HStack(spacing: 10) {
-                    Image(systemName: "lock.fill").foregroundStyle(.blue).font(.subheadline)
-                    Text("An AES-256 encryption key is generated for this anchor and embedded in the QR in the next step.")
-                        .font(.caption).foregroundStyle(.secondary)
+            // ── Anchor ID (QR only — advanced option) ───────────────────────────
+            if selectedAnchorType == .qr {
+                Section {
+                    TextField("Leave blank to auto-generate", text: $anchorId)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
+                        .font(.body.monospaced())
+                } header: {
+                    Text("Anchor ID (optional)")
+                } footer: {
+                    Text("Custom ID to match a physical QR you've already printed.")
+                }
+
+                Section {
+                    HStack(spacing: 10) {
+                        Image(systemName: "lock.fill").foregroundStyle(.blue).font(.subheadline)
+                        Text("An AES-256 encryption key is generated and embedded in the QR in the next step.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                 }
             }
 
@@ -543,11 +564,62 @@ struct CreateAnchorSheet: View {
             ToolbarItem(placement: .confirmationAction) {
                 if isCreating { ProgressView() }
                 else {
-                    Button("Continue") { Task { await createAnchor() } }
+                    let label = selectedAnchorType == .qr ? "Continue" : "Create"
+                    Button(label) { Task { await createAnchor() } }
                         .disabled(assetId.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
         }
+    }
+
+    // Two-card anchor type picker
+    private var anchorTypePicker: some View {
+        HStack(spacing: 10) {
+            anchorTypeCard(
+                type:    .qr,
+                icon:    "qrcode.viewfinder",
+                label:   "QR Anchor",
+                caption: "Print & scan"
+            )
+            anchorTypeCard(
+                type:    .locTag,
+                icon:    "figure.walk.circle",
+                label:   "Gemba Walk",
+                caption: "Tap any surface"
+            )
+        }
+        .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
+        .listRowBackground(Color.clear)
+    }
+
+    private func anchorTypeCard(type: AnchorType, icon: String, label: String, caption: String) -> some View {
+        let selected = selectedAnchorType == type
+        return Button { selectedAnchorType = type } label: {
+            VStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.system(size: 26, weight: .semibold))
+                    .foregroundStyle(selected ? .white : .primary)
+                Text(label)
+                    .font(.subheadline.bold())
+                    .foregroundStyle(selected ? .white : .primary)
+                Text(caption)
+                    .font(.caption2)
+                    .foregroundStyle(selected ? .white.opacity(0.75) : .secondary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(
+                selected
+                    ? (type == .qr ? Color.blue : Color.orange)
+                    : Color(.secondarySystemGroupedBackground),
+                in: RoundedRectangle(cornerRadius: 12)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .strokeBorder(selected ? Color.clear : Color(.separator), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     // ── Step 2: Print & place QR ──────────────────────────────────────────────
@@ -591,31 +663,47 @@ struct CreateAnchorSheet: View {
         createError = nil
         let client  = SIBClient(settings: settings)
 
-        // Generate the anchor ID client-side so the encryption key can be derived
-        // before the SIB call.  Physical QR embeds this key from day one.
         let resolvedId = anchorId.trimmingCharacters(in: .whitespaces).isEmpty
             ? UUID().uuidString.lowercased()
             : anchorId.trimmingCharacters(in: .whitespaces)
 
-        let encKey = AnchorEncryption.getOrCreateKey(for: resolvedId)
-        let keyB64 = AnchorEncryption.base64(for: encKey)
-        appState.anchorEncryptionKey = encKey
-
         do {
-            let req = CreateAnchorRequest(
-                id:               resolvedId,
-                assetId:          assetId.trimmingCharacters(in: .whitespaces),
-                coordinateSystem: .assetFrame,
-                position:         .zero,
-                rotation:         .identity,
-                metadata:         [:],
-                encryptionKey:    keyB64,
-                qrSizeCm:         10.0   // canonical size — stored in SIB, never changes
-            )
-            let anchor = try await client.createAnchor(req)
-            isCreating    = false
-            createdAnchor = anchor
-            createdKeyB64 = keyB64
+            let anchor: Anchor
+
+            if selectedAnchorType == .locTag {
+                // ── Gemba Walk (Loc-Tag) ─────────────────────────────────────
+                // No QR, no encryption key. ARWorldMap is the spatial reference.
+                let req = CreateAnchorRequest(
+                    id:         resolvedId,
+                    assetId:    assetId.trimmingCharacters(in: .whitespaces),
+                    anchorType: .locTag
+                )
+                anchor = try await client.createAnchor(req)
+                isCreating = false
+                // Skip step 2 — go directly to hub
+                dismiss()
+                onCreated(anchor)
+
+            } else {
+                // ── QR Anchor (existing flow) ────────────────────────────────
+                // Generate the anchor ID client-side so the encryption key can be
+                // derived before the SIB call. Physical QR embeds this key from day one.
+                let encKey = AnchorEncryption.getOrCreateKey(for: resolvedId)
+                let keyB64 = AnchorEncryption.base64(for: encKey)
+                appState.anchorEncryptionKey = encKey
+
+                let req = CreateAnchorRequest(
+                    id:            resolvedId,
+                    assetId:       assetId.trimmingCharacters(in: .whitespaces),
+                    encryptionKey: keyB64,
+                    qrSizeCm:      10.0      // canonical size — stored in SIB, never changes
+                )
+                anchor = try await client.createAnchor(req)
+                isCreating    = false
+                createdAnchor = anchor
+                createdKeyB64 = keyB64
+                // Proceed to step 2 (print QR)
+            }
         } catch {
             createError = error.localizedDescription
             isCreating  = false

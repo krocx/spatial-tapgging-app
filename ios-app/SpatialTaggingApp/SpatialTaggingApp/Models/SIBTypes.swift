@@ -111,7 +111,7 @@ enum AnchorStatus: String, Codable     { case pass = "PASS"; case fail = "FAIL";
 
 // ── Spatial primitives ────────────────────────────────────────────────────────
 
-struct SIBVector3: Codable {
+struct SIBVector3: Codable, Equatable {
     let x, y, z: Double
     static let zero = SIBVector3(x: 0, y: 0, z: 0)
 }

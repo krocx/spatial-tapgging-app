@@ -9,7 +9,15 @@ import ARKit
 import CryptoKit
 import simd
 
-enum AppMode: Equatable { case none; case author; case `operator` }
+enum AppMode: Equatable {
+    case none
+    case author
+    case `operator`
+    /// Phase 2 — Gemba audit walk: Author places Loc-Tags via surface tap.
+    case locTagAuthor
+    /// Phase 2 — Gemba audit walk: Operator re-localizes and resolves Loc-Tags.
+    case locTagOperator
+}
 
 enum ScanState: Equatable {
     case scanning

@@ -43,10 +43,15 @@ struct AnchorHubView: View {
 
     var body: some View {
         List {
-            // ── QR card ────────────────────────────────────────────────────────
+            // ── Card ──────────────────────────────────────────────────────────
             Section {
-                qrCard
-                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                if anchor.anchorType == .locTag {
+                    locTagInfoCard
+                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                } else {
+                    qrCard
+                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                }
             }
 
             // ── Tags ───────────────────────────────────────────────────────────
@@ -98,25 +103,41 @@ struct AnchorHubView: View {
                 Button {
                     appState.activeAnchor = anchor
                     appState.activeTags   = tags
-                    showScanGate = true
+                    if anchor.anchorType == .locTag {
+                        // Loc-Tag: no QR scan needed — go straight to the AR mode.
+                        // ModeSelectionView's onSessionReady callback routes to the
+                        // correct LocTag view based on the caller's mode parameter.
+                        onSessionReady(anchor, tags)
+                    } else {
+                        showScanGate = true
+                    }
                 } label: {
                     HStack {
                         Spacer()
-                        Label("Enter AR Session", systemImage: "play.fill")
-                            .font(.headline)
+                        Label(
+                            anchor.anchorType == .locTag
+                                ? (mode == .author ? "Start Audit Walk" : "Load Walk")
+                                : "Enter AR Session",
+                            systemImage: anchor.anchorType == .locTag ? "figure.walk" : "play.fill"
+                        )
+                        .font(.headline)
                         Spacer()
                     }
                     .padding(.vertical, 4)
                 }
                 .buttonStyle(.borderedProminent)
+                .tint(anchor.anchorType == .locTag ? .orange : .blue)
                 .controlSize(.large)
                 .disabled(isReadinessBlocked)
 
                 HStack {
                     Spacer()
-                    Image(systemName: "qrcode.viewfinder")
+                    Image(systemName: anchor.anchorType == .locTag ? "figure.walk.circle" : "qrcode.viewfinder")
                         .font(.caption).foregroundStyle(.secondary)
-                    Text("Scan anchor QR to lock origin for this session")
+                    Text(anchor.anchorType == .locTag
+                         ? (mode == .author ? "Enter AR to place tags by tapping surfaces"
+                                            : "Enter AR to re-localize and resolve tags")
+                         : "Scan anchor QR to lock origin for this session")
                         .font(.caption).foregroundStyle(.secondary)
                     Spacer()
                 }
@@ -127,9 +148,12 @@ struct AnchorHubView: View {
         .navigationTitle(anchor.assetId)
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button { showQRSheet = true } label: {
-                    Image(systemName: "qrcode")
+            // QR share button — hidden for Loc-Tag anchors (no QR exists)
+            if anchor.anchorType != .locTag {
+                ToolbarItem(placement: .primaryAction) {
+                    Button { showQRSheet = true } label: {
+                        Image(systemName: "qrcode")
+                    }
                 }
             }
         }
@@ -228,6 +252,32 @@ struct AnchorHubView: View {
                     )
                 }
             )
+        }
+    }
+
+    // ── Loc-Tag info card ─────────────────────────────────────────────────────
+
+    private var locTagInfoCard: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.orange.opacity(0.15))
+                    .frame(width: 56, height: 56)
+                Image(systemName: "figure.walk.circle")
+                    .font(.system(size: 30))
+                    .foregroundStyle(.orange)
+            }
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Gemba Audit Walk")
+                    .font(.subheadline.bold())
+                Text("No QR · surface-tap placement")
+                    .font(.caption2).foregroundStyle(.secondary)
+                HStack(spacing: 4) {
+                    Image(systemName: "map.fill").font(.system(size: 9)).foregroundStyle(.orange)
+                    Text("ARWorldMap spatial reference").font(.caption2).foregroundStyle(.orange)
+                }
+            }
+            Spacer()
         }
     }
 

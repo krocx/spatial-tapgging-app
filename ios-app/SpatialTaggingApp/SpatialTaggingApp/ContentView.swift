@@ -14,6 +14,11 @@ struct ContentView: View {
                 AuthorModeView()
             case .operator:
                 OperatorModeView()
+            // Phase 2: Gemba audit walk modes (views implemented in Tasks E/F)
+            case .locTagAuthor:
+                LocTagAuthorView()
+            case .locTagOperator:
+                LocTagOperatorView()
             }
         }
         .animation(.easeInOut(duration: 0.25), value: appState.mode == .none)

@@ -216,7 +216,7 @@ struct ModeSelectionView: View {
                 .animation(.easeInOut(duration: 0.25), value: tour.currentStep)
             }
         }
-        // Author: directory → hub → QR gate → AuthorModeView
+        // Author: directory → hub → (QR gate | direct) → AuthorModeView / LocTagAuthorView
         .fullScreenCover(isPresented: $showAuthorDirectory) {
             AnchorDirectoryView(
                 mode: .author,
@@ -224,7 +224,7 @@ struct ModeSelectionView: View {
                     showAuthorDirectory = false
                     appState.activeAnchor = anchor
                     appState.activeTags   = tags
-                    appState.mode = .author
+                    appState.mode = anchor.anchorType == .locTag ? .locTagAuthor : .author
                 },
                 onCancel: { showAuthorDirectory = false }
             )
@@ -232,7 +232,7 @@ struct ModeSelectionView: View {
             .environmentObject(appState)
             .environmentObject(tour)
         }
-        // Operator: directory → hub → QR gate → OperatorModeView
+        // Operator: directory → hub → (QR gate | direct) → OperatorModeView / LocTagOperatorView
         .fullScreenCover(isPresented: $showOperatorDirectory) {
             AnchorDirectoryView(
                 mode: .operator,
@@ -240,7 +240,7 @@ struct ModeSelectionView: View {
                     showOperatorDirectory = false
                     appState.activeAnchor = anchor
                     appState.activeTags   = tags
-                    appState.mode = .operator
+                    appState.mode = anchor.anchorType == .locTag ? .locTagOperator : .operator
                 },
                 onCancel: { showOperatorDirectory = false }
             )
