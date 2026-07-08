@@ -1,15 +1,27 @@
+import './load-config.js';           // MUST be first — loads sib-config.env into process.env (no-op on Render)
 import { createApp } from './app.js';
 import { networkInterfaces } from 'os';
 import { compareAgainstPassState } from './perception/image-comparator.js';
+import http  from 'http';
+import https from 'https';
+import fs    from 'fs';
 
-const PORT = process.env.PORT ?? 3001;
+const PORT = Number(process.env.PORT ?? 3001);
 // Bind to 0.0.0.0 so the iPhone on the same WiFi can reach the Macbook SIB server.
-const HOST = '0.0.0.0';
+const HOST = process.env.HOST?.trim() || '0.0.0.0';
 
-const app = createApp();
+const cert = process.env.SSL_CERT_PATH?.trim();
+const key  = process.env.SSL_KEY_PATH?.trim();
 
-app.listen(Number(PORT), HOST, () => {
-  console.log(`SIB v0.2 running on ${HOST}:${PORT}`);
+const app    = createApp();
+const server = (cert && key)
+  ? https.createServer({ cert: fs.readFileSync(cert), key: fs.readFileSync(key) }, app)
+  : http.createServer(app);
+
+const protocol = (cert && key) ? 'https' : 'http';
+
+server.listen(PORT, HOST, () => {
+  console.log(`SIB v0.2 running on ${HOST}:${PORT} (${protocol.toUpperCase()})`);
 
   // Print all LAN addresses so you can copy the correct one into the iOS app Settings.
   const nets = networkInterfaces();
@@ -23,7 +35,7 @@ app.listen(Number(PORT), HOST, () => {
   }
   if (lanAddresses.length > 0) {
     console.log('📱 iPhone SIB URL candidates:');
-    lanAddresses.forEach(ip => console.log(`   http://${ip}:${PORT}`));
+    lanAddresses.forEach(ip => console.log(`   ${protocol}://${ip}:${PORT}`));
   }
 
   // Pre-warm V8's JIT compiler for the comparator's math-heavy loops.
