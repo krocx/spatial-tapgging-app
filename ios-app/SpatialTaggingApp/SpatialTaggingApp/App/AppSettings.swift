@@ -37,12 +37,20 @@ final class AppSettings: ObservableObject {
     @Published var ftueOperatorSeen: Bool {
         didSet { UserDefaults.standard.set(ftueOperatorSeen, forKey: "ftue_operator_seen") }
     }
+    @Published var ftueGembaAuthorSeen: Bool {
+        didSet { UserDefaults.standard.set(ftueGembaAuthorSeen, forKey: "ftue_gemba_author_seen") }
+    }
+    @Published var ftueGembaOperatorSeen: Bool {
+        didSet { UserDefaults.standard.set(ftueGembaOperatorSeen, forKey: "ftue_gemba_operator_seen") }
+    }
 
     /// Resets all seen flags so the auto-show fires again on next entry to each mode.
     func resetFTUE() {
-        ftueHomeSeen     = false
-        ftueAuthorSeen   = false
-        ftueOperatorSeen = false
+        ftueHomeSeen           = false
+        ftueAuthorSeen         = false
+        ftueOperatorSeen       = false
+        ftueGembaAuthorSeen    = false
+        ftueGembaOperatorSeen  = false
     }
 
     // ── Guided Tour ──────────────────────────────────────────────────────────
@@ -66,10 +74,12 @@ final class AppSettings: ObservableObject {
         defaultAssetId = UserDefaults.standard.string(forKey: "default_asset_id") ?? ""
         apiKey         = UserDefaults.standard.string(forKey: "sib_api_key")      ?? ""
         // ftueEnabled defaults to true on first launch (no key in UserDefaults yet)
-        ftueEnabled      = (UserDefaults.standard.object(forKey: "ftue_enabled")       as? Bool) ?? true
-        ftueHomeSeen     = UserDefaults.standard.bool(forKey: "ftue_home_seen")
-        ftueAuthorSeen   = UserDefaults.standard.bool(forKey: "ftue_author_seen")
-        ftueOperatorSeen = UserDefaults.standard.bool(forKey: "ftue_operator_seen")
+        ftueEnabled           = (UserDefaults.standard.object(forKey: "ftue_enabled") as? Bool) ?? true
+        ftueHomeSeen          = UserDefaults.standard.bool(forKey: "ftue_home_seen")
+        ftueAuthorSeen        = UserDefaults.standard.bool(forKey: "ftue_author_seen")
+        ftueOperatorSeen      = UserDefaults.standard.bool(forKey: "ftue_operator_seen")
+        ftueGembaAuthorSeen   = UserDefaults.standard.bool(forKey: "ftue_gemba_author_seen")
+        ftueGembaOperatorSeen = UserDefaults.standard.bool(forKey: "ftue_gemba_operator_seen")
         guidedTourEnabled = (UserDefaults.standard.object(forKey: "guided_tour_enabled") as? Bool) ?? true
         guidedTourSeen    = UserDefaults.standard.bool(forKey: "guided_tour_seen")
     }

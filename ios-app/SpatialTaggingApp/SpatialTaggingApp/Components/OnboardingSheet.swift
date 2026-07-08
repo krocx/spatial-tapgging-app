@@ -12,13 +12,15 @@ import SwiftUI
 // ── Context descriptor ────────────────────────────────────────────────────────
 
 enum OnboardingContext {
-    case home, author, operatorMode
+    case home, author, operatorMode, gembaAuthor, gembaOperator
 
     var welcomeTitle: String {
         switch self {
-        case .home:         return "Welcome to\nSpatial Tagging"
-        case .author:       return "Author Mode"
-        case .operatorMode: return "Operator Mode"
+        case .home:          return "Welcome to\nSpatial Tagging"
+        case .author:        return "Author Mode"
+        case .operatorMode:  return "Operator Mode"
+        case .gembaAuthor:   return "Gemba Walk\nAuthor"
+        case .gembaOperator: return "Gemba Walk\nOperator"
         }
     }
 
@@ -30,30 +32,40 @@ enum OnboardingContext {
             return "Build the inspection blueprint — place tags, train reference views, and share with your team."
         case .operatorMode:
             return "Run the inspection — scan the anchor, walk the path, and get real-time PASS/FAIL results."
+        case .gembaAuthor:
+            return "Walk the floor, pin every issue you find, and build the audit trail Operators will resolve."
+        case .gembaOperator:
+            return "Re-enter the space, navigate to each flagged stop, and log your resolution for every issue."
         }
     }
 
     var welcomeIcon: String {
         switch self {
-        case .home:         return "qrcode.viewfinder"
-        case .author:       return "pencil.circle.fill"
-        case .operatorMode: return "eye.circle.fill"
+        case .home:          return "qrcode.viewfinder"
+        case .author:        return "pencil.circle.fill"
+        case .operatorMode:  return "eye.circle.fill"
+        case .gembaAuthor:   return "figure.walk.circle.fill"
+        case .gembaOperator: return "checkmark.seal.fill"
         }
     }
 
     var accentColor: Color {
         switch self {
-        case .home:         return .cyan
-        case .author:       return .blue
-        case .operatorMode: return .green
+        case .home:          return .cyan
+        case .author:        return .blue
+        case .operatorMode:  return .green
+        case .gembaAuthor:   return .orange
+        case .gembaOperator: return .teal
         }
     }
 
     var steps: [OnboardingStep] {
         switch self {
-        case .home:         return OnboardingContent.home
-        case .author:       return OnboardingContent.author
-        case .operatorMode: return OnboardingContent.operatorMode
+        case .home:          return OnboardingContent.home
+        case .author:        return OnboardingContent.author
+        case .operatorMode:  return OnboardingContent.operatorMode
+        case .gembaAuthor:   return OnboardingContent.gembaAuthor
+        case .gembaOperator: return OnboardingContent.gembaOperator
         }
     }
 }
@@ -130,6 +142,56 @@ enum OnboardingContent {
             icon:   "arrow.counterclockwise",
             title:  "Re-inspect if Needed",
             detail: "Tap 'Re-inspect Failed' to re-run only the failing tags — no need to repeat checks that already passed."),
+    ]
+
+    // ── Gemba Walk — Author ───────────────────────────────────────────────────
+
+    static let gembaAuthor: [OnboardingStep] = [
+        OnboardingStep(
+            icon:   "hand.tap.fill",
+            title:  "Pin Issues by Tapping",
+            detail: "Walk the space and tap any flat surface to drop an issue pin. Give each stop a title, defect category, and severity — this becomes the audit record Operators will act on."),
+        OnboardingStep(
+            icon:   "camera.fill",
+            title:  "Reference Photo Captured Automatically",
+            detail: "When you save your very first pin, the app snapshots your current viewpoint. Operators see this photo during re-localization so they know exactly where to stand."),
+        OnboardingStep(
+            icon:   "pencil.circle.fill",
+            title:  "Edit or Delete from the Hub",
+            detail: "Back in the Anchor Hub, tap any issue to edit its title, category, or severity. Swipe left to delete. Changes sync to the server instantly."),
+        OnboardingStep(
+            icon:   "arrow.trianglehead.clockwise.rotate.90",
+            title:  "Resume and Extend Anytime",
+            detail: "Return to the walk later and tap Edit Walk. The app re-localizes to your saved map, shows existing pins in AR, and lets you add or remove issues without starting over."),
+        OnboardingStep(
+            icon:   "person.2.fill",
+            title:  "Hand Off to Operators",
+            detail: "Once the walk is complete, Operators load it from the same Anchor Hub. They navigate each numbered stop in AR and log their resolution status directly on the floor."),
+    ]
+
+    // ── Gemba Walk — Operator ─────────────────────────────────────────────────
+
+    static let gembaOperator: [OnboardingStep] = [
+        OnboardingStep(
+            icon:   "camera.viewfinder",
+            title:  "Re-Localize to the Space",
+            detail: "On entry, hold up your device and walk briefly through the area. The app matches your surroundings to the Author's saved map — orange pins appear once the space is locked."),
+        OnboardingStep(
+            icon:   "photo.fill",
+            title:  "Use the Reference Photo",
+            detail: "A card shows the photo the Author captured at the first pin. Stand in the same spot facing the same direction for the fastest match. Tap 'I'm Here' if you're confident in your position."),
+        OnboardingStep(
+            icon:   "mappin.and.ellipse",
+            title:  "Navigate Each Numbered Stop",
+            detail: "Floating orange pins guide you through every flagged issue in order. Follow the on-screen arrow to the next stop — the number on each pin matches the audit list in the hub."),
+        OnboardingStep(
+            icon:   "checkmark.circle.fill",
+            title:  "Log Your Resolution",
+            detail: "At each stop, tap the pin and choose: Resolved, Still Present, or Escalated. Add an evidence photo and a note for the record — all completions sync to the server immediately."),
+        OnboardingStep(
+            icon:   "chart.bar.doc.horizontal",
+            title:  "Results in the Portal",
+            detail: "All completions appear in the Gemba Walks tab of the web portal, grouped by location. Supervisors can track resolution status and export reports without leaving their desk."),
     ]
 }
 

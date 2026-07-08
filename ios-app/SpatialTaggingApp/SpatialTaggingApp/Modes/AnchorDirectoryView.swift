@@ -102,15 +102,8 @@ struct AnchorDirectoryView: View {
         }
         .onAppear {
             Task { await loadAnchors() }
-            // FTUE: auto-show the mode-appropriate walkthrough on first entry
-            guard settings.ftueEnabled else { return }
-            if mode == .author, !settings.ftueAuthorSeen {
-                settings.ftueAuthorSeen = true    // mark now — won't repeat
-                showOnboarding = true
-            } else if mode != .author, !settings.ftueOperatorSeen {
-                settings.ftueOperatorSeen = true  // mark now — won't repeat
-                showOnboarding = true
-            }
+            // FTUE auto-trigger moved to AnchorHubView where anchor type is known.
+            // The ? button here still shows the QR-mode walkthrough as a manual reference.
         }
         // Tour: auto-advance when + Create sheet opens or a row is tapped
         .onChange(of: showCreateSheet) { if $0 { tour.advancePast(.createAnchor) } }

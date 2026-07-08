@@ -39,6 +39,9 @@ struct AnchorHubView: View {
     // QR scan gate
     @State private var showScanGate = false
 
+    // FTUE walkthrough
+    @State private var showOnboarding = false
+
     // Tour frame capture
     @State private var tourFrames: [TourStep: CGRect] = [:]
 
@@ -188,9 +191,13 @@ struct AnchorHubView: View {
         .navigationTitle(anchor.assetId)
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
-            // QR share button — hidden for Loc-Tag anchors (no QR exists)
-            if anchor.anchorType != .locTag {
-                ToolbarItem(placement: .primaryAction) {
+            ToolbarItemGroup(placement: .primaryAction) {
+                // ? help button — always visible, shows walkthrough for this anchor type
+                Button { showOnboarding = true } label: {
+                    Image(systemName: "questionmark.circle")
+                }
+                // QR share button — hidden for Loc-Tag anchors (no QR exists)
+                if anchor.anchorType != .locTag {
                     Button { showQRSheet = true } label: {
                         Image(systemName: "qrcode")
                     }
@@ -206,6 +213,27 @@ struct AnchorHubView: View {
             // or the user dismissed the sheet without tapping "Next" on the QR banner.
             tour.advancePast(.createAnchor)
             tour.advancePast(.anchorQR)
+            // FTUE: show the walkthrough for this anchor type on first entry.
+            // Gemba Walk and QR anchors each have their own seen flag so a user
+            // who works with both types sees the right walkthrough for each.
+            guard settings.ftueEnabled else { return }
+            if anchor.anchorType == .locTag {
+                if mode == .author, !settings.ftueGembaAuthorSeen {
+                    settings.ftueGembaAuthorSeen = true
+                    showOnboarding = true
+                } else if mode != .author, !settings.ftueGembaOperatorSeen {
+                    settings.ftueGembaOperatorSeen = true
+                    showOnboarding = true
+                }
+            } else {
+                if mode == .author, !settings.ftueAuthorSeen {
+                    settings.ftueAuthorSeen = true
+                    showOnboarding = true
+                } else if mode != .author, !settings.ftueOperatorSeen {
+                    settings.ftueOperatorSeen = true
+                    showOnboarding = true
+                }
+            }
         }
         // ── Tour: collect spotlight target frames ─────────────────────────────
         .onPreferenceChange(TourFrameKey.self) { frames in
@@ -238,6 +266,13 @@ struct AnchorHubView: View {
         // ── QR generator ─────────────────────────────────────────────────────
         .sheet(isPresented: $showQRSheet) {
             qrGeneratorSheet
+        }
+        // ── FTUE walkthrough ──────────────────────────────────────────────────
+        .sheet(isPresented: $showOnboarding) {
+            let context: OnboardingContext = anchor.anchorType == .locTag
+                ? (mode == .author ? .gembaAuthor : .gembaOperator)
+                : (mode == .author ? .author      : .operatorMode)
+            OnboardingSheet(context: context)
         }
         // ── QR scan gate ──────────────────────────────────────────────────────
         .fullScreenCover(isPresented: $showScanGate) {
