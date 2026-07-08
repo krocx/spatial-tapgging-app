@@ -4,6 +4,33 @@
 // All clients and adapters MUST use these types.
 // ============================================================
 
+// --- Anchor Types ---
+
+/**
+ * Discriminates between the two anchor placement mechanisms:
+ *   QR       — classic flow: Author prints a QR code, scans it to place the anchor.
+ *   LOC_TAG  — Gemba audit walk: Author taps any surface to place the anchor;
+ *              an ARWorldMap is saved so Operators can re-localize without a QR.
+ * Defaults to 'QR' when absent for backward-compatibility with existing anchors.
+ */
+export type AnchorType = 'QR' | 'LOC_TAG';
+
+// --- Defect Categories (Loc-Tag / Gemba audit walk) ---
+
+export type DefectCategory =
+  | '6C'
+  | 'COSMETIC'
+  | 'CABLE_ROUTING'
+  | 'PART_MISSING'
+  | 'LOOSE_COMPONENTS'
+  | 'SWAPPED_PARTS'
+  | 'SAFETY_HAZARD'
+  | 'CONTAMINATION'
+  | 'WARNING'
+  | 'OTHERS';
+
+export type LocTagCompletionStatus = 'RESOLVED' | 'STILL_PRESENT' | 'ESCALATED';
+
 // --- Coordinate Systems ---
 
 export type CoordinateSystem =
@@ -73,6 +100,11 @@ export interface Anchor {
    */
   encryptionKey?: string;
   /**
+   * Loc-Tag anchors are placed by surface hit-test rather than QR scan.
+   * Omitted for all existing anchors — treat absent as 'QR'.
+   */
+  anchorType?: AnchorType;
+  /**
    * Physical width of the printed QR code in centimetres.
    * Stored once at anchor creation so every subsequent QR generation —
    * in-app and in the portal — uses the same size, producing the same QR pixels.
@@ -95,6 +127,8 @@ export interface CreateAnchorRequest {
   encryptionKey?: string;
   /** Physical QR print size in cm — locked at creation. Default: 10.0. */
   qrSizeCm?: number;
+  /** Loc-Tag anchors omit the QR flow entirely. Default: 'QR'. */
+  anchorType?: AnchorType;
 }
 
 // ============================================================
@@ -424,4 +458,68 @@ export interface QRAnchorContext {
    * Optional so the type stays backwards-compatible.
    */
   scanQuaternion?: Quaternion;
+}
+
+// ============================================================
+// Loc-Tag — Phase 2 Gemba audit walk types
+// ============================================================
+
+/**
+ * A location-tagged defect or observation placed by tapping a surface
+ * during an Author's Gemba audit walk. Unlike regular Tags, LocTags are
+ * not tied to a QR anchor — the spatial reference is an ARWorldMap.
+ */
+export interface LocTag {
+  id: string;
+  anchorId: string;
+  title: string;
+  description: string;
+  severity?: Severity;
+  defectCategory: DefectCategory;
+  /** Free-text field populated when defectCategory === 'OTHERS'. */
+  defectCategoryNote?: string;
+  /** Filename of the reference photo stored in SIB evidence store. */
+  referenceImagePath?: string;
+  /** ARKit world-space position within the saved ARWorldMap. */
+  position: Vector3;
+  /** Author-defined visit order for Operator navigation. */
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CreateLocTagRequest = Omit<LocTag, 'id' | 'referenceImagePath' | 'createdAt' | 'updatedAt'> & {
+  /** Base64-encoded JPEG reference photo captured at tag placement. */
+  referenceImageBase64?: string;
+};
+
+/**
+ * Operator's completion record for a single LocTag.
+ * Multiple completions are allowed (operator can revisit a tag on subsequent walks).
+ */
+export interface LocTagCompletion {
+  id: string;
+  locTagId: string;
+  anchorId: string;
+  operatorName: string;
+  status: LocTagCompletionStatus;
+  /** Filename of the completion photo stored in SIB evidence store. */
+  completionImagePath?: string;
+  note?: string;
+  completedAt: string;
+}
+
+export type SubmitLocTagCompletionRequest =
+  Omit<LocTagCompletion, 'id' | 'completionImagePath' | 'completedAt'> & {
+    /** Base64-encoded JPEG completion photo. */
+    completionImageBase64?: string;
+  };
+
+/** Summary of a LocTag's latest completion status — used in session reports. */
+export interface LocTagSummary {
+  locTagId:   string;
+  title:      string;
+  order:      number;
+  latestStatus?: LocTagCompletionStatus;
+  completedAt?:  string;
 }

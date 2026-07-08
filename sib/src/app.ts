@@ -8,6 +8,8 @@ import tagRouter from './routes/tags.js';
 import sessionRouter from './routes/sessions.js';
 import perceptionRouter from './routes/perception.js';
 import trainingRouter from './routes/training.js';
+import locTagRouter from './routes/loc-tags.js';
+import worldMapRouter from './routes/worldmap.js';
 import { apiKeyAuth } from './middleware/auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -186,6 +188,18 @@ export function createApp(): express.Express {
   // POST /perception/validate            — Operator: validate live frame (stub PASS)
   // GET  /perception/pass-state/:tagId   — load pass state for Operator mode
   app.use('/perception', trainingRouter);
+
+  // --- Phase 2: Loc-Tag (Gemba audit walk) ---
+  // POST   /loc-tags                    — Author: create a LocTag
+  // GET    /loc-tags?anchorId=xxx       — list LocTags for an anchor
+  // GET    /loc-tags/image/:filename    — serve reference / completion photo
+  // POST   /loc-tags/:id/completion     — Operator: submit completion
+  // GET    /loc-tags/:id/completions    — list completions for a LocTag
+  app.use('/loc-tags', locTagRouter);
+
+  // POST /worldmap/upload               — Author: save ARWorldMap after walk
+  // GET  /worldmap/:anchorId            — Operator: download ARWorldMap to re-localize
+  app.use('/worldmap', worldMapRouter);
 
   // --- 404 fallback ---
   app.use((_req, res) => {
