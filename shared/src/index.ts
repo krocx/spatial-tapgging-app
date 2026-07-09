@@ -112,6 +112,12 @@ export interface Anchor {
    * Default: 10.0 cm.
    */
   qrSizeCm?: number;
+  /**
+   * The display name of the user who created this anchor.
+   * Set from the device's Author Name setting at creation time.
+   * Absent on anchors created before this field was introduced (treat as shared/legacy).
+   */
+  createdBy?: string;
   createdAt: string; // ISO 8601
   updatedAt: string;
 }
@@ -129,6 +135,8 @@ export interface CreateAnchorRequest {
   qrSizeCm?: number;
   /** Loc-Tag anchors omit the QR flow entirely. Default: 'QR'. */
   anchorType?: AnchorType;
+  /** Author name at creation time — used for per-user anchor filtering in the directory. */
+  createdBy?: string;
 }
 
 // ============================================================

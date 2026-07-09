@@ -140,6 +140,9 @@ struct Anchor: Codable, Identifiable, Hashable {
     /// Phase 2 (Loc-Tag): distinguishes QR-scanned anchors from surface-tap anchors.
     /// Nil / absent on legacy anchors — treat as .qr.
     let anchorType: AnchorType?
+    /// Display name of the user who created this anchor (from their Author Name setting).
+    /// Nil on anchors created before author tracking — treated as "Shared" in the directory.
+    let createdBy: String?
     let createdAt: String
     let updatedAt: String
 
@@ -162,6 +165,8 @@ struct CreateAnchorRequest: Codable {
     let qrSizeCm: Double?
     /// Phase 2 (Loc-Tag): omit or pass nil/.qr for the default QR-scan flow.
     let anchorType: AnchorType?
+    /// Author name at creation time — used for per-user anchor filtering in the directory.
+    let createdBy: String?
 
     init(
         id:               String?              = nil,
@@ -172,7 +177,8 @@ struct CreateAnchorRequest: Codable {
         metadata:         [String: AnyCodable] = [:],
         encryptionKey:    String?              = nil,
         qrSizeCm:         Double?              = nil,
-        anchorType:       AnchorType?          = nil
+        anchorType:       AnchorType?          = nil,
+        createdBy:        String?              = nil
     ) {
         self.id               = id
         self.assetId          = assetId
@@ -183,6 +189,7 @@ struct CreateAnchorRequest: Codable {
         self.encryptionKey    = encryptionKey
         self.qrSizeCm         = qrSizeCm
         self.anchorType       = anchorType
+        self.createdBy        = createdBy
     }
 }
 

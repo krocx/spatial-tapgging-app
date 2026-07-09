@@ -115,6 +115,7 @@ router.post('/', async (req: Request, res: Response) => {
       || randomBytes(32).toString('base64'),
     qrSizeCm: typeof (body as any).qrSizeCm === 'number' ? (body as any).qrSizeCm : 10.0,
     anchorType: body.anchorType,
+    createdBy: body.createdBy,
     createdAt: now,
     updatedAt: now,
   };

@@ -52,6 +52,19 @@ struct AnchorDirectoryView: View {
         }
     }
 
+    /// Author-mode: anchors created on this device (tracked by ID, not by name).
+    /// ID-based tracking is reliable regardless of author-name renames or
+    /// differences between creation time and display time.
+    private var myAnchors: [Anchor] {
+        filtered.filter { settings.myAnchorIds.contains($0.id) }
+    }
+
+    /// Author-mode: anchors not created on this device — shared team anchors,
+    /// legacy anchors, and anchors authored on another device.
+    private var sharedAnchors: [Anchor] {
+        filtered.filter { !settings.myAnchorIds.contains($0.id) }
+    }
+
     var body: some View {
         NavigationStack {
             Group {
@@ -162,12 +175,23 @@ struct AnchorDirectoryView: View {
             }
         }
 
-        // Create anchor sheet (Author only — new anchor appears at top of list on creation)
+        // Create anchor sheet (Author only)
+        // After creation, insert the anchor at the top of the list, then navigate
+        // directly to its AnchorHubView — the user can start a walk or AR session
+        // without having to tap the row again.
         .sheet(isPresented: $showCreateSheet) {
             CreateAnchorSheet { newAnchor in
+                // Claim this anchor on the local device — this is what drives
+                // the My Anchors / Shared split, independently of server state.
+                settings.myAnchorIds.insert(newAnchor.id)
                 anchors.insert(newAnchor, at: 0)
                 tagCounts[newAnchor.id] = 0
                 showCreateSheet = false
+                // Brief delay so the sheet finishes dismissing before NavigationStack
+                // pushes AnchorHubView — avoids a blank-screen flash on iOS 17+.
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                    selectAnchor(newAnchor)
+                }
             }
             .environmentObject(settings)
             .environmentObject(appState)
@@ -193,38 +217,81 @@ struct AnchorDirectoryView: View {
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
 
-            Section {
-                ForEach(filtered) { anchor in
-                    AnchorDirectoryRow(
-                        anchor:    anchor,
-                        tagCount:  tagCounts[anchor.id] ?? 0,
-                        isLoading: false
-                    ) {
-                        selectAnchor(anchor)
+            if mode == .author {
+                // ── My Anchors ──────────────────────────────────────────────────
+                Section {
+                    if myAnchors.isEmpty {
+                        Text("No anchors yet — tap + to create one")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .listRowBackground(Color.clear)
+                    } else {
+                        ForEach(myAnchors) { anchor in
+                            anchorRow(anchor, showCreator: false)
+                        }
                     }
-                    // Author-only swipe-to-delete
-                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                        if mode == .author {
-                            Button(role: .destructive) {
-                                anchorToDelete = anchor
-                            } label: {
-                                Label("Delete", systemImage: "trash")
-                            }
+                } header: {
+                    HStack {
+                        Text("My Anchors")
+                        Spacer()
+                        Text("\(myAnchors.count)").foregroundStyle(.secondary)
+                    }
+                }
+
+                // ── Shared ──────────────────────────────────────────────────────
+                if settings.showSharedAnchors && !sharedAnchors.isEmpty {
+                    Section {
+                        ForEach(sharedAnchors) { anchor in
+                            anchorRow(anchor, showCreator: true)
+                        }
+                    } header: {
+                        HStack {
+                            Text("Shared")
+                            Spacer()
+                            Text("\(sharedAnchors.count)").foregroundStyle(.secondary)
                         }
                     }
                 }
-            } header: {
-                HStack {
-                    Text("Anchors")
-                    Spacer()
-                    Text("\(filtered.count)")
-                        .foregroundStyle(.secondary)
+
+            } else {
+                // ── Operator mode: flat list, all anchors visible ────────────────
+                Section {
+                    ForEach(filtered) { anchor in
+                        anchorRow(anchor, showCreator: false)
+                    }
+                } header: {
+                    HStack {
+                        Text("Anchors")
+                        Spacer()
+                        Text("\(filtered.count)").foregroundStyle(.secondary)
+                    }
                 }
             }
-
         }
         .listStyle(.insetGrouped)
         .animation(.default, value: anchors.count)
+    }
+
+    /// Shared row builder used by both the My Anchors and Shared sections.
+    @ViewBuilder
+    private func anchorRow(_ anchor: Anchor, showCreator: Bool) -> some View {
+        AnchorDirectoryRow(
+            anchor:      anchor,
+            tagCount:    tagCounts[anchor.id] ?? 0,
+            isLoading:   false,
+            showCreator: showCreator
+        ) {
+            selectAnchor(anchor)
+        }
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            if mode == .author {
+                Button(role: .destructive) {
+                    anchorToDelete = anchor
+                } label: {
+                    Label("Delete", systemImage: "trash")
+                }
+            }
+        }
     }
 
     // ── Portal card ───────────────────────────────────────────────────────────
@@ -367,10 +434,12 @@ struct AnchorDirectoryView: View {
 // ── Anchor directory row ──────────────────────────────────────────────────────
 
 private struct AnchorDirectoryRow: View {
-    let anchor:    Anchor
-    let tagCount:  Int
-    let isLoading: Bool
-    let onSelect:  () -> Void
+    let anchor:      Anchor
+    let tagCount:    Int
+    let isLoading:   Bool
+    /// When true, renders the createdBy name as a small caption (used in the Shared section).
+    let showCreator: Bool
+    let onSelect:    () -> Void
 
     private var shortId: String {
         anchor.id.count > 20
@@ -410,6 +479,12 @@ private struct AnchorDirectoryRow: View {
                         .font(.caption.monospaced())
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
+                    if showCreator, let creator = anchor.createdBy {
+                        Text("by \(creator)")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                            .lineLimit(1)
+                    }
                 }
 
                 Spacer()
@@ -673,7 +748,8 @@ struct CreateAnchorSheet: View {
                 let req = CreateAnchorRequest(
                     id:         resolvedId,
                     assetId:    assetId.trimmingCharacters(in: .whitespaces),
-                    anchorType: .locTag
+                    anchorType: .locTag,
+                    createdBy:  settings.authorName
                 )
                 anchor = try await client.createAnchor(req)
                 isCreating = false
@@ -693,7 +769,8 @@ struct CreateAnchorSheet: View {
                     id:            resolvedId,
                     assetId:       assetId.trimmingCharacters(in: .whitespaces),
                     encryptionKey: keyB64,
-                    qrSizeCm:      10.0      // canonical size — stored in SIB, never changes
+                    qrSizeCm:      10.0,     // canonical size — stored in SIB, never changes
+                    createdBy:     settings.authorName
                 )
                 anchor = try await client.createAnchor(req)
                 isCreating    = false

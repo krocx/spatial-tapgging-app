@@ -67,9 +67,9 @@ struct SettingsView: View {
     @EnvironmentObject private var tour:      GuidedTourManager
     @Environment(\.dismiss) private var dismiss
 
-    @State private var draftURL     = ""
-    @State private var draftAssetId = ""
-    @State private var draftApiKey  = ""
+    @State private var draftURL        = ""
+    @State private var draftApiKey     = ""
+    @State private var draftAuthorName = ""
     @State private var showApiKey   = false
     @State private var isTesting    = false
     @State private var testResult:  Result<Void, Error>? = nil
@@ -181,18 +181,36 @@ struct SettingsView: View {
                     Text("Set in Render → Environment → SIB_API_KEY. Leave blank when running locally without a key.")
                 }
 
-                // ── Default Asset ID ───────────────────────────────────────────
+                // ── Identity ──────────────────────────────────────────────────
                 Section {
+                    // Contextual nudge shown only during the guided tour saveSettings step
+                    if tour.isActive && tour.currentStep == .saveSettings {
+                        HStack(spacing: 8) {
+                            Image(systemName: "person.badge.key.fill")
+                                .foregroundStyle(.orange)
+                            Text("Verify your Author Name before saving")
+                                .font(.caption.bold())
+                                .foregroundStyle(.orange)
+                        }
+                        .listRowBackground(Color.orange.opacity(0.08))
+                    }
+
                     HStack {
-                        Image(systemName: "tag").foregroundColor(.secondary).frame(width: 22)
-                        TextField("e.g. eq-001", text: $draftAssetId)
+                        Image(systemName: "person.fill").foregroundColor(.secondary).frame(width: 22)
+                        TextField("Your name", text: $draftAuthorName)
                             .autocorrectionDisabled()
-                            .textInputAutocapitalization(.never)
+                            .textInputAutocapitalization(.words)
+                    }
+                    Toggle(isOn: Binding(
+                        get: { settings.showSharedAnchors },
+                        set: { settings.showSharedAnchors = $0 }
+                    )) {
+                        Label("Show Shared Anchors", systemImage: "person.2.fill")
                     }
                 } header: {
-                    Text("Default Asset ID")
+                    Text("Identity")
                 } footer: {
-                    Text("Used when creating new anchors. Can be overridden by the QR payload.")
+                    Text("Auto-detected from your device name — update it here if needed. This name tags every anchor you create and determines what appears under \"My Anchors\" in the directory.")
                 }
 
                 // ── Test Connection ────────────────────────────────────────────
@@ -310,9 +328,21 @@ struct SettingsView: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
-                        settings.sibBaseURL     = draftURL.trimmingCharacters(in: .whitespaces)
-                        settings.defaultAssetId = draftAssetId.trimmingCharacters(in: .whitespaces)
-                        settings.apiKey         = draftApiKey.trimmingCharacters(in: .whitespaces)
+                        settings.sibBaseURL = draftURL.trimmingCharacters(in: .whitespaces)
+                        settings.apiKey     = draftApiKey.trimmingCharacters(in: .whitespaces)
+                        let newName = draftAuthorName.trimmingCharacters(in: .whitespaces)
+                        if !newName.isEmpty {
+                            let oldName = settings.authorName
+                            // If the name changed, archive the old one so anchors created
+                            // under it still appear under "My Anchors" in the directory.
+                            if newName != oldName && !oldName.isEmpty &&
+                               !settings.previousAuthorNames.contains(oldName) {
+                                settings.previousAuthorNames.append(oldName)
+                            }
+                            settings.authorName = newName
+                        }
+                        // Mark confirmed — dismisses the home-screen name nudge.
+                        settings.authorNameConfirmed = true
                         // Tour: advance past saveSettings before dismissing
                         tour.advancePast(.saveSettings)
                         dismiss()
@@ -332,9 +362,9 @@ struct SettingsView: View {
                 }
             }
             .onAppear {
-                draftURL     = settings.sibBaseURL
-                draftAssetId = settings.defaultAssetId
-                draftApiKey  = settings.apiKey
+                draftURL        = settings.sibBaseURL
+                draftApiKey     = settings.apiKey
+                draftAuthorName = settings.authorName
                 // Reflect active preset based on current URL
                 activePreset = ServerPreset.allCases.first { $0.url == draftURL }
             }

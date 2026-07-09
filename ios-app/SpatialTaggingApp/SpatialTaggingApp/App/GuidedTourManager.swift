@@ -133,7 +133,7 @@ extension TourStep {
         case .testConnection:
             return "Tap Test Connection to verify the app\ncan reach your SIB server."
         case .saveSettings:
-            return "All good! Tap Save to apply your settings\nand close."
+            return "Before saving — scroll down to Identity and check your Author Name.\nWe detected it from your device; update it if needed.\nThen tap Save to apply and close."
         case .tapAuthor:
             return "You're connected! Now let's explore\nhow Authors create inspection tags."
         case .createAnchor:
