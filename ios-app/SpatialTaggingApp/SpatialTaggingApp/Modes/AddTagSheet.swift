@@ -60,6 +60,9 @@ struct AddTagSheet: View {
     @State private var tagType: TagType  = .presenceCheck   // defaults to Cone
     @State private var isSaving          = false
     @State private var saveError: String? = nil
+    /// Becomes true once the label field has been focused and then left empty,
+    /// so the "Required" hint only surfaces after the user has had a chance to type.
+    @State private var labelTouched      = false
     @FocusState private var labelFocused: Bool
 
     // Current capture mode derived from tagType
@@ -143,13 +146,20 @@ struct AddTagSheet: View {
                 .padding(.bottom, 10)
             }
 
-            // ── Label field ────────────────────────────────────────────────────
+            // ── Label field (required) ─────────────────────────────────────────
             VStack(alignment: .leading, spacing: 4) {
-                Text("LABEL")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.38))
-                    .padding(.horizontal, 16)
+                // Header with required asterisk
+                HStack(spacing: 3) {
+                    Text("LABEL")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.38))
+                    Text("*")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(.orange)
+                }
+                .padding(.horizontal, 16)
 
+                let isEmptyAndTouched = labelTouched && label.trimmingCharacters(in: .whitespaces).isEmpty
                 TextField("e.g. Pressure Gauge", text: $label)
                     .focused($labelFocused)
                     .font(.subheadline)
@@ -158,8 +168,27 @@ struct AddTagSheet: View {
                     .padding(.horizontal, 12).padding(.vertical, 10)
                     .background(.white.opacity(0.07),
                                 in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .stroke(isEmptyAndTouched ? Color.orange.opacity(0.65) : Color.clear,
+                                    lineWidth: 1)
+                    )
                     .padding(.horizontal, 16)
+                    .onChange(of: labelFocused) { focused in
+                        // Mark as touched once the user leaves the field
+                        if !focused { labelTouched = true }
+                    }
+
+                // Inline hint — only shown after the user has left the field blank
+                if isEmptyAndTouched {
+                    Text("Required — enter a label for this tag")
+                        .font(.caption)
+                        .foregroundStyle(.orange.opacity(0.85))
+                        .padding(.horizontal, 16)
+                        .transition(.opacity)
+                }
             }
+            .animation(.easeInOut(duration: 0.18), value: labelTouched)
             .padding(.bottom, 16)
 
             // ── Error ──────────────────────────────────────────────────────────

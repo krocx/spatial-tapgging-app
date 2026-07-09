@@ -162,14 +162,12 @@ struct AnchorDirectoryView: View {
             }
         }
 
-        // Create anchor sheet (Author only — navigates to hub on creation)
+        // Create anchor sheet (Author only — new anchor appears at top of list on creation)
         .sheet(isPresented: $showCreateSheet) {
             CreateAnchorSheet { newAnchor in
                 anchors.insert(newAnchor, at: 0)
                 tagCounts[newAnchor.id] = 0
                 showCreateSheet = false
-                // Navigate directly to the hub for the new anchor
-                hubAnchor = newAnchor
             }
             .environmentObject(settings)
             .environmentObject(appState)

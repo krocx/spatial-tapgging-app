@@ -208,7 +208,18 @@ struct ModeSelectionView: View {
                     step:       tour.currentStep,
                     targetRect: tourFrames[tour.currentStep],
                     ownerName:  tour.ownerName,
-                    onNext:     { tour.advance() },
+                    onNext:     {
+                        // For navigation-gating spotlight steps, open the target screen.
+                        // The existing onChange handlers call advancePast(), which advances
+                        // the step — so we must NOT also call tour.advance() here or the
+                        // step would jump twice.
+                        switch tour.currentStep {
+                        case .tapSettings:  showSettings          = true
+                        case .tapAuthor:    showAuthorDirectory   = true
+                        case .tapOperator:  showOperatorDirectory = true
+                        default:            tour.advance()
+                        }
+                    },
                     onSkip:     { tour.skip() }
                 )
                 .ignoresSafeArea()

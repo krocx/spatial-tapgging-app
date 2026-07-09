@@ -31,6 +31,11 @@ struct LocTagFormSheet: View {
     @State private var isSubmitting = false
     @State private var submitError: String? = nil
 
+    /// Becomes true once the title field has been focused then left empty,
+    /// so the inline error only appears after the user has had a chance to type.
+    @State private var titleTouched  = false
+    @FocusState private var titleFocused: Bool
+
     private var isValid: Bool {
         !title.trimmingCharacters(in: .whitespaces).isEmpty
     }
@@ -40,10 +45,41 @@ struct LocTagFormSheet: View {
             Form {
 
                 // ── Issue details ──────────────────────────────────────────────
-                Section("Issue Details") {
-                    TextField("Title (required)", text: $title)
-                    TextField("Description", text: $description, axis: .vertical)
+                Section {
+                    // Title row — red asterisk visible while empty
+                    HStack(spacing: 6) {
+                        TextField("Enter issue title", text: $title)
+                            .focused($titleFocused)
+                            .onChange(of: titleFocused) { focused in
+                                if !focused { titleTouched = true }
+                            }
+                        if title.trimmingCharacters(in: .whitespaces).isEmpty {
+                            Text("*")
+                                .font(.system(size: 17, weight: .bold))
+                                .foregroundStyle(.red)
+                        }
+                    }
+
+                    // Inline error — surfaces after first interaction
+                    if titleTouched && title.trimmingCharacters(in: .whitespaces).isEmpty {
+                        Text("Required — enter an issue title")
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
+
+                    TextField("Description (optional)", text: $description, axis: .vertical)
                         .lineLimit(3, reservesSpace: true)
+                } header: {
+                    HStack {
+                        Text("Issue Details")
+                        Spacer()
+                        HStack(spacing: 3) {
+                            Text("*").bold().foregroundStyle(.red)
+                            Text("Required")
+                        }
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    }
                 }
 
                 // ── Classification ─────────────────────────────────────────────

@@ -51,8 +51,9 @@ const router = Router();
 router.post('/', async (req: Request, res: Response): Promise<void> => {
   const body = req.body as CreateLocTagRequest & { referenceImageBase64?: string };
 
-  if (!body.anchorId || !body.title || !body.description || !body.defectCategory) {
-    res.status(400).json({ error: 'anchorId, title, description, and defectCategory are required' });
+  // description is optional — an empty string is valid
+  if (!body.anchorId || !body.title || !body.defectCategory) {
+    res.status(400).json({ error: 'anchorId, title, and defectCategory are required' });
     return;
   }
 
@@ -74,7 +75,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     id,
     anchorId:             body.anchorId,
     title:                body.title,
-    description:          body.description,
+    description:          body.description ?? '',
     severity:             body.severity,
     defectCategory:       body.defectCategory,
     defectCategoryNote:   body.defectCategoryNote,
