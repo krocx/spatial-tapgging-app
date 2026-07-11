@@ -10,6 +10,8 @@ import perceptionRouter from './routes/perception.js';
 import trainingRouter from './routes/training.js';
 import locTagRouter from './routes/loc-tags.js';
 import worldMapRouter from './routes/worldmap.js';
+import guideRouter from './routes/guides.js';
+import guideSessionRouter from './routes/guide-sessions.js';
 import { apiKeyAuth } from './middleware/auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -200,6 +202,26 @@ export function createApp(): express.Express {
   // POST /worldmap/upload               — Author: save ARWorldMap after walk
   // GET  /worldmap/:anchorId            — Operator: download ARWorldMap to re-localize
   app.use('/worldmap', worldMapRouter);
+
+  // --- AR OMS: Guided work instructions (Phase 1) ---
+  // POST   /guides                           — Author: create Guide
+  // GET    /guides?anchorId=xxx              — list published guides for Operators
+  // GET    /guides?anchorId=xxx&all=true     — list all guides (drafts + published) for Authors
+  // GET    /guides/:id                       — get Guide
+  // PATCH  /guides/:id                       — Author: update name / description / published
+  // DELETE /guides/:id                       — Author: cascade-delete Guide + Steps
+  // GET    /guides/:id/steps                 — list Steps in sequence order
+  // POST   /guides/:id/steps                 — Author: create Step (with optional image)
+  // PATCH  /guides/:id/steps/:stepId         — Author: update Step
+  // DELETE /guides/:id/steps/:stepId         — Author: delete Step
+  // GET    /guides/step-image/:filename      — serve step media image
+  app.use('/guides', guideRouter);
+
+  // POST /guide-sessions                     — Operator: submit completed session (sign-off)
+  // GET  /guide-sessions?anchorId=xxx        — list sessions for an anchor
+  // GET  /guide-sessions?guideId=xxx         — list sessions for a guide
+  // GET  /guide-sessions/:id                 — get session
+  app.use('/guide-sessions', guideSessionRouter);
 
   // --- 404 fallback ---
   app.use((_req, res) => {

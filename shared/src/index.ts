@@ -531,3 +531,125 @@ export interface LocTagSummary {
   latestStatus?: LocTagCompletionStatus;
   completedAt?:  string;
 }
+
+// ============================================================
+// AR OMS — Phase 1: Guided work instruction types
+// ============================================================
+
+/**
+ * The media type of a step's attached asset.
+ * 'image' — JPEG photo (MVP).
+ * 'video' — MP4 short clip (Phase 2).
+ * 'glb'   — 3D model (Phase 2).
+ */
+export type GuideStepMediaType = 'image' | 'video' | 'glb';
+
+/**
+ * A single step within an AR Guide.
+ * sequenceNumber is 1-based and determines display order.
+ * ttsText defaults to `text` when absent (synthesised on-device).
+ * mediaPath is the filename on the SIB step-image store — absent when no media is attached.
+ * completionRequired: when true the Operator must tap the checkmark before advancing.
+ */
+export interface GuideStep {
+  id:                 string;
+  guideId:            string;
+  anchorId:           string;      // denormalised for efficient anchor-scoped queries
+  sequenceNumber:     number;
+  text:               string;      // instruction shown in the floating panel
+  ttsText?:           string;      // override for voice synthesis — defaults to text
+  mediaType?:         GuideStepMediaType;
+  mediaPath?:         string;      // filename on SIB step-image store
+  completionRequired: boolean;     // defaults to true
+  createdAt:          string;
+  updatedAt:          string;
+}
+
+export type CreateGuideStepRequest = {
+  sequenceNumber:      number;
+  text:                string;
+  ttsText?:            string;
+  mediaType?:          GuideStepMediaType;
+  /** Base64-encoded JPEG — stored server-side; mediaPath is returned in the response. */
+  mediaBase64?:        string;
+  completionRequired?: boolean;    // defaults to true when absent
+};
+
+export type UpdateGuideStepRequest = {
+  sequenceNumber?:     number;
+  text?:               string;
+  ttsText?:            string;
+  completionRequired?: boolean;
+  /** Pass null to clear an attached image. */
+  mediaBase64?:        string | null;
+};
+
+/**
+ * A Guide is a named, ordered collection of steps attached to one Anchor.
+ * published: false → draft (Author-visible only); true → live (Operators can run it).
+ * An Anchor can have multiple Guides (e.g. "Startup Procedure", "Fault Recovery").
+ */
+export interface Guide {
+  id:          string;
+  anchorId:    string;
+  name:        string;
+  description: string;
+  published:   boolean;
+  createdBy:   string;    // authorName at creation time
+  createdAt:   string;
+  updatedAt:   string;
+}
+
+export type CreateGuideRequest = {
+  anchorId:     string;
+  name:         string;
+  description?: string;
+  createdBy:    string;
+};
+
+export type UpdateGuideRequest = {
+  name?:        string;
+  description?: string;
+  published?:   boolean;
+};
+
+/**
+ * Completion record for a single step within a GuideSession.
+ */
+export interface GuideStepCompletion {
+  stepId:          string;
+  completedAt:     string;   // ISO 8601
+  durationSeconds: number;   // time from step entry to checkmark tap
+}
+
+/**
+ * A GuideSession records one Operator's run through a Guide.
+ * Created atomically at sign-off (not opened then closed — the entire session
+ * is submitted in a single POST once the Operator taps Sign & Submit).
+ */
+export interface GuideSession {
+  id:              string;
+  guideId:         string;
+  anchorId:        string;
+  guideName:       string;    // snapshot of guide name at session time
+  anchorName:      string;    // snapshot of anchor assetId at session time
+  signedOffBy:     string;    // operatorName — from AppSettings.authorName on the device
+  startedAt:       string;    // when the AR session began
+  completedAt:     string;    // when sign-off was tapped
+  durationSeconds: number;
+  stepCompletions: GuideStepCompletion[];
+  createdAt:       string;
+  updatedAt:       string;
+}
+
+export type CreateGuideSessionRequest = {
+  guideId:         string;
+  anchorId:        string;
+  guideName:       string;
+  anchorName:      string;
+  signedOffBy:     string;
+  startedAt:       string;
+  completedAt:     string;
+  durationSeconds: number;
+  stepCompletions: GuideStepCompletion[];
+};
