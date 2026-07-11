@@ -130,6 +130,41 @@ struct AnchorHubView: View {
                 }
             }
 
+            // ── AR Guides (QR anchors only; anchorType nil = legacy QR anchor) ───
+            if anchor.anchorType != .locTag {
+                Section {
+                    NavigationLink {
+                        GuideListView(anchor: anchor, mode: mode)
+                            .environmentObject(settings)
+                            .environmentObject(appState)
+                            .environmentObject(tour)
+                    } label: {
+                        HStack(spacing: 14) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color.indigo.opacity(0.12))
+                                    .frame(width: 36, height: 36)
+                                Image(systemName: "list.bullet.clipboard")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundStyle(.indigo)
+                            }
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("AR Guides")
+                                    .font(.subheadline.bold())
+                                Text(mode == .author
+                                     ? "Create and manage work instructions"
+                                     : "View published step-by-step guides")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    }
+                } header: {
+                    Text("Work Instructions")
+                }
+            }
+
             // ── Readiness warning (Operator) ───────────────────────────────────
             if let warning = readinessWarning {
                 Section {
