@@ -561,6 +561,12 @@ export interface GuideStep {
   mediaType?:         GuideStepMediaType;
   mediaPath?:         string;      // filename on SIB step-image store
   completionRequired: boolean;     // defaults to true
+  // Phase 2: spatial placement
+  posX?:              number;      // ARKit world-space X (metres, relative to saved ARWorldMap)
+  posY?:              number;
+  posZ?:              number;
+  isPlaced:           boolean;     // true once Author has placed the pin in AR
+  positionSource?:    'tap' | 'cad';  // forward-compat hook: 'tap' = Author placed; 'cad' = imported
   createdAt:          string;
   updatedAt:          string;
 }
@@ -582,6 +588,12 @@ export type UpdateGuideStepRequest = {
   completionRequired?: boolean;
   /** Pass null to clear an attached image. */
   mediaBase64?:        string | null;
+  // Phase 2: spatial placement
+  posX?:               number;
+  posY?:               number;
+  posZ?:               number;
+  isPlaced?:           boolean;
+  positionSource?:     'tap' | 'cad';
 };
 
 /**

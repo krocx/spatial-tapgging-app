@@ -1,4 +1,4 @@
-// GuideEditorView.swift — AR OMS Phase 1
+// GuideEditorView.swift — AR OMS Phase 2
 //
 // Author-only form for creating and editing an AR Guide.
 //
@@ -42,12 +42,20 @@ struct GuideEditorView: View {
     // Active guide (set after creation so steps can be added to it)
     @State private var activeGuide: ARGuide? = nil
 
-    // Add-step sheet state
+    // Add / edit step sheet state
     @State private var showAddStep    = false
     @State private var editingStep:   GuideStep? = nil
 
+    // Phase 2: AR placement flow
+    @State private var showScanGate      = false
+    @State private var showPlacementView = false
+
     var isCreating: Bool { guide == nil && activeGuide == nil }
     var currentGuide: ARGuide? { activeGuide ?? guide }
+
+    // Placement summary
+    private var placedCount: Int { steps.filter(\.isPlaced).count }
+    private var allStepsPlaced: Bool { !steps.isEmpty && steps.allSatisfy(\.isPlaced) }
 
     var body: some View {
         NavigationStack {
@@ -79,8 +87,16 @@ struct GuideEditorView: View {
                                 .foregroundStyle(published ? .green : .orange)
                         }
                         .tint(.green)
+                        .disabled(!allStepsPlaced)
                     } footer: {
-                        Text("Publish when all steps are complete and the guide is ready for Operators.")
+                        if steps.isEmpty {
+                            Text("Add steps before publishing.")
+                        } else if !allStepsPlaced {
+                            Text("⚠️ All \(steps.count) step\(steps.count == 1 ? "" : "s") must be placed in AR before publishing. Use "Place Steps in AR" below.")
+                                .foregroundStyle(.orange)
+                        } else {
+                            Text("Publish when the guide is ready for Operators.")
+                        }
                     }
 
                     // ── Steps ─────────────────────────────────────────────────
@@ -119,6 +135,40 @@ struct GuideEditorView: View {
                         }
                     } footer: {
                         Text("Drag ≡ to reorder. Steps are shown in sequence to the Operator during the AR session.")
+                    }
+
+                    // ── AR step placement (Phase 2) ────────────────────────────
+                    if !steps.isEmpty && !isLoading {
+                        Section {
+                            Button {
+                                showScanGate = true
+                            } label: {
+                                HStack(spacing: 12) {
+                                    ZStack {
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(Color.indigo.opacity(0.1))
+                                            .frame(width: 36, height: 36)
+                                        Image(systemName: "arkit")
+                                            .font(.system(size: 16, weight: .semibold))
+                                            .foregroundStyle(.indigo)
+                                    }
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("Place Steps in AR")
+                                            .font(.subheadline.bold())
+                                            .foregroundStyle(.indigo)
+                                        Text("\(placedCount) / \(steps.count) position\(steps.count == 1 ? "" : "s") saved")
+                                            .font(.caption).foregroundStyle(.secondary)
+                                    }
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption).foregroundStyle(.secondary)
+                                }
+                                .padding(.vertical, 4)
+                            }
+                            .buttonStyle(.plain)
+                        } footer: {
+                            Text("Scan the anchor's QR code to enter AR, then tap surfaces to pin each step's location. Operators navigate to these pins in sequence.")
+                        }
                     }
                 }
 
@@ -173,6 +223,34 @@ struct GuideEditorView: View {
                 if let g = currentGuide {
                     EditStepSheet(guide: g, step: step)
                         .environmentObject(settings)
+                }
+            }
+            // ── Phase 2: QR scan gate before AR placement ─────────────────────
+            .fullScreenCover(isPresented: $showScanGate) {
+                if currentGuide != nil {
+                    QRScanGateView(
+                        mode: .author,
+                        onSessionReady: {
+                            showScanGate     = false
+                            showPlacementView = true
+                        },
+                        onCancel: {
+                            showScanGate = false
+                        }
+                    )
+                    .environmentObject(settings)
+                    .environmentObject(appState)
+                    .environmentObject(tour)
+                }
+            }
+            // ── Phase 2: AR step placement view ───────────────────────────────
+            .fullScreenCover(isPresented: $showPlacementView) {
+                if let g = currentGuide {
+                    GuideStepPlacementView(guide: g, steps: steps) { updatedSteps in
+                        steps            = updatedSteps
+                        showPlacementView = false
+                    }
+                    .environmentObject(settings)
                 }
             }
         }
@@ -278,11 +356,19 @@ struct StepEditorRow: View {
                     .font(.subheadline)
                     .lineLimit(2)
                 HStack(spacing: 8) {
+                    // AR placement status
+                    if step.isPlaced {
+                        Label("AR", systemImage: "arkit")
+                            .font(.caption2).foregroundStyle(.indigo)
+                    } else {
+                        Label("Not placed", systemImage: "arkit")
+                            .font(.caption2).foregroundStyle(.orange)
+                    }
                     if step.mediaPath != nil {
                         Label("Photo", systemImage: "photo")
                             .font(.caption2).foregroundStyle(.secondary)
                     }
-                    if step.ttsText != nil || step.completionRequired {
+                    if step.ttsText != nil {
                         Label("Voice", systemImage: "waveform")
                             .font(.caption2).foregroundStyle(.secondary)
                     }
@@ -443,6 +529,13 @@ struct EditStepSheet: View {
     @State private var isSaving           = false
     @State private var error:             String? = nil
 
+    // Photo editing state
+    @State private var fetchedPhoto:    UIImage? = nil  // existing photo from server
+    @State private var selectedImage:   UIImage? = nil  // new photo chosen by user
+    @State private var shouldClearPhoto = false          // true → send null to server
+    @State private var showImagePicker  = false
+    @State private var imageSourceType: UIImagePickerController.SourceType = .photoLibrary
+
     var body: some View {
         NavigationStack {
             Form {
@@ -460,6 +553,68 @@ struct EditStepSheet: View {
                             .lineLimit(2...4)
                     }
                     Toggle("Mark complete required", isOn: $completionRequired)
+                }
+
+                // ── Photo editing ─────────────────────────────────────────────
+                Section {
+                    if let newImg = selectedImage {
+                        // User just picked a replacement photo
+                        Image(uiImage: newImg)
+                            .resizable().scaledToFill()
+                            .frame(height: 140).clipped()
+                            .cornerRadius(8)
+                        Button("Remove New Photo", role: .destructive) {
+                            selectedImage   = nil
+                            shouldClearPhoto = false
+                        }
+                    } else if shouldClearPhoto {
+                        Label("Photo will be removed on save", systemImage: "trash")
+                            .font(.caption).foregroundStyle(.orange)
+                        Button("Keep Existing Photo") { shouldClearPhoto = false }
+                            .foregroundStyle(.indigo)
+                    } else if let existing = fetchedPhoto {
+                        // Show existing photo with Replace / Remove options
+                        Image(uiImage: existing)
+                            .resizable().scaledToFill()
+                            .frame(height: 120).clipped()
+                            .cornerRadius(8)
+                        HStack {
+                            Button {
+                                imageSourceType = .camera
+                                showImagePicker = true
+                            } label: {
+                                Label("Replace (Camera)", systemImage: "camera")
+                            }
+                            Spacer()
+                            Button {
+                                imageSourceType = .photoLibrary
+                                showImagePicker = true
+                            } label: {
+                                Label("Replace (Library)", systemImage: "photo.on.rectangle")
+                            }
+                        }
+                        Button("Remove Photo", role: .destructive) {
+                            shouldClearPhoto = true
+                        }
+                    } else {
+                        // No existing photo
+                        Button {
+                            imageSourceType = .camera
+                            showImagePicker = true
+                        } label: {
+                            Label("Take Photo", systemImage: "camera")
+                        }
+                        Button {
+                            imageSourceType = .photoLibrary
+                            showImagePicker = true
+                        } label: {
+                            Label("Choose from Library", systemImage: "photo.on.rectangle")
+                        }
+                    }
+                } header: {
+                    Text("Reference Photo")
+                } footer: {
+                    Text("Shown in the floating panel during the Operator's AR session.")
                 }
 
                 if let err = error {
@@ -485,12 +640,30 @@ struct EditStepSheet: View {
                     Button("Cancel") { dismiss() }
                 }
             }
+            .sheet(isPresented: $showImagePicker) {
+                CameraPickerView(sourceType: imageSourceType) { img in
+                    selectedImage   = img
+                    shouldClearPhoto = false
+                }
+            }
             .onAppear {
                 text               = step.text
                 useTTSOverride     = step.ttsText != nil
                 ttsOverride        = step.ttsText ?? ""
                 completionRequired = step.completionRequired
+                // Fetch existing photo if the step has one
+                if step.mediaPath != nil {
+                    Task { await fetchExistingPhoto() }
+                }
             }
+        }
+    }
+
+    private func fetchExistingPhoto() async {
+        guard let filename = step.mediaPath else { return }
+        let client = SIBClient(settings: settings)
+        if let data = try? await client.fetchGuideStepImage(filename: filename) {
+            fetchedPhoto = UIImage(data: data)
         }
     }
 
@@ -498,11 +671,25 @@ struct EditStepSheet: View {
         isSaving = true
         error    = nil
         let client = SIBClient(settings: settings)
-        let req = UpdateGuideStepRequest(
-            text:               text.trimmingCharacters(in: .whitespaces),
-            ttsText:            useTTSOverride ? ttsOverride.trimmingCharacters(in: .whitespaces) : nil,
-            completionRequired: completionRequired
-        )
+
+        // Use no-arg convenience init — preserves synthesized memberwise init
+        // (partial memberwise calls won't compile; no-arg + property assignment is the pattern)
+        var req = UpdateGuideStepRequest()
+        req.text               = text.trimmingCharacters(in: .whitespaces)
+        req.ttsText            = useTTSOverride ? ttsOverride.trimmingCharacters(in: .whitespaces) : nil
+        req.completionRequired = completionRequired
+
+        // Media update logic:
+        //   ""      (empty string sentinel) → server interprets as "clear existing photo"
+        //   base64  (non-empty string)      → server saves new photo
+        //   nil key absent from JSON        → server keeps existing (encodeIfPresent omits nil)
+        if shouldClearPhoto {
+            req.mediaBase64 = ""    // sentinel: empty string → clear on server
+        } else if let img = selectedImage {
+            req.mediaBase64 = img.jpegData(compressionQuality: 0.65)?.base64EncodedString()
+        }
+        // else: req.mediaBase64 stays nil → key omitted from JSON → server keeps existing
+
         do {
             _ = try await client.updateGuideStep(guideId: guide.id, stepId: step.id, req: req)
             dismiss()

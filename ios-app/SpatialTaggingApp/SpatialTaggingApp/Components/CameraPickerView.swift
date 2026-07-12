@@ -7,7 +7,6 @@ import SwiftUI
 
 struct CameraPickerView: UIViewControllerRepresentable {
 
-    var sourceType: UIImagePickerController.SourceType = .camera
     let onImageCaptured: (UIImage) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -15,16 +14,12 @@ struct CameraPickerView: UIViewControllerRepresentable {
     func makeCoordinator() -> Coordinator { Coordinator(self) }
 
     func makeUIViewController(context: Context) -> UIImagePickerController {
-        let picker        = UIImagePickerController()
-        // Honour the requested source type; fall back to photo library if camera unavailable
-        // (e.g. Simulator) or if the caller already requested the library.
-        picker.sourceType = (sourceType == .camera && UIImagePickerController.isSourceTypeAvailable(.camera))
+        let picker           = UIImagePickerController()
+        picker.sourceType    = UIImagePickerController.isSourceTypeAvailable(.camera)
             ? .camera
-            : .photoLibrary
-        if picker.sourceType == .camera {
-            picker.cameraCaptureMode = .photo
-        }
-        picker.delegate   = context.coordinator
+            : .photoLibrary       // Simulator fallback
+        picker.cameraCaptureMode = .photo
+        picker.delegate      = context.coordinator
         return picker
     }
 
