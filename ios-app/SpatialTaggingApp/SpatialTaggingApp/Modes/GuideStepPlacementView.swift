@@ -35,8 +35,13 @@ struct GuideStepPlacementView: View {
     @State private var stepNodes: [String: SCNNode] = [:]
 
     // ── Save state ────────────────────────────────────────────────────────────
-    @State private var isSaving:  Bool    = false
-    @State private var saveError: String? = nil
+    @State private var isSaving:          Bool    = false
+    @State private var saveError:         String? = nil
+    @State private var lastSaveSucceeded: Bool    = false   // drives "Saved ✓" flash
+
+    // ── 3D focus ring (surface-tracking crosshair, same as Author/Gemba modes) ─
+    @State private var focusRing: ARFocusRing? = nil
+    private let crosshairTicker = Timer.publish(every: 0.10, on: .main, in: .common).autoconnect()
 
     // ── UX ────────────────────────────────────────────────────────────────────
     @State private var showTapHint: Bool = true
@@ -57,8 +62,13 @@ struct GuideStepPlacementView: View {
                     arManager.startSession()
                     arManager.disableQRScanning()
                     initFromExistingPositions()
+                    focusRing = ARFocusRing(sceneView: arManager.sceneView)
                 }
-                .onDisappear { arManager.pauseSession() }
+                .onDisappear {
+                    focusRing?.cleanup()
+                    focusRing = nil
+                    arManager.pauseSession()
+                }
 
             // First-tap hint (auto-hides after 5 s or first placement)
             if showTapHint && stepPositions.isEmpty {
@@ -83,6 +93,9 @@ struct GuideStepPlacementView: View {
             // Auto-hide tap hint after 5 seconds
             try? await Task.sleep(nanoseconds: 5_000_000_000)
             withAnimation { showTapHint = false }
+        }
+        .onReceive(crosshairTicker) { _ in
+            focusRing?.update(sceneView: arManager.sceneView)
         }
     }
 
@@ -237,18 +250,32 @@ struct GuideStepPlacementView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                // Save button
-                Button { Task { await save() } } label: {
-                    Label(placedCount == steps.count ? "Save & Done" : "Save",
-                          systemImage: "checkmark.circle.fill")
-                        .font(.subheadline.bold())
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                        .background(placedCount == 0 ? Color.gray.opacity(0.6) : Color.indigo)
-                        .foregroundStyle(.white)
-                        .clipShape(Capsule())
+                // Save (stay in view) + Done (save & exit) buttons
+                HStack(spacing: 8) {
+                    Button { Task { await savePins() } } label: {
+                        Text(lastSaveSucceeded ? "Saved ✓" : "Save")
+                            .font(.subheadline.bold())
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .background(placedCount == 0
+                                        ? Color.gray.opacity(0.5)
+                                        : (lastSaveSucceeded ? Color.green.opacity(0.8) : Color.indigo.opacity(0.8)))
+                            .foregroundStyle(.white)
+                            .clipShape(Capsule())
+                    }
+                    .disabled(placedCount == 0 || isSaving)
+
+                    Button { Task { await saveAndExit() } } label: {
+                        Label("Done", systemImage: "checkmark.circle.fill")
+                            .font(.subheadline.bold())
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 10)
+                            .background(placedCount == 0 ? Color.gray.opacity(0.5) : Color.indigo)
+                            .foregroundStyle(.white)
+                            .clipShape(Capsule())
+                    }
+                    .disabled(placedCount == 0 || isSaving)
                 }
-                .disabled(placedCount == 0 || isSaving)
             }
             .padding(.horizontal, 16)
             .padding(.top, 12)
@@ -260,14 +287,18 @@ struct GuideStepPlacementView: View {
 
     // ── Saving overlay ────────────────────────────────────────────────────────
 
+    @State private var savingIsExit: Bool = false   // true when Done (not Save) triggered overlay
+
     private var savingOverlay: some View {
         ZStack {
             Color.black.opacity(0.55).ignoresSafeArea()
             VStack(spacing: 14) {
                 ProgressView().scaleEffect(1.3).tint(.white)
-                Text("Saving positions…")
+                Text(savingIsExit ? "Saving…" : "Saving positions…")
                     .font(.headline).foregroundStyle(.white)
-                Text("Uploading \(placedCount) pin\(placedCount == 1 ? "" : "s") + world map")
+                Text(savingIsExit
+                     ? "Uploading \(placedCount) pin\(placedCount == 1 ? "" : "s") + world map"
+                     : "Updating \(placedCount) pin\(placedCount == 1 ? "" : "s") on server")
                     .font(.caption).foregroundStyle(.white.opacity(0.6))
             }
         }
@@ -504,23 +535,13 @@ struct GuideStepPlacementView: View {
         }
     }
 
-    // ── Save ──────────────────────────────────────────────────────────────────
+    // ── Save helpers ──────────────────────────────────────────────────────────
 
+    /// PATCH each step whose position changed from the server value.
+    /// Returns (updatedSteps, errorMessages).
     @MainActor
-    private func save() async {
-        guard placedCount > 0 else { return }
-        isSaving  = true
-        saveError = nil
-
+    private func patchChangedPositions() async -> (updated: [GuideStep], errors: [String]) {
         let client = SIBClient(settings: settings)
-
-        // 1. Capture reference photo (AR scene view with numbered pins)
-        let photoData: Data? = arManager.sceneView.snapshot().jpegData(compressionQuality: 0.72)
-
-        // 2. Serialise ARWorldMap
-        let mapData = await arManager.saveCurrentWorldMap()
-
-        // 3. PATCH position for each step whose position changed from the server value
         var updatedSteps = steps
         var errors: [String] = []
 
@@ -551,9 +572,61 @@ struct GuideStepPlacementView: View {
                 errors.append("Step \(step.sequenceNumber): \(error.localizedDescription)")
             }
         }
+        return (updatedSteps, errors)
+    }
 
-        // 4. Upload ARWorldMap (non-fatal — Operator can still navigate without it,
-        //    positions will just be in a potentially drifted coordinate frame)
+    // ── Save (stay in view) ───────────────────────────────────────────────────
+    //
+    // Persists all currently-placed step positions to SIB without uploading
+    // the ARWorldMap.  The Author can tap Save multiple times as they place
+    // more pins, then hit Done when finished.
+
+    @MainActor
+    private func savePins() async {
+        guard placedCount > 0 else { return }
+        isSaving       = true
+        savingIsExit   = false
+        saveError      = nil
+        lastSaveSucceeded = false
+
+        let (_, errors) = await patchChangedPositions()
+
+        isSaving = false
+
+        if errors.isEmpty {
+            withAnimation { lastSaveSucceeded = true }
+            // Brief "Saved ✓" flash, then reset
+            Task {
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                withAnimation { lastSaveSucceeded = false }
+            }
+        } else {
+            saveError = "Save incomplete — " + errors.joined(separator: "; ")
+        }
+    }
+
+    // ── Done (save + upload worldmap + exit) ──────────────────────────────────
+    //
+    // Persists step positions AND uploads the ARWorldMap + reference photo,
+    // then returns to the guide editor with the freshly updated steps.
+
+    @MainActor
+    private func saveAndExit() async {
+        guard placedCount > 0 else { return }
+        isSaving     = true
+        savingIsExit = true
+        saveError    = nil
+
+        let client = SIBClient(settings: settings)
+
+        // 1. Capture reference photo + serialise ARWorldMap
+        let photoData: Data? = arManager.sceneView.snapshot().jpegData(compressionQuality: 0.72)
+        let mapData = await arManager.saveCurrentWorldMap()
+
+        // 2. PATCH step positions
+        let (updatedSteps, errors) = await patchChangedPositions()
+
+        // 3. Upload ARWorldMap (non-fatal)
         if let mapData {
             do {
                 try await client.uploadGuideWorldMap(

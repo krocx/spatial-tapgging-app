@@ -111,7 +111,12 @@ struct GuideListView: View {
                     showScanGate = false
                     if let guide = pendingGuide, !guideSteps.isEmpty {
                         selectedGuide = guide
-                        showSession   = true
+                        // Delay so the QR gate's dismiss animation completes before the
+                        // session cover appears — iOS cannot animate two modal transitions
+                        // simultaneously and shows a blank white screen if we don't wait.
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
+                            showSession = true
+                        }
                     }
                 },
                 onCancel: {
