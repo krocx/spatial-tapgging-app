@@ -104,22 +104,26 @@ struct GuideListView: View {
                 .environmentObject(tour)
         }
         // ── Operator: QR scan gate before session ─────────────────────────────
-        .fullScreenCover(isPresented: $showScanGate) {
+        // onDismiss fires after the dismiss animation fully completes, which is
+        // the only reliable place to present the next fullScreenCover.  Using
+        // asyncAfter is not reliable because its offset is relative to the state
+        // change, not the end of the modal animation.
+        .fullScreenCover(isPresented: $showScanGate, onDismiss: {
+            if selectedGuide != nil {
+                showSession = true
+            }
+        }) {
             QRScanGateView(
                 mode: .operator,
                 onSessionReady: {
-                    showScanGate = false
+                    // Set session data before dismissing so onDismiss finds it.
                     if let guide = pendingGuide, !guideSteps.isEmpty {
                         selectedGuide = guide
-                        // Delay so the QR gate's dismiss animation completes before the
-                        // session cover appears — iOS cannot animate two modal transitions
-                        // simultaneously and shows a blank white screen if we don't wait.
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) {
-                            showSession = true
-                        }
                     }
+                    showScanGate = false
                 },
                 onCancel: {
+                    selectedGuide = nil   // clear any stale state from a prior session
                     showScanGate  = false
                     pendingGuide  = nil
                 }
