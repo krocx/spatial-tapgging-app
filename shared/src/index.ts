@@ -556,7 +556,8 @@ export interface GuideStep {
   guideId:            string;
   anchorId:           string;      // denormalised for efficient anchor-scoped queries
   sequenceNumber:     number;
-  text:               string;      // instruction shown in the floating panel
+  title?:             string;      // short display title (pill header + card header); falls back to "Step N"
+  text:               string;      // description shown in the expanded floating panel
   ttsText?:           string;      // override for voice synthesis — defaults to text
   mediaType?:         GuideStepMediaType;
   mediaPath?:         string;      // filename on SIB step-image store
@@ -573,6 +574,7 @@ export interface GuideStep {
 
 export type CreateGuideStepRequest = {
   sequenceNumber:      number;
+  title?:              string;     // optional short title — falls back to "Step N" when absent
   text:                string;
   ttsText?:            string;
   mediaType?:          GuideStepMediaType;
@@ -583,6 +585,7 @@ export type CreateGuideStepRequest = {
 
 export type UpdateGuideStepRequest = {
   sequenceNumber?:     number;
+  title?:              string;     // pass empty string to clear title (revert to "Step N" fallback)
   text?:               string;
   ttsText?:            string;
   completionRequired?: boolean;

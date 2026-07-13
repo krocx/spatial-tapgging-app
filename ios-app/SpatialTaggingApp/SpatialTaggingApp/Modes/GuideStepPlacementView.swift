@@ -205,7 +205,7 @@ struct GuideStepPlacementView: View {
                 }
             }
 
-            Text(step.text)
+            Text(step.displayTitle)
                 .font(.system(size: 9))
                 .foregroundStyle(isActive ? .white : .white.opacity(0.55))
                 .lineLimit(2)
@@ -243,9 +243,14 @@ struct GuideStepPlacementView: View {
                         let s = steps[activeStepIndex]
                         Text("Tap to place step \(s.sequenceNumber):")
                             .font(.caption2).foregroundStyle(.white.opacity(0.55))
-                        Text(s.text)
-                            .font(.caption).foregroundStyle(.white)
-                            .lineLimit(2)
+                        Text(s.displayTitle)
+                            .font(.caption.bold()).foregroundStyle(.white)
+                            .lineLimit(1)
+                        if s.title != nil {
+                            Text(s.text)
+                                .font(.caption).foregroundStyle(.white.opacity(0.7))
+                                .lineLimit(1)
+                        }
                     } else {
                         Text("All steps placed")
                             .font(.subheadline.bold()).foregroundStyle(.green)
@@ -343,6 +348,20 @@ struct GuideStepPlacementView: View {
                 stepNodes[step.id] = node
             }
         }
+
+        // Resume scenario — when all steps are already placed from the server, the
+        // tap-handler condition that captures firstStepPhotoData never fires.
+        // Capture a reference snapshot after a 2 s AR-tracking warm-up so the
+        // Operator ghost overlay always has a valid starting-point image.
+        if steps.allSatisfy({ $0.worldPosition != nil }) {
+            Task {
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                if firstStepPhotoData == nil {
+                    firstStepPhotoData = arManager.sceneView.snapshot()
+                        .jpegData(compressionQuality: 0.72)
+                }
+            }
+        }
     }
 
     // ── Activate a step for (re-)placement ────────────────────────────────────
@@ -410,10 +429,12 @@ struct GuideStepPlacementView: View {
         let stepId  = step.id
         let stepSeq = step.sequenceNumber
 
-        // Capture reference photo the first time Step 1 is placed.
-        // This photo is uploaded as the relocalization ghost so Operators see the
-        // correct starting-point view — NOT wherever the Author is standing at Done.
-        if activeStepIndex == 0 && firstStepPhotoData == nil && stepPositions[stepId] == nil {
+        // Always (re-)capture the reference photo whenever Step 1 is placed.
+        // This records the correct starting-point vantage for the Operator ghost
+        // overlay — NOT wherever the Author was standing when they tapped Done.
+        // Re-capturing on each re-placement of Step 1 keeps it fresh if the Author
+        // moves the pin to a better position.
+        if activeStepIndex == 0 {
             firstStepPhotoData = arManager.sceneView.snapshot().jpegData(compressionQuality: 0.72)
         }
 

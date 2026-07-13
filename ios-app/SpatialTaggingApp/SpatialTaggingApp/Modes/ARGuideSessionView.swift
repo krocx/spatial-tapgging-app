@@ -86,6 +86,11 @@ struct ARGuideSessionView: View {
     // ── Sign-off ──────────────────────────────────────────────────────────────
     @State private var showSignOff = false
 
+    // ── Panel visibility toggle ───────────────────────────────────────────────
+    /// When false (default), only the current step's panel is shown.
+    /// When true, all steps' panels are visible simultaneously.
+    @State private var showAllPanels: Bool = false
+
     // ── Evidence capture (Phase 3) ────────────────────────────────────────────
     @State private var showEvidencePicker      = false
     @State private var evidencePickerStepIndex: Int? = nil
@@ -234,9 +239,24 @@ struct ARGuideSessionView: View {
             Spacer()
 
             if case .navigating(let index) = phase {
-                Text("\(index + 1) / \(sortedSteps.count)")
-                    .font(.subheadline.monospacedDigit())
-                    .foregroundStyle(.white.opacity(0.7))
+                HStack(spacing: 10) {
+                    Text("\(index + 1) / \(sortedSteps.count)")
+                        .font(.subheadline.monospacedDigit())
+                        .foregroundStyle(.white.opacity(0.7))
+
+                    // Panel visibility toggle: eye = show all, eye.slash = current only
+                    Button {
+                        showAllPanels.toggle()
+                        updatePanelVisibility()
+                    } label: {
+                        Image(systemName: showAllPanels ? "eye.fill" : "eye.slash")
+                            .font(.system(size: 16))
+                            .foregroundStyle(showAllPanels
+                                             ? Color.white
+                                             : Color.white.opacity(0.45))
+                    }
+                    .buttonStyle(.plain)
+                }
             }
         }
         .padding(.horizontal, 16)
@@ -420,9 +440,14 @@ struct ARGuideSessionView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Step \(step.sequenceNumber) of \(sortedSteps.count)")
                         .font(.caption.bold()).foregroundStyle(.white.opacity(0.55))
-                    Text(step.text)
-                        .font(.subheadline).foregroundStyle(.white)
-                        .lineLimit(2)
+                    Text(step.displayTitle)
+                        .font(.subheadline.bold()).foregroundStyle(.white)
+                        .lineLimit(1)
+                    if step.title != nil {
+                        Text(step.text)
+                            .font(.caption).foregroundStyle(.white.opacity(0.65))
+                            .lineLimit(1)
+                    }
                 }
                 Spacer()
                 VStack(spacing: 4) {
@@ -533,6 +558,8 @@ struct ARGuideSessionView: View {
             for step in sortedSteps where stepImages[step.id] != nil {
                 refreshPanelTextures(stepId: step.id)
             }
+            // Apply initial panel visibility: show only step 0, hide the rest.
+            updatePanelVisibility(currentIndex: 0)
         }
     }
 
@@ -782,7 +809,7 @@ struct ARGuideSessionView: View {
                                     y: badgeR.midY - numSz.height/2),
                         withAttributes: numAttrs)
 
-            // ── Title (center-aligned in middle zone) ─────────────────────────
+            // ── Title (center-aligned in middle zone) — use displayTitle ─────
             let titlePara = NSMutableParagraphStyle()
             titlePara.alignment     = .center
             titlePara.lineBreakMode = .byTruncatingTail
@@ -791,9 +818,9 @@ struct ARGuideSessionView: View {
                 .foregroundColor: UIColor.white,
                 .paragraphStyle:  titlePara,
             ]
-            // Middle zone: badge right edge = 72, audio left edge = 348 → width 276
+            // Middle zone: badge right edge ≈ 72, audio left edge = 348 → width 268
             let titleR = CGRect(x: 80, y: 8, width: 260, height: H - 16)
-            (step.text as NSString).draw(with: titleR,
+            (step.displayTitle as NSString).draw(with: titleR,
                 options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine],
                 attributes: titleAttrs,
                 context: nil)
@@ -849,9 +876,9 @@ struct ARGuideSessionView: View {
             UIColor(white: 0.09, alpha: 1.0).setFill()
             UIBezierPath(roundedRect: r, cornerRadius: 24).fill()
 
-            // ── Header row ────────────────────────────────────────────────────
-            // Badge
-            let badgeR = CGRect(x: 14, y: 14, width: 46, height: 46)
+            // ── Header row (0–76 pt) ──────────────────────────────────────────
+            // Badge: 44×44 circle, vertically centred in 76-pt header zone (y=16)
+            let badgeR = CGRect(x: 14, y: 16, width: 44, height: 44)
             (isCompleted ? UIColor.systemGreen : UIColor.systemIndigo).setFill()
             UIBezierPath(ovalIn: badgeR).fill()
             if isCompleted {
@@ -859,7 +886,10 @@ struct ARGuideSessionView: View {
                     .font:            UIFont.boldSystemFont(ofSize: 22),
                     .foregroundColor: UIColor.white,
                 ]
-                ("✓" as NSString).draw(at: CGPoint(x: 23, y: 21), withAttributes: ckAttrs)
+                let ckSz = ("✓" as NSString).size(withAttributes: ckAttrs)
+                ("✓" as NSString).draw(at: CGPoint(x: badgeR.midX - ckSz.width/2,
+                                                    y: badgeR.midY - ckSz.height/2),
+                                        withAttributes: ckAttrs)
             } else {
                 let numStr   = "\(step.sequenceNumber)" as NSString
                 let numAttrs: [NSAttributedString.Key: Any] = [
@@ -872,44 +902,57 @@ struct ARGuideSessionView: View {
                             withAttributes: numAttrs)
             }
 
-            // Step label — at top of header zone, small caption size
+            // Right-of-badge zone: step counter (caption) + display title (subheadline)
+            // Vertically stacked and centred in the 76pt header.
+            // Counter: 10pt → ~13pt high; title: 16pt → ~20pt high; gap: 3pt → total ≈ 36pt.
+            // Centre the pair: headerMid = 38, offset = 38 - 18 = 20 → counter at y=20, title at y=36.
+            let headerMid: CGFloat = 38    // visual centre of header zone
             let stepLabelAttrs: [NSAttributedString.Key: Any] = [
                 .font:            UIFont.systemFont(ofSize: 10, weight: .semibold),
                 .foregroundColor: UIColor.white.withAlphaComponent(0.50),
             ]
-            ("Step \(index + 1) of \(sortedSteps.count)" as NSString)
-                .draw(at: CGPoint(x: 70, y: 16), withAttributes: stepLabelAttrs)
+            let stepLblStr = "Step \(index + 1) of \(sortedSteps.count)" as NSString
+            let stepLblSz  = stepLblStr.size(withAttributes: stepLabelAttrs)
+            let titleFont  = UIFont.systemFont(ofSize: 16, weight: .semibold)
+            let titleH: CGFloat = titleFont.lineHeight    // ≈ 20pt
+            let blockH  = stepLblSz.height + 3 + titleH
+            let blockY  = headerMid - blockH / 2
+            stepLblStr.draw(at: CGPoint(x: 70, y: blockY), withAttributes: stepLabelAttrs)
 
-            // Title — below step label with a clear gap (step label ends at ~29 pt)
+            // Display title uses displayTitle (title field if set, else "Step N")
             let titleLinePara = NSMutableParagraphStyle()
             titleLinePara.lineBreakMode = .byTruncatingTail
             let titleAttrs: [NSAttributedString.Key: Any] = [
-                .font:            UIFont.systemFont(ofSize: 15, weight: .semibold),
+                .font:            titleFont,
                 .foregroundColor: UIColor.white,
                 .paragraphStyle:  titleLinePara,
             ]
-            let titleR = CGRect(x: 70, y: 34, width: W - 130, height: 30)
-            (step.text as NSString).draw(with: titleR,
+            let titleY = blockY + stepLblSz.height + 3
+            let titleR = CGRect(x: 70, y: titleY, width: W - 130, height: titleH + 4)
+            (step.displayTitle as NSString).draw(with: titleR,
                 options: .truncatesLastVisibleLine,
                 attributes: titleAttrs,
                 context: nil)
 
-            // Minimize chevron (top-right)
+            // Minimize chevron (top-right, vertically centred in header)
             let minAttrs: [NSAttributedString.Key: Any] = [
                 .font:            UIFont.systemFont(ofSize: 16, weight: .medium),
                 .foregroundColor: UIColor.white.withAlphaComponent(0.45),
             ]
-            ("–" as NSString).draw(at: CGPoint(x: W - 34, y: 24), withAttributes: minAttrs)
+            let minStr  = "–" as NSString
+            let minSz   = minStr.size(withAttributes: minAttrs)
+            minStr.draw(at: CGPoint(x: W - 14 - minSz.width, y: headerMid - minSz.height/2),
+                        withAttributes: minAttrs)
 
             // ── Divider ───────────────────────────────────────────────────────
             UIColor.white.withAlphaComponent(0.12).setStroke()
             let divPath = UIBezierPath()
-            divPath.move(to: CGPoint(x: 14, y: 72))
-            divPath.addLine(to: CGPoint(x: W - 14, y: 72))
+            divPath.move(to: CGPoint(x: 14, y: 76))
+            divPath.addLine(to: CGPoint(x: W - 14, y: 76))
             divPath.lineWidth = 1
             divPath.stroke()
 
-            // ── Description (center-aligned) ──────────────────────────────────
+            // ── Description body (step.text) — centered, below header ─────────
             let descPara = NSMutableParagraphStyle()
             descPara.alignment = .center
             let descAttrs: [NSAttributedString.Key: Any] = [
@@ -917,7 +960,7 @@ struct ARGuideSessionView: View {
                 .foregroundColor: UIColor.white.withAlphaComponent(0.88),
                 .paragraphStyle:  descPara,
             ]
-            let descR = CGRect(x: 14, y: 82, width: W - 28, height: 140)
+            let descR = CGRect(x: 14, y: 86, width: W - 28, height: 134)
             (step.text as NSString).draw(with: descR,
                 options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine],
                 attributes: descAttrs,
@@ -1009,51 +1052,51 @@ struct ARGuideSessionView: View {
                 (String(format: "%.1f m", d) as NSString).draw(at: CGPoint(x: 130, y: barY + 22), withAttributes: dAttrs)
             }
 
-            // Primary action button (right side)
-            let btnX: CGFloat = W - 170
-            let btnR  = CGRect(x: btnX, y: barY + 10, width: 156, height: 52)
+            // Primary action button (right side) — pill shape, properly centred text
+            // Width 148pt to avoid the "stretched" look on a 512pt canvas.
+            let btnX: CGFloat = W - 158
+            let btnR  = CGRect(x: btnX, y: barY + 12, width: 144, height: 48)
+            let btnCorner: CGFloat = 24   // full pill radius
+
+            func drawCenteredLabel(_ text: String, attrs: [NSAttributedString.Key: Any], in rect: CGRect) {
+                let str = text as NSString
+                let sz  = str.size(withAttributes: attrs)
+                str.draw(at: CGPoint(x: rect.midX - sz.width/2, y: rect.midY - sz.height/2),
+                         withAttributes: attrs)
+            }
+
             if isLastStep && allRequiredDone {
                 UIColor.systemGreen.setFill()
-                UIBezierPath(roundedRect: btnR, cornerRadius: 12).fill()
+                UIBezierPath(roundedRect: btnR, cornerRadius: btnCorner).fill()
                 let btnAttrs: [NSAttributedString.Key: Any] = [
                     .font:            UIFont.boldSystemFont(ofSize: 14),
                     .foregroundColor: UIColor.white,
                 ]
-                let lbl = "✎ Sign Off" as NSString
-                let lSz = lbl.size(withAttributes: btnAttrs)
-                lbl.draw(at: CGPoint(x: btnR.midX - lSz.width/2,
-                                     y: btnR.midY - lSz.height/2),
-                         withAttributes: btnAttrs)
+                drawCenteredLabel("✎  Sign Off", attrs: btnAttrs, in: btnR)
             } else if isCompleted {
                 UIColor.systemGreen.withAlphaComponent(0.2).setFill()
-                UIBezierPath(roundedRect: btnR, cornerRadius: 12).fill()
+                UIBezierPath(roundedRect: btnR, cornerRadius: btnCorner).fill()
                 let btnAttrs: [NSAttributedString.Key: Any] = [
                     .font:            UIFont.boldSystemFont(ofSize: 14),
                     .foregroundColor: UIColor.systemGreen,
                 ]
-                ("✓ Completed" as NSString).draw(
-                    at: CGPoint(x: btnR.midX - 52, y: btnR.midY - 10),
-                    withAttributes: btnAttrs)
+                drawCenteredLabel("✓  Completed", attrs: btnAttrs, in: btnR)
             } else if step.completionRequired {
                 UIColor.systemIndigo.setFill()
-                UIBezierPath(roundedRect: btnR, cornerRadius: 12).fill()
+                UIBezierPath(roundedRect: btnR, cornerRadius: btnCorner).fill()
                 let btnAttrs: [NSAttributedString.Key: Any] = [
                     .font:            UIFont.boldSystemFont(ofSize: 14),
                     .foregroundColor: UIColor.white,
                 ]
-                ("✓ Mark Complete" as NSString).draw(
-                    at: CGPoint(x: btnR.midX - 66, y: btnR.midY - 10),
-                    withAttributes: btnAttrs)
+                drawCenteredLabel("✓  Mark Complete", attrs: btnAttrs, in: btnR)
             } else {
-                UIColor.white.withAlphaComponent(0.1).setFill()
-                UIBezierPath(roundedRect: btnR, cornerRadius: 12).fill()
+                UIColor.white.withAlphaComponent(0.12).setFill()
+                UIBezierPath(roundedRect: btnR, cornerRadius: btnCorner).fill()
                 let btnAttrs: [NSAttributedString.Key: Any] = [
                     .font:            UIFont.systemFont(ofSize: 14),
-                    .foregroundColor: UIColor.white.withAlphaComponent(0.55),
+                    .foregroundColor: UIColor.white.withAlphaComponent(0.6),
                 ]
-                ("→ Next Step" as NSString).draw(
-                    at: CGPoint(x: btnR.midX - 48, y: btnR.midY - 10),
-                    withAttributes: btnAttrs)
+                drawCenteredLabel("→  Next Step", attrs: btnAttrs, in: btnR)
             }
         }
     }
@@ -1281,6 +1324,22 @@ struct ARGuideSessionView: View {
         if sortedSteps[index].worldPosition == nil { showContentPanel = true }
         let step = sortedSteps[index]
         if stepImages[step.id] == nil { Task { await loadStepImage(for: step) } }
+        updatePanelVisibility(currentIndex: index)
+    }
+
+    /// Shows only the current step's panel (default) or all panels (when showAllPanels = true).
+    /// Panels for non-current steps are hidden to reduce visual clutter in the AR scene.
+    private func updatePanelVisibility(currentIndex: Int? = nil) {
+        guard case .navigating(let activeIndex) = phase else { return }
+        let idx = currentIndex ?? activeIndex
+        for (i, step) in sortedSteps.enumerated() {
+            guard let container = panelContainers[step.id] else { continue }
+            let shouldShow = showAllPanels || i == idx
+            SCNTransaction.begin()
+            SCNTransaction.animationDuration = 0.2
+            container.isHidden = !shouldShow
+            SCNTransaction.commit()
+        }
     }
 
     private func markComplete(at index: Int) {
@@ -1403,6 +1462,10 @@ struct GuideContentPanel: View {
                     Text("Step \(stepNumber) of \(totalSteps)")
                         .font(.caption.bold())
                         .foregroundStyle(.secondary)
+                    Text(step.displayTitle)
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
                     if step.completionRequired {
                         Label("Completion required", systemImage: "exclamationmark.circle.fill")
                             .font(.system(size: 9, weight: .medium))
@@ -1444,7 +1507,7 @@ struct GuideContentPanel: View {
 
             Divider().padding(.horizontal, 16)
 
-            // ── Step text + reference + evidence ──────────────────────────────
+            // ── Step description + reference + evidence ────────────────────────
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     Text(step.text)

@@ -70,7 +70,8 @@ struct GuideStep: Codable, Identifiable, Equatable {
     let guideId:            String
     let anchorId:           String
     let sequenceNumber:     Int
-    let text:               String
+    let title:              String?   // Short display title; nil → fallback to "Step N"
+    let text:               String    // Description shown in the expanded panel body
     let ttsText:            String?
     let mediaType:          GuideStepMediaType?
     let mediaPath:          String?
@@ -86,6 +87,10 @@ struct GuideStep: Codable, Identifiable, Equatable {
 
     /// Effective voice text: ttsText if set, else falls back to the instruction text.
     var effectiveTTSText: String { ttsText ?? text }
+
+    /// Display title for pill headers and card headers.
+    /// Uses the explicit title if provided, otherwise "Step N" as a safe fallback.
+    var displayTitle: String { title?.isEmpty == false ? title! : "Step \(sequenceNumber)" }
 
     /// ARKit world-space position, or nil if the step has not been placed in AR yet.
     var worldPosition: simd_float3? {
@@ -103,6 +108,7 @@ struct GuideStep: Codable, Identifiable, Equatable {
         guideId            = try c.decode(String.self,              forKey: .guideId)
         anchorId           = try c.decode(String.self,              forKey: .anchorId)
         sequenceNumber     = try c.decode(Int.self,                 forKey: .sequenceNumber)
+        title              = try c.decodeIfPresent(String.self,             forKey: .title)
         text               = try c.decode(String.self,              forKey: .text)
         ttsText            = try c.decodeIfPresent(String.self,             forKey: .ttsText)
         mediaType          = try c.decodeIfPresent(GuideStepMediaType.self, forKey: .mediaType)
@@ -122,6 +128,7 @@ struct GuideStep: Codable, Identifiable, Equatable {
 /// Request body for POST /guides/:id/steps.
 struct CreateGuideStepRequest: Codable {
     let sequenceNumber:     Int
+    let title:              String?    // optional short header; server falls back to "Step N" when absent
     let text:               String
     let ttsText:            String?
     let mediaType:          GuideStepMediaType?
@@ -131,12 +138,14 @@ struct CreateGuideStepRequest: Codable {
     /// Convenience init — accepts a UIImage directly and encodes it.
     init(
         sequenceNumber:     Int,
+        title:              String?     = nil,
         text:               String,
         ttsText:            String?     = nil,
         image:              UIImage?    = nil,
         completionRequired: Bool        = true
     ) {
         self.sequenceNumber     = sequenceNumber
+        self.title              = title?.isEmpty == true ? nil : title
         self.text               = text
         self.ttsText            = ttsText?.isEmpty == true ? nil : ttsText
         self.mediaType          = image != nil ? .image : nil
@@ -159,6 +168,7 @@ struct CreateGuideStepRequest: Codable {
 /// to nil to clear; use "" (empty string sentinel) instead.
 struct UpdateGuideStepRequest: Codable {
     var sequenceNumber:     Int?
+    var title:              String?    // send "" to clear (revert to "Step N" fallback)
     var text:               String?
     var ttsText:            String?
     var completionRequired: Bool?

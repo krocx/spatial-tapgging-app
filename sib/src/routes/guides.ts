@@ -277,6 +277,7 @@ router.post('/:id/steps', (req: Request, res: Response): void => {
     guideId:            guide.id,
     anchorId:           guide.anchorId,
     sequenceNumber:     body.sequenceNumber,
+    title:              body.title?.trim() || undefined,
     text:               body.text.trim(),
     ttsText:            body.ttsText?.trim(),
     mediaType:          body.mediaType,
@@ -353,6 +354,7 @@ router.patch('/:id/steps/:stepId', (req: Request, res: Response): void => {
   const updated: GuideStep = {
     ...step,
     sequenceNumber:     body.sequenceNumber     ?? step.sequenceNumber,
+    title:              'title' in body ? (body.title?.trim() || undefined) : step.title,
     text:               body.text?.trim()       ?? step.text,
     ttsText:            'ttsText' in body       ? body.ttsText?.trim() : step.ttsText,
     completionRequired: body.completionRequired ?? step.completionRequired,

@@ -380,8 +380,12 @@ struct StepEditorRow: View {
             }
 
             VStack(alignment: .leading, spacing: 3) {
+                Text(step.displayTitle)
+                    .font(.subheadline.bold())
+                    .lineLimit(1)
                 Text(step.text)
-                    .font(.subheadline)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                     .lineLimit(2)
                 HStack(spacing: 8) {
                     // AR placement status
@@ -429,6 +433,7 @@ struct AddStepSheet: View {
     @EnvironmentObject private var settings: AppSettings
     @Environment(\.dismiss) private var dismiss
 
+    @State private var stepTitle          = ""
     @State private var text               = ""
     @State private var ttsOverride        = ""
     @State private var useTTSOverride     = false
@@ -443,12 +448,21 @@ struct AddStepSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Step instruction", text: $text, axis: .vertical)
+                    TextField("e.g. Check oil level", text: $stepTitle)
+                        .autocorrectionDisabled()
+                } header: {
+                    Text("Step \(nextSequence) — Title (optional)")
+                } footer: {
+                    Text("Short label shown on the 3D floating panel header and pilot tab. Defaults to \"Step \(nextSequence)\" when left blank.")
+                }
+
+                Section {
+                    TextField("Describe what the Operator needs to do…", text: $text, axis: .vertical)
                         .lineLimit(3...6)
                 } header: {
-                    Text("Step \(nextSequence) — Instruction *")
+                    Text("Step \(nextSequence) — Description *")
                 } footer: {
-                    Text("This text appears in the floating panel during the AR session.")
+                    Text("Shown in full when the floating panel is expanded.")
                 }
 
                 Section {
@@ -526,6 +540,7 @@ struct AddStepSheet: View {
         let client = SIBClient(settings: settings)
         let req = CreateGuideStepRequest(
             sequenceNumber:     nextSequence,
+            title:              stepTitle.trimmingCharacters(in: .whitespaces).isEmpty ? nil : stepTitle.trimmingCharacters(in: .whitespaces),
             text:               text.trimmingCharacters(in: .whitespaces),
             ttsText:            useTTSOverride ? ttsOverride.trimmingCharacters(in: .whitespaces) : nil,
             image:              selectedImage,
@@ -550,6 +565,7 @@ struct EditStepSheet: View {
     @EnvironmentObject private var settings: AppSettings
     @Environment(\.dismiss) private var dismiss
 
+    @State private var stepTitle          = ""
     @State private var text               = ""
     @State private var ttsOverride        = ""
     @State private var useTTSOverride     = false
@@ -568,10 +584,19 @@ struct EditStepSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Step instruction", text: $text, axis: .vertical)
+                    TextField("e.g. Check oil level", text: $stepTitle)
+                        .autocorrectionDisabled()
+                } header: {
+                    Text("Step \(step.sequenceNumber) — Title (optional)")
+                } footer: {
+                    Text("Short label on the 3D panel header. Defaults to \"Step \(step.sequenceNumber)\" when blank.")
+                }
+
+                Section {
+                    TextField("Describe what the Operator needs to do…", text: $text, axis: .vertical)
                         .lineLimit(3...6)
                 } header: {
-                    Text("Step \(step.sequenceNumber) — Instruction")
+                    Text("Step \(step.sequenceNumber) — Description")
                 }
 
                 Section {
@@ -675,6 +700,7 @@ struct EditStepSheet: View {
                 }
             }
             .onAppear {
+                stepTitle          = step.title ?? ""
                 text               = step.text
                 useTTSOverride     = step.ttsText != nil
                 ttsOverride        = step.ttsText ?? ""
@@ -703,6 +729,8 @@ struct EditStepSheet: View {
         // Use no-arg convenience init — preserves synthesized memberwise init
         // (partial memberwise calls won't compile; no-arg + property assignment is the pattern)
         var req = UpdateGuideStepRequest()
+        let trimmedTitle       = stepTitle.trimmingCharacters(in: .whitespaces)
+        req.title              = trimmedTitle.isEmpty ? "" : trimmedTitle   // "" clears, non-empty sets
         req.text               = text.trimmingCharacters(in: .whitespaces)
         req.ttsText            = useTTSOverride ? ttsOverride.trimmingCharacters(in: .whitespaces) : nil
         req.completionRequired = completionRequired
