@@ -561,6 +561,12 @@ export interface GuideStep {
   mediaType?:         GuideStepMediaType;
   mediaPath?:         string;      // filename on SIB step-image store
   completionRequired: boolean;     // defaults to true
+  // Phase 2: spatial placement
+  posX?:              number;      // ARKit world-space X (metres, relative to saved ARWorldMap)
+  posY?:              number;
+  posZ?:              number;
+  isPlaced:           boolean;     // true once Author has placed the pin in AR
+  positionSource?:    'tap' | 'cad';  // forward-compat hook: 'tap' = Author placed; 'cad' = imported
   createdAt:          string;
   updatedAt:          string;
 }
@@ -582,6 +588,12 @@ export type UpdateGuideStepRequest = {
   completionRequired?: boolean;
   /** Pass null to clear an attached image. */
   mediaBase64?:        string | null;
+  // Phase 2: spatial placement
+  posX?:               number;
+  posY?:               number;
+  posZ?:               number;
+  isPlaced?:           boolean;
+  positionSource?:     'tap' | 'cad';
 };
 
 /**
@@ -615,11 +627,17 @@ export type UpdateGuideRequest = {
 
 /**
  * Completion record for a single step within a GuideSession.
+ *
+ * evidencePhotoBase64 — iOS sends an optional JPEG encoded as base64. The server
+ * stores it to disk and replaces this field with evidencePhotoPath in the stored
+ * record.  Both fields are optional so sessions without evidence decode cleanly.
  */
 export interface GuideStepCompletion {
-  stepId:          string;
-  completedAt:     string;   // ISO 8601
-  durationSeconds: number;   // time from step entry to checkmark tap
+  stepId:               string;
+  completedAt:          string;   // ISO 8601
+  durationSeconds:      number;   // time from step entry to checkmark tap
+  evidencePhotoBase64?: string;   // request only — base64 JPEG; server strips on receipt
+  evidencePhotoPath?:   string;   // stored only — relative path set by server after save
 }
 
 /**

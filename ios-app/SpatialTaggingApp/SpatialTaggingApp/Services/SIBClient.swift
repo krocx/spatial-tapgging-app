@@ -319,6 +319,137 @@ final class SIBClient {
         return data
     }
 
+    // ── AR OMS — Guides ──────────────────────────────────────────────────────
+
+    /// Fetch guides for an anchor.
+    /// `includeUnpublished: true` → Author view (all guides inc. drafts).
+    /// `includeUnpublished: false` → Operator view (published only).
+    func fetchGuides(anchorId: String, includeUnpublished: Bool = false) async throws -> [ARGuide] {
+        let suffix = includeUnpublished ? "&all=true" : ""
+        return try await get([ARGuide].self, path: "/guides?anchorId=\(anchorId)\(suffix)")
+    }
+
+    /// Author: create a new Guide (always starts as draft — published=false).
+    func createGuide(_ req: CreateARGuideRequest) async throws -> ARGuide {
+        try await post(ARGuide.self, path: "/guides", body: req)
+    }
+
+    /// Author: update Guide name, description, or published flag.
+    func updateGuide(id: String, req: UpdateARGuideRequest) async throws -> ARGuide {
+        try await patch(ARGuide.self, path: "/guides/\(id)", body: req)
+    }
+
+    /// Author: cascade-delete a Guide and all its Steps.
+    func deleteGuide(id: String) async throws {
+        try await delete(path: "/guides/\(id)")
+    }
+
+    // ── AR OMS — Steps ────────────────────────────────────────────────────────
+
+    /// Fetch all steps for a guide, sorted by sequenceNumber (ascending).
+    func fetchGuideSteps(guideId: String) async throws -> [GuideStep] {
+        try await get([GuideStep].self, path: "/guides/\(guideId)/steps")
+    }
+
+    /// Author: add a step to a Guide.
+    /// Use the `CreateGuideStepRequest(image:)` convenience init to include a photo.
+    /// 30s timeout to accommodate base64 image payloads.
+    func createGuideStep(guideId: String, req: CreateGuideStepRequest) async throws -> GuideStep {
+        try await post(GuideStep.self, path: "/guides/\(guideId)/steps", body: req, timeout: 30)
+    }
+
+    /// Author: update a step's text, sequence, or image.
+    func updateGuideStep(guideId: String, stepId: String, req: UpdateGuideStepRequest) async throws -> GuideStep {
+        try await patch(GuideStep.self, path: "/guides/\(guideId)/steps/\(stepId)", body: req)
+    }
+
+    /// Author: delete a single step.
+    func deleteGuideStep(guideId: String, stepId: String) async throws {
+        try await delete(path: "/guides/\(guideId)/steps/\(stepId)")
+    }
+
+    /// Fetch a step's attached image by its stored filename.
+    /// Returns raw JPEG Data — display via UIImage(data:).
+    func fetchGuideStepImage(filename: String) async throws -> Data {
+        let req = try makeRequest(method: "GET", path: "/guides/step-image/\(filename)")
+        let (data, response): (Data, URLResponse)
+        do { (data, response) = try await session.data(for: req) }
+        catch { throw SIBClientError.networkError(error) }
+        if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+            let msg = (try? JSONDecoder().decode(APIError.self, from: data))?.error ?? "HTTP \(http.statusCode)"
+            throw SIBClientError.httpError(http.statusCode, msg)
+        }
+        return data
+    }
+
+    // ── AR OMS — Guide Sessions ───────────────────────────────────────────────
+
+    /// Operator: submit a completed guide session atomically at sign-off.
+    /// The entire session (step completions, duration, signed-off name) is sent in one call.
+    func submitGuideSession(_ req: CreateARGuideSessionRequest) async throws -> ARGuideSession {
+        try await post(ARGuideSession.self, path: "/guide-sessions", body: req)
+    }
+
+    /// Fetch sessions for an anchor or guide (or both).
+    /// Returns records newest-first.
+    func fetchGuideSessions(anchorId: String? = nil, guideId: String? = nil) async throws -> [ARGuideSession] {
+        var parts: [String] = []
+        if let a = anchorId { parts.append("anchorId=\(a)") }
+        if let g = guideId  { parts.append("guideId=\(g)") }
+        let query = parts.joined(separator: "&")
+        return try await get([ARGuideSession].self, path: "/guide-sessions?\(query)")
+    }
+
+    // ── AR OMS — Guide Worldmaps ─────────────────────────────────────────────
+
+    /// Author: upload the ARWorldMap captured during guide step placement.
+    /// Also accepts an optional JPEG reference photo (base64) for Operator re-localization.
+    /// 90s timeout — ARWorldMap blobs can be large.
+    func uploadGuideWorldMap(guideId: String, mapData: Data, referencePhotoData: Data? = nil) async throws {
+        struct Body: Encodable {
+            let worldMapBase64:        String
+            let capturedAt:            String
+            let referencePhotoBase64:  String?
+        }
+        struct Resp: Decodable { let guideId: String; let sizeBytes: Int; let refPhotoSaved: Bool }
+        let body = Body(
+            worldMapBase64:       mapData.base64EncodedString(),
+            capturedAt:           ISO8601DateFormatter().string(from: Date()),
+            referencePhotoBase64: referencePhotoData?.base64EncodedString()
+        )
+        _ = try await post(Resp.self, path: "/worldmap/guide/\(guideId)/upload", body: body, timeout: 90)
+    }
+
+    /// Operator: download the ARWorldMap for a guide to re-localize the session.
+    /// Returns nil on 404 (Author has not yet placed steps for this guide).
+    func fetchGuideWorldMap(guideId: String) async throws -> Data? {
+        var req = try makeRequest(method: "GET", path: "/worldmap/guide/\(guideId)")
+        req.timeoutInterval = 45
+        let (data, response): (Data, URLResponse)
+        do { (data, response) = try await session.data(for: req) }
+        catch { throw SIBClientError.networkError(error) }
+        guard let http = response as? HTTPURLResponse else { return nil }
+        if http.statusCode == 404 { return nil }
+        if !(200...299).contains(http.statusCode) {
+            throw SIBClientError.httpError(http.statusCode, "Guide world map download failed (\(http.statusCode))")
+        }
+        return data
+    }
+
+    /// Operator: download the reference photo for a guide's re-localization overlay.
+    /// Returns nil on 404 (photo was not captured or Author skipped it).
+    func fetchGuideWorldMapPhoto(guideId: String) async throws -> Data? {
+        var req = try makeRequest(method: "GET", path: "/worldmap/guide/\(guideId)/photo")
+        req.timeoutInterval = 20
+        let (data, response): (Data, URLResponse)
+        do { (data, response) = try await session.data(for: req) }
+        catch { throw SIBClientError.networkError(error) }
+        guard let http = response as? HTTPURLResponse else { return nil }
+        if http.statusCode == 404 { return nil }
+        if !(200...299).contains(http.statusCode) { return nil }
+        return data
+    }
+
     // ── HTTP helpers ──────────────────────────────────────────────────────────
 
     private func get<T: Decodable>(_ type: T.Type, path: String) async throws -> T {
