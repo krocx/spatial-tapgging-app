@@ -32,11 +32,19 @@ struct GuideListView: View {
     @State private var editingGuide:   ARGuide? = nil
 
     // Operator: session flow
-    @State private var selectedGuide:  ARGuide? = nil
-    @State private var pendingGuide:   ARGuide? = nil   // waiting for QR scan
-    @State private var showScanGate    = false
-    @State private var guideSteps:     [GuideStep] = []
-    @State private var showSession     = false
+    @State private var pendingGuide:  ARGuide? = nil   // guide tapped, waiting for QR scan
+    @State private var showScanGate   = false
+    @State private var guideSteps:    [GuideStep] = []
+    @State private var sessionInput:  GuideSessionInput? = nil   // drives session cover
+
+    // Bundles guide + pre-fetched steps into an Identifiable value for
+    // fullScreenCover(item:), which guarantees content is non-nil when the
+    // cover appears — eliminating the blank-white-sheet from nil guard failure.
+    private struct GuideSessionInput: Identifiable {
+        let guide: ARGuide
+        let steps: [GuideStep]
+        var id: String { guide.id }
+    }
 
     var body: some View {
         Group {
@@ -104,28 +112,28 @@ struct GuideListView: View {
                 .environmentObject(tour)
         }
         // ── Operator: QR scan gate before session ─────────────────────────────
-        // onDismiss fires after the dismiss animation fully completes, which is
-        // the only reliable place to present the next fullScreenCover.  Using
-        // asyncAfter is not reliable because its offset is relative to the state
-        // change, not the end of the modal animation.
+        // onDismiss fires after the dismiss animation fully completes — the only
+        // safe place to present the next fullScreenCover.  We set sessionInput
+        // there (not in onSessionReady) so the two covers never overlap.
+        // Using fullScreenCover(item:) for the session cover guarantees the
+        // guide/steps are non-nil when the cover appears, eliminating the blank
+        // white sheet that appeared when `if let guide = selectedGuide` was nil.
         .fullScreenCover(isPresented: $showScanGate, onDismiss: {
-            if selectedGuide != nil {
-                showSession = true
+            guard let guide = pendingGuide, !guideSteps.isEmpty else { return }
+            // One extra run-loop cycle so the modal system is fully at rest.
+            DispatchQueue.main.async {
+                sessionInput = GuideSessionInput(guide: guide, steps: guideSteps)
             }
         }) {
             QRScanGateView(
                 mode: .operator,
                 onSessionReady: {
-                    // Set session data before dismissing so onDismiss finds it.
-                    if let guide = pendingGuide, !guideSteps.isEmpty {
-                        selectedGuide = guide
-                    }
+                    // Only dismiss; onDismiss will set sessionInput after animation
                     showScanGate = false
                 },
                 onCancel: {
-                    selectedGuide = nil   // clear any stale state from a prior session
-                    showScanGate  = false
-                    pendingGuide  = nil
+                    pendingGuide = nil
+                    showScanGate = false
                 }
             )
             .environmentObject(settings)
@@ -133,16 +141,15 @@ struct GuideListView: View {
             .environmentObject(tour)
         }
         // ── Operator: AR Guide session ────────────────────────────────────────
-        .fullScreenCover(isPresented: $showSession) {
-            if let guide = selectedGuide {
-                ARGuideSessionView(
-                    anchor: anchor,
-                    guide:  guide,
-                    steps:  guideSteps
-                )
-                .environmentObject(settings)
-                .environmentObject(appState)
-            }
+        // item-based cover: content closure receives a guaranteed non-nil value.
+        .fullScreenCover(item: $sessionInput) { input in
+            ARGuideSessionView(
+                anchor: anchor,
+                guide:  input.guide,
+                steps:  input.steps
+            )
+            .environmentObject(settings)
+            .environmentObject(appState)
         }
     }
 
