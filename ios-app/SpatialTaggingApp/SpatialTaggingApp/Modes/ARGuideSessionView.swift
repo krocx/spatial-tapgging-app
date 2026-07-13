@@ -378,7 +378,8 @@ struct ARGuideSessionView: View {
                             onComplete:      { markComplete(at: index); autoAdvance(from: index) },
                             onSpeak:         { toggleSpeech(for: step) },
                             onSignOff:       { showSignOff = true },
-                            onEvidence:      { openEvidencePicker(for: index) }
+                            onEvidence:      { openEvidencePicker(for: index) },
+                            onMinimize:      { showContentPanel = false }
                         )
                     } else {
                         miniNavCard(step: step, index: index)
@@ -400,7 +401,7 @@ struct ARGuideSessionView: View {
         return CGPoint(x: cx + dx * s, y: cy + dy * s)
     }
 
-    /// Compact card shown while navigating toward a step (before 0.5m arrival)
+    /// Compact card shown by default. Tap anywhere to expand to the full content panel.
     private func miniNavCard(step: GuideStep, index: Int) -> some View {
         VStack(spacing: 12) {
             HStack(spacing: 12) {
@@ -417,7 +418,12 @@ struct ARGuideSessionView: View {
                         .lineLimit(2)
                 }
                 Spacer()
-                distancePill
+                VStack(spacing: 4) {
+                    distancePill
+                    Image(systemName: "chevron.up")
+                        .font(.caption2.bold())
+                        .foregroundStyle(.white.opacity(0.4))
+                }
             }
             .padding(.horizontal, 16)
 
@@ -433,6 +439,8 @@ struct ARGuideSessionView: View {
         .padding(.top, 14)
         .padding(.bottom, 34)
         .background(.ultraThinMaterial)
+        .contentShape(Rectangle())
+        .onTapGesture { showContentPanel = true }
     }
 
     @ViewBuilder
@@ -533,42 +541,45 @@ struct ARGuideSessionView: View {
     // ── Floating panel construction (Phase 3) ─────────────────────────────────
 
     /// Attaches a world-anchored floating panel as a child of the pin node.
-    /// The panel starts in the maximized (card) state.
+    /// The panel starts in the minimized (pill) state.
     private func attachFloatingPanel(to pinNode: SCNNode, for step: GuideStep, index: Int) {
         let container = SCNNode()
         container.name = "panel_container_\(step.id)"
         // Float 0.18 m above the sphere centre so it clears the torus ring
         container.position = SCNVector3(0, 0.18, 0)
-        // Always face the camera on all axes
+        // Always face the camera on Y-axis only — freeAxes .all causes
+        // per-frame reorientation that fights alpha-blend depth sorting
         let billboard = SCNBillboardConstraint()
-        billboard.freeAxes = .all
+        billboard.freeAxes = .Y
         container.constraints = [billboard]
 
-        // Default: maximized card visible
-        panelMinimized[step.id] = false
+        // Default: minimized pill visible
+        panelMinimized[step.id] = true
 
         // ── Minimized pill ────────────────────────────────────────────────────
         let pillImg  = renderPillTexture(step: step, index: index)
         let pillPlane = SCNPlane(width: 0.30, height: 0.055)
-        pillPlane.firstMaterial?.diffuse.contents  = pillImg
-        pillPlane.firstMaterial?.lightingModel     = .constant
-        pillPlane.firstMaterial?.isDoubleSided     = true
-        pillPlane.firstMaterial?.blendMode         = .alpha
+        pillPlane.firstMaterial?.diffuse.contents    = pillImg
+        pillPlane.firstMaterial?.lightingModel       = .constant
+        pillPlane.firstMaterial?.isDoubleSided       = true
+        pillPlane.firstMaterial?.blendMode           = .alpha
+        pillPlane.firstMaterial?.writesToDepthBuffer = false
         let pillNode = SCNNode(geometry: pillPlane)
         pillNode.name     = "pill_\(step.id)"
-        pillNode.isHidden = true    // hidden initially; shown when minimized
+        pillNode.isHidden = false   // visible by default (minimized state)
         container.addChildNode(pillNode)
 
         // ── Maximized card ────────────────────────────────────────────────────
         let cardImg   = renderCardTexture(step: step, index: index, referenceImage: nil)
         let cardPlane = SCNPlane(width: 0.30, height: 0.40)
-        cardPlane.firstMaterial?.diffuse.contents  = cardImg
-        cardPlane.firstMaterial?.lightingModel     = .constant
-        cardPlane.firstMaterial?.isDoubleSided     = true
-        cardPlane.firstMaterial?.blendMode         = .alpha
+        cardPlane.firstMaterial?.diffuse.contents    = cardImg
+        cardPlane.firstMaterial?.lightingModel       = .constant
+        cardPlane.firstMaterial?.isDoubleSided       = true
+        cardPlane.firstMaterial?.blendMode           = .alpha
+        cardPlane.firstMaterial?.writesToDepthBuffer = false
         let cardNode = SCNNode(geometry: cardPlane)
         cardNode.name     = "card_\(step.id)"
-        cardNode.isHidden = false   // visible initially
+        cardNode.isHidden = true    // hidden by default (minimized state)
         container.addChildNode(cardNode)
 
         // ── Invisible hit-test buttons on the card ────────────────────────────
@@ -615,8 +626,10 @@ struct ARGuideSessionView: View {
         // Only process taps during navigation
         guard case .navigating(let currentIndex) = phase else { return }
 
+        // Use .all so every node at the tap point is returned — alpha-blended
+        // planes don't write depth reliably, making .closest pick the wrong node.
         let hits = arManager.sceneView.hitTest(point, options: [
-            SCNHitTestOption.searchMode: SCNHitTestSearchMode.closest.rawValue,
+            SCNHitTestOption.searchMode: SCNHitTestSearchMode.all.rawValue,
         ])
 
         // Walk up hit node hierarchy to find a named button or pill/card
@@ -671,13 +684,14 @@ struct ARGuideSessionView: View {
     }
 
     /// Toggle a panel between minimized pill and maximized card.
+    /// No animation — instant switch to avoid flicker against AR background.
     private func togglePanel(stepId: String, minimize: Bool) {
         panelMinimized[stepId] = minimize
         guard let container = panelContainers[stepId] else { return }
         let pillNode = container.childNode(withName: "pill_\(stepId)", recursively: true)
         let cardNode = container.childNode(withName: "card_\(stepId)", recursively: true)
         SCNTransaction.begin()
-        SCNTransaction.animationDuration = 0.18
+        SCNTransaction.animationDuration = 0
         pillNode?.isHidden = !minimize
         cardNode?.isHidden = minimize
         SCNTransaction.commit()
@@ -1112,7 +1126,7 @@ struct ARGuideSessionView: View {
         let dist   = simd_length(targetW - camPos)
         distanceM  = dist
 
-        if dist <= arrivedM && !showContentPanel { showContentPanel = true }
+        // Do not auto-expand the 2D panel on arrival — user taps the mini card to open it
 
         let sv        = arManager.sceneView
         let projected = sv.projectPoint(SCNVector3(targetW.x, targetW.y, targetW.z))
@@ -1266,6 +1280,7 @@ struct GuideContentPanel: View {
     let onSpeak:     () -> Void
     let onSignOff:   () -> Void
     let onEvidence:  () -> Void   // Phase 3
+    let onMinimize:  () -> Void   // collapse back to mini nav card
 
     var isCompleted: Bool { progress?.isCompleted ?? false }
     var isLastStep:  Bool { stepNumber == totalSteps }
@@ -1320,6 +1335,14 @@ struct GuideContentPanel: View {
                 }
                 .buttonStyle(.plain)
                 .padding(.trailing, 4)
+
+                // Minimize — collapse back to mini nav card
+                Button(action: onMinimize) {
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
             }
             .padding(.horizontal, 16)
             .padding(.top, 16)
