@@ -57,7 +57,8 @@ struct ARGuideSessionView: View {
     @State private var arrowNode: SCNNode? = nil
 
     // ── 3D floating panels (Phase 3) ──────────────────────────────────────────
-    /// Container node per step (child of the pin node, always faces camera).
+    /// Container node per step — added to scene ROOT (not pin child) so it
+    /// doesn't inherit the pin's pulsing opacity animation.
     @State private var panelContainers: [String: SCNNode] = [:]
     /// true = minimized pill shown, false = maximized card shown (default).
     @State private var panelMinimized:  [String: Bool]    = [:]
@@ -126,6 +127,12 @@ struct ARGuideSessionView: View {
                 .onDisappear {
                     stopSpeaking()
                     removeArrow()
+                    // Remove scene-root panel containers (they are NOT pin children,
+                    // so they must be cleaned up manually on view teardown)
+                    for (_, container) in panelContainers {
+                        container.removeFromParentNode()
+                    }
+                    panelContainers.removeAll()
                     arManager.pauseSession()
                 }
                 .onChange(of: arManager.isRelocalizing) { stillRelocalizing in
@@ -540,69 +547,81 @@ struct ARGuideSessionView: View {
 
     // ── Floating panel construction (Phase 3) ─────────────────────────────────
 
-    /// Attaches a world-anchored floating panel as a child of the pin node.
-    /// The panel starts in the minimized (pill) state.
+    /// Attaches a world-anchored floating panel directly to the scene root — NOT as a
+    /// child of the pin node.  Keeping it at root-level prevents it from inheriting the
+    /// pin's pulsing opacity animation (which was the primary blink cause).
+    /// The panel floats 0.55 m above the pin and is connected by a dotted dash line.
+    /// Materials are fully opaque so freeAxes = .all works without alpha-sort flicker.
     private func attachFloatingPanel(to pinNode: SCNNode, for step: GuideStep, index: Int) {
         let container = SCNNode()
         container.name = "panel_container_\(step.id)"
-        // Float 0.18 m above the sphere centre so it clears the torus ring
-        container.position = SCNVector3(0, 0.18, 0)
-        // Always face the camera on Y-axis only — freeAxes .all causes
-        // per-frame reorientation that fights alpha-blend depth sorting
+
+        // Position: 0.55 m above the pin in world space (panel bottom at ~0.34 m)
+        let pp = pinNode.simdPosition
+        container.simdPosition = simd_float3(pp.x, pp.y + 0.55, pp.z)
+
+        // Full billboard — panel always directly faces the camera on every axis,
+        // which maximises readability. Opaque materials avoid alpha-sort flicker.
         let billboard = SCNBillboardConstraint()
-        billboard.freeAxes = .Y
+        billboard.freeAxes = .all
         container.constraints = [billboard]
 
         // Default: minimized pill visible
         panelMinimized[step.id] = true
 
-        // ── Minimized pill ────────────────────────────────────────────────────
-        let pillImg  = renderPillTexture(step: step, index: index)
+        // ── Opaque material helper ────────────────────────────────────────────
+        func opaqueMat(image: UIImage) -> SCNMaterial {
+            let m = SCNMaterial()
+            m.diffuse.contents = image
+            m.lightingModel    = .constant
+            m.isDoubleSided    = true
+            // blendMode stays at default (.none = opaque) — no alpha blending,
+            // no per-frame depth-sort, no flicker.
+            return m
+        }
+
+        // ── Minimized pill (0.30 × 0.055 m → texture 512 × 94 pt) ───────────
         let pillPlane = SCNPlane(width: 0.30, height: 0.055)
-        pillPlane.firstMaterial?.diffuse.contents    = pillImg
-        pillPlane.firstMaterial?.lightingModel       = .constant
-        pillPlane.firstMaterial?.isDoubleSided       = true
-        pillPlane.firstMaterial?.blendMode           = .alpha
-        pillPlane.firstMaterial?.writesToDepthBuffer = false
+        pillPlane.firstMaterial = opaqueMat(image: renderPillTexture(step: step, index: index))
         let pillNode = SCNNode(geometry: pillPlane)
         pillNode.name     = "pill_\(step.id)"
-        pillNode.isHidden = false   // visible by default (minimized state)
+        pillNode.isHidden = false
         container.addChildNode(pillNode)
 
-        // ── Maximized card ────────────────────────────────────────────────────
-        let cardImg   = renderCardTexture(step: step, index: index, referenceImage: nil)
+        // ── Maximized card (0.30 × 0.40 m → texture 512 × 683 pt) ───────────
         let cardPlane = SCNPlane(width: 0.30, height: 0.40)
-        cardPlane.firstMaterial?.diffuse.contents    = cardImg
-        cardPlane.firstMaterial?.lightingModel       = .constant
-        cardPlane.firstMaterial?.isDoubleSided       = true
-        cardPlane.firstMaterial?.blendMode           = .alpha
-        cardPlane.firstMaterial?.writesToDepthBuffer = false
+        cardPlane.firstMaterial = opaqueMat(image: renderCardTexture(step: step, index: index, referenceImage: nil))
         let cardNode = SCNNode(geometry: cardPlane)
         cardNode.name     = "card_\(step.id)"
-        cardNode.isHidden = true    // hidden by default (minimized state)
+        cardNode.isHidden = true
         container.addChildNode(cardNode)
 
-        // ── Invisible hit-test buttons on the card ────────────────────────────
-        // Card is 0.30 m × 0.40 m; local coords: x ∈ [-0.15, 0.15], y ∈ [-0.20, 0.20]
-        // Minimize (top-right corner)
-        cardNode.addChildNode(makeHitButton(
-            w: 0.055, h: 0.055, x: 0.125, y: 0.178, name: "btn_min_\(step.id)"))
-        // Audio (bottom-left)
-        cardNode.addChildNode(makeHitButton(
-            w: 0.06, h: 0.055, x: -0.105, y: -0.168, name: "btn_audio_\(step.id)"))
-        // Evidence camera (bottom, next to audio)
-        cardNode.addChildNode(makeHitButton(
-            w: 0.06, h: 0.055, x: -0.035, y: -0.168, name: "btn_camera_\(step.id)"))
-        // Mark complete / sign-off (bottom-right area)
-        cardNode.addChildNode(makeHitButton(
-            w: 0.10, h: 0.055, x: 0.07, y: -0.168, name: "btn_complete_\(step.id)"))
+        // ── Invisible hit-test buttons (card local: x ∈ [−0.15,0.15], y ∈ [−0.20,0.20])
+        cardNode.addChildNode(makeHitButton(w: 0.06, h: 0.05, x:  0.12,  y:  0.183, name: "btn_min_\(step.id)"))
+        cardNode.addChildNode(makeHitButton(w: 0.07, h: 0.05, x: -0.10,  y: -0.175, name: "btn_audio_\(step.id)"))
+        cardNode.addChildNode(makeHitButton(w: 0.07, h: 0.05, x: -0.025, y: -0.175, name: "btn_camera_\(step.id)"))
+        cardNode.addChildNode(makeHitButton(w: 0.11, h: 0.05, x:  0.068, y: -0.175, name: "btn_complete_\(step.id)"))
+        pillNode.addChildNode(makeHitButton(w: 0.30, h: 0.055, x: 0, y: 0, name: "btn_expand_\(step.id)"))
 
-        // ── Invisible pill expand button ──────────────────────────────────────
-        // The whole pill surface acts as the expand target
-        pillNode.addChildNode(makeHitButton(
-            w: 0.30, h: 0.055, x: 0, y: 0, name: "btn_expand_\(step.id)"))
+        // ── Dotted connector: vertical dashes from pin top to panel bottom ────
+        // Pin-local y=0.06 (above torus) → y=0.34 (panel bottom in pin-local space)
+        // Panel bottom in world = pp.y+0.55−0.20 = pp.y+0.35 → local y≈0.35
+        let dotCount = 7
+        for i in 0..<dotCount {
+            let t = Float(i) / Float(dotCount - 1)
+            let y = 0.06 + t * 0.28          // 0.06 m to 0.34 m above pin
+            let dash = SCNCylinder(radius: 0.004, height: 0.018)
+            let dMat = SCNMaterial()
+            dMat.diffuse.contents = UIColor.white.withAlphaComponent(0.45)
+            dMat.lightingModel    = .constant
+            dash.firstMaterial    = dMat
+            let dNode = SCNNode(geometry: dash)
+            dNode.position = SCNVector3(0, y, 0)
+            pinNode.addChildNode(dNode)
+        }
 
-        pinNode.addChildNode(container)
+        // ── Add panel to SCENE ROOT (not pin child) — avoids pulse inheritance ─
+        arManager.sceneView.scene.rootNode.addChildNode(container)
         panelContainers[step.id] = container
     }
 
@@ -729,23 +748,26 @@ struct ARGuideSessionView: View {
     // applied as SCNMaterial.diffuse.contents.  All drawing is in pixel space;
     // the SCNPlane's physical size controls real-world scale.
 
-    /// Minimized pill (512 × 80 pt → 0.30 m × 0.055 m in world space)
+    /// Minimized pill (512 × 94 pt — matches SCNPlane ratio 0.30 m × 0.055 m).
+    /// Fully opaque background; audio icon + distance shown in right zone.
     private func renderPillTexture(step: GuideStep, index: Int) -> UIImage {
-        let size = CGSize(width: 512, height: 80)
+        let W: CGFloat = 512
+        let H: CGFloat = 94
+        let size = CGSize(width: W, height: H)
         return UIGraphicsImageRenderer(size: size).image { _ in
             let r = CGRect(origin: .zero, size: size)
 
-            // Dark glass background
-            UIColor(white: 0.08, alpha: 0.92).setFill()
-            UIBezierPath(roundedRect: r, cornerRadius: 22).fill()
+            // Opaque dark background — no alpha, avoids alpha-sort flicker with freeAxes=.all
+            UIColor(white: 0.11, alpha: 1.0).setFill()
+            UIBezierPath(roundedRect: r, cornerRadius: 18).fill()
 
-            // Step badge
-            let badgeR = CGRect(x: 10, y: 14, width: 52, height: 52)
+            // ── Step badge ────────────────────────────────────────────────────
+            let badgeR = CGRect(x: 12, y: 17, width: 60, height: 60)
             UIColor.systemIndigo.setFill()
             UIBezierPath(ovalIn: badgeR).fill()
-            let numStr   = "\(step.sequenceNumber)" as NSString
+            let numStr = "\(step.sequenceNumber)" as NSString
             let numAttrs: [NSAttributedString.Key: Any] = [
-                .font:            UIFont.boldSystemFont(ofSize: 24),
+                .font:            UIFont.boldSystemFont(ofSize: 26),
                 .foregroundColor: UIColor.white,
             ]
             let numSz = numStr.size(withAttributes: numAttrs)
@@ -753,23 +775,48 @@ struct ARGuideSessionView: View {
                                     y: badgeR.midY - numSz.height/2),
                         withAttributes: numAttrs)
 
-            // Title
+            // ── Title (center-aligned in middle zone) ─────────────────────────
+            let titlePara = NSMutableParagraphStyle()
+            titlePara.alignment     = .center
+            titlePara.lineBreakMode = .byTruncatingTail
             let titleAttrs: [NSAttributedString.Key: Any] = [
-                .font:            UIFont.systemFont(ofSize: 16, weight: .semibold),
+                .font:            UIFont.systemFont(ofSize: 15, weight: .semibold),
                 .foregroundColor: UIColor.white,
+                .paragraphStyle:  titlePara,
             ]
-            let titleR = CGRect(x: 72, y: 10, width: 360, height: 60)
+            // Middle zone: badge right edge = 72, audio left edge = 348 → width 276
+            let titleR = CGRect(x: 80, y: 8, width: 260, height: H - 16)
             (step.text as NSString).draw(with: titleR,
-                options: .truncatesLastVisibleLine,
+                options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine],
                 attributes: titleAttrs,
                 context: nil)
 
-            // Expand chevron
-            let chevAttrs: [NSAttributedString.Key: Any] = [
-                .font:            UIFont.systemFont(ofSize: 22, weight: .medium),
-                .foregroundColor: UIColor.white.withAlphaComponent(0.55),
+            // ── Audio icon ────────────────────────────────────────────────────
+            let audioColor: UIColor = isSpeaking ? .systemIndigo : UIColor.white.withAlphaComponent(0.80)
+            let audioAttrs: [NSAttributedString.Key: Any] = [
+                .font:            UIFont.systemFont(ofSize: 22),
+                .foregroundColor: audioColor,
             ]
-            ("›" as NSString).draw(at: CGPoint(x: 478, y: 24), withAttributes: chevAttrs)
+            ("🔊" as NSString).draw(at: CGPoint(x: 352, y: H / 2 - 18), withAttributes: audioAttrs)
+
+            // ── Distance label ────────────────────────────────────────────────
+            if let d = distanceM {
+                let dColor: UIColor = d <= arrivedM ? .systemGreen
+                    : (d <= approachingM ? .systemOrange : .white)
+                let dAttrs: [NSAttributedString.Key: Any] = [
+                    .font:            UIFont.monospacedDigitSystemFont(ofSize: 12, weight: .semibold),
+                    .foregroundColor: dColor,
+                ]
+                (String(format: "%.1f m", d) as NSString)
+                    .draw(at: CGPoint(x: 390, y: H / 2 - 9), withAttributes: dAttrs)
+            }
+
+            // ── Expand chevron (far right) ────────────────────────────────────
+            let chevAttrs: [NSAttributedString.Key: Any] = [
+                .font:            UIFont.systemFont(ofSize: 26, weight: .medium),
+                .foregroundColor: UIColor.white.withAlphaComponent(0.50),
+            ]
+            ("›" as NSString).draw(at: CGPoint(x: 478, y: H / 2 - 18), withAttributes: chevAttrs)
         }
     }
 
@@ -791,8 +838,8 @@ struct ARGuideSessionView: View {
         return UIGraphicsImageRenderer(size: size).image { ctx in
             let r = CGRect(origin: .zero, size: size)
 
-            // ── Background ────────────────────────────────────────────────────
-            UIColor(white: 0.09, alpha: 0.94).setFill()
+            // ── Background — fully opaque (avoids alpha-sort ordering artefacts) ──
+            UIColor(white: 0.09, alpha: 1.0).setFill()
             UIBezierPath(roundedRect: r, cornerRadius: 24).fill()
 
             // ── Header row ────────────────────────────────────────────────────
@@ -818,20 +865,23 @@ struct ARGuideSessionView: View {
                             withAttributes: numAttrs)
             }
 
-            // Step label
+            // Step label — at top of header zone, small caption size
             let stepLabelAttrs: [NSAttributedString.Key: Any] = [
-                .font:            UIFont.systemFont(ofSize: 11, weight: .semibold),
-                .foregroundColor: UIColor.white.withAlphaComponent(0.5),
+                .font:            UIFont.systemFont(ofSize: 10, weight: .semibold),
+                .foregroundColor: UIColor.white.withAlphaComponent(0.50),
             ]
             ("Step \(index + 1) of \(sortedSteps.count)" as NSString)
-                .draw(at: CGPoint(x: 70, y: 18), withAttributes: stepLabelAttrs)
+                .draw(at: CGPoint(x: 70, y: 16), withAttributes: stepLabelAttrs)
 
-            // Title
+            // Title — below step label with a clear gap (step label ends at ~29 pt)
+            let titleLinePara = NSMutableParagraphStyle()
+            titleLinePara.lineBreakMode = .byTruncatingTail
             let titleAttrs: [NSAttributedString.Key: Any] = [
                 .font:            UIFont.systemFont(ofSize: 15, weight: .semibold),
                 .foregroundColor: UIColor.white,
+                .paragraphStyle:  titleLinePara,
             ]
-            let titleR = CGRect(x: 70, y: 32, width: W - 130, height: 30)
+            let titleR = CGRect(x: 70, y: 34, width: W - 130, height: 30)
             (step.text as NSString).draw(with: titleR,
                 options: .truncatesLastVisibleLine,
                 attributes: titleAttrs,
@@ -852,12 +902,15 @@ struct ARGuideSessionView: View {
             divPath.lineWidth = 1
             divPath.stroke()
 
-            // ── Description ───────────────────────────────────────────────────
+            // ── Description (center-aligned) ──────────────────────────────────
+            let descPara = NSMutableParagraphStyle()
+            descPara.alignment = .center
             let descAttrs: [NSAttributedString.Key: Any] = [
                 .font:            UIFont.systemFont(ofSize: 13),
                 .foregroundColor: UIColor.white.withAlphaComponent(0.88),
+                .paragraphStyle:  descPara,
             ]
-            let descR   = CGRect(x: 14, y: 82, width: W - 28, height: 140)
+            let descR = CGRect(x: 14, y: 82, width: W - 28, height: 140)
             (step.text as NSString).draw(with: descR,
                 options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine],
                 attributes: descAttrs,
@@ -870,10 +923,25 @@ struct ARGuideSessionView: View {
                 let imgR = CGRect(x: 14, y: nextY, width: W - 28, height: imgH)
                 UIColor.white.withAlphaComponent(0.06).setFill()
                 UIBezierPath(roundedRect: imgR, cornerRadius: 8).fill()
-                // Clip and draw image
+                // Clip and draw image — aspect-fit (no stretching)
                 ctx.cgContext.saveGState()
                 UIBezierPath(roundedRect: imgR, cornerRadius: 8).addClip()
-                img.draw(in: imgR)
+                let imgAspect = img.size.width / img.size.height
+                let boxAspect = imgR.width / imgR.height
+                let fittedRect: CGRect
+                if imgAspect > boxAspect {
+                    // Image is wider than box — fit width, letterbox top/bottom
+                    let fH = imgR.width / imgAspect
+                    fittedRect = CGRect(x: imgR.minX,
+                                        y: imgR.minY + (imgR.height - fH) / 2,
+                                        width: imgR.width, height: fH)
+                } else {
+                    // Image is taller than box — fit height, pillarbox left/right
+                    let fW = imgR.height * imgAspect
+                    fittedRect = CGRect(x: imgR.minX + (imgR.width - fW) / 2,
+                                        y: imgR.minY, width: fW, height: imgR.height)
+                }
+                img.draw(in: fittedRect)
                 ctx.cgContext.restoreGState()
                 nextY = imgR.maxY + 12
             }
