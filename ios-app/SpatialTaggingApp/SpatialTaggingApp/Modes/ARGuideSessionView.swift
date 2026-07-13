@@ -527,6 +527,12 @@ struct ARGuideSessionView: View {
             phase = .navigating(index: 0)
             highlightPin(index: 0)
             if sortedSteps[0].worldPosition == nil { showContentPanel = true }
+            // loadStepImage (called from onAppear) may have finished before placePins()
+            // created the panel containers, making its refreshPanelTextures() a no-op.
+            // Flush any images already in the cache into the newly-created panels now.
+            for step in sortedSteps where stepImages[step.id] != nil {
+                refreshPanelTextures(stepId: step.id)
+            }
         }
     }
 
@@ -598,9 +604,10 @@ struct ARGuideSessionView: View {
 
         // ── Invisible hit-test buttons (card local: x ∈ [−0.15,0.15], y ∈ [−0.20,0.20])
         cardNode.addChildNode(makeHitButton(w: 0.06, h: 0.05, x:  0.12,  y:  0.183, name: "btn_min_\(step.id)"))
-        cardNode.addChildNode(makeHitButton(w: 0.07, h: 0.05, x: -0.10,  y: -0.175, name: "btn_audio_\(step.id)"))
-        cardNode.addChildNode(makeHitButton(w: 0.07, h: 0.05, x: -0.025, y: -0.175, name: "btn_camera_\(step.id)"))
-        cardNode.addChildNode(makeHitButton(w: 0.11, h: 0.05, x:  0.068, y: -0.175, name: "btn_complete_\(step.id)"))
+        // Larger hit areas for audio/camera to match the increased 34pt icon size
+        cardNode.addChildNode(makeHitButton(w: 0.08, h: 0.07, x: -0.10,  y: -0.170, name: "btn_audio_\(step.id)"))
+        cardNode.addChildNode(makeHitButton(w: 0.08, h: 0.07, x: -0.025, y: -0.170, name: "btn_camera_\(step.id)"))
+        cardNode.addChildNode(makeHitButton(w: 0.11, h: 0.05, x:  0.068, y: -0.170, name: "btn_complete_\(step.id)"))
         pillNode.addChildNode(makeHitButton(w: 0.30, h: 0.055, x: 0, y: 0, name: "btn_expand_\(step.id)"))
 
         // ── Dotted connector: vertical dashes from pin top to panel bottom ────
@@ -794,10 +801,10 @@ struct ARGuideSessionView: View {
             // ── Audio icon ────────────────────────────────────────────────────
             let audioColor: UIColor = isSpeaking ? .systemIndigo : UIColor.white.withAlphaComponent(0.80)
             let audioAttrs: [NSAttributedString.Key: Any] = [
-                .font:            UIFont.systemFont(ofSize: 22),
+                .font:            UIFont.systemFont(ofSize: 30),
                 .foregroundColor: audioColor,
             ]
-            ("🔊" as NSString).draw(at: CGPoint(x: 352, y: H / 2 - 18), withAttributes: audioAttrs)
+            ("🔊" as NSString).draw(at: CGPoint(x: 348, y: H / 2 - 20), withAttributes: audioAttrs)
 
             // ── Distance label ────────────────────────────────────────────────
             if let d = distanceM {
@@ -919,7 +926,7 @@ struct ARGuideSessionView: View {
             // ── Reference image ───────────────────────────────────────────────
             var nextY: CGFloat = 232
             if let img = referenceImage {
-                let imgH: CGFloat = 150
+                let imgH: CGFloat = 170
                 let imgR = CGRect(x: 14, y: nextY, width: W - 28, height: imgH)
                 UIColor.white.withAlphaComponent(0.06).setFill()
                 UIBezierPath(roundedRect: imgR, cornerRadius: 8).fill()
@@ -948,44 +955,63 @@ struct ARGuideSessionView: View {
 
             // ── Divider before action bar ─────────────────────────────────────
             let div2Path = UIBezierPath()
-            div2Path.move(to: CGPoint(x: 14, y: H - 88))
-            div2Path.addLine(to: CGPoint(x: W - 14, y: H - 88))
+            div2Path.move(to: CGPoint(x: 14, y: H - 108))
+            div2Path.addLine(to: CGPoint(x: W - 14, y: H - 108))
             div2Path.lineWidth = 1
             UIColor.white.withAlphaComponent(0.12).setStroke()
             div2Path.stroke()
 
-            // ── Action bar (bottom 88 pt) ─────────────────────────────────────
-            let barY: CGFloat = H - 80
+            // ── Action bar (bottom 108 pt) ────────────────────────────────────
+            // Icons are 34 pt; labels beneath at 9 pt; total icon+label ≈ 52 pt.
+            let barY: CGFloat = H - 100
 
-            // Audio button
-            let audioColor: UIColor = isSpeaking ? .systemIndigo : UIColor.white.withAlphaComponent(0.55)
+            // Audio button — icon + label
+            let audioColor: UIColor = isSpeaking ? .systemIndigo : UIColor.white.withAlphaComponent(0.75)
             let speakerAttrs: [NSAttributedString.Key: Any] = [
-                .font:            UIFont.systemFont(ofSize: 20),
+                .font:            UIFont.systemFont(ofSize: 34),
                 .foregroundColor: audioColor,
             ]
-            ("🔊" as NSString).draw(at: CGPoint(x: 18, y: barY + 4), withAttributes: speakerAttrs)
+            ("🔊" as NSString).draw(at: CGPoint(x: 14, y: barY + 6), withAttributes: speakerAttrs)
+            let audioLabelPara = NSMutableParagraphStyle(); audioLabelPara.alignment = .center
+            let audioLabelAttrs: [NSAttributedString.Key: Any] = [
+                .font:            UIFont.systemFont(ofSize: 9, weight: .medium),
+                .foregroundColor: audioColor,
+                .paragraphStyle:  audioLabelPara,
+            ]
+            (isSpeaking ? "SPEAKING" : "AUDIO" as NSString)
+                .draw(in: CGRect(x: 6, y: barY + 46, width: 52, height: 14),
+                      withAttributes: audioLabelAttrs)
 
-            // Evidence camera button
-            let camColor: UIColor = hasEvidence ? .systemGreen : UIColor.white.withAlphaComponent(0.55)
+            // Evidence camera button — icon + label
+            let camColor: UIColor = hasEvidence ? .systemGreen : UIColor.white.withAlphaComponent(0.75)
             let camAttrs: [NSAttributedString.Key: Any] = [
-                .font:            UIFont.systemFont(ofSize: 20),
+                .font:            UIFont.systemFont(ofSize: 34),
                 .foregroundColor: camColor,
             ]
-            ("📷" as NSString).draw(at: CGPoint(x: 62, y: barY + 4), withAttributes: camAttrs)
+            ("📷" as NSString).draw(at: CGPoint(x: 70, y: barY + 6), withAttributes: camAttrs)
+            let camLabelPara = NSMutableParagraphStyle(); camLabelPara.alignment = .center
+            let camLabelAttrs: [NSAttributedString.Key: Any] = [
+                .font:            UIFont.systemFont(ofSize: 9, weight: .medium),
+                .foregroundColor: camColor,
+                .paragraphStyle:  camLabelPara,
+            ]
+            (hasEvidence ? "CAPTURED" : "PHOTO" as NSString)
+                .draw(in: CGRect(x: 62, y: barY + 46, width: 52, height: 14),
+                      withAttributes: camLabelAttrs)
 
-            // Distance label
+            // Distance label (between icons and primary button)
             if let d = distanceM {
                 let dColor: UIColor = d <= arrivedM ? .systemGreen : (d <= approachingM ? .systemOrange : .white)
                 let dAttrs: [NSAttributedString.Key: Any] = [
                     .font:            UIFont.monospacedDigitSystemFont(ofSize: 13, weight: .semibold),
                     .foregroundColor: dColor,
                 ]
-                (String(format: "%.1f m", d) as NSString).draw(at: CGPoint(x: 110, y: barY + 10), withAttributes: dAttrs)
+                (String(format: "%.1f m", d) as NSString).draw(at: CGPoint(x: 130, y: barY + 22), withAttributes: dAttrs)
             }
 
             // Primary action button (right side)
             let btnX: CGFloat = W - 170
-            let btnR  = CGRect(x: btnX, y: barY, width: 156, height: 52)
+            let btnR  = CGRect(x: btnX, y: barY + 10, width: 156, height: 52)
             if isLastStep && allRequiredDone {
                 UIColor.systemGreen.setFill()
                 UIBezierPath(roundedRect: btnR, cornerRadius: 12).fill()

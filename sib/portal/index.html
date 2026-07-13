@@ -1180,8 +1180,8 @@ async function loadARGuideSessions() {
   const list = document.getElementById('ar-guides-list');
   list.innerHTML = '<p style="color:var(--muted);padding:20px 0;text-align:center">Loading…</p>';
   try {
-    const res  = await apiFetch('/guide-sessions?all=true');
-    const body = await res.json();
+    // apiFetch already resolves res.json() — result is the parsed object directly.
+    const body = await apiFetch('/guide-sessions?all=true');
     arGuideSessions = body.data || [];
     renderARGuideSessions();
   } catch (e) {
