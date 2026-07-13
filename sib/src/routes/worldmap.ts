@@ -21,11 +21,6 @@ const DATA_DIR      = process.env.SIB_DATA_DIR ?? path.join(process.cwd(), '.sib
 const WORLDMAPS_DIR = path.join(DATA_DIR, 'worldmaps');
 fs.mkdirSync(WORLDMAPS_DIR, { recursive: true });
 
-// Guide-scoped worldmaps live in a separate directory to avoid namespace clashes
-// with anchor worldmaps.
-const GUIDE_WORLDMAPS_DIR = path.join(DATA_DIR, 'guide-worldmaps');
-fs.mkdirSync(GUIDE_WORLDMAPS_DIR, { recursive: true });
-
 function worldMapPath(anchorId: string): string {
   return path.join(WORLDMAPS_DIR, `${anchorId}.arworldmap`);
 }
@@ -34,20 +29,8 @@ function refPhotoPath(anchorId: string): string {
   return path.join(WORLDMAPS_DIR, `${anchorId}.refphoto.jpg`);
 }
 
-function guideWorldMapPath(guideId: string): string {
-  return path.join(GUIDE_WORLDMAPS_DIR, `${guideId}.arworldmap`);
-}
-
-function guideRefPhotoPath(guideId: string): string {
-  return path.join(GUIDE_WORLDMAPS_DIR, `${guideId}.refphoto.jpg`);
-}
-
 function isValidAnchorId(anchorId: string): boolean {
   return !anchorId.includes('..') && !anchorId.includes('/');
-}
-
-function isValidGuideId(guideId: string): boolean {
-  return !guideId.includes('..') && !guideId.includes('/');
 }
 
 // ── Router ────────────────────────────────────────────────────────────────────
@@ -109,121 +92,6 @@ router.post('/upload', (req: Request, res: Response): void => {
   };
   res.status(201).json(resp);
 });
-
-// ── Guide-scoped worldmap routes ──────────────────────────────────────────────
-// IMPORTANT: these must be registered BEFORE /:anchorId catch-all routes so
-// Express doesn't capture "guide" as an anchorId.
-
-// POST /worldmap/guide/:guideId/upload
-// Body: { guideId, worldMapBase64, capturedAt, referencePhotoBase64? }
-// Author saves the ARWorldMap captured during guide step placement.
-router.post('/guide/:guideId/upload', (req: Request, res: Response): void => {
-  const { guideId } = req.params;
-  if (!isValidGuideId(guideId)) {
-    res.status(400).json({ error: 'Invalid guideId' });
-    return;
-  }
-
-  const { worldMapBase64, capturedAt, referencePhotoBase64 } = req.body as {
-    worldMapBase64:        string;
-    capturedAt:            string;
-    referencePhotoBase64?: string;
-  };
-
-  if (!worldMapBase64) {
-    res.status(400).json({ error: 'worldMapBase64 is required' });
-    return;
-  }
-
-  let buf: Buffer;
-  try {
-    buf = Buffer.from(worldMapBase64, 'base64');
-  } catch {
-    res.status(400).json({ error: 'worldMapBase64 is not valid base64' });
-    return;
-  }
-
-  try {
-    fs.writeFileSync(guideWorldMapPath(guideId), buf);
-  } catch (err) {
-    console.error('[SIB] Failed to write guide world map:', err);
-    res.status(500).json({ error: 'Failed to save guide world map' });
-    return;
-  }
-
-  let refPhotoSaved = false;
-  if (referencePhotoBase64) {
-    try {
-      const photoBuf = Buffer.from(referencePhotoBase64, 'base64');
-      fs.writeFileSync(guideRefPhotoPath(guideId), photoBuf);
-      refPhotoSaved = true;
-      console.log(`[SIB] Reference photo saved for guide ${guideId} (${photoBuf.length} bytes)`);
-    } catch (err) {
-      console.error('[SIB] Failed to save guide reference photo (non-fatal):', err);
-    }
-  }
-
-  console.log(`[SIB] ARWorldMap saved for guide ${guideId} (${buf.length} bytes, captured ${capturedAt})`);
-
-  const resp: ApiResponse<{ guideId: string; sizeBytes: number; refPhotoSaved: boolean }> = {
-    data:      { guideId, sizeBytes: buf.length, refPhotoSaved },
-    timestamp: new Date().toISOString(),
-  };
-  res.status(201).json(resp);
-});
-
-// GET /worldmap/guide/:guideId/photo
-// Returns the reference JPEG captured when the Author saved step positions.
-// 404 if no photo was uploaded.
-router.get('/guide/:guideId/photo', (req: Request, res: Response): void => {
-  const { guideId } = req.params;
-  if (!isValidGuideId(guideId)) {
-    res.status(400).json({ error: 'Invalid guideId' });
-    return;
-  }
-
-  const filePath = guideRefPhotoPath(guideId);
-  if (!fs.existsSync(filePath)) {
-    res.status(404).json({ error: `No reference photo found for guide ${guideId}` });
-    return;
-  }
-
-  res.setHeader('Content-Type', 'image/jpeg');
-  res.sendFile(filePath);
-});
-
-// GET /worldmap/guide/:guideId
-// Returns the binary ARWorldMap for a guide as application/octet-stream.
-// 404 if the Author has not yet placed steps and saved a worldmap.
-router.get('/guide/:guideId', (req: Request, res: Response): void => {
-  const { guideId } = req.params;
-  if (!isValidGuideId(guideId)) {
-    res.status(400).json({ error: 'Invalid guideId' });
-    return;
-  }
-
-  const filePath = guideWorldMapPath(guideId);
-  if (!fs.existsSync(filePath)) {
-    res.status(404).json({ error: `No world map found for guide ${guideId}` });
-    return;
-  }
-
-  const stat = fs.statSync(filePath);
-  res.setHeader('Content-Type',   'application/octet-stream');
-  res.setHeader('Content-Length', stat.size);
-  res.setHeader('X-Guide-Id',     guideId);
-
-  const stream = fs.createReadStream(filePath);
-  stream.on('error', err => {
-    console.error('[SIB] Error streaming guide world map:', err);
-    if (!res.headersSent) {
-      res.status(500).json({ error: 'Failed to stream guide world map' });
-    }
-  });
-  stream.pipe(res);
-});
-
-// ── Anchor worldmap routes (existing) ─────────────────────────────────────────
 
 // GET /worldmap/:anchorId/reference-photo
 // Returns the reference JPEG captured at the Author's first tag save.

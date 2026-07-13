@@ -282,22 +282,13 @@ router.post('/:id/steps', (req: Request, res: Response): void => {
     mediaType:          body.mediaType,
     mediaPath,
     completionRequired: body.completionRequired ?? true,
-    // Phase 2: spatial placement — new steps start unplaced
-    isPlaced:           false,
     createdAt:          now,
     updatedAt:          now,
   };
 
   guideStepStore.save(step);
-
-  // If the guide was published, adding a new (unplaced) step reverts it to draft
-  // so Authors must re-place and re-publish before Operators see it.
-  if (guide.published) {
-    guideStore.update(guide.id, { published: false, updatedAt: now });
-    console.log(`[SIB] Guide ${guide.id} reverted to draft (new step added to published guide)`);
-  } else {
-    guideStore.update(guide.id, { updatedAt: now });
-  }
+  // Mark the guide as updated when a step is added
+  guideStore.update(guide.id, { updatedAt: now });
 
   console.log(`[SIB] GuideStep created: ${stepId} (seq=${body.sequenceNumber}) in guide ${guide.id}`);
 
@@ -330,8 +321,8 @@ router.patch('/:id/steps/:stepId', (req: Request, res: Response): void => {
 
   let mediaPath = step.mediaPath;
 
-  // mediaBase64 === null or "" (empty string sentinel from iOS) → clear existing image
-  if ((body.mediaBase64 === null || body.mediaBase64 === '') && step.mediaPath) {
+  // mediaBase64 === null → clear existing image
+  if (body.mediaBase64 === null && step.mediaPath) {
     deleteStepImage(step.mediaPath);
     mediaPath = undefined;
   }
@@ -357,12 +348,6 @@ router.patch('/:id/steps/:stepId', (req: Request, res: Response): void => {
     ttsText:            'ttsText' in body       ? body.ttsText?.trim() : step.ttsText,
     completionRequired: body.completionRequired ?? step.completionRequired,
     mediaPath,
-    // Phase 2: spatial placement fields (only update when explicitly provided)
-    posX:               'posX'            in body ? body.posX            : step.posX,
-    posY:               'posY'            in body ? body.posY            : step.posY,
-    posZ:               'posZ'            in body ? body.posZ            : step.posZ,
-    isPlaced:           'isPlaced'        in body ? (body.isPlaced ?? step.isPlaced) : step.isPlaced,
-    positionSource:     'positionSource'  in body ? body.positionSource  : step.positionSource,
     updatedAt: now,
   };
 

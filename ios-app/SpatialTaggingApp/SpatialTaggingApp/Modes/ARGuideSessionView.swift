@@ -193,11 +193,9 @@ struct ARGuideSessionView: View {
         .sheet(isPresented: $showEvidencePicker) {
             if let idx = evidencePickerStepIndex {
                 CameraPickerView(sourceType: .camera) { img in
-                    if let img {
-                        progresses[idx].evidencePhoto = img
-                        let stepId = sortedSteps[idx].id
-                        refreshPanelTextures(stepId: stepId)
-                    }
+                    progresses[idx].evidencePhoto = img
+                    let stepId = sortedSteps[idx].id
+                    refreshPanelTextures(stepId: stepId)
                     showEvidencePicker = false
                 }
             }
@@ -1371,7 +1369,7 @@ struct GuideContentPanel: View {
                             Label(evidenceImage == nil ? "Add Evidence Photo" : "Retake",
                                   systemImage: "camera.fill")
                                 .font(.caption.bold())
-                                .foregroundStyle(evidenceImage == nil ? .secondary : .green)
+                                .foregroundStyle(evidenceImage == nil ? AnyShapeStyle(.secondary) : AnyShapeStyle(Color.green))
                         }
                         .buttonStyle(.plain)
                     }

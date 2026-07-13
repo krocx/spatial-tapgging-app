@@ -95,12 +95,9 @@ final class ARSessionManager: NSObject, ObservableObject {
     // ── Init ──────────────────────────────────────────────────────────────────
     override init() {
         super.init()
-        sceneView.delegate         = self
+        sceneView.delegate      = self
         sceneView.session.delegate = self
         sceneView.autoenablesDefaultLighting = true
-        // Black background prevents the white ARSCNView flash that appears
-        // before ARKit acquires the camera feed (especially on first present).
-        sceneView.backgroundColor = .black
         #if DEBUG
         sceneView.debugOptions = [.showFeaturePoints]
         #endif
