@@ -13,6 +13,7 @@ import worldMapRouter from './routes/worldmap.js';
 import guideRouter from './routes/guides.js';
 import guideSessionRouter from './routes/guide-sessions.js';
 import tagGroupRouter from './routes/tag-groups.js';
+import modelRouter from './routes/models.js';
 import { apiKeyAuth } from './middleware/auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -231,6 +232,16 @@ export function createApp(): express.Express {
   // PATCH  /tag-groups/:id                   — Author: rename / update description
   // DELETE /tag-groups/:id                   — Author: delete group (tags lose groupId, not deleted)
   app.use('/tag-groups', tagGroupRouter);
+
+  // --- 3D Model asset library ---
+  // POST   /models?anchorId=&name=&uploadedBy=  — Upload binary 3D file (GLB/USDZ pass-through; OBJ/FBX/STEP async Blender conversion)
+  // GET    /models?anchorId=xxx                 — List models for an anchor
+  // GET    /models/:id                          — Model metadata + status
+  // PATCH  /models/:id                          — Rename
+  // DELETE /models/:id                          — Delete model + files
+  // GET    /models/:id/file.glb                 — Serve the GLB file
+  // GET    /models/:id/file.usdz                — Serve the USDZ file (if available)
+  app.use('/models', modelRouter);
 
   // --- 404 fallback ---
   app.use((_req, res) => {

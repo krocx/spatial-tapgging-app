@@ -268,6 +268,57 @@
     .ag-step-pend { background:rgba(255,255,255,0.08);color:var(--muted); }
     .ag-step-txt { flex:1;color:var(--text); }
     .ag-ev-thumb { width:42px;height:32px;border-radius:4px;object-fit:cover;border:1px solid var(--border);cursor:zoom-in; }
+
+    /* ── 3D Models panel ── */
+    #models-panel { display:none; padding:20px 24px 56px; }
+    #models-panel.visible { display:block; }
+    .models-inner { max-width:860px; margin:0 auto; }
+    .models-anchor-bar { display:flex; align-items:center; gap:10px; margin-bottom:20px; flex-wrap:wrap; }
+    .models-anchor-bar label { font-size:0.78rem; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; }
+    #models-anchor-select { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:7px 12px; color:var(--text); font-size:0.85rem; outline:none; min-width:220px; cursor:pointer; }
+    #models-anchor-select:focus { border-color:var(--accent); }
+
+    /* Drop zone */
+    .model-dropzone { border:2px dashed var(--border); border-radius:12px; padding:32px 24px; text-align:center; cursor:pointer; transition:border-color 0.2s, background 0.2s; margin-bottom:20px; }
+    .model-dropzone:hover, .model-dropzone.drag-over { border-color:var(--accent); background:rgba(79,142,247,0.04); }
+    .model-dropzone p { color:var(--muted); font-size:0.85rem; margin-top:6px; }
+    .model-dropzone strong { color:var(--text); font-size:0.92rem; }
+    .model-dropzone .fmt-chips { display:flex; justify-content:center; gap:6px; flex-wrap:wrap; margin-top:10px; }
+    .fmt-chip { font-size:0.68rem; font-weight:700; padding:2px 8px; border-radius:6px; background:var(--border); color:var(--muted); }
+    .fmt-chip.ar-ready { background:rgba(61,214,140,0.12); color:var(--green); }
+
+    /* Upload progress */
+    #upload-progress-wrap { display:none; margin-bottom:16px; }
+    .upload-bar-bg { height:6px; background:var(--border); border-radius:3px; overflow:hidden; margin-bottom:4px; }
+    .upload-bar-fill { height:100%; background:var(--accent); border-radius:3px; transition:width 0.2s; width:0%; }
+    .upload-status { font-size:0.75rem; color:var(--muted); }
+
+    /* Model cards */
+    .models-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:12px; }
+    .model-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px; }
+    .model-card-hdr { display:flex; align-items:flex-start; gap:10px; margin-bottom:8px; }
+    .model-icon { width:38px; height:38px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:1.2rem; flex-shrink:0; }
+    .model-icon.glb   { background:rgba(79,142,247,0.12); }
+    .model-icon.usdz  { background:rgba(61,214,140,0.12); }
+    .model-icon.cad   { background:rgba(245,166,35,0.12); }
+    .model-icon.other { background:var(--border); }
+    .model-name { font-size:0.85rem; font-weight:700; word-break:break-word; line-height:1.3; }
+    .model-meta { font-size:0.72rem; color:var(--muted); margin-top:2px; }
+    .model-status { display:inline-flex; align-items:center; gap:5px; font-size:0.72rem; font-weight:700; padding:3px 8px; border-radius:6px; margin-bottom:8px; }
+    .model-status.ready      { background:rgba(61,214,140,0.12); color:var(--green); }
+    .model-status.processing { background:rgba(245,166,35,0.12); color:var(--orange); }
+    .model-status.failed     { background:rgba(240,86,86,0.12);  color:var(--red); }
+    .model-status.uploading  { background:var(--border); color:var(--muted); }
+    .model-error { font-size:0.72rem; color:var(--red); margin-bottom:8px; line-height:1.4; }
+    .model-actions { display:flex; gap:6px; flex-wrap:wrap; }
+    .model-actions a { font-size:0.73rem; font-weight:600; padding:4px 10px; border-radius:6px; background:rgba(79,142,247,0.1); color:var(--accent); text-decoration:none; }
+    .model-actions a:hover { background:rgba(79,142,247,0.2); }
+    .model-card .step-assign { font-size:0.72rem; color:var(--muted); margin-top:10px; border-top:1px solid var(--border); padding-top:8px; }
+    .model-card .step-assign span { color:var(--accent); }
+
+    /* Step model picker (inline in AR Guides step editor) */
+    .step-model-row { display:flex; align-items:center; gap:8px; font-size:0.78rem; padding:6px 0; }
+    .step-model-select { background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:4px 8px; color:var(--text); font-size:0.75rem; outline:none; flex:1; }
   </style>
 </head>
 <body>
@@ -293,6 +344,7 @@
   <button class="nav-tab"        data-view="sessions"  onclick="switchView('sessions')">Sessions</button>
   <button class="nav-tab"        data-view="gemba"     onclick="switchView('gemba')">Gemba Walks</button>
   <button class="nav-tab"        data-view="ar-guides" onclick="switchView('ar-guides')">AR Guides</button>
+  <button class="nav-tab"        data-view="models"    onclick="switchView('models')">3D Models</button>
 </div>
 
 <!-- Setup banner (shown when API key not set) -->
@@ -343,6 +395,41 @@
     <button class="btn btn-ghost btn-sm" onclick="loadARGuideSessions()">⟳ Refresh</button>
   </div>
   <div id="ar-guides-list" class="sessions-list"></div>
+</div>
+
+<!-- 3D Models panel -->
+<div id="models-panel">
+  <div class="models-inner">
+    <div class="models-anchor-bar">
+      <label style="font-size:0.78rem;color:var(--muted);font-weight:600">Anchor</label>
+      <select id="models-anchor-select" onchange="onModelsAnchorChange()" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:5px 10px;color:var(--text);font-size:0.82rem;outline:none;min-width:220px">
+        <option value="">— select an anchor —</option>
+      </select>
+      <button class="btn btn-ghost btn-sm" onclick="loadModels(modelsCurrentAnchorId)" style="margin-left:auto">⟳ Refresh</button>
+    </div>
+
+    <div id="model-dropzone" class="model-dropzone" ondragover="onModelDragOver(event)" ondragleave="onModelDragLeave(event)" ondrop="onModelDrop(event)" onclick="document.getElementById('model-file-input').click()">
+      <input type="file" id="model-file-input" style="display:none" accept=".glb,.gltf,.usdz,.obj,.fbx,.step,.iges,.stp" onchange="onModelFileSelected(event)">
+      <strong>Drop a 3D model here or click to browse</strong>
+      <p>No Blender required for GLB / USDZ · Blender needed for CAD/mesh conversion</p>
+      <div class="fmt-chips">
+        <span class="fmt-chip ar-ready">GLB</span>
+        <span class="fmt-chip ar-ready">USDZ</span>
+        <span class="fmt-chip ar-ready">GLTF</span>
+        <span class="fmt-chip">OBJ</span>
+        <span class="fmt-chip">FBX</span>
+        <span class="fmt-chip">STEP</span>
+        <span class="fmt-chip">IGES</span>
+      </div>
+    </div>
+
+    <div id="upload-progress-wrap">
+      <div class="upload-bar-bg"><div class="upload-bar-fill" id="upload-bar-fill"></div></div>
+      <span class="upload-status" id="upload-status">Uploading…</span>
+    </div>
+
+    <div class="models-grid" id="models-grid"></div>
+  </div>
 </div>
 
 <!-- Evidence image lightbox -->
@@ -1136,11 +1223,12 @@ function switchView(view) {
   document.querySelectorAll('.nav-tab').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.view === view);
   });
-  const anchorGrid  = document.getElementById('anchor-grid');
-  const toolbar     = document.getElementById('toolbar');
-  const sessPanel   = document.getElementById('sessions-panel');
-  const gembaPanel  = document.getElementById('gemba-panel');
-  const agPanel     = document.getElementById('ar-guides-panel');
+  const anchorGrid    = document.getElementById('anchor-grid');
+  const toolbar       = document.getElementById('toolbar');
+  const sessPanel     = document.getElementById('sessions-panel');
+  const gembaPanel    = document.getElementById('gemba-panel');
+  const agPanel       = document.getElementById('ar-guides-panel');
+  const modelsPanel   = document.getElementById('models-panel');
 
   if (view === 'sessions') {
     anchorGrid.style.display = 'none';
@@ -1148,6 +1236,7 @@ function switchView(view) {
     sessPanel.classList.add('visible');
     gembaPanel.classList.remove('visible');
     agPanel.classList.remove('visible');
+    modelsPanel.classList.remove('visible');
     if (sessionsData.length === 0) loadSessions();
   } else if (view === 'gemba') {
     anchorGrid.style.display = 'none';
@@ -1155,6 +1244,7 @@ function switchView(view) {
     sessPanel.classList.remove('visible');
     gembaPanel.classList.add('visible');
     agPanel.classList.remove('visible');
+    modelsPanel.classList.remove('visible');
     if (Object.keys(gembaLocTags).length === 0) loadGembaWalks();
   } else if (view === 'ar-guides') {
     anchorGrid.style.display = 'none';
@@ -1162,13 +1252,23 @@ function switchView(view) {
     sessPanel.classList.remove('visible');
     gembaPanel.classList.remove('visible');
     agPanel.classList.add('visible');
+    modelsPanel.classList.remove('visible');
     loadARGuideSessions();
+  } else if (view === 'models') {
+    anchorGrid.style.display = 'none';
+    toolbar.style.display    = 'none';
+    sessPanel.classList.remove('visible');
+    gembaPanel.classList.remove('visible');
+    agPanel.classList.remove('visible');
+    modelsPanel.classList.add('visible');
+    initModelsPanel();
   } else {
     anchorGrid.style.display = '';
     toolbar.style.display    = 'flex';
     sessPanel.classList.remove('visible');
     gembaPanel.classList.remove('visible');
     agPanel.classList.remove('visible');
+    modelsPanel.classList.remove('visible');
   }
 }
 
@@ -1305,6 +1405,215 @@ function exportARGuidesCSV() {
   a.click(); URL.revokeObjectURL(url);
 }
 
+
+// ── 3D Models ─────────────────────────────────────────────────────────────────
+
+let modelsCurrentAnchorId = '';
+let modelsData            = [];
+const modelPollTimers     = {};   // modelId → intervalId
+
+/** Populate the anchor selector from the already-loaded allAnchors array. */
+function initModelsPanel() {
+  const sel = document.getElementById('models-anchor-select');
+  sel.innerHTML = '<option value="">— select an anchor —</option>';
+  for (const a of allAnchors) {
+    const opt = document.createElement('option');
+    opt.value       = a.id;
+    opt.textContent = `${a.assetId} (${a.id.slice(0, 8)}…)`;
+    if (a.id === modelsCurrentAnchorId) opt.selected = true;
+    sel.appendChild(opt);
+  }
+  if (modelsCurrentAnchorId) loadModels(modelsCurrentAnchorId);
+}
+
+function onModelsAnchorChange() {
+  const sel = document.getElementById('models-anchor-select');
+  modelsCurrentAnchorId = sel.value;
+  if (modelsCurrentAnchorId) loadModels(modelsCurrentAnchorId);
+  else {
+    modelsData = [];
+    renderModels([]);
+  }
+}
+
+async function loadModels(anchorId) {
+  if (!anchorId) return;
+  const grid = document.getElementById('models-grid');
+  grid.innerHTML = '<p style="color:var(--muted);padding:24px 0;text-align:center;font-size:0.82rem">Loading…</p>';
+  try {
+    const body = await apiFetch(`/models?anchorId=${encodeURIComponent(anchorId)}`);
+    modelsData = body.data || [];
+    renderModels(modelsData);
+    // Resume polling for any processing models
+    for (const m of modelsData) {
+      if (m.status === 'processing' || m.status === 'uploading') {
+        pollModelStatus(m.id);
+      }
+    }
+  } catch (e) {
+    grid.innerHTML = `<p style="color:var(--red);padding:24px 0;text-align:center;font-size:0.82rem">Error: ${e.message}</p>`;
+  }
+}
+
+function renderModels(models) {
+  const grid = document.getElementById('models-grid');
+  if (!models.length) {
+    grid.innerHTML = '<p style="color:var(--muted);padding:40px 0;text-align:center;font-size:0.82rem">No 3D models yet. Drop a file above to upload.</p>';
+    return;
+  }
+
+  const iconFor = (m) => {
+    const f = m.originalFormat;
+    if (m.hasGLB)                           return { cls: 'glb',   icon: '📦' };
+    if (m.hasUSDZ)                          return { cls: 'usdz',  icon: '🍎' };
+    if (f === 'step' || f === 'iges')       return { cls: 'cad',   icon: '⚙️' };
+    return { cls: 'other', icon: '🗂️' };
+  };
+
+  const statusBadge = (m) => {
+    const labels = { ready: '✓ Ready', processing: '⏳ Converting', uploading: '↑ Uploading', failed: '✗ Failed' };
+    return `<span class="model-status ${m.status}">${labels[m.status] || m.status}</span>`;
+  };
+
+  const formatBytes = (b) => {
+    if (b == null) return '';
+    if (b < 1024) return `${b} B`;
+    if (b < 1048576) return `${(b/1024).toFixed(1)} KB`;
+    return `${(b/1048576).toFixed(1)} MB`;
+  };
+
+  let html = '';
+  for (const m of models) {
+    const { cls, icon } = iconFor(m);
+    const downloadLinks = [];
+    if (m.hasGLB)  downloadLinks.push(`<a href="/models/${m.id}/file.glb" target="_blank" download>⬇ GLB</a>`);
+    if (m.hasUSDZ) downloadLinks.push(`<a href="/models/${m.id}/file.usdz" target="_blank" download>⬇ USDZ</a>`);
+
+    html += `<div class="model-card" id="model-card-${m.id}">
+      <div class="model-card-hdr">
+        <div class="model-icon ${cls}">${icon}</div>
+        <div>
+          <div class="model-name">${esc(m.name)}</div>
+          <div class="model-meta">${esc(m.originalFilename || '')} · ${formatBytes(m.fileSizeBytes)}</div>
+        </div>
+      </div>
+      ${statusBadge(m)}
+      ${m.status === 'failed' && m.conversionError ? `<div class="model-error">${esc(m.conversionError)}</div>` : ''}
+      <div class="model-actions">
+        ${downloadLinks.join('')}
+        <a href="#" onclick="deleteModel('${m.id}', '${m.anchorId}'); return false" style="background:rgba(240,86,86,0.1);color:var(--red)">🗑 Delete</a>
+      </div>
+    </div>`;
+  }
+  grid.innerHTML = html;
+}
+
+/** Upload a file to the models endpoint with progress reporting. */
+async function uploadModel(anchorId, file) {
+  if (!anchorId) { alert('Please select an anchor first.'); return; }
+
+  const progressWrap  = document.getElementById('upload-progress-wrap');
+  const barFill       = document.getElementById('upload-bar-fill');
+  const statusEl      = document.getElementById('upload-status');
+
+  progressWrap.style.display = 'block';
+  barFill.style.width        = '0%';
+  statusEl.textContent       = `Uploading ${file.name}…`;
+
+  const name = file.name.replace(/\.[^.]+$/, '');
+  const url  = `/models?anchorId=${encodeURIComponent(anchorId)}&name=${encodeURIComponent(name)}&uploadedBy=portal`;
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url);
+    const key = apiKey();
+    if (key) xhr.setRequestHeader('X-API-Key', key);
+    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+    xhr.setRequestHeader('x-filename', file.name);
+
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        const pct = Math.round((e.loaded / e.total) * 100);
+        barFill.style.width  = `${pct}%`;
+        statusEl.textContent = `Uploading… ${pct}%`;
+      }
+    };
+    xhr.onload = async () => {
+      progressWrap.style.display = 'none';
+      if (xhr.status >= 200 && xhr.status < 300) {
+        const m = JSON.parse(xhr.responseText);
+        toast(`Uploaded "${m.name}" — ${m.status === 'processing' ? 'CAD conversion queued' : 'ready'}.`);
+        await loadModels(anchorId);
+        if (m.status === 'processing') pollModelStatus(m.id);
+        resolve(m);
+      } else {
+        let msg = `Upload failed (${xhr.status})`;
+        try { msg = JSON.parse(xhr.responseText).error || msg; } catch (_) {}
+        toast(msg);
+        reject(new Error(msg));
+      }
+    };
+    xhr.onerror = () => {
+      progressWrap.style.display = 'none';
+      const msg = 'Upload failed (network error)';
+      toast(msg, true);
+      reject(new Error(msg));
+    };
+    xhr.send(file);
+  });
+}
+
+async function deleteModel(modelId, anchorId) {
+  if (!confirm('Delete this 3D model? This cannot be undone.')) return;
+  try {
+    await apiFetch(`/models/${encodeURIComponent(modelId)}`, { method: 'DELETE' });
+    clearInterval(modelPollTimers[modelId]);
+    delete modelPollTimers[modelId];
+    toast('Model deleted.');
+    await loadModels(anchorId || modelsCurrentAnchorId);
+  } catch (e) {
+    alert(`Failed to delete model: ${e.message}`);
+  }
+}
+
+/** Poll GET /models/:id every 3s until status leaves 'processing'. */
+function pollModelStatus(modelId) {
+  if (modelPollTimers[modelId]) return;  // already polling
+  modelPollTimers[modelId] = setInterval(async () => {
+    try {
+      const m = await apiFetch(`/models/${encodeURIComponent(modelId)}`);
+      if (m.status !== 'processing' && m.status !== 'uploading') {
+        clearInterval(modelPollTimers[modelId]);
+        delete modelPollTimers[modelId];
+        // Refresh full list so status badges + download links update
+        await loadModels(m.anchorId || modelsCurrentAnchorId);
+      }
+    } catch (_) {
+      clearInterval(modelPollTimers[modelId]);
+      delete modelPollTimers[modelId];
+    }
+  }, 3000);
+}
+
+// Drag-and-drop handlers for the model dropzone
+function onModelDragOver(e) {
+  e.preventDefault();
+  document.getElementById('model-dropzone').classList.add('drag-over');
+}
+function onModelDragLeave(e) {
+  document.getElementById('model-dropzone').classList.remove('drag-over');
+}
+function onModelDrop(e) {
+  e.preventDefault();
+  document.getElementById('model-dropzone').classList.remove('drag-over');
+  const file = e.dataTransfer?.files?.[0];
+  if (file) uploadModel(modelsCurrentAnchorId, file);
+}
+function onModelFileSelected(e) {
+  const file = e.target.files?.[0];
+  if (file) uploadModel(modelsCurrentAnchorId, file);
+  e.target.value = '';  // reset so same file can be picked again
+}
 
 // ── Data loading ──────────────────────────────────────────────────────────────
 

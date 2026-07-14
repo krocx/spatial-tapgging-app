@@ -227,6 +227,50 @@ export type UpdateTagGroupRequest = {
 };
 
 // ============================================================
+// Model3D — 3D asset library for AR Guide step ghost overlays
+// ============================================================
+
+/**
+ * Raw file format supplied by the Author on upload.
+ * 'glb' / 'gltf' / 'usdz' — AR-ready, stored as-is and marked ready immediately.
+ * 'obj' / 'fbx'            — Common interchange; server converts to GLB via Blender.
+ * 'step' / 'iges'          — CAD formats; server converts via Blender + CAD importer
+ *                            (requires Blender with CAD addon on the server host).
+ *                            If Blender is unavailable the record is marked 'failed'
+ *                            with a helptext asking the Author to pre-export to GLB.
+ */
+export type ModelFormat = 'glb' | 'gltf' | 'usdz' | 'obj' | 'fbx' | 'step' | 'iges';
+
+/** Server-side processing state for the 3D model. */
+export type ModelStatus = 'uploading' | 'processing' | 'ready' | 'failed';
+
+/**
+ * A 3D model stored in an anchor's asset library.
+ * Authors upload via the web portal; the server converts to GLB (canonical format)
+ * and optionally stores the original USDZ for direct iOS use.
+ * Multiple GuideSteps can reference the same model via modelId.
+ */
+export interface Model3D {
+  id:               string;
+  anchorId:         string;
+  name:             string;             // display name (editable)
+  originalFormat:   ModelFormat;
+  originalFilename: string;
+  fileSizeBytes:    number;
+  status:           ModelStatus;
+  conversionError?: string;             // populated on failure
+  hasGLB:           boolean;            // true once .glb file is available
+  hasUSDZ:          boolean;            // true if original was USDZ (served as-is for iOS)
+  uploadedBy?:      string;
+  createdAt:        string;
+  updatedAt:        string;
+}
+
+export type UpdateModel3DRequest = {
+  name?: string;
+};
+
+// ============================================================
 // Observation — normalised output from any AI perception model
 // ============================================================
 
@@ -606,6 +650,13 @@ export interface GuideStep {
   posZ?:              number;
   isPlaced:           boolean;     // true once Author has placed the pin in AR
   positionSource?:    'tap' | 'cad';  // forward-compat hook: 'tap' = Author placed; 'cad' = imported
+  // 3D model ghost overlay (Phase 2 — Model3D library)
+  modelId?:           string;      // Model3D.id from anchor asset library
+  modelScale?:        number;      // uniform scale factor applied to the model (default 1.0)
+  modelOpacity?:      number;      // ghost overlay opacity 0.0–1.0 (default 0.45)
+  modelOffsetX?:      number;      // metres offset from step world position (X axis)
+  modelOffsetY?:      number;
+  modelOffsetZ?:      number;
   createdAt:          string;
   updatedAt:          string;
 }
@@ -635,6 +686,13 @@ export type UpdateGuideStepRequest = {
   posZ?:               number;
   isPlaced?:           boolean;
   positionSource?:     'tap' | 'cad';
+  // 3D model ghost overlay
+  modelId?:            string | null;   // null clears the assigned model
+  modelScale?:         number;
+  modelOpacity?:       number;
+  modelOffsetX?:       number;
+  modelOffsetY?:       number;
+  modelOffsetZ?:       number;
 };
 
 /**
