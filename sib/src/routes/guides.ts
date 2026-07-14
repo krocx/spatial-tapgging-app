@@ -365,6 +365,15 @@ router.patch('/:id/steps/:stepId', (req: Request, res: Response): void => {
     posZ:               'posZ'            in body ? body.posZ            : step.posZ,
     isPlaced:           'isPlaced'        in body ? (body.isPlaced ?? step.isPlaced) : step.isPlaced,
     positionSource:     'positionSource'  in body ? body.positionSource  : step.positionSource,
+    // 3D model ghost overlay fields (only update when explicitly provided)
+    // body.modelId may be null (explicit clear) — coerce null → undefined for the stored record
+    modelId:            'modelId'         in body ? (body.modelId ?? undefined) : step.modelId,
+    modelScale:         'modelScale'      in body ? body.modelScale       : step.modelScale,
+    modelOpacity:       'modelOpacity'    in body ? body.modelOpacity     : step.modelOpacity,
+    modelOffsetX:       'modelOffsetX'    in body ? body.modelOffsetX     : step.modelOffsetX,
+    modelOffsetY:       'modelOffsetY'    in body ? body.modelOffsetY     : step.modelOffsetY,
+    modelOffsetZ:       'modelOffsetZ'    in body ? body.modelOffsetZ     : step.modelOffsetZ,
+    modelRotationY:     'modelRotationY'  in body ? body.modelRotationY   : step.modelRotationY,
     updatedAt: now,
   };
 

@@ -148,6 +148,7 @@ struct GuideStep: Codable, Identifiable, Equatable {
     let modelOffsetX:       Double?     // X offset from step worldPosition in metres (default 0)
     let modelOffsetY:       Double?     // Y offset from step worldPosition in metres (default 0)
     let modelOffsetZ:       Double?     // Z offset from step worldPosition in metres (default 0)
+    let modelRotationY:     Double?     // Y-axis rotation in radians (default 0); set by AR placement UI
     let createdAt:          String
     let updatedAt:          String
 
@@ -193,6 +194,7 @@ struct GuideStep: Codable, Identifiable, Equatable {
         modelOffsetX       = try c.decodeIfPresent(Double.self,             forKey: .modelOffsetX)
         modelOffsetY       = try c.decodeIfPresent(Double.self,             forKey: .modelOffsetY)
         modelOffsetZ       = try c.decodeIfPresent(Double.self,             forKey: .modelOffsetZ)
+        modelRotationY     = try c.decodeIfPresent(Double.self,             forKey: .modelRotationY)
         createdAt          = try c.decode(String.self,              forKey: .createdAt)
         updatedAt          = try c.decode(String.self,              forKey: .updatedAt)
     }
@@ -264,6 +266,7 @@ struct UpdateGuideStepRequest: Codable {
     var modelOffsetX:       Double?
     var modelOffsetY:       Double?
     var modelOffsetZ:       Double?
+    var modelRotationY:     Double?
 }
 
 // Swift synthesizes init() automatically for this struct because every stored

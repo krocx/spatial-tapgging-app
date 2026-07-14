@@ -1430,34 +1430,47 @@ struct ARGuideSessionView: View {
         guard let models = try? await client.fetchModels(anchorId: anchor.id) else { return }
         anchorModels = models
 
-        // Download GLBs concurrently for any step that references a ready model
-        let targets = models.filter { stepModelIds.contains($0.id) && $0.hasGLB && $0.isReady }
+        // Download USDZ (preferred) or GLB for each step that references a ready model.
+        // SCNScene(url:) loads USDZ natively on all iOS versions; GLB requires ModelIO
+        // which was removed from the SceneKit bridge in iOS 26.
+        let targets = models.filter { stepModelIds.contains($0.id) && ($0.hasUSDZ || $0.hasGLB) && $0.isReady }
         await withTaskGroup(of: Void.self) { group in
             for model in targets {
-                group.addTask { await self.downloadAndCacheGLB(modelId: model.id) }
+                group.addTask { await self.downloadAndCacheModel(model: model) }
             }
         }
     }
 
-    /// Download one GLB and write it to a temp file.  If the active step is waiting
-    /// for this model, attach the ghost overlay immediately.
-    private func downloadAndCacheGLB(modelId: String) async {
-        guard glbCache[modelId] == nil else { return }
+    /// Download one model file (USDZ preferred, GLB fallback) and write it to a temp cache.
+    /// If the active step is waiting for this model, attach the ghost overlay immediately.
+    private func downloadAndCacheModel(model: Model3D) async {
+        guard glbCache[model.id] == nil else { return }
         let client = SIBClient(settings: settings)
-        guard let data = try? await client.downloadModelGLB(id: modelId) else { return }
 
-        // Write to a persistent-ish temp dir (iOS cleans on low-storage purge)
+        // Prefer USDZ: SCNScene(url:) loads it natively on iOS 12+.
+        // GLB requires the ModelIO–SceneKit bridge which was removed in iOS 26.
+        let fileExt: String
+        let data: Data?
+        if model.hasUSDZ {
+            data    = try? await client.downloadModelUSDZ(id: model.id)
+            fileExt = "usdz"
+        } else {
+            data    = try? await client.downloadModelGLB(id: model.id)
+            fileExt = "glb"
+        }
+        guard let data else { return }
+
         let cacheDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ar-oms-glb", isDirectory: true)
+            .appendingPathComponent("ar-oms-models", isDirectory: true)
         try? FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
-        let fileURL = cacheDir.appendingPathComponent("\(modelId).glb")
+        let fileURL = cacheDir.appendingPathComponent("\(model.id).\(fileExt)")
         guard (try? data.write(to: fileURL)) != nil else { return }
 
-        glbCache[modelId] = fileURL
+        glbCache[model.id] = fileURL
 
         // If the Operator is already on a step that uses this model, attach now
         if case .navigating(let idx) = phase, idx < sortedSteps.count,
-           sortedSteps[idx].modelId == modelId {
+           sortedSteps[idx].modelId == model.id {
             attachGhostOverlay(for: sortedSteps[idx])
         }
     }
@@ -1472,10 +1485,11 @@ struct ARGuideSessionView: View {
               let pos      = step.worldPosition else { return }
 
         // Capture value-type data before hopping off-actor
-        let stepId   = step.id
-        let scale    = Float(step.modelScale   ?? 1.0)
-        let opacity  = CGFloat(step.modelOpacity ?? 0.45)
-        let finalPos = simd_float3(
+        let stepId    = step.id
+        let scale     = Float(step.modelScale     ?? 1.0)
+        let opacity   = CGFloat(step.modelOpacity ?? 0.45)
+        let rotationY = Float(step.modelRotationY ?? 0.0)
+        let finalPos  = simd_float3(
             pos.x + Float(step.modelOffsetX ?? 0),
             pos.y + Float(step.modelOffsetY ?? 0),
             pos.z + Float(step.modelOffsetZ ?? 0)
@@ -1483,9 +1497,9 @@ struct ARGuideSessionView: View {
         let sceneView = arManager.sceneView
 
         Task {
-            // Load GLB on a background thread via SCNScene(url:) — returns configured SCNNode.
-            // SCNScene(url:options:) uses SceneKit's native format pipeline; on iOS 17+
-            // this supports GLB/glTF directly without requiring a separate ModelIO import.
+            // Load model on a background thread via SCNScene(url:).
+            // SCNScene(url:options:) loads USDZ natively on iOS 12+.
+            // (GLB requires the ModelIO–SceneKit bridge removed in iOS 26 — always prefer USDZ.)
             let builtNode: SCNNode? = await Task.detached(priority: .utility) { () -> SCNNode? in
                 guard let scene = try? SCNScene(url: glbURL, options: [
                     SCNSceneSource.LoadingOption.checkConsistency: false,
@@ -1495,11 +1509,12 @@ struct ARGuideSessionView: View {
                 let children = scene.rootNode.childNodes
                 guard !children.isEmpty else { return nil }
 
-                let wrapper  = SCNNode()
-                wrapper.name = "ghost_model_\(stepId)"
+                let wrapper       = SCNNode()
+                wrapper.name      = "ghost_model_\(stepId)"
                 children.forEach { wrapper.addChildNode($0.clone()) }
                 wrapper.simdScale    = simd_float3(scale, scale, scale)
                 wrapper.simdPosition = finalPos
+                wrapper.eulerAngles  = SCNVector3(0, rotationY, 0)
                 wrapper.opacity      = opacity
                 return wrapper
             }.value

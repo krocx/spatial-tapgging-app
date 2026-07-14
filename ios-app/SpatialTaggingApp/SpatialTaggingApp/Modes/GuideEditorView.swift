@@ -462,6 +462,13 @@ struct AddStepSheet: View {
     @State private var isSaving           = false
     @State private var error:             String? = nil
 
+    // 3D model picker state (Phase 3D — same as EditStepSheet)
+    @State private var anchorModels:    [Model3D] = []
+    @State private var isLoadingModels  = false
+    @State private var selectedModelId: String?   = nil
+    @State private var modelScale:      Double    = 1.0
+    @State private var modelOpacity:    Double    = 0.45
+
     var body: some View {
         NavigationStack {
             Form {
@@ -519,6 +526,53 @@ struct AddStepSheet: View {
                     Text("Reference Photo (optional)")
                 }
 
+                // ── 3D Ghost Model ────────────────────────────────────────────
+                Section {
+                    if isLoadingModels {
+                        HStack {
+                            ProgressView().scaleEffect(0.8)
+                            Text("Loading models…")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    } else if anchorModels.filter(\.isReady).isEmpty {
+                        Text("No ready models found for this anchor.\nUpload 3D models in the portal → 3D Models tab.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Picker("Model", selection: $selectedModelId) {
+                            Text("None").tag(Optional<String>.none)
+                            ForEach(anchorModels.filter(\.isReady)) { model in
+                                Text("\(model.name) (\(model.formatLabel))")
+                                    .tag(Optional(model.id))
+                            }
+                        }
+                        if selectedModelId != nil {
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text("Scale: \(String(format: "%.1f", modelScale))×")
+                                        .font(.caption).foregroundStyle(.secondary)
+                                    Spacer()
+                                }
+                                Slider(value: $modelScale, in: 0.1...5.0, step: 0.1)
+                                    .tint(.indigo)
+                            }
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text("Opacity: \(Int(modelOpacity * 100))%")
+                                        .font(.caption).foregroundStyle(.secondary)
+                                    Spacer()
+                                }
+                                Slider(value: $modelOpacity, in: 0.1...1.0, step: 0.05)
+                                    .tint(.indigo)
+                            }
+                        }
+                    }
+                } header: {
+                    Text("3D Ghost Overlay (optional)")
+                } footer: {
+                    Text("A semi-transparent model displayed at this step's AR position to guide the Operator.")
+                }
+
                 if let err = error {
                     Section {
                         Label(err, systemImage: "exclamationmark.triangle.fill")
@@ -547,7 +601,19 @@ struct AddStepSheet: View {
                     selectedImage = img
                 }
             }
+            .onAppear {
+                Task { await fetchAnchorModels() }
+            }
         }
+    }
+
+    private func fetchAnchorModels() async {
+        isLoadingModels = true
+        let client = SIBClient(settings: settings)
+        if let models = try? await client.fetchModels(anchorId: guide.anchorId) {
+            anchorModels = models
+        }
+        isLoadingModels = false
     }
 
     private func addStep() async {
@@ -563,7 +629,15 @@ struct AddStepSheet: View {
             completionRequired: completionRequired
         )
         do {
-            _ = try await client.createGuideStep(guideId: guide.id, req: req)
+            let newStep = try await client.createGuideStep(guideId: guide.id, req: req)
+            // Patch-after-create: if a model was selected, immediately PATCH the new step
+            if let modelId = selectedModelId {
+                var patch = UpdateGuideStepRequest()
+                patch.modelId      = modelId
+                patch.modelScale   = modelScale
+                patch.modelOpacity = modelOpacity
+                _ = try? await client.updateGuideStep(guideId: guide.id, stepId: newStep.id, req: patch)
+            }
             dismiss()
         } catch {
             self.error = friendlyMessage(for: error)
@@ -596,11 +670,14 @@ struct EditStepSheet: View {
     @State private var imagePickerSource: ImagePickerSource? = nil
 
     // 3D model picker state (Phase 3D)
-    @State private var anchorModels:   [Model3D] = []
-    @State private var isLoadingModels = false
-    @State private var selectedModelId: String?  = nil   // nil = "None"
-    @State private var modelScale:      Double   = 1.0
-    @State private var modelOpacity:    Double   = 0.45
+    @State private var anchorModels:    [Model3D] = []
+    @State private var isLoadingModels  = false
+    @State private var selectedModelId: String?   = nil   // nil = "None"
+    @State private var modelScale:      Double    = 1.0
+    @State private var modelOpacity:    Double    = 0.45
+
+    // AR placement state
+    @State private var placementModel: Model3D? = nil   // non-nil → present ModelARPlacementView
 
     var body: some View {
         NavigationStack {
@@ -727,6 +804,23 @@ struct EditStepSheet: View {
                                 Slider(value: $modelOpacity, in: 0.1...1.0, step: 0.05)
                                     .tint(.indigo)
                             }
+                            // Place in AR — only available once the step has a world position
+                            if step.isPlaced, let modelId = selectedModelId,
+                               let activeModel = anchorModels.first(where: { $0.id == modelId }) {
+                                Button {
+                                    placementModel = activeModel
+                                } label: {
+                                    Label("Place in AR", systemImage: "arkit")
+                                        .frame(maxWidth: .infinity, alignment: .center)
+                                        .font(.subheadline.bold())
+                                        .padding(.vertical, 8)
+                                        .foregroundStyle(.indigo)
+                                }
+                            } else if !step.isPlaced {
+                                Label("Place step pin in AR first to enable model placement", systemImage: "mappin.slash")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
                 } header: {
@@ -772,8 +866,8 @@ struct EditStepSheet: View {
                 completionRequired = step.completionRequired
                 // 3D model: pre-populate from step
                 selectedModelId    = step.modelId
-                modelScale         = step.modelScale   ?? 1.0
-                modelOpacity       = step.modelOpacity ?? 0.45
+                modelScale         = step.modelScale     ?? 1.0
+                modelOpacity       = step.modelOpacity   ?? 0.45
                 // Fetch existing photo and anchor model library in parallel
                 Task {
                     await withTaskGroup(of: Void.self) { group in
@@ -781,6 +875,12 @@ struct EditStepSheet: View {
                         group.addTask { await fetchAnchorModels() }
                     }
                 }
+            }
+            // AR model placement — presented full-screen from NavigationStack level to avoid
+            // presentation issues with fullScreenCover inside Form sections
+            .fullScreenCover(item: $placementModel) { model in
+                ModelARPlacementView(guide: guide, step: step, model: model)
+                    .environmentObject(settings)
             }
         }
     }

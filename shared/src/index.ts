@@ -657,6 +657,7 @@ export interface GuideStep {
   modelOffsetX?:      number;      // metres offset from step world position (X axis)
   modelOffsetY?:      number;
   modelOffsetZ?:      number;
+  modelRotationY?:    number;      // Y-axis rotation in radians (Author-placed via AR placement UI)
   createdAt:          string;
   updatedAt:          string;
 }
@@ -693,6 +694,7 @@ export type UpdateGuideStepRequest = {
   modelOffsetX?:       number;
   modelOffsetY?:       number;
   modelOffsetZ?:       number;
+  modelRotationY?:     number;     // Y-axis rotation in radians
 };
 
 /**

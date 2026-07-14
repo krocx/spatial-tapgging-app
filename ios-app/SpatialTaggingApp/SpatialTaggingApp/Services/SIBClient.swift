@@ -501,6 +501,23 @@ final class SIBClient {
         return data
     }
 
+    /// Download the USDZ binary for a model.
+    /// Returns raw Data; caller writes to a cache file.
+    /// 30s timeout — USDZ is typically smaller than GLB.
+    func downloadModelUSDZ(id: String) async throws -> Data {
+        var req = try makeRequest(method: "GET", path: "/models/\(id)/file.usdz")
+        req.timeoutInterval = 30
+        let (data, response): (Data, URLResponse)
+        do { (data, response) = try await session.data(for: req) }
+        catch { throw SIBClientError.networkError(error) }
+        if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+            let msg = (try? JSONDecoder().decode(APIError.self, from: data))?.error
+                ?? "HTTP \(http.statusCode)"
+            throw SIBClientError.httpError(http.statusCode, msg)
+        }
+        return data
+    }
+
     // ── HTTP helpers ──────────────────────────────────────────────────────────
 
     private func get<T: Decodable>(_ type: T.Type, path: String) async throws -> T {
