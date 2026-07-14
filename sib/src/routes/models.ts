@@ -26,7 +26,7 @@
 //   If `blender` is not on PATH, CAD/mesh conversion fails gracefully with a
 //   human-readable error suggesting the Author exports to GLB from their CAD tool.
 
-import { Router }   from 'express';
+import express, { Router } from 'express';
 import type { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import fs            from 'fs';
@@ -230,9 +230,8 @@ router.get('/:id/file.usdz', (req: Request, res: Response): void => {
 router.post(
   '/',
   (req: Request, res: Response, next) => {
-    // Apply raw body parser only for this route
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    require('express').raw({ type: '*/*', limit: '250mb' })(req, res, next);
+    // Apply raw body parser only for this route (binary model file in body)
+    express.raw({ type: '*/*', limit: '250mb' })(req, res, next);
   },
   (req: Request, res: Response): void => {
     const { anchorId, name, uploadedBy } = req.query as Record<string, string>;

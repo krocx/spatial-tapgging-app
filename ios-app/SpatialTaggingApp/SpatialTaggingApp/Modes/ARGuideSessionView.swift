@@ -19,7 +19,6 @@
 import SwiftUI
 import ARKit
 import SceneKit
-import ModelIO
 import simd
 import AVFoundation
 
@@ -1484,11 +1483,15 @@ struct ARGuideSessionView: View {
         let sceneView = arManager.sceneView
 
         Task {
-            // Heavy MDLAsset loading on a background thread — returns configured SCNNode
+            // Load GLB on a background thread via SCNScene(url:) — returns configured SCNNode.
+            // SCNScene(url:options:) uses SceneKit's native format pipeline; on iOS 17+
+            // this supports GLB/glTF directly without requiring a separate ModelIO import.
             let builtNode: SCNNode? = await Task.detached(priority: .utility) { () -> SCNNode? in
-                let asset    = MDLAsset(url: glbURL)
-                asset.loadTextures()
-                let scene    = SCNScene(mdlAsset: asset)
+                guard let scene = try? SCNScene(url: glbURL, options: [
+                    SCNSceneSource.LoadingOption.checkConsistency: false,
+                    SCNSceneSource.LoadingOption.flattenScene:     false,
+                ]) else { return nil }
+
                 let children = scene.rootNode.childNodes
                 guard !children.isEmpty else { return nil }
 
