@@ -19,6 +19,7 @@
 import SwiftUI
 import ARKit
 import SceneKit
+import ModelIO
 import simd
 import AVFoundation
 
@@ -95,6 +96,14 @@ struct ARGuideSessionView: View {
     @State private var showEvidencePicker      = false
     @State private var evidencePickerStepIndex: Int? = nil
 
+    // ── 3D ghost model overlay (Phase 3D) ────────────────────────────────────
+    /// Metadata for all models in this anchor's library — fetched once on load.
+    @State private var anchorModels:   [Model3D]    = []
+    /// Local disk cache: modelId → temp .glb file URL (populated in background on load).
+    @State private var glbCache:       [String: URL] = [:]
+    /// Currently visible ghost SCNNode (at most one; removed when step changes).
+    @State private var ghostModelNode: SCNNode?      = nil
+
     // ── Ticker ────────────────────────────────────────────────────────────────
     private let navTicker = Timer.publish(every: 0.10, on: .main, in: .common).autoconnect()
 
@@ -138,6 +147,8 @@ struct ARGuideSessionView: View {
                         container.removeFromParentNode()
                     }
                     panelContainers.removeAll()
+                    // Remove 3D ghost model overlay
+                    removeGhostOverlay()
                     arManager.pauseSession()
                 }
                 .onChange(of: arManager.isRelocalizing) { stillRelocalizing in
@@ -523,6 +534,10 @@ struct ARGuideSessionView: View {
 
             if let pd = photoData { referencePhoto = UIImage(data: pd) }
 
+            // Kick off background GLB prefetch for all steps that have a 3D model
+            // (non-blocking — ghost overlays attach as downloads complete)
+            Task { await prefetchModels() }
+
             if let data = mapData {
                 arManager.startSessionWithWorldMap(data)
                 arManager.disableQRScanning()
@@ -560,6 +575,8 @@ struct ARGuideSessionView: View {
             }
             // Apply initial panel visibility: show only step 0, hide the rest.
             updatePanelVisibility(currentIndex: 0)
+            // Attach 3D ghost model overlay for the first step (if available)
+            attachGhostOverlay(for: sortedSteps[0])
         }
     }
 
@@ -1319,6 +1336,8 @@ struct ARGuideSessionView: View {
         let step = sortedSteps[index]
         if stepImages[step.id] == nil { Task { await loadStepImage(for: step) } }
         updatePanelVisibility(currentIndex: index)
+        // Swap ghost overlay for this step
+        attachGhostOverlay(for: step)
     }
 
     /// Shows only the current step's panel (default) or all panels (when showAllPanels = true).
@@ -1396,6 +1415,102 @@ struct ARGuideSessionView: View {
             // Refresh floating panel with the newly loaded image
             refreshPanelTextures(stepId: step.id)
         }
+    }
+
+    // ── 3D Ghost Model Overlay ────────────────────────────────────────────────
+
+    /// Fetch the anchor's model library, then background-download GLBs for every
+    /// step that has a modelId.  Runs once on session load; results are cached in
+    /// `anchorModels` and `glbCache`.  Ghost overlays are attached immediately if
+    /// the Operator is already on the step that just finished downloading.
+    private func prefetchModels() async {
+        let stepModelIds = Set(sortedSteps.compactMap(\.modelId))
+        guard !stepModelIds.isEmpty else { return }
+
+        let client = SIBClient(settings: settings)
+        guard let models = try? await client.fetchModels(anchorId: anchor.id) else { return }
+        anchorModels = models
+
+        // Download GLBs concurrently for any step that references a ready model
+        let targets = models.filter { stepModelIds.contains($0.id) && $0.hasGLB && $0.isReady }
+        await withTaskGroup(of: Void.self) { group in
+            for model in targets {
+                group.addTask { await self.downloadAndCacheGLB(modelId: model.id) }
+            }
+        }
+    }
+
+    /// Download one GLB and write it to a temp file.  If the active step is waiting
+    /// for this model, attach the ghost overlay immediately.
+    private func downloadAndCacheGLB(modelId: String) async {
+        guard glbCache[modelId] == nil else { return }
+        let client = SIBClient(settings: settings)
+        guard let data = try? await client.downloadModelGLB(id: modelId) else { return }
+
+        // Write to a persistent-ish temp dir (iOS cleans on low-storage purge)
+        let cacheDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ar-oms-glb", isDirectory: true)
+        try? FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
+        let fileURL = cacheDir.appendingPathComponent("\(modelId).glb")
+        guard (try? data.write(to: fileURL)) != nil else { return }
+
+        glbCache[modelId] = fileURL
+
+        // If the Operator is already on a step that uses this model, attach now
+        if case .navigating(let idx) = phase, idx < sortedSteps.count,
+           sortedSteps[idx].modelId == modelId {
+            attachGhostOverlay(for: sortedSteps[idx])
+        }
+    }
+
+    /// Display a semi-transparent ghost SCNNode for the given step.
+    /// GLB is loaded off the main actor via Task.detached so MDLAsset init
+    /// (which can be slow for large files) does not block the AR render loop.
+    private func attachGhostOverlay(for step: GuideStep) {
+        removeGhostOverlay()
+        guard let modelId  = step.modelId,
+              let glbURL   = glbCache[modelId],
+              let pos      = step.worldPosition else { return }
+
+        // Capture value-type data before hopping off-actor
+        let stepId   = step.id
+        let scale    = Float(step.modelScale   ?? 1.0)
+        let opacity  = CGFloat(step.modelOpacity ?? 0.45)
+        let finalPos = simd_float3(
+            pos.x + Float(step.modelOffsetX ?? 0),
+            pos.y + Float(step.modelOffsetY ?? 0),
+            pos.z + Float(step.modelOffsetZ ?? 0)
+        )
+        let sceneView = arManager.sceneView
+
+        Task {
+            // Heavy MDLAsset loading on a background thread — returns configured SCNNode
+            let builtNode: SCNNode? = await Task.detached(priority: .utility) { () -> SCNNode? in
+                let asset    = MDLAsset(url: glbURL)
+                asset.loadTextures()
+                let scene    = SCNScene(mdlAsset: asset)
+                let children = scene.rootNode.childNodes
+                guard !children.isEmpty else { return nil }
+
+                let wrapper  = SCNNode()
+                wrapper.name = "ghost_model_\(stepId)"
+                children.forEach { wrapper.addChildNode($0.clone()) }
+                wrapper.simdScale    = simd_float3(scale, scale, scale)
+                wrapper.simdPosition = finalPos
+                wrapper.opacity      = opacity
+                return wrapper
+            }.value
+
+            guard let node = builtNode else { return }
+            sceneView.scene.rootNode.addChildNode(node)
+            ghostModelNode = node
+        }
+    }
+
+    /// Remove the current ghost model node from the scene.
+    private func removeGhostOverlay() {
+        ghostModelNode?.removeFromParentNode()
+        ghostModelNode = nil
     }
 }
 

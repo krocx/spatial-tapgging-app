@@ -471,6 +471,36 @@ final class SIBClient {
         return data
     }
 
+    // ── 3D Model library ─────────────────────────────────────────────────────
+
+    /// Fetch all models in an anchor's asset library (all statuses).
+    /// Ordered newest-first by the server.
+    func fetchModels(anchorId: String) async throws -> [Model3D] {
+        try await get([Model3D].self, path: "/models?anchorId=\(anchorId)")
+    }
+
+    /// Fetch metadata for a single model — useful for polling conversion status.
+    func fetchModel(id: String) async throws -> Model3D {
+        try await get(Model3D.self, path: "/models/\(id)")
+    }
+
+    /// Download the GLB binary for a model.
+    /// Returns raw Data; caller is responsible for writing to a cache file.
+    /// 60s timeout — GLB files can be several MB.
+    func downloadModelGLB(id: String) async throws -> Data {
+        var req = try makeRequest(method: "GET", path: "/models/\(id)/file.glb")
+        req.timeoutInterval = 60
+        let (data, response): (Data, URLResponse)
+        do { (data, response) = try await session.data(for: req) }
+        catch { throw SIBClientError.networkError(error) }
+        if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+            let msg = (try? JSONDecoder().decode(APIError.self, from: data))?.error
+                ?? "HTTP \(http.statusCode)"
+            throw SIBClientError.httpError(http.statusCode, msg)
+        }
+        return data
+    }
+
     // ── HTTP helpers ──────────────────────────────────────────────────────────
 
     private func get<T: Decodable>(_ type: T.Type, path: String) async throws -> T {

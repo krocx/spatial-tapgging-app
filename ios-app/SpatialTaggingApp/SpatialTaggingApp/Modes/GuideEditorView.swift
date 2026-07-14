@@ -423,6 +423,10 @@ struct StepEditorRow: View {
                         Label("Req.", systemImage: "checkmark.circle")
                             .font(.caption2).foregroundStyle(.orange)
                     }
+                    if step.modelId != nil {
+                        Label("3D", systemImage: "cube")
+                            .font(.caption2).foregroundStyle(.teal)
+                    }
                 }
             }
 
@@ -591,6 +595,13 @@ struct EditStepSheet: View {
     @State private var shouldClearPhoto = false          // true → send null to server
     @State private var imagePickerSource: ImagePickerSource? = nil
 
+    // 3D model picker state (Phase 3D)
+    @State private var anchorModels:   [Model3D] = []
+    @State private var isLoadingModels = false
+    @State private var selectedModelId: String?  = nil   // nil = "None"
+    @State private var modelScale:      Double   = 1.0
+    @State private var modelOpacity:    Double   = 0.45
+
     var body: some View {
         NavigationStack {
             Form {
@@ -677,6 +688,53 @@ struct EditStepSheet: View {
                     Text("Shown in the floating panel during the Operator's AR session.")
                 }
 
+                // ── 3D Ghost Model ────────────────────────────────────────────
+                Section {
+                    if isLoadingModels {
+                        HStack {
+                            ProgressView().scaleEffect(0.8)
+                            Text("Loading models…")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    } else if anchorModels.filter(\.isReady).isEmpty {
+                        Text("No ready models found for this anchor.\nUpload 3D models in the portal → 3D Models tab.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Picker("Model", selection: $selectedModelId) {
+                            Text("None").tag(Optional<String>.none)
+                            ForEach(anchorModels.filter(\.isReady)) { model in
+                                Text("\(model.name) (\(model.formatLabel))")
+                                    .tag(Optional(model.id))
+                            }
+                        }
+                        if selectedModelId != nil {
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text("Scale: \(String(format: "%.1f", modelScale))×")
+                                        .font(.caption).foregroundStyle(.secondary)
+                                    Spacer()
+                                }
+                                Slider(value: $modelScale, in: 0.1...5.0, step: 0.1)
+                                    .tint(.indigo)
+                            }
+                            VStack(alignment: .leading, spacing: 4) {
+                                HStack {
+                                    Text("Opacity: \(Int(modelOpacity * 100))%")
+                                        .font(.caption).foregroundStyle(.secondary)
+                                    Spacer()
+                                }
+                                Slider(value: $modelOpacity, in: 0.1...1.0, step: 0.05)
+                                    .tint(.indigo)
+                            }
+                        }
+                    }
+                } header: {
+                    Text("3D Ghost Overlay (optional)")
+                } footer: {
+                    Text("A semi-transparent model displayed at this step's AR position to guide the Operator. Requires a ready model in the anchor's 3D library.")
+                }
+
                 if let err = error {
                     Section {
                         Label(err, systemImage: "exclamationmark.triangle.fill")
@@ -712,9 +770,16 @@ struct EditStepSheet: View {
                 useTTSOverride     = step.ttsText != nil
                 ttsOverride        = step.ttsText ?? ""
                 completionRequired = step.completionRequired
-                // Fetch existing photo if the step has one
-                if step.mediaPath != nil {
-                    Task { await fetchExistingPhoto() }
+                // 3D model: pre-populate from step
+                selectedModelId    = step.modelId
+                modelScale         = step.modelScale   ?? 1.0
+                modelOpacity       = step.modelOpacity ?? 0.45
+                // Fetch existing photo and anchor model library in parallel
+                Task {
+                    await withTaskGroup(of: Void.self) { group in
+                        if step.mediaPath != nil { group.addTask { await fetchExistingPhoto() } }
+                        group.addTask { await fetchAnchorModels() }
+                    }
                 }
             }
         }
@@ -726,6 +791,15 @@ struct EditStepSheet: View {
         if let data = try? await client.fetchGuideStepImage(filename: filename) {
             fetchedPhoto = UIImage(data: data)
         }
+    }
+
+    private func fetchAnchorModels() async {
+        isLoadingModels = true
+        let client = SIBClient(settings: settings)
+        if let models = try? await client.fetchModels(anchorId: guide.anchorId) {
+            anchorModels = models
+        }
+        isLoadingModels = false
     }
 
     private func saveStep() async {
@@ -752,6 +826,13 @@ struct EditStepSheet: View {
             req.mediaBase64 = img.jpegData(compressionQuality: 0.65)?.base64EncodedString()
         }
         // else: req.mediaBase64 stays nil → key omitted from JSON → server keeps existing
+
+        // 3D model assignment (only send fields when a model is selected)
+        req.modelId      = selectedModelId            // nil → key absent → server keeps existing
+        if selectedModelId != nil {
+            req.modelScale   = modelScale
+            req.modelOpacity = modelOpacity
+        }
 
         do {
             _ = try await client.updateGuideStep(guideId: guide.id, stepId: step.id, req: req)

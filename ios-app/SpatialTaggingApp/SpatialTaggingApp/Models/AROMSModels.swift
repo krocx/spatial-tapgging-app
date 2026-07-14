@@ -20,6 +20,65 @@ enum GuideStepMediaType: String, Codable {
     case glb   = "glb"
 }
 
+/// Original file format of an uploaded 3D model.
+/// Mirrors `ModelFormat` in shared/src/index.ts.
+enum ModelFormat: String, Codable {
+    case glb  = "glb"
+    case gltf = "gltf"
+    case usdz = "usdz"
+    case obj  = "obj"
+    case fbx  = "fbx"
+    case step = "step"
+    case iges = "iges"
+}
+
+/// Processing / availability status of a 3D model in the asset library.
+/// Mirrors `ModelStatus` in shared/src/index.ts.
+enum ModelStatus: String, Codable {
+    case uploading  = "uploading"
+    case processing = "processing"
+    case ready      = "ready"
+    case failed     = "failed"
+}
+
+// ============================================================
+// MARK: - Model3D
+// ============================================================
+
+/// A 3D model in an anchor's asset library.
+/// Models uploaded in non-GLB formats are converted to GLB by the server
+/// via Blender headless before being available for AR ghost overlay use.
+/// Mirrors `Model3D` in shared/src/index.ts.
+struct Model3D: Codable, Identifiable, Equatable {
+    let id:               String
+    let anchorId:         String
+    let name:             String
+    let originalFormat:   ModelFormat
+    let originalFilename: String
+    let fileSizeBytes:    Int
+    let status:           ModelStatus
+    let conversionError:  String?
+    let hasGLB:           Bool
+    let hasUSDZ:          Bool
+    let uploadedBy:       String?
+    let createdAt:        String
+    let updatedAt:        String
+
+    /// True when the model has finished processing and is ready for AR use.
+    var isReady: Bool { status == .ready }
+
+    /// Short display label for the source format.
+    var formatLabel: String {
+        switch originalFormat {
+        case .glb, .gltf: return "GLB"
+        case .usdz:        return "USDZ"
+        case .step, .iges: return "CAD"
+        case .obj:         return "OBJ"
+        case .fbx:         return "FBX"
+        }
+    }
+}
+
 // ============================================================
 // MARK: - Guide
 // ============================================================
@@ -82,6 +141,13 @@ struct GuideStep: Codable, Identifiable, Equatable {
     let posZ:               Double?
     let isPlaced:           Bool        // non-optional; custom init defaults to false
     let positionSource:     String?     // "tap" | "cad" — forward compat for CAD import
+    // Phase 3D: 3D model assignment
+    let modelId:            String?     // ID of Model3D in this anchor's library; nil = no ghost
+    let modelScale:         Double?     // world-space uniform scale factor (default 1.0)
+    let modelOpacity:       Double?     // ghost overlay opacity 0–1 (default 0.45)
+    let modelOffsetX:       Double?     // X offset from step worldPosition in metres (default 0)
+    let modelOffsetY:       Double?     // Y offset from step worldPosition in metres (default 0)
+    let modelOffsetZ:       Double?     // Z offset from step worldPosition in metres (default 0)
     let createdAt:          String
     let updatedAt:          String
 
@@ -120,6 +186,13 @@ struct GuideStep: Codable, Identifiable, Equatable {
         posZ               = try c.decodeIfPresent(Double.self,             forKey: .posZ)
         isPlaced           = (try? c.decode(Bool.self,              forKey: .isPlaced)) ?? false
         positionSource     = try c.decodeIfPresent(String.self,             forKey: .positionSource)
+        // Phase 3D: model assignment — default nil (key absent) when not yet assigned
+        modelId            = try c.decodeIfPresent(String.self,             forKey: .modelId)
+        modelScale         = try c.decodeIfPresent(Double.self,             forKey: .modelScale)
+        modelOpacity       = try c.decodeIfPresent(Double.self,             forKey: .modelOpacity)
+        modelOffsetX       = try c.decodeIfPresent(Double.self,             forKey: .modelOffsetX)
+        modelOffsetY       = try c.decodeIfPresent(Double.self,             forKey: .modelOffsetY)
+        modelOffsetZ       = try c.decodeIfPresent(Double.self,             forKey: .modelOffsetZ)
         createdAt          = try c.decode(String.self,              forKey: .createdAt)
         updatedAt          = try c.decode(String.self,              forKey: .updatedAt)
     }
@@ -180,6 +253,17 @@ struct UpdateGuideStepRequest: Codable {
     var posZ:               Double?
     var isPlaced:           Bool?
     var positionSource:     String?
+    // Phase 3D: 3D model assignment
+    // Note: Swift's encodeIfPresent omits nil keys entirely (does NOT send JSON null).
+    // Setting modelId = nil therefore means "don't change"; assigning a real ID sets/replaces.
+    // Clearing the model (sending JSON null) is not yet supported via this struct —
+    // it would require a custom encoder or an explicit null-sentinel wrapper type.
+    var modelId:            String?
+    var modelScale:         Double?
+    var modelOpacity:       Double?
+    var modelOffsetX:       Double?
+    var modelOffsetY:       Double?
+    var modelOffsetZ:       Double?
 }
 
 // Swift synthesizes init() automatically for this struct because every stored
