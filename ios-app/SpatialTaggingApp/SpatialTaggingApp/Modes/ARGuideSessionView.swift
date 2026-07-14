@@ -630,11 +630,22 @@ struct ARGuideSessionView: View {
         container.addChildNode(cardNode)
 
         // ── Invisible hit-test buttons (card local: x ∈ [−0.15,0.15], y ∈ [−0.20,0.20])
+        // Positions are derived from the drawn texture coordinates using:
+        //   x_local = (x_tex / 512) * 0.30 − 0.15
+        //   y_local = 0.20 − (y_tex / 580) * 0.40
+        //
+        // Minimize "–" drawn at approx tex (494, 38):
         cardNode.addChildNode(makeHitButton(w: 0.06, h: 0.05, x:  0.12,  y:  0.183, name: "btn_min_\(step.id)"))
-        // Larger hit areas for audio/camera to match the increased 34pt icon size
-        cardNode.addChildNode(makeHitButton(w: 0.08, h: 0.07, x: -0.10,  y: -0.170, name: "btn_audio_\(step.id)"))
-        cardNode.addChildNode(makeHitButton(w: 0.08, h: 0.07, x: -0.025, y: -0.170, name: "btn_camera_\(step.id)"))
-        cardNode.addChildNode(makeHitButton(w: 0.11, h: 0.05, x:  0.068, y: -0.170, name: "btn_complete_\(step.id)"))
+        // Audio 🔊 drawn at tex (14, 486), label at (6,526,w52) → zone centre ≈ (32, 513):
+        //   x_local = (32/512)*0.30−0.15 = −0.131  y_local = 0.20−(513/580)*0.40 = −0.154
+        cardNode.addChildNode(makeHitButton(w: 0.07, h: 0.07, x: -0.131, y: -0.154, name: "btn_audio_\(step.id)"))
+        // Camera 📷 moved to tex (160, 486), label at (152,526,w52) → zone centre ≈ (178, 513):
+        //   x_local = (178/512)*0.30−0.15 = −0.046  y_local = −0.154
+        //   8.5 cm gap between audio and camera centres → safe for gloved hands
+        cardNode.addChildNode(makeHitButton(w: 0.07, h: 0.07, x: -0.046, y: -0.154, name: "btn_camera_\(step.id)"))
+        // Primary button drawn at tex CGRect(354,492,144,48) → centre (426, 516):
+        //   x_local = (426/512)*0.30−0.15 = 0.100   y_local = 0.20−(516/580)*0.40 = −0.156
+        cardNode.addChildNode(makeHitButton(w: 0.09, h: 0.055, x:  0.100, y: -0.156, name: "btn_complete_\(step.id)"))
         pillNode.addChildNode(makeHitButton(w: 0.30, h: 0.055, x: 0, y: 0, name: "btn_expand_\(step.id)"))
 
         // ── Dotted connector: vertical dashes from pin top to panel bottom ────
@@ -809,7 +820,18 @@ struct ARGuideSessionView: View {
                                     y: badgeR.midY - numSz.height/2),
                         withAttributes: numAttrs)
 
-            // ── Title (center-aligned in middle zone) — use displayTitle ─────
+            // ── Audio icon (pushed right so title has a centered zone) ────────
+            // Audio at x=420, chevron at x=470 — leaves x=76..412 for the title.
+            let audioColor: UIColor = isSpeaking ? .systemIndigo : UIColor.white.withAlphaComponent(0.80)
+            let audioAttrs: [NSAttributedString.Key: Any] = [
+                .font:            UIFont.systemFont(ofSize: 28),
+                .foregroundColor: audioColor,
+            ]
+            ("🔊" as NSString).draw(at: CGPoint(x: 420, y: H / 2 - 17), withAttributes: audioAttrs)
+
+            // ── Title (center-aligned between badge and audio icon) ───────────
+            // Zone: badge right ≈ 76, audio left ≈ 420 → available = 336pt, center ≈ 244
+            // (distance label removed from pill; it is shown in the miniNavCard)
             let titlePara = NSMutableParagraphStyle()
             titlePara.alignment     = .center
             titlePara.lineBreakMode = .byTruncatingTail
@@ -818,39 +840,18 @@ struct ARGuideSessionView: View {
                 .foregroundColor: UIColor.white,
                 .paragraphStyle:  titlePara,
             ]
-            // Middle zone: badge right edge ≈ 72, audio left edge = 348 → width 268
-            let titleR = CGRect(x: 80, y: 8, width: 260, height: H - 16)
+            let titleR = CGRect(x: 76, y: 8, width: 336, height: H - 16)
             (step.displayTitle as NSString).draw(with: titleR,
                 options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine],
                 attributes: titleAttrs,
                 context: nil)
-
-            // ── Audio icon ────────────────────────────────────────────────────
-            let audioColor: UIColor = isSpeaking ? .systemIndigo : UIColor.white.withAlphaComponent(0.80)
-            let audioAttrs: [NSAttributedString.Key: Any] = [
-                .font:            UIFont.systemFont(ofSize: 30),
-                .foregroundColor: audioColor,
-            ]
-            ("🔊" as NSString).draw(at: CGPoint(x: 348, y: H / 2 - 20), withAttributes: audioAttrs)
-
-            // ── Distance label ────────────────────────────────────────────────
-            if let d = distanceM {
-                let dColor: UIColor = d <= arrivedM ? .systemGreen
-                    : (d <= approachingM ? .systemOrange : .white)
-                let dAttrs: [NSAttributedString.Key: Any] = [
-                    .font:            UIFont.monospacedDigitSystemFont(ofSize: 12, weight: .semibold),
-                    .foregroundColor: dColor,
-                ]
-                (String(format: "%.1f m", d) as NSString)
-                    .draw(at: CGPoint(x: 390, y: H / 2 - 9), withAttributes: dAttrs)
-            }
 
             // ── Expand chevron (far right) ────────────────────────────────────
             let chevAttrs: [NSAttributedString.Key: Any] = [
                 .font:            UIFont.systemFont(ofSize: 26, weight: .medium),
                 .foregroundColor: UIColor.white.withAlphaComponent(0.50),
             ]
-            ("›" as NSString).draw(at: CGPoint(x: 478, y: H / 2 - 18), withAttributes: chevAttrs)
+            ("›" as NSString).draw(at: CGPoint(x: 470, y: H / 2 - 18), withAttributes: chevAttrs)
         }
     }
 
@@ -902,24 +903,14 @@ struct ARGuideSessionView: View {
                             withAttributes: numAttrs)
             }
 
-            // Right-of-badge zone: step counter (caption) + display title (subheadline)
-            // Vertically stacked and centred in the 76pt header.
-            // Counter: 10pt → ~13pt high; title: 16pt → ~20pt high; gap: 3pt → total ≈ 36pt.
-            // Centre the pair: headerMid = 38, offset = 38 - 18 = 20 → counter at y=20, title at y=36.
-            let headerMid: CGFloat = 38    // visual centre of header zone
-            let stepLabelAttrs: [NSAttributedString.Key: Any] = [
-                .font:            UIFont.systemFont(ofSize: 10, weight: .semibold),
-                .foregroundColor: UIColor.white.withAlphaComponent(0.50),
-            ]
-            let stepLblStr = "Step \(index + 1) of \(sortedSteps.count)" as NSString
-            let stepLblSz  = stepLblStr.size(withAttributes: stepLabelAttrs)
+            // Right-of-badge zone: display title only.
+            // The step number is already shown in the badge, so the "Step N of M"
+            // caption is omitted here — it previously caused a cluttered "3 Step 3"
+            // appearance when displayTitle defaulted to "Step N".
+            let headerMid: CGFloat = 38    // visual centre of 76pt header zone
             let titleFont  = UIFont.systemFont(ofSize: 16, weight: .semibold)
             let titleH: CGFloat = titleFont.lineHeight    // ≈ 20pt
-            let blockH  = stepLblSz.height + 3 + titleH
-            let blockY  = headerMid - blockH / 2
-            stepLblStr.draw(at: CGPoint(x: 70, y: blockY), withAttributes: stepLabelAttrs)
-
-            // Display title uses displayTitle (title field if set, else "Step N")
+            let titleY     = headerMid - titleH / 2       // vertically centered
             let titleLinePara = NSMutableParagraphStyle()
             titleLinePara.lineBreakMode = .byTruncatingTail
             let titleAttrs: [NSAttributedString.Key: Any] = [
@@ -927,8 +918,8 @@ struct ARGuideSessionView: View {
                 .foregroundColor: UIColor.white,
                 .paragraphStyle:  titleLinePara,
             ]
-            let titleY = blockY + stepLblSz.height + 3
-            let titleR = CGRect(x: 70, y: titleY, width: W - 130, height: titleH + 4)
+            // x=70 → clear of badge (right edge ≈58); width=W-120 leaves 50pt for the "–" button
+            let titleR = CGRect(x: 70, y: titleY, width: W - 120, height: titleH + 4)
             (step.displayTitle as NSString).draw(with: titleR,
                 options: .truncatesLastVisibleLine,
                 attributes: titleAttrs,
@@ -1026,12 +1017,15 @@ struct ARGuideSessionView: View {
                       withAttributes: audioLabelAttrs)
 
             // Evidence camera button — icon + label
+            // Moved to x=160 (was 70) to create clear physical separation from the
+            // audio button. The gap between icon centres is now ~8.5 cm in world
+            // space, preventing accidental mis-taps by gloved technicians.
             let camColor: UIColor = hasEvidence ? .systemGreen : UIColor.white.withAlphaComponent(0.75)
             let camAttrs: [NSAttributedString.Key: Any] = [
                 .font:            UIFont.systemFont(ofSize: 34),
                 .foregroundColor: camColor,
             ]
-            ("📷" as NSString).draw(at: CGPoint(x: 70, y: barY + 6), withAttributes: camAttrs)
+            ("📷" as NSString).draw(at: CGPoint(x: 160, y: barY + 6), withAttributes: camAttrs)
             let camLabelPara = NSMutableParagraphStyle(); camLabelPara.alignment = .center
             let camLabelAttrs: [NSAttributedString.Key: Any] = [
                 .font:            UIFont.systemFont(ofSize: 9, weight: .medium),
@@ -1039,17 +1033,17 @@ struct ARGuideSessionView: View {
                 .paragraphStyle:  camLabelPara,
             ]
             (hasEvidence ? "CAPTURED" : "PHOTO" as NSString)
-                .draw(in: CGRect(x: 62, y: barY + 46, width: 52, height: 14),
+                .draw(in: CGRect(x: 152, y: barY + 46, width: 52, height: 14),
                       withAttributes: camLabelAttrs)
 
-            // Distance label (between icons and primary button)
+            // Distance label (between icons and primary button — moved right of camera)
             if let d = distanceM {
                 let dColor: UIColor = d <= arrivedM ? .systemGreen : (d <= approachingM ? .systemOrange : .white)
                 let dAttrs: [NSAttributedString.Key: Any] = [
                     .font:            UIFont.monospacedDigitSystemFont(ofSize: 13, weight: .semibold),
                     .foregroundColor: dColor,
                 ]
-                (String(format: "%.1f m", d) as NSString).draw(at: CGPoint(x: 130, y: barY + 22), withAttributes: dAttrs)
+                (String(format: "%.1f m", d) as NSString).draw(at: CGPoint(x: 220, y: barY + 22), withAttributes: dAttrs)
             }
 
             // Primary action button (right side) — pill shape, properly centred text

@@ -21,6 +21,10 @@ import simd
 
 struct AuthorModeView: View {
 
+    /// Tag Groups: when set, new tags placed in this session are assigned to this Inspection Set.
+    /// Nil = session is not group-scoped (legacy flat flow or Loc-Tag walk).
+    var groupId: String? = nil
+
     @EnvironmentObject private var settings: AppSettings
     @EnvironmentObject private var appState:  AppState
     @EnvironmentObject private var tour:      GuidedTourManager
@@ -339,7 +343,8 @@ struct AuthorModeView: View {
                         appState.activeTags.append(newTag)
                         appState.saveLastAuthorSession()
                         pendingPlacement = nil
-                    }
+                    },
+                    groupId: groupId
                 )
                 .environmentObject(settings)
                 .environmentObject(appState)

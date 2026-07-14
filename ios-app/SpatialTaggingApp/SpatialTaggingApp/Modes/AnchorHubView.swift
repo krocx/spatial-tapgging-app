@@ -62,20 +62,20 @@ struct AnchorHubView: View {
                 }
             }
 
-            // ── Tags ───────────────────────────────────────────────────────────
-            if isLoadingTags {
-                Section { HStack { Spacer(); ProgressView("Loading tags…"); Spacer() } }
-            } else if let err = tagLoadError {
-                Section {
-                    Label(err, systemImage: "exclamationmark.triangle.fill")
-                        .font(.caption).foregroundStyle(.red)
-                    Button("Retry") { Task { await loadTags() } }
-                        .buttonStyle(.borderedProminent).controlSize(.small)
-                }
-            } else {
-                Section {
-                    if anchor.anchorType == .locTag {
-                        // ── Gemba Walk: show LocTag issues ─────────────────────
+            // ── Tags / Inspection Sets ──────────────────────────────────────────────
+            if anchor.anchorType == .locTag {
+                // ── Gemba Walk: loading state + issues list ──────────────────────
+                if isLoadingTags {
+                    Section { HStack { Spacer(); ProgressView("Loading tags…"); Spacer() } }
+                } else if let err = tagLoadError {
+                    Section {
+                        Label(err, systemImage: "exclamationmark.triangle.fill")
+                            .font(.caption).foregroundStyle(.red)
+                        Button("Retry") { Task { await loadTags() } }
+                            .buttonStyle(.borderedProminent).controlSize(.small)
+                    }
+                } else {
+                    Section {
                         if locTags.isEmpty {
                             ContentUnavailableView {
                                 Label("No Issues Placed", systemImage: "mappin.slash")
@@ -99,34 +99,52 @@ struct AnchorHubView: View {
                                     }
                             }
                         }
-                    } else {
-                        // ── QR anchor: show regular trained/untrained tags ──────
-                        if tags.isEmpty {
-                            ContentUnavailableView {
-                                Label("No Tags Yet", systemImage: "tag.slash")
-                            } description: {
-                                Text(mode == .author
-                                     ? "Enter AR session to place your first tag."
-                                     : "The Author must add and train tags before inspection.")
-                            }
-                            .listRowBackground(Color.clear)
-                        } else {
-                            ForEach(tags) { tag in HubTagRow(tag: tag) }
-                        }
-                    }
-                } header: {
-                    HStack {
-                        Text(anchor.anchorType == .locTag ? "Issues" : "Tags")
-                        Spacer()
-                        if anchor.anchorType == .locTag {
+                    } header: {
+                        HStack {
+                            Text("Issues")
+                            Spacer()
                             Text("\(locTags.count) issue\(locTags.count == 1 ? "" : "s")")
                                 .foregroundStyle(.secondary)
-                        } else {
-                            let trained = tags.filter { isTagTrained($0) }.count
-                            Text("\(trained)/\(tags.count) trained")
-                                .foregroundStyle(.secondary)
                         }
                     }
+                }
+            } else {
+                // ── QR anchor: Inspection Sets (Tag Groups) ───────────────────────
+                // Tags are managed per group in TagGroupListView / TagGroupDetailView.
+                Section {
+                    NavigationLink {
+                        TagGroupListView(
+                            anchor:         anchor,
+                            mode:           mode,
+                            onSessionReady: onSessionReady
+                        )
+                        .environmentObject(settings)
+                        .environmentObject(appState)
+                        .environmentObject(tour)
+                    } label: {
+                        HStack(spacing: 14) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color.teal.opacity(0.12))
+                                    .frame(width: 36, height: 36)
+                                Image(systemName: "checklist")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundStyle(.teal)
+                            }
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Inspection Sets")
+                                    .font(.subheadline.bold())
+                                Text(mode == .author
+                                     ? "Create and manage grouped inspection tags"
+                                     : "View and run tag inspection sets")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    }
+                } header: {
+                    Text("Tags")
                 }
             }
 
@@ -165,8 +183,8 @@ struct AnchorHubView: View {
                 }
             }
 
-            // ── Readiness warning (Operator) ───────────────────────────────────
-            if let warning = readinessWarning {
+            // ── Readiness warning (Operator, Loc-Tag) ───────────────────────────
+            if anchor.anchorType == .locTag, let warning = readinessWarning {
                 Section {
                     Label(warning, systemImage: "exclamationmark.triangle.fill")
                         .font(.caption)
@@ -174,53 +192,45 @@ struct AnchorHubView: View {
                 }
             }
 
-            // ── Enter AR session ───────────────────────────────────────────────
-            Section {
-                Button {
-                    appState.activeAnchor = anchor
-                    appState.activeTags   = tags
-                    if anchor.anchorType == .locTag {
+            // ── Enter AR session (Loc-Tag anchors only) ───────────────────────
+            // QR anchors: AR entry is now through Inspection Sets → TagGroupDetailView.
+            if anchor.anchorType == .locTag {
+                Section {
+                    Button {
+                        appState.activeAnchor = anchor
+                        appState.activeTags   = tags
                         // Loc-Tag: no QR scan needed — go straight to the AR mode.
-                        // ModeSelectionView's onSessionReady callback routes to the
-                        // correct LocTag view based on the caller's mode parameter.
                         onSessionReady(anchor, tags)
-                    } else {
-                        showScanGate = true
+                    } label: {
+                        HStack {
+                            Spacer()
+                            Label(
+                                mode == .author
+                                    ? (locTags.isEmpty ? "Start Audit Walk" : "Edit Walk")
+                                    : "Load Walk",
+                                systemImage: "figure.walk"
+                            )
+                            .font(.headline)
+                            Spacer()
+                        }
+                        .padding(.vertical, 4)
                     }
-                } label: {
+                    .buttonStyle(.borderedProminent)
+                    .tint(.orange)
+                    .controlSize(.large)
+
                     HStack {
                         Spacer()
-                        Label(
-                            anchor.anchorType == .locTag
-                                ? (mode == .author
-                                    ? (locTags.isEmpty ? "Start Audit Walk" : "Edit Walk")
-                                    : "Load Walk")
-                                : "Enter AR Session",
-                            systemImage: anchor.anchorType == .locTag ? "figure.walk" : "play.fill"
-                        )
-                        .font(.headline)
+                        Image(systemName: "figure.walk.circle")
+                            .font(.caption).foregroundStyle(.secondary)
+                        Text(mode == .author ? "Enter AR to place tags by tapping surfaces"
+                                             : "Enter AR to re-localize and resolve tags")
+                            .font(.caption).foregroundStyle(.secondary)
                         Spacer()
                     }
-                    .padding(.vertical, 4)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(anchor.anchorType == .locTag ? .orange : .blue)
-                .controlSize(.large)
-                .disabled(isReadinessBlocked)
-
-                HStack {
-                    Spacer()
-                    Image(systemName: anchor.anchorType == .locTag ? "figure.walk.circle" : "qrcode.viewfinder")
-                        .font(.caption).foregroundStyle(.secondary)
-                    Text(anchor.anchorType == .locTag
-                         ? (mode == .author ? "Enter AR to place tags by tapping surfaces"
-                                            : "Enter AR to re-localize and resolve tags")
-                         : "Scan anchor QR to lock origin for this session")
-                        .font(.caption).foregroundStyle(.secondary)
-                    Spacer()
-                }
+                .listRowBackground(Color.clear)
             }
-            .listRowBackground(Color.clear)
         }
         .listStyle(.insetGrouped)
         .navigationTitle(anchor.assetId)
@@ -446,43 +456,15 @@ struct AnchorHubView: View {
     }
 
     private func loadTags() async {
+        // QR anchors: tags are managed per Inspection Set — only load for Loc-Tag anchors.
+        guard anchor.anchorType == .locTag else { return }
         isLoadingTags = true
         tagLoadError  = nil
         let client    = SIBClient(settings: settings)
         do {
-            if anchor.anchorType == .locTag {
-                // ── Gemba Walk: fetch loc-tags (issues) ───────────────────────
-                let fetched = try await client.fetchLocTags(anchorId: anchor.id)
-                locTags = fetched.sorted { $0.order < $1.order }
-            } else {
-                // ── QR anchor: fetch regular tags + optional readiness check ──
-                let fetched = try await client.fetchTags(anchorId: anchor.id)
-                tags = fetched
-
-                // Seed trainedTagIds from server-computed isTrained field so the Author
-                // tag list and Operator list show accurate trained status after re-entry.
-                let trained = fetched.filter { $0.isTrained == true }.map { $0.id }
-                for id in trained { appState.trainedTagIds.insert(id) }
-
-                // Operator: check readiness
-                if mode == .operator, !fetched.isEmpty {
-                    do {
-                        let readiness = try await client.fetchAnchorReadiness(id: anchor.id)
-                        if !readiness.isReady {
-                            if readiness.trainedTags == 0 {
-                                readinessWarning = "No tags trained yet — Author must train all tags before inspection."
-                                isReadinessBlocked = true
-                            } else {
-                                let n = readiness.untrainedTagIds.count
-                                readinessWarning = "\(n) of \(readiness.totalTags) tag\(n == 1 ? "" : "s") not yet trained — they will show as PENDING."
-                                isReadinessBlocked = false
-                            }
-                        }
-                    } catch {
-                        print("[AnchorHub] Readiness check failed (non-fatal): \(error.localizedDescription)")
-                    }
-                }
-            }
+            // Gemba Walk: fetch loc-tags (issues placed by surface tap)
+            let fetched = try await client.fetchLocTags(anchorId: anchor.id)
+            locTags = fetched.sorted { $0.order < $1.order }
         } catch {
             tagLoadError = error.localizedDescription
         }

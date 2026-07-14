@@ -155,8 +155,11 @@ final class SIBClient {
 
     // ── Tags ──────────────────────────────────────────────────────────────────
 
-    func fetchTags(anchorId: String) async throws -> [Tag] {
-        try await get([Tag].self, path: "/tags?anchorId=\(anchorId)")
+    /// Fetch tags for an anchor, optionally filtered to a specific Inspection Set.
+    func fetchTags(anchorId: String, groupId: String? = nil) async throws -> [Tag] {
+        var path = "/tags?anchorId=\(anchorId)"
+        if let gid = groupId { path += "&groupId=\(gid)" }
+        return try await get([Tag].self, path: path)
     }
 
     func createTag(_ req: CreateTagRequest) async throws -> Tag {
@@ -173,6 +176,24 @@ final class SIBClient {
 
     func deleteAllTags(anchorId: String) async throws {
         try await delete(path: "/tags?anchorId=\(anchorId)")
+    }
+
+    // ── Tag Groups (Inspection Sets) ──────────────────────────────────────────
+
+    func fetchTagGroups(anchorId: String) async throws -> [TagGroup] {
+        try await get([TagGroup].self, path: "/tag-groups?anchorId=\(anchorId)")
+    }
+
+    func createTagGroup(_ req: CreateTagGroupRequest) async throws -> TagGroup {
+        try await post(TagGroup.self, path: "/tag-groups", body: req)
+    }
+
+    func updateTagGroup(id: String, req: UpdateTagGroupRequest) async throws -> TagGroup {
+        try await patch(TagGroup.self, path: "/tag-groups/\(id)", body: req)
+    }
+
+    func deleteTagGroup(id: String) async throws {
+        try await delete(path: "/tag-groups/\(id)")
     }
 
     // ── Pass-state ────────────────────────────────────────────────────────────

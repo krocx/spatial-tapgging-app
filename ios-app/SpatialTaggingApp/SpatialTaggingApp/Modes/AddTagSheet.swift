@@ -51,6 +51,8 @@ struct AddTagSheet: View {
     let placement:      SIBVector3?
     let onSaveAndTrain: (Tag) -> Void   // "Train now"
     let onSaveAndDefer: (Tag) -> Void   // "Save & train later"
+    /// Tag Groups: when set, new tags are assigned to this Inspection Set.
+    var groupId:        String? = nil
 
     @EnvironmentObject private var settings: AppSettings
     @EnvironmentObject private var appState:  AppState
@@ -352,6 +354,7 @@ struct AddTagSheet: View {
             expectedOutcome:  "\(trimmedLabel) is present and correct",
             checkDescription: nil,
             order:            nil,
+            groupId:          groupId,
             metadata:         meta
         )
 

@@ -11,7 +11,7 @@ struct ContentView: View {
             case .none:
                 ModeSelectionView()
             case .author:
-                AuthorModeView()
+                AuthorModeView(groupId: appState.activeGroupId)
             case .operator:
                 OperatorModeView()
             // Phase 2: Gemba audit walk modes (views implemented in Tasks E/F)

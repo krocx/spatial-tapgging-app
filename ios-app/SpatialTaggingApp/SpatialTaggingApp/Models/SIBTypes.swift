@@ -218,6 +218,9 @@ struct Tag: Codable, Identifiable {
     let order: Int?
     /// Optional inspection-region crop. Nil = full-frame validation.
     let roi: RegionOfInterest?
+    /// Tag Groups: optional Inspection Set membership.
+    /// Nil on legacy tags — they are treated as ungrouped.
+    let groupId: String?
     let metadata: [String: AnyCodable]
     /// Server-computed: true when a pass-state exists for this tag.
     /// Optional for backward compatibility with older SIB responses.
@@ -237,6 +240,8 @@ struct CreateTagRequest: Codable {
     let expectedOutcome: String
     let checkDescription: String?
     let order: Int?
+    /// Tag Groups: pass a groupId to assign this tag to an Inspection Set.
+    let groupId: String?
     let metadata: [String: AnyCodable]
 }
 
@@ -267,6 +272,46 @@ struct UpdateTagRequest: Codable {
         self.order = order
         self.roi = roi
         self.metadata = metadata
+    }
+}
+
+// ── Tag Groups (Inspection Sets) ──────────────────────────────────────────────
+
+/// A named collection of Tags attached to one Anchor.
+/// Mirrors the ARGuide pattern: Author creates named Inspection Sets,
+/// assigns Tags to them via groupId, and Operators select a set to inspect.
+struct TagGroup: Codable, Identifiable {
+    let id: String
+    let anchorId: String
+    let name: String
+    let description: String?
+    /// Author name at creation time. Nil on groups created before this field.
+    let createdBy: String?
+    let createdAt: String
+    let updatedAt: String
+}
+
+struct CreateTagGroupRequest: Codable {
+    let anchorId: String
+    let name: String
+    let description: String?
+    let createdBy: String?
+
+    init(anchorId: String, name: String, description: String? = nil, createdBy: String? = nil) {
+        self.anchorId    = anchorId
+        self.name        = name
+        self.description = description
+        self.createdBy   = createdBy
+    }
+}
+
+struct UpdateTagGroupRequest: Codable {
+    let name: String?
+    let description: String?
+
+    init(name: String? = nil, description: String? = nil) {
+        self.name        = name
+        self.description = description
     }
 }
 

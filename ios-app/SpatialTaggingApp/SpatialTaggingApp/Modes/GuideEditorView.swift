@@ -18,6 +18,21 @@
 import SwiftUI
 import AVFoundation
 
+// Used by AddStepSheet and EditStepSheet to avoid a race between setting
+// `imageSourceType` and `showImagePicker = true` in the same Button action.
+// By using sheet(item:) with an enum that carries the source type, SwiftUI
+// reads the source type from the presented item itself — no race condition.
+private enum ImagePickerSource: Identifiable {
+    case camera, library
+    var id: Self { self }
+    var uiSourceType: UIImagePickerController.SourceType {
+        switch self {
+        case .camera:  return .camera
+        case .library: return .photoLibrary
+        }
+    }
+}
+
 struct GuideEditorView: View {
 
     let anchor:  Anchor
@@ -439,8 +454,7 @@ struct AddStepSheet: View {
     @State private var useTTSOverride     = false
     @State private var completionRequired = true
     @State private var selectedImage:     UIImage? = nil
-    @State private var showImagePicker    = false
-    @State private var imageSourceType:   UIImagePickerController.SourceType = .photoLibrary
+    @State private var imagePickerSource: ImagePickerSource? = nil
     @State private var isSaving           = false
     @State private var error:             String? = nil
 
@@ -487,14 +501,12 @@ struct AddStepSheet: View {
                         Button("Remove Photo", role: .destructive) { selectedImage = nil }
                     } else {
                         Button {
-                            imageSourceType = .camera
-                            showImagePicker = true
+                            imagePickerSource = .camera
                         } label: {
                             Label("Take Photo", systemImage: "camera")
                         }
                         Button {
-                            imageSourceType = .photoLibrary
-                            showImagePicker = true
+                            imagePickerSource = .library
                         } label: {
                             Label("Choose from Library", systemImage: "photo.on.rectangle")
                         }
@@ -526,8 +538,8 @@ struct AddStepSheet: View {
                     Button("Cancel") { dismiss() }
                 }
             }
-            .sheet(isPresented: $showImagePicker) {
-                CameraPickerView(sourceType: imageSourceType) { img in
+            .sheet(item: $imagePickerSource) { source in
+                CameraPickerView(sourceType: source.uiSourceType) { img in
                     selectedImage = img
                 }
             }
@@ -577,8 +589,7 @@ struct EditStepSheet: View {
     @State private var fetchedPhoto:    UIImage? = nil  // existing photo from server
     @State private var selectedImage:   UIImage? = nil  // new photo chosen by user
     @State private var shouldClearPhoto = false          // true → send null to server
-    @State private var showImagePicker  = false
-    @State private var imageSourceType: UIImagePickerController.SourceType = .photoLibrary
+    @State private var imagePickerSource: ImagePickerSource? = nil
 
     var body: some View {
         NavigationStack {
@@ -633,15 +644,13 @@ struct EditStepSheet: View {
                             .cornerRadius(8)
                         HStack {
                             Button {
-                                imageSourceType = .camera
-                                showImagePicker = true
+                                imagePickerSource = .camera
                             } label: {
                                 Label("Replace (Camera)", systemImage: "camera")
                             }
                             Spacer()
                             Button {
-                                imageSourceType = .photoLibrary
-                                showImagePicker = true
+                                imagePickerSource = .library
                             } label: {
                                 Label("Replace (Library)", systemImage: "photo.on.rectangle")
                             }
@@ -652,14 +661,12 @@ struct EditStepSheet: View {
                     } else {
                         // No existing photo
                         Button {
-                            imageSourceType = .camera
-                            showImagePicker = true
+                            imagePickerSource = .camera
                         } label: {
                             Label("Take Photo", systemImage: "camera")
                         }
                         Button {
-                            imageSourceType = .photoLibrary
-                            showImagePicker = true
+                            imagePickerSource = .library
                         } label: {
                             Label("Choose from Library", systemImage: "photo.on.rectangle")
                         }
@@ -693,9 +700,9 @@ struct EditStepSheet: View {
                     Button("Cancel") { dismiss() }
                 }
             }
-            .sheet(isPresented: $showImagePicker) {
-                CameraPickerView(sourceType: imageSourceType) { img in
-                    selectedImage   = img
+            .sheet(item: $imagePickerSource) { source in
+                CameraPickerView(sourceType: source.uiSourceType) { img in
+                    selectedImage    = img
                     shouldClearPhoto = false
                 }
             }

@@ -169,6 +169,12 @@ export interface Tag {
   order?: number;              // optional step order within an anchor
   /** Optional inspection-region crop — see RegionOfInterest. Backward-compatible. */
   roi?: RegionOfInterest;
+  /**
+   * Tag Groups — optional grouping of tags under a named Inspection Set.
+   * Absent on legacy tags (treat as ungrouped). When set, this tag belongs
+   * to the TagGroup with this id.
+   */
+  groupId?: string;
   metadata: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
@@ -187,6 +193,38 @@ export interface UpdateTagRequest {
   /** Deep-merged into tag.metadata — existing keys are preserved. */
   metadata?: Record<string, unknown>;
 }
+
+// ============================================================
+// TagGroup — named Inspection Set grouping Tags under an Anchor
+// ============================================================
+
+/**
+ * A TagGroup is a named collection of Tags attached to one Anchor.
+ * Mirrors the ARGuide pattern: Author creates groups, assigns Tags to them,
+ * Operator selects a group to inspect and enters AR with only those tags.
+ * An Anchor can have multiple TagGroups (e.g. "Chamber Inspection", "Gas Line Check").
+ */
+export interface TagGroup {
+  id:          string;
+  anchorId:    string;
+  name:        string;
+  description?: string;
+  createdBy?:  string;    // authorName at creation time
+  createdAt:   string;
+  updatedAt:   string;
+}
+
+export type CreateTagGroupRequest = {
+  anchorId:    string;
+  name:        string;
+  description?: string;
+  createdBy?:  string;
+};
+
+export type UpdateTagGroupRequest = {
+  name?:        string;
+  description?: string;
+};
 
 // ============================================================
 // Observation — normalised output from any AI perception model

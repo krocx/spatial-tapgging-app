@@ -38,6 +38,8 @@ router.post('/', (req: Request, res: Response) => {
     expectedOutcome: body.expectedOutcome ?? '',
     ...(body.checkDescription !== undefined && { checkDescription: body.checkDescription }),
     ...(body.order !== undefined && { order: body.order }),
+    // Tag Groups: persist groupId when provided so the tag belongs to an Inspection Set.
+    ...(body.groupId !== undefined && { groupId: body.groupId }),
     metadata: body.metadata ?? {},
     createdAt: now,
     updatedAt: now,
@@ -53,14 +55,19 @@ router.post('/', (req: Request, res: Response) => {
   return res.status(201).json(response);
 });
 
-// GET /tags — list all tags (optionally filter by anchorId)
+// GET /tags — list all tags (optionally filter by anchorId and/or groupId)
 // Each tag is enriched with a server-computed `isTrained` boolean so clients
 // can display trained/untrained status without a separate readiness call.
 router.get('/', (req: Request, res: Response) => {
-  const { anchorId } = req.query;
+  const { anchorId, groupId } = req.query;
   let tags = tagStore.findAll();
   if (typeof anchorId === 'string') {
     tags = tags.filter((t) => t.anchorId === anchorId);
+  }
+  // Filter by Tag Group when supplied (used by TagGroupDetailView to load only
+  // the tags belonging to a specific Inspection Set).
+  if (typeof groupId === 'string') {
+    tags = tags.filter((t) => t.groupId === groupId);
   }
   const enriched = tags.map(tag => ({
     ...tag,

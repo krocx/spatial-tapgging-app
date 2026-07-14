@@ -12,6 +12,7 @@ import locTagRouter from './routes/loc-tags.js';
 import worldMapRouter from './routes/worldmap.js';
 import guideRouter from './routes/guides.js';
 import guideSessionRouter from './routes/guide-sessions.js';
+import tagGroupRouter from './routes/tag-groups.js';
 import { apiKeyAuth } from './middleware/auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -222,6 +223,14 @@ export function createApp(): express.Express {
   // GET  /guide-sessions?guideId=xxx         — list sessions for a guide
   // GET  /guide-sessions/:id                 — get session
   app.use('/guide-sessions', guideSessionRouter);
+
+  // --- Tag Groups: Inspection Sets ---
+  // POST   /tag-groups                       — Author: create an Inspection Set
+  // GET    /tag-groups?anchorId=xxx          — list Inspection Sets for an anchor
+  // GET    /tag-groups/:id                   — get a single TagGroup
+  // PATCH  /tag-groups/:id                   — Author: rename / update description
+  // DELETE /tag-groups/:id                   — Author: delete group (tags lose groupId, not deleted)
+  app.use('/tag-groups', tagGroupRouter);
 
   // --- 404 fallback ---
   app.use((_req, res) => {

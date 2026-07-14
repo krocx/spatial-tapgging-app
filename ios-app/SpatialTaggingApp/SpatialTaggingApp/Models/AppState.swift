@@ -38,6 +38,10 @@ final class AppState: ObservableObject {
     @Published var activeAnchor: Anchor? = nil
     @Published var activeTags: [Tag] = []
     @Published var activeSession: SIBSession? = nil
+    /// Tag Groups: the Inspection Set (TagGroup.id) that scoped this AR session.
+    /// Set by TagGroupDetailView before entering the QR scan gate; cleared on reset().
+    /// Nil means the session is not group-scoped (legacy flat flow or locTag walk).
+    @Published var activeGroupId: String? = nil
     @Published var lastValidationResult: AnchorValidationResult? = nil
     @Published var connectionState: ConnectionState = .unknown
     @Published var errorMessage: String? = nil
@@ -102,6 +106,7 @@ final class AppState: ObservableObject {
         trainedTagIds = []
         anchorEncryptionKey = nil
         anchorNormalisedTransform = nil
+        activeGroupId = nil
         // Release the shared session — any view holding a link will keep it alive
         // until it dismisses and pauses via its own onDisappear.
         activeARSession = nil
