@@ -65,6 +65,9 @@ struct GuideEditorView: View {
     @State private var showScanGate      = false
     @State private var showPlacementView = false
 
+    // 3D models for the anchor — passed into GuideStepPlacementView
+    @State private var anchorModels: [Model3D] = []
+
     // Prevents onAppear from resetting editable fields (name / description /
     // published) on subsequent firings — e.g. when a fullScreenCover closes and
     // SwiftUI re-fires onAppear on the underlying Form.
@@ -243,6 +246,15 @@ struct GuideEditorView: View {
                     }
                     // Always reload steps — refreshes isPlaced counts after placement.
                     Task { await loadSteps(guideId: g.id) }
+                    // Load anchor model library for integrated step+model placement.
+                    if anchorModels.isEmpty {
+                        Task {
+                            if let m = try? await SIBClient(settings: settings)
+                                .fetchModels(anchorId: anchor.id) {
+                                anchorModels = m
+                            }
+                        }
+                    }
                 }
             }
             // ── Add step sheet ────────────────────────────────────────────────
@@ -289,7 +301,7 @@ struct GuideEditorView: View {
                 if let g = currentGuide { Task { await loadSteps(guideId: g.id) } }
             }) {
                 if let g = currentGuide {
-                    GuideStepPlacementView(guide: g, steps: steps) { updatedSteps in
+                    GuideStepPlacementView(guide: g, steps: steps, models: anchorModels) { updatedSteps in
                         steps            = updatedSteps
                         showPlacementView = false
                     }
@@ -684,9 +696,6 @@ struct EditStepSheet: View {
     @State private var modelScale:      Double    = 1.0
     @State private var modelOpacity:    Double    = 0.45
 
-    // AR placement state
-    @State private var placementModel: Model3D? = nil   // non-nil → present ModelARPlacementView
-
     var body: some View {
         NavigationStack {
             Form {
@@ -820,29 +829,12 @@ struct EditStepSheet: View {
                                 Slider(value: $modelOpacity, in: 0.1...1.0, step: 0.05)
                                     .tint(.indigo)
                             }
-                            // Place in AR — only available once the step has a world position
-                            if step.isPlaced, let modelId = selectedModelId,
-                               let activeModel = anchorModels.first(where: { $0.id == modelId }) {
-                                Button {
-                                    placementModel = activeModel
-                                } label: {
-                                    Label("Place in AR", systemImage: "arkit")
-                                        .frame(maxWidth: .infinity, alignment: .center)
-                                        .font(.subheadline.bold())
-                                        .padding(.vertical, 8)
-                                        .foregroundStyle(.indigo)
-                                }
-                            } else if !step.isPlaced {
-                                Label("Place step pin in AR first to enable model placement", systemImage: "mappin.slash")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
                         }
                     }
                 } header: {
                     Text("3D Ghost Overlay (optional)")
                 } footer: {
-                    Text("A semi-transparent model displayed at this step's AR position to guide the Operator. Requires a ready model in the anchor's 3D library.")
+                    Text("Model position is set when you place the step pin in AR — tap \"Place Steps in AR\" in the guide editor and position the model after each pin drop.")
                 }
 
                 if let err = error {
@@ -891,12 +883,6 @@ struct EditStepSheet: View {
                         group.addTask { await fetchAnchorModels() }
                     }
                 }
-            }
-            // AR model placement — presented full-screen from NavigationStack level to avoid
-            // presentation issues with fullScreenCover inside Form sections
-            .fullScreenCover(item: $placementModel) { model in
-                ModelARPlacementView(guide: guide, step: step, model: model)
-                    .environmentObject(settings)
             }
         }
     }

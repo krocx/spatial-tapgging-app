@@ -1,82 +1,255 @@
-// GuideStepPlacementView.swift — AR OMS Phase 2
-// Author AR view for placing numbered step pins in world space.
+// GuideStepPlacementView.swift — AR OMS Phase 2 + 3D Model Placement
+//
+// Author AR view for placing numbered step pins in world space, with integrated
+// 3D model positioning immediately after each pin is dropped.
 //
 // Flow:
 //   1. Start a fresh AR session with plane detection.
 //   2. Pre-place pins for steps that already have saved positions (resume mode).
 //   3. Active step = first unplaced step (or first if all were already placed).
 //   4. Tap any surface → raycast → place pin for active step.
-//   5. Tap an existing pin → make that step active for re-placement.
-//   6. Tap a step chip in the bottom tray → make it active for (re-)placement.
-//   7. Save → PATCH each changed step position to SIB + upload ARWorldMap + reference photo.
+//      If that step has a 3D model → download it and enter Model Adjust mode.
+//   5. Model Adjust mode: 1-finger pan (H/V), 2-finger pinch (scale),
+//      2-finger rotate (Y-axis). Confirm → save transform, advance to next step.
+//      Skip → discard model placement for this step, advance.
+//   6. Tap an existing pin → make that step active for re-placement.
+//   7. Tap a step chip in the bottom tray → make it active for (re-)placement.
+//   8. Save / Done → PATCH each changed step position + model offsets to SIB
+//      + upload ARWorldMap + reference photo.
 
 import SwiftUI
 import ARKit
 import SceneKit
 import simd
 
+// ── Model transform captured during adjustment ────────────────────────────────
+
+private struct ModelTransformState {
+    var position:  simd_float3  // absolute world position
+    var scale:     Float        // uniform scale factor
+    var rotationY: Float        // Y-axis rotation in radians
+}
+
+// ── Placement phase state machine ─────────────────────────────────────────────
+
+private enum PlacementPhase: Equatable {
+    case placingPins
+    case loadingModel(stepId: String)
+    case adjustingModel(stepId: String)
+
+    static func == (lhs: PlacementPhase, rhs: PlacementPhase) -> Bool {
+        switch (lhs, rhs) {
+        case (.placingPins, .placingPins):                         return true
+        case (.loadingModel(let a), .loadingModel(let b)):         return a == b
+        case (.adjustingModel(let a), .adjustingModel(let b)):     return a == b
+        default:                                                   return false
+        }
+    }
+
+    var isAdjusting: Bool {
+        if case .adjustingModel = self { return true }
+        return false
+    }
+    var isPlacingPins: Bool { self == .placingPins }
+}
+
+// ── Pan mode for model adjustment ────────────────────────────────────────────
+
+private enum ModelPanMode { case horizontal, vertical }
+
+// ── Combined AR gesture container ─────────────────────────────────────────────
+//
+// Single UIViewRepresentable that wraps arManager.sceneView and adds tap,
+// pan, pinch, and rotate recognisers in one pass (no view-swap required).
+// Phase-conditional callbacks let the SwiftUI layer decide what each gesture does.
+
+private struct ARPlacementContainer: UIViewRepresentable {
+
+    @ObservedObject var arManager: ARSessionManager
+
+    // Tap (pin placement)
+    var onTap:          ((CGPoint) -> Void)?
+
+    // 1-finger pan (model translate)
+    var onPanBegan:     ((CGPoint) -> Void)?
+    var onPanChanged:   ((CGPoint) -> Void)?
+    var onPanEnded:     (() -> Void)?
+
+    // Pinch (model scale)
+    var onPinchBegan:   (() -> Void)?
+    var onPinchChanged: ((CGFloat) -> Void)?
+    var onPinchEnded:   ((CGFloat) -> Void)?
+
+    // Rotation (model Y-axis)
+    var onRotBegan:     (() -> Void)?
+    var onRotChanged:   ((CGFloat) -> Void)?
+    var onRotEnded:     ((CGFloat) -> Void)?
+
+    // ── Coordinator ───────────────────────────────────────────────────────────
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        var parent: ARPlacementContainer
+        init(_ parent: ARPlacementContainer) { self.parent = parent }
+
+        // All recognisers run simultaneously (pan + pinch + rotate)
+        func gestureRecognizer(
+            _ g1: UIGestureRecognizer,
+            shouldRecognizeSimultaneouslyWith g2: UIGestureRecognizer
+        ) -> Bool { true }
+
+        @objc func handleTap(_ r: UITapGestureRecognizer) {
+            guard r.state == .ended, let v = r.view else { return }
+            parent.onTap?(r.location(in: v))
+        }
+
+        @objc func handlePan(_ r: UIPanGestureRecognizer) {
+            guard r.numberOfTouches == 1, let v = r.view else { return }
+            let pt = r.location(in: v)
+            switch r.state {
+            case .began:             parent.onPanBegan?(pt)
+            case .changed:           parent.onPanChanged?(pt)
+            case .ended, .cancelled: parent.onPanEnded?()
+            default: break
+            }
+        }
+
+        @objc func handlePinch(_ r: UIPinchGestureRecognizer) {
+            switch r.state {
+            case .began:             r.scale = 1; parent.onPinchBegan?()
+            case .changed:           parent.onPinchChanged?(r.scale)
+            case .ended, .cancelled: parent.onPinchEnded?(r.scale)
+            default: break
+            }
+        }
+
+        @objc func handleRotation(_ r: UIRotationGestureRecognizer) {
+            switch r.state {
+            case .began:             r.rotation = 0; parent.onRotBegan?()
+            case .changed:           parent.onRotChanged?(r.rotation)
+            case .ended, .cancelled: parent.onRotEnded?(r.rotation)
+            default: break
+            }
+        }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+
+    func makeUIView(context: Context) -> ARSCNView {
+        let view = arManager.sceneView
+        let c    = context.coordinator
+
+        let tap = UITapGestureRecognizer(target: c, action: #selector(Coordinator.handleTap(_:)))
+        tap.delegate = c
+        view.addGestureRecognizer(tap)
+
+        let pan = UIPanGestureRecognizer(target: c, action: #selector(Coordinator.handlePan(_:)))
+        pan.minimumNumberOfTouches = 1
+        pan.maximumNumberOfTouches = 1
+        pan.delegate = c
+        view.addGestureRecognizer(pan)
+
+        let pinch = UIPinchGestureRecognizer(target: c, action: #selector(Coordinator.handlePinch(_:)))
+        pinch.delegate = c
+        view.addGestureRecognizer(pinch)
+
+        let rot = UIRotationGestureRecognizer(target: c, action: #selector(Coordinator.handleRotation(_:)))
+        rot.delegate = c
+        view.addGestureRecognizer(rot)
+
+        return view
+    }
+
+    // Always update coordinator so latest closures are used
+    func updateUIView(_ uiView: ARSCNView, context: Context) {
+        context.coordinator.parent = self
+    }
+
+    static func dismantleUIView(_ uiView: ARSCNView, coordinator: Coordinator) {}
+}
+
+// ── Main view ─────────────────────────────────────────────────────────────────
+
 struct GuideStepPlacementView: View {
 
     @EnvironmentObject private var settings: AppSettings
 
-    let guide: ARGuide
-    let steps: [GuideStep]
-    /// Called after all positions are saved.  Receives the server-updated step list.
+    let guide:  ARGuide
+    let steps:  [GuideStep]
+    let models: [Model3D]
+    /// Called after all positions are saved. Receives the server-updated step list.
     let onDone: ([GuideStep]) -> Void
 
     @StateObject private var arManager = ARSessionManager()
 
-    // ── Placement state ───────────────────────────────────────────────────────
-    /// Working positions for this session (keyed by step.id).
-    @State private var stepPositions: [String: simd_float3] = [:]
-    /// Index into `steps` of the step currently being placed.
-    @State private var activeStepIndex: Int = 0
-    /// SCNNode for each placed pin (keyed by step.id).
-    @State private var stepNodes: [String: SCNNode] = [:]
+    // ── Pin placement state ───────────────────────────────────────────────────
+    @State private var stepPositions:  [String: simd_float3] = [:]
+    @State private var activeStepIndex: Int                  = 0
+    @State private var stepNodes:      [String: SCNNode]     = [:]
+
+    // ── Phase + model state ───────────────────────────────────────────────────
+    @State private var placementPhase:  PlacementPhase       = .placingPins
+    @State private var modelNodes:      [String: SCNNode]    = [:]
+    /// Confirmed transforms for steps adjusted in this session.
+    @State private var modelTransforms: [String: ModelTransformState] = [:]
+
+    // Live adjustment values (populated when entering .adjustingModel)
+    @State private var modelPosition: simd_float3  = .zero
+    @State private var modelScale:    Float        = 1.0
+    @State private var modelRotY:     Float        = 0.0
+    @State private var modelPanMode:  ModelPanMode = .horizontal
+
+    // Gesture baselines
+    @State private var panBasePos:    simd_float3 = .zero
+    @State private var panDepthZ:     Float       = 0.5
+    @State private var panStartWorld: simd_float3 = .zero
+    @State private var scaleBase:     Float       = 1.0
+    @State private var rotYBase:      Float       = 0.0
 
     // ── Save state ────────────────────────────────────────────────────────────
-    @State private var isSaving:          Bool    = false
-    @State private var saveError:         String? = nil
-    @State private var lastSaveSucceeded: Bool    = false   // drives "Saved ✓" flash
-    /// Snapshot captured when Step 1 is first placed — used as the relocalization
-    /// ghost-photo for Operators.  Captures the view FROM step 1's location so the
-    /// ghost overlay shows the correct starting vantage point instead of wherever
-    /// the Author happened to be standing when they tapped Done.
-    @State private var firstStepPhotoData: Data? = nil
+    @State private var isSaving:           Bool    = false
+    @State private var savingIsExit:       Bool    = false
+    @State private var saveError:          String? = nil
+    @State private var lastSaveSucceeded:  Bool    = false
+    @State private var firstStepPhotoData: Data?   = nil
 
-    // ── 3D focus ring (surface-tracking crosshair, same as Author/Gemba modes) ─
+    // ── Focus ring ────────────────────────────────────────────────────────────
     @State private var focusRing: ARFocusRing? = nil
     private let crosshairTicker = Timer.publish(every: 0.10, on: .main, in: .common).autoconnect()
 
     // ── UX ────────────────────────────────────────────────────────────────────
     @State private var showTapHint: Bool = true
 
-    // ── Pin colour constants ──────────────────────────────────────────────────
+    // ── Pin colours ───────────────────────────────────────────────────────────
     private let indigoColor = UIColor.systemIndigo
     private let activeColor = UIColor.systemBlue
 
-    // ── Body ──────────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // MARK: Body
+    // ─────────────────────────────────────────────────────────────────────────
 
     var body: some View {
         ZStack(alignment: .bottom) {
 
-            // Full-screen AR camera + scene
-            ARContainerView(arManager: arManager, onTap: handleTap)
-                .ignoresSafeArea()
-                .onAppear {
-                    arManager.startSession()
-                    arManager.disableQRScanning()
-                    initFromExistingPositions()
-                    focusRing = ARFocusRing(sceneView: arManager.sceneView)
-                }
-                .onDisappear {
-                    focusRing?.cleanup()
-                    focusRing = nil
-                    arManager.pauseSession()
-                }
+            // Single AR container — never swapped, always live
+            ARPlacementContainer(
+                arManager:      arManager,
+                // Tap only fires in pin-placement phase
+                onTap:          placementPhase.isPlacingPins ? handleTap : nil,
+                // Pan/pinch/rotate only fire in model-adjust phase
+                onPanBegan:     placementPhase.isAdjusting  ? handleModelPanBegan   : nil,
+                onPanChanged:   placementPhase.isAdjusting  ? handleModelPanChanged : nil,
+                onPanEnded:     placementPhase.isAdjusting  ? { handleModelPanEnded()   } : nil,
+                onPinchBegan:   placementPhase.isAdjusting  ? { handleModelPinchBegan() } : nil,
+                onPinchChanged: placementPhase.isAdjusting  ? handleModelPinchChanged   : nil,
+                onPinchEnded:   placementPhase.isAdjusting  ? handleModelPinchEnded     : nil,
+                onRotBegan:     placementPhase.isAdjusting  ? { handleModelRotBegan()   } : nil,
+                onRotChanged:   placementPhase.isAdjusting  ? handleModelRotChanged     : nil,
+                onRotEnded:     placementPhase.isAdjusting  ? handleModelRotEnded       : nil
+            )
+            .ignoresSafeArea()
 
-            // First-tap hint (auto-hides after 5 s or first placement)
-            if showTapHint && stepPositions.isEmpty {
+            // First-tap hint
+            if placementPhase.isPlacingPins && showTapHint && stepPositions.isEmpty {
                 VStack {
                     tapHintBanner
                     Spacer()
@@ -85,32 +258,59 @@ struct GuideStepPlacementView: View {
                 .animation(.easeOut(duration: 0.35), value: showTapHint)
             }
 
-            // Bottom UI: step chips tray + action bar
-            VStack(spacing: 0) {
-                stepTray
-                actionBar
+            // Model loading overlay
+            if case .loadingModel = placementPhase {
+                modelLoadingOverlay
+            }
+
+            // Bottom UI switches between step tray and model adjust bar
+            switch placementPhase {
+            case .placingPins, .loadingModel:
+                VStack(spacing: 0) { stepTray; actionBar }
+            case .adjustingModel(let stepId):
+                if let idx = steps.firstIndex(where: { $0.id == stepId }) {
+                    modelAdjustBar(for: steps[idx])
+                }
             }
         }
         .navigationBarHidden(true)
         .overlay(alignment: .top) { topBar }
         .overlay { if isSaving { savingOverlay } }
+        .onAppear {
+            arManager.startSession()
+            arManager.disableQRScanning()
+            initFromExistingPositions()
+            focusRing = ARFocusRing(sceneView: arManager.sceneView)
+        }
+        .onDisappear {
+            for node in modelNodes.values { node.removeFromParentNode() }
+            focusRing?.cleanup()
+            focusRing = nil
+            arManager.pauseSession()
+        }
         .task {
-            // Auto-hide tap hint after 5 seconds
             try? await Task.sleep(nanoseconds: 5_000_000_000)
             withAnimation { showTapHint = false }
         }
         .onReceive(crosshairTicker) { _ in
-            focusRing?.update(sceneView: arManager.sceneView)
+            if placementPhase.isPlacingPins {
+                focusRing?.update(sceneView: arManager.sceneView)
+            }
         }
     }
 
-    // ── Top bar ───────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // MARK: Top bar
+    // ─────────────────────────────────────────────────────────────────────────
 
     private var topBar: some View {
         HStack {
             Button {
-                // Cancel — return unchanged steps
-                onDone(steps)
+                if case .adjustingModel(let stepId) = placementPhase {
+                    skipModelPlacement(stepId: stepId)
+                } else {
+                    onDone(steps)
+                }
             } label: {
                 Image(systemName: "xmark.circle.fill")
                     .font(.system(size: 26))
@@ -121,26 +321,39 @@ struct GuideStepPlacementView: View {
             Spacer()
 
             VStack(spacing: 2) {
-                Text("Place Steps")
-                    .font(.headline.bold()).foregroundStyle(.white)
-                Text("\(placedCount) / \(steps.count) placed")
-                    .font(.caption).foregroundStyle(.white.opacity(0.65))
+                switch placementPhase {
+                case .placingPins:
+                    Text("Place Steps")
+                        .font(.headline.bold()).foregroundStyle(.white)
+                    Text("\(placedCount) / \(steps.count) placed")
+                        .font(.caption).foregroundStyle(.white.opacity(0.65))
+                case .loadingModel(let stepId):
+                    Text("Loading Model")
+                        .font(.headline.bold()).foregroundStyle(.white)
+                    Text("Preparing \(displayTitle(stepId: stepId))")
+                        .font(.caption).foregroundStyle(.white.opacity(0.65))
+                case .adjustingModel(let stepId):
+                    Text("Adjust Model")
+                        .font(.headline.bold()).foregroundStyle(.white)
+                    Text("Positioning model for \(displayTitle(stepId: stepId))")
+                        .font(.caption).foregroundStyle(.white.opacity(0.65))
+                        .lineLimit(1)
+                }
             }
 
             Spacer()
 
-            // Invisible spacer so title stays centred
             Image(systemName: "xmark.circle.fill")
-                .font(.system(size: 26))
-                .foregroundStyle(.clear)
+                .font(.system(size: 26)).foregroundStyle(.clear)
                 .padding(.trailing, 16)
         }
-        .padding(.vertical, 10)
-        .padding(.top, 4)
+        .padding(.vertical, 10).padding(.top, 4)
         .background(.ultraThinMaterial.opacity(0.85))
     }
 
-    // ── Tap hint ──────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // MARK: Tap hint
+    // ─────────────────────────────────────────────────────────────────────────
 
     private var tapHintBanner: some View {
         HStack(spacing: 8) {
@@ -148,8 +361,7 @@ struct GuideStepPlacementView: View {
             let seq = activeStepIndex < steps.count
                 ? "Step \(steps[activeStepIndex].sequenceNumber)"
                 : "a step"
-            Text("Tap any surface to place \(seq)")
-                .font(.subheadline)
+            Text("Tap any surface to place \(seq)").font(.subheadline)
         }
         .foregroundStyle(.white)
         .padding(.horizontal, 16).padding(.vertical, 10)
@@ -157,7 +369,101 @@ struct GuideStepPlacementView: View {
         .padding(.horizontal, 24)
     }
 
-    // ── Step tray ─────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // MARK: Model loading overlay
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private var modelLoadingOverlay: some View {
+        ZStack {
+            Color.black.opacity(0.45).ignoresSafeArea()
+            VStack(spacing: 14) {
+                ProgressView().scaleEffect(1.2).tint(.white)
+                Text("Loading 3D model…")
+                    .font(.headline).foregroundStyle(.white)
+                Text("Tap ✕ above to skip")
+                    .font(.caption).foregroundStyle(.white.opacity(0.6))
+            }
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // MARK: Model adjust bar
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private func modelAdjustBar(for step: GuideStep) -> some View {
+        VStack(spacing: 0) {
+            // Gesture hints + H/V toggle
+            HStack(alignment: .top, spacing: 16) {
+                modelGestureHint(
+                    icon:  modelPanMode == .horizontal ? "hand.draw.fill"    : "arrow.up.and.down",
+                    label: modelPanMode == .horizontal ? "Drag\nto move"     : "Drag\nup/down"
+                )
+                modelGestureHint(icon: "arrow.up.left.and.arrow.down.right", label: "Pinch\nto scale")
+                modelGestureHint(icon: "rotate.right.fill", label: "Twist\nto rotate")
+
+                Button {
+                    modelPanMode = (modelPanMode == .horizontal) ? .vertical : .horizontal
+                } label: {
+                    VStack(spacing: 4) {
+                        Image(systemName: modelPanMode == .horizontal
+                              ? "arrow.left.and.right" : "arrow.up.and.down")
+                            .font(.system(size: 18)).foregroundStyle(.white.opacity(0.9))
+                        Text(modelPanMode == .horizontal ? "H" : "V")
+                            .font(.system(size: 10).bold()).foregroundStyle(.white.opacity(0.75))
+                    }
+                    .padding(.horizontal, 10).padding(.vertical, 6)
+                    .background(modelPanMode == .horizontal
+                                ? Color.white.opacity(0.12) : Color.indigo.opacity(0.55))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
+            }
+            .padding(.top, 10).padding(.bottom, 4)
+
+            // Scale / rotation readout
+            HStack(spacing: 24) {
+                Label("\(String(format: "%.2f", modelScale))×",
+                      systemImage: "arrow.up.left.and.arrow.down.right")
+                    .font(.caption).foregroundStyle(.white.opacity(0.7))
+                Label("\(Int(modelRotY * 180 / .pi))°", systemImage: "rotate.right")
+                    .font(.caption).foregroundStyle(.white.opacity(0.7))
+            }
+            .padding(.bottom, 8)
+
+            // Confirm + Skip
+            HStack(spacing: 12) {
+                Button { skipModelPlacement(stepId: step.id) } label: {
+                    Text("Skip")
+                        .font(.subheadline.bold())
+                        .frame(maxWidth: .infinity).padding(.vertical, 14)
+                        .background(Color.white.opacity(0.12))
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                Button { confirmModelPlacement(stepId: step.id) } label: {
+                    Label("Confirm", systemImage: "checkmark.circle.fill")
+                        .font(.headline.bold())
+                        .frame(maxWidth: .infinity).padding(.vertical, 14)
+                        .background(Color.green)
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+            }
+            .padding(.horizontal, 16).padding(.bottom, 34)
+        }
+        .background(.ultraThinMaterial)
+    }
+
+    private func modelGestureHint(icon: String, label: String) -> some View {
+        VStack(spacing: 4) {
+            Image(systemName: icon).font(.system(size: 18)).foregroundStyle(.white.opacity(0.8))
+            Text(label).font(.system(size: 10)).foregroundStyle(.white.opacity(0.6))
+                .multilineTextAlignment(.center)
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // MARK: Step tray
+    // ─────────────────────────────────────────────────────────────────────────
 
     private var stepTray: some View {
         ScrollViewReader { proxy in
@@ -166,13 +472,10 @@ struct GuideStepPlacementView: View {
                     ForEach(Array(steps.enumerated()), id: \.element.id) { idx, step in
                         stepTrayChip(idx: idx, step: step)
                             .id(step.id)
-                            .onTapGesture {
-                                activateStep(idx)
-                            }
+                            .onTapGesture { activateStep(idx) }
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 10)
+                .padding(.horizontal, 16).padding(.vertical, 10)
             }
             .background(.ultraThinMaterial)
             .onChange(of: activeStepIndex) { idx in
@@ -184,8 +487,9 @@ struct GuideStepPlacementView: View {
 
     @ViewBuilder
     private func stepTrayChip(idx: Int, step: GuideStep) -> some View {
-        let isActive = idx == activeStepIndex
-        let placed   = stepPositions[step.id] != nil
+        let isActive  = idx == activeStepIndex
+        let placed    = stepPositions[step.id] != nil
+        let hasModel  = modelTransforms[step.id] != nil
 
         VStack(spacing: 4) {
             ZStack {
@@ -193,63 +497,50 @@ struct GuideStepPlacementView: View {
                     .fill(isActive ? Color.blue :
                           placed   ? Color.indigo.opacity(0.85) : Color.gray.opacity(0.4))
                     .frame(width: 36, height: 36)
-
                 if placed && !isActive {
-                    Image(systemName: "checkmark")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(.white)
+                    Image(systemName: hasModel ? "cube.fill" : "checkmark")
+                        .font(.system(size: 14, weight: .bold)).foregroundStyle(.white)
                 } else {
                     Text("\(step.sequenceNumber)")
-                        .font(.headline.bold())
-                        .foregroundStyle(.white)
+                        .font(.headline.bold()).foregroundStyle(.white)
                 }
             }
-
             Text(step.displayTitle)
                 .font(.system(size: 9))
                 .foregroundStyle(isActive ? .white : .white.opacity(0.55))
-                .lineLimit(2)
-                .multilineTextAlignment(.center)
-                .frame(width: 62)
+                .lineLimit(2).multilineTextAlignment(.center).frame(width: 62)
         }
         .padding(6)
         .background(isActive ? Color.blue.opacity(0.18) : Color.clear,
                     in: RoundedRectangle(cornerRadius: 10))
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(isActive ? Color.blue : Color.clear, lineWidth: 1.5)
-        )
+        .overlay(RoundedRectangle(cornerRadius: 10)
+            .stroke(isActive ? Color.blue : Color.clear, lineWidth: 1.5))
     }
 
-    // ── Action bar ────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // MARK: Action bar (pin-placement mode)
+    // ─────────────────────────────────────────────────────────────────────────
 
     private var actionBar: some View {
         VStack(spacing: 0) {
-            // Error banner
             if let err = saveError {
                 Text(err)
-                    .font(.caption)
-                    .foregroundStyle(.white)
+                    .font(.caption).foregroundStyle(.white)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 16).padding(.vertical, 8)
                     .background(Color.red.opacity(0.85))
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
-
             HStack(spacing: 12) {
-                // Active step description
                 VStack(alignment: .leading, spacing: 2) {
                     if activeStepIndex < steps.count {
                         let s = steps[activeStepIndex]
                         Text("Tap to place step \(s.sequenceNumber):")
                             .font(.caption2).foregroundStyle(.white.opacity(0.55))
                         Text(s.displayTitle)
-                            .font(.caption.bold()).foregroundStyle(.white)
-                            .lineLimit(1)
+                            .font(.caption.bold()).foregroundStyle(.white).lineLimit(1)
                         if s.title != nil {
-                            Text(s.text)
-                                .font(.caption).foregroundStyle(.white.opacity(0.7))
-                                .lineLimit(1)
+                            Text(s.text).font(.caption).foregroundStyle(.white.opacity(0.7)).lineLimit(1)
                         }
                     } else {
                         Text("All steps placed")
@@ -260,44 +551,39 @@ struct GuideStepPlacementView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                // Save (stay in view) + Done (save & exit) buttons
                 HStack(spacing: 8) {
                     Button { Task { await savePins() } } label: {
                         Text(lastSaveSucceeded ? "Saved ✓" : "Save")
                             .font(.subheadline.bold())
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 10)
+                            .padding(.horizontal, 14).padding(.vertical, 10)
                             .background(placedCount == 0
                                         ? Color.gray.opacity(0.5)
-                                        : (lastSaveSucceeded ? Color.green.opacity(0.8) : Color.indigo.opacity(0.8)))
-                            .foregroundStyle(.white)
-                            .clipShape(Capsule())
+                                        : (lastSaveSucceeded
+                                           ? Color.green.opacity(0.8)
+                                           : Color.indigo.opacity(0.8)))
+                            .foregroundStyle(.white).clipShape(Capsule())
                     }
                     .disabled(placedCount == 0 || isSaving)
 
                     Button { Task { await saveAndExit() } } label: {
                         Label("Done", systemImage: "checkmark.circle.fill")
                             .font(.subheadline.bold())
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 10)
+                            .padding(.horizontal, 14).padding(.vertical, 10)
                             .background(placedCount == 0 ? Color.gray.opacity(0.5) : Color.indigo)
-                            .foregroundStyle(.white)
-                            .clipShape(Capsule())
+                            .foregroundStyle(.white).clipShape(Capsule())
                     }
                     .disabled(placedCount == 0 || isSaving)
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 12)
-            .padding(.bottom, 32)   // safe area buffer
+            .padding(.horizontal, 16).padding(.top, 12).padding(.bottom, 32)
         }
         .background(.ultraThinMaterial)
         .animation(.easeInOut(duration: 0.2), value: saveError)
     }
 
-    // ── Saving overlay ────────────────────────────────────────────────────────
-
-    @State private var savingIsExit: Bool = false   // true when Done (not Save) triggered overlay
+    // ─────────────────────────────────────────────────────────────────────────
+    // MARK: Saving overlay
+    // ─────────────────────────────────────────────────────────────────────────
 
     private var savingOverlay: some View {
         ZStack {
@@ -314,45 +600,43 @@ struct GuideStepPlacementView: View {
         }
     }
 
-    // ── Derived ───────────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // MARK: Helpers
+    // ─────────────────────────────────────────────────────────────────────────
 
     private var placedCount: Int { stepPositions.count }
 
-    // ── Initialise from server-saved positions ────────────────────────────────
+    private func displayTitle(stepId: String) -> String {
+        steps.first(where: { $0.id == stepId })?.displayTitle ?? "step"
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // MARK: Init from existing server positions
+    // ─────────────────────────────────────────────────────────────────────────
 
     private func initFromExistingPositions() {
-        // Load positions from steps that were placed in a previous session
         for step in steps {
-            if let pos = step.worldPosition {
-                stepPositions[step.id] = pos
-            }
+            if let pos = step.worldPosition { stepPositions[step.id] = pos }
         }
 
-        // Determine active step (first unplaced, or sentinel if all placed)
         if let firstUnplaced = steps.firstIndex(where: { $0.worldPosition == nil }) {
             activeStepIndex = firstUnplaced
         } else if !steps.isEmpty {
-            activeStepIndex = steps.count  // all placed — let user tap pins to re-place
+            activeStepIndex = steps.count   // all placed — user taps pins to re-place
         }
 
-        // Place 3D pins for already-positioned steps once session is initialised
         Task {
-            try? await Task.sleep(nanoseconds: 600_000_000)   // wait for ARKit to warm up
+            try? await Task.sleep(nanoseconds: 600_000_000)
             for (idx, step) in steps.enumerated() {
                 guard let pos = stepPositions[step.id],
                       stepNodes[step.id] == nil else { continue }
-                let isActive = idx == activeStepIndex
-                let node = makePin(number: step.sequenceNumber, isActive: isActive)
+                let node = makePin(number: step.sequenceNumber, isActive: idx == activeStepIndex)
                 node.simdPosition = pos
                 arManager.sceneView.scene.rootNode.addChildNode(node)
                 stepNodes[step.id] = node
             }
         }
 
-        // Resume scenario — when all steps are already placed from the server, the
-        // tap-handler condition that captures firstStepPhotoData never fires.
-        // Capture a reference snapshot after a 2 s AR-tracking warm-up so the
-        // Operator ghost overlay always has a valid starting-point image.
         if steps.allSatisfy({ $0.worldPosition != nil }) {
             Task {
                 try? await Task.sleep(nanoseconds: 2_000_000_000)
@@ -364,44 +648,42 @@ struct GuideStepPlacementView: View {
         }
     }
 
-    // ── Activate a step for (re-)placement ────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // MARK: Activate step
+    // ─────────────────────────────────────────────────────────────────────────
 
     private func activateStep(_ idx: Int) {
         guard idx < steps.count else { return }
         let prevIdx = activeStepIndex
         activeStepIndex = idx
-        if prevIdx < steps.count {
-            updatePinStyle(for: steps[prevIdx].id, isActive: false)
-        }
+        if prevIdx < steps.count { updatePinStyle(for: steps[prevIdx].id, isActive: false) }
         updatePinStyle(for: steps[idx].id, isActive: true)
     }
 
-    // ── Tap handler ───────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // MARK: Tap handler (pin placement)
+    // ─────────────────────────────────────────────────────────────────────────
 
     private func handleTap(_ point: CGPoint) {
         let sv = arManager.sceneView
 
-        // ── Check if tapping an existing pin ──────────────────────────────────
+        // Check if tapping an existing pin → activate it
         let hits = sv.hitTest(point, options: [
             SCNHitTestOption.searchMode: SCNHitTestSearchMode.all.rawValue,
         ])
         for hit in hits {
-            // Walk up to find a root pin node
             var candidate: SCNNode? = hit.node
             while let n = candidate {
                 for (stepId, pinNode) in stepNodes where n === pinNode {
-                    if let idx = steps.firstIndex(where: { $0.id == stepId }) {
-                        activateStep(idx)
-                    }
+                    if let idx = steps.firstIndex(where: { $0.id == stepId }) { activateStep(idx) }
                     return
                 }
                 candidate = n.parent
             }
         }
 
-        // ── No pin hit — surface raycast for placement ────────────────────────
+        // Surface raycast → place active step
         guard activeStepIndex < steps.count else { return }
-
         guard let pos = rayCastSurface(from: point, in: sv) else { return }
         placeActiveStep(at: pos)
         withAnimation { showTapHint = false }
@@ -410,30 +692,24 @@ struct GuideStepPlacementView: View {
     private func rayCastSurface(from point: CGPoint, in sv: ARSCNView) -> simd_float3? {
         if let q = sv.raycastQuery(from: point, allowing: .existingPlaneGeometry, alignment: .any),
            let h = sv.session.raycast(q).first {
-            let c = h.worldTransform.columns.3
-            return simd_float3(c.x, c.y, c.z)
+            let c = h.worldTransform.columns.3; return simd_float3(c.x, c.y, c.z)
         }
         if let q = sv.raycastQuery(from: point, allowing: .estimatedPlane, alignment: .any),
            let h = sv.session.raycast(q).first {
-            let c = h.worldTransform.columns.3
-            return simd_float3(c.x, c.y, c.z)
+            let c = h.worldTransform.columns.3; return simd_float3(c.x, c.y, c.z)
         }
         return nil
     }
 
-    // ── Pin placement ─────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // MARK: Pin placement
+    // ─────────────────────────────────────────────────────────────────────────
 
     private func placeActiveStep(at position: simd_float3) {
         guard activeStepIndex < steps.count else { return }
-        let step    = steps[activeStepIndex]
-        let stepId  = step.id
-        let stepSeq = step.sequenceNumber
+        let step   = steps[activeStepIndex]
+        let stepId = step.id
 
-        // Always (re-)capture the reference photo whenever Step 1 is placed.
-        // This records the correct starting-point vantage for the Operator ghost
-        // overlay — NOT wherever the Author was standing when they tapped Done.
-        // Re-capturing on each re-placement of Step 1 keeps it fresh if the Author
-        // moves the pin to a better position.
         if activeStepIndex == 0 {
             firstStepPhotoData = arManager.sceneView.snapshot().jpegData(compressionQuality: 0.72)
         }
@@ -441,21 +717,132 @@ struct GuideStepPlacementView: View {
         stepPositions[stepId] = position
 
         if let existing = stepNodes[stepId] {
-            // Animate existing pin to new position
-            SCNTransaction.begin()
-            SCNTransaction.animationDuration = 0.22
+            SCNTransaction.begin(); SCNTransaction.animationDuration = 0.22
             existing.simdPosition = position
             SCNTransaction.commit()
         } else {
-            let node = makePin(number: stepSeq, isActive: true)
+            let node = makePin(number: step.sequenceNumber, isActive: true)
             node.simdPosition = position
             arManager.sceneView.scene.rootNode.addChildNode(node)
             stepNodes[stepId] = node
         }
 
-        // Advance to next unplaced step
+        // If step has a ready model, enter model-placement flow
+        if let modelId = step.modelId,
+           let model   = models.first(where: { $0.id == modelId && $0.isReady }) {
+            placementPhase = .loadingModel(stepId: stepId)
+            Task { await downloadAndPlaceModel(model: model, step: step, pinPos: position) }
+        } else {
+            advanceFromStep(stepId: stepId)
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // MARK: Model download + placement
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private func downloadAndPlaceModel(model: Model3D, step: GuideStep, pinPos: simd_float3) async {
+        let client = SIBClient(settings: settings)
+
+        let ext:  String
+        let data: Data?
+        if model.hasUSDZ {
+            data = try? await client.downloadModelUSDZ(id: model.id); ext = "usdz"
+        } else {
+            data = try? await client.downloadModelGLB(id: model.id);  ext = "glb"
+        }
+
+        guard let data else {
+            await MainActor.run { placementPhase = .placingPins; advanceFromStep(stepId: step.id) }
+            return
+        }
+
+        let cacheDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ar-oms-placement", isDirectory: true)
+        try? FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
+        let fileURL = cacheDir.appendingPathComponent("\(model.id).\(ext)")
+        guard (try? data.write(to: fileURL)) != nil else {
+            await MainActor.run { placementPhase = .placingPins; advanceFromStep(stepId: step.id) }
+            return
+        }
+
+        // Build SCNNode off-main thread
+        let builtNode: SCNNode? = await Task.detached(priority: .utility) {
+            guard let scene = try? SCNScene(url: fileURL, options: [
+                SCNSceneSource.LoadingOption.checkConsistency: false,
+                SCNSceneSource.LoadingOption.flattenScene: false,
+            ]) else { return nil }
+            let children = scene.rootNode.childNodes
+            guard !children.isEmpty else { return nil }
+            let wrapper = SCNNode(); wrapper.name = "model_\(model.id)"
+            children.forEach { wrapper.addChildNode($0.clone()) }
+            return wrapper
+        }.value
+
+        guard let node = builtNode else {
+            await MainActor.run { placementPhase = .placingPins; advanceFromStep(stepId: step.id) }
+            return
+        }
+
+        await MainActor.run {
+            // Remove stale node for this step (re-placement)
+            modelNodes[step.id]?.removeFromParentNode()
+
+            // Initial transform: preserve existing step values, fall back to model defaults
+            let initScale = Float(step.modelScale    ?? model.defaultScale ?? 1.0)
+            let initRotY  = Float(step.modelRotationY ?? 0.0)
+            let initPos   = simd_float3(
+                pinPos.x + Float(step.modelOffsetX ?? 0),
+                pinPos.y + Float(step.modelOffsetY ?? 0),
+                pinPos.z + Float(step.modelOffsetZ ?? 0)
+            )
+
+            node.simdWorldPosition = initPos
+            node.simdScale         = simd_float3(initScale, initScale, initScale)
+            node.eulerAngles       = SCNVector3(0, initRotY, 0)
+            node.opacity           = 0.65
+
+            arManager.sceneView.scene.rootNode.addChildNode(node)
+            modelNodes[step.id] = node
+
+            modelPosition = initPos
+            modelScale    = initScale
+            modelRotY     = initRotY
+            modelPanMode  = .horizontal
+
+            placementPhase = .adjustingModel(stepId: step.id)
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // MARK: Model confirm / skip
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private func confirmModelPlacement(stepId: String) {
+        modelTransforms[stepId] = ModelTransformState(
+            position: modelPosition, scale: modelScale, rotationY: modelRotY
+        )
+        modelNodes[stepId]?.opacity = 0.55
+        placementPhase = .placingPins
+        advanceFromStep(stepId: stepId)
+    }
+
+    private func skipModelPlacement(stepId: String) {
+        modelNodes[stepId]?.removeFromParentNode()
+        modelNodes.removeValue(forKey: stepId)
+        placementPhase = .placingPins
+        advanceFromStep(stepId: stepId)
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // MARK: Advance to next step
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private func advanceFromStep(stepId: String) {
+        guard let idx = steps.firstIndex(where: { $0.id == stepId }) else { return }
+
         let nextUnplaced =
-            steps.indices.first(where: { i in i > activeStepIndex && stepPositions[steps[i].id] == nil })
+            steps.indices.first(where: { i in i > idx && stepPositions[steps[i].id] == nil })
             ?? steps.indices.first(where: { i in stepPositions[steps[i].id] == nil })
 
         if let next = nextUnplaced {
@@ -463,19 +850,19 @@ struct GuideStepPlacementView: View {
             activeStepIndex = next
             updatePinStyle(for: steps[next].id, isActive: true)
         } else {
-            // All placed — sentinel
             updatePinStyle(for: stepId, isActive: false)
-            activeStepIndex = steps.count
+            activeStepIndex = steps.count   // all-placed sentinel
         }
     }
 
-    // ── 3D pin factory ────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // MARK: Pin factory
+    // ─────────────────────────────────────────────────────────────────────────
 
     private func makePin(number: Int, isActive: Bool) -> SCNNode {
         let root  = SCNNode()
         let color = isActive ? activeColor : indigoColor
 
-        // Sphere
         let sphere = SCNSphere(radius: 0.015)
         let sMat   = SCNMaterial()
         sMat.diffuse.contents  = color
@@ -484,7 +871,6 @@ struct GuideStepPlacementView: View {
         sphere.firstMaterial   = sMat
         root.addChildNode(SCNNode(geometry: sphere))
 
-        // Torus ring
         let torus        = SCNTorus()
         torus.ringRadius = 0.023
         torus.pipeRadius = 0.004
@@ -497,7 +883,6 @@ struct GuideStepPlacementView: View {
         ring.eulerAngles       = SCNVector3(Float.pi / 2, 0, 0)
         root.addChildNode(ring)
 
-        // Numbered billboard (Core Graphics badge facing camera)
         let badge = makeNumberBadge(number: number, color: color)
         badge.simdPosition = simd_float3(0, 0.055, 0)
         root.addChildNode(badge)
@@ -508,25 +893,18 @@ struct GuideStepPlacementView: View {
                 .fadeOpacity(to: 1.00, duration: 0.45),
             ])))
         }
-
         return root
     }
 
     private func makeNumberBadge(number: Int, color: UIColor) -> SCNNode {
         let side: CGFloat = 96
-        let sz = CGSize(width: side, height: side)
-        let renderer = UIGraphicsImageRenderer(size: sz)
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: side, height: side))
         let img = renderer.image { _ in
-            // Filled circle
             color.withAlphaComponent(0.92).setFill()
-            UIBezierPath(ovalIn: CGRect(x: 4, y: 4,
-                                        width: side - 8, height: side - 8)).fill()
-            // White border ring
+            UIBezierPath(ovalIn: CGRect(x: 4, y: 4, width: side - 8, height: side - 8)).fill()
             UIColor.white.withAlphaComponent(0.65).setStroke()
-            let ring = UIBezierPath(ovalIn: CGRect(x: 5, y: 5,
-                                                   width: side - 10, height: side - 10))
+            let ring = UIBezierPath(ovalIn: CGRect(x: 5, y: 5, width: side - 10, height: side - 10))
             ring.lineWidth = 3.5; ring.stroke()
-            // Step number
             let str  = "\(number)" as NSString
             let para = NSMutableParagraphStyle(); para.alignment = .center
             let attrs: [NSAttributedString.Key: Any] = [
@@ -535,22 +913,18 @@ struct GuideStepPlacementView: View {
                 .paragraphStyle: para,
             ]
             let ts = str.size(withAttributes: attrs)
-            str.draw(at: CGPoint(x: (side - ts.width) / 2,
-                                 y: (side - ts.height) / 2),
+            str.draw(at: CGPoint(x: (side - ts.width) / 2, y: (side - ts.height) / 2),
                      withAttributes: attrs)
         }
-
         let plane = SCNPlane(width: 0.054, height: 0.054)
         let mat   = SCNMaterial()
         mat.diffuse.contents = img
         mat.lightingModel    = .constant
         mat.isDoubleSided    = true
         plane.firstMaterial  = mat
-
         let node       = SCNNode(geometry: plane)
-        let billboard  = SCNBillboardConstraint()
-        billboard.freeAxes = .all
-        node.constraints   = [billboard]
+        let billboard  = SCNBillboardConstraint(); billboard.freeAxes = .all
+        node.constraints = [billboard]
         return node
     }
 
@@ -568,10 +942,64 @@ struct GuideStepPlacementView: View {
         }
     }
 
-    // ── Save helpers ──────────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // MARK: Model gesture handlers
+    // ─────────────────────────────────────────────────────────────────────────
 
-    /// PATCH each step whose position changed from the server value.
-    /// Returns (updatedSteps, errorMessages).
+    private func handleModelPanBegan(_ pt: CGPoint) {
+        panBasePos = modelPosition
+        let sv   = arManager.sceneView
+        let proj = sv.projectPoint(SCNVector3(modelPosition.x, modelPosition.y, modelPosition.z))
+        panDepthZ    = proj.z
+        let worldPt  = sv.unprojectPoint(SCNVector3(Float(pt.x), Float(pt.y), panDepthZ))
+        panStartWorld = simd_float3(worldPt.x, worldPt.y, worldPt.z)
+    }
+
+    private func handleModelPanChanged(_ pt: CGPoint) {
+        let sv      = arManager.sceneView
+        let worldPt = sv.unprojectPoint(SCNVector3(Float(pt.x), Float(pt.y), panDepthZ))
+        let delta: simd_float3
+        switch modelPanMode {
+        case .horizontal: delta = simd_float3(worldPt.x - panStartWorld.x, 0,                      worldPt.z - panStartWorld.z)
+        case .vertical:   delta = simd_float3(0,                            worldPt.y - panStartWorld.y, 0)
+        }
+        let newPos = panBasePos + delta
+        modelPosition = newPos
+        if case .adjustingModel(let stepId) = placementPhase {
+            modelNodes[stepId]?.simdWorldPosition = newPos
+        }
+    }
+
+    private func handleModelPanEnded() {}
+
+    private func handleModelPinchBegan() { scaleBase = modelScale }
+
+    private func handleModelPinchChanged(_ factor: CGFloat) {
+        let newScale = max(0.05, min(20.0, scaleBase * Float(factor)))
+        modelScale = newScale
+        if case .adjustingModel(let stepId) = placementPhase {
+            modelNodes[stepId]?.simdScale = simd_float3(newScale, newScale, newScale)
+        }
+    }
+
+    private func handleModelPinchEnded(_ factor: CGFloat) {}
+
+    private func handleModelRotBegan() { rotYBase = modelRotY }
+
+    private func handleModelRotChanged(_ rotation: CGFloat) {
+        let newRot = rotYBase + Float(rotation)
+        modelRotY = newRot
+        if case .adjustingModel(let stepId) = placementPhase {
+            modelNodes[stepId]?.eulerAngles = SCNVector3(0, newRot, 0)
+        }
+    }
+
+    private func handleModelRotEnded(_ rotation: CGFloat) {}
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // MARK: Save helpers
+    // ─────────────────────────────────────────────────────────────────────────
+
     @MainActor
     private func patchChangedPositions() async -> (updated: [GuideStep], errors: [String]) {
         let client = SIBClient(settings: settings)
@@ -581,21 +1009,29 @@ struct GuideStepPlacementView: View {
         for (idx, step) in steps.enumerated() {
             guard let newPos = stepPositions[step.id] else { continue }
 
-            // Skip if position is unchanged (avoid unnecessary network calls)
-            let serverPos = step.worldPosition
-            let unchanged = serverPos.map { old in
-                abs(old.x - newPos.x) < 0.0001 &&
-                abs(old.y - newPos.y) < 0.0001 &&
-                abs(old.z - newPos.z) < 0.0001
+            let serverPos  = step.worldPosition
+            let unchanged  = serverPos.map {
+                abs($0.x - newPos.x) < 0.0001 &&
+                abs($0.y - newPos.y) < 0.0001 &&
+                abs($0.z - newPos.z) < 0.0001
             } ?? false
             if unchanged { continue }
 
-            var req = UpdateGuideStepRequest()
+            var req            = UpdateGuideStepRequest()
             req.posX           = Double(newPos.x)
             req.posY           = Double(newPos.y)
             req.posZ           = Double(newPos.z)
             req.isPlaced       = true
             req.positionSource = "tap"
+
+            // Persist model placement if confirmed this session
+            if let t = modelTransforms[step.id] {
+                req.modelOffsetX   = Double(t.position.x - newPos.x)
+                req.modelOffsetY   = Double(t.position.y - newPos.y)
+                req.modelOffsetZ   = Double(t.position.z - newPos.z)
+                req.modelScale     = Double(t.scale)
+                req.modelRotationY = Double(t.rotationY)
+            }
 
             do {
                 let fresh = try await client.updateGuideStep(
@@ -608,27 +1044,14 @@ struct GuideStepPlacementView: View {
         return (updatedSteps, errors)
     }
 
-    // ── Save (stay in view) ───────────────────────────────────────────────────
-    //
-    // Persists all currently-placed step positions to SIB without uploading
-    // the ARWorldMap.  The Author can tap Save multiple times as they place
-    // more pins, then hit Done when finished.
-
     @MainActor
     private func savePins() async {
         guard placedCount > 0 else { return }
-        isSaving       = true
-        savingIsExit   = false
-        saveError      = nil
-        lastSaveSucceeded = false
-
+        isSaving = true; savingIsExit = false; saveError = nil; lastSaveSucceeded = false
         let (_, errors) = await patchChangedPositions()
-
         isSaving = false
-
         if errors.isEmpty {
             withAnimation { lastSaveSucceeded = true }
-            // Brief "Saved ✓" flash, then reset
             Task {
                 try? await Task.sleep(nanoseconds: 2_000_000_000)
                 withAnimation { lastSaveSucceeded = false }
@@ -638,49 +1061,25 @@ struct GuideStepPlacementView: View {
         }
     }
 
-    // ── Done (save + upload worldmap + exit) ──────────────────────────────────
-    //
-    // Persists step positions AND uploads the ARWorldMap + reference photo,
-    // then returns to the guide editor with the freshly updated steps.
-
     @MainActor
     private func saveAndExit() async {
         guard placedCount > 0 else { return }
-        isSaving     = true
-        savingIsExit = true
-        saveError    = nil
-
-        let client = SIBClient(settings: settings)
-
-        // 1. Capture reference photo + serialise ARWorldMap
-        // Prefer the photo captured at Step 1 placement (the correct starting vantage
-        // point).  Fall back to current view only if Step 1 was never placed here.
-        let photoData: Data? = firstStepPhotoData
+        isSaving = true; savingIsExit = true; saveError = nil
+        let client    = SIBClient(settings: settings)
+        let photoData = firstStepPhotoData
             ?? arManager.sceneView.snapshot().jpegData(compressionQuality: 0.72)
-        let mapData = await arManager.saveCurrentWorldMap()
-
-        // 2. PATCH step positions
+        let mapData   = await arManager.saveCurrentWorldMap()
         let (updatedSteps, errors) = await patchChangedPositions()
-
-        // 3. Upload ARWorldMap (non-fatal)
         if let mapData {
             do {
                 try await client.uploadGuideWorldMap(
-                    guideId: guide.id,
-                    mapData: mapData,
-                    referencePhotoData: photoData
-                )
+                    guideId: guide.id, mapData: mapData, referencePhotoData: photoData)
             } catch {
                 print("[GuideStepPlacementView] World map upload failed (non-fatal): \(error)")
             }
         }
-
         isSaving = false
-
-        if errors.isEmpty {
-            onDone(updatedSteps)
-        } else {
-            saveError = "Save incomplete — " + errors.joined(separator: "; ")
-        }
+        if errors.isEmpty { onDone(updatedSteps) }
+        else { saveError = "Save incomplete — " + errors.joined(separator: "; ") }
     }
 }
