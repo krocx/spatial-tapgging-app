@@ -411,11 +411,9 @@
 <div id="models-panel">
   <div class="models-inner">
     <div class="models-anchor-bar">
-      <label style="font-size:0.78rem;color:var(--muted);font-weight:600">Anchor</label>
-      <select id="models-anchor-select" onchange="onModelsAnchorChange()" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:5px 10px;color:var(--text);font-size:0.82rem;outline:none;min-width:220px">
-        <option value="">— select an anchor —</option>
-      </select>
-      <button class="btn btn-ghost btn-sm" onclick="loadModels(modelsCurrentAnchorId)" style="margin-left:auto">⟳ Refresh</button>
+      <span style="font-size:0.92rem;font-weight:700;color:var(--text)">📦 Global 3D Library</span>
+      <span style="font-size:0.75rem;color:var(--muted);flex:1;margin-left:8px">Upload once · assign to any anchor</span>
+      <button class="btn btn-ghost btn-sm" onclick="loadModels()" style="margin-left:auto">⟳ Refresh</button>
     </div>
 
     <div id="model-dropzone" class="model-dropzone" ondragover="onModelDragOver(event)" ondragleave="onModelDragLeave(event)" ondrop="onModelDrop(event)" onclick="document.getElementById('model-file-input').click()">
@@ -629,8 +627,26 @@
       <div style="font-size:0.75rem;color:var(--muted);white-space:nowrap">
         H: <span id="preview-height-val" style="color:var(--text)">–</span>
       </div>
+      <button onclick="saveDefaultScale()" style="font-size:0.75rem;font-weight:600;padding:5px 12px;border-radius:7px;background:rgba(61,214,140,0.12);color:var(--green);border:1px solid rgba(61,214,140,0.25);cursor:pointer;white-space:nowrap;flex-shrink:0">💾 Save as default</button>
       <div style="font-size:0.72rem;padding:3px 9px;border-radius:6px;background:rgba(68,136,255,0.1);color:#6699ff;border:1px solid rgba(68,136,255,0.2);white-space:nowrap">🔵 = 1.8 m person</div>
       <div style="font-size:0.70rem;color:var(--muted)">Orbit: drag · Zoom: scroll</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     3D MODEL KIT ASSIGNMENT MODAL
+══════════════════════════════════════════════════════════════ -->
+<div id="kit-modal" class="overlay">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:480px">
+    <h2>🔗 Assign to Anchors</h2>
+    <p style="font-size:0.80rem;color:var(--muted);margin-bottom:14px">
+      Choose which anchors will see this model in their iOS step picker.
+    </p>
+    <div id="kit-anchor-list" style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:4px 10px;background:var(--bg)"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeKitModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveKitAssignment()">Save Kit</button>
     </div>
   </div>
 </div>
@@ -1455,45 +1471,27 @@ function exportARGuidesCSV() {
 }
 
 
-// ── 3D Models ─────────────────────────────────────────────────────────────────
+// ── 3D Models — Global Library ────────────────────────────────────────────────
 
-let modelsCurrentAnchorId = '';
-let modelsData            = [];
-const modelPollTimers     = {};   // modelId → intervalId
+let modelsData        = [];
+const modelPollTimers = {};   // modelId → intervalId
+let kitModelId        = null;   // model being assigned in kit modal
+let kitCurrentIds     = [];     // anchorIds on that model at open time
 
-/** Populate the anchor selector from the already-loaded allAnchors array. */
+/** Called when switching to the Models tab. */
 function initModelsPanel() {
-  const sel = document.getElementById('models-anchor-select');
-  sel.innerHTML = '<option value="">— select an anchor —</option>';
-  for (const a of allAnchors) {
-    const opt = document.createElement('option');
-    opt.value       = a.id;
-    opt.textContent = `${a.assetId} (${a.id.slice(0, 8)}…)`;
-    if (a.id === modelsCurrentAnchorId) opt.selected = true;
-    sel.appendChild(opt);
-  }
-  if (modelsCurrentAnchorId) loadModels(modelsCurrentAnchorId);
+  loadModels();
 }
 
-function onModelsAnchorChange() {
-  const sel = document.getElementById('models-anchor-select');
-  modelsCurrentAnchorId = sel.value;
-  if (modelsCurrentAnchorId) loadModels(modelsCurrentAnchorId);
-  else {
-    modelsData = [];
-    renderModels([]);
-  }
-}
-
-async function loadModels(anchorId) {
-  if (!anchorId) return;
+/** Fetch all models in the global library (no anchor filter). */
+async function loadModels() {
   const grid = document.getElementById('models-grid');
   grid.innerHTML = '<p style="color:var(--muted);padding:24px 0;text-align:center;font-size:0.82rem">Loading…</p>';
   try {
-    const body = await apiFetch(`/models?anchorId=${encodeURIComponent(anchorId)}`);
+    const body = await apiFetch('/models');
     modelsData = body.data || [];
     renderModels(modelsData);
-    // Resume polling for any processing models
+    // Resume polling for any models still converting
     for (const m of modelsData) {
       if (m.status === 'processing' || m.status === 'uploading') {
         pollModelStatus(m.id);
@@ -1539,6 +1537,17 @@ function renderModels(models) {
     if (m.hasGLB)  downloadLinks.push(`<a href="/models/${m.id}/file.glb" target="_blank" download>⬇ GLB</a>`);
     if (m.hasUSDZ) downloadLinks.push(`<a href="/models/${m.id}/file.usdz" target="_blank" download>⬇ USDZ</a>`);
 
+    // Default scale display
+    const scaleInfo = m.defaultScale != null
+      ? `<div style="font-size:0.70rem;color:var(--muted);margin-bottom:6px">Default scale: <span style="color:var(--accent);font-family:monospace">${m.defaultScale.toFixed(3)}×</span></div>`
+      : '';
+
+    // Anchor kit usage
+    const kitIds  = m.anchorIds ?? (m.anchorId ? [m.anchorId] : []);
+    const kitInfo = kitIds.length > 0
+      ? `<div style="font-size:0.70rem;color:var(--muted);margin-bottom:6px">🔗 ${kitIds.length} anchor${kitIds.length !== 1 ? 's' : ''} in kit</div>`
+      : `<div style="font-size:0.70rem;color:var(--muted);margin-bottom:6px">Not assigned to any anchor</div>`;
+
     html += `<div class="model-card" id="model-card-${m.id}">
       <div class="model-card-hdr">
         <div class="model-icon ${cls}">${icon}</div>
@@ -1549,19 +1558,20 @@ function renderModels(models) {
       </div>
       ${statusBadge(m)}
       ${m.status === 'failed' && m.conversionError ? `<div class="model-error">${esc(m.conversionError)}</div>` : ''}
+      ${scaleInfo}
+      ${kitInfo}
       <div class="model-actions">
         ${downloadLinks.join('')}
-        <a href="#" onclick="deleteModel('${m.id}', '${m.anchorId}'); return false" style="background:rgba(240,86,86,0.1);color:var(--red)">🗑 Delete</a>
+        <a href="#" onclick="openKitModal('${m.id}', ${JSON.stringify(kitIds)}); return false" style="background:rgba(79,142,247,0.1);color:var(--accent)">🔗 Assign</a>
+        <a href="#" onclick="deleteModel('${m.id}'); return false" style="background:rgba(240,86,86,0.1);color:var(--red)">🗑 Delete</a>
       </div>
     </div>`;
   }
   grid.innerHTML = html;
 }
 
-/** Upload a file to the models endpoint with progress reporting. */
-async function uploadModel(anchorId, file) {
-  if (!anchorId) { alert('Please select an anchor first.'); return; }
-
+/** Upload a file to the global models library with progress reporting. */
+async function uploadModel(file) {
   const progressWrap  = document.getElementById('upload-progress-wrap');
   const barFill       = document.getElementById('upload-bar-fill');
   const statusEl      = document.getElementById('upload-status');
@@ -1571,7 +1581,7 @@ async function uploadModel(anchorId, file) {
   statusEl.textContent       = `Uploading ${file.name}…`;
 
   const name = file.name.replace(/\.[^.]+$/, '');
-  const url  = `/models?anchorId=${encodeURIComponent(anchorId)}&name=${encodeURIComponent(name)}&uploadedBy=portal`;
+  const url  = `/models?name=${encodeURIComponent(name)}&uploadedBy=portal`;
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -1591,9 +1601,9 @@ async function uploadModel(anchorId, file) {
     xhr.onload = async () => {
       progressWrap.style.display = 'none';
       if (xhr.status >= 200 && xhr.status < 300) {
-        const m = JSON.parse(xhr.responseText);
+        const m = JSON.parse(xhr.responseText).data ?? JSON.parse(xhr.responseText);
         toast(`Uploaded "${m.name}" — ${m.status === 'processing' ? 'CAD conversion queued' : 'ready'}.`);
-        await loadModels(anchorId);
+        await loadModels();
         if (m.status === 'processing') pollModelStatus(m.id);
         resolve(m);
       } else {
@@ -1613,14 +1623,14 @@ async function uploadModel(anchorId, file) {
   });
 }
 
-async function deleteModel(modelId, anchorId) {
-  if (!confirm('Delete this 3D model? This cannot be undone.')) return;
+async function deleteModel(modelId) {
+  if (!confirm('Delete this 3D model from the global library? This cannot be undone.')) return;
   try {
     await apiFetch(`/models/${encodeURIComponent(modelId)}`, { method: 'DELETE' });
     clearInterval(modelPollTimers[modelId]);
     delete modelPollTimers[modelId];
     toast('Model deleted.');
-    await loadModels(anchorId || modelsCurrentAnchorId);
+    await loadModels();
   } catch (e) {
     alert(`Failed to delete model: ${e.message}`);
   }
@@ -1636,13 +1646,81 @@ function pollModelStatus(modelId) {
         clearInterval(modelPollTimers[modelId]);
         delete modelPollTimers[modelId];
         // Refresh full list so status badges + download links update
-        await loadModels(m.anchorId || modelsCurrentAnchorId);
+        await loadModels();
       }
     } catch (_) {
       clearInterval(modelPollTimers[modelId]);
       delete modelPollTimers[modelId];
     }
   }, 3000);
+}
+
+/** Save the current preview slider value as the model's defaultScale. */
+async function saveDefaultScale() {
+  const modelId = window._previewModelId;
+  if (!modelId) { toast('No model loaded'); return; }
+  const logVal = document.getElementById('preview-scale-slider').value;
+  const scale  = Math.pow(10, parseFloat(logVal));
+  try {
+    await apiFetch(`/models/${encodeURIComponent(modelId)}`, {
+      method: 'PATCH',
+      body:   JSON.stringify({ defaultScale: scale }),
+    });
+    toast(`Default scale saved: ${scale.toFixed(3)}×`);
+    loadModels();   // refresh cards to show new default
+  } catch (e) {
+    toast(`Failed to save scale: ${e.message}`, true);
+  }
+}
+
+/** Open the anchor kit assignment modal for a model. */
+function openKitModal(modelId, anchorIds) {
+  kitModelId    = modelId;
+  kitCurrentIds = anchorIds || [];
+  const list = document.getElementById('kit-anchor-list');
+  if (!allAnchors.length) {
+    list.innerHTML = '<p style="color:var(--muted);padding:12px;font-size:0.82rem">No anchors found.</p>';
+  } else {
+    list.innerHTML = allAnchors.map(a => {
+      const checked = kitCurrentIds.includes(a.id) ? 'checked' : '';
+      return `<label style="display:flex;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid var(--border);cursor:pointer">
+        <input type="checkbox" value="${a.id}" ${checked} style="accent-color:var(--accent)">
+        <span style="font-size:0.85rem;font-weight:600">${esc(a.assetId)}</span>
+        <span style="font-size:0.72rem;color:var(--muted);font-family:monospace;margin-left:auto">${a.id.slice(0,8)}…</span>
+      </label>`;
+    }).join('');
+  }
+  document.getElementById('kit-modal').classList.add('open');
+}
+
+function closeKitModal() {
+  document.getElementById('kit-modal').classList.remove('open');
+}
+
+async function saveKitAssignment() {
+  if (!kitModelId) return;
+  const checkboxes  = document.querySelectorAll('#kit-anchor-list input[type=checkbox]');
+  const newIds      = Array.from(checkboxes).filter(cb => cb.checked).map(cb => cb.value);
+  const toAdd       = newIds.filter(id => !kitCurrentIds.includes(id));
+  const toRemove    = kitCurrentIds.filter(id => !newIds.includes(id));
+
+  try {
+    for (const anchorId of toAdd) {
+      await apiFetch(`/models/${encodeURIComponent(kitModelId)}/kit`, {
+        method: 'POST', body: JSON.stringify({ action: 'add', anchorId }),
+      });
+    }
+    for (const anchorId of toRemove) {
+      await apiFetch(`/models/${encodeURIComponent(kitModelId)}/kit`, {
+        method: 'POST', body: JSON.stringify({ action: 'remove', anchorId }),
+      });
+    }
+    closeKitModal();
+    toast(`Anchor kit updated (${newIds.length} anchor${newIds.length !== 1 ? 's' : ''}).`);
+    loadModels();
+  } catch (e) {
+    alert(`Failed to update kit: ${e.message}`);
+  }
 }
 
 // Drag-and-drop handlers for the model dropzone
@@ -1657,11 +1735,11 @@ function onModelDrop(e) {
   e.preventDefault();
   document.getElementById('model-dropzone').classList.remove('drag-over');
   const file = e.dataTransfer?.files?.[0];
-  if (file) uploadModel(modelsCurrentAnchorId, file);
+  if (file) uploadModel(file);
 }
 function onModelFileSelected(e) {
   const file = e.target.files?.[0];
-  if (file) uploadModel(modelsCurrentAnchorId, file);
+  if (file) uploadModel(file);
   e.target.value = '';  // reset so same file can be picked again
 }
 
@@ -2233,6 +2311,9 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 let _r = null, _s = null, _cam = null, _ctrl = null, _raf = null;
 let _node = null, _bbox = null, _obs = null;
 
+// Expose the currently-previewed model ID so the regular-script saveDefaultScale() can read it
+window._previewModelId = null;
+
 function _key() { return localStorage.getItem('sib_api_key') || ''; }
 
 // ── Public API (exposed on window) ───────────────────────────────────────────
@@ -2247,6 +2328,7 @@ window.openModelPreview = async function(modelId, modelName) {
   const $modal   = document.getElementById('model-preview-modal');
 
   if (!$name) return;
+  window._previewModelId = modelId;   // expose for saveDefaultScale()
   $name.textContent   = modelName;
   $dims.textContent   = '–';
   $height.textContent = '–';
@@ -2265,6 +2347,7 @@ window.openModelPreview = async function(modelId, modelName) {
 
 window.closeModelPreview = function() {
   document.getElementById('model-preview-modal')?.classList.remove('open');
+  window._previewModelId = null;
   _dispose();
 };
 

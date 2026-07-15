@@ -1,16 +1,19 @@
-// models.ts — 3D Model asset library for AR Guide step ghost overlays
+// models.ts — 3D Model global asset library for AR Guide step ghost overlays
 //
 // Endpoints:
 //   POST   /models                    — Upload a 3D model file (binary body, params in query)
-//   GET    /models?anchorId=xxx       — List all models for an anchor
+//   GET    /models                    — List ALL models in the global library
+//   GET    /models?anchorId=xxx       — List models assigned to an anchor's kit
 //   GET    /models/:id                — Get single model metadata
-//   PATCH  /models/:id                — Rename a model
+//   PATCH  /models/:id                — Update name / defaultScale
 //   DELETE /models/:id                — Delete model + stored files
+//   POST   /models/:id/kit            — Add or remove from an anchor's kit
+//                                       Body: { action: 'add'|'remove', anchorId: string }
 //   GET    /models/:id/file.glb       — Serve the GLB file
 //   GET    /models/:id/file.usdz      — Serve the USDZ file (only if hasUSDZ=true)
 //
 // Upload protocol:
-//   POST /models?anchorId=xxx&name=MyPart&uploadedBy=Author
+//   POST /models?name=MyPart&uploadedBy=Author   (anchorId optional — global upload)
 //   Content-Type: <mime for the file>   (e.g. model/gltf-binary, application/octet-stream)
 //   Body: raw binary file bytes
 //
@@ -236,8 +239,8 @@ router.post(
   (req: Request, res: Response): void => {
     const { anchorId, name, uploadedBy } = req.query as Record<string, string>;
 
-    if (!anchorId || !name?.trim()) {
-      res.status(400).json({ error: 'anchorId and name query parameters are required' });
+    if (!name?.trim()) {
+      res.status(400).json({ error: 'name query parameter is required' });
       return;
     }
 
@@ -267,7 +270,8 @@ router.post(
 
     const model: Model3D = {
       id,
-      anchorId,
+      anchorId:         anchorId || undefined,           // legacy field, optional
+      anchorIds:        anchorId ? [anchorId] : [],      // kit: start with upload anchor if given
       name:             name.trim(),
       originalFormat:   format,
       originalFilename: origFilename,
@@ -300,7 +304,7 @@ router.post(
     }
 
     model3DStore.save(model);
-    console.log(`[SIB/models] Uploaded ${format.toUpperCase()} "${model.name}" (${model.id}) for anchor ${anchorId}`);
+    console.log(`[SIB/models] Uploaded ${format.toUpperCase()} "${model.name}" (${model.id})${anchorId ? ` for anchor ${anchorId}` : ' (global)'}`);
 
     // Kick off async conversion for formats that need it
     if (!passThrough) {
@@ -328,20 +332,24 @@ router.post(
   },
 );
 
-// ── GET /models?anchorId=xxx — list models for an anchor ─────────────────────
+// ── GET /models — list all models, or filter by anchor kit ───────────────────
+// Without anchorId: returns the full global library (for portal library view).
+// With ?anchorId=xxx: returns models assigned to that anchor's kit —
+//   matches anchorIds.includes(anchorId) OR legacy anchorId === anchorId.
 router.get('/', (req: Request, res: Response): void => {
   const { anchorId } = req.query;
-  if (!anchorId || typeof anchorId !== 'string') {
-    res.status(400).json({ error: 'anchorId query parameter is required' });
-    return;
-  }
-  const models = model3DStore
-    .findAll()
-    .filter(m => m.anchorId === anchorId)
-    .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  let models = model3DStore.findAll();
 
-  const now = new Date().toISOString();
-  res.json({ data: models, timestamp: now });
+  if (anchorId && typeof anchorId === 'string') {
+    // Anchor kit filter (backward compatible with legacy anchorId field)
+    models = models.filter(m =>
+      (m.anchorIds ?? []).includes(anchorId) ||
+      m.anchorId === anchorId
+    );
+  }
+
+  models = models.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  res.json({ data: models, timestamp: new Date().toISOString() });
 });
 
 // ── GET /models/:id — single model metadata ───────────────────────────────────
@@ -351,16 +359,47 @@ router.get('/:id', (req: Request, res: Response): void => {
   res.json({ data: model, timestamp: new Date().toISOString() });
 });
 
-// ── PATCH /models/:id — rename ────────────────────────────────────────────────
+// ── PATCH /models/:id — update name / defaultScale ────────────────────────────
 router.patch('/:id', (req: Request, res: Response): void => {
-  const body    = req.body as UpdateModel3DRequest;
-  const model   = model3DStore.findById(req.params.id);
+  const body  = req.body as UpdateModel3DRequest;
+  const model = model3DStore.findById(req.params.id);
   if (!model) { res.status(404).json({ error: 'Model not found' }); return; }
 
+  const patch: Partial<Model3D> = { updatedAt: new Date().toISOString() };
+  if (body.name?.trim())                patch.name         = body.name.trim();
+  if (body.defaultScale !== undefined)  patch.defaultScale = body.defaultScale;
+
+  const updated = model3DStore.update(req.params.id, patch);
+  res.json({ data: updated, timestamp: new Date().toISOString() });
+});
+
+// ── POST /models/:id/kit — add or remove model from an anchor's kit ──────────
+// Body: { action: 'add' | 'remove', anchorId: string }
+router.post('/:id/kit', (req: Request, res: Response): void => {
+  const { action, anchorId } = req.body as { action: 'add' | 'remove'; anchorId: string };
+  const model = model3DStore.findById(req.params.id);
+  if (!model)    { res.status(404).json({ error: 'Model not found' }); return; }
+  if (!anchorId) { res.status(400).json({ error: 'anchorId is required' }); return; }
+  if (action !== 'add' && action !== 'remove') {
+    res.status(400).json({ error: 'action must be "add" or "remove"' });
+    return;
+  }
+
+  // Build current list (merge legacy anchorId field for backward compat)
+  const current = Array.from(new Set([
+    ...(model.anchorIds ?? []),
+    ...(model.anchorId ? [model.anchorId] : []),
+  ]));
+
+  const nextIds = action === 'add'
+    ? (current.includes(anchorId) ? current : [...current, anchorId])
+    : current.filter(id => id !== anchorId);
+
   const updated = model3DStore.update(req.params.id, {
-    ...(body.name?.trim() && { name: body.name.trim() }),
+    anchorIds: nextIds,
     updatedAt: new Date().toISOString(),
   });
+  console.log(`[SIB/models] Kit ${action}: model ${req.params.id} ${action === 'add' ? '→' : '✗'} anchor ${anchorId}`);
   res.json({ data: updated, timestamp: new Date().toISOString() });
 });
 

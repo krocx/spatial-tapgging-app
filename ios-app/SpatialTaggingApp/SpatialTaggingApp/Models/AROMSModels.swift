@@ -51,7 +51,8 @@ enum ModelStatus: String, Codable {
 /// Mirrors `Model3D` in shared/src/index.ts.
 struct Model3D: Codable, Identifiable, Equatable {
     let id:               String
-    let anchorId:         String
+    let anchorId:         String?   // optional — global library models may omit this
+    let anchorIds:        [String]? // anchor kit membership (v2 global library)
     let name:             String
     let originalFormat:   ModelFormat
     let originalFilename: String
@@ -60,6 +61,8 @@ struct Model3D: Codable, Identifiable, Equatable {
     let conversionError:  String?
     let hasGLB:           Bool
     let hasUSDZ:          Bool
+    /// Author-saved default scale — pre-fills the model scale slider in EditStepSheet.
+    let defaultScale:     Double?
     let uploadedBy:       String?
     let createdAt:        String
     let updatedAt:        String

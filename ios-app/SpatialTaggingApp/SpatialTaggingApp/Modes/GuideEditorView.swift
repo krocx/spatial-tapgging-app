@@ -546,6 +546,14 @@ struct AddStepSheet: View {
                                     .tag(Optional(model.id))
                             }
                         }
+                        .onChange(of: selectedModelId) { newId in
+                            // Pre-fill scale from model's saved default scale (set in portal preview)
+                            if let id = newId,
+                               let m  = anchorModels.first(where: { $0.id == id }),
+                               let ds = m.defaultScale {
+                                modelScale = ds
+                            }
+                        }
                         if selectedModelId != nil {
                             VStack(alignment: .leading, spacing: 4) {
                                 HStack {
@@ -783,6 +791,14 @@ struct EditStepSheet: View {
                             ForEach(anchorModels.filter(\.isReady)) { model in
                                 Text("\(model.name) (\(model.formatLabel))")
                                     .tag(Optional(model.id))
+                            }
+                        }
+                        .onChange(of: selectedModelId) { newId in
+                            // Pre-fill scale from model's saved default scale (set in portal preview)
+                            if let id = newId,
+                               let m  = anchorModels.first(where: { $0.id == id }),
+                               let ds = m.defaultScale {
+                                modelScale = ds
                             }
                         }
                         if selectedModelId != nil {

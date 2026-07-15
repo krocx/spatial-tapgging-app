@@ -245,14 +245,20 @@ export type ModelFormat = 'glb' | 'gltf' | 'usdz' | 'obj' | 'fbx' | 'step' | 'ig
 export type ModelStatus = 'uploading' | 'processing' | 'ready' | 'failed';
 
 /**
- * A 3D model stored in an anchor's asset library.
+ * A 3D model in the global asset library.
  * Authors upload via the web portal; the server converts to GLB (canonical format)
  * and optionally stores the original USDZ for direct iOS use.
  * Multiple GuideSteps can reference the same model via modelId.
+ *
+ * Global library (v2): models are no longer anchored to a single anchor.
+ *   anchorId  — legacy field, still set on models uploaded before the global library
+ *   anchorIds — the anchor kit: list of anchor IDs that have this model assigned;
+ *               GET /models?anchorId=xxx returns models where anchorIds.includes(anchorId)
  */
 export interface Model3D {
   id:               string;
-  anchorId:         string;
+  anchorId?:        string;            // legacy — preserved for backward compatibility
+  anchorIds?:       string[];          // kit membership: anchors this model is assigned to
   name:             string;             // display name (editable)
   originalFormat:   ModelFormat;
   originalFilename: string;
@@ -261,13 +267,15 @@ export interface Model3D {
   conversionError?: string;             // populated on failure
   hasGLB:           boolean;            // true once .glb file is available
   hasUSDZ:          boolean;            // true if original was USDZ (served as-is for iOS)
+  defaultScale?:    number;             // Author-saved default scale (pre-fills model picker on iOS)
   uploadedBy?:      string;
   createdAt:        string;
   updatedAt:        string;
 }
 
 export type UpdateModel3DRequest = {
-  name?: string;
+  name?:         string;
+  defaultScale?: number;    // persist the scale chosen in the portal 3D preview viewer
 };
 
 // ============================================================
