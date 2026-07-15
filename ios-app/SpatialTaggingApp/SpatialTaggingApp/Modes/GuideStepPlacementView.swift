@@ -216,6 +216,12 @@ struct GuideStepPlacementView: View {
     @State private var focusRing: ARFocusRing? = nil
     private let crosshairTicker = Timer.publish(every: 0.10, on: .main, in: .common).autoconnect()
 
+    // ── Resolved model library ────────────────────────────────────────────────
+    /// Seeded from the `models` parameter on appear, then refreshed from the
+    /// server so placeActiveStep works even if the parent's anchorModels loaded
+    /// too late (async race between GuideEditorView.onAppear and sheet open).
+    @State private var resolvedModels: [Model3D] = []
+
     // ── UX ────────────────────────────────────────────────────────────────────
     @State private var showTapHint: Bool = true
 
@@ -281,6 +287,16 @@ struct GuideStepPlacementView: View {
             arManager.disableQRScanning()
             initFromExistingPositions()
             focusRing = ARFocusRing(sceneView: arManager.sceneView)
+            // Seed from parent immediately (may be non-empty if parent loaded in time)
+            if !models.isEmpty { resolvedModels = models }
+            // Fetch fresh from server regardless — guarantees models are available
+            // even when the parent's async fetch hadn't finished before this view opened.
+            Task {
+                if let m = try? await SIBClient(settings: settings)
+                    .fetchModels(anchorId: guide.anchorId), !m.isEmpty {
+                    resolvedModels = m
+                }
+            }
         }
         .onDisappear {
             for node in modelNodes.values { node.removeFromParentNode() }
@@ -727,9 +743,11 @@ struct GuideStepPlacementView: View {
             stepNodes[stepId] = node
         }
 
-        // If step has a ready model, enter model-placement flow
+        // If step has a ready model, enter model-placement flow.
+        // Use resolvedModels (fetched on appear) rather than the `models` parameter
+        // which may have been empty when this view was first presented.
         if let modelId = step.modelId,
-           let model   = models.first(where: { $0.id == modelId && $0.isReady }) {
+           let model   = resolvedModels.first(where: { $0.id == modelId && $0.isReady }) {
             placementPhase = .loadingModel(stepId: stepId)
             Task { await downloadAndPlaceModel(model: model, step: step, pinPos: position) }
         } else {
@@ -766,8 +784,8 @@ struct GuideStepPlacementView: View {
             return
         }
 
-        // Build SCNNode off-main thread
-        let builtNode: SCNNode? = await Task.detached(priority: .utility) {
+        // Build SCNNode off-main thread; also compute bounding box for base-snapping.
+        let buildResult: (SCNNode, Float)? = await Task.detached(priority: .utility) { () -> (SCNNode, Float)? in
             guard let scene = try? SCNScene(url: fileURL, options: [
                 SCNSceneSource.LoadingOption.checkConsistency: false,
                 SCNSceneSource.LoadingOption.flattenScene: false,
@@ -776,10 +794,15 @@ struct GuideStepPlacementView: View {
             guard !children.isEmpty else { return nil }
             let wrapper = SCNNode(); wrapper.name = "model_\(model.id)"
             children.forEach { wrapper.addChildNode($0.clone()) }
-            return wrapper
+            // bbMin.y = bottom of model in local space (at scale = 1).
+            // A positive bbMin.y means the geometry starts above the origin (model floats).
+            // We capture it here so MainActor.run can snap the base to the pin position.
+            var bbMin = SCNVector3Zero, bbMax = SCNVector3Zero
+            wrapper.getBoundingBoxMin(&bbMin, max: &bbMax)
+            return (wrapper, Float(bbMin.y))
         }.value
 
-        guard let node = builtNode else {
+        guard let (node, baseY) = buildResult else {
             await MainActor.run { placementPhase = .placingPins; advanceFromStep(stepId: step.id) }
             return
         }
@@ -791,16 +814,28 @@ struct GuideStepPlacementView: View {
             // Initial transform: preserve existing step values, fall back to model defaults
             let initScale = Float(step.modelScale    ?? model.defaultScale ?? 1.0)
             let initRotY  = Float(step.modelRotationY ?? 0.0)
+
+            // On first placement (no saved Y offset), auto-snap the model's base to the
+            // pin position. baseY is bbMin.y at scale=1; -baseY * scale shifts the node
+            // so the model's bottom face sits at pinPos.y instead of floating above it.
+            // When the user has already manually adjusted Y (modelOffsetY != nil), use
+            // their saved value directly — the auto-offset was already baked in on save.
+            let hasManualY:  Bool  = step.modelOffsetY != nil
+            let autoYOffset: Float = hasManualY ? 0.0 : (-baseY * initScale)
             let initPos   = simd_float3(
                 pinPos.x + Float(step.modelOffsetX ?? 0),
-                pinPos.y + Float(step.modelOffsetY ?? 0),
+                pinPos.y + Float(step.modelOffsetY ?? 0) + autoYOffset,
                 pinPos.z + Float(step.modelOffsetZ ?? 0)
             )
 
-            node.simdWorldPosition = initPos
-            node.simdScale         = simd_float3(initScale, initScale, initScale)
-            node.eulerAngles       = SCNVector3(0, initRotY, 0)
-            node.opacity           = 0.65
+            // Set position BEFORE addChildNode — simdPosition (local) is correct here
+            // because the parent IS the scene root, so local == world.
+            // simdWorldPosition requires the node to already be in the scene;
+            // calling it on an unattached node silently leaves position at zero.
+            node.simdPosition = initPos
+            node.simdScale    = simd_float3(initScale, initScale, initScale)
+            node.eulerAngles  = SCNVector3(0, initRotY, 0)
+            node.opacity      = 0.65
 
             arManager.sceneView.scene.rootNode.addChildNode(node)
             modelNodes[step.id] = node

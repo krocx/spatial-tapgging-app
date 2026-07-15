@@ -1563,7 +1563,7 @@ function renderModels(models) {
       ${kitInfo}
       <div class="model-actions">
         ${downloadLinks.join('')}
-        <a href="#" onclick="openKitModal('${m.id}', ${JSON.stringify(kitIds)}); return false" style="background:rgba(79,142,247,0.1);color:var(--accent)">🔗 Assign</a>
+        <a href="#" onclick="openKitModal('${m.id}', ${JSON.stringify(kitIds).replace(/"/g, '&quot;')}); return false" style="background:rgba(79,142,247,0.1);color:var(--accent)">🔗 Assign</a>
         <a href="#" onclick="deleteModel('${m.id}'); return false" style="background:rgba(240,86,86,0.1);color:var(--red)">🗑 Delete</a>
       </div>
     </div>`;

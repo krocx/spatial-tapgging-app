@@ -101,7 +101,11 @@ struct ARGuideSessionView: View {
     /// Local disk cache: modelId → temp .glb file URL (populated in background on load).
     @State private var glbCache:       [String: URL] = [:]
     /// Currently visible ghost SCNNode (at most one; removed when step changes).
-    @State private var ghostModelNode: SCNNode?      = nil
+    @State private var ghostModelNode:  SCNNode?      = nil
+    /// Step waiting for its model to finish downloading before the ghost can be shown.
+    /// Set by attachGhostOverlay when glbCache doesn't have the model yet; cleared
+    /// once the ghost is successfully built and added to the scene.
+    @State private var pendingGhostStep: GuideStep?  = nil
 
     // ── Ticker ────────────────────────────────────────────────────────────────
     private let navTicker = Timer.publish(every: 0.10, on: .main, in: .common).autoconnect()
@@ -1468,21 +1472,47 @@ struct ARGuideSessionView: View {
 
         glbCache[model.id] = fileURL
 
-        // If the Operator is already on a step that uses this model, attach now
+        // Attach ghost for the current navigating step if it uses this model
         if case .navigating(let idx) = phase, idx < sortedSteps.count,
            sortedSteps[idx].modelId == model.id {
             attachGhostOverlay(for: sortedSteps[idx])
+        }
+        // Also retry any step that was waiting for this exact model to be cached.
+        // This covers the race where all models finish downloading *before*
+        // transitionToNavigating fires (relocalizing path), so the navigating check
+        // above doesn't trigger, but pendingGhostStep was set by the attachGhostOverlay
+        // call inside transitionToNavigating.
+        else if let pending = pendingGhostStep, pending.modelId == model.id {
+            attachGhostOverlay(for: pending)
         }
     }
 
     /// Display a semi-transparent ghost SCNNode for the given step.
     /// GLB is loaded off the main actor via Task.detached so MDLAsset init
     /// (which can be slow for large files) does not block the AR render loop.
+    ///
+    /// If the model isn't in glbCache yet (still downloading), the step is stored in
+    /// `pendingGhostStep`; downloadAndCacheModel will call this again once the file
+    /// arrives, guaranteeing the ghost always appears even when prefetch races
+    /// against transitionToNavigating.
     private func attachGhostOverlay(for step: GuideStep) {
         removeGhostOverlay()
-        guard let modelId  = step.modelId,
-              let glbURL   = glbCache[modelId],
-              let pos      = step.worldPosition else { return }
+
+        // Step must have a model and a placed world position to show a ghost
+        guard let modelId = step.modelId,
+              let pos     = step.worldPosition else {
+            pendingGhostStep = nil
+            return
+        }
+
+        // Model not cached yet — register the step as pending so downloadAndCacheModel
+        // can retry once the download finishes.
+        guard let glbURL = glbCache[modelId] else {
+            pendingGhostStep = step
+            return
+        }
+
+        pendingGhostStep = nil
 
         // Capture value-type data before hopping off-actor
         let stepId    = step.id
