@@ -3,8 +3,9 @@
 // Lets the Author position a 3D model in the guide's AR world space so it
 // aligns precisely with the real-world component.
 //
-// Interactions (same as iOS AR Quick Look):
-//   1-finger pan     → translate model on horizontal plane
+// Interactions (same as iOS AR Quick Look + vertical mode):
+//   1-finger pan     → translate model on XZ plane (H mode) or up/down Y (V mode)
+//   H/V button       → toggle between Horizontal and Vertical pan mode
 //   2-finger pinch   → uniform scale
 //   2-finger rotate  → Y-axis rotation
 //
@@ -125,6 +126,8 @@ struct ARModelGestureContainer: UIViewRepresentable {
 
 struct ModelARPlacementView: View {
 
+    enum PanMode { case horizontal, vertical }
+
     @EnvironmentObject private var settings: AppSettings
     @Environment(\.dismiss) private var dismiss
 
@@ -158,6 +161,7 @@ struct ModelARPlacementView: View {
     @State private var phase:     Phase    = .loading
     @State private var isSaving:  Bool     = false
     @State private var error:     String?  = nil
+    @State private var panMode:   PanMode  = .horizontal
 
     enum Phase { case loading, placing }
 
@@ -268,11 +272,35 @@ struct ModelARPlacementView: View {
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
 
-            // Hint row
-            HStack(spacing: 20) {
-                gestureHint(icon: "hand.draw.fill",    label: "Drag\nto move")
+            // Hint row + H/V mode toggle
+            HStack(alignment: .top, spacing: 16) {
+                gestureHint(
+                    icon:  panMode == .horizontal ? "hand.draw.fill"    : "arrow.up.and.down",
+                    label: panMode == .horizontal ? "Drag\nto move"     : "Drag\nup/down"
+                )
                 gestureHint(icon: "arrow.up.left.and.arrow.down.right", label: "Pinch\nto scale")
                 gestureHint(icon: "rotate.right.fill", label: "Twist\nto rotate")
+
+                // Pan-mode toggle
+                Button {
+                    panMode = (panMode == .horizontal) ? .vertical : .horizontal
+                } label: {
+                    VStack(spacing: 4) {
+                        Image(systemName: panMode == .horizontal
+                              ? "arrow.left.and.right" : "arrow.up.and.down")
+                            .font(.system(size: 18))
+                            .foregroundStyle(.white.opacity(0.9))
+                        Text(panMode == .horizontal ? "H" : "V")
+                            .font(.system(size: 10).bold())
+                            .foregroundStyle(.white.opacity(0.75))
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(panMode == .horizontal
+                                ? Color.white.opacity(0.12)
+                                : Color.indigo.opacity(0.55))
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                }
             }
             .padding(.top, 10)
             .padding(.bottom, 6)
@@ -448,13 +476,25 @@ struct ModelARPlacementView: View {
     }
 
     private func handlePanChanged(_ screenPt: CGPoint) {
-        let sv = arManager.sceneView
+        let sv      = arManager.sceneView
         let worldPt = sv.unprojectPoint(SCNVector3(Float(screenPt.x), Float(screenPt.y), panDepthZ))
-        let delta = simd_float3(
-            worldPt.x - panStartWorld.x,
-            0,   // lock Y — horizontal plane translation only
-            worldPt.z - panStartWorld.z
-        )
+        let delta: simd_float3
+        switch panMode {
+        case .horizontal:
+            // Lock Y — move on the XZ ground plane only
+            delta = simd_float3(
+                worldPt.x - panStartWorld.x,
+                0,
+                worldPt.z - panStartWorld.z
+            )
+        case .vertical:
+            // Lock XZ — move up/down (Y axis) only
+            delta = simd_float3(
+                0,
+                worldPt.y - panStartWorld.y,
+                0
+            )
+        }
         let newPos = panBasePosition + delta
         position = newPos
         modelNode?.simdWorldPosition = newPos

@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Spatial Tagging · Anchor Directory</title>
+  <script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.169.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.169.0/examples/jsm/"}}</script>
   <!-- qrcodejs removed: QR images are now generated server-side and fetched via /anchors/:id/qrimage -->
   <style>
     :root {
@@ -319,6 +320,15 @@
     /* Step model picker (inline in AR Guides step editor) */
     .step-model-row { display:flex; align-items:center; gap:8px; font-size:0.78rem; padding:6px 0; }
     .step-model-select { background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:4px 8px; color:var(--text); font-size:0.75rem; outline:none; flex:1; }
+
+    /* ── 3D Model Preview modal ── */
+    #model-preview-modal { z-index:150; }
+    #model-preview-modal .modal { max-width:860px; height:85vh; display:flex; flex-direction:column; padding:0; overflow:hidden; }
+    #model-preview-canvas { display:block; width:100%; height:100%; }
+    .preview-footer { padding:12px 18px; border-top:1px solid var(--border); flex-shrink:0;
+                      display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+    .preview-scale-row { display:flex; align-items:center; gap:8px; flex:1; min-width:180px; }
+    .preview-scale-row input[type=range] { flex:1; accent-color:var(--accent); }
   </style>
 </head>
 <body>
@@ -582,6 +592,45 @@
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeDeleteTagModal()">Cancel</button>
       <button class="btn btn-danger" onclick="confirmDeleteTag()">Delete Tag</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     3D MODEL PREVIEW MODAL (Three.js GLB viewer with person reference)
+══════════════════════════════════════════════════════════════ -->
+<div id="model-preview-modal" class="overlay">
+  <div class="modal" onclick="event.stopPropagation()">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);flex-shrink:0">
+      <div>
+        <div style="font-size:0.9rem;font-weight:700" id="preview-model-name">Model</div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:2px" id="preview-model-dims">–</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="closeModelPreview()">✕ Close</button>
+    </div>
+    <!-- Canvas area -->
+    <div style="flex:1;position:relative;overflow:hidden;min-height:0">
+      <canvas id="model-preview-canvas"></canvas>
+      <div id="preview-loading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.55)">
+        <div style="text-align:center">
+          <div class="spin" style="margin:0 auto 12px"></div>
+          <div style="font-size:0.82rem;color:var(--text)">Loading 3D model…</div>
+        </div>
+      </div>
+    </div>
+    <!-- Footer: scale controls -->
+    <div class="preview-footer">
+      <div class="preview-scale-row">
+        <span style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;white-space:nowrap">Scale</span>
+        <input type="range" id="preview-scale-slider" min="-3" max="2" step="0.005" value="0" oninput="onPreviewScaleInput(this.value)">
+        <span style="font-size:0.82rem;font-weight:700;color:var(--accent);min-width:58px;text-align:right;font-family:monospace" id="preview-scale-val">1.000×</span>
+      </div>
+      <div style="font-size:0.75rem;color:var(--muted);white-space:nowrap">
+        H: <span id="preview-height-val" style="color:var(--text)">–</span>
+      </div>
+      <div style="font-size:0.72rem;padding:3px 9px;border-radius:6px;background:rgba(68,136,255,0.1);color:#6699ff;border:1px solid rgba(68,136,255,0.2);white-space:nowrap">🔵 = 1.8 m person</div>
+      <div style="font-size:0.70rem;color:var(--muted)">Orbit: drag · Zoom: scroll</div>
     </div>
   </div>
 </div>
@@ -1486,6 +1535,7 @@ function renderModels(models) {
   for (const m of models) {
     const { cls, icon } = iconFor(m);
     const downloadLinks = [];
+    if (m.hasGLB && m.status === 'ready') downloadLinks.push(`<a href="#" onclick="openModelPreview('${m.id}','${jsEsc(m.name)}');return false" style="background:rgba(61,214,140,0.1);color:var(--green)">👁 Preview</a>`);
     if (m.hasGLB)  downloadLinks.push(`<a href="/models/${m.id}/file.glb" target="_blank" download>⬇ GLB</a>`);
     if (m.hasUSDZ) downloadLinks.push(`<a href="/models/${m.id}/file.usdz" target="_blank" download>⬇ USDZ</a>`);
 
@@ -2166,6 +2216,224 @@ function toast(msg, duration=2200) {
   el.textContent = msg;
   el.classList.add('show');
   setTimeout(() => el.classList.remove('show'), duration);
+}
+</script>
+
+<!-- ══════════════════════════════════════════════════════════════
+     3D MODEL PREVIEW  — Three.js ES module
+     Exposes openModelPreview / closeModelPreview / onPreviewScaleInput
+     on window so plain onclick="" attributes can call them.
+══════════════════════════════════════════════════════════════ -->
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader }    from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// Module-private renderer state
+let _r = null, _s = null, _cam = null, _ctrl = null, _raf = null;
+let _node = null, _bbox = null, _obs = null;
+
+function _key() { return localStorage.getItem('sib_api_key') || ''; }
+
+// ── Public API (exposed on window) ───────────────────────────────────────────
+
+window.openModelPreview = async function(modelId, modelName) {
+  const $name    = document.getElementById('preview-model-name');
+  const $dims    = document.getElementById('preview-model-dims');
+  const $height  = document.getElementById('preview-height-val');
+  const $slider  = document.getElementById('preview-scale-slider');
+  const $scaleV  = document.getElementById('preview-scale-val');
+  const $loading = document.getElementById('preview-loading');
+  const $modal   = document.getElementById('model-preview-modal');
+
+  if (!$name) return;
+  $name.textContent   = modelName;
+  $dims.textContent   = '–';
+  $height.textContent = '–';
+  $slider.value       = '0';
+  $scaleV.textContent = '1.000×';
+  $loading.style.display = 'flex';
+  $loading.innerHTML  = '<div style="text-align:center"><div class="spin" style="margin:0 auto 12px"></div><div style="font-size:0.82rem;color:var(--text)">Loading 3D model…</div></div>';
+  $modal.classList.add('open');
+
+  // Wait two rAFs so the browser has laid out the modal and canvas has real dimensions
+  await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+  _initScene();
+  _loadGLB(`/models/${encodeURIComponent(modelId)}/file.glb`);
+};
+
+window.closeModelPreview = function() {
+  document.getElementById('model-preview-modal')?.classList.remove('open');
+  _dispose();
+};
+
+window.onPreviewScaleInput = function(logVal) {
+  const scale = Math.pow(10, parseFloat(logVal));
+  document.getElementById('preview-scale-val').textContent = scale.toFixed(3) + '×';
+  if (_node) {
+    _node.scale.setScalar(scale);
+    if (_bbox) {
+      const sz = _bbox.getSize(new THREE.Vector3());
+      const h  = (sz.y * scale).toFixed(3);
+      const w  = (sz.x * scale).toFixed(3);
+      const d  = (sz.z * scale).toFixed(3);
+      document.getElementById('preview-height-val').textContent = `${h} m  (${w} × ${d} m)`;
+    }
+  }
+};
+
+// ── Scene setup ───────────────────────────────────────────────────────────────
+
+function _initScene() {
+  _dispose();
+
+  const canvas = document.getElementById('model-preview-canvas');
+  const W = canvas.clientWidth  || 700;
+  const H = canvas.clientHeight || 500;
+
+  // Renderer
+  _r = new THREE.WebGLRenderer({ canvas, antialias: true });
+  _r.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  _r.setSize(W, H, false);   // false = don't override CSS width/height
+  _r.setClearColor(0x0a0a0f);
+  _r.shadowMap.enabled = true;
+  _r.shadowMap.type    = THREE.PCFSoftShadowMap;
+
+  // Scene
+  _s = new THREE.Scene();
+
+  // Lighting
+  _s.add(new THREE.AmbientLight(0xffffff, 0.55));
+  const sun = new THREE.DirectionalLight(0xffffff, 1.1);
+  sun.position.set(4, 8, 5);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(1024, 1024);
+  _s.add(sun);
+  const fill = new THREE.DirectionalLight(0x889aCC, 0.35);
+  fill.position.set(-3, 2, -4);
+  _s.add(fill);
+
+  // Floor grid
+  const grid = new THREE.GridHelper(20, 40, 0x22223a, 0x22223a);
+  grid.material.opacity    = 0.55;
+  grid.material.transparent = true;
+  _s.add(grid);
+
+  // Floor plane (shadow receiver)
+  const floor = new THREE.Mesh(
+    new THREE.PlaneGeometry(40, 40),
+    new THREE.MeshStandardMaterial({ color: 0x0d0d18, roughness: 1, metalness: 0 })
+  );
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.y = -0.001;
+  floor.receiveShadow = true;
+  _s.add(floor);
+
+  // 1.8 m person reference (placed 1.8 m to the right of the origin)
+  const pMat = new THREE.MeshLambertMaterial({ color: 0x4488ff, transparent: true, opacity: 0.38 });
+
+  // Body: y = 0 … 1.5 m
+  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 1.5, 12), pMat);
+  body.position.set(1.8, 0.75, 0);
+  body.castShadow = true;
+  _s.add(body);
+
+  // Head: centre at 1.65 m, top at 1.80 m
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 8), pMat);
+  head.position.set(1.8, 1.65, 0);
+  head.castShadow = true;
+  _s.add(head);
+
+  // Height-indicator line + tick marks
+  const lMat = new THREE.LineBasicMaterial({ color: 0x4488ff, transparent: true, opacity: 0.55 });
+  const addLine = (pts) => _s.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), lMat));
+  addLine([new THREE.Vector3(2.12, 0, 0), new THREE.Vector3(2.12, 1.8, 0)]);
+  [0, 1.8].forEach(y => addLine([new THREE.Vector3(2.07, y, 0), new THREE.Vector3(2.17, y, 0)]));
+
+  // Camera
+  _cam = new THREE.PerspectiveCamera(40, W / H, 0.01, 200);
+  _cam.position.set(3.2, 2.0, 4.2);
+
+  // Controls
+  _ctrl = new OrbitControls(_cam, canvas);
+  _ctrl.target.set(0.5, 0.9, 0);
+  _ctrl.enableDamping  = true;
+  _ctrl.dampingFactor  = 0.07;
+  _ctrl.minDistance    = 0.3;
+  _ctrl.maxDistance    = 40;
+  _ctrl.update();
+
+  // Resize observer — keeps renderer sized to canvas CSS box
+  _obs = new ResizeObserver(() => {
+    if (!_r) return;
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    if (!w || !h) return;
+    _r.setSize(w, h, false);
+    _cam.aspect = w / h;
+    _cam.updateProjectionMatrix();
+  });
+  _obs.observe(canvas);
+
+  // Render loop
+  const loop = () => { _raf = requestAnimationFrame(loop); _ctrl.update(); _r.render(_s, _cam); };
+  loop();
+}
+
+// ── GLB loading ───────────────────────────────────────────────────────────────
+
+function _loadGLB(url) {
+  const loader = new GLTFLoader();
+  const key = _key();
+  if (key) loader.setRequestHeader({ 'X-API-Key': key });
+
+  loader.load(url, (gltf) => {
+    const model = gltf.scene;
+    model.traverse(c => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
+
+    // Centre on floor (bottom of bounding box → y = 0)
+    _bbox = new THREE.Box3().setFromObject(model);
+    const c  = _bbox.getCenter(new THREE.Vector3());
+    const sz = _bbox.getSize(new THREE.Vector3());
+    model.position.x -= c.x;
+    model.position.z -= c.z;
+    model.position.y -= _bbox.min.y;
+
+    _node = model;
+    _s.add(model);
+
+    // Auto-fit camera
+    const span = Math.max(sz.x, sz.y, sz.z, 1.8);
+    const dist = Math.max(span * 2.2, 3.5);
+    _cam.position.set(dist * 0.6, dist * 0.45, dist);
+    _ctrl.target.set(0, sz.y * 0.5, 0);
+    _ctrl.update();
+
+    // Update UI
+    const dims = `${sz.x.toFixed(3)} × ${sz.y.toFixed(3)} × ${sz.z.toFixed(3)} m  (native GLB size)`;
+    const $dims   = document.getElementById('preview-model-dims');
+    const $height = document.getElementById('preview-height-val');
+    const $load   = document.getElementById('preview-loading');
+    if ($dims)   $dims.textContent   = dims;
+    if ($height) $height.textContent = `${sz.y.toFixed(3)} m  (${sz.x.toFixed(3)} × ${sz.z.toFixed(3)} m)`;
+    if ($load)   $load.style.display = 'none';
+  }, undefined, (err) => {
+    const $load = document.getElementById('preview-loading');
+    if ($load) $load.innerHTML =
+      `<div style="padding:24px;color:var(--red);text-align:center">
+         Failed to load model<br>
+         <small style="color:var(--muted)">${err.message || 'unknown error'}</small>
+       </div>`;
+  });
+}
+
+// ── Cleanup ───────────────────────────────────────────────────────────────────
+
+function _dispose() {
+  if (_raf)  { cancelAnimationFrame(_raf); _raf  = null; }
+  if (_obs)  { _obs.disconnect();          _obs  = null; }
+  if (_r)    { _r.dispose();               _r    = null; }
+  _s = null; _cam = null; _ctrl = null; _node = null; _bbox = null;
 }
 </script>
 </body>
