@@ -480,6 +480,7 @@ struct AddStepSheet: View {
     @State private var selectedModelId: String?   = nil
     @State private var modelScale:      Double    = 1.0
     @State private var modelOpacity:    Double    = 0.45
+    @State private var previewModel:    Model3D?  = nil
 
     var body: some View {
         NavigationStack {
@@ -567,6 +568,12 @@ struct AddStepSheet: View {
                             }
                         }
                         if selectedModelId != nil {
+                            Button {
+                                previewModel = anchorModels.first { $0.id == selectedModelId }
+                            } label: {
+                                Label("Preview Model", systemImage: "rotate.3d")
+                                    .font(.subheadline)
+                            }
                             VStack(alignment: .leading, spacing: 4) {
                                 HStack {
                                     Text("Scale: \(String(format: "%.1f", modelScale))×")
@@ -620,6 +627,10 @@ struct AddStepSheet: View {
                 CameraPickerView(sourceType: source.uiSourceType) { img in
                     selectedImage = img
                 }
+            }
+            .sheet(item: $previewModel) { model in
+                ModelPreviewView(model: model)
+                    .environmentObject(settings)
             }
             .onAppear {
                 Task { await fetchAnchorModels() }
@@ -695,6 +706,7 @@ struct EditStepSheet: View {
     @State private var selectedModelId: String?   = nil   // nil = "None"
     @State private var modelScale:      Double    = 1.0
     @State private var modelOpacity:    Double    = 0.45
+    @State private var previewModel:    Model3D?  = nil
 
     var body: some View {
         NavigationStack {
@@ -811,6 +823,12 @@ struct EditStepSheet: View {
                             }
                         }
                         if selectedModelId != nil {
+                            Button {
+                                previewModel = anchorModels.first { $0.id == selectedModelId }
+                            } label: {
+                                Label("Preview Model", systemImage: "rotate.3d")
+                                    .font(.subheadline)
+                            }
                             VStack(alignment: .leading, spacing: 4) {
                                 HStack {
                                     Text("Scale: \(String(format: "%.1f", modelScale))×")
@@ -865,6 +883,10 @@ struct EditStepSheet: View {
                     selectedImage    = img
                     shouldClearPhoto = false
                 }
+            }
+            .sheet(item: $previewModel) { model in
+                ModelPreviewView(model: model)
+                    .environmentObject(settings)
             }
             .onAppear {
                 stepTitle          = step.title ?? ""
