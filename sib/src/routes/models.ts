@@ -82,6 +82,57 @@ function detectFormat(contentType: string, filename: string): ModelFormat | null
   return MIME_TO_FORMAT[base] ?? null;
 }
 
+// ── GLB → USDZ conversion (Three.js) ─────────────────────────────────────────
+//
+// SceneKit's ModelIO bridge for loading GLB was removed in iOS 26.
+// SCNScene(url:) only loads USDZ natively on iOS 12+.
+// We therefore convert every stored GLB to USDZ using Three.js's USDZExporter,
+// which runs in Node.js without any WebGL or Apple tooling.
+//
+// The conversion runs asynchronously after the model record is saved so it
+// never blocks the upload response. `hasUSDZ` is set to true once the file
+// is written; the iOS app will pick it up on the next metadata fetch or
+// immediately if the model was pre-cached (GuideStepPlacementView prefetch).
+
+async function convertGlbToUsdz(modelId: string, glbPath: string): Promise<void> {
+  try {
+    // Dynamic imports — graceful no-op if `three` isn't installed.
+    const THREE = await import('three').catch(() => null);
+    if (!THREE) { console.warn('[SIB/models] `three` not installed — skipping USDZ conversion'); return; }
+
+    const { GLTFLoader }   = await import('three/addons/loaders/GLTFLoader.js')
+      .catch(() => import('three/examples/jsm/loaders/GLTFLoader.js' as any)) as any;
+    const { USDZExporter } = await import('three/addons/exporters/USDZExporter.js')
+      .catch(() => import('three/examples/jsm/exporters/USDZExporter.js' as any)) as any;
+
+    if (!GLTFLoader || !USDZExporter) {
+      console.warn('[SIB/models] Three.js addons not found — skipping USDZ conversion');
+      return;
+    }
+
+    // Read GLB into ArrayBuffer (GLTFLoader.parse accepts it directly — no fetch needed)
+    const glbBuf    = await fs.promises.readFile(glbPath);
+    const arrayBuf  = glbBuf.buffer.slice(glbBuf.byteOffset, glbBuf.byteOffset + glbBuf.byteLength);
+
+    const gltf = await new Promise<any>((resolve, reject) => {
+      const loader = new GLTFLoader();
+      loader.parse(arrayBuf, '', resolve, reject);
+    });
+
+    const exporter   = new USDZExporter();
+    const usdzBuffer = await exporter.parseAsync(gltf.scene);
+
+    const usdzPath = path.join(MODELS_DIR, `${modelId}.usdz`);
+    await fs.promises.writeFile(usdzPath, Buffer.from(usdzBuffer));
+
+    model3DStore.update(modelId, { hasUSDZ: true, updatedAt: new Date().toISOString() });
+    console.log(`[SIB/models] USDZ conversion complete: ${modelId}.usdz`);
+  } catch (err) {
+    // Non-fatal: model stays GLB-only; older iOS versions can still load it.
+    console.warn(`[SIB/models] USDZ conversion failed for ${modelId}:`, err);
+  }
+}
+
 // ── Blender conversion ────────────────────────────────────────────────────────
 
 /** Embedded Blender Python script written to a temp file before invoking. */
@@ -157,6 +208,8 @@ function runBlenderConversion(modelId: string, inputPath: string): void {
         updatedAt: now(),
       });
       console.log(`[SIB/models] Conversion complete: ${modelId}.glb`);
+      // Also convert to USDZ for iOS 26+ (ModelIO–SceneKit bridge removed)
+      convertGlbToUsdz(modelId, outputPath);
     } else if (code === 2) {
       model3DStore.update(modelId, {
         status:         'failed' as ModelStatus,
@@ -291,10 +344,13 @@ router.post(
       model.hasUSDZ = true;
       model.status  = 'ready';
     } else if (format === 'glb' || format === 'gltf') {
-      // GLB / GLTF: store as GLB (GLTF is already JSON-based glTF; treat as GLB for simplicity)
-      fs.writeFileSync(path.join(MODELS_DIR, `${id}.glb`), body);
+      // GLB / GLTF: store as GLB, then kick off async USDZ conversion for iOS 26+.
+      const glbPath = path.join(MODELS_DIR, `${id}.glb`);
+      fs.writeFileSync(glbPath, body);
       model.hasGLB = true;
       model.status = 'ready';
+      // Async: do not await — response is sent immediately; hasUSDZ flips to true once done.
+      convertGlbToUsdz(id, glbPath);
     } else {
       // OBJ / FBX / STEP / IGES: save original, trigger async Blender conversion
       const origExt  = `.${format}`;

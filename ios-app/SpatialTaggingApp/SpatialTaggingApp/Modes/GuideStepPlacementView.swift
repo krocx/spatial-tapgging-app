@@ -222,6 +222,11 @@ struct GuideStepPlacementView: View {
     /// too late (async race between GuideEditorView.onAppear and sheet open).
     @State private var resolvedModels: [Model3D] = []
 
+    // ── Pre-cached model files ────────────────────────────────────────────────
+    /// Local temp-file URLs for each model ID, downloaded on appear so the
+    /// model is ready the instant a step pin is placed (no wait on tap).
+    @State private var modelFileCache: [String: URL] = [:]
+
     // ── UX ────────────────────────────────────────────────────────────────────
     @State private var showTapHint: Bool = true
 
@@ -291,10 +296,13 @@ struct GuideStepPlacementView: View {
             if !models.isEmpty { resolvedModels = models }
             // Fetch fresh from server regardless — guarantees models are available
             // even when the parent's async fetch hadn't finished before this view opened.
+            // Then pre-download the file for every step that has a model, so the
+            // model is ready the instant the author taps to place a pin.
             Task {
                 if let m = try? await SIBClient(settings: settings)
                     .fetchModels(anchorId: guide.anchorId), !m.isEmpty {
                     resolvedModels = m
+                    await prefetchStepModels(from: m)
                 }
             }
         }
@@ -743,48 +751,88 @@ struct GuideStepPlacementView: View {
             stepNodes[stepId] = node
         }
 
-        // If step has a ready model, enter model-placement flow.
-        // Use resolvedModels (fetched on appear) rather than the `models` parameter
-        // which may have been empty when this view was first presented.
+        // If step has a model, enter model-placement flow.
+        // Use resolvedModels (fetched on appear) to get correct hasUSDZ/hasGLB flags.
+        // Pass the pre-cached file URL so downloadAndPlaceModel skips the network call.
         if let modelId = step.modelId,
            let model   = resolvedModels.first(where: { $0.id == modelId && $0.isReady }) {
+            let cachedURL = modelFileCache[modelId]  // nil if pre-fetch not done yet
             placementPhase = .loadingModel(stepId: stepId)
-            Task { await downloadAndPlaceModel(model: model, step: step, pinPos: position) }
+            Task { await downloadAndPlaceModel(model: model, step: step, pinPos: position, cachedURL: cachedURL) }
         } else {
             advanceFromStep(stepId: stepId)
         }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // MARK: Model download + placement
+    // MARK: Model pre-fetch + placement
     // ─────────────────────────────────────────────────────────────────────────
 
-    private func downloadAndPlaceModel(model: Model3D, step: GuideStep, pinPos: simd_float3) async {
-        let client = SIBClient(settings: settings)
+    /// Download + cache files for every model used by this guide's steps.
+    /// Called on appear so the file is ready before the author taps to place a pin.
+    private func prefetchStepModels(from models: [Model3D]) async {
+        let neededIds = Set(steps.compactMap { $0.modelId })
+        let targets   = models.filter { neededIds.contains($0.id) && $0.isReady && ($0.hasUSDZ || $0.hasGLB) }
+        await withTaskGroup(of: Void.self) { group in
+            for model in targets { group.addTask { await self.cacheModelFile(model) } }
+        }
+    }
 
-        let ext:  String
+    /// Download one model file (USDZ preferred) and write it to the temp cache.
+    private func cacheModelFile(_ model: Model3D) async {
+        guard await MainActor.run(resultType: URL?.self) { modelFileCache[model.id] } == nil else { return }
+        let client = SIBClient(settings: settings)
+        let fileExt: String
         let data: Data?
         if model.hasUSDZ {
-            data = try? await client.downloadModelUSDZ(id: model.id); ext = "usdz"
+            data = try? await client.downloadModelUSDZ(id: model.id); fileExt = "usdz"
         } else {
-            data = try? await client.downloadModelGLB(id: model.id);  ext = "glb"
+            data = try? await client.downloadModelGLB(id: model.id);  fileExt = "glb"
         }
-
-        guard let data else {
-            await MainActor.run { placementPhase = .placingPins; advanceFromStep(stepId: step.id) }
-            return
-        }
-
+        guard let data else { return }
         let cacheDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("ar-oms-placement", isDirectory: true)
         try? FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
-        let fileURL = cacheDir.appendingPathComponent("\(model.id).\(ext)")
-        guard (try? data.write(to: fileURL)) != nil else {
-            await MainActor.run { placementPhase = .placingPins; advanceFromStep(stepId: step.id) }
-            return
+        let fileURL = cacheDir.appendingPathComponent("\(model.id).\(fileExt)")
+        guard (try? data.write(to: fileURL)) != nil else { return }
+        await MainActor.run { modelFileCache[model.id] = fileURL }
+    }
+
+    /// Place a 3D model in the scene at the given pin position.
+    /// Uses the pre-cached file URL when available; falls back to downloading on demand.
+    private func downloadAndPlaceModel(model: Model3D, step: GuideStep, pinPos: simd_float3,
+                                       cachedURL: URL? = nil) async {
+        // Resolve file URL — use pre-cache if available, otherwise download now.
+        let fileURL: URL
+        if let cached = cachedURL {
+            fileURL = cached
+        } else {
+            let client = SIBClient(settings: settings)
+            let ext: String; let data: Data?
+            if model.hasUSDZ {
+                data = try? await client.downloadModelUSDZ(id: model.id); ext = "usdz"
+            } else {
+                data = try? await client.downloadModelGLB(id: model.id);  ext = "glb"
+            }
+            guard let data else {
+                await MainActor.run { placementPhase = .placingPins; advanceFromStep(stepId: step.id) }
+                return
+            }
+            let cacheDir = FileManager.default.temporaryDirectory
+                .appendingPathComponent("ar-oms-placement", isDirectory: true)
+            try? FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
+            let url = cacheDir.appendingPathComponent("\(model.id).\(model.hasUSDZ ? "usdz" : "glb")")
+            guard (try? data.write(to: url)) != nil else {
+                await MainActor.run { placementPhase = .placingPins; advanceFromStep(stepId: step.id) }
+                return
+            }
+            fileURL = url
         }
 
         // Build SCNNode off-main thread; also compute bounding box for base-snapping.
+        // SCNScene(url:) loads USDZ natively (iOS 12+). GLB requires ModelIO which
+        // was removed in iOS 26 — the server auto-converts GLB → USDZ so hasUSDZ
+        // will be true for all models by the time the iOS app downloads them.
         let buildResult: (SCNNode, Float)? = await Task.detached(priority: .utility) { () -> (SCNNode, Float)? in
             guard let scene = try? SCNScene(url: fileURL, options: [
                 SCNSceneSource.LoadingOption.checkConsistency: false,
@@ -794,12 +842,10 @@ struct GuideStepPlacementView: View {
             guard !children.isEmpty else { return nil }
             let wrapper = SCNNode(); wrapper.name = "model_\(model.id)"
             children.forEach { wrapper.addChildNode($0.clone()) }
-            // bbMin.y = bottom of model in local space (at scale = 1).
-            // A positive bbMin.y means the geometry starts above the origin (model floats).
-            // We capture it here so MainActor.run can snap the base to the pin position.
-            var bbMin = SCNVector3Zero, bbMax = SCNVector3Zero
-            wrapper.getBoundingBoxMin(&bbMin, max: &bbMax)
-            return (wrapper, Float(bbMin.y))
+            // bb.min.y = bottom of model in local space (at scale = 1).
+            // Used to snap the model's base to the pin position on first placement.
+            let bb = wrapper.boundingBox
+            return (wrapper, bb.min.y)
         }.value
 
         guard let (node, baseY) = buildResult else {
