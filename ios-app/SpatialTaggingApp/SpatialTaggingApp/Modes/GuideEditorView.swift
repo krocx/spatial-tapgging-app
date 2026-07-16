@@ -568,11 +568,18 @@ struct AddStepSheet: View {
                             }
                         }
                         if selectedModelId != nil {
+                            let _previewTarget = anchorModels.first { $0.id == selectedModelId }
                             Button {
-                                previewModel = anchorModels.first { $0.id == selectedModelId }
+                                previewModel = _previewTarget
                             } label: {
                                 Label("Preview Model", systemImage: "rotate.3d")
                                     .font(.subheadline)
+                            }
+                            .disabled(_previewTarget?.hasUSDZ != true)
+                            if _previewTarget?.hasUSDZ != true {
+                                Text("USDZ pending — convert in portal first")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
                             }
                             VStack(alignment: .leading, spacing: 4) {
                                 HStack {
@@ -823,11 +830,18 @@ struct EditStepSheet: View {
                             }
                         }
                         if selectedModelId != nil {
+                            let _previewTarget = anchorModels.first { $0.id == selectedModelId }
                             Button {
-                                previewModel = anchorModels.first { $0.id == selectedModelId }
+                                previewModel = _previewTarget
                             } label: {
                                 Label("Preview Model", systemImage: "rotate.3d")
                                     .font(.subheadline)
+                            }
+                            .disabled(_previewTarget?.hasUSDZ != true)
+                            if _previewTarget?.hasUSDZ != true {
+                                Text("USDZ pending — convert in portal first")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
                             }
                             VStack(alignment: .leading, spacing: 4) {
                                 HStack {

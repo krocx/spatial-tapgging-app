@@ -61,6 +61,10 @@ struct Model3D: Codable, Identifiable, Equatable {
     let conversionError:  String?
     let hasGLB:           Bool
     let hasUSDZ:          Bool
+    /// USDZ conversion state set by the portal browser after GLB→USDZ conversion.
+    /// 'pending' = not yet converted; 'ready' = USDZ available; 'failed' = conversion error.
+    /// Nil on legacy records — infer from hasUSDZ.
+    let usdzStatus:       String?
     /// Author-saved default scale — pre-fills the model scale slider in EditStepSheet.
     let defaultScale:     Double?
     let uploadedBy:       String?

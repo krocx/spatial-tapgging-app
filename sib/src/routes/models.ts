@@ -19,9 +19,10 @@
 //
 //   The server detects format from Content-Type + name extension, stores the file,
 //   and dispatches async conversion if needed:
-//     GLB / GLTF   → ready immediately (pass-through as GLB)
-//     USDZ         → ready immediately (stored as USDZ; hasUSDZ=true)
-//     OBJ / FBX    → async Blender conversion → GLB
+//     GLB / GLTF   → ready immediately (stored as GLB; usdzStatus='pending')
+//                    Portal browser then converts GLB→USDZ and uploads via PUT /models/:id/file.usdz
+//     USDZ         → ready immediately (stored as USDZ; hasUSDZ=true, usdzStatus='ready')
+//     OBJ / FBX    → async Blender conversion → GLB (then browser converts to USDZ)
 //     STEP / IGES  → async Blender conversion → GLB  (requires CAD addon)
 //
 // Conversion:
@@ -82,56 +83,20 @@ function detectFormat(contentType: string, filename: string): ModelFormat | null
   return MIME_TO_FORMAT[base] ?? null;
 }
 
-// ── GLB → USDZ conversion (Three.js) ─────────────────────────────────────────
+// ── GLB → USDZ: browser-side conversion ──────────────────────────────────────
 //
-// SceneKit's ModelIO bridge for loading GLB was removed in iOS 26.
-// SCNScene(url:) only loads USDZ natively on iOS 12+.
-// We therefore convert every stored GLB to USDZ using Three.js's USDZExporter,
-// which runs in Node.js without any WebGL or Apple tooling.
+// GLB→USDZ conversion is performed in the portal browser using Three.js
+// GLTFLoader + USDZExporter (where WebGL is available and the USDZExporter
+// is well-supported). The browser uploads the resulting USDZ via
+// PUT /models/:id/file.usdz, which stores it and sets hasUSDZ=true.
 //
-// The conversion runs asynchronously after the model record is saved so it
-// never blocks the upload response. `hasUSDZ` is set to true once the file
-// is written; the iOS app will pick it up on the next metadata fetch or
-// immediately if the model was pre-cached (GuideStepPlacementView prefetch).
-
-async function convertGlbToUsdz(modelId: string, glbPath: string): Promise<void> {
-  try {
-    // Dynamic imports — graceful no-op if `three` isn't installed.
-    const THREE = await import('three').catch(() => null);
-    if (!THREE) { console.warn('[SIB/models] `three` not installed — skipping USDZ conversion'); return; }
-
-    const { GLTFLoader }   = await import('three/addons/loaders/GLTFLoader.js')
-      .catch(() => import('three/examples/jsm/loaders/GLTFLoader.js' as any)) as any;
-    const { USDZExporter } = await import('three/addons/exporters/USDZExporter.js')
-      .catch(() => import('three/examples/jsm/exporters/USDZExporter.js' as any)) as any;
-
-    if (!GLTFLoader || !USDZExporter) {
-      console.warn('[SIB/models] Three.js addons not found — skipping USDZ conversion');
-      return;
-    }
-
-    // Read GLB into ArrayBuffer (GLTFLoader.parse accepts it directly — no fetch needed)
-    const glbBuf    = await fs.promises.readFile(glbPath);
-    const arrayBuf  = glbBuf.buffer.slice(glbBuf.byteOffset, glbBuf.byteOffset + glbBuf.byteLength);
-
-    const gltf = await new Promise<any>((resolve, reject) => {
-      const loader = new GLTFLoader();
-      loader.parse(arrayBuf, '', resolve, reject);
-    });
-
-    const exporter   = new USDZExporter();
-    const usdzBuffer = await exporter.parseAsync(gltf.scene);
-
-    const usdzPath = path.join(MODELS_DIR, `${modelId}.usdz`);
-    await fs.promises.writeFile(usdzPath, Buffer.from(usdzBuffer));
-
-    model3DStore.update(modelId, { hasUSDZ: true, updatedAt: new Date().toISOString() });
-    console.log(`[SIB/models] USDZ conversion complete: ${modelId}.usdz`);
-  } catch (err) {
-    // Non-fatal: model stays GLB-only; older iOS versions can still load it.
-    console.warn(`[SIB/models] USDZ conversion failed for ${modelId}:`, err);
-  }
-}
+// This server keeps both the original GLB (for future AR-glasses / non-iOS use)
+// and the converted USDZ (for iOS 26+ where SCNScene(url:) only loads USDZ).
+//
+// usdzStatus tracks the conversion state:
+//   'pending' — GLB ready, USDZ not yet received from browser
+//   'ready'   — USDZ received and stored; iOS app can download it
+//   'failed'  — Browser reported conversion error (set by browser after failure)
 
 // ── Blender conversion ────────────────────────────────────────────────────────
 
@@ -203,13 +168,12 @@ function runBlenderConversion(modelId: string, inputPath: string): void {
 
     if (code === 0 && fs.existsSync(outputPath)) {
       model3DStore.update(modelId, {
-        status:    'ready' as ModelStatus,
-        hasGLB:    true,
-        updatedAt: now(),
+        status:     'ready' as ModelStatus,
+        hasGLB:     true,
+        usdzStatus: 'pending',  // portal browser will convert GLB→USDZ and upload
+        updatedAt:  now(),
       });
-      console.log(`[SIB/models] Conversion complete: ${modelId}.glb`);
-      // Also convert to USDZ for iOS 26+ (ModelIO–SceneKit bridge removed)
-      convertGlbToUsdz(modelId, outputPath);
+      console.log(`[SIB/models] Conversion complete: ${modelId}.glb (USDZ pending browser conversion)`);
     } else if (code === 2) {
       model3DStore.update(modelId, {
         status:         'failed' as ModelStatus,
@@ -281,6 +245,45 @@ router.get('/:id/file.usdz', (req: Request, res: Response): void => {
   res.sendFile(filePath);
 });
 
+// ── PUT /models/:id/file.usdz — receive USDZ from portal browser ─────────────
+// Called by the portal after in-browser GLB→USDZ conversion completes.
+// Stores the USDZ alongside the existing GLB and sets hasUSDZ=true + usdzStatus='ready'.
+router.put(
+  '/:id/file.usdz',
+  (req: Request, res: Response, next) => {
+    express.raw({ type: '*/*', limit: '250mb' })(req, res, next);
+  },
+  (req: Request, res: Response): void => {
+    const model = model3DStore.findById(req.params.id);
+    if (!model) { res.status(404).json({ error: 'Model not found' }); return; }
+
+    const body = req.body as Buffer;
+    if (!Buffer.isBuffer(body) || body.length === 0) {
+      res.status(400).json({ error: 'Request body must be the raw USDZ file' });
+      return;
+    }
+
+    const usdzPath = path.join(MODELS_DIR, `${model.id}.usdz`);
+    try {
+      fs.writeFileSync(usdzPath, body);
+    } catch (err) {
+      res.status(500).json({ error: 'Failed to write USDZ file to disk' });
+      return;
+    }
+
+    model3DStore.update(model.id, {
+      hasUSDZ:    true,
+      usdzStatus: 'ready',
+      updatedAt:  new Date().toISOString(),
+    });
+    console.log(`[SIB/models] USDZ received from browser (${(body.length / 1024).toFixed(1)} KB): ${model.id}.usdz`);
+
+    const updated = model3DStore.findById(model.id)!;
+    const resp: ApiResponse<Model3D> = { data: updated, timestamp: new Date().toISOString() };
+    res.json(resp);
+  },
+);
+
 // ── POST /models — upload a 3D model file ────────────────────────────────────
 // Uses express.raw() applied at the route level so only this endpoint accepts binary bodies.
 router.post(
@@ -332,6 +335,7 @@ router.post(
       status,
       hasGLB:           false,
       hasUSDZ:          false,
+      usdzStatus:       'pending',                        // updated to 'ready' when browser uploads USDZ
       uploadedBy:       uploadedBy?.trim() || undefined,
       createdAt:        now,
       updatedAt:        now,
@@ -339,18 +343,19 @@ router.post(
 
     // Save the file
     if (format === 'usdz') {
-      // USDZ: store as-is
+      // USDZ: store as-is — already iOS-ready, no conversion needed.
       fs.writeFileSync(path.join(MODELS_DIR, `${id}.usdz`), body);
-      model.hasUSDZ = true;
-      model.status  = 'ready';
+      model.hasUSDZ    = true;
+      model.usdzStatus = 'ready';
+      model.status     = 'ready';
     } else if (format === 'glb' || format === 'gltf') {
-      // GLB / GLTF: store as GLB, then kick off async USDZ conversion for iOS 26+.
+      // GLB / GLTF: store as GLB. The portal browser converts to USDZ and
+      // uploads via PUT /models/:id/file.usdz — no server-side conversion.
       const glbPath = path.join(MODELS_DIR, `${id}.glb`);
       fs.writeFileSync(glbPath, body);
-      model.hasGLB = true;
-      model.status = 'ready';
-      // Async: do not await — response is sent immediately; hasUSDZ flips to true once done.
-      convertGlbToUsdz(id, glbPath);
+      model.hasGLB     = true;
+      model.usdzStatus = 'pending';
+      model.status     = 'ready';
     } else {
       // OBJ / FBX / STEP / IGES: save original, trigger async Blender conversion
       const origExt  = `.${format}`;

@@ -266,7 +266,8 @@ export interface Model3D {
   status:           ModelStatus;
   conversionError?: string;             // populated on failure
   hasGLB:           boolean;            // true once .glb file is available
-  hasUSDZ:          boolean;            // true if original was USDZ (served as-is for iOS)
+  hasUSDZ:          boolean;            // true once a .usdz file is available (browser-converted or original USDZ)
+  usdzStatus?:      'pending' | 'ready' | 'failed'; // USDZ conversion state; absent on legacy records → infer from hasUSDZ
   defaultScale?:    number;             // Author-saved default scale (pre-fills model picker on iOS)
   uploadedBy?:      string;
   createdAt:        string;

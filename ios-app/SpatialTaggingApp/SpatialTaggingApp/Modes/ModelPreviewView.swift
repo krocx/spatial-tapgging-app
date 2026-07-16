@@ -1,8 +1,11 @@
 // ModelPreviewView.swift
 //
-// A non-AR sheet that lets authors preview a 3D model (USDZ or GLB) in a
-// SceneKit scene. Used to verify that the server-side GLB→USDZ conversion
+// A non-AR sheet that lets authors preview a 3D model (USDZ only) in a
+// SceneKit scene. Used to verify that the browser-side GLB→USDZ conversion
 // produced a valid file before assigning the model to a guide step.
+//
+// iOS only supports USDZ via SCNScene(url:). The ModelIO→SceneKit GLB bridge
+// was removed in iOS 26. The portal browser converts GLB→USDZ automatically.
 //
 // Usage:
 //   .sheet(item: $previewModel) { model in
@@ -114,23 +117,26 @@ struct ModelPreviewView: View {
     private func loadModel() async {
         await MainActor.run { loadState = .loading }
 
-        let client = SIBClient(settings: settings)
-
-        // Prefer USDZ (iOS 26+ native); fall back to GLB.
-        let useUSDZ  = model.hasUSDZ
-        let fileExt  = useUSDZ ? "usdz" : "glb"
-        let label    = useUSDZ ? "USDZ" : "GLB"
-
-        let data: Data?
-        if useUSDZ {
-            data = try? await client.downloadModelUSDZ(id: model.id)
-        } else {
-            data = try? await client.downloadModelGLB(id: model.id)
+        // iOS only renders USDZ via SCNScene(url:) — the ModelIO→SceneKit GLB bridge
+        // was removed in iOS 26. If hasUSDZ is false, the portal browser conversion
+        // hasn't completed yet; show a clear message rather than a confusing error.
+        guard model.hasUSDZ else {
+            await MainActor.run {
+                loadState = .failed(
+                    "USDZ not yet available.\n" +
+                    "Open the portal and upload (or re-upload) this model " +
+                    "to trigger browser-side conversion."
+                )
+            }
+            return
         }
+
+        let client = SIBClient(settings: settings)
+        let data   = try? await client.downloadModelUSDZ(id: model.id)
 
         guard let data else {
             await MainActor.run {
-                loadState = .failed("Could not download the model file.\nCheck your network connection.")
+                loadState = .failed("Could not download the USDZ file.\nCheck your network connection.")
             }
             return
         }
@@ -139,7 +145,7 @@ struct ModelPreviewView: View {
         let cacheDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("ar-oms-preview", isDirectory: true)
         try? FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
-        let fileURL = cacheDir.appendingPathComponent("\(model.id)-preview.\(fileExt)")
+        let fileURL = cacheDir.appendingPathComponent("\(model.id)-preview.usdz")
 
         guard (try? data.write(to: fileURL)) != nil else {
             await MainActor.run {
@@ -188,12 +194,11 @@ struct ModelPreviewView: View {
 
         await MainActor.run {
             if let scene {
-                loadState = .loaded(scene, label)
+                loadState = .loaded(scene, "USDZ")
             } else {
                 loadState = .failed(
-                    useUSDZ
-                    ? "SceneKit could not parse the USDZ file.\nThe conversion may have failed."
-                    : "SceneKit could not load this GLB file.\n(iOS 26 requires USDZ — conversion may still be in progress.)"
+                    "SceneKit could not parse the USDZ file.\n" +
+                    "The browser conversion may have produced an invalid file."
                 )
             }
         }

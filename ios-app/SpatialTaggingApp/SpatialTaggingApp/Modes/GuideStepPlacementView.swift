@@ -772,28 +772,24 @@ struct GuideStepPlacementView: View {
     /// Called on appear so the file is ready before the author taps to place a pin.
     private func prefetchStepModels(from models: [Model3D]) async {
         let neededIds = Set(steps.compactMap { $0.modelId })
-        let targets   = models.filter { neededIds.contains($0.id) && $0.isReady && ($0.hasUSDZ || $0.hasGLB) }
+        let targets   = models.filter { neededIds.contains($0.id) && $0.isReady && $0.hasUSDZ }
         await withTaskGroup(of: Void.self) { group in
             for model in targets { group.addTask { await self.cacheModelFile(model) } }
         }
     }
 
-    /// Download one model file (USDZ preferred) and write it to the temp cache.
+    /// Download the USDZ file and write it to the temp cache.
+    /// Only USDZ is supported on iOS — GLB requires the ModelIO→SceneKit bridge removed in iOS 26.
     private func cacheModelFile(_ model: Model3D) async {
         guard await MainActor.run(resultType: URL?.self) { modelFileCache[model.id] } == nil else { return }
-        let client = SIBClient(settings: settings)
-        let fileExt: String
-        let data: Data?
-        if model.hasUSDZ {
-            data = try? await client.downloadModelUSDZ(id: model.id); fileExt = "usdz"
-        } else {
-            data = try? await client.downloadModelGLB(id: model.id);  fileExt = "glb"
-        }
+        guard model.hasUSDZ else { return }   // skip models still pending browser conversion
+        let client  = SIBClient(settings: settings)
+        let data    = try? await client.downloadModelUSDZ(id: model.id)
         guard let data else { return }
         let cacheDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("ar-oms-placement", isDirectory: true)
         try? FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
-        let fileURL = cacheDir.appendingPathComponent("\(model.id).\(fileExt)")
+        let fileURL = cacheDir.appendingPathComponent("\(model.id).usdz")
         guard (try? data.write(to: fileURL)) != nil else { return }
         await MainActor.run { modelFileCache[model.id] = fileURL }
     }
@@ -807,13 +803,14 @@ struct GuideStepPlacementView: View {
         if let cached = cachedURL {
             fileURL = cached
         } else {
-            let client = SIBClient(settings: settings)
-            let ext: String; let data: Data?
-            if model.hasUSDZ {
-                data = try? await client.downloadModelUSDZ(id: model.id); ext = "usdz"
-            } else {
-                data = try? await client.downloadModelGLB(id: model.id);  ext = "glb"
+            // On-demand download: only proceed if USDZ is available.
+            // GLB is not renderable on iOS 26+ — the portal converts it in the browser.
+            guard model.hasUSDZ else {
+                await MainActor.run { placementPhase = .placingPins; advanceFromStep(stepId: step.id) }
+                return
             }
+            let client = SIBClient(settings: settings)
+            let data   = try? await client.downloadModelUSDZ(id: model.id)
             guard let data else {
                 await MainActor.run { placementPhase = .placingPins; advanceFromStep(stepId: step.id) }
                 return
@@ -821,7 +818,7 @@ struct GuideStepPlacementView: View {
             let cacheDir = FileManager.default.temporaryDirectory
                 .appendingPathComponent("ar-oms-placement", isDirectory: true)
             try? FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
-            let url = cacheDir.appendingPathComponent("\(model.id).\(model.hasUSDZ ? "usdz" : "glb")")
+            let url = cacheDir.appendingPathComponent("\(model.id).usdz")
             guard (try? data.write(to: url)) != nil else {
                 await MainActor.run { placementPhase = .placingPins; advanceFromStep(stepId: step.id) }
                 return

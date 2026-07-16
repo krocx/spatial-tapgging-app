@@ -310,6 +310,11 @@
     .model-status.processing { background:rgba(245,166,35,0.12); color:var(--orange); }
     .model-status.failed     { background:rgba(240,86,86,0.12);  color:var(--red); }
     .model-status.uploading  { background:var(--border); color:var(--muted); }
+    .usdz-status { display:inline-flex; align-items:center; gap:5px; font-size:0.70rem; font-weight:700; padding:2px 7px; border-radius:6px; margin-bottom:6px; margin-left:4px; }
+    .usdz-status.ready      { background:rgba(61,214,140,0.12); color:var(--green); }
+    .usdz-status.pending    { background:var(--border); color:var(--muted); }
+    .usdz-status.converting { background:rgba(245,166,35,0.12); color:var(--orange); }
+    .usdz-status.failed     { background:rgba(240,86,86,0.12);  color:var(--red); }
     .model-error { font-size:0.72rem; color:var(--red); margin-bottom:8px; line-height:1.4; }
     .model-actions { display:flex; gap:6px; flex-wrap:wrap; }
     .model-actions a { font-size:0.73rem; font-weight:600; padding:4px 10px; border-radius:6px; background:rgba(79,142,247,0.1); color:var(--accent); text-decoration:none; }
@@ -1523,6 +1528,16 @@ function renderModels(models) {
     return `<span class="model-status ${m.status}">${labels[m.status] || m.status}</span>`;
   };
 
+  // USDZ badge: shown for models that have a GLB (need browser conversion) or were uploaded as USDZ.
+  const usdzBadge = (m) => {
+    if (!m.hasGLB && !m.hasUSDZ) return '';   // CAD not yet converted to GLB — skip
+    // Infer status for legacy records that predate usdzStatus field
+    const s = m.usdzStatus ?? (m.hasUSDZ ? 'ready' : m.hasGLB ? 'pending' : null);
+    if (!s) return '';
+    const labels = { ready: '🍎 USDZ Ready', pending: '⏳ USDZ Pending', converting: '🔄 Converting USDZ…', failed: '✗ USDZ Failed' };
+    return `<span class="usdz-status ${s}" id="usdz-badge-${m.id}">${labels[s] || s}</span>`;
+  };
+
   const formatBytes = (b) => {
     if (b == null) return '';
     if (b < 1024) return `${b} B`;
@@ -1557,7 +1572,7 @@ function renderModels(models) {
           <div class="model-meta">${esc(m.originalFilename || '')} · ${formatBytes(m.fileSizeBytes)}</div>
         </div>
       </div>
-      ${statusBadge(m)}
+      <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center">${statusBadge(m)}${usdzBadge(m)}</div>
       ${m.status === 'failed' && m.conversionError ? `<div class="model-error">${esc(m.conversionError)}</div>` : ''}
       ${scaleInfo}
       ${kitInfo}
@@ -1606,6 +1621,10 @@ async function uploadModel(file) {
         toast(`Uploaded "${m.name}" — ${m.status === 'processing' ? 'CAD conversion queued' : 'ready'}.`);
         await loadModels();
         if (m.status === 'processing') pollModelStatus(m.id);
+        // If a GLB was uploaded and USDZ is pending, kick off browser-side conversion now.
+        if (m.hasGLB && !m.hasUSDZ && typeof window.convertAndUploadUSDZ === 'function') {
+          window.convertAndUploadUSDZ(m.id, file);
+        }
         resolve(m);
       } else {
         let msg = `Upload failed (${xhr.status})`;
@@ -2306,6 +2325,7 @@ function toast(msg, duration=2200) {
 <script type="module">
 import * as THREE from 'three';
 import { GLTFLoader }    from 'three/addons/loaders/GLTFLoader.js';
+import { USDZExporter }  from 'three/addons/exporters/USDZExporter.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 // Module-private renderer state
@@ -2316,6 +2336,54 @@ let _node = null, _bbox = null, _obs = null;
 window._previewModelId = null;
 
 function _key() { return localStorage.getItem('sib_api_key') || ''; }
+
+// ── Browser-side GLB→USDZ conversion ─────────────────────────────────────────
+// Called from uploadModel() after a GLB upload succeeds.
+// Converts in-browser using Three.js (WebGL available) then PUTs the USDZ to
+// the server, which stores it alongside the GLB and sets usdzStatus='ready'.
+
+window.convertAndUploadUSDZ = async function(modelId, file) {
+  // Optimistically show "Converting…" badge on the card.
+  const badge = document.getElementById(`usdz-badge-${modelId}`);
+  if (badge) { badge.className = 'usdz-status converting'; badge.textContent = '🔄 Converting USDZ…'; }
+
+  try {
+    // Parse the GLB file (the original File object is still in memory).
+    const arrayBuffer = await file.arrayBuffer();
+    const gltf = await new Promise((resolve, reject) => {
+      new GLTFLoader().parse(arrayBuffer, '', resolve, reject);
+    });
+
+    // Export to USDZ.
+    const exporter    = new USDZExporter();
+    const usdzBuffer  = await exporter.parseAsync(gltf.scene);
+
+    // Upload to server.
+    const headers = { 'Content-Type': 'model/vnd.usdz+zip' };
+    const key = _key();
+    if (key) headers['X-API-Key'] = key;
+
+    const resp = await fetch(`/models/${encodeURIComponent(modelId)}/file.usdz`, {
+      method:  'PUT',
+      headers,
+      body:    usdzBuffer,
+    });
+
+    if (resp.ok) {
+      toast('USDZ conversion complete — model ready for iOS.');
+      await loadModels();   // refresh cards to show updated badge + download link
+    } else {
+      const errJson = await resp.json().catch(() => ({}));
+      throw new Error(errJson.error || `HTTP ${resp.status}`);
+    }
+  } catch (err) {
+    console.error('[Portal] USDZ conversion failed:', err);
+    toast(`USDZ conversion failed: ${err.message}`, 5000);
+    // Mark badge as failed.
+    const b2 = document.getElementById(`usdz-badge-${modelId}`);
+    if (b2) { b2.className = 'usdz-status failed'; b2.textContent = '✗ USDZ Failed'; }
+  }
+};
 
 // ── Public API (exposed on window) ───────────────────────────────────────────
 

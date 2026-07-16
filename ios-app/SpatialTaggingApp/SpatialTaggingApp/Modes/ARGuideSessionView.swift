@@ -1437,7 +1437,7 @@ struct ARGuideSessionView: View {
         // Download USDZ (preferred) or GLB for each step that references a ready model.
         // SCNScene(url:) loads USDZ natively on all iOS versions; GLB requires ModelIO
         // which was removed from the SceneKit bridge in iOS 26.
-        let targets = models.filter { stepModelIds.contains($0.id) && ($0.hasUSDZ || $0.hasGLB) && $0.isReady }
+        let targets = models.filter { stepModelIds.contains($0.id) && $0.hasUSDZ && $0.isReady }
         await withTaskGroup(of: Void.self) { group in
             for model in targets {
                 group.addTask { await self.downloadAndCacheModel(model: model) }
@@ -1451,23 +1451,17 @@ struct ARGuideSessionView: View {
         guard glbCache[model.id] == nil else { return }
         let client = SIBClient(settings: settings)
 
-        // Prefer USDZ: SCNScene(url:) loads it natively on iOS 12+.
-        // GLB requires the ModelIO–SceneKit bridge which was removed in iOS 26.
-        let fileExt: String
-        let data: Data?
-        if model.hasUSDZ {
-            data    = try? await client.downloadModelUSDZ(id: model.id)
-            fileExt = "usdz"
-        } else {
-            data    = try? await client.downloadModelGLB(id: model.id)
-            fileExt = "glb"
-        }
+        // iOS only supports USDZ via SCNScene(url:).
+        // The ModelIO→SceneKit GLB bridge was removed in iOS 26.
+        // The portal browser converts GLB→USDZ automatically after upload.
+        guard model.hasUSDZ else { return }   // skip models still pending browser conversion
+        let data = try? await client.downloadModelUSDZ(id: model.id)
         guard let data else { return }
 
         let cacheDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("ar-oms-models", isDirectory: true)
         try? FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
-        let fileURL = cacheDir.appendingPathComponent("\(model.id).\(fileExt)")
+        let fileURL = cacheDir.appendingPathComponent("\(model.id).usdz")
         guard (try? data.write(to: fileURL)) != nil else { return }
 
         glbCache[model.id] = fileURL
