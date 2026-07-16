@@ -548,15 +548,29 @@ struct AddStepSheet: View {
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                     } else if anchorModels.filter(\.isReady).isEmpty {
-                        Text("No ready models found for this anchor.\nUpload 3D models in the portal → 3D Models tab.")
+                        Text("No ready models found.\nUpload models in the portal → 3D Models tab (mark as General or assign to this anchor).")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     } else {
                         Picker("Model", selection: $selectedModelId) {
                             Text("None").tag(Optional<String>.none)
-                            ForEach(anchorModels.filter(\.isReady)) { model in
-                                Text("\(model.name) (\(model.formatLabel))")
-                                    .tag(Optional(model.id))
+                            let generalModels  = anchorModels.filter { $0.isReady && $0.category == "general" }
+                            let specificModels = anchorModels.filter { $0.isReady && $0.category != "general" }
+                            if !generalModels.isEmpty {
+                                Section("General") {
+                                    ForEach(generalModels) { model in
+                                        Text("\(model.name) (\(model.formatLabel))")
+                                            .tag(Optional(model.id))
+                                    }
+                                }
+                            }
+                            if !specificModels.isEmpty {
+                                Section("Anchor-specific") {
+                                    ForEach(specificModels) { model in
+                                        Text("\(model.name) (\(model.formatLabel))")
+                                            .tag(Optional(model.id))
+                                    }
+                                }
                             }
                         }
                         .onChange(of: selectedModelId) { newId in
@@ -810,15 +824,29 @@ struct EditStepSheet: View {
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                     } else if anchorModels.filter(\.isReady).isEmpty {
-                        Text("No ready models found for this anchor.\nUpload 3D models in the portal → 3D Models tab.")
+                        Text("No ready models found.\nUpload models in the portal → 3D Models tab (mark as General or assign to this anchor).")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     } else {
                         Picker("Model", selection: $selectedModelId) {
                             Text("None").tag(Optional<String>.none)
-                            ForEach(anchorModels.filter(\.isReady)) { model in
-                                Text("\(model.name) (\(model.formatLabel))")
-                                    .tag(Optional(model.id))
+                            let generalModels  = anchorModels.filter { $0.isReady && $0.category == "general" }
+                            let specificModels = anchorModels.filter { $0.isReady && $0.category != "general" }
+                            if !generalModels.isEmpty {
+                                Section("General") {
+                                    ForEach(generalModels) { model in
+                                        Text("\(model.name) (\(model.formatLabel))")
+                                            .tag(Optional(model.id))
+                                    }
+                                }
+                            }
+                            if !specificModels.isEmpty {
+                                Section("Anchor-specific") {
+                                    ForEach(specificModels) { model in
+                                        Text("\(model.name) (\(model.formatLabel))")
+                                            .tag(Optional(model.id))
+                                    }
+                                }
                             }
                         }
                         .onChange(of: selectedModelId) { newId in

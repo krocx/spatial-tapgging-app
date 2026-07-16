@@ -65,6 +65,8 @@ struct Model3D: Codable, Identifiable, Equatable {
     /// 'pending' = not yet converted; 'ready' = USDZ available; 'failed' = conversion error.
     /// Nil on legacy records — infer from hasUSDZ.
     let usdzStatus:       String?
+    /// Organizational category. 'general' = visible to ALL anchors without kit assignment.
+    let category:         String?
     /// Author-saved default scale — pre-fills the model scale slider in EditStepSheet.
     let defaultScale:     Double?
     let uploadedBy:       String?

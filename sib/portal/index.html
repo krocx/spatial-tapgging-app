@@ -321,6 +321,10 @@
     .model-actions a:hover { background:rgba(79,142,247,0.2); }
     .model-card .step-assign { font-size:0.72rem; color:var(--muted); margin-top:10px; border-top:1px solid var(--border); padding-top:8px; }
     .model-card .step-assign span { color:var(--accent); }
+    .category-badge { display:inline-flex; align-items:center; gap:4px; font-size:0.68rem; font-weight:700; padding:2px 7px; border-radius:6px; background:rgba(139,92,246,0.12); color:#a78bfa; margin-bottom:6px; margin-left:4px; }
+    .model-filter-tabs { display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap; }
+    .model-filter-tabs .btn { opacity:0.55; }
+    .model-filter-tabs .btn.active { opacity:1; border-color:var(--accent); }
 
     /* Step model picker (inline in AR Guides step editor) */
     .step-model-row { display:flex; align-items:center; gap:8px; font-size:0.78rem; padding:6px 0; }
@@ -436,9 +440,23 @@
       </div>
     </div>
 
+    <div style="margin:10px 0 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <label style="font-size:0.82rem;color:var(--muted);white-space:nowrap">Upload category:</label>
+      <select id="model-category-upload" style="font-size:0.82rem;padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);outline:none">
+        <option value="">— none (assign to anchor kits) —</option>
+        <option value="general">🌐 General (visible to all anchors)</option>
+      </select>
+    </div>
+
     <div id="upload-progress-wrap">
       <div class="upload-bar-bg"><div class="upload-bar-fill" id="upload-bar-fill"></div></div>
       <span class="upload-status" id="upload-status">Uploading…</span>
+    </div>
+
+    <div class="model-filter-tabs" id="model-filter-tabs">
+      <button class="btn btn-ghost btn-sm active" id="filter-btn-all"        onclick="setModelFilter('all')">All</button>
+      <button class="btn btn-ghost btn-sm"         id="filter-btn-general"    onclick="setModelFilter('general')">🌐 General</button>
+      <button class="btn btn-ghost btn-sm"         id="filter-btn-unassigned" onclick="setModelFilter('unassigned')">Unassigned</button>
     </div>
 
     <div class="models-grid" id="models-grid"></div>
@@ -1489,6 +1507,36 @@ function initModelsPanel() {
   loadModels();
 }
 
+/** Active filter for the Models tab ('all' | 'general' | 'unassigned') */
+let _modelFilter = 'all';
+
+/** Set the active category filter and re-render. */
+function setModelFilter(f) {
+  _modelFilter = f;
+  ['all', 'general', 'unassigned'].forEach(id => {
+    const btn = document.getElementById(`filter-btn-${id}`);
+    if (btn) btn.classList.toggle('active', id === f);
+  });
+  const filtered = f === 'general'    ? modelsData.filter(m => m.category === 'general')
+                 : f === 'unassigned' ? modelsData.filter(m => m.category !== 'general' && !(m.anchorIds?.length) && !m.anchorId)
+                 : /* all */            modelsData;
+  renderModels(filtered);
+}
+
+/** PATCH the category for a model, then reload. */
+async function setModelCategory(modelId, category) {
+  try {
+    const headers = { 'Content-Type': 'application/json' };
+    const key = apiKey(); if (key) headers['X-API-Key'] = key;
+    const resp = await fetch(`/models/${encodeURIComponent(modelId)}`, {
+      method: 'PATCH', headers,
+      body: JSON.stringify({ category: category || null }),
+    });
+    if (resp.ok) { await loadModels(); }
+    else toast('Failed to update category');
+  } catch (e) { toast(`Category update error: ${e.message}`); }
+}
+
 /** Fetch all models in the global library (no anchor filter). */
 async function loadModels() {
   const grid = document.getElementById('models-grid');
@@ -1496,7 +1544,8 @@ async function loadModels() {
   try {
     const body = await apiFetch('/models');
     modelsData = body.data || [];
-    renderModels(modelsData);
+    // Re-apply active filter (keeps selected tab stable after upload/refresh)
+    setModelFilter(_modelFilter);
     // Resume polling for any models still converting
     for (const m of modelsData) {
       if (m.status === 'processing' || m.status === 'uploading') {
@@ -1558,11 +1607,19 @@ function renderModels(models) {
       ? `<div style="font-size:0.70rem;color:var(--muted);margin-bottom:6px">Default scale: <span style="color:var(--accent);font-family:monospace">${m.defaultScale.toFixed(3)}×</span></div>`
       : '';
 
+    // Category badge + toggle
+    const catBadge = m.category === 'general'
+      ? `<span class="category-badge">🌐 General</span>`
+      : '';
+    const catToggle = m.category === 'general'
+      ? `<a href="#" onclick="setModelCategory('${m.id}', ''); return false" style="background:rgba(139,92,246,0.1);color:#a78bfa">✕ Remove General</a>`
+      : `<a href="#" onclick="setModelCategory('${m.id}', 'general'); return false" style="background:rgba(139,92,246,0.1);color:#a78bfa">🌐 Set General</a>`;
+
     // Anchor kit usage
     const kitIds  = m.anchorIds ?? (m.anchorId ? [m.anchorId] : []);
     const kitInfo = kitIds.length > 0
       ? `<div style="font-size:0.70rem;color:var(--muted);margin-bottom:6px">🔗 ${kitIds.length} anchor${kitIds.length !== 1 ? 's' : ''} in kit</div>`
-      : `<div style="font-size:0.70rem;color:var(--muted);margin-bottom:6px">Not assigned to any anchor</div>`;
+      : (m.category === 'general' ? '' : `<div style="font-size:0.70rem;color:var(--muted);margin-bottom:6px">Not assigned to any anchor</div>`);
 
     html += `<div class="model-card" id="model-card-${m.id}">
       <div class="model-card-hdr">
@@ -1572,12 +1629,13 @@ function renderModels(models) {
           <div class="model-meta">${esc(m.originalFilename || '')} · ${formatBytes(m.fileSizeBytes)}</div>
         </div>
       </div>
-      <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center">${statusBadge(m)}${usdzBadge(m)}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center">${statusBadge(m)}${usdzBadge(m)}${catBadge}</div>
       ${m.status === 'failed' && m.conversionError ? `<div class="model-error">${esc(m.conversionError)}</div>` : ''}
       ${scaleInfo}
       ${kitInfo}
       <div class="model-actions">
         ${downloadLinks.join('')}
+        ${catToggle}
         <a href="#" onclick="openKitModal('${m.id}', ${JSON.stringify(kitIds).replace(/"/g, '&quot;')}); return false" style="background:rgba(79,142,247,0.1);color:var(--accent)">🔗 Assign</a>
         <a href="#" onclick="deleteModel('${m.id}'); return false" style="background:rgba(240,86,86,0.1);color:var(--red)">🗑 Delete</a>
       </div>
@@ -1596,8 +1654,9 @@ async function uploadModel(file) {
   barFill.style.width        = '0%';
   statusEl.textContent       = `Uploading ${file.name}…`;
 
-  const name = file.name.replace(/\.[^.]+$/, '');
-  const url  = `/models?name=${encodeURIComponent(name)}&uploadedBy=portal`;
+  const name     = file.name.replace(/\.[^.]+$/, '');
+  const category = document.getElementById('model-category-upload')?.value || '';
+  const url  = `/models?name=${encodeURIComponent(name)}&uploadedBy=portal${category ? `&category=${encodeURIComponent(category)}` : ''}`;
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();

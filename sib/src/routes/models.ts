@@ -293,7 +293,7 @@ router.post(
     express.raw({ type: '*/*', limit: '250mb' })(req, res, next);
   },
   (req: Request, res: Response): void => {
-    const { anchorId, name, uploadedBy } = req.query as Record<string, string>;
+    const { anchorId, name, uploadedBy, category } = req.query as Record<string, string>;
 
     if (!name?.trim()) {
       res.status(400).json({ error: 'name query parameter is required' });
@@ -336,6 +336,7 @@ router.post(
       hasGLB:           false,
       hasUSDZ:          false,
       usdzStatus:       'pending',                        // updated to 'ready' when browser uploads USDZ
+      category:         category?.trim() || undefined,   // 'general' = visible to all anchors
       uploadedBy:       uploadedBy?.trim() || undefined,
       createdAt:        now,
       updatedAt:        now,
@@ -402,8 +403,10 @@ router.get('/', (req: Request, res: Response): void => {
   let models = model3DStore.findAll();
 
   if (anchorId && typeof anchorId === 'string') {
-    // Anchor kit filter (backward compatible with legacy anchorId field)
+    // Anchor kit filter: include models assigned to this anchor OR any 'general' category model.
+    // 'general' models are shared across all anchors — no kit assignment needed.
     models = models.filter(m =>
+      m.category === 'general' ||
       (m.anchorIds ?? []).includes(anchorId) ||
       m.anchorId === anchorId
     );
@@ -429,6 +432,7 @@ router.patch('/:id', (req: Request, res: Response): void => {
   const patch: Partial<Model3D> = { updatedAt: new Date().toISOString() };
   if (body.name?.trim())                patch.name         = body.name.trim();
   if (body.defaultScale !== undefined)  patch.defaultScale = body.defaultScale;
+  if ('category' in body)               patch.category     = body.category?.trim() || undefined;
 
   const updated = model3DStore.update(req.params.id, patch);
   res.json({ data: updated, timestamp: new Date().toISOString() });

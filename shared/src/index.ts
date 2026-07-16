@@ -268,6 +268,7 @@ export interface Model3D {
   hasGLB:           boolean;            // true once .glb file is available
   hasUSDZ:          boolean;            // true once a .usdz file is available (browser-converted or original USDZ)
   usdzStatus?:      'pending' | 'ready' | 'failed'; // USDZ conversion state; absent on legacy records → infer from hasUSDZ
+  category?:        string;             // 'general' = visible to all anchors; other values are organizational labels
   defaultScale?:    number;             // Author-saved default scale (pre-fills model picker on iOS)
   uploadedBy?:      string;
   createdAt:        string;
@@ -277,6 +278,7 @@ export interface Model3D {
 export type UpdateModel3DRequest = {
   name?:         string;
   defaultScale?: number;    // persist the scale chosen in the portal 3D preview viewer
+  category?:     string;    // 'general' | other organizational label
 };
 
 // ============================================================
