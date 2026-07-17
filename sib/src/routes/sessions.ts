@@ -221,4 +221,20 @@ router.get('/evidence/:filename', (req: Request, res: Response) => {
   return res.sendFile(filePath);
 });
 
+// DELETE /sessions/:id — remove a single inspection session record
+router.delete('/:id', (req: Request, res: Response): void => {
+  const session = sessionStore.findById(req.params.id);
+  if (!session) { res.status(404).json({ error: 'Session not found' }); return; }
+  sessionStore.delete(req.params.id);
+  console.log(`[SIB] Inspection session deleted: ${req.params.id}`);
+  res.status(204).send();
+});
+
+// DELETE /sessions — remove ALL inspection session records
+router.delete('/', (_req: Request, res: Response): void => {
+  const count = sessionStore.pruneWhere(() => true);
+  console.log(`[SIB] Deleted all ${count} inspection session(s)`);
+  res.json({ deleted: count, timestamp: new Date().toISOString() });
+});
+
 export default router;

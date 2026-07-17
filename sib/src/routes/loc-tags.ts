@@ -215,6 +215,22 @@ router.patch('/:id', (req: Request, res: Response): void => {
   res.json(resp);
 });
 
+// DELETE /loc-tags/completions — remove ALL Gemba Walk completion records
+router.delete('/completions', (_req: Request, res: Response): void => {
+  const count = locTagCompletionStore.pruneWhere(() => true);
+  console.log(`[SIB] Deleted all ${count} Gemba Walk completion(s)`);
+  res.json({ deleted: count, timestamp: new Date().toISOString() });
+});
+
+// DELETE /loc-tags/completions/:id — remove a single Gemba Walk completion
+router.delete('/completions/:id', (req: Request, res: Response): void => {
+  const completion = locTagCompletionStore.findById(req.params.id);
+  if (!completion) { res.status(404).json({ error: 'Completion not found' }); return; }
+  locTagCompletionStore.delete(req.params.id);
+  console.log(`[SIB] Gemba Walk completion deleted: ${req.params.id}`);
+  res.status(204).send();
+});
+
 // DELETE /loc-tags/:id — Author removes a LocTag
 router.delete('/:id', (req: Request, res: Response): void => {
   const { id } = req.params;

@@ -392,6 +392,7 @@
     <span style="font-size:0.78rem;color:var(--muted);flex:1">Grouped by anchor · most recent first</span>
     <button class="btn btn-ghost btn-sm" onclick="exportAllCSV()" title="Export all sessions as CSV">⬇ Export All</button>
     <button class="btn btn-ghost btn-sm" onclick="loadSessions()">⟳ Refresh</button>
+    <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteAllSessions()" title="Delete all inspection sessions">🗑 Delete All</button>
   </div>
   <div class="sessions-list"></div>
 </div>
@@ -402,6 +403,7 @@
     <span style="font-size:0.78rem;color:var(--muted);flex:1">Gemba audit walk completions · grouped by anchor</span>
     <button class="btn btn-ghost btn-sm" onclick="exportAllGembaCSV()" title="Export all walks as CSV">⬇ Export All</button>
     <button class="btn btn-ghost btn-sm" onclick="loadGembaWalks()">⟳ Refresh</button>
+    <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteAllGembaCompletions()" title="Delete all Gemba Walk completion records">🗑 Delete All</button>
   </div>
   <div class="gemba-list"></div>
 </div>
@@ -412,6 +414,7 @@
     <span style="font-size:0.78rem;color:var(--muted);flex:1">AR Guide completions · grouped by anchor → guide</span>
     <button class="btn btn-ghost btn-sm" onclick="exportARGuidesCSV()" title="Export as CSV">⬇ Export</button>
     <button class="btn btn-ghost btn-sm" onclick="loadARGuideSessions()">⟳ Refresh</button>
+    <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteAllARGuideSessions()" title="Delete all AR Guide sessions">🗑 Delete All</button>
   </div>
   <div id="ar-guides-list" class="sessions-list"></div>
 </div>
@@ -1424,6 +1427,7 @@ function renderARGuideSessions() {
             <span class="ag-steps-badge ${stepsClass}">${completedCount} step${completedCount !== 1 ? 's' : ''} completed</span>
             ${hasEvidence ? '<span style="font-size:0.72rem;color:#22c55e">📷 evidence</span>' : ''}
             <span class="ag-dur">⏱ ${dur}</span>
+            <button onclick="event.stopPropagation();deleteARGuideSession('${sess.id}')" class="btn btn-ghost btn-sm" style="font-size:0.68rem;padding:2px 7px;color:var(--red);margin-left:auto" title="Delete this session">🗑</button>
           </div>
         </div>
         <div class="ag-detail" id="ag-detail-${sess.id}">
@@ -1822,6 +1826,67 @@ function onModelFileSelected(e) {
   e.target.value = '';  // reset so same file can be picked again
 }
 
+// ── Session / Gemba / AR Guide delete helpers ─────────────────────────────────
+
+async function _apiDelete(url) {
+  const headers = {};
+  const key = apiKey(); if (key) headers['X-API-Key'] = key;
+  const resp = await fetch(url, { method: 'DELETE', headers });
+  if (!resp.ok) {
+    const j = await resp.json().catch(() => ({}));
+    throw new Error(j.error || `HTTP ${resp.status}`);
+  }
+  return resp.status === 204 ? null : resp.json();
+}
+
+async function deleteSession(id) {
+  try {
+    await _apiDelete(`/sessions/${encodeURIComponent(id)}`);
+    await loadSessions();
+  } catch (e) { toast(`Delete failed: ${e.message}`, 4000); }
+}
+
+async function deleteAllSessions() {
+  if (!confirm('Delete ALL inspection sessions? This cannot be undone.')) return;
+  try {
+    const r = await _apiDelete('/sessions');
+    toast(`Deleted ${r?.deleted ?? '?'} session(s)`);
+    await loadSessions();
+  } catch (e) { toast(`Delete failed: ${e.message}`, 4000); }
+}
+
+async function deleteARGuideSession(id) {
+  try {
+    await _apiDelete(`/guide-sessions/${encodeURIComponent(id)}`);
+    await loadARGuideSessions();
+  } catch (e) { toast(`Delete failed: ${e.message}`, 4000); }
+}
+
+async function deleteAllARGuideSessions() {
+  if (!confirm('Delete ALL AR Guide sessions? Evidence photos will also be removed. This cannot be undone.')) return;
+  try {
+    const r = await _apiDelete('/guide-sessions');
+    toast(`Deleted ${r?.deleted ?? '?'} AR Guide session(s)`);
+    await loadARGuideSessions();
+  } catch (e) { toast(`Delete failed: ${e.message}`, 4000); }
+}
+
+async function deleteGembaCompletion(id) {
+  try {
+    await _apiDelete(`/loc-tags/completions/${encodeURIComponent(id)}`);
+    await loadGembaWalks();
+  } catch (e) { toast(`Delete failed: ${e.message}`, 4000); }
+}
+
+async function deleteAllGembaCompletions() {
+  if (!confirm('Delete ALL Gemba Walk completion records? The loc-tag stops themselves are preserved. This cannot be undone.')) return;
+  try {
+    const r = await _apiDelete('/loc-tags/completions');
+    toast(`Deleted ${r?.deleted ?? '?'} completion record(s)`);
+    await loadGembaWalks();
+  } catch (e) { toast(`Delete failed: ${e.message}`, 4000); }
+}
+
 // ── Data loading ──────────────────────────────────────────────────────────────
 
 async function loadSessions() {
@@ -1951,7 +2016,10 @@ function buildSessionRow(s, tagLabels, colCount) {
       <td style="white-space:nowrap">${dur}</td>
       ${tagCells}
       <td>${overall}</td>
-      <td onclick="event.stopPropagation()"><button class="btn btn-ghost btn-sm" style="font-size:0.68rem;padding:2px 7px" onclick="exportSessionCSV('${sid}')">CSV</button></td>
+      <td onclick="event.stopPropagation()" style="white-space:nowrap">
+        <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;padding:2px 7px" onclick="exportSessionCSV('${sid}')">CSV</button>
+        <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;padding:2px 7px;color:var(--red)" onclick="deleteSession('${sid}')">🗑</button>
+      </td>
     </tr>
     <tr class="detail-tr" id="dtr-${sid}" style="display:none">
       <td colspan="${totalCols}"><div class="detail-inner">${detailContent}</div></td>
@@ -2277,6 +2345,7 @@ function buildGembaRow(tag) {
         <span style="color:var(--text)">${esc(c.operatorName || '—')}</span>
         <span style="color:var(--muted)">${dateStr}</span>
         ${noteStr}
+        <button onclick="deleteGembaCompletion('${esc(c.id)}')" class="btn btn-ghost btn-sm" style="font-size:0.65rem;padding:1px 5px;color:var(--red);margin-left:4px" title="Delete this completion record">🗑</button>
       </div>`;
     }).join('');
   }
