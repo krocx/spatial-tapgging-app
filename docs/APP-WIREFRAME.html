@@ -2,257 +2,150 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>SpatialTaggingApp — Interactive Wireframe</title>
+<title>SpatialTaggingApp — Wireframe v3</title>
 <style>
-  :root{
-    --page-bg:#f4f3ef; --panel:#ffffff; --border:#ddd9cd; --text:#2c2c2a; --text2:#5f5e5a; --text3:#888780;
-    --accent:#185fa5; --accent-bg:#e6f1fb; --accent-text:#0c447c;
-  }
-  *{box-sizing:border-box;}
-  body{
-    margin:0; padding:24px; background:var(--page-bg); color:var(--text);
-    font-family:-apple-system,"Helvetica Neue",Arial,sans-serif; font-size:14px; line-height:1.5;
-  }
-  h1{font-size:20px; font-weight:600; margin:0 0 4px;}
-  .sub{color:var(--text2); margin:0 0 20px; font-size:13px;}
-  .tabs{display:flex; gap:8px; margin-bottom:16px;}
-  .tab{
-    padding:8px 16px; border:1px solid var(--border); border-radius:8px; background:var(--panel);
-    cursor:pointer; font-weight:500; color:var(--text2);
-  }
-  .tab.active{background:var(--accent-bg); color:var(--accent-text); border-color:var(--accent);}
-  .flowmap{
-    display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px; padding:14px;
-    background:var(--panel); border:1px solid var(--border); border-radius:10px;
-  }
-  .flownode{
-    padding:6px 10px; border-radius:6px; background:#f1efe8; color:var(--text2);
-    font-size:12px; cursor:pointer; border:1px solid transparent; white-space:nowrap;
-  }
-  .flownode.current{background:var(--accent-bg); color:var(--accent-text); border-color:var(--accent); font-weight:600;}
-  .flowarrow{color:var(--text3); align-self:center; font-size:12px;}
-  .stage{display:flex; gap:24px; flex-wrap:wrap; align-items:flex-start;}
-
-  /* ---- phone shell ---- */
-  .phone{
-    width:320px; min-height:600px; border-radius:34px; padding:8px;
-    background:#000; box-shadow:0 6px 24px rgba(0,0,0,0.18);
-  }
-  .phone-screen{
-    border-radius:27px; overflow:hidden; min-height:584px; display:flex; flex-direction:column;
-    position:relative; background:#f2f2f7; color:#1c1c1e;
-  }
-  .phone.dark .phone-screen{ background:linear-gradient(180deg,#15151a,#1f1f24); color:#fff; }
-  .statusbar{
-    height:18px; display:flex; align-items:center; justify-content:center;
-    font-size:10px; font-weight:600; color:inherit; opacity:0.7; flex-shrink:0;
-  }
-  .meta{padding:10px 16px 4px;}
-  .meta .t{font-size:15px; font-weight:700; margin:0;}
-  .meta .s{font-size:11px; opacity:0.55; margin:2px 0 0;}
-  .body-scroll{flex:1; overflow:auto; padding:10px 14px 6px;}
-  .actions{display:flex; flex-direction:column; gap:7px; padding:8px 14px 14px;}
-
-  /* ---- generic buttons (wireframe controls, not in-app chrome) ---- */
-  .btn{
-    padding:10px 12px; border-radius:10px; border:1px solid var(--border); background:var(--panel);
-    color:var(--text); font-size:12.5px; cursor:pointer; text-align:left; font-weight:500;
-  }
-  .phone.dark ~ .btn, .phone.dark .btn{ }
-  .btn:hover{border-color:var(--accent);}
-  .btn.primary{background:var(--accent-bg); color:var(--accent-text); border-color:var(--accent);}
-
-  /* ---- iOS-ish building blocks ---- */
-  .ios-list{border-radius:12px; overflow:hidden; background:#fff; margin-bottom:12px;}
-  .phone.dark .ios-list{background:rgba(255,255,255,0.06);}
-  .ios-row{
-    display:flex; align-items:center; gap:10px; padding:11px 12px;
-    border-bottom:1px solid #e5e5ea;
-  }
-  .phone.dark .ios-row{border-bottom:1px solid rgba(255,255,255,0.08);}
-  .ios-row:last-child{border-bottom:none;}
-  .ios-section-header{font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.04em; opacity:0.5; margin:14px 2px 6px;}
-  .icon-circle{
-    width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center;
-    font-size:14px; flex-shrink:0;
-  }
-  .row-main{flex:1; min-width:0;}
-  .row-title{font-size:13.5px; font-weight:600; margin:0;}
-  .row-sub{font-size:11px; opacity:0.55; margin:1px 0 0;}
-  .chev{opacity:0.3; font-size:14px;}
-
-  .badge{display:inline-flex; align-items:center; gap:3px; padding:3px 9px; border-radius:20px; font-size:10.5px; font-weight:700; white-space:nowrap;}
-  .badge-green{background:#d2f4da; color:#1c7d34;}
-  .badge-orange{background:#ffe7c2; color:#ad6800;}
-  .badge-red{background:#ffd9d9; color:#c41e3a;}
-  .badge-blue{background:#d9e8ff; color:#1456c9;}
-  .badge-gray{background:#e6e6ea; color:#6b6b70;}
-  .phone.dark .badge-green{background:rgba(52,199,89,0.22); color:#67e08a;}
-  .phone.dark .badge-orange{background:rgba(255,149,0,0.22); color:#ffb454;}
-  .phone.dark .badge-red{background:rgba(255,59,48,0.22); color:#ff8a82;}
-  .phone.dark .badge-blue{background:rgba(52,120,246,0.22); color:#7da9ff;}
-  .phone.dark .badge-gray{background:rgba(255,255,255,0.12); color:rgba(255,255,255,0.6);}
-
-  .search-mock{
-    background:rgba(118,118,128,0.12); border-radius:10px; padding:8px 10px; font-size:12.5px;
-    color:#8e8e93; margin-bottom:10px;
-  }
-  .portal-card{
-    display:flex; align-items:center; gap:10px; background:#fff; border:1px solid #d9e8ff;
-    border-radius:12px; padding:11px 12px; margin-bottom:12px;
-  }
-
-  .topbar{
-    position:absolute; top:0; left:0; right:0; padding:14px 14px 22px;
-    background:linear-gradient(180deg, rgba(0,0,0,0.7), rgba(0,0,0,0));
-    display:flex; align-items:center; justify-content:space-between; z-index:3;
-  }
-  .topbar .center{text-align:center; flex:1;}
-  .topbar .center .t{font-size:13px; font-weight:700; color:#fff; margin:0;}
-  .topbar .center .s{font-size:10.5px; color:rgba(255,255,255,0.6); margin:1px 0 0;}
-  .chip{
-    padding:5px 11px; border-radius:20px; background:rgba(255,255,255,0.15);
-    backdrop-filter:blur(6px); color:#fff; font-size:11px; font-weight:600;
-  }
-  .icon-btn-dark{
-    width:30px; height:30px; border-radius:50%; background:rgba(255,255,255,0.15);
-    display:flex; align-items:center; justify-content:center; color:#fff; font-size:13px;
-  }
-
-  .ar-bg{
-    flex:1; position:relative; min-height:420px; overflow:hidden;
-    background:
-      radial-gradient(circle at 30% 20%, rgba(255,255,255,0.05), transparent 40%),
-      repeating-linear-gradient(135deg, #1a1a1f, #1a1a1f 14px, #232328 14px, #232328 28px);
-  }
-  .marker{
-    position:absolute; width:26px; height:26px; border-radius:50%; transform:translate(-50%,-50%);
-    border:2.5px solid #3478F6; background:rgba(52,120,246,0.18);
-    display:flex; align-items:center; justify-content:center; font-size:11px; color:#fff;
-  }
-  .marker.green{border-color:#34C759; background:rgba(52,199,89,0.25);}
-  .marker.red{border-color:#FF3B30; background:rgba(255,59,48,0.3); animation:pulse 1.4s infinite;}
-  .marker.pending{border-color:rgba(255,255,255,0.5); background:rgba(255,255,255,0.08);}
-  @keyframes pulse{0%,100%{opacity:1;} 50%{opacity:0.45;}}
-
-  .qr-frame{
-    position:absolute; top:50%; left:50%; width:160px; height:160px; transform:translate(-50%,-50%);
-    border-radius:18px;
-  }
-  .qr-frame .corner{position:absolute; width:26px; height:26px; border:3px solid #32ADE6;}
-  .qr-frame .tl{top:0;left:0;border-right:none;border-bottom:none;border-radius:8px 0 0 0;}
-  .qr-frame .tr{top:0;right:0;border-left:none;border-bottom:none;border-radius:0 8px 0 0;}
-  .qr-frame .bl{bottom:0;left:0;border-right:none;border-top:none;border-radius:0 0 0 8px;}
-  .qr-frame .br{bottom:0;right:0;border-left:none;border-top:none;border-radius:0 0 8px 0;}
-
-  .status-card{
-    position:absolute; top:46%; left:50%; transform:translate(-50%,-50%); width:230px;
-    background:rgba(40,40,46,0.72); backdrop-filter:blur(10px); border-radius:16px; padding:16px;
-    text-align:center; color:#fff; z-index:2;
-  }
-  .status-card .icon{font-size:26px; margin-bottom:8px;}
-  .status-card .msg{font-size:12.5px; font-weight:600;}
-
-  .bottom-sheet-bar{
-    position:absolute; left:0; right:0; bottom:0; padding:14px;
-    background:linear-gradient(0deg, rgba(0,0,0,0.78), rgba(0,0,0,0)); z-index:3;
-  }
-  .glass-card{
-    background:rgba(255,255,255,0.10); backdrop-filter:blur(10px); border:1px solid rgba(255,255,255,0.14);
-    border-radius:14px; padding:12px 14px; color:#fff;
-  }
-
-  .fab{
-    position:absolute; right:16px; bottom:88px; width:50px; height:50px; border-radius:50%;
-    background:#3478F6; color:#fff; font-size:22px; display:flex; align-items:center; justify-content:center;
-    box-shadow:0 4px 10px rgba(0,0,0,0.4); z-index:3;
-  }
-
-  /* dark sheet (Add Tag, Tag List) */
-  .dark-sheet{ background:#11121b; color:#fff; border-radius:18px 18px 0 0; padding:14px; flex:1; }
-  .drag-handle{width:36px; height:4px; background:rgba(255,255,255,0.2); border-radius:3px; margin:0 auto 12px;}
-  .chip-row{display:flex; gap:8px; margin-bottom:10px;}
-  .mode-chip{
-    flex:1; text-align:center; padding:9px 4px; border-radius:10px; font-size:12px; font-weight:600;
-    background:rgba(255,255,255,0.06); color:rgba(255,255,255,0.5); border:1px solid transparent;
-  }
-  .mode-chip.selected{background:#162043; color:#7da9ff; border-color:rgba(52,120,246,0.45);}
-  .suggest-row{display:flex; gap:6px; overflow:auto; padding-bottom:8px; margin-bottom:10px;}
-  .suggest-chip{
-    flex-shrink:0; padding:6px 12px; border-radius:20px; font-size:11.5px; font-weight:600;
-    background:rgba(52,120,246,0.14); color:#7da9ff; white-space:nowrap;
-  }
-  .suggest-chip.sel{background:#3478F6; color:#fff;}
-  .field-label{font-size:10.5px; font-weight:700; letter-spacing:0.05em; color:rgba(255,255,255,0.4); margin-bottom:5px;}
-  .field-mock{background:rgba(255,255,255,0.07); border-radius:9px; padding:11px 12px; font-size:13px; color:rgba(255,255,255,0.4); margin-bottom:12px;}
-
-  /* capture HUD */
-  .zone-ring{
-    width:120px; height:120px; border-radius:50%; margin:0 auto 12px; position:relative;
-    background:conic-gradient(#34C759 0deg 265deg, rgba(255,255,255,0.15) 265deg 360deg);
-    display:flex; align-items:center; justify-content:center;
-  }
-  .zone-ring::before{content:""; position:absolute; width:96px; height:96px; border-radius:50%; background:#1a1a1f;}
-  .zone-ring .num{position:relative; z-index:1; font-size:20px; font-weight:700; color:#fff;}
-  .hold-bar{height:6px; border-radius:4px; background:rgba(255,255,255,0.15); overflow:hidden; margin-top:10px;}
-  .hold-bar .fill{height:100%; width:62%; background:#FFD60A;}
-
-  /* QR generator */
-  .qr-card{
-    width:200px; height:200px; margin:18px auto 14px; background:#fff; border-radius:18px;
-    box-shadow:0 4px 14px rgba(0,0,0,0.12); display:flex; align-items:center; justify-content:center;
-  }
-  .qr-svg{width:150px; height:150px;}
-
-  /* validation results */
-  .status-hero{text-align:center; padding:14px 0 8px;}
-  .status-hero .icon{font-size:46px; line-height:1;}
-  .status-hero .label{font-size:18px; font-weight:800; letter-spacing:0.03em; margin-top:4px;}
-  .status-hero .desc{font-size:12px; opacity:0.6; margin-top:2px;}
-  .progress-track{height:7px; border-radius:4px; background:#ffd9d9; overflow:hidden; margin:10px 0 4px;}
-  .progress-fill{height:100%; background:#34C759; width:50%;}
-
-  .threshold-mock{
-    position:absolute; top:54px; right:14px; background:rgba(255,214,10,0.22); color:#FFD60A;
-    border-radius:20px; padding:5px 11px; font-size:11px; font-weight:700; backdrop-filter:blur(6px); z-index:3;
-  }
-
-  /* ROI picker */
-  .roi-box{
-    position:absolute; border:2.5px solid #32ADE6; border-radius:2px;
-    box-shadow:0 0 0 9999px rgba(0,0,0,0.55); z-index:1;
-  }
-  .roi-handle{
-    position:absolute; width:14px; height:14px; border-radius:50%; background:#32ADE6;
-    border:2px solid #fff; transform:translate(-50%,-50%); z-index:2;
-  }
-  .roi-reset{
-    position:absolute; top:14px; right:14px; color:rgba(255,255,255,0.7); font-size:11px; font-weight:700; z-index:3;
-  }
-
-  .notes{
-    width:300px; min-height:600px; background:var(--panel); border:1px solid var(--border);
-    border-radius:14px; padding:18px;
-  }
-  .notes h2{font-size:15px; margin:0 0 8px; font-weight:600;}
-  .notes p{color:var(--text2); margin:0 0 12px;}
-  .notes ul{margin:0 0 12px; padding-left:18px; color:var(--text2);}
-  .notes li{margin-bottom:6px;}
-  .legend{display:flex; gap:14px; margin-top:16px; font-size:12px; color:var(--text2); flex-wrap:wrap;}
-  .legend span{display:inline-flex; align-items:center; gap:5px;}
-  .dot{width:9px; height:9px; border-radius:50%; display:inline-block;}
-  .sr-only{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0);}
+:root{--bg:#f4f3ef;--panel:#fff;--border:#ddd9cd;--text:#2c2c2a;--t2:#5f5e5a;--t3:#888780;--acc:#185fa5;--acc-bg:#e6f1fb;--acc-t:#0c447c;}
+*{box-sizing:border-box;}
+body{margin:0;padding:20px;background:var(--bg);color:var(--text);font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:13px;line-height:1.5;}
+h1{font-size:18px;font-weight:700;margin:0 0 3px;}
+.sub{color:var(--t2);margin:0 0 16px;font-size:12px;}
+.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;}
+.tab{padding:7px 14px;border:1px solid var(--border);border-radius:7px;background:var(--panel);cursor:pointer;font-weight:500;color:var(--t2);font-size:12.5px;}
+.tab.active{background:var(--acc-bg);color:var(--acc-t);border-color:var(--acc);}
+.flowmap{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px;padding:12px;background:var(--panel);border:1px solid var(--border);border-radius:10px;min-height:44px;}
+.fnode{padding:5px 9px;border-radius:5px;background:#f1efe8;color:var(--t2);font-size:11.5px;cursor:pointer;border:1px solid transparent;white-space:nowrap;}
+.fnode.cur{background:var(--acc-bg);color:var(--acc-t);border-color:var(--acc);font-weight:600;}
+.farr{color:var(--t3);align-self:center;font-size:11px;}
+.stage{display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start;}
+/* phone */
+.phone{width:310px;min-height:590px;border-radius:32px;padding:7px;background:#111;box-shadow:0 6px 22px rgba(0,0,0,.2);}
+.pscreen{border-radius:26px;overflow:hidden;min-height:576px;display:flex;flex-direction:column;position:relative;background:#f2f2f7;color:#1c1c1e;}
+.phone.dark .pscreen{background:linear-gradient(180deg,#15151a,#1f1f24);color:#fff;}
+.meta{padding:9px 14px 3px;}
+.meta .t{font-size:14px;font-weight:700;margin:0;}
+.meta .s{font-size:10.5px;opacity:.55;margin:1px 0 0;}
+.bscroll{flex:1;overflow:auto;padding:8px 12px 6px;}
+.acts{display:flex;flex-direction:column;gap:6px;padding:6px 12px 12px;}
+/* buttons */
+.btn{padding:9px 11px;border-radius:9px;border:1px solid var(--border);background:var(--panel);color:var(--text);font-size:12px;cursor:pointer;text-align:left;font-weight:500;}
+.btn:hover{border-color:var(--acc);}
+.btn.pri{background:var(--acc-bg);color:var(--acc-t);border-color:var(--acc);}
+/* ios components */
+.ilist{border-radius:11px;overflow:hidden;background:#fff;margin-bottom:10px;}
+.phone.dark .ilist{background:rgba(255,255,255,.06);}
+.irow{display:flex;align-items:center;gap:9px;padding:10px 11px;border-bottom:1px solid #e5e5ea;}
+.phone.dark .irow{border-bottom:1px solid rgba(255,255,255,.08);}
+.irow:last-child{border-bottom:none;}
+.isec{font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;opacity:.5;margin:12px 2px 5px;}
+.ic{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
+.rm{flex:1;min-width:0;}
+.rt{font-size:13px;font-weight:600;margin:0;}
+.rs{font-size:10.5px;opacity:.55;margin:1px 0 0;}
+.cv{opacity:.3;font-size:13px;}
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:18px;font-size:10px;font-weight:700;white-space:nowrap;}
+.bg{background:#d2f4da;color:#1c7d34;} .bo{background:#ffe7c2;color:#ad6800;} .br{background:#ffd9d9;color:#c41e3a;}
+.bb{background:#d9e8ff;color:#1456c9;} .bgy{background:#e6e6ea;color:#6b6b70;} .bp{background:#ede9ff;color:#6b41c7;}
+.phone.dark .bg{background:rgba(52,199,89,.22);color:#67e08a;}
+.phone.dark .bo{background:rgba(255,149,0,.22);color:#ffb454;}
+.phone.dark .br{background:rgba(255,59,48,.22);color:#ff8a82;}
+.phone.dark .bb{background:rgba(52,120,246,.22);color:#7da9ff;}
+.phone.dark .bgy{background:rgba(255,255,255,.12);color:rgba(255,255,255,.6);}
+.phone.dark .bp{background:rgba(140,82,255,.22);color:#c4a8ff;}
+.smock{background:rgba(118,118,128,.12);border-radius:9px;padding:7px 9px;font-size:12px;color:#8e8e93;margin-bottom:9px;}
+.pcard{display:flex;align-items:center;gap:9px;background:#fff;border:1px solid #d9e8ff;border-radius:11px;padding:10px 11px;margin-bottom:10px;}
+/* AR screens */
+.arbg{flex:1;position:relative;min-height:400px;overflow:hidden;background:radial-gradient(circle at 30% 20%,rgba(255,255,255,.05),transparent 40%),repeating-linear-gradient(135deg,#1a1a1f,#1a1a1f 14px,#232328 14px,#232328 28px);}
+.topbar{position:absolute;top:0;left:0;right:0;padding:12px 12px 20px;background:linear-gradient(180deg,rgba(0,0,0,.7),transparent);display:flex;align-items:center;justify-content:space-between;z-index:3;}
+.tc{text-align:center;flex:1;}
+.tc .t{font-size:12.5px;font-weight:700;color:#fff;margin:0;}
+.tc .s{font-size:10px;color:rgba(255,255,255,.6);margin:1px 0 0;}
+.chip{padding:4px 10px;border-radius:18px;background:rgba(255,255,255,.15);backdrop-filter:blur(6px);color:#fff;font-size:10.5px;font-weight:600;}
+.ibd{width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;}
+.mkr{position:absolute;width:24px;height:24px;border-radius:50%;transform:translate(-50%,-50%);border:2.5px solid #3478F6;background:rgba(52,120,246,.18);display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;}
+.mkr.g{border-color:#34C759;background:rgba(52,199,89,.25);}
+.mkr.r{border-color:#FF3B30;background:rgba(255,59,48,.3);animation:pulse 1.4s infinite;}
+.mkr.p{border-color:rgba(255,255,255,.4);background:rgba(255,255,255,.08);}
+.mkr.v{border-color:#AF52DE;background:rgba(175,82,222,.25);}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.45;}}
+.qrf{position:absolute;top:50%;left:50%;width:150px;height:150px;transform:translate(-50%,-50%);}
+.qrf .co{position:absolute;width:24px;height:24px;border:3px solid #32ADE6;}
+.qrf .tl{top:0;left:0;border-right:none;border-bottom:none;border-radius:7px 0 0 0;}
+.qrf .tr{top:0;right:0;border-left:none;border-bottom:none;border-radius:0 7px 0 0;}
+.qrf .bl{bottom:0;left:0;border-right:none;border-top:none;border-radius:0 0 0 7px;}
+.qrf .br{bottom:0;right:0;border-left:none;border-top:none;border-radius:0 0 7px 0;}
+.scard{position:absolute;top:46%;left:50%;transform:translate(-50%,-50%);width:210px;background:rgba(30,30,36,.75);backdrop-filter:blur(10px);border-radius:14px;padding:14px;text-align:center;color:#fff;z-index:2;}
+.scard .si{font-size:24px;margin-bottom:6px;}
+.scard .sm{font-size:12px;font-weight:600;}
+.bsbar{position:absolute;left:0;right:0;bottom:0;padding:12px;background:linear-gradient(0deg,rgba(0,0,0,.78),transparent);z-index:3;}
+.gc{background:rgba(255,255,255,.10);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.14);border-radius:13px;padding:11px 13px;color:#fff;}
+.fab{position:absolute;right:14px;bottom:82px;width:46px;height:46px;border-radius:50%;background:#3478F6;color:#fff;font-size:20px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 10px rgba(0,0,0,.4);z-index:3;}
+.dsh{background:#11121b;color:#fff;border-radius:16px 16px 0 0;padding:13px;flex:1;}
+.dh{width:32px;height:4px;background:rgba(255,255,255,.2);border-radius:3px;margin:0 auto 10px;}
+.cchip{flex:1;text-align:center;padding:8px 3px;border-radius:9px;font-size:11.5px;font-weight:600;background:rgba(255,255,255,.06);color:rgba(255,255,255,.5);border:1px solid transparent;}
+.cchip.sel{background:#162043;color:#7da9ff;border-color:rgba(52,120,246,.45);}
+.schip{flex-shrink:0;padding:5px 11px;border-radius:18px;font-size:11px;font-weight:600;background:rgba(52,120,246,.14);color:#7da9ff;white-space:nowrap;}
+.schip.s{background:#3478F6;color:#fff;}
+.fl{font-size:10px;font-weight:700;letter-spacing:.05em;color:rgba(255,255,255,.4);margin-bottom:4px;}
+.fm{background:rgba(255,255,255,.07);border-radius:8px;padding:10px 11px;font-size:12.5px;color:rgba(255,255,255,.4);margin-bottom:10px;}
+/* zone ring */
+.zring{width:110px;height:110px;border-radius:50%;margin:0 auto 10px;position:relative;background:conic-gradient(#34C759 0deg 260deg,rgba(255,255,255,.15) 260deg 360deg);display:flex;align-items:center;justify-content:center;}
+.zring::before{content:"";position:absolute;width:88px;height:88px;border-radius:50%;background:#1a1a1f;}
+.zring .zn{position:relative;z-index:1;font-size:19px;font-weight:700;color:#fff;}
+.hbar{height:5px;border-radius:3px;background:rgba(255,255,255,.15);overflow:hidden;margin-top:8px;}
+.hbar .hf{height:100%;width:62%;background:#FFD60A;}
+/* roi */
+.roib{position:absolute;border:2.5px solid #32ADE6;box-shadow:0 0 0 9999px rgba(0,0,0,.55);z-index:1;}
+.roih{position:absolute;width:13px;height:13px;border-radius:50%;background:#32ADE6;border:2px solid #fff;transform:translate(-50%,-50%);z-index:2;}
+/* qr card */
+.qrc{width:180px;height:180px;margin:14px auto 12px;background:#fff;border-radius:16px;box-shadow:0 4px 12px rgba(0,0,0,.12);display:flex;align-items:center;justify-content:center;}
+/* results */
+.shr{text-align:center;padding:12px 0 6px;}
+.shr .shi{font-size:42px;line-height:1;}
+.shr .shl{font-size:17px;font-weight:800;letter-spacing:.03em;margin-top:3px;}
+.shr .shd{font-size:11.5px;opacity:.6;margin-top:2px;}
+.ptr{height:6px;border-radius:3px;background:#ffd9d9;overflow:hidden;margin:8px 0 3px;}
+.ptf{height:100%;background:#34C759;}
+/* guide panel */
+.gpanel{position:absolute;left:10px;right:10px;bottom:74px;background:rgba(18,18,26,.9);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:13px;color:#fff;z-index:4;}
+.gnum{font-size:9.5px;font-weight:700;letter-spacing:.1em;color:rgba(255,255,255,.4);text-transform:uppercase;margin-bottom:3px;}
+.gtit{font-size:13px;font-weight:700;margin:0 0 3px;}
+.gbod{font-size:11px;color:rgba(255,255,255,.65);margin:0 0 9px;}
+/* portal */
+.pbody{background:#fff;border-radius:11px;overflow:hidden;border:1px solid #e0e0e0;}
+.pbhead{background:#f8f8f8;padding:7px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #e0e0e0;}
+.pbdots span{width:9px;height:9px;border-radius:50%;display:inline-block;}
+.pburl{flex:1;background:#fff;border:1px solid #ccc;border-radius:5px;padding:3px 8px;font-size:11px;color:#666;}
+.pnav{display:flex;border-bottom:1px solid #e5e5ea;padding:0 12px;overflow-x:auto;}
+.ptab{padding:9px 11px;font-size:11.5px;font-weight:600;color:#8e8e93;border-bottom:2px solid transparent;white-space:nowrap;}
+.ptab.a{color:#1456c9;border-color:#1456c9;}
+.pcont{padding:12px 14px;min-height:340px;font-size:11.5px;color:#333;}
+.ptbl{width:100%;border-collapse:collapse;font-size:11px;}
+.ptbl th{background:#f8f8f8;text-align:left;padding:7px 8px;font-weight:600;color:#555;border-bottom:1px solid #e5e5ea;}
+.ptbl td{padding:7px 8px;border-bottom:1px solid #f2f2f2;vertical-align:middle;}
+.ptbl tr:last-child td{border-bottom:none;}
+.pb{padding:3px 8px;border-radius:5px;border:1px solid #d9e8ff;background:#f0f6ff;color:#1456c9;font-size:10.5px;font-weight:600;cursor:pointer;}
+.pbd{border-color:#ffd9d9;background:#fff5f5;color:#c41e3a;}
+.phdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.phdr h3{margin:0;font-size:13px;font-weight:700;}
+/* notes panel */
+.notes{width:280px;min-height:590px;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;}
+.notes h2{font-size:14px;margin:0 0 6px;font-weight:600;}
+.notes p{color:var(--t2);margin:0 0 10px;font-size:12.5px;}
+.legend{display:flex;gap:12px;margin-top:14px;font-size:11.5px;color:var(--t2);flex-wrap:wrap;}
+.legend span{display:inline-flex;align-items:center;gap:4px;}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;}
 </style>
 </head>
 <body>
-<h2 class="sr-only">Interactive wireframe of the SpatialTaggingApp showing the Author tag-training flow and the Operator inspection flow, screen by screen, rendered with the app's actual colors, text, and layout, with clickable mock buttons to step through each path.</h2>
-
-<h1>SpatialTaggingApp — App Flow Wireframe</h1>
-<p class="sub">Click the buttons below each phone screen to walk through the flow. Click a node in the map to jump directly to a screen. Phone screens mirror the real app's colors, copy, and layout — the buttons underneath are wireframe navigation controls, not part of the app itself. Updated for the dual Pass/Fail training + Region-of-Interest picker added after the initial Phase 2.5 build.</p>
+<h1>SpatialTaggingApp — App Flow Wireframe v3</h1>
+<p class="sub">5 flows: Author · Operator · AR Guides · Gemba Walk · Portal &nbsp;|&nbsp; Click any node in the map or any button under the phone to navigate.</p>
 
 <div class="tabs">
-  <div class="tab active" id="tab-author" onclick="setFlow('author')">Author flow</div>
-  <div class="tab" id="tab-operator" onclick="setFlow('operator')">Operator flow</div>
+  <div class="tab active" id="tab-author"    onclick="setFlow('author')">Author flow</div>
+  <div class="tab"        id="tab-operator"  onclick="setFlow('operator')">Operator flow</div>
+  <div class="tab"        id="tab-arguides"  onclick="setFlow('arguides')">AR Guides</div>
+  <div class="tab"        id="tab-gemba"     onclick="setFlow('gemba')">Gemba Walk</div>
+  <div class="tab"        id="tab-portal"    onclick="setFlow('portal')">Portal</div>
 </div>
 
 <div class="flowmap" id="flowmap"></div>
@@ -260,724 +153,271 @@
 <div class="stage">
   <div>
     <div class="phone" id="phoneShell">
-      <div class="phone-screen" id="screen"></div>
+      <div class="pscreen" id="screen"></div>
     </div>
-    <div class="actions" id="actions" style="padding-left:0;"></div>
+    <div class="acts" id="actions"></div>
   </div>
   <div class="notes" id="notes"></div>
 </div>
 
 <div class="legend">
   <span><span class="dot" style="background:#34C759"></span>Trained / PASS</span>
-  <span><span class="dot" style="background:#FF3B30"></span>FAIL</span>
-  <span><span class="dot" style="background:#8E8E93"></span>Pending / untrained</span>
+  <span><span class="dot" style="background:#FF3B30"></span>FAIL / Issue</span>
+  <span><span class="dot" style="background:#8E8E93"></span>Pending</span>
+  <span><span class="dot" style="background:#AF52DE"></span>Gemba checkpoint</span>
 </div>
 
 <script>
-function qrSvg(stroke){
-  stroke = stroke || "#111";
-  // simple decorative QR-like pattern, not a real scannable code
-  var cells = [
-    "1110101110111","1000101000101","1011101011101","1011101011101",
-    "1000100000101","1110101110111","0000000000000","1011100010110",
-    "0101011101001","1110100101010","1000101110111","1011100000101",
-    "1110111011101"
-  ];
-  var size = 13, cell = 150/size, rects = "";
-  for (var r=0;r<size;r++){
-    for (var c=0;c<size;c++){
-      if (cells[r][c]==="1"){
-        rects += '<rect x="'+(c*cell)+'" y="'+(r*cell)+'" width="'+cell+'" height="'+cell+'" fill="'+stroke+'"/>';
-      }
-    }
-  }
-  return '<svg class="qr-svg" viewBox="0 0 150 150" xmlns="http://www.w3.org/2000/svg">'+rects+'</svg>';
+// ── helpers ──────────────────────────────────────────────
+function q(id){return document.getElementById(id);}
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function qrSVG(){
+  var cells=["1110101110111","1000101000101","1011101011101","1011101011101","1000100000101","1110101110111","0000000000000","1011100010110","0101011101001","1110100101010","1000101110111","1011100000101","1110111011101"];
+  var n=13, cell=140/n, out='<svg viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg" style="width:130px;height:130px;">';
+  for(var r=0;r<n;r++) for(var c=0;c<n;c++) if(cells[r][c]==='1') out+='<rect x="'+(c*cell)+'" y="'+(r*cell)+'" width="'+cell+'" height="'+cell+'" fill="#111"/>';
+  return out+'</svg>';
 }
 
-const screens = {
-  "mode-select": {
-    title: "Mode Selection", sub: "Always the first screen on launch", dark: true,
-    body: `
-      <div class="meta" style="padding-top:18px;">
-        <div style="display:flex; align-items:center; gap:10px;">
-          <div class="icon-circle" style="background:linear-gradient(135deg,#3478F6,#32ADE6); font-size:16px;">▦</div>
-          <div>
-            <p class="t" style="margin:0;">Spatial Tagging</p>
-            <p class="s" style="margin:0;">Cleanroom Inspection · Phase 2</p>
-          </div>
-          <div style="flex:1;"></div>
-          <div class="icon-btn-dark" style="background:transparent; color:rgba(255,255,255,0.5);">?</div>
-          <div class="icon-btn-dark" style="background:transparent; color:rgba(255,255,255,0.5);">⚙</div>
-        </div>
-      </div>
-      <div class="body-scroll">
-        <div class="glass-card" style="border-color:rgba(52,120,246,0.3); background:rgba(255,255,255,0.08); margin-bottom:10px; display:flex; align-items:center; gap:12px;">
-          <div class="icon-circle" style="background:rgba(52,120,246,0.18); color:#7da9ff;">✎</div>
-          <div class="row-main">
-            <p class="row-title" style="color:#fff;">Author Mode</p>
-            <p class="row-sub" style="color:rgba(255,255,255,0.55);">Create and train inspection tags</p>
-          </div>
-          <span class="chev" style="color:#7da9ff;">›</span>
-        </div>
-        <div class="glass-card" style="border-color:rgba(52,199,89,0.3); background:rgba(255,255,255,0.08); margin-bottom:14px; display:flex; align-items:center; gap:12px;">
-          <div class="icon-circle" style="background:rgba(52,199,89,0.18); color:#67e08a;">◉</div>
-          <div class="row-main">
-            <p class="row-title" style="color:#fff;">Operator Mode</p>
-            <p class="row-sub" style="color:rgba(255,255,255,0.55);">Run inspections and view results</p>
-          </div>
-          <span class="chev" style="color:#67e08a;">›</span>
-        </div>
-        <div class="glass-card" style="background:rgba(88,86,214,0.12); border-color:rgba(88,86,214,0.3); display:flex; align-items:center; gap:10px;">
-          <div class="icon-circle" style="background:rgba(88,86,214,0.2); color:#a6a4ff; font-size:12px;">▦</div>
-          <div class="row-main">
-            <p class="row-title" style="color:#fff; font-size:12.5px;">Share Anchor QR</p>
-            <p class="row-sub" style="color:rgba(255,255,255,0.5);">Acme Pump Station · tap to generate team QR</p>
-          </div>
-        </div>
-      </div>
-      <div class="bottom-sheet-bar" style="position:relative; background:none; padding:0 14px 16px;">
-        <div style="display:flex; align-items:center; gap:8px; background:rgba(255,255,255,0.06); border-radius:10px; padding:9px 12px;">
-          <span class="dot" style="background:#34C759; width:8px; height:8px; border-radius:50%; display:inline-block;"></span>
-          <span style="font-size:11px; color:rgba(255,255,255,0.6); flex:1;">SIB Connected · sib-server-hiul.onrender.com</span>
-          <span style="font-size:11px; color:#7da9ff; font-weight:600;">Test</span>
-        </div>
-      </div>`,
-    actions: [
-      {label:"Tap “Author Mode”", to:"directory-author", flow:"author", primary:true},
-      {label:"Tap “Operator Mode”", to:"directory-operator", flow:"operator"},
-    ],
-    note: "Entry point for both roles. No QR scan happens here — that's gated later, per anchor, once you've picked an anchor in the directory."
-  },
+// ── screen definitions ────────────────────────────────────
+var S = {};
 
-  "directory-author": {
-    title: "Anchor Directory", sub: "List of all anchors on the server",
-    body: `
-      <div class="meta"><p class="t">Anchor Directory</p></div>
-      <div class="body-scroll">
-        <div class="search-mock">🔍 Search by anchor or asset ID</div>
-        <div class="portal-card">
-          <div class="icon-circle" style="background:#d9e8ff; color:#1456c9;">🌐</div>
-          <div class="row-main">
-            <p class="row-title" style="color:#1456c9;">Anchor Directory Portal</p>
-            <p class="row-sub">Browse anchors from any browser</p>
-          </div>
-          <span style="color:#1456c9;">↗</span>
-        </div>
-        <div class="ios-section-header">Anchors</div>
-        <div class="ios-list">
-          <div class="ios-row">
-            <div class="icon-circle" style="background:#e6e6ea;">📍</div>
-            <div class="row-main"><p class="row-title">Acme Pump Station</p></div>
-            <span class="badge badge-blue">3 tags</span>
-            <span class="chev">›</span>
-          </div>
-          <div class="ios-row">
-            <div class="icon-circle" style="background:#e6e6ea;">📍</div>
-            <div class="row-main"><p class="row-title">Line 4 Conveyor</p></div>
-            <span class="badge badge-orange">0 tags</span>
-            <span class="chev">›</span>
-          </div>
-        </div>
-      </div>`,
-    actions: [
-      {label:"Tap “Acme Pump Station”", to:"hub-author", primary:true},
-      {label:"Tap + (new anchor wizard)", to:"hub-author"},
-    ],
-    note: "Shared screen — same component for both roles. The toolbar + (Author only) opens a 2-step wizard: name the asset, then print/place the generated QR, which lands back here."
-  },
-  "directory-operator": {
-    title: "Anchor Directory", sub: "Same shared screen, Operator context",
-    body: `
-      <div class="meta"><p class="t">Anchor Directory</p></div>
-      <div class="body-scroll">
-        <div class="search-mock">🔍 Search by anchor or asset ID</div>
-        <div class="portal-card">
-          <div class="icon-circle" style="background:#d9e8ff; color:#1456c9;">🌐</div>
-          <div class="row-main">
-            <p class="row-title" style="color:#1456c9;">Anchor Directory Portal</p>
-            <p class="row-sub">Browse anchors from any browser</p>
-          </div>
-          <span style="color:#1456c9;">↗</span>
-        </div>
-        <div class="ios-section-header">Anchors</div>
-        <div class="ios-list">
-          <div class="ios-row">
-            <div class="icon-circle" style="background:#e6e6ea;">📍</div>
-            <div class="row-main"><p class="row-title">Acme Pump Station</p></div>
-            <span class="badge badge-blue">3 tags</span>
-            <span class="chev">›</span>
-          </div>
-          <div class="ios-row">
-            <div class="icon-circle" style="background:#e6e6ea;">📍</div>
-            <div class="row-main"><p class="row-title">Line 4 Conveyor</p></div>
-            <span class="badge badge-orange">0 tags</span>
-            <span class="chev">›</span>
-          </div>
-        </div>
-      </div>`,
-    actions: [{label:"Tap “Acme Pump Station”", to:"hub-operator", primary:true}],
-    note: "Identical component to the Author directory — no + button here, and it routes to the Operator-mode hub next."
-  },
+// -------- AUTHOR FLOW --------
+S['mode-select']={t:'Mode Selection',s:'First screen on launch',dk:true,note:'Entry point for both roles. Yellow name-confirm nudge appears until the author confirms their name in Settings. Version shown in subtitle. No QR gate at this point.',
+body:'<div class="meta" style="padding-top:12px;"><div style="display:flex;align-items:center;gap:9px;"><div class="ic" style="background:linear-gradient(135deg,#3478F6,#32ADE6);font-size:15px;">&#x25A6;</div><div><p class="t" style="margin:0;">Spatial Tagging</p><p class="s" style="margin:0;">v1.4 &middot; SIB Phase 3</p></div><div style="flex:1;"></div><div class="ibd">?</div><div class="ibd">&#x2699;</div></div></div><div class="bscroll"><div style="background:rgba(255,193,7,.14);border:1px solid rgba(255,193,7,.3);border-radius:11px;padding:9px 11px;margin-bottom:10px;display:flex;gap:8px;align-items:center;"><span style="font-size:13px;">&#x1F464;</span><div style="flex:1;"><p style="margin:0;font-size:11.5px;font-weight:700;color:#FFD60A;">Confirm your name</p><p style="margin:1px 0 0;font-size:10.5px;color:rgba(255,255,255,.55);">Karthik &mdash; tap to confirm in Settings</p></div><span style="color:#FFD60A;font-size:11px;font-weight:600;">&#x2192; Settings</span></div><div class="gc" style="border-color:rgba(52,120,246,.3);background:rgba(255,255,255,.08);margin-bottom:9px;display:flex;align-items:center;gap:11px;"><div class="ic" style="background:rgba(52,120,246,.18);color:#7da9ff;">&#x270E;</div><div class="rm"><p class="rt" style="color:#fff;">Author Mode</p><p class="rs" style="color:rgba(255,255,255,.55);">Create and train inspection tags</p></div><span class="cv" style="color:#7da9ff;">&#x203A;</span></div><div class="gc" style="border-color:rgba(52,199,89,.3);background:rgba(255,255,255,.08);margin-bottom:14px;display:flex;align-items:center;gap:11px;"><div class="ic" style="background:rgba(52,199,89,.18);color:#67e08a;">&#x25C9;</div><div class="rm"><p class="rt" style="color:#fff;">Operator Mode</p><p class="rs" style="color:rgba(255,255,255,.55);">Run inspections and view results</p></div><span class="cv" style="color:#67e08a;">&#x203A;</span></div></div><div style="padding:0 12px 14px;"><div style="display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.06);border-radius:9px;padding:8px 11px;"><span class="dot" style="background:#34C759;flex-shrink:0;"></span><span style="font-size:10.5px;color:rgba(255,255,255,.6);">SIB Connected &middot; sib-server.local</span></div></div>',
+acts:[{l:'Tap "Author Mode"',to:'dir-author',f:'author',p:true},{l:'Tap "Operator Mode"',to:'dir-operator',f:'operator'}]};
 
-  "hub-author": {
-    title: "Anchor Hub", sub: "Acme Pump Station — tag list + entry point to AR",
-    body: `
-      <div class="meta"><p class="t">Acme Pump Station</p></div>
-      <div class="body-scroll">
-        <div class="ios-list">
-          <div class="ios-row">
-            <div class="icon-circle" style="background:#e6e6ea; color:#1c1c1e;">▦</div>
-            <div class="row-main">
-              <p class="row-title">Anchor QR Code</p>
-              <p class="row-sub">Permanent · key embedded</p>
-            </div>
-          </div>
-          <div class="ios-row">
-            <span style="color:#1c7d34; font-size:12px;">🔒 AES-256 encrypted</span>
-            <div style="flex:1;"></div>
-            <span style="color:#1456c9; font-size:12px; font-weight:600;">Share</span>
-          </div>
-        </div>
-        <div class="ios-section-header">Tags · 1/2 trained</div>
-        <div class="ios-list">
-          <div class="ios-row">
-            <div class="icon-circle" style="background:rgba(50,173,230,0.16); color:#1f8fb8;">📟</div>
-            <div class="row-main"><p class="row-title">Pressure Gauge A</p></div>
-            <span class="badge badge-green">Trained</span>
-          </div>
-          <div class="ios-row">
-            <div class="icon-circle" style="background:rgba(52,120,246,0.14); color:#1456c9;">🔧</div>
-            <div class="row-main"><p class="row-title">Valve Handle B</p></div>
-            <span class="badge badge-orange">Untrained</span>
-          </div>
-        </div>
-      </div>
-      <div class="actions" style="padding:8px 16px 16px;">
-        <div style="background:#3478F6; color:#fff; border-radius:12px; padding:12px 14px;">
-          <p style="margin:0; font-weight:700; font-size:13.5px;">▶ Enter AR Session</p>
-          <p style="margin:2px 0 0; font-size:11px; opacity:0.85;">Scan anchor QR to lock origin for this session</p>
-        </div>
-      </div>`,
-    actions: [{label:"Tap “Enter AR Session”", to:"qrgate-author", primary:true}],
-    note: "Shows each tag's training status before you walk into AR. The QR row up top is the same code an Operator would scan to start an inspection."
-  },
-  "hub-operator": {
-    title: "Anchor Hub", sub: "Readiness warning shown if any tag is untrained",
-    body: `
-      <div class="meta"><p class="t">Acme Pump Station</p></div>
-      <div class="body-scroll">
-        <div class="ios-list">
-          <div class="ios-row">
-            <div class="icon-circle" style="background:#e6e6ea; color:#1c1c1e;">▦</div>
-            <div class="row-main">
-              <p class="row-title">Anchor QR Code</p>
-              <p class="row-sub">Permanent · key embedded</p>
-            </div>
-          </div>
-        </div>
-        <div class="ios-section-header">Tags · 1/2 trained</div>
-        <div class="ios-list">
-          <div class="ios-row">
-            <div class="icon-circle" style="background:rgba(50,173,230,0.16); color:#1f8fb8;">📟</div>
-            <div class="row-main"><p class="row-title">Pressure Gauge A</p></div>
-            <span class="badge badge-green">Trained</span>
-          </div>
-          <div class="ios-row">
-            <div class="icon-circle" style="background:rgba(52,120,246,0.14); color:#1456c9;">🔧</div>
-            <div class="row-main"><p class="row-title">Valve Handle B</p></div>
-            <span class="badge badge-orange">Untrained</span>
-          </div>
-        </div>
-        <div style="background:#fff3da; border:1px solid #ffd9a0; border-radius:10px; padding:10px 12px; display:flex; gap:8px; align-items:flex-start;">
-          <span style="color:#ad6800;">⚠</span>
-          <span style="font-size:11.5px; color:#8a5400;">1 of 2 tag(s) not yet trained — they will show as PENDING.</span>
-        </div>
-      </div>
-      <div class="actions" style="padding:8px 16px 16px;">
-        <div style="background:#3478F6; color:#fff; border-radius:12px; padding:12px 14px;">
-          <p style="margin:0; font-weight:700; font-size:13.5px;">▶ Enter AR Session</p>
-          <p style="margin:2px 0 0; font-size:11px; opacity:0.85;">Scan anchor QR to lock origin for this session</p>
-        </div>
-      </div>`,
-    actions: [{label:"Tap “Enter AR Session”", to:"qrgate-operator", primary:true}],
-    note: "Operators see an orange (warn) or red (block) readiness banner if tags aren't fully trained yet — this is a non-blocking warning here since one tag is still untrained."
-  },
+S['dir-author']={t:'Anchor Directory',s:'My Anchors / Shared split',note:'My Anchors shows anchors you created (matched by a locally-stored ID set). Shared shows all others. The + toolbar button opens a 2-step anchor creation wizard, then navigates to the new anchor Hub.',
+body:'<div class="meta"><p class="t">Anchor Directory</p></div><div class="bscroll"><div class="smock">&#x1F50D; Search anchors</div><div class="pcard"><div class="ic" style="background:#d9e8ff;color:#1456c9;">&#x1F310;</div><div class="rm"><p class="rt" style="color:#1456c9;">Anchor Directory Portal</p><p class="rs">Browse from any browser</p></div><span style="color:#1456c9;">&#x2197;</span></div><div class="isec">My Anchors</div><div class="ilist"><div class="irow"><div class="ic" style="background:#e6e6ea;">&#x1F4CD;</div><div class="rm"><p class="rt">Acme Pump Station</p><p class="rs">2 groups &middot; 5 tags</p></div><span class="badge bb">5 tags</span><span class="cv">&#x203A;</span></div></div><div class="isec">Shared Anchors</div><div class="ilist"><div class="irow"><div class="ic" style="background:#e6e6ea;">&#x1F4CD;</div><div class="rm"><p class="rt">Line 4 Conveyor</p><p class="rs">by Jane &middot; 0 tags</p></div><span class="badge bo">0 tags</span><span class="cv">&#x203A;</span></div></div></div>',
+acts:[{l:'Tap "Acme Pump Station"',to:'hub-author',p:true},{l:'Tap + (new anchor wizard)',to:'hub-author'}]};
 
-  "qrgate-author": {
-    title: "QR Scan Gate", sub: "Mandatory AR camera lock — Author Mode", dark: true,
-    body: `
-      <div class="ar-bg">
-        <div class="topbar" style="background:linear-gradient(180deg, rgba(0,0,0,0.55), rgba(0,0,0,0));">
-          <span style="color:#fff; font-size:18px;">✕</span>
-          <div class="center"></div>
-          <span class="chip">✎ Author Mode</span>
-        </div>
-        <div class="qr-frame">
-          <div class="corner tl"></div><div class="corner tr"></div>
-          <div class="corner bl"></div><div class="corner br"></div>
-        </div>
-        <div class="status-card">
-          <div class="icon">▦</div>
-          <div class="msg">Point at the anchor QR code</div>
-        </div>
-      </div>`,
-    actions: [
-      {label:"Scan correct QR → origin locks", to:"ar-author", primary:true},
-      {label:"Scan wrong QR (shows error, retry)", to:"qrgate-author"},
-    ],
-    note: "Full-screen AR camera passthrough. Downloads any saved ARWorldMap first and relocalises (orange spinner) before showing this viewfinder, so tags land in the same spot every session. A wrong QR shows a red error banner — “Wrong QR — this code belongs to a different anchor” — for a few seconds, then lets you retry."
-  },
-  "qrgate-operator": {
-    title: "QR Scan Gate", sub: "Mandatory AR camera lock — Operator Mode", dark: true,
-    body: `
-      <div class="ar-bg">
-        <div class="topbar" style="background:linear-gradient(180deg, rgba(0,0,0,0.55), rgba(0,0,0,0));">
-          <span style="color:#fff; font-size:18px;">✕</span>
-          <div class="center"></div>
-          <span class="chip">◉ Operator Mode</span>
-        </div>
-        <div class="qr-frame">
-          <div class="corner tl"></div><div class="corner tr"></div>
-          <div class="corner bl"></div><div class="corner br"></div>
-        </div>
-        <div class="status-card">
-          <div class="icon">▦</div>
-          <div class="msg">Point at the anchor QR code</div>
-        </div>
-      </div>`,
-    actions: [{label:"Scan correct QR → origin locks", to:"ar-operator", primary:true}],
-    note: "Identical mechanism to the Author gate — locks this device's AR session to the same physical anchor and world frame."
-  },
+S['hub-author']={t:'Anchor Hub — Author',s:'Acme Pump Station command centre',note:'Hub shows Tag Groups, AR Guides, and Gemba Walk sections. Guides appear as draft or published. Tag groups are collapsible lists with swipe-to-edit/delete. QR row also provides PDF print link.',
+body:'<div class="meta"><p class="t">Acme Pump Station</p><p class="s">Author</p></div><div class="bscroll"><div class="ilist"><div class="irow"><div class="ic" style="background:#e6e6ea;">&#x25A6;</div><div class="rm"><p class="rt">Anchor QR Code</p><p class="rs">AES-256 key embedded</p></div><span style="color:#1456c9;font-size:11.5px;font-weight:600;">Share</span></div><div class="irow"><span style="font-size:11px;color:#555;flex:1;">&#x1F4C4; Print PDF QR</span><span class="cv">&#x203A;</span></div></div><div class="isec">Tag Groups &middot; 2 groups &middot; 5 tags</div><div class="ilist"><div class="irow"><div class="ic" style="background:#d9e8ff;color:#1456c9;">&#x1F4E6;</div><div class="rm"><p class="rt">Electrical Panel</p><p class="rs">3 tags &middot; 2/3 trained</p></div><span class="badge bo">2/3</span><span class="cv">&#x203A;</span></div><div class="irow"><div class="ic" style="background:#d2f4da;color:#1c7d34;">&#x1F529;</div><div class="rm"><p class="rt">Valve Assembly</p><p class="rs">2 tags &middot; 2/2 trained</p></div><span class="badge bg">2/2</span><span class="cv">&#x203A;</span></div></div><div class="isec">AR Guides</div><div class="ilist"><div class="irow"><div class="ic" style="background:#ede9ff;color:#6b41c7;">&#x1F4CB;</div><div class="rm"><p class="rt">Startup Procedure</p><p class="rs">6 steps &middot; Published</p></div><span class="badge bg">Live</span><span class="cv">&#x203A;</span></div><div class="irow"><div class="ic" style="background:#e6e6ea;color:#6b6b70;">&#x1F4CB;</div><div class="rm"><p class="rt">Shutdown Checklist</p><p class="rs">4 steps &middot; Draft</p></div><span class="badge bgy">Draft</span><span class="cv">&#x203A;</span></div><div class="irow" style="justify-content:center;"><span style="color:#1456c9;font-size:12px;font-weight:600;">+ Create AR Guide</span></div></div><div class="isec">Gemba Walk</div><div class="ilist"><div class="irow"><div class="ic" style="background:rgba(175,82,222,.15);color:#AF52DE;">&#x1F4CD;</div><div class="rm"><p class="rt">Gemba Walk Audit</p><p class="rs">4 checkpoints defined</p></div><span class="cv">&#x203A;</span></div></div></div><div style="padding:6px 12px 12px;"><div style="background:#3478F6;color:#fff;border-radius:11px;padding:11px 13px;"><p style="margin:0;font-weight:700;font-size:13px;">&#x25B6; Enter AR Session</p><p style="margin:2px 0 0;font-size:10.5px;opacity:.85;">Scan QR to place / train tags</p></div></div>',
+acts:[{l:'Tap "Enter AR Session"',to:'qrgate-author',p:true},{l:'Tap a Tag Group',to:'taglist'},{l:'Tap "Startup Procedure" guide',to:'guide-editor',f:'arguides'},{l:'Tap "Gemba Walk Audit"',to:'gemba-author',f:'gemba'}]};
 
-  "ar-author": {
-    title: "Author AR View", sub: "Tap a surface to place a tag", dark: true,
-    body: `
-      <div class="ar-bg">
-        <div class="topbar">
-          <span style="color:rgba(255,255,255,0.85); font-size:12.5px; font-weight:600;">Done</span>
-          <div class="center"><p class="t">Acme Pump Station</p></div>
-          <span style="color:#7da9ff; font-size:12.5px; font-weight:600;">Tag list</span>
-        </div>
-        <div class="marker green" style="top:34%; left:24%;">✓</div>
-        <div class="marker pending" style="top:58%; left:68%;"></div>
-        <div class="fab">+</div>
-        <div class="bottom-sheet-bar">
-          <div class="glass-card">
-            <p style="margin:0; font-size:12px; font-weight:600;">🔒 Origin locked · 2 tag(s) · 1/2 trained</p>
-            <p style="margin:4px 0 0; font-size:11.5px; opacity:0.75;">👆 Tap a surface to place a tag</p>
-          </div>
-        </div>
-      </div>`,
-    actions: [
-      {label:"Tap surface → place tag", to:"addtag", primary:true},
-      {label:"Open tag list", to:"taglist"},
-      {label:"Tap Share QR icon", to:"qrgen"},
-      {label:"Tap Done (end session)", to:"mode-select"},
-    ],
-    note: "Green ring + checkmark = trained; faint ring = pending/untrained. This is home base — every sheet and capture screen returns here. The blue + FAB places a pending marker; a separate panel (not shown) appears instead when you're navigating back to re-train an existing tag. Since the dual Pass/Fail + ROI update, finishing a tag's training now optionally routes through a Fail-state prompt and a region-of-interest picker before landing back here — both skippable."
-  },
+S['qrgate-author']={t:'QR Scan Gate',s:'Mandatory AR lock — Author Mode',dk:true,note:'Downloads saved ARWorldMap first, relocalizes (orange banner) then shows viewfinder. Wrong QR shows a red error banner for a few seconds then lets you retry. First session on a brand-new anchor starts fresh (no map yet).',
+body:'<div class="arbg"><div class="topbar"><span style="color:#fff;font-size:17px;">&#x2715;</span><div class="tc"></div><span class="chip">&#x270E; Author</span></div><div class="qrf"><div class="co tl"></div><div class="co tr"></div><div class="co bl"></div><div class="co br"></div></div><div class="scard"><div class="si">&#x25A6;</div><div class="sm">Point at the anchor QR code</div></div></div>',
+acts:[{l:'Scan correct QR &rarr; origin locks',to:'ar-author',p:true},{l:'Scan wrong QR (error, retry)',to:'qrgate-author'}]};
 
-  "addtag": {
-    title: "New Tag", sub: "Dark sheet shown right after placing a marker", dark: true,
-    body: `
-      <div class="dark-sheet">
-        <div class="drag-handle"></div>
-        <p style="font-weight:700; font-size:15px; margin:0 0 12px;">New tag</p>
-        <div class="chip-row">
-          <div class="mode-chip">⬡ Honeycomb</div>
-          <div class="mode-chip selected">▲ Cone</div>
-          <div class="mode-chip">T OCR</div>
-        </div>
-        <div class="suggest-row">
-          <div class="suggest-chip sel">Pressure Gauge</div>
-          <div class="suggest-chip">Safety Label</div>
-          <div class="suggest-chip">Hazard Sign</div>
-          <div class="suggest-chip">Valve Status</div>
-          <div class="suggest-chip">Seal Integrity</div>
-        </div>
-        <div class="field-label">LABEL</div>
-        <div class="field-mock">Pressure Gauge A</div>
-        <div style="display:flex; flex-direction:column; gap:8px;">
-          <div style="background:#3478F6; color:#fff; text-align:center; border-radius:11px; padding:11px; font-weight:700; font-size:13px;">▶ Train now</div>
-          <div style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.16); color:#fff; text-align:center; border-radius:11px; padding:11px; font-weight:600; font-size:13px;">Save &amp; train later</div>
-          <div style="text-align:center; color:rgba(255,255,255,0.32); font-size:12.5px; padding:4px;">✕  Cancel</div>
-        </div>
-      </div>`,
-    actions: [
-      {label:"Tap “Train now”", to:"capture", primary:true},
-      {label:"Tap “Save & train later”", to:"ar-author"},
-    ],
-    note: "The 3-way chip (Honeycomb / Cone / OCR) picks which capture screen opens next. Quick-suggestion chips below pre-fill common label names. Sheet is blocked from saving if no AR surface was actually captured at tap time — shown as an inline orange warning."
-  },
+S['ar-author']={t:'Author AR View',s:'Tap surface to place tags',dk:true,note:'Green = trained, faint ring = pending. Tap the + FAB or any real surface to place a new tag. Done saves the updated ARWorldMap to the server. Tag markers scale with distance.',
+body:'<div class="arbg"><div class="topbar"><span style="color:rgba(255,255,255,.85);font-size:12px;font-weight:600;">Done</span><div class="tc"><p class="t">Acme Pump Station</p><p class="s">5 tags &middot; 4/5 trained</p></div><span style="color:#7da9ff;font-size:12px;font-weight:600;">Tag list</span></div><div class="mkr g" style="top:30%;left:22%;">&#x2713;</div><div class="mkr g" style="top:48%;left:52%;">&#x2713;</div><div class="mkr p" style="top:62%;left:70%;"></div><div class="fab">+</div><div class="bsbar"><div class="gc"><p style="margin:0;font-size:11.5px;font-weight:600;">&#x1F512; Origin locked &middot; 5 tags &middot; 4/5 trained</p><p style="margin:3px 0 0;font-size:11px;opacity:.75;">&#x1F446; Tap a surface to place a new tag</p></div></div></div>',
+acts:[{l:'Tap surface &rarr; place new tag',to:'addtag',p:true},{l:'Open tag list',to:'taglist'},{l:'Tap Share QR icon',to:'qrgen'},{l:'Tap Done (end session)',to:'mode-select'}]};
 
-  "capture": {
-    title: "Cone Capture", sub: "Walk the guided sweep to record reference images", dark: true,
-    body: `
-      <div class="ar-bg">
-        <div class="topbar" style="background:linear-gradient(180deg, rgba(0,0,0,0.72), rgba(0,0,0,0));">
-          <span style="color:#fff; font-size:16px;">✕</span>
-          <div class="center">
-            <p class="t">Pressure Gauge A</p>
-            <p class="s">Cone · 14/19 zones <span style="color:#67e08a;">🔒</span></p>
-          </div>
-          <div style="width:24px;"></div>
-        </div>
-        <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-58%); text-align:center;">
-          <div class="zone-ring"><span class="num">14/19</span></div>
-          <p style="color:#fff; font-size:12px; font-weight:600; margin:0;">Hold distance · slowly slide across each sphere</p>
-          <p style="color:rgba(255,255,255,0.55); font-size:11px; margin:4px 0 0;">Keep sliding — 5 more zones needed</p>
-          <div class="hold-bar" style="width:160px; margin:10px auto 0;"><div class="fill"></div></div>
-        </div>
-        <div class="bottom-sheet-bar">
-          <div style="background:rgba(255,255,255,0.12); color:#fff; text-align:center; border-radius:11px; padding:11px; font-weight:700; font-size:13px; opacity:0.5;">Done Training</div>
-          <p style="text-align:center; color:rgba(255,255,255,0.45); font-size:10.5px; margin:6px 0 0;">Cover 5 more zone(s) to enable Done</p>
-        </div>
-      </div>`,
-    actions: [
-      {label:"Finish sweep → Done Training", to:"failprompt", primary:true},
-      {label:"Capture fails → inline error, retry", to:"capture"},
-    ],
-    note: "Shown here: Cone capture, the most common of the three modes (19 zones on a dome guide rendered directly in the AR scene). Honeycomb shows a 7-point mini-map and compass hint instead; OCR is a single still-photo + editable text review. All three end the same way — a green checkmark success overlay — then (new) a prompt to optionally also train a Fail reference, then back to the AR view."
-  },
+S['addtag']={t:'New Tag',s:'Sheet after placing marker',dk:true,note:'Mode chip picks capture screen. Quick-suggest chips pre-fill label and type. Tag Group picker chips let you assign to an existing group or create a new one inline. Sheet blocks save if no AR surface was detected.',
+body:'<div class="dsh"><div class="dh"></div><p style="font-weight:700;font-size:14px;margin:0 0 10px;">New tag</p><div style="display:flex;gap:7px;margin-bottom:9px;"><div class="cchip">&#x2B21; Honeycomb</div><div class="cchip sel">&#x25B2; Cone</div><div class="cchip">T OCR</div></div><div style="display:flex;gap:5px;overflow:auto;padding-bottom:7px;margin-bottom:9px;"><div class="schip s">Pressure Gauge</div><div class="schip">Safety Label</div><div class="schip">Valve Status</div><div class="schip">Cable Routing</div></div><div class="fl">LABEL</div><div class="fm">Pressure Gauge A</div><div class="fl">TAG GROUP</div><div style="display:flex;gap:5px;margin-bottom:11px;flex-wrap:wrap;"><div class="schip">Electrical Panel</div><div class="schip s">Valve Assembly &#x2713;</div><div class="schip">+ New group</div></div><div style="display:flex;flex-direction:column;gap:7px;"><div style="background:#3478F6;color:#fff;text-align:center;border-radius:10px;padding:10px;font-weight:700;font-size:12.5px;">&#x25B6; Train now</div><div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);color:#fff;text-align:center;border-radius:10px;padding:10px;font-weight:600;font-size:12.5px;">Save &amp; train later</div><div style="text-align:center;color:rgba(255,255,255,.32);font-size:12px;padding:3px;">&#x2715; Cancel</div></div></div>',
+acts:[{l:'Tap "Train now"',to:'capture',p:true},{l:'Tap "Save &amp; train later"',to:'ar-author'}]};
 
-  "failprompt": {
-    title: "Train Fail State?", sub: "New — shown right after Pass-state capture succeeds", dark: true,
-    body: `
-      <div class="dark-sheet" style="display:flex; flex-direction:column; justify-content:center; flex:1;">
-        <div style="text-align:center; margin-bottom:18px;">
-          <div style="font-size:32px;">✓</div>
-          <p style="font-weight:700; font-size:15px; margin:10px 0 4px; color:#fff;">Pass state trained</p>
-          <p style="font-size:12px; color:rgba(255,255,255,0.55); margin:0 24px;">Want to also show what the WRONG condition looks like (unplugged, closed, switched off)? This lets validation tell &#8220;different&#8221; apart from &#8220;broken&#8221;.</p>
-        </div>
-        <div style="display:flex; flex-direction:column; gap:8px;">
-          <div style="background:#3478F6; color:#fff; text-align:center; border-radius:11px; padding:11px; font-weight:700; font-size:13px;">⬡ Train Fail State</div>
-          <div style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.16); color:#fff; text-align:center; border-radius:11px; padding:11px; font-weight:600; font-size:13px;">Skip — Pass only</div>
-        </div>
-      </div>`,
-    actions: [
-      {label:"Tap “Train Fail State”", to:"capture-fail", primary:true},
-      {label:"Tap “Skip — Pass only”", to:"roi-picker"},
-    ],
-    note: "Entirely optional, per tag. Training a Fail reference set lets validation use a relative nearest-match comparison (closer to Pass → PASS, closer to Fail → FAIL) instead of one absolute threshold — useful when “wrong” looks meaningfully different from “right” (unplugged vs. plugged, open vs. closed). Skipping validates exactly as before, against Pass alone. Training Fail never touches the tag's existing Pass images, and vice versa — each state is stored and replaced independently; retraining one is a full replace of just that state, never a merge."
-  },
+S['capture']={t:'Cone Capture — Pass State',s:'Walk the sweep to record reference images',dk:true,note:'19-zone dome guide rendered in AR. Green spheres = captured, yellow = actively held, cone hidden during sweep. Done Training enables once minimum zones covered. Honeycomb = 7-point hemisphere; OCR = single-shot review.',
+body:'<div class="arbg"><div class="topbar" style="background:linear-gradient(180deg,rgba(0,0,0,.72),transparent);"><span style="color:#fff;font-size:15px;">&#x2715;</span><div class="tc"><p class="t">Pressure Gauge A</p><p class="s">Cone &middot; 14/19 zones &#x1F512;</p></div><div style="width:22px;"></div></div><div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-58%);text-align:center;"><div class="zring"><span class="zn">14/19</span></div><p style="color:#fff;font-size:11.5px;font-weight:600;margin:0;">Hold distance &middot; sweep slowly</p><p style="color:rgba(255,255,255,.55);font-size:10.5px;margin:3px 0 0;">5 more zones needed</p><div class="hbar" style="width:150px;margin:8px auto 0;"><div class="hf"></div></div></div><div class="bsbar"><div style="background:rgba(255,255,255,.12);color:#fff;text-align:center;border-radius:10px;padding:10px;font-weight:700;font-size:12.5px;opacity:.5;">Done Training</div><p style="text-align:center;color:rgba(255,255,255,.45);font-size:10px;margin:5px 0 0;">Cover 5 more zone(s) to enable</p></div></div>',
+acts:[{l:'Finish sweep &rarr; Done Training',to:'failprompt',p:true},{l:'Capture error &rarr; retry inline',to:'capture'}]};
 
-  "capture-fail": {
-    title: "Cone Capture — FAIL state", sub: "Same capture flow, now recording the Fail reference", dark: true,
-    body: `
-      <div class="ar-bg">
-        <div class="topbar" style="background:linear-gradient(180deg, rgba(0,0,0,0.72), rgba(0,0,0,0));">
-          <span style="color:#fff; font-size:16px;">✕</span>
-          <div class="center">
-            <p class="t">Valve Handle B</p>
-            <p class="s">FAIL state · Cone · 9/19 zones <span style="color:#ff8a82;">🔒</span></p>
-          </div>
-          <div style="width:24px;"></div>
-        </div>
-        <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-58%); text-align:center;">
-          <div class="zone-ring" style="background:conic-gradient(#FF3B30 0deg 170deg, rgba(255,255,255,0.15) 170deg 360deg);"><span class="num">9/19</span></div>
-          <p style="color:#fff; font-size:12px; font-weight:600; margin:0;">Show the WRONG condition this time</p>
-          <p style="color:rgba(255,255,255,0.55); font-size:11px; margin:4px 0 0;">e.g. valve closed / handle removed — keep sliding</p>
-          <div class="hold-bar" style="width:160px; margin:10px auto 0;"><div class="fill" style="background:#FF3B30; width:47%;"></div></div>
-        </div>
-        <div class="bottom-sheet-bar">
-          <div style="background:rgba(255,255,255,0.12); color:#fff; text-align:center; border-radius:11px; padding:11px; font-weight:700; font-size:13px; opacity:0.5;">Done Training</div>
-          <p style="text-align:center; color:rgba(255,255,255,0.45); font-size:10.5px; margin:6px 0 0;">Cover 10 more zone(s) to enable Done</p>
-        </div>
-      </div>`,
-    actions: [{label:"Finish sweep → Done Training", to:"roi-picker", primary:true}],
-    note: "Identical capture mechanic to Pass-state training, just pointed at the equipment in its faulty/wrong condition. Stored as a completely separate reference set on the server — training one state never overwrites or merges with the other."
-  },
+S['failprompt']={t:'Train Fail State?',s:'Optional — after Pass capture succeeds',dk:true,note:'Entirely optional. Training a Fail set enables relative nearest-match scoring (closer to Pass vs closer to Fail) instead of an absolute threshold. Skipping leaves the tag working exactly as before. Each state stored independently.',
+body:'<div class="dsh" style="display:flex;flex-direction:column;justify-content:center;flex:1;"><div style="text-align:center;margin-bottom:16px;"><div style="font-size:30px;">&#x2713;</div><p style="font-weight:700;font-size:14px;margin:8px 0 3px;color:#fff;">Pass state trained</p><p style="font-size:11.5px;color:rgba(255,255,255,.55);margin:0 20px;">Also train what the WRONG condition looks like? (unplugged, closed, off) Makes validation more reliable.</p></div><div style="display:flex;flex-direction:column;gap:7px;"><div style="background:#3478F6;color:#fff;text-align:center;border-radius:10px;padding:10px;font-weight:700;font-size:12.5px;">&#x2B21; Train Fail State</div><div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);color:#fff;text-align:center;border-radius:10px;padding:10px;font-weight:600;font-size:12.5px;">Skip &mdash; Pass only</div></div></div>',
+acts:[{l:'Tap "Train Fail State"',to:'capture-fail',p:true},{l:'Skip',to:'roi-picker'}]};
 
-  "roi-picker": {
-    title: "Mark Inspection Region", sub: "New — optional per-tag crop so validation ignores the rest of the scene", dark: true,
-    body: `
-      <div class="ar-bg" style="background:repeating-linear-gradient(135deg,#2a2a30,#2a2a30 14px,#34343a 14px,#34343a 28px);">
-        <div class="roi-reset">Reset</div>
-        <div class="meta" style="position:absolute; top:30px; left:0; right:0; text-align:center; z-index:2; padding:0 18px;">
-          <p class="t" style="color:#fff; margin:0;">Mark Inspection Region</p>
-          <p class="s" style="color:rgba(255,255,255,0.6); margin:4px 0 0; font-size:10.5px;">Drag the box around just &#8220;Valve Handle B&#8221; so validation focuses on that feature, not the whole scene.</p>
-        </div>
-        <div class="roi-box" style="top:36%; left:26%; width:46%; height:30%;">
-          <div class="roi-handle" style="top:0; left:0;"></div>
-          <div class="roi-handle" style="top:0; left:100%;"></div>
-          <div class="roi-handle" style="top:100%; left:0;"></div>
-          <div class="roi-handle" style="top:100%; left:100%;"></div>
-          <div class="roi-handle" style="top:0; left:50%;"></div>
-          <div class="roi-handle" style="top:100%; left:50%;"></div>
-          <div class="roi-handle" style="top:50%; left:0;"></div>
-          <div class="roi-handle" style="top:50%; left:100%;"></div>
-        </div>
-        <div class="bottom-sheet-bar" style="position:absolute; bottom:0;">
-          <div style="display:flex; gap:8px;">
-            <div style="flex:1; border:1px solid rgba(255,255,255,0.3); color:#fff; text-align:center; border-radius:11px; padding:11px; font-weight:600; font-size:12.5px;">Skip</div>
-            <div style="flex:1; background:#32ADE6; color:#fff; text-align:center; border-radius:11px; padding:11px; font-weight:700; font-size:12.5px;">Use This Region</div>
-          </div>
-        </div>
-      </div>`,
-    actions: [
-      {label:"Drag corner/edge handles to resize/move", to:"roi-picker"},
-      {label:"Tap “Skip” (validate full frame)", to:"ar-author"},
-      {label:"Tap “Use This Region”", to:"ar-author", primary:true},
-    ],
-    note: "Entirely optional — Skip leaves the tag validating against the full frame exactly as before this feature existed. 8 drag handles (4 corners + 4 edge midpoints), each with a 44×44pt tap target well beyond the visible dot. A magnifier loupe appears above your finger while dragging a handle so the touch point is never hidden under your own fingertip, and a haptic tap confirms the grab. Saved as a normalised (0–1 fraction) crop on the tag, applied identically by both the Author preview and the Operator's validation request."
-  },
+S['capture-fail']={t:'Cone Capture — Fail State',s:'Same mechanic, wrong condition',dk:true,note:'Identical to Pass capture but arc turns red. Point at the equipment in its faulty/wrong condition. Stored as a completely separate reference set — retraining one state never affects the other.',
+body:'<div class="arbg"><div class="topbar" style="background:linear-gradient(180deg,rgba(0,0,0,.72),transparent);"><span style="color:#fff;font-size:15px;">&#x2715;</span><div class="tc"><p class="t">Valve Handle B</p><p class="s">FAIL state &middot; Cone &middot; 9/19 &#x1F512;</p></div><div style="width:22px;"></div></div><div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-58%);text-align:center;"><div class="zring" style="background:conic-gradient(#FF3B30 0deg 170deg,rgba(255,255,255,.15) 170deg 360deg);"><span class="zn">9/19</span></div><p style="color:#fff;font-size:11.5px;font-weight:600;margin:0;">Show the WRONG condition</p><p style="color:rgba(255,255,255,.55);font-size:10.5px;margin:3px 0 0;">valve closed / handle removed</p><div class="hbar" style="width:150px;margin:8px auto 0;"><div class="hf" style="background:#FF3B30;width:47%;"></div></div></div><div class="bsbar"><div style="background:rgba(255,255,255,.12);color:#fff;text-align:center;border-radius:10px;padding:10px;font-weight:700;font-size:12.5px;opacity:.5;">Done Training</div></div></div>',
+acts:[{l:'Finish sweep &rarr; Done Training',to:'roi-picker',p:true}]};
 
-  "taglist": {
-    title: "Tag List", sub: "Dark sheet — every tag on this anchor", dark: true,
-    body: `
-      <div class="dark-sheet">
-        <div class="drag-handle"></div>
-        <p style="font-weight:700; font-size:15px; margin:0 0 2px;">Tags — Acme Pump Station</p>
-        <p style="font-size:11.5px; opacity:0.5; margin:0 0 14px;">1 of 2 trained</p>
-        <div class="ios-list" style="background:rgba(255,255,255,0.06); margin-bottom:14px;">
-          <div class="ios-row" style="border-bottom:1px solid rgba(255,255,255,0.1);">
-            <div class="icon-circle" style="background:rgba(50,173,230,0.18); color:#5fc7ec;">📟</div>
-            <div class="row-main"><p class="row-title" style="color:#fff;">Pressure Gauge A</p></div>
-            <span class="badge badge-green">Trained</span>
-          </div>
-          <div class="ios-row">
-            <div class="icon-circle" style="background:rgba(52,120,246,0.18); color:#7da9ff;">🔧</div>
-            <div class="row-main">
-              <p class="row-title" style="color:#fff;">Valve Handle B</p>
-            </div>
-            <span class="badge badge-blue">Train →</span>
-          </div>
-        </div>
-        <p style="font-size:10.5px; color:rgba(255,255,255,0.4); text-align:center; margin:0;">Tap Train to navigate to that tag in AR · swipe a row for Edit / Delete</p>
-      </div>`,
-    actions: [
-      {label:"Swipe row → Edit", to:"edittag"},
-      {label:"Tap “Train →” (navigate + re-enter capture)", to:"capture"},
-      {label:"Close sheet", to:"ar-author", primary:true},
-    ],
-    note: "Lives inside Author Mode as a draggable sheet (medium/large detents). Tapping Train → on an unpositioned/untrained tag re-enters the AR view in navigation mode — a pulsing target + distance readout guides you back to that tag's location — then opens the capture screen."
-  },
+S['roi-picker']={t:'Mark Inspection Region',s:'Optional crop for validation',dk:true,note:'8 drag handles (4 corners + 4 edge midpoints). A magnifier loupe follows the finger while dragging. Saved as normalised 0-1 fractions on the tag. Skip validates full frame as before.',
+body:'<div class="arbg" style="background:repeating-linear-gradient(135deg,#2a2a30,#2a2a30 14px,#34343a 14px,#34343a 28px);"><div style="position:absolute;top:10px;right:12px;color:rgba(255,255,255,.6);font-size:10.5px;font-weight:700;z-index:3;">Reset</div><div style="position:absolute;top:24px;left:0;right:0;text-align:center;z-index:2;padding:0 16px;"><p style="color:#fff;font-weight:700;font-size:12.5px;margin:0;">Mark Inspection Region</p><p style="color:rgba(255,255,255,.6);font-size:10px;margin:3px 0 0;">Drag the box around the tag feature. Skip = full frame.</p></div><div class="roib" style="top:36%;left:26%;width:46%;height:30%;"><div class="roih" style="top:0;left:0;"></div><div class="roih" style="top:0;left:100%;"></div><div class="roih" style="top:100%;left:0;"></div><div class="roih" style="top:100%;left:100%;"></div><div class="roih" style="top:0;left:50%;"></div><div class="roih" style="top:100%;left:50%;"></div><div class="roih" style="top:50%;left:0;"></div><div class="roih" style="top:50%;left:100%;"></div></div><div style="position:absolute;bottom:0;left:0;right:0;padding:12px;z-index:3;background:linear-gradient(0deg,rgba(0,0,0,.78),transparent);"><div style="display:flex;gap:7px;"><div style="flex:1;border:1px solid rgba(255,255,255,.3);color:#fff;text-align:center;border-radius:10px;padding:10px;font-weight:600;font-size:12px;">Skip</div><div style="flex:1;background:#32ADE6;color:#fff;text-align:center;border-radius:10px;padding:10px;font-weight:700;font-size:12px;">Use This Region</div></div></div></div>',
+acts:[{l:'Drag handles to resize',to:'roi-picker'},{l:'Skip (full frame)',to:'ar-author'},{l:'Tap "Use This Region"',to:'ar-author',p:true}]};
 
-  "edittag": {
-    title: "Edit Tag", sub: "Standard Form — label, description, re-capture",
-    body: `
-      <div class="meta" style="display:flex; align-items:center; justify-content:space-between; padding-top:14px;">
-        <span style="color:#1456c9; font-size:13px;">Cancel</span>
-        <p class="t" style="font-size:14px;">Edit Tag</p>
-        <span style="color:#1456c9; font-size:13px; font-weight:700; opacity:0.4;">Save</span>
-      </div>
-      <div class="body-scroll">
-        <div class="ios-section-header">Tag Info</div>
-        <div class="ios-list">
-          <div class="ios-row"><span class="row-title" style="font-weight:500;">Type</span><div style="flex:1;"></div><span class="row-sub">Cone Capture</span></div>
-          <div class="ios-row"><span class="row-title" style="font-weight:500;">ID</span><div style="flex:1;"></div><span class="row-sub">a1c4e9f0b2d3…</span></div>
-        </div>
-        <div class="ios-section-header">Edit Details</div>
-        <div class="ios-list">
-          <div class="ios-row"><div class="row-main"><p class="row-sub" style="margin:0 0 2px;">Label</p><p class="row-title" style="font-weight:500;">Pressure Gauge A</p></div></div>
-          <div class="ios-row"><div class="row-main"><p class="row-sub" style="margin:0 0 2px;">Check Description</p><p class="row-title" style="font-weight:500;">Verify amber connector is seated</p></div></div>
-          <div class="ios-row"><div class="row-main"><p class="row-sub" style="margin:0 0 2px;">Expected Outcome</p><p class="row-title" style="font-weight:500;">Gauge reads in normal (green) range</p></div></div>
-        </div>
-        <p style="font-size:11px; color:var(--text3); margin:6px 4px 14px;">Changes are saved to SIB immediately.</p>
-        <div class="ios-section-header">Training</div>
-        <div class="ios-list">
-          <div class="ios-row">
-            <span style="color:#1456c9;">📷</span>
-            <span style="color:#1456c9; font-weight:600; font-size:13px;">Re-capture Pass Images</span>
-          </div>
-          <div class="ios-row">
-            <span style="color:#c41e3a;">⬡</span>
-            <span style="color:#c41e3a; font-weight:600; font-size:13px;">Train Fail State</span>
-            <div style="flex:1;"></div>
-            <span class="badge badge-gray" style="font-size:9.5px;">not trained</span>
-          </div>
-          <div class="ios-row">
-            <span style="color:#1456c9;">⬚</span>
-            <span style="color:#1456c9; font-weight:600; font-size:13px;">Adjust Region of Interest</span>
-          </div>
-        </div>
-        <p style="font-size:11px; color:var(--text3); margin:6px 4px;">Re-capturing Pass or Fail fully replaces that state's images — it does not merge with what's already trained, and the other state (if trained) is left untouched. ROI is optional and applies to both states.</p>
-      </div>`,
-    actions: [
-      {label:"Tap “Re-capture Pass Images”", to:"capture", primary:true},
-      {label:"Tap “Train Fail State”", to:"capture-fail"},
-      {label:"Tap “Adjust Region of Interest”", to:"roi-picker"},
-      {label:"Tap Cancel", to:"taglist"},
-    ],
-    note: "Standard system Form (light), unlike the dark AR/sheet screens — only reachable from the Author tag list, never used in Operator mode. New rows: Train Fail State (becomes “Re-capture Fail Images” once trained) and Adjust Region of Interest, both independent of and non-destructive to the Pass state."
-  },
+S['taglist']={t:'Tag List',s:'Dark sheet — tags in this group',dk:true,note:'Sheet shows tags for the selected group. Swipe reveals Edit and Delete. Train on an unpositioned tag enters navigation mode — a pulsing target + live distance readout guides you back before opening capture.',
+body:'<div class="dsh"><div class="dh"></div><p style="font-weight:700;font-size:14px;margin:0 0 1px;">Valve Assembly</p><p style="font-size:11px;opacity:.5;margin:0 0 12px;">2 tags &middot; all trained</p><div class="ilist" style="background:rgba(255,255,255,.06);margin-bottom:12px;"><div class="irow" style="border-bottom:1px solid rgba(255,255,255,.08);"><div class="ic" style="background:rgba(50,173,230,.18);color:#5fc7ec;">&#x1F4DF;</div><div class="rm"><p class="rt" style="color:#fff;">Pressure Gauge A</p><p class="rs">Cone &middot; Pass + Fail trained</p></div><span class="badge bg">Trained</span></div><div class="irow"><div class="ic" style="background:rgba(52,120,246,.18);color:#7da9ff;">&#x1F527;</div><div class="rm"><p class="rt" style="color:#fff;">Valve Handle B</p><p class="rs">Cone &middot; Pass only</p></div><span class="badge bg">Trained</span></div></div><p style="font-size:10px;color:rgba(255,255,255,.4);text-align:center;margin:0;">Swipe a row for Edit / Delete &middot; tap Train to navigate in AR</p></div>',
+acts:[{l:'Swipe row &rarr; Edit',to:'edittag',p:true},{l:'Tap Train on untrained tag',to:'capture'},{l:'Close',to:'ar-author'}]};
 
-  "qrgen": {
-    title: "Anchor QR Code", sub: "Sheet — share this anchor's QR",
-    body: `
-      <div class="meta" style="display:flex; align-items:center; justify-content:space-between; padding-top:14px;">
-        <span style="color:#1456c9; font-size:13px;">Close</span>
-        <p class="t" style="font-size:14px;">Anchor QR Code</p>
-        <span style="width:36px;"></span>
-      </div>
-      <div class="body-scroll" style="text-align:center;">
-        <div class="qr-card">${qrSvg("#111")}</div>
-        <div class="ios-list" style="text-align:left;">
-          <div class="ios-row"><span class="row-sub">Asset</span><div style="flex:1;"></div><span class="row-title" style="font-weight:500;">Acme Pump Station</span></div>
-          <div class="ios-row"><span class="row-sub">Anchor</span><div style="flex:1;"></div><span class="row-title" style="font-weight:500;">a1c4e9f0b2d3…</span></div>
-          <div class="ios-row"><span class="row-sub">Encryption</span><div style="flex:1;"></div><span class="row-title" style="font-weight:500; font-size:11.5px;">AES-256-GCM (embedded)</span></div>
-          <div class="ios-row"><span class="row-sub">Print size</span><div style="flex:1;"></div><span class="row-title" style="font-weight:500;">10 cm (locked)</span></div>
-        </div>
-        <p style="text-align:left; font-size:11px; color:var(--text3); margin:10px 2px;">Print or display this code near the physical anchor location. Operator devices scan it to begin inspection. The code contains the encryption key — treat it like a physical key to the anchor.</p>
-        <div style="background:#3478F6; color:#fff; text-align:center; border-radius:11px; padding:11px; font-weight:700; font-size:13px;">↑ Share QR Code</div>
-      </div>`,
-    actions: [
-      {label:"Tap “Share QR Code”", to:"qrgen"},
-      {label:"Tap Close", to:"ar-author", primary:true},
-    ],
-    note: "Fetches the canonical PNG generated server-side at anchor creation, so every client — iOS app and web portal — shows the pixel-identical code."
-  },
+S['edittag']={t:'Edit Tag',s:'Form: label, description, retrain options',note:'Standard light-mode form. Each retrain action is independent — touching one never affects the other. ROI adjustment applies to both states. Label/description changes saved to SIB on Save.',
+body:'<div class="meta" style="display:flex;align-items:center;justify-content:space-between;padding-top:12px;"><span style="color:#1456c9;font-size:12.5px;">Cancel</span><p class="t" style="font-size:13.5px;">Edit Tag</p><span style="color:#1456c9;font-size:12.5px;font-weight:700;">Save</span></div><div class="bscroll"><div class="isec">Tag Info</div><div class="ilist"><div class="irow"><span style="font-weight:500;">Type</span><div style="flex:1;"></div><span class="rs">Cone Capture</span></div><div class="irow"><span style="font-weight:500;">Group</span><div style="flex:1;"></div><span class="rs">Valve Assembly</span></div></div><div class="isec">Details</div><div class="ilist"><div class="irow"><div class="rm"><p class="rs" style="margin:0 0 1px;">Label</p><p class="rt" style="font-weight:500;">Pressure Gauge A</p></div></div><div class="irow"><div class="rm"><p class="rs" style="margin:0 0 1px;">Check Description</p><p class="rt" style="font-weight:500;">Verify amber connector seated</p></div></div></div><div class="isec">Training</div><div class="ilist"><div class="irow"><span style="color:#1456c9;">&#x1F4F7;</span><span style="color:#1456c9;font-weight:600;font-size:12.5px;">&nbsp;Re-capture Pass Images</span></div><div class="irow"><span style="color:#c41e3a;">&#x2B21;</span><span style="color:#c41e3a;font-weight:600;font-size:12.5px;">&nbsp;Re-capture Fail Images</span><div style="flex:1;"></div><span class="badge bg" style="font-size:9px;">trained</span></div><div class="irow"><span style="color:#1456c9;">&#x2B1A;</span><span style="color:#1456c9;font-weight:600;font-size:12.5px;">&nbsp;Adjust Region of Interest</span></div></div></div>',
+acts:[{l:'Re-capture Pass Images',to:'capture',p:true},{l:'Re-capture Fail Images',to:'capture-fail'},{l:'Adjust Region of Interest',to:'roi-picker'},{l:'Cancel',to:'taglist'}]};
 
-  "ar-operator": {
-    title: "Operator AR View", sub: "Walk near a tag to auto-validate, or inspect all at once", dark: true,
-    body: `
-      <div class="ar-bg">
-        <div class="topbar">
-          <span style="color:#fff; font-size:18px;">✕</span>
-          <div class="center">
-            <p class="t">Operator Mode</p>
-            <p class="s">Acme Pump Station · a1c4e9f0b2…</p>
-          </div>
-          <span class="badge badge-green" style="background:rgba(52,199,89,0.3); color:#fff;">2 tags</span>
-        </div>
-        <div class="threshold-mock">85%</div>
-        <div class="marker green" style="top:30%; left:22%;">✓</div>
-        <div class="marker red" style="top:55%; left:64%;">✕</div>
-        <div class="bottom-sheet-bar">
-          <div class="glass-card" style="margin-bottom:8px;">
-            <p style="margin:0; font-size:12px; font-weight:600;">1 / 2 tags inspected</p>
-            <p style="margin:3px 0 0; font-size:11px; opacity:0.7;">Keep walking to reach remaining tags</p>
-          </div>
-          <div style="display:flex; gap:8px;">
-            <div style="flex:1; background:rgba(255,255,255,0.12); color:#fff; text-align:center; border-radius:11px; padding:10px; font-weight:700; font-size:12.5px;">⌖ Inspect All</div>
-            <div style="flex:1; background:#34C759; color:#fff; text-align:center; border-radius:11px; padding:10px; font-weight:700; font-size:12.5px;">End Inspection</div>
-          </div>
-        </div>
-      </div>`,
-    actions: [
-      {label:"Tap “Inspect All”", to:"results", primary:true},
-      {label:"Tap “End Inspection”", to:"results"},
-    ],
-    note: "Markers update live: gray = pending, type-colored = not yet inspected this session, green = PASS, red = FAIL (pulses). The yellow chip top-right opens a PASS-threshold slider (40% lenient — 90% strict). For any tag with a Fail reference trained, the server instead uses a relative nearest-match comparison (closer to Pass vs. closer to Fail) rather than the absolute threshold — the threshold slider only affects Pass-only tags."
-  },
+S['qrgen']={t:'Anchor QR Code',s:'Share sheet for operators',note:'Canonical PNG from the server — same one the web portal shows. The encryption key is embedded in this QR; treat it like a physical key to the anchor. PDF print version accessible from the Hub QR row.',
+body:'<div class="meta" style="display:flex;align-items:center;justify-content:space-between;padding-top:12px;"><span style="color:#1456c9;font-size:12.5px;">Close</span><p class="t" style="font-size:13.5px;">Anchor QR Code</p><div style="width:32px;"></div></div><div class="bscroll" style="text-align:center;"><div class="qrc">'+qrSVG()+'</div><div class="ilist" style="text-align:left;"><div class="irow"><span class="rs">Asset</span><div style="flex:1;"></div><span class="rt" style="font-weight:500;">Acme Pump Station</span></div><div class="irow"><span class="rs">Encryption</span><div style="flex:1;"></div><span class="rt" style="font-weight:500;font-size:11px;">AES-256-GCM embedded</span></div></div><div style="background:#3478F6;color:#fff;text-align:center;border-radius:10px;padding:10px;font-weight:700;font-size:12.5px;margin-top:4px;">&#x2191; Share QR Code</div></div>',
+acts:[{l:'Share',to:'qrgen'},{l:'Close',to:'ar-author',p:true}]};
 
-  "results": {
-    title: "Inspection Results", sub: "Sheet — per-tag summary",
-    body: `
-      <div class="meta" style="display:flex; align-items:center; justify-content:space-between; padding-top:14px;">
-        <span style="color:#1456c9; font-size:13px;">Close</span>
-        <p class="t" style="font-size:14px;">Inspection Results</p>
-        <span style="color:#1456c9; font-size:13px; font-weight:700;">New Scan</span>
-      </div>
-      <div class="body-scroll">
-        <div class="status-hero">
-          <div class="icon" style="color:#ad6800;">◐</div>
-          <div class="label" style="color:#ad6800;">PARTIAL</div>
-          <div class="desc">1 of 2 checks passed</div>
-          <div class="desc" style="color:#c41e3a;">1 check(s) need attention</div>
-          <div class="progress-track"><div class="progress-fill"></div></div>
-        </div>
-        <div class="ios-section-header">Checks</div>
-        <div class="ios-list">
-          <div class="ios-row">
-            <div class="icon-circle" style="background:rgba(255,217,217,1); color:#c41e3a;">🔧</div>
-            <div class="row-main">
-              <p class="row-title">Valve Handle B</p>
-              <p class="row-sub">41% confidence</p>
-            </div>
-            <span class="badge badge-red">FAIL</span>
-          </div>
-          <div class="ios-row">
-            <div class="icon-circle" style="background:rgba(210,244,218,1); color:#1c7d34;">📟</div>
-            <div class="row-main">
-              <p class="row-title">Pressure Gauge A</p>
-              <p class="row-sub">94% confidence</p>
-            </div>
-            <span class="badge badge-green">PASS</span>
-          </div>
-        </div>
-      </div>
-      <div class="actions" style="padding:6px 16px 16px;">
-        <div style="background:#ffd9d9; color:#c41e3a; text-align:center; border-radius:11px; padding:11px; font-weight:700; font-size:12.5px;">↻ Re-inspect 1 Failed Tag(s)</div>
-        <div style="border:1px solid #d9e8ff; color:#1456c9; text-align:center; border-radius:11px; padding:11px; font-weight:600; font-size:12.5px;">Re-inspect All Tags</div>
-      </div>`,
-    actions: [
-      {label:"Tap Close", to:"ar-operator", primary:true},
-      {label:"Tap “Re-inspect Failed Tags”", to:"ar-operator"},
-      {label:"Tap “New Scan” (different anchor)", to:"directory-operator"},
-      {label:"Tap exit (X) anytime", to:"mode-select"},
-    ],
-    note: "Fail-first sorted list, standard light Form/List (not the dark AR theme). Re-inspect resets just the relevant markers and loops back into the AR view; New Scan exits to the directory for a different anchor."
-  },
+// -------- OPERATOR FLOW --------
+S['dir-operator']={t:'Anchor Directory',s:'Operator: pick an anchor to inspect',note:'No + button for Operators. Anchors show readiness: green Ready (all trained), orange (some untrained), red (none trained). Routes to the Operator-specific Hub.',
+body:'<div class="meta"><p class="t">Anchor Directory</p></div><div class="bscroll"><div class="smock">&#x1F50D; Search anchors</div><div class="isec">Anchors</div><div class="ilist"><div class="irow"><div class="ic" style="background:#e6e6ea;">&#x1F4CD;</div><div class="rm"><p class="rt">Acme Pump Station</p><p class="rs">5 tags &middot; last inspected 2h ago</p></div><span class="badge bg">Ready</span><span class="cv">&#x203A;</span></div><div class="irow"><div class="ic" style="background:#e6e6ea;">&#x1F4CD;</div><div class="rm"><p class="rt">Line 4 Conveyor</p><p class="rs">0 tags trained</p></div><span class="badge br">Not ready</span><span class="cv">&#x203A;</span></div></div></div>',
+acts:[{l:'Tap "Acme Pump Station"',to:'hub-operator',p:true}]};
+
+S['hub-operator']={t:'Anchor Hub — Operator',s:'Readiness check before AR',note:'Same hub, Operator view — no edit or delete, no + button. Readiness warning is non-blocking if some tags are trained, blocks if zero. AR Guides shows only published guides. Gemba Walk accessible if checkpoints exist.',
+body:'<div class="meta"><p class="t">Acme Pump Station</p><p class="s">Operator</p></div><div class="bscroll"><div style="background:#fff3da;border:1px solid #ffd9a0;border-radius:9px;padding:9px 11px;display:flex;gap:7px;align-items:flex-start;margin-bottom:10px;"><span>&#x26A0;</span><span style="font-size:11px;color:#8a5400;">1 of 5 tags not yet trained &mdash; will show as PENDING.</span></div><div class="isec">Inspection &middot; 4/5 tags trained</div><div class="ilist"><div class="irow"><div class="ic" style="background:#d2f4da;color:#1c7d34;">&#x1F4DF;</div><div class="rm"><p class="rt">Pressure Gauge A</p></div><span class="badge bg">Trained</span></div><div class="irow"><div class="ic" style="background:#e6e6ea;">&#x1F527;</div><div class="rm"><p class="rt">Valve Handle B</p></div><span class="badge bo">Pending</span></div></div><div class="isec">AR Guides</div><div class="ilist"><div class="irow"><div class="ic" style="background:#ede9ff;color:#6b41c7;">&#x1F4CB;</div><div class="rm"><p class="rt">Startup Procedure</p><p class="rs">6 steps</p></div><span class="cv">&#x203A;</span></div></div><div class="isec">Gemba Walk</div><div class="ilist"><div class="irow"><div class="ic" style="background:rgba(175,82,222,.15);color:#AF52DE;">&#x1F4CD;</div><div class="rm"><p class="rt">Gemba Walk Audit</p><p class="rs">4 checkpoints</p></div><span class="cv">&#x203A;</span></div></div></div><div style="padding:6px 12px 12px;"><div style="background:#3478F6;color:#fff;border-radius:11px;padding:11px 13px;"><p style="margin:0;font-weight:700;font-size:13px;">&#x25B6; Enter AR Session</p><p style="margin:2px 0 0;font-size:10.5px;opacity:.85;">Scan anchor QR to begin inspection</p></div></div>',
+acts:[{l:'Tap "Enter AR Session"',to:'qrgate-operator',p:true},{l:'Tap "Startup Procedure" guide',to:'guide-list-op',f:'arguides'},{l:'Tap "Gemba Walk Audit"',to:'gemba-operator',f:'gemba'}]};
+
+S['qrgate-operator']={t:'QR Scan Gate',s:'Mandatory AR lock — Operator',dk:true,note:'Identical to Author QR gate. If QR has no embedded key (legacy QR), falls back to Keychain. If neither is available, shows a clear warning that validation will return 0% confidence and instructs the Operator to get the in-app QR from the Author.',
+body:'<div class="arbg"><div class="topbar"><span style="color:#fff;font-size:17px;">&#x2715;</span><div class="tc"></div><span class="chip">&#x25C9; Operator</span></div><div class="qrf"><div class="co tl"></div><div class="co tr"></div><div class="co bl"></div><div class="co br"></div></div><div class="scard"><div class="si">&#x25A6;</div><div class="sm">Point at the anchor QR code</div></div></div>',
+acts:[{l:'Scan correct QR &rarr; origin locks',to:'ar-operator',p:true}]};
+
+S['ar-operator']={t:'Operator AR View',s:'Live PASS/FAIL markers — walk near tags',dk:true,note:'Markers update live: pending (gray), green (PASS), red blinking (FAIL). Yellow chip top-right opens threshold slider (40-90%). Tags with a Fail reference use relative nearest-match; Pass-only tags use the absolute threshold.',
+body:'<div class="arbg"><div class="topbar"><span style="color:#fff;font-size:17px;">&#x2715;</span><div class="tc"><p class="t">Operator Mode</p><p class="s">Acme Pump Station &middot; Session #42</p></div><span class="badge bb" style="background:rgba(52,199,89,.3);color:#fff;">5 tags</span></div><div style="position:absolute;top:52px;right:12px;background:rgba(255,214,10,.22);color:#FFD60A;border-radius:18px;padding:4px 10px;font-size:10.5px;font-weight:700;z-index:3;">85%</div><div class="mkr g" style="top:28%;left:20%;">&#x2713;</div><div class="mkr g" style="top:44%;left:50%;">&#x2713;</div><div class="mkr r" style="top:58%;left:68%;">&#x2715;</div><div class="mkr p" style="top:36%;left:76%;"></div><div class="bsbar"><div class="gc" style="margin-bottom:7px;"><p style="margin:0;font-size:11.5px;font-weight:600;">3 / 5 tags inspected &middot; 2 PASS &middot; 1 FAIL</p><p style="margin:3px 0 0;font-size:11px;opacity:.7;">Walk toward remaining tags</p></div><div style="display:flex;gap:7px;"><div style="flex:1;background:rgba(255,255,255,.12);color:#fff;text-align:center;border-radius:10px;padding:9px;font-weight:700;font-size:12px;">&#x2316; Inspect All</div><div style="flex:1;background:#34C759;color:#fff;text-align:center;border-radius:10px;padding:9px;font-weight:700;font-size:12px;">End Inspection</div></div></div></div>',
+acts:[{l:'Tap "Inspect All"',to:'results',p:true},{l:'Tap "End Inspection"',to:'results'}]};
+
+S['results']={t:'Inspection Results',s:'Per-tag summary sheet',note:'Fail-first sorted. Session record submitted to SIB automatically on end — visible in Portal under Sessions. Re-inspect resets relevant markers and loops back into AR.',
+body:'<div class="meta" style="display:flex;align-items:center;justify-content:space-between;padding-top:12px;"><span style="color:#1456c9;font-size:12.5px;">Close</span><p class="t" style="font-size:13.5px;">Inspection Results</p><span style="color:#1456c9;font-size:12.5px;font-weight:700;">New Scan</span></div><div class="bscroll"><div class="shr"><div class="shi" style="color:#ad6800;">&#x25D0;</div><div class="shl" style="color:#ad6800;">PARTIAL</div><div class="shd">3 of 5 checks passed</div><div class="ptr"><div class="ptf" style="width:60%;"></div></div></div><div class="isec">Checks</div><div class="ilist"><div class="irow"><div class="ic" style="background:#ffd9d9;color:#c41e3a;">&#x1F527;</div><div class="rm"><p class="rt">Valve Handle B</p><p class="rs">41% confidence</p></div><span class="badge br">FAIL</span></div><div class="irow"><div class="ic" style="background:#d2f4da;color:#1c7d34;">&#x1F4DF;</div><div class="rm"><p class="rt">Pressure Gauge A</p><p class="rs">94% confidence</p></div><span class="badge bg">PASS</span></div></div></div><div class="acts" style="padding:5px 12px 12px;"><div style="background:#ffd9d9;color:#c41e3a;text-align:center;border-radius:10px;padding:10px;font-weight:700;font-size:12px;">&#x21BB; Re-inspect 1 Failed Tag</div><div style="border:1px solid #d9e8ff;color:#1456c9;text-align:center;border-radius:10px;padding:10px;font-weight:600;font-size:12px;margin-top:6px;">Re-inspect All Tags</div></div>',
+acts:[{l:'Close',to:'ar-operator',p:true},{l:'Re-inspect failed',to:'ar-operator'},{l:'New Scan',to:'dir-operator'},{l:'Exit (X)',to:'mode-select'}]};
+
+// -------- AR GUIDES --------
+S['guide-list-auth']={t:'AR Guides — Author',s:'Manage guides for this anchor',note:'Author sees all guides (draft + published). Operator only sees published. Tap a guide to open its editor. Swipe to delete (cascades steps and evidence). Creating a new guide starts with just a name field.',
+body:'<div class="meta" style="display:flex;align-items:center;justify-content:space-between;padding-top:12px;"><span style="color:#1456c9;font-size:12.5px;">&#x2039; Hub</span><p class="t" style="font-size:13.5px;">AR Guides</p><span style="color:#1456c9;font-size:12.5px;font-weight:700;">+ New</span></div><div class="bscroll"><div class="ilist"><div class="irow"><div class="ic" style="background:#ede9ff;color:#6b41c7;">&#x1F4CB;</div><div class="rm"><p class="rt">Startup Procedure</p><p class="rs">6 steps &middot; Published &middot; by Karthik</p></div><span class="badge bg">Live</span><span class="cv">&#x203A;</span></div><div class="irow"><div class="ic" style="background:#e6e6ea;color:#6b6b70;">&#x1F4CB;</div><div class="rm"><p class="rt">Shutdown Checklist</p><p class="rs">4 steps &middot; Draft</p></div><span class="badge bgy">Draft</span><span class="cv">&#x203A;</span></div></div><p style="font-size:10.5px;color:var(--t2);margin:8px 2px;">Published guides are visible to Operators. Swipe to delete.</p></div>',
+acts:[{l:'Tap a guide to edit',to:'guide-editor',p:true},{l:'Tap + New',to:'guide-editor'}]};
+
+S['guide-editor']={t:'Guide Editor',s:'Name, steps, publish toggle',note:'Each step has a title (required), instruction text (optional), a reference photo captured at placement time, and an optional 3D USDZ model shown as a ghost overlay for Operators. Steps drag-reorderable. Publish makes guide visible to Operators.',
+body:'<div class="meta" style="display:flex;align-items:center;justify-content:space-between;padding-top:12px;"><span style="color:#1456c9;font-size:12.5px;">&#x2039; Guides</span><p class="t" style="font-size:13.5px;">Edit Guide</p><span style="color:#34C759;font-size:12.5px;font-weight:700;">Publish</span></div><div class="bscroll"><div class="isec">Guide Info</div><div class="ilist"><div class="irow"><div class="rm"><p class="rs" style="margin:0 0 1px;">Guide Name</p><p class="rt" style="font-weight:500;">Startup Procedure</p></div></div><div class="irow"><div class="rm"><p class="rs" style="margin:0 0 1px;">Description</p><p class="rt" style="font-weight:500;color:#8e8e93;">Add description&hellip;</p></div></div></div><div class="isec">Steps &middot; drag to reorder</div><div class="ilist"><div class="irow"><span style="opacity:.3;margin-right:3px;">&#x283F;</span><div class="rm"><p class="rt">1. Open main valve</p><p class="rs">tap to position in AR</p></div><span class="badge bg" style="font-size:9px;">Placed</span><span class="cv">&#x203A;</span></div><div class="irow"><span style="opacity:.3;margin-right:3px;">&#x283F;</span><div class="rm"><p class="rt">2. Check pressure gauge</p><p class="rs">3D model assigned</p></div><span class="badge bb" style="font-size:9px;">Model</span><span class="cv">&#x203A;</span></div><div class="irow"><span style="opacity:.3;margin-right:3px;">&#x283F;</span><div class="rm"><p class="rt">3. Verify power LED</p><p class="rs">not placed yet</p></div><span class="badge bgy" style="font-size:9px;">Unplaced</span><span class="cv">&#x203A;</span></div><div class="irow" style="justify-content:center;"><span style="color:#1456c9;font-size:12px;font-weight:600;">+ Add Step</span></div></div></div>',
+acts:[{l:'Tap a step &rarr; Place in AR',to:'step-placement',p:true},{l:'Tap "+ Add Step"',to:'guide-editor'},{l:'Tap "Publish"',to:'guide-list-auth'}]};
+
+S['step-placement']={t:'Step Placement in AR',s:'Author drops a pin for this step',dk:true,note:'Author taps a real AR surface to drop a numbered step pin (purple). A reference photo captures automatically when the pin is placed — this becomes the ghost overlay background for the Operator. Optionally assign a 3D USDZ model shown as ghost overlay.',
+body:'<div class="arbg"><div class="topbar"><span style="color:#fff;font-size:15px;">&#x2715;</span><div class="tc"><p class="t">Place Step 2</p><p class="s">"Check pressure gauge"</p></div><span style="color:#7da9ff;font-size:12px;font-weight:600;">Done</span></div><div class="mkr v" style="top:44%;left:48%;">2</div><div style="position:absolute;top:52px;left:12px;background:rgba(22,22,30,.8);border-radius:10px;padding:7px 9px;z-index:3;"><p style="color:#fff;font-size:10.5px;font-weight:600;margin:0;">&#x1F4F8; Reference photo captured</p></div><div style="position:absolute;top:52px;right:12px;background:rgba(175,82,222,.22);border-radius:10px;padding:7px 9px;z-index:3;"><p style="color:#c4a8ff;font-size:10.5px;font-weight:700;margin:0;">&#x1F9CA; Gauge GLB assigned</p></div><div class="bsbar"><div class="gc"><p style="margin:0 0 3px;font-size:11.5px;font-weight:600;">&#x1F446; Tap a surface to place step pin</p><p style="margin:0;font-size:11px;opacity:.7;">Reference photo auto-captured &middot; 3D ghost in AR</p></div></div></div>',
+acts:[{l:'Tap surface &rarr; pin placed',to:'step-placement'},{l:'Done &rarr; back to editor',to:'guide-editor',p:true}]};
+
+S['guide-list-op']={t:'AR Guides — Operator',s:'Pick a published guide to follow',note:'Operators only see published guides. Tapping a guide goes through the same QR scan gate (relocalizes the AR session) then opens the guide session view.',
+body:'<div class="meta" style="display:flex;align-items:center;justify-content:space-between;padding-top:12px;"><span style="color:#1456c9;font-size:12.5px;">&#x2039; Hub</span><p class="t" style="font-size:13.5px;">AR Guides</p><div style="width:32px;"></div></div><div class="bscroll"><div class="ilist"><div class="irow"><div class="ic" style="background:#ede9ff;color:#6b41c7;">&#x1F4CB;</div><div class="rm"><p class="rt">Startup Procedure</p><p class="rs">6 steps &middot; ~8 min</p></div><span class="badge bg">Ready</span><span class="cv">&#x203A;</span></div></div><p style="font-size:10.5px;color:var(--t2);margin:8px 2px;">Only published guides appear here. Tap to begin &mdash; you will scan the anchor QR first.</p></div>',
+acts:[{l:'Tap "Startup Procedure" &rarr; AR session',to:'ar-guide-session',p:true}]};
+
+S['ar-guide-session']={t:'AR Guide Session',s:'Operator follows steps with floating panel',dk:true,note:'Numbered purple pins anchored to AR world positions. Completed steps turn green. Floating panel shows step title + instructions + optional 3D USDZ ghost overlay on real scene. Evidence photos optional per step. Panel togglable to show one at a time.',
+body:'<div class="arbg"><div class="topbar"><span style="color:#fff;font-size:17px;">&#x2715;</span><div class="tc"><p class="t">Startup Procedure</p><p class="s">Step 2 of 6</p></div><span style="color:#7da9ff;font-size:11.5px;font-weight:600;">Steps &#x2191;</span></div><div class="mkr g" style="top:30%;left:24%;">1</div><div class="mkr v" style="top:46%;left:50%;">2</div><div class="mkr p" style="top:36%;left:72%;">3</div><div class="gpanel"><div class="gnum">Step 2 of 6</div><div class="gtit">Check pressure gauge</div><div class="gbod">Verify needle in green zone (1.2&ndash;1.8 bar). Do not proceed below 1.0 bar.</div><div style="display:flex;gap:7px;"><div style="flex:1;background:rgba(255,255,255,.1);color:#fff;text-align:center;border-radius:9px;padding:8px;font-size:11.5px;font-weight:600;">&#x1F4F7; Evidence</div><div style="flex:1;background:#3478F6;color:#fff;text-align:center;border-radius:9px;padding:8px;font-size:11.5px;font-weight:700;">&#x2713; Done</div></div></div></div>',
+acts:[{l:'Done &rarr; advance to next step',to:'ar-guide-session',p:true},{l:'Evidence &rarr; capture photo',to:'ar-guide-session'},{l:'All steps complete &rarr; Sign Off',to:'guide-signoff'}]};
+
+S['guide-signoff']={t:'Guide Sign-Off',s:'Submit sheet after last step',note:'Single POST to /guide-sessions with all step completions, duration, and sign-off name. Evidence photos uploaded as base64 and stored server-side. Session visible in Portal under AR Guides. No open/close lifecycle — whole session submitted atomically.',
+body:'<div class="meta" style="display:flex;align-items:center;justify-content:space-between;padding-top:12px;"><span style="color:#1456c9;font-size:12.5px;">Back</span><p class="t" style="font-size:13.5px;">Sign &amp; Submit</p><div style="width:32px;"></div></div><div class="bscroll"><div class="shr"><div class="shi" style="color:#34C759;">&#x2713;</div><div class="shl" style="color:#1c7d34;">All Steps Done</div><div class="shd">6 of 6 steps completed</div></div><div class="isec">Session Summary</div><div class="ilist"><div class="irow"><span style="font-weight:500;">Guide</span><div style="flex:1;"></div><span class="rs">Startup Procedure</span></div><div class="irow"><span style="font-weight:500;">Duration</span><div style="flex:1;"></div><span class="rs">7 min 34 sec</span></div><div class="irow"><span style="font-weight:500;">Evidence photos</span><div style="flex:1;"></div><span class="rs">4 captured</span></div></div><div class="isec">Sign Off</div><div class="ilist"><div class="irow"><div class="rm"><p class="rs" style="margin:0 0 1px;">Your name</p><p class="rt" style="font-weight:500;">Alex Chen</p></div></div></div><div style="background:#3478F6;color:#fff;text-align:center;border-radius:10px;padding:11px;font-weight:700;font-size:13px;margin-top:10px;">&#x2713; Sign &amp; Submit</div></div>',
+acts:[{l:'Tap "Sign &amp; Submit"',to:'dir-operator',f:'operator',p:true},{l:'Back',to:'ar-guide-session'}]};
+
+// -------- GEMBA WALK --------
+S['gemba-author']={t:'Gemba Walk — Author AR',s:'Place and edit audit checkpoints in AR',dk:true,note:'Purple numbered pins mark Gemba checkpoints in AR. Tap the + FAB or any surface to add a new one (opens the form sheet). Tap an existing pin to edit it. List button shows all checkpoints with swipe-to-edit/delete. Author can upload a reference photo per checkpoint.',
+body:'<div class="arbg"><div class="topbar"><span style="color:rgba(255,255,255,.85);font-size:12px;font-weight:600;">Done</span><div class="tc"><p class="t">Gemba Walk Audit</p><p class="s">4 checkpoints</p></div><span style="color:#c4a8ff;font-size:12px;font-weight:600;">List</span></div><div class="mkr v" style="top:27%;left:21%;">1</div><div class="mkr v" style="top:43%;left:54%;">2</div><div class="mkr v" style="top:59%;left:34%;">3</div><div class="mkr v" style="top:35%;left:74%;">4</div><div class="fab" style="background:#AF52DE;">+</div><div class="bsbar"><div class="gc" style="border-color:rgba(175,82,222,.3);"><p style="margin:0;font-size:11.5px;font-weight:600;">&#x1F512; Origin locked &middot; 4 checkpoints</p><p style="margin:3px 0 0;font-size:11px;opacity:.75;">&#x1F446; Tap surface to add a checkpoint</p></div></div></div>',
+acts:[{l:'Tap surface &rarr; add checkpoint',to:'loctag-form',p:true},{l:'Tap existing pin &rarr; edit',to:'loctag-form'},{l:'Done',to:'hub-author',f:'author'}]};
+
+S['loctag-form']={t:'Gemba Checkpoint Form',s:'Create / edit a loc-tag',note:'Title and defect category are required. Severity optional. Reference photo optional — when captured, Operators see it as a comparison thumbnail. Description saved as empty string if blank (server accepts this). Saved position is the 3D AR point tapped.',
+body:'<div class="meta" style="display:flex;align-items:center;justify-content:space-between;padding-top:12px;"><span style="color:#1456c9;font-size:12.5px;">Cancel</span><p class="t" style="font-size:13.5px;">Checkpoint 2</p><span style="color:#1456c9;font-size:12.5px;font-weight:700;">Save</span></div><div class="bscroll"><div class="isec">Details</div><div class="ilist"><div class="irow"><div class="rm"><p class="rs" style="margin:0 0 1px;">Title *</p><p class="rt" style="font-weight:500;">Check coolant level</p></div></div><div class="irow"><div class="rm"><p class="rs" style="margin:0 0 1px;">Description</p><p class="rt" style="font-weight:500;color:#8e8e93;">Add more details&hellip;</p></div></div></div><div class="isec">Classification</div><div class="ilist"><div class="irow"><span style="font-weight:500;">Defect Category</span><div style="flex:1;"></div><span class="rs" style="color:#1456c9;">Fluid Levels &#x203A;</span></div><div class="irow"><span style="font-weight:500;">Severity</span><div style="flex:1;"></div><span class="rs" style="color:#1456c9;">Medium &#x203A;</span></div></div><div class="isec">Reference Photo</div><div class="ilist"><div class="irow" style="justify-content:center;"><span style="color:#1456c9;font-size:12px;font-weight:600;">&#x1F4F7; Capture reference photo</span></div></div></div>',
+acts:[{l:'Save checkpoint',to:'gemba-author',p:true},{l:'Cancel',to:'gemba-author'}]};
+
+S['gemba-operator']={t:'Gemba Walk — Operator',s:'Navigation arrow guides to each checkpoint',dk:true,note:'Numbered purple pins visible in AR. The next unvisited checkpoint shows a directional arrow + distance readout. If the Author placed a reference photo, a relocalize ghost overlay appears when you first arrive. Tap the pin when you reach it to open the completion sheet.',
+body:'<div class="arbg"><div class="topbar"><span style="color:#fff;font-size:17px;">&#x2715;</span><div class="tc"><p class="t">Gemba Walk Audit</p><p class="s">Checkpoint 2 of 4 &middot; 1 done</p></div><span style="color:#c4a8ff;font-size:11.5px;font-weight:600;">All &#x2191;</span></div><div class="mkr g" style="top:27%;left:21%;">1</div><div class="mkr v" style="top:43%;left:54%;">2</div><div class="mkr p" style="top:59%;left:34%;">3</div><div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-100%);text-align:center;z-index:3;"><div style="font-size:28px;animation:pulse 1s infinite;">&#x2B06;</div><p style="color:#c4a8ff;font-size:11.5px;font-weight:700;margin:3px 0 0;">1.4 m &middot; Checkpoint 2</p></div><div class="bsbar"><div class="gc" style="border-color:rgba(175,82,222,.3);"><p style="margin:0;font-size:11.5px;font-weight:600;color:#c4a8ff;">&#x25CF; Checkpoint 2: Check coolant level</p><p style="margin:3px 0 0;font-size:11px;opacity:.7;">Walk toward arrow &middot; tap pin when you arrive</p></div></div></div>',
+acts:[{l:'Tap purple pin &rarr; completion sheet',to:'loctag-completion',p:true},{l:'Tap All &rarr; full list',to:'loctag-completion'}]};
+
+S['loctag-completion']={t:'Checkpoint Completion',s:'Operator marks status + optional photo',note:'Three statuses: OK, Issue, Blocked. Reference photo shown as comparison thumbnail if captured by Author. Evidence photo optional. Submit POSTs to /loc-tags/:id/completion — record includes operator name, status, notes, timestamp. Results visible in Portal under Gemba Walk.',
+body:'<div class="meta" style="display:flex;align-items:center;justify-content:space-between;padding-top:12px;"><span style="color:#1456c9;font-size:12.5px;">Cancel</span><p class="t" style="font-size:13.5px;">Checkpoint 2</p><div style="width:32px;"></div></div><div class="bscroll"><div style="background:#f0f0f5;border-radius:10px;padding:9px;margin-bottom:10px;text-align:center;"><p style="font-size:10px;color:#8e8e93;margin:0 0 3px;">Reference photo</p><div style="height:72px;background:#d0d0d8;border-radius:7px;display:flex;align-items:center;justify-content:center;color:#8e8e93;font-size:11.5px;">&#x1F4F8; coolant_ref.jpg</div></div><div class="isec">Status</div><div class="ilist"><div class="irow" style="background:#d2f4da;"><span style="color:#1c7d34;font-size:15px;">&#x2713;</span><div class="rm"><p class="rt" style="color:#1c7d34;">OK &mdash; as expected</p></div><span style="color:#1c7d34;">&#x25CF;</span></div><div class="irow"><span style="color:#ad6800;font-size:15px;">&#x26A0;</span><div class="rm"><p class="rt">Issue found</p></div></div><div class="irow"><span style="color:#c41e3a;font-size:15px;">&#x2715;</span><div class="rm"><p class="rt">Blocked / cannot inspect</p></div></div></div><div class="isec">Notes</div><div class="ilist"><div class="irow"><p style="margin:0;color:#8e8e93;font-size:12px;">Add notes&hellip;</p></div></div><div style="display:flex;gap:7px;margin-top:8px;"><div style="flex:1;border:1px solid #d9e8ff;color:#1456c9;text-align:center;border-radius:9px;padding:8px;font-size:11.5px;font-weight:600;">&#x1F4F7; Evidence</div><div style="flex:1;background:#3478F6;color:#fff;text-align:center;border-radius:9px;padding:8px;font-size:11.5px;font-weight:700;">Submit</div></div></div>',
+acts:[{l:'Select OK + Submit',to:'gemba-operator',p:true},{l:'Select Issue + note + Submit',to:'gemba-operator'},{l:'Cancel',to:'gemba-operator'}]};
+
+// -------- PORTAL --------
+S['portal-home']={t:'Portal — Home',s:'Web portal: sib-server.local/portal',portal:true,ptab:'home',note:'Web portal lives at /portal on the SIB server. No login by default (API key optional via Settings). Five tabs cover all data types — Anchors, Sessions, AR Guides, Gemba Walk, 3D Models.',
+body:'<div class="phdr"><h3>Spatial Inspection Backend</h3><div style="display:flex;gap:6px;"><span class="pb">Test Connection</span></div></div><p style="font-size:11.5px;color:#666;margin:0 0 12px;">Select a tab to manage anchors, view history, browse AR guide sessions, check Gemba completions, or manage the 3D model library.</p><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;"><div style="border:1px solid #e5e5ea;border-radius:9px;padding:10px;text-align:center;"><div style="font-size:20px;margin-bottom:3px;">&#x1F4CD;</div><p style="margin:0;font-size:11px;font-weight:600;">12 Anchors</p></div><div style="border:1px solid #e5e5ea;border-radius:9px;padding:10px;text-align:center;"><div style="font-size:20px;margin-bottom:3px;">&#x1F4CB;</div><p style="margin:0;font-size:11px;font-weight:600;">48 Sessions</p></div><div style="border:1px solid #e5e5ea;border-radius:9px;padding:10px;text-align:center;"><div style="font-size:20px;margin-bottom:3px;">&#x1F9CA;</div><p style="margin:0;font-size:11px;font-weight:600;">8 Models</p></div></div>',
+acts:[{l:'Anchors tab',to:'portal-anchors',p:true},{l:'Sessions tab',to:'portal-sessions'},{l:'AR Guides tab',to:'portal-arguides'},{l:'Gemba Walk tab',to:'portal-gemba'},{l:'3D Models tab',to:'portal-models'}]};
+
+S['portal-anchors']={t:'Portal — Anchors',s:'Manage anchors, download QR PDFs',portal:true,ptab:'anchors',note:'Each row: QR (browser preview), PDF (print-ready QR sheet), Delete (cascade: tags + pass-states + QR blob + world map). Delete All deletes every anchor and all their data.',
+body:'<div class="phdr"><h3>Anchors</h3><div style="display:flex;gap:5px;"><span class="pb">+ Create</span><span class="pb pbd">&#x1F5D1; Delete All</span></div></div><table class="ptbl"><thead><tr><th>Name</th><th>Tags</th><th>Created</th><th>Actions</th></tr></thead><tbody><tr><td><strong>Acme Pump Station</strong></td><td>5</td><td>Jun 12</td><td><div style="display:flex;gap:4px;"><span class="pb">QR</span><span class="pb">PDF</span><span class="pb pbd">&#x1F5D1;</span></div></td></tr><tr><td><strong>Line 4 Conveyor</strong></td><td>0</td><td>Jul 1</td><td><div style="display:flex;gap:4px;"><span class="pb">QR</span><span class="pb">PDF</span><span class="pb pbd">&#x1F5D1;</span></div></td></tr></tbody></table><p style="font-size:10.5px;color:#999;margin:10px 0 0;">Delete All cascades through all child data. Cannot be undone.</p>',
+acts:[{l:'Sessions tab',to:'portal-sessions',p:true},{l:'AR Guides tab',to:'portal-arguides'},{l:'Back: Home',to:'portal-home'}]};
+
+S['portal-sessions']={t:'Portal — Inspection Sessions',s:'Per-anchor inspection history',portal:true,ptab:'sessions',note:'Sessions created automatically when an Operator ends an inspection. PASS ratio shown per session. Auto-pruned after 90 days by default. Delete All clears all session records.',
+body:'<div class="phdr"><h3>Inspection Sessions</h3><span class="pb pbd">&#x1F5D1; Delete All</span></div><table class="ptbl"><thead><tr><th>Anchor</th><th>Date</th><th>Result</th><th>Tags</th><th></th></tr></thead><tbody><tr><td>Acme Pump Station</td><td>Jul 17 14:32</td><td><span class="badge bg" style="font-size:9.5px;">3/5 PASS</span></td><td>5</td><td><span class="pb pbd">&#x1F5D1;</span></td></tr><tr><td>Acme Pump Station</td><td>Jul 17 09:14</td><td><span class="badge br" style="font-size:9.5px;">1/5 PASS</span></td><td>5</td><td><span class="pb pbd">&#x1F5D1;</span></td></tr><tr><td>Line 4 Conveyor</td><td>Jul 16 11:00</td><td><span class="badge bg" style="font-size:9.5px;">5/5 PASS</span></td><td>5</td><td><span class="pb pbd">&#x1F5D1;</span></td></tr></tbody></table>',
+acts:[{l:'AR Guides tab',to:'portal-arguides',p:true},{l:'Anchors tab',to:'portal-anchors'},{l:'Gemba tab',to:'portal-gemba'}]};
+
+S['portal-arguides']={t:'Portal — AR Guide Sessions',s:'Sign-off records with evidence photos',portal:true,ptab:'arguides',note:'Each row is a completed guide session submitted atomically by the Operator. Evidence photos link to /guide-sessions/:id/evidence/:stepId. Delete removes session record and entire evidence folder. Retained 90 days by default.',
+body:'<div class="phdr"><h3>AR Guide Sessions</h3><span class="pb pbd">&#x1F5D1; Delete All</span></div><table class="ptbl"><thead><tr><th>Guide</th><th>Anchor</th><th>Signed By</th><th>Steps</th><th>Evidence</th><th></th></tr></thead><tbody><tr><td><strong>Startup Procedure</strong></td><td>Acme</td><td>Alex Chen</td><td>6/6</td><td><span style="color:#1456c9;font-size:11px;cursor:pointer;">4 photos &#x2197;</span></td><td><span class="pb pbd">&#x1F5D1;</span></td></tr><tr><td><strong>Startup Procedure</strong></td><td>Acme</td><td>Maria G.</td><td>5/6</td><td><span style="color:#1456c9;font-size:11px;cursor:pointer;">2 photos &#x2197;</span></td><td><span class="pb pbd">&#x1F5D1;</span></td></tr></tbody></table>',
+acts:[{l:'Gemba Walk tab',to:'portal-gemba',p:true},{l:'3D Models tab',to:'portal-models'},{l:'Sessions tab',to:'portal-sessions'}]};
+
+S['portal-gemba']={t:'Portal — Gemba Walk',s:'Checkpoint completion records',portal:true,ptab:'gemba',note:'Each row is one checkpoint completion linked to a specific loc-tag. Status: OK, Issue, or Blocked. Notes and evidence can be expanded inline. Delete All clears all completion records while leaving the loc-tags (checkpoint definitions) in place.',
+body:'<div class="phdr"><h3>Gemba Walk Completions</h3><span class="pb pbd">&#x1F5D1; Delete All</span></div><table class="ptbl"><thead><tr><th>Checkpoint</th><th>Operator</th><th>Status</th><th>Date</th><th></th></tr></thead><tbody><tr><td>Check coolant level</td><td>Alex Chen</td><td><span class="badge bg" style="font-size:9px;">OK</span></td><td>Jul 17 09:10</td><td><span class="pb pbd">&#x1F5D1;</span></td></tr><tr><td>Inspect valve seal</td><td>Alex Chen</td><td><span class="badge bo" style="font-size:9px;">Issue</span></td><td>Jul 17 09:14</td><td><span class="pb pbd">&#x1F5D1;</span></td></tr><tr><td>Check coolant level</td><td>Maria G.</td><td><span class="badge br" style="font-size:9px;">Blocked</span></td><td>Jul 16 14:02</td><td><span class="pb pbd">&#x1F5D1;</span></td></tr></tbody></table>',
+acts:[{l:'3D Models tab',to:'portal-models',p:true},{l:'AR Guides tab',to:'portal-arguides'},{l:'Anchors tab',to:'portal-anchors'}]};
+
+S['portal-models']={t:'Portal — 3D Model Library',s:'Upload USDZ models for AR guide steps',portal:true,ptab:'models',note:'Models have three USDZ states: Ready (conversion succeeded), Converting (browser-side GLB→USDZ in progress), Failed (manual USDZ upload available). General library models available to all anchors. Kit models assigned to a specific anchor. Preview opens a Three.js viewer in-browser.',
+body:'<div class="phdr"><h3>3D Model Library</h3><span class="pb">+ Upload GLB</span></div><div style="border:1px solid #e5e5ea;border-radius:9px;padding:9px;margin-bottom:7px;display:flex;align-items:center;gap:9px;"><div style="width:40px;height:40px;border-radius:7px;background:#e8e8f0;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">&#x1F9CA;</div><div style="flex:1;"><p style="margin:0;font-size:12.5px;font-weight:600;">Pressure Gauge</p><p style="margin:1px 0 0;font-size:10.5px;color:#8e8e93;">gauge_v2.glb &middot; 1.2 MB &middot; General</p></div><div style="display:flex;gap:5px;align-items:center;"><span class="badge bg" style="font-size:9px;">USDZ Ready</span><span class="pb">&#x1F441; Preview</span><span class="pb pbd">&#x1F5D1;</span></div></div><div style="border:1px solid #e5e5ea;border-radius:9px;padding:9px;margin-bottom:7px;display:flex;align-items:center;gap:9px;"><div style="width:40px;height:40px;border-radius:7px;background:#e8e8f0;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">&#x1F9CA;</div><div style="flex:1;"><p style="margin:0;font-size:12.5px;font-weight:600;">Valve Assembly</p><p style="margin:1px 0 0;font-size:10.5px;color:#8e8e93;">valve_assy.glb &middot; 3.4 MB &middot; Acme kit</p></div><div style="display:flex;gap:5px;align-items:center;"><span class="badge bo" style="font-size:9px;">Converting&hellip;</span><span class="pb" style="opacity:.4;">&#x1F441; Preview</span><span class="pb pbd">&#x1F5D1;</span></div></div><div style="border:1px solid #e5e5ea;border-radius:9px;padding:9px;display:flex;align-items:center;gap:9px;"><div style="width:40px;height:40px;border-radius:7px;background:#ffd9d9;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">&#x26A0;</div><div style="flex:1;"><p style="margin:0;font-size:12.5px;font-weight:600;">Cable Harness</p><p style="margin:1px 0 0;font-size:10.5px;color:#8e8e93;">harness.glb &middot; 890 KB &middot; General</p></div><div style="display:flex;gap:5px;align-items:center;"><span class="badge br" style="font-size:9px;">USDZ Failed</span><span class="pb">&#x2191; Upload USDZ</span><span class="pb pbd">&#x1F5D1;</span></div></div>',
+acts:[{l:'Anchors tab',to:'portal-anchors',p:true},{l:'Sessions tab',to:'portal-sessions'}]};
+
+// ── flow definitions ──────────────────────────────────────
+var F = {
+  author:   ['mode-select','dir-author','hub-author','qrgate-author','ar-author','addtag','capture','failprompt','capture-fail','roi-picker','taglist','edittag','qrgen'],
+  operator: ['mode-select','dir-operator','hub-operator','qrgate-operator','ar-operator','results'],
+  arguides: ['guide-list-auth','guide-editor','step-placement','guide-list-op','ar-guide-session','guide-signoff'],
+  gemba:    ['gemba-author','loctag-form','gemba-operator','loctag-completion'],
+  portal:   ['portal-home','portal-anchors','portal-sessions','portal-arguides','portal-gemba','portal-models']
 };
 
-const flows = {
-  author: ["mode-select","directory-author","hub-author","qrgate-author","ar-author","addtag","capture","failprompt","capture-fail","roi-picker","taglist","edittag","qrgen"],
-  operator: ["mode-select","directory-operator","hub-operator","qrgate-operator","ar-operator","results"],
+var FLOW_LABELS = {
+  author:'Author (tag creation & training)',
+  operator:'Operator (inspection)',
+  arguides:'AR Guides (Author + Operator)',
+  gemba:'Gemba Walk (Author + Operator)',
+  portal:'Web Portal'
 };
 
-let currentFlow = "author";
-let currentScreen = "mode-select";
+var PORTAL_TABS = {home:'Home',anchors:'Anchors',sessions:'Sessions',arguides:'AR Guides',gemba:'Gemba Walk',models:'3D Models'};
 
-function setFlow(flow){
-  currentFlow = flow;
-  document.getElementById("tab-author").classList.toggle("active", flow==="author");
-  document.getElementById("tab-operator").classList.toggle("active", flow==="operator");
-  currentScreen = flows[flow][0];
-  render();
-}
+var curFlow = 'author', curScreen = 'mode-select';
 
-function goTo(id, flow){
-  if (flow && flow !== currentFlow){
-    currentFlow = flow;
-    document.getElementById("tab-author").classList.toggle("active", flow==="author");
-    document.getElementById("tab-operator").classList.toggle("active", flow==="operator");
-  }
-  currentScreen = id;
-  render();
-}
-
-function renderFlowmap(){
-  const map = document.getElementById("flowmap");
-  map.innerHTML = "";
-  const seq = flows[currentFlow];
-  seq.forEach((id, i) => {
-    const node = document.createElement("div");
-    node.className = "flownode" + (id === currentScreen ? " current" : "");
-    node.textContent = screens[id].title;
-    node.onclick = () => goTo(id);
-    map.appendChild(node);
-    if (i < seq.length - 1){
-      const arrow = document.createElement("div");
-      arrow.className = "flowarrow";
-      arrow.textContent = "→";
-      map.appendChild(arrow);
-    }
+function setFlow(f){
+  curFlow = f;
+  ['author','operator','arguides','gemba','portal'].forEach(function(id){
+    q('tab-'+id).classList.toggle('active', id===f);
   });
+  curScreen = F[f][0];
+  render();
+}
+
+function goTo(id, f){
+  if(f && f !== curFlow){
+    curFlow = f;
+    ['author','operator','arguides','gemba','portal'].forEach(function(fid){
+      q('tab-'+fid).classList.toggle('active', fid===f);
+    });
+  }
+  curScreen = id;
+  render();
+}
+
+function buildPortalTabs(active){
+  var out = '<div class="pnav">';
+  Object.keys(PORTAL_TABS).forEach(function(k){
+    var screenId = 'portal-'+(k==='home'?'home':k);
+    out += '<div class="ptab'+(k===active?' a':'')+'" onclick="goTo(\''+screenId+'\')">'+PORTAL_TABS[k]+'</div>';
+  });
+  out += '</div>';
+  return out;
 }
 
 function render(){
-  renderFlowmap();
-  const s = screens[currentScreen];
-  const phoneShell = document.getElementById("phoneShell");
-  phoneShell.className = "phone" + (s.dark ? " dark" : "");
-  document.getElementById("screen").innerHTML = s.body;
-  const actionsEl = document.getElementById("actions");
-  actionsEl.innerHTML = s.actions.map(a =>
-    `<button class="btn${a.primary ? ' primary' : ''}" data-to="${a.to}" data-flow="${a.flow||''}">${a.label}</button>`
-  ).join("");
-  actionsEl.querySelectorAll(".btn").forEach(btn => {
-    btn.onclick = () => goTo(btn.dataset.to, btn.dataset.flow || null);
+  // flowmap
+  var fm = q('flowmap');
+  fm.innerHTML = '';
+  F[curFlow].forEach(function(id,i){
+    var node = document.createElement('div');
+    node.className = 'fnode'+(id===curScreen?' cur':'');
+    node.textContent = S[id].t;
+    node.onclick = (function(sid){return function(){goTo(sid);};})(id);
+    fm.appendChild(node);
+    if(i < F[curFlow].length-1){var a=document.createElement('div');a.className='farr';a.textContent='→';fm.appendChild(a);}
   });
-  document.getElementById("notes").innerHTML = `
-    <h2>${s.title}</h2>
-    <p style="font-size:12px; color:var(--text3); margin:-6px 0 12px;">${s.sub}</p>
-    <p>${s.note}</p>
-    <p style="font-size:12px; color:var(--text3)">Flow: ${currentFlow === "author" ? "Author (tag creation & training)" : "Operator (inspection)"}</p>
-  `;
+
+  var s = S[curScreen];
+
+  if(s.portal){
+    // render portal as a light-bg phone screen with browser chrome inside
+    q('phoneShell').className = 'phone';
+    q('screen').innerHTML =
+      '<div class="pbody" style="margin:8px;border-radius:14px;overflow:hidden;">' +
+        '<div class="pbhead"><div class="pbdots"><span style="background:#FF5F57;"></span>&nbsp;<span style="background:#FEBC2E;"></span>&nbsp;<span style="background:#28C840;"></span></div>' +
+        '<div class="pburl" style="margin-left:6px;">sib-server.local/portal</div></div>' +
+        buildPortalTabs(s.ptab) +
+        '<div class="pcont">'+s.body+'</div>' +
+      '</div>';
+  } else {
+    q('phoneShell').className = 'phone'+(s.dk?' dark':'');
+    q('screen').innerHTML = s.body;
+  }
+
+  // action buttons
+  var ae = q('actions');
+  ae.innerHTML = (s.acts||[]).map(function(a){
+    return '<button class="btn'+(a.p?' pri':'')+'" data-to="'+a.to+'" data-f="'+(a.f||'')+'">'+a.l+'</button>';
+  }).join('');
+  ae.querySelectorAll('.btn').forEach(function(btn){
+    btn.onclick = function(){ goTo(btn.dataset.to, btn.dataset.f||null); };
+  });
+
+  // notes
+  q('notes').innerHTML = '<h2>'+s.t+'</h2><p style="font-size:11.5px;color:var(--t3);margin:-4px 0 10px;">'+s.s+'</p><p>'+s.note+'</p><p style="font-size:11.5px;color:var(--t3);">Flow: '+FLOW_LABELS[curFlow]+'</p>';
 }
 
-setFlow("author");
+setFlow('author');
 </script>
 </body>
 </html>
