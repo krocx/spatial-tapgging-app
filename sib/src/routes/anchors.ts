@@ -381,6 +381,42 @@ router.get('/:id/worldmap', (req: Request, res: Response) => {
   return res.sendFile(filePath);
 });
 
+// ── DELETE /anchors — cascade-delete ALL anchors + tags + pass-states ────────
+router.delete('/', (_req: Request, res: Response) => {
+  const anchors = anchorStore.findAll();
+  let deletedAnchors = 0;
+  let deletedTags = 0;
+  let deletedPassStates = 0;
+
+  for (const anchor of anchors) {
+    const tags = tagStore.findAll().filter(t => t.anchorId === anchor.id);
+    for (const tag of tags) {
+      const ps = findPassStateByTag(tag.id);
+      if (ps) { passStateStore.delete(ps.id); deletedPassStates++; }
+      tagStore.delete(tag.id);
+      deletedTags++;
+    }
+    anchorStore.delete(anchor.id);
+    deletedAnchors++;
+
+    // Clean up binary blobs
+    const qrPath  = path.join(QRIMAGES_DIR,  `${anchor.id}.png`);
+    const mapPath = path.join(WORLDMAPS_DIR, `${anchor.id}.worldmap`);
+    try { fs.unlinkSync(qrPath);  } catch { /* not present */ }
+    try { fs.unlinkSync(mapPath); } catch { /* not present */ }
+  }
+
+  console.log(
+    `[SIB] Deleted all ${deletedAnchors} anchor(s) ` +
+    `(+${deletedTags} tags, +${deletedPassStates} pass-states)`
+  );
+
+  return res.json({
+    data: { deleted: deletedAnchors, deletedTags, deletedPassStates },
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // ── DELETE /anchors/:id — cascade-delete anchor + tags + pass-states ──────────
 router.delete('/:id', (req: Request, res: Response) => {
   const anchor = anchorStore.findById(req.params.id);

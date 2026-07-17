@@ -381,6 +381,7 @@
 <div id="toolbar" style="display:none">
   <input id="search" type="search" placeholder="🔍 Search by anchor ID or asset…" oninput="renderAnchors()" />
   <button class="btn btn-ghost btn-sm" onclick="loadAnchors()">⟳ Refresh</button>
+  <button class="btn btn-danger btn-sm" onclick="deleteAllAnchors()" style="margin-left:auto">🗑 Delete All</button>
 </div>
 
 <!-- Anchor grid -->
@@ -1837,6 +1838,15 @@ async function _apiDelete(url) {
     throw new Error(j.error || `HTTP ${resp.status}`);
   }
   return resp.status === 204 ? null : resp.json();
+}
+
+async function deleteAllAnchors() {
+  if (!confirm('Delete ALL anchors? This will also permanently delete all their tags, trained pass-state images, QR images, and world maps. This cannot be undone.')) return;
+  try {
+    const r = await _apiDelete('/anchors');
+    toast(`Deleted ${r?.data?.deleted ?? '?'} anchor(s) (+${r?.data?.deletedTags ?? '?'} tags)`);
+    await loadAnchors();
+  } catch (e) { toast(`Delete failed: ${e.message}`, 4000); }
 }
 
 async function deleteSession(id) {
