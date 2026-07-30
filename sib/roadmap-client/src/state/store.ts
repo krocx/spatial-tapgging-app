@@ -7,7 +7,7 @@
 
 import { create } from 'zustand';
 import type {
-  Mindmap, MindmapNode, MindmapEdge, MindmapLane, MindmapNodeType,
+  Mindmap, MindmapNode, MindmapEdge, MindmapLane, MindmapGroup, MindmapNodeType,
   MindmapNodeStatus, MindmapNodeReview, MindmapComment, MindmapSummary,
   MindmapWsEvent, MapSyncPayload, CursorPayload, PresencePayload,
 } from '@spatial/shared';
@@ -15,6 +15,8 @@ import { mindmapApi } from '../api/mindmap-api.js';
 import { CollabClient, type CollabStatus } from '../ws/collab.js';
 import { autoLayout, type LayoutMode } from '../utils/layout.js';
 import { NODE_W, NODE_H } from '../utils/geometry.js';
+import { computeSteps, stepBounds, type PresentationStep } from '../utils/presentation.js';
+import type { MindmapNodeShape } from '@spatial/shared';
 
 export interface Peer {
   clientId: string;
@@ -27,7 +29,42 @@ export interface Peer {
 
 export interface Camera { x: number; y: number; scale: number; }
 
-interface HistoryEntry { nodes: MindmapNode[]; edges: MindmapEdge[]; lanes?: MindmapLane[]; }
+interface HistoryEntry {
+  nodes: MindmapNode[];
+  edges: MindmapEdge[];
+  lanes?: MindmapLane[];
+  groups?: MindmapGroup[];
+}
+
+/** 'none' matches nodes without a status. */
+export type StatusFilter = MindmapNodeStatus | 'none';
+
+export interface ViewFilters {
+  types: MindmapNodeType[];
+  statuses: StatusFilter[];
+  groupIds: string[];
+}
+
+export const EMPTY_FILTERS: ViewFilters = { types: [], statuses: [], groupIds: [] };
+
+/**
+ * Highlight rule: within a category selections OR together; across categories
+ * they AND. Returns null when no filters are active (= highlight everything).
+ */
+export function computeHighlight(map: Mindmap, f: ViewFilters): Set<string> | null {
+  if (f.types.length === 0 && f.statuses.length === 0 && f.groupIds.length === 0) return null;
+  const grouped = new Set<string>(
+    (map.groups ?? []).filter(g => f.groupIds.includes(g.id)).flatMap(g => g.nodeIds),
+  );
+  const out = new Set<string>();
+  for (const n of map.nodes) {
+    if (f.types.length > 0 && !f.types.includes(n.type)) continue;
+    if (f.statuses.length > 0 && !f.statuses.includes(n.status ?? 'none')) continue;
+    if (f.groupIds.length > 0 && !grouped.has(n.id)) continue;
+    out.add(n.id);
+  }
+  return out;
+}
 
 const HISTORY_LIMIT = 100;
 let collab: CollabClient | null = null;   // socket lives outside the store
@@ -55,6 +92,11 @@ interface State {
   searchQuery: string;
   /** Last applied auto-layout; any manual node move resets to 'freeform'. */
   layoutMode: 'freeform' | 'hierarchical' | 'grid';
+  /** View filters — per-client, never synced or persisted. */
+  filters: ViewFilters;
+  showFilterPanel: boolean;
+  /** Presentation mode — per-client walkthrough of lanes/groups. */
+  presentation: { active: boolean; step: number; steps: PresentationStep[] };
   // collab
   collabStatus: CollabStatus;
   peers: Record<string, Peer>;
@@ -105,6 +147,26 @@ interface Actions {
   addLane(): void;
   fitView(): void;
   importMapFromJson(raw: string): Promise<void>;
+
+  // Groups + view filters
+  setGroups(groups: MindmapGroup[]): void;
+  createGroupFromSelection(name: string): void;
+  renameGroup(id: string, name: string): void;
+  deleteGroup(id: string): void;
+  toggleTypeFilter(t: MindmapNodeType): void;
+  toggleStatusFilter(s: StatusFilter): void;
+  toggleGroupFilter(id: string): void;
+  clearFilters(): void;
+  setShowFilterPanel(v: boolean): void;
+
+  // Rich nodes + collapse + presentation
+  toggleCollapse(id: string): void;
+  setNodeIcon(id: string, icon: string | undefined): void;
+  setNodeShape(id: string, shape: MindmapNodeShape | undefined): void;
+  setNodeLink(id: string, link: string | undefined): void;
+  startPresentation(): void;
+  exitPresentation(): void;
+  presentationGoto(step: number): void;
   updateLane(id: string, patch: Partial<MindmapLane>): void;
   removeLane(id: string): void;
 
@@ -139,6 +201,7 @@ export const useStore = create<State & Actions>((set, get) => {
       nodes: structuredClone(map.nodes),
       edges: structuredClone(map.edges),
       lanes: map.lanes ? structuredClone(map.lanes) : undefined,
+      groups: map.groups ? structuredClone(map.groups) : undefined,
     };
     set({ undoStack: [...undoStack.slice(-HISTORY_LIMIT + 1), entry], redoStack: [] });
   }
@@ -264,6 +327,11 @@ export const useStore = create<State & Actions>((set, get) => {
         mutateGraph(m => { m.lanes = lanes; });
         return;
       }
+      case 'map:groups': {
+        const { groups } = event.payload as { groups: MindmapGroup[] };
+        mutateGraph(m => { m.groups = groups; });
+        return;
+      }
       case 'comment:add': {
         const { nodeId, comment } = event.payload as { nodeId: string; comment: MindmapComment };
         mutateGraph(m => {
@@ -303,6 +371,9 @@ export const useStore = create<State & Actions>((set, get) => {
     defaultNodeType: 'generic',
     searchQuery: '',
     layoutMode: 'freeform',
+    filters: EMPTY_FILTERS,
+    showFilterPanel: false,
+    presentation: { active: false, step: 0, steps: [] },
     collabStatus: 'disconnected',
     peers: {},
     dirty: false,
@@ -499,10 +570,142 @@ export const useStore = create<State & Actions>((set, get) => {
         mutateGraph(m => {
           m.nodes = m.nodes.filter(n => n.id !== id);
           m.edges = m.edges.filter(e => e.from !== id && e.to !== id);
+          // Cascade group memberships (server does the same on node:delete).
+          if (m.groups?.some(g => g.nodeIds.includes(id))) {
+            m.groups = m.groups.map(g =>
+              g.nodeIds.includes(id) ? { ...g, nodeIds: g.nodeIds.filter(n => n !== id) } : g,
+            );
+          }
         });
         collab?.send('node:delete', { id });
       }
       set({ selectedNodeIds: [], selectedEdgeId: null, editingNodeId: null });
+    },
+
+    // ── Groups ───────────────────────────────────────────────────────────
+
+    setGroups(groups) {
+      pushHistory();
+      mutateGraph(m => { m.groups = groups; });
+      collab?.send('map:groups', { groups });
+    },
+
+    createGroupFromSelection(name) {
+      const { map, selectedNodeIds } = get();
+      if (!map || selectedNodeIds.length === 0 || !name.trim()) return;
+      const group: MindmapGroup = {
+        id: crypto.randomUUID(),
+        name: name.trim(),
+        nodeIds: [...selectedNodeIds],
+      };
+      get().setGroups([...(map.groups ?? []), group]);
+      // Immediately filter to the new group so the user sees what they made.
+      set(s => ({
+        filters: { ...s.filters, groupIds: [group.id] },
+        showFilterPanel: true,
+        statusMessage: `Group "${group.name}" (${group.nodeIds.length} nodes)`,
+      }));
+    },
+
+    renameGroup(id, name) {
+      if (!name.trim()) return;
+      get().setGroups((get().map?.groups ?? []).map(g => g.id === id ? { ...g, name: name.trim() } : g));
+    },
+
+    deleteGroup(id) {
+      get().setGroups((get().map?.groups ?? []).filter(g => g.id !== id));
+      set(s => ({ filters: { ...s.filters, groupIds: s.filters.groupIds.filter(g => g !== id) } }));
+    },
+
+    // ── View filters (per-client) ────────────────────────────────────────
+
+    toggleTypeFilter: t => set(s => ({
+      filters: {
+        ...s.filters,
+        types: s.filters.types.includes(t)
+          ? s.filters.types.filter(x => x !== t)
+          : [...s.filters.types, t],
+      },
+    })),
+
+    toggleStatusFilter: st => set(s => ({
+      filters: {
+        ...s.filters,
+        statuses: s.filters.statuses.includes(st)
+          ? s.filters.statuses.filter(x => x !== st)
+          : [...s.filters.statuses, st],
+      },
+    })),
+
+    toggleGroupFilter: id => set(s => ({
+      filters: {
+        ...s.filters,
+        groupIds: s.filters.groupIds.includes(id)
+          ? s.filters.groupIds.filter(x => x !== id)
+          : [...s.filters.groupIds, id],
+      },
+    })),
+
+    clearFilters: () => set({ filters: EMPTY_FILTERS }),
+    setShowFilterPanel: v => set({ showFilterPanel: v }),
+
+    // ── Rich nodes + collapse ────────────────────────────────────────────
+
+    toggleCollapse(id) {
+      const node = get().map?.nodes.find(n => n.id === id);
+      if (node) patchNode(id, { collapsed: !node.collapsed || undefined });
+    },
+
+    setNodeIcon: (id, icon) => patchNode(id, { icon }),
+    setNodeShape: (id, shape) => patchNode(id, { shape: shape === 'rounded' ? undefined : shape }),
+    setNodeLink(id, link) {
+      const trimmed = link?.trim();
+      if (trimmed && !/^https?:\/\/\S+$/i.test(trimmed)) {
+        set({ error: 'Links must start with http:// or https://' });
+        return;
+      }
+      patchNode(id, { link: trimmed || undefined });
+    },
+
+    // ── Presentation mode ────────────────────────────────────────────────
+
+    startPresentation() {
+      const { map } = get();
+      if (!map) return;
+      const steps = computeSteps(map);
+      set({
+        presentation: { active: true, step: 0, steps },
+        selectedNodeIds: [], selectedEdgeId: null, selectedLaneId: null,
+        editingNodeId: null, showFilterPanel: false,
+      });
+      get().presentationGoto(0);
+    },
+
+    exitPresentation() {
+      set({ presentation: { active: false, step: 0, steps: [] } });
+      get().fitView();
+    },
+
+    presentationGoto(step) {
+      const { map, presentation } = get();
+      if (!map || presentation.steps.length === 0) return;
+      const clamped = Math.max(0, Math.min(presentation.steps.length - 1, step));
+      const bounds = stepBounds(map, presentation.steps[clamped]);
+      if (bounds) {
+        const pad = 90;
+        const vw = window.innerWidth, vh = window.innerHeight - 90;
+        const w = bounds.maxX - bounds.minX + pad * 2;
+        const h = bounds.maxY - bounds.minY + pad * 2;
+        const scale = Math.min(1.6, Math.max(0.15, Math.min(vw / w, vh / h)));
+        set({
+          camera: {
+            scale,
+            x: (vw - (bounds.maxX - bounds.minX) * scale) / 2 - bounds.minX * scale,
+            y: (vh - (bounds.maxY - bounds.minY) * scale) / 2 - bounds.minY * scale + 30,
+          },
+        });
+      }
+      set(s => ({ presentation: { ...s.presentation, step: clamped } }));
     },
 
     // ── Lanes ────────────────────────────────────────────────────────────
@@ -589,6 +792,7 @@ export const useStore = create<State & Actions>((set, get) => {
           nodes: parsed.nodes,
           edges: parsed.edges,
           lanes: parsed.lanes ?? [],
+          groups: parsed.groups ?? [],
           versionLabel: 'imported from JSON',
         });
         await get().refreshList();
@@ -717,11 +921,12 @@ export const useStore = create<State & Actions>((set, get) => {
         nodes: structuredClone(map.nodes),
         edges: structuredClone(map.edges),
         lanes: map.lanes ? structuredClone(map.lanes) : undefined,
+        groups: map.groups ? structuredClone(map.groups) : undefined,
       };
       set({
         undoStack: undoStack.slice(0, -1),
         redoStack: [...get().redoStack, current],
-        map: { ...map, nodes: entry.nodes, edges: entry.edges, lanes: entry.lanes, updatedAt: Date.now() },
+        map: { ...map, nodes: entry.nodes, edges: entry.edges, lanes: entry.lanes, groups: entry.groups, updatedAt: Date.now() },
         dirty: true,
       });
       // Undo/redo re-syncs peers via a full REST save (server broadcasts map:sync).
@@ -736,11 +941,12 @@ export const useStore = create<State & Actions>((set, get) => {
         nodes: structuredClone(map.nodes),
         edges: structuredClone(map.edges),
         lanes: map.lanes ? structuredClone(map.lanes) : undefined,
+        groups: map.groups ? structuredClone(map.groups) : undefined,
       };
       set({
         redoStack: redoStack.slice(0, -1),
         undoStack: [...get().undoStack, current],
-        map: { ...map, nodes: entry.nodes, edges: entry.edges, lanes: entry.lanes, updatedAt: Date.now() },
+        map: { ...map, nodes: entry.nodes, edges: entry.edges, lanes: entry.lanes, groups: entry.groups, updatedAt: Date.now() },
         dirty: true,
       });
       void get().save('redo');
@@ -752,7 +958,7 @@ export const useStore = create<State & Actions>((set, get) => {
       try {
         const saved = await mindmapApi.save({
           id: map.id, name: map.name, nodes: map.nodes, edges: map.edges,
-          lanes: map.lanes ?? [], versionLabel: label,
+          lanes: map.lanes ?? [], groups: map.groups ?? [], versionLabel: label,
         });
         set({ map: saved, dirty: false, statusMessage: `Saved ${new Date().toLocaleTimeString()}`, error: null });
       } catch (err) { set({ error: (err as Error).message }); }

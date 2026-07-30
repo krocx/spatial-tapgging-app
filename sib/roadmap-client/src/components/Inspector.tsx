@@ -5,12 +5,21 @@
 // Renders nothing when the selection is empty (canvas stays clutter-free).
 
 import { useState } from 'react';
-import type { MindmapNodeStatus, MindmapNodeReview } from '@spatial/shared';
+import type { MindmapNodeStatus, MindmapNodeReview, MindmapNodeShape } from '@spatial/shared';
 import { useStore } from '../state/store.js';
 import {
   NODE_COLORS, NODE_TYPE_LABELS, NODE_TYPES,
   STATUS_LABELS, NODE_STATUSES,
 } from '../utils/colors.js';
+import { ICON_PATHS, ICON_NAMES } from '../utils/icons.js';
+
+const SHAPES: Array<{ value: MindmapNodeShape; label: string }> = [
+  { value: 'rounded', label: 'Rounded' },
+  { value: 'rect', label: 'Rect' },
+  { value: 'pill', label: 'Pill' },
+  { value: 'diamond', label: 'Diamond' },
+  { value: 'hexagon', label: 'Hexagon' },
+];
 
 const REVIEW_OPTIONS: Array<{ value: MindmapNodeReview; label: string; cls: string }> = [
   { value: 'approved', label: '✓ Approve', cls: 'review-approve' },
@@ -39,10 +48,36 @@ export function Inspector(): JSX.Element | null {
         <h3>{selectedNodeIds.length} nodes selected</h3>
         <p className="inspector-hint">Drag to move together · ⌘C copy · ⌘D duplicate · Del remove</p>
         <BulkTypeRow />
+        <GroupCreateRow />
       </aside>
     );
   }
   return null;
+}
+
+function GroupCreateRow(): JSX.Element {
+  const createGroupFromSelection = useStore(s => s.createGroupFromSelection);
+  const [name, setName] = useState('');
+  return (
+    <label className="inspector-field">Group selection
+      <div className="group-create">
+        <input
+          value={name}
+          placeholder="Group name…"
+          onChange={e => setName(e.target.value)}
+          onKeyDown={e => {
+            e.stopPropagation();
+            if (e.key === 'Enter' && name.trim()) { createGroupFromSelection(name); setName(''); }
+          }}
+        />
+        <button
+          className="btn primary"
+          disabled={!name.trim()}
+          onClick={() => { createGroupFromSelection(name); setName(''); }}
+        >Group</button>
+      </div>
+    </label>
+  );
 }
 
 function BulkTypeRow(): JSX.Element {
@@ -72,6 +107,20 @@ function BulkTypeRow(): JSX.Element {
   );
 }
 
+/** Miniature shape preview for the picker. */
+function ShapeGlyph({ shape }: { shape: MindmapNodeShape }): JSX.Element {
+  const props = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.6 };
+  return (
+    <svg viewBox="0 0 26 16" width={24} height={15}>
+      {shape === 'rounded' && <rect x={2} y={2} width={22} height={12} rx={4} {...props} />}
+      {shape === 'rect' && <rect x={2} y={2} width={22} height={12} rx={1} {...props} />}
+      {shape === 'pill' && <rect x={2} y={2} width={22} height={12} rx={6} {...props} />}
+      {shape === 'diamond' && <polygon points="13,1 25,8 13,15 1,8" {...props} />}
+      {shape === 'hexagon' && <polygon points="7,2 19,2 24,8 19,14 7,14 2,8" {...props} />}
+    </svg>
+  );
+}
+
 function NodePanel({ nodeId }: { nodeId: string }): JSX.Element | null {
   const node = useStore(s => s.map?.nodes.find(n => n.id === nodeId));
   const setNodeType = useStore(s => s.setNodeType);
@@ -80,6 +129,9 @@ function NodePanel({ nodeId }: { nodeId: string }): JSX.Element | null {
   const toggleMilestone = useStore(s => s.toggleMilestone);
   const setNodeNotes = useStore(s => s.setNodeNotes);
   const updateNodeText = useStore(s => s.updateNodeText);
+  const setNodeShape = useStore(s => s.setNodeShape);
+  const setNodeIcon = useStore(s => s.setNodeIcon);
+  const setNodeLink = useStore(s => s.setNodeLink);
   if (!node) return null;
 
   const sib = node.metadata?.sib as { kind?: string; id?: string } | undefined;
@@ -136,6 +188,53 @@ function NodePanel({ nodeId }: { nodeId: string }): JSX.Element | null {
             </button>
           ))}
         </div>
+      </label>
+
+      <label className="inspector-field">Shape
+        <div className="shape-row">
+          {SHAPES.map(s => (
+            <button
+              key={s.value}
+              className={`shape-btn ${(node.shape ?? 'rounded') === s.value ? 'active' : ''}`}
+              title={s.label}
+              onClick={() => setNodeShape(node.id, s.value)}
+            >
+              <ShapeGlyph shape={s.value} />
+            </button>
+          ))}
+        </div>
+      </label>
+
+      <label className="inspector-field">Icon
+        <div className="icon-grid">
+          <button
+            className={`icon-btn ${!node.icon ? 'active' : ''}`}
+            title="No icon"
+            onClick={() => setNodeIcon(node.id, undefined)}
+          >∅</button>
+          {ICON_NAMES.map(name => (
+            <button
+              key={name}
+              className={`icon-btn ${node.icon === name ? 'active' : ''}`}
+              title={name}
+              onClick={() => setNodeIcon(node.id, name)}
+            >
+              <svg viewBox="0 0 24 24" width={15} height={15}>
+                <path d={ICON_PATHS[name]} fill="none" stroke="currentColor" strokeWidth={2}
+                      strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          ))}
+        </div>
+      </label>
+
+      <label className="inspector-field">Link
+        <input
+          defaultValue={node.link ?? ''}
+          placeholder="https://…"
+          onBlur={e => { if (e.target.value.trim() !== (node.link ?? '')) setNodeLink(node.id, e.target.value); }}
+          onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+        />
       </label>
 
       <label className="inspector-field">Notes

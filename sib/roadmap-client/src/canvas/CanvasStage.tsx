@@ -5,14 +5,15 @@
 //   Create:  double-click empty canvas; long-press on touch
 // Pure interaction layer — graph mutations go through store actions.
 
-import { useRef, useState, useCallback, useEffect } from 'react';
-import { useStore, noteMouseWorld } from '../state/store.js';
+import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
+import { useStore, noteMouseWorld, computeHighlight } from '../state/store.js';
 import { toWorld, nodeCenter, NODE_W, NODE_H } from '../utils/geometry.js';
 import { NodeView } from './NodeView.js';
 import { EdgeView } from './EdgeView.js';
 import { CursorLayer } from './CursorLayer.js';
 import { LaneLayer } from './LaneLayer.js';
 import { Minimap } from './Minimap.js';
+import { computeVisibility, hasDirectedChildren } from '../utils/visibility.js';
 
 const MIN_SCALE = 0.15;
 const MAX_SCALE = 3;
@@ -100,14 +101,15 @@ export function CanvasStage(): JSX.Element {
     const onBackground = e.target === svgRef.current || (e.target as Element).classList?.contains('lane-band');
     if (!onBackground && e.button !== 1) return;
 
-    if (e.button === 1 || spaceDown || e.pointerType === 'touch') {
+    const presenting = useStore.getState().presentation.active;
+    if (e.button === 1 || spaceDown || e.pointerType === 'touch' || presenting) {
       // Middle mouse / space / single-finger touch on background → pan.
       panStart.current = { mx: p.x, my: p.y, cx: camera.x, cy: camera.y };
       setPanning(true);
       (e.currentTarget as Element).setPointerCapture(e.pointerId);
 
       // Touch: long-press on empty canvas creates a node (no dblclick on iPad).
-      if (e.pointerType === 'touch') {
+      if (e.pointerType === 'touch' && !presenting) {
         const world = toWorld(p.x, p.y, camera);
         longPress.current = window.setTimeout(() => {
           setPanning(false);
@@ -188,12 +190,33 @@ export function CanvasStage(): JSX.Element {
   }, [pendingEdgeFrom, setPendingEdgeFrom, finishMarquee, cancelLongPress]);
 
   const onDoubleClick = useCallback((e: React.MouseEvent) => {
+    if (useStore.getState().presentation.active) return;
     const onBackground = e.target === svgRef.current || (e.target as Element).classList?.contains('lane-band');
     if (!onBackground) return;
     const p = screenPoint(e);
     const world = toWorld(p.x, p.y, camera);
     addNode(world.x, world.y);
   }, [camera, addNode, screenPoint]);
+
+  const filters = useStore(s => s.filters);
+  const presentation = useStore(s => s.presentation);
+
+  // null = no filters active → everything full-strength. During presentation,
+  // the current step's node set takes over as the highlight source.
+  const highlight = useMemo(() => {
+    if (!map) return null;
+    if (presentation.active) {
+      const step = presentation.steps[presentation.step];
+      return step && step.nodeIds.length > 0 ? new Set(step.nodeIds) : null;
+    }
+    return computeHighlight(map, filters);
+  }, [map, filters, presentation]);
+
+  // Collapsible branches: hidden nodes/edges are not rendered at all.
+  const visibility = useMemo(
+    () => (map ? computeVisibility(map) : { hidden: new Set<string>(), hiddenCounts: new Map<string, number>() }),
+    [map],
+  );
 
   if (!map) return <div className="canvas-empty">No map loaded</div>;
 
@@ -233,7 +256,14 @@ export function CanvasStage(): JSX.Element {
 
         <g transform={`translate(${camera.x} ${camera.y}) scale(${camera.scale})`}>
           <LaneLayer />
-          {map.edges.map(e => <EdgeView key={e.id} edge={e} />)}
+          {map.edges
+            .filter(e => !visibility.hidden.has(e.from) && !visibility.hidden.has(e.to))
+            .map(e => (
+              <EdgeView
+                key={e.id} edge={e}
+                dimmed={highlight !== null && !(highlight.has(e.from) && highlight.has(e.to))}
+              />
+            ))}
 
           {/* Live connection preview while dragging from a node handle */}
           {pendingSource && (
@@ -244,7 +274,16 @@ export function CanvasStage(): JSX.Element {
             />
           )}
 
-          {map.nodes.map(n => <NodeView key={n.id} node={n} onConnectDrop={addEdge} />)}
+          {map.nodes
+            .filter(n => !visibility.hidden.has(n.id))
+            .map(n => (
+              <NodeView
+                key={n.id} node={n} onConnectDrop={addEdge}
+                dimmed={highlight !== null && !highlight.has(n.id)}
+                collapsible={hasDirectedChildren(map, n.id)}
+                hiddenCount={visibility.hiddenCounts.get(n.id) ?? 0}
+              />
+            ))}
 
           {/* Marquee rectangle */}
           {marquee && (

@@ -63,6 +63,81 @@ button { font: inherit; }
 .sib-link { font-size: 11px; color: var(--muted); background: #eef2f7; border-radius: 8px; padding: 8px 10px; }
 .sib-link code { font-size: 10px; }
 
+/* ── Presentation mode ────────────────────────────────────── */
+
+.present-bar {
+  position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 16px;
+  background: rgba(255,255,255,.95); border: 1px solid var(--border);
+  border-radius: 14px; padding: 10px 16px; z-index: 50;
+  box-shadow: 0 8px 28px rgba(15,23,42,.16);
+}
+.present-title { display: flex; flex-direction: column; min-width: 120px; }
+.present-step-name { font-weight: 700; font-size: 15px; }
+.present-progress { font-size: 11px; color: var(--muted); }
+.present-dots { display: flex; gap: 5px; }
+.present-dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  border: none; background: #cbd5e1; cursor: pointer; padding: 0;
+}
+.present-dot.active { background: var(--accent); transform: scale(1.3); }
+.present-controls { display: flex; gap: 6px; }
+
+/* ── Shape + icon pickers ─────────────────────────────────── */
+
+.shape-row { display: flex; gap: 4px; }
+.shape-btn {
+  flex: 1; padding: 5px 2px; display: grid; place-items: center;
+  border: 1px solid var(--border); border-radius: 7px;
+  background: var(--panel); color: var(--muted); cursor: pointer;
+}
+.shape-btn.active { border-color: var(--accent); color: var(--accent); background: #eaf1fe; }
+.icon-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.icon-btn {
+  aspect-ratio: 1; display: grid; place-items: center;
+  border: 1px solid var(--border); border-radius: 7px;
+  background: var(--panel); color: var(--muted); cursor: pointer; font-size: 11px;
+  padding: 0;
+}
+.icon-btn:hover { background: #f1f5f9; }
+.icon-btn.active { border-color: var(--accent); color: var(--accent); background: #eaf1fe; }
+
+/* ── Filter panel ─────────────────────────────────────────── */
+
+.filter-panel {
+  width: 210px; flex-shrink: 0;
+  background: var(--panel); border-right: 1px solid var(--border);
+  padding: 12px; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.filter-head { display: flex; align-items: center; gap: 6px; }
+.filter-head h3 { flex: 1; margin: 0; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.filter-clear { font-size: 11px; color: var(--accent); padding: 2px 6px; }
+.filter-panel section h4 { margin: 0 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.filter-hint { font-size: 11px; color: var(--muted); margin: 0; line-height: 1.5; }
+
+.chip-col { display: flex; flex-direction: column; gap: 4px; }
+.chip-row { display: flex; align-items: center; gap: 4px; }
+.chip-row .chip { flex: 1; }
+.chip {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 9px; font-size: 12.5px; text-align: left;
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--panel); color: var(--text); cursor: pointer;
+}
+.chip:hover { background: #f1f5f9; }
+.chip.active { background: #eaf1fe; border-color: var(--accent); color: #1d4ed8; font-weight: 600; }
+.chip-count { margin-left: auto; font-size: 10.5px; color: var(--muted); }
+.chip-delete {
+  border: none; background: none; color: var(--muted); cursor: pointer;
+  font-size: 11px; padding: 2px 4px; opacity: .5;
+}
+.chip-delete:hover { opacity: 1; color: var(--danger); }
+
+.group-create { display: flex; gap: 6px; }
+.group-create input { flex: 1; min-width: 0; }
+.btn-active { background: #eaf1fe; border-color: var(--accent); color: #1d4ed8; }
+
 /* ── Review buttons ───────────────────────────────────────── */
 
 .review-row { display: flex; gap: 5px; }

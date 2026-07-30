@@ -41,6 +41,10 @@ export function Toolbar(): JSX.Element | null {
   const importFromSib = useStore(s => s.importFromSib);
   const layoutMode = useStore(s => s.layoutMode);
   const fitView = useStore(s => s.fitView);
+  const filters = useStore(s => s.filters);
+  const showFilterPanel = useStore(s => s.showFilterPanel);
+  const setShowFilterPanel = useStore(s => s.setShowFilterPanel);
+  const startPresentation = useStore(s => s.startPresentation);
 
   const [showExport, setShowExport] = useState(false);
   const [showVersions, setShowVersions] = useState(false);
@@ -58,6 +62,7 @@ export function Toolbar(): JSX.Element | null {
   const matches = searchQuery.trim()
     ? map.nodes.filter(n => n.text.toLowerCase().includes(searchQuery.trim().toLowerCase())).slice(0, 8)
     : [];
+  const filterCount = filters.types.length + filters.statuses.length + filters.groupIds.length;
 
   const pickType = (t: typeof NODE_TYPES[number]) => {
     setDefaultNodeType(t);
@@ -140,6 +145,19 @@ export function Toolbar(): JSX.Element | null {
       </div>
 
       <button className="btn" onClick={fitView} title="Zoom to fit the whole map">Fit</button>
+
+      <button
+        className={`btn ${showFilterPanel || filterCount > 0 ? 'btn-active' : ''}`}
+        onClick={() => setShowFilterPanel(!showFilterPanel)}
+        title="View filters: highlight by layer, status, or group"
+      >
+        Filters{filterCount > 0 ? ` (${filterCount})` : ''}
+      </button>
+
+      <button className="btn" onClick={startPresentation}
+              title="Walk through the map lane by lane (→ / ← / Esc)">
+        ▶ Present
+      </button>
 
       <div className="menu-wrap">
         <button className="btn" onClick={() => { const v = showSib; closeMenus(); setShowSib(!v); }}>

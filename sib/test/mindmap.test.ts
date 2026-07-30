@@ -292,6 +292,82 @@ test('row lanes sanitize and render horizontally', () => {
   assert.ok(svg.includes('>Now<'));
 });
 
+// ── Rich node fields: collapsed / icon / shape / link ──────────────────────
+
+test('collapsed, icon, shape, link sanitize correctly; unsafe links dropped', () => {
+  let map: Mindmap = saveMindmap({ name: 'Rich', nodes: [], edges: [] });
+  map = applyGraphEvent(map, event('node:add', map.id, node('n1', {
+    collapsed: true, icon: 'gear', shape: 'hexagon', link: 'https://sib.internal/docs',
+  })))!;
+  assert.equal(map.nodes[0].collapsed, true);
+  assert.equal(map.nodes[0].icon, 'gear');
+  assert.equal(map.nodes[0].shape, 'hexagon');
+  assert.equal(map.nodes[0].link, 'https://sib.internal/docs');
+
+  // javascript: link and bogus shape are silently dropped
+  const dirty = applyGraphEvent(map, event('node:update', map.id, node('n1', {
+    link: 'javascript:alert(1)', shape: 'blob' as never, updatedAt: Date.now() + 50,
+  })))!;
+  assert.equal(dirty.nodes[0].link, undefined);
+  assert.equal(dirty.nodes[0].shape, undefined);
+
+  // 'rounded' is the default — not persisted
+  const rounded = applyGraphEvent(dirty, event('node:update', map.id, node('n1', {
+    shape: 'rounded', updatedAt: Date.now() + 100,
+  })))!;
+  assert.equal(rounded.nodes[0].shape, undefined);
+});
+
+test('REST save sanitizes: unsafe links stripped, dangling edges dropped', () => {
+  const map = saveMindmap({
+    name: 'RestSanitize',
+    nodes: [
+      node('a', { link: 'javascript:alert(1)' as never, shape: 'blob' as never }),
+      node('b', { link: 'https://ok.example' }),
+    ],
+    edges: [
+      { id: 'e1', from: 'a', to: 'b', type: 'directed', updatedAt: 1 },
+      { id: 'e2', from: 'a', to: 'ghost', type: 'directed', updatedAt: 1 },   // dangling
+      { id: 'e3', from: 'b', to: 'b', type: 'directed', updatedAt: 1 },       // self-loop
+    ],
+  });
+  assert.equal(map.nodes.find(n => n.id === 'a')?.link, undefined);
+  assert.equal(map.nodes.find(n => n.id === 'a')?.shape, undefined);
+  assert.equal(map.nodes.find(n => n.id === 'b')?.link, 'https://ok.example');
+  assert.deepEqual(map.edges.map(e => e.id), ['e1']);
+});
+
+// ── Groups ─────────────────────────────────────────────────────────────────
+
+test('map:groups replaces groups, filters ghost node ids, rejects junk', () => {
+  let map: Mindmap = saveMindmap({ name: 'Groups', nodes: [node('a'), node('b')], edges: [] });
+  map = applyGraphEvent(map, event('map:groups', map.id, {
+    groups: [{ id: 'g1', name: 'Perception pipeline', nodeIds: ['a', 'b', 'ghost', 'a'] }],
+  }))!;
+  assert.deepEqual(map.groups?.[0].nodeIds, ['a', 'b']);   // ghost dropped, deduped
+  assert.equal(applyGraphEvent(map, event('map:groups', map.id, { groups: [{ bad: true }] })), null);
+  assert.equal(applyGraphEvent(map, event('map:groups', map.id, { groups: [] }))!.groups?.length, 0);
+});
+
+test('node:delete cascades out of groups', () => {
+  let map: Mindmap = saveMindmap({ name: 'GroupCascade', nodes: [node('a'), node('b')], edges: [] });
+  map = applyGraphEvent(map, event('map:groups', map.id, {
+    groups: [{ id: 'g1', name: 'Team A', nodeIds: ['a', 'b'] }],
+  }))!;
+  map = applyGraphEvent(map, event('node:delete', map.id, { id: 'a' }))!;
+  assert.deepEqual(map.groups?.[0].nodeIds, ['b']);
+});
+
+test('saveMindmap preserves groups when request omits them', () => {
+  const created = saveMindmap({
+    name: 'KeepGroups', nodes: [node('a')], edges: [],
+    groups: [{ id: 'g1', name: 'Core', nodeIds: ['a'] }],
+  });
+  assert.equal(created.groups?.length, 1);
+  const resaved = saveMindmap({ id: created.id, name: 'KeepGroups', nodes: [node('a')], edges: [] });
+  assert.equal(resaved.groups?.length, 1, 'groups lost on group-less save');
+});
+
 // ── SIB bridge ─────────────────────────────────────────────────────────────
 
 test('sib-json export builds draft tags from tag-typed nodes', () => {

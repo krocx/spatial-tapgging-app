@@ -14,6 +14,7 @@ import type {
   MindmapNode,
   MindmapEdge,
   MindmapLane,
+  MindmapGroup,
   MindmapComment,
   MindmapVersion,
   MindmapWsEvent,
@@ -107,8 +108,13 @@ export function applyGraphEvent(map: Mindmap, event: MindmapWsEvent): Mindmap | 
       if (!id) return null;
       if (!next.nodes.some(n => n.id === id)) return null;
       next.nodes = next.nodes.filter(n => n.id !== id);
-      // Cascade: remove edges touching the node.
+      // Cascade: remove edges touching the node, and its group memberships.
       next.edges = next.edges.filter(e => e.from !== id && e.to !== id);
+      if (next.groups?.some(g => g.nodeIds.includes(id))) {
+        next.groups = next.groups.map(g =>
+          g.nodeIds.includes(id) ? { ...g, nodeIds: g.nodeIds.filter(n => n !== id) } : g,
+        );
+      }
       break;
     }
     case 'edge:add': {
@@ -140,6 +146,15 @@ export function applyGraphEvent(map: Mindmap, event: MindmapWsEvent): Mindmap | 
       next.lanes = lanes;
       break;
     }
+    case 'map:groups': {
+      const groups = sanitizeGroups(
+        (event.payload as { groups?: unknown })?.groups,
+        new Set(next.nodes.map(n => n.id)),
+      );
+      if (groups === null) return null;
+      next.groups = groups;
+      break;
+    }
     default:
       return null; // cursor:move / session:* never mutate the graph
   }
@@ -151,7 +166,15 @@ export function applyGraphEvent(map: Mindmap, event: MindmapWsEvent): Mindmap | 
 const NODE_TYPES = new Set(['tag', 'perception', 'semantic', 'reasoning', 'generic']);
 const NODE_STATUSES = new Set(['planned', 'in-progress', 'done', 'blocked']);
 const NODE_REVIEWS = new Set(['approved', 'rejected', 'needs-validation']);
+const NODE_SHAPES = new Set(['rounded', 'rect', 'pill', 'diamond', 'hexagon']);
 const MAX_COMMENTS_PER_NODE = 100;
+
+/** http(s) only — rejects javascript:, data:, file: and other schemes outright. */
+function sanitizeLink(raw: unknown): string | undefined {
+  if (typeof raw !== 'string') return undefined;
+  const link = raw.trim().slice(0, 500);
+  return /^https?:\/\/\S+$/i.test(link) ? link : undefined;
+}
 
 export function sanitizeComment(raw: unknown): MindmapComment | null {
   const c = raw as Partial<MindmapComment> | undefined;
@@ -185,9 +208,31 @@ function sanitizeNode(raw: unknown, ts: number): MindmapNode | null {
     ...(NODE_STATUSES.has(n.status as string) && { status: n.status as MindmapNode['status'] }),
     ...(NODE_REVIEWS.has(n.review as string) && { review: n.review as MindmapNode['review'] }),
     ...(n.milestone === true && { milestone: true }),
+    ...(n.collapsed === true && { collapsed: true }),
+    ...(typeof n.icon === 'string' && n.icon.trim().length > 0 && { icon: n.icon.trim().slice(0, 32) }),
+    ...(NODE_SHAPES.has(n.shape as string) && n.shape !== 'rounded' && { shape: n.shape as MindmapNode['shape'] }),
+    ...(sanitizeLink(n.link) !== undefined && { link: sanitizeLink(n.link) }),
     ...(typeof n.notes === 'string' && n.notes.length > 0 && { notes: n.notes.slice(0, 10_000) }),
     ...(comments && { comments }),
   };
+}
+
+/**
+ * Sanitize full node/edge arrays (REST save + JSON import path — same rules
+ * as the WS path, so unsafe links/shapes can't sneak in via /mindmap/save).
+ * Malformed entries are dropped; edges must reference surviving nodes.
+ */
+export function sanitizeGraphArrays(rawNodes: unknown[], rawEdges: unknown[]): { nodes: MindmapNode[]; edges: MindmapEdge[] } {
+  const now = Date.now();
+  const nodes = rawNodes
+    .map(n => sanitizeNode(n, now))
+    .filter((n): n is MindmapNode => n !== null);
+  const ids = new Set(nodes.map(n => n.id));
+  const edges = rawEdges
+    .map(e => sanitizeEdge(e, now))
+    .filter((e): e is MindmapEdge =>
+      e !== null && ids.has(e.from) && ids.has(e.to) && e.from !== e.to);
+  return { nodes, edges };
 }
 
 /** Union two comment arrays by id (append-safe merge for node:update LWW). */
@@ -211,6 +256,27 @@ function sanitizeEdge(raw: unknown, ts: number): MindmapEdge | null {
     updatedAt: typeof e.updatedAt === 'number' ? Math.min(e.updatedAt, ts) : ts,
     ...(typeof e.label === 'string' && e.label.trim().length > 0 && { label: e.label.trim().slice(0, 200) }),
   };
+}
+
+/**
+ * Returns null when the payload is malformed; [] is valid (all groups removed).
+ * When `validNodeIds` is given, memberships are filtered to existing nodes.
+ */
+export function sanitizeGroups(raw: unknown, validNodeIds?: Set<string>): MindmapGroup[] | null {
+  if (!Array.isArray(raw)) return null;
+  const groups: MindmapGroup[] = [];
+  for (const item of raw.slice(0, 50)) {
+    const g = item as Partial<MindmapGroup> | undefined;
+    if (!g || typeof g.id !== 'string' || !Array.isArray(g.nodeIds)) return null;
+    const nodeIds = [...new Set(g.nodeIds.filter((n): n is string =>
+      typeof n === 'string' && (!validNodeIds || validNodeIds.has(n))))];
+    groups.push({
+      id: g.id,
+      name: (typeof g.name === 'string' && g.name.trim() ? g.name.trim() : 'Group').slice(0, 80),
+      nodeIds,
+    });
+  }
+  return groups;
 }
 
 /** Returns null when the payload is malformed; [] is valid (lanes removed). */

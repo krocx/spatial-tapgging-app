@@ -13,6 +13,18 @@ export function useKeyboardShortcuts(): void {
       const typing = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
       const mod = e.metaKey || e.ctrlKey;
 
+      // Presentation mode captures navigation keys.
+      if (s.presentation.active) {
+        if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+          e.preventDefault(); s.presentationGoto(s.presentation.step + 1); return;
+        }
+        if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+          e.preventDefault(); s.presentationGoto(s.presentation.step - 1); return;
+        }
+        if (e.key === 'Escape') { e.preventDefault(); s.exitPresentation(); return; }
+        return;   // suppress editing shortcuts while presenting
+      }
+
       if (mod && e.key.toLowerCase() === 's') {
         e.preventDefault();
         void s.save();

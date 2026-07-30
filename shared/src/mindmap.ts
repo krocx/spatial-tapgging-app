@@ -21,6 +21,9 @@ export type MindmapNodeStatus = 'planned' | 'in-progress' | 'done' | 'blocked';
 /** Review verdict — independent of execution status. */
 export type MindmapNodeReview = 'approved' | 'rejected' | 'needs-validation';
 
+/** Node outline shape. Default: 'rounded'. */
+export type MindmapNodeShape = 'rounded' | 'rect' | 'pill' | 'diamond' | 'hexagon';
+
 export interface MindmapComment {
   id: string;
   author: string;
@@ -45,6 +48,18 @@ export interface MindmapNode {
   notes?: string;
   /** Review verdict (approve / reject / needs validation). */
   review?: MindmapNodeReview;
+  /**
+   * Collapse marker: when true, descendants reachable via *directed* edges
+   * are hidden (fixpoint rule: a node hides only when ALL its directed
+   * parents are collapsed or hidden — alternate visible paths keep it shown).
+   */
+  collapsed?: boolean;
+  /** Icon name from the curated set (client validates; server caps length). */
+  icon?: string;
+  /** Outline shape (default 'rounded'). */
+  shape?: MindmapNodeShape;
+  /** Hyperlink — http(s) only, opened via the ↗ affordance. */
+  link?: string;
   /**
    * Discussion thread. Server-side merge is append-safe: node:update events
    * union comments by id, and comment:add/comment:delete events mutate the
@@ -78,6 +93,17 @@ export interface MindmapLane {
   orientation?: 'column' | 'row';
 }
 
+/**
+ * Named node grouping — a saved selection usable as a view filter
+ * ("show only Perception-pipeline nodes"). Groups are map-level state,
+ * replaced atomically via the `map:groups` WS event (like lanes).
+ */
+export interface MindmapGroup {
+  id: string;
+  name: string;
+  nodeIds: string[];
+}
+
 export interface Mindmap {
   id: string;
   name: string;
@@ -87,6 +113,8 @@ export interface Mindmap {
   edges: MindmapEdge[];
   /** Swimlanes (optional — absent on plain mind-maps). */
   lanes?: MindmapLane[];
+  /** Named node groups (optional). */
+  groups?: MindmapGroup[];
 }
 
 /** Lightweight listing entry (no graph payload). */
@@ -119,6 +147,7 @@ export interface SaveMindmapRequest {
   nodes: MindmapNode[];
   edges: MindmapEdge[];
   lanes?: MindmapLane[];
+  groups?: MindmapGroup[];
   /** Optional label recorded on the version snapshot. */
   versionLabel?: string;
 }
@@ -145,6 +174,7 @@ export type MindmapWsEventType =
   | 'map:sync'      // server → client: full graph on join / resync
   | 'map:rename'
   | 'map:lanes'     // full lanes array replace (rename/add/remove/resize)
+  | 'map:groups'    // full groups array replace (create/rename/remove/membership)
   | 'comment:add'    // { nodeId, comment } — appended server-side (never lost to LWW)
   | 'comment:delete' // { nodeId, commentId }
   | 'error';

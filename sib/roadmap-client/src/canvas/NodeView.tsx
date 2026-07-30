@@ -7,15 +7,42 @@ import type { MindmapNode } from '@spatial/shared';
 import { useStore } from '../state/store.js';
 import { NODE_COLORS, STATUS_COLORS } from '../utils/colors.js';
 import { NODE_W, NODE_H } from '../utils/geometry.js';
+import { ICON_PATHS } from '../utils/icons.js';
 
 interface Props {
   node: MindmapNode;
   onConnectDrop: (from: string, to: string) => void;
+  /** View-filter fade: node stays interactive but recedes visually. */
+  dimmed?: boolean;
+  /** Node has outgoing directed edges → show the collapse chevron. */
+  collapsible?: boolean;
+  /** Number of nodes hidden beneath this collapsed node (badge). */
+  hiddenCount?: number;
+}
+
+/** Shape outline for the node body. Diamond/hexagon are polygons. */
+function ShapeOutline({ shape, stroke, strokeWidth, filter }: {
+  shape: MindmapNode['shape']; stroke: string; strokeWidth: number; filter: string;
+}): JSX.Element {
+  const common = { fill: '#ffffff', stroke, strokeWidth, style: { filter } };
+  switch (shape) {
+    case 'rect':
+      return <rect width={NODE_W} height={NODE_H} rx={2} {...common} />;
+    case 'pill':
+      return <rect width={NODE_W} height={NODE_H} rx={NODE_H / 2} {...common} />;
+    case 'diamond':
+      return <polygon points={`${NODE_W / 2},-6 ${NODE_W + 10},${NODE_H / 2} ${NODE_W / 2},${NODE_H + 6} -10,${NODE_H / 2}`} {...common} />;
+    case 'hexagon':
+      return <polygon points={`14,0 ${NODE_W - 14},0 ${NODE_W},${NODE_H / 2} ${NODE_W - 14},${NODE_H} 14,${NODE_H} 0,${NODE_H / 2}`} {...common} />;
+    default:
+      return <rect width={NODE_W} height={NODE_H} rx={10} {...common} />;
+  }
 }
 
 const LONG_PRESS_MS = 500;
 
-export function NodeView({ node, onConnectDrop }: Props): JSX.Element {
+export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = false, hiddenCount = 0 }: Props): JSX.Element {
+  const toggleCollapse = useStore(s => s.toggleCollapse);
   const selected = useStore(s => s.selectedNodeIds.includes(node.id));
   const editing = useStore(s => s.editingNodeId === node.id);
   const pendingEdgeFrom = useStore(s => s.pendingEdgeFrom);
@@ -100,6 +127,8 @@ export function NodeView({ node, onConnectDrop }: Props): JSX.Element {
   return (
     <g
       className="node-view"
+      opacity={dimmed ? 0.15 : 1}
+      style={{ transition: 'opacity .18s' }}
       transform={`translate(${node.x} ${node.y})`}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -107,14 +136,64 @@ export function NodeView({ node, onConnectDrop }: Props): JSX.Element {
       onPointerCancel={onPointerUp}
       onDoubleClick={e => { e.stopPropagation(); setEditing(node.id); }}
     >
-      <rect
-        width={NODE_W} height={NODE_H} rx={10}
-        fill="#ffffff"
+      <ShapeOutline
+        shape={node.shape}
         stroke={selected ? '#1d4ed8' : color}
         strokeWidth={selected ? 3 : 2}
-        style={{ filter: selected ? 'drop-shadow(0 2px 6px rgba(29,78,216,.35))' : 'drop-shadow(0 1px 2px rgba(0,0,0,.12))' }}
+        filter={selected ? 'drop-shadow(0 2px 6px rgba(29,78,216,.35))' : 'drop-shadow(0 1px 2px rgba(0,0,0,.12))'}
       />
-      <rect width={6} height={NODE_H} rx={3} fill={color} />
+      {/* Layer color: bar for boxy shapes, dot for polygon/pill shapes */}
+      {(!node.shape || node.shape === 'rect') ? (
+        <rect width={6} height={NODE_H} rx={3} fill={color} />
+      ) : (
+        <circle cx={node.shape === 'pill' ? 16 : node.shape === 'hexagon' ? 12 : NODE_W / 2} cy={node.shape === 'diamond' ? 6 : NODE_H / 2} r={4} fill={color} />
+      )}
+
+      {/* Icon — left of the text */}
+      {node.icon && ICON_PATHS[node.icon] && (
+        <g transform={`translate(${node.shape === 'diamond' ? NODE_W / 2 - 7 : 12} ${node.shape === 'diamond' ? NODE_H - 22 : NODE_H / 2 - 7}) scale(0.58)`} pointerEvents="none">
+          <path d={ICON_PATHS[node.icon]} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+        </g>
+      )}
+
+      {/* Collapse chevron — bottom edge, only when there are directed children */}
+      {collapsible && (
+        <g
+          transform={`translate(${NODE_W / 2} ${NODE_H + (node.shape === 'diamond' ? 14 : 8)})`}
+          style={{ cursor: 'pointer' }}
+          onPointerDown={e => e.stopPropagation()}
+          onClick={e => { e.stopPropagation(); toggleCollapse(node.id); }}
+        >
+          <circle r={8} fill="#ffffff" stroke="#cbd5e1" strokeWidth={1.2} />
+          <path
+            d={node.collapsed ? 'M -3 -1 L 0 2.5 L 3 -1' : 'M -3 1.5 L 0 -2 L 3 1.5'}
+            fill="none" stroke="#475569" strokeWidth={1.6} strokeLinecap="round"
+          />
+          {node.collapsed && hiddenCount > 0 && (
+            <g transform="translate(13 0)">
+              <rect x={-3} y={-7} width={hiddenCount > 9 ? 26 : 20} height={14} rx={7} fill="#2f6fed" />
+              <text x={hiddenCount > 9 ? 10 : 7} y={3.5} textAnchor="middle" style={{ fontSize: 9, fontWeight: 700 }} fill="#fff">
+                +{hiddenCount}
+              </text>
+            </g>
+          )}
+          <title>{node.collapsed ? `Expand (${hiddenCount} hidden)` : 'Collapse branch'}</title>
+        </g>
+      )}
+
+      {/* Link — opens in a new tab */}
+      {node.link && (
+        <g
+          transform={`translate(${NODE_W - (node.status ? 26 : 12)} 10)`}
+          style={{ cursor: 'pointer' }}
+          onPointerDown={e => e.stopPropagation()}
+          onClick={e => { e.stopPropagation(); window.open(node.link, '_blank', 'noopener'); }}
+        >
+          <circle r={7} fill="#eef2f7" stroke="#cbd5e1" strokeWidth={0.8} />
+          <path d="M -2 2 L 2 -2 M 0 -2 L 2 -2 L 2 0" fill="none" stroke="#2f6fed" strokeWidth={1.4} strokeLinecap="round" />
+          <title>{node.link}</title>
+        </g>
+      )}
 
       {/* Status badge — top-right */}
       {node.status && (
@@ -178,12 +257,12 @@ export function NodeView({ node, onConnectDrop }: Props): JSX.Element {
         </foreignObject>
       ) : (
         <text
-          x={NODE_W / 2 + 2} y={NODE_H / 2 + 4}
+          x={NODE_W / 2 + (node.icon && node.shape !== 'diamond' ? 9 : 2)} y={NODE_H / 2 + 4}
           textAnchor="middle"
           className="node-label"
           pointerEvents="none"
         >
-          {displayText.length > 22 ? displayText.slice(0, 21) + '…' : displayText}
+          {displayText.length > 20 ? displayText.slice(0, 19) + '…' : displayText}
         </text>
       )}
 

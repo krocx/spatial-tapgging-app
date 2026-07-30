@@ -33,6 +33,7 @@ Separation of concerns follows the workspace preferences: UI logic (components) 
 `MindmapNode { id, x, y, text, type, metadata, updatedAt, status?, review?, milestone?, notes?, comments?[] }` — type is one of `tag | perception | semantic | reasoning | generic`, mapping 1:1 onto SIB layers (blue / purple / green / orange / grey); `status` is `planned | in-progress | done | blocked` (badge); `review` is `approved | rejected | needs-validation` (✓ / ✗ / ? glyph), independent of status.
 `MindmapComment { id, author, text, createdAt }` — appended via dedicated `comment:add` / `comment:delete` WS events; `node:update` merges comment arrays by id (union), so concurrent commenters never overwrite each other.
 `MindmapEdge { id, from, to, type: directed|undirected, updatedAt, label? }`
+`MindmapGroup { id, name, nodeIds }` — named node grouping usable as a view filter; replaced atomically via `map:groups`; node deletion cascades memberships out of groups.
 `MindmapLane { id, name, x, width, orientation? }` — swimlane bands, replaced atomically via `map:lanes`. Default orientation is `column` (vertical bands along x — Now / Next / Later); `row` gives horizontal bands along y (Why / What / How), where `x` is the band top and `width` its height. Columns and rows combine into a strategy grid.
 
 Types live in `@spatial/shared` so server and client can never drift.
@@ -102,6 +103,14 @@ Double-click empty canvas → create node · drag node → move (a multi-selecti
 **Inspector (right panel, appears on selection):** node text / layer type / status / milestone / **review verdict (Approve ✓ / Reject ✗ / Needs Validation ?** — click again to clear) / notes / **comment thread** (author = your display name; comment count bubbles on nodes) · edge label + direction · lane name / width / remove. Multi-selection gets bulk type + status setters.
 
 **Toolbar:** search with jump-to-node · Lanes menu (Now/Next/Later columns, **Why/What/How rows**, add, clear) · **Layout button shows the current mode** (Freeform / Hierarchical / Grid — any hand-move resets to Freeform) · **Fit** (zoom to whole map) · SIB menu (import anchors+tags, export draft) · undo/redo · Export (PNG/SVG/JSON) · History · Save · presence.
+
+**Collapsible branches:** nodes with outgoing directed edges get a chevron beneath them — collapse hides all descendants (fixpoint rule: a node hides only when *every* directed parent is collapsed or hidden, so alternate visible paths and cycles behave correctly). Collapsed nodes show a "+N" badge with the hidden count. Collapse state is part of the map (synced + versioned). Exports always render the full graph.
+
+**Presentation mode (▶ Present):** full-screen walkthrough — steps are column lanes (left→right), then row lanes, then a closing Overview; maps without lanes step through groups, else one whole-map step. Navigation: → / ← / Space / Esc, or the on-screen bar with progress dots. Nodes outside the current step fade; editing is disabled while presenting. Collapse first, then present, for a chapter-level walkthrough.
+
+**Rich nodes (inspector):** shape (rounded / rect / pill / diamond / hexagon), a 20-glyph inline icon set (flag, star, bolt, gear, eye, camera, cube, robot, wrench, chip, qr, tag, check, alert, bulb, target, layers, doc, user, clock — no external requests), and an http(s) hyperlink opened via the ↗ affordance on the node. Links are sanitized server-side on **both** the WS and REST/save paths (`javascript:` etc. rejected); REST saves also drop malformed nodes and dangling/self-loop edges.
+
+**View filters (Filters button):** left panel with toggleable chips for SIB layers, statuses (incl. "no status"), and custom groups — matching nodes stay full-strength, everything else fades to 15% (edges fade unless both endpoints match). Within a section chips OR together; across sections they AND ("semantic OR reasoning, AND in-progress"). Filters are per-viewer only — they never affect collaborators. Groups are created from a multi-selection ("Group selection" in the inspector), renamed by double-clicking their chip, and are synced + versioned map state.
 
 **Cross-server transfer:** Export → JSON on one server (e.g. Render), then "Import JSON" on the map-list screen of another (e.g. the internal server). The import creates a fresh map with a new id and keeps nodes, edges, lanes, statuses, reviews, notes, and comments.
 

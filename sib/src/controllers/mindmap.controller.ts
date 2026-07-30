@@ -17,6 +17,8 @@ import {
   summarize,
   renderMindmapSvg,
   sanitizeLanes,
+  sanitizeGroups,
+  sanitizeGraphArrays,
 } from '../models/mindmap.model.js';
 import { importSibGraph, buildSibDraft } from '../adapters/mindmap-sib-adapter.js';
 
@@ -36,17 +38,24 @@ export function saveMindmap(body: SaveMindmapRequest): Mindmap {
   const now = Date.now();
   const existing = body.id ? mindmapStore.findById(body.id) : undefined;
 
+  // Same sanitization rules as the WS path — REST saves and JSON imports
+  // can't persist unsafe links, bogus shapes, or dangling edges.
+  const { nodes, edges } = sanitizeGraphArrays(body.nodes, body.edges);
+
   const map: Mindmap = {
     id: existing?.id ?? body.id ?? uuidv4(),
     name: body.name.trim(),
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
-    nodes: body.nodes,
-    edges: body.edges,
-    // Lanes: keep existing when the request omits them (older clients).
+    nodes,
+    edges,
+    // Lanes/groups: keep existing when the request omits them (older clients).
     lanes: body.lanes !== undefined
       ? (sanitizeLanes(body.lanes) ?? existing?.lanes ?? [])
       : existing?.lanes,
+    groups: body.groups !== undefined
+      ? (sanitizeGroups(body.groups, new Set(nodes.map(n => n.id))) ?? existing?.groups ?? [])
+      : existing?.groups,
   };
 
   mindmapStore.save(map);
