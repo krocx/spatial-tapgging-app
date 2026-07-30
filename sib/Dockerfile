@@ -17,6 +17,7 @@ COPY package*.json ./
 COPY shared/package.json ./shared/
 COPY sib/package.json    ./sib/
 COPY ar-client/package.json ./ar-client/
+COPY sib/roadmap-client/package.json ./sib/roadmap-client/
 
 # Install all workspace deps (dev deps included for TypeScript compilation).
 RUN npm ci
@@ -40,6 +41,7 @@ COPY package*.json ./
 COPY shared/package.json ./shared/
 COPY sib/package.json    ./sib/
 COPY ar-client/package.json ./ar-client/
+COPY sib/roadmap-client/package.json ./sib/roadmap-client/
 RUN npm ci --omit=dev
 
 # Copy compiled sib output from builder.
@@ -47,6 +49,11 @@ COPY --from=builder /app/sib/dist ./sib/dist
 
 # Copy static portal files (served at /portal, no auth required).
 COPY sib/portal/ ./sib/portal/
+
+# Copy the prebuilt Roadmap Mind-Mapper bundle (served at /roadmap).
+# The bundle is committed to git (built via `npm run build:roadmap`), so no
+# frontend build step is needed inside the image.
+COPY sib/roadmap/ ./sib/roadmap/
 
 # Persistent data directory — mount a Render disk at /data.
 # SIB writes anchor/tag data here so it survives container restarts and redeploys.

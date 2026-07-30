@@ -121,6 +121,29 @@ npm test --workspace=sib
 
 Production is identical to the existing flow: `npm run build --workspace=sib && npm start --workspace=sib`. Set `SIB_API_KEY` to require auth, `SIB_DATA_DIR` to relocate storage, HTTPS via the existing `SSL_CERT_PATH`/`SSL_KEY_PATH` (WS automatically upgrades to `wss://`). For private-network-only access, bind `HOST` to a LAN interface or firewall port 3001 — no additional configuration is needed by the tool.
 
+### Render
+
+Nothing new to configure — the existing Docker deploy carries the mind-mapper:
+
+- `sib/Dockerfile` copies the committed `sib/roadmap/` bundle into the runtime image and includes the `sib/roadmap-client` workspace manifest so `npm ci` matches the lockfile. (Both were added when the tool was introduced — a deploy from an older Dockerfile will fail `npm ci`.)
+- Push to the deploy branch → Render builds → `https://<your-service>.onrender.com/roadmap`.
+- `SIB_API_KEY` is set on Render, so the app will show the API-key field on the home screen; the WebSocket passes the key as `?key=` and uses `wss://` automatically. Mind-map data lands on the persistent disk (`SIB_DATA_DIR=/data/.sib-data`) alongside anchors and tags.
+- Note: Render Starter spins down on idle — the WS drops with it; the client auto-reconnects with backoff once the service wakes.
+
+### Internal server (dca-qa-330, Windows + NSSM)
+
+Follow the existing `INTERNAL-SERVER-DEPLOY.md` flow; the mind-mapper needs no extra steps:
+
+```bash
+cd C:\sib
+git pull                       # branch with the mind-mapper
+npm install                    # repo root — installs all workspaces (adds ws)
+npm run build --workspace=sib  # recompile sib/dist
+# restart the NSSM service
+```
+
+Then open `https://dca-qa-330.amat.com:447/roadmap`. The committed `sib/roadmap/` bundle is served as-is (no Node build tools needed for the frontend on the server), HTTPS gives collaborators `wss://` transport, and data persists under the configured `SIB_DATA_DIR` (`C:\sib-data`).
+
 ## SIB Integration Path (designed-for, not yet wired)
 
 - Node types already mirror SIB layers, and `metadata` is an open `Record<string, unknown>` — a `tag` node can carry `{ anchorId, tagId }` today.
