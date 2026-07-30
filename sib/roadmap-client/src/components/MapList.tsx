@@ -1,0 +1,92 @@
+// MapList.tsx — home screen: your name (for presence), API key when required,
+// create map, and the list of existing maps.
+
+import { useEffect, useState } from 'react';
+import { useStore } from '../state/store.js';
+import { fetchAuthRequired, getApiKey, setApiKey } from '../api/mindmap-api.js';
+
+export function MapList(): JSX.Element {
+  const maps = useStore(s => s.maps);
+  const error = useStore(s => s.error);
+  const refreshList = useStore(s => s.refreshList);
+  const createMap = useStore(s => s.createMap);
+  const openMap = useStore(s => s.openMap);
+  const deleteMap = useStore(s => s.deleteMap);
+
+  const [name, setName] = useState('');
+  const [userName, setUserName] = useState(localStorage.getItem('roadmap-name') ?? '');
+  const [authRequired, setAuthRequired] = useState(false);
+  const [key, setKey] = useState(getApiKey());
+
+  useEffect(() => {
+    void fetchAuthRequired().then(setAuthRequired);
+    void refreshList();
+  }, []);
+
+  const saveIdentity = () => {
+    localStorage.setItem('roadmap-name', userName.trim() || 'Anonymous');
+    if (authRequired) { setApiKey(key); void refreshList(); }
+  };
+
+  return (
+    <div className="map-list">
+      <header className="list-header">
+        <h1>SIB Roadmap · Mind Mapper</h1>
+        <p className="subtitle">Secure, collaborative mind-mapping on the Spatial Intelligence Backend</p>
+      </header>
+
+      <section className="identity card">
+        <label>
+          Display name
+          <input value={userName} placeholder="Shown to collaborators"
+                 onChange={e => setUserName(e.target.value)} onBlur={saveIdentity} />
+        </label>
+        {authRequired && (
+          <label>
+            API key
+            <input type="password" value={key} placeholder="X-API-Key"
+                   onChange={e => setKey(e.target.value)} onBlur={saveIdentity} />
+          </label>
+        )}
+      </section>
+
+      <section className="card">
+        <form
+          className="create-row"
+          onSubmit={e => {
+            e.preventDefault();
+            if (name.trim()) { void createMap(name.trim()); setName(''); }
+          }}
+        >
+          <input value={name} placeholder="New mind-map name…" onChange={e => setName(e.target.value)} />
+          <button className="btn primary" type="submit" disabled={!name.trim()}>Create</button>
+        </form>
+      </section>
+
+      {error && <div className="error-banner">{error}</div>}
+
+      <section className="card maps">
+        {maps.length === 0 && <p className="menu-note">No maps yet — create your first one above.</p>}
+        {maps.map(m => (
+          <div key={m.id} className="map-row">
+            <button className="map-open" onClick={() => void openMap(m.id, userName.trim() || 'Anonymous')}>
+              <span className="map-title">{m.name}</span>
+              <span className="map-meta">
+                {m.nodeCount} nodes · {m.edgeCount} edges · updated {new Date(m.updatedAt).toLocaleString()}
+              </span>
+            </button>
+            <button
+              className="btn ghost danger"
+              title="Delete map"
+              onClick={() => { if (confirm(`Delete "${m.name}" and its version history?`)) void deleteMap(m.id); }}
+            >✕</button>
+          </div>
+        ))}
+      </section>
+
+      <footer className="list-footer">
+        Hosted on SIB · data in <code>.sib-data/</code> · no external services
+      </footer>
+    </div>
+  );
+}

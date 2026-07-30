@@ -1,0 +1,32 @@
+// App.tsx — shell: map list ⇄ editor. All state lives in the store.
+
+import { useStore } from './state/store.js';
+import { MapList } from './components/MapList.js';
+import { Toolbar } from './components/Toolbar.js';
+import { CanvasStage } from './canvas/CanvasStage.js';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts.js';
+
+export default function App(): JSX.Element {
+  const view = useStore(s => s.view);
+  const error = useStore(s => s.error);
+  const setError = useStore(s => s.setError);
+  useKeyboardShortcuts();
+
+  if (view === 'list') return <MapList />;
+
+  return (
+    <div className="editor">
+      <Toolbar />
+      {error && (
+        <div className="error-banner floating" onClick={() => setError(null)}>
+          {error} <span className="dismiss">✕</span>
+        </div>
+      )}
+      <CanvasStage />
+      <div className="hint-bar">
+        double-click: add node · drag ring: connect · space+drag: pan · scroll: zoom ·
+        enter: edit · del: remove · ⌘S save · ⌘Z undo
+      </div>
+    </div>
+  );
+}

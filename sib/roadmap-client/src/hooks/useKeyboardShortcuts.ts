@@ -1,0 +1,43 @@
+// useKeyboardShortcuts.ts — editor-wide keyboard handling.
+//   Delete/Backspace  remove selection        Enter   edit selected node
+//   Ctrl/Cmd+S        save                     Escape  deselect / stop editing
+//   Ctrl/Cmd+Z        undo                     Ctrl/Cmd+Y or Shift+Z  redo
+
+import { useEffect } from 'react';
+import { useStore } from '../state/store.js';
+
+export function useKeyboardShortcuts(): void {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const s = useStore.getState();
+      const typing = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
+      const mod = e.metaKey || e.ctrlKey;
+
+      if (mod && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        void s.save();
+        return;
+      }
+      if (typing) return;
+
+      if (mod && e.key.toLowerCase() === 'z' && !e.shiftKey) { e.preventDefault(); s.undo(); return; }
+      if (mod && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) {
+        e.preventDefault(); s.redo(); return;
+      }
+      if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); s.deleteSelection(); return; }
+      if (e.key === 'Enter' && s.selectedNodeIds.length === 1) {
+        e.preventDefault();
+        s.setEditing(s.selectedNodeIds[0]);
+        return;
+      }
+      if (e.key === 'Escape') {
+        s.setEditing(null);
+        s.select(null);
+        s.selectEdge(null);
+        s.setPendingEdgeFrom(null);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
+}

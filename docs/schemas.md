@@ -55,3 +55,20 @@
   "observations": [],
   "completedSteps": []
 }
+## Mindmap (Roadmap Mind-Mapper — /mindmap/*)
+## json
+{
+  "id": "string",
+  "name": "string",
+  "createdAt": 0,
+  "updatedAt": 0,
+  "nodes": [
+    { "id": "string", "x": 0, "y": 0, "text": "string",
+      "type": "tag|perception|semantic|reasoning|generic",
+      "metadata": {}, "updatedAt": 0 }
+  ],
+  "edges": [
+    { "id": "string", "from": "nodeId", "to": "nodeId",
+      "type": "directed|undirected", "updatedAt": 0 }
+  ]
+}

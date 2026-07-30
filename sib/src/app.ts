@@ -14,6 +14,7 @@ import guideRouter from './routes/guides.js';
 import guideSessionRouter from './routes/guide-sessions.js';
 import tagGroupRouter from './routes/tag-groups.js';
 import modelRouter from './routes/models.js';
+import mindmapRouter from './routes/mindmap.routes.js';
 import { apiKeyAuth } from './middleware/auth.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -61,6 +62,21 @@ export function createApp(): express.Express {
   app.get('/portal', (_req, res) => {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.sendFile(path.join(__dirname, '../portal/index.html'));
+  });
+
+  // --- Roadmap Mind-Mapper (no auth on static assets — same model as /portal;
+  // the app reads /config and asks for the API key before touching /mindmap/*).
+  // Built bundle lives in sib/roadmap/ (source: sib/roadmap-client/).
+  app.use('/roadmap', express.static(path.join(__dirname, '../roadmap'), {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.html')) {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      }
+    },
+  }));
+  app.get('/roadmap', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.sendFile(path.join(__dirname, '../roadmap/index.html'));
   });
 
   // --- GET /anchors/:id/qrprint — print-ready QR page (no auth required) ---
@@ -242,6 +258,17 @@ export function createApp(): express.Express {
   // GET    /models/:id/file.glb                 — Serve the GLB file
   // GET    /models/:id/file.usdz                — Serve the USDZ file (if available)
   app.use('/models', modelRouter);
+
+  // --- Roadmap Mind-Mapper API ---
+  // POST   /mindmap/save                    — create / full-save a map (+version snapshot)
+  // GET    /mindmap/load/:id                — load a map
+  // GET    /mindmap/list                    — list map summaries
+  // POST   /mindmap/export                  — { id, format: json|svg } → file download
+  // GET    /mindmap/:id/versions            — version history (metadata only)
+  // POST   /mindmap/:id/restore/:versionId  — restore a snapshot
+  // DELETE /mindmap/:id                     — delete map + versions
+  // (Real-time collaboration: WebSocket at /mindmap/ws — see ws/mindmap.ws.ts)
+  app.use('/mindmap', mindmapRouter);
 
   // --- 404 fallback ---
   app.use((_req, res) => {

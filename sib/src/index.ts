@@ -1,5 +1,6 @@
 import './load-config.js';           // MUST be first — loads sib-config.env into process.env (no-op on Render)
 import { createApp } from './app.js';
+import { attachMindmapWs } from './ws/mindmap.ws.js';
 import { networkInterfaces } from 'os';
 import { compareAgainstPassState } from './perception/image-comparator.js';
 import http  from 'http';
@@ -19,6 +20,9 @@ const server = (cert && key)
   : http.createServer(app);
 
 const protocol = (cert && key) ? 'https' : 'http';
+
+// Roadmap Mind-Mapper real-time collaboration (WebSocket upgrade on /mindmap/ws).
+attachMindmapWs(server);
 
 server.listen(PORT, HOST, () => {
   console.log(`SIB v0.2 running on ${HOST}:${PORT} (${protocol.toUpperCase()})`);

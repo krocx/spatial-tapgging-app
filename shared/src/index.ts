@@ -783,3 +783,6 @@ export type CreateGuideSessionRequest = {
   durationSeconds: number;
   stepCompletions: GuideStepCompletion[];
 };
+
+// --- Roadmap Mind-Mapper (served at /roadmap, API at /mindmap/*) ---
+export * from './mindmap.js';

@@ -5,11 +5,14 @@
   "workspaces": [
     "shared",
     "sib",
-    "ar-client"
+    "ar-client",
+    "sib/roadmap-client"
   ],
   "scripts": {
     "dev:sib": "npm run dev --workspace=sib",
     "dev:client": "npm run dev --workspace=ar-client",
+    "dev:roadmap": "npm run dev --workspace=sib/roadmap-client",
+    "build:roadmap": "npm run build --workspace=sib/roadmap-client",
     "build": "npm run build --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },
