@@ -16,7 +16,9 @@ import {
   listVersions,
   summarize,
   renderMindmapSvg,
+  sanitizeLanes,
 } from '../models/mindmap.model.js';
+import { importSibGraph, buildSibDraft } from '../adapters/mindmap-sib-adapter.js';
 
 export class MindmapError extends Error {
   constructor(public status: number, message: string) { super(message); }
@@ -41,6 +43,10 @@ export function saveMindmap(body: SaveMindmapRequest): Mindmap {
     updatedAt: now,
     nodes: body.nodes,
     edges: body.edges,
+    // Lanes: keep existing when the request omits them (older clients).
+    lanes: body.lanes !== undefined
+      ? (sanitizeLanes(body.lanes) ?? existing?.lanes ?? [])
+      : existing?.lanes,
   };
 
   mindmapStore.save(map);
@@ -115,7 +121,35 @@ export function exportMindmap(id: string, format: string): ExportResult {
       body: renderMindmapSvg(map),
     };
   }
+  if (format === 'sib-json') {
+    return {
+      contentType: 'application/json',
+      filename: `${safeName}.sib-draft.json`,
+      body: JSON.stringify(buildSibDraft(map), null, 2),
+    };
+  }
   // PNG rendering needs a raster canvas — done client-side in /roadmap to keep
   // SIB dependency-free. The endpoint stays honest about that.
-  throw new MindmapError(400, `Unsupported export format "${format}". Server supports: json, svg. PNG export is available in the /roadmap client.`);
+  throw new MindmapError(400, `Unsupported export format "${format}". Server supports: json, svg, sib-json. PNG export is available in the /roadmap client.`);
+}
+
+export interface ImportSibSummary {
+  map: Mindmap;
+  addedNodes: number;
+  addedEdges: number;
+}
+
+/** Merge SIB anchors/tags into a map (idempotent) and snapshot a version. */
+export function importSib(mapId: string, anchorId?: string): ImportSibSummary {
+  const map = loadMindmap(mapId);
+  const result = importSibGraph(map, anchorId);
+
+  if (result.addedNodes === 0 && result.addedEdges === 0) {
+    return { map, addedNodes: 0, addedEdges: 0 };
+  }
+
+  const next: Mindmap = { ...map, nodes: result.nodes, edges: result.edges, updatedAt: Date.now() };
+  mindmapStore.save(next);
+  snapshotVersion(next, `SIB import (+${result.addedNodes} nodes, +${result.addedEdges} edges)`);
+  return { map: next, addedNodes: result.addedNodes, addedEdges: result.addedEdges };
 }

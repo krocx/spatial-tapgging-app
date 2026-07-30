@@ -3,6 +3,7 @@
 import { useStore } from './state/store.js';
 import { MapList } from './components/MapList.js';
 import { Toolbar } from './components/Toolbar.js';
+import { Inspector } from './components/Inspector.js';
 import { CanvasStage } from './canvas/CanvasStage.js';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts.js';
 
@@ -22,10 +23,13 @@ export default function App(): JSX.Element {
           {error} <span className="dismiss">✕</span>
         </div>
       )}
-      <CanvasStage />
+      <div className="editor-body">
+        <CanvasStage />
+        <Inspector />
+      </div>
       <div className="hint-bar">
-        double-click: add node · drag ring: connect · space+drag: pan · scroll: zoom ·
-        enter: edit · del: remove · ⌘S save · ⌘Z undo
+        double-click: add node · drag ring: connect · drag: marquee select · space+drag: pan ·
+        scroll: zoom · enter: edit · del: remove · ⌘S save · ⌘Z undo · ⌘C/⌘V copy/paste · ⌘D duplicate
       </div>
     </div>
   );

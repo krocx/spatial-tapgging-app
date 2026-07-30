@@ -35,6 +35,16 @@ export function EdgeView({ edge }: { edge: MindmapEdge }): JSX.Element | null {
         strokeWidth={selected ? 2.5 : 1.5}
         markerEnd={marker}
       />
+      {edge.label && (
+        <text
+          x={(p1.x + p2.x) / 2} y={(p1.y + p2.y) / 2 - 6}
+          textAnchor="middle"
+          className="edge-label"
+          style={{ paintOrder: 'stroke' }}
+        >
+          {edge.label}
+        </text>
+      )}
     </g>
   );
 }

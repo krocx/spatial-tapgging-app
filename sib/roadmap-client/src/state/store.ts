@@ -7,7 +7,8 @@
 
 import { create } from 'zustand';
 import type {
-  Mindmap, MindmapNode, MindmapEdge, MindmapNodeType, MindmapSummary,
+  Mindmap, MindmapNode, MindmapEdge, MindmapLane, MindmapNodeType,
+  MindmapNodeStatus, MindmapSummary,
   MindmapWsEvent, MapSyncPayload, CursorPayload, PresencePayload,
 } from '@spatial/shared';
 import { mindmapApi } from '../api/mindmap-api.js';
@@ -26,12 +27,17 @@ export interface Peer {
 
 export interface Camera { x: number; y: number; scale: number; }
 
-interface HistoryEntry { nodes: MindmapNode[]; edges: MindmapEdge[]; }
+interface HistoryEntry { nodes: MindmapNode[]; edges: MindmapEdge[]; lanes?: MindmapLane[]; }
 
 const HISTORY_LIMIT = 100;
 let collab: CollabClient | null = null;   // socket lives outside the store
 let cursorThrottle = 0;                   // cursor:move rate limit
 let dragThrottle = 0;                     // node:update rate limit during drags
+
+// Clipboard + last cursor position (module-level: no re-renders on mouse move).
+let clipboard: { nodes: MindmapNode[]; edges: MindmapEdge[] } | null = null;
+let lastMouseWorld = { x: 300, y: 200 };
+export function noteMouseWorld(x: number, y: number): void { lastMouseWorld = { x, y }; }
 
 interface State {
   // navigation
@@ -42,9 +48,11 @@ interface State {
   camera: Camera;
   selectedNodeIds: string[];
   selectedEdgeId: string | null;
+  selectedLaneId: string | null;
   editingNodeId: string | null;
   pendingEdgeFrom: string | null;      // node id while dragging a new connection
   defaultNodeType: MindmapNodeType;
+  searchQuery: string;
   // collab
   collabStatus: CollabStatus;
   peers: Record<string, Peer>;
@@ -74,10 +82,33 @@ interface Actions {
   addNode(x: number, y: number, type?: MindmapNodeType): void;
   updateNodeText(id: string, text: string): void;
   setNodeType(id: string, type: MindmapNodeType): void;
+  setNodeStatus(id: string, status: MindmapNodeStatus | undefined): void;
+  toggleMilestone(id: string): void;
+  setNodeNotes(id: string, notes: string): void;
   moveNode(id: string, x: number, y: number, live: boolean): void;
+  moveNodes(positions: Array<{ id: string; x: number; y: number }>, live: boolean): void;
   addEdge(from: string, to: string): void;
   toggleEdgeType(id: string): void;
+  setEdgeLabel(id: string, label: string): void;
   deleteSelection(): void;
+
+  // Lanes
+  selectLane(id: string | null): void;
+  setLanes(lanes: MindmapLane[], withHistory?: boolean): void;
+  addLanePreset(): void;
+  addLane(): void;
+  updateLane(id: string, patch: Partial<MindmapLane>): void;
+  removeLane(id: string): void;
+
+  // Clipboard / search
+  copySelection(): void;
+  pasteClipboard(): void;
+  duplicateSelection(): void;
+  setSearchQuery(q: string): void;
+  jumpToNode(id: string): void;
+
+  // SIB bridge
+  importFromSib(): Promise<void>;
 
   applyAutoLayout(mode: LayoutMode): void;
   undo(): void;
@@ -96,7 +127,11 @@ export const useStore = create<State & Actions>((set, get) => {
   function pushHistory(): void {
     const { map, undoStack } = get();
     if (!map) return;
-    const entry: HistoryEntry = { nodes: structuredClone(map.nodes), edges: structuredClone(map.edges) };
+    const entry: HistoryEntry = {
+      nodes: structuredClone(map.nodes),
+      edges: structuredClone(map.edges),
+      lanes: map.lanes ? structuredClone(map.lanes) : undefined,
+    };
     set({ undoStack: [...undoStack.slice(-HISTORY_LIMIT + 1), entry], redoStack: [] });
   }
 
@@ -107,6 +142,37 @@ export const useStore = create<State & Actions>((set, get) => {
     fn(next);
     next.updatedAt = Date.now();
     set({ map: next, dirty: true });
+  }
+
+  /** Patch one node (history + WS broadcast) — shared by all field editors. */
+  function patchNode(id: string, patch: Partial<MindmapNode>): void {
+    pushHistory();
+    let updated: MindmapNode | undefined;
+    mutateGraph(m => {
+      const i = m.nodes.findIndex(n => n.id === id);
+      if (i !== -1) {
+        updated = { ...m.nodes[i], ...patch, updatedAt: Date.now() };
+        m.nodes[i] = updated;
+      }
+    });
+    if (updated) collab?.send('node:update', updated);
+  }
+
+  /** Replace one edge (history + delete/re-add on the wire). */
+  function patchEdge(id: string, patch: Partial<MindmapEdge>): void {
+    pushHistory();
+    let updated: MindmapEdge | undefined;
+    mutateGraph(m => {
+      const i = m.edges.findIndex(e => e.id === id);
+      if (i !== -1) {
+        updated = { ...m.edges[i], ...patch, updatedAt: Date.now() };
+        m.edges[i] = updated;
+      }
+    });
+    if (updated) {
+      collab?.send('edge:delete', { id });
+      collab?.send('edge:add', updated);
+    }
   }
 
   /** Apply a remote (peer / server) event to local state. */
@@ -185,6 +251,11 @@ export const useStore = create<State & Actions>((set, get) => {
         mutateGraph(m => { m.name = name; });
         return;
       }
+      case 'map:lanes': {
+        const { lanes } = event.payload as { lanes: MindmapLane[] };
+        mutateGraph(m => { m.lanes = lanes; });
+        return;
+      }
     }
   }
 
@@ -197,9 +268,11 @@ export const useStore = create<State & Actions>((set, get) => {
     camera: { x: 0, y: 0, scale: 1 },
     selectedNodeIds: [],
     selectedEdgeId: null,
+    selectedLaneId: null,
     editingNodeId: null,
     pendingEdgeFrom: null,
     defaultNodeType: 'generic',
+    searchQuery: '',
     collabStatus: 'disconnected',
     peers: {},
     dirty: false,
@@ -260,11 +333,17 @@ export const useStore = create<State & Actions>((set, get) => {
           ? (s.selectedNodeIds.includes(nodeId)
               ? s.selectedNodeIds.filter(id => id !== nodeId)
               : [...s.selectedNodeIds, nodeId])
-          : [nodeId],
+          : (s.selectedNodeIds.includes(nodeId) && s.selectedNodeIds.length > 1
+              // Clicking a node that's part of a multi-selection keeps the group
+              // (so a drag moves all of them) instead of collapsing to one.
+              ? s.selectedNodeIds
+              : [nodeId]),
       selectedEdgeId: null,
+      selectedLaneId: null,
     })),
 
-    selectEdge: edgeId => set({ selectedEdgeId: edgeId, selectedNodeIds: [] }),
+    selectEdge: edgeId => set({ selectedEdgeId: edgeId, selectedNodeIds: [], selectedLaneId: null }),
+    selectLane: laneId => set({ selectedLaneId: laneId, selectedNodeIds: [], selectedEdgeId: null }),
     setEditing: nodeId => set({ editingNodeId: nodeId }),
     setDefaultNodeType: t => set({ defaultNodeType: t }),
     setPendingEdgeFrom: nodeId => set({ pendingEdgeFrom: nodeId }),
@@ -285,30 +364,14 @@ export const useStore = create<State & Actions>((set, get) => {
       set({ selectedNodeIds: [node.id], editingNodeId: node.id });
     },
 
-    updateNodeText(id, text) {
-      pushHistory();
-      let updated: MindmapNode | undefined;
-      mutateGraph(m => {
-        const i = m.nodes.findIndex(n => n.id === id);
-        if (i !== -1) {
-          m.nodes[i] = { ...m.nodes[i], text, updatedAt: Date.now() };
-          updated = m.nodes[i];
-        }
-      });
-      if (updated) collab?.send('node:update', updated);
-    },
+    updateNodeText: (id, text) => patchNode(id, { text }),
+    setNodeType: (id, type) => patchNode(id, { type }),
+    setNodeStatus: (id, status) => patchNode(id, { status }),
+    setNodeNotes: (id, notes) => patchNode(id, { notes: notes || undefined }),
 
-    setNodeType(id, type) {
-      pushHistory();
-      let updated: MindmapNode | undefined;
-      mutateGraph(m => {
-        const i = m.nodes.findIndex(n => n.id === id);
-        if (i !== -1) {
-          m.nodes[i] = { ...m.nodes[i], type, updatedAt: Date.now() };
-          updated = m.nodes[i];
-        }
-      });
-      if (updated) collab?.send('node:update', updated);
+    toggleMilestone(id) {
+      const node = get().map?.nodes.find(n => n.id === id);
+      if (node) patchNode(id, { milestone: !node.milestone || undefined });
     },
 
     moveNode(id, x, y, live) {
@@ -341,21 +404,27 @@ export const useStore = create<State & Actions>((set, get) => {
     },
 
     toggleEdgeType(id) {
-      pushHistory();
-      let removed = false;
-      let added: MindmapEdge | undefined;
+      const edge = get().map?.edges.find(e => e.id === id);
+      if (edge) patchEdge(id, { type: edge.type === 'directed' ? 'undirected' : 'directed' });
+    },
+
+    setEdgeLabel: (id, label) => patchEdge(id, { label: label.trim() || undefined }),
+
+    moveNodes(positions, live) {
+      const updates: MindmapNode[] = [];
       mutateGraph(m => {
-        const i = m.edges.findIndex(e => e.id === id);
-        if (i !== -1) {
-          removed = true;
-          added = { ...m.edges[i], type: m.edges[i].type === 'directed' ? 'undirected' : 'directed', updatedAt: Date.now() };
-          m.edges[i] = added;
+        for (const p of positions) {
+          const i = m.nodes.findIndex(n => n.id === p.id);
+          if (i !== -1) {
+            m.nodes[i] = { ...m.nodes[i], x: p.x, y: p.y, updatedAt: Date.now() };
+            updates.push(m.nodes[i]);
+          }
         }
       });
-      // Edge type change = delete + re-add on the wire (server has no edge:update).
-      if (removed && added) {
-        collab?.send('edge:delete', { id });
-        collab?.send('edge:add', added);
+      const now = performance.now();
+      if (!live || now - dragThrottle > 33) {
+        dragThrottle = now;
+        for (const n of updates) collab?.send('node:update', n);
       }
     },
 
@@ -378,6 +447,141 @@ export const useStore = create<State & Actions>((set, get) => {
       set({ selectedNodeIds: [], selectedEdgeId: null, editingNodeId: null });
     },
 
+    // ── Lanes ────────────────────────────────────────────────────────────
+
+    setLanes(lanes, withHistory = true) {
+      if (withHistory) pushHistory();
+      mutateGraph(m => { m.lanes = lanes; });
+      collab?.send('map:lanes', { lanes });
+    },
+
+    addLanePreset() {
+      const { map } = get();
+      if (!map) return;
+      // Span the current content (or a sensible default) with Now / Next / Later.
+      const xs = map.nodes.map(n => n.x);
+      const startX = xs.length ? Math.min(...xs) - 40 : 40;
+      const total = Math.max(xs.length ? Math.max(...xs) + NODE_W + 40 - startX : 0, 1200);
+      const w = Math.ceil(total / 3);
+      get().setLanes([
+        { id: crypto.randomUUID(), name: 'Now', x: startX, width: w },
+        { id: crypto.randomUUID(), name: 'Next', x: startX + w, width: w },
+        { id: crypto.randomUUID(), name: 'Later', x: startX + 2 * w, width: w },
+      ]);
+    },
+
+    addLane() {
+      const { map } = get();
+      if (!map) return;
+      const lanes = map.lanes ?? [];
+      const last = lanes[lanes.length - 1];
+      const x = last ? last.x + last.width : 40;
+      get().setLanes([...lanes, { id: crypto.randomUUID(), name: `Lane ${lanes.length + 1}`, x, width: 400 }]);
+    },
+
+    updateLane(id, patch) {
+      const lanes = (get().map?.lanes ?? []).map(l => l.id === id ? { ...l, ...patch, id: l.id } : l);
+      get().setLanes(lanes);
+    },
+
+    removeLane(id) {
+      get().setLanes((get().map?.lanes ?? []).filter(l => l.id !== id));
+      set({ selectedLaneId: null });
+    },
+
+    // ── Clipboard / duplicate ────────────────────────────────────────────
+
+    copySelection() {
+      const { map, selectedNodeIds } = get();
+      if (!map || selectedNodeIds.length === 0) return;
+      const ids = new Set(selectedNodeIds);
+      clipboard = {
+        nodes: structuredClone(map.nodes.filter(n => ids.has(n.id))),
+        edges: structuredClone(map.edges.filter(e => ids.has(e.from) && ids.has(e.to))),
+      };
+      set({ statusMessage: `Copied ${clipboard.nodes.length} node(s)` });
+    },
+
+    pasteClipboard() {
+      if (!clipboard || clipboard.nodes.length === 0) return;
+      pushHistory();
+      // Re-id everything; keep internal edges wired to the new ids.
+      const idMap = new Map(clipboard.nodes.map(n => [n.id, crypto.randomUUID()]));
+      // Offset so the paste lands at the cursor (anchored on the copied group's top-left).
+      const minX = Math.min(...clipboard.nodes.map(n => n.x));
+      const minY = Math.min(...clipboard.nodes.map(n => n.y));
+      const dx = lastMouseWorld.x - minX;
+      const dy = lastMouseWorld.y - minY;
+      const now = Date.now();
+
+      const newNodes: MindmapNode[] = clipboard.nodes.map(n => ({
+        ...n, id: idMap.get(n.id)!, x: n.x + dx, y: n.y + dy, updatedAt: now,
+        metadata: { ...n.metadata },
+      }));
+      const newEdges: MindmapEdge[] = clipboard.edges.map(e => ({
+        ...e, id: crypto.randomUUID(), from: idMap.get(e.from)!, to: idMap.get(e.to)!, updatedAt: now,
+      }));
+
+      mutateGraph(m => { m.nodes.push(...newNodes); m.edges.push(...newEdges); });
+      for (const n of newNodes) collab?.send('node:add', n);
+      for (const e of newEdges) collab?.send('edge:add', e);
+      set({ selectedNodeIds: newNodes.map(n => n.id), selectedEdgeId: null });
+    },
+
+    duplicateSelection() {
+      get().copySelection();
+      // Nudge the paste target so duplicates don't sit exactly on the originals.
+      lastMouseWorld = { x: lastMouseWorld.x + 24, y: lastMouseWorld.y + 24 };
+      const { map, selectedNodeIds } = get();
+      if (map && selectedNodeIds.length > 0) {
+        const first = map.nodes.find(n => n.id === selectedNodeIds[0]);
+        if (first) lastMouseWorld = { x: first.x + 24, y: first.y + 24 };
+      }
+      get().pasteClipboard();
+    },
+
+    // ── Search ───────────────────────────────────────────────────────────
+
+    setSearchQuery: q => set({ searchQuery: q }),
+
+    jumpToNode(id) {
+      const { map, camera } = get();
+      const node = map?.nodes.find(n => n.id === id);
+      if (!node) return;
+      // Center the node in the viewport at the current zoom.
+      const vw = window.innerWidth, vh = window.innerHeight;
+      set({
+        camera: {
+          scale: camera.scale,
+          x: vw / 2 - (node.x + NODE_W / 2) * camera.scale,
+          y: vh / 2 - (node.y + NODE_H / 2) * camera.scale,
+        },
+        selectedNodeIds: [id],
+        selectedEdgeId: null,
+        searchQuery: '',
+      });
+    },
+
+    // ── SIB bridge ───────────────────────────────────────────────────────
+
+    async importFromSib() {
+      const { map } = get();
+      if (!map) return;
+      try {
+        const result = await mindmapApi.importSib(map.id);
+        // Server broadcasts map:sync to this client too; set directly in case
+        // the WS is momentarily down.
+        set({
+          map: result.map,
+          dirty: false,
+          statusMessage: result.addedNodes || result.addedEdges
+            ? `SIB import: +${result.addedNodes} nodes, +${result.addedEdges} edges`
+            : 'SIB import: already up to date',
+          error: null,
+        });
+      } catch (err) { set({ error: (err as Error).message }); }
+    },
+
     applyAutoLayout(mode) {
       const { map } = get();
       if (!map) return;
@@ -391,11 +595,15 @@ export const useStore = create<State & Actions>((set, get) => {
       const { undoStack, map } = get();
       if (!map || undoStack.length === 0) return;
       const entry = undoStack[undoStack.length - 1];
-      const current: HistoryEntry = { nodes: structuredClone(map.nodes), edges: structuredClone(map.edges) };
+      const current: HistoryEntry = {
+        nodes: structuredClone(map.nodes),
+        edges: structuredClone(map.edges),
+        lanes: map.lanes ? structuredClone(map.lanes) : undefined,
+      };
       set({
         undoStack: undoStack.slice(0, -1),
         redoStack: [...get().redoStack, current],
-        map: { ...map, nodes: entry.nodes, edges: entry.edges, updatedAt: Date.now() },
+        map: { ...map, nodes: entry.nodes, edges: entry.edges, lanes: entry.lanes, updatedAt: Date.now() },
         dirty: true,
       });
       // Undo/redo re-syncs peers via a full REST save (server broadcasts map:sync).
@@ -406,11 +614,15 @@ export const useStore = create<State & Actions>((set, get) => {
       const { redoStack, map } = get();
       if (!map || redoStack.length === 0) return;
       const entry = redoStack[redoStack.length - 1];
-      const current: HistoryEntry = { nodes: structuredClone(map.nodes), edges: structuredClone(map.edges) };
+      const current: HistoryEntry = {
+        nodes: structuredClone(map.nodes),
+        edges: structuredClone(map.edges),
+        lanes: map.lanes ? structuredClone(map.lanes) : undefined,
+      };
       set({
         redoStack: redoStack.slice(0, -1),
         undoStack: [...get().undoStack, current],
-        map: { ...map, nodes: entry.nodes, edges: entry.edges, updatedAt: Date.now() },
+        map: { ...map, nodes: entry.nodes, edges: entry.edges, lanes: entry.lanes, updatedAt: Date.now() },
         dirty: true,
       });
       void get().save('redo');
@@ -421,7 +633,8 @@ export const useStore = create<State & Actions>((set, get) => {
       if (!map) return;
       try {
         const saved = await mindmapApi.save({
-          id: map.id, name: map.name, nodes: map.nodes, edges: map.edges, versionLabel: label,
+          id: map.id, name: map.name, nodes: map.nodes, edges: map.edges,
+          lanes: map.lanes ?? [], versionLabel: label,
         });
         set({ map: saved, dirty: false, statusMessage: `Saved ${new Date().toLocaleTimeString()}`, error: null });
       } catch (err) { set({ error: (err as Error).message }); }

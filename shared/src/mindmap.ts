@@ -15,6 +15,9 @@ export type MindmapNodeType =
 
 export type MindmapEdgeType = 'directed' | 'undirected';
 
+/** Roadmap execution status — rendered as a badge on the node. */
+export type MindmapNodeStatus = 'planned' | 'in-progress' | 'done' | 'blocked';
+
 export interface MindmapNode {
   id: string;
   x: number;
@@ -24,6 +27,12 @@ export interface MindmapNode {
   metadata: Record<string, unknown>;
   /** Last-write-wins clock — epoch ms of the last mutation. */
   updatedAt: number;
+  /** Roadmap status badge (optional — plain mind-map nodes have none). */
+  status?: MindmapNodeStatus;
+  /** Milestone marker — rendered as a gold diamond. */
+  milestone?: boolean;
+  /** Free-form notes, edited in the inspector panel. */
+  notes?: string;
 }
 
 export interface MindmapEdge {
@@ -32,6 +41,16 @@ export interface MindmapEdge {
   to: string;                 // node id
   type: MindmapEdgeType;
   updatedAt: number;
+  /** Optional label rendered at the edge midpoint. */
+  label?: string;
+}
+
+/** Vertical swimlane band (world-space x range), e.g. Now / Next / Later. */
+export interface MindmapLane {
+  id: string;
+  name: string;
+  x: number;
+  width: number;
 }
 
 export interface Mindmap {
@@ -41,6 +60,8 @@ export interface Mindmap {
   updatedAt: number;          // epoch ms
   nodes: MindmapNode[];
   edges: MindmapEdge[];
+  /** Swimlanes (optional — absent on plain mind-maps). */
+  lanes?: MindmapLane[];
 }
 
 /** Lightweight listing entry (no graph payload). */
@@ -72,11 +93,13 @@ export interface SaveMindmapRequest {
   name: string;
   nodes: MindmapNode[];
   edges: MindmapEdge[];
+  lanes?: MindmapLane[];
   /** Optional label recorded on the version snapshot. */
   versionLabel?: string;
 }
 
-export type ExportFormat = 'json' | 'svg';
+/** sib-json: draft SIB entity scaffold generated from tag-typed nodes. */
+export type ExportFormat = 'json' | 'svg' | 'sib-json';
 
 export interface ExportMindmapRequest {
   id: string;
@@ -96,6 +119,7 @@ export type MindmapWsEventType =
   | 'cursor:move'
   | 'map:sync'      // server → client: full graph on join / resync
   | 'map:rename'
+  | 'map:lanes'     // full lanes array replace (rename/add/remove/resize)
   | 'error';
 
 export interface MindmapWsEvent<T = unknown> {

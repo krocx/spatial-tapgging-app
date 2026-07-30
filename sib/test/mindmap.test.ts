@@ -180,3 +180,109 @@ test('renderMindmapSvg handles an empty map', () => {
   const svg = renderMindmapSvg({ id: 'x', name: 'Empty', createdAt: 0, updatedAt: 0, nodes: [], edges: [] });
   assert.ok(svg.startsWith('<svg'));
 });
+
+// ── Roadmap fields: status / milestone / notes / edge labels / lanes ───────
+
+test('node status, milestone, notes survive sanitization; junk is dropped', () => {
+  let map: Mindmap = saveMindmap({ name: 'Fields', nodes: [], edges: [] });
+  map = applyGraphEvent(map, event('node:add', map.id, node('n1', {
+    status: 'in-progress', milestone: true, notes: 'ship with SIB v0.3',
+  })))!;
+  assert.equal(map.nodes[0].status, 'in-progress');
+  assert.equal(map.nodes[0].milestone, true);
+  assert.equal(map.nodes[0].notes, 'ship with SIB v0.3');
+
+  // Invalid status → dropped, not rejected
+  const junk = applyGraphEvent(map, event('node:update', map.id,
+    node('n1', { status: 'wat' as never, updatedAt: Date.now() + 50 })))!;
+  assert.equal(junk.nodes[0].status, undefined);
+});
+
+test('edge labels persist and render in SVG', () => {
+  const map = saveMindmap({
+    name: 'Labeled',
+    nodes: [node('a'), node('b', { x: 300 })],
+    edges: [{ id: 'e1', from: 'a', to: 'b', type: 'directed', updatedAt: Date.now(), label: 'depends on' }],
+  });
+  assert.equal(map.edges[0].label, 'depends on');
+  assert.ok(renderMindmapSvg(map).includes('depends on'));
+});
+
+test('map:lanes event replaces lanes (LWW-free full replace) and rejects junk', () => {
+  let map: Mindmap = saveMindmap({ name: 'Lanes', nodes: [], edges: [] });
+  const lanes = [
+    { id: 'l1', name: 'Now', x: 0, width: 400 },
+    { id: 'l2', name: 'Next', x: 400, width: 400 },
+  ];
+  map = applyGraphEvent(map, event('map:lanes', map.id, { lanes }))!;
+  assert.equal(map.lanes?.length, 2);
+  assert.equal(map.lanes?.[1].name, 'Next');
+
+  // Malformed lane entry → event rejected entirely
+  assert.equal(applyGraphEvent(map, event('map:lanes', map.id, { lanes: [{ nope: 1 }] })), null);
+  // Empty array is valid (lanes cleared)
+  assert.equal(applyGraphEvent(map, event('map:lanes', map.id, { lanes: [] }))!.lanes?.length, 0);
+});
+
+test('saveMindmap preserves lanes when request omits them', () => {
+  const created = saveMindmap({
+    name: 'KeepLanes', nodes: [], edges: [],
+    lanes: [{ id: 'l1', name: 'Now', x: 0, width: 300 }],
+  });
+  assert.equal(created.lanes?.length, 1);
+  const resaved = saveMindmap({ id: created.id, name: 'KeepLanes', nodes: [], edges: [] });
+  assert.equal(resaved.lanes?.length, 1, 'lanes lost on lane-less save');
+});
+
+// ── SIB bridge ─────────────────────────────────────────────────────────────
+
+test('sib-json export builds draft tags from tag-typed nodes', () => {
+  const map = saveMindmap({
+    name: 'SIB Draft',
+    nodes: [
+      node('t1', { type: 'tag', text: 'Check valve torque', notes: 'use torque wrench' }),
+      node('g1', { type: 'generic', text: 'not a tag' }),
+      node('linked', { type: 'tag', text: 'already linked', metadata: { sib: { kind: 'tag', id: 'abc' } } }),
+    ],
+    edges: [],
+  });
+  const out = exportMindmap(map.id, 'sib-json');
+  const draft = JSON.parse(out.body);
+  assert.equal(draft.draftTags.length, 1);
+  assert.equal(draft.draftTags[0].label, 'Check valve torque');
+  assert.equal(draft.draftTags[0].metadata.notes, 'use torque wrench');
+  assert.equal(draft.linked.length, 1);
+  assert.equal(draft.linked[0].sibId, 'abc');
+  assert.ok(out.filename.endsWith('.sib-draft.json'));
+});
+
+test('importSibGraph merges anchors/tags idempotently', async () => {
+  const { anchorStore } = await import('../src/routes/anchors.js');
+  const { tagStore } = await import('../src/routes/tags.js');
+  const { importSibGraph } = await import('../src/adapters/mindmap-sib-adapter.js');
+
+  const anchor = {
+    id: 'a-test-1', assetId: 'PUMP-42', anchorType: 'QR' as const,
+    coordinateSystem: 'ASSET_FRAME' as const,
+    position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0, w: 1 },
+    metadata: {}, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+  };
+  anchorStore.save(anchor as never);
+  tagStore.save({
+    id: 't-test-1', anchorId: 'a-test-1', type: 'INSPECTION_POINT', label: 'Valve check',
+    expectedOutcome: '', metadata: {}, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+  } as never);
+
+  const map = saveMindmap({ name: 'SIB Import', nodes: [], edges: [] });
+  const first = importSibGraph(map, 'a-test-1');
+  assert.equal(first.addedNodes, 2);            // anchor node + tag node
+  assert.equal(first.addedEdges, 1);            // anchor → tag
+  assert.equal(first.nodes.find(n => n.text === 'PUMP-42')?.type, 'generic');
+  assert.equal(first.nodes.find(n => n.text === 'Valve check')?.type, 'tag');
+
+  // Second import over the merged result adds nothing.
+  const merged = { ...map, nodes: first.nodes, edges: first.edges };
+  const second = importSibGraph(merged, 'a-test-1');
+  assert.equal(second.addedNodes, 0);
+  assert.equal(second.addedEdges, 0);
+});

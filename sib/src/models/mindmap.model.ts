@@ -13,6 +13,7 @@ import type {
   Mindmap,
   MindmapNode,
   MindmapEdge,
+  MindmapLane,
   MindmapVersion,
   MindmapWsEvent,
   MindmapSummary,
@@ -103,6 +104,12 @@ export function applyGraphEvent(map: Mindmap, event: MindmapWsEvent): Mindmap | 
       next.name = name;
       break;
     }
+    case 'map:lanes': {
+      const lanes = sanitizeLanes((event.payload as { lanes?: unknown })?.lanes);
+      if (lanes === null) return null;
+      next.lanes = lanes;
+      break;
+    }
     default:
       return null; // cursor:move / session:* never mutate the graph
   }
@@ -112,6 +119,7 @@ export function applyGraphEvent(map: Mindmap, event: MindmapWsEvent): Mindmap | 
 }
 
 const NODE_TYPES = new Set(['tag', 'perception', 'semantic', 'reasoning', 'generic']);
+const NODE_STATUSES = new Set(['planned', 'in-progress', 'done', 'blocked']);
 
 function sanitizeNode(raw: unknown, ts: number): MindmapNode | null {
   const n = raw as Partial<MindmapNode> | undefined;
@@ -124,6 +132,9 @@ function sanitizeNode(raw: unknown, ts: number): MindmapNode | null {
     type: NODE_TYPES.has(n.type as string) ? (n.type as MindmapNode['type']) : 'generic',
     metadata: (n.metadata && typeof n.metadata === 'object') ? n.metadata as Record<string, unknown> : {},
     updatedAt: typeof n.updatedAt === 'number' ? Math.min(n.updatedAt, ts) : ts,
+    ...(NODE_STATUSES.has(n.status as string) && { status: n.status as MindmapNode['status'] }),
+    ...(n.milestone === true && { milestone: true }),
+    ...(typeof n.notes === 'string' && n.notes.length > 0 && { notes: n.notes.slice(0, 10_000) }),
   };
 }
 
@@ -136,7 +147,25 @@ function sanitizeEdge(raw: unknown, ts: number): MindmapEdge | null {
     to: e.to,
     type: e.type === 'undirected' ? 'undirected' : 'directed',
     updatedAt: typeof e.updatedAt === 'number' ? Math.min(e.updatedAt, ts) : ts,
+    ...(typeof e.label === 'string' && e.label.trim().length > 0 && { label: e.label.trim().slice(0, 200) }),
   };
+}
+
+/** Returns null when the payload is malformed; [] is valid (lanes removed). */
+export function sanitizeLanes(raw: unknown): MindmapLane[] | null {
+  if (!Array.isArray(raw)) return null;
+  const lanes: MindmapLane[] = [];
+  for (const item of raw.slice(0, 20)) {
+    const l = item as Partial<MindmapLane> | undefined;
+    if (!l || typeof l.id !== 'string' || typeof l.x !== 'number' || typeof l.width !== 'number') return null;
+    lanes.push({
+      id: l.id,
+      name: typeof l.name === 'string' ? l.name.slice(0, 80) : 'Lane',
+      x: l.x,
+      width: Math.max(80, l.width),
+    });
+  }
+  return lanes;
 }
 
 // ── Versioning ─────────────────────────────────────────────────────────────
@@ -189,6 +218,12 @@ const NODE_COLORS: Record<string, string> = {
   reasoning: '#f59e0b',
   generic: '#64748b',
 };
+const STATUS_COLORS: Record<string, string> = {
+  planned: '#94a3b8',
+  'in-progress': '#2563eb',
+  done: '#16a34a',
+  blocked: '#dc2626',
+};
 const NODE_W = 160;
 const NODE_H = 48;
 
@@ -204,6 +239,12 @@ export function renderMindmapSvg(map: Mindmap): string {
   const maxX = (xs.length ? Math.max(...xs) : 0) + NODE_W + pad;
   const maxY = (ys.length ? Math.max(...ys) : 0) + NODE_H + pad;
 
+  // Swimlane bands behind everything.
+  const lanes = (map.lanes ?? []).map((l, i) => [
+    `  <rect x="${l.x}" y="${minY}" width="${l.width}" height="${maxY - minY}" fill="${i % 2 === 0 ? 'rgba(47,111,237,0.05)' : 'rgba(100,116,139,0.05)'}"/>`,
+    `  <text x="${l.x + l.width / 2}" y="${minY + 24}" text-anchor="middle" font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#94a3b8">${esc(l.name)}</text>`,
+  ].join('\n')).join('\n');
+
   const byId = new Map(map.nodes.map(n => [n.id, n]));
   const edges = map.edges.map(e => {
     const a = byId.get(e.from); const b = byId.get(e.to);
@@ -211,16 +252,25 @@ export function renderMindmapSvg(map: Mindmap): string {
     const x1 = a.x + NODE_W / 2, y1 = a.y + NODE_H / 2;
     const x2 = b.x + NODE_W / 2, y2 = b.y + NODE_H / 2;
     const marker = e.type === 'directed' ? ' marker-end="url(#arrow)"' : '';
-    return `  <line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#94a3b8" stroke-width="1.5"${marker}/>`;
+    const label = e.label
+      ? `\n  <text x="${(x1 + x2) / 2}" y="${(y1 + y2) / 2 - 6}" text-anchor="middle" font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="11" fill="#475569" stroke="#ffffff" stroke-width="3" paint-order="stroke">${esc(e.label)}</text>`
+      : '';
+    return `  <line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#94a3b8" stroke-width="1.5"${marker}/>${label}`;
   }).join('\n');
 
   const nodes = map.nodes.map(n => {
     const color = NODE_COLORS[n.type] ?? NODE_COLORS.generic;
     const label = esc(n.text.length > 24 ? n.text.slice(0, 23) + '…' : n.text);
+    const status = n.status
+      ? `\n    <circle cx="${n.x + NODE_W - 10}" cy="${n.y + 10}" r="5" fill="${STATUS_COLORS[n.status]}" stroke="#ffffff" stroke-width="1.5"/>`
+      : '';
+    const milestone = n.milestone
+      ? `\n    <path d="M ${n.x + 16} ${n.y - 8} l 7 8 l -7 8 l -7 -8 z" fill="#eab308" stroke="#ffffff" stroke-width="1.5"/>`
+      : '';
     return [
       `  <g>`,
       `    <rect x="${n.x}" y="${n.y}" width="${NODE_W}" height="${NODE_H}" rx="10" fill="#ffffff" stroke="${color}" stroke-width="2"/>`,
-      `    <rect x="${n.x}" y="${n.y}" width="6" height="${NODE_H}" rx="3" fill="${color}"/>`,
+      `    <rect x="${n.x}" y="${n.y}" width="6" height="${NODE_H}" rx="3" fill="${color}"/>` + status + milestone,
       `    <text x="${n.x + NODE_W / 2}" y="${n.y + NODE_H / 2 + 5}" text-anchor="middle" font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="13" fill="#1e293b">${label}</text>`,
       `  </g>`,
     ].join('\n');
@@ -230,6 +280,7 @@ export function renderMindmapSvg(map: Mindmap): string {
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX} ${minY} ${maxX - minX} ${maxY - minY}">`,
     `  <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8"/></marker></defs>`,
     `  <title>${esc(map.name)}</title>`,
+    lanes,
     edges,
     nodes,
     `</svg>`,

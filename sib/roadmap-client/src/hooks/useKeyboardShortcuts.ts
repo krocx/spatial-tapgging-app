@@ -24,6 +24,14 @@ export function useKeyboardShortcuts(): void {
       if (mod && (e.key.toLowerCase() === 'y' || (e.key.toLowerCase() === 'z' && e.shiftKey))) {
         e.preventDefault(); s.redo(); return;
       }
+      if (mod && e.key.toLowerCase() === 'c') { e.preventDefault(); s.copySelection(); return; }
+      if (mod && e.key.toLowerCase() === 'v') { e.preventDefault(); s.pasteClipboard(); return; }
+      if (mod && e.key.toLowerCase() === 'd') { e.preventDefault(); s.duplicateSelection(); return; }
+      if (mod && e.key.toLowerCase() === 'a') {
+        e.preventDefault();
+        useStore.setState({ selectedNodeIds: (s.map?.nodes ?? []).map(n => n.id), selectedEdgeId: null });
+        return;
+      }
       if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); s.deleteSelection(); return; }
       if (e.key === 'Enter' && s.selectedNodeIds.length === 1) {
         e.preventDefault();
@@ -34,7 +42,9 @@ export function useKeyboardShortcuts(): void {
         s.setEditing(null);
         s.select(null);
         s.selectEdge(null);
+        s.selectLane(null);
         s.setPendingEdgeFrom(null);
+        s.setSearchQuery('');
       }
     };
     window.addEventListener('keydown', handler);

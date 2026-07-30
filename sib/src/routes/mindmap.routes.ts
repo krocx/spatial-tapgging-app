@@ -20,6 +20,7 @@ import {
   getVersions,
   restoreVersion,
   exportMindmap,
+  importSib,
 } from '../controllers/mindmap.controller.js';
 import { broadcastMapSync } from '../ws/mindmap.ws.js';
 
@@ -65,6 +66,17 @@ router.post('/export', (req: Request, res: Response) => {
     res.setHeader('Content-Type', result.contentType);
     res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
     return res.send(result.body);
+  } catch (err) { return fail(res, err); }
+});
+
+// POST /mindmap/:id/import-sib — merge SIB anchors/tags into the map.
+// Body: { anchorId?: string } — omit to import the full anchor/tag graph.
+router.post('/:id/import-sib', (req: Request, res: Response) => {
+  try {
+    const { anchorId } = (req.body ?? {}) as { anchorId?: string };
+    const result = importSib(req.params.id, anchorId);
+    if (result.addedNodes > 0 || result.addedEdges > 0) broadcastMapSync(result.map);
+    return ok(res, result);
   } catch (err) { return fail(res, err); }
 });
 

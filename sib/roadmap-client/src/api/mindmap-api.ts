@@ -41,8 +41,19 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   return ((await res.json()) as ApiResponse<T>).data;
 }
 
+export interface ImportSibResult {
+  map: Mindmap;
+  addedNodes: number;
+  addedEdges: number;
+}
+
 export const mindmapApi = {
   list: () => request<MindmapSummary[]>('/mindmap/list'),
+  importSib: (id: string, anchorId?: string) =>
+    request<ImportSibResult>(`/mindmap/${id}/import-sib`, {
+      method: 'POST',
+      body: JSON.stringify(anchorId ? { anchorId } : {}),
+    }),
   load: (id: string) => request<Mindmap>(`/mindmap/load/${id}`),
   save: (body: SaveMindmapRequest) =>
     request<Mindmap>('/mindmap/save', { method: 'POST', body: JSON.stringify(body) }),
@@ -51,3 +62,27 @@ export const mindmapApi = {
   restore: (id: string, versionId: string) =>
     request<Mindmap>(`/mindmap/${id}/restore/${versionId}`, { method: 'POST' }),
 };
+
+/** Server-side export (sib-json / svg / json) → browser download. */
+export async function downloadServerExport(id: string, format: string): Promise<void> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const key = getApiKey();
+  if (key) headers['X-API-Key'] = key;
+
+  const res = await fetch('/mindmap/export', {
+    method: 'POST', headers, body: JSON.stringify({ id, format }),
+  });
+  if (!res.ok) {
+    let message = `HTTP ${res.status}`;
+    try { message = ((await res.json()) as { error?: string }).error ?? message; } catch { /* keep default */ }
+    throw new Error(message);
+  }
+  const disposition = res.headers.get('Content-Disposition') ?? '';
+  const filename = /filename="([^"]+)"/.exec(disposition)?.[1] ?? `mindmap.${format}`;
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}

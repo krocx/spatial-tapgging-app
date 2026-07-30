@@ -1,5 +1,5 @@
 // colors.ts — SIB layer palette. Single source of truth for node styling.
-import type { MindmapNodeType } from '@spatial/shared';
+import type { MindmapNodeType, MindmapNodeStatus } from '@spatial/shared';
 
 export const NODE_COLORS: Record<MindmapNodeType, string> = {
   tag: '#2f6fed',        // spatial layer — blue
@@ -18,6 +18,22 @@ export const NODE_TYPE_LABELS: Record<MindmapNodeType, string> = {
 };
 
 export const NODE_TYPES: MindmapNodeType[] = ['tag', 'perception', 'semantic', 'reasoning', 'generic'];
+
+export const STATUS_COLORS: Record<MindmapNodeStatus, string> = {
+  planned: '#94a3b8',
+  'in-progress': '#2563eb',
+  done: '#16a34a',
+  blocked: '#dc2626',
+};
+
+export const STATUS_LABELS: Record<MindmapNodeStatus, string> = {
+  planned: 'Planned',
+  'in-progress': 'In progress',
+  done: 'Done',
+  blocked: 'Blocked',
+};
+
+export const NODE_STATUSES: MindmapNodeStatus[] = ['planned', 'in-progress', 'done', 'blocked'];
 
 /** Stable peer-cursor color derived from the client id. */
 export function peerColor(clientId: string): string {

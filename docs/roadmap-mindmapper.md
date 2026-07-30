@@ -29,9 +29,10 @@ Separation of concerns follows the workspace preferences: UI logic (components) 
 
 ### Data model (shared/src/mindmap.ts)
 
-`Mindmap { id, name, createdAt, updatedAt, nodes[], edges[] }`
-`MindmapNode { id, x, y, text, type, metadata, updatedAt }` — type is one of `tag | perception | semantic | reasoning | generic`, mapping 1:1 onto SIB layers (blue / purple / green / orange / grey).
-`MindmapEdge { id, from, to, type: directed|undirected, updatedAt }`
+`Mindmap { id, name, createdAt, updatedAt, nodes[], edges[], lanes?[] }`
+`MindmapNode { id, x, y, text, type, metadata, updatedAt, status?, milestone?, notes? }` — type is one of `tag | perception | semantic | reasoning | generic`, mapping 1:1 onto SIB layers (blue / purple / green / orange / grey); `status` is `planned | in-progress | done | blocked` (rendered as a badge).
+`MindmapEdge { id, from, to, type: directed|undirected, updatedAt, label? }`
+`MindmapLane { id, name, x, width }` — vertical swimlane bands (e.g. Now / Next / Later), replaced atomically via the `map:lanes` WS event.
 
 Types live in `@spatial/shared` so server and client can never drift.
 
@@ -62,7 +63,8 @@ All routes behind `apiKeyAuth`; responses use the standard `ApiResponse<T>` enve
 | POST | `/mindmap/save` | `{ id?, name, nodes[], edges[], versionLabel? }` | `Mindmap` (201). Omit `id` to create. Snapshots a version. |
 | GET | `/mindmap/load/:id` | — | `Mindmap` |
 | GET | `/mindmap/list` | — | `MindmapSummary[]` (no graph payload, sorted by `updatedAt`) |
-| POST | `/mindmap/export` | `{ id, format: "json"\|"svg" }` | File download (`Content-Disposition: attachment`). PNG is client-side. |
+| POST | `/mindmap/export` | `{ id, format: "json"\|"svg"\|"sib-json" }` | File download (`Content-Disposition: attachment`). PNG is client-side. `sib-json` = draft SIB tag scaffold from tag-typed nodes. |
+| POST | `/mindmap/:id/import-sib` | `{ anchorId? }` | Merges SIB anchors/tags into the map (idempotent — re-import adds nothing). Broadcasts `map:sync`. |
 | GET | `/mindmap/:id/versions` | — | Version metadata (no snapshots), newest first |
 | POST | `/mindmap/:id/restore/:versionId` | — | Restored `Mindmap`; broadcasts `map:sync` |
 | DELETE | `/mindmap/:id` | — | `{ deleted: id }`; also removes its versions |
@@ -92,11 +94,17 @@ src/
 
 ### Canvas interactions
 
-Double-click empty canvas → create node · drag node → move · drag the ring on a node's right edge → drop on another node to connect · scroll → zoom to cursor · space+drag (or background drag / middle mouse) → pan · double-click node → edit text (Enter commits, Esc cancels) · double-click edge → toggle directed/undirected · shift-click → multi-select · palette click → sets type for new nodes **and** recolors the selection.
+Double-click empty canvas → create node · drag node → move (a multi-selection moves together) · background drag → **marquee select** · drag the ring on a node's right edge → drop on another node to connect · scroll → zoom to cursor · space+drag / middle mouse → pan · double-click node → edit text (Enter commits, Esc cancels) · double-click edge → toggle directed/undirected · shift-click / shift-marquee → extend selection · palette click → sets type for new nodes **and** recolors the selection.
 
-Shortcuts: `Delete` remove selection · `Enter` edit selected · `Ctrl/⌘+S` save · `Ctrl/⌘+Z` undo · `Ctrl/⌘+Y` / `Shift+Z` redo · `Esc` deselect.
+**Touch (iPad):** one finger on background → pan · pinch → zoom · drag a node → move · long-press empty canvas → create node · long-press a node → edit text.
 
-Auto-layout: **Hierarchical** (layered left-to-right from root nodes over directed edges; disconnected parts get their own layers) and **Grid** (freeform tidy-up).
+**Inspector (right panel, appears on selection):** node text / layer type / status / milestone / notes · edge label + direction · lane name / width / remove. Multi-selection gets bulk type + status setters.
+
+**Toolbar:** search with jump-to-node · Lanes menu (Now/Next/Later preset, add, clear) · Layout · SIB menu (import anchors+tags, export draft) · undo/redo · Export (PNG/SVG/JSON) · History · Save · presence.
+
+Shortcuts: `Delete` remove selection · `Enter` edit selected · `Ctrl/⌘+S` save · `Ctrl/⌘+Z` undo · `Ctrl/⌘+Y` / `Shift+Z` redo · `Ctrl/⌘+C/V` copy/paste (internal edges included, pasted at cursor) · `Ctrl/⌘+D` duplicate · `Ctrl/⌘+A` select all · `Esc` deselect.
+
+Auto-layout: **Hierarchical** (layered left-to-right from root nodes over directed edges; disconnected parts get their own layers) and **Grid** (freeform tidy-up). A clickable **minimap** (bottom-right) shows the whole graph, lanes, and the current viewport.
 
 ## Build & Deployment
 
@@ -144,11 +152,11 @@ npm run build --workspace=@spatial/sib  # recompile sib/dist (exact name — see
 
 Then open `https://dca-qa-330.amat.com:447/roadmap`. The committed `sib/roadmap/` bundle is served as-is (no Node build tools needed for the frontend on the server), HTTPS gives collaborators `wss://` transport, and data persists under the configured `SIB_DATA_DIR` (`C:\sib-data`).
 
-## SIB Integration Path (designed-for, not yet wired)
+## SIB Integration (wired — sib/src/adapters/mindmap-sib-adapter.ts)
 
-- Node types already mirror SIB layers, and `metadata` is an open `Record<string, unknown>` — a `tag` node can carry `{ anchorId, tagId }` today.
-- Planned adapters (small, isolated modules): import SIB anchors/tags as nodes (`GET /anchors`, `/tags` → graph), and export `tag`-typed nodes into SIB tag schemas. Both belong in `sib/src/adapters/` next to `perception-adapter.ts`.
-- AI-assisted node expansion was intentionally left out: it conflicts with the "no external calls" constraint. When a local model is available it should join via the existing adapter interface — never hard-coded into the client.
+- **Import:** the toolbar's SIB → "Import anchors + tags" (REST: `POST /mindmap/:id/import-sib`) merges the live anchor/tag graph into the current map — anchors as `generic` nodes, their tags as `tag` nodes with anchor→tag edges. Provenance is stored in `node.metadata.sib = { kind, id }`, making re-imports idempotent; imported nodes keep their positions on subsequent imports. Each import that changes anything snapshots a version.
+- **Export:** SIB → "Export SIB draft" (`POST /mindmap/export` with `format: "sib-json"`) produces a *draft* scaffold of Tag entities from tag-typed nodes (nodes already linked to SIB are listed separately for traceability). It deliberately does **not** write into the SIB stores — real tags need an anchor and spatial placement, which stays in the authoring apps.
+- AI-assisted node expansion remains intentionally out: it conflicts with the "no external calls" constraint. When a local model is available it should join via the adapter interface — never hard-coded into the client.
 
 ## Assumptions & Limitations
 
