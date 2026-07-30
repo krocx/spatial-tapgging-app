@@ -116,10 +116,10 @@ npm run dev:roadmap         # http://localhost:5174
 npm run build:roadmap
 
 # backend unit tests (12 tests: LWW, versioning, export, controller)
-npm test --workspace=sib
+npm run test:sib
 ```
 
-Production is identical to the existing flow: `npm run build --workspace=sib && npm start --workspace=sib`. Set `SIB_API_KEY` to require auth, `SIB_DATA_DIR` to relocate storage, HTTPS via the existing `SSL_CERT_PATH`/`SSL_KEY_PATH` (WS automatically upgrades to `wss://`). For private-network-only access, bind `HOST` to a LAN interface or firewall port 3001 — no additional configuration is needed by the tool.
+Production is identical to the existing flow: `npm run build --workspace=@spatial/sib && npm start --workspace=@spatial/sib`. (Use the exact package *name* — the path form `--workspace=sib` also matches the nested `sib/roadmap-client` workspace.) Set `SIB_API_KEY` to require auth, `SIB_DATA_DIR` to relocate storage, HTTPS via the existing `SSL_CERT_PATH`/`SSL_KEY_PATH` (WS automatically upgrades to `wss://`). For private-network-only access, bind `HOST` to a LAN interface or firewall port 3001 — no additional configuration is needed by the tool.
 
 ### Render
 
@@ -136,9 +136,9 @@ Follow the existing `INTERNAL-SERVER-DEPLOY.md` flow; the mind-mapper needs no e
 
 ```bash
 cd C:\sib
-git pull                       # branch with the mind-mapper
-npm install                    # repo root — installs all workspaces (adds ws)
-npm run build --workspace=sib  # recompile sib/dist
+git pull                                # branch with the mind-mapper
+npm install                             # repo root — installs all workspaces (adds ws)
+npm run build --workspace=@spatial/sib  # recompile sib/dist (exact name — see note above)
 # restart the NSSM service
 ```
 

@@ -30,7 +30,11 @@ COPY sib/tsconfig.json  ./sib/
 COPY sib/src/           ./sib/src/
 
 # Compile sib TypeScript → sib/dist/
-RUN npm run build --workspace=sib
+# NOTE: use the exact package NAME, not the path. `--workspace=sib` matches by
+# path prefix and would also select the nested sib/roadmap-client workspace,
+# whose source is intentionally not copied into this image (its prebuilt
+# bundle ships via sib/roadmap/ instead).
+RUN npm run build --workspace=@spatial/sib
 
 # ── Stage 2: Runtime ──────────────────────────────────────────────────────────
 FROM node:20-alpine

@@ -9,10 +9,11 @@
     "sib/roadmap-client"
   ],
   "scripts": {
-    "dev:sib": "npm run dev --workspace=sib",
+    "dev:sib": "npm run dev --workspace=@spatial/sib",
     "dev:client": "npm run dev --workspace=ar-client",
-    "dev:roadmap": "npm run dev --workspace=sib/roadmap-client",
-    "build:roadmap": "npm run build --workspace=sib/roadmap-client",
+    "dev:roadmap": "npm run dev --workspace=@spatial/roadmap-client",
+    "build:roadmap": "npm run build --workspace=@spatial/roadmap-client",
+    "test:sib": "npm run test --workspace=@spatial/sib",
     "build": "npm run build --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },
