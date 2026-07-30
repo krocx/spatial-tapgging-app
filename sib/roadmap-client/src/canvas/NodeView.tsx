@@ -131,6 +131,26 @@ export function NodeView({ node, onConnectDrop }: Props): JSX.Element {
         </path>
       )}
 
+      {/* Review verdict — top-left inside the node */}
+      {node.review && (
+        <text x={14} y={15} textAnchor="middle" pointerEvents="none"
+              style={{ fontSize: 11, fontWeight: 700 }}
+              fill={node.review === 'approved' ? '#16a34a' : node.review === 'rejected' ? '#dc2626' : '#f59e0b'}>
+          {node.review === 'approved' ? '✓' : node.review === 'rejected' ? '✗' : '?'}
+          <title>{node.review}</title>
+        </text>
+      )}
+
+      {/* Comment count — bottom-left bubble */}
+      {(node.comments?.length ?? 0) > 0 && (
+        <g transform={`translate(12 ${NODE_H - 9})`} pointerEvents="none">
+          <rect x={-7} y={-8} width={20} height={13} rx={6.5} fill="#eef2f7" stroke="#cbd5e1" strokeWidth={0.8} />
+          <text x={3} y={2.5} textAnchor="middle" style={{ fontSize: 9, fontWeight: 600 }} fill="#475569">
+            {node.comments!.length > 99 ? '99' : node.comments!.length}
+          </text>
+        </g>
+      )}
+
       {/* Notes indicator — bottom-right corner */}
       {node.notes && (
         <g transform={`translate(${NODE_W - 16} ${NODE_H - 14})`} opacity={0.55} pointerEvents="none">

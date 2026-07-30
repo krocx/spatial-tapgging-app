@@ -8,7 +8,7 @@
 import { create } from 'zustand';
 import type {
   Mindmap, MindmapNode, MindmapEdge, MindmapLane, MindmapNodeType,
-  MindmapNodeStatus, MindmapSummary,
+  MindmapNodeStatus, MindmapNodeReview, MindmapComment, MindmapSummary,
   MindmapWsEvent, MapSyncPayload, CursorPayload, PresencePayload,
 } from '@spatial/shared';
 import { mindmapApi } from '../api/mindmap-api.js';
@@ -53,6 +53,8 @@ interface State {
   pendingEdgeFrom: string | null;      // node id while dragging a new connection
   defaultNodeType: MindmapNodeType;
   searchQuery: string;
+  /** Last applied auto-layout; any manual node move resets to 'freeform'. */
+  layoutMode: 'freeform' | 'hierarchical' | 'grid';
   // collab
   collabStatus: CollabStatus;
   peers: Record<string, Peer>;
@@ -83,8 +85,11 @@ interface Actions {
   updateNodeText(id: string, text: string): void;
   setNodeType(id: string, type: MindmapNodeType): void;
   setNodeStatus(id: string, status: MindmapNodeStatus | undefined): void;
+  setNodeReview(id: string, review: MindmapNodeReview | undefined): void;
   toggleMilestone(id: string): void;
   setNodeNotes(id: string, notes: string): void;
+  addComment(nodeId: string, text: string): void;
+  deleteComment(nodeId: string, commentId: string): void;
   moveNode(id: string, x: number, y: number, live: boolean): void;
   moveNodes(positions: Array<{ id: string; x: number; y: number }>, live: boolean): void;
   addEdge(from: string, to: string): void;
@@ -96,7 +101,10 @@ interface Actions {
   selectLane(id: string | null): void;
   setLanes(lanes: MindmapLane[], withHistory?: boolean): void;
   addLanePreset(): void;
+  addRowLanePreset(): void;
   addLane(): void;
+  fitView(): void;
+  importMapFromJson(raw: string): Promise<void>;
   updateLane(id: string, patch: Partial<MindmapLane>): void;
   removeLane(id: string): void;
 
@@ -256,6 +264,27 @@ export const useStore = create<State & Actions>((set, get) => {
         mutateGraph(m => { m.lanes = lanes; });
         return;
       }
+      case 'comment:add': {
+        const { nodeId, comment } = event.payload as { nodeId: string; comment: MindmapComment };
+        mutateGraph(m => {
+          const i = m.nodes.findIndex(n => n.id === nodeId);
+          if (i !== -1 && !(m.nodes[i].comments ?? []).some(c => c.id === comment.id)) {
+            m.nodes[i] = { ...m.nodes[i], comments: [...(m.nodes[i].comments ?? []), comment] };
+          }
+        });
+        return;
+      }
+      case 'comment:delete': {
+        const { nodeId, commentId } = event.payload as { nodeId: string; commentId: string };
+        mutateGraph(m => {
+          const i = m.nodes.findIndex(n => n.id === nodeId);
+          if (i !== -1) {
+            const remaining = (m.nodes[i].comments ?? []).filter(c => c.id !== commentId);
+            m.nodes[i] = { ...m.nodes[i], comments: remaining.length ? remaining : undefined };
+          }
+        });
+        return;
+      }
     }
   }
 
@@ -273,6 +302,7 @@ export const useStore = create<State & Actions>((set, get) => {
     pendingEdgeFrom: null,
     defaultNodeType: 'generic',
     searchQuery: '',
+    layoutMode: 'freeform',
     collabStatus: 'disconnected',
     peers: {},
     dirty: false,
@@ -367,7 +397,34 @@ export const useStore = create<State & Actions>((set, get) => {
     updateNodeText: (id, text) => patchNode(id, { text }),
     setNodeType: (id, type) => patchNode(id, { type }),
     setNodeStatus: (id, status) => patchNode(id, { status }),
+    setNodeReview: (id, review) => patchNode(id, { review }),
     setNodeNotes: (id, notes) => patchNode(id, { notes: notes || undefined }),
+
+    addComment(nodeId, text) {
+      if (!text.trim()) return;
+      const comment: MindmapComment = {
+        id: crypto.randomUUID(),
+        author: localStorage.getItem('roadmap-name')?.trim() || 'Anonymous',
+        text: text.trim(),
+        createdAt: Date.now(),
+      };
+      mutateGraph(m => {
+        const i = m.nodes.findIndex(n => n.id === nodeId);
+        if (i !== -1) m.nodes[i] = { ...m.nodes[i], comments: [...(m.nodes[i].comments ?? []), comment] };
+      });
+      collab?.send('comment:add', { nodeId, comment });
+    },
+
+    deleteComment(nodeId, commentId) {
+      mutateGraph(m => {
+        const i = m.nodes.findIndex(n => n.id === nodeId);
+        if (i !== -1) {
+          const remaining = (m.nodes[i].comments ?? []).filter(c => c.id !== commentId);
+          m.nodes[i] = { ...m.nodes[i], comments: remaining.length ? remaining : undefined };
+        }
+      });
+      collab?.send('comment:delete', { nodeId, commentId });
+    },
 
     toggleMilestone(id) {
       const node = get().map?.nodes.find(n => n.id === id);
@@ -426,6 +483,7 @@ export const useStore = create<State & Actions>((set, get) => {
         dragThrottle = now;
         for (const n of updates) collab?.send('node:update', n);
       }
+      if (get().layoutMode !== 'freeform') set({ layoutMode: 'freeform' });
     },
 
     deleteSelection() {
@@ -470,13 +528,72 @@ export const useStore = create<State & Actions>((set, get) => {
       ]);
     },
 
+    addRowLanePreset() {
+      const { map } = get();
+      if (!map) return;
+      // Horizontal Why / What / How bands spanning the current content height.
+      const ys = map.nodes.map(n => n.y);
+      const startY = ys.length ? Math.min(...ys) - 40 : 40;
+      const total = Math.max(ys.length ? Math.max(...ys) + NODE_H + 40 - startY : 0, 720);
+      const h = Math.ceil(total / 3);
+      const columns = (map.lanes ?? []).filter(l => l.orientation !== 'row');
+      get().setLanes([
+        ...columns,
+        { id: crypto.randomUUID(), name: 'Why', x: startY, width: h, orientation: 'row' },
+        { id: crypto.randomUUID(), name: 'What', x: startY + h, width: h, orientation: 'row' },
+        { id: crypto.randomUUID(), name: 'How', x: startY + 2 * h, width: h, orientation: 'row' },
+      ]);
+    },
+
     addLane() {
       const { map } = get();
       if (!map) return;
       const lanes = map.lanes ?? [];
-      const last = lanes[lanes.length - 1];
+      const columns = lanes.filter(l => l.orientation !== 'row');
+      const last = columns[columns.length - 1];
       const x = last ? last.x + last.width : 40;
-      get().setLanes([...lanes, { id: crypto.randomUUID(), name: `Lane ${lanes.length + 1}`, x, width: 400 }]);
+      get().setLanes([...lanes, { id: crypto.randomUUID(), name: `Lane ${columns.length + 1}`, x, width: 400 }]);
+    },
+
+    fitView() {
+      const { map } = get();
+      if (!map || map.nodes.length === 0) return;
+      const pad = 80;
+      const minX = Math.min(...map.nodes.map(n => n.x)) - pad;
+      const minY = Math.min(...map.nodes.map(n => n.y)) - pad;
+      const maxX = Math.max(...map.nodes.map(n => n.x)) + NODE_W + pad;
+      const maxY = Math.max(...map.nodes.map(n => n.y)) + NODE_H + pad;
+      const vw = window.innerWidth, vh = window.innerHeight - 120;   // minus chrome
+      const scale = Math.min(2, Math.max(0.15, Math.min(vw / (maxX - minX), vh / (maxY - minY))));
+      set({
+        camera: {
+          scale,
+          x: (vw - (maxX - minX) * scale) / 2 - minX * scale,
+          y: (vh - (maxY - minY) * scale) / 2 - minY * scale + 60,
+        },
+      });
+    },
+
+    async importMapFromJson(raw) {
+      try {
+        const parsed = JSON.parse(raw) as Partial<Mindmap>;
+        if (!Array.isArray(parsed.nodes) || !Array.isArray(parsed.edges)) {
+          throw new Error('Not a mind-map export: missing nodes/edges arrays');
+        }
+        const name = typeof parsed.name === 'string' && parsed.name.trim()
+          ? `${parsed.name.trim()} (imported)`
+          : 'Imported map';
+        // New id on this server — an export from Render becomes a fresh map here.
+        const saved = await mindmapApi.save({
+          name,
+          nodes: parsed.nodes,
+          edges: parsed.edges,
+          lanes: parsed.lanes ?? [],
+          versionLabel: 'imported from JSON',
+        });
+        await get().refreshList();
+        set({ statusMessage: `Imported "${saved.name}"`, error: null });
+      } catch (err) { set({ error: `Import failed: ${(err as Error).message}` }); }
     },
 
     updateLane(id, patch) {
@@ -589,6 +706,7 @@ export const useStore = create<State & Actions>((set, get) => {
       const laidOut = autoLayout(map, mode).map(n => ({ ...n, updatedAt: Date.now() }));
       mutateGraph(m => { m.nodes = laidOut; });
       for (const n of laidOut) collab?.send('node:update', n);
+      set({ layoutMode: mode });
     },
 
     undo() {

@@ -35,9 +35,12 @@ export function Toolbar(): JSX.Element | null {
   const setSearchQuery = useStore(s => s.setSearchQuery);
   const jumpToNode = useStore(s => s.jumpToNode);
   const addLanePreset = useStore(s => s.addLanePreset);
+  const addRowLanePreset = useStore(s => s.addRowLanePreset);
   const addLane = useStore(s => s.addLane);
   const setLanes = useStore(s => s.setLanes);
   const importFromSib = useStore(s => s.importFromSib);
+  const layoutMode = useStore(s => s.layoutMode);
+  const fitView = useStore(s => s.fitView);
 
   const [showExport, setShowExport] = useState(false);
   const [showVersions, setShowVersions] = useState(false);
@@ -111,24 +114,32 @@ export function Toolbar(): JSX.Element | null {
         </button>
         {showLanes && (
           <div className="menu">
-            <button onClick={() => { addLanePreset(); setShowLanes(false); }}>Now / Next / Later</button>
-            <button onClick={() => { addLane(); setShowLanes(false); }}>Add lane</button>
+            <button onClick={() => { addLanePreset(); setShowLanes(false); }}>Now / Next / Later (columns)</button>
+            <button onClick={() => { addRowLanePreset(); setShowLanes(false); }}>Why / What / How (rows)</button>
+            <button onClick={() => { addLane(); setShowLanes(false); }}>Add column lane</button>
             <button onClick={() => { setLanes([]); setShowLanes(false); }}>Clear lanes</button>
           </div>
         )}
       </div>
 
       <div className="menu-wrap">
-        <button className="btn" onClick={() => { const v = showLayout; closeMenus(); setShowLayout(!v); }}>
-          Layout ▾
+        <button className="btn" onClick={() => { const v = showLayout; closeMenus(); setShowLayout(!v); }}
+                title="Current layout mode — resets to Freeform when you move a node by hand">
+          Layout: {layoutMode === 'hierarchical' ? 'Hierarchical' : layoutMode === 'grid' ? 'Grid' : 'Freeform'} ▾
         </button>
         {showLayout && (
           <div className="menu">
-            <button onClick={() => { applyAutoLayout('hierarchical'); setShowLayout(false); }}>Hierarchical</button>
-            <button onClick={() => { applyAutoLayout('grid'); setShowLayout(false); }}>Grid</button>
+            <button onClick={() => { applyAutoLayout('hierarchical'); setShowLayout(false); }}>
+              {layoutMode === 'hierarchical' ? '✓ ' : ''}Hierarchical
+            </button>
+            <button onClick={() => { applyAutoLayout('grid'); setShowLayout(false); }}>
+              {layoutMode === 'grid' ? '✓ ' : ''}Grid
+            </button>
           </div>
         )}
       </div>
+
+      <button className="btn" onClick={fitView} title="Zoom to fit the whole map">Fit</button>
 
       <div className="menu-wrap">
         <button className="btn" onClick={() => { const v = showSib; closeMenus(); setShowSib(!v); }}>

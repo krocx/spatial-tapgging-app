@@ -4,12 +4,19 @@
 //   lane → name, width, remove
 // Renders nothing when the selection is empty (canvas stays clutter-free).
 
-import type { MindmapNodeStatus } from '@spatial/shared';
+import { useState } from 'react';
+import type { MindmapNodeStatus, MindmapNodeReview } from '@spatial/shared';
 import { useStore } from '../state/store.js';
 import {
   NODE_COLORS, NODE_TYPE_LABELS, NODE_TYPES,
   STATUS_LABELS, NODE_STATUSES,
 } from '../utils/colors.js';
+
+const REVIEW_OPTIONS: Array<{ value: MindmapNodeReview; label: string; cls: string }> = [
+  { value: 'approved', label: '✓ Approve', cls: 'review-approve' },
+  { value: 'rejected', label: '✗ Reject', cls: 'review-reject' },
+  { value: 'needs-validation', label: '? Validate', cls: 'review-validate' },
+];
 
 export function Inspector(): JSX.Element | null {
   const map = useStore(s => s.map);
@@ -69,6 +76,7 @@ function NodePanel({ nodeId }: { nodeId: string }): JSX.Element | null {
   const node = useStore(s => s.map?.nodes.find(n => n.id === nodeId));
   const setNodeType = useStore(s => s.setNodeType);
   const setNodeStatus = useStore(s => s.setNodeStatus);
+  const setNodeReview = useStore(s => s.setNodeReview);
   const toggleMilestone = useStore(s => s.toggleMilestone);
   const setNodeNotes = useStore(s => s.setNodeNotes);
   const updateNodeText = useStore(s => s.updateNodeText);
@@ -115,6 +123,21 @@ function NodePanel({ nodeId }: { nodeId: string }): JSX.Element | null {
         Milestone
       </label>
 
+      <label className="inspector-field">Review
+        <div className="review-row">
+          {REVIEW_OPTIONS.map(o => (
+            <button
+              key={o.value}
+              className={`review-btn ${o.cls} ${node.review === o.value ? 'active' : ''}`}
+              title={o.value === node.review ? 'Click to clear' : o.value}
+              onClick={() => setNodeReview(node.id, node.review === o.value ? undefined : o.value)}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      </label>
+
       <label className="inspector-field">Notes
         <textarea
           defaultValue={node.notes ?? ''}
@@ -129,7 +152,52 @@ function NodePanel({ nodeId }: { nodeId: string }): JSX.Element | null {
           Linked to SIB {sib.kind}: <code>{sib.id.slice(0, 12)}…</code>
         </div>
       )}
+
+      <CommentsSection nodeId={node.id} />
     </aside>
+  );
+}
+
+function CommentsSection({ nodeId }: { nodeId: string }): JSX.Element {
+  const comments = useStore(s => s.map?.nodes.find(n => n.id === nodeId)?.comments) ?? [];
+  const addComment = useStore(s => s.addComment);
+  const deleteComment = useStore(s => s.deleteComment);
+  const [draft, setDraft] = useState('');
+
+  const submit = () => {
+    if (draft.trim()) { addComment(nodeId, draft); setDraft(''); }
+  };
+
+  return (
+    <div className="comments">
+      <h4>Comments {comments.length > 0 && <span className="comment-count">({comments.length})</span>}</h4>
+      {comments.map(c => (
+        <div key={c.id} className="comment">
+          <div className="comment-head">
+            <span className="comment-author">{c.author}</span>
+            <span className="comment-date">{new Date(c.createdAt).toLocaleString()}</span>
+            <button className="comment-delete" title="Delete comment"
+                    onClick={() => deleteComment(nodeId, c.id)}>✕</button>
+          </div>
+          <div className="comment-text">{c.text}</div>
+        </div>
+      ))}
+      <div className="comment-compose">
+        <textarea
+          rows={2}
+          value={draft}
+          placeholder="Add a comment…"
+          onChange={e => setDraft(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submit(); }
+            e.stopPropagation();
+          }}
+        />
+        <button className="btn primary comment-send" disabled={!draft.trim()} onClick={submit}>
+          Comment
+        </button>
+      </div>
+    </div>
   );
 }
 

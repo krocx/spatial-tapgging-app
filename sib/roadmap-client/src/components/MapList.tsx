@@ -1,7 +1,7 @@
 // MapList.tsx — home screen: your name (for presence), API key when required,
 // create map, and the list of existing maps.
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../state/store.js';
 import { fetchAuthRequired, getApiKey, setApiKey } from '../api/mindmap-api.js';
 
@@ -12,6 +12,9 @@ export function MapList(): JSX.Element {
   const createMap = useStore(s => s.createMap);
   const openMap = useStore(s => s.openMap);
   const deleteMap = useStore(s => s.deleteMap);
+  const importMapFromJson = useStore(s => s.importMapFromJson);
+  const statusMessage = useStore(s => s.statusMessage);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState('');
   const [userName, setUserName] = useState(localStorage.getItem('roadmap-name') ?? '');
@@ -60,7 +63,23 @@ export function MapList(): JSX.Element {
         >
           <input value={name} placeholder="New mind-map name…" onChange={e => setName(e.target.value)} />
           <button className="btn primary" type="submit" disabled={!name.trim()}>Create</button>
+          <button
+            className="btn" type="button"
+            title="Import a mind-map exported as JSON (e.g. from the Render instance)"
+            onClick={() => fileRef.current?.click()}
+          >Import JSON</button>
+          <input
+            ref={fileRef} type="file" accept=".json,application/json" hidden
+            onChange={e => {
+              const file = e.target.files?.[0];
+              if (file) {
+                void file.text().then(text => importMapFromJson(text));
+              }
+              e.target.value = '';   // allow re-importing the same file
+            }}
+          />
         </form>
+        {statusMessage && <p className="import-status">{statusMessage}</p>}
       </section>
 
       {error && <div className="error-banner">{error}</div>}

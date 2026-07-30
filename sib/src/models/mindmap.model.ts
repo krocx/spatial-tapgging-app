@@ -14,6 +14,7 @@ import type {
   MindmapNode,
   MindmapEdge,
   MindmapLane,
+  MindmapComment,
   MindmapVersion,
   MindmapWsEvent,
   MindmapSummary,
@@ -69,7 +70,36 @@ export function applyGraphEvent(map: Mindmap, event: MindmapWsEvent): Mindmap | 
       const i = next.nodes.findIndex(n => n.id === node.id);
       if (i === -1) return null;                       // deleted concurrently
       if (next.nodes[i].updatedAt > node.updatedAt) return null; // stale (LWW)
-      next.nodes[i] = node;
+      // Comments are append-safe: union rather than replace, so a node:update
+      // from a client that hasn't seen a peer's fresh comment can't drop it.
+      const comments = mergeComments(next.nodes[i].comments, node.comments);
+      next.nodes[i] = { ...node, ...(comments ? { comments } : {}) };
+      break;
+    }
+    case 'comment:add': {
+      const { nodeId } = (event.payload as { nodeId?: string }) ?? {};
+      const comment = sanitizeComment((event.payload as { comment?: unknown })?.comment);
+      if (!nodeId || !comment) return null;
+      const i = next.nodes.findIndex(n => n.id === nodeId);
+      if (i === -1) return null;
+      const existing = next.nodes[i].comments ?? [];
+      if (existing.some(c => c.id === comment.id)) return null;   // duplicate
+      next.nodes[i] = { ...next.nodes[i], comments: [...existing, comment], updatedAt: ts };
+      break;
+    }
+    case 'comment:delete': {
+      const { nodeId, commentId } = (event.payload as { nodeId?: string; commentId?: string }) ?? {};
+      if (!nodeId || !commentId) return null;
+      const i = next.nodes.findIndex(n => n.id === nodeId);
+      if (i === -1) return null;
+      const existing = next.nodes[i].comments ?? [];
+      if (!existing.some(c => c.id === commentId)) return null;
+      const remaining = existing.filter(c => c.id !== commentId);
+      next.nodes[i] = {
+        ...next.nodes[i],
+        comments: remaining.length > 0 ? remaining : undefined,
+        updatedAt: ts,
+      };
       break;
     }
     case 'node:delete': {
@@ -120,10 +150,30 @@ export function applyGraphEvent(map: Mindmap, event: MindmapWsEvent): Mindmap | 
 
 const NODE_TYPES = new Set(['tag', 'perception', 'semantic', 'reasoning', 'generic']);
 const NODE_STATUSES = new Set(['planned', 'in-progress', 'done', 'blocked']);
+const NODE_REVIEWS = new Set(['approved', 'rejected', 'needs-validation']);
+const MAX_COMMENTS_PER_NODE = 100;
+
+export function sanitizeComment(raw: unknown): MindmapComment | null {
+  const c = raw as Partial<MindmapComment> | undefined;
+  if (!c || typeof c.id !== 'string' || typeof c.text !== 'string' || !c.text.trim()) return null;
+  return {
+    id: c.id,
+    author: (typeof c.author === 'string' && c.author.trim() ? c.author.trim() : 'Anonymous').slice(0, 40),
+    text: c.text.trim().slice(0, 2000),
+    createdAt: typeof c.createdAt === 'number' ? c.createdAt : Date.now(),
+  };
+}
+
+function sanitizeComments(raw: unknown): MindmapComment[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const out = raw.map(sanitizeComment).filter((c): c is MindmapComment => c !== null);
+  return out.length > 0 ? out.slice(-MAX_COMMENTS_PER_NODE) : undefined;
+}
 
 function sanitizeNode(raw: unknown, ts: number): MindmapNode | null {
   const n = raw as Partial<MindmapNode> | undefined;
   if (!n || typeof n.id !== 'string' || typeof n.x !== 'number' || typeof n.y !== 'number') return null;
+  const comments = sanitizeComments(n.comments);
   return {
     id: n.id,
     x: n.x,
@@ -133,9 +183,21 @@ function sanitizeNode(raw: unknown, ts: number): MindmapNode | null {
     metadata: (n.metadata && typeof n.metadata === 'object') ? n.metadata as Record<string, unknown> : {},
     updatedAt: typeof n.updatedAt === 'number' ? Math.min(n.updatedAt, ts) : ts,
     ...(NODE_STATUSES.has(n.status as string) && { status: n.status as MindmapNode['status'] }),
+    ...(NODE_REVIEWS.has(n.review as string) && { review: n.review as MindmapNode['review'] }),
     ...(n.milestone === true && { milestone: true }),
     ...(typeof n.notes === 'string' && n.notes.length > 0 && { notes: n.notes.slice(0, 10_000) }),
+    ...(comments && { comments }),
   };
+}
+
+/** Union two comment arrays by id (append-safe merge for node:update LWW). */
+function mergeComments(existing?: MindmapComment[], incoming?: MindmapComment[]): MindmapComment[] | undefined {
+  if (!existing && !incoming) return undefined;
+  const byId = new Map<string, MindmapComment>();
+  for (const c of existing ?? []) byId.set(c.id, c);
+  for (const c of incoming ?? []) byId.set(c.id, c);
+  const merged = [...byId.values()].sort((a, b) => a.createdAt - b.createdAt);
+  return merged.length > 0 ? merged.slice(-MAX_COMMENTS_PER_NODE) : undefined;
 }
 
 function sanitizeEdge(raw: unknown, ts: number): MindmapEdge | null {
@@ -163,6 +225,7 @@ export function sanitizeLanes(raw: unknown): MindmapLane[] | null {
       name: typeof l.name === 'string' ? l.name.slice(0, 80) : 'Lane',
       x: l.x,
       width: Math.max(80, l.width),
+      ...(l.orientation === 'row' && { orientation: 'row' as const }),
     });
   }
   return lanes;
@@ -239,11 +302,20 @@ export function renderMindmapSvg(map: Mindmap): string {
   const maxX = (xs.length ? Math.max(...xs) : 0) + NODE_W + pad;
   const maxY = (ys.length ? Math.max(...ys) : 0) + NODE_H + pad;
 
-  // Swimlane bands behind everything.
-  const lanes = (map.lanes ?? []).map((l, i) => [
-    `  <rect x="${l.x}" y="${minY}" width="${l.width}" height="${maxY - minY}" fill="${i % 2 === 0 ? 'rgba(47,111,237,0.05)' : 'rgba(100,116,139,0.05)'}"/>`,
-    `  <text x="${l.x + l.width / 2}" y="${minY + 24}" text-anchor="middle" font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#94a3b8">${esc(l.name)}</text>`,
-  ].join('\n')).join('\n');
+  // Swimlane bands behind everything (columns span y, rows span x).
+  const lanes = (map.lanes ?? []).map((l, i) => {
+    const fill = i % 2 === 0 ? 'rgba(47,111,237,0.05)' : 'rgba(100,116,139,0.05)';
+    if (l.orientation === 'row') {
+      return [
+        `  <rect x="${minX}" y="${l.x}" width="${maxX - minX}" height="${l.width}" fill="${fill}"/>`,
+        `  <text x="${minX + 16}" y="${l.x + 24}" font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#94a3b8">${esc(l.name)}</text>`,
+      ].join('\n');
+    }
+    return [
+      `  <rect x="${l.x}" y="${minY}" width="${l.width}" height="${maxY - minY}" fill="${fill}"/>`,
+      `  <text x="${l.x + l.width / 2}" y="${minY + 24}" text-anchor="middle" font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="14" font-weight="600" fill="#94a3b8">${esc(l.name)}</text>`,
+    ].join('\n');
+  }).join('\n');
 
   const byId = new Map(map.nodes.map(n => [n.id, n]));
   const edges = map.edges.map(e => {
@@ -264,13 +336,18 @@ export function renderMindmapSvg(map: Mindmap): string {
     const status = n.status
       ? `\n    <circle cx="${n.x + NODE_W - 10}" cy="${n.y + 10}" r="5" fill="${STATUS_COLORS[n.status]}" stroke="#ffffff" stroke-width="1.5"/>`
       : '';
+    const reviewGlyph = n.review === 'approved' ? '✓' : n.review === 'rejected' ? '✗' : n.review === 'needs-validation' ? '?' : '';
+    const reviewColor = n.review === 'approved' ? '#16a34a' : n.review === 'rejected' ? '#dc2626' : '#f59e0b';
+    const review = reviewGlyph
+      ? `\n    <text x="${n.x + 14}" y="${n.y + 15}" text-anchor="middle" font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="11" font-weight="700" fill="${reviewColor}">${reviewGlyph}</text>`
+      : '';
     const milestone = n.milestone
       ? `\n    <path d="M ${n.x + 16} ${n.y - 8} l 7 8 l -7 8 l -7 -8 z" fill="#eab308" stroke="#ffffff" stroke-width="1.5"/>`
       : '';
     return [
       `  <g>`,
       `    <rect x="${n.x}" y="${n.y}" width="${NODE_W}" height="${NODE_H}" rx="10" fill="#ffffff" stroke="${color}" stroke-width="2"/>`,
-      `    <rect x="${n.x}" y="${n.y}" width="6" height="${NODE_H}" rx="3" fill="${color}"/>` + status + milestone,
+      `    <rect x="${n.x}" y="${n.y}" width="6" height="${NODE_H}" rx="3" fill="${color}"/>` + status + milestone + review,
       `    <text x="${n.x + NODE_W / 2}" y="${n.y + NODE_H / 2 + 5}" text-anchor="middle" font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="13" fill="#1e293b">${label}</text>`,
       `  </g>`,
     ].join('\n');

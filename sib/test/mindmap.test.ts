@@ -234,6 +234,64 @@ test('saveMindmap preserves lanes when request omits them', () => {
   assert.equal(resaved.lanes?.length, 1, 'lanes lost on lane-less save');
 });
 
+// ── Comments + review ──────────────────────────────────────────────────────
+
+test('comment:add appends, dedupes, and comment:delete removes', () => {
+  let map: Mindmap = saveMindmap({ name: 'Comments', nodes: [node('n1')], edges: [] });
+  const comment = { id: 'c1', author: 'Karthik', text: 'Looks right', createdAt: Date.now() };
+
+  map = applyGraphEvent(map, event('comment:add', map.id, { nodeId: 'n1', comment }))!;
+  assert.equal(map.nodes[0].comments?.length, 1);
+  assert.equal(map.nodes[0].comments?.[0].author, 'Karthik');
+
+  // Duplicate id → dropped
+  assert.equal(applyGraphEvent(map, event('comment:add', map.id, { nodeId: 'n1', comment })), null);
+  // Unknown node → dropped
+  assert.equal(applyGraphEvent(map, event('comment:add', map.id, { nodeId: 'ghost', comment: { ...comment, id: 'c2' } })), null);
+
+  map = applyGraphEvent(map, event('comment:delete', map.id, { nodeId: 'n1', commentId: 'c1' }))!;
+  assert.equal(map.nodes[0].comments, undefined);
+});
+
+test('node:update merges comments instead of clobbering (append-safe)', () => {
+  let map: Mindmap = saveMindmap({ name: 'Merge', nodes: [node('n1')], edges: [] });
+  const c1 = { id: 'c1', author: 'A', text: 'first', createdAt: 1000 };
+  map = applyGraphEvent(map, event('comment:add', map.id, { nodeId: 'n1', comment: c1 }))!;
+
+  // A stale-ish client sends node:update WITHOUT c1 but with its own c2.
+  const c2 = { id: 'c2', author: 'B', text: 'second', createdAt: 2000 };
+  const incoming = { ...map.nodes[0], comments: [c2], updatedAt: Date.now() + 10 };
+  map = applyGraphEvent(map, event('node:update', map.id, incoming))!;
+
+  const ids = (map.nodes[0].comments ?? []).map(c => c.id);
+  assert.deepEqual(ids, ['c1', 'c2'], 'union by id, sorted by createdAt');
+});
+
+test('review state round-trips; junk review dropped', () => {
+  let map: Mindmap = saveMindmap({ name: 'Review', nodes: [], edges: [] });
+  map = applyGraphEvent(map, event('node:add', map.id, node('n1', { review: 'needs-validation' })))!;
+  assert.equal(map.nodes[0].review, 'needs-validation');
+  const junk = applyGraphEvent(map, event('node:update', map.id,
+    node('n1', { review: 'maybe' as never, updatedAt: Date.now() + 50 })))!;
+  assert.equal(junk.nodes[0].review, undefined);
+  assert.ok(renderMindmapSvg(map).includes('?'));   // review glyph in SVG
+});
+
+test('row lanes sanitize and render horizontally', () => {
+  let map: Mindmap = saveMindmap({ name: 'Rows', nodes: [node('a')], edges: [] });
+  map = applyGraphEvent(map, event('map:lanes', map.id, {
+    lanes: [
+      { id: 'r1', name: 'Why', x: 0, width: 220, orientation: 'row' },
+      { id: 'c1', name: 'Now', x: 0, width: 400 },
+    ],
+  }))!;
+  assert.equal(map.lanes?.[0].orientation, 'row');
+  assert.equal(map.lanes?.[1].orientation, undefined);   // columns stay default
+  const svg = renderMindmapSvg(map);
+  assert.ok(svg.includes('>Why<'));
+  assert.ok(svg.includes('>Now<'));
+});
+
 // ── SIB bridge ─────────────────────────────────────────────────────────────
 
 test('sib-json export builds draft tags from tag-typed nodes', () => {

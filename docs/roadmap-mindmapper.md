@@ -30,9 +30,10 @@ Separation of concerns follows the workspace preferences: UI logic (components) 
 ### Data model (shared/src/mindmap.ts)
 
 `Mindmap { id, name, createdAt, updatedAt, nodes[], edges[], lanes?[] }`
-`MindmapNode { id, x, y, text, type, metadata, updatedAt, status?, milestone?, notes? }` — type is one of `tag | perception | semantic | reasoning | generic`, mapping 1:1 onto SIB layers (blue / purple / green / orange / grey); `status` is `planned | in-progress | done | blocked` (rendered as a badge).
+`MindmapNode { id, x, y, text, type, metadata, updatedAt, status?, review?, milestone?, notes?, comments?[] }` — type is one of `tag | perception | semantic | reasoning | generic`, mapping 1:1 onto SIB layers (blue / purple / green / orange / grey); `status` is `planned | in-progress | done | blocked` (badge); `review` is `approved | rejected | needs-validation` (✓ / ✗ / ? glyph), independent of status.
+`MindmapComment { id, author, text, createdAt }` — appended via dedicated `comment:add` / `comment:delete` WS events; `node:update` merges comment arrays by id (union), so concurrent commenters never overwrite each other.
 `MindmapEdge { id, from, to, type: directed|undirected, updatedAt, label? }`
-`MindmapLane { id, name, x, width }` — vertical swimlane bands (e.g. Now / Next / Later), replaced atomically via the `map:lanes` WS event.
+`MindmapLane { id, name, x, width, orientation? }` — swimlane bands, replaced atomically via `map:lanes`. Default orientation is `column` (vertical bands along x — Now / Next / Later); `row` gives horizontal bands along y (Why / What / How), where `x` is the band top and `width` its height. Columns and rows combine into a strategy grid.
 
 Types live in `@spatial/shared` so server and client can never drift.
 
@@ -98,9 +99,11 @@ Double-click empty canvas → create node · drag node → move (a multi-selecti
 
 **Touch (iPad):** one finger on background → pan · pinch → zoom · drag a node → move · long-press empty canvas → create node · long-press a node → edit text.
 
-**Inspector (right panel, appears on selection):** node text / layer type / status / milestone / notes · edge label + direction · lane name / width / remove. Multi-selection gets bulk type + status setters.
+**Inspector (right panel, appears on selection):** node text / layer type / status / milestone / **review verdict (Approve ✓ / Reject ✗ / Needs Validation ?** — click again to clear) / notes / **comment thread** (author = your display name; comment count bubbles on nodes) · edge label + direction · lane name / width / remove. Multi-selection gets bulk type + status setters.
 
-**Toolbar:** search with jump-to-node · Lanes menu (Now/Next/Later preset, add, clear) · Layout · SIB menu (import anchors+tags, export draft) · undo/redo · Export (PNG/SVG/JSON) · History · Save · presence.
+**Toolbar:** search with jump-to-node · Lanes menu (Now/Next/Later columns, **Why/What/How rows**, add, clear) · **Layout button shows the current mode** (Freeform / Hierarchical / Grid — any hand-move resets to Freeform) · **Fit** (zoom to whole map) · SIB menu (import anchors+tags, export draft) · undo/redo · Export (PNG/SVG/JSON) · History · Save · presence.
+
+**Cross-server transfer:** Export → JSON on one server (e.g. Render), then "Import JSON" on the map-list screen of another (e.g. the internal server). The import creates a fresh map with a new id and keeps nodes, edges, lanes, statuses, reviews, notes, and comments.
 
 Shortcuts: `Delete` remove selection · `Enter` edit selected · `Ctrl/⌘+S` save · `Ctrl/⌘+Z` undo · `Ctrl/⌘+Y` / `Shift+Z` redo · `Ctrl/⌘+C/V` copy/paste (internal edges included, pasted at cursor) · `Ctrl/⌘+D` duplicate · `Ctrl/⌘+A` select all · `Esc` deselect.
 

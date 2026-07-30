@@ -18,6 +18,16 @@ export type MindmapEdgeType = 'directed' | 'undirected';
 /** Roadmap execution status — rendered as a badge on the node. */
 export type MindmapNodeStatus = 'planned' | 'in-progress' | 'done' | 'blocked';
 
+/** Review verdict — independent of execution status. */
+export type MindmapNodeReview = 'approved' | 'rejected' | 'needs-validation';
+
+export interface MindmapComment {
+  id: string;
+  author: string;
+  text: string;
+  createdAt: number;   // epoch ms
+}
+
 export interface MindmapNode {
   id: string;
   x: number;
@@ -33,6 +43,14 @@ export interface MindmapNode {
   milestone?: boolean;
   /** Free-form notes, edited in the inspector panel. */
   notes?: string;
+  /** Review verdict (approve / reject / needs validation). */
+  review?: MindmapNodeReview;
+  /**
+   * Discussion thread. Server-side merge is append-safe: node:update events
+   * union comments by id, and comment:add/comment:delete events mutate the
+   * thread directly — concurrent commenters never overwrite each other.
+   */
+  comments?: MindmapComment[];
 }
 
 export interface MindmapEdge {
@@ -45,12 +63,19 @@ export interface MindmapEdge {
   label?: string;
 }
 
-/** Vertical swimlane band (world-space x range), e.g. Now / Next / Later. */
+/**
+ * Swimlane band. orientation 'column' (default): vertical band spanning a
+ * world-space x range — e.g. Now / Next / Later. orientation 'row':
+ * horizontal band spanning a y range — e.g. Why / What / How; for rows,
+ * `x` is the band's top y and `width` is its height (field reuse keeps the
+ * wire format and stored data backward-compatible).
+ */
 export interface MindmapLane {
   id: string;
   name: string;
   x: number;
   width: number;
+  orientation?: 'column' | 'row';
 }
 
 export interface Mindmap {
@@ -120,6 +145,8 @@ export type MindmapWsEventType =
   | 'map:sync'      // server → client: full graph on join / resync
   | 'map:rename'
   | 'map:lanes'     // full lanes array replace (rename/add/remove/resize)
+  | 'comment:add'    // { nodeId, comment } — appended server-side (never lost to LWW)
+  | 'comment:delete' // { nodeId, commentId }
   | 'error';
 
 export interface MindmapWsEvent<T = unknown> {
