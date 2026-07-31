@@ -1,0 +1,1141 @@
+{
+  "name": "Do. Or do not. There is no try.",
+  "nodes": [
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "root",
+      "x": -320,
+      "y": 880,
+      "text": "Do. Or do not.",
+      "type": "reasoning",
+      "shape": "hexagon",
+      "icon": "star",
+      "milestone": true,
+      "review": "approved",
+      "notes": "North star: one AR platform — SIB as the spatial OS — serving Author Mode (create), Operator Mode (execute), and autonomous systems (cobots). AI-first principle: every pillar ships with an AI assist path, always behind SIB adapter interfaces (no vendor lock-in, local-first inference). Thin clients, thick backend; every front-end replaceable."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "hub-auth",
+      "x": 10,
+      "y": 133,
+      "text": "Authoring Suite",
+      "type": "semantic",
+      "shape": "pill",
+      "icon": "doc",
+      "notes": "Author Mode: everything a process engineer needs to turn tribal knowledge into spatial, validated work instructions — manual first, AI-accelerated next, AI-generated later."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "auth-01",
+      "x": 200,
+      "y": 40,
+      "text": "Author Mode iOS",
+      "type": "semantic",
+      "status": "done",
+      "icon": "doc",
+      "review": "approved",
+      "notes": "SHIPPED (Spatial Tagging App Phase 2). Swift + SwiftUI + ARKit authoring app: QR anchor creation, multi-tag placement per anchor, pass-state training sweeps, tag groups (inspection sets)."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "auth-02",
+      "x": 200,
+      "y": 118,
+      "text": "AR Guides v1",
+      "type": "semantic",
+      "status": "done",
+      "icon": "check",
+      "review": "approved",
+      "notes": "SHIPPED. Step-based AR work instructions: guides API (draft/publish), sequenced steps with images, guide sessions with per-step completion tracking. Manual creation path complete."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "auth-03",
+      "x": 200,
+      "y": 196,
+      "text": "CAD Import v1",
+      "type": "semantic",
+      "status": "done",
+      "icon": "cube",
+      "review": "approved",
+      "notes": "SHIPPED. 3D model library: GLB/USDZ pass-through; OBJ/FBX/STEP async conversion via headless Blender. Models attach to anchors for AR overlay."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "auth-04",
+      "x": 620,
+      "y": 40,
+      "text": "Instruction Import",
+      "type": "semantic",
+      "status": "planned",
+      "icon": "doc",
+      "notes": "Import existing SOPs: PDF/DOCX/CSV parsers → guide-step mapping wizard. AI-assist: local LLM proposes step segmentation + image slots from the source document; author approves (human-in-the-loop)."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "auth-05",
+      "x": 620,
+      "y": 118,
+      "text": "CAD Optimisation",
+      "type": "semantic",
+      "status": "planned",
+      "icon": "wrench",
+      "notes": "Mobile-ready pipeline: decimation, LOD generation, Draco/meshopt compression, texture atlas baking — Blender headless jobs queued in SIB. Target: <5 MB overlays on-device at 60 fps."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "auth-06",
+      "x": 620,
+      "y": 196,
+      "text": "CMS v1",
+      "type": "generic",
+      "status": "planned",
+      "icon": "layers",
+      "notes": "Content Management System: versioned content repo for guides, models, tags, media. Draft→review→publish workflow with review verdicts (reuses roadmap-tool review pattern), rollback via snapshots, content lineage."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "auth-07",
+      "x": 1200,
+      "y": 40,
+      "text": "AI Dyn. Instructions",
+      "type": "reasoning",
+      "status": "planned",
+      "icon": "bulb",
+      "milestone": true,
+      "notes": "FLAGSHIP AI-FIRST. Dynamic instructions: AI reviews live context (anchor, perception state, operator history, MES order) and generates/adapts steps on the fly. Local LLM via SIB adapter; RAG over CMS + ontology; every generated step traceable + reviewable. Depends on: CMS v1, Perception context feed."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "auth-08",
+      "x": 1200,
+      "y": 118,
+      "text": "AI 3D Generation",
+      "type": "reasoning",
+      "status": "planned",
+      "icon": "camera",
+      "notes": "Model creation on the go: phone capture → photogrammetry / Gaussian splatting → mesh cleanup → optimisation pipeline. Author scans a part, gets an AR-ready overlay in minutes. Candidate stacks evaluated behind the adapter interface."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "hub-ops",
+      "x": 10,
+      "y": 513,
+      "text": "Operator Runtime",
+      "type": "tag",
+      "shape": "pill",
+      "icon": "eye",
+      "notes": "Operator Mode: guided execution on whatever device the floor has — iPhone today, Android + glasses next, VisionOS later. The AR feature set (anchoring, tagging, tracking) lives here."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "ops-09",
+      "x": 200,
+      "y": 420,
+      "text": "Operator Mode iOS",
+      "type": "tag",
+      "status": "done",
+      "icon": "eye",
+      "review": "approved",
+      "notes": "SHIPPED (Phase 2). Batch validation: one QR scan → all tag results (AnchorValidationResult). Guided inspection flow with live AR overlays via RealityKit."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "ops-10",
+      "x": 200,
+      "y": 498,
+      "text": "QR Spatial Anchor",
+      "type": "tag",
+      "status": "done",
+      "icon": "qr",
+      "review": "approved",
+      "notes": "SHIPPED. 6-DOF QR image tracking (ARKit), printed at exact physical size via portal QR print page. Anchor = stable asset-frame origin for all tags."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "ops-11",
+      "x": 200,
+      "y": 576,
+      "text": "Spatial Tagging",
+      "type": "tag",
+      "status": "done",
+      "icon": "tag",
+      "review": "approved",
+      "notes": "SHIPPED. Multi-tag per anchor with typed ontology (presence/language/routing/configuration/part checks), ROI regions, per-tag trained pass states."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "ops-12",
+      "x": 390,
+      "y": 420,
+      "text": "Gemba Loc-Tags",
+      "type": "tag",
+      "status": "done",
+      "icon": "flag",
+      "review": "approved",
+      "notes": "SHIPPED. Audit-walk mode: tap-to-place LocTags on any surface, ARWorldMap persistence for re-localization without QR, defect categories, completion tracking (resolved / still present / escalated)."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "ops-13",
+      "x": 390,
+      "y": 498,
+      "text": "Evidence Capture",
+      "type": "tag",
+      "status": "done",
+      "icon": "camera",
+      "review": "approved",
+      "notes": "SHIPPED. Photo evidence per tag inspection, report submission with evidence upload, served from SIB evidence store. Feeds the audit trail."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "ops-14",
+      "x": 390,
+      "y": 576,
+      "text": "Glasses Pilot",
+      "type": "tag",
+      "status": "in-progress",
+      "icon": "eye",
+      "notes": "IN PROGRESS. RayNeo (+ AVP) evaluation: tracking stability, anchor persistence, UI ergonomics, battery/thermal, dev ecosystem. Output: go/no-go per device class for FY27 assessment plan."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "ops-15",
+      "x": 620,
+      "y": 420,
+      "text": "Object Anchoring",
+      "type": "tag",
+      "status": "planned",
+      "icon": "cube",
+      "notes": "Anchor on the part itself, no QR: ARKit object detection from scanned reference objects + CAD-based model tracking. Uses the CAD pipeline (C1). Fallback chain: object → QR → worldmap."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "ops-16",
+      "x": 620,
+      "y": 498,
+      "text": "ARCore Client",
+      "type": "tag",
+      "status": "planned",
+      "icon": "chip",
+      "notes": "Android parity client (Kotlin + ARCore): cloud-free anchor hosting against SIB, same REST/WS contracts. Proves the thin-client thesis — no SIB changes required."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "ops-17",
+      "x": 620,
+      "y": 576,
+      "text": "AR SDK Layer",
+      "type": "tag",
+      "status": "planned",
+      "icon": "layers",
+      "milestone": true,
+      "notes": "MILESTONE. Unified AR abstraction: ARKit / ARCore / VisionOS / OpenXR adapters behind one anchor-tracking interface. Client capability matrix negotiated with SIB per session. This is what makes glasses + cobots cheap to add."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "ops-18",
+      "x": 1200,
+      "y": 420,
+      "text": "VisionOS App",
+      "type": "tag",
+      "status": "planned",
+      "icon": "eye",
+      "notes": "Apple Vision Pro operator client on the SDK layer: shared-space instructions, hands-free step advance (gaze + pinch), persistent room-scale anchors."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "ops-19",
+      "x": 1200,
+      "y": 498,
+      "text": "Glasses Operator",
+      "type": "tag",
+      "status": "planned",
+      "icon": "bolt",
+      "notes": "Production glasses client for the winning device class from the pilot: heads-up step cards, voice advance, hands-free evidence capture. Gated on: Glasses Pilot verdict + AR SDK Layer."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "hub-perc",
+      "x": 10,
+      "y": 1313,
+      "text": "Perception & AI",
+      "type": "perception",
+      "shape": "pill",
+      "icon": "chip",
+      "notes": "The eyes of the platform. Everything runs behind the perception-adapter interface so models are swappable; training happens in the app, on the floor, by the people who know the part."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "perc-20",
+      "x": 200,
+      "y": 1220,
+      "text": "SSIM Validation",
+      "type": "perception",
+      "status": "done",
+      "icon": "check",
+      "review": "approved",
+      "notes": "SHIPPED. Image comparator: SSIM + feature alignment against trained pass states, V8-warmup optimized (~2 s per validation). Pass/fail with confidence."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "perc-21",
+      "x": 200,
+      "y": 1298,
+      "text": "Train in App v1",
+      "type": "perception",
+      "status": "done",
+      "icon": "target",
+      "review": "approved",
+      "notes": "SHIPPED. Author trains pass states in-app: multi-image sweeps (up to 19 frames, depth-map metadata), per-tag pass-state store. No data scientist required."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "perc-22",
+      "x": 200,
+      "y": 1376,
+      "text": "Adapter Registry",
+      "type": "perception",
+      "status": "done",
+      "icon": "layers",
+      "review": "approved",
+      "notes": "SHIPPED. Perception-adapter interface + registry (analyze-image endpoint). The contract that keeps every future model vendor-neutral and replaceable."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "perc-23",
+      "x": 620,
+      "y": 1220,
+      "text": "Vision SDK Integr.",
+      "type": "perception",
+      "status": "planned",
+      "icon": "chip",
+      "notes": "Integrate external vision stacks as adapters: CoreML/Vision on-device, YOLO-class detectors, OCR for language checks, anomaly detection. Each SDK = one adapter module, benchmarked on the same pass-state test sets."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "perc-24",
+      "x": 620,
+      "y": 1298,
+      "text": "Defect Detection",
+      "type": "perception",
+      "status": "planned",
+      "icon": "alert",
+      "notes": "AI defect classification mapped to the existing defect ontology (scratch/dent/burn + 6C categories). Trained from evidence-capture images — the data flywheel is already collecting."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "perc-25",
+      "x": 620,
+      "y": 1376,
+      "text": "Train in App v2",
+      "type": "perception",
+      "status": "planned",
+      "icon": "target",
+      "notes": "Richer floor-training: multi-view fusion, depth-aware ROIs, negative examples, auto-suggested ROI placement. Goal: >95% first-pass validation reliability in cleanroom lighting variance."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "perc-26",
+      "x": 1200,
+      "y": 1220,
+      "text": "On-Device Models",
+      "type": "perception",
+      "status": "planned",
+      "icon": "bolt",
+      "notes": "Edge deployment: quantized models pushed to clients via CMS, offline validation on-device, results sync when back online. Latency target <300 ms."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "perc-27",
+      "x": 1200,
+      "y": 1298,
+      "text": "Continuous Learning",
+      "type": "reasoning",
+      "status": "planned",
+      "icon": "bulb",
+      "milestone": true,
+      "notes": "MILESTONE, AI-FIRST. Operator verdicts + evidence become training signal: drift detection, auto-retrain proposals, champion/challenger evaluation — humans approve promotion (review workflow). Closes the perception loop."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "hub-ent",
+      "x": 10,
+      "y": 1993,
+      "text": "Enterprise Platform",
+      "type": "generic",
+      "shape": "pill",
+      "icon": "layers",
+      "review": "approved",
+      "notes": "SIB itself plus everything IT needs to say yes: identity, access control, auditability, data residency. Already self-hosted — no Azure, no SaaS, no lock-in."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "ent-28",
+      "x": 200,
+      "y": 1900,
+      "text": "SIB v0.2 Core",
+      "type": "generic",
+      "status": "done",
+      "icon": "gear",
+      "milestone": true,
+      "review": "approved",
+      "notes": "SHIPPED MILESTONE. Node/Express spatial backend: anchors, tags, sessions, guides, tag-groups, models, worldmaps, perception APIs; JSON file stores; HTTPS; runs on MacBook, Render, or the internal Windows server (NSSM)."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "ent-29",
+      "x": 200,
+      "y": 1978,
+      "text": "API Key Auth",
+      "type": "generic",
+      "status": "done",
+      "icon": "check",
+      "review": "approved",
+      "notes": "SHIPPED. Shared-key auth (X-API-Key) across REST + WS, env-driven, no-op in trusted dev. Stepping stone to RBAC + SSO."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "ent-30",
+      "x": 200,
+      "y": 2056,
+      "text": "Anchor Portal",
+      "type": "generic",
+      "status": "done",
+      "icon": "qr",
+      "review": "approved",
+      "notes": "SHIPPED. Browser portal: anchor directory, QR generation + print-exact pages, data administration (cascade deletes)."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "ent-31",
+      "x": 390,
+      "y": 1900,
+      "text": "Roadmap Tool",
+      "type": "generic",
+      "status": "done",
+      "icon": "star",
+      "review": "approved",
+      "notes": "SHIPPED. This tool: collaborative mind-mapping/roadmapping on SIB — real-time WS collab, versioning, lanes, filters, comments, reviews, presentation mode. This very map lives in it."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "ent-32",
+      "x": 390,
+      "y": 1978,
+      "text": "Inspection Logs",
+      "type": "generic",
+      "status": "done",
+      "icon": "doc",
+      "review": "approved",
+      "notes": "SHIPPED. Structured inspection logging (inspection-logger): who validated what, when, with what result — the seed of the full audit trail."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "ent-33",
+      "x": 620,
+      "y": 1900,
+      "text": "RBAC",
+      "type": "generic",
+      "status": "planned",
+      "icon": "user",
+      "notes": "Roles: Admin / Author / Operator / Viewer (+ per-site scoping). Route-level policy middleware in SIB; UI affordances per role. Admin console for user/role management."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "ent-34",
+      "x": 620,
+      "y": 1978,
+      "text": "SSO (OIDC/SAML)",
+      "type": "generic",
+      "status": "planned",
+      "icon": "user",
+      "notes": "Corporate IdP federation via OIDC/SAML — self-hosted broker (e.g. Keycloak-class) so SIB stays cloud-free. JWT sessions replace shared API key; per-user identity flows into audit + collab presence."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "ent-35",
+      "x": 620,
+      "y": 2056,
+      "text": "Audit Logs v2",
+      "type": "generic",
+      "status": "planned",
+      "icon": "doc",
+      "notes": "Immutable append-only event trail across all APIs (who/what/when/before/after), retention policies, tamper-evidence (hash chaining), CSV/JSON export for QA + compliance reviews."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "ent-36",
+      "x": 810,
+      "y": 1900,
+      "text": "DB Store Adapter",
+      "type": "generic",
+      "status": "planned",
+      "icon": "gear",
+      "notes": "JsonFileStore → SQLite/Postgres behind the same store interface (drop-in, per the store abstraction already in place). Needed before multi-site and heavy audit volumes."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "ent-37",
+      "x": 1200,
+      "y": 1900,
+      "text": "Multi-Site Deploy",
+      "type": "generic",
+      "status": "planned",
+      "icon": "layers",
+      "milestone": true,
+      "notes": "MILESTONE. Multi-plant federation: per-site SIB instances, content promotion between sites via CMS export/import (signed bundles), central fleet dashboard. Platform v1.0 gate."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "hub-int",
+      "x": 10,
+      "y": 2814,
+      "text": "Integrations+Cobots",
+      "type": "reasoning",
+      "shape": "pill",
+      "icon": "robot",
+      "notes": "Where the platform meets the rest of the factory: MES/ERP order context in, results + evidence out, and eventually cobots sharing SIB’s spatial truth."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "int-38",
+      "x": 200,
+      "y": 2760,
+      "text": "Schemas+Adapters",
+      "type": "reasoning",
+      "status": "done",
+      "icon": "layers",
+      "review": "approved",
+      "notes": "SHIPPED. Versioned JSON schemas (anchors/tags/observations/procedures/sessions) + adapter interfaces — the integration contract every external system codes against."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "int-39",
+      "x": 620,
+      "y": 2760,
+      "text": "MES/iOMS Bridge",
+      "type": "reasoning",
+      "status": "planned",
+      "icon": "gear",
+      "milestone": true,
+      "notes": "MILESTONE. Order-context integration: work orders from iOMS/MES drive which guide/anchor the operator sees; results post back. Connectors: SAP (OData/RFC), direct SQL dBs, REST webhooks. Connector = adapter module, one per system."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "int-40",
+      "x": 620,
+      "y": 2838,
+      "text": "Data Lake Export",
+      "type": "reasoning",
+      "status": "planned",
+      "icon": "doc",
+      "notes": "Batch analytics feed: inspection results, evidence metadata, session telemetry → SQL/Hadoop/parquet drops on schedule. Enables yield/defect trend analytics outside SIB without opening SIB itself."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "int-41",
+      "x": 1200,
+      "y": 2760,
+      "text": "AI Ops Copilot",
+      "type": "reasoning",
+      "status": "planned",
+      "icon": "bulb",
+      "notes": "AI-FIRST. Cross-layer assistant over SIB data: \"why did line 3 fail more this week?\" — RAG over audit logs, inspections, MES context. Local inference, adapter-mounted, read-only start."
+    },
+    {
+      "metadata": {},
+      "updatedAt": 1785437717641,
+      "id": "int-42",
+      "x": 1200,
+      "y": 2838,
+      "text": "Cobot Collab",
+      "type": "reasoning",
+      "status": "planned",
+      "icon": "robot",
+      "milestone": true,
+      "notes": "MILESTONE. AR + cobot shared spatial context: SIB anchors as the common world frame; task handoff (operator flags → cobot executes → operator verifies in AR); safety-zone visualization from robot envelopes; ROS2 bridge as the first adapter. The \"spatial OS\" thesis made real."
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-1",
+      "from": "root",
+      "to": "hub-auth",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-2",
+      "from": "hub-auth",
+      "to": "auth-01",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-3",
+      "from": "hub-auth",
+      "to": "auth-02",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-4",
+      "from": "hub-auth",
+      "to": "auth-03",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-5",
+      "from": "hub-auth",
+      "to": "auth-04",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-6",
+      "from": "hub-auth",
+      "to": "auth-05",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-7",
+      "from": "hub-auth",
+      "to": "auth-06",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-8",
+      "from": "hub-auth",
+      "to": "auth-07",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-9",
+      "from": "hub-auth",
+      "to": "auth-08",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-10",
+      "from": "root",
+      "to": "hub-ops",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-11",
+      "from": "hub-ops",
+      "to": "ops-09",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-12",
+      "from": "hub-ops",
+      "to": "ops-10",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-13",
+      "from": "hub-ops",
+      "to": "ops-11",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-14",
+      "from": "hub-ops",
+      "to": "ops-12",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-15",
+      "from": "hub-ops",
+      "to": "ops-13",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-16",
+      "from": "hub-ops",
+      "to": "ops-14",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-17",
+      "from": "hub-ops",
+      "to": "ops-15",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-18",
+      "from": "hub-ops",
+      "to": "ops-16",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-19",
+      "from": "hub-ops",
+      "to": "ops-17",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-20",
+      "from": "hub-ops",
+      "to": "ops-18",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-21",
+      "from": "hub-ops",
+      "to": "ops-19",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-22",
+      "from": "root",
+      "to": "hub-perc",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-23",
+      "from": "hub-perc",
+      "to": "perc-20",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-24",
+      "from": "hub-perc",
+      "to": "perc-21",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-25",
+      "from": "hub-perc",
+      "to": "perc-22",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-26",
+      "from": "hub-perc",
+      "to": "perc-23",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-27",
+      "from": "hub-perc",
+      "to": "perc-24",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-28",
+      "from": "hub-perc",
+      "to": "perc-25",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-29",
+      "from": "hub-perc",
+      "to": "perc-26",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-30",
+      "from": "hub-perc",
+      "to": "perc-27",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-31",
+      "from": "root",
+      "to": "hub-ent",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-32",
+      "from": "hub-ent",
+      "to": "ent-28",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-33",
+      "from": "hub-ent",
+      "to": "ent-29",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-34",
+      "from": "hub-ent",
+      "to": "ent-30",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-35",
+      "from": "hub-ent",
+      "to": "ent-31",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-36",
+      "from": "hub-ent",
+      "to": "ent-32",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-37",
+      "from": "hub-ent",
+      "to": "ent-33",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-38",
+      "from": "hub-ent",
+      "to": "ent-34",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-39",
+      "from": "hub-ent",
+      "to": "ent-35",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-40",
+      "from": "hub-ent",
+      "to": "ent-36",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-41",
+      "from": "hub-ent",
+      "to": "ent-37",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-42",
+      "from": "root",
+      "to": "hub-int",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-43",
+      "from": "hub-int",
+      "to": "int-38",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-44",
+      "from": "hub-int",
+      "to": "int-39",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-45",
+      "from": "hub-int",
+      "to": "int-40",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-46",
+      "from": "hub-int",
+      "to": "int-41",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-47",
+      "from": "hub-int",
+      "to": "int-42",
+      "type": "directed",
+      "updatedAt": 1785437717641
+    },
+    {
+      "id": "e-48",
+      "from": "auth-03",
+      "to": "ops-15",
+      "type": "directed",
+      "updatedAt": 1785437717641,
+      "label": "models feed tracking"
+    },
+    {
+      "id": "e-49",
+      "from": "auth-06",
+      "to": "auth-07",
+      "type": "directed",
+      "updatedAt": 1785437717641,
+      "label": "content corpus"
+    },
+    {
+      "id": "e-50",
+      "from": "perc-24",
+      "to": "auth-07",
+      "type": "directed",
+      "updatedAt": 1785437717641,
+      "label": "live context"
+    },
+    {
+      "id": "e-51",
+      "from": "ops-17",
+      "to": "ops-19",
+      "type": "directed",
+      "updatedAt": 1785437717641,
+      "label": "unblocks"
+    },
+    {
+      "id": "e-52",
+      "from": "ops-14",
+      "to": "ops-19",
+      "type": "directed",
+      "updatedAt": 1785437717641,
+      "label": "device verdict"
+    },
+    {
+      "id": "e-53",
+      "from": "ent-33",
+      "to": "ent-34",
+      "type": "directed",
+      "updatedAt": 1785437717641,
+      "label": "identity model"
+    },
+    {
+      "id": "e-54",
+      "from": "ent-36",
+      "to": "ent-37",
+      "type": "directed",
+      "updatedAt": 1785437717641,
+      "label": "prerequisite"
+    },
+    {
+      "id": "e-55",
+      "from": "int-39",
+      "to": "auth-07",
+      "type": "directed",
+      "updatedAt": 1785437717641,
+      "label": "order context"
+    },
+    {
+      "id": "e-56",
+      "from": "ops-13",
+      "to": "perc-24",
+      "type": "directed",
+      "updatedAt": 1785437717641,
+      "label": "training data"
+    },
+    {
+      "id": "e-57",
+      "from": "perc-27",
+      "to": "int-41",
+      "type": "directed",
+      "updatedAt": 1785437717641,
+      "label": "signals"
+    }
+  ],
+  "lanes": [
+    {
+      "id": "lane-now",
+      "name": "Now — shipped & building",
+      "x": 0,
+      "width": 580
+    },
+    {
+      "id": "lane-next",
+      "name": "Next — 2–3 quarters",
+      "x": 580,
+      "width": 580
+    },
+    {
+      "id": "lane-later",
+      "name": "Later — platform bets",
+      "x": 1160,
+      "width": 580
+    }
+  ],
+  "groups": [
+    {
+      "id": "grp-auth",
+      "name": "Authoring Suite",
+      "nodeIds": [
+        "hub-auth",
+        "auth-01",
+        "auth-02",
+        "auth-03",
+        "auth-04",
+        "auth-05",
+        "auth-06",
+        "auth-07",
+        "auth-08"
+      ]
+    },
+    {
+      "id": "grp-ops",
+      "name": "Operator Runtime",
+      "nodeIds": [
+        "hub-ops",
+        "ops-09",
+        "ops-10",
+        "ops-11",
+        "ops-12",
+        "ops-13",
+        "ops-14",
+        "ops-15",
+        "ops-16",
+        "ops-17",
+        "ops-18",
+        "ops-19"
+      ]
+    },
+    {
+      "id": "grp-perc",
+      "name": "Perception & AI",
+      "nodeIds": [
+        "hub-perc",
+        "perc-20",
+        "perc-21",
+        "perc-22",
+        "perc-23",
+        "perc-24",
+        "perc-25",
+        "perc-26",
+        "perc-27"
+      ]
+    },
+    {
+      "id": "grp-ent",
+      "name": "Enterprise Platform",
+      "nodeIds": [
+        "hub-ent",
+        "ent-28",
+        "ent-29",
+        "ent-30",
+        "ent-31",
+        "ent-32",
+        "ent-33",
+        "ent-34",
+        "ent-35",
+        "ent-36",
+        "ent-37"
+      ]
+    },
+    {
+      "id": "grp-int",
+      "name": "Integrations & Robotics",
+      "nodeIds": [
+        "hub-int",
+        "int-38",
+        "int-39",
+        "int-40",
+        "int-41",
+        "int-42"
+      ]
+    },
+    {
+      "id": "grp-shipped",
+      "name": "Shipped ✓",
+      "nodeIds": [
+        "auth-01",
+        "auth-02",
+        "auth-03",
+        "ops-09",
+        "ops-10",
+        "ops-11",
+        "ops-12",
+        "ops-13",
+        "perc-20",
+        "perc-21",
+        "perc-22",
+        "ent-28",
+        "ent-29",
+        "ent-30",
+        "ent-31",
+        "ent-32",
+        "int-38"
+      ]
+    }
+  ]
+}
