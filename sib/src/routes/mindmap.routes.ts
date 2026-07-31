@@ -21,10 +21,33 @@ import {
   restoreVersion,
   exportMindmap,
   importSib,
+  publishMindmap,
+  unlockByKey,
+  withPublished,
+  assertAccess,
 } from '../controllers/mindmap.controller.js';
 import { broadcastMapSync } from '../ws/mindmap.ws.js';
 
 const router = Router();
+
+/** Draft key for the addressed map (publish workflow, pre-RBAC). */
+function draftKeyOf(req: Request): string | undefined {
+  const h = req.headers['x-draft-key'];
+  const v = Array.isArray(h) ? h[0] : h;
+  return v?.trim() || undefined;
+}
+
+/** X-Draft-Keys: "mapId1:key1,mapId2:key2" — used by /list. */
+function draftKeysOf(req: Request): Map<string, string> {
+  const h = req.headers['x-draft-keys'];
+  const v = Array.isArray(h) ? h[0] : h;
+  const out = new Map<string, string>();
+  for (const pair of (v ?? '').split(',')) {
+    const i = pair.indexOf(':');
+    if (i > 0) out.set(pair.slice(0, i).trim(), pair.slice(i + 1).trim());
+  }
+  return out;
+}
 
 function fail(res: Response, err: unknown): Response {
   const status = err instanceof MindmapError ? err.status : 500;
@@ -39,20 +62,23 @@ function ok<T>(res: Response, data: T, status = 200): Response {
 
 router.post('/save', (req: Request, res: Response) => {
   try {
-    const map = saveMindmap(req.body);
+    const { map, draftKey } = saveMindmap(req.body, draftKeyOf(req));
     // Keep any live collaborators in sync with a REST-side save.
     broadcastMapSync(map);
-    return ok<Mindmap>(res, map, 201);
+    // Creation responses carry the draft key exactly once.
+    return ok(res, draftKey ? { ...map, draftKey } : map, 201);
   } catch (err) { return fail(res, err); }
 });
 
 router.get('/load/:id', (req: Request, res: Response) => {
-  try { return ok<Mindmap>(res, loadMindmap(req.params.id)); }
-  catch (err) { return fail(res, err); }
+  try {
+    assertAccess(req.params.id, draftKeyOf(req));
+    return ok<Mindmap>(res, withPublished(loadMindmap(req.params.id)));
+  } catch (err) { return fail(res, err); }
 });
 
-router.get('/list', (_req: Request, res: Response) => {
-  try { return ok<MindmapSummary[]>(res, listMindmaps()); }
+router.get('/list', (req: Request, res: Response) => {
+  try { return ok<MindmapSummary[]>(res, listMindmaps(draftKeysOf(req))); }
   catch (err) { return fail(res, err); }
 });
 
@@ -62,6 +88,7 @@ router.post('/export', (req: Request, res: Response) => {
     if (!id || !format) {
       throw new MindmapError(400, 'Missing required fields: id, format');
     }
+    assertAccess(id, draftKeyOf(req));
     const result = exportMindmap(id, format);
     res.setHeader('Content-Type', result.contentType);
     res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
@@ -69,10 +96,30 @@ router.post('/export', (req: Request, res: Response) => {
   } catch (err) { return fail(res, err); }
 });
 
+// POST /mindmap/unlock — { draftKey } → map summary; how teammates open a shared draft.
+router.post('/unlock', (req: Request, res: Response) => {
+  try {
+    const { draftKey } = (req.body ?? {}) as { draftKey?: string };
+    if (!draftKey?.trim()) throw new MindmapError(400, 'Missing required field: draftKey');
+    return ok(res, unlockByKey(draftKey.trim()));
+  } catch (err) { return fail(res, err); }
+});
+
+// POST /mindmap/:id/publish  |  /:id/unpublish — draft-key holder only.
+router.post('/:id/publish', (req: Request, res: Response) => {
+  try { return ok<Mindmap>(res, publishMindmap(req.params.id, draftKeyOf(req), true)); }
+  catch (err) { return fail(res, err); }
+});
+router.post('/:id/unpublish', (req: Request, res: Response) => {
+  try { return ok<Mindmap>(res, publishMindmap(req.params.id, draftKeyOf(req), false)); }
+  catch (err) { return fail(res, err); }
+});
+
 // POST /mindmap/:id/import-sib — merge SIB anchors/tags into the map.
 // Body: { anchorId?: string } — omit to import the full anchor/tag graph.
 router.post('/:id/import-sib', (req: Request, res: Response) => {
   try {
+    assertAccess(req.params.id, draftKeyOf(req));
     const { anchorId } = (req.body ?? {}) as { anchorId?: string };
     const result = importSib(req.params.id, anchorId);
     if (result.addedNodes > 0 || result.addedEdges > 0) broadcastMapSync(result.map);
@@ -81,12 +128,15 @@ router.post('/:id/import-sib', (req: Request, res: Response) => {
 });
 
 router.get('/:id/versions', (req: Request, res: Response) => {
-  try { return ok(res, getVersions(req.params.id)); }
-  catch (err) { return fail(res, err); }
+  try {
+    assertAccess(req.params.id, draftKeyOf(req));
+    return ok(res, getVersions(req.params.id));
+  } catch (err) { return fail(res, err); }
 });
 
 router.post('/:id/restore/:versionId', (req: Request, res: Response) => {
   try {
+    assertAccess(req.params.id, draftKeyOf(req));
     const map = restoreVersion(req.params.id, req.params.versionId);
     broadcastMapSync(map);
     return ok<Mindmap>(res, map);
@@ -95,7 +145,7 @@ router.post('/:id/restore/:versionId', (req: Request, res: Response) => {
 
 router.delete('/:id', (req: Request, res: Response) => {
   try {
-    deleteMindmap(req.params.id);
+    deleteMindmap(req.params.id, draftKeyOf(req));
     return ok(res, { deleted: req.params.id });
   } catch (err) { return fail(res, err); }
 });

@@ -16,6 +16,7 @@ import type {
   MindmapLane,
   MindmapGroup,
   MindmapComment,
+  MindmapSettings,
   MindmapVersion,
   MindmapWsEvent,
   MindmapSummary,
@@ -24,6 +25,43 @@ import { JsonFileStore } from '../stores/json-file-store.js';
 
 export const mindmapStore = new JsonFileStore<Mindmap>('mindmaps');
 export const mindmapVersionStore = new JsonFileStore<MindmapVersion>('mindmap-versions');
+
+// ── Access control (publish workflow — pre-RBAC) ───────────────────────────
+// One record per map. Maps WITHOUT a record are treated as published
+// (backward compatibility: everything created before the publish feature
+// was already shared with the whole team).
+//
+// draftKey: bearer secret generated at map creation; the creator's browser
+// stores it. It grants edit/view while unpublished and publish/unpublish
+// control forever. When SSO/RBAC lands, these records become real ownership.
+
+export interface MindmapAccess {
+  id: string;          // map id
+  draftKey: string;
+  published: boolean;
+}
+
+export const mindmapAccessStore = new JsonFileStore<MindmapAccess>('mindmap-access');
+
+export function getAccess(mapId: string): MindmapAccess {
+  return mindmapAccessStore.findById(mapId) ?? { id: mapId, draftKey: '', published: true };
+}
+
+export function isPublished(mapId: string): boolean {
+  return getAccess(mapId).published;
+}
+
+/** Published maps are open; drafts require the exact draft key. */
+export function canAccess(mapId: string, providedKey?: string): boolean {
+  const access = getAccess(mapId);
+  return access.published || (!!providedKey && providedKey === access.draftKey);
+}
+
+/** Holder-of-the-key check (publish/unpublish control). */
+export function isOwner(mapId: string, providedKey?: string): boolean {
+  const access = getAccess(mapId);
+  return !!access.draftKey && !!providedKey && providedKey === access.draftKey;
+}
 
 /** Max stored versions per map — oldest are pruned beyond this. */
 export const MAX_VERSIONS_PER_MAP = 50;
@@ -43,7 +81,18 @@ export function summarize(map: Mindmap): MindmapSummary {
     updatedAt: map.updatedAt,
     nodeCount: map.nodes.length,
     edgeCount: map.edges.length,
+    published: isPublished(map.id),
   };
+}
+
+/** null on malformed payloads; unknown values fall back to defaults. */
+export function sanitizeSettings(raw: unknown): MindmapSettings | null {
+  if (raw === null || typeof raw !== 'object') return null;
+  const s = raw as Partial<MindmapSettings>;
+  const out: MindmapSettings = {};
+  if (s.edgeColor === 'neutral') out.edgeColor = 'neutral';
+  if (s.edgeStyle === 'curved') out.edgeStyle = 'curved';
+  return out;   // defaults ('parent'/'straight') stay implicit
 }
 
 /**
@@ -153,6 +202,12 @@ export function applyGraphEvent(map: Mindmap, event: MindmapWsEvent): Mindmap | 
       );
       if (groups === null) return null;
       next.groups = groups;
+      break;
+    }
+    case 'map:settings': {
+      const settings = sanitizeSettings((event.payload as { settings?: unknown })?.settings);
+      if (settings === null) return null;
+      next.settings = settings;
       break;
     }
     default:
@@ -384,16 +439,28 @@ export function renderMindmapSvg(map: Mindmap): string {
   }).join('\n');
 
   const byId = new Map(map.nodes.map(n => [n.id, n]));
+  const parentColored = map.settings?.edgeColor !== 'neutral';
+  const curved = map.settings?.edgeStyle === 'curved';
   const edges = map.edges.map(e => {
     const a = byId.get(e.from); const b = byId.get(e.to);
     if (!a || !b) return '';
     const x1 = a.x + NODE_W / 2, y1 = a.y + NODE_H / 2;
     const x2 = b.x + NODE_W / 2, y2 = b.y + NODE_H / 2;
-    const marker = e.type === 'directed' ? ' marker-end="url(#arrow)"' : '';
+    const color = parentColored ? (NODE_COLORS[a.type] ?? '#94a3b8') : '#94a3b8';
+    const markerId = parentColored ? `arrow-${a.type}` : 'arrow';
+    const marker = e.type === 'directed' ? ` marker-end="url(#${markerId})"` : '';
+    // Curved: cubic bezier with control points offset along the dominant axis.
+    const dx = Math.abs(x2 - x1), dy = Math.abs(y2 - y1);
+    const off = Math.min(160, Math.max(40, (dx >= dy ? dx : dy) * 0.4));
+    const path = curved
+      ? (dx >= dy
+          ? `M ${x1} ${y1} C ${x1 + Math.sign(x2 - x1) * off} ${y1}, ${x2 - Math.sign(x2 - x1) * off} ${y2}, ${x2} ${y2}`
+          : `M ${x1} ${y1} C ${x1} ${y1 + Math.sign(y2 - y1) * off}, ${x2} ${y2 - Math.sign(y2 - y1) * off}, ${x2} ${y2}`)
+      : `M ${x1} ${y1} L ${x2} ${y2}`;
     const label = e.label
       ? `\n  <text x="${(x1 + x2) / 2}" y="${(y1 + y2) / 2 - 6}" text-anchor="middle" font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="11" fill="#475569" stroke="#ffffff" stroke-width="3" paint-order="stroke">${esc(e.label)}</text>`
       : '';
-    return `  <line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#94a3b8" stroke-width="1.5"${marker}/>${label}`;
+    return `  <path d="${path}" fill="none" stroke="${color}" stroke-width="1.5" stroke-opacity="${parentColored ? 0.75 : 1}"${marker}/>${label}`;
   }).join('\n');
 
   const nodes = map.nodes.map(n => {
@@ -419,9 +486,15 @@ export function renderMindmapSvg(map: Mindmap): string {
     ].join('\n');
   }).join('\n');
 
+  const markers = [
+    `<marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8"/></marker>`,
+    ...Object.entries(NODE_COLORS).map(([type, color]) =>
+      `<marker id="arrow-${type}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="${color}"/></marker>`),
+  ].join('');
+
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX} ${minY} ${maxX - minX} ${maxY - minY}">`,
-    `  <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8"/></marker></defs>`,
+    `  <defs>${markers}</defs>`,
     `  <title>${esc(map.name)}</title>`,
     lanes,
     edges,

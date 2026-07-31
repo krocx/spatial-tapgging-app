@@ -16,7 +16,8 @@ import { CollabClient, type CollabStatus } from '../ws/collab.js';
 import { autoLayout, type LayoutMode } from '../utils/layout.js';
 import { NODE_W, NODE_H } from '../utils/geometry.js';
 import { computeSteps, stepBounds, type PresentationStep } from '../utils/presentation.js';
-import type { MindmapNodeShape } from '@spatial/shared';
+import type { MindmapNodeShape, MindmapSettings } from '@spatial/shared';
+import { getDraftKey } from '../api/mindmap-api.js';
 
 export interface Peer {
   clientId: string;
@@ -167,6 +168,14 @@ interface Actions {
   startPresentation(): void;
   exitPresentation(): void;
   presentationGoto(step: number): void;
+
+  // Style settings + publish workflow
+  updateSettings(patch: Partial<MindmapSettings>): void;
+  publishMap(): Promise<void>;
+  unpublishMap(): Promise<void>;
+  unlockDraft(draftKey: string): Promise<void>;
+  /** Does this browser hold the current map's draft key? */
+  holdsDraftKey(): boolean;
   updateLane(id: string, patch: Partial<MindmapLane>): void;
   removeLane(id: string): void;
 
@@ -330,6 +339,11 @@ export const useStore = create<State & Actions>((set, get) => {
       case 'map:groups': {
         const { groups } = event.payload as { groups: MindmapGroup[] };
         mutateGraph(m => { m.groups = groups; });
+        return;
+      }
+      case 'map:settings': {
+        const { settings } = event.payload as { settings: MindmapSettings };
+        mutateGraph(m => { m.settings = settings; });
         return;
       }
       case 'comment:add': {
@@ -649,6 +663,54 @@ export const useStore = create<State & Actions>((set, get) => {
     clearFilters: () => set({ filters: EMPTY_FILTERS }),
     setShowFilterPanel: v => set({ showFilterPanel: v }),
 
+    // ── Style settings (map-level, synced, no undo entry — it's cosmetic) ─
+
+    updateSettings(patch) {
+      const { map } = get();
+      if (!map) return;
+      const settings: MindmapSettings = { ...map.settings, ...patch };
+      // Defaults stay implicit — drop keys set back to their default value.
+      if (settings.edgeColor !== 'neutral') delete settings.edgeColor;
+      if (settings.edgeStyle !== 'curved') delete settings.edgeStyle;
+      mutateGraph(m => { m.settings = settings; });
+      collab?.send('map:settings', { settings });
+    },
+
+    // ── Publish workflow ─────────────────────────────────────────────────
+
+    holdsDraftKey() {
+      const { map } = get();
+      return !!map && !!getDraftKey(map.id);
+    },
+
+    async publishMap() {
+      const { map } = get();
+      if (!map) return;
+      try {
+        const updated = await mindmapApi.publish(map.id);
+        set({ map: { ...map, published: updated.published }, statusMessage: 'Published — visible to everyone', error: null });
+        void get().refreshList();
+      } catch (err) { set({ error: (err as Error).message }); }
+    },
+
+    async unpublishMap() {
+      const { map } = get();
+      if (!map) return;
+      try {
+        const updated = await mindmapApi.unpublish(map.id);
+        set({ map: { ...map, published: updated.published }, statusMessage: 'Unpublished — draft-key holders only', error: null });
+        void get().refreshList();
+      } catch (err) { set({ error: (err as Error).message }); }
+    },
+
+    async unlockDraft(draftKey) {
+      try {
+        const { summary } = await mindmapApi.unlock(draftKey.trim());
+        await get().refreshList();
+        set({ statusMessage: `Unlocked draft "${summary.name}"`, error: null });
+      } catch (err) { set({ error: (err as Error).message }); }
+    },
+
     // ── Rich nodes + collapse ────────────────────────────────────────────
 
     toggleCollapse(id) {
@@ -793,6 +855,7 @@ export const useStore = create<State & Actions>((set, get) => {
           edges: parsed.edges,
           lanes: parsed.lanes ?? [],
           groups: parsed.groups ?? [],
+          settings: parsed.settings,
           versionLabel: 'imported from JSON',
         });
         await get().refreshList();
@@ -958,7 +1021,8 @@ export const useStore = create<State & Actions>((set, get) => {
       try {
         const saved = await mindmapApi.save({
           id: map.id, name: map.name, nodes: map.nodes, edges: map.edges,
-          lanes: map.lanes ?? [], groups: map.groups ?? [], versionLabel: label,
+          lanes: map.lanes ?? [], groups: map.groups ?? [],
+          settings: map.settings, versionLabel: label,
         });
         set({ map: saved, dirty: false, statusMessage: `Saved ${new Date().toLocaleTimeString()}`, error: null });
       } catch (err) { set({ error: (err as Error).message }); }

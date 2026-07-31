@@ -62,7 +62,9 @@ All routes behind `apiKeyAuth`; responses use the standard `ApiResponse<T>` enve
 
 | Method | Route | Body | Returns |
 |---|---|---|---|
-| POST | `/mindmap/save` | `{ id?, name, nodes[], edges[], versionLabel? }` | `Mindmap` (201). Omit `id` to create. Snapshots a version. |
+| POST | `/mindmap/save` | `{ id?, name, nodes[], edges[], lanes?, groups?, settings?, versionLabel? }` | `Mindmap` (201). Omit `id` to create — new maps start as drafts and the response carries `draftKey` once. Snapshots a version. |
+| POST | `/mindmap/unlock` | `{ draftKey }` | `{ mapId, summary }` — resolves a shared draft key. |
+| POST | `/mindmap/:id/publish` / `unpublish` | — (`X-Draft-Key` required) | Toggles publication. |
 | GET | `/mindmap/load/:id` | — | `Mindmap` |
 | GET | `/mindmap/list` | — | `MindmapSummary[]` (no graph payload, sorted by `updatedAt`) |
 | POST | `/mindmap/export` | `{ id, format: "json"\|"svg"\|"sib-json" }` | File download (`Content-Disposition: attachment`). PNG is client-side. `sib-json` = draft SIB tag scaffold from tag-typed nodes. |
@@ -111,6 +113,10 @@ Double-click empty canvas → create node · drag node → move (a multi-selecti
 **Rich nodes (inspector):** shape (rounded / rect / pill / diamond / hexagon), a 20-glyph inline icon set (flag, star, bolt, gear, eye, camera, cube, robot, wrench, chip, qr, tag, check, alert, bulb, target, layers, doc, user, clock — no external requests), and an http(s) hyperlink opened via the ↗ affordance on the node. Links are sanitized server-side on **both** the WS and REST/save paths (`javascript:` etc. rejected); REST saves also drop malformed nodes and dangling/self-loop edges.
 
 **View filters (Filters button):** left panel with toggleable chips for SIB layers, statuses (incl. "no status"), and custom groups — matching nodes stay full-strength, everything else fades to 15% (edges fade unless both endpoints match). Within a section chips OR together; across sections they AND ("semantic OR reasoning, AND in-progress"). Filters are per-viewer only — they never affect collaborators. Groups are created from a multi-selection ("Group selection" in the inspector), renamed by double-clicking their chip, and are synced + versioned map state.
+
+**Edge styling (Style menu):** map-level, synced to all viewers and honored by PNG/SVG exports. Edge color: **parent** (default — edges and arrowheads carry the source node's layer color, so flows visually tell their origin's story) or **neutral** grey. Routes: **straight** (default) or **curved** (cubic beziers with controls along the dominant axis; labels sit on the curve).
+
+**Publish workflow (pre-RBAC):** new maps are born as **private drafts**. The creator's browser receives the map's **draft key** exactly once and stores it (`roadmap-draft-keys` in localStorage). Drafts are invisible in the list and locked (403 on REST + WS) for everyone else. Sharing: "Copy key" in the toolbar → teammate uses "Unlock draft" on the home screen. The **Draft 🔒 / Published** chip next to the map name toggles publication (draft-key holder only): published maps are open to everyone (view + edit); unpublish flips them back. Keys live server-side in `.sib-data/mindmap-access.json`, are never included in map payloads, and survive publish — only the holder can ever unpublish. Maps created before this feature have no key and are permanently published. When SSO/RBAC lands, access records map directly onto real ownership. Headers: `X-Draft-Key` (single map), `X-Draft-Keys: id:key,…` (list); WS: `&draftKey=`. Endpoints: `POST /mindmap/unlock` `{ draftKey }`, `POST /mindmap/:id/publish`, `POST /mindmap/:id/unpublish`.
 
 **Cross-server transfer:** Export → JSON on one server (e.g. Render), then "Import JSON" on the map-list screen of another (e.g. the internal server). The import creates a fresh map with a new id and keeps nodes, edges, lanes, statuses, reviews, notes, and comments.
 

@@ -63,6 +63,25 @@ button { font: inherit; }
 .sib-link { font-size: 11px; color: var(--muted); background: #eef2f7; border-radius: 8px; padding: 8px 10px; }
 .sib-link code { font-size: 10px; }
 
+/* ── Publish workflow ─────────────────────────────────────── */
+
+.pub-chip {
+  padding: 3px 10px; font-size: 11px; font-weight: 700;
+  border-radius: 20px; cursor: pointer; border: 1px solid transparent;
+}
+.pub-chip.draft { background: #fef3c7; color: #b45309; border-color: #fcd34d; }
+.pub-chip.draft:hover { background: #fde68a; }
+.pub-chip.published { background: #dcfce7; color: #15803d; border-color: #86efac; }
+.pub-chip.published:hover { background: #bbf7d0; }
+
+.draft-badge {
+  margin-left: 8px; padding: 2px 8px;
+  font-size: 10px; font-weight: 700;
+  background: #fef3c7; color: #b45309;
+  border: 1px solid #fcd34d; border-radius: 12px;
+  vertical-align: middle;
+}
+
 /* ── Presentation mode ────────────────────────────────────── */
 
 .present-bar {

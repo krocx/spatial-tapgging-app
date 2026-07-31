@@ -104,6 +104,14 @@ export interface MindmapGroup {
   nodeIds: string[];
 }
 
+/** Map-level visual style — shared by all viewers and honored by exports. */
+export interface MindmapSettings {
+  /** 'parent': edges take the source node's layer color. Default 'parent'. */
+  edgeColor?: 'parent' | 'neutral';
+  /** Default 'straight'. */
+  edgeStyle?: 'straight' | 'curved';
+}
+
 export interface Mindmap {
   id: string;
   name: string;
@@ -115,6 +123,14 @@ export interface Mindmap {
   lanes?: MindmapLane[];
   /** Named node groups (optional). */
   groups?: MindmapGroup[];
+  /** Visual style (optional). */
+  settings?: MindmapSettings;
+  /**
+   * Publication state — decorated onto responses by the server from its
+   * access store; ignored when sent by clients. Absent = published
+   * (backward compatibility with pre-publish maps).
+   */
+  published?: boolean;
 }
 
 /** Lightweight listing entry (no graph payload). */
@@ -125,6 +141,8 @@ export interface MindmapSummary {
   updatedAt: number;
   nodeCount: number;
   edgeCount: number;
+  /** false = draft (only listed for callers presenting its draft key). */
+  published: boolean;
 }
 
 // --- Versioning ---
@@ -148,9 +166,13 @@ export interface SaveMindmapRequest {
   edges: MindmapEdge[];
   lanes?: MindmapLane[];
   groups?: MindmapGroup[];
+  settings?: MindmapSettings;
   /** Optional label recorded on the version snapshot. */
   versionLabel?: string;
 }
+
+/** Creation responses carry the map's draft key exactly once. */
+export type SaveMindmapResponse = Mindmap & { draftKey?: string };
 
 /** sib-json: draft SIB entity scaffold generated from tag-typed nodes. */
 export type ExportFormat = 'json' | 'svg' | 'sib-json';
@@ -175,6 +197,7 @@ export type MindmapWsEventType =
   | 'map:rename'
   | 'map:lanes'     // full lanes array replace (rename/add/remove/resize)
   | 'map:groups'    // full groups array replace (create/rename/remove/membership)
+  | 'map:settings'  // visual style replace (edge color/curve mode)
   | 'comment:add'    // { nodeId, comment } — appended server-side (never lost to LWW)
   | 'comment:delete' // { nodeId, commentId }
   | 'error';

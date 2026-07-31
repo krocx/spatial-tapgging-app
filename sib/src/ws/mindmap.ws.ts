@@ -20,7 +20,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import type { Server as HttpServer } from 'http';
 import { v4 as uuidv4 } from 'uuid';
 import type { Mindmap, MindmapWsEvent } from '@spatial/shared';
-import { mindmapStore, applyGraphEvent, snapshotVersion } from '../models/mindmap.model.js';
+import { mindmapStore, applyGraphEvent, snapshotVersion, canAccess } from '../models/mindmap.model.js';
 
 interface Client {
   id: string;
@@ -60,6 +60,13 @@ export function attachMindmapWs(server: HttpServer): void {
     const mapId = url.searchParams.get('mapId');
     if (!mapId || !mindmapStore.findById(mapId)) {
       socket.write('HTTP/1.1 404 Not Found\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+
+    // Publish workflow: unpublished drafts require the map's draft key.
+    if (!canAccess(mapId, url.searchParams.get('draftKey') ?? undefined)) {
+      socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
       socket.destroy();
       return;
     }

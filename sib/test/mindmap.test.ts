@@ -30,9 +30,18 @@ const {
   MindmapError,
 } = await import('../src/controllers/mindmap.controller.js');
 
-import type { Mindmap, MindmapNode, MindmapWsEvent } from '@spatial/shared';
+import type { Mindmap, MindmapNode, MindmapWsEvent, SaveMindmapRequest } from '@spatial/shared';
 
 after(() => fs.rmSync(TMP_DATA, { recursive: true, force: true }));
+
+// New maps are born as drafts with a one-time draft key; this helper keeps a
+// key registry so tests can create + resave transparently.
+const keyReg = new Map<string, string>();
+function create(body: SaveMindmapRequest): Mindmap {
+  const r = saveMindmap(body, body.id ? keyReg.get(body.id) : undefined);
+  if (r.draftKey) keyReg.set(r.map.id, r.draftKey);
+  return r.map;
+}
 
 function node(id: string, overrides: Partial<MindmapNode> = {}): MindmapNode {
   return { id, x: 0, y: 0, text: id, type: 'generic', metadata: {}, updatedAt: Date.now(), ...overrides };
@@ -45,7 +54,7 @@ function event(type: MindmapWsEvent['type'], mapId: string, payload: unknown, ts
 // ── Controller: save / load / list / delete ────────────────────────────────
 
 test('saveMindmap creates a map and a version snapshot', () => {
-  const map = saveMindmap({ name: 'Roadmap 2027', nodes: [node('a')], edges: [] });
+  const map = create({ name: 'Roadmap 2027', nodes: [node('a')], edges: [] });
   assert.ok(map.id);
   assert.equal(map.name, 'Roadmap 2027');
   assert.equal(loadMindmap(map.id).nodes.length, 1);
@@ -54,9 +63,100 @@ test('saveMindmap creates a map and a version snapshot', () => {
 });
 
 test('saveMindmap rejects missing name and bad arrays', () => {
-  assert.throws(() => saveMindmap({ name: '  ', nodes: [], edges: [] }), MindmapError);
+  assert.throws(() => create({ name: '  ', nodes: [], edges: [] }), MindmapError);
   // @ts-expect-error — intentionally malformed
-  assert.throws(() => saveMindmap({ name: 'x', nodes: 'nope', edges: [] }), MindmapError);
+  assert.throws(() => create({ name: 'x', nodes: 'nope', edges: [] }), MindmapError);
+});
+
+// ── Publish workflow (draft keys, pre-RBAC) ────────────────────────────────
+
+test('new maps are drafts; key grants access; publish opens to all', async () => {
+  const { listMindmaps, publishMindmap, unlockByKey } = await import('../src/controllers/mindmap.controller.js');
+  const { canAccess } = await import('../src/models/mindmap.model.js');
+
+  const r = saveMindmap({ name: 'Secret Draft', nodes: [], edges: [] });
+  assert.ok(r.draftKey, 'creation returns a draft key');
+  assert.equal(r.map.published, false);
+
+  // Not listed without the key; listed with it.
+  assert.equal(listMindmaps().some(m => m.id === r.map.id), false);
+  assert.equal(listMindmaps(new Map([[r.map.id, r.draftKey!]])).some(m => m.id === r.map.id), true);
+
+  // Access checks
+  assert.equal(canAccess(r.map.id), false);
+  assert.equal(canAccess(r.map.id, 'wrong-key'), false);
+  assert.equal(canAccess(r.map.id, r.draftKey), true);
+
+  // Update without key → 403; with key → ok.
+  assert.throws(() => saveMindmap({ id: r.map.id, name: 'Secret Draft', nodes: [], edges: [] }), MindmapError);
+  saveMindmap({ id: r.map.id, name: 'Secret Draft', nodes: [], edges: [] }, r.draftKey);
+
+  // Unlock-by-key resolves the summary.
+  assert.equal(unlockByKey(r.draftKey!).mapId, r.map.id);
+  assert.throws(() => unlockByKey('nope'), MindmapError);
+
+  // Publish: only the key holder; afterwards open to everyone.
+  assert.throws(() => publishMindmap(r.map.id, 'wrong', true), MindmapError);
+  const published = publishMindmap(r.map.id, r.draftKey, true);
+  assert.equal(published.published, true);
+  assert.equal(canAccess(r.map.id), true);
+  assert.equal(listMindmaps().some(m => m.id === r.map.id), true);
+
+  // Unpublish: key still required; anonymous edits blocked again.
+  publishMindmap(r.map.id, r.draftKey, false);
+  assert.equal(canAccess(r.map.id), false);
+  keyReg.set(r.map.id, r.draftKey!);
+});
+
+test('legacy maps without access record are treated as published', async () => {
+  const { canAccess } = await import('../src/models/mindmap.model.js');
+  const legacy: Mindmap = { id: 'legacy-1', name: 'Old Map', createdAt: 1, updatedAt: 1, nodes: [], edges: [] };
+  mindmapStore.save(legacy);
+  assert.equal(canAccess('legacy-1'), true);
+});
+
+// ── Settings: edge color + curve style ─────────────────────────────────────
+
+test('map:settings replaces settings; junk rejected; save preserves on omit', () => {
+  let map: Mindmap = create({ name: 'Styled', nodes: [node('a'), node('b', { x: 400, y: 200 })],
+    edges: [{ id: 'e1', from: 'a', to: 'b', type: 'directed', updatedAt: 1 }] });
+
+  map = applyGraphEvent(map, event('map:settings', map.id, { settings: { edgeColor: 'neutral', edgeStyle: 'curved' } }))!;
+  assert.equal(map.settings?.edgeColor, 'neutral');
+  assert.equal(map.settings?.edgeStyle, 'curved');
+
+  // Unknown values fall back to implicit defaults; malformed payload rejected.
+  const dflt = applyGraphEvent(map, event('map:settings', map.id, { settings: { edgeColor: 'rainbow', edgeStyle: 'zigzag' } }))!;
+  assert.deepEqual(dflt.settings, {});
+  assert.equal(applyGraphEvent(map, event('map:settings', map.id, { settings: 'nope' })), null);
+
+  // Save without settings keeps existing ones.
+  mindmapStore.save({ ...map });
+  const resaved = saveMindmap({ id: map.id, name: 'Styled', nodes: map.nodes, edges: map.edges }, keyReg.get(map.id)).map;
+  assert.equal(resaved.settings?.edgeStyle, 'curved');
+});
+
+test('SVG export honors parent colors and curved routes', () => {
+  const map = create({
+    name: 'CurvyColors',
+    nodes: [node('a', { type: 'perception' }), node('b', { x: 420, y: 240 })],
+    edges: [{ id: 'e1', from: 'a', to: 'b', type: 'directed', updatedAt: 1 }],
+    settings: { edgeStyle: 'curved' },
+  });
+  const svg = exportMindmap(map.id, 'svg').body;
+  assert.ok(svg.includes('stroke="#8b5cf6"'), 'edge takes perception parent color');
+  assert.ok(svg.includes('marker-end="url(#arrow-perception)"'), 'colored arrowhead');
+  assert.ok(/d="M [\d.\- ]+C /.test(svg), 'cubic bezier path');
+
+  // Neutral mode: grey edges, plain arrow.
+  const neutral = create({
+    name: 'Neutral',
+    nodes: [node('a', { type: 'perception' }), node('b', { x: 420 })],
+    edges: [{ id: 'e1', from: 'a', to: 'b', type: 'directed', updatedAt: 1 }],
+    settings: { edgeColor: 'neutral' },
+  });
+  const nsvg = exportMindmap(neutral.id, 'svg').body;
+  assert.ok(nsvg.includes('marker-end="url(#arrow)"'));
 });
 
 test('listMindmaps returns summaries sorted by updatedAt desc', () => {
@@ -70,8 +170,8 @@ test('listMindmaps returns summaries sorted by updatedAt desc', () => {
 });
 
 test('deleteMindmap removes map and its versions', () => {
-  const map = saveMindmap({ name: 'Temp', nodes: [], edges: [] });
-  deleteMindmap(map.id);
+  const map = create({ name: 'Temp', nodes: [], edges: [] });
+  deleteMindmap(map.id, keyReg.get(map.id));
   assert.throws(() => loadMindmap(map.id), MindmapError);
   assert.equal(mindmapStore.findById(map.id), undefined);
   assert.equal(listMindmaps().some(m => m.id === map.id), false);
@@ -80,7 +180,7 @@ test('deleteMindmap removes map and its versions', () => {
 // ── LWW graph events ───────────────────────────────────────────────────────
 
 test('applyGraphEvent adds, updates, deletes nodes with LWW', () => {
-  let map: Mindmap = saveMindmap({ name: 'LWW', nodes: [], edges: [] });
+  let map: Mindmap = create({ name: 'LWW', nodes: [], edges: [] });
 
   map = applyGraphEvent(map, event('node:add', map.id, node('n1', { text: 'first' })))!;
   assert.equal(map.nodes.length, 1);
@@ -103,7 +203,7 @@ test('applyGraphEvent adds, updates, deletes nodes with LWW', () => {
 });
 
 test('applyGraphEvent rejects invalid edges', () => {
-  let map: Mindmap = saveMindmap({ name: 'Edges', nodes: [node('a'), node('b')], edges: [] });
+  let map: Mindmap = create({ name: 'Edges', nodes: [node('a'), node('b')], edges: [] });
 
   // Self-loop
   assert.equal(applyGraphEvent(map, event('edge:add', map.id, { id: 'e', from: 'a', to: 'a', type: 'directed' })), null);
@@ -115,14 +215,14 @@ test('applyGraphEvent rejects invalid edges', () => {
 });
 
 test('applyGraphEvent clamps runaway client clocks', () => {
-  const map: Mindmap = saveMindmap({ name: 'Clock', nodes: [], edges: [] });
+  const map: Mindmap = create({ name: 'Clock', nodes: [], edges: [] });
   const farFuture = Date.now() + 999_999_999;
   const result = applyGraphEvent(map, event('node:add', map.id, node('n1', { updatedAt: farFuture }), farFuture))!;
   assert.ok(result.nodes[0].updatedAt <= Date.now() + 31_000);
 });
 
 test('cursor and session events never mutate the graph', () => {
-  const map: Mindmap = saveMindmap({ name: 'Cursor', nodes: [node('a')], edges: [] });
+  const map: Mindmap = create({ name: 'Cursor', nodes: [node('a')], edges: [] });
   assert.equal(applyGraphEvent(map, event('cursor:move', map.id, { x: 1, y: 2 })), null);
   assert.equal(applyGraphEvent(map, event('session:join', map.id, {})), null);
 });
@@ -130,7 +230,7 @@ test('cursor and session events never mutate the graph', () => {
 // ── Versioning ─────────────────────────────────────────────────────────────
 
 test('version history is pruned to MAX_VERSIONS_PER_MAP', () => {
-  const map = saveMindmap({ name: 'Prune', nodes: [], edges: [] });
+  const map = create({ name: 'Prune', nodes: [], edges: [] });
   for (let i = 0; i < MAX_VERSIONS_PER_MAP + 10; i++) snapshotVersion(map, `s${i}`);
   assert.equal(listVersions(map.id).length, MAX_VERSIONS_PER_MAP);
   // Newest survive
@@ -138,9 +238,9 @@ test('version history is pruned to MAX_VERSIONS_PER_MAP', () => {
 });
 
 test('restoreVersion restores snapshot content and preserves identity', () => {
-  const v1 = saveMindmap({ name: 'Restorable', nodes: [node('a')], edges: [] });
+  const v1 = create({ name: 'Restorable', nodes: [node('a')], edges: [] });
   const versionsAfterV1 = listVersions(v1.id);
-  const v2 = saveMindmap({ id: v1.id, name: 'Restorable', nodes: [node('a'), node('b')], edges: [] });
+  const v2 = create({ id: v1.id, name: 'Restorable', nodes: [node('a'), node('b')], edges: [] });
   assert.equal(v2.nodes.length, 2);
 
   const restored = restoreVersion(v1.id, versionsAfterV1[0].id);
@@ -156,7 +256,7 @@ test('restoreVersion restores snapshot content and preserves identity', () => {
 // ── Export ─────────────────────────────────────────────────────────────────
 
 test('exportMindmap json and svg; rejects png server-side', () => {
-  const map = saveMindmap({
+  const map = create({
     name: 'Export Me',
     nodes: [node('a', { text: 'Perception <layer>', type: 'perception', x: 10, y: 20 }), node('b', { x: 300, y: 200 })],
     edges: [{ id: 'e1', from: 'a', to: 'b', type: 'directed', updatedAt: Date.now() }],
@@ -171,7 +271,9 @@ test('exportMindmap json and svg; rejects png server-side', () => {
   assert.equal(svg.contentType, 'image/svg+xml');
   assert.ok(svg.body.startsWith('<svg'));
   assert.ok(svg.body.includes('&lt;layer&gt;'));       // XML-escaped
-  assert.ok(svg.body.includes('marker-end="url(#arrow)"')); // directed edge
+  // Directed edge — default edgeColor is 'parent', so the arrowhead carries
+  // the source node's layer color (node 'a' is perception).
+  assert.ok(svg.body.includes('marker-end="url(#arrow-perception)"'));
 
   assert.throws(() => exportMindmap(map.id, 'png'), MindmapError);
 });
@@ -184,7 +286,7 @@ test('renderMindmapSvg handles an empty map', () => {
 // ── Roadmap fields: status / milestone / notes / edge labels / lanes ───────
 
 test('node status, milestone, notes survive sanitization; junk is dropped', () => {
-  let map: Mindmap = saveMindmap({ name: 'Fields', nodes: [], edges: [] });
+  let map: Mindmap = create({ name: 'Fields', nodes: [], edges: [] });
   map = applyGraphEvent(map, event('node:add', map.id, node('n1', {
     status: 'in-progress', milestone: true, notes: 'ship with SIB v0.3',
   })))!;
@@ -199,7 +301,7 @@ test('node status, milestone, notes survive sanitization; junk is dropped', () =
 });
 
 test('edge labels persist and render in SVG', () => {
-  const map = saveMindmap({
+  const map = create({
     name: 'Labeled',
     nodes: [node('a'), node('b', { x: 300 })],
     edges: [{ id: 'e1', from: 'a', to: 'b', type: 'directed', updatedAt: Date.now(), label: 'depends on' }],
@@ -209,7 +311,7 @@ test('edge labels persist and render in SVG', () => {
 });
 
 test('map:lanes event replaces lanes (LWW-free full replace) and rejects junk', () => {
-  let map: Mindmap = saveMindmap({ name: 'Lanes', nodes: [], edges: [] });
+  let map: Mindmap = create({ name: 'Lanes', nodes: [], edges: [] });
   const lanes = [
     { id: 'l1', name: 'Now', x: 0, width: 400 },
     { id: 'l2', name: 'Next', x: 400, width: 400 },
@@ -225,19 +327,19 @@ test('map:lanes event replaces lanes (LWW-free full replace) and rejects junk', 
 });
 
 test('saveMindmap preserves lanes when request omits them', () => {
-  const created = saveMindmap({
+  const created = create({
     name: 'KeepLanes', nodes: [], edges: [],
     lanes: [{ id: 'l1', name: 'Now', x: 0, width: 300 }],
   });
   assert.equal(created.lanes?.length, 1);
-  const resaved = saveMindmap({ id: created.id, name: 'KeepLanes', nodes: [], edges: [] });
+  const resaved = create({ id: created.id, name: 'KeepLanes', nodes: [], edges: [] });
   assert.equal(resaved.lanes?.length, 1, 'lanes lost on lane-less save');
 });
 
 // ── Comments + review ──────────────────────────────────────────────────────
 
 test('comment:add appends, dedupes, and comment:delete removes', () => {
-  let map: Mindmap = saveMindmap({ name: 'Comments', nodes: [node('n1')], edges: [] });
+  let map: Mindmap = create({ name: 'Comments', nodes: [node('n1')], edges: [] });
   const comment = { id: 'c1', author: 'Karthik', text: 'Looks right', createdAt: Date.now() };
 
   map = applyGraphEvent(map, event('comment:add', map.id, { nodeId: 'n1', comment }))!;
@@ -254,7 +356,7 @@ test('comment:add appends, dedupes, and comment:delete removes', () => {
 });
 
 test('node:update merges comments instead of clobbering (append-safe)', () => {
-  let map: Mindmap = saveMindmap({ name: 'Merge', nodes: [node('n1')], edges: [] });
+  let map: Mindmap = create({ name: 'Merge', nodes: [node('n1')], edges: [] });
   const c1 = { id: 'c1', author: 'A', text: 'first', createdAt: 1000 };
   map = applyGraphEvent(map, event('comment:add', map.id, { nodeId: 'n1', comment: c1 }))!;
 
@@ -268,7 +370,7 @@ test('node:update merges comments instead of clobbering (append-safe)', () => {
 });
 
 test('review state round-trips; junk review dropped', () => {
-  let map: Mindmap = saveMindmap({ name: 'Review', nodes: [], edges: [] });
+  let map: Mindmap = create({ name: 'Review', nodes: [], edges: [] });
   map = applyGraphEvent(map, event('node:add', map.id, node('n1', { review: 'needs-validation' })))!;
   assert.equal(map.nodes[0].review, 'needs-validation');
   const junk = applyGraphEvent(map, event('node:update', map.id,
@@ -278,7 +380,7 @@ test('review state round-trips; junk review dropped', () => {
 });
 
 test('row lanes sanitize and render horizontally', () => {
-  let map: Mindmap = saveMindmap({ name: 'Rows', nodes: [node('a')], edges: [] });
+  let map: Mindmap = create({ name: 'Rows', nodes: [node('a')], edges: [] });
   map = applyGraphEvent(map, event('map:lanes', map.id, {
     lanes: [
       { id: 'r1', name: 'Why', x: 0, width: 220, orientation: 'row' },
@@ -295,7 +397,7 @@ test('row lanes sanitize and render horizontally', () => {
 // ── Rich node fields: collapsed / icon / shape / link ──────────────────────
 
 test('collapsed, icon, shape, link sanitize correctly; unsafe links dropped', () => {
-  let map: Mindmap = saveMindmap({ name: 'Rich', nodes: [], edges: [] });
+  let map: Mindmap = create({ name: 'Rich', nodes: [], edges: [] });
   map = applyGraphEvent(map, event('node:add', map.id, node('n1', {
     collapsed: true, icon: 'gear', shape: 'hexagon', link: 'https://sib.internal/docs',
   })))!;
@@ -319,7 +421,7 @@ test('collapsed, icon, shape, link sanitize correctly; unsafe links dropped', ()
 });
 
 test('REST save sanitizes: unsafe links stripped, dangling edges dropped', () => {
-  const map = saveMindmap({
+  const map = create({
     name: 'RestSanitize',
     nodes: [
       node('a', { link: 'javascript:alert(1)' as never, shape: 'blob' as never }),
@@ -340,7 +442,7 @@ test('REST save sanitizes: unsafe links stripped, dangling edges dropped', () =>
 // ── Groups ─────────────────────────────────────────────────────────────────
 
 test('map:groups replaces groups, filters ghost node ids, rejects junk', () => {
-  let map: Mindmap = saveMindmap({ name: 'Groups', nodes: [node('a'), node('b')], edges: [] });
+  let map: Mindmap = create({ name: 'Groups', nodes: [node('a'), node('b')], edges: [] });
   map = applyGraphEvent(map, event('map:groups', map.id, {
     groups: [{ id: 'g1', name: 'Perception pipeline', nodeIds: ['a', 'b', 'ghost', 'a'] }],
   }))!;
@@ -350,7 +452,7 @@ test('map:groups replaces groups, filters ghost node ids, rejects junk', () => {
 });
 
 test('node:delete cascades out of groups', () => {
-  let map: Mindmap = saveMindmap({ name: 'GroupCascade', nodes: [node('a'), node('b')], edges: [] });
+  let map: Mindmap = create({ name: 'GroupCascade', nodes: [node('a'), node('b')], edges: [] });
   map = applyGraphEvent(map, event('map:groups', map.id, {
     groups: [{ id: 'g1', name: 'Team A', nodeIds: ['a', 'b'] }],
   }))!;
@@ -359,19 +461,19 @@ test('node:delete cascades out of groups', () => {
 });
 
 test('saveMindmap preserves groups when request omits them', () => {
-  const created = saveMindmap({
+  const created = create({
     name: 'KeepGroups', nodes: [node('a')], edges: [],
     groups: [{ id: 'g1', name: 'Core', nodeIds: ['a'] }],
   });
   assert.equal(created.groups?.length, 1);
-  const resaved = saveMindmap({ id: created.id, name: 'KeepGroups', nodes: [node('a')], edges: [] });
+  const resaved = create({ id: created.id, name: 'KeepGroups', nodes: [node('a')], edges: [] });
   assert.equal(resaved.groups?.length, 1, 'groups lost on group-less save');
 });
 
 // ── SIB bridge ─────────────────────────────────────────────────────────────
 
 test('sib-json export builds draft tags from tag-typed nodes', () => {
-  const map = saveMindmap({
+  const map = create({
     name: 'SIB Draft',
     nodes: [
       node('t1', { type: 'tag', text: 'Check valve torque', notes: 'use torque wrench' }),
@@ -407,7 +509,7 @@ test('importSibGraph merges anchors/tags idempotently', async () => {
     expectedOutcome: '', metadata: {}, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
   } as never);
 
-  const map = saveMindmap({ name: 'SIB Import', nodes: [], edges: [] });
+  const map = create({ name: 'SIB Import', nodes: [], edges: [] });
   const first = importSibGraph(map, 'a-test-1');
   assert.equal(first.addedNodes, 2);            // anchor node + tag node
   assert.equal(first.addedEdges, 1);            // anchor → tag

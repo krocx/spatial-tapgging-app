@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useStore } from '../state/store.js';
 import { NODE_COLORS, NODE_TYPE_LABELS, NODE_TYPES, peerColor } from '../utils/colors.js';
 import { exportJson, exportPng, exportSvg } from '../utils/export.js';
-import { downloadServerExport } from '../api/mindmap-api.js';
+import { downloadServerExport, getDraftKey } from '../api/mindmap-api.js';
 import { VersionsPanel } from './VersionsPanel.js';
 
 async function downloadSibDraft(mapId: string): Promise<void> {
@@ -45,6 +45,11 @@ export function Toolbar(): JSX.Element | null {
   const showFilterPanel = useStore(s => s.showFilterPanel);
   const setShowFilterPanel = useStore(s => s.setShowFilterPanel);
   const startPresentation = useStore(s => s.startPresentation);
+  const updateSettings = useStore(s => s.updateSettings);
+  const publishMap = useStore(s => s.publishMap);
+  const unpublishMap = useStore(s => s.unpublishMap);
+  const holdsDraftKey = useStore(s => s.holdsDraftKey);
+  const [showStyle, setShowStyle] = useState(false);
 
   const [showExport, setShowExport] = useState(false);
   const [showVersions, setShowVersions] = useState(false);
@@ -54,7 +59,7 @@ export function Toolbar(): JSX.Element | null {
 
   const closeMenus = () => {
     setShowExport(false); setShowVersions(false); setShowLayout(false);
-    setShowLanes(false); setShowSib(false);
+    setShowLanes(false); setShowSib(false); setShowStyle(false);
   };
 
   if (!map) return null;
@@ -75,6 +80,32 @@ export function Toolbar(): JSX.Element | null {
       <button className="btn ghost" onClick={closeMap} title="Back to map list">←</button>
       <span className="map-name" title={map.name}>{map.name}</span>
       {dirty ? <span className="dirty-dot" title="Unsaved changes">●</span> : null}
+
+      {/* Publish state chip — click to toggle (draft-key holders only) */}
+      {map.published === false ? (
+        <button
+          className="pub-chip draft"
+          title="Draft — only draft-key holders can see this map. Click to publish for everyone."
+          onClick={() => { if (confirm('Publish this map? Everyone will be able to view and edit it.')) void publishMap(); }}
+        >Draft 🔒</button>
+      ) : null}
+      {map.published === false && holdsDraftKey() ? (
+        <button
+          className="btn ghost share-key"
+          title="Copy this map's draft key — share it so a teammate can unlock the draft"
+          onClick={() => {
+            const key = getDraftKey(map.id);
+            if (key) void navigator.clipboard.writeText(key);
+          }}
+        >Copy key</button>
+      ) : null}
+      {map.published !== false && holdsDraftKey() ? (
+        <button
+          className="pub-chip published"
+          title="Published — visible to everyone. Click to unpublish (back to draft)."
+          onClick={() => { if (confirm('Unpublish? Only draft-key holders will see it again.')) void unpublishMap(); }}
+        >Published</button>
+      ) : null}
 
       <div className="palette" title="Node type — applies to new nodes and current selection">
         {NODE_TYPES.map(t => (
@@ -123,6 +154,30 @@ export function Toolbar(): JSX.Element | null {
             <button onClick={() => { addRowLanePreset(); setShowLanes(false); }}>Why / What / How (rows)</button>
             <button onClick={() => { addLane(); setShowLanes(false); }}>Add column lane</button>
             <button onClick={() => { setLanes([]); setShowLanes(false); }}>Clear lanes</button>
+          </div>
+        )}
+      </div>
+
+      <div className="menu-wrap">
+        <button className="btn" onClick={() => { const v = showStyle; closeMenus(); setShowStyle(!v); }}>
+          Style ▾
+        </button>
+        {showStyle && (
+          <div className="menu">
+            <div className="menu-note">Edge color</div>
+            <button onClick={() => updateSettings({ edgeColor: 'parent' })}>
+              {map.settings?.edgeColor !== 'neutral' ? '✓ ' : ''}Parent node color
+            </button>
+            <button onClick={() => updateSettings({ edgeColor: 'neutral' })}>
+              {map.settings?.edgeColor === 'neutral' ? '✓ ' : ''}Neutral grey
+            </button>
+            <div className="menu-note">Routes</div>
+            <button onClick={() => updateSettings({ edgeStyle: 'straight' })}>
+              {map.settings?.edgeStyle !== 'curved' ? '✓ ' : ''}Straight
+            </button>
+            <button onClick={() => updateSettings({ edgeStyle: 'curved' })}>
+              {map.settings?.edgeStyle === 'curved' ? '✓ ' : ''}Curved
+            </button>
           </div>
         )}
       </div>

@@ -3,7 +3,7 @@
 // All state handling lives in the store's event handler (UI-free here).
 
 import type { MindmapWsEvent } from '@spatial/shared';
-import { getApiKey } from '../api/mindmap-api.js';
+import { getApiKey, getDraftKey } from '../api/mindmap-api.js';
 
 export type CollabStatus = 'connecting' | 'connected' | 'disconnected';
 
@@ -27,6 +27,8 @@ export class CollabClient {
     const params = new URLSearchParams({ mapId: this.mapId, name: this.clientName });
     const key = getApiKey();
     if (key) params.set('key', key);
+    const draftKey = getDraftKey(this.mapId);
+    if (draftKey) params.set('draftKey', draftKey);
 
     const ws = new WebSocket(`${proto}://${location.host}/mindmap/ws?${params}`);
     this.socket = ws;

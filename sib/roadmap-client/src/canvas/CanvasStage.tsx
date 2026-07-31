@@ -14,6 +14,7 @@ import { CursorLayer } from './CursorLayer.js';
 import { LaneLayer } from './LaneLayer.js';
 import { Minimap } from './Minimap.js';
 import { computeVisibility, hasDirectedChildren } from '../utils/visibility.js';
+import { NODE_COLORS } from '../utils/colors.js';
 
 const MIN_SCALE = 0.15;
 const MAX_SCALE = 3;
@@ -249,6 +250,13 @@ export function CanvasStage(): JSX.Element {
                   orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z" fill="#2f6fed" />
           </marker>
+          {/* Parent-colored arrowheads — one marker per SIB layer color */}
+          {Object.entries(NODE_COLORS).map(([type, color]) => (
+            <marker key={type} id={`arrow-${type}`} viewBox="0 0 10 10" refX="9" refY="5"
+                    markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill={color} fillOpacity={0.85} />
+            </marker>
+          ))}
         </defs>
 
         {/* Dot grid backdrop (screen space, so it never runs out) */}

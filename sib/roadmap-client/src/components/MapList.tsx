@@ -13,6 +13,7 @@ export function MapList(): JSX.Element {
   const openMap = useStore(s => s.openMap);
   const deleteMap = useStore(s => s.deleteMap);
   const importMapFromJson = useStore(s => s.importMapFromJson);
+  const unlockDraft = useStore(s => s.unlockDraft);
   const statusMessage = useStore(s => s.statusMessage);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -68,6 +69,14 @@ export function MapList(): JSX.Element {
             title="Import a mind-map exported as JSON (e.g. from the Render instance)"
             onClick={() => fileRef.current?.click()}
           >Import JSON</button>
+          <button
+            className="btn" type="button"
+            title="A teammate shared a draft key with you? Enter it to see their draft."
+            onClick={() => {
+              const key = prompt('Enter the draft key you were given:');
+              if (key?.trim()) void unlockDraft(key);
+            }}
+          >Unlock draft</button>
           <input
             ref={fileRef} type="file" accept=".json,application/json" hidden
             onChange={e => {
@@ -89,7 +98,10 @@ export function MapList(): JSX.Element {
         {maps.map(m => (
           <div key={m.id} className="map-row">
             <button className="map-open" onClick={() => void openMap(m.id, userName.trim() || 'Anonymous')}>
-              <span className="map-title">{m.name}</span>
+              <span className="map-title">
+                {m.name}
+                {m.published === false && <span className="draft-badge" title="Draft — visible only to draft-key holders">Draft 🔒</span>}
+              </span>
               <span className="map-meta">
                 {m.nodeCount} nodes · {m.edgeCount} edges · updated {new Date(m.updatedAt).toLocaleString()}
               </span>
