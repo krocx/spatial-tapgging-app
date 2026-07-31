@@ -1,6 +1,6 @@
 # Spatial Tagging App
 
-A native iOS AR inspection platform for industrial workflows. Authors train inspection checkpoints once; Operators run repeatable PASS/FAIL inspections against them anywhere, on any team device.
+A native iOS AR platform for industrial workflows, powered by the **Spatial Intelligence Backend (SIB)**. Authors train inspection checkpoints once; Operators run repeatable PASS/FAIL inspections against them anywhere, on any team device. Around that core, the platform now also covers Gemba audit walks, AR work instructions, 3D model overlays, a browser portal, and a collaborative roadmap tool — all self-hosted, no cloud dependencies.
 
 ---
 
@@ -15,6 +15,28 @@ All reference images are encrypted on-device (AES-256-GCM) before upload. The se
 
 ---
 
+## Platform Capabilities
+
+### Spatial inspection (the core)
+QR-anchored 6-DOF tracking, multi-tag anchors with a typed check ontology (presence / language / routing / configuration / part checks), in-app pass-state training (multi-angle honeycomb capture, ROI regions, depth metadata), SSIM-based PASS/FAIL validation with confidence scores, and batch validation — one scan returns results for every tag on the anchor. **Tag Groups** organize tags into named inspection sets that can be validated as a unit.
+
+### Gemba Walk (Loc-Tags)
+Audit-walk mode with no QR required: the Author taps any surface to drop a **LocTag** (defect category, reference photo, notes); an ARWorldMap is saved so Operators re-localize in the same space later. Completions are tracked per finding — *resolved / still present / escalated* — with completion photos, giving a full audit trail for 6S/Gemba rounds.
+
+### AR Work Instructions (AR OMS)
+Step-based guided procedures anchored in space: Authors create **Guides** (draft → published) with sequenced steps and per-step images; Operators run them step-by-step in AR, and **guide sessions** record per-step completions and durations. This is the AR OMS foundation — manual authoring today, instruction import and AI-generated dynamic instructions on the roadmap.
+
+### 3D Model Library
+Per-anchor 3D overlays: GLB/USDZ upload with pass-through serving; OBJ/FBX/STEP are converted asynchronously via headless Blender. Models attach to anchors and render in AR on device.
+
+### Anchor Portal (`/portal`)
+Browser-based team console served by SIB: anchor directory, QR generation with print-exact sizing (A4 page at true physical dimensions), and data administration — per-row and delete-all operations for anchors (cascading tags, pass-states, and blobs), sessions, AR Guides, and Gemba Walk data. Auto-detects whether the server requires an API key.
+
+### Roadmap Mind-Mapper (`/roadmap`)
+A secure, collaborative mind-mapping and roadmapping tool hosted on SIB — built for roadmap design, SIB ontology graphs, and AR workflow planning. Highlights: real-time collaboration (WebSockets, live cursors, presence), swimlanes (Now/Next/Later columns, Why/What/How rows), node status + review verdicts + comments, milestones, icons/shapes/links, collapsible branches, presentation mode, view filters and custom groups, version history with restore, PNG/SVG/JSON export, cross-server JSON import, a draft→publish workflow (per-map draft keys, pre-RBAC), SIB ontology import/export, and **image import** — photograph a whiteboard and a local vision model (Ollama) turns it into an editable roadmap draft. Full docs: [docs/roadmap-mindmapper.md](docs/roadmap-mindmapper.md). The platform's own roadmap lives in it: [docs/roadmaps/](docs/roadmaps/).
+
+---
+
 ## Project Structure
 
 ```
@@ -22,11 +44,15 @@ spatial-tagging-app/
 ├── ios-app/          Native iOS app (Swift + ARKit + SwiftUI)
 │   └── SpatialTaggingApp/
 ├── sib/              Spatial Intelligence Backend (Node.js + TypeScript)
-│   ├── src/
+│   ├── src/          Routes, controllers, models, WS, adapters (perception, SIB↔mindmap, vision)
+│   ├── portal/       Anchor Portal — static browser console served at /portal
+│   ├── roadmap/      Roadmap Mind-Mapper — prebuilt bundle served at /roadmap
+│   ├── roadmap-client/  Roadmap frontend source (React + TS + Vite + Zustand)
 │   └── Dockerfile
 ├── shared/           Shared TypeScript types (@spatial/shared)
 ├── ar-client/        Phase 1 web AR client (archived — superseded by iOS app)
 ├── docs/             Architecture docs and deployment guides
+│   └── roadmaps/     Importable roadmap JSON (e.g. the AR platform roadmap)
 └── skills/           Claude Cowork guidelines and coding standards
 ```
 
@@ -47,6 +73,8 @@ This is a monorepo — the iOS app, the server, and shared types all live in one
 | Walk through every screen, or see the clickable wireframe | **[docs/APP-FLOW.md](docs/APP-FLOW.md)** / **[docs/APP-WIREFRAME.html](docs/APP-WIREFRAME.html)** |
 | Run the SIB server locally for development | [Running the SIB server locally](#running-the-sib-server-locally) below |
 | Deploy the SIB server for the team (Render) | **[docs/RENDER-DEPLOYMENT.md](docs/RENDER-DEPLOYMENT.md)** |
+| Deploy on the internal company server (Windows + NSSM) | **[docs/INTERNAL-SERVER-DEPLOY.md](docs/INTERNAL-SERVER-DEPLOY.md)** |
+| Use or extend the Roadmap Mind-Mapper (architecture, API, deployment) | **[docs/roadmap-mindmapper.md](docs/roadmap-mindmapper.md)** |
 | Look up server env vars / endpoints | **[docs/SERVER-REFERENCE.md](docs/SERVER-REFERENCE.md)** |
 | Read how we got here, phase by phase | **[docs/PHASE-HISTORY.md](docs/PHASE-HISTORY.md)** |
 | See the whole app's features, including how the AR components work | **[docs/APP-FEATURES.md](docs/APP-FEATURES.md)** |
@@ -59,16 +87,22 @@ This is a monorepo — the iOS app, the server, and shared types all live in one
 ## Running the SIB Server Locally
 
 ```bash
-cd sib && npm install
-npm run dev
+npm install            # repo root — installs all workspaces
+npm run dev:sib
 # Server runs at http://localhost:3001
+#   Anchor Portal:        http://localhost:3001/portal
+#   Roadmap Mind-Mapper:  http://localhost:3001/roadmap
 
 # Find your Mac's LAN IP so an iPhone on the same WiFi can reach it
 ipconfig getifaddr en0
 # Use http://<that-ip>:3001 as the SIB URL in the iOS app's Settings screen
 ```
 
-The server persists data to `.sib-data/` in the `sib/` folder (git-ignored). For team use, the server should instead be deployed to Render — see [docs/RENDER-DEPLOYMENT.md](docs/RENDER-DEPLOYMENT.md) — so every team member points their app at the same shared, always-on URL instead of a teammate's laptop.
+Other useful scripts (repo root): `npm run test:sib` (backend unit tests), `npm run dev:roadmap` (roadmap frontend with hot reload), `npm run build:roadmap` (rebuild the `/roadmap` bundle after client changes — the compiled bundle is committed, so servers need no frontend build step).
+
+Optional — whiteboard image import in the Roadmap tool needs a local vision model on the SIB host: install [Ollama](https://ollama.com), then `ollama pull qwen2.5vl`. No SIB config required (defaults to `localhost:11434`); images never leave the machine.
+
+The server persists data to `.sib-data/` in the `sib/` folder (git-ignored). For team use, the server should instead be deployed to Render — see [docs/RENDER-DEPLOYMENT.md](docs/RENDER-DEPLOYMENT.md) — or the internal company server — see [docs/INTERNAL-SERVER-DEPLOY.md](docs/INTERNAL-SERVER-DEPLOY.md) — so every team member points at the same shared, always-on URL instead of a teammate's laptop.
 
 ---
 
@@ -159,6 +193,15 @@ Each inspection reports a confidence score (0–100 %). Use this as a signal, no
 - A PASS at 60–70 % is valid but borderline — consider re-training with better lighting or more varied angles.
 - A FAIL at under 30 % is a clear mismatch.
 - A FAIL at 50–59 % is close to the threshold — the trained reference may be ambiguous, or the live shot may have had a large angle/lighting shift.
+
+### 7. Beyond inspections
+
+Once the core flow checks out, walk the rest of the platform:
+
+- **Gemba Walk** — start an audit walk, tap-place a LocTag with a defect category and photo, then re-open the walk on a second device and confirm it re-localizes from the saved ARWorldMap; mark the finding resolved with a completion photo.
+- **AR Guides** — author a two-step guide with images, publish it, and run it in Operator mode; confirm the guide session records each step completion.
+- **Portal** — open `/portal`, print a QR at exact physical size, and try a per-row delete to confirm cascades behave.
+- **Roadmap** — open `/roadmap`, import `docs/roadmaps/do-or-do-not.roadmap.json`, toggle the *Shipped ✓* filter, and press ▶ Present. Then photograph a whiteboard sketch and try **From image 📷** (needs Ollama running — see above).
 
 ---
 
