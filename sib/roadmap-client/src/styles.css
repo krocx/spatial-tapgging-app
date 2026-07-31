@@ -63,6 +63,34 @@ button { font: inherit; }
 .sib-link { font-size: 11px; color: var(--muted); background: #eef2f7; border-radius: 8px; padding: 8px 10px; }
 .sib-link code { font-size: 10px; }
 
+/* ── Image import preview modal ───────────────────────────── */
+
+.modal-backdrop {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(15, 23, 42, .45);
+  display: grid; place-items: center; padding: 24px;
+}
+.modal {
+  width: min(680px, 100%); max-height: 90vh; overflow-y: auto;
+  background: var(--panel); border-radius: 16px;
+  padding: 20px; display: flex; flex-direction: column; gap: 12px;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, .3);
+}
+.modal h3 { margin: 0; font-size: 16px; }
+.modal-stats { margin: 0; font-size: 13px; color: var(--muted); }
+.preview-frame {
+  border: 1px solid var(--border); border-radius: 12px;
+  background: var(--bg); padding: 8px; max-height: 320px; overflow: auto;
+}
+.preview-frame img { width: 100%; height: auto; display: block; }
+.preview-warnings {
+  margin: 0; padding: 8px 12px 8px 26px;
+  background: #fef3c7; border: 1px solid #fcd34d; border-radius: 10px;
+  font-size: 12px; color: #92400e;
+}
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.modal-hint { margin: 0; font-size: 11px; color: var(--muted); text-align: right; }
+
 /* ── Publish workflow ─────────────────────────────────────── */
 
 .pub-chip {

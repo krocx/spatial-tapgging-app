@@ -17,7 +17,8 @@ import { autoLayout, type LayoutMode } from '../utils/layout.js';
 import { NODE_W, NODE_H } from '../utils/geometry.js';
 import { computeSteps, stepBounds, type PresentationStep } from '../utils/presentation.js';
 import type { MindmapNodeShape, MindmapSettings } from '@spatial/shared';
-import { getDraftKey } from '../api/mindmap-api.js';
+import { getDraftKey, type ImageImportResult } from '../api/mindmap-api.js';
+import { fileToDownscaledBase64 } from '../utils/image.js';
 
 export interface Peer {
   clientId: string;
@@ -98,6 +99,9 @@ interface State {
   showFilterPanel: boolean;
   /** Presentation mode — per-client walkthrough of lanes/groups. */
   presentation: { active: boolean; step: number; steps: PresentationStep[] };
+  /** Whiteboard/screenshot import: preview awaiting user confirmation. */
+  imagePreview: ImageImportResult | null;
+  importingImage: boolean;
   // collab
   collabStatus: CollabStatus;
   peers: Record<string, Peer>;
@@ -176,6 +180,11 @@ interface Actions {
   unlockDraft(draftKey: string): Promise<void>;
   /** Does this browser hold the current map's draft key? */
   holdsDraftKey(): boolean;
+
+  // Whiteboard/screenshot import
+  importFromImage(file: File): Promise<void>;
+  discardImagePreview(): void;
+  createFromImagePreview(name: string): Promise<void>;
   updateLane(id: string, patch: Partial<MindmapLane>): void;
   removeLane(id: string): void;
 
@@ -388,6 +397,8 @@ export const useStore = create<State & Actions>((set, get) => {
     filters: EMPTY_FILTERS,
     showFilterPanel: false,
     presentation: { active: false, step: 0, steps: [] },
+    imagePreview: null,
+    importingImage: false,
     collabStatus: 'disconnected',
     peers: {},
     dirty: false,
@@ -700,6 +711,41 @@ export const useStore = create<State & Actions>((set, get) => {
         const updated = await mindmapApi.unpublish(map.id);
         set({ map: { ...map, published: updated.published }, statusMessage: 'Unpublished — draft-key holders only', error: null });
         void get().refreshList();
+      } catch (err) { set({ error: (err as Error).message }); }
+    },
+
+    // ── Whiteboard / screenshot import ───────────────────────────────────
+
+    async importFromImage(file) {
+      set({ importingImage: true, error: null, imagePreview: null });
+      try {
+        const { base64, mimeType } = await fileToDownscaledBase64(file);
+        const result = await mindmapApi.importImage(base64, mimeType);
+        if (result.nodes.length === 0) {
+          set({ error: 'No diagram found in that image — try a clearer photo.', importingImage: false });
+          return;
+        }
+        set({ imagePreview: result, importingImage: false });
+      } catch (err) {
+        set({ error: (err as Error).message, importingImage: false });
+      }
+    },
+
+    discardImagePreview: () => set({ imagePreview: null }),
+
+    async createFromImagePreview(name) {
+      const preview = get().imagePreview;
+      if (!preview) return;
+      try {
+        const saved = await mindmapApi.save({
+          name: name.trim() || preview.name,
+          nodes: preview.nodes,
+          edges: preview.edges,
+          lanes: preview.lanes,
+          versionLabel: `imported from image (${preview.model})`,
+        });
+        set({ imagePreview: null, statusMessage: `Created draft "${saved.name}"` });
+        await get().refreshList();
       } catch (err) { set({ error: (err as Error).message }); }
     },
 

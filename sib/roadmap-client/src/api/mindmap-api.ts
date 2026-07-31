@@ -2,7 +2,16 @@
 // GET /config reports whether SIB_API_KEY is enforced; the key is kept in
 // localStorage and sent as X-API-Key on every request.
 
-import type { Mindmap, MindmapSummary, MindmapVersion, SaveMindmapRequest, ApiResponse } from '@spatial/shared';
+import type { Mindmap, MindmapSummary, MindmapVersion, MindmapNode, MindmapEdge, MindmapLane, SaveMindmapRequest, ApiResponse } from '@spatial/shared';
+
+export interface ImageImportResult {
+  name: string;
+  nodes: MindmapNode[];
+  edges: MindmapEdge[];
+  lanes: MindmapLane[];
+  warnings: string[];
+  model: string;
+}
 
 const API_KEY_STORAGE = 'sib-api-key';
 const DRAFT_KEYS_STORAGE = 'roadmap-draft-keys';   // { [mapId]: draftKey }
@@ -105,6 +114,11 @@ export const mindmapApi = {
     request<Mindmap>(`/mindmap/${id}/restore/${versionId}`, { method: 'POST' }, id),
   publish: (id: string) => request<Mindmap>(`/mindmap/${id}/publish`, { method: 'POST' }, id),
   unpublish: (id: string) => request<Mindmap>(`/mindmap/${id}/unpublish`, { method: 'POST' }, id),
+  importImage: (imageBase64: string, mimeType: string) =>
+    request<ImageImportResult>('/mindmap/import-image', {
+      method: 'POST',
+      body: JSON.stringify({ image: imageBase64, mimeType }),
+    }),
   unlock: async (draftKey: string): Promise<{ mapId: string; summary: MindmapSummary }> => {
     const result = await request<{ mapId: string; summary: MindmapSummary }>(
       '/mindmap/unlock', { method: 'POST', body: JSON.stringify({ draftKey }) });

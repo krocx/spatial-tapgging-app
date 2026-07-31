@@ -470,6 +470,59 @@ test('saveMindmap preserves groups when request omits them', () => {
   assert.equal(resaved.groups?.length, 1, 'groups lost on group-less save');
 });
 
+// ── Vision adapter (image → graph, pure parsing — no model needed) ─────────
+
+test('parseVisionJson strips fences and trailing prose', async () => {
+  const { parseVisionJson } = await import('../src/adapters/vision-adapter.js');
+  assert.deepEqual(parseVisionJson('```json\n{"a":1}\n```'), { a: 1 });
+  assert.deepEqual(parseVisionJson('Here you go: {"a":{"b":2}} hope that helps!'), { a: { b: 2 } });
+  assert.equal(parseVisionJson('no json here'), null);
+  assert.equal(parseVisionJson('{"broken": '), null);
+});
+
+test('toGraph scales percent coords, resolves edges, builds lanes, warns on junk', async () => {
+  const { toGraph } = await import('../src/adapters/vision-adapter.js');
+  const result = toGraph({
+    name: '  Q3 Whiteboard  ',
+    nodes: [
+      { id: 'a', text: 'Perception SDK', x: 10, y: 50, type: 'perception', status: 'done' },
+      { id: 'b', text: 'Glasses pilot', x: 90, y: 50 },
+      { id: 'c', text: '', x: 5, y: 5 },                       // dropped: empty
+      { id: 'd', text: 'No position node' },                   // grid fallback
+    ],
+    edges: [
+      { from: 'a', to: 'b', directed: true, label: 'feeds' },
+      { from: 'a', to: 'ghost' },                              // dropped
+    ],
+    lanes: [
+      { name: 'Now', orientation: 'column', start: 0, end: 50 },
+      { name: 'bad', start: 80, end: 20 },                     // dropped: inverted
+    ],
+  });
+
+  assert.equal(result.name, 'Q3 Whiteboard');
+  assert.equal(result.nodes.length, 3);
+  const a = result.nodes.find(n => n.text === 'Perception SDK')!;
+  assert.equal(a.type, 'perception');
+  assert.equal(a.status, 'done');
+  assert.ok(a.x < 200, 'left-ish node lands left');           // 10% of 1600 − half node
+  const b = result.nodes.find(n => n.text === 'Glasses pilot')!;
+  assert.ok(b.x > 1200, 'right-ish node lands right');
+  assert.equal(result.edges.length, 1);
+  assert.equal(result.edges[0].label, 'feeds');
+  assert.equal(result.lanes.length, 1);
+  assert.equal(result.lanes[0].name, 'Now');
+  assert.equal(result.lanes[0].width, 800);                    // 50% of 1600
+  assert.ok(result.warnings.length >= 2, 'warned about dropped node + edge');
+});
+
+test('toGraph tolerates a fully garbage payload', async () => {
+  const { toGraph } = await import('../src/adapters/vision-adapter.js');
+  const result = toGraph({ nodes: 'nope', edges: 42, lanes: null } as never);
+  assert.equal(result.nodes.length, 0);
+  assert.ok(result.warnings.some(w => w.includes('No nodes')));
+});
+
 // ── SIB bridge ─────────────────────────────────────────────────────────────
 
 test('sib-json export builds draft tags from tag-typed nodes', () => {

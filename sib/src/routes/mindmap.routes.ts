@@ -96,6 +96,32 @@ router.post('/export', (req: Request, res: Response) => {
   } catch (err) { return fail(res, err); }
 });
 
+// POST /mindmap/import-image — { image: base64, mimeType } → PREVIEW graph
+// (not persisted; the client creates a draft via /save if the user accepts).
+// Extraction runs on the locally configured vision model — see vision-adapter.ts.
+router.post('/import-image', (req: Request, res: Response) => {
+  void (async () => {
+    try {
+      const { image, mimeType } = (req.body ?? {}) as { image?: string; mimeType?: string };
+      if (!image || typeof image !== 'string') {
+        throw new MindmapError(400, 'Missing required field: image (base64)');
+      }
+      if (image.length > 12_000_000) {
+        throw new MindmapError(413, 'Image too large — downscale to ~1280px before upload');
+      }
+      const mime = typeof mimeType === 'string' && /^image\/(png|jpe?g|webp)$/.test(mimeType)
+        ? mimeType : 'image/jpeg';
+      const { extractMindmapFromImage } = await import('../adapters/vision-adapter.js');
+      const result = await extractMindmapFromImage(image, mime);
+      return ok(res, result);
+    } catch (err) {
+      const status = err instanceof MindmapError ? err.status : 502;
+      const message = err instanceof Error ? err.message : 'Vision extraction failed';
+      return res.status(status).json({ error: message, timestamp: new Date().toISOString() });
+    }
+  })();
+});
+
 // POST /mindmap/unlock — { draftKey } → map summary; how teammates open a shared draft.
 router.post('/unlock', (req: Request, res: Response) => {
   try {

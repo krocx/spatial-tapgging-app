@@ -4,6 +4,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../state/store.js';
 import { fetchAuthRequired, getApiKey, setApiKey } from '../api/mindmap-api.js';
+import { ImageImportPreview } from './ImageImportPreview.js';
 
 export function MapList(): JSX.Element {
   const maps = useStore(s => s.maps);
@@ -14,8 +15,11 @@ export function MapList(): JSX.Element {
   const deleteMap = useStore(s => s.deleteMap);
   const importMapFromJson = useStore(s => s.importMapFromJson);
   const unlockDraft = useStore(s => s.unlockDraft);
+  const importFromImage = useStore(s => s.importFromImage);
+  const importingImage = useStore(s => s.importingImage);
   const statusMessage = useStore(s => s.statusMessage);
   const fileRef = useRef<HTMLInputElement>(null);
+  const imageRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState('');
   const [userName, setUserName] = useState(localStorage.getItem('roadmap-name') ?? '');
@@ -71,6 +75,20 @@ export function MapList(): JSX.Element {
           >Import JSON</button>
           <button
             className="btn" type="button"
+            disabled={importingImage}
+            title="Photograph a whiteboard or upload a screenshot — the local vision model turns it into a roadmap draft"
+            onClick={() => imageRef.current?.click()}
+          >{importingImage ? 'Reading image…' : 'From image 📷'}</button>
+          <input
+            ref={imageRef} type="file" accept="image/png,image/jpeg,image/webp" hidden
+            onChange={e => {
+              const file = e.target.files?.[0];
+              if (file) void importFromImage(file);
+              e.target.value = '';
+            }}
+          />
+          <button
+            className="btn" type="button"
             title="A teammate shared a draft key with you? Enter it to see their draft."
             onClick={() => {
               const key = prompt('Enter the draft key you were given:');
@@ -118,6 +136,8 @@ export function MapList(): JSX.Element {
       <footer className="list-footer">
         Hosted on SIB · data in <code>.sib-data/</code> · no external services
       </footer>
+
+      <ImageImportPreview />
     </div>
   );
 }
