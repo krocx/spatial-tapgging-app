@@ -270,7 +270,15 @@ export const useStore = create<State & Actions>((set, get) => {
     switch (event.type) {
       case 'map:sync': {
         const synced = (event.payload as MapSyncPayload).map;
-        if (synced) set({ map: synced, dirty: false });
+        if (synced) {
+          // Defensive: if a sync payload ever arrives without publication
+          // state, keep what we already know instead of letting the
+          // Draft/Published chip read `undefined` as published.
+          set({
+            map: { ...synced, published: synced.published ?? get().map?.published },
+            dirty: false,
+          });
+        }
         return;
       }
       case 'session:join':

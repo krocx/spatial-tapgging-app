@@ -173,9 +173,10 @@ export function restoreVersion(mapId: string, versionId: string): Mindmap {
     createdAt: current.createdAt,
     updatedAt: Date.now(),
   };
+  delete restored.published;        // publication state lives in the access store
   mindmapStore.save(restored);
   snapshotVersion(restored, `restored: ${version.label}`);
-  return restored;
+  return withPublished(restored);
 }
 
 export interface ExportResult {
@@ -226,11 +227,11 @@ export function importSib(mapId: string, anchorId?: string): ImportSibSummary {
   const result = importSibGraph(map, anchorId);
 
   if (result.addedNodes === 0 && result.addedEdges === 0) {
-    return { map, addedNodes: 0, addedEdges: 0 };
+    return { map: withPublished(map), addedNodes: 0, addedEdges: 0 };
   }
 
   const next: Mindmap = { ...map, nodes: result.nodes, edges: result.edges, updatedAt: Date.now() };
   mindmapStore.save(next);
   snapshotVersion(next, `SIB import (+${result.addedNodes} nodes, +${result.addedEdges} edges)`);
-  return { map: next, addedNodes: result.addedNodes, addedEdges: result.addedEdges };
+  return { map: withPublished(next), addedNodes: result.addedNodes, addedEdges: result.addedEdges };
 }

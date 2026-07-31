@@ -20,7 +20,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import type { Server as HttpServer } from 'http';
 import { v4 as uuidv4 } from 'uuid';
 import type { Mindmap, MindmapWsEvent } from '@spatial/shared';
-import { mindmapStore, applyGraphEvent, snapshotVersion, canAccess } from '../models/mindmap.model.js';
+import { mindmapStore, applyGraphEvent, snapshotVersion, canAccess, isPublished } from '../models/mindmap.model.js';
 
 interface Client {
   id: string;
@@ -99,9 +99,14 @@ function handleConnection(socket: WebSocket, mapId: string, clientName: string):
 
   socket.on('pong', () => { client.alive = true; });
 
-  // 1. Full state sync to the joining client.
+  // 1. Full state sync to the joining client. The stored map never carries
+  // publication state (it lives in the access store), so decorate it here —
+  // otherwise the client's Draft/Published chip reads `undefined` as published.
   const map = mindmapStore.findById(mapId);
-  send(client, { type: 'map:sync', mapId, ts: Date.now(), payload: { map } });
+  send(client, {
+    type: 'map:sync', mapId, ts: Date.now(),
+    payload: { map: map ? { ...map, published: isPublished(mapId) } : map },
+  });
 
   // 2. Presence: tell everyone (including the joiner) who is in the room.
   broadcastPresence(mapId, 'session:join', client);
@@ -183,9 +188,13 @@ function broadcastPresence(mapId: string, type: 'session:join' | 'session:leave'
   });
 }
 
-/** Push a full re-sync to all collaborators (used after REST save / restore). */
+/** Push a full re-sync to all collaborators (used after REST save / restore).
+ *  Always decorates publication state so no sync path can clobber it. */
 export function broadcastMapSync(map: Mindmap): void {
-  broadcast(map.id, { type: 'map:sync', mapId: map.id, ts: Date.now(), payload: { map } });
+  broadcast(map.id, {
+    type: 'map:sync', mapId: map.id, ts: Date.now(),
+    payload: { map: { ...map, published: isPublished(map.id) } },
+  });
 }
 
 function errorEvent(mapId: string, message: string): MindmapWsEvent {

@@ -108,6 +108,21 @@ test('new maps are drafts; key grants access; publish opens to all', async () =>
   keyReg.set(r.map.id, r.draftKey!);
 });
 
+test('restore and SIB import responses carry publication state (chip regression)', async () => {
+  const { restoreVersion: restore, importSib: doImport } = await import('../src/controllers/mindmap.controller.js');
+  const map = create({ name: 'ChipFix', nodes: [node('a')], edges: [] });
+  assert.equal(map.published, false, 'new maps are drafts');
+
+  const versions = listVersions(map.id);
+  const restored = restore(map.id, versions[0].id);
+  assert.equal(restored.published, false, 'restore response must include published');
+
+  const imported = doImport(map.id);
+  assert.equal(imported.map.published, false, 'import-sib response must include published');
+  // Stored record itself must never persist the decoration.
+  assert.equal(mindmapStore.findById(map.id)!.published, undefined);
+});
+
 test('legacy maps without access record are treated as published', async () => {
   const { canAccess } = await import('../src/models/mindmap.model.js');
   const legacy: Mindmap = { id: 'legacy-1', name: 'Old Map', createdAt: 1, updatedAt: 1, nodes: [], edges: [] };
