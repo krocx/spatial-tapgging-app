@@ -22,6 +22,8 @@ ar-client/public/
 docs/
 skills/
 *.md
+# …except the roadmap dictionary, which the server serves at /mindmap/glossary
+!docs/roadmap-glossary.md
 .git/
 .gitignore
 
