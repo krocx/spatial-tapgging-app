@@ -59,6 +59,9 @@ COPY sib/portal/ ./sib/portal/
 # frontend build step is needed inside the image.
 COPY sib/roadmap/ ./sib/roadmap/
 
+# Roadmap dictionary — served at GET /mindmap/glossary.
+COPY docs/roadmap-glossary.md ./docs/roadmap-glossary.md
+
 # Persistent data directory — mount a Render disk at /data.
 # SIB writes anchor/tag data here so it survives container restarts and redeploys.
 RUN mkdir -p /data/.sib-data

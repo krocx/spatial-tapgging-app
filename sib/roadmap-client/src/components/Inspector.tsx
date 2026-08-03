@@ -12,6 +12,8 @@ import {
   STATUS_LABELS, NODE_STATUSES,
 } from '../utils/colors.js';
 import { ICON_PATHS, ICON_NAMES } from '../utils/icons.js';
+import { matchGlossary } from '../utils/glossary.js';
+import { renderInline } from './GlossaryPanel.js';
 
 const SHAPES: Array<{ value: MindmapNodeShape; label: string }> = [
   { value: 'rounded', label: 'Rounded' },
@@ -252,8 +254,32 @@ function NodePanel({ nodeId }: { nodeId: string }): JSX.Element | null {
         </div>
       )}
 
+      <DictionaryBlock nodeText={node.text} />
+
       <CommentsSection nodeId={node.id} />
     </aside>
+  );
+}
+
+/** Contextual dictionary lookup — shows the glossary entry matching the node. */
+function DictionaryBlock({ nodeText }: { nodeText: string }): JSX.Element | null {
+  const glossary = useStore(s => s.glossary);
+  const openGlossary = useStore(s => s.openGlossary);
+  if (!glossary) return null;
+
+  const entry = matchGlossary(nodeText, glossary);
+  if (!entry) return null;
+
+  return (
+    <div className="dict-block">
+      <div className="dict-head">
+        <span className="dict-term">📖 {renderInline(entry.term)}</span>
+      </div>
+      <p className="dict-def">{renderInline(entry.definition)}</p>
+      <button className="btn ghost dict-more" onClick={() => openGlossary(entry.term)}>
+        Read in dictionary →
+      </button>
+    </div>
   );
 }
 

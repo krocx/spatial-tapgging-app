@@ -114,6 +114,7 @@ export const mindmapApi = {
     request<Mindmap>(`/mindmap/${id}/restore/${versionId}`, { method: 'POST' }, id),
   publish: (id: string) => request<Mindmap>(`/mindmap/${id}/publish`, { method: 'POST' }, id),
   unpublish: (id: string) => request<Mindmap>(`/mindmap/${id}/unpublish`, { method: 'POST' }, id),
+  glossary: () => request<{ markdown: string; updatedAt: number }>('/mindmap/glossary'),
   importImage: (imageBase64: string, mimeType: string) =>
     request<ImageImportResult>('/mindmap/import-image', {
       method: 'POST',

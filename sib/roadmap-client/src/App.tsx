@@ -6,6 +6,7 @@ import { Toolbar } from './components/Toolbar.js';
 import { Inspector } from './components/Inspector.js';
 import { FilterPanel } from './components/FilterPanel.js';
 import { PresentationBar } from './components/PresentationBar.js';
+import { GlossaryPanel } from './components/GlossaryPanel.js';
 import { CanvasStage } from './canvas/CanvasStage.js';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts.js';
 
@@ -29,6 +30,7 @@ export default function App(): JSX.Element {
       <div className="editor-body">
         {!presenting && <FilterPanel />}
         <CanvasStage />
+        {!presenting && <GlossaryPanel />}
         {!presenting && <Inspector />}
       </div>
       <PresentationBar />

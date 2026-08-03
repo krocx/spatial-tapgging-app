@@ -19,6 +19,7 @@ import { computeSteps, stepBounds, type PresentationStep } from '../utils/presen
 import type { MindmapNodeShape, MindmapSettings } from '@spatial/shared';
 import { getDraftKey, type ImageImportResult } from '../api/mindmap-api.js';
 import { fileToDownscaledBase64 } from '../utils/image.js';
+import { parseGlossary, type GlossaryData } from '../utils/glossary.js';
 
 export interface Peer {
   clientId: string;
@@ -102,6 +103,10 @@ interface State {
   /** Whiteboard/screenshot import: preview awaiting user confirmation. */
   imagePreview: ImageImportResult | null;
   importingImage: boolean;
+  /** In-app dictionary (docs/roadmap-glossary.md, fetched once per session). */
+  glossary: GlossaryData | null;
+  showGlossary: boolean;
+  glossaryFocusTerm: string | null;
   // collab
   collabStatus: CollabStatus;
   peers: Record<string, Peer>;
@@ -185,6 +190,11 @@ interface Actions {
   importFromImage(file: File): Promise<void>;
   discardImagePreview(): void;
   createFromImagePreview(name: string): Promise<void>;
+
+  // Dictionary
+  loadGlossary(): Promise<void>;
+  openGlossary(term?: string): void;
+  closeGlossary(): void;
   updateLane(id: string, patch: Partial<MindmapLane>): void;
   removeLane(id: string): void;
 
@@ -407,6 +417,9 @@ export const useStore = create<State & Actions>((set, get) => {
     presentation: { active: false, step: 0, steps: [] },
     imagePreview: null,
     importingImage: false,
+    glossary: null,
+    showGlossary: false,
+    glossaryFocusTerm: null,
     collabStatus: 'disconnected',
     peers: {},
     dirty: false,
@@ -441,6 +454,8 @@ export const useStore = create<State & Actions>((set, get) => {
         collab?.close();
         collab = new CollabClient(id, clientName, onCollabEvent, status => set({ collabStatus: status }));
         collab.connect();
+        // Warm the dictionary so per-node lookups are instant in the inspector.
+        void get().loadGlossary();
       } catch (err) { set({ error: (err as Error).message }); }
     },
 
@@ -721,6 +736,26 @@ export const useStore = create<State & Actions>((set, get) => {
         void get().refreshList();
       } catch (err) { set({ error: (err as Error).message }); }
     },
+
+    // ── Dictionary ───────────────────────────────────────────────────────
+
+    async loadGlossary() {
+      if (get().glossary) return;   // once per session
+      try {
+        const { markdown } = await mindmapApi.glossary();
+        set({ glossary: parseGlossary(markdown) });
+      } catch {
+        // Missing glossary is non-fatal — the 📖 button just shows a note.
+        set({ glossary: { sections: [], entries: [] } });
+      }
+    },
+
+    openGlossary(term) {
+      set({ showGlossary: true, glossaryFocusTerm: term ?? null, showFilterPanel: false });
+      void get().loadGlossary();
+    },
+
+    closeGlossary: () => set({ showGlossary: false, glossaryFocusTerm: null }),
 
     // ── Whiteboard / screenshot import ───────────────────────────────────
 

@@ -49,6 +49,9 @@ export function Toolbar(): JSX.Element | null {
   const publishMap = useStore(s => s.publishMap);
   const unpublishMap = useStore(s => s.unpublishMap);
   const holdsDraftKey = useStore(s => s.holdsDraftKey);
+  const showGlossary = useStore(s => s.showGlossary);
+  const openGlossary = useStore(s => s.openGlossary);
+  const closeGlossary = useStore(s => s.closeGlossary);
   const [showStyle, setShowStyle] = useState(false);
 
   const [showExport, setShowExport] = useState(false);
@@ -213,6 +216,12 @@ export function Toolbar(): JSX.Element | null {
               title="Walk through the map lane by lane (→ / ← / Esc)">
         ▶ Present
       </button>
+
+      <button
+        className={`btn ${showGlossary ? 'btn-active' : ''}`}
+        onClick={() => showGlossary ? closeGlossary() : openGlossary()}
+        title="Roadmap dictionary — every capability on the roadmap, defined"
+      >📖</button>
 
       <div className="menu-wrap">
         <button className="btn" onClick={() => { const v = showSib; closeMenus(); setShowSib(!v); }}>

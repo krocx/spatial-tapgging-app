@@ -10,6 +10,9 @@
 //   POST   /mindmap/:id/restore/:versionId    — restore a snapshot
 
 import { Router, type Request, type Response } from 'express';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import type { ApiResponse, Mindmap, MindmapSummary } from '@spatial/shared';
 import {
   MindmapError,
@@ -80,6 +83,29 @@ router.get('/load/:id', (req: Request, res: Response) => {
 router.get('/list', (req: Request, res: Response) => {
   try { return ok<MindmapSummary[]>(res, listMindmaps(draftKeysOf(req))); }
   catch (err) { return fail(res, err); }
+});
+
+// GET /mindmap/glossary — the roadmap dictionary (docs/roadmap-glossary.md),
+// served at runtime so editing the markdown updates the tool with no rebuild.
+// Works from src (tsx), dist (compiled), and the Docker image (/app/docs).
+const __routesDir = path.dirname(fileURLToPath(import.meta.url));
+const GLOSSARY_CANDIDATES = [
+  path.join(__routesDir, '../../../docs/roadmap-glossary.md'),   // repo: sib/{src|dist}/routes → docs/
+  path.join(process.cwd(), 'docs/roadmap-glossary.md'),          // Docker: cwd /app
+  path.join(process.cwd(), '../docs/roadmap-glossary.md'),       // dev: cwd sib/
+];
+
+router.get('/glossary', (_req: Request, res: Response) => {
+  for (const candidate of GLOSSARY_CANDIDATES) {
+    try {
+      const markdown = fs.readFileSync(candidate, 'utf8');
+      return ok(res, { markdown, updatedAt: fs.statSync(candidate).mtimeMs });
+    } catch { /* try next location */ }
+  }
+  return res.status(404).json({
+    error: 'Glossary not found — expected docs/roadmap-glossary.md alongside the SIB deployment',
+    timestamp: new Date().toISOString(),
+  });
 });
 
 router.post('/export', (req: Request, res: Response) => {
