@@ -743,9 +743,14 @@ export type UpdateGuideRequest = {
  * evidencePhotoBase64 — iOS sends an optional JPEG encoded as base64. The server
  * stores it to disk and replaces this field with evidencePhotoPath in the stored
  * record.  Both fields are optional so sessions without evidence decode cleanly.
+ *
+ * enteredAt — when the Operator first saw this step (set on step:entered event).
+ * Absent on sessions recorded before this field was added; consumers should treat
+ * it as optional.
  */
 export interface GuideStepCompletion {
   stepId:               string;
+  enteredAt?:           string;   // ISO 8601 — when step first shown to Operator
   completedAt:          string;   // ISO 8601
   durationSeconds:      number;   // time from step entry to checkmark tap
   evidencePhotoBase64?: string;   // request only — base64 JPEG; server strips on receipt
@@ -782,7 +787,82 @@ export type CreateGuideSessionRequest = {
   completedAt:     string;
   durationSeconds: number;
   stepCompletions: GuideStepCompletion[];
+  /** When the Operator opened the guide via the live session stream, this links
+   *  the sign-off record to the in-flight LiveGuideSession for full telemetry. */
+  liveSessionId?:  string;
 };
+
+// ============================================================
+// Live Guide Session — real-time step telemetry (AI readiness, Phase 2)
+// ============================================================
+
+/**
+ * Event types emitted by the iOS app during an active guide session.
+ * The server fans these out over SSE to any registered observer (AI agent, dashboard).
+ *
+ *   session:started   — Operator opened the guide; AR session initialising.
+ *   step:entered      — Operator navigated to a step (first time or revisit).
+ *   step:completed    — Operator tapped the checkmark on a step.
+ *   step:retried      — Operator tapped "Previous" to go back to a step.
+ *   perception:result — Live-frame validation result (future: fed by Operator mode).
+ *   session:submitted — Sign-off submitted; links to GuideSession id.
+ */
+export type GuideSessionEventType =
+  | 'session:started'
+  | 'step:entered'
+  | 'step:completed'
+  | 'step:retried'
+  | 'perception:result'
+  | 'session:submitted';
+
+export interface GuideSessionEvent {
+  id:               string;                 // uuidv4 — unique per event
+  liveSessionId:    string;
+  type:             GuideSessionEventType;
+  ts:               string;                 // ISO 8601
+  stepId?:          string;                 // present for step:* events
+  stepIndex?:       number;                 // 0-based index in sorted step list
+  durationSeconds?: number;                 // step:completed — time on this step
+  payload?:         Record<string, unknown>; // event-specific extras (e.g. perception result)
+}
+
+/**
+ * An in-flight guide session tracked in server memory while the Operator is active.
+ * Created at session:started, closed and optionally linked at session:submitted.
+ *
+ * Not persisted to disk — intentionally ephemeral. The linked GuideSession
+ * (created at sign-off) is the durable record; LiveGuideSession carries the
+ * real-time event log that makes AI intervention possible during the session.
+ */
+export interface LiveGuideSession {
+  id:               string;     // liveSessionId
+  guideId:          string;
+  anchorId:         string;
+  guideName:        string;
+  anchorName:       string;
+  operatorName:     string;
+  startedAt:        string;     // ISO 8601
+  currentStepIndex: number;     // last known step index (0-based)
+  events:           GuideSessionEvent[];
+  linkedSessionId?: string;     // set when GuideSession sign-off POSTs with liveSessionId
+  closedAt?:        string;     // ISO 8601 — set on session:submitted
+}
+
+export interface OpenLiveSessionRequest {
+  guideId:      string;
+  anchorId:     string;
+  guideName:    string;
+  anchorName:   string;
+  operatorName: string;
+}
+
+export interface PushGuideSessionEventRequest {
+  type:             GuideSessionEventType;
+  stepId?:          string;
+  stepIndex?:       number;
+  durationSeconds?: number;
+  payload?:         Record<string, unknown>;
+}
 
 // --- Roadmap Mind-Mapper (served at /roadmap, API at /mindmap/*) ---
 export * from './mindmap.js';

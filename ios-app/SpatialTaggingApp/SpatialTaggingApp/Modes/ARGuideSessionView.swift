@@ -91,6 +91,10 @@ struct ARGuideSessionView: View {
     /// When true, all steps' panels are visible simultaneously.
     @State private var showAllPanels: Bool = false
 
+    // ── Live session (AI readiness Step 1) ───────────────────────────────────
+    /// Set once `openLiveGuideSession` succeeds; nil if the request fails or is skipped.
+    @State private var liveSessionId: String? = nil
+
     // ── Evidence capture (Phase 3) ────────────────────────────────────────────
     @State private var showEvidencePicker      = false
     @State private var evidencePickerStepIndex: Int? = nil
@@ -203,10 +207,11 @@ struct ARGuideSessionView: View {
         .task { await loadData() }
         .sheet(isPresented: $showSignOff) {
             SessionSignOffView(
-                guide:      guide,
-                anchor:     anchor,
-                progresses: progresses,
-                startedAt:  sessionStart
+                guide:         guide,
+                anchor:        anchor,
+                progresses:    progresses,
+                startedAt:     sessionStart,
+                liveSessionId: liveSessionId
             ) {
                 showSignOff = false
                 phase       = .submitted
@@ -536,6 +541,30 @@ struct ARGuideSessionView: View {
             let (mapData, photoData) = try await (mapFetch, photoFetch)
 
             if let pd = photoData { referencePhoto = UIImage(data: pd) }
+
+            // Open live session for real-time telemetry (fire-and-forget — AR session
+            // continues normally if this fails).
+            let opName = settings.authorName.isEmpty ? "Operator" : settings.authorName
+            if let lsId = try? await client.openLiveGuideSession(
+                guideId:      guide.id,
+                anchorId:     anchor.id,
+                guideName:    guide.name,
+                anchorName:   anchor.assetId,
+                operatorName: opName
+            ) {
+                liveSessionId = lsId
+                // Push step:entered for step 0 (already entered in onAppear before loadData ran)
+                if let first = sortedSteps.first {
+                    Task {
+                        await client.pushGuideSessionEvent(
+                            liveSessionId: lsId,
+                            event: PushGuideSessionEventRequest(
+                                type: .stepEntered, stepId: first.id, stepIndex: 0, durationSeconds: nil
+                            )
+                        )
+                    }
+                }
+            }
 
             // Kick off background GLB prefetch for all steps that have a 3D model
             // (non-blocking — ghost overlays attach as downloads complete)
@@ -1341,6 +1370,17 @@ struct ARGuideSessionView: View {
         updatePanelVisibility(currentIndex: index)
         // Swap ghost overlay for this step
         attachGhostOverlay(for: step)
+        // Push step:entered live event (fire-and-forget)
+        if let lsId = liveSessionId {
+            Task {
+                await SIBClient(settings: settings).pushGuideSessionEvent(
+                    liveSessionId: lsId,
+                    event: PushGuideSessionEventRequest(
+                        type: .stepEntered, stepId: step.id, stepIndex: index, durationSeconds: nil
+                    )
+                )
+            }
+        }
     }
 
     /// Shows only the current step's panel (default) or all panels (when showAllPanels = true).
@@ -1361,6 +1401,19 @@ struct ARGuideSessionView: View {
     private func markComplete(at index: Int) {
         guard index < progresses.count else { return }
         progresses[index].complete()
+        // Push step:completed live event (fire-and-forget)
+        if let lsId = liveSessionId, index < sortedSteps.count {
+            let stepId   = sortedSteps[index].id
+            let duration = progresses[index].durationSeconds
+            Task {
+                await SIBClient(settings: settings).pushGuideSessionEvent(
+                    liveSessionId: lsId,
+                    event: PushGuideSessionEventRequest(
+                        type: .stepCompleted, stepId: stepId, stepIndex: index, durationSeconds: duration
+                    )
+                )
+            }
+        }
     }
 
     /// After marking complete, auto-advance to the next step if one exists.
@@ -1801,11 +1854,12 @@ struct GuideContentPanel: View {
 
 struct SessionSignOffView: View {
 
-    let guide:      ARGuide
-    let anchor:     Anchor
-    let progresses: [GuideStepProgress]
-    let startedAt:  Date
-    let onDone:     () -> Void
+    let guide:         ARGuide
+    let anchor:        Anchor
+    let progresses:    [GuideStepProgress]
+    let startedAt:     Date
+    let liveSessionId: String?   // links sign-off to SSE stream; optional for backward compat
+    let onDone:        () -> Void
 
     @EnvironmentObject private var settings: AppSettings
     @Environment(\.dismiss) private var dismiss
@@ -1907,7 +1961,8 @@ struct SessionSignOffView: View {
             startedAt:       iso.string(from: startedAt),
             completedAt:     iso.string(from: completedAt),
             durationSeconds: durationSeconds,
-            stepCompletions: stepCompletions
+            stepCompletions: stepCompletions,
+            liveSessionId:   liveSessionId
         )
         let client = SIBClient(settings: settings)
         do {

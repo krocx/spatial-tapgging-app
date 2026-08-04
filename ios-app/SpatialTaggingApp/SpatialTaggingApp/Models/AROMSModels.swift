@@ -295,6 +295,7 @@ struct UpdateGuideStepRequest: Codable {
 /// sessions without evidence decode cleanly.
 struct GuideStepCompletion: Codable, Equatable {
     let stepId:               String
+    var enteredAt:            String?  // ISO 8601 — when step first shown; nil on legacy records
     let completedAt:          String   // ISO 8601
     let durationSeconds:      Double   // elapsed from step entry to checkmark tap
     var evidencePhotoBase64:  String?  // request only — stripped by server on receipt
@@ -330,6 +331,9 @@ struct CreateARGuideSessionRequest: Codable {
     let completedAt:     String
     let durationSeconds: Double
     let stepCompletions: [GuideStepCompletion]
+    /// Live session id opened at session start — optional for backward compat.
+    /// When present the server closes the SSE stream and broadcasts session:submitted.
+    let liveSessionId:   String?
 }
 
 // ============================================================
@@ -364,15 +368,42 @@ struct GuideStepProgress {
 
     func toCompletion() -> GuideStepCompletion? {
         guard let completed = completedAt else { return nil }
+        let iso = ISO8601DateFormatter()
         let b64 = evidencePhoto
             .flatMap { $0.jpegData(compressionQuality: 0.72) }
             .map     { $0.base64EncodedString() }
         return GuideStepCompletion(
             stepId:              step.id,
-            completedAt:         ISO8601DateFormatter().string(from: completed),
+            enteredAt:           enteredAt.map { iso.string(from: $0) },
+            completedAt:         iso.string(from: completed),
             durationSeconds:     durationSeconds,
             evidencePhotoBase64: b64,
             evidencePhotoPath:   nil   // server fills this in the response
         )
     }
+}
+
+// ============================================================
+// MARK: - Live Guide Session (real-time telemetry — Step 1 AI readiness)
+// ============================================================
+
+/// Step-event types pushed by the Operator device during an active guide walk.
+/// Mirrors `GuideSessionEventType` in shared/src/index.ts.
+enum GuideSessionEventType: String, Codable {
+    case sessionStarted  = "session:started"
+    case stepEntered     = "step:entered"
+    case stepCompleted   = "step:completed"
+    case stepRetried     = "step:retried"
+    case perceptionResult = "perception:result"
+    case sessionSubmitted = "session:submitted"
+}
+
+/// Request body for POST /guide-sessions/live/:id/events.
+/// Fire-and-forget: iOS wraps calls in Task{} and ignores errors.
+/// Mirrors `PushGuideSessionEventRequest` in shared/src/index.ts.
+struct PushGuideSessionEventRequest: Encodable {
+    let type:            GuideSessionEventType
+    let stepId:          String?
+    let stepIndex:       Int?
+    let durationSeconds: Double?
 }

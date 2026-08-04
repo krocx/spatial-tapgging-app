@@ -5,13 +5,21 @@
 // session record (step completions, duration, sign-off name) is submitted in
 // a single POST once the Operator finishes the guide.
 //
-// Endpoints:
+// Endpoints (sign-off + history):
 //   POST /guide-sessions                          — Operator: submit completed session
 //   GET  /guide-sessions?all=true                 — list all sessions (portal)
 //   GET  /guide-sessions?anchorId=xxx             — list sessions for an anchor
 //   GET  /guide-sessions?guideId=xxx              — list sessions for a specific guide
 //   GET  /guide-sessions/:id                      — get a single session
 //   GET  /guide-sessions/:id/evidence/:stepId     — serve evidence photo for a step
+//   DELETE /guide-sessions/:id                    — remove a session + evidence
+//   DELETE /guide-sessions                        — remove ALL sessions + evidence
+//
+// Endpoints (live session-state stream — AI readiness Phase 2, Step 1):
+//   POST /guide-sessions/live                     — open a live session (returns liveSessionId)
+//   POST /guide-sessions/live/:id/events          — push a step event (iOS, fire-and-forget)
+//   GET  /guide-sessions/live/:id/stream          — SSE stream for observers (AI agents)
+//   GET  /guide-sessions/live/:id                 — current session snapshot (catch-up)
 
 import { Router } from 'express';
 import type { Request, Response } from 'express';
@@ -22,9 +30,18 @@ import type {
   GuideSession,
   GuideStepCompletion,
   CreateGuideSessionRequest,
+  OpenLiveSessionRequest,
+  PushGuideSessionEventRequest,
   ApiResponse,
 } from '@spatial/shared';
 import { JsonFileStore } from '../stores/json-file-store.js';
+import {
+  openLiveSession,
+  pushEvent,
+  closeLiveSession,
+  getLiveSession,
+  subscribeSse,
+} from '../sse/guide-session.sse.js';
 
 // ── Storage ───────────────────────────────────────────────────────────────────
 
@@ -68,6 +85,76 @@ setInterval(pruneOldGuideSessions, PRUNE_INTERVAL_MS).unref();
 // ── Router ────────────────────────────────────────────────────────────────────
 
 const router = Router();
+
+// ── Live session-state stream ─────────────────────────────────────────────────
+// These routes MUST be registered before the /:id wildcard routes below or
+// Express would try to match "live" as a session id.
+
+// POST /guide-sessions/live — open a live tracking session
+router.post('/live', (req: Request, res: Response): void => {
+  const body = req.body as OpenLiveSessionRequest;
+
+  if (!body.guideId || !body.anchorId || !body.guideName || !body.anchorName || !body.operatorName) {
+    res.status(400).json({
+      error: 'Missing required fields: guideId, anchorId, guideName, anchorName, operatorName',
+      timestamp: new Date().toISOString(),
+    });
+    return;
+  }
+
+  const session = openLiveSession(body);
+  res.status(201).json({ data: session, timestamp: new Date().toISOString() });
+});
+
+// POST /guide-sessions/live/:id/events — iOS pushes a step event (fire-and-forget)
+router.post('/live/:id/events', (req: Request, res: Response): void => {
+  const body = req.body as PushGuideSessionEventRequest;
+
+  if (!body.type) {
+    res.status(400).json({ error: 'Missing required field: type', timestamp: new Date().toISOString() });
+    return;
+  }
+
+  const event = pushEvent(req.params.id, body);
+  if (!event) {
+    res.status(404).json({
+      error: `Live session ${req.params.id} not found`,
+      timestamp: new Date().toISOString(),
+    });
+    return;
+  }
+
+  res.status(201).json({ data: event, timestamp: new Date().toISOString() });
+});
+
+// GET /guide-sessions/live/:id/stream — SSE stream for AI agents / dashboards
+// Auth: when SIB_API_KEY is set, clients must provide it as ?key= (browsers
+// can't set headers on EventSource connections).
+router.get('/live/:id/stream', (req: Request, res: Response): void => {
+  const ok = subscribeSse(req.params.id, res);
+  if (!ok) {
+    res.status(404).json({
+      error: `Live session ${req.params.id} not found`,
+      timestamp: new Date().toISOString(),
+    });
+  }
+  // subscribeSse takes ownership of `res` — do not call res.end() here.
+});
+
+// GET /guide-sessions/live/:id — current session snapshot (catch-up for new observers)
+router.get('/live/:id', (req: Request, res: Response): void => {
+  const session = getLiveSession(req.params.id);
+  if (!session) {
+    res.status(404).json({
+      error: `Live session ${req.params.id} not found`,
+      timestamp: new Date().toISOString(),
+    });
+    return;
+  }
+  res.json({ data: session, timestamp: new Date().toISOString() });
+});
+
+// ── Sign-off (durable record) ─────────────────────────────────────────────────
 
 // POST /guide-sessions — Operator submits a completed guide session
 router.post('/', (req: Request, res: Response): void => {
@@ -136,6 +223,12 @@ router.post('/', (req: Request, res: Response): void => {
     `[SIB] GuideSession created: ${session.id} — guide "${body.guideName}" ` +
     `signed by ${body.signedOffBy} (${body.stepCompletions.length} steps, ${Math.round(body.durationSeconds)}s)`
   );
+
+  // Link the durable record back to the live session (if one was opened).
+  // This closes the SSE stream and pushes a session:submitted event to observers.
+  if (body.liveSessionId) {
+    closeLiveSession(body.liveSessionId, session.id);
+  }
 
   const resp: ApiResponse<GuideSession> = { data: session, timestamp: now };
   res.status(201).json(resp);

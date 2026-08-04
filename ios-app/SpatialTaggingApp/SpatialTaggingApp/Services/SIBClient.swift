@@ -421,6 +421,40 @@ final class SIBClient {
         return try await get([ARGuideSession].self, path: "/guide-sessions?\(query)")
     }
 
+    // ── Live Guide Session (AI readiness Step 1) ─────────────────────────────
+
+    /// Open a live tracking session before the Operator starts the first step.
+    /// Returns the liveSessionId — store it in @State and pass to all subsequent
+    /// event pushes and to the final sign-off request.
+    func openLiveGuideSession(
+        guideId:      String,
+        anchorId:     String,
+        guideName:    String,
+        anchorName:   String,
+        operatorName: String
+    ) async throws -> String {
+        struct Req: Encodable {
+            let guideId, anchorId, guideName, anchorName, operatorName: String
+        }
+        struct LiveSession: Decodable { let id: String }
+        struct Wrapper:     Decodable { let data: LiveSession }
+        let body    = Req(guideId: guideId, anchorId: anchorId,
+                          guideName: guideName, anchorName: anchorName,
+                          operatorName: operatorName)
+        let wrapper = try await post(Wrapper.self, path: "/guide-sessions/live", body: body)
+        return wrapper.data.id
+    }
+
+    /// Fire-and-forget: push a step event to the live session.
+    /// Wrapped in Task{} by callers so the AR session is never blocked.
+    func pushGuideSessionEvent(liveSessionId: String, event: PushGuideSessionEventRequest) async {
+        _ = try? await post(
+            EmptyResponse.self,
+            path: "/guide-sessions/live/\(liveSessionId)/events",
+            body: event
+        )
+    }
+
     // ── AR OMS — Guide Worldmaps ─────────────────────────────────────────────
 
     /// Author: upload the ARWorldMap captured during guide step placement.
