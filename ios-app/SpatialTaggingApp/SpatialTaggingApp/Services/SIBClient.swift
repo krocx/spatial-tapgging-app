@@ -448,8 +448,9 @@ final class SIBClient {
     /// Fire-and-forget: push a step event to the live session.
     /// Wrapped in Task{} by callers so the AR session is never blocked.
     func pushGuideSessionEvent(liveSessionId: String, event: PushGuideSessionEventRequest) async {
+        struct Ack: Decodable {}   // we don't need the response body
         _ = try? await post(
-            EmptyResponse.self,
+            Ack.self,
             path: "/guide-sessions/live/\(liveSessionId)/events",
             body: event
         )
