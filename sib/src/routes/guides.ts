@@ -374,6 +374,10 @@ router.patch('/:id/steps/:stepId', (req: Request, res: Response): void => {
     modelOffsetY:       'modelOffsetY'    in body ? body.modelOffsetY     : step.modelOffsetY,
     modelOffsetZ:       'modelOffsetZ'    in body ? body.modelOffsetZ     : step.modelOffsetZ,
     modelRotationY:     'modelRotationY'  in body ? body.modelRotationY   : step.modelRotationY,
+    // Conditional task graph fields — null in body clears, key absent keeps existing
+    nextOnSuccess:      'nextOnSuccess'   in body ? (body.nextOnSuccess ?? undefined) : step.nextOnSuccess,
+    nextOnFailure:      'nextOnFailure'   in body ? (body.nextOnFailure ?? undefined) : step.nextOnFailure,
+    precondition:       'precondition'    in body ? (body.precondition  ?? undefined) : step.precondition,
     updatedAt: now,
   };
 

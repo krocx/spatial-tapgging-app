@@ -158,6 +158,10 @@ struct GuideStep: Codable, Identifiable, Equatable {
     let modelOffsetY:       Double?     // Y offset from step worldPosition in metres (default 0)
     let modelOffsetZ:       Double?     // Z offset from step worldPosition in metres (default 0)
     let modelRotationY:     Double?     // Y-axis rotation in radians (default 0); set by AR placement UI
+    // Conditional task graph (Step 2 of AI-readiness) — all optional, nil = linear/default behaviour
+    let nextOnSuccess:      String?     // step ID to navigate to on completion; nil → sequenceNumber+1
+    let nextOnFailure:      String?     // step ID to navigate to on failure/retry; nil → stay on step
+    let precondition:       String?     // step ID that must be completed before this step is reachable
     let createdAt:          String
     let updatedAt:          String
 
@@ -204,6 +208,10 @@ struct GuideStep: Codable, Identifiable, Equatable {
         modelOffsetY       = try c.decodeIfPresent(Double.self,             forKey: .modelOffsetY)
         modelOffsetZ       = try c.decodeIfPresent(Double.self,             forKey: .modelOffsetZ)
         modelRotationY     = try c.decodeIfPresent(Double.self,             forKey: .modelRotationY)
+        // Conditional task graph — absent on guides created before Step 2
+        nextOnSuccess      = try c.decodeIfPresent(String.self,             forKey: .nextOnSuccess)
+        nextOnFailure      = try c.decodeIfPresent(String.self,             forKey: .nextOnFailure)
+        precondition       = try c.decodeIfPresent(String.self,             forKey: .precondition)
         createdAt          = try c.decode(String.self,              forKey: .createdAt)
         updatedAt          = try c.decode(String.self,              forKey: .updatedAt)
     }
@@ -276,6 +284,10 @@ struct UpdateGuideStepRequest: Codable {
     var modelOffsetY:       Double?
     var modelOffsetZ:       Double?
     var modelRotationY:     Double?
+    // Conditional task graph — nil omits the key (keeps existing); set to "" to clear
+    var nextOnSuccess:      String?
+    var nextOnFailure:      String?
+    var precondition:       String?
 }
 
 // Swift synthesizes init() automatically for this struct because every stored

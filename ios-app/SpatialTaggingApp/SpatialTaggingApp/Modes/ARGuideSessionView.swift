@@ -1357,6 +1357,19 @@ struct ARGuideSessionView: View {
 
     private func navigateTo(index: Int) {
         guard index >= 0, index < sortedSteps.count else { return }
+
+        // Precondition gate: if this step requires another step to be completed first
+        // and it isn't yet, redirect to that prerequisite instead.
+        let candidate = sortedSteps[index]
+        if let prereqId = candidate.precondition,
+           let prereqIdx = sortedSteps.firstIndex(where: { $0.id == prereqId }),
+           prereqIdx < progresses.count,
+           !progresses[prereqIdx].isCompleted,
+           prereqIdx != index {
+            navigateTo(index: prereqIdx)
+            return
+        }
+
         stopSpeaking()
         distanceM        = nil
         targetScreenPos  = nil
@@ -1417,12 +1430,19 @@ struct ARGuideSessionView: View {
     }
 
     /// After marking complete, auto-advance to the next step if one exists.
+    /// Follows nextOnSuccess branch if the step has one; otherwise sequential.
     private func autoAdvance(from index: Int) {
-        let next = index + 1
-        if next < sortedSteps.count {
-            navigateTo(index: next)
+        let step = sortedSteps[index]
+        if let targetId = step.nextOnSuccess,
+           let targetIdx = sortedSteps.firstIndex(where: { $0.id == targetId }) {
+            navigateTo(index: targetIdx)
+        } else {
+            let next = index + 1
+            if next < sortedSteps.count {
+                navigateTo(index: next)
+            }
         }
-        // If last step, panel texture will show the sign-off button on next refresh
+        // If last/terminal step, panel texture shows the sign-off button on next refresh
     }
 
     // ── Evidence capture ──────────────────────────────────────────────────────

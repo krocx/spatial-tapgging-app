@@ -669,6 +669,10 @@ export interface GuideStep {
   modelOffsetY?:      number;
   modelOffsetZ?:      number;
   modelRotationY?:    number;      // Y-axis rotation in radians (Author-placed via AR placement UI)
+  // Conditional task graph (Step 2 of AI-readiness) — all optional for backward compat
+  nextOnSuccess?:     string;      // step ID to navigate to on completion; nil → sequenceNumber+1
+  nextOnFailure?:     string;      // step ID to navigate to on failure/retry; nil → stay on step
+  precondition?:      string;      // step ID that must be completed before this step is reachable
   createdAt:          string;
   updatedAt:          string;
 }
@@ -706,6 +710,10 @@ export type UpdateGuideStepRequest = {
   modelOffsetY?:       number;
   modelOffsetZ?:       number;
   modelRotationY?:     number;     // Y-axis rotation in radians
+  // Conditional task graph — null clears, undefined keeps existing
+  nextOnSuccess?:      string | null;
+  nextOnFailure?:      string | null;
+  precondition?:       string | null;
 };
 
 /**

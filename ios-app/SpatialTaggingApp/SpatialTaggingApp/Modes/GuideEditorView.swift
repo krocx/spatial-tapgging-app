@@ -271,7 +271,7 @@ struct GuideEditorView: View {
                 if let g = currentGuide { Task { await loadSteps(guideId: g.id) } }
             }) { step in
                 if let g = currentGuide {
-                    EditStepSheet(guide: g, step: step)
+                    EditStepSheet(guide: g, step: step, allSteps: steps)
                         .environmentObject(settings)
                 }
             }
@@ -701,8 +701,9 @@ struct AddStepSheet: View {
 // ── Edit Step sheet ───────────────────────────────────────────────────────────
 
 struct EditStepSheet: View {
-    let guide: ARGuide
-    let step:  GuideStep
+    let guide:    ARGuide
+    let step:     GuideStep
+    let allSteps: [GuideStep]   // full step list for branch target pickers
 
     @EnvironmentObject private var settings: AppSettings
     @Environment(\.dismiss) private var dismiss
@@ -714,6 +715,11 @@ struct EditStepSheet: View {
     @State private var completionRequired = true
     @State private var isSaving           = false
     @State private var error:             String? = nil
+
+    // Conditional task graph (Step 2 of AI-readiness)
+    @State private var nextOnSuccess: String? = nil   // step ID or nil = sequential
+    @State private var nextOnFailure: String? = nil   // step ID or nil = stay
+    @State private var precondition:  String? = nil   // step ID or nil = no gate
 
     // Photo editing state
     @State private var fetchedPhoto:    UIImage? = nil  // existing photo from server
@@ -897,6 +903,40 @@ struct EditStepSheet: View {
                     Text("Model position is set when you place the step pin in AR — tap \"Place Steps in AR\" in the guide editor and position the model after each pin drop.")
                 }
 
+                // ── Branch Logic (Conditional task graph) ────────────────────
+                if allSteps.count > 1 {
+                    Section {
+                        // Other steps (exclude this step itself from all pickers)
+                        let otherSteps = allSteps.filter { $0.id != step.id }
+                            .sorted { $0.sequenceNumber < $1.sequenceNumber }
+
+                        Picker("On complete → go to", selection: $nextOnSuccess) {
+                            Text("Next step (default)").tag(Optional<String>.none)
+                            ForEach(otherSteps) { s in
+                                Text("Step \(s.sequenceNumber): \(s.displayTitle)").tag(Optional(s.id))
+                            }
+                        }
+
+                        Picker("On failure → go to", selection: $nextOnFailure) {
+                            Text("Stay on this step (default)").tag(Optional<String>.none)
+                            ForEach(otherSteps) { s in
+                                Text("Step \(s.sequenceNumber): \(s.displayTitle)").tag(Optional(s.id))
+                            }
+                        }
+
+                        Picker("Requires completion of", selection: $precondition) {
+                            Text("No prerequisite (default)").tag(Optional<String>.none)
+                            ForEach(otherSteps) { s in
+                                Text("Step \(s.sequenceNumber): \(s.displayTitle)").tag(Optional(s.id))
+                            }
+                        }
+                    } header: {
+                        Text("Branch Logic (optional)")
+                    } footer: {
+                        Text("Controls how the AI agent and Operator navigate between steps. Leave defaults for a standard linear flow.")
+                    }
+                }
+
                 if let err = error {
                     Section {
                         Label(err, systemImage: "exclamationmark.triangle.fill")
@@ -940,6 +980,10 @@ struct EditStepSheet: View {
                 selectedModelId    = step.modelId
                 modelScale         = step.modelScale     ?? 1.0
                 modelOpacity       = step.modelOpacity   ?? 0.45
+                // Branch logic: pre-populate from step
+                nextOnSuccess      = step.nextOnSuccess
+                nextOnFailure      = step.nextOnFailure
+                precondition       = step.precondition
                 // Fetch existing photo and anchor model library in parallel
                 Task {
                     await withTaskGroup(of: Void.self) { group in
@@ -999,6 +1043,12 @@ struct EditStepSheet: View {
             req.modelScale   = modelScale
             req.modelOpacity = modelOpacity
         }
+
+        // Branch logic — always send so Author can clear a previously-set branch
+        // (nil = key absent = server keeps existing; "" would also work but pickers use nil)
+        req.nextOnSuccess = nextOnSuccess
+        req.nextOnFailure = nextOnFailure
+        req.precondition  = precondition
 
         do {
             _ = try await client.updateGuideStep(guideId: guide.id, stepId: step.id, req: req)
