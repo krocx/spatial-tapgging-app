@@ -95,6 +95,12 @@ struct ARGuideSessionView: View {
     /// Set once `openLiveGuideSession` succeeds; nil if the request fails or is skipped.
     @State private var liveSessionId: String? = nil
 
+    // ── AI hints (Step 3: AI Dynamic Instructions) ────────────────────────────
+    /// The hint currently shown to the Operator; nil = banner hidden.
+    @State private var activeHint: AIHint? = nil
+    /// Timer that polls /live/:id/hints every 5 s while a live session is open.
+    @State private var hintPollTimer: Timer? = nil
+
     // ── Evidence capture (Phase 3) ────────────────────────────────────────────
     @State private var showEvidencePicker      = false
     @State private var evidencePickerStepIndex: Int? = nil
@@ -148,6 +154,7 @@ struct ARGuideSessionView: View {
                 .onDisappear {
                     stopSpeaking()
                     removeArrow()
+                    stopHintPolling()
                     // Remove scene-root panel containers (they are NOT pin children,
                     // so they must be cleaned up manually on view teardown)
                     for (_, container) in panelContainers {
@@ -418,6 +425,7 @@ struct ARGuideSessionView: View {
                             canSkip:         !step.completionRequired && !(progress?.isCompleted ?? false),
                             allRequiredDone: allRequiredDone,
                             distanceM:       distanceM,
+                            activeHint:      activeHint,
                             onPrev:          { navigateTo(index: index - 1) },
                             onNext:          { navigateTo(index: index + 1) },
                             onSkip:          { navigateTo(index: index + 1) },
@@ -425,7 +433,14 @@ struct ARGuideSessionView: View {
                             onSpeak:         { toggleSpeech(for: step) },
                             onSignOff:       { showSignOff = true },
                             onEvidence:      { openEvidencePicker(for: index) },
-                            onMinimize:      { showContentPanel = false }
+                            onMinimize:      { showContentPanel = false },
+                            onDismissHint:   { activeHint = nil },
+                            onNavigateHint:  { targetId in
+                                if let idx = sortedSteps.firstIndex(where: { $0.id == targetId }) {
+                                    navigateTo(index: idx)
+                                }
+                                activeHint = nil
+                            }
                         )
                     } else {
                         miniNavCard(step: step, index: index)
@@ -564,6 +579,9 @@ struct ARGuideSessionView: View {
                         )
                     }
                 }
+                // Start AI hint poll — every 5 s, drain server hint queue and show
+                // the first pending hint as a banner in GuideContentPanel.
+                startHintPolling(liveSessionId: lsId)
             }
 
             // Kick off background GLB prefetch for all steps that have a 3D model
@@ -1429,6 +1447,28 @@ struct ARGuideSessionView: View {
         }
     }
 
+    // ── AI hint polling (Step 3) ──────────────────────────────────────────────
+
+    /// Start a repeating 5-second timer that drains the server's hint queue and
+    /// shows the first pending hint as a banner in GuideContentPanel.
+    /// Safe to call multiple times — invalidates any existing timer first.
+    private func startHintPolling(liveSessionId: String) {
+        hintPollTimer?.invalidate()
+        hintPollTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { _ in
+            Task { @MainActor in
+                let hints = await client.fetchGuideHints(liveSessionId: liveSessionId)
+                if let first = hints.first, activeHint == nil {
+                    activeHint = first
+                }
+            }
+        }
+    }
+
+    private func stopHintPolling() {
+        hintPollTimer?.invalidate()
+        hintPollTimer = nil
+    }
+
     /// After marking complete, auto-advance to the next step if one exists.
     /// Follows nextOnSuccess branch if the step has one; otherwise sequential.
     private func autoAdvance(from index: Int) {
@@ -1650,20 +1690,66 @@ struct GuideContentPanel: View {
     let allRequiredDone: Bool
     let distanceM:       Float?
 
-    let onPrev:      () -> Void
-    let onNext:      () -> Void
-    let onSkip:      () -> Void
-    let onComplete:  () -> Void
-    let onSpeak:     () -> Void
-    let onSignOff:   () -> Void
-    let onEvidence:  () -> Void   // Phase 3
-    let onMinimize:  () -> Void   // collapse back to mini nav card
+    let activeHint:  AIHint?       // Step 3: AI hint to surface, or nil
+
+    let onPrev:          () -> Void
+    let onNext:          () -> Void
+    let onSkip:          () -> Void
+    let onComplete:      () -> Void
+    let onSpeak:         () -> Void
+    let onSignOff:       () -> Void
+    let onEvidence:      () -> Void              // Phase 3
+    let onMinimize:      () -> Void              // collapse back to mini nav card
+    let onDismissHint:   () -> Void              // Step 3: dismiss AI hint banner
+    let onNavigateHint:  (String) -> Void        // Step 3: follow nextOnFailure branch
 
     var isCompleted: Bool { progress?.isCompleted ?? false }
     var isLastStep:  Bool { stepNumber == totalSteps }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+
+            // ── AI hint banner (Step 3) ───────────────────────────────────────
+            if let hint = activeHint {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(alignment: .top, spacing: 8) {
+                        Image(systemName: "lightbulb.fill")
+                            .foregroundStyle(.yellow)
+                            .font(.system(size: 14))
+                        Text(hint.text)
+                            .font(.subheadline)
+                            .foregroundStyle(.primary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Spacer(minLength: 4)
+                        Button(action: onDismissHint) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(.secondary)
+                                .font(.system(size: 18))
+                        }
+                    }
+                    if hint.action == .navigate, let targetId = hint.targetStepId {
+                        Button(action: { onNavigateHint(targetId) }) {
+                            Label("Go to recovery step", systemImage: "arrow.right.circle")
+                                .font(.subheadline.bold())
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 7)
+                                .background(Color.orange)
+                                .clipShape(Capsule())
+                        }
+                    }
+                }
+                .padding(12)
+                .background(Color.yellow.opacity(0.12))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color.yellow.opacity(0.4), lineWidth: 1)
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .padding(.horizontal, 16)
+                .padding(.top, 12)
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
 
             // ── Step header ───────────────────────────────────────────────────
             HStack(spacing: 10) {

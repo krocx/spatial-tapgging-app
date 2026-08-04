@@ -20,6 +20,7 @@
 //   POST /guide-sessions/live/:id/events          — push a step event (iOS, fire-and-forget)
 //   GET  /guide-sessions/live/:id/stream          — SSE stream for observers (AI agents)
 //   GET  /guide-sessions/live/:id                 — current session snapshot (catch-up)
+//   GET  /guide-sessions/live/:id/hints           — AI hint poll; consume-once (Step 3)
 
 import { Router } from 'express';
 import type { Request, Response } from 'express';
@@ -41,6 +42,7 @@ import {
   closeLiveSession,
   getLiveSession,
   subscribeSse,
+  drainHints,
 } from '../sse/guide-session.sse.js';
 
 // ── Storage ───────────────────────────────────────────────────────────────────
@@ -152,6 +154,16 @@ router.get('/live/:id', (req: Request, res: Response): void => {
     return;
   }
   res.json({ data: session, timestamp: new Date().toISOString() });
+});
+
+// GET /guide-sessions/live/:id/hints — AI hint poll (iOS, consume-once)
+//
+// iOS calls this every ~5 s during an active guide session.
+// Returns all queued AI hints and clears the queue so hints are not re-shown.
+// Returns an empty array when no hints are pending — always 200.
+router.get('/live/:id/hints', (req: Request, res: Response): void => {
+  const hints = drainHints(req.params.id);
+  res.json({ data: hints, timestamp: new Date().toISOString() });
 });
 
 // ── Sign-off (durable record) ─────────────────────────────────────────────────

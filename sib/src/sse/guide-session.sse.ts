@@ -26,7 +26,14 @@ import type {
   GuideSessionEventType,
   OpenLiveSessionRequest,
   PushGuideSessionEventRequest,
+  AIHint,
+  GuideStep,
 } from '@spatial/shared';
+import {
+  getActiveAIGuideAdapter,
+  type AIGuideContext,
+} from '../adapters/ai-guide-adapter.js';
+import { guideStepStore } from '../routes/guides.js';
 
 // ── In-memory store ───────────────────────────────────────────────────────────
 
@@ -35,6 +42,18 @@ const sessions = new Map<string, LiveGuideSession>();
 
 /** SSE subscribers per live session. */
 const subscribers = new Map<string, Set<Response>>();
+
+/**
+ * Per-session hint queue. iOS polls GET /live/:id/hints to drain this.
+ * Consume-once: hints are removed after being read so they're not re-shown.
+ */
+const hintQueues = new Map<string, AIHint[]>();
+
+/**
+ * Retry counter per session: tracks how many `step:retried` events have fired
+ * on the *current* step. Reset to 0 whenever the step changes.
+ */
+const retryCounters = new Map<string, number>();
 
 /** Auto-evict closed sessions after this window to avoid unbounded growth. */
 const EVICT_AFTER_MS = 60 * 60 * 1000; // 1 hour
@@ -70,6 +89,8 @@ export function openLiveSession(req: OpenLiveSessionRequest): LiveGuideSession {
   };
 
   sessions.set(id, session);
+  hintQueues.set(id, []);
+  retryCounters.set(id, 0);
   console.log(`[live-session] Opened ${id} — guide "${req.guideName}" by ${req.operatorName}`);
   return session;
 }
@@ -99,12 +120,34 @@ export function pushEvent(
   session.events.push(event);
 
   // Track the latest known step position so GET /live/:id can report current state.
+  // Reset the retry counter whenever the Operator moves to a new step.
   if (req.type === 'step:entered' && req.stepIndex !== undefined) {
     session.currentStepIndex = req.stepIndex;
+    retryCounters.set(liveSessionId, 0);
+  }
+
+  // Count retries on the current step and invoke the AI guide adapter if warranted.
+  if (req.type === 'step:retried') {
+    const prev = retryCounters.get(liveSessionId) ?? 0;
+    const next = prev + 1;
+    retryCounters.set(liveSessionId, next);
+    maybeGenerateHint(liveSessionId, session, next);
   }
 
   broadcastToSubscribers(liveSessionId, event);
   return event;
+}
+
+/**
+ * Retrieve and clear all pending AI hints for a live session.
+ * iOS calls this on every poll cycle (consume-once semantics).
+ */
+export function drainHints(liveSessionId: string): AIHint[] {
+  const queue = hintQueues.get(liveSessionId);
+  if (!queue || queue.length === 0) return [];
+  const copy = [...queue];
+  queue.length = 0; // drain in place
+  return copy;
 }
 
 /**
@@ -140,9 +183,11 @@ export function closeLiveSession(liveSessionId: string, linkedSessionId: string)
 
   console.log(`[live-session] Closed ${liveSessionId} → linked to GuideSession ${linkedSessionId}`);
 
-  // Schedule eviction so the map doesn't grow forever.
+  // Schedule eviction so the maps don't grow forever.
   setTimeout(() => {
     sessions.delete(liveSessionId);
+    hintQueues.delete(liveSessionId);
+    retryCounters.delete(liveSessionId);
     console.log(`[live-session] Evicted ${liveSessionId}`);
   }, EVICT_AFTER_MS).unref();
 }
@@ -196,6 +241,50 @@ export function subscribeSse(liveSessionId: string, res: Response): boolean {
 }
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
+
+/**
+ * Asynchronously ask the active AI guide adapter whether to intervene and,
+ * if so, generate a hint. The hint is enqueued for iOS to poll.
+ * Fire-and-forget: never blocks the event-push response path.
+ */
+function maybeGenerateHint(
+  liveSessionId: string,
+  session:       LiveGuideSession,
+  retryCount:    number,
+): void {
+  const adapter = getActiveAIGuideAdapter();
+  if (!adapter) return;
+
+  // Load guide steps for this session to give the adapter graph context.
+  const guideSteps: GuideStep[] = guideStepStore
+    .findAll()
+    .filter((s: GuideStep) => s.guideId === session.guideId)
+    .sort((a: GuideStep, b: GuideStep) => a.sequenceNumber - b.sequenceNumber);
+
+  const currentStep = guideSteps[session.currentStepIndex] as GuideStep | undefined;
+
+  const ctx: AIGuideContext = {
+    liveSession:  session,
+    guideSteps,
+    currentStep,
+    recentEvents: session.events.slice(-20), // last 20 events for context
+    retryCount,
+  };
+
+  if (!adapter.shouldIntervene(ctx)) return;
+
+  // Run async — do not await; we never want this to slow down event pushes.
+  adapter.generateHint(ctx).then((hint) => {
+    if (!hint) return;
+    const queue = hintQueues.get(liveSessionId);
+    if (queue) {
+      queue.push(hint);
+      console.log(`[ai-guide] Hint queued for session ${liveSessionId} (step ${hint.stepId})`);
+    }
+  }).catch((err: unknown) => {
+    console.error('[ai-guide] generateHint error:', err);
+  });
+}
 
 function broadcastToSubscribers(liveSessionId: string, event: GuideSessionEvent): void {
   const room = subscribers.get(liveSessionId);

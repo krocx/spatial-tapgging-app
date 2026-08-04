@@ -419,3 +419,23 @@ struct PushGuideSessionEventRequest: Encodable {
     let stepIndex:       Int?
     let durationSeconds: Double?
 }
+
+// MARK: - AI Hint (Step 3: AI Dynamic Instructions adapter)
+
+/// Action the AI adapter recommends alongside a hint.
+enum AIHintAction: String, Decodable {
+    case navigate = "navigate"
+    case none     = "none"
+}
+
+/// An AI-generated guidance intervention delivered via GET /guide-sessions/live/:id/hints.
+/// Mirrors `AIHint` in shared/src/index.ts.
+struct AIHint: Decodable, Identifiable {
+    let id:            String
+    let liveSessionId: String
+    let stepId:        String?
+    let text:          String       // guidance shown to the Operator
+    let action:        AIHintAction?
+    let targetStepId:  String?      // navigate target when action == .navigate
+    let ts:            String       // ISO 8601
+}

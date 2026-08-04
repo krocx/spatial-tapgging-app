@@ -456,6 +456,18 @@ final class SIBClient {
         )
     }
 
+    /// Poll for AI-generated hints for the current live session.
+    /// Returns all pending hints and clears the server queue (consume-once).
+    /// Returns [] silently on any network or decode error — never throws.
+    func fetchGuideHints(liveSessionId: String) async -> [AIHint] {
+        struct Wrapper: Decodable { let data: [AIHint] }
+        guard let wrapper = try? await get(Wrapper.self,
+                                           path: "/guide-sessions/live/\(liveSessionId)/hints") else {
+            return []
+        }
+        return wrapper.data
+    }
+
     // ── AR OMS — Guide Worldmaps ─────────────────────────────────────────────
 
     /// Author: upload the ARWorldMap captured during guide step placement.
