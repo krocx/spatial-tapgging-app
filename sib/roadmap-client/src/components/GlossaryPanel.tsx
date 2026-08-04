@@ -65,7 +65,15 @@ export function GlossaryPanel(): JSX.Element | null {
       />
 
       {!glossary && <p className="menu-note">Loading dictionary…</p>}
-      {glossary && sections.length === 0 && <p className="menu-note">No matching terms.</p>}
+      {glossary && glossary.entries.length === 0 && (
+        <p className="menu-note">
+          Dictionary unavailable — the server couldn't provide a readable
+          <code> docs/roadmap-glossary.md</code>. Check <code>GET /mindmap/glossary</code>.
+        </p>
+      )}
+      {glossary && glossary.entries.length > 0 && sections.length === 0 && (
+        <p className="menu-note">No matching terms.</p>
+      )}
 
       {sections.map(section => (
         <section key={section.title} className="glossary-section">

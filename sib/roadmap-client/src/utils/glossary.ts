@@ -46,7 +46,12 @@ export function parseGlossary(markdown: string): GlossaryData {
   let current: { title: string; entries: GlossaryEntry[] } | null = null;
   let inAcronymTable = false;
 
-  for (const line of markdown.split('\n')) {
+  // Normalize before parsing: strip BOM and carriage returns. Windows git
+  // checkouts serve the file with CRLF, and `\r` is a line terminator in JS
+  // regex — leaving it in makes every `.+$` pattern fail silently.
+  const normalized = markdown.replace(/^﻿/, '').replace(/\r/g, '');
+
+  for (const line of normalized.split('\n')) {
     const heading = /^##\s+(.+)$/.exec(line);
     if (heading) {
       current = { title: heading[1].trim(), entries: [] };

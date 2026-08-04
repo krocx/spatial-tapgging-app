@@ -740,12 +740,15 @@ export const useStore = create<State & Actions>((set, get) => {
     // ── Dictionary ───────────────────────────────────────────────────────
 
     async loadGlossary() {
-      if (get().glossary) return;   // once per session
+      // Cache only a SUCCESSFUL load — an empty/failed result retries on the
+      // next open instead of sticking for the whole session.
+      const existing = get().glossary;
+      if (existing && existing.entries.length > 0) return;
       try {
         const { markdown } = await mindmapApi.glossary();
         set({ glossary: parseGlossary(markdown) });
       } catch {
-        // Missing glossary is non-fatal — the 📖 button just shows a note.
+        // Missing glossary is non-fatal — the 📖 panel shows a note.
         set({ glossary: { sections: [], entries: [] } });
       }
     },
