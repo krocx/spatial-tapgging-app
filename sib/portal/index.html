@@ -265,6 +265,8 @@
     .gl-warn-banner { background:rgba(180,83,9,0.15); border-top:1px solid rgba(180,83,9,0.3); padding:7px 14px; font-size:0.74rem; color:#fbbf24; }
     .gl-steps-list { display:none; border-top:1px solid var(--border); }
     .gl-steps-list.open { display:block; }
+    .gl-graph-panel { display:none; border-top:1px solid var(--border); background:rgba(0,0,0,0.18); }
+    .gl-graph-panel.open { display:block; }
     .gl-step-row { display:flex; align-items:flex-start; gap:10px; padding:9px 14px; border-bottom:1px solid rgba(255,255,255,0.04); font-size:0.78rem; }
     .gl-step-row:last-child { border-bottom:none; }
     .gl-step-seq { font-weight:700; color:var(--accent); min-width:24px; }
@@ -2091,6 +2093,7 @@ function renderGuideLibrary() {
           ${pubBadge}${warnBadge}${placePill}
           <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;${pubColor}" onclick="togglePublishGuide('${guide.id}','${anchorId}',${guide.published})">${pubLabel}</button>
           <button class="btn btn-ghost btn-sm" style="font-size:0.68rem" onclick="toggleGuideSteps('${guide.id}','${anchorId}')" id="gl-toggle-${guide.id}">▶ Steps</button>
+          <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;color:#a78bfa" onclick="toggleGuideGraph('${guide.id}','${anchorId}')" id="gl-graph-toggle-${guide.id}">⬡ Graph</button>
           <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;color:var(--red)" onclick="deleteGuideFromLibrary('${guide.id}','${anchorId}')">🗑</button>
         </div>`;
 
@@ -2104,6 +2107,10 @@ function renderGuideLibrary() {
 
       html += `<div class="gl-steps-list" id="gl-steps-${guide.id}">
         <div style="padding:12px 14px;color:var(--muted);font-size:0.78rem">Loading steps…</div>
+      </div>`;
+
+      html += `<div class="gl-graph-panel" id="gl-graph-${guide.id}">
+        <div style="padding:12px 14px;color:var(--muted);font-size:0.78rem">Loading graph…</div>
       </div>`;
 
       html += `</div>`; // gl-guide-card
@@ -2181,6 +2188,246 @@ function renderStepsInCard(guideId, anchorId) {
     </div>`;
   }
   stepsEl.innerHTML = html;
+}
+
+async function toggleGuideGraph(guideId, anchorId) {
+  const graphEl  = document.getElementById(`gl-graph-${guideId}`);
+  const toggleEl = document.getElementById(`gl-graph-toggle-${guideId}`);
+  const isOpen   = graphEl.classList.contains('open');
+
+  if (isOpen) {
+    graphEl.classList.remove('open');
+    toggleEl.textContent = '⬡ Graph';
+    return;
+  }
+
+  // Ensure steps are loaded (graph reuses the same cached data as Steps panel)
+  const entry = guideLibraryData[anchorId];
+  if (!entry?.steps[guideId]) {
+    graphEl.classList.add('open');
+    toggleEl.textContent = '▲ Graph';
+    graphEl.innerHTML = '<div style="padding:12px 14px;color:var(--muted);font-size:0.78rem">Loading steps…</div>';
+    try {
+      const resp = await apiFetch(`/guides/${encodeURIComponent(guideId)}/steps`);
+      entry.steps        = entry.steps || {};
+      entry.steps[guideId] = resp.data || [];
+      renderGuideLibrary();
+      document.getElementById(`gl-graph-${guideId}`).classList.add('open');
+      document.getElementById(`gl-graph-toggle-${guideId}`).textContent = '▲ Graph';
+    } catch (e) {
+      graphEl.innerHTML = `<div style="padding:10px 14px;color:var(--red);font-size:0.78rem">⚠ ${e.message}</div>`;
+      return;
+    }
+  } else {
+    graphEl.classList.add('open');
+    toggleEl.textContent = '▲ Graph';
+  }
+
+  renderGuideGraph(guideId, anchorId);
+}
+
+function renderGuideGraph(guideId, anchorId) {
+  const graphEl = document.getElementById(`gl-graph-${guideId}`);
+  if (!graphEl) return;
+  const steps = (guideLibraryData[anchorId]?.steps[guideId]) || [];
+  if (!steps.length) {
+    graphEl.innerHTML = '<div style="padding:12px 14px;color:var(--muted);font-size:0.78rem">No steps to display.</div>';
+    return;
+  }
+
+  // ── Sort + index ─────────────────────────────────────────────────────────
+  const sorted = [...steps].sort((a, b) => a.sequenceNumber - b.sequenceNumber);
+  const byId   = {};
+  sorted.forEach(s => { byId[s.id] = s; });
+
+  // ── Build edges ───────────────────────────────────────────────────────────
+  // type: 'success' | 'failure' | 'precondition' | 'sequential'
+  const edges = [];
+  sorted.forEach((step, i) => {
+    if (step.nextOnSuccess) {
+      edges.push({ from: step.id, to: step.nextOnSuccess, type: 'success' });
+    } else if (i + 1 < sorted.length) {
+      edges.push({ from: step.id, to: sorted[i + 1].id, type: 'sequential' });
+    }
+    if (step.nextOnFailure) {
+      edges.push({ from: step.id, to: step.nextOnFailure, type: 'failure' });
+    }
+    if (step.precondition) {
+      edges.push({ from: step.precondition, to: step.id, type: 'precondition' });
+    }
+  });
+
+  // ── BFS rank assignment ───────────────────────────────────────────────────
+  // Count non-precondition incoming flow edges per node
+  const inFlow = {};
+  sorted.forEach(s => { inFlow[s.id] = 0; });
+  edges.filter(e => e.type !== 'precondition').forEach(e => {
+    if (byId[e.to]) inFlow[e.to] = (inFlow[e.to] || 0) + 1;
+  });
+
+  const root   = sorted.find(s => inFlow[s.id] === 0) || sorted[0];
+  const ranks  = {};
+  ranks[root.id] = 0;
+  const queue    = [root.id];
+  const visited  = new Set([root.id]);
+
+  while (queue.length) {
+    const curr     = queue.shift();
+    const currRank = ranks[curr];
+    edges
+      .filter(e => e.from === curr && e.type !== 'precondition')
+      .forEach(e => {
+        if (!byId[e.to]) return;
+        if (!visited.has(e.to)) {
+          visited.add(e.to);
+          ranks[e.to] = currRank + 1;
+          queue.push(e.to);
+        } else {
+          // Push deeper to maintain correct depth (handles diamond shapes)
+          ranks[e.to] = Math.max(ranks[e.to], currRank + 1);
+        }
+      });
+  }
+  // Any node unreachable from root gets a rank based on sequenceNumber position
+  sorted.forEach((s, i) => { if (ranks[s.id] === undefined) ranks[s.id] = i; });
+
+  // ── Group by rank ─────────────────────────────────────────────────────────
+  const rankGroups = {};
+  sorted.forEach(s => {
+    const r = ranks[s.id];
+    if (!rankGroups[r]) rankGroups[r] = [];
+    rankGroups[r].push(s);
+  });
+
+  // ── Layout constants ──────────────────────────────────────────────────────
+  const NW     = 148;   // node width
+  const NH     = 56;    // node height
+  const CGAP   = 64;    // horizontal gap between columns
+  const RGAP   = 18;    // vertical gap between rows
+  const PAD    = 20;    // canvas padding
+
+  const maxRank    = Math.max(...Object.keys(rankGroups).map(Number));
+  const maxPerRank = Math.max(...Object.values(rankGroups).map(g => g.length));
+
+  const svgW = PAD + (maxRank + 1) * (NW + CGAP) - CGAP + PAD;
+  const svgH = PAD + maxPerRank  * (NH + RGAP)  - RGAP + PAD + 32; // +32 for legend
+
+  // ── Assign node positions ─────────────────────────────────────────────────
+  const pos = {};
+  Object.entries(rankGroups).forEach(([rank, group]) => {
+    const r      = Number(rank);
+    const x      = PAD + r * (NW + CGAP);
+    const totalH = group.length * (NH + RGAP) - RGAP;
+    const startY = PAD + (svgH - 32 - PAD * 2 - totalH) / 2;
+    group.forEach((step, i) => {
+      pos[step.id] = {
+        x,  y: startY + i * (NH + RGAP),
+        cx: x + NW / 2,
+        cy: startY + i * (NH + RGAP) + NH / 2,
+      };
+    });
+  });
+
+  // ── Edge style map ────────────────────────────────────────────────────────
+  const EST = {
+    success:      { color: '#4ade80', dash: '',    label: '✓' },
+    failure:      { color: '#f87171', dash: '',    label: '✗' },
+    precondition: { color: '#fbbf24', dash: '5,3', label: '⊙' },
+    sequential:   { color: '#475569', dash: '3,3', label: ''  },
+  };
+
+  // ── Build SVG ─────────────────────────────────────────────────────────────
+  const gid = guideId.replace(/[^a-z0-9]/gi, '_'); // safe ID fragment
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${svgW}" height="${svgH}" style="display:block;min-width:${svgW}px;font-family:system-ui,sans-serif">`;
+
+  // Arrowhead markers
+  Object.entries(EST).forEach(([type, s]) => {
+    svg += `<defs><marker id="arr-${gid}-${type}" markerWidth="7" markerHeight="7" refX="6" refY="2.5" orient="auto">
+      <path d="M0,0 L0,5 L7,2.5 z" fill="${s.color}"/>
+    </marker></defs>`;
+  });
+
+  // ── Draw edges (under nodes) ──────────────────────────────────────────────
+  edges.forEach(edge => {
+    const fp = pos[edge.from];
+    const tp = pos[edge.to];
+    if (!fp || !tp) return;
+
+    const s  = EST[edge.type];
+    const x1 = fp.x + NW;        // right side of from-node
+    const y1 = fp.cy;
+    const x2 = tp.x - 2;         // left side of to-node (leave room for arrowhead)
+    const y2 = tp.cy;
+
+    let pathD;
+    if (x2 <= x1 + 4) {
+      // Back-edge (loop or same column): arc above both nodes
+      const arcY = Math.min(fp.y, tp.y) - 36;
+      pathD = `M${x1},${y1} C${x1+50},${arcY} ${x2-50},${arcY} ${x2},${y2}`;
+    } else {
+      const mx = x1 + (x2 - x1) * 0.55;
+      pathD = `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`;
+    }
+
+    svg += `<path d="${pathD}" fill="none" stroke="${s.color}" stroke-width="1.6"
+      stroke-dasharray="${s.dash}" marker-end="url(#arr-${gid}-${edge.type})" opacity="0.85"/>`;
+
+    // Label on non-sequential edges
+    if (s.label) {
+      const lx = (x1 + x2) / 2 + (x2 <= x1 + 4 ? 0 : 0);
+      const ly = (y1 + y2) / 2 - (x2 <= x1 + 4 ? 20 : 8);
+      svg += `<text x="${lx}" y="${ly}" text-anchor="middle" font-size="9" fill="${s.color}" font-weight="700">${s.label}</text>`;
+    }
+  });
+
+  // ── Draw nodes ────────────────────────────────────────────────────────────
+  sorted.forEach(step => {
+    const p = pos[step.id];
+    if (!p) return;
+
+    const placed    = step.pos_x !== null && step.pos_x !== undefined;
+    const border    = placed ? '#6366f1' : '#b45309';
+    const bg        = placed ? 'rgba(99,102,241,0.14)' : 'rgba(180,83,9,0.14)';
+    const badgeFill = placed ? '#4f46e5' : '#92400e';
+
+    const rawTitle  = step.title || `Step ${step.sequenceNumber}`;
+    const title     = rawTitle.length > 17 ? rawTitle.slice(0, 16) + '…' : rawTitle;
+    const rawBody   = step.text || '';
+    const body      = rawBody.length > 22  ? rawBody.slice(0, 21)  + '…' : rawBody;
+
+    svg += `<g>
+      <rect x="${p.x}" y="${p.y}" width="${NW}" height="${NH}" rx="9"
+        fill="${bg}" stroke="${border}" stroke-width="1.5"/>
+      <circle cx="${p.x + 20}" cy="${p.cy}" r="13" fill="${badgeFill}"/>
+      <text x="${p.x + 20}" y="${p.cy + 4}" text-anchor="middle"
+        font-size="11" font-weight="700" fill="white">${step.sequenceNumber}</text>
+      <text x="${p.x + 38}" y="${p.y + 19}" font-size="11" font-weight="600" fill="#f1f5f9">${esc(title)}</text>
+      <text x="${p.x + 38}" y="${p.y + 34}" font-size="9" fill="#94a3b8">${esc(body)}</text>
+      ${step.completionRequired
+        ? `<text x="${p.x + NW - 10}" y="${p.y + 14}" font-size="10" fill="#818cf8">🔒</text>`
+        : ''}
+    </g>`;
+  });
+
+  // ── Legend ────────────────────────────────────────────────────────────────
+  const LY   = svgH - 22;
+  const items = [
+    { color: '#4ade80', dash: '',    label: 'Success path' },
+    { color: '#f87171', dash: '',    label: 'Failure path' },
+    { color: '#fbbf24', dash: '4,3', label: 'Precondition' },
+    { color: '#475569', dash: '3,3', label: 'Sequential'   },
+  ];
+  let lx = PAD;
+  items.forEach(item => {
+    svg += `<line x1="${lx}" y1="${LY}" x2="${lx+20}" y2="${LY}"
+      stroke="${item.color}" stroke-width="1.5" stroke-dasharray="${item.dash}"/>`;
+    svg += `<text x="${lx + 24}" y="${LY + 4}" font-size="9" fill="#64748b">${item.label}</text>`;
+    lx += 100;
+  });
+
+  svg += '</svg>';
+
+  graphEl.innerHTML = `<div style="overflow-x:auto;padding:14px 14px 10px">${svg}</div>`;
 }
 
 async function togglePublishGuide(guideId, anchorId, currentlyPublished) {

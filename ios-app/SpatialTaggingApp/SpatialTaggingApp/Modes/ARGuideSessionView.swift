@@ -1453,6 +1453,14 @@ struct ARGuideSessionView: View {
     private func markComplete(at index: Int) {
         guard index < progresses.count else { return }
         progresses[index].complete()
+        // Dismiss any active hint that was about or pointing to this step —
+        // it is now moot since the step has just been completed.
+        if let hint = activeHint, index < sortedSteps.count {
+            let completedId = sortedSteps[index].id
+            if hint.targetStepId == completedId || hint.stepId == completedId {
+                activeHint = nil
+            }
+        }
         // Push step:completed live event (fire-and-forget)
         if let lsId = liveSessionId, index < sortedSteps.count {
             let stepId   = sortedSteps[index].id
@@ -1470,6 +1478,27 @@ struct ARGuideSessionView: View {
 
     // ── AI hint polling (Step 3) ──────────────────────────────────────────────
 
+    /// Returns true if the hint is no longer actionable because the step it
+    /// references (either as context or as a navigation target) has already
+    /// been completed by the Operator.
+    private func isHintStale(_ hint: AIHint) -> Bool {
+        // Navigate-action hint whose target step is already done
+        if let targetId = hint.targetStepId,
+           let idx = sortedSteps.firstIndex(where: { $0.id == targetId }),
+           idx < progresses.count,
+           progresses[idx].isCompleted {
+            return true
+        }
+        // Context hint about a step that is already done
+        if let stepId = hint.stepId,
+           let idx = sortedSteps.firstIndex(where: { $0.id == stepId }),
+           idx < progresses.count,
+           progresses[idx].isCompleted {
+            return true
+        }
+        return false
+    }
+
     /// Start a repeating 5-second timer that drains the server's hint queue and
     /// shows the first pending hint as a banner in GuideContentPanel.
     /// Safe to call multiple times — invalidates any existing timer first.
@@ -1479,7 +1508,7 @@ struct ARGuideSessionView: View {
             Task { @MainActor in
                 let client = SIBClient(settings: settings)
                 let hints = await client.fetchGuideHints(liveSessionId: liveSessionId)
-                if let first = hints.first, activeHint == nil {
+                if let first = hints.first, activeHint == nil, !isHintStale(first) {
                     activeHint = first
                 }
             }
