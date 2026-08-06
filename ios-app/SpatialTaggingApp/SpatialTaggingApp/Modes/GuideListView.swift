@@ -9,8 +9,10 @@
 //
 // Operator mode:
 //   • Shows only published guides.
-//   • Tap guide row → QRScanGateView (QR scan to lock AR origin) → ARGuideSessionView.
-//   • Empty state guides operator to ask the Author to publish a guide.
+//   • Steps are fetched in parallel with the guide list so placement status
+//     is known immediately — rows with unplaced steps show a ⚠ badge and
+//     tapping them shows an alert instead of starting the session.
+//   • Tap a ready guide → QRScanGateView → ARGuideSessionView.
 
 import SwiftUI
 
@@ -23,27 +25,36 @@ struct GuideListView: View {
     @EnvironmentObject private var appState:  AppState
     @EnvironmentObject private var tour:      GuidedTourManager
 
-    @State private var guides:       [ARGuide] = []
-    @State private var isLoading     = false
-    @State private var loadError:    String? = nil
+    @State private var guides:    [ARGuide] = []
+    @State private var allSteps:  [String: [GuideStep]] = [:]   // guideId → steps (cached)
+    @State private var isLoading  = false
+    @State private var loadError: String? = nil
 
     // Author: create / edit
     @State private var showCreateSheet = false
     @State private var editingGuide:   ARGuide? = nil
 
     // Operator: session flow
-    @State private var pendingGuide:  ARGuide? = nil   // guide tapped, waiting for QR scan
+    @State private var pendingGuide:  ARGuide? = nil
     @State private var showScanGate   = false
     @State private var guideSteps:    [GuideStep] = []
-    @State private var sessionInput:  GuideSessionInput? = nil   // drives session cover
+    @State private var sessionInput:  GuideSessionInput? = nil
 
-    // Bundles guide + pre-fetched steps into an Identifiable value for
-    // fullScreenCover(item:), which guarantees content is non-nil when the
-    // cover appears — eliminating the blank-white-sheet from nil guard failure.
+    // Operator: unplaced-steps alert
+    @State private var showUnplacedAlert  = false
+    @State private var unplacedAlertGuide = ""
+    @State private var unplacedCount      = 0
+
     private struct GuideSessionInput: Identifiable {
         let guide: ARGuide
         let steps: [GuideStep]
         var id: String { guide.id }
+    }
+
+    // All steps placed (or steps not yet loaded — optimistic)
+    private func isReady(_ guide: ARGuide) -> Bool {
+        guard let steps = allSteps[guide.id], !steps.isEmpty else { return true }
+        return steps.allSatisfy { $0.isPlaced }
     }
 
     var body: some View {
@@ -66,7 +77,7 @@ struct GuideListView: View {
             } else {
                 List {
                     ForEach(guides) { guide in
-                        GuideRow(guide: guide, mode: mode)
+                        GuideRow(guide: guide, mode: mode, isReady: isReady(guide))
                             .contentShape(Rectangle())
                             .onTapGesture { handleTap(guide) }
                             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
@@ -88,15 +99,19 @@ struct GuideListView: View {
         .toolbar {
             if mode == .author {
                 ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        showCreateSheet = true
-                    } label: {
+                    Button { showCreateSheet = true } label: {
                         Image(systemName: "plus")
                     }
                 }
             }
         }
         .task { await loadGuides() }
+        // ── Unplaced steps alert ──────────────────────────────────────────────
+        .alert("Guide Not Ready", isPresented: $showUnplacedAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("\"\(unplacedAlertGuide)\" has \(unplacedCount) step\(unplacedCount == 1 ? "" : "s") that haven't been placed in AR yet.\n\nAsk the Author to open the Guide Editor on their device and place the remaining steps before running this guide.")
+        }
         // ── Author: create new guide ──────────────────────────────────────────
         .sheet(isPresented: $showCreateSheet, onDismiss: { Task { await loadGuides() } }) {
             GuideEditorView(anchor: anchor, guide: nil)
@@ -111,26 +126,16 @@ struct GuideListView: View {
                 .environmentObject(appState)
                 .environmentObject(tour)
         }
-        // ── Operator: QR scan gate before session ─────────────────────────────
-        // onDismiss fires after the dismiss animation fully completes — the only
-        // safe place to present the next fullScreenCover.  We set sessionInput
-        // there (not in onSessionReady) so the two covers never overlap.
-        // Using fullScreenCover(item:) for the session cover guarantees the
-        // guide/steps are non-nil when the cover appears, eliminating the blank
-        // white sheet that appeared when `if let guide = selectedGuide` was nil.
+        // ── Operator: QR scan gate ────────────────────────────────────────────
         .fullScreenCover(isPresented: $showScanGate, onDismiss: {
             guard let guide = pendingGuide, !guideSteps.isEmpty else { return }
-            // One extra run-loop cycle so the modal system is fully at rest.
             DispatchQueue.main.async {
                 sessionInput = GuideSessionInput(guide: guide, steps: guideSteps)
             }
         }) {
             QRScanGateView(
                 mode: .operator,
-                onSessionReady: {
-                    // Only dismiss; onDismiss will set sessionInput after animation
-                    showScanGate = false
-                },
+                onSessionReady: { showScanGate = false },
                 onCancel: {
                     pendingGuide = nil
                     showScanGate = false
@@ -141,7 +146,6 @@ struct GuideListView: View {
             .environmentObject(tour)
         }
         // ── Operator: AR Guide session ────────────────────────────────────────
-        // item-based cover: content closure receives a guaranteed non-nil value.
         .fullScreenCover(item: $sessionInput) { input in
             ARGuideSessionView(
                 anchor: anchor,
@@ -178,22 +182,18 @@ struct GuideListView: View {
         if mode == .author {
             editingGuide = guide
         } else {
-            // Operator: fetch steps then initiate QR scan
-            pendingGuide = guide
-            Task {
-                await fetchStepsAndStartSession(guide)
+            // Block if any steps are unplaced
+            if !isReady(guide) {
+                let steps = allSteps[guide.id] ?? []
+                unplacedAlertGuide = guide.name
+                unplacedCount      = steps.filter { !$0.isPlaced }.count
+                showUnplacedAlert  = true
+                return
             }
-        }
-    }
-
-    private func fetchStepsAndStartSession(_ guide: ARGuide) async {
-        let client = SIBClient(settings: settings)
-        do {
-            let steps = try await client.fetchGuideSteps(guideId: guide.id)
-            guideSteps   = steps
+            // Use cached steps — no second fetch needed
+            pendingGuide = guide
+            guideSteps   = allSteps[guide.id] ?? []
             showScanGate = true
-        } catch {
-            loadError = "Couldn't load steps: \(friendlyMessage(for: error))"
         }
     }
 
@@ -202,6 +202,7 @@ struct GuideListView: View {
         do {
             try await client.deleteGuide(id: guide.id)
             guides.removeAll { $0.id == guide.id }
+            allSteps.removeValue(forKey: guide.id)
         } catch {
             loadError = "Delete failed: \(friendlyMessage(for: error))"
         }
@@ -214,10 +215,27 @@ struct GuideListView: View {
         loadError = nil
         let client = SIBClient(settings: settings)
         do {
-            guides = try await client.fetchGuides(
+            let loaded = try await client.fetchGuides(
                 anchorId:           anchor.id,
                 includeUnpublished: mode == .author
             )
+            guides = loaded
+
+            // Fetch steps for all guides in parallel so placement status is
+            // known immediately — avoids a second round-trip when Operator taps.
+            var stepsMap: [String: [GuideStep]] = [:]
+            await withTaskGroup(of: (String, [GuideStep]).self) { group in
+                for g in loaded {
+                    group.addTask {
+                        let steps = (try? await client.fetchGuideSteps(guideId: g.id)) ?? []
+                        return (g.id, steps)
+                    }
+                }
+                for await (id, steps) in group {
+                    stepsMap[id] = steps
+                }
+            }
+            allSteps = stepsMap
         } catch {
             loadError = friendlyMessage(for: error)
         }
@@ -228,18 +246,19 @@ struct GuideListView: View {
 // ── Guide row ─────────────────────────────────────────────────────────────────
 
 private struct GuideRow: View {
-    let guide: ARGuide
-    let mode:  AppMode
+    let guide:   ARGuide
+    let mode:    AppMode
+    let isReady: Bool           // false → has unplaced steps (Operator mode warning)
 
     var body: some View {
         HStack(spacing: 14) {
             ZStack {
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(Color.indigo.opacity(0.12))
+                    .fill(iconBgColor)
                     .frame(width: 44, height: 44)
-                Image(systemName: "list.bullet.clipboard")
+                Image(systemName: iconName)
                     .font(.system(size: 20))
-                    .foregroundStyle(.indigo)
+                    .foregroundStyle(iconFgColor)
             }
 
             VStack(alignment: .leading, spacing: 3) {
@@ -259,29 +278,61 @@ private struct GuideRow: View {
 
             Spacer()
 
-            // Published / draft badge (Author only)
-            if mode == .author {
-                if guide.published {
-                    Text("Live")
-                        .font(.caption2.bold())
-                        .foregroundStyle(.green)
-                        .padding(.horizontal, 7).padding(.vertical, 3)
-                        .background(Color.green.opacity(0.10))
-                        .clipShape(Capsule())
-                } else {
-                    Text("Draft")
-                        .font(.caption2.bold())
-                        .foregroundStyle(.orange)
-                        .padding(.horizontal, 7).padding(.vertical, 3)
-                        .background(Color.orange.opacity(0.10))
-                        .clipShape(Capsule())
-                }
-            } else {
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
+            trailingBadge
         }
         .padding(.vertical, 4)
+        .opacity(mode == .operator && !isReady ? 0.65 : 1.0)
+    }
+
+    // ── Computed appearance ───────────────────────────────────────────────────
+
+    private var iconName: String {
+        if mode == .operator && !isReady { return "exclamationmark.triangle.fill" }
+        return "list.bullet.clipboard"
+    }
+
+    private var iconBgColor: Color {
+        if mode == .operator && !isReady { return Color.orange.opacity(0.12) }
+        return Color.indigo.opacity(0.12)
+    }
+
+    private var iconFgColor: Color {
+        if mode == .operator && !isReady { return .orange }
+        return .indigo
+    }
+
+    @ViewBuilder
+    private var trailingBadge: some View {
+        if mode == .author {
+            // Author: show published/draft badge
+            if guide.published {
+                Text("Live")
+                    .font(.caption2.bold())
+                    .foregroundStyle(.green)
+                    .padding(.horizontal, 7).padding(.vertical, 3)
+                    .background(Color.green.opacity(0.10))
+                    .clipShape(Capsule())
+            } else {
+                Text("Draft")
+                    .font(.caption2.bold())
+                    .foregroundStyle(.orange)
+                    .padding(.horizontal, 7).padding(.vertical, 3)
+                    .background(Color.orange.opacity(0.10))
+                    .clipShape(Capsule())
+            }
+        } else if !isReady {
+            // Operator: guide has unplaced steps
+            Text("Not ready")
+                .font(.caption2.bold())
+                .foregroundStyle(.orange)
+                .padding(.horizontal, 7).padding(.vertical, 3)
+                .background(Color.orange.opacity(0.10))
+                .clipShape(Capsule())
+        } else {
+            // Operator: ready to run
+            Image(systemName: "chevron.right")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+        }
     }
 }
