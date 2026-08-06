@@ -24,13 +24,22 @@ QR-anchored 6-DOF tracking, multi-tag anchors with a typed check ontology (prese
 Audit-walk mode with no QR required: the Author taps any surface to drop a **LocTag** (defect category, reference photo, notes); an ARWorldMap is saved so Operators re-localize in the same space later. Completions are tracked per finding — *resolved / still present / escalated* — with completion photos, giving a full audit trail for 6S/Gemba rounds.
 
 ### AR Work Instructions (AR OMS)
-Step-based guided procedures anchored in space: Authors create **Guides** (draft → published) with sequenced steps and per-step images; Operators run them step-by-step in AR, and **guide sessions** record per-step completions and durations. This is the AR OMS foundation — manual authoring today, instruction import and AI-generated dynamic instructions on the roadmap.
+Step-based guided procedures anchored in space. Authors create **Guides** (draft → published) with sequenced steps, per-step images, optional voice scripts, and a 3D ghost model overlay; each step is spatially placed as a pin in AR so Operators are physically walked to the right location. Operators run the guide step-by-step, capture evidence photos per step, and sign off; **guide sessions** record per-step completions, durations, and evidence.
+
+Beyond linear procedures, the module now covers:
+
+- **Conditional task graph** — steps can branch on outcome (`nextOnSuccess` / `nextOnFailure`) and gate on prerequisites (`precondition`), so a failed check can route to a recovery step and rejoin the main path.
+- **Instruction import** — `POST /guides/import` behind an adapter interface. A manual JSON adapter ships today (importable from the portal); an MES adapter is stubbed for production integration. Referenced images are downloaded and stored at import time, and graph links expressed as sequence numbers are resolved to step IDs server-side.
+- **Live session telemetry** — an SSE stream (`/guide-sessions/live/:id/stream`) publishes `session:started`, `step:entered`, `step:completed`, `step:retried`, `step:stalled`, and `session:submitted` events while a walk is in progress, giving observers and AI agents visibility *during* the job rather than only at sign-off.
+- **AI-assisted guidance** — an `AIGuideAdapter` extension point decides when to intervene and generates a contextual hint, delivered to the device via a consume-once hint queue. A self-contained stub adapter ships by default (no LLM, no cloud); a real model can be registered without touching surrounding infrastructure. Triggers on repeated retries or on a dwell-based stall (90 s on a step with no completion).
 
 ### 3D Model Library
-Per-anchor 3D overlays: GLB/USDZ upload with pass-through serving; OBJ/FBX/STEP are converted asynchronously via headless Blender. Models attach to anchors and render in AR on device.
+A shared 3D asset library with per-anchor "kits": models can be assigned to specific anchors or marked `general` to be visible everywhere, with an Author-saved default scale. GLB/USDZ upload is pass-through; OBJ/FBX/STEP are converted asynchronously to GLB via headless Blender when it is available on the host. GLB→USDZ conversion runs **in the portal browser** (Three.js `USDZExporter`) and uploads the result back, so no native toolchain is required on the server. Models render on device as ghost overlays with per-step scale, opacity, offset, and Y-rotation, positioned in AR by the Author.
 
 ### Anchor Portal (`/portal`)
-Browser-based team console served by SIB: anchor directory, QR generation with print-exact sizing (A4 page at true physical dimensions), and data administration — per-row and delete-all operations for anchors (cascading tags, pass-states, and blobs), sessions, AR Guides, and Gemba Walk data. Auto-detects whether the server requires an API key.
+Browser-based team console served by SIB, with tabs for Anchors, Sessions, Gemba Walks, AR Guides, **Guide Library**, and 3D Models. Covers anchor directory and QR generation with print-exact sizing (A4 page at true physical dimensions), CSV export, and data administration — per-row and delete-all operations for anchors (cascading tags, pass-states, and blobs), sessions, AR Guides, and Gemba Walk data. Auto-detects whether the server requires an API key.
+
+The **Guide Library** tab adds guide lifecycle management outside the app: browse guides per anchor, publish/unpublish, delete, inspect step lists with placement status, import a guide from JSON, and open a **⬡ Graph** view that renders the conditional task graph — success, failure, precondition, and sequential edges, with each failure branch laid out on its own lane and retry loops drawn as back-arcs.
 
 ### Roadmap Mind-Mapper (`/roadmap`)
 A secure, collaborative mind-mapping and roadmapping tool hosted on SIB — built for roadmap design, SIB ontology graphs, and AR workflow planning. Highlights: real-time collaboration (WebSockets, live cursors, presence), swimlanes (Now/Next/Later columns, Why/What/How rows), node status + review verdicts + comments, milestones, icons/shapes/links, collapsible branches, presentation mode, view filters and custom groups, version history with restore, PNG/SVG/JSON export, cross-server JSON import, a draft→publish workflow (per-map draft keys, pre-RBAC), SIB ontology import/export, and **image import** — photograph a whiteboard and a local vision model (Ollama) turns it into an editable roadmap draft. Full docs: [docs/roadmap-mindmapper.md](docs/roadmap-mindmapper.md). The platform's own roadmap lives in it: [docs/roadmaps/](docs/roadmaps/).
@@ -199,7 +208,8 @@ Each inspection reports a confidence score (0–100 %). Use this as a signal, no
 Once the core flow checks out, walk the rest of the platform:
 
 - **Gemba Walk** — start an audit walk, tap-place a LocTag with a defect category and photo, then re-open the walk on a second device and confirm it re-localizes from the saved ARWorldMap; mark the finding resolved with a completion photo.
-- **AR Guides** — author a two-step guide with images, publish it, and run it in Operator mode; confirm the guide session records each step completion.
+- **AR Guides** — author a two-step guide with images, place both steps in AR, publish it, and run it in Operator mode; confirm the guide session records each step completion and any evidence photos.
+- **Branching & AI hints** — import a guide with failure branches (see the Guide Library tab → ⬆ Import Guide), open ⬡ Graph and confirm branches render on separate lanes. Then run it and stand on one step for ~95 seconds without completing it: a stall event fires and the AI hint banner should appear.
 - **Portal** — open `/portal`, print a QR at exact physical size, and try a per-row delete to confirm cascades behave.
 - **Roadmap** — open `/roadmap`, import `docs/roadmaps/do-or-do-not.roadmap.json`, toggle the *Shipped ✓* filter, and press ▶ Present. Then photograph a whiteboard sketch and try **From image 📷** (needs Ollama running — see above).
 

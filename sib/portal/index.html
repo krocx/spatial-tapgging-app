@@ -2266,14 +2266,22 @@ function renderGuideGraph(guideId, anchorId) {
 
   const stepIdx = id => sorted.findIndex(s => s.id === id);
 
-  // A forward branch is a failure link that jumps ahead in the sequence to
-  // somewhere other than the immediate next step. A failure link pointing
-  // backwards is a retry loop, and one pointing at the next step is just the
-  // normal flow — neither earns a lane.
+  // Where the success path leads: the explicit link if the author set one,
+  // otherwise the next step in sequence.
+  const successTarget = s => s.nextOnSuccess || seqNext(s)?.id;
+
+  // A forward branch is a failure link that jumps ahead in the sequence AND
+  // lands somewhere other than where success goes. Comparing against the
+  // success target rather than against sequence position matters for the
+  // common "success skips ahead, failure takes the adjacent detour" shape —
+  // e.g. check oil (2): pass → inspect hoses (4), fail → top up oil (3).
+  // Step 3 is adjacent to step 2, yet is genuinely a branch.
+  // A failure link pointing backwards is a retry loop, and one pointing where
+  // success already goes is just the normal flow — neither earns a lane.
   const isForwardBranch = s => {
     if (!s.nextOnFailure || !byId[s.nextOnFailure]) return false;
     if (stepIdx(s.nextOnFailure) <= stepIdx(s.id))  return false;
-    return seqNext(s)?.id !== s.nextOnFailure;
+    return successTarget(s) !== s.nextOnFailure;
   };
 
   // Everything reachable from a forward-branch target via explicit success
