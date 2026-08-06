@@ -2247,62 +2247,92 @@ function renderGuideGraph(guideId, anchorId) {
   }
 
   // ── Lane assignment ───────────────────────────────────────────────────────
-  // Lane 0 = main success/sequential path from root.
-  // Each nextOnFailure branch gets its own lane below (lane 1, 2, …).
-  // colLane[id] = { col, lane }
-  const colLane     = {};
-  let   laneCounter = 0;
+  // Strategy: "Branch-root BFS"
+  //
+  // A step is a "branch root" when it is the nextOnFailure target of a step
+  // that ALSO has an explicit nextOnSuccess (a true fork). Branch roots and
+  // all nodes reachable from them form failure subtrees, each in its own lane.
+  // Steps NOT in any subtree go on the main sequential lane (0).
 
-  // Walk main path (lane 0)
-  const root = sorted[0];
-  let cur = root;
-  const mainVisited = new Set();
-  let col = 0;
-  while (cur && !mainVisited.has(cur.id)) {
-    mainVisited.add(cur.id);
-    colLane[cur.id] = { col: col++, lane: 0 };
-    const nextId = cur.nextOnSuccess || seqNext(cur)?.id;
-    cur = byId[nextId] || null;
-  }
+  const failureSourcesWithSuccess = sorted.filter(s =>
+    s.nextOnSuccess && byId[s.nextOnSuccess] &&
+    s.nextOnFailure && byId[s.nextOnFailure]
+  );
+  const branchRoots = new Set(failureSourcesWithSuccess.map(s => s.nextOnFailure));
 
-  // Walk failure branches (BFS over already-assigned nodes)
-  const branchQueue = sorted.filter(s => colLane[s.id]);
-  let bqi = 0;
-  while (bqi < branchQueue.length) {
-    const step = branchQueue[bqi++];
-    if (!step.nextOnFailure || !byId[step.nextOnFailure]) continue;
-    if (colLane[step.nextOnFailure]) continue; // already placed
+  // BFS from each branch root → nodeToLane[id] = lane number (1-based).
+  // Stop propagation when another branch root is encountered (it owns its lane).
+  const nodeToLane = {};
+  let laneCounter = 0;
 
+  failureSourcesWithSuccess.forEach(source => {
+    const rootId = source.nextOnFailure;
+    if (!rootId || !byId[rootId] || nodeToLane[rootId] !== undefined) return;
     laneCounter++;
-    const branchLane = laneCounter;
-    let bc   = byId[step.nextOnFailure];
-    let bcol = (colLane[step.id]?.col ?? 0) + 1;
-    const bvis = new Set();
-    while (bc && !colLane[bc.id] && !bvis.has(bc.id)) {
-      bvis.add(bc.id);
-      colLane[bc.id] = { col: bcol++, lane: branchLane };
-      branchQueue.push(bc);
-      const nextId = bc.nextOnSuccess || seqNext(bc)?.id;
-      bc = byId[nextId] || null;
-    }
-  }
-
-  // Fallback: any node not yet placed (precondition-only refs, disconnected)
-  sorted.forEach((s, i) => {
-    if (!colLane[s.id]) {
-      laneCounter++;
-      colLane[s.id] = { col: i, lane: laneCounter };
+    const lane = laneCounter;
+    const queue = [byId[rootId]];
+    const vis = new Set();
+    while (queue.length) {
+      const curr = queue.shift();
+      if (!curr || vis.has(curr.id)) continue;
+      vis.add(curr.id);
+      if (nodeToLane[curr.id] === undefined) nodeToLane[curr.id] = lane;
+      const nextId = curr.nextOnSuccess || seqNext(curr)?.id;
+      if (nextId && byId[nextId] && !branchRoots.has(nextId)) {
+        queue.push(byId[nextId]);
+      }
     }
   });
 
+  // Main path (lane 0): sequential order, subtree nodes excluded
+  const colLane = {};
+  let mainCol = 0;
+  sorted.forEach(step => {
+    if (nodeToLane[step.id] === undefined) {
+      colLane[step.id] = { col: mainCol++, lane: 0 };
+    }
+  });
+
+  // Failure subtrees: columns start one past their fork source
+  failureSourcesWithSuccess.forEach(source => {
+    const rootId = source.nextOnFailure;
+    if (!rootId || !byId[rootId]) return;
+    const lane = nodeToLane[rootId];
+    if (lane === undefined) return;
+
+    const startCol = (colLane[source.id]?.col ?? 0) + 1;
+    let cur = byId[rootId];
+    let col = startCol;
+    const vis = new Set();
+    while (cur && !vis.has(cur.id)) {
+      vis.add(cur.id);
+      if (nodeToLane[cur.id] === lane && !colLane[cur.id]) {
+        colLane[cur.id] = { col: col++, lane };
+      }
+      const nextId = cur.nextOnSuccess || seqNext(cur)?.id;
+      if (!nextId || !byId[nextId] || branchRoots.has(nextId)) break;
+      cur = byId[nextId];
+    }
+  });
+
+  // Fallback: anything still unplaced (disconnected / precondition-only)
+  sorted.forEach((s, i) => {
+    if (!colLane[s.id]) colLane[s.id] = { col: i, lane: 0 };
+  });
+
   // ── Build edges ───────────────────────────────────────────────────────────
+  // Sequential edges are only drawn within the same lane — a cross-lane
+  // seqNext would spuriously connect the main path into a failure branch.
   const edges = [];
   sorted.forEach(step => {
     if (step.nextOnSuccess && byId[step.nextOnSuccess]) {
       edges.push({ from: step.id, to: step.nextOnSuccess, type: 'success' });
     } else {
       const nxt = seqNext(step);
-      if (nxt) edges.push({ from: step.id, to: nxt.id, type: 'sequential' });
+      if (nxt && colLane[nxt.id] && colLane[step.id] &&
+          colLane[nxt.id].lane === colLane[step.id].lane) {
+        edges.push({ from: step.id, to: nxt.id, type: 'sequential' });
+      }
     }
     if (step.nextOnFailure && byId[step.nextOnFailure]) {
       edges.push({ from: step.id, to: step.nextOnFailure, type: 'failure' });
