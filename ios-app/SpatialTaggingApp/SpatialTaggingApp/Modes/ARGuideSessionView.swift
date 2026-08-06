@@ -86,6 +86,9 @@ struct ARGuideSessionView: View {
     // ── Sign-off ──────────────────────────────────────────────────────────────
     @State private var showSignOff = false
 
+    // ── FTUE / Help ───────────────────────────────────────────────────────────
+    @State private var showOnboarding = false
+
     // ── Panel visibility toggle ───────────────────────────────────────────────
     /// When false (default), only the current step's panel is shown.
     /// When true, all steps' panels are visible simultaneously.
@@ -210,6 +213,11 @@ struct ARGuideSessionView: View {
             sessionStart = Date()
             if !progresses.isEmpty { progresses[0].enter() }
             if let first = sortedSteps.first { Task { await loadStepImage(for: first) } }
+            // FTUE: auto-show guide session onboarding on first run
+            if settings.ftueEnabled && !settings.ftueGuideOperatorSeen {
+                settings.ftueGuideOperatorSeen = true
+                showOnboarding = true
+            }
         }
         .task { await loadData() }
         .sheet(isPresented: $showSignOff) {
@@ -238,6 +246,11 @@ struct ARGuideSessionView: View {
                 }
             }
         }
+        // FTUE / Help sheet
+        .sheet(isPresented: $showOnboarding) {
+            OnboardingSheet(context: .guideOperator)
+                .environmentObject(settings)
+        }
     }
 
     // ── Top bar ───────────────────────────────────────────────────────────────
@@ -264,8 +277,8 @@ struct ARGuideSessionView: View {
 
             Spacer()
 
-            if case .navigating(let index) = phase {
-                HStack(spacing: 10) {
+            HStack(spacing: 10) {
+                if case .navigating(let index) = phase {
                     Text("\(index + 1) / \(sortedSteps.count)")
                         .font(.subheadline.monospacedDigit())
                         .foregroundStyle(.white.opacity(0.7))
@@ -283,6 +296,14 @@ struct ARGuideSessionView: View {
                     }
                     .buttonStyle(.plain)
                 }
+
+                // Help button — always visible; re-shows the guide session onboarding
+                Button { showOnboarding = true } label: {
+                    Image(systemName: "questionmark.circle")
+                        .font(.system(size: 16))
+                        .foregroundStyle(.white.opacity(0.65))
+                }
+                .buttonStyle(.plain)
             }
         }
         .padding(.horizontal, 16)

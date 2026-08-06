@@ -91,14 +91,18 @@ final class AppSettings: ObservableObject {
     @Published var ftueGembaOperatorSeen: Bool {
         didSet { UserDefaults.standard.set(ftueGembaOperatorSeen, forKey: "ftue_gemba_operator_seen") }
     }
+    @Published var ftueGuideOperatorSeen: Bool {
+        didSet { UserDefaults.standard.set(ftueGuideOperatorSeen, forKey: "ftue_guide_operator_seen") }
+    }
 
     /// Resets all seen flags so the auto-show fires again on next entry to each mode.
     func resetFTUE() {
-        ftueHomeSeen           = false
-        ftueAuthorSeen         = false
-        ftueOperatorSeen       = false
-        ftueGembaAuthorSeen    = false
-        ftueGembaOperatorSeen  = false
+        ftueHomeSeen            = false
+        ftueAuthorSeen          = false
+        ftueOperatorSeen        = false
+        ftueGembaAuthorSeen     = false
+        ftueGembaOperatorSeen   = false
+        ftueGuideOperatorSeen   = false
     }
 
     // ── Guided Tour ──────────────────────────────────────────────────────────
@@ -164,6 +168,7 @@ final class AppSettings: ObservableObject {
         ftueOperatorSeen      = UserDefaults.standard.bool(forKey: "ftue_operator_seen")
         ftueGembaAuthorSeen   = UserDefaults.standard.bool(forKey: "ftue_gemba_author_seen")
         ftueGembaOperatorSeen = UserDefaults.standard.bool(forKey: "ftue_gemba_operator_seen")
+        ftueGuideOperatorSeen = UserDefaults.standard.bool(forKey: "ftue_guide_operator_seen")
         guidedTourEnabled = (UserDefaults.standard.object(forKey: "guided_tour_enabled") as? Bool) ?? true
         guidedTourSeen    = UserDefaults.standard.bool(forKey: "guided_tour_seen")
     }

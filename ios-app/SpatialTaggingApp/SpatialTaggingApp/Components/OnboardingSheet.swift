@@ -12,7 +12,7 @@ import SwiftUI
 // ── Context descriptor ────────────────────────────────────────────────────────
 
 enum OnboardingContext {
-    case home, author, operatorMode, gembaAuthor, gembaOperator
+    case home, author, operatorMode, gembaAuthor, gembaOperator, guideOperator
 
     var welcomeTitle: String {
         switch self {
@@ -21,6 +21,7 @@ enum OnboardingContext {
         case .operatorMode:  return "Operator Mode"
         case .gembaAuthor:   return "Gemba Walk\nAuthor"
         case .gembaOperator: return "Gemba Walk\nOperator"
+        case .guideOperator: return "AR Guide\nSession"
         }
     }
 
@@ -36,6 +37,8 @@ enum OnboardingContext {
             return "Walk the floor, pin every issue you find, and build the audit trail Operators will resolve."
         case .gembaOperator:
             return "Re-enter the space, navigate to each flagged stop, and log your resolution for every issue."
+        case .guideOperator:
+            return "Follow the step-by-step guide, mark each step complete, and sign off when you're done."
         }
     }
 
@@ -46,6 +49,7 @@ enum OnboardingContext {
         case .operatorMode:  return "eye.circle.fill"
         case .gembaAuthor:   return "figure.walk.circle.fill"
         case .gembaOperator: return "checkmark.seal.fill"
+        case .guideOperator: return "list.clipboard.fill"
         }
     }
 
@@ -56,6 +60,7 @@ enum OnboardingContext {
         case .operatorMode:  return .green
         case .gembaAuthor:   return .orange
         case .gembaOperator: return .teal
+        case .guideOperator: return .purple
         }
     }
 
@@ -66,6 +71,7 @@ enum OnboardingContext {
         case .operatorMode:  return OnboardingContent.operatorMode
         case .gembaAuthor:   return OnboardingContent.gembaAuthor
         case .gembaOperator: return OnboardingContent.gembaOperator
+        case .guideOperator: return OnboardingContent.guideOperator
         }
     }
 }
@@ -192,6 +198,31 @@ enum OnboardingContent {
             icon:   "chart.bar.doc.horizontal",
             title:  "Results in the Portal",
             detail: "All completions appear in the Gemba Walks tab of the web portal, grouped by location. Supervisors can track resolution status and export reports without leaving their desk."),
+    ]
+
+    // ── AR Guide Session — Operator ───────────────────────────────────────────
+
+    static let guideOperator: [OnboardingStep] = [
+        OnboardingStep(
+            icon:   "rectangle.on.rectangle.angled",
+            title:  "Floating Step Panels",
+            detail: "Each guide step appears as a floating panel in AR space above its pin. Tap the pill to expand a full card with the step description, reference photo, and action buttons."),
+        OnboardingStep(
+            icon:   "checkmark.circle.fill",
+            title:  "Mark Steps Complete",
+            detail: "When you've performed a step, tap \"Mark Complete\" on the card. Required steps (marked with a lock icon) must be completed before you can advance — optional steps can be skipped."),
+        OnboardingStep(
+            icon:   "arrow.triangle.branch",
+            title:  "Branch Steps",
+            detail: "Some guides branch based on outcome — completing a step may take you to a different next step than usual. The panel always shows exactly where you'll go next."),
+        OnboardingStep(
+            icon:   "waveform.badge.magnifyingglass",
+            title:  "AI Hint Banner",
+            detail: "If the guide has an AI assistant configured, contextual hints may appear as a banner at the bottom of the screen. Tap the hint to navigate to the suggested step, or dismiss it."),
+        OnboardingStep(
+            icon:   "signature",
+            title:  "Sign Off When Done",
+            detail: "Once all required steps are complete, the final step shows a \"Sign Off\" button. Tapping it records the session, your name, and a timestamp — all synced to the portal immediately."),
     ]
 }
 
