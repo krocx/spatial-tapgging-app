@@ -2254,10 +2254,14 @@ function renderGuideGraph(guideId, anchorId) {
   // all nodes reachable from them form failure subtrees, each in its own lane.
   // Steps NOT in any subtree go on the main sequential lane (0).
 
-  const failureSourcesWithSuccess = sorted.filter(s =>
-    s.nextOnSuccess && byId[s.nextOnSuccess] &&
-    s.nextOnFailure && byId[s.nextOnFailure]
-  );
+  // A step is a "fork" whenever its nextOnFailure points somewhere other than
+  // the sequential next step.  We don't require an explicit nextOnSuccess —
+  // the sequential flow is the implicit success path for most guides.
+  const failureSourcesWithSuccess = sorted.filter(s => {
+    if (!s.nextOnFailure || !byId[s.nextOnFailure]) return false;
+    const nxt = seqNext(s);
+    return !nxt || nxt.id !== s.nextOnFailure;   // failure target ≠ seq-next
+  });
   const branchRoots = new Set(failureSourcesWithSuccess.map(s => s.nextOnFailure));
 
   // BFS from each branch root → nodeToLane[id] = lane number (1-based).
