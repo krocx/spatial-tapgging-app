@@ -246,6 +246,37 @@
     /* AR Guides panel */
     #ar-guides-panel { display:none; padding:20px 24px 56px; }
     #ar-guides-panel.visible { display:block; }
+
+    /* Guide Library panel */
+    #guide-library-panel { display:none; padding:20px 24px 56px; }
+    #guide-library-panel.visible { display:block; }
+    .gl-anchor-section { margin-bottom:28px; }
+    .gl-anchor-hdr { font-size:0.78rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; padding:0 0 8px; border-bottom:1px solid var(--border); margin-bottom:12px; }
+    .gl-guide-card { border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:10px; }
+    .gl-guide-card.unplaced { border-color: #b45309; }
+    .gl-guide-hdr { background:rgba(255,255,255,0.04); padding:12px 14px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .gl-guide-name { font-size:0.88rem; font-weight:600; color:var(--text); flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .gl-badge { font-size:0.63rem; font-weight:700; border-radius:8px; padding:2px 7px; white-space:nowrap; }
+    .gl-badge-published { background:#166534; color:#bbf7d0; }
+    .gl-badge-draft     { background:#374151; color:#9ca3af; }
+    .gl-badge-warn      { background:#78350f; color:#fde68a; }
+    .gl-placement-pill  { font-size:0.68rem; color:var(--muted); white-space:nowrap; }
+    .gl-guide-desc { font-size:0.75rem; color:var(--muted); padding:0 14px 10px; margin-top:-4px; }
+    .gl-warn-banner { background:rgba(180,83,9,0.15); border-top:1px solid rgba(180,83,9,0.3); padding:7px 14px; font-size:0.74rem; color:#fbbf24; }
+    .gl-steps-list { display:none; border-top:1px solid var(--border); }
+    .gl-steps-list.open { display:block; }
+    .gl-step-row { display:flex; align-items:flex-start; gap:10px; padding:9px 14px; border-bottom:1px solid rgba(255,255,255,0.04); font-size:0.78rem; }
+    .gl-step-row:last-child { border-bottom:none; }
+    .gl-step-seq { font-weight:700; color:var(--accent); min-width:24px; }
+    .gl-step-body { flex:1; min-width:0; }
+    .gl-step-title { font-weight:600; color:var(--text); margin-bottom:2px; }
+    .gl-step-text  { color:var(--muted); line-height:1.4; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+    .gl-step-tags  { display:flex; gap:5px; margin-top:5px; flex-wrap:wrap; }
+    .gl-step-tag   { font-size:0.62rem; padding:1px 6px; border-radius:6px; }
+    .gl-step-placed   { background:rgba(22,101,52,0.3);  color:#86efac; }
+    .gl-step-unplaced { background:rgba(180,83,9,0.25);  color:#fbbf24; }
+    .gl-step-img      { background:rgba(99,102,241,0.2); color:#a5b4fc; }
+    .gl-step-branch   { background:rgba(79,70,229,0.2);  color:#c4b5fd; }
     .ag-anchor-group { max-width:960px;margin:0 auto 24px; }
     .ag-anchor-hdr { font-size:0.8rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;padding:6px 0;border-bottom:1px solid var(--border);margin-bottom:12px; }
     .ag-guide-group { margin-bottom:16px;border:1px solid var(--border);border-radius:10px;overflow:hidden; }
@@ -362,8 +393,9 @@
   <button class="nav-tab active" data-view="anchors"   onclick="switchView('anchors')">Anchors</button>
   <button class="nav-tab"        data-view="sessions"  onclick="switchView('sessions')">Sessions</button>
   <button class="nav-tab"        data-view="gemba"     onclick="switchView('gemba')">Gemba Walks</button>
-  <button class="nav-tab"        data-view="ar-guides" onclick="switchView('ar-guides')">AR Guides</button>
-  <button class="nav-tab"        data-view="models"    onclick="switchView('models')">3D Models</button>
+  <button class="nav-tab"        data-view="ar-guides"     onclick="switchView('ar-guides')">AR Guides</button>
+  <button class="nav-tab"        data-view="guide-library" onclick="switchView('guide-library')">Guide Library</button>
+  <button class="nav-tab"        data-view="models"        onclick="switchView('models')">3D Models</button>
 </div>
 
 <!-- Setup banner (shown when API key not set) -->
@@ -447,6 +479,15 @@
     </div>
     <p id="import-guide-error" style="display:none;color:var(--red);font-size:0.78rem;margin-top:12px"></p>
   </div>
+</div>
+
+<!-- Guide Library panel -->
+<div id="guide-library-panel">
+  <div class="sessions-toolbar">
+    <span style="font-size:0.78rem;color:var(--muted);flex:1">All guides · grouped by anchor · expand to see steps</span>
+    <button class="btn btn-ghost btn-sm" onclick="loadGuideLibrary()">⟳ Refresh</button>
+  </div>
+  <div id="guide-library-list"></div>
 </div>
 
 <!-- 3D Models panel -->
@@ -1350,47 +1391,44 @@ function switchView(view) {
   const sessPanel     = document.getElementById('sessions-panel');
   const gembaPanel    = document.getElementById('gemba-panel');
   const agPanel       = document.getElementById('ar-guides-panel');
+  const glPanel       = document.getElementById('guide-library-panel');
   const modelsPanel   = document.getElementById('models-panel');
+
+  // Hide everything, then selectively show
+  sessPanel.classList.remove('visible');
+  gembaPanel.classList.remove('visible');
+  agPanel.classList.remove('visible');
+  glPanel.classList.remove('visible');
+  modelsPanel.classList.remove('visible');
 
   if (view === 'sessions') {
     anchorGrid.style.display = 'none';
     toolbar.style.display    = 'none';
     sessPanel.classList.add('visible');
-    gembaPanel.classList.remove('visible');
-    agPanel.classList.remove('visible');
-    modelsPanel.classList.remove('visible');
     if (sessionsData.length === 0) loadSessions();
   } else if (view === 'gemba') {
     anchorGrid.style.display = 'none';
     toolbar.style.display    = 'none';
-    sessPanel.classList.remove('visible');
     gembaPanel.classList.add('visible');
-    agPanel.classList.remove('visible');
-    modelsPanel.classList.remove('visible');
     if (Object.keys(gembaLocTags).length === 0) loadGembaWalks();
   } else if (view === 'ar-guides') {
     anchorGrid.style.display = 'none';
     toolbar.style.display    = 'none';
-    sessPanel.classList.remove('visible');
-    gembaPanel.classList.remove('visible');
     agPanel.classList.add('visible');
-    modelsPanel.classList.remove('visible');
     loadARGuideSessions();
+  } else if (view === 'guide-library') {
+    anchorGrid.style.display = 'none';
+    toolbar.style.display    = 'none';
+    glPanel.classList.add('visible');
+    loadGuideLibrary();
   } else if (view === 'models') {
     anchorGrid.style.display = 'none';
     toolbar.style.display    = 'none';
-    sessPanel.classList.remove('visible');
-    gembaPanel.classList.remove('visible');
-    agPanel.classList.remove('visible');
     modelsPanel.classList.add('visible');
     initModelsPanel();
   } else {
     anchorGrid.style.display = '';
     toolbar.style.display    = 'flex';
-    sessPanel.classList.remove('visible');
-    gembaPanel.classList.remove('visible');
-    agPanel.classList.remove('visible');
-    modelsPanel.classList.remove('visible');
   }
 }
 
@@ -1972,6 +2010,215 @@ async function submitImportGuide() {
 document.getElementById('import-guide-modal').addEventListener('click', (e) => {
   if (e.target === document.getElementById('import-guide-modal')) closeImportGuideModal();
 });
+
+// ── Guide Library ─────────────────────────────────────────────────────────────
+// guideLibraryData: { [anchorId]: { anchor, guides: Guide[], steps: { [guideId]: GuideStep[] } } }
+let guideLibraryData = {};
+
+async function loadGuideLibrary() {
+  const list = document.getElementById('guide-library-list');
+  list.innerHTML = '<p style="color:var(--muted);padding:20px 0;text-align:center">Loading…</p>';
+  guideLibraryData = {};
+
+  try {
+    // Ensure anchors are loaded
+    if (!allAnchors.length) {
+      const resp = await apiFetch('/anchors');
+      allAnchors = resp.data || [];
+    }
+    if (!allAnchors.length) {
+      list.innerHTML = '<p style="color:var(--muted);padding:40px 0;text-align:center">No anchors found. Create an anchor on the iOS app first.</p>';
+      return;
+    }
+
+    // Fetch all guides for all anchors in parallel
+    const results = await Promise.allSettled(
+      allAnchors.map(a => apiFetch(`/guides?anchorId=${encodeURIComponent(a.id)}&all=true`))
+    );
+
+    let totalGuides = 0;
+    results.forEach((r, i) => {
+      const anchor = allAnchors[i];
+      const guides = r.status === 'fulfilled' ? (r.value.data || []) : [];
+      if (guides.length) {
+        guideLibraryData[anchor.id] = { anchor, guides, steps: {} };
+        totalGuides += guides.length;
+      }
+    });
+
+    if (!totalGuides) {
+      list.innerHTML = '<p style="color:var(--muted);padding:40px 0;text-align:center">No guides yet. Import one using the AR Guides tab or create steps in the iOS Guide Editor.</p>';
+      return;
+    }
+
+    renderGuideLibrary();
+  } catch (e) {
+    list.innerHTML = `<p style="color:var(--red);padding:20px 0;text-align:center">⚠ ${e.message}</p>`;
+  }
+}
+
+function renderGuideLibrary() {
+  const list = document.getElementById('guide-library-list');
+  let html = '';
+
+  for (const [anchorId, entry] of Object.entries(guideLibraryData)) {
+    const anchorLabel = entry.anchor.assetId || anchorId;
+    html += `<div class="gl-anchor-section">
+      <div class="gl-anchor-hdr">📍 ${esc(anchorLabel)}</div>`;
+
+    for (const guide of entry.guides.sort((a, b) => a.name.localeCompare(b.name))) {
+      const steps      = entry.steps[guide.id] || null;
+      const placedCount  = steps ? steps.filter(s => s.isPlaced).length : null;
+      const totalSteps   = steps ? steps.length : null;
+      const allPlaced    = steps ? (placedCount === totalSteps) : true; // unknown until expanded → assume ok
+      const hasUnplaced  = steps && !allPlaced;
+
+      const pubBadge   = guide.published
+        ? `<span class="gl-badge gl-badge-published">● Published</span>`
+        : `<span class="gl-badge gl-badge-draft">◌ Draft</span>`;
+      const placePill  = steps
+        ? `<span class="gl-placement-pill">${placedCount}/${totalSteps} placed</span>`
+        : '';
+      const warnBadge  = hasUnplaced
+        ? `<span class="gl-badge gl-badge-warn">⚠ Unplaced steps</span>` : '';
+
+      const pubLabel   = guide.published ? 'Unpublish' : 'Publish';
+      const pubColor   = guide.published ? 'color:var(--red)' : 'color:#86efac';
+
+      html += `<div class="gl-guide-card${hasUnplaced ? ' unplaced' : ''}" id="gl-card-${guide.id}">
+        <div class="gl-guide-hdr">
+          <span class="gl-guide-name" title="${esc(guide.name)}">📋 ${esc(guide.name)}</span>
+          ${pubBadge}${warnBadge}${placePill}
+          <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;${pubColor}" onclick="togglePublishGuide('${guide.id}','${anchorId}',${guide.published})">${pubLabel}</button>
+          <button class="btn btn-ghost btn-sm" style="font-size:0.68rem" onclick="toggleGuideSteps('${guide.id}','${anchorId}')" id="gl-toggle-${guide.id}">▶ Steps</button>
+          <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;color:var(--red)" onclick="deleteGuideFromLibrary('${guide.id}','${anchorId}')">🗑</button>
+        </div>`;
+
+      if (guide.description) {
+        html += `<div class="gl-guide-desc">${esc(guide.description)}</div>`;
+      }
+
+      if (hasUnplaced) {
+        html += `<div class="gl-warn-banner">⚠ ${totalSteps - placedCount} step${totalSteps - placedCount !== 1 ? 's' : ''} need AR placement before Operators can use this guide. Open the Guide Editor on iOS to place them.</div>`;
+      }
+
+      html += `<div class="gl-steps-list" id="gl-steps-${guide.id}">
+        <div style="padding:12px 14px;color:var(--muted);font-size:0.78rem">Loading steps…</div>
+      </div>`;
+
+      html += `</div>`; // gl-guide-card
+    }
+
+    html += `</div>`; // gl-anchor-section
+  }
+
+  list.innerHTML = html;
+}
+
+async function toggleGuideSteps(guideId, anchorId) {
+  const stepsEl  = document.getElementById(`gl-steps-${guideId}`);
+  const toggleEl = document.getElementById(`gl-toggle-${guideId}`);
+  const isOpen   = stepsEl.classList.contains('open');
+
+  if (isOpen) {
+    stepsEl.classList.remove('open');
+    toggleEl.textContent = '▶ Steps';
+    return;
+  }
+
+  stepsEl.classList.add('open');
+  toggleEl.textContent = '▾ Steps';
+
+  // Lazy-load steps if not already fetched
+  const entry = guideLibraryData[anchorId];
+  if (!entry) return;
+  if (!entry.steps[guideId]) {
+    try {
+      const resp = await apiFetch(`/guides/${encodeURIComponent(guideId)}/steps`);
+      entry.steps[guideId] = resp.data || [];
+      // Re-render card to update placement pill + warn banner
+      renderGuideLibrary();
+      // Re-open after re-render
+      document.getElementById(`gl-steps-${guideId}`).classList.add('open');
+      document.getElementById(`gl-toggle-${guideId}`).textContent = '▾ Steps';
+    } catch (e) {
+      stepsEl.innerHTML = `<div style="padding:10px 14px;color:var(--red);font-size:0.78rem">⚠ ${e.message}</div>`;
+      return;
+    }
+  }
+
+  renderStepsInCard(guideId, anchorId);
+}
+
+function renderStepsInCard(guideId, anchorId) {
+  const steps  = (guideLibraryData[anchorId]?.steps[guideId]) || [];
+  const stepsEl = document.getElementById(`gl-steps-${guideId}`);
+  if (!stepsEl) return;
+
+  if (!steps.length) {
+    stepsEl.innerHTML = '<div style="padding:10px 14px;color:var(--muted);font-size:0.78rem">No steps yet.</div>';
+    return;
+  }
+
+  let html = '';
+  for (const step of steps) {
+    const placedTag  = step.isPlaced
+      ? `<span class="gl-step-tag gl-step-placed">✅ Placed</span>`
+      : `<span class="gl-step-tag gl-step-unplaced">⚠ Unplaced</span>`;
+    const imgTag     = step.mediaPath
+      ? `<span class="gl-step-tag gl-step-img">📷 Image</span>` : '';
+    const branchTag  = (step.nextOnSuccess || step.nextOnFailure)
+      ? `<span class="gl-step-tag gl-step-branch">⇒ Branch</span>` : '';
+    const title      = step.title || `Step ${step.sequenceNumber}`;
+
+    html += `<div class="gl-step-row">
+      <div class="gl-step-seq">${step.sequenceNumber}</div>
+      <div class="gl-step-body">
+        <div class="gl-step-title">${esc(title)}</div>
+        <div class="gl-step-text">${esc(step.text)}</div>
+        <div class="gl-step-tags">${placedTag}${imgTag}${branchTag}</div>
+      </div>
+    </div>`;
+  }
+  stepsEl.innerHTML = html;
+}
+
+async function togglePublishGuide(guideId, anchorId, currentlyPublished) {
+  try {
+    const resp = await apiFetch(`/guides/${encodeURIComponent(guideId)}`, {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ published: !currentlyPublished }),
+    });
+    const updated = resp.data;
+    // Update local state
+    const entry = guideLibraryData[anchorId];
+    if (entry) {
+      const idx = entry.guides.findIndex(g => g.id === guideId);
+      if (idx !== -1) entry.guides[idx] = updated;
+    }
+    toast(updated.published ? `"${updated.name}" published.` : `"${updated.name}" reverted to draft.`);
+    renderGuideLibrary();
+    // Re-open steps if they were loaded
+    if (guideLibraryData[anchorId]?.steps[guideId]) {
+      document.getElementById(`gl-steps-${guideId}`)?.classList.add('open');
+      document.getElementById(`gl-toggle-${guideId}`).textContent = '▾ Steps';
+      renderStepsInCard(guideId, anchorId);
+    }
+  } catch (e) { toast(`Failed: ${e.message}`, 4000); }
+}
+
+async function deleteGuideFromLibrary(guideId, anchorId) {
+  const entry = guideLibraryData[anchorId];
+  const guide = entry?.guides.find(g => g.id === guideId);
+  if (!confirm(`Delete guide "${guide?.name ?? guideId}" and all its steps? This cannot be undone.`)) return;
+  try {
+    await _apiDelete(`/guides/${encodeURIComponent(guideId)}`);
+    if (entry) entry.guides = entry.guides.filter(g => g.id !== guideId);
+    toast('Guide deleted.');
+    renderGuideLibrary();
+  } catch (e) { toast(`Delete failed: ${e.message}`, 4000); }
+}
 
 async function deleteGembaCompletion(id) {
   try {
