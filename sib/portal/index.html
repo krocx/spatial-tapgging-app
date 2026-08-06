@@ -2235,97 +2235,102 @@ function renderGuideGraph(guideId, anchorId) {
     return;
   }
 
-  // ── Sort + index ─────────────────────────────────────────────────────────
+  // ── Sort + index ──────────────────────────────────────────────────────────
   const sorted = [...steps].sort((a, b) => a.sequenceNumber - b.sequenceNumber);
   const byId   = {};
   sorted.forEach(s => { byId[s.id] = s; });
 
-  // ── Build edges ───────────────────────────────────────────────────────────
-  // type: 'success' | 'failure' | 'precondition' | 'sequential'
-  const edges = [];
-  sorted.forEach((step, i) => {
-    if (step.nextOnSuccess) {
-      edges.push({ from: step.id, to: step.nextOnSuccess, type: 'success' });
-    } else if (i + 1 < sorted.length) {
-      edges.push({ from: step.id, to: sorted[i + 1].id, type: 'sequential' });
+  // Sequential fallback: next step by sequenceNumber
+  function seqNext(step) {
+    const i = sorted.findIndex(s => s.id === step.id);
+    return i >= 0 && i + 1 < sorted.length ? sorted[i + 1] : null;
+  }
+
+  // ── Lane assignment ───────────────────────────────────────────────────────
+  // Lane 0 = main success/sequential path from root.
+  // Each nextOnFailure branch gets its own lane below (lane 1, 2, …).
+  // colLane[id] = { col, lane }
+  const colLane     = {};
+  let   laneCounter = 0;
+
+  // Walk main path (lane 0)
+  const root = sorted[0];
+  let cur = root;
+  const mainVisited = new Set();
+  let col = 0;
+  while (cur && !mainVisited.has(cur.id)) {
+    mainVisited.add(cur.id);
+    colLane[cur.id] = { col: col++, lane: 0 };
+    const nextId = cur.nextOnSuccess || seqNext(cur)?.id;
+    cur = byId[nextId] || null;
+  }
+
+  // Walk failure branches (BFS over already-assigned nodes)
+  const branchQueue = sorted.filter(s => colLane[s.id]);
+  let bqi = 0;
+  while (bqi < branchQueue.length) {
+    const step = branchQueue[bqi++];
+    if (!step.nextOnFailure || !byId[step.nextOnFailure]) continue;
+    if (colLane[step.nextOnFailure]) continue; // already placed
+
+    laneCounter++;
+    const branchLane = laneCounter;
+    let bc   = byId[step.nextOnFailure];
+    let bcol = (colLane[step.id]?.col ?? 0) + 1;
+    const bvis = new Set();
+    while (bc && !colLane[bc.id] && !bvis.has(bc.id)) {
+      bvis.add(bc.id);
+      colLane[bc.id] = { col: bcol++, lane: branchLane };
+      branchQueue.push(bc);
+      const nextId = bc.nextOnSuccess || seqNext(bc)?.id;
+      bc = byId[nextId] || null;
     }
-    if (step.nextOnFailure) {
+  }
+
+  // Fallback: any node not yet placed (precondition-only refs, disconnected)
+  sorted.forEach((s, i) => {
+    if (!colLane[s.id]) {
+      laneCounter++;
+      colLane[s.id] = { col: i, lane: laneCounter };
+    }
+  });
+
+  // ── Build edges ───────────────────────────────────────────────────────────
+  const edges = [];
+  sorted.forEach(step => {
+    if (step.nextOnSuccess && byId[step.nextOnSuccess]) {
+      edges.push({ from: step.id, to: step.nextOnSuccess, type: 'success' });
+    } else {
+      const nxt = seqNext(step);
+      if (nxt) edges.push({ from: step.id, to: nxt.id, type: 'sequential' });
+    }
+    if (step.nextOnFailure && byId[step.nextOnFailure]) {
       edges.push({ from: step.id, to: step.nextOnFailure, type: 'failure' });
     }
-    if (step.precondition) {
+    if (step.precondition && byId[step.precondition]) {
       edges.push({ from: step.precondition, to: step.id, type: 'precondition' });
     }
   });
 
-  // ── BFS rank assignment ───────────────────────────────────────────────────
-  // Count non-precondition incoming flow edges per node
-  const inFlow = {};
-  sorted.forEach(s => { inFlow[s.id] = 0; });
-  edges.filter(e => e.type !== 'precondition').forEach(e => {
-    if (byId[e.to]) inFlow[e.to] = (inFlow[e.to] || 0) + 1;
-  });
-
-  const root   = sorted.find(s => inFlow[s.id] === 0) || sorted[0];
-  const ranks  = {};
-  ranks[root.id] = 0;
-  const queue    = [root.id];
-  const visited  = new Set([root.id]);
-
-  while (queue.length) {
-    const curr     = queue.shift();
-    const currRank = ranks[curr];
-    edges
-      .filter(e => e.from === curr && e.type !== 'precondition')
-      .forEach(e => {
-        if (!byId[e.to]) return;
-        if (!visited.has(e.to)) {
-          visited.add(e.to);
-          ranks[e.to] = currRank + 1;
-          queue.push(e.to);
-        } else {
-          // Push deeper to maintain correct depth (handles diamond shapes)
-          ranks[e.to] = Math.max(ranks[e.to], currRank + 1);
-        }
-      });
-  }
-  // Any node unreachable from root gets a rank based on sequenceNumber position
-  sorted.forEach((s, i) => { if (ranks[s.id] === undefined) ranks[s.id] = i; });
-
-  // ── Group by rank ─────────────────────────────────────────────────────────
-  const rankGroups = {};
-  sorted.forEach(s => {
-    const r = ranks[s.id];
-    if (!rankGroups[r]) rankGroups[r] = [];
-    rankGroups[r].push(s);
-  });
-
   // ── Layout constants ──────────────────────────────────────────────────────
-  const NW     = 148;   // node width
-  const NH     = 56;    // node height
-  const CGAP   = 64;    // horizontal gap between columns
-  const RGAP   = 18;    // vertical gap between rows
-  const PAD    = 20;    // canvas padding
+  const NW   = 148;   // node width
+  const NH   = 56;    // node height
+  const CGAP = 64;    // horizontal gap between columns
+  const LGAP = 32;    // vertical gap between lanes
+  const PAD  = 20;
 
-  const maxRank    = Math.max(...Object.keys(rankGroups).map(Number));
-  const maxPerRank = Math.max(...Object.values(rankGroups).map(g => g.length));
+  const maxCol  = Math.max(...Object.values(colLane).map(v => v.col));
+  const maxLane = Math.max(...Object.values(colLane).map(v => v.lane));
 
-  const svgW = PAD + (maxRank + 1) * (NW + CGAP) - CGAP + PAD;
-  const svgH = PAD + maxPerRank  * (NH + RGAP)  - RGAP + PAD + 32; // +32 for legend
+  const svgW = PAD + (maxCol + 1) * (NW + CGAP) - CGAP + PAD;
+  const svgH = PAD + (maxLane + 1) * (NH + LGAP) - LGAP + PAD + 36;
 
-  // ── Assign node positions ─────────────────────────────────────────────────
+  // ── Pixel positions ───────────────────────────────────────────────────────
   const pos = {};
-  Object.entries(rankGroups).forEach(([rank, group]) => {
-    const r      = Number(rank);
-    const x      = PAD + r * (NW + CGAP);
-    const totalH = group.length * (NH + RGAP) - RGAP;
-    const startY = PAD + (svgH - 32 - PAD * 2 - totalH) / 2;
-    group.forEach((step, i) => {
-      pos[step.id] = {
-        x,  y: startY + i * (NH + RGAP),
-        cx: x + NW / 2,
-        cy: startY + i * (NH + RGAP) + NH / 2,
-      };
-    });
+  Object.entries(colLane).forEach(([id, { col, lane }]) => {
+    const x = PAD + col * (NW + CGAP);
+    const y = PAD + lane * (NH + LGAP);
+    pos[id] = { x, y, cx: x + NW / 2, cy: y + NH / 2 };
   });
 
   // ── Edge style map ────────────────────────────────────────────────────────
@@ -2337,7 +2342,7 @@ function renderGuideGraph(guideId, anchorId) {
   };
 
   // ── Build SVG ─────────────────────────────────────────────────────────────
-  const gid = guideId.replace(/[^a-z0-9]/gi, '_'); // safe ID fragment
+  const gid = guideId.replace(/[^a-z0-9]/gi, '_');
   let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${svgW}" height="${svgH}" style="display:block;min-width:${svgW}px;font-family:system-ui,sans-serif">`;
 
   // Arrowhead markers
@@ -2347,40 +2352,53 @@ function renderGuideGraph(guideId, anchorId) {
     </marker></defs>`;
   });
 
-  // ── Draw edges (under nodes) ──────────────────────────────────────────────
+  // ── Lane separator rules ──────────────────────────────────────────────────
+  for (let lane = 1; lane <= maxLane; lane++) {
+    const sepY = PAD + lane * (NH + LGAP) - LGAP / 2;
+    svg += `<line x1="${PAD}" y1="${sepY}" x2="${svgW - PAD}" y2="${sepY}"
+      stroke="#1e293b" stroke-width="1" stroke-dasharray="4,4" opacity="0.7"/>`;
+  }
+
+  // ── Edges (drawn under nodes) ─────────────────────────────────────────────
   edges.forEach(edge => {
     const fp = pos[edge.from];
     const tp = pos[edge.to];
     if (!fp || !tp) return;
 
-    const s  = EST[edge.type];
-    const x1 = fp.x + NW;        // right side of from-node
-    const y1 = fp.cy;
-    const x2 = tp.x - 2;         // left side of to-node (leave room for arrowhead)
-    const y2 = tp.cy;
+    const s = EST[edge.type];
+    let x1, y1, x2, y2, pathD;
 
-    let pathD;
-    if (x2 <= x1 + 4) {
-      // Back-edge (loop or same column): arc above both nodes
-      const arcY = Math.min(fp.y, tp.y) - 36;
-      pathD = `M${x1},${y1} C${x1+50},${arcY} ${x2-50},${arcY} ${x2},${y2}`;
-    } else {
-      const mx = x1 + (x2 - x1) * 0.55;
+    if (tp.x > fp.x + NW / 2) {
+      // Forward edge: exit right, enter left
+      x1 = fp.x + NW;  y1 = fp.cy;
+      x2 = tp.x - 2;   y2 = tp.cy;
+      const mx = x1 + (x2 - x1) * 0.5;
       pathD = `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`;
+    } else if (tp.x < fp.x - NW / 2) {
+      // Back-edge: arc above both nodes
+      x1 = fp.cx;  y1 = fp.y;
+      x2 = tp.cx;  y2 = tp.y;
+      const arcY = Math.min(fp.y, tp.y) - 40;
+      pathD = `M${x1},${y1} C${x1},${arcY} ${x2},${arcY} ${x2},${y2}`;
+    } else {
+      // Same column, different lane: exit bottom / enter top
+      x1 = fp.cx;        y1 = fp.y + NH;
+      x2 = tp.cx;        y2 = tp.y - 2;
+      const my = (y1 + y2) / 2;
+      pathD = `M${x1},${y1} C${x1},${my} ${x2},${my} ${x2},${y2}`;
     }
 
     svg += `<path d="${pathD}" fill="none" stroke="${s.color}" stroke-width="1.6"
       stroke-dasharray="${s.dash}" marker-end="url(#arr-${gid}-${edge.type})" opacity="0.85"/>`;
 
-    // Label on non-sequential edges
     if (s.label) {
-      const lx = (x1 + x2) / 2 + (x2 <= x1 + 4 ? 0 : 0);
-      const ly = (y1 + y2) / 2 - (x2 <= x1 + 4 ? 20 : 8);
+      const lx = (x1 + x2) / 2;
+      const ly = (y1 + y2) / 2 - 8;
       svg += `<text x="${lx}" y="${ly}" text-anchor="middle" font-size="9" fill="${s.color}" font-weight="700">${s.label}</text>`;
     }
   });
 
-  // ── Draw nodes ────────────────────────────────────────────────────────────
+  // ── Nodes ─────────────────────────────────────────────────────────────────
   sorted.forEach(step => {
     const p = pos[step.id];
     if (!p) return;
@@ -2390,10 +2408,9 @@ function renderGuideGraph(guideId, anchorId) {
     const bg        = placed ? 'rgba(99,102,241,0.14)' : 'rgba(180,83,9,0.14)';
     const badgeFill = placed ? '#4f46e5' : '#92400e';
 
-    const rawTitle  = step.title || `Step ${step.sequenceNumber}`;
-    const title     = rawTitle.length > 17 ? rawTitle.slice(0, 16) + '…' : rawTitle;
-    const rawBody   = step.text || '';
-    const body      = rawBody.length > 22  ? rawBody.slice(0, 21)  + '…' : rawBody;
+    const rawTitle = step.title || `Step ${step.sequenceNumber}`;
+    const title    = rawTitle.length > 17 ? rawTitle.slice(0, 16) + '…' : rawTitle;
+    const body     = (step.text || '').length > 22 ? step.text.slice(0, 21) + '…' : (step.text || '');
 
     svg += `<g>
       <rect x="${p.x}" y="${p.y}" width="${NW}" height="${NH}" rx="9"
@@ -2410,23 +2427,22 @@ function renderGuideGraph(guideId, anchorId) {
   });
 
   // ── Legend ────────────────────────────────────────────────────────────────
-  const LY   = svgH - 22;
-  const items = [
+  const LY = svgH - 22;
+  const legendItems = [
     { color: '#4ade80', dash: '',    label: 'Success path' },
     { color: '#f87171', dash: '',    label: 'Failure path' },
     { color: '#fbbf24', dash: '4,3', label: 'Precondition' },
     { color: '#475569', dash: '3,3', label: 'Sequential'   },
   ];
   let lx = PAD;
-  items.forEach(item => {
-    svg += `<line x1="${lx}" y1="${LY}" x2="${lx+20}" y2="${LY}"
+  legendItems.forEach(item => {
+    svg += `<line x1="${lx}" y1="${LY}" x2="${lx + 20}" y2="${LY}"
       stroke="${item.color}" stroke-width="1.5" stroke-dasharray="${item.dash}"/>`;
     svg += `<text x="${lx + 24}" y="${LY + 4}" font-size="9" fill="#64748b">${item.label}</text>`;
     lx += 100;
   });
 
   svg += '</svg>';
-
   graphEl.innerHTML = `<div style="overflow-x:auto;padding:14px 14px 10px">${svg}</div>`;
 }
 
