@@ -33,6 +33,13 @@ export interface AIGuideContext {
   recentEvents:  GuideSessionEvent[];
   /** Number of `step:retried` events on the current step so far. */
   retryCount:    number;
+  /**
+   * True when this invocation was triggered by a `step:stalled` event — the
+   * Operator has been sitting on the current step past the dwell threshold
+   * without completing it. Distinct from retryCount: a stall means "no
+   * progress and no attempts", a retry means "attempted and failed".
+   */
+  stalled:       boolean;
 }
 
 export interface AIGuideAdapter {
@@ -60,7 +67,8 @@ export class StubAIGuideAdapter implements AIGuideAdapter {
   readonly name = 'stub-ai-guide';
 
   shouldIntervene(ctx: AIGuideContext): boolean {
-    return ctx.retryCount >= RETRY_THRESHOLD;
+    // Two independent triggers: repeated failed attempts, or a silent stall.
+    return ctx.stalled || ctx.retryCount >= RETRY_THRESHOLD;
   }
 
   async generateHint(ctx: AIGuideContext): Promise<AIHint | null> {
@@ -68,10 +76,13 @@ export class StubAIGuideAdapter implements AIGuideAdapter {
     if (!step) return null;
 
     // Build hint text: prefer the step's TTS script as it's authored guidance.
-    // Fall back to a generic nudge that references the step title/text.
+    // Fall back to a nudge whose wording matches the trigger — a stalled
+    // Operator hasn't failed at anything yet, so "retried N times" would be wrong.
     const stepLabel = step.title?.trim() || step.text.slice(0, 60);
-    const hintText  = step.ttsText?.trim()
-      ?? `You've retried "${stepLabel}" ${ctx.retryCount} times. Double-check the reference image and try again from a stable position.`;
+    const fallback  = ctx.stalled
+      ? `Still working on "${stepLabel}"? Check the reference image, and mark the step complete once you're done.`
+      : `You've retried "${stepLabel}" ${ctx.retryCount} times. Double-check the reference image and try again from a stable position.`;
+    const hintText  = step.ttsText?.trim() ?? fallback;
 
     const hint: AIHint = {
       id:            uuidv4(),
@@ -90,7 +101,8 @@ export class StubAIGuideAdapter implements AIGuideAdapter {
       hint.action = 'none';
     }
 
-    console.log(`[ai-guide] Stub hint for step ${step.id} (retries=${ctx.retryCount}): "${hintText.slice(0, 80)}…"`);
+    const trigger = ctx.stalled ? 'stalled' : `retries=${ctx.retryCount}`;
+    console.log(`[ai-guide] Stub hint for step ${step.id} (${trigger}): "${hintText.slice(0, 80)}…"`);
     return hint;
   }
 }

@@ -2246,82 +2246,103 @@ function renderGuideGraph(guideId, anchorId) {
     return i >= 0 && i + 1 < sorted.length ? sorted[i + 1] : null;
   }
 
+  // ── Link census ───────────────────────────────────────────────────────────
+  // Counted up front and surfaced in the panel header. If a guide renders as a
+  // single row, this says immediately whether that's a layout problem or simply
+  // a guide with no branch data — the two look identical on screen otherwise.
+  const nSuccess = sorted.filter(s => s.nextOnSuccess && byId[s.nextOnSuccess]).length;
+  const nFailure = sorted.filter(s => s.nextOnFailure && byId[s.nextOnFailure]).length;
+  const nPrecond = sorted.filter(s => s.precondition  && byId[s.precondition]).length;
+
   // ── Lane assignment ───────────────────────────────────────────────────────
-  // Strategy: "Branch-root BFS"
+  // The subtle failure this replaces: the spine walk used to fall back to plain
+  // sequence order, so from step 1 it marched through EVERY step — including the
+  // ones that belong to failure branches. Those targets were therefore already
+  // on lane 0 by the time the branch pass ran, so no branch ever opened a lane
+  // and the graph always collapsed to one row.
   //
-  // A step is a "branch root" when it is the nextOnFailure target of a step
-  // that ALSO has an explicit nextOnSuccess (a true fork). Branch roots and
-  // all nodes reachable from them form failure subtrees, each in its own lane.
-  // Steps NOT in any subtree go on the main sequential lane (0).
+  // The fix is to work out which steps a branch owns BEFORE laying out the
+  // spine, and let the spine step over them.
 
-  // A step is a "fork" whenever its nextOnFailure points somewhere other than
-  // the sequential next step.  We don't require an explicit nextOnSuccess —
-  // the sequential flow is the implicit success path for most guides.
-  const failureSourcesWithSuccess = sorted.filter(s => {
+  const stepIdx = id => sorted.findIndex(s => s.id === id);
+
+  // A forward branch is a failure link that jumps ahead in the sequence to
+  // somewhere other than the immediate next step. A failure link pointing
+  // backwards is a retry loop, and one pointing at the next step is just the
+  // normal flow — neither earns a lane.
+  const isForwardBranch = s => {
     if (!s.nextOnFailure || !byId[s.nextOnFailure]) return false;
-    const nxt = seqNext(s);
-    return !nxt || nxt.id !== s.nextOnFailure;   // failure target ≠ seq-next
+    if (stepIdx(s.nextOnFailure) <= stepIdx(s.id))  return false;
+    return seqNext(s)?.id !== s.nextOnFailure;
+  };
+
+  // Everything reachable from a forward-branch target via explicit success
+  // links. These steps belong to branches, so the spine must skip them.
+  const branchOwned = new Set();
+  sorted.filter(isForwardBranch).forEach(s => {
+    let cur = byId[s.nextOnFailure];
+    const seen = new Set();
+    while (cur && !seen.has(cur.id)) {
+      seen.add(cur.id);
+      branchOwned.add(cur.id);
+      cur = cur.nextOnSuccess ? byId[cur.nextOnSuccess] : null;
+    }
   });
-  const branchRoots = new Set(failureSourcesWithSuccess.map(s => s.nextOnFailure));
 
-  // BFS from each branch root → nodeToLane[id] = lane number (1-based).
-  // Stop propagation when another branch root is encountered (it owns its lane).
-  const nodeToLane = {};
+  const colLane = {};
+
+  // 1. Spine → lane 0. Explicit success link first; otherwise the next
+  //    in-sequence step that no branch has claimed.
+  const spine = [];
+  {
+    let cur = sorted[0];
+    const seen = new Set();
+    while (cur && !seen.has(cur.id)) {
+      seen.add(cur.id);
+      spine.push(cur);
+      let nxt = cur.nextOnSuccess ? byId[cur.nextOnSuccess] : null;
+      if (!nxt) {
+        for (let i = stepIdx(cur.id) + 1; i < sorted.length; i++) {
+          if (!branchOwned.has(sorted[i].id)) { nxt = sorted[i]; break; }
+        }
+      }
+      cur = nxt;
+    }
+  }
+  spine.forEach((s, i) => { colLane[s.id] = { col: i, lane: 0 }; });
+
+  // 2. Failure branches → one lane each, starting a column past their fork.
+  //    Branch walks follow explicit success links only; sequence order here
+  //    would drag the rest of the guide into the branch.
   let laneCounter = 0;
+  const frontier  = [...spine];
+  let fi = 0;
+  while (fi < frontier.length) {
+    const src   = frontier[fi++];
+    const tgtId = src.nextOnFailure;
+    // An already-placed target is a loop back into the flow: drawn as a
+    // back-arc, but it needs no lane of its own.
+    if (!tgtId || !byId[tgtId] || colLane[tgtId]) continue;
 
-  failureSourcesWithSuccess.forEach(source => {
-    const rootId = source.nextOnFailure;
-    if (!rootId || !byId[rootId] || nodeToLane[rootId] !== undefined) return;
     laneCounter++;
     const lane = laneCounter;
-    const queue = [byId[rootId]];
-    const vis = new Set();
-    while (queue.length) {
-      const curr = queue.shift();
-      if (!curr || vis.has(curr.id)) continue;
-      vis.add(curr.id);
-      if (nodeToLane[curr.id] === undefined) nodeToLane[curr.id] = lane;
-      const nextId = curr.nextOnSuccess || seqNext(curr)?.id;
-      if (nextId && byId[nextId] && !branchRoots.has(nextId)) {
-        queue.push(byId[nextId]);
-      }
+    let col = (colLane[src.id]?.col ?? 0) + 1;
+    let cur = byId[tgtId];
+    const seen = new Set();
+    while (cur && !colLane[cur.id] && !seen.has(cur.id)) {
+      seen.add(cur.id);
+      colLane[cur.id] = { col: col++, lane };
+      frontier.push(cur);
+      cur = cur.nextOnSuccess ? byId[cur.nextOnSuccess] : null;
     }
-  });
+  }
 
-  // Main path (lane 0): sequential order, subtree nodes excluded
-  const colLane = {};
-  let mainCol = 0;
-  sorted.forEach(step => {
-    if (nodeToLane[step.id] === undefined) {
-      colLane[step.id] = { col: mainCol++, lane: 0 };
+  // 3. Orphans → a lane each, so they read as disconnected rather than in-flow.
+  sorted.forEach(s => {
+    if (!colLane[s.id]) {
+      laneCounter++;
+      colLane[s.id] = { col: 0, lane: laneCounter };
     }
-  });
-
-  // Failure subtrees: columns start one past their fork source
-  failureSourcesWithSuccess.forEach(source => {
-    const rootId = source.nextOnFailure;
-    if (!rootId || !byId[rootId]) return;
-    const lane = nodeToLane[rootId];
-    if (lane === undefined) return;
-
-    const startCol = (colLane[source.id]?.col ?? 0) + 1;
-    let cur = byId[rootId];
-    let col = startCol;
-    const vis = new Set();
-    while (cur && !vis.has(cur.id)) {
-      vis.add(cur.id);
-      if (nodeToLane[cur.id] === lane && !colLane[cur.id]) {
-        colLane[cur.id] = { col: col++, lane };
-      }
-      const nextId = cur.nextOnSuccess || seqNext(cur)?.id;
-      if (!nextId || !byId[nextId] || branchRoots.has(nextId)) break;
-      cur = byId[nextId];
-    }
-  });
-
-  // Fallback: anything still unplaced (disconnected / precondition-only)
-  sorted.forEach((s, i) => {
-    if (!colLane[s.id]) colLane[s.id] = { col: i, lane: 0 };
   });
 
   // ── Build edges ───────────────────────────────────────────────────────────
@@ -2477,7 +2498,34 @@ function renderGuideGraph(guideId, anchorId) {
   });
 
   svg += '</svg>';
-  graphEl.innerHTML = `<div style="overflow-x:auto;padding:14px 14px 10px">${svg}</div>`;
+
+  // ── Diagnostic header ─────────────────────────────────────────────────────
+  // A single-row graph is ambiguous on its own: it can mean the layout failed,
+  // or that the guide genuinely has no branches. These counts disambiguate.
+  const laneCount = laneCounter + 1;
+  const chip = (label, value, colour) =>
+    `<span style="display:inline-block;margin-right:12px;font-size:0.7rem;color:var(--muted)">
+       ${label} <b style="color:${colour}">${value}</b></span>`;
+
+  let header = `<div style="padding:10px 14px 0;display:flex;flex-wrap:wrap;align-items:center">
+    ${chip('Steps',        sorted.length, '#e2e8f0')}
+    ${chip('Success',      nSuccess,      '#4ade80')}
+    ${chip('Failure',      nFailure,      '#f87171')}
+    ${chip('Precondition', nPrecond,      '#fbbf24')}
+    ${chip('Lanes',        laneCount,     '#a78bfa')}
+  </div>`;
+
+  // The one case worth calling out explicitly, because it is the difference
+  // between "the graph is broken" and "there is nothing to branch".
+  if (nFailure === 0 && nSuccess === 0) {
+    header += `<div style="padding:6px 14px 0;font-size:0.7rem;color:#fbbf24">
+      ⚠ No branch links on any step — this guide is purely sequential, so a
+      single row is the correct rendering. Add a failure branch in the step
+      editor to see lanes.</div>`;
+  }
+
+  graphEl.innerHTML = header +
+    `<div style="overflow-x:auto;padding:8px 14px 10px">${svg}</div>`;
 }
 
 async function togglePublishGuide(guideId, anchorId, currentlyPublished) {

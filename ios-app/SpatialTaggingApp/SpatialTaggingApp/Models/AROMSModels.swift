@@ -406,6 +406,7 @@ enum GuideSessionEventType: String, Codable {
     case stepEntered     = "step:entered"
     case stepCompleted   = "step:completed"
     case stepRetried     = "step:retried"
+    case stepStalled     = "step:stalled"
     case perceptionResult = "perception:result"
     case sessionSubmitted = "session:submitted"
 }

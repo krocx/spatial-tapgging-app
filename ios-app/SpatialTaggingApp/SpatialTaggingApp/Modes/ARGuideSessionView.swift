@@ -104,6 +104,19 @@ struct ARGuideSessionView: View {
     /// Timer that polls /live/:id/hints every 5 s while a live session is open.
     @State private var hintPollTimer: Timer? = nil
 
+    // ── Stall detection (idle helper trigger) ────────────────────────────────
+    /// Timer that checks every 10 s whether the Operator has dwelled on the
+    /// current step past `stallThresholdSeconds` without completing it.
+    @State private var stallCheckTimer: Timer? = nil
+    /// When the Operator landed on the current step, for stall purposes only.
+    /// Deliberately separate from `GuideStepProgress.enteredAt`: that field is
+    /// write-once so sign-off can report true time-on-step, whereas this resets
+    /// on every visit so re-entering a step gives a fresh 90 s grace period.
+    @State private var stallClockStart: Date? = nil
+    /// Step IDs that have already emitted a stall event during their current
+    /// visit. Cleared for a step when the Operator navigates back to it.
+    @State private var stallFiredSteps: Set<String> = []
+
     // ── Evidence capture (Phase 3) ────────────────────────────────────────────
     @State private var showEvidencePicker      = false
     @State private var evidencePickerStepIndex: Int? = nil
@@ -126,6 +139,13 @@ struct ARGuideSessionView: View {
     // ── Thresholds ────────────────────────────────────────────────────────────
     private let arrivedM:     Float = 0.5
     private let approachingM: Float = 1.0
+    /// Seconds on a single step without completing it before we ask the server
+    /// for a hint. Generous on purpose: hands-on AR work involves no taps, so a
+    /// short threshold would interrupt Operators who are simply busy.
+    private let stallThresholdSeconds: TimeInterval = 90
+    /// How often the stall condition is evaluated. Wall-clock comparison against
+    /// `stallClockStart`, so a coarse interval stays accurate across backgrounding.
+    private let stallCheckInterval:    TimeInterval = 10
 
     // ── Computed ──────────────────────────────────────────────────────────────
 
@@ -158,6 +178,7 @@ struct ARGuideSessionView: View {
                     stopSpeaking()
                     removeArrow()
                     stopHintPolling()
+                    stopStallDetection()
                     // Remove scene-root panel containers (they are NOT pin children,
                     // so they must be cleaned up manually on view teardown)
                     for (_, container) in panelContainers {
@@ -603,6 +624,10 @@ struct ARGuideSessionView: View {
                 // Start AI hint poll — every 5 s, drain server hint queue and show
                 // the first pending hint as a banner in GuideContentPanel.
                 startHintPolling(liveSessionId: lsId)
+                // Start the dwell watchdog. Step 0's clock starts now rather than
+                // in navigateTo, since the Operator is already standing on it.
+                stallClockStart = Date()
+                startStallDetection(liveSessionId: lsId)
             }
 
             // Kick off background GLB prefetch for all steps that have a 3D model
@@ -1415,6 +1440,10 @@ struct ARGuideSessionView: View {
         showContentPanel = false
         phase = .navigating(index: index)
         if progresses[index].enteredAt == nil { progresses[index].enter() }
+        // Restart the stall clock for this visit and re-arm the step so a
+        // revisit can produce a fresh hint.
+        stallClockStart = Date()
+        stallFiredSteps.remove(sortedSteps[index].id)
         highlightPin(index: index)
         if sortedSteps[index].worldPosition == nil { showContentPanel = true }
         let step = sortedSteps[index]
@@ -1518,6 +1547,63 @@ struct ARGuideSessionView: View {
     private func stopHintPolling() {
         hintPollTimer?.invalidate()
         hintPollTimer = nil
+    }
+
+    // ── Stall detection ───────────────────────────────────────────────────────
+
+    /// Start the repeating stall check. One timer serves the whole session —
+    /// it re-reads `phase` on each tick rather than being restarted per step.
+    /// Safe to call multiple times.
+    private func startStallDetection(liveSessionId: String) {
+        stallCheckTimer?.invalidate()
+        stallCheckTimer = Timer.scheduledTimer(withTimeInterval: stallCheckInterval, repeats: true) { _ in
+            Task { @MainActor in
+                evaluateStall(liveSessionId: liveSessionId)
+            }
+        }
+    }
+
+    private func stopStallDetection() {
+        stallCheckTimer?.invalidate()
+        stallCheckTimer = nil
+    }
+
+    /// Emit `step:stalled` once if the Operator has been on the current step
+    /// past the threshold with no completion and nothing else competing for
+    /// their attention.
+    @MainActor
+    private func evaluateStall(liveSessionId: String) {
+        // Only meaningful while actively navigating a step.
+        guard case .navigating(let idx) = phase,
+              idx < sortedSteps.count,
+              idx < progresses.count else { return }
+
+        // Nothing to nudge about if the step is already done.
+        guard !progresses[idx].isCompleted else { return }
+
+        // Don't stack help on help, or interrupt a modal the Operator opened.
+        guard activeHint == nil,
+              !showSignOff,
+              !showOnboarding,
+              !showEvidencePicker else { return }
+
+        // Dwell threshold not yet reached.
+        guard let start = stallClockStart,
+              Date().timeIntervalSince(start) >= stallThresholdSeconds else { return }
+
+        // Once per visit — re-armed by navigateTo when the Operator returns.
+        let stepId = sortedSteps[idx].id
+        guard !stallFiredSteps.contains(stepId) else { return }
+        stallFiredSteps.insert(stepId)
+
+        Task {
+            await SIBClient(settings: settings).pushGuideSessionEvent(
+                liveSessionId: liveSessionId,
+                event: PushGuideSessionEventRequest(
+                    type: .stepStalled, stepId: stepId, stepIndex: idx, durationSeconds: nil
+                )
+            )
+        }
     }
 
     /// After marking complete, auto-advance to the next step if one exists.

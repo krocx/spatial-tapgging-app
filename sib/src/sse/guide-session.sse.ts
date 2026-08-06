@@ -131,7 +131,15 @@ export function pushEvent(
     const prev = retryCounters.get(liveSessionId) ?? 0;
     const next = prev + 1;
     retryCounters.set(liveSessionId, next);
-    maybeGenerateHint(liveSessionId, session, next);
+    maybeGenerateHint(liveSessionId, session, next, false);
+  }
+
+  // A stall means the Operator has dwelled on the current step past the client
+  // side threshold without completing it. iOS fires this at most once per step
+  // visit, so no server-side debounce is needed here.
+  if (req.type === 'step:stalled') {
+    const retries = retryCounters.get(liveSessionId) ?? 0;
+    maybeGenerateHint(liveSessionId, session, retries, true);
   }
 
   broadcastToSubscribers(liveSessionId, event);
@@ -251,6 +259,7 @@ function maybeGenerateHint(
   liveSessionId: string,
   session:       LiveGuideSession,
   retryCount:    number,
+  stalled:       boolean,
 ): void {
   const adapter = getActiveAIGuideAdapter();
   if (!adapter) return;
@@ -269,6 +278,7 @@ function maybeGenerateHint(
     currentStep,
     recentEvents: session.events.slice(-20), // last 20 events for context
     retryCount,
+    stalled,
   };
 
   if (!adapter.shouldIntervene(ctx)) return;

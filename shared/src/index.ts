@@ -820,6 +820,7 @@ export type GuideSessionEventType =
   | 'step:entered'
   | 'step:completed'
   | 'step:retried'
+  | 'step:stalled'
   | 'perception:result'
   | 'session:submitted';
 
