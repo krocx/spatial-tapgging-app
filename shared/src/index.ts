@@ -889,5 +889,68 @@ export interface AIHint {
   ts:             string;   // ISO 8601
 }
 
+// ============================================================
+// Instructions Import Tool — adapter-based guide import
+// ============================================================
+
+/**
+ * A single step in an imported guide.
+ *
+ * Graph links (nextOnSuccess, nextOnFailure, precondition) are expressed as
+ * 1-based sequence numbers rather than UUIDs — the server resolves them to
+ * real step IDs after all steps have been created.
+ *
+ * imageUrl, if provided, is downloaded at import time and stored in the SIB
+ * step-image directory (same path as portal-uploaded images). The guide works
+ * offline once imported.
+ */
+export interface ImportedGuideStep {
+  sequenceNumber:       number;
+  title?:               string;
+  text:                 string;
+  ttsText?:             string;
+  /** URL of the reference image — downloaded and stored locally at import time. */
+  imageUrl?:            string;
+  completionRequired?:  boolean;   // defaults to true
+  // Conditional task graph — expressed as sequence numbers; server resolves to UUIDs
+  nextOnSuccessSeq?:    number;
+  nextOnFailureSeq?:    number;
+  preconditionSeq?:     number;
+}
+
+/**
+ * A complete guide ready to be imported into SIB.
+ * Produced by InstructionsSourceAdapters (ManualJsonAdapter for testing,
+ * MESAdapter for production).
+ */
+export interface ImportedGuide {
+  name:         string;
+  description?: string;
+  steps:        ImportedGuideStep[];
+}
+
+/**
+ * Request body for POST /guides/import.
+ * sourceType defaults to 'manual' — pass 'mes' when routing through the MES adapter.
+ */
+export interface ImportGuideRequest {
+  anchorId:     string;
+  createdBy:    string;
+  sourceType?:  'manual' | 'mes';
+  /** Full ImportedGuide payload — passed through to the active adapter. */
+  payload:      ImportedGuide;
+}
+
+/**
+ * Response from POST /guides/import.
+ * imageErrors lists any imageUrl values that failed to download — the guide
+ * and its steps are still created; affected steps simply have no mediaPath.
+ */
+export interface ImportGuideResult {
+  guide:        Guide;
+  steps:        GuideStep[];
+  imageErrors:  string[];
+}
+
 // --- Roadmap Mind-Mapper (served at /roadmap, API at /mindmap/*) ---
 export * from './mindmap.js';

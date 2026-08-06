@@ -413,11 +413,40 @@
 <div id="ar-guides-panel">
   <div class="sessions-toolbar">
     <span style="font-size:0.78rem;color:var(--muted);flex:1">AR Guide completions · grouped by anchor → guide</span>
+    <button class="btn btn-ghost btn-sm" onclick="openImportGuideModal()" title="Import a guide from JSON or MES">⬆ Import Guide</button>
     <button class="btn btn-ghost btn-sm" onclick="exportARGuidesCSV()" title="Export as CSV">⬇ Export</button>
     <button class="btn btn-ghost btn-sm" onclick="loadARGuideSessions()">⟳ Refresh</button>
     <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteAllARGuideSessions()" title="Delete all AR Guide sessions">🗑 Delete All</button>
   </div>
   <div id="ar-guides-list" class="sessions-list"></div>
+</div>
+
+<!-- Import Guide modal -->
+<div id="import-guide-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9000;align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px 32px;width:min(640px,92vw);max-height:90vh;overflow-y:auto;position:relative;">
+    <button onclick="closeImportGuideModal()" style="position:absolute;top:14px;right:16px;background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer;line-height:1">✕</button>
+    <h3 style="margin:0 0 4px;font-size:1rem;font-weight:700;color:var(--text)">⬆ Import Guide</h3>
+    <p style="margin:0 0 20px;font-size:0.78rem;color:var(--muted)">Paste an <code>ImportedGuide</code> JSON payload. The guide will be created as a draft and must be published in the iOS app after spatial placement.</p>
+
+    <label style="font-size:0.8rem;font-weight:600;color:var(--text);display:block;margin-bottom:6px">Anchor</label>
+    <select id="import-anchor-select" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:0.85rem;margin-bottom:16px">
+      <option value="">— select anchor —</option>
+    </select>
+
+    <label style="font-size:0.8rem;font-weight:600;color:var(--text);display:block;margin-bottom:6px">Author name</label>
+    <input id="import-author-name" type="text" placeholder="Your name" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:0.85rem;margin-bottom:16px">
+
+    <label style="font-size:0.8rem;font-weight:600;color:var(--text);display:block;margin-bottom:6px">
+      Payload <span style="font-weight:400;color:var(--muted)">(ImportedGuide JSON)</span>
+    </label>
+    <textarea id="import-payload-json" rows="12" placeholder='{"name":"Startup Procedure","steps":[{"sequenceNumber":1,"text":"Open valve A","imageUrl":"https://..."}]}' style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:0.78rem;font-family:monospace;resize:vertical;margin-bottom:20px"></textarea>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-ghost btn-sm" onclick="closeImportGuideModal()">Cancel</button>
+      <button class="btn btn-sm" onclick="submitImportGuide()" style="background:var(--accent);color:#fff;font-weight:600">Import</button>
+    </div>
+    <p id="import-guide-error" style="display:none;color:var(--red);font-size:0.78rem;margin-top:12px"></p>
+  </div>
 </div>
 
 <!-- 3D Models panel -->
@@ -1880,6 +1909,69 @@ async function deleteAllARGuideSessions() {
     await loadARGuideSessions();
   } catch (e) { toast(`Delete failed: ${e.message}`, 4000); }
 }
+
+// ── Import Guide ──────────────────────────────────────────────────────────────
+
+function openImportGuideModal() {
+  // Populate anchor dropdown from the already-loaded anchors list
+  const sel = document.getElementById('import-anchor-select');
+  sel.innerHTML = '<option value="">— select anchor —</option>';
+  const anchors = allAnchors || [];
+  for (const a of anchors) {
+    const opt = document.createElement('option');
+    opt.value       = a.id;
+    opt.textContent = `${a.assetId ?? a.id} (${a.id.slice(0,8)}…)`;
+    sel.appendChild(opt);
+  }
+  // Pre-fill author name if available
+  const storedName = localStorage.getItem('sibAuthorName') || '';
+  document.getElementById('import-author-name').value = storedName;
+  document.getElementById('import-guide-error').style.display = 'none';
+  const modal = document.getElementById('import-guide-modal');
+  modal.style.display = 'flex';
+}
+
+function closeImportGuideModal() {
+  document.getElementById('import-guide-modal').style.display = 'none';
+}
+
+async function submitImportGuide() {
+  const errEl      = document.getElementById('import-guide-error');
+  const anchorId   = document.getElementById('import-anchor-select').value.trim();
+  const createdBy  = document.getElementById('import-author-name').value.trim();
+  const rawJson    = document.getElementById('import-payload-json').value.trim();
+
+  errEl.style.display = 'none';
+
+  if (!anchorId)  { errEl.textContent = 'Please select an anchor.';         errEl.style.display = 'block'; return; }
+  if (!createdBy) { errEl.textContent = 'Author name is required.';         errEl.style.display = 'block'; return; }
+  if (!rawJson)   { errEl.textContent = 'Payload JSON cannot be empty.';    errEl.style.display = 'block'; return; }
+
+  let payload;
+  try { payload = JSON.parse(rawJson); }
+  catch (e) { errEl.textContent = `Invalid JSON: ${e.message}`; errEl.style.display = 'block'; return; }
+
+  try {
+    const result = await apiFetch('/guides/import', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ anchorId, createdBy, payload }),
+    });
+    const { guide, steps, imageErrors } = result.data;
+    closeImportGuideModal();
+    let msg = `Imported "${guide.name}" — ${steps.length} step${steps.length !== 1 ? 's' : ''}.`;
+    if (imageErrors.length) msg += ` (${imageErrors.length} image(s) failed to download)`;
+    toast(msg, imageErrors.length ? 4000 : 2500);
+  } catch (e) {
+    errEl.textContent = `Import failed: ${e.message}`;
+    errEl.style.display = 'block';
+  }
+}
+
+// Close modal on backdrop click
+document.getElementById('import-guide-modal').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('import-guide-modal')) closeImportGuideModal();
+});
 
 async function deleteGembaCompletion(id) {
   try {

@@ -2,6 +2,7 @@
 //
 // Endpoints:
 //   POST   /guides                           — Author: create a Guide
+//   POST   /guides/import                    — Import a guide from an InstructionsSourceAdapter
 //   GET    /guides?anchorId=xxx              — List published guides for an anchor
 //   GET    /guides?anchorId=xxx&all=true     — List all guides (drafts + published) for Authors
 //   GET    /guides/:id                       — Get a single Guide
@@ -18,6 +19,8 @@ import type { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import fs   from 'fs';
 import path from 'path';
+import https from 'https';
+import http  from 'http';
 import type {
   Guide,
   GuideStep,
@@ -25,9 +28,15 @@ import type {
   UpdateGuideRequest,
   CreateGuideStepRequest,
   UpdateGuideStepRequest,
+  ImportGuideRequest,
+  ImportGuideResult,
   ApiResponse,
 } from '@spatial/shared';
 import { JsonFileStore } from '../stores/json-file-store.js';
+import {
+  getInstructionsSourceAdapter,
+  getActiveInstructionsSourceAdapter,
+} from '../adapters/instructions-source-adapter.js';
 
 // ── Storage ───────────────────────────────────────────────────────────────────
 
@@ -55,9 +64,197 @@ function deleteStepImage(filename: string): void {
   } catch { /* not present — ignore */ }
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/**
+ * Download a remote image URL and return its bytes as a Buffer.
+ * Supports http and https. Follows up to 3 redirects.
+ * Resolves with null on any network / HTTP error so the caller can treat
+ * image failures as non-fatal.
+ */
+function downloadUrl(url: string, redirectsLeft = 3): Promise<Buffer | null> {
+  return new Promise((resolve) => {
+    const lib = url.startsWith('https') ? https : http;
+    const req = lib.get(url, { timeout: 15_000 }, (res) => {
+      // Follow redirects
+      if ((res.statusCode === 301 || res.statusCode === 302) && res.headers.location && redirectsLeft > 0) {
+        resolve(downloadUrl(res.headers.location, redirectsLeft - 1));
+        return;
+      }
+      if (!res.statusCode || res.statusCode < 200 || res.statusCode >= 300) {
+        console.warn(`[SIB] Image download failed (${res.statusCode}): ${url}`);
+        resolve(null);
+        return;
+      }
+      const chunks: Buffer[] = [];
+      res.on('data', (chunk: Buffer) => chunks.push(chunk));
+      res.on('end', () => resolve(Buffer.concat(chunks)));
+      res.on('error', () => resolve(null));
+    });
+    req.on('error',   () => resolve(null));
+    req.on('timeout', () => { req.destroy(); resolve(null); });
+  });
+}
+
 // ── Router ────────────────────────────────────────────────────────────────────
 
 const router = Router();
+
+// POST /guides/import — import a guide from an InstructionsSourceAdapter
+//
+// MUST be registered before /:id routes so the literal "import" path is not
+// treated as a guide id by Express.
+//
+// Body: ImportGuideRequest { anchorId, createdBy, sourceType?, payload }
+// The adapter identified by sourceType (default: active adapter) is called
+// with `payload`. It returns an ImportedGuide which is then persisted as a
+// new Guide + GuideSteps. Images referenced by imageUrl are downloaded and
+// stored locally. Graph links (nextOnSuccessSeq etc.) are resolved to real
+// step UUIDs in a second pass after all steps are created.
+router.post('/import', async (req: Request, res: Response): Promise<void> => {
+  const body = req.body as ImportGuideRequest;
+
+  if (!body.anchorId || !body.createdBy || !body.payload) {
+    res.status(400).json({
+      error: 'anchorId, createdBy, and payload are required',
+      timestamp: new Date().toISOString(),
+    });
+    return;
+  }
+
+  // Select adapter
+  const adapter = body.sourceType
+    ? getInstructionsSourceAdapter(body.sourceType)
+    : getActiveInstructionsSourceAdapter();
+
+  if (!adapter) {
+    res.status(400).json({
+      error: `No InstructionsSourceAdapter found for sourceType "${body.sourceType ?? 'active'}"`,
+      timestamp: new Date().toISOString(),
+    });
+    return;
+  }
+
+  // Fetch the normalised ImportedGuide from the adapter
+  let imported;
+  try {
+    imported = await adapter.fetchGuide(body.payload);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[SIB] Import adapter error:', err);
+    res.status(422).json({
+      error: `Adapter error: ${msg}`,
+      timestamp: new Date().toISOString(),
+    });
+    return;
+  }
+
+  if (!imported.steps || imported.steps.length === 0) {
+    res.status(422).json({
+      error: 'ImportedGuide must contain at least one step',
+      timestamp: new Date().toISOString(),
+    });
+    return;
+  }
+
+  const now     = new Date().toISOString();
+  const guideId = uuidv4();
+
+  // ── Create the Guide record ────────────────────────────────────────────────
+  const guide: Guide = {
+    id:          guideId,
+    anchorId:    body.anchorId,
+    name:        imported.name.trim(),
+    description: imported.description?.trim() ?? '',
+    published:   false,   // always starts as draft — Author must publish
+    createdBy:   body.createdBy,
+    createdAt:   now,
+    updatedAt:   now,
+  };
+  guideStore.save(guide);
+  console.log(`[SIB] Guide imported (${adapter.name}): ${guideId} ("${guide.name}") — ${imported.steps.length} steps`);
+
+  // ── First pass: assign UUIDs and build seq→id map ─────────────────────────
+  const seqToId = new Map<number, string>();
+  const stepIds: string[] = [];
+  for (const s of imported.steps) {
+    const stepId = uuidv4();
+    seqToId.set(s.sequenceNumber, stepId);
+    stepIds.push(stepId);
+  }
+
+  // ── Download images in parallel (non-fatal) ────────────────────────────────
+  const imageErrors: string[] = [];
+  const imageBuffers = await Promise.all(
+    imported.steps.map(async (s) => {
+      if (!s.imageUrl) return null;
+      const buf = await downloadUrl(s.imageUrl);
+      if (!buf) {
+        imageErrors.push(s.imageUrl);
+        return null;
+      }
+      return buf;
+    }),
+  );
+
+  // ── Create GuideStep records ───────────────────────────────────────────────
+  const createdSteps: GuideStep[] = [];
+
+  for (let i = 0; i < imported.steps.length; i++) {
+    const s      = imported.steps[i];
+    const stepId = stepIds[i];
+
+    // Save downloaded image (if any)
+    let mediaPath: string | undefined;
+    const buf = imageBuffers[i];
+    if (buf) {
+      try {
+        const date     = new Date();
+        const stamp    = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2,'0')}${String(date.getDate()).padStart(2,'0')}_${String(date.getHours()).padStart(2,'0')}${String(date.getMinutes()).padStart(2,'0')}${String(date.getSeconds()).padStart(2,'0')}`;
+        const filename = `${guideId}_${stepId}_${stamp}.jpg`;
+        fs.writeFileSync(path.join(STEP_IMG_DIR, filename), buf);
+        mediaPath = filename;
+      } catch (err) {
+        console.error(`[SIB] Failed to save imported image for step ${stepId}:`, err);
+        imageErrors.push(s.imageUrl ?? '(write error)');
+      }
+    }
+
+    // Resolve sequence-number graph refs to real UUIDs
+    const nextOnSuccess = s.nextOnSuccessSeq !== undefined ? seqToId.get(s.nextOnSuccessSeq) : undefined;
+    const nextOnFailure = s.nextOnFailureSeq !== undefined ? seqToId.get(s.nextOnFailureSeq) : undefined;
+    const precondition  = s.preconditionSeq  !== undefined ? seqToId.get(s.preconditionSeq)  : undefined;
+
+    const step: GuideStep = {
+      id:                 stepId,
+      guideId,
+      anchorId:           body.anchorId,
+      sequenceNumber:     s.sequenceNumber,
+      title:              s.title?.trim()   || undefined,
+      text:               s.text.trim(),
+      ttsText:            s.ttsText?.trim() || undefined,
+      mediaType:          mediaPath ? 'image' : undefined,
+      mediaPath,
+      completionRequired: s.completionRequired ?? true,
+      isPlaced:           false,   // spatial placement done separately in AR
+      nextOnSuccess,
+      nextOnFailure,
+      precondition,
+      createdAt:          now,
+      updatedAt:          now,
+    };
+
+    guideStepStore.save(step);
+    createdSteps.push(step);
+  }
+
+  console.log(`[SIB] Imported ${createdSteps.length} steps for guide ${guideId}` +
+    (imageErrors.length ? ` (${imageErrors.length} image error(s))` : ''));
+
+  const result: ImportGuideResult = { guide, steps: createdSteps, imageErrors };
+  const resp: ApiResponse<ImportGuideResult> = { data: result, timestamp: now };
+  res.status(201).json(resp);
+});
 
 // GET /guides/step-image/:filename — serve a step media image
 // IMPORTANT: must be registered BEFORE /:id routes to avoid "step-image" matching as an id.
