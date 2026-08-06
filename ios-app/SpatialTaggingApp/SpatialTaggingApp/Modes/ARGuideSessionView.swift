@@ -1456,6 +1456,7 @@ struct ARGuideSessionView: View {
         hintPollTimer?.invalidate()
         hintPollTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { _ in
             Task { @MainActor in
+                let client = SIBClient(settings: settings)
                 let hints = await client.fetchGuideHints(liveSessionId: liveSessionId)
                 if let first = hints.first, activeHint == nil {
                     activeHint = first
