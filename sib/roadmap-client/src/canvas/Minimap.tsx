@@ -16,12 +16,19 @@ export function Minimap(): JSX.Element | null {
   const setCamera = useStore(s => s.setCamera);
   const svgRef = useRef<SVGSVGElement>(null);
 
-  if (!map || map.nodes.length === 0) return null;
+  // NO early return above the hooks. The old `if (nodes.length === 0) return null`
+  // sat between useRef and useCallback, so the moment a map went from empty to
+  // one node the component rendered MORE hooks than the previous render —
+  // React error #310, full unmount, blank page on every first node.
+  // All hooks must run unconditionally; the bail-out happens after them.
+  const nodes = map?.nodes ?? [];
+  const empty = nodes.length === 0;
 
-  const minX = Math.min(...map.nodes.map(n => n.x)) - PAD;
-  const minY = Math.min(...map.nodes.map(n => n.y)) - PAD;
-  const maxX = Math.max(...map.nodes.map(n => n.x)) + NODE_W + PAD;
-  const maxY = Math.max(...map.nodes.map(n => n.y)) + NODE_H + PAD;
+  // Safe fallbacks when empty — never rendered, only kept finite for the deps.
+  const minX = empty ? 0 : Math.min(...nodes.map(n => n.x)) - PAD;
+  const minY = empty ? 0 : Math.min(...nodes.map(n => n.y)) - PAD;
+  const maxX = empty ? MM_W : Math.max(...nodes.map(n => n.x)) + NODE_W + PAD;
+  const maxY = empty ? MM_H : Math.max(...nodes.map(n => n.y)) + NODE_H + PAD;
   const scale = Math.min(MM_W / (maxX - minX), MM_H / (maxY - minY));
   const ox = (MM_W - (maxX - minX) * scale) / 2;
   const oy = (MM_H - (maxY - minY) * scale) / 2;
@@ -46,6 +53,8 @@ export function Minimap(): JSX.Element | null {
       y: window.innerHeight / 2 - wy * camera.scale,
     });
   }, [minX, minY, ox, oy, scale, camera.scale, setCamera]);
+
+  if (!map || empty) return null;
 
   return (
     <svg
