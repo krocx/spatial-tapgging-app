@@ -14,6 +14,7 @@ export function Minimap(): JSX.Element | null {
   const map = useStore(s => s.map);
   const camera = useStore(s => s.camera);
   const setCamera = useStore(s => s.setCamera);
+  const night = useStore(s => s.canvasTheme) === 'night';
   const svgRef = useRef<SVGSVGElement>(null);
 
   // NO early return above the hooks. The old `if (nodes.length === 0) return null`
@@ -64,7 +65,9 @@ export function Minimap(): JSX.Element | null {
       onPointerDown={e => { e.stopPropagation(); jump(e); }}
       onPointerMove={e => { if (e.buttons === 1) jump(e); }}
     >
-      <rect width={MM_W} height={MM_H} rx={8} fill="rgba(255,255,255,0.92)" stroke="#e2e8f0" />
+      <rect width={MM_W} height={MM_H} rx={8}
+            fill={night ? 'rgba(15,23,42,0.92)' : 'rgba(255,255,255,0.92)'}
+            stroke={night ? '#334155' : '#e2e8f0'} />
       {(map.lanes ?? []).map((l, i) => {
         const a = toMini(l.x, minY);
         return (

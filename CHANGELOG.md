@@ -7,6 +7,15 @@ it, it gets a line.
 ## 2026.4.42 — 2026-08-11
 
 ### Added
+- Procedure Designer slice 2 — step content authoring on the canvas: voice
+  script, optional-step toggle, reference images (uploaded to a content-addressed
+  designer store, copied into the guide at export) and 3D model assignment with
+  scale. Model semantics: canvas owns assignment, device owns AR placement;
+  switching models clears stale placement.
+- Day/night canvas theme — procedure maps default to a dark canvas so an
+  executable procedure is visually distinct from a planning roadmap; toggle in
+  the toolbar, per-map-kind preference. Node cards stay white in both themes so
+  nothing inside them can lose contrast.
 - **Procedure Designer** — `procedure` maps on the Roadmap canvas: role-typed
   edges (Next / On failure / Requires) with a relationship picker, server-derived
   step numbers, pre-flight validation, and one-click send to the Guide Library as

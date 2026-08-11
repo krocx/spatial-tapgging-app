@@ -224,9 +224,10 @@ export function CanvasStage(): JSX.Element {
 
   const pendingSource = pendingEdgeFrom ? map.nodes.find(n => n.id === pendingEdgeFrom) : null;
   const gridSize = 24 * camera.scale;
+  const night = useStore(s => s.canvasTheme) === 'night';
 
   return (
-    <div className="canvas-wrap">
+    <div className={`canvas-wrap${night ? ' night' : ''}`}>
       <svg
         ref={svgRef}
         className="canvas-stage"
@@ -241,7 +242,7 @@ export function CanvasStage(): JSX.Element {
         <defs>
           <pattern id="dot-grid" width={gridSize} height={gridSize} patternUnits="userSpaceOnUse"
                    x={camera.x % gridSize} y={camera.y % gridSize}>
-            <circle cx={1} cy={1} r={1} fill="#d3dce6" />
+            <circle cx={1} cy={1} r={1} fill={night ? '#233047' : '#d3dce6'} />
           </pattern>
           <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7"
                   orient="auto-start-reverse">

@@ -22,6 +22,7 @@
 //
 // See docs/PROCEDURE-DESIGNER.md §8.
 
+import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import type { Guide, GuideStep, ImportedGuide } from '@spatial/shared';
 import {
@@ -31,6 +32,7 @@ import {
   deleteStepImage,
   downloadUrl,
 } from './store.js';
+import { designerImagePath } from '../procedure/designer-images.js';
 
 export interface ApplyImportedGuideOptions {
   anchorId:   string;
@@ -63,21 +65,40 @@ export interface ApplyImportedGuideResult {
   imageErrors: string[];
 }
 
-/** Fields owned by the device. Never written from an import or a canvas re-sync. */
-function carrySpatial(target: GuideStep, existing: GuideStep): void {
+/**
+ * Fields owned by the device. Never written from an import or a canvas re-sync.
+ *
+ * The 3D model split is deliberate and worth being precise about:
+ *   • ASSIGNMENT  (modelId / modelScale / modelOpacity) — which model, how big,
+ *     how transparent. An authoring surface may set these, so an import that
+ *     specifies a model wins; an import that is silent preserves the device's.
+ *   • PLACEMENT   (modelOffset* / modelRotationY) — where the ghost sits in AR.
+ *     Only the device can know this; imports never touch it — EXCEPT when the
+ *     import switches to a different model, in which case the old model's
+ *     placement is meaningless and is cleared for a fresh AR placement.
+ */
+function carrySpatial(target: GuideStep, existing: GuideStep, importSetsModel: boolean): void {
   target.posX           = existing.posX;
   target.posY           = existing.posY;
   target.posZ           = existing.posZ;
   target.isPlaced       = existing.isPlaced;
   target.positionSource = existing.positionSource;
-  // 3D ghost overlay transform is placed in AR too, so it travels with position.
-  target.modelId        = existing.modelId;
-  target.modelScale     = existing.modelScale;
-  target.modelOpacity   = existing.modelOpacity;
-  target.modelOffsetX   = existing.modelOffsetX;
-  target.modelOffsetY   = existing.modelOffsetY;
-  target.modelOffsetZ   = existing.modelOffsetZ;
-  target.modelRotationY = existing.modelRotationY;
+
+  if (!importSetsModel) {
+    // Import silent on models → the device's assignment stands untouched.
+    target.modelId      = existing.modelId;
+    target.modelScale   = existing.modelScale;
+    target.modelOpacity = existing.modelOpacity;
+  }
+
+  const modelUnchanged = !importSetsModel || target.modelId === existing.modelId;
+  if (modelUnchanged) {
+    target.modelOffsetX   = existing.modelOffsetX;
+    target.modelOffsetY   = existing.modelOffsetY;
+    target.modelOffsetZ   = existing.modelOffsetZ;
+    target.modelRotationY = existing.modelRotationY;
+  }
+  // else: new model assigned from the canvas — placement starts fresh on device.
 }
 
 export async function applyImportedGuide(
@@ -132,9 +153,18 @@ export async function applyImportedGuide(
   }
 
   // ── Images (parallel, non-fatal) ──────────────────────────────────────────
+  // Two sources: imageFile = server-local designer store (Procedure Designer —
+  // copied, no network), imageUrl = remote (JSON/MES import — downloaded).
+  // imageFile wins when both are present.
   const imageErrors: string[] = [];
   const imageBuffers = await Promise.all(
     imported.steps.map(async (s) => {
+      if (s.imageFile) {
+        const full = designerImagePath(s.imageFile);
+        if (!full) { imageErrors.push(`designer:${s.imageFile}`); return null; }
+        try { return fs.readFileSync(full); }
+        catch { imageErrors.push(`designer:${s.imageFile}`); return null; }
+      }
       if (!s.imageUrl) return null;
       const buf = await downloadUrl(s.imageUrl);
       if (!buf) { imageErrors.push(s.imageUrl); return null; }
@@ -183,8 +213,17 @@ export async function applyImportedGuide(
       updatedAt:          now,
     };
 
+    // Model ASSIGNMENT from the authoring surface (placement stays device-owned
+    // — see carrySpatial).
+    const importSetsModel = !!s.modelId;
+    if (importSetsModel) {
+      step.modelId      = s.modelId;
+      step.modelScale   = s.modelScale;
+      step.modelOpacity = s.modelOpacity;
+    }
+
     // THE invariant: placement survives every write that isn't from the device.
-    if (existing) { carrySpatial(step, existing); updated++; }
+    if (existing) { carrySpatial(step, existing, importSetsModel); updated++; }
     else          { created++; }
 
     guideStepStore.save(step);

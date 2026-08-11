@@ -4,9 +4,10 @@
 //   lane → name, width, remove
 // Renders nothing when the selection is empty (canvas stays clutter-free).
 
-import { useState } from 'react';
-import type { MindmapNodeStatus, MindmapNodeReview, MindmapNodeShape } from '@spatial/shared';
+import { useState, useEffect } from 'react';
+import type { MindmapNodeStatus, MindmapNodeReview, MindmapNodeShape, Model3D } from '@spatial/shared';
 import { useStore } from '../state/store.js';
+import { mindmapApi, fetchStepImageUrl } from '../api/mindmap-api.js';
 import {
   NODE_COLORS, NODE_TYPE_LABELS, NODE_TYPES,
   STATUS_LABELS, NODE_STATUSES,
@@ -254,10 +255,160 @@ function NodePanel({ nodeId }: { nodeId: string }): JSX.Element | null {
         </div>
       )}
 
+      <StepSection nodeId={node.id} />
+
       <DictionaryBlock nodeText={node.text} />
 
       <CommentsSection nodeId={node.id} />
     </aside>
+  );
+}
+
+/**
+ * Procedure-map step fields: voice script, optional toggle, reference image
+ * and 3D model assignment. Renders only on `kind: 'procedure'` maps; writes to
+ * node.metadata.step, which the compiler reads at export.
+ *
+ * Hooks are unconditional and the bail-out sits below them — the exact
+ * pattern whose violation in Minimap blanked the app (React #310).
+ */
+function StepSection({ nodeId }: { nodeId: string }): JSX.Element | null {
+  const isProcedure = useStore(s => s.map?.kind === 'procedure');
+  const step = useStore(s =>
+    (s.map?.nodes.find(n => n.id === nodeId)?.metadata?.step ?? {}) as {
+      ttsText?: string; optional?: boolean; imageFile?: string;
+      modelId?: string; modelScale?: number;
+    });
+  const patchStepMeta = useStore(s => s.patchStepMeta);
+
+  const [models, setModels]     = useState<Model3D[] | null>(null);
+  const [preview, setPreview]   = useState<string | null>(null);
+  const [busy, setBusy]         = useState<string | null>(null);
+
+  // Model list: once per panel mount, only on procedure maps.
+  useEffect(() => {
+    if (!isProcedure || models !== null) return;
+    mindmapApi.listModels()
+      .then(setModels)
+      .catch(() => setModels([]));   // picker degrades to "unavailable"
+  }, [isProcedure, models]);
+
+  // Image preview: fetched with auth → blob URL (an <img src> can't send keys).
+  useEffect(() => {
+    if (!step.imageFile) { setPreview(null); return; }
+    let url: string | null = null;
+    let cancelled = false;
+    fetchStepImageUrl(step.imageFile)
+      .then(u => { if (cancelled) URL.revokeObjectURL(u); else { url = u; setPreview(u); } })
+      .catch(() => setPreview(null));
+    return () => { cancelled = true; if (url) URL.revokeObjectURL(url); };
+  }, [step.imageFile]);
+
+  if (!isProcedure) return null;
+
+  /** Downscale to ≤1024px JPEG before upload — keeps the store and AR panels light. */
+  const attachImage = (file: File) => {
+    setBusy('image');
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, 1024 / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width  = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(img.src);
+      const base64 = canvas.toDataURL('image/jpeg', 0.82).split(',')[1];
+      mindmapApi.uploadStepImage(base64)
+        .then(r => patchStepMeta(nodeId, { imageFile: r.filename }))
+        .catch(err => useStore.getState().setError((err as Error).message))
+        .finally(() => setBusy(null));
+    };
+    img.onerror = () => { URL.revokeObjectURL(img.src); setBusy(null); };
+    img.src = URL.createObjectURL(file);
+  };
+
+  const selectedModel = models?.find(m => m.id === step.modelId);
+
+  return (
+    <div className="step-section">
+      <h3>Step (procedure)</h3>
+
+      <label className="inspector-field">Voice script
+        <textarea
+          rows={2}
+          placeholder="Spoken instruction — defaults to the step text"
+          defaultValue={step.ttsText ?? ''}
+          key={`tts-${nodeId}`}
+          onBlur={e => patchStepMeta(nodeId, { ttsText: e.target.value.trim() || null })}
+        />
+      </label>
+
+      <label className="step-check">
+        <input
+          type="checkbox"
+          checked={step.optional === true}
+          onChange={e => patchStepMeta(nodeId, { optional: e.target.checked ? true : null })}
+        />
+        Optional step <span className="step-check-hint">— operator may skip it</span>
+      </label>
+
+      <div className="inspector-field">Reference image
+        {preview && <img className="step-image-preview" src={preview} alt="Step reference" />}
+        <div className="step-row">
+          <label className="btn file-btn">
+            {busy === 'image' ? 'Uploading…' : step.imageFile ? 'Replace…' : 'Attach…'}
+            <input
+              type="file" accept="image/*" hidden
+              disabled={busy === 'image'}
+              onChange={e => { const f = e.target.files?.[0]; if (f) attachImage(f); e.target.value = ''; }}
+            />
+          </label>
+          {step.imageFile && (
+            <button className="btn" onClick={() => patchStepMeta(nodeId, { imageFile: null })}>Remove</button>
+          )}
+        </div>
+      </div>
+
+      <label className="inspector-field">3D model
+        <select
+          value={step.modelId ?? ''}
+          disabled={models === null}
+          onChange={e => {
+            const id = e.target.value;
+            if (!id) { patchStepMeta(nodeId, { modelId: null, modelScale: null }); return; }
+            const m = models?.find(x => x.id === id);
+            // Assignment only — offsets/rotation are placed in AR on device.
+            patchStepMeta(nodeId, { modelId: id, modelScale: m?.defaultScale ?? 1 });
+          }}
+        >
+          <option value="">— none —</option>
+          {(models ?? []).map(m => (
+            <option key={m.id} value={m.id}>
+              {m.name}{m.usdzStatus && m.usdzStatus !== 'ready' ? ' (USDZ pending)' : ''}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      {selectedModel && (
+        <label className="inspector-field">Model scale
+          <input
+            type="number" min={0.01} step={0.05}
+            defaultValue={step.modelScale ?? selectedModel.defaultScale ?? 1}
+            key={`scale-${nodeId}-${step.modelId}`}
+            onBlur={e => {
+              const v = parseFloat(e.target.value);
+              if (isFinite(v) && v > 0) patchStepMeta(nodeId, { modelScale: v });
+            }}
+          />
+        </label>
+      )}
+
+      <p className="step-note">
+        Position in AR (pin + model placement) is done on device after sending
+        to the Guide Library — never from the canvas.
+      </p>
+    </div>
   );
 }
 

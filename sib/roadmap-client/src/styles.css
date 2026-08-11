@@ -43,6 +43,22 @@ button { font: inherit; }
   user-select: none; pointer-events: none;
 }
 
+/* ── Night canvas ─────────────────────────────────────────────
+   Scoped to the canvas only — panels/toolbar stay light. Node CARDS stay
+   white in both themes (every badge, icon and label inside them was designed
+   against white), so the night palette only touches the surfaces AROUND
+   nodes: background, grid, lanes, labels, minimap. That is what guarantees
+   "nodes and routes always visible" — cards gain contrast on dark rather
+   than losing it. Role edge colours (green/red/amber) and layer colours are
+   bright and read well on both. */
+.canvas-wrap.night .canvas-stage { background: #0b1220; }
+.canvas-wrap.night .edge-label {
+  fill: #cbd5e1;
+  stroke: #0b1220;                /* halo must match the canvas, not white */
+}
+/* Node labels sit on WHITE cards in both themes — never theme this. */
+.node-label { fill: #1e293b !important; }
+
 /* ── Inspector ────────────────────────────────────────────── */
 
 .inspector {
@@ -481,3 +497,17 @@ input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
   border-radius: 5px; border: 1px solid currentColor;
   background: #fff; cursor: pointer; color: inherit;
 }
+
+/* ── Inspector: procedure step section ────────────────────── */
+.step-section { display: flex; flex-direction: column; gap: 10px;
+  border-top: 1px solid var(--border); padding-top: 12px; }
+.step-section h3 { margin: 0; font-size: 13px; text-transform: uppercase;
+  letter-spacing: .06em; color: var(--muted); }
+.step-check { display: flex; align-items: center; gap: 7px;
+  font-size: 12.5px; color: var(--text); cursor: pointer; }
+.step-check-hint { color: var(--muted); font-size: 11.5px; }
+.step-row { display: flex; gap: 6px; }
+.file-btn { cursor: pointer; }
+.step-image-preview { width: 100%; border-radius: 8px;
+  border: 1px solid var(--border); display: block; }
+.step-note { margin: 0; font-size: 11px; color: var(--muted); line-height: 1.45; }

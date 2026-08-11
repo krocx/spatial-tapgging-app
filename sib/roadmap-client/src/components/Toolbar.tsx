@@ -45,6 +45,8 @@ export function Toolbar(): JSX.Element | null {
   const showFilterPanel = useStore(s => s.showFilterPanel);
   const setShowFilterPanel = useStore(s => s.setShowFilterPanel);
   const startPresentation = useStore(s => s.startPresentation);
+  const canvasTheme = useStore(s => s.canvasTheme);
+  const toggleCanvasTheme = useStore(s => s.toggleCanvasTheme);
   const updateSettings = useStore(s => s.updateSettings);
   const publishMap = useStore(s => s.publishMap);
   const unpublishMap = useStore(s => s.unpublishMap);
@@ -146,6 +148,16 @@ export function Toolbar(): JSX.Element | null {
       </div>
 
       <div className="spacer" />
+
+      <button
+        className="btn"
+        onClick={toggleCanvasTheme}
+        title={canvasTheme === 'night'
+          ? 'Switch canvas to day background'
+          : 'Switch canvas to night background'}
+      >
+        {canvasTheme === 'night' ? '☀ Day' : '☾ Night'}
+      </button>
 
       <div className="menu-wrap">
         <button className="btn" onClick={() => { const v = showLanes; closeMenus(); setShowLanes(!v); }}>

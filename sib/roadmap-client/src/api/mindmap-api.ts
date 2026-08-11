@@ -2,7 +2,21 @@
 // GET /config reports whether SIB_API_KEY is enforced; the key is kept in
 // localStorage and sent as X-API-Key on every request.
 
-import type { Mindmap, MindmapSummary, MindmapVersion, MindmapNode, MindmapEdge, MindmapLane, SaveMindmapRequest, ApiResponse, ProcedureCompileResult, ProcedureExportRequest, ProcedureExportResult } from '@spatial/shared';
+import type { Mindmap, MindmapSummary, MindmapVersion, MindmapNode, MindmapEdge, MindmapLane, SaveMindmapRequest, ApiResponse, ProcedureCompileResult, ProcedureExportRequest, ProcedureExportResult, Model3D } from '@spatial/shared';
+
+/**
+ * Fetch a step image as an object URL. Needed because <img src> cannot carry
+ * the X-API-Key header — we fetch with auth and hand back a blob URL instead.
+ * Callers must URL.revokeObjectURL when done.
+ */
+export async function fetchStepImageUrl(filename: string): Promise<string> {
+  const headers: Record<string, string> = {};
+  const key = getApiKey();
+  if (key) headers['X-API-Key'] = key;
+  const res = await fetch(`/mindmap/step-images/${filename}`, { headers });
+  if (!res.ok) throw new Error(`Image fetch failed (${res.status})`);
+  return URL.createObjectURL(await res.blob());
+}
 
 export interface ImageImportResult {
   name: string;
@@ -126,6 +140,16 @@ export const mindmapApi = {
       method: 'POST',
       body:   JSON.stringify(body),
     }, id),
+
+  /** Upload a step reference image (base64 JPEG) → content-addressed filename. */
+  uploadStepImage: (base64: string) =>
+    request<{ filename: string }>('/mindmap/step-images', {
+      method: 'POST',
+      body:   JSON.stringify({ image: base64 }),
+    }),
+
+  /** Global 3D model library (SIB /models) — for the step model picker. */
+  listModels: () => request<Model3D[]>('/models'),
 
   glossary: () => request<{ markdown: string; updatedAt: number }>('/mindmap/glossary'),
   importImage: (imageBase64: string, mimeType: string) =>

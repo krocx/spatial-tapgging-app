@@ -126,6 +126,14 @@ interface State {
   procedureSent: ProcedureExportResult | null;
   /** Set when a send is refused because the target guide is published. */
   procedurePublishedConflict: string | null;
+  /**
+   * Canvas day/night theme. Per-client, per-map-kind (localStorage) — a view
+   * preference like filters, never synced. Procedure maps default to night so
+   * an executable procedure is visually unmistakable from a planning roadmap;
+   * node cards stay white in both themes so nothing inside them can lose
+   * contrast.
+   */
+  canvasTheme: 'day' | 'night';
   // collab
   collabStatus: CollabStatus;
   peers: Record<string, Peer>;
@@ -173,6 +181,9 @@ interface Actions {
   validateProcedure(): Promise<void>;
   sendToGuideLibrary(opts: { anchorId?: string; createdBy: string; confirmUnpublish?: boolean }): Promise<void>;
   dismissProcedureSent(): void;
+  toggleCanvasTheme(): void;
+  /** Merge fields into node.metadata.step (voice, required, image, model). */
+  patchStepMeta(nodeId: string, patch: Record<string, unknown>): void;
   deleteSelection(): void;
 
   // Lanes
@@ -439,6 +450,7 @@ export const useStore = create<State & Actions>((set, get) => {
     procedureBusy: false,
     procedureSent: null,
     procedurePublishedConflict: null,
+    canvasTheme: 'day',
     pendingEdgeFrom: null,
     defaultNodeType: 'generic',
     searchQuery: '',
@@ -486,6 +498,10 @@ export const useStore = create<State & Actions>((set, get) => {
           undoStack: [], redoStack: [], peers: {},
           pendingRolePick: null, procedure: null,
           procedureSent: null, procedurePublishedConflict: null,
+          // Stored per map KIND so flipping one procedure map flips them all —
+          // the theme is a "which tool am I in" signal, not a per-map setting.
+          canvasTheme: (localStorage.getItem(`canvas-theme:${map.kind ?? 'roadmap'}`)
+            ?? (map.kind === 'procedure' ? 'night' : 'day')) as 'day' | 'night',
         });
         if (map.kind === 'procedure') void get().validateProcedure();
         collab?.close();
@@ -686,6 +702,26 @@ export const useStore = create<State & Actions>((set, get) => {
     },
 
     dismissProcedureSent: () => set({ procedureSent: null, procedurePublishedConflict: null }),
+
+    toggleCanvasTheme() {
+      const next = get().canvasTheme === 'night' ? 'day' : 'night';
+      localStorage.setItem(`canvas-theme:${get().map?.kind ?? 'roadmap'}`, next);
+      set({ canvasTheme: next });
+    },
+
+    patchStepMeta(nodeId, patch) {
+      const node = get().map?.nodes.find(n => n.id === nodeId);
+      if (!node) return;
+      const prev = (node.metadata?.step as Record<string, unknown>) ?? {};
+      const step = { ...prev, ...patch };
+      // Drop cleared keys so metadata doesn't accumulate nulls.
+      for (const k of Object.keys(step)) {
+        if (step[k] === null || step[k] === undefined || step[k] === '') delete step[k];
+      }
+      patchNode(nodeId, { metadata: { ...node.metadata, step } });
+      // Step content affects compile output (warnings, tts, media) — revalidate.
+      void get().validateProcedure();
+    },
 
     toggleEdgeType(id) {
       const edge = get().map?.edges.find(e => e.id === id);

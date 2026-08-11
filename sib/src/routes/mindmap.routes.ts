@@ -36,6 +36,11 @@ import {
   validateProcedure,
   exportProcedure,
 } from '../procedure/export.js';
+import {
+  DesignerImageError,
+  saveDesignerImage,
+  designerImagePath,
+} from '../procedure/designer-images.js';
 
 /**
  * Persist a map without snapshotting a version. Used by the procedure export to
@@ -69,8 +74,9 @@ function draftKeysOf(req: Request): Map<string, string> {
 
 function fail(res: Response, err: unknown): Response {
   const status =
-    err instanceof MindmapError   ? err.status :
-    err instanceof ProcedureError ? err.status : 500;
+    err instanceof MindmapError       ? err.status :
+    err instanceof ProcedureError     ? err.status :
+    err instanceof DesignerImageError ? err.status : 500;
   const message = err instanceof Error ? err.message : 'Internal error';
   // Procedure failures carry the pre-flight issue list — the client needs it to
   // point at the offending step rather than just showing a message.
@@ -202,6 +208,25 @@ router.post('/:id/import-sib', (req: Request, res: Response) => {
 // ── Procedure Designer ──────────────────────────────────────────────────────
 // A `kind: 'procedure'` map compiles into an AR guide.
 // See docs/PROCEDURE-DESIGNER.md.
+
+// POST /mindmap/step-images — upload a step reference image (base64 JPEG).
+// Content-addressed; the response filename goes into node.metadata.step.imageFile.
+// Registered BEFORE /:id routes so "step-images" is not read as a map id.
+router.post('/step-images', (req: Request, res: Response) => {
+  try {
+    const { image } = (req.body ?? {}) as { image?: string };
+    if (!image?.trim()) throw new DesignerImageError(400, 'Missing required field: image (base64 JPEG)');
+    const filename = saveDesignerImage(image.trim());
+    return ok(res, { filename }, 201);
+  } catch (err) { return fail(res, err); }
+});
+
+// GET /mindmap/step-images/:filename — serve a designer image.
+router.get('/step-images/:filename', (req: Request, res: Response) => {
+  const full = designerImagePath(req.params.filename);
+  if (!full) return res.status(404).json({ error: 'Image not found', timestamp: new Date().toISOString() });
+  return res.sendFile(full);
+});
 
 // POST /mindmap/:id/procedure/validate — pre-flight only; never writes.
 // Returns the census, derived step numbers, and any blocking/warning issues.

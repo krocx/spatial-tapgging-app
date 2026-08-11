@@ -912,7 +912,20 @@ export interface ImportedGuideStep {
   ttsText?:             string;
   /** URL of the reference image — downloaded and stored locally at import time. */
   imageUrl?:            string;
+  /**
+   * Filename in the SERVER-LOCAL designer image store (uploaded from the
+   * Procedure Designer via POST /mindmap/step-images). Copied — not
+   * downloaded — into the guide step-image store at ingest. Mutually
+   * exclusive with imageUrl; imageFile wins when both are present.
+   */
+  imageFile?:           string;
   completionRequired?:  boolean;   // defaults to true
+  // 3D ghost overlay ASSIGNMENT (which model, how big, how transparent).
+  // Deliberately excludes offsets/rotation: those are AR placement, owned by
+  // the device, and survive re-sync — see applyImportedGuide.
+  modelId?:             string;
+  modelScale?:          number;
+  modelOpacity?:        number;
   // Conditional task graph — expressed as sequence numbers; server resolves to UUIDs
   nextOnSuccessSeq?:    number;
   nextOnFailureSeq?:    number;

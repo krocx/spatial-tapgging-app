@@ -126,6 +126,15 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
   // Server-derived step order (procedure maps only). Deriving it here as well
   // would let the number on the card drift from the number in the guide.
   const stepNumber = useStore(s => s.procedure?.order?.[node.id]);
+  // Step content glyphs — attached voice / image / model, so an authored step
+  // is distinguishable from a bare one at a glance.
+  const stepMeta = node.metadata?.step as
+    { ttsText?: string; imageFile?: string; modelId?: string } | undefined;
+  const stepGlyphs = [
+    stepMeta?.ttsText   ? '🔊' : null,
+    stepMeta?.imageFile ? '🖼' : null,
+    stepMeta?.modelId   ? '⬢'  : null,
+  ].filter((g): g is string => g !== null);
 
   return (
     <g
@@ -215,6 +224,17 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
             {stepNumber}
           </text>
         </g>
+      )}
+
+      {/* Step content glyphs — bottom edge, centred; voice / image / model */}
+      {stepGlyphs.length > 0 && (
+        <text
+          x={NODE_W / 2} y={NODE_H + 14}
+          textAnchor="middle" pointerEvents="none"
+          style={{ fontSize: 10 }}
+        >
+          {stepGlyphs.join(' ')}
+        </text>
       )}
 
       {/* Milestone diamond — floats above the top-left corner */}

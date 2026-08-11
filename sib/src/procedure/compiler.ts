@@ -55,6 +55,34 @@ function bodyOf(node: MindmapNode): string {
   return (node.text ?? '').trim();
 }
 
+/**
+ * Per-step authoring fields set by the Inspector's Procedure section, stored
+ * at node.metadata.step: voice script, optional flag, attached image (a
+ * designer-image-store filename) and 3D model assignment.
+ */
+interface StepMeta {
+  ttsText?:      string;
+  optional?:     boolean;
+  imageFile?:    string;
+  modelId?:      string;
+  modelScale?:   number;
+  modelOpacity?: number;
+}
+
+function stepMetaOf(node: MindmapNode): StepMeta {
+  const raw = node.metadata?.step;
+  if (!raw || typeof raw !== 'object') return {};
+  const m = raw as Record<string, unknown>;
+  return {
+    ttsText:      typeof m.ttsText === 'string' && m.ttsText.trim() ? m.ttsText.trim() : undefined,
+    optional:     m.optional === true,
+    imageFile:    typeof m.imageFile === 'string' && m.imageFile ? m.imageFile : undefined,
+    modelId:      typeof m.modelId === 'string' && m.modelId ? m.modelId : undefined,
+    modelScale:   typeof m.modelScale === 'number' && isFinite(m.modelScale) && m.modelScale > 0 ? m.modelScale : undefined,
+    modelOpacity: typeof m.modelOpacity === 'number' && m.modelOpacity >= 0 && m.modelOpacity <= 1 ? m.modelOpacity : undefined,
+  };
+}
+
 export function compileProcedure(map: Mindmap): ProcedureCompileResult {
   const issues: ProcedureIssue[] = [];
   const err = (code: string, message: string, nodeId?: string) =>
@@ -211,6 +239,11 @@ export function compileProcedure(map: Mindmap): ProcedureCompileResult {
         `Step ${seqOf.get(id)} has no detail — its title will be used as the instruction.`,
         id);
     }
+    if (!stepMetaOf(node).imageFile) {
+      warn('no-image',
+        `Step ${seqOf.get(id)} has no reference image. Usable, but weaker in the field.`,
+        id);
+    }
   }
 
   // ── Precondition cycles ───────────────────────────────────────────────────
@@ -233,6 +266,7 @@ export function compileProcedure(map: Mindmap): ProcedureCompileResult {
   const steps: ImportedGuideStep[] = orderedIds.map(id => {
     const node = byId.get(id)!;
     const seq  = seqOf.get(id)!;
+    const meta = stepMetaOf(node);
 
     const nextId    = nextOut.get(id);
     const failId    = failOut.get(id);
@@ -242,8 +276,17 @@ export function compileProcedure(map: Mindmap): ProcedureCompileResult {
       sequenceNumber:     seq,
       title:              titleOf(node, seq),
       text:               bodyOf(node),
-      completionRequired: node.metadata?.optional === true ? false : true,
+      // metadata.optional kept for backward compat with slice-1 maps;
+      // metadata.step.optional is what the Inspector writes now.
+      completionRequired: (meta.optional || node.metadata?.optional === true) ? false : true,
     };
+    if (meta.ttsText)      step.ttsText      = meta.ttsText;
+    if (meta.imageFile)    step.imageFile    = meta.imageFile;
+    if (meta.modelId) {
+      step.modelId = meta.modelId;
+      if (meta.modelScale   !== undefined) step.modelScale   = meta.modelScale;
+      if (meta.modelOpacity !== undefined) step.modelOpacity = meta.modelOpacity;
+    }
     if (nextId   && seqOf.has(nextId))   step.nextOnSuccessSeq = seqOf.get(nextId);
     if (failId   && seqOf.has(failId))   step.nextOnFailureSeq = seqOf.get(failId);
     if (prereqId && seqOf.has(prereqId)) step.preconditionSeq  = seqOf.get(prereqId);
