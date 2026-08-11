@@ -4,6 +4,10 @@
 // Follows the SIB layer ontology: node types map 1:1 onto SIB layers so a
 // mind-map can later be projected into anchors/tags/perception entities.
 
+// Type-only import — erased at compile time, so this does not create a runtime
+// cycle with index.ts (which re-exports this module).
+import type { ImportedGuide } from './index.js';
+
 // --- Node ontology (SIB layers) ---
 
 export type MindmapNodeType =
@@ -14,6 +18,26 @@ export type MindmapNodeType =
   | 'generic';    // grey    — free-form
 
 export type MindmapEdgeType = 'directed' | 'undirected';
+
+/**
+ * Procedure semantics carried by an edge on a `kind: 'procedure'` map.
+ *
+ * Absent on roadmap maps and on legacy edges — an edge with no role is a plain
+ * roadmap connection and is ignored by the procedure compiler. Deliberately
+ * separate from MindmapEdgeType: that field controls arrow rendering, this one
+ * controls what the edge *means* when compiled into a guide.
+ *
+ *   next     → GuideStep.nextOnSuccess   (green)
+ *   failure  → GuideStep.nextOnFailure   (red)
+ *   requires → GuideStep.precondition    (amber, drawn INTO the gated step)
+ */
+export type MindmapEdgeRole = 'next' | 'failure' | 'requires';
+
+/**
+ * Map kind. Absent means 'roadmap' — every map created before the Procedure
+ * Designer keeps working untouched.
+ */
+export type MindmapKind = 'roadmap' | 'procedure';
 
 /** Roadmap execution status — rendered as a badge on the node. */
 export type MindmapNodeStatus = 'planned' | 'in-progress' | 'done' | 'blocked';
@@ -76,6 +100,11 @@ export interface MindmapEdge {
   updatedAt: number;
   /** Optional label rendered at the edge midpoint. */
   label?: string;
+  /**
+   * Procedure semantics — only meaningful on `kind: 'procedure'` maps.
+   * Absent on roadmap maps and on all pre-existing edges.
+   */
+  role?: MindmapEdgeRole;
 }
 
 /**
@@ -119,6 +148,16 @@ export interface Mindmap {
   updatedAt: number;          // epoch ms
   nodes: MindmapNode[];
   edges: MindmapEdge[];
+  /**
+   * What this map is for. Absent = 'roadmap' (backward compatibility).
+   * A 'procedure' map compiles into an AR guide — see docs/PROCEDURE-DESIGNER.md.
+   */
+  kind?: MindmapKind;
+  /**
+   * Target anchor for a procedure map. Set at creation when the map is started
+   * from the Guide Library, otherwise chosen at send time.
+   */
+  anchorId?: string;
   /** Swimlanes (optional — absent on plain mind-maps). */
   lanes?: MindmapLane[];
   /** Named node groups (optional). */
@@ -164,6 +203,14 @@ export interface SaveMindmapRequest {
   name: string;
   nodes: MindmapNode[];
   edges: MindmapEdge[];
+  /**
+   * Map kind, honoured on CREATE only. A map's kind is immutable afterwards:
+   * silently turning a roadmap into an executable procedure (or vice versa)
+   * would change what every node means.
+   */
+  kind?: MindmapKind;
+  /** Target anchor for a procedure map. Updatable. */
+  anchorId?: string;
   lanes?: MindmapLane[];
   groups?: MindmapGroup[];
   settings?: MindmapSettings;
@@ -230,4 +277,78 @@ export interface PresencePayload {
 
 export interface MapSyncPayload {
   map: Mindmap;
+}
+
+// ── Procedure Designer ───────────────────────────────────────────────────────
+// Contracts for compiling a `kind: 'procedure'` map into an AR guide.
+// See docs/PROCEDURE-DESIGNER.md for the full design.
+
+/**
+ * Provenance stamped on a node once it corresponds to a real GuideStep.
+ * Mirrors the `metadata.sib` convention in mindmap-sib-adapter.ts so re-sync
+ * updates existing steps instead of duplicating them.
+ *
+ * Stored at `MindmapNode.metadata.guide`.
+ */
+export interface MindmapGuideProvenance {
+  guideId: string;
+  stepId:  string;
+}
+
+/** Severity of a pre-flight finding. `error` blocks export; `warning` does not. */
+export type ProcedureIssueLevel = 'error' | 'warning';
+
+export interface ProcedureIssue {
+  level:   ProcedureIssueLevel;
+  /** Stable machine code, e.g. 'no-start', 'unreachable', 'empty-text'. */
+  code:    string;
+  /** Human-readable, shown verbatim in the pre-flight panel. */
+  message: string;
+  /** Node this concerns, when applicable — the UI selects it on click. */
+  nodeId?: string;
+}
+
+/**
+ * Result of compiling a procedure map. `guide` is present only when there are
+ * no `error`-level issues; warnings never suppress it.
+ */
+export interface ProcedureCompileResult {
+  ok:      boolean;
+  issues:  ProcedureIssue[];
+  /** Census shown in the pre-flight strip — mirrors the Guide Library graph header. */
+  census:  {
+    steps:        number;
+    next:         number;
+    failure:      number;
+    requires:     number;
+    lanes:        number;
+  };
+  /** The compiled payload, ready for POST /guides/import. */
+  guide?:  ImportedGuide;
+  /**
+   * Node id → derived sequenceNumber. Returned so the canvas can render the
+   * same numbers the compiler will emit, rather than deriving them separately.
+   */
+  order?:  Record<string, number>;
+}
+
+/** Request body for POST /mindmap/:id/procedure/export. */
+export interface ProcedureExportRequest {
+  anchorId:  string;
+  createdBy: string;
+  /** Target an existing guide (re-sync). Omit to create a new draft guide. */
+  guideId?:  string;
+  /** Required to proceed when the target guide is published — see §8 of the spec. */
+  confirmUnpublish?: boolean;
+}
+
+export interface ProcedureExportResult {
+  guideId:      string;
+  guideName:    string;
+  stepsCreated: number;
+  stepsUpdated: number;
+  stepsRemoved: number;
+  /** Steps that still need AR placement before the guide can be published. */
+  stepsUnplaced: number;
+  issues:       ProcedureIssue[];
 }

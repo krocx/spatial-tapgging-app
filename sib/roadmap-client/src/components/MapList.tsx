@@ -66,8 +66,14 @@ export function MapList(): JSX.Element {
             if (name.trim()) { void createMap(name.trim()); setName(''); }
           }}
         >
-          <input value={name} placeholder="New mind-map name…" onChange={e => setName(e.target.value)} />
-          <button className="btn primary" type="submit" disabled={!name.trim()}>Create</button>
+          <input value={name} placeholder="New map name…" onChange={e => setName(e.target.value)} />
+          <button className="btn primary" type="submit" disabled={!name.trim()}>Create roadmap</button>
+          <button
+            className="btn" type="button"
+            disabled={!name.trim()}
+            title="A procedure map compiles into an AR work instruction guide. Its kind cannot be changed later."
+            onClick={() => { if (name.trim()) { void createMap(name.trim(), 'procedure'); setName(''); } }}
+          >Create procedure</button>
           <button
             className="btn" type="button"
             title="Import a mind-map exported as JSON (e.g. from the Render instance)"

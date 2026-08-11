@@ -9,7 +9,8 @@ import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { useStore, noteMouseWorld, computeHighlight } from '../state/store.js';
 import { toWorld, nodeCenter, NODE_W, NODE_H } from '../utils/geometry.js';
 import { NodeView } from './NodeView.js';
-import { EdgeView } from './EdgeView.js';
+import { EdgeView, ROLE_COLORS } from './EdgeView.js';
+import { RolePicker } from '../components/RolePicker.js';
 import { CursorLayer } from './CursorLayer.js';
 import { LaneLayer } from './LaneLayer.js';
 import { Minimap } from './Minimap.js';
@@ -257,6 +258,13 @@ export function CanvasStage(): JSX.Element {
               <path d="M 0 0 L 10 5 L 0 10 z" fill={color} fillOpacity={0.85} />
             </marker>
           ))}
+          {/* Procedure relationship arrowheads — same palette as the Guide Library graph */}
+          {Object.entries(ROLE_COLORS).map(([role, color]) => (
+            <marker key={role} id={`arrow-role-${role}`} viewBox="0 0 10 10" refX="9" refY="5"
+                    markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill={color} />
+            </marker>
+          ))}
         </defs>
 
         {/* Dot grid backdrop (screen space, so it never runs out) */}
@@ -307,6 +315,7 @@ export function CanvasStage(): JSX.Element {
         </g>
       </svg>
       <Minimap />
+      <RolePicker />
     </div>
   );
 }

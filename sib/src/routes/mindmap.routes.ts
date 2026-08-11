@@ -30,6 +30,21 @@ import {
   assertAccess,
 } from '../controllers/mindmap.controller.js';
 import { broadcastMapSync } from '../ws/mindmap.ws.js';
+import { mindmapStore } from '../models/mindmap.model.js';
+import {
+  ProcedureError,
+  validateProcedure,
+  exportProcedure,
+} from '../procedure/export.js';
+
+/**
+ * Persist a map without snapshotting a version. Used by the procedure export to
+ * stamp step provenance onto nodes — bookkeeping, not an authored edit, so it
+ * should not consume a slot in the version history.
+ */
+function saveMindmapRecord(map: Mindmap): void {
+  mindmapStore.save(map);
+}
 
 const router = Router();
 
@@ -53,9 +68,14 @@ function draftKeysOf(req: Request): Map<string, string> {
 }
 
 function fail(res: Response, err: unknown): Response {
-  const status = err instanceof MindmapError ? err.status : 500;
+  const status =
+    err instanceof MindmapError   ? err.status :
+    err instanceof ProcedureError ? err.status : 500;
   const message = err instanceof Error ? err.message : 'Internal error';
-  return res.status(status).json({ error: message, timestamp: new Date().toISOString() });
+  // Procedure failures carry the pre-flight issue list — the client needs it to
+  // point at the offending step rather than just showing a message.
+  const issues = err instanceof ProcedureError && err.issues.length ? { issues: err.issues } : {};
+  return res.status(status).json({ error: message, ...issues, timestamp: new Date().toISOString() });
 }
 
 function ok<T>(res: Response, data: T, status = 200): Response {
@@ -176,6 +196,62 @@ router.post('/:id/import-sib', (req: Request, res: Response) => {
     const result = importSib(req.params.id, anchorId);
     if (result.addedNodes > 0 || result.addedEdges > 0) broadcastMapSync(result.map);
     return ok(res, result);
+  } catch (err) { return fail(res, err); }
+});
+
+// ── Procedure Designer ──────────────────────────────────────────────────────
+// A `kind: 'procedure'` map compiles into an AR guide.
+// See docs/PROCEDURE-DESIGNER.md.
+
+// POST /mindmap/:id/procedure/validate — pre-flight only; never writes.
+// Returns the census, derived step numbers, and any blocking/warning issues.
+router.post('/:id/procedure/validate', (req: Request, res: Response) => {
+  try {
+    assertAccess(req.params.id, draftKeyOf(req));
+    const map = loadMindmap(req.params.id);
+    return ok(res, validateProcedure(map));
+  } catch (err) { return fail(res, err); }
+});
+
+// POST /mindmap/:id/procedure/export — send the procedure to the Guide Library.
+//
+// Body: { anchorId?, createdBy, guideId?, confirmUnpublish? }
+// Creates a DRAFT guide with every new step unplaced — placement happens on
+// device and is never written from here.
+router.post('/:id/procedure/export', async (req: Request, res: Response) => {
+  try {
+    assertAccess(req.params.id, draftKeyOf(req));
+    const map  = loadMindmap(req.params.id);
+    const body = (req.body ?? {}) as {
+      anchorId?: string; createdBy?: string; guideId?: string; confirmUnpublish?: boolean;
+    };
+
+    if (!body.createdBy?.trim()) {
+      throw new ProcedureError(400, 'createdBy is required');
+    }
+
+    const { result, provenance } = await exportProcedure(map, {
+      anchorId:         body.anchorId,
+      createdBy:        body.createdBy.trim(),
+      guideId:          body.guideId,
+      confirmUnpublish: body.confirmUnpublish === true,
+    });
+
+    // Persist provenance onto the nodes so the next re-sync matches these steps
+    // instead of duplicating them. Also pins the map's anchor on first export.
+    const stamped: Mindmap = {
+      ...map,
+      anchorId: map.anchorId ?? body.anchorId,
+      nodes: map.nodes.map(n => {
+        const p = provenance[n.id];
+        return p ? { ...n, metadata: { ...n.metadata, guide: p } } : n;
+      }),
+      updatedAt: Date.now(),
+    };
+    saveMindmapRecord(stamped);
+    broadcastMapSync(stamped);
+
+    return ok(res, result, 201);
   } catch (err) { return fail(res, err); }
 });
 

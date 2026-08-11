@@ -123,6 +123,9 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
   }, [node.id, setPendingEdgeFrom]);
 
   const displayText = node.text || '…';
+  // Server-derived step order (procedure maps only). Deriving it here as well
+  // would let the number on the card drift from the number in the guide.
+  const stepNumber = useStore(s => s.procedure?.order?.[node.id]);
 
   return (
     <g
@@ -201,6 +204,17 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
                 fill={STATUS_COLORS[node.status]} stroke="#ffffff" strokeWidth={1.5}>
           <title>{node.status}</title>
         </circle>
+      )}
+
+      {/* Step number on a procedure map — DERIVED from the graph by the server,
+          never typed. Absent means the step is not reachable from the start. */}
+      {stepNumber !== undefined && (
+        <g transform="translate(-9 -9)" pointerEvents="none">
+          <circle cx={0} cy={0} r={11} fill="#4f46e5" stroke="#ffffff" strokeWidth={2} />
+          <text x={0} y={4} textAnchor="middle" style={{ fontSize: 11, fontWeight: 700 }} fill="#ffffff">
+            {stepNumber}
+          </text>
+        </g>
       )}
 
       {/* Milestone diamond — floats above the top-left corner */}

@@ -19,8 +19,6 @@ import type { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import fs   from 'fs';
 import path from 'path';
-import https from 'https';
-import http  from 'http';
 import type {
   Guide,
   GuideStep,
@@ -32,69 +30,25 @@ import type {
   ImportGuideResult,
   ApiResponse,
 } from '@spatial/shared';
-import { JsonFileStore } from '../stores/json-file-store.js';
 import {
   getInstructionsSourceAdapter,
   getActiveInstructionsSourceAdapter,
 } from '../adapters/instructions-source-adapter.js';
+import {
+  guideStore,
+  guideStepStore,
+  STEP_IMG_DIR,
+  saveStepImage,
+  deleteStepImage,
+} from '../guides/store.js';
+import { applyImportedGuide } from '../guides/ingest.js';
 
 // ── Storage ───────────────────────────────────────────────────────────────────
+// Stores live in ../guides/store.js so the ingestion service can share them
+// without a circular import. Re-exported here because existing consumers
+// (e.g. sse/guide-session.sse.ts) import them from this module.
 
-export const guideStore     = new JsonFileStore<Guide>('guides');
-export const guideStepStore = new JsonFileStore<GuideStep>('guide-steps');
-
-const DATA_DIR         = process.env.SIB_DATA_DIR ?? path.join(process.cwd(), '.sib-data');
-const STEP_IMG_DIR     = path.join(DATA_DIR, 'guide-step-images');
-fs.mkdirSync(STEP_IMG_DIR, { recursive: true });
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function saveStepImage(guideId: string, stepId: string, base64: string): string {
-  const date   = new Date();
-  const stamp  = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}_${String(date.getHours()).padStart(2, '0')}${String(date.getMinutes()).padStart(2, '0')}${String(date.getSeconds()).padStart(2, '0')}`;
-  const filename = `${guideId}_${stepId}_${stamp}.jpg`;
-  const buf    = Buffer.from(base64, 'base64');
-  fs.writeFileSync(path.join(STEP_IMG_DIR, filename), buf);
-  return filename;
-}
-
-function deleteStepImage(filename: string): void {
-  try {
-    fs.unlinkSync(path.join(STEP_IMG_DIR, filename));
-  } catch { /* not present — ignore */ }
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-/**
- * Download a remote image URL and return its bytes as a Buffer.
- * Supports http and https. Follows up to 3 redirects.
- * Resolves with null on any network / HTTP error so the caller can treat
- * image failures as non-fatal.
- */
-function downloadUrl(url: string, redirectsLeft = 3): Promise<Buffer | null> {
-  return new Promise((resolve) => {
-    const lib = url.startsWith('https') ? https : http;
-    const req = lib.get(url, { timeout: 15_000 }, (res) => {
-      // Follow redirects
-      if ((res.statusCode === 301 || res.statusCode === 302) && res.headers.location && redirectsLeft > 0) {
-        resolve(downloadUrl(res.headers.location, redirectsLeft - 1));
-        return;
-      }
-      if (!res.statusCode || res.statusCode < 200 || res.statusCode >= 300) {
-        console.warn(`[SIB] Image download failed (${res.statusCode}): ${url}`);
-        resolve(null);
-        return;
-      }
-      const chunks: Buffer[] = [];
-      res.on('data', (chunk: Buffer) => chunks.push(chunk));
-      res.on('end', () => resolve(Buffer.concat(chunks)));
-      res.on('error', () => resolve(null));
-    });
-    req.on('error',   () => resolve(null));
-    req.on('timeout', () => { req.destroy(); resolve(null); });
-  });
-}
+export { guideStore, guideStepStore };
 
 // ── Router ────────────────────────────────────────────────────────────────────
 
@@ -157,102 +111,23 @@ router.post('/import', async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  const now     = new Date().toISOString();
-  const guideId = uuidv4();
+  // Persistence, image download and seq→UUID resolution all live in the shared
+  // ingestion service, which the Procedure Designer export also calls. Keeping
+  // one implementation matters most for the rule that a write must never
+  // overwrite spatial placement — see sib/src/guides/ingest.ts.
+  const applied = await applyImportedGuide(imported, {
+    anchorId:  body.anchorId,
+    createdBy: body.createdBy,
+  });
 
-  // ── Create the Guide record ────────────────────────────────────────────────
-  const guide: Guide = {
-    id:          guideId,
-    anchorId:    body.anchorId,
-    name:        imported.name.trim(),
-    description: imported.description?.trim() ?? '',
-    published:   false,   // always starts as draft — Author must publish
-    createdBy:   body.createdBy,
-    createdAt:   now,
-    updatedAt:   now,
+  console.log(`[SIB] Guide imported (${adapter.name}): ${applied.guide.id} ("${applied.guide.name}") — ${applied.steps.length} steps`);
+
+  const result: ImportGuideResult = {
+    guide:       applied.guide,
+    steps:       applied.steps,
+    imageErrors: applied.imageErrors,
   };
-  guideStore.save(guide);
-  console.log(`[SIB] Guide imported (${adapter.name}): ${guideId} ("${guide.name}") — ${imported.steps.length} steps`);
-
-  // ── First pass: assign UUIDs and build seq→id map ─────────────────────────
-  const seqToId = new Map<number, string>();
-  const stepIds: string[] = [];
-  for (const s of imported.steps) {
-    const stepId = uuidv4();
-    seqToId.set(s.sequenceNumber, stepId);
-    stepIds.push(stepId);
-  }
-
-  // ── Download images in parallel (non-fatal) ────────────────────────────────
-  const imageErrors: string[] = [];
-  const imageBuffers = await Promise.all(
-    imported.steps.map(async (s) => {
-      if (!s.imageUrl) return null;
-      const buf = await downloadUrl(s.imageUrl);
-      if (!buf) {
-        imageErrors.push(s.imageUrl);
-        return null;
-      }
-      return buf;
-    }),
-  );
-
-  // ── Create GuideStep records ───────────────────────────────────────────────
-  const createdSteps: GuideStep[] = [];
-
-  for (let i = 0; i < imported.steps.length; i++) {
-    const s      = imported.steps[i];
-    const stepId = stepIds[i];
-
-    // Save downloaded image (if any)
-    let mediaPath: string | undefined;
-    const buf = imageBuffers[i];
-    if (buf) {
-      try {
-        const date     = new Date();
-        const stamp    = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2,'0')}${String(date.getDate()).padStart(2,'0')}_${String(date.getHours()).padStart(2,'0')}${String(date.getMinutes()).padStart(2,'0')}${String(date.getSeconds()).padStart(2,'0')}`;
-        const filename = `${guideId}_${stepId}_${stamp}.jpg`;
-        fs.writeFileSync(path.join(STEP_IMG_DIR, filename), buf);
-        mediaPath = filename;
-      } catch (err) {
-        console.error(`[SIB] Failed to save imported image for step ${stepId}:`, err);
-        imageErrors.push(s.imageUrl ?? '(write error)');
-      }
-    }
-
-    // Resolve sequence-number graph refs to real UUIDs
-    const nextOnSuccess = s.nextOnSuccessSeq !== undefined ? seqToId.get(s.nextOnSuccessSeq) : undefined;
-    const nextOnFailure = s.nextOnFailureSeq !== undefined ? seqToId.get(s.nextOnFailureSeq) : undefined;
-    const precondition  = s.preconditionSeq  !== undefined ? seqToId.get(s.preconditionSeq)  : undefined;
-
-    const step: GuideStep = {
-      id:                 stepId,
-      guideId,
-      anchorId:           body.anchorId,
-      sequenceNumber:     s.sequenceNumber,
-      title:              s.title?.trim()   || undefined,
-      text:               s.text.trim(),
-      ttsText:            s.ttsText?.trim() || undefined,
-      mediaType:          mediaPath ? 'image' : undefined,
-      mediaPath,
-      completionRequired: s.completionRequired ?? true,
-      isPlaced:           false,   // spatial placement done separately in AR
-      nextOnSuccess,
-      nextOnFailure,
-      precondition,
-      createdAt:          now,
-      updatedAt:          now,
-    };
-
-    guideStepStore.save(step);
-    createdSteps.push(step);
-  }
-
-  console.log(`[SIB] Imported ${createdSteps.length} steps for guide ${guideId}` +
-    (imageErrors.length ? ` (${imageErrors.length} image error(s))` : ''));
-
-  const result: ImportGuideResult = { guide, steps: createdSteps, imageErrors };
-  const resp: ApiResponse<ImportGuideResult> = { data: result, timestamp: now };
+  const resp: ApiResponse<ImportGuideResult> = { data: result, timestamp: new Date().toISOString() };
   res.status(201).json(resp);
 });
 

@@ -310,6 +310,11 @@ function sanitizeEdge(raw: unknown, ts: number): MindmapEdge | null {
     type: e.type === 'undirected' ? 'undirected' : 'directed',
     updatedAt: typeof e.updatedAt === 'number' ? Math.min(e.updatedAt, ts) : ts,
     ...(typeof e.label === 'string' && e.label.trim().length > 0 && { label: e.label.trim().slice(0, 200) }),
+    // Procedure semantics. Must be whitelisted here or it is silently dropped
+    // on every save — this function rebuilds the edge from scratch.
+    ...(e.role === 'next' || e.role === 'failure' || e.role === 'requires'
+      ? { role: e.role }
+      : {}),
   };
 }
 

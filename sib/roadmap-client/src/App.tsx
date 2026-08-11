@@ -7,6 +7,7 @@ import { Inspector } from './components/Inspector.js';
 import { FilterPanel } from './components/FilterPanel.js';
 import { PresentationBar } from './components/PresentationBar.js';
 import { GlossaryPanel } from './components/GlossaryPanel.js';
+import { ProcedureBar } from './components/ProcedureBar.js';
 import { CanvasStage } from './canvas/CanvasStage.js';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts.js';
 
@@ -22,6 +23,7 @@ export default function App(): JSX.Element {
   return (
     <div className="editor">
       {!presenting && <Toolbar />}
+      {!presenting && <ProcedureBar />}
       {error && (
         <div className="error-banner floating" onClick={() => setError(null)}>
           {error} <span className="dismiss">✕</span>

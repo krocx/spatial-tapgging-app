@@ -397,3 +397,87 @@ input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
   z-index: 40; cursor: pointer; margin: 0;
 }
 .dismiss { margin-left: 8px; opacity: .7; }
+
+/* ── Procedure Designer ─────────────────────────────────────────────────── */
+/* Relationship picker — shown when a connection is dropped on a procedure map.
+   Nothing is committed until a relationship is chosen. */
+.role-picker-backdrop {
+  position: absolute; inset: 0; z-index: 60;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(15, 23, 42, 0.25);
+}
+.role-picker {
+  background: #fff; border: 1px solid #cbd5e1; border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
+  padding: 12px; width: 300px;
+}
+.role-picker-head { padding: 2px 6px 10px; border-bottom: 1px solid #eef2f7; margin-bottom: 8px; }
+.role-picker-title { display: block; font-size: 0.82rem; font-weight: 600; color: #0f172a; }
+.role-picker-sub   { display: block; font-size: 0.72rem; color: #64748b; margin-top: 2px;
+                     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.role-picker-option {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  background: none; border: none; border-radius: 7px;
+  padding: 8px; cursor: pointer; text-align: left;
+}
+.role-picker-option:hover { background: #f1f5f9; }
+.role-swatch { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+.role-picker-labels { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.role-picker-label { font-size: 0.8rem; color: #0f172a; }
+.role-picker-hint  { font-size: 0.7rem; color: #64748b; }
+.role-picker kbd {
+  font-size: 0.68rem; color: #475569; background: #f1f5f9;
+  border: 1px solid #e2e8f0; border-radius: 4px; padding: 1px 5px;
+}
+.role-picker-cancel {
+  width: 100%; margin-top: 6px; padding: 6px; font-size: 0.74rem;
+  background: none; border: none; color: #64748b; cursor: pointer; border-radius: 6px;
+}
+.role-picker-cancel:hover { background: #f1f5f9; }
+
+/* Pre-flight strip — census fields mirror the Guide Library graph header. */
+.procedure-bar { border-bottom: 1px solid #e2e8f0; background: #fbfdff; }
+.procedure-census {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 7px 12px; font-size: 0.74rem; color: #475569;
+}
+.pc-badge {
+  background: #eef2ff; color: #4f46e5; border-radius: 5px;
+  padding: 2px 8px; font-size: 0.68rem; font-weight: 600;
+}
+.pc-stat b { color: inherit; font-weight: 600; }
+.pc-muted { color: #94a3b8; }
+.procedure-actions { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+.pc-anchor {
+  font-size: 0.72rem; padding: 3px 7px; width: 150px;
+  border: 1px solid #cbd5e1; border-radius: 5px;
+}
+.procedure-actions button {
+  font-size: 0.72rem; padding: 4px 10px; border-radius: 5px;
+  border: 1px solid #cbd5e1; background: #fff; cursor: pointer;
+}
+.procedure-actions button.primary { background: #4f46e5; border-color: #4f46e5; color: #fff; }
+.procedure-actions button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.procedure-issues { margin: 0; padding: 0 12px 8px; list-style: none; }
+.procedure-issues li {
+  display: flex; align-items: flex-start; gap: 7px;
+  font-size: 0.73rem; padding: 3px 0; cursor: pointer; color: #475569;
+}
+.procedure-issues li:hover { color: #0f172a; }
+.pi-dot { width: 7px; height: 7px; border-radius: 50%; margin-top: 5px; flex: none; }
+.pi-dot.error   { background: #ef4444; }
+.pi-dot.warning { background: #f59e0b; }
+
+.procedure-conflict, .procedure-sent {
+  margin: 0 12px 10px; padding: 9px 11px; border-radius: 7px; font-size: 0.75rem;
+}
+.procedure-conflict { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+.procedure-sent     { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+.procedure-conflict p, .procedure-sent p { margin: 0 0 6px; }
+.procedure-sent .ps-next { color: #15803d; font-weight: 500; }
+.procedure-conflict button, .procedure-sent button {
+  font-size: 0.72rem; padding: 3px 9px; margin-right: 6px;
+  border-radius: 5px; border: 1px solid currentColor;
+  background: #fff; cursor: pointer; color: inherit;
+}

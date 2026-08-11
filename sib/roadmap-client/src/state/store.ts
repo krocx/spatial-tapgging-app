@@ -10,6 +10,7 @@ import type {
   Mindmap, MindmapNode, MindmapEdge, MindmapLane, MindmapGroup, MindmapNodeType,
   MindmapNodeStatus, MindmapNodeReview, MindmapComment, MindmapSummary,
   MindmapWsEvent, MapSyncPayload, CursorPayload, PresencePayload,
+  MindmapKind, MindmapEdgeRole, ProcedureCompileResult, ProcedureExportResult,
 } from '@spatial/shared';
 import { mindmapApi } from '../api/mindmap-api.js';
 import { CollabClient, type CollabStatus } from '../ws/collab.js';
@@ -107,6 +108,24 @@ interface State {
   glossary: GlossaryData | null;
   showGlossary: boolean;
   glossaryFocusTerm: string | null;
+  // ── Procedure Designer (kind: 'procedure' maps only) ──────────────────────
+  /**
+   * A connection has been dropped and is waiting for the author to say what it
+   * means. On procedure maps an edge is never created until a role is chosen —
+   * an unroled edge is silently ignored by the compiler, which would be a
+   * confusing way to lose work.
+   */
+  pendingRolePick: { from: string; to: string } | null;
+  /**
+   * Latest server-side pre-flight. Holds the census, the derived step order and
+   * any issues. Server-derived on purpose: see mindmap-api.procedureValidate.
+   */
+  procedure: ProcedureCompileResult | null;
+  procedureBusy: boolean;
+  /** Result of the last successful send, shown as a confirmation. */
+  procedureSent: ProcedureExportResult | null;
+  /** Set when a send is refused because the target guide is published. */
+  procedurePublishedConflict: string | null;
   // collab
   collabStatus: CollabStatus;
   peers: Record<string, Peer>;
@@ -121,7 +140,7 @@ interface State {
 
 interface Actions {
   refreshList(): Promise<void>;
-  createMap(name: string): Promise<void>;
+  createMap(name: string, kind?: MindmapKind): Promise<void>;
   openMap(id: string, clientName: string): Promise<void>;
   closeMap(): void;
   deleteMap(id: string): Promise<void>;
@@ -147,6 +166,13 @@ interface Actions {
   addEdge(from: string, to: string): void;
   toggleEdgeType(id: string): void;
   setEdgeLabel(id: string, label: string): void;
+  // ── Procedure Designer ────────────────────────────────────────────────────
+  confirmEdgeRole(role: MindmapEdgeRole): void;
+  cancelEdgeRole(): void;
+  setEdgeRole(id: string, role: MindmapEdgeRole): void;
+  validateProcedure(): Promise<void>;
+  sendToGuideLibrary(opts: { anchorId?: string; createdBy: string; confirmUnpublish?: boolean }): Promise<void>;
+  dismissProcedureSent(): void;
   deleteSelection(): void;
 
   // Lanes
@@ -408,6 +434,11 @@ export const useStore = create<State & Actions>((set, get) => {
     selectedEdgeId: null,
     selectedLaneId: null,
     editingNodeId: null,
+    pendingRolePick: null,
+    procedure: null,
+    procedureBusy: false,
+    procedureSent: null,
+    procedurePublishedConflict: null,
     pendingEdgeFrom: null,
     defaultNodeType: 'generic',
     searchQuery: '',
@@ -433,9 +464,12 @@ export const useStore = create<State & Actions>((set, get) => {
       catch (err) { set({ error: (err as Error).message }); }
     },
 
-    async createMap(name) {
+    async createMap(name, kind) {
       try {
-        const map = await mindmapApi.save({ name, nodes: [], edges: [], versionLabel: 'created' });
+        const map = await mindmapApi.save({
+          name, nodes: [], edges: [], versionLabel: 'created',
+          ...(kind === 'procedure' ? { kind } : {}),
+        });
         await get().refreshList();
         set({ error: null });
         void get().openMap(map.id, localStorage.getItem('roadmap-name') ?? 'Anonymous');
@@ -450,7 +484,10 @@ export const useStore = create<State & Actions>((set, get) => {
           camera: { x: 60, y: 60, scale: 1 },
           selectedNodeIds: [], selectedEdgeId: null, editingNodeId: null,
           undoStack: [], redoStack: [], peers: {},
+          pendingRolePick: null, procedure: null,
+          procedureSent: null, procedurePublishedConflict: null,
         });
+        if (map.kind === 'procedure') void get().validateProcedure();
         collab?.close();
         collab = new CollabClient(id, clientName, onCollabEvent, status => set({ collabStatus: status }));
         collab.connect();
@@ -573,11 +610,82 @@ export const useStore = create<State & Actions>((set, get) => {
       const { map } = get();
       if (!map || from === to) return;
       if (map.edges.some(e => (e.from === from && e.to === to) || (e.from === to && e.to === from))) return;
+
+      // On a procedure map an edge has to mean something, so ask before
+      // creating it. Committing an unroled edge would look connected on screen
+      // while the compiler silently ignored it.
+      if (map.kind === 'procedure') { set({ pendingRolePick: { from, to } }); return; }
+
       pushHistory();
       const edge: MindmapEdge = { id: crypto.randomUUID(), from, to, type: 'directed', updatedAt: Date.now() };
       mutateGraph(m => m.edges.push(edge));
       collab?.send('edge:add', edge);
     },
+
+    confirmEdgeRole(role) {
+      const pick = get().pendingRolePick;
+      if (!pick) return;
+      pushHistory();
+      const edge: MindmapEdge = {
+        id: crypto.randomUUID(),
+        from: pick.from, to: pick.to,
+        type: 'directed', role,
+        updatedAt: Date.now(),
+      };
+      mutateGraph(m => m.edges.push(edge));
+      collab?.send('edge:add', edge);
+      set({ pendingRolePick: null });
+      void get().validateProcedure();
+    },
+
+    cancelEdgeRole: () => set({ pendingRolePick: null }),
+
+    setEdgeRole(id, role) {
+      patchEdge(id, { role });
+      void get().validateProcedure();
+    },
+
+    async validateProcedure() {
+      const map = get().map;
+      if (!map || map.kind !== 'procedure') return;
+      set({ procedureBusy: true });
+      try {
+        // Server-derived: the canvas must show the same step numbers the
+        // compiler will emit, so it asks rather than deriving its own.
+        const result = await mindmapApi.procedureValidate(map.id);
+        set({ procedure: result, procedureBusy: false });
+      } catch (err) {
+        set({ procedureBusy: false, error: (err as Error).message });
+      }
+    },
+
+    async sendToGuideLibrary(opts) {
+      const map = get().map;
+      if (!map || map.kind !== 'procedure') return;
+      set({ procedureBusy: true, procedurePublishedConflict: null });
+      try {
+        const result = await mindmapApi.procedureExport(map.id, {
+          anchorId:         opts.anchorId ?? map.anchorId ?? '',
+          createdBy:        opts.createdBy,
+          confirmUnpublish: opts.confirmUnpublish,
+        });
+        // Re-open the map so the provenance the server stamped onto the nodes
+        // is reflected locally; without it the next send would duplicate steps.
+        const fresh = await mindmapApi.load(map.id);
+        set({ map: fresh, procedureSent: result, procedureBusy: false });
+        void get().validateProcedure();
+      } catch (err) {
+        const message = (err as Error).message;
+        // 409 — the target guide is published and may be in use right now.
+        if (/published/i.test(message)) {
+          set({ procedureBusy: false, procedurePublishedConflict: message });
+        } else {
+          set({ procedureBusy: false, error: message });
+        }
+      }
+    },
+
+    dismissProcedureSent: () => set({ procedureSent: null, procedurePublishedConflict: null }),
 
     toggleEdgeType(id) {
       const edge = get().map?.edges.find(e => e.id === id);

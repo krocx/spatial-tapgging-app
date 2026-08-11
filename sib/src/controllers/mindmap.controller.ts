@@ -80,8 +80,15 @@ export function saveMindmap(body: SaveMindmapRequest, draftKey?: string): SaveMi
     settings: body.settings !== undefined
       ? (sanitizeSettings(body.settings) ?? existing?.settings)
       : existing?.settings,
+    // Kind is set at creation and immutable thereafter — flipping a roadmap
+    // into an executable procedure would silently change what every node means.
+    kind: existing ? existing.kind : (body.kind === 'procedure' ? 'procedure' : undefined),
+    // Anchor is updatable; the procedure export pins it on first send.
+    anchorId: body.anchorId ?? existing?.anchorId,
   };
   delete map.published;   // publication state lives in the access store only
+  if (map.kind === undefined)     delete map.kind;
+  if (map.anchorId === undefined) delete map.anchorId;
 
   mindmapStore.save(map);
   snapshotVersion(map, body.versionLabel ?? 'manual save');

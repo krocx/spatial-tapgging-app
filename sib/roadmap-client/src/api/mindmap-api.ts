@@ -2,7 +2,7 @@
 // GET /config reports whether SIB_API_KEY is enforced; the key is kept in
 // localStorage and sent as X-API-Key on every request.
 
-import type { Mindmap, MindmapSummary, MindmapVersion, MindmapNode, MindmapEdge, MindmapLane, SaveMindmapRequest, ApiResponse } from '@spatial/shared';
+import type { Mindmap, MindmapSummary, MindmapVersion, MindmapNode, MindmapEdge, MindmapLane, SaveMindmapRequest, ApiResponse, ProcedureCompileResult, ProcedureExportRequest, ProcedureExportResult } from '@spatial/shared';
 
 export interface ImageImportResult {
   name: string;
@@ -114,6 +114,19 @@ export const mindmapApi = {
     request<Mindmap>(`/mindmap/${id}/restore/${versionId}`, { method: 'POST' }, id),
   publish: (id: string) => request<Mindmap>(`/mindmap/${id}/publish`, { method: 'POST' }, id),
   unpublish: (id: string) => request<Mindmap>(`/mindmap/${id}/unpublish`, { method: 'POST' }, id),
+  // ── Procedure Designer ────────────────────────────────────────────────────
+  // Validation runs on the SERVER so the canvas, the Guide Library graph and
+  // the compiler all derive step order from one implementation. Deriving it
+  // again here would let the numbers you see drift from the guide you get.
+  procedureValidate: (id: string) =>
+    request<ProcedureCompileResult>(`/mindmap/${id}/procedure/validate`, { method: 'POST' }, id),
+
+  procedureExport: (id: string, body: ProcedureExportRequest) =>
+    request<ProcedureExportResult>(`/mindmap/${id}/procedure/export`, {
+      method: 'POST',
+      body:   JSON.stringify(body),
+    }, id),
+
   glossary: () => request<{ markdown: string; updatedAt: number }>('/mindmap/glossary'),
   importImage: (imageBase64: string, mimeType: string) =>
     request<ImageImportResult>('/mindmap/import-image', {
