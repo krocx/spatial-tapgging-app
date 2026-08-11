@@ -43,10 +43,18 @@ RUN npm run build --workspace=@spatial/sib
 # first-ever runtime VALUE import of @spatial/shared resolved to .ts source and
 # crashed the container with ERR_MODULE_NOT_FOUND, while `tsc --noEmit` was
 # green the whole time (type imports are erased; only booting executes resolution).
-RUN (SIB_DATA_DIR=/tmp/smoke PORT=3999 node sib/dist/index.js &) && \
-    sleep 5 && \
-    wget -qO- http://localhost:3999/health && \
-    wget -qO- http://localhost:3999/config
+# IMPORTANT: stdio must be redirected and the process must be killed, or the
+# backgrounded server holds the RUN step's pipes open and the build hangs
+# indefinitely at layer commit (observed: a 20-minute "deploy" that was really
+# a healthy server running forever inside the builder).
+RUN SIB_DATA_DIR=/tmp/smoke PORT=3999 node sib/dist/index.js > /tmp/smoke.log 2>&1 & \
+    SMOKE_PID=$!; \
+    i=0; until wget -qO /dev/null http://localhost:3999/health 2>/dev/null || [ $i -ge 20 ]; do i=$((i+1)); sleep 1; done; \
+    wget -qO- http://localhost:3999/health && wget -qO- http://localhost:3999/config; \
+    STATUS=$?; \
+    kill $SMOKE_PID 2>/dev/null; \
+    echo '--- smoke boot log ---'; cat /tmp/smoke.log; \
+    exit $STATUS
 
 # ── Stage 2: Runtime ──────────────────────────────────────────────────────────
 FROM node:20-alpine
