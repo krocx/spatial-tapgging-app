@@ -49,8 +49,8 @@ RUN npm run build --workspace=@spatial/sib
 # a healthy server running forever inside the builder).
 RUN SIB_DATA_DIR=/tmp/smoke PORT=3999 node sib/dist/index.js > /tmp/smoke.log 2>&1 & \
     SMOKE_PID=$!; \
-    i=0; until wget -qO /dev/null http://localhost:3999/health 2>/dev/null || [ $i -ge 20 ]; do i=$((i+1)); sleep 1; done; \
-    wget -qO- http://localhost:3999/health && wget -qO- http://localhost:3999/config; \
+    i=0; until wget -qO /dev/null http://127.0.0.1:3999/health 2>/dev/null || [ $i -ge 20 ]; do i=$((i+1)); sleep 1; done; \
+    wget -qO- http://127.0.0.1:3999/health && wget -qO- http://127.0.0.1:3999/config; \
     STATUS=$?; \
     kill $SMOKE_PID 2>/dev/null; \
     echo '--- smoke boot log ---'; cat /tmp/smoke.log; \
@@ -96,7 +96,7 @@ ENV PORT=3001
 EXPOSE 3001
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget -qO- http://localhost:3001/health || exit 1
+  CMD wget -qO- http://127.0.0.1:3001/health || exit 1
 
 # --max-old-space-size caps the V8 JS heap at 384MB, leaving ~128MB of headroom
 # on the 512MB Render Starter instance for native/off-heap memory (Buffers from
