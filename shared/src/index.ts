@@ -970,17 +970,14 @@ export interface ImportGuideResult {
 export * from './mindmap.js';
 
 // ── Platform version ─────────────────────────────────────────────────────────
-// The ONE version number for the whole release train — server, portal, roadmap
-// client and (matched manually in Xcode) the iOS MARKETING_VERSION.
+// Lives in sib/src/version.ts, NOT here.
 //
-// Scheme: YEAR.QUARTER.WEEK  (fiscal calendar, e.g. "2026.4.42")
-//   — the same scheme AppVersion.swift documents for iOS. The 4th component
-//   (BUILD) is per-artifact: CFBundleVersion on iOS, not tracked server-side.
+// This package's exports point at TypeScript SOURCE, so it is types-only at
+// runtime: `import type` is always safe (erased at compile), and bundled
+// clients are fine (vite compiles the source) — but a VALUE import from
+// compiled server code crashes in production with ERR_MODULE_NOT_FOUND,
+// because node cannot execute .ts. That is exactly how the first runtime
+// value import ever added here took down a Render deploy.
 //
-// Fiscal calendar: FY ends late October (FY26 ends 2026-10-23); quarters are
-// 13-week blocks — Q1 = weeks 1–13, Q2 = 14–26, Q3 = 27–39, Q4 = 40–52.
-//
-// Bump on the Monday of each release week, in the SAME commit as the release.
-// docs/VERSIONING.md is the standard; docs/FEATURE-CATALOG.md rows are stamped
-// with this value when features ship.
-export const PLATFORM_VERSION = '2026.4.42';
+// Rule: add types and interfaces to this package freely; add runtime values
+// to the workspace that executes them.

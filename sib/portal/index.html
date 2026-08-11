@@ -823,7 +823,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const cfg = await fetch('/config').then(r => r.json());
     authRequired = cfg.authRequired !== false;
     // Platform version — single source of truth is PLATFORM_VERSION in
-    // @spatial/shared, surfaced here so "what's running?" has an answer.
+    // sib/src/version.ts, surfaced here so "what's running?" has an answer.
     if (cfg.platformVersion) {
       const el = document.getElementById('platform-version');
       if (el) el.textContent = 'v' + cfg.platformVersion;

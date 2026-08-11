@@ -11,7 +11,14 @@ staged=$(git diff --cached --name-only)
 client_changed=$(echo "$staged" | grep -c '^sib/roadmap-client/src/' || true)
 bundle_changed=$(echo "$staged" | grep -c '^sib/roadmap/'            || true)
 
-if [ "$client_changed" -gt 0 ] && [ "$bundle_changed" -eq 0 ]; then
+# A staged-bundle check alone is too coarse: a comment-only source change
+# minifies to byte-identical output, so a fresh rebuild stages nothing and the
+# naive check false-positives. The real question is staleness — does any source
+# file postdate the built bundle? vite rewrites index.html on every build, so
+# its mtime marks the last build time. (BSD find: no -quit, hence head -1.)
+stale_src=$(find sib/roadmap-client/src -type f -newer sib/roadmap/index.html 2>/dev/null | head -1)
+
+if [ "$client_changed" -gt 0 ] && [ "$bundle_changed" -eq 0 ] && [ -n "$stale_src" ]; then
   echo ""
   echo "✗ roadmap-client source is staged but the built bundle (sib/roadmap/) is not."
   echo "  The server serves the committed bundle — your changes will not appear until"

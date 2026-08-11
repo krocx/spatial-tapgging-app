@@ -59,7 +59,7 @@ The version is defined in **exactly one place** and read everywhere else:
 
 | Where | Role |
 |---|---|
-| `shared/src/index.ts` → `PLATFORM_VERSION` | **The source of truth.** A string like `'2026.3.36'`. |
+|  `sib/src/version.ts` → `PLATFORM_VERSION` | **The source of truth.** A string like `'2026.4.42'`. (Lives in sib, not @spatial/shared — the shared package is types-only at runtime; a value import of it crashes compiled server code.) |
 | `GET /config` → `platformVersion` | How any client or human asks a server what it's running. |
 | Portal header | Displays `v<version>` fetched from `/config`. |
 | Roadmap client | Displays the same (from `/config`) — wire in the next client build. |
@@ -73,7 +73,7 @@ the portal header.
 
 On the Monday of a release week (or whenever cutting a release):
 
-1. Bump `PLATFORM_VERSION` in `shared/src/index.ts`.
+1. Bump `PLATFORM_VERSION` in `sib/src/version.ts`.
 2. Set `MARKETING_VERSION` in Xcode to the same value; reset
    `CURRENT_PROJECT_VERSION` to `01`.
 3. Add a section to `CHANGELOG.md` (see §5) titled with the new version.

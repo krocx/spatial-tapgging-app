@@ -52,7 +52,7 @@ export default function App(): JSX.Element {
 }
 
 /** Platform version from /config — the single source of truth is
- *  PLATFORM_VERSION in @spatial/shared (see docs/VERSIONING.md). */
+ *  PLATFORM_VERSION in sib/src/version.ts (see docs/VERSIONING.md). */
 function PlatformVersion(): JSX.Element | null {
   const [version, setVersion] = useState<string | null>(null);
   useEffect(() => {

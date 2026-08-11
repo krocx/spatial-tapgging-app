@@ -16,7 +16,9 @@ import tagGroupRouter from './routes/tag-groups.js';
 import modelRouter from './routes/models.js';
 import mindmapRouter from './routes/mindmap.routes.js';
 import { apiKeyAuth } from './middleware/auth.js';
-import { PLATFORM_VERSION } from '@spatial/shared';
+// NOT from @spatial/shared: that package is types-only at runtime — its exports
+// point at .ts source, which a compiled server cannot load. See sib/src/version.ts.
+import { PLATFORM_VERSION } from './version.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 

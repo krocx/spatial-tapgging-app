@@ -36,6 +36,18 @@ COPY sib/src/           ./sib/src/
 # bundle ships via sib/roadmap/ instead).
 RUN npm run build --workspace=@spatial/sib
 
+# ── Boot smoke test ───────────────────────────────────────────────────────────
+# Run the compiled output with plain node — exactly as production does — and
+# hit /health. Catches the compiles-clean-but-crashes-on-boot class of failure
+# at BUILD time instead of on deploy. Real incident this guards against: the
+# first-ever runtime VALUE import of @spatial/shared resolved to .ts source and
+# crashed the container with ERR_MODULE_NOT_FOUND, while `tsc --noEmit` was
+# green the whole time (type imports are erased; only booting executes resolution).
+RUN (SIB_DATA_DIR=/tmp/smoke PORT=3999 node sib/dist/index.js &) && \
+    sleep 5 && \
+    wget -qO- http://localhost:3999/health && \
+    wget -qO- http://localhost:3999/config
+
 # ── Stage 2: Runtime ──────────────────────────────────────────────────────────
 FROM node:20-alpine
 WORKDIR /app
