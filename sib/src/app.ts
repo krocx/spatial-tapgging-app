@@ -16,6 +16,7 @@ import tagGroupRouter from './routes/tag-groups.js';
 import modelRouter from './routes/models.js';
 import mindmapRouter from './routes/mindmap.routes.js';
 import { apiKeyAuth } from './middleware/auth.js';
+import { PLATFORM_VERSION } from '@spatial/shared';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -42,6 +43,8 @@ export function createApp(): express.Express {
   app.get('/config', (_req, res) => {
     res.json({
       authRequired: !!(process.env.SIB_API_KEY?.trim()),
+      // Single platform version for the whole release train — see docs/VERSIONING.md.
+      platformVersion: PLATFORM_VERSION,
       timestamp: new Date().toISOString(),
     });
   });

@@ -1,0 +1,27 @@
+#!/bin/sh
+# pre-commit — guards against committing roadmap-client source changes without
+# the rebuilt bundle. The deployed server serves the COMMITTED bundle
+# (sib/roadmap/); Render never builds the client (Dockerfile runs --omit=dev),
+# so a stale bundle ships silently and the new UI simply never appears.
+#
+# Enable once per clone:   git config core.hooksPath .githooks
+
+staged=$(git diff --cached --name-only)
+
+client_changed=$(echo "$staged" | grep -c '^sib/roadmap-client/src/' || true)
+bundle_changed=$(echo "$staged" | grep -c '^sib/roadmap/'            || true)
+
+if [ "$client_changed" -gt 0 ] && [ "$bundle_changed" -eq 0 ]; then
+  echo ""
+  echo "✗ roadmap-client source is staged but the built bundle (sib/roadmap/) is not."
+  echo "  The server serves the committed bundle — your changes will not appear until"
+  echo "  it is rebuilt. Run:"
+  echo ""
+  echo "      npm run build:roadmap"
+  echo "      git add sib/roadmap"
+  echo ""
+  echo "  (Bypass deliberately with: git commit --no-verify)"
+  exit 1
+fi
+
+exit 0

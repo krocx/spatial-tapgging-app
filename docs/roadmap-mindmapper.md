@@ -182,6 +182,40 @@ Then open `https://dca-qa-330.amat.com:447/roadmap`. The committed `sib/roadmap/
 - **Export:** SIB → "Export SIB draft" (`POST /mindmap/export` with `format: "sib-json"`) produces a *draft* scaffold of Tag entities from tag-typed nodes (nodes already linked to SIB are listed separately for traceability). It deliberately does **not** write into the SIB stores — real tags need an anchor and spatial placement, which stays in the authoring apps.
 - AI-assisted node expansion remains intentionally out: it conflicts with the "no external calls" constraint. When a local model is available it should join via the adapter interface — never hard-coded into the client.
 
+## Procedure Designer (kind: 'procedure' maps)
+
+The canvas doubles as a visual authoring tool for AR work instructions. Full design
+rationale and lifecycle: [PROCEDURE-DESIGNER.md](PROCEDURE-DESIGNER.md).
+
+- **Map kind** is chosen at creation ("Create procedure" on the map list) and is
+  **immutable** afterwards — flipping a roadmap into an executable procedure would
+  silently change what every node means. `Mindmap.kind` is absent on all pre-existing
+  maps, which the server treats as `'roadmap'`.
+- **Edge roles**: on procedure maps, dropping a connection opens a relationship picker
+  (Next / On failure / Requires, keys 1/2/3) — no edge is created until a role is
+  chosen, because an unroled edge is ignored by the compiler. Roles render green /
+  red / amber, matching the Guide Library's ⬡ Graph view exactly. Stored as
+  `MindmapEdge.role`, whitelisted through `sanitizeEdge` (which rebuilds edges from
+  scratch — any new field must be added there or it is silently dropped on save).
+- **Derived step numbers**: node badges show the sequence the compiler will emit,
+  fetched from `POST /mindmap/:id/procedure/validate` — never derived client-side, so
+  the number on the card cannot drift from the number in the guide.
+- **Pre-flight**: the ProcedureBar shows the census (steps / next / failure /
+  requires / lanes) plus blocking errors (no start, unreachable step, empty text,
+  duplicate role edges, precondition deadlock) and non-blocking warnings. Blocking
+  issues select the offending node on click.
+- **Send to Guide Library**: `POST /mindmap/:id/procedure/export` compiles the map
+  via the shared ingestion service and creates or updates a **draft** guide. Every
+  new step arrives unplaced — AR placement stays on device. Node provenance
+  (`metadata.guide = { guideId, stepId }`) is stamped back so re-sync updates steps
+  in place; spatial fields are never overwritten by a canvas write. Re-sync to a
+  **published** guide is refused (409) unless explicitly confirmed, which unpublishes
+  first.
+- **Server pieces**: compiler `sib/src/procedure/compiler.ts` (pure, unit-tested),
+  policy `sib/src/procedure/export.ts`, shared ingestion `sib/src/guides/ingest.ts`.
+  Tests: `sib/test/procedure-compiler.test.ts`, `guide-ingest.test.ts`,
+  `procedure-export.test.ts`.
+
 ## Assumptions & Limitations
 
 - **LWW, not CRDT** — chosen for simplicity and auditability at team scale (a handful of concurrent editors). Whole-entity granularity: two people editing the *same node's text* simultaneously → last writer wins. Position and text are on the same record, so a concurrent move+rename resolves to one writer. A CRDT can replace `applyGraphEvent()` without touching the wire protocol.

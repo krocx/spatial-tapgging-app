@@ -382,7 +382,7 @@
       <path d="M14 4L24 10V18L14 24L4 18V10L14 4Z" stroke="#4f8ef7" stroke-width="1.5" fill="none"/>
       <circle cx="14" cy="14" r="3" fill="#4f8ef7"/>
     </svg>
-    <h1>Spatial Tagging <span>· Anchor Directory</span></h1>
+    <h1>Spatial Tagging <span>· Anchor Directory</span> <span id="platform-version" style="font-size:0.62rem;color:var(--muted);font-weight:400;margin-left:6px"></span></h1>
   </div>
   <div class="actions">
     <button class="btn btn-ghost btn-sm" onclick="showSettings()">⚙ Settings</button>
@@ -822,6 +822,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     const cfg = await fetch('/config').then(r => r.json());
     authRequired = cfg.authRequired !== false;
+    // Platform version — single source of truth is PLATFORM_VERSION in
+    // @spatial/shared, surfaced here so "what's running?" has an answer.
+    if (cfg.platformVersion) {
+      const el = document.getElementById('platform-version');
+      if (el) el.textContent = 'v' + cfg.platformVersion;
+    }
   } catch { /* keep authRequired = true */ }
 
   if (!authRequired) {

@@ -1,5 +1,6 @@
 // App.tsx — shell: map list ⇄ editor. All state lives in the store.
 
+import { useState, useEffect } from 'react';
 import { useStore } from './state/store.js';
 import { MapList } from './components/MapList.js';
 import { Toolbar } from './components/Toolbar.js';
@@ -8,6 +9,7 @@ import { FilterPanel } from './components/FilterPanel.js';
 import { PresentationBar } from './components/PresentationBar.js';
 import { GlossaryPanel } from './components/GlossaryPanel.js';
 import { ProcedureBar } from './components/ProcedureBar.js';
+import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { CanvasStage } from './canvas/CanvasStage.js';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts.js';
 
@@ -18,9 +20,10 @@ export default function App(): JSX.Element {
   const presenting = useStore(s => s.presentation.active);
   useKeyboardShortcuts();
 
-  if (view === 'list') return <MapList />;
+  if (view === 'list') return <ErrorBoundary><MapList /></ErrorBoundary>;
 
   return (
+    <ErrorBoundary>
     <div className="editor">
       {!presenting && <Toolbar />}
       {!presenting && <ProcedureBar />}
@@ -40,8 +43,23 @@ export default function App(): JSX.Element {
         <div className="hint-bar">
           double-click: add node · drag ring: connect · drag: marquee select · space+drag: pan ·
           scroll: zoom · enter: edit · del: remove · ⌘S save · ⌘Z undo · ⌘C/⌘V copy/paste · ⌘D duplicate
+          <PlatformVersion />
         </div>
       )}
     </div>
+    </ErrorBoundary>
   );
+}
+
+/** Platform version from /config — the single source of truth is
+ *  PLATFORM_VERSION in @spatial/shared (see docs/VERSIONING.md). */
+function PlatformVersion(): JSX.Element | null {
+  const [version, setVersion] = useState<string | null>(null);
+  useEffect(() => {
+    fetch('/config').then(r => r.json())
+      .then(cfg => { if (cfg.platformVersion) setVersion(cfg.platformVersion); })
+      .catch(() => { /* footer stays version-less offline */ });
+  }, []);
+  if (!version) return null;
+  return <span style={{ marginLeft: 12, opacity: 0.55 }}>v{version}</span>;
 }

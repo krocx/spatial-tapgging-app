@@ -955,3 +955,19 @@ export interface ImportGuideResult {
 
 // --- Roadmap Mind-Mapper (served at /roadmap, API at /mindmap/*) ---
 export * from './mindmap.js';
+
+// ── Platform version ─────────────────────────────────────────────────────────
+// The ONE version number for the whole release train — server, portal, roadmap
+// client and (matched manually in Xcode) the iOS MARKETING_VERSION.
+//
+// Scheme: YEAR.QUARTER.WEEK  (fiscal calendar, e.g. "2026.4.42")
+//   — the same scheme AppVersion.swift documents for iOS. The 4th component
+//   (BUILD) is per-artifact: CFBundleVersion on iOS, not tracked server-side.
+//
+// Fiscal calendar: FY ends late October (FY26 ends 2026-10-23); quarters are
+// 13-week blocks — Q1 = weeks 1–13, Q2 = 14–26, Q3 = 27–39, Q4 = 40–52.
+//
+// Bump on the Monday of each release week, in the SAME commit as the release.
+// docs/VERSIONING.md is the standard; docs/FEATURE-CATALOG.md rows are stamped
+// with this value when features ship.
+export const PLATFORM_VERSION = '2026.4.42';
