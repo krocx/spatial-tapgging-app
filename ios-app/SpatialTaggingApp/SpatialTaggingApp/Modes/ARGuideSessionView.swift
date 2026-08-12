@@ -1979,6 +1979,23 @@ struct GuideContentPanel: View {
                             .padding(.horizontal, 16)
                     }
 
+                    // Reference link — authored in the Procedure Designer
+                    // (video, PDF, SOP page). Opens in Safari; the platform
+                    // stores no copy of the target.
+                    if let raw = step.linkUrl, let url = URL(string: raw),
+                       url.scheme == "https" || url.scheme == "http" {
+                        Link(destination: url) {
+                            Label("Reference", systemImage: "paperclip")
+                                .font(.subheadline.bold())
+                                .foregroundStyle(.indigo)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 7)
+                                .background(Color.indigo.opacity(0.12))
+                                .clipShape(Capsule())
+                        }
+                        .padding(.horizontal, 16)
+                    }
+
                     // Evidence row (Phase 3)
                     HStack(spacing: 10) {
                         if let ev = evidenceImage {

@@ -3,7 +3,7 @@
 
 import type { Mindmap } from '@spatial/shared';
 import { NODE_COLORS } from './colors.js';
-import { NODE_W, NODE_H, nodeCenter, borderPoint } from './geometry.js';
+import { NODE_W, LINE_HEIGHT, nodeHeight, wrapNodeText, nodeCenter, borderPoint } from './geometry.js';
 import { edgePath, edgeMidpoint, edgeColorFor } from '../canvas/EdgeView.js';
 
 export function buildSvg(map: Mindmap): string {
@@ -16,7 +16,7 @@ export function buildSvg(map: Mindmap): string {
   const minX = (xs.length ? Math.min(...xs) : 0) - pad;
   const minY = (ys.length ? Math.min(...ys) : 0) - pad;
   const w = (xs.length ? Math.max(...xs) : 0) + NODE_W + pad - minX;
-  const h = (ys.length ? Math.max(...ys) : 0) + NODE_H + pad - minY;
+  const h = (map.nodes.length ? Math.max(...map.nodes.map(n => n.y + nodeHeight(n))) : 0) + pad - minY;
 
   const byId = new Map(map.nodes.map(n => [n.id, n]));
   const neutral = map.settings?.edgeColor === 'neutral';
@@ -38,12 +38,17 @@ export function buildSvg(map: Mindmap): string {
 
   const nodeMarkup = map.nodes.map(n => {
     const color = NODE_COLORS[n.type] ?? NODE_COLORS.generic;
-    const label = esc(n.text.length > 22 ? n.text.slice(0, 21) + '…' : n.text);
+    // Same wrap the canvas uses, so the export matches what the author sees.
+    const { lines } = wrapNodeText(n.text);
+    const nh = nodeHeight(n);
+    const firstY = n.y + nh / 2 + 5 - ((lines.length - 1) * LINE_HEIGHT) / 2;
+    const text = lines.map((ln, i) =>
+      `<text x="${n.x + NODE_W / 2}" y="${firstY + i * LINE_HEIGHT}" text-anchor="middle" font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="13" fill="#1e293b">${esc(ln)}</text>`).join('');
     return [
       `<g>`,
-      `<rect x="${n.x}" y="${n.y}" width="${NODE_W}" height="${NODE_H}" rx="10" fill="#ffffff" stroke="${color}" stroke-width="2"/>`,
-      `<rect x="${n.x}" y="${n.y}" width="6" height="${NODE_H}" rx="3" fill="${color}"/>`,
-      `<text x="${n.x + NODE_W / 2}" y="${n.y + NODE_H / 2 + 5}" text-anchor="middle" font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="13" fill="#1e293b">${label}</text>`,
+      `<rect x="${n.x}" y="${n.y}" width="${NODE_W}" height="${nh}" rx="10" fill="#ffffff" stroke="${color}" stroke-width="2"/>`,
+      `<rect x="${n.x}" y="${n.y}" width="6" height="${nh}" rx="3" fill="${color}"/>`,
+      text,
       `</g>`,
     ].join('');
   }).join('\n');

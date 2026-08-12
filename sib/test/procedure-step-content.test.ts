@@ -78,6 +78,36 @@ test('compiler warns per step without an image, and rejects junk meta values', (
   assert.equal(s1.ttsText, undefined, 'blank tts dropped');
 });
 
+test('compiler carries a valid reference link and drops a non-http one', () => {
+  const r = compileProcedure(M(
+    [N('a', 0, 'S1', { linkUrl: '  https://example.com/sop.pdf  ' }),
+     N('b', 100, 'S2', { linkUrl: 'javascript:alert(1)' })],
+    [E('a', 'b', 'next')],
+  ));
+  assert.equal(r.ok, true);
+  assert.equal(r.guide!.steps[0].linkUrl, 'https://example.com/sop.pdf', 'trimmed and kept');
+  assert.equal(r.guide!.steps[1].linkUrl, undefined, 'non-http scheme dropped');
+});
+
+test('ingest writes linkUrl onto the guide step and clears it when absent on re-sync', async () => {
+  const first = await applyImportedGuide(
+    { name: 'GL', steps: [{ sequenceNumber: 1, title: 'A', text: 'x', linkUrl: 'https://example.com/v' }] },
+    { anchorId: 'anchor-l', createdBy: 'K' },
+  );
+  assert.equal(first.steps[0].linkUrl, 'https://example.com/v');
+
+  // Re-sync with the link removed on the canvas → cleared on the step
+  // (authoring-surface-owned, like text — unlike device-owned placement).
+  const second = await applyImportedGuide(
+    { name: 'GL', steps: [{ sequenceNumber: 1, title: 'A', text: 'x' }] },
+    { anchorId: 'anchor-l', createdBy: 'K', guideId: first.guide.id,
+      existingStepIdBySeq: { 1: first.steps[0].id } },
+  );
+  assert.equal(second.updated, 1);
+  assert.equal(second.steps[0].id, first.steps[0].id);
+  assert.equal(second.steps[0].linkUrl, undefined, 'removed link cleared');
+});
+
 // ── Ingest: designer image copy ─────────────────────────────────────────────
 
 test('ingest copies a designer image into the guide step-image store', async () => {

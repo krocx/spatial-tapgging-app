@@ -235,6 +235,30 @@ Proves the whole path on real data before investing in the richer UI.
 Inspector fields (voice, required, image, model), pre-flight panel in the canvas,
 step palette (decision, terminal), keyboard flow.
 
+### Slice 2.5 — UX polish + preview (shipped 2026.4.42, from field feedback)
+
+Driven by first non-developer use of the deployed designer ("teams are used to
+Visio and Figma"):
+
+- **Edge type switcher** — a selected connection's role (Next / On failure /
+  Requires) is editable in the Inspector; drawing no longer commits you.
+- **Role comprehension** — picker copy rewritten around *paths vs rules*
+  (Next/On failure are travelled; Requires only gates), Enter defaults to Next,
+  Requires visually demoted; census strip doubles as a colour legend with a
+  ? explainer panel.
+- **Auto-sizing nodes** — cards wrap titles up to 4 lines and grow; all
+  geometry reads `nodeHeight()` (see geometry.ts), never the `NODE_H` constant.
+- **Autosave fields** — Notes and Voice script commit on blur AND unmount
+  (the unmount path was silently dropping text); Saved ✓ affordance.
+- **Reference link per step** — `metadata.step.linkUrl` (http/https only)
+  → compiler → `ImportedGuideStep.linkUrl` → `GuideStep.linkUrl` → "Reference"
+  button on the iOS AR panel (opens in Safari; nothing stored server-side).
+- **Preview mode** — client-side phone-frame walkthrough traversing the real
+  edge graph (Complete/Failed), speech-synthesis voice, requires-gate
+  redirects, canvas you-are-here highlight, branch-coverage exit summary.
+  Traversal must stay semantically identical to the compiler and the iOS
+  runtime; a divergence is a bug in one of the three.
+
 ### Slice 3 — round-trip
 
 Open an existing guide into a map, diff dialog, published-guide guard UI,

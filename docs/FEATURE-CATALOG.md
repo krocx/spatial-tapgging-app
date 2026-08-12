@@ -97,6 +97,10 @@ the linked docs are the single source of truth.
 | **Procedure maps** | `kind: 'procedure'` maps with role-typed edges, server-derived step numbers, pre-flight validation, send-to-Guide-Library | Shipped | baseline | [PROCEDURE-DESIGNER](PROCEDURE-DESIGNER.md) |
 | Step content authoring | Voice script, optional toggle, reference image and 3D model assignment on canvas nodes; compiled into the guide at export | Shipped | 2026.4.42 | [PROCEDURE-DESIGNER](PROCEDURE-DESIGNER.md) |
 | Day/night canvas | Dark canvas for procedure maps (default) with a toolbar toggle; node cards stay white so contents never lose contrast | Shipped | 2026.4.42 | [roadmap-mindmapper](roadmap-mindmapper.md) |
+| Preview mode | Phone-frame walkthrough of a procedure: real edge-graph traversal (Complete/Failed), voice playback, requires-gate redirects, canvas highlight, branch-coverage exit summary | Shipped | 2026.4.42 | [PROCEDURE-DESIGNER](PROCEDURE-DESIGNER.md) |
+| Reference link per step | Any http(s) URL (video, PDF, SOP) authored on a step; "Reference" button on the iOS AR panel opens it in Safari | Shipped | 2026.4.42 | [PROCEDURE-DESIGNER](PROCEDURE-DESIGNER.md) |
+| Auto-sizing nodes | Cards wrap titles up to 4 lines and grow to fit; all geometry (edges, minimap, layout, export) follows the real height | Shipped | 2026.4.42 | [roadmap-mindmapper](roadmap-mindmapper.md) |
+| Edge type switcher + legend | Change Next / On failure / Requires on a selected connection; census line-swatch legend + role explainer panel | Shipped | 2026.4.42 | [PROCEDURE-DESIGNER](PROCEDURE-DESIGNER.md) |
 
 ## 7. Platform foundations
 

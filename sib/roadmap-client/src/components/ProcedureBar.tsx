@@ -23,7 +23,11 @@ export function ProcedureBar(): JSX.Element | null {
   const dismiss    = useStore(s => s.dismissProcedureSent);
   const select     = useStore(s => s.select);
 
+  const startPreview = useStore(s => s.startPreview);
+  const previewing   = useStore(s => !!s.preview);
+
   const [anchorId, setAnchorId] = useState('');
+  const [showHelp, setShowHelp] = useState(false);
 
   if (!map || map.kind !== 'procedure') return null;
 
@@ -43,10 +47,24 @@ export function ProcedureBar(): JSX.Element | null {
         {c && (
           <>
             <span className="pc-stat">steps <b>{c.steps}</b></span>
-            <span className="pc-stat" style={{ color: ROLE_COLORS.next }}>next <b>{c.next}</b></span>
-            <span className="pc-stat" style={{ color: ROLE_COLORS.failure }}>on failure <b>{c.failure}</b></span>
-            <span className="pc-stat" style={{ color: ROLE_COLORS.requires }}>requires <b>{c.requires}</b></span>
+            {/* Line swatches double as the canvas legend: solid green/red for
+                the two paths, dashed amber for the gate — same rendering as
+                the edges themselves and the portal graph. */}
+            <span className="pc-stat" style={{ color: ROLE_COLORS.next }}>
+              <span className="pc-line" style={{ background: ROLE_COLORS.next }} />next <b>{c.next}</b>
+            </span>
+            <span className="pc-stat" style={{ color: ROLE_COLORS.failure }}>
+              <span className="pc-line" style={{ background: ROLE_COLORS.failure }} />on failure <b>{c.failure}</b>
+            </span>
+            <span className="pc-stat" style={{ color: ROLE_COLORS.requires }}>
+              <span className="pc-line dashed" style={{ color: ROLE_COLORS.requires }} />requires <b>{c.requires}</b>
+            </span>
             <span className="pc-stat">lanes <b>{c.lanes}</b></span>
+            <button
+              className="pc-help"
+              title="What do the connection types mean?"
+              onClick={() => setShowHelp(v => !v)}
+            >?</button>
           </>
         )}
         {busy && <span className="pc-stat pc-muted">checking…</span>}
@@ -63,6 +81,11 @@ export function ProcedureBar(): JSX.Element | null {
           )}
           <button onClick={() => void validate()} disabled={busy}>Re-check</button>
           <button
+            onClick={startPreview}
+            disabled={previewing || !procedure?.order || Object.keys(procedure.order).length === 0}
+            title="Walk through the procedure as the operator will experience it — nothing is saved or sent"
+          >▶ Preview</button>
+          <button
             className="primary"
             onClick={() => doSend(false)}
             disabled={!canSend}
@@ -76,6 +99,19 @@ export function ProcedureBar(): JSX.Element | null {
           </button>
         </span>
       </div>
+
+      {showHelp && (
+        <div className="pc-help-panel" onClick={() => setShowHelp(false)}>
+          <p><b style={{ color: ROLE_COLORS.next }}>Next step</b> — the operator's path: where they
+            go after completing a step. Every step (except the last) has exactly one.</p>
+          <p><b style={{ color: ROLE_COLORS.failure }}>On failure</b> — a recovery path, taken only
+            if the step fails. Optional; can loop back to an earlier step.</p>
+          <p><b style={{ color: ROLE_COLORS.requires }}>Requires</b> — a rule, not a path. The step
+            it points at cannot start until the step it comes from is done. Nobody travels along
+            it — use it only when the dependency isn't already enforced by the Next chain.</p>
+          <p className="pc-help-dismiss">Click to dismiss</p>
+        </div>
+      )}
 
       {errors.length > 0 && (
         <ul className="procedure-issues errors">

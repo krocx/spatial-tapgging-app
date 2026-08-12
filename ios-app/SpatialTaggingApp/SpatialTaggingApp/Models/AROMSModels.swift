@@ -143,6 +143,9 @@ struct GuideStep: Codable, Identifiable, Equatable {
     let ttsText:            String?
     let mediaType:          GuideStepMediaType?
     let mediaPath:          String?
+    /// Reference link (video, PDF, SOP page). Shown as a "Reference" button on
+    /// the AR step panel; opens in Safari on tap.
+    let linkUrl:            String?
     let completionRequired: Bool
     // Phase 2: spatial placement
     let posX:               Double?
@@ -193,6 +196,7 @@ struct GuideStep: Codable, Identifiable, Equatable {
         ttsText            = try c.decodeIfPresent(String.self,             forKey: .ttsText)
         mediaType          = try c.decodeIfPresent(GuideStepMediaType.self, forKey: .mediaType)
         mediaPath          = try c.decodeIfPresent(String.self,             forKey: .mediaPath)
+        linkUrl            = try c.decodeIfPresent(String.self,             forKey: .linkUrl)
         completionRequired = try c.decode(Bool.self,                forKey: .completionRequired)
         // Phase 2 placement fields — default to unplaced when absent (pre-Phase-2 server builds)
         posX               = try c.decodeIfPresent(Double.self,             forKey: .posX)

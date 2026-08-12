@@ -3,7 +3,7 @@
 // lanes fall back to groups; without groups, a single whole-map step.
 
 import type { Mindmap } from '@spatial/shared';
-import { NODE_W, NODE_H } from './geometry.js';
+import { NODE_W, nodeHeight } from './geometry.js';
 
 export interface PresentationStep {
   name: string;
@@ -30,7 +30,7 @@ export function computeSteps(map: Mindmap): PresentationStep[] {
   for (const lane of rows) {
     const ids = map.nodes
       .filter(n => {
-        const cy = n.y + NODE_H / 2;
+        const cy = n.y + nodeHeight(n) / 2;
         return cy >= lane.x && cy < lane.x + lane.width;   // rows: x=top, width=height
       })
       .map(n => n.id);
@@ -59,6 +59,6 @@ export function stepBounds(map: Mindmap, step: PresentationStep) {
     minX: Math.min(...nodes.map(n => n.x)),
     minY: Math.min(...nodes.map(n => n.y)),
     maxX: Math.max(...nodes.map(n => n.x)) + NODE_W,
-    maxY: Math.max(...nodes.map(n => n.y)) + NODE_H,
+    maxY: Math.max(...nodes.map(n => n.y + nodeHeight(n))),
   };
 }

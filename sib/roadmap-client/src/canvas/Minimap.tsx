@@ -4,7 +4,7 @@
 import { useCallback, useRef } from 'react';
 import { useStore } from '../state/store.js';
 import { NODE_COLORS } from '../utils/colors.js';
-import { NODE_W, NODE_H } from '../utils/geometry.js';
+import { NODE_W, NODE_H, nodeHeight } from '../utils/geometry.js';
 
 const MM_W = 180;
 const MM_H = 120;
@@ -29,7 +29,7 @@ export function Minimap(): JSX.Element | null {
   const minX = empty ? 0 : Math.min(...nodes.map(n => n.x)) - PAD;
   const minY = empty ? 0 : Math.min(...nodes.map(n => n.y)) - PAD;
   const maxX = empty ? MM_W : Math.max(...nodes.map(n => n.x)) + NODE_W + PAD;
-  const maxY = empty ? MM_H : Math.max(...nodes.map(n => n.y)) + NODE_H + PAD;
+  const maxY = empty ? MM_H : Math.max(...nodes.map(n => n.y + nodeHeight(n))) + PAD;
   const scale = Math.min(MM_W / (maxX - minX), MM_H / (maxY - minY));
   const ox = (MM_W - (maxX - minX) * scale) / 2;
   const oy = (MM_H - (maxY - minY) * scale) / 2;
@@ -79,7 +79,7 @@ export function Minimap(): JSX.Element | null {
         const p = toMini(n.x, n.y);
         return (
           <rect key={n.id} x={p.x} y={p.y}
-                width={Math.max(3, NODE_W * scale)} height={Math.max(2, NODE_H * scale)}
+                width={Math.max(3, NODE_W * scale)} height={Math.max(2, nodeHeight(n) * scale)}
                 rx={1.5} fill={NODE_COLORS[n.type] ?? NODE_COLORS.generic} opacity={0.8} />
         );
       })}

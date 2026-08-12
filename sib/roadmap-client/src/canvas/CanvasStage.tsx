@@ -7,7 +7,7 @@
 
 import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { useStore, noteMouseWorld, computeHighlight } from '../state/store.js';
-import { toWorld, nodeCenter, NODE_W, NODE_H } from '../utils/geometry.js';
+import { toWorld, nodeCenter, nodeHeight, NODE_W } from '../utils/geometry.js';
 import { NodeView } from './NodeView.js';
 import { EdgeView, ROLE_COLORS } from './EdgeView.js';
 import { RolePicker } from '../components/RolePicker.js';
@@ -174,7 +174,7 @@ export function CanvasStage(): JSX.Element {
     // Tiny drag = click → already deselected on pointerdown.
     if (maxX - minX > 4 || maxY - minY > 4) {
       const hit = map.nodes
-        .filter(n => n.x + NODE_W > minX && n.x < maxX && n.y + NODE_H > minY && n.y < maxY)
+        .filter(n => n.x + NODE_W > minX && n.x < maxX && n.y + nodeHeight(n) > minY && n.y < maxY)
         .map(n => n.id);
       const current = additive ? useStore.getState().selectedNodeIds : [];
       useStore.setState({ selectedNodeIds: [...new Set([...current, ...hit])], selectedEdgeId: null });

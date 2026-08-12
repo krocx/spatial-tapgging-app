@@ -9,6 +9,7 @@ import { FilterPanel } from './components/FilterPanel.js';
 import { PresentationBar } from './components/PresentationBar.js';
 import { GlossaryPanel } from './components/GlossaryPanel.js';
 import { ProcedureBar } from './components/ProcedureBar.js';
+import { PreviewPanel } from './components/PreviewPanel.js';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { CanvasStage } from './canvas/CanvasStage.js';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts.js';
@@ -18,6 +19,7 @@ export default function App(): JSX.Element {
   const error = useStore(s => s.error);
   const setError = useStore(s => s.setError);
   const presenting = useStore(s => s.presentation.active);
+  const previewing = useStore(s => !!s.preview);
   useKeyboardShortcuts();
 
   if (view === 'list') return <ErrorBoundary><MapList /></ErrorBoundary>;
@@ -36,7 +38,10 @@ export default function App(): JSX.Element {
         {!presenting && <FilterPanel />}
         <CanvasStage />
         {!presenting && <GlossaryPanel />}
-        {!presenting && <Inspector />}
+        {/* Preview replaces the Inspector on the right while active — the
+            walkthrough IS the selection during a rehearsal. */}
+        {!presenting && !previewing && <Inspector />}
+        {!presenting && <PreviewPanel />}
       </div>
       <PresentationBar />
       {!presenting && (

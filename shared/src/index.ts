@@ -654,6 +654,13 @@ export interface GuideStep {
   ttsText?:           string;      // override for voice synthesis — defaults to text
   mediaType?:         GuideStepMediaType;
   mediaPath?:         string;      // filename on SIB step-image store
+  /**
+   * Reference link (video, PDF, SOP page — any http(s) URL). Shown as a
+   * tappable "Reference" button on the AR step panel; opens on the device.
+   * Deliberately a link rather than embedded media: the platform stores no
+   * copy, and the target can be any format the phone's browser can open.
+   */
+  linkUrl?:           string;
   completionRequired: boolean;     // defaults to true
   // Phase 2: spatial placement
   posX?:              number;      // ARKit world-space X (metres, relative to saved ARWorldMap)
@@ -685,6 +692,7 @@ export type CreateGuideStepRequest = {
   mediaType?:          GuideStepMediaType;
   /** Base64-encoded JPEG — stored server-side; mediaPath is returned in the response. */
   mediaBase64?:        string;
+  linkUrl?:            string;
   completionRequired?: boolean;    // defaults to true when absent
 };
 
@@ -696,6 +704,8 @@ export type UpdateGuideStepRequest = {
   completionRequired?: boolean;
   /** Pass null to clear an attached image. */
   mediaBase64?:        string | null;
+  /** Pass null to clear the reference link. */
+  linkUrl?:            string | null;
   // Phase 2: spatial placement
   posX?:               number;
   posY?:               number;
@@ -919,6 +929,8 @@ export interface ImportedGuideStep {
    * exclusive with imageUrl; imageFile wins when both are present.
    */
   imageFile?:           string;
+  /** Reference link (any http(s) URL) — carried through to GuideStep.linkUrl. */
+  linkUrl?:             string;
   completionRequired?:  boolean;   // defaults to true
   // 3D ghost overlay ASSIGNMENT (which model, how big, how transparent).
   // Deliberately excludes offsets/rotation: those are AR placement, owned by

@@ -6,7 +6,7 @@ import { useRef, useCallback } from 'react';
 import type { MindmapNode } from '@spatial/shared';
 import { useStore } from '../state/store.js';
 import { NODE_COLORS, STATUS_COLORS } from '../utils/colors.js';
-import { NODE_W, NODE_H } from '../utils/geometry.js';
+import { NODE_W, NODE_H, LINE_HEIGHT, nodeHeight, wrapNodeText } from '../utils/geometry.js';
 import { ICON_PATHS } from '../utils/icons.js';
 
 interface Props {
@@ -20,22 +20,23 @@ interface Props {
   hiddenCount?: number;
 }
 
-/** Shape outline for the node body. Diamond/hexagon are polygons. */
-function ShapeOutline({ shape, stroke, strokeWidth, filter }: {
-  shape: MindmapNode['shape']; stroke: string; strokeWidth: number; filter: string;
+/** Shape outline for the node body. Diamond/hexagon are polygons.
+ *  `h` is the content-derived card height (nodeHeight), not the constant. */
+function ShapeOutline({ shape, h, stroke, strokeWidth, filter }: {
+  shape: MindmapNode['shape']; h: number; stroke: string; strokeWidth: number; filter: string;
 }): JSX.Element {
   const common = { fill: '#ffffff', stroke, strokeWidth, style: { filter } };
   switch (shape) {
     case 'rect':
-      return <rect width={NODE_W} height={NODE_H} rx={2} {...common} />;
+      return <rect width={NODE_W} height={h} rx={2} {...common} />;
     case 'pill':
-      return <rect width={NODE_W} height={NODE_H} rx={NODE_H / 2} {...common} />;
+      return <rect width={NODE_W} height={h} rx={NODE_H / 2} {...common} />;
     case 'diamond':
-      return <polygon points={`${NODE_W / 2},-6 ${NODE_W + 10},${NODE_H / 2} ${NODE_W / 2},${NODE_H + 6} -10,${NODE_H / 2}`} {...common} />;
+      return <polygon points={`${NODE_W / 2},-6 ${NODE_W + 10},${h / 2} ${NODE_W / 2},${h + 6} -10,${h / 2}`} {...common} />;
     case 'hexagon':
-      return <polygon points={`14,0 ${NODE_W - 14},0 ${NODE_W},${NODE_H / 2} ${NODE_W - 14},${NODE_H} 14,${NODE_H} 0,${NODE_H / 2}`} {...common} />;
+      return <polygon points={`14,0 ${NODE_W - 14},0 ${NODE_W},${h / 2} ${NODE_W - 14},${h} 14,${h} 0,${h / 2}`} {...common} />;
     default:
-      return <rect width={NODE_W} height={NODE_H} rx={10} {...common} />;
+      return <rect width={NODE_W} height={h} rx={10} {...common} />;
   }
 }
 
@@ -53,6 +54,9 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
   const updateNodeText = useStore(s => s.updateNodeText);
   const setPendingEdgeFrom = useStore(s => s.setPendingEdgeFrom);
   const sendCursor = useStore(s => s.sendCursor);
+  // Preview walkthrough: the step the simulated operator is standing on gets
+  // an indigo ring so the phone frame and the canvas agree on "you are here".
+  const previewCurrent = useStore(s => s.preview?.currentId === node.id);
 
   // Baseline positions of every node that moves with this drag.
   const drag = useRef<{
@@ -62,6 +66,9 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
   const longPress = useRef<number | null>(null);
 
   const color = NODE_COLORS[node.type] ?? NODE_COLORS.generic;
+  // Content-derived card height — see geometry.ts. Everything positioned
+  // against the bottom edge uses `h`, not NODE_H.
+  const h = nodeHeight(node);
 
   const cancelLongPress = () => {
     if (longPress.current !== null) { clearTimeout(longPress.current); longPress.current = null; }
@@ -98,7 +105,7 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
     drag.current.moved = true;
     cancelLongPress();
     moveNodes(drag.current.baseline.map(b => ({ id: b.id, x: b.x + dx, y: b.y + dy })), true);
-    sendCursor(node.x + NODE_W / 2, node.y + NODE_H / 2, node.id);
+    sendCursor(node.x + NODE_W / 2, node.y + nodeHeight(node) / 2, node.id);
   }, [node.id, node.x, node.y, camera.scale, moveNodes, sendCursor]);
 
   const onPointerUp = useCallback((e: React.PointerEvent) => {
@@ -123,6 +130,8 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
   }, [node.id, setPendingEdgeFrom]);
 
   const displayText = node.text || '…';
+  // Wrapped title lines; card height (h) is derived from the same wrap.
+  const { lines: labelLines, truncated: labelTruncated } = wrapNodeText(displayText);
   // Server-derived step order (procedure maps only). Deriving it here as well
   // would let the number on the card drift from the number in the guide.
   const stepNumber = useStore(s => s.procedure?.order?.[node.id]);
@@ -148,22 +157,30 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
       onPointerCancel={onPointerUp}
       onDoubleClick={e => { e.stopPropagation(); setEditing(node.id); }}
     >
+      {/* Native tooltip with the full title — only when the label truncated
+          (>4 wrapped lines), and on the root g because the label itself has
+          pointerEvents="none". */}
+      {labelTruncated && <title>{node.text}</title>}
       <ShapeOutline
         shape={node.shape}
-        stroke={selected ? '#1d4ed8' : color}
-        strokeWidth={selected ? 3 : 2}
-        filter={selected ? 'drop-shadow(0 2px 6px rgba(29,78,216,.35))' : 'drop-shadow(0 1px 2px rgba(0,0,0,.12))'}
+        h={h}
+        stroke={previewCurrent ? '#4f46e5' : selected ? '#1d4ed8' : color}
+        strokeWidth={previewCurrent ? 3.5 : selected ? 3 : 2}
+        filter={previewCurrent
+          ? 'drop-shadow(0 0 10px rgba(99,102,241,.6))'
+          : selected ? 'drop-shadow(0 2px 6px rgba(29,78,216,.35))' : 'drop-shadow(0 1px 2px rgba(0,0,0,.12))'}
       />
       {/* Layer color: bar for boxy shapes, dot for polygon/pill shapes */}
       {(!node.shape || node.shape === 'rect') ? (
-        <rect width={6} height={NODE_H} rx={3} fill={color} />
+        <rect width={6} height={h} rx={3} fill={color} />
       ) : (
-        <circle cx={node.shape === 'pill' ? 16 : node.shape === 'hexagon' ? 12 : NODE_W / 2} cy={node.shape === 'diamond' ? 6 : NODE_H / 2} r={4} fill={color} />
+        <circle cx={node.shape === 'pill' ? 16 : node.shape === 'hexagon' ? 12 : NODE_W / 2} cy={node.shape === 'diamond' ? 6 : h / 2} r={4} fill={color} />
       )}
 
-      {/* Icon — left of the text */}
+      {/* Icon — left of the text, sized up from 0.58 after field feedback that
+          it was unreadable at normal zoom */}
       {node.icon && ICON_PATHS[node.icon] && (
-        <g transform={`translate(${node.shape === 'diamond' ? NODE_W / 2 - 7 : 12} ${node.shape === 'diamond' ? NODE_H - 22 : NODE_H / 2 - 7}) scale(0.58)`} pointerEvents="none">
+        <g transform={`translate(${node.shape === 'diamond' ? NODE_W / 2 - 9 : 10} ${node.shape === 'diamond' ? h - 24 : h / 2 - 9}) scale(0.75)`} pointerEvents="none">
           <path d={ICON_PATHS[node.icon]} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
         </g>
       )}
@@ -171,7 +188,7 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
       {/* Collapse chevron — bottom edge, only when there are directed children */}
       {collapsible && (
         <g
-          transform={`translate(${NODE_W / 2} ${NODE_H + (node.shape === 'diamond' ? 14 : 8)})`}
+          transform={`translate(${NODE_W / 2} ${h + (node.shape === 'diamond' ? 14 : 8)})`}
           style={{ cursor: 'pointer' }}
           onPointerDown={e => e.stopPropagation()}
           onClick={e => { e.stopPropagation(); toggleCollapse(node.id); }}
@@ -226,16 +243,24 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
         </g>
       )}
 
-      {/* Step content glyphs — bottom edge, centred; voice / image / model */}
-      {stepGlyphs.length > 0 && (
-        <text
-          x={NODE_W / 2} y={NODE_H + 14}
-          textAnchor="middle" pointerEvents="none"
-          style={{ fontSize: 10 }}
-        >
-          {stepGlyphs.join(' ')}
-        </text>
-      )}
+      {/* Step content glyphs — voice / image / model, on a white pill riding
+          the bottom edge. The pill matters on the night canvas: bare glyph
+          text below the card sat on the dark background, tiny AND low-contrast
+          — the exact combination users reported as "icons too small to see".
+          Shifts left when a collapse chevron shares the bottom edge. */}
+      {stepGlyphs.length > 0 && (() => {
+        const pillW = stepGlyphs.length * 19 + 12;
+        const cx = collapsible ? NODE_W / 2 - 44 : NODE_W / 2;
+        return (
+          <g transform={`translate(${cx} ${h - 2})`} pointerEvents="none">
+            <rect x={-pillW / 2} y={-4} width={pillW} height={21} rx={10.5}
+                  fill="#ffffff" stroke="#cbd5e1" strokeWidth={1} />
+            <text x={0} y={12} textAnchor="middle" style={{ fontSize: 13 }}>
+              {stepGlyphs.join(' ')}
+            </text>
+          </g>
+        );
+      })()}
 
       {/* Milestone diamond — floats above the top-left corner */}
       {node.milestone && (
@@ -256,7 +281,7 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
 
       {/* Comment count — bottom-left bubble */}
       {(node.comments?.length ?? 0) > 0 && (
-        <g transform={`translate(12 ${NODE_H - 9})`} pointerEvents="none">
+        <g transform={`translate(12 ${h - 9})`} pointerEvents="none">
           <rect x={-7} y={-8} width={20} height={13} rx={6.5} fill="#eef2f7" stroke="#cbd5e1" strokeWidth={0.8} />
           <text x={3} y={2.5} textAnchor="middle" style={{ fontSize: 9, fontWeight: 600 }} fill="#475569">
             {node.comments!.length > 99 ? '99' : node.comments!.length}
@@ -266,7 +291,7 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
 
       {/* Notes indicator — bottom-right corner */}
       {node.notes && (
-        <g transform={`translate(${NODE_W - 16} ${NODE_H - 14})`} opacity={0.55} pointerEvents="none">
+        <g transform={`translate(${NODE_W - 16} ${h - 14})`} opacity={0.55} pointerEvents="none">
           <rect width={9} height={10} rx={1.5} fill="none" stroke="#475569" strokeWidth={1.2} />
           <line x1={2} y1={3} x2={7} y2={3} stroke="#475569" strokeWidth={1.2} />
           <line x1={2} y1={5.5} x2={7} y2={5.5} stroke="#475569" strokeWidth={1.2} />
@@ -274,7 +299,7 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
       )}
 
       {editing ? (
-        <foreignObject x={8} y={4} width={NODE_W - 16} height={NODE_H - 8}>
+        <foreignObject x={8} y={4} width={NODE_W - 16} height={h - 8}>
           <textarea
             autoFocus
             className="node-editor"
@@ -289,21 +314,24 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
             onPointerDown={e => e.stopPropagation()}
           />
         </foreignObject>
-      ) : (
-        <text
-          x={NODE_W / 2 + (node.icon && node.shape !== 'diamond' ? 9 : 2)} y={NODE_H / 2 + 4}
-          textAnchor="middle"
-          className="node-label"
-          pointerEvents="none"
-        >
-          {displayText.length > 20 ? displayText.slice(0, 19) + '…' : displayText}
-        </text>
-      )}
+      ) : (() => {
+        // Wrapped title: card height (h) already accounts for the line count,
+        // so the block is simply centred.
+        const cx = NODE_W / 2 + (node.icon && node.shape !== 'diamond' ? 9 : 2);
+        const firstY = h / 2 + 4 - ((labelLines.length - 1) * LINE_HEIGHT) / 2;
+        return (
+          <text x={cx} y={firstY} textAnchor="middle" className="node-label" pointerEvents="none">
+            {labelLines.map((ln, i) => (
+              <tspan key={i} x={cx} dy={i === 0 ? 0 : LINE_HEIGHT}>{ln}</tspan>
+            ))}
+          </text>
+        );
+      })()}
 
       {/* Connection handle — right edge ring */}
       <circle
         className="connect-handle"
-        cx={NODE_W} cy={NODE_H / 2} r={7}
+        cx={NODE_W} cy={h / 2} r={7}
         fill="#ffffff" stroke={color} strokeWidth={2}
         style={{ cursor: 'crosshair', opacity: selected || pendingEdgeFrom ? 1 : undefined }}
         onPointerDown={startConnection}

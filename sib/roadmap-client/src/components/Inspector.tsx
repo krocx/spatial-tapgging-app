@@ -4,9 +4,10 @@
 //   lane → name, width, remove
 // Renders nothing when the selection is empty (canvas stays clutter-free).
 
-import { useState, useEffect } from 'react';
-import type { MindmapNodeStatus, MindmapNodeReview, MindmapNodeShape, Model3D } from '@spatial/shared';
+import { useState, useEffect, useRef } from 'react';
+import type { MindmapNodeStatus, MindmapNodeReview, MindmapNodeShape, MindmapEdgeRole, Model3D } from '@spatial/shared';
 import { useStore } from '../state/store.js';
+import { ROLE_COLORS } from '../canvas/EdgeView.js';
 import { mindmapApi, fetchStepImageUrl } from '../api/mindmap-api.js';
 import {
   NODE_COLORS, NODE_TYPE_LABELS, NODE_TYPES,
@@ -107,6 +108,51 @@ function BulkTypeRow(): JSX.Element {
         </select>
       </label>
     </>
+  );
+}
+
+/**
+ * Textarea that cannot lose your text. The old defaultValue+onBlur pattern
+ * dropped edits whenever the panel UNMOUNTED before blur fired — click from
+ * the notes field straight onto the canvas and the selection change tears the
+ * panel down without a blur event, silently discarding everything typed.
+ * (Users noticed: "can't save notes unless we add a comment" — the comment box
+ * only 'worked' because it kept the panel alive long enough to blur.)
+ * Fix: track dirtiness in a ref, commit on blur AND on unmount.
+ */
+function AutosaveTextarea({ initial, onSave, rows = 5, placeholder }: {
+  initial: string; onSave: (v: string) => void; rows?: number; placeholder?: string;
+}): JSX.Element {
+  const [draft, setDraft] = useState(initial);
+  const [saved, setSaved] = useState(false);
+  const live = useRef({ draft: initial, dirty: false, onSave });
+  live.current.onSave = onSave;   // always commit through the latest closure
+
+  useEffect(() => () => {
+    if (live.current.dirty) live.current.onSave(live.current.draft);
+  }, []);
+
+  return (
+    <div className="autosave-wrap">
+      <textarea
+        rows={rows}
+        value={draft}
+        placeholder={placeholder}
+        onChange={e => {
+          setDraft(e.target.value);
+          live.current.draft = e.target.value;
+          live.current.dirty = true;
+          setSaved(false);
+        }}
+        onBlur={() => {
+          if (!live.current.dirty) return;
+          live.current.onSave(live.current.draft);
+          live.current.dirty = false;
+          setSaved(true);
+        }}
+      />
+      {saved && <span className="saved-tick">Saved ✓</span>}
+    </div>
   );
 }
 
@@ -241,11 +287,12 @@ function NodePanel({ nodeId }: { nodeId: string }): JSX.Element | null {
       </label>
 
       <label className="inspector-field">Notes
-        <textarea
-          defaultValue={node.notes ?? ''}
+        <AutosaveTextarea
+          key={`notes-${node.id}`}
+          initial={node.notes ?? ''}
           rows={5}
           placeholder="Free-form notes…"
-          onBlur={e => { if (e.target.value !== (node.notes ?? '')) setNodeNotes(node.id, e.target.value); }}
+          onSave={v => setNodeNotes(node.id, v)}
         />
       </label>
 
@@ -276,7 +323,7 @@ function StepSection({ nodeId }: { nodeId: string }): JSX.Element | null {
   const isProcedure = useStore(s => s.map?.kind === 'procedure');
   const step = useStore(s =>
     (s.map?.nodes.find(n => n.id === nodeId)?.metadata?.step ?? {}) as {
-      ttsText?: string; optional?: boolean; imageFile?: string;
+      ttsText?: string; optional?: boolean; imageFile?: string; linkUrl?: string;
       modelId?: string; modelScale?: number;
     });
   const patchStepMeta = useStore(s => s.patchStepMeta);
@@ -334,13 +381,32 @@ function StepSection({ nodeId }: { nodeId: string }): JSX.Element | null {
       <h3>Step (procedure)</h3>
 
       <label className="inspector-field">Voice script
-        <textarea
+        <AutosaveTextarea
+          key={`tts-${nodeId}`}
+          initial={step.ttsText ?? ''}
           rows={2}
           placeholder="Spoken instruction — defaults to the step text"
-          defaultValue={step.ttsText ?? ''}
-          key={`tts-${nodeId}`}
-          onBlur={e => patchStepMeta(nodeId, { ttsText: e.target.value.trim() || null })}
+          onSave={v => patchStepMeta(nodeId, { ttsText: v.trim() || null })}
         />
+      </label>
+
+      <label className="inspector-field">Reference link
+        <input
+          key={`link-${nodeId}`}
+          type="url"
+          defaultValue={step.linkUrl ?? ''}
+          placeholder="https://… (video, PDF, SOP page)"
+          onBlur={e => {
+            const v = e.target.value.trim();
+            if (v && !/^https?:\/\//i.test(v)) {
+              useStore.getState().setError('Reference link must start with http:// or https://');
+              return;
+            }
+            if (v !== (step.linkUrl ?? '')) patchStepMeta(nodeId, { linkUrl: v || null });
+          }}
+          onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+        />
+        <span className="step-check-hint">Opens on the operator's phone from the step panel</span>
       </label>
 
       <label className="step-check">
@@ -477,15 +543,50 @@ function CommentsSection({ nodeId }: { nodeId: string }): JSX.Element {
   );
 }
 
+const EDGE_ROLES: Array<{ role: MindmapEdgeRole; label: string; hint: string }> = [
+  { role: 'next',     label: 'Next step',   hint: "The operator's path after completing this step" },
+  { role: 'failure',  label: 'On failure',  hint: 'Recovery path taken if the step fails' },
+  { role: 'requires', label: 'Requires',    hint: "A rule, not a path — the target can't start until the source is done" },
+];
+
 function EdgePanel({ edgeId }: { edgeId: string }): JSX.Element | null {
   const edge = useStore(s => s.map?.edges.find(e => e.id === edgeId));
+  const isProcedure = useStore(s => s.map?.kind === 'procedure');
   const setEdgeLabel = useStore(s => s.setEdgeLabel);
   const toggleEdgeType = useStore(s => s.toggleEdgeType);
+  const setEdgeRole = useStore(s => s.setEdgeRole);
   if (!edge) return null;
 
   return (
     <aside className="inspector">
-      <h3>Edge</h3>
+      <h3>{isProcedure ? 'Connection' : 'Edge'}</h3>
+      {/* Role switcher — the answer to "why can't I change Next → On failure?"
+          Pick the wrong type in the drop dialog and you fix it here instead of
+          deleting and redrawing. Validation re-runs on every change, so a
+          second Next out of the same step is flagged immediately. */}
+      {isProcedure && (
+        <label className="inspector-field">Type
+          <div className="edge-role-row">
+            {EDGE_ROLES.map(r => (
+              <button
+                key={r.role}
+                className={`edge-role-btn ${edge.role === r.role ? 'active' : ''}`}
+                style={edge.role === r.role
+                  ? { borderColor: ROLE_COLORS[r.role], background: `${ROLE_COLORS[r.role]}22` }
+                  : undefined}
+                title={r.hint}
+                onClick={() => { if (edge.role !== r.role) setEdgeRole(edge.id, r.role); }}
+              >
+                <span className="role-swatch" style={{ background: ROLE_COLORS[r.role] }} />
+                {r.label}
+              </button>
+            ))}
+          </div>
+          <span className="step-check-hint">
+            {EDGE_ROLES.find(r => r.role === edge.role)?.hint ?? 'No type set — this connection is ignored by the guide.'}
+          </span>
+        </label>
+      )}
       <label className="inspector-field">Label
         <input
           defaultValue={edge.label ?? ''}

@@ -15,7 +15,7 @@ import type {
 import { mindmapApi } from '../api/mindmap-api.js';
 import { CollabClient, type CollabStatus } from '../ws/collab.js';
 import { autoLayout, type LayoutMode } from '../utils/layout.js';
-import { NODE_W, NODE_H } from '../utils/geometry.js';
+import { NODE_W, NODE_H, nodeHeight } from '../utils/geometry.js';
 import { computeSteps, stepBounds, type PresentationStep } from '../utils/presentation.js';
 import type { MindmapNodeShape, MindmapSettings } from '@spatial/shared';
 import { getDraftKey, type ImageImportResult } from '../api/mindmap-api.js';
@@ -134,6 +134,21 @@ interface State {
    * contrast.
    */
   canvasTheme: 'day' | 'night';
+  /**
+   * Preview walkthrough (procedure maps): simulates the operator's run in a
+   * phone-frame panel while the canvas highlights the current step. Purely
+   * client-side — traverses the same next/failure/requires edges the compiler
+   * emits and the iOS runtime walks, so what you rehearse is what ships.
+   */
+  preview: {
+    currentId: string;
+    /** Steps completed (in order visited). */
+    visited: string[];
+    /** Unmet prerequisite blocking the current step, if any. */
+    blockedBy: string | null;
+    /** Terminal state: the walk ran off the end of the Next chain. */
+    done: boolean;
+  } | null;
   // collab
   collabStatus: CollabStatus;
   peers: Record<string, Peer>;
@@ -184,6 +199,13 @@ interface Actions {
   toggleCanvasTheme(): void;
   /** Merge fields into node.metadata.step (voice, required, image, model). */
   patchStepMeta(nodeId: string, patch: Record<string, unknown>): void;
+  // ── Preview walkthrough ───────────────────────────────────────────────────
+  startPreview(): void;
+  exitPreview(): void;
+  /** Advance along the current step's `next` or `failure` edge. */
+  previewGo(role: 'next' | 'failure'): void;
+  /** Jump to the unmet prerequisite blocking the current step. */
+  previewJumpToRequired(): void;
   deleteSelection(): void;
 
   // Lanes
@@ -451,6 +473,7 @@ export const useStore = create<State & Actions>((set, get) => {
     procedureSent: null,
     procedurePublishedConflict: null,
     canvasTheme: 'day',
+    preview: null,
     pendingEdgeFrom: null,
     defaultNodeType: 'generic',
     searchQuery: '',
@@ -496,7 +519,7 @@ export const useStore = create<State & Actions>((set, get) => {
           camera: { x: 60, y: 60, scale: 1 },
           selectedNodeIds: [], selectedEdgeId: null, editingNodeId: null,
           undoStack: [], redoStack: [], peers: {},
-          pendingRolePick: null, procedure: null,
+          pendingRolePick: null, procedure: null, preview: null,
           procedureSent: null, procedurePublishedConflict: null,
           // Stored per map KIND so flipping one procedure map flips them all —
           // the theme is a "which tool am I in" signal, not a per-map setting.
@@ -721,6 +744,62 @@ export const useStore = create<State & Actions>((set, get) => {
       patchNode(nodeId, { metadata: { ...node.metadata, step } });
       // Step content affects compile output (warnings, tts, media) — revalidate.
       void get().validateProcedure();
+    },
+
+    // ── Preview walkthrough ───────────────────────────────────────────────
+    //
+    // Traversal rules mirror the compiler + iOS runtime exactly:
+    //   Complete → follow the `next` edge; none left → done.
+    //   Failed   → follow the `failure` edge (button only shown when one exists).
+    //   Arriving at a step with an incoming `requires` edge whose source has
+    //   not been completed → blocked, offer a jump to the prerequisite (the
+    //   on-device behaviour is the same redirect).
+    // Divergence between this walk and the compiled guide is a bug in ONE of
+    // them — keep both against docs/PROCEDURE-DESIGNER.md §sequencing.
+
+    startPreview() {
+      const { map, procedure } = get();
+      if (!map || map.kind !== 'procedure' || !procedure?.order) return;
+      const startId = Object.entries(procedure.order).find(([, seq]) => seq === 1)?.[0];
+      if (!startId) return;
+      set({ preview: { currentId: startId, visited: [], blockedBy: null, done: false } });
+      get().jumpToNode(startId);
+    },
+
+    exitPreview: () => set({ preview: null }),
+
+    previewGo(role) {
+      const { map, preview } = get();
+      if (!map || !preview || preview.done) return;
+      const edge = map.edges.find(e => e.from === preview.currentId && e.role === role);
+      const visited = [...preview.visited, preview.currentId];
+      if (!edge) {
+        // Only reachable for 'next' (the Failed button requires an edge).
+        set({ preview: { ...preview, visited, done: true, blockedBy: null } });
+        return;
+      }
+      // Requires gate on the target: prerequisite must already be completed.
+      const unmet = map.edges.find(e =>
+        e.role === 'requires' && e.to === edge.to && !visited.includes(e.from));
+      set({
+        preview: {
+          currentId: edge.to,
+          visited,
+          blockedBy: unmet ? unmet.from : null,
+          done: false,
+        },
+      });
+      get().jumpToNode(edge.to);
+    },
+
+    previewJumpToRequired() {
+      const { preview } = get();
+      if (!preview?.blockedBy) return;
+      // The operator is redirected to the prerequisite; on completing it they
+      // come back — modelled here by simply making it the current step (its
+      // `next` chain leads back through the flow).
+      set({ preview: { ...preview, currentId: preview.blockedBy, blockedBy: null } });
+      get().jumpToNode(preview.blockedBy);
     },
 
     toggleEdgeType(id) {
@@ -1063,7 +1142,7 @@ export const useStore = create<State & Actions>((set, get) => {
       const minX = Math.min(...map.nodes.map(n => n.x)) - pad;
       const minY = Math.min(...map.nodes.map(n => n.y)) - pad;
       const maxX = Math.max(...map.nodes.map(n => n.x)) + NODE_W + pad;
-      const maxY = Math.max(...map.nodes.map(n => n.y)) + NODE_H + pad;
+      const maxY = Math.max(...map.nodes.map(n => n.y + nodeHeight(n))) + pad;
       const vw = window.innerWidth, vh = window.innerHeight - 120;   // minus chrome
       const scale = Math.min(2, Math.max(0.15, Math.min(vw / (maxX - minX), vh / (maxY - minY))));
       set({
@@ -1174,7 +1253,7 @@ export const useStore = create<State & Actions>((set, get) => {
         camera: {
           scale: camera.scale,
           x: vw / 2 - (node.x + NODE_W / 2) * camera.scale,
-          y: vh / 2 - (node.y + NODE_H / 2) * camera.scale,
+          y: vh / 2 - (node.y + nodeHeight(node) / 2) * camera.scale,
         },
         selectedNodeIds: [id],
         selectedEdgeId: null,

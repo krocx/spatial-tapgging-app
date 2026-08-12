@@ -202,6 +202,7 @@ export async function applyImportedGuide(
       title:              s.title?.trim()   || undefined,
       text:               s.text.trim(),
       ttsText:            s.ttsText?.trim() || undefined,
+      linkUrl:            s.linkUrl?.trim() || undefined,
       mediaType:          mediaPath ? 'image' : undefined,
       mediaPath,
       completionRequired: s.completionRequired ?? true,

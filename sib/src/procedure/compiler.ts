@@ -64,6 +64,7 @@ interface StepMeta {
   ttsText?:      string;
   optional?:     boolean;
   imageFile?:    string;
+  linkUrl?:      string;
   modelId?:      string;
   modelScale?:   number;
   modelOpacity?: number;
@@ -77,6 +78,9 @@ function stepMetaOf(node: MindmapNode): StepMeta {
     ttsText:      typeof m.ttsText === 'string' && m.ttsText.trim() ? m.ttsText.trim() : undefined,
     optional:     m.optional === true,
     imageFile:    typeof m.imageFile === 'string' && m.imageFile ? m.imageFile : undefined,
+    // Only http(s) survives — anything else would produce a dead button on device.
+    linkUrl:      typeof m.linkUrl === 'string' && /^https?:\/\//i.test(m.linkUrl.trim())
+                    ? m.linkUrl.trim() : undefined,
     modelId:      typeof m.modelId === 'string' && m.modelId ? m.modelId : undefined,
     modelScale:   typeof m.modelScale === 'number' && isFinite(m.modelScale) && m.modelScale > 0 ? m.modelScale : undefined,
     modelOpacity: typeof m.modelOpacity === 'number' && m.modelOpacity >= 0 && m.modelOpacity <= 1 ? m.modelOpacity : undefined,
@@ -282,6 +286,7 @@ export function compileProcedure(map: Mindmap): ProcedureCompileResult {
     };
     if (meta.ttsText)      step.ttsText      = meta.ttsText;
     if (meta.imageFile)    step.imageFile    = meta.imageFile;
+    if (meta.linkUrl)      step.linkUrl      = meta.linkUrl;
     if (meta.modelId) {
       step.modelId = meta.modelId;
       if (meta.modelScale   !== undefined) step.modelScale   = meta.modelScale;

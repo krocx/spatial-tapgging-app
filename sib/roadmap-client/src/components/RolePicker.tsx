@@ -20,10 +20,18 @@ interface Choice {
   key:   string;
 }
 
+// Copy rewritten after non-developer feedback ("what's the difference between
+// Requires and Next?"). The distinction that landed: Next/On failure are PATHS
+// the operator travels; Requires is a RULE that blocks a step until another is
+// done — nobody ever walks along a Requires arrow. Next is the default (Enter)
+// because it is the right answer ~90% of the time.
 const CHOICES: Choice[] = [
-  { role: 'next',     label: 'Next step',     hint: 'Continue here when the step succeeds', key: '1' },
-  { role: 'failure',  label: 'On failure',    hint: 'Recovery path when the step fails',    key: '2' },
-  { role: 'requires', label: 'Requires first', hint: 'Target cannot start until this is done', key: '3' },
+  { role: 'next',     label: 'Next step',
+    hint: 'Where the operator goes after completing this step', key: '1' },
+  { role: 'failure',  label: 'On failure',
+    hint: 'Recovery path — only taken if this step fails', key: '2' },
+  { role: 'requires', label: 'Requires first',
+    hint: 'A rule, not a path: the target can’t start until this step is done. Use only when the dependency isn’t already on the path.', key: '3' },
 ];
 
 export function RolePicker(): JSX.Element | null {
@@ -36,6 +44,8 @@ export function RolePicker(): JSX.Element | null {
     if (!pending) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') { cancel(); return; }
+      // Enter = Next step, the overwhelmingly common choice.
+      if (e.key === 'Enter') { e.preventDefault(); confirm('next'); return; }
       const choice = CHOICES.find(c => c.key === e.key);
       if (choice) { e.preventDefault(); confirm(choice.role); }
     };
@@ -60,7 +70,7 @@ export function RolePicker(): JSX.Element | null {
         {CHOICES.map(c => (
           <button
             key={c.role}
-            className="role-picker-option"
+            className={`role-picker-option ${c.role === 'requires' ? 'tertiary' : ''}`}
             onClick={() => confirm(c.role)}
           >
             <span className="role-swatch" style={{ background: ROLE_COLORS[c.role] }} />
@@ -68,9 +78,12 @@ export function RolePicker(): JSX.Element | null {
               <span className="role-picker-label">{c.label}</span>
               <span className="role-picker-hint">{c.hint}</span>
             </span>
-            <kbd>{c.key}</kbd>
+            <kbd>{c.role === 'next' ? '↵ / 1' : c.key}</kbd>
           </button>
         ))}
+        <p className="role-picker-footnote">
+          Picked wrong? Select the connection afterwards and change its type in the side panel.
+        </p>
         <button className="role-picker-cancel" onClick={cancel}>Cancel (Esc)</button>
       </div>
     </div>

@@ -352,6 +352,7 @@ router.post('/:id/steps', (req: Request, res: Response): void => {
     title:              body.title?.trim() || undefined,
     text:               body.text.trim(),
     ttsText:            body.ttsText?.trim(),
+    linkUrl:            body.linkUrl?.trim() || undefined,
     mediaType:          body.mediaType,
     mediaPath,
     completionRequired: body.completionRequired ?? true,
@@ -429,6 +430,8 @@ router.patch('/:id/steps/:stepId', (req: Request, res: Response): void => {
     title:              'title' in body ? (body.title?.trim() || undefined) : step.title,
     text:               body.text?.trim()       ?? step.text,
     ttsText:            'ttsText' in body       ? body.ttsText?.trim() : step.ttsText,
+    // null clears; absent preserves (same contract as mediaBase64)
+    linkUrl:            'linkUrl' in body       ? (body.linkUrl?.trim() || undefined) : step.linkUrl,
     completionRequired: body.completionRequired ?? step.completionRequired,
     mediaPath,
     // Phase 2: spatial placement fields (only update when explicitly provided)

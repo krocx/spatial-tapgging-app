@@ -7,6 +7,26 @@ it, it gets a line.
 ## 2026.4.42 — 2026-08-11
 
 ### Added
+- **Preview mode** — ▶ Preview in the procedure bar walks the procedure as the
+  operator will experience it: phone-frame step card (title, instruction,
+  reference image, voice playback via browser speech synthesis),
+  Complete ✓ / Failed ✗ buttons that traverse the real edge graph, canvas
+  highlight of the current step, requires-gate redirects, and an exit summary
+  listing branches never exercised. Purely client-side; nothing is saved or sent.
+- Reference link per step — any http(s) URL (video, PDF, SOP page) authored in
+  the Inspector, carried through compile → export → ingest, and shown as a
+  tappable "Reference" button on the iOS AR step panel (opens in Safari; the
+  platform stores no copy).
+- Auto-sizing nodes — cards wrap titles up to four lines and grow to fit
+  instead of truncating at 20 characters; edge anchors, minimap, marquee,
+  auto-layout, presentation bounds and SVG export all follow the real height.
+- Edge type switcher — select a connection on a procedure map and change
+  Next / On failure / Requires in the side panel (no more delete-and-redraw).
+- Canvas legend + role explainer — line swatches in the procedure bar census
+  and a ? panel explaining paths (Next / On failure) vs rules (Requires);
+  RolePicker copy rewritten in operator language, Enter confirms Next.
+- Step content glyphs (voice / image / model) enlarged onto a white pill so
+  they stay legible on the night canvas.
 - Procedure Designer slice 2 — step content authoring on the canvas: voice
   script, optional-step toggle, reference images (uploaded to a content-addressed
   designer store, copied into the guide at export) and 3D model assignment with
@@ -43,6 +63,10 @@ it, it gets a line.
   position, so adjacent-detour procedures render correctly.
 
 ### Fixed
+- Notes and voice-script edits silently lost when clicking from the field
+  straight onto the canvas — the panel unmounted before blur fired, so the
+  save-on-blur handler never ran (reported as "can't save notes unless we add
+  a comment"). Fields now commit on blur AND on unmount, with a Saved ✓ tick.
 - Blank page when creating the first node on any map — React #310 caused by a
   hook after an early return in `Minimap.tsx` (pre-existing; exposed during
   Procedure Designer testing).
