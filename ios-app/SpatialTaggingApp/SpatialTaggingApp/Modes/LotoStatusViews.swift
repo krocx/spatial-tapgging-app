@@ -297,13 +297,13 @@ struct LotoKindView: View {
         .task { await load() }
         .refreshable { await load() }
         .fullScreenCover(isPresented: $showAR, onDismiss: { Task { await load() } }) {
-            LotoARSessionView(
+            // QR-gated: scan the panel QR first, then author in that frame.
+            LotoARGateFlow(
                 anchor: anchor,
                 mode: .author(kind: kind),
                 isCertified: isCertified,
                 onExit: { showAR = false }
             )
-            .environmentObject(settings)
         }
         .sheet(item: $selected) { st in
             LotoPointDetailSheet(
@@ -349,6 +349,130 @@ struct LotoKindView: View {
             loadError = error.localizedDescription
         }
         isLoading = false
+    }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// MARK: - AR LOTO map home (view · edit · delete)
+// ════════════════════════════════════════════════════════════════════════════
+
+struct LotoMapHomeView: View {
+
+    let anchor:      Anchor
+    let isCertified: Bool
+
+    @EnvironmentObject private var settings: AppSettings
+
+    @State private var map: LotoMap? = nil
+    @State private var isLoading = true
+    @State private var loadError: String? = nil
+    @State private var arMode: LotoARMode? = nil
+    @State private var confirmDelete = false
+    @State private var isDeleting = false
+
+    var body: some View {
+        List {
+            Section {
+                if isLoading {
+                    HStack { Spacer(); ProgressView(); Spacer() }
+                } else if let m = map {
+                    HStack(spacing: 12) {
+                        Image(systemName: "point.topleft.down.curvedto.point.bottomright.up")
+                            .font(.title3).foregroundStyle(.teal)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Flow map v\(m.version)").font(.subheadline.bold())
+                            Text("\(m.strokes.count) line\(m.strokes.count == 1 ? "" : "s") · \(m.strokes.filter { $0.fedByPointId != nil }.count) linked to breakers")
+                                .font(.caption).foregroundStyle(.secondary)
+                            Text("by \(m.createdBy) · \(LotoFormat.relative(m.createdAt))")
+                                .font(.caption2).foregroundStyle(.tertiary)
+                        }
+                    }
+                } else {
+                    ContentUnavailableView {
+                        Label("No flow map yet", systemImage: "bolt")
+                    } description: {
+                        Text("Draw the panel's electricity flow in AR: start each line at its Safe Off breaker so the map greys out de-energized circuits live.")
+                    }
+                    .listRowBackground(Color.clear)
+                }
+                if let err = loadError {
+                    Label(err, systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption).foregroundStyle(.red)
+                }
+            }
+
+            Section {
+                Button {
+                    arMode = .status
+                } label: {
+                    Label("View in AR (with live status)", systemImage: "arkit")
+                }
+                .disabled(map == nil)
+
+                Button {
+                    arMode = .mapEdit
+                } label: {
+                    Label(map == nil ? "Draw flow map in AR" : "Edit flow map in AR",
+                          systemImage: "pencil.and.outline")
+                }
+            } footer: {
+                Text("Drawing: tap a Safe Off marker to start a line at its breaker, then tap along the conduit. Saving creates a new version; earlier versions are kept.")
+            }
+
+            if map != nil {
+                Section {
+                    Button(role: .destructive) { confirmDelete = true } label: {
+                        if isDeleting { ProgressView() }
+                        else { Label("Delete flow map", systemImage: "trash") }
+                    }
+                }
+            }
+        }
+        .navigationTitle("AR LOTO Map")
+        .navigationBarTitleDisplayMode(.inline)
+        .task { await load() }
+        .refreshable { await load() }
+        .fullScreenCover(item: $arMode, onDismiss: { Task { await load() } }) { m in
+            LotoARGateFlow(anchor: anchor, mode: m, isCertified: isCertified,
+                           onExit: { arMode = nil })
+        }
+        .confirmationDialog("Delete the flow map?", isPresented: $confirmDelete, titleVisibility: .visible) {
+            Button("Delete all versions", role: .destructive) { Task { await deleteMap() } }
+        } message: {
+            Text("Removes the drawing only — points, locks and the audit trail are untouched.")
+        }
+    }
+
+    private func load() async {
+        isLoading = map == nil
+        loadError = nil
+        do {
+            map = try await SIBClient(settings: settings).fetchLotoMap(anchorId: anchor.id)
+        } catch {
+            loadError = error.localizedDescription
+        }
+        isLoading = false
+    }
+
+    private func deleteMap() async {
+        isDeleting = true
+        do {
+            try await SIBClient(settings: settings).deleteLotoMap(anchorId: anchor.id)
+            map = nil
+        } catch {
+            loadError = error.localizedDescription
+        }
+        isDeleting = false
+    }
+}
+
+extension LotoARMode: Identifiable {
+    var id: String {
+        switch self {
+        case .author(let kind): return "author-\(kind.rawValue)"
+        case .status:           return "status"
+        case .mapEdit:          return "mapEdit"
+        }
     }
 }
 
@@ -417,13 +541,13 @@ struct LotoStatusListView: View {
         .task { await load() }
         .refreshable { await load() }
         .fullScreenCover(isPresented: $showAR, onDismiss: { Task { await load() } }) {
-            LotoARSessionView(
+            // QR-gated: the status walk relocalizes from the panel QR too.
+            LotoARGateFlow(
                 anchor: anchor,
                 mode: .status,
                 isCertified: isCertified,
                 onExit: { showAR = false }
             )
-            .environmentObject(settings)
         }
         .sheet(item: $selected) { st in
             LotoPointDetailSheet(

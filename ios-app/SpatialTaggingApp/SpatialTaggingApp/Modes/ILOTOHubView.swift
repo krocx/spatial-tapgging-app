@@ -98,6 +98,8 @@ struct ILOTOHubView: View {
                     MyLotoView()
                 case .training:
                     LotoTrainingView(onCertChanged: { Task { await load() } })
+                case .map:
+                    LotoMapHomeView(anchor: anchor, isCertified: isCertified)
                 }
             }
             .environmentObject(settings)
@@ -200,8 +202,7 @@ struct ILOTOHubView: View {
             }
             lotoTile(icon: "point.topleft.down.curvedto.point.bottomright.up", tint: .teal,
                      title: "AR LOTO Map", caption: "Electricity flow", gated: false) {
-                placeholder = .init(title: "AR LOTO Map",
-                    message: "Draw the panel's electricity flow in AR; segments grey out when their breaker is safe-off'd. Arrives in slice 4.")
+                route = .map
             }
             lotoTile(icon: "graduationcap.fill", tint: .green, title: "My LOTO Training",
                      caption: isCertified ? "Certified ✓" : "Get certified", gated: false) {
@@ -299,7 +300,7 @@ struct ILOTOHubView: View {
 
 /// Pushed destinations from the hub tiles (slices 2–3).
 enum LotoHubRoute: String, Identifiable, Hashable {
-    case safeOff, loto, checkStatus, myLoto, training
+    case safeOff, loto, checkStatus, myLoto, training, map
     var id: String { rawValue }
 }
 

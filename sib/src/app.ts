@@ -286,6 +286,9 @@ export function createApp(): express.Express {
   // GET    /loto/events/photo/:file    — evidence photo
   // GET    /loto/status?anchorId=      — derived per-point + panel summary
   // GET    /loto/my?userId=            — my active locks across anchors
+  // POST   /loto/map                   — save a new flow-map version
+  // GET    /loto/map?anchorId=         — latest flow map (404 when none)
+  // DELETE /loto/map?anchorId=         — remove the flow map
   // GET    /loto/quiz                  — training questions (answers withheld)
   // POST   /loto/quiz/submit           — grade server-side → certification
   // GET    /loto/certifications        — cert records, newest first

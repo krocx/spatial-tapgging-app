@@ -144,6 +144,36 @@ struct MyLotoEntry: Codable, Equatable {
 }
 
 // ============================================================
+// MARK: - AR LOTO map (electricity flow)
+// ============================================================
+
+/// One drawn flow line: ordered world-space vertices in the panel's QR-locked
+/// frame. `fedByPointId` links the stroke to the Safe Off breaker feeding it —
+/// when that breaker is locked out, the stroke renders de-energized.
+struct LotoMapStroke: Codable, Identifiable, Equatable {
+    let id:           String
+    var points:       [SIBVector3]
+    var circuitId:    String?
+    var fedByPointId: String?
+}
+
+/// Versioned flow map — GET returns the highest version.
+struct LotoMap: Codable, Identifiable, Equatable {
+    let id:        String
+    let anchorId:  String
+    let version:   Int
+    let strokes:   [LotoMapStroke]
+    let createdBy: String
+    let createdAt: String
+}
+
+struct SaveLotoMapRequest: Codable {
+    let anchorId:  String
+    let strokes:   [LotoMapStroke]
+    let createdBy: String
+}
+
+// ============================================================
 // MARK: - Training / certification
 // ============================================================
 

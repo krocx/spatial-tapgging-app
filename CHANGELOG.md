@@ -7,6 +7,17 @@ it, it gets a line.
 ## 2026.4.42 — 2026-08-11
 
 ### Added
+- **iLOTO slice 4 — AR LOTO map**: draw the panel's electricity flow in AR by
+  tapping vertices along the conduit; starting a line on a Safe Off marker
+  links it to that breaker, making the map STATUS-AWARE — lock out the breaker
+  and its lines turn grey and pulse-free live, restore it and the teal flow
+  pulse returns. Versioned saves (history kept), view/edit/delete home screen.
+- **iLOTO fix — QR-gated AR sessions**: every iLOTO AR surface (point
+  authoring, status walk, map drawing) now starts with the mandatory panel-QR
+  scan, exactly like AR Work Instructions: QR locks the session origin,
+  ARWorldMap relocalizes (local → SIB → fresh), and the live session is
+  adopted without a frame reset — positions consistent across devices and
+  sessions. Found in field testing: slice 2 sessions skipped the gate.
 - **Portal iLOTO tab** — EHS review surface: live status board for every
   control panel (per-point state, owner, serial), audit trail with override
   events pinned first and evidence photos in the lightbox, certification

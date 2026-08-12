@@ -173,7 +173,7 @@ what was confirmed, per event, even if definitions evolve later.
 | 1 | Shared types, SIB stores + routes + seeded quiz, derived status, iOS hub (6 tiles, status banner, cert gate), 'loto' anchor type | **shipped** |
 | 2 | Point authoring in AR (worldmap saved on author exit; markers relocalize), Apply/Remove ordered checklists with photo + try-test, supervisor override, Check Status AR walk + list, point detail with append-only history | **shipped** |
 | 3 | My LOTO cross-anchor view with remove deep-link + active-lock nudge on the hub tile, quiz UI (one question at a time, server-graded, miss review with explanations), cert issuance live | **shipped** |
-| 4 | AR LOTO map: vertex-drawn flow lines, circuit links, status-aware rendering, versions | planned |
+| 4 | AR LOTO map: vertex-drawn flow lines (snap-to-marker; first vertex on a Safe Off breaker links the stroke via fedByPointId), status-aware rendering (fed breaker locked → line grey/pulse-free; energized → teal with a travelling pulse), versioned saves, view/edit/delete home. Plus: ALL iLOTO AR sessions now QR-gated via QRScanGateView (origin locked from the panel QR, worldmap local→SIB→fresh, session adopted via linkToExistingSession). | **shipped** |
 | Portal | iLOTO tab: live status board per panel, audit trail with overrides pinned first, certification registry, events + certs CSV export. Read-only by design — the portal is where EHS reviews, not where locks change. | **shipped** |
 
 Slice 2 implementation notes: the AR surface (`LotoARSessionView`) has two modes

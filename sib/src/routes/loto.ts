@@ -22,6 +22,9 @@ import type {
   LotoCertification,
   LotoQuizQuestion,
   LotoQuizQuestionPublic,
+  LotoMap,
+  LotoMapStroke,
+  SaveLotoMapRequest,
   CreateLotoPointRequest,
   UpdateLotoPointRequest,
   CreateLotoEventRequest,
@@ -46,6 +49,7 @@ export const lotoPointStore = new JsonFileStore<LotoPoint>('loto-points');
 export const lotoEventStore = new JsonFileStore<LotoEvent>('loto-events');
 export const lotoCertStore  = new JsonFileStore<LotoCertification>('loto-certifications');
 export const lotoQuizStore  = new JsonFileStore<LotoQuizQuestion>('loto-quiz');
+export const lotoMapStore   = new JsonFileStore<LotoMap>('loto-maps');
 
 const DATA_DIR       = process.env.SIB_DATA_DIR ?? path.join(process.cwd(), '.sib-data');
 const LOTO_PHOTO_DIR = path.join(DATA_DIR, 'loto-photos');
@@ -257,6 +261,78 @@ router.get('/my', (req: Request, res: Response): void => {
   }
   entries.sort((a, b) => ((a.status.lockedAt ?? '') < (b.status.lockedAt ?? '') ? 1 : -1));
   res.json(entries);
+});
+
+// ── AR LOTO map ──────────────────────────────────────────────────────────────
+// Versioned: every save creates version+1; prior versions are kept (cheap,
+// and "what did the map say then" is a question EHS asks). GET returns the
+// highest version. DELETE removes the map entirely (authoring content, not
+// audit — events are the untouchable record, the map is a drawing).
+
+function latestMap(anchorId: string): LotoMap | undefined {
+  return lotoMapStore.findAll()
+    .filter(m => m.anchorId === anchorId)
+    .sort((a, b) => b.version - a.version)[0];
+}
+
+const isFiniteVec = (v: unknown): boolean => {
+  const p = v as { x?: unknown; y?: unknown; z?: unknown };
+  return typeof p?.x === 'number' && isFinite(p.x)
+      && typeof p?.y === 'number' && isFinite(p.y)
+      && typeof p?.z === 'number' && isFinite(p.z);
+};
+
+// POST /loto/map — save a new version of the panel's flow map.
+router.post('/map', (req: Request, res: Response): void => {
+  const body = req.body as SaveLotoMapRequest;
+  if (!body.anchorId || !Array.isArray(body.strokes)) {
+    res.status(400).json({ error: 'anchorId and strokes are required' });
+    return;
+  }
+  const strokes: LotoMapStroke[] = [];
+  for (const s of body.strokes) {
+    if (!Array.isArray(s.points) || s.points.length < 2 || !s.points.every(isFiniteVec)) {
+      res.status(400).json({ error: 'Every stroke needs at least 2 finite vertices' });
+      return;
+    }
+    if (s.fedByPointId && !lotoPointStore.findById(s.fedByPointId)) {
+      res.status(400).json({ error: `fedByPointId ${s.fedByPointId} is not a known point` });
+      return;
+    }
+    strokes.push({
+      id:     s.id ?? uuidv4(),
+      points: s.points,
+      ...(s.circuitId?.trim() && { circuitId: s.circuitId.trim() }),
+      ...(s.fedByPointId && { fedByPointId: s.fedByPointId }),
+    });
+  }
+  const map: LotoMap = {
+    id:        uuidv4(),
+    anchorId:  body.anchorId,
+    version:   (latestMap(body.anchorId)?.version ?? 0) + 1,
+    strokes,
+    createdBy: body.createdBy ?? 'Anonymous',
+    createdAt: new Date().toISOString(),
+  };
+  lotoMapStore.save(map);
+  res.status(201).json(map);
+});
+
+// GET /loto/map?anchorId= — latest version (404 when none).
+router.get('/map', (req: Request, res: Response): void => {
+  const anchorId = req.query.anchorId as string | undefined;
+  if (!anchorId) { res.status(400).json({ error: 'anchorId is required' }); return; }
+  const map = latestMap(anchorId);
+  if (!map) { res.status(404).json({ error: 'No flow map for this panel yet' }); return; }
+  res.json(map);
+});
+
+// DELETE /loto/map?anchorId= — remove the map (all versions).
+router.delete('/map', (req: Request, res: Response): void => {
+  const anchorId = req.query.anchorId as string | undefined;
+  if (!anchorId) { res.status(400).json({ error: 'anchorId is required' }); return; }
+  const removed = lotoMapStore.pruneWhere(m => m.anchorId === anchorId);
+  res.json({ deleted: removed });
 });
 
 // ── Training ─────────────────────────────────────────────────────────────────

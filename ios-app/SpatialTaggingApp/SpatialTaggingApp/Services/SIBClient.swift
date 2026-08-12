@@ -361,6 +361,25 @@ final class SIBClient {
         try await post(SubmitLotoQuizResult.self, path: "/loto/quiz/submit", body: req, timeout: 30)
     }
 
+    /// Latest flow map for a panel, or nil when none has been drawn yet.
+    func fetchLotoMap(anchorId: String) async throws -> LotoMap? {
+        do {
+            return try await get(LotoMap.self, path: "/loto/map?anchorId=\(anchorId)")
+        } catch SIBClientError.httpError(404, _) {
+            return nil
+        }
+    }
+
+    /// Save a new version of the panel's flow map (previous versions kept).
+    func saveLotoMap(_ req: SaveLotoMapRequest) async throws -> LotoMap {
+        try await post(LotoMap.self, path: "/loto/map", body: req, timeout: 30)
+    }
+
+    /// Delete the panel's flow map (all versions).
+    func deleteLotoMap(anchorId: String) async throws {
+        try await delete(path: "/loto/map?anchorId=\(anchorId)")
+    }
+
     /// Certification history for a user, newest first (head = current).
     func fetchLotoCertifications(userId: String) async throws -> [LotoCertification] {
         let encoded = userId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? userId

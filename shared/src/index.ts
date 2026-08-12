@@ -1094,6 +1094,44 @@ export interface MyLotoEntry {
   status:     LotoPointStatus;
 }
 
+// ── AR LOTO map (electricity flow) ──────────────────────────────────────────
+
+/**
+ * One drawn flow line: an ordered polyline of world-space vertices (placed by
+ * vertex-tap in AR, in the panel's QR-locked frame). `fedByPointId` links the
+ * stroke to the Safe Off breaker that feeds it — the hook that makes the map
+ * STATUS-AWARE: when that breaker is locked out, the stroke renders
+ * de-energized.
+ */
+export interface LotoMapStroke {
+  id:            string;
+  points:        Vector3[];      // ≥ 2 vertices
+  /** Circuit label shown on tap (matches LotoPoint.circuitId conventions). */
+  circuitId?:    string;
+  /** Safe Off breaker point feeding this line — drives de-energized rendering. */
+  fedByPointId?: string;
+}
+
+/**
+ * The panel's flow map. Versioned: every save creates version+1 (the previous
+ * versions are kept — cheap, and EHS may ask "what did the map say then").
+ * GET returns the highest version.
+ */
+export interface LotoMap {
+  id:        string;
+  anchorId:  string;
+  version:   number;
+  strokes:   LotoMapStroke[];
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface SaveLotoMapRequest {
+  anchorId:  string;
+  strokes:   Array<Omit<LotoMapStroke, 'id'> & { id?: string }>;
+  createdBy: string;
+}
+
 // ── Training / certification ────────────────────────────────────────────────
 
 /** Question bank record as STORED (seeded from OSHA 1910.147; editable data,
