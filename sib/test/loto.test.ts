@@ -19,6 +19,7 @@ import {
   derivePointStatus,
   deriveAnchorStatus,
   gradeQuiz,
+  validateQuizQuestions,
   LotoValidationError,
   CHECKLISTS,
 } from '../src/loto/loto-core.js';
@@ -214,6 +215,35 @@ test('quiz: seed bank is well-formed (4 choices, correctIndex in range, unique i
     assert.ok(q.correctIndex >= 0 && q.correctIndex < q.choices.length, `${q.id}: index in range`);
     assert.ok(q.explanation.length > 20, `${q.id}: has a real explanation`);
   }
+});
+
+test('quiz admin: import validation is all-or-nothing with named failures', () => {
+  const good = { prompt: 'Q?', choices: ['a', 'b', 'c', 'd'], correctIndex: 2, explanation: 'because' };
+
+  const parsed = validateQuizQuestions([good, { ...good, choices: ['a', 'b'], correctIndex: 1 }]);
+  assert.equal(parsed.length, 2);
+  assert.equal(parsed[0].correctIndex, 2);
+  assert.equal(parsed[1].choices.length, 2, '2 choices allowed');
+
+  const rejects: Array<[unknown, string]> = [
+    [[], 'empty array'],
+    ['nope', 'not an array'],
+    [[{ ...good, prompt: '  ' }], 'blank prompt'],
+    [[good, { ...good, choices: ['only'] }], 'too few choices (question 2)'],
+    [[{ ...good, choices: ['a', '', 'c', 'd'] }], 'empty choice'],
+    [[{ ...good, correctIndex: 4 }], 'index out of range'],
+    [[{ ...good, correctIndex: 1.5 }], 'non-integer index'],
+  ];
+  for (const [input, label] of rejects) {
+    try { validateQuizQuestions(input); assert.fail(`${label}: expected rejection`); }
+    catch (err) {
+      assert.ok(err instanceof LotoValidationError, `${label}: wrong error type`);
+      assert.equal(err.status, 400, label);
+    }
+  }
+  // Failure message names the offending question number.
+  try { validateQuizQuestions([good, { ...good, prompt: '' }]); assert.fail('expected rejection'); }
+  catch (err) { assert.match((err as Error).message, /Question 2/); }
 });
 
 test('quiz: grading — pass at ratio, fail below, per-question feedback', () => {

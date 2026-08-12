@@ -7,6 +7,20 @@ it, it gets a line.
 ## 2026.4.42 — 2026-08-11
 
 ### Added
+- **iLOTO — questionnaire editor + import**: the portal iLOTO tab gains a
+  Training questions section — add/edit/delete questions inline (radio marks
+  the correct answer), import from JSON or CSV (append or replace, validated
+  ATOMICALLY server-side so a half-imported bank cannot exist), export JSON
+  backup. New admin routes carry answers; the public quiz endpoint still
+  strips them. Editing never touches issued certifications — future takers
+  face the current bank.
+- **iLOTO — model adjust gestures + reassignment**: drag / pinch / twist the
+  3D lock model in AR (H/V pan modes, scale, Y-rotation — the AR Work
+  Instructions gesture kit), saved as device-owned placement offsets on the
+  point. Point detail gains a 3D model section for authors: assign, change or
+  remove a model on EXISTING points; switching models resets placement
+  server-side (a shape's placement dies with the shape), and "Adjust model in
+  AR" jumps straight from the sheet into the gesture phase.
 - **iLOTO — 3D lock/tag models on points**: assign a lock or tag model from
   the 3D Model library when placing a Safe Off / LOTO point; the marker then
   renders the USDZ model GHOST (translucent) while the point is clear — "a

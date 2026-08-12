@@ -309,6 +309,12 @@ final class SIBClient {
         try await get([LotoPoint].self, path: "/loto/points?anchorId=\(anchorId)")
     }
 
+    /// Author: update a point — label/circuit, model assignment, or the AR
+    /// placement (offsets/rotation from the adjust gestures).
+    func updateLotoPoint(id: String, req: UpdateLotoPointRequest) async throws -> LotoPoint {
+        try await patch(LotoPoint.self, path: "/loto/points/\(id)", body: req)
+    }
+
     /// Author: delete a CLEAR point (server refuses with 409 while locked).
     /// The point's event history is kept server-side for audit.
     func deleteLotoPoint(id: String) async throws {

@@ -291,6 +291,11 @@ export function createApp(): express.Express {
   // DELETE /loto/map?anchorId=         — remove the flow map
   // GET    /loto/quiz                  — training questions (answers withheld)
   // POST   /loto/quiz/submit           — grade server-side → certification
+  // GET    /loto/quiz/admin            — full questions incl. answers (EHS editor)
+  // POST   /loto/quiz/questions        — add a question
+  // PATCH  /loto/quiz/questions/:id    — update a question (full-field)
+  // DELETE /loto/quiz/questions/:id    — remove a question
+  // POST   /loto/quiz/import           — bulk import { mode: append|replace, questions } (atomic)
   // GET    /loto/certifications        — cert records, newest first
   app.use('/loto', lotoRouter);
 

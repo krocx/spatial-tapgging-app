@@ -39,6 +39,7 @@ import {
   derivePointStatus,
   deriveAnchorStatus,
   gradeQuiz,
+  validateQuizQuestions,
   LotoValidationError,
 } from '../loto/loto-core.js';
 import { buildSeedQuestions } from '../loto/quiz-seed.js';
@@ -129,17 +130,33 @@ router.get('/points', (req: Request, res: Response): void => {
   res.json(anchorId ? all.filter(p => p.anchorId === anchorId) : all);
 });
 
-// PATCH /loto/points/:id — label/circuit/model/position (author re-places).
+// PATCH /loto/points/:id — label/circuit/model/position/placement.
+// Model doctrine (same as GuideStep): ASSIGNMENT (modelId/scale) may change
+// freely; switching to a DIFFERENT model clears the old model's PLACEMENT
+// (offsets/rotation) — placement belongs to a shape, not a point.
 router.patch('/points/:id', (req: Request, res: Response): void => {
   const point = lotoPointStore.findById(req.params.id);
   if (!point) { res.status(404).json({ error: 'Point not found' }); return; }
   const body = req.body as UpdateLotoPointRequest;
+
+  const modelChanged = 'modelId' in body && (body.modelId || undefined) !== point.modelId;
+
   const updated = lotoPointStore.update(point.id, {
     ...(body.label?.trim() && { label: body.label.trim() }),
     ...('circuitId' in body && { circuitId: body.circuitId?.trim() || undefined }),
     ...(body.position && { position: body.position }),
     ...('modelId' in body && { modelId: body.modelId || undefined }),
     ...(body.modelScale !== undefined && { modelScale: body.modelScale }),
+    // Placement: explicit values win; a model CHANGE resets stale placement.
+    ...(modelChanged
+      ? { modelOffsetX: undefined, modelOffsetY: undefined,
+          modelOffsetZ: undefined, modelRotationY: undefined }
+      : {
+          ...(body.modelOffsetX   !== undefined && { modelOffsetX:   body.modelOffsetX }),
+          ...(body.modelOffsetY   !== undefined && { modelOffsetY:   body.modelOffsetY }),
+          ...(body.modelOffsetZ   !== undefined && { modelOffsetZ:   body.modelOffsetZ }),
+          ...(body.modelRotationY !== undefined && { modelRotationY: body.modelRotationY }),
+        }),
     updatedAt: new Date().toISOString(),
   } as Partial<LotoPoint>);
   res.json(updated);
@@ -371,6 +388,77 @@ router.post('/quiz/submit', (req: Request, res: Response): void => {
   lotoCertStore.save(certification);
   const result: SubmitLotoQuizResult = { certification, results: graded.results };
   res.status(201).json(result);
+});
+
+// ── Quiz administration (portal EHS editor) ──────────────────────────────────
+// The public GET /loto/quiz strips answers; these admin routes carry them.
+// Editing never touches issued certifications — a cert records what was
+// passed WHEN it was passed; future takers face the current bank.
+
+// GET /loto/quiz/admin — full questions incl. correctIndex + explanation.
+router.get('/quiz/admin', (_req: Request, res: Response): void => {
+  const questions = lotoQuizStore.findAll()
+    .sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
+  res.json({ questions, passRatio: PASS_RATIO });
+});
+
+// POST /loto/quiz/questions — add one question.
+router.post('/quiz/questions', (req: Request, res: Response): void => {
+  try {
+    const [input] = validateQuizQuestions([req.body]);
+    const now = new Date().toISOString();
+    const question: LotoQuizQuestion = { id: uuidv4(), ...input, createdAt: now, updatedAt: now };
+    lotoQuizStore.save(question);
+    res.status(201).json(question);
+  } catch (err) { fail(res, err); }
+});
+
+// PATCH /loto/quiz/questions/:id — full-field update (the editor sends the
+// whole question; partial patches of a 4-way choice list invite index bugs).
+router.patch('/quiz/questions/:id', (req: Request, res: Response): void => {
+  try {
+    const existing = lotoQuizStore.findById(req.params.id);
+    if (!existing) { res.status(404).json({ error: 'Question not found' }); return; }
+    const [input] = validateQuizQuestions([req.body]);
+    const updated = lotoQuizStore.update(existing.id, {
+      ...input, updatedAt: new Date().toISOString(),
+    });
+    res.json(updated);
+  } catch (err) { fail(res, err); }
+});
+
+// DELETE /loto/quiz/questions/:id — the portal warns when the bank runs low;
+// an empty bank simply blocks new certifications (submit returns 503).
+router.delete('/quiz/questions/:id', (req: Request, res: Response): void => {
+  if (!lotoQuizStore.findById(req.params.id)) {
+    res.status(404).json({ error: 'Question not found' });
+    return;
+  }
+  lotoQuizStore.delete(req.params.id);
+  res.json({ deleted: true, remaining: lotoQuizStore.findAll().length });
+});
+
+// POST /loto/quiz/import — bulk load. ATOMIC: everything validates first,
+// then applies; a half-imported bank can never exist.
+// Body: { mode: 'append' | 'replace', questions: [...] }
+router.post('/quiz/import', (req: Request, res: Response): void => {
+  try {
+    const body = req.body as { mode?: string; questions?: unknown };
+    const mode = body.mode === 'replace' ? 'replace' : 'append';
+    const inputs = validateQuizQuestions(body.questions);
+
+    if (mode === 'replace') {
+      lotoQuizStore.pruneWhere(() => true);
+    }
+    const now = new Date().toISOString();
+    const created: LotoQuizQuestion[] = inputs.map(input => {
+      const q: LotoQuizQuestion = { id: uuidv4(), ...input, createdAt: now, updatedAt: now };
+      lotoQuizStore.save(q);
+      return q;
+    });
+    console.log(`[SIB] LOTO quiz import (${mode}): +${created.length} questions, bank now ${lotoQuizStore.findAll().length}`);
+    res.status(201).json({ mode, imported: created.length, total: lotoQuizStore.findAll().length });
+  } catch (err) { fail(res, err); }
 });
 
 // GET /loto/certifications?userId= — newest first; head is the current one.

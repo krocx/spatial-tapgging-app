@@ -583,6 +583,23 @@
     <div id="iloto-audit" class="iloto-panel-card"></div>
     <div class="iloto-section-title">Certification registry</div>
     <div id="iloto-certs" class="iloto-panel-card"></div>
+
+    <div class="iloto-section-title">Training questions
+      <span style="text-transform:none;font-weight:400">— what future takers face; issued certifications are unaffected</span>
+    </div>
+    <div class="iloto-panel-card">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <button class="btn btn-ghost btn-sm" onclick="lotoQuizShowEditor(null)">＋ Add question</button>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('loto-quiz-import-file').click()">⬆ Import JSON/CSV</button>
+        <input type="file" id="loto-quiz-import-file" accept=".json,.csv" style="display:none" onchange="lotoQuizImportFile(event)">
+        <label style="font-size:0.72rem;color:var(--muted);display:flex;align-items:center;gap:5px">
+          <input type="checkbox" id="loto-quiz-replace"> replace existing bank on import
+        </label>
+        <button class="btn btn-ghost btn-sm" onclick="lotoQuizExport()" style="margin-left:auto">⬇ Export JSON</button>
+      </div>
+      <div id="loto-quiz-editor" style="display:none"></div>
+      <div id="loto-quiz-list"><p style="color:var(--muted);font-size:0.8rem;margin:0">Loading…</p></div>
+    </div>
   </div>
 </div>
 
@@ -3246,9 +3263,174 @@ async function loadILoto() {
 
     lotoCertsCache = await apiFetch('/loto/certifications').catch(() => []);
     renderLotoCerts(certs, lotoCertsCache);
+    await loadLotoQuiz();
   } catch (err) {
     board.innerHTML = `<div class="iloto-panel-card" style="color:#ef4444;font-size:0.82rem">Failed to load: ${esc(err.message)}</div>`;
   }
+}
+
+// ── Training questions editor ────────────────────────────────────────────────
+// Uses the admin endpoints (answers included). Every write reloads the list —
+// the server's validation messages surface via toast, verbatim.
+
+let lotoQuizAdmin = [];
+
+async function loadLotoQuiz() {
+  const el = document.getElementById('loto-quiz-list');
+  try {
+    const payload = await apiFetch('/loto/quiz/admin');
+    lotoQuizAdmin = payload.questions;
+    const pass = Math.round((payload.passRatio ?? 0.8) * 100);
+    if (!lotoQuizAdmin.length) {
+      el.innerHTML = '<p style="color:#f97316;font-size:0.8rem;margin:0">Bank is EMPTY — nobody can get certified until questions exist.</p>';
+      return;
+    }
+    el.innerHTML =
+      `<p style="color:var(--muted);font-size:0.72rem;margin:0 0 6px">${lotoQuizAdmin.length} questions · ${pass}% required to pass</p>` +
+      lotoQuizAdmin.map((q, i) => `
+        <div class="iloto-event" style="align-items:flex-start;flex-wrap:nowrap">
+          <span style="color:var(--muted);flex:none">${i + 1}.</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600">${esc(q.prompt)}</div>
+            <div style="color:#22c55e;font-size:0.74rem;margin-top:2px">✓ ${esc(q.choices[q.correctIndex] ?? '?')}</div>
+          </div>
+          <span style="flex:none;display:flex;gap:6px">
+            <button class="btn btn-ghost btn-sm" onclick="lotoQuizShowEditor('${q.id}')">Edit</button>
+            <button class="btn btn-ghost btn-sm" onclick="lotoQuizDelete('${q.id}')">✕</button>
+          </span>
+        </div>`).join('');
+  } catch (err) {
+    el.innerHTML = `<p style="color:#ef4444;font-size:0.8rem;margin:0">Failed to load questions: ${esc(err.message)}</p>`;
+  }
+}
+
+/** Inline editor — add (id null) or edit an existing question. */
+function lotoQuizShowEditor(id) {
+  const q = id ? lotoQuizAdmin.find(x => x.id === id) : null;
+  const choices = q?.choices ?? ['', '', '', ''];
+  const box = document.getElementById('loto-quiz-editor');
+  box.style.display = 'block';
+  box.innerHTML = `
+    <div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px">
+      <div style="font-weight:700;font-size:0.8rem;margin-bottom:8px">${q ? 'Edit question' : 'New question'}</div>
+      <textarea id="lq-prompt" rows="2" placeholder="Question prompt" style="width:100%;font-size:0.82rem;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text)">${q ? esc(q.prompt) : ''}</textarea>
+      ${choices.map((c, i) => `
+        <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+          <input type="radio" name="lq-correct" value="${i}" ${((q?.correctIndex ?? 0) === i) ? 'checked' : ''} title="Correct answer">
+          <input type="text" class="lq-choice" placeholder="Choice ${String.fromCharCode(65 + i)}" value="${esc(c)}"
+                 style="flex:1;font-size:0.8rem;padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text)">
+        </div>`).join('')}
+      <textarea id="lq-explanation" rows="2" placeholder="Explanation shown after grading (the teaching moment)" style="width:100%;margin-top:8px;font-size:0.8rem;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text)">${q ? esc(q.explanation) : ''}</textarea>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="btn btn-sm" onclick="lotoQuizSave(${id ? `'${id}'` : 'null'})">Save</button>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('loto-quiz-editor').style.display='none'">Cancel</button>
+        <span style="font-size:0.7rem;color:var(--muted);align-self:center">Radio = correct answer · blank choices are dropped</span>
+      </div>
+    </div>`;
+  box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function lotoQuizSave(id) {
+  const prompt      = document.getElementById('lq-prompt').value.trim();
+  const explanation = document.getElementById('lq-explanation').value.trim();
+  const allChoices  = [...document.querySelectorAll('.lq-choice')];
+  const checkedIdx  = Number(document.querySelector('input[name="lq-correct"]:checked')?.value ?? 0);
+  // Drop blank choices but keep the correct radio pointing at the same TEXT.
+  const correctText = allChoices[checkedIdx]?.value.trim() ?? '';
+  const choices = allChoices.map(c => c.value.trim()).filter(Boolean);
+  const correctIndex = choices.indexOf(correctText);
+  if (correctIndex === -1) { toast('The correct answer cannot be a blank choice.'); return; }
+  const body = { prompt, choices, correctIndex, explanation };
+  try {
+    if (id) await apiFetch(`/loto/quiz/questions/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
+    else    await apiFetch('/loto/quiz/questions',       { method: 'POST',  body: JSON.stringify(body) });
+    document.getElementById('loto-quiz-editor').style.display = 'none';
+    toast(id ? 'Question updated.' : 'Question added.');
+    loadLotoQuiz();
+  } catch (err) { toast(err.message); }
+}
+
+async function lotoQuizDelete(id) {
+  if (lotoQuizAdmin.length <= 3 &&
+      !confirm('The bank is nearly empty — certification becomes impossible without questions. Delete anyway?')) return;
+  try {
+    const r = await apiFetch(`/loto/quiz/questions/${id}`, { method: 'DELETE' });
+    toast(`Deleted · ${r.remaining} questions remain.`);
+    loadLotoQuiz();
+  } catch (err) { toast(err.message); }
+}
+
+function lotoQuizExport() {
+  if (!lotoQuizAdmin.length) { toast('Nothing to export.'); return; }
+  const payload = lotoQuizAdmin.map(({ prompt, choices, correctIndex, explanation }) =>
+    ({ prompt, choices, correctIndex, explanation }));
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `loto_questions_${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+/** Import: .json = [{prompt, choices[], correctIndex, explanation}] ·
+ *  .csv = prompt,choice1..choice4,correct(A–D or 1–4),explanation */
+async function lotoQuizImportFile(event) {
+  const file = event.target.files?.[0];
+  event.target.value = '';
+  if (!file) return;
+  let questions;
+  try {
+    const text = await file.text();
+    questions = file.name.toLowerCase().endsWith('.csv')
+      ? lotoQuizParseCSV(text)
+      : JSON.parse(text);
+  } catch (err) { toast(`Could not read file: ${err.message}`); return; }
+
+  const mode = document.getElementById('loto-quiz-replace').checked ? 'replace' : 'append';
+  if (mode === 'replace' &&
+      !confirm(`REPLACE the entire bank with ${Array.isArray(questions) ? questions.length : '?'} imported questions?`)) return;
+  try {
+    const r = await apiFetch('/loto/quiz/import', {
+      method: 'POST', body: JSON.stringify({ mode, questions }),
+    });
+    toast(`Imported ${r.imported} (${r.mode}) · bank now ${r.total} questions.`);
+    loadLotoQuiz();
+  } catch (err) { toast(`Import rejected: ${err.message}`); }
+}
+
+/** CSV rows: prompt, up to 4 choices, correct (A–D / a–d / 1–4), explanation.
+ *  Handles quoted fields with commas; header row auto-skipped. */
+function lotoQuizParseCSV(text) {
+  const rows = [];
+  let field = '', row = [], inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"' && text[i + 1] === '"') { field += '"'; i++; }
+      else if (ch === '"') inQuotes = false;
+      else field += ch;
+    } else if (ch === '"') inQuotes = true;
+    else if (ch === ',') { row.push(field); field = ''; }
+    else if (ch === '\n' || ch === '\r') {
+      if (ch === '\r' && text[i + 1] === '\n') i++;
+      row.push(field); field = '';
+      if (row.some(f => f.trim())) rows.push(row);
+      row = [];
+    } else field += ch;
+  }
+  if (field || row.length) { row.push(field); if (row.some(f => f.trim())) rows.push(row); }
+
+  const body = rows.length && /prompt/i.test(rows[0][0]) ? rows.slice(1) : rows;
+  return body.map(cols => {
+    const prompt  = (cols[0] ?? '').trim();
+    const choices = cols.slice(1, 5).map(c => (c ?? '').trim()).filter(Boolean);
+    const rawCorrect = (cols[5] ?? '').trim();
+    let correctIndex = /^[a-dA-D]$/.test(rawCorrect)
+      ? rawCorrect.toUpperCase().charCodeAt(0) - 65
+      : parseInt(rawCorrect, 10) - 1;
+    if (!Number.isInteger(correctIndex)) correctIndex = -1;
+    return { prompt, choices, correctIndex, explanation: (cols[6] ?? '').trim() };
+  });
 }
 
 function renderLotoBoard(el, perAnchor) {

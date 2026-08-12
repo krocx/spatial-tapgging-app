@@ -168,6 +168,50 @@ export function validateEvent(
   throw new LotoValidationError(400, `Unknown event type: ${type as string}`);
 }
 
+// ── Quiz question validation (admin editing / import) ───────────────────────
+
+export interface QuizQuestionInput {
+  prompt:       string;
+  choices:      string[];
+  correctIndex: number;
+  explanation:  string;
+}
+
+/**
+ * Validates raw question input (portal editor or import file). Throws on the
+ * FIRST problem with a message naming the question number — imports are
+ * all-or-nothing so a half-imported bank can never exist.
+ */
+export function validateQuizQuestions(raw: unknown): QuizQuestionInput[] {
+  if (!Array.isArray(raw) || raw.length === 0) {
+    throw new LotoValidationError(400, 'Provide a non-empty array of questions.');
+  }
+  return raw.map((q, i) => {
+    const n = i + 1;
+    const item = q as Record<string, unknown>;
+    const prompt = typeof item.prompt === 'string' ? item.prompt.trim() : '';
+    if (!prompt) throw new LotoValidationError(400, `Question ${n}: prompt is required.`);
+
+    const choices = Array.isArray(item.choices)
+      ? item.choices.map(c => (typeof c === 'string' ? c.trim() : '')) : [];
+    if (choices.length < 2 || choices.length > 6) {
+      throw new LotoValidationError(400, `Question ${n}: needs 2–6 choices (got ${choices.length}).`);
+    }
+    if (choices.some(c => c.length === 0)) {
+      throw new LotoValidationError(400, `Question ${n}: choices cannot be empty.`);
+    }
+
+    const correctIndex = typeof item.correctIndex === 'number' ? item.correctIndex : NaN;
+    if (!Number.isInteger(correctIndex) || correctIndex < 0 || correctIndex >= choices.length) {
+      throw new LotoValidationError(400,
+        `Question ${n}: correctIndex must be 0–${choices.length - 1}.`);
+    }
+
+    const explanation = typeof item.explanation === 'string' ? item.explanation.trim() : '';
+    return { prompt, choices, correctIndex, explanation };
+  });
+}
+
 // ── Quiz grading ────────────────────────────────────────────────────────────
 
 export interface GradeResult {

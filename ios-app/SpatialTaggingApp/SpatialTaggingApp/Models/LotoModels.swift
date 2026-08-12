@@ -40,9 +40,28 @@ struct LotoPoint: Codable, Identifiable, Equatable {
     let position:   SIBVector3
     let modelId:    String?
     let modelScale: Double?
+    /// Model PLACEMENT — device-owned, set via AR pan/pinch/rotate gestures.
+    /// The server clears these when the assigned model changes.
+    let modelOffsetX:   Double?
+    let modelOffsetY:   Double?
+    let modelOffsetZ:   Double?
+    let modelRotationY: Double?
     let createdBy:  String
     let createdAt:  String
     let updatedAt:  String
+}
+
+/// PATCH /loto/points/:id — send only what changes. Assigning a DIFFERENT
+/// modelId resets placement server-side (old model's placement is meaningless).
+struct UpdateLotoPointRequest: Codable {
+    var label:          String? = nil
+    var circuitId:      String? = nil
+    var modelId:        String? = nil
+    var modelScale:     Double? = nil
+    var modelOffsetX:   Double? = nil
+    var modelOffsetY:   Double? = nil
+    var modelOffsetZ:   Double? = nil
+    var modelRotationY: Double? = nil
 }
 
 struct CreateLotoPointRequest: Codable {

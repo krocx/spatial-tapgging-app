@@ -27,6 +27,9 @@ struct LotoPointDetailSheet: View {
     /// Called with fresh derived status after an apply/remove succeeds.
     let onChanged: (LotoPointStatus) -> Void
     let onDeleted: () -> Void
+    /// Present only when opened from an AR authoring session AND the point has
+    /// a model — dismisses the sheet and enters the gesture-adjust phase.
+    var onAdjustModel: (() -> Void)? = nil
 
     @EnvironmentObject private var settings: AppSettings
     @Environment(\.dismiss) private var dismiss
@@ -37,9 +40,16 @@ struct LotoPointDetailSheet: View {
     @State private var showRemove = false
     @State private var deleteError: String? = nil
     @State private var isDeleting = false
+    @State private var availableModels: [Model3D] = []
+    @State private var isSavingModel = false
+    @State private var modelError: String? = nil
 
     private var point: LotoPoint { status.point }
     private var isMyLock: Bool { status.lockedBy == settings.authorName }
+    private var usableModels: [Model3D] { availableModels.filter { $0.isReady && $0.hasUSDZ } }
+    private var currentModelName: String? {
+        point.modelId.flatMap { id in availableModels.first { $0.id == id }?.name }
+    }
 
     var body: some View {
         NavigationStack {
@@ -89,6 +99,55 @@ struct LotoPointDetailSheet: View {
                     Text("Events are permanent records — nothing here can be edited or deleted.")
                 }
 
+                // ── 3D model (author contexts) ──────────────────────────────
+                if allowDelete {
+                    Section {
+                        HStack {
+                            Label(currentModelName ?? (point.modelId != nil ? "Assigned" : "None"),
+                                  systemImage: "cube")
+                                .font(.subheadline)
+                            Spacer()
+                            if isSavingModel { ProgressView() }
+                        }
+                        if !usableModels.isEmpty {
+                            Menu {
+                                ForEach(usableModels) { m in
+                                    Button(m.name) { Task { await setModel(m) } }
+                                }
+                                if point.modelId != nil {
+                                    Divider()
+                                    Button("Remove model", role: .destructive) {
+                                        Task { await setModel(nil) }
+                                    }
+                                }
+                            } label: {
+                                Label(point.modelId == nil ? "Assign 3D model…" : "Change 3D model…",
+                                      systemImage: "arrow.triangle.2.circlepath")
+                            }
+                            .disabled(isSavingModel)
+                        }
+                        if let onAdjust = onAdjustModel, point.modelId != nil {
+                            Button {
+                                dismiss()
+                                onAdjust()
+                            } label: {
+                                Label("Adjust model in AR (move · scale · rotate)",
+                                      systemImage: "hand.draw")
+                            }
+                        }
+                        if let err = modelError {
+                            Label(err, systemImage: "exclamationmark.triangle.fill")
+                                .font(.caption).foregroundStyle(.red)
+                        }
+                    } header: {
+                        Text("3D lock model")
+                    } footer: {
+                        Text(usableModels.isEmpty && point.modelId == nil
+                             ? "Upload lock/tag models in the portal's 3D Models tab first."
+                             : "Changing the model resets its AR placement — re-adjust after switching.")
+                    }
+                }
+
                 if allowDelete && !status.isLocked {
                     Section {
                         if let err = deleteError {
@@ -111,7 +170,13 @@ struct LotoPointDetailSheet: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
             }
-            .task { await loadHistory() }
+            .task {
+                await loadHistory()
+                if allowDelete {
+                    availableModels = (try? await SIBClient(settings: settings)
+                        .fetchModels(anchorId: anchor.id)) ?? []
+                }
+            }
             .sheet(isPresented: $showApply) {
                 LotoApplyFlowView(anchor: anchor, point: point) { fresh in
                     onChanged(fresh)
@@ -215,6 +280,31 @@ struct LotoPointDetailSheet: View {
                let img = UIImage(data: data) {
                 photos[event.id] = img
             }
+        }
+    }
+
+    /// Assign / change / remove (nil) the point's 3D model via PATCH.
+    /// The server clears stale placement when the model changes; sending an
+    /// empty modelId string is the "clear" signal (JSON nulls are dropped by
+    /// the encoder, so absence can't mean removal).
+    private func setModel(_ model: Model3D?) async {
+        isSavingModel = true
+        modelError = nil
+        var req = UpdateLotoPointRequest()
+        req.modelId    = model?.id ?? ""
+        req.modelScale = model?.defaultScale
+        do {
+            let updated = try await SIBClient(settings: settings).updateLotoPoint(id: point.id, req: req)
+            isSavingModel = false
+            // Same lock state, refreshed point — caller re-renders markers.
+            onChanged(LotoPointStatus(
+                point: updated, state: status.state,
+                lockedBy: status.lockedBy, lockedByName: status.lockedByName,
+                lockedAt: status.lockedAt, lockSerial: status.lockSerial,
+                lastEventId: status.lastEventId))
+        } catch {
+            modelError = error.localizedDescription
+            isSavingModel = false
         }
     }
 

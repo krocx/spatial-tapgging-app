@@ -60,6 +60,26 @@ struct LotoARSessionView: View {
     /// modelId → loaded USDZ template node (cloned per marker).
     @State private var modelTemplates: [String: SCNNode] = [:]
 
+    // ── Model adjust phase (pan/pinch/rotate, as in AR Work Instructions) ───
+    private enum LotoPanMode: String { case horizontal = "H", vertical = "V" }
+    @State private var adjustingPointId: String? = nil
+    @State private var adjPanMode: LotoPanMode = .horizontal
+    @State private var adjScale: Float = 1
+    @State private var adjRotY: Float = 0
+    @State private var adjWorldPos: simd_float3 = .zero
+    @State private var panBasePos: simd_float3 = .zero
+    @State private var panStartWorld: simd_float3 = .zero
+    @State private var panDepthZ: Float = 0.5
+    @State private var scaleBase: Float = 1
+    @State private var rotYBase: Float = 0
+    @State private var isSavingAdjust = false
+
+    private var isAdjusting: Bool { adjustingPointId != nil }
+    private var adjustingModelNode: SCNNode? {
+        guard let id = adjustingPointId else { return nil }
+        return pointNodes[id]?.childNode(withName: "model", recursively: false)
+    }
+
     private var usableModels: [Model3D] {
         models.filter { $0.isReady && $0.hasUSDZ }
     }
@@ -97,8 +117,17 @@ struct LotoARSessionView: View {
 
     var body: some View {
         ZStack {
-            LotoARContainer(arManager: arManager, onTap: handleTap)
-                .ignoresSafeArea()
+            LotoARContainer(
+                arManager:      arManager,
+                onTap:          isAdjusting ? nil : handleTap,
+                onPanBegan:     isAdjusting ? handleAdjustPanBegan   : nil,
+                onPanChanged:   isAdjusting ? handleAdjustPanChanged : nil,
+                onPinchBegan:   isAdjusting ? { scaleBase = adjScale } : nil,
+                onPinchChanged: isAdjusting ? handleAdjustPinch      : nil,
+                onRotBegan:     isAdjusting ? { rotYBase = adjRotY } : nil,
+                onRotChanged:   isAdjusting ? handleAdjustRot        : nil
+            )
+            .ignoresSafeArea()
 
             VStack {
                 topBar
@@ -117,7 +146,9 @@ struct LotoARSessionView: View {
                         .padding(.bottom, 8)
                 }
 
-                if isMapEditing {
+                if isAdjusting {
+                    adjustBar
+                } else if isMapEditing {
                     mapEditBar
                 } else {
                     bottomHint
@@ -152,7 +183,9 @@ struct LotoARSessionView: View {
                 isCertified: isCertified,
                 allowDelete: authorKind != nil,
                 onChanged:   { fresh in applyStatusChange(fresh) },
-                onDeleted:   { removeDeletedPoint(st.point) }
+                onDeleted:   { removeDeletedPoint(st.point) },
+                onAdjustModel: (authorKind != nil && st.point.modelId != nil)
+                    ? { enterAdjust(for: st.point.id) } : nil
             )
             .environmentObject(settings)
         }
@@ -465,13 +498,18 @@ struct LotoARSessionView: View {
         // ── Assigned 3D lock/tag model ──────────────────────────────────────
         if let p = point, let modelId = p.modelId, let template = modelTemplates[modelId] {
             let modelNode = template.clone()
+            modelNode.name = "model"   // findable for the AR adjust gestures
             let scale = Float(p.modelScale
                 ?? models.first(where: { $0.id == modelId })?.defaultScale
                 ?? 1.0)
             modelNode.scale = SCNVector3(scale, scale, scale)
-            // Sit just above the ring so the padlock/tag reads as hanging at
-            // the isolation point rather than swallowing the marker.
-            modelNode.position = SCNVector3(0, 0.055, 0)
+            // Base perch just above the ring, plus the author's saved AR
+            // placement offsets (pan gestures) and Y rotation.
+            modelNode.position = SCNVector3(
+                Float(p.modelOffsetX ?? 0),
+                0.055 + Float(p.modelOffsetY ?? 0),
+                Float(p.modelOffsetZ ?? 0))
+            modelNode.eulerAngles = SCNVector3(0, Float(p.modelRotationY ?? 0), 0)
             modelNode.opacity = locked ? 1.0 : 0.45   // solid = on, ghost = belongs here
             root.addChildNode(modelNode)
         }
@@ -608,6 +646,117 @@ struct LotoARSessionView: View {
         pendingNode?.removeFromParentNode()
         pendingNode = nil
         pendingPosition = nil
+    }
+
+    // ── Model adjust: enter / gestures / save ───────────────────────────────
+    // Gesture math mirrors GuideStepPlacementView exactly: pan translates in
+    // a screen-parallel plane at the model's projected depth (H = XZ, V = Y),
+    // pinch scales from the gesture-start baseline, rotation spins around Y.
+
+    private func enterAdjust(for pointId: String) {
+        guard let p = points.first(where: { $0.id == pointId }),
+              let modelNode = pointNodes[pointId]?.childNode(withName: "model", recursively: false)
+        else { showToast("Model still loading — try again in a moment."); return }
+        adjustingPointId = pointId
+        adjScale    = Float(p.modelScale ?? 1)
+        adjRotY     = Float(p.modelRotationY ?? 0)
+        adjWorldPos = modelNode.simdWorldPosition
+        showToast("Drag to move (\(adjPanMode.rawValue)) · pinch to scale · twist to rotate")
+    }
+
+    private func handleAdjustPanBegan(_ pt: CGPoint) {
+        panBasePos = adjWorldPos
+        let sv = arManager.sceneView
+        let proj = sv.projectPoint(SCNVector3(adjWorldPos))
+        panDepthZ = proj.z
+        let w = sv.unprojectPoint(SCNVector3(Float(pt.x), Float(pt.y), panDepthZ))
+        panStartWorld = simd_float3(w.x, w.y, w.z)
+    }
+
+    private func handleAdjustPanChanged(_ pt: CGPoint) {
+        let sv = arManager.sceneView
+        let w = sv.unprojectPoint(SCNVector3(Float(pt.x), Float(pt.y), panDepthZ))
+        let delta: simd_float3 = adjPanMode == .horizontal
+            ? simd_float3(w.x - panStartWorld.x, 0, w.z - panStartWorld.z)
+            : simd_float3(0, w.y - panStartWorld.y, 0)
+        adjWorldPos = panBasePos + delta
+        adjustingModelNode?.simdWorldPosition = adjWorldPos
+    }
+
+    private func handleAdjustPinch(_ factor: CGFloat) {
+        adjScale = max(0.05, min(20.0, scaleBase * Float(factor)))
+        adjustingModelNode?.simdScale = simd_float3(adjScale, adjScale, adjScale)
+    }
+
+    private func handleAdjustRot(_ rotation: CGFloat) {
+        adjRotY = rotYBase + Float(rotation)
+        adjustingModelNode?.eulerAngles = SCNVector3(0, adjRotY, 0)
+    }
+
+    private var adjustBar: some View {
+        VStack(spacing: 8) {
+            Text("Drag to move · pinch to scale · twist to rotate")
+                .font(.caption).foregroundStyle(.white.opacity(0.85))
+            HStack(spacing: 10) {
+                Button {
+                    adjPanMode = adjPanMode == .horizontal ? .vertical : .horizontal
+                } label: {
+                    Label(adjPanMode == .horizontal ? "Move: H" : "Move: V",
+                          systemImage: adjPanMode == .horizontal
+                              ? "arrow.left.and.right" : "arrow.up.and.down")
+                }
+                Button {
+                    cancelAdjust()
+                } label: {
+                    Label("Cancel", systemImage: "xmark")
+                }
+                Button {
+                    Task { await saveAdjust() }
+                } label: {
+                    if isSavingAdjust { ProgressView().tint(.white) }
+                    else { Label("Save", systemImage: "checkmark").bold() }
+                }
+                .disabled(isSavingAdjust)
+            }
+            .font(.caption.bold())
+            .buttonStyle(.borderedProminent)
+            .tint(.indigo)
+        }
+        .padding(.horizontal, 16).padding(.vertical, 12)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .padding(.horizontal, 20)
+        .padding(.bottom, 16)
+    }
+
+    private func cancelAdjust() {
+        if let id = adjustingPointId { refreshMarker(for: id) }   // discard live edits
+        adjustingPointId = nil
+    }
+
+    private func saveAdjust() async {
+        guard let id = adjustingPointId,
+              let root = pointNodes[id],
+              let modelNode = adjustingModelNode else { adjustingPointId = nil; return }
+        isSavingAdjust = true
+        // World → offsets relative to the marker (minus the 0.055 base perch).
+        let local = root.simdConvertPosition(modelNode.simdWorldPosition, from: nil)
+        var req = UpdateLotoPointRequest()
+        req.modelScale     = Double(adjScale)
+        req.modelOffsetX   = Double(local.x)
+        req.modelOffsetY   = Double(local.y - 0.055)
+        req.modelOffsetZ   = Double(local.z)
+        req.modelRotationY = Double(adjRotY)
+        do {
+            let updated = try await SIBClient(settings: settings).updateLotoPoint(id: id, req: req)
+            if let idx = points.firstIndex(where: { $0.id == id }) { points[idx] = updated }
+            refreshMarker(for: id)
+            showToast("Model placement saved.")
+        } catch {
+            showToast("Save failed: \(error.localizedDescription)")
+            refreshMarker(for: id)
+        }
+        isSavingAdjust = false
+        adjustingPointId = nil
     }
 
     // ── Flow map: drawing ───────────────────────────────────────────────────
@@ -755,6 +904,20 @@ struct LotoARSessionView: View {
 
     private func applyStatusChange(_ fresh: LotoPointStatus) {
         statuses[fresh.point.id] = fresh
+        // The point itself may have changed too (model reassignment).
+        if let idx = points.firstIndex(where: { $0.id == fresh.point.id }) {
+            points[idx] = fresh.point
+        }
+        // Newly assigned model whose USDZ isn't cached yet → fetch + upgrade.
+        if let modelId = fresh.point.modelId, modelTemplates[modelId] == nil,
+           let m = usableModels.first(where: { $0.id == modelId }) {
+            Task {
+                if let node = await loadModelTemplate(m) {
+                    modelTemplates[m.id] = node
+                    refreshMarker(for: fresh.point.id)
+                }
+            }
+        }
         refreshMarker(for: fresh.point.id)
         // A Safe Off apply/remove flips downstream lines live — the payoff
         // moment of the status-aware map.
@@ -841,31 +1004,76 @@ struct LotoARGateFlow: View {
     }
 }
 
-// ── Minimal AR container (tap only) ─────────────────────────────────────────
+// ── AR container: tap + (adjust-phase) pan / pinch / rotate ─────────────────
+// Mirrors ARPlacementContainer in GuideStepPlacementView: recognisers run
+// simultaneously; nil callbacks make a gesture inert outside the adjust phase.
 
 private struct LotoARContainer: UIViewRepresentable {
     let arManager: ARSessionManager
-    let onTap: (CGPoint) -> Void
+    var onTap:          ((CGPoint) -> Void)?
+    var onPanBegan:     ((CGPoint) -> Void)? = nil
+    var onPanChanged:   ((CGPoint) -> Void)? = nil
+    var onPinchBegan:   (() -> Void)?        = nil
+    var onPinchChanged: ((CGFloat) -> Void)? = nil
+    var onRotBegan:     (() -> Void)?        = nil
+    var onRotChanged:   ((CGFloat) -> Void)? = nil
 
-    func makeCoordinator() -> Coordinator { Coordinator(onTap: onTap) }
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
 
     func makeUIView(context: Context) -> ARSCNView {
         let view = arManager.sceneView
-        let tap = UITapGestureRecognizer(target: context.coordinator,
-                                         action: #selector(Coordinator.handleTap(_:)))
-        view.addGestureRecognizer(tap)
+        let c = context.coordinator
+        view.addGestureRecognizer(UITapGestureRecognizer(target: c, action: #selector(Coordinator.tap(_:))))
+        let pan = UIPanGestureRecognizer(target: c, action: #selector(Coordinator.pan(_:)))
+        pan.maximumNumberOfTouches = 1
+        pan.delegate = c
+        view.addGestureRecognizer(pan)
+        let pinch = UIPinchGestureRecognizer(target: c, action: #selector(Coordinator.pinch(_:)))
+        pinch.delegate = c
+        view.addGestureRecognizer(pinch)
+        let rot = UIRotationGestureRecognizer(target: c, action: #selector(Coordinator.rot(_:)))
+        rot.delegate = c
+        view.addGestureRecognizer(rot)
         return view
     }
 
     func updateUIView(_ uiView: ARSCNView, context: Context) {
-        context.coordinator.onTap = onTap
+        context.coordinator.parent = self
     }
 
-    final class Coordinator: NSObject {
-        var onTap: (CGPoint) -> Void
-        init(onTap: @escaping (CGPoint) -> Void) { self.onTap = onTap }
-        @objc func handleTap(_ r: UITapGestureRecognizer) {
-            onTap(r.location(in: r.view))
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        var parent: LotoARContainer
+        init(_ parent: LotoARContainer) { self.parent = parent }
+
+        func gestureRecognizer(_ g1: UIGestureRecognizer,
+                               shouldRecognizeSimultaneouslyWith g2: UIGestureRecognizer) -> Bool { true }
+
+        @objc func tap(_ r: UITapGestureRecognizer) {
+            guard r.state == .ended, let v = r.view else { return }
+            parent.onTap?(r.location(in: v))
+        }
+        @objc func pan(_ r: UIPanGestureRecognizer) {
+            guard r.numberOfTouches <= 1, let v = r.view else { return }
+            let pt = r.location(in: v)
+            switch r.state {
+            case .began:   parent.onPanBegan?(pt)
+            case .changed: parent.onPanChanged?(pt)
+            default: break
+            }
+        }
+        @objc func pinch(_ r: UIPinchGestureRecognizer) {
+            switch r.state {
+            case .began:   r.scale = 1; parent.onPinchBegan?()
+            case .changed: parent.onPinchChanged?(r.scale)
+            default: break
+            }
+        }
+        @objc func rot(_ r: UIRotationGestureRecognizer) {
+            switch r.state {
+            case .began:   r.rotation = 0; parent.onRotBegan?()
+            case .changed: parent.onRotChanged?(r.rotation)
+            default: break
+            }
         }
     }
 }

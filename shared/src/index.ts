@@ -1008,6 +1008,13 @@ export interface LotoPoint {
   position:    Vector3;       // ARKit world space within the anchor's world map
   modelId?:    string;        // lock 3D asset (yellow/red) from the model library
   modelScale?: number;
+  // Model PLACEMENT — device-owned, adjusted with AR gestures (pan/pinch/
+  // rotate), same doctrine as GuideStep: switching to a DIFFERENT model
+  // clears these (the old model's placement is meaningless on a new shape).
+  modelOffsetX?:   number;    // metres from the marker position
+  modelOffsetY?:   number;
+  modelOffsetZ?:   number;
+  modelRotationY?: number;    // radians around Y
   createdBy:   string;
   createdAt:   string;
   updatedAt:   string;
@@ -1017,7 +1024,8 @@ export type CreateLotoPointRequest =
   Omit<LotoPoint, 'id' | 'createdAt' | 'updatedAt'>;
 
 export type UpdateLotoPointRequest = Partial<
-  Pick<LotoPoint, 'label' | 'circuitId' | 'position' | 'modelId' | 'modelScale'>>;
+  Pick<LotoPoint, 'label' | 'circuitId' | 'position' | 'modelId' | 'modelScale'
+                | 'modelOffsetX' | 'modelOffsetY' | 'modelOffsetZ' | 'modelRotationY'>>;
 
 /**
  * Event types. 'override-remove' is the OSHA 1910.147 exception procedure —
