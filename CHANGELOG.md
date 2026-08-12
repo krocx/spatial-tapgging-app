@@ -7,6 +7,21 @@ it, it gets a line.
 ## 2026.4.42 — 2026-08-11
 
 ### Added
+- **iLOTO slice 3** — the gate opens: training quiz UI (one question at a
+  time, server-graded, failed attempts reviewed with the correct answer and
+  explanation — the explanations ARE the training), certification issuance
+  live with expiry; My LOTO view — every lock the user holds across all
+  panels with a one-tap deep-link into the Remove flow; hub My LOTO tile
+  turns red with a live count when any locks are held (the shift-end nudge).
+- **iLOTO slice 2** — the working loop: AR point authoring (tap breakers/
+  switches to place yellow/red markers; panel ARWorldMap saved on author exit
+  so every later session relocalizes), ordered Apply checklists (notify →
+  shutdown → lock → photo → try test → serial) and Remove checklists with the
+  supervisor-override form behind an explicit second decision, Check Status as
+  list + AR walk (solid = locked, hollow = clear), and a point-detail sheet
+  with the append-only event history and evidence photos. Server 4xx messages
+  surface verbatim — the client makes the right path easy; the server stays
+  the referee.
 - **iLOTO slice 1** — spatial Lockout/Tagout foundation
   ([docs/ILOTO.md](docs/ILOTO.md)): 'LOTO' anchor type (one anchor per control
   panel, full QR + worldmap flow), authored isolation points (yellow Safe Off

@@ -168,13 +168,23 @@ what was confirmed, per event, even if definitions evolve later.
 
 ## 7. Build phasing
 
-| Slice | Scope |
-|---|---|
-| 1 | Shared types, SIB stores + routes + seeded quiz, derived status, iOS hub (6 tiles, status banner, cert gate), 'loto' anchor type |
-| 2 | Point authoring in AR (yellow/red lock assets), Apply/Remove checklists with photo + try-test, supervisor override, Check Status AR/list |
-| 3 | My LOTO cross-anchor view + shift-end notice, quiz UI, cert issuance live |
-| 4 | AR LOTO map: vertex-drawn flow lines, circuit links, status-aware rendering, versions |
-| Portal | With each slice: status board → audit trail (overrides pinned) → cert registry → CSV export |
+| Slice | Scope | Status |
+|---|---|---|
+| 1 | Shared types, SIB stores + routes + seeded quiz, derived status, iOS hub (6 tiles, status banner, cert gate), 'loto' anchor type | **shipped** |
+| 2 | Point authoring in AR (worldmap saved on author exit; markers relocalize), Apply/Remove ordered checklists with photo + try-test, supervisor override, Check Status AR walk + list, point detail with append-only history | **shipped** |
+| 3 | My LOTO cross-anchor view with remove deep-link + active-lock nudge on the hub tile, quiz UI (one question at a time, server-graded, miss review with explanations), cert issuance live | **shipped** |
+| 4 | AR LOTO map: vertex-drawn flow lines, circuit links, status-aware rendering, versions | planned |
+| Portal | With each slice: status board → audit trail (overrides pinned) → cert registry → CSV export | pending |
+
+Slice 2 implementation notes: the AR surface (`LotoARSessionView`) has two modes
+sharing one relocalization path — `.author(kind)` places markers and uploads the
+ARWorldMap on exit; `.status` renders solid (locked) / hollow (clear) markers
+and opens the same point-detail sheet the lists use. Apply/Remove UIs enforce
+checklist ORDER client-side (each confirm disabled until the previous one), but
+the server remains the referee — its 4xx messages are shown verbatim. The
+override path is behind an explicit "Supervisor override…" button, never a
+fallback. Lock 3D-model assignment (`modelId` on points) is schema-ready but
+UI-deferred until the lock assets are uploaded to the model library.
 
 ## 8. Deliberate non-goals (v1)
 

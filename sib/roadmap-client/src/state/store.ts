@@ -1164,6 +1164,10 @@ export const useStore = create<State & Actions>((set, get) => {
           ? `${parsed.name.trim()} (imported)`
           : 'Imported map';
         // New id on this server — an export from Render becomes a fresh map here.
+        // kind/anchorId MUST travel with the import: kind is create-only, and
+        // dropping it here silently demoted procedure maps to plain roadmaps on
+        // the destination server (no role picker, no procedure bar) — found
+        // when moving maps between Render and an internal deploy.
         const saved = await mindmapApi.save({
           name,
           nodes: parsed.nodes,
@@ -1171,6 +1175,8 @@ export const useStore = create<State & Actions>((set, get) => {
           lanes: parsed.lanes ?? [],
           groups: parsed.groups ?? [],
           settings: parsed.settings,
+          ...(parsed.kind && { kind: parsed.kind }),
+          ...(parsed.anchorId && { anchorId: parsed.anchorId }),
           versionLabel: 'imported from JSON',
         });
         await get().refreshList();

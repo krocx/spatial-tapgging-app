@@ -24,6 +24,9 @@ struct ILOTOHubView: View {
     @State private var isLoading = true
     @State private var loadError: String? = nil
     @State private var placeholder: PlaceholderInfo? = nil
+    @State private var route: LotoHubRoute? = nil
+    /// Locks I hold anywhere (not just this panel) — the shift-end nudge.
+    @State private var myLockCount = 0
 
     /// Cert gate: Safe Off and LOTO require a valid, unexpired certification.
     /// Everything else stays open — an affected employee must be able to SEE
@@ -81,6 +84,25 @@ struct ILOTOHubView: View {
         .refreshable { await load() }
         .sheet(item: $placeholder) { info in
             LotoPlaceholderSheet(info: info)
+        }
+        .navigationDestination(item: $route) { r in
+            Group {
+                switch r {
+                case .safeOff:
+                    LotoKindView(anchor: anchor, kind: .safeoff, isCertified: isCertified)
+                case .loto:
+                    LotoKindView(anchor: anchor, kind: .loto, isCertified: isCertified)
+                case .checkStatus:
+                    LotoStatusListView(anchor: anchor, isCertified: isCertified)
+                case .myLoto:
+                    MyLotoView()
+                case .training:
+                    LotoTrainingView(onCertChanged: { Task { await load() } })
+                }
+            }
+            .environmentObject(settings)
+            // Status may have changed inside the flows — refresh on return.
+            .onDisappear { Task { await load() } }
         }
     }
 
@@ -156,24 +178,25 @@ struct ILOTOHubView: View {
         LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)],
                   spacing: 10) {
             lotoTile(icon: "power", tint: .yellow, title: "Safe Off",
-                     caption: "Apply · Remove", gated: true) {
-                placeholder = .init(title: "Safe Off",
-                    message: "Yellow out-of-service locks on circuit breakers. Apply and Remove flows arrive in the next update (slice 2).")
+                     caption: safeOffCaption, gated: true) {
+                route = .safeOff
             }
             lotoTile(icon: "lock.fill", tint: .red, title: "LOTO",
-                     caption: "Apply · Remove", gated: true) {
-                placeholder = .init(title: "LOTO",
-                    message: "Red personal danger locks on switches, with the full six-step OSHA sequence. Apply and Remove flows arrive in the next update (slice 2).")
+                     caption: lotoCaption, gated: true) {
+                route = .loto
             }
             lotoTile(icon: "eye", tint: .blue, title: "Check Status",
                      caption: "AR + list", gated: false) {
-                placeholder = .init(title: "Check Status",
-                    message: "Walk the panel in AR with live lock markers, or scan the list. Arrives with point authoring (slice 2).")
+                route = .checkStatus
             }
-            lotoTile(icon: "person.fill", tint: .indigo, title: "My LOTO",
-                     caption: "My active locks", gated: false) {
-                placeholder = .init(title: "My LOTO",
-                    message: "Every lock you currently hold, across all panels — so nothing is forgotten at shift end. Arrives in slice 3.")
+            lotoTile(icon: "person.fill",
+                     tint: myLockCount > 0 ? .red : .indigo,
+                     title: "My LOTO",
+                     caption: myLockCount > 0
+                        ? "\(myLockCount) active lock\(myLockCount == 1 ? "" : "s")!"
+                        : "My active locks",
+                     gated: false) {
+                route = .myLoto
             }
             lotoTile(icon: "point.topleft.down.curvedto.point.bottomright.up", tint: .teal,
                      title: "AR LOTO Map", caption: "Electricity flow", gated: false) {
@@ -182,8 +205,7 @@ struct ILOTOHubView: View {
             }
             lotoTile(icon: "graduationcap.fill", tint: .green, title: "My LOTO Training",
                      caption: isCertified ? "Certified ✓" : "Get certified", gated: false) {
-                placeholder = .init(title: "My LOTO Training",
-                    message: "A short certification quiz drawn from OSHA 1910.147. The question bank is already live on the server; the quiz screen arrives in slice 3.")
+                route = .training
             }
         }
     }
@@ -228,6 +250,16 @@ struct ILOTOHubView: View {
         .buttonStyle(.plain)
     }
 
+    private var safeOffCaption: String {
+        guard let s = status else { return "Apply · Remove" }
+        return s.safeOffActive > 0 ? "\(s.safeOffActive) active" : "Apply · Remove"
+    }
+
+    private var lotoCaption: String {
+        guard let s = status else { return "Apply · Remove" }
+        return s.lotoActive > 0 ? "\(s.lotoActive) active" : "Apply · Remove"
+    }
+
     // ── Data ───────────────────────────────────────────────────────────────
 
     private func load() async {
@@ -237,9 +269,11 @@ struct ILOTOHubView: View {
         do {
             async let statusFetch = client.fetchLotoStatus(anchorId: anchor.id)
             async let certFetch   = client.fetchLotoCertifications(userId: settings.authorName)
-            let (s, certs) = try await (statusFetch, certFetch)
+            async let myFetch     = client.fetchMyLoto(userId: settings.authorName)
+            let (s, certs, mine) = try await (statusFetch, certFetch, myFetch)
             status        = s
             certification = certs.first(where: { $0.isValid }) ?? certs.first
+            myLockCount   = mine.count
         } catch {
             loadError = error.localizedDescription
         }
@@ -263,7 +297,13 @@ struct ILOTOHubView: View {
     }
 }
 
-// ── Placeholder sheet (slice 1 only — replaced as flows land) ──────────────
+/// Pushed destinations from the hub tiles (slices 2–3).
+enum LotoHubRoute: String, Identifiable, Hashable {
+    case safeOff, loto, checkStatus, myLoto, training
+    var id: String { rawValue }
+}
+
+// ── Placeholder sheet (remaining slice 3/4 tiles) ──────────────────────────
 
 private struct PlaceholderInfo: Identifiable {
     let id = UUID()

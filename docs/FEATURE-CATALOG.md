@@ -108,8 +108,9 @@ the linked docs are the single source of truth.
 |---|---|---|---|---|
 | iLOTO anchors + hub | 'LOTO' anchor type (control panel, QR + worldmap); iOS hub with live status banner, six tiles, certification gate | Shipped (slice 1) | 2026.4.42 | [ILOTO](ILOTO.md) |
 | Append-only LOTO audit log | Apply/remove/override events with server-enforced checklists, try test, photo evidence, one-lock-one-person; status always derived, never edited | Shipped (slice 1) | 2026.4.42 | [ILOTO](ILOTO.md) |
-| LOTO training + certification | Seeded OSHA 1910.147 question bank (editable data), server-side grading, expiring certs gating apply/remove | Shipped (server; quiz UI slice 3) | 2026.4.42 | [ILOTO](ILOTO.md) |
-| AR point authoring + apply/remove flows | Yellow/red lock placement, six-step apply checklist, supervisor override UI, Check Status AR walk | Planned (slice 2) | — | [ILOTO](ILOTO.md) |
+| LOTO training + certification | Seeded OSHA 1910.147 question bank (editable data), quiz UI with miss review, server-side grading, expiring certs gating apply/remove | Shipped | 2026.4.42 | [ILOTO](ILOTO.md) |
+| My LOTO | Cross-anchor view of the user's active locks with remove deep-link; hub tile turns red with live count (shift-end nudge) | Shipped | 2026.4.42 | [ILOTO](ILOTO.md) |
+| AR point authoring + apply/remove flows | Yellow/red lock placement with worldmap relocalization, ordered apply/remove checklists (photo + try test), supervisor override UI, Check Status AR walk + point history | Shipped (slice 2) | 2026.4.42 | [ILOTO](ILOTO.md) |
 | AR LOTO map | Vertex-drawn electricity flow lines, status-aware de-energized rendering | Planned (slice 4) | — | [ILOTO](ILOTO.md) |
 
 ## 7. Platform foundations

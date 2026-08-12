@@ -309,6 +309,12 @@ final class SIBClient {
         try await get([LotoPoint].self, path: "/loto/points?anchorId=\(anchorId)")
     }
 
+    /// Author: delete a CLEAR point (server refuses with 409 while locked).
+    /// The point's event history is kept server-side for audit.
+    func deleteLotoPoint(id: String) async throws {
+        try await delete(path: "/loto/points/\(id)")
+    }
+
     /// Record an apply / remove / override-remove. The server validates the
     /// checklist, one-lock-one-person and override conditions — a 4xx means
     /// the flow tried to skip a required step.
@@ -319,6 +325,19 @@ final class SIBClient {
     /// Audit trail for an anchor (newest first).
     func fetchLotoEvents(anchorId: String) async throws -> [LotoEvent] {
         try await get([LotoEvent].self, path: "/loto/events?anchorId=\(anchorId)")
+    }
+
+    /// Evidence photo for an event (photoPath from the event record).
+    func fetchLotoEventPhoto(filename: String) async throws -> Data {
+        let req = try makeRequest(method: "GET", path: "/loto/events/photo/\(filename)")
+        let (data, response): (Data, URLResponse)
+        do { (data, response) = try await session.data(for: req) }
+        catch { throw SIBClientError.networkError(error) }
+        if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+            let msg = (try? JSONDecoder().decode(APIError.self, from: data))?.error ?? "HTTP \(http.statusCode)"
+            throw SIBClientError.httpError(http.statusCode, msg)
+        }
+        return data
     }
 
     /// Panel status: per-point states + red/yellow counts (hub banner).
