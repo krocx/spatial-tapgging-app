@@ -51,7 +51,18 @@ struct LotoARSessionView: View {
     @State private var showPointForm = false
     @State private var newLabel = ""
     @State private var newCircuit = ""
+    @State private var newModelId: String? = nil
     @State private var isSavingPoint = false
+
+    // ── 3D lock/tag models (Model3D library) ────────────────────────────────
+    // Ghost = a lock belongs here (point clear); solid = the lock is ON.
+    @State private var models: [Model3D] = []
+    /// modelId → loaded USDZ template node (cloned per marker).
+    @State private var modelTemplates: [String: SCNNode] = [:]
+
+    private var usableModels: [Model3D] {
+        models.filter { $0.isReady && $0.hasUSDZ }
+    }
 
     // Detail / flows
     @State private var detailStatus: LotoPointStatus? = nil
@@ -276,6 +287,21 @@ struct LotoARSessionView: View {
                 } footer: {
                     Text("Used by the AR LOTO map to link flow lines to this \(authorKind == .loto ? "switch" : "breaker").")
                 }
+
+                Section {
+                    Picker("3D lock model", selection: $newModelId) {
+                        Text("— none —").tag(String?.none)
+                        ForEach(usableModels) { m in
+                            Text(m.name).tag(String?.some(m.id))
+                        }
+                    }
+                } header: {
+                    Text("3D model (optional)")
+                } footer: {
+                    Text(usableModels.isEmpty
+                         ? "Upload \(authorKind == .loto ? "red lock" : "yellow lock")/tag models in the portal's 3D Models tab, assigned to this anchor or marked General."
+                         : "Shown as a ghost until a physical lock is applied, then solid.")
+                }
             }
             .navigationTitle("New \(authorKind?.displayName ?? "") point")
             .navigationBarTitleDisplayMode(.inline)
@@ -320,18 +346,55 @@ struct LotoARSessionView: View {
             async let pointsFetch = client.fetchLotoPoints(anchorId: anchor.id)
             async let statusFetch = client.fetchLotoStatus(anchorId: anchor.id)
             async let mapFetch    = client.fetchLotoMap(anchorId: anchor.id)
+            async let modelsFetch = client.fetchModels(anchorId: anchor.id)
             let (pts, st, fm) = try await (pointsFetch, statusFetch, mapFetch)
             points   = pts
             statuses = Dictionary(uniqueKeysWithValues: st.points.map { ($0.point.id, $0) })
             flowMap  = fm
+            models   = (try? await modelsFetch) ?? []   // markers degrade to rings without
             if isMapEditing { workingStrokes = fm?.strokes ?? [] }   // EDIT starts from current
             placeMarkers()
             renderFlowMap()
+            // Load lock/tag model templates in the background; markers upgrade
+            // from ring-only to ring+model as each USDZ arrives.
+            Task { await prefetchModelTemplates() }
         } catch {
             showToast("Could not load panel data: \(error.localizedDescription)")
         }
         focusRing = ARFocusRing(sceneView: arManager.sceneView)
         isLoadingSession = false
+    }
+
+    // ── 3D model templates ──────────────────────────────────────────────────
+
+    private func prefetchModelTemplates() async {
+        let needed = Set(points.compactMap { $0.modelId })
+        for model in usableModels where needed.contains(model.id) && modelTemplates[model.id] == nil {
+            if let node = await loadModelTemplate(model) {
+                modelTemplates[model.id] = node
+                // Upgrade every marker using this model.
+                for p in points where p.modelId == model.id { refreshMarker(for: p.id) }
+            }
+        }
+    }
+
+    /// Download (cached on disk) + load a USDZ into a reusable template node.
+    private func loadModelTemplate(_ model: Model3D) async -> SCNNode? {
+        let cacheURL = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("loto-model-\(model.id).usdz")
+        if !FileManager.default.fileExists(atPath: cacheURL.path) {
+            guard let data = try? await SIBClient(settings: settings).downloadModelUSDZ(id: model.id),
+                  (try? data.write(to: cacheURL)) != nil else { return nil }
+        }
+        // SCNScene(url:) loads USDZ natively; off-main to keep AR smooth.
+        return await Task.detached(priority: .userInitiated) { () -> SCNNode? in
+            guard let scene = try? SCNScene(url: cacheURL, options: [
+                SCNSceneSource.LoadingOption.checkConsistency: false,
+            ]) else { return nil }
+            let container = SCNNode()
+            for child in scene.rootNode.childNodes { container.addChildNode(child.clone()) }
+            return container
+        }.value
     }
 
     private func exitSession() async {
@@ -355,7 +418,7 @@ struct LotoARSessionView: View {
         let visible = authorKind != nil ? points.filter { $0.kind == authorKind } : points
         for p in visible {
             let locked = statuses[p.id]?.isLocked == true
-            let node = makeLockMarker(kind: p.kind, locked: locked)
+            let node = makeLockMarker(kind: p.kind, locked: locked, point: p)
             node.name = p.id
             node.simdPosition = simd_float3(Float(p.position.x), Float(p.position.y), Float(p.position.z))
             arManager.sceneView.scene.rootNode.addChildNode(node)
@@ -366,7 +429,13 @@ struct LotoARSessionView: View {
     /// Lock marker: small sphere on a ring, kind-coloured. Locked points are
     /// solid + emissive; clear points are hollow/translucent — readable from
     /// across the room, matching the hub's language.
-    private func makeLockMarker(kind: LotoPointKind, locked: Bool) -> SCNNode {
+    ///
+    /// When the point has an assigned 3D lock/tag model (Model3D library) and
+    /// its USDZ template has loaded, the model rides above the ring:
+    /// GHOST (translucent) while clear — "a lock belongs here, this kind" —
+    /// and SOLID once applied. The ring stays regardless: it is the tap
+    /// affordance and the state colour, model or not.
+    private func makeLockMarker(kind: LotoPointKind, locked: Bool, point: LotoPoint? = nil) -> SCNNode {
         let color: UIColor = kind == .loto ? .systemRed : .systemYellow
         let root = SCNNode()
 
@@ -392,6 +461,20 @@ struct LotoARSessionView: View {
         let bb = SCNBillboardConstraint()
         bb.freeAxes = .all
         ring.constraints = [bb]
+
+        // ── Assigned 3D lock/tag model ──────────────────────────────────────
+        if let p = point, let modelId = p.modelId, let template = modelTemplates[modelId] {
+            let modelNode = template.clone()
+            let scale = Float(p.modelScale
+                ?? models.first(where: { $0.id == modelId })?.defaultScale
+                ?? 1.0)
+            modelNode.scale = SCNVector3(scale, scale, scale)
+            // Sit just above the ring so the padlock/tag reads as hanging at
+            // the isolation point rather than swallowing the marker.
+            modelNode.position = SCNVector3(0, 0.055, 0)
+            modelNode.opacity = locked ? 1.0 : 0.45   // solid = on, ghost = belongs here
+            root.addChildNode(modelNode)
+        }
         return root
     }
 
@@ -399,7 +482,7 @@ struct LotoARSessionView: View {
         guard let p = points.first(where: { $0.id == pointId }) else { return }
         let locked = statuses[pointId]?.isLocked == true
         pointNodes[pointId]?.removeFromParentNode()
-        let node = makeLockMarker(kind: p.kind, locked: locked)
+        let node = makeLockMarker(kind: p.kind, locked: locked, point: p)
         node.name = p.id
         node.simdPosition = simd_float3(Float(p.position.x), Float(p.position.y), Float(p.position.z))
         arManager.sceneView.scene.rootNode.addChildNode(node)
@@ -458,7 +541,7 @@ struct LotoARSessionView: View {
         node.simdPosition = pos
         sv.scene.rootNode.addChildNode(node)
         pendingNode = node
-        newLabel = ""; newCircuit = ""
+        newLabel = ""; newCircuit = ""; newModelId = nil
         showPointForm = true
     }
 
@@ -479,14 +562,15 @@ struct LotoARSessionView: View {
     private func savePendingPoint() async {
         guard let kind = authorKind, let pos = pendingPosition else { return }
         isSavingPoint = true
+        let chosenModel = usableModels.first { $0.id == newModelId }
         let req = CreateLotoPointRequest(
             anchorId:   anchor.id,
             kind:       kind,
             label:      newLabel.trimmingCharacters(in: .whitespaces),
             circuitId:  newCircuit.trimmingCharacters(in: .whitespaces).isEmpty ? nil : newCircuit.trimmingCharacters(in: .whitespaces),
             position:   SIBVector3(x: Double(pos.x), y: Double(pos.y), z: Double(pos.z)),
-            modelId:    nil,
-            modelScale: nil,
+            modelId:    chosenModel?.id,
+            modelScale: chosenModel?.defaultScale,
             createdBy:  settings.authorName
         )
         do {
@@ -500,6 +584,16 @@ struct LotoARSessionView: View {
             pendingNode = nil
             pendingPosition = nil
             refreshMarker(for: saved.id)
+            // Model chosen but its USDZ not cached yet → load, then upgrade
+            // the marker in place (ring-only until then).
+            if let m = chosenModel, modelTemplates[m.id] == nil {
+                Task {
+                    if let node = await loadModelTemplate(m) {
+                        modelTemplates[m.id] = node
+                        refreshMarker(for: saved.id)
+                    }
+                }
+            }
             isSavingPoint = false
             showPointForm = false
             showToast("\(saved.label) placed.")

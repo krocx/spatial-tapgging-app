@@ -527,6 +527,10 @@ struct LotoPointHeaderRow: View {
                     if let c = point.circuitId {
                         Text("· \(c)").font(.caption).foregroundStyle(.secondary)
                     }
+                    if point.modelId != nil {
+                        Label("3D lock", systemImage: "cube")
+                            .font(.caption2).foregroundStyle(.teal)
+                    }
                 }
             }
         }

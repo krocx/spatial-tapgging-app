@@ -7,6 +7,13 @@ it, it gets a line.
 ## 2026.4.42 — 2026-08-11
 
 ### Added
+- **iLOTO — 3D lock/tag models on points**: assign a lock or tag model from
+  the 3D Model library when placing a Safe Off / LOTO point; the marker then
+  renders the USDZ model GHOST (translucent) while the point is clear — "a
+  lock belongs here, this kind" — and SOLID the moment a lock is applied.
+  Models upgrade in place as USDZs download; the ring stays as tap affordance
+  and state colour. Uses the existing library end-to-end: upload in the
+  portal, assign to the anchor kit or mark General.
 - **iLOTO slice 4 — AR LOTO map**: draw the panel's electricity flow in AR by
   tapping vertices along the conduit; starting a line on a Safe Off marker
   links it to that breaker, making the map STATUS-AWARE — lock out the breaker
