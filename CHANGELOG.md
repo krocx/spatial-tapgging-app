@@ -7,6 +7,17 @@ it, it gets a line.
 ## 2026.4.42 — 2026-08-11
 
 ### Added
+- **iLOTO slice 1** — spatial Lockout/Tagout foundation
+  ([docs/ILOTO.md](docs/ILOTO.md)): 'LOTO' anchor type (one anchor per control
+  panel, full QR + worldmap flow), authored isolation points (yellow Safe Off
+  on breakers / red LOTO on switches), **append-only event log** with
+  server-enforced rules — per-kind checklists incl. the mandatory try test,
+  photo evidence on apply, one-lock-one-person removal, OSHA-exception
+  supervisor override as a distinct event type — derived status endpoints
+  (panel banner + cross-anchor My LOTO), seeded 16-question OSHA 1910.147
+  training bank with server-side grading and expiring certifications, and the
+  iOS iLOTO hub (status banner, six tiles, live certification gate). Apply/
+  Remove flows, AR authoring, quiz UI and the AR LOTO map follow in slices 2–4.
 - **Preview mode** — ▶ Preview in the procedure bar walks the procedure as the
   operator will experience it: phone-frame step card (title, instruction,
   reference image, voice playback via browser speech synthesis),

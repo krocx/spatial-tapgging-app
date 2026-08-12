@@ -15,6 +15,7 @@ import guideSessionRouter from './routes/guide-sessions.js';
 import tagGroupRouter from './routes/tag-groups.js';
 import modelRouter from './routes/models.js';
 import mindmapRouter from './routes/mindmap.routes.js';
+import lotoRouter from './routes/loto.js';
 import { apiKeyAuth } from './middleware/auth.js';
 // NOT from @spatial/shared: that package is types-only at runtime — its exports
 // point at .ts source, which a compiled server cannot load. See sib/src/version.ts.
@@ -274,6 +275,21 @@ export function createApp(): express.Express {
   // DELETE /mindmap/:id                     — delete map + versions
   // (Real-time collaboration: WebSocket at /mindmap/ws — see ws/mindmap.ws.ts)
   app.use('/mindmap', mindmapRouter);
+
+  // --- iLOTO — spatial Lockout/Tagout (docs/ILOTO.md) ---
+  // POST   /loto/points                — author: define an isolation point
+  // GET    /loto/points?anchorId=      — list points
+  // PATCH  /loto/points/:id            — author: update label/circuit/model/position
+  // DELETE /loto/points/:id            — author: remove (blocked while locked; events kept)
+  // POST   /loto/events                — apply / remove / override-remove (APPEND-ONLY; server validates)
+  // GET    /loto/events?anchorId=      — audit trail, newest first
+  // GET    /loto/events/photo/:file    — evidence photo
+  // GET    /loto/status?anchorId=      — derived per-point + panel summary
+  // GET    /loto/my?userId=            — my active locks across anchors
+  // GET    /loto/quiz                  — training questions (answers withheld)
+  // POST   /loto/quiz/submit           — grade server-side → certification
+  // GET    /loto/certifications        — cert records, newest first
+  app.use('/loto', lotoRouter);
 
   // --- 404 fallback ---
   app.use((_req, res) => {

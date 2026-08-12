@@ -102,6 +102,16 @@ the linked docs are the single source of truth.
 | Auto-sizing nodes | Cards wrap titles up to 4 lines and grow to fit; all geometry (edges, minimap, layout, export) follows the real height | Shipped | 2026.4.42 | [roadmap-mindmapper](roadmap-mindmapper.md) |
 | Edge type switcher + legend | Change Next / On failure / Requires on a selected connection; census line-swatch legend + role explainer panel | Shipped | 2026.4.42 | [PROCEDURE-DESIGNER](PROCEDURE-DESIGNER.md) |
 
+## 6b. iLOTO — spatial Lockout/Tagout
+
+| Feature | What it does | Status | Introduced | Docs |
+|---|---|---|---|---|
+| iLOTO anchors + hub | 'LOTO' anchor type (control panel, QR + worldmap); iOS hub with live status banner, six tiles, certification gate | Shipped (slice 1) | 2026.4.42 | [ILOTO](ILOTO.md) |
+| Append-only LOTO audit log | Apply/remove/override events with server-enforced checklists, try test, photo evidence, one-lock-one-person; status always derived, never edited | Shipped (slice 1) | 2026.4.42 | [ILOTO](ILOTO.md) |
+| LOTO training + certification | Seeded OSHA 1910.147 question bank (editable data), server-side grading, expiring certs gating apply/remove | Shipped (server; quiz UI slice 3) | 2026.4.42 | [ILOTO](ILOTO.md) |
+| AR point authoring + apply/remove flows | Yellow/red lock placement, six-step apply checklist, supervisor override UI, Check Status AR walk | Planned (slice 2) | — | [ILOTO](ILOTO.md) |
+| AR LOTO map | Vertex-drawn electricity flow lines, status-aware de-energized rendering | Planned (slice 4) | — | [ILOTO](ILOTO.md) |
+
 ## 7. Platform foundations
 
 | Feature | What it does | Status | Introduced | Docs |

@@ -13,7 +13,7 @@
  *              an ARWorldMap is saved so Operators can re-localize without a QR.
  * Defaults to 'QR' when absent for backward-compatibility with existing anchors.
  */
-export type AnchorType = 'QR' | 'LOC_TAG';
+export type AnchorType = 'QR' | 'LOC_TAG' | 'LOTO';
 
 // --- Defect Categories (Loc-Tag / Gemba audit walk) ---
 
@@ -976,6 +976,176 @@ export interface ImportGuideResult {
   guide:        Guide;
   steps:        GuideStep[];
   imageErrors:  string[];
+}
+
+// ============================================================
+// iLOTO — spatial Lockout/Tagout (see docs/ILOTO.md)
+// ============================================================
+//
+// An anchor with anchorType 'LOTO' is one control panel. Authored LotoPoints
+// mark its circuit breakers (Safe Off, yellow) and switches (LOTO, red).
+// Every apply/remove is an APPEND-ONLY LotoEvent — status is always derived
+// from the event log on read, never stored or edited. The app is the record
+// and verification aid; the physical lock is the safety control.
+
+/** 'safeoff' = out-of-service yellow lock on a breaker; 'loto' = personal
+ *  danger red lock on a switch. Site semantics per docs/ILOTO.md §2. */
+export type LotoPointKind = 'safeoff' | 'loto';
+
+/**
+ * An authored isolation point on a control panel. Placement follows the
+ * platform invariant: position is DEVICE-owned (set by the author standing at
+ * the panel); the lock 3D asset is an assignment from the Model3D library.
+ * Operators act only on authored points — ad-hoc points would destroy audit
+ * integrity.
+ */
+export interface LotoPoint {
+  id:          string;
+  anchorId:    string;
+  kind:        LotoPointKind;
+  label:       string;        // e.g. "CB-3 · Main spindle"
+  circuitId?:  string;        // free-form circuit reference for the LOTO map
+  position:    Vector3;       // ARKit world space within the anchor's world map
+  modelId?:    string;        // lock 3D asset (yellow/red) from the model library
+  modelScale?: number;
+  createdBy:   string;
+  createdAt:   string;
+  updatedAt:   string;
+}
+
+export type CreateLotoPointRequest =
+  Omit<LotoPoint, 'id' | 'createdAt' | 'updatedAt'>;
+
+export type UpdateLotoPointRequest = Partial<
+  Pick<LotoPoint, 'label' | 'circuitId' | 'position' | 'modelId' | 'modelScale'>>;
+
+/**
+ * Event types. 'override-remove' is the OSHA 1910.147 exception procedure —
+ * removing someone else's lock under documented conditions. It exists as a
+ * DISTINCT type so audits surface overrides instantly; it is never a fallback
+ * the UI reaches silently.
+ */
+export type LotoEventType = 'apply' | 'remove' | 'override-remove';
+
+/** Supervisor override record — all three confirmations are the OSHA
+ *  exception conditions and must be true for the server to accept. */
+export interface LotoOverride {
+  supervisorName:          string;
+  reason:                  string;
+  verifiedAbsent:          boolean;   // verified the authorized employee is not at the facility
+  contactAttempted:        boolean;   // reasonable effort made to contact them
+  willInformBeforeReturn:  boolean;   // they will be informed before resuming work
+}
+
+/**
+ * One append-only audit record. The checklist snapshot stores exactly what
+ * was confirmed at the time, so audits stay truthful even if checklist
+ * definitions evolve later. There are no update or delete routes for events,
+ * by design — including for admins.
+ */
+export interface LotoEvent {
+  id:          string;
+  anchorId:    string;
+  pointId:     string;
+  type:        LotoEventType;
+  userId:      string;        // acting user (author-name identity)
+  userName:    string;
+  lockSerial?: string;
+  /** Snapshot of the confirms shown for this flow, key → confirmed. */
+  checklist:   Record<string, boolean>;
+  /** Evidence photo filename in the SIB loto-photo store. */
+  photoPath?:  string;
+  override?:   LotoOverride;  // present iff type === 'override-remove'
+  note?:       string;
+  createdAt:   string;
+}
+
+export type CreateLotoEventRequest =
+  Omit<LotoEvent, 'id' | 'photoPath' | 'createdAt'> & {
+    /** Base64 JPEG evidence photo (required for apply events). */
+    photoBase64?: string;
+  };
+
+/** Derived on read from the event log — never stored. */
+export interface LotoPointStatus {
+  point:       LotoPoint;
+  state:       'clear' | 'locked';
+  /** Present when locked. */
+  lockedBy?:   string;        // userId
+  lockedByName?: string;
+  lockedAt?:   string;
+  lockSerial?: string;
+  lastEventId?: string;
+}
+
+/** Panel-level aggregation for the hub status banner. */
+export interface LotoAnchorStatus {
+  anchorId:      string;
+  points:        LotoPointStatus[];
+  lotoActive:    number;      // red locks currently applied
+  safeOffActive: number;      // yellow locks currently applied
+  lastEventAt?:  string;
+}
+
+/** One of the user's active locks, across all anchors (My LOTO). */
+export interface MyLotoEntry {
+  anchorId:   string;
+  anchorName: string;
+  status:     LotoPointStatus;
+}
+
+// ── Training / certification ────────────────────────────────────────────────
+
+/** Question bank record as STORED (seeded from OSHA 1910.147; editable data,
+ *  not code). GET /loto/quiz strips correctIndex + explanation — grading
+ *  happens server-side only. */
+export interface LotoQuizQuestion {
+  id:           string;
+  prompt:       string;
+  choices:      string[];
+  correctIndex: number;
+  explanation:  string;
+  createdAt:    string;
+  updatedAt:    string;
+}
+
+/** What the client sees: a question with the answer withheld. */
+export type LotoQuizQuestionPublic =
+  Omit<LotoQuizQuestion, 'correctIndex' | 'explanation' | 'createdAt' | 'updatedAt'>;
+
+export interface SubmitLotoQuizRequest {
+  userId:   string;
+  userName: string;
+  /** questionId → chosen choice index. */
+  answers:  Record<string, number>;
+}
+
+/** Per-question grading feedback returned after submission. */
+export interface LotoQuizResultItem {
+  questionId:  string;
+  correct:     boolean;
+  correctIndex: number;
+  explanation: string;
+}
+
+/**
+ * Certification record. Valid = passed && now < expiresAt. Issued only by the
+ * server from a graded submission. Gates Safe Off and LOTO apply/remove.
+ */
+export interface LotoCertification {
+  id:        string;
+  userId:    string;
+  userName:  string;
+  score:     number;
+  total:     number;
+  passed:    boolean;
+  issuedAt:  string;
+  expiresAt: string;
+}
+
+export interface SubmitLotoQuizResult {
+  certification: LotoCertification;
+  results:       LotoQuizResultItem[];
 }
 
 // --- Roadmap Mind-Mapper (served at /roadmap, API at /mindmap/*) ---

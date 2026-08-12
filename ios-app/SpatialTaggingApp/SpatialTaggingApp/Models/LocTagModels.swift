@@ -77,11 +77,14 @@ enum LocTagCompletionStatus: String, Codable, CaseIterable, Identifiable {
     }
 }
 
-/// Discriminates between QR-scanned anchors and surface-tap Loc-Tag anchors.
-/// Mirrors `AnchorType` in shared/src/index.ts.
+/// Discriminates between QR-scanned anchors, surface-tap Loc-Tag anchors and
+/// iLOTO control-panel anchors. Mirrors `AnchorType` in shared/src/index.ts.
+/// iLOTO anchors use the full QR + worldmap flow (a control panel is a fixed,
+/// QR-labelled asset) but open the iLOTO hub instead of the classic one.
 enum AnchorType: String, Codable {
     case qr     = "QR"
     case locTag = "LOC_TAG"
+    case loto   = "LOTO"
 }
 
 // ============================================================

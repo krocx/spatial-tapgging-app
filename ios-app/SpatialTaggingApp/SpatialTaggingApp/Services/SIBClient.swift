@@ -296,6 +296,58 @@ final class SIBClient {
         try await delete(path: "/loc-tags/\(id)")
     }
 
+    // ── iLOTO (docs/ILOTO.md) ────────────────────────────────────────────────
+    // Status is DERIVED by the server from the append-only event log — the
+    // client never computes lock state locally.
+
+    /// Author: define an isolation point (position placed in AR on device).
+    func createLotoPoint(_ req: CreateLotoPointRequest) async throws -> LotoPoint {
+        try await post(LotoPoint.self, path: "/loto/points", body: req)
+    }
+
+    func fetchLotoPoints(anchorId: String) async throws -> [LotoPoint] {
+        try await get([LotoPoint].self, path: "/loto/points?anchorId=\(anchorId)")
+    }
+
+    /// Record an apply / remove / override-remove. The server validates the
+    /// checklist, one-lock-one-person and override conditions — a 4xx means
+    /// the flow tried to skip a required step.
+    func submitLotoEvent(_ req: CreateLotoEventRequest) async throws -> LotoEventResponse {
+        try await post(LotoEventResponse.self, path: "/loto/events", body: req, timeout: 30)
+    }
+
+    /// Audit trail for an anchor (newest first).
+    func fetchLotoEvents(anchorId: String) async throws -> [LotoEvent] {
+        try await get([LotoEvent].self, path: "/loto/events?anchorId=\(anchorId)")
+    }
+
+    /// Panel status: per-point states + red/yellow counts (hub banner).
+    func fetchLotoStatus(anchorId: String) async throws -> LotoAnchorStatus {
+        try await get(LotoAnchorStatus.self, path: "/loto/status?anchorId=\(anchorId)")
+    }
+
+    /// My active locks across ALL anchors (My LOTO / shift-end check).
+    func fetchMyLoto(userId: String) async throws -> [MyLotoEntry] {
+        let encoded = userId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? userId
+        return try await get([MyLotoEntry].self, path: "/loto/my?userId=\(encoded)")
+    }
+
+    /// Training questions — answers withheld; grading is server-side.
+    func fetchLotoQuiz() async throws -> LotoQuizPayload {
+        try await get(LotoQuizPayload.self, path: "/loto/quiz")
+    }
+
+    /// Submit answers → graded result + certification record (pass or fail).
+    func submitLotoQuiz(_ req: SubmitLotoQuizRequest) async throws -> SubmitLotoQuizResult {
+        try await post(SubmitLotoQuizResult.self, path: "/loto/quiz/submit", body: req, timeout: 30)
+    }
+
+    /// Certification history for a user, newest first (head = current).
+    func fetchLotoCertifications(userId: String) async throws -> [LotoCertification] {
+        let encoded = userId.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? userId
+        return try await get([LotoCertification].self, path: "/loto/certifications?userId=\(encoded)")
+    }
+
     // ── Loc-Tag ARWorldMap (Phase 2) ─────────────────────────────────────────
 
     /// Author: save the ARWorldMap captured at the end of a Gemba audit walk.

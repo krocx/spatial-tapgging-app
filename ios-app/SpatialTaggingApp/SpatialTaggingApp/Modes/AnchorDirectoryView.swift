@@ -99,15 +99,23 @@ struct AnchorDirectoryView: View {
             .searchable(text: $searchText, placement: .navigationBarDrawer(displayMode: .always),
                         prompt: "Search by anchor or asset ID")
             // ── AnchorHubView destination ──────────────────────────────────────
+            // iLOTO anchors branch to their own hub (docs/ILOTO.md §3); the
+            // classic hub serves QR + Gemba anchors unchanged.
             .navigationDestination(item: $hubAnchor) { anchor in
-                AnchorHubView(
-                    anchor: anchor,
-                    mode: mode,
-                    onSessionReady: { anchor, tags in
-                        onSessionReady(anchor, tags)
-                    },
-                    onBack: { hubAnchor = nil }
-                )
+                Group {
+                    if anchor.anchorType == .loto {
+                        ILOTOHubView(anchor: anchor, onBack: { hubAnchor = nil })
+                    } else {
+                        AnchorHubView(
+                            anchor: anchor,
+                            mode: mode,
+                            onSessionReady: { anchor, tags in
+                                onSessionReady(anchor, tags)
+                            },
+                            onBack: { hubAnchor = nil }
+                        )
+                    }
+                }
                 .environmentObject(settings)
                 .environmentObject(appState)
                 .environmentObject(tour)
@@ -454,20 +462,29 @@ private struct AnchorDirectoryRow: View {
         return f.localizedString(for: date, relativeTo: Date())
     }
 
+    /// Per-type accent: blue = QR, orange = Gemba, red = iLOTO (danger domain).
+    private var accent: Color {
+        switch anchor.anchorType {
+        case .locTag: return .orange
+        case .loto:   return .red
+        default:      return .blue
+        }
+    }
+
     var body: some View {
         Button(action: onSelect) {
             HStack(spacing: 14) {
                 // Tag count badge — orange for Gemba Walk anchors, blue for QR anchors (incl. legacy nil)
                 ZStack {
                     Circle()
-                        .fill(anchor.anchorType == .locTag ? Color.orange.opacity(0.12) : Color.blue.opacity(0.12))
+                        .fill(accent.opacity(0.12))
                         .frame(width: 40, height: 40)
                     if isLoading {
                         ProgressView().scaleEffect(0.7)
                     } else {
                         Text("\(tagCount)")
                             .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(anchor.anchorType == .locTag ? Color.orange : Color.blue)
+                            .foregroundStyle(accent)
                     }
                 }
 
@@ -492,9 +509,9 @@ private struct AnchorDirectoryRow: View {
                 VStack(alignment: .trailing, spacing: 4) {
                     Text(tagCount == 1 ? "1 tag" : "\(tagCount) tags")
                         .font(.caption.bold())
-                        .foregroundStyle(anchor.anchorType == .locTag ? Color.orange : Color.blue)
+                        .foregroundStyle(accent)
                         .padding(.horizontal, 8).padding(.vertical, 3)
-                        .background(anchor.anchorType == .locTag ? Color.orange.opacity(0.10) : Color.blue.opacity(0.10))
+                        .background(accent.opacity(0.10))
                         .clipShape(Capsule())
 
                     Text(relativeDate)
@@ -567,8 +584,8 @@ struct CreateAnchorSheet: View {
 
     private var step1View: some View {
         Form {
-            // QR only: step progress (Gemba walk is single-step, no need to show progress)
-            if selectedAnchorType == .qr {
+            // QR-flow types (QR + iLOTO) show step progress; Gemba walk is single-step.
+            if selectedAnchorType != .locTag {
                 Section { stepProgress(currentStep: 1) }
                     .listRowBackground(Color.clear)
             }
@@ -579,15 +596,22 @@ struct CreateAnchorSheet: View {
             } header: {
                 Text("Anchor Type")
             } footer: {
-                Text(selectedAnchorType == .qr
-                     ? "A QR code is printed and mounted at the inspection point. AR sessions begin by scanning it."
-                     : "Tap any surface in AR to place issue tags. No QR code needed — the space itself is the anchor.")
+                switch selectedAnchorType {
+                case .qr:
+                    Text("A QR code is printed and mounted at the inspection point. AR sessions begin by scanning it.")
+                case .locTag:
+                    Text("Tap any surface in AR to place issue tags. No QR code needed — the space itself is the anchor.")
+                case .loto:
+                    Text("One anchor per control panel. A QR code is printed and mounted on the panel; Safe Off and LOTO points are placed against its world map.")
+                }
             }
 
             // ── Name ────────────────────────────────────────────────────────────
             Section {
                 TextField(
-                    selectedAnchorType == .qr ? "e.g. Pump-Station-A" : "e.g. Assembly-Line-3-Bay-7",
+                    selectedAnchorType == .qr ? "e.g. Pump-Station-A"
+                        : selectedAnchorType == .loto ? "e.g. Control-Panel-CP07"
+                        : "e.g. Assembly-Line-3-Bay-7",
                     text: $assetId
                 )
                 .autocorrectionDisabled()
@@ -598,8 +622,8 @@ struct CreateAnchorSheet: View {
                 Text("Identifies the physical location this anchor covers.")
             }
 
-            // ── Anchor ID (QR only — advanced option) ───────────────────────────
-            if selectedAnchorType == .qr {
+            // ── Anchor ID (QR-flow types — advanced option) ─────────────────────
+            if selectedAnchorType != .locTag {
                 Section {
                     TextField("Leave blank to auto-generate", text: $anchorId)
                         .autocorrectionDisabled()
@@ -636,7 +660,7 @@ struct CreateAnchorSheet: View {
             ToolbarItem(placement: .confirmationAction) {
                 if isCreating { ProgressView() }
                 else {
-                    let label = selectedAnchorType == .qr ? "Continue" : "Create"
+                    let label = selectedAnchorType != .locTag ? "Continue" : "Create"
                     Button(label) { Task { await createAnchor() } }
                         .disabled(assetId.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
@@ -644,9 +668,9 @@ struct CreateAnchorSheet: View {
         }
     }
 
-    // Two-card anchor type picker
+    // Three-card anchor type picker
     private var anchorTypePicker: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             anchorTypeCard(
                 type:    .qr,
                 icon:    "qrcode.viewfinder",
@@ -658,6 +682,12 @@ struct CreateAnchorSheet: View {
                 icon:    "figure.walk.circle",
                 label:   "Gemba Walk",
                 caption: "Tap any surface"
+            )
+            anchorTypeCard(
+                type:    .loto,
+                icon:    "lock.shield",
+                label:   "iLOTO",
+                caption: "Control panel"
             )
         }
         .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
@@ -682,7 +712,7 @@ struct CreateAnchorSheet: View {
             .padding(.vertical, 14)
             .background(
                 selected
-                    ? (type == .qr ? Color.blue : Color.orange)
+                    ? (type == .qr ? Color.blue : type == .loto ? Color.red : Color.orange)
                     : Color(.secondarySystemGroupedBackground),
                 in: RoundedRectangle(cornerRadius: 12)
             )
@@ -758,9 +788,12 @@ struct CreateAnchorSheet: View {
                 onCreated(anchor)
 
             } else {
-                // ── QR Anchor (existing flow) ────────────────────────────────
+                // ── QR-flow anchor (QR + iLOTO) ──────────────────────────────
                 // Generate the anchor ID client-side so the encryption key can be
                 // derived before the SIB call. Physical QR embeds this key from day one.
+                // iLOTO anchors ride this exact flow — a control panel is a fixed,
+                // QR-labelled asset — differing only in the stamped anchorType,
+                // which routes them to the iLOTO hub.
                 let encKey = AnchorEncryption.getOrCreateKey(for: resolvedId)
                 let keyB64 = AnchorEncryption.base64(for: encKey)
                 appState.anchorEncryptionKey = encKey
@@ -770,6 +803,7 @@ struct CreateAnchorSheet: View {
                     assetId:       assetId.trimmingCharacters(in: .whitespaces),
                     encryptionKey: keyB64,
                     qrSizeCm:      10.0,     // canonical size — stored in SIB, never changes
+                    anchorType:    selectedAnchorType == .loto ? .loto : nil,
                     createdBy:     settings.authorName
                 )
                 anchor = try await client.createAnchor(req)

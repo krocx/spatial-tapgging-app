@@ -263,17 +263,23 @@ struct ModeSelectionView: View {
         // AnchorHubView doesn't carry its own NavigationStack, so we wrap it here.
         .fullScreenCover(item: $hubResumeAnchor) { anchor in
             NavigationStack {
-                AnchorHubView(
-                    anchor: anchor,
-                    mode: .author,
-                    onSessionReady: { a, tags in
-                        hubResumeAnchor = nil
-                        appState.activeAnchor = a
-                        appState.activeTags   = tags
-                        appState.mode = .author
-                    },
-                    onBack: { hubResumeAnchor = nil }
-                )
+                Group {
+                    if anchor.anchorType == .loto {
+                        ILOTOHubView(anchor: anchor, onBack: { hubResumeAnchor = nil })
+                    } else {
+                        AnchorHubView(
+                            anchor: anchor,
+                            mode: .author,
+                            onSessionReady: { a, tags in
+                                hubResumeAnchor = nil
+                                appState.activeAnchor = a
+                                appState.activeTags   = tags
+                                appState.mode = .author
+                            },
+                            onBack: { hubResumeAnchor = nil }
+                        )
+                    }
+                }
                 .environmentObject(settings)
                 .environmentObject(appState)
                 .environmentObject(tour)
