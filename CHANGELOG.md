@@ -7,6 +7,11 @@ it, it gets a line.
 ## 2026.4.42 — 2026-08-11
 
 ### Added
+- **Portal iLOTO tab** — EHS review surface: live status board for every
+  control panel (per-point state, owner, serial), audit trail with override
+  events pinned first and evidence photos in the lightbox, certification
+  registry (valid / expired / failed), and one-click CSV export of events and
+  certifications. Read-only by design.
 - **iLOTO slice 3** — the gate opens: training quiz UI (one question at a
   time, server-graded, failed attempts reviewed with the correct answer and
   explanation — the explanations ARE the training), certification issuance

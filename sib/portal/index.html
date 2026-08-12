@@ -189,6 +189,32 @@
     /* ── Phase 4: Sessions panel ── */
     #sessions-panel { display: none; padding: 20px 24px 56px; }
     #sessions-panel.visible { display: block; }
+
+    /* ── iLOTO panel ── */
+    #iloto-panel { display: none; padding: 20px 24px 56px; }
+    #iloto-panel.visible { display: block; }
+    .iloto-inner { max-width: 960px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+    .iloto-section-title { font-size: 0.8rem; font-weight: 700; letter-spacing: .04em;
+      text-transform: uppercase; color: var(--muted); margin: 6px 0 0; }
+    .iloto-panel-card { background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 14px 16px; }
+    .iloto-point-row { display: flex; align-items: center; gap: 10px; padding: 7px 0;
+      border-top: 1px solid var(--border); font-size: 0.82rem; }
+    .iloto-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+    .iloto-badge { font-size: 0.68rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+    .iloto-badge.red    { background: rgba(239,68,68,.15);  color: #ef4444; }
+    .iloto-badge.yellow { background: rgba(234,179,8,.18);  color: #ca8a04; }
+    .iloto-badge.green  { background: rgba(34,197,94,.15);  color: #22c55e; }
+    .iloto-badge.orange { background: rgba(249,115,22,.18); color: #f97316; }
+    .iloto-event { display: flex; align-items: baseline; gap: 8px; padding: 8px 0;
+      border-top: 1px solid var(--border); font-size: 0.8rem; flex-wrap: wrap; }
+    .iloto-event.override { background: rgba(249,115,22,.07); margin: 0 -16px;
+      padding-left: 16px; padding-right: 16px; border-left: 3px solid #f97316; }
+    .iloto-photo-link { color: var(--accent); cursor: pointer; font-size: 0.75rem; }
+    .iloto-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    .iloto-table th { text-align: left; color: var(--muted); font-weight: 600;
+      padding: 6px 8px; border-bottom: 1px solid var(--border); font-size: 0.72rem; }
+    .iloto-table td { padding: 7px 8px; border-bottom: 1px solid var(--border); }
     .sessions-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; max-width: 960px; margin-left: auto; margin-right: auto; }
     .sessions-list { display: flex; flex-direction: column; gap: 12px; max-width: 960px; margin: 0 auto; }
 
@@ -398,6 +424,7 @@
   <button class="nav-tab"        data-view="ar-guides"     onclick="switchView('ar-guides')">AR Guides</button>
   <button class="nav-tab"        data-view="guide-library" onclick="switchView('guide-library')">Guide Library</button>
   <button class="nav-tab"        data-view="models"        onclick="switchView('models')">3D Models</button>
+  <button class="nav-tab"        data-view="iloto"         onclick="switchView('iloto')">iLOTO</button>
 </div>
 
 <!-- Setup banner (shown when API key not set) -->
@@ -536,6 +563,26 @@
     </div>
 
     <div class="models-grid" id="models-grid"></div>
+  </div>
+</div>
+
+<!-- iLOTO panel — status board · audit trail · certification registry -->
+<div id="iloto-panel">
+  <div class="iloto-inner">
+    <div class="sessions-toolbar" style="margin-bottom:0">
+      <span style="font-size:0.78rem;color:var(--muted);flex:1">
+        Lockout/Tagout across all control panels · status is derived from the append-only event log
+      </span>
+      <button class="btn btn-ghost btn-sm" onclick="exportLotoEventsCSV()">⬇ Events CSV</button>
+      <button class="btn btn-ghost btn-sm" onclick="exportLotoCertsCSV()">⬇ Certs CSV</button>
+      <button class="btn btn-ghost btn-sm" onclick="loadILoto()">⟳ Refresh</button>
+    </div>
+    <div class="iloto-section-title">Panel status</div>
+    <div id="iloto-status-board"><p style="color:var(--muted);font-size:0.82rem">Loading…</p></div>
+    <div class="iloto-section-title">Audit trail <span style="text-transform:none;font-weight:400">— overrides pinned first</span></div>
+    <div id="iloto-audit" class="iloto-panel-card"></div>
+    <div class="iloto-section-title">Certification registry</div>
+    <div id="iloto-certs" class="iloto-panel-card"></div>
   </div>
 </div>
 
@@ -1401,6 +1448,7 @@ function switchView(view) {
   const agPanel       = document.getElementById('ar-guides-panel');
   const glPanel       = document.getElementById('guide-library-panel');
   const modelsPanel   = document.getElementById('models-panel');
+  const ilotoPanel    = document.getElementById('iloto-panel');
 
   // Hide everything, then selectively show
   sessPanel.classList.remove('visible');
@@ -1408,6 +1456,7 @@ function switchView(view) {
   agPanel.classList.remove('visible');
   glPanel.classList.remove('visible');
   modelsPanel.classList.remove('visible');
+  ilotoPanel.classList.remove('visible');
 
   if (view === 'sessions') {
     anchorGrid.style.display = 'none';
@@ -1434,6 +1483,11 @@ function switchView(view) {
     toolbar.style.display    = 'none';
     modelsPanel.classList.add('visible');
     initModelsPanel();
+  } else if (view === 'iloto') {
+    anchorGrid.style.display = 'none';
+    toolbar.style.display    = 'none';
+    ilotoPanel.classList.add('visible');
+    loadILoto();
   } else {
     anchorGrid.style.display = '';
     toolbar.style.display    = 'flex';
@@ -3150,6 +3204,183 @@ function toast(msg, duration=2200) {
   el.textContent = msg;
   el.classList.add('show');
   setTimeout(() => el.classList.remove('show'), duration);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// iLOTO view — status board, audit trail (overrides pinned), cert registry.
+// Everything rendered here is server-DERIVED from the append-only event log
+// (docs/ILOTO.md). This tab never writes: the portal is where EHS reviews,
+// not where locks change.
+// Endpoints: GET /anchors · /loto/status?anchorId= · /loto/events?anchorId=
+//            /loto/certifications · /loto/events/photo/:file
+// ══════════════════════════════════════════════════════════════════════════════
+
+let lotoEventsCache = [];   // merged, for CSV export
+let lotoCertsCache  = [];
+const lotoPhotoBlobCache = {};
+
+async function loadILoto() {
+  const board = document.getElementById('iloto-status-board');
+  const audit = document.getElementById('iloto-audit');
+  const certs = document.getElementById('iloto-certs');
+  board.innerHTML = '<p style="color:var(--muted);font-size:0.82rem">Loading…</p>';
+
+  try {
+    // NOTE: /anchors wraps in {data:[…]}; the /loto/* endpoints return raw JSON.
+    const anchors = ((await apiFetch('/anchors')).data || []).filter(a => a.anchorType === 'LOTO');
+    if (anchors.length === 0) {
+      board.innerHTML = '<div class="iloto-panel-card" style="color:var(--muted);font-size:0.82rem">No iLOTO control panels yet — create one from the app (anchor type “iLOTO”).</div>';
+      audit.innerHTML = '<p style="color:var(--muted);font-size:0.8rem;margin:0">No events.</p>';
+    } else {
+      const perAnchor = await Promise.all(anchors.map(async a => ({
+        anchor: a,
+        status: await apiFetch(`/loto/status?anchorId=${encodeURIComponent(a.id)}`).catch(() => null),
+        events: await apiFetch(`/loto/events?anchorId=${encodeURIComponent(a.id)}`).catch(() => []),
+      })));
+      renderLotoBoard(board, perAnchor);
+      lotoEventsCache = perAnchor
+        .flatMap(p => p.events.map(e => ({ ...e, anchorName: p.anchor.assetId })))
+        .sort((x, y) => x.createdAt < y.createdAt ? 1 : -1);
+      renderLotoAudit(audit, lotoEventsCache, perAnchor);
+    }
+
+    lotoCertsCache = await apiFetch('/loto/certifications').catch(() => []);
+    renderLotoCerts(certs, lotoCertsCache);
+  } catch (err) {
+    board.innerHTML = `<div class="iloto-panel-card" style="color:#ef4444;font-size:0.82rem">Failed to load: ${esc(err.message)}</div>`;
+  }
+}
+
+function renderLotoBoard(el, perAnchor) {
+  el.innerHTML = perAnchor.map(({ anchor, status }) => {
+    if (!status) {
+      return `<div class="iloto-panel-card"><strong style="font-size:0.88rem">${esc(anchor.assetId)}</strong>
+        <span style="color:var(--muted);font-size:0.78rem"> — status unavailable</span></div>`;
+    }
+    const points = status.points ?? [];
+    const rows = points.map(st => {
+      const kind   = st.point.kind === 'loto' ? 'LOTO' : 'Safe Off';
+      const kBadge = st.point.kind === 'loto' ? 'red' : 'yellow';
+      const locked = st.state === 'locked';
+      const dot    = locked ? (st.point.kind === 'loto' ? '#ef4444' : '#eab308') : '#22c55e';
+      const who    = locked
+        ? `locked by <strong>${esc(st.lockedByName ?? '?')}</strong> ${relTime(st.lockedAt)}${st.lockSerial ? ` · lock ${esc(st.lockSerial)}` : ''}`
+        : 'clear';
+      return `<div class="iloto-point-row">
+        <span class="iloto-dot" style="background:${dot}"></span>
+        <span class="iloto-badge ${kBadge}">${kind}</span>
+        <strong>${esc(st.point.label)}</strong>
+        <span style="color:var(--muted)">${who}</span>
+      </div>`;
+    }).join('');
+    return `<div class="iloto-panel-card" style="margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <strong style="font-size:0.9rem">⚡ ${esc(anchor.assetId)}</strong>
+        <span class="iloto-badge red">${status.lotoActive} LOTO</span>
+        <span class="iloto-badge yellow">${status.safeOffActive} safe off</span>
+        <span class="iloto-badge green">${points.filter(p => p.state !== 'locked').length} clear</span>
+        <span style="color:var(--muted);font-size:0.72rem;margin-left:auto">${status.lastEventAt ? 'last event ' + relTime(status.lastEventAt) : 'no events yet'}</span>
+      </div>
+      ${rows || '<p style="color:var(--muted);font-size:0.78rem;margin:8px 0 0">No points defined.</p>'}
+    </div>`;
+  }).join('');
+}
+
+function renderLotoAudit(el, events, perAnchor) {
+  if (!events.length) {
+    el.innerHTML = '<p style="color:var(--muted);font-size:0.8rem;margin:0">No events recorded.</p>';
+    return;
+  }
+  const labelOf = {};
+  perAnchor.forEach(p => (p.status?.points ?? []).forEach(st => { labelOf[st.point.id] = st.point.label; }));
+  // Overrides pinned first — the records an audit reads before anything else.
+  const ordered = [...events.filter(e => e.type === 'override-remove'),
+                   ...events.filter(e => e.type !== 'override-remove')].slice(0, 200);
+  el.innerHTML = ordered.map(e => {
+    const isOverride = e.type === 'override-remove';
+    const icon  = e.type === 'apply' ? '🔒' : (isOverride ? '⚠️' : '🔓');
+    const verb  = e.type === 'apply' ? 'applied' : (isOverride ? 'OVERRIDE removal' : 'removed');
+    const extra = isOverride && e.override
+      ? `<span style="color:#f97316">by supervisor ${esc(e.override.supervisorName)} — ${esc(e.override.reason)} (applied by ${esc(e.userName)})</span>`
+      : `by <strong>${esc(e.userName)}</strong>`;
+    const photo = e.photoPath
+      ? `<span class="iloto-photo-link" onclick="openLotoPhoto('${esc(e.photoPath)}')">📷 evidence</span>` : '';
+    return `<div class="iloto-event${isOverride ? ' override' : ''}">
+      <span>${icon}</span>
+      <strong>${esc(labelOf[e.pointId] ?? e.pointId.slice(0, 8))}</strong>
+      <span>${verb}</span> ${extra}
+      <span style="color:var(--muted)">· ${esc(e.anchorName ?? '')}</span>
+      ${e.lockSerial ? `<span style="color:var(--muted)">· lock ${esc(e.lockSerial)}</span>` : ''}
+      ${photo}
+      <span style="color:var(--muted);margin-left:auto">${relTime(e.createdAt)}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderLotoCerts(el, certs) {
+  if (!certs.length) {
+    el.innerHTML = '<p style="color:var(--muted);font-size:0.8rem;margin:0">No certifications yet.</p>';
+    return;
+  }
+  const now = new Date().toISOString();
+  const rows = certs.map(c => {
+    const valid = c.passed && c.expiresAt > now;
+    const badge = valid ? '<span class="iloto-badge green">valid</span>'
+      : c.passed ? '<span class="iloto-badge orange">expired</span>'
+      : '<span class="iloto-badge red">failed</span>';
+    return `<tr>
+      <td><strong>${esc(c.userName)}</strong></td>
+      <td>${c.score}/${c.total}</td>
+      <td>${badge}</td>
+      <td style="color:var(--muted)">${new Date(c.issuedAt).toLocaleDateString()}</td>
+      <td style="color:var(--muted)">${new Date(c.expiresAt).toLocaleDateString()}</td>
+    </tr>`;
+  }).join('');
+  el.innerHTML = `<table class="iloto-table">
+    <thead><tr><th>Employee</th><th>Score</th><th>Status</th><th>Issued</th><th>Expires</th></tr></thead>
+    <tbody>${rows}</tbody></table>`;
+}
+
+async function openLotoPhoto(filename) {
+  try {
+    if (!lotoPhotoBlobCache[filename]) {
+      const res = await fetch(`/loto/events/photo/${filename}`, { headers: { 'X-API-Key': apiKey() } });
+      if (!res.ok) { toast('Photo unavailable'); return; }
+      lotoPhotoBlobCache[filename] = URL.createObjectURL(await res.blob());
+    }
+    openLightbox(lotoPhotoBlobCache[filename]);
+  } catch { toast('Photo unavailable'); }
+}
+
+function relTime(iso) {
+  if (!iso) return '';
+  const s = (Date.now() - new Date(iso).getTime()) / 1000;
+  if (s < 60)     return 'just now';
+  if (s < 3600)   return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400)  return `${Math.floor(s / 3600)}h ago`;
+  return `${Math.floor(s / 86400)}d ago`;
+}
+
+function exportLotoEventsCSV() {
+  if (!lotoEventsCache.length) { toast('No iLOTO events to export.'); return; }
+  const head = ['createdAt','anchor','pointId','type','user','lockSerial','checklist','supervisor','overrideReason','photo'];
+  const lines = lotoEventsCache.map(e => [
+    e.createdAt, e.anchorName ?? '', e.pointId, e.type, e.userName, e.lockSerial ?? '',
+    Object.entries(e.checklist ?? {}).map(([k, v]) => `${k}=${v}`).join('; '),
+    e.override?.supervisorName ?? '', e.override?.reason ?? '', e.photoPath ?? '',
+  ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(','));
+  downloadCSV([head.join(','), ...lines].join('\n'),
+    `iloto_events_${new Date().toISOString().slice(0, 10)}.csv`);
+}
+
+function exportLotoCertsCSV() {
+  if (!lotoCertsCache.length) { toast('No certifications to export.'); return; }
+  const head = ['userName','score','total','passed','issuedAt','expiresAt'];
+  const lines = lotoCertsCache.map(c =>
+    [c.userName, c.score, c.total, c.passed, c.issuedAt, c.expiresAt]
+      .map(v => `"${String(v).replace(/"/g, '""')}"`).join(','));
+  downloadCSV([head.join(','), ...lines].join('\n'),
+    `iloto_certifications_${new Date().toISOString().slice(0, 10)}.csv`);
 }
 </script>
 

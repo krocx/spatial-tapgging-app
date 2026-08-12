@@ -111,6 +111,7 @@ the linked docs are the single source of truth.
 | LOTO training + certification | Seeded OSHA 1910.147 question bank (editable data), quiz UI with miss review, server-side grading, expiring certs gating apply/remove | Shipped | 2026.4.42 | [ILOTO](ILOTO.md) |
 | My LOTO | Cross-anchor view of the user's active locks with remove deep-link; hub tile turns red with live count (shift-end nudge) | Shipped | 2026.4.42 | [ILOTO](ILOTO.md) |
 | AR point authoring + apply/remove flows | Yellow/red lock placement with worldmap relocalization, ordered apply/remove checklists (photo + try test), supervisor override UI, Check Status AR walk + point history | Shipped (slice 2) | 2026.4.42 | [ILOTO](ILOTO.md) |
+| Portal iLOTO tab | Status board per panel, audit trail (overrides pinned, evidence lightbox), cert registry, CSV exports | Shipped | 2026.4.42 | [ILOTO](ILOTO.md) |
 | AR LOTO map | Vertex-drawn electricity flow lines, status-aware de-energized rendering | Planned (slice 4) | — | [ILOTO](ILOTO.md) |
 
 ## 7. Platform foundations
