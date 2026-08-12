@@ -1,6 +1,8 @@
 # App Flow
 
-A walkthrough of every screen in the app, for both the Author and Operator roles. Open **[APP-WIREFRAME.html](APP-WIREFRAME.html)** in any browser for a clickable interactive version of this flow — no build tools required, just double-click the file.
+A walkthrough of every screen in the platform. Open **[APP-WIREFRAME.html](APP-WIREFRAME.html)** in any browser for a clickable interactive version covering all **seven flows** — Author, Operator, AR Guides, Gemba Walk, **iLOTO**, **Procedure Designer**, and the Web Portal. No build tools required, just double-click the file.
+
+This document details the two tag-inspection flows in depth, then summarises the newer flows with pointers to their full specs.
 
 ---
 
@@ -64,8 +66,38 @@ Each capture mode feeds the same downstream pipeline: a successful capture becom
 
 ---
 
+## iLOTO flow (Lockout/Tagout)
+
+Full spec: **[ILOTO.md](ILOTO.md)**. An anchor with type **iLOTO** is one control panel (QR + world map). The rule that shapes everything: the event log is **append-only**, status is always derived from it, and the app is the record — the physical lock and the operator's own try test are the safety controls.
+
+1. **Anchor Directory** → create anchor, type **iLOTO** (same QR print + mount flow as tag anchors) → **iLOTO Hub**
+2. **Hub** — live status banner (x LOTO active · y safe off), six tiles. **Safe Off** and **LOTO** are locked until the user passes **My LOTO Training** (server-graded quiz, certification with expiry; question bank editable/importable by EHS in the portal)
+3. **Define points** (author, per kind) — mandatory QR scan locks the AR origin, then tap breakers (**yellow Safe Off**) and switches (**red LOTO**) to place markers; optional 3D lock/tag model from the shared library, adjustable in AR (drag/pinch/twist). World map re-saves on exit
+4. **Apply** — ordered checklist enforced step by step: notify affected → shut down → apply physical lock → **photo evidence (required)** → **try test** → lock serial → recorded. Safe Off uses a shortened list. The server re-validates everything
+5. **Remove** — reverse checklist, own locks only (one lock, one person). Someone else's lock offers only the documented **supervisor override** (three OSHA exception confirmations + reason, pinned in every audit)
+6. **Check Status** — AR walk-around: solid = locked, hollow = clear, tap any marker for owner/history/photos. The **AR LOTO Map** overlays drawn electricity-flow lines that grey out live when their feeding breaker is safe-off'd
+7. **My LOTO** — every lock the user holds across all panels, with one-tap remove; the hub tile counts them in red (the shift-end nudge)
+8. **Portal → iLOTO tab** — EHS review: status board, audit trail (overrides pinned, evidence lightbox), certification registry, CSV exports, training-question editor with atomic JSON/CSV import
+
+---
+
+## Procedure Designer flow (web canvas)
+
+Full spec: **[PROCEDURE-DESIGNER.md](PROCEDURE-DESIGNER.md)**. Served at `/roadmap`; a **procedure** map (kind chosen at creation, immutable) compiles into an AR Work Instructions guide.
+
+1. **Map list** → **+ New procedure** → the night-mode canvas (cards stay white — contrast is guaranteed)
+2. **Draw steps** — nodes auto-size to their text; connections carry meaning: green **Next** (the operator's path), red **On failure** (recovery), dashed amber **Requires** (a rule, not a path). Enter defaults to Next; a connection's type can be changed later in the Inspector. Step numbers are **server-derived** from the graph, never typed
+3. **Step content** (Inspector) — voice script, optional toggle, reference image, 3D model assignment, and a reference **link** (video/PDF/SOP — opens on the operator's phone). Notes/voice autosave on blur *and* unmount
+4. **▶ Preview** — phone-frame rehearsal traversing the real graph (Complete/Failed buttons, requires-gate redirects, browser-voice playback, branch-coverage summary). Nothing is saved or sent
+5. **Send to Guide Library** — pre-flight validation must pass; creates/updates a **draft** guide with new steps unplaced. AR placement happens on device and is never overwritten by a re-sync (device-owned, the platform invariant). From there the guide continues in the **AR Guides** flow
+
+---
+
 ## See also
 
-- **[APP-WIREFRAME.html](APP-WIREFRAME.html)** — interactive, clickable version of this flow
-- **[IOS-SETUP.md](IOS-SETUP.md)** — build and run the app that implements this flow
+- **[APP-WIREFRAME.html](APP-WIREFRAME.html)** — interactive, clickable version of all seven flows
+- **[ILOTO.md](ILOTO.md)** — iLOTO spec: event model, checklists, override procedure
+- **[PROCEDURE-DESIGNER.md](PROCEDURE-DESIGNER.md)** — Procedure Designer spec: compiler, validation, re-sync rules
+- **[FEATURE-CATALOG.md](FEATURE-CATALOG.md)** — every platform feature with its shipped version
+- **[IOS-SETUP.md](IOS-SETUP.md)** — build and run the app that implements these flows
 - **[SERVER-REFERENCE.md](SERVER-REFERENCE.md)** — the SIB endpoints each screen calls
