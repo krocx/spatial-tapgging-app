@@ -1006,25 +1006,51 @@ export interface LotoPoint {
   label:       string;        // e.g. "CB-3 · Main spindle"
   circuitId?:  string;        // free-form circuit reference for the LOTO map
   position:    Vector3;       // ARKit world space within the anchor's world map
-  modelId?:    string;        // lock 3D asset (yellow/red) from the model library
+  /**
+   * 3D asset slots — up to LOTO_MAX_MODELS per point (e.g. a lock, a tag,
+   * and a hasp). Each slot carries its own device-owned placement; the
+   * server clears a slot's placement when its modelId changes (placement
+   * belongs to a shape, not a slot).
+   */
+  models?:     LotoPointModel[];
+  // ── Legacy single-model fields (pre-slots builds) ─────────────────────────
+  // Honoured as an implicit first slot when `models` is absent; new writes
+  // should use `models`. Kept so older app builds keep working.
+  modelId?:    string;
   modelScale?: number;
-  // Model PLACEMENT — device-owned, adjusted with AR gestures (pan/pinch/
-  // rotate), same doctrine as GuideStep: switching to a DIFFERENT model
-  // clears these (the old model's placement is meaningless on a new shape).
-  modelOffsetX?:   number;    // metres from the marker position
+  modelOffsetX?:   number;
   modelOffsetY?:   number;
   modelOffsetZ?:   number;
-  modelRotationY?: number;    // radians around Y
+  modelRotationY?: number;
   createdBy:   string;
   createdAt:   string;
   updatedAt:   string;
 }
 
+/** One 3D asset on a point: assignment (which model, how big) + device-owned
+ *  AR placement. slotId is stable across edits so placement survives
+ *  reordering and other slots' changes. */
+export interface LotoPointModel {
+  slotId:          string;
+  modelId:         string;
+  modelScale?:     number;
+  modelOffsetX?:   number;
+  modelOffsetY?:   number;
+  modelOffsetZ?:   number;
+  modelRotationY?: number;
+}
+
+// NOTE: the max-slots limit (3) is a VALUE and therefore deliberately NOT
+// exported from this types-only package (see the runtime-values rule at the
+// bottom of this file). It lives as LOTO_MAX_MODELS in sib/src/loto/loto-core.ts
+// and iOS LotoModels.swift.
+
 export type CreateLotoPointRequest =
   Omit<LotoPoint, 'id' | 'createdAt' | 'updatedAt'>;
 
 export type UpdateLotoPointRequest = Partial<
-  Pick<LotoPoint, 'label' | 'circuitId' | 'position' | 'modelId' | 'modelScale'
+  Pick<LotoPoint, 'label' | 'circuitId' | 'position' | 'models'
+                | 'modelId' | 'modelScale'
                 | 'modelOffsetX' | 'modelOffsetY' | 'modelOffsetZ' | 'modelRotationY'>>;
 
 /**

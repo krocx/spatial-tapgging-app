@@ -527,8 +527,9 @@ struct LotoPointHeaderRow: View {
                     if let c = point.circuitId {
                         Text("· \(c)").font(.caption).foregroundStyle(.secondary)
                     }
-                    if point.modelId != nil {
-                        Label("3D lock", systemImage: "cube")
+                    if !point.modelSlots.isEmpty {
+                        Label(point.modelSlots.count == 1 ? "3D asset" : "\(point.modelSlots.count) 3D assets",
+                              systemImage: "cube")
                             .font(.caption2).foregroundStyle(.teal)
                     }
                 }

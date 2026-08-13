@@ -10,6 +10,7 @@
 import type {
   LotoPoint,
   LotoPointKind,
+  LotoPointModel,
   LotoPointStatus,
   LotoAnchorStatus,
   LotoEvent,
@@ -18,6 +19,10 @@ import type {
   LotoQuizQuestion,
   LotoQuizResultItem,
 } from '@spatial/shared';
+
+/** Max 3D asset slots per point (lock + tag + hasp covers the field cases).
+ *  Lives here, not in @spatial/shared — that package is types-only at runtime. */
+export const LOTO_MAX_MODELS = 3;
 
 // ── Checklist definitions (v1 — docs/ILOTO.md §6) ───────────────────────────
 // Keys are part of each event's snapshot, so changing these later never
@@ -166,6 +171,76 @@ export function validateEvent(
   }
 
   throw new LotoValidationError(400, `Unknown event type: ${type as string}`);
+}
+
+// ── Model slots (up to LOTO_MAX_MODELS 3D assets per point) ─────────────────
+
+const finiteOrUndef = (v: unknown): number | undefined =>
+  typeof v === 'number' && isFinite(v) ? v : undefined;
+
+/**
+ * Validates incoming model slots and enforces the placement doctrine PER SLOT:
+ * a slot whose modelId CHANGED (matched by slotId against the existing point)
+ * has its placement stripped — placement belongs to a shape, and the old
+ * shape is gone. Unchanged slots keep whatever placement the client sent
+ * (which is how the AR adjust gestures persist).
+ *
+ * Throws 400 on structural problems; caps at LOTO_MAX_MODELS.
+ */
+export function sanitizeModelSlots(
+  raw:      unknown,
+  existing: LotoPointModel[] | undefined,
+): LotoPointModel[] {
+  if (!Array.isArray(raw)) {
+    throw new LotoValidationError(400, 'models must be an array of slots');
+  }
+  if (raw.length > LOTO_MAX_MODELS) {
+    throw new LotoValidationError(400, `A point holds at most ${LOTO_MAX_MODELS} 3D assets.`);
+  }
+  const prior = new Map((existing ?? []).map(s => [s.slotId, s]));
+  const seen = new Set<string>();
+  return raw.map((r, i) => {
+    const s = r as Record<string, unknown>;
+    const slotId  = typeof s.slotId === 'string' && s.slotId.trim() ? s.slotId.trim() : `slot-${i + 1}`;
+    const modelId = typeof s.modelId === 'string' ? s.modelId.trim() : '';
+    if (!modelId) throw new LotoValidationError(400, `Slot ${i + 1}: modelId is required.`);
+    if (seen.has(slotId)) throw new LotoValidationError(400, `Duplicate slotId "${slotId}".`);
+    seen.add(slotId);
+
+    const was = prior.get(slotId);
+    const modelChanged = !!was && was.modelId !== modelId;
+    const slot: LotoPointModel = { slotId, modelId };
+    const scale = finiteOrUndef(s.modelScale);
+    if (scale !== undefined) slot.modelScale = scale;
+    if (!modelChanged) {
+      const ox = finiteOrUndef(s.modelOffsetX);
+      const oy = finiteOrUndef(s.modelOffsetY);
+      const oz = finiteOrUndef(s.modelOffsetZ);
+      const ry = finiteOrUndef(s.modelRotationY);
+      if (ox !== undefined) slot.modelOffsetX   = ox;
+      if (oy !== undefined) slot.modelOffsetY   = oy;
+      if (oz !== undefined) slot.modelOffsetZ   = oz;
+      if (ry !== undefined) slot.modelRotationY = ry;
+    }
+    // modelChanged → placement deliberately dropped, fresh AR adjust needed.
+    return slot;
+  });
+}
+
+/** The point's slots as the CLIENT should see them: `models` when present,
+ *  else the legacy single-model fields lifted into one synthetic slot. */
+export function effectiveModelSlots(p: LotoPoint): LotoPointModel[] {
+  if (p.models && p.models.length > 0) return p.models;
+  if (!p.modelId) return [];
+  return [{
+    slotId: 'legacy',
+    modelId: p.modelId,
+    ...(p.modelScale     !== undefined && { modelScale:     p.modelScale }),
+    ...(p.modelOffsetX   !== undefined && { modelOffsetX:   p.modelOffsetX }),
+    ...(p.modelOffsetY   !== undefined && { modelOffsetY:   p.modelOffsetY }),
+    ...(p.modelOffsetZ   !== undefined && { modelOffsetZ:   p.modelOffsetZ }),
+    ...(p.modelRotationY !== undefined && { modelRotationY: p.modelRotationY }),
+  }];
 }
 
 // ── Quiz question validation (admin editing / import) ───────────────────────

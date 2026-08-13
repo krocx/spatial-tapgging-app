@@ -27,9 +27,9 @@ struct LotoPointDetailSheet: View {
     /// Called with fresh derived status after an apply/remove succeeds.
     let onChanged: (LotoPointStatus) -> Void
     let onDeleted: () -> Void
-    /// Present only when opened from an AR authoring session AND the point has
-    /// a model — dismisses the sheet and enters the gesture-adjust phase.
-    var onAdjustModel: (() -> Void)? = nil
+    /// Present only when opened from an AR authoring session. Called with the
+    /// SLOT id to adjust — dismisses the sheet and enters the gesture phase.
+    var onAdjustModel: ((String) -> Void)? = nil
 
     @EnvironmentObject private var settings: AppSettings
     @Environment(\.dismiss) private var dismiss
@@ -47,8 +47,8 @@ struct LotoPointDetailSheet: View {
     private var point: LotoPoint { status.point }
     private var isMyLock: Bool { status.lockedBy == settings.authorName }
     private var usableModels: [Model3D] { availableModels.filter { $0.isReady && $0.hasUSDZ } }
-    private var currentModelName: String? {
-        point.modelId.flatMap { id in availableModels.first { $0.id == id }?.name }
+    private func modelName(_ id: String) -> String {
+        availableModels.first { $0.id == id }?.name ?? id
     }
 
     var body: some View {
@@ -99,52 +99,80 @@ struct LotoPointDetailSheet: View {
                     Text("Events are permanent records — nothing here can be edited or deleted.")
                 }
 
-                // ── 3D model (author contexts) ──────────────────────────────
+                // ── 3D assets (author contexts) — up to 3 slots ─────────────
                 if allowDelete {
                     Section {
-                        HStack {
-                            Label(currentModelName ?? (point.modelId != nil ? "Assigned" : "None"),
-                                  systemImage: "cube")
-                                .font(.subheadline)
-                            Spacer()
-                            if isSavingModel { ProgressView() }
+                        ForEach(point.modelSlots) { slot in
+                            VStack(alignment: .leading, spacing: 6) {
+                                HStack {
+                                    Image(systemName: "cube").foregroundStyle(.teal)
+                                    Text(modelName(slot.modelId)).font(.subheadline)
+                                    if slot.hasPlacement {
+                                        Image(systemName: "scope").font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    Spacer()
+                                    Menu {
+                                        ForEach(usableModels.filter { $0.id != slot.modelId }) { m in
+                                            Button("Change to \(m.name)") {
+                                                Task { await mutateSlots { slots in
+                                                    if let i = slots.firstIndex(where: { $0.slotId == slot.slotId }) {
+                                                        slots[i].modelId = m.id
+                                                        slots[i].modelScale = m.defaultScale
+                                                    }
+                                                } }
+                                            }
+                                        }
+                                        Divider()
+                                        Button("Remove", role: .destructive) {
+                                            Task { await mutateSlots { $0.removeAll { $0.slotId == slot.slotId } } }
+                                        }
+                                    } label: {
+                                        Image(systemName: "ellipsis.circle")
+                                    }
+                                    .disabled(isSavingModel)
+                                }
+                                if let onAdjust = onAdjustModel {
+                                    Button {
+                                        dismiss()
+                                        onAdjust(slot.slotId)
+                                    } label: {
+                                        Label("Adjust in AR (move · scale · rotate)", systemImage: "hand.draw")
+                                            .font(.caption)
+                                    }
+                                }
+                            }
                         }
-                        if !usableModels.isEmpty {
+                        if point.modelSlots.count < lotoMaxModelSlots && !usableModels.isEmpty {
                             Menu {
                                 ForEach(usableModels) { m in
-                                    Button(m.name) { Task { await setModel(m) } }
-                                }
-                                if point.modelId != nil {
-                                    Divider()
-                                    Button("Remove model", role: .destructive) {
-                                        Task { await setModel(nil) }
+                                    Button(m.name) {
+                                        Task { await mutateSlots { slots in
+                                            slots.append(LotoPointModelSlot(
+                                                slotId: "slot-\(UUID().uuidString.prefix(8))",
+                                                modelId: m.id, modelScale: m.defaultScale,
+                                                modelOffsetX: nil, modelOffsetY: nil,
+                                                modelOffsetZ: nil, modelRotationY: nil))
+                                        } }
                                     }
                                 }
                             } label: {
-                                Label(point.modelId == nil ? "Assign 3D model…" : "Change 3D model…",
-                                      systemImage: "arrow.triangle.2.circlepath")
+                                Label("Add 3D asset… (\(point.modelSlots.count)/\(lotoMaxModelSlots))",
+                                      systemImage: "plus.circle")
                             }
                             .disabled(isSavingModel)
                         }
-                        if let onAdjust = onAdjustModel, point.modelId != nil {
-                            Button {
-                                dismiss()
-                                onAdjust()
-                            } label: {
-                                Label("Adjust model in AR (move · scale · rotate)",
-                                      systemImage: "hand.draw")
-                            }
-                        }
+                        if isSavingModel { ProgressView() }
                         if let err = modelError {
                             Label(err, systemImage: "exclamationmark.triangle.fill")
                                 .font(.caption).foregroundStyle(.red)
                         }
                     } header: {
-                        Text("3D lock model")
+                        Text("3D assets (lock · tag · hasp)")
                     } footer: {
-                        Text(usableModels.isEmpty && point.modelId == nil
-                             ? "Upload lock/tag models in the portal's 3D Models tab first."
-                             : "Changing the model resets its AR placement — re-adjust after switching.")
+                        Text(usableModels.isEmpty && point.modelSlots.isEmpty
+                             ? "Upload lock/tag/hasp models in the portal's 3D Models tab first."
+                             : "Up to \(lotoMaxModelSlots) per point. Changing a slot's model resets that slot's AR placement (⌖ = placed) — others are untouched.")
                     }
                 }
 
@@ -283,16 +311,15 @@ struct LotoPointDetailSheet: View {
         }
     }
 
-    /// Assign / change / remove (nil) the point's 3D model via PATCH.
-    /// The server clears stale placement when the model changes; sending an
-    /// empty modelId string is the "clear" signal (JSON nulls are dropped by
-    /// the encoder, so absence can't mean removal).
-    private func setModel(_ model: Model3D?) async {
+    /// Mutate the slot array and PATCH the whole thing. The server enforces
+    /// the ≤3 cap and strips placement from any slot whose modelId changed.
+    private func mutateSlots(_ mutate: (inout [LotoPointModelSlot]) -> Void) async {
         isSavingModel = true
         modelError = nil
+        var slots = point.modelSlots
+        mutate(&slots)
         var req = UpdateLotoPointRequest()
-        req.modelId    = model?.id ?? ""
-        req.modelScale = model?.defaultScale
+        req.models = slots
         do {
             let updated = try await SIBClient(settings: settings).updateLotoPoint(id: point.id, req: req)
             isSavingModel = false

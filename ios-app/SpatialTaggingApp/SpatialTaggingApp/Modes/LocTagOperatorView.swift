@@ -54,8 +54,14 @@ struct LocTagOperatorView: View {
     // ── Completion ────────────────────────────────────────────────────────────
     @State private var completingTag:   LocTag?        = nil
     @State private var completedTagIds: Set<String>    = []
-    /// Guard against auto-trigger firing again while the sheet is open.
+    /// Guard against auto-trigger firing again while the sheet is open — and,
+    /// after a dismiss, until the operator WALKS AWAY (> approachingM). The old
+    /// on-dismiss reset re-opened the form instantly while still standing at
+    /// the tag, hiding the very marker they were trying to look at.
     @State private var autoTriggerGuard = false
+    /// Sheet detent: arrives MINIMIZED (compact header strip, AR view visible
+    /// and interactive behind it) — drag up or tap Expand for the full form.
+    @State private var completionDetent: PresentationDetent = .height(148)
 
     // ── Ticker ────────────────────────────────────────────────────────────────
     private let navTicker = Timer.publish(every: 0.10, on: .main, in: .common).autoconnect()
@@ -131,8 +137,11 @@ struct LocTagOperatorView: View {
             }
         }
         .task { await loadData() }
-        // Per-tag completion sheet
-        .sheet(item: $completingTag, onDismiss: { autoTriggerGuard = false }) { tag in
+        // Per-tag completion sheet — presented MINIMIZED so the operator can
+        // still see (and move around) the tag location; the AR view stays
+        // interactive behind the compact strip. Guard is NOT reset on dismiss:
+        // it re-arms only after walking away (see updateNavTelemetry).
+        .sheet(item: $completingTag) { tag in
             if let anchor = appState.activeAnchor {
                 LocTagOperatorSheet(tag: tag, anchor: anchor) { completion in
                     completedTagIds.insert(tag.id)
@@ -141,6 +150,10 @@ struct LocTagOperatorView: View {
                 }
                 .environmentObject(settings)
                 .environmentObject(appState)
+                .presentationDetents([.height(148), .large], selection: $completionDetent)
+                .presentationBackgroundInteraction(.enabled(upThrough: .height(148)))
+                .presentationDragIndicator(.visible)
+                .onAppear { completionDetent = .height(148) }   // always arrive minimized
             }
         }
     }
@@ -507,10 +520,15 @@ struct LocTagOperatorView: View {
         let dist   = simd_length(tagW - camPos)
         distanceM  = dist
 
-        // Auto-trigger completion sheet on arrival
+        // Auto-trigger completion sheet on arrival (opens minimized).
         if dist <= arrivedM && completingTag == nil && !autoTriggerGuard {
             autoTriggerGuard = true
             completingTag    = locTags[index]
+        }
+        // Re-arm only after the operator walks AWAY — dismissing the sheet
+        // while still at the tag must not bounce it straight back open.
+        if dist > approachingM && completingTag == nil && autoTriggerGuard {
+            autoTriggerGuard = false
         }
 
         // Project tag to 2D screen for chevron

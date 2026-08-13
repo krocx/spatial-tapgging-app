@@ -7,6 +7,15 @@ it, it gets a line.
 ## 2026.4.42 — 2026-08-11
 
 ### Added
+- **iLOTO — up to 3 3D assets per point**: points now hold model SLOTS (e.g.
+  lock + tag + hasp), each with its own device-owned AR placement; unadjusted
+  slots fan out slightly to avoid overlap. Server enforces the cap and strips
+  placement per-slot when that slot's model changes — other slots untouched.
+  Legacy single-model points keep working (lifted into one synthetic slot).
+- **Gemba Walk — minimized completion form**: arriving at a checkpoint now
+  opens the completion sheet at a compact height with the AR view visible AND
+  interactive behind it — drag up to expand. Dismissing no longer bounces it
+  straight back open; it re-arms only after walking away (>1 m).
 - **iLOTO — questionnaire editor + import**: the portal iLOTO tab gains a
   Training questions section — add/edit/delete questions inline (radio marks
   the correct answer), import from JSON or CSV (append or replace, validated

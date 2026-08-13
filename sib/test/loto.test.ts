@@ -20,6 +20,8 @@ import {
   deriveAnchorStatus,
   gradeQuiz,
   validateQuizQuestions,
+  sanitizeModelSlots,
+  effectiveModelSlots,
   LotoValidationError,
   CHECKLISTS,
 } from '../src/loto/loto-core.js';
@@ -201,6 +203,55 @@ test('override-remove: any missing confirmation or blank field is rejected', () 
   }
   expectReject(400, () => validateEvent(p, current,
     removeReq(p, 'sup', { type: 'override-remove' })), 'override without details');
+});
+
+// ── Model slots (≤3 3D assets per point) ────────────────────────────────────
+
+test('model slots: ≤3 enforced, modelId required, duplicates rejected', () => {
+  const slot = (id: string, m: string) => ({ slotId: id, modelId: m });
+  assert.equal(sanitizeModelSlots([slot('a', 'm1'), slot('b', 'm2'), slot('c', 'm3')], undefined).length, 3);
+
+  const cases: Array<[unknown, string]> = [
+    [[slot('a','m1'), slot('b','m2'), slot('c','m3'), slot('d','m4')], 'four slots'],
+    [[{ slotId: 'a', modelId: '  ' }], 'blank modelId'],
+    [[slot('a','m1'), slot('a','m2')], 'duplicate slotId'],
+    ['nope', 'not an array'],
+  ];
+  for (const [input, label] of cases) {
+    try { sanitizeModelSlots(input, undefined); assert.fail(`${label}: expected rejection`); }
+    catch (err) { assert.equal((err as LotoValidationError).status, 400, label); }
+  }
+});
+
+test('model slots: changing a slot\'s model strips ITS placement, others keep theirs', () => {
+  const existing = [
+    { slotId: 'a', modelId: 'lock-red', modelScale: 0.5, modelOffsetX: 0.1, modelRotationY: 1.5 },
+    { slotId: 'b', modelId: 'tag',      modelOffsetY: 0.2 },
+  ];
+  const incoming = [
+    { slotId: 'a', modelId: 'lock-yellow', modelScale: 0.7, modelOffsetX: 0.1, modelRotationY: 1.5 }, // model CHANGED
+    { slotId: 'b', modelId: 'tag',         modelOffsetY: 0.25 },                                      // placement adjusted
+    { slotId: 'c', modelId: 'hasp',        modelOffsetZ: 0.05 },                                      // new slot
+  ];
+  const out = sanitizeModelSlots(incoming, existing);
+  assert.equal(out[0].modelOffsetX, undefined, 'changed slot: placement stripped');
+  assert.equal(out[0].modelRotationY, undefined);
+  assert.equal(out[0].modelScale, 0.7, 'scale (assignment) survives');
+  assert.equal(out[1].modelOffsetY, 0.25, 'unchanged slot keeps its adjusted placement');
+  assert.equal(out[2].modelOffsetZ, 0.05, 'new slot keeps sent placement');
+});
+
+test('model slots: legacy single-model fields lift into one synthetic slot', () => {
+  const p = P('a', 'loto');
+  assert.deepEqual(effectiveModelSlots(p), [], 'no model → no slots');
+  const legacy = { ...p, modelId: 'lock-red', modelScale: 0.5, modelOffsetX: 0.1 };
+  const slots = effectiveModelSlots(legacy);
+  assert.equal(slots.length, 1);
+  assert.equal(slots[0].slotId, 'legacy');
+  assert.equal(slots[0].modelId, 'lock-red');
+  assert.equal(slots[0].modelOffsetX, 0.1);
+  const withArray = { ...legacy, models: [{ slotId: 's1', modelId: 'hasp' }] };
+  assert.equal(effectiveModelSlots(withArray)[0].modelId, 'hasp', 'array wins over legacy');
 });
 
 // ── Quiz ────────────────────────────────────────────────────────────────────

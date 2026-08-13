@@ -29,6 +29,27 @@ enum LotoPointKind: String, Codable {
     }
 }
 
+/// One 3D asset slot on a point (lock / tag / hasp): assignment + its own
+/// device-owned AR placement. slotId is stable so a slot's placement survives
+/// other slots' edits. Mirrors `LotoPointModel` in shared/src/index.ts.
+struct LotoPointModelSlot: Codable, Identifiable, Equatable {
+    let slotId:         String
+    var modelId:        String
+    var modelScale:     Double?
+    var modelOffsetX:   Double?
+    var modelOffsetY:   Double?
+    var modelOffsetZ:   Double?
+    var modelRotationY: Double?
+    var id: String { slotId }
+
+    var hasPlacement: Bool {
+        modelOffsetX != nil || modelOffsetY != nil || modelOffsetZ != nil || modelRotationY != nil
+    }
+}
+
+/// Max 3D asset slots per point — mirrors LOTO_MAX_MODELS on the server.
+let lotoMaxModelSlots = 3
+
 /// An authored isolation point on a control panel (placed in AR).
 /// Mirrors `LotoPoint` in shared/src/index.ts.
 struct LotoPoint: Codable, Identifiable, Equatable {
@@ -38,10 +59,11 @@ struct LotoPoint: Codable, Identifiable, Equatable {
     let label:      String
     let circuitId:  String?
     let position:   SIBVector3
+    /// 3D asset slots (≤ lotoMaxModelSlots). Wins over the legacy fields below.
+    let models:     [LotoPointModelSlot]?
+    // Legacy single-model fields (pre-slots builds) — read via modelSlots.
     let modelId:    String?
     let modelScale: Double?
-    /// Model PLACEMENT — device-owned, set via AR pan/pinch/rotate gestures.
-    /// The server clears these when the assigned model changes.
     let modelOffsetX:   Double?
     let modelOffsetY:   Double?
     let modelOffsetZ:   Double?
@@ -49,13 +71,26 @@ struct LotoPoint: Codable, Identifiable, Equatable {
     let createdBy:  String
     let createdAt:  String
     let updatedAt:  String
+
+    /// The slots as the UI should see them: `models` when present, else the
+    /// legacy single-model fields lifted into one synthetic slot.
+    var modelSlots: [LotoPointModelSlot] {
+        if let m = models, !m.isEmpty { return m }
+        guard let legacy = modelId else { return [] }
+        return [LotoPointModelSlot(
+            slotId: "legacy", modelId: legacy, modelScale: modelScale,
+            modelOffsetX: modelOffsetX, modelOffsetY: modelOffsetY,
+            modelOffsetZ: modelOffsetZ, modelRotationY: modelRotationY)]
+    }
 }
 
-/// PATCH /loto/points/:id — send only what changes. Assigning a DIFFERENT
-/// modelId resets placement server-side (old model's placement is meaningless).
+/// PATCH /loto/points/:id — send only what changes. Sending `models` replaces
+/// the whole slot array (server strips placement from any slot whose modelId
+/// changed, and clears the legacy single-model fields).
 struct UpdateLotoPointRequest: Codable {
     var label:          String? = nil
     var circuitId:      String? = nil
+    var models:         [LotoPointModelSlot]? = nil
     var modelId:        String? = nil
     var modelScale:     Double? = nil
     var modelOffsetX:   Double? = nil
@@ -70,8 +105,8 @@ struct CreateLotoPointRequest: Codable {
     let label:      String
     let circuitId:  String?
     let position:   SIBVector3
-    let modelId:    String?
-    let modelScale: Double?
+    /// Up to lotoMaxModelSlots 3D assets, chosen at placement.
+    let models:     [LotoPointModelSlot]?
     let createdBy:  String
 }
 

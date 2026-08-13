@@ -51,7 +51,8 @@ struct LotoARSessionView: View {
     @State private var showPointForm = false
     @State private var newLabel = ""
     @State private var newCircuit = ""
-    @State private var newModelId: String? = nil
+    /// Models chosen at placement — up to lotoMaxModelSlots.
+    @State private var newModelIds: [String] = []
     @State private var isSavingPoint = false
 
     // ── 3D lock/tag models (Model3D library) ────────────────────────────────
@@ -63,6 +64,7 @@ struct LotoARSessionView: View {
     // ── Model adjust phase (pan/pinch/rotate, as in AR Work Instructions) ───
     private enum LotoPanMode: String { case horizontal = "H", vertical = "V" }
     @State private var adjustingPointId: String? = nil
+    @State private var adjustingSlotId: String? = nil
     @State private var adjPanMode: LotoPanMode = .horizontal
     @State private var adjScale: Float = 1
     @State private var adjRotY: Float = 0
@@ -76,8 +78,8 @@ struct LotoARSessionView: View {
 
     private var isAdjusting: Bool { adjustingPointId != nil }
     private var adjustingModelNode: SCNNode? {
-        guard let id = adjustingPointId else { return nil }
-        return pointNodes[id]?.childNode(withName: "model", recursively: false)
+        guard let id = adjustingPointId, let slot = adjustingSlotId else { return nil }
+        return pointNodes[id]?.childNode(withName: "model-\(slot)", recursively: false)
     }
 
     private var usableModels: [Model3D] {
@@ -184,8 +186,8 @@ struct LotoARSessionView: View {
                 allowDelete: authorKind != nil,
                 onChanged:   { fresh in applyStatusChange(fresh) },
                 onDeleted:   { removeDeletedPoint(st.point) },
-                onAdjustModel: (authorKind != nil && st.point.modelId != nil)
-                    ? { enterAdjust(for: st.point.id) } : nil
+                onAdjustModel: authorKind != nil
+                    ? { slotId in enterAdjust(for: st.point.id, slotId: slotId) } : nil
             )
             .environmentObject(settings)
         }
@@ -322,18 +324,33 @@ struct LotoARSessionView: View {
                 }
 
                 Section {
-                    Picker("3D lock model", selection: $newModelId) {
-                        Text("— none —").tag(String?.none)
-                        ForEach(usableModels) { m in
-                            Text(m.name).tag(String?.some(m.id))
+                    ForEach(Array(newModelIds.enumerated()), id: \.offset) { idx, mid in
+                        HStack {
+                            Image(systemName: "cube").foregroundStyle(.teal)
+                            Text(usableModels.first(where: { $0.id == mid })?.name ?? mid)
+                                .font(.subheadline)
+                            Spacer()
+                            Button(role: .destructive) {
+                                newModelIds.remove(at: idx)
+                            } label: { Image(systemName: "minus.circle") }
+                        }
+                    }
+                    if newModelIds.count < lotoMaxModelSlots && !usableModels.isEmpty {
+                        Menu {
+                            ForEach(usableModels.filter { m in !newModelIds.contains(m.id) }) { m in
+                                Button(m.name) { newModelIds.append(m.id) }
+                            }
+                        } label: {
+                            Label("Add 3D asset… (\(newModelIds.count)/\(lotoMaxModelSlots))",
+                                  systemImage: "plus.circle")
                         }
                     }
                 } header: {
-                    Text("3D model (optional)")
+                    Text("3D assets (up to \(lotoMaxModelSlots))")
                 } footer: {
                     Text(usableModels.isEmpty
-                         ? "Upload \(authorKind == .loto ? "red lock" : "yellow lock")/tag models in the portal's 3D Models tab, assigned to this anchor or marked General."
-                         : "Shown as a ghost until a physical lock is applied, then solid.")
+                         ? "Upload lock/tag/hasp models in the portal's 3D Models tab, assigned to this anchor or marked General."
+                         : "e.g. lock + tag + hasp. Ghost until a physical lock is applied, then solid. Each can be positioned individually in AR afterwards.")
                 }
             }
             .navigationTitle("New \(authorKind?.displayName ?? "") point")
@@ -401,12 +418,27 @@ struct LotoARSessionView: View {
     // ── 3D model templates ──────────────────────────────────────────────────
 
     private func prefetchModelTemplates() async {
-        let needed = Set(points.compactMap { $0.modelId })
+        let needed = Set(points.flatMap { $0.modelSlots.map(\.modelId) })
         for model in usableModels where needed.contains(model.id) && modelTemplates[model.id] == nil {
             if let node = await loadModelTemplate(model) {
                 modelTemplates[model.id] = node
                 // Upgrade every marker using this model.
-                for p in points where p.modelId == model.id { refreshMarker(for: p.id) }
+                for p in points where p.modelSlots.contains(where: { $0.modelId == model.id }) {
+                    refreshMarker(for: p.id)
+                }
+            }
+        }
+    }
+
+    /// Fetch any of this point's slot models that aren't cached yet.
+    private func loadMissingTemplates(for point: LotoPoint) {
+        for slot in point.modelSlots where modelTemplates[slot.modelId] == nil {
+            guard let m = usableModels.first(where: { $0.id == slot.modelId }) else { continue }
+            Task {
+                if let node = await loadModelTemplate(m) {
+                    modelTemplates[m.id] = node
+                    refreshMarker(for: point.id)
+                }
             }
         }
     }
@@ -495,23 +527,30 @@ struct LotoARSessionView: View {
         bb.freeAxes = .all
         ring.constraints = [bb]
 
-        // ── Assigned 3D lock/tag model ──────────────────────────────────────
-        if let p = point, let modelId = p.modelId, let template = modelTemplates[modelId] {
-            let modelNode = template.clone()
-            modelNode.name = "model"   // findable for the AR adjust gestures
-            let scale = Float(p.modelScale
-                ?? models.first(where: { $0.id == modelId })?.defaultScale
-                ?? 1.0)
-            modelNode.scale = SCNVector3(scale, scale, scale)
-            // Base perch just above the ring, plus the author's saved AR
-            // placement offsets (pan gestures) and Y rotation.
-            modelNode.position = SCNVector3(
-                Float(p.modelOffsetX ?? 0),
-                0.055 + Float(p.modelOffsetY ?? 0),
-                Float(p.modelOffsetZ ?? 0))
-            modelNode.eulerAngles = SCNVector3(0, Float(p.modelRotationY ?? 0), 0)
-            modelNode.opacity = locked ? 1.0 : 0.45   // solid = on, ghost = belongs here
-            root.addChildNode(modelNode)
+        // ── Assigned 3D asset slots (≤3: e.g. lock + tag + hasp) ────────────
+        // Each slot renders with its own placement; slots that have never
+        // been adjusted fan out slightly along X so they don't z-fight while
+        // awaiting a proper AR adjust.
+        if let p = point {
+            let slots = p.modelSlots
+            for (idx, slot) in slots.enumerated() {
+                guard let template = modelTemplates[slot.modelId] else { continue }
+                let modelNode = template.clone()
+                modelNode.name = "model-\(slot.slotId)"   // findable for adjust gestures
+                let scale = Float(slot.modelScale
+                    ?? models.first(where: { $0.id == slot.modelId })?.defaultScale
+                    ?? 1.0)
+                modelNode.scale = SCNVector3(scale, scale, scale)
+                let defaultFan: Float = slot.hasPlacement ? 0
+                    : (Float(idx) - Float(slots.count - 1) / 2) * 0.09
+                modelNode.position = SCNVector3(
+                    defaultFan + Float(slot.modelOffsetX ?? 0),
+                    0.055 + Float(slot.modelOffsetY ?? 0),
+                    Float(slot.modelOffsetZ ?? 0))
+                modelNode.eulerAngles = SCNVector3(0, Float(slot.modelRotationY ?? 0), 0)
+                modelNode.opacity = locked ? 1.0 : 0.45   // solid = on, ghost = belongs here
+                root.addChildNode(modelNode)
+            }
         }
         return root
     }
@@ -579,7 +618,7 @@ struct LotoARSessionView: View {
         node.simdPosition = pos
         sv.scene.rootNode.addChildNode(node)
         pendingNode = node
-        newLabel = ""; newCircuit = ""; newModelId = nil
+        newLabel = ""; newCircuit = ""; newModelIds = []
         showPointForm = true
     }
 
@@ -600,15 +639,20 @@ struct LotoARSessionView: View {
     private func savePendingPoint() async {
         guard let kind = authorKind, let pos = pendingPosition else { return }
         isSavingPoint = true
-        let chosenModel = usableModels.first { $0.id == newModelId }
+        let slots: [LotoPointModelSlot] = newModelIds.enumerated().map { idx, mid in
+            LotoPointModelSlot(
+                slotId: "slot-\(idx + 1)-\(UUID().uuidString.prefix(6))",
+                modelId: mid,
+                modelScale: usableModels.first(where: { $0.id == mid })?.defaultScale,
+                modelOffsetX: nil, modelOffsetY: nil, modelOffsetZ: nil, modelRotationY: nil)
+        }
         let req = CreateLotoPointRequest(
             anchorId:   anchor.id,
             kind:       kind,
             label:      newLabel.trimmingCharacters(in: .whitespaces),
             circuitId:  newCircuit.trimmingCharacters(in: .whitespaces).isEmpty ? nil : newCircuit.trimmingCharacters(in: .whitespaces),
             position:   SIBVector3(x: Double(pos.x), y: Double(pos.y), z: Double(pos.z)),
-            modelId:    chosenModel?.id,
-            modelScale: chosenModel?.defaultScale,
+            models:     slots.isEmpty ? nil : slots,
             createdBy:  settings.authorName
         )
         do {
@@ -622,16 +666,8 @@ struct LotoARSessionView: View {
             pendingNode = nil
             pendingPosition = nil
             refreshMarker(for: saved.id)
-            // Model chosen but its USDZ not cached yet → load, then upgrade
-            // the marker in place (ring-only until then).
-            if let m = chosenModel, modelTemplates[m.id] == nil {
-                Task {
-                    if let node = await loadModelTemplate(m) {
-                        modelTemplates[m.id] = node
-                        refreshMarker(for: saved.id)
-                    }
-                }
-            }
+            // Load any not-yet-cached USDZs, upgrading the marker per arrival.
+            loadMissingTemplates(for: saved)
             isSavingPoint = false
             showPointForm = false
             showToast("\(saved.label) placed.")
@@ -653,13 +689,15 @@ struct LotoARSessionView: View {
     // a screen-parallel plane at the model's projected depth (H = XZ, V = Y),
     // pinch scales from the gesture-start baseline, rotation spins around Y.
 
-    private func enterAdjust(for pointId: String) {
+    private func enterAdjust(for pointId: String, slotId: String) {
         guard let p = points.first(where: { $0.id == pointId }),
-              let modelNode = pointNodes[pointId]?.childNode(withName: "model", recursively: false)
+              let slot = p.modelSlots.first(where: { $0.slotId == slotId }),
+              let modelNode = pointNodes[pointId]?.childNode(withName: "model-\(slotId)", recursively: false)
         else { showToast("Model still loading — try again in a moment."); return }
         adjustingPointId = pointId
-        adjScale    = Float(p.modelScale ?? 1)
-        adjRotY     = Float(p.modelRotationY ?? 0)
+        adjustingSlotId  = slotId
+        adjScale    = Float(slot.modelScale ?? 1)
+        adjRotY     = Float(slot.modelRotationY ?? 0)
         adjWorldPos = modelNode.simdWorldPosition
         showToast("Drag to move (\(adjPanMode.rawValue)) · pinch to scale · twist to rotate")
     }
@@ -731,21 +769,31 @@ struct LotoARSessionView: View {
     private func cancelAdjust() {
         if let id = adjustingPointId { refreshMarker(for: id) }   // discard live edits
         adjustingPointId = nil
+        adjustingSlotId = nil
     }
 
     private func saveAdjust() async {
         guard let id = adjustingPointId,
+              let slotId = adjustingSlotId,
+              let point = points.first(where: { $0.id == id }),
               let root = pointNodes[id],
-              let modelNode = adjustingModelNode else { adjustingPointId = nil; return }
+              let modelNode = adjustingModelNode
+        else { adjustingPointId = nil; adjustingSlotId = nil; return }
         isSavingAdjust = true
         // World → offsets relative to the marker (minus the 0.055 base perch).
+        // The full slots array is sent back with only this slot's placement
+        // changed — other slots' placement travels untouched (slotIds stable).
         let local = root.simdConvertPosition(modelNode.simdWorldPosition, from: nil)
+        var slots = point.modelSlots
+        if let sIdx = slots.firstIndex(where: { $0.slotId == slotId }) {
+            slots[sIdx].modelScale     = Double(adjScale)
+            slots[sIdx].modelOffsetX   = Double(local.x)
+            slots[sIdx].modelOffsetY   = Double(local.y - 0.055)
+            slots[sIdx].modelOffsetZ   = Double(local.z)
+            slots[sIdx].modelRotationY = Double(adjRotY)
+        }
         var req = UpdateLotoPointRequest()
-        req.modelScale     = Double(adjScale)
-        req.modelOffsetX   = Double(local.x)
-        req.modelOffsetY   = Double(local.y - 0.055)
-        req.modelOffsetZ   = Double(local.z)
-        req.modelRotationY = Double(adjRotY)
+        req.models = slots
         do {
             let updated = try await SIBClient(settings: settings).updateLotoPoint(id: id, req: req)
             if let idx = points.firstIndex(where: { $0.id == id }) { points[idx] = updated }
@@ -757,6 +805,7 @@ struct LotoARSessionView: View {
         }
         isSavingAdjust = false
         adjustingPointId = nil
+        adjustingSlotId = nil
     }
 
     // ── Flow map: drawing ───────────────────────────────────────────────────
@@ -908,16 +957,8 @@ struct LotoARSessionView: View {
         if let idx = points.firstIndex(where: { $0.id == fresh.point.id }) {
             points[idx] = fresh.point
         }
-        // Newly assigned model whose USDZ isn't cached yet → fetch + upgrade.
-        if let modelId = fresh.point.modelId, modelTemplates[modelId] == nil,
-           let m = usableModels.first(where: { $0.id == modelId }) {
-            Task {
-                if let node = await loadModelTemplate(m) {
-                    modelTemplates[m.id] = node
-                    refreshMarker(for: fresh.point.id)
-                }
-            }
-        }
+        // Newly assigned models whose USDZs aren't cached yet → fetch + upgrade.
+        loadMissingTemplates(for: fresh.point)
         refreshMarker(for: fresh.point.id)
         // A Safe Off apply/remove flips downstream lines live — the payoff
         // moment of the status-aware map.

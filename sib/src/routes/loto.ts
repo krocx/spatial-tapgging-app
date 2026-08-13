@@ -40,6 +40,8 @@ import {
   deriveAnchorStatus,
   gradeQuiz,
   validateQuizQuestions,
+  sanitizeModelSlots,
+  effectiveModelSlots,
   LotoValidationError,
 } from '../loto/loto-core.js';
 import { buildSeedQuestions } from '../loto/quiz-seed.js';
@@ -106,21 +108,25 @@ router.post('/points', (req: Request, res: Response): void => {
     return;
   }
   const now = new Date().toISOString();
-  const point: LotoPoint = {
-    id:        uuidv4(),
-    anchorId:  body.anchorId,
-    kind:      body.kind,
-    label:     body.label.trim(),
-    ...(body.circuitId?.trim() && { circuitId: body.circuitId.trim() }),
-    position:  body.position,
-    ...(body.modelId && { modelId: body.modelId }),
-    ...(body.modelScale !== undefined && { modelScale: body.modelScale }),
-    createdBy: body.createdBy ?? 'Anonymous',
-    createdAt: now,
-    updatedAt: now,
-  };
-  lotoPointStore.save(point);
-  res.status(201).json(point);
+  try {
+    const point: LotoPoint = {
+      id:        uuidv4(),
+      anchorId:  body.anchorId,
+      kind:      body.kind,
+      label:     body.label.trim(),
+      ...(body.circuitId?.trim() && { circuitId: body.circuitId.trim() }),
+      position:  body.position,
+      // New builds send `models` (≤3 slots); legacy single-model fields still accepted.
+      ...(body.models !== undefined && { models: sanitizeModelSlots(body.models, undefined) }),
+      ...(body.modelId && { modelId: body.modelId }),
+      ...(body.modelScale !== undefined && { modelScale: body.modelScale }),
+      createdBy: body.createdBy ?? 'Anonymous',
+      createdAt: now,
+      updatedAt: now,
+    };
+    lotoPointStore.save(point);
+    res.status(201).json(point);
+  } catch (err) { fail(res, err); }
 });
 
 // GET /loto/points?anchorId=
@@ -138,28 +144,48 @@ router.patch('/points/:id', (req: Request, res: Response): void => {
   const point = lotoPointStore.findById(req.params.id);
   if (!point) { res.status(404).json({ error: 'Point not found' }); return; }
   const body = req.body as UpdateLotoPointRequest;
+  try {
+    // ── Slots path (new builds): full-array replace, per-slot doctrine ──────
+    // sanitizeModelSlots strips placement from any slot whose modelId changed.
+    // Sending `models` also clears the legacy single-model fields — the array
+    // becomes the single source of truth for this point from then on.
+    const slotsPatch = body.models !== undefined
+      ? {
+          models: sanitizeModelSlots(body.models, effectiveModelSlots(point)),
+          modelId: undefined, modelScale: undefined,
+          modelOffsetX: undefined, modelOffsetY: undefined,
+          modelOffsetZ: undefined, modelRotationY: undefined,
+        }
+      : {};
 
-  const modelChanged = 'modelId' in body && (body.modelId || undefined) !== point.modelId;
+    // ── Legacy single-model path (older builds) ─────────────────────────────
+    const modelChanged = 'modelId' in body && (body.modelId || undefined) !== point.modelId;
+    const legacyPatch = body.models === undefined
+      ? {
+          ...('modelId' in body && { modelId: body.modelId || undefined }),
+          ...(body.modelScale !== undefined && { modelScale: body.modelScale }),
+          ...(modelChanged
+            ? { modelOffsetX: undefined, modelOffsetY: undefined,
+                modelOffsetZ: undefined, modelRotationY: undefined }
+            : {
+                ...(body.modelOffsetX   !== undefined && { modelOffsetX:   body.modelOffsetX }),
+                ...(body.modelOffsetY   !== undefined && { modelOffsetY:   body.modelOffsetY }),
+                ...(body.modelOffsetZ   !== undefined && { modelOffsetZ:   body.modelOffsetZ }),
+                ...(body.modelRotationY !== undefined && { modelRotationY: body.modelRotationY }),
+              }),
+        }
+      : {};
 
-  const updated = lotoPointStore.update(point.id, {
-    ...(body.label?.trim() && { label: body.label.trim() }),
-    ...('circuitId' in body && { circuitId: body.circuitId?.trim() || undefined }),
-    ...(body.position && { position: body.position }),
-    ...('modelId' in body && { modelId: body.modelId || undefined }),
-    ...(body.modelScale !== undefined && { modelScale: body.modelScale }),
-    // Placement: explicit values win; a model CHANGE resets stale placement.
-    ...(modelChanged
-      ? { modelOffsetX: undefined, modelOffsetY: undefined,
-          modelOffsetZ: undefined, modelRotationY: undefined }
-      : {
-          ...(body.modelOffsetX   !== undefined && { modelOffsetX:   body.modelOffsetX }),
-          ...(body.modelOffsetY   !== undefined && { modelOffsetY:   body.modelOffsetY }),
-          ...(body.modelOffsetZ   !== undefined && { modelOffsetZ:   body.modelOffsetZ }),
-          ...(body.modelRotationY !== undefined && { modelRotationY: body.modelRotationY }),
-        }),
-    updatedAt: new Date().toISOString(),
-  } as Partial<LotoPoint>);
-  res.json(updated);
+    const updated = lotoPointStore.update(point.id, {
+      ...(body.label?.trim() && { label: body.label.trim() }),
+      ...('circuitId' in body && { circuitId: body.circuitId?.trim() || undefined }),
+      ...(body.position && { position: body.position }),
+      ...slotsPatch,
+      ...legacyPatch,
+      updatedAt: new Date().toISOString(),
+    } as Partial<LotoPoint>);
+    res.json(updated);
+  } catch (err) { fail(res, err); }
 });
 
 // DELETE /loto/points/:id — blocked while a lock is active on it. The event
