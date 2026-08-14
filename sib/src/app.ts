@@ -61,9 +61,20 @@ export function createApp(): express.Express {
   });
   app.get('/wireframe', (_req, res) => {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    res.sendFile(path.join(__dirname, '../../docs/APP-WIREFRAME.html'), err => {
-      if (err) res.status(404).json({ error: 'Wireframe not available on this deployment' });
-    });
+    // Deployments differ in cwd and layout (repo checkout vs Docker /app vs
+    // service launched from sib/) — try the same candidate locations the
+    // roadmap glossary uses, first hit wins.
+    const candidates = [
+      path.join(__dirname, '../../docs/APP-WIREFRAME.html'),   // repo: sib/dist → docs/
+      path.join(process.cwd(), 'docs/APP-WIREFRAME.html'),     // Docker: cwd /app · repo-root launch
+      path.join(process.cwd(), '../docs/APP-WIREFRAME.html'),  // service launched from sib/
+    ];
+    const hit = candidates.find(p => fs.existsSync(p));
+    if (!hit) {
+      res.status(404).json({ error: 'Wireframe not available on this deployment' });
+      return;
+    }
+    res.sendFile(hit);
   });
 
   // --- Anchor Directory portal (no auth — team members enter their own API key) ---
