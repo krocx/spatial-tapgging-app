@@ -24,6 +24,8 @@ skills/
 *.md
 # …except the roadmap dictionary, which the server serves at /mindmap/glossary
 !docs/roadmap-glossary.md
+# …and the app wireframe, served at GET /wireframe (home page link)
+!docs/APP-WIREFRAME.html
 .git/
 .gitignore
 
