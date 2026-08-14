@@ -236,7 +236,7 @@ router.patch('/:id', (req: Request, res: Response): void => {
     return;
   }
 
-  const body = req.body as UpdateGuideRequest;
+  const body = req.body as UpdateGuideRequest & { anchorId?: string };
   const now  = new Date().toISOString();
 
   const updated: Guide = {
@@ -244,8 +244,32 @@ router.patch('/:id', (req: Request, res: Response): void => {
     name:        body.name?.trim()        ?? guide.name,
     description: body.description != null ? body.description.trim() : guide.description,
     published:   body.published    != null ? body.published           : guide.published,
+    anchorId:    body.anchorId?.trim()    || guide.anchorId,
     updatedAt:   now,
   };
+
+  // Moving a guide to another anchor: anchorId is denormalised onto every
+  // step, so they move together. Spatial placement is CLEARED — positions
+  // were captured in the OLD anchor's world map and are meaningless (and
+  // dangerous, floating mid-air) in the new one. Steps must be re-placed on
+  // device, exactly like a fresh import.
+  if (updated.anchorId !== guide.anchorId) {
+    const moved = guideStepStore.findAll().filter(s => s.guideId === guide.id);
+    for (const step of moved) {
+      guideStepStore.save({
+        ...step,
+        anchorId: updated.anchorId,
+        posX: undefined, posY: undefined, posZ: undefined,
+        isPlaced: false, positionSource: undefined,
+        modelOffsetX: undefined, modelOffsetY: undefined,
+        modelOffsetZ: undefined, modelRotationY: undefined,
+        updatedAt: now,
+      });
+    }
+    // A published guide with suddenly-unplaced steps would break operators.
+    if (updated.published) updated.published = false;
+    console.log(`[SIB] Guide ${guide.id} moved ${guide.anchorId} → ${updated.anchorId}: ${moved.length} steps unplaced, guide unpublished`);
+  }
 
   guideStore.save(updated);
   console.log(`[SIB] Guide updated: ${guide.id} (published=${updated.published})`);

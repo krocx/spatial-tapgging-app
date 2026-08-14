@@ -7,6 +7,19 @@ it, it gets a line.
 ## 2026.4.42 — 2026-08-11
 
 ### Added
+- **Portal — AR Guides import UX overhaul**: import from **Excel (.xlsx)**
+  with a downloadable template (columns: Step, Title, Instruction, Voice,
+  ImageURL, LinkURL, Optional, OnSuccess, OnFailure, Requires — header
+  order-free), or JSON file, or pasted JSON. A parse **preview** (step count,
+  media, branches, per-step warnings) gates the Import button; after import
+  the portal jumps to the Guide Library, expands the new guide and flashes
+  it — no more invisible imports. Guide Library gains an Import button, a
+  live filter, and **⇄ Move to another anchor** (server moves the steps too,
+  clears their placement — positions belong to the old anchor's world map —
+  and unpublishes until re-placed).
+- **SIB Home page** — GET / is now a landing with cards for the Web Portal,
+  Roadmap & Procedure Designer, and the interactive App Wireframe (served at
+  /wireframe), plus live server status and platform version.
 - **iLOTO — up to 3 3D assets per point**: points now hold model SLOTS (e.g.
   lock + tag + hasp), each with its own device-owned AR placement; unadjusted
   slots fan out slightly to avoid overlap. Server enforces the cap and strips

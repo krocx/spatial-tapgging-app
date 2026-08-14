@@ -115,6 +115,14 @@ the linked docs are the single source of truth.
 | Portal iLOTO tab | Status board per panel, audit trail (overrides pinned, evidence lightbox), cert registry, CSV exports | Shipped | 2026.4.42 | [ILOTO](ILOTO.md) |
 | AR LOTO map | Vertex-drawn flow lines snapped to breaker markers; live status-aware rendering (grey when safe-off'd, teal pulse when energized); versioned | Shipped | 2026.4.42 | [ILOTO](ILOTO.md) |
 
+## 6c. Portal foundations (new)
+
+| Feature | What it does | Status | Introduced | Docs |
+|---|---|---|---|---|
+| Guide import (xlsx/JSON) with preview | Excel template + header-flexible parse, pre-import validation preview, post-import jump-and-flash to the new guide | Shipped | 2026.4.42 | — |
+| Guide move-to-anchor | Reassign a guide (and steps) to another anchor; placement cleared, guide unpublished until re-placed | Shipped | 2026.4.42 | — |
+| SIB home page | Landing at / with cards for Portal, Roadmap/Procedure Designer, App Wireframe (/wireframe); live status + version | Shipped | 2026.4.42 | — |
+
 ## 7. Platform foundations
 
 | Feature | What it does | Status | Introduced | Docs |

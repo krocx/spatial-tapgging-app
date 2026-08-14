@@ -52,6 +52,20 @@ export function createApp(): express.Express {
     });
   });
 
+  // --- Home page — the front door to every surface ------------------------
+  // GET /          → landing with cards for Portal, Roadmap, App Wireframe
+  // GET /wireframe → the interactive 7-flow app wireframe (docs/APP-WIREFRAME.html)
+  app.get('/', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.sendFile(path.join(__dirname, '../portal/home.html'));
+  });
+  app.get('/wireframe', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.sendFile(path.join(__dirname, '../../docs/APP-WIREFRAME.html'), err => {
+      if (err) res.status(404).json({ error: 'Wireframe not available on this deployment' });
+    });
+  });
+
   // --- Anchor Directory portal (no auth — team members enter their own API key) ---
   // Served at /portal — a browser-based anchor browser + QR generator.
   // index.html is served with no-cache so browsers always fetch the latest

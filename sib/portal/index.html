@@ -190,6 +190,10 @@
     #sessions-panel { display: none; padding: 20px 24px 56px; }
     #sessions-panel.visible { display: block; }
 
+    /* Post-import highlight — the new guide announces itself */
+    @keyframes glflash { 0%,60% { box-shadow: 0 0 0 3px rgba(59,130,246,.55); } 100% { box-shadow: none; } }
+    .gl-flash { animation: glflash 3.2s ease-out; }
+
     /* ── iLOTO panel ── */
     #iloto-panel { display: none; padding: 20px 24px 56px; }
     #iloto-panel.visible { display: block; }
@@ -487,24 +491,32 @@
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px 32px;width:min(640px,92vw);max-height:90vh;overflow-y:auto;position:relative;">
     <button onclick="closeImportGuideModal()" style="position:absolute;top:14px;right:16px;background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer;line-height:1">✕</button>
     <h3 style="margin:0 0 4px;font-size:1rem;font-weight:700;color:var(--text)">⬆ Import Guide</h3>
-    <p style="margin:0 0 20px;font-size:0.78rem;color:var(--muted)">Paste an <code>ImportedGuide</code> JSON payload. The guide will be created as a draft and must be published in the iOS app after spatial placement.</p>
+    <p style="margin:0 0 16px;font-size:0.78rem;color:var(--muted)">Upload an Excel (.xlsx) or JSON file — or paste JSON. The guide is created as a draft on the chosen anchor and appears in the Guide Library immediately; steps are placed in AR on device before publishing.</p>
 
-    <label style="font-size:0.8rem;font-weight:600;color:var(--text);display:block;margin-bottom:6px">Anchor</label>
-    <select id="import-anchor-select" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:0.85rem;margin-bottom:16px">
+    <label style="font-size:0.8rem;font-weight:600;color:var(--text);display:block;margin-bottom:6px">Anchor <span style="font-weight:400;color:var(--muted)">— the physical asset this guide is performed on</span></label>
+    <select id="import-anchor-select" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:0.85rem;margin-bottom:14px">
       <option value="">— select anchor —</option>
     </select>
 
     <label style="font-size:0.8rem;font-weight:600;color:var(--text);display:block;margin-bottom:6px">Author name</label>
-    <input id="import-author-name" type="text" placeholder="Your name" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:0.85rem;margin-bottom:16px">
+    <input id="import-author-name" type="text" placeholder="Your name" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:0.85rem;margin-bottom:14px">
 
-    <label style="font-size:0.8rem;font-weight:600;color:var(--text);display:block;margin-bottom:6px">
-      Payload <span style="font-weight:400;color:var(--muted)">(ImportedGuide JSON)</span>
-    </label>
-    <textarea id="import-payload-json" rows="12" placeholder='{"name":"Startup Procedure","steps":[{"sequenceNumber":1,"text":"Open valve A","imageUrl":"https://..."}]}' style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:0.78rem;font-family:monospace;resize:vertical;margin-bottom:20px"></textarea>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+      <button class="btn btn-sm" onclick="document.getElementById('import-guide-file').click()" style="font-weight:600">📄 Choose file (.xlsx / .json)</button>
+      <input type="file" id="import-guide-file" accept=".xlsx,.xls,.json" style="display:none" onchange="importGuideFileChosen(event)">
+      <span id="import-file-name" style="font-size:0.75rem;color:var(--muted)"></span>
+      <button class="btn btn-ghost btn-sm" onclick="downloadGuideXlsxTemplate()" style="margin-left:auto">⬇ Excel template</button>
+    </div>
+
+    <details style="margin-bottom:12px"><summary style="font-size:0.75rem;color:var(--muted);cursor:pointer">…or paste ImportedGuide JSON</summary>
+      <textarea id="import-payload-json" rows="8" placeholder='{"name":"Startup Procedure","steps":[{"sequenceNumber":1,"text":"Open valve A","imageUrl":"https://..."}]}' oninput="importGuideJsonTyped()" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:0.78rem;font-family:monospace;resize:vertical;margin-top:8px"></textarea>
+    </details>
+
+    <div id="import-preview" style="display:none;border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:0.78rem"></div>
 
     <div style="display:flex;gap:10px;justify-content:flex-end">
       <button class="btn btn-ghost btn-sm" onclick="closeImportGuideModal()">Cancel</button>
-      <button class="btn btn-sm" onclick="submitImportGuide()" style="background:var(--accent);color:#fff;font-weight:600">Import</button>
+      <button class="btn btn-sm" id="import-guide-submit" onclick="submitImportGuide()" disabled style="background:var(--accent);color:#fff;font-weight:600;opacity:.5">Import</button>
     </div>
     <p id="import-guide-error" style="display:none;color:var(--red);font-size:0.78rem;margin-top:12px"></p>
   </div>
@@ -513,7 +525,10 @@
 <!-- Guide Library panel -->
 <div id="guide-library-panel">
   <div class="sessions-toolbar">
-    <span style="font-size:0.78rem;color:var(--muted);flex:1">All guides · grouped by anchor · expand to see steps</span>
+    <span style="font-size:0.78rem;color:var(--muted)">All guides · grouped by anchor</span>
+    <input id="gl-search" type="search" placeholder="Filter guides…" oninput="filterGuideLibrary(this.value)"
+           style="flex:1;min-width:140px;padding:6px 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:0.78rem">
+    <button class="btn btn-sm" onclick="openImportGuideModal()" style="font-weight:600">⬆ Import Guide</button>
     <button class="btn btn-ghost btn-sm" onclick="loadGuideLibrary()">⟳ Refresh</button>
   </div>
   <div id="guide-library-list"></div>
@@ -2044,45 +2059,233 @@ function openImportGuideModal() {
   const storedName = localStorage.getItem('sibAuthorName') || '';
   document.getElementById('import-author-name').value = storedName;
   document.getElementById('import-guide-error').style.display = 'none';
+  // Reset parse state from any previous open
+  importParsedPayload = null;
+  document.getElementById('import-preview').style.display = 'none';
+  document.getElementById('import-file-name').textContent = '';
+  document.getElementById('import-payload-json').value = '';
+  const btn = document.getElementById('import-guide-submit');
+  btn.disabled = true; btn.style.opacity = '.5';
   const modal = document.getElementById('import-guide-modal');
   modal.style.display = 'flex';
+}
+
+/** Live filter: hides guide cards (and empty anchor sections) not matching. */
+function filterGuideLibrary(qstr) {
+  const needle = (qstr || '').toLowerCase();
+  document.querySelectorAll('.gl-anchor-section').forEach(section => {
+    let visible = 0;
+    section.querySelectorAll('.gl-guide-card').forEach(card => {
+      const hit = !needle || card.textContent.toLowerCase().includes(needle)
+        || (section.querySelector('.gl-anchor-hdr')?.textContent.toLowerCase().includes(needle));
+      card.style.display = hit ? '' : 'none';
+      if (hit) visible++;
+    });
+    section.style.display = visible ? '' : 'none';
+  });
 }
 
 function closeImportGuideModal() {
   document.getElementById('import-guide-modal').style.display = 'none';
 }
 
+// ── Parse state: the payload waiting to be imported (from file or paste) ─────
+let importParsedPayload = null;
+
+/** SheetJS is only needed for .xlsx — lazy-load it on first use. */
+function ensureSheetJS() {
+  return new Promise((resolve, reject) => {
+    if (window.XLSX) return resolve();
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload = resolve;
+    s.onerror = () => reject(new Error('Could not load the Excel parser (offline?)'));
+    document.head.appendChild(s);
+  });
+}
+
+/** Header-flexible column lookup: first header containing any alias wins. */
+function xlsxCol(headers, aliases) {
+  const idx = headers.findIndex(h => aliases.some(a => (h || '').toString().toLowerCase().includes(a)));
+  return idx >= 0 ? idx : null;
+}
+
+/** Excel rows → ImportedGuide. Columns (order-free, case-insensitive):
+ *  Step | Title | Instruction | Voice | ImageURL | LinkURL | Optional |
+ *  OnSuccess | OnFailure | Requires */
+function parseGuideXlsx(arrayBuffer, fileName) {
+  const wb    = XLSX.read(arrayBuffer, { type: 'array' });
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  const rows  = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false });
+  if (rows.length < 2) throw new Error('Sheet needs a header row plus at least one step row.');
+
+  const H = rows[0].map(h => (h || '').toString());
+  const col = {
+    seq:      xlsxCol(H, ['step', 'seq', '#']),
+    title:    xlsxCol(H, ['title']),
+    text:     xlsxCol(H, ['instruction', 'text', 'description']),
+    tts:      xlsxCol(H, ['voice', 'tts', 'speak']),
+    image:    xlsxCol(H, ['image']),
+    link:     xlsxCol(H, ['link', 'reference', 'url']),
+    optional: xlsxCol(H, ['optional', 'skip']),
+    next:     xlsxCol(H, ['success', 'next']),
+    fail:     xlsxCol(H, ['fail']),
+    req:      xlsxCol(H, ['require', 'precondition', 'prereq']),
+  };
+  if (col.text === null) throw new Error('No "Instruction" (or Text/Description) column found in the header row.');
+
+  const cell = (r, c) => (c !== null && r[c] !== undefined && r[c] !== null) ? r[c].toString().trim() : '';
+  const num  = (r, c) => { const v = parseInt(cell(r, c), 10); return Number.isInteger(v) && v > 0 ? v : undefined; };
+  const yes  = (r, c) => /^(y|yes|true|1|optional)$/i.test(cell(r, c));
+
+  const steps = rows.slice(1).map((r, i) => {
+    const s = { sequenceNumber: num(r, col.seq) ?? (i + 1), text: cell(r, col.text) };
+    const title = cell(r, col.title);   if (title) s.title   = title;
+    const tts   = cell(r, col.tts);     if (tts)   s.ttsText = tts;
+    const img   = cell(r, col.image);   if (/^https?:\/\//i.test(img))  s.imageUrl = img;
+    const link  = cell(r, col.link);    if (/^https?:\/\//i.test(link)) s.linkUrl  = link;
+    if (yes(r, col.optional)) s.completionRequired = false;
+    const nx = num(r, col.next); if (nx) s.nextOnSuccessSeq = nx;
+    const fl = num(r, col.fail); if (fl) s.nextOnFailureSeq = fl;
+    const rq = num(r, col.req);  if (rq) s.preconditionSeq  = rq;
+    return s;
+  });
+
+  const name = (fileName || 'Imported guide').replace(/\.(xlsx|xls)$/i, '').replace(/[_-]+/g, ' ').trim();
+  return { name, steps };
+}
+
+/** Preview the parsed payload with warnings BEFORE anything is imported —
+ *  the moment to catch a wrong file, not after. */
+function renderImportPreview(payload, sourceLabel) {
+  importParsedPayload = null;
+  const box = document.getElementById('import-preview');
+  const btn = document.getElementById('import-guide-submit');
+  const warnings = [];
+  if (!payload || !payload.name)                       warnings.push('Guide has no name.');
+  if (!Array.isArray(payload.steps) || !payload.steps.length) warnings.push('No steps found.');
+  (payload.steps || []).forEach((s, i) => {
+    if (!s.text || !s.text.trim()) warnings.push(`Step ${s.sequenceNumber ?? i + 1}: empty instruction text.`);
+  });
+  const fatal = !payload || !Array.isArray(payload.steps) || !payload.steps.length
+    || (payload.steps || []).some(s => !s.text || !s.text.trim());
+
+  const media = (payload.steps || []).filter(s => s.imageUrl).length;
+  const links = (payload.steps || []).filter(s => s.linkUrl).length;
+  const branches = (payload.steps || []).filter(s => s.nextOnFailureSeq).length;
+  box.style.display = 'block';
+  box.innerHTML =
+    `<b>${esc(payload?.name ?? '?')}</b> <span style="color:var(--muted)">· ${sourceLabel}</span><br>` +
+    `<span style="color:var(--muted)">${(payload?.steps ?? []).length} steps · ${media} with images · ${links} with links · ${branches} failure branch${branches === 1 ? '' : 'es'}</span>` +
+    (warnings.length
+      ? `<div style="margin-top:6px;color:#f97316">${warnings.map(w => '⚠ ' + esc(w)).join('<br>')}</div>`
+      : `<div style="margin-top:6px;color:#22c55e">✓ Ready to import</div>`);
+  if (!fatal) importParsedPayload = payload;
+  btn.disabled = fatal;
+  btn.style.opacity = fatal ? '.5' : '1';
+}
+
+async function importGuideFileChosen(event) {
+  const file = event.target.files?.[0];
+  event.target.value = '';
+  if (!file) return;
+  document.getElementById('import-file-name').textContent = file.name;
+  const errEl = document.getElementById('import-guide-error');
+  errEl.style.display = 'none';
+  try {
+    let payload;
+    if (/\.(xlsx|xls)$/i.test(file.name)) {
+      await ensureSheetJS();
+      payload = parseGuideXlsx(await file.arrayBuffer(), file.name);
+    } else {
+      payload = JSON.parse(await file.text());
+    }
+    renderImportPreview(payload, file.name);
+  } catch (e) {
+    errEl.textContent = `Could not read file: ${e.message}`;
+    errEl.style.display = 'block';
+  }
+}
+
+function importGuideJsonTyped() {
+  const raw = document.getElementById('import-payload-json').value.trim();
+  if (!raw) return;
+  try { renderImportPreview(JSON.parse(raw), 'pasted JSON'); }
+  catch { /* keep typing — preview updates when the JSON becomes valid */ }
+}
+
+async function downloadGuideXlsxTemplate() {
+  try { await ensureSheetJS(); } catch (e) { toast(e.message); return; }
+  const rows = [
+    ['Step', 'Title', 'Instruction', 'Voice', 'ImageURL', 'LinkURL', 'Optional', 'OnSuccess', 'OnFailure', 'Requires'],
+    [1, 'Check oil', 'Verify the oil level is between MIN and MAX.', 'Check the oil level', 'https://example.com/oil.jpg', '', '', 2, '', ''],
+    [2, 'Warm-up',  'Run five dry cycles at low pressure.', '', '', 'https://example.com/sop.pdf', '', 3, 4, ''],
+    [3, 'Confirm ready', 'Confirm pressure holds 180–200 bar.', '', '', '', '', '', '', 1],
+    [4, 'Bleed & retry', 'Bleed the line, then repeat the warm-up.', '', '', '', 'yes', 2, '', ''],
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:5},{wch:16},{wch:46},{wch:24},{wch:28},{wch:28},{wch:9},{wch:10},{wch:10},{wch:9}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Guide');
+  XLSX.writeFile(wb, 'guide-import-template.xlsx');
+}
+
 async function submitImportGuide() {
   const errEl      = document.getElementById('import-guide-error');
   const anchorId   = document.getElementById('import-anchor-select').value.trim();
   const createdBy  = document.getElementById('import-author-name').value.trim();
-  const rawJson    = document.getElementById('import-payload-json').value.trim();
-
   errEl.style.display = 'none';
 
-  if (!anchorId)  { errEl.textContent = 'Please select an anchor.';         errEl.style.display = 'block'; return; }
-  if (!createdBy) { errEl.textContent = 'Author name is required.';         errEl.style.display = 'block'; return; }
-  if (!rawJson)   { errEl.textContent = 'Payload JSON cannot be empty.';    errEl.style.display = 'block'; return; }
-
-  let payload;
-  try { payload = JSON.parse(rawJson); }
-  catch (e) { errEl.textContent = `Invalid JSON: ${e.message}`; errEl.style.display = 'block'; return; }
+  if (!anchorId)  { errEl.textContent = 'Please select an anchor — the guide is performed on a physical asset.'; errEl.style.display = 'block'; return; }
+  if (!createdBy) { errEl.textContent = 'Author name is required.'; errEl.style.display = 'block'; return; }
+  if (!importParsedPayload) { errEl.textContent = 'Choose a file or paste JSON first — the preview must show "Ready to import".'; errEl.style.display = 'block'; return; }
+  localStorage.setItem('sibAuthorName', createdBy);
 
   try {
     const result = await apiFetch('/guides/import', {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ anchorId, createdBy, payload }),
+      body:    JSON.stringify({ anchorId, createdBy, payload: importParsedPayload }),
     });
     const { guide, steps, imageErrors } = result.data;
     closeImportGuideModal();
+    importParsedPayload = null;
     let msg = `Imported "${guide.name}" — ${steps.length} step${steps.length !== 1 ? 's' : ''}.`;
     if (imageErrors.length) msg += ` (${imageErrors.length} image(s) failed to download)`;
     toast(msg, imageErrors.length ? 4000 : 2500);
+    // The fix for "imported it, can't see it": go straight to the guide.
+    switchView('guide-library');
+    await loadGuideLibrary();
+    const card = document.getElementById('gl-card-' + guide.id);
+    if (card) {
+      card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      card.classList.add('gl-flash');
+      setTimeout(() => card.classList.remove('gl-flash'), 3200);
+      toggleGuideSteps(guide.id, anchorId);   // expand its steps immediately
+    }
   } catch (e) {
     errEl.textContent = `Import failed: ${e.message}`;
     errEl.style.display = 'block';
   }
+}
+
+/** Move a guide (and its steps) to another anchor. Placement clears and a
+ *  published guide unpublishes — the server explains why in its own docs. */
+async function moveGuideToAnchor(guideId, fromAnchorId) {
+  const others = (allAnchors || []).filter(a => a.id !== fromAnchorId);
+  if (!others.length) { toast('No other anchors to move to.'); return; }
+  const listing = others.map((a, i) => `${i + 1}. ${a.assetId || a.id}`).join('\n');
+  const pick = prompt(`Move guide to which anchor?\n\n${listing}\n\nEnter a number (1–${others.length}).\nNote: steps become UNPLACED and must be re-placed in AR; a published guide is unpublished.`);
+  const idx = parseInt(pick, 10) - 1;
+  if (!Number.isInteger(idx) || idx < 0 || idx >= others.length) return;
+  try {
+    await apiFetch(`/guides/${guideId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ anchorId: others[idx].id }),
+    });
+    toast(`Moved to ${others[idx].assetId || others[idx].id} — steps need AR placement.`);
+    loadGuideLibrary();
+  } catch (e) { toast(`Move failed: ${e.message}`); }
 }
 
 // Close modal on backdrop click
@@ -2171,6 +2374,7 @@ function renderGuideLibrary() {
           <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;${pubColor}" onclick="togglePublishGuide('${guide.id}','${anchorId}',${guide.published})">${pubLabel}</button>
           <button class="btn btn-ghost btn-sm" style="font-size:0.68rem" onclick="toggleGuideSteps('${guide.id}','${anchorId}')" id="gl-toggle-${guide.id}">▶ Steps</button>
           <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;color:#a78bfa" onclick="toggleGuideGraph('${guide.id}','${anchorId}')" id="gl-graph-toggle-${guide.id}">⬡ Graph</button>
+          <button class="btn btn-ghost btn-sm" style="font-size:0.68rem" title="Move to another anchor (steps become unplaced)" onclick="moveGuideToAnchor('${guide.id}','${anchorId}')">⇄ Move</button>
           <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;color:var(--red)" onclick="deleteGuideFromLibrary('${guide.id}','${anchorId}')">🗑</button>
         </div>`;
 

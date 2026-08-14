@@ -753,6 +753,10 @@ export type UpdateGuideRequest = {
   name?:        string;
   description?: string;
   published?:   boolean;
+  /** Move the guide (and all its steps) to another anchor. Spatial placement
+   *  is cleared — positions belong to the old anchor's world map — and a
+   *  published guide is unpublished until re-placed. */
+  anchorId?:    string;
 };
 
 /**
