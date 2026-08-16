@@ -62,8 +62,22 @@ header h1 a{color:var(--text);text-decoration:none;}
 .deplink{display:inline-block;font-size:12px;padding:3px 9px;margin:0 5px 6px 0;border-radius:8px;
   background:var(--panel);border:1px solid var(--border);color:var(--text);cursor:pointer;}
 .deplink:hover{border-color:var(--accent);}
-.flowbox{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px;margin:8px 0;overflow-x:auto;}
+.flowbox{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px;margin:8px 0;
+  overflow-x:auto;cursor:zoom-in;position:relative;}
+.flowbox:hover{border-color:var(--accent);}
 .flowbox svg{max-width:100%;height:auto;}
+.flowbox .expandhint{position:absolute;right:8px;top:6px;font-size:10.5px;color:var(--muted);
+  background:var(--chip);padding:2px 8px;border-radius:10px;pointer-events:none;}
+
+/* ── Flow lightbox ── */
+#flowModal{position:fixed;inset:0;display:none;z-index:100;background:rgba(4,8,18,.92);
+  align-items:center;justify-content:center;flex-direction:column;padding:4vh 3vw;cursor:zoom-out;}
+#flowModal.open{display:flex;}
+#flowModal .fmtitle{color:var(--text);font-size:15px;font-weight:700;margin-bottom:14px;}
+#flowModal .fmbody{background:var(--panel);border:1px solid var(--border);border-radius:14px;
+  padding:26px;max-width:94vw;max-height:82vh;overflow:auto;}
+#flowModal .fmbody svg{width:min(90vw,1500px) !important;max-width:none !important;height:auto !important;}
+#flowModal .fmhint{color:var(--muted);font-size:11.5px;margin-top:12px;}
 .btnrow{display:flex;gap:8px;margin:14px 0 4px;flex-wrap:wrap;}
 .btn{background:var(--panel);border:1px solid var(--border);border-radius:8px;color:var(--text);
   padding:7px 12px;font-size:12.5px;cursor:pointer;}
@@ -133,6 +147,11 @@ text.albl{font-size:12px;font-weight:800;pointer-events:none;opacity:.8;}
   <div id="panel"></div>
 </div>
 <div id="tip"></div>
+<div id="flowModal">
+  <div class="fmtitle" id="fmTitle"></div>
+  <div class="fmbody" id="fmBody"></div>
+  <div class="fmhint">click anywhere or press Esc to close</div>
+</div>
 
 <script>
 'use strict';
@@ -184,8 +203,8 @@ function buildGraph(){
   const n = DATA.areas.length;
   DATA.areas.forEach((a, i) => {
     const ang = (i / n) * Math.PI * 2 - Math.PI / 2;
-    a.cx = W/2 + Math.cos(ang) * W*0.31;
-    a.cy = H/2 + Math.sin(ang) * H*0.31;
+    a.cx = W/2 + Math.cos(ang) * W*0.36;
+    a.cy = H/2 + Math.sin(ang) * H*0.36;
   });
   nodes = DATA.features.map(f => {
     const a = areaById[f.area];
@@ -199,13 +218,15 @@ let alpha = 1;
 let dirty = true;                     // redraw only while simulating or after interaction
 const markDirty = () => { dirty = true; };
 function tick(){
-  const REP = 1500, SPRING = 0.03, SPRINGLEN = 70, CLUSTER = 0.045, DAMP = 0.85;
+  // Tuned for breathing room: stronger/longer repulsion, longer springs,
+  // gentler cluster pull — labels stop colliding at default zoom.
+  const REP = 3600, SPRING = 0.025, SPRINGLEN = 120, CLUSTER = 0.028, DAMP = 0.85;
   for (let i = 0; i < nodes.length; i++){
     const a = nodes[i];
     for (let j = i+1; j < nodes.length; j++){
       const b = nodes[j];
       let dx = a.x-b.x, dy = a.y-b.y, d2 = dx*dx+dy*dy || 1;
-      if (d2 < 40000){ const f = REP/d2; const d = Math.sqrt(d2);
+      if (d2 < 100000){ const f = REP/d2; const d = Math.sqrt(d2);
         dx/=d; dy/=d; a.vx += dx*f; a.vy += dy*f; b.vx -= dx*f; b.vy -= dy*f; }
     }
     const home = areaById[a.area];
@@ -259,7 +280,7 @@ function draw(){
   // area labels
   for (const a of DATA.areas){
     const dim = activeAreas.size && !activeAreas.has(a.id);
-    out += `<text class="albl" x="${a.cx}" y="${a.cy - 92}" text-anchor="middle" fill="${a.color}" opacity="${dim?0.15:0.8}">${esc(a.name)}</text>`;
+    out += `<text class="albl" x="${a.cx}" y="${a.cy - 130}" text-anchor="middle" fill="${a.color}" opacity="${dim?0.15:0.8}">${esc(a.name)}</text>`;
   }
   // edges
   for (const e of edges){
@@ -389,15 +410,32 @@ function bindTermChips(root){
   });
 }
 
-/* ═══════════════ mermaid ═══════════════ */
-async function renderFlow(el, code){
+/* ═══════════════ mermaid + flow lightbox ═══════════════ */
+async function renderFlow(el, code, title){
   if (!code){ el.style.display = 'none'; return; }
   if (!mermaidReady){ el.innerHTML = '<pre style="font-size:11px;color:#7d8da3;margin:0;">' + esc(code) + '</pre>'; return; }
   try {
     const { svg: out } = await window.mermaid.render('mm' + (++mermaidSeq), code);
-    el.innerHTML = out;
+    el.innerHTML = out + '<span class="expandhint">⤢ enlarge</span>';
   } catch { el.innerHTML = '<pre style="font-size:11px;color:#7d8da3;margin:0;">' + esc(code) + '</pre>'; }
+  // Click → full-screen lightbox with the flow re-rendered at reading size.
+  el.onclick = () => openFlowModal(code, title || '');
 }
+const flowModal = document.getElementById('flowModal');
+async function openFlowModal(code, title){
+  document.getElementById('fmTitle').textContent = title;
+  const body = document.getElementById('fmBody');
+  body.innerHTML = '<pre style="font-size:12px;color:#7d8da3;margin:0;">' + esc(code) + '</pre>';
+  flowModal.classList.add('open');
+  if (mermaidReady){
+    try {
+      const { svg: out } = await window.mermaid.render('mmx' + (++mermaidSeq), code);
+      body.innerHTML = out;
+    } catch { /* keep the <pre> fallback */ }
+  }
+}
+flowModal.addEventListener('click', () => flowModal.classList.remove('open'));
+document.addEventListener('keydown', ev => { if (ev.key === 'Escape') flowModal.classList.remove('open'); });
 
 /* ═══════════════ side panel views ═══════════════ */
 const panel = document.getElementById('panel');
@@ -447,7 +485,7 @@ function showArea(id){
     <h3>${feats.length} features</h3>
     ${feats.map(f => `<span class="deplink" data-go="${f.id}">${esc(f.name)}</span>`).join('')}
     <div class="btnrow"><button class="btn" id="backHome">← Overview</button></div>`;
-  renderFlow(panel.querySelector('#areaFlow'), a.flow);
+  renderFlow(panel.querySelector('#areaFlow'), a.flow, a.name + ' — how it flows');
   panel.querySelectorAll('[data-go]').forEach(el => el.onclick = () => selectFeature(el.dataset.go));
   panel.querySelector('#backHome').onclick = renderHome;
   panel.classList.add('open');
@@ -486,7 +524,7 @@ function showFeature(id){
       <button class="btn" id="backHome">← Overview</button>
     </div>
     <div id="specBox"><div style="font-size:11px;color:var(--muted);margin-bottom:8px">${esc(f.spec)}</div><div class="md" id="specMd">Loading…</div></div>`;
-  renderFlow(panel.querySelector('#featFlow'), flow);
+  renderFlow(panel.querySelector('#featFlow'), flow, f.name + (f.flow ? ' — how it flows' : ' — ' + a.name + ' area flow'));
   bindTermChips(panel);
   panel.querySelectorAll('[data-go]').forEach(el => el.onclick = () => selectFeature(el.dataset.go));
   panel.querySelector('#backHome').onclick = renderHome;
