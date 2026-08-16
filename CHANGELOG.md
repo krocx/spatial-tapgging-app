@@ -7,6 +7,19 @@ it, it gets a line.
 ## 2026.4.42 — 2026-08-11
 
 ### Added
+- **Visual Feature Catalogue** (`/catalog`) — docs-as-data: `docs/catalog/`
+  holds one YAML-frontmatter markdown file per feature (63 files, 7 area files
+  with Mermaid flows, 3 role trails) as the canonical source;
+  `GET /catalog/data` derives the full JSON graph from them live (also the
+  future AI-grounding feed, with a reserved `?format=toon` seam) and
+  `GET /catalog/doc/:id` serves each feature's deep-dive spec. The `/catalog`
+  page renders it all as a connected graph — area clusters, shipped/beta/
+  planned node styling, dependency edges, search, glossary hover definitions
+  (glossary gained an iLOTO section), per-feature Mermaid flows, spec
+  rendered in place, and three "start here" role trails for new team members.
+  `npm run catalog:check` fails on any drift (dangling depends, unknown
+  terms, missing specs) using the same rules as the endpoint;
+  FEATURE-CATALOG.md is now explicitly a generated view of these files.
 - **Portal — AR Guides import UX overhaul**: import from **Excel (.xlsx)**
   with a downloadable template (columns: Step, Title, Instruction, Voice,
   ImageURL, LinkURL, Optional, OnSuccess, OnFailure, Requires — header

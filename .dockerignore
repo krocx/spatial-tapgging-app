@@ -22,10 +22,17 @@ ar-client/public/
 docs/
 skills/
 *.md
-# …except the roadmap dictionary, which the server serves at /mindmap/glossary
-!docs/roadmap-glossary.md
-# …and the app wireframe, served at GET /wireframe (home page link)
+# …except the docs the server SERVES at runtime (each needs a re-include or the
+# image build fails with "not found" — learned the hard way with the wireframe):
+#   /mindmap/glossary + /catalog term definitions → docs/roadmap-glossary.md
+#   /catalog/doc/:id spec deep-dives             → all top-level docs/*.md
+#   /catalog/data                                → docs/catalog/*.md
+#   /wireframe                                   → docs/APP-WIREFRAME.html
+#   /catalog/doc/:id specs pointing at ../README.md → root README.md
+!docs/*.md
+!docs/catalog/*.md
 !docs/APP-WIREFRAME.html
+!README.md
 .git/
 .gitignore
 

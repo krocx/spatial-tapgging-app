@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feature Catalogue — AR Operations Platform</title>
+<!--
+  The /catalog surface: a live, connected view of docs/catalog/*.md.
+  Everything on this page is derived from GET /catalog/data at load time —
+  nothing here is hand-maintained. Mermaid + marked load from cdnjs (same
+  precedent as SheetJS in the portal); both degrade gracefully to <pre>.
+-->
+<style>
+:root{
+  --bg:#0b1220; --panel:#111a2e; --panel2:#0e1626; --border:#22304b;
+  --text:#e2e8f0; --muted:#7d8da3; --accent:#3b82f6; --chip:#1a2540;
+}
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:-apple-system,Helvetica,Arial,sans-serif;display:flex;flex-direction:column;overflow:hidden;}
+
+/* ── Header ── */
+header{display:flex;align-items:center;gap:14px;padding:10px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+header h1{font-size:16px;font-weight:800;margin:0;white-space:nowrap;}
+header h1 a{color:var(--text);text-decoration:none;}
+#search{background:var(--panel);border:1px solid var(--border);border-radius:8px;color:var(--text);
+  padding:7px 12px;font-size:13px;width:230px;outline:none;}
+#search:focus{border-color:var(--accent);}
+#areaChips{display:flex;gap:6px;flex-wrap:wrap;}
+.achip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--border);
+  border-radius:20px;font-size:11.5px;cursor:pointer;color:var(--muted);background:var(--panel);user-select:none;}
+.achip .dot{width:8px;height:8px;border-radius:50%;}
+.achip.on{color:var(--text);border-color:var(--accent);}
+.legend{display:flex;gap:12px;font-size:11px;color:var(--muted);align-items:center;margin-left:auto;}
+.legend svg{vertical-align:middle;}
+.hlinks{font-size:11.5px;display:flex;gap:10px;}
+.hlinks a{color:var(--muted);text-decoration:none;}
+.hlinks a:hover{color:var(--text);}
+
+/* ── Layout ── */
+#main{flex:1;display:flex;min-height:0;}
+#graphWrap{flex:1;position:relative;min-width:0;}
+#graph{width:100%;height:100%;display:block;cursor:grab;}
+#graph.dragging{cursor:grabbing;}
+#hint{position:absolute;left:14px;bottom:12px;font-size:11px;color:var(--muted);pointer-events:none;}
+#matchCount{position:absolute;left:14px;top:10px;font-size:12px;color:var(--accent);display:none;}
+
+/* ── Side panel ── */
+#panel{width:400px;max-width:46vw;border-left:1px solid var(--border);background:var(--panel2);
+  overflow-y:auto;padding:16px;}
+#panel h2{font-size:17px;margin:0 0 6px;}
+#panel h3{font-size:13px;margin:18px 0 8px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;}
+.meta{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 12px;}
+.mchip{font-size:11px;padding:3px 9px;border-radius:12px;background:var(--chip);border:1px solid var(--border);color:var(--muted);}
+.mchip.status-shipped{color:#4ade80;border-color:#14532d;}
+.mchip.status-beta{color:#fbbf24;border-color:#78350f;}
+.mchip.status-planned{color:#94a3b8;border-color:#334155;}
+.body-text{font-size:13px;line-height:1.65;color:var(--text);}
+.termchip{display:inline-block;font-size:11.5px;padding:3px 9px;margin:0 5px 6px 0;border-radius:12px;
+  background:var(--chip);border:1px solid var(--border);color:#93c5fd;cursor:help;position:relative;}
+.deplink{display:inline-block;font-size:12px;padding:3px 9px;margin:0 5px 6px 0;border-radius:8px;
+  background:var(--panel);border:1px solid var(--border);color:var(--text);cursor:pointer;}
+.deplink:hover{border-color:var(--accent);}
+.flowbox{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px;margin:8px 0;overflow-x:auto;}
+.flowbox svg{max-width:100%;height:auto;}
+.btnrow{display:flex;gap:8px;margin:14px 0 4px;flex-wrap:wrap;}
+.btn{background:var(--panel);border:1px solid var(--border);border-radius:8px;color:var(--text);
+  padding:7px 12px;font-size:12.5px;cursor:pointer;}
+.btn:hover{border-color:var(--accent);}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+#specBox{display:none;margin-top:12px;border-top:1px solid var(--border);padding-top:12px;}
+#specBox .md{font-size:12.5px;line-height:1.6;}
+#specBox .md h1,#specBox .md h2,#specBox .md h3{color:var(--text);}
+#specBox .md h1{font-size:16px;} #specBox .md h2{font-size:14px;} #specBox .md h3{font-size:13px;}
+#specBox .md code{background:var(--chip);padding:1px 5px;border-radius:4px;font-size:11.5px;}
+#specBox .md pre{background:var(--chip);padding:10px;border-radius:8px;overflow-x:auto;}
+#specBox .md pre code{background:none;padding:0;}
+#specBox .md table{border-collapse:collapse;font-size:11.5px;}
+#specBox .md th,#specBox .md td{border:1px solid var(--border);padding:4px 8px;text-align:left;}
+#specBox .md a{color:#93c5fd;}
+#specBox .md blockquote{border-left:3px solid var(--border);margin:8px 0;padding:2px 12px;color:var(--muted);}
+
+/* ── Trails ── */
+.trailcard{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:10px;cursor:pointer;}
+.trailcard:hover{border-color:var(--accent);}
+.trailcard .tname{font-weight:700;font-size:13.5px;margin-bottom:3px;}
+.trailcard .tblurb{font-size:12px;color:var(--muted);}
+.trailcard .tcount{font-size:11px;color:var(--accent);margin-top:6px;}
+#trailBar{display:none;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid var(--border);
+  background:var(--panel);font-size:12.5px;}
+#trailBar .tstep{color:var(--muted);}
+#trailBar button{padding:4px 10px;font-size:12px;}
+
+/* ── Tooltip ── */
+#tip{position:fixed;display:none;max-width:320px;background:#1c2a47;border:1px solid var(--accent);
+  border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.55;z-index:50;pointer-events:none;
+  box-shadow:0 8px 30px rgba(0,0,0,.5);}
+#tip .tt{font-weight:700;color:#93c5fd;margin-bottom:3px;}
+
+/* graph text */
+text.nlabel{font-size:9.5px;fill:#b8c4d6;pointer-events:none;}
+text.albl{font-size:12px;font-weight:800;pointer-events:none;opacity:.8;}
+.trailbadge{font-size:9px;font-weight:800;fill:#fff;pointer-events:none;}
+@media (max-width:800px){ #panel{max-width:none;width:100%;position:absolute;inset:0;z-index:10;display:none;}
+  #panel.open{display:block;} }
+</style>
+</head>
+<body>
+<header>
+  <h1><a href="/">⚡</a> Feature Catalogue</h1>
+  <input id="search" type="search" placeholder="Search features, terms…" autocomplete="off">
+  <div id="areaChips"></div>
+  <div class="legend">
+    <span><svg width="14" height="12"><circle cx="7" cy="6" r="5" fill="#3b82f6"/></svg> shipped</span>
+    <span><svg width="14" height="12"><circle cx="7" cy="6" r="5" fill="#3b82f6" fill-opacity=".25" stroke="#3b82f6" stroke-width="1.6"/></svg> beta</span>
+    <span><svg width="14" height="12"><circle cx="7" cy="6" r="5" fill="none" stroke="#3b82f6" stroke-width="1.4" stroke-dasharray="3 2"/></svg> planned</span>
+  </div>
+  <div class="hlinks"><a href="/portal">Portal</a><a href="/roadmap">Roadmap</a><a href="/wireframe">Wireframe</a></div>
+</header>
+<div id="trailBar">
+  <strong id="trailName"></strong><span class="tstep" id="trailStep"></span>
+  <button class="btn" id="trailPrev">← Prev</button>
+  <button class="btn primary" id="trailNext">Next →</button>
+  <button class="btn" id="trailExit">Exit trail</button>
+</div>
+<div id="main">
+  <div id="graphWrap">
+    <div id="matchCount"></div>
+    <svg id="graph"></svg>
+    <div id="hint">Click a node for details · drag to pan · scroll to zoom · drag nodes to rearrange</div>
+  </div>
+  <div id="panel"></div>
+</div>
+<div id="tip"></div>
+
+<script>
+'use strict';
+/* ═══════════════ data + boot ═══════════════ */
+const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+let DATA = null;                      // /catalog/data payload
+let nodes = [], edges = [], byId = {};
+let areaById = {};
+let selected = null;                  // feature id
+let activeAreas = new Set();          // empty = all
+let searchQ = '';
+let trail = null, trailIdx = 0;       // active trail state
+let mermaidReady = false, markedReady = false, mermaidSeq = 0;
+
+function loadScript(src){ return new Promise((ok, no) => {
+  const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = no;
+  document.head.appendChild(s);
+});}
+
+async function boot(){
+  try {
+    const r = await fetch('/catalog/data');
+    if (!r.ok) throw new Error((await r.json()).error || r.statusText);
+    DATA = await r.json();
+  } catch (e) {
+    document.getElementById('panel').innerHTML =
+      '<h2>Catalogue unavailable</h2><p class="body-text">' + esc(e.message) + '</p>';
+    return;
+  }
+  DATA.areas.forEach(a => areaById[a.id] = a);
+  buildGraph();
+  renderAreaChips();
+  renderHome();
+  startSim();
+  // Renderers load in the background; cards fall back to <pre> until ready.
+  loadScript('https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js')
+    .then(() => { window.mermaid.initialize({ startOnLoad:false, theme:'dark', securityLevel:'loose',
+      themeVariables:{ darkMode:true, background:'#111a2e', primaryColor:'#1a2540', lineColor:'#7d8da3' } });
+      mermaidReady = true; if (selected) showFeature(selected); })
+    .catch(() => {});
+  loadScript('https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js')
+    .then(() => markedReady = true).catch(() => {});
+}
+
+/* ═══════════════ graph model + force simulation ═══════════════ */
+const W = 1200, H = 800;
+function buildGraph(){
+  // Area cluster anchors on an ellipse around the canvas centre.
+  const n = DATA.areas.length;
+  DATA.areas.forEach((a, i) => {
+    const ang = (i / n) * Math.PI * 2 - Math.PI / 2;
+    a.cx = W/2 + Math.cos(ang) * W*0.31;
+    a.cy = H/2 + Math.sin(ang) * H*0.31;
+  });
+  nodes = DATA.features.map(f => {
+    const a = areaById[f.area];
+    return { ...f, x: a.cx + (Math.random()-0.5)*120, y: a.cy + (Math.random()-0.5)*120, vx:0, vy:0, fx:null, fy:null };
+  });
+  byId = {}; nodes.forEach(nd => byId[nd.id] = nd);
+  edges = DATA.edges.map(e => ({ s: byId[e.from], t: byId[e.to] }));
+}
+
+let alpha = 1;
+let dirty = true;                     // redraw only while simulating or after interaction
+const markDirty = () => { dirty = true; };
+function tick(){
+  const REP = 1500, SPRING = 0.03, SPRINGLEN = 70, CLUSTER = 0.045, DAMP = 0.85;
+  for (let i = 0; i < nodes.length; i++){
+    const a = nodes[i];
+    for (let j = i+1; j < nodes.length; j++){
+      const b = nodes[j];
+      let dx = a.x-b.x, dy = a.y-b.y, d2 = dx*dx+dy*dy || 1;
+      if (d2 < 40000){ const f = REP/d2; const d = Math.sqrt(d2);
+        dx/=d; dy/=d; a.vx += dx*f; a.vy += dy*f; b.vx -= dx*f; b.vy -= dy*f; }
+    }
+    const home = areaById[a.area];
+    a.vx += (home.cx - a.x) * CLUSTER; a.vy += (home.cy - a.y) * CLUSTER;
+  }
+  for (const e of edges){
+    const dx = e.t.x-e.s.x, dy = e.t.y-e.s.y, d = Math.sqrt(dx*dx+dy*dy)||1;
+    const f = (d - SPRINGLEN) * SPRING;
+    e.s.vx += dx/d*f; e.s.vy += dy/d*f; e.t.vx -= dx/d*f; e.t.vy -= dy/d*f;
+  }
+  for (const nd of nodes){
+    if (nd.fx != null){ nd.x = nd.fx; nd.y = nd.fy; nd.vx = nd.vy = 0; continue; }
+    nd.vx *= DAMP; nd.vy *= DAMP;
+    nd.x += nd.vx * alpha; nd.y += nd.vy * alpha;
+    nd.x = Math.max(30, Math.min(W-30, nd.x)); nd.y = Math.max(30, Math.min(H-30, nd.y));
+  }
+  alpha *= 0.995;
+}
+function startSim(){ alpha = 1; requestAnimationFrame(function loop(){
+  if (alpha > 0.02){ tick(); dirty = true; }   // simulate until settled…
+  if (dirty){ draw(); dirty = false; }         // …then redraw only on interaction
+  requestAnimationFrame(loop);
+}); }
+function reheat(){ alpha = Math.max(alpha, 0.5); dirty = true; }
+
+/* ═══════════════ drawing ═══════════════ */
+const svg = document.getElementById('graph');
+let view = { x:0, y:0, k:1 };  // pan/zoom
+svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+
+function nodeVisible(nd){
+  if (activeAreas.size && !activeAreas.has(nd.area)) return false;
+  return true;
+}
+function nodeMatches(nd){
+  if (!searchQ) return true;
+  const q = searchQ.toLowerCase();
+  return nd.id.includes(q) || nd.name.toLowerCase().includes(q) ||
+    nd.body.toLowerCase().includes(q) || nd.terms.some(t => t.toLowerCase().includes(q));
+}
+function trailSet(){ return trail ? new Set(trail.steps) : null; }
+
+function draw(){
+  const ts = trailSet();
+  const neighbours = new Set();
+  if (selected && byId[selected]){
+    neighbours.add(selected);
+    edges.forEach(e => { if (e.s.id === selected) neighbours.add(e.t.id); if (e.t.id === selected) neighbours.add(e.s.id); });
+  }
+  let out = `<g transform="translate(${view.x},${view.y}) scale(${view.k})">`;
+  // area labels
+  for (const a of DATA.areas){
+    const dim = activeAreas.size && !activeAreas.has(a.id);
+    out += `<text class="albl" x="${a.cx}" y="${a.cy - 92}" text-anchor="middle" fill="${a.color}" opacity="${dim?0.15:0.8}">${esc(a.name)}</text>`;
+  }
+  // edges
+  for (const e of edges){
+    const vis = nodeVisible(e.s) && nodeVisible(e.t);
+    let op = vis ? 0.35 : 0.04;
+    if (ts) op = (ts.has(e.s.id) && ts.has(e.t.id)) ? 0.6 : 0.05;
+    else if (selected) op = (neighbours.has(e.s.id) && neighbours.has(e.t.id) && (e.s.id === selected || e.t.id === selected)) ? 0.9 : 0.08;
+    else if (searchQ) op = (nodeMatches(e.s) && nodeMatches(e.t)) ? 0.4 : 0.05;
+    out += `<line x1="${e.s.x}" y1="${e.s.y}" x2="${e.t.x}" y2="${e.t.y}" stroke="${areaById[e.s.area].color}" stroke-width="1.2" opacity="${op}"/>`;
+  }
+  // nodes
+  for (const nd of nodes){
+    const c = areaById[nd.area].color;
+    let op = nodeVisible(nd) ? 1 : 0.07;
+    if (ts) op = ts.has(nd.id) ? 1 : 0.08;
+    else if (searchQ) op = nodeMatches(nd) && nodeVisible(nd) ? 1 : 0.07;
+    const r = nd.id === selected ? 11 : 8;
+    let shape;
+    if (nd.status === 'shipped') shape = `<circle cx="${nd.x}" cy="${nd.y}" r="${r}" fill="${c}"/>`;
+    else if (nd.status === 'beta') shape = `<circle cx="${nd.x}" cy="${nd.y}" r="${r}" fill="${c}" fill-opacity=".25" stroke="${c}" stroke-width="2"/>`;
+    else shape = `<circle cx="${nd.x}" cy="${nd.y}" r="${r}" fill="none" stroke="${c}" stroke-width="1.6" stroke-dasharray="4 3"/>`;
+    const sel = nd.id === selected ? `<circle cx="${nd.x}" cy="${nd.y}" r="${r+4}" fill="none" stroke="#fff" stroke-width="1.4" opacity=".9"/>` : '';
+    let badge = '';
+    if (ts && ts.has(nd.id)){
+      const num = trail.steps.indexOf(nd.id) + 1;
+      badge = `<circle cx="${nd.x+10}" cy="${nd.y-10}" r="7" fill="${num-1===trailIdx?'#f59e0b':'#334155'}"/>
+               <text class="trailbadge" x="${nd.x+10}" y="${nd.y-7}" text-anchor="middle">${num}</text>`;
+    }
+    out += `<g opacity="${op}" data-id="${nd.id}" style="cursor:pointer">${sel}${shape}
+      <text class="nlabel" x="${nd.x}" y="${nd.y + r + 11}" text-anchor="middle">${esc(nd.name.length > 26 ? nd.name.slice(0,25)+'…' : nd.name)}</text>${badge}</g>`;
+  }
+  out += '</g>';
+  svg.innerHTML = out;
+}
+
+/* pan / zoom / node drag / click */
+let drag = null; // {type:'pan'|'node', ...}
+function svgPoint(ev){
+  const r = svg.getBoundingClientRect();
+  const px = (ev.clientX - r.left) / r.width * W, py = (ev.clientY - r.top) / r.height * H;
+  return { x: (px - view.x) / view.k, y: (py - view.y) / view.k };
+}
+svg.addEventListener('pointerdown', ev => {
+  const g = ev.target.closest('g[data-id]');
+  if (g){ const nd = byId[g.dataset.id]; drag = { type:'node', nd, moved:false }; nd.fx = nd.x; nd.fy = nd.y; }
+  else drag = { type:'pan', sx: ev.clientX, sy: ev.clientY, ox: view.x, oy: view.y, moved:false };
+  svg.setPointerCapture(ev.pointerId); svg.classList.add('dragging');
+});
+svg.addEventListener('pointermove', ev => {
+  if (!drag) return;
+  if (drag.type === 'node'){
+    const p = svgPoint(ev); drag.nd.fx = p.x; drag.nd.fy = p.y; drag.moved = true; reheat();
+  } else {
+    const r = svg.getBoundingClientRect();
+    view.x = drag.ox + (ev.clientX - drag.sx) / r.width * W;
+    view.y = drag.oy + (ev.clientY - drag.sy) / r.height * H;
+    if (Math.abs(ev.clientX-drag.sx) + Math.abs(ev.clientY-drag.sy) > 4) drag.moved = true;
+    markDirty();
+  }
+});
+svg.addEventListener('pointerup', ev => {
+  svg.classList.remove('dragging');
+  if (drag && drag.type === 'node'){
+    if (!drag.moved) selectFeature(drag.nd.id);
+    drag.nd.fx = drag.nd.fy = null; markDirty();
+  } else if (drag && !drag.moved){
+    selected = null; renderHome(); // click empty space → home panel
+  }
+  drag = null;
+});
+svg.addEventListener('wheel', ev => {
+  ev.preventDefault();
+  const p = svgPoint(ev);
+  const k2 = Math.max(0.4, Math.min(3.5, view.k * (ev.deltaY < 0 ? 1.12 : 0.89)));
+  view.x += p.x * (view.k - k2); view.y += p.y * (view.k - k2); view.k = k2; markDirty();
+}, { passive:false });
+
+/* ═══════════════ header controls ═══════════════ */
+function renderAreaChips(){
+  const el = document.getElementById('areaChips');
+  el.innerHTML = DATA.areas.map(a =>
+    `<span class="achip${activeAreas.size===0||activeAreas.has(a.id)?' on':''}" data-area="${a.id}">
+       <span class="dot" style="background:${a.color}"></span>${esc(a.name)}</span>`).join('');
+  el.querySelectorAll('.achip').forEach(ch => {
+    ch.onclick = () => {
+      const id = ch.dataset.area;
+      if (activeAreas.has(id)) activeAreas.delete(id);
+      else activeAreas.add(id);
+      if (activeAreas.size === DATA.areas.length) activeAreas.clear();
+      renderAreaChips(); showArea(id); markDirty();
+    };
+  });
+}
+document.getElementById('search').addEventListener('input', ev => {
+  searchQ = ev.target.value.trim();
+  const mc = document.getElementById('matchCount');
+  if (searchQ){ const n = nodes.filter(nodeMatches).length;
+    mc.style.display = 'block'; mc.textContent = n + ' match' + (n===1?'':'es'); }
+  else mc.style.display = 'none';
+  markDirty();
+});
+document.getElementById('search').addEventListener('keydown', ev => {
+  if (ev.key === 'Enter'){ const hit = nodes.find(nodeMatches); if (hit) selectFeature(hit.id); }
+});
+
+/* ═══════════════ glossary tooltips ═══════════════ */
+function findTerm(t){
+  const g = DATA.glossary;
+  return g.find(x => x.term === t) || g.find(x => x.term.startsWith(t)) || g.find(x => x.term.includes(t))
+    || DATA.acronyms.find(a => a.acronym === t || a.acronym.split('/').map(s=>s.trim()).includes(t));
+}
+const tip = document.getElementById('tip');
+function bindTermChips(root){
+  root.querySelectorAll('.termchip').forEach(ch => {
+    ch.addEventListener('mouseenter', () => {
+      const hit = findTerm(ch.dataset.term);
+      if (!hit) return;
+      tip.innerHTML = hit.term
+        ? `<div class="tt">${esc(hit.term)}</div>${esc(hit.definition)}`
+        : `<div class="tt">${esc(hit.acronym)}</div>${esc(hit.expansion)}`;
+      tip.style.display = 'block';
+      const r = ch.getBoundingClientRect();
+      tip.style.left = Math.min(r.left, innerWidth - 340) + 'px';
+      tip.style.top = (r.bottom + 6) + 'px';
+    });
+    ch.addEventListener('mouseleave', () => tip.style.display = 'none');
+  });
+}
+
+/* ═══════════════ mermaid ═══════════════ */
+async function renderFlow(el, code){
+  if (!code){ el.style.display = 'none'; return; }
+  if (!mermaidReady){ el.innerHTML = '<pre style="font-size:11px;color:#7d8da3;margin:0;">' + esc(code) + '</pre>'; return; }
+  try {
+    const { svg: out } = await window.mermaid.render('mm' + (++mermaidSeq), code);
+    el.innerHTML = out;
+  } catch { el.innerHTML = '<pre style="font-size:11px;color:#7d8da3;margin:0;">' + esc(code) + '</pre>'; }
+}
+
+/* ═══════════════ side panel views ═══════════════ */
+const panel = document.getElementById('panel');
+
+function renderHome(){
+  selected = null; markDirty();
+  const s = { shipped:0, beta:0, planned:0 };
+  DATA.features.forEach(f => s[f.status]++);
+  panel.innerHTML = `
+    <h2>AR Operations Platform</h2>
+    <p class="body-text" style="color:var(--muted)">${DATA.features.length} features · ${DATA.edges.length} connections ·
+      v${esc(DATA.platformVersion)} — every card on this page is generated live from
+      <code style="font-size:11px">docs/catalog/</code>.</p>
+    <div class="meta">
+      <span class="mchip status-shipped">${s.shipped} shipped</span>
+      <span class="mchip status-beta">${s.beta} beta</span>
+      <span class="mchip status-planned">${s.planned} planned</span>
+    </div>
+    <h3>New here? Start with a trail</h3>
+    ${DATA.trails.map(t => `
+      <div class="trailcard" data-trail="${t.id}">
+        <div class="tname">${esc(t.name)}</div>
+        <div class="tblurb">${esc(t.blurb)}</div>
+        <div class="tcount">${t.steps.length} stops →</div>
+      </div>`).join('')}
+    <h3>Areas</h3>
+    ${DATA.areas.map(a => `
+      <div class="trailcard" data-areacard="${a.id}">
+        <div class="tname"><span class="dot" style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${a.color};margin-right:7px"></span>${esc(a.name)}</div>
+        <div class="tblurb">${esc(a.body.split('. ')[0])}.</div>
+      </div>`).join('')}`;
+  panel.querySelectorAll('[data-trail]').forEach(el => el.onclick = () => startTrail(el.dataset.trail));
+  panel.querySelectorAll('[data-areacard]').forEach(el => el.onclick = () => showArea(el.dataset.areacard));
+  panel.classList.add('open');
+}
+
+function showArea(id){
+  const a = areaById[id]; if (!a) return;
+  selected = null; markDirty();
+  const feats = DATA.features.filter(f => f.area === id);
+  panel.innerHTML = `
+    <h2><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:${a.color};margin-right:8px"></span>${esc(a.name)}</h2>
+    <p class="body-text">${esc(a.body)}</p>
+    <h3>How it flows</h3>
+    <div class="flowbox" id="areaFlow"></div>
+    ${a.wireframe ? `<div class="btnrow"><button class="btn" onclick="location.href='/wireframe'">Open in App Wireframe →</button></div>` : ''}
+    <h3>${feats.length} features</h3>
+    ${feats.map(f => `<span class="deplink" data-go="${f.id}">${esc(f.name)}</span>`).join('')}
+    <div class="btnrow"><button class="btn" id="backHome">← Overview</button></div>`;
+  renderFlow(panel.querySelector('#areaFlow'), a.flow);
+  panel.querySelectorAll('[data-go]').forEach(el => el.onclick = () => selectFeature(el.dataset.go));
+  panel.querySelector('#backHome').onclick = renderHome;
+  panel.classList.add('open');
+}
+
+function selectFeature(id){
+  selected = id; markDirty();
+  showFeature(id);
+}
+
+function showFeature(id){
+  const f = byId[id]; if (!f) return;
+  const a = areaById[f.area];
+  const deps = f.depends.map(d => byId[d]).filter(Boolean);
+  const usedBy = edges.filter(e => e.s.id === id).map(e => e.t);
+  const flow = f.flow || a.flow;
+  panel.innerHTML = `
+    <h2>${esc(f.name)}</h2>
+    <div class="meta">
+      <span class="mchip" style="color:${a.color};border-color:${a.color}55">${esc(a.name)}</span>
+      <span class="mchip status-${f.status}">${f.status}</span>
+      <span class="mchip">${f.version === 'baseline' ? 'baseline' : 'v' + esc(f.version)}</span>
+    </div>
+    <p class="body-text">${esc(f.body)}</p>
+    ${f.terms.length ? `<h3>Dictionary</h3>${f.terms.map(t =>
+      `<span class="termchip" data-term="${esc(t)}">${esc(t)}</span>`).join('')}` : ''}
+    <h3>How it flows ${f.flow ? '' : `<span style="text-transform:none;letter-spacing:0">(${esc(a.name)} area)</span>`}</h3>
+    <div class="flowbox" id="featFlow"></div>
+    ${deps.length ? `<h3>Builds on</h3>${deps.map(d =>
+      `<span class="deplink" data-go="${d.id}">${esc(d.name)}</span>`).join('')}` : ''}
+    ${usedBy.length ? `<h3>Used by</h3>${usedBy.map(d =>
+      `<span class="deplink" data-go="${d.id}">${esc(d.name)}</span>`).join('')}` : ''}
+    <div class="btnrow">
+      <button class="btn primary" id="specBtn">Read the spec ↓</button>
+      ${f.wireframe ? `<button class="btn" onclick="location.href='/wireframe'">App Wireframe</button>` : ''}
+      <button class="btn" id="backHome">← Overview</button>
+    </div>
+    <div id="specBox"><div style="font-size:11px;color:var(--muted);margin-bottom:8px">${esc(f.spec)}</div><div class="md" id="specMd">Loading…</div></div>`;
+  renderFlow(panel.querySelector('#featFlow'), flow);
+  bindTermChips(panel);
+  panel.querySelectorAll('[data-go]').forEach(el => el.onclick = () => selectFeature(el.dataset.go));
+  panel.querySelector('#backHome').onclick = renderHome;
+  panel.querySelector('#specBtn').onclick = async () => {
+    const box = panel.querySelector('#specBox');
+    if (box.style.display === 'block'){ box.style.display = 'none'; return; }
+    box.style.display = 'block';
+    try {
+      const r = await fetch('/catalog/doc/' + encodeURIComponent(id));
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error);
+      const md = panel.querySelector('#specMd');
+      md.innerHTML = markedReady ? window.marked.parse(j.markdown)
+        : '<pre style="white-space:pre-wrap;font-size:11.5px">' + esc(j.markdown) + '</pre>';
+    } catch (e) { panel.querySelector('#specMd').textContent = 'Spec unavailable: ' + e.message; }
+  };
+  panel.classList.add('open');
+  panel.scrollTop = 0;
+}
+
+/* ═══════════════ trails ═══════════════ */
+function startTrail(id){
+  trail = DATA.trails.find(t => t.id === id); if (!trail) return;
+  trailIdx = 0;
+  document.getElementById('trailBar').style.display = 'flex';
+  document.getElementById('trailName').textContent = trail.name;
+  markDirty();
+  updateTrail();
+}
+function updateTrail(){
+  document.getElementById('trailStep').textContent = `stop ${trailIdx+1} of ${trail.steps.length}`;
+  selectFeature(trail.steps[trailIdx]);
+}
+document.getElementById('trailNext').onclick = () => { if (trail && trailIdx < trail.steps.length-1){ trailIdx++; updateTrail(); } };
+document.getElementById('trailPrev').onclick = () => { if (trail && trailIdx > 0){ trailIdx--; updateTrail(); } };
+document.getElementById('trailExit').onclick = () => { trail = null; markDirty(); document.getElementById('trailBar').style.display = 'none'; renderHome(); };
+
+boot();
+</script>
+</body>
+</html>

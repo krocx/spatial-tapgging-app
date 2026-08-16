@@ -79,11 +79,15 @@ COPY sib/portal/ ./sib/portal/
 # frontend build step is needed inside the image.
 COPY sib/roadmap/ ./sib/roadmap/
 
-# Roadmap dictionary — served at GET /mindmap/glossary.
-COPY docs/roadmap-glossary.md ./docs/roadmap-glossary.md
-
-# App wireframe — served at GET /wireframe (linked from the home page).
+# Docs the server serves at runtime (.dockerignore whitelists exactly these):
+#   docs/*.md            → /mindmap/glossary + /catalog/doc/:id spec deep-dives
+#   docs/catalog/        → /catalog/data (the feature-catalogue source files)
+#   APP-WIREFRAME.html   → /wireframe
+#   README.md            → catalogue specs that point at ../README.md
+COPY docs/*.md ./docs/
+COPY docs/catalog/ ./docs/catalog/
 COPY docs/APP-WIREFRAME.html ./docs/APP-WIREFRAME.html
+COPY README.md ./README.md
 
 # Persistent data directory — mount a Render disk at /data.
 # SIB writes anchor/tag data here so it survives container restarts and redeploys.

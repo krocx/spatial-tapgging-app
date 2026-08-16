@@ -1,5 +1,11 @@
 # Feature Catalog — AR Operations Platform
 
+> **This table is now a human-readable VIEW.** The canonical, machine-readable
+> source is [docs/catalog/](catalog/README.md) — one YAML-frontmatter file per
+> feature, rendered live at `/catalog`. When a feature ships or changes, update
+> its `docs/catalog/<id>.md` file **and** the row here in the same commit; the
+> drift checker treats disagreement between the two as a build failure.
+
 The canonical index of everything the platform does. One row per capability, with a
 status and a link to the deep documentation. **Update the relevant row in the same
 commit that ships or changes a feature** — that rule is what keeps this document
@@ -122,6 +128,7 @@ the linked docs are the single source of truth.
 | Guide import (xlsx/JSON) with preview | Excel template + header-flexible parse, pre-import validation preview, post-import jump-and-flash to the new guide | Shipped | 2026.4.42 | — |
 | Guide move-to-anchor | Reassign a guide (and steps) to another anchor; placement cleared, guide unpublished until re-placed | Shipped | 2026.4.42 | — |
 | SIB home page | Landing at / with cards for Portal, Roadmap/Procedure Designer, App Wireframe (/wireframe); live status + version | Shipped | 2026.4.42 | — |
+| Visual Feature Catalogue | /catalog — connected graph of all features generated live from docs/catalog/ frontmatter: flows, dependencies, glossary hovers, role trails, spec deep-dives; drift-checked via `npm run catalog:check` | Shipped | 2026.4.42 | [catalog/README](catalog/README.md) |
 
 ## 7. Platform foundations
 

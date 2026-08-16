@@ -78,6 +78,17 @@ Each term below is a technical capability on the roadmap or a foundation it stan
 
 ---
 
+## iLOTO — Lockout/Tagout
+
+- **LOTO — Lockout/Tagout** ✅ — the OSHA 29 CFR 1910.147 procedure for controlling hazardous energy during service: isolate the energy source, apply a personal lock and tag, verify, work, remove. iLOTO is the platform's spatial implementation — the app records; the physical lock protects.
+- **Energy Isolation Point** ✅ — a breaker, switch or valve where energy is cut, marked in AR on the control panel. Yellow **Safe Off** points mark out-of-service isolation on breakers; red **LOTO** points mark personal lockout on switches.
+- **Try Test** ✅ — the mandatory verification step of a LOTO apply: after locking, attempt to start the equipment and confirm it does not respond. The server refuses to record an apply without it.
+- **One Lock, One Person** ✅ — only the person who applied a lock may remove it; the server rejects any other removal. The one exception is the supervisor override, recorded as its own event type.
+- **Supervisor Override** ✅ — the OSHA-exception removal path: three explicit confirmations, a supervisor identity and a written reason, appended to the audit log and pinned first in every review surface.
+- **LOTO Certification** ✅ — an expiring credential issued by passing the in-app OSHA 1910.147 training quiz (server-graded). Applying or removing a lock requires a valid certification; the portal manages the question bank.
+
+---
+
 ## Acronym Quick Reference
 
 | Acronym | Expansion |

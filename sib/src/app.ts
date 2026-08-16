@@ -16,6 +16,7 @@ import tagGroupRouter from './routes/tag-groups.js';
 import modelRouter from './routes/models.js';
 import mindmapRouter from './routes/mindmap.routes.js';
 import lotoRouter from './routes/loto.js';
+import catalogRouter from './routes/catalog.js';
 import { apiKeyAuth } from './middleware/auth.js';
 // NOT from @spatial/shared: that package is types-only at runtime — its exports
 // point at .ts source, which a compiled server cannot load. See sib/src/version.ts.
@@ -76,6 +77,11 @@ export function createApp(): express.Express {
     }
     res.sendFile(hit);
   });
+
+  // --- Feature Catalogue (no auth — read-only docs surface, like /wireframe) ---
+  // GET /catalog/data     → JSON graph of docs/catalog/ (also the AI-grounding feed)
+  // GET /catalog/doc/:id  → deep-dive spec markdown for a feature
+  app.use('/catalog', catalogRouter);
 
   // --- Anchor Directory portal (no auth — team members enter their own API key) ---
   // Served at /portal — a browser-based anchor browser + QR generator.
