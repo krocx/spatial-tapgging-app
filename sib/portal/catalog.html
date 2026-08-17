@@ -137,6 +137,11 @@ header h1 a{color:var(--text);text-decoration:none;}
 
 /* graph text */
 text.nlabel{font-size:9.5px;fill:#b8c4d6;pointer-events:none;}
+/* "Alive" breathing: pure CSS, so the idle render loop stays idle and the
+   hit area travels with the node — ±1.5px against a 16px target never
+   affects clicking. Two directions + varied duration/delay = organic. */
+@keyframes breatheA{from{transform:translate(0,0)}to{transform:translate(1.5px,-1.2px)}}
+@keyframes breatheB{from{transform:translate(0,0)}to{transform:translate(-1.3px,1.5px)}}
 text.albl{font-size:12px;font-weight:800;pointer-events:none;opacity:.8;}
 .trailbadge{font-size:9px;font-weight:800;fill:#fff;pointer-events:none;}
 @media (max-width:800px){ #panel{max-width:none;width:100%;position:absolute;inset:0;z-index:10;display:none;}
@@ -306,12 +311,13 @@ function tick(){
 }
 function startSim(){
   alpha = 1;
-  // Pre-settle SYNCHRONOUSLY before the first paint. Letting the layout
-  // converge live meant ~13 s of drifting nodes — users clicked where a node
-  // WAS, hit the background, and thought selection was broken (reported on
-  // Windows; really just "clicked early"). 600 ticks ≈ a few ms for 64 nodes,
-  // and the graph appears already stationary.
-  for (let i = 0; i < 600; i++) tick();
+  // Pre-settle SYNCHRONOUSLY before the first paint — but only ~90% of the
+  // way. The page opens with a few seconds of gentle, REAL settling (the
+  // launch animation people liked) while movement stays small enough that
+  // the 16 px hit areas + 5 px click dead-zone keep selection reliable.
+  // (Fully live convergence was ~13 s of fast drift — clicks landed where a
+  // node WAS; fully pre-settled was reliable but static.)
+  for (let i = 0; i < 300; i++) tick();
   dirty = true;
   requestAnimationFrame(function loop(){
     if (alpha > 0.02){ tick(); dirty = true; }   // drag reheats simulate briefly…
@@ -380,7 +386,9 @@ function draw(){
     }
     // The transparent circle is the HIT AREA — nodes are visually 8 px but
     // clickable at 16 px, which matters for precise mice and small trackpads.
-    out += `<g opacity="${op}" data-id="${nd.id}" style="cursor:pointer">
+    const bi = nd.id.length + nd.id.charCodeAt(0);            // stable per-node variation
+    const breathe = `animation:${bi % 2 ? 'breatheA' : 'breatheB'} ${3.2 + (bi % 5) * 0.6}s ease-in-out ${(bi % 7) * 0.4}s infinite alternate`;
+    out += `<g opacity="${op}" data-id="${nd.id}" style="cursor:pointer;${breathe}">
       <circle cx="${nd.x}" cy="${nd.y}" r="${r + 8}" fill="transparent"/>${sel}${shape}
       <text class="nlabel" x="${nd.x}" y="${nd.y + r + 11}" text-anchor="middle">${esc(nd.name.length > 26 ? nd.name.slice(0,25)+'…' : nd.name)}</text>${badge}</g>`;
   }
