@@ -8,6 +8,16 @@ depends: [inspection-sessions, resolution-tracking, evidence-signoff]
 terms: [Evidence Capture]
 spec: SERVER-REFERENCE.md
 wireframe: portal
+arch: |
+  flowchart LR
+    subgraph Portal["Portal (single-file index.html)"]
+      T["Sessions / Gemba / AR Guides tabs"] --> F["apiFetch with X-API-Key"]
+      T --> LB["Evidence blob cache + openLightbox"]
+      T --> CSV["downloadCSV - client-side"]
+    end
+    F --> R1["GET /sessions + evidence"]
+    F --> R2["GET /loc-tags"]
+    F --> R3["GET /guide-sessions + per-step evidence"]
 ---
 Full history of every inspection session, Gemba walk and guided procedure — grouped,
 with evidence photos in a lightbox and CSV export. The review side of everything the

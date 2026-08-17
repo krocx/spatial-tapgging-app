@@ -8,6 +8,14 @@ depends: [procedure-maps, model-library]
 terms: [AR Work Instructions]
 spec: PROCEDURE-DESIGNER.md
 wireframe: procdes
+arch: |
+  flowchart LR
+    INSP["Inspector procedure section on a canvas node"] --> F["voice, optional toggle, image, model + scale"]
+    F --> IMGUP["POST /mindmap/step-images - content-addressed designer store"]
+    F --> SAVE["POST /mindmap/save - sanitizers preserve the fields"]
+    SAVE --> COMP["procedure/compiler.ts carries content into steps"]
+    COMP --> ING["Ingest copies images into the guide at export"]
+    BLUR["Fields commit on blur AND unmount - Saved tick"] -.-> SAVE
 ---
 Voice script, optional-step toggle, reference images (content-addressed designer
 store, copied into the guide at export) and 3D model assignment with scale — all

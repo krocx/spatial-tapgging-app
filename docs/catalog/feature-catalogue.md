@@ -7,6 +7,13 @@ version: 2026.4.42
 depends: [home-page, versioning]
 terms: [SIB]
 spec: catalog/README.md
+arch: |
+  flowchart LR
+    MD["docs/catalog/*.md - YAML frontmatter, canonical source"] --> CORE["catalog-core.ts buildCatalog - validates + derives graph"]
+    CORE --> DATA["GET /catalog/data - features, edges, trails, glossary (AI-grounding feed)"]
+    DATA --> UI["catalog.html - force graph, cards, mermaid, lightbox"]
+    MD --> DOC["GET /catalog/doc/:id - spec markdown in place"]
+    CHK["npm run catalog:check - same rules, fails CI on drift"] -.-> MD
 ---
 This surface: docs/catalog/ holds one YAML-frontmatter file per feature, and
 GET /catalog renders them as a connected graph — flows, dependencies, role trails

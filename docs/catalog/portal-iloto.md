@@ -8,6 +8,16 @@ depends: [loto-event-log, loto-training]
 terms: [LOTO, Supervisor Override, Certification]
 spec: ILOTO.md
 wireframe: portal
+arch: |
+  flowchart LR
+    subgraph Portal["Portal iLOTO tab (read-only by design)"]
+      B["Status board"] --> S["GET /loto/status"]
+      A["Audit trail - overrides pinned first"] --> E["GET /loto/events + evidence lightbox"]
+      C["Cert registry"] --> CT["GET /loto/certifications"]
+      CSV["Client-side CSV export"]
+    end
+    Q["Training questions editor"] --> QA["GET /loto/quiz/admin + POST /loto/quiz/import (atomic)"]
+    NOTE["No portal route can write an event - the log is append-only from the field"] -.-> E
 ---
 The EHS review surface: a live status board per control panel (per-point state,
 owner, serial), the audit trail with override events pinned first and evidence

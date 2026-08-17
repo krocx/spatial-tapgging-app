@@ -8,6 +8,18 @@ depends: [iloto-anchors, loto-event-log, loto-training]
 terms: [LOTO, Try Test, ARWorldMap]
 spec: ILOTO.md
 wireframe: iloto
+arch: |
+  sequenceDiagram
+    participant U as User (iOS)
+    participant G as LotoARGateFlow -> QRScanGateView
+    participant W as Worldmap (local -> SIB -> fresh)
+    participant E as POST /loto/events
+    U->>G: Every iLOTO AR surface starts here - no exceptions
+    G->>G: Panel QR scan locks the session origin
+    G->>W: Relocalize markers into position
+    U->>E: Ordered checklist flow - notify, shutdown, lock, photo, try test, serial
+    E-->>U: 4xx rule violations surface verbatim
+    Note over G: Author exit re-saves the worldmap for the next session
 ---
 Every iLOTO AR surface starts with the mandatory panel-QR scan (origin lock, then
 worldmap relocalization) — the scan at the panel IS the you-are-here confirmation.

@@ -8,6 +8,14 @@ depends: [spatial-steps]
 terms: [AR Work Instructions, Author Mode]
 spec: PROCEDURE-DESIGNER.md
 wireframe: arguides
+arch: |
+  flowchart LR
+    NEW["Guide created (editor, import, or procedure export)"] --> DRAFT["draft - invisible to operators"]
+    DRAFT --> PLACE["Each step placed in AR - isPlaced per step"]
+    PLACE --> PUB["Publish via PATCH /guides/:id"]
+    PUB --> OP["GuideListView shows published guides only"]
+    MOVE["Move to another anchor"] -.clears placement.-> DRAFT
+    RESYNC["Canvas re-sync"] -.updates content only.-> PUB
 ---
 Guides are invisible to operators until every step is placed in AR and the guide is
 explicitly published. Half-authored content can never leak onto the floor; moving a
