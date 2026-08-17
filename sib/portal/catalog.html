@@ -304,11 +304,21 @@ function tick(){
   }
   alpha *= 0.995;
 }
-function startSim(){ alpha = 1; requestAnimationFrame(function loop(){
-  if (alpha > 0.02){ tick(); dirty = true; }   // simulate until settled…
-  if (dirty){ draw(); dirty = false; }         // …then redraw only on interaction
-  requestAnimationFrame(loop);
-}); }
+function startSim(){
+  alpha = 1;
+  // Pre-settle SYNCHRONOUSLY before the first paint. Letting the layout
+  // converge live meant ~13 s of drifting nodes — users clicked where a node
+  // WAS, hit the background, and thought selection was broken (reported on
+  // Windows; really just "clicked early"). 600 ticks ≈ a few ms for 64 nodes,
+  // and the graph appears already stationary.
+  for (let i = 0; i < 600; i++) tick();
+  dirty = true;
+  requestAnimationFrame(function loop(){
+    if (alpha > 0.02){ tick(); dirty = true; }   // drag reheats simulate briefly…
+    if (dirty){ draw(); dirty = false; }         // …then redraw only on interaction
+    requestAnimationFrame(loop);
+  });
+}
 function reheat(){ alpha = Math.max(alpha, 0.5); dirty = true; }
 
 /* ═══════════════ drawing ═══════════════ */
