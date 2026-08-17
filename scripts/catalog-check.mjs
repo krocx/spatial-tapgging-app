@@ -67,6 +67,17 @@ for (const f of data.features) {
   if (f.arch && !/^(sequenceDiagram|flowchart)/m.test(f.arch)) {
     errs.push(`${f.id}: arch is not a mermaid sequenceDiagram/flowchart`);
   }
+  // Mermaid treats ';' as a statement separator — an unquoted semicolon in any
+  // diagram line is a guaranteed "Syntax error in text" at render time.
+  // (Real incident: "ARKit relocalizes; fresh map only as last resort".)
+  for (const [kind, code] of [['flow', f.flow], ['arch', f.arch]]) {
+    if (!code) continue;
+    for (const line of code.split('\n')) {
+      if (line.replace(/"[^"]*"/g, '').includes(';')) {
+        errs.push(`${f.id}: unquoted ';' breaks mermaid in ${kind}: "${line.trim()}"`);
+      }
+    }
+  }
 }
 for (const a of data.areas) {
   if (!/flowchart/.test(a.flow)) errs.push(`area ${a.id}: flow is not a mermaid flowchart`);

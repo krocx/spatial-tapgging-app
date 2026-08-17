@@ -20,7 +20,7 @@ arch: |
     G->>C: Downsample, then encrypt each frame (key never leaves device)
     C->>S: Upload PASS set (and FAIL set for dual-state tags)
     S->>St: Persist encrypted references per tag + calibration data
-    S-->>A: Trained; comparator warm-up runs in background
+    S-->>A: Trained - comparator warm-up runs in background
 ---
 Guided reference capture: a 19-zone cone dome or 7-point honeycomb hemisphere walks
 the author around the feature, recording angles with depth metadata. Tags are trained

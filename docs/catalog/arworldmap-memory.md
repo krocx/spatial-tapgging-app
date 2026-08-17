@@ -21,7 +21,7 @@ arch: |
     alt local miss
       D->>S: GET /worldmap/:anchorId - download shared map
     end
-    D->>D: ARKit relocalizes; fresh map only as last resort
+    D->>D: ARKit relocalizes - fresh map only as last resort
     S-->>D: GET /worldmap/:anchorId/reference-photo - author viewpoint card
 ---
 Apple's saved "memory of a space": the device recognises a previously-mapped area and

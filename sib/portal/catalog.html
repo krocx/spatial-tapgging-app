@@ -189,6 +189,7 @@ async function boot(){
   // Renderers load in the background; cards fall back to <pre> until ready.
   loadScript('https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js')
     .then(() => { window.mermaid.initialize({ startOnLoad:false, theme:'dark', securityLevel:'loose',
+      suppressErrorRendering:true, // a bad diagram falls back to <pre>; never bomb-icons the page
       themeVariables:{ darkMode:true, background:'#111a2e', primaryColor:'#1a2540', lineColor:'#7d8da3' } });
       mermaidReady = true; if (selected) showFeature(selected); })
     .catch(() => {});

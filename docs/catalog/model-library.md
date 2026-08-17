@@ -10,21 +10,23 @@ spec: ../README.md
 wireframe: portal
 arch: |
   flowchart LR
-    subgraph Portal
+    subgraph Portal["Portal (browser)"]
       UP["Upload model"] --> FMT{"Format?"}
-      FMT -->|GLB / USDZ| PASS["Store as-is"]
-      FMT -->|OBJ / FBX / STEP| BL["Headless Blender convert (where present)"]
-      GLB2["Three.js USDZExporter in browser"] -->|"PUT /models/:id/file.usdz"| ST
+      FMT -->|USDZ| PASS["Store as-is - usdzStatus: ready"]
+      FMT -->|GLB| CONV["In-browser GLB to USDZ: Three.js GLTFLoader + USDZExporter"]
+      FMT -->|OBJ / FBX / STEP| BL["Headless Blender convert to GLB (where present)"]
+      BL --> CONV
+      CONV -->|"auto-upload PUT /models/:id/file.usdz"| ST
     end
     subgraph SIB["SIB routes/models.ts"]
-      PASS --> ST[("Model store + usdzStatus")]
-      BL --> ST
-      KIT["POST /models/:id/kit - assign to anchor, or mark general"]
+      PASS --> ST[("Model store: file.glb + file.usdz + usdzStatus")]
+      KIT["POST /models/:id/kit - assign to anchor kit, or mark general"]
     end
     subgraph iOS
-      DL["GET /models/:id/file.usdz (preferred) or file.glb"] --> SCN["SceneKit node at defaultScale"]
+      DL["SIBClient downloads USDZ (preferred), GLB fallback"] --> SCN["SceneKit node at author defaultScale"]
     end
     ST --> DL
+    ST -.usdzStatus gates Preview.-> DL
 ---
 A shared library of AR-ready models: GLB/USDZ pass through natively, OBJ/FBX/STEP
 convert via headless Blender where present, and GLB→USDZ runs in the browser

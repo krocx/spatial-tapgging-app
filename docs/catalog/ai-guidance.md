@@ -18,7 +18,7 @@ arch: |
     A->>Q: Enqueue hint for the step
     O->>Q: GET /guide-sessions/live/:id/hints
     Q-->>O: Hint delivered once, then consumed
-    Note over O: Stale hints discarded at poll; auto-dismissed when the step completes
+    Note over O: Stale hints discarded at poll and auto-dismissed when the step completes
 ---
 An adapter watches the live session stream and decides when to help; hints are
 delivered through a consume-once queue and auto-dismissed when their step completes.
