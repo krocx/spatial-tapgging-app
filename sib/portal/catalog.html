@@ -113,6 +113,28 @@ header h1 a{color:var(--text);text-decoration:none;}
   box-shadow:0 8px 30px rgba(0,0,0,.5);}
 #tip .tt{font-weight:700;color:#93c5fd;margin-bottom:3px;}
 
+/* ── Ask SIB drawer ── */
+#askDrawer{position:fixed;top:0;right:0;bottom:0;width:min(430px,94vw);background:var(--panel2);
+  border-left:1px solid var(--border);z-index:60;display:flex;flex-direction:column;
+  transform:translateX(102%);transition:transform .22s ease;box-shadow:-12px 0 40px rgba(0,0,0,.45);}
+#askDrawer.open{transform:none;}
+#askDrawer .ahdr{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--border);}
+#askDrawer .ahdr h2{font-size:15px;margin:0;flex:1;}
+#askDrawer .atier{font-size:10.5px;color:var(--muted);}
+#askBody{flex:1;overflow-y:auto;padding:14px 16px;font-size:13px;line-height:1.6;}
+#askBody .aq{color:var(--muted);font-size:12px;margin:14px 0 4px;}
+#askBody .aa{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px 14px;}
+#askBody .aa code{background:var(--chip);padding:1px 5px;border-radius:4px;font-size:11.5px;}
+#askBody .anote{font-size:11.5px;color:#fbbf24;margin-top:6px;}
+#askBody .asrc{margin-top:8px;}
+#askForm{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border);}
+#askInput{flex:1;background:var(--panel);border:1px solid var(--border);border-radius:9px;
+  color:var(--text);padding:9px 12px;font-size:13px;outline:none;}
+#askInput:focus{border-color:var(--accent);}
+.askchip{display:inline-block;font-size:11.5px;padding:3px 9px;margin:0 5px 6px 0;border-radius:8px;
+  background:var(--panel);border:1px solid var(--border);color:#93c5fd;cursor:pointer;}
+.askchip:hover{border-color:var(--accent);}
+
 /* graph text */
 text.nlabel{font-size:9.5px;fill:#b8c4d6;pointer-events:none;}
 text.albl{font-size:12px;font-weight:800;pointer-events:none;opacity:.8;}
@@ -131,6 +153,7 @@ text.albl{font-size:12px;font-weight:800;pointer-events:none;opacity:.8;}
     <span><svg width="14" height="12"><circle cx="7" cy="6" r="5" fill="#3b82f6" fill-opacity=".25" stroke="#3b82f6" stroke-width="1.6"/></svg> beta</span>
     <span><svg width="14" height="12"><circle cx="7" cy="6" r="5" fill="none" stroke="#3b82f6" stroke-width="1.4" stroke-dasharray="3 2"/></svg> planned</span>
   </div>
+  <button class="btn primary" style="padding:6px 13px" onclick="askOpen()">💬 Ask SIB</button>
   <div class="hlinks"><a href="/portal">Portal</a><a href="/roadmap">Roadmap</a><a href="/wireframe">Wireframe</a></div>
 </header>
 <div id="trailBar">
@@ -148,6 +171,24 @@ text.albl{font-size:12px;font-weight:800;pointer-events:none;opacity:.8;}
   <div id="panel"></div>
 </div>
 <div id="tip"></div>
+<div id="askDrawer">
+  <div class="ahdr">
+    <h2>💬 Ask SIB</h2>
+    <span class="atier" id="askTier">docs search</span>
+    <button class="btn" onclick="askClose()">✕</button>
+  </div>
+  <div id="askBody">
+    <p style="color:var(--muted);font-size:12.5px">Ask anything about the platform — answers come from the
+    Feature Catalogue and the dictionary, with the features cited so you can jump straight to the card.
+    Try: <span class="askchip" onclick="askPreset(this)">How does LOTO removal get enforced?</span>
+    <span class="askchip" onclick="askPreset(this)">What happens when I import an xlsx guide?</span>
+    <span class="askchip" onclick="askPreset(this)">How are 3D models converted for AR?</span></p>
+  </div>
+  <form id="askForm" onsubmit="askSubmit(event)">
+    <input id="askInput" type="text" maxlength="500" placeholder="Ask the docs…" autocomplete="off">
+    <button class="btn primary" type="submit">Ask</button>
+  </form>
+</div>
 <div id="flowModal">
   <div class="fmtitle" id="fmTitle"></div>
   <div class="fmbody" id="fmBody"></div>
@@ -209,6 +250,7 @@ async function boot(){
 function applyHash(){
   const id = decodeURIComponent(location.hash.slice(1));
   if (!id) return;
+  if (id === 'ask') { askOpen(); return; }
   if (byId[id]) { if (selected !== id) selectFeature(id); }
   else if (areaById[id]) showArea(id);
 }
@@ -583,6 +625,56 @@ function updateTrail(){
 document.getElementById('trailNext').onclick = () => { if (trail && trailIdx < trail.steps.length-1){ trailIdx++; updateTrail(); } };
 document.getElementById('trailPrev').onclick = () => { if (trail && trailIdx > 0){ trailIdx--; updateTrail(); } };
 document.getElementById('trailExit').onclick = () => { trail = null; markDirty(); document.getElementById('trailBar').style.display = 'none'; renderHome(); };
+
+/* ═══════════════ Ask SIB ═══════════════ */
+let askGen = false;
+fetch('/ask/config').then(r=>r.json()).then(c=>{
+  askGen = !!c.generation;
+  document.getElementById('askTier').textContent = askGen ? ('model: ' + c.model) : 'docs search (no model configured)';
+}).catch(()=>{});
+function askOpen(){ document.getElementById('askDrawer').classList.add('open'); document.getElementById('askInput').focus(); }
+function askClose(){ document.getElementById('askDrawer').classList.remove('open'); }
+function askPreset(el){ document.getElementById('askInput').value = el.textContent; askSubmit(); }
+function askSourceChips(sources){
+  if (!sources.length) return '';
+  return '<div class="asrc">' + sources.map(s =>
+    `<span class="askchip" onclick="selectFeature('${esc(s.id)}')">${esc(s.name)}</span>`).join('') + '</div>';
+}
+async function askSubmit(ev){
+  if (ev) ev.preventDefault();
+  const input = document.getElementById('askInput');
+  const q = input.value.trim();
+  if (!q) return;
+  input.value = '';
+  const body = document.getElementById('askBody');
+  body.insertAdjacentHTML('beforeend', `<div class="aq">You asked</div><div class="aa">${esc(q)}</div>
+    <div class="aq">Ask SIB</div><div class="aa" id="askPending">Thinking…</div>`);
+  body.scrollTop = body.scrollHeight;
+  try {
+    const r = await fetch('/ask', { method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ question: q }) });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || r.statusText);
+    const box = document.getElementById('askPending');
+    box.removeAttribute('id');
+    if (j.tier === 'generation' && j.answer){
+      box.innerHTML = (markedReady ? window.marked.parse(j.answer) : esc(j.answer)) + askSourceChips(j.sources);
+    } else if (j.sources.length){
+      box.innerHTML = '<div style="color:var(--muted);font-size:12px;margin-bottom:6px">Best matches from the docs:</div>'
+        + j.sources.map(sr => `<div style="margin-bottom:8px"><span class="askchip" onclick="selectFeature('${esc(sr.id)}')">${esc(sr.name)}</span>
+           <div style="font-size:12px;color:var(--muted)">${esc(sr.excerpt)}</div></div>`).join('')
+        + (j.glossary.length ? '<div style="color:var(--muted);font-size:12px;margin:6px 0 4px">Dictionary:</div>'
+          + j.glossary.map(g => `<div style="font-size:12px"><strong style="color:#93c5fd">${esc(g.term)}</strong> — ${esc(g.definition)}</div>`).join('') : '')
+        + (j.note ? `<div class="anote">${esc(j.note)}</div>` : '');
+    } else {
+      box.textContent = "That's not in my docs. Try naming a feature, area or dictionary term — or browse the graph.";
+    }
+  } catch (e) {
+    const box = document.getElementById('askPending');
+    if (box){ box.removeAttribute('id'); box.innerHTML = '<span style="color:#ef4444">' + esc(e.message) + '</span>'; }
+  }
+  body.scrollTop = body.scrollHeight;
+}
 
 boot();
 </script>

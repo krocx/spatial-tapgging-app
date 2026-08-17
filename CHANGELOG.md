@@ -7,6 +7,14 @@ it, it gets a line.
 ## 2026.4.42 — 2026-08-11
 
 ### Added
+- **Ask SIB** (beta) — a docs-grounded assistant: 💬 drawer on /catalog (and a
+  home card) answering questions strictly from the Feature Catalogue and the
+  dictionary, with cited features as permalink chips. Two tiers: retrieval
+  (keyword-ranked sources + definitions — works on every deployment) and
+  generation via any **OpenAI-compatible local model endpoint** — llama.cpp's
+  llama-server or Ollama, chosen by `ASK_LLM_URL`/`ASK_LLM_MODEL` env vars, no
+  code change. Public but rate-limited; grounding carries no site data; a down
+  model degrades to retrieval with a note, never a hard failure.
 - **Portal pilot-hardening**: (1) **Admin gate** — set `SIB_ADMIN_KEY` and every
   destructive action (all DELETEs, the LOTO quiz editor) requires unlocking
   🔒 Admin in the portal header; the server refuses without `X-Admin-Key`

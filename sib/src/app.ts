@@ -17,6 +17,7 @@ import modelRouter from './routes/models.js';
 import mindmapRouter from './routes/mindmap.routes.js';
 import lotoRouter, { lotoPointStore, lotoEventStore } from './routes/loto.js';
 import catalogRouter from './routes/catalog.js';
+import askRouter from './routes/ask.js';
 import { sessionStore } from './routes/sessions.js';
 import { locTagStore, locTagCompletionStore } from './routes/loc-tags.js';
 import { derivePointStatus } from './loto/loto-core.js';
@@ -125,6 +126,10 @@ export function createApp(): express.Express {
   // GET /catalog/data     → JSON graph of docs/catalog/ (also the AI-grounding feed)
   // GET /catalog/doc/:id  → deep-dive spec markdown for a feature
   app.use('/catalog', catalogRouter);
+
+  // --- Ask SIB (no auth — docs-grounded assistant; grounding is the catalogue
+  // ONLY, so nothing sensitive can leak; rate-limited in the router) ---
+  app.use('/ask', askRouter);
 
   // --- Anchor Directory portal (no auth — team members enter their own API key) ---
   // Served at /portal — a browser-based anchor browser + QR generator.

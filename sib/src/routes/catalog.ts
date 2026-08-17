@@ -38,7 +38,7 @@ function resolveDocsDir(): string | null {
   return candidates.find(p => fs.existsSync(path.join(p, 'catalog'))) ?? null;
 }
 
-function readCatalog() {
+export function readCatalog() {
   const docsDir = resolveDocsDir();
   if (!docsDir) return null;
   const catalogDir = path.join(docsDir, 'catalog');
