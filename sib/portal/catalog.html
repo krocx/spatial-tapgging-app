@@ -368,7 +368,10 @@ function draw(){
       badge = `<circle cx="${nd.x+10}" cy="${nd.y-10}" r="7" fill="${num-1===trailIdx?'#f59e0b':'#334155'}"/>
                <text class="trailbadge" x="${nd.x+10}" y="${nd.y-7}" text-anchor="middle">${num}</text>`;
     }
-    out += `<g opacity="${op}" data-id="${nd.id}" style="cursor:pointer">${sel}${shape}
+    // The transparent circle is the HIT AREA — nodes are visually 8 px but
+    // clickable at 16 px, which matters for precise mice and small trackpads.
+    out += `<g opacity="${op}" data-id="${nd.id}" style="cursor:pointer">
+      <circle cx="${nd.x}" cy="${nd.y}" r="${r + 8}" fill="transparent"/>${sel}${shape}
       <text class="nlabel" x="${nd.x}" y="${nd.y + r + 11}" text-anchor="middle">${esc(nd.name.length > 26 ? nd.name.slice(0,25)+'…' : nd.name)}</text>${badge}</g>`;
   }
   out += '</g>';
@@ -384,13 +387,18 @@ function svgPoint(ev){
 }
 svg.addEventListener('pointerdown', ev => {
   const g = ev.target.closest('g[data-id]');
-  if (g){ const nd = byId[g.dataset.id]; drag = { type:'node', nd, moved:false }; nd.fx = nd.x; nd.fy = nd.y; }
+  if (g){ const nd = byId[g.dataset.id]; drag = { type:'node', nd, moved:false, sx: ev.clientX, sy: ev.clientY }; nd.fx = nd.x; nd.fy = nd.y; }
   else drag = { type:'pan', sx: ev.clientX, sy: ev.clientY, ox: view.x, oy: view.y, moved:false };
   svg.setPointerCapture(ev.pointerId); svg.classList.add('dragging');
 });
 svg.addEventListener('pointermove', ev => {
   if (!drag) return;
   if (drag.type === 'node'){
+    // Dead zone: Windows mice emit 1–2 px pointermove jitter between press
+    // and release, which misclassified clicks as drags — the node then never
+    // selected. Only treat it as a drag beyond 5 px of real movement.
+    if (!drag.moved &&
+        Math.abs(ev.clientX - drag.sx) + Math.abs(ev.clientY - drag.sy) <= 5) return;
     const p = svgPoint(ev); drag.nd.fx = p.x; drag.nd.fy = p.y; drag.moved = true; reheat();
   } else {
     const r = svg.getBoundingClientRect();

@@ -7,6 +7,16 @@ it, it gets a line.
 ## 2026.4.42 — 2026-08-11
 
 ### Added
+- **In-AR assist UI (fix + redesign)** — AI hints were fetched and logged but
+  drawn inside the content panel, which is hidden by default: invisible in the
+  field. Assist is now its own overlay layer above the panel in every state —
+  a glanceable ✨ chip that expands into a card with the hint, a Recovery-step
+  button (nextOnFailure), and Replay voice. Stall-triggered hints auto-expand
+  (the operator is stuck); retry hints stay collapsed. One hint at a time, soft
+  haptic on arrival, 30 s per-step cooldown after dismissal, auto-clear on step
+  completion, and a "Hints this session" tray so dismissed hints are
+  recoverable. Server: AIHint gains an optional `trigger` (stall/retry) so the
+  client knows why it fired — backward compatible.
 - **Ask SIB** (beta) — a docs-grounded assistant: 💬 drawer on /catalog (and a
   home card) answering questions strictly from the Feature Catalogue and the
   dictionary, with cited features as permalink chips. Two tiers: retrieval

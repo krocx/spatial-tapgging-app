@@ -901,6 +901,9 @@ export interface AIHint {
   /** Optional navigation action — follows nextOnFailure branch if set. */
   action?:        'navigate' | 'none';
   targetStepId?:  string;   // step to navigate to when action === 'navigate'
+  /** Why the adapter fired: drives assist UX (stall auto-expands the card;
+   *  retry stays as a quiet chip). Optional for backward compatibility. */
+  trigger?:       'stall' | 'retry';
   ts:             string;   // ISO 8601
 }
 

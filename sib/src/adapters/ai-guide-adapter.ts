@@ -89,6 +89,9 @@ export class StubAIGuideAdapter implements AIGuideAdapter {
       liveSessionId: ctx.liveSession.id,
       stepId:        step.id,
       text:          hintText,
+      // Why we fired — iOS auto-expands the assist card on a stall (operator
+      // is stuck) but stays as a quiet chip on a retry (operator is busy).
+      trigger:       ctx.stalled ? 'stall' : 'retry',
       ts:            new Date().toISOString(),
     };
 

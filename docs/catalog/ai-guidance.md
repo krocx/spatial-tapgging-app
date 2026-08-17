@@ -21,6 +21,9 @@ arch: |
     Note over O: Stale hints discarded at poll and auto-dismissed when the step completes
 ---
 An adapter watches the live session stream and decides when to help; hints are
-delivered through a consume-once queue and auto-dismissed when their step completes.
+delivered through a consume-once queue and surface in AR as a glanceable ✨ assist
+chip — auto-expanding into the full card only on a stall (the operator is stuck),
+with recovery-step and replay-voice actions, a session hint tray, and a per-step
+cooldown. Hints auto-dismiss when their step completes.
 Today's adapter is rule-based (retries, stalls); the interface is the point — a
 local model drops in without touching the client.

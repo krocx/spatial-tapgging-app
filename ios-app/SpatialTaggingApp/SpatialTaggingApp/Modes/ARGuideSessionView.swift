@@ -99,8 +99,23 @@ struct ARGuideSessionView: View {
     @State private var liveSessionId: String? = nil
 
     // ── AI hints (Step 3: AI Dynamic Instructions) ────────────────────────────
-    /// The hint currently shown to the Operator; nil = banner hidden.
+    /// The hint currently shown to the Operator; nil = assist hidden.
+    /// FIX: the old banner lived INSIDE GuideContentPanel, which is hidden by
+    /// default (showContentPanel starts false) — hints were fetched and logged
+    /// but rendered inside a panel that wasn't on screen. Assist is now its
+    /// own overlay layer, visible in every panel state.
     @State private var activeHint: AIHint? = nil
+    /// Whether the assist card is expanded (true) or collapsed to the ✨ chip.
+    /// Stall-triggered hints auto-expand — the operator is stuck; retry hints
+    /// stay collapsed so they never pile onto someone mid-recovery.
+    @State private var assistExpanded = false
+    /// Every hint received this session — the assist tray makes dismissed
+    /// hints recoverable instead of gone.
+    @State private var hintHistory: [AIHint] = []
+    @State private var showAssistTray = false
+    /// Guardrail: after a dismissal, no new hint for the same step for 30 s.
+    @State private var lastHintDismissedAt: Date? = nil
+    @State private var lastDismissedStepId: String? = nil
     /// Timer that polls /live/:id/hints every 5 s while a live session is open.
     @State private var hintPollTimer: Timer? = nil
 
@@ -241,6 +256,29 @@ struct ARGuideSessionView: View {
             }
         }
         .task { await loadData() }
+        .sheet(isPresented: $showAssistTray) {
+            NavigationStack {
+                List {
+                    ForEach(hintHistory.reversed()) { h in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(assistReason(h))
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(.secondary)
+                            Text(h.text).font(.subheadline)
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
+                .navigationTitle("Hints this session")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Done") { showAssistTray = false }
+                    }
+                }
+            }
+            .presentationDetents([.medium])
+        }
         .sheet(isPresented: $showSignOff) {
             SessionSignOffView(
                 guide:         guide,
@@ -453,6 +491,16 @@ struct ARGuideSessionView: View {
                 // Bottom 2D panel: full content when arrived, mini nav card en-route
                 VStack {
                     Spacer()
+                    // ── Assist layer — its own overlay, independent of panel state ──
+                    if let hint = activeHint {
+                        if assistExpanded {
+                            assistCard(hint: hint, step: step)
+                                .transition(.move(edge: .bottom).combined(with: .opacity))
+                        } else {
+                            assistChip(hint: hint)
+                                .transition(.opacity)
+                        }
+                    }
                     if showContentPanel || step.worldPosition == nil {
                         GuideContentPanel(
                             step:            step,
@@ -467,7 +515,6 @@ struct ARGuideSessionView: View {
                             canSkip:         !step.completionRequired && !(progress?.isCompleted ?? false),
                             allRequiredDone: allRequiredDone,
                             distanceM:       distanceM,
-                            activeHint:      activeHint,
                             onPrev:          { navigateTo(index: index - 1) },
                             onNext:          { navigateTo(index: index + 1) },
                             onSkip:          { navigateTo(index: index + 1) },
@@ -475,14 +522,7 @@ struct ARGuideSessionView: View {
                             onSpeak:         { toggleSpeech(for: step) },
                             onSignOff:       { showSignOff = true },
                             onEvidence:      { openEvidencePicker(for: index) },
-                            onMinimize:      { showContentPanel = false },
-                            onDismissHint:   { activeHint = nil },
-                            onNavigateHint:  { targetId in
-                                if let idx = sortedSteps.firstIndex(where: { $0.id == targetId }) {
-                                    navigateTo(index: idx)
-                                }
-                                activeHint = nil
-                            }
+                            onMinimize:      { showContentPanel = false }
                         )
                     } else {
                         miniNavCard(step: step, index: index)
@@ -1479,6 +1519,122 @@ struct ARGuideSessionView: View {
         }
     }
 
+    // ── Assist UI (contextual AI help) ────────────────────────────────────────
+    // Chip-first, never blocking: a small ✨ capsule the operator can glance at
+    // and ignore. One hint at a time; the card is one tap away (or auto-opens
+    // on a stall). Everything lives ABOVE the content panel so it is visible
+    // whether the panel is open, minimized, or the step is unplaced.
+
+    private func assistDismiss(hint: AIHint) {
+        lastHintDismissedAt = Date()
+        lastDismissedStepId = hint.stepId
+        withAnimation(.easeOut(duration: 0.2)) {
+            activeHint = nil
+            assistExpanded = false
+        }
+    }
+
+    private func assistReason(_ hint: AIHint) -> String {
+        switch hint.trigger {
+        case "stall": return "This step's been open a while"
+        case "retry": return "That step took a few tries"
+        default:      return "A tip for this step"
+        }
+    }
+
+    @ViewBuilder
+    private func assistChip(hint: AIHint) -> some View {
+        Button {
+            withAnimation(.spring(duration: 0.25)) { assistExpanded = true }
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 13, weight: .semibold))
+                Text(assistReason(hint))
+                    .font(.footnote.weight(.semibold))
+                    .lineLimit(1)
+                Image(systemName: "chevron.up")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 9)
+            .background(.ultraThinMaterial, in: Capsule())
+            .overlay(Capsule().stroke(Color.yellow.opacity(0.5), lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .padding(.bottom, 6)
+    }
+
+    @ViewBuilder
+    private func assistCard(hint: AIHint, step: GuideStep) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: "sparkles")
+                    .foregroundStyle(.yellow)
+                    .font(.system(size: 15, weight: .semibold))
+                Text(assistReason(hint))
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                if hintHistory.count > 1 {
+                    Button { showAssistTray = true } label: {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .font(.system(size: 14))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                }
+                Button { assistDismiss(hint: hint) } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 19))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+            Text(hint.text)
+                .font(.subheadline)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 8) {
+                if hint.action == .navigate, let targetId = hint.targetStepId {
+                    Button {
+                        if let idx = sortedSteps.firstIndex(where: { $0.id == targetId }) {
+                            navigateTo(index: idx)
+                        }
+                        assistDismiss(hint: hint)
+                    } label: {
+                        Label("Recovery step", systemImage: "arrow.uturn.right")
+                            .font(.footnote.bold())
+                            .padding(.horizontal, 12).padding(.vertical, 7)
+                            .background(Color.orange, in: Capsule())
+                            .foregroundStyle(.white)
+                    }
+                    .buttonStyle(.plain)
+                }
+                if step.ttsText?.isEmpty == false {
+                    Button { toggleSpeech(for: step) } label: {
+                        Label("Replay voice", systemImage: "speaker.wave.2")
+                            .font(.footnote.bold())
+                            .padding(.horizontal, 12).padding(.vertical, 7)
+                            .background(Color.indigo.opacity(0.85), in: Capsule())
+                            .foregroundStyle(.white)
+                    }
+                    .buttonStyle(.plain)
+                }
+                Spacer()
+                Button("Got it") { assistDismiss(hint: hint) }
+                    .font(.footnote.bold())
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(14)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.yellow.opacity(0.45), lineWidth: 1))
+        .padding(.horizontal, 16)
+        .padding(.bottom, 6)
+        .onTapGesture { } // swallow taps so the card never falls through to AR
+    }
+
     private func markComplete(at index: Int) {
         guard index < progresses.count else { return }
         progresses[index].complete()
@@ -1488,6 +1644,7 @@ struct ARGuideSessionView: View {
             let completedId = sortedSteps[index].id
             if hint.targetStepId == completedId || hint.stepId == completedId {
                 activeHint = nil
+                assistExpanded = false
             }
         }
         // Push step:completed live event (fire-and-forget)
@@ -1538,7 +1695,17 @@ struct ARGuideSessionView: View {
                 let client = SIBClient(settings: settings)
                 let hints = await client.fetchGuideHints(liveSessionId: liveSessionId)
                 if let first = hints.first, activeHint == nil, !isHintStale(first) {
+                    // Cooldown: a hint for the step the user JUST dismissed a
+                    // hint on, within 30 s, is nagging — drop it.
+                    if let at = lastHintDismissedAt, let dismissedStep = lastDismissedStepId,
+                       first.stepId == dismissedStep, Date().timeIntervalSince(at) < 30 {
+                        return
+                    }
                     activeHint = first
+                    hintHistory.append(first)
+                    // Stall = stuck, open the card. Retry (or legacy nil) = quiet chip.
+                    assistExpanded = (first.trigger == "stall")
+                    UIImpactFeedbackGenerator(style: .soft).impactOccurred()
                 }
             }
         }
@@ -1827,8 +1994,6 @@ struct GuideContentPanel: View {
     let allRequiredDone: Bool
     let distanceM:       Float?
 
-    let activeHint:  AIHint?       // Step 3: AI hint to surface, or nil
-
     let onPrev:          () -> Void
     let onNext:          () -> Void
     let onSkip:          () -> Void
@@ -1837,8 +2002,6 @@ struct GuideContentPanel: View {
     let onSignOff:       () -> Void
     let onEvidence:      () -> Void              // Phase 3
     let onMinimize:      () -> Void              // collapse back to mini nav card
-    let onDismissHint:   () -> Void              // Step 3: dismiss AI hint banner
-    let onNavigateHint:  (String) -> Void        // Step 3: follow nextOnFailure branch
 
     var isCompleted: Bool { progress?.isCompleted ?? false }
     var isLastStep:  Bool { stepNumber == totalSteps }
@@ -1846,47 +2009,6 @@ struct GuideContentPanel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
 
-            // ── AI hint banner (Step 3) ───────────────────────────────────────
-            if let hint = activeHint {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(alignment: .top, spacing: 8) {
-                        Image(systemName: "lightbulb.fill")
-                            .foregroundStyle(.yellow)
-                            .font(.system(size: 14))
-                        Text(hint.text)
-                            .font(.subheadline)
-                            .foregroundStyle(.primary)
-                            .fixedSize(horizontal: false, vertical: true)
-                        Spacer(minLength: 4)
-                        Button(action: onDismissHint) {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundStyle(.secondary)
-                                .font(.system(size: 18))
-                        }
-                    }
-                    if hint.action == .navigate, let targetId = hint.targetStepId {
-                        Button(action: { onNavigateHint(targetId) }) {
-                            Label("Go to recovery step", systemImage: "arrow.right.circle")
-                                .font(.subheadline.bold())
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 14)
-                                .padding(.vertical, 7)
-                                .background(Color.orange)
-                                .clipShape(Capsule())
-                        }
-                    }
-                }
-                .padding(12)
-                .background(Color.yellow.opacity(0.12))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10)
-                        .stroke(Color.yellow.opacity(0.4), lineWidth: 1)
-                )
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-                .padding(.horizontal, 16)
-                .padding(.top, 12)
-                .transition(.move(edge: .top).combined(with: .opacity))
-            }
 
             // ── Step header ───────────────────────────────────────────────────
             HStack(spacing: 10) {

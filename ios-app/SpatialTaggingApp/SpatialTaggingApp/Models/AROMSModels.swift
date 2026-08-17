@@ -442,5 +442,9 @@ struct AIHint: Decodable, Identifiable {
     let text:          String       // guidance shown to the Operator
     let action:        AIHintAction?
     let targetStepId:  String?      // navigate target when action == .navigate
+    /// Why the adapter fired: "stall" (operator stuck — assist card auto-expands)
+    /// or "retry" (operator busy — stays as a quiet chip). Optional: older
+    /// servers omit it, and we treat nil like a retry.
+    let trigger:       String?
     let ts:            String       // ISO 8601
 }
