@@ -7,6 +7,23 @@ it, it gets a line.
 ## 2026.4.42 — 2026-08-11
 
 ### Added
+- **Portal pilot-hardening**: (1) **Admin gate** — set `SIB_ADMIN_KEY` and every
+  destructive action (all DELETEs, the LOTO quiz editor) requires unlocking
+  🔒 Admin in the portal header; the server refuses without `X-Admin-Key`
+  (the middleware is the guarantee, the hidden buttons are convenience), and
+  deployments without the env var behave exactly as before. (2) **Filters +
+  pagination** — Sessions, Gemba and AR Guides tabs gain free-text search,
+  per-anchor and date-range filters, and show-more pagination (50 at a time),
+  so review stays usable as pilot data grows. (3) **Tablet layout** — nav
+  scrolls, tables scroll horizontally, bigger tap targets.
+- **Home page live pulse** — `/` now shows anchors, sessions this week, open
+  Gemba findings and **active LOTO locks right now** (red when any are held),
+  fed by a new public `GET /stats` that returns aggregate counts only.
+- **Catalogue durability + deep links** — `npm run catalog:vendor` downloads
+  mermaid + marked into `sib/portal/vendor/` (loaded local-first, CDN
+  fallback) so blocked CDNs can't blank the diagrams; `/catalog#feature-id`
+  permalinks select the card on load (linkable from Slack/PRs/specs); the
+  wireframe buttons deep-link to the right flow via `/wireframe#<flow>`.
 - **Visual Feature Catalogue** (`/catalog`) — docs-as-data: `docs/catalog/`
   holds one YAML-frontmatter markdown file per feature (63 files, 7 area files
   with Mermaid flows, 3 role trails) as the canonical source;

@@ -7,8 +7,9 @@
 <!--
   The /catalog surface: a live, connected view of docs/catalog/*.md.
   Everything on this page is derived from GET /catalog/data at load time —
-  nothing here is hand-maintained. Mermaid + marked load from cdnjs (same
-  precedent as SheetJS in the portal); both degrade gracefully to <pre>.
+  nothing here is hand-maintained. Mermaid + marked load from
+  sib/portal/vendor/ (run `npm run catalog:vendor` once) with cdnjs as
+  fallback; both degrade gracefully to <pre>.
 -->
 <style>
 :root{
@@ -186,15 +187,30 @@ async function boot(){
   renderAreaChips();
   renderHome();
   startSim();
-  // Renderers load in the background; cards fall back to <pre> until ready.
-  loadScript('https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js')
+  // Renderers: vendored copies first (sib/portal/vendor/ — run `npm run
+  // catalog:vendor` once and commit), CDN only as fallback. Cards fall back
+  // to <pre> until either loads.
+  const lib = (local, cdn) => loadScript(local).catch(() => loadScript(cdn));
+  lib('/portal/vendor/mermaid.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js')
     .then(() => { window.mermaid.initialize({ startOnLoad:false, theme:'dark', securityLevel:'loose',
       suppressErrorRendering:true, // a bad diagram falls back to <pre>; never bomb-icons the page
       themeVariables:{ darkMode:true, background:'#111a2e', primaryColor:'#1a2540', lineColor:'#7d8da3' } });
       mermaidReady = true; if (selected) showFeature(selected); })
     .catch(() => {});
-  loadScript('https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js')
+  lib('/portal/vendor/marked.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js')
     .then(() => markedReady = true).catch(() => {});
+
+  // Permalinks: /catalog#feature-id (or #area-id) selects on load and on
+  // hash change — cards become linkable from Slack, PRs and specs.
+  applyHash();
+  window.addEventListener('hashchange', applyHash);
+}
+
+function applyHash(){
+  const id = decodeURIComponent(location.hash.slice(1));
+  if (!id) return;
+  if (byId[id]) { if (selected !== id) selectFeature(id); }
+  else if (areaById[id]) showArea(id);
 }
 
 /* ═══════════════ graph model + force simulation ═══════════════ */
@@ -443,6 +459,7 @@ const panel = document.getElementById('panel');
 
 function renderHome(){
   selected = null; markDirty();
+  if (location.hash) history.replaceState(null, '', location.pathname);
   const s = { shipped:0, beta:0, planned:0 };
   DATA.features.forEach(f => s[f.status]++);
   panel.innerHTML = `
@@ -482,7 +499,7 @@ function showArea(id){
     <p class="body-text">${esc(a.body)}</p>
     <h3>How it flows</h3>
     <div class="flowbox" id="areaFlow"></div>
-    ${a.wireframe ? `<div class="btnrow"><button class="btn" onclick="location.href='/wireframe'">Open in App Wireframe →</button></div>` : ''}
+    ${a.wireframe ? `<div class="btnrow"><button class="btn" onclick="location.href='/wireframe#${esc(a.wireframe)}'">Open in App Wireframe →</button></div>` : ''}
     <h3>${feats.length} features</h3>
     ${feats.map(f => `<span class="deplink" data-go="${f.id}">${esc(f.name)}</span>`).join('')}
     <div class="btnrow"><button class="btn" id="backHome">← Overview</button></div>`;
@@ -494,6 +511,7 @@ function showArea(id){
 
 function selectFeature(id){
   selected = id; markDirty();
+  if (location.hash !== '#' + id) history.replaceState(null, '', '#' + id);
   showFeature(id);
 }
 
@@ -523,7 +541,7 @@ function showFeature(id){
       `<span class="deplink" data-go="${d.id}">${esc(d.name)}</span>`).join('')}` : ''}
     <div class="btnrow">
       <button class="btn primary" id="specBtn">Read the spec ↓</button>
-      ${f.wireframe ? `<button class="btn" onclick="location.href='/wireframe'">App Wireframe</button>` : ''}
+      ${f.wireframe ? `<button class="btn" onclick="location.href='/wireframe#${esc(f.wireframe)}'">App Wireframe</button>` : ''}
       <button class="btn" id="backHome">← Overview</button>
     </div>
     <div id="specBox"><div style="font-size:11px;color:var(--muted);margin-bottom:8px">${esc(f.spec)}</div><div class="md" id="specMd">Loading…</div></div>`;

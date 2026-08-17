@@ -401,6 +401,33 @@
                       display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
     .preview-scale-row { display:flex; align-items:center; gap:8px; flex:1; min-width:180px; }
     .preview-scale-row input[type=range] { flex:1; accent-color:var(--accent); }
+
+    /* ── Pilot hardening: admin lock ─────────────────────────────────────── */
+    /* When locked, every button whose onclick invokes a delete* function is
+       hidden — one rule covers Delete All AND per-row deletes everywhere. */
+    body.admin-locked button[onclick*="delete"],
+    body.admin-locked button[onclick*="Delete"] { display:none !important; }
+    body.admin-locked .admin-only { display:none !important; }
+    #admin-btn.unlocked { color:#22c55e; }
+
+    /* ── Pilot filters ────────────────────────────────────────────────────── */
+    .filter-bar { display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:8px auto 0;max-width:960px; }
+    .filter-bar input[type="search"], .filter-bar input[type="date"], .filter-bar select {
+      background:var(--surface);border:1px solid var(--border);border-radius:7px;
+      color:var(--text);font-size:0.75rem;padding:6px 9px; }
+    .filter-bar input[type="search"] { flex:1;min-width:150px; }
+    .filter-bar .flt-lbl { font-size:0.68rem;color:var(--muted); }
+    .show-more-row { text-align:center;padding:12px; }
+
+    /* ── Tablet layout (floor iPads) ─────────────────────────────────────── */
+    @media (max-width: 900px) {
+      header { flex-wrap:wrap;gap:8px; }
+      #nav-tabs { overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none; }
+      .btn { min-height:34px; }
+      .sessions-toolbar { flex-wrap:wrap;row-gap:6px; }
+      .sessions-tbl-wrap { overflow-x:auto;-webkit-overflow-scrolling:touch; }
+      .anchor-group, .iloto-panel-card { overflow-x:auto; }
+    }
   </style>
 </head>
 <body>
@@ -415,6 +442,7 @@
     <h1>Spatial Tagging <span>· Anchor Directory</span> <span id="platform-version" style="font-size:0.62rem;color:var(--muted);font-weight:400;margin-left:6px"></span></h1>
   </div>
   <div class="actions">
+    <button class="btn btn-ghost btn-sm" id="admin-btn" onclick="toggleAdmin()" style="display:none" title="Destructive actions (delete, quiz editing) require the admin key">🔒 Admin</button>
     <button class="btn btn-ghost btn-sm" onclick="showSettings()">⚙ Settings</button>
     <button class="btn btn-primary btn-sm" onclick="openCreateModal()">+ New Anchor</button>
   </div>
@@ -460,6 +488,12 @@
     <button class="btn btn-ghost btn-sm" onclick="loadSessions()">⟳ Refresh</button>
     <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteAllSessions()" title="Delete all inspection sessions">🗑 Delete All</button>
   </div>
+  <div class="filter-bar">
+    <input type="search" id="flt-sess-q" placeholder="Search operator, tag, anchor…" oninput="setFilter('sessions')">
+    <select id="flt-sess-anchor" onchange="setFilter('sessions')"><option value="">All anchors</option></select>
+    <span class="flt-lbl">from</span><input type="date" id="flt-sess-from" onchange="setFilter('sessions')">
+    <span class="flt-lbl">to</span><input type="date" id="flt-sess-to" onchange="setFilter('sessions')">
+  </div>
   <div class="sessions-list"></div>
 </div>
 
@@ -470,6 +504,10 @@
     <button class="btn btn-ghost btn-sm" onclick="exportAllGembaCSV()" title="Export all walks as CSV">⬇ Export All</button>
     <button class="btn btn-ghost btn-sm" onclick="loadGembaWalks()">⟳ Refresh</button>
     <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteAllGembaCompletions()" title="Delete all Gemba Walk completion records">🗑 Delete All</button>
+  </div>
+  <div class="filter-bar">
+    <input type="search" id="flt-gemba-q" placeholder="Search finding, category, severity…" oninput="setFilter('gemba')">
+    <select id="flt-gemba-anchor" onchange="setFilter('gemba')"><option value="">All anchors</option></select>
   </div>
   <div class="gemba-list"></div>
 </div>
@@ -482,6 +520,12 @@
     <button class="btn btn-ghost btn-sm" onclick="exportARGuidesCSV()" title="Export as CSV">⬇ Export</button>
     <button class="btn btn-ghost btn-sm" onclick="loadARGuideSessions()">⟳ Refresh</button>
     <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteAllARGuideSessions()" title="Delete all AR Guide sessions">🗑 Delete All</button>
+  </div>
+  <div class="filter-bar">
+    <input type="search" id="flt-ag-q" placeholder="Search operator, guide, anchor…" oninput="setFilter('ag')">
+    <select id="flt-ag-anchor" onchange="setFilter('ag')"><option value="">All anchors</option></select>
+    <span class="flt-lbl">from</span><input type="date" id="flt-ag-from" onchange="setFilter('ag')">
+    <span class="flt-lbl">to</span><input type="date" id="flt-ag-to" onchange="setFilter('ag')">
   </div>
   <div id="ar-guides-list" class="sessions-list"></div>
 </div>
@@ -599,10 +643,10 @@
     <div class="iloto-section-title">Certification registry</div>
     <div id="iloto-certs" class="iloto-panel-card"></div>
 
-    <div class="iloto-section-title">Training questions
+    <div class="iloto-section-title admin-only">Training questions
       <span style="text-transform:none;font-weight:400">— what future takers face; issued certifications are unaffected</span>
     </div>
-    <div class="iloto-panel-card">
+    <div class="iloto-panel-card admin-only">
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
         <button class="btn btn-ghost btn-sm" onclick="lotoQuizShowEditor(null)">＋ Add question</button>
         <button class="btn btn-ghost btn-sm" onclick="document.getElementById('loto-quiz-import-file').click()">⬆ Import JSON/CSV</button>
@@ -901,6 +945,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     const cfg = await fetch('/config').then(r => r.json());
     authRequired = cfg.authRequired !== false;
+    adminRequired = cfg.adminRequired === true;
+    applyAdminUI();
     // Platform version — single source of truth is PLATFORM_VERSION in
     // sib/src/version.ts, surfaced here so "what's running?" has an answer.
     if (cfg.platformVersion) {
@@ -927,6 +973,79 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 });
 
+// ── Admin mode (pilot hardening) ──────────────────────────────────────────────
+// adminRequired comes from /config (SIB_ADMIN_KEY set server-side). While
+// locked, all delete-invoking buttons and the quiz editor are hidden by CSS,
+// and the SERVER also refuses destructive requests without X-Admin-Key — the
+// UI is convenience, the middleware is the guarantee.
+let adminRequired = false;
+function adminKeyStored() { return localStorage.getItem('sib_admin_key') || ''; }
+function applyAdminUI() {
+  const locked = adminRequired && !adminKeyStored();
+  document.body.classList.toggle('admin-locked', locked);
+  const btn = document.getElementById('admin-btn');
+  if (btn) {
+    btn.style.display = adminRequired ? '' : 'none';
+    btn.textContent   = locked ? '🔒 Admin' : '🔓 Admin';
+    btn.classList.toggle('unlocked', !locked);
+  }
+}
+function toggleAdmin() {
+  if (adminKeyStored()) {
+    localStorage.removeItem('sib_admin_key');
+    toast('Admin mode locked.');
+  } else {
+    const k = prompt('Admin key (SIB_ADMIN_KEY on the server):');
+    if (k && k.trim()) { localStorage.setItem('sib_admin_key', k.trim()); toast('Admin mode unlocked.'); }
+  }
+  applyAdminUI();
+}
+
+// ── Pilot filters (client-side over already-fetched data) ─────────────────────
+const FILTERS = {
+  sessions: { q:'', anchor:'', from:'', to:'', limit:50 },
+  gemba:    { q:'', anchor:'' },
+  ag:       { q:'', anchor:'', from:'', to:'', limit:50 },
+};
+function fltVal(id) { const el = document.getElementById(id); return el ? el.value.trim() : ''; }
+function setFilter(kind) {
+  if (kind === 'sessions') {
+    Object.assign(FILTERS.sessions, { q:fltVal('flt-sess-q'), anchor:fltVal('flt-sess-anchor'),
+      from:fltVal('flt-sess-from'), to:fltVal('flt-sess-to'), limit:50 });
+    renderSessions();
+  } else if (kind === 'gemba') {
+    Object.assign(FILTERS.gemba, { q:fltVal('flt-gemba-q'), anchor:fltVal('flt-gemba-anchor') });
+    renderGembaWalks();
+  } else {
+    Object.assign(FILTERS.ag, { q:fltVal('flt-ag-q'), anchor:fltVal('flt-ag-anchor'),
+      from:fltVal('flt-ag-from'), to:fltVal('flt-ag-to'), limit:50 });
+    renderARGuideSessions();
+  }
+}
+/** Generic record filter: free text over the whole record (JSON), anchor id, date range. */
+function passesFilter(obj, dateStr, f) {
+  if (f.q && !JSON.stringify(obj).toLowerCase().includes(f.q.toLowerCase())) return false;
+  if (f.anchor && obj.anchorId !== f.anchor) return false;
+  const day = dateStr ? String(dateStr).slice(0, 10) : '';
+  if (f.from && day && day < f.from) return false;
+  if (f.to   && day && day > f.to)   return false;
+  return true;
+}
+/** Fill the anchor <select>s from allAnchors, preserving the current choice. */
+function populateAnchorFilters() {
+  for (const id of ['flt-sess-anchor', 'flt-gemba-anchor', 'flt-ag-anchor']) {
+    const el = document.getElementById(id); if (!el) continue;
+    const cur = el.value;
+    el.innerHTML = '<option value="">All anchors</option>' +
+      allAnchors.map(a => `<option value="${esc(a.id)}">${esc(a.assetId || a.id)}</option>`).join('');
+    el.value = cur;
+  }
+}
+function showMoreRow(kind, shown, total, rerenderFn) {
+  if (shown >= total) return '';
+  return `<div class="show-more-row"><button class="btn btn-ghost btn-sm" onclick="FILTERS.${kind}.limit += 100; ${rerenderFn}()">Show more — ${shown} of ${total}</button></div>`;
+}
+
 // ── Auth helpers ───────────────────────────────────────────────────────────────
 function apiKey() { return localStorage.getItem('sib_api_key') || ''; }
 
@@ -936,6 +1055,7 @@ async function apiFetch(path, opts = {}) {
     headers: {
       'Content-Type': 'application/json',
       'X-API-Key': apiKey(),
+      'X-Admin-Key': adminKeyStored(),
       ...(opts.headers || {}),
     },
   });
@@ -1545,14 +1665,20 @@ async function loadARGuideSessions() {
 
 function renderARGuideSessions() {
   const list = document.getElementById('ar-guides-list');
-  if (!arGuideSessions.length) {
-    list.innerHTML = '<p style="color:var(--muted);padding:40px 0;text-align:center">No AR Guide sessions yet.</p>';
+  populateAnchorFilters();
+  const f = FILTERS.ag;
+  const agFiltered = arGuideSessions.filter(s => passesFilter(s, s.completedAt, f));
+  const agShown    = agFiltered.slice(0, f.limit);
+  if (!agFiltered.length) {
+    list.innerHTML = arGuideSessions.length
+      ? '<p style="color:var(--muted);padding:40px 0;text-align:center">No AR Guide sessions match the current filters.</p>'
+      : '<p style="color:var(--muted);padding:40px 0;text-align:center">No AR Guide sessions yet.</p>';
     return;
   }
 
   // Group: anchorName → guideName → sessions[]
   const byAnchor = {};
-  for (const s of arGuideSessions) {
+  for (const s of agShown) {
     const a = s.anchorName || s.anchorId;
     const g = s.guideName  || s.guideId;
     if (!byAnchor[a])    byAnchor[a]    = {};
@@ -1600,7 +1726,7 @@ function renderARGuideSessions() {
     }
     html += '</div>';  // ag-anchor-group
   }
-  list.innerHTML = html;
+  list.innerHTML = html + showMoreRow('ag', agShown.length, agFiltered.length, 'renderARGuideSessions');
 }
 
 function toggleAGDetail(sessionId) {
@@ -2890,14 +3016,20 @@ async function loadSessions() {
 
 function renderSessions() {
   const list = document.querySelector('.sessions-list');
-  if (!sessionsData.length) {
-    list.innerHTML = '<p style="color:var(--muted);padding:24px;text-align:center;font-size:0.82rem;">No inspection sessions yet. Sessions are uploaded from the iOS app when an operator taps End Session.</p>';
+  populateAnchorFilters();
+  const f = FILTERS.sessions;
+  const filtered = sessionsData.filter(s => passesFilter(s, s.startTime, f));
+  const shown    = filtered.slice(0, f.limit);
+  if (!filtered.length) {
+    list.innerHTML = sessionsData.length
+      ? '<p style="color:var(--muted);padding:24px;text-align:center;font-size:0.82rem;">No sessions match the current filters.</p>'
+      : '<p style="color:var(--muted);padding:24px;text-align:center;font-size:0.82rem;">No inspection sessions yet. Sessions are uploaded from the iOS app when an operator taps End Session.</p>';
     return;
   }
 
   // Build anchor groups (preserve newest-first order within each group)
   const groups = new Map(); // anchorKey → { anchorName, sessions[] }
-  for (const s of sessionsData) {
+  for (const s of shown) {
     const key  = s.anchorId   || '__none__';
     const name = s.anchorName || s.anchorId || 'Unknown anchor';
     if (!groups.has(key)) groups.set(key, { anchorName: name, sessions: [] });
@@ -2912,7 +3044,7 @@ function renderSessions() {
       for (const r of (s.tagRecords || [])) tagLabelSet.add(r.tagLabel);
     html.push(buildAnchorGroup(anchorKey, group, [...tagLabelSet]));
   }
-  list.innerHTML = html.join('');
+  list.innerHTML = html.join('') + showMoreRow('sessions', shown.length, filtered.length, 'renderSessions');
 }
 
 function buildAnchorGroup(anchorKey, group, tagLabels) {
@@ -3195,19 +3327,28 @@ async function loadGembaWalks() {
 }
 
 function renderGembaWalks() {
-  const list      = document.querySelector('.gemba-list');
-  const anchorIds = Object.keys(gembaLocTags);
+  const list = document.querySelector('.gemba-list');
+  populateAnchorFilters();
+  const f = FILTERS.gemba;
+  const anchorIds = Object.keys(gembaLocTags).filter(id => !f.anchor || id === f.anchor);
 
-  if (anchorIds.length === 0) {
-    list.innerHTML = '<p style="color:var(--muted);padding:24px;text-align:center;font-size:0.82rem;">No Gemba Walk data yet. Walks are created in the iOS app in Loc-Tag (Gemba) mode.</p>';
-    return;
-  }
-
-  list.innerHTML = anchorIds.map(anchorId => {
+  const html = anchorIds.map(anchorId => {
     const anchor     = allAnchors.find(a => a.id === anchorId);
     const anchorName = anchor ? anchor.assetId : anchorId;
-    return buildGembaGroup(anchorId, anchorName, gembaLocTags[anchorId]);
-  }).join('');
+    // Free-text filter matches against the finding record (title, category, …)
+    const tags = f.q
+      ? gembaLocTags[anchorId].filter(t => JSON.stringify(t).toLowerCase().includes(f.q.toLowerCase()))
+      : gembaLocTags[anchorId];
+    return tags.length ? buildGembaGroup(anchorId, anchorName, tags) : '';
+  }).filter(Boolean);
+
+  if (!html.length) {
+    list.innerHTML = Object.keys(gembaLocTags).length
+      ? '<p style="color:var(--muted);padding:24px;text-align:center;font-size:0.82rem;">No findings match the current filters.</p>'
+      : '<p style="color:var(--muted);padding:24px;text-align:center;font-size:0.82rem;">No Gemba Walk data yet. Walks are created in the iOS app in Loc-Tag (Gemba) mode.</p>';
+    return;
+  }
+  list.innerHTML = html.join('');
 }
 
 function buildGembaGroup(anchorId, anchorName, locTags) {

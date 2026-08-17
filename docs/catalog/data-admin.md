@@ -16,6 +16,9 @@ arch: |
     CASC --> WARN["Portal states the blast radius before confirming"]
     NOTE["Destructive actions are explicit routes - never side effects"] -.-> CASC
 ---
-Per-row and bulk delete with correct cascades — deleting an anchor takes its tags,
-pass states, QR blob and world map with it, and says so before it does. Destructive
+Per-row and bulk delete with correct cascades, behind the pilot admin gate: with
+SIB_ADMIN_KEY set, every DELETE (and the quiz editor) requires unlocking Admin
+mode in the portal — the server refuses without X-Admin-Key, the UI hides the
+buttons. Deleting an anchor takes its tags, pass states, QR blob and world map
+with it, and says so before it does. Destructive
 actions are explicit, never side effects.

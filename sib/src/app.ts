@@ -15,9 +15,12 @@ import guideSessionRouter from './routes/guide-sessions.js';
 import tagGroupRouter from './routes/tag-groups.js';
 import modelRouter from './routes/models.js';
 import mindmapRouter from './routes/mindmap.routes.js';
-import lotoRouter from './routes/loto.js';
+import lotoRouter, { lotoPointStore, lotoEventStore } from './routes/loto.js';
 import catalogRouter from './routes/catalog.js';
-import { apiKeyAuth } from './middleware/auth.js';
+import { sessionStore } from './routes/sessions.js';
+import { locTagStore, locTagCompletionStore } from './routes/loc-tags.js';
+import { derivePointStatus } from './loto/loto-core.js';
+import { apiKeyAuth, adminKeyAuth } from './middleware/auth.js';
 // NOT from @spatial/shared: that package is types-only at runtime — its exports
 // point at .ts source, which a compiled server cannot load. See sib/src/version.ts.
 import { PLATFORM_VERSION } from './version.js';
@@ -47,6 +50,9 @@ export function createApp(): express.Express {
   app.get('/config', (_req, res) => {
     res.json({
       authRequired: !!(process.env.SIB_API_KEY?.trim()),
+      // adminRequired → SIB_ADMIN_KEY set: destructive actions (DELETE, quiz
+      // admin) need X-Admin-Key. The portal uses this to lock destructive UI.
+      adminRequired: !!(process.env.SIB_ADMIN_KEY?.trim()),
       // Single platform version for the whole release train — see docs/VERSIONING.md.
       platformVersion: PLATFORM_VERSION,
       timestamp: new Date().toISOString(),
@@ -76,6 +82,43 @@ export function createApp(): express.Express {
       return;
     }
     res.sendFile(hit);
+  });
+
+  // --- Live site stats (no auth — AGGREGATE COUNTS ONLY, for the home page) ---
+  // Deliberately numbers-only: no names, ids, photos or positions leak here.
+  // The active-locks count is the safety-relevant one — leadership sees at a
+  // glance whether anyone is locked onto equipment right now.
+  app.get('/stats', (_req, res) => {
+    try {
+      const weekAgo = Date.now() - 7 * 24 * 3600 * 1000;
+      const sessionsThisWeek = sessionStore.findAll()
+        .filter(s => s.startTime && new Date(s.startTime).getTime() >= weekAgo).length;
+
+      // Open Gemba findings = latest completion per finding is not RESOLVED
+      // (or the finding has no completion yet).
+      const completions = locTagCompletionStore.findAll();
+      const latestByTag = new Map<string, { status: string; completedAt: string }>();
+      for (const c of completions) {
+        const cur = latestByTag.get(c.locTagId);
+        if (!cur || c.completedAt > cur.completedAt) latestByTag.set(c.locTagId, c);
+      }
+      const openFindings = locTagStore.findAll()
+        .filter(t => latestByTag.get(t.id)?.status !== 'RESOLVED').length;
+
+      const lotoEvents = lotoEventStore.findAll();
+      const activeLocks = lotoPointStore.findAll()
+        .filter(p => derivePointStatus(p, lotoEvents).state === 'locked').length;
+
+      res.json({
+        anchors: anchorStore.findAll().length,
+        sessionsThisWeek,
+        openGembaFindings: openFindings,
+        activeLotoLocks: activeLocks,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (err) {
+      res.status(500).json({ error: 'Stats unavailable', detail: String(err) });
+    }
   });
 
   // --- Feature Catalogue (no auth — read-only docs surface, like /wireframe) ---
@@ -219,6 +262,10 @@ export function createApp(): express.Express {
 
   // --- API key auth — protects all routes below this point ---
   app.use(apiKeyAuth);
+
+  // --- Admin gate — destructive actions (DELETE, quiz admin) additionally
+  // require X-Admin-Key when SIB_ADMIN_KEY is set. See middleware/auth.ts.
+  app.use(adminKeyAuth);
 
   // --- SIB Routes (Phase 1) ---
   // POST /anchors        — create anchor

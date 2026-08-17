@@ -18,4 +18,6 @@ arch: |
 This surface: docs/catalog/ holds one YAML-frontmatter file per feature, and
 GET /catalog renders them as a connected graph — flows, dependencies, role trails
 and dictionary definitions, generated live at /catalog/data (which doubles as the
-AI-grounding feed). The markdown is the single source; everything visual is derived.
+AI-grounding feed). The markdown is the single source; everything visual is derived. Every card is
+linkable (/catalog#feature-id) and render libraries are vendored via
+`npm run catalog:vendor` so no CDN outage can blank a diagram.

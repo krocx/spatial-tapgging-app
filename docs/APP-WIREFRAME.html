@@ -486,7 +486,16 @@ function render(){
   q('notes').innerHTML = '<h2>'+s.t+'</h2><p style="font-size:11.5px;color:var(--t3);margin:-4px 0 10px;">'+s.s+'</p><p>'+s.note+'</p><p style="font-size:11.5px;color:var(--t3);">Flow: '+FLOW_LABELS[curFlow]+'</p>';
 }
 
-setFlow('author');
+// Deep link: /wireframe#iloto (etc.) opens straight on that flow — the
+// Feature Catalogue links here per-feature. Falls back to the Author flow.
+(function(){
+  var h = location.hash.slice(1);
+  setFlow(h && document.getElementById('tab-' + h) ? h : 'author');
+})();
+window.addEventListener('hashchange', function(){
+  var h = location.hash.slice(1);
+  if (h && document.getElementById('tab-' + h)) setFlow(h);
+});
 </script>
 </body>
 </html>
