@@ -159,3 +159,14 @@ test('buildCatalog: areas sorted by order, README ignored', () => {
   assert.deepEqual(cat.areas.map(a => a.id), ['y', 'z']);
   assert.equal(cat.areas[0].flow, 'flowchart LR\n  A --> B');
 });
+
+test('buildCatalog: arch block passes through; absent arch stays undefined', () => {
+  const withArch = {
+    name: 'a.md',
+    content: feature('a').content.replace('---\nA body', 'arch: |\n  sequenceDiagram\n    A->>B: POST /x\n---\nA body'),
+  };
+  const cat = buildCatalog([withArch, feature('b')], GLOSS, 'v');
+  const a = cat.features.find(f => f.id === 'a')!;
+  assert.equal(a.arch, 'sequenceDiagram\n  A->>B: POST /x');
+  assert.equal(cat.features.find(f => f.id === 'b')!.arch, undefined);
+});

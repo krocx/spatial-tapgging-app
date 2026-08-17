@@ -21,7 +21,10 @@ export interface CatalogFeature {
   terms: string[];
   spec: string;
   wireframe?: string;
+  /** User-facing journey (mermaid). */
   flow?: string;
+  /** System architecture (mermaid) — real routes, modules and stores. */
+  arch?: string;
   body: string;
 }
 
@@ -209,7 +212,8 @@ export function buildCatalog(
         status: status as CatalogFeature['status'],
         version: str(fm.version), depends: arr(fm.depends), terms: arr(fm.terms),
         spec: str(fm.spec), wireframe: str(fm.wireframe) || undefined,
-        flow: str(fm.flow) || undefined, body,
+        flow: str(fm.flow) || undefined,
+        arch: str(fm.arch) || undefined, body,
       });
     }
   }

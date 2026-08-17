@@ -28,6 +28,10 @@ wireframe: author         # flow tab in the App Wireframe (/wireframe), if one e
 flow: |                   # OPTIONAL per-feature Mermaid; omit to inherit the area flow
   flowchart LR
     A --> B
+arch: |                   # OPTIONAL architecture Mermaid — the SYSTEM's story, with
+  sequenceDiagram         # REAL route paths, module files and stores (e.g.
+    App->>SIB: POST /x    # "POST /guides/import", "ingest.ts"). flow = what the
+                          # user experiences; arch = what the system does.
 ---
 Two to four sentences: what it does, why it exists, one operational detail
 a teammate would actually need. No marketing language.

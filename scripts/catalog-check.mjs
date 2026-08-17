@@ -64,6 +64,9 @@ for (const f of data.features) {
     errs.push(`${f.id}: unknown wireframe flow "${f.wireframe}"`);
   }
   if (f.body.length < 80) errs.push(`${f.id}: body is a stub (${f.body.length} chars) — say what it does`);
+  if (f.arch && !/^(sequenceDiagram|flowchart)/m.test(f.arch)) {
+    errs.push(`${f.id}: arch is not a mermaid sequenceDiagram/flowchart`);
+  }
 }
 for (const a of data.areas) {
   if (!/flowchart/.test(a.flow)) errs.push(`area ${a.id}: flow is not a mermaid flowchart`);

@@ -8,6 +8,22 @@ depends: [guide-ingestion, adapter-architecture]
 terms: [Instruction Import, Adapter]
 spec: SERVER-REFERENCE.md
 wireframe: portal
+arch: |
+  sequenceDiagram
+    participant P as Portal (Import modal)
+    participant X as SheetJS parseGuideXlsx (browser)
+    participant S as SIB POST /guides/import
+    participant A as instructions-source-adapter.ts
+    participant I as guides/ingest.ts - applyImportedGuide
+    participant St as Guide store
+    P->>X: .xlsx file (header-flexible) or JSON
+    X-->>P: Parsed steps -> preview gates the Import button
+    P->>S: ImportedGuide payload + adapter id
+    S->>A: Adapter validates/normalises steps
+    A->>I: Single shared create/upsert path
+    Note over I: Invariant - spatial placement is NEVER overwritten
+    I->>St: Guide + steps (draft, unplaced)
+    S-->>P: Guide id -> jump-and-flash in Guide Library
 ---
 `POST /guides/import` sits behind a pluggable instruction-source adapter; the portal
 front door accepts Excel (.xlsx, downloadable template, header order-free), JSON

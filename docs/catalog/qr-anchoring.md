@@ -13,6 +13,19 @@ flow: |
     PRINT[Print QR at exact size] --> SCAN[Device scans QR]
     SCAN --> LOCK[AR frame locks to asset, gravity-normalised]
     LOCK --> CONTENT[Tags, guides, LOTO points appear in true positions]
+arch: |
+  flowchart LR
+    subgraph iOS["iOS app"]
+      CAM["ARKit camera frame"] --> DET["Vision QR detection"]
+      DET --> SZ["Scale from anchor.qrSizeCm - printed size is ground truth"]
+      SZ --> GRAV["Gravity-normalise orientation"]
+      GRAV --> ORIGIN["Session origin = QR pose"]
+    end
+    subgraph SIB
+      A["GET /anchors/:id"] --> QRC["qrSizeCm + encryption key ref"]
+    end
+    ORIGIN --> CONTENT["All content positioned relative to origin: tags, steps, LOTO points"]
+    QRC -.exact print size.-> SZ
 ---
 A printed QR code establishes a six-degrees-of-freedom coordinate frame on the asset,
 gravity-normalised so the scan angle never shifts tag positions. Cheap, robust, works

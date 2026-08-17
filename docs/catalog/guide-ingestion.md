@@ -7,6 +7,16 @@ version: baseline
 depends: [guide-lifecycle]
 terms: [AR Work Instructions, SIB]
 spec: PROCEDURE-DESIGNER.md
+arch: |
+  flowchart LR
+    J["POST /guides/import (JSON / xlsx via adapter)"] --> AP["guides/ingest.ts - applyImportedGuide"]
+    PX["POST /mindmap/:id/procedure/export"] --> AP
+    AP --> UP{"Guide exists?"}
+    UP -->|no| NEW["Create draft guide + steps"]
+    UP -->|yes| SYNC["Upsert steps in place"]
+    SYNC --> KEEP["posX/Y/Z, isPlaced, model offsets PRESERVED - tested invariant"]
+    NEW --> ST[("Guide store")]
+    KEEP --> ST
 ---
 One create/upsert path shared by JSON import, xlsx import and procedure export
 (`sib/src/guides/ingest.ts`). Its tested invariant is the platform's most important
