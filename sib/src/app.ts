@@ -17,6 +17,7 @@ import modelRouter from './routes/models.js';
 import mindmapRouter from './routes/mindmap.routes.js';
 import lotoRouter, { lotoPointStore, lotoEventStore } from './routes/loto.js';
 import catalogRouter from './routes/catalog.js';
+import adminRouter from './routes/admin.js';
 import askRouter from './routes/ask.js';
 import { sessionStore } from './routes/sessions.js';
 import { locTagStore, locTagCompletionStore } from './routes/loc-tags.js';
@@ -271,6 +272,9 @@ export function createApp(): express.Express {
   // --- Admin gate — destructive actions (DELETE, quiz admin) additionally
   // require X-Admin-Key when SIB_ADMIN_KEY is set. See middleware/auth.ts.
   app.use(adminKeyAuth);
+
+  // --- Ops routes (admin-gated): GET /admin/backup?scope=data|full ---
+  app.use('/admin', adminRouter);
 
   // --- SIB Routes (Phase 1) ---
   // POST /anchors        — create anchor

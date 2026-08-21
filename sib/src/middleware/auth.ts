@@ -42,6 +42,7 @@ export function apiKeyAuth(req: Request, res: Response, next: NextFunction): voi
 
 export function isAdminRequest(method: string, path: string): boolean {
   if (method === 'DELETE') return true;
+  if (path.startsWith('/admin/')) return true;                                   // ops: backups etc.
   if (path.startsWith('/loto/quiz/admin')) return true;                          // bank WITH answers
   if (path.startsWith('/loto/quiz/questions')) return true;                      // add/edit/delete
   if (path === '/loto/quiz/import') return true;                                 // bulk replace

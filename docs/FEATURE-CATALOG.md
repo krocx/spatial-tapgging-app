@@ -130,6 +130,8 @@ the linked docs are the single source of truth.
 | Guide move-to-anchor | Reassign a guide (and steps) to another anchor; placement cleared, guide unpublished until re-placed | Shipped | 2026.4.42 | — |
 | SIB home page | Landing at / with cards for Portal, Roadmap/Procedure Designer, App Wireframe (/wireframe); live status + version | Shipped | 2026.4.42 | — |
 | Ask SIB | /ask + drawer on /catalog — docs-grounded Q&A citing features; retrieval everywhere, generation via any OpenAI-compatible local model (llama.cpp / Ollama) | Beta | 2026.4.42 | [catalog/README](catalog/README.md) |
+| Guide Preview (portal) | ▶ Preview walks the real branch graph in a phone frame — Complete/Failed/Skip, requires redirects, images, voice, coverage summary, placement banner | Shipped | 2026.4.42 | [PROCEDURE-DESIGNER](PROCEDURE-DESIGNER.md) |
+| Backup & restore | Admin-gated `GET /admin/backup?scope=data\|full` streams a timestamped tar.gz of the data dir; portal Settings buttons; documented manual restore | Shipped | 2026.4.42 | [INTERNAL-SERVER-DEPLOY](INTERNAL-SERVER-DEPLOY.md) |
 | Visual Feature Catalogue | /catalog — connected graph of all features generated live from docs/catalog/ frontmatter: flows, dependencies, glossary hovers, role trails, spec deep-dives; drift-checked via `npm run catalog:check` | Shipped | 2026.4.42 | [catalog/README](catalog/README.md) |
 
 ## 7. Platform foundations

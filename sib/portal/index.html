@@ -402,6 +402,28 @@
     .preview-scale-row { display:flex; align-items:center; gap:8px; flex:1; min-width:180px; }
     .preview-scale-row input[type=range] { flex:1; accent-color:var(--accent); }
 
+    /* ── Guide Preview: phone-frame walkthrough ──────────────────────────── */
+    #gp-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.72);z-index:9500;align-items:center;justify-content:center;}
+    #gp-modal.open{display:flex;}
+    .gp-shell{display:flex;flex-direction:column;align-items:center;gap:10px;max-height:96vh;}
+    .gp-banner{font-size:0.72rem;padding:6px 12px;border-radius:8px;max-width:352px;text-align:center;}
+    .gp-banner.warn{background:#78350f;color:#fde68a;}
+    .gp-banner.ok{background:#14532d;color:#bbf7d0;}
+    .gp-phone{width:344px;height:min(640px,78vh);background:#0d0d14;border:6px solid #2a2a35;border-radius:34px;
+      padding:16px 14px;display:flex;flex-direction:column;gap:10px;color:#e8e8f0;overflow-y:auto;}
+    .gp-hdr{display:flex;justify-content:space-between;align-items:center;font-size:0.7rem;color:#8890a5;}
+    .gp-title{font-size:1rem;font-weight:700;color:#fff;}
+    .gp-note{font-size:0.72rem;color:#fbbf24;background:rgba(251,191,36,0.12);border-radius:8px;padding:6px 9px;}
+    .gp-text{font-size:0.82rem;line-height:1.55;color:#cfd3e0;white-space:pre-wrap;}
+    .gp-img{width:100%;border-radius:10px;max-height:180px;object-fit:cover;background:#1a1a24;}
+    .gp-btns{display:flex;gap:8px;margin-top:auto;padding-top:10px;}
+    .gp-btn{flex:1;padding:11px 0;border:none;border-radius:10px;font-weight:700;font-size:0.8rem;cursor:pointer;}
+    .gp-ok{background:#16a34a;color:#fff;} .gp-bad{background:#b91c1c;color:#fff;} .gp-skip{background:#333344;color:#ccc;}
+    .gp-foot{display:flex;gap:12px;align-items:center;font-size:0.72rem;color:#cbd5e1;}
+    .gp-foot .btn{color:var(--text);}
+    .gp-sum{font-size:0.8rem;line-height:1.6;}
+    .gp-sum ul{margin:4px 0 10px;padding-left:18px;}
+
     /* ── Pilot hardening: admin lock ─────────────────────────────────────── */
     /* When locked, every button whose onclick invokes a delete* function is
        hidden — one rule covers Delete All AND per-row deletes everywhere. */
@@ -875,6 +897,18 @@
 
 <div id="toast"></div>
 
+<!-- Guide Preview modal — phone-frame walkthrough of the step sequence -->
+<div id="gp-modal">
+  <div class="gp-shell">
+    <div class="gp-banner" id="gp-banner"></div>
+    <div class="gp-phone" id="gp-phone"></div>
+    <div class="gp-foot">
+      <span>Voice is your browser's — the app sounds different on iOS.</span>
+      <button class="btn btn-ghost btn-sm" onclick="closeGuidePreview()">✕ Close</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ══════════════════════════════════════════════════════════════════════════════
 // T96: Tag type registry
@@ -1159,6 +1193,16 @@ function buildCard(anchor) {
     <div class="card-header">
       <div class="card-ids">
         <h3 title="${anchor.id}">${short}</h3>
+
+    <!-- Backups (admin) — restore is a documented manual procedure, on purpose -->
+    <div class="admin-only" style="margin:14px 0;padding:12px;border:1px solid var(--border);border-radius:10px">
+      <div style="font-size:0.8rem;font-weight:700;margin-bottom:4px">🗄 Backups</div>
+      <p style="font-size:0.72rem;color:var(--muted);margin:0 0 10px">Data = JSON stores only (small — take weekly). Full = evidence photos, world maps and 3D models too (large — take before upgrades). Restore: stop the service, unpack over the data directory, start it again.</p>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-ghost btn-sm" onclick="downloadBackup('data')">⬇ Data backup</button>
+        <button class="btn btn-ghost btn-sm" onclick="downloadBackup('full')">⬇ Full backup</button>
+      </div>
+    </div>
         <div class="asset">${anchor.assetId}</div>
       </div>
       ${badge}
@@ -2395,6 +2439,203 @@ async function submitImportGuide() {
   }
 }
 
+/** Download a backup archive. Streams through fetch so the admin key header
+ * travels with it; the server refuses without it when SIB_ADMIN_KEY is set. */
+async function downloadBackup(scope) {
+  try {
+    toast(scope === 'full' ? 'Preparing full backup — this can take a while…' : 'Preparing data backup…');
+    const r = await fetch(`/admin/backup?scope=${scope}`,
+      { headers: { 'X-API-Key': apiKey(), 'X-Admin-Key': adminKeyStored() } });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.error || `HTTP ${r.status}`);
+    }
+    const blob = await r.blob();
+    const cd = r.headers.get('Content-Disposition') || '';
+    const name = (cd.match(/filename="([^"]+)"/) || [])[1] || `sib-backup-${scope}.tar.gz`;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+    toast(`Backup downloaded: ${name}`);
+  } catch (e) { toast('Backup failed: ' + e.message); }
+}
+
+/* ── Guide Preview (phone-frame walkthrough) ─────────────────────────────────
+ * Reviewers walk the REAL branch graph from a desk: Complete follows
+ * nextOnSuccess (or the next sequence number), Failed follows nextOnFailure
+ * (or stays put, like the operator retrying), requires-gates redirect, and
+ * the exit summary lists what a happy-path review never exercised.
+ * Purely client-side — nothing is saved or sent. */
+let gp = null;                       // preview state
+const gpImgCache = {};               // mediaPath → object URL
+
+async function openGuidePreview(guideId) {
+  try {
+    const guide = (await apiFetch(`/guides/${encodeURIComponent(guideId)}`)).data;
+    const steps = ((await apiFetch(`/guides/${encodeURIComponent(guideId)}/steps`)).data || [])
+      .sort((a, b) => a.sequenceNumber - b.sequenceNumber);
+    if (!steps.length) { toast('This guide has no steps to preview.'); return; }
+    gp = {
+      guide, steps,
+      byId: Object.fromEntries(steps.map(s => [s.id, s])),
+      idx: 0, note: '',
+      completed: new Set(), visited: new Set(), failTaken: new Set(),
+      finished: false,
+    };
+    const placed = steps.filter(s => s.isPlaced).length;
+    const banner = document.getElementById('gp-banner');
+    if (guide.published && placed === steps.length) {
+      banner.className = 'gp-banner ok';
+      banner.textContent = `Published — live for operators · ${steps.length} steps, all placed`;
+    } else {
+      banner.className = 'gp-banner warn';
+      banner.textContent = `${placed} of ${steps.length} steps placed · ` +
+        (guide.published ? 'published' : 'DRAFT') +
+        ` — operators can't run this guide yet`;
+    }
+    document.getElementById('gp-modal').classList.add('open');
+    gpEnter(0);
+  } catch (e) { toast('Preview failed: ' + e.message); }
+}
+
+function closeGuidePreview() {
+  document.getElementById('gp-modal').classList.remove('open');
+  window.speechSynthesis?.cancel();
+  gp = null;
+}
+
+/** Enter a step by index, honouring requires-gates with a visible redirect. */
+function gpEnter(idx, note) {
+  gp.note = note || '';
+  const step = gp.steps[idx];
+  if (step?.precondition && !gp.completed.has(step.precondition)) {
+    const req = gp.byId[step.precondition];
+    const reqIdx = gp.steps.indexOf(req);
+    if (req && reqIdx !== -1) {
+      gp.idx = reqIdx;
+      gp.note = `⛔ "${step.title || 'Step ' + step.sequenceNumber}" requires ` +
+        `"${req.title || 'Step ' + req.sequenceNumber}" first — jumped there.`;
+      gp.visited.add(req.id);
+      gpRender();
+      return;
+    }
+  }
+  gp.idx = idx;
+  gp.visited.add(step.id);
+  gpRender();
+}
+
+function gpNextIndexAfter(step) {
+  const i = gp.steps.indexOf(step);
+  return i + 1 < gp.steps.length ? i + 1 : -1;
+}
+
+function gpComplete() {
+  const step = gp.steps[gp.idx];
+  gp.completed.add(step.id);
+  window.speechSynthesis?.cancel();
+  if (step.nextOnSuccess && gp.byId[step.nextOnSuccess]) {
+    gpEnter(gp.steps.indexOf(gp.byId[step.nextOnSuccess]));
+    return;
+  }
+  const next = gpNextIndexAfter(step);
+  if (next === -1) { gpFinish(); return; }
+  gpEnter(next);
+}
+
+function gpFail() {
+  const step = gp.steps[gp.idx];
+  window.speechSynthesis?.cancel();
+  if (step.nextOnFailure && gp.byId[step.nextOnFailure]) {
+    gp.failTaken.add(step.id);
+    gpEnter(gp.steps.indexOf(gp.byId[step.nextOnFailure]),
+      '↩ Recovery branch taken — this is what a failure routes to.');
+    return;
+  }
+  gp.note = '✗ Failed — no recovery branch, so the operator retries this step.';
+  gpRender();
+}
+
+function gpSkip() {
+  const step = gp.steps[gp.idx];
+  window.speechSynthesis?.cancel();
+  const next = gpNextIndexAfter(step);
+  if (next === -1) { gpFinish(); return; }
+  gpEnter(next, '⏭ Skipped (optional step).');
+}
+
+function gpSpeak() {
+  const step = gp.steps[gp.idx];
+  const txt = (step.ttsText || step.text || '').trim();
+  if (!txt || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(new SpeechSynthesisUtterance(txt));
+}
+
+function gpFinish() {
+  gp.finished = true;
+  const unvisited = gp.steps.filter(st => !gp.visited.has(st.id));
+  const unexercised = gp.steps.filter(st => st.nextOnFailure && !gp.failTaken.has(st.id));
+  const li = arr => arr.map(st => `<li>${esc(st.title || 'Step ' + st.sequenceNumber)}</li>`).join('');
+  document.getElementById('gp-phone').innerHTML = `
+    <div class="gp-hdr"><span>Preview finished</span><span>${esc(gp.guide.name)}</span></div>
+    <div class="gp-title">🏁 Walkthrough complete</div>
+    <div class="gp-sum">
+      ✅ ${gp.completed.size} of ${gp.steps.length} steps completed<br>
+      ${unvisited.length ? `<br>Never reached on this walk:<ul>${li(unvisited)}</ul>` : ''}
+      ${unexercised.length ? `Failure branches never exercised (try ✗ Failed on these):<ul>${li(unexercised)}</ul>` : ''}
+      ${!unvisited.length && !unexercised.length ? '<br>Every step and failure branch was exercised. 💯' : ''}
+    </div>
+    <div class="gp-btns">
+      <button class="gp-btn gp-skip" onclick="gpRestart()">↺ Restart</button>
+      <button class="gp-btn gp-ok" onclick="closeGuidePreview()">Done</button>
+    </div>`;
+}
+
+function gpRestart() {
+  gp.idx = 0; gp.note = ''; gp.finished = false;
+  gp.completed = new Set(); gp.visited = new Set(); gp.failTaken = new Set();
+  gpEnter(0);
+}
+
+function gpRender() {
+  const step = gp.steps[gp.idx];
+  const done = gp.completed.has(step.id);
+  const phone = document.getElementById('gp-phone');
+  phone.innerHTML = `
+    <div class="gp-hdr">
+      <span>Step ${step.sequenceNumber} of ${gp.steps.length}</span>
+      <span>${step.isPlaced ? '📍 placed' : '⚠ unplaced'}${done ? ' · ✅ done' : ''}</span>
+    </div>
+    <div class="gp-title">${esc(step.title || 'Step ' + step.sequenceNumber)}</div>
+    ${gp.note ? `<div class="gp-note">${esc(gp.note)}</div>` : ''}
+    ${step.mediaPath ? `<img class="gp-img" id="gp-img" alt="reference">` : ''}
+    <div class="gp-text">${esc(step.text || '')}</div>
+    ${(step.ttsText || step.text) ? `<button class="btn btn-ghost btn-sm" style="align-self:flex-start" onclick="gpSpeak()">🔊 Play voice</button>` : ''}
+    ${step.linkUrl ? `<a class="btn btn-ghost btn-sm" style="align-self:flex-start" href="${esc(step.linkUrl)}" target="_blank" rel="noopener">🔗 Reference</a>` : ''}
+    <div class="gp-btns">
+      <button class="gp-btn gp-bad" onclick="gpFail()">✗ Failed</button>
+      ${!step.completionRequired ? `<button class="gp-btn gp-skip" onclick="gpSkip()">Skip</button>` : ''}
+      <button class="gp-btn gp-ok" onclick="gpComplete()">✓ Complete</button>
+    </div>`;
+  if (step.mediaPath) gpLoadImage(step.mediaPath);
+}
+
+async function gpLoadImage(mediaPath) {
+  const img = document.getElementById('gp-img');
+  if (!img) return;
+  if (gpImgCache[mediaPath]) { img.src = gpImgCache[mediaPath]; return; }
+  try {
+    const r = await fetch(`/guides/step-image/${encodeURIComponent(mediaPath)}`,
+      { headers: { 'X-API-Key': apiKey(), 'X-Admin-Key': adminKeyStored() } });
+    if (!r.ok) throw new Error(String(r.status));
+    gpImgCache[mediaPath] = URL.createObjectURL(await r.blob());
+    if (img.isConnected) img.src = gpImgCache[mediaPath];
+  } catch { img.remove(); }
+}
+
 /** Open (or create) the guide's procedure map and jump into the Designer.
  * Round-trip doctrine: the canvas edits CONTENT and STRUCTURE; AR placement
  * always survives a re-sync. `stale` means the guide changed elsewhere since
@@ -2521,6 +2762,7 @@ function renderGuideLibrary() {
           <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;${pubColor}" onclick="togglePublishGuide('${guide.id}','${anchorId}',${guide.published})">${pubLabel}</button>
           <button class="btn btn-ghost btn-sm" style="font-size:0.68rem" onclick="toggleGuideSteps('${guide.id}','${anchorId}')" id="gl-toggle-${guide.id}">▶ Steps</button>
           <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;color:#a78bfa" onclick="toggleGuideGraph('${guide.id}','${anchorId}')" id="gl-graph-toggle-${guide.id}">⬡ Graph</button>
+          <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;color:#86efac" title="Walk the step sequence as the operator will experience it — no headset needed" onclick="openGuidePreview('${guide.id}')">▶ Preview</button>
           <button class="btn btn-ghost btn-sm" style="font-size:0.68rem" title="Edit this guide visually in the Procedure Designer" onclick="editGuideInDesigner('${guide.id}')">✏️ Edit in Designer</button>
           <button class="btn btn-ghost btn-sm" style="font-size:0.68rem" title="Move to another anchor (steps become unplaced)" onclick="moveGuideToAnchor('${guide.id}','${anchorId}')">⇄ Move</button>
           <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;color:var(--red)" onclick="deleteGuideFromLibrary('${guide.id}','${anchorId}')">🗑</button>

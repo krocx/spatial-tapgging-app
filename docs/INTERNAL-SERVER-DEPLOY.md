@@ -126,3 +126,34 @@ In the app's **Settings**, enter:
 | `EACCES` / permission error on port 447 | Run NSSM service as a user with permission to bind ports below 1024, or use the Windows port proxy |
 | iOS app cannot connect | Confirm the device is on the company network and the firewall allows inbound TCP on port 447 |
 | Portal shows "Failed to load anchors" | Check `SIB_API_KEY` matches between the config file and the iOS app Settings |
+
+## Backups & restore
+
+Two admin-gated downloads in the portal (⚙ Settings → 🗄 Backups, requires the
+🔒 Admin unlock when `SIB_ADMIN_KEY` is set), or directly:
+
+```
+GET /admin/backup?scope=data   # JSON stores only — small; take one weekly
+GET /admin/backup?scope=full   # + evidence photos, world maps, 3D models, QR
+                               #   images, step images — large; take before upgrades
+```
+
+Both stream a `.tar.gz` of the data directory (`SIB_DATA_DIR`, default
+`.sib-data`). Requires the system `tar` binary (present on Linux, macOS and
+Windows 10 / Server 2019+).
+
+**Restore is deliberately manual** — a restore button on a web page is a
+footgun. Procedure:
+
+1. Stop the SIB service (`nssm stop <ServiceName>` / stop the container).
+2. Move the current data directory aside (keep it until verified).
+3. Unpack the archive into a fresh data directory:
+   `mkdir restored && tar -xzf sib-backup-....tar.gz -C restored`
+4. Point `SIB_DATA_DIR` at it (or rename it into place).
+5. Start the service and verify: `/config` up, portal shows the expected
+   anchors/sessions, `/stats` counts look right.
+
+A `data` backup restores stores only — evidence photos, world maps and models
+referenced by the restored records must still exist on disk (or restore a
+`full` archive). Version note: restore onto the same or newer platform
+version; stores are forward-compatible, not backward.

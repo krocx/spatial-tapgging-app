@@ -7,6 +7,23 @@ it, it gets a line.
 ## 2026.4.42 — 2026-08-11
 
 ### Added
+- **Backup & restore** — the missing production-readiness piece: admin-gated
+  `GET /admin/backup?scope=data|full` streams a timestamped `.tar.gz` of the
+  data directory (data = JSON stores, small, weekly habit; full = evidence
+  photos, world maps, 3D models too, before upgrades), with ⬇ buttons in the
+  portal's ⚙ Settings behind the 🔒 Admin unlock. Restore is a documented
+  stop → unpack → start procedure (INTERNAL-SERVER-DEPLOY.md) — deliberately
+  not an endpoint. Verified by an automated drill: back up, restore into a
+  fresh directory, boot, data intact. All /admin/* paths now require the
+  admin key.
+- **Guide Preview in the portal** — ▶ Preview on any Guide Library row walks
+  the step sequence exactly as an operator would, no headset needed: a
+  phone-frame modal with Complete ✓ / Failed ✗ / Skip traversal of the REAL
+  branch graph (nextOnSuccess/nextOnFailure, requires-gate redirects shown
+  explicitly), reference images, browser voice playback, reference links, and
+  an exit summary listing steps never reached and failure branches never
+  exercised. A placement banner ("N of M placed — operators can't run this
+  yet") keeps content review honest about runnability. Client-side only.
 - **Edit any guide in the Designer (round-trip)** — ✏️ Edit in Designer in the
   Guide Library opens the guide's procedure map, GENERATING one (named
   "[Guide] <name>") via a new reverse-compiler when none exists: steps become
