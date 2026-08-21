@@ -8,8 +8,9 @@
 // The two cases that matter most:
 //   • 're-export preserves placement' — the invariant that makes re-syncing a
 //     procedure safe.
-//   • 're-export to a published guide is refused' — a published guide may be
-//     running on the floor; mutating it silently is not recoverable.
+//   • the published-guide policy — content-only re-syncs apply LIVE (wording
+//     fixes reach operators immediately, placement untouched); structural
+//     re-syncs need explicit confirmation and unpublish until placed.
 
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -157,24 +158,57 @@ test('re-export updates in place and preserves placement', async () => {
   assert.equal(aStep.posX, 1);
 });
 
-test('re-export to a published guide is refused', async () => {
+// ── Published-guide policy (round-trip UX review) ────────────────────────────
+// Content-only re-syncs (same steps, better words) apply LIVE and the guide
+// stays published; structural re-syncs (steps added/removed) require explicit
+// confirmation and unpublish until the new steps are placed.
+
+test('CONTENT-ONLY re-export to a published guide applies live, stays published', async () => {
   const map     = mindmapStore.findById('m2')!;
   const guideId = provOf(map, 'a').guideId;
   guideStore.save({ ...guideStore.findById(guideId)!, published: true });
 
+  mindmapStore.save({
+    ...map,
+    nodes: map.nodes.map(n => n.id === 'a' ? { ...n, notes: 'LIVE WORDING FIX' } : n),
+  });
+
+  const r = await post('/mindmap/m2/procedure/export', { createdBy: 'Karthik' });
+  assert.equal(r.status, 201, JSON.stringify(r.json));
+  assert.equal(r.json.data.stepsCreated, 0, 'no structural change');
+  assert.equal(guideStore.findById(guideId)!.published, true, 'stays live');
+  const aStep = guideStepStore.findById(provOf(map, 'a').stepId)!;
+  assert.equal(aStep.text, 'LIVE WORDING FIX');
+  assert.equal(aStep.isPlaced, true, 'placement untouched by the live update');
+});
+
+test('STRUCTURAL re-export to a published guide is refused without confirmation', async () => {
+  const map     = mindmapStore.findById('m2')!;
+  const guideId = provOf(map, 'a').guideId;
+  assert.equal(guideStore.findById(guideId)!.published, true, 'precondition: still live');
+
+  // Add a step: node E on the spine after D.
+  mindmapStore.save({
+    ...map,
+    nodes: [...map.nodes, N('e', 1600, 0, 'New step', 'Do the new thing')],
+    edges: [...map.edges, E('d', 'e', 'next')],
+  });
+
   const r = await post('/mindmap/m2/procedure/export', { createdBy: 'Karthik' });
   assert.equal(r.status, 409);
-  assert.match(r.json.error, /published/i);
+  assert.match(r.json.error, /adds or removes steps/i);
   assert.equal(guideStore.findById(guideId)!.published, true, 'left untouched after refusal');
 });
 
-test('confirmUnpublish proceeds and drops the guide back to draft', async () => {
+test('STRUCTURAL re-export with confirmUnpublish proceeds and drops to draft', async () => {
   const map     = mindmapStore.findById('m2')!;
   const guideId = provOf(map, 'a').guideId;
 
   const r = await post('/mindmap/m2/procedure/export', { createdBy: 'Karthik', confirmUnpublish: true });
-  assert.equal(r.status, 201);
-  assert.equal(guideStore.findById(guideId)!.published, false);
+  assert.equal(r.status, 201, JSON.stringify(r.json));
+  assert.equal(r.json.data.stepsCreated, 1, 'the new step lands');
+  assert.equal(r.json.data.stepsUnplaced, 1, 'and starts unplaced');
+  assert.equal(guideStore.findById(guideId)!.published, false, 'unpublished until placed');
 });
 
 test('an invalid graph returns 422 with issues pointing at the offending node', async () => {

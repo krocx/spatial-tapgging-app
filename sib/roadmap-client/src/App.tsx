@@ -22,6 +22,16 @@ export default function App(): JSX.Element {
   const previewing = useStore(s => !!s.preview);
   useKeyboardShortcuts();
 
+  // Deep link: /roadmap?map=<id> opens straight into that map — the portal's
+  // "Edit in Designer" button lands here. Runs once; a bad id surfaces through
+  // the store's normal error banner on the list view.
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get('map');
+    if (id) {
+      void useStore.getState().openMap(id, localStorage.getItem('roadmap-name') ?? 'Anonymous');
+    }
+  }, []);
+
   if (view === 'list') return <ErrorBoundary><MapList /></ErrorBoundary>;
 
   return (

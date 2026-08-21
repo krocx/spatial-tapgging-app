@@ -2395,6 +2395,27 @@ async function submitImportGuide() {
   }
 }
 
+/** Open (or create) the guide's procedure map and jump into the Designer.
+ * Round-trip doctrine: the canvas edits CONTENT and STRUCTURE; AR placement
+ * always survives a re-sync. `stale` means the guide changed elsewhere since
+ * the map last agreed with it — re-syncing from the map would overwrite that,
+ * so the user must acknowledge before opening. */
+async function editGuideInDesigner(guideId) {
+  try {
+    const r = await apiFetch(`/guides/${encodeURIComponent(guideId)}/edit-map`, { method: 'POST' });
+    const d = r.data;
+    if (d.stale && !confirm(
+      'Heads up: this guide was edited (on iOS or here) AFTER its design map was last synced.\n\n' +
+      'The map may not show those latest changes, and re-syncing from it will overwrite them.\n\n' +
+      'Open the Designer anyway?')) return;
+    toast(d.created ? `Created "${d.mapName}" — opening the Designer…`
+                    : 'Opening the linked procedure map…');
+    window.open(`/roadmap?map=${encodeURIComponent(d.mapId)}`, '_blank');
+  } catch (e) {
+    toast('Edit in Designer failed: ' + e.message);
+  }
+}
+
 /** Move a guide (and its steps) to another anchor. Placement clears and a
  *  published guide unpublishes — the server explains why in its own docs. */
 async function moveGuideToAnchor(guideId, fromAnchorId) {
@@ -2500,6 +2521,7 @@ function renderGuideLibrary() {
           <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;${pubColor}" onclick="togglePublishGuide('${guide.id}','${anchorId}',${guide.published})">${pubLabel}</button>
           <button class="btn btn-ghost btn-sm" style="font-size:0.68rem" onclick="toggleGuideSteps('${guide.id}','${anchorId}')" id="gl-toggle-${guide.id}">▶ Steps</button>
           <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;color:#a78bfa" onclick="toggleGuideGraph('${guide.id}','${anchorId}')" id="gl-graph-toggle-${guide.id}">⬡ Graph</button>
+          <button class="btn btn-ghost btn-sm" style="font-size:0.68rem" title="Edit this guide visually in the Procedure Designer" onclick="editGuideInDesigner('${guide.id}')">✏️ Edit in Designer</button>
           <button class="btn btn-ghost btn-sm" style="font-size:0.68rem" title="Move to another anchor (steps become unplaced)" onclick="moveGuideToAnchor('${guide.id}','${anchorId}')">⇄ Move</button>
           <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;color:var(--red)" onclick="deleteGuideFromLibrary('${guide.id}','${anchorId}')">🗑</button>
         </div>`;

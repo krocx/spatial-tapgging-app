@@ -271,6 +271,9 @@ router.post('/:id/procedure/export', async (req: Request, res: Response) => {
         const p = provenance[n.id];
         return p ? { ...n, metadata: { ...n.metadata, guide: p } } : n;
       }),
+      // Map and guide agree as of now — resets the stale-map warning that
+      // "Edit in Designer" shows when the guide changed elsewhere since.
+      guideSync: { guideId: result.guideId, syncedAt: Date.now() },
       updatedAt: Date.now(),
     };
     saveMindmapRecord(stamped);

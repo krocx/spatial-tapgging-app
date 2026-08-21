@@ -158,6 +158,14 @@ export interface Mindmap {
    * from the Guide Library, otherwise chosen at send time.
    */
   anchorId?: string;
+  /**
+   * Guide round-trip bookkeeping — SERVER-OWNED, never sent by clients.
+   * Set when a map is generated from a guide ("Edit in Designer") and
+   * refreshed on every successful procedure export. `syncedAt` older than
+   * the guide's updatedAt means the guide changed elsewhere since this map
+   * last agreed with it — the UI warns before a re-sync overwrites that.
+   */
+  guideSync?: { guideId: string; syncedAt: number };
   /** Swimlanes (optional — absent on plain mind-maps). */
   lanes?: MindmapLane[];
   /** Named node groups (optional). */

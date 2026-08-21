@@ -23,7 +23,7 @@ import type {
 } from '@spatial/shared';
 import { compileProcedure } from './compiler.js';
 import { applyImportedGuide } from '../guides/ingest.js';
-import { guideStore } from '../guides/store.js';
+import { guideStore, guideStepStore } from '../guides/store.js';
 
 export class ProcedureError extends Error {
   constructor(public status: number, message: string, public issues: ProcedureIssue[] = []) {
@@ -99,19 +99,6 @@ export async function exportProcedure(
       'Choose which anchor this procedure belongs to before sending it.');
   }
 
-  // A published guide may be running on the floor right now. Refuse silently
-  // mutating it; the caller must unpublish deliberately.
-  const existing = targetGuideId ? guideStore.findById(targetGuideId) : undefined;
-  if (existing?.published && !opts.confirmUnpublish) {
-    throw new ProcedureError(409,
-      `"${existing.name}" is published and may be in use by an operator right now. ` +
-      'Unpublish it first to apply these changes.');
-  }
-  if (existing?.published && opts.confirmUnpublish) {
-    guideStore.save({ ...existing, published: false, updatedAt: new Date().toISOString() });
-    console.log(`[procedure] Unpublished ${existing.id} ("${existing.name}") ahead of a re-sync`);
-  }
-
   // Map derived sequence numbers back to the step ids already on those nodes,
   // so ingest updates in place and placement survives.
   const existingStepIdBySeq: Record<number, string> = {};
@@ -124,6 +111,33 @@ export async function exportProcedure(
     if (prov && (!targetGuideId || prov.guideId === targetGuideId)) {
       existingStepIdBySeq[seq] = prov.stepId;
     }
+  }
+
+  // ── Published-guide policy (agreed in the round-trip UX review) ────────────
+  // CONTENT-ONLY edits (every compiled step matches an existing step, none
+  // added or removed) apply LIVE: placement is untouched by ingest, operators
+  // just see better wording/voice/images. STRUCTURAL edits (steps added or
+  // removed) change what "fully placed" means, so they require the caller to
+  // confirm — and the guide unpublishes until the new steps are placed.
+  const existing = targetGuideId ? guideStore.findById(targetGuideId) : undefined;
+  if (existing?.published) {
+    const existingCount = guideStepStore.findAll()
+      .filter(s => s.guideId === existing.id).length;
+    const compiledCount = compiled.guide.steps.length;
+    const allMatched    = compiled.guide.steps
+      .every(s => existingStepIdBySeq[s.sequenceNumber] !== undefined);
+    const contentOnly   = allMatched && compiledCount === existingCount;
+
+    if (!contentOnly && !opts.confirmUnpublish) {
+      throw new ProcedureError(409,
+        `"${existing.name}" is published and this change adds or removes steps. ` +
+        'Confirm to apply — the guide will be unpublished until the new steps are placed in AR.');
+    }
+    if (!contentOnly && opts.confirmUnpublish) {
+      guideStore.save({ ...existing, published: false, updatedAt: new Date().toISOString() });
+      console.log(`[procedure] Unpublished ${existing.id} ("${existing.name}") — structural re-sync`);
+    }
+    // contentOnly → fall through: live in-place update, stays published.
   }
 
   const applied = await applyImportedGuide(compiled.guide, {

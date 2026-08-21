@@ -7,6 +7,17 @@ it, it gets a line.
 ## 2026.4.42 — 2026-08-11
 
 ### Added
+- **Edit any guide in the Designer (round-trip)** — ✏️ Edit in Designer in the
+  Guide Library opens the guide's procedure map, GENERATING one (named
+  "[Guide] <name>") via a new reverse-compiler when none exists: steps become
+  nodes, nextOnSuccess/nextOnFailure/precondition become Next/On-failure/
+  Requires edges, voice/images/models/links carry over, and per-node provenance
+  makes every re-sync an in-place update — AR placement always survives.
+  Published-guide policy: content-only edits apply LIVE (operators just see
+  better wording); structural edits require confirmation and unpublish until
+  the new steps are placed. A stale flag warns when the guide changed
+  elsewhere since the map last agreed with it. Designer supports
+  /roadmap?map=<id> deep links.
 - **In-AR assist UI (fix + redesign)** — AI hints were fetched and logged but
   drawn inside the content panel, which is hidden by default: invisible in the
   field. Assist is now its own overlay layer above the panel in every state —

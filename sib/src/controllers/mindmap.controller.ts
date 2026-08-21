@@ -85,10 +85,15 @@ export function saveMindmap(body: SaveMindmapRequest, draftKey?: string): SaveMi
     kind: existing ? existing.kind : (body.kind === 'procedure' ? 'procedure' : undefined),
     // Anchor is updatable; the procedure export pins it on first send.
     anchorId: body.anchorId ?? existing?.anchorId,
+    // Guide round-trip bookkeeping is SERVER-OWNED: always carried over from
+    // the stored record, never taken from the request body. (This is exactly
+    // the sanitizer-drop bug class that once ate edge.role — hence explicit.)
+    guideSync: existing?.guideSync,
   };
   delete map.published;   // publication state lives in the access store only
-  if (map.kind === undefined)     delete map.kind;
-  if (map.anchorId === undefined) delete map.anchorId;
+  if (map.kind === undefined)      delete map.kind;
+  if (map.anchorId === undefined)  delete map.anchorId;
+  if (map.guideSync === undefined) delete map.guideSync;
 
   mindmapStore.save(map);
   snapshotVersion(map, body.versionLabel ?? 'manual save');
