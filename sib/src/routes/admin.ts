@@ -18,6 +18,7 @@ import type { Request, Response } from 'express';
 import { spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
+import { logOpsEvent, recentOpsEvents } from '../ops-log.js';
 
 const DATA_DIR = process.env.SIB_DATA_DIR ?? path.join(process.cwd(), '.sib-data');
 
@@ -60,12 +61,23 @@ router.get('/backup', (req: Request, res: Response): void => {
       res.destroy();
     }
   });
+  let bytes = 0;
+  tar.stdout.on('data', (d: Buffer) => { bytes += d.length; });
   tar.on('close', code => {
     if (code !== 0) console.warn(`[backup] tar exited with code ${code}`);
-    console.log(`[backup] ${scope} backup streamed (${filename})`);
+    console.log(`[backup] ${scope} backup streamed (${filename}, ${(bytes / 1048576).toFixed(1)} MB)`);
+    logOpsEvent({ method: 'GET', path: '/admin/backup', outcome: 'allowed', ip: req.ip,
+      detail: `backup ${scope} · ${(bytes / 1048576).toFixed(1)} MB · ${filename}` });
   });
   // Client gave up mid-download — don't leave tar running.
   res.on('close', () => { if (tar.exitCode === null) tar.kill(); });
+});
+
+// GET /admin/events?limit=N — the ops log, newest first (admin-gated like
+// everything under /admin). Render-logs-style feed for the portal viewer.
+router.get('/events', (req: Request, res: Response): void => {
+  const limit = Number(req.query.limit) || 200;
+  res.json({ data: recentOpsEvents(limit), timestamp: new Date().toISOString() });
 });
 
 export default router;

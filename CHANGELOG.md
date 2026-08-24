@@ -15,7 +15,16 @@ it, it gets a line.
   stop → unpack → start procedure (INTERNAL-SERVER-DEPLOY.md) — deliberately
   not an endpoint. Verified by an automated drill: back up, restore into a
   fresh directory, boot, data intact. All /admin/* paths now require the
-  admin key.
+  admin key, and the home page gains a 🛠 Admin & Backups tile that deep-links
+  to the portal's admin settings (/portal#admin) with the unlock prompt.
+  Follow-up fixes from field testing: the Backups card now actually lives in
+  ⚙ Settings (a bad insertion had landed it inside the anchor-card template),
+  downloads show LIVE streamed progress ("42.3 MB received…") with locked
+  buttons and inline success/failure status instead of a vanishing toast, and
+  a new **🗒 Ops log** (Render-logs-style) records every admin-gated action —
+  DELETEs, quiz admin, backups with size — as allowed/denied/gate-off with
+  timestamp and IP, self-pruned to the newest 1,000, served by admin-gated
+  `GET /admin/events` and viewable in Settings.
 - **Guide Preview in the portal** — ▶ Preview on any Guide Library row walks
   the step sequence exactly as an operator would, no headset needed: a
   phone-frame modal with Complete ✓ / Failed ✗ / Skip traversal of the REAL

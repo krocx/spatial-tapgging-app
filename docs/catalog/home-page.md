@@ -11,7 +11,7 @@ arch: |
   flowchart LR
     GET["GET / in app.ts"] --> HTML["sib/portal/home.html - static, no build step"]
     HTML --> CFG["fetch /config - status dot + platformVersion"]
-    HTML --> CARDS["Cards: /portal, /roadmap, /wireframe, /catalog"]
+    HTML --> CARDS["Cards: /portal, /roadmap, /wireframe, /catalog, Ask SIB, Admin (portal#admin)"]
 ---
 GET / is a landing page with a live site pulse — anchors, sessions this week,
 open Gemba findings and active LOTO locks (red when any are held), from the

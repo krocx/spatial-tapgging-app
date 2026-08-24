@@ -720,6 +720,28 @@
       <label>API Key</label>
       <input type="password" id="settings-key" placeholder="sk-…" autocomplete="off" />
     </div>
+
+    <!-- Backups (admin) — restore is a documented manual procedure, on purpose -->
+    <div class="admin-only" style="margin:14px 0;padding:12px;border:1px solid var(--border);border-radius:10px">
+      <div style="font-size:0.8rem;font-weight:700;margin-bottom:4px">🗄 Backups</div>
+      <p style="font-size:0.72rem;color:var(--muted);margin:0 0 10px">Data = JSON stores only (small — take weekly). Full = evidence photos, world maps and 3D models too (large — take before upgrades). Restore: stop the service, unpack over the data directory, start it again.</p>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn btn-ghost btn-sm" id="bk-data-btn" onclick="downloadBackup('data')">⬇ Data backup</button>
+        <button class="btn btn-ghost btn-sm" id="bk-full-btn" onclick="downloadBackup('full')">⬇ Full backup</button>
+      </div>
+      <div id="bk-status" style="display:none;margin-top:10px;font-size:0.75rem;font-family:monospace;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px"></div>
+    </div>
+
+    <!-- Ops log (admin) — who did what, Render-log style -->
+    <div class="admin-only" style="margin:14px 0;padding:12px;border:1px solid var(--border);border-radius:10px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span style="font-size:0.8rem;font-weight:700">🗒 Ops log</span>
+        <span style="font-size:0.68rem;color:var(--muted);flex:1">admin &amp; destructive actions, newest first</span>
+        <button class="btn btn-ghost btn-sm" onclick="loadOpsLog()">⟳ Refresh</button>
+      </div>
+      <div id="ops-log" style="max-height:220px;overflow-y:auto;font-family:monospace;font-size:0.68rem;line-height:1.6;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--muted)">Open ⟳ to load.</div>
+    </div>
+
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeSettings()">Cancel</button>
       <button class="btn btn-primary" onclick="saveSettings()">Save</button>
@@ -989,6 +1011,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   } catch { /* keep authRequired = true */ }
 
+  // Deep link from the home page's Admin tile: /portal#admin opens Settings
+  // (where Backups live) and offers the admin unlock if it's still locked.
+  // /admin/* itself is an API namespace — headers only, no browser page.
+  if (location.hash === '#admin') {
+    setTimeout(() => {
+      if (adminRequired && !adminKeyStored()) toggleAdmin();
+      showSettings();
+    }, 300);
+  }
+
   if (!authRequired) {
     // Company network / local server — no key needed, load straight in.
     document.getElementById('toolbar').style.display = 'flex';
@@ -1193,16 +1225,6 @@ function buildCard(anchor) {
     <div class="card-header">
       <div class="card-ids">
         <h3 title="${anchor.id}">${short}</h3>
-
-    <!-- Backups (admin) — restore is a documented manual procedure, on purpose -->
-    <div class="admin-only" style="margin:14px 0;padding:12px;border:1px solid var(--border);border-radius:10px">
-      <div style="font-size:0.8rem;font-weight:700;margin-bottom:4px">🗄 Backups</div>
-      <p style="font-size:0.72rem;color:var(--muted);margin:0 0 10px">Data = JSON stores only (small — take weekly). Full = evidence photos, world maps and 3D models too (large — take before upgrades). Restore: stop the service, unpack over the data directory, start it again.</p>
-      <div style="display:flex;gap:8px">
-        <button class="btn btn-ghost btn-sm" onclick="downloadBackup('data')">⬇ Data backup</button>
-        <button class="btn btn-ghost btn-sm" onclick="downloadBackup('full')">⬇ Full backup</button>
-      </div>
-    </div>
         <div class="asset">${anchor.assetId}</div>
       </div>
       ${badge}
@@ -2439,27 +2461,89 @@ async function submitImportGuide() {
   }
 }
 
-/** Download a backup archive. Streams through fetch so the admin key header
- * travels with it; the server refuses without it when SIB_ADMIN_KEY is set. */
+/** Download a backup archive with LIVE progress. The server streams tar.gz
+ * with no Content-Length, so progress is bytes received, not a percentage.
+ * Buttons lock while a backup runs; failures land in the status line, not a
+ * vanishing toast. */
+let bkRunning = false;
+function bkStatus(msg, color) {
+  const el = document.getElementById('bk-status');
+  if (!el) return;
+  el.style.display = 'block';
+  el.style.color = color || 'var(--text)';
+  el.textContent = msg;
+}
 async function downloadBackup(scope) {
+  if (bkRunning) return;
+  bkRunning = true;
+  const btns = [document.getElementById('bk-data-btn'), document.getElementById('bk-full-btn')];
+  btns.forEach(b => b && (b.disabled = true, b.style.opacity = 0.5));
   try {
-    toast(scope === 'full' ? 'Preparing full backup — this can take a while…' : 'Preparing data backup…');
+    bkStatus(`⏳ Requesting ${scope} backup…`);
     const r = await fetch(`/admin/backup?scope=${scope}`,
       { headers: { 'X-API-Key': apiKey(), 'X-Admin-Key': adminKeyStored() } });
     if (!r.ok) {
       const err = await r.json().catch(() => ({}));
       throw new Error(err.error || `HTTP ${r.status}`);
     }
-    const blob = await r.blob();
     const cd = r.headers.get('Content-Disposition') || '';
     const name = (cd.match(/filename="([^"]+)"/) || [])[1] || `sib-backup-${scope}.tar.gz`;
+    let blob;
+    if (r.body && r.body.getReader) {
+      const reader = r.body.getReader();
+      const chunks = [];
+      let received = 0, lastPaint = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        received += value.length;
+        const now = Date.now();
+        if (now - lastPaint > 200) {
+          lastPaint = now;
+          bkStatus(`⏳ ${scope} backup streaming… ${(received / 1048576).toFixed(1)} MB received`);
+        }
+      }
+      blob = new Blob(chunks, { type: 'application/gzip' });
+    } else {
+      bkStatus(`⏳ ${scope} backup downloading… (no progress available in this browser)`);
+      blob = await r.blob();
+    }
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = name;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 30000);
-    toast(`Backup downloaded: ${name}`);
-  } catch (e) { toast('Backup failed: ' + e.message); }
+    bkStatus(`✓ ${name} — ${(blob.size / 1048576).toFixed(1)} MB saved to your Downloads.`, '#4ade80');
+  } catch (e) {
+    bkStatus(`✗ Backup failed: ${e.message}`, 'var(--red)');
+  } finally {
+    bkRunning = false;
+    btns.forEach(b => b && (b.disabled = false, b.style.opacity = 1));
+  }
+}
+
+/** Ops log — admin & destructive actions, Render-log style. */
+async function loadOpsLog() {
+  const el = document.getElementById('ops-log');
+  el.textContent = 'Loading…';
+  try {
+    const r = await fetch('/admin/events?limit=200',
+      { headers: { 'X-API-Key': apiKey(), 'X-Admin-Key': adminKeyStored() } });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
+    const rows = j.data || [];
+    if (!rows.length) { el.textContent = 'No admin events recorded yet.'; return; }
+    el.innerHTML = rows.map(ev => {
+      const t = new Date(ev.ts).toLocaleString();
+      const col = ev.outcome === 'denied' ? 'var(--red)' : (ev.outcome === 'allowed' ? '#4ade80' : 'var(--muted)');
+      return `<div><span style="color:var(--muted)">${esc(t)}</span> ` +
+        `<span style="color:${col}">${esc(ev.outcome.toUpperCase())}</span> ` +
+        `${esc(ev.method)} ${esc(ev.path)}` +
+        `${ev.detail ? ' — ' + esc(ev.detail) : ''}` +
+        `<span style="color:var(--muted)"> · ${esc(ev.ip || '')}</span></div>`;
+    }).join('');
+  } catch (e) { el.textContent = 'Ops log unavailable: ' + e.message; }
 }
 
 /* ── Guide Preview (phone-frame walkthrough) ─────────────────────────────────

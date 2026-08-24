@@ -7,6 +7,7 @@
 //   so local npm run dev continues to work without any key.
 
 import type { Request, Response, NextFunction } from 'express';
+import { logOpsEvent } from '../ops-log.js';
 
 export function apiKeyAuth(req: Request, res: Response, next: NextFunction): void {
   const expectedKey = process.env.SIB_API_KEY?.trim();
@@ -50,20 +51,28 @@ export function isAdminRequest(method: string, path: string): boolean {
 }
 
 export function adminKeyAuth(req: Request, res: Response, next: NextFunction): void {
-  const adminKey = process.env.SIB_ADMIN_KEY?.trim();
-  if (!adminKey) { next(); return; }                    // gate not configured
   if (!isAdminRequest(req.method, req.path)) { next(); return; }
+
+  const adminKey = process.env.SIB_ADMIN_KEY?.trim();
+  if (!adminKey) {
+    // Gate not configured — action proceeds, but the ops log still records it.
+    logOpsEvent({ method: req.method, path: req.path, outcome: 'gate-off', ip: req.ip });
+    next();
+    return;
+  }
 
   const provided = Array.isArray(req.headers['x-admin-key'])
     ? req.headers['x-admin-key'][0]
     : req.headers['x-admin-key'];
 
   if (!provided || provided !== adminKey) {
+    logOpsEvent({ method: req.method, path: req.path, outcome: 'denied', ip: req.ip });
     res.status(403).json({
       error: 'Admin key required: this action is destructive. Unlock admin mode in the portal (X-Admin-Key).',
       timestamp: new Date().toISOString(),
     });
     return;
   }
+  logOpsEvent({ method: req.method, path: req.path, outcome: 'allowed', ip: req.ip });
   next();
 }
