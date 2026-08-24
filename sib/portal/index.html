@@ -197,6 +197,15 @@
     /* ── iLOTO panel ── */
     #iloto-panel { display: none; padding: 20px 24px 56px; }
     #iloto-panel.visible { display: block; }
+    #admin-panel { display: none; max-width: 860px; margin: 0 auto; }
+    #admin-panel.visible { display: block; }
+    .adm-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+      padding: 16px 18px; margin-bottom: 14px; }
+    .adm-card h3 { margin: 0 0 6px; font-size: 0.92rem; }
+    .adm-lock-banner { display:flex; align-items:center; gap:10px; padding:10px 14px; border-radius:10px;
+      font-size:0.8rem; margin-bottom:14px; }
+    .adm-lock-banner.locked { background:rgba(239,68,68,0.1); border:1px solid #7f1d1d; color:#fca5a5; }
+    .adm-lock-banner.unlocked { background:rgba(34,197,94,0.1); border:1px solid #14532d; color:#86efac; }
     .iloto-inner { max-width: 960px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
     .iloto-section-title { font-size: 0.8rem; font-weight: 700; letter-spacing: .04em;
       text-transform: uppercase; color: var(--muted); margin: 6px 0 0; }
@@ -479,6 +488,7 @@
   <button class="nav-tab"        data-view="guide-library" onclick="switchView('guide-library')">Guide Library</button>
   <button class="nav-tab"        data-view="models"        onclick="switchView('models')">3D Models</button>
   <button class="nav-tab"        data-view="iloto"         onclick="switchView('iloto')">iLOTO</button>
+  <button class="nav-tab"        data-view="admin"         onclick="switchView('admin')">🛠 Admin</button>
 </div>
 
 <!-- Setup banner (shown when API key not set) -->
@@ -550,6 +560,32 @@
     <span class="flt-lbl">to</span><input type="date" id="flt-ag-to" onchange="setFilter('ag')">
   </div>
   <div id="ar-guides-list" class="sessions-list"></div>
+</div>
+
+<!-- Admin panel — dedicated ops page: unlock, backups, ops log -->
+<div id="admin-panel">
+  <div id="adm-lock-banner"></div>
+  <div class="adm-card admin-only">
+    <h3>🗄 Backups</h3>
+    <p style="font-size:0.75rem;color:var(--muted);margin:0 0 12px">
+      <strong>Data</strong> = JSON stores only (small — take one weekly).
+      <strong>Full</strong> = evidence photos, world maps and 3D models too (large — take before upgrades).
+      Restore is deliberately manual: stop the service → unpack over the data directory → start it again
+      (see INTERNAL-SERVER-DEPLOY.md).</p>
+    <div style="display:flex;gap:10px;align-items:center">
+      <button class="btn btn-ghost" id="bk-data-btn" onclick="downloadBackup('data')">⬇ Data backup</button>
+      <button class="btn btn-ghost" id="bk-full-btn" onclick="downloadBackup('full')">⬇ Full backup</button>
+    </div>
+    <div id="bk-status" style="display:none;margin-top:12px;font-size:0.78rem;font-family:monospace;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px"></div>
+  </div>
+  <div class="adm-card admin-only">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <h3 style="margin:0">🗒 Ops log</h3>
+      <span style="font-size:0.72rem;color:var(--muted);flex:1">every admin &amp; destructive action, newest first — allowed / denied / gate-off, with IP</span>
+      <button class="btn btn-ghost btn-sm" onclick="loadOpsLog()">⟳ Refresh</button>
+    </div>
+    <div id="ops-log" style="max-height:420px;overflow-y:auto;font-family:monospace;font-size:0.72rem;line-height:1.7;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--muted)">Loading…</div>
+  </div>
 </div>
 
 <!-- Import Guide modal -->
@@ -720,28 +756,7 @@
       <label>API Key</label>
       <input type="password" id="settings-key" placeholder="sk-…" autocomplete="off" />
     </div>
-
-    <!-- Backups (admin) — restore is a documented manual procedure, on purpose -->
-    <div class="admin-only" style="margin:14px 0;padding:12px;border:1px solid var(--border);border-radius:10px">
-      <div style="font-size:0.8rem;font-weight:700;margin-bottom:4px">🗄 Backups</div>
-      <p style="font-size:0.72rem;color:var(--muted);margin:0 0 10px">Data = JSON stores only (small — take weekly). Full = evidence photos, world maps and 3D models too (large — take before upgrades). Restore: stop the service, unpack over the data directory, start it again.</p>
-      <div style="display:flex;gap:8px;align-items:center">
-        <button class="btn btn-ghost btn-sm" id="bk-data-btn" onclick="downloadBackup('data')">⬇ Data backup</button>
-        <button class="btn btn-ghost btn-sm" id="bk-full-btn" onclick="downloadBackup('full')">⬇ Full backup</button>
-      </div>
-      <div id="bk-status" style="display:none;margin-top:10px;font-size:0.75rem;font-family:monospace;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px"></div>
-    </div>
-
-    <!-- Ops log (admin) — who did what, Render-log style -->
-    <div class="admin-only" style="margin:14px 0;padding:12px;border:1px solid var(--border);border-radius:10px">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-        <span style="font-size:0.8rem;font-weight:700">🗒 Ops log</span>
-        <span style="font-size:0.68rem;color:var(--muted);flex:1">admin &amp; destructive actions, newest first</span>
-        <button class="btn btn-ghost btn-sm" onclick="loadOpsLog()">⟳ Refresh</button>
-      </div>
-      <div id="ops-log" style="max-height:220px;overflow-y:auto;font-family:monospace;font-size:0.68rem;line-height:1.6;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--muted)">Open ⟳ to load.</div>
-    </div>
-
+    <p style="font-size:0.72rem;color:var(--muted);margin:4px 0 0">Backups and the ops log live on the <a href="#" onclick="closeSettings();switchView('admin');return false" style="color:var(--accent)">🛠 Admin page</a>.</p>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeSettings()">Cancel</button>
       <button class="btn btn-primary" onclick="saveSettings()">Save</button>
@@ -1011,14 +1026,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   } catch { /* keep authRequired = true */ }
 
-  // Deep link from the home page's Admin tile: /portal#admin opens Settings
-  // (where Backups live) and offers the admin unlock if it's still locked.
-  // /admin/* itself is an API namespace — headers only, no browser page.
+  // Deep link from the home page's Admin tile: /portal#admin opens the
+  // dedicated 🛠 Admin page. /admin/* itself is an API namespace — headers
+  // only, no browser page.
   if (location.hash === '#admin') {
-    setTimeout(() => {
-      if (adminRequired && !adminKeyStored()) toggleAdmin();
-      showSettings();
-    }, 300);
+    setTimeout(() => switchView('admin'), 300);
   }
 
   if (!authRequired) {
@@ -1065,6 +1077,30 @@ function toggleAdmin() {
     if (k && k.trim()) { localStorage.setItem('sib_admin_key', k.trim()); toast('Admin mode unlocked.'); }
   }
   applyAdminUI();
+  // Keep the dedicated Admin page in sync if it's the current view.
+  const panel = document.getElementById('admin-panel');
+  if (panel && panel.classList.contains('visible')) renderAdminPanel();
+}
+
+/** The dedicated 🛠 Admin page: lock-state banner, then (when unlocked or the
+ * gate is off) the Backups and Ops log cards — which the admin-locked CSS
+ * hides automatically while locked. */
+function renderAdminPanel() {
+  const banner = document.getElementById('adm-lock-banner');
+  const locked = adminRequired && !adminKeyStored();
+  if (!adminRequired) {
+    banner.className = 'adm-lock-banner unlocked';
+    banner.innerHTML = '🔓 <strong>Admin gate is off</strong>&nbsp;— no SIB_ADMIN_KEY set on this server; destructive actions are open. Fine for local/dev, set the key for pilots.';
+  } else if (locked) {
+    banner.className = 'adm-lock-banner locked';
+    banner.innerHTML = '🔒 <strong>Admin locked</strong>&nbsp;— backups, the ops log and destructive actions need the admin key.&nbsp;' +
+      '<button class="btn btn-primary btn-sm" onclick="toggleAdmin()">🔓 Unlock admin</button>';
+  } else {
+    banner.className = 'adm-lock-banner unlocked';
+    banner.innerHTML = '🔓 <strong>Admin unlocked</strong>&nbsp;— destructive actions and backups enabled on this browser.&nbsp;' +
+      '<button class="btn btn-ghost btn-sm" onclick="toggleAdmin()">🔒 Lock</button>';
+  }
+  if (!locked) loadOpsLog();
 }
 
 // ── Pilot filters (client-side over already-fetched data) ─────────────────────
@@ -1667,6 +1703,7 @@ function switchView(view) {
   const glPanel       = document.getElementById('guide-library-panel');
   const modelsPanel   = document.getElementById('models-panel');
   const ilotoPanel    = document.getElementById('iloto-panel');
+  const adminPanel    = document.getElementById('admin-panel');
 
   // Hide everything, then selectively show
   sessPanel.classList.remove('visible');
@@ -1675,6 +1712,7 @@ function switchView(view) {
   glPanel.classList.remove('visible');
   modelsPanel.classList.remove('visible');
   ilotoPanel.classList.remove('visible');
+  adminPanel.classList.remove('visible');
 
   if (view === 'sessions') {
     anchorGrid.style.display = 'none';
@@ -1706,6 +1744,11 @@ function switchView(view) {
     toolbar.style.display    = 'none';
     ilotoPanel.classList.add('visible');
     loadILoto();
+  } else if (view === 'admin') {
+    anchorGrid.style.display = 'none';
+    toolbar.style.display    = 'none';
+    adminPanel.classList.add('visible');
+    renderAdminPanel();
   } else {
     anchorGrid.style.display = '';
     toolbar.style.display    = 'flex';
