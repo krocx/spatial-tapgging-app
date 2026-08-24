@@ -22,7 +22,7 @@ import askRouter from './routes/ask.js';
 import { sessionStore } from './routes/sessions.js';
 import { locTagStore, locTagCompletionStore } from './routes/loc-tags.js';
 import { derivePointStatus } from './loto/loto-core.js';
-import { apiKeyAuth, adminKeyAuth } from './middleware/auth.js';
+import { apiKeyAuth, adminKeyAuth, contentGate, hasValidApiKey } from './middleware/auth.js';
 // NOT from @spatial/shared: that package is types-only at runtime — its exports
 // point at .ts source, which a compiled server cannot load. See sib/src/version.ts.
 import { PLATFORM_VERSION } from './version.js';
@@ -40,6 +40,61 @@ export function createApp(): express.Express {
   // 14-image minimum on busier/noisier camera frames.
   app.use(express.json({ limit: '30mb' })); // allow base64 image payloads
 
+  // --- Content gate: with SIB_API_KEY set, EVERYTHING below needs the key ---
+  // (header for apps/APIs, HttpOnly cookie set by /unlock for browsers).
+  // Internal deployments without the key are unaffected. See middleware/auth.ts.
+  app.use(contentGate);
+
+  // --- /unlock — the only public page. Serves no data; sets the access cookie.
+  app.get('/unlock', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    res.send(`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>SIB — Access</title>
+<style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+background:#0b1220;color:#e2e8f0;font-family:-apple-system,Helvetica,Arial,sans-serif}
+.card{background:#111a2e;border:1px solid #22304b;border-radius:14px;padding:30px 34px;width:min(380px,90vw)}
+h1{font-size:18px;margin:0 0 6px}p{font-size:12.5px;color:#7d8da3;margin:0 0 18px}
+input{width:100%;box-sizing:border-box;padding:10px 12px;border:1px solid #22304b;border-radius:9px;
+background:#0b1220;color:#e2e8f0;font-size:14px;outline:none}input:focus{border-color:#3b82f6}
+button{width:100%;margin-top:12px;padding:10px;border:none;border-radius:9px;background:#3b82f6;
+color:#fff;font-size:14px;font-weight:700;cursor:pointer}
+.err{color:#ef4444;font-size:12px;margin-top:10px;display:none}</style></head><body>
+<div class="card"><h1>&#9889; SIB</h1><p>This deployment is access-controlled. Enter the site key to continue.</p>
+<form id="f"><input id="k" type="password" placeholder="Site key" autocomplete="off" autofocus>
+<button type="submit">Unlock</button><div class="err" id="e">Invalid key.</div></form></div>
+<script>
+document.getElementById('f').addEventListener('submit', async function(ev){
+  ev.preventDefault();
+  var k = document.getElementById('k').value.trim();
+  if (!k) return;
+  var r = await fetch('/unlock', { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ key: k }) });
+  if (r.ok) {
+    try { localStorage.setItem('sib_api_key', k); } catch(_){}
+    var next = new URLSearchParams(location.search).get('next') || '/';
+    if (next.indexOf('/') !== 0 || next.indexOf('//') === 0) next = '/';
+    location.href = next;
+  } else {
+    document.getElementById('e').style.display = 'block';
+  }
+});
+</script></body></html>`);
+  });
+  app.post('/unlock', (req, res) => {
+    const expected = process.env.SIB_API_KEY?.trim();
+    const key = String((req.body as { key?: string })?.key ?? '').trim();
+    if (!expected) { res.json({ ok: true }); return; }        // internal deployment
+    if (key !== expected) {
+      res.status(403).json({ error: 'Invalid key' });
+      return;
+    }
+    const secure = (req.headers['x-forwarded-proto'] === 'https') || req.secure;
+    res.setHeader('Set-Cookie',
+      'sib_key=' + encodeURIComponent(key) +
+      '; Path=/; Max-Age=2592000; HttpOnly; SameSite=Lax' + (secure ? '; Secure' : ''));
+    res.json({ ok: true });
+  });
+
   // --- Health check (no auth — used by Render for container health probes) ---
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -49,14 +104,14 @@ export function createApp(): express.Express {
   // authRequired: true  → SIB_API_KEY is set (Render / any externally-accessible server)
   // authRequired: false → SIB_API_KEY not set (company network / local dev)
   // The portal uses this to decide whether to show the API key setup banner.
-  app.get('/config', (_req, res) => {
+  app.get('/config', (req, res) => {
     res.json({
       authRequired: !!(process.env.SIB_API_KEY?.trim()),
       // adminRequired → SIB_ADMIN_KEY set: destructive actions (DELETE, quiz
       // admin) need X-Admin-Key. The portal uses this to lock destructive UI.
       adminRequired: !!(process.env.SIB_ADMIN_KEY?.trim()),
-      // Single platform version for the whole release train — see docs/VERSIONING.md.
-      platformVersion: PLATFORM_VERSION,
+      // Version is a deployment detail — only authenticated callers see it.
+      ...(hasValidApiKey(req) ? { platformVersion: PLATFORM_VERSION } : {}),
       timestamp: new Date().toISOString(),
     });
   });

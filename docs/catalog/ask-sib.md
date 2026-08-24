@@ -23,4 +23,6 @@ Ask a question, get an answer grounded strictly in the Feature Catalogue and the
 dictionary — with the features cited as clickable chips. Runs in two tiers: docs
 search everywhere, and full generation wherever an OpenAI-compatible local model
 endpoint (llama.cpp or Ollama) is configured. No site data flows through it and
-no cloud AI is involved; a down model degrades to search, never to a hard failure.
+no cloud AI is involved; a down model degrades to search, never to a hard
+failure. On internet-facing deployments it sits behind the site key like
+everything else.

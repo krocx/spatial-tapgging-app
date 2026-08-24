@@ -9,15 +9,33 @@
 import type { Request, Response, NextFunction } from 'express';
 import { logOpsEvent } from '../ops-log.js';
 
+/** The API key a request carries — X-API-Key header, or the `sib_key` cookie
+ *  set by the /unlock page (browsers can't add headers to page navigations). */
+export function providedApiKey(req: Request): string | undefined {
+  const h = Array.isArray(req.headers['x-api-key'])
+    ? req.headers['x-api-key'][0]
+    : req.headers['x-api-key'];
+  if (h) return h;
+  const cookie = req.headers.cookie;
+  if (!cookie) return undefined;
+  const m = /(?:^|;\s*)sib_key=([^;]*)/.exec(cookie);
+  return m ? decodeURIComponent(m[1]) : undefined;
+}
+
+/** True when no key is configured (internal deployments) or the request carries it. */
+export function hasValidApiKey(req: Request): boolean {
+  const expected = process.env.SIB_API_KEY?.trim();
+  if (!expected) return true;
+  return providedApiKey(req) === expected;
+}
+
 export function apiKeyAuth(req: Request, res: Response, next: NextFunction): void {
   const expectedKey = process.env.SIB_API_KEY?.trim();
 
   // Dev mode — no key configured, allow everything
   if (!expectedKey) { next(); return; }
 
-  const provided = Array.isArray(req.headers['x-api-key'])
-    ? req.headers['x-api-key'][0]
-    : req.headers['x-api-key'];
+  const provided = providedApiKey(req);
 
   if (!provided || provided !== expectedKey) {
     res.status(401).json({
@@ -28,6 +46,39 @@ export function apiKeyAuth(req: Request, res: Response, next: NextFunction): voi
   }
 
   next();
+}
+
+// ── Content gate (IP hardening) ──────────────────────────────────────────────
+// When SIB_API_KEY is set (internet-facing deployments), EVERY surface —
+// pages, docs, catalogue, stats, Ask SIB — requires the key. Browsers can't
+// attach headers to page navigations, so the /unlock page stores the key in
+// an HttpOnly cookie that this gate also accepts. Internal deployments
+// (no key configured) are untouched.
+//
+// Public exceptions, deliberately tiny:
+//   /health  — Render's container probe
+//   /unlock  — the door itself (serves no data)
+//   /config  — auth-mode booleans only; platformVersion is stripped for
+//              unauthenticated callers in the route itself.
+
+export function contentGate(req: Request, res: Response, next: NextFunction): void {
+  if (!process.env.SIB_API_KEY?.trim()) { next(); return; }   // internal deployment — open
+  if (req.method === 'OPTIONS') { next(); return; }            // CORS preflight
+  if (req.path === '/health' || req.path === '/unlock' || req.path === '/config') { next(); return; }
+  if (hasValidApiKey(req)) { next(); return; }
+
+  const wantsHtml = req.method === 'GET' && (req.headers.accept ?? '').includes('text/html');
+  if (wantsHtml) {
+    // Same-origin paths only — never a redirect target an attacker controls.
+    const target = req.originalUrl.startsWith('/') && !req.originalUrl.startsWith('//')
+      ? req.originalUrl : '/';
+    res.redirect(302, '/unlock?next=' + encodeURIComponent(target));
+    return;
+  }
+  res.status(401).json({
+    error: 'Unauthorized: missing or invalid X-API-Key header',
+    timestamp: new Date().toISOString(),
+  });
 }
 
 // ── Admin gate (pilot hardening) ─────────────────────────────────────────────

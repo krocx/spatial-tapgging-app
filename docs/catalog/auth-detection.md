@@ -20,6 +20,8 @@ arch: |
     end
     Note over M: Same build everywhere - no flags, the server decides
 ---
-The portal asks /config whether the server enforces an API key and only prompts when
-it does. Local development stays frictionless; production stays locked — one
-codebase, no build flags.
+The portal asks /config whether the server enforces an API key and only prompts
+when it does. On internet-facing deployments the content gate goes further:
+every page and endpoint requires the key (browsers unlock once via /unlock,
+which sets an HttpOnly cookie), and only /health, /unlock and a reduced /config
+stay public. Local development stays frictionless; one codebase, no build flags.

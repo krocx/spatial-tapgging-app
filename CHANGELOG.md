@@ -7,6 +7,15 @@ it, it gets a line.
 ## 2026.4.42 — 2026-08-11
 
 ### Added
+- **Full site lock-down for internet-facing deployments** — with `SIB_API_KEY`
+  set, EVERY surface now requires the key: home, portal, roadmap, wireframe,
+  catalogue (+data/spec endpoints), Ask SIB, /stats, QR print pages. Browsers
+  unlock once via a minimal public `/unlock` page (validates the key, sets a
+  30-day HttpOnly cookie, pre-fills the portal's stored key); apps and APIs
+  keep using the `X-API-Key` header. Only `/health`, `/unlock`, and a reduced
+  `/config` (auth booleans only — `platformVersion` now requires auth) remain
+  public. Internal deployments without the key are completely unchanged.
+  Motivated by IP review: pre-filing material must not sit on public URLs.
 - **Backup & restore** — the missing production-readiness piece: admin-gated
   `GET /admin/backup?scope=data|full` streams a timestamped `.tar.gz` of the
   data directory (data = JSON stores, small, weekly habit; full = evidence
