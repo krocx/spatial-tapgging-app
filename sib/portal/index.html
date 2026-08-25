@@ -4,7 +4,25 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Spatial Tagging · Anchor Directory</title>
-  <script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.169.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.169.0/examples/jsm/"}}</script>
+  <!-- Three.js r169 import map — vendored copy first (npm run catalog:vendor,
+       committed under portal/vendor/three/), unpkg CDN only as fallback when
+       the vendored files are absent. Import maps are processed once before any
+       module loads, so the choice is made synchronously at parse time. -->
+  <script>
+    (function () {
+      var local = false;
+      try {
+        var probe = new XMLHttpRequest();
+        probe.open('HEAD', '/portal/vendor/three/three.module.js', false); // sync: must resolve before the importmap is written
+        probe.send();
+        local = probe.status === 200;
+      } catch (e) { /* stay on CDN */ }
+      var map = local
+        ? { imports: { 'three': '/portal/vendor/three/three.module.js', 'three/addons/': '/portal/vendor/three/addons/' } }
+        : { imports: { 'three': 'https://unpkg.com/three@0.169.0/build/three.module.js', 'three/addons/': 'https://unpkg.com/three@0.169.0/examples/jsm/' } };
+      document.write('<script type="importmap">' + JSON.stringify(map) + '<\/script>');
+    })();
+  </script>
   <!-- qrcodejs removed: QR images are now generated server-side and fetched via /anchors/:id/qrimage -->
   <style>
     :root {

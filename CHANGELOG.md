@@ -7,6 +7,14 @@ it, it gets a line.
 ## 2026.4.42 — 2026-08-11
 
 ### Added
+- **Three.js vendored (supply-chain hardening)** — the portal's 3D preview and
+  browser GLB→USDZ converter no longer depend on unpkg at runtime:
+  `npm run catalog:vendor` now also downloads Three.js r169 (core + GLTFLoader,
+  USDZExporter, OrbitControls and their addon dependencies) into
+  `sib/portal/vendor/three/`, and the portal's import map prefers the vendored
+  copies, falling back to the CDN only when they're absent. Closes the last
+  un-pinned third-party script on a page that holds an API key, and makes the
+  converter work on networks that block CDNs.
 - **Full site lock-down for internet-facing deployments** — with `SIB_API_KEY`
   set, EVERY surface now requires the key: home, portal, roadmap, wireframe,
   catalogue (+data/spec endpoints), Ask SIB, /stats, QR print pages. Browsers

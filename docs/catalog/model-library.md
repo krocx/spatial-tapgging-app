@@ -22,14 +22,16 @@ arch: |
       PASS --> ST[("Model store: file.glb + file.usdz + usdzStatus")]
       KIT["POST /models/:id/kit - assign to anchor kit, or mark general"]
     end
-    subgraph iOS
-      DL["SIBClient downloads USDZ (preferred), GLB fallback"] --> SCN["SceneKit node at author defaultScale"]
+    subgraph iOS["iOS (SIBClient)"]
+      LIST["GET /models?anchorId= - anchor kit + all 'general' models"] --> DL["GET /models/:id/file.usdz preferred, file.glb fallback - cached on device"]
+      DL --> SCN["SceneKit node at author defaultScale"]
     end
     ST --> DL
-    ST -.usdzStatus gates Preview.-> DL
+    ST -."GET /models/:id - usdzStatus gates Preview".-> DL
 ---
 A shared library of AR-ready models: GLB/USDZ pass through natively, OBJ/FBX/STEP
 convert via headless Blender where present, and GLB→USDZ runs in the browser
-(Three.js USDZExporter) so the server needs no native toolchain. Models are assigned
+(Three.js r169 USDZExporter, vendored locally with CDN fallback) so the server
+needs no native toolchain. Models are assigned
 per-anchor as kits or marked general, and an author-set real-world default scale
 pre-fills every picker — used by guide ghosts and iLOTO point slots alike.
