@@ -7,6 +7,9 @@ version: 2026.4.42
 depends: [procedure-maps, model-library]
 terms: [AR Work Instructions]
 spec: PROCEDURE-DESIGNER.md
+api: |
+  POST /mindmap/step-images — upload per-step image (designer · API key)
+  GET /mindmap/step-images/:filename — serve step image (designer, app · API key)
 wireframe: procdes
 arch: |
   flowchart LR

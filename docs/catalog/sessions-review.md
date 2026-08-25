@@ -7,6 +7,9 @@ version: baseline
 depends: [inspection-sessions, resolution-tracking, evidence-signoff]
 terms: [Evidence Capture]
 spec: SERVER-REFERENCE.md
+api: |
+  GET /sessions — inspection history (portal · API key)
+  PATCH /sessions/:id/report — reviewer notes on a session (portal · API key)
 wireframe: portal
 arch: |
   flowchart LR

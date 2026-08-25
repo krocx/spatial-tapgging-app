@@ -7,6 +7,10 @@ version: 2026.4.42
 depends: [iloto-anchors, loto-event-log]
 terms: [LOTO, Energy Isolation Point]
 spec: ILOTO.md
+api: |
+  POST /loto/map — save isolation sequence map (app · API key)
+  GET /loto/map?anchorId= — load map with live point status (app · API key)
+  DELETE /loto/map?anchorId= — remove map (portal · admin key)
 wireframe: iloto
 arch: |
   flowchart LR

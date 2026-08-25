@@ -7,6 +7,16 @@ it, it gets a line.
 ## 2026.4.42 — 2026-08-11
 
 ### Added
+- **Per-feature API reference in the catalogue** — 47 features now carry an
+  `api:` block ("METHOD /path — purpose (caller · auth tier)") rendered as an
+  API section on the /catalog card between Architecture and the spec, with
+  method chips and auth-tier annotations (API key / admin key / public).
+  127 endpoint lines cover the full surface: anchors, tags, perception,
+  sessions, guides + live SSE, models, mindmap/procedure, worldmap, Gemba,
+  iLOTO, quiz admin, ask, admin/backup. `catalog:check` extracts the real
+  Express routes from `sib/src` and fails on any listed endpoint that doesn't
+  exist or any malformed line — the reference cannot silently drift from the
+  code. UX-only features carry no API section rather than filler.
 - **Catalogue "Read the spec" now section-scoped** — spec paths can carry a
   heading anchor (`spec: ../README.md#3d-model-library`) and `/catalog/doc/:id`
   serves just that section instead of the whole file. The 11 features whose

@@ -7,6 +7,8 @@ version: 2026.4.42
 depends: [loto-event-log]
 terms: [LOTO]
 spec: ILOTO.md
+api: |
+  GET /loto/my?name= — cross-anchor locks + certification for one person (app · API key)
 wireframe: iloto
 arch: |
   flowchart LR

@@ -7,6 +7,8 @@ version: baseline
 depends: [live-telemetry, stall-detection, adapter-architecture]
 terms: [Adapter, AI Dynamic Instructions]
 spec: ../README.md#ar-work-instructions-ar-oms
+api: |
+  GET /guide-sessions/live/:id/hints — consume-once contextual hint queue (app · API key)
 arch: |
   sequenceDiagram
     participant M as guide-session.sse.ts

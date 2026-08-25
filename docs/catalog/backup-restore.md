@@ -7,6 +7,9 @@ version: 2026.4.42
 depends: [self-hosted, data-admin]
 terms: [SIB]
 spec: INTERNAL-SERVER-DEPLOY.md
+api: |
+  GET /admin/backup?scope=data|full — streamed tar.gz of the data directory (portal · admin key)
+  GET /admin/events — ops log of admin actions (portal · admin key)
 arch: |
   flowchart LR
     BTN["Portal Settings - Backups (admin unlock)"] --> EP["GET /admin/backup?scope=data|full"]

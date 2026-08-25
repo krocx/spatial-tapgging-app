@@ -7,6 +7,11 @@ version: baseline
 depends: []
 terms: [Anchor, QR Spatial Anchoring, 6-DOF]
 spec: APP-FEATURES.md
+api: |
+  POST /anchors — create anchor, returns id + encryption key for the QR (app, portal · API key)
+  GET /anchors/:id — resolve a scanned QR to its anchor (app · API key)
+  GET /anchors/:id/qrimage — server-rendered QR PNG (portal · API key)
+  GET /anchors/:id/qrprint — print-exact A4 QR page (portal · API key)
 wireframe: author
 flow: |
   flowchart LR

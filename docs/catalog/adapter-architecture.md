@@ -7,6 +7,9 @@ version: baseline
 depends: []
 terms: [Adapter]
 spec: technical-architecture.md
+api: |
+  GET /perception/adapters — registered perception adapters (any · API key)
+  POST /perception/analyze-image — raw adapter analysis, no tag context (any · API key)
 arch: |
   flowchart LR
     subgraph SIB["sib/src/adapters/"]

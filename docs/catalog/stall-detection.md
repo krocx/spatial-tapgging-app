@@ -7,6 +7,8 @@ version: baseline
 depends: [live-telemetry]
 terms: [AR Work Instructions]
 spec: ../README.md#ar-work-instructions-ar-oms
+api: |
+  POST /guide-sessions/live/:id/events — dwell timer emits step:stalled here (app · API key)
 arch: |
   sequenceDiagram
     participant O as iOS dwell watchdog (90s timer)

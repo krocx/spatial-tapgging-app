@@ -7,6 +7,11 @@ version: 2026.4.42
 depends: [loto-event-log, loto-training]
 terms: [LOTO, Supervisor Override, Certification]
 spec: ILOTO.md
+api: |
+  GET /loto/quiz/admin — bank WITH answers (portal · admin key)
+  POST /loto/quiz/questions — add question (portal · admin key)
+  PATCH /loto/quiz/questions/:id — edit question (portal · admin key)
+  POST /loto/quiz/import — bulk replace bank, JSON/CSV (portal · admin key)
 wireframe: portal
 arch: |
   flowchart LR

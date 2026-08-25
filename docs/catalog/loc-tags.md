@@ -7,6 +7,12 @@ version: baseline
 depends: [arworldmap-memory]
 terms: [Gemba Walk, ARWorldMap]
 spec: APP-FEATURES.md
+api: |
+  POST /loc-tags — create Gemba finding pinned in AR (app · API key)
+  GET /loc-tags?anchorId= — findings for an anchor (app, portal · API key)
+  PATCH /loc-tags/:id — edit finding (app · API key)
+  GET /loc-tags/image/:filename — finding photo (app, portal · API key)
+  DELETE /loc-tags/:id — remove finding (portal · admin key)
 wireframe: gemba
 arch: |
   flowchart LR

@@ -7,6 +7,9 @@ version: baseline
 depends: [roadmap-collab]
 terms: [VLM]
 spec: roadmap-mindmapper.md
+api: |
+  POST /mindmap/export — portable JSON for cross-server import (designer · API key)
+  POST /mindmap/import-image — whiteboard photo to draft map via local vision model (designer · API key)
 arch: |
   flowchart LR
     MAP["Canvas map"] --> PNGSVG["PNG / SVG export - rendered client-side"]

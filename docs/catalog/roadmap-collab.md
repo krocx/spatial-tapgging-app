@@ -7,6 +7,12 @@ version: baseline
 depends: []
 terms: [SIB]
 spec: roadmap-mindmapper.md
+api: |
+  POST /mindmap/save — LWW map save (designer · API key)
+  GET /mindmap/list — map directory (designer · API key)
+  GET /mindmap/load/:id — load map (designer · API key)
+  POST /mindmap/:id/publish — draft to published (designer · API key)
+  POST /mindmap/unlock — per-map draft key check (designer · API key)
 arch: |
   sequenceDiagram
     participant C1 as Client A (zustand store)

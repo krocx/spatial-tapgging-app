@@ -7,6 +7,9 @@ version: baseline
 depends: [spatial-steps, model-library]
 terms: [CAD Import & Conversion, GLB / USDZ]
 spec: ../README.md#3d-model-library
+api: |
+  GET /models/:id/file.usdz — overlay model, preferred format (app · API key)
+  GET /models/:id/file.glb — overlay model fallback (app · API key)
 wireframe: arguides
 arch: |
   flowchart LR

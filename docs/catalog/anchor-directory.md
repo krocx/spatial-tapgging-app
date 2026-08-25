@@ -7,6 +7,10 @@ version: baseline
 depends: [qr-anchoring]
 terms: [Anchor, QR Spatial Anchoring]
 spec: SERVER-REFERENCE.md
+api: |
+  GET /anchors — full directory with CSV export source (portal · API key)
+  GET /anchors/:id/readiness — trained / placed / world-map summary (portal · API key)
+  POST /anchors — create anchor with auto-generated key (portal · API key)
 wireframe: portal
 arch: |
   flowchart LR

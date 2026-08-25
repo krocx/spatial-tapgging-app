@@ -7,6 +7,11 @@ version: baseline
 depends: [qr-anchoring]
 terms: [Tag, Ontology]
 spec: APP-FEATURES.md
+api: |
+  POST /tags — create checkpoint with check type + AR placement (app · API key)
+  GET /tags?anchorId= — checkpoints for an anchor (app, portal · API key)
+  PATCH /tags/:id — update label, placement, check config (app · API key)
+  DELETE /tags/:id — remove checkpoint + pass-states (portal · admin key)
 wireframe: author
 arch: |
   flowchart LR

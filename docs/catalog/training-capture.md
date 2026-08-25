@@ -7,6 +7,9 @@ version: baseline
 depends: [check-ontology]
 terms: [Pass State, Train in App]
 spec: SIB-TRAINING-FEATURES.md
+api: |
+  POST /perception/train — encrypted multi-angle reference upload (app · API key)
+  GET /perception/pass-state/:tagId — training state + calibration (app · API key)
 wireframe: author
 arch: |
   sequenceDiagram

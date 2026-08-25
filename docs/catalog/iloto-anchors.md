@@ -7,6 +7,11 @@ version: 2026.4.42
 depends: [qr-anchoring, arworldmap-memory]
 terms: [LOTO, Energy Isolation Point, Anchor]
 spec: ILOTO.md
+api: |
+  POST /loto/points — create isolation point with AR placement (app · API key)
+  GET /loto/points?anchorId= — points for an anchor (app, portal · API key)
+  PATCH /loto/points/:id — edit point / assign 3D asset slots (app · API key)
+  DELETE /loto/points/:id — remove point (portal · admin key)
 wireframe: iloto
 arch: |
   flowchart LR

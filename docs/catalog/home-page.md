@@ -7,6 +7,9 @@ version: 2026.4.42
 depends: []
 terms: [SIB]
 spec: SERVER-REFERENCE.md
+api: |
+  GET /stats — aggregate pulse: anchors, sessions, findings, locks (browser · API key)
+  GET /config — server online + version badge (browser · public, version requires key)
 arch: |
   flowchart LR
     GET["GET / in app.ts"] --> HTML["sib/portal/home.html - static, no build step"]

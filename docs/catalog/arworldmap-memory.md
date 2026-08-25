@@ -7,6 +7,9 @@ version: baseline
 depends: []
 terms: [ARWorldMap]
 spec: APP-FEATURES.md
+api: |
+  POST /worldmap/upload — share ARWorldMap for an anchor (app · API key)
+  GET /worldmap/:anchorId — download shared map for relocalization (app · API key)
 wireframe: gemba
 arch: |
   sequenceDiagram

@@ -7,6 +7,9 @@ version: 2026.4.42
 depends: [guide-ingestion, adapter-architecture]
 terms: [Instruction Import, Adapter]
 spec: SERVER-REFERENCE.md
+api: |
+  POST /guides/import — adapter-based instruction import, manual JSON today (portal · API key)
+  GET /guides/step-image/:filename — imported step image (app, portal · API key)
 wireframe: portal
 arch: |
   sequenceDiagram

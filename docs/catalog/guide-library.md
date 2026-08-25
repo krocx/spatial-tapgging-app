@@ -7,6 +7,10 @@ version: baseline
 depends: [guide-lifecycle, guide-import]
 terms: [AR Work Instructions]
 spec: ../README.md#anchor-portal-portal
+api: |
+  GET /guides — all guides across anchors (portal · API key)
+  PATCH /guides/:id — publish / unpublish from the library (portal · API key)
+  GET /guides/:id/steps — step list with placement status (portal · API key)
 wireframe: portal
 arch: |
   flowchart LR

@@ -7,6 +7,13 @@ version: baseline
 depends: [spatial-steps]
 terms: [AR Work Instructions, Author Mode]
 spec: PROCEDURE-DESIGNER.md
+api: |
+  POST /guides — create draft guide (app, portal · API key)
+  GET /guides?anchorId= — guides for an anchor (app, portal · API key)
+  PATCH /guides/:id — publish / unpublish / rename / move (portal · API key)
+  POST /guides/:id/steps — append step (app, portal · API key)
+  PATCH /guides/:id/steps/:stepId — edit step content + placement (app, portal · API key)
+  DELETE /guides/:id — remove guide + steps + evidence (portal · admin key)
 wireframe: arguides
 arch: |
   flowchart LR

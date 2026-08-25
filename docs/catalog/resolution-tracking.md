@@ -7,6 +7,9 @@ version: baseline
 depends: [loc-tags, defect-taxonomy]
 terms: [Evidence Capture]
 spec: APP-FEATURES.md
+api: |
+  POST /loc-tags/:id/completion — record walk outcome incl. RESOLVED (app · API key)
+  GET /loc-tags/:id/completions — completion history per finding (app, portal · API key)
 wireframe: portal
 arch: |
   sequenceDiagram

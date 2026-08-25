@@ -7,6 +7,10 @@ version: 2026.4.42
 depends: [loto-event-log]
 terms: [LOTO, Certification]
 spec: ILOTO.md
+api: |
+  GET /loto/quiz — question bank, answers stripped (app · API key)
+  POST /loto/quiz/submit — grade attempt, issue certification on pass (app · API key)
+  GET /loto/certifications — certification register (app, portal · API key)
 wireframe: iloto
 arch: |
   sequenceDiagram

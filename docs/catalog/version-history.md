@@ -7,6 +7,9 @@ version: baseline
 depends: [roadmap-collab]
 terms: []
 spec: roadmap-mindmapper.md
+api: |
+  GET /mindmap/:id/versions — saved versions of a map (designer · API key)
+  POST /mindmap/:id/restore/:versionId — restore a version (designer · API key)
 arch: |
   sequenceDiagram
     participant U as User

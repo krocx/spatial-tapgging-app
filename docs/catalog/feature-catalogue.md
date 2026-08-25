@@ -7,6 +7,9 @@ version: 2026.4.42
 depends: [home-page, versioning]
 terms: [SIB]
 spec: catalog/README.md
+api: |
+  GET /catalog/data — the derived graph this page renders (browser · API key)
+  GET /catalog/doc/:id — section-scoped spec markdown (browser · API key)
 arch: |
   flowchart LR
     MD["docs/catalog/*.md - YAML frontmatter, canonical source"] --> CORE["catalog-core.ts buildCatalog - validates + derives graph"]

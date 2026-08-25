@@ -7,6 +7,9 @@ version: baseline
 depends: [arworldmap-memory]
 terms: [ARWorldMap]
 spec: APP-FEATURES.md
+api: |
+  GET /worldmap/:anchorId/reference-photo — author viewpoint card (app · API key)
+  GET /worldmap/guide/:guideId/photo — guide re-localization photo (app · API key)
 wireframe: gemba
 arch: |
   sequenceDiagram

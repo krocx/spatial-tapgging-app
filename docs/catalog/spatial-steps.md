@@ -7,6 +7,10 @@ version: baseline
 depends: [qr-anchoring]
 terms: [AR Work Instructions, Anchor]
 spec: ../README.md#ar-work-instructions-ar-oms
+api: |
+  PATCH /guides/:id/steps/:stepId — persist AR pin position per step (app · API key)
+  POST /worldmap/guide/:guideId/upload — guide world map + reference photo (app · API key)
+  GET /worldmap/guide/:guideId — world map for operator relocalization (app · API key)
 wireframe: arguides
 arch: |
   flowchart LR

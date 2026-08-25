@@ -7,6 +7,8 @@ version: baseline
 depends: [guide-import]
 terms: [MES, Adapter]
 spec: PROCEDURE-DESIGNER.md
+api: |
+  POST /guides/import — the adapter seam a future MES connector plugs into (portal · API key)
 arch: |
   flowchart LR
     MES["MES work orders + instructions"] -.planned.-> AD["adapters/instructions-source-adapter.ts"]

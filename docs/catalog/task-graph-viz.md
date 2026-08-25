@@ -7,6 +7,8 @@ version: baseline
 depends: [conditional-graph]
 terms: [AR Work Instructions]
 spec: ../README.md#anchor-portal-portal
+api: |
+  GET /guides/:id/steps — branch fields drive the lane layout (portal · API key)
 wireframe: portal
 arch: |
   flowchart LR

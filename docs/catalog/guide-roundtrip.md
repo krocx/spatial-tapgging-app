@@ -7,6 +7,9 @@ version: 2026.4.42
 depends: [procedure-maps, guide-ingestion, guide-library]
 terms: [AR Work Instructions, Instruction Import]
 spec: PROCEDURE-DESIGNER.md
+api: |
+  POST /guides/:id/edit-map — reverse-compile guide into an editable map (portal · API key)
+  POST /mindmap/:id/procedure/export — re-sync edits back to the guide (designer · API key)
 wireframe: procdes
 arch: |
   sequenceDiagram

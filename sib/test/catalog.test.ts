@@ -162,6 +162,22 @@ test('buildCatalog: areas sorted by order, README ignored', () => {
   assert.equal(cat.areas[0].flow, 'flowchart LR\n  A --> B');
 });
 
+test('buildCatalog: api block splits to trimmed lines; absent api stays undefined', () => {
+  const withApi = {
+    name: 'a.md',
+    content: feature('a').content.replace(
+      '---\nA body',
+      'api: |\n  GET /x — one (app · API key)\n  POST /x — two (portal · admin key)\n---\nA body',
+    ),
+  };
+  const cat = buildCatalog([withApi, feature('b')], GLOSS, 'v');
+  assert.deepEqual(cat.features.find(f => f.id === 'a')!.api, [
+    'GET /x — one (app · API key)',
+    'POST /x — two (portal · admin key)',
+  ]);
+  assert.equal(cat.features.find(f => f.id === 'b')!.api, undefined);
+});
+
 test('slugifyHeading: GitHub-style slugs incl. parens, backticks, digits', () => {
   assert.equal(slugifyHeading('3D Model Library'), '3d-model-library');
   assert.equal(slugifyHeading('AR Work Instructions (AR OMS)'), 'ar-work-instructions-ar-oms');

@@ -7,6 +7,9 @@ version: baseline
 depends: [patch-scoring]
 terms: [Batch Validation, Anchor]
 spec: SERVER-REFERENCE.md
+api: |
+  POST /perception/validate — score one capture against one tag (app · API key)
+  POST /perception/validate-all — one anchor capture scored against every tag (app · API key)
 wireframe: operator
 arch: |
   sequenceDiagram

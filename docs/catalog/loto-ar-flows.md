@@ -7,6 +7,9 @@ version: 2026.4.42
 depends: [iloto-anchors, loto-event-log, loto-training]
 terms: [LOTO, Try Test, ARWorldMap]
 spec: ILOTO.md
+api: |
+  POST /loto/events — apply / remove / override with checklist + photo (app · API key)
+  GET /loto/status?anchorId= — derived per-point lock state (app, portal · API key)
 wireframe: iloto
 arch: |
   sequenceDiagram

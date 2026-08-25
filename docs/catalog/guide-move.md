@@ -7,6 +7,8 @@ version: 2026.4.42
 depends: [guide-library, guide-lifecycle]
 terms: [Anchor, AR Work Instructions]
 spec: SERVER-REFERENCE.md
+api: |
+  PATCH /guides/:id — new anchorId moves guide + all steps (portal · API key)
 wireframe: portal
 arch: |
   sequenceDiagram

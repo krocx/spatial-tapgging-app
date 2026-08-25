@@ -7,6 +7,10 @@ version: baseline
 depends: [spatial-steps]
 terms: [Evidence Capture]
 spec: ../README.md#ar-work-instructions-ar-oms
+api: |
+  POST /guide-sessions — sign-off with per-step completions + evidence (app · API key)
+  GET /guide-sessions — run history grouped for review (portal · API key)
+  GET /guide-sessions/:id/evidence/:stepId — step evidence photo (portal · API key)
 wireframe: portal
 arch: |
   sequenceDiagram

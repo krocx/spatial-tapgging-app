@@ -23,7 +23,16 @@ status: shipped           # shipped | beta | planned
 version: baseline         # platform version stamp, or "baseline" (pre-versioning)
 depends: [shared-schema]  # ids of features this one builds on (drawn as graph edges)
 terms: [Anchor]           # glossary names from docs/roadmap-glossary.md (hover definitions)
-spec: APP-FEATURES.md     # the deep-dive doc in docs/ (rendered in place on the card)
+spec: APP-FEATURES.md     # the deep-dive doc in docs/ (rendered in place on the card);
+                          # append #heading-slug to render just that section
+api: |                    # OPTIONAL endpoint list — one line each, exactly:
+  GET /x — purpose (app · API key)
+                          # "METHOD /path — purpose (caller · auth tier)".
+                          # Callers: app | portal | designer | browser | any.
+                          # Auth: API key | admin key | public. The checker
+                          # validates every HTTP line against the real Express
+                          # routes in sib/src — a renamed endpoint fails CI.
+                          # Omit entirely for UX-only features (no filler).
 wireframe: author         # flow tab in the App Wireframe (/wireframe), if one exists
 flow: |                   # OPTIONAL per-feature Mermaid; omit to inherit the area flow
   flowchart LR

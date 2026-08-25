@@ -25,6 +25,13 @@ export interface CatalogFeature {
   flow?: string;
   /** System architecture (mermaid) — real routes, modules and stores. */
   arch?: string;
+  /**
+   * Endpoints this feature exposes/consumes — one line each, authored as an
+   * `api: |` block: "METHOD /path — purpose (callers · auth tier)".
+   * HTTP lines are validated against the real Express routes by the drift
+   * checker; omitted entirely for UX-only features (no filler).
+   */
+  api?: string[];
   body: string;
 }
 
@@ -257,7 +264,11 @@ export function buildCatalog(
         version: str(fm.version), depends: arr(fm.depends), terms: arr(fm.terms),
         spec: str(fm.spec), wireframe: str(fm.wireframe) || undefined,
         flow: str(fm.flow) || undefined,
-        arch: str(fm.arch) || undefined, body,
+        arch: str(fm.arch) || undefined,
+        api: str(fm.api)
+          ? str(fm.api).split('\n').map(s => s.trim()).filter(Boolean)
+          : undefined,
+        body,
       });
     }
   }

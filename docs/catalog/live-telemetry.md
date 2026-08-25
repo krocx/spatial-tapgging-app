@@ -7,6 +7,11 @@ version: baseline
 depends: [evidence-signoff]
 terms: [AR Work Instructions, SIB]
 spec: SERVER-REFERENCE.md
+api: |
+  POST /guide-sessions/live — open live session (app · API key)
+  POST /guide-sessions/live/:id/events — push step events incl. step:stalled (app · API key)
+  GET /guide-sessions/live/:id/stream — SSE feed of a running session (portal · API key)
+  GET /guide-sessions/live/:id — live session snapshot (portal · API key)
 arch: |
   sequenceDiagram
     participant O as Operator (iOS)

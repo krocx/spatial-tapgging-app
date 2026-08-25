@@ -84,6 +84,16 @@ header h1 a{color:var(--text);text-decoration:none;}
   padding:7px 12px;font-size:12.5px;cursor:pointer;}
 .btn:hover{border-color:var(--accent);}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+.apibox{display:flex;flex-direction:column;gap:5px;margin:4px 0 2px;}
+.apiline{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;font-size:12px;line-height:1.45;}
+.apiline .method{flex:none;font-weight:700;font-size:10px;letter-spacing:0.4px;padding:1px 7px;border-radius:5px;border:1px solid;}
+.apiline .m-GET{color:#4ade80;border-color:#4ade8055;}
+.apiline .m-POST{color:#93c5fd;border-color:#93c5fd55;}
+.apiline .m-PUT,.apiline .m-PATCH{color:#fbbf24;border-color:#fbbf2455;}
+.apiline .m-DELETE{color:#f87171;border-color:#f8717155;}
+.apiline .m-WS{color:#c4b5fd;border-color:#c4b5fd55;}
+.apiline code{background:var(--chip);padding:1px 6px;border-radius:4px;font-size:11.5px;word-break:break-all;}
+.apiline .apinote{color:var(--muted);font-size:11.5px;}
 #specBox{display:none;margin-top:12px;border-top:1px solid var(--border);padding-top:12px;}
 #specBox .md{font-size:12.5px;line-height:1.6;}
 #specBox .md h1,#specBox .md h2,#specBox .md h3{color:var(--text);}
@@ -603,6 +613,8 @@ function showFeature(id){
     <div class="flowbox" id="featFlow"></div>
     ${f.arch ? `<h3>Architecture <span style="text-transform:none;letter-spacing:0">(routes · modules · stores)</span></h3>
     <div class="flowbox" id="featArch"></div>` : ''}
+    ${f.api && f.api.length ? `<h3>API <span style="text-transform:none;letter-spacing:0">(caller · auth tier)</span></h3>
+    <div class="apibox">${f.api.map(renderApiLine).join('')}</div>` : ''}
     ${deps.length ? `<h3>Builds on</h3>${deps.map(d =>
       `<span class="deplink" data-go="${d.id}">${esc(d.name)}</span>`).join('')}` : ''}
     ${usedBy.length ? `<h3>Used by</h3>${usedBy.map(d =>
@@ -633,6 +645,14 @@ function showFeature(id){
   };
   panel.classList.add('open');
   panel.scrollTop = 0;
+}
+
+/* One "METHOD /path — purpose (caller · auth)" line → method chip + code path + note. */
+function renderApiLine(line){
+  const m = /^(GET|POST|PUT|PATCH|DELETE|WS)\s+(\S+)\s*(?:—|-)?\s*(.*)$/.exec(line);
+  if (!m) return `<div class="apiline">${esc(line)}</div>`;
+  return `<div class="apiline"><span class="method m-${m[1]}">${m[1]}</span><code>${esc(m[2])}</code>${
+    m[3] ? `<span class="apinote">${esc(m[3])}</span>` : ''}</div>`;
 }
 
 /* ═══════════════ trails ═══════════════ */

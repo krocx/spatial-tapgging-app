@@ -7,6 +7,9 @@ version: 2026.4.42
 depends: [guide-library, conditional-graph]
 terms: [AR Work Instructions]
 spec: PROCEDURE-DESIGNER.md
+api: |
+  GET /guides/:id/steps — walkthrough source (portal · API key)
+  GET /guides/step-image/:filename — step images in the phone frame (portal · API key)
 wireframe: portal
 arch: |
   flowchart LR

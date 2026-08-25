@@ -7,6 +7,11 @@ version: baseline
 depends: []
 terms: [SIB]
 spec: SERVER-REFERENCE.md
+api: |
+  DELETE /anchors/:id — cascade: tags, pass-states, blobs (portal · admin key)
+  DELETE /sessions — clear session history (portal · admin key)
+  DELETE /guide-sessions — clear guide run history (portal · admin key)
+  DELETE /loc-tags/completions — clear Gemba completions (portal · admin key)
 wireframe: portal
 arch: |
   flowchart LR

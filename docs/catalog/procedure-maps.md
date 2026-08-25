@@ -7,6 +7,9 @@ version: baseline
 depends: [guide-ingestion, roadmap-collab]
 terms: [AR Work Instructions]
 spec: PROCEDURE-DESIGNER.md
+api: |
+  POST /mindmap/:id/procedure/validate — graph rules check, no side effects (designer · API key)
+  POST /mindmap/:id/procedure/export — compile map into a draft guide (designer · API key)
 wireframe: procdes
 flow: |
   flowchart LR

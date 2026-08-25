@@ -7,6 +7,9 @@ version: 2026.4.42
 depends: [iloto-anchors]
 terms: [LOTO, Try Test, Supervisor Override]
 spec: ILOTO.md
+api: |
+  GET /loto/events?anchorId= — immutable audit trail (portal · API key)
+  GET /loto/events/photo/:filename — event photo evidence (portal · API key)
 wireframe: iloto
 flow: |
   flowchart LR

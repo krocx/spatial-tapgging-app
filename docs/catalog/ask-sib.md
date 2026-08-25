@@ -7,6 +7,9 @@ version: 2026.4.42
 depends: [feature-catalogue, no-cloud-ai]
 terms: [SIB, AI Ops Copilot, Adapter]
 spec: catalog/README.md
+api: |
+  POST /ask — retrieval + optional local-LLM answer with citations (browser · API key)
+  GET /ask/config — whether generation is enabled + model name (browser · API key)
 arch: |
   flowchart LR
     Q["POST /ask - question"] --> RET["ask/ask-core.ts retrieve - keyword scoring over features + glossary"]

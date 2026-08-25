@@ -7,6 +7,12 @@ version: baseline
 depends: [batch-validation]
 terms: [Evidence Capture]
 spec: APP-FEATURES.md
+api: |
+  POST /sessions — open inspection session (app · API key)
+  PATCH /sessions/:id/close — close with per-tag results (app · API key)
+  POST /sessions/:id/evidence/:tagId — attach evidence photo (app · API key)
+  GET /sessions — session history for review (portal · API key)
+  GET /sessions/evidence/:filename — evidence image (portal · API key)
 wireframe: portal
 arch: |
   sequenceDiagram
