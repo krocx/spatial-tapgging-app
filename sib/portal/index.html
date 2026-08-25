@@ -2056,6 +2056,7 @@ function renderModels(models) {
         ${downloadLinks.join('')}
         ${catToggle}
         <a href="#" onclick="openKitModal('${m.id}', ${JSON.stringify(kitIds).replace(/"/g, '&quot;')}); return false" style="background:rgba(79,142,247,0.1);color:var(--accent)">🔗 Assign</a>
+        <a href="#" onclick="renameModel('${m.id}','${jsEsc(m.name)}'); return false" style="background:rgba(79,142,247,0.1);color:var(--accent)">✏️ Rename</a>
         <a href="#" onclick="deleteModel('${m.id}'); return false" style="background:rgba(240,86,86,0.1);color:var(--red)">🗑 Delete</a>
       </div>
     </div>`;
@@ -2168,6 +2169,24 @@ async function saveDefaultScale() {
     loadModels();   // refresh cards to show new default
   } catch (e) {
     toast(`Failed to save scale: ${e.message}`, true);
+  }
+}
+
+/** Rename a model — display name only; files, kit assignments and ids untouched. */
+async function renameModel(modelId, currentName) {
+  const input = prompt('New model name:', currentName);
+  if (input === null) return;                       // cancelled
+  const name = input.trim();
+  if (!name || name === currentName) return;        // empty or unchanged — no-op
+  try {
+    await apiFetch(`/models/${encodeURIComponent(modelId)}`, {
+      method: 'PATCH',
+      body:   JSON.stringify({ name }),
+    });
+    toast(`Renamed to "${name}"`);
+    loadModels();
+  } catch (e) {
+    toast(`Rename failed: ${e.message}`, true);
   }
 }
 

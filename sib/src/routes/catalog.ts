@@ -19,7 +19,7 @@ import { Router } from 'express';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { buildCatalog, CatalogParseError } from '../catalog/catalog-core.js';
+import { buildCatalog, CatalogParseError, extractSection } from '../catalog/catalog-core.js';
 import { PLATFORM_VERSION } from '../version.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -92,19 +92,28 @@ router.get('/doc/:id', (req, res) => {
 
   // spec paths are relative to docs/ ("../README.md" reaches the repo root
   // README and nothing beyond it — resolved paths must stay inside the repo).
+  // An optional #anchor selects one heading's section instead of the whole
+  // file ("../README.md#3d-model-library") — used by features whose source of
+  // truth is a README section rather than a dedicated deep-dive doc.
+  const [specPath, anchor] = feature.spec.split('#');
   const repoRoot = path.resolve(cat.docsDir, '..');
-  const resolved = path.resolve(cat.docsDir, feature.spec);
+  const resolved = path.resolve(cat.docsDir, specPath);
   if (!resolved.startsWith(repoRoot)) {
     return res.status(400).json({ error: 'Spec path escapes the repository' });
   }
   if (!fs.existsSync(resolved)) {
-    return res.status(404).json({ error: `Spec file not found on this deployment: ${feature.spec}` });
+    return res.status(404).json({ error: `Spec file not found on this deployment: ${specPath}` });
   }
+  const full = fs.readFileSync(resolved, 'utf8');
+  // Anchor miss falls back to the full document — a renamed heading should
+  // degrade to "too much spec", never to an error (the drift checker catches
+  // the rename at CI time anyway).
+  const markdown = anchor ? (extractSection(full, anchor) ?? full) : full;
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   return res.json({
     id: feature.id,
     spec: feature.spec,
-    markdown: fs.readFileSync(resolved, 'utf8'),
+    markdown,
   });
 });
 

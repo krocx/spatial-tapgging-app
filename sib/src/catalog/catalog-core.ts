@@ -163,6 +163,50 @@ export function resolveTerm(
   );
 }
 
+// ── Spec section extraction ──────────────────────────────────────────────────
+
+/** GitHub-style heading slug: lowercase, punctuation stripped, spaces → "-".
+ *  "AR Work Instructions (AR OMS)" → "ar-work-instructions-ar-oms". */
+export function slugifyHeading(text: string): string {
+  return text
+    .trim()
+    .toLowerCase()
+    .replace(/[`*_]/g, '')            // markdown formatting chars
+    .replace(/[^a-z0-9\s-]/g, '')     // punctuation, parens, slashes
+    .trim()
+    .replace(/\s+/g, '-');
+}
+
+/**
+ * Extract one section of a markdown document by heading anchor — the heading
+ * line whose slug matches, through to (not including) the next heading of the
+ * same or higher level. Fenced code blocks are skipped so `# comments` inside
+ * them can't match. Returns null when no heading matches, so callers can fall
+ * back to the whole document rather than serving nothing.
+ *
+ * Powers `spec: ../README.md#3d-model-library` — features without a dedicated
+ * deep-dive doc link to just their section of the README instead of all of it.
+ */
+export function extractSection(markdown: string, anchor: string): string | null {
+  const lines = markdown.split('\n');
+  const want = anchor.toLowerCase();
+  let inFence = false;
+  let start = -1;
+  let level = 0;
+  for (let i = 0; i < lines.length; i++) {
+    if (/^\s*(```|~~~)/.test(lines[i])) { inFence = !inFence; continue; }
+    if (inFence) continue;
+    const m = /^(#{1,6})\s+(.+?)\s*$/.exec(lines[i]);
+    if (!m) continue;
+    if (start === -1) {
+      if (slugifyHeading(m[2]) === want) { start = i; level = m[1].length; }
+    } else if (m[1].length <= level) {
+      return lines.slice(start, i).join('\n').trimEnd();
+    }
+  }
+  return start === -1 ? null : lines.slice(start).join('\n').trimEnd();
+}
+
 // ── Catalogue graph ──────────────────────────────────────────────────────────
 
 export class CatalogParseError extends Error {

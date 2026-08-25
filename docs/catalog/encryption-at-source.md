@@ -6,7 +6,7 @@ status: shipped
 version: baseline
 depends: [training-capture]
 terms: [SIB]
-spec: ../README.md
+spec: ../README.md#what-it-does
 arch: |
   flowchart LR
     subgraph Device["iOS device"]

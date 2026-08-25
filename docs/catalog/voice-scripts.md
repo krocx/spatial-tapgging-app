@@ -6,7 +6,7 @@ status: shipped
 version: baseline
 depends: [spatial-steps]
 terms: [AR Work Instructions]
-spec: ../README.md
+spec: ../README.md#ar-work-instructions-ar-oms
 wireframe: arguides
 arch: |
   flowchart LR

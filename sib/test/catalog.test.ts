@@ -11,6 +11,8 @@ import {
   parseGlossary,
   resolveTerm,
   buildCatalog,
+  slugifyHeading,
+  extractSection,
   CatalogParseError,
 } from '../src/catalog/catalog-core.js';
 
@@ -158,6 +160,43 @@ test('buildCatalog: areas sorted by order, README ignored', () => {
   );
   assert.deepEqual(cat.areas.map(a => a.id), ['y', 'z']);
   assert.equal(cat.areas[0].flow, 'flowchart LR\n  A --> B');
+});
+
+test('slugifyHeading: GitHub-style slugs incl. parens, backticks, digits', () => {
+  assert.equal(slugifyHeading('3D Model Library'), '3d-model-library');
+  assert.equal(slugifyHeading('AR Work Instructions (AR OMS)'), 'ar-work-instructions-ar-oms');
+  assert.equal(slugifyHeading('Anchor Portal (`/portal`)'), 'anchor-portal-portal');
+  assert.equal(slugifyHeading('What It Does'), 'what-it-does');
+});
+
+const SPEC_MD = `# Title
+Intro text.
+## Alpha
+Alpha body.
+### Alpha Sub
+Sub body.
+\`\`\`
+# not a heading (code fence)
+\`\`\`
+## Beta (Two)
+Beta body.
+`;
+
+test('extractSection: heading through next same-level heading, subsections kept', () => {
+  const s = extractSection(SPEC_MD, 'alpha')!;
+  assert.match(s, /^## Alpha/);
+  assert.match(s, /Alpha Sub/);          // deeper heading stays inside
+  assert.doesNotMatch(s, /Beta body/);   // sibling heading ends the section
+});
+
+test('extractSection: last section runs to EOF; fenced # ignored; miss → null', () => {
+  const beta = extractSection(SPEC_MD, 'beta-two')!;
+  assert.match(beta, /^## Beta \(Two\)/);
+  assert.match(beta, /Beta body\./);
+  // The fenced "# not a heading" must neither match nor terminate a section
+  assert.equal(extractSection(SPEC_MD, 'not-a-heading-code-fence'), null);
+  assert.match(extractSection(SPEC_MD, 'alpha')!, /not a heading/);
+  assert.equal(extractSection(SPEC_MD, 'ghost'), null);
 });
 
 test('buildCatalog: arch block passes through; absent arch stays undefined', () => {

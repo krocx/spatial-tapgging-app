@@ -6,7 +6,7 @@ status: shipped
 version: baseline
 depends: [adapter-architecture]
 terms: [Adapter, Perception Layer]
-spec: ../README.md
+spec: ../README.md#ar-work-instructions-ar-oms
 arch: |
   flowchart LR
     V["Vision OCR - on device"] --> LOCAL["Every intelligent feature local or behind an owned interface"]

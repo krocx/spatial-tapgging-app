@@ -6,7 +6,7 @@ status: shipped
 version: baseline
 depends: [spatial-steps]
 terms: [Evidence Capture]
-spec: ../README.md
+spec: ../README.md#ar-work-instructions-ar-oms
 wireframe: portal
 arch: |
   sequenceDiagram

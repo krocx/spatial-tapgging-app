@@ -6,7 +6,7 @@ status: shipped
 version: baseline
 depends: [qr-anchoring]
 terms: [AR Work Instructions, Anchor]
-spec: ../README.md
+spec: ../README.md#ar-work-instructions-ar-oms
 wireframe: arguides
 arch: |
   flowchart LR

@@ -6,7 +6,7 @@ status: shipped
 version: baseline
 depends: [live-telemetry]
 terms: [AR Work Instructions]
-spec: ../README.md
+spec: ../README.md#ar-work-instructions-ar-oms
 arch: |
   sequenceDiagram
     participant O as iOS dwell watchdog (90s timer)

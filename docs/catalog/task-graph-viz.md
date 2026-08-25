@@ -6,7 +6,7 @@ status: shipped
 version: baseline
 depends: [conditional-graph]
 terms: [AR Work Instructions]
-spec: ../README.md
+spec: ../README.md#anchor-portal-portal
 wireframe: portal
 arch: |
   flowchart LR

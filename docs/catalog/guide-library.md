@@ -6,7 +6,7 @@ status: shipped
 version: baseline
 depends: [guide-lifecycle, guide-import]
 terms: [AR Work Instructions]
-spec: ../README.md
+spec: ../README.md#anchor-portal-portal
 wireframe: portal
 arch: |
   flowchart LR

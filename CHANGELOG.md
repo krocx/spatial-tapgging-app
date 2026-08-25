@@ -7,6 +7,17 @@ it, it gets a line.
 ## 2026.4.42 — 2026-08-11
 
 ### Added
+- **Catalogue "Read the spec" now section-scoped** — spec paths can carry a
+  heading anchor (`spec: ../README.md#3d-model-library`) and `/catalog/doc/:id`
+  serves just that section instead of the whole file. The 11 features whose
+  source of truth is a README section (model library, ghost overlays, the six
+  AR-OMS capabilities, guide library, task graph, encryption) now show only
+  their section; features with dedicated deep-dive docs are unchanged.
+  `catalog:check` validates anchors against real headings so a renamed README
+  heading fails CI instead of silently degrading to full-file.
+- **Rename 3D models in the portal** — each card in the 3D Models tab gains a
+  ✏️ Rename action (display name only, via the existing `PATCH /models/:id`;
+  files, kit assignments and step references untouched).
 - **Three.js vendored (supply-chain hardening)** — the portal's 3D preview and
   browser GLB→USDZ converter no longer depend on unpkg at runtime:
   `npm run catalog:vendor` now also downloads Three.js r169 (core + GLTFLoader,

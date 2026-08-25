@@ -6,7 +6,7 @@ status: shipped
 version: baseline
 depends: [live-telemetry, stall-detection, adapter-architecture]
 terms: [Adapter, AI Dynamic Instructions]
-spec: ../README.md
+spec: ../README.md#ar-work-instructions-ar-oms
 arch: |
   sequenceDiagram
     participant M as guide-session.sse.ts

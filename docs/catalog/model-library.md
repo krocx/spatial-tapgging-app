@@ -6,7 +6,7 @@ status: shipped
 version: baseline
 depends: []
 terms: [CAD Import & Conversion, GLB / USDZ]
-spec: ../README.md
+spec: ../README.md#3d-model-library
 wireframe: portal
 arch: |
   flowchart LR

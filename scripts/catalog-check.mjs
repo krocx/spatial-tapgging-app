@@ -26,7 +26,7 @@ if (!fs.existsSync(corePath)) {
   console.error('sib/dist not found — run `npm run build --workspace=@spatial/sib` first.');
   process.exit(1);
 }
-const { buildCatalog, resolveTerm, CatalogParseError } =
+const { buildCatalog, resolveTerm, extractSection, CatalogParseError } =
   await import(pathToUrl(corePath));
 
 function pathToUrl(p) { return new URL('file://' + p.replace(/\\/g, '/')).href; }
@@ -57,8 +57,19 @@ for (const f of data.features) {
     }
   }
   if (!f.spec) errs.push(`${f.id}: missing spec`);
-  else if (!fs.existsSync(path.resolve(docsDir, f.spec))) {
-    errs.push(`${f.id}: spec file not found — ${f.spec}`);
+  else {
+    // spec may carry a #anchor selecting one heading's section of the file
+    // ("../README.md#3d-model-library"). Validate both parts: the file must
+    // exist AND the anchor must resolve to a real heading — a renamed README
+    // heading silently degrades the card to full-file at runtime, so it must
+    // fail loudly here instead.
+    const [specPath, anchor] = f.spec.split('#');
+    const resolved = path.resolve(docsDir, specPath);
+    if (!fs.existsSync(resolved)) {
+      errs.push(`${f.id}: spec file not found — ${specPath}`);
+    } else if (anchor && extractSection(fs.readFileSync(resolved, 'utf8'), anchor) === null) {
+      errs.push(`${f.id}: spec anchor "#${anchor}" matches no heading in ${specPath}`);
+    }
   }
   if (f.wireframe && !WIREFRAME_FLOWS.has(f.wireframe)) {
     errs.push(`${f.id}: unknown wireframe flow "${f.wireframe}"`);
