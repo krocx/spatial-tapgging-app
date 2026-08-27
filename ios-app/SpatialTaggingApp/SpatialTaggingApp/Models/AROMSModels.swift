@@ -410,6 +410,7 @@ enum GuideSessionEventType: String, Codable {
     case stepEntered     = "step:entered"
     case stepCompleted   = "step:completed"
     case stepRetried     = "step:retried"
+    case stepFailed      = "step:failed"    // Operator took the recovery branch
     case stepStalled     = "step:stalled"
     case perceptionResult = "perception:result"
     case sessionSubmitted = "session:submitted"

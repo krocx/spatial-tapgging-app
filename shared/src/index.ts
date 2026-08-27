@@ -834,6 +834,7 @@ export type GuideSessionEventType =
   | 'step:entered'
   | 'step:completed'
   | 'step:retried'
+  | 'step:failed'      // Operator marked the step failed and took the recovery branch
   | 'step:stalled'
   | 'perception:result'
   | 'session:submitted';

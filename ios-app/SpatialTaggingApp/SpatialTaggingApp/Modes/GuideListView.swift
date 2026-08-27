@@ -40,6 +40,9 @@ struct GuideListView: View {
     @State private var guideSteps:    [GuideStep] = []
     @State private var sessionInput:  GuideSessionInput? = nil
 
+    // Pilot hardening: transient "queued sign-offs uploaded" banner
+    @State private var syncedBanner: String? = nil
+
     // Operator: unplaced-steps alert
     @State private var showUnplacedAlert  = false
     @State private var unplacedAlertGuide = ""
@@ -106,6 +109,29 @@ struct GuideListView: View {
             }
         }
         .task { await loadGuides() }
+        // Pilot hardening: push any sign-offs that were saved offline. The
+        // guide list is the natural sync point — every run starts here.
+        .task {
+            guard PendingSessionQueue.count > 0 else { return }
+            let n = await PendingSessionQueue.drain(client: SIBClient(settings: settings))
+            if n > 0 {
+                syncedBanner = "\(n) saved sign-off\(n == 1 ? "" : "s") uploaded"
+                try? await Task.sleep(nanoseconds: 4_000_000_000)
+                syncedBanner = nil
+            }
+        }
+        .overlay(alignment: .bottom) {
+            if let banner = syncedBanner {
+                Label(banner, systemImage: "checkmark.icloud.fill")
+                    .font(.caption.bold())
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 14).padding(.vertical, 8)
+                    .background(Color.green.opacity(0.9), in: Capsule())
+                    .padding(.bottom, 12)
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.3), value: syncedBanner)
         // ── Unplaced steps alert ──────────────────────────────────────────────
         .alert("Guide Not Ready", isPresented: $showUnplacedAlert) {
             Button("OK", role: .cancel) { }

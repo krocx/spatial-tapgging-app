@@ -86,6 +86,14 @@ struct ARGuideSessionView: View {
     // ── Sign-off ──────────────────────────────────────────────────────────────
     @State private var showSignOff = false
 
+    // ── Pilot hardening ───────────────────────────────────────────────────────
+    /// Step index awaiting "mark as failed" confirmation; nil = no dialog.
+    @State private var failConfirmIndex: Int? = nil
+    /// Transient top notice (precondition redirects, failure routing). Auto-clears.
+    @State private var transientNotice: String? = nil
+    /// Saved run offered for resume on entry; nil once answered.
+    @State private var resumeOffer: GuideRunSnapshot? = nil
+
     // ── FTUE / Help ───────────────────────────────────────────────────────────
     @State private var showOnboarding = false
 
@@ -247,6 +255,11 @@ struct ARGuideSessionView: View {
         .onAppear {
             progresses   = sortedSteps.map { GuideStepProgress(step: $0) }
             sessionStart = Date()
+            // Interrupted run from earlier (call, battery, accidental exit)?
+            // Offer to pick up where they left off instead of redoing work.
+            if let snap = GuideRunStore.resumable(guideId: guide.id) {
+                resumeOffer = snap
+            }
             if !progresses.isEmpty { progresses[0].enter() }
             if let first = sortedSteps.first { Task { await loadStepImage(for: first) } }
             // FTUE: auto-show guide session onboarding on first run
@@ -291,6 +304,8 @@ struct ARGuideSessionView: View {
                 phase       = .submitted
                 stopSpeaking()
                 arManager.pauseSession()
+                // Submitted (or queued for sync) — the resume snapshot is done.
+                GuideRunStore.clear(guideId: guide.id)
             }
             .environmentObject(settings)
         }
@@ -302,9 +317,64 @@ struct ARGuideSessionView: View {
                     let stepId = sortedSteps[idx].id
                     refreshPanelTextures(stepId: stepId)
                     showEvidencePicker = false
+                    persistProgress()
                 }
             }
         }
+        // ── Resume interrupted run ────────────────────────────────────────────
+        .alert("Resume previous run?", isPresented: Binding(
+            get: { resumeOffer != nil },
+            set: { if !$0 { resumeOffer = nil } }
+        )) {
+            Button("Resume") {
+                if let snap = resumeOffer {
+                    GuideRunStore.apply(snap, to: &progresses)
+                    sessionStart = snap.startedAt
+                    for p in progresses where p.isCompleted {
+                        refreshPanelTextures(stepId: p.step.id)
+                    }
+                }
+                resumeOffer = nil
+            }
+            Button("Start Over", role: .destructive) {
+                GuideRunStore.clear(guideId: guide.id)
+                resumeOffer = nil
+            }
+        } message: {
+            if let snap = resumeOffer {
+                Text("\(snap.completedCount) of \(sortedSteps.count) steps were already completed in an interrupted run. Resume, or start from the beginning?")
+            }
+        }
+        // ── Step-failed confirmation (routes to the authored recovery branch) ──
+        .confirmationDialog(
+            "Mark this step as failed?",
+            isPresented: Binding(
+                get: { failConfirmIndex != nil },
+                set: { if !$0 { failConfirmIndex = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Step failed — go to recovery", role: .destructive) {
+                if let idx = failConfirmIndex { markFailed(at: idx) }
+                failConfirmIndex = nil
+            }
+            Button("Cancel", role: .cancel) { failConfirmIndex = nil }
+        } message: {
+            Text("The failure is recorded and the guide will route you to the recovery step the author defined.")
+        }
+        // ── Transient notice (redirects / failure routing) ────────────────────
+        .overlay(alignment: .top) {
+            if let notice = transientNotice {
+                Text(notice)
+                    .font(.caption.bold())
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 16).padding(.vertical, 9)
+                    .background(Color.indigo.opacity(0.92), in: Capsule())
+                    .padding(.top, 62)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: transientNotice)
         // FTUE / Help sheet
         .sheet(isPresented: $showOnboarding) {
             OnboardingSheet(context: .guideOperator)
@@ -522,7 +592,9 @@ struct ARGuideSessionView: View {
                             onSpeak:         { toggleSpeech(for: step) },
                             onSignOff:       { showSignOff = true },
                             onEvidence:      { openEvidencePicker(for: index) },
-                            onMinimize:      { showContentPanel = false }
+                            onMinimize:      { showContentPanel = false },
+                            hasFailurePath:  step.nextOnFailure != nil,
+                            onFail:          { failConfirmIndex = index }
                         )
                     } else {
                         miniNavCard(step: step, index: index)
@@ -1470,6 +1542,8 @@ struct ARGuideSessionView: View {
            prereqIdx < progresses.count,
            !progresses[prereqIdx].isCompleted,
            prereqIdx != index {
+            // Explain the redirect — a silent jump reads as a glitch.
+            showNotice("\(candidate.displayTitle) needs \(sortedSteps[prereqIdx].displayTitle) first — taking you there")
             navigateTo(index: prereqIdx)
             return
         }
@@ -1635,9 +1709,51 @@ struct ARGuideSessionView: View {
         .onTapGesture { } // swallow taps so the card never falls through to AR
     }
 
+    // ── Pilot hardening helpers ───────────────────────────────────────────────
+
+    /// Persist step state to disk so an interrupted run can be resumed.
+    private func persistProgress() {
+        GuideRunStore.save(guideId: guide.id, startedAt: sessionStart, progresses: progresses)
+    }
+
+    /// Show a short top-of-screen notice, auto-dismissed after 3.5 s.
+    private func showNotice(_ text: String) {
+        transientNotice = text
+        Task {
+            try? await Task.sleep(nanoseconds: 3_500_000_000)
+            if transientNotice == text { transientNotice = nil }
+        }
+    }
+
+    /// Operator reported the step failed: record the event, persist, and route
+    /// to the authored recovery branch (nextOnFailure). The step stays
+    /// NOT-completed — the recovery path decides what happens next.
+    private func markFailed(at index: Int) {
+        guard index < sortedSteps.count else { return }
+        let step = sortedSteps[index]
+        if let lsId = liveSessionId {
+            Task {
+                await SIBClient(settings: settings).pushGuideSessionEvent(
+                    liveSessionId: lsId,
+                    event: PushGuideSessionEventRequest(
+                        type: .stepFailed, stepId: step.id, stepIndex: index,
+                        durationSeconds: progresses[index].durationSeconds
+                    )
+                )
+            }
+        }
+        persistProgress()
+        if let targetId = step.nextOnFailure,
+           let targetIdx = sortedSteps.firstIndex(where: { $0.id == targetId }) {
+            showNotice("Routing to recovery: \(sortedSteps[targetIdx].displayTitle)")
+            navigateTo(index: targetIdx)
+        }
+    }
+
     private func markComplete(at index: Int) {
         guard index < progresses.count else { return }
         progresses[index].complete()
+        persistProgress()
         // Dismiss any active hint that was about or pointing to this step —
         // it is now moot since the step has just been completed.
         if let hint = activeHint, index < sortedSteps.count {
@@ -2002,6 +2118,10 @@ struct GuideContentPanel: View {
     let onSignOff:       () -> Void
     let onEvidence:      () -> Void              // Phase 3
     let onMinimize:      () -> Void              // collapse back to mini nav card
+    /// Pilot hardening: the authored recovery branch (nextOnFailure) is now
+    /// reachable — without this the failure path existed only on paper.
+    let hasFailurePath:  Bool
+    let onFail:          () -> Void
 
     var isCompleted: Bool { progress?.isCompleted ?? false }
     var isLastStep:  Bool { stepNumber == totalSteps }
@@ -2182,6 +2302,14 @@ struct GuideContentPanel: View {
                     .padding(.vertical, 10)
                 }
 
+                if hasFailurePath && !isCompleted {
+                    Button(action: onFail) {
+                        Label("Step failed — go to recovery", systemImage: "exclamationmark.triangle.fill")
+                            .font(.caption.bold())
+                            .foregroundStyle(.orange)
+                    }
+                }
+
                 if canSkip {
                     Button(action: onSkip) {
                         Text("Skip this step →")
@@ -2249,6 +2377,11 @@ struct SessionSignOffView: View {
     @State private var operatorName = ""
     @State private var isSubmitting = false
     @State private var error:       String? = nil
+    // Pilot hardening
+    @State private var showIncompleteConfirm = false
+    /// Set after a failed submit — offers "Save & sync later" so the record
+    /// (evidence photos included) survives a network outage.
+    @State private var canQueue = false
 
     private var completedAt: Date { Date() }
 
@@ -2308,8 +2441,37 @@ struct SessionSignOffView: View {
                     Section {
                         Label(err, systemImage: "exclamationmark.triangle.fill")
                             .font(.caption).foregroundStyle(.red)
+                        if canQueue {
+                            Button {
+                                if PendingSessionQueue.enqueue(makeRequest()) {
+                                    onDone()
+                                } else {
+                                    error = "Could not save locally — please retry submission."
+                                }
+                            } label: {
+                                Label("Save & sync later", systemImage: "tray.and.arrow.down.fill")
+                                    .font(.subheadline.bold())
+                            }
+                            Text("The signed-off record (with evidence photos) is stored on this device and uploads automatically next time the guide list opens with a connection.")
+                                .font(.caption2).foregroundStyle(.secondary)
+                        }
                     }
                 }
+            }
+            .onAppear {
+                // Prefill from the confirmed identity in Settings — retyping
+                // invites inconsistent audit names ("Raj" / "raj k" / "RK").
+                if operatorName.isEmpty { operatorName = settings.authorName }
+            }
+            .confirmationDialog(
+                "\(progresses.count - stepCompletions.count) step(s) not completed",
+                isPresented: $showIncompleteConfirm,
+                titleVisibility: .visible
+            ) {
+                Button("Submit anyway", role: .destructive) { Task { await submit() } }
+                Button("Go back", role: .cancel) { }
+            } message: {
+                Text("Skipped branch steps are normal — but check you haven't missed required work before submitting.")
             }
             .navigationTitle("Sign Off")
             .navigationBarTitleDisplayMode(.inline)
@@ -2318,9 +2480,15 @@ struct SessionSignOffView: View {
                     if isSubmitting {
                         ProgressView().scaleEffect(0.8)
                     } else {
-                        Button("Submit") { Task { await submit() } }
-                            .bold()
-                            .disabled(operatorName.trimmingCharacters(in: .whitespaces).isEmpty)
+                        Button("Submit") {
+                            if stepCompletions.count < progresses.count {
+                                showIncompleteConfirm = true    // warn, don't block — branches skip steps legitimately
+                            } else {
+                                Task { await submit() }
+                            }
+                        }
+                        .bold()
+                        .disabled(operatorName.trimmingCharacters(in: .whitespaces).isEmpty)
                     }
                 }
                 ToolbarItem(placement: .cancellationAction) {
@@ -2330,11 +2498,9 @@ struct SessionSignOffView: View {
         }
     }
 
-    private func submit() async {
-        isSubmitting = true
-        error        = nil
-        let iso      = ISO8601DateFormatter()
-        let req      = CreateARGuideSessionRequest(
+    private func makeRequest() -> CreateARGuideSessionRequest {
+        let iso = ISO8601DateFormatter()
+        return CreateARGuideSessionRequest(
             guideId:         guide.id,
             anchorId:        anchor.id,
             guideName:       guide.name,
@@ -2346,12 +2512,19 @@ struct SessionSignOffView: View {
             stepCompletions: stepCompletions,
             liveSessionId:   liveSessionId
         )
+    }
+
+    private func submit() async {
+        isSubmitting = true
+        error        = nil
+        canQueue     = false
         let client = SIBClient(settings: settings)
         do {
-            _ = try await client.submitGuideSession(req)
+            _ = try await client.submitGuideSession(makeRequest())
             onDone()
         } catch {
             self.error = "Submission failed: \(friendlyMessage(for: error))"
+            self.canQueue = true    // offer the offline path — never lose the record
         }
         isSubmitting = false
     }

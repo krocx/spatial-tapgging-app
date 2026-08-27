@@ -7,6 +7,22 @@ it, it gets a line.
 ## 2026.4.42 — 2026-08-11
 
 ### Added
+- **Operator pilot hardening (AR Work Instructions)** — six fixes from the
+  operator-POV UX review ahead of daily technician use: (1) the authored
+  failure branch is finally reachable — steps with a recovery path show
+  "Step failed → go to recovery", confirm, record a `step:failed` live event
+  and route to `nextOnFailure` (previously the branch existed only on paper);
+  (2) session resume — step progress and evidence photos persist to the
+  device after every action, and an interrupted run (call, battery, wrong
+  tap) offers "Resume previous run?" for up to 12 h instead of forcing a
+  redo; (3) offline sign-off queue — a failed submission offers "Save & sync
+  later"; the record (evidence included) uploads automatically next time the
+  guide list opens with a connection, with a green confirmation banner;
+  (4) operator name prefills from Settings identity; (5) submitting with
+  incomplete steps now warns with the count (warn not block — branch skips
+  are legitimate); (6) precondition redirects explain themselves with a
+  toast instead of silently jumping. New: Services/GuideRunStore.swift;
+  `step:failed` added to the shared event union.
 - **`.tag` live subscription (M2 — the continuous emitter)** — assembly
   envelopes' `subscribe.hints` now lead with a real SSE feed:
   `GET /anchors/:id/subscribe` sends `state` (contentVersion + payload hash)
