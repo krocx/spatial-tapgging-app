@@ -231,16 +231,27 @@ function loadScript(src){ return new Promise((ok, no) => {
 /* ── IP-sensitivity (secondary secret) ─────────────────────────────────────
    Features marked restricted arrive redacted unless requests carry the IP
    key. Stored like the API key; sent as X-IP-Key on catalogue fetches. */
+const IP_KEY_TTL_MS = 7 * 24 * 3600 * 1000;   // re-authenticate weekly
 function ipHdrs(){
-  const k = localStorage.getItem('sib_ip_key');
-  return k ? { 'X-IP-Key': k } : {};
+  try {
+    const raw = localStorage.getItem('sib_ip_key');
+    if (!raw) return {};
+    // Stored as {key, savedAt}; legacy bare-string entries have no timestamp
+    // and are treated as expired (prompts once, then the clock starts).
+    const rec = raw[0] === '{' ? JSON.parse(raw) : { key: raw, savedAt: 0 };
+    if (!rec.key || Date.now() - (rec.savedAt || 0) > IP_KEY_TTL_MS) {
+      localStorage.removeItem('sib_ip_key');
+      return {};
+    }
+    return { 'X-IP-Key': rec.key };
+  } catch (e) { return {}; }
 }
 function ipUnlock(){
-  const k = prompt('Secondary IP key — unlocks restricted feature details:');
+  const k = prompt('Secondary IP key — unlocks restricted feature details (remembered for 7 days):');
   if (k === null) return;
   const v = k.trim();
   if (!v) { localStorage.removeItem('sib_ip_key'); return; }
-  localStorage.setItem('sib_ip_key', v);
+  localStorage.setItem('sib_ip_key', JSON.stringify({ key: v, savedAt: Date.now() }));
   location.reload();   // re-fetch the catalogue with the key attached
 }
 

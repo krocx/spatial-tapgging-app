@@ -9,6 +9,7 @@ import { JsonFileStore } from '../stores/json-file-store.js';
 import { tagStore } from './tags.js';
 import { passStateStore, findPassStateByTag } from '../stores/pass-state-store.js';
 import { buildAssemblyEnvelope } from '../tag/tag-emitter.js';
+import { subscribeToAnchor } from '../tag/tag-subscribe.js';
 
 export const anchorStore = new JsonFileStore<Anchor>('anchors');
 
@@ -160,6 +161,16 @@ router.get('/:id/emit', (req: Request, res: Response) => {
   }
   res.setHeader('Content-Type', 'application/json');
   return res.json(envelope);
+});
+
+// ── GET /anchors/:id/subscribe — the continuous emitter (SSE) ────────────────
+// Live per-chamber push (spec §7): `state` on connect, `changed` whenever the
+// assembly envelope moves, naming the exact streams/members that changed so
+// readers re-fetch only the delta. Registered BEFORE /:id.
+router.get('/:id/subscribe', (req: Request, res: Response) => {
+  if (!subscribeToAnchor(req.params.id, res)) {
+    res.status(404).json({ error: `Anchor ${req.params.id} not found`, timestamp: new Date().toISOString() });
+  }
 });
 
 // ── GET /anchors/:id — get a single anchor ────────────────────────────────────

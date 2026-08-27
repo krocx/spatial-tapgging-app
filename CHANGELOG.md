@@ -7,6 +7,18 @@ it, it gets a line.
 ## 2026.4.42 — 2026-08-11
 
 ### Added
+- **`.tag` live subscription (M2 — the continuous emitter)** — assembly
+  envelopes' `subscribe.hints` now lead with a real SSE feed:
+  `GET /anchors/:id/subscribe` sends `state` (contentVersion + payload hash)
+  on connect and pushes `changed` events naming exactly which streams and
+  member parts moved (`stream:worldmap`, `member:<tagId>`) so readers
+  re-fetch only the delta and verify it against the new hashes. Event-driven
+  server side: a store-write bus on JsonFileStore (single hook point) with a
+  400 ms debounce, recomputed only for anchors with live subscribers, plus a
+  30 s safety sweep for binary artifacts; heartbeats keep proxies alive. Push
+  carries hashes and names only — never content. iOS gains `TagSubscription`
+  (async SSE listener with auto-reconnect) in TagEnvelope.swift. Spec §7
+  updated — subscribe graduates from hints-only.
 - **Catalogue IP-sensitivity gate (secondary secret)** — features marked
   `sensitivity: restricted` in their frontmatter are redacted for anyone
   without the new `SIB_IP_KEY` env secret: /catalog/data strips body, flows,
@@ -17,7 +29,9 @@ it, it gets a line.
   viewers ≠ data admins. Gate off when the env var is unset, so internal
   deployments are unchanged. All restriction decisions flow through ONE
   function (`canViewRestricted`) — the designated swap point when SSO/RBAC
-  arrives. First restricted entry: the .tag format feature below.
+  arrives. First restricted entry: the .tag format feature below. The
+  browser-stored IP key expires after 7 days (shorter than the API key's 30 —
+  it protects more sensitive content), after which the 🔒 prompt returns.
 - **`.tag` virtual emitter v1 (beta)** — every tagged part and every chamber
   can now emit a signed, tamper-evident envelope (spec: docs/TAG-FORMAT.md,
   Proprietary & Confidential, patent pending). `GET /tags/:id/emit` yields a

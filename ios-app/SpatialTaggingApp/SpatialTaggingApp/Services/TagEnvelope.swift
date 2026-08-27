@@ -190,3 +190,70 @@ enum TagEnvelopeReader {
         return out + "\""
     }
 }
+
+// MARK: - Live subscription (spec §7 — the continuous emitter, M2)
+
+/// A `changed` push from GET /anchors/:id/subscribe.
+struct TagChangeEvent: Codable {
+    let contentVersion: String
+    let payloadSha256: String
+    /// "stream:<name>" / "member:<tagId>" — re-fetch only these.
+    let changed: [String]?
+}
+
+/// SSE listener for a chamber's .tag change feed. Usage:
+///   let sub = TagSubscription(baseURL: url, apiKey: key, anchorId: id) { event in
+///       // re-emit the envelope, verify, refresh only event.changed streams
+///   }
+///   sub.start()   … later …   sub.stop()
+final class TagSubscription {
+    private let url: URL
+    private let apiKey: String?
+    private let onChange: (TagChangeEvent) -> Void
+    private var task: Task<Void, Never>?
+
+    init?(baseURL: URL, apiKey: String?, anchorId: String, onChange: @escaping (TagChangeEvent) -> Void) {
+        guard let u = URL(string: "/anchors/\(anchorId)/subscribe", relativeTo: baseURL) else { return nil }
+        self.url = u
+        self.apiKey = apiKey
+        self.onChange = onChange
+    }
+
+    func start() {
+        stop()
+        task = Task { [url, apiKey, onChange] in
+            while !Task.isCancelled {
+                var req = URLRequest(url: url)
+                req.timeoutInterval = 3600
+                if let apiKey { req.setValue(apiKey, forHTTPHeaderField: "X-API-Key") }
+                do {
+                    let (bytes, response) = try await URLSession.shared.bytes(for: req)
+                    guard (response as? HTTPURLResponse)?.statusCode == 200 else { throw URLError(.badServerResponse) }
+                    var eventName = ""
+                    for try await line in bytes.lines {
+                        if Task.isCancelled { return }
+                        if line.hasPrefix("event: ") {
+                            eventName = String(line.dropFirst(7))
+                        } else if line.hasPrefix("data: "), eventName == "changed" {
+                            if let data = String(line.dropFirst(6)).data(using: .utf8),
+                               let event = try? JSONDecoder().decode(TagChangeEvent.self, from: data) {
+                                await MainActor.run { onChange(event) }
+                            }
+                        }
+                        // blank lines end an SSE message; heartbeats (": hb") are ignored
+                        if line.isEmpty { eventName = "" }
+                    }
+                } catch { /* fall through to backoff-reconnect */ }
+                if Task.isCancelled { return }
+                try? await Task.sleep(nanoseconds: 5_000_000_000)   // 5s reconnect backoff
+            }
+        }
+    }
+
+    func stop() {
+        task?.cancel()
+        task = nil
+    }
+
+    deinit { stop() }
+}

@@ -11,6 +11,7 @@ sensitivity: restricted
 api: |
   GET /tags/:id/emit — signed part-level .tag envelope (app · API key)
   GET /anchors/:id/emit — signed assembly-level (chamber) .tag envelope with member manifest (app · API key)
+  GET /anchors/:id/subscribe — SSE change feed: state on connect, changed with per-stream/member delta names (app · API key)
 arch: |
   flowchart LR
     subgraph SIB["SIB tag/ (emitter + reference validator)"]
@@ -23,9 +24,11 @@ arch: |
     subgraph Emissions
       P["GET /tags/:id/emit - kind: part"]
       A["GET /anchors/:id/emit - kind: assembly + member manifest (Merkle links)"]
+      S["GET /anchors/:id/subscribe - SSE: store-write bus, debounced diff, names changed streams/members"]
     end
     EM --> P
     EM --> A
+    EM --> S
     subgraph iOS["iOS reader (TagEnvelope.swift)"]
       RD["parse + canonicalize + verify signature"] --> PIN["pin issuer key on first scan"]
       PIN --> CACHE[("Documents/tags/*.tag - offline, re-verified on read")]

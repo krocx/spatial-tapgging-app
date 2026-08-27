@@ -131,7 +131,7 @@ determinism rules, and signature, returning human-readable violations.
 Exercised by `sib/test/tag-format.test.ts` including a full emit → validate →
 tamper → re-validate cycle.
 
-## 7. Offline flow (first consumer: our iOS app)
+## 7. Offline flow + live subscription (first consumer: our iOS app)
 
 Scan QR → anchor id → `GET /anchors/:id/emit` → verify + pin → cache the
 envelope (and any streams fetched) in the app's Documents. Offline, the app
@@ -139,6 +139,24 @@ re-verifies the cached envelope's signature and serves cached streams; on
 reconnect it re-emits, compares `contentVersion`/hashes, and refreshes only
 streams whose hashes changed. Reference reader:
 `ios-app/.../Services/TagEnvelope.swift`.
+
+**Live subscription (M2 — the continuous emitter).** While connected, a
+reader MAY open the SSE feed at `GET /anchors/:id/subscribe` (the first
+`subscribe.hints` entry of every assembly envelope):
+
+- `event: state` on connect — current `contentVersion` + `payloadSha256`.
+- `event: changed` whenever the assembly envelope moves — carries the new
+  `contentVersion`, `payloadSha256`, and a `changed` list naming exactly
+  what moved (`stream:<name>` / `member:<tagId>`) so the reader re-fetches
+  only the delta, then re-verifies each stream against its new hash.
+- Heartbeat comments every 25 s; readers reconnect with backoff on drop.
+
+Change detection is event-driven on the server (store-write bus, 400 ms
+debounce, per-anchor only while subscribers exist) plus a 30 s safety sweep
+for binary artifacts that bypass the JSON stores. Push carries **hashes and
+names only** — never content — so the subscribe channel grants nothing the
+API key doesn't already grant. Reference listener: `TagSubscription` in
+`TagEnvelope.swift`.
 
 ## 8. Versioning
 

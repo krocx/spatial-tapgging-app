@@ -144,6 +144,29 @@ test('emitter: assembly manifest Merkle-links members; part change breaks the li
   assert.equal(asm2.payload.members!.find(m => m.tagId === 'tag-1')!.sha256, payloadHash(after.payload));
 });
 
+test('diffAssemblyPayloads: names changed streams and members, both directions', async () => {
+  const { diffAssemblyPayloads } = await import('../src/tag/tag-subscribe.js');
+  const asm = buildAssemblyEnvelope('anc-1')!.payload;
+
+  // No change → empty diff.
+  assert.deepEqual(diffAssemblyPayloads(asm, asm), []);
+
+  // Stream re-hash + member re-hash + member removal.
+  const next = JSON.parse(JSON.stringify(asm)) as typeof asm;
+  next.streams[0] = { ...next.streams[0], sha256: 'f'.repeat(64) };
+  next.members![0] = { ...next.members![0], sha256: 'e'.repeat(64) };
+  const removed = next.members!.pop()!;
+  const d = diffAssemblyPayloads(asm, next);
+  assert.ok(d.includes(`stream:${asm.streams[0].name}`), d.join(','));
+  assert.ok(d.includes(`member:${asm.members![0].tagId}`));
+  assert.ok(d.includes(`member:${removed.tagId}`));
+
+  // New stream appearing is also a change.
+  const withNew = JSON.parse(JSON.stringify(asm)) as typeof asm;
+  withNew.streams.push({ name: 'worldmap', ref: '/worldmap/anc-1', sha256: 'a'.repeat(64) });
+  assert.deepEqual(diffAssemblyPayloads(asm, withNew), ['stream:worldmap']);
+});
+
 test('emitter: assembly never embeds the anchor encryption key', () => {
   const asm = buildAssemblyEnvelope('anc-1')!;
   assert.ok(!JSON.stringify(asm).includes('encryptionKey') || !JSON.stringify(asm).match(/"encryptionKey":"[^"]/));

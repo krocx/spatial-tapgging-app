@@ -7,7 +7,16 @@
 
 import fs   from 'fs';
 import path from 'path';
+import { EventEmitter } from 'events';
 import { InMemoryStore } from './in-memory-store.js';
+
+/**
+ * Global store-write bus — emits ('write', storeName) after every persisted
+ * mutation. The ONE hook point for reactive consumers (the .tag subscription
+ * manager debounces on this instead of polling or instrumenting every route).
+ */
+export const storeEvents = new EventEmitter();
+storeEvents.setMaxListeners(50);
 
 // SIB_DATA_DIR env var allows overriding the data location (e.g. Render persistent disk at /data/.sib-data).
 // Falls back to .sib-data/ in cwd for local development.
@@ -15,9 +24,11 @@ const DATA_DIR = process.env.SIB_DATA_DIR ?? path.join(process.cwd(), '.sib-data
 
 export class JsonFileStore<T extends { id: string }> extends InMemoryStore<T> {
   private readonly filePath: string;
+  private readonly storeName: string;
 
   constructor(storeName: string) {
     super();
+    this.storeName = storeName;
     fs.mkdirSync(DATA_DIR, { recursive: true });
     this.filePath = path.join(DATA_DIR, `${storeName}.json`);
     this.hydrate();
@@ -77,5 +88,8 @@ export class JsonFileStore<T extends { id: string }> extends InMemoryStore<T> {
     } catch (err) {
       console.error(`[JsonFileStore] Failed to write ${this.filePath}: ${err}`);
     }
+    // After the write, whether it succeeded or not — listeners recompute from
+    // the in-memory truth, which has already mutated either way.
+    storeEvents.emit('write', this.storeName);
   }
 }

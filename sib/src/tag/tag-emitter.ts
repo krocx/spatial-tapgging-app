@@ -221,7 +221,8 @@ export function buildAssemblyEnvelope(anchorId: string): TagEnvelope | null {
     issuer: { platform: 'SIB', version: PLATFORM_VERSION },
     streams,
     members,
-    subscribe: { hints: [`/loto/status?anchorId=${anchor.id}`, '/guide-sessions/live'] },
+    // M2: the first hint is now a REAL SSE feed — connect for live deltas.
+    subscribe: { hints: [`/anchors/${anchor.id}/subscribe`, `/loto/status?anchorId=${anchor.id}`, '/guide-sessions/live'] },
     contentVersion: maxVersion(
       ...streams.map(s => s.contentVersion),
       ...parts.map(p => p.updatedAt),
