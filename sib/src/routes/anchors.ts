@@ -8,6 +8,7 @@ import type { Anchor, CreateAnchorRequest, ApiResponse } from '@spatial/shared';
 import { JsonFileStore } from '../stores/json-file-store.js';
 import { tagStore } from './tags.js';
 import { passStateStore, findPassStateByTag } from '../stores/pass-state-store.js';
+import { buildAssemblyEnvelope } from '../tag/tag-emitter.js';
 
 export const anchorStore = new JsonFileStore<Anchor>('anchors');
 
@@ -142,6 +143,23 @@ router.get('/', (_req: Request, res: Response) => {
     data: anchors,
     timestamp: new Date().toISOString(),
   });
+});
+
+// ── GET /anchors/:id/emit — the assembly-level .tag envelope ─────────────────
+// Signed Ed25519 emission for the chamber: chamber streams + a member manifest
+// carrying the SHA-256 of every part envelope beneath it (Merkle-style tree).
+// Registered BEFORE /:id so "emit" isn't swallowed by the param route.
+router.get('/:id/emit', (req: Request, res: Response) => {
+  const envelope = buildAssemblyEnvelope(req.params.id);
+  if (!envelope) {
+    return res.status(404).json({ error: `Anchor ${req.params.id} not found`, timestamp: new Date().toISOString() });
+  }
+  if (req.query.download) {
+    const safe = envelope.payload.subject.label.replace(/[^\w.-]+/g, '_').slice(0, 60) || envelope.payload.subject.id;
+    res.setHeader('Content-Disposition', `attachment; filename="${safe}.tag"`);
+  }
+  res.setHeader('Content-Type', 'application/json');
+  return res.json(envelope);
 });
 
 // ── GET /anchors/:id — get a single anchor ────────────────────────────────────

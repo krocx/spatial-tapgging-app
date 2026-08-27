@@ -661,6 +661,32 @@ final class SIBClient {
         return data
     }
 
+    // ── .tag virtual emitter (spec: docs/TAG-FORMAT.md) ──────────────────────
+
+    /// Raw part-level .tag envelope bytes. Caller verifies + caches via
+    /// TagEnvelopeReader (raw bytes are kept so the cache re-verifies later).
+    func fetchPartTagEnvelope(tagId: String) async throws -> Data {
+        try await fetchRawEnvelope(path: "/tags/\(tagId)/emit")
+    }
+
+    /// Raw assembly-level (chamber) .tag envelope bytes.
+    func fetchAssemblyTagEnvelope(anchorId: String) async throws -> Data {
+        try await fetchRawEnvelope(path: "/anchors/\(anchorId)/emit")
+    }
+
+    private func fetchRawEnvelope(path: String) async throws -> Data {
+        var req = try makeRequest(method: "GET", path: path)
+        req.timeoutInterval = 20
+        let (data, response): (Data, URLResponse)
+        do { (data, response) = try await session.data(for: req) }
+        catch { throw SIBClientError.networkError(error) }
+        if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+            let msg = (try? JSONDecoder().decode(APIError.self, from: data))?.error ?? "HTTP \(http.statusCode)"
+            throw SIBClientError.httpError(http.statusCode, msg)
+        }
+        return data
+    }
+
     // ── HTTP helpers ──────────────────────────────────────────────────────────
 
     private func get<T: Decodable>(_ type: T.Type, path: String) async throws -> T {

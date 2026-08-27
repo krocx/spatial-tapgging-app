@@ -4,6 +4,7 @@ import type { Tag, CreateTagRequest, UpdateTagRequest, ApiResponse } from '@spat
 import { JsonFileStore } from '../stores/json-file-store.js';
 import { anchorStore } from './anchors.js';
 import { passStateStore, findPassStateByTag, hasPassStateForTag } from '../stores/pass-state-store.js';
+import { buildPartEnvelope } from '../tag/tag-emitter.js';
 
 export const tagStore = new JsonFileStore<Tag>('tags');
 
@@ -78,6 +79,23 @@ router.get('/', (req: Request, res: Response) => {
     hasFailState: hasPassStateForTag(tag.id, 'FAIL'),
   }));
   return res.json({ data: enriched, timestamp: new Date().toISOString() });
+});
+
+// ── GET /tags/:id/emit — the part-level .tag envelope ────────────────────────
+// Signed Ed25519 emission for one tagged part (spec: docs/TAG-FORMAT.md).
+// Registered BEFORE /:id so "emit" isn't swallowed by the param route.
+// ?download=1 sets a Content-Disposition so browsers save a .tag file.
+router.get('/:id/emit', (req: Request, res: Response) => {
+  const envelope = buildPartEnvelope(req.params.id);
+  if (!envelope) {
+    return res.status(404).json({ error: `Tag ${req.params.id} not found`, timestamp: new Date().toISOString() });
+  }
+  if (req.query.download) {
+    const safe = envelope.payload.subject.label.replace(/[^\w.-]+/g, '_').slice(0, 60) || envelope.payload.subject.id;
+    res.setHeader('Content-Disposition', `attachment; filename="${safe}.tag"`);
+  }
+  res.setHeader('Content-Type', 'application/json');
+  return res.json(envelope);
 });
 
 // GET /tags/:id — get a single tag

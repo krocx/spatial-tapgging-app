@@ -7,6 +7,20 @@ it, it gets a line.
 ## 2026.4.42 — 2026-08-11
 
 ### Added
+- **`.tag` virtual emitter v1 (beta)** — every tagged part and every chamber
+  can now emit a signed, tamper-evident envelope (spec: docs/TAG-FORMAT.md,
+  Proprietary & Confidential, patent pending). `GET /tags/:id/emit` yields a
+  part envelope; `GET /anchors/:id/emit` yields the chamber assembly with a
+  member manifest hashing every part beneath it (Merkle-style tree — one
+  signature commits to the whole chamber's state). References + SHA-256 only,
+  never inline payloads; deterministic emission (no timestamps or JSON
+  numbers in the payload); Ed25519 issuer key auto-generated on first boot at
+  `<data-dir>/tag-signing-key.json` (covered by data-scope backups). Zero new
+  dependencies — Node built-in crypto server-side, CryptoKit on device.
+  Conformance validator + 10 tests including emit→tamper→re-validate; iOS
+  reference reader (TagEnvelope.swift) verifies, pins the issuer on first
+  scan, and caches envelopes for offline in Documents/tags/. Subscribe is
+  hints-only in v1; live per-chamber push lands in M2.
 - **Per-feature API reference in the catalogue** — 47 features now carry an
   `api:` block ("METHOD /path — purpose (caller · auth tier)") rendered as an
   API section on the /catalog card between Architecture and the spec, with
