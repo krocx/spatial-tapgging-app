@@ -660,7 +660,10 @@ function showFeature(id){
   bindTermChips(panel);
   panel.querySelectorAll('[data-go]').forEach(el => el.onclick = () => selectFeature(el.dataset.go));
   panel.querySelector('#backHome').onclick = renderHome;
-  panel.querySelector('#specBtn').onclick = async () => {
+  // Locked features have no #specBtn (replaced by the IP-key unlock button) —
+  // guard, or this throws and strands the graph's drag state mid-click.
+  const specBtn = panel.querySelector('#specBtn');
+  if (specBtn) specBtn.onclick = async () => {
     const box = panel.querySelector('#specBox');
     if (box.style.display === 'block'){ box.style.display = 'none'; return; }
     box.style.display = 'block';

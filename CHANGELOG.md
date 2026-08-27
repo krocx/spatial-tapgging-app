@@ -32,6 +32,8 @@ it, it gets a line.
   arrives. First restricted entry: the .tag format feature below. The
   browser-stored IP key expires after 7 days (shorter than the API key's 30 —
   it protects more sensitive content), after which the 🔒 prompt returns.
+  Field fix: selecting a locked card no longer strands the node on the cursor
+  (the missing spec button threw mid-click, skipping the drag release).
 - **`.tag` virtual emitter v1 (beta)** — every tagged part and every chamber
   can now emit a signed, tamper-evident envelope (spec: docs/TAG-FORMAT.md,
   Proprietary & Confidential, patent pending). `GET /tags/:id/emit` yields a
