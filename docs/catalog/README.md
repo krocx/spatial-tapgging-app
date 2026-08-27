@@ -34,6 +34,11 @@ api: |                    # OPTIONAL endpoint list — one line each, exactly:
                           # routes in sib/src — a renamed endpoint fails CI.
                           # Omit entirely for UX-only features (no filler).
 wireframe: author         # flow tab in the App Wireframe (/wireframe), if one exists
+sensitivity: restricted   # OPTIONAL — IP-sensitive feature: redacted from
+                          # /catalog/data, /catalog/doc and Ask SIB for anyone
+                          # without the secondary SIB_IP_KEY. Omit for normal
+                          # features. Future SSO/RBAC replaces the key check
+                          # (single swap point: canViewRestricted in auth.ts).
 flow: |                   # OPTIONAL per-feature Mermaid; omit to inherit the area flow
   flowchart LR
     A --> B

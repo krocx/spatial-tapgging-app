@@ -81,6 +81,30 @@ export function contentGate(req: Request, res: Response, next: NextFunction): vo
   });
 }
 
+// ── IP-sensitivity gate (secondary secret) ───────────────────────────────────
+// SIB_IP_KEY env var — when set, catalogue features marked
+// `sensitivity: restricted` are redacted (body/flows/api/spec stripped) for
+// anyone without the key, and their deep-dive docs return 403. When NOT set,
+// everything is visible (internal deployments unchanged).
+//
+// THE RBAC SWAP POINT: when SSO lands, this function's key comparison becomes
+// a role-claim check (e.g. req.user.roles.includes('ip-viewer')). Nothing
+// else in the codebase needs to change — every restricted-content decision
+// flows through here.
+
+export function canViewRestricted(req: Request): boolean {
+  const key = process.env.SIB_IP_KEY?.trim();
+  if (!key) return true;                                   // gate off — open
+  const h = Array.isArray(req.headers['x-ip-key'])
+    ? req.headers['x-ip-key'][0]
+    : req.headers['x-ip-key'];
+  if (h === key) return true;
+  const cookie = req.headers.cookie;
+  if (!cookie) return false;
+  const m = /(?:^|;\s*)sib_ip_key=([^;]*)/.exec(cookie);
+  return !!m && decodeURIComponent(m[1]) === key;
+}
+
 // ── Admin gate (pilot hardening) ─────────────────────────────────────────────
 // SIB_ADMIN_KEY env var — when set, DESTRUCTIVE requests additionally require
 // a matching X-Admin-Key header. Destructive = any DELETE, plus the LOTO quiz

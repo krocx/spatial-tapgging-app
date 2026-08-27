@@ -19,7 +19,8 @@ import { Router } from 'express';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { buildCatalog, CatalogParseError, extractSection } from '../catalog/catalog-core.js';
+import { buildCatalog, CatalogParseError, extractSection, redactFeature } from '../catalog/catalog-core.js';
+import { canViewRestricted } from '../middleware/auth.js';
 import { PLATFORM_VERSION } from '../version.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -73,6 +74,11 @@ router.get('/data', (req, res) => {
     const cat = readCatalog();
     if (!cat) return res.status(404).json({ error: 'Catalogue not available on this deployment' });
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    // IP-sensitivity: restricted features are redacted for callers without
+    // the secondary key — node stays in the graph, substance stripped.
+    if (!canViewRestricted(req)) {
+      return res.json({ ...cat.data, features: cat.data.features.map(redactFeature) });
+    }
     return res.json(cat.data);
   } catch (err) {
     if (err instanceof CatalogParseError) {
@@ -89,6 +95,9 @@ router.get('/doc/:id', (req, res) => {
   if (!cat) return res.status(404).json({ error: 'Catalogue not available on this deployment' });
   const feature = cat.data.features.find(f => f.id === req.params.id);
   if (!feature) return res.status(404).json({ error: `Unknown feature id "${req.params.id}"` });
+  if (feature.sensitivity === 'restricted' && !canViewRestricted(req)) {
+    return res.status(403).json({ error: 'Restricted — this spec requires the secondary IP key (X-IP-Key)' });
+  }
 
   // spec paths are relative to docs/ ("../README.md" reaches the repo root
   // README and nothing beyond it — resolved paths must stay inside the repo).

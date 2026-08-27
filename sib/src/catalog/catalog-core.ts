@@ -32,6 +32,15 @@ export interface CatalogFeature {
    * checker; omitted entirely for UX-only features (no filler).
    */
   api?: string[];
+  /**
+   * IP-sensitivity marker. 'restricted' features are redacted from
+   * /catalog/data (and excluded from Ask SIB retrieval) for callers without
+   * the secondary SIB_IP_KEY — see redactFeature() and canViewRestricted().
+   */
+  sensitivity?: 'restricted';
+  /** Serialization flag set by redactFeature() — tells the UI to render the
+   *  lock stub + unlock affordance. Never present on unredacted features. */
+  locked?: boolean;
   body: string;
 }
 
@@ -170,6 +179,28 @@ export function resolveTerm(
   );
 }
 
+// ── IP-sensitivity redaction ─────────────────────────────────────────────────
+
+/**
+ * The redacted view of a restricted feature for callers without the IP key.
+ * The node keeps its place in the graph (id, name, area, status, depends —
+ * the map stays honest) but every substantive field is stripped: body, flows,
+ * architecture, API surface, spec pointer, glossary terms.
+ */
+export function redactFeature(f: CatalogFeature): CatalogFeature {
+  if (f.sensitivity !== 'restricted') return f;
+  return {
+    id: f.id, name: f.name, area: f.area, status: f.status,
+    version: f.version, depends: f.depends,
+    terms: [],
+    spec: 'restricted',
+    sensitivity: 'restricted',
+    locked: true,
+    body: 'Restricted — this feature’s details require the secondary IP key. '
+        + 'Enter it below, or ask the platform owner for access.',
+  };
+}
+
 // ── Spec section extraction ──────────────────────────────────────────────────
 
 /** GitHub-style heading slug: lowercase, punctuation stripped, spaces → "-".
@@ -258,7 +289,12 @@ export function buildCatalog(
       if (!(CATALOG_AREAS as readonly string[]).includes(str(fm.area))) {
         throw new CatalogParseError(f.name, `invalid area "${str(fm.area)}"`);
       }
+      const sensitivity = str(fm.sensitivity);
+      if (sensitivity && sensitivity !== 'restricted') {
+        throw new CatalogParseError(f.name, `invalid sensitivity "${sensitivity}" (only "restricted" exists)`);
+      }
       features.push({
+        ...(sensitivity === 'restricted' ? { sensitivity: 'restricted' as const } : {}),
         id: str(fm.id), name: str(fm.name), area: str(fm.area),
         status: status as CatalogFeature['status'],
         version: str(fm.version), depends: arr(fm.depends), terms: arr(fm.terms),

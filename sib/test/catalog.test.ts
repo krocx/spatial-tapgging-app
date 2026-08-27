@@ -13,6 +13,7 @@ import {
   buildCatalog,
   slugifyHeading,
   extractSection,
+  redactFeature,
   CatalogParseError,
 } from '../src/catalog/catalog-core.js';
 
@@ -160,6 +161,35 @@ test('buildCatalog: areas sorted by order, README ignored', () => {
   );
   assert.deepEqual(cat.areas.map(a => a.id), ['y', 'z']);
   assert.equal(cat.areas[0].flow, 'flowchart LR\n  A --> B');
+});
+
+test('sensitivity: parsed when restricted, invalid values rejected, redaction strips substance', () => {
+  const restricted = {
+    name: 'r.md',
+    content: feature('r').content.replace(
+      '---\nA body',
+      'sensitivity: restricted\napi: |\n  GET /secret — x (app · API key)\narch: |\n  flowchart LR\n    A --> B\n---\nA body',
+    ),
+  };
+  const cat = buildCatalog([restricted, feature('open')], GLOSS, 'v');
+  const r = cat.features.find(f => f.id === 'r')!;
+  assert.equal(r.sensitivity, 'restricted');
+  assert.equal(cat.features.find(f => f.id === 'open')!.sensitivity, undefined);
+
+  // Redaction: graph identity kept, substance stripped, locked flag set.
+  const red = redactFeature(r);
+  assert.equal(red.locked, true);
+  assert.equal(red.id, 'r');
+  assert.deepEqual({ arch: red.arch, api: red.api, flow: red.flow, terms: red.terms },
+    { arch: undefined, api: undefined, flow: undefined, terms: [] });
+  assert.equal(red.spec, 'restricted');
+  assert.match(red.body, /Restricted/);
+  // Non-restricted features pass through untouched (same reference).
+  const open = cat.features.find(f => f.id === 'open')!;
+  assert.equal(redactFeature(open), open);
+
+  const bad = { name: 'b.md', content: feature('b').content.replace('---\nA body', 'sensitivity: secret\n---\nA body') };
+  assert.throws(() => buildCatalog([bad], GLOSS, 'v'), /invalid sensitivity "secret"/);
 });
 
 test('buildCatalog: api block splits to trimmed lines; absent api stays undefined', () => {

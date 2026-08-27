@@ -7,6 +7,17 @@ it, it gets a line.
 ## 2026.4.42 — 2026-08-11
 
 ### Added
+- **Catalogue IP-sensitivity gate (secondary secret)** — features marked
+  `sensitivity: restricted` in their frontmatter are redacted for anyone
+  without the new `SIB_IP_KEY` env secret: /catalog/data strips body, flows,
+  architecture, API lines and spec (node stays in the graph with a 🔒 chip +
+  "Enter IP key" unlock), /catalog/doc returns 403, and Ask SIB excludes them
+  from retrieval so it can't become a side-channel. Key travels as X-IP-Key
+  (stored like the API key). Deliberately separate from the admin key — IP
+  viewers ≠ data admins. Gate off when the env var is unset, so internal
+  deployments are unchanged. All restriction decisions flow through ONE
+  function (`canViewRestricted`) — the designated swap point when SSO/RBAC
+  arrives. First restricted entry: the .tag format feature below.
 - **`.tag` virtual emitter v1 (beta)** — every tagged part and every chamber
   can now emit a signed, tamper-evident envelope (spec: docs/TAG-FORMAT.md,
   Proprietary & Confidential, patent pending). `GET /tags/:id/emit` yields a

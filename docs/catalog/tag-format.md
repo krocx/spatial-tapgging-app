@@ -7,6 +7,7 @@ version: 2026.4.42
 depends: [qr-anchoring, shared-schema]
 terms: [Anchor]
 spec: TAG-FORMAT.md
+sensitivity: restricted
 api: |
   GET /tags/:id/emit — signed part-level .tag envelope (app · API key)
   GET /anchors/:id/emit — signed assembly-level (chamber) .tag envelope with member manifest (app · API key)

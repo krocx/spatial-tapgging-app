@@ -22,6 +22,7 @@
 import { Router } from 'express';
 import { retrieve, buildAskContext, buildMessages } from '../ask/ask-core.js';
 import { readCatalog } from './catalog.js';
+import { canViewRestricted } from '../middleware/auth.js';
 
 const LLM_TIMEOUT_MS = 90_000;
 
@@ -64,7 +65,14 @@ router.post('/', async (req, res) => {
   const cat = readCatalog();
   if (!cat) return res.status(404).json({ error: 'Catalogue not available on this deployment' });
 
-  const retrieval = retrieve(cat.data, question);
+  // IP-sensitivity: restricted features never enter retrieval (or the LLM
+  // context) for callers without the secondary key — Ask SIB must not become
+  // a side-channel around the catalogue redaction.
+  const visible = canViewRestricted(req)
+    ? cat.data
+    : { ...cat.data, features: cat.data.features.filter(f => f.sensitivity !== 'restricted') };
+
+  const retrieval = retrieve(visible, question);
   const base = {
     question,
     sources: retrieval.sources,
@@ -79,7 +87,7 @@ router.post('/', async (req, res) => {
   }
 
   try {
-    const context = buildAskContext(cat.data, retrieval);
+    const context = buildAskContext(visible, retrieval);
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), LLM_TIMEOUT_MS);
     const resp = await fetch(`${cfg.url}/chat/completions`, {
