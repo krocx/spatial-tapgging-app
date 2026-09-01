@@ -7,6 +7,22 @@ it, it gets a line.
 ## 2026.4.45 — 2026-09-01
 
 ### Added
+- **Roadmap home redesign (S5)** — the map list is now a proper front door:
+  a night-sky hero ("What will you build today?") with two glowing door
+  cards — 🗺 Roadmap (gold) and 🧩 Procedure (teal), matching the canvas
+  edge-role palette — that open an inline name field and create in place.
+  Maps became a card gallery with kind badges (list API now returns `kind`),
+  node/edge counts, relative updated time and the draft 🔒 badge. Import
+  JSON / whiteboard photo / unlock-draft moved into a ⋯ menu; display name
+  and API key live in a corner 👤 chip. All previous behaviour is preserved —
+  only the arrangement changed.
+- **Designer: issues drawer + autosaving node text (S5)** — the pre-flight
+  warnings list no longer stacks inline: a count chip in the census row
+  toggles a scrollable drawer grouped into "Blocking — fix before sending"
+  and "Warnings — sending still allowed", so 20+ findings stay usable.
+  Node text now autosaves while typing (500 ms debounce) and on blur —
+  Enter is no longer required, and Escape simply closes the editor since
+  nothing can be lost.
 - **iOS RBAC (S4, beta)** — the app joins UAM. Settings → Identity gains
   Work Email + Employee ID and a "Verify Access" button: both must match the
   allow-list record; success caches the token + role (shown as a badge) and

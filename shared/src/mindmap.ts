@@ -190,6 +190,8 @@ export interface MindmapSummary {
   edgeCount: number;
   /** false = draft (only listed for callers presenting its draft key). */
   published: boolean;
+  /** Map kind for list badges. Absent = 'roadmap' (pre-Procedure maps). */
+  kind?: MindmapKind;
 }
 
 // --- Versioning ---

@@ -82,6 +82,7 @@ export function summarize(map: Mindmap): MindmapSummary {
     nodeCount: map.nodes.length,
     edgeCount: map.edges.length,
     published: isPublished(map.id),
+    ...(map.kind ? { kind: map.kind } : {}),
   };
 }
 
