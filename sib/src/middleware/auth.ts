@@ -7,7 +7,11 @@
 //   so local npm run dev continues to work without any key.
 
 import type { Request, Response, NextFunction } from 'express';
+import type { UamRole, UamUser } from '@spatial/shared';
 import { logOpsEvent } from '../ops-log.js';
+import { verifyToken } from '../uam/uam-core.js';
+// Circular at module level, resolved at call time (same pattern as tag-emitter ↔ routes).
+import { uamUserStore, uamSecret, findUserByEmail } from '../routes/uam.js';
 
 /** The API key a request carries — X-API-Key header, or the `sib_key` cookie
  *  set by the /unlock page (browsers can't add headers to page navigations). */
@@ -81,6 +85,68 @@ export function contentGate(req: Request, res: Response, next: NextFunction): vo
   });
 }
 
+// ── UAM identity (RBAC ahead of SSO) ─────────────────────────────────────────
+// Token from POST /uam/login travels as the X-User-Token header (iOS) or the
+// sib_user cookie (portal). The token asserts only the email; role is re-read
+// from the user store on EVERY request so role changes and removals take
+// effect immediately. SSO swap point: replace verifyToken with IdP JWT
+// validation — everything downstream is unchanged.
+
+export const UAM_COOKIE = 'sib_user';
+
+export function currentUamUser(req: Request): UamUser | undefined {
+  const h = Array.isArray(req.headers['x-user-token'])
+    ? req.headers['x-user-token'][0]
+    : req.headers['x-user-token'];
+  let token = h;
+  if (!token && req.headers.cookie) {
+    const m = new RegExp(`(?:^|;\\s*)${UAM_COOKIE}=([^;]*)`).exec(req.headers.cookie);
+    if (m) token = decodeURIComponent(m[1]);
+  }
+  if (!token) return undefined;
+  const email = verifyToken(token, uamSecret());
+  if (!email) return undefined;
+  return findUserByEmail(email);
+}
+
+/** The acting identity for privileged operations: a signed-in UAM user, or
+ *  the legacy admin key acting as owner-equivalent (bootstrap + transition). */
+export type UamActor =
+  | { kind: 'user'; user: UamUser; role: UamRole; email: string }
+  | { kind: 'legacy-admin' };
+
+export function uamActor(req: Request): UamActor | undefined {
+  const user = currentUamUser(req);
+  if (user) return { kind: 'user', user, role: user.role, email: user.email };
+  const adminKey = process.env.SIB_ADMIN_KEY?.trim();
+  if (adminKey) {
+    const provided = Array.isArray(req.headers['x-admin-key'])
+      ? req.headers['x-admin-key'][0]
+      : req.headers['x-admin-key'];
+    if (provided === adminKey) return { kind: 'legacy-admin' };
+  } else {
+    // No admin key configured (internal dev) — management stays reachable,
+    // matching the platform's historical gate-off behaviour.
+    return { kind: 'legacy-admin' };
+  }
+  return undefined;
+}
+
+/** Route middleware: require a signed-in user with one of `roles`
+ *  (legacy admin key counts as owner). */
+export function requireRole(...roles: UamRole[]) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    const actor = uamActor(req);
+    const effective: UamRole | undefined =
+      actor?.kind === 'legacy-admin' ? 'owner' : actor?.role;
+    if (effective && roles.includes(effective)) { next(); return; }
+    res.status(403).json({
+      error: `Requires role: ${roles.join(' or ')}`,
+      timestamp: new Date().toISOString(),
+    });
+  };
+}
+
 // ── IP-sensitivity gate (secondary secret) ───────────────────────────────────
 // SIB_IP_KEY env var — when set, catalogue features marked
 // `sensitivity: restricted` are redacted (body/flows/api/spec stripped) for
@@ -127,6 +193,17 @@ export function isAdminRequest(method: string, path: string): boolean {
 
 export function adminKeyAuth(req: Request, res: Response, next: NextFunction): void {
   if (!isAdminRequest(req.method, req.path)) { next(); return; }
+
+  // UAM transition: a signed-in Owner or Manager passes the destructive gate
+  // by role — no shared admin key needed. Engineers/Technicians fall through
+  // to the legacy key check (and normally fail it, which is the point).
+  const user = currentUamUser(req);
+  if (user && (user.role === 'owner' || user.role === 'manager')) {
+    logOpsEvent({ method: req.method, path: req.path, outcome: 'allowed', ip: req.ip,
+      detail: `by role — ${user.email} (${user.role})` });
+    next();
+    return;
+  }
 
   const adminKey = process.env.SIB_ADMIN_KEY?.trim();
   if (!adminKey) {

@@ -1243,3 +1243,48 @@ export * from './mindmap.js';
 //
 // Rule: add types and interfaces to this package freely; add runtime values
 // to the workspace that executes them.
+
+// ─── UAM — User Access Management (RBAC ahead of SSO) ────────────────────────
+// Pre-SSO identity: users are manually allow-listed by email + employee ID in
+// the portal's UAM table. POST /uam/login identifies against that list and
+// issues an HMAC-signed token. When corporate SSO (OIDC + HYPR) arrives, only
+// the token-issuing step changes — every role check stays.
+
+/** Role ladder, most → least privileged. */
+export type UamRole = 'owner' | 'manager' | 'engineer' | 'technician';
+
+export interface UamUser {
+  id:         string;
+  /** Normalised (lowercase, trimmed) — the identity key. */
+  email:      string;
+  employeeId: string;
+  name:       string;
+  role:       UamRole;
+  createdAt:  string;
+  updatedAt:  string;
+}
+
+export interface CreateUamUserRequest {
+  email:      string;
+  employeeId: string;
+  name:       string;
+  role:       UamRole;
+}
+
+/** Partial update — only supplied fields are written. */
+export interface UpdateUamUserRequest {
+  employeeId?: string;
+  name?:       string;
+  role?:       UamRole;
+}
+
+export interface UamLoginRequest {
+  email:       string;
+  /** iOS supplies it and it must match the record; portal may omit. */
+  employeeId?: string;
+}
+
+export interface UamLoginResponse {
+  token: string;
+  user:  UamUser;
+}

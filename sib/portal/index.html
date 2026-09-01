@@ -491,6 +491,8 @@
     <h1>Spatial Tagging <span>· Anchor Directory</span> <span id="platform-version" style="font-size:0.62rem;color:var(--muted);font-weight:400;margin-left:6px"></span></h1>
   </div>
   <div class="actions">
+    <span id="uam-chip" style="display:none;font-size:0.72rem;color:var(--muted);margin-right:4px"></span>
+    <button class="btn btn-ghost btn-sm" id="uam-signout" onclick="uamLogout()" style="display:none">Sign out</button>
     <button class="btn btn-ghost btn-sm" id="admin-btn" onclick="toggleAdmin()" style="display:none" title="Destructive actions (delete, quiz editing) require the admin key">🔒 Admin</button>
     <button class="btn btn-ghost btn-sm" onclick="showSettings()">⚙ Settings</button>
     <button class="btn btn-primary btn-sm" onclick="openCreateModal()">+ New Anchor</button>
@@ -581,8 +583,43 @@
 </div>
 
 <!-- Admin panel — dedicated ops page: unlock, backups, ops log -->
+<!-- UAM email login — shown when the allow-list is active and no session cookie -->
+<div id="uam-login" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:900;align-items:center;justify-content:center">
+  <div style="width:min(400px,92vw);background:var(--card,#111a2e);border:1px solid var(--border);border-radius:14px;padding:30px 28px">
+    <h2 style="margin:0 0 4px;font-size:1.15rem">Sign in to SIB</h2>
+    <p style="margin:0 0 18px;font-size:0.78rem;color:var(--muted)">Enter your work email. Access is limited to the allow-list managed by the platform owner.</p>
+    <input id="uam-email" type="email" placeholder="you@company.com" autocomplete="email"
+           style="width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.9rem"
+           onkeydown="if(event.key==='Enter')uamSubmitLogin()">
+    <div id="uam-login-err" style="display:none;margin-top:10px;font-size:0.75rem;color:var(--red,#f05656)"></div>
+    <button class="btn btn-primary" style="width:100%;margin-top:16px" onclick="uamSubmitLogin()">Sign in</button>
+    <p style="margin:14px 0 0;font-size:0.68rem;color:var(--muted)">SSO with HYPR arrives later — this identifies you against the access list until then.</p>
+  </div>
+</div>
+
 <div id="admin-panel">
   <div id="adm-lock-banner"></div>
+  <div class="card" id="uam-card">
+    <h3>👥 User Access Management</h3>
+    <p style="font-size:0.75rem;color:var(--muted);margin:4px 0 12px">
+      The allow-list that gates sign-in, and each user's role. Roles: <strong>Owner</strong> (full control) ·
+      <strong>Manager</strong> (manages users except Owners) · <strong>Engineer</strong> (creates/edits guides) ·
+      <strong>Technician</strong> (runs shared guides). With an empty list, login is off — add the first Owner to activate.
+    </p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <input id="uam-add-email" type="email" placeholder="email" style="flex:2;min-width:160px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.78rem">
+      <input id="uam-add-empid" placeholder="employee ID" style="flex:1;min-width:100px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.78rem">
+      <input id="uam-add-name" placeholder="name" style="flex:1;min-width:110px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.78rem">
+      <select id="uam-add-role" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.78rem">
+        <option value="technician">Technician</option>
+        <option value="engineer">Engineer</option>
+        <option value="manager">Manager</option>
+        <option value="owner">Owner</option>
+      </select>
+      <button class="btn btn-primary btn-sm" onclick="uamAddUser()">+ Add user</button>
+    </div>
+    <div id="uam-table" style="font-size:0.78rem;color:var(--muted)">Loading…</div>
+  </div>
   <div class="adm-card admin-only">
     <h3>🗄 Backups</h3>
     <p style="font-size:0.75rem;color:var(--muted);margin:0 0 12px">
@@ -1035,6 +1072,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const cfg = await fetch('/config').then(r => r.json());
     authRequired = cfg.authRequired !== false;
     adminRequired = cfg.adminRequired === true;
+    uamActive = cfg.uamActive === true;
     applyAdminUI();
     // Platform version — single source of truth is PLATFORM_VERSION in
     // sib/src/version.ts, surfaced here so "what's running?" has an answer.
@@ -1052,22 +1090,87 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   if (!authRequired) {
-    // Company network / local server — no key needed, load straight in.
-    document.getElementById('toolbar').style.display = 'flex';
-    document.getElementById('nav-tabs').classList.add('visible');
-    loadAnchors();
+    // Company network / local server — no key needed.
+    await enterPortal();
   } else {
     // Render / externally-accessible server — require a stored API key.
     const key = localStorage.getItem('sib_api_key');
     if (!key) {
       document.getElementById('setup-banner').style.display = 'block';
     } else {
-      document.getElementById('toolbar').style.display = 'flex';
-      document.getElementById('nav-tabs').classList.add('visible');
-      loadAnchors();
+      await enterPortal();
     }
   }
 });
+
+// ── UAM gate + entry (RBAC ahead of SSO) ─────────────────────────────────────
+// With users in the allow-list (cfg.uamActive), the portal requires an email
+// sign-in before showing anything. Empty list = UAM dormant (bootstrap via
+// the admin-unlocked UAM table). The server enforces everything the UI hides.
+let uamActive = false;
+let UAM_USER  = null;   // { email, name, role, … } once signed in
+
+async function enterPortal() {
+  if (uamActive) {
+    try {
+      const j = await apiFetch('/uam/me');
+      if (!j.data.legacyAdmin) UAM_USER = j.data;
+    } catch (e) {
+      // 401 (no/expired session) or network error — show the sign-in screen.
+      document.getElementById('uam-login').style.display = 'flex';
+      return;
+    }
+  }
+  applyUamUI();
+  document.getElementById('toolbar').style.display = 'flex';
+  document.getElementById('nav-tabs').classList.add('visible');
+  loadAnchors();
+}
+
+async function uamSubmitLogin() {
+  const email = document.getElementById('uam-email').value.trim();
+  const errEl = document.getElementById('uam-login-err');
+  if (!email) { errEl.style.display = 'block'; errEl.textContent = 'Enter your email.'; return; }
+  try {
+    await apiFetch('/uam/login', { method: 'POST', body: JSON.stringify({ email }) });
+    location.reload();   // cookie is set — reload enters signed in
+  } catch (e) {
+    errEl.style.display = 'block';
+    errEl.textContent = e.message;
+  }
+}
+
+async function uamLogout() {
+  try { await apiFetch('/uam/logout', { method: 'POST' }); } catch (e) {}
+  location.reload();
+}
+
+const UAM_ROLE_LABEL = { owner: 'Owner', manager: 'Manager', engineer: 'Engineer', technician: 'Technician' };
+
+/** Identity chip + role-driven visibility. Server-side checks remain the guarantee. */
+function applyUamUI() {
+  const chip = document.getElementById('uam-chip');
+  const out  = document.getElementById('uam-signout');
+  if (UAM_USER) {
+    chip.style.display = 'inline';
+    chip.textContent = `👤 ${UAM_USER.name} · ${UAM_ROLE_LABEL[UAM_USER.role] || UAM_USER.role}`;
+    out.style.display = 'inline-block';
+    // Only Owner/Manager see the Admin page (they pass its gates by role).
+    const adminTab = document.querySelector('.nav-tab[data-view="admin"]');
+    if (adminTab && UAM_USER.role !== 'owner' && UAM_USER.role !== 'manager') {
+      adminTab.style.display = 'none';
+    }
+    // Owner/Manager act destructively by ROLE — recompute the admin lock.
+    applyAdminUI();
+  }
+}
+
+/** True when destructive UI should be hidden: admin key required, not stored,
+ *  and no Owner/Manager session to pass the gate by role. */
+function adminLockedNow() {
+  const roleUnlocked = UAM_USER && (UAM_USER.role === 'owner' || UAM_USER.role === 'manager');
+  return adminRequired && !adminKeyStored() && !roleUnlocked;
+}
 
 // ── Admin mode (pilot hardening) ──────────────────────────────────────────────
 // adminRequired comes from /config (SIB_ADMIN_KEY set server-side). While
@@ -1077,7 +1180,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 let adminRequired = false;
 function adminKeyStored() { return localStorage.getItem('sib_admin_key') || ''; }
 function applyAdminUI() {
-  const locked = adminRequired && !adminKeyStored();
+  const locked = adminLockedNow();
   document.body.classList.toggle('admin-locked', locked);
   const btn = document.getElementById('admin-btn');
   if (btn) {
@@ -1105,8 +1208,11 @@ function toggleAdmin() {
  * hides automatically while locked. */
 function renderAdminPanel() {
   const banner = document.getElementById('adm-lock-banner');
-  const locked = adminRequired && !adminKeyStored();
-  if (!adminRequired) {
+  const locked = adminLockedNow();
+  if (UAM_USER && (UAM_USER.role === 'owner' || UAM_USER.role === 'manager')) {
+    banner.className = 'adm-lock-banner unlocked';
+    banner.innerHTML = `🔓 <strong>Unlocked by role</strong>&nbsp;— signed in as ${esc(UAM_USER.name)} (${UAM_ROLE_LABEL[UAM_USER.role]}). Destructive actions, backups and user management enabled.`;
+  } else if (!adminRequired) {
     banner.className = 'adm-lock-banner unlocked';
     banner.innerHTML = '🔓 <strong>Admin gate is off</strong>&nbsp;— no SIB_ADMIN_KEY set on this server; destructive actions are open. Fine for local/dev, set the key for pilots.';
   } else if (locked) {
@@ -1118,7 +1224,72 @@ function renderAdminPanel() {
     banner.innerHTML = '🔓 <strong>Admin unlocked</strong>&nbsp;— destructive actions and backups enabled on this browser.&nbsp;' +
       '<button class="btn btn-ghost btn-sm" onclick="toggleAdmin()">🔒 Lock</button>';
   }
-  if (!locked) loadOpsLog();
+  if (!locked) { loadOpsLog(); loadUamUsers(); }
+  document.getElementById('uam-card').style.display = locked ? 'none' : 'block';
+}
+
+// ── UAM user table (Admin page) ───────────────────────────────────────────────
+async function loadUamUsers() {
+  const el = document.getElementById('uam-table');
+  try {
+    const j = await apiFetch('/uam/users');
+    if (!j.data.length) {
+      el.innerHTML = '<em>No users yet — UAM login is dormant. Add yourself as Owner to activate it.</em>';
+      return;
+    }
+    el.innerHTML = `<table style="width:100%;border-collapse:collapse">
+      <tr style="text-align:left;color:var(--muted)">
+        <th style="padding:6px 8px">Email</th><th style="padding:6px 8px">Employee ID</th>
+        <th style="padding:6px 8px">Name</th><th style="padding:6px 8px">Role</th><th></th></tr>
+      ${j.data.map(u => `<tr style="border-top:1px solid var(--border)">
+        <td style="padding:6px 8px;color:var(--text)">${esc(u.email)}</td>
+        <td style="padding:6px 8px">${esc(u.employeeId)}</td>
+        <td style="padding:6px 8px">${esc(u.name)}</td>
+        <td style="padding:6px 8px">
+          <select onchange="uamSetRole('${u.id}', this.value, '${esc(u.email)}')" style="padding:4px 6px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:0.74rem">
+            ${['technician','engineer','manager','owner'].map(rr =>
+              `<option value="${rr}" ${u.role === rr ? 'selected' : ''}>${UAM_ROLE_LABEL[rr]}</option>`).join('')}
+          </select></td>
+        <td style="padding:6px 8px;text-align:right">
+          <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="uamRemoveUser('${u.id}','${esc(u.email)}')">Remove</button></td>
+      </tr>`).join('')}
+    </table>`;
+  } catch (e) {
+    el.innerHTML = `<span style="color:var(--red)">Could not load users: ${esc(e.message)}</span>`;
+  }
+}
+
+async function uamAddUser() {
+  const email = document.getElementById('uam-add-email').value.trim();
+  const employeeId = document.getElementById('uam-add-empid').value.trim();
+  const name = document.getElementById('uam-add-name').value.trim();
+  const role = document.getElementById('uam-add-role').value;
+  if (!email || !employeeId || !name) { toast('Email, employee ID and name are all required', true); return; }
+  try {
+    await apiFetch('/uam/users', { method: 'POST', body: JSON.stringify({ email, employeeId, name, role }) });
+    toast(`Added ${email} as ${UAM_ROLE_LABEL[role]}`);
+    for (const id of ['uam-add-email','uam-add-empid','uam-add-name']) document.getElementById(id).value = '';
+    loadUamUsers();
+  } catch (e) { toast(`Add failed: ${e.message}`, true); }
+}
+
+async function uamSetRole(id, role, email) {
+  try {
+    await apiFetch(`/uam/users/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ role }) });
+    toast(`${email} → ${UAM_ROLE_LABEL[role]}`);
+  } catch (e) {
+    toast(`Role change failed: ${e.message}`, true);
+  }
+  loadUamUsers();   // re-render either way — a refused change must snap back
+}
+
+async function uamRemoveUser(id, email) {
+  if (!confirm(`Remove ${email} from the access list? They will no longer be able to sign in.`)) return;
+  try {
+    await apiFetch(`/uam/users/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    toast(`Removed ${email}`);
+  } catch (e) { toast(`Remove failed: ${e.message}`, true); }
+  loadUamUsers();
 }
 
 // ── Pilot filters (client-side over already-fetched data) ─────────────────────

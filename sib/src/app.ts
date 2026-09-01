@@ -18,6 +18,7 @@ import mindmapRouter from './routes/mindmap.routes.js';
 import lotoRouter, { lotoPointStore, lotoEventStore } from './routes/loto.js';
 import catalogRouter from './routes/catalog.js';
 import adminRouter from './routes/admin.js';
+import uamRouter, { uamUserStore } from './routes/uam.js';
 import askRouter from './routes/ask.js';
 import { sessionStore } from './routes/sessions.js';
 import { locTagStore, locTagCompletionStore } from './routes/loc-tags.js';
@@ -110,6 +111,10 @@ document.getElementById('f').addEventListener('submit', async function(ev){
       // adminRequired → SIB_ADMIN_KEY set: destructive actions (DELETE, quiz
       // admin) need X-Admin-Key. The portal uses this to lock destructive UI.
       adminRequired: !!(process.env.SIB_ADMIN_KEY?.trim()),
+      // uamActive → the allow-list has users: the portal shows the email
+      // login before entering. An empty list keeps UAM dormant (bootstrap:
+      // add the first Owner via the admin-unlocked UAM table).
+      uamActive: uamUserStore.findAll().length > 0,
       // Version is a deployment detail — only authenticated callers see it.
       ...(hasValidApiKey(req) ? { platformVersion: PLATFORM_VERSION } : {}),
       timestamp: new Date().toISOString(),
@@ -330,6 +335,12 @@ document.getElementById('f').addEventListener('submit', async function(ev){
 
   // --- Ops routes (admin-gated): GET /admin/backup?scope=data|full ---
   app.use('/admin', adminRouter);
+
+  // --- UAM — User Access Management (RBAC ahead of SSO) ---
+  // Login + allow-list management. Sits behind apiKeyAuth like every API
+  // namespace; management endpoints additionally enforce Owner/Manager role
+  // (legacy admin key = owner-equivalent during transition).
+  app.use('/uam', uamRouter);
 
   // --- SIB Routes (Phase 1) ---
   // POST /anchors        — create anchor

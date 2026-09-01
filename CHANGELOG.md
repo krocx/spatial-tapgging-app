@@ -7,6 +7,26 @@ it, it gets a line.
 ## 2026.4.42 — 2026-08-11
 
 ### Added
+- **UAM — User Access Management, S1 server core (beta)** — RBAC ahead of
+  corporate SSO. A manually managed allow-list (email + employee ID + role)
+  gates sign-in: `POST /uam/login` rejects anyone not in the table and issues
+  a 7-day HMAC token (cookie for the portal, header for iOS). Four roles —
+  Owner, Manager, Engineer, Technician — with server-enforced rules: Managers
+  manage everyone except Owner records and can never grant Owner; the last
+  Owner can be neither demoted nor removed. Tokens carry identity only; the
+  role is re-read per request, so changes and removals take effect
+  immediately. Owners/Managers now pass the destructive-action gate by role
+  (legacy admin key still honoured — and acts as Owner for bootstrap: unlock
+  admin, add yourself, roles take over). All logins and user-table changes
+  land in the ops log. SSO swap point: token issuing only. 5 new unit tests
+  + a 14-step live authorization matrix.
+  S2 — portal surface: with users in the list (`/config.uamActive`), the
+  portal shows an email sign-in before anything loads; the header gains an
+  identity chip (name · role) with Sign out; the Admin page gains the 👥
+  User Access Management table (add / edit role / remove, with server-refused
+  changes snapping back); only Owners/Managers see the Admin tab, and their
+  session lifts the destructive-UI lock by role — no shared admin key needed
+  day-to-day. Empty list = login off (bootstrap unchanged).
 - **Operator pilot hardening (AR Work Instructions)** — six fixes from the
   operator-POV UX review ahead of daily technician use: (1) the authored
   failure branch is finally reachable — steps with a recovery path show
