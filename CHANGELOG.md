@@ -22,7 +22,12 @@ it, it gets a line.
   incomplete steps now warns with the count (warn not block — branch skips
   are legitimate); (6) precondition redirects explain themselves with a
   toast instead of silently jumping. New: Services/GuideRunStore.swift;
-  `step:failed` added to the shared event union.
+  `step:failed` added to the shared event union. Follow-up from testing with
+  a real branching guide: (7) sign-off no longer demands completion of
+  required steps on paths never taken (branch skips made it unreachable);
+  (8) sequential auto-advance skips failure-only steps, so the happy-path
+  terminal no longer walks into "Tag Out of Service"; (9) sign-off is
+  offered on ANY terminal step — the happy end and failure dead-ends alike.
 - **`.tag` live subscription (M2 — the continuous emitter)** — assembly
   envelopes' `subscribe.hints` now lead with a real SSE feed:
   `GET /anchors/:id/subscribe` sends `state` (contentVersion + payload hash)

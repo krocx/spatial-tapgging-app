@@ -176,11 +176,46 @@ struct ARGuideSessionView: View {
         steps.sorted { $0.sequenceNumber < $1.sequenceNumber }
     }
 
+    /// Required steps gate sign-off ONLY if the Operator actually visited them.
+    /// Branching guides legitimately bypass whole limbs (oil was fine → skip
+    /// "Top Up Oil") — a required step on a path never taken must not make
+    /// sign-off unreachable. Steps that WERE entered can only be left by
+    /// completing them (Next is gated), so this stays sound.
     var allRequiredDone: Bool {
         guard progresses.count == sortedSteps.count else { return false }
         return zip(sortedSteps, progresses).allSatisfy { step, prog in
-            !step.completionRequired || prog.isCompleted
+            !step.completionRequired || prog.isCompleted || prog.enteredAt == nil
         }
+    }
+
+    /// Steps reachable ONLY via a failure branch: someone's nextOnFailure
+    /// target that no success path points to. Sequential auto-advance must
+    /// never walk into these — they are entered by explicit routing only.
+    var failureOnlyStepIds: Set<String> {
+        let failTargets    = Set(sortedSteps.compactMap { $0.nextOnFailure })
+        let successTargets = Set(sortedSteps.compactMap { $0.nextOnSuccess })
+        return failTargets.subtracting(successTargets)
+    }
+
+    /// The sequential successor of `index`, skipping failure-only steps.
+    /// nil = nothing follows → the step is a terminal (sign-off point).
+    func nextSequentialIndex(after index: Int) -> Int? {
+        let skip = failureOnlyStepIds
+        var i = index + 1
+        while i < sortedSteps.count {
+            if !skip.contains(sortedSteps[i].id) { return i }
+            i += 1
+        }
+        return nil
+    }
+
+    /// Terminal = no authored continuation and no sequential successor that
+    /// isn't failure-only. Both the happy-path end AND a failure dead-end
+    /// (e.g. "Tag Out of Service") are terminals — each can end the session.
+    func isTerminal(index: Int) -> Bool {
+        guard index < sortedSteps.count else { return false }
+        if sortedSteps[index].nextOnSuccess != nil { return false }
+        return nextSequentialIndex(after: index) == nil
     }
 
     // ── Body ──────────────────────────────────────────────────────────────────
@@ -584,6 +619,7 @@ struct ARGuideSessionView: View {
                             canGoNext:       index < sortedSteps.count - 1 && canAdvanceFrom(index: index),
                             canSkip:         !step.completionRequired && !(progress?.isCompleted ?? false),
                             allRequiredDone: allRequiredDone,
+                            isTerminal:      isTerminal(index: index),
                             distanceM:       distanceM,
                             onPrev:          { navigateTo(index: index - 1) },
                             onNext:          { navigateTo(index: index + 1) },
@@ -956,8 +992,9 @@ struct ARGuideSessionView: View {
                 if name.hasPrefix("btn_complete_") {
                     let stepId = String(name.dropFirst("btn_complete_".count))
                     if let idx = sortedSteps.firstIndex(where: { $0.id == stepId }) {
-                        // If this is the last step and all required are done → sign-off
-                        if idx == sortedSteps.count - 1 && allRequiredDone {
+                        // Terminal step (happy end OR failure dead-end) with all
+                        // visited-required steps done → sign-off
+                        if isTerminal(index: idx) && allRequiredDone {
                             showSignOff = true
                         } else {
                             markComplete(at: idx)
@@ -1092,7 +1129,7 @@ struct ARGuideSessionView: View {
         let size = CGSize(width: W, height: H)
         let progress = index < progresses.count ? progresses[index] : nil
         let isCompleted  = progress?.isCompleted ?? false
-        let isLastStep   = index == sortedSteps.count - 1
+        let isLastStep   = isTerminal(index: index)   // terminal = sign-off point (happy end or failure dead-end)
         let hasEvidence  = evidenceImage != nil || (progress?.evidencePhoto) != nil
 
         return UIGraphicsImageRenderer(size: size).image { ctx in
@@ -1896,13 +1933,12 @@ struct ARGuideSessionView: View {
         if let targetId = step.nextOnSuccess,
            let targetIdx = sortedSteps.firstIndex(where: { $0.id == targetId }) {
             navigateTo(index: targetIdx)
-        } else {
-            let next = index + 1
-            if next < sortedSteps.count {
-                navigateTo(index: next)
-            }
+        } else if let next = nextSequentialIndex(after: index) {
+            // Sequential fallback skips failure-only steps — completing the
+            // happy-path terminal must not walk into "Tag Out of Service".
+            navigateTo(index: next)
         }
-        // If last/terminal step, panel texture shows the sign-off button on next refresh
+        // Terminal step: stay put — the panel shows Sign Off on next refresh.
     }
 
     // ── Evidence capture ──────────────────────────────────────────────────────
@@ -2108,6 +2144,10 @@ struct GuideContentPanel: View {
     let canGoNext:       Bool
     let canSkip:         Bool
     let allRequiredDone: Bool
+    /// Terminal = the session can end here (happy end or failure dead-end).
+    /// Drives the Sign Off gate and disables Next — NOT the same as being
+    /// the highest sequence number.
+    let isTerminal:      Bool
     let distanceM:       Float?
 
     let onPrev:          () -> Void
@@ -2124,7 +2164,7 @@ struct GuideContentPanel: View {
     let onFail:          () -> Void
 
     var isCompleted: Bool { progress?.isCompleted ?? false }
-    var isLastStep:  Bool { stepNumber == totalSteps }
+    var isLastStep:  Bool { isTerminal }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
