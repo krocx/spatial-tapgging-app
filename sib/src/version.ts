@@ -17,4 +17,4 @@
 // fetch /config), and iOS MARKETING_VERSION (set manually in Xcode to match).
 //
 // Bump on the Monday of each release week, in the SAME commit as the release.
-export const PLATFORM_VERSION = '2026.4.42';
+export const PLATFORM_VERSION = '2026.4.45';

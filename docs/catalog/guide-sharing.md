@@ -3,7 +3,7 @@ id: guide-sharing
 name: Per-user guide sharing
 area: guides
 status: beta
-version: 2026.4.42
+version: 2026.4.45
 depends: [uam, guide-lifecycle]
 terms: []
 spec: ../README.md#ar-work-instructions-ar-oms

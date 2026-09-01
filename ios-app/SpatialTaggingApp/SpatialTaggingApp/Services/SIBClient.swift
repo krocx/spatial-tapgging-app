@@ -753,6 +753,42 @@ final class SIBClient {
         if !key.isEmpty {
             req.setValue(key, forHTTPHeaderField: "X-API-Key")
         }
+        // UAM identity (RBAC): carried on EVERY request so the server can
+        // enforce roles and per-user guide sharing. Empty until verified.
+        if !settings.uamToken.isEmpty {
+            req.setValue(settings.uamToken, forHTTPHeaderField: "X-User-Token")
+        }
         return req
+    }
+
+    // ── UAM login (RBAC ahead of SSO) ─────────────────────────────────────────
+
+    struct UamLoginUser: Codable {
+        let email: String
+        let name:  String
+        let role:  String
+    }
+    struct UamLoginResult: Codable {
+        let token: String
+        let user:  UamLoginUser
+    }
+    private struct UamLoginEnvelope: Codable { let data: UamLoginResult }
+
+    /// Verify identity against the server's allow-list. Both email and
+    /// employee ID must match the UAM record. Throws httpError(401, …) when
+    /// not listed / mismatched — callers surface the server's message.
+    func uamLogin(email: String, employeeId: String) async throws -> UamLoginResult {
+        var req = try makeRequest(method: "POST", path: "/uam/login")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONEncoder().encode(["email": email, "employeeId": employeeId])
+        req.timeoutInterval = 15
+        let (data, response): (Data, URLResponse)
+        do { (data, response) = try await session.data(for: req) }
+        catch { throw SIBClientError.networkError(error) }
+        if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+            let msg = (try? JSONDecoder().decode(APIError.self, from: data))?.error ?? "HTTP \(http.statusCode)"
+            throw SIBClientError.httpError(http.statusCode, msg)
+        }
+        return try JSONDecoder().decode(UamLoginEnvelope.self, from: data).data
     }
 }

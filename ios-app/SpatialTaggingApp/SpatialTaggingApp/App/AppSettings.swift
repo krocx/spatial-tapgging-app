@@ -42,6 +42,30 @@ final class AppSettings: ObservableObject {
         didSet { UserDefaults.standard.set(authorNameConfirmed, forKey: "author_name_confirmed") }
     }
 
+    // ── UAM identity (RBAC ahead of SSO) ─────────────────────────────────────
+    // Work email + employee ID are verified against the server's allow-list
+    // via POST /uam/login; the returned token travels on every request as
+    // X-User-Token. Role is cached so gating survives offline sessions —
+    // the SERVER re-reads the live role on each request regardless.
+    @Published var workEmail: String {
+        didSet { UserDefaults.standard.set(workEmail, forKey: "uam_work_email") }
+    }
+    @Published var employeeId: String {
+        didSet { UserDefaults.standard.set(employeeId, forKey: "uam_employee_id") }
+    }
+    @Published var uamToken: String {
+        didSet { UserDefaults.standard.set(uamToken, forKey: "uam_token") }
+    }
+    /// "owner" | "manager" | "engineer" | "technician" | "" (not verified)
+    @Published var uamRole: String {
+        didSet { UserDefaults.standard.set(uamRole, forKey: "uam_role") }
+    }
+
+    var uamSignedIn: Bool { !uamToken.isEmpty && !uamRole.isEmpty }
+    /// Technicians get operator-only surfaces. Unknown role = ungated
+    /// (transition behaviour until the device verifies access).
+    var isTechnician: Bool { uamRole == "technician" }
+
     /// Current name plus all previous names — kept for display purposes
     /// (the "by [name]" caption in Shared rows). Not used for filtering.
     var allKnownNames: [String] {
@@ -124,6 +148,10 @@ final class AppSettings: ObservableObject {
     init() {
         sibBaseURL = UserDefaults.standard.string(forKey: "sib_base_url") ?? ""
         apiKey     = UserDefaults.standard.string(forKey: "sib_api_key")  ?? ""
+        workEmail  = UserDefaults.standard.string(forKey: "uam_work_email")  ?? ""
+        employeeId = UserDefaults.standard.string(forKey: "uam_employee_id") ?? ""
+        uamToken   = UserDefaults.standard.string(forKey: "uam_token")       ?? ""
+        uamRole    = UserDefaults.standard.string(forKey: "uam_role")        ?? ""
 
         // Author name: use stored value if set; otherwise extract first name from device name
         // e.g. "Karthik's iPhone" → "Karthik", bare "iPhone" → full device name as fallback

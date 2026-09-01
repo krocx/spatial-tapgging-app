@@ -3,7 +3,7 @@ id: tag-format
 name: .tag virtual emitter (v1)
 area: platform
 status: beta
-version: 2026.4.42
+version: 2026.4.45
 depends: [qr-anchoring, shared-schema]
 terms: [Anchor]
 spec: TAG-FORMAT.md

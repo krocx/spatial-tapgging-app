@@ -4,9 +4,20 @@ One section per platform version (see [docs/VERSIONING.md](docs/VERSIONING.md)),
 newest first. Written in the same PR as the change — if a teammate would notice
 it, it gets a line.
 
-## 2026.4.42 — 2026-08-11
+## 2026.4.45 — 2026-09-01
 
 ### Added
+- **iOS RBAC (S4, beta)** — the app joins UAM. Settings → Identity gains
+  Work Email + Employee ID and a "Verify Access" button: both must match the
+  allow-list record; success caches the token + role (shown as a badge) and
+  every request now carries X-User-Token, so per-user guide sharing and role
+  enforcement apply on device. Technicians see operator surfaces only —
+  Author Mode and the Continue-last-session card are hidden (and refused
+  server-side regardless). On launch the app silently re-verifies: role
+  changes propagate, revocation (401) clears the session, and offline keeps
+  the cached role working. Transition note: a device that never verifies
+  remains an unidentified legacy caller until the pilot enforces
+  identified-only access.
 - **Per-user guide sharing (S3, beta)** — guides can be shared with specific
   technicians. `Guide.sharedWith` holds allow-list emails (validated on
   write; unknown addresses are refused); the Guide Library gains a 👥 Share
@@ -136,6 +147,9 @@ it, it gets a line.
   copies, falling back to the CDN only when they're absent. Closes the last
   un-pinned third-party script on a page that holds an API key, and makes the
   converter work on networks that block CDNs.
+## 2026.4.42 — 2026-08-11
+
+### Added
 - **Full site lock-down for internet-facing deployments** — with `SIB_API_KEY`
   set, EVERY surface now requires the key: home, portal, roadmap, wireframe,
   catalogue (+data/spec endpoints), Ask SIB, /stats, QR print pages. Browsers

@@ -70,6 +70,30 @@ struct SettingsView: View {
     @State private var draftURL        = ""
     @State private var draftApiKey     = ""
     @State private var draftAuthorName = ""
+
+    // UAM access verification (RBAC ahead of SSO)
+    @State private var isVerifyingAccess = false
+    @State private var accessStatus: String? = nil
+
+    /// POST /uam/login with email + employee ID; caches token + role for
+    /// offline gating. The server re-reads the live role on every request.
+    private func verifyAccess() async {
+        isVerifyingAccess = true
+        accessStatus = nil
+        do {
+            let result = try await SIBClient(settings: settings).uamLogin(
+                email:      settings.workEmail.trimmingCharacters(in: .whitespaces),
+                employeeId: settings.employeeId.trimmingCharacters(in: .whitespaces))
+            settings.uamToken = result.token
+            settings.uamRole  = result.user.role
+            accessStatus = "✓ Verified — signed in as \(result.user.name) (\(result.user.role.capitalized))"
+        } catch {
+            settings.uamToken = ""
+            settings.uamRole  = ""
+            accessStatus = friendlyMessage(for: error)
+        }
+        isVerifyingAccess = false
+    }
     @State private var showApiKey   = false
     @State private var isTesting    = false
     @State private var testResult:  Result<Void, Error>? = nil
@@ -200,6 +224,51 @@ struct SettingsView: View {
                         TextField("Your name", text: $draftAuthorName)
                             .autocorrectionDisabled()
                             .textInputAutocapitalization(.words)
+                    }
+
+                    // ── UAM access (RBAC ahead of SSO) ────────────────────────
+                    HStack {
+                        Image(systemName: "envelope.fill").foregroundColor(.secondary).frame(width: 22)
+                        TextField("Work email", text: Binding(
+                            get: { settings.workEmail }, set: { settings.workEmail = $0 }))
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.never)
+                            .keyboardType(.emailAddress)
+                    }
+                    HStack {
+                        Image(systemName: "number").foregroundColor(.secondary).frame(width: 22)
+                        TextField("Employee ID", text: Binding(
+                            get: { settings.employeeId }, set: { settings.employeeId = $0 }))
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.never)
+                    }
+                    HStack {
+                        Button {
+                            Task { await verifyAccess() }
+                        } label: {
+                            if isVerifyingAccess {
+                                ProgressView().scaleEffect(0.8)
+                            } else {
+                                Label(settings.uamSignedIn ? "Re-verify Access" : "Verify Access",
+                                      systemImage: "person.badge.shield.checkmark")
+                            }
+                        }
+                        .disabled(settings.workEmail.trimmingCharacters(in: .whitespaces).isEmpty ||
+                                  settings.employeeId.trimmingCharacters(in: .whitespaces).isEmpty ||
+                                  isVerifyingAccess)
+                        Spacer()
+                        if settings.uamSignedIn {
+                            Text(settings.uamRole.capitalized)
+                                .font(.caption.bold())
+                                .padding(.horizontal, 10).padding(.vertical, 4)
+                                .background(settings.isTechnician ? Color.green.opacity(0.2) : Color.blue.opacity(0.2))
+                                .clipShape(Capsule())
+                        }
+                    }
+                    if let msg = accessStatus {
+                        Text(msg)
+                            .font(.caption)
+                            .foregroundStyle(msg.hasPrefix("✓") ? Color.green : Color.red)
                     }
                     Toggle(isOn: Binding(
                         get: { settings.showSharedAnchors },

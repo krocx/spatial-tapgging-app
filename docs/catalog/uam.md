@@ -3,7 +3,7 @@ id: uam
 name: User Access Management (RBAC)
 area: platform
 status: beta
-version: 2026.4.42
+version: 2026.4.45
 depends: [shared-schema]
 terms: []
 spec: ../README.md#what-it-does

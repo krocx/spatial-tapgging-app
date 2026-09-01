@@ -81,6 +81,9 @@ struct ModeSelectionView: View {
 
                 // Mode buttons
                 VStack(spacing: 16) {
+                    // RBAC: Technicians run procedures — authoring surfaces are
+                    // hidden for them (and refused server-side regardless).
+                    if !settings.isTechnician {
                     ModeButton(title: "Author Mode",
                                subtitle: "Create and train inspection tags",
                                icon: "pencil.circle.fill", accentColor: .blue,
@@ -93,6 +96,7 @@ struct ModeSelectionView: View {
                             )
                         }
                     )
+                    }
 
                     ModeButton(title: "Operator Mode",
                                subtitle: "Run inspections and view results",
@@ -108,7 +112,7 @@ struct ModeSelectionView: View {
                     )
 
                     // ── Continue last Author session ───────────────────────────
-                    if let session = lastSession, settings.isConfigured {
+                    if let session = lastSession, settings.isConfigured, !settings.isTechnician {
                         ContinueSessionCard(
                             session:    session,
                             isLoading:  isResuming,
@@ -306,6 +310,25 @@ struct ModeSelectionView: View {
         .onAppear {
             // Load last Author session for "Continue" card
             lastSession = appState.loadLastAuthorSession()
+
+            // UAM: silently refresh the access token + role on launch when
+            // identity is configured. Offline/failed network keeps the cached
+            // role (server enforces regardless); a 401 means access was
+            // revoked or details changed — clear the session so the UI
+            // ungates and Settings shows the reason on next verify.
+            if !settings.workEmail.isEmpty && !settings.employeeId.isEmpty && settings.isConfigured {
+                Task {
+                    do {
+                        let r = try await SIBClient(settings: settings).uamLogin(
+                            email: settings.workEmail, employeeId: settings.employeeId)
+                        settings.uamToken = r.token
+                        settings.uamRole  = r.user.role
+                    } catch let SIBClientError.httpError(code, _) where code == 401 {
+                        settings.uamToken = ""
+                        settings.uamRole  = ""
+                    } catch { /* offline — keep cached role */ }
+                }
+            }
 
             // Guided tour: auto-start on very first launch (takes priority over FTUE home page)
             if settings.guidedTourEnabled && !settings.guidedTourSeen {
