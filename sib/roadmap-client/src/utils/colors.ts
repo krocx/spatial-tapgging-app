@@ -9,6 +9,24 @@ export const NODE_COLORS: Record<MindmapNodeType, string> = {
   generic: '#64748b',    // generic — grey
 };
 
+/**
+ * Card FILL palette — darkened variants of NODE_COLORS tuned so WHITE text
+ * passes WCAG AA (≥4.5:1) on every fill. Nodes are solid-filled (2026.4.45);
+ * NODE_COLORS above stays the bright palette for edges, arrows, legends and
+ * pickers.
+ *
+ * DOCTRINE: every ornament drawn INSIDE a card must be designed against these
+ * dark fills (white/near-white strokes, or a light chip behind it). Never add
+ * a dark-on-dark badge; never assume a white card again.
+ */
+export const NODE_FILL_COLORS: Record<MindmapNodeType, string> = {
+  tag: '#2557c9',        // darkened spatial blue
+  perception: '#6d3fd6', // darkened perception purple
+  semantic: '#15803d',   // darkened semantic green
+  reasoning: '#b45309',  // darkened reasoning orange (white text passes here; #f59e0b does not)
+  generic: '#475569',    // darkened grey
+};
+
 export const NODE_TYPE_LABELS: Record<MindmapNodeType, string> = {
   tag: 'Tag',
   perception: 'Perception',

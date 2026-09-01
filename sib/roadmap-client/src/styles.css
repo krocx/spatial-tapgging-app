@@ -44,20 +44,20 @@ button { font: inherit; }
 }
 
 /* ── Night canvas ─────────────────────────────────────────────
-   Scoped to the canvas only — panels/toolbar stay light. Node CARDS stay
-   white in both themes (every badge, icon and label inside them was designed
-   against white), so the night palette only touches the surfaces AROUND
-   nodes: background, grid, lanes, labels, minimap. That is what guarantees
-   "nodes and routes always visible" — cards gain contrast on dark rather
-   than losing it. Role edge colours (green/red/amber) and layer colours are
-   bright and read well on both. */
+   Scoped to the canvas only — panels/toolbar stay light. Node cards are
+   SOLID-FILLED in the layer's dark fill colour (NODE_FILL_COLORS) with white
+   text, so they read identically on both themes — the night palette only
+   touches the surfaces AROUND nodes: background, grid, lanes, edge labels,
+   minimap. Doctrine (see colors.ts): every ornament inside a card is designed
+   against the dark fills — white/near-white strokes or a light chip — never
+   dark-on-dark. Role edge colours (green/red/amber) stay bright on both. */
 .canvas-wrap.night .canvas-stage { background: #0b1220; }
 .canvas-wrap.night .edge-label {
   fill: #cbd5e1;
   stroke: #0b1220;                /* halo must match the canvas, not white */
 }
-/* Node labels sit on WHITE cards in both themes — never theme this. */
-.node-label { fill: #1e293b !important; }
+/* Node labels sit on the dark card fills in both themes — always white. */
+.node-label { fill: #ffffff !important; }
 
 /* ── Inspector ────────────────────────────────────────────── */
 
@@ -279,15 +279,19 @@ button { font: inherit; }
 .search-results button { display: flex; justify-content: flex-start; align-items: center; gap: 8px; }
 .swatch-dot { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
 
-.node-label { font-size: 13px; fill: var(--text); user-select: none; }
+.node-label { font-size: 13px; font-weight: 600; fill: #ffffff; user-select: none; }
 
 .node-editor {
   width: 100%; height: 100%;
   border: none; outline: none; resize: none;
-  font: 13px/1.3 inherit; text-align: center;
-  background: transparent; color: var(--text);
+  font: 13px/1.3 inherit; font-weight: 600; text-align: center;
+  /* Editing happens ON the solid card — dark scrim + white text so opening
+     the editor doesn't flash a white box over the fill. */
+  background: rgba(0, 0, 0, 0.25); border-radius: 6px; color: #ffffff;
+  caret-color: #ffffff;
   padding-top: 8px;
 }
+.node-editor::selection { background: rgba(255, 255, 255, 0.35); }
 
 .connect-handle { opacity: 0; transition: opacity .12s; }
 .node-view:hover .connect-handle { opacity: 1; }

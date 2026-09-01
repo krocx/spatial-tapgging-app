@@ -2,7 +2,7 @@
 // Pure DOM/canvas — no dependency on React or the store.
 
 import type { Mindmap } from '@spatial/shared';
-import { NODE_COLORS } from './colors.js';
+import { NODE_COLORS, NODE_FILL_COLORS } from './colors.js';
 import { NODE_W, LINE_HEIGHT, nodeHeight, wrapNodeText, nodeCenter, borderPoint } from './geometry.js';
 import { edgePath, edgeMidpoint, edgeColorFor } from '../canvas/EdgeView.js';
 
@@ -37,17 +37,17 @@ export function buildSvg(map: Mindmap): string {
   }).join('\n');
 
   const nodeMarkup = map.nodes.map(n => {
-    const color = NODE_COLORS[n.type] ?? NODE_COLORS.generic;
+    // Solid-fill cards, matching NodeView: dark layer fill + white label.
+    const fill = NODE_FILL_COLORS[n.type] ?? NODE_FILL_COLORS.generic;
     // Same wrap the canvas uses, so the export matches what the author sees.
     const { lines } = wrapNodeText(n.text);
     const nh = nodeHeight(n);
     const firstY = n.y + nh / 2 + 5 - ((lines.length - 1) * LINE_HEIGHT) / 2;
     const text = lines.map((ln, i) =>
-      `<text x="${n.x + NODE_W / 2}" y="${firstY + i * LINE_HEIGHT}" text-anchor="middle" font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="13" fill="#1e293b">${esc(ln)}</text>`).join('');
+      `<text x="${n.x + NODE_W / 2}" y="${firstY + i * LINE_HEIGHT}" text-anchor="middle" font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#ffffff">${esc(ln)}</text>`).join('');
     return [
       `<g>`,
-      `<rect x="${n.x}" y="${n.y}" width="${NODE_W}" height="${nh}" rx="10" fill="#ffffff" stroke="${color}" stroke-width="2"/>`,
-      `<rect x="${n.x}" y="${n.y}" width="6" height="${nh}" rx="3" fill="${color}"/>`,
+      `<rect x="${n.x}" y="${n.y}" width="${NODE_W}" height="${nh}" rx="10" fill="${fill}" stroke="rgba(255,255,255,0.22)" stroke-width="1"/>`,
       text,
       `</g>`,
     ].join('');

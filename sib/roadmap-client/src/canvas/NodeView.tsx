@@ -5,7 +5,7 @@
 import { useRef, useCallback } from 'react';
 import type { MindmapNode } from '@spatial/shared';
 import { useStore } from '../state/store.js';
-import { NODE_COLORS, STATUS_COLORS } from '../utils/colors.js';
+import { NODE_COLORS, NODE_FILL_COLORS, STATUS_COLORS } from '../utils/colors.js';
 import { NODE_W, NODE_H, LINE_HEIGHT, nodeHeight, wrapNodeText } from '../utils/geometry.js';
 import { ICON_PATHS } from '../utils/icons.js';
 
@@ -20,12 +20,14 @@ interface Props {
   hiddenCount?: number;
 }
 
-/** Shape outline for the node body. Diamond/hexagon are polygons.
- *  `h` is the content-derived card height (nodeHeight), not the constant. */
-function ShapeOutline({ shape, h, stroke, strokeWidth, filter }: {
-  shape: MindmapNode['shape']; h: number; stroke: string; strokeWidth: number; filter: string;
+/** Shape body for the node. Diamond/hexagon are polygons.
+ *  `h` is the content-derived card height (nodeHeight), not the constant.
+ *  Cards are SOLID-FILLED in the layer's dark fill color (NODE_FILL_COLORS) —
+ *  see the doctrine note in colors.ts. */
+function ShapeOutline({ shape, h, fill, stroke, strokeWidth, filter }: {
+  shape: MindmapNode['shape']; h: number; fill: string; stroke: string; strokeWidth: number; filter: string;
 }): JSX.Element {
-  const common = { fill: '#ffffff', stroke, strokeWidth, style: { filter } };
+  const common = { fill, stroke, strokeWidth, style: { filter } };
   switch (shape) {
     case 'rect':
       return <rect width={NODE_W} height={h} rx={2} {...common} />;
@@ -68,6 +70,7 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
   const longPress = useRef<number | null>(null);
 
   const color = NODE_COLORS[node.type] ?? NODE_COLORS.generic;
+  const fill = NODE_FILL_COLORS[node.type] ?? NODE_FILL_COLORS.generic;
   // Content-derived card height — see geometry.ts. Everything positioned
   // against the bottom edge uses `h`, not NODE_H.
   const h = nodeHeight(node);
@@ -163,27 +166,26 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
           (>4 wrapped lines), and on the root g because the label itself has
           pointerEvents="none". */}
       {labelTruncated && <title>{node.text}</title>}
+      {/* Solid-fill card. Selection can't be a stroke-color change any more
+          (a blue stroke vanishes on a blue fill), so selected/preview states
+          use a light stroke + glow ring that reads on EVERY fill and on both
+          canvas themes. */}
       <ShapeOutline
         shape={node.shape}
         h={h}
-        stroke={previewCurrent ? '#4f46e5' : selected ? '#1d4ed8' : color}
-        strokeWidth={previewCurrent ? 3.5 : selected ? 3 : 2}
+        fill={fill}
+        stroke={previewCurrent ? '#a5b4fc' : selected ? '#93c5fd' : 'rgba(255,255,255,0.22)'}
+        strokeWidth={previewCurrent ? 3.5 : selected ? 3 : 1}
         filter={previewCurrent
-          ? 'drop-shadow(0 0 10px rgba(99,102,241,.6))'
-          : selected ? 'drop-shadow(0 2px 6px rgba(29,78,216,.35))' : 'drop-shadow(0 1px 2px rgba(0,0,0,.12))'}
+          ? 'drop-shadow(0 0 10px rgba(99,102,241,.7))'
+          : selected ? 'drop-shadow(0 0 8px rgba(147,197,253,.65))' : 'drop-shadow(0 2px 5px rgba(0,0,0,.25))'}
       />
-      {/* Layer color: bar for boxy shapes, dot for polygon/pill shapes */}
-      {(!node.shape || node.shape === 'rect') ? (
-        <rect width={6} height={h} rx={3} fill={color} />
-      ) : (
-        <circle cx={node.shape === 'pill' ? 16 : node.shape === 'hexagon' ? 12 : NODE_W / 2} cy={node.shape === 'diamond' ? 6 : h / 2} r={4} fill={color} />
-      )}
 
       {/* Icon — left of the text, sized up from 0.58 after field feedback that
           it was unreadable at normal zoom */}
       {node.icon && ICON_PATHS[node.icon] && (
         <g transform={`translate(${node.shape === 'diamond' ? NODE_W / 2 - 9 : 10} ${node.shape === 'diamond' ? h - 24 : h / 2 - 9}) scale(0.75)`} pointerEvents="none">
-          <path d={ICON_PATHS[node.icon]} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+          <path d={ICON_PATHS[node.icon]} fill="none" stroke="rgba(255,255,255,0.92)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
         </g>
       )}
 
@@ -220,16 +222,18 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
           onPointerDown={e => e.stopPropagation()}
           onClick={e => { e.stopPropagation(); window.open(node.link, '_blank', 'noopener'); }}
         >
-          <circle r={7} fill="#eef2f7" stroke="#cbd5e1" strokeWidth={0.8} />
-          <path d="M -2 2 L 2 -2 M 0 -2 L 2 -2 L 2 0" fill="none" stroke="#2f6fed" strokeWidth={1.4} strokeLinecap="round" />
+          <circle r={7} fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.5)" strokeWidth={0.8} />
+          <path d="M -2 2 L 2 -2 M 0 -2 L 2 -2 L 2 0" fill="none" stroke="#ffffff" strokeWidth={1.4} strokeLinecap="round" />
           <title>{node.link}</title>
         </g>
       )}
 
-      {/* Status badge — top-right */}
+      {/* Status badge — top-right. White ring, NOT the card fill: the dot's
+          own color can match the fill (done-green on a semantic card), so the
+          ring is what keeps it legible on every fill. */}
       {node.status && (
         <circle cx={NODE_W - 10} cy={10} r={5}
-                fill={STATUS_COLORS[node.status]} stroke="#ffffff" strokeWidth={1.5}>
+                fill={STATUS_COLORS[node.status]} stroke="rgba(255,255,255,0.95)" strokeWidth={1.5}>
           <title>{node.status}</title>
         </circle>
       )}
@@ -264,21 +268,26 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
         );
       })()}
 
-      {/* Milestone diamond — floats above the top-left corner */}
+      {/* Milestone diamond — floats above the top-left corner. Ringed in the
+          card fill so it separates from the card on one side and gold stays
+          gold against both canvas themes on the other. */}
       {node.milestone && (
-        <path d={`M 16 -8 l 7 8 l -7 8 l -7 -8 z`} fill="#eab308" stroke="#ffffff" strokeWidth={1.5}>
+        <path d={`M 16 -8 l 7 8 l -7 8 l -7 -8 z`} fill="#eab308" stroke={fill} strokeWidth={1.5}>
           <title>Milestone</title>
         </path>
       )}
 
-      {/* Review verdict — top-left inside the node */}
+      {/* Review verdict — top-left inside the node, on a white chip so the
+          verdict color survives every card fill (red-on-blue etc. is mud). */}
       {node.review && (
-        <text x={14} y={15} textAnchor="middle" pointerEvents="none"
-              style={{ fontSize: 11, fontWeight: 700 }}
-              fill={node.review === 'approved' ? '#16a34a' : node.review === 'rejected' ? '#dc2626' : '#f59e0b'}>
-          {node.review === 'approved' ? '✓' : node.review === 'rejected' ? '✗' : '?'}
+        <g transform="translate(14 11)" pointerEvents="none">
+          <circle r={8} fill="rgba(255,255,255,0.95)" />
+          <text y={4} textAnchor="middle" style={{ fontSize: 11, fontWeight: 700 }}
+                fill={node.review === 'approved' ? '#16a34a' : node.review === 'rejected' ? '#dc2626' : '#d97706'}>
+            {node.review === 'approved' ? '✓' : node.review === 'rejected' ? '✗' : '?'}
+          </text>
           <title>{node.review}</title>
-        </text>
+        </g>
       )}
 
       {/* Comment count — bottom-left bubble */}
@@ -293,10 +302,10 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
 
       {/* Notes indicator — bottom-right corner */}
       {node.notes && (
-        <g transform={`translate(${NODE_W - 16} ${h - 14})`} opacity={0.55} pointerEvents="none">
-          <rect width={9} height={10} rx={1.5} fill="none" stroke="#475569" strokeWidth={1.2} />
-          <line x1={2} y1={3} x2={7} y2={3} stroke="#475569" strokeWidth={1.2} />
-          <line x1={2} y1={5.5} x2={7} y2={5.5} stroke="#475569" strokeWidth={1.2} />
+        <g transform={`translate(${NODE_W - 16} ${h - 14})`} opacity={0.75} pointerEvents="none">
+          <rect width={9} height={10} rx={1.5} fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth={1.2} />
+          <line x1={2} y1={3} x2={7} y2={3} stroke="rgba(255,255,255,0.85)" strokeWidth={1.2} />
+          <line x1={2} y1={5.5} x2={7} y2={5.5} stroke="rgba(255,255,255,0.85)" strokeWidth={1.2} />
         </g>
       )}
 
@@ -338,7 +347,7 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
       ) : (() => {
         // Wrapped title: card height (h) already accounts for the line count,
         // so the block is simply centred.
-        const cx = NODE_W / 2 + (node.icon && node.shape !== 'diamond' ? 9 : 2);
+        const cx = NODE_W / 2 + (node.icon && node.shape !== 'diamond' ? 9 : 0);
         const firstY = h / 2 + 4 - ((labelLines.length - 1) * LINE_HEIGHT) / 2;
         return (
           <text x={cx} y={firstY} textAnchor="middle" className="node-label" pointerEvents="none">

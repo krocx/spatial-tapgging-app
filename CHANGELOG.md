@@ -7,6 +7,16 @@ it, it gets a line.
 ## 2026.4.45 — 2026-09-01
 
 ### Added
+- **Solid-fill nodes** — designer cards are now solid-filled in a darkened
+  layer palette (`NODE_FILL_COLORS`, tuned so white text passes WCAG AA on
+  every fill) with white labels and white/near-white ornaments; the left
+  color bar is gone — the fill IS the layer color. Selection and preview
+  states became a light glow ring (a colored stroke vanishes on a colored
+  fill); status dots keep a white ring, review verdicts sit on a white chip,
+  the milestone diamond is ringed in the card fill, and the inline editor
+  uses a dark scrim so editing never flashes white. SVG export matches.
+  New doctrine (colors.ts): every future in-card ornament is designed
+  against the dark fills — the white-card rule is retired.
 - **Roadmap home redesign (S5)** — the map list is now a proper front door:
   a night-sky hero ("What will you build today?") with two glowing door
   cards — 🗺 Roadmap (gold) and 🧩 Procedure (teal), matching the canvas
