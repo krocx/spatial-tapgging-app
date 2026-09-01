@@ -973,6 +973,23 @@
 <!-- ══════════════════════════════════════════════════════════════
      3D MODEL KIT ASSIGNMENT MODAL
 ══════════════════════════════════════════════════════════════ -->
+<!-- Guide sharing — pick which technicians see this guide -->
+<div id="share-modal" class="overlay">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:480px">
+    <h2>👥 Share Guide</h2>
+    <p style="font-size:0.80rem;color:var(--muted);margin-bottom:14px">
+      Choose which technicians can see and run this guide.
+      <strong>No one selected = visible to all technicians.</strong>
+      Engineers, Managers and Owners always see every guide.
+    </p>
+    <div id="share-tech-list" style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:4px 10px;background:var(--bg)">Loading…</div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeShareModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveGuideSharing()">Save Sharing</button>
+    </div>
+  </div>
+</div>
+
 <div id="kit-modal" class="overlay">
   <div class="modal" onclick="event.stopPropagation()" style="max-width:480px">
     <h2>🔗 Assign to Anchors</h2>
@@ -3023,6 +3040,55 @@ document.getElementById('import-guide-modal').addEventListener('click', (e) => {
 // guideLibraryData: { [anchorId]: { anchor, guides: Guide[], steps: { [guideId]: GuideStep[] } } }
 let guideLibraryData = {};
 
+// ── Guide sharing (UAM) ───────────────────────────────────────────────────────
+let shareGuideId = null;
+
+async function openShareModal(guideId) {
+  shareGuideId = guideId;
+  const list = document.getElementById('share-tech-list');
+  list.innerHTML = 'Loading…';
+  document.getElementById('share-modal').classList.add('open');
+  try {
+    const [gRes, tRes] = await Promise.all([
+      apiFetch(`/guides/${encodeURIComponent(guideId)}`),
+      apiFetch('/uam/technicians'),
+    ]);
+    const current = new Set(gRes.data.sharedWith || []);
+    if (!tRes.data.length) {
+      list.innerHTML = '<p style="color:var(--muted);padding:12px;font-size:0.8rem">No technicians in the access list yet — add them on the 🛠 Admin page first.</p>';
+      return;
+    }
+    list.innerHTML = tRes.data.map(t => `
+      <label style="display:flex;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid var(--border);cursor:pointer">
+        <input type="checkbox" class="share-tech-cb" value="${esc(t.email)}" ${current.has(t.email) ? 'checked' : ''}>
+        <span style="color:var(--text);font-size:0.82rem">${esc(t.name)}</span>
+        <span style="color:var(--muted);font-size:0.72rem">${esc(t.email)}</span>
+      </label>`).join('');
+  } catch (e) {
+    list.innerHTML = `<span style="color:var(--red);font-size:0.8rem">Could not load: ${esc(e.message)}</span>`;
+  }
+}
+
+function closeShareModal() {
+  document.getElementById('share-modal').classList.remove('open');
+  shareGuideId = null;
+}
+
+async function saveGuideSharing() {
+  if (!shareGuideId) return;
+  const emails = [...document.querySelectorAll('.share-tech-cb:checked')].map(cb => cb.value);
+  try {
+    await apiFetch(`/guides/${encodeURIComponent(shareGuideId)}`, {
+      method: 'PATCH', body: JSON.stringify({ sharedWith: emails }),
+    });
+    toast(emails.length
+      ? `Shared with ${emails.length} technician${emails.length === 1 ? '' : 's'}`
+      : 'Visible to all technicians');
+    closeShareModal();
+    loadGuideLibrary();
+  } catch (e) { toast(`Share failed: ${e.message}`, true); }
+}
+
 async function loadGuideLibrary() {
   const list = document.getElementById('guide-library-list');
   list.innerHTML = '<p style="color:var(--muted);padding:20px 0;text-align:center">Loading…</p>';
@@ -3102,6 +3168,7 @@ function renderGuideLibrary() {
           <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;color:#a78bfa" onclick="toggleGuideGraph('${guide.id}','${anchorId}')" id="gl-graph-toggle-${guide.id}">⬡ Graph</button>
           <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;color:#86efac" title="Walk the step sequence as the operator will experience it — no headset needed" onclick="openGuidePreview('${guide.id}')">▶ Preview</button>
           <button class="btn btn-ghost btn-sm" style="font-size:0.68rem" title="Edit this guide visually in the Procedure Designer" onclick="editGuideInDesigner('${guide.id}')">✏️ Edit in Designer</button>
+          <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;color:#7dd3fc" title="Choose which technicians can see and run this guide" onclick="openShareModal('${guide.id}','${anchorId}')">👥 Share${(guide.sharedWith && guide.sharedWith.length) ? ` (${guide.sharedWith.length})` : ''}</button>
           <button class="btn btn-ghost btn-sm" style="font-size:0.68rem" title="Move to another anchor (steps become unplaced)" onclick="moveGuideToAnchor('${guide.id}','${anchorId}')">⇄ Move</button>
           <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;color:var(--red)" onclick="deleteGuideFromLibrary('${guide.id}','${anchorId}')">🗑</button>
         </div>`;

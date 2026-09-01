@@ -7,6 +7,17 @@ it, it gets a line.
 ## 2026.4.42 — 2026-08-11
 
 ### Added
+- **Per-user guide sharing (S3, beta)** — guides can be shared with specific
+  technicians. `Guide.sharedWith` holds allow-list emails (validated on
+  write; unknown addresses are refused); the Guide Library gains a 👥 Share
+  dialog listing technicians from UAM (new Engineer-readable
+  `GET /uam/technicians`), with a share-count badge on the card. One
+  visibility predicate gates the guide list, the single-guide read AND the
+  steps read — excluded technicians get 404, never confirmation. Empty/no
+  list = visible to all technicians (existing guides unchanged); Engineer+
+  always see everything; only Engineer+ may edit sharing. Verified live:
+  share/normalize/unknown-email-400, per-role list contents, deep-link 404s,
+  clear-to-everyone. 4 new unit tests.
 - **UAM — User Access Management, S1 server core (beta)** — RBAC ahead of
   corporate SSO. A manually managed allow-list (email + employee ID + role)
   gates sign-in: `POST /uam/login` rejects anyone not in the table and issues

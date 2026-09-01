@@ -42,6 +42,10 @@ import {
   deleteStepImage,
 } from '../guides/store.js';
 import { applyImportedGuide } from '../guides/ingest.js';
+import { guideVisibleTo } from '../uam/guide-visibility.js';
+import { currentUamUser, uamIsActive } from '../middleware/auth.js';
+import { normalizeEmail } from '../uam/uam-core.js';
+import { findUserByEmail } from './uam.js';
 import { guideToProcedureMap, toMindmapRecord } from '../procedure/reverse-compiler.js';
 import { boundGuideId } from '../procedure/export.js';
 import { mindmapStore, mindmapAccessStore } from '../models/mindmap.model.js';
@@ -206,6 +210,11 @@ router.get('/', (req: Request, res: Response): void => {
     guides = guides.filter(g => g.published);
   }
 
+  // Per-user sharing (UAM): technicians see only guides shared with them
+  // (or with everyone). Engineer+ and unidentified callers are unaffected.
+  const viewer = currentUamUser(req);
+  guides = guides.filter(g => guideVisibleTo(viewer, g));
+
   // Sort by name for consistent ordering
   guides.sort((a, b) => a.name.localeCompare(b.name));
 
@@ -219,7 +228,9 @@ router.get('/', (req: Request, res: Response): void => {
 // GET /guides/:id — get a single Guide
 router.get('/:id', (req: Request, res: Response): void => {
   const guide = guideStore.findById(req.params.id);
-  if (!guide) {
+  // Sharing: a guide outside a technician's list answers 404, not 403 —
+  // deep links must not confirm existence of unshared work.
+  if (!guide || !guideVisibleTo(currentUamUser(req), guide)) {
     res.status(404).json({
       error: `Guide ${req.params.id} not found`,
       timestamp: new Date().toISOString(),
@@ -307,12 +318,36 @@ router.patch('/:id', (req: Request, res: Response): void => {
   const body = req.body as UpdateGuideRequest & { anchorId?: string };
   const now  = new Date().toISOString();
 
+  // Per-user sharing: replace the whole list. [] = back to "all technicians".
+  // Emails must exist in the allow-list (catches typos before they strand a
+  // technician), and editing the list needs Engineer+ once UAM is active.
+  let sharedWith = guide.sharedWith;
+  if (body.sharedWith !== undefined) {
+    if (!Array.isArray(body.sharedWith) || body.sharedWith.some(e => typeof e !== 'string')) {
+      res.status(400).json({ error: 'sharedWith must be an array of emails', timestamp: now });
+      return;
+    }
+    const actor = currentUamUser(req);
+    if (uamIsActive() && actor && actor.role === 'technician') {
+      res.status(403).json({ error: 'Sharing requires Engineer role or above', timestamp: now });
+      return;
+    }
+    const normalized = [...new Set(body.sharedWith.map(e => normalizeEmail(e)))];
+    const unknown = normalized.filter(e => !findUserByEmail(e));
+    if (unknown.length) {
+      res.status(400).json({ error: `Not in the access list: ${unknown.join(', ')}`, timestamp: now });
+      return;
+    }
+    sharedWith = normalized.length ? normalized : undefined;   // [] clears back to "everyone"
+  }
+
   const updated: Guide = {
     ...guide,
     name:        body.name?.trim()        ?? guide.name,
     description: body.description != null ? body.description.trim() : guide.description,
     published:   body.published    != null ? body.published           : guide.published,
     anchorId:    body.anchorId?.trim()    || guide.anchorId,
+    sharedWith,
     updatedAt:   now,
   };
 
@@ -371,7 +406,9 @@ router.delete('/:id', (req: Request, res: Response): void => {
 // GET /guides/:id/steps — list steps in ascending sequenceNumber order
 router.get('/:id/steps', (req: Request, res: Response): void => {
   const guide = guideStore.findById(req.params.id);
-  if (!guide) {
+  // Same visibility rule as GET /:id — steps of an unshared guide are 404
+  // for technicians outside its list (no enumeration via deep links).
+  if (!guide || !guideVisibleTo(currentUamUser(req), guide)) {
     res.status(404).json({
       error: `Guide ${req.params.id} not found`,
       timestamp: new Date().toISOString(),

@@ -126,6 +126,23 @@ router.get('/me', (req: Request, res: Response) => {
   return res.json({ data: actor.user, timestamp: new Date().toISOString() });
 });
 
+// ── GET /uam/technicians ─────────────────────────────────────────────────────
+// The share-picker list: name + email of every technician. Readable by
+// Engineer and above (Engineers share guides but may not see the full user
+// table with roles and employee IDs).
+router.get('/technicians', (req: Request, res: Response) => {
+  const actor = uamActor(req);
+  const role = actor?.kind === 'legacy-admin' ? 'owner' : actor?.role;
+  if (!role || role === 'technician') {
+    return err(res, 403, 'Requires Engineer role or above');
+  }
+  const techs = uamUserStore.findAll()
+    .filter(u => u.role === 'technician')
+    .map(u => ({ email: u.email, name: u.name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  res.json({ data: techs, timestamp: new Date().toISOString() });
+});
+
 // ── GET /uam/users ───────────────────────────────────────────────────────────
 router.get('/users', (req: Request, res: Response) => {
   const actor = actorOr403(req, res); if (!actor) return;

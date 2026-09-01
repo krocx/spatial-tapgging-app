@@ -738,6 +738,13 @@ export interface Guide {
   description: string;
   published:   boolean;
   createdBy:   string;    // authorName at creation time
+  /**
+   * Per-user sharing (UAM): normalised emails of the technicians this guide
+   * is shared with. Absent/empty = visible to ALL technicians (backward
+   * compatible). Non-empty = visible only to the listed users. Engineers,
+   * Managers and Owners always see every guide.
+   */
+  sharedWith?: string[];
   createdAt:   string;
   updatedAt:   string;
 }
@@ -757,6 +764,9 @@ export type UpdateGuideRequest = {
    *  is cleared — positions belong to the old anchor's world map — and a
    *  published guide is unpublished until re-placed. */
   anchorId?:    string;
+  /** Replace the sharing list (see Guide.sharedWith). [] = all technicians.
+   *  Emails must exist in the UAM allow-list. Requires Engineer role or above. */
+  sharedWith?:  string[];
 };
 
 /**
