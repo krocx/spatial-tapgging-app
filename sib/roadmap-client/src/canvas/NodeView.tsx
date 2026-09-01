@@ -46,6 +46,8 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
   const toggleCollapse = useStore(s => s.toggleCollapse);
   const selected = useStore(s => s.selectedNodeIds.includes(node.id));
   const editing = useStore(s => s.editingNodeId === node.id);
+  /** Debounce handle for autosave-while-typing in the inline editor. */
+  const textSaveTimer = useRef<number | undefined>(undefined);
   const pendingEdgeFrom = useStore(s => s.pendingEdgeFrom);
   const camera = useStore(s => s.camera);
   const select = useStore(s => s.select);
@@ -305,11 +307,30 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
             className="node-editor"
             defaultValue={node.text}
             onFocus={e => e.target.select()}
-            onBlur={e => { updateNodeText(node.id, e.target.value.trim()); setEditing(null); }}
+            onChange={e => {
+              // Autosave while typing (debounced) — no Enter required. The
+              // editor stays open; blur/Enter merely close it. Matches how
+              // people expect canvas tools to behave.
+              const value = e.target.value;
+              if (textSaveTimer.current !== undefined) window.clearTimeout(textSaveTimer.current);
+              textSaveTimer.current = window.setTimeout(() => {
+                updateNodeText(node.id, value.trim());
+                textSaveTimer.current = undefined;
+              }, 500);
+            }}
+            onBlur={e => {
+              if (textSaveTimer.current !== undefined) {
+                window.clearTimeout(textSaveTimer.current);
+                textSaveTimer.current = undefined;
+              }
+              updateNodeText(node.id, e.target.value.trim());
+              setEditing(null);
+            }}
             onKeyDown={e => {
               e.stopPropagation();
               if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); (e.target as HTMLTextAreaElement).blur(); }
-              if (e.key === 'Escape') { e.preventDefault(); setEditing(null); }
+              // Escape closes the editor; typed text is already autosaved.
+              if (e.key === 'Escape') { e.preventDefault(); (e.target as HTMLTextAreaElement).blur(); }
             }}
             onPointerDown={e => e.stopPropagation()}
           />

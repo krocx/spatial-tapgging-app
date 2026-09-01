@@ -28,6 +28,9 @@ export function ProcedureBar(): JSX.Element | null {
 
   const [anchorId, setAnchorId] = useState('');
   const [showHelp, setShowHelp] = useState(false);
+  // Issues live in a collapsible drawer — 20+ warnings must never bury the
+  // canvas. Collapsed by default; the count chip is the always-visible signal.
+  const [showIssues, setShowIssues] = useState(false);
 
   if (!map || map.kind !== 'procedure') return null;
 
@@ -68,6 +71,19 @@ export function ProcedureBar(): JSX.Element | null {
           </>
         )}
         {busy && <span className="pc-stat pc-muted">checking…</span>}
+
+        {(errors.length > 0 || warns.length > 0) && (
+          <button
+            className={`pc-issues-chip ${errors.length ? 'has-errors' : 'has-warns'}`}
+            onClick={() => setShowIssues(v => !v)}
+            title={showIssues ? 'Hide the issue list' : 'Show the issue list'}
+          >
+            {errors.length > 0 && `⛔ ${errors.length}`}
+            {errors.length > 0 && warns.length > 0 && ' · '}
+            {warns.length > 0 && `⚠ ${warns.length}`}
+            <span className="pc-chevron">{showIssues ? ' ▾' : ' ▸'}</span>
+          </button>
+        )}
 
         <span className="procedure-actions">
           {!map.anchorId && (
@@ -113,24 +129,33 @@ export function ProcedureBar(): JSX.Element | null {
         </div>
       )}
 
-      {errors.length > 0 && (
-        <ul className="procedure-issues errors">
-          {errors.map((i, n) => (
-            <li key={n} onClick={() => i.nodeId && select(i.nodeId)}>
-              <span className="pi-dot error" /> {i.message}
-            </li>
-          ))}
-        </ul>
-      )}
-
-      {errors.length === 0 && warns.length > 0 && (
-        <ul className="procedure-issues warnings">
-          {warns.map((i, n) => (
-            <li key={n} onClick={() => i.nodeId && select(i.nodeId)}>
-              <span className="pi-dot warning" /> {i.message}
-            </li>
-          ))}
-        </ul>
+      {showIssues && (errors.length > 0 || warns.length > 0) && (
+        <div className="procedure-issues-drawer">
+          {errors.length > 0 && (
+            <>
+              <div className="pid-group-label">Blocking — fix before sending</div>
+              <ul className="procedure-issues errors">
+                {errors.map((i, n) => (
+                  <li key={n} onClick={() => i.nodeId && select(i.nodeId)}>
+                    <span className="pi-dot error" /> {i.message}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          {warns.length > 0 && (
+            <>
+              <div className="pid-group-label">Warnings — sending still allowed</div>
+              <ul className="procedure-issues warnings">
+                {warns.map((i, n) => (
+                  <li key={n} onClick={() => i.nodeId && select(i.nodeId)}>
+                    <span className="pi-dot warning" /> {i.message}
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </div>
       )}
 
       {conflict && (
