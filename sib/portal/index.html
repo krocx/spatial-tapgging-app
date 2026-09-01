@@ -1114,7 +1114,10 @@ async function enterPortal() {
   if (uamActive) {
     try {
       const j = await apiFetch('/uam/me');
-      if (!j.data.legacyAdmin) UAM_USER = j.data;
+      // legacyAdmin (admin key, no personal session) is NOT an identity —
+      // with the allow-list active, everyone signs in as themselves.
+      if (j.data.legacyAdmin) throw new Error('sign-in required');
+      UAM_USER = j.data;
     } catch (e) {
       // 401 (no/expired session) or network error — show the sign-in screen.
       document.getElementById('uam-login').style.display = 'flex';

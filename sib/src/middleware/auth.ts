@@ -115,6 +115,11 @@ export type UamActor =
   | { kind: 'user'; user: UamUser; role: UamRole; email: string }
   | { kind: 'legacy-admin' };
 
+/** UAM is active once the allow-list has at least one user. */
+export function uamIsActive(): boolean {
+  return uamUserStore.findAll().length > 0;
+}
+
 export function uamActor(req: Request): UamActor | undefined {
   const user = currentUamUser(req);
   if (user) return { kind: 'user', user, role: user.role, email: user.email };
@@ -124,9 +129,11 @@ export function uamActor(req: Request): UamActor | undefined {
       ? req.headers['x-admin-key'][0]
       : req.headers['x-admin-key'];
     if (provided === adminKey) return { kind: 'legacy-admin' };
-  } else {
-    // No admin key configured (internal dev) — management stays reachable,
-    // matching the platform's historical gate-off behaviour.
+  } else if (!uamIsActive()) {
+    // No admin key configured AND the allow-list is empty (UAM dormant) —
+    // management stays reachable so the first Owner can be added. The moment
+    // users exist, anonymous callers stop being admin-equivalent: sign in as
+    // Owner/Manager, or configure SIB_ADMIN_KEY.
     return { kind: 'legacy-admin' };
   }
   return undefined;
@@ -207,7 +214,20 @@ export function adminKeyAuth(req: Request, res: Response, next: NextFunction): v
 
   const adminKey = process.env.SIB_ADMIN_KEY?.trim();
   if (!adminKey) {
-    // Gate not configured — action proceeds, but the ops log still records it.
+    if (uamIsActive()) {
+      // Allow-list in force: destructive actions need an Owner/Manager
+      // session (handled above) — a signed-in Engineer/Technician or an
+      // anonymous caller is refused even though no admin key is configured.
+      logOpsEvent({ method: req.method, path: req.path, outcome: 'denied', ip: req.ip,
+        detail: user ? `role ${user.role} insufficient` : 'no sign-in (UAM active, no admin key)' });
+      res.status(403).json({
+        error: 'This action requires an Owner or Manager sign-in.',
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+    // Gate not configured and UAM dormant — action proceeds, but the ops log
+    // still records it (historical gate-off behaviour).
     logOpsEvent({ method: req.method, path: req.path, outcome: 'gate-off', ip: req.ip });
     next();
     return;

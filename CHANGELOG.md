@@ -27,6 +27,13 @@ it, it gets a line.
   changes snapping back); only Owners/Managers see the Admin tab, and their
   session lifts the destructive-UI lock by role — no shared admin key needed
   day-to-day. Empty list = login off (bootstrap unchanged).
+  Field fix from first deploy: on servers WITHOUT SIB_ADMIN_KEY, the gate-off
+  fallback made every caller admin-equivalent, so the sign-in screen never
+  appeared and anonymous callers could act destructively once users existed.
+  The fallback now applies only while the allow-list is EMPTY — the moment
+  users exist, management and destructive actions require an Owner/Manager
+  sign-in (or the configured admin key), and the portal always shows the
+  sign-in screen when UAM is active.
 - **Operator pilot hardening (AR Work Instructions)** — six fixes from the
   operator-POV UX review ahead of daily technician use: (1) the authored
   failure branch is finally reachable — steps with a recovery path show
