@@ -220,8 +220,6 @@ test('applyGraphEvent adds, updates, deletes nodes with LWW', () => {
 test('applyGraphEvent rejects invalid edges', () => {
   let map: Mindmap = create({ name: 'Edges', nodes: [node('a'), node('b')], edges: [] });
 
-  // Self-loop
-  assert.equal(applyGraphEvent(map, event('edge:add', map.id, { id: 'e', from: 'a', to: 'a', type: 'directed' })), null);
   // Missing endpoint
   assert.equal(applyGraphEvent(map, event('edge:add', map.id, { id: 'e', from: 'a', to: 'ghost', type: 'directed' })), null);
   // Duplicate pair
@@ -444,14 +442,60 @@ test('REST save sanitizes: unsafe links stripped, dangling edges dropped', () =>
     ],
     edges: [
       { id: 'e1', from: 'a', to: 'b', type: 'directed', updatedAt: 1 },
-      { id: 'e2', from: 'a', to: 'ghost', type: 'directed', updatedAt: 1 },   // dangling
-      { id: 'e3', from: 'b', to: 'b', type: 'directed', updatedAt: 1 },       // self-loop
+      { id: 'e2', from: 'a', to: 'ghost', type: 'directed', updatedAt: 1 },   // dangling — dropped
+      { id: 'e3', from: 'b', to: 'b', type: 'directed', updatedAt: 1 },       // self-loop — kept (2026.4.45)
     ],
   });
   assert.equal(map.nodes.find(n => n.id === 'a')?.link, undefined);
   assert.equal(map.nodes.find(n => n.id === 'a')?.shape, undefined);
   assert.equal(map.nodes.find(n => n.id === 'b')?.link, 'https://ok.example');
-  assert.deepEqual(map.edges.map(e => e.id), ['e1']);
+  assert.deepEqual(map.edges.map(e => e.id), ['e1', 'e3']);
+});
+
+// ── Self-loops, anchor ports, new shapes (2026.4.45) ───────────────────────
+
+test('edge:add accepts a self-loop, caps a node at one, keeps valid ports, drops junk ports', () => {
+  let map: Mindmap = create({ name: 'Loops', nodes: [node('a'), node('b')], edges: [] });
+  // Self-loop with pinned ports.
+  let next = applyGraphEvent(map, event('edge:add', map.id, {
+    id: 'loop', from: 'a', to: 'a', type: 'directed', updatedAt: Date.now(),
+    fromPort: 'right', toPort: 'top',
+  }));
+  assert.ok(next, 'self-loop must be accepted');
+  map = next!;
+  assert.equal(map.edges[0].fromPort, 'right');
+  assert.equal(map.edges[0].toPort, 'top');
+  // Second loop on the same node = duplicate.
+  assert.equal(applyGraphEvent(map, event('edge:add', map.id, {
+    id: 'loop2', from: 'a', to: 'a', type: 'directed', updatedAt: Date.now(),
+  })), null, 'second self-loop on the same node must be rejected as duplicate');
+  // Junk port values are silently dropped, edge itself survives.
+  next = applyGraphEvent(map, event('edge:add', map.id, {
+    id: 'e-ab', from: 'a', to: 'b', type: 'directed', updatedAt: Date.now(),
+    fromPort: 'diagonal', toPort: 42,
+  }));
+  assert.ok(next);
+  const ab = next!.edges.find(e => e.id === 'e-ab')!;
+  assert.equal(ab.fromPort, undefined);
+  assert.equal(ab.toPort, undefined);
+});
+
+test('new shapes (circle/parallelogram/cylinder) pass sanitize; edgeStyle straight persists', () => {
+  const map = create({
+    name: 'Shapes',
+    nodes: [
+      node('c', { shape: 'circle' }),
+      node('p', { shape: 'parallelogram' }),
+      node('y', { shape: 'cylinder' }),
+    ],
+    edges: [],
+    settings: { edgeStyle: 'straight' },
+  });
+  assert.equal(map.nodes.find(n => n.id === 'c')?.shape, 'circle');
+  assert.equal(map.nodes.find(n => n.id === 'p')?.shape, 'parallelogram');
+  assert.equal(map.nodes.find(n => n.id === 'y')?.shape, 'cylinder');
+  // 'straight' is an explicit choice now that the default is curved.
+  assert.equal(loadMindmap(map.id).settings?.edgeStyle, 'straight');
 });
 
 // ── Groups ─────────────────────────────────────────────────────────────────

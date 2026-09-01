@@ -7,6 +7,19 @@ it, it gets a line.
 ## 2026.4.45 — 2026-09-01
 
 ### Added
+- **Canvas: precise connections, new shapes, self-loops** — edges now attach
+  to the actual shape OUTLINE (diamonds/hexagons no longer show gaps where
+  the old math hit the invisible bounding box), and every node gains four
+  anchor ports (top/right/bottom/left, shown on hover): drag from a port to
+  pin the edge's start, drop on a port to pin its end — pinned ends stay put
+  as nodes move, unpinned ends keep auto-adjusting. Curves leave pinned
+  ports perpendicular to the side. Three new shapes: circle, parallelogram
+  (flowchart input/output), cylinder (data/store). Self-connections are
+  allowed (one loop per node), drawn as an arc leaving one port and
+  re-entering another. Curved is now the DEFAULT connector style — existing
+  maps flip once; picking Straight now persists explicitly. One geometry
+  source (insideShape/shapePathD) drives the canvas, edge attachment and
+  the SVG export, so they cannot drift. 2 new server tests (155 total).
 - **Solid-fill nodes** — designer cards are now solid-filled in a darkened
   layer palette (`NODE_FILL_COLORS`, tuned so white text passes WCAG AA on
   every fill) with white labels and white/near-white ornaments; the left

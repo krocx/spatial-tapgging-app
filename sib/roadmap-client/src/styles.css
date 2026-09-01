@@ -717,3 +717,10 @@ input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 .gallery-delete { position: absolute; top: 8px; right: 8px; }
 .home-v2 .menu-note { text-align: center; color: #94a3b8; }
 .home-v2 .list-footer { text-align: center; margin-top: 34px; color: #64748b; font-size: 12px; }
+
+/* ── Anchor ports (2026.4.45) ──
+   Hidden until the node is hovered, and always visible while a connection
+   drag is in flight (they are the precise drop targets). */
+.node-port { opacity: 0; transition: opacity 0.12s; }
+.node-view:hover .node-port, .node-port.port-active { opacity: 1; }
+.node-port:hover .node-port-dot { r: 6; stroke-width: 2.5; }

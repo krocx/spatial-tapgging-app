@@ -188,10 +188,10 @@ export function Toolbar(): JSX.Element | null {
             </button>
             <div className="menu-note">Routes</div>
             <button onClick={() => updateSettings({ edgeStyle: 'straight' })}>
-              {map.settings?.edgeStyle !== 'curved' ? '✓ ' : ''}Straight
+              {map.settings?.edgeStyle === 'straight' ? '✓ ' : ''}Straight
             </button>
             <button onClick={() => updateSettings({ edgeStyle: 'curved' })}>
-              {map.settings?.edgeStyle === 'curved' ? '✓ ' : ''}Curved
+              {map.settings?.edgeStyle !== 'straight' ? '✓ ' : ''}Curved
             </button>
           </div>
         )}

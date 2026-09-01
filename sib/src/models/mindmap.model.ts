@@ -92,8 +92,10 @@ export function sanitizeSettings(raw: unknown): MindmapSettings | null {
   const s = raw as Partial<MindmapSettings>;
   const out: MindmapSettings = {};
   if (s.edgeColor === 'neutral') out.edgeColor = 'neutral';
-  if (s.edgeStyle === 'curved') out.edgeStyle = 'curved';
-  return out;   // defaults ('parent'/'straight') stay implicit
+  // edgeStyle default flipped to 'curved' in 2026.4.45, so 'straight' is now
+  // an explicit choice and must be persisted; absent = curved.
+  if (s.edgeStyle === 'curved' || s.edgeStyle === 'straight') out.edgeStyle = s.edgeStyle;
+  return out;   // defaults ('parent'/'curved') stay implicit
 }
 
 /**
@@ -171,8 +173,9 @@ export function applyGraphEvent(map: Mindmap, event: MindmapWsEvent): Mindmap | 
       const edge = sanitizeEdge(event.payload, ts);
       if (!edge) return null;
       if (next.edges.some(e => e.id === edge.id)) return null;
-      // Both endpoints must exist; ignore self-loops and duplicates.
-      if (edge.from === edge.to) return null;
+      // Both endpoints must exist; ignore duplicates. Self-loops (from === to)
+      // are allowed since 2026.4.45 — the duplicate check below caps a node
+      // at one loop.
       if (!next.nodes.some(n => n.id === edge.from) || !next.nodes.some(n => n.id === edge.to)) return null;
       if (next.edges.some(e => e.from === edge.from && e.to === edge.to)) return null;
       next.edges.push(edge);
@@ -222,7 +225,8 @@ export function applyGraphEvent(map: Mindmap, event: MindmapWsEvent): Mindmap | 
 const NODE_TYPES = new Set(['tag', 'perception', 'semantic', 'reasoning', 'generic']);
 const NODE_STATUSES = new Set(['planned', 'in-progress', 'done', 'blocked']);
 const NODE_REVIEWS = new Set(['approved', 'rejected', 'needs-validation']);
-const NODE_SHAPES = new Set(['rounded', 'rect', 'pill', 'diamond', 'hexagon']);
+const NODE_SHAPES = new Set(['rounded', 'rect', 'pill', 'diamond', 'hexagon', 'circle', 'parallelogram', 'cylinder']);
+const EDGE_PORTS = new Set(['top', 'right', 'bottom', 'left']);
 const MAX_COMMENTS_PER_NODE = 100;
 
 /** http(s) only — rejects javascript:, data:, file: and other schemes outright. */
@@ -287,7 +291,7 @@ export function sanitizeGraphArrays(rawNodes: unknown[], rawEdges: unknown[]): {
   const edges = rawEdges
     .map(e => sanitizeEdge(e, now))
     .filter((e): e is MindmapEdge =>
-      e !== null && ids.has(e.from) && ids.has(e.to) && e.from !== e.to);
+      e !== null && ids.has(e.from) && ids.has(e.to));
   return { nodes, edges };
 }
 
@@ -316,6 +320,9 @@ function sanitizeEdge(raw: unknown, ts: number): MindmapEdge | null {
     ...(e.role === 'next' || e.role === 'failure' || e.role === 'requires'
       ? { role: e.role }
       : {}),
+    // Pinned anchor ports (2026.4.45). Absent = auto endpoint.
+    ...(EDGE_PORTS.has(e.fromPort as string) && { fromPort: e.fromPort as MindmapEdge['fromPort'] }),
+    ...(EDGE_PORTS.has(e.toPort as string) && { toPort: e.toPort as MindmapEdge['toPort'] }),
   };
 }
 
@@ -446,7 +453,7 @@ export function renderMindmapSvg(map: Mindmap): string {
 
   const byId = new Map(map.nodes.map(n => [n.id, n]));
   const parentColored = map.settings?.edgeColor !== 'neutral';
-  const curved = map.settings?.edgeStyle === 'curved';
+  const curved = map.settings?.edgeStyle !== 'straight';   // default = curved (2026.4.45)
   const edges = map.edges.map(e => {
     const a = byId.get(e.from); const b = byId.get(e.to);
     if (!a || !b) return '';

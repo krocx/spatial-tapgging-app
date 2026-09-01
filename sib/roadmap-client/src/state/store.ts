@@ -17,7 +17,7 @@ import { CollabClient, type CollabStatus } from '../ws/collab.js';
 import { autoLayout, type LayoutMode } from '../utils/layout.js';
 import { NODE_W, NODE_H, nodeHeight } from '../utils/geometry.js';
 import { computeSteps, stepBounds, type PresentationStep } from '../utils/presentation.js';
-import type { MindmapNodeShape, MindmapSettings } from '@spatial/shared';
+import type { MindmapEdgePort, MindmapNodeShape, MindmapSettings } from '@spatial/shared';
 import { getDraftKey, type ImageImportResult } from '../api/mindmap-api.js';
 import { fileToDownscaledBase64 } from '../utils/image.js';
 import { parseGlossary, type GlossaryData } from '../utils/glossary.js';
@@ -92,6 +92,7 @@ interface State {
   selectedLaneId: string | null;
   editingNodeId: string | null;
   pendingEdgeFrom: string | null;      // node id while dragging a new connection
+  pendingEdgeFromPort: MindmapEdgePort | null;  // pinned source port, if the drag started on one
   defaultNodeType: MindmapNodeType;
   searchQuery: string;
   /** Last applied auto-layout; any manual node move resets to 'freeform'. */
@@ -115,7 +116,7 @@ interface State {
    * an unroled edge is silently ignored by the compiler, which would be a
    * confusing way to lose work.
    */
-  pendingRolePick: { from: string; to: string } | null;
+  pendingRolePick: { from: string; to: string; fromPort?: MindmapEdgePort; toPort?: MindmapEdgePort } | null;
   /**
    * Latest server-side pre-flight. Holds the census, the derived step order and
    * any issues. Server-derived on purpose: see mindmap-api.procedureValidate.
@@ -173,7 +174,7 @@ interface Actions {
   selectEdge(edgeId: string | null): void;
   setEditing(nodeId: string | null): void;
   setDefaultNodeType(t: MindmapNodeType): void;
-  setPendingEdgeFrom(nodeId: string | null): void;
+  setPendingEdgeFrom(nodeId: string | null, port?: MindmapEdgePort): void;
 
   addNode(x: number, y: number, type?: MindmapNodeType): void;
   updateNodeText(id: string, text: string): void;
@@ -186,7 +187,7 @@ interface Actions {
   deleteComment(nodeId: string, commentId: string): void;
   moveNode(id: string, x: number, y: number, live: boolean): void;
   moveNodes(positions: Array<{ id: string; x: number; y: number }>, live: boolean): void;
-  addEdge(from: string, to: string): void;
+  addEdge(from: string, to: string, fromPort?: MindmapEdgePort, toPort?: MindmapEdgePort): void;
   toggleEdgeType(id: string): void;
   setEdgeLabel(id: string, label: string): void;
   // ── Procedure Designer ────────────────────────────────────────────────────
@@ -475,6 +476,7 @@ export const useStore = create<State & Actions>((set, get) => {
     canvasTheme: 'day',
     preview: null,
     pendingEdgeFrom: null,
+    pendingEdgeFromPort: null,
     defaultNodeType: 'generic',
     searchQuery: '',
     layoutMode: 'freeform',
@@ -571,7 +573,7 @@ export const useStore = create<State & Actions>((set, get) => {
     selectLane: laneId => set({ selectedLaneId: laneId, selectedNodeIds: [], selectedEdgeId: null }),
     setEditing: nodeId => set({ editingNodeId: nodeId }),
     setDefaultNodeType: t => set({ defaultNodeType: t }),
-    setPendingEdgeFrom: nodeId => set({ pendingEdgeFrom: nodeId }),
+    setPendingEdgeFrom: (nodeId, port) => set({ pendingEdgeFrom: nodeId, pendingEdgeFromPort: nodeId ? port ?? null : null }),
 
     addNode(x, y, type) {
       pushHistory();
@@ -645,18 +647,23 @@ export const useStore = create<State & Actions>((set, get) => {
       }
     },
 
-    addEdge(from, to) {
+    addEdge(from, to, fromPort, toPort) {
       const { map } = get();
-      if (!map || from === to) return;
+      if (!map) return;
+      // Self-loops (from === to) are allowed; one connection per node pair
+      // either way round, and one loop per node.
       if (map.edges.some(e => (e.from === from && e.to === to) || (e.from === to && e.to === from))) return;
 
       // On a procedure map an edge has to mean something, so ask before
       // creating it. Committing an unroled edge would look connected on screen
       // while the compiler silently ignored it.
-      if (map.kind === 'procedure') { set({ pendingRolePick: { from, to } }); return; }
+      if (map.kind === 'procedure') { set({ pendingRolePick: { from, to, fromPort, toPort } }); return; }
 
       pushHistory();
-      const edge: MindmapEdge = { id: crypto.randomUUID(), from, to, type: 'directed', updatedAt: Date.now() };
+      const edge: MindmapEdge = {
+        id: crypto.randomUUID(), from, to, type: 'directed', updatedAt: Date.now(),
+        ...(fromPort ? { fromPort } : {}), ...(toPort ? { toPort } : {}),
+      };
       mutateGraph(m => m.edges.push(edge));
       collab?.send('edge:add', edge);
     },
@@ -670,6 +677,8 @@ export const useStore = create<State & Actions>((set, get) => {
         from: pick.from, to: pick.to,
         type: 'directed', role,
         updatedAt: Date.now(),
+        ...(pick.fromPort ? { fromPort: pick.fromPort } : {}),
+        ...(pick.toPort ? { toPort: pick.toPort } : {}),
       };
       mutateGraph(m => m.edges.push(edge));
       collab?.send('edge:add', edge);
@@ -927,8 +936,10 @@ export const useStore = create<State & Actions>((set, get) => {
       if (!map) return;
       const settings: MindmapSettings = { ...map.settings, ...patch };
       // Defaults stay implicit — drop keys set back to their default value.
+      // edgeStyle: default flipped to 'curved' in 2026.4.45, so 'straight'
+      // is the explicit, persisted choice now.
       if (settings.edgeColor !== 'neutral') delete settings.edgeColor;
-      if (settings.edgeStyle !== 'curved') delete settings.edgeStyle;
+      if (settings.edgeStyle !== 'straight' && settings.edgeStyle !== 'curved') delete settings.edgeStyle;
       mutateGraph(m => { m.settings = settings; });
       collab?.send('map:settings', { settings });
     },

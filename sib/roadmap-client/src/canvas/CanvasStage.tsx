@@ -7,7 +7,7 @@
 
 import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { useStore, noteMouseWorld, computeHighlight } from '../state/store.js';
-import { toWorld, nodeCenter, nodeHeight, NODE_W } from '../utils/geometry.js';
+import { toWorld, nodeCenter, nodeHeight, portPoint, NODE_W } from '../utils/geometry.js';
 import { NodeView } from './NodeView.js';
 import { EdgeView, ROLE_COLORS } from './EdgeView.js';
 import { RolePicker } from '../components/RolePicker.js';
@@ -223,6 +223,7 @@ export function CanvasStage(): JSX.Element {
   if (!map) return <div className="canvas-empty">No map loaded</div>;
 
   const pendingSource = pendingEdgeFrom ? map.nodes.find(n => n.id === pendingEdgeFrom) : null;
+  const pendingPort = useStore.getState().pendingEdgeFromPort;
   const gridSize = 24 * camera.scale;
   const night = useStore(s => s.canvasTheme) === 'night';
 
@@ -285,7 +286,8 @@ export function CanvasStage(): JSX.Element {
           {/* Live connection preview while dragging from a node handle */}
           {pendingSource && (
             <line
-              x1={nodeCenter(pendingSource).x} y1={nodeCenter(pendingSource).y}
+              x1={(pendingPort ? portPoint(pendingSource, pendingPort) : nodeCenter(pendingSource)).x}
+              y1={(pendingPort ? portPoint(pendingSource, pendingPort) : nodeCenter(pendingSource)).y}
               x2={mouseWorld.x} y2={mouseWorld.y}
               stroke="#2f6fed" strokeWidth={1.5} strokeDasharray="6 4" pointerEvents="none"
             />

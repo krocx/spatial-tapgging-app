@@ -3,15 +3,15 @@
 // connection handle, inline text editing. Long-press edits on touch.
 
 import { useRef, useCallback } from 'react';
-import type { MindmapNode } from '@spatial/shared';
+import type { MindmapEdgePort, MindmapNode } from '@spatial/shared';
 import { useStore } from '../state/store.js';
 import { NODE_COLORS, NODE_FILL_COLORS, STATUS_COLORS } from '../utils/colors.js';
-import { NODE_W, NODE_H, LINE_HEIGHT, nodeHeight, wrapNodeText } from '../utils/geometry.js';
+import { NODE_W, NODE_H, LINE_HEIGHT, nodeHeight, wrapNodeText, shapePathD, portPoint, EDGE_PORTS } from '../utils/geometry.js';
 import { ICON_PATHS } from '../utils/icons.js';
 
 interface Props {
   node: MindmapNode;
-  onConnectDrop: (from: string, to: string) => void;
+  onConnectDrop: (from: string, to: string, fromPort?: MindmapEdgePort, toPort?: MindmapEdgePort) => void;
   /** View-filter fade: node stays interactive but recedes visually. */
   dimmed?: boolean;
   /** Node has outgoing directed edges → show the collapse chevron. */
@@ -20,26 +20,15 @@ interface Props {
   hiddenCount?: number;
 }
 
-/** Shape body for the node. Diamond/hexagon are polygons.
+/** Shape body for the node — one path per shape from shapePathD (geometry.ts),
+ *  the same source the SVG export draws from, so canvas and export agree.
  *  `h` is the content-derived card height (nodeHeight), not the constant.
  *  Cards are SOLID-FILLED in the layer's dark fill color (NODE_FILL_COLORS) —
  *  see the doctrine note in colors.ts. */
 function ShapeOutline({ shape, h, fill, stroke, strokeWidth, filter }: {
   shape: MindmapNode['shape']; h: number; fill: string; stroke: string; strokeWidth: number; filter: string;
 }): JSX.Element {
-  const common = { fill, stroke, strokeWidth, style: { filter } };
-  switch (shape) {
-    case 'rect':
-      return <rect width={NODE_W} height={h} rx={2} {...common} />;
-    case 'pill':
-      return <rect width={NODE_W} height={h} rx={NODE_H / 2} {...common} />;
-    case 'diamond':
-      return <polygon points={`${NODE_W / 2},-6 ${NODE_W + 10},${h / 2} ${NODE_W / 2},${h + 6} -10,${h / 2}`} {...common} />;
-    case 'hexagon':
-      return <polygon points={`14,0 ${NODE_W - 14},0 ${NODE_W},${h / 2} ${NODE_W - 14},${h} 14,${h} 0,${h / 2}`} {...common} />;
-    default:
-      return <rect width={NODE_W} height={h} rx={10} {...common} />;
-  }
+  return <path d={shapePathD(shape, h)} fill={fill} stroke={stroke} strokeWidth={strokeWidth} style={{ filter }} />;
 }
 
 const LONG_PRESS_MS = 500;
@@ -122,16 +111,33 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
       moveNodes(drag.current.baseline.map(b => ({ id: b.id, x: b.x + dx, y: b.y + dy })), false);
     }
     drag.current = null;
-    // Complete a pending connection dropped onto this node.
-    if (pendingEdgeFrom && pendingEdgeFrom !== node.id) {
-      onConnectDrop(pendingEdgeFrom, node.id);
+    // Complete a pending connection dropped onto this node. Dropping on the
+    // SOURCE node itself creates a self-loop (allowed since 2026.4.45).
+    if (pendingEdgeFrom) {
+      const fromPort = useStore.getState().pendingEdgeFromPort ?? undefined;
+      onConnectDrop(pendingEdgeFrom, node.id, fromPort, undefined);
       setPendingEdgeFrom(null);
     }
   }, [node.id, camera.scale, moveNodes, pendingEdgeFrom, onConnectDrop, setPendingEdgeFrom]);
 
+  /** Complete a pending connection precisely on one of this node's ports. */
+  const dropOnPort = useCallback((e: React.PointerEvent, port: MindmapEdgePort) => {
+    if (!pendingEdgeFrom) return;
+    e.stopPropagation();
+    const fromPort = useStore.getState().pendingEdgeFromPort ?? undefined;
+    onConnectDrop(pendingEdgeFrom, node.id, fromPort, port);
+    setPendingEdgeFrom(null);
+  }, [node.id, pendingEdgeFrom, onConnectDrop, setPendingEdgeFrom]);
+
   const startConnection = useCallback((e: React.PointerEvent) => {
     e.stopPropagation();
     setPendingEdgeFrom(node.id);
+  }, [node.id, setPendingEdgeFrom]);
+
+  /** Start a connection pinned to a specific port. */
+  const startPortConnection = useCallback((e: React.PointerEvent, port: MindmapEdgePort) => {
+    e.stopPropagation();
+    setPendingEdgeFrom(node.id, port);
   }, [node.id, setPendingEdgeFrom]);
 
   const displayText = node.text || '…';
@@ -358,7 +364,7 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
         );
       })()}
 
-      {/* Connection handle — right edge ring */}
+      {/* Connection handle — right edge ring (auto endpoints, legacy flow) */}
       <circle
         className="connect-handle"
         cx={NODE_W} cy={h / 2} r={7}
@@ -366,6 +372,29 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
         style={{ cursor: 'crosshair', opacity: selected || pendingEdgeFrom ? 1 : undefined }}
         onPointerDown={startConnection}
       />
+
+      {/* Anchor ports — N/E/S/W points ON the shape outline. Dragging from
+          one pins the edge's source side; dropping on one pins the target
+          side. Shown on hover/selection, and always while a connection is
+          being dragged (they are the drop targets). */}
+      {EDGE_PORTS.map(port => {
+        const p = portPoint(node, port);
+        const lx = p.x - node.x, ly = p.y - node.y;
+        return (
+          <g
+            key={port}
+            className={`node-port${pendingEdgeFrom ? ' port-active' : ''}`}
+            transform={`translate(${lx} ${ly})`}
+            style={{ cursor: 'crosshair' }}
+            onPointerDown={e => startPortConnection(e, port)}
+            onPointerUp={e => dropOnPort(e, port)}
+          >
+            <circle r={9} fill="transparent" />
+            <circle className="node-port-dot" r={4.5} fill="#ffffff" stroke={color} strokeWidth={2} />
+            <title>{`Connect from ${port}`}</title>
+          </g>
+        );
+      })}
     </g>
   );
 }

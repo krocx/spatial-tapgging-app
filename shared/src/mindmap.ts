@@ -46,7 +46,17 @@ export type MindmapNodeStatus = 'planned' | 'in-progress' | 'done' | 'blocked';
 export type MindmapNodeReview = 'approved' | 'rejected' | 'needs-validation';
 
 /** Node outline shape. Default: 'rounded'. */
-export type MindmapNodeShape = 'rounded' | 'rect' | 'pill' | 'diamond' | 'hexagon';
+export type MindmapNodeShape =
+  | 'rounded' | 'rect' | 'pill' | 'diamond' | 'hexagon'
+  | 'circle' | 'parallelogram' | 'cylinder';
+
+/**
+ * Edge anchor port — a side of the node the user explicitly pinned an edge
+ * end to. Absent = auto: the endpoint slides along the node outline toward
+ * the peer (pre-ports behaviour, and still the default for handle-drawn
+ * connections).
+ */
+export type MindmapEdgePort = 'top' | 'right' | 'bottom' | 'left';
 
 export interface MindmapComment {
   id: string;
@@ -105,6 +115,10 @@ export interface MindmapEdge {
    * Absent on roadmap maps and on all pre-existing edges.
    */
   role?: MindmapEdgeRole;
+  /** Pinned source-side anchor port. Absent = auto endpoint. */
+  fromPort?: MindmapEdgePort;
+  /** Pinned target-side anchor port. Absent = auto endpoint. */
+  toPort?: MindmapEdgePort;
 }
 
 /**
@@ -137,7 +151,10 @@ export interface MindmapGroup {
 export interface MindmapSettings {
   /** 'parent': edges take the source node's layer color. Default 'parent'. */
   edgeColor?: 'parent' | 'neutral';
-  /** Default 'straight'. */
+  /**
+   * Default 'curved' (since 2026.4.45 — was 'straight'). 'straight' is now
+   * stored explicitly so the choice survives the default flip.
+   */
   edgeStyle?: 'straight' | 'curved';
 }
 

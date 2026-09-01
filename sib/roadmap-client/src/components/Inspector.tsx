@@ -23,6 +23,9 @@ const SHAPES: Array<{ value: MindmapNodeShape; label: string }> = [
   { value: 'pill', label: 'Pill' },
   { value: 'diamond', label: 'Diamond' },
   { value: 'hexagon', label: 'Hexagon' },
+  { value: 'circle', label: 'Circle' },
+  { value: 'parallelogram', label: 'Slant' },
+  { value: 'cylinder', label: 'Cylinder' },
 ];
 
 const REVIEW_OPTIONS: Array<{ value: MindmapNodeReview; label: string; cls: string }> = [
@@ -166,6 +169,12 @@ function ShapeGlyph({ shape }: { shape: MindmapNodeShape }): JSX.Element {
       {shape === 'pill' && <rect x={2} y={2} width={22} height={12} rx={6} {...props} />}
       {shape === 'diamond' && <polygon points="13,1 25,8 13,15 1,8" {...props} />}
       {shape === 'hexagon' && <polygon points="7,2 19,2 24,8 19,14 7,14 2,8" {...props} />}
+      {shape === 'circle' && <ellipse cx={13} cy={8} rx={11} ry={6.5} {...props} />}
+      {shape === 'parallelogram' && <polygon points="6,2 25,2 20,14 1,14" {...props} />}
+      {shape === 'cylinder' && <>
+        <path d="M 2 4.5 A 11 2.5 0 0 1 24 4.5 V 11.5 A 11 2.5 0 0 1 2 11.5 Z" {...props} />
+        <path d="M 2 4.5 A 11 2.5 0 0 0 24 4.5" {...props} />
+      </>}
     </svg>
   );
 }

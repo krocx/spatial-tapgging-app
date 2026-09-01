@@ -3,8 +3,8 @@
 
 import type { Mindmap } from '@spatial/shared';
 import { NODE_COLORS, NODE_FILL_COLORS } from './colors.js';
-import { NODE_W, LINE_HEIGHT, nodeHeight, wrapNodeText, nodeCenter, borderPoint } from './geometry.js';
-import { edgePath, edgeMidpoint, edgeColorFor } from '../canvas/EdgeView.js';
+import { NODE_W, LINE_HEIGHT, nodeHeight, wrapNodeText, nodeCenter, borderPoint, portPoint, shapePathD } from './geometry.js';
+import { edgePath, edgeMidpoint, edgeColorFor, selfLoopGeometry } from '../canvas/EdgeView.js';
 
 export function buildSvg(map: Mindmap): string {
   const esc = (s: string) =>
@@ -20,20 +20,28 @@ export function buildSvg(map: Mindmap): string {
 
   const byId = new Map(map.nodes.map(n => [n.id, n]));
   const neutral = map.settings?.edgeColor === 'neutral';
-  const curved = map.settings?.edgeStyle === 'curved';
+  const curved = map.settings?.edgeStyle !== 'straight';   // default = curved (2026.4.45)
   const edgeMarkup = map.edges.map(e => {
     const a = byId.get(e.from); const b = byId.get(e.to);
     if (!a || !b) return '';
-    const p1 = borderPoint(a, nodeCenter(b));
-    const p2 = borderPoint(b, nodeCenter(a));
     const color = edgeColorFor(a, neutral);
     const markerId = neutral ? 'rm-arrow' : `rm-arrow-${a.type}`;
     const marker = e.type === 'directed' ? ` marker-end="url(#${markerId})"` : '';
-    const mid = edgeMidpoint(p1, p2, curved);
+    // Self-loops and pinned ports mirror EdgeView exactly.
+    if (a.id === b.id) {
+      const loop = selfLoopGeometry(a, e.fromPort, e.toPort);
+      const loopLabel = e.label
+        ? `<text x="${loop.mid.x}" y="${loop.mid.y - 6}" text-anchor="middle" font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="11" fill="#475569" stroke="#ffffff" stroke-width="3" paint-order="stroke">${esc(e.label)}</text>`
+        : '';
+      return `<path d="${loop.d}" fill="none" stroke="${color}" stroke-opacity="${neutral ? 1 : 0.75}" stroke-width="1.5"${marker}/>${loopLabel}`;
+    }
+    const p1 = e.fromPort ? portPoint(a, e.fromPort) : borderPoint(a, e.toPort ? portPoint(b, e.toPort) : nodeCenter(b));
+    const p2 = e.toPort ? portPoint(b, e.toPort) : borderPoint(b, e.fromPort ? portPoint(a, e.fromPort) : nodeCenter(a));
+    const mid = edgeMidpoint(p1, p2, curved, e.fromPort, e.toPort);
     const label = e.label
       ? `<text x="${mid.x}" y="${mid.y - 6}" text-anchor="middle" font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="11" fill="#475569" stroke="#ffffff" stroke-width="3" paint-order="stroke">${esc(e.label)}</text>`
       : '';
-    return `<path d="${edgePath(p1, p2, curved)}" fill="none" stroke="${color}" stroke-opacity="${neutral ? 1 : 0.75}" stroke-width="1.5"${marker}/>${label}`;
+    return `<path d="${edgePath(p1, p2, curved, e.fromPort, e.toPort)}" fill="none" stroke="${color}" stroke-opacity="${neutral ? 1 : 0.75}" stroke-width="1.5"${marker}/>${label}`;
   }).join('\n');
 
   const nodeMarkup = map.nodes.map(n => {
@@ -47,7 +55,7 @@ export function buildSvg(map: Mindmap): string {
       `<text x="${n.x + NODE_W / 2}" y="${firstY + i * LINE_HEIGHT}" text-anchor="middle" font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="13" font-weight="600" fill="#ffffff">${esc(ln)}</text>`).join('');
     return [
       `<g>`,
-      `<rect x="${n.x}" y="${n.y}" width="${NODE_W}" height="${nh}" rx="10" fill="${fill}" stroke="rgba(255,255,255,0.22)" stroke-width="1"/>`,
+      `<path transform="translate(${n.x} ${n.y})" d="${shapePathD(n.shape, nh)}" fill="${fill}" stroke="rgba(255,255,255,0.22)" stroke-width="1"/>`,
       text,
       `</g>`,
     ].join('');
