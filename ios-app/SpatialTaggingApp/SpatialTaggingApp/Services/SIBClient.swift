@@ -812,6 +812,8 @@ final class SIBClient {
         let email: String
         let name:  String
         let role:  String
+        /// E1: product entitlements; nil/empty = all products.
+        let products: [String]?
     }
     struct UamLoginResult: Codable {
         let token: String

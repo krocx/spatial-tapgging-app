@@ -34,6 +34,15 @@ struct KioskStartView: View {
 
     private var identified: Bool { settings.uamSignedIn && !switchingUser }
 
+    /// E1: the work-context label follows the user's product. A returning
+    /// GembaWalk-only user is asked for an audit/project name; everyone else
+    /// (and fresh sign-ins, whose products are unknown yet) sees Production #.
+    private var contextLabel: String {
+        identified && settings.uamProducts == "gemba"
+            ? "Audit / project name"
+            : "Production # (chamber / system)"
+    }
+
     /// Identified users only set a (local) Production # — no server needed.
     private var needsServer: Bool { !identified }
 
@@ -87,7 +96,7 @@ struct KioskStartView: View {
                         kioskField("Employee ID", text: $employeeIdInput,
                                    icon: "person.text.rectangle", contentType: .username)
                     }
-                    kioskField("Production # (chamber / system)", text: $productionInput,
+                    kioskField(contextLabel, text: $productionInput,
                                icon: "number.square", contentType: nil)
                 }
                 .frame(maxWidth: 420)
@@ -180,6 +189,7 @@ struct KioskStartView: View {
                 settings.uamToken    = r.token
                 settings.uamRole     = r.user.role
                 settings.uamUserName = r.user.name
+                settings.uamProducts = (r.user.products ?? []).joined(separator: ",")
                 settings.workEmail   = r.user.email
                 settings.employeeId  = empId
                 settings.productionNumber = production

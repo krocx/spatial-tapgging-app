@@ -7,6 +7,44 @@ it, it gets a line.
 ## 2026.4.45 — 2026-09-01
 
 ### Added
+- **UAM product entitlements (E1)** — users can be scoped to platform
+  products (`aroms` / `iloto` / `gemba`). Absent/empty = ALL products, so
+  every existing user keeps full access until explicitly scoped. The portal
+  UAM table gains per-user product checkboxes (none checked = all, shown as
+  "(all)"); the server whitelists + dedupes and `[]` clears back to all.
+  On device, entitlements gate AUTHORING surfaces only: the anchor-creation
+  picker offers Gemba Walk / iLOTO types only to entitled users, and the
+  AR Guides authoring entry requires `aroms` — operator flows stay governed
+  by session/guide assignment, keeping run-time delegation uniform across
+  products. The kiosk work-context label follows the product: a GembaWalk-
+  only user is asked for an "Audit / project name" instead of Production #.
+  `@spatial/shared` stays types-only at runtime (Render-crash doctrine) —
+  the whitelist array lives with each consumer.
+- **AR floating panels redesigned (A1/A4)** — the step panel now follows the
+  platform design doctrine: solid dark surface, colored state band in the
+  Designer's role palette (blue in-progress · green done · red recovery ·
+  slate upcoming) with a "Step N / M" progress pill, 34pt title, 25pt body,
+  requirement chips (Required / 🤖 Validated / 👤 Manual check / 📷 Evidence),
+  and thumb-sized action buttons. Sizing rule: width fixed at 0.30 m, the
+  body font NEVER shrinks — the panel's HEIGHT adapts to the text (growing
+  upward, away from the machine) up to a cap, beyond which the body
+  truncates behind a "▼ More" control that expands it in place. Hit targets
+  reposition with the layout. Non-current panels (visible via the 👁 toggle)
+  collapse to band + title, done ones adding a "✓ Completed HH:mm" stamp.
+  The Designer pre-flight warns when step text exceeds ~280 characters.
+  Delight pass: success haptic + green pulse on step completion, a session
+  progress ring in the toolbar, and distance-aware panel scaling (beyond
+  1.5 m the current panel grows up to 2.2× so type stays readable).
+- **AR overlays: focus by default + live ghost opacity (A2/A3)** — the
+  operator's 👁 toggle now governs the WHOLE step overlay set: numbered pins
+  AND floating panels for other steps are hidden by default (current step
+  only; the 3D ghost was already current-only) and appear on demand for
+  orientation. Authors adjust ghost-model opacity with a live slider inside
+  the AR placement view (see the effect on the machine, saved with the
+  placement), and the portal's Guide Library gains a 👻 per-step opacity
+  slider that saves directly — no editor round-trip. Usage Log also
+  reworked into a dense grouped table (one row per session, expandable
+  per-step timing, validation badges inline).
 - **Step validation via Spatial Inspection (K4)** — a guide step can now
   demand a validation verdict before it completes. The Author trains it
   in-app (capture a reference photo → Verify with a live test compare →

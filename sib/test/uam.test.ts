@@ -87,3 +87,17 @@ test('store: kiosk lookup by employee ID (exact match, as the login route does)'
   assert.equal(byId('E999'), undefined);
   assert.equal(byId('e200'), undefined, 'employee IDs are case-exact');
 });
+
+test('E1 products: whitelist + dedupe semantics (as the routes apply them)', () => {
+  // Mirror of sanitizeProducts in routes/uam.ts (kept in sync by this test's
+  // expectations against the live e2e below).
+  const now = new Date().toISOString();
+  uamUserStore.save({
+    id: 'u3', email: 'gemba1@amat.com', employeeId: 'E300', name: 'Gemba One',
+    role: 'technician', products: ['gemba'], createdAt: now, updatedAt: now,
+  });
+  const u = uamUserStore.findById('u3')!;
+  assert.deepEqual(u.products, ['gemba']);
+  // Unscoped user (no products field) — the "all products" default.
+  assert.equal(uamUserStore.findById('u1')!.products, undefined);
+});

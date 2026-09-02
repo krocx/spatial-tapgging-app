@@ -1334,6 +1334,16 @@ export * from './mindmap.js';
 /** Role ladder, most → least privileged. */
 export type UamRole = 'owner' | 'manager' | 'engineer' | 'technician';
 
+/**
+ * Platform products a user can be entitled to (E1, 2026.4.45).
+ * Governs which AUTHORING surfaces the app shows; operator access stays
+ * driven by session/guide assignment (per-user sharing), so run-time
+ * delegation is uniform across products.
+ */
+export type SibProduct = 'aroms' | 'iloto' | 'gemba';
+// NB: no value export here — @spatial/shared stays types-only at runtime
+// (the Render-crash doctrine). Consumers keep their own whitelist array.
+
 export interface UamUser {
   id:         string;
   /** Normalised (lowercase, trimmed) — the identity key. */
@@ -1341,6 +1351,11 @@ export interface UamUser {
   employeeId: string;
   name:       string;
   role:       UamRole;
+  /**
+   * Product entitlements. ABSENT/empty = all products (backward compatible —
+   * every pre-E1 user keeps full access until explicitly scoped).
+   */
+  products?:  SibProduct[];
   createdAt:  string;
   updatedAt:  string;
 }
@@ -1350,6 +1365,8 @@ export interface CreateUamUserRequest {
   employeeId: string;
   name:       string;
   role:       UamRole;
+  /** Product entitlements. Absent/empty = all products. */
+  products?:  SibProduct[];
 }
 
 /** Partial update — only supplied fields are written. */
@@ -1357,6 +1374,8 @@ export interface UpdateUamUserRequest {
   employeeId?: string;
   name?:       string;
   role?:       UamRole;
+  /** [] clears back to "all products"; absent keeps existing. */
+  products?:  SibProduct[];
 }
 
 export interface UamLoginRequest {

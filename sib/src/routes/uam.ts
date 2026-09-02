@@ -173,6 +173,8 @@ router.post('/users', (req: Request, res: Response) => {
     return err(res, 403, `${actorRole(actor)} may not create ${body.role} users`);
   }
   if (findUserByEmail(body.email)) return err(res, 409, 'A user with this email already exists');
+  const products = sanitizeProducts(body.products);
+  if (products === null) return err(res, 400, 'invalid products — use any of: aroms, iloto, gemba');
 
   const now = new Date().toISOString();
   const user: UamUser = {
@@ -181,6 +183,8 @@ router.post('/users', (req: Request, res: Response) => {
     employeeId: body.employeeId.trim(),
     name: body.name.trim(),
     role: body.role,
+    // E1: empty/absent = all products (backward compatible).
+    ...(products && products.length > 0 ? { products } : {}),
     createdAt: now, updatedAt: now,
   };
   uamUserStore.save(user);
@@ -208,10 +212,14 @@ router.patch('/users/:id', (req: Request, res: Response) => {
       return err(res, 409, 'Cannot demote the last remaining Owner');
     }
   }
+  const products = sanitizeProducts(body.products);
+  if (products === null) return err(res, 400, 'invalid products — use any of: aroms, iloto, gemba');
   const updated = uamUserStore.update(user.id, {
     ...(body.employeeId !== undefined ? { employeeId: body.employeeId.trim() } : {}),
     ...(body.name !== undefined ? { name: body.name.trim() } : {}),
     ...(body.role !== undefined ? { role: body.role } : {}),
+    // E1: [] clears entitlements back to "all products" (stored as undefined).
+    ...(products !== undefined ? { products: products.length > 0 ? products : undefined } : {}),
     updatedAt: new Date().toISOString(),
   });
   logOpsEvent({ method: 'PATCH', path: `/uam/users/${user.id}`, outcome: 'allowed', ip: req.ip,
@@ -235,6 +243,27 @@ router.delete('/users/:id', (req: Request, res: Response) => {
     detail: `user removed — ${user.email} by ${actorLabel(actor)}` });
   res.json({ data: { deleted: user.id }, timestamp: new Date().toISOString() });
 });
+
+/** E1: product-entitlement whitelist (shared stays types-only at runtime). */
+const SIB_PRODUCTS = ['aroms', 'iloto', 'gemba'] as const;
+type SibProductVal = typeof SIB_PRODUCTS[number];
+
+/**
+ * Sanitize a products array: whitelist + dedupe. Returns:
+ *   undefined → field absent (keep existing / not set)
+ *   null      → invalid input (caller 400s)
+ *   []        → explicit clear back to "all products"
+ */
+function sanitizeProducts(raw: unknown): SibProductVal[] | null | undefined {
+  if (raw === undefined) return undefined;
+  if (!Array.isArray(raw)) return null;
+  const out: SibProductVal[] = [];
+  for (const p of raw) {
+    if (typeof p !== 'string' || !(SIB_PRODUCTS as readonly string[]).includes(p)) return null;
+    if (!out.includes(p as SibProductVal)) out.push(p as SibProductVal);
+  }
+  return out;
+}
 
 function countOwners(): number {
   return uamUserStore.findAll().filter(u => u.role === 'owner').length;

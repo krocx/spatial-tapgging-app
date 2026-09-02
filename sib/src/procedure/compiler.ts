@@ -240,6 +240,10 @@ export function compileProcedure(map: Mindmap): ProcedureCompileResult {
       err('empty-text',
         `Step ${seqOf.get(id)} has no instruction text. An operator would see an empty panel.`,
         id);
+    } else if (bodyOf(node).length > 280) {
+      warn('long-text',
+        `Step ${seqOf.get(id)}'s instruction is ${bodyOf(node).length} characters — on the AR panel it will truncate behind a "More" control. Consider splitting it into two steps.`,
+        id);
     } else if ((node.notes ?? '').trim().length === 0) {
       warn('title-only',
         `Step ${seqOf.get(id)} has no detail — its title will be used as the instruction.`,

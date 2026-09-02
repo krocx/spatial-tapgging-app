@@ -158,6 +158,9 @@ struct ModelARPlacementView: View {
     // ── Node & UI state ───────────────────────────────────────────────────────
 
     @State private var modelNode: SCNNode? = nil
+    /// A2 (2026.4.45): live ghost opacity — adjusted here, in context, and
+    /// saved with the placement. Seeded from the step's stored value.
+    @State private var opacity:   Double   = 0.45
     @State private var phase:     Phase    = .loading
     @State private var isSaving:  Bool     = false
     @State private var error:     String?  = nil
@@ -305,6 +308,25 @@ struct ModelARPlacementView: View {
             .padding(.top, 10)
             .padding(.bottom, 6)
 
+            // A2: ghost opacity — live on the node, saved with the placement.
+            HStack(spacing: 10) {
+                Image(systemName: "circle.lefthalf.filled")
+                    .font(.system(size: 14)).foregroundStyle(.white.opacity(0.7))
+                Slider(value: Binding(
+                    get: { opacity },
+                    set: { newVal in
+                        opacity = newVal
+                        modelNode?.opacity = CGFloat(newVal)
+                    }
+                ), in: 0.1...1.0)
+                Text("\(Int(opacity * 100))%")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.white.opacity(0.7))
+                    .frame(width: 38, alignment: .trailing)
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 4)
+
             // Scale / rotation readout
             HStack(spacing: 24) {
                 Label("\(String(format: "%.2f", scale))×", systemImage: "arrow.up.left.and.arrow.down.right")
@@ -381,6 +403,7 @@ struct ModelARPlacementView: View {
         )
         scale     = Float(step.modelScale     ?? 1.0)
         rotationY = Float(step.modelRotationY ?? 0.0)
+        opacity   = step.modelOpacity ?? 0.45          // A2: seed the live slider
 
         // 3. Download model file (USDZ preferred — SCNScene loads it natively on iOS 12+)
         let ext:  String
@@ -430,6 +453,7 @@ struct ModelARPlacementView: View {
         node.simdWorldPosition = position
         node.simdScale         = simd_float3(scale, scale, scale)
         node.eulerAngles       = SCNVector3(0, rotationY, 0)
+        node.opacity           = CGFloat(opacity)
 
         arManager.sceneView.scene.rootNode.addChildNode(node)
         modelNode = node
@@ -451,7 +475,8 @@ struct ModelARPlacementView: View {
         req.modelOffsetZ   = Double(position.z - pinPos.z)
         req.modelScale     = Double(scale)
         req.modelRotationY = Double(rotationY)
-        // modelId and modelOpacity are not changed here — EditStepSheet owns those
+        req.modelOpacity   = opacity    // A2: adjusted live in this view
+        // modelId is not changed here — EditStepSheet owns it
 
         do {
             _ = try await client.updateGuideStep(guideId: guide.id, stepId: step.id, req: req)

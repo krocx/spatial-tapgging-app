@@ -86,6 +86,8 @@ struct SettingsView: View {
                 employeeId: settings.employeeId.trimmingCharacters(in: .whitespaces))
             settings.uamToken = result.token
             settings.uamRole  = result.user.role
+            settings.uamUserName = result.user.name
+            settings.uamProducts = (result.user.products ?? []).joined(separator: ",")
             accessStatus = "✓ Verified — signed in as \(result.user.name) (\(result.user.role.capitalized))"
         } catch {
             settings.uamToken = ""

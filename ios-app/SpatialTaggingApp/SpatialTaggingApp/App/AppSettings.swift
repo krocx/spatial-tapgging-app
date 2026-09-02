@@ -64,6 +64,18 @@ final class AppSettings: ObservableObject {
     @Published var uamUserName: String {
         didSet { UserDefaults.standard.set(uamUserName, forKey: "uam_user_name") }
     }
+    /// E1: product entitlements, comma-joined ("aroms,iloto"). Empty = ALL
+    /// products (backward compatible — unscoped users keep full access).
+    @Published var uamProducts: String {
+        didSet { UserDefaults.standard.set(uamProducts, forKey: "uam_products") }
+    }
+    /// Author-surface gate for a product ("aroms" | "iloto" | "gemba").
+    /// Unsigned or unscoped users see everything; operator flows are NOT
+    /// gated here — session/guide assignment governs those.
+    func hasProduct(_ p: String) -> Bool {
+        guard uamSignedIn, !uamProducts.isEmpty else { return true }
+        return uamProducts.split(separator: ",").map(String.init).contains(p)
+    }
     /// Production # — the chamber/system the technician works on this shift.
     /// Entered on the kiosk start screen; free text by design (2026.4.45).
     @Published var productionNumber: String {
@@ -162,6 +174,7 @@ final class AppSettings: ObservableObject {
         uamToken   = UserDefaults.standard.string(forKey: "uam_token")       ?? ""
         uamRole    = UserDefaults.standard.string(forKey: "uam_role")        ?? ""
         uamUserName      = UserDefaults.standard.string(forKey: "uam_user_name")      ?? ""
+        uamProducts      = UserDefaults.standard.string(forKey: "uam_products")      ?? ""
         productionNumber = UserDefaults.standard.string(forKey: "production_number") ?? ""
 
         // Author name: use stored value if set; otherwise extract first name from device name

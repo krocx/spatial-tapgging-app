@@ -62,6 +62,8 @@ struct ARGuideSessionView: View {
     @State private var panelContainers: [String: SCNNode] = [:]
     /// true = minimized pill shown, false = maximized card shown (default).
     @State private var panelMinimized:  [String: Bool]    = [:]
+    /// A1: per-panel "▼ More" expansion — lifts the body-height cap.
+    @State private var panelExpanded:   [String: Bool]    = [:]
 
     // ── Navigation telemetry (10 Hz) ──────────────────────────────────────────
     @State private var distanceM:        Float?   = nil
@@ -558,6 +560,20 @@ struct ARGuideSessionView: View {
 
             HStack(spacing: 10) {
                 if case .navigating(let index) = phase {
+                    // A4: progress ring — completed / total at a glance.
+                    let doneCount = progresses.filter { $0.isCompleted }.count
+                    ZStack {
+                        Circle().stroke(Color.white.opacity(0.18), lineWidth: 3)
+                        Circle()
+                            .trim(from: 0, to: sortedSteps.isEmpty ? 0 : CGFloat(doneCount) / CGFloat(sortedSteps.count))
+                            .stroke(Color.green, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                            .rotationEffect(.degrees(-90))
+                            .animation(.easeOut(duration: 0.4), value: doneCount)
+                        Text("\(doneCount)")
+                            .font(.system(size: 10, weight: .bold).monospacedDigit())
+                            .foregroundStyle(.white)
+                    }
+                    .frame(width: 24, height: 24)
                     Text("\(index + 1) / \(sortedSteps.count)")
                         .font(.subheadline.monospacedDigit())
                         .foregroundStyle(.white.opacity(0.7))
@@ -958,6 +974,9 @@ struct ARGuideSessionView: View {
             // Attach the 3D floating panel above this pin
             attachFloatingPanel(to: node, for: step, index: i)
         }
+        // A3: apply the focus rule to freshly-placed pins too — without this,
+        // every pin is visible until the first step change.
+        updatePanelVisibility()
     }
 
     // ── Floating panel construction (Phase 3) ─────────────────────────────────
@@ -1003,31 +1022,18 @@ struct ARGuideSessionView: View {
         pillNode.isHidden = false
         container.addChildNode(pillNode)
 
-        // ── Maximized card (0.30 × 0.40 m → texture 512 × 683 pt) ───────────
+        // ── Maximized card (A1: width fixed 0.30 m, HEIGHT content-derived) ──
+        // Geometry, texture and hit-button positions are all applied by
+        // refreshPanelTextures() from the computed CardLayout — this creates
+        // placeholders only.
         let cardPlane = SCNPlane(width: 0.30, height: 0.40)
-        cardPlane.firstMaterial = opaqueMat(image: renderCardTexture(step: step, index: index, referenceImage: nil))
         let cardNode = SCNNode(geometry: cardPlane)
         cardNode.name     = "card_\(step.id)"
         cardNode.isHidden = true
         container.addChildNode(cardNode)
-
-        // ── Invisible hit-test buttons (card local: x ∈ [−0.15,0.15], y ∈ [−0.20,0.20])
-        // Positions are derived from the drawn texture coordinates using:
-        //   x_local = (x_tex / 512) * 0.30 − 0.15
-        //   y_local = 0.20 − (y_tex / 580) * 0.40
-        //
-        // Minimize "–" drawn at approx tex (494, 38):
-        cardNode.addChildNode(makeHitButton(w: 0.06, h: 0.05, x:  0.12,  y:  0.183, name: "btn_min_\(step.id)"))
-        // Audio 🔊 drawn at tex (14, 486), label at (6,526,w52) → zone centre ≈ (32, 513):
-        //   x_local = (32/512)*0.30−0.15 = −0.131  y_local = 0.20−(513/580)*0.40 = −0.154
-        cardNode.addChildNode(makeHitButton(w: 0.07, h: 0.07, x: -0.131, y: -0.154, name: "btn_audio_\(step.id)"))
-        // Camera 📷 moved to tex (160, 486), label at (152,526,w52) → zone centre ≈ (178, 513):
-        //   x_local = (178/512)*0.30−0.15 = −0.046  y_local = −0.154
-        //   8.5 cm gap between audio and camera centres → safe for gloved hands
-        cardNode.addChildNode(makeHitButton(w: 0.07, h: 0.07, x: -0.046, y: -0.154, name: "btn_camera_\(step.id)"))
-        // Primary button drawn at tex CGRect(354,492,144,48) → centre (426, 516):
-        //   x_local = (426/512)*0.30−0.15 = 0.100   y_local = 0.20−(516/580)*0.40 = −0.156
-        cardNode.addChildNode(makeHitButton(w: 0.09, h: 0.055, x:  0.100, y: -0.156, name: "btn_complete_\(step.id)"))
+        for btn in ["btn_min_", "btn_audio_", "btn_camera_", "btn_complete_", "btn_more_"] {
+            cardNode.addChildNode(makeHitButton(w: 0.05, h: 0.05, x: 0, y: 0, name: btn + step.id))
+        }
         pillNode.addChildNode(makeHitButton(w: 0.30, h: 0.055, x: 0, y: 0, name: "btn_expand_\(step.id)"))
 
         // ── Dotted connector: vertical dashes from pin top to panel bottom ────
@@ -1050,6 +1056,7 @@ struct ARGuideSessionView: View {
         // ── Add panel to SCENE ROOT (not pin child) — avoids pulse inheritance ─
         arManager.sceneView.scene.rootNode.addChildNode(container)
         panelContainers[step.id] = container
+        refreshPanelTextures(stepId: step.id)   // A1: apply real layout + texture
     }
 
     /// Creates a nearly-invisible (but hit-testable) flat button node.
@@ -1094,6 +1101,13 @@ struct ARGuideSessionView: View {
                         ? String(name.dropFirst("pill_".count))
                         : String(name.dropFirst("btn_expand_".count))
                     togglePanel(stepId: stepId, minimize: false)
+                    return
+                }
+                if name.hasPrefix("btn_more_") {
+                    // A1: lift/restore the body-height cap and re-render.
+                    let stepId = String(name.dropFirst("btn_more_".count))
+                    panelExpanded[stepId] = !(panelExpanded[stepId] ?? false)
+                    refreshPanelTextures(stepId: stepId)
                     return
                 }
                 if name.hasPrefix("btn_audio_") {
@@ -1162,11 +1176,37 @@ struct ARGuideSessionView: View {
         }
         _ = isMinimized  // suppress unused warning (visibility already set in togglePanel)
 
-        // Re-render card texture
+        // Re-render card texture — A1: geometry follows the computed layout.
         let cardNode = container.childNode(withName: "card_\(stepId)", recursively: true)
-        if let cardGeo = cardNode?.geometry as? SCNPlane {
-            cardGeo.firstMaterial?.diffuse.contents = renderCardTexture(
+        if let cardNode, let cardGeo = cardNode.geometry as? SCNPlane {
+            let (image, layout) = renderCardTexture(
                 step: step, index: index, referenceImage: refImage, evidenceImage: evidenceImg)
+            cardGeo.firstMaterial?.diffuse.contents = image
+
+            // Plane: width fixed 0.30 m; height from canvas (512 pt ↔ 0.30 m).
+            let hM = CGFloat(layout.H) / Self.cardW * 0.30
+            cardGeo.height = hM
+            // Keep the panel BOTTOM anchored where the 0.40 m base put it —
+            // extra height grows upward, away from the machine.
+            cardNode.position.y = Float((hM - 0.40) / 2)
+
+            // Reposition hit buttons from canvas rects.
+            func place(_ name: String, _ rect: CGRect?) {
+                guard let btn = cardNode.childNode(withName: name + stepId, recursively: false) else { return }
+                guard let rect, let plane = btn.geometry as? SCNPlane else { btn.isHidden = true; return }
+                btn.isHidden = false
+                plane.width  = rect.width  / Self.cardW * 0.30
+                plane.height = rect.height / Self.cardW * 0.30
+                btn.position = SCNVector3(
+                    Float(rect.midX / Self.cardW * 0.30 - 0.15),
+                    Float(hM / 2 - rect.midY / CGFloat(layout.H) * hM),
+                    0.001)
+            }
+            place("btn_min_",      layout.collapsed ? nil : layout.minRect)
+            place("btn_audio_",    layout.collapsed ? nil : layout.audioRect)
+            place("btn_camera_",   layout.collapsed ? nil : layout.camRect)
+            place("btn_complete_", layout.collapsed ? nil : layout.primaryRect)
+            place("btn_more_",     layout.moreRect)
         }
     }
 
@@ -1237,244 +1277,335 @@ struct ARGuideSessionView: View {
         }
     }
 
-    /// Maximized card (512 × 580 pt → 0.30 m × 0.40 m in world space)
+    // ── A1 (2026.4.45): redesigned card — solid surface, state band, big type ──
+    //
+    // Doctrine (same as the canvas): one state colour, high contrast, a body
+    // font floor that NEVER shrinks. Width is fixed (0.30 m); HEIGHT adapts to
+    // the content up to a cap, then the body truncates behind a "▼ More"
+    // control that lifts the cap. Long text grows the panel — it never shrinks
+    // the font.
+    //
+    // Canvas width is 512 pt ↔ 0.30 m. Heights are computed per step.
+
+    private struct CardLayout {
+        var H:            CGFloat          // total canvas height (pt)
+        var bandH:        CGFloat = 70
+        var titleRect     = CGRect.zero
+        var bodyRect      = CGRect.zero
+        var bodyTruncated = false
+        var moreRect:     CGRect? = nil    // "▼ More" / "▲ Less" zone
+        var chipsY:       CGFloat? = nil
+        var imageRect:    CGRect? = nil
+        var barY:         CGFloat = 0      // action bar top
+        var collapsed     = false          // non-current step: band+title(+stamp)
+        // Hit zones (canvas coords) — converted to node space in refresh.
+        var audioRect     = CGRect.zero
+        var camRect       = CGRect.zero
+        var primaryRect   = CGRect.zero
+        var minRect       = CGRect.zero
+    }
+
+    private static let cardW: CGFloat       = 512
+    private static let cardTitleFont        = UIFont.systemFont(ofSize: 34, weight: .heavy)
+    private static let cardBodyFont         = UIFont.systemFont(ofSize: 25)
+    private static let cardBodyCapCollapsed: CGFloat = 320   // ≈ 8 lines
+    private static let cardBodyCapExpanded:  CGFloat = 760
+    private static let cardMaxH:             CGFloat = 1100  // hard safety cap
+
+    private func cardBodyAttrs() -> [NSAttributedString.Key: Any] {
+        let p = NSMutableParagraphStyle()
+        p.lineHeightMultiple = 1.18
+        return [.font: Self.cardBodyFont,
+                .foregroundColor: UIColor(white: 0.92, alpha: 1.0),
+                .paragraphStyle: p]
+    }
+
+    private func computeCardLayout(step: GuideStep, isCurrent: Bool,
+                                   isCompleted: Bool, hasImage: Bool) -> CardLayout {
+        let W = Self.cardW
+        var l = CardLayout(H: 0)
+
+        // Non-current panels collapse: band + title (+ done stamp).
+        if !isCurrent {
+            let titleH = min(heightOf(step.displayTitle, font: Self.cardTitleFont, width: W - 36,
+                                      attrs: [.font: UIFont.systemFont(ofSize: 28, weight: .heavy)]), 80)
+            l.collapsed = true
+            l.titleRect = CGRect(x: 18, y: l.bandH + 14, width: W - 36, height: titleH)
+            l.H = l.titleRect.maxY + (isCompleted ? 56 : 18)
+            return l
+        }
+
+        let expanded = panelExpanded[step.id] ?? false
+        var y = l.bandH + 14
+
+        let titleH = min(heightOf(step.displayTitle, font: Self.cardTitleFont, width: W - 36,
+                                  attrs: [.font: Self.cardTitleFont]), 96)  // ≤ 2 lines
+        l.titleRect = CGRect(x: 18, y: y, width: W - 36, height: titleH)
+        y = l.titleRect.maxY + 8
+
+        let bodyCap  = expanded ? Self.cardBodyCapExpanded : Self.cardBodyCapCollapsed
+        let fullBodyH = heightOf(step.text, font: Self.cardBodyFont, width: W - 36, attrs: cardBodyAttrs())
+        let bodyH = min(fullBodyH, bodyCap)
+        l.bodyTruncated = fullBodyH > bodyCap + 1
+        l.bodyRect = CGRect(x: 18, y: y, width: W - 36, height: bodyH)
+        y = l.bodyRect.maxY + 6
+        if l.bodyTruncated || expanded {
+            l.moreRect = CGRect(x: 18, y: y, width: W - 36, height: 44)
+            y += 48
+        }
+
+        // Chips row (Required / Validated / Evidence) — only when relevant.
+        if step.completionRequired || step.needsValidation || step.needsEvidence {
+            l.chipsY = y
+            y += 48
+        }
+
+        if hasImage {
+            l.imageRect = CGRect(x: 18, y: y, width: W - 36, height: 210)
+            y = l.imageRect!.maxY + 10
+        }
+
+        l.barY = y + 6
+        l.H = min(l.barY + 118, Self.cardMaxH)
+
+        // Action bar zones (mockup proportions): audio | camera | primary
+        let by = l.barY + 12
+        l.audioRect   = CGRect(x: 18,  y: by, width: 84,  height: 84)
+        l.camRect     = CGRect(x: 118, y: by, width: 84,  height: 84)
+        l.primaryRect = CGRect(x: 220, y: by + 6, width: W - 240, height: 74)
+        l.minRect     = CGRect(x: W - 74, y: 8, width: 62, height: 54)
+        return l
+    }
+
+    private func heightOf(_ text: String, font: UIFont, width: CGFloat,
+                          attrs: [NSAttributedString.Key: Any]) -> CGFloat {
+        let bounds = (text as NSString).boundingRect(
+            with: CGSize(width: width, height: .greatestFiniteMagnitude),
+            options: [.usesLineFragmentOrigin, .usesFontLeading],
+            attributes: attrs, context: nil)
+        return ceil(bounds.height)
+    }
+
+    /// Redesigned card texture. Height is CONTENT-DERIVED — callers use the
+    /// returned layout to size the SCNPlane and reposition hit buttons.
     private func renderCardTexture(
         step:           GuideStep,
         index:          Int,
         referenceImage: UIImage?,
         evidenceImage:  UIImage? = nil
-    ) -> UIImage {
-        let W: CGFloat = 512
-        let H: CGFloat = 580
-        let size = CGSize(width: W, height: H)
-        let progress = index < progresses.count ? progresses[index] : nil
+    ) -> (image: UIImage, layout: CardLayout) {
+        let W = Self.cardW
+        let progress     = index < progresses.count ? progresses[index] : nil
         let isCompleted  = progress?.isCompleted ?? false
-        let isLastStep   = isTerminal(index: index)   // terminal = sign-off point (happy end or failure dead-end)
+        let isLastStep   = isTerminal(index: index)
         let hasEvidence  = evidenceImage != nil || (progress?.evidencePhoto) != nil
+        let isFailPath   = failureOnlyStepIds.contains(step.id)
+        var activeIndex  = index
+        if case .navigating(let i) = phase { activeIndex = i }
+        let isCurrent    = index == activeIndex
 
-        return UIGraphicsImageRenderer(size: size).image { ctx in
+        let layout = computeCardLayout(step: step, isCurrent: isCurrent,
+                                       isCompleted: isCompleted,
+                                       hasImage: referenceImage != nil && isCurrent)
+        let size = CGSize(width: W, height: layout.H)
+
+        // State palette — the Designer's role colours, verbatim.
+        let bandColor: UIColor =
+            isCompleted ? UIColor(red: 0.08, green: 0.50, blue: 0.24, alpha: 1)      // green
+            : isFailPath ? UIColor(red: 0.73, green: 0.11, blue: 0.11, alpha: 1)     // red
+            : isCurrent  ? UIColor(red: 0.11, green: 0.31, blue: 0.85, alpha: 1)     // blue
+            : UIColor(red: 0.20, green: 0.26, blue: 0.33, alpha: 1)                  // slate
+        let bandLabel =
+            isCompleted ? "✓ DONE"
+            : isFailPath ? "⚠ RECOVERY"
+            : isCurrent  ? "▶ IN PROGRESS"
+            : "○ UPCOMING"
+
+        let img = UIGraphicsImageRenderer(size: size).image { ctx in
             let r = CGRect(origin: .zero, size: size)
 
-            // ── Background — fully opaque (avoids alpha-sort ordering artefacts) ──
-            UIColor(white: 0.09, alpha: 1.0).setFill()
-            UIBezierPath(roundedRect: r, cornerRadius: 24).fill()
+            // Solid dark surface — opaque, no alpha-sort flicker.
+            UIColor(red: 0.06, green: 0.08, blue: 0.13, alpha: 1.0).setFill()
+            UIBezierPath(roundedRect: r, cornerRadius: 30).fill()
 
-            // ── Header row (0–76 pt) ──────────────────────────────────────────
-            // Badge: 44×44 circle, vertically centred in 76-pt header zone (y=16)
-            let badgeR = CGRect(x: 14, y: 16, width: 44, height: 44)
-            (isCompleted ? UIColor.systemGreen : UIColor.systemIndigo).setFill()
-            UIBezierPath(ovalIn: badgeR).fill()
-            if isCompleted {
-                let ckAttrs: [NSAttributedString.Key: Any] = [
-                    .font:            UIFont.boldSystemFont(ofSize: 22),
-                    .foregroundColor: UIColor.white,
+            // ── State band ────────────────────────────────────────────────────
+            let bandPath = UIBezierPath(roundedRect: CGRect(x: 0, y: 0, width: W, height: layout.bandH + 30),
+                                        cornerRadius: 30)
+            bandColor.setFill()
+            ctx.cgContext.saveGState()
+            UIBezierPath(rect: CGRect(x: 0, y: 0, width: W, height: layout.bandH)).addClip()
+            bandPath.fill()
+            ctx.cgContext.restoreGState()
+
+            let bandAttrs: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: 22, weight: .heavy),
+                .foregroundColor: UIColor.white,
+            ]
+            (bandLabel as NSString).draw(at: CGPoint(x: 20, y: 22), withAttributes: bandAttrs)
+
+            // Progress pill "Step i / N"
+            let progStr = "Step \(index + 1) / \(sortedSteps.count)" as NSString
+            let progAttrs: [NSAttributedString.Key: Any] = [
+                .font: UIFont.monospacedDigitSystemFont(ofSize: 19, weight: .bold),
+                .foregroundColor: UIColor.white,
+            ]
+            let ps = progStr.size(withAttributes: progAttrs)
+            let pillR = CGRect(x: W - ps.width - (isCurrent ? 96 : 44), y: 17,
+                               width: ps.width + 26, height: 36)
+            UIColor.white.withAlphaComponent(0.20).setFill()
+            UIBezierPath(roundedRect: pillR, cornerRadius: 18).fill()
+            progStr.draw(at: CGPoint(x: pillR.midX - ps.width/2, y: pillR.midY - ps.height/2),
+                         withAttributes: progAttrs)
+
+            // Minimize "–" (current panels only)
+            if isCurrent {
+                let minAttrs: [NSAttributedString.Key: Any] = [
+                    .font: UIFont.systemFont(ofSize: 30, weight: .bold),
+                    .foregroundColor: UIColor.white.withAlphaComponent(0.75),
                 ]
-                let ckSz = ("✓" as NSString).size(withAttributes: ckAttrs)
-                ("✓" as NSString).draw(at: CGPoint(x: badgeR.midX - ckSz.width/2,
-                                                    y: badgeR.midY - ckSz.height/2),
-                                        withAttributes: ckAttrs)
-            } else {
-                let numStr   = "\(step.sequenceNumber)" as NSString
-                let numAttrs: [NSAttributedString.Key: Any] = [
-                    .font:            UIFont.boldSystemFont(ofSize: 20),
-                    .foregroundColor: UIColor.white,
-                ]
-                let numSz = numStr.size(withAttributes: numAttrs)
-                numStr.draw(at: CGPoint(x: badgeR.midX - numSz.width/2,
-                                        y: badgeR.midY - numSz.height/2),
-                            withAttributes: numAttrs)
+                ("–" as NSString).draw(at: CGPoint(x: W - 52, y: 16), withAttributes: minAttrs)
             }
 
-            // Right-of-badge zone: display title only.
-            // The step number is already shown in the badge, so the "Step N of M"
-            // caption is omitted here — it previously caused a cluttered "3 Step 3"
-            // appearance when displayTitle defaulted to "Step N".
-            let headerMid: CGFloat = 38    // visual centre of 76pt header zone
-            let titleFont  = UIFont.systemFont(ofSize: 16, weight: .semibold)
-            let titleH: CGFloat = titleFont.lineHeight    // ≈ 20pt
-            let titleY     = headerMid - titleH / 2       // vertically centered
-            let titleLinePara = NSMutableParagraphStyle()
-            titleLinePara.lineBreakMode = .byTruncatingTail
-            let titleAttrs: [NSAttributedString.Key: Any] = [
-                .font:            titleFont,
-                .foregroundColor: UIColor.white,
-                .paragraphStyle:  titleLinePara,
-            ]
-            // x=70 → clear of badge (right edge ≈58); width=W-120 leaves 50pt for the "–" button
-            let titleR = CGRect(x: 70, y: titleY, width: W - 120, height: titleH + 4)
-            (step.displayTitle as NSString).draw(with: titleR,
-                options: .truncatesLastVisibleLine,
-                attributes: titleAttrs,
-                context: nil)
-
-            // Minimize chevron (top-right, vertically centred in header)
-            let minAttrs: [NSAttributedString.Key: Any] = [
-                .font:            UIFont.systemFont(ofSize: 16, weight: .medium),
-                .foregroundColor: UIColor.white.withAlphaComponent(0.45),
-            ]
-            let minStr  = "–" as NSString
-            let minSz   = minStr.size(withAttributes: minAttrs)
-            minStr.draw(at: CGPoint(x: W - 14 - minSz.width, y: headerMid - minSz.height/2),
-                        withAttributes: minAttrs)
-
-            // ── Divider ───────────────────────────────────────────────────────
-            UIColor.white.withAlphaComponent(0.12).setStroke()
-            let divPath = UIBezierPath()
-            divPath.move(to: CGPoint(x: 14, y: 76))
-            divPath.addLine(to: CGPoint(x: W - 14, y: 76))
-            divPath.lineWidth = 1
-            divPath.stroke()
-
-            // ── Description body (step.text) — centered, below header ─────────
-            let descPara = NSMutableParagraphStyle()
-            descPara.alignment = .center
-            let descAttrs: [NSAttributedString.Key: Any] = [
-                .font:            UIFont.systemFont(ofSize: 13),
-                .foregroundColor: UIColor.white.withAlphaComponent(0.88),
-                .paragraphStyle:  descPara,
-            ]
-            let descR = CGRect(x: 14, y: 86, width: W - 28, height: 134)
-            (step.text as NSString).draw(with: descR,
+            // ── Title ─────────────────────────────────────────────────────────
+            let titlePara = NSMutableParagraphStyle()
+            titlePara.lineBreakMode = .byTruncatingTail
+            let tFont = layout.collapsed ? UIFont.systemFont(ofSize: 28, weight: .heavy) : Self.cardTitleFont
+            (step.displayTitle as NSString).draw(with: layout.titleRect,
                 options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine],
-                attributes: descAttrs,
+                attributes: [.font: tFont, .foregroundColor: UIColor.white, .paragraphStyle: titlePara],
                 context: nil)
+
+            // Collapsed done-stamp, then finished.
+            if layout.collapsed {
+                if isCompleted, let done = progress?.completedAt {
+                    let fmt = DateFormatter(); fmt.dateFormat = "HH:mm"
+                    let stamp = "✓ Completed \(fmt.string(from: done))" as NSString
+                    stamp.draw(at: CGPoint(x: 18, y: layout.titleRect.maxY + 10), withAttributes: [
+                        .font: UIFont.systemFont(ofSize: 20, weight: .bold),
+                        .foregroundColor: UIColor(red: 0.53, green: 0.94, blue: 0.67, alpha: 1),
+                    ])
+                }
+                return
+            }
+
+            // ── Body — 25 pt floor, height already computed; truncates, never shrinks ──
+            (step.text as NSString).draw(with: layout.bodyRect,
+                options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine],
+                attributes: cardBodyAttrs(), context: nil)
+
+            // ▼ More / ▲ Less
+            if let mr = layout.moreRect {
+                let expanded = panelExpanded[step.id] ?? false
+                let label = (expanded ? "▲ Less" : "▼ More") as NSString
+                let mAttrs: [NSAttributedString.Key: Any] = [
+                    .font: UIFont.systemFont(ofSize: 21, weight: .bold),
+                    .foregroundColor: UIColor(red: 0.58, green: 0.77, blue: 0.99, alpha: 1),
+                ]
+                let msz = label.size(withAttributes: mAttrs)
+                label.draw(at: CGPoint(x: mr.midX - msz.width/2, y: mr.midY - msz.height/2),
+                           withAttributes: mAttrs)
+            }
+
+            // ── Requirement chips ─────────────────────────────────────────────
+            if let cy = layout.chipsY {
+                var cx: CGFloat = 18
+                func chip(_ text: String, bg: UIColor, fg: UIColor) {
+                    let str = text as NSString
+                    let a: [NSAttributedString.Key: Any] = [
+                        .font: UIFont.systemFont(ofSize: 18, weight: .bold), .foregroundColor: fg]
+                    let sz = str.size(withAttributes: a)
+                    let cr = CGRect(x: cx, y: cy, width: sz.width + 28, height: 38)
+                    bg.setFill(); UIBezierPath(roundedRect: cr, cornerRadius: 19).fill()
+                    str.draw(at: CGPoint(x: cr.midX - sz.width/2, y: cr.midY - sz.height/2), withAttributes: a)
+                    cx = cr.maxX + 10
+                }
+                if step.completionRequired {
+                    chip("Required", bg: UIColor(red: 0.23, green: 0.51, blue: 0.96, alpha: 0.25),
+                         fg: UIColor(red: 0.58, green: 0.77, blue: 0.99, alpha: 1))
+                }
+                if step.needsValidation {
+                    chip(step.validationTrained ? "🤖 Validated step" : "👤 Manual check",
+                         bg: UIColor(red: 0.66, green: 0.33, blue: 0.97, alpha: 0.25),
+                         fg: UIColor(red: 0.85, green: 0.71, blue: 1.0, alpha: 1))
+                }
+                if step.needsEvidence {
+                    chip(hasEvidence ? "📷 Captured" : "📷 Evidence needed",
+                         bg: hasEvidence ? UIColor(red: 0.13, green: 0.77, blue: 0.37, alpha: 0.25)
+                                         : UIColor(red: 0.96, green: 0.62, blue: 0.04, alpha: 0.25),
+                         fg: hasEvidence ? UIColor(red: 0.53, green: 0.94, blue: 0.67, alpha: 1)
+                                         : UIColor(red: 0.99, green: 0.83, blue: 0.30, alpha: 1))
+                }
+            }
 
             // ── Reference image ───────────────────────────────────────────────
-            var nextY: CGFloat = 232
-            if let img = referenceImage {
-                let imgH: CGFloat = 170
-                let imgR = CGRect(x: 14, y: nextY, width: W - 28, height: imgH)
+            if let img = referenceImage, let imgR = layout.imageRect {
                 UIColor.white.withAlphaComponent(0.06).setFill()
-                UIBezierPath(roundedRect: imgR, cornerRadius: 8).fill()
-                // Clip and draw image — aspect-fit (no stretching)
+                UIBezierPath(roundedRect: imgR, cornerRadius: 12).fill()
                 ctx.cgContext.saveGState()
-                UIBezierPath(roundedRect: imgR, cornerRadius: 8).addClip()
+                UIBezierPath(roundedRect: imgR, cornerRadius: 12).addClip()
                 let imgAspect = img.size.width / img.size.height
                 let boxAspect = imgR.width / imgR.height
-                let fittedRect: CGRect
+                let fitted: CGRect
                 if imgAspect > boxAspect {
-                    // Image is wider than box — fit width, letterbox top/bottom
                     let fH = imgR.width / imgAspect
-                    fittedRect = CGRect(x: imgR.minX,
-                                        y: imgR.minY + (imgR.height - fH) / 2,
-                                        width: imgR.width, height: fH)
+                    fitted = CGRect(x: imgR.minX, y: imgR.minY + (imgR.height - fH)/2,
+                                    width: imgR.width, height: fH)
                 } else {
-                    // Image is taller than box — fit height, pillarbox left/right
                     let fW = imgR.height * imgAspect
-                    fittedRect = CGRect(x: imgR.minX + (imgR.width - fW) / 2,
-                                        y: imgR.minY, width: fW, height: imgR.height)
+                    fitted = CGRect(x: imgR.minX + (imgR.width - fW)/2, y: imgR.minY,
+                                    width: fW, height: imgR.height)
                 }
-                img.draw(in: fittedRect)
+                img.draw(in: fitted)
                 ctx.cgContext.restoreGState()
-                nextY = imgR.maxY + 12
             }
 
-            // ── Divider before action bar ─────────────────────────────────────
-            let div2Path = UIBezierPath()
-            div2Path.move(to: CGPoint(x: 14, y: H - 108))
-            div2Path.addLine(to: CGPoint(x: W - 14, y: H - 108))
-            div2Path.lineWidth = 1
+            // ── Action bar ────────────────────────────────────────────────────
             UIColor.white.withAlphaComponent(0.12).setStroke()
-            div2Path.stroke()
+            let div = UIBezierPath()
+            div.move(to: CGPoint(x: 18, y: layout.barY))
+            div.addLine(to: CGPoint(x: W - 18, y: layout.barY))
+            div.lineWidth = 1.5
+            div.stroke()
 
-            // ── Action bar (bottom 108 pt) ────────────────────────────────────
-            // Icons are 34 pt; labels beneath at 9 pt; total icon+label ≈ 52 pt.
-            let barY: CGFloat = H - 100
-
-            // Audio button — icon + label
-            let audioColor: UIColor = isSpeaking ? .systemIndigo : UIColor.white.withAlphaComponent(0.75)
-            let speakerAttrs: [NSAttributedString.Key: Any] = [
-                .font:            UIFont.systemFont(ofSize: 34),
-                .foregroundColor: audioColor,
-            ]
-            ("🔊" as NSString).draw(at: CGPoint(x: 14, y: barY + 6), withAttributes: speakerAttrs)
-            let audioLabelPara = NSMutableParagraphStyle(); audioLabelPara.alignment = .center
-            let audioLabelAttrs: [NSAttributedString.Key: Any] = [
-                .font:            UIFont.systemFont(ofSize: 9, weight: .medium),
-                .foregroundColor: audioColor,
-                .paragraphStyle:  audioLabelPara,
-            ]
-            (isSpeaking ? "SPEAKING" : "AUDIO" as NSString)
-                .draw(in: CGRect(x: 6, y: barY + 46, width: 52, height: 14),
-                      withAttributes: audioLabelAttrs)
-
-            // Evidence camera button — icon + label
-            // Moved to x=160 (was 70) to create clear physical separation from the
-            // audio button. The gap between icon centres is now ~8.5 cm in world
-            // space, preventing accidental mis-taps by gloved technicians.
-            let camColor: UIColor = hasEvidence ? .systemGreen : UIColor.white.withAlphaComponent(0.75)
-            let camAttrs: [NSAttributedString.Key: Any] = [
-                .font:            UIFont.systemFont(ofSize: 34),
-                .foregroundColor: camColor,
-            ]
-            ("📷" as NSString).draw(at: CGPoint(x: 160, y: barY + 6), withAttributes: camAttrs)
-            let camLabelPara = NSMutableParagraphStyle(); camLabelPara.alignment = .center
-            let camLabelAttrs: [NSAttributedString.Key: Any] = [
-                .font:            UIFont.systemFont(ofSize: 9, weight: .medium),
-                .foregroundColor: camColor,
-                .paragraphStyle:  camLabelPara,
-            ]
-            (hasEvidence ? "CAPTURED" : "PHOTO" as NSString)
-                .draw(in: CGRect(x: 152, y: barY + 46, width: 52, height: 14),
-                      withAttributes: camLabelAttrs)
-
-            // Distance label (between icons and primary button — moved right of camera)
-            if let d = distanceM {
-                let dColor: UIColor = d <= arrivedM ? .systemGreen : (d <= approachingM ? .systemOrange : .white)
-                let dAttrs: [NSAttributedString.Key: Any] = [
-                    .font:            UIFont.monospacedDigitSystemFont(ofSize: 13, weight: .semibold),
-                    .foregroundColor: dColor,
-                ]
-                (String(format: "%.1f m", d) as NSString).draw(at: CGPoint(x: 220, y: barY + 22), withAttributes: dAttrs)
+            func iconButton(_ icon: String, _ label: String, rect: CGRect, color: UIColor) {
+                UIColor.white.withAlphaComponent(0.10).setFill()
+                UIBezierPath(roundedRect: rect, cornerRadius: 18).fill()
+                let ia: [NSAttributedString.Key: Any] = [.font: UIFont.systemFont(ofSize: 38), .foregroundColor: color]
+                let isz = (icon as NSString).size(withAttributes: ia)
+                (icon as NSString).draw(at: CGPoint(x: rect.midX - isz.width/2, y: rect.minY + 6), withAttributes: ia)
+                let la: [NSAttributedString.Key: Any] = [.font: UIFont.systemFont(ofSize: 12, weight: .bold), .foregroundColor: color]
+                let lsz = (label as NSString).size(withAttributes: la)
+                (label as NSString).draw(at: CGPoint(x: rect.midX - lsz.width/2, y: rect.maxY - 20), withAttributes: la)
             }
+            iconButton("🔊", isSpeaking ? "SPEAKING" : "AUDIO", rect: layout.audioRect,
+                       color: isSpeaking ? .systemIndigo : UIColor.white.withAlphaComponent(0.85))
+            iconButton("📷", hasEvidence ? "CAPTURED" : "PHOTO", rect: layout.camRect,
+                       color: hasEvidence ? .systemGreen : UIColor.white.withAlphaComponent(0.85))
 
-            // Primary action button (right side) — pill shape, properly centred text
-            // Width 148pt to avoid the "stretched" look on a 512pt canvas.
-            let btnX: CGFloat = W - 158
-            let btnR  = CGRect(x: btnX, y: barY + 12, width: 144, height: 48)
-            let btnCorner: CGFloat = 24   // full pill radius
-
-            func drawCenteredLabel(_ text: String, attrs: [NSAttributedString.Key: Any], in rect: CGRect) {
-                let str = text as NSString
-                let sz  = str.size(withAttributes: attrs)
-                str.draw(at: CGPoint(x: rect.midX - sz.width/2, y: rect.midY - sz.height/2),
-                         withAttributes: attrs)
+            // Primary button — thumb-sized, 24 pt label.
+            let btnR = layout.primaryRect
+            func primary(_ text: String, fill: UIColor, textColor: UIColor) {
+                fill.setFill()
+                UIBezierPath(roundedRect: btnR, cornerRadius: btnR.height/2).fill()
+                let a: [NSAttributedString.Key: Any] = [.font: UIFont.boldSystemFont(ofSize: 24), .foregroundColor: textColor]
+                let sz = (text as NSString).size(withAttributes: a)
+                (text as NSString).draw(at: CGPoint(x: btnR.midX - sz.width/2, y: btnR.midY - sz.height/2),
+                                        withAttributes: a)
             }
-
             if isLastStep && allRequiredDone {
-                UIColor.systemGreen.setFill()
-                UIBezierPath(roundedRect: btnR, cornerRadius: btnCorner).fill()
-                let btnAttrs: [NSAttributedString.Key: Any] = [
-                    .font:            UIFont.boldSystemFont(ofSize: 14),
-                    .foregroundColor: UIColor.white,
-                ]
-                drawCenteredLabel("✎  Sign Off", attrs: btnAttrs, in: btnR)
+                primary("✎ Sign Off", fill: .systemGreen, textColor: .white)
             } else if isCompleted {
-                UIColor.systemGreen.withAlphaComponent(0.2).setFill()
-                UIBezierPath(roundedRect: btnR, cornerRadius: btnCorner).fill()
-                let btnAttrs: [NSAttributedString.Key: Any] = [
-                    .font:            UIFont.boldSystemFont(ofSize: 14),
-                    .foregroundColor: UIColor.systemGreen,
-                ]
-                drawCenteredLabel("✓  Completed", attrs: btnAttrs, in: btnR)
+                primary("✓ Completed", fill: UIColor.systemGreen.withAlphaComponent(0.2), textColor: .systemGreen)
             } else if step.completionRequired {
-                UIColor.systemIndigo.setFill()
-                UIBezierPath(roundedRect: btnR, cornerRadius: btnCorner).fill()
-                let btnAttrs: [NSAttributedString.Key: Any] = [
-                    .font:            UIFont.boldSystemFont(ofSize: 14),
-                    .foregroundColor: UIColor.white,
-                ]
-                drawCenteredLabel("✓  Mark Complete", attrs: btnAttrs, in: btnR)
+                primary("✓ Complete", fill: isFailPath ? UIColor(red: 0.73, green: 0.11, blue: 0.11, alpha: 1)
+                                                       : UIColor(red: 0.09, green: 0.64, blue: 0.29, alpha: 1),
+                        textColor: .white)
             } else {
-                UIColor.white.withAlphaComponent(0.12).setFill()
-                UIBezierPath(roundedRect: btnR, cornerRadius: btnCorner).fill()
-                let btnAttrs: [NSAttributedString.Key: Any] = [
-                    .font:            UIFont.systemFont(ofSize: 14),
-                    .foregroundColor: UIColor.white.withAlphaComponent(0.6),
-                ]
-                drawCenteredLabel("→  Next Step", attrs: btnAttrs, in: btnR)
+                primary("→ Next Step", fill: UIColor.white.withAlphaComponent(0.12),
+                        textColor: UIColor.white.withAlphaComponent(0.75))
             }
         }
+        return (img, layout)
     }
 
     // ── Pin highlight ─────────────────────────────────────────────────────────
@@ -1639,6 +1770,14 @@ struct ARGuideSessionView: View {
         let dist   = simd_length(targetW - camPos)
         distanceM  = dist
 
+        // A4: distance-aware panel scaling — beyond 1.5 m the current panel
+        // grows with distance (capped 2.2×) so type never drops below the
+        // readable floor. Same principle as the tag-marker scaling.
+        if let container = panelContainers[step.id] {
+            let scale = Float(max(1.0, min(2.2, dist / 1.5)))
+            container.scale = SCNVector3(scale, scale, scale)
+        }
+
         // Do not auto-expand the 2D panel on arrival — user taps the mini card to open it
 
         let sv        = arManager.sceneView
@@ -1735,19 +1874,21 @@ struct ARGuideSessionView: View {
         }
     }
 
-    /// Shows only the current step's panel (default) or all panels (when showAllPanels = true).
-    /// Panels for non-current steps are hidden to reduce visual clutter in the AR scene.
+    /// A3 (2026.4.45): the eye toggle now governs the WHOLE step overlay set —
+    /// floating panels AND numbered pins. Default = current step only; the
+    /// 👁 button shows everything for orientation. (The 3D ghost model was
+    /// already current-step-only.) Focus is the default, context on demand.
     private func updatePanelVisibility(currentIndex: Int? = nil) {
         guard case .navigating(let activeIndex) = phase else { return }
         let idx = currentIndex ?? activeIndex
+        SCNTransaction.begin()
+        SCNTransaction.animationDuration = 0.2
         for (i, step) in sortedSteps.enumerated() {
-            guard let container = panelContainers[step.id] else { continue }
             let shouldShow = showAllPanels || i == idx
-            SCNTransaction.begin()
-            SCNTransaction.animationDuration = 0.2
-            container.isHidden = !shouldShow
-            SCNTransaction.commit()
+            panelContainers[step.id]?.isHidden = !shouldShow
+            pinNodes[step.id]?.isHidden        = !shouldShow
         }
+        SCNTransaction.commit()
     }
 
     // ── Assist UI (contextual AI help) ────────────────────────────────────────
@@ -1978,6 +2119,14 @@ struct ARGuideSessionView: View {
         guard index < progresses.count else { return }
         progresses[index].complete()
         persistProgress()
+        // A4: a completion MOMENT — success haptic + green pulse on the panel.
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        if let container = panelContainers[sortedSteps[index].id] {
+            container.runAction(.sequence([
+                .scale(to: 1.07, duration: 0.12),
+                .scale(to: 1.00, duration: 0.18),
+            ]))
+        }
         // Dismiss any active hint that was about or pointing to this step —
         // it is now moot since the step has just been completed.
         if let hint = activeHint, index < sortedSteps.count {

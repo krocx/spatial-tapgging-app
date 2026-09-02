@@ -670,6 +670,8 @@ struct CreateAnchorSheet: View {
 
     // Three-card anchor type picker
     private var anchorTypePicker: some View {
+        // E1: only entitled products can AUTHOR their anchor type. QR is the
+        // platform base (inspection + AR OMS). Unscoped users see all three.
         HStack(spacing: 8) {
             anchorTypeCard(
                 type:    .qr,
@@ -677,18 +679,22 @@ struct CreateAnchorSheet: View {
                 label:   "QR Anchor",
                 caption: "Print & scan"
             )
-            anchorTypeCard(
-                type:    .locTag,
-                icon:    "figure.walk.circle",
-                label:   "Gemba Walk",
-                caption: "Tap any surface"
-            )
-            anchorTypeCard(
-                type:    .loto,
-                icon:    "lock.shield",
-                label:   "iLOTO",
-                caption: "Control panel"
-            )
+            if settings.hasProduct("gemba") {
+                anchorTypeCard(
+                    type:    .locTag,
+                    icon:    "figure.walk.circle",
+                    label:   "Gemba Walk",
+                    caption: "Tap any surface"
+                )
+            }
+            if settings.hasProduct("iloto") {
+                anchorTypeCard(
+                    type:    .loto,
+                    icon:    "lock.shield",
+                    label:   "iLOTO",
+                    caption: "Control panel"
+                )
+            }
         }
         .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
         .listRowBackground(Color.clear)

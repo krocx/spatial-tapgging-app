@@ -149,7 +149,9 @@ struct AnchorHubView: View {
             }
 
             // ── AR Guides (QR anchors only; anchorType nil = legacy QR anchor) ───
-            if anchor.anchorType != .locTag {
+            // E1: authoring entry requires the 'aroms' entitlement; operator
+            // access stays governed by guide sharing/sessions.
+            if anchor.anchorType != .locTag && (mode != .author || settings.hasProduct("aroms")) {
                 Section {
                     NavigationLink {
                         GuideListView(anchor: anchor, mode: mode)

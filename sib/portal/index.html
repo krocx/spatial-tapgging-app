@@ -347,6 +347,9 @@
     .gl-guide-desc { font-size:0.75rem; color:var(--muted); padding:0 14px 10px; margin-top:-4px; }
     .gl-warn-banner { background:rgba(180,83,9,0.15); border-top:1px solid rgba(180,83,9,0.3); padding:7px 14px; font-size:0.74rem; color:#fbbf24; }
     .gl-steps-list { display:none; border-top:1px solid var(--border); }
+    .gl-opacity { display:inline-flex; align-items:center; gap:6px; margin-left:8px; font-size:0.72rem; }
+    .gl-opacity input[type=range] { width:90px; accent-color: var(--accent, #2f6fed); }
+    .gl-opacity-val { color: var(--muted); min-width:32px; font-variant-numeric: tabular-nums; }
     .gl-steps-list.open { display:block; }
     .gl-graph-panel { display:none; border-top:1px solid var(--border); background:rgba(0,0,0,0.18); }
     .gl-graph-panel.open { display:block; }
@@ -1288,7 +1291,8 @@ async function loadUamUsers() {
     el.innerHTML = `<table style="width:100%;border-collapse:collapse">
       <tr style="text-align:left;color:var(--muted)">
         <th style="padding:6px 8px">Email</th><th style="padding:6px 8px">Employee ID</th>
-        <th style="padding:6px 8px">Name</th><th style="padding:6px 8px">Role</th><th></th></tr>
+        <th style="padding:6px 8px">Name</th><th style="padding:6px 8px">Role</th>
+        <th style="padding:6px 8px" title="Product access — none checked = all products">Products</th><th></th></tr>
       ${j.data.map(u => `<tr style="border-top:1px solid var(--border)">
         <td style="padding:6px 8px;color:var(--text)">${esc(u.email)}</td>
         <td style="padding:6px 8px">${esc(u.employeeId)}</td>
@@ -1298,6 +1302,14 @@ async function loadUamUsers() {
             ${['technician','engineer','manager','owner'].map(rr =>
               `<option value="${rr}" ${u.role === rr ? 'selected' : ''}>${UAM_ROLE_LABEL[rr]}</option>`).join('')}
           </select></td>
+        <td style="padding:6px 8px;white-space:nowrap">
+          ${UAM_PRODUCTS.map(pr => `<label style="margin-right:8px;font-size:0.72rem;cursor:pointer" title="${pr.title}">
+            <input type="checkbox" ${((u.products && u.products.length) ? u.products.includes(pr.id) : false) ? 'checked' : ''}
+                   onchange="uamSetProducts('${u.id}', this.closest('td'), '${esc(u.email)}')"
+                   data-product="${pr.id}"> ${pr.label}
+          </label>`).join('')}
+          ${(!u.products || !u.products.length) ? '<span style="color:var(--muted);font-size:0.68rem">(all)</span>' : ''}
+        </td>
         <td style="padding:6px 8px;text-align:right">
           <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="uamRemoveUser('${u.id}','${esc(u.email)}')">Remove</button></td>
       </tr>`).join('')}
@@ -1319,6 +1331,23 @@ async function uamAddUser() {
     for (const id of ['uam-add-email','uam-add-empid','uam-add-name']) document.getElementById(id).value = '';
     loadUamUsers();
   } catch (e) { toast(`Add failed: ${e.message}`, true); }
+}
+
+// E1: product entitlements — none checked = all products (backward default).
+const UAM_PRODUCTS = [
+  { id: 'aroms', label: 'AR OMS', title: 'AR Work Instructions authoring' },
+  { id: 'iloto', label: 'iLOTO',  title: 'Lockout/Tagout authoring' },
+  { id: 'gemba', label: 'Gemba',  title: 'GembaWalk audit authoring' },
+];
+async function uamSetProducts(id, cell, email) {
+  const products = [...cell.querySelectorAll('input[data-product]:checked')].map(i => i.dataset.product);
+  try {
+    await apiFetch(`/uam/users/${id}`, { method: 'PATCH', body: JSON.stringify({ products }) });
+    toast(products.length ? `${email}: access set to ${products.join(', ')}` : `${email}: access reset to all products`);
+  } catch (e) {
+    toast(`Change refused: ${e.message}`, true);
+  }
+  loadUamUsers();   // re-render either way — refused changes snap back
 }
 
 async function uamSetRole(id, role, email) {
@@ -3371,17 +3400,46 @@ function renderStepsInCard(guideId, anchorId) {
     const branchTag  = (step.nextOnSuccess || step.nextOnFailure)
       ? `<span class="gl-step-tag gl-step-branch">⇒ Branch</span>` : '';
     const title      = step.title || `Step ${step.sequenceNumber}`;
+    // A2 (2026.4.45): quick ghost-opacity control for steps with a 3D model —
+    // adjust here without opening the app. Debounced PATCH on input.
+    const opacityCtl = step.modelId
+      ? `<span class="gl-opacity" onclick="event.stopPropagation()">👻
+           <input type="range" min="10" max="100" step="5"
+                  value="${Math.round((step.modelOpacity ?? 0.45) * 100)}"
+                  oninput="glOpacityInput(this, '${guideId}', '${step.id}')">
+           <span class="gl-opacity-val">${Math.round((step.modelOpacity ?? 0.45) * 100)}%</span>
+         </span>`
+      : '';
 
     html += `<div class="gl-step-row">
       <div class="gl-step-seq">${step.sequenceNumber}</div>
       <div class="gl-step-body">
         <div class="gl-step-title">${esc(title)}</div>
         <div class="gl-step-text">${esc(step.text)}</div>
-        <div class="gl-step-tags">${placedTag}${imgTag}${branchTag}</div>
+        <div class="gl-step-tags">${placedTag}${imgTag}${branchTag}${opacityCtl}</div>
       </div>
     </div>`;
   }
   stepsEl.innerHTML = html;
+}
+
+// A2: debounced ghost-opacity PATCH from the Guide Library step row.
+const glOpacityTimers = {};
+function glOpacityInput(input, guideId, stepId) {
+  const pct = parseInt(input.value, 10);
+  input.parentElement.querySelector('.gl-opacity-val').textContent = pct + '%';
+  clearTimeout(glOpacityTimers[stepId]);
+  glOpacityTimers[stepId] = setTimeout(async () => {
+    try {
+      await apiFetch(`/guides/${encodeURIComponent(guideId)}/steps/${encodeURIComponent(stepId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ modelOpacity: pct / 100 }),
+      });
+    } catch (e) {
+      alert('Could not save opacity: ' + (e.message || 'server error'));
+    }
+  }, 400);
 }
 
 async function toggleGuideGraph(guideId, anchorId) {

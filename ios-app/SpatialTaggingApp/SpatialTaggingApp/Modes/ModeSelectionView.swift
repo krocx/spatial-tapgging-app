@@ -363,6 +363,7 @@ struct ModeSelectionView: View {
                         settings.uamToken = r.token
                         settings.uamRole  = r.user.role
                         settings.uamUserName = r.user.name
+                        settings.uamProducts = (r.user.products ?? []).joined(separator: ",")
                     } catch let SIBClientError.httpError(code, _) where code == 401 {
                         settings.uamToken = ""
                         settings.uamRole  = ""
