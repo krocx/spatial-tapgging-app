@@ -888,6 +888,57 @@ export interface OpenLiveSessionRequest {
   guideName:    string;
   anchorName:   string;
   operatorName: string;
+  /**
+   * Work context for the shift (2026.4.45) — labelled "Production #" in
+   * AR OMS (chamber/system); other products relabel it (GembaWalk: audit /
+   * project name). Free text; lands in the usage log.
+   */
+  workContext?:       string;
+  /** Verified identity from the kiosk sign-in (server re-checks the token). */
+  operatorEmail?:     string;
+  operatorEmployeeId?: string;
+}
+
+// ============================================================
+// AR OMS Usage Log — durable per-step timing per work context (2026.4.45)
+// ============================================================
+
+/** One step visit inside a usage-log session. */
+export interface OmsUsageStepEntry {
+  stepId:           string;
+  stepIndex?:       number;
+  enteredAt:        string;                 // ISO 8601
+  exitedAt?:        string;
+  durationSeconds?: number;
+  /** open = still on it (or session abandoned while on it). */
+  outcome:          'open' | 'completed' | 'failed' | 'left';
+  // K4 (step validation) and K5 (evidence) extend this entry.
+}
+
+/**
+ * Durable usage record, one per live guide session — the system of record
+ * for "who worked on what, on which Production #, for how long, step by
+ * step". Written server-side from the live-session event stream; survives
+ * restarts (unlike LiveGuideSession, which is intentionally ephemeral).
+ */
+export interface OmsUsageSession {
+  id:                 string;   // = liveSessionId
+  workContext?:       string;   // Production # / audit name
+  guideId:            string;
+  guideName:          string;
+  anchorId:           string;
+  anchorName:         string;
+  operatorName:       string;
+  operatorEmail?:     string;
+  operatorEmployeeId?: string;
+  startedAt:          string;
+  endedAt?:           string;
+  totalSeconds?:      number;
+  /** true = sign-off submitted; false = abandoned/still open. */
+  completed:          boolean;
+  /** GuideSession (sign-off) id once linked. */
+  signOffSessionId?:  string;
+  steps:              OmsUsageStepEntry[];
 }
 
 export interface PushGuideSessionEventRequest {

@@ -23,6 +23,8 @@
 //   GET  /guide-sessions/live/:id/hints           — AI hint poll; consume-once (Step 3)
 
 import { Router } from 'express';
+import { usageOpen, usageRecordEvent, usageLinkSignOff, listUsage } from '../oms/usage-log.js';
+import { currentUamUser } from '../middleware/auth.js';
 import type { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
@@ -105,6 +107,10 @@ router.post('/live', (req: Request, res: Response): void => {
   }
 
   const session = openLiveSession(body);
+  // Usage log (K2): capture the durable record. Token-verified identity
+  // (kiosk sign-in) beats whatever the client typed.
+  const actor = currentUamUser(req);
+  usageOpen(session, body, actor ? { email: actor.email, employeeId: actor.employeeId } : undefined);
   res.status(201).json({ data: session, timestamp: new Date().toISOString() });
 });
 
@@ -118,6 +124,7 @@ router.post('/live/:id/events', (req: Request, res: Response): void => {
   }
 
   const event = pushEvent(req.params.id, body);
+  if (event) usageRecordEvent(req.params.id, event.type, body);   // usage log (K2)
   if (!event) {
     res.status(404).json({
       error: `Live session ${req.params.id} not found`,
@@ -240,10 +247,24 @@ router.post('/', (req: Request, res: Response): void => {
   // This closes the SSE stream and pushes a session:submitted event to observers.
   if (body.liveSessionId) {
     closeLiveSession(body.liveSessionId, session.id);
+    usageLinkSignOff(body.liveSessionId, session.id);   // usage log (K2)
   }
 
   const resp: ApiResponse<GuideSession> = { data: session, timestamp: now };
   res.status(201).json(resp);
+});
+
+// GET /guide-sessions/usage — the AR OMS Usage Log (K2).
+//   ?workContext=xxx → one Production # (or audit name)
+//   ?guideId=xxx     → one guide
+// Newest first. Per-step timing rows are embedded in each record.
+router.get('/usage', (req: Request, res: Response): void => {
+  const { workContext, guideId } = req.query;
+  const data = listUsage({
+    ...(typeof workContext === 'string' && workContext ? { workContext } : {}),
+    ...(typeof guideId === 'string' && guideId ? { guideId } : {}),
+  });
+  res.json({ data, timestamp: new Date().toISOString() });
 });
 
 // GET /guide-sessions — list sessions (all, by anchor, or by guide)

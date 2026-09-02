@@ -527,16 +527,25 @@ final class SIBClient {
         anchorId:     String,
         guideName:    String,
         anchorName:   String,
-        operatorName: String
+        operatorName: String,
+        workContext:  String? = nil,          // Production # / audit name (K2)
+        operatorEmail: String? = nil,
+        operatorEmployeeId: String? = nil
     ) async throws -> String {
         struct Req: Encodable {
             let guideId, anchorId, guideName, anchorName, operatorName: String
+            let workContext: String?
+            let operatorEmail: String?
+            let operatorEmployeeId: String?
         }
         struct LiveSession: Decodable { let id: String }
         struct Wrapper:     Decodable { let data: LiveSession }
         let body    = Req(guideId: guideId, anchorId: anchorId,
                           guideName: guideName, anchorName: anchorName,
-                          operatorName: operatorName)
+                          operatorName: operatorName,
+                          workContext: workContext,
+                          operatorEmail: operatorEmail,
+                          operatorEmployeeId: operatorEmployeeId)
         let wrapper = try await post(Wrapper.self, path: "/guide-sessions/live", body: body)
         return wrapper.data.id
     }

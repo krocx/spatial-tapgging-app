@@ -749,13 +749,19 @@ struct ARGuideSessionView: View {
 
             // Open live session for real-time telemetry (fire-and-forget — AR session
             // continues normally if this fails).
-            let opName = settings.authorName.isEmpty ? "Operator" : settings.authorName
+            // Prefer the kiosk identity (verified name) over the free-text
+            // author name; attach the shift's work context (Production #).
+            let opName = !settings.uamUserName.isEmpty ? settings.uamUserName
+                       : settings.authorName.isEmpty ? "Operator" : settings.authorName
             if let lsId = try? await client.openLiveGuideSession(
                 guideId:      guide.id,
                 anchorId:     anchor.id,
                 guideName:    guide.name,
                 anchorName:   anchor.assetId,
-                operatorName: opName
+                operatorName: opName,
+                workContext:  settings.productionNumber.isEmpty ? nil : settings.productionNumber,
+                operatorEmail: settings.workEmail.isEmpty ? nil : settings.workEmail,
+                operatorEmployeeId: settings.employeeId.isEmpty ? nil : settings.employeeId
             ) {
                 liveSessionId = lsId
                 // Push step:entered for step 0 (already entered in onAppear before loadData ran)

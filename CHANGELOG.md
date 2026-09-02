@@ -7,6 +7,19 @@ it, it gets a line.
 ## 2026.4.45 — 2026-09-01
 
 ### Added
+- **AR OMS Usage Log (K2)** — a durable, per-step usage record for every
+  guide run, derived server-side from the live-session event stream: step
+  enter/exit times, duration (operator-measured when available), outcome
+  (completed / failed / left), session totals, operator identity (token-
+  verified kiosk sign-in wins over client-typed fields) and the shift's
+  **work context** — labelled Production # in AR OMS; other products relabel
+  it (GembaWalk: audit/project name). Survives restarts, unlike the
+  intentionally-ephemeral live session. `GET /guide-sessions/usage`
+  (?workContext= / ?guideId=) serves it; the portal's AR Guides tab gains a
+  📊 Usage Log toggle grouped by Production # with expandable per-step
+  timing tables. iOS sends workContext + identity when opening a live
+  session. Offline sign-offs finalise the record at link time even when the
+  submit event never arrived. 3 new tests (159 total).
 - **Kiosk shift start (K1)** — the iPad now opens on a shift screen when the
   allow-list is active: the technician enters ONLY their employee ID (the
   server resolves name/email/role — `POST /uam/login` gained an

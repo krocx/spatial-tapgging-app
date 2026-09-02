@@ -568,6 +568,7 @@
 <div id="ar-guides-panel">
   <div class="sessions-toolbar">
     <span style="font-size:0.78rem;color:var(--muted);flex:1">AR Guide completions · grouped by anchor → guide</span>
+    <button class="btn btn-ghost btn-sm" id="usage-log-btn" onclick="toggleUsageLog()" title="Per-step timing per Production #">📊 Usage Log</button>
     <button class="btn btn-ghost btn-sm" onclick="openImportGuideModal()" title="Import a guide from JSON or MES">⬆ Import Guide</button>
     <button class="btn btn-ghost btn-sm" onclick="exportARGuidesCSV()" title="Export as CSV">⬇ Export</button>
     <button class="btn btn-ghost btn-sm" onclick="loadARGuideSessions()">⟳ Refresh</button>
@@ -580,6 +581,7 @@
     <span class="flt-lbl">to</span><input type="date" id="flt-ag-to" onchange="setFilter('ag')">
   </div>
   <div id="ar-guides-list" class="sessions-list"></div>
+  <div id="usage-log-view" class="sessions-list" style="display:none"></div>
 </div>
 
 <!-- Admin panel — dedicated ops page: unlock, backups, ops log -->
@@ -1962,6 +1964,89 @@ function switchView(view) {
     anchorGrid.style.display = '';
     toolbar.style.display    = 'flex';
   }
+}
+
+// ── AR OMS Usage Log (K2, 2026.4.45) ─────────────────────────────────────────
+// Per-step timing per work context (Production #). Toggle inside the
+// AR Guides panel; grouped workContext → session, expandable step rows.
+let usageLogVisible = false;
+let usageLogData = [];
+
+function toggleUsageLog() {
+  usageLogVisible = !usageLogVisible;
+  document.getElementById('ar-guides-list').style.display = usageLogVisible ? 'none' : '';
+  document.getElementById('usage-log-view').style.display = usageLogVisible ? '' : 'none';
+  document.getElementById('usage-log-btn').textContent = usageLogVisible ? '📋 Completions' : '📊 Usage Log';
+  if (usageLogVisible) loadUsageLog();
+}
+
+async function loadUsageLog() {
+  const view = document.getElementById('usage-log-view');
+  view.innerHTML = '<div class="empty-state">Loading usage log…</div>';
+  try {
+    const body = await apiFetch('/guide-sessions/usage');
+    usageLogData = body.data || [];
+    renderUsageLog();
+  } catch (e) {
+    view.innerHTML = `<div class="empty-state">Could not load the usage log — ${esc(e.message || 'server error')}</div>`;
+  }
+}
+
+function fmtDur(s) {
+  if (s === undefined || s === null) return '—';
+  if (s < 60) return s + 's';
+  const m = Math.floor(s / 60);
+  return m < 60 ? `${m}m ${s % 60}s` : `${Math.floor(m / 60)}h ${m % 60}m`;
+}
+
+function renderUsageLog() {
+  const view = document.getElementById('usage-log-view');
+  if (usageLogData.length === 0) {
+    view.innerHTML = '<div class="empty-state">No usage recorded yet. Sessions appear here as operators run guides with a Production # set.</div>';
+    return;
+  }
+  // Group by workContext (Production # / audit name).
+  const groups = new Map();
+  for (const u of usageLogData) {
+    const key = u.workContext || '(no production #)';
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(u);
+  }
+  const OUTCOME_ICON = { completed: '✅', failed: '❌', left: '↷', open: '⏳' };
+  let html = '';
+  for (const [ctx, sessions] of groups) {
+    const total = sessions.reduce((a, u) => a + (u.totalSeconds || 0), 0);
+    html += `<div class="ag-anchor-group">
+      <div class="ag-anchor-head">
+        <strong>🏭 ${esc(ctx)}</strong>
+        <span class="ag-guide-badge">${sessions.length} session${sessions.length !== 1 ? 's' : ''} · ${fmtDur(total)}</span>
+      </div>`;
+    for (const u of sessions) {
+      const stepsRows = (u.steps || []).map(e => `
+        <tr>
+          <td>${e.stepIndex !== undefined ? e.stepIndex + 1 : '·'}</td>
+          <td style="font-family:monospace;font-size:0.7rem">${esc(e.stepId.slice(0, 8))}</td>
+          <td>${new Date(e.enteredAt).toLocaleTimeString()}</td>
+          <td>${fmtDur(e.durationSeconds)}</td>
+          <td>${OUTCOME_ICON[e.outcome] || ''} ${esc(e.outcome)}</td>
+        </tr>`).join('');
+      html += `<details class="usage-session">
+        <summary style="cursor:pointer;padding:8px 10px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+          <span>${u.completed ? '✅' : '⏳'}</span>
+          <strong>${esc(u.guideName)}</strong>
+          <span style="color:var(--muted)">${esc(u.operatorName)}${u.operatorEmployeeId ? ' · ' + esc(u.operatorEmployeeId) : ''}</span>
+          <span style="color:var(--muted)">${new Date(u.startedAt).toLocaleString()}</span>
+          <span class="ag-guide-badge">${fmtDur(u.totalSeconds)} · ${(u.steps || []).length} step visit${(u.steps || []).length !== 1 ? 's' : ''}</span>
+        </summary>
+        <table class="sessions-table" style="margin:0 10px 10px">
+          <thead><tr><th>#</th><th>Step</th><th>Entered</th><th>Duration</th><th>Outcome</th></tr></thead>
+          <tbody>${stepsRows || '<tr><td colspan="5" style="color:var(--muted)">No step activity recorded</td></tr>'}</tbody>
+        </table>
+      </details>`;
+    }
+    html += '</div>';
+  }
+  view.innerHTML = html;
 }
 
 // ── AR Guide Sessions ─────────────────────────────────────────────────────────
