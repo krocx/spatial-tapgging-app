@@ -204,6 +204,32 @@
     .nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
     .nav-tab:hover:not(.active) { color: var(--text); }
 
+    /* ── AR OMS Usage Log (K2) — dense grouped table ── */
+    .usage-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+    .usage-table th { text-align: left; padding: 6px 8px; font-size: 0.68rem; text-transform: uppercase;
+      letter-spacing: 0.04em; color: var(--muted); border-bottom: 1px solid var(--border); white-space: nowrap; }
+    .usage-table td { padding: 5px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .usage-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+    .ul-group td { background: rgba(47, 111, 237, 0.08); padding: 7px 8px; font-size: 0.8rem; }
+    .ul-group-meta { float: right; color: var(--muted); font-size: 0.72rem; }
+    .ul-row { cursor: pointer; }
+    .ul-row:hover td { background: rgba(255, 255, 255, 0.03); }
+    .ul-caret { color: var(--muted); width: 18px; transition: transform 0.12s; }
+    .ul-row.open .ul-caret { transform: rotate(90deg); }
+    .ul-detail { display: none; }
+    .ul-detail.open { display: table-row; }
+    .ul-detail > td { background: rgba(0, 0, 0, 0.18); padding: 8px 10px 12px; }
+    .usage-steps { width: 100%; border-collapse: collapse; font-size: 0.74rem; }
+    .usage-steps th { padding: 4px 8px; font-size: 0.64rem; }
+    .usage-steps td { padding: 3px 8px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .ul-ok { color: var(--green, #3ecf6f); }
+    .ul-bad { color: var(--red, #f05656); }
+    .ul-dim { color: var(--muted); }
+    .ul-val { font-weight: 700; font-size: 0.7rem; padding: 1px 7px; border-radius: 9px; }
+    .ul-val.pass { background: rgba(62, 207, 111, 0.15); color: var(--green, #3ecf6f); }
+    .ul-val.fail { background: rgba(240, 86, 86, 0.15); color: var(--red, #f05656); }
+    .mono { font-family: monospace; }
+
     /* ── Phase 4: Sessions panel ── */
     #sessions-panel { display: none; padding: 20px 24px 56px; }
     #sessions-panel.visible { display: block; }
@@ -2005,47 +2031,54 @@ function renderUsageLog() {
     view.innerHTML = '<div class="empty-state">No usage recorded yet. Sessions appear here as operators run guides with a Production # set.</div>';
     return;
   }
-  // Group by workContext (Production # / audit name).
   const groups = new Map();
   for (const u of usageLogData) {
     const key = u.workContext || '(no production #)';
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(u);
   }
-  const OUTCOME_ICON = { completed: '✅', failed: '❌', left: '↷', open: '⏳' };
-  let html = '';
+  const OUT = { completed: '✅', failed: '❌', left: '↷', open: '⏳' };
+  const valBadge = v => !v ? ''
+    : `<span class="ul-val ${v.result}">${v.mode === 'system' ? '🤖' : '👤'} ${v.result.toUpperCase()}${v.score !== undefined ? ' ' + v.score.toFixed(2) : ''}</span>`;
+
+  let html = '<table class="usage-table"><thead><tr>' +
+    '<th></th><th>Production #</th><th>Guide</th><th>Operator</th><th>Started</th>' +
+    '<th class="num">Total</th><th class="num">Steps</th><th class="num">✔</th><th class="num">✖</th><th>Status</th>' +
+    '</tr></thead><tbody>';
+  let rowId = 0;
   for (const [ctx, sessions] of groups) {
     const total = sessions.reduce((a, u) => a + (u.totalSeconds || 0), 0);
-    html += `<div class="ag-anchor-group">
-      <div class="ag-anchor-head">
-        <strong>🏭 ${esc(ctx)}</strong>
-        <span class="ag-guide-badge">${sessions.length} session${sessions.length !== 1 ? 's' : ''} · ${fmtDur(total)}</span>
-      </div>`;
+    html += `<tr class="ul-group"><td colspan="10">🏭 <strong>${esc(ctx)}</strong>` +
+      `<span class="ul-group-meta">${sessions.length} session${sessions.length !== 1 ? 's' : ''} · ${fmtDur(total)}</span></td></tr>`;
     for (const u of sessions) {
-      const stepsRows = (u.steps || []).map(e => `
-        <tr>
-          <td>${e.stepIndex !== undefined ? e.stepIndex + 1 : '·'}</td>
-          <td style="font-family:monospace;font-size:0.7rem">${esc(e.stepId.slice(0, 8))}</td>
-          <td>${new Date(e.enteredAt).toLocaleTimeString()}</td>
-          <td>${fmtDur(e.durationSeconds)}</td>
-          <td>${OUTCOME_ICON[e.outcome] || ''} ${esc(e.outcome)}</td>
-        </tr>`).join('');
-      html += `<details class="usage-session">
-        <summary style="cursor:pointer;padding:8px 10px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-          <span>${u.completed ? '✅' : '⏳'}</span>
-          <strong>${esc(u.guideName)}</strong>
-          <span style="color:var(--muted)">${esc(u.operatorName)}${u.operatorEmployeeId ? ' · ' + esc(u.operatorEmployeeId) : ''}</span>
-          <span style="color:var(--muted)">${new Date(u.startedAt).toLocaleString()}</span>
-          <span class="ag-guide-badge">${fmtDur(u.totalSeconds)} · ${(u.steps || []).length} step visit${(u.steps || []).length !== 1 ? 's' : ''}</span>
-        </summary>
-        <table class="sessions-table" style="margin:0 10px 10px">
-          <thead><tr><th>#</th><th>Step</th><th>Entered</th><th>Duration</th><th>Outcome</th></tr></thead>
-          <tbody>${stepsRows || '<tr><td colspan="5" style="color:var(--muted)">No step activity recorded</td></tr>'}</tbody>
-        </table>
-      </details>`;
+      const id = 'ul-' + (rowId++);
+      const steps = u.steps || [];
+      const done = steps.filter(e => e.outcome === 'completed').length;
+      const failed = steps.filter(e => e.outcome === 'failed').length;
+      html += `<tr class="ul-row" onclick="document.getElementById('${id}').classList.toggle('open');this.classList.toggle('open')">` +
+        `<td class="ul-caret">▸</td>` +
+        `<td>${esc(u.workContext || '—')}</td>` +
+        `<td><strong>${esc(u.guideName)}</strong></td>` +
+        `<td>${esc(u.operatorName)}${u.operatorEmployeeId ? ' <span class="ul-dim">· ' + esc(u.operatorEmployeeId) + '</span>' : ''}</td>` +
+        `<td>${new Date(u.startedAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>` +
+        `<td class="num">${fmtDur(u.totalSeconds)}</td>` +
+        `<td class="num">${steps.length}</td>` +
+        `<td class="num ul-ok">${done}</td>` +
+        `<td class="num ul-bad">${failed || ''}</td>` +
+        `<td>${u.completed ? '✅ Signed off' : '⏳ Open'}</td></tr>`;
+      const stepRows = steps.map(e => `<tr>` +
+        `<td class="num">${e.stepIndex !== undefined ? e.stepIndex + 1 : '·'}</td>` +
+        `<td>${new Date(e.enteredAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</td>` +
+        `<td class="num">${fmtDur(e.durationSeconds)}</td>` +
+        `<td>${OUT[e.outcome] || ''} ${esc(e.outcome)}</td>` +
+        `<td>${valBadge(e.validation)}</td>` +
+        `<td class="ul-dim mono">${esc(e.stepId.slice(0, 8))}</td></tr>`).join('');
+      html += `<tr id="${id}" class="ul-detail"><td></td><td colspan="9">` +
+        `<table class="usage-steps"><thead><tr><th class="num">#</th><th>Entered</th><th class="num">Time</th><th>Outcome</th><th>Validation</th><th>Step</th></tr></thead>` +
+        `<tbody>${stepRows || '<tr><td colspan="6" class="ul-dim">No step activity recorded</td></tr>'}</tbody></table></td></tr>`;
     }
-    html += '</div>';
   }
+  html += '</tbody></table>';
   view.innerHTML = html;
 }
 
