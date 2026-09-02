@@ -7,6 +7,20 @@ it, it gets a line.
 ## 2026.4.45 — 2026-09-01
 
 ### Added
+- **Kiosk shift start (K1)** — the iPad now opens on a shift screen when the
+  allow-list is active: the technician enters ONLY their employee ID (the
+  server resolves name/email/role — `POST /uam/login` gained an
+  employee-ID-only kiosk path; the email+ID Settings path is unchanged) plus
+  the **Production #** (chamber/system) they'll work on. Both persist for
+  the shift and show in a home-screen chip — tap it to change the Production
+  # or switch technician between shifts. A 401 on the launch refresh
+  (revoked access) reopens the gate. The gate is deterministic: it renders
+  immediately whenever no shift is set and owns the server connection itself
+  (connecting state, cold-start retries, Retry button, dormant-UAM
+  auto-skip) — it never waits on a network probe to appear. Known pre-SSO
+  trade-off, approved:
+  employee ID alone authenticates on kiosk iPads until HYPR SSO lands; the
+  allow-list remains the gate and the SSO swap point is unchanged.
 - **Canvas: precise connections, new shapes, self-loops** — edges now attach
   to the actual shape OUTLINE (diamonds/hexagons no longer show gaps where
   the old math hit the invisible bounding box), and every node gains four

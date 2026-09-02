@@ -74,3 +74,16 @@ test('store: email lookup is normalized', () => {
   assert.equal(findUserByEmail('  KARTHIK@amat.com ')?.id, 'u1');
   assert.equal(findUserByEmail('nobody@amat.com'), undefined);
 });
+
+test('store: kiosk lookup by employee ID (exact match, as the login route does)', () => {
+  const now = new Date().toISOString();
+  uamUserStore.save({
+    id: 'u2', email: 'tech1@amat.com', employeeId: 'E200', name: 'Tech One',
+    role: 'technician', createdAt: now, updatedAt: now,
+  });
+  // Same predicate the kiosk branch of POST /uam/login uses.
+  const byId = (wanted: string) => uamUserStore.findAll().find(u => u.employeeId === wanted);
+  assert.equal(byId('E200')?.email, 'tech1@amat.com');
+  assert.equal(byId('E999'), undefined);
+  assert.equal(byId('e200'), undefined, 'employee IDs are case-exact');
+});

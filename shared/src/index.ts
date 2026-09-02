@@ -1289,8 +1289,9 @@ export interface UpdateUamUserRequest {
 }
 
 export interface UamLoginRequest {
-  email:       string;
-  /** iOS supplies it and it must match the record; portal may omit. */
+  /** Omitted on the kiosk path — employeeId alone identifies the user. */
+  email?:      string;
+  /** Kiosk path sends ONLY this; when sent WITH email it must match. */
   employeeId?: string;
 }
 

@@ -20,6 +20,9 @@ struct ModeSelectionView: View {
     @State private var showAuthorDirectory  = false
     @State private var showOperatorDirectory = false
     @State private var showSettings         = false
+    /// Kiosk gate — presented when UAM is active and there's no signed-in
+    /// technician, or no Production # set for the shift.
+    @State private var showKioskStart       = false
     @State private var showOnboarding       = false
     @State private var isTesting            = false
 
@@ -74,6 +77,32 @@ struct ModeSelectionView: View {
                     Text("Spatial Tagging").font(.largeTitle.bold()).foregroundColor(.white)
                     Text("Cleanroom Inspection · v\(AppVersion.current)")
                         .font(.subheadline).foregroundColor(.white.opacity(0.5))
+
+                    // Shift chip — who is signed in + which system they work
+                    // on. Tapping reopens the kiosk screen (change production
+                    // number or switch technician between shifts).
+                    if settings.uamSignedIn || !settings.productionNumber.isEmpty {
+                        Button { showKioskStart = true } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "person.crop.circle.badge.checkmark")
+                                    .foregroundColor(.green)
+                                Text(settings.uamUserName.isEmpty ? settings.employeeId : settings.uamUserName)
+                                    .fontWeight(.semibold)
+                                if !settings.productionNumber.isEmpty {
+                                    Text("· Prod # \(settings.productionNumber)")
+                                        .foregroundColor(.cyan)
+                                }
+                                Image(systemName: "chevron.right")
+                                    .font(.caption2).foregroundColor(.white.opacity(0.4))
+                            }
+                            .font(.footnote)
+                            .foregroundColor(.white.opacity(0.85))
+                            .padding(.vertical, 6).padding(.horizontal, 12)
+                            .background(Color.white.opacity(0.08))
+                            .cornerRadius(18)
+                        }
+                        .padding(.top, 4)
+                    }
                 }
                 .padding(.top, 48).padding(.horizontal, 24)
 
@@ -187,6 +216,16 @@ struct ModeSelectionView: View {
                 .background(Color.white.opacity(0.05))
                 .clipShape(RoundedRectangle(cornerRadius: 10))
                 .padding(.horizontal, 24).padding(.bottom, 40)
+            }
+
+            // ── Kiosk shift gate (2026.4.45) — topmost ZStack layer. Rendered
+            // as STATE, not as a modal presentation: a fullScreenCover set
+            // during launch can be silently dropped by SwiftUI; a ZStack
+            // layer cannot. KioskStartView paints its own full background.
+            if showKioskStart {
+                KioskStartView { showKioskStart = false }
+                    .transition(.opacity)
+                    .zIndex(10)
             }
         }
         // ── Tour: collect spotlight target frames ──────────────────────────────
@@ -323,15 +362,30 @@ struct ModeSelectionView: View {
                             email: settings.workEmail, employeeId: settings.employeeId)
                         settings.uamToken = r.token
                         settings.uamRole  = r.user.role
+                        settings.uamUserName = r.user.name
                     } catch let SIBClientError.httpError(code, _) where code == 401 {
                         settings.uamToken = ""
                         settings.uamRole  = ""
+                        settings.uamUserName = ""
+                        showKioskStart = true   // access changed — re-identify
                     } catch { /* offline — keep cached role */ }
                 }
             }
 
+            // Kiosk gate (2026.4.45): DETERMINISTIC — whenever no shift is
+            // set (nobody signed in, or no Production #), the gate shows
+            // immediately. The gate screen owns the server connection itself
+            // (connecting state, cold-start retries, dormant-UAM auto-skip);
+            // showing it must never wait on a network call.
+            print("KIOSK gate: isConfigured=\(settings.isConfigured) uamSignedIn=\(settings.uamSignedIn) prod='\(settings.productionNumber)'")
+            if settings.isConfigured && (!settings.uamSignedIn || settings.productionNumber.isEmpty) {
+                showKioskStart = true
+            }
+
             // Guided tour: auto-start on very first launch (takes priority over FTUE home page)
-            if settings.guidedTourEnabled && !settings.guidedTourSeen {
+            if showKioskStart || (settings.isConfigured && settings.uamSignedIn && settings.productionNumber.isEmpty) {
+                // Kiosk gate takes priority — tour/FTUE can run on a later launch.
+            } else if settings.guidedTourEnabled && !settings.guidedTourSeen {
                 settings.guidedTourSeen = true
                 // Small delay so the view is fully laid out before spotlighting
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {

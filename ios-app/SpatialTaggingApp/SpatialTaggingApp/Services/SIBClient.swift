@@ -778,9 +778,30 @@ final class SIBClient {
     /// employee ID must match the UAM record. Throws httpError(401, …) when
     /// not listed / mismatched — callers surface the server's message.
     func uamLogin(email: String, employeeId: String) async throws -> UamLoginResult {
+        try await uamLoginRaw(body: ["email": email, "employeeId": employeeId])
+    }
+
+    /// Kiosk path (2026.4.45): the employee ID alone identifies the technician.
+    func uamLoginKiosk(employeeId: String) async throws -> UamLoginResult {
+        try await uamLoginRaw(body: ["employeeId": employeeId])
+    }
+
+    /// True when the server's allow-list has users (GET /config.uamActive) —
+    /// the signal that the kiosk start screen must gate the app.
+    func uamActive() async throws -> Bool {
+        var req = try makeRequest(method: "GET", path: "/config")
+        req.timeoutInterval = 10
+        let (data, _) = try await session.data(for: req)
+        // NB: /config is FLAT (predates the {data:…} envelope convention) —
+        // decode the top-level object directly.
+        struct Cfg: Codable { let uamActive: Bool? }
+        return (try JSONDecoder().decode(Cfg.self, from: data)).uamActive ?? false
+    }
+
+    private func uamLoginRaw(body: [String: String]) async throws -> UamLoginResult {
         var req = try makeRequest(method: "POST", path: "/uam/login")
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.httpBody = try JSONEncoder().encode(["email": email, "employeeId": employeeId])
+        req.httpBody = try JSONEncoder().encode(body)
         req.timeoutInterval = 15
         let (data, response): (Data, URLResponse)
         do { (data, response) = try await session.data(for: req) }

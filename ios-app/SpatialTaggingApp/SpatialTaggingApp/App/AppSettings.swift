@@ -60,6 +60,15 @@ final class AppSettings: ObservableObject {
     @Published var uamRole: String {
         didSet { UserDefaults.standard.set(uamRole, forKey: "uam_role") }
     }
+    /// Display name returned by the allow-list on sign-in (kiosk greeting).
+    @Published var uamUserName: String {
+        didSet { UserDefaults.standard.set(uamUserName, forKey: "uam_user_name") }
+    }
+    /// Production # — the chamber/system the technician works on this shift.
+    /// Entered on the kiosk start screen; free text by design (2026.4.45).
+    @Published var productionNumber: String {
+        didSet { UserDefaults.standard.set(productionNumber, forKey: "production_number") }
+    }
 
     var uamSignedIn: Bool { !uamToken.isEmpty && !uamRole.isEmpty }
     /// Technicians get operator-only surfaces. Unknown role = ungated
@@ -152,6 +161,8 @@ final class AppSettings: ObservableObject {
         employeeId = UserDefaults.standard.string(forKey: "uam_employee_id") ?? ""
         uamToken   = UserDefaults.standard.string(forKey: "uam_token")       ?? ""
         uamRole    = UserDefaults.standard.string(forKey: "uam_role")        ?? ""
+        uamUserName      = UserDefaults.standard.string(forKey: "uam_user_name")      ?? ""
+        productionNumber = UserDefaults.standard.string(forKey: "production_number") ?? ""
 
         // Author name: use stored value if set; otherwise extract first name from device name
         // e.g. "Karthik's iPhone" → "Karthik", bare "iPhone" → full device name as fallback

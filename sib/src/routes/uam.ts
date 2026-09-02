@@ -86,16 +86,26 @@ const router = Router();
 router.post('/login', (req: Request, res: Response) => {
   if (loginLimited(req.ip ?? 'unknown')) return err(res, 429, 'Too many attempts — wait a minute.');
   const body = req.body as UamLoginRequest;
-  if (!body?.email?.trim()) return err(res, 400, 'email is required');
+  const hasEmail = !!body?.email?.trim();
+  const hasEmpId = !!body?.employeeId?.trim();
+  if (!hasEmail && !hasEmpId) return err(res, 400, 'email or employeeId is required');
 
-  const user = findUserByEmail(body.email);
+  // Kiosk path (2026.4.45): employee ID ALONE identifies the technician —
+  // shared iPads shouldn't require typing emails. Pre-SSO trade-off, approved
+  // by the platform owner: the allowlist is still the gate, and the HYPR/SSO
+  // swap point (token issuing) is unchanged.
+  let user = hasEmail ? findUserByEmail(body.email!) : undefined;
+  if (!user && !hasEmail && hasEmpId) {
+    const wanted = body.employeeId!.trim();
+    user = uamUserStore.findAll().find(u => u.employeeId === wanted);
+  }
   if (!user) {
     logOpsEvent({ method: 'POST', path: '/uam/login', outcome: 'denied', ip: req.ip,
-      detail: `login rejected — ${normalizeEmail(body.email)} not in access list` });
+      detail: `login rejected — ${hasEmail ? normalizeEmail(body.email!) : `employee ID ${body.employeeId!.trim()}`} not in access list` });
     return err(res, 401, 'Not in the access list — ask your platform owner for access.');
   }
-  // iOS supplies the employee ID; when supplied it must match the record.
-  if (body.employeeId !== undefined && body.employeeId.trim() !== user.employeeId) {
+  // When BOTH are supplied (Settings path), the employee ID must match.
+  if (hasEmail && body.employeeId !== undefined && body.employeeId.trim() !== user.employeeId) {
     logOpsEvent({ method: 'POST', path: '/uam/login', outcome: 'denied', ip: req.ip,
       detail: `login rejected — employee ID mismatch for ${user.email}` });
     return err(res, 401, 'Employee ID does not match our records.');
