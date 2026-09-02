@@ -229,6 +229,7 @@
     .ul-val.pass { background: rgba(62, 207, 111, 0.15); color: var(--green, #3ecf6f); }
     .ul-val.fail { background: rgba(240, 86, 86, 0.15); color: var(--red, #f05656); }
     .mono { font-family: monospace; }
+    .ul-thumb { height: 40px; border-radius: 5px; cursor: zoom-in; vertical-align: middle; }
 
     /* ── Phase 4: Sessions panel ── */
     #sessions-panel { display: none; padding: 20px 24px 56px; }
@@ -598,6 +599,7 @@
   <div class="sessions-toolbar">
     <span style="font-size:0.78rem;color:var(--muted);flex:1">AR Guide completions · grouped by anchor → guide</span>
     <button class="btn btn-ghost btn-sm" id="usage-log-btn" onclick="toggleUsageLog()" title="Per-step timing per Production #">📊 Usage Log</button>
+    <button class="btn btn-ghost btn-sm" id="usage-xlsx-btn" style="display:none" onclick="exportUsageXlsx()" title="Excel with evidence photos embedded per row">⬇ Excel</button>
     <button class="btn btn-ghost btn-sm" onclick="openImportGuideModal()" title="Import a guide from JSON or MES">⬆ Import Guide</button>
     <button class="btn btn-ghost btn-sm" onclick="exportARGuidesCSV()" title="Export as CSV">⬇ Export</button>
     <button class="btn btn-ghost btn-sm" onclick="loadARGuideSessions()">⟳ Refresh</button>
@@ -2032,7 +2034,23 @@ function toggleUsageLog() {
   document.getElementById('ar-guides-list').style.display = usageLogVisible ? 'none' : '';
   document.getElementById('usage-log-view').style.display = usageLogVisible ? '' : 'none';
   document.getElementById('usage-log-btn').textContent = usageLogVisible ? '📋 Completions' : '📊 Usage Log';
+  document.getElementById('usage-xlsx-btn').style.display = usageLogVisible ? '' : 'none';
   if (usageLogVisible) loadUsageLog();
+}
+
+async function exportUsageXlsx() {
+  try {
+    const res = await fetch('/guide-sessions/usage/export.xlsx', { headers: { 'X-API-Key': apiKey() } });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const blobUrl = URL.createObjectURL(await res.blob());
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = 'usage-log.xlsx';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+  } catch (e) {
+    alert('Export failed: ' + (e.message || 'server error'));
+  }
 }
 
 async function loadUsageLog() {
@@ -2084,7 +2102,7 @@ function renderUsageLog() {
       const steps = u.steps || [];
       const done = steps.filter(e => e.outcome === 'completed').length;
       const failed = steps.filter(e => e.outcome === 'failed').length;
-      html += `<tr class="ul-row" onclick="document.getElementById('${id}').classList.toggle('open');this.classList.toggle('open')">` +
+      html += `<tr class="ul-row" onclick="const d=document.getElementById('${id}');d.classList.toggle('open');this.classList.toggle('open');if(d.classList.contains('open'))loadEvidenceImagesIn(d)">` +
         `<td class="ul-caret">▸</td>` +
         `<td>${esc(u.workContext || '—')}</td>` +
         `<td><strong>${esc(u.guideName)}</strong></td>` +
@@ -2101,10 +2119,13 @@ function renderUsageLog() {
         `<td class="num">${fmtDur(e.durationSeconds)}</td>` +
         `<td>${OUT[e.outcome] || ''} ${esc(e.outcome)}</td>` +
         `<td>${valBadge(e.validation)}</td>` +
+        `<td>${u.signOffSessionId
+          ? `<img class="ul-thumb" data-evidence-url="/guide-sessions/${encodeURIComponent(u.signOffSessionId)}/evidence/${encodeURIComponent(e.stepId)}" alt="">`
+          : ''}</td>` +
         `<td class="ul-dim mono">${esc(e.stepId.slice(0, 8))}</td></tr>`).join('');
       html += `<tr id="${id}" class="ul-detail"><td></td><td colspan="9">` +
-        `<table class="usage-steps"><thead><tr><th class="num">#</th><th>Entered</th><th class="num">Time</th><th>Outcome</th><th>Validation</th><th>Step</th></tr></thead>` +
-        `<tbody>${stepRows || '<tr><td colspan="6" class="ul-dim">No step activity recorded</td></tr>'}</tbody></table></td></tr>`;
+        `<table class="usage-steps"><thead><tr><th class="num">#</th><th>Entered</th><th class="num">Time</th><th>Outcome</th><th>Validation</th><th>Evidence</th><th>Step</th></tr></thead>` +
+        `<tbody>${stepRows || '<tr><td colspan="7" class="ul-dim">No step activity recorded</td></tr>'}</tbody></table></td></tr>`;
     }
   }
   html += '</tbody></table>';

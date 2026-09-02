@@ -24,6 +24,7 @@
 
 import { Router } from 'express';
 import { usageOpen, usageRecordEvent, usageLinkSignOff, listUsage } from '../oms/usage-log.js';
+import { buildUsageXlsx } from '../oms/xlsx-lite.js';
 import { currentUamUser } from '../middleware/auth.js';
 import type { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
@@ -252,6 +253,20 @@ router.post('/', (req: Request, res: Response): void => {
 
   const resp: ApiResponse<GuideSession> = { data: session, timestamp: now };
   res.status(201).json(resp);
+});
+
+// GET /guide-sessions/usage/export.xlsx — Excel export with evidence photos
+// EMBEDDED per row (dependency-free writer — see oms/xlsx-lite.ts).
+router.get('/usage/export.xlsx', (req: Request, res: Response): void => {
+  const { workContext, guideId } = req.query;
+  const data = listUsage({
+    ...(typeof workContext === 'string' && workContext ? { workContext } : {}),
+    ...(typeof guideId === 'string' && guideId ? { guideId } : {}),
+  });
+  const buf = buildUsageXlsx(data);
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="usage-log-${new Date().toISOString().slice(0, 10)}.xlsx"`);
+  res.send(buf);
 });
 
 // GET /guide-sessions/usage — the AR OMS Usage Log (K2).

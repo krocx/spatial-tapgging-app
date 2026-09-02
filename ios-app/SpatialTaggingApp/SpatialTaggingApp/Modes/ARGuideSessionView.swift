@@ -1014,8 +1014,8 @@ struct ARGuideSessionView: View {
             return m
         }
 
-        // ── Minimized pill (0.30 × 0.055 m → texture 512 × 94 pt) ───────────
-        let pillPlane = SCNPlane(width: 0.30, height: 0.055)
+        // ── Minimized pill (A1 refresh: 0.30 × 0.07 m → texture 512 × 120 pt) ─
+        let pillPlane = SCNPlane(width: 0.30, height: 0.07)
         pillPlane.firstMaterial = opaqueMat(image: renderPillTexture(step: step, index: index))
         let pillNode = SCNNode(geometry: pillPlane)
         pillNode.name     = "pill_\(step.id)"
@@ -1034,7 +1034,7 @@ struct ARGuideSessionView: View {
         for btn in ["btn_min_", "btn_audio_", "btn_camera_", "btn_complete_", "btn_more_"] {
             cardNode.addChildNode(makeHitButton(w: 0.05, h: 0.05, x: 0, y: 0, name: btn + step.id))
         }
-        pillNode.addChildNode(makeHitButton(w: 0.30, h: 0.055, x: 0, y: 0, name: "btn_expand_\(step.id)"))
+        pillNode.addChildNode(makeHitButton(w: 0.30, h: 0.07, x: 0, y: 0, name: "btn_expand_\(step.id)"))
 
         // ── Dotted connector: vertical dashes from pin top to panel bottom ────
         // Pin-local y=0.06 (above torus) → y=0.34 (panel bottom in pin-local space)
@@ -1215,65 +1215,72 @@ struct ARGuideSessionView: View {
     // applied as SCNMaterial.diffuse.contents.  All drawing is in pixel space;
     // the SCNPlane's physical size controls real-world scale.
 
-    /// Minimized pill (512 × 94 pt — matches SCNPlane ratio 0.30 m × 0.055 m).
-    /// Fully opaque background; audio icon + distance shown in right zone.
+    /// Minimized pill — A1 refresh (512 × 120 pt ↔ 0.30 × 0.07 m).
+    /// Same design language as the card: solid dark surface, a state-coloured
+    /// badge (number, or ✓ when done), 26 pt title, audio + expand affordances.
     private func renderPillTexture(step: GuideStep, index: Int) -> UIImage {
         let W: CGFloat = 512
-        let H: CGFloat = 94
+        let H: CGFloat = 120
         let size = CGSize(width: W, height: H)
+        let progress    = index < progresses.count ? progresses[index] : nil
+        let isCompleted = progress?.isCompleted ?? false
+        let isFailPath  = failureOnlyStepIds.contains(step.id)
+        var activeIndex = index
+        if case .navigating(let i) = phase { activeIndex = i }
+        let isCurrent   = index == activeIndex
+
+        let stateColor: UIColor =
+            isCompleted ? UIColor(red: 0.08, green: 0.50, blue: 0.24, alpha: 1)
+            : isFailPath ? UIColor(red: 0.73, green: 0.11, blue: 0.11, alpha: 1)
+            : isCurrent  ? UIColor(red: 0.11, green: 0.31, blue: 0.85, alpha: 1)
+            : UIColor(red: 0.20, green: 0.26, blue: 0.33, alpha: 1)
+
         return UIGraphicsImageRenderer(size: size).image { _ in
             let r = CGRect(origin: .zero, size: size)
 
-            // Opaque dark background — no alpha, avoids alpha-sort flicker with freeAxes=.all
-            UIColor(white: 0.11, alpha: 1.0).setFill()
-            UIBezierPath(roundedRect: r, cornerRadius: 18).fill()
+            // Solid dark surface (matches the card), state-coloured edge ring.
+            UIColor(red: 0.06, green: 0.08, blue: 0.13, alpha: 1.0).setFill()
+            UIBezierPath(roundedRect: r, cornerRadius: 26).fill()
+            let ring = UIBezierPath(roundedRect: r.insetBy(dx: 2, dy: 2), cornerRadius: 24)
+            ring.lineWidth = 4
+            stateColor.setStroke()
+            ring.stroke()
 
-            // ── Step badge ────────────────────────────────────────────────────
-            let badgeR = CGRect(x: 12, y: 17, width: 60, height: 60)
-            UIColor.systemIndigo.setFill()
+            // ── State badge: number, or ✓ when completed ─────────────────────
+            let badgeR = CGRect(x: 16, y: 22, width: 76, height: 76)
+            stateColor.setFill()
             UIBezierPath(ovalIn: badgeR).fill()
-            let numStr = "\(step.sequenceNumber)" as NSString
-            let numAttrs: [NSAttributedString.Key: Any] = [
-                .font:            UIFont.boldSystemFont(ofSize: 26),
+            let badgeStr = (isCompleted ? "✓" : "\(step.sequenceNumber)") as NSString
+            let badgeAttrs: [NSAttributedString.Key: Any] = [
+                .font:            UIFont.systemFont(ofSize: 34, weight: .heavy),
                 .foregroundColor: UIColor.white,
             ]
-            let numSz = numStr.size(withAttributes: numAttrs)
-            numStr.draw(at: CGPoint(x: badgeR.midX - numSz.width/2,
-                                    y: badgeR.midY - numSz.height/2),
-                        withAttributes: numAttrs)
+            let bSz = badgeStr.size(withAttributes: badgeAttrs)
+            badgeStr.draw(at: CGPoint(x: badgeR.midX - bSz.width/2, y: badgeR.midY - bSz.height/2),
+                          withAttributes: badgeAttrs)
 
-            // ── Audio icon (pushed right so title has a centered zone) ────────
-            // Audio at x=420, chevron at x=470 — leaves x=76..412 for the title.
-            let audioColor: UIColor = isSpeaking ? .systemIndigo : UIColor.white.withAlphaComponent(0.80)
-            let audioAttrs: [NSAttributedString.Key: Any] = [
-                .font:            UIFont.systemFont(ofSize: 28),
-                .foregroundColor: audioColor,
-            ]
-            ("🔊" as NSString).draw(at: CGPoint(x: 420, y: H / 2 - 17), withAttributes: audioAttrs)
-
-            // ── Title (center-aligned between badge and audio icon) ───────────
-            // Zone: badge right ≈ 76, audio left ≈ 420 → available = 336pt, center ≈ 244
-            // (distance label removed from pill; it is shown in the miniNavCard)
+            // ── Title — 26 pt bold, left-aligned in the free zone ────────────
             let titlePara = NSMutableParagraphStyle()
-            titlePara.alignment     = .center
             titlePara.lineBreakMode = .byTruncatingTail
             let titleAttrs: [NSAttributedString.Key: Any] = [
-                .font:            UIFont.systemFont(ofSize: 15, weight: .semibold),
+                .font:            UIFont.systemFont(ofSize: 26, weight: .bold),
                 .foregroundColor: UIColor.white,
                 .paragraphStyle:  titlePara,
             ]
-            let titleR = CGRect(x: 76, y: 8, width: 336, height: H - 16)
+            // Zone: badge right ≈ 104 … audio left ≈ 396
+            let titleR = CGRect(x: 108, y: H / 2 - 18, width: 284, height: 36)
             (step.displayTitle as NSString).draw(with: titleR,
-                options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine],
-                attributes: titleAttrs,
-                context: nil)
+                options: .truncatesLastVisibleLine, attributes: titleAttrs, context: nil)
 
-            // ── Expand chevron (far right) ────────────────────────────────────
-            let chevAttrs: [NSAttributedString.Key: Any] = [
-                .font:            UIFont.systemFont(ofSize: 26, weight: .medium),
-                .foregroundColor: UIColor.white.withAlphaComponent(0.50),
-            ]
-            ("›" as NSString).draw(at: CGPoint(x: 470, y: H / 2 - 18), withAttributes: chevAttrs)
+            // ── Audio + expand chevron ───────────────────────────────────────
+            let audioColor: UIColor = isSpeaking ? .systemIndigo : UIColor.white.withAlphaComponent(0.85)
+            ("🔊" as NSString).draw(at: CGPoint(x: 400, y: H / 2 - 19), withAttributes: [
+                .font: UIFont.systemFont(ofSize: 32), .foregroundColor: audioColor,
+            ])
+            ("›" as NSString).draw(at: CGPoint(x: 462, y: H / 2 - 26), withAttributes: [
+                .font: UIFont.systemFont(ofSize: 38, weight: .semibold),
+                .foregroundColor: UIColor.white.withAlphaComponent(0.6),
+            ])
         }
     }
 
@@ -1889,6 +1896,9 @@ struct ARGuideSessionView: View {
             pinNodes[step.id]?.isHidden        = !shouldShow
         }
         SCNTransaction.commit()
+        // A1: the newly-current step's textures must flip to the blue
+        // IN PROGRESS state (they rendered slate/green while non-current).
+        if idx < sortedSteps.count { refreshPanelTextures(stepId: sortedSteps[idx].id) }
     }
 
     // ── Assist UI (contextual AI help) ────────────────────────────────────────
@@ -2120,7 +2130,9 @@ struct ARGuideSessionView: View {
         progresses[index].complete()
         persistProgress()
         // A4: a completion MOMENT — success haptic + green pulse on the panel.
+        // Re-render textures so pill + card flip to their DONE (green) state.
         UINotificationFeedbackGenerator().notificationOccurred(.success)
+        if index < sortedSteps.count { refreshPanelTextures(stepId: sortedSteps[index].id) }
         if let container = panelContainers[sortedSteps[index].id] {
             container.runAction(.sequence([
                 .scale(to: 1.07, duration: 0.12),

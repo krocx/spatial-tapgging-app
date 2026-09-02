@@ -7,6 +7,22 @@ it, it gets a line.
 ## 2026.4.45 — 2026-09-01
 
 ### Added
+- **Usage Log: evidence photos + Excel export** — expanding a session in the
+  portal's Usage Log now shows the evidence photo captured at each step
+  (thumbnail → lightbox, reusing the sessions-tab loader; steps without
+  evidence show nothing). New "⬇ Excel" button downloads
+  `GET /guide-sessions/usage/export.xlsx`: one row per step visit with the
+  evidence photo EMBEDDED in the row's Evidence cell. Built by a new
+  dependency-free XLSX writer (`oms/xlsx-lite.ts` — STORED-zip + minimal
+  OOXML + drawingML anchors), keeping the no-new-runtime-dependencies
+  doctrine; opens in Excel, Numbers and LibreOffice.
+- **AR pill refresh** — the minimized floating pill now follows the A1
+  design language: solid dark surface with a state-coloured ring and badge
+  (step number, ✓ when done; blue current · green done · red recovery ·
+  slate upcoming), 26pt title, larger audio/expand affordances, and a
+  taller plane (0.07 m) to carry the bigger type. Pill and card textures
+  re-render on completion and on step advance so state colours are always
+  current.
 - **UAM product entitlements (E1)** — users can be scoped to platform
   products (`aroms` / `iloto` / `gemba`). Absent/empty = ALL products, so
   every existing user keeps full access until explicitly scoped. The portal
