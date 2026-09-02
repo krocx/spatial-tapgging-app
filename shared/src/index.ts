@@ -690,6 +690,18 @@ export interface GuideStep {
    * validationRequired = the operator is asked for a manual Pass/Fail.
    */
   validationTrainedAt?: string;
+  /**
+   * How the step was trained (V1, 2026.4.45). SERVER-owned:
+   *   'single' — one reference photo (PUT validation-ref); strict comparison.
+   *   'cone'   — multi-angle Spatial Inspection training (dome sweep) against
+   *              a hidden step-validation tag; the operator is guided into
+   *              the cone and validated via POST /perception/validate.
+   * Absent on steps trained before this field existed → treat as 'single'.
+   */
+  validationMode?:    'single' | 'cone';
+  /** V1: id of the hidden step-validation tag holding the cone pass-state.
+   *  SERVER-owned; set by POST validation-trained, cleared on DELETE. */
+  validationTagId?:   string;
   /** K5: the operator must attach an evidence photo before completing. */
   evidenceRequired?:  boolean;
   createdAt:          string;
@@ -928,8 +940,10 @@ export interface OmsUsageStepEntry {
   durationSeconds?: number;
   /** open = still on it (or session abandoned while on it). */
   outcome:          'open' | 'completed' | 'failed' | 'left';
-  /** Step-validation verdict (K4): system = comparator score, manual = operator choice. */
-  validation?: { mode: 'system' | 'manual'; result: 'pass' | 'fail'; score?: number };
+  /** Step-validation verdict (K4): system = comparator score, manual = operator choice.
+   *  overridden (V3): the verdict was FAIL but the operator chose to proceed —
+   *  the step completed anyway, with this honest mark in the audit trail. */
+  validation?: { mode: 'system' | 'manual'; result: 'pass' | 'fail'; score?: number; overridden?: boolean };
   /** Live evidence photo uploaded for this step (served from the usage id). */
   evidence?: boolean;
   // K5 (evidence) extends this entry.

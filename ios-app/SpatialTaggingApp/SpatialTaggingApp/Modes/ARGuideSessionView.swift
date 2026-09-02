@@ -18,6 +18,7 @@
 
 import SwiftUI
 import ARKit
+import CoreImage
 import SceneKit
 import simd
 import AVFoundation
@@ -98,6 +99,14 @@ struct ARGuideSessionView: View {
     @State private var transientNotice: String? = nil
     // ── Step validation (K4) ──
     @State private var validationCameraIndex: Int? = nil          // system check: camera capture
+    // V2: in-AR cone validation (multi-angle trained steps). The operator is
+    // guided into position at the step pin with the same cone visual the
+    // Author trained with, then a RAW camera frame (zero AR artifacts) is
+    // scored against the multi-angle pass-state.
+    @State private var coneValidateIndex: Int?       = nil
+    @State private var coneValidateGuide: ConeARGuide? = nil
+    @State private var coneReady          = false
+    @State private var coneStatusText     = "Move toward the ring"
     @State private var manualValidationIndex: Int? = nil          // untrained: manual Pass/Fail
     @State private var validationInFlight = false
     @State private var validationFailInfo: ValidationFail? = nil  // system FAIL follow-up
@@ -250,6 +259,7 @@ struct ARGuideSessionView: View {
                     removeArrow()
                     stopHintPolling()
                     stopStallDetection()
+                    endConeValidation()   // V2: remove cone nodes on teardown
                     // Remove scene-root panel containers (they are NOT pin children,
                     // so they must be cleaned up manually on view teardown)
                     for (_, container) in panelContainers {
@@ -292,12 +302,62 @@ struct ARGuideSessionView: View {
                 }
             }
 
+            // V2: in-AR cone validation overlay — guides the operator into the
+            // trained viewing zone before capturing the verdict frame.
+            if let idx = coneValidateIndex, idx < sortedSteps.count {
+                VStack {
+                    Spacer()
+                    VStack(spacing: 12) {
+                        Text("Validate: \(sortedSteps[idx].displayTitle)")
+                            .font(.headline).foregroundStyle(.white)
+                        Label(coneStatusText, systemImage: coneReady ? "checkmark.circle.fill" : "scope")
+                            .font(.subheadline)
+                            .foregroundStyle(coneReady ? .green : .white.opacity(0.75))
+                        HStack(spacing: 12) {
+                            Button("Cancel") { endConeValidation() }
+                                .font(.subheadline).foregroundStyle(.white.opacity(0.7))
+                                .padding(.horizontal, 16).padding(.vertical, 10)
+                                .background(Color.white.opacity(0.12), in: Capsule())
+                            Button {
+                                captureConeValidationFrame()
+                            } label: {
+                                HStack {
+                                    if validationInFlight { ProgressView().tint(.white) }
+                                    Text(validationInFlight ? "Checking…" : "Capture & Validate")
+                                        .font(.subheadline.bold())
+                                }
+                                .padding(.horizontal, 18).padding(.vertical, 10)
+                                .background(coneReady ? Color.green : Color.gray.opacity(0.5), in: Capsule())
+                                .foregroundStyle(.white)
+                            }
+                            .disabled(!coneReady || validationInFlight)
+                        }
+                    }
+                    .padding(18)
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 110)
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+
             // Top bar — always visible
             topBar
         }
         .onReceive(navTicker) { _ in
             if case .navigating(let index) = phase {
                 updateNavTelemetry(index: index)
+            }
+            // V2: live cone guidance — colour + readiness at 10 Hz
+            if let g = coneValidateGuide,
+               let frame = arManager.sceneView.session.currentFrame {
+                g.updateForCamera(cameraTransform: frame.camera.transform)
+                let angle = g.alignmentAngle(cameraTransform: frame.camera.transform)
+                let ready = !g.isOutOfRange && angle < 25
+                if ready != coneReady { coneReady = ready }
+                coneStatusText = g.isOutOfRange ? "Move closer to the ring"
+                               : angle >= 25    ? "Aim at the ring"
+                               :                  "✓ In position — capture"
             }
         }
         .onAppear {
@@ -389,17 +449,37 @@ struct ARGuideSessionView: View {
             titleVisibility: .visible
         ) {
             Button("Retry check") {
-                if let info = validationFailInfo { validationCameraIndex = info.index }
+                if let info = validationFailInfo {
+                    // V2: cone-trained steps retry through the guided in-AR
+                    // capture; single-photo steps reopen the camera sheet.
+                    if info.index < sortedSteps.count, sortedSteps[info.index].coneTrained {
+                        startConeValidation(at: info.index)
+                    } else {
+                        validationCameraIndex = info.index
+                    }
+                }
                 validationFailInfo = nil
             }
             Button("Mark step failed — go to recovery", role: .destructive) {
                 if let info = validationFailInfo { markFailed(at: info.index) }
                 validationFailInfo = nil
             }
+            // V3: the gate is never a dead end — the operator may proceed,
+            // but the FAIL + override is recorded in the usage log.
+            Button("Proceed anyway (logged as failed)") {
+                if let info = validationFailInfo {
+                    pushValidationEvent(index: info.index, mode: "system", result: "fail",
+                                        score: info.score, overridden: true)
+                    showNotice("⚠️ Proceeding — validation FAIL recorded in the log")
+                    markComplete(at: info.index)
+                    autoAdvance(from: info.index)
+                }
+                validationFailInfo = nil
+            }
             Button("Cancel", role: .cancel) { validationFailInfo = nil }
         } message: {
             if let info = validationFailInfo {
-                Text("The system check scored \(String(format: "%.2f", info.score)) — below the pass threshold. Re-check the work and retry, or take the recovery path. The result is already logged.")
+                Text("The system check scored \(String(format: "%.2f", info.score)) — below the pass threshold. Re-check the work and retry, take the recovery path, or proceed with the failure on record.")
             }
         }
         // Untrained validation step — the operator decides, and it's logged.
@@ -424,6 +504,17 @@ struct ARGuideSessionView: View {
                 if let idx = manualValidationIndex {
                     pushValidationEvent(index: idx, mode: "manual", result: "fail", score: nil)
                     markFailed(at: idx)
+                }
+                manualValidationIndex = nil
+            }
+            // V3: fail-but-proceed, honestly recorded.
+            Button("Fail — proceed anyway (logged)") {
+                if let idx = manualValidationIndex {
+                    pushValidationEvent(index: idx, mode: "manual", result: "fail",
+                                        score: nil, overridden: true)
+                    showNotice("⚠️ Proceeding — manual FAIL recorded in the log")
+                    markComplete(at: idx)
+                    autoAdvance(from: idx)
                 }
                 manualValidationIndex = nil
             }
@@ -2093,8 +2184,13 @@ struct ARGuideSessionView: View {
             return
         }
         if step.needsValidation && !progresses[index].isCompleted {
-            if step.validationTrained { validationCameraIndex = index }
-            else                      { manualValidationIndex = index }
+            if step.coneTrained, step.worldPosition != nil {
+                startConeValidation(at: index)                   // V2: in-AR guided capture
+            } else if step.validationTrained {
+                validationCameraIndex = index                    // single-photo: camera sheet
+            } else {
+                manualValidationIndex = index                    // untrained: manual Pass/Fail
+            }
             return
         }
         markComplete(at: index)
@@ -2102,13 +2198,16 @@ struct ARGuideSessionView: View {
     }
 
     /// Push the verdict onto the live stream (lands in the usage log).
-    private func pushValidationEvent(index: Int, mode: String, result: String, score: Double?) {
+    /// overridden (V3): FAIL that the operator chose to proceed past.
+    private func pushValidationEvent(index: Int, mode: String, result: String,
+                                     score: Double?, overridden: Bool = false) {
         guard let lsId = liveSessionId, index < sortedSteps.count else { return }
         let stepId = sortedSteps[index].id
         var payload: [String: AnyCodable] = [
             "mode": AnyCodable(mode), "result": AnyCodable(result),
         ]
         if let score { payload["score"] = AnyCodable(score) }
+        if overridden { payload["overridden"] = AnyCodable(true) }
         Task {
             await SIBClient(settings: settings).pushGuideSessionEvent(
                 liveSessionId: lsId,
@@ -2117,6 +2216,62 @@ struct ARGuideSessionView: View {
                     durationSeconds: nil, payload: payload
                 )
             )
+        }
+    }
+
+    // ── V2: in-AR cone validation ─────────────────────────────────────────────
+
+    /// Show the training cone at the step pin and let the ticker drive live
+    /// distance/aim guidance until the operator captures.
+    private func startConeValidation(at index: Int) {
+        guard let pos = sortedSteps[index].worldPosition else {
+            validationCameraIndex = index      // no pin? fall back to photo sheet
+            return
+        }
+        coneValidateGuide?.cleanup()
+        coneReady         = false
+        coneStatusText    = "Move toward the ring"
+        coneValidateIndex = index
+        coneValidateGuide = ConeARGuide(sceneView: arManager.sceneView, tagWorldPosition: pos)
+    }
+
+    private func endConeValidation() {
+        coneValidateGuide?.cleanup()
+        coneValidateGuide = nil
+        coneValidateIndex = nil
+        coneReady         = false
+    }
+
+    /// Capture the RAW camera frame (ARFrame.capturedImage — no SceneKit
+    /// artifacts by construction) and score it against the multi-angle
+    /// pass-state via the step validate endpoint (cone-aware server-side).
+    private func captureConeValidationFrame() {
+        guard let idx = coneValidateIndex,
+              let frame = arManager.sceneView.session.currentFrame,
+              let img = rawCameraImage(from: frame) else {
+            if let idx = coneValidateIndex { validationCameraIndex = idx }
+            endConeValidation()
+            return
+        }
+        endConeValidation()
+        Task { await runSystemValidation(index: idx, image: img) }
+    }
+
+    /// Mirror of training's clean-capture path (see OperatorModeView #48):
+    /// raw sensor buffer, rotated portrait, capped at 800 px.
+    private func rawCameraImage(from frame: ARFrame) -> UIImage? {
+        let ci       = CIImage(cvPixelBuffer: frame.capturedImage)
+        let oriented = ci.oriented(.right)
+        let ctx      = CIContext(options: [.useSoftwareRenderer: false])
+        guard let cg = ctx.createCGImage(oriented, from: oriented.extent) else { return nil }
+        let full = UIImage(cgImage: cg)
+        let longest = max(full.size.width, full.size.height)
+        guard longest > 800 else { return full }
+        let scale   = 800 / longest
+        let newSize = CGSize(width: (full.size.width * scale).rounded(),
+                             height: (full.size.height * scale).rounded())
+        return UIGraphicsImageRenderer(size: newSize).image { _ in
+            full.draw(in: CGRect(origin: .zero, size: newSize))
         }
     }
 

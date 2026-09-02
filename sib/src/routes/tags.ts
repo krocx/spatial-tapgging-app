@@ -60,8 +60,14 @@ router.post('/', (req: Request, res: Response) => {
 // Each tag is enriched with a server-computed `isTrained` boolean so clients
 // can display trained/untrained status without a separate readiness call.
 router.get('/', (req: Request, res: Response) => {
-  const { anchorId, groupId } = req.query;
+  const { anchorId, groupId, includeHidden } = req.query;
   let tags = tagStore.findAll();
+  // V1 (2026.4.45): step-validation tags are infrastructure for AR OMS cone
+  // training — hidden from every tag list (app + portal) unless explicitly
+  // requested. GET /tags/:id is unaffected, so direct lookups still work.
+  if (includeHidden !== 'true') {
+    tags = tags.filter((t) => !(t.metadata as Record<string, unknown> | undefined)?.step_validation);
+  }
   if (typeof anchorId === 'string') {
     tags = tags.filter((t) => t.anchorId === anchorId);
   }

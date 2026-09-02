@@ -14,6 +14,8 @@ import SwiftUI
 
 struct KioskStartView: View {
     @EnvironmentObject private var settings: AppSettings
+    @EnvironmentObject private var appState: AppState
+    @EnvironmentObject private var tour:     GuidedTourManager
 
     /// Called when the shift is ready (signed in + production # set).
     let onDone: () -> Void
@@ -31,6 +33,9 @@ struct KioskStartView: View {
     /// Local override so "Not you?" can switch users without touching the
     /// stored session until the new sign-in succeeds.
     @State private var switchingUser = false
+    /// Settings from the gate: change server / test connection BEFORE signing
+    /// in (kiosk iPads often need repointing without an identified user).
+    @State private var showSettings = false
 
     private var identified: Bool { settings.uamSignedIn && !switchingUser }
 
@@ -157,6 +162,27 @@ struct KioskStartView: View {
                     .padding(.bottom, 24)
             }
             .padding(.horizontal, 24)
+        }
+        .overlay(alignment: .topTrailing) {
+            Button { showSettings = true } label: {
+                Image(systemName: "gearshape.fill")
+                    .font(.system(size: 20))
+                    .foregroundStyle(.white.opacity(0.55))
+                    .padding(12)
+                    .background(Color.white.opacity(0.08), in: Circle())
+            }
+            .padding(.top, 18).padding(.trailing, 18)
+            .accessibilityLabel("Server settings")
+        }
+        .sheet(isPresented: $showSettings, onDismiss: {
+            // The server URL may have changed — re-probe from scratch so the
+            // link status (and the UAM-dormant auto-skip) reflect the new host.
+            Task { await connect() }
+        }) {
+            SettingsView()
+                .environmentObject(settings)
+                .environmentObject(appState)
+                .environmentObject(tour)
         }
         .onAppear { productionInput = settings.productionNumber }
         .task { await connect() }

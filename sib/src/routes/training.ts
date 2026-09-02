@@ -227,8 +227,12 @@ router.post('/validate-all', async (req: Request, res: Response) => {
       ? body.threshold
       : parseFloat(process.env.PASS_THRESHOLD ?? '0.60');
 
-  // All tags registered for this anchor
-  let tags = tagStore.findAll().filter(t => t.anchorId === body.anchorId);
+  // All tags registered for this anchor — excluding hidden step-validation
+  // tags (V1): guide-step cone references are validated one-at-a-time by the
+  // AR OMS flow, never as part of an anchor inspection sweep.
+  let tags = tagStore.findAll().filter(t =>
+    t.anchorId === body.anchorId &&
+    !(t.metadata as Record<string, unknown> | undefined)?.step_validation);
   if (tags.length === 0) {
     return res.status(404).json({
       error: `No tags found for anchor ${body.anchorId}. Author mode must run first.`,

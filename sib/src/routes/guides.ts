@@ -47,6 +47,9 @@ import { currentUamUser, uamIsActive } from '../middleware/auth.js';
 import { normalizeEmail } from '../uam/uam-core.js';
 import { findUserByEmail } from './uam.js';
 import { guideToProcedureMap, toMindmapRecord } from '../procedure/reverse-compiler.js';
+import { tagStore } from './tags.js';
+import { passStateStore, findPassStateByTag } from '../stores/pass-state-store.js';
+import { compareAgainstPassState } from '../perception/image-comparator.js';
 import { boundGuideId } from '../procedure/export.js';
 import { mindmapStore, mindmapAccessStore } from '../models/mindmap.model.js';
 import { saveDesignerImage } from '../procedure/designer-images.js';
@@ -634,19 +637,58 @@ router.put('/:id/steps/:stepId/validation-ref', (req: Request, res: Response): v
   }
   const now  = new Date().toISOString();
   const step = guideStepStore.findById(ids.stepId)!;
-  guideStepStore.save({ ...step, validationTrainedAt: now, updatedAt: now });
-  console.log(`[SIB] Step validation trained: ${ids.stepId} in guide ${ids.guideId}`);
+  guideStepStore.save({ ...step, validationTrainedAt: now, validationMode: 'single',
+                        validationTagId: undefined, updatedAt: now });
+  console.log(`[SIB] Step validation trained (single): ${ids.stepId} in guide ${ids.guideId}`);
   res.json({ data: { validationTrainedAt: now }, timestamp: now });
 });
 
+// POST /guides/:id/steps/:stepId/validation-trained — V1: Author trained the
+// step through the Spatial Inspection cone (multi-angle pass-state stored via
+// POST /perception/train under a hidden step-validation tag). The body names
+// that tag; we verify the pass-state exists, then stamp the step.
+router.post('/:id/steps/:stepId/validation-trained', (req: Request, res: Response): void => {
+  const ids = findGuideStep(req, res);
+  if (!ids) return;
+  const { tagId } = req.body as { tagId?: string };
+  if (!tagId?.trim()) {
+    res.status(400).json({ error: 'tagId is required', timestamp: new Date().toISOString() });
+    return;
+  }
+  if (!findPassStateByTag(tagId, 'PASS')) {
+    res.status(409).json({ error: `No pass-state trained for tag ${tagId} — run the cone sweep first`,
+                           timestamp: new Date().toISOString() });
+    return;
+  }
+  const now  = new Date().toISOString();
+  const step = guideStepStore.findById(ids.stepId)!;
+  guideStepStore.save({ ...step, validationTrainedAt: now, validationMode: 'cone',
+                        validationTagId: tagId, updatedAt: now });
+  // The single-photo ref (if any) is superseded — drop it so DELETE semantics stay clean.
+  deleteValidationRef(ids.guideId, ids.stepId);
+  console.log(`[SIB] Step validation trained (cone): ${ids.stepId} in guide ${ids.guideId} → tag ${tagId}`);
+  res.json({ data: { validationTrainedAt: now, validationMode: 'cone', validationTagId: tagId }, timestamp: now });
+});
+
 // DELETE /guides/:id/steps/:stepId/validation-ref — Author removes training.
+// Works for both modes: clears the single-photo ref, and for cone-trained
+// steps also deletes the hidden tag's pass-states and the tag record itself.
 router.delete('/:id/steps/:stepId/validation-ref', (req: Request, res: Response): void => {
   const ids = findGuideStep(req, res);
   if (!ids) return;
   deleteValidationRef(ids.guideId, ids.stepId);
   const now  = new Date().toISOString();
   const step = guideStepStore.findById(ids.stepId)!;
-  guideStepStore.save({ ...step, validationTrainedAt: undefined, updatedAt: now });
+  if (step.validationTagId) {
+    for (const kind of ['PASS', 'FAIL'] as const) {
+      const ps = findPassStateByTag(step.validationTagId, kind);
+      if (ps) passStateStore.delete(ps.id);
+    }
+    tagStore.delete(step.validationTagId);
+    console.log(`[SIB] Cone training removed: step ${ids.stepId} → tag ${step.validationTagId}`);
+  }
+  guideStepStore.save({ ...step, validationTrainedAt: undefined, validationMode: undefined,
+                        validationTagId: undefined, updatedAt: now });
   res.json({ data: { removed: true }, timestamp: now });
 });
 
@@ -662,7 +704,21 @@ router.post('/:id/steps/:stepId/validate', (req: Request, res: Response): void =
     res.status(400).json({ error: 'imageBase64 is required', timestamp: new Date().toISOString() });
     return;
   }
-  validateStepFrame(ids.guideId, ids.stepId, imageBase64)
+  // V2: cone-trained steps score against ALL multi-angle references from the
+  // hidden step-validation tag's pass-state (best-of, same comparator engine).
+  // Single-photo steps keep the original one-reference path.
+  const step = guideStepStore.findById(ids.stepId)!;
+  const verdictPromise = (step.validationMode === 'cone' && step.validationTagId)
+    ? (async () => {
+        const ps = findPassStateByTag(step.validationTagId!, 'PASS');
+        if (!ps) return null;
+        const roi = tagStore.findById(step.validationTagId!)?.roi;
+        const r = await compareAgainstPassState(
+          ps.images.map(img => img.imageBase64), imageBase64, undefined, roi);
+        return { status: r.status, score: r.score };
+      })()
+    : validateStepFrame(ids.guideId, ids.stepId, imageBase64);
+  verdictPromise
     .then(verdict => {
       if (!verdict) {
         res.status(409).json({ error: 'Step is not trained for validation', timestamp: new Date().toISOString() });

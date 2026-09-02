@@ -439,6 +439,21 @@ struct StepEditorRow: View {
                         Label("3D", systemImage: "cube")
                             .font(.caption2).foregroundStyle(.teal)
                     }
+                    // B2: validation / evidence status at a glance — the
+                    // pre-publish training checklist for the Author.
+                    if step.needsValidation {
+                        if step.validationTrained {
+                            Label("Trained", systemImage: "checkmark.seal.fill")
+                                .font(.caption2).foregroundStyle(.green)
+                        } else {
+                            Label("Train", systemImage: "seal")
+                                .font(.caption2).foregroundStyle(.orange)
+                        }
+                    }
+                    if step.needsEvidence {
+                        Label("Evidence", systemImage: "camera")
+                            .font(.caption2).foregroundStyle(.teal)
+                    }
                 }
             }
 
@@ -473,6 +488,12 @@ struct AddStepSheet: View {
     @State private var imagePickerSource: ImagePickerSource? = nil
     @State private var isSaving           = false
     @State private var error:             String? = nil
+
+    // Step validation flags (K4/K5 — B1). The step doesn't exist until Add,
+    // so the flags ride a patch-after-create (same pattern as the 3D model);
+    // reference-photo training then happens from the step's ✏️ Edit sheet.
+    @State private var evidenceOn   = false
+    @State private var validationOn = false
 
     // 3D model picker state (Phase 3D — same as EditStepSheet)
     @State private var anchorModels:    [Model3D] = []
@@ -514,6 +535,22 @@ struct AddStepSheet: View {
                     Text("Options")
                 } footer: {
                     Text("When 'Mark complete required' is on, the Operator must tap ✓ before advancing to the next step.")
+                }
+
+                // ── Step validation (K4/K5 — B1: same controls as Edit Step) ──
+                Section {
+                    Toggle("Require evidence photo", isOn: $evidenceOn)
+                    Toggle("Require validation", isOn: $validationOn)
+                    if validationOn {
+                        Label("After adding, open the step's ✏️ Edit sheet to train the reference photo. Until trained, the Operator sees a manual Pass/Fail.",
+                              systemImage: "info.circle")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                } header: {
+                    Text("Validation")
+                } footer: {
+                    Text("Validation uses the platform's Spatial Inspection engine to verify the step was completed correctly.")
                 }
 
                 Section {
@@ -682,12 +719,17 @@ struct AddStepSheet: View {
         )
         do {
             let newStep = try await client.createGuideStep(guideId: guide.id, req: req)
-            // Patch-after-create: if a model was selected, immediately PATCH the new step
-            if let modelId = selectedModelId {
+            // Patch-after-create: model assignment and validation/evidence flags
+            // aren't part of the create request — PATCH them onto the new step.
+            if selectedModelId != nil || validationOn || evidenceOn {
                 var patch = UpdateGuideStepRequest()
-                patch.modelId      = modelId
-                patch.modelScale   = modelScale
-                patch.modelOpacity = modelOpacity
+                if let modelId = selectedModelId {
+                    patch.modelId      = modelId
+                    patch.modelScale   = modelScale
+                    patch.modelOpacity = modelOpacity
+                }
+                if validationOn { patch.validationRequired = true }
+                if evidenceOn   { patch.evidenceRequired   = true }
                 _ = try? await client.updateGuideStep(guideId: guide.id, stepId: newStep.id, req: patch)
             }
             dismiss()
@@ -786,7 +828,13 @@ struct EditStepSheet: View {
                                 .font(.footnote)
                             Spacer()
                         }
-                        Button(trainedAt != nil ? "Retrain reference photo" : "Train — capture reference photo") {
+                        if step.coneTrained {
+                            Label("Multi-angle (cone) training active — retrain from the AR placement view.",
+                                  systemImage: "arkit")
+                                .font(.footnote).foregroundStyle(.secondary)
+                        }
+                        Button(trainedAt != nil ? "Retrain reference photo (quick, single angle)"
+                                                : "Quick train — single reference photo") {
                             validationShot = .train
                         }
                         .disabled(validationBusy)
@@ -806,7 +854,7 @@ struct EditStepSheet: View {
                 } header: {
                     Text("Validation")
                 } footer: {
-                    Text("Uses the platform's Spatial Inspection engine. Train with the part in its correct state, from where the operator will stand. Verify before publishing.")
+                    Text("Uses the platform's Spatial Inspection engine. Recommended: train multi-angle with the 🛡 seal button in \"Place Steps in AR\" — the cone sweep is far more tolerant of operator viewpoint than a single photo. Verify before publishing.")
                 }
 
                 // ── Photo editing ─────────────────────────────────────────────

@@ -255,6 +255,7 @@ export function buildUsageXlsx(
     for (const e of u.steps) {
       const val = e.validation
         ? `${e.validation.mode} ${e.validation.result}${e.validation.score !== undefined ? ` (${e.validation.score})` : ''}`
+          + (e.validation.overridden ? ' — operator proceeded' : '')
         : '';
       const evi = usageEvidencePath(u.id, u.signOffSessionId, e.stepId, signOffPaths);
       const cells = base(r)

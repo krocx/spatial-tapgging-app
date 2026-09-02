@@ -2333,7 +2333,7 @@ function renderUsageLog() {
   }
   const OUT = { completed: '✅', failed: '❌', left: '↷', open: '⏳' };
   const valBadge = v => !v ? ''
-    : `<span class="ul-val ${v.result}">${v.mode === 'system' ? '🤖' : '👤'} ${v.result.toUpperCase()}${v.score !== undefined ? ' ' + v.score.toFixed(2) : ''}</span>`;
+    : `<span class="ul-val ${v.result}" ${v.overridden ? 'title="Validation failed — operator chose to proceed"' : ''}>${v.mode === 'system' ? '🤖' : '👤'} ${v.result.toUpperCase()}${v.score !== undefined ? ' ' + v.score.toFixed(2) : ''}${v.overridden ? ' · proceeded' : ''}</span>`;
 
   let html = '<table class="usage-table"><thead><tr>' +
     '<th></th><th>Production #</th><th>Guide</th><th>Operator</th><th>Started</th>' +

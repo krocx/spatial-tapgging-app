@@ -169,9 +169,20 @@ private struct ARPlacementContainer: UIViewRepresentable {
 
 // ── Main view ─────────────────────────────────────────────────────────────────
 
+/// V1: everything ConeCaptureView needs to train one step's validation,
+/// bundled so a single fullScreenCover(item:) drives the presentation.
+private struct StepTrainingTarget: Identifiable {
+    let step:     GuideStep
+    let tag:      Tag
+    let anchor:   Anchor
+    let worldPos: simd_float3
+    var id: String { step.id }
+}
+
 struct GuideStepPlacementView: View {
 
     @EnvironmentObject private var settings: AppSettings
+    @EnvironmentObject private var appState: AppState   // ConeCaptureView requires it
 
     let guide:  ARGuide
     let steps:  [GuideStep]
@@ -185,6 +196,13 @@ struct GuideStepPlacementView: View {
     @State private var stepPositions:  [String: simd_float3] = [:]
     @State private var activeStepIndex: Int                  = 0
     @State private var stepNodes:      [String: SCNNode]     = [:]
+
+    // ── V1: cone training for validation steps ────────────────────────────────
+    @State private var trainingTarget:      StepTrainingTarget? = nil
+    @State private var isPreparingTraining  = false
+    @State private var coneTrainedStepIds:  Set<String>         = []
+    @State private var sessionTagIds:       [String: String]    = [:]  // stepId → hidden tag id (this session)
+    @State private var anchorRecord:        Anchor?             = nil
 
     // ── Phase + model state ───────────────────────────────────────────────────
     @State private var placementPhase:  PlacementPhase       = .placingPins
@@ -287,10 +305,29 @@ struct GuideStepPlacementView: View {
         .navigationBarHidden(true)
         .overlay(alignment: .top) { topBar }
         .overlay { if isSaving { savingOverlay } }
+        // V1: Spatial Inspection cone training for a validation step. Shares
+        // this view's AR session (same pattern as Author-mode tag training) and
+        // anchors the dome at the step's pin via forcedTagWorldPos.
+        .fullScreenCover(item: $trainingTarget) { target in
+            ConeCaptureView(tag:             target.tag,
+                            anchor:          target.anchor,
+                            parentArManager: arManager,
+                            onTrained:       { tagId in
+                                Task { await finishConeTraining(step: target.step, tagId: tagId) }
+                            },
+                            forcedTagWorldPos: target.worldPos)
+                .environmentObject(settings)
+                .environmentObject(appState)
+        }
         .onAppear {
             arManager.startSession()
             arManager.disableQRScanning()
             initFromExistingPositions()
+            // V1: seed training badges + tag reuse from server state
+            for s in steps where s.coneTrained {
+                coneTrainedStepIds.insert(s.id)
+                if let t = s.validationTagId { sessionTagIds[s.id] = t }
+            }
             focusRing = ARFocusRing(sceneView: arManager.sceneView)
             // Seed from parent immediately (may be non-empty if parent loaded in time)
             if !models.isEmpty { resolvedModels = models }
@@ -533,6 +570,24 @@ struct GuideStepPlacementView: View {
                 .font(.system(size: 9))
                 .foregroundStyle(isActive ? .white : .white.opacity(0.55))
                 .lineLimit(2).multilineTextAlignment(.center).frame(width: 62)
+
+            // V1: cone training for validation steps — tap the seal to train
+            // this step with the Spatial Inspection dome sweep. Only shown
+            // once the step has a pin (the cone anchors at the pin).
+            if step.needsValidation && placed {
+                let trained = coneTrainedStepIds.contains(step.id) || step.coneTrained
+                Button {
+                    Task { await beginConeTraining(for: step) }
+                } label: {
+                    Label(trained ? "Trained" : "Train",
+                          systemImage: trained ? "checkmark.seal.fill" : "seal")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(trained ? Color.green : Color.orange)
+                        .padding(.horizontal, 7).padding(.vertical, 3)
+                        .background(Color.black.opacity(0.35), in: Capsule())
+                }
+                .disabled(isPreparingTraining)
+            }
         }
         .padding(6)
         .background(isActive ? Color.blue.opacity(0.18) : Color.clear,
@@ -603,6 +658,69 @@ struct GuideStepPlacementView: View {
         }
         .background(.ultraThinMaterial)
         .animation(.easeInOut(duration: 0.2), value: saveError)
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // MARK: V1 — cone training for validation steps
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Prepare the hidden step-validation tag (create on first train, reuse on
+    /// retrain — POST /perception/train upserts pass-states by tagId) and
+    /// present ConeCaptureView anchored at the step's pin.
+    @MainActor
+    private func beginConeTraining(for step: GuideStep) async {
+        guard !isPreparingTraining, let pos = stepPositions[step.id] else { return }
+        isPreparingTraining = true
+        defer { isPreparingTraining = false }
+        let client = SIBClient(settings: settings)
+        do {
+            if anchorRecord == nil {
+                anchorRecord = try await client.fetchAnchor(id: guide.anchorId)
+            }
+            guard let anchor = anchorRecord else { return }
+
+            let tag: Tag
+            if let existingId = sessionTagIds[step.id] ?? step.validationTagId {
+                // Reuse the existing hidden tag record — retraining replaces
+                // its pass-state; no need to fetch, the fields are deterministic.
+                tag = Tag(id: existingId, anchorId: anchor.id, type: .configurationCheck,
+                          label: "\(step.displayTitle) — validation",
+                          expectedOutcome: "Step completed correctly",
+                          checkDescription: nil, order: nil, roi: nil, groupId: nil,
+                          metadata: ["step_validation": AnyCodable(true),
+                                     "guide_id":        AnyCodable(guide.id),
+                                     "step_id":         AnyCodable(step.id)],
+                          isTrained: true, hasFailState: nil, createdAt: "", updatedAt: "")
+            } else {
+                tag = try await client.createTag(CreateTagRequest(
+                    anchorId:        anchor.id,
+                    type:            .configurationCheck,   // captureMode == .cone
+                    label:           "\(step.displayTitle) — validation",
+                    expectedOutcome: "Step completed correctly",
+                    checkDescription: nil, order: nil, groupId: nil,
+                    metadata: ["step_validation": AnyCodable(true),
+                               "guide_id":        AnyCodable(guide.id),
+                               "step_id":         AnyCodable(step.id)]))
+            }
+            sessionTagIds[step.id] = tag.id
+            trainingTarget = StepTrainingTarget(step: step, tag: tag, anchor: anchor, worldPos: pos)
+        } catch {
+            saveError = "Couldn't start training: \(error.localizedDescription)"
+        }
+    }
+
+    /// The cone sweep finished uploading its pass-state — stamp the step so
+    /// the operator flow knows a system verdict is available (mode 'cone').
+    private func finishConeTraining(step: GuideStep, tagId: String) async {
+        do {
+            try await SIBClient(settings: settings)
+                .markStepConeTrained(guideId: guide.id, stepId: step.id, tagId: tagId)
+            await MainActor.run { coneTrainedStepIds.insert(step.id) }
+        } catch {
+            await MainActor.run {
+                saveError = "Training captured, but marking the step failed — retry from the seal button. (\(error.localizedDescription))"
+            }
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────

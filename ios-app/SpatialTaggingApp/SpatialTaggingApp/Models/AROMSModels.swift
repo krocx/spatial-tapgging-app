@@ -168,6 +168,10 @@ struct GuideStep: Codable, Identifiable, Equatable {
     // Step validation (K4)
     let validationRequired:  Bool?      // author demands a verdict before completion
     let validationTrainedAt: String?    // server-stamped when a reference photo exists
+    // V1: how the step was trained — "single" (one photo) or "cone" (multi-angle
+    // Spatial Inspection sweep against the hidden validationTagId tag).
+    let validationMode:      String?
+    let validationTagId:     String?
     // K5: evidence photo mandatory before completion
     let evidenceRequired:    Bool?
     let createdAt:          String
@@ -175,6 +179,8 @@ struct GuideStep: Codable, Identifiable, Equatable {
 
     /// The comparator can produce a system verdict for this step.
     var validationTrained: Bool { validationTrainedAt?.isEmpty == false }
+    /// V1: trained through the Spatial Inspection cone (multi-angle).
+    var coneTrained: Bool { validationTrained && validationMode == "cone" && validationTagId != nil }
     /// A verdict (system or manual) is required before completing.
     var needsValidation: Bool { validationRequired == true }
     /// An evidence photo is required before completing (K5).
@@ -230,6 +236,8 @@ struct GuideStep: Codable, Identifiable, Equatable {
         precondition       = try c.decodeIfPresent(String.self,             forKey: .precondition)
         validationRequired  = try c.decodeIfPresent(Bool.self,   forKey: .validationRequired)
         validationTrainedAt = try c.decodeIfPresent(String.self, forKey: .validationTrainedAt)
+        validationMode      = try c.decodeIfPresent(String.self, forKey: .validationMode)
+        validationTagId     = try c.decodeIfPresent(String.self, forKey: .validationTagId)
         evidenceRequired    = try c.decodeIfPresent(Bool.self,   forKey: .evidenceRequired)
         createdAt          = try c.decode(String.self,              forKey: .createdAt)
         updatedAt          = try c.decode(String.self,              forKey: .updatedAt)

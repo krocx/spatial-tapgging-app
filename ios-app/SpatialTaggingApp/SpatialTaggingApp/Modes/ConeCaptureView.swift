@@ -52,6 +52,11 @@ struct ConeCaptureView: View {
     /// capture (and any other call site), which falls back to measuring the
     /// Author's live stance distance at `startSweep()` as before.
     var forcedDistanceM: Float? = nil
+    /// V1 (AR OMS step validation): the caller already knows the subject's
+    /// world position in the CURRENT session (e.g. a guide step's pin), so
+    /// skip the anchor-relative metadata lookup entirely. Left `nil` for
+    /// every tag-training call site — zero behaviour change there.
+    var forcedTagWorldPos: simd_float3? = nil
 
     @EnvironmentObject private var settings: AppSettings
     @EnvironmentObject private var appState:  AppState
@@ -691,6 +696,13 @@ struct ConeCaptureView: View {
     // ── Guide spawn ───────────────────────────────────────────────────────────
 
     private func spawnGuide() {
+        // V1: a caller-supplied world position (guide-step pin) needs neither
+        // the current frame's anchor lock nor tag metadata.
+        if let forced = forcedTagWorldPos, guide == nil {
+            tagWorldPos = forced
+            guide = ConeARGuide(sceneView: svHolder.sceneView, tagWorldPosition: forced)
+            return
+        }
         guard guide == nil,
               let frame = svHolder.sceneView.session.currentFrame,
               let anchorTransform = parentArManager.lockedAnchorTransform

@@ -112,7 +112,7 @@ export function usageRecordEvent(
       // Step-validation verdict (K4): attach to the newest entry for the
       // step (open or just-closed) — the app may complete the step in the
       // same breath as the verdict.
-      const pl = (req.payload ?? {}) as { mode?: string; result?: string; score?: number };
+      const pl = (req.payload ?? {}) as { mode?: string; result?: string; score?: number; overridden?: boolean };
       if (pl.mode !== 'system' && pl.mode !== 'manual') return;
       if (pl.result !== 'pass' && pl.result !== 'fail') return;
       for (let i = rec.steps.length - 1; i >= 0; i--) {
@@ -120,6 +120,8 @@ export function usageRecordEvent(
           rec.steps[i].validation = {
             mode: pl.mode, result: pl.result,
             ...(typeof pl.score === 'number' ? { score: pl.score } : {}),
+            // V3: FAIL that the operator chose to proceed past — recorded honestly.
+            ...(pl.overridden === true ? { overridden: true } : {}),
           };
           break;
         }

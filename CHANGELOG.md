@@ -7,6 +7,38 @@ it, it gets a line.
 ## 2026.4.45 — 2026-09-01
 
 ### Added
+- **Settings from the kiosk gate (iOS)** — the shift-start screen now has a
+  ⚙️ button (top-right) opening the full Settings sheet, so a kiosk iPad can
+  be repointed at a different server (and the connection tested) before any
+  employee ID or Production # is entered. Closing the sheet re-runs the
+  server probe, so a changed URL takes effect immediately — including the
+  auto-skip when the new server has UAM dormant.
+- **Cone training for step validation (V1–V3)** — AR Work Instructions now
+  use the full Spatial Inspection engine instead of a single reference photo.
+  V1 (author): in "Place Steps in AR", every placed validation step carries a
+  🛡 seal button that launches the existing multi-angle cone sweep, anchored
+  at the step's pin; references are stored as a pass-state under a hidden
+  step-validation tag (excluded from all tag lists and anchor inspection
+  sweeps; deleted with the training). New route
+  `POST /guides/:id/steps/:stepId/validation-trained` stamps
+  `validationMode: 'cone'` + `validationTagId` (409 until the sweep uploads);
+  removing training cascades tag + pass-states. The single-photo path remains
+  as "quick train". V2 (operator): completing a cone-trained step shows the
+  training cone at the pin with live distance/aim guidance; when in position,
+  a RAW camera frame (zero AR artifacts) is scored against ALL multi-angle
+  references (best-of, same comparator) — far more tolerant of operator
+  viewpoint than the single-photo compare. V3 (override): the FAIL dialog
+  (system and manual) gains "Proceed anyway" — the step completes, but the
+  usage log records `validation.overridden`, the portal badge shows
+  "FAIL · proceeded", and the Excel export prints "— operator proceeded".
+- **Validation authoring discoverability (B1+B2, iOS)** — the Add Step
+  sheet now carries the same Validation section as Edit Step (Require
+  evidence photo / Require validation; flags ride a patch-after-create,
+  training itself still happens from the step's ✏️ Edit sheet), and step
+  rows in the guide editor show status badges: green ✓-seal "Trained",
+  orange seal "Train" (validation on but no reference yet), and a camera
+  "Evidence" chip — an at-a-glance training checklist before publishing.
+  iOS-only; no server change.
 - **Completion Log Excel export** — the AR Guides Completions view now
   exports as `.xlsx` with evidence photos embedded per step row
   (`GET /guide-sessions/export.xlsx`, same `?all/anchorId/guideId` filters

@@ -753,6 +753,17 @@ final class SIBClient {
         _ = try await delete(path: "/guides/\(guideId)/steps/\(stepId)/validation-ref")
     }
 
+    /// V1: stamp a step as cone-trained after a Spatial Inspection sweep has
+    /// stored the multi-angle pass-state under the hidden step-validation tag.
+    /// Server 409s when no pass-state exists for the tag yet.
+    func markStepConeTrained(guideId: String, stepId: String, tagId: String) async throws {
+        struct Body: Encodable { let tagId: String }
+        var req = try makeRequest(method: "POST", path: "/guides/\(guideId)/steps/\(stepId)/validation-trained")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONEncoder().encode(Body(tagId: tagId))
+        _ = try await perform(req, decoding: TrainedEnvelope.self)
+    }
+
     /// Score a live frame against the trained reference (author verify +
     /// operator system verdict). Server 409s when untrained.
     func validateStep(guideId: String, stepId: String, jpegBase64: String) async throws -> StepValidationVerdict {
