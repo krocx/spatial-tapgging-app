@@ -31,6 +31,11 @@ it, it gets a line.
   (system and manual) gains "Proceed anyway" — the step completes, but the
   usage log records `validation.overridden`, the portal badge shows
   "FAIL · proceeded", and the Excel export prints "— operator proceeded".
+  Fixed: cone-trained step validation returned 0.00 FAIL on anchors with an
+  AES encryption key — ConeCaptureView encrypts every reference, and the
+  cone-aware validate path fed the ciphertext straight to the comparator.
+  The route now decrypts references in-memory using the key from the anchor
+  record (plaintext never persisted); already-trained steps need no retrain.
 - **Validation authoring discoverability (B1+B2, iOS)** — the Add Step
   sheet now carries the same Validation section as Edit Step (Require
   evidence photo / Require validation; flags ride a patch-after-create,

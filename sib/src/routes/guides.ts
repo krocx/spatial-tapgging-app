@@ -48,6 +48,8 @@ import { normalizeEmail } from '../uam/uam-core.js';
 import { findUserByEmail } from './uam.js';
 import { guideToProcedureMap, toMindmapRecord } from '../procedure/reverse-compiler.js';
 import { tagStore } from './tags.js';
+import { anchorStore } from './anchors.js';
+import { decryptImageBase64 } from './training.js';
 import { passStateStore, findPassStateByTag } from '../stores/pass-state-store.js';
 import { compareAgainstPassState } from '../perception/image-comparator.js';
 import { boundGuideId } from '../procedure/export.js';
@@ -712,9 +714,19 @@ router.post('/:id/steps/:stepId/validate', (req: Request, res: Response): void =
     ? (async () => {
         const ps = findPassStateByTag(step.validationTagId!, 'PASS');
         if (!ps) return null;
-        const roi = tagStore.findById(step.validationTagId!)?.roi;
-        const r = await compareAgainstPassState(
-          ps.images.map(img => img.imageBase64), imageBase64, undefined, roi);
+        const tagRec = tagStore.findById(step.validationTagId!);
+        // ConeCaptureView AES-256-GCM-encrypts every reference with the
+        // anchor's key. The key lives in the anchor record, so decrypt
+        // in-memory here — an encrypted ref fed to the comparator raw is
+        // the classic "0.00 FAIL" (task #66). Refs that fail to decrypt
+        // (legacy/unencrypted) pass through unchanged.
+        const encKey = tagRec ? anchorStore.findById(tagRec.anchorId)?.encryptionKey : undefined;
+        const refs = ps.images.map(img => {
+          if (!encKey) return img.imageBase64;
+          try { return decryptImageBase64(img.imageBase64, encKey); }
+          catch { return img.imageBase64; }
+        });
+        const r = await compareAgainstPassState(refs, imageBase64, undefined, tagRec?.roi);
         return { status: r.status, score: r.score };
       })()
     : validateStepFrame(ids.guideId, ids.stepId, imageBase64);

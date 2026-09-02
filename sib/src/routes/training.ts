@@ -39,7 +39,7 @@ const router = Router();
 // (a base64-encoded 32-byte SymmetricKey from the QR code).
 // Decryption happens in-memory; plaintext is never persisted.
 
-function decryptImageBase64(encryptedBase64: string, keyBase64: string): string {
+export function decryptImageBase64(encryptedBase64: string, keyBase64: string): string {
   const combined    = Buffer.from(encryptedBase64, 'base64');
   const key         = Buffer.from(keyBase64, 'base64');
   const nonce       = combined.subarray(0, 12);
