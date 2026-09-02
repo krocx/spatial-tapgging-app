@@ -691,9 +691,10 @@
   <div class="sessions-toolbar">
     <span style="font-size:0.78rem;color:var(--muted);flex:1">AR Guide completions · grouped by anchor → guide</span>
     <button class="btn btn-ghost btn-sm" id="usage-log-btn" onclick="toggleUsageLog()" title="Per-step timing per Production #">📊 Usage Log</button>
-    <button class="btn btn-ghost btn-sm" id="usage-xlsx-btn" style="display:none" onclick="exportUsageXlsx()" title="Excel with evidence photos embedded per row">⬇ Excel</button>
+    <button class="btn btn-ghost btn-sm" id="usage-xlsx-btn" style="display:none" onclick="exportUsageXlsx()" title="Excel with evidence photos embedded per row">⬇ .xlsx</button>
     <button class="btn btn-ghost btn-sm" onclick="openImportGuideModal()" title="Import a guide from JSON or MES">⬆ Import Guide</button>
-    <button class="btn btn-ghost btn-sm" onclick="exportARGuidesCSV()" title="Export as CSV">⬇ Export</button>
+    <button class="btn btn-ghost btn-sm" id="ag-xlsx-btn" onclick="exportARGuidesXlsx()" title="Excel with evidence photos embedded per step">⬇ .xlsx</button>
+    <button class="btn btn-ghost btn-sm" id="ag-csv-btn" onclick="exportARGuidesCSV()" title="Export as CSV (no images)">⬇ .csv</button>
     <button class="btn btn-ghost btn-sm" onclick="loadARGuideSessions()">⟳ Refresh</button>
     <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteAllARGuideSessions()" title="Delete all AR Guide sessions">🗑 Delete All</button>
   </div>
@@ -2226,19 +2227,74 @@ function toggleUsageLog() {
   document.getElementById('usage-log-view').style.display = usageLogVisible ? '' : 'none';
   document.getElementById('usage-log-btn').textContent = usageLogVisible ? '📋 Completions' : '📊 Usage Log';
   document.getElementById('usage-xlsx-btn').style.display = usageLogVisible ? '' : 'none';
+  // Completion-log exports only make sense on the Completions view.
+  document.getElementById('ag-xlsx-btn').style.display = usageLogVisible ? 'none' : '';
+  document.getElementById('ag-csv-btn').style.display  = usageLogVisible ? 'none' : '';
   if (usageLogVisible) loadUsageLog();
+}
+
+/** Authenticated download of a server-built file (blob URLs carry no
+ *  filename, so we set it on the anchor). */
+async function downloadServerFile(path, filename) {
+  const res = await fetch(path, { headers: { 'X-API-Key': apiKey() } });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const blobUrl = URL.createObjectURL(await res.blob());
+  const a = document.createElement('a');
+  a.href = blobUrl;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+}
+
+/** Completion Log → Excel with evidence embedded per step row. */
+async function exportARGuidesXlsx() {
+  try {
+    await downloadServerFile('/guide-sessions/export.xlsx?all=true',
+                             `completion-log-${new Date().toISOString().slice(0, 10)}.xlsx`);
+  } catch (e) {
+    alert('Export failed: ' + (e.message || 'server error'));
+  }
+}
+
+/** One completed session → Excel with its evidence photos embedded. */
+async function agExportSessionXlsx(sessionId) {
+  try {
+    await downloadServerFile(`/guide-sessions/${encodeURIComponent(sessionId)}/export.xlsx`,
+                             `guide-session-${sessionId.slice(0, 8)}.xlsx`);
+  } catch (e) {
+    alert('Export failed: ' + (e.message || 'server error'));
+  }
+}
+
+/** One completed session → CSV (per-step rows, no images). */
+function agExportSessionCSV(sessionId) {
+  const s = arGuideSessions.find(x => x.id === sessionId);
+  if (!s) return;
+  const rows = [['Guide','Anchor','Signed off by','Started','Signed off','Session duration (s)',
+                 'Step','Step completed at','Step duration (s)','Has evidence']];
+  const completions = s.stepCompletions || [];
+  if (!completions.length) {
+    rows.push([s.guideName, s.anchorName, s.signedOffBy, s.startedAt, s.completedAt,
+               Math.round(s.durationSeconds), '(no steps recorded)', '', '', '']);
+  }
+  completions.forEach((sc, i) => {
+    rows.push([s.guideName, s.anchorName, s.signedOffBy, s.startedAt, s.completedAt,
+               Math.round(s.durationSeconds), i + 1, sc.completedAt || '',
+               sc.durationSeconds !== undefined ? Math.round(sc.durationSeconds) : '',
+               sc.evidencePhotoPath ? 'Yes' : 'No']);
+  });
+  const csv  = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement('a'),
+                             { href: url, download: `guide-session-${sessionId.slice(0, 8)}.csv` });
+  a.click(); URL.revokeObjectURL(url);
 }
 
 async function exportUsageXlsx() {
   try {
-    const res = await fetch('/guide-sessions/usage/export.xlsx', { headers: { 'X-API-Key': apiKey() } });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const blobUrl = URL.createObjectURL(await res.blob());
-    const a = document.createElement('a');
-    a.href = blobUrl;
-    a.download = 'usage-log.xlsx';
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+    await downloadServerFile('/guide-sessions/usage/export.xlsx',
+                             `usage-log-${new Date().toISOString().slice(0, 10)}.xlsx`);
   } catch (e) {
     alert('Export failed: ' + (e.message || 'server error'));
   }
@@ -2394,7 +2450,9 @@ function renderARGuideSessions() {
             <span class="ag-steps-badge ${stepsClass}">${completedCount} step${completedCount !== 1 ? 's' : ''} completed</span>
             ${hasEvidence ? '<span style="font-size:0.72rem;color:#22c55e">📷 evidence</span>' : ''}
             <span class="ag-dur">⏱ ${dur}</span>
-            <button onclick="event.stopPropagation();deleteARGuideSession('${sess.id}')" class="btn btn-ghost btn-sm" style="font-size:0.68rem;padding:2px 7px;color:var(--red);margin-left:auto" title="Delete this session">🗑</button>
+            <button onclick="event.stopPropagation();agExportSessionXlsx('${sess.id}')" class="btn btn-ghost btn-sm" style="font-size:0.68rem;padding:2px 7px;margin-left:auto" title="Export this session as Excel with evidence photos embedded">⬇ .xlsx</button>
+            <button onclick="event.stopPropagation();agExportSessionCSV('${sess.id}')" class="btn btn-ghost btn-sm" style="font-size:0.68rem;padding:2px 7px" title="Export this session as CSV (no images)">⬇ .csv</button>
+            <button onclick="event.stopPropagation();deleteARGuideSession('${sess.id}')" class="btn btn-ghost btn-sm" style="font-size:0.68rem;padding:2px 7px;color:var(--red)" title="Delete this session">🗑</button>
           </div>
         </div>
         <div class="ag-detail" id="ag-detail-${sess.id}">

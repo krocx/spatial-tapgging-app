@@ -24,7 +24,7 @@
 
 import { Router } from 'express';
 import { usageOpen, usageRecordEvent, usageLinkSignOff, listUsage, usageMarkEvidence } from '../oms/usage-log.js';
-import { buildUsageXlsx } from '../oms/xlsx-lite.js';
+import { buildUsageXlsx, buildSessionsXlsx } from '../oms/xlsx-lite.js';
 import { currentUamUser } from '../middleware/auth.js';
 import type { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
@@ -287,6 +287,21 @@ router.post('/', (req: Request, res: Response): void => {
   res.status(201).json(resp);
 });
 
+/** Map `${signOffSessionId}:${stepId}` → absolute evidence path, from the
+ *  stored evidencePhotoPath on each sign-off record. Final fallback for the
+ *  usage export — authoritative wherever the file actually landed. */
+function signOffEvidencePaths(): Map<string, string> {
+  const m = new Map<string, string>();
+  for (const s of guideSessionStore.findAll()) {
+    for (const sc of s.stepCompletions) {
+      if (sc.evidencePhotoPath && !sc.evidencePhotoPath.includes('..')) {
+        m.set(`${s.id}:${sc.stepId}`, path.join(DATA_DIR, sc.evidencePhotoPath));
+      }
+    }
+  }
+  return m;
+}
+
 // GET /guide-sessions/usage/export.xlsx — Excel export with evidence photos
 // EMBEDDED per row (dependency-free writer — see oms/xlsx-lite.ts).
 router.get('/usage/export.xlsx', (req: Request, res: Response): void => {
@@ -295,7 +310,7 @@ router.get('/usage/export.xlsx', (req: Request, res: Response): void => {
     ...(typeof workContext === 'string' && workContext ? { workContext } : {}),
     ...(typeof guideId === 'string' && guideId ? { guideId } : {}),
   });
-  const buf = buildUsageXlsx(data);
+  const buf = buildUsageXlsx(data, signOffEvidencePaths());
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.setHeader('Content-Disposition', `attachment; filename="usage-log-${new Date().toISOString().slice(0, 10)}.xlsx"`);
   res.send(buf);
@@ -348,6 +363,38 @@ router.get('/', (req: Request, res: Response): void => {
     timestamp: new Date().toISOString(),
   };
   res.json(resp);
+});
+
+// GET /guide-sessions/export.xlsx — Completion Log as Excel, evidence photos
+// EMBEDDED per step row. Same filters as the list route (?all/anchorId/guideId).
+// NB: registered BEFORE '/:id' so "export.xlsx" is not swallowed as an id.
+router.get('/export.xlsx', (req: Request, res: Response): void => {
+  const { anchorId, guideId } = req.query;
+  let sessions = guideSessionStore.findAll();
+  if (typeof anchorId === 'string' && anchorId) sessions = sessions.filter(s => s.anchorId === anchorId);
+  if (typeof guideId === 'string' && guideId)   sessions = sessions.filter(s => s.guideId === guideId);
+  sessions.sort((a, b) => b.completedAt.localeCompare(a.completedAt));
+  const buf = buildSessionsXlsx(sessions);
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="completion-log-${new Date().toISOString().slice(0, 10)}.xlsx"`);
+  res.send(buf);
+});
+
+// GET /guide-sessions/:id/export.xlsx — one completed session as Excel with
+// its evidence photos embedded (per-session export for records/hand-off).
+router.get('/:id/export.xlsx', (req: Request, res: Response): void => {
+  const session = guideSessionStore.findById(req.params.id);
+  if (!session) {
+    res.status(404).json({
+      error: `GuideSession ${req.params.id} not found`,
+      timestamp: new Date().toISOString(),
+    });
+    return;
+  }
+  const buf = buildSessionsXlsx([session]);
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="guide-session-${session.completedAt.slice(0, 10)}-${session.id.slice(0, 8)}.xlsx"`);
+  res.send(buf);
 });
 
 // GET /guide-sessions/:id — get a single session

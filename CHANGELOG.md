@@ -7,6 +7,20 @@ it, it gets a line.
 ## 2026.4.45 — 2026-09-01
 
 ### Added
+- **Completion Log Excel export** — the AR Guides Completions view now
+  exports as `.xlsx` with evidence photos embedded per step row
+  (`GET /guide-sessions/export.xlsx`, same `?all/anchorId/guideId` filters
+  as the list), alongside the existing CSV. Each completed session also
+  gets its own row-level **⬇ .xlsx** and **⬇ .csv** buttons
+  (`GET /guide-sessions/:id/export.xlsx`) for per-session records/hand-off.
+  Export buttons across AR Guides are now labelled by format — **⬇ .xlsx**
+  (images embedded) vs **⬇ .csv** (no images) — and the completion-log
+  buttons hide while the Usage Log view is active. The Usage Log export
+  gained a final evidence-resolution fallback: the sign-off record's
+  stored `evidencePhotoPath` is consulted when the photo is in neither
+  the live-upload nor the conventional sign-off directory, so evidence
+  recorded by any app/server era embeds. (`oms/xlsx-lite.ts` refactored
+  into one shared workbook assembler for both logs.)
 - **Portal home redesign** — the portal now opens on a tile-grid Home
   (approved mockup): seven color-coded tiles — Anchors, Inspection
   Sessions, AR Guides Sessions (Completions / 📊 Usage Log sub-chips),
