@@ -726,7 +726,19 @@ router.post('/:id/steps/:stepId/validate', (req: Request, res: Response): void =
           try { return decryptImageBase64(img.imageBase64, encKey); }
           catch { return img.imageBase64; }
         });
-        const r = await compareAgainstPassState(refs, imageBase64, undefined, tagRec?.roi);
+        // A reference that isn't a JPEG after (attempted) decryption was
+        // encrypted with a key the server doesn't hold — scoring it would
+        // yield a meaningless 0.00. Say so explicitly instead.
+        const readable = refs.filter(r => r.startsWith('/9j/'));
+        if (readable.length === 0) {
+          const e = new Error('Validation references are unreadable (encryption key mismatch) — retrain this step');
+          (e as Error & { code?: string }).code = 'UNREADABLE_REFS';
+          throw e;
+        }
+        if (readable.length < refs.length) {
+          console.warn(`[SIB] Step ${ids.stepId}: ${refs.length - readable.length}/${refs.length} references unreadable — scoring the rest`);
+        }
+        const r = await compareAgainstPassState(readable, imageBase64, undefined, tagRec?.roi);
         return { status: r.status, score: r.score };
       })()
     : validateStepFrame(ids.guideId, ids.stepId, imageBase64);
@@ -739,6 +751,11 @@ router.post('/:id/steps/:stepId/validate', (req: Request, res: Response): void =
       res.json({ data: verdict, timestamp: new Date().toISOString() });
     })
     .catch(err => {
+      if ((err as { code?: string })?.code === 'UNREADABLE_REFS') {
+        console.error(`[SIB] Step validation refs unreadable: step ${ids.stepId}`);
+        res.status(409).json({ error: (err as Error).message, timestamp: new Date().toISOString() });
+        return;
+      }
       console.error('[SIB] Step validation failed:', err);
       res.status(500).json({ error: 'Validation failed', timestamp: new Date().toISOString() });
     });

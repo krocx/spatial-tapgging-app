@@ -35,7 +35,18 @@ it, it gets a line.
   AES encryption key — ConeCaptureView encrypts every reference, and the
   cone-aware validate path fed the ciphertext straight to the comparator.
   The route now decrypts references in-memory using the key from the anchor
-  record (plaintext never persisted); already-trained steps need no retrain.
+  record (plaintext never persisted). Fixed (2): the placement flow never
+  pre-loaded the anchor's key, so ConeCaptureView fell back to a random
+  LOCAL key — references the server could never read (steps trained via
+  the placement flow before this fix must be retrained). The placement flow
+  now pins `appState.anchorEncryptionKey` to the anchor record's key, and
+  the server answers a distinct 409 "references unreadable — retrain" when
+  no reference decodes, instead of a silent 0.00. Fixed (3): operator
+  scoring now matches the tag-inspection rule — on-device feature-print
+  match (ROI-aware, calibrated `fp_max_dist`) combined with server SSIM as
+  `max(fp, ssim)`, PASS ≥ 0.60 — and "In position" is gated on the trained
+  stance (`cone_dist_m` ±30 %) with closer/back guidance, so the live frame
+  is comparable to the references the way the inspection flow guarantees.
 - **Validation authoring discoverability (B1+B2, iOS)** — the Add Step
   sheet now carries the same Validation section as Edit Step (Require
   evidence photo / Require validation; flags ride a patch-after-create,

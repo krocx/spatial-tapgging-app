@@ -105,8 +105,11 @@ struct ARGuideSessionView: View {
     // scored against the multi-angle pass-state.
     @State private var coneValidateIndex: Int?       = nil
     @State private var coneValidateGuide: ConeARGuide? = nil
+    @State private var coneValidateTag:   Tag?       = nil   // hidden step tag: feature prints, ROI, cone_dist_m
     @State private var coneReady          = false
     @State private var coneStatusText     = "Move toward the ring"
+    /// Same pass threshold the inspection flow uses (OperatorModeView default).
+    private let stepPassThreshold: Double = 0.60
     @State private var manualValidationIndex: Int? = nil          // untrained: manual Pass/Fail
     @State private var validationInFlight = false
     @State private var validationFailInfo: ValidationFail? = nil  // system FAIL follow-up
@@ -348,16 +351,28 @@ struct ARGuideSessionView: View {
             if case .navigating(let index) = phase {
                 updateNavTelemetry(index: index)
             }
-            // V2: live cone guidance — colour + readiness at 10 Hz
+            // V2: live cone guidance — colour + readiness at 10 Hz. "In
+            // position" means standing at the distance the Author TRAINED at
+            // (cone_dist_m, ±30 % / ≥8 cm) and aiming at the ring — apparent
+            // object size scales ~1/distance, so matching the trained stance
+            // is what makes the references comparable.
             if let g = coneValidateGuide,
                let frame = arManager.sceneView.session.currentFrame {
-                g.updateForCamera(cameraTransform: frame.camera.transform)
-                let angle = g.alignmentAngle(cameraTransform: frame.camera.transform)
-                let ready = !g.isOutOfRange && angle < 25
+                let t = frame.camera.transform
+                g.updateForCamera(cameraTransform: t)
+                let cam   = simd_float3(t.columns.3.x, t.columns.3.y, t.columns.3.z)
+                let dist  = simd_length(cam - g.tagWorldPosition)
+                let train = coneValidateTag.flatMap { metaFloat($0.metadata, "cone_dist_m") } ?? 0.30
+                let tol   = max(0.08, train * 0.30)
+                let distOK = abs(dist - train) <= tol
+                let angle  = g.alignmentAngle(cameraTransform: t)
+                let ready  = distOK && angle < 25
                 if ready != coneReady { coneReady = ready }
-                coneStatusText = g.isOutOfRange ? "Move closer to the ring"
-                               : angle >= 25    ? "Aim at the ring"
-                               :                  "✓ In position — capture"
+                coneStatusText = !distOK
+                    ? (dist > train ? "Move closer — \(Int(((dist - train) * 100).rounded())) cm"
+                                    : "Step back — \(Int(((train - dist) * 100).rounded())) cm")
+                    : angle >= 25 ? "Aim at the ring"
+                    : "✓ In position — capture"
             }
         }
         .onAppear {
@@ -2233,6 +2248,17 @@ struct ARGuideSessionView: View {
         coneStatusText    = "Move toward the ring"
         coneValidateIndex = index
         coneValidateGuide = ConeARGuide(sceneView: arManager.sceneView, tagWorldPosition: pos)
+        // The hidden step tag carries what the inspection flow scores with:
+        // feature_prints + fp_max_dist (viewpoint-tolerant match), the
+        // Author's ROI, and cone_dist_m (the trained stance). Fetch once.
+        if coneValidateTag?.id != sortedSteps[index].validationTagId,
+           let tagId = sortedSteps[index].validationTagId {
+            coneValidateTag = nil
+            Task {
+                let t = try? await SIBClient(settings: settings).fetchTag(id: tagId)
+                await MainActor.run { coneValidateTag = t }
+            }
+        }
     }
 
     private func endConeValidation() {
@@ -2240,6 +2266,86 @@ struct ARGuideSessionView: View {
         coneValidateGuide = nil
         coneValidateIndex = nil
         coneReady         = false
+    }
+
+    private func metaFloat(_ meta: [String: AnyCodable], _ key: String) -> Float? {
+        guard let any = meta[key] else { return nil }
+        if let d = any.value as? Double { return Float(d) }
+        if let f = any.value as? Float  { return f }
+        if let i = any.value as? Int    { return Float(i) }
+        return nil
+    }
+
+    /// Author-marked inspection region, padded 10 % exactly as OperatorModeView
+    /// and the server do (task #74 — one crop convention platform-wide).
+    private func cropToROI(_ image: UIImage, roi: RegionOfInterest) -> UIImage {
+        let pad: CGFloat = 0.10
+        let size = image.size
+        let padW = CGFloat(roi.w) * size.width  * pad
+        let padH = CGFloat(roi.h) * size.height * pad
+        let x1 = max(0, CGFloat(roi.x) * size.width  - padW)
+        let y1 = max(0, CGFloat(roi.y) * size.height - padH)
+        let x2 = min(size.width,  CGFloat(roi.x + roi.w) * size.width  + padW)
+        let y2 = min(size.height, CGFloat(roi.y + roi.h) * size.height + padH)
+        let rect = CGRect(x: x1 * image.scale, y: y1 * image.scale,
+                          width: max(1, x2 - x1) * image.scale, height: max(1, y2 - y1) * image.scale)
+        guard let cg = image.cgImage, let cropped = cg.cropping(to: rect) else { return image }
+        return UIImage(cgImage: cropped, scale: image.scale, orientation: image.imageOrientation)
+    }
+
+    /// Cone-trained verdict — SAME rule as tag inspection (OperatorModeView):
+    /// on-device Vision feature-print match (tolerant of viewpoint) and server
+    /// multi-reference SSIM (precise when the angle matches), final score =
+    /// the better of the two, PASS at ≥ 0.60.
+    private func runConeValidation(index: Int, image: UIImage) async {
+        validationInFlight = true
+        defer { validationInFlight = false }
+        let tag = coneValidateTag
+
+        // 1. Feature-print score (client-side, no network)
+        var fpScore: Double = 0
+        if let tag, let fpAny = tag.metadata["feature_prints"], let arr = fpAny.value as? [Any] {
+            let refs = arr.compactMap { ($0 as? String).flatMap { TagFeaturePrint(base64: $0) } }
+            let liveImg = tag.roi.map { cropToROI(image, roi: $0) } ?? image
+            if !refs.isEmpty, let live = await TagFeaturePrint.extract(from: liveImg) {
+                fpScore = TagFeaturePrint.bestScore(live: live, references: refs,
+                                                    maxDist: metaFloat(tag.metadata, "fp_max_dist"))
+            }
+        }
+
+        // 2. Server SSIM against every cone reference (decrypted server-side)
+        var ssim: Double = 0
+        var serverUnavailable = false
+        if let jpeg = image.jpegData(compressionQuality: 0.7) {
+            do {
+                let v = try await SIBClient(settings: settings).validateStep(
+                    guideId: guide.id, stepId: sortedSteps[index].id,
+                    jpegBase64: jpeg.base64EncodedString())
+                ssim = v.score
+            } catch {
+                serverUnavailable = true
+                print("[StepValidation] server compare unavailable: \(error.localizedDescription)")
+            }
+        }
+
+        // No signal at all (offline + no feature prints) → operator decides.
+        if serverUnavailable && tag == nil {
+            showNotice("System check unavailable — confirm the result manually")
+            manualValidationIndex = index
+            return
+        }
+
+        let score = max(fpScore, ssim)
+        print("[StepValidation] fp=\(String(format: "%.3f", fpScore)) ssim=\(String(format: "%.3f", ssim)) → \(String(format: "%.3f", score))")
+        if score >= stepPassThreshold {
+            pushValidationEvent(index: index, mode: "system", result: "pass", score: score)
+            showNotice("✓ Validated PASS — score \(String(format: "%.2f", score))")
+            markComplete(at: index)
+            autoAdvance(from: index)
+        } else {
+            pushValidationEvent(index: index, mode: "system", result: "fail", score: score)
+            validationFailInfo = ValidationFail(index: index, score: score)
+        }
     }
 
     /// Capture the RAW camera frame (ARFrame.capturedImage — no SceneKit
@@ -2254,7 +2360,7 @@ struct ARGuideSessionView: View {
             return
         }
         endConeValidation()
-        Task { await runSystemValidation(index: idx, image: img) }
+        Task { await runConeValidation(index: idx, image: img) }
     }
 
     /// Mirror of training's clean-capture path (see OperatorModeView #48):

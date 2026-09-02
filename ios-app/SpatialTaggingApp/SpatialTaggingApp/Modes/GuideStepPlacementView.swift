@@ -679,6 +679,17 @@ struct GuideStepPlacementView: View {
             }
             guard let anchor = anchorRecord else { return }
 
+            // ConeCaptureView encrypts every reference with
+            // appState.anchorEncryptionKey — and falls back to a LOCAL random
+            // key when that is nil. The server validates step references on
+            // its own (no operator-supplied key), so the references MUST be
+            // encrypted with the key stored on the anchor record. Pin it here.
+            guard let serverKey = anchor.encryptionKey, !serverKey.isEmpty else {
+                saveError = "This anchor has no encryption key on the server — regenerate its QR from the portal, then train."
+                return
+            }
+            appState.anchorEncryptionKey = serverKey
+
             let tag: Tag
             if let existingId = sessionTagIds[step.id] ?? step.validationTagId {
                 // Reuse the existing hidden tag record — retraining replaces

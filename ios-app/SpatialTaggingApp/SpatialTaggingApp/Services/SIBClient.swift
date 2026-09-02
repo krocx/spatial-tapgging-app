@@ -156,6 +156,13 @@ final class SIBClient {
     // ── Tags ──────────────────────────────────────────────────────────────────
 
     /// Fetch tags for an anchor, optionally filtered to a specific Inspection Set.
+    /// Single tag by id — unaffected by the hidden-tag list filter, so the
+    /// AR OMS step-validation tag (feature prints, ROI, cone distance) is
+    /// reachable for the operator scoring path.
+    func fetchTag(id: String) async throws -> Tag {
+        try await get(Tag.self, path: "/tags/\(id)")
+    }
+
     func fetchTags(anchorId: String, groupId: String? = nil) async throws -> [Tag] {
         var path = "/tags?anchorId=\(anchorId)"
         if let gid = groupId { path += "&groupId=\(gid)" }
