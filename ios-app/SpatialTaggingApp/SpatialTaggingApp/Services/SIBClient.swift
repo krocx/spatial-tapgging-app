@@ -726,6 +726,42 @@ final class SIBClient {
         return try await perform(req, decoding: type)
     }
 
+    // ── Step validation (K4) ─────────────────────────────────────────────────
+
+    struct StepValidationVerdict: Codable {
+        let status: String   // "PASS" | "FAIL"
+        let score:  Double
+    }
+    private struct VerdictEnvelope: Codable { let data: StepValidationVerdict }
+    private struct TrainedEnvelope: Codable {
+        struct D: Codable { let validationTrainedAt: String }
+        let data: D
+    }
+    private struct ImagePayload: Codable { let imageBase64: String }
+
+    /// Author trains a step: uploads the reference photo; returns the stamp.
+    func trainStepValidation(guideId: String, stepId: String, jpegBase64: String) async throws -> String {
+        var req = try makeRequest(method: "PUT", path: "/guides/\(guideId)/steps/\(stepId)/validation-ref")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONEncoder().encode(ImagePayload(imageBase64: jpegBase64))
+        req.timeoutInterval = 45
+        return try await perform(req, decoding: TrainedEnvelope.self).data.validationTrainedAt
+    }
+
+    /// Author removes step validation training.
+    func removeStepValidation(guideId: String, stepId: String) async throws {
+        _ = try await delete(path: "/guides/\(guideId)/steps/\(stepId)/validation-ref")
+    }
+
+    /// Score a live frame against the trained reference (author verify +
+    /// operator system verdict). Server 409s when untrained.
+    func validateStep(guideId: String, stepId: String, jpegBase64: String) async throws -> StepValidationVerdict {
+        try await post(VerdictEnvelope.self,
+                       path: "/guides/\(guideId)/steps/\(stepId)/validate",
+                       body: ImagePayload(imageBase64: jpegBase64),
+                       timeout: 45).data
+    }
+
     private func patch<B: Encodable, R: Decodable>(_ type: R.Type, path: String, body: B) async throws -> R {
         var req = try makeRequest(method: "PATCH", path: path)
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")

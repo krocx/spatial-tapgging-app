@@ -7,6 +7,31 @@ it, it gets a line.
 ## 2026.4.45 — 2026-09-01
 
 ### Added
+- **Step validation via Spatial Inspection (K4)** — a guide step can now
+  demand a validation verdict before it completes. The Author trains it
+  in-app (capture a reference photo → Verify with a live test compare →
+  publish with the guide; Retrain/Remove any time); the reference is scored
+  by the SAME comparator engine tag inspection uses (coarse registration +
+  SSIM/patch-grid) via new step-scoped endpoints
+  (`PUT/DELETE /guides/:id/steps/:stepId/validation-ref`,
+  `POST …/validate`; `validationTrainedAt` is server-stamped). At run time
+  a trained step asks the Operator for a photo and returns a system PASS
+  (auto-completes, score shown) or FAIL (Retry / take the recovery branch);
+  an untrained-but-required step falls back to explicit manual Pass/Fail.
+  Every verdict — system score or manual choice — rides the live stream as
+  `perception:result` and lands on the step's usage-log entry.
+- **Evidence-required steps (K5)** — Authors can mark a step "Require
+  evidence photo" (App editor toggle + Designer inspector checkbox, carried
+  through the procedure compiler and reverse-compiler round-trip). Operators
+  cannot complete such a step until a photo is attached — the camera opens
+  with a notice instead. Closes the parked post-pilot P1.
+- **Production-verified resume (K3)** — an interrupted guide run belongs to
+  its Production #: resume snapshots are stamped with the shift's work
+  context, and picking one up on the SAME Production # works as before.
+  A snapshot from a different Production # gets an explicit prompt —
+  "Switch & Resume" (moves the shift to that #) or "Start fresh on the
+  current #" — so work is never silently logged against the wrong system.
+  Pre-K3 (unstamped) snapshots keep resuming normally.
 - **AR OMS Usage Log (K2)** — a durable, per-step usage record for every
   guide run, derived server-side from the live-session event stream: step
   enter/exit times, duration (operator-measured when available), outcome

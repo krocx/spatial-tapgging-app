@@ -727,6 +727,17 @@ struct EditStepSheet: View {
     @State private var shouldClearPhoto = false          // true → send null to server
     @State private var imagePickerSource: ImagePickerSource? = nil
 
+    // Step validation state (K4)
+    @State private var validationOn      = false
+    // K5: evidence photo mandatory
+    @State private var evidenceOn        = false
+    @State private var trainedAt:        String? = nil
+    @State private var validationBusy    = false
+    @State private var validationNote:   String? = nil
+    /// Camera purpose: capture a training reference vs a verify test shot.
+    private enum ValidationShot: String, Identifiable { case train, test; var id: String { rawValue } }
+    @State private var validationShot:   ValidationShot? = nil
+
     // 3D model picker state (Phase 3D)
     @State private var anchorModels:    [Model3D] = []
     @State private var isLoadingModels  = false
@@ -761,6 +772,41 @@ struct EditStepSheet: View {
                             .lineLimit(2...4)
                     }
                     Toggle("Mark complete required", isOn: $completionRequired)
+                }
+
+                // ── Step validation (K4) — Spatial Inspection on this step ────
+                Section {
+                    Toggle("Require evidence photo", isOn: $evidenceOn)
+                    Toggle("Require validation", isOn: $validationOn)
+                    if validationOn {
+                        HStack {
+                            Image(systemName: trainedAt != nil ? "checkmark.seal.fill" : "seal")
+                                .foregroundColor(trainedAt != nil ? .green : .secondary)
+                            Text(trainedAt != nil ? "Trained — system verdict active" : "Not trained — operator sees manual Pass/Fail")
+                                .font(.footnote)
+                            Spacer()
+                        }
+                        Button(trainedAt != nil ? "Retrain reference photo" : "Train — capture reference photo") {
+                            validationShot = .train
+                        }
+                        .disabled(validationBusy)
+                        if trainedAt != nil {
+                            Button("Verify — test against reference") { validationShot = .test }
+                                .disabled(validationBusy)
+                            Button("Remove training", role: .destructive) {
+                                Task { await removeValidationTraining() }
+                            }
+                            .disabled(validationBusy)
+                        }
+                        if validationBusy { ProgressView() }
+                        if let note = validationNote {
+                            Text(note).font(.footnote).foregroundColor(.secondary)
+                        }
+                    }
+                } header: {
+                    Text("Validation")
+                } footer: {
+                    Text("Uses the platform's Spatial Inspection engine. Train with the part in its correct state, from where the operator will stand. Verify before publishing.")
                 }
 
                 // ── Photo editing ─────────────────────────────────────────────
@@ -970,12 +1016,21 @@ struct EditStepSheet: View {
                 ModelPreviewView(model: model)
                     .environmentObject(settings)
             }
+            .sheet(item: $validationShot) { shot in
+                CameraPickerView(sourceType: .camera) { img in
+                    validationShot = nil
+                    Task { await handleValidationShot(shot, image: img) }
+                }
+            }
             .onAppear {
                 stepTitle          = step.title ?? ""
                 text               = step.text
                 useTTSOverride     = step.ttsText != nil
                 ttsOverride        = step.ttsText ?? ""
                 completionRequired = step.completionRequired
+                validationOn       = step.validationRequired == true
+                trainedAt          = step.validationTrainedAt
+                evidenceOn         = step.evidenceRequired == true
                 // 3D model: pre-populate from step
                 selectedModelId    = step.modelId
                 modelScale         = step.modelScale     ?? 1.0
@@ -1010,6 +1065,43 @@ struct EditStepSheet: View {
             anchorModels = models
         }
         isLoadingModels = false
+    }
+
+    private func handleValidationShot(_ shot: ValidationShot, image: UIImage) async {
+        guard let jpeg = image.jpegData(compressionQuality: 0.7) else { return }
+        validationBusy = true
+        validationNote = nil
+        let client = SIBClient(settings: settings)
+        do {
+            switch shot {
+            case .train:
+                trainedAt = try await client.trainStepValidation(
+                    guideId: guide.id, stepId: step.id, jpegBase64: jpeg.base64EncodedString())
+                validationNote = "Reference saved. Use Verify to test it before publishing."
+            case .test:
+                let v = try await client.validateStep(
+                    guideId: guide.id, stepId: step.id, jpegBase64: jpeg.base64EncodedString())
+                validationNote = v.status == "PASS"
+                    ? "Verify PASS — score \(String(format: "%.2f", v.score)). Training looks good."
+                    : "Verify FAIL — score \(String(format: "%.2f", v.score)). Retrain from the operator's viewpoint, or expect manual checks."
+            }
+        } catch {
+            validationNote = friendlyMessage(for: error)
+        }
+        validationBusy = false
+    }
+
+    private func removeValidationTraining() async {
+        validationBusy = true
+        let client = SIBClient(settings: settings)
+        do {
+            try await client.removeStepValidation(guideId: guide.id, stepId: step.id)
+            trainedAt = nil
+            validationNote = "Training removed — operators will validate manually."
+        } catch {
+            validationNote = friendlyMessage(for: error)
+        }
+        validationBusy = false
     }
 
     private func saveStep() async {
@@ -1049,6 +1141,11 @@ struct EditStepSheet: View {
         req.nextOnSuccess = nextOnSuccess
         req.nextOnFailure = nextOnFailure
         req.precondition  = precondition
+
+        // Step validation flag (K4). Training itself happens immediately via
+        // its own endpoints — only the requirement flag rides the PATCH.
+        req.validationRequired = validationOn
+        req.evidenceRequired   = evidenceOn   // K5
 
         do {
             _ = try await client.updateGuideStep(guideId: guide.id, stepId: step.id, req: req)

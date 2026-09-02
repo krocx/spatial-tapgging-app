@@ -680,6 +680,18 @@ export interface GuideStep {
   nextOnSuccess?:     string;      // step ID to navigate to on completion; nil → sequenceNumber+1
   nextOnFailure?:     string;      // step ID to navigate to on failure/retry; nil → stay on step
   precondition?:      string;      // step ID that must be completed before this step is reachable
+  // Step validation via Spatial Inspection (K4, 2026.4.45)
+  /** Author requires a validation verdict before this step can complete. */
+  validationRequired?: boolean;
+  /**
+   * SERVER-STAMPED when the author uploads a validation reference photo
+   * (PUT /guides/:id/steps/:stepId/validation-ref); cleared on DELETE.
+   * Present = the comparator can produce a system verdict; absent while
+   * validationRequired = the operator is asked for a manual Pass/Fail.
+   */
+  validationTrainedAt?: string;
+  /** K5: the operator must attach an evidence photo before completing. */
+  evidenceRequired?:  boolean;
   createdAt:          string;
   updatedAt:          string;
 }
@@ -724,6 +736,10 @@ export type UpdateGuideStepRequest = {
   nextOnSuccess?:      string | null;
   nextOnFailure?:      string | null;
   precondition?:       string | null;
+  /** Step validation (K4). validationTrainedAt is server-owned — not here. */
+  validationRequired?: boolean;
+  /** K5: evidence photo mandatory before completion. */
+  evidenceRequired?:   boolean;
 };
 
 /**
@@ -912,7 +928,9 @@ export interface OmsUsageStepEntry {
   durationSeconds?: number;
   /** open = still on it (or session abandoned while on it). */
   outcome:          'open' | 'completed' | 'failed' | 'left';
-  // K4 (step validation) and K5 (evidence) extend this entry.
+  /** Step-validation verdict (K4): system = comparator score, manual = operator choice. */
+  validation?: { mode: 'system' | 'manual'; result: 'pass' | 'fail'; score?: number };
+  // K5 (evidence) extends this entry.
 }
 
 /**
@@ -1001,6 +1019,8 @@ export interface ImportedGuideStep {
   /** Reference link (any http(s) URL) — carried through to GuideStep.linkUrl. */
   linkUrl?:             string;
   completionRequired?:  boolean;   // defaults to true
+  /** K5: evidence photo mandatory before this step can complete. */
+  evidenceRequired?:    boolean;
   // 3D ghost overlay ASSIGNMENT (which model, how big, how transparent).
   // Deliberately excludes offsets/rotation: those are AR placement, owned by
   // the device, and survive re-sync — see applyImportedGuide.

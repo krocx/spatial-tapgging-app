@@ -50,6 +50,7 @@ import { guideToProcedureMap, toMindmapRecord } from '../procedure/reverse-compi
 import { boundGuideId } from '../procedure/export.js';
 import { mindmapStore, mindmapAccessStore } from '../models/mindmap.model.js';
 import { saveDesignerImage } from '../procedure/designer-images.js';
+import { saveValidationRef, deleteValidationRef, validateStepFrame } from '../oms/step-validation.js';
 
 // ── Storage ───────────────────────────────────────────────────────────────────
 // Stores live in ../guides/store.js so the ingestion service can share them
@@ -582,6 +583,10 @@ router.patch('/:id/steps/:stepId', (req: Request, res: Response): void => {
     nextOnSuccess:      'nextOnSuccess'   in body ? (body.nextOnSuccess ?? undefined) : step.nextOnSuccess,
     nextOnFailure:      'nextOnFailure'   in body ? (body.nextOnFailure ?? undefined) : step.nextOnFailure,
     precondition:       'precondition'    in body ? (body.precondition  ?? undefined) : step.precondition,
+    // Step validation (K4). validationTrainedAt is SERVER-owned — set only by
+    // the validation-ref routes below, never by a PATCH body.
+    validationRequired: 'validationRequired' in body ? (body.validationRequired || undefined) : step.validationRequired,
+    evidenceRequired:   'evidenceRequired'   in body ? (body.evidenceRequired   || undefined) : step.evidenceRequired,
     updatedAt: now,
   };
 
@@ -592,6 +597,83 @@ router.patch('/:id/steps/:stepId', (req: Request, res: Response): void => {
 
   const resp: ApiResponse<GuideStep> = { data: updated, timestamp: now };
   res.json(resp);
+});
+
+// ── Step validation (K4) — train / untrain / score ───────────────────────────
+
+/** Shared 404 guard: guide must exist and own the step. */
+function findGuideStep(req: Request, res: Response): { guideId: string; stepId: string } | null {
+  const guide = guideStore.findById(req.params.id);
+  const step  = guide ? guideStepStore.findById(req.params.stepId) : undefined;
+  if (!guide || !step || step.guideId !== guide.id) {
+    res.status(404).json({
+      error: `Step ${req.params.stepId} not found in guide ${req.params.id}`,
+      timestamp: new Date().toISOString(),
+    });
+    return null;
+  }
+  return { guideId: guide.id, stepId: step.id };
+}
+
+// PUT /guides/:id/steps/:stepId/validation-ref — Author trains the step:
+// stores the reference photo and stamps validationTrainedAt on the step.
+router.put('/:id/steps/:stepId/validation-ref', (req: Request, res: Response): void => {
+  const ids = findGuideStep(req, res);
+  if (!ids) return;
+  const { imageBase64 } = req.body as { imageBase64?: string };
+  if (!imageBase64) {
+    res.status(400).json({ error: 'imageBase64 is required', timestamp: new Date().toISOString() });
+    return;
+  }
+  try {
+    saveValidationRef(ids.guideId, ids.stepId, imageBase64);
+  } catch (err) {
+    console.error('[SIB] Failed to save validation reference:', err);
+    res.status(500).json({ error: 'Failed to save validation reference', timestamp: new Date().toISOString() });
+    return;
+  }
+  const now  = new Date().toISOString();
+  const step = guideStepStore.findById(ids.stepId)!;
+  guideStepStore.save({ ...step, validationTrainedAt: now, updatedAt: now });
+  console.log(`[SIB] Step validation trained: ${ids.stepId} in guide ${ids.guideId}`);
+  res.json({ data: { validationTrainedAt: now }, timestamp: now });
+});
+
+// DELETE /guides/:id/steps/:stepId/validation-ref — Author removes training.
+router.delete('/:id/steps/:stepId/validation-ref', (req: Request, res: Response): void => {
+  const ids = findGuideStep(req, res);
+  if (!ids) return;
+  deleteValidationRef(ids.guideId, ids.stepId);
+  const now  = new Date().toISOString();
+  const step = guideStepStore.findById(ids.stepId)!;
+  guideStepStore.save({ ...step, validationTrainedAt: undefined, updatedAt: now });
+  res.json({ data: { removed: true }, timestamp: now });
+});
+
+// POST /guides/:id/steps/:stepId/validate — score a live frame against the
+// trained reference. Used by the Author to VERIFY training and by the
+// Operator for the system verdict. 409 when the step is untrained (client
+// falls back to manual Pass/Fail).
+router.post('/:id/steps/:stepId/validate', (req: Request, res: Response): void => {
+  const ids = findGuideStep(req, res);
+  if (!ids) return;
+  const { imageBase64 } = req.body as { imageBase64?: string };
+  if (!imageBase64) {
+    res.status(400).json({ error: 'imageBase64 is required', timestamp: new Date().toISOString() });
+    return;
+  }
+  validateStepFrame(ids.guideId, ids.stepId, imageBase64)
+    .then(verdict => {
+      if (!verdict) {
+        res.status(409).json({ error: 'Step is not trained for validation', timestamp: new Date().toISOString() });
+        return;
+      }
+      res.json({ data: verdict, timestamp: new Date().toISOString() });
+    })
+    .catch(err => {
+      console.error('[SIB] Step validation failed:', err);
+      res.status(500).json({ error: 'Validation failed', timestamp: new Date().toISOString() });
+    });
 });
 
 // DELETE /guides/:id/steps/:stepId — Author deletes a single step

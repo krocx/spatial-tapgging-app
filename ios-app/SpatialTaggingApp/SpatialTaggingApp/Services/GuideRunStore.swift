@@ -32,6 +32,9 @@ struct GuideRunSnapshot: Codable {
     let startedAt: Date
     var savedAt:   Date
     var steps:     [StepState]
+    /// Production # the run belongs to (K3). Optional so pre-K3 snapshots
+    /// decode; nil = legacy, treated as matching.
+    var productionNumber: String?
 
     var completedCount: Int { steps.filter { $0.completedAt != nil }.count }
 }
@@ -55,7 +58,8 @@ enum GuideRunStore {
         dir.appendingPathComponent("\(guideId)-\(stepId).jpg")
     }
 
-    static func save(guideId: String, startedAt: Date, progresses: [GuideStepProgress]) {
+    static func save(guideId: String, startedAt: Date, progresses: [GuideStepProgress],
+                     productionNumber: String? = nil) {
         let snap = GuideRunSnapshot(
             guideId: guideId,
             startedAt: startedAt,
@@ -65,7 +69,8 @@ enum GuideRunStore {
                       enteredAt: $0.enteredAt,
                       completedAt: $0.completedAt,
                       hasEvidence: $0.evidencePhoto != nil)
-            }
+            },
+            productionNumber: productionNumber
         )
         if let data = try? JSONEncoder().encode(snap) {
             try? data.write(to: snapshotURL(guideId), options: .atomic)

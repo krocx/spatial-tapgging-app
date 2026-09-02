@@ -91,8 +91,16 @@ struct ARGuideSessionView: View {
     @State private var failConfirmIndex: Int? = nil
     /// Transient top notice (precondition redirects, failure routing). Auto-clears.
     @State private var transientNotice: String? = nil
+    // ── Step validation (K4) ──
+    @State private var validationCameraIndex: Int? = nil          // system check: camera capture
+    @State private var manualValidationIndex: Int? = nil          // untrained: manual Pass/Fail
+    @State private var validationInFlight = false
+    @State private var validationFailInfo: ValidationFail? = nil  // system FAIL follow-up
+    private struct ValidationFail: Identifiable { let id = UUID(); let index: Int; let score: Double }
     /// Saved run offered for resume on entry; nil once answered.
     @State private var resumeOffer: GuideRunSnapshot? = nil
+    /// Snapshot from a DIFFERENT Production # — needs an explicit switch (K3).
+    @State private var resumeMismatch: GuideRunSnapshot? = nil
 
     // ── FTUE / Help ───────────────────────────────────────────────────────────
     @State private var showOnboarding = false
@@ -293,7 +301,16 @@ struct ARGuideSessionView: View {
             // Interrupted run from earlier (call, battery, accidental exit)?
             // Offer to pick up where they left off instead of redoing work.
             if let snap = GuideRunStore.resumable(guideId: guide.id) {
-                resumeOffer = snap
+                // K3: a run belongs to its Production #. Same (or legacy,
+                // unstamped) → normal resume offer; different → explicit
+                // switch prompt so work is never silently logged against
+                // the wrong system.
+                if let snapProd = snap.productionNumber,
+                   !snapProd.isEmpty, snapProd != settings.productionNumber {
+                    resumeMismatch = snap
+                } else {
+                    resumeOffer = snap
+                }
             }
             if !progresses.isEmpty { progresses[0].enter() }
             if let first = sortedSteps.first { Task { await loadStepImage(for: first) } }
@@ -344,6 +361,70 @@ struct ARGuideSessionView: View {
             }
             .environmentObject(settings)
         }
+        // ── Step validation (K4): camera capture for the system check ─────────
+        .sheet(isPresented: Binding(
+            get: { validationCameraIndex != nil },
+            set: { if !$0 { validationCameraIndex = nil } }
+        )) {
+            if let idx = validationCameraIndex {
+                CameraPickerView(sourceType: .camera) { img in
+                    validationCameraIndex = nil
+                    Task { await runSystemValidation(index: idx, image: img) }
+                }
+            }
+        }
+        // System check FAILED — retry, take the recovery branch, or cancel.
+        .confirmationDialog(
+            "Validation FAILED",
+            isPresented: Binding(
+                get: { validationFailInfo != nil },
+                set: { if !$0 { validationFailInfo = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Retry check") {
+                if let info = validationFailInfo { validationCameraIndex = info.index }
+                validationFailInfo = nil
+            }
+            Button("Mark step failed — go to recovery", role: .destructive) {
+                if let info = validationFailInfo { markFailed(at: info.index) }
+                validationFailInfo = nil
+            }
+            Button("Cancel", role: .cancel) { validationFailInfo = nil }
+        } message: {
+            if let info = validationFailInfo {
+                Text("The system check scored \(String(format: "%.2f", info.score)) — below the pass threshold. Re-check the work and retry, or take the recovery path. The result is already logged.")
+            }
+        }
+        // Untrained validation step — the operator decides, and it's logged.
+        .confirmationDialog(
+            "Validate this step",
+            isPresented: Binding(
+                get: { manualValidationIndex != nil },
+                set: { if !$0 { manualValidationIndex = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Pass — work is correct") {
+                if let idx = manualValidationIndex {
+                    pushValidationEvent(index: idx, mode: "manual", result: "pass", score: nil)
+                    showNotice("✓ Manually validated PASS")
+                    markComplete(at: idx)
+                    autoAdvance(from: idx)
+                }
+                manualValidationIndex = nil
+            }
+            Button("Fail — go to recovery", role: .destructive) {
+                if let idx = manualValidationIndex {
+                    pushValidationEvent(index: idx, mode: "manual", result: "fail", score: nil)
+                    markFailed(at: idx)
+                }
+                manualValidationIndex = nil
+            }
+            Button("Cancel", role: .cancel) { manualValidationIndex = nil }
+        } message: {
+            Text("This step requires validation but has no trained reference. Confirm the result — your verdict is recorded in the usage log.")
+        }
         // Evidence camera picker (Phase 3)
         .sheet(isPresented: $showEvidencePicker) {
             if let idx = evidencePickerStepIndex {
@@ -380,6 +461,31 @@ struct ARGuideSessionView: View {
                 Text("\(snap.completedCount) of \(sortedSteps.count) steps were already completed in an interrupted run. Resume, or start from the beginning?")
             }
         }
+        // ── Resume from a different Production # (K3) ────────────────────────
+        .alert("Different Production #", isPresented: Binding(
+            get: { resumeMismatch != nil },
+            set: { if !$0 { resumeMismatch = nil } }
+        )) {
+            Button("Switch & Resume") {
+                if let snap = resumeMismatch {
+                    if let snapProd = snap.productionNumber { settings.productionNumber = snapProd }
+                    GuideRunStore.apply(snap, to: &progresses)
+                    sessionStart = snap.startedAt
+                    for p in progresses where p.isCompleted {
+                        refreshPanelTextures(stepId: p.step.id)
+                    }
+                }
+                resumeMismatch = nil
+            }
+            Button("Start fresh on current #", role: .destructive) {
+                GuideRunStore.clear(guideId: guide.id)
+                resumeMismatch = nil
+            }
+        } message: {
+            if let snap = resumeMismatch {
+                Text("An interrupted run of this guide (\(snap.completedCount) step\(snap.completedCount == 1 ? "" : "s") done) belongs to Production # \(snap.productionNumber ?? "?"), but this shift is set to \(settings.productionNumber.isEmpty ? "none" : settings.productionNumber). Switch the shift to resume it, or start fresh.")
+            }
+        }
         // ── Step-failed confirmation (routes to the authored recovery branch) ──
         .confirmationDialog(
             "Mark this step as failed?",
@@ -399,6 +505,15 @@ struct ARGuideSessionView: View {
         }
         // ── Transient notice (redirects / failure routing) ────────────────────
         .overlay(alignment: .top) {
+            if validationInFlight {
+                VStack(spacing: 10) {
+                    ProgressView().tint(.white)
+                    Text("Validating…").font(.footnote).foregroundColor(.white)
+                }
+                .padding(18)
+                .background(.black.opacity(0.7))
+                .cornerRadius(14)
+            }
             if let notice = transientNotice {
                 Text(notice)
                     .font(.caption.bold())
@@ -624,7 +739,7 @@ struct ARGuideSessionView: View {
                             onPrev:          { navigateTo(index: index - 1) },
                             onNext:          { navigateTo(index: index + 1) },
                             onSkip:          { navigateTo(index: index + 1) },
-                            onComplete:      { markComplete(at: index); autoAdvance(from: index) },
+                            onComplete:      { attemptComplete(at: index) },
                             onSpeak:         { toggleSpeech(for: step) },
                             onSignOff:       { showSignOff = true },
                             onEvidence:      { openEvidencePicker(for: index) },
@@ -1003,8 +1118,7 @@ struct ARGuideSessionView: View {
                         if isTerminal(index: idx) && allRequiredDone {
                             showSignOff = true
                         } else {
-                            markComplete(at: idx)
-                            autoAdvance(from: idx)
+                            attemptComplete(at: idx)
                         }
                         refreshPanelTextures(stepId: stepId)
                     }
@@ -1756,7 +1870,8 @@ struct ARGuideSessionView: View {
 
     /// Persist step state to disk so an interrupted run can be resumed.
     private func persistProgress() {
-        GuideRunStore.save(guideId: guide.id, startedAt: sessionStart, progresses: progresses)
+        GuideRunStore.save(guideId: guide.id, startedAt: sessionStart, progresses: progresses,
+                           productionNumber: settings.productionNumber.isEmpty ? nil : settings.productionNumber)
     }
 
     /// Show a short top-of-screen notice, auto-dismissed after 3.5 s.
@@ -1790,6 +1905,72 @@ struct ARGuideSessionView: View {
            let targetIdx = sortedSteps.firstIndex(where: { $0.id == targetId }) {
             showNotice("Routing to recovery: \(sortedSteps[targetIdx].displayTitle)")
             navigateTo(index: targetIdx)
+        }
+    }
+
+    /// K4 gate: steps that require validation get a verdict BEFORE completing.
+    /// Trained → camera capture + comparator verdict; untrained → manual
+    /// Pass/Fail. Everything else completes as before.
+    private func attemptComplete(at index: Int) {
+        guard index < sortedSteps.count else { return }
+        let step = sortedSteps[index]
+        // K5: evidence photo first — completing without it is blocked.
+        if step.needsEvidence && progresses[index].evidencePhoto == nil && !progresses[index].isCompleted {
+            showNotice("📷 Evidence photo required — take it to complete this step")
+            evidencePickerStepIndex = index
+            showEvidencePicker = true
+            return
+        }
+        if step.needsValidation && !progresses[index].isCompleted {
+            if step.validationTrained { validationCameraIndex = index }
+            else                      { manualValidationIndex = index }
+            return
+        }
+        markComplete(at: index)
+        autoAdvance(from: index)
+    }
+
+    /// Push the verdict onto the live stream (lands in the usage log).
+    private func pushValidationEvent(index: Int, mode: String, result: String, score: Double?) {
+        guard let lsId = liveSessionId, index < sortedSteps.count else { return }
+        let stepId = sortedSteps[index].id
+        var payload: [String: AnyCodable] = [
+            "mode": AnyCodable(mode), "result": AnyCodable(result),
+        ]
+        if let score { payload["score"] = AnyCodable(score) }
+        Task {
+            await SIBClient(settings: settings).pushGuideSessionEvent(
+                liveSessionId: lsId,
+                event: PushGuideSessionEventRequest(
+                    type: .perceptionResult, stepId: stepId, stepIndex: index,
+                    durationSeconds: nil, payload: payload
+                )
+            )
+        }
+    }
+
+    /// System validation: score the captured photo against the trained reference.
+    private func runSystemValidation(index: Int, image: UIImage) async {
+        guard let jpeg = image.jpegData(compressionQuality: 0.7) else { return }
+        validationInFlight = true
+        defer { validationInFlight = false }
+        do {
+            let v = try await SIBClient(settings: settings).validateStep(
+                guideId: guide.id, stepId: sortedSteps[index].id,
+                jpegBase64: jpeg.base64EncodedString())
+            if v.status == "PASS" {
+                pushValidationEvent(index: index, mode: "system", result: "pass", score: v.score)
+                showNotice("✓ Validated PASS — score \(String(format: "%.2f", v.score))")
+                markComplete(at: index)
+                autoAdvance(from: index)
+            } else {
+                pushValidationEvent(index: index, mode: "system", result: "fail", score: v.score)
+                validationFailInfo = ValidationFail(index: index, score: v.score)
+            }
+        } catch {
+            // Server unreachable or untrained (409) — fall back to manual so
+            // the operator is never stuck.
+            manualValidationIndex = index
         }
     }
 

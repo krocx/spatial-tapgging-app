@@ -108,8 +108,26 @@ export function usageRecordEvent(
       rec.totalSeconds = seconds(rec.startedAt, ts);
       rec.completed    = true;
       break;
+    case 'perception:result': {
+      // Step-validation verdict (K4): attach to the newest entry for the
+      // step (open or just-closed) — the app may complete the step in the
+      // same breath as the verdict.
+      const pl = (req.payload ?? {}) as { mode?: string; result?: string; score?: number };
+      if (pl.mode !== 'system' && pl.mode !== 'manual') return;
+      if (pl.result !== 'pass' && pl.result !== 'fail') return;
+      for (let i = rec.steps.length - 1; i >= 0; i--) {
+        if (!req.stepId || rec.steps[i].stepId === req.stepId) {
+          rec.steps[i].validation = {
+            mode: pl.mode, result: pl.result,
+            ...(typeof pl.score === 'number' ? { score: pl.score } : {}),
+          };
+          break;
+        }
+      }
+      break;
+    }
     default:
-      return;   // retried/stalled/perception events don't change timing rows
+      return;   // retried/stalled events don't change timing rows
   }
   omsUsageStore.save(rec);
 }

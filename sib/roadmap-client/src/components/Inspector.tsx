@@ -332,7 +332,7 @@ function StepSection({ nodeId }: { nodeId: string }): JSX.Element | null {
   const isProcedure = useStore(s => s.map?.kind === 'procedure');
   const step = useStore(s =>
     (s.map?.nodes.find(n => n.id === nodeId)?.metadata?.step ?? {}) as {
-      ttsText?: string; optional?: boolean; imageFile?: string; linkUrl?: string;
+      ttsText?: string; optional?: boolean; evidenceRequired?: boolean; imageFile?: string; linkUrl?: string;
       modelId?: string; modelScale?: number;
     });
   const patchStepMeta = useStore(s => s.patchStepMeta);
@@ -425,6 +425,15 @@ function StepSection({ nodeId }: { nodeId: string }): JSX.Element | null {
           onChange={e => patchStepMeta(nodeId, { optional: e.target.checked ? true : null })}
         />
         Optional step <span className="step-check-hint">— operator may skip it</span>
+      </label>
+
+      <label className="step-check">
+        <input
+          type="checkbox"
+          checked={step.evidenceRequired === true}
+          onChange={e => patchStepMeta(nodeId, { evidenceRequired: e.target.checked ? true : null })}
+        />
+        Evidence photo required <span className="step-check-hint">— must be taken before completing</span>
       </label>
 
       <div className="inspector-field">Reference image

@@ -206,6 +206,7 @@ export async function applyImportedGuide(
       mediaType:          mediaPath ? 'image' : undefined,
       mediaPath,
       completionRequired: s.completionRequired ?? true,
+      ...(s.evidenceRequired === true ? { evidenceRequired: true } : {}),
       isPlaced:           false,
       nextOnSuccess:      s.nextOnSuccessSeq !== undefined ? seqToId.get(s.nextOnSuccessSeq) : undefined,
       nextOnFailure:      s.nextOnFailureSeq !== undefined ? seqToId.get(s.nextOnFailureSeq) : undefined,

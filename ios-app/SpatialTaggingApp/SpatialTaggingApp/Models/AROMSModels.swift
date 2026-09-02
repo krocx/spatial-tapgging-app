@@ -165,8 +165,20 @@ struct GuideStep: Codable, Identifiable, Equatable {
     let nextOnSuccess:      String?     // step ID to navigate to on completion; nil → sequenceNumber+1
     let nextOnFailure:      String?     // step ID to navigate to on failure/retry; nil → stay on step
     let precondition:       String?     // step ID that must be completed before this step is reachable
+    // Step validation (K4)
+    let validationRequired:  Bool?      // author demands a verdict before completion
+    let validationTrainedAt: String?    // server-stamped when a reference photo exists
+    // K5: evidence photo mandatory before completion
+    let evidenceRequired:    Bool?
     let createdAt:          String
     let updatedAt:          String
+
+    /// The comparator can produce a system verdict for this step.
+    var validationTrained: Bool { validationTrainedAt?.isEmpty == false }
+    /// A verdict (system or manual) is required before completing.
+    var needsValidation: Bool { validationRequired == true }
+    /// An evidence photo is required before completing (K5).
+    var needsEvidence: Bool { evidenceRequired == true }
 
     /// Effective voice text: ttsText if set, else falls back to the instruction text.
     var effectiveTTSText: String { ttsText ?? text }
@@ -216,6 +228,9 @@ struct GuideStep: Codable, Identifiable, Equatable {
         nextOnSuccess      = try c.decodeIfPresent(String.self,             forKey: .nextOnSuccess)
         nextOnFailure      = try c.decodeIfPresent(String.self,             forKey: .nextOnFailure)
         precondition       = try c.decodeIfPresent(String.self,             forKey: .precondition)
+        validationRequired  = try c.decodeIfPresent(Bool.self,   forKey: .validationRequired)
+        validationTrainedAt = try c.decodeIfPresent(String.self, forKey: .validationTrainedAt)
+        evidenceRequired    = try c.decodeIfPresent(Bool.self,   forKey: .evidenceRequired)
         createdAt          = try c.decode(String.self,              forKey: .createdAt)
         updatedAt          = try c.decode(String.self,              forKey: .updatedAt)
     }
@@ -292,6 +307,10 @@ struct UpdateGuideStepRequest: Codable {
     var nextOnSuccess:      String?
     var nextOnFailure:      String?
     var precondition:       String?
+    // Step validation (K4) — nil keeps existing; true/false sets
+    var validationRequired: Bool?
+    // K5
+    var evidenceRequired:   Bool?
 }
 
 // Swift synthesizes init() automatically for this struct because every stored
@@ -424,6 +443,8 @@ struct PushGuideSessionEventRequest: Encodable {
     let stepId:          String?
     let stepIndex:       Int?
     let durationSeconds: Double?
+    /// Event-specific extras (K4: validation verdicts ride perception:result).
+    var payload:         [String: AnyCodable]? = nil
 }
 
 // MARK: - AI Hint (Step 3: AI Dynamic Instructions adapter)

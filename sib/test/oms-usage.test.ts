@@ -62,11 +62,40 @@ test('moving on without completing closes the entry as left; sign-off link final
   assert.ok(rec.endedAt);
 });
 
+test('perception:result attaches a validation verdict to the matching step entry', () => {
+  usageOpen(live('L3'),
+    { guideId: 'g1', anchorId: 'a1', guideName: 'x', anchorName: 'y',
+      operatorName: 'Tech Three', workContext: 'CH-11' });
+  usageRecordEvent('L3', 'step:entered', { type: 'step:entered', stepId: 's1', stepIndex: 0 });
+  // System verdict arrives, then the completion — both target s1.
+  usageRecordEvent('L3', 'perception:result', {
+    type: 'perception:result', stepId: 's1',
+    payload: { mode: 'system', result: 'pass', score: 0.87 },
+  });
+  usageRecordEvent('L3', 'step:completed', { type: 'step:completed', stepId: 's1' });
+  // Manual verdict on the next step, then failure routing.
+  usageRecordEvent('L3', 'step:entered', { type: 'step:entered', stepId: 's2', stepIndex: 1 });
+  usageRecordEvent('L3', 'perception:result', {
+    type: 'perception:result', stepId: 's2',
+    payload: { mode: 'manual', result: 'fail' },
+  });
+  usageRecordEvent('L3', 'step:failed', { type: 'step:failed', stepId: 's2' });
+  // Junk payload must be ignored.
+  usageRecordEvent('L3', 'perception:result', {
+    type: 'perception:result', stepId: 's2', payload: { mode: 'wat', result: 'maybe' },
+  });
+
+  const rec = omsUsageStore.findById('L3')!;
+  assert.deepEqual(rec.steps[0].validation, { mode: 'system', result: 'pass', score: 0.87 });
+  assert.deepEqual(rec.steps[1].validation, { mode: 'manual', result: 'fail' });
+  assert.equal(rec.steps[1].outcome, 'failed');
+});
+
 test('listUsage filters by workContext and guideId, newest first; unknown ids ignored', () => {
   usageRecordEvent('NOPE', 'step:entered', { type: 'step:entered', stepId: 's1' });  // no throw
   const ch07 = listUsage({ workContext: 'CH-07' });
   assert.equal(ch07.length, 1);
   assert.equal(ch07[0].id, 'L1');
-  assert.equal(listUsage({ guideId: 'g1' }).length, 2);
+  assert.equal(listUsage({ guideId: 'g1' }).length, 3);   // L1 + L2 + L3
   assert.equal(listUsage({ guideId: 'other' }).length, 0);
 });
