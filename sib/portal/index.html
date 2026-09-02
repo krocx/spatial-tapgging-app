@@ -2119,9 +2119,11 @@ function renderUsageLog() {
         `<td class="num">${fmtDur(e.durationSeconds)}</td>` +
         `<td>${OUT[e.outcome] || ''} ${esc(e.outcome)}</td>` +
         `<td>${valBadge(e.validation)}</td>` +
-        `<td>${u.signOffSessionId
-          ? `<img class="ul-thumb" data-evidence-url="/guide-sessions/${encodeURIComponent(u.signOffSessionId)}/evidence/${encodeURIComponent(e.stepId)}" alt="">`
-          : ''}</td>` +
+        `<td>${e.evidence
+          ? `<img class="ul-thumb" data-evidence-url="/guide-sessions/${encodeURIComponent(u.id)}/evidence/${encodeURIComponent(e.stepId)}" alt="">`
+          : u.signOffSessionId
+            ? `<img class="ul-thumb" data-evidence-url="/guide-sessions/${encodeURIComponent(u.signOffSessionId)}/evidence/${encodeURIComponent(e.stepId)}" alt="">`
+            : ''}</td>` +
         `<td class="ul-dim mono">${esc(e.stepId.slice(0, 8))}</td></tr>`).join('');
       html += `<tr id="${id}" class="ul-detail"><td></td><td colspan="9">` +
         `<table class="usage-steps"><thead><tr><th class="num">#</th><th>Entered</th><th class="num">Time</th><th>Outcome</th><th>Validation</th><th>Evidence</th><th>Step</th></tr></thead>` +

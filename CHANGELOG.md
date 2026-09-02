@@ -7,6 +7,26 @@ it, it gets a line.
 ## 2026.4.45 — 2026-09-01
 
 ### Added
+- **Live evidence — usage log becomes the system of record** — evidence
+  photos now upload THE MOMENT they are captured
+  (`PUT /guide-sessions/live/:id/evidence/:stepId`, encoded off the main
+  thread), stored once under the LIVE session id. The Usage Log shows them
+  immediately — including for interrupted sessions that never reach
+  sign-off. Sign-off DEDUPES: when the live file exists it references it
+  instead of storing a second copy (old app builds that still send base64
+  are deduped server-side too), and the evidence endpoint resolves
+  sign-off ids through the stored path, so the Completions tab keeps
+  working unchanged. New builds skip photo re-upload at sign-off entirely.
+### Fixed
+- **Sign-off screen freeze** — `SessionSignOffView` had a computed property
+  that JPEG-encoded and base64'd EVERY evidence photo, referenced from
+  `body` — so SwiftUI re-ran all the encodes on the main thread on every
+  render (every keystroke in the name field). The UI now uses a cheap
+  completed-count; the heavy encoding happens once, off the main thread,
+  inside submit — and with live evidence upload, usually not at all.
+  The offline "Save & sync later" queue still embeds every photo (a queued
+  record may drain much later), with server-side dedupe as the safety net.
+
 - **Usage Log: evidence photos + Excel export** — expanding a session in the
   portal's Usage Log now shows the evidence photo captured at each step
   (thumbnail → lightbox, reusing the sessions-tab loader; steps without

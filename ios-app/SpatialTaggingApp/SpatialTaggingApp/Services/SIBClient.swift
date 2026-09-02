@@ -828,6 +828,18 @@ final class SIBClient {
         try await uamLoginRaw(body: ["email": email, "employeeId": employeeId])
     }
 
+    /// Live evidence upload — fire the moment the photo is captured so the
+    /// Usage Log preserves it even if the session is later interrupted.
+    func uploadLiveEvidence(liveSessionId: String, stepId: String, jpegBase64: String) async throws {
+        var req = try makeRequest(method: "PUT",
+                                  path: "/guide-sessions/live/\(liveSessionId)/evidence/\(stepId)")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONEncoder().encode(["imageBase64": jpegBase64])
+        req.timeoutInterval = 30
+        struct Env: Codable { struct D: Codable { let saved: Bool }; let data: D }
+        _ = try await perform(req, decoding: Env.self)
+    }
+
     /// Kiosk path (2026.4.45): the employee ID alone identifies the technician.
     func uamLoginKiosk(employeeId: String) async throws -> UamLoginResult {
         try await uamLoginRaw(body: ["employeeId": employeeId])

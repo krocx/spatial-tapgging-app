@@ -401,12 +401,17 @@ struct GuideStepProgress {
         completedAt  = Date()
     }
 
-    func toCompletion() -> GuideStepCompletion? {
+    /// includePhoto: false when the photo was already uploaded live —
+    /// the server links the existing file, so sending base64 again would
+    /// only waste bandwidth (and main-thread encode time).
+    func toCompletion(includePhoto: Bool = true) -> GuideStepCompletion? {
         guard let completed = completedAt else { return nil }
         let iso = ISO8601DateFormatter()
-        let b64 = evidencePhoto
-            .flatMap { $0.jpegData(compressionQuality: 0.72) }
-            .map     { $0.base64EncodedString() }
+        let b64 = includePhoto
+            ? evidencePhoto
+                .flatMap { $0.jpegData(compressionQuality: 0.72) }
+                .map     { $0.base64EncodedString() }
+            : nil
         return GuideStepCompletion(
             stepId:              step.id,
             enteredAt:           enteredAt.map { iso.string(from: $0) },

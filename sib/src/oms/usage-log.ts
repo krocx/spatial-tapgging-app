@@ -132,6 +132,17 @@ export function usageRecordEvent(
   omsUsageStore.save(rec);
 }
 
+/** Live evidence uploaded for a step — mark the newest matching entry so
+ *  the portal/export know without probing the filesystem. */
+export function usageMarkEvidence(liveSessionId: string, stepId: string): void {
+  const rec = omsUsageStore.findById(liveSessionId);
+  if (!rec) return;
+  for (let i = rec.steps.length - 1; i >= 0; i--) {
+    if (rec.steps[i].stepId === stepId) { rec.steps[i].evidence = true; break; }
+  }
+  omsUsageStore.save(rec);
+}
+
 /** Link the durable sign-off record; also finalises timing if the
  *  session:submitted event never arrived (e.g. offline queue drain). */
 export function usageLinkSignOff(liveSessionId: string, signOffSessionId: string): void {

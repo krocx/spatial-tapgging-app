@@ -102,8 +102,11 @@ function cellNum(col: number, row: number, v: number): string {
 
 const EVIDENCE_DIR = path.join(process.env.DATA_DIR ?? './data', 'guide-session-evidence');
 
-/** Evidence photo for a step of a linked sign-off, if one exists on disk. */
-function evidencePath(signOffId: string | undefined, stepId: string): string | null {
+/** Evidence photo for a step: live-upload dir (usage id) first, then the
+ *  legacy sign-off dir. */
+function evidencePath(usageId: string, signOffId: string | undefined, stepId: string): string | null {
+  const live = path.join(EVIDENCE_DIR, usageId, `${stepId}.jpg`);
+  if (fs.existsSync(live)) return live;
   if (!signOffId) return null;
   const p = path.join(EVIDENCE_DIR, signOffId, `${stepId}.jpg`);
   return fs.existsSync(p) ? p : null;
@@ -140,7 +143,7 @@ export function buildUsageXlsx(records: OmsUsageSession[]): Buffer {
       const val = e.validation
         ? `${e.validation.mode} ${e.validation.result}${e.validation.score !== undefined ? ` (${e.validation.score})` : ''}`
         : '';
-      const evi = evidencePath(u.signOffSessionId, e.stepId);
+      const evi = evidencePath(u.id, u.signOffSessionId, e.stepId);
       let cells = base(r)
         + (e.stepIndex !== undefined ? cellNum(5, r, e.stepIndex + 1) : cellStr(5, r, ''))
         + cellStr(6, r, e.enteredAt)

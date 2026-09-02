@@ -64,6 +64,9 @@ struct ARGuideSessionView: View {
     @State private var panelMinimized:  [String: Bool]    = [:]
     /// A1: per-panel "▼ More" expansion — lifts the body-height cap.
     @State private var panelExpanded:   [String: Bool]    = [:]
+    /// Steps whose evidence photo is already uploaded (live) — sign-off skips
+    /// re-encoding these entirely.
+    @State private var uploadedEvidenceSteps: Set<String> = []
 
     // ── Navigation telemetry (10 Hz) ──────────────────────────────────────────
     @State private var distanceM:        Float?   = nil
@@ -352,7 +355,8 @@ struct ARGuideSessionView: View {
                 anchor:        anchor,
                 progresses:    progresses,
                 startedAt:     sessionStart,
-                liveSessionId: liveSessionId
+                liveSessionId: liveSessionId,
+                uploadedEvidenceSteps: uploadedEvidenceSteps
             ) {
                 showSignOff = false
                 phase       = .submitted
@@ -436,6 +440,22 @@ struct ARGuideSessionView: View {
                     refreshPanelTextures(stepId: stepId)
                     showEvidencePicker = false
                     persistProgress()
+                    // Live evidence upload: preserve the photo server-side NOW,
+                    // so an interrupted session still has it in the Usage Log.
+                    // Encoding happens off the main thread.
+                    if let lsId = liveSessionId {
+                        Task.detached(priority: .utility) {
+                            guard let jpeg = img.jpegData(compressionQuality: 0.72) else { return }
+                            do {
+                                try await SIBClient(settings: settings).uploadLiveEvidence(
+                                    liveSessionId: lsId, stepId: stepId,
+                                    jpegBase64: jpeg.base64EncodedString())
+                                await MainActor.run { _ = uploadedEvidenceSteps.insert(stepId) }
+                            } catch {
+                                // Offline — the sign-off will carry the photo instead.
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -2757,6 +2777,8 @@ struct SessionSignOffView: View {
     let progresses:    [GuideStepProgress]
     let startedAt:     Date
     let liveSessionId: String?   // links sign-off to SSE stream; optional for backward compat
+    /// Steps whose evidence is already on the server — no base64 for these.
+    var uploadedEvidenceSteps: Set<String> = []
     let onDone:        () -> Void
 
     @EnvironmentObject private var settings: AppSettings
@@ -2777,8 +2799,13 @@ struct SessionSignOffView: View {
         completedAt.timeIntervalSince(startedAt)
     }
 
-    private var stepCompletions: [GuideStepCompletion] {
-        progresses.compactMap { $0.toCompletion() }
+    /// PERF (freeze fix): the old computed `stepCompletions` JPEG-encoded and
+    /// base64'd EVERY evidence photo, and body referenced it — so SwiftUI
+    /// re-ran all those encodes on the main thread on every render (every
+    /// keystroke in the name field). The UI only ever needs the COUNT; the
+    /// heavy encode now happens once, off the main thread, inside submit().
+    private var completedCount: Int {
+        progresses.filter { $0.completedAt != nil }.count
     }
 
     var body: some View {
@@ -2816,7 +2843,7 @@ struct SessionSignOffView: View {
 
                 Section {
                     LabeledContent("Steps completed",
-                                   value: "\(stepCompletions.count) / \(progresses.count)")
+                                   value: "\(completedCount) / \(progresses.count)")
                     LabeledContent("Evidence photos",
                                    value: "\(progresses.filter { $0.evidencePhoto != nil }.count) captured")
                     LabeledContent("Duration",
@@ -2831,10 +2858,21 @@ struct SessionSignOffView: View {
                             .font(.caption).foregroundStyle(.red)
                         if canQueue {
                             Button {
-                                if PendingSessionQueue.enqueue(makeRequest()) {
-                                    onDone()
-                                } else {
-                                    error = "Could not save locally — please retry submission."
+                                Task {
+                                    // Queue keeps photos: this record may drain
+                                    // much later, when live files could be gone —
+                                    // so include EVERY photo here (belt & braces;
+                                    // the server still dedupes if files exist).
+                                    let progressesCopy = progresses
+                                    let req = await makeRequest(
+                                        completionsOverride: await Task.detached(priority: .userInitiated) {
+                                            progressesCopy.compactMap { $0.toCompletion(includePhoto: true) }
+                                        }.value)
+                                    if PendingSessionQueue.enqueue(req) {
+                                        onDone()
+                                    } else {
+                                        error = "Could not save locally — please retry submission."
+                                    }
                                 }
                             } label: {
                                 Label("Save & sync later", systemImage: "tray.and.arrow.down.fill")
@@ -2852,7 +2890,7 @@ struct SessionSignOffView: View {
                 if operatorName.isEmpty { operatorName = settings.authorName }
             }
             .confirmationDialog(
-                "\(progresses.count - stepCompletions.count) step(s) not completed",
+                "\(progresses.count - completedCount) step(s) not completed",
                 isPresented: $showIncompleteConfirm,
                 titleVisibility: .visible
             ) {
@@ -2869,7 +2907,7 @@ struct SessionSignOffView: View {
                         ProgressView().scaleEffect(0.8)
                     } else {
                         Button("Submit") {
-                            if stepCompletions.count < progresses.count {
+                            if completedCount < progresses.count {
                                 showIncompleteConfirm = true    // warn, don't block — branches skip steps legitimately
                             } else {
                                 Task { await submit() }
@@ -2886,8 +2924,22 @@ struct SessionSignOffView: View {
         }
     }
 
-    private func makeRequest() -> CreateARGuideSessionRequest {
+    private func makeRequest(completionsOverride: [GuideStepCompletion]? = nil) async -> CreateARGuideSessionRequest {
         let iso = ISO8601DateFormatter()
+        // Build completions OFF the main thread — photo encoding is the
+        // expensive part, and only steps WITHOUT a live upload need it.
+        let progressesCopy = progresses
+        let uploaded       = uploadedEvidenceSteps
+        let completions: [GuideStepCompletion]
+        if let completionsOverride {
+            completions = completionsOverride
+        } else {
+            completions = await Task.detached(priority: .userInitiated) {
+                progressesCopy.compactMap {
+                    $0.toCompletion(includePhoto: !uploaded.contains($0.step.id))
+                }
+            }.value
+        }
         return CreateARGuideSessionRequest(
             guideId:         guide.id,
             anchorId:        anchor.id,
@@ -2897,7 +2949,7 @@ struct SessionSignOffView: View {
             startedAt:       iso.string(from: startedAt),
             completedAt:     iso.string(from: completedAt),
             durationSeconds: durationSeconds,
-            stepCompletions: stepCompletions,
+            stepCompletions: completions,
             liveSessionId:   liveSessionId
         )
     }
@@ -2908,7 +2960,7 @@ struct SessionSignOffView: View {
         canQueue     = false
         let client = SIBClient(settings: settings)
         do {
-            _ = try await client.submitGuideSession(makeRequest())
+            _ = try await client.submitGuideSession(await makeRequest())
             onDone()
         } catch {
             self.error = "Submission failed: \(friendlyMessage(for: error))"

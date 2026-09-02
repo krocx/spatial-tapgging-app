@@ -23,7 +23,7 @@
 //   GET  /guide-sessions/live/:id/hints           — AI hint poll; consume-once (Step 3)
 
 import { Router } from 'express';
-import { usageOpen, usageRecordEvent, usageLinkSignOff, listUsage } from '../oms/usage-log.js';
+import { usageOpen, usageRecordEvent, usageLinkSignOff, listUsage, usageMarkEvidence } from '../oms/usage-log.js';
 import { buildUsageXlsx } from '../oms/xlsx-lite.js';
 import { currentUamUser } from '../middleware/auth.js';
 import type { Request, Response } from 'express';
@@ -169,6 +169,28 @@ router.get('/live/:id', (req: Request, res: Response): void => {
 // iOS calls this every ~5 s during an active guide session.
 // Returns all queued AI hints and clears the queue so hints are not re-shown.
 // Returns an empty array when no hints are pending — always 200.
+// PUT /guide-sessions/live/:id/evidence/:stepId — the operator's evidence
+// photo, uploaded THE MOMENT it is captured. Stored under the LIVE session id
+// so it survives interruptions and is visible in the Usage Log immediately;
+// the sign-off later references this same file (no duplicate storage).
+router.put('/live/:id/evidence/:stepId', (req: Request, res: Response): void => {
+  const { imageBase64 } = req.body as { imageBase64?: string };
+  if (!imageBase64) {
+    res.status(400).json({ error: 'imageBase64 is required', timestamp: new Date().toISOString() });
+    return;
+  }
+  try {
+    const dir = ensureEvidenceDir(req.params.id);
+    fs.writeFileSync(path.join(dir, `${req.params.stepId}.jpg`), Buffer.from(imageBase64, 'base64'));
+  } catch (err) {
+    console.error('[SIB] Live evidence save failed:', err);
+    res.status(500).json({ error: 'Failed to save evidence', timestamp: new Date().toISOString() });
+    return;
+  }
+  usageMarkEvidence(req.params.id, req.params.stepId);
+  res.status(201).json({ data: { saved: true }, timestamp: new Date().toISOString() });
+});
+
 router.get('/live/:id/hints', (req: Request, res: Response): void => {
   const hints = drainHints(req.params.id);
   res.json({ data: hints, timestamp: new Date().toISOString() });
@@ -204,6 +226,16 @@ router.post('/', (req: Request, res: Response): void => {
   // ── Save evidence photos and replace base64 with path ────────────────────
   const processedCompletions: GuideStepCompletion[] = body.stepCompletions.map((completion) => {
     const { evidencePhotoBase64, ...rest } = completion as GuideStepCompletion & { evidencePhotoBase64?: string };
+
+    // Live-evidence dedupe: when the photo was already uploaded during the
+    // session (under the LIVE session id), reference that file — whether or
+    // not the client also sent base64 (older builds do; new ones skip it).
+    if (body.liveSessionId) {
+      const liveFile = path.join(EVIDENCE_DIR, body.liveSessionId, `${completion.stepId}.jpg`);
+      if (fs.existsSync(liveFile)) {
+        return { ...rest, evidencePhotoPath: `guide-session-evidence/${body.liveSessionId}/${completion.stepId}.jpg` };
+      }
+    }
 
     if (evidencePhotoBase64) {
       try {
@@ -339,7 +371,17 @@ router.get('/:id', (req: Request, res: Response): void => {
 // GET /guide-sessions/:id/evidence/:stepId — serve evidence photo
 router.get('/:id/evidence/:stepId', (req: Request, res: Response): void => {
   const { id, stepId } = req.params;
-  const filepath = path.join(EVIDENCE_DIR, id, `${stepId}.jpg`);
+  let filepath = path.join(EVIDENCE_DIR, id, `${stepId}.jpg`);
+
+  // Fallback: a sign-off whose evidence lives under the LIVE session id
+  // (live-upload dedupe) — resolve via the stored evidencePhotoPath.
+  if (!fs.existsSync(filepath)) {
+    const session = guideSessionStore.findById(id);
+    const rel = session?.stepCompletions.find(c => c.stepId === stepId)?.evidencePhotoPath;
+    if (rel && !rel.includes('..')) {
+      filepath = path.join(DATA_DIR, rel);
+    }
+  }
 
   if (!fs.existsSync(filepath)) {
     res.status(404).json({

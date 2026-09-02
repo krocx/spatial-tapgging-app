@@ -930,6 +930,8 @@ export interface OmsUsageStepEntry {
   outcome:          'open' | 'completed' | 'failed' | 'left';
   /** Step-validation verdict (K4): system = comparator score, manual = operator choice. */
   validation?: { mode: 'system' | 'manual'; result: 'pass' | 'fail'; score?: number };
+  /** Live evidence photo uploaded for this step (served from the usage id). */
+  evidence?: boolean;
   // K5 (evidence) extends this entry.
 }
 
