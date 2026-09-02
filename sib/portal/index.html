@@ -198,8 +198,47 @@
     }
 
     /* ── Phase 4: Nav tabs ── */
-    #nav-tabs { display: none; padding: 0 24px; gap: 4px; border-bottom: 1px solid var(--border); }
-    #nav-tabs.visible { display: flex; }
+    /* Portal home + section bar (2026.4.45 redesign) — nav-tabs retired */
+    #portal-home { display:none; padding: 10px 32px 46px; }
+    #portal-home.visible { display:block; }
+    .ph-hero { text-align:center; margin: 26px 0 10px; }
+    .ph-hero h2 { font-size: clamp(21px, 3vw, 30px); font-weight:800; margin:0 0 6px; color:var(--text); }
+    .ph-hero p { color: var(--muted); font-size: 0.85rem; margin:0; }
+    .ph-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap:16px;
+               max-width:1180px; margin: 20px auto 0; }
+    .ph-tile { border-radius:18px; padding: 18px 20px 14px; cursor:pointer;
+               background: rgba(30,41,59,.55); border: 2px solid var(--border);
+               transition: transform .15s, box-shadow .15s, border-color .15s; }
+    .ph-tile:hover { transform: translateY(-3px); }
+    .ph-ico { font-size: 28px; }
+    .ph-tile h3 { margin: 6px 0 2px; font-size: 1.02rem; font-weight: 800; color: var(--text); }
+    .ph-sub { font-size: 0.74rem; color: var(--muted); line-height: 1.45; }
+    .ph-stats { margin-top: 10px; display:flex; gap:8px; flex-wrap:wrap; min-height: 22px; }
+    .ph-stat { font-size: 0.7rem; font-weight: 700; border-radius: 999px; padding: 3px 10px;
+               background: rgba(255,255,255,.08); color: var(--text); font-variant-numeric: tabular-nums; }
+    .ph-subnav { margin-top: 9px; display:flex; gap:6px; flex-wrap:wrap; }
+    .ph-chip { font-size: 0.68rem; font-weight: 700; padding: 3px 10px; border-radius: 8px;
+               background: rgba(255,255,255,.1); color: var(--text); }
+    .ph-chip:hover { background: rgba(255,255,255,.22); }
+    .t-anchors:hover  { border-color:#3b82f6; box-shadow:0 0 24px rgba(59,130,246,.22); }
+    .t-inspect:hover  { border-color:#22d3ee; box-shadow:0 0 24px rgba(34,211,238,.2); }
+    .t-arguides:hover { border-color:#818cf8; box-shadow:0 0 24px rgba(129,140,248,.22); }
+    .t-content:hover  { border-color:#2dd4bf; box-shadow:0 0 24px rgba(45,212,191,.2); }
+    .t-iloto:hover    { border-color:#ef4444; box-shadow:0 0 24px rgba(239,68,68,.2); }
+    .t-gemba:hover    { border-color:#fb923c; box-shadow:0 0 24px rgba(251,146,60,.2); }
+    .t-admin:hover    { border-color:#94a3b8; box-shadow:0 0 24px rgba(148,163,184,.18); }
+
+    #section-bar { display:none; align-items:center; gap:12px; padding: 8px 24px;
+                   border-bottom: 1px solid var(--border); }
+    #section-bar.visible { display:flex; }
+    .sb-home { font-size: 1rem; background: rgba(255,255,255,.08); border:1px solid var(--border);
+               color: var(--text); border-radius: 10px; padding: 5px 12px; cursor:pointer; }
+    .sb-home:hover { background: rgba(255,255,255,.16); }
+    .sb-name { font-weight: 800; font-size: 0.92rem; }
+    .sb-tabs { display:flex; gap:4px; margin-left: 6px; }
+    .sb-tab { font-size: 0.78rem; padding: 5px 14px; border-radius: 8px; color: var(--muted);
+              cursor:pointer; border:none; background:none; font-weight:600; }
+    .sb-tab.active { background: rgba(129,140,248,.16); color: var(--text); font-weight:700; }
     .nav-tab { background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--muted); font-size: 0.85rem; font-weight: 600; padding: 10px 14px; cursor: pointer; transition: color 0.15s, border-color 0.15s; margin-bottom: -1px; }
     .nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
     .nav-tab:hover:not(.active) { color: var(--text); }
@@ -501,7 +540,7 @@
     /* ── Tablet layout (floor iPads) ─────────────────────────────────────── */
     @media (max-width: 900px) {
       header { flex-wrap:wrap;gap:8px; }
-      #nav-tabs { overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none; }
+      #section-bar { overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none; }
       .btn { min-height:34px; }
       .sessions-toolbar { flex-wrap:wrap;row-gap:6px; }
       .sessions-tbl-wrap { overflow-x:auto;-webkit-overflow-scrolling:touch; }
@@ -530,15 +569,68 @@
 </header>
 
 <!-- Phase 4: View nav tabs (hidden until authenticated) -->
-<div id="nav-tabs">
-  <button class="nav-tab active" data-view="anchors"   onclick="switchView('anchors')">Anchors</button>
-  <button class="nav-tab"        data-view="sessions"  onclick="switchView('sessions')">Sessions</button>
-  <button class="nav-tab"        data-view="gemba"     onclick="switchView('gemba')">Gemba Walks</button>
-  <button class="nav-tab"        data-view="ar-guides"     onclick="switchView('ar-guides')">AR Guides</button>
-  <button class="nav-tab"        data-view="guide-library" onclick="switchView('guide-library')">Guide Library</button>
-  <button class="nav-tab"        data-view="models"        onclick="switchView('models')">3D Models</button>
-  <button class="nav-tab"        data-view="iloto"         onclick="switchView('iloto')">iLOTO</button>
-  <button class="nav-tab"        data-view="admin"         onclick="switchView('admin')">🛠 Admin</button>
+<!-- Section bar — slim ⌂ bar shown INSIDE a section (replaces the tab strip) -->
+<div id="section-bar">
+  <button class="sb-home" onclick="location.hash='#home'" title="Portal home">⌂</button>
+  <span id="sb-name" class="sb-name"></span>
+  <div id="sb-tabs" class="sb-tabs"></div>
+</div>
+
+<!-- Portal home — the tile grid landing (approved mockup) -->
+<div id="portal-home">
+  <div class="ph-hero">
+    <h2>Where do you want to work?</h2>
+    <p>Live counts refresh with the platform — home doubles as a status glance.</p>
+  </div>
+  <div class="ph-grid">
+    <div class="ph-tile t-anchors" onclick="location.hash='#anchors'">
+      <div class="ph-ico">🔗</div><h3>Anchors</h3>
+      <div class="ph-sub">QR codes, tags &amp; training — the spatial backbone</div>
+      <div class="ph-stats" id="ph-stat-anchors"></div>
+    </div>
+    <div class="ph-tile t-inspect" onclick="location.hash='#sessions'">
+      <div class="ph-ico">🔍</div><h3>Inspection Sessions</h3>
+      <div class="ph-sub">Spatial Inspection results — pass/fail, evidence, reports</div>
+      <div class="ph-stats" id="ph-stat-inspect"></div>
+    </div>
+    <div class="ph-tile t-arguides" onclick="location.hash='#ar-guides'">
+      <div class="ph-ico">📋</div><h3>AR Guides Sessions</h3>
+      <div class="ph-sub">Work-instruction runs by Production #</div>
+      <div class="ph-stats" id="ph-stat-arguides"></div>
+      <div class="ph-subnav">
+        <span class="ph-chip" onclick="event.stopPropagation();location.hash='#ar-guides/completions'">Completions</span>
+        <span class="ph-chip" onclick="event.stopPropagation();location.hash='#ar-guides/usage'">📊 Usage Log</span>
+      </div>
+    </div>
+    <div class="ph-tile t-content" onclick="location.hash='#content/guides'">
+      <div class="ph-ico">📚</div><h3>Content Library</h3>
+      <div class="ph-sub">Everything authors publish, in one place</div>
+      <div class="ph-stats" id="ph-stat-content"></div>
+      <div class="ph-subnav">
+        <span class="ph-chip" onclick="event.stopPropagation();location.hash='#content/guides'">Guide Library</span>
+        <span class="ph-chip" onclick="event.stopPropagation();location.hash='#content/models'">3D Models</span>
+      </div>
+    </div>
+    <div class="ph-tile t-iloto" onclick="location.hash='#iloto'">
+      <div class="ph-ico">🔒</div><h3>iLOTO</h3>
+      <div class="ph-sub">Lockout/Tagout points, certifications &amp; training questions</div>
+      <div class="ph-stats" id="ph-stat-iloto"></div>
+    </div>
+    <div class="ph-tile t-gemba" onclick="location.hash='#gemba'">
+      <div class="ph-ico">🚶</div><h3>GembaWalks</h3>
+      <div class="ph-sub">Audit walks — findings, defect categories, resolution</div>
+      <div class="ph-stats" id="ph-stat-gemba"></div>
+    </div>
+    <div class="ph-tile t-admin" onclick="location.hash='#admin/uam'">
+      <div class="ph-ico">🛠</div><h3>Admin</h3>
+      <div class="ph-sub">Platform operations — each on its own page</div>
+      <div class="ph-subnav">
+        <span class="ph-chip" onclick="event.stopPropagation();location.hash='#admin/uam'">👥 User Access</span>
+        <span class="ph-chip" onclick="event.stopPropagation();location.hash='#admin/ops'">📜 Ops Log</span>
+        <span class="ph-chip" onclick="event.stopPropagation();location.hash='#admin/backup'">💾 Backups</span>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- Setup banner (shown when API key not set) -->
@@ -653,7 +745,7 @@
     </div>
     <div id="uam-table" style="font-size:0.78rem;color:var(--muted)">Loading…</div>
   </div>
-  <div class="adm-card admin-only">
+  <div class="adm-card admin-only" id="adm-backup-card">
     <h3>🗄 Backups</h3>
     <p style="font-size:0.75rem;color:var(--muted);margin:0 0 12px">
       <strong>Data</strong> = JSON stores only (small — take one weekly).
@@ -666,7 +758,7 @@
     </div>
     <div id="bk-status" style="display:none;margin-top:12px;font-size:0.78rem;font-family:monospace;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px"></div>
   </div>
-  <div class="adm-card admin-only">
+  <div class="adm-card admin-only" id="adm-ops-card">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
       <h3 style="margin:0">🗒 Ops log</h3>
       <span style="font-size:0.72rem;color:var(--muted);flex:1">every admin &amp; destructive action, newest first — allowed / denied / gate-off, with IP</span>
@@ -847,7 +939,7 @@
       <label>API Key</label>
       <input type="password" id="settings-key" placeholder="sk-…" autocomplete="off" />
     </div>
-    <p style="font-size:0.72rem;color:var(--muted);margin:4px 0 0">Backups and the ops log live on the <a href="#" onclick="closeSettings();switchView('admin');return false" style="color:var(--accent)">🛠 Admin page</a>.</p>
+    <p style="font-size:0.72rem;color:var(--muted);margin:4px 0 0">Backups and the ops log live on the <a href="#" onclick="closeSettings();location.hash='#admin/backup';return false" style="color:var(--accent)">🛠 Admin page</a>.</p>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeSettings()">Cancel</button>
       <button class="btn btn-primary" onclick="saveSettings()">Save</button>
@@ -1139,7 +1231,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // dedicated 🛠 Admin page. /admin/* itself is an API namespace — headers
   // only, no browser page.
   if (location.hash === '#admin') {
-    setTimeout(() => switchView('admin'), 300);
+    setTimeout(() => { location.hash = '#admin/uam'; }, 300);
   }
 
   if (!authRequired) {
@@ -1178,9 +1270,9 @@ async function enterPortal() {
     }
   }
   applyUamUI();
-  document.getElementById('toolbar').style.display = 'flex';
-  document.getElementById('nav-tabs').classList.add('visible');
-  loadAnchors();
+  loadAnchors();          // warm the anchors cache for when the user goes there
+  portalAuthed = true;
+  renderRoute();          // honours a deep link (#admin/uam etc.); default #home
 }
 
 async function uamSubmitLogin() {
@@ -1211,10 +1303,10 @@ function applyUamUI() {
     chip.style.display = 'inline';
     chip.textContent = `👤 ${UAM_USER.name} · ${UAM_ROLE_LABEL[UAM_USER.role] || UAM_USER.role}`;
     out.style.display = 'inline-block';
-    // Only Owner/Manager see the Admin page (they pass its gates by role).
-    const adminTab = document.querySelector('.nav-tab[data-view="admin"]');
-    if (adminTab && UAM_USER.role !== 'owner' && UAM_USER.role !== 'manager') {
-      adminTab.style.display = 'none';
+    // Only Owner/Manager see the Admin TILE (they pass its gates by role).
+    const adminTile = document.querySelector('.ph-tile.t-admin');
+    if (adminTile && UAM_USER.role !== 'owner' && UAM_USER.role !== 'manager') {
+      adminTile.style.display = 'none';
     }
     // Owner/Manager act destructively by ROLE — recompute the admin lock.
     applyAdminUI();
@@ -1962,10 +2054,103 @@ let evidenceBlobCache = {};               // evidence URL → blob URL (avoids r
 
 // ── View switching ────────────────────────────────────────────────────────────
 
+// ── Hash router (2026.4.45 redesign) ──────────────────────────────────────────
+// URLs: #home · #anchors · #sessions · #ar-guides[/completions|/usage]
+//       #content[/guides|/models] · #iloto · #gemba · #admin[/uam|/ops|/backup]
+// Back button returns Home, refresh keeps your place, links are shareable.
+// switchView() remains the internal panel renderer; the router drives it.
+
+const SECTIONS = {
+  'anchors':   { name: '🔗 Anchors',              color: '#3b82f6' },
+  'sessions':  { name: '🔍 Inspection Sessions',  color: '#22d3ee' },
+  'ar-guides': { name: '📋 AR Guides Sessions',   color: '#818cf8',
+                 tabs: [['completions', 'Completions'], ['usage', '📊 Usage Log']], defaultSub: 'completions' },
+  'content':   { name: '📚 Content Library',      color: '#2dd4bf',
+                 tabs: [['guides', 'Guide Library'], ['models', '3D Models']], defaultSub: 'guides' },
+  'iloto':     { name: '🔒 iLOTO',                color: '#ef4444' },
+  'gemba':     { name: '🚶 GembaWalks',           color: '#fb923c' },
+  'admin':     { name: '🛠 Admin',                color: '#94a3b8',
+                 tabs: [['uam', '👥 User Access'], ['ops', '📜 Ops Log'], ['backup', '💾 Backups']], defaultSub: 'uam' },
+};
+let portalAuthed = false;   // router renders nothing until enterPortal succeeds
+
+function renderRoute() {
+  if (!portalAuthed) return;
+  const raw = (location.hash || '#home').slice(1);
+  let [sec, sub] = raw.split('/');
+  if (!SECTIONS[sec]) sec = 'home';
+  const home = document.getElementById('portal-home');
+  const bar  = document.getElementById('section-bar');
+
+  if (sec === 'home') {
+    switchView('home');
+    home.classList.add('visible');
+    bar.classList.remove('visible');
+    loadHomeStats();
+    return;
+  }
+  home.classList.remove('visible');
+  bar.classList.add('visible');
+  const def = SECTIONS[sec];
+  sub = sub || def.defaultSub;
+
+  // Section → internal panel
+  if (sec === 'ar-guides')    { switchView('ar-guides'); setUsageView(sub === 'usage'); }
+  else if (sec === 'content') { switchView(sub === 'models' ? 'models' : 'guide-library'); }
+  else if (sec === 'admin')   { switchView('admin'); adminShowSub(sub); }
+  else                        { switchView(sec); }
+
+  // Section bar
+  const nameEl = document.getElementById('sb-name');
+  nameEl.textContent = def.name;
+  nameEl.style.color = def.color;
+  document.getElementById('sb-tabs').innerHTML = (def.tabs || []).map(([id, label]) =>
+    `<button class="sb-tab ${id === sub ? 'active' : ''}" onclick="location.hash='#${sec}/${id}'">${label}</button>`
+  ).join('');
+}
+window.addEventListener('hashchange', renderRoute);
+
+/** AR Guides sub-view: deterministic setter over the existing toggle. */
+function setUsageView(showUsage) {
+  if (usageLogVisible !== showUsage) toggleUsageLog();
+}
+
+/** Admin sub-pages: one card per route (unlock banner always visible). */
+function adminShowSub(sub) {
+  const map = { uam: 'uam-card', ops: 'adm-ops-card', backup: 'adm-backup-card' };
+  for (const [k, id] of Object.entries(map)) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = (k === sub) ? '' : 'none';
+  }
+}
+
+/** Home tiles: live counts. /stats is public; usage adds today's runs. */
+async function loadHomeStats() {
+  const put = (id, chips) => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = chips.filter(Boolean).map(c => `<span class="ph-stat">${c}</span>`).join('');
+  };
+  try {
+    const st = await (await fetch('/stats')).json();
+    put('ph-stat-anchors', [`${st.anchors ?? '—'} anchors`]);
+    put('ph-stat-inspect', [`${st.sessionsThisWeek ?? '—'} this week`]);
+    put('ph-stat-iloto',   [`${st.activeLotoLocks ?? 0} active lock${st.activeLotoLocks === 1 ? '' : 's'}`]);
+    put('ph-stat-gemba',   [`${st.openGembaFindings ?? 0} open finding${st.openGembaFindings === 1 ? '' : 's'}`]);
+  } catch { /* stats are decoration — tiles work without them */ }
+  try {
+    const usage = (await apiFetch('/guide-sessions/usage')).data || [];
+    const today = new Date().toISOString().slice(0, 10);
+    const todayCount = usage.filter(u => u.startedAt.slice(0, 10) === today).length;
+    const open = usage.filter(u => !u.completed).length;
+    put('ph-stat-arguides', [`${todayCount} today`, open ? `${open} open` : '']);
+  } catch { /* ignore */ }
+  try {
+    const models = (await apiFetch('/models')).data || [];
+    put('ph-stat-content', [`${models.length} models`]);
+  } catch { /* ignore */ }
+}
+
 function switchView(view) {
-  document.querySelectorAll('.nav-tab').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.view === view);
-  });
   const anchorGrid    = document.getElementById('anchor-grid');
   const toolbar       = document.getElementById('toolbar');
   const sessPanel     = document.getElementById('sessions-panel');
@@ -2020,6 +2205,9 @@ function switchView(view) {
     toolbar.style.display    = 'none';
     adminPanel.classList.add('visible');
     renderAdminPanel();
+  } else if (view === 'home') {
+    anchorGrid.style.display = 'none';
+    toolbar.style.display    = 'none';
   } else {
     anchorGrid.style.display = '';
     toolbar.style.display    = 'flex';
@@ -2890,7 +3078,7 @@ async function submitImportGuide() {
     if (imageErrors.length) msg += ` (${imageErrors.length} image(s) failed to download)`;
     toast(msg, imageErrors.length ? 4000 : 2500);
     // The fix for "imported it, can't see it": go straight to the guide.
-    switchView('guide-library');
+    location.hash = '#content/guides';
     await loadGuideLibrary();
     const card = document.getElementById('gl-card-' + guide.id);
     if (card) {

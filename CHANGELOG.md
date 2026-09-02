@@ -7,6 +7,18 @@ it, it gets a line.
 ## 2026.4.45 — 2026-09-01
 
 ### Added
+- **Portal home redesign** — the portal now opens on a tile-grid Home
+  (approved mockup): seven color-coded tiles — Anchors, Inspection
+  Sessions, AR Guides Sessions (Completions / 📊 Usage Log sub-chips),
+  Content Library (Guide Library + 3D Models), iLOTO, GembaWalks, and
+  Admin (👥 User Access / 📜 Ops Log / 💾 Backups as dedicated sub-pages) —
+  with live counts from /stats and the usage log, so Home doubles as a
+  status glance. The 8-tab strip is retired; inside a section a slim ⌂ bar
+  shows the section name and its sub-tabs. Navigation is HASH-ROUTED
+  (#ar-guides/usage, #admin/uam …): the back button returns Home, refresh
+  keeps your place, and views are bookmarkable/shareable. Panels themselves
+  are unchanged — every table, filter, export and modal works as before;
+  the Admin tile stays Owner/Manager-only (server gates unchanged).
 - **Live evidence — usage log becomes the system of record** — evidence
   photos now upload THE MOMENT they are captured
   (`PUT /guide-sessions/live/:id/evidence/:stepId`, encoded off the main
