@@ -810,7 +810,10 @@
 
 <!-- Evidence image lightbox -->
 <div id="evidence-lightbox" onclick="closeLightbox()">
-  <img id="evidence-lightbox-img" src="" alt="Evidence" />
+  <div style="display:flex;flex-direction:column;align-items:center;gap:12px" onclick="event.stopPropagation()">
+    <img id="evidence-lightbox-img" src="" alt="Evidence" onclick="event.stopPropagation()" />
+    <a id="evidence-lightbox-dl" class="btn btn-primary btn-sm" download="evidence.jpg" href="">⬇ Download JPEG</a>
+  </div>
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════
@@ -4042,10 +4045,11 @@ async function loadEvidenceImagesIn(container) {
   await Promise.allSettled(imgs.map(async img => {
     const url = img.dataset.evidenceUrl;
     if (!url) return;
+    const dlName = 'evidence-' + url.split('/').filter(Boolean).slice(-3).join('-') + '.jpg';
     if (evidenceBlobCache[url]) {
       img.src = evidenceBlobCache[url];
       img.dataset.loaded = '1';
-      img.onclick = e => { e.stopPropagation(); openLightbox(evidenceBlobCache[url]); };
+      img.onclick = e => { e.stopPropagation(); openLightbox(evidenceBlobCache[url], dlName); };
       return;
     }
     try {
@@ -4055,7 +4059,7 @@ async function loadEvidenceImagesIn(container) {
       evidenceBlobCache[url] = blobUrl;
       img.src = blobUrl;
       img.dataset.loaded = '1';
-      img.onclick = e => { e.stopPropagation(); openLightbox(blobUrl); };
+      img.onclick = e => { e.stopPropagation(); openLightbox(blobUrl, dlName); };
     } catch { img.remove(); }
   }));
 }
@@ -4133,8 +4137,13 @@ function formatDuration(secs) {
   return `${s}s`;
 }
 
-function openLightbox(url) {
+function openLightbox(url, filename) {
   document.getElementById('evidence-lightbox-img').src = url;
+  // Blob URLs carry no filename/extension — saving one directly yields an
+  // "unknown format" file. The Download button names it properly.
+  const dl = document.getElementById('evidence-lightbox-dl');
+  dl.href = url;
+  dl.download = filename || 'evidence.jpg';
   document.getElementById('evidence-lightbox').classList.add('open');
 }
 

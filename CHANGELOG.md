@@ -17,6 +17,9 @@ it, it gets a line.
   are deduped server-side too), and the evidence endpoint resolves
   sign-off ids through the stored path, so the Completions tab keeps
   working unchanged. New builds skip photo re-upload at sign-off entirely.
+  Excel export images enlarged to 240×180 (reviewable, rows sized to fit),
+  and the evidence lightbox gained a "⬇ Download JPEG" button — blob URLs
+  carry no filename, which made direct saves look like an unknown format.
 ### Fixed
 - **Sign-off screen freeze** — `SessionSignOffView` had a computed property
   that JPEG-encoded and base64'd EVERY evidence photo, referenced from

@@ -113,8 +113,8 @@ function evidencePath(usageId: string, signOffId: string | undefined, stepId: st
 }
 
 const EMU_PER_PX = 9525;
-const IMG_W = 96, IMG_H = 72;          // px in the sheet
-const IMG_ROW_HT = 58;                 // pt — fits the 72px image
+const IMG_W = 240, IMG_H = 180;        // px in the sheet — large enough to review
+const IMG_ROW_HT = 140;                // pt — fits the 180px image
 
 /** Build the Usage Log workbook: one row per step visit, evidence embedded. */
 export function buildUsageXlsx(records: OmsUsageSession[]): Buffer {
@@ -162,7 +162,7 @@ export function buildUsageXlsx(records: OmsUsageSession[]): Buffer {
 
   const colDefs =
     `<cols>` +
-    [16, 28, 18, 12, 20, 6, 20, 11, 11, 20, 15]
+    [16, 28, 18, 12, 20, 6, 20, 11, 11, 20, 34]
       .map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join('') +
     `</cols>`;
 
