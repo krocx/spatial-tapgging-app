@@ -328,12 +328,17 @@ function NodePanel({ nodeId }: { nodeId: string }): JSX.Element | null {
  * Hooks are unconditional and the bail-out sits below them — the exact
  * pattern whose violation in Minimap blanked the app (React #310).
  */
+/** U5: one model slot on a step (assignment only — placement is on device). */
+interface StepModelSlot { slotId: string; modelId: string; modelScale?: number; modelOpacity?: number }
+const MAX_STEP_MODELS = 3;
+
 function StepSection({ nodeId }: { nodeId: string }): JSX.Element | null {
   const isProcedure = useStore(s => s.map?.kind === 'procedure');
   const step = useStore(s =>
     (s.map?.nodes.find(n => n.id === nodeId)?.metadata?.step ?? {}) as {
       ttsText?: string; optional?: boolean; evidenceRequired?: boolean; imageFile?: string; linkUrl?: string;
-      modelId?: string; modelScale?: number;
+      modelId?: string; modelScale?: number; modelOpacity?: number;
+      models?: StepModelSlot[];
     });
   const patchStepMeta = useStore(s => s.patchStepMeta);
 
@@ -383,7 +388,27 @@ function StepSection({ nodeId }: { nodeId: string }): JSX.Element | null {
     img.src = URL.createObjectURL(file);
   };
 
-  const selectedModel = models?.find(m => m.id === step.modelId);
+  // U5: slot list — `models` when present, else the legacy single fields
+  // lifted into slot 1 (maps authored before slots existed).
+  const slots: StepModelSlot[] = step.models
+    ?? (step.modelId
+        ? [{ slotId: 'slot-1', modelId: step.modelId,
+             ...(step.modelScale   !== undefined && { modelScale:   step.modelScale }),
+             ...(step.modelOpacity !== undefined && { modelOpacity: step.modelOpacity }) }]
+        : []);
+
+  /** Write the slot list; legacy keys mirror slot 1 so older readers agree. */
+  const writeSlots = (next: StepModelSlot[]) => {
+    const first = next[0];
+    patchStepMeta(nodeId, {
+      models:       next.length ? next : null,
+      modelId:      first?.modelId ?? null,
+      modelScale:   first?.modelScale ?? null,
+      modelOpacity: first?.modelOpacity ?? null,
+    });
+  };
+  const updateSlot = (slotId: string, patch: Partial<StepModelSlot>) =>
+    writeSlots(slots.map(sl => (sl.slotId === slotId ? { ...sl, ...patch } : sl)));
 
   return (
     <div className="step-section">
@@ -453,40 +478,60 @@ function StepSection({ nodeId }: { nodeId: string }): JSX.Element | null {
         </div>
       </div>
 
-      <label className="inspector-field">3D model
-        <select
-          value={step.modelId ?? ''}
-          disabled={models === null}
-          onChange={e => {
-            const id = e.target.value;
-            if (!id) { patchStepMeta(nodeId, { modelId: null, modelScale: null }); return; }
-            const m = models?.find(x => x.id === id);
-            // Assignment only — offsets/rotation are placed in AR on device.
-            patchStepMeta(nodeId, { modelId: id, modelScale: m?.defaultScale ?? 1 });
-          }}
-        >
-          <option value="">— none —</option>
-          {(models ?? []).map(m => (
-            <option key={m.id} value={m.id}>
-              {m.name}{m.usdzStatus && m.usdzStatus !== 'ready' ? ' (USDZ pending)' : ''}
-            </option>
-          ))}
-        </select>
-      </label>
-
-      {selectedModel && (
-        <label className="inspector-field">Model scale
-          <input
-            type="number" min={0.01} step={0.05}
-            defaultValue={step.modelScale ?? selectedModel.defaultScale ?? 1}
-            key={`scale-${nodeId}-${step.modelId}`}
-            onBlur={e => {
-              const v = parseFloat(e.target.value);
-              if (isFinite(v) && v > 0) patchStepMeta(nodeId, { modelScale: v });
-            }}
-          />
-        </label>
-      )}
+      <div className="inspector-field">3D models <span className="step-check-hint">— up to {MAX_STEP_MODELS} per step</span>
+        {slots.map((sl, i) => {
+          const m = models?.find(x => x.id === sl.modelId);
+          return (
+            <div key={sl.slotId} className="step-row" style={{ alignItems: 'center', gap: 6, marginTop: 4 }}>
+              <span className="step-check-hint" style={{ minWidth: 14 }}>{i + 1}</span>
+              <select
+                value={sl.modelId}
+                disabled={models === null}
+                style={{ flex: 1 }}
+                onChange={e => {
+                  const id = e.target.value;
+                  const nm = models?.find(x => x.id === id);
+                  // Changing the shape resets scale to the model default; the
+                  // server drops that slot's AR placement on send.
+                  updateSlot(sl.slotId, { modelId: id, modelScale: nm?.defaultScale ?? 1 });
+                }}
+              >
+                {(models ?? []).map(x => (
+                  <option key={x.id} value={x.id}>
+                    {x.name}{x.usdzStatus && x.usdzStatus !== 'ready' ? ' (USDZ pending)' : ''}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="number" min={0.01} step={0.05} title="Scale" style={{ width: 62 }}
+                key={`scale-${nodeId}-${sl.slotId}-${sl.modelId}`}
+                defaultValue={sl.modelScale ?? m?.defaultScale ?? 1}
+                onBlur={e => {
+                  const v = parseFloat(e.target.value);
+                  if (isFinite(v) && v > 0 && v !== sl.modelScale) updateSlot(sl.slotId, { modelScale: v });
+                }}
+              />
+              <button className="btn" title="Remove this model"
+                onClick={() => writeSlots(slots.filter(x => x.slotId !== sl.slotId))}>✕</button>
+            </div>
+          );
+        })}
+        {slots.length < MAX_STEP_MODELS && (models?.length ?? 0) > 0 && (
+          <button className="btn" style={{ marginTop: 6 }}
+            onClick={() => {
+              const m = models![0];
+              writeSlots([...slots, {
+                slotId: `slot-${Date.now().toString(36)}`,
+                modelId: m.id, modelScale: m.defaultScale ?? 1,
+              }]);
+            }}>
+            + Add model{slots.length ? ` (${slots.length + 1}/${MAX_STEP_MODELS})` : ''}
+          </button>
+        )}
+        {models !== null && models.length === 0 && (
+          <span className="step-check-hint">No 3D models in the library yet — upload in the portal.</span>
+        )}
+      </div>
 
       <p className="step-note">
         Position in AR (pin + model placement) is done on device after sending

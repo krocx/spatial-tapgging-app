@@ -24,7 +24,7 @@
 
 import fs from 'fs';
 import { v4 as uuidv4 } from 'uuid';
-import type { Guide, GuideStep, ImportedGuide } from '@spatial/shared';
+import type { Guide, GuideStep, GuideStepModel, ImportedGuide } from '@spatial/shared';
 import {
   guideStore,
   guideStepStore,
@@ -33,7 +33,7 @@ import {
   downloadUrl,
 } from './store.js';
 import { designerImagePath } from '../procedure/designer-images.js';
-import { applyLegacyToSlots } from './step-models.js';
+import { applyLegacyToSlots, applySlotsToLegacy } from './step-models.js';
 
 export interface ApplyImportedGuideOptions {
   anchorId:   string;
@@ -229,10 +229,30 @@ export async function applyImportedGuide(
     if (existing) { carrySpatial(step, existing, importSetsModel); updated++; }
     else          { created++; }
 
-    // U4: extra model slots (2..n) are device-authored and never come from an
-    // import — carry them over, then mirror the (possibly new) slot 1.
-    if (existing?.models) step.models = existing.models;
-    applyLegacyToSlots(step);
+    if (s.models) {
+      // U5: the import owns the slot LIST (assignments); placement is still
+      // device-owned — a slot keeps its offsets when slotId + modelId match.
+      const prior = new Map((existing?.models ?? []).map(m => [m.slotId, m]));
+      step.models = s.models.map(m => {
+        const was = prior.get(m.slotId);
+        const slot: GuideStepModel = { slotId: m.slotId, modelId: m.modelId };
+        if (m.modelScale   !== undefined) slot.modelScale   = m.modelScale;
+        if (m.modelOpacity !== undefined) slot.modelOpacity = m.modelOpacity;
+        if (was && was.modelId === m.modelId) {
+          if (was.modelOffsetX   !== undefined) slot.modelOffsetX   = was.modelOffsetX;
+          if (was.modelOffsetY   !== undefined) slot.modelOffsetY   = was.modelOffsetY;
+          if (was.modelOffsetZ   !== undefined) slot.modelOffsetZ   = was.modelOffsetZ;
+          if (was.modelRotationY !== undefined) slot.modelRotationY = was.modelRotationY;
+        }
+        return slot;
+      });
+      applySlotsToLegacy(step);
+    } else {
+      // U4: extra model slots (2..n) are device-authored and never come from a
+      // legacy import — carry them over, then mirror the (possibly new) slot 1.
+      if (existing?.models) step.models = existing.models;
+      applyLegacyToSlots(step);
+    }
 
     guideStepStore.save(step);
     written.push(step);

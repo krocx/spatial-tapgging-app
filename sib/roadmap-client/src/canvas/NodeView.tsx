@@ -149,11 +149,13 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
   // Step content glyphs — attached voice / image / model, so an authored step
   // is distinguishable from a bare one at a glance.
   const stepMeta = node.metadata?.step as
-    { ttsText?: string; imageFile?: string; modelId?: string } | undefined;
+    { ttsText?: string; imageFile?: string; modelId?: string; models?: unknown[] } | undefined;
+  // U5: several models per step → "⬢×2" so the count is visible on the canvas.
+  const modelCount = Array.isArray(stepMeta?.models) ? stepMeta!.models!.length : (stepMeta?.modelId ? 1 : 0);
   const stepGlyphs = [
     stepMeta?.ttsText   ? '🔊' : null,
     stepMeta?.imageFile ? '🖼' : null,
-    stepMeta?.modelId   ? '⬢'  : null,
+    modelCount > 1 ? `⬢×${modelCount}` : modelCount === 1 ? '⬢' : null,
   ].filter((g): g is string => g !== null);
 
   return (

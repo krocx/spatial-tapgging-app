@@ -1056,6 +1056,14 @@ export interface AIHint {
  * step-image directory (same path as portal-uploaded images). The guide works
  * offline once imported.
  */
+/** Assignment-only model slot as authored on the canvas or in an import. */
+export interface ImportedStepModel {
+  slotId:        string;
+  modelId:       string;
+  modelScale?:   number;
+  modelOpacity?: number;
+}
+
 export interface ImportedGuideStep {
   sequenceNumber:       number;
   title?:               string;
@@ -1081,6 +1089,11 @@ export interface ImportedGuideStep {
   modelId?:             string;
   modelScale?:          number;
   modelOpacity?:        number;
+  /** U5 (2026.4.45): several model assignments per step (max 3). When
+   *  present it is authoritative and the three legacy keys above are
+   *  ignored. Placement is still device-owned: a slot keeps its saved
+   *  offsets when its slotId AND modelId are unchanged. */
+  models?:              ImportedStepModel[];
   // Conditional task graph — expressed as sequence numbers; server resolves to UUIDs
   nextOnSuccessSeq?:    number;
   nextOnFailureSeq?:    number;

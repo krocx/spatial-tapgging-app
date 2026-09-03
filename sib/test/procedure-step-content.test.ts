@@ -218,3 +218,67 @@ test('designer image store is content-addressed and validates payloads', () => {
     /Only JPEG/);
   assert.throws(() => saveDesignerImage(''), /Empty/);
 });
+
+// ── U5: multiple model slots from the canvas ───────────────────────────────
+
+test('U5: compiler emits models[] (capped at 3) and mirrors slot 1 into legacy keys', () => {
+  const r = compileProcedure(M(
+    [N('a', 0, 'S1', {
+       modelId: 'stale-legacy',   // ignored when models[] is present
+       models: [
+         { slotId: 'lock', modelId: 'm-lock', modelScale: 0.5, modelOpacity: 0.4 },
+         { slotId: 'tag',  modelId: 'm-tag' },
+         { modelId: 'm-hasp', modelScale: -1 },          // no slotId → generated; bad scale dropped
+         { slotId: 'extra', modelId: 'm-4' },            // 4th → capped
+         { slotId: 'junk' },                             // no modelId → skipped
+       ],
+     }),
+     N('b', 100, 'S2', { modelId: 'legacy-only', modelScale: 2 })],
+    [E('a', 'b', 'next')],
+  ));
+  assert.equal(r.ok, true);
+  const s1 = r.guide!.steps[0];
+  assert.deepEqual(s1.models, [
+    { slotId: 'lock', modelId: 'm-lock', modelScale: 0.5, modelOpacity: 0.4 },
+    { slotId: 'tag',  modelId: 'm-tag' },
+    { slotId: 'slot-3', modelId: 'm-hasp' },
+  ]);
+  assert.equal(s1.modelId, 'm-lock');  assert.equal(s1.modelScale, 0.5);
+  const s2 = r.guide!.steps[1];
+  assert.equal(s2.models, undefined);
+  assert.equal(s2.modelId, 'legacy-only');
+});
+
+test('U5: ingest writes every slot; unchanged slots keep device placement, changed ones lose it', async () => {
+  const first = await applyImportedGuide(
+    { name: 'G', steps: [{ sequenceNumber: 1, title: 'A', text: 'x',
+        models: [{ slotId: 'a', modelId: 'm-1' }, { slotId: 'b', modelId: 'm-2' }] }] },
+    { anchorId: 'anchor-1', createdBy: 'K' },
+  );
+  let s = first.steps[0];
+  assert.equal(s.models!.length, 2);
+  assert.equal(s.modelId, 'm-1', 'legacy mirrors slot 1');
+
+  // Device places both ghosts.
+  guideStepStore.save({ ...s, isPlaced: true, posX: 1, posY: 2, posZ: 3,
+    models: [{ slotId: 'a', modelId: 'm-1', modelOffsetX: 0.1, modelRotationY: 1 },
+             { slotId: 'b', modelId: 'm-2', modelOffsetY: 0.5 }] });
+
+  // Canvas re-sync: slot a same model (new scale), slot b swapped, slot c new.
+  const again = await applyImportedGuide(
+    { name: 'G', steps: [{ sequenceNumber: 1, title: 'A', text: 'x',
+        models: [{ slotId: 'a', modelId: 'm-1', modelScale: 2 },
+                 { slotId: 'b', modelId: 'm-9' },
+                 { slotId: 'c', modelId: 'm-3' }] }] },
+    { anchorId: 'anchor-1', createdBy: 'K',
+      guideId: first.guide.id, existingStepIdBySeq: { 1: s.id } },
+  );
+  s = again.steps[0];
+  assert.deepEqual(s.models, [
+    { slotId: 'a', modelId: 'm-1', modelScale: 2, modelOffsetX: 0.1, modelRotationY: 1 },
+    { slotId: 'b', modelId: 'm-9' },
+    { slotId: 'c', modelId: 'm-3' },
+  ]);
+  assert.equal(s.modelOffsetX, 0.1, 'legacy placement mirrors slot 1');
+  assert.equal(s.isPlaced, true); assert.equal(s.posX, 1);
+});

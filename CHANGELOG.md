@@ -51,6 +51,17 @@ it, it gets a line.
   "Duplicate" in the Anchor Directory → name prompt → opens the new anchor's
   hub. Portal: "⧉ Duplicate" on the anchor row. Response carries
   `copied: { guides, steps, kitModels }`.
+- **Procedure Designer: multiple 3D models per step (U5)** — the Inspector's
+  "3D model" picker is now a slot list (up to 3, each with its own model and
+  scale; "+ Add model" / ✕), stored as `metadata.step.models[]` with the
+  legacy `modelId/modelScale/modelOpacity` keys mirrored to slot 1 so older
+  maps and readers still agree. Canvas nodes show "⬢×N". Compiler emits
+  `ImportedGuideStep.models[]` (capped, ids trimmed, junk dropped); ingest
+  writes the slot list and keeps a slot's device placement when its slotId
+  and model are unchanged (a swapped model loses placement, as on device);
+  the reverse-compiler (Edit in Designer) surfaces every slot, assignment
+  only. Unit tests for all three paths. Roadmap bundle must be rebuilt on
+  the Mac (`npm run build:roadmap`) and committed.
 - **Guided single-shot training + auto-capture (W1–W3)** — W1: a validated
   step always yields evidence: "Require validation" locks "Require evidence
   photo" on (enforced server-side on PATCH), the validation frame becomes the

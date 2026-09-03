@@ -29,6 +29,7 @@ import type {
   MindmapEdge,
   ImportedGuide,
   ImportedGuideStep,
+  ImportedStepModel,
   ProcedureCompileResult,
   ProcedureIssue,
 } from '@spatial/shared';
@@ -69,6 +70,32 @@ interface StepMeta {
   modelId?:      string;
   modelScale?:   number;
   modelOpacity?: number;
+  /** U5: model slots (max 3). Wins over the three legacy keys when present. */
+  models?:       ImportedStepModel[];
+}
+
+const MAX_STEP_MODELS = 3;
+
+/** Parse metadata.step.models — assignment fields only, capped, ids trimmed. */
+function stepModelsOf(raw: unknown): ImportedStepModel[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const out: ImportedStepModel[] = [];
+  const seen = new Set<string>();
+  for (const r of raw) {
+    if (!r || typeof r !== 'object') continue;
+    const m = r as Record<string, unknown>;
+    const modelId = typeof m.modelId === 'string' ? m.modelId.trim() : '';
+    if (!modelId) continue;
+    let slotId = typeof m.slotId === 'string' && m.slotId.trim() ? m.slotId.trim() : `slot-${out.length + 1}`;
+    if (seen.has(slotId)) slotId = `${slotId}-${out.length + 1}`;
+    seen.add(slotId);
+    const slot: ImportedStepModel = { slotId, modelId };
+    if (typeof m.modelScale === 'number' && isFinite(m.modelScale) && m.modelScale > 0) slot.modelScale = m.modelScale;
+    if (typeof m.modelOpacity === 'number' && m.modelOpacity >= 0 && m.modelOpacity <= 1) slot.modelOpacity = m.modelOpacity;
+    out.push(slot);
+    if (out.length >= MAX_STEP_MODELS) break;
+  }
+  return out;
 }
 
 function stepMetaOf(node: MindmapNode): StepMeta {
@@ -86,6 +113,7 @@ function stepMetaOf(node: MindmapNode): StepMeta {
     modelId:      typeof m.modelId === 'string' && m.modelId ? m.modelId : undefined,
     modelScale:   typeof m.modelScale === 'number' && isFinite(m.modelScale) && m.modelScale > 0 ? m.modelScale : undefined,
     modelOpacity: typeof m.modelOpacity === 'number' && m.modelOpacity >= 0 && m.modelOpacity <= 1 ? m.modelOpacity : undefined,
+    models:       stepModelsOf(m.models),
   };
 }
 
@@ -294,7 +322,16 @@ export function compileProcedure(map: Mindmap): ProcedureCompileResult {
     if (meta.ttsText)      step.ttsText      = meta.ttsText;
     if (meta.imageFile)    step.imageFile    = meta.imageFile;
     if (meta.linkUrl)      step.linkUrl      = meta.linkUrl;
-    if (meta.modelId) {
+    if (meta.models) {
+      // U5: slots are authoritative; legacy keys mirror slot 1 for old readers.
+      step.models = meta.models;
+      const first = meta.models[0];
+      if (first) {
+        step.modelId = first.modelId;
+        if (first.modelScale   !== undefined) step.modelScale   = first.modelScale;
+        if (first.modelOpacity !== undefined) step.modelOpacity = first.modelOpacity;
+      }
+    } else if (meta.modelId) {
       step.modelId = meta.modelId;
       if (meta.modelScale   !== undefined) step.modelScale   = meta.modelScale;
       if (meta.modelOpacity !== undefined) step.modelOpacity = meta.modelOpacity;

@@ -21,6 +21,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import type { Guide, GuideStep, Mindmap, MindmapNode, MindmapEdge } from '@spatial/shared';
+import { effectiveStepModels } from '../guides/step-models.js';
 
 const COL_W  = 240;   // horizontal spacing along a chain
 const LANE_H = 170;   // vertical spacing between lanes
@@ -92,6 +93,15 @@ export function guideToProcedureMap(guide: Guide, rawSteps: GuideStep[],
     if (s.modelId)                    stepMeta.modelId      = s.modelId;
     if (s.modelScale !== undefined)   stepMeta.modelScale   = s.modelScale;
     if (s.modelOpacity !== undefined) stepMeta.modelOpacity = s.modelOpacity;
+    // U5: every slot (assignment only — placement never reaches the canvas).
+    const slots = effectiveStepModels(s);
+    if (slots.length > 0) {
+      stepMeta.models = slots.map(m => ({
+        slotId: m.slotId, modelId: m.modelId,
+        ...(m.modelScale   !== undefined && { modelScale:   m.modelScale }),
+        ...(m.modelOpacity !== undefined && { modelOpacity: m.modelOpacity }),
+      }));
+    }
 
     return {
       id: nodeIdByStepId.get(s.id)!,

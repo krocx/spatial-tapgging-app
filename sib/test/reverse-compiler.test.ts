@@ -129,3 +129,22 @@ test('empty guide → empty but valid map skeleton', () => {
   assert.equal(r.edges.length, 0);
   assert.equal(r.kind, 'procedure');
 });
+
+test('U5: reverse-compiler surfaces every model slot (assignment only) and lifts legacy into slot-1', () => {
+  const steps = [
+    step('s1', 1, { models: [
+      { slotId: 'lock', modelId: 'm-lock', modelScale: 0.5, modelOffsetX: 0.3, modelRotationY: 1 },
+      { slotId: 'tag',  modelId: 'm-tag',  modelOpacity: 0.7 },
+    ], modelId: 'm-lock', modelScale: 0.5, modelOffsetX: 0.3 }),
+    step('s2', 2, { modelId: 'm9', modelScale: 2 }),
+  ];
+  const r = guideToProcedureMap(GUIDE, steps);
+  const m1 = r.nodes[0].metadata.step as Record<string, unknown>;
+  assert.deepEqual(m1.models, [
+    { slotId: 'lock', modelId: 'm-lock', modelScale: 0.5 },   // no offsets on the canvas
+    { slotId: 'tag',  modelId: 'm-tag',  modelOpacity: 0.7 },
+  ]);
+  assert.equal(m1.modelId, 'm-lock');
+  const m2 = r.nodes[1].metadata.step as Record<string, unknown>;
+  assert.deepEqual(m2.models, [{ slotId: 'slot-1', modelId: 'm9', modelScale: 2 }]);
+});
