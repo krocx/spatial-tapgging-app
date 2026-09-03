@@ -42,6 +42,8 @@ struct GuideListView: View {
 
     // Pilot hardening: transient "queued sign-offs uploaded" banner
     @State private var syncedBanner: String? = nil
+    /// U2: guide awaiting an anchor pick for "Copy to…"
+    @State private var copySource: ARGuide? = nil
 
     // Operator: unplaced-steps alert
     @State private var showUnplacedAlert  = false
@@ -90,6 +92,11 @@ struct GuideListView: View {
                                     } label: {
                                         Label("Delete", systemImage: "trash")
                                     }
+                                    // U2: copy this guide onto another anchor
+                                    Button { copySource = guide } label: {
+                                        Label("Copy to…", systemImage: "square.on.square")
+                                    }
+                                    .tint(.teal)
                                 }
                             }
                     }
@@ -109,6 +116,18 @@ struct GuideListView: View {
             }
         }
         .task { await loadGuides() }
+        .sheet(item: $copySource) { source in
+            CopyGuideToAnchorSheet(guide: source, currentAnchor: anchor) { copied, target in
+                syncedBanner = "Copied to \(target.assetId) as draft — place its steps there"
+                if target.id == anchor.id { Task { await loadGuides() } }
+                Task {
+                    try? await Task.sleep(nanoseconds: 5_000_000_000)
+                    if syncedBanner?.hasPrefix("Copied") == true { syncedBanner = nil }
+                }
+                _ = copied
+            }
+            .environmentObject(settings)
+        }
         // Pilot hardening: push any sign-offs that were saved offline. The
         // guide list is the natural sync point — every run starts here.
         .task {
@@ -360,5 +379,98 @@ private struct GuideRow: View {
                 .font(.caption)
                 .foregroundStyle(.tertiary)
         }
+    }
+}
+
+
+// ── U2: Copy guide to anchor ─────────────────────────────────────────────────
+//
+// Anchor picker for "Copy to…". The copy carries steps, media, model
+// assignments and flags; pins, model placement, validation training and
+// sharing stay with the source anchor's world map — the author re-places
+// (and re-trains) on the new tool, then publishes.
+
+private struct CopyGuideToAnchorSheet: View {
+    let guide:         ARGuide
+    let currentAnchor: Anchor
+    let onCopied:      (ARGuide, Anchor) -> Void
+
+    @EnvironmentObject private var settings: AppSettings
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var anchors:   [Anchor] = []
+    @State private var isLoading = true
+    @State private var isCopying = false
+    @State private var error:     String? = nil
+    @State private var newName:   String  = ""
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    TextField("Name (optional)", text: $newName)
+                } header: {
+                    Text("Copy \"\(guide.name)\" to…")
+                } footer: {
+                    Text("Steps, photos, 3D model assignments and validation settings are copied. Pin positions and validation training belong to this anchor's world map and are not — place the steps (and retrain) on the new tool, then publish.")
+                }
+                Section("Anchor") {
+                    if isLoading {
+                        HStack { ProgressView(); Text("Loading anchors…").foregroundStyle(.secondary) }
+                    } else if anchors.isEmpty {
+                        Text("No anchors found").foregroundStyle(.secondary)
+                    } else {
+                        ForEach(anchors) { a in
+                            Button {
+                                Task { await copy(to: a) }
+                            } label: {
+                                HStack {
+                                    Image(systemName: a.id == currentAnchor.id ? "arrow.triangle.2.circlepath" : "qrcode")
+                                        .foregroundStyle(.teal)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(a.assetId).foregroundStyle(.primary)
+                                        if a.id == currentAnchor.id {
+                                            Text("This anchor — duplicate here").font(.caption2).foregroundStyle(.secondary)
+                                        }
+                                    }
+                                    Spacer()
+                                    if isCopying { ProgressView() }
+                                }
+                            }
+                            .disabled(isCopying)
+                        }
+                    }
+                }
+                if let error {
+                    Section { Text(error).foregroundStyle(.red).font(.caption) }
+                }
+            }
+            .navigationTitle("Copy Guide")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+            }
+            .task {
+                let client = SIBClient(settings: settings)
+                anchors = ((try? await client.fetchAnchors()) ?? [])
+                    .sorted { $0.assetId.localizedCaseInsensitiveCompare($1.assetId) == .orderedAscending }
+                isLoading = false
+            }
+        }
+    }
+
+    private func copy(to target: Anchor) async {
+        isCopying = true; error = nil
+        let client = SIBClient(settings: settings)
+        do {
+            let trimmed = newName.trimmingCharacters(in: .whitespaces)
+            let copied  = try await client.copyGuide(id: guide.id, toAnchor: target.id,
+                                                     name: trimmed.isEmpty ? nil : trimmed)
+            onCopied(copied, target)
+            dismiss()
+        } catch {
+            self.error = "Copy failed: \(friendlyMessage(for: error))"
+        }
+        isCopying = false
     }
 }

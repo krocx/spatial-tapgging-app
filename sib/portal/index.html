@@ -1553,6 +1553,23 @@ function jsEsc(str) {
 function safeId(id) { return id.replace(/[^a-z0-9]/gi,'_'); }
 
 // ── Load anchors ──────────────────────────────────────────────────────────────
+// U3 (2026.4.45): template copy of an anchor — guides (drafts, unplaced,
+// untrained) + model kit on a brand-new QR/key. World map and tags stay.
+async function duplicateAnchor(anchorId, assetId) {
+  const name = prompt(`Duplicate "${assetId}" as a new anchor.\n\nNew asset name:`, `${assetId} copy`);
+  if (name === null) return;
+  try {
+    const r = await apiFetch(`/anchors/${encodeURIComponent(anchorId)}/duplicate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ assetId: name.trim() || undefined, createdBy: (UAM_USER && UAM_USER.name) || 'portal' }),
+    });
+    const c = r.data.copied || {};
+    toast(`Created "${r.data.assetId}" — ${c.guides || 0} guide(s), ${c.kitModels || 0} kit model(s). Print its QR and scan the world map.`);
+    loadAnchors();
+  } catch (e) { toast(`Duplicate failed: ${e.message}`); }
+}
+
 async function loadAnchors() {
   const grid = document.getElementById('anchor-grid');
   grid.innerHTML = `<div class="spinner" style="grid-column:1/-1"><div class="spin"></div><span>Loading anchors…</span></div>`;
@@ -1642,6 +1659,7 @@ function buildCard(anchor) {
       </span>
       <button class="btn btn-ghost btn-sm" onclick="openQRPrint('${anchor.id}')">📄 Print / PDF</button>
       <button class="btn btn-ghost btn-sm" onclick="copyAnchorId('${anchor.id}')">Copy ID</button>
+      <button class="btn btn-ghost btn-sm" title="New anchor (new QR + key) with the same guides and 3D model kit — no world map or tags" onclick="duplicateAnchor('${anchor.id}','${jsEsc(anchor.assetId)}')">⧉ Duplicate</button>
       <button class="btn btn-danger btn-sm" onclick="openDeleteModal('${anchor.id}','${jsEsc(anchor.assetId)}')">🗑 Delete</button>
     </div>
   `;
@@ -3450,6 +3468,27 @@ async function moveGuideToAnchor(guideId, fromAnchorId) {
   } catch (e) { toast(`Move failed: ${e.message}`); }
 }
 
+// U2 (2026.4.45): copy a guide onto another anchor (or duplicate on the same
+// one). Same prompt-style picker as Move; the copy is a draft with unplaced
+// steps and no validation training — see sib/src/guides/copy.ts.
+async function copyGuideToAnchor(guideId, fromAnchorId) {
+  const list = (allAnchors || []).slice().sort((a, b) => (a.id === fromAnchorId ? -1 : b.id === fromAnchorId ? 1 : 0));
+  if (!list.length) { toast('No anchors available.'); return; }
+  const listing = list.map((a, i) => `${i + 1}. ${a.assetId || a.id}${a.id === fromAnchorId ? '  (this anchor — duplicate)' : ''}`).join('\n');
+  const pick = prompt(`Copy guide to which anchor?\n\n${listing}\n\nEnter a number (1–${list.length}).\nThe copy is a draft: steps must be placed in AR on that tool and validation retrained.`);
+  const idx = parseInt(pick, 10) - 1;
+  if (!Number.isInteger(idx) || idx < 0 || idx >= list.length) return;
+  try {
+    const r = await apiFetch(`/guides/${encodeURIComponent(guideId)}/copy`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ anchorId: list[idx].id, createdBy: (UAM_USER && UAM_USER.name) || 'portal' }),
+    });
+    toast(`Copied "${r.data.name}" (${r.data.stepCount} steps) to ${list[idx].assetId || list[idx].id} — place its steps in AR.`);
+    loadGuideLibrary();
+  } catch (e) { toast(`Copy failed: ${e.message}`); }
+}
+
 // Close modal on backdrop click
 document.getElementById('import-guide-modal').addEventListener('click', (e) => {
   if (e.target === document.getElementById('import-guide-modal')) closeImportGuideModal();
@@ -3589,6 +3628,7 @@ function renderGuideLibrary() {
           <button class="btn btn-ghost btn-sm" style="font-size:0.68rem" title="Edit this guide visually in the Procedure Designer" onclick="editGuideInDesigner('${guide.id}')">✏️ Edit in Designer</button>
           <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;color:#7dd3fc" title="Choose which technicians can see and run this guide" onclick="openShareModal('${guide.id}','${anchorId}')">👥 Share${(guide.sharedWith && guide.sharedWith.length) ? ` (${guide.sharedWith.length})` : ''}</button>
           <button class="btn btn-ghost btn-sm" style="font-size:0.68rem" title="Move to another anchor (steps become unplaced)" onclick="moveGuideToAnchor('${guide.id}','${anchorId}')">⇄ Move</button>
+          <button class="btn btn-ghost btn-sm" style="font-size:0.68rem" title="Copy to another anchor as a draft (steps unplaced, training not copied)" onclick="copyGuideToAnchor('${guide.id}','${anchorId}')">⧉ Copy</button>
           <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;color:var(--red)" onclick="deleteGuideFromLibrary('${guide.id}','${anchorId}')">🗑</button>
         </div>`;
 
@@ -3682,13 +3722,18 @@ function renderStepsInCard(guideId, anchorId) {
            <span class="gl-opacity-val">${Math.round((step.modelOpacity ?? 0.45) * 100)}%</span>
          </span>`
       : '';
+    // U4 (2026.4.45): steps can carry up to 3 model slots; the opacity control
+    // above drives slot 1 (mirrored to the legacy field). Show the count.
+    const slotCount  = Array.isArray(step.models) ? step.models.length : (step.modelId ? 1 : 0);
+    const modelsTag  = slotCount > 1
+      ? `<span class="gl-step-tag gl-step-img" title="3D models on this step">🧊 ${slotCount} models</span>` : '';
 
     html += `<div class="gl-step-row">
       <div class="gl-step-seq">${step.sequenceNumber}</div>
       <div class="gl-step-body">
         <div class="gl-step-title">${esc(title)}</div>
         <div class="gl-step-text">${esc(step.text)}</div>
-        <div class="gl-step-tags">${placedTag}${imgTag}${branchTag}${opacityCtl}</div>
+        <div class="gl-step-tags">${placedTag}${imgTag}${branchTag}${modelsTag}${opacityCtl}</div>
       </div>
     </div>`;
   }

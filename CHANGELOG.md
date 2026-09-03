@@ -7,6 +7,50 @@ it, it gets a line.
 ## 2026.4.45 — 2026-09-01
 
 ### Added
+- **Place Steps focus toggle (U1, iOS)** — an eye button in the Place Steps
+  top bar hides every other step's pin, label and 3D model while one step is
+  selected, so retraining or repositioning a pin in a dense guide isn't
+  cluttered by its neighbours. Session-only; hidden pins are also skipped by
+  tap hit-testing. Sign-off now prefills the operator name from the shift-start
+  (kiosk / UAM) identity — the same name the usage log carries — falling back
+  to the author name; the field stays editable.
+- **Multiple 3D models per step (U4)** — a guide step now carries up to three
+  model slots (`GuideStep.models[]`, same slot doctrine as iLOTO points: each
+  slot has its own scale, opacity and device-owned placement; a slot whose
+  model changes loses its placement). The server mirrors slot 1 into the
+  legacy `modelId/…` fields in both directions, so older app builds, the
+  procedure compiler, imports and the portal keep working unchanged; moving a
+  guide to another anchor strips slot placements like it strips pins.
+  `PATCH …/steps/:id { models }` (max 3, `[]` clears every model — the edit
+  sheet can finally remove a model). iOS: the Edit Step sheet adds "Add another
+  model" slots; Place Steps loads and adjusts each slot in turn after the pin
+  drop (✕ skips a slot), a cube toggle hides the active step's models while
+  the pin is repositioned, and **Copy models to…** stamps the active step's
+  models — at the same physical spot — onto any other placed steps (saved on
+  the next Save/Done, even when no pin moved). Operators see every slot.
+  Portal step rows show a "🧊 N models" chip. Unit tests + e2e (mirroring,
+  cap, placement drop, anchor move).
+- **Copy guide to anchor (U2)** — `POST /guides/:id/copy { anchorId, name? }`
+  clones a guide onto another anchor (or duplicates it on the same one as
+  "<name> (copy)"): steps, titles, voice, links, step photos (file
+  duplicated), branch links (re-pointed), completion / validation / evidence
+  flags and 3D model assignments travel. Pin positions, model placement,
+  validation training (photos, cone tags, pass-states) and the sharing list
+  stay with the source anchor's world map; the copy is an unpublished draft
+  until re-placed. Technicians can't copy. iOS: swipe "Copy to…" on a guide →
+  anchor picker (optional new name) → banner. Portal: "⧉ Copy" in the Guide
+  Library. Replaces re-importing a guide per anchor.
+- **Duplicate anchor (U3)** — `POST /anchors/:id/duplicate { assetId? }`
+  creates a template copy: a NEW anchor (new id, new QR, its own encryption
+  key — never shared between tools) with the source's metadata
+  (`duplicatedFrom` stamped), anchor type, QR print size and 3D model kit
+  membership, plus every guide copied via U2 (drafts, unplaced, untrained).
+  The world map, tags, loc-tags and LOTO points are not copied — they describe
+  the source's physical location; scan the new tool and re-place. Asset name
+  defaults to "<name> copy" (uniqueness suffix as usual). iOS: swipe
+  "Duplicate" in the Anchor Directory → name prompt → opens the new anchor's
+  hub. Portal: "⧉ Duplicate" on the anchor row. Response carries
+  `copied: { guides, steps, kitModels }`.
 - **Guided single-shot training + auto-capture (W1–W3)** — W1: a validated
   step always yields evidence: "Require validation" locks "Require evidence
   photo" on (enforced server-side on PATCH), the validation frame becomes the

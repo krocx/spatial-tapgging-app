@@ -36,15 +36,17 @@ private struct ModelTransformState {
 
 private enum PlacementPhase: Equatable {
     case placingPins
-    case loadingModel(stepId: String)
-    case adjustingModel(stepId: String)
+    // U4: each step can carry up to guideStepMaxModelSlots models; the chain
+    // loads/adjusts them one slot at a time after the pin drop.
+    case loadingModel(stepId: String, slotId: String)
+    case adjustingModel(stepId: String, slotId: String)
 
     static func == (lhs: PlacementPhase, rhs: PlacementPhase) -> Bool {
         switch (lhs, rhs) {
-        case (.placingPins, .placingPins):                         return true
-        case (.loadingModel(let a), .loadingModel(let b)):         return a == b
-        case (.adjustingModel(let a), .adjustingModel(let b)):     return a == b
-        default:                                                   return false
+        case (.placingPins, .placingPins):                                   return true
+        case (.loadingModel(let a, let sa), .loadingModel(let b, let sb)):   return a == b && sa == sb
+        case (.adjustingModel(let a, let sa), .adjustingModel(let b, let sb)): return a == b && sa == sb
+        default:                                                             return false
         }
     }
 
@@ -208,9 +210,17 @@ struct GuideStepPlacementView: View {
 
     // ── Phase + model state ───────────────────────────────────────────────────
     @State private var placementPhase:  PlacementPhase       = .placingPins
-    @State private var modelNodes:      [String: SCNNode]    = [:]
+    /// stepId → slotId → placed ghost node (U4: several per step).
+    @State private var modelNodes:      [String: [String: SCNNode]] = [:]
     /// Confirmed transforms for steps adjusted in this session.
-    @State private var modelTransforms: [String: ModelTransformState] = [:]
+    /// stepId → slotId → confirmed world transform (this session).
+    @State private var modelTransforms: [String: [String: ModelTransformState]] = [:]
+    /// U4 "Copy models to…": target steps whose slot ASSIGNMENTS were replaced
+    /// this session (saved as `models` on the next Save).
+    @State private var slotOverrides:   [String: [GuideStepModel]] = [:]
+    /// U4: steps whose models are hidden while the author works on the pin.
+    @State private var hiddenModelStepIds: Set<String> = []
+    @State private var showCopySheet:   Bool = false
 
     // Live adjustment values (populated when entering .adjustingModel)
     @State private var modelPosition: simd_float3  = .zero
@@ -251,6 +261,11 @@ struct GuideStepPlacementView: View {
 
     // ── UX ────────────────────────────────────────────────────────────────────
     @State private var showTapHint: Bool = true
+
+    /// U1: when true, only the active step's pin/label/model is visible —
+    /// declutters the scene while retraining or repositioning one step in a
+    /// dense guide. Session-only (not saved). Mirrors the Operator-mode eye.
+    @State private var focusActiveOnly: Bool = false
 
     // ── Pin colours ───────────────────────────────────────────────────────────
     private let indigoColor = UIColor.systemIndigo
@@ -300,14 +315,15 @@ struct GuideStepPlacementView: View {
             switch placementPhase {
             case .placingPins, .loadingModel:
                 VStack(spacing: 0) { stepTray; actionBar }
-            case .adjustingModel(let stepId):
+            case .adjustingModel(let stepId, let slotId):
                 if let idx = steps.firstIndex(where: { $0.id == stepId }) {
-                    modelAdjustBar(for: steps[idx])
+                    modelAdjustBar(for: steps[idx], slotId: slotId)
                 }
             }
         }
         .navigationBarHidden(true)
         .overlay(alignment: .top) { topBar }
+        .sheet(isPresented: $showCopySheet) { copyModelsSheet }
         .overlay { if isSaving { savingOverlay } }
         // V1: Spatial Inspection cone training for a validation step. Shares
         // this view's AR session (same pattern as Author-mode tag training) and
@@ -348,7 +364,7 @@ struct GuideStepPlacementView: View {
             }
         }
         .onDisappear {
-            for node in modelNodes.values { node.removeFromParentNode() }
+            for perStep in modelNodes.values { for node in perStep.values { node.removeFromParentNode() } }
             focusRing?.cleanup()
             focusRing = nil
             arManager.pauseSession()
@@ -372,8 +388,11 @@ struct GuideStepPlacementView: View {
     private var topBar: some View {
         HStack {
             Button {
-                if case .adjustingModel(let stepId) = placementPhase {
-                    skipModelPlacement(stepId: stepId)
+                if case .adjustingModel(let stepId, let slotId) = placementPhase {
+                    skipModelPlacement(stepId: stepId, slotId: slotId)
+                } else if case .loadingModel(let stepId, let slotId) = placementPhase {
+                    // "Tap ✕ above to skip" — skip this slot, keep the session.
+                    skipModelPlacement(stepId: stepId, slotId: slotId)
                 } else {
                     onDone(steps)
                 }
@@ -393,15 +412,15 @@ struct GuideStepPlacementView: View {
                         .font(.headline.bold()).foregroundStyle(.white)
                     Text("\(placedCount) / \(steps.count) placed")
                         .font(.caption).foregroundStyle(.white.opacity(0.65))
-                case .loadingModel(let stepId):
+                case .loadingModel(let stepId, let slotId):
                     Text("Loading Model")
                         .font(.headline.bold()).foregroundStyle(.white)
-                    Text("Preparing \(displayTitle(stepId: stepId))")
+                    Text("Preparing \(slotLabel(stepId: stepId, slotId: slotId)) · \(displayTitle(stepId: stepId))")
                         .font(.caption).foregroundStyle(.white.opacity(0.65))
-                case .adjustingModel(let stepId):
-                    Text("Adjust Model")
+                case .adjustingModel(let stepId, let slotId):
+                    Text("Adjust \(slotLabel(stepId: stepId, slotId: slotId))")
                         .font(.headline.bold()).foregroundStyle(.white)
-                    Text("Positioning model for \(displayTitle(stepId: stepId))")
+                    Text("Positioning for \(displayTitle(stepId: stepId))")
                         .font(.caption).foregroundStyle(.white.opacity(0.65))
                         .lineLimit(1)
                 }
@@ -409,12 +428,74 @@ struct GuideStepPlacementView: View {
 
             Spacer()
 
-            Image(systemName: "xmark.circle.fill")
-                .font(.system(size: 26)).foregroundStyle(.clear)
+            // U1: eye toggle — hide every other step while working on one.
+            // U4: cube toggle — hide the ACTIVE step's models while placing its pin.
+            if placementPhase.isPlacingPins {
+                if activeStepIndex < steps.count, !(modelNodes[steps[activeStepIndex].id] ?? [:]).isEmpty {
+                    let sid = steps[activeStepIndex].id
+                    let hidden = hiddenModelStepIds.contains(sid)
+                    Button {
+                        if hidden { hiddenModelStepIds.remove(sid) } else { hiddenModelStepIds.insert(sid) }
+                        applyStepVisibility()
+                    } label: {
+                        Image(systemName: hidden ? "cube" : "cube.fill")
+                            .font(.system(size: 18))
+                            .foregroundStyle(hidden ? Color.yellow : Color.white.opacity(0.85))
+                            .frame(width: 26, height: 26)
+                    }
+                    .accessibilityLabel(hidden ? "Show this step's 3D models" : "Hide this step's 3D models")
+                    .padding(.trailing, 6)
+                }
+                Button {
+                    focusActiveOnly.toggle()
+                    applyStepVisibility()
+                } label: {
+                    Image(systemName: focusActiveOnly ? "eye.slash.fill" : "eye.fill")
+                        .font(.system(size: 20))
+                        .foregroundStyle(focusActiveOnly ? Color.yellow : Color.white.opacity(0.85))
+                        .frame(width: 26, height: 26)
+                }
+                .accessibilityLabel(focusActiveOnly ? "Show all steps" : "Show only the selected step")
                 .padding(.trailing, 16)
+            } else {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 26)).foregroundStyle(.clear)
+                    .padding(.trailing, 16)
+            }
         }
         .padding(.vertical, 10).padding(.top, 4)
         .background(.ultraThinMaterial.opacity(0.85))
+    }
+
+    /// U1: apply the focus filter to every pin + model node. With the filter
+    /// off, or with no active step (all placed, nothing selected), everything
+    /// is shown. Hidden nodes are also skipped by SceneKit hit-testing, so
+    /// taps can't land on an invisible pin.
+    private func applyStepVisibility() {
+        let activeId: String? = activeStepIndex < steps.count ? steps[activeStepIndex].id : nil
+        let hideOthers = focusActiveOnly && activeId != nil
+        for (stepId, node) in stepNodes  { node.isHidden = hideOthers && stepId != activeId }
+        for (stepId, perStep) in modelNodes {
+            let hide = (hideOthers && stepId != activeId) || hiddenModelStepIds.contains(stepId)
+            for node in perStep.values { node.isHidden = hide }
+        }
+    }
+
+    /// U4: "Model 2 of 3 · Lock" style label for the phase header.
+    private func slotLabel(stepId: String, slotId: String) -> String {
+        guard let step = steps.first(where: { $0.id == stepId }) else { return "Model" }
+        let slots = slots(for: step)
+        let idx   = slots.firstIndex { $0.slotId == slotId } ?? 0
+        let mid   = idx < slots.count ? slots[idx].modelId : nil
+        let name  = resolvedModels.first { $0.id == mid }?.name
+        let base  = slots.count > 1 ? "Model \(idx + 1) of \(slots.count)" : "Model"
+        return name.map { "\(base) · \($0)" } ?? base
+    }
+
+    /// U4: the slots this session will render/save for a step — the copied
+    /// assignments when "Copy models to…" replaced them, else the server's.
+    private func slots(for step: GuideStep) -> [GuideStepModel] {
+        slotOverrides[step.id] ?? step.effectiveModels
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -456,7 +537,7 @@ struct GuideStepPlacementView: View {
     // MARK: Model adjust bar
     // ─────────────────────────────────────────────────────────────────────────
 
-    private func modelAdjustBar(for step: GuideStep) -> some View {
+    private func modelAdjustBar(for step: GuideStep, slotId: String) -> some View {
         VStack(spacing: 0) {
             // Gesture hints + H/V toggle
             HStack(alignment: .top, spacing: 16) {
@@ -497,7 +578,7 @@ struct GuideStepPlacementView: View {
 
             // Confirm + Skip
             HStack(spacing: 12) {
-                Button { skipModelPlacement(stepId: step.id) } label: {
+                Button { skipModelPlacement(stepId: step.id, slotId: slotId) } label: {
                     Text("Skip")
                         .font(.subheadline.bold())
                         .frame(maxWidth: .infinity).padding(.vertical, 14)
@@ -505,7 +586,7 @@ struct GuideStepPlacementView: View {
                         .foregroundStyle(.white)
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
-                Button { confirmModelPlacement(stepId: step.id) } label: {
+                Button { confirmModelPlacement(stepId: step.id, slotId: slotId) } label: {
                     Label("Confirm", systemImage: "checkmark.circle.fill")
                         .font(.headline.bold())
                         .frame(maxWidth: .infinity).padding(.vertical, 14)
@@ -555,7 +636,7 @@ struct GuideStepPlacementView: View {
     private func stepTrayChip(idx: Int, step: GuideStep) -> some View {
         let isActive  = idx == activeStepIndex
         let placed    = stepPositions[step.id] != nil
-        let hasModel  = modelTransforms[step.id] != nil
+        let hasModel  = !(modelTransforms[step.id] ?? [:]).isEmpty
 
         VStack(spacing: 4) {
             ZStack {
@@ -651,6 +732,18 @@ struct GuideStepPlacementView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 HStack(spacing: 8) {
+                    // U4: copy this step's models (as world positions) to other steps
+                    if activeStepIndex < steps.count, canCopyModels(from: steps[activeStepIndex]) {
+                        Button { showCopySheet = true } label: {
+                            Image(systemName: "square.on.square")
+                                .font(.subheadline.bold())
+                                .padding(.horizontal, 12).padding(.vertical, 10)
+                                .background(Color.teal.opacity(0.8))
+                                .foregroundStyle(.white).clipShape(Capsule())
+                        }
+                        .accessibilityLabel("Copy models to other steps")
+                        .disabled(isSaving)
+                    }
                     Button { Task { await savePins() } } label: {
                         Text(lastSaveSucceeded ? "Saved ✓" : "Save")
                             .font(.subheadline.bold())
@@ -888,6 +981,7 @@ struct GuideStepPlacementView: View {
                 arManager.sceneView.scene.rootNode.addChildNode(node)
                 stepNodes[step.id] = node
             }
+            applyStepVisibility()
         }
 
         // NOTE: no blind timed snapshot here. The re-localization reference
@@ -927,6 +1021,7 @@ struct GuideStepPlacementView: View {
         activeStepIndex = idx
         if prevIdx < steps.count { updatePinStyle(for: steps[prevIdx].id, isActive: false) }
         updatePinStyle(for: steps[idx].id, isActive: true)
+        applyStepVisibility()
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -996,17 +1091,44 @@ struct GuideStepPlacementView: View {
             stepNodes[stepId] = node
         }
 
-        // If step has a model, enter model-placement flow.
-        // Use resolvedModels (fetched on appear) to get correct hasUSDZ/hasGLB flags.
-        // Pass the pre-cached file URL so downloadAndPlaceModel skips the network call.
-        if let modelId = step.modelId,
-           let model   = resolvedModels.first(where: { $0.id == modelId && $0.isReady }) {
-            let cachedURL = modelFileCache[modelId]  // nil if pre-fetch not done yet
-            placementPhase = .loadingModel(stepId: stepId)
-            Task { await downloadAndPlaceModel(model: model, step: step, pinPos: position, cachedURL: cachedURL) }
-        } else {
-            advanceFromStep(stepId: stepId)
+        // U4: re-placing a pin restarts the model chain — drop this session's
+        // nodes/transforms for the step so every slot is positioned afresh.
+        for node in (modelNodes[stepId] ?? [:]).values { node.removeFromParentNode() }
+        modelNodes[stepId] = nil
+        modelTransforms[stepId] = nil
+
+        // Walk the step's model slots (U4) — each ready model is loaded and
+        // adjusted in turn; steps without models advance immediately.
+        startModelChain(step: step, pinPos: position, fromSlot: 0)
+    }
+
+    /// U4: load + adjust the step's model slots one after another starting at
+    /// `fromSlot`; slots whose model isn't ready are skipped silently.
+    private func startModelChain(step: GuideStep, pinPos: simd_float3, fromSlot: Int) {
+        let slotList = slots(for: step)
+        var i = fromSlot
+        while i < slotList.count {
+            let slot = slotList[i]
+            if let model = resolvedModels.first(where: { $0.id == slot.modelId && $0.isReady }) {
+                let cachedURL = modelFileCache[model.id]  // nil if pre-fetch not done yet
+                placementPhase = .loadingModel(stepId: step.id, slotId: slot.slotId)
+                Task { await downloadAndPlaceModel(model: model, step: step, slot: slot, pinPos: pinPos, cachedURL: cachedURL) }
+                return
+            }
+            i += 1
         }
+        placementPhase = .placingPins
+        advanceFromStep(stepId: step.id)
+    }
+
+    /// Continue the chain after `slotId` was confirmed or skipped.
+    private func continueModelChain(stepId: String, after slotId: String) {
+        guard let step = steps.first(where: { $0.id == stepId }),
+              let pin  = stepPositions[stepId] else {
+            placementPhase = .placingPins; advanceFromStep(stepId: stepId); return
+        }
+        let idx = slots(for: step).firstIndex { $0.slotId == slotId } ?? -1
+        startModelChain(step: step, pinPos: pin, fromSlot: idx + 1)
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -1016,7 +1138,7 @@ struct GuideStepPlacementView: View {
     /// Download + cache files for every model used by this guide's steps.
     /// Called on appear so the file is ready before the author taps to place a pin.
     private func prefetchStepModels(from models: [Model3D]) async {
-        let neededIds = Set(steps.compactMap { $0.modelId })
+        let neededIds = Set(steps.flatMap { slots(for: $0).map(\.modelId) })
         let targets   = models.filter { neededIds.contains($0.id) && $0.isReady && $0.hasUSDZ }
         await withTaskGroup(of: Void.self) { group in
             for model in targets { group.addTask { await self.cacheModelFile(model) } }
@@ -1041,8 +1163,8 @@ struct GuideStepPlacementView: View {
 
     /// Place a 3D model in the scene at the given pin position.
     /// Uses the pre-cached file URL when available; falls back to downloading on demand.
-    private func downloadAndPlaceModel(model: Model3D, step: GuideStep, pinPos: simd_float3,
-                                       cachedURL: URL? = nil) async {
+    private func downloadAndPlaceModel(model: Model3D, step: GuideStep, slot: GuideStepModel,
+                                       pinPos: simd_float3, cachedURL: URL? = nil) async {
         // Resolve file URL — use pre-cache if available, otherwise download now.
         let fileURL: URL
         if let cached = cachedURL {
@@ -1051,13 +1173,13 @@ struct GuideStepPlacementView: View {
             // On-demand download: only proceed if USDZ is available.
             // GLB is not renderable on iOS 26+ — the portal converts it in the browser.
             guard model.hasUSDZ else {
-                await MainActor.run { placementPhase = .placingPins; advanceFromStep(stepId: step.id) }
+                await MainActor.run { continueModelChain(stepId: step.id, after: slot.slotId) }
                 return
             }
             let client = SIBClient(settings: settings)
             let data   = try? await client.downloadModelUSDZ(id: model.id)
             guard let data else {
-                await MainActor.run { placementPhase = .placingPins; advanceFromStep(stepId: step.id) }
+                await MainActor.run { continueModelChain(stepId: step.id, after: slot.slotId) }
                 return
             }
             let cacheDir = FileManager.default.temporaryDirectory
@@ -1065,7 +1187,7 @@ struct GuideStepPlacementView: View {
             try? FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
             let url = cacheDir.appendingPathComponent("\(model.id).usdz")
             guard (try? data.write(to: url)) != nil else {
-                await MainActor.run { placementPhase = .placingPins; advanceFromStep(stepId: step.id) }
+                await MainActor.run { continueModelChain(stepId: step.id, after: slot.slotId) }
                 return
             }
             fileURL = url
@@ -1082,7 +1204,7 @@ struct GuideStepPlacementView: View {
             ]) else { return nil }
             let children = scene.rootNode.childNodes
             guard !children.isEmpty else { return nil }
-            let wrapper = SCNNode(); wrapper.name = "model_\(model.id)"
+            let wrapper = SCNNode(); wrapper.name = "model_\(model.id)_\(slot.slotId)"
             children.forEach { wrapper.addChildNode($0.clone()) }
             // bb.min.y = bottom of model in local space (at scale = 1).
             // Used to snap the model's base to the pin position on first placement.
@@ -1091,29 +1213,31 @@ struct GuideStepPlacementView: View {
         }.value
 
         guard let (node, baseY) = buildResult else {
-            await MainActor.run { placementPhase = .placingPins; advanceFromStep(stepId: step.id) }
+            await MainActor.run { continueModelChain(stepId: step.id, after: slot.slotId) }
             return
         }
 
         await MainActor.run {
-            // Remove stale node for this step (re-placement)
-            modelNodes[step.id]?.removeFromParentNode()
+            // The author skipped (✕) while this was loading — drop it silently.
+            guard placementPhase == .loadingModel(stepId: step.id, slotId: slot.slotId) else { return }
+            // Remove stale node for this slot (re-placement)
+            modelNodes[step.id]?[slot.slotId]?.removeFromParentNode()
 
-            // Initial transform: preserve existing step values, fall back to model defaults
-            let initScale = Float(step.modelScale    ?? model.defaultScale ?? 1.0)
-            let initRotY  = Float(step.modelRotationY ?? 0.0)
+            // Initial transform: preserve the slot's saved values, fall back to model defaults
+            let initScale = Float(slot.modelScale    ?? model.defaultScale ?? 1.0)
+            let initRotY  = Float(slot.modelRotationY ?? 0.0)
 
             // On first placement (no saved Y offset), auto-snap the model's base to the
             // pin position. baseY is bbMin.y at scale=1; -baseY * scale shifts the node
             // so the model's bottom face sits at pinPos.y instead of floating above it.
             // When the user has already manually adjusted Y (modelOffsetY != nil), use
             // their saved value directly — the auto-offset was already baked in on save.
-            let hasManualY:  Bool  = step.modelOffsetY != nil
+            let hasManualY:  Bool  = slot.modelOffsetY != nil
             let autoYOffset: Float = hasManualY ? 0.0 : (-baseY * initScale)
             let initPos   = simd_float3(
-                pinPos.x + Float(step.modelOffsetX ?? 0),
-                pinPos.y + Float(step.modelOffsetY ?? 0) + autoYOffset,
-                pinPos.z + Float(step.modelOffsetZ ?? 0)
+                pinPos.x + Float(slot.modelOffsetX ?? 0),
+                pinPos.y + Float(slot.modelOffsetY ?? 0) + autoYOffset,
+                pinPos.z + Float(slot.modelOffsetZ ?? 0)
             )
 
             // Set position BEFORE addChildNode — simdPosition (local) is correct here
@@ -1126,14 +1250,16 @@ struct GuideStepPlacementView: View {
             node.opacity      = 0.65
 
             arManager.sceneView.scene.rootNode.addChildNode(node)
-            modelNodes[step.id] = node
+            modelNodes[step.id, default: [:]][slot.slotId] = node
+            hiddenModelStepIds.remove(step.id)   // adjusting → must be visible
+            applyStepVisibility()
 
             modelPosition = initPos
             modelScale    = initScale
             modelRotY     = initRotY
             modelPanMode  = .horizontal
 
-            placementPhase = .adjustingModel(stepId: step.id)
+            placementPhase = .adjustingModel(stepId: step.id, slotId: slot.slotId)
         }
     }
 
@@ -1141,20 +1267,18 @@ struct GuideStepPlacementView: View {
     // MARK: Model confirm / skip
     // ─────────────────────────────────────────────────────────────────────────
 
-    private func confirmModelPlacement(stepId: String) {
-        modelTransforms[stepId] = ModelTransformState(
+    private func confirmModelPlacement(stepId: String, slotId: String) {
+        modelTransforms[stepId, default: [:]][slotId] = ModelTransformState(
             position: modelPosition, scale: modelScale, rotationY: modelRotY
         )
-        modelNodes[stepId]?.opacity = 0.55
-        placementPhase = .placingPins
-        advanceFromStep(stepId: stepId)
+        modelNodes[stepId]?[slotId]?.opacity = 0.55
+        continueModelChain(stepId: stepId, after: slotId)
     }
 
-    private func skipModelPlacement(stepId: String) {
-        modelNodes[stepId]?.removeFromParentNode()
-        modelNodes.removeValue(forKey: stepId)
-        placementPhase = .placingPins
-        advanceFromStep(stepId: stepId)
+    private func skipModelPlacement(stepId: String, slotId: String) {
+        modelNodes[stepId]?[slotId]?.removeFromParentNode()
+        modelNodes[stepId]?.removeValue(forKey: slotId)
+        continueModelChain(stepId: stepId, after: slotId)
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -1176,6 +1300,7 @@ struct GuideStepPlacementView: View {
             updatePinStyle(for: stepId, isActive: false)
             activeStepIndex = steps.count   // all-placed sentinel
         }
+        applyStepVisibility()
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -1288,8 +1413,8 @@ struct GuideStepPlacementView: View {
         }
         let newPos = panBasePos + delta
         modelPosition = newPos
-        if case .adjustingModel(let stepId) = placementPhase {
-            modelNodes[stepId]?.simdWorldPosition = newPos
+        if case .adjustingModel(let stepId, let slotId) = placementPhase {
+            modelNodes[stepId]?[slotId]?.simdWorldPosition = newPos
         }
     }
 
@@ -1300,8 +1425,8 @@ struct GuideStepPlacementView: View {
     private func handleModelPinchChanged(_ factor: CGFloat) {
         let newScale = max(0.05, min(20.0, scaleBase * Float(factor)))
         modelScale = newScale
-        if case .adjustingModel(let stepId) = placementPhase {
-            modelNodes[stepId]?.simdScale = simd_float3(newScale, newScale, newScale)
+        if case .adjustingModel(let stepId, let slotId) = placementPhase {
+            modelNodes[stepId]?[slotId]?.simdScale = simd_float3(newScale, newScale, newScale)
         }
     }
 
@@ -1312,12 +1437,124 @@ struct GuideStepPlacementView: View {
     private func handleModelRotChanged(_ rotation: CGFloat) {
         let newRot = rotYBase + Float(rotation)
         modelRotY = newRot
-        if case .adjustingModel(let stepId) = placementPhase {
-            modelNodes[stepId]?.eulerAngles = SCNVector3(0, newRot, 0)
+        if case .adjustingModel(let stepId, let slotId) = placementPhase {
+            modelNodes[stepId]?[slotId]?.eulerAngles = SCNVector3(0, newRot, 0)
         }
     }
 
     private func handleModelRotEnded(_ rotation: CGFloat) {}
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // MARK: U4 — Copy models to other steps
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// A step can be a copy source once it has a pin and at least one slot
+    /// with a known world transform (confirmed this session, or saved offsets).
+    private func canCopyModels(from step: GuideStep) -> Bool {
+        guard stepPositions[step.id] != nil else { return false }
+        return slots(for: step).contains { worldTransform(step: step, slot: $0) != nil }
+    }
+
+    /// World transform of a slot: this session's confirmed value, else the
+    /// saved offsets re-based on the step's pin. nil = never positioned.
+    private func worldTransform(step: GuideStep, slot: GuideStepModel) -> ModelTransformState? {
+        if let t = modelTransforms[step.id]?[slot.slotId] { return t }
+        guard let pin = stepPositions[step.id], slot.hasPlacement else { return nil }
+        return ModelTransformState(
+            position:  simd_float3(pin.x + Float(slot.modelOffsetX ?? 0),
+                                   pin.y + Float(slot.modelOffsetY ?? 0),
+                                   pin.z + Float(slot.modelOffsetZ ?? 0)),
+            scale:     Float(slot.modelScale ?? 1.0),
+            rotationY: Float(slot.modelRotationY ?? 0.0))
+    }
+
+    @State private var copyTargets: Set<String> = []
+
+    private var copyModelsSheet: some View {
+        let source = activeStepIndex < steps.count ? steps[activeStepIndex] : nil
+        return NavigationStack {
+            List {
+                if let source {
+                    Section {
+                        ForEach(steps.filter { $0.id != source.id }) { step in
+                            let placed = stepPositions[step.id] != nil
+                            Button {
+                                if copyTargets.contains(step.id) { copyTargets.remove(step.id) }
+                                else { copyTargets.insert(step.id) }
+                            } label: {
+                                HStack {
+                                    Image(systemName: copyTargets.contains(step.id) ? "checkmark.circle.fill" : "circle")
+                                        .foregroundStyle(copyTargets.contains(step.id) ? Color.teal : Color.secondary)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("Step \(step.sequenceNumber): \(step.displayTitle)")
+                                            .foregroundStyle(.primary)
+                                        if !placed {
+                                            Text("Place this step's pin first")
+                                                .font(.caption2).foregroundStyle(.orange)
+                                        } else if !slots(for: step).isEmpty {
+                                            Text("Replaces its \(slots(for: step).count) model(s)")
+                                                .font(.caption2).foregroundStyle(.secondary)
+                                        }
+                                    }
+                                }
+                            }
+                            .disabled(!placed)
+                        }
+                    } header: {
+                        Text("Copy \(slots(for: source).count) model(s) from Step \(source.sequenceNumber) to…")
+                    } footer: {
+                        Text("Models land at the same physical spot on every selected step — useful when one part is shared across steps. Saved on the next Save / Done.")
+                    }
+                }
+            }
+            .navigationTitle("Copy models")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { showCopySheet = false; copyTargets = [] }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Copy") {
+                        if let source { applyCopyModels(from: source, to: copyTargets) }
+                        showCopySheet = false; copyTargets = []
+                    }
+                    .disabled(copyTargets.isEmpty)
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
+    /// Replace each target's slots with the source's (same slotIds, same
+    /// world transforms) and mirror the ghost nodes so the author sees them.
+    private func applyCopyModels(from source: GuideStep, to targetIds: Set<String>) {
+        let srcSlots = slots(for: source)
+        for target in steps where targetIds.contains(target.id) {
+            guard stepPositions[target.id] != nil else { continue }
+            for node in (modelNodes[target.id] ?? [:]).values { node.removeFromParentNode() }
+            modelNodes[target.id] = [:]
+            modelTransforms[target.id] = [:]
+            slotOverrides[target.id] = srcSlots.map { slot in
+                // Assignment only — placement comes from the copied world transform.
+                GuideStepModel(slotId: slot.slotId, modelId: slot.modelId,
+                               modelScale: slot.modelScale, modelOpacity: slot.modelOpacity)
+            }
+            for slot in srcSlots {
+                guard let t = worldTransform(step: source, slot: slot) else { continue }
+                modelTransforms[target.id, default: [:]][slot.slotId] = t
+                if let srcNode = modelNodes[source.id]?[slot.slotId] {
+                    let clone = srcNode.clone()
+                    clone.simdPosition = t.position
+                    clone.simdScale    = simd_float3(t.scale, t.scale, t.scale)
+                    clone.eulerAngles  = SCNVector3(0, t.rotationY, 0)
+                    clone.opacity      = 0.55
+                    arManager.sceneView.scene.rootNode.addChildNode(clone)
+                    modelNodes[target.id, default: [:]][slot.slotId] = clone
+                }
+            }
+        }
+        applyStepVisibility()
+    }
 
     // ─────────────────────────────────────────────────────────────────────────
     // MARK: Save helpers
@@ -1333,12 +1570,16 @@ struct GuideStepPlacementView: View {
             guard let newPos = stepPositions[step.id] else { continue }
 
             let serverPos  = step.worldPosition
-            let unchanged  = serverPos.map {
+            let posUnchanged = serverPos.map {
                 abs($0.x - newPos.x) < 0.0001 &&
                 abs($0.y - newPos.y) < 0.0001 &&
                 abs($0.z - newPos.z) < 0.0001
             } ?? false
-            if unchanged { continue }
+            // U4: model work (adjusted this session, or slots copied in) is
+            // saved even when the pin itself didn't move.
+            let transforms   = modelTransforms[step.id] ?? [:]
+            let modelChanged = !transforms.isEmpty || slotOverrides[step.id] != nil
+            if posUnchanged && !modelChanged { continue }
 
             var req            = UpdateGuideStepRequest()
             req.posX           = Double(newPos.x)
@@ -1347,13 +1588,21 @@ struct GuideStepPlacementView: View {
             req.isPlaced       = true
             req.positionSource = "tap"
 
-            // Persist model placement if confirmed this session
-            if let t = modelTransforms[step.id] {
-                req.modelOffsetX   = Double(t.position.x - newPos.x)
-                req.modelOffsetY   = Double(t.position.y - newPos.y)
-                req.modelOffsetZ   = Double(t.position.z - newPos.z)
-                req.modelScale     = Double(t.scale)
-                req.modelRotationY = Double(t.rotationY)
+            // Persist every model slot (U4). Slots confirmed this session get
+            // their world transform re-expressed as offsets from THIS pin;
+            // untouched slots keep whatever the server already had.
+            if modelChanged {
+                req.models = slots(for: step).map { slot in
+                    var out = slot
+                    if let t = transforms[slot.slotId] {
+                        out.modelOffsetX   = Double(t.position.x - newPos.x)
+                        out.modelOffsetY   = Double(t.position.y - newPos.y)
+                        out.modelOffsetZ   = Double(t.position.z - newPos.z)
+                        out.modelScale     = Double(t.scale)
+                        out.modelRotationY = Double(t.rotationY)
+                    }
+                    return out
+                }
             }
 
             do {

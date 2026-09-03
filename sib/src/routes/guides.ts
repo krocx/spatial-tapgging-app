@@ -7,6 +7,7 @@
 //   GET    /guides?anchorId=xxx&all=true     — List all guides (drafts + published) for Authors
 //   GET    /guides/:id                       — Get a single Guide
 //   PATCH  /guides/:id                       — Author: update name, description, published flag
+//   POST   /guides/:id/copy                  — Author: copy the guide onto another anchor (U2)
 //   DELETE /guides/:id                       — Author: cascade-delete Guide + all Steps
 //   GET    /guides/:id/steps                 — List steps in sequence order
 //   POST   /guides/:id/steps                 — Author: create a Step (with optional image)
@@ -42,6 +43,7 @@ import {
   deleteStepImage,
 } from '../guides/store.js';
 import { applyImportedGuide } from '../guides/ingest.js';
+import { copyGuideToAnchor } from '../guides/copy.js';
 import { guideVisibleTo } from '../uam/guide-visibility.js';
 import { currentUamUser, uamIsActive } from '../middleware/auth.js';
 import { normalizeEmail } from '../uam/uam-core.js';
@@ -56,6 +58,16 @@ import { boundGuideId } from '../procedure/export.js';
 import { mindmapStore, mindmapAccessStore } from '../models/mindmap.model.js';
 import { saveDesignerImage } from '../procedure/designer-images.js';
 import { saveValidationRef, deleteValidationRef, validateStepFrame } from '../oms/step-validation.js';
+import {
+  sanitizeStepModelSlots, applySlotsToLegacy, applyLegacyToSlots,
+  stripSlotPlacements, effectiveStepModels, StepModelsError, LEGACY_MODEL_KEYS,
+} from '../guides/step-models.js';
+
+/** U4: what clients read — `models` always present when any model is assigned. */
+function withEffectiveModels(step: GuideStep): GuideStep {
+  const models = effectiveStepModels(step);
+  return models.length > 0 ? { ...step, models } : step;
+}
 
 // ── Storage ───────────────────────────────────────────────────────────────────
 // Stores live in ../guides/store.js so the ingestion service can share them
@@ -372,6 +384,7 @@ router.patch('/:id', (req: Request, res: Response): void => {
         isPlaced: false, positionSource: undefined,
         modelOffsetX: undefined, modelOffsetY: undefined,
         modelOffsetZ: undefined, modelRotationY: undefined,
+        models: stripSlotPlacements(step.models),
         updatedAt: now,
       });
     }
@@ -385,6 +398,43 @@ router.patch('/:id', (req: Request, res: Response): void => {
 
   const resp: ApiResponse<Guide> = { data: updated, timestamp: now };
   res.json(resp);
+});
+
+// POST /guides/:id/copy — copy this guide onto another anchor (U2, 2026.4.45).
+//
+// Body: { anchorId, name?, createdBy? }. Steps, media, model assignments and
+// flags travel; pins, model placement, validation training and sharing do
+// not (see guides/copy.ts). The copy is a draft until re-placed + published.
+// Technicians may not copy (authoring action).
+router.post('/:id/copy', (req: Request, res: Response): void => {
+  const now    = new Date().toISOString();
+  const source = guideStore.findById(req.params.id);
+  if (!source || !guideVisibleTo(currentUamUser(req), source)) {
+    res.status(404).json({ error: `Guide ${req.params.id} not found`, timestamp: now });
+    return;
+  }
+  const actor = currentUamUser(req);
+  if (uamIsActive() && actor && actor.role === 'technician') {
+    res.status(403).json({ error: 'Copying a guide requires Engineer role or above', timestamp: now });
+    return;
+  }
+  const body = (req.body ?? {}) as { anchorId?: unknown; name?: unknown; createdBy?: unknown };
+  const anchorId = typeof body.anchorId === 'string' ? body.anchorId.trim() : '';
+  if (!anchorId) {
+    res.status(400).json({ error: 'anchorId is required', timestamp: now });
+    return;
+  }
+  if (!anchorStore.findById(anchorId)) {
+    res.status(404).json({ error: `Anchor ${anchorId} not found`, timestamp: now });
+    return;
+  }
+  const result = copyGuideToAnchor(source, {
+    targetAnchorId: anchorId,
+    name:           typeof body.name === 'string' ? body.name : undefined,
+    createdBy:      typeof body.createdBy === 'string' && body.createdBy.trim()
+                      ? body.createdBy.trim() : (actor?.name ?? source.createdBy),
+  });
+  res.status(201).json({ data: { ...result.guide, stepCount: result.steps.length }, timestamp: now });
 });
 
 // DELETE /guides/:id — cascade-delete guide + all its steps
@@ -428,7 +478,7 @@ router.get('/:id/steps', (req: Request, res: Response): void => {
     .sort((a, b) => a.sequenceNumber - b.sequenceNumber);
 
   const resp: ApiResponse<GuideStep[]> = {
-    data:      steps,
+    data:      steps.map(withEffectiveModels),
     timestamp: new Date().toISOString(),
   };
   res.json(resp);
@@ -584,6 +634,7 @@ router.patch('/:id/steps/:stepId', (req: Request, res: Response): void => {
     modelOffsetY:       'modelOffsetY'    in body ? body.modelOffsetY     : step.modelOffsetY,
     modelOffsetZ:       'modelOffsetZ'    in body ? body.modelOffsetZ     : step.modelOffsetZ,
     modelRotationY:     'modelRotationY'  in body ? body.modelRotationY   : step.modelRotationY,
+    models:             step.models,
     // Conditional task graph fields — null in body clears, key absent keeps existing
     nextOnSuccess:      'nextOnSuccess'   in body ? (body.nextOnSuccess ?? undefined) : step.nextOnSuccess,
     nextOnFailure:      'nextOnFailure'   in body ? (body.nextOnFailure ?? undefined) : step.nextOnFailure,
@@ -599,12 +650,29 @@ router.patch('/:id/steps/:stepId', (req: Request, res: Response): void => {
   // (app, portal, import) can produce a validated step without evidence.
   if (updated.validationRequired) updated.evidenceRequired = true;
 
+  // U4: model slots. `models` in the body is authoritative (legacy keys in
+  // the same body are ignored); otherwise a legacy write rewrites slot 1.
+  if ('models' in body) {
+    try {
+      updated.models = sanitizeStepModelSlots(body.models, effectiveStepModels(step));
+    } catch (err) {
+      if (err instanceof StepModelsError) {
+        res.status(err.status).json({ error: err.message, timestamp: now });
+        return;
+      }
+      throw err;
+    }
+    applySlotsToLegacy(updated);
+  } else if (LEGACY_MODEL_KEYS.some(k => k in body)) {
+    applyLegacyToSlots(updated);
+  }
+
   guideStepStore.save(updated);
   guideStore.update(guide.id, { updatedAt: now });
 
   console.log(`[SIB] GuideStep updated: ${step.id} in guide ${guide.id}`);
 
-  const resp: ApiResponse<GuideStep> = { data: updated, timestamp: now };
+  const resp: ApiResponse<GuideStep> = { data: withEffectiveModels(updated), timestamp: now };
   res.json(resp);
 });
 

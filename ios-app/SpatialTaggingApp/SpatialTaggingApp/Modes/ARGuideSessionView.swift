@@ -180,7 +180,8 @@ struct ARGuideSessionView: View {
     /// Local disk cache: modelId → temp .glb file URL (populated in background on load).
     @State private var glbCache:       [String: URL] = [:]
     /// Currently visible ghost SCNNode (at most one; removed when step changes).
-    @State private var ghostModelNode:  SCNNode?      = nil
+    /// U4: one ghost node per model slot of the current step.
+    @State private var ghostModelNodes: [SCNNode]     = []
     /// Step waiting for its model to finish downloading before the ghost can be shown.
     /// Set by attachGhostOverlay when glbCache doesn't have the model yet; cleared
     /// once the ghost is successfully built and added to the scene.
@@ -2711,7 +2712,7 @@ struct ARGuideSessionView: View {
     /// `anchorModels` and `glbCache`.  Ghost overlays are attached immediately if
     /// the Operator is already on the step that just finished downloading.
     private func prefetchModels() async {
-        let stepModelIds = Set(sortedSteps.compactMap(\.modelId))
+        let stepModelIds = Set(sortedSteps.flatMap { $0.effectiveModels.map(\.modelId) })
         guard !stepModelIds.isEmpty else { return }
 
         let client = SIBClient(settings: settings)
@@ -2752,7 +2753,7 @@ struct ARGuideSessionView: View {
 
         // Attach ghost for the current navigating step if it uses this model
         if case .navigating(let idx) = phase, idx < sortedSteps.count,
-           sortedSteps[idx].modelId == model.id {
+           sortedSteps[idx].effectiveModels.contains(where: { $0.modelId == model.id }) {
             attachGhostOverlay(for: sortedSteps[idx])
         }
         // Also retry any step that was waiting for this exact model to be cached.
@@ -2760,7 +2761,8 @@ struct ARGuideSessionView: View {
         // transitionToNavigating fires (relocalizing path), so the navigating check
         // above doesn't trigger, but pendingGhostStep was set by the attachGhostOverlay
         // call inside transitionToNavigating.
-        else if let pending = pendingGhostStep, pending.modelId == model.id {
+        else if let pending = pendingGhostStep,
+                pending.effectiveModels.contains(where: { $0.modelId == model.id }) {
             attachGhostOverlay(for: pending)
         }
     }
@@ -2776,67 +2778,79 @@ struct ARGuideSessionView: View {
     private func attachGhostOverlay(for step: GuideStep) {
         removeGhostOverlay()
 
-        // Step must have a model and a placed world position to show a ghost
-        guard let modelId = step.modelId,
-              let pos     = step.worldPosition else {
+        // Step must have at least one model and a placed world position (U4:
+        // every slot is rendered; slots whose file isn't cached yet make the
+        // step pending so the download completion re-attaches everything).
+        let slots = step.effectiveModels
+        guard !slots.isEmpty, let pos = step.worldPosition else {
             pendingGhostStep = nil
             return
         }
-
-        // Model not cached yet — register the step as pending so downloadAndCacheModel
-        // can retry once the download finishes.
-        guard let glbURL = glbCache[modelId] else {
-            pendingGhostStep = step
-            return
+        let ready = slots.compactMap { slot -> (GuideStepModel, URL)? in
+            glbCache[slot.modelId].map { (slot, $0) }
         }
-
+        // Some slot still downloading (and it is a real, USDZ-capable model) →
+        // wait for it so the operator sees the complete overlay at once.
+        let awaiting = slots.contains { slot in
+            glbCache[slot.modelId] == nil &&
+            anchorModels.contains { $0.id == slot.modelId && $0.hasUSDZ && $0.isReady }
+        }
+        if awaiting { pendingGhostStep = step; return }
         pendingGhostStep = nil
+        guard !ready.isEmpty else { return }
 
-        // Capture value-type data before hopping off-actor
         let stepId    = step.id
-        let scale     = Float(step.modelScale     ?? 1.0)
-        let opacity   = CGFloat(step.modelOpacity ?? 0.45)
-        let rotationY = Float(step.modelRotationY ?? 0.0)
-        let finalPos  = simd_float3(
-            pos.x + Float(step.modelOffsetX ?? 0),
-            pos.y + Float(step.modelOffsetY ?? 0),
-            pos.z + Float(step.modelOffsetZ ?? 0)
-        )
         let sceneView = arManager.sceneView
 
-        Task {
-            // Load model on a background thread via SCNScene(url:).
-            // SCNScene(url:options:) loads USDZ natively on iOS 12+.
-            // (GLB requires the ModelIO–SceneKit bridge removed in iOS 26 — always prefer USDZ.)
-            let builtNode: SCNNode? = await Task.detached(priority: .utility) { () -> SCNNode? in
-                guard let scene = try? SCNScene(url: glbURL, options: [
-                    SCNSceneSource.LoadingOption.checkConsistency: false,
-                    SCNSceneSource.LoadingOption.flattenScene:     false,
-                ]) else { return nil }
+        for (slot, glbURL) in ready {
+            // Capture value-type data before hopping off-actor
+            let slotId    = slot.slotId
+            let scale     = Float(slot.modelScale     ?? 1.0)
+            let opacity   = CGFloat(slot.modelOpacity ?? 0.45)
+            let rotationY = Float(slot.modelRotationY ?? 0.0)
+            let finalPos  = simd_float3(
+                pos.x + Float(slot.modelOffsetX ?? 0),
+                pos.y + Float(slot.modelOffsetY ?? 0),
+                pos.z + Float(slot.modelOffsetZ ?? 0)
+            )
+            Task {
+                // Load model on a background thread via SCNScene(url:).
+                // SCNScene(url:options:) loads USDZ natively on iOS 12+.
+                // (GLB requires the ModelIO–SceneKit bridge removed in iOS 26 — always prefer USDZ.)
+                let builtNode: SCNNode? = await Task.detached(priority: .utility) { () -> SCNNode? in
+                    guard let scene = try? SCNScene(url: glbURL, options: [
+                        SCNSceneSource.LoadingOption.checkConsistency: false,
+                        SCNSceneSource.LoadingOption.flattenScene:     false,
+                    ]) else { return nil }
 
-                let children = scene.rootNode.childNodes
-                guard !children.isEmpty else { return nil }
+                    let children = scene.rootNode.childNodes
+                    guard !children.isEmpty else { return nil }
 
-                let wrapper       = SCNNode()
-                wrapper.name      = "ghost_model_\(stepId)"
-                children.forEach { wrapper.addChildNode($0.clone()) }
-                wrapper.simdScale    = simd_float3(scale, scale, scale)
-                wrapper.simdPosition = finalPos
-                wrapper.eulerAngles  = SCNVector3(0, rotationY, 0)
-                wrapper.opacity      = opacity
-                return wrapper
-            }.value
+                    let wrapper       = SCNNode()
+                    wrapper.name      = "ghost_model_\(stepId)_\(slotId)"
+                    children.forEach { wrapper.addChildNode($0.clone()) }
+                    wrapper.simdScale    = simd_float3(scale, scale, scale)
+                    wrapper.simdPosition = finalPos
+                    wrapper.eulerAngles  = SCNVector3(0, rotationY, 0)
+                    wrapper.opacity      = opacity
+                    return wrapper
+                }.value
 
-            guard let node = builtNode else { return }
-            sceneView.scene.rootNode.addChildNode(node)
-            ghostModelNode = node
+                guard let node = builtNode else { return }
+                // The operator may have moved on while this loaded — only
+                // attach if the step is still the one being shown.
+                guard case .navigating(let idx) = phase, idx < sortedSteps.count,
+                      sortedSteps[idx].id == stepId else { return }
+                sceneView.scene.rootNode.addChildNode(node)
+                ghostModelNodes.append(node)
+            }
         }
     }
 
     /// Remove the current ghost model node from the scene.
     private func removeGhostOverlay() {
-        ghostModelNode?.removeFromParentNode()
-        ghostModelNode = nil
+        for node in ghostModelNodes { node.removeFromParentNode() }
+        ghostModelNodes = []
     }
 }
 
@@ -3232,9 +3246,13 @@ struct SessionSignOffView: View {
                 }
             }
             .onAppear {
-                // Prefill from the confirmed identity in Settings — retyping
-                // invites inconsistent audit names ("Raj" / "raj k" / "RK").
-                if operatorName.isEmpty { operatorName = settings.authorName }
+                // Prefill from the identity used at shift start (kiosk / UAM
+                // verified name) — the same name the usage log carries — and
+                // only then the free-text author name. Retyping invites
+                // inconsistent audit names ("Raj" / "raj k" / "RK"). Editable.
+                if operatorName.isEmpty {
+                    operatorName = !settings.uamUserName.isEmpty ? settings.uamUserName : settings.authorName
+                }
             }
             .confirmationDialog(
                 "\(progresses.count - completedCount) step(s) not completed",

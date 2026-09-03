@@ -10,6 +10,10 @@ import { tagStore } from './tags.js';
 import { passStateStore, findPassStateByTag } from '../stores/pass-state-store.js';
 import { buildAssemblyEnvelope } from '../tag/tag-emitter.js';
 import { subscribeToAnchor } from '../tag/tag-subscribe.js';
+import { model3DStore } from './models.js';
+import { guideStore } from '../guides/store.js';
+import { copyGuideToAnchor } from '../guides/copy.js';
+import { currentUamUser, uamIsActive } from '../middleware/auth.js';
 
 export const anchorStore = new JsonFileStore<Anchor>('anchors');
 
@@ -447,6 +451,77 @@ router.delete('/', (_req: Request, res: Response) => {
 });
 
 // ── DELETE /anchors/:id — cascade-delete anchor + tags + pass-states ──────────
+// ── POST /anchors/:id/duplicate — template copy (U3, 2026.4.45) ───────────────
+//
+// Body: { assetId?, createdBy? }. Creates a NEW anchor (new id, new QR, its
+// own encryption key) that carries the source's metadata, anchor type, QR
+// size and 3D model kit membership, then copies every guide onto it via the
+// U2 copy (steps + media + model assignments; pins, placement and validation
+// training cleared). The world map, tags, loc-tags and LOTO points are NOT
+// copied — they describe the source's physical location. The author scans
+// the new tool's world map and re-places the steps.
+router.post('/:id/duplicate', (req: Request, res: Response) => {
+  const now    = new Date().toISOString();
+  const source = anchorStore.findById(req.params.id);
+  if (!source) {
+    return res.status(404).json({ error: `Anchor ${req.params.id} not found`, timestamp: now });
+  }
+  const actor = currentUamUser(req);
+  if (uamIsActive() && actor && actor.role === 'technician') {
+    return res.status(403).json({ error: 'Duplicating an anchor requires Engineer role or above', timestamp: now });
+  }
+  const body = (req.body ?? {}) as { assetId?: unknown; createdBy?: unknown };
+  const wanted = typeof body.assetId === 'string' && body.assetId.trim()
+    ? body.assetId.trim() : `${source.assetId} copy`;
+  const createdBy = typeof body.createdBy === 'string' && body.createdBy.trim()
+    ? body.createdBy.trim() : (actor?.name ?? source.createdBy ?? 'author');
+
+  const anchor: Anchor = {
+    id:               uuidv4(),
+    assetId:          ensureUniqueAssetId(wanted),
+    coordinateSystem: source.coordinateSystem,
+    position:         source.position,
+    rotation:         source.rotation,
+    metadata:         { ...source.metadata, duplicatedFrom: source.id },
+    encryptionKey:    randomBytes(32).toString('base64'),   // never share a key between tools
+    qrSizeCm:         source.qrSizeCm,
+    anchorType:       source.anchorType,
+    createdBy,
+    createdAt:        now,
+    updatedAt:        now,
+  };
+  anchorStore.save(anchor);
+  generateAndStoreQRImage(anchor).catch(err =>
+    console.error(`[SIB] QR image generation failed for ${anchor.id}: ${err}`)
+  );
+
+  // Model kit: every model assigned to the source is assigned to the copy.
+  let kitCount = 0;
+  for (const m of model3DStore.findAll()) {
+    const inKit = (m.anchorIds ?? []).includes(source.id) || m.anchorId === source.id;
+    if (!inKit) continue;
+    const ids = new Set([...(m.anchorIds ?? []), ...(m.anchorId ? [m.anchorId] : [])]);
+    ids.add(anchor.id);
+    model3DStore.save({ ...m, anchorIds: [...ids], updatedAt: now });
+    kitCount++;
+  }
+
+  // Guides: U2 copy for each (drafts, unplaced, untrained).
+  const guides = guideStore.findAll().filter(g => g.anchorId === source.id);
+  let stepCount = 0;
+  for (const g of guides) {
+    const r = copyGuideToAnchor(g, { targetAnchorId: anchor.id, name: g.name, createdBy });
+    stepCount += r.steps.length;
+  }
+
+  console.log(`[SIB] Anchor duplicated: ${source.id} → ${anchor.id} ("${anchor.assetId}"): ${guides.length} guides / ${stepCount} steps, ${kitCount} kit models`);
+  const resp = {
+    data: { ...anchor, copied: { guides: guides.length, steps: stepCount, kitModels: kitCount } },
+    timestamp: now,
+  };
+  return res.status(201).json(resp);
+});
+
 router.delete('/:id', (req: Request, res: Response) => {
   const anchor = anchorStore.findById(req.params.id);
   if (!anchor) {

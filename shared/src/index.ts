@@ -676,6 +676,15 @@ export interface GuideStep {
   modelOffsetY?:      number;
   modelOffsetZ?:      number;
   modelRotationY?:    number;      // Y-axis rotation in radians (Author-placed via AR placement UI)
+  /**
+   * U4 (2026.4.45): up to GUIDE_STEP_MAX_MODELS 3D assets per step, each with
+   * its own scale/opacity/placement (same slot doctrine as LotoPoint.models).
+   * SERVER keeps the legacy single-model fields above MIRRORED to slot 1 in
+   * both directions — a write to `models` rewrites modelId/…; a legacy write
+   * (older app builds, compiler, imports) rewrites slot 1 and leaves other
+   * slots alone. Readers should prefer `models` when present.
+   */
+  models?:            GuideStepModel[];
   // Conditional task graph (Step 2 of AI-readiness) — all optional for backward compat
   nextOnSuccess?:     string;      // step ID to navigate to on completion; nil → sequenceNumber+1
   nextOnFailure?:     string;      // step ID to navigate to on failure/retry; nil → stay on step
@@ -744,6 +753,10 @@ export type UpdateGuideStepRequest = {
   modelOffsetY?:       number;
   modelOffsetZ?:       number;
   modelRotationY?:     number;     // Y-axis rotation in radians
+  /** U4: replace ALL model slots (max 3; [] clears every model). When present
+   *  the legacy modelId/… keys in the same body are ignored. A slot whose
+   *  modelId changed (matched by slotId) has its placement dropped. */
+  models?:             GuideStepModel[];
   // Conditional task graph — null clears, undefined keeps existing
   nextOnSuccess?:      string | null;
   nextOnFailure?:      string | null;
@@ -753,6 +766,22 @@ export type UpdateGuideStepRequest = {
   /** K5: evidence photo mandatory before completion. */
   evidenceRequired?:   boolean;
 };
+
+/** One 3D asset on a guide step (U4). slotId is stable across edits so a
+ *  slot's AR placement survives other slots being added or removed. Offsets
+ *  are metres from the step's pin; rotation is Y-axis radians. The max-slots
+ *  limit (3) is a VALUE — it lives as GUIDE_STEP_MAX_MODELS in
+ *  sib/src/guides/step-models.ts and iOS AROMSModels.swift. */
+export interface GuideStepModel {
+  slotId:          string;
+  modelId:         string;
+  modelScale?:     number;
+  modelOpacity?:   number;
+  modelOffsetX?:   number;
+  modelOffsetY?:   number;
+  modelOffsetZ?:   number;
+  modelRotationY?: number;
+}
 
 /**
  * A Guide is a named, ordered collection of steps attached to one Anchor.
@@ -782,6 +811,15 @@ export type CreateGuideRequest = {
   name:         string;
   description?: string;
   createdBy:    string;
+};
+
+/** U2 (2026.4.45): POST /guides/:id/copy. Steps, media, model assignments
+ *  and flags travel; pins, model placement, validation training and sharing
+ *  do not. Response: the new Guide plus `stepCount`. */
+export type CopyGuideRequest = {
+  anchorId:   string;
+  name?:      string;   // default: source name ("<name> (copy)" on the same anchor)
+  createdBy?: string;   // default: UAM actor name, else the source's author
 };
 
 export type UpdateGuideRequest = {

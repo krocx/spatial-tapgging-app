@@ -127,6 +127,28 @@ struct UpdateARGuideRequest: Codable {
 // MARK: - GuideStep
 // ============================================================
 
+/// U4 (2026.4.45): one 3D asset on a guide step — assignment (which model, how
+/// big, how transparent) + device-owned placement (offsets from the pin, Y rot).
+/// Mirrors `GuideStepModel` in shared/src/index.ts. slotId is stable across edits.
+struct GuideStepModel: Codable, Identifiable, Equatable {
+    let slotId:         String
+    var modelId:        String
+    var modelScale:     Double?
+    var modelOpacity:   Double?
+    var modelOffsetX:   Double?
+    var modelOffsetY:   Double?
+    var modelOffsetZ:   Double?
+    var modelRotationY: Double?
+    var id: String { slotId }
+
+    var hasPlacement: Bool {
+        modelOffsetX != nil || modelOffsetY != nil || modelOffsetZ != nil || modelRotationY != nil
+    }
+}
+
+/// Max 3D model slots per step — mirrors GUIDE_STEP_MAX_MODELS on the server.
+let guideStepMaxModelSlots = 3
+
 /// One instruction step within an ARGuide.
 /// `sequenceNumber` is 1-based and determines display order in the floating panel.
 /// `ttsText` overrides the voice synthesis text — defaults to `text` when nil.
@@ -161,6 +183,9 @@ struct GuideStep: Codable, Identifiable, Equatable {
     let modelOffsetY:       Double?     // Y offset from step worldPosition in metres (default 0)
     let modelOffsetZ:       Double?     // Z offset from step worldPosition in metres (default 0)
     let modelRotationY:     Double?     // Y-axis rotation in radians (default 0); set by AR placement UI
+    /// U4: model slots (≤ guideStepMaxModelSlots). The server mirrors slot 1
+    /// into the legacy fields above; read `effectiveModels` instead of either.
+    let models:             [GuideStepModel]?
     // Conditional task graph (Step 2 of AI-readiness) — all optional, nil = linear/default behaviour
     let nextOnSuccess:      String?     // step ID to navigate to on completion; nil → sequenceNumber+1
     let nextOnFailure:      String?     // step ID to navigate to on failure/retry; nil → stay on step
@@ -185,6 +210,18 @@ struct GuideStep: Codable, Identifiable, Equatable {
     var needsValidation: Bool { validationRequired == true }
     /// An evidence photo is required before completing (K5).
     var needsEvidence: Bool { evidenceRequired == true }
+
+    /// U4: the step's 3D model slots — `models` when present, else the legacy
+    /// single-model fields lifted into one slot (older servers / records).
+    var effectiveModels: [GuideStepModel] {
+        if let m = models, !m.isEmpty { return m }
+        guard let mid = modelId else { return [] }
+        return [GuideStepModel(slotId: "slot-1", modelId: mid, modelScale: modelScale,
+                               modelOpacity: modelOpacity, modelOffsetX: modelOffsetX,
+                               modelOffsetY: modelOffsetY, modelOffsetZ: modelOffsetZ,
+                               modelRotationY: modelRotationY)]
+    }
+    var hasModels: Bool { !effectiveModels.isEmpty }
 
     /// Effective voice text: ttsText if set, else falls back to the instruction text.
     var effectiveTTSText: String { ttsText ?? text }
@@ -230,6 +267,7 @@ struct GuideStep: Codable, Identifiable, Equatable {
         modelOffsetY       = try c.decodeIfPresent(Double.self,             forKey: .modelOffsetY)
         modelOffsetZ       = try c.decodeIfPresent(Double.self,             forKey: .modelOffsetZ)
         modelRotationY     = try c.decodeIfPresent(Double.self,             forKey: .modelRotationY)
+        models             = try c.decodeIfPresent([GuideStepModel].self,  forKey: .models)
         // Conditional task graph — absent on guides created before Step 2
         nextOnSuccess      = try c.decodeIfPresent(String.self,             forKey: .nextOnSuccess)
         nextOnFailure      = try c.decodeIfPresent(String.self,             forKey: .nextOnFailure)
@@ -311,6 +349,9 @@ struct UpdateGuideStepRequest: Codable {
     var modelOffsetY:       Double?
     var modelOffsetZ:       Double?
     var modelRotationY:     Double?
+    /// U4: replace ALL model slots (max 3; [] clears every model). When set, the
+    /// legacy model* keys above are ignored by the server.
+    var models:             [GuideStepModel]?
     // Conditional task graph — nil omits the key (keeps existing); set to "" to clear
     var nextOnSuccess:      String?
     var nextOnFailure:      String?

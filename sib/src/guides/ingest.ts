@@ -33,6 +33,7 @@ import {
   downloadUrl,
 } from './store.js';
 import { designerImagePath } from '../procedure/designer-images.js';
+import { applyLegacyToSlots } from './step-models.js';
 
 export interface ApplyImportedGuideOptions {
   anchorId:   string;
@@ -227,6 +228,11 @@ export async function applyImportedGuide(
     // THE invariant: placement survives every write that isn't from the device.
     if (existing) { carrySpatial(step, existing, importSetsModel); updated++; }
     else          { created++; }
+
+    // U4: extra model slots (2..n) are device-authored and never come from an
+    // import — carry them over, then mirror the (possibly new) slot 1.
+    if (existing?.models) step.models = existing.models;
+    applyLegacyToSlots(step);
 
     guideStepStore.save(step);
     written.push(step);

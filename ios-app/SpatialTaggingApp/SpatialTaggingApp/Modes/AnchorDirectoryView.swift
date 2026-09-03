@@ -36,6 +36,10 @@ struct AnchorDirectoryView: View {
 
     // ── Phase 3: NavigationStack destination (anchor hub) ────────────────────
     @State private var hubAnchor: Anchor? = nil
+    /// U3: anchor awaiting a name for "Duplicate"
+    @State private var anchorToDuplicate: Anchor? = nil
+    @State private var duplicateName:     String  = ""
+    @State private var isDuplicating      = false
 
     // ── Sheets ────────────────────────────────────────────────────────────────
     @State private var showCreateSheet = false
@@ -187,6 +191,19 @@ struct AnchorDirectoryView: View {
         // After creation, insert the anchor at the top of the list, then navigate
         // directly to its AnchorHubView — the user can start a walk or AR session
         // without having to tap the row again.
+        .alert("Duplicate Anchor", isPresented: Binding(
+            get: { anchorToDuplicate != nil },
+            set: { if !$0 { anchorToDuplicate = nil } }
+        )) {
+            TextField("New asset name", text: $duplicateName)
+            Button("Cancel", role: .cancel) { anchorToDuplicate = nil }
+            Button("Duplicate") {
+                if let src = anchorToDuplicate { Task { await duplicateAnchor(src) } }
+            }
+            .disabled(isDuplicating)
+        } message: {
+            Text("Creates a new anchor (new QR code and key) with the same guides and 3D model kit. Steps arrive unplaced and untrained — scan the new tool's world map, place the pins, then publish.")
+        }
         .sheet(isPresented: $showCreateSheet) {
             CreateAnchorSheet { newAnchor in
                 // Claim this anchor on the local device — this is what drives
@@ -298,6 +315,14 @@ struct AnchorDirectoryView: View {
                 } label: {
                     Label("Delete", systemImage: "trash")
                 }
+                // U3: template copy — same guides/model kit on a new QR
+                Button {
+                    duplicateName   = "\(anchor.assetId) copy"
+                    anchorToDuplicate = anchor
+                } label: {
+                    Label("Duplicate", systemImage: "plus.square.on.square")
+                }
+                .tint(.teal)
             }
         }
     }
@@ -407,6 +432,26 @@ struct AnchorDirectoryView: View {
             loadError = error.localizedDescription
         }
         isLoading = false
+    }
+
+    /// U3: server-side template copy; the new anchor opens in its hub so the
+    /// author can print the QR and scan the world map straight away.
+    private func duplicateAnchor(_ source: Anchor) async {
+        isDuplicating = true
+        let client = SIBClient(settings: settings)
+        do {
+            let trimmed  = duplicateName.trimmingCharacters(in: .whitespaces)
+            let newAnchor = try await client.duplicateAnchor(id: source.id, assetId: trimmed.isEmpty ? nil : trimmed)
+            settings.myAnchorIds.insert(newAnchor.id)
+            anchors.insert(newAnchor, at: 0)
+            tagCounts[newAnchor.id] = 0
+            anchorToDuplicate = nil
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { hubAnchor = newAnchor }
+        } catch {
+            deleteError = "Duplicate failed: \(friendlyMessage(for: error))"
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5) { deleteError = nil }
+        }
+        isDuplicating = false
     }
 
     private func deleteAnchor(_ anchor: Anchor) async {

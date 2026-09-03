@@ -435,8 +435,9 @@ struct StepEditorRow: View {
                         Label("Req.", systemImage: "checkmark.circle")
                             .font(.caption2).foregroundStyle(.orange)
                     }
-                    if step.modelId != nil {
-                        Label("3D", systemImage: "cube")
+                    if step.hasModels {
+                        let n = step.effectiveModels.count
+                        Label(n > 1 ? "3D ×\(n)" : "3D", systemImage: "cube")
                             .font(.caption2).foregroundStyle(.teal)
                     }
                     // B2: validation / evidence status at a glance — the
@@ -795,6 +796,13 @@ struct EditStepSheet: View {
     @State private var modelScale:      Double    = 1.0
     @State private var modelOpacity:    Double    = 0.45
     @State private var previewModel:    Model3D?  = nil
+    /// U4: slot 1's stable id (placement survives re-saves) + extra slots 2…n.
+    @State private var slot1Id:         String    = "slot-1"
+    @State private var extraSlots:      [GuideStepModel] = []
+    /// 1-based-friendly index of an extra slot (slot 1 is the main picker).
+    private func slotIndex(_ slotId: String) -> Int {
+        (extraSlots.firstIndex { $0.slotId == slotId } ?? 0) + 1
+    }
 
     var body: some View {
         NavigationStack {
@@ -1003,12 +1011,42 @@ struct EditStepSheet: View {
                                 Slider(value: $modelOpacity, in: 0.1...1.0, step: 0.05)
                                     .tint(.indigo)
                             }
+                            // U4: additional model slots (2…guideStepMaxModelSlots).
+                            // Each is positioned separately in Place Steps in AR.
+                            ForEach($extraSlots) { $slot in
+                                HStack {
+                                    Picker("Model \(slotIndex(slot.slotId) + 1)", selection: $slot.modelId) {
+                                        ForEach(anchorModels.filter(\.isReady)) { m in
+                                            Text(m.name).tag(m.id)
+                                        }
+                                    }
+                                    Button(role: .destructive) {
+                                        extraSlots.removeAll { $0.slotId == slot.slotId }
+                                    } label: {
+                                        Image(systemName: "minus.circle.fill").foregroundStyle(.red)
+                                    }
+                                    .buttonStyle(.borderless)
+                                }
+                            }
+                            if extraSlots.count < guideStepMaxModelSlots - 1,
+                               let firstReady = anchorModels.first(where: { $0.isReady }) {
+                                Button {
+                                    extraSlots.append(GuideStepModel(
+                                        slotId: "slot-" + UUID().uuidString.prefix(8).lowercased(),
+                                        modelId: firstReady.id,
+                                        modelScale: firstReady.defaultScale, modelOpacity: modelOpacity))
+                                } label: {
+                                    Label("Add another model (\(extraSlots.count + 1)/\(guideStepMaxModelSlots))",
+                                          systemImage: "plus.circle")
+                                        .font(.subheadline)
+                                }
+                            }
                         }
                     }
                 } header: {
                     Text("3D Ghost Overlay (optional)")
                 } footer: {
-                    Text("Model position is set when you place the step pin in AR — tap \"Place Steps in AR\" in the guide editor and position the model after each pin drop.")
+                    Text("Up to \(guideStepMaxModelSlots) models per step. Positions are set when you place the step pin in AR — tap \"Place Steps in AR\" in the guide editor and position each model after the pin drop.")
                 }
 
                 // ── Branch Logic (Conditional task graph) ────────────────────
@@ -1094,9 +1132,13 @@ struct EditStepSheet: View {
                 trainedAt          = step.validationTrainedAt
                 evidenceOn         = step.evidenceRequired == true
                 // 3D model: pre-populate from step
-                selectedModelId    = step.modelId
-                modelScale         = step.modelScale     ?? 1.0
-                modelOpacity       = step.modelOpacity   ?? 0.45
+                // U4: slot 1 drives the existing picker; the rest are extras.
+                let slots          = step.effectiveModels
+                selectedModelId    = slots.first?.modelId
+                slot1Id            = slots.first?.slotId ?? "slot-1"
+                modelScale         = slots.first?.modelScale   ?? 1.0
+                modelOpacity       = slots.first?.modelOpacity ?? 0.45
+                extraSlots         = Array(slots.dropFirst())
                 // Branch logic: pre-populate from step
                 nextOnSuccess      = step.nextOnSuccess
                 nextOnFailure      = step.nextOnFailure
@@ -1191,12 +1233,20 @@ struct EditStepSheet: View {
         }
         // else: req.mediaBase64 stays nil → key omitted from JSON → server keeps existing
 
-        // 3D model assignment (only send fields when a model is selected)
-        req.modelId      = selectedModelId            // nil → key absent → server keeps existing
-        if selectedModelId != nil {
-            req.modelScale   = modelScale
-            req.modelOpacity = modelOpacity
+        // U4: model slots are sent as a whole — "None" with no extras clears
+        // every model (previously impossible from this sheet). Slot 1 keeps its
+        // stable slotId and existing placement; the server drops placement for
+        // any slot whose model changed.
+        var slots: [GuideStepModel] = []
+        if let mid = selectedModelId {
+            let prior = step.effectiveModels.first
+            slots.append(GuideStepModel(slotId: slot1Id, modelId: mid,
+                                        modelScale: modelScale, modelOpacity: modelOpacity,
+                                        modelOffsetX: prior?.modelOffsetX, modelOffsetY: prior?.modelOffsetY,
+                                        modelOffsetZ: prior?.modelOffsetZ, modelRotationY: prior?.modelRotationY))
+            slots.append(contentsOf: extraSlots)   // extras only exist under a slot-1 model
         }
+        req.models = slots
 
         // Branch logic — always send so Author can clear a previously-set branch
         // (nil = key absent = server keeps existing; "" would also work but pickers use nil)
