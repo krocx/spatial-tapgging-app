@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import anchorRouter, { anchorStore, QRIMAGES_DIR } from './routes/anchors.js';
+import { omsUsageStore } from './oms/usage-log.js';
 import tagRouter from './routes/tags.js';
 import sessionRouter from './routes/sessions.js';
 import perceptionRouter from './routes/perception.js';
@@ -128,6 +129,23 @@ document.getElementById('f').addEventListener('submit', async function(ev){
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.sendFile(path.join(__dirname, '../portal/home.html'));
   });
+  // GET /platform      → the one-visual platform map (leadership view)
+  // GET /platform.pptx → the same slide as editable native PowerPoint shapes
+  app.get('/platform', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.sendFile(path.join(__dirname, '../portal/platform.html'));
+  });
+  // Screenshot / clip slots for the /platform product cards. Drop files
+  // named wi-1.jpg, sv-2.jpg … into sib/portal/platform-media/ and they
+  // appear in place of the labelled slots — no page change needed.
+  app.use('/platform-media', express.static(path.join(__dirname, '../portal/platform-media')));
+  app.get('/platform.pptx', (_req, res) => {
+    const p = path.join(__dirname, '../portal/AR-Platform-Map.pptx');
+    if (!fs.existsSync(p)) { res.status(404).json({ error: 'Slide not available on this deployment' }); return; }
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
+    res.setHeader('Content-Disposition', 'attachment; filename="AR-Platform-Map.pptx"');
+    res.sendFile(p);
+  });
   app.get('/wireframe', (_req, res) => {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     // Deployments differ in cwd and layout (repo checkout vs Docker /app vs
@@ -171,11 +189,20 @@ document.getElementById('f').addEventListener('submit', async function(ev){
       const activeLocks = lotoPointStore.findAll()
         .filter(p => derivePointStatus(p, lotoEvents).state === 'locked').length;
 
+      // AR Work Instructions — aggregate counts for the /platform "proof
+      // it's real" strip. Numbers only, same doctrine as the rest of /stats.
+      const usage = omsUsageStore.findAll();
+      const guidedRuns = usage.length;
+      const validatedSteps = usage.reduce((n, r) =>
+        n + r.steps.filter(e => e.validation?.mode === 'system').length, 0);
+
       res.json({
         anchors: anchorStore.findAll().length,
         sessionsThisWeek,
         openGembaFindings: openFindings,
         activeLotoLocks: activeLocks,
+        guidedRuns,
+        validatedSteps,
         timestamp: new Date().toISOString(),
       });
     } catch (err) {

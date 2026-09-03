@@ -7,6 +7,21 @@ it, it gets a line.
 ## 2026.4.45 — 2026-09-01
 
 ### Added
+- **Platform story page (`/platform`)** — a marketing-friendly, interactive
+  page for BU leadership: hero value proposition; "Why AR, why now" with
+  sourced facts (PTC benchmark, Boeing/Iowa State, Volvo, Fujitsu, SIA/Oxford
+  Economics workforce gap, ASML's AR support in the fab) beside "Where
+  Applied can be ahead"; one card per product answering *What it is · Why
+  we built it · How it helps you · Where it stands* with honest readiness
+  badges (pilot-ready / early prototype / in production use), a "walk a
+  shift" stepper, a before/after toggle, and labelled screenshot slots
+  (`sib/portal/platform-media/`, served at `/platform-media`, auto-shown
+  when files exist); the platform map; live counts from `/stats` (which
+  gained `guidedRuns` and `validatedSteps` aggregates); momentum timeline
+  with next milestones; and contact / demo-request `mailto:` links.
+  `/platform.pptx` now serves a 9-slide native-shape pitch deck built from
+  the same content (title, why AR, five product slides, map, contact) —
+  regenerate with `tools/platform-deck-build.py`. Capability-level only.
 - **Settings from the kiosk gate (iOS)** — the shift-start screen now has a
   ⚙️ button (top-right) opening the full Settings sheet, so a kiosk iPad can
   be repointed at a different server (and the connection tested) before any
