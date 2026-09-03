@@ -145,17 +145,17 @@ def build_deck():
     footer()
 
     # 3–7 Products
-    prods=[('AR Work Instructions','AR OMS · AR OJT (on-the-job training)','PILOT-READY','#818cf8',
+    prods=[('AR Work Instructions','AR OMS · AR OJT (on-the-job training)','POC-READY','#818cf8',
       'Procedures shown in AR on the actual tool — each step pinned where the work is, with 3D ghosts of the correct result.',
       'Procedure knowledge lives in people and PDFs. We wanted it to live on the equipment.',
       ['Faster ramp — the guide teaches while they work (AR OJT)','Fewer skipped steps; critical ones validated on the spot','Audit-ready record per Production #','Shared kiosk iPads — employee-ID sign-in'],
       'Live on cloud and in-house servers. Best first use: a procedure you already have in Excel.'),
-     ('Spatial Validation','AR-guided · own models or third-party via API','PILOT-READY','#22d3ee',
+     ('Spatial Validation','AR-guided · own models or third-party via API','POC-READY','#22d3ee',
       'Confirms hands-on work was done right: the technician stands where the author stood; the platform compares the live view with “correct”, from several angles.',
       'Vision systems validate parts on a line — nothing validated a technician’s work at a tool.',
       ['Catch the missing guard before the tool restarts','Objective verdict per step, on record','A failed check can be overridden — and it is logged','Pluggable engine — ours today, any model via API'],
       'Multi-angle training and guided capture live; scoring tuned with field tests.'),
-     ('GembaWalks','Audit walks · findings · resolution','PILOT-READY','#fb923c',
+     ('GembaWalks','Audit walks · findings · resolution','POC-READY','#fb923c',
       'Audit walks in AR — checkpoints tagged to real locations, findings with photos, every open finding tracked to resolution.',
       'Findings in spreadsheets die. Findings tied to a physical location stay honest and repeatable.',
       ['Same checkpoints, same order, every walk','Evidence and location on every finding','Ageing open findings visible at a glance'],
@@ -169,12 +169,12 @@ def build_deck():
       'QR anchors tie content to equipment, world maps let any iPad re-find it, plus validation, telemetry, access control and usage records — one server, on-prem or cloud.',
       'Every AR product needs the same 80%. Built once, each new product is a thin layer — GembaWalks and iLOTO took weeks.',
       ['Data can stay inside the fab network','One user list and role model across products','Authoring from Excel / JSON / MES or the visual designer'],
-      'Running continuously; hardened for pilots. Spatial data formats patent-pending.')]
+      'Running continuously; hardened for POCs. Spatial data formats patent-pending.')]
     for name,sub,bl,col,what,why,how,stand in prods:
         new()
         text(60,40,900,40,'THE PRODUCTS',11,col,True)
         text(60,72,1100,50,name,28,'#ffffff',True); text(60,120,900,26,sub,12,col,True)
-        bc = {'PILOT-READY':'#d97706','EARLY PROTOTYPE':'#dc2626','IN PRODUCTION USE':'#16a34a'}[bl]
+        bc = {'POC-READY':'#d97706','EARLY PROTOTYPE':'#dc2626','IN PRODUCTION USE':'#16a34a'}[bl]
         b=rect(1300,80,240,30,'#1e293b',bc,1,0.5); b.text_frame.text=bl; p=b.text_frame.paragraphs[0]; p.alignment=PP_ALIGN.CENTER; r=p.runs[0]; r.font.size=Pt(10); r.font.bold=True; r.font.color.rgb=rgb('#ffffff'); r.font.name='Calibri'
         for i,(h,d) in enumerate([('WHAT IT IS',what),('WHY WE BUILT IT',why)]):
             x=60+i*750; rect(x,170,720,220,'#1e293b','#334155',1); text(x+18,182,680,26,h,10,col,True); text(x+18,212,684,170,d,12.5,'#cbd5e1')
