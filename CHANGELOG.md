@@ -7,6 +7,25 @@ it, it gets a line.
 ## 2026.4.45 — 2026-09-01
 
 ### Added
+- **Guided single-shot training + auto-capture (W1–W3)** — W1: a validated
+  step always yields evidence: "Require validation" locks "Require evidence
+  photo" on (enforced server-side on PATCH), the validation frame becomes the
+  step's evidence photo (stored, rendered, live-uploaded — before scoring, so
+  a FAIL or an override keeps the honest picture), and the operator is never
+  asked for a second photo; untrained (manual Pass/Fail) steps still ask.
+  Switching a cone-trained step to single-photo mode now deletes the hidden
+  tag and pass-states (no orphans). W2: 📷 **quick-shot** training in "Place
+  Steps in AR" — one raw frame from where the Author stands, plus the stance
+  (`cone_dist_m`, `shot_dir_*`), stored as a one-image pass-state on the
+  hidden tag so scoring/decryption/operator flow are identical to cone. New
+  `GET /guides/:id/steps/:stepId/validation-ref.jpg` serves the reference
+  (decrypted in-memory) for the operator's **ghost overlay**: the live view
+  is lined up with the Author's frame, guidance covers distance, line of
+  sight and aim. The form-camera training (no stance) is retired from Edit
+  Step. W3: **dwell auto-capture** — 0.8 s steady in position fires the
+  capture (cone and quick-shot alike); the manual button remains.
+  Fixed: placement-flow key pinning assigned a String to a `SymmetricKey`
+  (compile error) — now parses via `AnchorEncryption.key(fromBase64:)`.
 - **Platform story page (`/platform`)** — a marketing-friendly, interactive
   page for BU leadership: hero value proposition; "Why AR, why now" with
   sourced facts (PTC benchmark, Boeing/Iowa State, Volvo, Fujitsu, SIA/Oxford

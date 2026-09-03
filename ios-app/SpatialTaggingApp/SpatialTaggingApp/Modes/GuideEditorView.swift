@@ -539,10 +539,18 @@ struct AddStepSheet: View {
 
                 // ── Step validation (K4/K5 — B1: same controls as Edit Step) ──
                 Section {
-                    Toggle("Require evidence photo", isOn: $evidenceOn)
                     Toggle("Require validation", isOn: $validationOn)
+                        .onChange(of: validationOn) { on in if on { evidenceOn = true } }
+                    // W1: a validated step always yields an evidence photo — the
+                    // validation frame IS the evidence, so the toggle is locked on.
+                    Toggle("Require evidence photo", isOn: $evidenceOn)
+                        .disabled(validationOn)
                     if validationOn {
-                        Label("After adding, open the step's ✏️ Edit sheet to train the reference photo. Until trained, the Operator sees a manual Pass/Fail.",
+                        Text("Evidence is captured automatically by validation — no second photo.")
+                            .font(.footnote).foregroundStyle(.secondary)
+                    }
+                    if validationOn {
+                        Label("After adding and placing the step, train it in \"Place Steps in AR\" (🛡 Cone or 📷 quick-shot). Until trained, the Operator sees a manual Pass/Fail.",
                               systemImage: "info.circle")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
@@ -818,8 +826,16 @@ struct EditStepSheet: View {
 
                 // ── Step validation (K4) — Spatial Inspection on this step ────
                 Section {
-                    Toggle("Require evidence photo", isOn: $evidenceOn)
                     Toggle("Require validation", isOn: $validationOn)
+                        .onChange(of: validationOn) { on in if on { evidenceOn = true } }
+                    // W1: a validated step always yields an evidence photo — the
+                    // validation frame IS the evidence, so the toggle is locked on.
+                    Toggle("Require evidence photo", isOn: $evidenceOn)
+                        .disabled(validationOn)
+                    if validationOn {
+                        Text("Evidence is captured automatically by validation — no second photo.")
+                            .font(.footnote).foregroundStyle(.secondary)
+                    }
                     if validationOn {
                         HStack {
                             Image(systemName: trainedAt != nil ? "checkmark.seal.fill" : "seal")
@@ -828,19 +844,17 @@ struct EditStepSheet: View {
                                 .font(.footnote)
                             Spacer()
                         }
-                        if step.coneTrained {
-                            Label("Multi-angle (cone) training active — retrain from the AR placement view.",
-                                  systemImage: "arkit")
-                                .font(.footnote).foregroundStyle(.secondary)
-                        }
-                        Button(trainedAt != nil ? "Retrain reference photo (quick, single angle)"
-                                                : "Quick train — single reference photo") {
-                            validationShot = .train
-                        }
-                        .disabled(validationBusy)
+                        // W2: training happens IN AR — from "Place Steps in AR",
+                        // tap the step's 🛡 Cone (multi-angle sweep) or 📷 quick-shot
+                        // button. Both record where the Author stood, so the
+                        // operator is guided back to the same viewpoint. The old
+                        // form-camera training (no stance, unreliable) is retired.
+                        Label(trainedAt != nil
+                              ? "Retrain from \"Place Steps in AR\" — 🛡 Cone (multi-angle) or 📷 quick-shot."
+                              : "Train from \"Place Steps in AR\" — 🛡 Cone (multi-angle) or 📷 quick-shot from where the operator should stand.",
+                              systemImage: "arkit")
+                            .font(.footnote).foregroundStyle(.secondary)
                         if trainedAt != nil {
-                            Button("Verify — test against reference") { validationShot = .test }
-                                .disabled(validationBusy)
                             Button("Remove training", role: .destructive) {
                                 Task { await removeValidationTraining() }
                             }
@@ -854,7 +868,7 @@ struct EditStepSheet: View {
                 } header: {
                     Text("Validation")
                 } footer: {
-                    Text("Uses the platform's Spatial Inspection engine. Recommended: train multi-angle with the 🛡 seal button in \"Place Steps in AR\" — the cone sweep is far more tolerant of operator viewpoint than a single photo. Verify before publishing.")
+                    Text("Uses the platform's Spatial Inspection engine. Cone = most tolerant of viewpoint; quick-shot = one frame plus your stance, and the operator is guided back to it with a ghost overlay.")
                 }
 
                 // ── Photo editing ─────────────────────────────────────────────

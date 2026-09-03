@@ -108,6 +108,11 @@ struct ARGuideSessionView: View {
     @State private var coneValidateTag:   Tag?       = nil   // hidden step tag: feature prints, ROI, cone_dist_m
     @State private var coneReady          = false
     @State private var coneStatusText     = "Move toward the ring"
+    // W2/W3: ghost-overlay alignment (quick-shot steps) + dwell auto-capture
+    @State private var coneGhostImage:    UIImage? = nil
+    @State private var coneReadyTicks     = 0        // consecutive 100 ms ticks in position
+    @State private var coneAutoFired      = false    // one auto-capture per attempt
+    private let coneDwellTicks            = 8        // 0.8 s steady = capture
     /// Same pass threshold the inspection flow uses (OperatorModeView default).
     private let stepPassThreshold: Double = 0.60
     @State private var manualValidationIndex: Int? = nil          // untrained: manual Pass/Fail
@@ -308,6 +313,19 @@ struct ARGuideSessionView: View {
             // V2: in-AR cone validation overlay — guides the operator into the
             // trained viewing zone before capturing the verdict frame.
             if let idx = coneValidateIndex, idx < sortedSteps.count {
+                // W2: the Author's reference as a translucent ghost — the
+                // operator lines the live view up with it (same idea as
+                // checkpoint re-localization), then the capture fires itself.
+                if let ghost = coneGhostImage {
+                    Image(uiImage: ghost)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .opacity(coneReady ? 0.22 : 0.38)
+                        .ignoresSafeArea()
+                        .allowsHitTesting(false)
+                        .animation(.easeInOut(duration: 0.25), value: coneReady)
+                }
                 VStack {
                     Spacer()
                     VStack(spacing: 12) {
@@ -366,13 +384,38 @@ struct ARGuideSessionView: View {
                 let tol   = max(0.08, train * 0.30)
                 let distOK = abs(dist - train) <= tol
                 let angle  = g.alignmentAngle(cameraTransform: t)
-                let ready  = distOK && angle < 25
+                // W2: quick-shot steps also store the direction the Author
+                // stood in — guide the operator back onto that line of sight.
+                var dirOK = true
+                if let tag = coneValidateTag,
+                   let sx = metaFloat(tag.metadata, "shot_dir_x"),
+                   let sy = metaFloat(tag.metadata, "shot_dir_y"),
+                   let sz = metaFloat(tag.metadata, "shot_dir_z"), dist > 0.001 {
+                    let cur = simd_normalize(cam - g.tagWorldPosition)
+                    let d   = simd_dot(cur, simd_float3(sx, sy, sz))
+                    dirOK = acos(max(-1, min(1, d))) * 180 / .pi < 20
+                }
+                let ready  = distOK && dirOK && angle < 25
                 if ready != coneReady { coneReady = ready }
                 coneStatusText = !distOK
                     ? (dist > train ? "Move closer — \(Int(((dist - train) * 100).rounded())) cm"
                                     : "Step back — \(Int(((train - dist) * 100).rounded())) cm")
+                    : !dirOK ? "Move around to match the ghost view"
                     : angle >= 25 ? "Aim at the ring"
-                    : "✓ In position — capture"
+                    : coneAutoFired ? "✓ In position"
+                    : "✓ Hold still — capturing…"
+                // W3: dwell auto-capture — 0.8 s steady in position fires once
+                // per attempt; the manual button stays as a backup.
+                if ready && !validationInFlight && !coneAutoFired {
+                    coneReadyTicks += 1
+                    if coneReadyTicks >= coneDwellTicks {
+                        coneAutoFired = true
+                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                        captureConeValidationFrame()
+                    }
+                } else if !ready {
+                    coneReadyTicks = 0
+                }
             }
         }
         .onAppear {
@@ -2192,7 +2235,12 @@ struct ARGuideSessionView: View {
         guard index < sortedSteps.count else { return }
         let step = sortedSteps[index]
         // K5: evidence photo first — completing without it is blocked.
-        if step.needsEvidence && progresses[index].evidencePhoto == nil && !progresses[index].isCompleted {
+        // W1: validated steps capture their own evidence (the validation frame),
+        // so the separate photo prompt only applies to evidence-only steps.
+        // (Untrained steps use a manual Pass/Fail with no frame, so they still ask.)
+        let validationSuppliesEvidence = step.needsValidation && step.validationTrained
+        if step.needsEvidence && !validationSuppliesEvidence
+            && progresses[index].evidencePhoto == nil && !progresses[index].isCompleted {
             showNotice("📷 Evidence photo required — take it to complete this step")
             evidencePickerStepIndex = index
             showEvidencePicker = true
@@ -2248,6 +2296,18 @@ struct ARGuideSessionView: View {
         coneStatusText    = "Move toward the ring"
         coneValidateIndex = index
         coneValidateGuide = ConeARGuide(sceneView: arManager.sceneView, tagWorldPosition: pos)
+        coneReadyTicks = 0; coneAutoFired = false; coneGhostImage = nil
+        // W2: quick-shot steps get the Author's reference frame as a ghost
+        // overlay — align the live view to it, and the capture fires itself.
+        if index < sortedSteps.count {
+            let g = guide.id, sId = sortedSteps[index].id
+            Task {
+                if let data = try? await SIBClient(settings: settings).fetchStepValidationRef(guideId: g, stepId: sId),
+                   let img = UIImage(data: data) {
+                    await MainActor.run { if coneValidateIndex == index { coneGhostImage = img } }
+                }
+            }
+        }
         // The hidden step tag carries what the inspection flow scores with:
         // feature_prints + fp_max_dist (viewpoint-tolerant match), the
         // Author's ROI, and cone_dist_m (the trained stance). Fetch once.
@@ -2266,6 +2326,8 @@ struct ARGuideSessionView: View {
         coneValidateGuide = nil
         coneValidateIndex = nil
         coneReady         = false
+        coneGhostImage    = nil
+        coneReadyTicks    = 0
     }
 
     private func metaFloat(_ meta: [String: AnyCodable], _ key: String) -> Float? {
@@ -2293,6 +2355,28 @@ struct ARGuideSessionView: View {
         return UIImage(cgImage: cropped, scale: image.scale, orientation: image.imageOrientation)
     }
 
+    /// W1: the validation frame doubles as the step's evidence photo — stored
+    /// locally, rendered on the panel, and live-uploaded like any evidence.
+    /// Called BEFORE scoring so a FAIL (or an override) still leaves the
+    /// honest picture in the record.
+    private func attachEvidence(index: Int, image: UIImage) {
+        guard index < progresses.count, index < sortedSteps.count else { return }
+        progresses[index].evidencePhoto = image
+        let stepId = sortedSteps[index].id
+        refreshPanelTextures(stepId: stepId)
+        persistProgress()
+        if let lsId = liveSessionId {
+            Task.detached(priority: .utility) {
+                guard let jpeg = image.jpegData(compressionQuality: 0.72) else { return }
+                do {
+                    try await SIBClient(settings: settings).uploadLiveEvidence(
+                        liveSessionId: lsId, stepId: stepId, jpegBase64: jpeg.base64EncodedString())
+                    await MainActor.run { _ = uploadedEvidenceSteps.insert(stepId) }
+                } catch { /* offline — sign-off carries the photo */ }
+            }
+        }
+    }
+
     /// Cone-trained verdict — SAME rule as tag inspection (OperatorModeView):
     /// on-device Vision feature-print match (tolerant of viewpoint) and server
     /// multi-reference SSIM (precise when the angle matches), final score =
@@ -2300,6 +2384,7 @@ struct ARGuideSessionView: View {
     private func runConeValidation(index: Int, image: UIImage) async {
         validationInFlight = true
         defer { validationInFlight = false }
+        attachEvidence(index: index, image: image)   // W1
         let tag = coneValidateTag
 
         // 1. Feature-print score (client-side, no network)
@@ -2386,6 +2471,7 @@ struct ARGuideSessionView: View {
         guard let jpeg = image.jpegData(compressionQuality: 0.7) else { return }
         validationInFlight = true
         defer { validationInFlight = false }
+        attachEvidence(index: index, image: image)   // W1
         do {
             let v = try await SIBClient(settings: settings).validateStep(
                 guideId: guide.id, stepId: sortedSteps[index].id,

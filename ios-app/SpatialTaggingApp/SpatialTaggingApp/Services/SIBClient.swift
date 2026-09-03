@@ -760,6 +760,21 @@ final class SIBClient {
         _ = try await delete(path: "/guides/\(guideId)/steps/\(stepId)/validation-ref")
     }
 
+    /// W2: the trained reference frame (server-decrypted) for the operator's
+    /// ghost-overlay alignment. Works for cone and quick-shot training.
+    /// Returns raw JPEG Data — display via UIImage(data:).
+    func fetchStepValidationRef(guideId: String, stepId: String) async throws -> Data {
+        var req = try makeRequest(method: "GET", path: "/guides/\(guideId)/steps/\(stepId)/validation-ref.jpg")
+        req.timeoutInterval = 30
+        let (data, response): (Data, URLResponse)
+        do { (data, response) = try await session.data(for: req) }
+        catch { throw SIBClientError.networkError(error) }
+        if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+            throw SIBClientError.httpError(http.statusCode, "No readable reference for this step")
+        }
+        return data
+    }
+
     /// V1: stamp a step as cone-trained after a Spatial Inspection sweep has
     /// stored the multi-angle pass-state under the hidden step-validation tag.
     /// Server 409s when no pass-state exists for the tag yet.

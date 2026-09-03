@@ -594,6 +594,10 @@ router.patch('/:id/steps/:stepId', (req: Request, res: Response): void => {
     evidenceRequired:   'evidenceRequired'   in body ? (body.evidenceRequired   || undefined) : step.evidenceRequired,
     updatedAt: now,
   };
+  // W1: a validated step always yields an evidence photo — the validation
+  // frame IS the evidence. Enforce the implication server-side so no client
+  // (app, portal, import) can produce a validated step without evidence.
+  if (updated.validationRequired) updated.evidenceRequired = true;
 
   guideStepStore.save(updated);
   guideStore.update(guide.id, { updatedAt: now });
@@ -639,6 +643,15 @@ router.put('/:id/steps/:stepId/validation-ref', (req: Request, res: Response): v
   }
   const now  = new Date().toISOString();
   const step = guideStepStore.findById(ids.stepId)!;
+  // Switching to single-photo mode supersedes any cone training — drop the
+  // hidden tag and its pass-states so nothing is left orphaned.
+  if (step.validationTagId) {
+    for (const kind of ['PASS', 'FAIL'] as const) {
+      const ps = findPassStateByTag(step.validationTagId, kind);
+      if (ps) passStateStore.delete(ps.id);
+    }
+    tagStore.delete(step.validationTagId);
+  }
   guideStepStore.save({ ...step, validationTrainedAt: now, validationMode: 'single',
                         validationTagId: undefined, updatedAt: now });
   console.log(`[SIB] Step validation trained (single): ${ids.stepId} in guide ${ids.guideId}`);
@@ -670,6 +683,35 @@ router.post('/:id/steps/:stepId/validation-trained', (req: Request, res: Respons
   deleteValidationRef(ids.guideId, ids.stepId);
   console.log(`[SIB] Step validation trained (cone): ${ids.stepId} in guide ${ids.guideId} → tag ${tagId}`);
   res.json({ data: { validationTrainedAt: now, validationMode: 'cone', validationTagId: tagId }, timestamp: now });
+});
+
+// GET /guides/:id/steps/:stepId/validation-ref.jpg — W2: the trained
+// reference frame for the operator's ghost-overlay alignment. Cone/shot
+// mode: first pass-state image, decrypted in-memory with the anchor key;
+// single mode: the stored reference file. Never persisted decrypted.
+router.get('/:id/steps/:stepId/validation-ref.jpg', (req: Request, res: Response): void => {
+  const ids = findGuideStep(req, res);
+  if (!ids) return;
+  const step = guideStepStore.findById(ids.stepId)!;
+  let jpeg: Buffer | null = null;
+  if (step.validationMode === 'cone' && step.validationTagId) {
+    const ps = findPassStateByTag(step.validationTagId, 'PASS');
+    const tagRec = tagStore.findById(step.validationTagId);
+    const encKey = tagRec ? anchorStore.findById(tagRec.anchorId)?.encryptionKey : undefined;
+    const first = ps?.images[0]?.imageBase64;
+    if (first) {
+      let b64 = first;
+      if (encKey) { try { b64 = decryptImageBase64(first, encKey); } catch { /* fall through */ } }
+      if (b64.startsWith('/9j/')) jpeg = Buffer.from(b64, 'base64');
+    }
+  } else {
+    const p = path.join(process.env.DATA_DIR ?? './data', 'guide-step-validation', `${ids.guideId}-${ids.stepId}.jpg`);
+    if (fs.existsSync(p)) jpeg = fs.readFileSync(p);
+  }
+  if (!jpeg) { res.status(404).json({ error: 'No readable reference for this step', timestamp: new Date().toISOString() }); return; }
+  res.setHeader('Content-Type', 'image/jpeg');
+  res.setHeader('Cache-Control', 'private, max-age=300');
+  res.send(jpeg);
 });
 
 // DELETE /guides/:id/steps/:stepId/validation-ref — Author removes training.

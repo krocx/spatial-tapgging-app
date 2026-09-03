@@ -21,6 +21,8 @@ import SwiftUI
 import ARKit
 import SceneKit
 import simd
+import CoreImage
+import CryptoKit
 
 // ── Model transform captured during adjustment ────────────────────────────────
 
@@ -229,6 +231,8 @@ struct GuideStepPlacementView: View {
     @State private var saveError:          String? = nil
     @State private var lastSaveSucceeded:  Bool    = false
     @State private var firstStepPhotoData: Data?   = nil
+    /// Resume sessions may refresh the Step-1 reference once, only when looking at it.
+    @State private var resumeRefCaptureArmed = true
 
     // ── Focus ring ────────────────────────────────────────────────────────────
     @State private var focusRing: ARFocusRing? = nil
@@ -356,6 +360,7 @@ struct GuideStepPlacementView: View {
         .onReceive(crosshairTicker) { _ in
             if placementPhase.isPlacingPins {
                 focusRing?.update(sceneView: arManager.sceneView)
+                captureResumeReferenceIfLookingAtStep1()
             }
         }
     }
@@ -576,15 +581,30 @@ struct GuideStepPlacementView: View {
             // once the step has a pin (the cone anchors at the pin).
             if step.needsValidation && placed {
                 let trained = coneTrainedStepIds.contains(step.id) || step.coneTrained
-                Button {
-                    Task { await beginConeTraining(for: step) }
-                } label: {
-                    Label(trained ? "Trained" : "Train",
-                          systemImage: trained ? "checkmark.seal.fill" : "seal")
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(trained ? Color.green : Color.orange)
-                        .padding(.horizontal, 7).padding(.vertical, 3)
-                        .background(Color.black.opacity(0.35), in: Capsule())
+                HStack(spacing: 4) {
+                    // Multi-angle cone sweep (most robust)
+                    Button {
+                        Task { await beginConeTraining(for: step) }
+                    } label: {
+                        Label(trained ? "Trained" : "Cone",
+                              systemImage: trained ? "checkmark.seal.fill" : "seal")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(trained ? Color.green : Color.orange)
+                            .padding(.horizontal, 7).padding(.vertical, 3)
+                            .background(Color.black.opacity(0.35), in: Capsule())
+                    }
+                    // W2: quick-shot — one frame from where you stand now, with
+                    // the stance recorded so the operator is guided back to it.
+                    Button {
+                        Task { await quickShotTrain(for: step) }
+                    } label: {
+                        Image(systemName: "camera.fill")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(Color.cyan)
+                            .padding(.horizontal, 7).padding(.vertical, 3)
+                            .background(Color.black.opacity(0.35), in: Capsule())
+                    }
+                    .accessibilityLabel("Quick-shot train from here")
                 }
                 .disabled(isPreparingTraining)
             }
@@ -664,32 +684,33 @@ struct GuideStepPlacementView: View {
     // MARK: V1 — cone training for validation steps
     // ─────────────────────────────────────────────────────────────────────────
 
-    /// Prepare the hidden step-validation tag (create on first train, reuse on
-    /// retrain — POST /perception/train upserts pass-states by tagId) and
-    /// present ConeCaptureView anchored at the step's pin.
+    /// Resolve the anchor (once), pin the SERVER encryption key, and get the
+    /// hidden step-validation tag (created on first train, reused after).
+    /// Shared by cone training and quick-shot training.
     @MainActor
-    private func beginConeTraining(for step: GuideStep) async {
-        guard !isPreparingTraining, let pos = stepPositions[step.id] else { return }
-        isPreparingTraining = true
-        defer { isPreparingTraining = false }
+    private func prepareValidationTag(for step: GuideStep) async -> (Tag, Anchor, SymmetricKey)? {
         let client = SIBClient(settings: settings)
         do {
             if anchorRecord == nil {
                 anchorRecord = try await client.fetchAnchor(id: guide.anchorId)
             }
-            guard let anchor = anchorRecord else { return }
+            guard let anchor = anchorRecord else { return nil }
 
             // ConeCaptureView encrypts every reference with
             // appState.anchorEncryptionKey — and falls back to a LOCAL random
             // key when that is nil. The server validates step references on
             // its own (no operator-supplied key), so the references MUST be
             // encrypted with the key stored on the anchor record. Pin it here.
-            guard let serverKey = anchor.encryptionKey, !serverKey.isEmpty else {
+            guard let serverKeyB64 = anchor.encryptionKey,
+                  let serverKey = AnchorEncryption.key(fromBase64: serverKeyB64) else {
                 saveError = "This anchor has no encryption key on the server — regenerate its QR from the portal, then train."
-                return
+                return nil
             }
             appState.anchorEncryptionKey = serverKey
 
+            let meta: [String: AnyCodable] = ["step_validation": AnyCodable(true),
+                                              "guide_id":        AnyCodable(guide.id),
+                                              "step_id":         AnyCodable(step.id)]
             let tag: Tag
             if let existingId = sessionTagIds[step.id] ?? step.validationTagId {
                 // Reuse the existing hidden tag record — retraining replaces
@@ -698,26 +719,105 @@ struct GuideStepPlacementView: View {
                           label: "\(step.displayTitle) — validation",
                           expectedOutcome: "Step completed correctly",
                           checkDescription: nil, order: nil, roi: nil, groupId: nil,
-                          metadata: ["step_validation": AnyCodable(true),
-                                     "guide_id":        AnyCodable(guide.id),
-                                     "step_id":         AnyCodable(step.id)],
-                          isTrained: true, hasFailState: nil, createdAt: "", updatedAt: "")
+                          metadata: meta, isTrained: true, hasFailState: nil, createdAt: "", updatedAt: "")
             } else {
                 tag = try await client.createTag(CreateTagRequest(
                     anchorId:        anchor.id,
                     type:            .configurationCheck,   // captureMode == .cone
                     label:           "\(step.displayTitle) — validation",
                     expectedOutcome: "Step completed correctly",
-                    checkDescription: nil, order: nil, groupId: nil,
-                    metadata: ["step_validation": AnyCodable(true),
-                               "guide_id":        AnyCodable(guide.id),
-                               "step_id":         AnyCodable(step.id)]))
+                    checkDescription: nil, order: nil, groupId: nil, metadata: meta))
             }
             sessionTagIds[step.id] = tag.id
-            trainingTarget = StepTrainingTarget(step: step, tag: tag, anchor: anchor, worldPos: pos)
+            return (tag, anchor, serverKey)
         } catch {
             saveError = "Couldn't start training: \(error.localizedDescription)"
+            return nil
         }
+    }
+
+    /// Cone (multi-angle) training — presents ConeCaptureView at the pin.
+    @MainActor
+    private func beginConeTraining(for step: GuideStep) async {
+        guard !isPreparingTraining, let pos = stepPositions[step.id] else { return }
+        isPreparingTraining = true
+        defer { isPreparingTraining = false }
+        guard let (tag, anchor, _) = await prepareValidationTag(for: step) else { return }
+        trainingTarget = StepTrainingTarget(step: step, tag: tag, anchor: anchor, worldPos: pos)
+    }
+
+    /// W2 — Quick-shot training: ONE raw frame from where the Author is
+    /// standing right now, plus the stance (distance + direction from the
+    /// pin) so the operator can be guided back to the same viewpoint with a
+    /// ghost overlay. Stored as a one-image pass-state on the hidden tag —
+    /// so scoring, decryption and the operator flow are identical to cone.
+    @MainActor
+    private func quickShotTrain(for step: GuideStep) async {
+        guard !isPreparingTraining, let pin = stepPositions[step.id],
+              let frame = arManager.sceneView.session.currentFrame else { return }
+        isPreparingTraining = true
+        defer { isPreparingTraining = false }
+        guard let (tag, anchor, key) = await prepareValidationTag(for: step) else { return }
+
+        // Stance
+        let t = frame.camera.transform
+        let cam = simd_float3(t.columns.3.x, t.columns.3.y, t.columns.3.z)
+        let vec = cam - pin
+        let dist = simd_length(vec)
+        let dir  = dist > 0.001 ? simd_normalize(vec) : simd_float3(0, 0, 1)
+
+        // Raw frame (zero AR artifacts — same path as cone training)
+        guard let img = rawCameraImage(from: frame),
+              let jpeg = img.jpegData(compressionQuality: 0.65) else {
+            saveError = "Couldn't capture the camera frame — try again."
+            return
+        }
+        let client = SIBClient(settings: settings)
+        do {
+            let payload = (try? AnchorEncryption.encrypt(imageBase64: jpeg.base64EncodedString(), using: key))
+                          ?? jpeg.base64EncodedString()
+            let now = ISO8601DateFormatter().string(from: Date())
+            try await client.trainPassState(CreatePassStateRequest(
+                tagId: tag.id, anchorId: anchor.id, assetId: anchor.assetId, state: .pass,
+                images: [PassStateImage(id: nil, tagId: tag.id, anchorId: anchor.id, assetId: anchor.assetId,
+                                        imageBase64: payload, mimeType: "image/jpeg",
+                                        pose: CameraPose(position: .zero, rotation: .identity), capturedAt: now)]))
+
+            // Feature print (viewpoint-tolerant half of the verdict) + stance
+            var meta: [String: AnyCodable] = [
+                "training_kind": AnyCodable("shot"),
+                "cone_dist_m":   AnyCodable(Double(dist)),
+                "shot_dir_x":    AnyCodable(Double(dir.x)),
+                "shot_dir_y":    AnyCodable(Double(dir.y)),
+                "shot_dir_z":    AnyCodable(Double(dir.z)),
+            ]
+            if let fp = await TagFeaturePrint.extract(from: img) {
+                meta["feature_prints"] = AnyCodable([fp.base64])
+            }
+            _ = try? await client.updateTag(id: tag.id, req: UpdateTagRequest(
+                label: nil, expectedOutcome: nil, checkDescription: nil, order: nil, metadata: meta))
+
+            try await client.markStepConeTrained(guideId: guide.id, stepId: step.id, tagId: tag.id)
+            coneTrainedStepIds.insert(step.id)
+            saveError = nil
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+        } catch {
+            saveError = "Quick-shot training failed: \(error.localizedDescription)"
+        }
+    }
+
+    /// Raw sensor frame, portrait, ≤ 800 px — identical to ConeCaptureView's
+    /// capture so quick-shot references are comparable to cone references.
+    private func rawCameraImage(from frame: ARFrame) -> UIImage? {
+        let ci = CIImage(cvPixelBuffer: frame.capturedImage).oriented(.right)
+        let ctx = CIContext(options: [.useSoftwareRenderer: false])
+        guard let cg = ctx.createCGImage(ci, from: ci.extent) else { return nil }
+        let full = UIImage(cgImage: cg)
+        let longest = max(full.size.width, full.size.height)
+        guard longest > 800 else { return full }
+        let scale = 800 / longest
+        let size  = CGSize(width: (full.size.width * scale).rounded(), height: (full.size.height * scale).rounded())
+        return UIGraphicsImageRenderer(size: size).image { _ in full.draw(in: CGRect(origin: .zero, size: size)) }
     }
 
     /// The cone sweep finished uploading its pass-state — stamp the step so
@@ -790,15 +890,31 @@ struct GuideStepPlacementView: View {
             }
         }
 
-        if steps.allSatisfy({ $0.worldPosition != nil }) {
-            Task {
-                try? await Task.sleep(nanoseconds: 2_000_000_000)
-                if firstStepPhotoData == nil {
-                    firstStepPhotoData = arManager.sceneView.snapshot()
-                        .jpegData(compressionQuality: 0.72)
-                }
-            }
-        }
+        // NOTE: no blind timed snapshot here. The re-localization reference
+        // must be a view of STEP 1 — on resume it is captured by the ticker
+        // only while the camera is actually looking at Step 1's pin (see
+        // captureResumeReferenceIfLookingAtStep1). A 2 s snapshot of wherever
+        // the Author happened to point (e.g. Step 3, opened just to train it)
+        // was overwriting the Step-1 reference and misleading operators.
+    }
+
+    /// Resume sessions: opportunistically capture the Step-1 reference photo
+    /// while the camera is on Step 1's pin (in view, ≤ 1.5 m). Fires once.
+    private func captureResumeReferenceIfLookingAtStep1() {
+        guard firstStepPhotoData == nil, resumeRefCaptureArmed,
+              let first = steps.first, let node = stepNodes[first.id],
+              let pov = arManager.sceneView.pointOfView,
+              let frame = arManager.sceneView.session.currentFrame else { return }
+        let cam  = simd_float3(frame.camera.transform.columns.3.x, frame.camera.transform.columns.3.y, frame.camera.transform.columns.3.z)
+        let dist = simd_length(cam - node.simdWorldPosition)
+        guard dist <= 1.5, arManager.sceneView.isNode(node, insideFrustumOf: pov) else { return }
+        // Must also be roughly centred — projected within the middle 60 % of the screen.
+        let p  = arManager.sceneView.projectPoint(node.worldPosition)
+        let b  = arManager.sceneView.bounds
+        let px = CGFloat(p.x), py = CGFloat(p.y)
+        guard p.z > 0, px > b.width * 0.2, px < b.width * 0.8, py > b.height * 0.2, py < b.height * 0.8 else { return }
+        firstStepPhotoData = arManager.sceneView.snapshot().jpegData(compressionQuality: 0.72)
+        resumeRefCaptureArmed = false
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -1273,8 +1389,10 @@ struct GuideStepPlacementView: View {
         guard placedCount > 0 else { return }
         isSaving = true; savingIsExit = true; saveError = nil
         let client    = SIBClient(settings: settings)
+        // nil → the server keeps the existing Step-1 reference (it only
+        // writes a photo when one is supplied). Never send a snapshot of
+        // wherever the Author is standing at Save time.
         let photoData = firstStepPhotoData
-            ?? arManager.sceneView.snapshot().jpegData(compressionQuality: 0.72)
         let mapData   = await arManager.saveCurrentWorldMap()
         let (updatedSteps, errors) = await patchChangedPositions()
         if let mapData {
