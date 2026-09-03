@@ -22,6 +22,11 @@ it, it gets a line.
   `/platform.pptx` now serves a 9-slide native-shape pitch deck built from
   the same content (title, why AR, five product slides, map, contact) —
   regenerate with `tools/platform-deck-build.py`. Capability-level only.
+  Deployment-local overrides, outside git: `DATA_DIR/platform/deck.pptx`
+  is served at `/platform.pptx` in place of the bundled deck (for a site's
+  own template deck), and `DATA_DIR/platform/media/*.jpg` is served at
+  `/platform-media/` ahead of bundled files — so confidential decks and
+  real screenshots never need to be committed.
 - **Settings from the kiosk gate (iOS)** — the shift-start screen now has a
   ⚙️ button (top-right) opening the full Settings sheet, so a kiosk iPad can
   be repointed at a different server (and the connection tested) before any

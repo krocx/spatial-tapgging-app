@@ -138,12 +138,22 @@ document.getElementById('f').addEventListener('submit', async function(ev){
   // Screenshot / clip slots for the /platform product cards. Drop files
   // named wi-1.jpg, sv-2.jpg … into sib/portal/platform-media/ and they
   // appear in place of the labelled slots — no page change needed.
+  // Deployment-local overrides live under DATA_DIR/platform/ — outside git,
+  // so a site can serve its own template deck and real screenshots without
+  // committing confidential material. Bundled repo files are the fallback.
+  //   DATA_DIR/platform/deck.pptx      → served at /platform.pptx
+  //   DATA_DIR/platform/media/*.jpg    → served at /platform-media/* (first)
+  const PLATFORM_LOCAL = path.join(process.env.DATA_DIR ?? './data', 'platform');
+  app.use('/platform-media', express.static(path.join(PLATFORM_LOCAL, 'media')));
   app.use('/platform-media', express.static(path.join(__dirname, '../portal/platform-media')));
   app.get('/platform.pptx', (_req, res) => {
-    const p = path.join(__dirname, '../portal/AR-Platform-Map.pptx');
-    if (!fs.existsSync(p)) { res.status(404).json({ error: 'Slide not available on this deployment' }); return; }
+    const local   = path.join(PLATFORM_LOCAL, 'deck.pptx');
+    const bundled = path.join(__dirname, '../portal/AR-Platform-Map.pptx');
+    const p = fs.existsSync(local) ? local : bundled;
+    if (!fs.existsSync(p)) { res.status(404).json({ error: 'Deck not available on this deployment' }); return; }
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
-    res.setHeader('Content-Disposition', 'attachment; filename="AR-Platform-Map.pptx"');
+    res.setHeader('Content-Disposition', 'attachment; filename="AR-Operations-Platform.pptx"');
     res.sendFile(p);
   });
   app.get('/wireframe', (_req, res) => {
