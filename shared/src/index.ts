@@ -913,6 +913,11 @@ export type GuideSessionEventType =
   | 'step:failed'      // Operator marked the step failed and took the recovery branch
   | 'step:stalled'
   | 'perception:result'
+  /** X1 (2026.4.45): the device re-localized into the saved world map but the
+   *  operator's "I'm Here" pose disagrees with the author's reference pose —
+   *  typically the QR / a prominent object moved. Pins may be off; the app
+   *  falls back to image alignment. payload: { distanceM, angleDeg }. */
+  | 'environment:drift'
   | 'session:submitted';
 
 export interface GuideSessionEvent {
@@ -1010,6 +1015,8 @@ export interface OmsUsageSession {
   completed:          boolean;
   /** GuideSession (sign-off) id once linked. */
   signOffSessionId?:  string;
+  /** X1: environment drift detected at re-localization (see 'environment:drift'). */
+  drift?:             { distanceM: number; angleDeg: number; ts: string };
   steps:              OmsUsageStepEntry[];
 }
 

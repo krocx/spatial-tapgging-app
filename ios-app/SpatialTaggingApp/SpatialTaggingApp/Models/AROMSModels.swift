@@ -486,6 +486,7 @@ enum GuideSessionEventType: String, Codable {
     case stepFailed      = "step:failed"    // Operator took the recovery branch
     case stepStalled     = "step:stalled"
     case perceptionResult = "perception:result"
+    case environmentDrift = "environment:drift"   // X1: re-localization disagreed with the author's pose
     case sessionSubmitted = "session:submitted"
 }
 

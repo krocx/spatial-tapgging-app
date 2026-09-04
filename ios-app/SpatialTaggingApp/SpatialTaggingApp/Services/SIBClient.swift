@@ -2,6 +2,7 @@
 // async/await REST client for SIB v0.2. All network calls go through here.
 
 import Foundation
+import simd
 
 enum SIBClientError: LocalizedError {
     case notConfigured
@@ -605,19 +606,37 @@ final class SIBClient {
     /// Author: upload the ARWorldMap captured during guide step placement.
     /// Also accepts an optional JPEG reference photo (base64) for Operator re-localization.
     /// 90s timeout — ARWorldMap blobs can be large.
-    func uploadGuideWorldMap(guideId: String, mapData: Data, referencePhotoData: Data? = nil) async throws {
+    func uploadGuideWorldMap(guideId: String, mapData: Data, referencePhotoData: Data? = nil,
+                             referenceCameraPose: [Float]? = nil) async throws {
         struct Body: Encodable {
             let worldMapBase64:        String
             let capturedAt:            String
             let referencePhotoBase64:  String?
+            /// X1: column-major 4×4 camera transform at the reference photo.
+            let referenceCameraPose:   [Float]?
         }
         struct Resp: Decodable { let guideId: String; let sizeBytes: Int; let refPhotoSaved: Bool }
         let body = Body(
             worldMapBase64:       mapData.base64EncodedString(),
             capturedAt:           ISO8601DateFormatter().string(from: Date()),
-            referencePhotoBase64: referencePhotoData?.base64EncodedString()
+            referencePhotoBase64: referencePhotoData?.base64EncodedString(),
+            referenceCameraPose:  referencePhotoData != nil ? referenceCameraPose : nil
         )
         _ = try await post(Resp.self, path: "/worldmap/guide/\(guideId)/upload", body: body, timeout: 90)
+    }
+
+    /// X1: the author's camera pose at the reference photo (nil when the guide
+    /// was placed before poses were recorded). Used to detect a re-localization
+    /// that latched onto a moved object.
+    func fetchGuideWorldMapReferencePose(guideId: String) async -> simd_float4x4? {
+        struct Meta: Decodable { let referenceCameraPose: [Float]? }
+        guard let m = try? await get(Meta.self, path: "/worldmap/guide/\(guideId)/meta"),
+              let f = m.referenceCameraPose, f.count == 16 else { return nil }
+        return simd_float4x4(columns: (
+            simd_float4(f[0],  f[1],  f[2],  f[3]),
+            simd_float4(f[4],  f[5],  f[6],  f[7]),
+            simd_float4(f[8],  f[9],  f[10], f[11]),
+            simd_float4(f[12], f[13], f[14], f[15])))
     }
 
     /// Operator: download the ARWorldMap for a guide to re-localize the session.

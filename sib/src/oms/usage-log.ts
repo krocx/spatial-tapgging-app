@@ -128,6 +128,12 @@ export function usageRecordEvent(
       }
       break;
     }
+    case 'environment:drift': {
+      const pl = (req.payload ?? {}) as { distanceM?: number; angleDeg?: number };
+      if (typeof pl.distanceM !== 'number' || typeof pl.angleDeg !== 'number') return;
+      rec.drift = { distanceM: pl.distanceM, angleDeg: pl.angleDeg, ts };
+      break;
+    }
     default:
       return;   // retried/stalled events don't change timing rows
   }

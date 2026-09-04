@@ -241,6 +241,9 @@ struct GuideStepPlacementView: View {
     @State private var saveError:          String? = nil
     @State private var lastSaveSucceeded:  Bool    = false
     @State private var firstStepPhotoData: Data?   = nil
+    /// X1: camera transform at the moment firstStepPhotoData was taken —
+    /// uploaded with the world map so operators can detect drift.
+    @State private var firstStepCameraPose: simd_float4x4? = nil
     /// Resume sessions may refresh the Step-1 reference once, only when looking at it.
     @State private var resumeRefCaptureArmed = true
 
@@ -1007,7 +1010,8 @@ struct GuideStepPlacementView: View {
         let b  = arManager.sceneView.bounds
         let px = CGFloat(p.x), py = CGFloat(p.y)
         guard p.z > 0, px > b.width * 0.2, px < b.width * 0.8, py > b.height * 0.2, py < b.height * 0.8 else { return }
-        firstStepPhotoData = arManager.sceneView.snapshot().jpegData(compressionQuality: 0.72)
+        firstStepPhotoData  = arManager.sceneView.snapshot().jpegData(compressionQuality: 0.72)
+        firstStepCameraPose = frame.camera.transform
         resumeRefCaptureArmed = false
     }
 
@@ -1075,7 +1079,8 @@ struct GuideStepPlacementView: View {
         let stepId = step.id
 
         if activeStepIndex == 0 {
-            firstStepPhotoData = arManager.sceneView.snapshot().jpegData(compressionQuality: 0.72)
+            firstStepPhotoData  = arManager.sceneView.snapshot().jpegData(compressionQuality: 0.72)
+            firstStepCameraPose = arManager.sceneView.session.currentFrame?.camera.transform
         }
 
         stepPositions[stepId] = position
@@ -1646,8 +1651,12 @@ struct GuideStepPlacementView: View {
         let (updatedSteps, errors) = await patchChangedPositions()
         if let mapData {
             do {
+                let pose: [Float]? = firstStepCameraPose.map { m in
+                    (0..<4).flatMap { c in (0..<4).map { r in m[c][r] } }
+                }
                 try await client.uploadGuideWorldMap(
-                    guideId: guide.id, mapData: mapData, referencePhotoData: photoData)
+                    guideId: guide.id, mapData: mapData, referencePhotoData: photoData,
+                    referenceCameraPose: pose)
             } catch {
                 print("[GuideStepPlacementView] World map upload failed (non-fatal): \(error)")
             }

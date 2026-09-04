@@ -62,6 +62,27 @@ it, it gets a line.
   the reverse-compiler (Edit in Designer) surfaces every slot, assignment
   only. Unit tests for all three paths. Roadmap bundle must be rebuilt on
   the Mac (`npm run build:roadmap`) and committed.
+- **Never-stuck step validation (X1)** — the trained-stance gate (distance /
+  direction / aim to the pin) is now advisory. Auto-capture also fires on
+  **image alignment**: every 0.5 s the live frame's Vision feature print is
+  scored against the trained references (`feature_prints` / `fp_max_dist`,
+  ROI-cropped) and ≥ 0.60 counts as aligned — so a moved QR (every pin off)
+  can't trap the operator. After 8 s the shutter becomes "Capture anyway"; the
+  comparator still scores honestly (FAIL → Retry / Proceed anyway / Recovery).
+  **Drift detection**: Place Steps now uploads the author's camera pose with
+  the Step-1 reference photo (`referenceCameraPose` on the world-map upload,
+  `GET /worldmap/guide/:id/meta`). At "I'm Here" the operator's pose is
+  compared; > 0.5 m or > 25° yaw apart → in-app warning ("Scene may have
+  changed — pins may be off"), guidance switches to the ghost, and an
+  `environment:drift` event lands on the usage-log session (`drift`, shown as
+  a ⚠ chip in the portal) so the author knows to re-place steps.
+- **Validation focus mode (X2, iOS)** — validation takes over the screen:
+  step panels, pins, arrow, feature-point dots, the text panel, Prev/Next and
+  the failed banner are hidden; what remains is the target ring, one guidance
+  line under the top bar, the ghost as a corner thumbnail (spreads over the
+  live view only when you're close to aligned — ≥ 35 % match — or when
+  tapped), a shutter with a ring that fills as alignment improves, and a ✕.
+  Everything returns when validation ends.
 - **Guided single-shot training + auto-capture (W1–W3)** — W1: a validated
   step always yields evidence: "Require validation" locks "Require evidence
   photo" on (enforced server-side on PATCH), the validation frame becomes the

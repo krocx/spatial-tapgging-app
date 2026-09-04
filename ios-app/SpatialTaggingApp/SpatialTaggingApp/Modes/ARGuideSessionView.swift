@@ -113,6 +113,22 @@ struct ARGuideSessionView: View {
     @State private var coneReadyTicks     = 0        // consecutive 100 ms ticks in position
     @State private var coneAutoFired      = false    // one auto-capture per attempt
     private let coneDwellTicks            = 8        // 0.8 s steady = capture
+    // X1: never-stuck validation. The pose gate is ADVISORY — image alignment
+    // (on-device feature-print similarity to the trained refs) can open the
+    // gate on its own, and after coneEscapeSeconds the shutter works anyway.
+    @State private var coneImgScore:      Double = 0            // live fp similarity 0…1
+    @State private var coneImgInFlight    = false
+    @State private var coneRefPrints:     [TagFeaturePrint] = []
+    @State private var conePoseProgress:  Double = 0            // 0…1 how close the stance is
+    @State private var coneStartedAt:     Date?  = nil
+    @State private var coneTick           = 0
+    @State private var coneGhostExpanded  = false               // X2: thumbnail tapped open
+    private let coneEscapeSeconds: TimeInterval = 8
+    private let coneImgAlignThreshold: Double   = 0.60          // = stepPassThreshold
+    /// X1: author's camera pose at the reference photo (world-map coords) and
+    /// whether "I'm Here" disagreed with it — pins are then suspect.
+    @State private var referenceCameraPose: simd_float4x4? = nil
+    @State private var environmentDrift   = false
     /// Same pass threshold the inspection flow uses (OperatorModeView default).
     private let stepPassThreshold: Double = 0.60
     @State private var manualValidationIndex: Int? = nil          // untrained: manual Pass/Fail
@@ -305,62 +321,17 @@ struct ARGuideSessionView: View {
                 case .relocalizing:
                     relocalizingOverlay
                 case .navigating(let index):
-                    navigationUI(index: index)
+                    // X2: validation focus mode owns the screen while it runs.
+                    if coneValidateIndex == nil { navigationUI(index: index) }
                 case .submitted:
                     submittedOverlay
                 }
             }
 
-            // V2: in-AR cone validation overlay — guides the operator into the
-            // trained viewing zone before capturing the verdict frame.
+            // V2/X2: in-AR validation — focus mode (see validationFocusUI).
             if let idx = coneValidateIndex, idx < sortedSteps.count {
-                // W2: the Author's reference as a translucent ghost — the
-                // operator lines the live view up with it (same idea as
-                // checkpoint re-localization), then the capture fires itself.
-                if let ghost = coneGhostImage {
-                    Image(uiImage: ghost)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .opacity(coneReady ? 0.22 : 0.38)
-                        .ignoresSafeArea()
-                        .allowsHitTesting(false)
-                        .animation(.easeInOut(duration: 0.25), value: coneReady)
-                }
-                VStack {
-                    Spacer()
-                    VStack(spacing: 12) {
-                        Text("Validate: \(sortedSteps[idx].displayTitle)")
-                            .font(.headline).foregroundStyle(.white)
-                        Label(coneStatusText, systemImage: coneReady ? "checkmark.circle.fill" : "scope")
-                            .font(.subheadline)
-                            .foregroundStyle(coneReady ? .green : .white.opacity(0.75))
-                        HStack(spacing: 12) {
-                            Button("Cancel") { endConeValidation() }
-                                .font(.subheadline).foregroundStyle(.white.opacity(0.7))
-                                .padding(.horizontal, 16).padding(.vertical, 10)
-                                .background(Color.white.opacity(0.12), in: Capsule())
-                            Button {
-                                captureConeValidationFrame()
-                            } label: {
-                                HStack {
-                                    if validationInFlight { ProgressView().tint(.white) }
-                                    Text(validationInFlight ? "Checking…" : "Capture & Validate")
-                                        .font(.subheadline.bold())
-                                }
-                                .padding(.horizontal, 18).padding(.vertical, 10)
-                                .background(coneReady ? Color.green : Color.gray.opacity(0.5), in: Capsule())
-                                .foregroundStyle(.white)
-                            }
-                            .disabled(!coneReady || validationInFlight)
-                        }
-                    }
-                    .padding(18)
-                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 110)
-                }
-                .transition(.move(edge: .bottom).combined(with: .opacity))
+                validationFocusUI(index: idx)
+                    .transition(.opacity)
             }
 
             // Top bar — always visible
@@ -370,13 +341,14 @@ struct ARGuideSessionView: View {
             if case .navigating(let index) = phase {
                 updateNavTelemetry(index: index)
             }
-            // V2: live cone guidance — colour + readiness at 10 Hz. "In
-            // position" means standing at the distance the Author TRAINED at
-            // (cone_dist_m, ±30 % / ≥8 cm) and aiming at the ring — apparent
-            // object size scales ~1/distance, so matching the trained stance
-            // is what makes the references comparable.
+            // V2/X1: live validation guidance at 10 Hz. Pose readiness (trained
+            // stance: cone_dist_m ±30 % / ≥8 cm, aim, shot direction) is now
+            // ADVISORY — image alignment against the trained references can
+            // open the gate on its own, so a moved QR (pins off) never traps
+            // the operator. After coneEscapeSeconds the shutter works regardless.
             if let g = coneValidateGuide,
                let frame = arManager.sceneView.session.currentFrame {
+                coneTick += 1
                 let t = frame.camera.transform
                 g.updateForCamera(cameraTransform: t)
                 let cam   = simd_float3(t.columns.3.x, t.columns.3.y, t.columns.3.z)
@@ -385,8 +357,6 @@ struct ARGuideSessionView: View {
                 let tol   = max(0.08, train * 0.30)
                 let distOK = abs(dist - train) <= tol
                 let angle  = g.alignmentAngle(cameraTransform: t)
-                // W2: quick-shot steps also store the direction the Author
-                // stood in — guide the operator back onto that line of sight.
                 var dirOK = true
                 if let tag = coneValidateTag,
                    let sx = metaFloat(tag.metadata, "shot_dir_x"),
@@ -396,17 +366,49 @@ struct ARGuideSessionView: View {
                     let d   = simd_dot(cur, simd_float3(sx, sy, sz))
                     dirOK = acos(max(-1, min(1, d))) * 180 / .pi < 20
                 }
-                let ready  = distOK && dirOK && angle < 25
+                let poseOK = distOK && dirOK && angle < 25
+                // Smooth 0…1 stance progress for the shutter ring.
+                let distP  = max(0, 1 - Double(abs(dist - train)) / Double(train * 1.5 + 0.2))
+                let angP   = max(0, 1 - Double(angle) / 90)
+                conePoseProgress = poseOK ? 1 : min(distP, angP) * 0.9
+
+                // X1: image alignment — feature print of the raw frame vs the
+                // trained refs, every 0.5 s, one in flight at a time.
+                if coneTick % 5 == 0, !coneImgInFlight, !coneRefPrints.isEmpty, !validationInFlight,
+                   let img = rawCameraImage(from: frame) {
+                    coneImgInFlight = true
+                    let roi = coneValidateTag?.roi
+                    let maxDist = coneValidateTag.flatMap { metaFloat($0.metadata, "fp_max_dist") }
+                    let refs = coneRefPrints
+                    Task {
+                        let probe = roi.map { cropToROI(img, roi: $0) } ?? img
+                        let score = await TagFeaturePrint.extract(from: probe)
+                            .map { TagFeaturePrint.bestScore(live: $0, references: refs, maxDist: maxDist) } ?? 0
+                        await MainActor.run {
+                            coneImgScore    = score
+                            coneImgInFlight = false
+                        }
+                    }
+                }
+                let imgOK = coneImgScore >= coneImgAlignThreshold
+                let ready = poseOK || imgOK
                 if ready != coneReady { coneReady = ready }
-                coneStatusText = !distOK
-                    ? (dist > train ? "Move closer — \(Int(((dist - train) * 100).rounded())) cm"
-                                    : "Step back — \(Int(((train - dist) * 100).rounded())) cm")
-                    : !dirOK ? "Move around to match the ghost view"
+
+                let pct = Int((coneImgScore * 100).rounded())
+                coneStatusText =
+                    coneAutoFired ? "✓ In position"
+                    : ready       ? "✓ Hold still — capturing…"
+                    // Pins suspect (drift) or the stance is far off: steer by the ghost.
+                    : (environmentDrift || !distOK && abs(dist - train) > train)
+                                  ? "Match the ghost view · \(pct)% match"
+                    : !distOK     ? (dist > train ? "Move closer — \(Int(((dist - train) * 100).rounded())) cm"
+                                                  : "Step back — \(Int(((train - dist) * 100).rounded())) cm")
+                    : !dirOK      ? "Move around to match the ghost view"
                     : angle >= 25 ? "Aim at the ring"
-                    : coneAutoFired ? "✓ In position"
-                    : "✓ Hold still — capturing…"
+                    : "Line up with the ghost · \(pct)% match"
+
                 // W3: dwell auto-capture — 0.8 s steady in position fires once
-                // per attempt; the manual button stays as a backup.
+                // per attempt; the shutter stays as a backup.
                 if ready && !validationInFlight && !coneAutoFired {
                     coneReadyTicks += 1
                     if coneReadyTicks >= coneDwellTicks {
@@ -847,6 +849,7 @@ struct ARGuideSessionView: View {
 
                 Button {
                     userConfirmedRelocalize = true
+                    checkEnvironmentDrift()          // X1
                     transitionToNavigating()
                 } label: {
                     Label("I'm Here", systemImage: "mappin.and.ellipse")
@@ -1047,6 +1050,8 @@ struct ARGuideSessionView: View {
             let (mapData, photoData) = try await (mapFetch, photoFetch)
 
             if let pd = photoData { referencePhoto = UIImage(data: pd) }
+            // X1: author's pose at that photo — compared at "I'm Here".
+            Task { referenceCameraPose = await client.fetchGuideWorldMapReferencePose(guideId: guide.id) }
 
             // Open live session for real-time telemetry (fire-and-forget — AR session
             // continues normally if this fails).
@@ -2298,6 +2303,10 @@ struct ARGuideSessionView: View {
         coneValidateIndex = index
         coneValidateGuide = ConeARGuide(sceneView: arManager.sceneView, tagWorldPosition: pos)
         coneReadyTicks = 0; coneAutoFired = false; coneGhostImage = nil
+        coneImgScore = 0; coneImgInFlight = false; conePoseProgress = 0
+        coneStartedAt = Date(); coneTick = 0; coneGhostExpanded = false
+        coneRefPrints = coneValidateTag.map(referencePrints(of:)) ?? []
+        setValidationFocus(true)                                    // X2
         // W2: quick-shot steps get the Author's reference frame as a ghost
         // overlay — align the live view to it, and the capture fires itself.
         if index < sortedSteps.count {
@@ -2317,7 +2326,10 @@ struct ARGuideSessionView: View {
             coneValidateTag = nil
             Task {
                 let t = try? await SIBClient(settings: settings).fetchTag(id: tagId)
-                await MainActor.run { coneValidateTag = t }
+                await MainActor.run {
+                    coneValidateTag = t
+                    coneRefPrints   = t.map(referencePrints(of:)) ?? []
+                }
             }
         }
     }
@@ -2329,6 +2341,62 @@ struct ARGuideSessionView: View {
         coneReady         = false
         coneGhostImage    = nil
         coneReadyTicks    = 0
+        coneStartedAt     = nil
+        coneImgScore      = 0
+        setValidationFocus(false)                                   // X2
+    }
+
+    /// Trained feature prints carried by the hidden step tag.
+    private func referencePrints(of tag: Tag) -> [TagFeaturePrint] {
+        guard let fpAny = tag.metadata["feature_prints"], let arr = fpAny.value as? [Any] else { return [] }
+        return arr.compactMap { ($0 as? String).flatMap { TagFeaturePrint(base64: $0) } }
+    }
+
+    /// X1: escape hatch — after coneEscapeSeconds the shutter works without
+    /// alignment (the comparator still scores honestly; FAIL → dialog).
+    private var coneEscapeOpen: Bool {
+        guard let t0 = coneStartedAt else { return false }
+        return Date().timeIntervalSince(t0) >= coneEscapeSeconds
+    }
+
+    /// X1: compare the operator's "I'm Here" pose with the author's reference
+    /// pose. A large disagreement means ARKit re-localized onto something that
+    /// moved (typically the QR) — every pin is then off by that same offset.
+    /// We warn, log it for the author, and let image alignment carry validation.
+    private func checkEnvironmentDrift() {
+        guard let ref = referenceCameraPose,
+              let cur = arManager.sceneView.session.currentFrame?.camera.transform else { return }
+        let dp   = simd_float3(cur.columns.3.x - ref.columns.3.x, 0, cur.columns.3.z - ref.columns.3.z)
+        let dist = simd_length(dp)
+        // Forward vectors (-Z) projected onto the floor plane → yaw difference.
+        func yaw(_ m: simd_float4x4) -> Float { atan2(-m.columns.2.x, -m.columns.2.z) }
+        var dy = abs(yaw(cur) - yaw(ref)) * 180 / .pi
+        if dy > 180 { dy = 360 - dy }
+        guard dist > 0.5 || dy > 25 else { return }
+        environmentDrift = true
+        showNotice("⚠ Scene may have changed (QR moved?) — pins may be off; validation will use image alignment")
+        if let lsId = liveSessionId {
+            Task {
+                await SIBClient(settings: settings).pushGuideSessionEvent(
+                    liveSessionId: lsId,
+                    event: PushGuideSessionEventRequest(
+                        type: .environmentDrift, stepId: nil, stepIndex: nil, durationSeconds: nil,
+                        payload: ["distanceM": AnyCodable(Double(dist)), "angleDeg": AnyCodable(Double(dy))]))
+            }
+        }
+    }
+
+    /// X2: validation focus mode — everything that isn't the target gets out
+    /// of the way: step pins/panels, the guidance arrow, feature-point dots.
+    private func setValidationFocus(_ on: Bool) {
+        SCNTransaction.begin(); SCNTransaction.animationDuration = 0.2
+        for (_, n) in panelContainers { n.isHidden = on }
+        for (_, n) in pinNodes        { n.isHidden = on }
+        arrowNode?.isHidden = on
+        for n in ghostModelNodes { n.isHidden = on }
+        SCNTransaction.commit()
+        arManager.sceneView.debugOptions = on ? [] : [.showFeaturePoints]
+        if !on { updatePanelVisibility() }
     }
 
     private func metaFloat(_ meta: [String: AnyCodable], _ key: String) -> Float? {
@@ -2851,6 +2919,114 @@ struct ARGuideSessionView: View {
     private func removeGhostOverlay() {
         for node in ghostModelNodes { node.removeFromParentNode() }
         ghostModelNodes = []
+    }
+}
+
+// ── X2: Validation focus mode ─────────────────────────────────────────────────
+
+extension ARGuideSessionView {
+    /// One target, one line of guidance, one shutter. The ghost lives in a
+    /// corner thumbnail and only spreads over the live view when the operator
+    /// is close to aligned (or taps it), so it stops fighting the camera.
+    @ViewBuilder
+    func validationFocusUI(index: Int) -> some View {
+        let step      = sortedSteps[index]
+        let progress  = max(conePoseProgress, coneImgScore)
+        let canShoot  = (coneReady || coneEscapeOpen) && !validationInFlight
+        let showFull  = coneGhostExpanded || coneReady || coneImgScore >= 0.35
+
+        ZStack {
+            if let ghost = coneGhostImage, showFull {
+                Image(uiImage: ghost)
+                    .resizable().scaledToFill()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .opacity(coneReady ? 0.20 : 0.34)
+                    .ignoresSafeArea()
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
+            }
+
+            VStack(spacing: 0) {
+                // Guidance line, just under the top bar
+                HStack(spacing: 8) {
+                    Image(systemName: coneReady ? "checkmark.circle.fill" : "scope")
+                        .foregroundStyle(coneReady ? Color.green : Color.white.opacity(0.85))
+                    Text(coneStatusText).font(.subheadline.weight(.semibold)).foregroundStyle(.white)
+                        .lineLimit(1).minimumScaleFactor(0.8)
+                }
+                .padding(.horizontal, 16).padding(.vertical, 9)
+                .background(.ultraThinMaterial, in: Capsule())
+                .padding(.top, 62)
+                Text("Validate · \(step.displayTitle)")
+                    .font(.caption).foregroundStyle(.white.opacity(0.7))
+                    .padding(.top, 6)
+                if environmentDrift {
+                    Text("Pins may be off — line up with the ghost")
+                        .font(.caption2.bold()).foregroundStyle(.orange)
+                        .padding(.top, 2)
+                }
+                Spacer()
+
+                // Bottom rail: ghost thumbnail · shutter ring · cancel
+                HStack(alignment: .center) {
+                    Button { withAnimation { coneGhostExpanded.toggle() } } label: {
+                        ZStack {
+                            if let ghost = coneGhostImage {
+                                Image(uiImage: ghost).resizable().scaledToFill()
+                            } else {
+                                Color.black.opacity(0.35)
+                                ProgressView().tint(.white)
+                            }
+                        }
+                        .frame(width: 84, height: 60)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .overlay(RoundedRectangle(cornerRadius: 10)
+                            .stroke(coneGhostExpanded ? Color.white : Color.white.opacity(0.4), lineWidth: 1.5))
+                    }
+                    .accessibilityLabel("Reference view")
+
+                    Spacer()
+
+                    VStack(spacing: 8) {
+                        Button { captureConeValidationFrame() } label: {
+                            ZStack {
+                                Circle().stroke(Color.white.opacity(0.25), lineWidth: 6).frame(width: 84, height: 84)
+                                Circle().trim(from: 0, to: CGFloat(min(1, progress)))
+                                    .stroke(coneReady ? Color.green : Color.cyan,
+                                            style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                                    .rotationEffect(.degrees(-90))
+                                    .frame(width: 84, height: 84)
+                                    .animation(.easeOut(duration: 0.2), value: progress)
+                                Circle().fill(canShoot ? Color.white : Color.white.opacity(0.45))
+                                    .frame(width: 62, height: 62)
+                                if validationInFlight { ProgressView().tint(.black) }
+                            }
+                        }
+                        .disabled(!canShoot)
+                        Text(validationInFlight ? "Checking…"
+                             : coneReady ? "Capture"
+                             : coneEscapeOpen ? "Capture anyway"
+                             : "\(Int((progress * 100).rounded()))% aligned")
+                            .font(.caption2.bold())
+                            .foregroundStyle(.white.opacity(0.85))
+                    }
+
+                    Spacer()
+
+                    Button { endConeValidation() } label: {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(.white)
+                            .frame(width: 48, height: 48)
+                            .background(Color.white.opacity(0.14), in: Circle())
+                    }
+                    .accessibilityLabel("Cancel validation")
+                    .frame(width: 84)   // balance the thumbnail so the shutter is centred
+                }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 44)
+            }
+        }
     }
 }
 

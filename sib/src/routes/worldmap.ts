@@ -42,6 +42,14 @@ function guideRefPhotoPath(guideId: string): string {
   return path.join(GUIDE_WORLDMAPS_DIR, `${guideId}.refphoto.jpg`);
 }
 
+/** X1: camera pose (column-major 4×4, 16 floats, world-map coords) at the
+ *  moment the reference photo was taken — the operator's "I'm Here" pose is
+ *  compared against it to detect a relocalization that latched onto a moved
+ *  object (QR moved → every pin off). */
+function guideRefPosePath(guideId: string): string {
+  return path.join(GUIDE_WORLDMAPS_DIR, `${guideId}.refpose.json`);
+}
+
 function isValidAnchorId(anchorId: string): boolean {
   return !anchorId.includes('..') && !anchorId.includes('/');
 }
@@ -124,10 +132,11 @@ router.post('/guide/:guideId/upload', (req: Request, res: Response): void => {
     return;
   }
 
-  const { worldMapBase64, capturedAt, referencePhotoBase64 } = req.body as {
+  const { worldMapBase64, capturedAt, referencePhotoBase64, referenceCameraPose } = req.body as {
     worldMapBase64:        string;
     capturedAt:            string;
     referencePhotoBase64?: string;
+    referenceCameraPose?:  number[];
   };
 
   if (!worldMapBase64) {
@@ -163,6 +172,15 @@ router.post('/guide/:guideId/upload', (req: Request, res: Response): void => {
     }
   }
 
+  // X1: reference camera pose rides along with the photo (only when a photo
+  // was captured this save — the pose belongs to that frame).
+  if (referencePhotoBase64 && Array.isArray(referenceCameraPose)
+      && referenceCameraPose.length === 16 && referenceCameraPose.every(n => typeof n === 'number' && isFinite(n))) {
+    try {
+      fs.writeFileSync(guideRefPosePath(guideId), JSON.stringify({ referenceCameraPose, capturedAt }));
+    } catch (err) { console.error('[SIB] Failed to save reference pose (non-fatal):', err); }
+  }
+
   console.log(`[SIB] ARWorldMap saved for guide ${guideId} (${buf.length} bytes, captured ${capturedAt})`);
 
   const resp: ApiResponse<{ guideId: string; sizeBytes: number; refPhotoSaved: boolean }> = {
@@ -170,6 +188,22 @@ router.post('/guide/:guideId/upload', (req: Request, res: Response): void => {
     timestamp: new Date().toISOString(),
   };
   res.status(201).json(resp);
+});
+
+// GET /worldmap/guide/:guideId/meta — X1: { referenceCameraPose?: number[16], capturedAt? }
+router.get('/guide/:guideId/meta', (req: Request, res: Response): void => {
+  const { guideId } = req.params;
+  if (!isValidGuideId(guideId)) {
+    res.status(400).json({ error: 'Invalid guideId' });
+    return;
+  }
+  let meta: Record<string, unknown> = {};
+  try {
+    if (fs.existsSync(guideRefPosePath(guideId))) {
+      meta = JSON.parse(fs.readFileSync(guideRefPosePath(guideId), 'utf8')) as Record<string, unknown>;
+    }
+  } catch { meta = {}; }
+  res.json({ data: meta, timestamp: new Date().toISOString() });
 });
 
 // GET /worldmap/guide/:guideId/photo

@@ -2377,7 +2377,7 @@ function renderUsageLog() {
         `<td class="num">${steps.length}</td>` +
         `<td class="num ul-ok">${done}</td>` +
         `<td class="num ul-bad">${failed || ''}</td>` +
-        `<td>${u.completed ? '✅ Signed off' : '⏳ Open'}</td></tr>`;
+        `<td>${u.completed ? '✅ Signed off' : '⏳ Open'}${u.drift ? ` <span class="ul-val fail" title="Re-localization disagreed with the author's reference pose by ${u.drift.distanceM.toFixed(2)} m / ${Math.round(u.drift.angleDeg)}° — QR or equipment may have moved; steps should be re-placed">⚠ drift</span>` : ''}</td></tr>`;
       const stepRows = steps.map(e => `<tr>` +
         `<td class="num">${e.stepIndex !== undefined ? e.stepIndex + 1 : '·'}</td>` +
         `<td>${new Date(e.enteredAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</td>` +
