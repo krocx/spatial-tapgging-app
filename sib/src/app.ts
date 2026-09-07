@@ -15,6 +15,8 @@ import guideRouter from './routes/guides.js';
 import guideSessionRouter from './routes/guide-sessions.js';
 import tagGroupRouter from './routes/tag-groups.js';
 import chamberConfigRouter from './routes/chamber-configs.js';
+import { chamberConfigStore } from './routes/chamber-configs.js';
+import { guideStore, guideStepStore } from './guides/store.js';
 import modelRouter from './routes/models.js';
 import mindmapRouter from './routes/mindmap.routes.js';
 import lotoRouter, { lotoPointStore, lotoEventStore } from './routes/loto.js';
@@ -207,8 +209,20 @@ document.getElementById('f').addEventListener('submit', async function(ev){
       const validatedSteps = usage.reduce((n, r) =>
         n + r.steps.filter(e => e.validation?.mode === 'system').length, 0);
 
+      // P1: getting-started milestones for the portal's guided assistance.
+      const allGuides = guideStore.findAll();
+      const allSteps  = guideStepStore.findAll();
+      const placedGuides = allGuides.filter(g => {
+        const st = allSteps.filter(s => s.guideId === g.id);
+        return st.length > 0 && st.every(s => s.isPlaced);
+      }).length;
+      const allAnchors = anchorStore.findAll();
       res.json({
-        anchors: anchorStore.findAll().length,
+        anchors: allAnchors.length,
+        chambersAssigned: allAnchors.filter(a => (!a.anchorType || a.anchorType === 'QR') && a.configId).length,
+        chamberConfigs: chamberConfigStore.findAll().length,
+        guides: allGuides.length,
+        placedGuides,
         sessionsThisWeek,
         openGembaFindings: openFindings,
         activeLotoLocks: activeLocks,

@@ -114,6 +114,20 @@ it, it gets a line.
   chamber (unassigned chambers, then GembaWalk/iLOTO, at the end) and each
   guide gets "⧉⧉ All N" — copy to every other chamber of the configuration
   as drafts, skipping chambers that already have a guide of that name.
+- **Portal guided assistance (P1)** — the portal's FTUE, in the iOS tour's
+  voice. (1) A 🧭 **Getting started** checklist (bottom-right) with five
+  milestones that turn green from live `/stats` data — configuration →
+  chamber + QR → guide → steps placed (phone) → first run — each a link into
+  the right page, with a progress bar; it minimises itself once you're 3/5,
+  celebrates and disappears at 5/5. (2) **Page tours**: a spotlight
+  walkthrough of the controls that matter on Home, Chambers, Guide Library,
+  AR Guides and Admin, once per page per browser; **❔ Show me** in the header
+  replays it; Esc skips. (3) **Empty states become next steps** (no chambers →
+  "add a configuration first" / "+ New Anchor"; no guides → Import / open the
+  Designer). A **Guided assistance** toggle in ⚙ Settings (on by default) with
+  "Restart tours". Technicians never see it. `/stats` gains
+  `chamberConfigs`, `chambersAssigned`, `guides`, `placedGuides`; the Guide
+  Library toolbar gains a 🗺 Procedure Designer link.
 - **Validation focus mode (X2, iOS)** — validation takes over the screen:
   step panels, pins, arrow, feature-point dots, the text panel, Prev/Next and
   the failed banner are hidden; what remains is the target ring, one guidance

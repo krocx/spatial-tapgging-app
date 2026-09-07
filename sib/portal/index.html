@@ -546,6 +546,35 @@
       .sessions-tbl-wrap { overflow-x:auto;-webkit-overflow-scrolling:touch; }
       .anchor-group, .iloto-panel-card { overflow-x:auto; }
     }
+
+    /* ── P1: guided assistance (checklist + spotlight tours) ───────────── */
+    #gs-panel { position:fixed; right:18px; bottom:18px; width:340px; z-index:600; background:var(--surface);
+      border:1px solid var(--border); border-radius:14px; box-shadow:0 18px 50px rgba(0,0,0,.45); font-size:0.8rem; overflow:hidden; }
+    #gs-panel.min { width:auto; }
+    #gs-panel .gs-hdr { display:flex; align-items:center; gap:10px; padding:10px 14px; cursor:pointer; background:rgba(79,142,247,.08); }
+    #gs-panel .gs-hdr b { flex:1; font-size:0.84rem; }
+    #gs-panel .gs-bar { height:5px; background:var(--border); border-radius:3px; margin:0 14px 8px; overflow:hidden; }
+    #gs-panel .gs-bar i { display:block; height:100%; background:linear-gradient(90deg,#4f8ef7,#22d3ee); transition:width .4s; }
+    .gs-item { display:flex; gap:10px; padding:9px 14px; border-top:1px solid var(--border); cursor:pointer; align-items:flex-start; }
+    .gs-item:hover { background:rgba(255,255,255,.03); }
+    .gs-item .gs-ck { width:20px; height:20px; border-radius:50%; border:2px solid var(--border); flex:none; display:flex; align-items:center; justify-content:center; font-size:11px; margin-top:1px; }
+    .gs-item.done .gs-ck { background:#22c55e; border-color:#22c55e; color:#04120a; }
+    .gs-item.next .gs-ck { border-color:#4f8ef7; box-shadow:0 0 0 3px rgba(79,142,247,.25); }
+    .gs-item .gs-t { font-weight:600; } .gs-item.done .gs-t { color:var(--muted); text-decoration:line-through; }
+    .gs-item .gs-d { color:var(--muted); font-size:0.72rem; margin-top:2px; }
+    .gs-item.next .gs-d { color:var(--text); }
+    .gs-foot { padding:8px 14px; font-size:0.7rem; color:var(--muted); border-top:1px solid var(--border); display:flex; gap:10px; }
+    .gs-foot a { color:var(--accent); cursor:pointer; }
+    #tour-mask { position:fixed; inset:0; z-index:700; pointer-events:none; }
+    #tour-ring { position:fixed; z-index:701; border-radius:12px; box-shadow:0 0 0 9999px rgba(3,5,12,.66), 0 0 0 3px #4f8ef7, 0 0 30px rgba(79,142,247,.6);
+      transition:all .25s ease; pointer-events:none; }
+    #tour-card { position:fixed; z-index:702; width:320px; background:var(--surface); border:1px solid var(--border); border-radius:14px;
+      padding:14px 16px; box-shadow:0 18px 50px rgba(0,0,0,.5); font-size:0.82rem; }
+    #tour-card h4 { margin:0 0 6px; font-size:0.95rem; } #tour-card p { margin:0 0 12px; color:var(--muted); line-height:1.45; }
+    #tour-card .tour-nav { display:flex; align-items:center; gap:8px; }
+    #tour-card .tour-nav .tour-step { flex:1; color:var(--muted); font-size:0.7rem; }
+    .tour-empty { text-align:center; padding:28px 16px; color:var(--muted); }
+    .tour-empty .btn { margin-top:10px; }
   </style>
 </head>
 <body>
@@ -563,8 +592,9 @@
     <span id="uam-chip" style="display:none;font-size:0.72rem;color:var(--muted);margin-right:4px"></span>
     <button class="btn btn-ghost btn-sm" id="uam-signout" onclick="uamLogout()" style="display:none">Sign out</button>
     <button class="btn btn-ghost btn-sm" id="admin-btn" onclick="toggleAdmin()" style="display:none" title="Destructive actions (delete, quiz editing) require the admin key">🔒 Admin</button>
-    <button class="btn btn-ghost btn-sm" onclick="showSettings()">⚙ Settings</button>
-    <button class="btn btn-primary btn-sm" onclick="openCreateModal()">+ New Anchor</button>
+    <button class="btn btn-ghost btn-sm" onclick="showSettings()" data-tour="settings">⚙ Settings</button>
+    <button class="btn btn-ghost btn-sm" id="guide-help-btn" onclick="guideStartTour(true)" title="Show me around this page" style="display:none">❔ Show me</button>
+    <button class="btn btn-primary btn-sm" onclick="openCreateModal()" data-tour="new-anchor">+ New Anchor</button>
   </div>
 </header>
 
@@ -583,7 +613,7 @@
     <p>Live counts refresh with the platform — home doubles as a status glance.</p>
   </div>
   <div class="ph-grid">
-    <div class="ph-tile t-anchors" onclick="location.hash='#anchors'">
+    <div class="ph-tile t-anchors" onclick="location.hash='#anchors'" data-tour="tile-anchors">
       <div class="ph-ico">🔗</div><h3>Anchors</h3>
       <div class="ph-sub">QR codes, tags &amp; training — the spatial backbone</div>
       <div class="ph-stats" id="ph-stat-anchors"></div>
@@ -593,7 +623,7 @@
       <div class="ph-sub">Spatial Inspection results — pass/fail, evidence, reports</div>
       <div class="ph-stats" id="ph-stat-inspect"></div>
     </div>
-    <div class="ph-tile t-arguides" onclick="location.hash='#ar-guides'">
+    <div class="ph-tile t-arguides" onclick="location.hash='#ar-guides'" data-tour="tile-arguides">
       <div class="ph-ico">📋</div><h3>AR Guides Sessions</h3>
       <div class="ph-sub">Work-instruction runs by Production #</div>
       <div class="ph-stats" id="ph-stat-arguides"></div>
@@ -602,7 +632,7 @@
         <span class="ph-chip" onclick="event.stopPropagation();location.hash='#ar-guides/usage'">📊 Usage Log</span>
       </div>
     </div>
-    <div class="ph-tile t-content" onclick="location.hash='#content/guides'">
+    <div class="ph-tile t-content" onclick="location.hash='#content/guides'" data-tour="tile-content">
       <div class="ph-ico">📚</div><h3>Content Library</h3>
       <div class="ph-sub">Everything authors publish, in one place</div>
       <div class="ph-stats" id="ph-stat-content"></div>
@@ -621,7 +651,7 @@
       <div class="ph-sub">Audit walks — findings, defect categories, resolution</div>
       <div class="ph-stats" id="ph-stat-gemba"></div>
     </div>
-    <div class="ph-tile t-admin" onclick="location.hash='#admin/uam'">
+    <div class="ph-tile t-admin" onclick="location.hash='#admin/uam'" data-tour="tile-admin">
       <div class="ph-ico">🛠</div><h3>Admin</h3>
       <div class="ph-sub">Platform operations — each on its own page</div>
       <div class="ph-subnav">
@@ -691,10 +721,10 @@
 <div id="ar-guides-panel">
   <div class="sessions-toolbar">
     <span style="font-size:0.78rem;color:var(--muted);flex:1">AR Guide completions · grouped by anchor → guide</span>
-    <button class="btn btn-ghost btn-sm" id="usage-log-btn" onclick="toggleUsageLog()" title="Per-step timing per Production #">📊 Usage Log</button>
+    <button class="btn btn-ghost btn-sm" id="usage-log-btn" onclick="toggleUsageLog()" title="Per-step timing per Production #" data-tour="usage-log">📊 Usage Log</button>
     <button class="btn btn-ghost btn-sm" id="usage-xlsx-btn" style="display:none" onclick="exportUsageXlsx()" title="Excel with evidence photos embedded per row">⬇ .xlsx</button>
     <button class="btn btn-ghost btn-sm" onclick="openImportGuideModal()" title="Import a guide from JSON or MES">⬆ Import Guide</button>
-    <button class="btn btn-ghost btn-sm" id="ag-xlsx-btn" onclick="exportARGuidesXlsx()" title="Excel with evidence photos embedded per step">⬇ .xlsx</button>
+    <button class="btn btn-ghost btn-sm" id="ag-xlsx-btn" onclick="exportARGuidesXlsx()" title="Excel with evidence photos embedded per step" data-tour="ag-export">⬇ .xlsx</button>
     <button class="btn btn-ghost btn-sm" id="ag-csv-btn" onclick="exportARGuidesCSV()" title="Export as CSV (no images)">⬇ .csv</button>
     <button class="btn btn-ghost btn-sm" onclick="loadARGuideSessions()">⟳ Refresh</button>
     <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteAllARGuideSessions()" title="Delete all AR Guide sessions">🗑 Delete All</button>
@@ -734,7 +764,7 @@
       <strong>Technician</strong> (runs shared guides). With an empty list, login is off — add the first Owner to activate.
     </p>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-      <input id="uam-add-email" type="email" placeholder="email" style="flex:2;min-width:160px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.78rem">
+      <input id="uam-add-email" data-tour="uam-add" type="email" placeholder="email" style="flex:2;min-width:160px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.78rem">
       <input id="uam-add-empid" placeholder="employee ID" style="flex:1;min-width:100px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.78rem">
       <input id="uam-add-name" placeholder="name" style="flex:1;min-width:110px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.78rem">
       <select id="uam-add-role" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.78rem">
@@ -769,7 +799,7 @@
       a configuration can only be deleted once no chamber points at it.
     </p>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-      <input id="cc-add-code" placeholder="code (e.g. PXP-A)" maxlength="32" style="flex:1;min-width:120px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.78rem">
+      <input id="cc-add-code" data-tour="cc-add" placeholder="code (e.g. PXP-A)" maxlength="32" style="flex:1;min-width:120px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.78rem">
       <input id="cc-add-name" placeholder="name (e.g. Producer XP · Config A)" style="flex:2;min-width:180px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.78rem">
       <input id="cc-add-desc" placeholder="description (optional)" style="flex:2;min-width:160px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.78rem">
       <button class="btn btn-primary btn-sm" onclick="addChamberConfig()">＋ Add</button>
@@ -828,7 +858,8 @@
     <span style="font-size:0.78rem;color:var(--muted)">All guides · grouped by anchor</span>
     <input id="gl-search" type="search" placeholder="Filter guides…" oninput="filterGuideLibrary(this.value)"
            style="flex:1;min-width:140px;padding:6px 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:0.78rem">
-    <button class="btn btn-sm" onclick="openImportGuideModal()" style="font-weight:600">⬆ Import Guide</button>
+    <button class="btn btn-sm" onclick="openImportGuideModal()" style="font-weight:600" data-tour="gl-import">⬆ Import Guide</button>
+    <a class="btn btn-ghost btn-sm" href="/roadmap" target="_blank" title="Draw a procedure on a canvas and send it here as a guide" data-tour="gl-designer">🗺 Procedure Designer</a>
     <button class="btn btn-ghost btn-sm" onclick="loadGuideLibrary()">⟳ Refresh</button>
   </div>
   <div id="guide-library-list"></div>
@@ -963,6 +994,14 @@
       <input type="password" id="settings-key" placeholder="sk-…" autocomplete="off" />
     </div>
     <p style="font-size:0.72rem;color:var(--muted);margin:4px 0 0">Backups and the ops log live on the <a href="#" onclick="closeSettings();location.hash='#admin/backup';return false" style="color:var(--accent)">🛠 Admin page</a>.</p>
+    <div class="field" style="margin-top:14px">
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+        <input type="checkbox" id="settings-guide" onchange="guideSetEnabled(this.checked)" style="width:auto">
+        Guided assistance
+      </label>
+      <p style="font-size:0.72rem;color:var(--muted);margin:4px 0 0">Getting-started checklist and short page tours for new users. On by default.
+        <a href="#" onclick="guideReset();return false" style="color:var(--accent)">Restart tours</a></p>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeSettings()">Cancel</button>
       <button class="btn btn-primary" onclick="saveSettings()">Save</button>
@@ -1638,7 +1677,7 @@ async function loadChamberConfigs() {
   try {
     chamberConfigs = (await apiFetch('/chamber-configs')).data || [];
   } catch (e) { el.innerHTML = `<span style="color:var(--red)">${esc(e.message)}</span>`; return; }
-  if (!chamberConfigs.length) { el.innerHTML = '<div class="empty-state">No configurations yet — add the first one above.</div>'; return; }
+  if (!chamberConfigs.length) { el.innerHTML = guideEmptyState('configs') || '<div class="empty-state">No configurations yet — add the first one above.</div>'; return; }
   const canDelete = UAM_USER && (UAM_USER.role === 'owner' || UAM_USER.role === 'manager');
   el.innerHTML = '<table class="usage-table"><thead><tr><th>Code</th><th>Name</th><th>Description</th><th class="num">Chambers</th><th></th></tr></thead><tbody>' +
     chamberConfigs.map(c => `<tr>
@@ -1726,7 +1765,8 @@ function renderAnchors() {
   const grid = document.getElementById('anchor-grid');
 
   if (!filtered.length) {
-    grid.innerHTML = `<div class="empty" style="grid-column:1/-1">
+    const guided = !allAnchors.length ? guideEmptyState('anchors') : null;   // P1
+    grid.innerHTML = guided ? `<div style="grid-column:1/-1">${guided}</div>` : `<div class="empty" style="grid-column:1/-1">
       <div style="font-size:2rem">📭</div>
       <p>${allAnchors.length ? 'No anchors match your search.' : 'No anchors yet. Create one to get started.'}</p>
     </div>`;
@@ -1983,6 +2023,7 @@ async function submitCreateAnchor() {
 // ── Settings ───────────────────────────────────────────────────────────────────
 function showSettings() {
   document.getElementById('settings-key').value = apiKey();
+  const g = document.getElementById('settings-guide'); if (g) g.checked = guideEnabled();
   document.getElementById('settings-modal').classList.add('open');
 }
 function closeSettings() {
@@ -2233,6 +2274,8 @@ function renderRoute() {
     home.classList.add('visible');
     bar.classList.remove('visible');
     loadHomeStats();
+    guideStartTour(false);      // P1
+    guideRefresh();
     return;
   }
   home.classList.remove('visible');
@@ -2245,6 +2288,8 @@ function renderRoute() {
   else if (sec === 'content') { switchView(sub === 'models' ? 'models' : 'guide-library'); }
   else if (sec === 'admin')   { switchView('admin'); adminShowSub(sub); }
   else                        { switchView(sec); }
+  guideStartTour(false);      // P1: first-visit page tour
+  guideRefresh();             // P1: checklist follows live data
 
   // Section bar
   const nameEl = document.getElementById('sb-name');
@@ -2255,6 +2300,248 @@ function renderRoute() {
   ).join('');
 }
 window.addEventListener('hashchange', renderRoute);
+
+// ═════════════════════════════════════════════════════════════════════════════
+// P1 (2026.4.45): Guided assistance — the portal's FTUE.
+//
+// Same philosophy as the iOS tour: guided, exploratory, discoverable, and it
+// should leave people feeling capable. Three layers, one switch:
+//   1. Getting-started checklist — five milestones that turn green from LIVE
+//      data (/stats), each a link into the right page. Minimises itself once
+//      you're rolling; disappears when everything is green.
+//   2. Page tours — a 2–4 step spotlight on the controls that matter on the
+//      page you just opened, once per page per browser. "❔ Show me" replays.
+//   3. Toggle in ⚙ Settings (on by default) + "Restart tours".
+// Technicians never see any of it — they live in the AR app.
+// ═════════════════════════════════════════════════════════════════════════════
+
+const GUIDE_KEY = { on: 'sib.guide.on', seen: 'sib.guide.seen.', min: 'sib.guide.min', done: 'sib.guide.done' };
+let guideStats = null;            // last /stats payload
+let tourSteps = [], tourIdx = 0;  // active tour
+
+function guideEnabled()  { return localStorage.getItem(GUIDE_KEY.on) !== '0'; }
+function guideEligible() { return guideEnabled() && !(UAM_USER && UAM_USER.role === 'technician'); }
+function guideSetEnabled(on) {
+  localStorage.setItem(GUIDE_KEY.on, on ? '1' : '0');
+  if (!on) { tourEnd(); document.getElementById('gs-panel')?.remove(); }
+  else { guideRefresh(); guideStartTour(false); }
+}
+function guideReset() {
+  Object.keys(localStorage).filter(k => k.startsWith('sib.guide.')).forEach(k => localStorage.removeItem(k));
+  localStorage.setItem(GUIDE_KEY.on, '1');
+  closeSettings();
+  guideRefresh();
+  guideStartTour(true);
+  toast('Tours reset — welcome back to the start 👋');
+}
+
+// ── 1. Getting-started checklist ─────────────────────────────────────────────
+
+function guideMilestones(st) {
+  st = st || {};
+  return [
+    { id: 'config',  hash: '#admin/configs',   done: (st.chamberConfigs || 0) > 0,
+      t: 'Name your first chamber configuration',
+      d: 'A configuration is a chamber type — "Producer XP · Cfg A". Everything you author hangs off it.' },
+    { id: 'chamber', hash: '#anchors',         done: (st.chambersAssigned || 0) > 0,
+      t: 'Register a chamber and print its QR',
+      d: 'One anchor per physical chamber, assigned to its configuration. The QR is what operators scan.' },
+    { id: 'guide',   hash: '#content/guides',  done: (st.guides || 0) > 0,
+      t: 'Build your first guide',
+      d: 'Import from Excel / JSON, or draw it in the Procedure Designer and send it to the library.' },
+    { id: 'place',   hash: '#content/guides',  done: (st.placedGuides || 0) > 0,
+      t: 'Place the steps in AR (on the phone)',
+      d: 'Open the guide in the iOS app → Place Steps in AR. This turns text into pins on the tool.' },
+    { id: 'run',     hash: '#ar-guides',       done: (st.guidedRuns || 0) > 0,
+      t: 'Run it once and watch it land here',
+      d: 'A technician scans the chamber QR and runs the guide — the Completion and Usage logs fill in.' },
+  ];
+}
+
+async function guideRefresh() {
+  if (!portalAuthed || !guideEligible()) { document.getElementById('gs-panel')?.remove(); return; }
+  try { guideStats = await (await fetch('/stats')).json(); } catch { /* keep last */ }
+  renderGettingStarted();
+}
+
+function renderGettingStarted() {
+  let panel = document.getElementById('gs-panel');
+  if (!guideEligible()) { panel?.remove(); return; }
+  const ms = guideMilestones(guideStats);
+  const done = ms.filter(m => m.done).length;
+  if (done === ms.length) {
+    // Everything green: one celebratory moment, then get out of the way.
+    if (!localStorage.getItem(GUIDE_KEY.done)) {
+      localStorage.setItem(GUIDE_KEY.done, '1');
+      toast('🎉 You’ve set up the whole loop — configuration → chamber → guide → placed → run. Nice work.');
+    }
+    panel?.remove(); return;
+  }
+  if (!panel) { panel = document.createElement('div'); panel.id = 'gs-panel'; document.body.appendChild(panel); }
+  const min = localStorage.getItem(GUIDE_KEY.min) === '1' || done >= 3 && localStorage.getItem(GUIDE_KEY.min) !== '0';
+  panel.classList.toggle('min', min);
+  const nextIdx = ms.findIndex(m => !m.done);
+  panel.innerHTML = `
+    <div class="gs-hdr" onclick="guideToggleMin()">
+      <span>🧭</span><b>Getting started</b>
+      <span style="color:var(--muted);font-size:0.72rem">${done} of ${ms.length}</span>
+      <span style="color:var(--muted)">${min ? '▴' : '▾'}</span>
+    </div>
+    ${min ? '' : `
+    <div class="gs-bar"><i style="width:${Math.round(done / ms.length * 100)}%"></i></div>
+    ${ms.map((m, i) => `
+      <div class="gs-item ${m.done ? 'done' : ''} ${i === nextIdx ? 'next' : ''}" onclick="location.hash='${m.hash}'">
+        <div class="gs-ck">${m.done ? '✓' : i + 1}</div>
+        <div><div class="gs-t">${m.t}</div><div class="gs-d">${m.d}</div></div>
+      </div>`).join('')}
+    <div class="gs-foot"><span>Turn this off any time in ⚙ Settings.</span><a onclick="guideStartTour(true)">Show me this page</a></div>`}
+  `;
+}
+function guideToggleMin() {
+  const cur = document.getElementById('gs-panel')?.classList.contains('min');
+  localStorage.setItem(GUIDE_KEY.min, cur ? '0' : '1');
+  renderGettingStarted();
+}
+
+// ── 2. Page tours ────────────────────────────────────────────────────────────
+// Copy follows the iOS tour: short headline, one or two sentences, "Tap … to …".
+
+const PAGE_TOURS = {
+  home: [
+    { sel: null, h: 'Welcome to the AR Operations Platform 👋',
+      p: 'This portal is where MEs set things up; technicians do their work in the AR app. Let’s take the 60-second tour — you can replay it from ❔ Show me at any time.' },
+    { sel: '[data-tour="tile-anchors"]', h: 'Chambers live here',
+      p: 'Every physical chamber is an anchor with a printed QR. Create it, assign its configuration, print the code.' },
+    { sel: '[data-tour="tile-content"]', h: 'Your guide library',
+      p: 'Work instructions per chamber — import them, draw them in the Procedure Designer, preview them, copy them to sister chambers.' },
+    { sel: '[data-tour="tile-arguides"]', h: 'See it come back',
+      p: 'Every guided run lands here: completions with evidence photos, and the usage log by Production #.' },
+    { sel: '[data-tour="tile-admin"]', h: 'Admin — users and configurations',
+      p: 'The allow-list of who can sign in, and the catalog of chamber configurations. Start there if you’re new.' },
+  ],
+  anchors: [
+    { sel: '[data-tour="new-anchor"]', h: 'Create a chamber',
+      p: 'Tap + New Anchor. Give it the name on the tool, pick its configuration — the server mints the encryption key and the QR for you.' },
+    { sel: '.anchor-card select', h: 'Assign a configuration', optional: true,
+      p: 'Each card shows the chamber’s configuration. Unassigned chambers can’t be scanned into by operators — fix that here.' },
+    { sel: '.anchor-card .card-actions', h: 'Print the QR', optional: true,
+      p: 'Print / PDF at the stored size and mount it on the chamber. The same QR is used by authors and operators — it never changes.' },
+  ],
+  'guide-library': [
+    { sel: '[data-tour="gl-import"]', h: 'Bring a guide in',
+      p: 'Import from Excel, JSON or MES. Steps arrive as text; pins are placed on the phone afterwards.' },
+    { sel: '[data-tour="gl-designer"]', h: 'Or draw it',
+      p: 'The Procedure Designer is a canvas: steps as nodes, branches as arrows, models and voice per step. Send it to the library when it’s ready.' },
+    { sel: '.gl-guide-hdr', h: 'Everything a guide can do', optional: true,
+      p: 'Preview it like an operator, share it with specific technicians, copy it to every other chamber of the configuration with ⧉⧉ All.' },
+  ],
+  'ar-guides': [
+    { sel: '[data-tour="usage-log"]', h: 'Two views of the same work',
+      p: 'Completions are signed-off runs with evidence. Usage Log is per-step timing by Production #, with validation verdicts.' },
+    { sel: '[data-tour="ag-export"]', h: 'Take it with you',
+      p: 'Export to Excel — evidence photos embedded per step — or CSV for the data crowd.' },
+  ],
+  admin: [
+    { sel: '[data-tour="uam-add"]', h: 'Who gets in', optional: true,
+      p: 'Add people by email and employee ID. Engineers author; technicians run. Technicians sign in on the kiosk with just their ID.' },
+    { sel: '[data-tour="cc-add"]', h: 'Chamber configurations', optional: true,
+      p: 'Add a code and a name — "PXP-A · Producer XP Config A". Chambers point at it; MEs author against it.' },
+  ],
+};
+
+function guideCurrentPage() {
+  const raw = (location.hash || '#home').slice(1);
+  const [sec, sub] = raw.split('/');
+  if (sec === 'content') return sub === 'models' ? null : 'guide-library';
+  return PAGE_TOURS[sec] ? sec : null;
+}
+
+/** Called by the router after each page render (and by ❔ / the checklist). */
+function guideStartTour(force) {
+  const page = guideCurrentPage();
+  const helpBtn = document.getElementById('guide-help-btn');
+  if (helpBtn) helpBtn.style.display = (guideEligible() && page) ? '' : 'none';
+  if (!page || !guideEligible()) return;
+  if (!force && localStorage.getItem(GUIDE_KEY.seen + page)) return;
+  // Give the page a beat to render before we look for targets.
+  setTimeout(() => {
+    tourSteps = PAGE_TOURS[page].filter(st => !st.sel || !st.optional || document.querySelector(st.sel));
+    if (!tourSteps.length) return;
+    localStorage.setItem(GUIDE_KEY.seen + page, '1');
+    tourIdx = 0;
+    tourShow();
+  }, force ? 50 : 500);
+}
+
+function tourShow(scroll = true) {
+  tourEnd(true);
+  const st = tourSteps[tourIdx];
+  if (!st) { tourEnd(); return; }
+  const target = st.sel ? document.querySelector(st.sel) : null;
+  const mask = document.createElement('div'); mask.id = 'tour-mask';
+  const ring = document.createElement('div'); ring.id = 'tour-ring';
+  const card = document.createElement('div'); card.id = 'tour-card';
+  const last = tourIdx === tourSteps.length - 1;
+  card.innerHTML = `<h4>${st.h}</h4><p>${st.p}</p>
+    <div class="tour-nav">
+      <span class="tour-step">Step ${tourIdx + 1} of ${tourSteps.length}</span>
+      <button class="btn btn-ghost btn-sm" onclick="tourEnd()">Skip tour</button>
+      <button class="btn btn-primary btn-sm" onclick="tourNext()">${last ? 'Got it ✓' : 'Next →'}</button>
+    </div>`;
+  document.body.append(mask, ring, card);
+  if (target) {
+    if (scroll) target.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    const r = target.getBoundingClientRect();
+    ring.style.cssText = `left:${r.left - 8}px;top:${r.top - 8}px;width:${r.width + 16}px;height:${r.height + 16}px`;
+    // Card below the target if there's room, else above; keep on screen.
+    const below = r.bottom + 12 + 180 < window.innerHeight;
+    const top = below ? r.bottom + 14 : Math.max(12, r.top - 14 - 190);
+    const left = Math.min(Math.max(12, r.left), window.innerWidth - 332);
+    card.style.cssText = `left:${left}px;top:${top}px`;
+  } else {
+    ring.style.cssText = 'left:50%;top:50%;width:0;height:0';
+    card.style.cssText = `left:${Math.max(12, (window.innerWidth - 320) / 2)}px;top:${Math.max(40, window.innerHeight * 0.3)}px`;
+  }
+  // Keep the spotlight glued to the target while the page scrolls/resizes.
+  window.addEventListener('resize', tourReposition); window.addEventListener('scroll', tourReposition, true);
+}
+function tourReposition() { if (document.getElementById('tour-card')) tourShow(false); }
+function tourNext() {
+  if (tourIdx >= tourSteps.length - 1) {
+    tourEnd();
+    const page = guideCurrentPage();
+    if (page === 'home') setTimeout(() => toast('Explore freely — the 🧭 checklist keeps your place.'), 300);
+    return;
+  }
+  tourIdx++; tourShow();
+}
+function tourEnd(keepState) {
+  ['tour-mask', 'tour-ring', 'tour-card'].forEach(id => document.getElementById(id)?.remove());
+  window.removeEventListener('resize', tourReposition); window.removeEventListener('scroll', tourReposition, true);
+  if (!keepState) { tourSteps = []; tourIdx = 0; }
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.getElementById('tour-card')) tourEnd(); });
+
+// ── 3. Empty states become next steps ────────────────────────────────────────
+function guideEmptyState(kind) {
+  if (!guideEligible()) return null;
+  const cfgOk = (guideStats?.chamberConfigs || 0) > 0;
+  switch (kind) {
+    case 'anchors':
+      return cfgOk
+        ? `<div class="tour-empty"><div style="font-size:2rem">📍</div><p>No chambers yet. Register the first one and print its QR.</p>
+             <button class="btn btn-primary btn-sm" onclick="openCreateModal()">+ New Anchor</button></div>`
+        : `<div class="tour-empty"><div style="font-size:2rem">🏭</div><p>Start with a chamber configuration — chambers are assigned to one.</p>
+             <button class="btn btn-primary btn-sm" onclick="location.hash='#admin/configs'">Add a configuration</button></div>`;
+    case 'guides':
+      return `<div class="tour-empty"><div style="font-size:2rem">📋</div><p>No guides yet. Import one, or draw it in the Procedure Designer.</p>
+        <button class="btn btn-primary btn-sm" onclick="openImportGuideModal()">⬆ Import Guide</button>
+        <a class="btn btn-ghost btn-sm" href="/roadmap" target="_blank">🗺 Open Designer</a></div>`;
+    case 'configs':
+      return `<div class="tour-empty"><div style="font-size:2rem">🏭</div><p>Add your first configuration above — a code like <b>PXP-A</b> and a readable name.</p></div>`;
+    default: return null;
+  }
+}
 
 /** AR Guides sub-view: deterministic setter over the existing toggle. */
 function setUsageView(showUsage) {
@@ -3828,7 +4115,7 @@ function renderGuideLibrary() {
   }
   }   // configuration group
 
-  if (!html) html = '<p style="color:var(--muted);padding:40px 0;text-align:center">No guides yet.</p>';
+  if (!html) html = guideEmptyState('guides') || '<p style="color:var(--muted);padding:40px 0;text-align:center">No guides yet.</p>';
   list.innerHTML = html;
 }
 
