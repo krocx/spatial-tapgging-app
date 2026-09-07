@@ -626,6 +626,7 @@
       <div class="ph-sub">Platform operations — each on its own page</div>
       <div class="ph-subnav">
         <span class="ph-chip" onclick="event.stopPropagation();location.hash='#admin/uam'">👥 User Access</span>
+        <span class="ph-chip" onclick="event.stopPropagation();location.hash='#admin/configs'">🏭 Chamber Configs</span>
         <span class="ph-chip" onclick="event.stopPropagation();location.hash='#admin/ops'">📜 Ops Log</span>
         <span class="ph-chip" onclick="event.stopPropagation();location.hash='#admin/backup'">💾 Backups</span>
       </div>
@@ -758,6 +759,22 @@
       <button class="btn btn-ghost" id="bk-full-btn" onclick="downloadBackup('full')">⬇ Full backup</button>
     </div>
     <div id="bk-status" style="display:none;margin-top:12px;font-size:0.78rem;font-family:monospace;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px"></div>
+  </div>
+  <div class="card" id="adm-configs-card" style="display:none">
+    <h3>🏭 Chamber Configurations</h3>
+    <p style="font-size:0.75rem;color:var(--muted);margin:4px 0 12px">
+      A configuration is a chamber <strong>type</strong> (e.g. <em>Producer XP · Cfg A</em>). Each physical chamber's
+      anchor (QR) is assigned to one configuration; MEs author against a configuration in the app, and an operator's
+      QR scan resolves the chamber → configuration → its libraries. Engineers and above can add or edit;
+      a configuration can only be deleted once no chamber points at it.
+    </p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <input id="cc-add-code" placeholder="code (e.g. PXP-A)" maxlength="32" style="flex:1;min-width:120px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.78rem">
+      <input id="cc-add-name" placeholder="name (e.g. Producer XP · Config A)" style="flex:2;min-width:180px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.78rem">
+      <input id="cc-add-desc" placeholder="description (optional)" style="flex:2;min-width:160px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.78rem">
+      <button class="btn btn-primary btn-sm" onclick="addChamberConfig()">＋ Add</button>
+    </div>
+    <div id="cc-list" style="font-size:0.8rem"></div>
   </div>
   <div class="adm-card admin-only" id="adm-ops-card">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
@@ -1570,12 +1587,108 @@ async function duplicateAnchor(anchorId, assetId) {
   } catch (e) { toast(`Duplicate failed: ${e.message}`); }
 }
 
+// ── C1: Chamber Configurations ────────────────────────────────────────────────
+let chamberConfigs = [];   // [{ id, code, name, description?, chamberCount }]
+
+function configLabel(id) {
+  const c = chamberConfigs.find(x => x.id === id);
+  return c ? `${c.code} · ${c.name}` : '';
+}
+
+/** Anchor card row: current configuration + inline reassign (engineer+). Gemba
+ *  and iLOTO anchors are areas/panels, not chambers — the row is hidden. */
+function configRowHtml(anchor) {
+  if (anchor.anchorType && anchor.anchorType !== 'QR') return '';
+  const isTech = UAM_USER && UAM_USER.role === 'technician';
+  const opts = ['<option value="">— unassigned —</option>']
+    .concat(chamberConfigs.map(c => `<option value="${c.id}" ${c.id === anchor.configId ? 'selected' : ''}>${esc(c.code)} · ${esc(c.name)}</option>`))
+    .join('');
+  const badge = anchor.configId
+    ? `<span class="badge badge-green" title="Chamber configuration">🏭 ${esc(configLabel(anchor.configId) || '?')}</span>`
+    : `<span class="badge badge-orange" title="Assign a chamber configuration so MEs and operators find this chamber">🏭 No configuration</span>`;
+  return `<div style="display:flex;align-items:center;gap:8px;margin:6px 0;flex-wrap:wrap">
+    ${badge}
+    ${isTech ? '' : `<select style="font-size:0.72rem;padding:3px 6px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text)"
+       onchange="assignAnchorConfig('${anchor.id}', this.value)" title="Assign configuration">${opts}</select>`}
+  </div>`;
+}
+
+async function assignAnchorConfig(anchorId, configId) {
+  try {
+    const r = await apiFetch(`/anchors/${encodeURIComponent(anchorId)}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ configId: configId || null }),
+    });
+    const i = allAnchors.findIndex(a => a.id === anchorId);
+    if (i >= 0) allAnchors[i] = r.data;
+    toast(configId ? `Assigned to ${configLabel(configId)}` : 'Configuration cleared');
+    renderAnchors();
+  } catch (e) { toast(`Assign failed: ${e.message}`); }
+}
+
+async function loadChamberConfigs() {
+  const el = document.getElementById('cc-list');
+  if (!el) return;
+  el.innerHTML = 'Loading…';
+  try {
+    chamberConfigs = (await apiFetch('/chamber-configs')).data || [];
+  } catch (e) { el.innerHTML = `<span style="color:var(--red)">${esc(e.message)}</span>`; return; }
+  if (!chamberConfigs.length) { el.innerHTML = '<div class="empty-state">No configurations yet — add the first one above.</div>'; return; }
+  const canDelete = UAM_USER && (UAM_USER.role === 'owner' || UAM_USER.role === 'manager');
+  el.innerHTML = '<table class="usage-table"><thead><tr><th>Code</th><th>Name</th><th>Description</th><th class="num">Chambers</th><th></th></tr></thead><tbody>' +
+    chamberConfigs.map(c => `<tr>
+      <td><strong>${esc(c.code)}</strong></td>
+      <td>${esc(c.name)}</td>
+      <td style="color:var(--muted)">${esc(c.description || '')}</td>
+      <td class="num">${c.chamberCount ?? 0}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-ghost btn-sm" onclick="editChamberConfig('${c.id}')">✏️</button>
+        ${canDelete ? `<button class="btn btn-ghost btn-sm" style="color:var(--red)" ${c.chamberCount ? 'disabled title="Reassign its chambers first"' : ''} onclick="deleteChamberConfig('${c.id}','${jsEsc(c.code)}')">🗑</button>` : ''}
+      </td></tr>`).join('') + '</tbody></table>';
+}
+
+async function addChamberConfig() {
+  const code = document.getElementById('cc-add-code').value.trim();
+  const name = document.getElementById('cc-add-name').value.trim();
+  const description = document.getElementById('cc-add-desc').value.trim();
+  if (!code || !name) { toast('Code and name are required'); return; }
+  try {
+    await apiFetch('/chamber-configs', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, name, description: description || undefined, createdBy: (UAM_USER && UAM_USER.name) || 'portal' }) });
+    ['cc-add-code', 'cc-add-name', 'cc-add-desc'].forEach(id => document.getElementById(id).value = '');
+    toast(`Added ${code}`);
+    loadChamberConfigs();
+  } catch (e) { toast(`Add failed: ${e.message}`); }
+}
+
+async function editChamberConfig(id) {
+  const c = chamberConfigs.find(x => x.id === id); if (!c) return;
+  const code = prompt('Code:', c.code); if (code === null) return;
+  const name = prompt('Name:', c.name); if (name === null) return;
+  const description = prompt('Description:', c.description || ''); if (description === null) return;
+  try {
+    await apiFetch(`/chamber-configs/${encodeURIComponent(id)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: code.trim(), name: name.trim(), description: description.trim() }) });
+    toast('Saved'); loadChamberConfigs();
+  } catch (e) { toast(`Save failed: ${e.message}`); }
+}
+
+async function deleteChamberConfig(id, code) {
+  if (!confirm(`Delete configuration "${code}"?`)) return;
+  try {
+    await apiFetch(`/chamber-configs/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    toast(`Deleted ${code}`); loadChamberConfigs();
+  } catch (e) { toast(`Delete failed: ${e.message}`); }
+}
+
 async function loadAnchors() {
   const grid = document.getElementById('anchor-grid');
   grid.innerHTML = `<div class="spinner" style="grid-column:1/-1"><div class="spin"></div><span>Loading anchors…</span></div>`;
   try {
     const resp = await apiFetch('/anchors');
     allAnchors = resp.data || [];
+    // C1: configuration names for the cards (non-fatal if the route is absent).
+    try { chamberConfigs = (await apiFetch('/chamber-configs')).data || []; } catch { /* older server */ }
 
     // Load full tag objects (not just counts) for all anchors in parallel.
     // GET /tags enriches each tag with server-computed `isTrained` (T93).
@@ -1601,7 +1714,8 @@ function renderAnchors() {
   const filtered = allAnchors.filter(a =>
     !q ||
     a.id.toLowerCase().includes(q) ||
-    a.assetId.toLowerCase().includes(q)
+    a.assetId.toLowerCase().includes(q) ||
+    (configLabel(a.configId) || '').toLowerCase().includes(q)
   );
 
   const grid = document.getElementById('anchor-grid');
@@ -1651,6 +1765,7 @@ function buildCard(anchor) {
       <span>Created ${date}</span>
       <span>${anchor.coordinateSystem}</span>
     </div>
+    ${configRowHtml(anchor)}
     ${keyHtml}
     ${buildTagSection(anchor)}
     <div class="card-actions" style="margin-top:12px">
@@ -2089,7 +2204,7 @@ const SECTIONS = {
   'iloto':     { name: '🔒 iLOTO',                color: '#ef4444' },
   'gemba':     { name: '🚶 GembaWalks',           color: '#fb923c' },
   'admin':     { name: '🛠 Admin',                color: '#94a3b8',
-                 tabs: [['uam', '👥 User Access'], ['ops', '📜 Ops Log'], ['backup', '💾 Backups']], defaultSub: 'uam' },
+                 tabs: [['uam', '👥 User Access'], ['configs', '🏭 Chamber Configs'], ['ops', '📜 Ops Log'], ['backup', '💾 Backups']], defaultSub: 'uam' },
 };
 let portalAuthed = false;   // router renders nothing until enterPortal succeeds
 
@@ -2136,11 +2251,12 @@ function setUsageView(showUsage) {
 
 /** Admin sub-pages: one card per route (unlock banner always visible). */
 function adminShowSub(sub) {
-  const map = { uam: 'uam-card', ops: 'adm-ops-card', backup: 'adm-backup-card' };
+  const map = { uam: 'uam-card', configs: 'adm-configs-card', ops: 'adm-ops-card', backup: 'adm-backup-card' };
   for (const [k, id] of Object.entries(map)) {
     const el = document.getElementById(id);
     if (el) el.style.display = (k === sub) ? '' : 'none';
   }
+  if (sub === 'configs') loadChamberConfigs();
 }
 
 /** Home tiles: live counts. /stats is public; usage adds today's runs. */

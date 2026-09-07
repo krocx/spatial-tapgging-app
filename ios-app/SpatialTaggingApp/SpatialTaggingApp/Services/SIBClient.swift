@@ -106,6 +106,33 @@ final class SIBClient {
         try await delete(path: "/anchors/\(id)")
     }
 
+    // ── Chamber Configurations (C1) ──────────────────────────────────────────
+
+    func fetchChamberConfigs() async throws -> [ChamberConfig] {
+        try await get([ChamberConfig].self, path: "/chamber-configs")
+    }
+
+    /// Engineer+: add a configuration to the catalog from the app.
+    func createChamberConfig(code: String, name: String, description: String? = nil) async throws -> ChamberConfig {
+        struct Body: Encodable { let code: String; let name: String; let description: String?; let createdBy: String? }
+        return try await post(ChamberConfig.self, path: "/chamber-configs",
+                              body: Body(code: code, name: name, description: description,
+                                         createdBy: settings.authorName.isEmpty ? nil : settings.authorName))
+    }
+
+    /// Engineer+: assign (or clear, with nil) the chamber configuration of an anchor.
+    func setAnchorConfig(anchorId: String, configId: String?) async throws -> Anchor {
+        struct Body: Encodable {
+            let configId: String?
+            func encode(to encoder: Encoder) throws {
+                var c = encoder.container(keyedBy: CodingKeys.self)
+                try c.encode(configId, forKey: .configId)   // nil → JSON null (server clears)
+            }
+            enum CodingKeys: String, CodingKey { case configId }
+        }
+        return try await patch(Anchor.self, path: "/anchors/\(anchorId)", body: Body(configId: configId))
+    }
+
     /// U3: duplicate an anchor as a template — new id/QR/key, same metadata,
     /// model kit and every guide copied (drafts, unplaced, untrained). No
     /// world map, tags or LOTO points: the new tool gets scanned fresh.

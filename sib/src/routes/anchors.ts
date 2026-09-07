@@ -4,7 +4,7 @@ import { randomBytes } from 'crypto';
 import fs   from 'fs';
 import path from 'path';
 import QRCode from 'qrcode';
-import type { Anchor, CreateAnchorRequest, ApiResponse } from '@spatial/shared';
+import type { Anchor, CreateAnchorRequest, UpdateAnchorRequest, ApiResponse } from '@spatial/shared';
 import { JsonFileStore } from '../stores/json-file-store.js';
 import { tagStore } from './tags.js';
 import { passStateStore, findPassStateByTag } from '../stores/pass-state-store.js';
@@ -14,6 +14,7 @@ import { model3DStore } from './models.js';
 import { guideStore } from '../guides/store.js';
 import { copyGuideToAnchor } from '../guides/copy.js';
 import { currentUamUser, uamIsActive } from '../middleware/auth.js';
+import { chamberConfigStore } from './chamber-configs.js';
 
 export const anchorStore = new JsonFileStore<Anchor>('anchors');
 
@@ -122,6 +123,10 @@ router.post('/', async (req: Request, res: Response) => {
     qrSizeCm: typeof (body as any).qrSizeCm === 'number' ? (body as any).qrSizeCm : 10.0,
     anchorType: body.anchorType,
     createdBy: body.createdBy,
+    // C1: chamber configuration (validated — an unknown id is dropped, not stored)
+    ...(typeof body.configId === 'string' && body.configId.trim()
+        && chamberConfigStore.findById(body.configId.trim())
+        ? { configId: body.configId.trim() } : {}),
     createdAt: now,
     updatedAt: now,
   };
@@ -451,6 +456,38 @@ router.delete('/', (_req: Request, res: Response) => {
 });
 
 // ── DELETE /anchors/:id — cascade-delete anchor + tags + pass-states ──────────
+// ── PATCH /anchors/:id — C1: rename / assign chamber configuration ─────────────
+// Body: { assetId?, configId? } — configId null clears. Engineer+ (technicians
+// never edit anchors). Nothing spatial changes: pins, world map, tags stay.
+router.patch('/:id', (req: Request, res: Response) => {
+  const now = new Date().toISOString();
+  const anchor = anchorStore.findById(req.params.id);
+  if (!anchor) return res.status(404).json({ error: `Anchor ${req.params.id} not found`, timestamp: now });
+  const actor = currentUamUser(req);
+  if (uamIsActive() && actor && actor.role === 'technician') {
+    return res.status(403).json({ error: 'Editing an anchor requires Engineer role or above', timestamp: now });
+  }
+  const body = (req.body ?? {}) as UpdateAnchorRequest;
+  const updated: Anchor = { ...anchor, updatedAt: now };
+  if (typeof body.assetId === 'string') {
+    const a = body.assetId.trim();
+    if (!a) return res.status(400).json({ error: 'assetId cannot be empty', timestamp: now });
+    if (a.toLowerCase() !== anchor.assetId.toLowerCase()) updated.assetId = ensureUniqueAssetId(a);
+  }
+  if ('configId' in body) {
+    if (body.configId === null || body.configId === '') {
+      delete updated.configId;
+    } else if (typeof body.configId === 'string') {
+      if (!chamberConfigStore.findById(body.configId)) {
+        return res.status(404).json({ error: `Configuration ${body.configId} not found`, timestamp: now });
+      }
+      updated.configId = body.configId;
+    }
+  }
+  anchorStore.save(updated);
+  return res.json({ data: updated, timestamp: now });
+});
+
 // ── POST /anchors/:id/duplicate — template copy (U3, 2026.4.45) ───────────────
 //
 // Body: { assetId?, createdBy? }. Creates a NEW anchor (new id, new QR, its
@@ -486,6 +523,7 @@ router.post('/:id/duplicate', (req: Request, res: Response) => {
     encryptionKey:    randomBytes(32).toString('base64'),   // never share a key between tools
     qrSizeCm:         source.qrSizeCm,
     anchorType:       source.anchorType,
+    ...(source.configId ? { configId: source.configId } : {}),   // C1: same configuration
     createdBy,
     createdAt:        now,
     updatedAt:        now,

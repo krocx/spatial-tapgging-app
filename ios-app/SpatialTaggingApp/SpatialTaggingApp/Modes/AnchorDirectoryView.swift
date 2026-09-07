@@ -69,6 +69,29 @@ struct AnchorDirectoryView: View {
         filtered.filter { !settings.myAnchorIds.contains($0.id) }
     }
 
+    // ── C2: configuration-scoped authoring ───────────────────────────────────
+    // An ME authors FOR a chamber configuration. The directory leads with the
+    // chambers of that configuration; other chambers stay reachable (and can
+    // be assigned in a swipe); GembaWalk areas and iLOTO panels are neither —
+    // they keep their own section so those products are untouched.
+    private var configScoped: Bool {
+        mode == .author && settings.isAuthoringShift && !settings.chamberConfigId.isEmpty
+    }
+    private var configChambers: [Anchor] { filtered.filter { $0.isChamber && $0.configId == settings.chamberConfigId } }
+    private var otherChambers:  [Anchor] { filtered.filter { $0.isChamber && $0.configId != settings.chamberConfigId } }
+    private var areasAndPanels: [Anchor] { filtered.filter { !$0.isChamber } }
+
+    private func assignToCurrentConfig(_ anchor: Anchor) async {
+        do {
+            let updated = try await SIBClient(settings: settings)
+                .setAnchorConfig(anchorId: anchor.id, configId: settings.chamberConfigId)
+            if let i = anchors.firstIndex(where: { $0.id == anchor.id }) { anchors[i] = updated }
+        } catch {
+            deleteError = "Assign failed: \(friendlyMessage(for: error))"
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5) { deleteError = nil }
+        }
+    }
+
     var body: some View {
         NavigationStack {
             Group {
@@ -242,7 +265,48 @@ struct AnchorDirectoryView: View {
                 .listRowBackground(Color.clear)
                 .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
 
-            if mode == .author {
+            if configScoped {
+                // ── Chambers of this configuration ───────────────────────────
+                Section {
+                    if configChambers.isEmpty {
+                        Text("No chambers assigned to this configuration yet — tap + to add one, or swipe another chamber to assign it.")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                            .listRowBackground(Color.clear)
+                    } else {
+                        ForEach(configChambers) { anchor in anchorRow(anchor, showCreator: true) }
+                    }
+                } header: {
+                    HStack {
+                        Text("🏭 \(settings.chamberConfigLabel)")
+                        Spacer()
+                        Text("\(configChambers.count)").foregroundStyle(.secondary)
+                    }
+                } footer: {
+                    Text("Author on one chamber, then \"Copy to anchor\" pushes a guide to the others; place its steps on each.")
+                }
+                if !otherChambers.isEmpty {
+                    Section {
+                        ForEach(otherChambers) { anchor in
+                            anchorRow(anchor, showCreator: true)
+                                .swipeActions(edge: .leading) {
+                                    Button { Task { await assignToCurrentConfig(anchor) } } label: {
+                                        Label("Assign here", systemImage: "arrow.right.square")
+                                    }
+                                    .tint(.cyan)
+                                }
+                        }
+                    } header: {
+                        Text("Other chambers")
+                    } footer: {
+                        Text("Swipe right to assign a chamber to \(settings.chamberConfigLabel). Chambers without a configuration can't be scanned into by operators.")
+                    }
+                }
+                if !areasAndPanels.isEmpty {
+                    Section("GembaWalk areas & iLOTO panels") {
+                        ForEach(areasAndPanels) { anchor in anchorRow(anchor, showCreator: true) }
+                    }
+                }
+            } else if mode == .author {
                 // ── My Anchors ──────────────────────────────────────────────────
                 Section {
                     if myAnchors.isEmpty {
@@ -547,6 +611,11 @@ private struct AnchorDirectoryRow: View {
                             .foregroundStyle(.tertiary)
                             .lineLimit(1)
                     }
+                    // C2: a chamber nobody can scan into yet.
+                    if anchor.isChamber && anchor.configId == nil {
+                        Label("No configuration", systemImage: "exclamationmark.triangle")
+                            .font(.caption2).foregroundStyle(.orange)
+                    }
                 }
 
                 Spacer()
@@ -643,7 +712,9 @@ struct CreateAnchorSheet: View {
             } footer: {
                 switch selectedAnchorType {
                 case .qr:
-                    Text("A QR code is printed and mounted at the inspection point. AR sessions begin by scanning it.")
+                    Text(settings.isAuthoringShift && !settings.chamberConfigLabel.isEmpty
+                         ? "A QR code is printed and mounted on the chamber. This chamber will be assigned to \(settings.chamberConfigLabel)."
+                         : "A QR code is printed and mounted at the inspection point. AR sessions begin by scanning it.")
                 case .locTag:
                     Text("Tap any surface in AR to place issue tags. No QR code needed — the space itself is the anchor.")
                 case .loto:
@@ -849,13 +920,18 @@ struct CreateAnchorSheet: View {
                 let keyB64 = AnchorEncryption.base64(for: encKey)
                 appState.anchorEncryptionKey = encKey
 
+                // C2: a chamber created during an authoring shift joins that
+                // shift's configuration (iLOTO panels are not chambers).
+                let cfg = (selectedAnchorType == .qr && settings.isAuthoringShift && !settings.chamberConfigId.isEmpty)
+                    ? settings.chamberConfigId : nil
                 let req = CreateAnchorRequest(
                     id:            resolvedId,
                     assetId:       assetId.trimmingCharacters(in: .whitespaces),
                     encryptionKey: keyB64,
                     qrSizeCm:      10.0,     // canonical size — stored in SIB, never changes
                     anchorType:    selectedAnchorType == .loto ? .loto : nil,
-                    createdBy:     settings.authorName
+                    createdBy:     settings.authorName,
+                    configId:      cfg
                 )
                 anchor = try await client.createAnchor(req)
                 isCreating    = false

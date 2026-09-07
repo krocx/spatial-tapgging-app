@@ -82,6 +82,32 @@ final class AppSettings: ObservableObject {
         didSet { UserDefaults.standard.set(productionNumber, forKey: "production_number") }
     }
 
+    // C2: shift context. An ME authors AGAINST a chamber configuration; an
+    // operator works ON a Production/Slot # and reaches the configuration
+    // through the chamber's QR. Engineers+ choose which hat they wear this
+    // shift ("author" | "operate"); technicians always operate.
+    @Published var shiftIntent: String {
+        didSet { UserDefaults.standard.set(shiftIntent, forKey: "shift_intent") }
+    }
+    @Published var chamberConfigId: String {
+        didSet { UserDefaults.standard.set(chamberConfigId, forKey: "chamber_config_id") }
+    }
+    @Published var chamberConfigLabel: String {
+        didSet { UserDefaults.standard.set(chamberConfigLabel, forKey: "chamber_config_label") }
+    }
+    /// C3: the last chamber the operator scanned into (home chip).
+    @Published var lastChamberAssetId: String {
+        didSet { UserDefaults.standard.set(lastChamberAssetId, forKey: "last_chamber_asset") }
+    }
+    /// Authoring this shift (engineer+ who picked "I'm authoring").
+    var isAuthoringShift: Bool { !isTechnician && shiftIntent == "author" }
+    /// The kiosk gate is satisfied: signed in, plus the context the shift needs
+    /// (a configuration when authoring, a Production # when operating).
+    var shiftReady: Bool {
+        guard uamSignedIn else { return false }
+        return isAuthoringShift ? !chamberConfigId.isEmpty : !productionNumber.isEmpty
+    }
+
     var uamSignedIn: Bool { !uamToken.isEmpty && !uamRole.isEmpty }
     /// Technicians get operator-only surfaces. Unknown role = ungated
     /// (transition behaviour until the device verifies access).
@@ -176,6 +202,10 @@ final class AppSettings: ObservableObject {
         uamUserName      = UserDefaults.standard.string(forKey: "uam_user_name")      ?? ""
         uamProducts      = UserDefaults.standard.string(forKey: "uam_products")      ?? ""
         productionNumber = UserDefaults.standard.string(forKey: "production_number") ?? ""
+        shiftIntent        = UserDefaults.standard.string(forKey: "shift_intent")         ?? ""
+        chamberConfigId    = UserDefaults.standard.string(forKey: "chamber_config_id")    ?? ""
+        chamberConfigLabel = UserDefaults.standard.string(forKey: "chamber_config_label") ?? ""
+        lastChamberAssetId = UserDefaults.standard.string(forKey: "last_chamber_asset")    ?? ""
 
         // Author name: use stored value if set; otherwise extract first name from device name
         // e.g. "Karthik's iPhone" → "Karthik", bare "iPhone" → full device name as fallback

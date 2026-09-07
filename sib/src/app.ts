@@ -14,6 +14,7 @@ import worldMapRouter from './routes/worldmap.js';
 import guideRouter from './routes/guides.js';
 import guideSessionRouter from './routes/guide-sessions.js';
 import tagGroupRouter from './routes/tag-groups.js';
+import chamberConfigRouter from './routes/chamber-configs.js';
 import modelRouter from './routes/models.js';
 import mindmapRouter from './routes/mindmap.routes.js';
 import lotoRouter, { lotoPointStore, lotoEventStore } from './routes/loto.js';
@@ -444,6 +445,11 @@ document.getElementById('f').addEventListener('submit', async function(ev){
   // PATCH  /tag-groups/:id                   — Author: rename / update description
   // DELETE /tag-groups/:id                   — Author: delete group (tags lose groupId, not deleted)
   app.use('/tag-groups', tagGroupRouter);
+
+  // --- Chamber Configurations (C1) ---
+  // GET/POST /chamber-configs, PATCH/DELETE /chamber-configs/:id — the catalog
+  // of chamber TYPES; anchors point at one via configId.
+  app.use('/chamber-configs', chamberConfigRouter);
 
   // --- 3D Model asset library ---
   // POST   /models?anchorId=&name=&uploadedBy=  — Upload binary 3D file (GLB/USDZ pass-through; OBJ/FBX/STEP async Blender conversion)

@@ -143,8 +143,14 @@ struct Anchor: Codable, Identifiable, Hashable {
     /// Display name of the user who created this anchor (from their Author Name setting).
     /// Nil on anchors created before author tracking — treated as "Shared" in the directory.
     let createdBy: String?
+    /// C1: the Chamber Configuration (type) this chamber belongs to. Nil =
+    /// unassigned — legacy anchors and GembaWalk / iLOTO areas.
+    let configId: String?
     let createdAt: String
     let updatedAt: String
+
+    /// Chamber anchors (QR-scanned tools) are the ones a configuration groups.
+    var isChamber: Bool { anchorType == nil || anchorType == .qr }
 
     // Hashable — use id only; metadata:[String:AnyCodable] is not natively Hashable.
     static func == (lhs: Anchor, rhs: Anchor) -> Bool { lhs.id == rhs.id }
@@ -167,6 +173,8 @@ struct CreateAnchorRequest: Codable {
     let anchorType: AnchorType?
     /// Author name at creation time — used for per-user anchor filtering in the directory.
     let createdBy: String?
+    /// C1: chamber configuration this anchor belongs to.
+    let configId: String?
 
     init(
         id:               String?              = nil,
@@ -178,7 +186,8 @@ struct CreateAnchorRequest: Codable {
         encryptionKey:    String?              = nil,
         qrSizeCm:         Double?              = nil,
         anchorType:       AnchorType?          = nil,
-        createdBy:        String?              = nil
+        createdBy:        String?              = nil,
+        configId:         String?              = nil
     ) {
         self.id               = id
         self.assetId          = assetId
@@ -190,7 +199,24 @@ struct CreateAnchorRequest: Codable {
         self.qrSizeCm         = qrSizeCm
         self.anchorType       = anchorType
         self.createdBy        = createdBy
+        self.configId         = configId
     }
+}
+
+// ── ChamberConfig (C1) ────────────────────────────────────────────────────────
+
+/// A chamber / system configuration TYPE ("Producer XP · Cfg A"). Managed in
+/// the portal; many physical chambers (anchors) share one. Mirrors
+/// `ChamberConfig` in shared/src/index.ts (+ server-computed chamberCount).
+struct ChamberConfig: Codable, Identifiable, Hashable {
+    let id:           String
+    let code:         String
+    let name:         String
+    let description:  String?
+    let chamberCount: Int?
+    var label: String { "\(code) · \(name)" }
+    static func == (lhs: ChamberConfig, rhs: ChamberConfig) -> Bool { lhs.id == rhs.id }
+    func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
 
 // ── Tag ───────────────────────────────────────────────────────────────────────

@@ -118,9 +118,48 @@ export interface Anchor {
    * Absent on anchors created before this field was introduced (treat as shared/legacy).
    */
   createdBy?: string;
+  /**
+   * C1 (2026.4.45): the Chamber Configuration this chamber belongs to. A
+   * configuration is a TYPE ("Producer XP · Cfg A"); many physical chambers
+   * (anchors/QRs) share it, and the app scopes authoring to it. Absent =
+   * unassigned (legacy anchors, and GembaWalk / iLOTO anchors, which are
+   * areas/panels rather than chambers).
+   */
+  configId?: string;
   createdAt: string; // ISO 8601
   updatedAt: string;
 }
+
+/** C1: PATCH /anchors/:id — engineer+. configId null clears. */
+export interface UpdateAnchorRequest {
+  assetId?:  string;
+  configId?: string | null;
+}
+
+// ============================================================
+// ChamberConfig — a chamber/system configuration TYPE (C1, 2026.4.45)
+// ============================================================
+
+/**
+ * Managed catalog (portal Admin). An ME authors against a configuration;
+ * operators reach it through the chamber's QR (anchor.configId). Content
+ * (guides, inspection sets, training) is still stored per anchor in this
+ * phase — the config groups chambers and scopes the app's libraries.
+ */
+export interface ChamberConfig {
+  id:           string;
+  /** Short code as used on the floor / in MES, e.g. "PXP-A". Unique (case-insensitive). */
+  code:         string;
+  name:         string;
+  description?: string;
+  createdBy?:   string;
+  createdAt:    string;
+  updatedAt:    string;
+}
+
+export type CreateChamberConfigRequest = Pick<ChamberConfig, 'code' | 'name'> &
+  Partial<Pick<ChamberConfig, 'description' | 'createdBy'>>;
+export type UpdateChamberConfigRequest = Partial<Pick<ChamberConfig, 'code' | 'name' | 'description'>>;
 
 export interface CreateAnchorRequest {
   id?: string;
@@ -137,6 +176,8 @@ export interface CreateAnchorRequest {
   anchorType?: AnchorType;
   /** Author name at creation time — used for per-user anchor filtering in the directory. */
   createdBy?: string;
+  /** C1: chamber configuration this anchor belongs to (see Anchor.configId). */
+  configId?: string;
 }
 
 // ============================================================

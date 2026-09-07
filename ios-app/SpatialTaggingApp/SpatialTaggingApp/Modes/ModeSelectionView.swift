@@ -19,6 +19,7 @@ struct ModeSelectionView: View {
 
     @State private var showAuthorDirectory  = false
     @State private var showOperatorDirectory = false
+    @State private var showChamberScan       = false      // C3
     @State private var showSettings         = false
     /// Kiosk gate — presented when UAM is active and there's no signed-in
     /// technician, or no Production # set for the shift.
@@ -84,13 +85,21 @@ struct ModeSelectionView: View {
                     if settings.uamSignedIn || !settings.productionNumber.isEmpty {
                         Button { showKioskStart = true } label: {
                             HStack(spacing: 8) {
-                                Image(systemName: "person.crop.circle.badge.checkmark")
+                                Image(systemName: settings.isAuthoringShift ? "pencil.and.outline" : "person.crop.circle.badge.checkmark")
                                     .foregroundColor(.green)
                                 Text(settings.uamUserName.isEmpty ? settings.employeeId : settings.uamUserName)
                                     .fontWeight(.semibold)
-                                if !settings.productionNumber.isEmpty {
+                                // C2/C3: the shift context — what you author FOR or work ON.
+                                if settings.isAuthoringShift, !settings.chamberConfigLabel.isEmpty {
+                                    Text("· 🏭 \(settings.chamberConfigLabel)")
+                                        .foregroundColor(.cyan).lineLimit(1)
+                                } else if !settings.productionNumber.isEmpty {
                                     Text("· Prod # \(settings.productionNumber)")
                                         .foregroundColor(.cyan)
+                                    if !settings.chamberConfigLabel.isEmpty {
+                                        Text("· \(settings.chamberConfigLabel)\(settings.lastChamberAssetId.isEmpty ? "" : " · \(settings.lastChamberAssetId)")")
+                                            .foregroundColor(.white.opacity(0.6)).lineLimit(1)
+                                    }
                                 }
                                 Image(systemName: "chevron.right")
                                     .font(.caption2).foregroundColor(.white.opacity(0.4))
@@ -110,11 +119,22 @@ struct ModeSelectionView: View {
 
                 // Mode buttons
                 VStack(spacing: 16) {
+                    // C3: operating shift — the chamber QR is the front door.
+                    // Authors keep their tools below; technicians see this first.
+                    if !settings.isAuthoringShift {
+                        ModeButton(title: "Scan chamber QR",
+                                   subtitle: "Start work — the QR picks the configuration",
+                                   icon: "qrcode.viewfinder", accentColor: .green,
+                                   isEnabled: settings.isConfigured) { showChamberScan = true }
+                    }
+
                     // RBAC: Technicians run procedures — authoring surfaces are
                     // hidden for them (and refused server-side regardless).
                     if !settings.isTechnician {
                     ModeButton(title: "Author Mode",
-                               subtitle: "Create and train inspection tags",
+                               subtitle: settings.chamberConfigLabel.isEmpty
+                                   ? "Create and train inspection tags"
+                                   : "Chambers of \(settings.chamberConfigLabel)",
                                icon: "pencil.circle.fill", accentColor: .blue,
                                isEnabled: settings.isConfigured) { showAuthorDirectory = true }
                     .background(
@@ -127,9 +147,14 @@ struct ModeSelectionView: View {
                     )
                     }
 
-                    ModeButton(title: "Operator Mode",
-                               subtitle: "Run inspections and view results",
-                               icon: "eye.circle.fill", accentColor: .green,
+                    // Directory entry stays for GembaWalk areas and iLOTO panels
+                    // (not chambers — no QR-resolved configuration) and for
+                    // authors who want to run something on their config.
+                    ModeButton(title: settings.isAuthoringShift ? "Operator Mode" : "Browse areas & panels",
+                               subtitle: settings.isAuthoringShift ? "Run inspections and guides on your chambers"
+                                                                   : "GembaWalk areas · iLOTO panels · all chambers",
+                               icon: settings.isAuthoringShift ? "eye.circle.fill" : "list.bullet.circle.fill",
+                               accentColor: settings.isAuthoringShift ? .green : .gray,
                                isEnabled: settings.isConfigured) { showOperatorDirectory = true }
                     .background(
                         GeometryReader { geo in
@@ -302,6 +327,21 @@ struct ModeSelectionView: View {
             .environmentObject(appState)
             .environmentObject(tour)
         }
+        // C3: Scan chamber QR → hub (operator) → QR gate | direct → session
+        .fullScreenCover(isPresented: $showChamberScan) {
+            ChamberScanView(
+                onSessionReady: { anchor, tags in
+                    showChamberScan = false
+                    appState.activeAnchor = anchor
+                    appState.activeTags   = tags
+                    appState.mode = .operator
+                },
+                onCancel: { showChamberScan = false }
+            )
+            .environmentObject(settings)
+            .environmentObject(appState)
+            .environmentObject(tour)
+        }
         // Continue: hub → QR gate → AuthorModeView (skips directory)
         // AnchorHubView doesn't carry its own NavigationStack, so we wrap it here.
         .fullScreenCover(item: $hubResumeAnchor) { anchor in
@@ -379,12 +419,12 @@ struct ModeSelectionView: View {
             // (connecting state, cold-start retries, dormant-UAM auto-skip);
             // showing it must never wait on a network call.
             print("KIOSK gate: isConfigured=\(settings.isConfigured) uamSignedIn=\(settings.uamSignedIn) prod='\(settings.productionNumber)'")
-            if settings.isConfigured && (!settings.uamSignedIn || settings.productionNumber.isEmpty) {
+            if settings.isConfigured && !settings.shiftReady {
                 showKioskStart = true
             }
 
             // Guided tour: auto-start on very first launch (takes priority over FTUE home page)
-            if showKioskStart || (settings.isConfigured && settings.uamSignedIn && settings.productionNumber.isEmpty) {
+            if showKioskStart || (settings.isConfigured && !settings.shiftReady) {
                 // Kiosk gate takes priority — tour/FTUE can run on a later launch.
             } else if settings.guidedTourEnabled && !settings.guidedTourSeen {
                 settings.guidedTourSeen = true

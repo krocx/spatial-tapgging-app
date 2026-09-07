@@ -76,6 +76,29 @@ it, it gets a line.
   changed — pins may be off"), guidance switches to the ghost, and an
   `environment:drift` event lands on the usage-log session (`drift`, shown as
   a ⚠ chip in the portal) so the author knows to re-place steps.
+- **Chamber Configurations — role-aware shift start (C1–C3)** — a
+  configuration is a chamber *type* ("Producer XP · Cfg A"); many physical
+  chambers (anchors / QRs) share it. Server: `ChamberConfig` catalog
+  (`GET/POST /chamber-configs`, `PATCH/DELETE /:id` — engineer+; delete only
+  when no chamber references it), `Anchor.configId`, `PATCH /anchors/:id
+  { assetId?, configId? }`; duplicate keeps the configuration. Portal:
+  Admin → 🏭 Chamber Configs page; anchor cards show the configuration with
+  an inline assign dropdown; search matches config codes. iOS kiosk is now
+  two steps: Employee ID → then, by role, **Technician**: Production / Slot #
+  (the configuration comes from the QR — nothing to pick); **Engineer+**:
+  "I'm authoring" (pick the configuration; "+ New configuration" inline) or
+  "I'm operating". Home chip shows the configuration when authoring, Prod #
+  (+ resolved configuration · chamber) when operating. **Operator front
+  door: "Scan chamber QR"** (`ChamberScanView`) — the anchor's configuration
+  is resolved from the scan; unassigned chambers and GembaWalk/iLOTO QRs are
+  explained and rescan offered. "Browse areas & panels" keeps GembaWalk
+  areas and iLOTO panels (not chambers) reachable exactly as before. Author
+  directory during an authoring shift leads with the chambers of that
+  configuration, then "Other chambers" (swipe right → assign here), then
+  areas & panels; unassigned chambers carry a "No configuration" hint; new
+  QR anchors created in an authoring shift join the configuration. Content
+  (guides, inspection sets, training) stays per chamber in this phase —
+  author on one, "Copy to anchor" to the rest, place per chamber.
 - **Validation focus mode (X2, iOS)** — validation takes over the screen:
   step panels, pins, arrow, feature-point dots, the text panel, Prev/Next and
   the failed banner are hidden; what remains is the target ring, one guidance
