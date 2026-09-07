@@ -259,7 +259,9 @@ struct QRScanGateView: View {
                 } else {
                     Image(systemName: "qrcode.viewfinder")
                         .foregroundStyle(.cyan)
-                    Text("Point at the anchor QR code")
+                    // B: for operators this is the LOCALIZATION step (tag
+                    // positions live in the QR's frame), not a login.
+                    Text(mode == .operator ? "Scan the chamber QR to localize" : "Point at the anchor QR code")
                         .font(.subheadline)
                         .foregroundStyle(.white)
                 }
@@ -420,6 +422,8 @@ struct QRScanGateView: View {
                 appState.anchorEncryptionKey = AnchorEncryption.getOrCreateKey(for: context.anchorId)
             }
         }
+
+        appState.noteScanned(anchorId: context.anchorId)   // B
 
         // ── Store the gravity-aligned anchor transform ─────────────────────────
         appState.anchorNormalisedTransform = arManager.lockedAnchorTransform

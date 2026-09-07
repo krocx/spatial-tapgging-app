@@ -136,6 +136,7 @@ struct ChamberScanView: View {
                 if let k = ctx.encryptionKey, let key = AnchorEncryption.key(fromBase64: k) {
                     appState.anchorEncryptionKey = key
                 }
+                appState.noteScanned(anchorId: anchor.id)   // B: no second scan for guides
                 arManager.pauseSession()
                 hubAnchor = anchor
             } catch SIBClientError.httpError(404, _) {

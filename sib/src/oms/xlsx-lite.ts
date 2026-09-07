@@ -202,7 +202,7 @@ function assembleXlsx(spec: SheetSpec): Buffer {
 
 // ── Usage Log workbook ───────────────────────────────────────────────────────
 
-const USAGE_COLS = ['Production #', 'Guide', 'Operator', 'Employee ID', 'Session started',
+const USAGE_COLS = ['Production #', 'Configuration', 'Chamber', 'Guide', 'Operator', 'Employee ID', 'Session started',
                     'Step', 'Entered', 'Duration (s)', 'Outcome', 'Validation', 'Evidence'];
 
 /** Evidence photo for a usage step, in resolution order:
@@ -242,13 +242,15 @@ export function buildUsageXlsx(
   for (const u of records) {
     const base = (row: number) => [
       cellStr(0, row, u.workContext ?? ''),
-      cellStr(1, row, u.guideName),
-      cellStr(2, row, u.operatorName),
-      cellStr(3, row, u.operatorEmployeeId ?? ''),
-      cellStr(4, row, u.startedAt),
+      cellStr(1, row, u.configCode ?? ''),
+      cellStr(2, row, u.anchorName ?? ''),
+      cellStr(3, row, u.guideName),
+      cellStr(4, row, u.operatorName),
+      cellStr(5, row, u.operatorEmployeeId ?? ''),
+      cellStr(6, row, u.startedAt),
     ].join('');
     if (u.steps.length === 0) {
-      rows.push(`<row r="${r}">${base(r)}${cellStr(8, r, u.completed ? 'signed off' : 'open')}</row>`);
+      rows.push(`<row r="${r}">${base(r)}${cellStr(10, r, u.completed ? 'signed off' : 'open')}</row>`);
       r++;
       continue;
     }
@@ -259,11 +261,11 @@ export function buildUsageXlsx(
         : '';
       const evi = usageEvidencePath(u.id, u.signOffSessionId, e.stepId, signOffPaths);
       const cells = base(r)
-        + (e.stepIndex !== undefined ? cellNum(5, r, e.stepIndex + 1) : cellStr(5, r, ''))
-        + cellStr(6, r, e.enteredAt)
-        + (e.durationSeconds !== undefined ? cellNum(7, r, e.durationSeconds) : cellStr(7, r, ''))
-        + cellStr(8, r, e.outcome)
-        + cellStr(9, r, val);
+        + (e.stepIndex !== undefined ? cellNum(7, r, e.stepIndex + 1) : cellStr(7, r, ''))
+        + cellStr(8, r, e.enteredAt)
+        + (e.durationSeconds !== undefined ? cellNum(9, r, e.durationSeconds) : cellStr(9, r, ''))
+        + cellStr(10, r, e.outcome)
+        + cellStr(11, r, val);
       if (evi) {
         images.push({ rowIdx: r - 1, data: fs.readFileSync(evi) });  // 0-based row for the anchor
         rows.push(`<row r="${r}" ht="${IMG_ROW_HT}" customHeight="1">${cells}</row>`);
@@ -276,8 +278,8 @@ export function buildUsageXlsx(
 
   return assembleXlsx({
     sheetName: 'Usage Log',
-    colWidths: [16, 28, 18, 12, 20, 6, 20, 11, 11, 20, 34],
-    rows, images, imgCol: 10,
+    colWidths: [16, 12, 16, 28, 18, 12, 20, 6, 20, 11, 11, 20, 34],
+    rows, images, imgCol: 12,
   });
 }
 

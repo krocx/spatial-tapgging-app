@@ -238,7 +238,15 @@ struct GuideListView: View {
             // Use cached steps — no second fetch needed
             pendingGuide = guide
             guideSteps   = allSteps[guide.id] ?? []
-            showScanGate = true
+            // B: the operator just scanned THIS chamber's QR (front door) and
+            // the key is in memory — the guide re-localizes on its own world
+            // map, so a second scan of the same code adds nothing but friction.
+            if appState.recentlyScanned(anchor.id), appState.anchorEncryptionKey != nil {
+                appState.activeAnchor = anchor
+                sessionInput = GuideSessionInput(guide: guide, steps: guideSteps)
+            } else {
+                showScanGate = true
+            }
         }
     }
 

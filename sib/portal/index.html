@@ -939,6 +939,11 @@
       <input type="text" id="new-asset-id" placeholder="e.g. pump-station-A" />
     </div>
     <div class="field">
+      <label>Chamber configuration</label>
+      <select id="new-config-id" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.85rem"></select>
+      <p style="font-size:0.7rem;color:var(--muted);margin:4px 0 0">Operators reach a chamber through its QR → configuration. Unassigned chambers can't be scanned into. Manage the catalog under <a href="#" onclick="closeCreateModal();location.hash='#admin/configs';return false" style="color:var(--accent)">Admin → Chamber Configs</a>.</p>
+    </div>
+    <div class="field">
       <label>Anchor ID <span style="color:var(--muted)">(optional — auto-generated)</span></label>
       <input type="text" id="new-anchor-id" placeholder="Leave blank to auto-generate" />
     </div>
@@ -1931,6 +1936,11 @@ function copyAnchorId(id) {
 // ── Create anchor ──────────────────────────────────────────────────────────────
 function openCreateModal() {
   if (authRequired && !apiKey()) { alert('Enter your API key in Settings first.'); return; }
+  // A (2026.4.45): configuration select, pre-filled with the last one used.
+  const sel = document.getElementById('new-config-id');
+  const last = localStorage.getItem('sib.lastConfigId') || '';
+  sel.innerHTML = '<option value="">— unassigned —</option>' +
+    chamberConfigs.map(c => `<option value="${c.id}" ${c.id === last ? 'selected' : ''}>${esc(c.code)} · ${esc(c.name)}</option>`).join('');
   document.getElementById('create-modal').classList.add('open');
 }
 function closeCreateModal() {
@@ -1952,6 +1962,8 @@ async function submitCreateAnchor() {
       metadata: {},
     };
     if (anchorId) body.id = anchorId;
+    const configId = document.getElementById('new-config-id').value;
+    if (configId) { body.configId = configId; localStorage.setItem('sib.lastConfigId', configId); }
     const resp = await apiFetch('/anchors', { method:'POST', body: JSON.stringify(body) });
     const newAnchor = resp.data;
     allAnchors.unshift(newAnchor);
@@ -2453,14 +2465,29 @@ function fmtDur(s) {
   return m < 60 ? `${m}m ${s % 60}s` : `${Math.floor(m / 60)}h ${m % 60}m`;
 }
 
+let usageConfigFilter = '';   // C: configId | '' (all) | '__none'
+function setUsageConfigFilter(v) { usageConfigFilter = v; renderUsageLog(); }
+
 function renderUsageLog() {
   const view = document.getElementById('usage-log-view');
   if (usageLogData.length === 0) {
     view.innerHTML = '<div class="empty-state">No usage recorded yet. Sessions appear here as operators run guides with a Production # set.</div>';
     return;
   }
+  // C: configuration filter (values seen in the data, so legacy sessions still show)
+  const cfgSeen = new Map();
+  for (const u of usageLogData) if (u.configId) cfgSeen.set(u.configId, u.configCode || u.configId);
+  const filterBar = `<div class="filter-bar" style="margin-bottom:8px">
+    <span class="flt-lbl">Configuration</span>
+    <select onchange="setUsageConfigFilter(this.value)">
+      <option value="" ${usageConfigFilter === '' ? 'selected' : ''}>All</option>
+      ${[...cfgSeen].sort((a, b) => a[1].localeCompare(b[1])).map(([id, code]) => `<option value="${id}" ${usageConfigFilter === id ? 'selected' : ''}>${esc(code)}</option>`).join('')}
+      <option value="__none" ${usageConfigFilter === '__none' ? 'selected' : ''}>— no configuration —</option>
+    </select></div>`;
+  const shown = usageLogData.filter(u =>
+    usageConfigFilter === '' ? true : usageConfigFilter === '__none' ? !u.configId : u.configId === usageConfigFilter);
   const groups = new Map();
-  for (const u of usageLogData) {
+  for (const u of shown) {
     const key = u.workContext || '(no production #)';
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(u);
@@ -2469,14 +2496,14 @@ function renderUsageLog() {
   const valBadge = v => !v ? ''
     : `<span class="ul-val ${v.result}" ${v.overridden ? 'title="Validation failed — operator chose to proceed"' : ''}>${v.mode === 'system' ? '🤖' : '👤'} ${v.result.toUpperCase()}${v.score !== undefined ? ' ' + v.score.toFixed(2) : ''}${v.overridden ? ' · proceeded' : ''}</span>`;
 
-  let html = '<table class="usage-table"><thead><tr>' +
-    '<th></th><th>Production #</th><th>Guide</th><th>Operator</th><th>Started</th>' +
+  let html = filterBar + '<table class="usage-table"><thead><tr>' +
+    '<th></th><th>Production #</th><th>Configuration · Chamber</th><th>Guide</th><th>Operator</th><th>Started</th>' +
     '<th class="num">Total</th><th class="num">Steps</th><th class="num">✔</th><th class="num">✖</th><th>Status</th>' +
     '</tr></thead><tbody>';
   let rowId = 0;
   for (const [ctx, sessions] of groups) {
     const total = sessions.reduce((a, u) => a + (u.totalSeconds || 0), 0);
-    html += `<tr class="ul-group"><td colspan="10">🏭 <strong>${esc(ctx)}</strong>` +
+    html += `<tr class="ul-group"><td colspan="11">🏭 <strong>${esc(ctx)}</strong>` +
       `<span class="ul-group-meta">${sessions.length} session${sessions.length !== 1 ? 's' : ''} · ${fmtDur(total)}</span></td></tr>`;
     for (const u of sessions) {
       const id = 'ul-' + (rowId++);
@@ -2486,6 +2513,7 @@ function renderUsageLog() {
       html += `<tr class="ul-row" onclick="const d=document.getElementById('${id}');d.classList.toggle('open');this.classList.toggle('open');if(d.classList.contains('open'))loadEvidenceImagesIn(d)">` +
         `<td class="ul-caret">▸</td>` +
         `<td>${esc(u.workContext || '—')}</td>` +
+        `<td>${u.configCode ? `<span class="badge badge-green" style="font-size:0.68rem">${esc(u.configCode)}</span> ` : ''}<span class="ul-dim">${esc(u.anchorName || '')}</span></td>` +
         `<td><strong>${esc(u.guideName)}</strong></td>` +
         `<td>${esc(u.operatorName)}${u.operatorEmployeeId ? ' <span class="ul-dim">· ' + esc(u.operatorEmployeeId) + '</span>' : ''}</td>` +
         `<td>${new Date(u.startedAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>` +
@@ -2506,7 +2534,7 @@ function renderUsageLog() {
             ? `<img class="ul-thumb" data-evidence-url="/guide-sessions/${encodeURIComponent(u.signOffSessionId)}/evidence/${encodeURIComponent(e.stepId)}" alt="">`
             : ''}</td>` +
         `<td class="ul-dim mono">${esc(e.stepId.slice(0, 8))}</td></tr>`).join('');
-      html += `<tr id="${id}" class="ul-detail"><td></td><td colspan="9">` +
+      html += `<tr id="${id}" class="ul-detail"><td></td><td colspan="10">` +
         `<table class="usage-steps"><thead><tr><th class="num">#</th><th>Entered</th><th class="num">Time</th><th>Outcome</th><th>Validation</th><th>Evidence</th><th>Step</th></tr></thead>` +
         `<tbody>${stepRows || '<tr><td colspan="7" class="ul-dim">No step activity recorded</td></tr>'}</tbody></table></td></tr>`;
     }
@@ -3669,7 +3697,10 @@ async function loadGuideLibrary() {
   guideLibraryData = {};
 
   try {
-    // Ensure anchors are loaded
+    // Ensure anchors (and the configuration catalog) are loaded
+    if (!chamberConfigs.length) {
+      try { chamberConfigs = (await apiFetch('/chamber-configs')).data || []; } catch { /* older server */ }
+    }
     if (!allAnchors.length) {
       const resp = await apiFetch('/anchors');
       allAnchors = resp.data || [];
@@ -3709,8 +3740,33 @@ function renderGuideLibrary() {
   const list = document.getElementById('guide-library-list');
   let html = '';
 
+  // D (2026.4.45): configuration → chamber. An ME with six chambers of one
+  // configuration reads one block, not six. Unassigned chambers, then
+  // GembaWalk / iLOTO anchors, follow at the end.
+  const groups = new Map();   // key → { label, entries: [[anchorId, entry]] }
+  const keyOf = a => (a.anchorType && a.anchorType !== 'QR') ? '__areas' : (a.configId || '__none');
   for (const [anchorId, entry] of Object.entries(guideLibraryData)) {
+    const k = keyOf(entry.anchor);
+    if (!groups.has(k)) groups.set(k, { label: '', entries: [] });
+    groups.get(k).entries.push([anchorId, entry]);
+  }
+  const ordered = [...groups.keys()].sort((a, b) => {
+    const rank = k => k === '__none' ? 1 : k === '__areas' ? 2 : 0;
+    return rank(a) - rank(b) || (configLabel(a) || '').localeCompare(configLabel(b) || '');
+  });
+
+  for (const gk of ordered) {
+    const cfg = chamberConfigs.find(c => c.id === gk);
+    const grpLabel = gk === '__none' ? '⚠ Chambers without a configuration'
+                   : gk === '__areas' ? '🚶 GembaWalk areas & 🔒 iLOTO panels'
+                   : `🏭 ${esc(cfg ? `${cfg.code} · ${cfg.name}` : gk)}`;
+    const chambers = groups.get(gk).entries;
+    html += `<div class="gl-config-hdr" style="font-size:0.9rem;font-weight:800;margin:18px 0 8px;color:var(--text)">${grpLabel}
+      <span class="ul-dim" style="font-weight:400;font-size:0.72rem;margin-left:8px">${chambers.length} chamber${chambers.length !== 1 ? 's' : ''}</span></div>`;
+
+  for (const [anchorId, entry] of chambers) {
     const anchorLabel = entry.anchor.assetId || anchorId;
+    const siblings = (cfg ? chambers.filter(([id]) => id !== anchorId) : []);
     html += `<div class="gl-anchor-section">
       <div class="gl-anchor-hdr">📍 ${esc(anchorLabel)}</div>`;
 
@@ -3745,6 +3801,7 @@ function renderGuideLibrary() {
           <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;color:#7dd3fc" title="Choose which technicians can see and run this guide" onclick="openShareModal('${guide.id}','${anchorId}')">👥 Share${(guide.sharedWith && guide.sharedWith.length) ? ` (${guide.sharedWith.length})` : ''}</button>
           <button class="btn btn-ghost btn-sm" style="font-size:0.68rem" title="Move to another anchor (steps become unplaced)" onclick="moveGuideToAnchor('${guide.id}','${anchorId}')">⇄ Move</button>
           <button class="btn btn-ghost btn-sm" style="font-size:0.68rem" title="Copy to another anchor as a draft (steps unplaced, training not copied)" onclick="copyGuideToAnchor('${guide.id}','${anchorId}')">⧉ Copy</button>
+          ${siblings.length ? `<button class="btn btn-ghost btn-sm" style="font-size:0.68rem;color:#67e8f9" title="Copy this guide to every other chamber of ${esc(cfg.code)} (${siblings.length}) as drafts" onclick="copyGuideToConfigChambers('${guide.id}','${anchorId}','${cfg.id}')">⧉⧉ All ${siblings.length}</button>` : ''}
           <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;color:var(--red)" onclick="deleteGuideFromLibrary('${guide.id}','${anchorId}')">🗑</button>
         </div>`;
 
@@ -3769,8 +3826,37 @@ function renderGuideLibrary() {
 
     html += `</div>`; // gl-anchor-section
   }
+  }   // configuration group
 
+  if (!html) html = '<p style="color:var(--muted);padding:40px 0;text-align:center">No guides yet.</p>';
   list.innerHTML = html;
+}
+
+// D: push one guide to every other chamber of its configuration (U2 copy per
+// chamber — drafts, steps unplaced, training not copied). Skips chambers that
+// already have a guide of the same name so a re-run never duplicates.
+async function copyGuideToConfigChambers(guideId, fromAnchorId, configId) {
+  const targets = allAnchors.filter(a => a.configId === configId && a.id !== fromAnchorId
+                                      && (!a.anchorType || a.anchorType === 'QR'));
+  if (!targets.length) { toast('No other chambers in this configuration.'); return; }
+  const src = (guideLibraryData[fromAnchorId]?.guides || []).find(g => g.id === guideId);
+  const name = src ? src.name : '';
+  const todo = targets.filter(a => !(guideLibraryData[a.id]?.guides || []).some(g => g.name === name));
+  const skipped = targets.length - todo.length;
+  if (!todo.length) { toast(`Every chamber already has "${name}".`); return; }
+  if (!confirm(`Copy "${name}" to ${todo.length} chamber(s)${skipped ? ` (${skipped} already have it)` : ''}?\nEach copy is a draft — place its steps in AR on that chamber.`)) return;
+  let ok = 0, fail = 0;
+  for (const a of todo) {
+    try {
+      await apiFetch(`/guides/${encodeURIComponent(guideId)}/copy`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ anchorId: a.id, createdBy: (UAM_USER && UAM_USER.name) || 'portal' }),
+      });
+      ok++;
+    } catch { fail++; }
+  }
+  toast(`Copied to ${ok} chamber(s)${fail ? `, ${fail} failed` : ''}${skipped ? `, ${skipped} skipped` : ''}.`);
+  loadGuideLibrary();
 }
 
 async function toggleGuideSteps(guideId, anchorId) {

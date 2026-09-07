@@ -1058,6 +1058,9 @@ export interface OmsUsageSession {
   signOffSessionId?:  string;
   /** X1: environment drift detected at re-localization (see 'environment:drift'). */
   drift?:             { distanceM: number; angleDeg: number; ts: string };
+  /** C: chamber configuration of the anchor at session open (server-derived). */
+  configId?:          string;
+  configCode?:        string;
   steps:              OmsUsageStepEntry[];
 }
 

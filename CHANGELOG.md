@@ -99,6 +99,21 @@ it, it gets a line.
   QR anchors created in an authoring shift join the configuration. Content
   (guides, inspection sets, training) stays per chamber in this phase —
   author on one, "Copy to anchor" to the rest, place per chamber.
+- **Chamber Configuration follow-ups (A–D)** — **B (iOS):** after "Scan
+  chamber QR", opening a guide no longer asks for a second scan of the same
+  code: the app remembers the last scanned chamber (10 min) and, with the key
+  in memory, starts the guide directly (it re-localizes on its own world
+  map). The gate still runs for tag inspections — there it *is* the
+  localization step — and now says "Scan the chamber QR to localize".
+  **A (portal):** the Create Anchor dialog has a Chamber configuration
+  select (remembers the last one). **C:** usage-log sessions record the
+  chamber's configuration at open (`configId`, `configCode`, server-derived);
+  portal usage log gains a "Configuration · Chamber" column and a
+  configuration filter; the usage .xlsx gains Configuration and Chamber
+  columns. **D (portal):** the Guide Library is grouped configuration →
+  chamber (unassigned chambers, then GembaWalk/iLOTO, at the end) and each
+  guide gets "⧉⧉ All N" — copy to every other chamber of the configuration
+  as drafts, skipping chambers that already have a guide of that name.
 - **Validation focus mode (X2, iOS)** — validation takes over the screen:
   step panels, pins, arrow, feature-point dots, the text panel, Prev/Next and
   the failed banner are hidden; what remains is the target ring, one guidance

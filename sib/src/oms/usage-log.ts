@@ -23,6 +23,8 @@ import type {
   PushGuideSessionEventRequest,
 } from '@spatial/shared';
 import { JsonFileStore } from '../stores/json-file-store.js';
+import { anchorStore } from '../routes/anchors.js';
+import { chamberConfigStore } from '../routes/chamber-configs.js';
 
 export const omsUsageStore = new JsonFileStore<OmsUsageSession>('oms-usage-log');
 
@@ -46,6 +48,13 @@ export function usageOpen(
     completed:    false,
     steps:        [],
     ...(req.workContext?.trim() ? { workContext: req.workContext.trim() } : {}),
+    // C: the configuration the chamber belongs to — derived here so every
+    // client (any app build) is covered and the record can't lie.
+    ...(() => {
+      const cfgId = anchorStore.findById(live.anchorId)?.configId;
+      const cfg   = cfgId ? chamberConfigStore.findById(cfgId) : undefined;
+      return cfgId ? { configId: cfgId, ...(cfg ? { configCode: cfg.code } : {}) } : {};
+    })(),
     // Token-verified identity wins over client-supplied fields.
     ...((verified?.email ?? req.operatorEmail) ? { operatorEmail: verified?.email ?? req.operatorEmail } : {}),
     ...((verified?.employeeId ?? req.operatorEmployeeId)

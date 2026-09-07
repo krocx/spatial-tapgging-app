@@ -69,6 +69,18 @@ final class AppState: ObservableObject {
     /// Set in QRScanGateView.lockSession(); cleared in reset().
     var activeARSession: ARSession? = nil
 
+    // B (2026.4.45): the last chamber QR the operator scanned, so a guide run
+    // that follows "Scan chamber QR" isn't gated by a second scan of the same
+    // code. Guide runs re-localize on their own world map; the gate's only
+    // contribution for them is the key + identity, which the scan supplied.
+    var recentScanAnchorId: String? = nil
+    var recentScanAt: Date? = nil
+    func noteScanned(anchorId: String) { recentScanAnchorId = anchorId; recentScanAt = Date() }
+    func recentlyScanned(_ anchorId: String, within seconds: TimeInterval = 600) -> Bool {
+        guard recentScanAnchorId == anchorId, let t = recentScanAt else { return false }
+        return Date().timeIntervalSince(t) <= seconds
+    }
+
     var lockedContext: QRAnchorContext? {
         if case .locked(let ctx) = scanState { return ctx }; return nil
     }
