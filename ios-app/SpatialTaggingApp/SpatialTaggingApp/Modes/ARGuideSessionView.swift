@@ -2380,7 +2380,7 @@ struct ARGuideSessionView: View {
                     liveSessionId: lsId,
                     event: PushGuideSessionEventRequest(
                         type: .environmentDrift, stepId: nil, stepIndex: nil, durationSeconds: nil,
-                        payload: ["distanceM": AnyCodable(Double(dist)), "angleDeg": AnyCodable(Double(dy))]))
+                        payload: ["distanceM": AnyCodable(Double(d.metres)), "angleDeg": AnyCodable(Double(d.degrees))]))
             }
         }
     }

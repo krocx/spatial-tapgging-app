@@ -6,6 +6,16 @@ it, it gets a line.
 
 ## 2026.4.46 — 2026-09-08
 
+### Fixed
+- **Place Steps: only one model could be adjusted (iOS)** — model slots were
+  reachable only through the pin-drop chain, so a step whose pin was already
+  placed (or whose 2nd/3rd model was added later in the editor) had no way to
+  position the extra models, and re-tapping the pin restarted the chain from
+  slot 1. Every placed step's tray chip now shows one ⬢1 / ⬢2 / ⬢3 button per
+  model (indigo = positioned, orange = not yet); tapping it adjusts that slot
+  alone — loaded at its saved offsets, or at the pin if never positioned —
+  with Confirm returning to pin placement and Cancel restoring the model.
+
 ### Changed
 - **One localization doctrine for every AR surface (B1)** — *the author's
   world map is the origin; the QR is the key and a drift check.* AR Work

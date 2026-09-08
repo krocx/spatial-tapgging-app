@@ -218,6 +218,11 @@ struct GuideStepPlacementView: View {
     /// U4 "Copy models to…": target steps whose slot ASSIGNMENTS were replaced
     /// this session (saved as `models` on the next Save).
     @State private var slotOverrides:   [String: [GuideStepModel]] = [:]
+    /// U4b (2026.4.46): true while adjusting ONE slot from the tray (not the
+    /// pin-drop chain). Confirm/Cancel return to pin placement instead of
+    /// advancing to the next slot. `adjustStart` restores the node on Cancel.
+    @State private var singleSlotAdjust = false
+    @State private var adjustStart: ModelTransformState? = nil
     /// U4: steps whose models are hidden while the author works on the pin.
     @State private var hiddenModelStepIds: Set<String> = []
     @State private var showCopySheet:   Bool = false
@@ -582,7 +587,7 @@ struct GuideStepPlacementView: View {
             // Confirm + Skip
             HStack(spacing: 12) {
                 Button { skipModelPlacement(stepId: step.id, slotId: slotId) } label: {
-                    Text("Skip")
+                    Text(singleSlotAdjust ? "Cancel" : "Skip")
                         .font(.subheadline.bold())
                         .frame(maxWidth: .infinity).padding(.vertical, 14)
                         .background(Color.white.opacity(0.12))
@@ -691,6 +696,31 @@ struct GuideStepPlacementView: View {
                     .accessibilityLabel("Quick-shot train from here")
                 }
                 .disabled(isPreparingTraining)
+            }
+
+            // U4b: per-slot adjust — every model of a PLACED step can be
+            // positioned on its own, any time, without re-dropping the pin
+            // (which restarts the whole chain from slot 1).
+            if placed, placementPhase.isPlacingPins {
+                let slotList = slots(for: step)
+                if !slotList.isEmpty {
+                    HStack(spacing: 4) {
+                        ForEach(Array(slotList.enumerated()), id: \.element.slotId) { i, slot in
+                            let positioned = modelTransforms[step.id]?[slot.slotId] != nil || slot.hasPlacement
+                            Button {
+                                adjustSlot(step: step, slotId: slot.slotId)
+                            } label: {
+                                Text("⬢\(i + 1)")
+                                    .font(.system(size: 9, weight: .bold))
+                                    .foregroundStyle(positioned ? Color.indigo : Color.orange)
+                                    .padding(.horizontal, 6).padding(.vertical, 3)
+                                    .background(Color.black.opacity(0.35), in: Capsule())
+                            }
+                            .accessibilityLabel("Adjust model \(i + 1)\(positioned ? "" : " (not positioned yet)")")
+                        }
+                    }
+                    .disabled(isSaving)
+                }
             }
         }
         .padding(6)
@@ -1128,12 +1158,57 @@ struct GuideStepPlacementView: View {
 
     /// Continue the chain after `slotId` was confirmed or skipped.
     private func continueModelChain(stepId: String, after slotId: String) {
+        // U4b: a single-slot adjust from the tray ends here — back to pins.
+        if singleSlotAdjust {
+            singleSlotAdjust = false
+            adjustStart      = nil
+            placementPhase   = .placingPins
+            return
+        }
         guard let step = steps.first(where: { $0.id == stepId }),
               let pin  = stepPositions[stepId] else {
             placementPhase = .placingPins; advanceFromStep(stepId: stepId); return
         }
         let idx = slots(for: step).firstIndex { $0.slotId == slotId } ?? -1
         startModelChain(step: step, pinPos: pin, fromSlot: idx + 1)
+    }
+
+    /// U4b: adjust one slot of an already-placed step. Reuses this session's
+    /// node when it exists; otherwise loads the model at its saved offsets
+    /// (or at the pin when it was never positioned).
+    private func adjustSlot(step: GuideStep, slotId: String) {
+        guard placementPhase.isPlacingPins,
+              let pin  = stepPositions[step.id],
+              let slot = slots(for: step).first(where: { $0.slotId == slotId }) else { return }
+        activateStepIfNeeded(step)
+        singleSlotAdjust = true
+        if let node = modelNodes[step.id]?[slotId] {
+            modelPosition = node.simdPosition
+            modelScale    = node.simdScale.x
+            modelRotY     = node.eulerAngles.y
+            modelPanMode  = .horizontal
+            adjustStart   = ModelTransformState(position: modelPosition, scale: modelScale, rotationY: modelRotY)
+            node.opacity  = 0.65
+            hiddenModelStepIds.remove(step.id)
+            applyStepVisibility()
+            placementPhase = .adjustingModel(stepId: step.id, slotId: slotId)
+            return
+        }
+        guard let model = resolvedModels.first(where: { $0.id == slot.modelId && $0.isReady }) else {
+            singleSlotAdjust = false
+            saveError = "Model for slot isn't ready on the server yet."
+            return
+        }
+        adjustStart = nil
+        placementPhase = .loadingModel(stepId: step.id, slotId: slotId)
+        let cachedURL = modelFileCache[model.id]
+        Task { await downloadAndPlaceModel(model: model, step: step, slot: slot, pinPos: pin, cachedURL: cachedURL) }
+    }
+
+    private func activateStepIfNeeded(_ step: GuideStep) {
+        if let idx = steps.firstIndex(where: { $0.id == step.id }), idx != activeStepIndex {
+            activateStep(idx)
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -1281,6 +1356,21 @@ struct GuideStepPlacementView: View {
     }
 
     private func skipModelPlacement(stepId: String, slotId: String) {
+        if singleSlotAdjust {
+            // Cancel: put the node back where it was (or drop a freshly loaded
+            // one that was never positioned) — nothing is recorded.
+            if let start = adjustStart, let node = modelNodes[stepId]?[slotId] {
+                node.simdPosition = start.position
+                node.simdScale    = simd_float3(start.scale, start.scale, start.scale)
+                node.eulerAngles  = SCNVector3(0, start.rotationY, 0)
+                node.opacity      = 0.55
+            } else if modelTransforms[stepId]?[slotId] == nil {
+                modelNodes[stepId]?[slotId]?.removeFromParentNode()
+                modelNodes[stepId]?.removeValue(forKey: slotId)
+            }
+            continueModelChain(stepId: stepId, after: slotId)
+            return
+        }
         modelNodes[stepId]?[slotId]?.removeFromParentNode()
         modelNodes[stepId]?.removeValue(forKey: slotId)
         continueModelChain(stepId: stepId, after: slotId)
