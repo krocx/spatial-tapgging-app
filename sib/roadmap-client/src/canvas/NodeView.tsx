@@ -71,6 +71,8 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
   const onPointerDown = useCallback((e: React.PointerEvent) => {
     if (e.button !== 0) return;
     e.stopPropagation();
+    if (e.pointerType === 'mouse') e.preventDefault();   // dragging a card must not select page text
+    window.getSelection?.()?.removeAllRanges();
     select(node.id, e.shiftKey);
     // Snapshot the (possibly multi-) selection as the drag baseline.
     const s = useStore.getState();
@@ -323,7 +325,9 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
             autoFocus
             className="node-editor"
             defaultValue={node.text}
-            onFocus={e => e.target.select()}
+            // Caret at the end — the text reads normally; nothing looks "all
+            // selected". (Select-all on open was mistaken for a stuck highlight.)
+            onFocus={e => { const n = e.target.value.length; e.target.setSelectionRange(n, n); }}
             onChange={e => {
               // Autosave while typing (debounced) — no Enter required. The
               // editor stays open; blur/Enter merely close it. Matches how

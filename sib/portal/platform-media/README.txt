@@ -8,3 +8,7 @@ Drop them into DATA_DIR/platform/media/ on the server — brand assets stay depl
     "productivity": { "today": "TTC 14 d · SLH 2.1", "target": "TTC 7 d · SLH 1.4" },
     "velocity":     { "today": "CT 3 wk",            "target": "CT 2 d" },
     "trust":        { "today": "Field NCs 6/qtr",    "target": "≤ 2/qtr" } }
+
+Self-assessment wording: assessment.json in DATA_DIR/platform/media/ overrides the six questions and the four levels — no code change.
+  { "questions": [ { "q": "…", "o": ["worst", "…", "…", "best"] }, … 6 items ],
+    "levels":    [ { "n": "Aware", "d": "what it means", "next": "next rung" }, … 4 items ] }

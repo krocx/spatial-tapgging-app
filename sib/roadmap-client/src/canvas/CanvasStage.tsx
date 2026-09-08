@@ -83,6 +83,12 @@ export function CanvasStage(): JSX.Element {
   }, [camera, setCamera, screenPoint]);
 
   const onPointerDown = useCallback((e: React.PointerEvent) => {
+    // A mouse drag on an SVG is a native text-selection gesture: without this
+    // the browser highlights every text node on the page (labels, notes, the
+    // inspector) and the highlight survives pointer-up — the "everything looks
+    // selected" bug. Marquee/pan/pinch never want native selection.
+    if (e.pointerType === 'mouse') e.preventDefault();
+    window.getSelection?.()?.removeAllRanges();
     const p = screenPoint(e);
     pointers.current.set(e.pointerId, p);
 
@@ -234,6 +240,8 @@ export function CanvasStage(): JSX.Element {
         className="canvas-stage"
         style={{ cursor: panning ? 'grabbing' : spaceDown ? 'grab' : marquee ? 'crosshair' : 'default' }}
         onWheel={onWheel}
+        // Double/triple-click on the stage creates a node — never a word/line selection.
+        onMouseDown={e => { if (e.detail > 1) e.preventDefault(); }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}

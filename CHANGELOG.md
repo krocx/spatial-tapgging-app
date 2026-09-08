@@ -6,6 +6,17 @@ it, it gets a line.
 
 ## 2026.4.45 — 2026-09-01
 
+### Fixed
+- **Designer / Roadmap: "everything looks selected"** — a mouse drag or a
+  double-click on the SVG canvas was a native text-selection gesture, so the
+  browser highlighted every text node on the page (node labels, notes, the
+  inspector) and the highlight survived pointer-up. The canvas and node cards
+  now `preventDefault` mouse pointer-downs, clear any stray selection, block
+  multi-click selection on the stage, and the whole canvas is
+  `user-select: none` (textareas/inputs re-enable it). The node editor opens
+  with the caret at the end instead of selecting all text, so a freshly added
+  node reads normally. Roadmap bundle must be rebuilt (`npm run build:roadmap`).
+
 ### Added
 - **Place Steps focus toggle (U1, iOS)** — an eye button in the Place Steps
   top bar hides every other step's pin, label and 3D model while one step is
@@ -159,14 +170,18 @@ it, it gets a line.
   to two lines on the map and deck. M2: a **guided reading path** — a 🧭
   "Start here" pill and four spotlight stops (why → how we score → see it →
   where are you?), once per browser, Esc/Skip anytime — and a **Connected
-  Worker maturity self-assessment**: six questions (instructions, validation,
-  evidence, devices, change velocity, spatial data), a four-rung ladder
+  Worker maturity self-assessment**: six pain-point questions (iOMS instruction
+  accuracy per configuration, QFE critical-step sign-off, re-work vs CT,
+  new-hire time-to-qualified 16+/12/8/≤4 weeks, ME issue visibility, customer
+  change-request reach), each worst → best, a four-rung ladder
   (Aware → Piloting → Operating → Autonomous-ready) with what it means, the
   biggest gap and the next rung, Share-with-AppliedX / email prefilled with
   the result. Anonymous pulse: `POST /platform/assess` (level, score, answers,
   optional area label — nothing else, store capped at 5 000) and
   `GET /platform/assess/summary`; shown on /platform and as an "areas
-  assessed · avg level" tile on the home page.
+  assessed · avg level" tile on the home page. Questions and level copy can be
+  replaced per deployment without a rebuild: drop `assessment.json` into
+  `DATA_DIR/platform/media/` (format in `sib/portal/platform-media/README.txt`).
 - **Validation focus mode (X2, iOS)** — validation takes over the screen:
   step panels, pins, arrow, feature-point dots, the text panel, Prev/Next and
   the failed banner are hidden; what remains is the target ring, one guidance

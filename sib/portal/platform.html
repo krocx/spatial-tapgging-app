@@ -687,32 +687,45 @@
   setTimeout(() => { if (!rpSeen()) rpStart(false); else document.getElementById('rp-start').style.display = 'flex'; }, 1400);
 
   // ── M2: Connected Worker maturity self-assessment ────────────────────────
-  const AZ_Q = [
-    { q: 'How do technicians get their work instructions today?',
-      o: ['Paper or PDF binders', 'Digital docs on a screen', 'Step-by-step on a tablet', 'Pinned to the tool in AR'] },
-    { q: 'How is a critical step confirmed as done right?',
-      o: ['Experience and a signature', 'A checklist tick', 'A photo someone reviews later', 'Spatially validated on the spot'] },
-    { q: 'What evidence does a completed procedure leave behind?',
-      o: ['None beyond the sign-off', 'Photos in an email or folder', 'A form per job', 'A per-run log with timings, verdicts and photos'] },
-    { q: 'Which devices are in the cleanroom with the technician?',
-      o: ['None — screens are outside', 'A shared laptop or terminal', 'Shared iPads', 'iPads today, smart-glasses trials planned'] },
-    { q: 'When a procedure changes, how long until every chamber runs the new one?',
-      o: ['Months — retraining', 'Weeks', 'Days', 'Minutes — publish once, every chamber of the configuration'] },
-    { q: 'What spatial knowledge of your tools exists digitally?',
-      o: ['None', 'CAD only', 'Photos / videos of key steps', 'Anchors, world maps and validated reference views'] },
+  // Questions speak to the pain points we hear on the floor — iOMS is already
+  // in every technician's hands, so the ask is about accuracy, sign-off
+  // reality, re-work, ramp, ME response and change velocity. Options run
+  // worst → best (scored 0..3). To change the wording without a code change,
+  // drop DATA_DIR/platform/media/assessment.json ({ questions:[{q,o:[4]}], levels:[{n,d,next}×4] }).
+  let AZ_Q = [
+    { q: 'How accurate are the work instructions technicians get in iOMS for the configuration in front of them?',
+      o: ['Generic — the technician works out the config differences', 'Mostly right, with known gaps per config', 'Config-specific, but updates lag the floor', 'Config-specific and current for every chamber'] },
+    { q: 'How does the QFE sign-off on a critical step really happen?',
+      o: ['Signed off later, often without a proper review', 'Reviewed when the QFE is free — usually not in the moment', 'Reviewed at the step, from photos', 'Validated at the step with evidence; QFE reviews by exception'] },
+    { q: 'How much is re-work eating into your cycle time (CT)?',
+      o: ['Re-work is routine and we don’t measure its CT hit', 'Frequent — a visible share of CT every week', 'Occasional, tracked per job', 'Rare, tracked per step, trending down'] },
+    { q: 'How long until a new hire is qualified for independent work on critical assemblies?',
+      o: ['16 weeks or more', 'About 12 weeks', 'About 8 weeks', '4 weeks or less'] },
+    { q: 'When a technician hits an issue in the cleanroom, how quickly can an ME see it and resolve it?',
+      o: ['Days — described second-hand in a meeting', 'Same shift, if the ME can come to the tool', 'Hours — photos and notes shared on the spot', 'Minutes — the ME sees the step, the evidence and the verdict live'] },
+    { q: 'When a customer change request lands, how fast does it reach every chamber of that configuration?',
+      o: ['Months — retraining and re-documentation', 'Weeks', 'Days', 'Minutes — publish once, every chamber updates'] },
   ];
-  const AZ_LEVELS = [
-    { n: 'Aware',            d: 'Instructions live in documents and people. The upside is largest here — and the first POC is the fastest way to see it.', next: 'Pick one procedure on one chamber. We put it in AR in a working session; you baseline TTC and re-work.' },
-    { n: 'Piloting',         d: 'Digital instructions exist; validation and evidence are still manual. You are one step from measurable Customer Trust gains.', next: 'Add spatial validation to the two steps that cause your Field NCs. Two weeks, one configuration.' },
-    { n: 'Operating',        d: 'Guided work with evidence is part of the shift. The next lever is velocity — content that reaches every chamber the day it changes.', next: 'Move authoring to configurations and let the usage log report Productivity and Velocity per chamber.' },
-    { n: 'Autonomous-ready', d: 'Technicians supervise, intervene and validate with spatial context on the tool. You are the reference site for the FY27 device POCs.', next: 'Join the smart-glasses fit & feasibility POCs — your content and spatial data light up any form factor.' },
+  let AZ_LEVELS = [
+    { n: 'Aware',            d: 'Instructions are generic, QFE sign-off is a formality and re-work is unmeasured. The upside is largest here — and the first POC is the fastest way to see it.', next: 'Pick one procedure on one configuration. We put it in AR in a working session; you baseline TTC, re-work and CT.' },
+    { n: 'Piloting',         d: 'Config-specific instructions exist; validation and evidence are still manual and the QFE loop is slow. You are one step from measurable Customer Trust gains.', next: 'Add spatial validation to the two steps behind your Field NCs so the QFE reviews by exception. Two weeks, one configuration.' },
+    { n: 'Operating',        d: 'Guided, evidenced work is part of the shift and MEs see issues as they happen. The next lever is velocity — change requests reaching every chamber the day they land.', next: 'Move authoring to configurations and let the usage log report CT, re-work and TTC per chamber.' },
+    { n: 'Autonomous-ready', d: 'Technicians supervise, intervene and validate with spatial context on the tool; ramp is weeks, not months. You are the reference site for the FY27 device POCs.', next: 'Join the smart-glasses fit & feasibility POCs — your content and spatial data light up any form factor.' },
   ];
-  const azAns = new Array(AZ_Q.length).fill(-1);
-  (function azBuild() {
+  // Optional deployment-local override (same folder as logos / metrics.json).
+  async function azLoadOverride() {
+    try {
+      const ov = await (await fetch('/platform-media/assessment.json', { cache: 'no-store' })).json();
+      if (Array.isArray(ov.questions) && ov.questions.length === 6 && ov.questions.every(x => x && typeof x.q === 'string' && Array.isArray(x.o) && x.o.length === 4)) AZ_Q = ov.questions;
+      if (Array.isArray(ov.levels) && ov.levels.length === 4 && ov.levels.every(l => l && l.n && l.d && l.next)) AZ_LEVELS = ov.levels;
+    } catch { /* defaults */ }
+  }
+  const azAns = new Array(6).fill(-1);
+  function azBuild() {
     const host = document.getElementById('az-questions');
     host.innerHTML = AZ_Q.map((q, i) => `<div class="az-q"><div class="qt">${i + 1}. ${q.q}</div>
       <div class="az-opts">${q.o.map((o, j) => `<button class="az-opt" onclick="azPick(${i},${j},this)">${o}</button>`).join('')}</div></div>`).join('');
-  })();
+  }
   function azPick(i, j, btn) {
     azAns[i] = j;
     [...btn.parentElement.children].forEach(b => b.classList.toggle('on', b === btn));
@@ -757,7 +770,7 @@
         p.levels.map((n, i) => `${names[i]} <b>${n}</b>`).join(' · ');
     } catch {}
   }
-  azPulse();
+  azLoadOverride().then(() => { azBuild(); azPulse(); });
 
   // Live numbers — public aggregate counts only (/stats); fail silently
   (async () => {
