@@ -1657,6 +1657,11 @@ struct GuideStepPlacementView: View {
                 try await client.uploadGuideWorldMap(
                     guideId: guide.id, mapData: mapData, referencePhotoData: photoData,
                     referenceCameraPose: pose)
+                // B1: refresh the shared cache with the server's stamp so the next
+                // run on this device is a cache hit instead of a re-download.
+                if let meta = try? await client.fetchGuideWorldMapMeta(guideId: guide.id) {
+                    WorldMapCache.store(.guide(guide.id), map: mapData, meta: meta)
+                }
             } catch {
                 print("[GuideStepPlacementView] World map upload failed (non-fatal): \(error)")
             }

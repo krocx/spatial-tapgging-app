@@ -126,6 +126,12 @@ export interface Anchor {
    * areas/panels rather than chambers).
    */
   configId?: string;
+  /**
+   * B1 (2026.4.46): READ-ONLY, derived on GET. ISO time the author sealed the
+   * world map (map + anchorPose meta present). Absent = unsealed: the app
+   * falls back to the QR pose as origin. Never stored; never accepted on write.
+   */
+  mapSealedAt?: string;
   createdAt: string; // ISO 8601
   updatedAt: string;
 }

@@ -173,13 +173,23 @@ router.post('/guide/:guideId/upload', (req: Request, res: Response): void => {
   }
 
   // X1: reference camera pose rides along with the photo (only when a photo
-  // was captured this save — the pose belongs to that frame).
-  if (referencePhotoBase64 && Array.isArray(referenceCameraPose)
-      && referenceCameraPose.length === 16 && referenceCameraPose.every(n => typeof n === 'number' && isFinite(n))) {
+  // was captured this save — the pose belongs to that frame). B1: the meta's
+  // capturedAt is stamped on EVERY map save (pose kept from before when no new
+  // photo) — the app's WorldMapCache uses it to know when its copy is stale.
+  try {
+    let meta: Record<string, unknown> = {};
     try {
-      fs.writeFileSync(guideRefPosePath(guideId), JSON.stringify({ referenceCameraPose, capturedAt }));
-    } catch (err) { console.error('[SIB] Failed to save reference pose (non-fatal):', err); }
-  }
+      if (fs.existsSync(guideRefPosePath(guideId))) {
+        meta = JSON.parse(fs.readFileSync(guideRefPosePath(guideId), 'utf8')) as Record<string, unknown>;
+      }
+    } catch { meta = {}; }
+    if (referencePhotoBase64 && Array.isArray(referenceCameraPose)
+        && referenceCameraPose.length === 16 && referenceCameraPose.every(n => typeof n === 'number' && isFinite(n))) {
+      meta.referenceCameraPose = referenceCameraPose;
+    }
+    meta.capturedAt = typeof capturedAt === 'string' && capturedAt ? capturedAt : new Date().toISOString();
+    fs.writeFileSync(guideRefPosePath(guideId), JSON.stringify(meta));
+  } catch (err) { console.error('[SIB] Failed to save guide map meta (non-fatal):', err); }
 
   console.log(`[SIB] ARWorldMap saved for guide ${guideId} (${buf.length} bytes, captured ${capturedAt})`);
 

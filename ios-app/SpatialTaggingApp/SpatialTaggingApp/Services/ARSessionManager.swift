@@ -58,6 +58,15 @@ final class ARSessionManager: NSObject, ObservableObject {
     /// True while ARKit is relocalizing into a previously saved ARWorldMap.
     /// QRScanGateView shows a "Relocalizing…" hint while this is true.
     @Published var isRelocalizing: Bool = false
+    /// B1: how the last world-map relocalization ended. `.succeeded` means the
+    /// session frame IS the saved map's frame; `.timedOut` means we fell back
+    /// to a fresh frame (map data is meaningless in this session).
+    enum RelocalizationOutcome { case succeeded, timedOut }
+    @Published var relocalizationOutcome: RelocalizationOutcome? = nil
+    /// B1: true when the origin was adopted from the SEALED map (not the live
+    /// QR). While set, live ARImageAnchor refinement is ignored — otherwise a
+    /// moved/re-stuck QR would drag every tag back to wherever it is now.
+    @Published private(set) var mapIsOrigin: Bool = false
     /// True between ARSessionDelegate's sessionWasInterrupted/sessionInterruptionEnded
     /// callbacks — e.g. a phone call, Control Center, or multitasking switch.
     /// #69: previously nothing observed these callbacks, so a capture or
@@ -127,6 +136,8 @@ final class ARSessionManager: NSObject, ObservableObject {
         detectedQRCorners       = []
         lockedAnchorTransform   = nil
         isRelocalizing          = false
+        relocalizationOutcome   = nil
+        mapIsOrigin             = false
     }
 
     /// Start the AR session using a previously saved ARWorldMap so ARKit can
@@ -162,6 +173,8 @@ final class ARSessionManager: NSObject, ObservableObject {
         detectedQRCorners       = []
         lockedAnchorTransform   = nil
         isRelocalizing          = true
+        relocalizationOutcome   = nil
+        mapIsOrigin             = false
         print("[ARSessionManager] Session started with saved ARWorldMap — relocalizing…")
 
         // Relocalization timeout: fall back to fresh session if ARKit hasn't
@@ -172,6 +185,7 @@ final class ARSessionManager: NSObject, ObservableObject {
             print("[ARSessionManager] Relocalization timeout (15 s) — falling back to fresh session")
             self.isRelocalizing = false
             self.startSession()
+            self.relocalizationOutcome = .timedOut
         }
     }
 
@@ -203,7 +217,10 @@ final class ARSessionManager: NSObject, ObservableObject {
     ///   (including the locked ARImageAnchor) alive and continuously updated.
     /// - After linking, processImageAnchors will resume publishing lockedAnchorTransform
     ///   updates as ARKit refines the QR pose each frame.
-    func linkToExistingSession(_ session: ARSession) {
+    /// - Parameter mapOrigin: B1 — pass `appState.sealedMapOrigin`. When set,
+    ///   the sealed pose becomes `lockedAnchorTransform` and the live QR is NOT
+    ///   restored as the origin (no per-frame refinement either).
+    func linkToExistingSession(_ session: ARSession, mapOrigin: simd_float4x4? = nil) {
         imageAnchorStableFrames = 0
         pendingContext          = nil
         poseAccumulator         = []
@@ -212,12 +229,27 @@ final class ARSessionManager: NSObject, ObservableObject {
         // Become the new delegate so didUpdate/didAdd anchor callbacks flow here.
         session.delegate  = self
 
+        if let mapOrigin {
+            adoptMapOrigin(mapOrigin)
+            return
+        }
+
         // The session is already running — find the ARImageAnchor ARKit locked
         // during QRScanGateView and restore our local reference to it.
         // A short delay ensures the session delivers its first frame to us.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
             self?.restoreLockedImageAnchorFromSession()
         }
+    }
+
+    /// B1: make the SEALED map pose the origin for this session. The live
+    /// ARImageAnchor stays in the session (drift checks may read it) but no
+    /// longer drives `lockedAnchorTransform`.
+    func adoptMapOrigin(_ pose: simd_float4x4) {
+        mapIsOrigin           = true
+        _lockedImageAnchor    = nil
+        lockedAnchorTransform = pose
+        print("[ARSessionManager] ✓ Origin adopted from sealed world map")
     }
 
     /// Searches the current session frame for an ARImageAnchor and restores
@@ -245,6 +277,7 @@ final class ARSessionManager: NSObject, ObservableObject {
     func resetScan() {
         scanState             = .scanning
         lockedAnchorTransform = nil
+        mapIsOrigin           = false
         pendingContext        = nil
         _lockedImageAnchor    = nil
         poseAccumulator       = []
@@ -464,6 +497,8 @@ extension ARSessionManager: ARSessionDelegate {
         // When the QR is visible, ARKit keeps updating the ARImageAnchor's
         // transform.  We republish the gravity-normalised pose so that
         // AuthorModeView / OperatorModeView can reposition tag nodes to match.
+        // B1: never when the sealed map is the origin (adoptMapOrigin nils
+        // _lockedImageAnchor, so this guard also covers that case).
         guard let lockedAnchor = _lockedImageAnchor else { return }
         for anchor in anchors {
             guard anchor === lockedAnchor,
@@ -512,6 +547,7 @@ extension ARSessionManager: ARSessionDelegate {
             // has succeeded — clear the flag so QRScanGateView shows "scan QR" again.
             if cat == 1, self?.isRelocalizing == true {
                 self?.isRelocalizing = false
+                self?.relocalizationOutcome = .succeeded
                 print("[ARSessionManager] ✓ Relocalization complete — tracking normal")
             }
         }

@@ -62,6 +62,13 @@ final class AppState: ObservableObject {
     /// session's normalised transform — set once per session by QRScanGateView.
     var anchorNormalisedTransform: simd_float4x4? = nil
 
+    /// B1 (2026.4.46): non-nil when this session's origin came from the
+    /// author's SEALED world map rather than the live QR. Successor views pass
+    /// it to `linkToExistingSession(_:mapOrigin:)` so the live ARImageAnchor
+    /// never overrides it. nil = QR-origin session (unsealed anchor, or
+    /// relocalization timed out).
+    var sealedMapOrigin: simd_float4x4? = nil
+
     /// The live ARSession created by QRScanGateView and kept alive so that
     /// AuthorModeView / OperatorModeView can link to it without a session reset.
     /// When both views share this session, the locked ARImageAnchor remains tracked
@@ -118,6 +125,7 @@ final class AppState: ObservableObject {
         trainedTagIds = []
         anchorEncryptionKey = nil
         anchorNormalisedTransform = nil
+        sealedMapOrigin = nil
         activeGroupId = nil
         // Release the shared session — any view holding a link will keep it alive
         // until it dismisses and pauses via its own onDisappear.

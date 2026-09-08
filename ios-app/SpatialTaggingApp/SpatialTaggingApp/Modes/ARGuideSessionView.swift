@@ -1045,13 +1045,16 @@ struct ARGuideSessionView: View {
     private func loadData() async {
         let client = SIBClient(settings: settings)
         do {
-            async let mapFetch   = client.fetchGuideWorldMap(guideId: guide.id)
+            // B1: same loader as the Spatial Inspection gate — meta-checked
+            // local cache → SIB → none. The meta carries the author's camera
+            // pose at the reference photo (X1 drift check at "I'm Here").
+            async let mapFetch   = WorldMapCache.load(.guide(guide.id), client: client)
             async let photoFetch = client.fetchGuideWorldMapPhoto(guideId: guide.id)
-            let (mapData, photoData) = try await (mapFetch, photoFetch)
+            let (bundle, photoData) = try await (mapFetch, photoFetch)
+            let mapData = bundle?.map
+            referenceCameraPose = bundle?.meta.referenceCameraPoseTransform
 
             if let pd = photoData { referencePhoto = UIImage(data: pd) }
-            // X1: author's pose at that photo — compared at "I'm Here".
-            Task { referenceCameraPose = await client.fetchGuideWorldMapReferencePose(guideId: guide.id) }
 
             // Open live session for real-time telemetry (fire-and-forget — AR session
             // continues normally if this fails).
@@ -2366,13 +2369,9 @@ struct ARGuideSessionView: View {
     private func checkEnvironmentDrift() {
         guard let ref = referenceCameraPose,
               let cur = arManager.sceneView.session.currentFrame?.camera.transform else { return }
-        let dp   = simd_float3(cur.columns.3.x - ref.columns.3.x, 0, cur.columns.3.z - ref.columns.3.z)
-        let dist = simd_length(dp)
-        // Forward vectors (-Z) projected onto the floor plane → yaw difference.
-        func yaw(_ m: simd_float4x4) -> Float { atan2(-m.columns.2.x, -m.columns.2.z) }
-        var dy = abs(yaw(cur) - yaw(ref)) * 180 / .pi
-        if dy > 180 { dy = 360 - dy }
-        guard dist > 0.5 || dy > 25 else { return }
+        // B1: shared drift math with the Spatial Inspection gate.
+        let d = ARCoordinateFrame.poseDelta(ref, cur)
+        guard d.metres > 0.5 || d.degrees > 25 else { return }
         environmentDrift = true
         showNotice("⚠ Scene may have changed (QR moved?) — pins may be off; validation will use image alignment")
         if let lsId = liveSessionId {

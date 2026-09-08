@@ -656,14 +656,29 @@ final class SIBClient {
     /// was placed before poses were recorded). Used to detect a re-localization
     /// that latched onto a moved object.
     func fetchGuideWorldMapReferencePose(guideId: String) async -> simd_float4x4? {
-        struct Meta: Decodable { let referenceCameraPose: [Float]? }
-        guard let m = try? await get(Meta.self, path: "/worldmap/guide/\(guideId)/meta"),
-              let f = m.referenceCameraPose, f.count == 16 else { return nil }
-        return simd_float4x4(columns: (
-            simd_float4(f[0],  f[1],  f[2],  f[3]),
-            simd_float4(f[4],  f[5],  f[6],  f[7]),
-            simd_float4(f[8],  f[9],  f[10], f[11]),
-            simd_float4(f[12], f[13], f[14], f[15])))
+        ARCoordinateFrame.transform(from: (try? await fetchGuideWorldMapMeta(guideId: guideId))?.referenceCameraPose)
+    }
+
+    /// B1: guide map meta — `{ referenceCameraPose?, capturedAt? }`. Feeds WorldMapCache.
+    func fetchGuideWorldMapMeta(guideId: String) async throws -> WorldMapMeta {
+        try await get(WorldMapMeta.self, path: "/worldmap/guide/\(guideId)/meta")
+    }
+
+    // ── B1 (2026.4.46): sealed-map meta for Spatial Inspection anchors ────────
+    // The author's world map is the origin; `anchorPose` is the gravity-
+    // normalised QR pose in that map's frame. Same wire shape as the guide meta.
+
+    func fetchWorldMapMeta(anchorId: String) async throws -> WorldMapMeta {
+        try await get(WorldMapMeta.self, path: "/anchors/\(anchorId)/worldmap/meta")
+    }
+
+    /// Author: seal the map — record the origin pose alongside the uploaded map.
+    func uploadWorldMapMeta(anchorId: String, anchorPose: simd_float4x4, sealedBy: String?) async throws -> WorldMapMeta {
+        struct Body: Encodable { let anchorPose: [Float]; let capturedAt: String; let sealedBy: String? }
+        let body = Body(anchorPose: ARCoordinateFrame.floats(from: anchorPose),
+                        capturedAt: ISO8601DateFormatter().string(from: Date()),
+                        sealedBy:   sealedBy?.isEmpty == false ? sealedBy : nil)
+        return try await post(WorldMapMeta.self, path: "/anchors/\(anchorId)/worldmap/meta", body: body)
     }
 
     /// Operator: download the ARWorldMap for a guide to re-localize the session.

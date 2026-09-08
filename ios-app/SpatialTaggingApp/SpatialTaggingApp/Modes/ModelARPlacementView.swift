@@ -386,9 +386,10 @@ struct ModelARPlacementView: View {
     private func loadAndPlace() async {
         let client = SIBClient(settings: settings)
 
-        // 1. Download guide's ARWorldMap (re-localize into Author's session coordinate frame)
-        if let mapData = try? await client.fetchGuideWorldMap(guideId: guide.id) {
-            arManager.startSessionWithWorldMap(mapData)
+        // 1. Guide's ARWorldMap via the shared cache (B1) — re-localize into the
+        //    Author's coordinate frame.
+        if let bundle = await WorldMapCache.load(.guide(guide.id), client: client) {
+            arManager.startSessionWithWorldMap(bundle.map)
         } else {
             arManager.startSession()
         }

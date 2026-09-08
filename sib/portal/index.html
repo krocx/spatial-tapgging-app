@@ -1780,6 +1780,16 @@ function renderAnchors() {
   sorted.forEach(a => grid.appendChild(buildCard(a)));
 }
 
+// B1 (2026.4.46): sealed-map badge. The author's world map is the origin for
+// tags; an unsealed anchor still works, from the QR pose (less consistent).
+function mapSealedHtml(anchor) {
+  if (!anchor.mapSealedAt) {
+    return `<span class="badge badge-orange" title="No sealed world map yet — tags are placed from the QR pose each scan. Author: scan this QR once in Author mode to seal.">Map not sealed</span>`;
+  }
+  const d = new Date(anchor.mapSealedAt).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
+  return `<span class="badge badge-green" title="Author's world map is the origin — operators relocalize into it; the QR is the key and a drift check (${anchor.mapSealedAt})">🗺 Map sealed · ${d}</span>`;
+}
+
 // ── Build anchor card ──────────────────────────────────────────────────────────
 function buildCard(anchor) {
   const count = tagCounts[anchor.id] ?? 0;
@@ -1810,6 +1820,7 @@ function buildCard(anchor) {
     <div class="card-meta">
       <span>Created ${date}</span>
       <span>${anchor.coordinateSystem}</span>
+      ${mapSealedHtml(anchor)}
     </div>
     ${configRowHtml(anchor)}
     ${keyHtml}

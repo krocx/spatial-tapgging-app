@@ -133,7 +133,7 @@ struct AuthorModeView: View {
                     if let existingSession = appState.activeARSession {
                         // QRScanGateView kept its ARSession alive; link to it so
                         // we skip world-frame reset and keep the live ARImageAnchor.
-                        arManager.linkToExistingSession(existingSession)
+                        arManager.linkToExistingSession(existingSession, mapOrigin: appState.sealedMapOrigin)
                         arManager.disableQRScanning()
                     } else {
                         // Fallback: no shared session (legacy / direct launch).

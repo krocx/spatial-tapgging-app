@@ -121,6 +121,42 @@ enum ARCoordinateFrame {
         return simd_float3(result.x, result.y, result.z)
     }
 
+    // ── Drift check (B1, 2026.4.46) ───────────────────────────────────────────
+    // One rule for every AR surface: the author's world map is the origin; the
+    // QR (or the operator's stance) is compared against it. Guides compare the
+    // live camera against `referenceCameraPose`; Spatial Inspection compares the
+    // live QR against the sealed `anchorPose`.
+
+    /// Floor-plane distance (metres) and yaw difference (degrees) between two
+    /// poses. Height is ignored: a QR re-stuck 30 cm higher is still "moved",
+    /// but the operator's device height must not trip the guide check.
+    static func poseDelta(_ a: simd_float4x4, _ b: simd_float4x4) -> (metres: Float, degrees: Float) {
+        let dp   = simd_float3(b.columns.3.x - a.columns.3.x, 0, b.columns.3.z - a.columns.3.z)
+        let dist = simd_length(dp)
+        func yaw(_ m: simd_float4x4) -> Float { atan2(-m.columns.2.x, -m.columns.2.z) }
+        var dy = abs(yaw(b) - yaw(a)) * 180 / .pi
+        if dy > 180 { dy = 360 - dy }
+        return (dist, dy)
+    }
+
+    // ── 16-float wire format (column-major), shared with SIB meta files ───────
+
+    static func floats(from m: simd_float4x4) -> [Float] {
+        [m.columns.0.x, m.columns.0.y, m.columns.0.z, m.columns.0.w,
+         m.columns.1.x, m.columns.1.y, m.columns.1.z, m.columns.1.w,
+         m.columns.2.x, m.columns.2.y, m.columns.2.z, m.columns.2.w,
+         m.columns.3.x, m.columns.3.y, m.columns.3.z, m.columns.3.w]
+    }
+
+    static func transform(from f: [Float]?) -> simd_float4x4? {
+        guard let f, f.count == 16 else { return nil }
+        return simd_float4x4(columns: (
+            simd_float4(f[0],  f[1],  f[2],  f[3]),
+            simd_float4(f[4],  f[5],  f[6],  f[7]),
+            simd_float4(f[8],  f[9],  f[10], f[11]),
+            simd_float4(f[12], f[13], f[14], f[15])))
+    }
+
     // ── Private helpers ───────────────────────────────────────────────────────
 
     private static func makeTransform(x: simd_float3,

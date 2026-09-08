@@ -56,34 +56,24 @@ struct QRScanGateView: View {
     // ── SIBClient — used for world-map upload/download ────────────────────────
     private var sibClient: SIBClient { SIBClient(settings: settings) }
 
-    // ── Local WorldMap storage ────────────────────────────────────────────────
-    // Saves ARWorldMap data to Documents/WorldMaps/{anchorId}.worldmap so the
-    // app can relocalize without network access.  Local is tried first on every
-    // startup (instant, offline-capable); SIB is the authoritative remote backup.
+    // ── World map (B1, 2026.4.46) ─────────────────────────────────────────────
+    // Loaded through WorldMapCache — the same loader AR Work Instructions use
+    // (meta-checked local copy → SIB → fresh session). Doctrine: the AUTHOR's
+    // world map is the origin; the QR is the key and a drift check.
+    //
+    //   relocalized + sealed → origin = sealed pose; QR only checked for drift
+    //   relocalized, unsealed (legacy map) → origin = live QR (as before)
+    //   timed out → origin = live QR, "reduced accuracy" note
+    //
+    // Only AUTHOR sessions seal/re-upload the map, and only when the session
+    // frame is the map's frame (relocalized) or no map existed yet. Operator
+    // scans never overwrite it.
+    @State private var mapBundle: WorldMapBundle? = nil
+    @State private var originNote: String? = nil
 
-    private static func localWorldMapURL(anchorId: String) -> URL? {
-        guard let docs = FileManager.default.urls(for: .documentDirectory,
-                                                   in: .userDomainMask).first else { return nil }
-        let dir = docs.appendingPathComponent("WorldMaps", isDirectory: true)
-        try? FileManager.default.createDirectory(at: dir,
-                                                  withIntermediateDirectories: true)
-        return dir.appendingPathComponent("\(anchorId).worldmap")
-    }
-
-    private static func loadLocalWorldMap(anchorId: String) -> Data? {
-        guard let url = localWorldMapURL(anchorId: anchorId) else { return nil }
-        return try? Data(contentsOf: url)
-    }
-
-    private static func saveLocalWorldMap(anchorId: String, data: Data) {
-        guard let url = localWorldMapURL(anchorId: anchorId) else { return }
-        do {
-            try data.write(to: url, options: .atomic)
-            print("[QRScanGateView] ✓ World map saved locally (\(data.count / 1024) KB) for anchor \(anchorId)")
-        } catch {
-            print("[QRScanGateView] Local world map save failed: \(error.localizedDescription)")
-        }
-    }
+    /// Drift tolerance between the sealed pose and the live QR.
+    private let driftMetres: Float  = 0.05
+    private let driftDegrees: Float = 10
 
     private enum ScanPhase: Equatable {
         case waiting          // scanning, no QR detected yet
@@ -165,34 +155,18 @@ struct QRScanGateView: View {
                     arManager.startSession()
                     return
                 }
-
-                // ── 1. Try local file first (offline-capable, no latency) ──────
-                if let localData = QRScanGateView.loadLocalWorldMap(anchorId: anchorId) {
-                    print("[QRScanGateView] Using LOCAL world map (\(localData.count / 1024) KB) — starting relocalization")
-                    await MainActor.run { arManager.startSessionWithWorldMap(localData) }
-                    // Still try to refresh from SIB in background in case a newer
-                    // map was uploaded from another device (non-blocking).
-                    Task {
-                        if let remoteData = try? await sibClient.fetchWorldMap(anchorId: anchorId),
-                           remoteData.count != localData.count {
-                            print("[QRScanGateView] Remote map differs — updating local cache")
-                            QRScanGateView.saveLocalWorldMap(anchorId: anchorId, data: remoteData)
-                        }
+                // B1: one loader for every AR surface (meta-checked cache → SIB).
+                let bundle = await WorldMapCache.load(.anchor(anchorId), client: sibClient)
+                await MainActor.run {
+                    mapBundle = bundle
+                    if let b = bundle {
+                        print("[QRScanGateView] World map \(b.source == .local ? "from cache" : "downloaded") — sealed=\(b.isSealed) — relocalizing")
+                        arManager.startSessionWithWorldMap(b.map)
+                    } else {
+                        print("[QRScanGateView] No world map (local or remote) — starting fresh session")
+                        arManager.startSession()
                     }
-                    return
                 }
-
-                // ── 2. Try SIB server ─────────────────────────────────────────
-                if let remoteData = try? await sibClient.fetchWorldMap(anchorId: anchorId) {
-                    print("[QRScanGateView] Downloaded world map from SIB (\(remoteData.count / 1024) KB) — caching locally and starting relocalization")
-                    QRScanGateView.saveLocalWorldMap(anchorId: anchorId, data: remoteData)
-                    await MainActor.run { arManager.startSessionWithWorldMap(remoteData) }
-                    return
-                }
-
-                // ── 3. Fresh session ──────────────────────────────────────────
-                print("[QRScanGateView] No world map available (local or remote) — starting fresh session")
-                arManager.startSession()
             }
         }
         .onDisappear {
@@ -272,8 +246,14 @@ struct QRScanGateView: View {
                 ProgressView().tint(.cyan).scaleEffect(0.8)
                 Text("Locking origin…").font(.subheadline).foregroundStyle(.white)
             case .locked:
-                Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-                Text("Origin locked").font(.subheadline.bold()).foregroundStyle(.white)
+                if let note = originNote {
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                    Text(note).font(.caption).foregroundStyle(.white).lineLimit(2)
+                } else {
+                    Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                    Text(appState.sealedMapOrigin != nil ? "Origin locked · sealed map" : "Origin locked")
+                        .font(.subheadline.bold()).foregroundStyle(.white)
+                }
             case .error(let msg):
                 Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.red)
                 Text(msg).font(.caption).foregroundStyle(.white).lineLimit(2)
@@ -334,9 +314,10 @@ struct QRScanGateView: View {
                 Image(systemName: "lock.fill").font(.title3).foregroundStyle(.green)
             }
             VStack(alignment: .leading, spacing: 2) {
-                Text("Origin locked").font(.headline).foregroundStyle(.white)
-                Text("Entering \(mode == .author ? "Author" : "Operator") mode…")
-                    .font(.caption).foregroundStyle(.white.opacity(0.6))
+                Text(appState.sealedMapOrigin != nil ? "Origin locked · sealed map" : "Origin locked")
+                    .font(.headline).foregroundStyle(.white)
+                Text(originNote ?? "Entering \(mode == .author ? "Author" : "Operator") mode…")
+                    .font(.caption).foregroundStyle(originNote == nil ? .white.opacity(0.6) : .orange)
             }
             Spacer()
             ProgressView().tint(.white)
@@ -425,8 +406,31 @@ struct QRScanGateView: View {
 
         appState.noteScanned(anchorId: context.anchorId)   // B
 
-        // ── Store the gravity-aligned anchor transform ─────────────────────────
-        appState.anchorNormalisedTransform = arManager.lockedAnchorTransform
+        // ── Choose the origin (B1) ─────────────────────────────────────────────
+        // Sealed map + relocalized → the author's pose is the origin; the live
+        // QR is only compared against it. Anything else → live QR (as before).
+        let livePose    = arManager.lockedAnchorTransform
+        let relocalized = arManager.relocalizationOutcome == .succeeded
+        var originPose  = livePose
+        originNote      = nil
+        if let sealed = mapBundle?.meta.anchorPoseTransform, relocalized {
+            originPose = sealed
+            arManager.adoptMapOrigin(sealed)
+            appState.sealedMapOrigin = sealed
+            if let live = livePose {
+                let d = ARCoordinateFrame.poseDelta(sealed, live)
+                if d.metres > driftMetres || d.degrees > driftDegrees {
+                    originNote = String(format: "QR moved? Using the sealed map (Δ %.0f cm · %.0f°)", d.metres * 100, d.degrees)
+                    print("[QRScanGateView] ⚠ QR drift vs sealed origin: \(d.metres) m, \(d.degrees)°")
+                }
+            }
+        } else {
+            appState.sealedMapOrigin = nil
+            if mapBundle?.isSealed == true {
+                originNote = "Couldn't match the sealed map — using the QR position (reduced accuracy)"
+            }
+        }
+        appState.anchorNormalisedTransform = originPose
 
         // ── Preserve the live ARSession for AuthorModeView / OperatorModeView ──
         // By storing the session here (before QRScanGateView dismisses), the
@@ -434,24 +438,28 @@ struct QRScanGateView: View {
         // startSession(), keeping the world frame and the live ARImageAnchor intact.
         appState.activeARSession = arManager.sceneView.session
 
-        // ── Serialise, cache locally, and upload the ARWorldMap ──────────────
-        // Save to the local Documents/WorldMaps/ directory FIRST (no network needed),
-        // then upload to SIB in the background.  On next app launch the local copy
-        // is used immediately (no download latency, works offline), and the SIB
-        // copy is used as a cross-device authoritative backup.
-        let client = sibClient
-        let aid    = context.anchorId
-        Task {
-            if let mapData = await arManager.saveCurrentWorldMap() {
-                // ── Local save (instant, offline-capable) ─────────────────────
-                QRScanGateView.saveLocalWorldMap(anchorId: aid, data: mapData)
-
-                // ── Remote upload (non-blocking, non-fatal) ───────────────────
+        // ── Seal the map (B1: AUTHOR only) ────────────────────────────────────
+        // Upload map + origin pose when no map existed yet, or when this session
+        // relocalized into the existing map (same frame — extending it is safe).
+        // A timed-out session has a fresh frame: uploading would corrupt the
+        // seal, so it is skipped. Operators never upload.
+        let hadMap = mapBundle != nil
+        if mode == .author, !hadMap || relocalized, let origin = originPose {
+            let client   = sibClient
+            let aid      = context.anchorId
+            let sealedBy = !settings.uamUserName.isEmpty ? settings.uamUserName : settings.authorName
+            Task {
+                guard let mapData = await arManager.saveCurrentWorldMap() else { return }
                 do {
                     try await client.uploadWorldMap(anchorId: aid, data: mapData)
-                    print("[QRScanGateView] ✓ World map uploaded to SIB for anchor \(aid)")
+                    let meta = try await client.uploadWorldMapMeta(anchorId: aid, anchorPose: origin, sealedBy: sealedBy)
+                    WorldMapCache.store(.anchor(aid), map: mapData, meta: meta)
+                    print("[QRScanGateView] ✓ World map sealed for anchor \(aid) (\(meta.capturedAt ?? "-"))")
                 } catch {
-                    print("[QRScanGateView] SIB upload failed (non-fatal, local copy saved): \(error.localizedDescription)")
+                    // Keep the map usable offline on this device; the seal is retried
+                    // on the author's next relocalized session.
+                    WorldMapCache.store(.anchor(aid), map: mapData, meta: WorldMapMeta())
+                    print("[QRScanGateView] Seal upload failed (non-fatal, cached locally): \(error.localizedDescription)")
                 }
             }
         }
@@ -465,7 +473,8 @@ struct QRScanGateView: View {
         let qrStep: TourStep = mode == .author ? .scanQRAuthor : .scanQROperator
         tour.advancePast(qrStep)
         withAnimation { scanPhase = .locked }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
+        // B1: linger long enough to read a drift / reduced-accuracy note.
+        DispatchQueue.main.asyncAfter(deadline: .now() + (originNote == nil ? 0.9 : 2.4)) {
             onSessionReady()
         }
     }

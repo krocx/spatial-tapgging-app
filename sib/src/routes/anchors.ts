@@ -146,9 +146,17 @@ router.post('/', async (req: Request, res: Response) => {
   return res.status(201).json(response);
 });
 
+// B1: derived read-only field — when the author sealed the world map (see
+// worldmap/meta below). Computed from files so the store never carries it.
+function withMapSealed(anchor: Anchor): Anchor {
+  const meta = readWorldMapMeta(anchor.id);
+  if (!meta.anchorPose || !fs.existsSync(path.join(WORLDMAPS_DIR, `${anchor.id}.worldmap`))) return anchor;
+  return { ...anchor, mapSealedAt: meta.capturedAt };
+}
+
 // ── GET /anchors — list all anchors ───────────────────────────────────────────
 router.get('/', (_req: Request, res: Response) => {
-  const anchors = anchorStore.findAll();
+  const anchors = anchorStore.findAll().map(withMapSealed);
   return res.json({
     data: anchors,
     timestamp: new Date().toISOString(),
@@ -191,7 +199,7 @@ router.get('/:id', (req: Request, res: Response) => {
       timestamp: new Date().toISOString(),
     });
   }
-  return res.json({ data: anchor, timestamp: new Date().toISOString() });
+  return res.json({ data: withMapSealed(anchor), timestamp: new Date().toISOString() });
 });
 
 // ── GET /anchors/:id/qrimage — serve the canonical QR PNG ────────────────────
@@ -419,6 +427,74 @@ router.get('/:id/worldmap', (req: Request, res: Response) => {
   return res.sendFile(filePath);
 });
 
+// ── World-map meta: the sealed origin (B1, 2026.4.46) ─────────────────────────
+// Doctrine for every anchor-scoped AR surface: the AUTHOR's world map is the
+// origin; the QR is the key and a drift check. The meta file records the
+// gravity-normalised QR pose *as seen in the sealed map's frame*, so an
+// operator who relocalizes into the map can place `anchor_rel` tags from the
+// author's pose instead of from a fresh (±5–15 mm, tilt-noisy) QR estimate.
+// Same shape as the guide `referenceCameraPose` meta.
+//
+//   POST /anchors/:id/worldmap/meta  { anchorPose: number[16], capturedAt?, sealedBy? }
+//   GET  /anchors/:id/worldmap/meta  → { anchorPose?, capturedAt?, sealedBy?, sealed: boolean }
+//
+// Uploading the map without meta (older app builds) leaves the anchor
+// unsealed — the app keeps today's QR-origin behaviour for it.
+export function worldMapMetaPath(anchorId: string): string {
+  return path.join(WORLDMAPS_DIR, `${anchorId}.anchorpose.json`);
+}
+
+export interface WorldMapMeta {
+  anchorPose?: number[];
+  capturedAt?: string;
+  sealedBy?:   string;
+}
+
+export function readWorldMapMeta(anchorId: string): WorldMapMeta {
+  try {
+    const p = worldMapMetaPath(anchorId);
+    if (!fs.existsSync(p)) return {};
+    const m = JSON.parse(fs.readFileSync(p, 'utf8')) as WorldMapMeta;
+    return Array.isArray(m.anchorPose) && m.anchorPose.length === 16 ? m : {};
+  } catch { return {}; }
+}
+
+router.post('/:id/worldmap/meta', express.json(), (req: Request, res: Response) => {
+  const anchor = anchorStore.findById(req.params.id);
+  if (!anchor) {
+    return res.status(404).json({ error: `Anchor ${req.params.id} not found`, timestamp: new Date().toISOString() });
+  }
+  const { anchorPose, capturedAt, sealedBy } = (req.body ?? {}) as Partial<WorldMapMeta>;
+  if (!Array.isArray(anchorPose) || anchorPose.length !== 16 ||
+      !anchorPose.every(v => typeof v === 'number' && Number.isFinite(v))) {
+    return res.status(400).json({ error: 'anchorPose must be 16 finite numbers (column-major 4×4)', timestamp: new Date().toISOString() });
+  }
+  const meta: WorldMapMeta = {
+    anchorPose,
+    capturedAt: typeof capturedAt === 'string' && capturedAt ? capturedAt : new Date().toISOString(),
+    ...(typeof sealedBy === 'string' && sealedBy.trim() && { sealedBy: sealedBy.trim().slice(0, 80) }),
+  };
+  try {
+    fs.writeFileSync(worldMapMetaPath(anchor.id), JSON.stringify(meta));
+  } catch (err) {
+    return res.status(500).json({ error: `Failed to store world map meta: ${err}`, timestamp: new Date().toISOString() });
+  }
+  const hasMap = fs.existsSync(path.join(WORLDMAPS_DIR, `${anchor.id}.worldmap`));
+  console.log(`[SIB] World map sealed for anchor ${anchor.id} (${meta.capturedAt}${meta.sealedBy ? ` by ${meta.sealedBy}` : ''}${hasMap ? '' : ' — map not uploaded yet'})`);
+  return res.status(201).json({ data: { ...meta, sealed: hasMap }, timestamp: new Date().toISOString() });
+});
+
+router.get('/:id/worldmap/meta', (req: Request, res: Response) => {
+  const anchor = anchorStore.findById(req.params.id);
+  if (!anchor) {
+    return res.status(404).json({ error: `Anchor ${req.params.id} not found`, timestamp: new Date().toISOString() });
+  }
+  const meta = readWorldMapMeta(anchor.id);
+  const hasMap = fs.existsSync(path.join(WORLDMAPS_DIR, `${anchor.id}.worldmap`));
+  res.setHeader('Cache-Control', 'no-store');
+  return res.json({ data: { ...meta, sealed: hasMap && !!meta.anchorPose }, timestamp: new Date().toISOString() });
+});
+
 // ── DELETE /anchors — cascade-delete ALL anchors + tags + pass-states ────────
 router.delete('/', (_req: Request, res: Response) => {
   const anchors = anchorStore.findAll();
@@ -442,6 +518,7 @@ router.delete('/', (_req: Request, res: Response) => {
     const mapPath = path.join(WORLDMAPS_DIR, `${anchor.id}.worldmap`);
     try { fs.unlinkSync(qrPath);  } catch { /* not present */ }
     try { fs.unlinkSync(mapPath); } catch { /* not present */ }
+    try { fs.unlinkSync(worldMapMetaPath(anchor.id)); } catch { /* not present */ }
   }
 
   console.log(
@@ -587,6 +664,7 @@ router.delete('/:id', (req: Request, res: Response) => {
   const mapPath = path.join(WORLDMAPS_DIR, `${req.params.id}.worldmap`);
   try { fs.unlinkSync(qrPath);  } catch { /* not present */ }
   try { fs.unlinkSync(mapPath); } catch { /* not present */ }
+  try { fs.unlinkSync(worldMapMetaPath(req.params.id)); } catch { /* not present */ }
 
   console.log(
     `[SIB] Deleted anchor ${req.params.id} ` +

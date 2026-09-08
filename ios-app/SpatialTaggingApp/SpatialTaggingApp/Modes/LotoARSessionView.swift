@@ -382,7 +382,7 @@ struct LotoARSessionView: View {
         // below exists only for defensive robustness; it should never run in
         // the shipped flow (and says so loudly).
         if let existingSession = appState.activeARSession {
-            arManager.linkToExistingSession(existingSession)
+            arManager.linkToExistingSession(existingSession, mapOrigin: appState.sealedMapOrigin)
             arManager.disableQRScanning()
             hadWorldMap = true
         } else {

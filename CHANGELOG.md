@@ -4,6 +4,41 @@ One section per platform version (see [docs/VERSIONING.md](docs/VERSIONING.md)),
 newest first. Written in the same PR as the change — if a teammate would notice
 it, it gets a line.
 
+## 2026.4.46 — 2026-09-08
+
+### Changed
+- **One localization doctrine for every AR surface (B1)** — *the author's
+  world map is the origin; the QR is the key and a drift check.* AR Work
+  Instructions already worked this way; Spatial Inspection placed tags from
+  the live QR pose on every scan (±5–15 mm, tilt-noisy, and every tag moved
+  when the QR was re-stuck). Now an Author **seals** the map on QR lock: the
+  map is uploaded together with the gravity-normalised QR pose in that map's
+  frame (`POST/GET /anchors/:id/worldmap/meta`, `<id>.anchorpose.json`,
+  removed with the anchor). Operators relocalize into the sealed map and place
+  `anchor_rel` tags from the **author's** pose; the live QR is only compared
+  against it (> 5 cm / 10° → "QR moved? Using the sealed map"). If
+  relocalization times out the QR pose is used as before, with a "reduced
+  accuracy" note. **Operator scans never upload a map any more** (previously
+  every scan overwrote the author's map, often with a fresh, unrelated frame).
+  Unsealed anchors (every existing one) behave exactly as before until an
+  author scans them once — no data migration. Portal anchor cards show
+  **🗺 Map sealed · date** / **Map not sealed**; `Anchor.mapSealedAt` is a
+  derived read-only field on `GET /anchors`.
+- **Shared world-map loader (iOS `WorldMapCache`)** — the QR gate, guide
+  sessions and 3D-model placement load maps through one path: fetch the small
+  meta first, reuse the local copy when `capturedAt` matches, otherwise
+  download; offline degrades to the cached copy. Replaces the gate's
+  local-first / size-diff refresh (which could keep a stale map) and the
+  guides' download-every-time. Guide map saves now always stamp
+  `capturedAt` in the meta (pose kept when no new photo), so the cache can
+  tell a re-save apart. Drift math is one function
+  (`ARCoordinateFrame.poseDelta`) for both the guide "I'm Here" check and the
+  inspection gate. `ARSessionManager` gains `relocalizationOutcome` and a
+  map-origin mode that ignores live ARImageAnchor refinement.
+- Platform version → **2026.4.46** (server `/config`; set iOS
+  MARKETING_VERSION to match). Server needs `npm run build`; Xcode target must
+  add `Services/WorldMapCache.swift`.
+
 ## 2026.4.45 — 2026-09-01
 
 ### Fixed
