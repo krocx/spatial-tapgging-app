@@ -17,6 +17,11 @@ import tagGroupRouter from './routes/tag-groups.js';
 import chamberConfigRouter from './routes/chamber-configs.js';
 import { chamberConfigStore } from './routes/chamber-configs.js';
 import { guideStore, guideStepStore } from './guides/store.js';
+import { v4 as uuidv4 } from 'uuid';
+import { JsonFileStore } from './stores/json-file-store.js';
+
+interface MaturityAssessment { id: string; level: number; score: number; answers: number[]; area?: string; createdAt: string }
+const assessmentStore = new JsonFileStore<MaturityAssessment>('platform-assessments');
 import modelRouter from './routes/models.js';
 import mindmapRouter from './routes/mindmap.routes.js';
 import lotoRouter, { lotoPointStore, lotoEventStore } from './routes/loto.js';
@@ -233,6 +238,41 @@ document.getElementById('f').addEventListener('submit', async function(ev){
     } catch (err) {
       res.status(500).json({ error: 'Stats unavailable', detail: String(err) });
     }
+  });
+
+  // --- Connected Worker maturity self-assessment (M2, 2026.4.45) ------------
+  // POST /platform/assess   { level:1..4, score:0..18, answers:number[6], area?:string }
+  //   Anonymous by design: no identity, no IP, no user agent. Just the level,
+  //   the per-question answers and an optional free-text area label so the
+  //   initiative can see where the org sits and where the gaps cluster.
+  // GET  /platform/assess/summary → { count, avgLevel, levels:[n1..n4], gaps:[avg per question] }
+  app.post('/platform/assess', (req, res) => {
+    const b = (req.body ?? {}) as { level?: unknown; score?: unknown; answers?: unknown; area?: unknown };
+    const level = Number(b.level), score = Number(b.score);
+    const answers = Array.isArray(b.answers) ? b.answers.map(Number) : [];
+    if (!(level >= 1 && level <= 4) || !(score >= 0 && score <= 18) || answers.length !== 6
+        || answers.some(a => !(a >= 0 && a <= 3))) {
+      return res.status(400).json({ error: 'level 1–4, score 0–18 and six answers 0–3 are required' });
+    }
+    const area = typeof b.area === 'string' ? b.area.trim().slice(0, 60) : '';
+    assessmentStore.save({ id: uuidv4(), level, score, answers, ...(area ? { area } : {}), createdAt: new Date().toISOString() });
+    // Keep the store bounded — this is a pulse, not a ledger.
+    const all = assessmentStore.findAll();
+    if (all.length > 5000) for (const old of all.slice(0, all.length - 5000)) assessmentStore.delete(old.id);
+    return res.status(201).json({ ok: true });
+  });
+  app.get('/platform/assess/summary', (_req, res) => {
+    const all = assessmentStore.findAll();
+    const levels = [0, 0, 0, 0];
+    const gaps = [0, 0, 0, 0, 0, 0];
+    for (const a of all) { levels[a.level - 1]++; a.answers.forEach((v, i) => { gaps[i] += v; }); }
+    res.json({
+      count: all.length,
+      avgLevel: all.length ? Math.round(all.reduce((n, a) => n + a.level, 0) / all.length * 10) / 10 : null,
+      levels,
+      gaps: all.length ? gaps.map(g => Math.round(g / all.length * 100) / 100) : gaps,
+      timestamp: new Date().toISOString(),
+    });
   });
 
   // --- Feature Catalogue (no auth — read-only docs surface, like /wireframe) ---

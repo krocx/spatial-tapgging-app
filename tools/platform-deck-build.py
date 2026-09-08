@@ -54,13 +54,13 @@ def badge(x,y,w,label,line,fg='#ffffff',size=7.5):
 def draw_map():
     new()
     text(60,28,900,40,'AR Operations Platform',24,'#ffffff',True)
-    text(60,66,1000,26,'One spatial backbone · four products · authoring, content and governance built in',11,'#94a3b8')
+    text(60,66,1100,26,'Connected Worker · AR OMS  ·  one spatial backbone · four products · authoring, content and governance built in',11,'#94a3b8')
     text(1140,32,400,22,'v2026.4.45 · September 2026',10,'#64748b',align=PP_ALIGN.RIGHT)
     text(1140,56,400,22,'Proprietary & Confidential · Applied Materials',9,'#475569',align=PP_ALIGN.RIGHT)
     def label(y,t): text(60,y-14,600,22,t,9,'#64748b',True)
     label(126,'PRODUCTS')
     products = [
-      (60, '#1a1f4d','#818cf8','Adaptive Guided Work Instructions','AR OMS  ·  AR OJT (on-the-job training)','#a5b4fc',
+      (60, '#1a1f4d','#818cf8','Adaptive Guided\nWork Instructions','Connected Worker AR OMS  ·  AR OJT','#a5b4fc',
        ['• Step-by-step AR guides with 3D ghost overlays','• Every step can be spatially validated','• Evidence, branches, resume & sign-off','• Kiosk shift start · Production # usage log']),
       (436,'#0f2a4a','#22d3ee','Spatial Validation','AR-guided · own models or 3rd-party via API','#67e8f9',
        ['• Author trains in AR from multiple angles','• Operator guided to the exact spot; live verdict','• Pass / fail states, regions of interest, evidence','• Pluggable engine — ours or any model via API']),
@@ -71,9 +71,10 @@ def draw_map():
     ]
     for x,fill,line,title,sub,subcol,bul in products:
         rect(x,138,352,158,fill,line,2)
-        text(x+16,146,330,30,title,15,'#ffffff',True)
-        if sub: text(x+16,174,330,20,sub,8.5,subcol,True)
-        text(x+16,196,330,100,[(b,9.5,'#cbd5e1',False) for b in bul],spacing=2)
+        two = '\n' in title
+        text(x+16,142 if two else 146,330,52 if two else 30,[(t,13.5 if two else 15,'#ffffff',True) for t in title.split('\n')])
+        if sub: text(x+16,196 if two else 174,330,18,sub,8.5,subcol,True)
+        text(x+16,214 if two else 196,330,80,[(b,8.5 if two else 9.5,'#cbd5e1',False) for b in bul],spacing=0 if two else 2)
     badge(1318,150,136,'EARLY PROTOTYPE','#f87171','#fca5a5',7)
     label(334,'AUTHORING & CONTENT')
     auth = [
@@ -116,8 +117,8 @@ def build_deck():
     new()
     text(80,250,1440,40,'APPLIED MATERIALS · CONNECTED WORKER AR OMS INITIATIVE',11,'#818cf8',True)
     text(80,300,1440,200,[('Every technician’s next move,',34,'#ffffff',True),('right the first time.',34,'#22d3ee',True)])
-    text(80,520,1300,90,'Adaptive Guided Work Instructions that live on the tool, adapt to the technician, and validate the work as it happens — so we win on Productivity, Velocity and Customer Trust, and our people are ready for semi- and fully-autonomous cleanrooms.',14,'#cbd5e1')
-    for i,(t,d) in enumerate([('Productivity','Hours per procedure and time-to-competency fall — instruction on the tool, check on the spot, no re-work.'),('Velocity','A procedure change reaches every chamber of a configuration in minutes, not a training cycle.'),('Customer Trust','Fewer quality issues escape to customer sites — critical steps validated and evidenced before the tool ships.')]):
+    text(80,520,1300,60,'Adaptive Guided Work Instructions that live on the tool, adapt to the technician, and validate the work as it happens.',15,'#cbd5e1')
+    for i,(t,d) in enumerate([('Productivity','Instruction on the tool, check on the spot, no re-work.\nMeasured: TTC · SLH · re-work per run'),('Velocity','A procedure change reaches every chamber in minutes.\nMeasured: CT · reduced downtime'),('Customer Trust','Fewer quality issues escape to customer sites.\nMeasured: Field NCs · Y7, Y8 · Q-reports')]):
         x=80+i*480; rect(x,640,440,140,'#1e293b','#334155',1); text(x+18,652,400,34,t,18,'#ffffff',True); text(x+18,690,404,80,d,11,'#94a3b8')
     footer()
 

@@ -147,6 +147,26 @@ it, it gets a line.
   full-platform benchmark; no-display, monocular and binocular glasses each
   matched to use cases, FY27 POCs; fit & feasibility judged against the iPad
   baseline). Bundled pitch deck title slide rebuilt to match.
+- **/platform for leadership (M1–M2)** — M1: hero lead shortened to the
+  promise; winning tiles carry the house metrics (TTC · SLH · re-work per run;
+  CT · reduced downtime; Field NCs · Y7, Y8 · Q-reports) with "Today / POC
+  target" hooks filled from `DATA_DIR/platform/media/metrics.json`; an
+  explicit **ask** under the strip (one BU sponsor · one configuration · one
+  measured POC, decision window from the same file); the impact section is
+  headlined "Ready for the autonomous cleanroom — starting with the
+  technician"; industry evidence trimmed to three facts; platform-map eyebrow
+  carries Connected Worker · AR OMS; "Adaptive Guided Work Instructions" wraps
+  to two lines on the map and deck. M2: a **guided reading path** — a 🧭
+  "Start here" pill and four spotlight stops (why → how we score → see it →
+  where are you?), once per browser, Esc/Skip anytime — and a **Connected
+  Worker maturity self-assessment**: six questions (instructions, validation,
+  evidence, devices, change velocity, spatial data), a four-rung ladder
+  (Aware → Piloting → Operating → Autonomous-ready) with what it means, the
+  biggest gap and the next rung, Share-with-AppliedX / email prefilled with
+  the result. Anonymous pulse: `POST /platform/assess` (level, score, answers,
+  optional area label — nothing else, store capped at 5 000) and
+  `GET /platform/assess/summary`; shown on /platform and as an "areas
+  assessed · avg level" tile on the home page.
 - **Validation focus mode (X2, iOS)** — validation takes over the screen:
   step panels, pins, arrow, feature-point dots, the text panel, Prev/Next and
   the failed banner are hidden; what remains is the target ring, one guidance

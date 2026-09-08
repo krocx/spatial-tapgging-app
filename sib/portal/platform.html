@@ -31,6 +31,37 @@
   .stat .s { color:var(--dim); font-size:11px; margin-top:10px; }
   .stat .s a { color:#8b9cc8; }
   .hero-ctas { display:flex; gap:12px; flex-wrap:wrap; margin-top:26px; }
+  .ask-line { margin-top:22px; display:flex; gap:18px; align-items:center; justify-content:space-between; flex-wrap:wrap; padding:18px 22px; border-radius:16px;
+              background:linear-gradient(135deg,rgba(79,70,229,.28),rgba(34,211,238,.12)); border:1px solid #3b3f8a; font-size:15px; color:#dbe2ff; }
+  .ask-line b { color:#fff; } .ask-when { display:block; color:var(--muted); font-size:12.5px; margin-top:6px; } .ask-when em { font-style:normal; color:#a5f3fc; }
+  /* M2: reading path + self-assessment */
+  #rp-mask { position:fixed; inset:0; z-index:90; pointer-events:none; }
+  #rp-ring { position:fixed; z-index:91; border-radius:18px; pointer-events:none; transition:all .3s ease;
+             box-shadow:0 0 0 9999px rgba(5,8,22,.7), 0 0 0 3px #22d3ee, 0 0 40px rgba(34,211,238,.55); }
+  #rp-card { position:fixed; z-index:92; width:340px; background:#131a3a; border:1px solid #3b3f8a; border-radius:16px; padding:16px 18px;
+             box-shadow:0 20px 60px rgba(0,0,0,.55); font-size:14px; }
+  #rp-card h4 { margin:0 0 6px; font-size:16px; color:#fff; } #rp-card p { margin:0 0 12px; color:var(--muted); line-height:1.45; }
+  #rp-card .nav { display:flex; align-items:center; gap:8px; } #rp-card .nav span { flex:1; color:var(--dim); font-size:12px; }
+  #rp-card .btn { padding:8px 14px; font-size:13px; }
+  #rp-start { position:fixed; right:18px; bottom:18px; z-index:60; display:none; gap:10px; align-items:center; padding:10px 14px 10px 12px; border-radius:999px;
+              background:linear-gradient(135deg,#4f46e5,#0891b2); color:#fff; font-weight:700; font-size:14px; box-shadow:0 12px 40px rgba(34,211,238,.35); cursor:pointer; border:0; }
+  #rp-start small { display:block; font-weight:500; opacity:.8; font-size:11px; }
+  .az { background:var(--card); border:1px solid var(--line); border-radius:20px; padding:26px; }
+  .az-q { padding:14px 0; border-bottom:1px solid var(--line); }
+  .az-q .qt { font-weight:700; color:#fff; margin-bottom:8px; }
+  .az-opts { display:flex; gap:8px; flex-wrap:wrap; }
+  .az-opt { padding:8px 14px; border-radius:999px; border:1px solid var(--line); background:rgba(255,255,255,.04); color:#cbd5e1; cursor:pointer; font-size:13.5px; }
+  .az-opt:hover { border-color:#67e8f9; } .az-opt.on { background:rgba(34,211,238,.18); border-color:#22d3ee; color:#fff; }
+  .az-res { margin-top:20px; padding:20px 22px; border-radius:16px; background:linear-gradient(135deg,rgba(79,70,229,.25),rgba(34,211,238,.12)); border:1px solid #3b3f8a; display:none; }
+  .az-res.on { display:block; animation:azin .4s ease; } @keyframes azin { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+  .az-ladder { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:14px 0 6px; }
+  .az-ladder div { padding:10px 8px; border-radius:10px; text-align:center; font-size:12px; color:var(--muted); background:rgba(255,255,255,.04); border:1px solid var(--line); }
+  .az-ladder div.on { background:rgba(34,211,238,.2); border-color:#22d3ee; color:#fff; font-weight:700; }
+  .az-ladder div b { display:block; font-size:18px; }
+  .az-pulse { margin-top:16px; color:var(--muted); font-size:13px; }
+  .az-pulse b { color:#fff; }
+  .stat .bt { display:flex; gap:14px; margin-top:10px; padding-top:8px; border-top:1px solid var(--line); font-size:11.5px; color:var(--dim); }
+  .stat .bt b { color:#e2e8f0; margin-left:4px; }
   .btn { display:inline-block; padding:12px 20px; border-radius:12px; font-weight:700; text-decoration:none; font-size:14px; }
   .btn.p { background:#4f46e5; color:#fff; }
   .btn.g { background:rgba(255,255,255,.08); color:#e2e8f0; border:1px solid var(--line); }
@@ -113,6 +144,7 @@
   <a href="#impact">Why</a>
   <a href="#why">Evidence</a>
   <a href="#devices">Devices</a>
+  <a href="#assess">Where are you?</a>
   <a href="#products">Products</a>
   <a href="#map">Platform</a>
   <a href="#contact">Contact</a>
@@ -124,7 +156,7 @@
 <section id="top">
   <div class="eyebrow">Applied Materials · Connected Worker AR OMS initiative</div>
   <h1>Every technician’s next move, <em>right the first time</em>.</h1>
-  <p class="lead"><b>Adaptive Guided Work Instructions</b> that live on the tool, adapt to the technician in front of it, and validate the work as it happens — so we win on <b>Productivity</b>, <b>Velocity</b> and <b>Customer Trust</b>, and our people are ready for the semi- and fully-autonomous cleanrooms that come next.</p>
+  <p class="lead"><b>Adaptive Guided Work Instructions</b> that live on the tool, adapt to the technician in front of it, and validate the work as it happens.</p>
   <div class="hero-ctas">
     <a class="btn p" href="#products">Explore the products ↓</a>
     <span style="align-self:center;color:var(--muted);font-size:14px">Reach out to us to learn more:</span>
@@ -133,21 +165,28 @@
   </div>
   <div class="eyebrow" style="margin-top:34px">Definition of winning</div>
   <div class="grid3" style="margin-top:10px">
-    <div class="stat"><div class="n">Productivity</div><div class="l">Hours per procedure and time-to-competency fall when the instruction is on the tool and the check is on the spot — no paper, no re-work.</div><div class="s">Measured: procedure time · ramp time · re-work per run</div></div>
-    <div class="stat"><div class="n">Velocity</div><div class="l">A procedure change reaches every chamber of a configuration in minutes, not a training cycle — the fab moves at the speed of the change.</div><div class="s">Measured: change-to-floor lead time · guides live per week</div></div>
-    <div class="stat"><div class="n">Customer Trust</div><div class="l">Fewer quality issues escape to customer sites, because critical steps are validated and evidenced before the tool ships or the shift ends.</div><div class="s">Measured: quality escapes found at customer sites · validated steps per run</div></div>
+    <div class="stat"><div class="n">Productivity</div><div class="l">Hours per procedure and time-to-competency fall when the instruction is on the tool and the check is on the spot — no paper, no re-work.</div><div class="s">Measured: TTC · SLH · re-work per run</div><div class="bt"><span>Today <b data-baseline="productivity">—</b></span><span>POC target <b data-target="productivity">—</b></span></div></div>
+    <div class="stat"><div class="n">Velocity</div><div class="l">A procedure change reaches every chamber of a configuration in minutes, not a training cycle — the fab moves at the speed of the change.</div><div class="s">Measured: CT · reduced downtime</div><div class="bt"><span>Today <b data-baseline="velocity">—</b></span><span>POC target <b data-target="velocity">—</b></span></div></div>
+    <div class="stat"><div class="n">Customer Trust</div><div class="l">Fewer quality issues escape to customer sites, because critical steps are validated and evidenced before the tool ships or the shift ends.</div><div class="s">Measured: Field NCs · Y7, Y8 · Q-reports</div><div class="bt"><span>Today <b data-baseline="trust">—</b></span><span>POC target <b data-target="trust">—</b></span></div></div>
+  </div>
+  <div class="ask-line" id="ask">
+    <div><div class="eyebrow" style="margin:0 0 4px">What we need for FY27</div>
+      <b>One BU sponsor · one configuration · one measured POC</b> — baseline these three numbers on a chamber you own, then decide on the pilot with data, not slides.
+      <span class="ask-when">Decision window: <em data-ask-date>Q1 FY27</em></span></div>
+    <a class="btn p" href="https://teams.microsoft.com/l/chat/0/0?users=karthik_addagarla@amat.com" target="_blank">Sponsor a POC →</a>
   </div>
 </section>
 
 <!-- ── Why this matters — the initiative, in leadership's terms ─────────── -->
 <section id="impact">
   <div class="eyebrow">Why we're doing this</div>
-  <h2>Transforming how work gets done — and readying Applied for what's next</h2>
+  <h2>Ready for the autonomous cleanroom — <em style="font-style:normal;color:#67e8f9">starting with the technician</em></h2>
+  <p class="lead">Tools and robots will take the repetitive work. The technician's job becomes supervising, intervening and validating — and that job needs spatial context delivered in the moment. We build that muscle now, and bank the wins along the way.</p>
   <div class="split">
     <div>
       <div class="fact"><div class="n">Today</div><div class="b"><b>Do-it-right-the-first-time, on every shift.</b> The instruction sits on the equipment, the 3D ghost shows the correct result, and the platform confirms the step before the technician moves on. Skipped steps and tribal knowledge stop being the failure mode.</div></div>
       <div class="fact"><div class="n">Smarter</div><div class="b"><b>Technicians work smarter, not harder.</b> The guide teaches while they work (AR OJT), adapts to what is in front of them, and captures evidence without a clipboard. New hires reach competency in days; experts stop re-documenting.</div></div>
-      <div class="fact"><div class="n">Next-gen</div><div class="b"><b>Ready for semi- and fully-autonomous cleanrooms.</b> As tools and robots take over the repetitive work, the technician's job becomes supervising, intervening and validating. That job needs spatial context — where, what, in what state — delivered in the moment. This platform is how we build that muscle now.</div></div>
+      <div class="fact"><div class="n">Next-gen</div><div class="b"><b>The autonomous cleanroom still has a human in the loop.</b> Semi-autonomous today, fully autonomous tomorrow — either way someone has to know where, what and in what state, instantly. Adaptive guidance on the tool is that capability, learned on today's procedures.</div></div>
       <div class="fact"><div class="n">Spatial</div><div class="b"><b>Spatial intelligence is the durable asset.</b> Every anchor, world map, validation reference and run leaves Applied with a growing spatial understanding of its own tools. That data is device-independent: it powers today's AR on iPads and is exactly what next-generation spatial computing will consume.</div></div>
     </div>
     <div class="vision">
@@ -170,9 +209,7 @@
     <div>
       <div class="fact"><div class="n">−40%</div><div class="b">fewer procedural errors and 32% faster task completion when AR-guided instructions replace paper or static methods.<small>PTC industrial AR benchmark (2025), as reported by <a href="https://oxmaint.com/article/ar-augmented-reality-maintenance" target="_blank">OxMaint</a></small></div></div>
       <div class="fact"><div class="n">~90%</div><div class="b">improvement in first-time quality with AR instructions vs. desktop instructions in Boeing wing assembly; wiring production time cut 25%.<small>Iowa State University / Boeing, via <a href="https://www.advancedmanufacturing.org/smart-manufacturing/extended-reality-xr-drives-aerospace-excellence-at-boeing/article_f7f81646-c605-11ef-b601-dffe3e028bc2.html" target="_blank">SME Advanced Manufacturing</a> and <a href="https://arvrjourney.com/case-study-boeing-cuts-production-time-with-ar-1caf33768d61" target="_blank">AR Insider</a></small></div></div>
-      <div class="fact"><div class="n">−60%</div><div class="b">training time at Volvo Group with AR-based procedures; Fujitsu cut operator training from 3–5 days to about an hour.<small><a href="https://www.ptc.com/en/case-studies/volvo-group-digital-thread" target="_blank">PTC / Volvo Group</a> · <a href="https://www.ptc.com/en/case-studies/fujitsu-augmented-reality-assembly-instructions" target="_blank">PTC / Fujitsu</a></small></div></div>
       <div class="fact"><div class="n">67,000</div><div class="b">U.S. semiconductor technician, engineer and computer-science roles at risk of going unfilled by 2030 — 39% of them technicians. Faster time-to-competency is now a capacity lever, not a nice-to-have.<small><a href="https://www.semiconductors.org/america-faces-significant-shortage-of-tech-workers-in-semiconductor-industry-and-throughout-u-s-economy/" target="_blank">SIA / Oxford Economics (2023)</a></small></div></div>
-      <div class="fact"><div class="n">60+</div><div class="b">customers now supported by ASML through AR remote assistance on lithography tools — AR is already normal in the fab, but as a vendor's remote-support channel, not as the fab's own operating system.<small><a href="https://optics.org/news/11/4/24" target="_blank">optics.org</a> · <a href="https://pulse.microsoft.com/en/transform-en/manufacturing-en/fa2-asml-redefining-customer-support-with-mixed-reality-technology/" target="_blank">Microsoft / ASML</a>; sub-fab AR inspection research: <a href="https://www.sciencedirect.com/science/article/abs/pii/S0278612524002541" target="_blank">Journal of Manufacturing Systems (2024)</a></small></div></div>
     </div>
     <div class="vision">
       <h3>Where Applied can be ahead</h3>
@@ -297,7 +334,7 @@
 
 <!-- ── Platform map ─────────────────────────────────────────────────────── -->
 <section id="map">
-  <div class="eyebrow">The whole platform, one picture</div>
+  <div class="eyebrow">Connected Worker · AR OMS — the whole platform, one picture</div>
   <h2>Platform map</h2>
   <div class="mapwrap"><svg viewBox="0 0 1600 900" xmlns="http://www.w3.org/2000/svg">
   <defs>
@@ -326,12 +363,13 @@
   <g>
     <rect x="60" y="138" width="352" height="158" rx="16" fill="#1a1f4d" stroke="#818cf8" stroke-width="2"/>
     <text x="84" y="172" font-size="26">📋</text>
-    <text x="122" y="172" font-size="19" font-weight="800" fill="#ffffff">Adaptive Guided Work Instructions</text>
-    <text x="122" y="190" font-size="11" fill="#a5b4fc" font-weight="700">AR OMS  ·  AR OJT (on-the-job training)</text>
-    <text x="84" y="214" font-size="12.5" fill="#cbd5e1">• Step-by-step AR guides with 3D ghost overlays</text>
-    <text x="84" y="236" font-size="12.5" fill="#cbd5e1">• Every step can be spatially validated</text>
-    <text x="84" y="258" font-size="12.5" fill="#cbd5e1">• Evidence, branches, resume &amp; sign-off</text>
-    <text x="84" y="280" font-size="12.5" fill="#cbd5e1">• Kiosk shift start · Production # usage log</text>
+    <text x="122" y="166" font-size="18" font-weight="800" fill="#ffffff">Adaptive Guided</text>
+    <text x="122" y="186" font-size="18" font-weight="800" fill="#ffffff">Work Instructions</text>
+    <text x="122" y="203" font-size="11" fill="#a5b4fc" font-weight="700">Connected Worker AR OMS  ·  AR OJT</text>
+    <text x="84" y="226" font-size="12.5" fill="#cbd5e1">• Step-by-step AR guides with 3D ghost overlays</text>
+    <text x="84" y="246" font-size="12.5" fill="#cbd5e1">• Every step spatially validated, evidenced</text>
+    <text x="84" y="266" font-size="12.5" fill="#cbd5e1">• Branches, resume &amp; sign-off</text>
+    <text x="84" y="286" font-size="12.5" fill="#cbd5e1">• Kiosk shift start · Production # usage log</text>
   </g>
 
   <!-- Spatial Validation -->
@@ -509,6 +547,24 @@
   </div>
 </section>
 
+<!-- ── Self-assessment ──────────────────────────────────────────────────── -->
+<section id="assess">
+  <div class="eyebrow">Where are you on the Connected Worker journey?</div>
+  <h2>Ninety seconds. Six questions. A place on the ladder — and the next rung.</h2>
+  <p class="lead">Answer for the area you know best — a bay, a BU, a product line. Nothing is stored about you; the anonymous level feeds a live pulse so the initiative can see where Applied sits.</p>
+  <div class="az" id="az">
+    <div id="az-questions"></div>
+    <div style="display:flex;gap:12px;align-items:center;margin-top:16px;flex-wrap:wrap">
+      <input id="az-area" placeholder="Area / BU (optional, e.g. Etch · Bay 3)" maxlength="60"
+             style="flex:1;min-width:220px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:rgba(11,16,38,.6);color:#fff;font-size:14px">
+      <button class="btn p" id="az-go" onclick="azScore()" disabled>Show my level →</button>
+      <span id="az-progress" style="color:var(--dim);font-size:13px">0 of 6 answered</span>
+    </div>
+    <div class="az-res" id="az-res"></div>
+    <div class="az-pulse" id="az-pulse"></div>
+  </div>
+</section>
+
 <!-- ── Contact ──────────────────────────────────────────────────────────── -->
 <section id="contact">
   <div class="contact">
@@ -524,6 +580,8 @@
     </div>
   </div>
 </section>
+
+<button id="rp-start" onclick="rpStart(true)">🧭 Start here<small>a 60-second guided read</small></button>
 
 <div class="foot">Proprietary &amp; Confidential · Applied Materials · Capability-level overview; spatial data formats and validation methods are patent-pending and not described here. · v2026.4.45</div>
 
@@ -566,6 +624,141 @@
   document.querySelectorAll('.media figure[data-src]').forEach(f => {
     const img = new Image(); img.onload = () => { f.classList.add('has'); f.innerHTML = ''; f.appendChild(img); }; img.src = f.dataset.src;
   });
+  // ── M1: baseline / target hooks + ask date — DATA_DIR/platform/media/metrics.json
+  //   { "askDate": "Q1 FY27", "productivity": {"today":"…","target":"…"}, "velocity": {…}, "trust": {…} }
+  (async () => {
+    try {
+      const m = await (await fetch('/platform-media/metrics.json', { cache: 'no-store' })).json();
+      if (m.askDate) document.querySelector('[data-ask-date]').textContent = m.askDate;
+      for (const k of ['productivity', 'velocity', 'trust']) {
+        if (!m[k]) continue;
+        const b = document.querySelector(`[data-baseline="${k}"]`), t = document.querySelector(`[data-target="${k}"]`);
+        if (b && m[k].today)  b.textContent = m[k].today;
+        if (t && m[k].target) t.textContent = m[k].target;
+      }
+    } catch { /* placeholders stay as — until the file exists */ }
+  })();
+
+  // ── M2: guided reading path — four stops, once, never a demo ─────────────
+  const RP = [
+    { sel: '#top h1',        h: 'Start with the why',        p: 'One initiative, one promise: every technician’s next move, right the first time. Everything below exists to make that true.' },
+    { sel: '#top .grid3',    h: 'How we keep score',         p: 'Productivity, Velocity, Customer Trust — in the numbers leadership already tracks. The ask sits right underneath.' },
+    { sel: '#products',      h: 'See it, don’t imagine it',  p: 'Each product card walks a real shift. Tap through “Walk a shift” — that’s a technician’s morning, not a mock-up.' },
+    { sel: '#assess',        h: 'Now — where are you?',      p: 'Six questions place your area on the ladder and name the next rung. Ninety seconds, anonymous, and it lights up the pulse below.' },
+  ];
+  let rpI = 0;
+  const rpSeen = () => localStorage.getItem('sib.platform.rp') === '1';
+  function rpStart(force) {
+    if (!force && rpSeen()) return;
+    localStorage.setItem('sib.platform.rp', '1');
+    document.getElementById('rp-start').style.display = 'none';
+    rpI = 0; rpShow();
+  }
+  function rpShow(scroll = true) {
+    rpEnd(true);
+    const st = RP[rpI]; if (!st) { rpEnd(); return; }
+    const el = document.querySelector(st.sel); if (!el) { rpI++; rpShow(); return; }
+    if (scroll) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    const mask = Object.assign(document.createElement('div'), { id: 'rp-mask' });
+    const ring = Object.assign(document.createElement('div'), { id: 'rp-ring' });
+    const card = Object.assign(document.createElement('div'), { id: 'rp-card' });
+    const last = rpI === RP.length - 1;
+    card.innerHTML = `<h4>${st.h}</h4><p>${st.p}</p><div class="nav"><span>${rpI + 1} of ${RP.length}</span>
+      <button class="btn g" onclick="rpEnd()">Skip</button><button class="btn p" onclick="rpNext()">${last ? 'Let’s go ✓' : 'Next →'}</button></div>`;
+    document.body.append(mask, ring, card);
+    const place = () => {
+      const r = el.getBoundingClientRect();
+      ring.style.cssText = `left:${r.left - 10}px;top:${r.top - 10}px;width:${r.width + 20}px;height:${r.height + 20}px`;
+      const below = r.bottom + 200 < window.innerHeight;
+      card.style.cssText = `left:${Math.min(Math.max(16, r.left), window.innerWidth - 356)}px;top:${below ? r.bottom + 16 : Math.max(16, r.top - 200)}px`;
+    };
+    place(); setTimeout(place, 450);
+    window.addEventListener('resize', rpRe); window.addEventListener('scroll', rpRe, true);
+  }
+  function rpRe() { if (document.getElementById('rp-card')) rpShow(false); }
+  function rpNext() { if (rpI >= RP.length - 1) { rpEnd(); return; } rpI++; rpShow(); }
+  function rpEnd(keep) {
+    ['rp-mask', 'rp-ring', 'rp-card'].forEach(id => document.getElementById(id)?.remove());
+    window.removeEventListener('resize', rpRe); window.removeEventListener('scroll', rpRe, true);
+    if (!keep) document.getElementById('rp-start').style.display = 'flex';
+  }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') rpEnd(); });
+  // First visit: offer, don't hijack — the button pulses; auto-start after a beat.
+  setTimeout(() => { if (!rpSeen()) rpStart(false); else document.getElementById('rp-start').style.display = 'flex'; }, 1400);
+
+  // ── M2: Connected Worker maturity self-assessment ────────────────────────
+  const AZ_Q = [
+    { q: 'How do technicians get their work instructions today?',
+      o: ['Paper or PDF binders', 'Digital docs on a screen', 'Step-by-step on a tablet', 'Pinned to the tool in AR'] },
+    { q: 'How is a critical step confirmed as done right?',
+      o: ['Experience and a signature', 'A checklist tick', 'A photo someone reviews later', 'Spatially validated on the spot'] },
+    { q: 'What evidence does a completed procedure leave behind?',
+      o: ['None beyond the sign-off', 'Photos in an email or folder', 'A form per job', 'A per-run log with timings, verdicts and photos'] },
+    { q: 'Which devices are in the cleanroom with the technician?',
+      o: ['None — screens are outside', 'A shared laptop or terminal', 'Shared iPads', 'iPads today, smart-glasses trials planned'] },
+    { q: 'When a procedure changes, how long until every chamber runs the new one?',
+      o: ['Months — retraining', 'Weeks', 'Days', 'Minutes — publish once, every chamber of the configuration'] },
+    { q: 'What spatial knowledge of your tools exists digitally?',
+      o: ['None', 'CAD only', 'Photos / videos of key steps', 'Anchors, world maps and validated reference views'] },
+  ];
+  const AZ_LEVELS = [
+    { n: 'Aware',            d: 'Instructions live in documents and people. The upside is largest here — and the first POC is the fastest way to see it.', next: 'Pick one procedure on one chamber. We put it in AR in a working session; you baseline TTC and re-work.' },
+    { n: 'Piloting',         d: 'Digital instructions exist; validation and evidence are still manual. You are one step from measurable Customer Trust gains.', next: 'Add spatial validation to the two steps that cause your Field NCs. Two weeks, one configuration.' },
+    { n: 'Operating',        d: 'Guided work with evidence is part of the shift. The next lever is velocity — content that reaches every chamber the day it changes.', next: 'Move authoring to configurations and let the usage log report Productivity and Velocity per chamber.' },
+    { n: 'Autonomous-ready', d: 'Technicians supervise, intervene and validate with spatial context on the tool. You are the reference site for the FY27 device POCs.', next: 'Join the smart-glasses fit & feasibility POCs — your content and spatial data light up any form factor.' },
+  ];
+  const azAns = new Array(AZ_Q.length).fill(-1);
+  (function azBuild() {
+    const host = document.getElementById('az-questions');
+    host.innerHTML = AZ_Q.map((q, i) => `<div class="az-q"><div class="qt">${i + 1}. ${q.q}</div>
+      <div class="az-opts">${q.o.map((o, j) => `<button class="az-opt" onclick="azPick(${i},${j},this)">${o}</button>`).join('')}</div></div>`).join('');
+  })();
+  function azPick(i, j, btn) {
+    azAns[i] = j;
+    [...btn.parentElement.children].forEach(b => b.classList.toggle('on', b === btn));
+    const n = azAns.filter(a => a >= 0).length;
+    document.getElementById('az-progress').textContent = `${n} of ${AZ_Q.length} answered`;
+    document.getElementById('az-go').disabled = n < AZ_Q.length;
+  }
+  function azScore() {
+    const score = azAns.reduce((a, b) => a + b, 0);                  // 0..18
+    const level = score <= 4 ? 1 : score <= 9 ? 2 : score <= 14 ? 3 : 4;
+    const L = AZ_LEVELS[level - 1];
+    const weakest = azAns.indexOf(Math.min(...azAns));
+    const res = document.getElementById('az-res');
+    res.innerHTML = `<div class="eyebrow" style="margin:0 0 6px">Your area today</div>
+      <h3 style="margin:0;color:#fff;font-size:24px">Level ${level} · ${L.n}</h3>
+      <div class="az-ladder">${AZ_LEVELS.map((l, k) => `<div class="${k + 1 === level ? 'on' : ''}"><b>${k + 1}</b>${l.n}</div>`).join('')}</div>
+      <p style="margin:10px 0 6px;color:#dbe2ff">${L.d}</p>
+      <p style="margin:0 0 6px;color:#cbd5e1"><b style="color:#fff">Biggest gap:</b> ${AZ_Q[weakest].q.replace(/\?$/, '')} — you answered “${AZ_Q[weakest].o[azAns[weakest]]}”.</p>
+      <p style="margin:0 0 14px;color:#cbd5e1"><b style="color:#fff">Next rung:</b> ${L.next}</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <a class="btn p" target="_blank" href="https://teams.microsoft.com/l/chat/0/0?users=karthik_addagarla@amat.com">💬 Share with AppliedX (Level ${level})</a>
+        <a class="btn g" href="mailto:karthik_addagarla@amat.com?subject=${encodeURIComponent(`Connected Worker readiness — Level ${level} · ${L.n}`)}&body=${encodeURIComponent(`Area: ${document.getElementById('az-area').value || '(not given)'}\nLevel ${level} · ${L.n} (score ${score}/18)\nBiggest gap: ${AZ_Q[weakest].q}\n\nWhat I'd like to do next:\n`)}">✉ Email my result</a>
+        <button class="btn g" onclick="azReset()">Retake</button>
+      </div>`;
+    res.classList.add('on'); res.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    localStorage.setItem('sib.platform.az', JSON.stringify({ level, score, at: Date.now() }));
+    // Anonymous pulse — level + answers + optional area label. Nothing else.
+    fetch('/platform/assess', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ level, score, answers: azAns, area: document.getElementById('az-area').value }) })
+      .then(azPulse).catch(() => {});
+  }
+  function azReset() { azAns.fill(-1); document.querySelectorAll('.az-opt.on').forEach(b => b.classList.remove('on'));
+    document.getElementById('az-res').classList.remove('on');
+    document.getElementById('az-progress').textContent = '0 of 6 answered'; document.getElementById('az-go').disabled = true; }
+  async function azPulse() {
+    try {
+      const p = await (await fetch('/platform/assess/summary')).json();
+      const el = document.getElementById('az-pulse');
+      if (!p.count) { el.innerHTML = 'Be the first to place your area on the ladder.'; return; }
+      const names = AZ_LEVELS.map(l => l.n);
+      el.innerHTML = `<b>${p.count}</b> area${p.count === 1 ? '' : 's'} assessed so far · average <b>Level ${p.avgLevel}</b> · ` +
+        p.levels.map((n, i) => `${names[i]} <b>${n}</b>`).join(' · ');
+    } catch {}
+  }
+  azPulse();
+
   // Live numbers — public aggregate counts only (/stats); fail silently
   (async () => {
     try { const s = await (await fetch('/stats')).json();

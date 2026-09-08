@@ -42,6 +42,7 @@ a.card:hover{border-color:var(--accent);transform:translateY(-2px);}
     <div class="stat"><div class="sv" id="st-sessions">–</div><div class="sl">sessions · 7 days</div></div>
     <div class="stat"><div class="sv" id="st-gemba">–</div><div class="sl">open Gemba findings</div></div>
     <div class="stat" id="st-loto-card"><div class="sv" id="st-loto">–</div><div class="sl">active LOTO locks</div></div>
+    <a class="stat" id="st-az-card" href="/platform#assess" style="display:none;text-decoration:none"><div class="sv" id="st-az">–</div><div class="sl" id="st-az-l">areas assessed</div></a>
   </div>
 
   <div class="grid">
@@ -107,6 +108,13 @@ fetch('/stats').then(function(r){ return r.json(); }).then(function(st){
   if (st.activeLotoLocks > 0) document.getElementById('st-loto-card').classList.add('alert');
   document.getElementById('stats').style.display = 'flex';
 }).catch(function(){ /* strip stays hidden if stats are unavailable */ });
+// M2: Connected Worker maturity pulse — anonymous aggregate from /platform/assess/summary.
+fetch('/platform/assess/summary').then(function(r){ return r.json(); }).then(function(p){
+  if (!p.count) return;
+  document.getElementById('st-az').textContent   = p.count;
+  document.getElementById('st-az-l').textContent = 'areas assessed · avg level ' + p.avgLevel;
+  document.getElementById('st-az-card').style.display = '';
+}).catch(function(){});
 </script>
 <script src="/portal/brand.js"></script>
 </body>
