@@ -76,7 +76,7 @@ struct ModeSelectionView: View {
                         )
                     }
                     Text("Spatial Tagging").font(.largeTitle.bold()).foregroundColor(.white)
-                    Text("Cleanroom Inspection · v\(AppVersion.current)")
+                    Text("Connected Worker AR OMS · v\(AppVersion.current)")
                         .font(.subheadline).foregroundColor(.white.opacity(0.5))
 
                     // Shift chip — who is signed in + which system they work

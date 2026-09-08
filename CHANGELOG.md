@@ -128,6 +128,25 @@ it, it gets a line.
   "Restart tours". Technicians never see it. `/stats` gains
   `chamberConfigs`, `chambersAssigned`, `guides`, `placedGuides`; the Guide
   Library toolbar gains a 🗺 Procedure Designer link.
+- **Brand strip + Connected Worker narrative** — every web surface (portal,
+  home, /platform, catalogue) shows the Applied Materials logo and the
+  AppliedX mark top-right via `sib/portal/brand.js`; the images are
+  deployment-local (`DATA_DIR/platform/media/logo-amat.png`,
+  `logo-appliedx.png`, served at `/platform-media/`) and a quiet dashed
+  placeholder with a hover hint stands in until they're dropped. iOS home
+  subtitle is now "Connected Worker AR OMS". `/platform` re-framed for
+  leadership: eyebrow "Connected Worker AR OMS initiative", headline "Every
+  technician's next move, right the first time", **Adaptive Guided Work
+  Instructions** as the flagship (product renamed everywhere, incl. the
+  platform map and deck), a **Definition of winning** strip — Productivity ·
+  Velocity · Customer Trust (fewer quality escapes at customer sites) — with
+  what each is measured by, a **Why we're doing this** section (do-it-right-
+  the-first-time · technicians working smarter · ready for semi-/fully-
+  autonomous cleanrooms · spatial intelligence as the durable, device-
+  independent asset), and a **Devices** section (iPads/iPhones today as the
+  full-platform benchmark; no-display, monocular and binocular glasses each
+  matched to use cases, FY27 POCs; fit & feasibility judged against the iPad
+  baseline). Bundled pitch deck title slide rebuilt to match.
 - **Validation focus mode (X2, iOS)** — validation takes over the screen:
   step panels, pins, arrow, feature-point dots, the text panel, Prev/Next and
   the failed banner are hidden; what remains is the target ring, one guidance

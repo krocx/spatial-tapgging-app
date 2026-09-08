@@ -589,6 +589,7 @@
     <h1>Spatial Tagging <span>· Anchor Directory</span> <span id="platform-version" style="font-size:0.62rem;color:var(--muted);font-weight:400;margin-left:6px"></span></h1>
   </div>
   <div class="actions">
+    <span data-brand-slot style="display:flex;align-items:center;margin-right:10px"></span>
     <span id="uam-chip" style="display:none;font-size:0.72rem;color:var(--muted);margin-right:4px"></span>
     <button class="btn btn-ghost btn-sm" id="uam-signout" onclick="uamLogout()" style="display:none">Sign out</button>
     <button class="btn btn-ghost btn-sm" id="admin-btn" onclick="toggleAdmin()" style="display:none" title="Destructive actions (delete, quiz editing) require the admin key">🔒 Admin</button>
@@ -5839,5 +5840,6 @@ function _dispose() {
   _s = null; _cam = null; _ctrl = null; _node = null; _bbox = null;
 }
 </script>
+<script src="/portal/brand.js"></script>
 </body>
 </html>

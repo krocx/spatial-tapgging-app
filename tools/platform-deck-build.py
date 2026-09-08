@@ -60,7 +60,7 @@ def draw_map():
     def label(y,t): text(60,y-14,600,22,t,9,'#64748b',True)
     label(126,'PRODUCTS')
     products = [
-      (60, '#1a1f4d','#818cf8','AR Work Instructions','AR OMS  ·  AR OJT (on-the-job training)','#a5b4fc',
+      (60, '#1a1f4d','#818cf8','Adaptive Guided Work Instructions','AR OMS  ·  AR OJT (on-the-job training)','#a5b4fc',
        ['• Step-by-step AR guides with 3D ghost overlays','• Every step can be spatially validated','• Evidence, branches, resume & sign-off','• Kiosk shift start · Production # usage log']),
       (436,'#0f2a4a','#22d3ee','Spatial Validation','AR-guided · own models or 3rd-party via API','#67e8f9',
        ['• Author trains in AR from multiple angles','• Operator guided to the exact spot; live verdict','• Pass / fail states, regions of interest, evidence','• Pluggable engine — ours or any model via API']),
@@ -102,7 +102,7 @@ def draw_map():
         text(x,652,270,24,a,9.5,'#e0e7ff',True); text(x,678,300,24,b2,9.5,'#e0e7ff',True)
     label(778,'HOW WE GOT HERE')
     ln = S.shapes.add_connector(1, X(60),Y(820),X(1540),Y(820)); ln.line.color.rgb=rgb('#334155'); ln.line.width=Pt(1.5)
-    ms = [(120,'#22d3ee','Spatial\nValidation'),(300,'#fb923c','GembaWalks\n(Loc-Tags)'),(480,'#818cf8','AR Work\nInstructions'),
+    ms = [(120,'#22d3ee','Spatial\nValidation'),(300,'#fb923c','GembaWalks\n(Loc-Tags)'),(480,'#818cf8','Adaptive Guided\nWork Instructions'),
           (660,'#2dd4bf','3D Models &\nCAD import'),(840,'#3b82f6','Roadmap &\nProcedure Designer'),(1020,'#f87171','iLOTO\n& certification'),
           (1200,'#a78bfa','Feature Catalogue,\n.tag, lock-down · Aug ’26'),(1400,'#22c55e','UAM, Kiosk, Usage Log,\nvalidated work steps · Sep ’26')]
     for cx,col,t in ms:
@@ -114,10 +114,10 @@ def draw_map():
 def build_deck():
     # 1 Title
     new()
-    text(80,250,1440,40,'APPLIED MATERIALS · AR OPERATIONS PLATFORM',11,'#818cf8',True)
-    text(80,300,1440,200,[('Work Instructions that assist technicians as they do it —',34,'#ffffff',True),('and help to validate immediately.',34,'#22d3ee',True)])
-    text(80,520,1200,90,'Four products on one spatial backbone — built in-house, runs on-prem or in the cloud, and proves every step with evidence.',15,'#cbd5e1')
-    for i,(t,d) in enumerate([('Guided','Steps appear on the equipment itself, in the technician’s field of view.'),('Validated','Critical steps are checked spatially before moving on; verdict and score recorded.'),('Evidenced','Every run leaves a usage log — timings, photos, sign-off — exportable to Excel.')]):
+    text(80,250,1440,40,'APPLIED MATERIALS · CONNECTED WORKER AR OMS INITIATIVE',11,'#818cf8',True)
+    text(80,300,1440,200,[('Every technician’s next move,',34,'#ffffff',True),('right the first time.',34,'#22d3ee',True)])
+    text(80,520,1300,90,'Adaptive Guided Work Instructions that live on the tool, adapt to the technician, and validate the work as it happens — so we win on Productivity, Velocity and Customer Trust, and our people are ready for semi- and fully-autonomous cleanrooms.',14,'#cbd5e1')
+    for i,(t,d) in enumerate([('Productivity','Hours per procedure and time-to-competency fall — instruction on the tool, check on the spot, no re-work.'),('Velocity','A procedure change reaches every chamber of a configuration in minutes, not a training cycle.'),('Customer Trust','Fewer quality issues escape to customer sites — critical steps validated and evidenced before the tool ships.')]):
         x=80+i*480; rect(x,640,440,140,'#1e293b','#334155',1); text(x+18,652,400,34,t,18,'#ffffff',True); text(x+18,690,404,80,d,11,'#94a3b8')
     footer()
 
@@ -145,7 +145,7 @@ def build_deck():
     footer()
 
     # 3–7 Products
-    prods=[('AR Work Instructions','AR OMS · AR OJT (on-the-job training)','POC-READY','#818cf8',
+    prods=[('Adaptive Guided Work Instructions','AR OMS · AR OJT (on-the-job training)','POC-READY','#818cf8',
       'Procedures shown in AR on the actual tool — each step pinned where the work is, with 3D ghosts of the correct result.',
       'Procedure knowledge lives in people and PDFs. We wanted it to live on the equipment.',
       ['Faster ramp — the guide teaches while they work (AR OJT)','Fewer skipped steps; critical ones validated on the spot','Audit-ready record per Production #','Shared kiosk iPads — employee-ID sign-in'],

@@ -32,6 +32,7 @@ a.card:hover{border-color:var(--accent);transform:translateY(-2px);}
 </style>
 </head>
 <body>
+  <div data-brand-slot style="position:absolute;top:14px;right:18px"></div>
   <h1>⚡ AR Operations Platform</h1>
   <p class="sub">Spatial tagging · AR work instructions · Gemba walks · iLOTO · one server</p>
 
@@ -107,5 +108,6 @@ fetch('/stats').then(function(r){ return r.json(); }).then(function(st){
   document.getElementById('stats').style.display = 'flex';
 }).catch(function(){ /* strip stays hidden if stats are unavailable */ });
 </script>
+<script src="/portal/brand.js"></script>
 </body>
 </html>
