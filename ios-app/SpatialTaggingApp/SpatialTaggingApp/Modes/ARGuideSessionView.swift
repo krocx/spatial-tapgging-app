@@ -38,6 +38,12 @@ struct ARGuideSessionView: View {
     // ── AR session ────────────────────────────────────────────────────────────
     @StateObject private var arManager = ARSessionManager()
 
+    // F1 (2026.4.46): in-session FTUE — moment cards + ? cheat-sheet.
+    @StateObject private var coach = ARMomentCoach(employeeId: {
+        UserDefaults.standard.string(forKey: "uam_employee_id") ?? ""
+    })
+    @State private var showCheatSheet = false
+
     // ── State machine ─────────────────────────────────────────────────────────
     private enum Phase: Equatable {
         case loading
@@ -704,6 +710,16 @@ struct ARGuideSessionView: View {
             OnboardingSheet(context: .guideOperator)
                 .environmentObject(settings)
         }
+        // F1: moment cards over the live view; ? opens the controls sheet
+        // (overview stays one tap away inside it).
+        .overlay {
+            if case .navigating = phase, coneValidateIndex == nil {
+                ARMomentCard(coach: coach, bottomInset: 150, accent: .purple)
+            }
+        }
+        .sheet(isPresented: $showCheatSheet) {
+            GestureCheatSheet(screen: .guideSession, coach: coach, onOverview: { showOnboarding = true })
+        }
     }
 
     // ── Top bar ───────────────────────────────────────────────────────────────
@@ -764,8 +780,8 @@ struct ARGuideSessionView: View {
                     .buttonStyle(.plain)
                 }
 
-                // Help button — always visible; re-shows the guide session onboarding
-                Button { showOnboarding = true } label: {
+                // Help button — always visible; F1: controls cheat-sheet (overview inside)
+                Button { showCheatSheet = true } label: {
                     Image(systemName: "questionmark.circle")
                         .font(.system(size: 16))
                         .foregroundStyle(.white.opacity(0.65))
@@ -1126,6 +1142,11 @@ struct ARGuideSessionView: View {
             phase = .navigating(index: 0)
             highlightPin(index: 0)
             if sortedSteps[0].worldPosition == nil { showContentPanel = true }
+            // F1 moments — the pill is the first thing they see; the eye
+            // matters once several panels share the view.
+            if sortedSteps[0].worldPosition != nil { coach.show(.guideExpandPill) }
+            if sortedSteps.filter({ $0.worldPosition != nil }).count >= 2 { coach.show(.guideOnePanel) }
+            if sortedSteps[0].needsValidation, sortedSteps[0].coneTrained { coach.show(.guideValidation) }
             // loadStepImage (called from onAppear) may have finished before placePins()
             // created the panel containers, making its refreshPanelTextures() a no-op.
             // Flush any images already in the cache into the newly-created panels now.
@@ -1325,6 +1346,7 @@ struct ARGuideSessionView: View {
     /// No animation — instant switch to avoid flicker against AR background.
     private func togglePanel(stepId: String, minimize: Bool) {
         panelMinimized[stepId] = minimize
+        if !minimize { coach.show(.guidePanelButtons) }   // F1
         guard let container = panelContainers[stepId] else { return }
         let pillNode = container.childNode(withName: "pill_\(stepId)", recursively: true)
         let cardNode = container.childNode(withName: "card_\(stepId)", recursively: true)
@@ -2018,6 +2040,9 @@ struct ARGuideSessionView: View {
         // Precondition gate: if this step requires another step to be completed first
         // and it isn't yet, redirect to that prerequisite instead.
         let candidate = sortedSteps[index]
+        // F1: teach the ghost-alignment capture on ARRIVAL at a validation step,
+        // before Complete opens the (deliberately bare) focus mode.
+        if candidate.needsValidation, candidate.coneTrained { coach.show(.guideValidation) }
         if let prereqId = candidate.precondition,
            let prereqIdx = sortedSteps.firstIndex(where: { $0.id == prereqId }),
            prereqIdx < progresses.count,
@@ -2564,6 +2589,7 @@ struct ARGuideSessionView: View {
         guard index < progresses.count else { return }
         progresses[index].complete()
         persistProgress()
+        if progresses.allSatisfy({ $0.isCompleted }) { coach.show(.guideSignOff) }   // F1
         // A4: a completion MOMENT — success haptic + green pulse on the panel.
         // Re-render textures so pill + card flip to their DONE (green) state.
         UINotificationFeedbackGenerator().notificationOccurred(.success)
@@ -2639,6 +2665,7 @@ struct ARGuideSessionView: View {
                     }
                     activeHint = first
                     hintHistory.append(first)
+                    coach.show(.guideHints)   // F1
                     // Stall = stuck, open the card. Retry (or legacy nil) = quiet chip.
                     assistExpanded = (first.trigger == "stall")
                     UIImpactFeedbackGenerator(style: .soft).impactOccurred()

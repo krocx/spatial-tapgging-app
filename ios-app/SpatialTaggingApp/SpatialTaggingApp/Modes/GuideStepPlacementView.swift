@@ -196,6 +196,12 @@ struct GuideStepPlacementView: View {
 
     @StateObject private var arManager = ARSessionManager()
 
+    // F1 (2026.4.46): in-session FTUE — moment cards + ? cheat-sheet.
+    @StateObject private var coach = ARMomentCoach(employeeId: {
+        UserDefaults.standard.string(forKey: "uam_employee_id") ?? ""
+    })
+    @State private var showCheatSheet = false
+
     // ── Pin placement state ───────────────────────────────────────────────────
     @State private var stepPositions:  [String: simd_float3] = [:]
     @State private var activeStepIndex: Int                  = 0
@@ -223,6 +229,14 @@ struct GuideStepPlacementView: View {
     /// advancing to the next slot. `adjustStart` restores the node on Cancel.
     @State private var singleSlotAdjust = false
     @State private var adjustStart: ModelTransformState? = nil
+
+    /// T1 (2026.4.46): training feedback toast — the author sees the capture
+    /// happen instead of a silent chip flip. Same toast for quick-shot and cone.
+    private enum TrainingToast: Equatable {
+        case holdSteady, training(String), trained, failed(String)
+    }
+    @State private var trainingToast: TrainingToast? = nil
+    @State private var trainingToastSeq = 0
     /// U4: steps whose models are hidden while the author works on the pin.
     @State private var hiddenModelStepIds: Set<String> = []
     @State private var showCopySheet:   Bool = false
@@ -269,6 +283,10 @@ struct GuideStepPlacementView: View {
 
     // ── UX ────────────────────────────────────────────────────────────────────
     @State private var showTapHint: Bool = true
+    /// F1b: "tap where Step N should go" after a pin is tapped for re-placement —
+    /// until the person has seen it (shares the `placeMovePin` memory; Replay re-arms).
+    @State private var showReplaceHint  = false
+    private var employeeIdNow: String { UserDefaults.standard.string(forKey: "uam_employee_id") ?? "" }
 
     /// U1: when true, only the active step's pin/label/model is visible —
     /// declutters the scene while retraining or repositioning one step in a
@@ -304,14 +322,21 @@ struct GuideStepPlacementView: View {
             )
             .ignoresSafeArea()
 
-            // First-tap hint
-            if placementPhase.isPlacingPins && showTapHint && stepPositions.isEmpty {
-                VStack {
-                    tapHintBanner
-                    Spacer()
-                }
-                .padding(.top, 80)
-                .animation(.easeOut(duration: 0.35), value: showTapHint)
+            // F1b: the pulsing hand — first pin, and once more on the first re-place.
+            if placementPhase.isPlacingPins, activeStepIndex < steps.count,
+               (showTapHint && stepPositions.isEmpty) || showReplaceHint {
+                let n = steps[activeStepIndex].sequenceNumber
+                ARTapCoach(
+                    title:    showReplaceHint ? "Tap where Step \(n) should go" : "Tap any surface to place Step \(n)",
+                    subtitle: showReplaceHint ? "The pin moves to your next tap" : "Point at the part, then tap",
+                    accent:   .indigo,
+                    onDismiss: {
+                        if showReplaceHint { ARMomentStore.markSeen(.placeMovePin, employeeId: employeeIdNow) }
+                        withAnimation(.easeOut(duration: 0.3)) { showTapHint = false; showReplaceHint = false }
+                    }
+                )
+                .transition(.opacity.combined(with: .scale(scale: 0.94)))
+                .animation(.easeInOut(duration: 0.35), value: showTapHint || showReplaceHint)
             }
 
             // Model loading overlay
@@ -333,6 +358,11 @@ struct GuideStepPlacementView: View {
         .overlay(alignment: .top) { topBar }
         .sheet(isPresented: $showCopySheet) { copyModelsSheet }
         .overlay { if isSaving { savingOverlay } }
+        .overlay(alignment: .center) {
+            if let t = trainingToast { trainingToastView(t) }
+        }
+        .overlay { ARMomentCard(coach: coach, bottomInset: placementPhase.isPlacingPins ? 150 : 200, accent: .indigo) }
+        .sheet(isPresented: $showCheatSheet) { GestureCheatSheet(screen: .placeSteps, coach: coach) }
         // V1: Spatial Inspection cone training for a validation step. Shares
         // this view's AR session (same pattern as Author-mode tag training) and
         // anchors the dome at the step's pin via forcedTagWorldPos.
@@ -376,10 +406,6 @@ struct GuideStepPlacementView: View {
             focusRing?.cleanup()
             focusRing = nil
             arManager.pauseSession()
-        }
-        .task {
-            try? await Task.sleep(nanoseconds: 5_000_000_000)
-            withAnimation { showTapHint = false }
         }
         .onReceive(crosshairTicker) { _ in
             if placementPhase.isPlacingPins {
@@ -464,6 +490,14 @@ struct GuideStepPlacementView: View {
                         .frame(width: 26, height: 26)
                 }
                 .accessibilityLabel(focusActiveOnly ? "Show all steps" : "Show only the selected step")
+                .padding(.trailing, 6)
+                Button { showCheatSheet = true } label: {
+                    Image(systemName: "questionmark.circle")
+                        .font(.system(size: 20))
+                        .foregroundStyle(.white.opacity(0.85))
+                        .frame(width: 26, height: 26)
+                }
+                .accessibilityLabel("Controls and tips")
                 .padding(.trailing, 16)
             } else {
                 Image(systemName: "xmark.circle.fill")
@@ -504,24 +538,6 @@ struct GuideStepPlacementView: View {
     /// assignments when "Copy models to…" replaced them, else the server's.
     private func slots(for step: GuideStep) -> [GuideStepModel] {
         slotOverrides[step.id] ?? step.effectiveModels
-    }
-
-    // ─────────────────────────────────────────────────────────────────────────
-    // MARK: Tap hint
-    // ─────────────────────────────────────────────────────────────────────────
-
-    private var tapHintBanner: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "hand.tap.fill").foregroundStyle(.indigo)
-            let seq = activeStepIndex < steps.count
-                ? "Step \(steps[activeStepIndex].sequenceNumber)"
-                : "a step"
-            Text("Tap any surface to place \(seq)").font(.subheadline)
-        }
-        .foregroundStyle(.white)
-        .padding(.horizontal, 16).padding(.vertical, 10)
-        .background(.ultraThinMaterial, in: Capsule())
-        .padding(.horizontal, 24)
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -880,10 +896,20 @@ struct GuideStepPlacementView: View {
     @MainActor
     private func quickShotTrain(for step: GuideStep) async {
         guard !isPreparingTraining, let pin = stepPositions[step.id],
-              let frame = arManager.sceneView.session.currentFrame else { return }
+              arManager.sceneView.session.currentFrame != nil else { return }
         isPreparingTraining = true
         defer { isPreparingTraining = false }
-        guard let (tag, anchor, key) = await prepareValidationTag(for: step) else { return }
+        // T1: "Hold steady" beat — lets the author settle before the frame is
+        // read, and makes the capture visible. The frame is re-read after it.
+        showTrainingToast(.holdSteady)
+        try? await Task.sleep(nanoseconds: 600_000_000)
+        guard let frame = arManager.sceneView.session.currentFrame else {
+            showTrainingToast(.failed("Camera frame unavailable — try again."), autoHide: false); return
+        }
+        showTrainingToast(.training("Building the reference for step \(step.sequenceNumber)"))
+        guard let (tag, anchor, key) = await prepareValidationTag(for: step) else {
+            showTrainingToast(.failed(saveError ?? "Couldn't prepare the step for training."), autoHide: false); return
+        }
 
         // Stance
         let t = frame.camera.transform
@@ -896,6 +922,7 @@ struct GuideStepPlacementView: View {
         guard let img = rawCameraImage(from: frame),
               let jpeg = img.jpegData(compressionQuality: 0.65) else {
             saveError = "Couldn't capture the camera frame — try again."
+            showTrainingToast(.failed("Couldn't capture the camera frame — try again."), autoHide: false)
             return
         }
         let client = SIBClient(settings: settings)
@@ -927,8 +954,10 @@ struct GuideStepPlacementView: View {
             coneTrainedStepIds.insert(step.id)
             saveError = nil
             UINotificationFeedbackGenerator().notificationOccurred(.success)
+            showTrainingToast(.trained)
         } catch {
             saveError = "Quick-shot training failed: \(error.localizedDescription)"
+            showTrainingToast(.failed("Training failed: \(error.localizedDescription)"), autoHide: false)
         }
     }
 
@@ -949,13 +978,19 @@ struct GuideStepPlacementView: View {
     /// The cone sweep finished uploading its pass-state — stamp the step so
     /// the operator flow knows a system verdict is available (mode 'cone').
     private func finishConeTraining(step: GuideStep, tagId: String) async {
+        await MainActor.run { showTrainingToast(.training("Sealing step \(step.sequenceNumber)")) }
         do {
             try await SIBClient(settings: settings)
                 .markStepConeTrained(guideId: guide.id, stepId: step.id, tagId: tagId)
-            await MainActor.run { coneTrainedStepIds.insert(step.id) }
+            await MainActor.run {
+                coneTrainedStepIds.insert(step.id)
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                showTrainingToast(.trained)
+            }
         } catch {
             await MainActor.run {
                 saveError = "Training captured, but marking the step failed — retry from the seal button. (\(error.localizedDescription))"
+                showTrainingToast(.failed("Captured, but sealing the step failed — retry from the seal button."), autoHide: false)
             }
         }
     }
@@ -977,6 +1012,53 @@ struct GuideStepPlacementView: View {
                     .font(.caption).foregroundStyle(.white.opacity(0.6))
             }
         }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // MARK: Training toast (T1)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private func showTrainingToast(_ t: TrainingToast, autoHide: Bool? = nil) {
+        trainingToastSeq += 1
+        let seq = trainingToastSeq
+        withAnimation(.easeOut(duration: 0.2)) { trainingToast = t }
+        let hide = autoHide ?? (t == .trained)
+        guard hide else { return }
+        Task {
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            guard trainingToastSeq == seq else { return }
+            withAnimation(.easeIn(duration: 0.35)) { trainingToast = nil }
+        }
+    }
+
+    @ViewBuilder
+    private func trainingToastView(_ t: TrainingToast) -> some View {
+        VStack(spacing: 10) {
+            switch t {
+            case .holdSteady:
+                Image(systemName: "camera.viewfinder").font(.system(size: 34)).foregroundStyle(.cyan)
+                Text("Hold steady").font(.headline).foregroundStyle(.white)
+                Text("Capturing the reference from here…").font(.caption).foregroundStyle(.white.opacity(0.7))
+            case .training(let detail):
+                ProgressView().scaleEffect(1.3).tint(.white)
+                Text("Training…").font(.headline).foregroundStyle(.white)
+                Text(detail).font(.caption).foregroundStyle(.white.opacity(0.7))
+            case .trained:
+                Image(systemName: "checkmark.seal.fill").font(.system(size: 38)).foregroundStyle(.green)
+                Text("Trained").font(.headline).foregroundStyle(.white)
+            case .failed(let msg):
+                Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 30)).foregroundStyle(.orange)
+                Text(msg).font(.caption).foregroundStyle(.white).multilineTextAlignment(.center)
+                Button("OK") { withAnimation { trainingToast = nil } }
+                    .font(.subheadline.bold()).foregroundStyle(.cyan)
+            }
+        }
+        .padding(.horizontal, 26).padding(.vertical, 20)
+        .frame(minWidth: 220)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
+        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.white.opacity(0.12)))
+        .transition(.scale(scale: 0.92).combined(with: .opacity))
+        .allowsHitTesting({ if case .failed = t { return true } else { return false } }())
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -1074,6 +1156,10 @@ struct GuideStepPlacementView: View {
             while let n = candidate {
                 for (stepId, pinNode) in stepNodes where n === pinNode {
                     if let idx = steps.firstIndex(where: { $0.id == stepId }) { activateStep(idx) }
+                    // F1b: teach re-placement with the hand once per session.
+                    if !ARMomentStore.seen(.placeMovePin, employeeId: employeeIdNow) {
+                        withAnimation { showReplaceHint = true }
+                    }
                     return
                 }
                 candidate = n.parent
@@ -1084,7 +1170,8 @@ struct GuideStepPlacementView: View {
         guard activeStepIndex < steps.count else { return }
         guard let pos = rayCastSurface(from: point, in: sv) else { return }
         placeActiveStep(at: pos)
-        withAnimation { showTapHint = false }
+        if showReplaceHint { ARMomentStore.markSeen(.placeMovePin, employeeId: employeeIdNow) }
+        withAnimation { showTapHint = false; showReplaceHint = false }
     }
 
     private func rayCastSurface(from point: CGPoint, in sv: ARSCNView) -> simd_float3? {
@@ -1114,6 +1201,10 @@ struct GuideStepPlacementView: View {
         }
 
         stepPositions[stepId] = position
+        // F1 moments — first pin: move it; second pin: declutter; validation step: train.
+        if stepPositions.count == 1 { coach.show(.placeMovePin) }
+        if stepPositions.count == 2 { coach.show(.placeDeclutter) }
+        if step.needsValidation      { coach.show(.placeTrainStep) }
 
         if let existing = stepNodes[stepId] {
             SCNTransaction.begin(); SCNTransaction.animationDuration = 0.22
@@ -1153,6 +1244,7 @@ struct GuideStepPlacementView: View {
             i += 1
         }
         placementPhase = .placingPins
+        if slotList.count >= 2 { coach.show(.placeAdjustSlots) }   // F1: chain done for a multi-model step
         advanceFromStep(stepId: step.id)
     }
 
@@ -1340,6 +1432,7 @@ struct GuideStepPlacementView: View {
             modelPanMode  = .horizontal
 
             placementPhase = .adjustingModel(stepId: step.id, slotId: slot.slotId)
+            coach.show(.placeModelGestures)   // F1
         }
     }
 
@@ -1714,6 +1807,7 @@ struct GuideStepPlacementView: View {
     @MainActor
     private func savePins() async {
         guard placedCount > 0 else { return }
+        coach.show(.placeSaveVsDone)   // F1
         isSaving = true; savingIsExit = false; saveError = nil; lastSaveSucceeded = false
         let (_, errors) = await patchChangedPositions()
         isSaving = false

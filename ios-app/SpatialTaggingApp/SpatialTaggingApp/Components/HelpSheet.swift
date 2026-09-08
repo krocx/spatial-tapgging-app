@@ -51,7 +51,7 @@ struct HelpSheet: View {
 
 // ── Step card ─────────────────────────────────────────────────────────────────
 
-private struct HelpStepCard: View {
+struct HelpStepCard: View {   // internal: reused by GestureCheatSheet (F1)
     let step:  HelpStep
     let index: Int
 

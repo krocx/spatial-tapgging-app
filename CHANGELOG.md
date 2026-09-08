@@ -16,6 +16,35 @@ it, it gets a line.
   alone — loaded at its saved offsets, or at the pin if never positioned —
   with Confirm returning to pin placement and Cancel restoring the model.
 
+### Added
+- **In-session FTUE for AR OMS (F1, iOS)** — the paged overview explained a
+  mode before the camera was up and was forgotten by the time a control
+  mattered ("didn't know I could move a pin / expand the panel"). Now a
+  **moment card** appears over the live AR view the first time a control
+  becomes relevant — one line, one glyph, *Got it* — never covering the camera
+  or the AR panels. Place Steps: tap a pin to move it · drag/pinch/twist ·
+  ⬢1 ⬢2 ⬢3 adjust any model later · seal vs camera training · eye/cube
+  declutter · Save vs Done. Guide session: tap the pill to expand · ✓ ✕ 📷
+  panel buttons · one-panel eye toggle · ghost alignment capture (on arrival
+  at a validation step) · ✨ hints · sign-off. Remembered **per person**
+  (employee ID) so a shared kiosk iPad still teaches the next technician.
+  The **?** icon on both screens opens a *Controls* cheat-sheet (every
+  control with its glyph), **Replay tips**, and the old overview. No flow,
+  gate or layout changed. New file `Components/ARMomentCoach.swift` (add to
+  the Xcode target).
+- **The pulsing "tap here" hand is back everywhere (F1b, iOS)** — the
+  Spatial Inspection tap coach only appeared on an anchor with zero tags and
+  never in AR OMS. It is now a shared `ARTapCoach`: Place Steps shows it for
+  the first pin ("Tap any surface to place Step N") and once more when a pin
+  is tapped to re-place it ("Tap where Step N should go"); Spatial Inspection
+  shows it on an empty anchor and otherwise once per person. Dismisses on the
+  first tap or after 8 s; ? / Replay tips re-arm it. New file
+  `Components/ARTapCoach.swift` (add to the Xcode target).
+- **Training feedback in Place Steps (T1, iOS)** — camera (quick-shot) and
+  cone training now show a centred toast: *Hold steady* (0.6 s, then the
+  frame is read) → *Training…* → ✓ *Trained* (fades after 1.5 s; the seal
+  chip remains as the record). Failures stay up with the reason and OK.
+
 ### Changed
 - **One localization doctrine for every AR surface (B1)** — *the author's
   world map is the origin; the QR is the key and a drift check.* AR Work
