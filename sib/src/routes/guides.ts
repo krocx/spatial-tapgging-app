@@ -49,6 +49,8 @@ import { currentUamUser, uamIsActive } from '../middleware/auth.js';
 import { normalizeEmail } from '../uam/uam-core.js';
 import { findUserByEmail } from './uam.js';
 import { guideToProcedureMap, toMindmapRecord } from '../procedure/reverse-compiler.js';
+import { mergeGuideIntoMap } from '../procedure/map-merge.js';
+import { broadcastMapSync } from '../ws/mindmap.ws.js';
 import { tagStore } from './tags.js';
 import { anchorStore } from './anchors.js';
 import { decryptImageBase64 } from './training.js';
@@ -267,9 +269,20 @@ router.get('/:id', (req: Request, res: Response): void => {
 // "[Guide] <name>", published immediately (no draft key needed to edit), with
 // per-node provenance so re-sync updates steps in place and placement survives.
 //
-// `stale: true` in the response means the guide changed elsewhere (iOS, portal,
-// another import) AFTER the map last agreed with it — the client must warn
-// before a re-sync from that map overwrites those edits.
+// D (2026.4.46) — the guide is the source of truth; the map is a VIEW that
+// keeps its own presentation. When the guide changed after the map last
+// agreed with it (a step added on iOS, text edited in the portal…), the map
+// is brought up to date on open by mergeGuideIntoMap: content re-derived,
+// layout / shapes / annotations kept, per-node provenance matching.
+//
+// Conflict: the designer may hold CONTENT edits it hasn't sent yet
+// (map.updatedAt > guideSync.syncedAt). Merging would overwrite them on the
+// steps the guide changed, so the client must choose:
+//   ?mode=refresh   merge now (default when there are no unsent edits)
+//   ?mode=asis      open the stored map untouched (client will warn on send)
+//   (no mode)       when unsent edits exist AND the guide is newer → the route
+//                   returns { conflict: true, unsentEdits, stale } and does
+//                   nothing; the client asks the user and calls again.
 router.post('/:id/edit-map', (req: Request, res: Response): void => {
   const guide = guideStore.findById(req.params.id);
   if (!guide) {
@@ -285,16 +298,50 @@ router.post('/:id/edit-map', (req: Request, res: Response): void => {
   const maps = mindmapStore.findAll();
   const linked = maps.find(m => m.guideSync?.guideId === guide.id)
               ?? maps.find(m => boundGuideId(m) === guide.id);
+  const steps = guideStepStore.findAll().filter(s => s.guideId === guide.id);
+
   if (linked) {
-    const stale = new Date(guide.updatedAt).getTime() > (linked.guideSync?.syncedAt ?? 0);
+    const syncedAt    = linked.guideSync?.syncedAt ?? 0;
+    const stale       = new Date(guide.updatedAt).getTime() > syncedAt;
+    const unsentEdits = linked.updatedAt > syncedAt;
+    const mode        = typeof req.query.mode === 'string' ? req.query.mode : undefined;
+
+    if (!stale || mode === 'asis') {
+      res.json({
+        data: { mapId: linked.id, mapName: linked.name, created: false, stale, unsentEdits, merged: false },
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+    if (unsentEdits && mode !== 'refresh') {
+      res.json({
+        data: { mapId: linked.id, mapName: linked.name, created: false, stale, unsentEdits, conflict: true },
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+    // Refresh: guide → map, layout kept.
+    const imageFileByStepId: Record<string, string> = {};
+    for (const st of steps) {
+      if (!st.mediaPath) continue;
+      const already = linked.nodes.find(n => (n.metadata?.guide as { stepId?: string } | undefined)?.stepId === st.id);
+      const existingImg = (already?.metadata?.step as { imageFile?: string } | undefined)?.imageFile;
+      if (existingImg) { imageFileByStepId[st.id] = existingImg; continue; }   // reuse the designer copy
+      try {
+        const buf = fs.readFileSync(path.join(STEP_IMG_DIR, st.mediaPath));
+        imageFileByStepId[st.id] = saveDesignerImage(buf.toString('base64'));
+      } catch { /* missing on disk — ingest keeps the guide's mediaPath anyway */ }
+    }
+    const { map: merged, summary } = mergeGuideIntoMap(linked, guide, steps, imageFileByStepId);
+    mindmapStore.save(merged);
+    broadcastMapSync(merged);
+    console.log(`[edit-map] Refreshed "${merged.name}" from guide ${guide.id}: +${summary.added} ~${summary.updated} -${summary.removed}`);
     res.json({
-      data: { mapId: linked.id, mapName: linked.name, created: false, stale },
+      data: { mapId: merged.id, mapName: merged.name, created: false, stale: false, unsentEdits: false, merged: true, summary },
       timestamp: new Date().toISOString(),
     });
     return;
   }
-
-  const steps = guideStepStore.findAll().filter(s => s.guideId === guide.id);
 
   // Copy step media into the designer image store so the Inspector previews it.
   // A missing file just skips: ingest keeps the existing mediaPath when a node

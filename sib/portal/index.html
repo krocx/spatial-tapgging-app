@@ -1026,6 +1026,22 @@
   </div>
 </div>
 
+<!-- D (2026.4.46): designer ↔ guide sync choice -->
+<div id="sync-modal" class="overlay">
+  <div class="modal">
+    <h2>🔀 The guide changed since the Designer last saw it</h2>
+    <p style="font-size:0.875rem;color:var(--muted);margin-bottom:10px">
+      The Designer also has edits it hasn't sent to the Guide Library yet. Your <strong style="color:var(--text)">layout is kept either way</strong> — only step content can collide.
+    </p>
+    <div class="modal-actions" style="flex-direction:column;align-items:stretch;gap:8px">
+      <button class="btn btn-primary" onclick="syncChoice('refresh')">🔄 Refresh from guide <span class="ul-dim" style="font-weight:400">— iOS/portal edits win on changed steps</span></button>
+      <button class="btn btn-ghost" onclick="syncChoice('send-first')">📤 Send my Designer edits first, then refresh</button>
+      <button class="btn btn-ghost" onclick="syncChoice('asis')">Open as-is <span class="ul-dim" style="font-weight:400">— I'll sort it out on the canvas</span></button>
+      <button class="btn btn-ghost" onclick="syncChoice(null)">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══════════════════════════════════════════════════════════════
      T96: TAG MODALS
 ══════════════════════════════════════════════════════════════ -->
@@ -3876,16 +3892,48 @@ async function gpLoadImage(mediaPath) {
  * always survives a re-sync. `stale` means the guide changed elsewhere since
  * the map last agreed with it — re-syncing from the map would overwrite that,
  * so the user must acknowledge before opening. */
-async function editGuideInDesigner(guideId) {
+// D (2026.4.46): the guide is the source of truth; the map is a view that
+// keeps its layout. Opening refreshes the map from the guide when the guide
+// moved on. If the Designer holds unsent content edits too, the user picks.
+let _syncResolve = null;
+function syncChoice(v) {
+  document.getElementById('sync-modal').classList.remove('open');
+  if (_syncResolve) { _syncResolve(v); _syncResolve = null; }
+}
+function askSyncChoice() {
+  document.getElementById('sync-modal').classList.add('open');
+  return new Promise(res => { _syncResolve = res; });
+}
+async function editGuideInDesigner(guideId, mode) {
   try {
-    const r = await apiFetch(`/guides/${encodeURIComponent(guideId)}/edit-map`, { method: 'POST' });
+    const q = mode ? `?mode=${mode}` : '';
+    const r = await apiFetch(`/guides/${encodeURIComponent(guideId)}/edit-map${q}`, { method: 'POST' });
     const d = r.data;
-    if (d.stale && !confirm(
-      'Heads up: this guide was edited (on iOS or here) AFTER its design map was last synced.\n\n' +
-      'The map may not show those latest changes, and re-syncing from it will overwrite them.\n\n' +
-      'Open the Designer anyway?')) return;
-    toast(d.created ? `Created "${d.mapName}" — opening the Designer…`
-                    : 'Opening the linked procedure map…');
+    if (d.conflict) {
+      const choice = await askSyncChoice();
+      if (!choice) return;
+      if (choice === 'send-first') {
+        try {
+          await apiFetch(`/mindmap/${encodeURIComponent(d.mapId)}/procedure/export`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ guideId, createdBy: (typeof UAM_USER !== 'undefined' && UAM_USER?.name) || 'portal', confirmUnpublish: true }),
+          });
+          toast('Designer edits sent to the Guide Library.');
+        } catch (e) { toast('Send failed: ' + e.message, 4000); return; }
+        return editGuideInDesigner(guideId, 'refresh');
+      }
+      return editGuideInDesigner(guideId, choice);   // 'refresh' | 'asis'
+    }
+    if (d.merged) {
+      const sm = d.summary || {};
+      const bits = [];
+      if (sm.added)   bits.push(`+${sm.added} step${sm.added !== 1 ? 's' : ''}${sm.addedTitles?.length ? ` (${sm.addedTitles.slice(0, 3).join(', ')}${sm.addedTitles.length > 3 ? '…' : ''})` : ''}`);
+      if (sm.removed) bits.push(`−${sm.removed} removed`);
+      toast(`Updated from the guide${bits.length ? ' · ' + bits.join(' · ') : ''} — opening the Designer…`, 3500);
+    } else {
+      toast(d.created ? `Created "${d.mapName}" — opening the Designer…`
+                      : (d.stale ? 'Opening as-is — the guide has newer edits.' : 'Opening the linked procedure map…'));
+    }
     window.open(`/roadmap?map=${encodeURIComponent(d.mapId)}`, '_blank');
   } catch (e) {
     toast('Edit in Designer failed: ' + e.message);
@@ -4049,9 +4097,16 @@ function renderGuideLibrary() {
     if (!groups.has(k)) groups.set(k, { label: '', entries: [] });
     groups.get(k).entries.push([anchorId, entry]);
   }
+  // Recency everywhere (what people expect from a library): newest-touched
+  // guide first inside a chamber, chambers by their newest guide, and
+  // configurations by their newest chamber. Ties fall back to name.
+  const guideTs   = g => Date.parse(g.updatedAt || g.createdAt || 0) || 0;
+  const entryTs   = e => Math.max(0, ...e.guides.map(guideTs));
+  const groupTs   = k => Math.max(0, ...groups.get(k).entries.map(([, e]) => entryTs(e)));
+  for (const g of groups.values()) g.entries.sort((a, b) => entryTs(b[1]) - entryTs(a[1]));
   const ordered = [...groups.keys()].sort((a, b) => {
     const rank = k => k === '__none' ? 1 : k === '__areas' ? 2 : 0;
-    return rank(a) - rank(b) || (configLabel(a) || '').localeCompare(configLabel(b) || '');
+    return rank(a) - rank(b) || groupTs(b) - groupTs(a) || (configLabel(a) || '').localeCompare(configLabel(b) || '');
   });
 
   for (const gk of ordered) {
@@ -4069,7 +4124,7 @@ function renderGuideLibrary() {
     html += `<div class="gl-anchor-section">
       <div class="gl-anchor-hdr">📍 ${esc(anchorLabel)}</div>`;
 
-    for (const guide of entry.guides.sort((a, b) => a.name.localeCompare(b.name))) {
+    for (const guide of entry.guides.sort((a, b) => guideTs(b) - guideTs(a) || a.name.localeCompare(b.name))) {
       const steps      = entry.steps[guide.id] || null;
       const placedCount  = steps ? steps.filter(s => s.isPlaced).length : null;
       const totalSteps   = steps ? steps.length : null;

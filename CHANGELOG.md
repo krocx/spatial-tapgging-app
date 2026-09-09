@@ -7,6 +7,30 @@ it, it gets a line.
 ## 2026.4.46 — 2026-09-08
 
 ### Fixed
+- **Procedure Designer never caught up with the guide (D)** — "Edit in
+  Designer" reopened the stored map as-is and only warned when the guide had
+  moved on; a step added on iOS never reached the canvas, and sending from
+  that canvas would have dropped it. Doctrine now: *the guide is the source
+  of truth; the map is a view that keeps its presentation.* On open, when
+  the guide is newer, the map is **refreshed from the guide** by per-node
+  provenance — content updated in place, new steps added beside their
+  predecessor, removed steps dropped with their edges, layout / shapes /
+  icons / comments / annotation nodes kept, role edges rebuilt (ids reused).
+  Silent with a toast ("Updated from the guide · +1 step (NewStep)") when the
+  Designer has nothing unsent; otherwise a real choice: **Refresh from
+  guide**, **Send my Designer edits first, then refresh**, or **Open as-is**.
+  `POST /guides/:id/edit-map?mode=refresh|asis` (`conflict: true` when both
+  sides changed). Unit tests (add / change / delete / layout kept /
+  annotations kept / branch edges) + e2e. Roadmap client unchanged.
+- **Place Steps: eye did nothing once every step was placed (iOS)** — the
+  "all placed" sentinel left no active step, so focus mode had nothing to
+  focus on and showed everything. Focus now follows its own memory (last pin
+  tapped or placed, else Step 1) and the eye works in every state. The action
+  bar's rarer actions (*Copy models to other steps…*, *Clear all pins…*) moved
+  into a ⋯ menu so Save / Done never wrap on a phone.
+- **Guide Library order (portal)** — newest-touched first at every level:
+  guides inside a chamber, chambers inside a configuration, configurations
+  themselves (iOS step edits count — they bump the guide's `updatedAt`).
 - **Place Steps opened in the wrong frame — author pins never where they were
   placed (A, iOS)** — Place Steps started a fresh ARKit session and drew the
   saved pin coordinates (which belong to the original session's frame) in it,
@@ -14,8 +38,8 @@ it, it gets a line.
   positions back. Nothing to do with QR distance — the map was never loaded.
   Place Steps now opens like the operator session: the guide map loads through
   `WorldMapCache`, the Step-1 ghost photo shows, and pins stay hidden until
-  ARKit reports the space matched and the author taps **I'm Here — show my
-  pins**. If matching times out (15 s) the author chooses **Keep looking** or
+  ARKit reports the space matched — then they snap in by themselves (haptic),
+  exactly like the operator session. If matching times out (15 s) the author chooses **Keep looking** or
   **Re-place all pins in a fresh map** — never a silent wrong frame. Save/Done
   upload a map only when the session frame is the map's frame (extending it);
   in re-place mode, steps not re-placed have their stale position cleared so

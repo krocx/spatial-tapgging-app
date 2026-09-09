@@ -311,6 +311,10 @@ struct GuideStepPlacementView: View {
     /// declutters the scene while retraining or repositioning one step in a
     /// dense guide. Session-only (not saved). Mirrors the Operator-mode eye.
     @State private var focusActiveOnly: Bool = FocusPref.load(screen: "placeSteps")
+    /// G3 fix: the step the eye focuses on. `activeStepIndex == steps.count` is
+    /// the "all placed" sentinel (a surface tap must NOT re-place anything), so
+    /// the focus needs its own memory — the last step tapped/placed, else Step 1.
+    @State private var focusStepId: String? = nil
     // G2: "Clear all pins" — every step unplaced on Save (map kept; frame unchanged).
     @State private var clearedAllPins = false
     @State private var showClearAllConfirm = false
@@ -392,8 +396,19 @@ struct GuideStepPlacementView: View {
             Text("Every step becomes unplaced when you Save. The world map, training and 3D model assignments are kept; model placements are dropped.")
         }
         .onChange(of: arManager.relocalizationOutcome) { outcome in
-            guard relocState == .relocalizing, outcome == .timedOut else { return }
-            relocState = .timedOut
+            guard relocState == .relocalizing else { return }
+            switch outcome {
+            case .succeeded:
+                // Same as the operator session: snap the moment ARKit matches —
+                // no tap needed. Haptic so the author knows the pins are live.
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                withAnimation { relocState = .relocalized }
+                placeExistingPinNodes()
+            case .timedOut:
+                relocState = .timedOut
+            case .none:
+                break
+            }
         }
         .sheet(isPresented: $showCheatSheet) { GestureCheatSheet(screen: .placeSteps, coach: coach) }
         // V1: Spatial Inspection cone training for a validation step. Shares
@@ -575,7 +590,9 @@ struct GuideStepPlacementView: View {
     /// is shown. Hidden nodes are also skipped by SceneKit hit-testing, so
     /// taps can't land on an invisible pin.
     private func applyStepVisibility() {
-        let activeId: String? = activeStepIndex < steps.count ? steps[activeStepIndex].id : nil
+        if activeStepIndex < steps.count { focusStepId = steps[activeStepIndex].id }
+        if focusStepId == nil { focusStepId = steps.first { stepPositions[$0.id] != nil }?.id ?? steps.first?.id }
+        let activeId = focusStepId
         let hideOthers = focusActiveOnly && activeId != nil
         for (stepId, node) in stepNodes  { node.isHidden = hideOthers && stepId != activeId }
         for (stepId, perStep) in modelNodes {
@@ -842,33 +859,34 @@ struct GuideStepPlacementView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 HStack(spacing: 8) {
-                    // G2: clear every pin at once (confirmed; saved as unplaced on Save)
-                    if placedCount > 0 {
-                        Button { showClearAllConfirm = true } label: {
-                            Image(systemName: "mappin.slash")
+                    // ⋯ — the rarer actions live here so Save / Done never wrap.
+                    let canCopy = activeStepIndex < steps.count && canCopyModels(from: steps[activeStepIndex])
+                    if placedCount > 0 || canCopy {
+                        Menu {
+                            if canCopy {
+                                Button { showCopySheet = true } label: {
+                                    Label("Copy models to other steps…", systemImage: "square.on.square")
+                                }
+                            }
+                            if placedCount > 0 {
+                                Button(role: .destructive) { showClearAllConfirm = true } label: {
+                                    Label("Clear all pins…", systemImage: "mappin.slash")
+                                }
+                            }
+                        } label: {
+                            Image(systemName: "ellipsis")
                                 .font(.subheadline.bold())
-                                .padding(.horizontal, 12).padding(.vertical, 10)
-                                .background(Color.red.opacity(0.75))
+                                .padding(.horizontal, 12).padding(.vertical, 12)
+                                .background(Color.white.opacity(0.14))
                                 .foregroundStyle(.white).clipShape(Capsule())
                         }
-                        .accessibilityLabel("Clear all pins")
-                        .disabled(isSaving)
-                    }
-                    // U4: copy this step's models (as world positions) to other steps
-                    if activeStepIndex < steps.count, canCopyModels(from: steps[activeStepIndex]) {
-                        Button { showCopySheet = true } label: {
-                            Image(systemName: "square.on.square")
-                                .font(.subheadline.bold())
-                                .padding(.horizontal, 12).padding(.vertical, 10)
-                                .background(Color.teal.opacity(0.8))
-                                .foregroundStyle(.white).clipShape(Capsule())
-                        }
-                        .accessibilityLabel("Copy models to other steps")
+                        .accessibilityLabel("More actions")
                         .disabled(isSaving)
                     }
                     Button { Task { await savePins() } } label: {
                         Text(lastSaveSucceeded ? "Saved ✓" : "Save")
                             .font(.subheadline.bold())
+                            .lineLimit(1).fixedSize()
                             .padding(.horizontal, 14).padding(.vertical, 10)
                             .background(placedCount == 0
                                         ? Color.gray.opacity(0.5)
@@ -882,6 +900,7 @@ struct GuideStepPlacementView: View {
                     Button { Task { await saveAndExit() } } label: {
                         Label("Done", systemImage: "checkmark.circle.fill")
                             .font(.subheadline.bold())
+                            .lineLimit(1).fixedSize()
                             .padding(.horizontal, 14).padding(.vertical, 10)
                             .background(placedCount == 0 ? Color.gray.opacity(0.5) : Color.indigo)
                             .foregroundStyle(.white).clipShape(Capsule())
@@ -1101,8 +1120,8 @@ struct GuideStepPlacementView: View {
                             VStack(spacing: 4) {
                                 Text("Go to the Starting Point").font(.title3.bold()).foregroundStyle(.white)
                                 Text(relocPhoto != nil
-                                     ? "Line up the live view with the ghost of Step 1. Your pins appear once the space is matched."
-                                     : "Stand where you set the guide up. Your pins appear once the space is matched.")
+                                     ? "Line up the live view with the ghost of Step 1. Your pins appear the moment the space is matched."
+                                     : "Stand where you set the guide up. Your pins appear the moment the space is matched.")
                                     .font(.caption).foregroundStyle(.white.opacity(0.7)).multilineTextAlignment(.center)
                             }
                             HStack(spacing: 8) {
@@ -1121,17 +1140,15 @@ struct GuideStepPlacementView: View {
                                     Image(systemName: "eye.fill").font(.caption).foregroundStyle(.white.opacity(0.4))
                                 }
                             }
-                            Button {
-                                relocState = .relocalized
-                                placeExistingPinNodes()
-                            } label: {
-                                Label(matched ? "I'm Here — show my pins" : "Waiting for a match…",
-                                      systemImage: "mappin.and.ellipse")
-                                    .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 13)
-                                    .background(matched ? Color.indigo : Color.gray.opacity(0.5))
-                                    .foregroundStyle(.white).clipShape(RoundedRectangle(cornerRadius: 13))
+                            // Pins snap in automatically on match (onChange above);
+                            // this row is the "still matching" status.
+                            HStack(spacing: 8) {
+                                Image(systemName: "mappin.and.ellipse").foregroundStyle(.white.opacity(0.6))
+                                Text(matched ? "Matched — showing your pins" : "Walk to Step 1 and hold the view steady")
+                                    .font(.caption).foregroundStyle(.white.opacity(0.7))
                             }
-                            .disabled(!matched)
+                            .frame(maxWidth: .infinity).padding(.vertical, 10)
+                            .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 13))
                         } else {
                             VStack(spacing: 4) {
                                 Image(systemName: "exclamationmark.triangle.fill").font(.title2).foregroundStyle(.orange)
