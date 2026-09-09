@@ -201,6 +201,8 @@ struct GuideStepPlacementView: View {
         UserDefaults.standard.string(forKey: "uam_employee_id") ?? ""
     })
     @State private var showCheatSheet = false
+    // H2: read a step in full without leaving AR (half sheet, camera stays live)
+    @State private var readIndex: Int? = nil
 
     // ── A (2026.4.46): relocalize into the guide's world map before showing pins ──
     // Saved pin positions are coordinates in the AUTHOR's ORIGINAL session frame.
@@ -411,6 +413,15 @@ struct GuideStepPlacementView: View {
             }
         }
         .sheet(isPresented: $showCheatSheet) { GestureCheatSheet(screen: .placeSteps, coach: coach) }
+        .sheet(isPresented: Binding(get: { readIndex != nil }, set: { if !$0 { readIndex = nil } })) {
+            StepReadCard(
+                steps: steps,
+                index: Binding(get: { readIndex ?? 0 }, set: { readIndex = $0 }),
+                models: resolvedModels,
+                trainedStepIds: coneTrainedStepIds,
+                placedStepIds: Set(stepPositions.keys))
+            .environmentObject(settings)
+        }
         // V1: Spatial Inspection cone training for a validation step. Shares
         // this view's AR session (same pattern as Author-mode tag training) and
         // anchors the dome at the step's pin via forcedTagWorldPos.
@@ -741,19 +752,37 @@ struct GuideStepPlacementView: View {
         let hasModel  = !(modelTransforms[step.id] ?? [:]).isEmpty
 
         VStack(spacing: 4) {
-            ZStack {
+            // H1: the NUMBER is always the face of the chip — a 20-step tray is
+            // navigated by counting, not by reading. State lives on the rim.
+            ZStack(alignment: .bottomTrailing) {
                 Circle()
                     .fill(isActive ? Color.blue :
                           placed   ? Color.indigo.opacity(0.85) : Color.gray.opacity(0.4))
                     .frame(width: 36, height: 36)
-                if placed && !isActive {
-                    Image(systemName: hasModel ? "cube.fill" : "checkmark")
-                        .font(.system(size: 14, weight: .bold)).foregroundStyle(.white)
-                } else {
-                    Text("\(step.sequenceNumber)")
-                        .font(.headline.bold()).foregroundStyle(.white)
+                Text("\(step.sequenceNumber)")
+                    .font(.headline.bold()).foregroundStyle(.white)
+                    .frame(width: 36, height: 36)
+                if placed {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 8, weight: .black)).foregroundStyle(.white)
+                        .frame(width: 14, height: 14)
+                        .background(Color.green, in: Circle())
+                        .overlay(Circle().stroke(Color.black.opacity(0.35), lineWidth: 1))
+                        .offset(x: 3, y: 3)
+                }
+                if hasModel || step.hasModels {
+                    Image(systemName: "cube.fill")
+                        .font(.system(size: 7, weight: .black)).foregroundStyle(.white)
+                        .frame(width: 14, height: 14)
+                        .background(Color.cyan, in: Circle())
+                        .overlay(Circle().stroke(Color.black.opacity(0.35), lineWidth: 1))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                        .offset(x: -3, y: 3)
                 }
             }
+            .frame(width: 36, height: 36)
+            .contentShape(Rectangle())
+            .onLongPressGesture { readIndex = idx }   // H2: read the step
             Text(step.displayTitle)
                 .font(.system(size: 9))
                 .foregroundStyle(isActive ? .white : .white.opacity(0.55))
@@ -844,19 +873,29 @@ struct GuideStepPlacementView: View {
                         let s = steps[activeStepIndex]
                         Text("Tap to place step \(s.sequenceNumber):")
                             .font(.caption2).foregroundStyle(.white.opacity(0.55))
-                        Text(s.displayTitle)
-                            .font(.caption.bold()).foregroundStyle(.white).lineLimit(1)
+                        HStack(spacing: 4) {
+                            Text(s.displayTitle)
+                                .font(.caption.bold()).foregroundStyle(.white).lineLimit(1)
+                            Image(systemName: "info.circle").font(.caption2).foregroundStyle(.white.opacity(0.6))
+                        }
                         if s.title != nil {
                             Text(s.text).font(.caption).foregroundStyle(.white.opacity(0.7)).lineLimit(1)
                         }
                     } else {
                         Text("All steps placed")
                             .font(.subheadline.bold()).foregroundStyle(.green)
-                        Text("Tap an existing pin to re-place it")
+                        Text("Tap an existing pin to re-place it · hold a step to read it")
                             .font(.caption).foregroundStyle(.white.opacity(0.55))
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    // H2: read the active step (or the focused one when all are placed)
+                    if activeStepIndex < steps.count { readIndex = activeStepIndex }
+                    else if let f = focusStepId, let i = steps.firstIndex(where: { $0.id == f }) { readIndex = i }
+                    else if !steps.isEmpty { readIndex = 0 }
+                }
 
                 HStack(spacing: 8) {
                     // ⋯ — the rarer actions live here so Save / Done never wrap.

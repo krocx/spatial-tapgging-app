@@ -65,6 +65,16 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **Read the step where it lives (H, iOS)** — Place Steps tray chips now
+  always show the **step number** (✓ placed and ⬢ models moved to small rim
+  badges), so a 20-step guide is navigated by counting instead of reading
+  9-pt titles in a cleanroom. Tapping the step text in the action bar — or
+  holding any tray chip — opens a **Step card**: a half-height sheet with the
+  full title, instruction, voice-over, photo, flags, models and branches,
+  with ‹ › to flip through steps while the camera stays live behind it, so
+  an author can show a technician the step without leaving AR. In the Guide
+  editor, tapping a step's text expands the full instruction inline. New
+  file `Components/StepReadCard.swift` (add to the Xcode target).
 - **Remove a saved world map (G1)** — `DELETE /anchors/:id/worldmap` unseals a
   chamber (map + origin removed; tags stay, they are QR-relative; the next
   Author scan seals a new map) and `DELETE /worldmap/guide/:id` resets a

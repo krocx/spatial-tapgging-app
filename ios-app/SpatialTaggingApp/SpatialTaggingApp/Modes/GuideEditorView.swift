@@ -427,6 +427,8 @@ struct StepEditorRow: View {
     let step:     GuideStep
     let onEdit:   () -> Void
     let onDelete: () -> Void
+    /// H3 (2026.4.46): tap the text to read the whole instruction inline.
+    @State private var expanded = false
 
     var body: some View {
         HStack(spacing: 12) {
@@ -444,10 +446,20 @@ struct StepEditorRow: View {
                 Text(step.displayTitle)
                     .font(.subheadline.bold())
                     .lineLimit(1)
-                Text(step.text)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
+                HStack(alignment: .top, spacing: 4) {
+                    Text(step.text)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(expanded ? nil : 2)
+                        .fixedSize(horizontal: false, vertical: expanded)
+                    if step.text.count > 90 {
+                        Image(systemName: expanded ? "chevron.up" : "chevron.down")
+                            .font(.caption2.bold()).foregroundStyle(.tertiary)
+                            .padding(.top, 2)
+                    }
+                }
+                .contentShape(Rectangle())
+                .onTapGesture { withAnimation(.easeInOut(duration: 0.2)) { expanded.toggle() } }
                 HStack(spacing: 8) {
                     // AR placement status
                     if step.isPlaced {
