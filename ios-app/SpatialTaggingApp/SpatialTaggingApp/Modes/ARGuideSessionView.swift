@@ -2544,19 +2544,10 @@ struct ARGuideSessionView: View {
     /// Mirror of training's clean-capture path (see OperatorModeView #48):
     /// raw sensor buffer, rotated portrait, capped at 800 px.
     private func rawCameraImage(from frame: ARFrame) -> UIImage? {
-        let ci       = CIImage(cvPixelBuffer: frame.capturedImage)
-        let oriented = ci.oriented(.right)
-        let ctx      = CIContext(options: [.useSoftwareRenderer: false])
-        guard let cg = ctx.createCGImage(oriented, from: oriented.extent) else { return nil }
-        let full = UIImage(cgImage: cg)
-        let longest = max(full.size.width, full.size.height)
-        guard longest > 800 else { return full }
-        let scale   = 800 / longest
-        let newSize = CGSize(width: (full.size.width * scale).rounded(),
-                             height: (full.size.height * scale).rounded())
-        return UIGraphicsImageRenderer(size: newSize).image { _ in
-            full.draw(in: CGRect(origin: .zero, size: newSize))
-        }
+        // C: rotated to the SCREEN orientation (iPad landscape safe), ≤ 800 px —
+        // the same helper the author used, so the ghost and the SSIM compare
+        // see the frame the way it was trained.
+        ARFrameImage.screenOriented(frame, maxPx: 800)
     }
 
     /// System validation: score the captured photo against the trained reference.

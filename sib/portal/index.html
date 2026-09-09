@@ -1787,7 +1787,7 @@ function mapSealedHtml(anchor) {
     return `<span class="badge badge-orange" title="No sealed world map yet — tags are placed from the QR pose each scan. Author: scan this QR once in Author mode to seal.">Map not sealed</span>`;
   }
   const d = new Date(anchor.mapSealedAt).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
-  return `<span class="badge badge-green" title="Author's world map is the origin — operators relocalize into it; the QR is the key and a drift check (${anchor.mapSealedAt})">🗺 Map sealed · ${d}</span>`;
+  return `<span class="badge badge-green" title="Author's world map is the origin — operators relocalize into it; the QR is the key and a drift check (${anchor.mapSealedAt})">🗺 Map sealed · ${d}</span> <button class="btn btn-ghost btn-sm" style="font-size:0.62rem;padding:1px 6px" title="Remove the sealed map so an Author can create a new one (tags stay)" onclick="unsealAnchorMap('${anchor.id}','${jsEsc(anchor.assetId)}')">Unseal</button>`;
 }
 
 // ── Build anchor card ──────────────────────────────────────────────────────────
@@ -4101,6 +4101,7 @@ function renderGuideLibrary() {
           <button class="btn btn-ghost btn-sm" style="font-size:0.68rem" title="Move to another anchor (steps become unplaced)" onclick="moveGuideToAnchor('${guide.id}','${anchorId}')">⇄ Move</button>
           <button class="btn btn-ghost btn-sm" style="font-size:0.68rem" title="Copy to another anchor as a draft (steps unplaced, training not copied)" onclick="copyGuideToAnchor('${guide.id}','${anchorId}')">⧉ Copy</button>
           ${siblings.length ? `<button class="btn btn-ghost btn-sm" style="font-size:0.68rem;color:#67e8f9" title="Copy this guide to every other chamber of ${esc(cfg.code)} (${siblings.length}) as drafts" onclick="copyGuideToConfigChambers('${guide.id}','${anchorId}','${cfg.id}')">⧉⧉ All ${siblings.length}</button>` : ''}
+          <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;color:#fdba74" title="Delete this guide's world map and unplace every step — the author re-places them in a fresh map on iOS" onclick="resetGuideMap('${guide.id}','${anchorId}')">🗺 Reset map</button>
           <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;color:var(--red)" onclick="deleteGuideFromLibrary('${guide.id}','${anchorId}')">🗑</button>
         </div>`;
 
@@ -4641,6 +4642,30 @@ async function deleteGuideFromLibrary(guideId, anchorId) {
     toast('Guide deleted.');
     renderGuideLibrary();
   } catch (e) { toast(`Delete failed: ${e.message}`, 4000); }
+}
+
+// G1 (2026.4.46): reset a guide's world map. Pins only mean something inside
+// the map they were placed in, so the server unplaces every step too.
+async function resetGuideMap(guideId, anchorId) {
+  const entry = guideLibraryData[anchorId];
+  const guide = entry?.guides.find(g => g.id === guideId);
+  if (!confirm(`Reset the world map of "${guide?.name ?? guideId}"?\n\nEvery step becomes unplaced and must be re-placed in AR on iOS. Training and 3D model assignments are kept.`)) return;
+  try {
+    const r = await _apiDelete(`/worldmap/guide/${encodeURIComponent(guideId)}`);
+    toast(`Map reset · ${r?.data?.unplaced ?? 0} step(s) unplaced.`);
+    loadGuideLibrary();
+  } catch (e) { toast(`Reset failed: ${e.message}`, 4000); }
+}
+
+// G1: unseal an anchor's world map. Tags are QR-relative and stay valid; the
+// next Author scan re-seals.
+async function unsealAnchorMap(anchorId, assetId) {
+  if (!confirm(`Unseal the world map of "${assetId}"?\n\nTags stay. Operators localize from the QR until an Author scans this chamber again.`)) return;
+  try {
+    await _apiDelete(`/anchors/${encodeURIComponent(anchorId)}/worldmap`);
+    toast('Map unsealed.');
+    loadAnchors();
+  } catch (e) { toast(`Unseal failed: ${e.message}`, 4000); }
 }
 
 async function deleteGembaCompletion(id) {

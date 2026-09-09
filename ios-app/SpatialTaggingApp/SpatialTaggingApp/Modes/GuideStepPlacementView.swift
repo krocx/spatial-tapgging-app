@@ -202,6 +202,25 @@ struct GuideStepPlacementView: View {
     })
     @State private var showCheatSheet = false
 
+    // ── A (2026.4.46): relocalize into the guide's world map before showing pins ──
+    // Saved pin positions are coordinates in the AUTHOR's ORIGINAL session frame.
+    // A fresh ARKit session has a different frame, so drawing them there put every
+    // pin wherever the new origin happened to be — and Save wrote those wrong
+    // positions back. Now, like the operator session, Place Steps relocalizes
+    // into the guide map first; pins stay hidden until ARKit confirms the frame.
+    private enum RelocState: Equatable {
+        case none            // new guide / nothing placed yet → fresh frame is fine
+        case relocalizing    // map loaded, waiting for ARKit + "I'm Here"
+        case relocalized     // same frame as the map — pins trustworthy, Save extends the map
+        case timedOut        // ARKit couldn't match — author must choose
+        case replaceAll      // author chose a fresh frame: every pin is re-placed, map replaced
+    }
+    @State private var relocState: RelocState = .none
+    @State private var relocBundle: WorldMapBundle? = nil
+    @State private var relocPhoto:  UIImage? = nil
+    @State private var relocGhostOpacity: Double = 0.4
+    @State private var relocMissingMap = false     // pins exist but no map on SIB (legacy guide)
+
     // ── Pin placement state ───────────────────────────────────────────────────
     @State private var stepPositions:  [String: simd_float3] = [:]
     @State private var activeStepIndex: Int                  = 0
@@ -291,7 +310,10 @@ struct GuideStepPlacementView: View {
     /// U1: when true, only the active step's pin/label/model is visible —
     /// declutters the scene while retraining or repositioning one step in a
     /// dense guide. Session-only (not saved). Mirrors the Operator-mode eye.
-    @State private var focusActiveOnly: Bool = false
+    @State private var focusActiveOnly: Bool = FocusPref.load(screen: "placeSteps")
+    // G2: "Clear all pins" — every step unplaced on Save (map kept; frame unchanged).
+    @State private var clearedAllPins = false
+    @State private var showClearAllConfirm = false
 
     // ── Pin colours ───────────────────────────────────────────────────────────
     private let indigoColor = UIColor.systemIndigo
@@ -362,6 +384,17 @@ struct GuideStepPlacementView: View {
             if let t = trainingToast { trainingToastView(t) }
         }
         .overlay { ARMomentCard(coach: coach, bottomInset: placementPhase.isPlacingPins ? 150 : 200, accent: .indigo) }
+        .overlay { relocOverlay }
+        .confirmationDialog("Clear all \(placedCount) pin\(placedCount == 1 ? "" : "s")?", isPresented: $showClearAllConfirm, titleVisibility: .visible) {
+            Button("Clear all pins", role: .destructive) { clearAllPins() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Every step becomes unplaced when you Save. The world map, training and 3D model assignments are kept; model placements are dropped.")
+        }
+        .onChange(of: arManager.relocalizationOutcome) { outcome in
+            guard relocState == .relocalizing, outcome == .timedOut else { return }
+            relocState = .timedOut
+        }
         .sheet(isPresented: $showCheatSheet) { GestureCheatSheet(screen: .placeSteps, coach: coach) }
         // V1: Spatial Inspection cone training for a validation step. Shares
         // this view's AR session (same pattern as Author-mode tag training) and
@@ -378,9 +411,36 @@ struct GuideStepPlacementView: View {
                 .environmentObject(appState)
         }
         .onAppear {
-            arManager.startSession()
             arManager.disableQRScanning()
             initFromExistingPositions()
+            if steps.contains(where: { $0.worldPosition != nil }) {
+                // A: existing pins → relocalize into the guide map first.
+                relocState = .relocalizing
+                Task {
+                    let client = SIBClient(settings: settings)
+                    async let bundleFetch = WorldMapCache.load(.guide(guide.id), client: client)
+                    async let photoFetch  = try? client.fetchGuideWorldMapPhoto(guideId: guide.id)
+                    let (bundle, photo) = await (bundleFetch, photoFetch)
+                    await MainActor.run {
+                        relocBundle = bundle
+                        if let pd = photo ?? nil { relocPhoto = UIImage(data: pd) }
+                        if let b = bundle {
+                            arManager.startSessionWithWorldMap(b.map)
+                            arManager.disableQRScanning()
+                        } else {
+                            // Legacy guide: pins without a map. Their frame is unknowable.
+                            relocMissingMap = true
+                            arManager.startSession()
+                            arManager.disableQRScanning()
+                            relocState = .timedOut
+                        }
+                    }
+                }
+            } else {
+                arManager.startSession()
+                relocState = .none
+                placeExistingPinNodes()
+            }
             // V1: seed training badges + tag reuse from server state
             for s in steps where s.coneTrained {
                 coneTrainedStepIds.insert(s.id)
@@ -482,6 +542,7 @@ struct GuideStepPlacementView: View {
                 }
                 Button {
                     focusActiveOnly.toggle()
+                    FocusPref.save(screen: "placeSteps", value: focusActiveOnly)   // G3: per person
                     applyStepVisibility()
                 } label: {
                     Image(systemName: focusActiveOnly ? "eye.slash.fill" : "eye.fill")
@@ -781,6 +842,18 @@ struct GuideStepPlacementView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
 
                 HStack(spacing: 8) {
+                    // G2: clear every pin at once (confirmed; saved as unplaced on Save)
+                    if placedCount > 0 {
+                        Button { showClearAllConfirm = true } label: {
+                            Image(systemName: "mappin.slash")
+                                .font(.subheadline.bold())
+                                .padding(.horizontal, 12).padding(.vertical, 10)
+                                .background(Color.red.opacity(0.75))
+                                .foregroundStyle(.white).clipShape(Capsule())
+                        }
+                        .accessibilityLabel("Clear all pins")
+                        .disabled(isSaving)
+                    }
                     // U4: copy this step's models (as world positions) to other steps
                     if activeStepIndex < steps.count, canCopyModels(from: steps[activeStepIndex]) {
                         Button { showCopySheet = true } label: {
@@ -964,15 +1037,8 @@ struct GuideStepPlacementView: View {
     /// Raw sensor frame, portrait, ≤ 800 px — identical to ConeCaptureView's
     /// capture so quick-shot references are comparable to cone references.
     private func rawCameraImage(from frame: ARFrame) -> UIImage? {
-        let ci = CIImage(cvPixelBuffer: frame.capturedImage).oriented(.right)
-        let ctx = CIContext(options: [.useSoftwareRenderer: false])
-        guard let cg = ctx.createCGImage(ci, from: ci.extent) else { return nil }
-        let full = UIImage(cgImage: cg)
-        let longest = max(full.size.width, full.size.height)
-        guard longest > 800 else { return full }
-        let scale = 800 / longest
-        let size  = CGSize(width: (full.size.width * scale).rounded(), height: (full.size.height * scale).rounded())
-        return UIGraphicsImageRenderer(size: size).image { _ in full.draw(in: CGRect(origin: .zero, size: size)) }
+        // C: rotated to the SCREEN orientation (iPad landscape safe), ≤ 800 px.
+        ARFrameImage.screenOriented(frame, maxPx: 800)
     }
 
     /// The cone sweep finished uploading its pass-state — stamp the step so
@@ -1011,6 +1077,97 @@ struct GuideStepPlacementView: View {
                      : "Updating \(placedCount) pin\(placedCount == 1 ? "" : "s") on server")
                     .font(.caption).foregroundStyle(.white.opacity(0.6))
             }
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // MARK: Relocalization overlay (A)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    @ViewBuilder
+    private var relocOverlay: some View {
+        if relocState == .relocalizing || relocState == .timedOut {
+            ZStack {
+                if relocState == .relocalizing, let img = relocPhoto {
+                    Image(uiImage: img).resizable().scaledToFill()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .opacity(relocGhostOpacity).ignoresSafeArea().allowsHitTesting(false)
+                }
+                VStack {
+                    Spacer()
+                    VStack(spacing: 14) {
+                        if relocState == .relocalizing {
+                            let matched = arManager.relocalizationOutcome == .succeeded
+                            VStack(spacing: 4) {
+                                Text("Go to the Starting Point").font(.title3.bold()).foregroundStyle(.white)
+                                Text(relocPhoto != nil
+                                     ? "Line up the live view with the ghost of Step 1. Your pins appear once the space is matched."
+                                     : "Stand where you set the guide up. Your pins appear once the space is matched.")
+                                    .font(.caption).foregroundStyle(.white.opacity(0.7)).multilineTextAlignment(.center)
+                            }
+                            HStack(spacing: 8) {
+                                if matched {
+                                    Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                                    Text("Space matched").font(.caption).foregroundStyle(.white.opacity(0.8))
+                                } else {
+                                    ProgressView().scaleEffect(0.8).tint(.indigo)
+                                    Text("Matching the space…").font(.caption).foregroundStyle(.white.opacity(0.55))
+                                }
+                            }
+                            if relocPhoto != nil {
+                                HStack(spacing: 10) {
+                                    Image(systemName: "photo.fill").font(.caption).foregroundStyle(.white.opacity(0.4))
+                                    Slider(value: $relocGhostOpacity, in: 0.15...0.65).tint(.indigo)
+                                    Image(systemName: "eye.fill").font(.caption).foregroundStyle(.white.opacity(0.4))
+                                }
+                            }
+                            Button {
+                                relocState = .relocalized
+                                placeExistingPinNodes()
+                            } label: {
+                                Label(matched ? "I'm Here — show my pins" : "Waiting for a match…",
+                                      systemImage: "mappin.and.ellipse")
+                                    .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 13)
+                                    .background(matched ? Color.indigo : Color.gray.opacity(0.5))
+                                    .foregroundStyle(.white).clipShape(RoundedRectangle(cornerRadius: 13))
+                            }
+                            .disabled(!matched)
+                        } else {
+                            VStack(spacing: 4) {
+                                Image(systemName: "exclamationmark.triangle.fill").font(.title2).foregroundStyle(.orange)
+                                Text(relocMissingMap ? "No world map for this guide" : "Couldn't match the space")
+                                    .font(.title3.bold()).foregroundStyle(.white)
+                                Text(relocMissingMap
+                                     ? "These pins were saved before maps were kept, so their positions can't be trusted. Re-place them to seal a map."
+                                     : "The pins can't be shown safely in an unmatched space — they would land in the wrong place and Save would keep them there.")
+                                    .font(.caption).foregroundStyle(.white.opacity(0.7)).multilineTextAlignment(.center)
+                            }
+                            if let b = relocBundle {
+                                Button {
+                                    relocState = .relocalizing
+                                    arManager.startSessionWithWorldMap(b.map)
+                                    arManager.disableQRScanning()
+                                } label: {
+                                    Label("Keep looking (walk to Step 1)", systemImage: "arrow.clockwise")
+                                        .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 13)
+                                        .background(Color.indigo).foregroundStyle(.white)
+                                        .clipShape(RoundedRectangle(cornerRadius: 13))
+                                }
+                            }
+                            Button { startReplaceAll() } label: {
+                                Label("Re-place all pins in a fresh map", systemImage: "mappin.slash")
+                                    .font(.subheadline.bold()).frame(maxWidth: .infinity).padding(.vertical, 12)
+                                    .background(Color.orange.opacity(0.85)).foregroundStyle(.white)
+                                    .clipShape(RoundedRectangle(cornerRadius: 13))
+                            }
+                        }
+                    }
+                    .padding(20)
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+                    .padding(.horizontal, 16).padding(.bottom, 48)
+                }
+            }
+            .transition(.opacity)
         }
     }
 
@@ -1086,6 +1243,20 @@ struct GuideStepPlacementView: View {
             activeStepIndex = steps.count   // all placed — user taps pins to re-place
         }
 
+        // Pin nodes are created by placeExistingPinNodes() — only once the
+        // session frame is known to be the map's frame (A).
+
+        // NOTE: no blind timed snapshot here. The re-localization reference
+        // must be a view of STEP 1 — on resume it is captured by the ticker
+        // only while the camera is actually looking at Step 1's pin (see
+        // captureResumeReferenceIfLookingAtStep1). A 2 s snapshot of wherever
+        // the Author happened to point (e.g. Step 3, opened just to train it)
+        // was overwriting the Step-1 reference and misleading operators.
+    }
+
+    /// A: draw the saved pins. Called for a new guide immediately, or after
+    /// ARKit relocalized into the guide map and the author tapped "I'm Here".
+    private func placeExistingPinNodes() {
         Task {
             try? await Task.sleep(nanoseconds: 600_000_000)
             for (idx, step) in steps.enumerated() {
@@ -1098,13 +1269,40 @@ struct GuideStepPlacementView: View {
             }
             applyStepVisibility()
         }
+    }
 
-        // NOTE: no blind timed snapshot here. The re-localization reference
-        // must be a view of STEP 1 — on resume it is captured by the ticker
-        // only while the camera is actually looking at Step 1's pin (see
-        // captureResumeReferenceIfLookingAtStep1). A 2 s snapshot of wherever
-        // the Author happened to point (e.g. Step 3, opened just to train it)
-        // was overwriting the Step-1 reference and misleading operators.
+    /// G2: unplace every step in this session (same frame, map kept).
+    private func clearAllPins() {
+        stepPositions.removeAll()
+        for n in stepNodes.values { n.removeFromParentNode() }
+        stepNodes.removeAll()
+        for perStep in modelNodes.values { for n in perStep.values { n.removeFromParentNode() } }
+        modelNodes.removeAll(); modelTransforms.removeAll(); slotOverrides.removeAll()
+        activeStepIndex = 0
+        clearedAllPins = true
+        showTapHint = true
+        applyStepVisibility()
+    }
+
+    /// A: the author gave up matching — every pin is re-placed in a fresh frame
+    /// and Save/Done replaces the map. Server positions of steps not re-placed
+    /// this session are cleared on Save so no pin can point into the old frame.
+    private func startReplaceAll() {
+        // G1: the old map must not linger on the server — Save/Done seals a new one.
+        let gid = guide.id
+        Task { _ = try? await SIBClient(settings: settings).deleteGuideWorldMap(guideId: gid) }
+        relocBundle = nil
+        stepPositions.removeAll()
+        for n in stepNodes.values { n.removeFromParentNode() }
+        stepNodes.removeAll()
+        for perStep in modelNodes.values { for n in perStep.values { n.removeFromParentNode() } }
+        modelNodes.removeAll(); modelTransforms.removeAll()
+        activeStepIndex = 0
+        firstStepPhotoData = nil; firstStepCameraPose = nil
+        arManager.startSession()
+        arManager.disableQRScanning()
+        relocState = .replaceAll
+        showTapHint = true
     }
 
     /// Resume sessions: opportunistically capture the Step-1 reference photo
@@ -1145,6 +1343,8 @@ struct GuideStepPlacementView: View {
     // ─────────────────────────────────────────────────────────────────────────
 
     private func handleTap(_ point: CGPoint) {
+        // A: no placement until the frame is trustworthy.
+        guard relocState != .relocalizing, relocState != .timedOut else { return }
         let sv = arManager.sceneView
 
         // Check if tapping an existing pin → activate it
@@ -1801,6 +2001,17 @@ struct GuideStepPlacementView: View {
                 errors.append("Step \(step.sequenceNumber): \(error.localizedDescription)")
             }
         }
+        // A / G2: after "Re-place all" or "Clear all pins", steps not re-placed
+        // this session are unplaced on the server so no pin can point into a
+        // frame that no longer exists (isPlaced=false; worldPosition reads nil).
+        if relocState == .replaceAll || clearedAllPins {
+            for (idx, step) in steps.enumerated() where stepPositions[step.id] == nil && step.worldPosition != nil {
+                var req = UpdateGuideStepRequest()
+                req.isPlaced = false
+                do { updatedSteps[idx] = try await client.updateGuideStep(guideId: guide.id, stepId: step.id, req: req) }
+                catch { errors.append("Step \(step.sequenceNumber): \(error.localizedDescription)") }
+            }
+        }
         return (updatedSteps, errors)
     }
 
@@ -1831,7 +2042,9 @@ struct GuideStepPlacementView: View {
         // writes a photo when one is supplied). Never send a snapshot of
         // wherever the Author is standing at Save time.
         let photoData = firstStepPhotoData
-        let mapData   = await arManager.saveCurrentWorldMap()
+        // A: never upload a map from a frame that isn't the guide's frame.
+        let frameIsMapFrame = relocBundle == nil || relocState == .relocalized || relocState == .replaceAll
+        let mapData   = frameIsMapFrame ? await arManager.saveCurrentWorldMap() : nil
         let (updatedSteps, errors) = await patchChangedPositions()
         if let mapData {
             do {

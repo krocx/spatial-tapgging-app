@@ -7,6 +7,30 @@ it, it gets a line.
 ## 2026.4.46 — 2026-09-08
 
 ### Fixed
+- **Place Steps opened in the wrong frame — author pins never where they were
+  placed (A, iOS)** — Place Steps started a fresh ARKit session and drew the
+  saved pin coordinates (which belong to the original session's frame) in it,
+  so pins landed wherever the new origin happened to be, and Save wrote those
+  positions back. Nothing to do with QR distance — the map was never loaded.
+  Place Steps now opens like the operator session: the guide map loads through
+  `WorldMapCache`, the Step-1 ghost photo shows, and pins stay hidden until
+  ARKit reports the space matched and the author taps **I'm Here — show my
+  pins**. If matching times out (15 s) the author chooses **Keep looking** or
+  **Re-place all pins in a fresh map** — never a silent wrong frame. Save/Done
+  upload a map only when the session frame is the map's frame (extending it);
+  in re-place mode, steps not re-placed have their stale position cleared so
+  no pin can point into the old frame. Guides saved before maps existed get
+  the same choice.
+- **Validation ghost rotated 90° on iPad Pro in landscape (C, iOS)** — five
+  capture sites rotated the sensor buffer with a hard-coded "screen is
+  portrait" (`.oriented(.right)`), so references trained on a landscape iPad
+  were sideways against the live view and the comparator scored rotated
+  frames. One helper, `ARFrameImage.screenOriented`, rotates by the current
+  interface orientation at every site (quick-shot, cone, honeycomb, guide
+  validation, inspection). Author and operator captures now match whenever
+  both work in the same orientation. References already trained in landscape
+  on an iPad need one re-train. New file `Services/ARFrameImage.swift` (add to
+  the Xcode target).
 - **Place Steps: only one model could be adjusted (iOS)** — model slots were
   reachable only through the pin-drop chain, so a step whose pin was already
   placed (or whose 2nd/3rd model was added later in the editor) had no way to
@@ -17,6 +41,25 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **Remove a saved world map (G1)** — `DELETE /anchors/:id/worldmap` unseals a
+  chamber (map + origin removed; tags stay, they are QR-relative; the next
+  Author scan seals a new map) and `DELETE /worldmap/guide/:id` resets a
+  guide's map (map, reference photo and meta removed; **every step unplaced**
+  — pins only mean something inside the map they were placed in; training
+  and model assignments kept, model placements dropped). Engineer+, logged to
+  the admin ops log. iOS: Anchor Hub ⋯ → *Unseal world map…*; Guide editor →
+  *Reset map & pins…* (count in the confirm); Place Steps' *Re-place all pins*
+  now deletes the old map so it can't linger. Portal: **Unseal** next to the
+  sealed badge, **🗺 Reset map** in the Guide Library.
+- **Remove all at once (G2, iOS)** — Spatial Inspection tag list gains 🗑
+  *Delete all tags* (confirmed; existing bulk route); Place Steps gains a
+  *Clear all pins* button (every step saved as unplaced on Save/Done; map
+  kept).
+- **Show only the current one by default (G3, iOS)** — Place Steps' eye now
+  defaults to *only the active step*; Spatial Inspection author gets the same
+  eye in its top bar, showing only the tag being worked on (just placed,
+  being trained, or navigated to; everything shows until there is one).
+  Tapping the eye shows all. Remembered per person (`FocusPref`).
 - **In-session FTUE for AR OMS (F1, iOS)** — the paged overview explained a
   mode before the camera was up and was forgotten by the time a control
   mattered ("didn't know I could move a pin / expand the panel"). Now a

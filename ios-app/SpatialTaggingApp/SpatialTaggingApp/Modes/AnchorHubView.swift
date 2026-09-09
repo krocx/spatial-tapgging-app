@@ -41,6 +41,9 @@ struct AnchorHubView: View {
 
     // FTUE walkthrough
     @State private var showOnboarding = false
+    // G1 (2026.4.46): unseal the world map (map + origin removed; tags stay).
+    @State private var showUnsealConfirm = false
+    @State private var unsealNote: String? = nil
 
     // Tour frame capture
     @State private var tourFrames: [TourStep: CGRect] = [:]
@@ -248,9 +251,28 @@ struct AnchorHubView: View {
                     Button { showQRSheet = true } label: {
                         Image(systemName: "qrcode")
                     }
+                    // G1: world-map housekeeping (engineer+; technicians see nothing)
+                    if settings.uamRole != "technician" {
+                        Menu {
+                            Button(role: .destructive) { showUnsealConfirm = true } label: {
+                                Label("Unseal world map…", systemImage: "map")
+                            }
+                        } label: {
+                            Image(systemName: "ellipsis.circle")
+                        }
+                    }
                 }
             }
         }
+        .confirmationDialog("Unseal the world map?", isPresented: $showUnsealConfirm, titleVisibility: .visible) {
+            Button("Unseal — tags stay", role: .destructive) { Task { await unsealMap() } }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Removes the saved map and its origin. Tags stay (they're QR-relative). Operators localize from the QR until an Author scans this chamber again, which seals a new map.")
+        }
+        .alert("World map", isPresented: Binding(get: { unsealNote != nil }, set: { if !$0 { unsealNote = nil } })) {
+            Button("OK") { unsealNote = nil }
+        } message: { Text(unsealNote ?? "") }
         .onAppear {
             Task { await loadTags() }
             // Tour: advance to anchorHub.
@@ -454,6 +476,16 @@ struct AnchorHubView: View {
             // Surface the error inline — can't show an alert from here easily so
             // we append it to tagLoadError, which already has an error UI.
             tagLoadError = "Delete failed: \(friendlyMessage(for: error))"
+        }
+    }
+
+    // G1: unseal — the next Author scan (QR gate) seals a fresh map.
+    private func unsealMap() async {
+        do {
+            try await SIBClient(settings: settings).deleteWorldMap(anchorId: anchor.id)
+            unsealNote = "Map unsealed. Scan this chamber's QR in Author mode to seal a new one."
+        } catch {
+            unsealNote = friendlyMessage(for: error)
         }
     }
 

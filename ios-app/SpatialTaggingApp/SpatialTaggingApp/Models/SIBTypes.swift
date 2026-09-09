@@ -146,6 +146,8 @@ struct Anchor: Codable, Identifiable, Hashable {
     /// C1: the Chamber Configuration (type) this chamber belongs to. Nil =
     /// unassigned — legacy anchors and GembaWalk / iLOTO areas.
     let configId: String?
+    /// B1 (derived, read-only): when the author sealed the world map. Nil = unsealed.
+    let mapSealedAt: String?
     let createdAt: String
     let updatedAt: String
 

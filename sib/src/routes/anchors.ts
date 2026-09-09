@@ -15,6 +15,7 @@ import { guideStore } from '../guides/store.js';
 import { copyGuideToAnchor } from '../guides/copy.js';
 import { currentUamUser, uamIsActive } from '../middleware/auth.js';
 import { chamberConfigStore } from './chamber-configs.js';
+import { logOpsEvent } from '../ops-log.js';
 
 export const anchorStore = new JsonFileStore<Anchor>('anchors');
 
@@ -483,6 +484,31 @@ router.post('/:id/worldmap/meta', express.json(), (req: Request, res: Response) 
   console.log(`[SIB] World map sealed for anchor ${anchor.id} (${meta.capturedAt}${meta.sealedBy ? ` by ${meta.sealedBy}` : ''}${hasMap ? '' : ' — map not uploaded yet'})`);
   return res.status(201).json({ data: { ...meta, sealed: hasMap }, timestamp: new Date().toISOString() });
 });
+
+// ── DELETE /anchors/:id/worldmap — G1 (2026.4.46): unseal ────────────────────
+// Removes the map AND the sealed origin. Tags stay (they are QR-relative and
+// still valid); the next Author scan re-seals. Technicians can't.
+router.delete('/:id/worldmap', (req: Request, res: Response) => {
+  const anchor = anchorStore.findById(req.params.id);
+  if (!anchor) {
+    return res.status(404).json({ error: `Anchor ${req.params.id} not found`, timestamp: new Date().toISOString() });
+  }
+  const actor = currentUamUser(req);
+  if (uamIsActive() && actor && actor.role === 'technician') {
+    return res.status(403).json({ error: 'Unsealing a world map requires Engineer role or above', timestamp: new Date().toISOString() });
+  }
+  let removed = 0;
+  for (const p of [path.join(WORLDMAPS_DIR, `${anchor.id}.worldmap`), worldMapMetaPath(anchor.id)]) {
+    try { fs.unlinkSync(p); removed++; } catch { /* not present */ }
+  }
+  logOpsEvent({ method: 'DELETE', path: `/anchors/${anchor.id}/worldmap`, outcome: 'allowed', ip: req.ip,
+                detail: `unseal "${anchor.assetId}"${actor ? ` by ${actor.name}` : ''} · ${removed} file(s)` });
+  console.log(`[SIB] World map unsealed for anchor ${anchor.id} (${removed} files)`);
+  return res.json({ data: { anchorId: anchor.id, removed, sealed: false }, timestamp: new Date().toISOString() });
+});
+
+// Client caches need nothing server-side: WorldMapCache compares the meta's
+// capturedAt; after an unseal GET …/meta has none, so a fresh map downloads.
 
 router.get('/:id/worldmap/meta', (req: Request, res: Response) => {
   const anchor = anchorStore.findById(req.params.id);

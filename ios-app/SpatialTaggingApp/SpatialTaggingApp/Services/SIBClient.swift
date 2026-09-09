@@ -672,6 +672,20 @@ final class SIBClient {
         try await get(WorldMapMeta.self, path: "/anchors/\(anchorId)/worldmap/meta")
     }
 
+    /// G1: unseal — remove the anchor's map + sealed origin (tags stay).
+    func deleteWorldMap(anchorId: String) async throws {
+        _ = try await delete(path: "/anchors/\(anchorId)/worldmap")
+        WorldMapCache.clear(.anchor(anchorId))
+    }
+
+    /// G1: reset a guide's map — server also unplaces every step.
+    func deleteGuideWorldMap(guideId: String) async throws -> Int {
+        struct R: Decodable { let unplaced: Int }
+        let data = try await delete(path: "/worldmap/guide/\(guideId)")
+        WorldMapCache.clear(.guide(guideId))
+        return (try? JSONDecoder().decode(APIResponse<R>.self, from: data))?.data.unplaced ?? 0
+    }
+
     /// Author: seal the map — record the origin pose alongside the uploaded map.
     func uploadWorldMapMeta(anchorId: String, anchorPose: simd_float4x4, sealedBy: String?) async throws -> WorldMapMeta {
         struct Body: Encodable { let anchorPose: [Float]; let capturedAt: String; let sealedBy: String? }

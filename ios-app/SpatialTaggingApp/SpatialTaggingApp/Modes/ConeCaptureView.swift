@@ -656,12 +656,8 @@ struct ConeCaptureView: View {
     // 800 px gives plenty of detail for VNGenerateImageFeaturePrint.
 
     private func captureRawCamera(from frame: ARFrame) -> UIImage? {
-        let ci       = CIImage(cvPixelBuffer: frame.capturedImage)
-        let oriented = ci.oriented(.right)  // sensor is always landscape-right
-        let ctx      = CIContext(options: [.useSoftwareRenderer: false])
-        guard let cg = ctx.createCGImage(oriented, from: oriented.extent) else { return nil }
-        let full = UIImage(cgImage: cg)
-        return downsample(full, maxDimension: 800)
+        // C: rotated to the SCREEN orientation (iPad landscape safe), ≤ 800 px.
+        ARFrameImage.screenOriented(frame, maxPx: 800)
     }
 
     /// Scales `image` so neither dimension exceeds `maxDimension`.

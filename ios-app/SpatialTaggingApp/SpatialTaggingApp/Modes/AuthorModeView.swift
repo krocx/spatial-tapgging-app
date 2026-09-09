@@ -84,6 +84,12 @@ struct AuthorModeView: View {
 
     // ── AR marker registry ────────────────────────────────────────────────────
     @State private var persistedNodes: [String: SCNNode] = [:]
+    // G3 (2026.4.46): focus mode — show only the tag being worked on (the one
+    // just placed, being trained, or navigated to). Default ON, per person.
+    @State private var focusCurrentOnly: Bool = FocusPref.load(screen: "inspectionAuthor")
+    @State private var focusTagId: String? = nil
+    // G2: delete every tag of this anchor at once
+    @State private var showDeleteAllConfirm = false
 
     // ── Re-anchor flow ────────────────────────────────────────────────────────
     /// Non-nil when the author has asked to re-place a position-wiped tag.
@@ -411,6 +417,16 @@ struct AuthorModeView: View {
         }
 
         // ── Training cover — routes by TagCaptureMode ──────────────────────────
+        .onChange(of: captureTag?.id) { id in
+            if let id { focusTagId = id; applyTagVisibility() }   // G3: training → current
+        }
+        .confirmationDialog("Delete all \(appState.activeTags.count) tag\(appState.activeTags.count == 1 ? "" : "s")?",
+                            isPresented: $showDeleteAllConfirm, titleVisibility: .visible) {
+            Button("Delete all tags", role: .destructive) { showTagList = false; deleteAllTags() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Removes every tag and its training from this anchor. The world map and QR stay. This cannot be undone.")
+        }
         .fullScreenCover(item: $captureTag) { tag in
             if let anchor = appState.activeAnchor {
                 let onTrained: (String) -> Void = { tagId in
@@ -492,6 +508,19 @@ struct AuthorModeView: View {
             }
 
             Spacer()
+
+            // G3: eye — only the current tag (default) vs all tags
+            Button {
+                focusCurrentOnly.toggle()
+                FocusPref.save(screen: "inspectionAuthor", value: focusCurrentOnly)
+                applyTagVisibility()
+            } label: {
+                Image(systemName: focusCurrentOnly ? "eye.slash.fill" : "eye.fill")
+                    .font(.body)
+                    .foregroundStyle(focusCurrentOnly ? .yellow : .white.opacity(0.85))
+            }
+            .accessibilityLabel(focusCurrentOnly ? "Show all tags" : "Show only the current tag")
+            .padding(.trailing, 12)
 
             // Tag list
             Button("Tag list") { showTagList = true }
@@ -679,6 +708,15 @@ struct AuthorModeView: View {
                 }
                 Spacer()
                 HStack(spacing: 14) {
+                    // G2: delete every tag of this anchor
+                    if !appState.activeTags.isEmpty {
+                        Button { showDeleteAllConfirm = true } label: {
+                            Image(systemName: "trash")
+                                .font(.subheadline)
+                                .foregroundStyle(.red.opacity(0.8))
+                        }
+                        .accessibilityLabel("Delete all tags")
+                    }
                     Button { showQRGenerator = true; showTagList = false } label: {
                         Image(systemName: "qrcode")
                             .font(.subheadline)
@@ -903,6 +941,7 @@ struct AuthorModeView: View {
         node.simdPosition = worldPos
         arManager.sceneView.scene.rootNode.addChildNode(node)
         persistedNodes[tag.id] = node
+        focusTagId = tag.id; applyTagVisibility()   // G3
 
         // Patch position keys onto the existing metadata (preserves training data).
         var meta = tag.metadata
@@ -955,6 +994,7 @@ struct AuthorModeView: View {
     private func navigateToTag(_ tag: Tag) {
         if persistedNodes[tag.id] != nil {
             navigatingToTag = tag
+            focusTagId = tag.id; applyTagVisibility()   // G3
             highlightTagForNavigation(tag)
         } else {
             pendingTrainAfterReanchor = true
@@ -1030,6 +1070,35 @@ struct AuthorModeView: View {
             arManager.sceneView.scene.rootNode.addChildNode(node)
             persistedNodes[tag.id] = node
         }
+        applyTagVisibility()   // G3
+    }
+
+    /// G3: focus mode — with a current tag, every other marker is hidden;
+    /// with none (fresh session), everything shows so the author can pick.
+    private func applyTagVisibility() {
+        let hideOthers = focusCurrentOnly && focusTagId != nil
+        for (id, node) in persistedNodes { node.isHidden = hideOthers && id != focusTagId }
+    }
+
+    /// G2: delete every tag (server bulk route) and clear the scene.
+    private func deleteAllTags() {
+        guard let anchor = appState.activeAnchor else { return }
+        for node in persistedNodes.values { node.removeFromParentNode() }
+        persistedNodes.removeAll()
+        appState.activeTags.removeAll()
+        appState.trainedTagIds.removeAll()
+        focusTagId = nil
+        navigatingToTag = nil
+        showTapHint = true
+        Task {
+            do { try await SIBClient(settings: settings).deleteAllTags(anchorId: anchor.id) }
+            catch {
+                await MainActor.run {
+                    networkErrorMsg = "Could not delete tags: \(friendlyMessage(for: error))"
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 5) { networkErrorMsg = nil }
+                }
+            }
+        }
     }
 
     /// Smoothly reposition all persisted tag nodes when the anchor transform is
@@ -1065,6 +1134,7 @@ struct AuthorModeView: View {
             node.addChildNode(child)
         }
         persistedNodes[tagId] = node
+        focusTagId = tagId; applyTagVisibility()   // G3: the tag just placed is current
     }
 
     // ── Auto-anchor legacy tags ───────────────────────────────────────────────

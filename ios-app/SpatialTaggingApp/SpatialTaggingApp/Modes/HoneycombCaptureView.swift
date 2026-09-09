@@ -885,11 +885,8 @@ struct HoneycombCaptureView: View {
     /// Convert ARFrame.capturedImage (YCbCr CVPixelBuffer, landscape sensor)
     /// to a portrait UIImage — no AR overlay contamination whatsoever.
     static func rawCameraImage(from frame: ARFrame) -> UIImage? {
-        let ci  = CIImage(cvPixelBuffer: frame.capturedImage)
-        let oriented = ci.oriented(.right)   // landscape-right → portrait
-        let ctx = CIContext(options: [.useSoftwareRenderer: false])
-        guard let cg = ctx.createCGImage(oriented, from: oriented.extent) else { return nil }
-        return UIImage(cgImage: cg)
+        // C: rotated to the SCREEN orientation (iPad landscape safe), full size.
+        ARFrameImage.screenOriented(frame, maxPx: .greatestFiniteMagnitude)
     }
 
     // ── Quaternion helper ─────────────────────────────────────────────────────

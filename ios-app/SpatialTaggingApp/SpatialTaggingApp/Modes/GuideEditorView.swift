@@ -64,6 +64,9 @@ struct GuideEditorView: View {
     // Phase 2: AR placement flow
     @State private var showScanGate      = false
     @State private var showPlacementView = false
+    // G1 (2026.4.46): reset the guide's world map (unplaces every step).
+    @State private var showResetMapConfirm = false
+    @State private var resetMapNote: String? = nil
 
     // 3D models for the anchor — passed into GuideStepPlacementView
     @State private var anchorModels: [Model3D] = []
@@ -189,9 +192,28 @@ struct GuideEditorView: View {
                                 .padding(.vertical, 4)
                             }
                             .buttonStyle(.plain)
+                            // G1: start over with a fresh map when the space changed
+                            // (tool moved, rebuilt, or the old map no longer matches).
+                            if placedCount > 0 {
+                                Button(role: .destructive) { showResetMapConfirm = true } label: {
+                                    Label("Reset map & pins…", systemImage: "map")
+                                        .font(.subheadline)
+                                }
+                            }
                         } footer: {
                             Text("Scan the anchor's QR code to enter AR, then tap surfaces to pin each step's location. Operators navigate to these pins in sequence.")
                         }
+                        .confirmationDialog("Reset the world map?", isPresented: $showResetMapConfirm, titleVisibility: .visible) {
+                            Button("Reset — \(placedCount) pin\(placedCount == 1 ? "" : "s") to re-place", role: .destructive) {
+                                Task { await resetMap() }
+                            }
+                            Button("Cancel", role: .cancel) {}
+                        } message: {
+                            Text("Deletes this guide's saved map and reference photo, and unplaces every step. Training and 3D model assignments are kept. You'll re-place the pins in a fresh map.")
+                        }
+                        .alert("World map", isPresented: Binding(get: { resetMapNote != nil }, set: { if !$0 { resetMapNote = nil } })) {
+                            Button("OK") { resetMapNote = nil }
+                        } message: { Text(resetMapNote ?? "") }
                     }
                 }
 
@@ -343,6 +365,18 @@ struct GuideEditorView: View {
             self.error = friendlyMessage(for: error)
         }
         isSaving = false
+    }
+
+    // G1: server deletes map + photo + meta and unplaces every step.
+    private func resetMap() async {
+        guard let g = currentGuide else { return }
+        do {
+            let n = try await SIBClient(settings: settings).deleteGuideWorldMap(guideId: g.id)
+            resetMapNote = "Map reset. \(n) step\(n == 1 ? "" : "s") unplaced — open Place Steps in AR to place them in a fresh map."
+            await loadSteps(guideId: g.id)
+        } catch {
+            resetMapNote = friendlyMessage(for: error)
+        }
     }
 
     private func loadSteps(guideId: String) async {

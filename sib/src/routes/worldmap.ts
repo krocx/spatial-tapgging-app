@@ -14,6 +14,9 @@ import type { Request, Response } from 'express';
 import fs   from 'fs';
 import path from 'path';
 import type { ApiResponse } from '@spatial/shared';
+import { guideStore, guideStepStore } from '../guides/store.js';
+import { currentUamUser, uamIsActive } from '../middleware/auth.js';
+import { logOpsEvent } from '../ops-log.js';
 
 // ── Storage ───────────────────────────────────────────────────────────────────
 
@@ -198,6 +201,44 @@ router.post('/guide/:guideId/upload', (req: Request, res: Response): void => {
     timestamp: new Date().toISOString(),
   };
   res.status(201).json(resp);
+});
+
+// DELETE /worldmap/guide/:guideId — G1 (2026.4.46): reset map & pins.
+// Pin positions only mean something inside the map they were placed in, so
+// every step of the guide is unplaced too (models keep their assignment,
+// device placement is dropped). Technicians can't.
+router.delete('/guide/:guideId', (req: Request, res: Response): void => {
+  const { guideId } = req.params;
+  if (!isValidGuideId(guideId)) { res.status(400).json({ error: 'Invalid guideId' }); return; }
+  const guide = guideStore.findById(guideId);
+  if (!guide) { res.status(404).json({ error: `Guide ${guideId} not found` }); return; }
+  const actor = currentUamUser(req);
+  if (uamIsActive() && actor && actor.role === 'technician') {
+    res.status(403).json({ error: 'Resetting a guide map requires Engineer role or above' }); return;
+  }
+  let removed = 0;
+  for (const p of [guideWorldMapPath(guideId), guideRefPhotoPath(guideId), guideRefPosePath(guideId)]) {
+    try { fs.unlinkSync(p); removed++; } catch { /* not present */ }
+  }
+  let unplaced = 0;
+  const now = new Date().toISOString();
+  for (const step of guideStepStore.findAll().filter(s => s.guideId === guideId)) {
+    if (!step.isPlaced && step.posX === undefined) continue;
+    guideStepStore.save({
+      ...step,
+      posX: undefined, posY: undefined, posZ: undefined, isPlaced: false, positionSource: undefined,
+      modelOffsetX: undefined, modelOffsetY: undefined, modelOffsetZ: undefined,
+      models: step.models?.map(m => ({ slotId: m.slotId, modelId: m.modelId,
+        ...(m.modelScale !== undefined && { modelScale: m.modelScale }),
+        ...(m.modelOpacity !== undefined && { modelOpacity: m.modelOpacity }) })),
+      updatedAt: now,
+    });
+    unplaced++;
+  }
+  logOpsEvent({ method: 'DELETE', path: `/worldmap/guide/${guideId}`, outcome: 'allowed', ip: req.ip,
+                detail: `reset map "${guide.name}"${actor ? ` by ${actor.name}` : ''} · ${removed} file(s) · ${unplaced} step(s) unplaced` });
+  console.log(`[SIB] Guide map reset ${guideId}: ${removed} files, ${unplaced} steps unplaced`);
+  res.json({ data: { guideId, removed, unplaced }, timestamp: now });
 });
 
 // GET /worldmap/guide/:guideId/meta — X1: { referenceCameraPose?: number[16], capturedAt? }

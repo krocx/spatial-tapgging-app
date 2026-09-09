@@ -252,3 +252,22 @@ struct GestureCheatSheet: View {
         }
     }
 }
+
+// ── Focus preference (G3, 2026.4.46) ─────────────────────────────────────────
+// "Show only the one I'm working on" is the DEFAULT in every author AR view;
+// the eye toggle shows everything. Remembered per person like the moments.
+
+enum FocusPref {
+    private static func key(_ screen: String) -> String {
+        let who = (UserDefaults.standard.string(forKey: "uam_employee_id") ?? "")
+            .trimmingCharacters(in: .whitespaces)
+        return "ftue.focus.\(screen).\(who.isEmpty ? "device" : who)"
+    }
+    /// true = focus on the current item only (default when never set).
+    static func load(screen: String) -> Bool {
+        UserDefaults.standard.object(forKey: key(screen)) as? Bool ?? true
+    }
+    static func save(screen: String, value: Bool) {
+        UserDefaults.standard.set(value, forKey: key(screen))
+    }
+}
