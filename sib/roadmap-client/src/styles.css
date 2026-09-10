@@ -186,9 +186,11 @@ button { font: inherit; }
 
 /* ── Shape + icon pickers ─────────────────────────────────── */
 
-.shape-row { display: flex; gap: 4px; }
+/* Same grid as the icon picker so the row wraps inside the 240 px pane
+   instead of overflowing sideways. */
+.shape-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
 .shape-btn {
-  flex: 1; padding: 5px 2px; display: grid; place-items: center;
+  padding: 6px 2px; display: grid; place-items: center;
   border: 1px solid var(--border); border-radius: 7px;
   background: var(--panel); color: var(--muted); cursor: pointer;
 }
