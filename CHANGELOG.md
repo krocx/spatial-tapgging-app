@@ -110,6 +110,18 @@ it, it gets a line.
   private frame. Presence identity is per device (`employeeId@device`), so
   the same login on two iPhones is two people. Author mode (Spatial
   Inspection) and author-coaches-operator are the next slices.
+- **Multi-user co-authoring, slice 2 — presence in Spatial Inspection Author
+  mode (P5)** — the same lens / view cone / gaze dot / edge arrows / roster
+  chip / join toasts, now in Author mode. Poses are shared in the **QR
+  frame** (tags are QR-relative): mine is `inverse(anchorPose) × camera`,
+  a colleague's renders as `anchorPose × pose`, re-based live as the QR
+  pose refines — so two authors in front of two units of the same chamber
+  type line up when the chamber's shape is the origin. Edit echo rides the
+  existing `.tag` feed: `changed` events name `member:<tagId>`, the view
+  re-fetches and adds / moves / removes only those markers with a pulse
+  and "Name · just now" (own writes are skipped by `updatedAt`). Frames
+  never mix: Author/Operator presence only shows Author/Operator
+  colleagues, Place Steps only people on the same guide.
 - **Object tracking, slice 3 — movable equipment (B2e, iOS)** — for
   object-origin chambers the shape is now the **only** frame: the QR gate,
   Place Steps and the guide session start a fresh session (no

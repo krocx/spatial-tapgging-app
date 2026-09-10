@@ -18,6 +18,7 @@ import SwiftUI
 import ARKit
 import SceneKit
 import simd
+import Combine
 
 struct AuthorModeView: View {
 
@@ -111,6 +112,19 @@ struct AuthorModeView: View {
     @State private var tourBaselineTagCount: Int = -1
     private let crosshairTicker = Timer.publish(every: 0.10, on: .main, in: .common).autoconnect()
 
+    // ── P5: presence (colleagues in front of this chamber) ───────────────────
+    // Poses are shared in the QR FRAME (tags are QR-relative): mine is
+    // inverse(anchorPose) × camera; theirs render as anchorPose × pose. Works
+    // across two physical units of the same chamber type when the object is
+    // the origin (the QR frame is then derived from the chamber's shape).
+    @State private var presence:       PresenceService? = nil
+    @State private var presenceLayer:  PresenceLayer?   = nil
+    @State private var presenceBag:    Set<AnyCancellable> = []
+    @State private var presenceOthers: [PresenceEntry] = []
+    @State private var presenceLinked  = false
+    @State private var presenceToast:  (text: String, color: UIColor)? = nil
+    @State private var presenceFocus   = PresenceFocusBox()
+
     // ── Body ──────────────────────────────────────────────────────────────────
 
     var body: some View {
@@ -157,6 +171,7 @@ struct AuthorModeView: View {
                     showExistingMarkers()
                     Task { await autoAnchorUnpositionedTags() }
                     autoPromptForBrokenTags()
+                    startPresence()
                     // Prefer the SIB-stored key (canonical); fall back to Keychain / generate.
                     if let anchor = appState.activeAnchor, appState.anchorEncryptionKey == nil {
                         if let storedB64 = anchor.encryptionKey,
@@ -176,6 +191,7 @@ struct AuthorModeView: View {
                     // and onAppear skips re-setup when persistedNodes is non-empty.
                     guard captureTag == nil else { return }
                     // True navigation away from Author mode — release the session.
+                    stopPresence()
                     arManager.pauseSession()
                     appState.activeARSession = nil
                 }
@@ -186,6 +202,8 @@ struct AuthorModeView: View {
                 .onChange(of: arManager.lockedAnchorTransform) { newTransform in
                     guard let t = newTransform else { return }
                     appState.anchorNormalisedTransform = t
+                    presenceLayer?.worldFromShared = t
+                    presenceLayer?.update(presenceOthers)
                     // Retry marker placement now that the anchor is ready — tags
                     // that only had anchor_rel_x/y/z (no legacy pos_x/y/z) are
                     // skipped by showExistingMarkers() until toWorldSpace() can
@@ -458,6 +476,19 @@ struct AuthorModeView: View {
                 }
             }
         }
+        // ── P5: presence overlays ──────────────────────────────────────────────
+        .overlay(alignment: .topTrailing) {
+            if !presenceOthers.isEmpty {
+                PresenceRosterChip(others: presenceOthers, connected: presenceLinked)
+                    .padding(.top, 64).padding(.trailing, 12)
+            }
+        }
+        .overlay { if !presenceOthers.isEmpty { PresenceEdgeArrows(others: presenceOthers, sceneView: arManager.sceneView) } }
+        .overlay(alignment: .top) {
+            if let t = presenceToast { PresenceToast(text: t.text, color: t.color).padding(.top, 104) }
+        }
+        .animation(.easeInOut(duration: 0.25), value: presenceToast?.text)
+        .onChange(of: focusTagId) { id in presenceFocus.stepId = id }
         // ── Tour banners (Author steps) ────────────────────────────────────────
         .overlay {
             let authorStep = tour.currentStep
@@ -1042,6 +1073,99 @@ struct AuthorModeView: View {
         let cam    = frame.camera.transform
         let camPos = simd_float3(cam.columns.3.x, cam.columns.3.y, cam.columns.3.z)
         distanceToTagM = simd_length(tagPos - camPos)
+    }
+
+    // ── P5: presence ─────────────────────────────────────────────────────────
+
+    private func startPresence() {
+        guard presence == nil, let anchor = appState.activeAnchor else { return }
+        let svc = PresenceService(client: SIBClient(settings: settings), settings: settings,
+                                  anchorId: anchor.id, surface: "author", guideId: nil)
+        let mgr = arManager
+        svc.poseProvider = {
+            guard let cam = mgr.sceneView.session.currentFrame?.camera.transform,
+                  let origin = mgr.lockedAnchorTransform else { return nil }
+            return simd_inverse(origin) * cam          // QR frame
+        }
+        let focus = presenceFocus
+        focus.stepId = focusTagId
+        svc.focusProvider = { focus.stepId }
+        svc.accepts = { $0.surface == "author" || $0.surface == "operator" }   // QR-frame surfaces only
+        let layer = PresenceLayer(sceneView: arManager.sceneView)
+        layer.worldFromShared = arManager.lockedAnchorTransform ?? matrix_identity_float4x4
+        svc.$others.receive(on: RunLoop.main).sink { list in
+            presenceOthers = list
+            layer.worldFromShared = mgr.lockedAnchorTransform ?? layer.worldFromShared
+            layer.update(list)
+        }.store(in: &presenceBag)
+        svc.$isConnected.receive(on: RunLoop.main).sink { presenceLinked = $0 }.store(in: &presenceBag)
+        svc.$event.receive(on: RunLoop.main).compactMap { $0 }.sink { ev in
+            switch ev {
+            case .joined(let e):
+                showPresenceToast("\(e.name) joined\(e.site.map { " from \($0)" } ?? "")",
+                                  color: PresencePalette.color(role: e.role, userId: e.userId))
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            case .left(_, let name):
+                showPresenceToast("\(name) left", color: .darkGray)
+            case .tagsChanged(let ids):
+                Task { await applyRemoteTagEdits(ids) }
+            case .stepsChanged:
+                break
+            }
+            svc.event = nil
+        }.store(in: &presenceBag)
+        presence = svc; presenceLayer = layer
+        svc.start()
+    }
+
+    private func stopPresence() {
+        presence?.stop(); presence = nil
+        presenceBag.removeAll()
+        presenceLayer?.removeAll(); presenceLayer = nil
+        presenceOthers = []
+    }
+
+    private func showPresenceToast(_ text: String, color: UIColor) {
+        withAnimation { presenceToast = (text, color) }
+        Task {
+            try? await Task.sleep(nanoseconds: 3_500_000_000)
+            if presenceToast?.text == text { withAnimation { presenceToast = nil } }
+        }
+    }
+
+    /// Edit echo: the anchor feed named tags that changed (M2 `member:<id>`).
+    /// Re-fetch, then add / move / remove markers for tags I didn't touch,
+    /// with a pulse and "Name · just now".
+    @MainActor
+    private func applyRemoteTagEdits(_ ids: [String]) async {
+        guard let anchor = appState.activeAnchor,
+              let fresh = try? await SIBClient(settings: settings).fetchTags(anchorId: anchor.id) else { return }
+        let who   = presenceOthers.first
+        let name  = who?.name ?? "A colleague"
+        let color = who.map { PresencePalette.color(role: $0.role, userId: $0.userId) } ?? .systemPurple
+        let freshById = Dictionary(uniqueKeysWithValues: fresh.map { ($0.id, $0) })
+        for id in ids {
+            if let t = freshById[id] {
+                if let idx = appState.activeTags.firstIndex(where: { $0.id == id }) {
+                    // Skip my own in-flight edits: identical metadata means nothing new.
+                    guard appState.activeTags[idx].updatedAt != t.updatedAt else { continue }
+                    appState.activeTags[idx] = t
+                    persistedNodes[id]?.removeFromParentNode(); persistedNodes[id] = nil
+                } else {
+                    appState.activeTags.append(t)
+                }
+                showExistingMarkers()
+                if let node = persistedNodes[id] {
+                    PresenceLayer.pulse(node, color: color)
+                    presenceLayer?.announceEdit(at: node.simdPosition, name: name, color: color)
+                }
+            } else if let idx = appState.activeTags.firstIndex(where: { $0.id == id }) {
+                appState.activeTags.remove(at: idx)
+                persistedNodes[id]?.removeFromParentNode(); persistedNodes[id] = nil
+                if focusTagId == id { focusTagId = nil }
+            }
+        }
+        applyTagVisibility()
     }
 
     // ── Existing tag markers ──────────────────────────────────────────────────

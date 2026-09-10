@@ -88,6 +88,8 @@ final class PresenceService: ObservableObject {
         case joined(PresenceEntry)
         case left(userId: String, name: String)
         case stepsChanged
+        /// M2 `changed` on the anchor feed: "member:<tagId>" entries name the tags.
+        case tagsChanged([String])
     }
 
     @Published private(set) var others: [PresenceEntry] = []
@@ -105,6 +107,9 @@ final class PresenceService: ObservableObject {
     /// Camera pose in the SHARED frame, or nil while the frame is private.
     var poseProvider:  () -> simd_float4x4? = { nil }
     var focusProvider: () -> String?        = { nil }
+    /// Frames differ per surface (guide map vs QR frame): only show people
+    /// whose poses live in MY frame. Default: same surface.
+    var accepts: (PresenceEntry) -> Bool = { _ in true }
 
     private let client: SIBClient
     private var poster:   Task<Void, Never>? = nil
@@ -174,7 +179,7 @@ final class PresenceService: ObservableObject {
     private func merge(_ entries: [PresenceEntry], replace: Bool) {
         var map: [String: PresenceEntry] = [:]
         if !replace { for o in others { map[o.userId] = o } }
-        for e in entries where e.userId != me.userId { map[e.userId] = e }
+        for e in entries where e.userId != me.userId && accepts(e) { map[e.userId] = e }
         let now = Date()
         others = map.values
             .filter { now.timeIntervalSince($0.updatedDate) < staleAfter }
@@ -196,7 +201,7 @@ final class PresenceService: ObservableObject {
                     guard line.hasPrefix("data: "), let data = String(line.dropFirst(6)).data(using: .utf8) else { continue }
                     switch eventName {
                     case "presence", "presence:joined":
-                        if let e = try? JSONDecoder().decode(PresenceEntry.self, from: data), e.userId != me.userId {
+                        if let e = try? JSONDecoder().decode(PresenceEntry.self, from: data), e.userId != me.userId, accepts(e) {
                             let isNew = !others.contains { $0.userId == e.userId }
                             merge([e], replace: false)
                             if isNew { event = .joined(e) }
@@ -210,6 +215,11 @@ final class PresenceService: ObservableObject {
                     case "guide-steps":
                         stepsVersion += 1
                         event = .stepsChanged
+                    case "changed":
+                        struct Changed: Decodable { let changed: [String]? }
+                        let ids = ((try? JSONDecoder().decode(Changed.self, from: data))?.changed ?? [])
+                            .filter { $0.hasPrefix("member:") }.map { String($0.dropFirst(7)) }
+                        if !ids.isEmpty { event = .tagsChanged(ids) }
                     default: break
                     }
                 }

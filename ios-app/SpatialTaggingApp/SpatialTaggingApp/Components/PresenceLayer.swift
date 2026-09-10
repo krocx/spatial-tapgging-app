@@ -25,6 +25,9 @@ final class PresenceLayer {
     private let root = SCNNode()
     private var nodes: [String: SCNNode] = [:]
     private var labelCache: [String: UIImage] = [:]
+    /// Shared frame → this session's world frame. Identity when the session
+    /// frame IS the shared frame (guide map); the QR pose for Spatial Inspection.
+    var worldFromShared: simd_float4x4 = matrix_identity_float4x4
 
     init(sceneView: ARSCNView) {
         self.sceneView = sceneView
@@ -46,7 +49,8 @@ final class PresenceLayer {
             root.childNode(withName: "gaze-\(id)", recursively: false)?.removeFromParentNode()
         }
         for e in others {
-            guard let t = e.transform else { continue }
+            guard let shared = e.transform else { continue }
+            let t = worldFromShared * shared
             let n = nodes[e.userId] ?? makeNode(for: e)
             nodes[e.userId] = n
             SCNTransaction.begin()

@@ -202,94 +202,7 @@ struct AnchorHubView: View {
             // On-device ARKit scan → sparse feature points on SIB. B2 makes it the
             // chamber's origin; until then it's the groundwork.
             if mode == .author, anchor.isChamber, settings.uamRole != "technician" {
-                Section {
-                    Button { showObjectScan = true } label: {
-                        HStack(spacing: 14) {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(Color.teal.opacity(0.12))
-                                    .frame(width: 36, height: 36)
-                                Image(systemName: "cube.transparent")
-                                    .font(.system(size: 16, weight: .semibold))
-                                    .foregroundStyle(.teal)
-                            }
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(objectMeta == nil ? "Scan chamber as object" : "Re-scan chamber object")
-                                    .font(.subheadline.bold()).foregroundStyle(.primary)
-                                if let m = objectMeta {
-                                    Text("Scanned \(m.scannedAt.prefix(10))\(m.scannedBy.map { " · \($0)" } ?? "") · \(m.featurePoints ?? 0) points\(m.sides.map { " · \($0)/6 sides" } ?? "")")
-                                        .font(.caption).foregroundStyle(.secondary)
-                                    // B1b provenance — recognition is camera-specific.
-                                    Text(objectProvenance(m))
-                                        .font(.caption).foregroundStyle(m.includesThisDevice ? .secondary : .orange)
-                                } else {
-                                    Text("Walk around it once — lets the app find this chamber without the QR")
-                                        .font(.caption).foregroundStyle(.secondary)
-                                }
-                            }
-                            Spacer()
-                            if objectMeta != nil {
-                                Image(systemName: "checkmark.seal.fill").foregroundStyle(.green)
-                            }
-                        }
-                        .padding(.vertical, 2)
-                    }
-                    if objectMeta != nil {
-                        // B1b: add THIS iPhone's camera to the scan (merged, same frame).
-                        Button { Task { await startMergeScan() } } label: {
-                            HStack(spacing: 8) {
-                                if isLoadingMerge { ProgressView().scaleEffect(0.8) }
-                                Label(objectMeta?.includesThisDevice == true ? "Add another pass from this device" : "Improve scan on this device",
-                                      systemImage: "iphone.gen3.radiowaves.left.and.right").font(.subheadline)
-                            }
-                        }
-                        .disabled(isLoadingMerge)
-                        Button(role: .destructive) { showRemoveObjectConfirm = true } label: {
-                            Label("Remove object scan…", systemImage: "trash").font(.subheadline)
-                        }
-                    }
-                    // B2: origin source
-                    Picker("Find this chamber by", selection: $originObject) {
-                        Text("World map").tag(false)
-                        Text("Its shape").tag(true)
-                    }
-                    .pickerStyle(.segmented)
-                    .onChange(of: originObject) { v in
-                        Task {
-                            do {
-                                _ = try await SIBClient(settings: settings)
-                                    .setAnchorOriginSource(anchorId: anchor.id, source: v ? "object" : "worldMap")
-                                originNote = v
-                                    ? (objectMeta == nil ? "Origin: object — scan the chamber above to activate it."
-                                       : (objectMeta?.objectPoseInQR == nil
-                                          ? "Origin: object — scan the QR once in Author mode with the chamber in view to calibrate."
-                                          : "Origin: object."))
-                                    : "Origin: world map."
-                            } catch { originNote = friendlyMessage(for: error); originObject = !v }
-                        }
-                    }
-                    if let n = originNote {
-                        Text(n).font(.caption).foregroundStyle(.secondary)
-                    } else if originObject, let m = objectMeta {
-                        Text(m.objectPoseInQR == nil
-                             ? "Not calibrated yet — scan the QR once in Author mode with the chamber in view."
-                             : "Calibrated \(m.calibratedAt?.prefix(10) ?? "") — sessions recognise this chamber by shape.")
-                            .font(.caption).foregroundStyle(m.objectPoseInQR == nil ? .orange : .secondary)
-                    }
-                } header: {
-                    Text("Object tracking")
-                } footer: {
-                    Text("Entirely on-device. The scan is a sparse point cloud stored on your SIB — not a mesh or a photo. The QR stays the key; the world map stays the fallback.")
-                }
-                .confirmationDialog("Remove the object scan?", isPresented: $showRemoveObjectConfirm, titleVisibility: .visible) {
-                    Button("Remove", role: .destructive) {
-                        Task {
-                            try? await SIBClient(settings: settings).deleteAnchorObject(anchorId: anchor.id)
-                            objectMeta = nil
-                        }
-                    }
-                    Button("Cancel", role: .cancel) {}
-                } message: { Text("The chamber falls back to its world map and QR until you scan again.") }
+                objectTrackingSection
             }
 
             // ── Readiness warning (Operator, Loc-Tag) ───────────────────────────
@@ -605,7 +518,108 @@ struct AnchorHubView: View {
         }
     }
 
+    // ── Object tracking section (B1/B2/B1b) — split out: the hub body was too
+    // large for the type-checker.
+    @ViewBuilder
+    private var objectTrackingSection: some View {
+        Section {
+            Button { showObjectScan = true } label: {
+                HStack(spacing: 14) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color.teal.opacity(0.12))
+                            .frame(width: 36, height: 36)
+                        Image(systemName: "cube.transparent")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(.teal)
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(objectMeta == nil ? "Scan chamber as object" : "Re-scan chamber object")
+                            .font(.subheadline.bold()).foregroundStyle(.primary)
+                        if let m = objectMeta {
+                            Text(scanSummary(m))
+                                .font(.caption).foregroundStyle(.secondary)
+                            // B1b provenance — recognition is camera-specific.
+                            Text(objectProvenance(m))
+                                .font(.caption).foregroundStyle(m.includesThisDevice ? Color.secondary : Color.orange)
+                        } else {
+                            Text("Walk around it once — lets the app find this chamber without the QR")
+                                .font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                    Spacer()
+                    if objectMeta != nil {
+                        Image(systemName: "checkmark.seal.fill").foregroundStyle(.green)
+                    }
+                }
+                .padding(.vertical, 2)
+            }
+            if objectMeta != nil {
+                // B1b: add THIS iPhone's camera to the scan (merged, same frame).
+                Button { Task { await startMergeScan() } } label: {
+                    HStack(spacing: 8) {
+                        if isLoadingMerge { ProgressView().scaleEffect(0.8) }
+                        Label(objectMeta?.includesThisDevice == true ? "Add another pass from this device" : "Improve scan on this device",
+                              systemImage: "iphone.gen3.radiowaves.left.and.right").font(.subheadline)
+                    }
+                }
+                .disabled(isLoadingMerge)
+                Button(role: .destructive) { showRemoveObjectConfirm = true } label: {
+                    Label("Remove object scan…", systemImage: "trash").font(.subheadline)
+                }
+            }
+            // B2: origin source
+            Picker("Find this chamber by", selection: $originObject) {
+                Text("World map").tag(false)
+                Text("Its shape").tag(true)
+            }
+            .pickerStyle(.segmented)
+            .onChange(of: originObject) { v in
+                Task {
+                    do {
+                        _ = try await SIBClient(settings: settings)
+                            .setAnchorOriginSource(anchorId: anchor.id, source: v ? "object" : "worldMap")
+                        originNote = v
+                            ? (objectMeta == nil ? "Origin: object — scan the chamber above to activate it."
+                               : (objectMeta?.objectPoseInQR == nil
+                                  ? "Origin: object — scan the QR once in Author mode with the chamber in view to calibrate."
+                                  : "Origin: object."))
+                            : "Origin: world map."
+                    } catch { originNote = friendlyMessage(for: error); originObject = !v }
+                }
+            }
+            if let n = originNote {
+                Text(n).font(.caption).foregroundStyle(.secondary)
+            } else if originObject, let m = objectMeta {
+                Text(m.objectPoseInQR == nil
+                     ? "Not calibrated yet — scan the QR once in Author mode with the chamber in view."
+                     : "Calibrated \(m.calibratedAt?.prefix(10) ?? "") — sessions recognise this chamber by shape.")
+                    .font(.caption).foregroundStyle(m.objectPoseInQR == nil ? Color.orange : Color.secondary)
+            }
+        } header: {
+            Text("Object tracking")
+        } footer: {
+            Text("Entirely on-device. The scan is a sparse point cloud stored on your SIB — not a mesh or a photo. The QR stays the key; the world map stays the fallback.")
+        }
+        .confirmationDialog("Remove the object scan?", isPresented: $showRemoveObjectConfirm, titleVisibility: .visible) {
+            Button("Remove", role: .destructive) {
+                Task {
+                    try? await SIBClient(settings: settings).deleteAnchorObject(anchorId: anchor.id)
+                    objectMeta = nil
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { Text("The chamber falls back to its world map and QR until you scan again.") }
+    }
+
     // ── B1b helpers ──────────────────────────────────────────────────────────
+    private func scanSummary(_ m: AnchorObjectMeta) -> String {
+        var line = "Scanned " + String(m.scannedAt.prefix(10))
+        if let by = m.scannedBy { line += " · " + by }
+        line += " · \(m.featurePoints ?? 0) points"
+        if let sides = m.sides { line += " · \(sides)/6 sides" }
+        return line
+    }
     private func objectProvenance(_ m: AnchorObjectMeta) -> String {
         let me = DeviceModel.identifier
         let on = m.scannedOn ?? "unknown device"

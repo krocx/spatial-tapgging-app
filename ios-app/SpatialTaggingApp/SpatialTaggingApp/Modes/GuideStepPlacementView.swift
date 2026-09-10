@@ -1469,6 +1469,8 @@ struct GuideStepPlacementView: View {
                                   anchorId: guide.anchorId, surface: "placeSteps", guideId: guide.id)
         let mgr = arManager
         svc.poseProvider  = { mgr.sceneView.session.currentFrame?.camera.transform }
+        let gid = guide.id
+        svc.accepts = { $0.guideId == gid }          // same guide map frame only
         let focus = presenceFocus
         focus.stepId = activeStepIndex < steps.count ? steps[activeStepIndex].id : nil
         svc.focusProvider = { focus.stepId }
@@ -1488,6 +1490,8 @@ struct GuideStepPlacementView: View {
                 showPresenceToast("\(name) left", color: .darkGray)
             case .stepsChanged:
                 Task { await applyRemoteEdits() }
+            case .tagsChanged:
+                break                                   // inspection tags — not this surface
             }
             svc.event = nil
         }.store(in: &presenceBag)
