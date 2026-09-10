@@ -29,6 +29,7 @@ struct PresenceUpdate: Encodable {
     var pose:    [Float]         // 16, column-major, shared frame
     var focusId: String?
     var site:    String?
+    var sessionId: String?       // operator: live guide session (coach target)
 }
 
 struct PresenceEntry: Decodable, Identifiable, Equatable {
@@ -40,6 +41,7 @@ struct PresenceEntry: Decodable, Identifiable, Equatable {
     var pose:      [Float]
     var focusId:   String?
     var site:      String?
+    var sessionId: String?
     var anchorId:  String
     var updatedAt: String
 
@@ -78,7 +80,7 @@ enum PresencePalette {
 
 /// Tiny reference box so a SwiftUI view can hand the poster a LIVE focus
 /// (struct state captured in a closure would be a stale copy).
-final class PresenceFocusBox { var stepId: String? = nil }
+final class PresenceFocusBox { var stepId: String? = nil; var sessionId: String? = nil }
 
 // ── Service ──────────────────────────────────────────────────────────────────
 
@@ -90,6 +92,8 @@ final class PresenceService: ObservableObject {
         case stepsChanged
         /// M2 `changed` on the anchor feed: "member:<tagId>" entries name the tags.
         case tagsChanged([String])
+        /// C1: a coach queued a hint for this live session — fetch it now.
+        case coachHint(liveSessionId: String, from: String?)
     }
 
     @Published private(set) var others: [PresenceEntry] = []
@@ -110,6 +114,8 @@ final class PresenceService: ObservableObject {
     /// Frames differ per surface (guide map vs QR frame): only show people
     /// whose poses live in MY frame. Default: same surface.
     var accepts: (PresenceEntry) -> Bool = { _ in true }
+    /// Operator: my live guide session id (sent so a coach can address me).
+    var sessionIdProvider: () -> String? = { nil }
 
     private let client: SIBClient
     private var poster:   Task<Void, Never>? = nil
@@ -167,7 +173,7 @@ final class PresenceService: ObservableObject {
         guard let pose = poseProvider() else { return }
         let u = PresenceUpdate(userId: me.userId, name: me.name, role: me.role, surface: surface,
                                guideId: guideId, pose: ARCoordinateFrame.floats(from: pose),
-                               focusId: focusProvider(), site: me.site)
+                               focusId: focusProvider(), site: me.site, sessionId: sessionIdProvider())
         do {
             let list = try await client.postPresence(anchorId: anchorId, update: u)
             merge(list, replace: true)
@@ -220,6 +226,11 @@ final class PresenceService: ObservableObject {
                         let ids = ((try? JSONDecoder().decode(Changed.self, from: data))?.changed ?? [])
                             .filter { $0.hasPrefix("member:") }.map { String($0.dropFirst(7)) }
                         if !ids.isEmpty { event = .tagsChanged(ids) }
+                    case "coach-hint":
+                        struct CH: Decodable { let liveSessionId: String; let from: String? }
+                        if let c = try? JSONDecoder().decode(CH.self, from: data) {
+                            event = .coachHint(liveSessionId: c.liveSessionId, from: c.from)
+                        }
                     default: break
                     }
                 }

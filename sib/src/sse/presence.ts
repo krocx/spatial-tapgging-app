@@ -49,6 +49,7 @@ export function validatePresenceUpdate(body: unknown): { ok: true; value: Presen
   if (typeof b.guideId === 'string') value.guideId = b.guideId.slice(0, 64);
   if (typeof b.focusId === 'string') value.focusId = b.focusId.slice(0, 64);
   if (typeof b.site === 'string')    value.site    = b.site.trim().slice(0, 40);
+  if (typeof b.sessionId === 'string') value.sessionId = b.sessionId.slice(0, 64);
   return { ok: true, value };
 }
 

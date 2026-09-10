@@ -524,4 +524,14 @@ struct AIHint: Decodable, Identifiable {
     /// servers omit it, and we treat nil like a retry.
     let trigger:       String?
     let ts:            String       // ISO 8601
+    /// C1: a human hint from a coaching author — `from` names them and
+    /// `pointer` (guide-map frame x,y,z) draws a "look here" marker.
+    let source:        String?
+    let from:          String?
+    let pointer:       [Float]?
+    var isHuman: Bool { source == "human" }
+    var pointerPosition: simd_float3? {
+        guard let p = pointer, p.count == 3 else { return nil }
+        return simd_float3(p[0], p[1], p[2])
+    }
 }

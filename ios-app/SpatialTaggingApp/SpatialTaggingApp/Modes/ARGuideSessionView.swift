@@ -17,6 +17,7 @@
 //   • Bug fix: reference photo captured at Step-1 placement (done in GuideStepPlacementView)
 
 import SwiftUI
+import Combine
 import ARKit
 import CoreImage
 import SceneKit
@@ -194,6 +195,15 @@ struct ARGuideSessionView: View {
     /// Timer that polls /live/:id/hints every 5 s while a live session is open.
     @State private var hintPollTimer: Timer? = nil
 
+    // ── C2: presence + coaching (a colleague author can see me and send hints) ──
+    @State private var presence:       PresenceService? = nil
+    @State private var presenceLayer:  PresenceLayer?   = nil
+    @State private var presenceBag:    Set<AnyCancellable> = []
+    @State private var presenceOthers: [PresenceEntry] = []
+    @State private var presenceLinked  = false
+    @State private var presenceToast:  (text: String, color: UIColor)? = nil
+    @State private var presenceFocus   = PresenceFocusBox()
+
     // ── Stall detection (idle helper trigger) ────────────────────────────────
     /// Timer that checks every 10 s whether the Operator has dwelled on the
     /// current step past `stallThresholdSeconds` without completing it.
@@ -314,6 +324,7 @@ struct ARGuideSessionView: View {
                     panelContainers.removeAll()
                     // Remove 3D ghost model overlay
                     removeGhostOverlay()
+                    stopPresence()
                     arManager.pauseSession()
                 }
                 .onChange(of: arManager.objectTransform) { objT in
@@ -394,6 +405,7 @@ struct ARGuideSessionView: View {
         .onReceive(navTicker) { _ in
             if case .navigating(let index) = phase {
                 updateNavTelemetry(index: index)
+                if index < sortedSteps.count { presenceFocus.stepId = sortedSteps[index].id }
             }
             // V2/X1: live validation guidance at 10 Hz. Pose readiness (trained
             // stance: cone_dist_m ±30 % / ≥8 cm, aim, shot direction) is now
@@ -761,6 +773,18 @@ struct ARGuideSessionView: View {
         }
         .animation(.easeInOut(duration: 0.25), value: transientNotice)
         .animation(.easeInOut(duration: 0.25), value: showRealignToast)
+        // C2: colleagues (a coaching author) — chip, edge arrows, toasts
+        .overlay(alignment: .topTrailing) {
+            if case .navigating = phase, !presenceOthers.isEmpty, coneValidateIndex == nil {
+                PresenceRosterChip(others: presenceOthers, connected: presenceLinked)
+                    .padding(.top, 64).padding(.trailing, 12)
+            }
+        }
+        .overlay { if !presenceOthers.isEmpty, coneValidateIndex == nil { PresenceEdgeArrows(others: presenceOthers, sceneView: arManager.sceneView) } }
+        .overlay(alignment: .top) {
+            if let t = presenceToast { PresenceToast(text: t.text, color: t.color).padding(.top, 104) }
+        }
+        .animation(.easeInOut(duration: 0.25), value: presenceToast?.text)
         // B2e: manual re-align finder (tap on the chamber pill)
         .overlay(alignment: .bottom) {
             if arManager.objectRealignManual, case .navigating = phase {
@@ -799,6 +823,7 @@ struct ARGuideSessionView: View {
             Button {
                 stopSpeaking()
                 removeArrow()
+                stopPresence()
                 arManager.pauseSession()
                 dismiss()
             } label: {
@@ -1273,6 +1298,10 @@ struct ARGuideSessionView: View {
     private func transitionToNavigating() {
         placePins()
         placeArrow()
+        // C2: my pose is only meaningful in the guide-map frame.
+        if originViaObject || arManager.relocalizationOutcome == .succeeded || userConfirmedRelocalize {
+            startPresence()
+        }
         if sortedSteps.isEmpty {
             phase = .submitted
         } else {
@@ -2260,6 +2289,7 @@ struct ARGuideSessionView: View {
         switch hint.trigger {
         case "stall": return "This step's been open a while"
         case "retry": return "That step took a few tries"
+        case "coach": return "\(hint.from ?? "A colleague") says"
         default:      return "A tip for this step"
         }
     }
@@ -2270,7 +2300,7 @@ struct ARGuideSessionView: View {
             withAnimation(.spring(duration: 0.25)) { assistExpanded = true }
         } label: {
             HStack(spacing: 6) {
-                Image(systemName: "sparkles")
+                Image(systemName: hint.isHuman ? "person.wave.2.fill" : "sparkles")
                     .font(.system(size: 13, weight: .semibold))
                 Text(assistReason(hint))
                     .font(.footnote.weight(.semibold))
@@ -2292,8 +2322,8 @@ struct ARGuideSessionView: View {
     private func assistCard(hint: AIHint, step: GuideStep) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
-                Image(systemName: "sparkles")
-                    .foregroundStyle(.yellow)
+                Image(systemName: hint.isHuman ? "person.wave.2.fill" : "sparkles")
+                    .foregroundStyle(hint.isHuman ? Color.cyan : Color.yellow)
                     .font(.system(size: 15, weight: .semibold))
                 Text(assistReason(hint))
                     .font(.footnote.weight(.semibold))
@@ -2805,6 +2835,78 @@ struct ARGuideSessionView: View {
     private func stopHintPolling() {
         hintPollTimer?.invalidate()
         hintPollTimer = nil
+    }
+
+    // ── C2: presence + coaching ───────────────────────────────────────────────
+
+    private func startPresence() {
+        guard presence == nil else { return }
+        let svc = PresenceService(client: SIBClient(settings: settings), settings: settings,
+                                  anchorId: anchor.id, surface: "guide", guideId: guide.id)
+        let mgr = arManager
+        svc.poseProvider = { mgr.sceneView.session.currentFrame?.camera.transform }
+        let focus = presenceFocus
+        focus.sessionId = liveSessionId
+        svc.focusProvider     = { focus.stepId }
+        svc.sessionIdProvider = { focus.sessionId }
+        let gid = guide.id
+        svc.accepts = { $0.guideId == gid }
+        let layer = PresenceLayer(sceneView: arManager.sceneView)
+        svc.$others.receive(on: RunLoop.main).sink { list in
+            presenceOthers = list
+            layer.update(list)
+        }.store(in: &presenceBag)
+        svc.$isConnected.receive(on: RunLoop.main).sink { presenceLinked = $0 }.store(in: &presenceBag)
+        svc.$event.receive(on: RunLoop.main).compactMap { $0 }.sink { ev in
+            switch ev {
+            case .joined(let e):
+                showPresenceToast("\(e.name) joined\(e.site.map { " from \($0)" } ?? "") — they can see where you are",
+                                  color: PresencePalette.color(role: e.role, userId: e.userId))
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            case .left(_, let name):
+                showPresenceToast("\(name) left", color: .darkGray)
+            case .coachHint(let sid, _):
+                if sid == liveSessionId { Task { await pullCoachHints() } }
+            case .stepsChanged, .tagsChanged:
+                break
+            }
+            svc.event = nil
+        }.store(in: &presenceBag)
+        presence = svc; presenceLayer = layer
+        svc.start()
+    }
+
+    private func stopPresence() {
+        presence?.stop(); presence = nil
+        presenceBag.removeAll()
+        presenceLayer?.removeAll(); presenceLayer = nil
+        presenceOthers = []
+    }
+
+    private func showPresenceToast(_ text: String, color: UIColor) {
+        withAnimation { presenceToast = (text, color) }
+        Task {
+            try? await Task.sleep(nanoseconds: 3_500_000_000)
+            if presenceToast?.text == text { withAnimation { presenceToast = nil } }
+        }
+    }
+
+    /// A coach's hint is never "nagging": it replaces whatever assist is
+    /// showing, opens the card, and draws the "look here" marker if it has one.
+    @MainActor
+    private func pullCoachHints() async {
+        guard let lsId = liveSessionId else { return }
+        let hints = await SIBClient(settings: settings).fetchGuideHints(liveSessionId: lsId)
+        guard let h = hints.last(where: { $0.isHuman }) ?? hints.first else { return }
+        activeHint = h
+        hintHistory.append(h)
+        withAnimation(.spring(duration: 0.25)) { assistExpanded = true }
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        if let p = h.pointerPosition {
+            let who   = presenceOthers.first { $0.name == h.from }
+            let color = who.map { PresencePalette.color(role: $0.role, userId: $0.userId) } ?? .systemCyan
+            presenceLayer?.showPointer(at: p, from: h.from ?? "Coach", color: color)
+        }
     }
 
     // ── Stall detection ───────────────────────────────────────────────────────

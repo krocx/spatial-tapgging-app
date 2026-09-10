@@ -110,6 +110,22 @@ it, it gets a line.
   private frame. Presence identity is per device (`employeeId@device`), so
   the same login on two iPhones is two people. Author mode (Spatial
   Inspection) and author-coaches-operator are the next slices.
+- **Multi-user, slice 3 — an author coaches an operator (C1/C2)** — the
+  operator's guide session now publishes presence too (surface `guide`,
+  pose in the guide-map frame once relocalized / object-snapped, current
+  step as focus, and the live session id), so an author in Place Steps on
+  the same guide sees the operator's lens, cone and gaze dot and which step
+  they are on. The roster entry gets a **Coach** button → a panel with a
+  message field, quick phrases ("Wait for me", "Check the torque", …) and
+  **Point here**: the next tap on the chamber sends a look-here marker.
+  Server: `POST /guide-sessions/live/:id/hints` queues a HUMAN hint on the
+  same consume-once channel the AI adapter uses (`AIHint.source: 'human'`,
+  `from`, optional `pointer` x,y,z, `trigger: 'coach'`); the chamber feed
+  gets a `coach-hint` nudge so the operator fetches it at once instead of
+  the next 5 s poll. Operator side: the assist card opens with "Priya says
+  …" (person icon, cyan), a success haptic, and a pulsing ring + beam +
+  "Priya: look here" label at the point for 20 s; coach hints bypass the
+  stall/retry cool-downs. `PresenceUpdate.sessionId` added.
 - **Multi-user co-authoring, slice 2 — presence in Spatial Inspection Author
   mode (P5)** — the same lens / view cone / gaze dot / edge arrows / roster
   chip / join toasts, now in Author mode. Poses are shared in the **QR

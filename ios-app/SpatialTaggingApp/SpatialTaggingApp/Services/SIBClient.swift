@@ -767,6 +767,15 @@ final class SIBClient {
         return try JSONDecoder().decode(R.self, from: data).others
     }
 
+    /// C1: coach → operator. Text plus an optional "look here" point (map frame).
+    func sendCoachHint(liveSessionId: String, text: String, from: String?, stepId: String?, pointer: simd_float3?) async throws {
+        struct Body: Encodable { let text: String; let from: String?; let stepId: String?; let pointer: [Float]? }
+        struct R: Decodable { let id: String }
+        _ = try await post(R.self, path: "/guide-sessions/live/\(liveSessionId)/hints",
+                           body: Body(text: text, from: from, stepId: stepId,
+                                      pointer: pointer.map { [$0.x, $0.y, $0.z] }))
+    }
+
     func leavePresence(anchorId: String, userId: String) async {
         guard var req = try? makeRequest(method: "DELETE", path: "/anchors/\(anchorId)/presence/\(userId)") else { return }
         req.timeoutInterval = 3

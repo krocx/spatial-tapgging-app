@@ -246,6 +246,9 @@ struct GuideStepPlacementView: View {
     @State private var presenceLinked   = false
     @State private var presenceToast:   (text: String, color: UIColor)? = nil
     @State private var presenceFocus    = PresenceFocusBox()
+    // C2: coaching an operator who is running this guide right now
+    @State private var coachTarget:      PresenceEntry? = nil
+    @State private var coachPointerMode  = false
     /// Server position of each step as of the last sync — the edit-echo baseline.
     @State private var remoteBaseline:  [String: simd_float3] = [:]
     private var objectExtent: simd_float3? {
@@ -424,10 +427,27 @@ struct GuideStepPlacementView: View {
         .overlay(alignment: .top) { objectTrackOverlay }
         .overlay(alignment: .topTrailing) {
             if placementPhase.isPlacingPins, !presenceOthers.isEmpty {
-                PresenceRosterChip(others: presenceOthers, connected: presenceLinked)
+                PresenceRosterChip(others: presenceOthers, connected: presenceLinked,
+                                   onCoach: { coachTarget = $0; coachPointerMode = false })
                     .padding(.top, 70).padding(.trailing, 12)
             }
         }
+        // C2: coach panel sits above the step tray
+        .overlay(alignment: .bottom) {
+            if let t = coachTarget, placementPhase.isPlacingPins {
+                let live = liveCoachTarget(t)
+                CoachPanel(
+                    target:      live,
+                    stepTitle:   coachStepTitle(live),
+                    pointerMode: $coachPointerMode,
+                    onSend:      { sendCoachHint($0, pointer: nil) },
+                    onClose:     { coachTarget = nil; coachPointerMode = false }
+                )
+                .padding(.horizontal, 12).padding(.bottom, 170)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: coachTarget?.userId)
         .overlay { if !presenceOthers.isEmpty { PresenceEdgeArrows(others: presenceOthers, sceneView: arManager.sceneView) } }
         .overlay(alignment: .top) {
             if let t = presenceToast {
@@ -1429,6 +1449,31 @@ struct GuideStepPlacementView: View {
         }
     }
 
+    private func liveCoachTarget(_ t: PresenceEntry) -> PresenceEntry {
+        presenceOthers.first { $0.userId == t.userId } ?? t
+    }
+    private func coachStepTitle(_ t: PresenceEntry) -> String? {
+        guard let id = t.focusId else { return nil }
+        return steps.first { $0.id == id }?.displayTitle
+    }
+
+    /// C2: send a hint to the operator's live session; a pointer draws the
+    /// same marker on my side so I can see what they'll see.
+    private func sendCoachHint(_ text: String, pointer: simd_float3?) {
+        guard let t = coachTarget, let sid = t.sessionId else { return }
+        let me = presence?.me.name
+        let stepId = t.focusId
+        if let p = pointer { presenceLayer?.showPointer(at: p, from: me ?? "You", color: .systemCyan, seconds: 8) }
+        Task {
+            do {
+                try await SIBClient(settings: settings).sendCoachHint(liveSessionId: sid, text: text, from: me, stepId: stepId, pointer: pointer)
+                showPresenceToast(pointer == nil ? "Sent to \(t.name)" : "Marker sent to \(t.name)", color: .systemCyan)
+            } catch {
+                showPresenceToast("Couldn't reach \(t.name): \(friendlyMessage(for: error))", color: .systemOrange)
+            }
+        }
+    }
+
     private func flashRealignToast() {
         withAnimation { showRealignToast = true }
         Task {
@@ -1744,6 +1789,19 @@ struct GuideStepPlacementView: View {
         // A: no placement until the frame is trustworthy.
         guard relocState != .relocalizing, relocState != .timedOut else { return }
         let sv = arManager.sceneView
+
+        // C2: "Point here" — this tap is a look-here marker for the operator, not a pin.
+        if coachPointerMode, coachTarget != nil {
+            if let q = sv.raycastQuery(from: point, allowing: .estimatedPlane, alignment: .any),
+               let hit = sv.session.raycast(q).first {
+                let p = simd_float3(hit.worldTransform.columns.3.x, hit.worldTransform.columns.3.y, hit.worldTransform.columns.3.z)
+                sendCoachHint("Look here", pointer: p)
+            } else {
+                showPresenceToast("No surface there — try a spot on the chamber", color: .systemOrange)
+            }
+            coachPointerMode = false
+            return
+        }
 
         // Check if tapping an existing pin → activate it
         let hits = sv.hitTest(point, options: [

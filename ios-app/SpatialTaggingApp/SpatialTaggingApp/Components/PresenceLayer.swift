@@ -80,6 +80,48 @@ final class PresenceLayer {
         ]))
     }
 
+    /// C1 "Look here": a pulsing ring + beam at a point with the coach's name,
+    /// world-locked, gone after `seconds`. Replaces any previous pointer.
+    func showPointer(at sharedPosition: simd_float3, from name: String, color: UIColor, seconds: TimeInterval = 20) {
+        root.childNode(withName: "coach-pointer", recursively: false)?.removeFromParentNode()
+        let p4 = worldFromShared * simd_float4(sharedPosition, 1)
+        let p  = simd_float3(p4.x, p4.y, p4.z)
+        let n = SCNNode(); n.name = "coach-pointer"; n.simdPosition = p
+
+        let ring = SCNNode(geometry: SCNTorus(ringRadius: 0.06, pipeRadius: 0.006))
+        ring.geometry?.firstMaterial?.diffuse.contents = color
+        ring.geometry?.firstMaterial?.emission.contents = color
+        ring.geometry?.firstMaterial?.lightingModel = .constant
+        ring.runAction(.repeatForever(.sequence([
+            .group([.scale(to: 1.8, duration: 0.9), .fadeOpacity(to: 0.15, duration: 0.9)]),
+            .group([.scale(to: 1.0, duration: 0.0), .fadeOpacity(to: 1.0, duration: 0.0)]),
+        ])))
+        n.addChildNode(ring)
+
+        let beam = SCNNode(geometry: SCNCylinder(radius: 0.004, height: 0.35))
+        beam.geometry?.firstMaterial?.diffuse.contents = color.withAlphaComponent(0.7)
+        beam.geometry?.firstMaterial?.lightingModel = .constant
+        beam.position = SCNVector3(0, 0.175, 0)
+        n.addChildNode(beam)
+
+        let label = SCNNode(geometry: {
+            let pl = SCNPlane(width: 0.18, height: 0.036); pl.cornerRadius = 0.009
+            pl.firstMaterial?.diffuse.contents = renderLabel(text: "\(name): look here", color: color, width: 240, height: 48)
+            pl.firstMaterial?.lightingModel = .constant; pl.firstMaterial?.isDoubleSided = true
+            return pl
+        }())
+        label.position = SCNVector3(0, 0.40, 0)
+        label.constraints = [SCNBillboardConstraint()]
+        n.addChildNode(label)
+
+        root.addChildNode(n)
+        n.runAction(.sequence([.wait(duration: seconds), .fadeOut(duration: 0.6), .removeFromParentNode()]))
+    }
+
+    func hidePointer() {
+        root.childNode(withName: "coach-pointer", recursively: false)?.removeFromParentNode()
+    }
+
     /// Pulse a pin the colleague just placed/moved.
     static func pulse(_ node: SCNNode, color: UIColor) {
         let glow = SCNNode(geometry: SCNSphere(radius: 0.05))
@@ -204,6 +246,8 @@ final class PresenceLayer {
 struct PresenceRosterChip: View {
     let others: [PresenceEntry]
     let connected: Bool
+    /// C2: shown as a "Coach" button on entries that carry a live session id.
+    var onCoach: ((PresenceEntry) -> Void)? = nil
     @State private var expanded = false
 
     var body: some View {
@@ -238,8 +282,19 @@ struct PresenceRosterChip: View {
                                 Circle().fill(Color(PresencePalette.color(role: o.role, userId: o.userId))).frame(width: 8, height: 8)
                                 VStack(alignment: .leading, spacing: 1) {
                                     Text(o.name).font(.caption.bold()).foregroundStyle(.white)
-                                    Text([o.site, o.role, o.focusId.map { _ in "editing a step" }].compactMap { $0 }.joined(separator: " · "))
+                                    Text([o.site, o.role, o.surface == "guide" ? "running the guide" : (o.focusId.map { _ in "editing a step" })]
+                                            .compactMap { $0 }.joined(separator: " · "))
                                         .font(.caption2).foregroundStyle(.white.opacity(0.65))
+                                }
+                                if let onCoach, o.sessionId != nil {
+                                    Spacer(minLength: 8)
+                                    Button { onCoach(o); expanded = false } label: {
+                                        Label("Coach", systemImage: "person.wave.2.fill")
+                                            .font(.caption2.bold()).foregroundStyle(.white)
+                                            .padding(.horizontal, 8).padding(.vertical, 4)
+                                            .background(Color.cyan.opacity(0.85), in: Capsule())
+                                    }
+                                    .buttonStyle(.plain)
                                 }
                             }
                         }
@@ -318,5 +373,77 @@ struct PresenceToast: View {
         .padding(.horizontal, 14).padding(.vertical, 9)
         .background(Color(color).opacity(0.94), in: Capsule())
         .transition(.move(edge: .top).combined(with: .opacity))
+    }
+}
+
+/// C2: the author's coaching panel — a message, quick phrases, and
+/// "Point here" (the next tap in AR sends a look-here marker).
+struct CoachPanel: View {
+    let target: PresenceEntry
+    let stepTitle: String?
+    @Binding var pointerMode: Bool
+    let onSend: (String) -> Void
+    let onClose: () -> Void
+    @State private var text = ""
+    @FocusState private var focused: Bool
+    private let quick = ["Wait for me", "Check the torque", "Photo before you proceed", "Good — carry on"]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: "person.wave.2.fill").foregroundStyle(.cyan)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Coaching \(target.name)").font(.subheadline.bold()).foregroundStyle(.white)
+                    if let t = stepTitle { Text("On: \(t)").font(.caption).foregroundStyle(.white.opacity(0.65)).lineLimit(1) }
+                }
+                Spacer()
+                Button(action: onClose) { Image(systemName: "xmark.circle.fill").font(.title3).foregroundStyle(.white.opacity(0.6)) }
+                    .buttonStyle(.plain)
+            }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    Button { pointerMode.toggle() } label: {
+                        Label(pointerMode ? "Tap the spot…" : "Point here", systemImage: "scope")
+                            .font(.caption.bold()).foregroundStyle(.white)
+                            .padding(.horizontal, 10).padding(.vertical, 7)
+                            .background(pointerMode ? Color.orange : Color.cyan.opacity(0.85), in: Capsule())
+                    }
+                    ForEach(quick, id: \.self) { q in
+                        Button { onSend(q) } label: {
+                            Text(q).font(.caption.bold()).foregroundStyle(.white)
+                                .padding(.horizontal, 10).padding(.vertical, 7)
+                                .background(Color.white.opacity(0.14), in: Capsule())
+                        }
+                    }
+                }
+            }
+            HStack(spacing: 8) {
+                TextField("Message…", text: $text)
+                    .focused($focused)
+                    .textFieldStyle(.plain)
+                    .padding(.horizontal, 12).padding(.vertical, 9)
+                    .background(Color.white.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
+                    .foregroundStyle(.white)
+                    .submitLabel(.send)
+                    .onSubmit { send() }
+                Button(action: send) {
+                    Image(systemName: "paperplane.fill").font(.subheadline.bold()).foregroundStyle(.white)
+                        .padding(10).background(text.trimmingCharacters(in: .whitespaces).isEmpty ? Color.gray.opacity(0.5) : Color.cyan, in: Circle())
+                }
+                .disabled(text.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+            if pointerMode {
+                Text("Tap a spot on the chamber — \(target.name) sees a pulsing marker there with your name.")
+                    .font(.caption).foregroundStyle(.orange)
+            }
+        }
+        .padding(14)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18))
+    }
+
+    private func send() {
+        let t = text.trimmingCharacters(in: .whitespaces)
+        guard !t.isEmpty else { return }
+        onSend(t); text = ""
     }
 }

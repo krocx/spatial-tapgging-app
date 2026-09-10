@@ -147,6 +147,36 @@ export function pushEvent(
 }
 
 /**
+ * C1: a HUMAN hint from a coaching author. Same queue, same consume-once
+ * poll on iOS; `source: 'human'` + `from` drive the operator's card, and
+ * an optional `pointer` (guide-map frame) draws a "look here" marker.
+ * Returns null if the session doesn't exist.
+ */
+export function queueHumanHint(liveSessionId: string, input: { text: string; from?: string; stepId?: string; pointer?: number[] }): AIHint | null {
+  const session = sessions.get(liveSessionId);
+  const queue = hintQueues.get(liveSessionId);
+  if (!session || !queue) return null;
+  const hint: AIHint = {
+    id: uuidv4(),
+    liveSessionId,
+    ...(input.stepId && { stepId: input.stepId }),
+    text: input.text,
+    action: 'none',
+    trigger: 'coach',
+    source: 'human',
+    ...(input.from && { from: input.from }),
+    ...(input.pointer && { pointer: input.pointer }),
+    ts: new Date().toISOString(),
+  };
+  queue.push(hint);
+  return hint;
+}
+
+export function liveSessionAnchorId(liveSessionId: string): string | undefined {
+  return sessions.get(liveSessionId)?.anchorId;
+}
+
+/**
  * Retrieve and clear all pending AI hints for a live session.
  * iOS calls this on every poll cycle (consume-once semantics).
  */

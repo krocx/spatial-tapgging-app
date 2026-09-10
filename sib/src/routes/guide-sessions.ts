@@ -26,6 +26,7 @@ import { Router } from 'express';
 import { usageOpen, usageRecordEvent, usageLinkSignOff, listUsage, usageMarkEvidence } from '../oms/usage-log.js';
 import { buildUsageXlsx, buildSessionsXlsx } from '../oms/xlsx-lite.js';
 import { currentUamUser } from '../middleware/auth.js';
+import { broadcastToAnchor } from '../tag/tag-subscribe.js';
 import type { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
@@ -46,6 +47,8 @@ import {
   getLiveSession,
   subscribeSse,
   drainHints,
+  queueHumanHint,
+  liveSessionAnchorId,
 } from '../sse/guide-session.sse.js';
 
 // ── Storage ───────────────────────────────────────────────────────────────────
@@ -194,6 +197,28 @@ router.put('/live/:id/evidence/:stepId', (req: Request, res: Response): void => 
 router.get('/live/:id/hints', (req: Request, res: Response): void => {
   const hints = drainHints(req.params.id);
   res.json({ data: hints, timestamp: new Date().toISOString() });
+});
+
+// C1: POST /guide-sessions/live/:id/hints — a HUMAN hint from a coaching
+// author (presence). Queued like an AI hint (same consume-once poll); the
+// chamber's SSE feed gets a `coach-hint` nudge so the operator fetches it at
+// once instead of waiting for the next 5 s poll.
+router.post('/live/:id/hints', (req: Request, res: Response): void => {
+  const b = (req.body ?? {}) as { text?: unknown; from?: unknown; stepId?: unknown; pointer?: unknown };
+  const text = typeof b.text === 'string' ? b.text.trim().slice(0, 280) : '';
+  if (!text) { res.status(400).json({ error: 'text is required', timestamp: new Date().toISOString() }); return; }
+  const pointer = Array.isArray(b.pointer) && b.pointer.length === 3 && b.pointer.every(n => typeof n === 'number' && Number.isFinite(n))
+    ? (b.pointer as number[]) : undefined;
+  const user = currentUamUser(req);
+  const from = user?.name ?? (typeof b.from === 'string' ? b.from.trim().slice(0, 80) : undefined);
+  const hint = queueHumanHint(req.params.id, {
+    text, from, pointer,
+    ...(typeof b.stepId === 'string' && { stepId: b.stepId }),
+  });
+  if (!hint) { res.status(404).json({ error: `Live session ${req.params.id} not found`, timestamp: new Date().toISOString() }); return; }
+  const anchorId = liveSessionAnchorId(req.params.id);
+  if (anchorId) broadcastToAnchor(anchorId, 'coach-hint', { liveSessionId: req.params.id, from: hint.from ?? null, at: hint.ts });
+  res.status(201).json({ data: hint, timestamp: new Date().toISOString() });
 });
 
 // ── Sign-off (durable record) ─────────────────────────────────────────────────

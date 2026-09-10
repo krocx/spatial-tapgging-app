@@ -172,6 +172,8 @@ export interface PresenceUpdate {
   focusId?:  string;
   /** Free-text site label shown on the lens ("US", "Singapore"). */
   site?:     string;
+  /** Operator: the live guide session id — lets a coaching author address hints to it. */
+  sessionId?: string;
 }
 
 export interface PresenceEntry extends PresenceUpdate {
@@ -1168,8 +1170,13 @@ export interface AIHint {
   targetStepId?:  string;   // step to navigate to when action === 'navigate'
   /** Why the adapter fired: drives assist UX (stall auto-expands the card;
    *  retry stays as a quiet chip). Optional for backward compatibility. */
-  trigger?:       'stall' | 'retry';
+  trigger?:       'stall' | 'retry' | 'coach';
   ts:             string;   // ISO 8601
+  /** C1: a HUMAN hint from a coaching author (presence). */
+  source?:        'ai' | 'human';
+  from?:          string;   // coach display name
+  /** "Look here": a point in the guide-map frame (x, y, z) the operator's AR marks. */
+  pointer?:       number[];
 }
 
 // ============================================================
