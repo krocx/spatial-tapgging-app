@@ -133,7 +133,7 @@
     <div class="copy">
       <div class="eyebrow">Spatial Intelligence Backbone</div>
       <h2>One chamber. One origin.</h2>
-      <p>Scan the chamber once and every guide, tag and LOTO point knows exactly where it lives — for every iPad, every shift, every technician. Reusable every day.</p>
+      <p>Scan the chamber once and every guide and tag knows exactly where it lives — for every session, every shift, every technician. Reusable every day.</p>
       <p style="color:#aab1d6">And if the part moves, the WI moves with it: an optional thirty-second scan lets SIB know our parts by their shape.</p>
       <span class="hint">Millimetre-stable · offline · on-prem</span><span class="hint"><b>Drag</b> sideways to move the part</span><a class="more" href="/catalog#arworldmap-memory">In the catalogue →</a>
     </div>
@@ -381,7 +381,7 @@ const qr = new THREE.Mesh(new THREE.PlaneGeometry(0.24,0.24), new THREE.MeshBasi
 const originRing = new THREE.Mesh(new THREE.RingGeometry(0.26,0.3,48), new THREE.MeshBasicMaterial({ color:0x818cf8, side:THREE.DoubleSide, transparent:true })); originRing.position.copy(qr.position); originRing.position.z += 0.01; originRing.scale.setScalar(0.72); chamber.add(originRing);
 const axes = new THREE.AxesHelper(0.5); axes.position.copy(qr.position); chamber.add(axes);
 fader(qr, s => s>=0.85 && s<2.7); fader(originRing, s => s>=1.0 && s<1.9); fader(axes, s => s>=1.0 && s<1.9);
-const originLabel = sprite('Origin locked', { sub:'every iPad · every shift', w:300, h:80, stroke:'#818cf8' }); originLabel.position.set(0.75, 1.45, 1.05); chamber.add(originLabel); fader(originLabel, s => s>=1.05 && s<1.5);
+const originLabel = sprite('Origin locked', { sub:'every session · every shift', w:300, h:80, stroke:'#818cf8' }); originLabel.position.set(0.75, 1.45, 1.05); chamber.add(originLabel); fader(originLabel, s => s>=1.05 && s<1.5);
 
 // shape beat (stage 1.5–2): point cloud on the surfaces
 let cloud;
