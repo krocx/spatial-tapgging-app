@@ -70,6 +70,10 @@ struct QRScanGateView: View {
     // scans never overwrite it.
     @State private var mapBundle: WorldMapBundle? = nil
     @State private var originNote: String? = nil
+    // B2: reference object (loaded whenever the chamber has a scan; used as the
+    // origin only when the anchor's originSource is 'object' and it is calibrated).
+    @State private var objectBundle: ReferenceObjectCache.Bundle? = nil
+    @State private var originIsObject = false
 
     /// Drift tolerance between the sealed pose and the live QR.
     private let driftMetres: Float  = 0.05
@@ -154,6 +158,20 @@ struct QRScanGateView: View {
                 guard let anchorId = appState.activeAnchor?.id else {
                     arManager.startSession()
                     return
+                }
+                // B2: reference object (when the chamber has one) — detection runs
+                // in every configuration from here on. Always probed (cheap 404):
+                // the anchor record in AppState may predate a scan made this shift.
+                if appState.activeAnchor?.isChamber ?? false {
+                    let ob = await ReferenceObjectCache.load(anchorId: anchorId, client: sibClient)
+                    await MainActor.run {
+                        objectBundle = ob
+                        arManager.setReferenceObject(ob?.archive, name: anchorId)
+                    }
+                    // Refresh the anchor so originSource / objectScannedAt are current.
+                    if let fresh = try? await sibClient.fetchAnchor(id: anchorId) {
+                        await MainActor.run { appState.activeAnchor = fresh }
+                    }
                 }
                 // B1: one loader for every AR surface (meta-checked cache → SIB).
                 let bundle = await WorldMapCache.load(.anchor(anchorId), client: sibClient)
@@ -251,7 +269,7 @@ struct QRScanGateView: View {
                     Text(note).font(.caption).foregroundStyle(.white).lineLimit(2)
                 } else {
                     Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-                    Text(appState.sealedMapOrigin != nil ? "Origin locked · sealed map" : "Origin locked")
+                    Text(originIsObject ? "Origin locked · chamber object" : (appState.sealedMapOrigin != nil ? "Origin locked · sealed map" : "Origin locked"))
                         .font(.subheadline.bold()).foregroundStyle(.white)
                 }
             case .error(let msg):
@@ -314,7 +332,7 @@ struct QRScanGateView: View {
                 Image(systemName: "lock.fill").font(.title3).foregroundStyle(.green)
             }
             VStack(alignment: .leading, spacing: 2) {
-                Text(appState.sealedMapOrigin != nil ? "Origin locked · sealed map" : "Origin locked")
+                Text(originIsObject ? "Origin locked · chamber object" : (appState.sealedMapOrigin != nil ? "Origin locked · sealed map" : "Origin locked"))
                     .font(.headline).foregroundStyle(.white)
                 Text(originNote ?? "Entering \(mode == .author ? "Author" : "Operator") mode…")
                     .font(.caption).foregroundStyle(originNote == nil ? .white.opacity(0.6) : .orange)
@@ -406,14 +424,50 @@ struct QRScanGateView: View {
 
         appState.noteScanned(anchorId: context.anchorId)   // B
 
-        // ── Choose the origin (B1) ─────────────────────────────────────────────
-        // Sealed map + relocalized → the author's pose is the origin; the live
-        // QR is only compared against it. Anything else → live QR (as before).
+        // B2: when the object is the chosen origin and calibrated, give ARKit a
+        // moment to find it after the QR lock (it usually has by now).
+        let wantsObject = (appState.activeAnchor?.usesObjectOrigin ?? false)
+                       && objectBundle?.meta.objectPoseInQR != nil
+        if wantsObject && arManager.objectTransform == nil {
+            withAnimation { scanPhase = .locking }
+            Task {
+                for _ in 0..<24 where arManager.objectTransform == nil {   // ≤ 6 s
+                    try? await Task.sleep(nanoseconds: 250_000_000)
+                }
+                finishLock(context: context)
+            }
+        } else {
+            finishLock(context: context)
+        }
+    }
+
+    /// Origin choice + seal + handoff. Priority: object › sealed map › live QR.
+    private func finishLock(context: QRAnchorContext) {
+        // ── Choose the origin (B1 + B2) ───────────────────────────────────────
+        // object (calibrated) → derive the QR frame from the live object pose;
+        // sealed map + relocalized → the author's pose; else the live QR.
         let livePose    = arManager.lockedAnchorTransform
         let relocalized = arManager.relocalizationOutcome == .succeeded
         var originPose  = livePose
         originNote      = nil
-        if let sealed = mapBundle?.meta.anchorPoseTransform, relocalized {
+        originIsObject  = false
+        let objectNow   = arManager.objectTransform
+        if let objT = objectNow, let cal = objectBundle?.meta.objectPoseInQRTransform,
+           appState.activeAnchor?.usesObjectOrigin == true {
+            // QR frame = objectPose_now × inverse(objectPoseInQR)
+            let derived = objT * simd_inverse(cal)
+            originPose = derived
+            originIsObject = true
+            arManager.adoptMapOrigin(derived)
+            appState.sealedMapOrigin = derived
+            if let live = livePose {
+                let d = ARCoordinateFrame.poseDelta(derived, live)
+                if d.metres > driftMetres || d.degrees > driftDegrees {
+                    originNote = String(format: "QR moved? Using the chamber object (Δ %.0f cm · %.0f°)", d.metres * 100, d.degrees)
+                }
+            }
+            print("[QRScanGateView] ✓ Origin from reference object")
+        } else if let sealed = mapBundle?.meta.anchorPoseTransform, relocalized {
             originPose = sealed
             arManager.adoptMapOrigin(sealed)
             appState.sealedMapOrigin = sealed
@@ -426,11 +480,31 @@ struct QRScanGateView: View {
             }
         } else {
             appState.sealedMapOrigin = nil
-            if mapBundle?.isSealed == true {
+            if appState.activeAnchor?.usesObjectOrigin == true, objectBundle != nil, objectNow == nil {
+                originNote = mapBundle?.isSealed == true
+                    ? "Chamber object not found yet — using the sealed map / QR"
+                    : "Chamber object not found yet — using the QR position"
+            } else if mapBundle?.isSealed == true {
                 originNote = "Couldn't match the sealed map — using the QR position (reduced accuracy)"
             }
         }
         appState.anchorNormalisedTransform = originPose
+
+        // ── B2 calibration (AUTHOR): object seen + a QR-frame origin that did
+        // NOT itself come from the object → store objectPoseInQR. Refreshed on
+        // every author pass so a re-scan of the object re-calibrates itself.
+        if mode == .author, let objT = objectNow, let origin = originPose, !originIsObject,
+           let aid = appState.activeAnchor?.id, objectBundle != nil {
+            let cal = simd_inverse(origin) * objT
+            let client = sibClient
+            Task {
+                if let meta = try? await client.calibrateAnchorObject(anchorId: aid, objectPoseInQR: cal),
+                   let ob = objectBundle {
+                    ReferenceObjectCache.store(aid, archive: ob.archive, meta: meta)
+                    print("[QRScanGateView] ✓ Object calibrated to QR frame")
+                }
+            }
+        }
 
         // ── Preserve the live ARSession for AuthorModeView / OperatorModeView ──
         // By storing the session here (before QRScanGateView dismisses), the

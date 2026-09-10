@@ -67,6 +67,13 @@ final class ARSessionManager: NSObject, ObservableObject {
     /// QR). While set, live ARImageAnchor refinement is ignored — otherwise a
     /// moved/re-stuck QR would drag every tag back to wherever it is now.
     @Published private(set) var mapIsOrigin: Bool = false
+    /// B2: the detected reference object's pose in the current session frame
+    /// (nil until ARKit finds it; refreshed as tracking refines). Views derive
+    /// the QR / map frame from it through the stored calibration.
+    @Published private(set) var objectTransform: simd_float4x4? = nil
+    /// B2: reference objects every session configuration should detect.
+    /// Set before startSession()/startSessionWithWorldMap(); survives re-runs.
+    nonisolated(unsafe) private var detectionObjects: Set<ARReferenceObject> = []
     /// True between ARSessionDelegate's sessionWasInterrupted/sessionInterruptionEnded
     /// callbacks — e.g. a phone call, Control Center, or multitasking switch.
     /// #69: previously nothing observed these callbacks, so a capture or
@@ -123,11 +130,52 @@ final class ARSessionManager: NSObject, ObservableObject {
         }
     }
 
+    // ── B2: reference object detection ────────────────────────────────────────
+
+    /// Load the `.arobject` archive (from ReferenceObjectCache) for detection.
+    /// Pass nil to stop detecting. Takes effect on the next session run.
+    func setReferenceObject(_ archive: Data?, name: String) {
+        objectTransform = nil
+        guard let archive else { detectionObjects = []; return }
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("ref-\(name).arobject")
+        do {
+            try archive.write(to: url, options: .atomic)
+            let obj = try ARReferenceObject(archiveURL: url)
+            obj.name = name
+            detectionObjects = [obj]
+            print("[ARSessionManager] Reference object loaded for detection (\(obj.rawFeaturePoints.points.count) pts)")
+        } catch {
+            detectionObjects = []
+            print("[ARSessionManager] Reference object load failed: \(error.localizedDescription)")
+        }
+    }
+
+    /// B2: re-base the session's world frame onto a stored data frame using
+    /// the detected object. `objectPoseInFrame` is the object's pose in that
+    /// frame (guide map, sealed QR frame…). After this call the session's
+    /// world coordinates ARE that frame, so map-frame positions render as-is —
+    /// no per-node transforms anywhere. Returns false if the object isn't
+    /// detected yet.
+    @discardableResult
+    func rebaseWorld(objectPoseInFrame: simd_float4x4) -> Bool {
+        guard let objT = objectTransform else { return false }
+        // new world origin (in current world coords) = objT × inverse(objectPoseInFrame)
+        let f = objT * simd_inverse(objectPoseInFrame)
+        sceneView.session.setWorldOrigin(relativeTransform: f)
+        objectTransform = objectPoseInFrame          // by construction, until ARKit refines
+        relocalizationOutcome = .succeeded           // the data frame is reachable
+        isRelocalizing = false
+        print("[ARSessionManager] ✓ World re-based onto the data frame via reference object")
+        return true
+    }
+
     // ── Session control ───────────────────────────────────────────────────────
 
     func startSession() {
         let config = ARWorldTrackingConfiguration()
         config.planeDetection = [.horizontal, .vertical]
+        config.detectionObjects = detectionObjects
+        objectTransform = nil
         sceneView.session.run(config, options: [.removeExistingAnchors, .resetTracking])
         imageAnchorStableFrames = 0
         pendingContext          = nil
@@ -162,6 +210,8 @@ final class ARSessionManager: NSObject, ObservableObject {
         let config = ARWorldTrackingConfiguration()
         config.planeDetection   = [.horizontal, .vertical]
         config.initialWorldMap  = worldMap
+        config.detectionObjects = detectionObjects
+        objectTransform = nil
         // ⚠️ Do NOT pass .resetTracking — that discards the initialWorldMap.
         // .removeExistingAnchors clears stale geometry; ARKit will re-add the
         // image anchors from the saved map as it relocalizes.
@@ -330,6 +380,7 @@ final class ARSessionManager: NSObject, ObservableObject {
             config.planeDetection   = [.horizontal, .vertical]
             config.detectionImages  = [refImage]
             config.maximumNumberOfTrackedImages = 1
+            config.detectionObjects = detectionObjects
             sceneView.session.run(config, options: [])
             print("[ARSessionManager] ARReferenceImage registered (\(String(format:"%.0f", context.physicalWidth * 100)) cm) — waiting for ARImageAnchor")
         } else {
@@ -462,6 +513,14 @@ extension ARSessionManager: ARSessionDelegate {
     }
 
     private nonisolated func processImageAnchors(_ anchors: [ARAnchor]) {
+
+        // ── B2: reference object — publish its pose whenever ARKit refines it ──
+        for anchor in anchors {
+            guard let obj = anchor as? ARObjectAnchor else { continue }
+            let t = obj.transform
+            Task { @MainActor [weak self] in self?.objectTransform = t }
+            break
+        }
 
         // ── Case A: waiting for initial QR lock ───────────────────────────────
         if let ctx = pendingContext {

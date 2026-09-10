@@ -3,6 +3,7 @@
 
 import Foundation
 import SwiftUI
+import simd
 
 // ── Enumerations ──────────────────────────────────────────────────────────────
 
@@ -151,6 +152,9 @@ struct Anchor: Codable, Identifiable, Hashable {
     /// B1 (derived, read-only): when an Author scanned this chamber as an ARKit
     /// reference object. Nil = no object scan.
     let objectScannedAt: String?
+    /// B2: "worldMap" (default when nil) or "object".
+    let originSource: String?
+    var usesObjectOrigin: Bool { originSource == "object" }
     let createdAt: String
     let updatedAt: String
 
@@ -171,6 +175,10 @@ struct AnchorObjectMeta: Codable, Equatable {
     let center:        V3?
     let featurePoints: Int?
     let sizeBytes:     Int?
+    /// B2 calibration: the object's pose in the QR frame (16 floats, column-major).
+    let objectPoseInQR: [Float]?
+    let calibratedAt:   String?
+    var objectPoseInQRTransform: simd_float4x4? { ARCoordinateFrame.transform(from: objectPoseInQR) }
 }
 
 struct CreateAnchorRequest: Codable {
@@ -191,6 +199,8 @@ struct CreateAnchorRequest: Codable {
     let createdBy: String?
     /// C1: chamber configuration this anchor belongs to.
     let configId: String?
+    /// B2: origin source chosen at creation ("worldMap" default / "object").
+    let originSource: String?
 
     init(
         id:               String?              = nil,
@@ -203,7 +213,8 @@ struct CreateAnchorRequest: Codable {
         qrSizeCm:         Double?              = nil,
         anchorType:       AnchorType?          = nil,
         createdBy:        String?              = nil,
-        configId:         String?              = nil
+        configId:         String?              = nil,
+        originSource:     String?              = nil
     ) {
         self.id               = id
         self.assetId          = assetId
@@ -216,6 +227,7 @@ struct CreateAnchorRequest: Codable {
         self.anchorType       = anchorType
         self.createdBy        = createdBy
         self.configId         = configId
+        self.originSource     = originSource
     }
 }
 

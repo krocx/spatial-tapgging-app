@@ -222,6 +222,11 @@ struct GuideStepPlacementView: View {
     @State private var relocPhoto:  UIImage? = nil
     @State private var relocGhostOpacity: Double = 0.4
     @State private var relocMissingMap = false     // pins exist but no map on SIB (legacy guide)
+    // B2: the chamber's reference object. When detected and the guide map is
+    // calibrated (objectPoseInMap), the session is re-based onto the map frame
+    // without waiting for ARKit relocalization — pins land exactly, QR or not.
+    @State private var objectBundle: ReferenceObjectCache.Bundle? = nil
+    @State private var originViaObject = false
 
     // ── Pin placement state ───────────────────────────────────────────────────
     @State private var stepPositions:  [String: simd_float3] = [:]
@@ -397,6 +402,19 @@ struct GuideStepPlacementView: View {
         } message: {
             Text("Every step becomes unplaced when you Save. The world map, training and 3D model assignments are kept; model placements are dropped.")
         }
+        .onChange(of: arManager.objectTransform) { objT in
+            // B2: object found + calibrated map → re-base the world onto the map
+            // frame and show the pins. Beats waiting for feature-point matching.
+            guard objT != nil, !originViaObject,
+                  relocState == .relocalizing || relocState == .timedOut,
+                  let cal = relocBundle?.meta.objectPoseInMapTransform else { return }
+            if arManager.rebaseWorld(objectPoseInFrame: cal) {
+                originViaObject = true
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                withAnimation { relocState = .relocalized }
+                placeExistingPinNodes()
+            }
+        }
         .onChange(of: arManager.relocalizationOutcome) { outcome in
             guard relocState == .relocalizing else { return }
             switch outcome {
@@ -444,6 +462,14 @@ struct GuideStepPlacementView: View {
                 relocState = .relocalizing
                 Task {
                     let client = SIBClient(settings: settings)
+                    // B2: chamber object (if scanned) — detection runs alongside the map.
+                    if let a = try? await client.fetchAnchor(id: guide.anchorId) {
+                        await MainActor.run { anchorRecord = a }
+                        if a.objectScannedAt != nil {
+                            let ob = await ReferenceObjectCache.load(anchorId: a.id, client: client)
+                            await MainActor.run { objectBundle = ob; arManager.setReferenceObject(ob?.archive, name: a.id) }
+                        }
+                    }
                     async let bundleFetch = WorldMapCache.load(.guide(guide.id), client: client)
                     async let photoFetch  = try? client.fetchGuideWorldMapPhoto(guideId: guide.id)
                     let (bundle, photo) = await (bundleFetch, photoFetch)
@@ -463,7 +489,24 @@ struct GuideStepPlacementView: View {
                     }
                 }
             } else {
-                arManager.startSession()
+                // New guide: fresh frame. Still detect the object so the first
+                // save can calibrate objectPoseInMap.
+                Task {
+                    let client = SIBClient(settings: settings)
+                    if let a = try? await client.fetchAnchor(id: guide.anchorId) {
+                        await MainActor.run { anchorRecord = a }
+                        if a.objectScannedAt != nil {
+                            let ob = await ReferenceObjectCache.load(anchorId: a.id, client: client)
+                            await MainActor.run {
+                                objectBundle = ob
+                                arManager.setReferenceObject(ob?.archive, name: a.id)
+                                arManager.startSession(); arManager.disableQRScanning()
+                            }
+                            return
+                        }
+                    }
+                    await MainActor.run { arManager.startSession(); arManager.disableQRScanning() }
+                }
                 relocState = .none
                 placeExistingPinNodes()
             }
@@ -1169,7 +1212,10 @@ struct GuideStepPlacementView: View {
                                     Text("Space matched").font(.caption).foregroundStyle(.white.opacity(0.8))
                                 } else {
                                     ProgressView().scaleEffect(0.8).tint(.indigo)
-                                    Text("Matching the space…").font(.caption).foregroundStyle(.white.opacity(0.55))
+                                    Text(objectBundle != nil && relocBundle?.meta.objectPoseInMap != nil
+                                         ? "Matching the space — or look at the chamber to find it by shape…"
+                                         : "Matching the space…")
+                                        .font(.caption).foregroundStyle(.white.opacity(0.55))
                                 }
                             }
                             if relocPhoto != nil {
@@ -2102,6 +2148,10 @@ struct GuideStepPlacementView: View {
         let frameIsMapFrame = relocBundle == nil || relocState == .relocalized || relocState == .replaceAll
         let mapData   = frameIsMapFrame ? await arManager.saveCurrentWorldMap() : nil
         let (updatedSteps, errors) = await patchChangedPositions()
+        // B2: the object's pose in the map frame — valid only while the session
+        // frame IS the map frame (which includes an object-rebased session).
+        let objectPoseInMap: [Float]? = (frameIsMapFrame && objectBundle != nil)
+            ? arManager.objectTransform.map { ARCoordinateFrame.floats(from: $0) } : nil
         if let mapData {
             do {
                 let pose: [Float]? = firstStepCameraPose.map { m in
@@ -2109,7 +2159,7 @@ struct GuideStepPlacementView: View {
                 }
                 try await client.uploadGuideWorldMap(
                     guideId: guide.id, mapData: mapData, referencePhotoData: photoData,
-                    referenceCameraPose: pose)
+                    referenceCameraPose: pose, objectPoseInMap: objectPoseInMap)
                 // B1: refresh the shared cache with the server's stamp so the next
                 // run on this device is a cache hit instead of a re-download.
                 if let meta = try? await client.fetchGuideWorldMapMeta(guideId: guide.id) {
@@ -2118,6 +2168,9 @@ struct GuideStepPlacementView: View {
             } catch {
                 print("[GuideStepPlacementView] World map upload failed (non-fatal): \(error)")
             }
+        } else if let cal = objectPoseInMap, let t = ARCoordinateFrame.transform(from: cal) {
+            // No map upload this time but the frame is the map's — refresh calibration.
+            try? await client.calibrateGuideObject(guideId: guide.id, objectPoseInMap: t)
         }
         isSaving = false
         if errors.isEmpty { onDone(updatedSteps) }

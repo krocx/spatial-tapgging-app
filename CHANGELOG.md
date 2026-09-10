@@ -65,6 +65,25 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **Object tracking, slice 2 — the object as origin (B2)** — a chamber can
+  now be found by its **shape**. `Anchor.originSource` = `worldMap` (default)
+  or `object`, chosen when creating a chamber ("How should the app find this
+  chamber?") or later in Anchor Hub → Object tracking. Doctrine unchanged
+  underneath: tags stay QR-relative and guide pins stay map-relative — the
+  object supplies the frame through a stored **calibration**:
+  `objectPoseInQR` on the object meta (written by the first Author QR scan
+  that also sees the object, `PATCH /anchors/:id/object/meta`) and
+  `objectPoseInMap` on each guide's map meta (written by Place Steps on save,
+  `PATCH /worldmap/guide/:id/meta`; also accepted on map upload). iOS:
+  `ARSessionManager` runs `detectionObjects` in every configuration and
+  publishes the object pose; the QR gate derives the QR frame from it
+  (priority **object › sealed map › live QR**, drift note when the QR moved,
+  ≤ 6 s wait after the lock for the object); Place Steps and the guide
+  session **re-base the world onto the map frame** the moment the object is
+  recognised (`ARSession.setWorldOrigin`) — pins exact, no feature-point
+  matching, no QR needed for guides. The reference object is cached like
+  maps (`ReferenceObjectCache`, offline-capable). Portal shows "◈ Origin:
+  object". Server needs `npm run build`.
 - **Object tracking, slice 1 — scan & store (B1)** — an Author can now scan a
   chamber as an ARKit **reference object**, entirely on the iPad
   (`ARObjectScanningConfiguration`): tap the surface the chamber stands on,

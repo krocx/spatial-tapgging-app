@@ -124,7 +124,7 @@ struct ObjectScanView: View {
             let by = !settings.uamUserName.isEmpty ? settings.uamUserName : settings.authorName
             let meta = try await client.uploadAnchorObject(
                 anchorId: anchor.id, data: data,
-                extent: ref.extent, center: ref.center, featurePoints: ref.rawFeaturePoints.count,
+                extent: ref.extent, center: ref.center, featurePoints: ref.rawFeaturePoints.points.count,
                 scannedBy: by)
             UINotificationFeedbackGenerator().notificationOccurred(.success)
             scanner.stop()
@@ -251,6 +251,7 @@ extension ObjectScanner: ARSessionDelegate {
 struct ObjectScanARView: UIViewRepresentable {
     @ObservedObject var scanner: ObjectScanner
 
+    @MainActor
     final class Coord: NSObject {
         let scanner: ObjectScanner
         var lastPan: CGPoint = .zero

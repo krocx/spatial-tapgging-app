@@ -663,6 +663,9 @@ struct CreateAnchorSheet: View {
     @State private var createError: String? = nil
     /// Phase 2: anchor type — QR (default) or Loc-Tag (Gemba walk, no QR required)
     @State private var selectedAnchorType: AnchorType = .qr
+    // B2: how AR sessions find this chamber. 'worldMap' default; 'object'
+    // means the author scans the chamber's shape right after creating it.
+    @State private var originObject = false
 
     // Step 2: shown after QR anchor is created (not used for Loc-Tag)
     @State private var createdAnchor: Anchor? = nil
@@ -719,6 +722,23 @@ struct CreateAnchorSheet: View {
                     Text("Tap any surface in AR to place issue tags. No QR code needed — the space itself is the anchor.")
                 case .loto:
                     Text("One anchor per control panel. A QR code is printed and mounted on the panel; Safe Off and LOTO points are placed against its world map.")
+                }
+            }
+
+            // ── B2: origin source (chambers only) ──────────────────────────────
+            if selectedAnchorType == .qr {
+                Section {
+                    Picker("Find this chamber by", selection: $originObject) {
+                        Text("World map").tag(false)
+                        Text("Its shape (object scan)").tag(true)
+                    }
+                    .pickerStyle(.segmented)
+                } header: {
+                    Text("How should the app find this chamber?")
+                } footer: {
+                    Text(originObject
+                         ? "You'll scan the chamber once from the Anchor Hub (walk around it, ~1–2 min). Sessions then recognise it by shape — the QR stays the key, the world map is the fallback. Best for textured equipment; poor on flat or shiny panels."
+                         : "The first Author scan seals a world map of the chamber; later sessions match it. The QR is the key and a drift check. Works everywhere; needs a similar viewpoint to match.")
                 }
             }
 
@@ -931,7 +951,8 @@ struct CreateAnchorSheet: View {
                     qrSizeCm:      10.0,     // canonical size — stored in SIB, never changes
                     anchorType:    selectedAnchorType == .loto ? .loto : nil,
                     createdBy:     settings.authorName,
-                    configId:      cfg
+                    configId:      cfg,
+                    originSource:  (selectedAnchorType == .qr && originObject) ? "object" : nil
                 )
                 anchor = try await client.createAnchor(req)
                 isCreating    = false

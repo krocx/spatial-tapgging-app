@@ -1810,9 +1810,13 @@ function mapSealedHtml(anchor) {
 // device); the .arobject lives on SIB and is the chamber's origin when the
 // anchor's origin source is 'object' (B2).
 function objectScanHtml(anchor) {
-  if (!anchor.objectScannedAt) return '';
+  // B2: origin source pill (object intent shows even before the scan exists)
+  const src = anchor.originSource === 'object'
+    ? `<span class="badge" style="background:rgba(45,212,191,.15);color:#5eead4" title="Origin source: detected object (world map kept as fallback, QR is the key)">◈ Origin: object${anchor.objectScannedAt ? '' : ' · scan pending'}</span>`
+    : '';
+  if (!anchor.objectScannedAt) return src;
   const d = new Date(anchor.objectScannedAt).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
-  return `<span class="badge badge-green" title="ARKit reference object scanned on device (${anchor.objectScannedAt}) — sparse feature points, no mesh or photo">◈ Object scanned · ${d}</span> <button class="btn btn-ghost btn-sm" style="font-size:0.62rem;padding:1px 6px" title="Remove the object scan (the Author can scan again)" onclick="removeObjectScan('${anchor.id}','${jsEsc(anchor.assetId)}')">Remove</button>`;
+  return src + ` <span class="badge badge-green" title="ARKit reference object scanned on device (${anchor.objectScannedAt}) — sparse feature points, no mesh or photo">◈ Object scanned · ${d}</span> <button class="btn btn-ghost btn-sm" style="font-size:0.62rem;padding:1px 6px" title="Remove the object scan (the Author can scan again)" onclick="removeObjectScan('${anchor.id}','${jsEsc(anchor.assetId)}')">Remove</button>`;
 }
 async function removeObjectScan(anchorId, assetId) {
   if (!confirm(`Remove the object scan of "${assetId}"?\n\nThe chamber falls back to its world map / QR until an Author scans it again.`)) return;

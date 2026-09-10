@@ -140,6 +140,9 @@ router.post('/', async (req: Request, res: Response) => {
     ...(typeof body.configId === 'string' && body.configId.trim()
         && chamberConfigStore.findById(body.configId.trim())
         ? { configId: body.configId.trim() } : {}),
+    // B2: origin source — 'object' is a declared intent at creation (the scan
+    // comes next); sessions fall back to map/QR until the scan exists.
+    ...(body.originSource === 'object' ? { originSource: 'object' as const } : {}),
     createdAt: now,
     updatedAt: now,
   };
@@ -614,6 +617,25 @@ router.get('/:id/object/meta', (req: Request, res: Response) => {
   return res.json({ data: meta, timestamp: new Date().toISOString() });
 });
 
+// B2: calibration — the object's pose in the QR frame, written by an Author
+// session that saw both. Sixteen finite numbers, column-major.
+router.patch('/:id/object/meta', express.json(), (req: Request, res: Response) => {
+  const anchor = anchorStore.findById(req.params.id);
+  if (!anchor) return res.status(404).json({ error: `Anchor ${req.params.id} not found`, timestamp: new Date().toISOString() });
+  const meta = readObjectMeta(anchor.id);
+  if (!meta) return res.status(404).json({ error: `No reference object for anchor ${anchor.id}`, timestamp: new Date().toISOString() });
+  const { objectPoseInQR } = (req.body ?? {}) as { objectPoseInQR?: unknown };
+  if (!Array.isArray(objectPoseInQR) || objectPoseInQR.length !== 16 ||
+      !objectPoseInQR.every(v => typeof v === 'number' && Number.isFinite(v))) {
+    return res.status(400).json({ error: 'objectPoseInQR must be 16 finite numbers (column-major 4×4)', timestamp: new Date().toISOString() });
+  }
+  const next: AnchorObjectMeta = { ...meta, objectPoseInQR, calibratedAt: new Date().toISOString() };
+  try { fs.writeFileSync(objectMetaPath(anchor.id), JSON.stringify(next)); }
+  catch (err) { return res.status(500).json({ error: `Failed to store calibration: ${err}`, timestamp: new Date().toISOString() }); }
+  console.log(`[SIB] Object calibrated to QR frame for anchor ${anchor.id}`);
+  return res.json({ data: next, timestamp: new Date().toISOString() });
+});
+
 router.delete('/:id/object', (req: Request, res: Response) => {
   const anchor = anchorStore.findById(req.params.id);
   if (!anchor) return res.status(404).json({ error: `Anchor ${req.params.id} not found`, timestamp: new Date().toISOString() });
@@ -707,8 +729,18 @@ router.patch('/:id', (req: Request, res: Response) => {
       updated.configId = body.configId;
     }
   }
+  // B2: origin source
+  if ('originSource' in body) {
+    if (body.originSource === 'object') {
+      updated.originSource = 'object';
+    } else if (body.originSource === 'worldMap' || body.originSource === undefined) {
+      delete updated.originSource;
+    } else {
+      return res.status(400).json({ error: "originSource must be 'worldMap' or 'object'", timestamp: now });
+    }
+  }
   anchorStore.save(updated);
-  return res.json({ data: updated, timestamp: now });
+  return res.json({ data: withMapSealed(updated), timestamp: now });
 });
 
 // ── POST /anchors/:id/duplicate — template copy (U3, 2026.4.45) ───────────────

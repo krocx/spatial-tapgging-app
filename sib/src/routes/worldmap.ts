@@ -135,11 +135,12 @@ router.post('/guide/:guideId/upload', (req: Request, res: Response): void => {
     return;
   }
 
-  const { worldMapBase64, capturedAt, referencePhotoBase64, referenceCameraPose } = req.body as {
+  const { worldMapBase64, capturedAt, referencePhotoBase64, referenceCameraPose, objectPoseInMap } = req.body as {
     worldMapBase64:        string;
     capturedAt:            string;
     referencePhotoBase64?: string;
     referenceCameraPose?:  number[];
+    objectPoseInMap?:      number[];   // B2 calibration (optional)
   };
 
   if (!worldMapBase64) {
@@ -190,6 +191,12 @@ router.post('/guide/:guideId/upload', (req: Request, res: Response): void => {
         && referenceCameraPose.length === 16 && referenceCameraPose.every(n => typeof n === 'number' && isFinite(n))) {
       meta.referenceCameraPose = referenceCameraPose;
     }
+    // B2: the detected object's pose in THIS map's frame — lets a session that
+    // detects the object reach the map frame without relocalizing.
+    if (Array.isArray(objectPoseInMap) && objectPoseInMap.length === 16
+        && objectPoseInMap.every(n => typeof n === 'number' && isFinite(n))) {
+      meta.objectPoseInMap = objectPoseInMap;
+    }
     meta.capturedAt = typeof capturedAt === 'string' && capturedAt ? capturedAt : new Date().toISOString();
     fs.writeFileSync(guideRefPosePath(guideId), JSON.stringify(meta));
   } catch (err) { console.error('[SIB] Failed to save guide map meta (non-fatal):', err); }
@@ -239,6 +246,27 @@ router.delete('/guide/:guideId', (req: Request, res: Response): void => {
                 detail: `reset map "${guide.name}"${actor ? ` by ${actor.name}` : ''} · ${removed} file(s) · ${unplaced} step(s) unplaced` });
   console.log(`[SIB] Guide map reset ${guideId}: ${removed} files, ${unplaced} steps unplaced`);
   res.json({ data: { guideId, removed, unplaced }, timestamp: now });
+});
+
+// PATCH /worldmap/guide/:guideId/meta — B2: { objectPoseInMap: number[16] }
+// Written by a Place Steps session that detected the object while in the
+// map's frame; capturedAt is NOT touched (the map itself didn't change).
+router.patch('/guide/:guideId/meta', (req: Request, res: Response): void => {
+  const { guideId } = req.params;
+  if (!isValidGuideId(guideId)) { res.status(400).json({ error: 'Invalid guideId' }); return; }
+  if (!fs.existsSync(guideWorldMapPath(guideId))) { res.status(404).json({ error: 'No world map for this guide' }); return; }
+  const { objectPoseInMap } = (req.body ?? {}) as { objectPoseInMap?: unknown };
+  if (!Array.isArray(objectPoseInMap) || objectPoseInMap.length !== 16
+      || !objectPoseInMap.every(n => typeof n === 'number' && isFinite(n))) {
+    res.status(400).json({ error: 'objectPoseInMap must be 16 finite numbers' }); return;
+  }
+  let meta: Record<string, unknown> = {};
+  try { if (fs.existsSync(guideRefPosePath(guideId))) meta = JSON.parse(fs.readFileSync(guideRefPosePath(guideId), 'utf8')); } catch { meta = {}; }
+  meta.objectPoseInMap = objectPoseInMap;
+  meta.objectCalibratedAt = new Date().toISOString();
+  try { fs.writeFileSync(guideRefPosePath(guideId), JSON.stringify(meta)); }
+  catch (err) { res.status(500).json({ error: `Failed to store calibration: ${err}` }); return; }
+  res.json({ data: meta, timestamp: new Date().toISOString() });
 });
 
 // GET /worldmap/guide/:guideId/meta — X1: { referenceCameraPose?: number[16], capturedAt? }

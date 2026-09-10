@@ -634,20 +634,23 @@ final class SIBClient {
     /// Also accepts an optional JPEG reference photo (base64) for Operator re-localization.
     /// 90s timeout — ARWorldMap blobs can be large.
     func uploadGuideWorldMap(guideId: String, mapData: Data, referencePhotoData: Data? = nil,
-                             referenceCameraPose: [Float]? = nil) async throws {
+                             referenceCameraPose: [Float]? = nil, objectPoseInMap: [Float]? = nil) async throws {
         struct Body: Encodable {
             let worldMapBase64:        String
             let capturedAt:            String
             let referencePhotoBase64:  String?
             /// X1: column-major 4×4 camera transform at the reference photo.
             let referenceCameraPose:   [Float]?
+            /// B2: detected object's pose in this map's frame.
+            let objectPoseInMap:       [Float]?
         }
         struct Resp: Decodable { let guideId: String; let sizeBytes: Int; let refPhotoSaved: Bool }
         let body = Body(
             worldMapBase64:       mapData.base64EncodedString(),
             capturedAt:           ISO8601DateFormatter().string(from: Date()),
             referencePhotoBase64: referencePhotoData?.base64EncodedString(),
-            referenceCameraPose:  referencePhotoData != nil ? referenceCameraPose : nil
+            referenceCameraPose:  referencePhotoData != nil ? referenceCameraPose : nil,
+            objectPoseInMap:      objectPoseInMap
         )
         _ = try await post(Resp.self, path: "/worldmap/guide/\(guideId)/upload", body: body, timeout: 90)
     }
@@ -723,6 +726,27 @@ final class SIBClient {
 
     func deleteAnchorObject(anchorId: String) async throws {
         _ = try await delete(path: "/anchors/\(anchorId)/object")
+    }
+
+    /// B2: store the object's pose in the QR frame (author session that saw both).
+    func calibrateAnchorObject(anchorId: String, objectPoseInQR: simd_float4x4) async throws -> AnchorObjectMeta {
+        struct Body: Encodable { let objectPoseInQR: [Float] }
+        return try await patch(AnchorObjectMeta.self, path: "/anchors/\(anchorId)/object/meta",
+                               body: Body(objectPoseInQR: ARCoordinateFrame.floats(from: objectPoseInQR)))
+    }
+
+    /// B2: set the origin source ('worldMap' | 'object').
+    func setAnchorOriginSource(anchorId: String, source: String) async throws -> Anchor {
+        struct Body: Encodable { let originSource: String }
+        return try await patch(Anchor.self, path: "/anchors/\(anchorId)", body: Body(originSource: source))
+    }
+
+    /// B2: guide-map calibration — the object's pose in the guide map frame.
+    func calibrateGuideObject(guideId: String, objectPoseInMap: simd_float4x4) async throws {
+        struct Body: Encodable { let objectPoseInMap: [Float] }
+        struct R: Decodable { let objectCalibratedAt: String? }
+        _ = try await patch(R.self, path: "/worldmap/guide/\(guideId)/meta",
+                            body: Body(objectPoseInMap: ARCoordinateFrame.floats(from: objectPoseInMap)))
     }
 
     /// Author: seal the map — record the origin pose alongside the uploaded map.

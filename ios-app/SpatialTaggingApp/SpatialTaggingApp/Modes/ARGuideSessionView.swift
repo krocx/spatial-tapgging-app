@@ -134,6 +134,10 @@ struct ARGuideSessionView: View {
     /// X1: author's camera pose at the reference photo (world-map coords) and
     /// whether "I'm Here" disagreed with it — pins are then suspect.
     @State private var referenceCameraPose: simd_float4x4? = nil
+    /// B2: the guide map's object calibration — when the chamber object is
+    /// detected, the session is re-based onto the map frame immediately.
+    @State private var objectPoseInMap: simd_float4x4? = nil
+    @State private var originViaObject = false
     @State private var environmentDrift   = false
     /// Same pass threshold the inspection flow uses (OperatorModeView default).
     private let stepPassThreshold: Double = 0.60
@@ -300,6 +304,18 @@ struct ARGuideSessionView: View {
                     // Remove 3D ghost model overlay
                     removeGhostOverlay()
                     arManager.pauseSession()
+                }
+                .onChange(of: arManager.objectTransform) { objT in
+                    // B2: object seen + calibrated → world re-based onto the map
+                    // frame; pins are exact without feature-point matching.
+                    guard objT != nil, !originViaObject, phase == .relocalizing,
+                          let cal = objectPoseInMap else { return }
+                    if arManager.rebaseWorld(objectPoseInFrame: cal) {
+                        originViaObject = true
+                        UINotificationFeedbackGenerator().notificationOccurred(.success)
+                        showNotice("Chamber recognised — steps placed from its shape")
+                        if case .relocalizing = phase { transitionToNavigating() }
+                    }
                 }
                 .onChange(of: arManager.isRelocalizing) { stillRelocalizing in
                     guard !stillRelocalizing, phase == .relocalizing else { return }
@@ -1064,11 +1080,18 @@ struct ARGuideSessionView: View {
             // B1: same loader as the Spatial Inspection gate — meta-checked
             // local cache → SIB → none. The meta carries the author's camera
             // pose at the reference photo (X1 drift check at "I'm Here").
+            // B2: chamber object → detection runs alongside the map; must be set
+            // before the session starts.
+            if anchor.objectScannedAt != nil {
+                let ob = await ReferenceObjectCache.load(anchorId: anchor.id, client: client)
+                arManager.setReferenceObject(ob?.archive, name: anchor.id)
+            }
             async let mapFetch   = WorldMapCache.load(.guide(guide.id), client: client)
             async let photoFetch = client.fetchGuideWorldMapPhoto(guideId: guide.id)
             let (bundle, photoData) = try await (mapFetch, photoFetch)
             let mapData = bundle?.map
             referenceCameraPose = bundle?.meta.referenceCameraPoseTransform
+            objectPoseInMap     = bundle?.meta.objectPoseInMapTransform
 
             if let pd = photoData { referencePhoto = UIImage(data: pd) }
 

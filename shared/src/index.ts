@@ -138,9 +138,20 @@ export interface Anchor {
    * no object scan. Never stored; never accepted on write.
    */
   objectScannedAt?: string;
+  /**
+   * B2 (2026.4.46): how AR sessions find this chamber's origin.
+   *   'worldMap' (default, absent) — sealed ARWorldMap; QR is the key + drift check.
+   *   'object'   — detected ARKit reference object; map kept as fallback.
+   * Doctrine: tags stay QR-relative and guide pins stay map-relative — the
+   * object supplies the frame through a stored calibration (see
+   * AnchorObjectMeta.objectPoseInQR / guide meta objectPoseInMap).
+   */
+  originSource?: OriginSource;
   createdAt: string; // ISO 8601
   updatedAt: string;
 }
+
+export type OriginSource = 'worldMap' | 'object';
 
 /** B1: meta stored beside `<anchorId>.arobject` — GET /anchors/:id/object/meta */
 export interface AnchorObjectMeta {
@@ -152,12 +163,24 @@ export interface AnchorObjectMeta {
   center?:        { x: number; y: number; z: number };
   featurePoints?: number;
   sizeBytes?:     number;
+  /**
+   * B2 calibration — the object anchor's pose expressed in the gravity-
+   * normalised QR frame (column-major 4×4), captured by an Author session
+   * that saw both. Sessions that detect the object derive the QR frame as
+   * objectPose_now × inverse(objectPoseInQR); `anchor_rel` tags need no
+   * migration. Absent until an Author has been through the gate with the
+   * object detected.
+   */
+  objectPoseInQR?: number[];
+  calibratedAt?:   string;
 }
 
 /** C1: PATCH /anchors/:id — engineer+. configId null clears. */
 export interface UpdateAnchorRequest {
-  assetId?:  string;
-  configId?: string | null;
+  assetId?:      string;
+  configId?:     string | null;
+  /** B2: 'object' requires an object scan to exist (409 otherwise). */
+  originSource?: OriginSource;
 }
 
 // ============================================================
@@ -202,6 +225,8 @@ export interface CreateAnchorRequest {
   createdBy?: string;
   /** C1: chamber configuration this anchor belongs to (see Anchor.configId). */
   configId?: string;
+  /** B2: origin source chosen at creation ('worldMap' default). */
+  originSource?: OriginSource;
 }
 
 // ============================================================

@@ -27,9 +27,64 @@ struct WorldMapMeta: Codable, Equatable {
     var referenceCameraPose: [Float]?
     var sealedBy:            String?
     var sealed:              Bool?
+    /// B2: the detected object's pose in the guide map's frame.
+    var objectPoseInMap:     [Float]?
+    var objectCalibratedAt:  String?
 
     var anchorPoseTransform:          simd_float4x4? { ARCoordinateFrame.transform(from: anchorPose) }
     var referenceCameraPoseTransform: simd_float4x4? { ARCoordinateFrame.transform(from: referenceCameraPose) }
+    var objectPoseInMapTransform:     simd_float4x4? { ARCoordinateFrame.transform(from: objectPoseInMap) }
+}
+
+// ── B2: reference-object cache ────────────────────────────────────────────────
+// Same discipline as maps: meta first (scannedAt/calibratedAt), reuse the local
+// archive when unchanged, otherwise download; offline uses the cached copy.
+enum ReferenceObjectCache {
+    struct Bundle { let archive: Data; let meta: AnchorObjectMeta; let source: WorldMapBundle.Source }
+
+    static func load(anchorId: String, client: SIBClient) async -> Bundle? {
+        let localMeta = loadLocalMeta(anchorId)
+        let local     = loadLocal(anchorId)
+        let remoteMeta: AnchorObjectMeta?
+        do { remoteMeta = try await client.fetchAnchorObjectMeta(anchorId: anchorId) }
+        catch { remoteMeta = nil }
+        if let rm = remoteMeta {
+            if let local, let lm = localMeta, lm.scannedAt == rm.scannedAt {
+                return Bundle(archive: local, meta: rm, source: .local)   // meta may carry a newer calibration
+            }
+            do {
+                guard let data = try await client.fetchAnchorObject(anchorId: anchorId) else { clear(anchorId); return nil }
+                store(anchorId, archive: data, meta: rm)
+                return Bundle(archive: data, meta: rm, source: .remote)
+            } catch {
+                if let local, let lm = localMeta { return Bundle(archive: local, meta: lm, source: .local) }
+                return nil
+            }
+        }
+        // Offline / meta failed: whatever is cached.
+        if let local, let lm = localMeta { return Bundle(archive: local, meta: lm, source: .local) }
+        return nil
+    }
+
+    static func store(_ anchorId: String, archive: Data, meta: AnchorObjectMeta) {
+        guard let u = url(anchorId, "arobject"), let mu = url(anchorId, "object.json") else { return }
+        try? archive.write(to: u, options: .atomic)
+        if let m = try? JSONEncoder().encode(meta) { try? m.write(to: mu, options: .atomic) }
+    }
+    static func clear(_ anchorId: String) {
+        for ext in ["arobject", "object.json"] { if let u = url(anchorId, ext) { try? FileManager.default.removeItem(at: u) } }
+    }
+    private static func loadLocal(_ id: String) -> Data? { url(id, "arobject").flatMap { try? Data(contentsOf: $0) } }
+    private static func loadLocalMeta(_ id: String) -> AnchorObjectMeta? {
+        guard let u = url(id, "object.json"), let d = try? Data(contentsOf: u) else { return nil }
+        return try? JSONDecoder().decode(AnchorObjectMeta.self, from: d)
+    }
+    private static func url(_ id: String, _ ext: String) -> URL? {
+        guard let docs = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return nil }
+        let dir = docs.appendingPathComponent("Objects", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        return dir.appendingPathComponent("\(id).\(ext)")
+    }
 }
 
 struct WorldMapBundle {

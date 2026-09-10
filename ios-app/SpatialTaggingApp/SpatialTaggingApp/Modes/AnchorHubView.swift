@@ -48,6 +48,9 @@ struct AnchorHubView: View {
     @State private var showObjectScan = false
     @State private var objectMeta: AnchorObjectMeta? = nil
     @State private var showRemoveObjectConfirm = false
+    // B2: origin source — mirrors the server; picker PATCHes it.
+    @State private var originObject = false
+    @State private var originNote: String? = nil
 
     // Tour frame capture
     @State private var tourFrames: [TourStep: CGRect] = [:]
@@ -230,10 +233,38 @@ struct AnchorHubView: View {
                             Label("Remove object scan…", systemImage: "trash").font(.subheadline)
                         }
                     }
+                    // B2: origin source
+                    Picker("Find this chamber by", selection: $originObject) {
+                        Text("World map").tag(false)
+                        Text("Its shape").tag(true)
+                    }
+                    .pickerStyle(.segmented)
+                    .onChange(of: originObject) { v in
+                        Task {
+                            do {
+                                _ = try await SIBClient(settings: settings)
+                                    .setAnchorOriginSource(anchorId: anchor.id, source: v ? "object" : "worldMap")
+                                originNote = v
+                                    ? (objectMeta == nil ? "Origin: object — scan the chamber above to activate it."
+                                       : (objectMeta?.objectPoseInQR == nil
+                                          ? "Origin: object — scan the QR once in Author mode with the chamber in view to calibrate."
+                                          : "Origin: object."))
+                                    : "Origin: world map."
+                            } catch { originNote = friendlyMessage(for: error); originObject = !v }
+                        }
+                    }
+                    if let n = originNote {
+                        Text(n).font(.caption).foregroundStyle(.secondary)
+                    } else if originObject, let m = objectMeta {
+                        Text(m.objectPoseInQR == nil
+                             ? "Not calibrated yet — scan the QR once in Author mode with the chamber in view."
+                             : "Calibrated \(m.calibratedAt?.prefix(10) ?? "") — sessions recognise this chamber by shape.")
+                            .font(.caption).foregroundStyle(m.objectPoseInQR == nil ? .orange : .secondary)
+                    }
                 } header: {
                     Text("Object tracking")
                 } footer: {
-                    Text("Entirely on-device. The scan is a sparse point cloud stored on your SIB — not a mesh or a photo.")
+                    Text("Entirely on-device. The scan is a sparse point cloud stored on your SIB — not a mesh or a photo. The QR stays the key; the world map stays the fallback.")
                 }
                 .confirmationDialog("Remove the object scan?", isPresented: $showRemoveObjectConfirm, titleVisibility: .visible) {
                     Button("Remove", role: .destructive) {
@@ -341,6 +372,7 @@ struct AnchorHubView: View {
         .onAppear {
             Task { await loadTags() }
             if mode == .author, anchor.isChamber {
+                originObject = anchor.usesObjectOrigin
                 Task { objectMeta = try? await SIBClient(settings: settings).fetchAnchorObjectMeta(anchorId: anchor.id) }
             }
             // Tour: advance to anchorHub.
