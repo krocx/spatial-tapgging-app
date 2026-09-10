@@ -133,7 +133,7 @@
     <div class="copy">
       <div class="eyebrow">Spatial Intelligence Backbone</div>
       <h2>One chamber. One origin.</h2>
-      <p>Scan the chamber once and every guide and tag knows exactly where it lives — for every session, every shift, every technician. Reusable every day.</p>
+      <p>Scan the chamber once and every guide and spatial tag knows exactly where it lives — for every session, every shift, every technician. Reusable every day.</p>
       <p style="color:#aab1d6">And if the part moves, the WI moves with it: an optional thirty-second scan lets SIB know our parts by their shape.</p>
       <span class="hint">Millimetre-stable · offline · on-prem</span><span class="hint"><b>Drag</b> sideways to move the part</span><a class="more" href="/catalog#arworldmap-memory">In the catalogue →</a>
     </div>
@@ -308,48 +308,103 @@ const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true, powerPref
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 el.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 scene.fog = new THREE.FogExp2(0x070a1a, 0.045);
 const camera = new THREE.PerspectiveCamera(38, innerWidth/innerHeight, 0.1, 200);
-scene.add(new THREE.HemisphereLight(0xdde3ff, 0x0b1026, 0.9));
-const key = new THREE.DirectionalLight(0xffffff, 1.1); key.position.set(4, 8, 5); scene.add(key);
-const rim = new THREE.DirectionalLight(0x818cf8, 0.8); rim.position.set(-6, 4, -6); scene.add(rim);
-const floor = new THREE.Mesh(new THREE.CircleGeometry(6, 64), new THREE.MeshStandardMaterial({ color:0x0d1230, roughness:1 }));
-floor.rotation.x = -Math.PI/2; scene.add(floor);
-const grid = new THREE.GridHelper(12, 24, 0x1e2a5a, 0x141b3d); grid.position.y = 0.002; scene.add(grid);
+scene.add(new THREE.HemisphereLight(0xdde3ff, 0x0b1026, 0.55));
+const key = new THREE.DirectionalLight(0xffffff, 1.6); key.position.set(4, 8, 5); key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048); key.shadow.camera.near = 1; key.shadow.camera.far = 30;
+key.shadow.camera.left = key.shadow.camera.bottom = -5; key.shadow.camera.right = key.shadow.camera.top = 5; key.shadow.bias = -0.0008; key.shadow.radius = 4;
+scene.add(key);
+const rim = new THREE.DirectionalLight(0x818cf8, 1.0); rim.position.set(-6, 4, -6); scene.add(rim);
+const fill = new THREE.PointLight(0x22d3ee, 6, 12, 1.6); fill.position.set(-2.5, 1.2, 2.5); scene.add(fill);
+// Studio environment (procedural — no HDR file to ship): a dark room with two soft panels,
+// baked through PMREM so brushed steel and clearcoat paint pick up real reflections.
+{ const pm = new THREE.PMREMGenerator(renderer); pm.compileEquirectangularShader();
+  const room = new THREE.Scene(); room.background = new THREE.Color(0x0a0e22);
+  const panel = (w,h,x,y,z,ry,c,i) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w,h), new THREE.MeshBasicMaterial({ color:c })); m.material.color.multiplyScalar(i); m.position.set(x,y,z); m.rotation.y = ry; room.add(m); };
+  panel(6, 3, 0, 4.5, -6, 0, 0xffffff, 3.0);      // top-back soft box
+  panel(3, 6, 7, 3, 0, -Math.PI/2, 0xc7d2fe, 2.2); // right cool panel
+  panel(3, 6, -7, 2, 0, Math.PI/2, 0x818cf8, 1.2); // left indigo panel
+  panel(12, 12, 0, -1, 0, 0, 0x0b1026, 1);
+  scene.environment = pm.fromScene(room, 0.04).texture; pm.dispose(); }
+const floor = new THREE.Mesh(new THREE.CircleGeometry(6, 64), new THREE.MeshStandardMaterial({ color:0x0d1230, roughness:.95, metalness:0 }));
+floor.rotation.x = -Math.PI/2; floor.receiveShadow = true; scene.add(floor);
+const shadowCatcher = new THREE.Mesh(new THREE.CircleGeometry(6, 64), new THREE.ShadowMaterial({ opacity:.45 }));
+shadowCatcher.rotation.x = -Math.PI/2; shadowCatcher.position.y = 0.001; shadowCatcher.receiveShadow = true; scene.add(shadowCatcher);
+const grid = new THREE.GridHelper(12, 24, 0x1e2a5a, 0x141b3d); grid.position.y = 0.002; grid.material.transparent = true; grid.material.opacity = .55; scene.add(grid);
 
 /* stylised chamber — inspired by our tools' silhouette, nothing traced */
+const PAINT = (c) => new THREE.MeshPhysicalMaterial({ color:c, roughness:.32, metalness:.05, clearcoat:.7, clearcoatRoughness:.25 });
+const STEELM = () => new THREE.MeshStandardMaterial({ color:0xb6bfd1, roughness:.28, metalness:.9 });
+const BRUSH  = () => new THREE.MeshStandardMaterial({ color:0x8f9bb3, roughness:.42, metalness:.85 });
+const CREAM  = () => new THREE.MeshStandardMaterial({ color:0xe9ecf4, roughness:.55, metalness:.04 });
+const RUBBER = () => new THREE.MeshStandardMaterial({ color:0x161b2c, roughness:.9, metalness:0 });
+const GLASS  = () => new THREE.MeshPhysicalMaterial({ color:0x9fd8ff, roughness:.05, metalness:0, transparent:true, opacity:.55, clearcoat:1 });
 const M = (c, o={}) => new THREE.MeshStandardMaterial(Object.assign({ color:c, roughness:.55, metalness:.15 }, o));
-const BLUE = 0x2563eb, STEEL = 0x8f9bb3, LIGHT = 0xe6e9f2, DARK = 0x1a2033;
 const chamber = new THREE.Group(); scene.add(chamber);
-const box = (w,h,d,mat,x,y,z,parent=chamber) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), mat); m.position.set(x,y,z); parent.add(m); return m; };
-const cyl = (r,h,mat,x,y,z,parent=chamber,rz=0) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,32), mat); m.position.set(x,y,z); m.rotation.z=rz; parent.add(m); return m; };
-box(2.3, 0.08, 1.6, M(0xd4a017,{roughness:.9}), 0, 0.04, 0);
-[[-0.85,-0.55],[0.85,-0.55],[-0.85,0.55],[0.85,0.55]].forEach(([x,z]) => cyl(0.05, 0.16, M(STEEL), x, 0.16, z));
-box(1.9, 1.0, 1.3, M(BLUE), 0, 0.74, 0);
-box(0.5, 0.42, 0.02, M(DARK), -0.5, 0.72, 0.66);
-for (let i=0;i<6;i++) box(0.44, 0.02, 0.03, M(STEEL), -0.5, 0.56+i*0.06, 0.67);
-box(0.7, 0.5, 0.02, M(LIGHT), 0.45, 0.72, 0.66);
-box(0.5, 0.3, 0.02, M(0x60a5fa,{emissive:0x1d4ed8, emissiveIntensity:.4}), 0.45, 0.68, 0.67);
-box(1.7, 0.9, 1.1, M(0x2b3350), 0, 1.7, 0);
-[[-0.75,-0.45],[0.75,-0.45],[-0.75,0.45],[0.75,0.45]].forEach(([x,z]) => box(0.08, 1.6, 0.08, M(STEEL), x, 2.0, z));
-box(0.6, 0.55, 0.45, M(LIGHT), -0.35, 1.55, 0.5);
-for (let i=0;i<4;i++) box(0.07, 0.35, 0.02, M(0x3b82f6), -0.55+i*0.12, 1.55, 0.73);
-const tray = box(1.2, 0.08, 0.7, M(0x0f1424,{roughness:.35, metalness:.5}), 0.05, 2.35, 0.25); tray.rotation.x = 0.35;
-cyl(0.06, 0.9, M(STEEL), 0.95, 1.9, 0.2);
-box(0.55, 0.12, 0.28, M(LIGHT), 1.15, 2.35, 0.2);
-box(0.16, 0.5, 0.16, M(0x111827), 0.98, 2.3, -0.35);
-box(0.07, 0.07, 0.07, M(0xef4444,{emissive:0xef4444, emissiveIntensity:.8}), 0.98, 2.62, -0.35);
-box(1.0, 0.9, 0.9, M(LIGHT), 0, 3.15, -0.05);
-cyl(0.5, 1.0, M(LIGHT), 0, 3.6, -0.05);
-const capTop = new THREE.Mesh(new THREE.SphereGeometry(0.5, 32, 16, 0, Math.PI*2, 0, Math.PI/2), M(LIGHT)); capTop.position.set(0, 4.1, -0.05); chamber.add(capTop);
-cyl(0.22, 0.05, M(0x64748b), 0, 2.95, 0.42, chamber, Math.PI/2);
-box(0.36, 0.1, 0.02, M(0xfbbf24), 0.2, 3.35, 0.41);
-const cableMat = new THREE.LineBasicMaterial({ color:0x2b3350 });
-for (let i=0;i<4;i++){ const pts=[]; for(let t=0;t<=1;t+=0.1){ pts.push(new THREE.Vector3(-0.9+0.1*i, 1.3+1.8*t, 0.55*Math.sin(t*Math.PI)*(0.5+0.2*i))); } chamber.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), cableMat)); }
+/* rounded box: rounded-rect extruded with a bevel → soft edges catch the light */
+function rboxGeo(w,h,d,r=0.03){ const sh = new THREE.Shape(); const x=-w/2, y=-h/2; const rr = Math.min(r, w/2, h/2);
+  sh.moveTo(x+rr, y); sh.lineTo(x+w-rr, y); sh.quadraticCurveTo(x+w, y, x+w, y+rr); sh.lineTo(x+w, y+h-rr); sh.quadraticCurveTo(x+w, y+h, x+w-rr, y+h);
+  sh.lineTo(x+rr, y+h); sh.quadraticCurveTo(x, y+h, x, y+h-rr); sh.lineTo(x, y+rr); sh.quadraticCurveTo(x, y, x+rr, y);
+  const g = new THREE.ExtrudeGeometry(sh, { depth: Math.max(0.001, d - 2*rr), bevelEnabled:true, bevelThickness:rr, bevelSize:rr, bevelSegments:3, curveSegments:6 });
+  g.center(); return g; }
+const add = (geo, mat, x,y,z, parent=chamber) => { const m = new THREE.Mesh(geo, mat); m.position.set(x,y,z); m.castShadow = m.receiveShadow = true; parent.add(m); return m; };
+const rbox = (w,h,d,mat,x,y,z,r=0.03,parent=chamber) => add(rboxGeo(w,h,d,r), mat, x,y,z, parent);
+const box  = (w,h,d,mat,x,y,z,parent=chamber) => add(new THREE.BoxGeometry(w,h,d), mat, x,y,z, parent);
+const cyl  = (r,h,mat,x,y,z,parent=chamber,rz=0,seg=32) => { const m = add(new THREE.CylinderGeometry(r,r,h,seg), mat, x,y,z, parent); m.rotation.z = rz; return m; };
+const bolt = (x,y,z,parent=chamber) => { const b = cyl(0.022, 0.02, STEELM(), x,y,z, parent, 0, 12); b.rotation.x = Math.PI/2; return b; };
+
+// pallet + levelling feet
+rbox(2.3, 0.08, 1.6, M(0xd4a017,{roughness:.9}), 0, 0.04, 0, 0.015);
+[[-0.85,-0.55],[0.85,-0.55],[-0.85,0.55],[0.85,0.55]].forEach(([x,z]) => { cyl(0.05, 0.16, STEELM(), x, 0.16, z); cyl(0.08, 0.02, RUBBER(), x, 0.09, z); });
+// base cabinet — clearcoat blue, seams, louvre, panel with handle, glowing HMI
+rbox(1.9, 1.0, 1.3, PAINT(0x2563eb), 0, 0.74, 0, 0.04);
+box(1.92, 0.012, 1.32, RUBBER(), 0, 0.99, 0);                   // top seam
+box(0.012, 0.9, 1.31, RUBBER(), 0.02, 0.74, 0);                 // door seam
+rbox(0.52, 0.44, 0.03, RUBBER(), -0.5, 0.72, 0.655, 0.01);      // louvre frame
+for (let i=0;i<7;i++) box(0.46, 0.018, 0.03, BRUSH(), -0.5, 0.55+i*0.055, 0.665);
+rbox(0.72, 0.52, 0.03, CREAM(), 0.45, 0.72, 0.655, 0.02);       // HMI panel
+rbox(0.52, 0.31, 0.012, new THREE.MeshStandardMaterial({ color:0x3b82f6, emissive:0x1d4ed8, emissiveIntensity:.9, roughness:.2 }), 0.45, 0.70, 0.672, 0.01);
+box(0.44, 0.02, 0.014, M(0x93c5fd,{emissive:0x60a5fa, emissiveIntensity:.8}), 0.45, 0.80, 0.68); // HMI header line
+for (let i=0;i<3;i++) box(0.12, 0.05, 0.014, M(0x1e3a8a), 0.32+i*0.13, 0.60, 0.68);   // soft keys
+cyl(0.012, 0.16, STEELM(), 0.86, 0.72, 0.68, chamber, 0);        // door handle
+bolt(-0.82, 0.30, 0.66); bolt(0.82, 0.30, 0.66); bolt(-0.82, 0.95, 0.66); bolt(0.82, 0.95, 0.66);
+box(0.5, 0.012, 0.012, new THREE.MeshStandardMaterial({ color:0x5eead4, emissive:0x5eead4, emissiveIntensity:1.6 }), -0.5, 0.98, 0.665); // status LED strip
+// mid frame — dark enclosure, brushed columns with bolted plates, cream controller with breaker slots
+rbox(1.7, 0.9, 1.1, M(0x2b3350,{roughness:.6, metalness:.3}), 0, 1.7, 0, 0.03);
+[[-0.75,-0.45],[0.75,-0.45],[-0.75,0.45],[0.75,0.45]].forEach(([x,z]) => { cyl(0.045, 1.6, BRUSH(), x, 2.0, z, chamber, 0, 8); box(0.16,0.06,0.16, BRUSH(), x, 1.27, z); bolt(x, 1.30, z+0.085); });
+rbox(0.6, 0.55, 0.45, CREAM(), -0.35, 1.55, 0.5, 0.02);
+for (let i=0;i<4;i++) { box(0.07, 0.35, 0.02, M(0x3b82f6,{roughness:.35}), -0.55+i*0.12, 1.55, 0.735); box(0.05, 0.05, 0.03, M(0x0f172a), -0.55+i*0.12, 1.42, 0.74); }
+box(0.5, 0.05, 0.02, M(0x0f172a), -0.35, 1.78, 0.735);           // controller label strip
+// gas lines — real tubes along curves, with steel fittings
+const tubeMat = BRUSH();
+[[-0.95,0.5],[-0.85,0.6],[-1.0,0.35],[-0.9,0.42]].forEach(([x,z],i) => {
+  const curve = new THREE.CatmullRomCurve3([ new THREE.Vector3(x, 1.1, z*0.4), new THREE.Vector3(x-0.15, 1.7, z), new THREE.Vector3(x-0.05, 2.4, z*0.8), new THREE.Vector3(x+0.25, 2.95, z*0.3) ]);
+  add(new THREE.TubeGeometry(curve, 24, 0.018 + 0.004*i, 10, false), tubeMat, 0,0,0);
+  const p = curve.getPoint(0.5); cyl(0.032, 0.06, STEELM(), p.x, p.y, p.z);
+});
+// tray / slab + side arm + black box + e-stop
+const tray = rbox(1.2, 0.08, 0.7, new THREE.MeshStandardMaterial({ color:0x0f1424, roughness:.3, metalness:.6 }), 0.05, 2.35, 0.25, 0.02); tray.rotation.x = 0.35;
+cyl(0.055, 0.9, BRUSH(), 0.95, 1.9, 0.2);
+rbox(0.55, 0.12, 0.28, CREAM(), 1.15, 2.35, 0.2, 0.02);
+rbox(0.16, 0.5, 0.16, RUBBER(), 0.98, 2.3, -0.35, 0.02);
+cyl(0.045, 0.05, new THREE.MeshStandardMaterial({ color:0xef4444, emissive:0xef4444, emissiveIntensity:1.2, roughness:.3 }), 0.98, 2.62, -0.35);
+cyl(0.06, 0.02, M(0xfbbf24), 0.98, 2.585, -0.35);
+// head — cream octagonal drum with viewport, ring, cap and dome
+rbox(1.0, 0.9, 0.9, CREAM(), 0, 3.15, -0.05, 0.05);
+cyl(0.5, 1.0, CREAM(), 0, 3.6, -0.05, chamber, 0, 8);
+const ringBand = cyl(0.52, 0.06, BRUSH(), 0, 3.12, -0.05, chamber, 0, 8);
+const capTop = new THREE.Mesh(new THREE.SphereGeometry(0.5, 40, 20, 0, Math.PI*2, 0, Math.PI/2), CREAM()); capTop.position.set(0, 4.1, -0.05); capTop.castShadow = true; chamber.add(capTop);
+cyl(0.24, 0.05, STEELM(), 0, 2.95, 0.42, chamber, Math.PI/2);   // viewport ring
+const port = cyl(0.19, 0.02, GLASS(), 0, 2.95, 0.45, chamber, Math.PI/2); port.castShadow = false;
+box(0.36, 0.1, 0.012, M(0xfbbf24), 0.2, 3.35, 0.405);             // warning label
+box(0.30, 0.07, 0.012, M(0xcbd5e1), -0.25, 3.35, 0.405);          // nameplate
 const bodyMeshes = [];
-chamber.traverse(o => { if (o.isMesh) { bodyMeshes.push(o); if (o.geometry.type==='BoxGeometry') o.add(new THREE.LineSegments(new THREE.EdgesGeometry(o.geometry), new THREE.LineBasicMaterial({ color:0x0b1026, transparent:true, opacity:.35 }))); } });
+chamber.traverse(o => { if (o.isMesh) bodyMeshes.push(o); });
 
 /* overlays */
 function sprite(text, opts={}) {
@@ -383,10 +438,28 @@ const axes = new THREE.AxesHelper(0.5); axes.position.copy(qr.position); chamber
 fader(qr, s => s>=0.85 && s<2.7); fader(originRing, s => s>=1.0 && s<1.9); fader(axes, s => s>=1.0 && s<1.9);
 const originLabel = sprite('Origin locked', { sub:'every session · every shift', w:300, h:80, stroke:'#818cf8' }); originLabel.position.set(0.75, 1.45, 1.05); chamber.add(originLabel); fader(originLabel, s => s>=1.05 && s<1.5);
 
+// spatial tags — the app's marker: horizontal ring + dot, ✓ when trained. QR-relative, so they
+// belong to the origin stop: "every guide and spatial tag knows exactly where it lives".
+function tagMarker(color, trained){ const g = new THREE.Group();
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(0.085, 0.016, 12, 48), new THREE.MeshStandardMaterial({ color, emissive:color, emissiveIntensity: trained? .9 : .5, roughness:.3 })); ring.rotation.x = Math.PI/2; g.add(ring);
+  const dot = new THREE.Mesh(new THREE.SphereGeometry(0.03, 16, 12), new THREE.MeshStandardMaterial({ color: trained?0x22c55e:color, emissive: trained?0x22c55e:color, emissiveIntensity:1.2 })); g.add(dot);
+  if (trained){ const ck = new THREE.Mesh(new THREE.SphereGeometry(0.038, 16, 12), new THREE.MeshStandardMaterial({ color:0x22c55e, emissive:0x22c55e, emissiveIntensity:1.2 })); ck.position.set(0.09, 0.09, 0); g.add(ck); }
+  g.userData.ring = ring; return g; }
+const tagDefs = [
+  { p:[0.45, 1.02, 0.68], c:0x3b82f6, t:'Inspection Point · HMI', trained:false, off:[0.95, 0.16] },
+  { p:[-0.35, 1.86, 0.74], c:0x22c55e, t:'Presence Check · breaker', trained:true,  off:[1.05, 0.02] },
+  { p:[0.98, 2.68, -0.35], c:0xf97316, t:'Warning · E-stop',       trained:false, off:[0.95, 0.18] },
+];
+const tags = tagDefs.map(d => { const g = tagMarker(d.c, d.trained); g.position.set(...d.p);
+  const lab = sprite(d.t, { w:320, h:60, size:18, stroke:'#'+d.c.toString(16).padStart(6,'0') }); lab.position.set(d.off[0], d.off[1], 0); g.add(lab);
+  g.userData.base = d.p.slice(); chamber.add(g); return g; });
+const tagLabel = sprite('Spatial tags', { sub:'anchored to the origin · trained ✓ validates on the spot', w:420, h:84, stroke:'#5eead4' }); tagLabel.position.set(0.9, 3.3, 1.0); chamber.add(tagLabel);
+fader(tagLabel, s => s>=1.25 && s<1.75);
+
 // shape beat (stage 1.5–2): point cloud on the surfaces
 let cloud;
 { const pts=[]; let seed=3; const rnd=()=> (seed=(seed*9301+49297)%233280)/233280;
-  const bx = bodyMeshes.filter(b => b.geometry.type==='BoxGeometry'||b.geometry.type==='CylinderGeometry');
+  const bx = bodyMeshes.filter(b => ['BoxGeometry','CylinderGeometry','ExtrudeGeometry'].includes(b.geometry.type));
   for (let i=0;i<2600;i++){ const b = bx[Math.floor(rnd()*bx.length)]; b.geometry.computeBoundingBox(); const bb=b.geometry.boundingBox;
     const f = Math.floor(rnd()*6); const p = new THREE.Vector3(bb.min.x+rnd()*(bb.max.x-bb.min.x), bb.min.y+rnd()*(bb.max.y-bb.min.y), bb.min.z+rnd()*(bb.max.z-bb.min.z));
     if(f===0)p.x=bb.min.x; if(f===1)p.x=bb.max.x; if(f===2)p.y=bb.max.y; if(f===3)p.z=bb.max.z; if(f===4)p.z=bb.min.z; if(f===5)p.y=bb.min.y;
@@ -488,6 +561,9 @@ function frame(){
   originRing.scale.setScalar(0.72*(1 + 0.08*Math.sin(t*4))); originRing.material.opacity = Math.min(originRing.material.opacity, 0.9);
   const qrT = Math.max(0, Math.min(1, (stage-0.85)/0.3)); qr.position.y = 1.0 + (1-ease(qrT))*2.2; qr.position.z = 0.66 + (1-ease(qrT))*1.2;
 
+  // spatial tags: fall onto the chamber right after the origin locks
+  tags.forEach((g,k) => { const tIn = Math.max(0, Math.min(1, (stage-1.12-k*0.06)/0.22)); const on = (stage>=1.12 && stage<1.9) || (ladderLevel>=2 && stage>6.5);
+    const cur = opacityOf(g); setOpacity(g, cur + ((on?1:0)-cur)*0.1); g.position.y = g.userData.base[1] + (stage<1.9 ? (1-ease(tIn))*1.2 : 0); g.userData.ring.rotation.z = t*0.8; });
   const s3 = manualScrub && stage>=1.8 && stage<2.9 ? scrub : Math.max(0, Math.min(3, (stage-1.8)*3));
   pins.forEach((g,k) => { const on = s3 > k+0.15 && stage>=1.8 && stage < (k===1?4.9:2.9) || (ladderLevel>=2 && stage>6.5 && k===1); const cur = opacityOf(g); const want=on?1:0; setOpacity(g, cur+(want-cur)*0.1); const drop = Math.max(0, 1-Math.max(0,(s3-k))*3); g.position.y = g.userData.base[1] + (stage<2.9 ? drop*1.5 : 0); });
   const gp = Math.max(0, Math.min(1, s3-1.2)); ghostPart.material.opacity = (stage>=1.8 && stage<2.9 && s3>0.9) ? 0.45 : 0; ghostPart.position.z = 0.5 + (1-ease(gp))*0.9;
