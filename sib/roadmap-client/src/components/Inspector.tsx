@@ -480,12 +480,12 @@ function StepSection({ nodeId }: { nodeId: string }): JSX.Element | null {
         {slots.map((sl, i) => {
           const m = models?.find(x => x.id === sl.modelId);
           return (
-            <div key={sl.slotId} className="step-row" style={{ alignItems: 'center', gap: 6, marginTop: 4 }}>
-              <span className="step-check-hint" style={{ minWidth: 14 }}>{i + 1}</span>
+            <div key={sl.slotId} className="model-slot">
+              <span className="step-check-hint model-slot-n">{i + 1}</span>
               <select
                 value={sl.modelId}
                 disabled={models === null}
-                style={{ flex: 1 }}
+                className="model-slot-select"
                 onChange={e => {
                   const id = e.target.value;
                   const nm = models?.find(x => x.id === id);
@@ -500,17 +500,19 @@ function StepSection({ nodeId }: { nodeId: string }): JSX.Element | null {
                   </option>
                 ))}
               </select>
-              <input
-                type="number" min={0.01} step={0.05} title="Scale" style={{ width: 62 }}
-                key={`scale-${nodeId}-${sl.slotId}-${sl.modelId}`}
-                defaultValue={sl.modelScale ?? m?.defaultScale ?? 1}
-                onBlur={e => {
-                  const v = parseFloat(e.target.value);
-                  if (isFinite(v) && v > 0 && v !== sl.modelScale) updateSlot(sl.slotId, { modelScale: v });
-                }}
-              />
-              <button className="btn" title="Remove this model"
-                onClick={() => writeSlots(slots.filter(x => x.slotId !== sl.slotId))}>✕</button>
+              <label className="model-slot-scale">Scale
+                <input
+                  type="number" min={0.01} step={0.05} title="Scale"
+                  key={`scale-${nodeId}-${sl.slotId}-${sl.modelId}`}
+                  defaultValue={sl.modelScale ?? m?.defaultScale ?? 1}
+                  onBlur={e => {
+                    const v = parseFloat(e.target.value);
+                    if (isFinite(v) && v > 0 && v !== sl.modelScale) updateSlot(sl.slotId, { modelScale: v });
+                  }}
+                />
+              </label>
+              <button className="btn model-slot-remove" title="Remove this model"
+                onClick={() => writeSlots(slots.filter(x => x.slotId !== sl.slotId))}>✕ Remove</button>
             </div>
           );
         })}
