@@ -132,8 +132,26 @@ export interface Anchor {
    * falls back to the QR pose as origin. Never stored; never accepted on write.
    */
   mapSealedAt?: string;
+  /**
+   * B1 (2026.4.46): READ-ONLY, derived on GET. ISO time an Author scanned
+   * this chamber as an ARKit reference object (.arobject on SIB). Absent =
+   * no object scan. Never stored; never accepted on write.
+   */
+  objectScannedAt?: string;
   createdAt: string; // ISO 8601
   updatedAt: string;
+}
+
+/** B1: meta stored beside `<anchorId>.arobject` — GET /anchors/:id/object/meta */
+export interface AnchorObjectMeta {
+  scannedAt:      string;
+  scannedBy?:     string;
+  /** Bounding box of the scan in metres (ARReferenceObject.extent). */
+  extent?:        { x: number; y: number; z: number };
+  /** ARReferenceObject.center relative to the object anchor origin. */
+  center?:        { x: number; y: number; z: number };
+  featurePoints?: number;
+  sizeBytes?:     number;
 }
 
 /** C1: PATCH /anchors/:id — engineer+. configId null clears. */

@@ -1806,6 +1806,23 @@ function mapSealedHtml(anchor) {
   return `<span class="badge badge-green" title="Author's world map is the origin — operators relocalize into it; the QR is the key and a drift check (${anchor.mapSealedAt})">🗺 Map sealed · ${d}</span> <button class="btn btn-ghost btn-sm" style="font-size:0.62rem;padding:1px 6px" title="Remove the sealed map so an Author can create a new one (tags stay)" onclick="unsealAnchorMap('${anchor.id}','${jsEsc(anchor.assetId)}')">Unseal</button>`;
 }
 
+// B1 (2026.4.46): reference-object badge. Scanned on the iPad (ARKit, on
+// device); the .arobject lives on SIB and is the chamber's origin when the
+// anchor's origin source is 'object' (B2).
+function objectScanHtml(anchor) {
+  if (!anchor.objectScannedAt) return '';
+  const d = new Date(anchor.objectScannedAt).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
+  return `<span class="badge badge-green" title="ARKit reference object scanned on device (${anchor.objectScannedAt}) — sparse feature points, no mesh or photo">◈ Object scanned · ${d}</span> <button class="btn btn-ghost btn-sm" style="font-size:0.62rem;padding:1px 6px" title="Remove the object scan (the Author can scan again)" onclick="removeObjectScan('${anchor.id}','${jsEsc(anchor.assetId)}')">Remove</button>`;
+}
+async function removeObjectScan(anchorId, assetId) {
+  if (!confirm(`Remove the object scan of "${assetId}"?\n\nThe chamber falls back to its world map / QR until an Author scans it again.`)) return;
+  try {
+    await _apiDelete(`/anchors/${encodeURIComponent(anchorId)}/object`);
+    toast('Object scan removed.');
+    loadAnchors();
+  } catch (e) { toast(`Remove failed: ${e.message}`, 4000); }
+}
+
 // ── Build anchor card ──────────────────────────────────────────────────────────
 function buildCard(anchor) {
   const count = tagCounts[anchor.id] ?? 0;
@@ -1837,6 +1854,7 @@ function buildCard(anchor) {
       <span>Created ${date}</span>
       <span>${anchor.coordinateSystem}</span>
       ${mapSealedHtml(anchor)}
+      ${objectScanHtml(anchor)}
     </div>
     ${configRowHtml(anchor)}
     ${keyHtml}

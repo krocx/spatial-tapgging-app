@@ -44,6 +44,10 @@ struct AnchorHubView: View {
     // G1 (2026.4.46): unseal the world map (map + origin removed; tags stay).
     @State private var showUnsealConfirm = false
     @State private var unsealNote: String? = nil
+    // B1 (2026.4.46): ARKit reference-object scan of this chamber
+    @State private var showObjectScan = false
+    @State private var objectMeta: AnchorObjectMeta? = nil
+    @State private var showRemoveObjectConfirm = false
 
     // Tour frame capture
     @State private var tourFrames: [TourStep: CGRect] = [:]
@@ -188,6 +192,60 @@ struct AnchorHubView: View {
                 }
             }
 
+            // ── B1: Object scan (Author, chamber anchors) ─────────────────────────
+            // On-device ARKit scan → sparse feature points on SIB. B2 makes it the
+            // chamber's origin; until then it's the groundwork.
+            if mode == .author, anchor.isChamber, settings.uamRole != "technician" {
+                Section {
+                    Button { showObjectScan = true } label: {
+                        HStack(spacing: 14) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color.teal.opacity(0.12))
+                                    .frame(width: 36, height: 36)
+                                Image(systemName: "cube.transparent")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundStyle(.teal)
+                            }
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(objectMeta == nil ? "Scan chamber as object" : "Re-scan chamber object")
+                                    .font(.subheadline.bold()).foregroundStyle(.primary)
+                                if let m = objectMeta {
+                                    Text("Scanned \(m.scannedAt.prefix(10))\(m.scannedBy.map { " · \($0)" } ?? "") · \(m.featurePoints ?? 0) points")
+                                        .font(.caption).foregroundStyle(.secondary)
+                                } else {
+                                    Text("Walk around it once — lets the app find this chamber without the QR")
+                                        .font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
+                            Spacer()
+                            if objectMeta != nil {
+                                Image(systemName: "checkmark.seal.fill").foregroundStyle(.green)
+                            }
+                        }
+                        .padding(.vertical, 2)
+                    }
+                    if objectMeta != nil {
+                        Button(role: .destructive) { showRemoveObjectConfirm = true } label: {
+                            Label("Remove object scan…", systemImage: "trash").font(.subheadline)
+                        }
+                    }
+                } header: {
+                    Text("Object tracking")
+                } footer: {
+                    Text("Entirely on-device. The scan is a sparse point cloud stored on your SIB — not a mesh or a photo.")
+                }
+                .confirmationDialog("Remove the object scan?", isPresented: $showRemoveObjectConfirm, titleVisibility: .visible) {
+                    Button("Remove", role: .destructive) {
+                        Task {
+                            try? await SIBClient(settings: settings).deleteAnchorObject(anchorId: anchor.id)
+                            objectMeta = nil
+                        }
+                    }
+                    Button("Cancel", role: .cancel) {}
+                } message: { Text("The chamber falls back to its world map and QR until you scan again.") }
+            }
+
             // ── Readiness warning (Operator, Loc-Tag) ───────────────────────────
             if anchor.anchorType == .locTag, let warning = readinessWarning {
                 Section {
@@ -273,8 +331,18 @@ struct AnchorHubView: View {
         .alert("World map", isPresented: Binding(get: { unsealNote != nil }, set: { if !$0 { unsealNote = nil } })) {
             Button("OK") { unsealNote = nil }
         } message: { Text(unsealNote ?? "") }
+        .fullScreenCover(isPresented: $showObjectScan) {
+            ObjectScanView(anchor: anchor) { meta in
+                if let meta { objectMeta = meta }
+                showObjectScan = false
+            }
+            .environmentObject(settings)
+        }
         .onAppear {
             Task { await loadTags() }
+            if mode == .author, anchor.isChamber {
+                Task { objectMeta = try? await SIBClient(settings: settings).fetchAnchorObjectMeta(anchorId: anchor.id) }
+            }
             // Tour: advance to anchorHub.
             // advancePast(.createAnchor) handles edge cases where the directory step
             // wasn't already advanced (e.g. re-entry). advancePast(.anchorQR) handles

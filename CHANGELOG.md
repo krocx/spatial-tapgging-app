@@ -65,6 +65,19 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **Object tracking, slice 1 — scan & store (B1)** — an Author can now scan a
+  chamber as an ARKit **reference object**, entirely on the iPad
+  (`ARObjectScanningConfiguration`): tap the surface the chamber stands on,
+  size the box (W · H · D sliders, drag to move), walk around it while the
+  live count shows feature points inside the box, *Save object*. The exported
+  `.arobject` (a sparse point cloud — no mesh, no photo) is stored on SIB:
+  `POST/GET/DELETE /anchors/:id/object` (streamed, 30 MB cap, engineer+, ops
+  log) + `GET …/object/meta` (extent, center, points, who, when); removed with
+  the anchor. `Anchor.objectScannedAt` is a derived read-only field. iOS:
+  Anchor Hub → **Object tracking** section (scan / re-scan / remove, status
+  row). Portal: **◈ Object scanned · date** badge with Remove. Nothing uses
+  the scan as an origin yet — that is B2. New file `Modes/ObjectScanView.swift`
+  (add to the Xcode target).
 - **Read the step where it lives (H, iOS)** — Place Steps tray chips now
   always show the **step number** (✓ placed and ⬢ models moved to small rim
   badges), so a 20-step guide is navigated by counting instead of reading

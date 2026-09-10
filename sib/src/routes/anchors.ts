@@ -4,7 +4,7 @@ import { randomBytes } from 'crypto';
 import fs   from 'fs';
 import path from 'path';
 import QRCode from 'qrcode';
-import type { Anchor, CreateAnchorRequest, UpdateAnchorRequest, ApiResponse } from '@spatial/shared';
+import type { Anchor, CreateAnchorRequest, UpdateAnchorRequest, ApiResponse, AnchorObjectMeta } from '@spatial/shared';
 import { JsonFileStore } from '../stores/json-file-store.js';
 import { tagStore } from './tags.js';
 import { passStateStore, findPassStateByTag } from '../stores/pass-state-store.js';
@@ -24,12 +24,24 @@ export const anchorStore = new JsonFileStore<Anchor>('anchors');
 const DATA_DIR      = process.env.SIB_DATA_DIR ?? path.join(process.cwd(), '.sib-data');
 const QRIMAGES_DIR  = path.join(DATA_DIR, 'qrimages');
 const WORLDMAPS_DIR = path.join(DATA_DIR, 'worldmaps');
+// B1 (2026.4.46): ARKit reference objects — on-device scans, on-premise files.
+const OBJECTS_DIR   = path.join(DATA_DIR, 'objects');
 
 // Exported so app.ts can serve the pre-auth /anchors/:id/qrprint endpoint
 // without duplicating the DATA_DIR resolution logic.
 export { QRIMAGES_DIR };
 fs.mkdirSync(QRIMAGES_DIR,  { recursive: true });
 fs.mkdirSync(WORLDMAPS_DIR, { recursive: true });
+fs.mkdirSync(OBJECTS_DIR,   { recursive: true });
+
+const objectPath     = (id: string) => path.join(OBJECTS_DIR, `${id}.arobject`);
+const objectMetaPath = (id: string) => path.join(OBJECTS_DIR, `${id}.object.json`);
+function readObjectMeta(id: string): AnchorObjectMeta | undefined {
+  try {
+    if (!fs.existsSync(objectMetaPath(id)) || !fs.existsSync(objectPath(id))) return undefined;
+    return JSON.parse(fs.readFileSync(objectMetaPath(id), 'utf8')) as AnchorObjectMeta;
+  } catch { return undefined; }
+}
 
 const router = Router();
 
@@ -151,8 +163,13 @@ router.post('/', async (req: Request, res: Response) => {
 // worldmap/meta below). Computed from files so the store never carries it.
 function withMapSealed(anchor: Anchor): Anchor {
   const meta = readWorldMapMeta(anchor.id);
-  if (!meta.anchorPose || !fs.existsSync(path.join(WORLDMAPS_DIR, `${anchor.id}.worldmap`))) return anchor;
-  return { ...anchor, mapSealedAt: meta.capturedAt };
+  const obj  = readObjectMeta(anchor.id);
+  const sealed = !!meta.anchorPose && fs.existsSync(path.join(WORLDMAPS_DIR, `${anchor.id}.worldmap`));
+  return {
+    ...anchor,
+    ...(sealed && { mapSealedAt: meta.capturedAt }),
+    ...(obj?.scannedAt && { objectScannedAt: obj.scannedAt }),
+  };
 }
 
 // ── GET /anchors — list all anchors ───────────────────────────────────────────
@@ -510,6 +527,107 @@ router.delete('/:id/worldmap', (req: Request, res: Response) => {
 // Client caches need nothing server-side: WorldMapCache compares the meta's
 // capturedAt; after an unseal GET …/meta has none, so a fresh map downloads.
 
+// ── B1 (2026.4.46): ARKit reference object per chamber ────────────────────────
+// The Author scans the chamber once on the iPad (ARObjectScanningConfiguration
+// — entirely on-device); the resulting ARReferenceObject archive is stored
+// here and cached by the app, so detection runs offline too. It is a sparse
+// feature-point cloud, not a mesh or a photo. Meta rides in the query string
+// because the body is the raw binary (streamed, like world maps).
+//
+//   POST   /anchors/:id/object?extent=x,y,z&center=x,y,z&featurePoints=N&scannedBy=…
+//   GET    /anchors/:id/object            → application/octet-stream
+//   GET    /anchors/:id/object/meta       → AnchorObjectMeta | 404
+//   DELETE /anchors/:id/object            → engineer+
+const MAX_OBJECT_BYTES = 30 * 1024 * 1024;
+
+router.post('/:id/object', (req: Request, res: Response) => {
+  const anchor = anchorStore.findById(req.params.id);
+  if (!anchor) {
+    return res.status(404).json({ error: `Anchor ${req.params.id} not found`, timestamp: new Date().toISOString() });
+  }
+  const actor = currentUamUser(req);
+  if (uamIsActive() && actor && actor.role === 'technician') {
+    return res.status(403).json({ error: 'Scanning an object requires Engineer role or above', timestamp: new Date().toISOString() });
+  }
+  const triple = (v: unknown) => {
+    if (typeof v !== 'string') return undefined;
+    const p = v.split(',').map(Number);
+    return p.length === 3 && p.every(Number.isFinite) ? { x: p[0], y: p[1], z: p[2] } : undefined;
+  };
+  const q = req.query;
+  const finalPath = objectPath(anchor.id);
+  const tmpPath   = `${finalPath}.tmp-${Date.now()}`;
+  const ws = fs.createWriteStream(tmpPath);
+  let bytes = 0, aborted = false;
+  const cleanup = () => fs.unlink(tmpPath, () => { /* best-effort */ });
+  req.on('data', (chunk: Buffer) => {
+    if (aborted) return;
+    bytes += chunk.length;
+    if (bytes > MAX_OBJECT_BYTES) {
+      aborted = true; ws.destroy(); cleanup();
+      if (!res.headersSent) res.status(413).json({ error: `Object exceeds ${MAX_OBJECT_BYTES} bytes`, timestamp: new Date().toISOString() });
+      req.destroy();
+    }
+  });
+  req.on('error', () => { aborted = true; ws.destroy(); cleanup(); if (!res.headersSent) res.status(400).json({ error: 'Upload stream error' }); });
+  ws.on('error', (err) => { aborted = true; cleanup(); if (!res.headersSent) res.status(500).json({ error: `Failed to store object: ${err}` }); });
+  ws.on('finish', () => {
+    if (aborted) return;
+    if (bytes === 0) { cleanup(); return res.status(400).json({ error: 'Body must be the .arobject archive', timestamp: new Date().toISOString() }); }
+    fs.rename(tmpPath, finalPath, (err) => {
+      if (err) { cleanup(); return res.status(500).json({ error: `Failed to store object: ${err}`, timestamp: new Date().toISOString() }); }
+      const meta: AnchorObjectMeta = {
+        scannedAt: new Date().toISOString(),
+        ...(typeof q.scannedBy === 'string' && q.scannedBy.trim() && { scannedBy: q.scannedBy.trim().slice(0, 80) }),
+        ...(triple(q.extent) && { extent: triple(q.extent) }),
+        ...(triple(q.center) && { center: triple(q.center) }),
+        ...(typeof q.featurePoints === 'string' && Number.isFinite(Number(q.featurePoints)) && { featurePoints: Number(q.featurePoints) }),
+        sizeBytes: bytes,
+      };
+      try { fs.writeFileSync(objectMetaPath(anchor.id), JSON.stringify(meta)); } catch { /* non-fatal */ }
+      logOpsEvent({ method: 'POST', path: `/anchors/${anchor.id}/object`, outcome: 'allowed', ip: req.ip,
+                    detail: `object scan "${anchor.assetId}"${actor ? ` by ${actor.name}` : ''} · ${(bytes / 1024).toFixed(0)} KB · ${meta.featurePoints ?? '?'} pts` });
+      console.log(`[SIB] Reference object stored for anchor ${anchor.id} (${bytes} bytes)`);
+      return res.status(201).json({ data: { anchorId: anchor.id, ...meta }, timestamp: new Date().toISOString() });
+    });
+  });
+  req.pipe(ws);
+});
+
+router.get('/:id/object', (req: Request, res: Response) => {
+  const anchor = anchorStore.findById(req.params.id);
+  if (!anchor) return res.status(404).json({ error: `Anchor ${req.params.id} not found`, timestamp: new Date().toISOString() });
+  if (!fs.existsSync(objectPath(anchor.id))) {
+    return res.status(404).json({ error: `No reference object for anchor ${anchor.id}`, timestamp: new Date().toISOString() });
+  }
+  res.setHeader('Content-Type', 'application/octet-stream');
+  res.setHeader('Cache-Control', 'no-store');
+  return res.sendFile(objectPath(anchor.id));
+});
+
+router.get('/:id/object/meta', (req: Request, res: Response) => {
+  const anchor = anchorStore.findById(req.params.id);
+  if (!anchor) return res.status(404).json({ error: `Anchor ${req.params.id} not found`, timestamp: new Date().toISOString() });
+  const meta = readObjectMeta(anchor.id);
+  if (!meta) return res.status(404).json({ error: `No reference object for anchor ${anchor.id}`, timestamp: new Date().toISOString() });
+  res.setHeader('Cache-Control', 'no-store');
+  return res.json({ data: meta, timestamp: new Date().toISOString() });
+});
+
+router.delete('/:id/object', (req: Request, res: Response) => {
+  const anchor = anchorStore.findById(req.params.id);
+  if (!anchor) return res.status(404).json({ error: `Anchor ${req.params.id} not found`, timestamp: new Date().toISOString() });
+  const actor = currentUamUser(req);
+  if (uamIsActive() && actor && actor.role === 'technician') {
+    return res.status(403).json({ error: 'Removing an object scan requires Engineer role or above', timestamp: new Date().toISOString() });
+  }
+  let removed = 0;
+  for (const p of [objectPath(anchor.id), objectMetaPath(anchor.id)]) { try { fs.unlinkSync(p); removed++; } catch { /* absent */ } }
+  logOpsEvent({ method: 'DELETE', path: `/anchors/${anchor.id}/object`, outcome: 'allowed', ip: req.ip,
+                detail: `remove object scan "${anchor.assetId}"${actor ? ` by ${actor.name}` : ''}` });
+  return res.json({ data: { anchorId: anchor.id, removed }, timestamp: new Date().toISOString() });
+});
+
 router.get('/:id/worldmap/meta', (req: Request, res: Response) => {
   const anchor = anchorStore.findById(req.params.id);
   if (!anchor) {
@@ -545,6 +663,8 @@ router.delete('/', (_req: Request, res: Response) => {
     try { fs.unlinkSync(qrPath);  } catch { /* not present */ }
     try { fs.unlinkSync(mapPath); } catch { /* not present */ }
     try { fs.unlinkSync(worldMapMetaPath(anchor.id)); } catch { /* not present */ }
+    try { fs.unlinkSync(objectPath(anchor.id)); } catch { /* not present */ }
+    try { fs.unlinkSync(objectMetaPath(anchor.id)); } catch { /* not present */ }
   }
 
   console.log(
@@ -691,6 +811,8 @@ router.delete('/:id', (req: Request, res: Response) => {
   try { fs.unlinkSync(qrPath);  } catch { /* not present */ }
   try { fs.unlinkSync(mapPath); } catch { /* not present */ }
   try { fs.unlinkSync(worldMapMetaPath(req.params.id)); } catch { /* not present */ }
+  try { fs.unlinkSync(objectPath(req.params.id)); } catch { /* not present */ }
+  try { fs.unlinkSync(objectMetaPath(req.params.id)); } catch { /* not present */ }
 
   console.log(
     `[SIB] Deleted anchor ${req.params.id} ` +

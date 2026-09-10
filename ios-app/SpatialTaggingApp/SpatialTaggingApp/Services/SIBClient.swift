@@ -686,6 +686,45 @@ final class SIBClient {
         return (try? JSONDecoder().decode(APIResponse<R>.self, from: data))?.data.unplaced ?? 0
     }
 
+    // ── B1 (2026.4.46): ARKit reference object per chamber ───────────────────
+
+    /// Author: upload the exported `.arobject` archive (raw binary, meta in query).
+    func uploadAnchorObject(anchorId: String, data: Data, extent: simd_float3, center: simd_float3,
+                            featurePoints: Int, scannedBy: String?) async throws -> AnchorObjectMeta {
+        func t(_ v: simd_float3) -> String { String(format: "%.4f,%.4f,%.4f", v.x, v.y, v.z) }
+        var q = "extent=\(t(extent))&center=\(t(center))&featurePoints=\(featurePoints)"
+        if let by = scannedBy?.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed), !by.isEmpty { q += "&scannedBy=\(by)" }
+        var req = try makeRequest(method: "POST", path: "/anchors/\(anchorId)/object?\(q)")
+        req.timeoutInterval = 90
+        req.setValue("application/octet-stream", forHTTPHeaderField: "Content-Type")
+        req.httpBody = data
+        return try await perform(req, decoding: AnchorObjectMeta.self)
+    }
+
+    func fetchAnchorObjectMeta(anchorId: String) async throws -> AnchorObjectMeta? {
+        do { return try await get(AnchorObjectMeta.self, path: "/anchors/\(anchorId)/object/meta") }
+        catch SIBClientError.httpError(404, _) { return nil }
+    }
+
+    /// The `.arobject` archive — nil on 404 (no scan yet).
+    func fetchAnchorObject(anchorId: String) async throws -> Data? {
+        var req = try makeRequest(method: "GET", path: "/anchors/\(anchorId)/object")
+        req.timeoutInterval = 45
+        let (data, response): (Data, URLResponse)
+        do { (data, response) = try await session.data(for: req) }
+        catch { throw SIBClientError.networkError(error) }
+        guard let http = response as? HTTPURLResponse else { return nil }
+        if http.statusCode == 404 { return nil }
+        if !(200...299).contains(http.statusCode) {
+            throw SIBClientError.httpError(http.statusCode, "Reference object download failed (\(http.statusCode))")
+        }
+        return data
+    }
+
+    func deleteAnchorObject(anchorId: String) async throws {
+        _ = try await delete(path: "/anchors/\(anchorId)/object")
+    }
+
     /// Author: seal the map — record the origin pose alongside the uploaded map.
     func uploadWorldMapMeta(anchorId: String, anchorPose: simd_float4x4, sealedBy: String?) async throws -> WorldMapMeta {
         struct Body: Encodable { let anchorPose: [Float]; let capturedAt: String; let sealedBy: String? }

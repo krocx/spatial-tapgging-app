@@ -148,6 +148,9 @@ struct Anchor: Codable, Identifiable, Hashable {
     let configId: String?
     /// B1 (derived, read-only): when the author sealed the world map. Nil = unsealed.
     let mapSealedAt: String?
+    /// B1 (derived, read-only): when an Author scanned this chamber as an ARKit
+    /// reference object. Nil = no object scan.
+    let objectScannedAt: String?
     let createdAt: String
     let updatedAt: String
 
@@ -157,6 +160,17 @@ struct Anchor: Codable, Identifiable, Hashable {
     // Hashable — use id only; metadata:[String:AnyCodable] is not natively Hashable.
     static func == (lhs: Anchor, rhs: Anchor) -> Bool { lhs.id == rhs.id }
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
+}
+
+/// B1: meta stored beside the `.arobject` on SIB.
+struct AnchorObjectMeta: Codable, Equatable {
+    struct V3: Codable, Equatable { let x: Double; let y: Double; let z: Double }
+    let scannedAt:     String
+    let scannedBy:     String?
+    let extent:        V3?
+    let center:        V3?
+    let featurePoints: Int?
+    let sizeBytes:     Int?
 }
 
 struct CreateAnchorRequest: Codable {
