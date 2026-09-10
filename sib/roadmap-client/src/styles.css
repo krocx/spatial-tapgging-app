@@ -728,3 +728,62 @@ input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 .node-port { opacity: 0; transition: opacity 0.12s; }
 .node-view:hover .node-port, .node-port.port-active { opacity: 1; }
 .node-port:hover .node-port-dot { r: 6; stroke-width: 2.5; }
+
+/* ── Icons (utils/icons.ts via components/Icon.tsx) ───────── */
+
+.icon { display: inline-block; vertical-align: -0.15em; }
+.btn .icon, .chip .icon, .menu button .icon { margin-right: 2px; }
+.door-icon .icon { color: var(--accent); }
+.pc-issues-chip .icon { vertical-align: -0.2em; }
+
+/* ── Inspector — night variant ────────────────────────────────
+   Follows the canvas theme toggle (App.tsx puts the theme on .editor-body).
+   Procedure maps default to night, so the node-properties pane is black
+   there; roadmap maps stay day/white unless flipped. Only the inspector
+   changes — filter/glossary/preview panels are untouched.                 */
+
+.editor-body.night .inspector {
+  --bg: #0b1220;
+  --panel: #0f172a;
+  --border: #253048;
+  --text: #e5e9f2;
+  --muted: #94a3b8;
+  --accent: #6d9cff;
+  color-scheme: dark;
+  color: var(--text);
+}
+.editor-body.night .inspector input,
+.editor-body.night .inspector textarea,
+.editor-body.night .inspector select {
+  background: var(--bg); color: var(--text); border-color: var(--border);
+}
+.editor-body.night .inspector .btn,
+.editor-body.night .inspector .chip,
+.editor-body.night .inspector .shape-btn,
+.editor-body.night .inspector .icon-btn,
+.editor-body.night .inspector .review-btn {
+  background: var(--panel); color: var(--muted); border-color: var(--border);
+}
+.editor-body.night .inspector .btn:hover:not(:disabled),
+.editor-body.night .inspector .chip:hover,
+.editor-body.night .inspector .shape-btn:hover,
+.editor-body.night .inspector .icon-btn:hover,
+.editor-body.night .inspector .review-btn:hover { background: #1e293b; color: var(--text); }
+.editor-body.night .inspector .btn.primary { background: var(--accent); border-color: var(--accent); color: #0b1220; }
+.editor-body.night .inspector .btn.danger { color: #f87171; }
+.editor-body.night .inspector .chip.active,
+.editor-body.night .inspector .shape-btn.active,
+.editor-body.night .inspector .icon-btn.active,
+.editor-body.night .inspector .btn-active { background: rgba(109, 156, 255, 0.16); border-color: var(--accent); color: #c7d7ff; }
+.editor-body.night .inspector .review-btn.review-approve.active { background: rgba(22, 163, 74, 0.2); border-color: #22c55e; color: #86efac; }
+.editor-body.night .inspector .review-btn.review-reject.active  { background: rgba(220, 38, 38, 0.2); border-color: #ef4444; color: #fca5a5; }
+.editor-body.night .inspector .review-btn.review-validate.active { background: rgba(245, 158, 11, 0.2); border-color: #f59e0b; color: #fcd34d; }
+.editor-body.night .inspector .sib-link { background: #111a2e; }
+.editor-body.night .inspector .comment { background: var(--bg); }
+.editor-body.night .inspector .dict-block { background: rgba(109, 156, 255, 0.10); border-color: #2b3f6b; }
+.editor-body.night .inspector .dict-term { color: #a5c4ff; }
+.editor-body.night .inspector .dict-def { color: #c7d2e6; }
+.editor-body.night .inspector .dict-def code,
+.editor-body.night .inspector .sib-link code { background: #1e293b; color: #e5e9f2; }
+.editor-body.night .inspector .swatch.active { border-color: #ffffff; }
+.editor-body.night .inspector .step-image-preview { border: 1px solid var(--border); }

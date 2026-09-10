@@ -13,6 +13,7 @@
 import { useState, useEffect } from 'react';
 import { useStore } from '../state/store.js';
 import { fetchStepImageUrl } from '../api/mindmap-api.js';
+import { Icon } from './Icon.js';
 
 export function PreviewPanel(): JSX.Element | null {
   const map        = useStore(s => s.map);
@@ -103,7 +104,7 @@ export function PreviewPanel(): JSX.Element | null {
           </div>
         </div>
         <div className="preview-actions">
-          <button onClick={restart}>↺ Run again</button>
+          <button onClick={restart}><Icon name="restart" size={14} /> Run again</button>
           <button className="primary" onClick={exit}>Done</button>
         </div>
       </aside>
@@ -130,7 +131,7 @@ export function PreviewPanel(): JSX.Element | null {
 
           {blocked ? (
             <div className="preview-blocked">
-              <p>⛔ This step requires <b>{blockedByName}</b> to be completed first.</p>
+              <p><Icon name="blocked" size={14} /> This step requires <b>{blockedByName}</b> to be completed first.</p>
               <p className="preview-hint-text">
                 On device the operator is redirected to the prerequisite — same here.
               </p>
@@ -148,7 +149,7 @@ export function PreviewPanel(): JSX.Element | null {
                 )}
                 {step.linkUrl && (
                   <a className="preview-chip" href={step.linkUrl} target="_blank" rel="noopener noreferrer">
-                    📎 Reference
+                    <Icon name="link" size={13} /> Reference
                   </a>
                 )}
                 {step.optional && <span className="preview-chip muted">Optional step</span>}

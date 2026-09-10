@@ -20,6 +20,7 @@ export default function App(): JSX.Element {
   const setError = useStore(s => s.setError);
   const presenting = useStore(s => s.presentation.active);
   const previewing = useStore(s => !!s.preview);
+  const canvasTheme = useStore(s => s.canvasTheme);
   useKeyboardShortcuts();
 
   // Deep link: /roadmap?map=<id> opens straight into that map — the portal's
@@ -44,7 +45,7 @@ export default function App(): JSX.Element {
           {error} <span className="dismiss">✕</span>
         </div>
       )}
-      <div className="editor-body">
+      <div className={`editor-body ${canvasTheme}`}>
         {!presenting && <FilterPanel />}
         <CanvasStage />
         {!presenting && <GlossaryPanel />}

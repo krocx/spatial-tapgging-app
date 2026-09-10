@@ -16,6 +16,7 @@
     "test:sib": "npm run test --workspace=@spatial/sib",
     "catalog:check": "node scripts/catalog-check.mjs",
     "catalog:vendor": "node scripts/vendor-catalog-libs.mjs",
+    "icons:doc": "node scripts/iconography.mjs",
     "build": "npm run build --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },

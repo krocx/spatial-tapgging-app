@@ -11,6 +11,7 @@
 import { useState } from 'react';
 import { useStore } from '../state/store.js';
 import { ROLE_COLORS } from '../canvas/EdgeView.js';
+import { Icon } from './Icon.js';
 
 export function ProcedureBar(): JSX.Element | null {
   const map        = useStore(s => s.map);
@@ -78,9 +79,9 @@ export function ProcedureBar(): JSX.Element | null {
             onClick={() => setShowIssues(v => !v)}
             title={showIssues ? 'Hide the issue list' : 'Show the issue list'}
           >
-            {errors.length > 0 && `⛔ ${errors.length}`}
+            {errors.length > 0 && <><Icon name="error" size={13} /> {errors.length}</>}
             {errors.length > 0 && warns.length > 0 && ' · '}
-            {warns.length > 0 && `⚠ ${warns.length}`}
+            {warns.length > 0 && <><Icon name="warning" size={13} /> {warns.length}</>}
             <span className="pc-chevron">{showIssues ? ' ▾' : ' ▸'}</span>
           </button>
         )}

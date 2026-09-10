@@ -7,6 +7,7 @@ import { NODE_COLORS, NODE_TYPE_LABELS, NODE_TYPES, peerColor } from '../utils/c
 import { exportJson, exportPng, exportSvg } from '../utils/export.js';
 import { downloadServerExport, getDraftKey } from '../api/mindmap-api.js';
 import { VersionsPanel } from './VersionsPanel.js';
+import { Icon } from './Icon.js';
 
 async function downloadSibDraft(mapId: string): Promise<void> {
   try { await downloadServerExport(mapId, 'sib-json'); }
@@ -92,7 +93,7 @@ export function Toolbar(): JSX.Element | null {
           className="pub-chip draft"
           title="Draft — only draft-key holders can see this map. Click to publish for everyone."
           onClick={() => { if (confirm('Publish this map? Everyone will be able to view and edit it.')) void publishMap(); }}
-        >Draft 🔒</button>
+        >Draft <Icon name="lock" size={12} /></button>
       ) : null}
       {map.published === false && holdsDraftKey() ? (
         <button
@@ -156,7 +157,7 @@ export function Toolbar(): JSX.Element | null {
           ? 'Switch canvas to day background'
           : 'Switch canvas to night background'}
       >
-        {canvasTheme === 'night' ? '☀ Day' : '☾ Night'}
+        {canvasTheme === 'night' ? <><Icon name="sun" size={14} /> Day</> : <><Icon name="moon" size={14} /> Night</>}
       </button>
 
       <div className="menu-wrap">
@@ -233,7 +234,7 @@ export function Toolbar(): JSX.Element | null {
         className={`btn ${showGlossary ? 'btn-active' : ''}`}
         onClick={() => showGlossary ? closeGlossary() : openGlossary()}
         title="Roadmap dictionary — every capability on the roadmap, defined"
-      >📖</button>
+      ><Icon name="book" size={15} /></button>
 
       <div className="menu-wrap">
         <button className="btn" onClick={() => { const v = showSib; closeMenus(); setShowSib(!v); }}>
@@ -247,8 +248,8 @@ export function Toolbar(): JSX.Element | null {
         )}
       </div>
 
-      <button className="btn" disabled={undoStack.length === 0} onClick={undo} title="Ctrl+Z">↶ Undo</button>
-      <button className="btn" disabled={redoStack.length === 0} onClick={redo} title="Ctrl+Y">↷ Redo</button>
+      <button className="btn" disabled={undoStack.length === 0} onClick={undo} title="Ctrl+Z"><Icon name="undo" size={14} /> Undo</button>
+      <button className="btn" disabled={redoStack.length === 0} onClick={redo} title="Ctrl+Y"><Icon name="redo" size={14} /> Redo</button>
 
       <div className="menu-wrap">
         <button className="btn" onClick={() => { const v = showExport; closeMenus(); setShowExport(!v); }}>

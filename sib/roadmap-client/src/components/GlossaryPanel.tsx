@@ -4,6 +4,7 @@
 
 import { useEffect, useMemo, useRef, useState, Fragment } from 'react';
 import { useStore } from '../state/store.js';
+import { Icon } from './Icon.js';
 
 /** Minimal inline-markdown renderer: **bold**, *italic*, `code`, [text](url) → text. */
 export function renderInline(text: string): JSX.Element {
@@ -52,7 +53,7 @@ export function GlossaryPanel(): JSX.Element | null {
   return (
     <aside className="glossary-panel">
       <div className="glossary-head">
-        <h3>📖 Dictionary</h3>
+        <h3><Icon name="book" size={15} /> Dictionary</h3>
         <button className="btn ghost" title="Close" onClick={closeGlossary}>✕</button>
       </div>
       <input

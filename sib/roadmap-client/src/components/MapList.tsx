@@ -14,6 +14,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../state/store.js';
 import { fetchAuthRequired, getApiKey, setApiKey } from '../api/mindmap-api.js';
 import { ImageImportPreview } from './ImageImportPreview.js';
+import { Icon } from './Icon.js';
 
 type Door = 'roadmap' | 'procedure';
 
@@ -70,7 +71,7 @@ export function MapList(): JSX.Element {
       {/* ── Identity chip + ⋯ menu (top-right) ── */}
       <div className="home-corner">
         <button className="home-chip" onClick={() => { setIdentityOpen(v => !v); setMenuOpen(false); }}>
-          👤 {userName.trim() || 'Set your name'}
+          <Icon name="person" size={14} /> {userName.trim() || 'Set your name'}
         </button>
         <button className="home-chip" title="Import & more" onClick={() => { setMenuOpen(v => !v); setIdentityOpen(false); }}>⋯</button>
 
@@ -90,16 +91,16 @@ export function MapList(): JSX.Element {
         )}
         {menuOpen && (
           <div className="home-popover home-menu">
-            <button onClick={() => { setMenuOpen(false); fileRef.current?.click(); }}>📄 Import JSON</button>
+            <button onClick={() => { setMenuOpen(false); fileRef.current?.click(); }}><Icon name="file" size={14} /> Import JSON</button>
             <button disabled={importingImage}
                     onClick={() => { setMenuOpen(false); imageRef.current?.click(); }}>
-              {importingImage ? 'Reading image…' : '📷 From whiteboard photo'}
+              {importingImage ? 'Reading image…' : <><Icon name="photo" size={14} /> From whiteboard photo</>}
             </button>
             <button onClick={() => {
               setMenuOpen(false);
               const k = prompt('Enter the draft key you were given:');
               if (k?.trim()) void unlockDraft(k);
-            }}>🔑 Unlock a shared draft</button>
+            }}><Icon name="key" size={14} /> Unlock a shared draft</button>
           </div>
         )}
       </div>
@@ -113,7 +114,7 @@ export function MapList(): JSX.Element {
       <section className="home-doors">
         <div className={`home-door door-roadmap ${door === 'roadmap' ? 'active' : ''}`}
              onClick={() => { setDoor('roadmap'); }}>
-          <div className="door-icon">🗺</div>
+          <div className="door-icon"><Icon name="map" size={34} strokeWidth={1.6} /></div>
           <h2>Roadmap</h2>
           <p className="door-tag">Shape the plan</p>
           <p className="door-desc">Collaborative canvas with live cursors, swimlanes, reviews and presentation mode.</p>
@@ -130,7 +131,7 @@ export function MapList(): JSX.Element {
 
         <div className={`home-door door-procedure ${door === 'procedure' ? 'active' : ''}`}
              onClick={() => { setDoor('procedure'); }}>
-          <div className="door-icon">🧩</div>
+          <div className="door-icon"><Icon name="procedure" size={34} strokeWidth={1.6} /></div>
           <h2>Procedure</h2>
           <p className="door-tag">Author the work</p>
           <p className="door-desc">Draw steps with next / on-failure / requires — compile straight into an AR work-instruction guide.</p>
@@ -161,10 +162,10 @@ export function MapList(): JSX.Element {
               <button className="gallery-open" onClick={() => void openMap(m.id, userName.trim() || 'Anonymous')}>
                 <div className="gallery-top">
                   <span className={`kind-badge ${m.kind === 'procedure' ? 'procedure' : 'roadmap'}`}>
-                    {m.kind === 'procedure' ? '🧩 Procedure' : '🗺 Roadmap'}
+                    {m.kind === 'procedure' ? <><Icon name="procedure" size={13} /> Procedure</> : <><Icon name="map" size={13} /> Roadmap</>}
                   </span>
                   {m.published === false && (
-                    <span className="draft-badge" title="Draft — visible only to draft-key holders">Draft 🔒</span>
+                    <span className="draft-badge" title="Draft — visible only to draft-key holders">Draft <Icon name="lock" size={11} /></span>
                   )}
                 </div>
                 <span className="map-title">{m.name}</span>

@@ -69,6 +69,29 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **Procedure Designer — issue bubbles on nodes (DS1)**. Compiler issues
+  now ride the card as a notification badge at the top-right corner: red
+  with the error glyph when any error blocks *Send to guide library*, amber
+  with the warning glyph otherwise, count inside, every message in the
+  tooltip. The issues drawer in the procedure bar is unchanged — the bubble
+  puts the same server-derived `issues[].nodeId` on the canvas.
+- **Procedure Designer — night node-properties pane (DS2)**. The Inspector
+  follows the canvas theme (`.editor-body.night .inspector`): black panel,
+  dark inputs, dimmed chips, re-tinted review/active states. Procedure maps
+  default to night, so the properties pane is black there; roadmap maps stay
+  white unless flipped with the existing ☀/☾ toggle.
+- **AppliedX iconography (DS3)**. `utils/icons.ts` redrawn as one stroke set
+  (24-grid, 2 px round strokes, `currentColor`) and extended from 20 to 60
+  icons — fab vocabulary first: chamber, wafer, gas line, breaker, torque,
+  lockout, evidence, voice, ghost model, checklist, ME, technician, hazard,
+  ESD, vacuum, clean, timer, Production #, spatial pin, scan. Every emoji
+  in the Designer chrome (toolbar, map list, preview, procedure bar, node
+  step pill) is replaced by `<Icon name>` (`components/Icon.tsx`).
+- **Iconography library**. `npm run icons:doc` (`scripts/iconography.mjs`)
+  generates `docs/ICONOGRAPHY.md` and the rendered sheet
+  `docs/iconography.html` (day / night / on-card previews, where each icon
+  is used) from `icons.ts`, and fails when a path has no meta or vice
+  versa — the library cannot drift from the code.
 - **Object scan robustness across devices (B1b)** — an ARKit reference
   object is a sparse point cloud tied to the camera that captured it, so a
   scan from one iPhone can be slow to recognise on another. Four changes:

@@ -1,28 +1,163 @@
-// icons.ts — curated inline icon set (single SVG paths, 24×24 viewBox).
-// No icon fonts, no external requests — everything ships in the bundle.
-// Stroke-style paths rendered with stroke=currentColor, fill=none.
+// icons.ts — the AppliedX iconography set (single source of truth).
+//
+// Every icon is one stroke-style SVG path on a 24×24 grid: 2 px round strokes,
+// fill=none, drawn with stroke=currentColor so the same path reads on the dark
+// node cards (white), the light inspector (slate) and the night inspector.
+// No icon fonts, no emoji, no external requests — everything ships in the
+// bundle. `docs/iconography.html` + `docs/ICONOGRAPHY.md` are GENERATED from
+// this file (`npm run icons:doc`) so the library can never drift from the code.
+//
+// Groups:
+//   node   — pickable on a node in the Inspector (ICON_NAMES)
+//   step   — step-content glyphs on a procedure node (voice / image / model)
+//   ui     — chrome: toolbar, map list, panels, issues
+//
+// To add an icon: add a path + meta here, run `npm run icons:doc`, rebuild.
+
+export type IconGroup = 'node' | 'step' | 'ui';
+
+export interface IconMeta {
+  /** Human label shown in the library and tooltips. */
+  label: string;
+  group: IconGroup;
+  /** Where the icon is used today (kept honest by the library generator). */
+  usedIn: string[];
+}
 
 export const ICON_PATHS: Record<string, string> = {
-  flag: 'M5 21V4m0 1h12l-2.5 3.5L17 12H5',
-  star: 'M12 3l2.7 5.6 6.1.8-4.5 4.3 1.1 6-5.4-3-5.4 3 1.1-6L3.2 9.4l6.1-.8z',
-  bolt: 'M13 2L4.5 13.5H11L10 22l8.5-11.5H12z',
-  gear: 'M12 8.5a3.5 3.5 0 100 7 3.5 3.5 0 000-7zM12 2v3m0 14v3M2 12h3m14 0h3M4.9 4.9l2.1 2.1m10 10l2.1 2.1m0-14.2l-2.1 2.1m-10 10l-2.1 2.1',
-  eye: 'M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6zm10 2.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z',
-  camera: 'M4 8h3l2-2.5h6L17 8h3a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V9a1 1 0 011-1zm8 8.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7z',
-  cube: 'M12 2l9 5v10l-9 5-9-5V7zm0 0v10m9-5l-9 5-9-5',
-  robot: 'M9 3h6M12 3v4M5 9h14a1 1 0 011 1v9a1 1 0 01-1 1H5a1 1 0 01-1-1v-9a1 1 0 011-1zm4 5h.01M15 14h.01M9 17.5h6',
-  wrench: 'M14.5 6.5a4 4 0 015.5 3.7 4 4 0 01-5.6 3.7L8 20.3a2 2 0 01-2.8-2.8l6.4-6.4a4 4 0 013.7-5.6z',
-  chip: 'M8 8h8v8H8zM5 5h14v14H5zM9 2v3m6-3v3M9 19v3m6-3v3M2 9h3m-3 6h3m14-6h3m-3 6h3',
-  qr: 'M4 4h6v6H4zm10 0h6v6h-6zM4 14h6v6H4zm10 3h3m3-3v6m-6 0h3m3-6h-3m-3 3v3',
-  tag: 'M3 3h8l10 10-8 8L3 11zm5 4.5h.01',
-  check: 'M4 12l5 5L20 6',
-  alert: 'M12 3l10 18H2zm0 6v5m0 3v.5',
-  bulb: 'M9 18h6m-5 3h4m3-11a5 5 0 10-8.4 3.6c.9.8 1.4 1.5 1.4 2.4h4c0-.9.5-1.6 1.4-2.4A5 5 0 0017 10z',
-  target: 'M12 12m-9 0a9 9 0 1018 0 9 9 0 10-18 0m9 0m-5 0a5 5 0 1010 0 5 5 0 10-10 0m9 0m-4 0a1 1 0 102 0 1 1 0 10-2 0',
-  layers: 'M12 3l9 5-9 5-9-5zm-9 9l9 5 9-5m-18 4l9 5 9-5',
-  doc: 'M6 2h8l4 4v16H6zm8 0v4h4M9 12h6m-6 4h6',
-  user: 'M12 11a4 4 0 100-8 4 4 0 000 8zm-8 10c0-4 4-6 8-6s8 2 8 6',
-  clock: 'M12 12m-9 0a9 9 0 1018 0 9 9 0 10-18 0M12 7v5l3.5 2',
+  // ── node — planning / roadmap ─────────────────────────────────────────────
+  flag:      'M6 21V4h11l-2 3.5 2 3.5H6',
+  star:      'M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.8-5.2 2.8 1-5.8L3.5 9.7l5.9-.9z',
+  bolt:      'M13 2.5 5.5 13.5H11l-1 8 7.5-11h-5.5z',
+  gear:      'M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z',
+  eye:       'M2.5 12s3.5-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.5 6.5-9.5 6.5S2.5 12 2.5 12zm9.5 3a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+  camera:    'M4 8h3.2l1.6-2.5h6.4L16.8 8H20a1.5 1.5 0 0 1 1.5 1.5v9A1.5 1.5 0 0 1 20 20H4a1.5 1.5 0 0 1-1.5-1.5v-9A1.5 1.5 0 0 1 4 8zm8 8.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z',
+  cube:      'M12 2.5 20.5 7v10L12 21.5 3.5 17V7zM12 12l8.5-5M12 12 3.5 7M12 12v9.5',
+  robot:     'M12 2.5v3M8 5.5h8a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3v-8a3 3 0 0 1 3-3zm1 6h.01M15 11.5h.01M9.5 15.5h5M2.5 12h2.5m14 0h2.5',
+  wrench:    'M20.5 6.5a5 5 0 0 1-6.6 6.1L7.2 19.3a2.1 2.1 0 0 1-3-3l6.7-6.7A5 5 0 0 1 17 3l-3 3 .5 3 3 .5z',
+  chip:      'M8.5 8.5h7v7h-7zM5 5h14v14H5zM9 2v3m6-3v3M9 19v3m6-3v3M2 9h3m-3 6h3m14-6h3m-3 6h3',
+  qr:        'M3.5 3.5h7v7h-7zm2 2h3v3h-3zm8-2h7v7h-7zm2 2h3v3h-3zm-12 8h7v7h-7zm2 2h3v3h-3zm8-2h3v3h-3zm4 0h3m-3 4h3v3h-3m-4-3v3h3',
+  tag:       'M3.5 3.5h7.6l9.4 9.4-7.6 7.6-9.4-9.4zM8 8h.01',
+  check:     'M4.5 12.5 9.5 17.5 19.5 7',
+  alert:     'M12 3.5 21.5 20h-19zM12 9.5v4.5m0 3v.5',
+  bulb:      'M9.5 18.5h5M10 21h4M8 10.5a4 4 0 1 1 8 0c0 1.6-.9 2.6-1.6 3.4-.6.7-.9 1.4-.9 2.1h-3c0-.7-.3-1.4-.9-2.1C8.9 13.1 8 12.1 8 10.5z',
+  target:    'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zm0-4a5 5 0 1 0 0-10 5 5 0 0 0 0 10zm0-4a1 1 0 1 0 0-2 1 1 0 0 0 0 2z',
+  layers:    'M12 3.5 21 8l-9 4.5L3 8zM3 12l9 4.5 9-4.5M3 16l9 4.5 9-4.5',
+  doc:       'M6.5 2.5h7l4.5 4.5v14.5h-11.5zM13.5 2.5v4.5H18M9.5 12.5h5m-5 3.5h5',
+  user:      'M12 11.5a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4.5 20.5c0-3.5 3.4-5.5 7.5-5.5s7.5 2 7.5 5.5',
+  clock:     'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zm0-13.5V12l3.5 2',
+
+  // ── node — fab / procedure vocabulary ─────────────────────────────────────
+  chamber:   'M5 8.5h14M5 8.5v8.5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5M5 8.5 7 5h10l2 3.5M9 12.5h6M12 19v2.5',
+  wafer:     'M12 20.5a8.5 8.5 0 1 0 0-17 8.5 8.5 0 0 0 0 17zM6 8.5h12M6 15.5h12M9 5v14M15 5v14',
+  gasline:   'M2.5 9h4.5l2 3-2 3H2.5M21.5 9H17l-2 3 2 3h4.5M9 12h6M12 5.5V8m0 8v2.5M10 5.5h4m-4 13h4',
+  breaker:   'M7 3.5h10v17H7zM12 8v3m-2 0h4M12 15.5h.01M9.5 19.5h5',
+  torque:    'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.5 8.5A8.5 8.5 0 1 0 20.5 12M20.5 5v3.5H17',
+  lockout:   'M7 11V8a5 5 0 0 1 10 0v3M5.5 11h13v9.5h-13zM12 14.5v3',
+  evidence:  'M4 8h3.2l1.6-2.5h6.4L16.8 8H20a1.5 1.5 0 0 1 1.5 1.5v9A1.5 1.5 0 0 1 20 20H4a1.5 1.5 0 0 1-1.5-1.5v-9A1.5 1.5 0 0 1 4 8zm5.5 5.5 2 2 4-4',
+  voice:     'M12 15.5a3 3 0 0 0 3-3v-6a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3zM6.5 11.5a5.5 5.5 0 0 0 11 0M12 17v4m-3 0h6',
+  ghost:     'M6 21V10a6 6 0 1 1 12 0v11l-2.5-2-2.5 2-2.5-2L8 21zm3.5-10h.01M14.5 11h.01',
+  checklist: 'M4 6.5 5.5 8 8 5.5M4 12.5 5.5 14 8 11.5M4 18.5 5.5 20 8 17.5M11 6.5h9M11 12.5h9M11 18.5h9',
+  engineer:  'M6.5 9.5a5.5 5.5 0 0 1 11 0M4 9.5h16M12 3.5v1.5M8 9.5a4 4 0 0 0 8 0M5 20.5c0-3.3 3-5.5 7-5.5s7 2.2 7 5.5',
+  technician:'M10 11.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM3.5 20.5c0-3.3 2.9-5.5 6.5-5.5 1.2 0 2.3.2 3.2.7M20.5 14.5a2.5 2.5 0 0 1-3.3 3.3L15 20.1a1.3 1.3 0 0 1-1.9-1.9l2.3-2.2a2.5 2.5 0 0 1 3.3-3.3l-1.5 1.5.4 1.4 1.4.4z',
+  hazard:    'M12 3.5 21.5 20h-19zM12 9.5v4.5m0 3v.5',
+  esd:       'M13 3 6.5 13H12l-1 8 6.5-10H12z',
+  vacuum:    'M12 20.5a8.5 8.5 0 1 0 0-17 8.5 8.5 0 0 0 0 17zM12 7.5v9m-4.5-4.5h9M8.8 8.8l6.4 6.4m0-6.4-6.4 6.4',
+  clean:     'M12 3.5l1.8 4.7 4.7 1.8-4.7 1.8L12 16.5l-1.8-4.7L5.5 10l4.7-1.8zM5 18.5l1 1m12-1-1 1M12 19v2',
+  timer:     'M12 21a8 8 0 1 0 0-16 8 8 0 0 0 0 16zm0-12v4l2.5 1.5M9.5 2.5h5M19 5l1.5 1.5',
+  production:'M4 20.5V9l5 3V9l5 3V9l6 3.5v8zM8 16.5h.01M12 16.5h.01M16 16.5h.01',
+  pin:       'M12 21.5s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11-6.5 11zm0-8.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',
+  scan:      'M3.5 8V5.5a2 2 0 0 1 2-2H8M16 3.5h2.5a2 2 0 0 1 2 2V8M20.5 16v2.5a2 2 0 0 1-2 2H16M8 20.5H5.5a2 2 0 0 1-2-2V16M4 12h16',
+
+  // ── step content glyphs (procedure nodes) ─────────────────────────────────
+  'step-voice': 'M4 9.5v5h3.5L12 18.5v-13L7.5 9.5zM15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11',
+  'step-image': 'M4 5.5h16v13H4zM4 15l4.5-4.5 4 4 2.5-2.5 5 5M16 9.5h.01',
+  'step-model': 'M12 2.5 20.5 7v10L12 21.5 3.5 17V7zM12 12l8.5-5M12 12 3.5 7M12 12v9.5',
+
+  // ── ui chrome ─────────────────────────────────────────────────────────────
+  book:      'M4 4.5h6a2 2 0 0 1 2 2v13a1.5 1.5 0 0 0-1.5-1.5H4zM20 4.5h-6a2 2 0 0 0-2 2v13a1.5 1.5 0 0 1 1.5-1.5H20z',
+  person:    'M12 11.5a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4.5 20.5c0-3.5 3.4-5.5 7.5-5.5s7.5 2 7.5 5.5',
+  file:      'M6.5 2.5h7l4.5 4.5v14.5h-11.5zM13.5 2.5v4.5H18',
+  photo:     'M4 8h3.2l1.6-2.5h6.4L16.8 8H20a1.5 1.5 0 0 1 1.5 1.5v9A1.5 1.5 0 0 1 20 20H4a1.5 1.5 0 0 1-1.5-1.5v-9A1.5 1.5 0 0 1 4 8zm8 8.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z',
+  key:       'M7 17.5a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9zm4.5-4.5H21m-3 0v3m-3-3v2.5',
+  lock:      'M7 11V8a5 5 0 0 1 10 0v3M5.5 11h13v9.5h-13zM12 14.5v3',
+  map:       'M3.5 6.5 9 4l6 2.5L20.5 4v13.5L15 20l-6-2.5-5.5 2.5zM9 4v13.5M15 6.5V20',
+  procedure: 'M4 5.5h6v5H4zM14 13.5h6v5h-6zM10 8h4v8h-4z M7 10.5V13h3',
+  restart:   'M4 12a8 8 0 1 0 2.3-5.6M4 4.5V9h4.5',
+  undo:      'M8 7.5H4v-4M4 7.5A8.5 8.5 0 1 1 3.5 12',
+  redo:      'M16 7.5h4v-4M20 7.5A8.5 8.5 0 1 0 20.5 12',
+  sun:       'M12 16.5a4.5 4.5 0 1 0 0-9 4.5 4.5 0 0 0 0 9zM12 2.5v2m0 15v2M2.5 12h2m15 0h2M5.3 5.3l1.4 1.4m10.6 10.6 1.4 1.4m0-13.4-1.4 1.4M6.7 17.3l-1.4 1.4',
+  moon:      'M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z',
+  warning:   'M12 3.5 21.5 20h-19zM12 9.5v4.5m0 3v.5',
+  error:     'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM8.5 8.5l7 7m0-7-7 7',
+  link:      'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1',
+  blocked:   'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM5.6 5.6l12.8 12.8',
 };
 
-export const ICON_NAMES = Object.keys(ICON_PATHS);
+export const ICON_META: Record<string, IconMeta> = {
+  flag:      { label: 'Flag',        group: 'node', usedIn: ['Inspector icon grid'] },
+  star:      { label: 'Star',        group: 'node', usedIn: ['Inspector icon grid'] },
+  bolt:      { label: 'Bolt',        group: 'node', usedIn: ['Inspector icon grid'] },
+  gear:      { label: 'Gear',        group: 'node', usedIn: ['Inspector icon grid'] },
+  eye:       { label: 'Eye',         group: 'node', usedIn: ['Inspector icon grid'] },
+  camera:    { label: 'Camera',      group: 'node', usedIn: ['Inspector icon grid'] },
+  cube:      { label: 'Cube',        group: 'node', usedIn: ['Inspector icon grid'] },
+  robot:     { label: 'Robot / cobot', group: 'node', usedIn: ['Inspector icon grid'] },
+  wrench:    { label: 'Wrench',      group: 'node', usedIn: ['Inspector icon grid'] },
+  chip:      { label: 'Chip',        group: 'node', usedIn: ['Inspector icon grid'] },
+  qr:        { label: 'QR code',     group: 'node', usedIn: ['Inspector icon grid'] },
+  tag:       { label: 'Tag',         group: 'node', usedIn: ['Inspector icon grid'] },
+  check:     { label: 'Check',       group: 'node', usedIn: ['Inspector icon grid'] },
+  alert:     { label: 'Alert',       group: 'node', usedIn: ['Inspector icon grid'] },
+  bulb:      { label: 'Idea',        group: 'node', usedIn: ['Inspector icon grid'] },
+  target:    { label: 'Target',      group: 'node', usedIn: ['Inspector icon grid'] },
+  layers:    { label: 'Layers',      group: 'node', usedIn: ['Inspector icon grid'] },
+  doc:       { label: 'Document',    group: 'node', usedIn: ['Inspector icon grid'] },
+  user:      { label: 'Person',      group: 'node', usedIn: ['Inspector icon grid'] },
+  clock:     { label: 'Clock',       group: 'node', usedIn: ['Inspector icon grid'] },
+  chamber:   { label: 'Chamber',     group: 'node', usedIn: ['Inspector icon grid'] },
+  wafer:     { label: 'Wafer',       group: 'node', usedIn: ['Inspector icon grid'] },
+  gasline:   { label: 'Gas line',    group: 'node', usedIn: ['Inspector icon grid'] },
+  breaker:   { label: 'Breaker',     group: 'node', usedIn: ['Inspector icon grid'] },
+  torque:    { label: 'Torque',      group: 'node', usedIn: ['Inspector icon grid'] },
+  lockout:   { label: 'Lockout (LOTO)', group: 'node', usedIn: ['Inspector icon grid'] },
+  evidence:  { label: 'Evidence photo', group: 'node', usedIn: ['Inspector icon grid'] },
+  voice:     { label: 'Voice',       group: 'node', usedIn: ['Inspector icon grid'] },
+  ghost:     { label: 'Ghost model', group: 'node', usedIn: ['Inspector icon grid'] },
+  checklist: { label: 'Checklist',   group: 'node', usedIn: ['Inspector icon grid'] },
+  engineer:  { label: 'ME',          group: 'node', usedIn: ['Inspector icon grid'] },
+  technician:{ label: 'Technician',  group: 'node', usedIn: ['Inspector icon grid'] },
+  hazard:    { label: 'Hazard',      group: 'node', usedIn: ['Inspector icon grid'] },
+  esd:       { label: 'ESD',         group: 'node', usedIn: ['Inspector icon grid'] },
+  vacuum:    { label: 'Vacuum',      group: 'node', usedIn: ['Inspector icon grid'] },
+  clean:     { label: 'Clean',       group: 'node', usedIn: ['Inspector icon grid'] },
+  timer:     { label: 'Timer',       group: 'node', usedIn: ['Inspector icon grid'] },
+  production:{ label: 'Production #', group: 'node', usedIn: ['Inspector icon grid'] },
+  pin:       { label: 'Spatial pin', group: 'node', usedIn: ['Inspector icon grid'] },
+  scan:      { label: 'Scan',        group: 'node', usedIn: ['Inspector icon grid'] },
+
+  'step-voice': { label: 'Step has voice', group: 'step', usedIn: ['NodeView step pill'] },
+  'step-image': { label: 'Step has image', group: 'step', usedIn: ['NodeView step pill'] },
+  'step-model': { label: 'Step has 3D model', group: 'step', usedIn: ['NodeView step pill'] },
+
+  book:      { label: 'Dictionary',  group: 'ui', usedIn: ['Toolbar', 'GlossaryPanel', 'Inspector dictionary block'] },
+  person:    { label: 'Your name',   group: 'ui', usedIn: ['MapList identity'] },
+  file:      { label: 'Import JSON', group: 'ui', usedIn: ['MapList menu'] },
+  photo:     { label: 'From whiteboard photo', group: 'ui', usedIn: ['MapList menu'] },
+  key:       { label: 'Unlock draft', group: 'ui', usedIn: ['MapList menu'] },
+  lock:      { label: 'Draft',       group: 'ui', usedIn: ['Toolbar', 'MapList draft badge'] },
+  map:       { label: 'Roadmap',     group: 'ui', usedIn: ['MapList door + row'] },
+  procedure: { label: 'Procedure',   group: 'ui', usedIn: ['MapList door + row'] },
+  restart:   { label: 'Run again',   group: 'ui', usedIn: ['PreviewPanel'] },
+  undo:      { label: 'Undo',        group: 'ui', usedIn: ['Toolbar'] },
+  redo:      { label: 'Redo',        group: 'ui', usedIn: ['Toolbar'] },
+  sun:       { label: 'Day theme',   group: 'ui', usedIn: ['Toolbar'] },
+  moon:      { label: 'Night theme', group: 'ui', usedIn: ['Toolbar'] },
+  warning:   { label: 'Warning',     group: 'ui', usedIn: ['ProcedureBar chip', 'NodeView issue bubble'] },
+  error:     { label: 'Error',       group: 'ui', usedIn: ['ProcedureBar chip', 'NodeView issue bubble'] },
+  link:      { label: 'Reference link', group: 'ui', usedIn: ['PreviewPanel'] },
+  blocked:   { label: 'Blocked by precondition', group: 'ui', usedIn: ['PreviewPanel'] },
+};
+
+/** Icons an author can pick for a node (Inspector grid). */
+export const ICON_NAMES = Object.keys(ICON_PATHS).filter(n => ICON_META[n]?.group === 'node');

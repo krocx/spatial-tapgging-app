@@ -13,7 +13,8 @@ import {
   NODE_COLORS, NODE_TYPE_LABELS, NODE_TYPES,
   STATUS_LABELS, NODE_STATUSES,
 } from '../utils/colors.js';
-import { ICON_PATHS, ICON_NAMES } from '../utils/icons.js';
+import { ICON_NAMES, ICON_META } from '../utils/icons.js';
+import { Icon } from './Icon.js';
 import { matchGlossary } from '../utils/glossary.js';
 import { renderInline } from './GlossaryPanel.js';
 
@@ -274,13 +275,10 @@ function NodePanel({ nodeId }: { nodeId: string }): JSX.Element | null {
             <button
               key={name}
               className={`icon-btn ${node.icon === name ? 'active' : ''}`}
-              title={name}
+              title={ICON_META[name]?.label ?? name}
               onClick={() => setNodeIcon(node.id, name)}
             >
-              <svg viewBox="0 0 24 24" width={15} height={15}>
-                <path d={ICON_PATHS[name]} fill="none" stroke="currentColor" strokeWidth={2}
-                      strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <Icon name={name} size={15} />
             </button>
           ))}
         </div>
@@ -553,7 +551,7 @@ function DictionaryBlock({ nodeText }: { nodeText: string }): JSX.Element | null
   return (
     <div className="dict-block">
       <div className="dict-head">
-        <span className="dict-term">📖 {renderInline(entry.term)}</span>
+        <span className="dict-term"><Icon name="book" size={13} /> {renderInline(entry.term)}</span>
       </div>
       <p className="dict-def">{renderInline(entry.definition)}</p>
       <button className="btn ghost dict-more" onClick={() => openGlossary(entry.term)}>

@@ -3,7 +3,7 @@
 // connection handle, inline text editing. Long-press edits on touch.
 
 import { useRef, useCallback } from 'react';
-import type { MindmapEdgePort, MindmapNode } from '@spatial/shared';
+import type { MindmapEdgePort, MindmapNode, ProcedureIssue } from '@spatial/shared';
 import { useStore } from '../state/store.js';
 import { NODE_COLORS, NODE_FILL_COLORS, STATUS_COLORS } from '../utils/colors.js';
 import { NODE_W, NODE_H, LINE_HEIGHT, nodeHeight, wrapNodeText, shapePathD, portPoint, EDGE_PORTS } from '../utils/geometry.js';
@@ -32,6 +32,7 @@ function ShapeOutline({ shape, h, fill, stroke, strokeWidth, filter }: {
 }
 
 const LONG_PRESS_MS = 500;
+const EMPTY_ISSUES: ProcedureIssue[] = [];
 
 export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = false, hiddenCount = 0 }: Props): JSX.Element {
   const toggleCollapse = useStore(s => s.toggleCollapse);
@@ -154,11 +155,17 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
     { ttsText?: string; imageFile?: string; modelId?: string; models?: unknown[] } | undefined;
   // U5: several models per step → "⬢×2" so the count is visible on the canvas.
   const modelCount = Array.isArray(stepMeta?.models) ? stepMeta!.models!.length : (stepMeta?.modelId ? 1 : 0);
-  const stepGlyphs = [
-    stepMeta?.ttsText   ? '🔊' : null,
-    stepMeta?.imageFile ? '🖼' : null,
-    modelCount > 1 ? `⬢×${modelCount}` : modelCount === 1 ? '⬢' : null,
-  ].filter((g): g is string => g !== null);
+  const stepGlyphs: Array<{ icon: string; count?: number; title: string }> = [
+    stepMeta?.ttsText   ? { icon: 'step-voice', title: 'Voice prompt' } : null,
+    stepMeta?.imageFile ? { icon: 'step-image', title: 'Reference image' } : null,
+    modelCount > 0 ? { icon: 'step-model', count: modelCount > 1 ? modelCount : undefined,
+                       title: modelCount > 1 ? `${modelCount} 3D models` : '3D model' } : null,
+  ].filter((g): g is { icon: string; count?: number; title: string } => g !== null);
+  // Compiler issues for THIS node (procedure maps). Server-derived; the drawer
+  // in ProcedureBar lists the same objects, the bubble puts them on the card.
+  const issues = useStore(s => s.procedure?.issues.filter(i => i.nodeId === node.id) ?? EMPTY_ISSUES);
+  const issueErrors = issues.filter(i => i.level === 'error').length;
+  const issueWarns  = issues.length - issueErrors;
 
   return (
     <g
@@ -265,15 +272,49 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
           — the exact combination users reported as "icons too small to see".
           Shifts left when a collapse chevron shares the bottom edge. */}
       {stepGlyphs.length > 0 && (() => {
-        const pillW = stepGlyphs.length * 19 + 12;
+        const slot = 20;
+        const pillW = stepGlyphs.reduce((w, g) => w + slot + (g.count ? 12 : 0), 12);
         const cx = collapsible ? NODE_W / 2 - 44 : NODE_W / 2;
+        let x = -pillW / 2 + 6;
         return (
           <g transform={`translate(${cx} ${h - 2})`} pointerEvents="none">
             <rect x={-pillW / 2} y={-4} width={pillW} height={21} rx={10.5}
                   fill="#ffffff" stroke="#cbd5e1" strokeWidth={1} />
-            <text x={0} y={12} textAnchor="middle" style={{ fontSize: 13 }}>
-              {stepGlyphs.join(' ')}
-            </text>
+            {stepGlyphs.map(g => {
+              const gx = x; x += slot + (g.count ? 12 : 0);
+              return (
+                <g key={g.icon} transform={`translate(${gx} -1)`}>
+                  <g transform="scale(0.62)">
+                    <path d={ICON_PATHS[g.icon]} fill="none" stroke="#334155" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
+                  </g>
+                  {g.count && (
+                    <text x={16} y={11} style={{ fontSize: 9.5, fontWeight: 700 }} fill="#334155">×{g.count}</text>
+                  )}
+                  <title>{g.title}</title>
+                </g>
+              );
+            })}
+          </g>
+        );
+      })()}
+
+      {/* Issue bubble — top-right, riding the corner like a notification
+          badge. Red when any error (blocks Send to guide library), amber for
+          warnings only. Native tooltip lists every message; the drawer in
+          ProcedureBar remains the full list. */}
+      {issues.length > 0 && (() => {
+        const n = issues.length;
+        const w = n > 9 ? 38 : 32;
+        const color = issueErrors > 0 ? '#dc2626' : '#f59e0b';
+        return (
+          <g transform={`translate(${NODE_W - 4} -6)`} pointerEvents="all">
+            <rect x={-w + 4} y={-9} width={w} height={18} rx={9} fill={color} stroke="#ffffff" strokeWidth={2}
+                  style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,.35))' }} />
+            <g transform={`translate(${-w + 8} -6) scale(0.5)`}>
+              <path d={ICON_PATHS[issueErrors > 0 ? 'error' : 'warning']} fill="none" stroke="#ffffff" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" />
+            </g>
+            <text x={-w + 27} y={3.5} textAnchor="middle" style={{ fontSize: 10, fontWeight: 700 }} fill="#ffffff">{n > 9 ? '9+' : n}</text>
+            <title>{issues.map(i => `${i.level === 'error' ? 'Error' : 'Warning'}: ${i.message}`).join('\n')}</title>
           </g>
         );
       })()}
