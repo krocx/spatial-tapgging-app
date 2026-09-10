@@ -1816,7 +1816,20 @@ function objectScanHtml(anchor) {
     : '';
   if (!anchor.objectScannedAt) return src;
   const d = new Date(anchor.objectScannedAt).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
-  return src + ` <span class="badge badge-green" title="ARKit reference object scanned on device (${anchor.objectScannedAt}) — sparse feature points, no mesh or photo">◈ Object scanned · ${d}</span> <button class="btn btn-ghost btn-sm" style="font-size:0.62rem;padding:1px 6px" title="Remove the object scan (the Author can scan again)" onclick="removeObjectScan('${anchor.id}','${jsEsc(anchor.assetId)}')">Remove</button>`;
+  // B1b/B2/B3 provenance — device, merged scans, sides, calibration, shape model.
+  const oi = anchor.objectInfo || {};
+  const prov = [
+    oi.scannedOn ? `Scanned on ${oi.scannedOn}` : 'Device unknown',
+    oi.mergedFrom && oi.mergedFrom.length ? `merged from ${oi.mergedFrom.length} more` : null,
+    oi.points !== undefined ? `${oi.points} pts` : null,
+    oi.sides !== undefined ? `${oi.sides}/6 sides` : null,
+    oi.calibrated ? 'calibrated to QR' : 'not calibrated (Author must scan the QR with the chamber in view)',
+    oi.shapeModel ? (oi.shapeAligned ? 'shape model aligned' : 'shape model set, not aligned') : null,
+  ].filter(Boolean).join(' · ');
+  const provBadge = anchor.objectInfo
+    ? ` <span class="badge" style="background:rgba(148,163,184,.15);color:#cbd5e1" title="${prov}">${oi.scannedOn || 'device ?'}${oi.mergedFrom && oi.mergedFrom.length ? ' +' + oi.mergedFrom.length : ''} · ${oi.sides !== undefined ? oi.sides + '/6' : '?'} sides${oi.calibrated ? ' · ✓ cal' : ' · <span style="color:#fbbf24">cal pending</span>'}${oi.shapeModel ? (oi.shapeAligned ? ' · ◧ model' : ' · <span style="color:#fbbf24">◧ align model</span>') : ''}</span>`
+    : '';
+  return src + provBadge + ` <span class="badge badge-green" title="ARKit reference object scanned on device (${anchor.objectScannedAt}) — sparse feature points, no mesh or photo">◈ Object scanned · ${d}</span> <button class="btn btn-ghost btn-sm" style="font-size:0.62rem;padding:1px 6px" title="Remove the object scan (the Author can scan again)" onclick="removeObjectScan('${anchor.id}','${jsEsc(anchor.assetId)}')">Remove</button>`;
 }
 async function removeObjectScan(anchorId, assetId) {
   if (!confirm(`Remove the object scan of "${assetId}"?\n\nThe chamber falls back to its world map / QR until an Author scans it again.`)) return;

@@ -332,6 +332,10 @@ struct OperatorModeView: View {
             OwnSCNViewContainer(sceneView: arManager.sceneView)
                 .ignoresSafeArea()
 
+            // R1: chamber moved? pill / re-align toast + Undo / manual finder.
+            ObjectTrackOverlay(arManager: arManager, topInset: 70, bottomInset: 200)
+                .allowsHitTesting(arManager.objectTrackState != .idle)
+
             // ── #84: tag tap catcher ─────────────────────────────────────────────
             // Invisible layer over the camera feed that hit-tests taps against
             // the 3D tag markers, so tapping a tag's label expands its info

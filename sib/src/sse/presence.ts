@@ -97,6 +97,16 @@ export function sweepPresence(now = Date.now()): number {
   return dropped;
 }
 
+/** People on tools right now (all anchors) + the anchors they are on — for /stats. */
+export function presenceSummary(now = Date.now()): { people: number; anchors: string[] } {
+  let people = 0; const anchors: string[] = [];
+  for (const [anchorId, m] of byAnchor) {
+    const live = [...m.values()].filter(e => now - Date.parse(e.updatedAt) <= STALE_MS).length;
+    if (live > 0) { people += live; anchors.push(anchorId); }
+  }
+  return { people, anchors };
+}
+
 /** Test hook. */
 export function resetPresence(): void { byAnchor.clear(); }
 

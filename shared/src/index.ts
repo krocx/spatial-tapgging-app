@@ -138,6 +138,16 @@ export interface Anchor {
    * no object scan. Never stored; never accepted on write.
    */
   objectScannedAt?: string;
+  /** Derived (read-only) summary of the object scan for lists / portal badges. */
+  objectInfo?: {
+    scannedOn?:   string;
+    mergedFrom?:  string[];
+    sides?:       number;
+    points?:      number;
+    calibrated:   boolean;    // objectPoseInQR present
+    shapeModel:   boolean;    // shapeModelId present
+    shapeAligned: boolean;    // shapeModelPose present
+  };
   /**
    * B2 (2026.4.46): how AR sessions find this chamber's origin.
    *   'worldMap' (default, absent) — sealed ARWorldMap; QR is the key + drift check.
@@ -206,6 +216,11 @@ export interface AnchorObjectMeta {
   mergedFrom?:     string[];
   /** B1b: how many sides of the box had feature points at save time (1–6). */
   sides?:          number;
+  /** B3: a library 3D model shown as a ghost ON the detected chamber (alignment preview). */
+  shapeModelId?:    string | null;
+  /** Model pose in the reference object's frame (16 floats, column-major). */
+  shapeModelPose?:  number[];
+  shapeModelScale?: number;
 }
 
 /** C1: PATCH /anchors/:id — engineer+. configId null clears. */

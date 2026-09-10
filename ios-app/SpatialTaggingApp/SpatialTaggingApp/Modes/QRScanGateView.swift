@@ -77,6 +77,7 @@ struct QRScanGateView: View {
     // B2e: object-origin chamber → after the QR lock we wait for the chamber's
     // shape with a visible timer; the QR position is an explicit fallback.
     @State private var objectWaitStart: Date? = nil
+    @State private var shapeGhost: ObjectShapeGhost? = nil     // B3
     @State private var pendingLockContext: QRAnchorContext? = nil
     private var objectExtent: simd_float3? {
         guard let e = objectBundle?.meta.extent else { return nil }
@@ -190,6 +191,11 @@ struct QRScanGateView: View {
                         objectBundle = ob
                         arManager.setReferenceObject(ob?.archive, name: anchorId)
                     }
+                    if let meta = ob?.meta, let mid = meta.shapeModelId {
+                        let g = await MainActor.run { ObjectShapeGhost(sceneView: arManager.sceneView, meta: meta) }
+                        await g.load(modelId: mid, client: sibClient)
+                        await MainActor.run { shapeGhost = g }
+                    }
                     // Refresh the anchor so originSource / objectScannedAt are current.
                     if let fresh = try? await sibClient.fetchAnchor(id: anchorId) {
                         await MainActor.run { appState.activeAnchor = fresh }
@@ -230,6 +236,10 @@ struct QRScanGateView: View {
             // pending auto-return fire onCancel() a second time later.
             wrongQRTimeoutWorkItem?.cancel()
             wrongQRTimeoutWorkItem = nil
+        }
+        .onChange(of: arManager.objectTransform) { t in
+            // B3: proof of recognition — the ghost lands on the chamber.
+            if t != nil { shapeGhost?.update(objectTransform: t); shapeGhost?.flash() }
         }
         .onChange(of: arManager.scanState) { state in
             if case .detected = state { scanPhase = .detected }

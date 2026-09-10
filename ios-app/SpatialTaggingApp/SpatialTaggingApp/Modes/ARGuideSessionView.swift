@@ -145,6 +145,7 @@ struct ARGuideSessionView: View {
     @State private var objectOnlyFrame       = false
     @State private var objectExtent: simd_float3? = nil
     @State private var objectMeta:   AnchorObjectMeta? = nil
+    @State private var shapeGhost:   ObjectShapeGhost? = nil     // B3
     @State private var objectSearchStartedAt = Date()
     @State private var fallbackMapData: Data? = nil
     /// User chose "Place from last known position" — pins come from the room map.
@@ -328,6 +329,8 @@ struct ARGuideSessionView: View {
                     arManager.pauseSession()
                 }
                 .onChange(of: arManager.objectTransform) { objT in
+                    // B3: ghost on the recognised chamber (fades after a few seconds).
+                    if objT != nil { shapeGhost?.update(objectTransform: objT); shapeGhost?.flash() }
                     // B2: object seen + calibrated → world re-based onto the map
                     // frame; pins are exact without feature-point matching.
                     // B2e: also while navigating on the APPROXIMATE (map) frame —
@@ -354,6 +357,7 @@ struct ARGuideSessionView: View {
                 // B2e: automatic re-alignment (chamber moved mid-session) — never silent.
                 .onChange(of: arManager.objectRealignCount) { n in
                     guard n > 0 else { return }
+                    shapeGhost?.update(objectTransform: arManager.objectTransform); shapeGhost?.flash()
                     withAnimation { showRealignToast = true }
                     Task {
                         try? await Task.sleep(nanoseconds: 8_000_000_000)
@@ -1213,6 +1217,11 @@ struct ARGuideSessionView: View {
                 objectLoaded = ob != nil
                 objectMeta   = ob?.meta
                 if let e = ob?.meta.extent { objectExtent = simd_float3(Float(e.x), Float(e.y), Float(e.z)) }
+                if let meta = ob?.meta, let mid = meta.shapeModelId {
+                    let g = ObjectShapeGhost(sceneView: arManager.sceneView, meta: meta)
+                    Task { await g.load(modelId: mid, client: client) }
+                    shapeGhost = g
+                }
             }
             async let mapFetch   = WorldMapCache.load(.guide(guide.id), client: client)
             async let photoFetch = client.fetchGuideWorldMapPhoto(guideId: guide.id)

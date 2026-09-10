@@ -110,6 +110,32 @@ it, it gets a line.
   private frame. Presence identity is per device (`employeeId@device`), so
   the same login on two iPhones is two people. Author mode (Spatial
   Inspection) and author-coaches-operator are the next slices.
+- **Object tracking, slice 5 — re-align UI in the inspection modes +
+  portal provenance (R1)** — Spatial Inspection Author / Operator and iLOTO
+  already inherited the chamber-movement watchdog from the QR gate but only
+  gave a haptic; they now get the same `ObjectTrackOverlay` the guides
+  have: tracking pill (tap = manual re-align with the timed finder),
+  "Chamber moved — re-aligned · Undo" toast, amber "looks different" state.
+  Portal: the chamber row's object badge now carries provenance — device it
+  was scanned on (+ merged devices), sides covered, calibration state and
+  shape-model state, with the full detail in the tooltip (`Anchor.objectInfo`,
+  derived, read-only).
+- **Object tracking, slice 4 — shape model ghost (B3)** — a reference
+  object is an invisible point cloud, so "chamber recognised" had nothing on
+  screen to prove *where* the app thinks the chamber is. Anchor Hub → Object
+  tracking → **Shape model** picks a USDZ-ready model from the chamber's kit;
+  **Align shape model on the chamber** opens a one-time fit (drag slides on
+  the chamber's ground plane, pinch scales, twist turns, sliders for lift
+  and scale; Save when it sits on the metal) and stores `shapeModelPose` /
+  `shapeModelScale` in the reference object's frame (kept across merged
+  scans, reset by a fresh re-scan). From then on the QR gate, Place Steps
+  and the guide session show the model as an indigo ghost on the chamber
+  for ~6 s at every recognition and every B2e re-alignment, then fade it —
+  a glance tells you the frame is right. Server: `PATCH
+  /anchors/:id/object/meta` now takes `shapeModelId` (existing model id or
+  null to clear), `shapeModelPose`, `shapeModelScale` alongside
+  `objectPoseInQR`. New file `Components/ObjectShapeGhost.swift` (renderer,
+  picker, align view) — add to the Xcode target.
 - **Multi-user, slice 3 — an author coaches an operator (C1/C2)** — the
   operator's guide session now publishes presence too (surface `guide`,
   pose in the guide-map frame once relocalized / object-snapped, current
@@ -257,6 +283,26 @@ it, it gets a line.
   chip remains as the record). Failures stay up with the reason and OK.
 
 ### Changed
+- **/platform rebuilt as "The Chamber" (PM1)** — the poster (five boxes,
+  thirty bullets) is replaced by one stylised chamber that the platform
+  happens to as you scroll, in the order a fab adopts it: *One chamber. One
+  origin.* (with the optional recognised-by-shape beat) → *The WI lands where
+  the hands go* (pins, ghost part, step scrubber, POC target from
+  `metrics.json`) → *SIB checks the work, not the checkbox* (cone + verdict)
+  → *The ME and the technician, on the same pin* (John · ME and Dev · new
+  hire, "look here", plus the responsible-by-design line) → *Not a slide. A
+  fab.* (grid glows from live `/stats` presence; counters read from SIB) →
+  *Built for iPad today. Getting ready for glasses tomorrow.* (FY27 device
+  POCs, readiness cards overridable via `/platform-media/trl.json`) → the
+  Connected Worker ladder (Level 1 Digital instructions · 2 Spatial &
+  validated · 3 Connected & coached · 4 Autonomous systems / cobot-ready;
+  tap a level to preview it on the chamber) with the six-question
+  assessment in a sheet. Hero: "Spatially guiding technicians to do it
+  right, the first time." ~60 words on the surface; "In the catalogue →"
+  behind each stop; the full write-up is parked verbatim at `/platform/long`
+  (and `docs/archive/`). Three.js is the vendored r169 with a CDN fallback;
+  no WebGL → quiet 2D fallback with the same copy. `/stats` gains
+  `presenceNow` / `presenceAnchors`.
 - **One localization doctrine for every AR surface (B1)** — *the author's
   world map is the origin; the QR is the key and a drift check.* AR Work
   Instructions already worked this way; Spatial Inspection placed tags from

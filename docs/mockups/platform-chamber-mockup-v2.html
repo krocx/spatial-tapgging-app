@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>The Chamber — Platform map mockup · AppliedX</title>
+<style>
+  :root { --ink:#eef2ff; --dim:#8b93b8; --indigo:#818cf8; --cyan:#22d3ee; --amber:#fbbf24; --teal:#5eead4; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; background:#070a1a; color:var(--ink); font-family:-apple-system,"SF Pro Display",Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  #stage { position:fixed; inset:0; z-index:0; }
+  #stage canvas { display:block; width:100%; height:100%; }
+  .veil { position:fixed; inset:0; pointer-events:none; z-index:1;
+          background:radial-gradient(1200px 700px at 50% 40%, rgba(129,140,248,.08), transparent 60%); }
+  main { position:relative; z-index:2; pointer-events:none; }
+  section { min-height:100vh; display:flex; align-items:flex-end; padding:0 6vw 12vh; }
+  section.center { align-items:center; }
+  .copy { max-width:560px; pointer-events:auto; }
+  .eyebrow { font-size:12px; letter-spacing:.22em; text-transform:uppercase; color:var(--dim); margin-bottom:14px; }
+  h1 { font-size:clamp(40px,6vw,76px); line-height:1.02; margin:0 0 18px; letter-spacing:-.02em; font-weight:700; }
+  h2 { font-size:clamp(30px,4.2vw,54px); line-height:1.05; margin:0 0 14px; letter-spacing:-.02em; font-weight:700; }
+  p  { font-size:clamp(16px,1.4vw,20px); line-height:1.45; color:#c7cdf0; margin:0 0 18px; max-width:46ch; }
+  .hint { display:inline-flex; align-items:center; gap:8px; font-size:13px; color:var(--dim); border:1px solid rgba(255,255,255,.12); border-radius:999px; padding:7px 12px; }
+  .hint b { color:var(--ink); font-weight:600; }
+  .more { display:inline-block; margin-left:10px; font-size:13px; color:var(--indigo); text-decoration:none; border-bottom:1px solid rgba(129,140,248,.4); }
+  .brand { position:fixed; top:22px; left:6vw; z-index:3; font-size:13px; letter-spacing:.18em; text-transform:uppercase; color:var(--dim); }
+  .brand b { color:var(--ink); }
+  .conf { position:fixed; top:22px; right:6vw; z-index:3; font-size:11px; color:#4b5280; }
+  .dots { position:fixed; right:22px; top:50%; transform:translateY(-50%); z-index:3; display:flex; flex-direction:column; gap:10px; }
+  .dots i { width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,.18); transition:all .3s; }
+  .dots i.on { background:var(--indigo); height:18px; border-radius:3px; }
+  /* live HUD (stage 6) */
+  .hud { position:fixed; left:6vw; bottom:12vh; z-index:3; display:none; gap:28px; pointer-events:none; }
+  .hud div { font-variant-numeric:tabular-nums; }
+  .hud .n { font-size:44px; font-weight:700; letter-spacing:-.02em; line-height:1; }
+  .hud .l { font-size:12px; color:var(--dim); letter-spacing:.14em; text-transform:uppercase; margin-top:6px; }
+  .hud .live { color:var(--teal); }
+  /* ladder (stage 7) */
+  .ladder { display:flex; gap:10px; margin:22px 0 14px; pointer-events:auto; }
+  .ladder button { background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); color:var(--ink); border-radius:12px; padding:14px 16px; text-align:left; cursor:pointer; min-width:150px; transition:all .2s; }
+  .ladder button:hover { background:rgba(129,140,248,.16); border-color:var(--indigo); transform:translateY(-2px); }
+  .ladder small { display:block; color:var(--dim); margin-top:4px; font-size:12px; }
+  .cta { display:inline-block; background:var(--indigo); color:#0b1026; font-weight:700; padding:13px 20px; border-radius:999px; text-decoration:none; pointer-events:auto; }
+  .ghost-cta { display:inline-block; margin-left:12px; color:var(--ink); padding:13px 18px; border:1px solid rgba(255,255,255,.18); border-radius:999px; text-decoration:none; pointer-events:auto; }
+  .toast { position:fixed; left:50%; top:26px; transform:translateX(-50%); z-index:4; background:rgba(34,211,238,.92); color:#04141a; font-weight:600; font-size:13px; padding:8px 14px; border-radius:999px; opacity:0; transition:opacity .3s; }
+  .toast.show { opacity:1; }
+  footer { position:relative; z-index:2; padding:40px 6vw 60px; color:#4b5280; font-size:12px; display:flex; justify-content:space-between; }
+  @media (max-width:700px){ section{padding-bottom:16vh} .hud{gap:16px} .hud .n{font-size:30px} .ladder{flex-wrap:wrap} }
+</style>
+</head>
+<body>
+<div class="brand"><b>AppliedX</b> · Connected Worker AR OMS</div>
+<div class="conf">Proprietary &amp; Confidential · Applied Materials · mockup</div>
+<div id="stage"></div>
+<div class="veil"></div>
+<div class="dots" id="dots"></div>
+<div class="toast" id="toast">John (ME): look here</div>
+<div class="hud" id="hud">
+  <div><div class="n live" id="h1">12</div><div class="l">people on tools now</div></div>
+  <div><div class="n" id="h2">148</div><div class="l">chambers mapped</div></div>
+  <div><div class="n" id="h3">2,314</div><div class="l">steps validated this week</div></div>
+</div>
+
+<main>
+  <!-- 0 · hero -->
+  <section>
+    <div class="copy">
+      <div class="eyebrow">Connected Worker AR OMS</div>
+      <h1>Every technician's next move, placed on the tool.</h1>
+      <p>Not on a screen beside the chamber. On it.</p>
+      <span class="hint"><b>Scroll</b> to watch the platform happen to one chamber · <b>drag</b> to turn it</span>
+    </div>
+  </section>
+
+  <!-- 1 · origin -->
+  <section>
+    <div class="copy">
+      <div class="eyebrow">Spatial Intelligence Backbone</div>
+      <h2>One chamber. One origin.</h2>
+      <p>Scan the chamber once and every guide, tag and LOTO point knows exactly where it lives — for every iPad, every shift, every technician. Reusable every day.</p>
+      <span class="hint">Millimetre-stable · works offline · on-prem</span><a class="more" href="#">Learn more</a>
+    </div>
+  </section>
+
+  <!-- 2 · AGWI -->
+  <section>
+    <div class="copy">
+      <div class="eyebrow">Adaptive Guided Work Instructions · AR OJT</div>
+      <h2>The WI lands where the hands go.</h2>
+      <p>Each step pinned on the chamber, a ghost of the correct result, a recovery path when something isn't right. Authored on the tool by the ME in minutes; logged per Production #.</p>
+      <span class="hint"><b>Scrub</b> the steps <input id="scrub" type="range" min="0" max="3" step="0.01" value="0" style="width:140px;vertical-align:middle;accent-color:#818cf8"></span><a class="more" href="#">Learn more</a>
+    </div>
+  </section>
+
+  <!-- 3 · validation -->
+  <section>
+    <div class="copy">
+      <div class="eyebrow">Spatial Validation</div>
+      <h2>SIB checks the work, not the checkbox.</h2>
+      <p>A cone of light brings the camera to the exact spot the ME trained. The verdict is on the part, with the evidence attached to the run.</p>
+      <span class="hint"><b>Tap</b> the spot to re-check</span><a class="more" href="#">Learn more</a>
+    </div>
+  </section>
+
+  <!-- 4 · shape (optional) -->
+  <section>
+    <div class="copy">
+      <div class="eyebrow">Object tracking · optional</div>
+      <h2>Knows our parts by their shape.</h2>
+      <p>A thirty-second scan makes the part itself the anchor. Roll a gas line to a different bay — the WI comes with it.</p>
+      <span class="hint"><b>Drag</b> the chamber sideways</span><a class="more" href="#">Learn more</a>
+    </div>
+  </section>
+
+  <!-- 5 · coaching -->
+  <section>
+    <div class="copy">
+      <div class="eyebrow">Presence &amp; coaching</div>
+      <h2>The ME and the technician, on the same pin.</h2>
+      <p>Guidance and coaching where the work is: the ME sees which step the technician is on and where they're looking, and sends a "look here" that lands on the metal. New hires learn on the tool, not in a classroom.</p>
+      <span class="hint"><b>Tap</b> the ME to point</span><a class="more" href="#">Learn more</a>
+    </div>
+  </section>
+
+  <!-- 6 · fab / readiness -->
+  <section>
+    <div class="copy" style="margin-bottom:120px">
+      <div class="eyebrow">Live from this server</div>
+      <h2>Built for iPad today. Getting ready for glasses tomorrow.</h2>
+      <p>Every glowing tool is someone on the platform right now. The same content, unchanged, is what the FY27 device POCs run on — follow the live Technology Readiness Level scorecard as each form factor earns its place.</p>
+      <a class="cta" href="#">TRL scorecard</a><a class="ghost-cta" href="#">FY27 POCs</a>
+    </div>
+  </section>
+
+  <!-- 7 · ladder -->
+  <section class="center">
+    <div class="copy">
+      <div class="eyebrow">Connected Worker maturity</div>
+      <h2>Where would your fab stand?</h2>
+      <p>Ninety seconds. Six questions. A place on the ladder — and the next rung.</p>
+      <div class="ladder">
+        <button>Level 1<small>Digital instructions</small></button>
+        <button>Level 2<small>Spatial &amp; validated</small></button>
+        <button>Level 3<small>Connected &amp; coached</small></button>
+        <button>Level 4<small>Autonomous systems / cobot-ready</small></button>
+      </div>
+      <a class="cta" href="#">Start the assessment</a><a class="ghost-cta" href="#">Explore the catalogue</a>
+    </div>
+  </section>
+</main>
+<footer><span>AppliedX · Connected Worker AR OMS · 2026.4.46</span><span>Design philosophy: guided · exploratory · discoverable · inspiring — responsible XR adoption</span></footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* ───────────────────────── scene ───────────────────────── */
+const el = document.getElementById('stage');
+const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputEncoding = THREE.sRGBEncoding;
+el.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x070a1a, 0.045);
+const camera = new THREE.PerspectiveCamera(38, innerWidth/innerHeight, 0.1, 200);
+
+scene.add(new THREE.HemisphereLight(0xdde3ff, 0x0b1026, 0.9));
+const key = new THREE.DirectionalLight(0xffffff, 1.1); key.position.set(4, 8, 5); scene.add(key);
+const rim = new THREE.DirectionalLight(0x818cf8, 0.8); rim.position.set(-6, 4, -6); scene.add(rim);
+
+// floor: subtle grid disc
+const floor = new THREE.Mesh(new THREE.CircleGeometry(6, 64), new THREE.MeshStandardMaterial({ color:0x0d1230, roughness:1, metalness:0 }));
+floor.rotation.x = -Math.PI/2; floor.position.y = 0; scene.add(floor);
+const grid = new THREE.GridHelper(12, 24, 0x1e2a5a, 0x141b3d); grid.position.y = 0.002; scene.add(grid);
+
+/* ───────────────── stylised chamber (inspired by, not copied from, the photo) ───────────────── */
+const M = (c, o={}) => new THREE.MeshStandardMaterial(Object.assign({ color:c, roughness:.55, metalness:.15 }, o));
+const BLUE = 0x2563eb, BLUE_D = 0x1d4ed8, STEEL = 0x8f9bb3, LIGHT = 0xe6e9f2, DARK = 0x1a2033, PANEL = 0xb8c2d9;
+const chamber = new THREE.Group(); scene.add(chamber);
+function box(w,h,d, mat, x,y,z, parent=chamber){ const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), mat); m.position.set(x,y,z); parent.add(m); return m; }
+function cyl(r,h, mat, x,y,z, parent=chamber, rz=0){ const m = new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,32), mat); m.position.set(x,y,z); m.rotation.z=rz; parent.add(m); return m; }
+
+// pallet + feet
+box(2.3, 0.08, 1.6, M(0xd4a017,{roughness:.9}), 0, 0.04, 0);
+[[-0.85,-0.55],[0.85,-0.55],[-0.85,0.55],[0.85,0.55]].forEach(([x,z]) => cyl(0.05, 0.16, M(STEEL), x, 0.16, z));
+// blue base cabinet with louvre + panel
+const base = box(1.9, 1.0, 1.3, M(BLUE), 0, 0.74, 0);
+box(0.5, 0.42, 0.02, M(DARK), -0.5, 0.72, 0.66);              // vent
+for (let i=0;i<6;i++) box(0.44, 0.02, 0.03, M(STEEL), -0.5, 0.56+i*0.06, 0.67);
+box(0.7, 0.5, 0.02, M(LIGHT), 0.45, 0.72, 0.66);              // white panel
+box(0.5, 0.3, 0.02, M(0x60a5fa,{emissive:0x1d4ed8, emissiveIntensity:.4}), 0.45, 0.68, 0.67); // screen glow
+// mid frame: steel columns + cream electronics block
+box(1.7, 0.9, 1.1, M(0x2b3350), 0, 1.7, 0);
+[[-0.75,-0.45],[0.75,-0.45],[-0.75,0.45],[0.75,0.45]].forEach(([x,z]) => box(0.08, 1.6, 0.08, M(STEEL), x, 2.0, z));
+box(0.6, 0.55, 0.45, M(LIGHT), -0.35, 1.55, 0.5);             // controller
+for (let i=0;i<4;i++) box(0.07, 0.35, 0.02, M(0x3b82f6), -0.55+i*0.12, 1.55, 0.73);
+// tray / slab (black wedge) + side arm
+const tray = box(1.2, 0.08, 0.7, M(0x0f1424,{roughness:.35, metalness:.5}), 0.05, 2.35, 0.25); tray.rotation.x = 0.35;
+cyl(0.06, 0.9, M(STEEL), 0.95, 1.9, 0.2, chamber, 0);
+box(0.55, 0.12, 0.28, M(LIGHT), 1.15, 2.35, 0.2);              // arm head
+box(0.16, 0.5, 0.16, M(0x111827), 0.98, 2.3, -0.35);           // black box
+box(0.07, 0.07, 0.07, M(0xef4444,{emissive:0xef4444, emissiveIntensity:.8}), 0.98, 2.62, -0.35); // e-stop
+// head: rounded cream dome-ish (box + cylinder cap)
+box(1.0, 0.9, 0.9, M(LIGHT), 0, 3.15, -0.05);
+cyl(0.5, 1.0, M(LIGHT), 0, 3.6, -0.05, chamber, 0);            // cap
+const capTop = new THREE.Mesh(new THREE.SphereGeometry(0.5, 32, 16, 0, Math.PI*2, 0, Math.PI/2), M(LIGHT)); capTop.position.set(0, 4.1, -0.05); chamber.add(capTop);
+cyl(0.22, 0.05, M(0x64748b), 0, 2.95, 0.42, chamber, Math.PI/2); // porthole
+box(0.36, 0.1, 0.02, M(0xfbbf24), 0.2, 3.35, 0.41);            // warning label
+// cables
+const cableMat = new THREE.LineBasicMaterial({ color:0x2b3350 });
+for (let i=0;i<4;i++){ const pts=[]; for(let t=0;t<=1;t+=0.1){ pts.push(new THREE.Vector3(-0.9+0.1*i, 1.3+1.8*t, 0.55*Math.sin(t*Math.PI)*(0.5+0.2*i))); } chamber.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), cableMat)); }
+// soft outline (edges) to keep it "stylised"
+chamber.traverse(o => { if (o.isMesh && o.geometry.type==='BoxGeometry') { const e = new THREE.LineSegments(new THREE.EdgesGeometry(o.geometry), new THREE.LineBasicMaterial({ color:0x0b1026, transparent:true, opacity:.35 })); o.add(e);} });
+
+/* ───────────────── overlays ───────────────── */
+function sprite(text, opts={}) {
+  const w = opts.w||360, h = opts.h||96, c = document.createElement('canvas'); c.width=w*2; c.height=h*2;
+  const g = c.getContext('2d'); g.scale(2,2);
+  const r=18; g.fillStyle = opts.bg||'rgba(8,12,32,.85)'; g.beginPath(); g.roundRect(0,0,w,h,r); g.fill();
+  if (opts.stroke){ g.strokeStyle=opts.stroke; g.lineWidth=2; g.stroke(); }
+  if (opts.dot){ g.fillStyle=opts.dot; g.beginPath(); g.arc(30,h/2,14,0,Math.PI*2); g.fill(); g.fillStyle='#fff'; g.font='700 15px -apple-system,system-ui'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(opts.initials||'', 30, h/2+1); }
+  g.textAlign='left'; g.textBaseline='middle';
+  g.fillStyle='#fff'; g.font=`700 ${opts.size||22}px -apple-system,system-ui`; g.fillText(text, opts.dot?56:20, opts.sub? h/2-12 : h/2);
+  if (opts.sub){ g.fillStyle='#aab1d6'; g.font='500 15px -apple-system,system-ui'; g.fillText(opts.sub, opts.dot?56:20, h/2+14); }
+  const tex = new THREE.CanvasTexture(c); tex.encoding = THREE.sRGBEncoding;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map:tex, transparent:true, depthTest:false }));
+  s.scale.set(w/220, h/220, 1); s.material.opacity = 0; return s;
+}
+const fadeTargets = [];   // {obj, get on(stage)}
+function fader(obj, isOn){ fadeTargets.push({obj, isOn}); return obj; }
+function setOpacity(obj, o){ obj.traverse(x => { if (x.material){ x.material.transparent = true; x.material.opacity = o; x.visible = o > 0.01; } }); }
+
+// 1 · QR
+const qrCanvas = document.createElement('canvas'); qrCanvas.width = qrCanvas.height = 128;
+{ const g = qrCanvas.getContext('2d'); g.fillStyle='#fff'; g.fillRect(0,0,128,128); g.fillStyle='#0b1026';
+  let seed = 7; const rnd = () => (seed = (seed*9301+49297)%233280)/233280;
+  for(let y=0;y<16;y++) for(let x=0;x<16;x++) if (rnd()>0.55) g.fillRect(x*8,y*8,8,8);
+  [[0,0],[104,0],[0,104]].forEach(([x,y]) => { g.fillStyle='#0b1026'; g.fillRect(x,y,24,24); g.fillStyle='#fff'; g.fillRect(x+4,y+4,16,16); g.fillStyle='#0b1026'; g.fillRect(x+8,y+8,8,8); }); }
+const qr = new THREE.Mesh(new THREE.PlaneGeometry(0.34,0.34), new THREE.MeshBasicMaterial({ map:new THREE.CanvasTexture(qrCanvas) }));
+qr.position.set(-0.45, 1.05, 0.67); chamber.add(qr);
+const originRing = new THREE.Mesh(new THREE.RingGeometry(0.26,0.3,48), new THREE.MeshBasicMaterial({ color:0x818cf8, side:THREE.DoubleSide, transparent:true }));
+originRing.position.copy(qr.position); originRing.position.z += 0.01; chamber.add(originRing);
+const axes = new THREE.AxesHelper(0.5); axes.position.copy(qr.position); chamber.add(axes);
+fader(qr, s => s>=0.85); fader(originRing, s => s>=1.0 && s<1.9); fader(axes, s => s>=1.0 && s<1.9);
+
+// 2 · point cloud on surfaces
+{ const pts=[]; const boxes=[]; chamber.traverse(o=>{ if(o.isMesh && (o.geometry.type==='BoxGeometry'||o.geometry.type==='CylinderGeometry')) boxes.push(o); });
+  let seed=3; const rnd=()=> (seed=(seed*9301+49297)%233280)/233280;
+  for (let i=0;i<2600;i++){ const b = boxes[Math.floor(rnd()*boxes.length)]; b.geometry.computeBoundingBox(); const bb=b.geometry.boundingBox;
+    const f = Math.floor(rnd()*6); const p = new THREE.Vector3(bb.min.x+rnd()*(bb.max.x-bb.min.x), bb.min.y+rnd()*(bb.max.y-bb.min.y), bb.min.z+rnd()*(bb.max.z-bb.min.z));
+    if(f===0)p.x=bb.min.x; if(f===1)p.x=bb.max.x; if(f===2)p.y=bb.max.y; if(f===3)p.z=bb.max.z; if(f===4)p.z=bb.min.z; if(f===5)p.y=bb.min.y;
+    b.localToWorld(p); chamber.worldToLocal(p); pts.push(p.x,p.y,p.z); }
+  var cloud = new THREE.Points(new THREE.BufferGeometry().setAttribute('position', new THREE.Float32BufferAttribute(pts,3)),
+    new THREE.PointsMaterial({ color:0xa5b4fc, size:0.035, transparent:true, opacity:0, sizeAttenuation:true, depthWrite:false }));
+  chamber.add(cloud); fader(cloud, s => s>=3.8 && s<5.0);
+  var shapeLabel = sprite('Chamber recognised', { sub:'by shape · follows the tool', w:330, h:84, stroke:'#5eead4' }); shapeLabel.position.set(0, 4.9, 0); chamber.add(shapeLabel); fader(shapeLabel, s=> s>=4.0 && s<4.9);
+}
+
+// 3 · pins + ghost part
+const pinDefs = [ {p:[0.45,0.72,0.72], t:'Open panel'}, {p:[-0.35,1.9,0.75], t:'Seat controller'}, {p:[0.0,2.5,0.62], t:'Lower tray'} ];
+const pins = pinDefs.map((d,i) => {
+  const g = new THREE.Group(); g.position.set(...d.p);
+  const s = new THREE.Mesh(new THREE.SphereGeometry(0.07, 24, 16), M(i===1?0x22d3ee:0x818cf8,{ emissive:i===1?0x22d3ee:0x818cf8, emissiveIntensity:.5 })); g.add(s);
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.008,0.008,0.35,8), M(0xcbd5e1)); stem.position.y = -0.18; g.add(stem);
+  const lab = sprite(`${i+1}  ${d.t}`, { w:300, h:72, size:20, stroke: i===1?'#22d3ee':'#818cf8' }); lab.position.set(0.95, 0.1, 0); g.add(lab);
+  g.userData.base = d.p.slice(); chamber.add(g); return g;
+});
+const ghostPart = new THREE.Mesh(new THREE.BoxGeometry(0.6,0.55,0.45), new THREE.MeshStandardMaterial({ color:0x818cf8, transparent:true, opacity:0, emissive:0x6366f1, emissiveIntensity:.5 }));
+ghostPart.position.set(-0.35, 1.55, 0.5); chamber.add(ghostPart);
+let scrub = 0; const scrubEl = document.getElementById('scrub'); scrubEl.addEventListener('input', e => { scrub = +e.target.value; manualScrub = true; }); let manualScrub=false;
+
+// 4 · validation cone + verdict
+const coneGeo = new THREE.ConeGeometry(0.42, 1.4, 40, 1, true);
+const cone = new THREE.Mesh(coneGeo, new THREE.MeshBasicMaterial({ color:0x22d3ee, transparent:true, opacity:0, side:THREE.DoubleSide, depthWrite:false }));
+cone.position.set(-0.35+0.9, 1.9+0.6, 0.75+1.4); cone.lookAt(new THREE.Vector3(-0.35,1.9,0.75)); cone.rotateX(Math.PI/2); chamber.add(cone);
+const verdict = sprite('PASS', { sub:'0.91 · evidence attached', w:300, h:84, stroke:'#22c55e', bg:'rgba(6,40,24,.9)' }); verdict.position.set(-0.35, 2.55, 0.9); chamber.add(verdict); fader(verdict, s => s>=3.05 && s<3.9);
+fader(cone, s => s>=2.9 && s<3.9);
+
+// 5 · presence lenses
+function lens(name, site, color, initials, pos){ const g = new THREE.Group(); g.position.set(...pos);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.07,16,12), M(color,{emissive:color, emissiveIntensity:.6})); g.add(head);
+  const c = new THREE.Mesh(new THREE.ConeGeometry(0.28,0.9,32,1,true), new THREE.MeshBasicMaterial({ color, transparent:true, opacity:.14, side:THREE.DoubleSide, depthWrite:false })); c.position.z = -0.45; c.rotation.x = -Math.PI/2; g.add(c);
+  const card = sprite(name, { sub:site, w:300, h:80, dot:'#'+color.toString(16).padStart(6,'0'), initials }); card.position.y = 0.32; g.add(card);
+  g.lookAt(new THREE.Vector3(-0.35,1.9,0.75)); chamber.add(g); return g; }
+const john = lens('John', 'Manufacturing Engineer', 0xf472b6, 'J', [-2.3, 2.1, 1.6]);
+const marco = lens('Dev', 'Technician · new hire', 0x22d3ee, 'D', [ 2.2, 1.8, 1.9]);
+fader(john, s => s>=4.9 && s<6.2); fader(marco, s => s>=4.9 && s<6.2);
+const lookRing = new THREE.Mesh(new THREE.TorusGeometry(0.12,0.012,12,48), new THREE.MeshBasicMaterial({ color:0xf472b6, transparent:true, opacity:0 })); lookRing.position.set(-0.35,1.9,0.78); chamber.add(lookRing);
+const lookLabel = sprite('John: look here', { w:280, h:64, size:18, bg:'rgba(244,114,182,.92)' }); lookLabel.position.set(-0.35, 2.3, 0.9); chamber.add(lookLabel);
+let lookUntil = 0;
+
+// 6 · fab grid
+const fab = new THREE.Group(); fab.visible = false; scene.add(fab);
+const miniGeo = new THREE.BoxGeometry(0.9, 1.6, 0.7); const miniMat = new THREE.MeshStandardMaterial({ color:0x1b2450, roughness:.8 });
+const minis = [];
+for (let r=0;r<6;r++) for (let c=0;c<9;c++){ if (r===2 && c===4) continue; const m = new THREE.Mesh(miniGeo, miniMat.clone()); m.position.set((c-4)*2.2, 0.8, (r-2.5)*2.6); fab.add(m); minis.push(m); }
+const glowSet = new Set([3,11,17,26,30,41,47]); minis.forEach((m,i)=>{ if(glowSet.has(i)){ m.material.emissive = new THREE.Color(0x5eead4); m.material.emissiveIntensity = .6; } });
+
+/* ───────────────── scroll → stage ───────────────── */
+const sections = [...document.querySelectorAll('main section')];
+const dots = document.getElementById('dots'); sections.forEach((_,i)=>{ const d=document.createElement('i'); dots.appendChild(d); });
+let stage = 0, target = 0;
+function onScroll(){ const max = document.documentElement.scrollHeight - innerHeight; target = Math.max(0, Math.min(7, (scrollY / max) * 7)); }
+addEventListener('scroll', onScroll, { passive:true }); onScroll();
+
+// camera keyframes per stage: [pos, lookAt]
+const cams = [
+  [[4.2,2.6,6.0],[0,2.0,0]], [[2.0,1.6,3.6],[-0.4,1.3,0.3]], [[3.2,2.4,4.6],[0,1.8,0.3]], [[1.6,2.6,4.2],[-0.3,1.9,0.6]],
+  [[4.6,2.8,5.4],[0,1.9,0]], [[0.4,3.0,7.2],[0,1.9,0.6]], [[0,16,22],[0,0,0]], [[0,9,26],[0,0,0]],
+];
+const lerpV = (a,b,t) => a.clone().lerp(b,t);
+const ease = t => t<.5 ? 2*t*t : -1+(4-2*t)*t;
+
+// drag to rotate / slide
+let dragging=false, lastX=0, rotY=0, slideX=0, chamberOffset=0;
+const canvas = renderer.domElement;
+canvas.addEventListener('pointerdown', e => { dragging=true; lastX=e.clientX; canvas.setPointerCapture(e.pointerId); });
+canvas.addEventListener('pointermove', e => { if(!dragging) return; const dx=e.clientX-lastX; lastX=e.clientX; if (stage>=3.6 && stage<4.7) slideX = Math.max(-2.2, Math.min(2.2, slideX + dx*0.006)); else rotY += dx*0.006; });
+canvas.addEventListener('pointerup', () => dragging=false);
+canvas.addEventListener('click', e => {
+  if (stage>=2.8 && stage<3.9) { verdictFlash = performance.now(); }
+  if (stage>=4.9 && stage<6.2) { lookUntil = performance.now()+4000; const t=document.getElementById('toast'); t.classList.add('show'); setTimeout(()=>t.classList.remove('show'), 2400); }
+});
+let verdictFlash = 0;
+
+/* ───────────────── frame ───────────────── */
+const clock = new THREE.Clock();
+function frame(){
+  const t = clock.getElapsedTime();
+  stage += (target - stage) * 0.08;
+  const i = Math.min(6, Math.floor(stage)), f = ease(Math.min(1, stage - i));
+  const p = lerpV(new THREE.Vector3(...cams[i][0]), new THREE.Vector3(...cams[i+1][0]), f);
+  const l = lerpV(new THREE.Vector3(...cams[i][1]), new THREE.Vector3(...cams[i+1][1]), f);
+  camera.position.copy(p); camera.lookAt(l);
+
+  // chamber: idle turn + user rotation + slide (stage 2)
+  chamber.rotation.y = rotY + Math.sin(t*0.15)*0.08;
+  chamberOffset += ((stage>=3.6 && stage<4.7 ? slideX : 0) - chamberOffset)*0.1;
+  chamber.position.x = chamberOffset;
+  chamber.visible = stage < 6.9; floor.visible = grid.visible = stage < 5.8;
+  const chamberFade = stage < 5.6 ? 1 : Math.max(0, 1-(stage-5.6)/0.6);
+  chamber.traverse(o => { if (o.isMesh && !fadeTargets.find(f=>f.obj===o || (f.obj.children&&f.obj.children.includes(o)))) { o.material.transparent = chamberFade<1; o.material.opacity = chamberFade; } });
+
+  // fades
+  fadeTargets.forEach(({obj,isOn}) => { const cur = obj.material ? obj.material.opacity : (obj.children[0]?.material?.opacity ?? 0); const want = isOn(stage)?1:0; setOpacity(obj, cur + (want-cur)*0.08); });
+  if (cloud.material.opacity>0.01){ cloud.material.opacity = Math.min(cloud.material.opacity, 0.9); cloud.material.size = 0.03 + 0.008*Math.sin(t*3); }
+  originRing.scale.setScalar(1 + 0.08*Math.sin(t*4)); originRing.material.opacity = Math.min(originRing.material.opacity, 0.9);
+
+  // QR flies in during stage 0.85→1.15
+  const qrT = Math.max(0, Math.min(1, (stage-0.85)/0.3)); qr.position.y = 1.05 + (1-ease(qrT))*2.2; qr.position.z = 0.67 + (1-ease(qrT))*1.2;
+
+  // pins: drop in during 2.8→3.3, then scrub; ghost part slides for step 2
+  const s3 = manualScrub && stage>=1.8 && stage<2.9 ? scrub : Math.max(0, Math.min(3, (stage-1.8)*3));
+  pins.forEach((g,k) => { const on = s3 > k+0.15 && stage>=1.8 && stage < (k===1?5.6:2.9); const cur = g.children[0].material.opacity; const want=on?1:0; setOpacity(g, cur+(want-cur)*0.1); const drop = Math.max(0, 1-Math.max(0,(s3-k))*3); g.position.y = g.userData.base[1] + drop*1.5; g.children[2].material.opacity = Math.min(g.children[2].material.opacity, 1); });
+  const gp = Math.max(0, Math.min(1, s3-1.2)); ghostPart.material.opacity = (stage>=1.8 && stage<2.9) ? 0.45*Math.min(1, s3-0.9>0?1:0) : 0; ghostPart.position.z = 0.5 + (1-ease(gp))*0.9;
+
+  // validation cone breathe + verdict flash on tap
+  if (cone.material.opacity>0.01){ cone.material.opacity = Math.min(cone.material.opacity, 0.22 + 0.06*Math.sin(t*2.5)); }
+  if (verdictFlash && performance.now()-verdictFlash < 900) verdict.scale.set(300/220*1.15, 84/220*1.15, 1); else verdict.scale.set(300/220, 84/220, 1);
+
+  // look-here ring
+  const lk = performance.now() < lookUntil; lookRing.material.opacity += ((lk?1:0)-lookRing.material.opacity)*0.1; lookRing.scale.setScalar(1+0.5*((t*1.5)%1)); lookRing.material.opacity *= lk? (1-((t*1.5)%1)*0.6) : 1;
+  lookLabel.material.opacity += ((lk?1:0)-lookLabel.material.opacity)*0.1;
+
+  // fab
+  fab.visible = stage > 5.4; const fabT = Math.max(0, Math.min(1,(stage-5.6)/0.7)); fab.scale.setScalar(0.2+0.8*ease(fabT)); fab.position.y = -1.5*(1-ease(fabT));
+  minis.forEach((m,k)=>{ if(glowSet.has(k)) m.material.emissiveIntensity = 0.45 + 0.35*Math.sin(t*2 + k); });
+  document.getElementById('hud').style.display = stage>5.9 && stage<7.1 ? 'flex' : 'none';
+
+  dots.querySelectorAll('i').forEach((d,k)=> d.classList.toggle('on', Math.round(stage)===k));
+  renderer.render(scene, camera); requestAnimationFrame(frame);
+}
+frame();
+addEventListener('resize', () => { camera.aspect = innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+
+// live-ish HUD tick (mock; the real page reads /stats + presence)
+setInterval(() => { const h1=document.getElementById('h1'); h1.textContent = 10 + Math.floor(Math.random()*5); }, 4000);
+</script>
+</body>
+</html>

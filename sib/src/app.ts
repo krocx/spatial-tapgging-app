@@ -18,6 +18,7 @@ import chamberConfigRouter from './routes/chamber-configs.js';
 import { chamberConfigStore } from './routes/chamber-configs.js';
 import { guideStore, guideStepStore } from './guides/store.js';
 import { v4 as uuidv4 } from 'uuid';
+import { presenceSummary } from './sse/presence.js';
 import { JsonFileStore } from './stores/json-file-store.js';
 
 interface MaturityAssessment { id: string; level: number; score: number; answers: number[]; area?: string; createdAt: string }
@@ -139,6 +140,11 @@ document.getElementById('f').addEventListener('submit', async function(ev){
   });
   // GET /platform      → the one-visual platform map (leadership view)
   // GET /platform.pptx → the same slide as editable native PowerPoint shapes
+  // PM1: the long-form write-up (Why AR, products, evidence) — parked but reachable.
+  app.get('/platform/long', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-cache');
+    res.sendFile(path.join(__dirname, '../portal/platform-long.html'));
+  });
   app.get('/platform', (_req, res) => {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.sendFile(path.join(__dirname, '../portal/platform.html'));
@@ -222,8 +228,12 @@ document.getElementById('f').addEventListener('submit', async function(ev){
         return st.length > 0 && st.every(s => s.isPlaced);
       }).length;
       const allAnchors = anchorStore.findAll();
+      const live = presenceSummary();
       res.json({
         anchors: allAnchors.length,
+        // PM1: who is on a tool right now (presence heartbeats, in-memory).
+        presenceNow: live.people,
+        presenceAnchors: live.anchors.length,
         chambersAssigned: allAnchors.filter(a => (!a.anchorType || a.anchorType === 'QR') && a.configId).length,
         chamberConfigs: chamberConfigStore.findAll().length,
         guides: allGuides.length,

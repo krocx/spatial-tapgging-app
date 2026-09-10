@@ -707,6 +707,24 @@ final class SIBClient {
         return try await perform(req, decoding: AnchorObjectMeta.self)
     }
 
+    /// B3: set / align / clear the shape model shown on the detected chamber.
+    func setObjectShapeModel(anchorId: String, modelId: String?, pose: simd_float4x4? = nil, scale: Float? = nil) async throws -> AnchorObjectMeta {
+        struct Body: Encodable {
+            let shapeModelId: String?; let shapeModelPose: [Float]?; let shapeModelScale: Float?; let clear: Bool
+            func encode(to encoder: Encoder) throws {
+                var c = encoder.container(keyedBy: K.self)
+                if clear { try c.encodeNil(forKey: .shapeModelId) }
+                else if let id = shapeModelId { try c.encode(id, forKey: .shapeModelId) }
+                if let p = shapeModelPose { try c.encode(p, forKey: .shapeModelPose) }
+                if let s = shapeModelScale { try c.encode(s, forKey: .shapeModelScale) }
+            }
+            enum K: String, CodingKey { case shapeModelId, shapeModelPose, shapeModelScale }
+        }
+        let body = Body(shapeModelId: modelId, shapeModelPose: pose.map { ARCoordinateFrame.floats(from: $0) },
+                        shapeModelScale: scale, clear: modelId == nil && pose == nil && scale == nil)
+        return try await patch(AnchorObjectMeta.self, path: "/anchors/\(anchorId)/object/meta", body: body)
+    }
+
     func fetchAnchorObjectMeta(anchorId: String) async throws -> AnchorObjectMeta? {
         do { return try await get(AnchorObjectMeta.self, path: "/anchors/\(anchorId)/object/meta") }
         catch SIBClientError.httpError(404, _) { return nil }

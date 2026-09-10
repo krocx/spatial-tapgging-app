@@ -237,6 +237,7 @@ struct GuideStepPlacementView: View {
     @State private var objectCalibrationStale = false
     @State private var showRealignToast       = false
     @State private var showObjectRescan       = false
+    @State private var shapeGhost: ObjectShapeGhost? = nil      // B3
     // P1: colleagues in front of this chamber (presence). Poses are shared
     // only while the session frame IS the guide map frame (relocalized).
     @State private var presence:        PresenceService? = nil
@@ -479,6 +480,8 @@ struct GuideStepPlacementView: View {
             Text("Every step becomes unplaced when you Save. The world map, training and 3D model assignments are kept; model placements are dropped.")
         }
         .onChange(of: arManager.objectTransform) { objT in
+            // B3: the ghost sits where the app thinks the chamber is.
+            if objT != nil { shapeGhost?.update(objectTransform: objT); shapeGhost?.flash() }
             // B2: object found + calibrated map → re-base the world onto the map
             // frame and show the pins. Beats waiting for feature-point matching.
             // B2e: also while on the APPROXIMATE (map) frame — the chamber is the
@@ -502,6 +505,7 @@ struct GuideStepPlacementView: View {
         .onChange(of: arManager.objectRealignCount) { n in
             guard n > 0 else { return }
             flashRealignToast()
+            shapeGhost?.update(objectTransform: arManager.objectTransform); shapeGhost?.flash()
         }
         // B2e: the author re-scans the chamber from the finder ("shape changed?")
         .fullScreenCover(isPresented: $showObjectRescan) {
@@ -566,6 +570,7 @@ struct GuideStepPlacementView: View {
                         if a.objectScannedAt != nil {
                             let ob = await ReferenceObjectCache.load(anchorId: a.id, client: client)
                             await MainActor.run { objectBundle = ob; arManager.setReferenceObject(ob?.archive, name: a.id) }
+                            await loadShapeGhost(ob, client: client)
                         }
                     }
                     async let bundleFetch = WorldMapCache.load(.guide(guide.id), client: client)
@@ -608,6 +613,7 @@ struct GuideStepPlacementView: View {
                                 arManager.setReferenceObject(ob?.archive, name: a.id)
                                 arManager.startSession(); arManager.disableQRScanning()
                             }
+                            await loadShapeGhost(ob, client: client)
                             return
                         }
                     }
@@ -1474,6 +1480,17 @@ struct GuideStepPlacementView: View {
         }
     }
 
+    /// B3: load the chamber's shape model (if one is set) as a ghost.
+    private func loadShapeGhost(_ ob: ReferenceObjectCache.Bundle?, client: SIBClient) async {
+        guard let meta = ob?.meta, let mid = meta.shapeModelId else { return }
+        let g = await MainActor.run { ObjectShapeGhost(sceneView: arManager.sceneView, meta: meta) }
+        await g.load(modelId: mid, client: client)
+        await MainActor.run {
+            shapeGhost = g
+            if let t = arManager.objectTransform { g.update(objectTransform: t); g.flash() }
+        }
+    }
+
     private func flashRealignToast() {
         withAnimation { showRealignToast = true }
         Task {
@@ -1535,8 +1552,8 @@ struct GuideStepPlacementView: View {
                 showPresenceToast("\(name) left", color: .darkGray)
             case .stepsChanged:
                 Task { await applyRemoteEdits() }
-            case .tagsChanged:
-                break                                   // inspection tags — not this surface
+            case .tagsChanged, .coachHint:
+                break                                   // not this surface
             }
             svc.event = nil
         }.store(in: &presenceBag)

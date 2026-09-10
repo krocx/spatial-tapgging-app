@@ -507,3 +507,55 @@ struct ObjectRealignToast: View {
         .transition(.move(edge: .top).combined(with: .opacity))
     }
 }
+
+// ── R1 (2026.4.46): self-contained re-align overlay for the inspection modes ──
+// Author / Operator / iLOTO inherit the chamber's movement watchdog from the
+// QR gate (linkToExistingSession(objectCalibration:)). This overlay gives them
+// the same pill / toast + Undo / manual finder the guides have, reading
+// everything from the manager so each view adds ONE modifier.
+struct ObjectTrackOverlay: View {
+    @ObservedObject var arManager: ARSessionManager
+    var objectMeta: AnchorObjectMeta? = nil
+    var topInset: CGFloat = 64
+    var bottomInset: CGFloat = 160
+    @State private var showToast = false
+    @State private var searchStart = Date()
+
+    var body: some View {
+        ZStack {
+            if arManager.objectTrackState != .idle {
+                VStack(spacing: 8) {
+                    ObjectTrackPill(state: arManager.objectTrackState) {
+                        searchStart = Date()
+                        arManager.realignToObject()
+                    }
+                    if showToast {
+                        ObjectRealignToast {
+                            arManager.undoLastRealign()
+                            withAnimation { showToast = false }
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .padding(.top, topInset)
+                .animation(.easeInOut(duration: 0.25), value: showToast)
+            }
+            if arManager.objectRealignManual {
+                ObjectFinderCard(title: "Re-aligning to the chamber", startedAt: searchStart,
+                                 onCancel: { arManager.cancelRealign() }, objectMeta: objectMeta)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                    .padding(.horizontal, 16).padding(.bottom, bottomInset)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: arManager.objectRealignManual)
+        .onChange(of: arManager.objectRealignCount) { n in
+            guard n > 0 else { return }
+            withAnimation { showToast = true }
+            Task {
+                try? await Task.sleep(nanoseconds: 8_000_000_000)
+                withAnimation { showToast = false }
+            }
+        }
+    }
+}

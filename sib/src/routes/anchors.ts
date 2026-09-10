@@ -173,6 +173,15 @@ function withMapSealed(anchor: Anchor): Anchor {
     ...anchor,
     ...(sealed && { mapSealedAt: meta.capturedAt }),
     ...(obj?.scannedAt && { objectScannedAt: obj.scannedAt }),
+    ...(obj?.scannedAt && { objectInfo: {
+      ...(obj.scannedOn && { scannedOn: obj.scannedOn }),
+      ...(obj.mergedFrom?.length && { mergedFrom: obj.mergedFrom }),
+      ...(obj.sides !== undefined && { sides: obj.sides }),
+      ...(obj.featurePoints !== undefined && { points: obj.featurePoints }),
+      calibrated:   !!obj.objectPoseInQR,
+      shapeModel:   !!obj.shapeModelId,
+      shapeAligned: !!obj.shapeModelPose,
+    } }),
   };
 }
 
@@ -616,6 +625,7 @@ router.post('/:id/object', (req: Request, res: Response) => {
       const meta: AnchorObjectMeta = {
         scannedAt: new Date().toISOString(),
         ...(prior?.objectPoseInQR && { objectPoseInQR: prior.objectPoseInQR, calibratedAt: prior.calibratedAt }),
+        ...(prior?.shapeModelId && { shapeModelId: prior.shapeModelId, shapeModelPose: prior.shapeModelPose, shapeModelScale: prior.shapeModelScale }),
         ...((prior?.scannedOn ?? device) && { scannedOn: prior?.scannedOn ?? device }),
         ...(prior && device && { mergedFrom: [...new Set([...(prior.mergedFrom ?? []), device])] }),
         ...(typeof q.sides === 'string' && Number.isFinite(Number(q.sides)) && { sides: Number(q.sides) }),
@@ -662,15 +672,42 @@ router.patch('/:id/object/meta', express.json(), (req: Request, res: Response) =
   if (!anchor) return res.status(404).json({ error: `Anchor ${req.params.id} not found`, timestamp: new Date().toISOString() });
   const meta = readObjectMeta(anchor.id);
   if (!meta) return res.status(404).json({ error: `No reference object for anchor ${anchor.id}`, timestamp: new Date().toISOString() });
-  const { objectPoseInQR } = (req.body ?? {}) as { objectPoseInQR?: unknown };
-  if (!Array.isArray(objectPoseInQR) || objectPoseInQR.length !== 16 ||
-      !objectPoseInQR.every(v => typeof v === 'number' && Number.isFinite(v))) {
-    return res.status(400).json({ error: 'objectPoseInQR must be 16 finite numbers (column-major 4×4)', timestamp: new Date().toISOString() });
+  const body = (req.body ?? {}) as { objectPoseInQR?: unknown; shapeModelId?: unknown; shapeModelPose?: unknown; shapeModelScale?: unknown };
+  const is16 = (v: unknown): v is number[] =>
+    Array.isArray(v) && v.length === 16 && v.every(n => typeof n === 'number' && Number.isFinite(n));
+  let next: AnchorObjectMeta = { ...meta };
+  let touched = false;
+  if (body.objectPoseInQR !== undefined) {
+    if (!is16(body.objectPoseInQR)) {
+      return res.status(400).json({ error: 'objectPoseInQR must be 16 finite numbers (column-major 4×4)', timestamp: new Date().toISOString() });
+    }
+    next = { ...next, objectPoseInQR: body.objectPoseInQR, calibratedAt: new Date().toISOString() };
+    touched = true;
+    console.log(`[SIB] Object calibrated to QR frame for anchor ${anchor.id}`);
   }
-  const next: AnchorObjectMeta = { ...meta, objectPoseInQR, calibratedAt: new Date().toISOString() };
+  // B3: shape model — null clears; pose/scale optional (identity / 1 until aligned).
+  if (body.shapeModelId !== undefined) {
+    if (body.shapeModelId === null) {
+      const { shapeModelId: _a, shapeModelPose: _b, shapeModelScale: _c, ...rest } = next;
+      next = rest as AnchorObjectMeta;
+    } else if (typeof body.shapeModelId === 'string' && model3DStore.findById(body.shapeModelId)) {
+      next = { ...next, shapeModelId: body.shapeModelId };
+    } else {
+      return res.status(400).json({ error: 'shapeModelId must be an existing model id or null', timestamp: new Date().toISOString() });
+    }
+    touched = true;
+  }
+  if (body.shapeModelPose !== undefined) {
+    if (!is16(body.shapeModelPose)) return res.status(400).json({ error: 'shapeModelPose must be 16 finite numbers', timestamp: new Date().toISOString() });
+    next = { ...next, shapeModelPose: body.shapeModelPose }; touched = true;
+  }
+  if (body.shapeModelScale !== undefined) {
+    if (typeof body.shapeModelScale !== 'number' || !(body.shapeModelScale > 0)) return res.status(400).json({ error: 'shapeModelScale must be > 0', timestamp: new Date().toISOString() });
+    next = { ...next, shapeModelScale: body.shapeModelScale }; touched = true;
+  }
+  if (!touched) return res.status(400).json({ error: 'Nothing to update', timestamp: new Date().toISOString() });
   try { fs.writeFileSync(objectMetaPath(anchor.id), JSON.stringify(next)); }
-  catch (err) { return res.status(500).json({ error: `Failed to store calibration: ${err}`, timestamp: new Date().toISOString() }); }
-  console.log(`[SIB] Object calibrated to QR frame for anchor ${anchor.id}`);
+  catch (err) { return res.status(500).json({ error: `Failed to store object meta: ${err}`, timestamp: new Date().toISOString() }); }
   return res.json({ data: next, timestamp: new Date().toISOString() });
 });
 

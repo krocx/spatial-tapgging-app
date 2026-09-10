@@ -1,0 +1,787 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connected Worker · AR OMS — Applied Materials</title>
+<style>
+  :root { color-scheme: dark; --bg:#0b1026; --bg2:#131a3a; --card:rgba(30,41,59,.72); --line:#26314d; --text:#e2e8f0; --muted:#94a3b8; --dim:#64748b;
+          --indigo:#818cf8; --cyan:#22d3ee; --orange:#fb923c; --red:#f87171; --green:#22c55e; --teal:#2dd4bf; --violet:#a78bfa; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:linear-gradient(180deg,#0b1026 0%,#131a3a 45%,#1b2450 100%); color:var(--text);
+         font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif; line-height:1.5; }
+  a { color:#c7d2fe; }
+  .bar { position:sticky; top:0; z-index:20; display:flex; align-items:center; gap:10px; padding:12px 28px;
+         background:rgba(11,16,38,.88); backdrop-filter:blur(10px); border-bottom:1px solid var(--line); }
+  .bar a { text-decoration:none; font-size:13px; padding:6px 12px; border-radius:8px; background:rgba(255,255,255,.06); white-space:nowrap; }
+  .bar a:hover { background:rgba(255,255,255,.14); }
+  .bar .t { font-weight:800; font-size:15px; color:#fff; margin-right:6px; }
+  .bar .sp { flex:1; }
+  .bar .dl { background:#4f46e5; color:#fff; }
+  section { max-width:1180px; margin:0 auto; padding:64px 28px; }
+  .eyebrow { font-size:12px; font-weight:800; letter-spacing:.12em; color:var(--dim); text-transform:uppercase; margin-bottom:12px; }
+  h1 { font-size:clamp(34px,5vw,58px); line-height:1.08; margin:0 0 18px; font-weight:800; color:#fff; letter-spacing:-.01em; }
+  h1 em { font-style:normal; background:linear-gradient(90deg,#818cf8,#22d3ee); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  h2 { font-size:clamp(26px,3.2vw,36px); margin:0 0 10px; font-weight:800; color:#fff; }
+  .lead { font-size:18px; color:#cbd5e1; max-width:760px; }
+  .grid3 { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:16px; margin-top:28px; }
+  .stat { background:var(--card); border:1px solid var(--line); border-radius:16px; padding:20px 22px; }
+  .stat .n { font-size:36px; font-weight:800; color:#fff; letter-spacing:-.02em; }
+  .stat .l { color:var(--muted); font-size:13.5px; margin-top:4px; }
+  .stat .s { color:var(--dim); font-size:11px; margin-top:10px; }
+  .stat .s a { color:#8b9cc8; }
+  .hero-ctas { display:flex; gap:12px; flex-wrap:wrap; margin-top:26px; }
+  .ask-line { margin-top:22px; display:flex; gap:18px; align-items:center; justify-content:space-between; flex-wrap:wrap; padding:18px 22px; border-radius:16px;
+              background:linear-gradient(135deg,rgba(79,70,229,.28),rgba(34,211,238,.12)); border:1px solid #3b3f8a; font-size:15px; color:#dbe2ff; }
+  .ask-line b { color:#fff; } .ask-when { display:block; color:var(--muted); font-size:12.5px; margin-top:6px; } .ask-when em { font-style:normal; color:#a5f3fc; }
+  /* M2: reading path + self-assessment */
+  #rp-mask { position:fixed; inset:0; z-index:90; pointer-events:none; }
+  #rp-ring { position:fixed; z-index:91; border-radius:18px; pointer-events:none; transition:all .3s ease;
+             box-shadow:0 0 0 9999px rgba(5,8,22,.7), 0 0 0 3px #22d3ee, 0 0 40px rgba(34,211,238,.55); }
+  #rp-card { position:fixed; z-index:92; width:340px; background:#131a3a; border:1px solid #3b3f8a; border-radius:16px; padding:16px 18px;
+             box-shadow:0 20px 60px rgba(0,0,0,.55); font-size:14px; }
+  #rp-card h4 { margin:0 0 6px; font-size:16px; color:#fff; } #rp-card p { margin:0 0 12px; color:var(--muted); line-height:1.45; }
+  #rp-card .nav { display:flex; align-items:center; gap:8px; } #rp-card .nav span { flex:1; color:var(--dim); font-size:12px; }
+  #rp-card .btn { padding:8px 14px; font-size:13px; }
+  #rp-start { position:fixed; right:18px; bottom:18px; z-index:60; display:none; gap:10px; align-items:center; padding:10px 14px 10px 12px; border-radius:999px;
+              background:linear-gradient(135deg,#4f46e5,#0891b2); color:#fff; font-weight:700; font-size:14px; box-shadow:0 12px 40px rgba(34,211,238,.35); cursor:pointer; border:0; }
+  #rp-start small { display:block; font-weight:500; opacity:.8; font-size:11px; }
+  .az { background:var(--card); border:1px solid var(--line); border-radius:20px; padding:26px; }
+  .az-q { padding:14px 0; border-bottom:1px solid var(--line); }
+  .az-q .qt { font-weight:700; color:#fff; margin-bottom:8px; }
+  .az-opts { display:flex; gap:8px; flex-wrap:wrap; }
+  .az-opt { padding:8px 14px; border-radius:999px; border:1px solid var(--line); background:rgba(255,255,255,.04); color:#cbd5e1; cursor:pointer; font-size:13.5px; }
+  .az-opt:hover { border-color:#67e8f9; } .az-opt.on { background:rgba(34,211,238,.18); border-color:#22d3ee; color:#fff; }
+  .az-res { margin-top:20px; padding:20px 22px; border-radius:16px; background:linear-gradient(135deg,rgba(79,70,229,.25),rgba(34,211,238,.12)); border:1px solid #3b3f8a; display:none; }
+  .az-res.on { display:block; animation:azin .4s ease; } @keyframes azin { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+  .az-ladder { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:14px 0 6px; }
+  .az-ladder div { padding:10px 8px; border-radius:10px; text-align:center; font-size:12px; color:var(--muted); background:rgba(255,255,255,.04); border:1px solid var(--line); }
+  .az-ladder div.on { background:rgba(34,211,238,.2); border-color:#22d3ee; color:#fff; font-weight:700; }
+  .az-ladder div b { display:block; font-size:18px; }
+  .az-pulse { margin-top:16px; color:var(--muted); font-size:13px; }
+  .az-pulse b { color:#fff; }
+  .stat .bt { display:flex; gap:14px; margin-top:10px; padding-top:8px; border-top:1px solid var(--line); font-size:11.5px; color:var(--dim); }
+  .stat .bt b { color:#e2e8f0; margin-left:4px; }
+  .btn { display:inline-block; padding:12px 20px; border-radius:12px; font-weight:700; text-decoration:none; font-size:14px; }
+  .btn.p { background:#4f46e5; color:#fff; }
+  .btn.g { background:rgba(255,255,255,.08); color:#e2e8f0; border:1px solid var(--line); }
+  .split { display:grid; grid-template-columns:1.1fr .9fr; gap:32px; align-items:start; }
+  @media (max-width:880px) { .split { grid-template-columns:1fr; } }
+  .vision { background:linear-gradient(135deg,rgba(79,70,229,.25),rgba(34,211,238,.12)); border:1px solid #3b3f8a; border-radius:18px; padding:24px; }
+  .vision h3 { margin:0 0 10px; color:#fff; font-size:18px; }
+  .vision ul { margin:0; padding-left:18px; color:#dbe2ff; font-size:14.5px; }
+  .vision li { margin:8px 0; }
+  .fact { display:flex; gap:14px; padding:14px 0; border-bottom:1px solid var(--line); }
+  .fact .n { min-width:96px; font-size:26px; font-weight:800; color:#fff; letter-spacing:-.02em; }
+  .fact .b { font-size:14px; color:#cbd5e1; }
+  .fact .b small { display:block; color:var(--dim); font-size:11.5px; margin-top:3px; }
+  /* products */
+  .tabs { display:flex; gap:8px; flex-wrap:wrap; margin:22px 0 18px; }
+  .tab { padding:10px 16px; border-radius:999px; border:1px solid var(--line); background:rgba(255,255,255,.04); color:#cbd5e1; cursor:pointer; font-weight:700; font-size:14px; }
+  .tab.active { color:#fff; border-color:var(--c); box-shadow:0 0 0 2px color-mix(in srgb,var(--c) 40%,transparent), 0 0 24px color-mix(in srgb,var(--c) 30%,transparent); }
+  .prod { display:none; border:2px solid var(--c); border-radius:20px; background:var(--card); padding:26px; }
+  .prod.active { display:block; }
+  .prod header { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:6px; }
+  .prod header h3 { margin:0; font-size:26px; color:#fff; }
+  .badge { font-size:11px; font-weight:800; padding:4px 10px; border-radius:999px; letter-spacing:.06em; }
+  .badge.ready { background:rgba(34,197,94,.15); color:#86efac; border:1px solid #16a34a; }
+  .badge.pilot { background:rgba(251,191,36,.15); color:#fde68a; border:1px solid #d97706; }
+  .badge.proto { background:rgba(248,113,113,.15); color:#fca5a5; border:1px solid #dc2626; }
+  .prod .tag { color:var(--c); font-weight:700; font-size:13px; }
+  .qgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin-top:18px; }
+  .q { background:rgba(11,16,38,.55); border:1px solid var(--line); border-radius:14px; padding:16px; }
+  .q h4 { margin:0 0 8px; font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--c); }
+  .q p, .q ul { margin:0; font-size:14px; color:#cbd5e1; }
+  .q ul { padding-left:18px; } .q li { margin:4px 0; }
+  .media { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:10px; margin-top:16px; }
+  .media figure { margin:0; border-radius:12px; overflow:hidden; background:rgba(255,255,255,.04); border:1px dashed var(--line); min-height:120px; display:flex; align-items:center; justify-content:center; color:var(--dim); font-size:12px; text-align:center; padding:8px; }
+  .media figure img { width:100%; height:100%; object-fit:cover; display:block; }
+  .media figure.has { border-style:solid; padding:0; }
+  /* stepper */
+  .stepper { margin-top:18px; background:rgba(11,16,38,.55); border:1px solid var(--line); border-radius:14px; padding:16px; }
+  .stepper .dots { display:flex; gap:6px; margin-bottom:12px; }
+  .stepper .dots span { flex:1; height:6px; border-radius:3px; background:rgba(255,255,255,.1); }
+  .stepper .dots span.on { background:var(--c); }
+  .stepper .stage { display:grid; grid-template-columns:220px 1fr; gap:16px; align-items:center; }
+  @media (max-width:640px) { .stepper .stage { grid-template-columns:1fr; } }
+  .stepper .pic { height:150px; border-radius:12px; background:rgba(255,255,255,.04); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; overflow:hidden; }
+  .stepper .pic svg { width:120px; height:120px; }
+  .stepper .pic img { width:100%; height:100%; object-fit:cover; }
+  .stepper .body { min-height:74px; font-size:14.5px; color:#e2e8f0; }
+  .stepper .body b { color:#fff; }
+  .stepper .ctl { display:flex; gap:8px; margin-top:12px; }
+  .stepper button, .toggle button { background:rgba(255,255,255,.08); color:#fff; border:1px solid var(--line); border-radius:8px; padding:7px 14px; cursor:pointer; font-weight:700; }
+  .toggle { margin-top:16px; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+  .toggle button.on { background:var(--c); color:#0b1026; border-color:var(--c); }
+  .ba { margin-top:10px; padding:14px 16px; border-radius:12px; background:rgba(11,16,38,.55); border:1px solid var(--line); font-size:14px; color:#cbd5e1; }
+  .ask { margin-top:18px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  /* map */
+  .mapwrap svg { width:100%; height:auto; border-radius:16px; box-shadow:0 20px 60px rgba(0,0,0,.45); }
+  /* live */
+  .live { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; margin-top:20px; }
+  .live .k { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; text-align:center; }
+  .live .k .n { font-size:30px; font-weight:800; color:#fff; font-variant-numeric:tabular-nums; }
+  .live .k .l { color:var(--muted); font-size:12.5px; }
+  /* timeline */
+  .tl { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-top:20px; }
+  .tl div { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 14px; font-size:13px; color:#cbd5e1; border-top:4px solid var(--c); }
+  .tl div b { display:block; color:#fff; margin-bottom:2px; }
+  .tl div.next { border-style:dashed; opacity:.85; }
+  /* contact */
+  .contact { background:linear-gradient(135deg,rgba(79,70,229,.3),rgba(45,212,191,.12)); border:1px solid #3b3f8a; border-radius:20px; padding:28px; display:flex; gap:24px; align-items:center; flex-wrap:wrap; }
+  .contact .av { width:72px; height:72px; border-radius:50%; background:#4f46e5; display:flex; align-items:center; justify-content:center; font-size:28px; font-weight:800; color:#fff; }
+  .contact h3 { margin:0 0 4px; color:#fff; font-size:22px; }
+  .contact p { margin:0; color:#cbd5e1; }
+  .foot { text-align:center; color:var(--dim); font-size:12px; padding:20px 28px 40px; }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <a href="/">⌂ Home</a>
+  <span class="t">🛰 Connected Worker · AR OMS</span>
+  <span class="sp"></span>
+  <a href="#impact">Why</a>
+  <a href="#why">Evidence</a>
+  <a href="#devices">Devices</a>
+  <a href="#assess">Where are you?</a>
+  <a href="#products">Products</a>
+  <a href="#map">Platform</a>
+  <a href="#contact">Contact</a>
+  <a class="dl" href="/platform.pptx" download>⬇ Pitch deck (.pptx)</a>
+  <span data-brand-slot style="display:flex;align-items:center;margin-left:6px"></span>
+</div>
+
+<!-- ── Hero ─────────────────────────────────────────────────────────────── -->
+<section id="top">
+  <div class="eyebrow">Applied Materials · Connected Worker AR OMS initiative</div>
+  <h1>Every technician’s next move, <em>right the first time</em>.</h1>
+  <p class="lead"><b>Adaptive Guided Work Instructions</b> that live on the tool, adapt to the technician in front of it, and validate the work as it happens.</p>
+  <div class="hero-ctas">
+    <a class="btn p" href="#products">Explore the products ↓</a>
+    <span style="align-self:center;color:var(--muted);font-size:14px">Reach out to us to learn more:</span>
+    <a class="btn g" href="https://teams.microsoft.com/l/chat/0/0?users=karthik_addagarla@amat.com" target="_blank">💬 Teams chat</a>
+    <a class="btn g" href="mailto:karthik_addagarla@amat.com?subject=AR%20Platform%20%E2%80%94%20learn%20more">✉ Email AppliedX</a>
+  </div>
+  <div class="eyebrow" style="margin-top:34px">Definition of winning</div>
+  <div class="grid3" style="margin-top:10px">
+    <div class="stat"><div class="n">Productivity</div><div class="l">Hours per procedure and time-to-competency fall when the instruction is on the tool and the check is on the spot — no paper, no re-work.</div><div class="s">Measured: TTC · SLH · re-work per run</div><div class="bt"><span>Today <b data-baseline="productivity">—</b></span><span>POC target <b data-target="productivity">—</b></span></div></div>
+    <div class="stat"><div class="n">Velocity</div><div class="l">A procedure change reaches every chamber of a configuration in minutes, not a training cycle — the fab moves at the speed of the change.</div><div class="s">Measured: CT · reduced downtime</div><div class="bt"><span>Today <b data-baseline="velocity">—</b></span><span>POC target <b data-target="velocity">—</b></span></div></div>
+    <div class="stat"><div class="n">Customer Trust</div><div class="l">Fewer quality issues escape to customer sites, because critical steps are validated and evidenced before the tool ships or the shift ends.</div><div class="s">Measured: Field NCs · Y7, Y8 · Q-reports</div><div class="bt"><span>Today <b data-baseline="trust">—</b></span><span>POC target <b data-target="trust">—</b></span></div></div>
+  </div>
+  <div class="ask-line" id="ask">
+    <div><div class="eyebrow" style="margin:0 0 4px">What we need for FY27</div>
+      <b>One BU sponsor · one configuration · one measured POC</b> — baseline these three numbers on a chamber you own, then decide on the pilot with data, not slides.
+      <span class="ask-when">Decision window: <em data-ask-date>Q1 FY27</em></span></div>
+    <a class="btn p" href="https://teams.microsoft.com/l/chat/0/0?users=karthik_addagarla@amat.com" target="_blank">Sponsor a POC →</a>
+  </div>
+</section>
+
+<!-- ── Why this matters — the initiative, in leadership's terms ─────────── -->
+<section id="impact">
+  <div class="eyebrow">Why we're doing this</div>
+  <h2>Ready for the autonomous cleanroom — <em style="font-style:normal;color:#67e8f9">starting with the technician</em></h2>
+  <p class="lead">Tools and robots will take the repetitive work. The technician's job becomes supervising, intervening and validating — and that job needs spatial context delivered in the moment. We build that muscle now, and bank the wins along the way.</p>
+  <div class="split">
+    <div>
+      <div class="fact"><div class="n">Today</div><div class="b"><b>Do-it-right-the-first-time, on every shift.</b> The instruction sits on the equipment, the 3D ghost shows the correct result, and the platform confirms the step before the technician moves on. Skipped steps and tribal knowledge stop being the failure mode.</div></div>
+      <div class="fact"><div class="n">Smarter</div><div class="b"><b>Technicians work smarter, not harder.</b> The guide teaches while they work (AR OJT), adapts to what is in front of them, and captures evidence without a clipboard. New hires reach competency in days; experts stop re-documenting.</div></div>
+      <div class="fact"><div class="n">Next-gen</div><div class="b"><b>The autonomous cleanroom still has a human in the loop.</b> Semi-autonomous today, fully autonomous tomorrow — either way someone has to know where, what and in what state, instantly. Adaptive guidance on the tool is that capability, learned on today's procedures.</div></div>
+      <div class="fact"><div class="n">Spatial</div><div class="b"><b>Spatial intelligence is the durable asset.</b> Every anchor, world map, validation reference and run leaves Applied with a growing spatial understanding of its own tools. That data is device-independent: it powers today's AR on iPads and is exactly what next-generation spatial computing will consume.</div></div>
+    </div>
+    <div class="vision">
+      <h3>What leadership gets</h3>
+      <ul>
+        <li><b>One initiative, one number set.</b> Productivity, Velocity and Customer Trust reported per configuration, from the platform's own usage log — not from a survey.</li>
+        <li><b>A capability Applied owns.</b> Content, spatial data and validation stay on Applied infrastructure; no vendor app between us and our tools.</li>
+        <li><b>A future-proof entry point.</b> Value on iPads today; the same content and data light up smart glasses as they mature (see Devices below).</li>
+        <li><b>A path, not a bet.</b> First BU POC → pilot → scale by configuration, with the FY27 device POCs running alongside.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ── Why AR ───────────────────────────────────────────────────────────── -->
+<section id="why">
+  <div class="eyebrow">The evidence</div>
+  <h2>What the industry has measured — and where Applied can be ahead</h2>
+  <div class="split">
+    <div>
+      <div class="fact"><div class="n">−40%</div><div class="b">fewer procedural errors and 32% faster task completion when AR-guided instructions replace paper or static methods.<small>PTC industrial AR benchmark (2025), as reported by <a href="https://oxmaint.com/article/ar-augmented-reality-maintenance" target="_blank">OxMaint</a></small></div></div>
+      <div class="fact"><div class="n">~90%</div><div class="b">improvement in first-time quality with AR instructions vs. desktop instructions in Boeing wing assembly; wiring production time cut 25%.<small>Iowa State University / Boeing, via <a href="https://www.advancedmanufacturing.org/smart-manufacturing/extended-reality-xr-drives-aerospace-excellence-at-boeing/article_f7f81646-c605-11ef-b601-dffe3e028bc2.html" target="_blank">SME Advanced Manufacturing</a> and <a href="https://arvrjourney.com/case-study-boeing-cuts-production-time-with-ar-1caf33768d61" target="_blank">AR Insider</a></small></div></div>
+      <div class="fact"><div class="n">67,000</div><div class="b">U.S. semiconductor technician, engineer and computer-science roles at risk of going unfilled by 2030 — 39% of them technicians. Faster time-to-competency is now a capacity lever, not a nice-to-have.<small><a href="https://www.semiconductors.org/america-faces-significant-shortage-of-tech-workers-in-semiconductor-industry-and-throughout-u-s-economy/" target="_blank">SIA / Oxford Economics (2023)</a></small></div></div>
+    </div>
+    <div class="vision">
+      <h3>Where Applied can be ahead</h3>
+      <ul>
+        <li><b>Own the backbone, not a vendor's app.</b> Every product here runs on SIB — anchors, world maps, validation and usage data are Applied's, deployable on-prem inside the fab network.</li>
+        <li><b>Validate, don't just display.</b> Most AR tools show steps. Ours checks them spatially, records the verdict, and never blocks the line — a failed check can be overridden, but it is logged.</li>
+        <li><b>Pluggable intelligence.</b> Validation runs on our engine today and can call any model — internal or third-party — through an API, so we ride every improvement in vision AI without rebuilding the platform.</li>
+        <li><b>One platform, many BUs.</b> OMS, on-the-job training, EHS audits and lockout/tagout share the same authoring, access control and reporting — each BU gets a product, Applied keeps one system.</li>
+        <li><b>Authoring measured in minutes.</b> Guides come from Excel, JSON or MES exports, or from the visual Procedure Designer — and any guide can be edited round-trip.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ── Products ─────────────────────────────────────────────────────────── -->
+<section id="products">
+  <div class="eyebrow">The products</div>
+  <h2>What each product is, why we built it, and how it helps you</h2>
+  <p class="lead">Pick a product. Each card answers the same four questions, and each has an interactive taste of the real workflow.</p>
+
+  <div class="tabs">
+    <button class="tab active" data-p="wi"  style="--c:#818cf8">📋 Adaptive Guided Work Instructions</button>
+    <button class="tab"        data-p="sv"  style="--c:#22d3ee">🎯 Spatial Validation</button>
+    <button class="tab"        data-p="gw"  style="--c:#fb923c">🚶 GembaWalks</button>
+    <button class="tab"        data-p="lo"  style="--c:#f87171">🔒 iLOTO</button>
+    <button class="tab"        data-p="sib" style="--c:#6366f1">🛰 SIB backbone</button>
+  </div>
+
+  <!-- AR Work Instructions -->
+  <div class="prod active" id="p-wi" style="--c:#818cf8">
+    <header><h3>📋 Adaptive Guided Work Instructions</h3><span class="badge pilot">POC-READY</span><span class="tag">Connected Worker AR OMS · AR OJT (on-the-job training)</span></header>
+    <div class="qgrid">
+      <div class="q"><h4>What it is</h4><p>Procedures shown in AR on the actual tool — each step pinned where the work is, with 3D ghosts of the correct result, adapting to the technician and the chamber in front of them.</p></div>
+      <div class="q"><h4>Why we built it</h4><p>Do-it-right-the-first-time. Procedure knowledge lived in people and PDFs; we wanted it to live on the equipment and check itself.</p></div>
+      <div class="q"><h4>How it helps you</h4><ul><li>Faster ramp — the guide teaches while they work (AR OJT)</li><li>Fewer skipped steps; critical ones validated on the spot</li><li>Audit-ready record per Production #</li></ul></div>
+      <div class="q"><h4>Where it stands</h4><p>Live on cloud and in-house servers. Best first use: a procedure you already have in Excel.</p></div>
+    </div>
+    <div class="stepper" data-steps='[
+      {"t":"<b>Shift start.</b> The technician picks up the shared iPad, enters an employee ID and today’s Production #. No email, no password.","icon":"kiosk","img":"/platform-media/shift-1.jpg"},
+      {"t":"<b>Scan the QR</b> on the chamber. Step 1 appears pinned exactly where the work is.","icon":"qr","img":"/platform-media/shift-2.jpg"},
+      {"t":"<b>Guided work.</b> A 3D ghost shows the part in its correct position. Tap ✓, the next step lights up. A photo is required where the author asked for one.","icon":"guide","img":"/platform-media/shift-3.jpg"},
+      {"t":"<b>Validated step.</b> Guided into the exact spot the author trained from; the platform checks the work and records the verdict.","icon":"validate","img":"/platform-media/shift-4.jpg"},
+      {"t":"<b>Sign-off.</b> Summary, photos, timings. On the portal the run appears under its Production # — one click to Excel.","icon":"log","img":"/platform-media/shift-5.jpg"}
+    ]'>
+      <div class="dots"></div>
+      <div class="stage"><div class="pic"></div><div class="body"></div></div>
+      <div class="ctl"><button data-dir="-1">← Back</button><button data-dir="1">Next →</button><span style="flex:1"></span><span style="color:var(--dim);font-size:12px;align-self:center">Walk a shift</span></div>
+    </div>
+    <div class="media">
+      <figure data-src="/platform-media/wi-1.jpg">Screenshot slot · AR step panel on equipment<br><small>drop <code>wi-1.jpg</code> into platform-media</small></figure>
+      <figure data-src="/platform-media/wi-2.jpg">Screenshot slot · Kiosk shift start<br><small><code>wi-2.jpg</code></small></figure>
+      <figure data-src="/platform-media/wi-3.jpg">Screenshot slot · Usage Log in the portal<br><small><code>wi-3.jpg</code></small></figure>
+    </div>
+    <div class="ask"><span style="color:var(--muted);font-size:13px">Reach out to AppliedX:</span><a class="btn p" href="https://teams.microsoft.com/l/chat/0/0?users=karthik_addagarla@amat.com" target="_blank">💬 Teams chat</a><a class="btn g" href="mailto:karthik_addagarla@amat.com?subject=AR%20Work%20Instructions">✉ Email</a></div>
+  </div>
+
+  <!-- Spatial Validation -->
+  <div class="prod" id="p-sv" style="--c:#22d3ee">
+    <header><h3>🎯 Spatial Validation</h3><span class="badge pilot">POC-READY</span><span class="tag">AR-guided · own models or third-party via API</span></header>
+    <div class="qgrid">
+      <div class="q"><h4>What it is</h4><p>Confirms hands-on work was done right: the technician stands where the author stood; the platform compares the live view with "correct", from several angles.</p></div>
+      <div class="q"><h4>Why we built it</h4><p>Vision systems validate parts on a line — nothing validated <em>a technician's work at a tool</em>.</p></div>
+      <div class="q"><h4>How it helps you</h4><ul><li>Catch the missing guard before the tool restarts</li><li>Objective verdict per step, on record</li><li>Pluggable engine — ours today, any model via API</li></ul></div>
+      <div class="q"><h4>Where it stands</h4><p>Multi-angle training and guided capture live; scoring tuned with field tests.</p></div>
+    </div>
+    <div class="toggle"><span style="color:var(--muted);font-size:13px">See the difference:</span><button class="on" data-ba="a">Before</button><button data-ba="b">With Spatial Validation</button></div>
+    <div class="ba" data-a="A technician completes the guard reinstall and ticks the box. Whether the guard is actually seated is known only if someone checks later — or when the tool faults." data-b="The technician is guided to the trained viewpoint; the platform compares the live view with the multi-angle references and records PASS 0.91 on the step. The run's usage log carries the verdict, the photo and the timestamp."></div>
+    <div class="media">
+      <figure data-src="/platform-media/sv-1.jpg">Screenshot slot · Author training the cone<br><small><code>sv-1.jpg</code></small></figure>
+      <figure data-src="/platform-media/sv-2.jpg">Screenshot slot · Operator "In position — capture"<br><small><code>sv-2.jpg</code></small></figure>
+      <figure data-src="/platform-media/sv-3.jpg">Screenshot slot · Verdict in the Usage Log<br><small><code>sv-3.jpg</code></small></figure>
+    </div>
+    <div class="ask"><span style="color:var(--muted);font-size:13px">Reach out to AppliedX:</span><a class="btn p" href="https://teams.microsoft.com/l/chat/0/0?users=karthik_addagarla@amat.com" target="_blank">💬 Teams chat</a><a class="btn g" href="mailto:karthik_addagarla@amat.com?subject=Spatial%20Validation">✉ Email</a></div>
+  </div>
+
+  <!-- GembaWalks -->
+  <div class="prod" id="p-gw" style="--c:#fb923c">
+    <header><h3>🚶 GembaWalks</h3><span class="badge pilot">POC-READY</span><span class="tag">Audit walks · findings · resolution</span></header>
+    <div class="qgrid">
+      <div class="q"><h4>What it is</h4><p>Audit walks in AR — checkpoints tagged to real locations, findings with photos, every open finding tracked to resolution.</p></div>
+      <div class="q"><h4>Why we built it</h4><p>Findings in spreadsheets die. Findings tied to a physical location stay honest and repeatable.</p></div>
+      <div class="q"><h4>How it helps you</h4><ul><li>Same checkpoints, same order, every walk</li><li>Evidence and location on every finding</li><li>Ageing open findings visible at a glance</li></ul></div>
+      <div class="q"><h4>Where it stands</h4><p>Live end to end. Ready for a team's first real walk.</p></div>
+    </div>
+    <div class="media">
+      <figure data-src="/platform-media/gw-1.jpg">Screenshot slot · Checkpoint in AR<br><small><code>gw-1.jpg</code></small></figure>
+      <figure data-src="/platform-media/gw-2.jpg">Screenshot slot · Finding form<br><small><code>gw-2.jpg</code></small></figure>
+      <figure data-src="/platform-media/gw-3.jpg">Screenshot slot · Portal findings board<br><small><code>gw-3.jpg</code></small></figure>
+    </div>
+    <div class="ask"><span style="color:var(--muted);font-size:13px">Reach out to AppliedX:</span><a class="btn p" href="https://teams.microsoft.com/l/chat/0/0?users=karthik_addagarla@amat.com" target="_blank">💬 Teams chat</a><a class="btn g" href="mailto:karthik_addagarla@amat.com?subject=GembaWalks">✉ Email</a></div>
+  </div>
+
+  <!-- iLOTO -->
+  <div class="prod" id="p-lo" style="--c:#f87171">
+    <header><h3>🔒 iLOTO</h3><span class="badge proto">EARLY PROTOTYPE</span><span class="tag">Spatial Lockout / Tagout</span></header>
+    <div class="qgrid">
+      <div class="q"><h4>What it is</h4><p>Lockout/Tagout points on the real equipment in AR — checklists, live lock status, energy-flow map, and a certification quiz gate.</p></div>
+      <div class="q"><h4>Why we built it</h4><p>LOTO is the highest-consequence, most paper-bound procedure on the floor. We explored making it visual and verifiable.</p></div>
+      <div class="q"><h4>How it helps you</h4><ul><li>Which breaker, which lock, which order — shown in place</li><li>EHS gets a live board and a certification gate</li></ul></div>
+      <div class="q"><h4>Where it stands</h4><p><b>Early prototype.</b> Works end to end; not yet reviewed against EHS / regulatory requirements.</p></div>
+    </div>
+    <div class="media">
+      <figure data-src="/platform-media/lo-1.jpg">Screenshot slot · LOTO points in AR<br><small><code>lo-1.jpg</code></small></figure>
+      <figure data-src="/platform-media/lo-2.jpg">Screenshot slot · Energy-flow map<br><small><code>lo-2.jpg</code></small></figure>
+      <figure data-src="/platform-media/lo-3.jpg">Screenshot slot · EHS status board<br><small><code>lo-3.jpg</code></small></figure>
+    </div>
+    <div class="ask"><span style="color:var(--muted);font-size:13px">Reach out to AppliedX:</span><a class="btn p" href="https://teams.microsoft.com/l/chat/0/0?users=karthik_addagarla@amat.com" target="_blank">💬 Teams chat</a><a class="btn g" href="mailto:karthik_addagarla@amat.com?subject=iLOTO%20prototype">✉ Email</a></div>
+  </div>
+
+  <!-- SIB -->
+  <div class="prod" id="p-sib" style="--c:#6366f1">
+    <header><h3>🛰 SIB — Spatial Intelligence Backbone</h3><span class="badge ready">IN PRODUCTION USE</span><span class="tag">The engine every product runs on</span></header>
+    <div class="qgrid">
+      <div class="q"><h4>What it is</h4><p>The foundation: QR anchors tie content to equipment, world maps let any iPad re-find it, plus validation, telemetry, access control and usage records — one server, on-prem or cloud.</p></div>
+      <div class="q"><h4>Why we built it</h4><p>Every AR product needs the same 80%. Built once, each new product is a thin layer — GembaWalks and iLOTO took weeks.</p></div>
+      <div class="q"><h4>How it helps you</h4><ul><li>Data can stay inside the fab network</li><li>One user list and role model across products</li><li>Authoring from Excel / JSON / MES or the visual designer</li></ul></div>
+      <div class="q"><h4>Where it stands</h4><p>Running continuously; hardened for POCs. Spatial data formats patent-pending.</p></div>
+    </div>
+    <div class="ask"><a class="btn g" href="/catalog">Open the Feature Catalogue →</a><a class="btn g" href="/roadmap">Open the Roadmap &amp; Designer →</a></div>
+  </div>
+</section>
+
+<!-- ── Platform map ─────────────────────────────────────────────────────── -->
+<section id="map">
+  <div class="eyebrow">Connected Worker · AR OMS — the whole platform, one picture</div>
+  <h2>Platform map</h2>
+  <div class="mapwrap"><svg viewBox="0 0 1600 900" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0b1026"/><stop offset="1" stop-color="#1b2450"/>
+    </linearGradient>
+    <linearGradient id="sib" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#1e3a8a"/><stop offset="1" stop-color="#312e81"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bg)"/>
+
+  <!-- Header -->
+  <text x="60" y="58" font-size="30" font-weight="800" fill="#ffffff">AR Operations Platform</text>
+  <text x="60" y="84" font-size="15" fill="#94a3b8">One spatial backbone · four products · authoring, content and governance built in</text>
+  <text x="1540" y="58" font-size="13" fill="#64748b" text-anchor="end">v2026.4.45 · September 2026</text>
+  <text x="1540" y="80" font-size="12" fill="#475569" text-anchor="end">Proprietary &amp; Confidential · Applied Materials</text>
+
+  <!-- ── Layer 1: Products ─────────────────────────────────────────── -->
+  <text x="60" y="126" font-size="12" font-weight="700" fill="#64748b" letter-spacing="2">PRODUCTS</text>
+
+  <!-- AR Work Instructions — first: the flagship -->
+  <g>
+    <rect x="60" y="138" width="352" height="158" rx="16" fill="#1a1f4d" stroke="#818cf8" stroke-width="2"/>
+    <text x="84" y="172" font-size="26">📋</text>
+    <text x="122" y="166" font-size="18" font-weight="800" fill="#ffffff">Adaptive Guided</text>
+    <text x="122" y="186" font-size="18" font-weight="800" fill="#ffffff">Work Instructions</text>
+    <text x="122" y="203" font-size="11" fill="#a5b4fc" font-weight="700">Connected Worker AR OMS  ·  AR OJT</text>
+    <text x="84" y="226" font-size="12.5" fill="#cbd5e1">• Step-by-step AR guides with 3D ghost overlays</text>
+    <text x="84" y="246" font-size="12.5" fill="#cbd5e1">• Every step spatially validated, evidenced</text>
+    <text x="84" y="266" font-size="12.5" fill="#cbd5e1">• Branches, resume &amp; sign-off</text>
+    <text x="84" y="286" font-size="12.5" fill="#cbd5e1">• Kiosk shift start · Production # usage log</text>
+  </g>
+
+  <!-- Spatial Validation -->
+  <g>
+    <rect x="436" y="138" width="352" height="158" rx="16" fill="#0f2a4a" stroke="#22d3ee" stroke-width="2"/>
+    <text x="460" y="172" font-size="26">🎯</text>
+    <text x="498" y="172" font-size="19" font-weight="800" fill="#ffffff">Spatial Validation</text>
+    <text x="498" y="190" font-size="11" fill="#67e8f9" font-weight="700">AR-guided · own models or 3rd-party via API</text>
+    <text x="460" y="214" font-size="12.5" fill="#cbd5e1">• Author trains in AR from multiple angles</text>
+    <text x="460" y="236" font-size="12.5" fill="#cbd5e1">• Operator guided to the exact spot; live verdict</text>
+    <text x="460" y="258" font-size="12.5" fill="#cbd5e1">• Pass / fail states, regions of interest, evidence</text>
+    <text x="460" y="280" font-size="12.5" fill="#cbd5e1">• Pluggable engine — ours today, any model via API</text>
+  </g>
+
+  <!-- GembaWalks -->
+  <g>
+    <rect x="812" y="138" width="352" height="158" rx="16" fill="#3a1f0f" stroke="#fb923c" stroke-width="2"/>
+    <text x="836" y="172" font-size="26">🚶</text>
+    <text x="874" y="172" font-size="19" font-weight="800" fill="#ffffff">GembaWalks</text>
+    <text x="836" y="200" font-size="12.5" fill="#cbd5e1">• Location-tagged audit walks in AR</text>
+    <text x="836" y="222" font-size="12.5" fill="#cbd5e1">• Findings, defect categories, resolution</text>
+    <text x="836" y="244" font-size="12.5" fill="#cbd5e1">• Ghost re-localization at each checkpoint</text>
+    <text x="836" y="266" font-size="12.5" fill="#cbd5e1">• Walk reports &amp; open-finding tracking</text>
+  </g>
+
+  <!-- iLOTO -->
+  <g>
+    <rect x="1188" y="138" width="352" height="158" rx="16" fill="#3a0f14" stroke="#f87171" stroke-width="2"/>
+    <text x="1212" y="172" font-size="26">🔒</text>
+    <text x="1250" y="172" font-size="19" font-weight="800" fill="#ffffff">iLOTO</text>
+    <rect x="1330" y="156" width="118" height="20" rx="10" fill="#f87171" fill-opacity="0.18" stroke="#f87171" stroke-width="1"/>
+    <text x="1389" y="170" font-size="10.5" font-weight="800" fill="#fca5a5" text-anchor="middle">EARLY PROTOTYPE</text>
+    <text x="1212" y="200" font-size="12.5" fill="#cbd5e1">• Spatial Lockout / Tagout points &amp; 3D locks</text>
+    <text x="1212" y="222" font-size="12.5" fill="#cbd5e1">• Apply / remove checklists, live lock status</text>
+    <text x="1212" y="244" font-size="12.5" fill="#cbd5e1">• Training quiz gate &amp; certification</text>
+    <text x="1212" y="266" font-size="12.5" fill="#cbd5e1">• AR LOTO energy-flow maps, EHS board</text>
+  </g>
+
+  <!-- ── Layer 2: Authoring & Content ─────────────────────────────── -->
+  <text x="60" y="334" font-size="12" font-weight="700" fill="#64748b" letter-spacing="2">AUTHORING &amp; CONTENT</text>
+
+  <g>
+    <rect x="60" y="346" width="470" height="122" rx="14" fill="#14213d" stroke="#3b82f6" stroke-width="1.5"/>
+    <text x="84" y="378" font-size="17" font-weight="800" fill="#ffffff">🗺 Roadmap &amp; Procedure Designer</text>
+    <text x="84" y="404" font-size="12.5" fill="#cbd5e1">Visual canvas for roadmaps and procedures · role-typed nodes,</text>
+    <text x="84" y="424" font-size="12.5" fill="#cbd5e1">branches &amp; recovery paths · compile straight to an AR guide</text>
+    <text x="84" y="448" font-size="12.5" fill="#93c5fd">Preview mode · round-trip edit of any guide · pre-flight checks</text>
+  </g>
+
+  <g>
+    <rect x="554" y="346" width="546" height="122" rx="14" fill="#0f2f2a" stroke="#2dd4bf" stroke-width="1.5"/>
+    <text x="578" y="378" font-size="17" font-weight="800" fill="#ffffff">📚 Content Library</text>
+    <text x="578" y="404" font-size="12.5" fill="#cbd5e1">Guide Library · 3D Model Library with CAD import (GLB → USDZ)</text>
+    <text x="578" y="424" font-size="12.5" fill="#cbd5e1">Guide import from Excel, JSON and MES sources · per-anchor model kits</text>
+    <text x="578" y="448" font-size="12.5" fill="#5eead4">Share guides per user · publish / draft control · ghost opacity per step</text>
+  </g>
+
+  <g>
+    <rect x="1124" y="346" width="416" height="122" rx="14" fill="#1f1a3d" stroke="#a78bfa" stroke-width="1.5"/>
+    <text x="1148" y="378" font-size="17" font-weight="800" fill="#ffffff">📖 Feature Catalogue</text>
+    <text x="1148" y="404" font-size="12.5" fill="#cbd5e1">Docs-as-data map of every capability, with</text>
+    <text x="1148" y="424" font-size="12.5" fill="#cbd5e1">flows, API reference and architecture views</text>
+    <text x="1148" y="448" font-size="12.5" fill="#c4b5fd">Ask SIB — docs-grounded assistant</text>
+  </g>
+
+  <!-- ── Layer 3: Operate & Govern ────────────────────────────────── -->
+  <text x="60" y="506" font-size="12" font-weight="700" fill="#64748b" letter-spacing="2">OPERATE &amp; GOVERN</text>
+
+  <g>
+    <rect x="60" y="518" width="1480" height="96" rx="14" fill="#111a33" stroke="#334155" stroke-width="1.5"/>
+    <!-- five chips -->
+    <g>
+      <rect x="84" y="538" width="270" height="56" rx="10" fill="#1e293b"/>
+      <text x="100" y="561" font-size="14" font-weight="800" fill="#ffffff">🏠 Web Portal</text>
+      <text x="100" y="581" font-size="11.5" fill="#94a3b8">Tile home · every product on one screen</text>
+    </g>
+    <g>
+      <rect x="370" y="538" width="290" height="56" rx="10" fill="#1e293b"/>
+      <text x="386" y="561" font-size="14" font-weight="800" fill="#ffffff">📊 Completions &amp; Usage Log</text>
+      <text x="386" y="581" font-size="11.5" fill="#94a3b8">Per-step timing, verdicts, evidence · Excel export</text>
+    </g>
+    <g>
+      <rect x="676" y="538" width="290" height="56" rx="10" fill="#1e293b"/>
+      <text x="692" y="561" font-size="14" font-weight="800" fill="#ffffff">👥 Access &amp; Roles (UAM)</text>
+      <text x="692" y="581" font-size="11.5" fill="#94a3b8">Owner → Technician · per-product entitlements</text>
+    </g>
+    <g>
+      <rect x="982" y="538" width="270" height="56" rx="10" fill="#1e293b"/>
+      <text x="998" y="561" font-size="14" font-weight="800" fill="#ffffff">🛠 Admin &amp; Ops</text>
+      <text x="998" y="581" font-size="11.5" fill="#94a3b8">Ops log · backup &amp; restore · site lock-down</text>
+    </g>
+    <g>
+      <rect x="1268" y="538" width="248" height="56" rx="10" fill="#1e293b"/>
+      <text x="1284" y="561" font-size="14" font-weight="800" fill="#ffffff">📱 Kiosk Mode</text>
+      <text x="1284" y="581" font-size="11.5" fill="#94a3b8">Shared iPads · employee ID sign-in</text>
+    </g>
+  </g>
+
+  <!-- ── Layer 4: SIB Foundation ─────────────────────────────────── -->
+  <g filter="url(#glow)">
+    <rect x="60" y="640" width="1480" height="96" rx="16" fill="url(#sib)" stroke="#6366f1" stroke-width="2"/>
+  </g>
+  <text x="84" y="672" font-size="18" font-weight="800" fill="#ffffff">🛰 SIB — Spatial Intelligence Backbone</text>
+  <text x="84" y="694" font-size="12.5" fill="#c7d2fe">The shared engine every product runs on · one server, on-prem or cloud</text>
+  <g font-size="12.5" fill="#e0e7ff" font-weight="700">
+    <text x="640" y="672">⬡ Anchors &amp; QR</text>
+    <text x="640" y="696">🗺 World maps &amp; re-localization</text>
+    <text x="900" y="672">👁 Perception engine</text>
+    <text x="900" y="696">📡 Live session stream &amp; AI hints</text>
+    <text x="1180" y="672">🔐 Encrypted training data</text>
+    <text x="1180" y="696">🏷 .tag / .sib spatial data formats</text>
+  </g>
+
+  <!-- ── Evolution strip ───────────────────────────────────────────── -->
+  <text x="60" y="778" font-size="12" font-weight="700" fill="#64748b" letter-spacing="2">HOW WE GOT HERE</text>
+  <line x1="60" y1="820" x2="1540" y2="820" stroke="#334155" stroke-width="2"/>
+  <g font-size="11.5" fill="#cbd5e1" text-anchor="middle">
+    <g><circle cx="120" cy="820" r="7" fill="#22d3ee"/><text x="120" y="848">Spatial</text><text x="120" y="864">Validation</text></g>
+    <g><circle cx="300" cy="820" r="7" fill="#fb923c"/><text x="300" y="848">GembaWalks</text><text x="300" y="864">(Loc-Tags)</text></g>
+    <g><circle cx="480" cy="820" r="7" fill="#818cf8"/><text x="480" y="848">AR Work</text><text x="480" y="864">Instructions</text></g>
+    <g><circle cx="660" cy="820" r="7" fill="#2dd4bf"/><text x="660" y="848">3D Models &amp;</text><text x="660" y="864">CAD import</text></g>
+    <g><circle cx="840" cy="820" r="7" fill="#3b82f6"/><text x="840" y="848">Roadmap &amp;</text><text x="840" y="864">Procedure Designer</text></g>
+    <g><circle cx="1020" cy="820" r="7" fill="#f87171"/><text x="1020" y="848">iLOTO</text><text x="1020" y="864">&amp; certification</text></g>
+    <g><circle cx="1200" cy="820" r="7" fill="#a78bfa"/><text x="1200" y="848">Feature Catalogue,</text><text x="1200" y="864">.tag, lock-down · Aug ’26</text></g>
+    <g><circle cx="1400" cy="820" r="7" fill="#22c55e"/><text x="1400" y="848">UAM, Kiosk, Usage Log,</text><text x="1400" y="864">validated work steps · Sep ’26</text></g>
+  </g>
+  <text x="1540" y="892" font-size="10.5" fill="#475569" text-anchor="end">Native iOS (ARKit) app + SIB server + web portal · Render (cloud) or on-prem Windows service</text>
+</svg></div>
+</section>
+
+<!-- ── Devices ──────────────────────────────────────────────────────────── -->
+<section id="devices">
+  <div class="eyebrow">Devices — iPads today, glasses as they earn their place</div>
+  <h2>Capture the value of AR now; be first-ready for the next form factor</h2>
+  <p class="lead">We deploy on iPads and iPhones today because they are in the fab already, they run the full platform, and they give us a measured baseline. Every smart-glass form factor is then assessed against that baseline for <b>fit and feasibility</b> — by use case, not by hype. FY27 POCs explore each one.</p>
+  <div class="qgrid">
+    <div class="q" style="--c:#22d3ee"><h4>iPad / iPhone · today</h4><p><b>Full platform, zero new hardware.</b> Authoring, guided work, spatial validation, evidence and the kiosk shift flow all run here. This is the benchmark every glass is measured against.</p><p style="margin-top:8px;color:var(--dim);font-size:12.5px">Best for: every procedure, today · authoring · POC and pilot</p></div>
+    <div class="q" style="--c:#a78bfa"><h4>No-display glasses · FY27 POC</h4><p><b>Hands-free voice and camera.</b> Step read-out, voice ✓, evidence photos from the technician's eye line — no screen to manage inside a chamber.</p><p style="margin-top:8px;color:var(--dim);font-size:12.5px">Best for: two-hands work · evidence capture · safety call-outs</p></div>
+    <div class="q" style="--c:#fb923c"><h4>Monocular display · FY27 POC</h4><p><b>Glanceable step and checklist.</b> The current step, the next action and the verdict in the corner of the eye; the iPad stays in the pocket.</p><p style="margin-top:8px;color:var(--dim);font-size:12.5px">Best for: sequential procedures · inspections · walk-downs</p></div>
+    <div class="q" style="--c:#818cf8"><h4>Binocular display · FY27 POC</h4><p><b>Full spatial overlays.</b> 3D ghosts and pins registered on the tool in true depth — the complete Adaptive Guided Work Instruction experience, hands-free.</p><p style="margin-top:8px;color:var(--dim);font-size:12.5px">Best for: complex assemblies · alignment work · training</p></div>
+  </div>
+  <p style="color:var(--muted);font-size:14px;margin-top:16px">The content, the spatial data and the validation engine are the same across all four — SIB is device-independent by design. Adopting a glass is a rollout decision, not a rebuild.</p>
+</section>
+
+<!-- ── Live ─────────────────────────────────────────────────────────────── -->
+<section id="live">
+  <div class="eyebrow">Proof it's real</div>
+  <h2>Live from this server, right now</h2>
+  <p class="lead">These numbers come from the platform itself — not from a slide.</p>
+  <div class="live">
+    <div class="k"><div class="n" id="lv-anchors">—</div><div class="l">Equipment anchors</div></div>
+    <div class="k"><div class="n" id="lv-sessions">—</div><div class="l">Inspection sessions this week</div></div>
+    <div class="k"><div class="n" id="lv-runs">—</div><div class="l">Guided runs on record</div></div>
+    <div class="k"><div class="n" id="lv-validated">—</div><div class="l">Steps validated by the system</div></div>
+    <div class="k"><div class="n" id="lv-findings">—</div><div class="l">Open Gemba findings</div></div>
+  </div>
+</section>
+
+<!-- ── Timeline ─────────────────────────────────────────────────────────── -->
+<section id="journey">
+  <div class="eyebrow">How we got here — and what's next</div>
+  <h2>Momentum</h2>
+  <div class="tl">
+    <div style="--c:#22d3ee"><b>Spatial Validation</b>Multi-angle training, live verdicts</div>
+    <div style="--c:#fb923c"><b>GembaWalks</b>Location-tagged audits</div>
+    <div style="--c:#818cf8"><b>Adaptive Guided Work Instructions</b>Guides pinned to equipment</div>
+    <div style="--c:#2dd4bf"><b>3D models &amp; CAD</b>Ghost overlays from CAD</div>
+    <div style="--c:#3b82f6"><b>Procedure Designer</b>Visual authoring → AR</div>
+    <div style="--c:#f87171"><b>iLOTO prototype</b>Spatial lockout/tagout</div>
+    <div style="--c:#a78bfa"><b>Aug ’26 · Hardening</b>Catalogue, lock-down, backups</div>
+    <div style="--c:#22c55e"><b>Sep ’26 · Operations</b>UAM, kiosk, usage log, validated steps</div>
+    <div class="next" style="--c:#64748b"><b>Next · SSO</b>Corporate identity for shared iPads</div>
+    <div class="next" style="--c:#64748b"><b>Next · First BU POC</b>One procedure, one chamber, measured — then pilot</div>
+    <div class="next" style="--c:#64748b"><b>Next · External models</b>Third-party validation via API</div>
+  </div>
+</section>
+
+<!-- ── Self-assessment ──────────────────────────────────────────────────── -->
+<section id="assess">
+  <div class="eyebrow">Where are you on the Connected Worker journey?</div>
+  <h2>Ninety seconds. Six questions. A place on the ladder — and the next rung.</h2>
+  <p class="lead">Answer for the area you know best — a bay, a BU, a product line. Nothing is stored about you; the anonymous level feeds a live pulse so the initiative can see where Applied sits.</p>
+  <div class="az" id="az">
+    <div id="az-questions"></div>
+    <div style="display:flex;gap:12px;align-items:center;margin-top:16px;flex-wrap:wrap">
+      <input id="az-area" placeholder="Area / BU (optional, e.g. Etch · Bay 3)" maxlength="60"
+             style="flex:1;min-width:220px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:rgba(11,16,38,.6);color:#fff;font-size:14px">
+      <button class="btn p" id="az-go" onclick="azScore()" disabled>Show my level →</button>
+      <span id="az-progress" style="color:var(--dim);font-size:13px">0 of 6 answered</span>
+    </div>
+    <div class="az-res" id="az-res"></div>
+    <div class="az-pulse" id="az-pulse"></div>
+  </div>
+</section>
+
+<!-- ── Contact ──────────────────────────────────────────────────────────── -->
+<section id="contact">
+  <div class="contact">
+    <div class="av">AX</div>
+    <div style="flex:1;min-width:240px">
+      <h3>AppliedX</h3>
+      <p>AR Operations Platform · Applied Materials</p>
+      <p style="margin-top:6px">Reach out to us to learn more about any product, or to bring a use case from your BU.</p>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <a class="btn p" href="https://teams.microsoft.com/l/chat/0/0?users=karthik_addagarla@amat.com" target="_blank">💬 Teams chat</a>
+      <a class="btn g" href="mailto:karthik_addagarla@amat.com?subject=AR%20Platform%20%E2%80%94%20BU%20use%20case&body=Hi%20AppliedX%2C%0A%0AProduct%20of%20interest%3A%0AEquipment%20%2F%20area%3A%0AWhat%20we%20want%20to%20solve%3A%0A">✉ Email</a>
+    </div>
+  </div>
+</section>
+
+<button id="rp-start" onclick="rpStart(true)">🧭 Start here<small>a 60-second guided read</small></button>
+
+<div style="padding:12px 24px;background:#1b2450;color:#c7cdf0;font-size:13px;text-align:center">Long-form version, parked 2026-09-10 · <a href="/platform" style="color:#a5b4fc">Back to the platform map →</a></div>
+<div class="foot">Proprietary &amp; Confidential · Applied Materials · Capability-level overview; spatial data formats and validation methods are patent-pending and not described here. · v2026.4.45</div>
+
+<script>
+  // Tabs
+  const tabs = document.querySelectorAll('.tab'), prods = document.querySelectorAll('.prod');
+  tabs.forEach(t => t.addEventListener('click', () => {
+    tabs.forEach(x => x.classList.toggle('active', x === t));
+    prods.forEach(p => p.classList.toggle('active', p.id === 'p-' + t.dataset.p));
+    history.replaceState(null, '', '#products');
+  }));
+
+  // Pictograms for the "walk a shift" stepper (replaced by shift-N.jpg when present)
+  const PICT = {
+    kiosk: '<svg viewBox="0 0 120 120" fill="none" stroke="#a5b4fc" stroke-width="3"><rect x="22" y="14" width="76" height="92" rx="10"/><rect x="34" y="30" width="52" height="10" rx="3" fill="#312e81" stroke="none"/><rect x="34" y="48" width="52" height="10" rx="3" fill="#312e81" stroke="none"/><rect x="34" y="70" width="52" height="16" rx="6" fill="#4f46e5" stroke="none"/><circle cx="60" cy="98" r="3" fill="#a5b4fc" stroke="none"/></svg>',
+    qr: '<svg viewBox="0 0 120 120" fill="none" stroke="#67e8f9" stroke-width="3"><rect x="22" y="22" width="30" height="30" rx="3"/><rect x="68" y="22" width="30" height="30" rx="3"/><rect x="22" y="68" width="30" height="30" rx="3"/><rect x="31" y="31" width="12" height="12" fill="#22d3ee" stroke="none"/><rect x="77" y="31" width="12" height="12" fill="#22d3ee" stroke="none"/><rect x="31" y="77" width="12" height="12" fill="#22d3ee" stroke="none"/><path d="M68 68h12v12h-12zM86 68h12M86 80v18M68 92h12" stroke="#22d3ee"/><path d="M10 40V14h26M84 14h26v26M10 80v26h26M84 106h26V80" stroke="#818cf8"/></svg>',
+    guide: '<svg viewBox="0 0 120 120" fill="none" stroke="#a5b4fc" stroke-width="3"><rect x="14" y="30" width="92" height="60" rx="8" fill="#1e293b"/><rect x="24" y="42" width="40" height="8" rx="3" fill="#818cf8" stroke="none"/><rect x="24" y="56" width="60" height="6" rx="3" fill="#475569" stroke="none"/><rect x="24" y="68" width="48" height="6" rx="3" fill="#475569" stroke="none"/><circle cx="90" cy="70" r="10" fill="#22c55e" stroke="none"/><path d="M85 70l4 4 7-8" stroke="#0b1026" stroke-width="3"/><circle cx="60" cy="100" r="5" fill="#818cf8" stroke="none"/><path d="M60 90v5" stroke="#818cf8"/></svg>',
+    validate: '<svg viewBox="0 0 120 120" fill="none" stroke="#22d3ee" stroke-width="3"><circle cx="60" cy="60" r="34" stroke-dasharray="6 5"/><circle cx="60" cy="60" r="18"/><circle cx="60" cy="60" r="4" fill="#22d3ee" stroke="none"/><path d="M60 14v10M60 96v10M14 60h10M96 60h10"/><rect x="74" y="80" width="34" height="18" rx="9" fill="#22c55e" stroke="none"/><text x="91" y="93" font-size="10" font-weight="700" fill="#0b1026" text-anchor="middle" stroke="none">PASS</text></svg>',
+    log: '<svg viewBox="0 0 120 120" fill="none" stroke="#86efac" stroke-width="3"><rect x="20" y="16" width="80" height="88" rx="8"/><path d="M34 40h52M34 56h52M34 72h32"/><circle cx="84" cy="80" r="14" fill="#22c55e" stroke="none"/><path d="M77 80l5 5 9-10" stroke="#0b1026" stroke-width="3"/></svg>'
+  };
+  // Stepper
+  document.querySelectorAll('.stepper').forEach(st => {
+    const steps = JSON.parse(st.dataset.steps); let i = 0;
+    const dots = st.querySelector('.dots'), body = st.querySelector('.body'), pic = st.querySelector('.pic');
+    dots.innerHTML = steps.map(() => '<span></span>').join('');
+    const render = () => {
+      const sp = steps[i]; body.innerHTML = sp.t; pic.innerHTML = PICT[sp.icon] || '';
+      if (sp.img) { const im = new Image(); im.onload = () => { if (steps[i] === sp) { pic.innerHTML = ''; pic.appendChild(im); } }; im.src = sp.img; }
+      [...dots.children].forEach((d,k) => d.classList.toggle('on', k <= i));
+    };
+    st.querySelectorAll('button[data-dir]').forEach(b => b.addEventListener('click', () => { i = Math.max(0, Math.min(steps.length-1, i + +b.dataset.dir)); render(); }));
+    render();
+  });
+  // Before / after
+  document.querySelectorAll('.toggle').forEach(tg => {
+    const ba = tg.nextElementSibling; const set = k => { ba.textContent = ba.dataset[k]; tg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.ba === k)); };
+    tg.querySelectorAll('button').forEach(b => b.addEventListener('click', () => set(b.dataset.ba))); set('a');
+  });
+  // Media slots: show real image when present, keep the labelled slot otherwise
+  document.querySelectorAll('.media figure[data-src]').forEach(f => {
+    const img = new Image(); img.onload = () => { f.classList.add('has'); f.innerHTML = ''; f.appendChild(img); }; img.src = f.dataset.src;
+  });
+  // ── M1: baseline / target hooks + ask date — DATA_DIR/platform/media/metrics.json
+  //   { "askDate": "Q1 FY27", "productivity": {"today":"…","target":"…"}, "velocity": {…}, "trust": {…} }
+  (async () => {
+    try {
+      const m = await (await fetch('/platform-media/metrics.json', { cache: 'no-store' })).json();
+      if (m.askDate) document.querySelector('[data-ask-date]').textContent = m.askDate;
+      for (const k of ['productivity', 'velocity', 'trust']) {
+        if (!m[k]) continue;
+        const b = document.querySelector(`[data-baseline="${k}"]`), t = document.querySelector(`[data-target="${k}"]`);
+        if (b && m[k].today)  b.textContent = m[k].today;
+        if (t && m[k].target) t.textContent = m[k].target;
+      }
+    } catch { /* placeholders stay as — until the file exists */ }
+  })();
+
+  // ── M2: guided reading path — four stops, once, never a demo ─────────────
+  const RP = [
+    { sel: '#top h1',        h: 'Start with the why',        p: 'One initiative, one promise: every technician’s next move, right the first time. Everything below exists to make that true.' },
+    { sel: '#top .grid3',    h: 'How we keep score',         p: 'Productivity, Velocity, Customer Trust — in the numbers leadership already tracks. The ask sits right underneath.' },
+    { sel: '#products',      h: 'See it, don’t imagine it',  p: 'Each product card walks a real shift. Tap through “Walk a shift” — that’s a technician’s morning, not a mock-up.' },
+    { sel: '#assess',        h: 'Now — where are you?',      p: 'Six questions place your area on the ladder and name the next rung. Ninety seconds, anonymous, and it lights up the pulse below.' },
+  ];
+  let rpI = 0;
+  const rpSeen = () => localStorage.getItem('sib.platform.rp') === '1';
+  function rpStart(force) {
+    if (!force && rpSeen()) return;
+    localStorage.setItem('sib.platform.rp', '1');
+    document.getElementById('rp-start').style.display = 'none';
+    rpI = 0; rpShow();
+  }
+  function rpShow(scroll = true) {
+    rpEnd(true);
+    const st = RP[rpI]; if (!st) { rpEnd(); return; }
+    const el = document.querySelector(st.sel); if (!el) { rpI++; rpShow(); return; }
+    if (scroll) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    const mask = Object.assign(document.createElement('div'), { id: 'rp-mask' });
+    const ring = Object.assign(document.createElement('div'), { id: 'rp-ring' });
+    const card = Object.assign(document.createElement('div'), { id: 'rp-card' });
+    const last = rpI === RP.length - 1;
+    card.innerHTML = `<h4>${st.h}</h4><p>${st.p}</p><div class="nav"><span>${rpI + 1} of ${RP.length}</span>
+      <button class="btn g" onclick="rpEnd()">Skip</button><button class="btn p" onclick="rpNext()">${last ? 'Let’s go ✓' : 'Next →'}</button></div>`;
+    document.body.append(mask, ring, card);
+    const place = () => {
+      const r = el.getBoundingClientRect();
+      ring.style.cssText = `left:${r.left - 10}px;top:${r.top - 10}px;width:${r.width + 20}px;height:${r.height + 20}px`;
+      const below = r.bottom + 200 < window.innerHeight;
+      card.style.cssText = `left:${Math.min(Math.max(16, r.left), window.innerWidth - 356)}px;top:${below ? r.bottom + 16 : Math.max(16, r.top - 200)}px`;
+    };
+    place(); setTimeout(place, 450);
+    window.addEventListener('resize', rpRe); window.addEventListener('scroll', rpRe, true);
+  }
+  function rpRe() { if (document.getElementById('rp-card')) rpShow(false); }
+  function rpNext() { if (rpI >= RP.length - 1) { rpEnd(); return; } rpI++; rpShow(); }
+  function rpEnd(keep) {
+    ['rp-mask', 'rp-ring', 'rp-card'].forEach(id => document.getElementById(id)?.remove());
+    window.removeEventListener('resize', rpRe); window.removeEventListener('scroll', rpRe, true);
+    if (!keep) document.getElementById('rp-start').style.display = 'flex';
+  }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') rpEnd(); });
+  // First visit: offer, don't hijack — the button pulses; auto-start after a beat.
+  setTimeout(() => { if (!rpSeen()) rpStart(false); else document.getElementById('rp-start').style.display = 'flex'; }, 1400);
+
+  // ── M2: Connected Worker maturity self-assessment ────────────────────────
+  // Questions speak to the pain points we hear on the floor — iOMS is already
+  // in every technician's hands, so the ask is about accuracy, sign-off
+  // reality, re-work, ramp, ME response and change velocity. Options run
+  // worst → best (scored 0..3). To change the wording without a code change,
+  // drop DATA_DIR/platform/media/assessment.json ({ questions:[{q,o:[4]}], levels:[{n,d,next}×4] }).
+  let AZ_Q = [
+    { q: 'How accurate are the work instructions technicians get in iOMS for the configuration in front of them?',
+      o: ['Generic — the technician works out the config differences', 'Mostly right, with known gaps per config', 'Config-specific, but updates lag the floor', 'Config-specific and current for every chamber'] },
+    { q: 'How does the QFE sign-off on a critical step really happen?',
+      o: ['Signed off later, often without a proper review', 'Reviewed when the QFE is free — usually not in the moment', 'Reviewed at the step, from photos', 'Validated at the step with evidence; QFE reviews by exception'] },
+    { q: 'How much is re-work eating into your cycle time (CT)?',
+      o: ['Re-work is routine and we don’t measure its CT hit', 'Frequent — a visible share of CT every week', 'Occasional, tracked per job', 'Rare, tracked per step, trending down'] },
+    { q: 'How long until a new hire is qualified for independent work on critical assemblies?',
+      o: ['16 weeks or more', 'About 12 weeks', 'About 8 weeks', '4 weeks or less'] },
+    { q: 'When a technician hits an issue in the cleanroom, how quickly can an ME see it and resolve it?',
+      o: ['Days — described second-hand in a meeting', 'Same shift, if the ME can come to the tool', 'Hours — photos and notes shared on the spot', 'Minutes — the ME sees the step, the evidence and the verdict live'] },
+    { q: 'When a customer change request lands, how fast does it reach every chamber of that configuration?',
+      o: ['Months — retraining and re-documentation', 'Weeks', 'Days', 'Minutes — publish once, every chamber updates'] },
+  ];
+  let AZ_LEVELS = [
+    { n: 'Aware',            d: 'Instructions are generic, QFE sign-off is a formality and re-work is unmeasured. The upside is largest here — and the first POC is the fastest way to see it.', next: 'Pick one procedure on one configuration. We put it in AR in a working session; you baseline TTC, re-work and CT.' },
+    { n: 'Piloting',         d: 'Config-specific instructions exist; validation and evidence are still manual and the QFE loop is slow. You are one step from measurable Customer Trust gains.', next: 'Add spatial validation to the two steps behind your Field NCs so the QFE reviews by exception. Two weeks, one configuration.' },
+    { n: 'Operating',        d: 'Guided, evidenced work is part of the shift and MEs see issues as they happen. The next lever is velocity — change requests reaching every chamber the day they land.', next: 'Move authoring to configurations and let the usage log report CT, re-work and TTC per chamber.' },
+    { n: 'Autonomous-ready', d: 'Technicians supervise, intervene and validate with spatial context on the tool; ramp is weeks, not months. You are the reference site for the FY27 device POCs.', next: 'Join the smart-glasses fit & feasibility POCs — your content and spatial data light up any form factor.' },
+  ];
+  // Optional deployment-local override (same folder as logos / metrics.json).
+  async function azLoadOverride() {
+    try {
+      const ov = await (await fetch('/platform-media/assessment.json', { cache: 'no-store' })).json();
+      if (Array.isArray(ov.questions) && ov.questions.length === 6 && ov.questions.every(x => x && typeof x.q === 'string' && Array.isArray(x.o) && x.o.length === 4)) AZ_Q = ov.questions;
+      if (Array.isArray(ov.levels) && ov.levels.length === 4 && ov.levels.every(l => l && l.n && l.d && l.next)) AZ_LEVELS = ov.levels;
+    } catch { /* defaults */ }
+  }
+  const azAns = new Array(6).fill(-1);
+  function azBuild() {
+    const host = document.getElementById('az-questions');
+    host.innerHTML = AZ_Q.map((q, i) => `<div class="az-q"><div class="qt">${i + 1}. ${q.q}</div>
+      <div class="az-opts">${q.o.map((o, j) => `<button class="az-opt" onclick="azPick(${i},${j},this)">${o}</button>`).join('')}</div></div>`).join('');
+  }
+  function azPick(i, j, btn) {
+    azAns[i] = j;
+    [...btn.parentElement.children].forEach(b => b.classList.toggle('on', b === btn));
+    const n = azAns.filter(a => a >= 0).length;
+    document.getElementById('az-progress').textContent = `${n} of ${AZ_Q.length} answered`;
+    document.getElementById('az-go').disabled = n < AZ_Q.length;
+  }
+  function azScore() {
+    const score = azAns.reduce((a, b) => a + b, 0);                  // 0..18
+    const level = score <= 4 ? 1 : score <= 9 ? 2 : score <= 14 ? 3 : 4;
+    const L = AZ_LEVELS[level - 1];
+    const weakest = azAns.indexOf(Math.min(...azAns));
+    const res = document.getElementById('az-res');
+    res.innerHTML = `<div class="eyebrow" style="margin:0 0 6px">Your area today</div>
+      <h3 style="margin:0;color:#fff;font-size:24px">Level ${level} · ${L.n}</h3>
+      <div class="az-ladder">${AZ_LEVELS.map((l, k) => `<div class="${k + 1 === level ? 'on' : ''}"><b>${k + 1}</b>${l.n}</div>`).join('')}</div>
+      <p style="margin:10px 0 6px;color:#dbe2ff">${L.d}</p>
+      <p style="margin:0 0 6px;color:#cbd5e1"><b style="color:#fff">Biggest gap:</b> ${AZ_Q[weakest].q.replace(/\?$/, '')} — you answered “${AZ_Q[weakest].o[azAns[weakest]]}”.</p>
+      <p style="margin:0 0 14px;color:#cbd5e1"><b style="color:#fff">Next rung:</b> ${L.next}</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <a class="btn p" target="_blank" href="https://teams.microsoft.com/l/chat/0/0?users=karthik_addagarla@amat.com">💬 Share with AppliedX (Level ${level})</a>
+        <a class="btn g" href="mailto:karthik_addagarla@amat.com?subject=${encodeURIComponent(`Connected Worker readiness — Level ${level} · ${L.n}`)}&body=${encodeURIComponent(`Area: ${document.getElementById('az-area').value || '(not given)'}\nLevel ${level} · ${L.n} (score ${score}/18)\nBiggest gap: ${AZ_Q[weakest].q}\n\nWhat I'd like to do next:\n`)}">✉ Email my result</a>
+        <button class="btn g" onclick="azReset()">Retake</button>
+      </div>`;
+    res.classList.add('on'); res.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    localStorage.setItem('sib.platform.az', JSON.stringify({ level, score, at: Date.now() }));
+    // Anonymous pulse — level + answers + optional area label. Nothing else.
+    fetch('/platform/assess', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ level, score, answers: azAns, area: document.getElementById('az-area').value }) })
+      .then(azPulse).catch(() => {});
+  }
+  function azReset() { azAns.fill(-1); document.querySelectorAll('.az-opt.on').forEach(b => b.classList.remove('on'));
+    document.getElementById('az-res').classList.remove('on');
+    document.getElementById('az-progress').textContent = '0 of 6 answered'; document.getElementById('az-go').disabled = true; }
+  async function azPulse() {
+    try {
+      const p = await (await fetch('/platform/assess/summary')).json();
+      const el = document.getElementById('az-pulse');
+      if (!p.count) { el.innerHTML = 'Be the first to place your area on the ladder.'; return; }
+      const names = AZ_LEVELS.map(l => l.n);
+      el.innerHTML = `<b>${p.count}</b> area${p.count === 1 ? '' : 's'} assessed so far · average <b>Level ${p.avgLevel}</b> · ` +
+        p.levels.map((n, i) => `${names[i]} <b>${n}</b>`).join(' · ');
+    } catch {}
+  }
+  azLoadOverride().then(() => { azBuild(); azPulse(); });
+
+  // Live numbers — public aggregate counts only (/stats); fail silently
+  (async () => {
+    try { const s = await (await fetch('/stats')).json();
+      const put = (id, v) => { document.getElementById(id).textContent = (v ?? '—'); };
+      put('lv-anchors', s.anchors); put('lv-sessions', s.sessionsThisWeek); put('lv-findings', s.openGembaFindings);
+      put('lv-runs', s.guidedRuns); put('lv-validated', s.validatedSteps);
+    } catch {}
+  })();
+</script>
+<script src="/portal/brand.js"></script>
+</body>
+</html>

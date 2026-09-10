@@ -50,6 +50,10 @@ struct AnchorHubView: View {
     @State private var objectMeta: AnchorObjectMeta? = nil
     @State private var mergeTarget: ARReferenceObject? = nil   // B1b
     @State private var isLoadingMerge = false
+    // B3: shape model (library USDZ shown as a ghost on the detected chamber)
+    @State private var showShapePicker = false
+    @State private var showShapeAlign  = false
+    @State private var shapeModelName: String? = nil
     @State private var showRemoveObjectConfirm = false
     // B2: origin source — mirrors the server; picker PATCHes it.
     @State private var originObject = false
@@ -290,6 +294,26 @@ struct AnchorHubView: View {
         .alert("World map", isPresented: Binding(get: { unsealNote != nil }, set: { if !$0 { unsealNote = nil } })) {
             Button("OK") { unsealNote = nil }
         } message: { Text(unsealNote ?? "") }
+        .sheet(isPresented: $showShapePicker) {
+            ShapeModelPicker(anchorId: anchor.id, current: objectMeta?.shapeModelId) { picked in
+                Task {
+                    if let m = try? await SIBClient(settings: settings).setObjectShapeModel(anchorId: anchor.id, modelId: picked?.id) {
+                        objectMeta = m; shapeModelName = picked?.name
+                        if picked != nil { showShapeAlign = true }
+                    }
+                }
+            }
+            .environmentObject(settings)
+        }
+        .fullScreenCover(isPresented: $showShapeAlign) {
+            if let m = objectMeta, let mid = m.shapeModelId {
+                ObjectModelAlignView(anchor: anchor, meta: m, modelId: mid) { updated in
+                    if let updated { objectMeta = updated }
+                    showShapeAlign = false
+                }
+                .environmentObject(settings)
+            }
+        }
         .fullScreenCover(isPresented: $showObjectScan) {
             ObjectScanView(anchor: anchor, mergeInto: mergeTarget) { meta in
                 if let meta { objectMeta = meta }
@@ -302,7 +326,11 @@ struct AnchorHubView: View {
             Task { await loadTags() }
             if mode == .author, anchor.isChamber {
                 originObject = anchor.usesObjectOrigin
-                Task { objectMeta = try? await SIBClient(settings: settings).fetchAnchorObjectMeta(anchorId: anchor.id) }
+                Task {
+                    let client = SIBClient(settings: settings)
+                    objectMeta = try? await client.fetchAnchorObjectMeta(anchorId: anchor.id)
+                    if let mid = objectMeta?.shapeModelId { shapeModelName = try? await client.fetchModel(id: mid).name }
+                }
             }
             // Tour: advance to anchorHub.
             // advancePast(.createAnchor) handles edge cases where the directory step
@@ -564,6 +592,25 @@ struct AnchorHubView: View {
                     }
                 }
                 .disabled(isLoadingMerge)
+                // B3: shape model — makes recognition visible (ghost on the metal).
+                Button { showShapePicker = true } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "cube.transparent.fill").foregroundStyle(.indigo)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(objectMeta?.shapeModelId == nil ? "Shape model (optional)" : "Shape model: \(shapeModelName ?? "…")")
+                                .font(.subheadline)
+                            Text(shapeModelHint).font(.caption).foregroundStyle(shapeModelHintColor)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
+                    }
+                }
+                if objectMeta?.shapeModelId != nil {
+                    Button { showShapeAlign = true } label: {
+                        Label(objectMeta?.shapeModelPose == nil ? "Align shape model on the chamber" : "Re-align shape model",
+                              systemImage: "scope").font(.subheadline)
+                    }
+                }
                 Button(role: .destructive) { showRemoveObjectConfirm = true } label: {
                     Label("Remove object scan…", systemImage: "trash").font(.subheadline)
                 }
@@ -610,6 +657,15 @@ struct AnchorHubView: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: { Text("The chamber falls back to its world map and QR until you scan again.") }
+    }
+
+    // ── B3 helpers ───────────────────────────────────────────────────────────
+    private var shapeModelHint: String {
+        guard objectMeta?.shapeModelId != nil else { return "Show the chamber's 3D model as a ghost when it is recognised" }
+        return objectMeta?.shapeModelPose == nil ? "Not aligned yet — align it once on the chamber" : "Aligned"
+    }
+    private var shapeModelHintColor: Color {
+        (objectMeta?.shapeModelId != nil && objectMeta?.shapeModelPose == nil) ? Color.orange : Color.secondary
     }
 
     // ── B1b helpers ──────────────────────────────────────────────────────────

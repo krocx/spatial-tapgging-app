@@ -476,6 +476,11 @@ struct AuthorModeView: View {
                 }
             }
         }
+        // ── R1: chamber moved? pill / re-align toast + Undo / manual finder ────
+        .overlay {
+            ObjectTrackOverlay(arManager: arManager, topInset: 100, bottomInset: 200)
+                .allowsHitTesting(arManager.objectTrackState != .idle)
+        }
         // ── P5: presence overlays ──────────────────────────────────────────────
         .overlay(alignment: .topTrailing) {
             if !presenceOthers.isEmpty {
@@ -1109,7 +1114,7 @@ struct AuthorModeView: View {
                 showPresenceToast("\(name) left", color: .darkGray)
             case .tagsChanged(let ids):
                 Task { await applyRemoteTagEdits(ids) }
-            case .stepsChanged:
+            case .stepsChanged, .coachHint:
                 break
             }
             svc.event = nil

@@ -182,7 +182,12 @@ struct AnchorObjectMeta: Codable, Equatable {
     let scannedOn:      String?
     let mergedFrom:     [String]?
     let sides:          Int?
+    /// B3: library model shown as a ghost on the detected chamber.
+    let shapeModelId:    String?
+    let shapeModelPose:  [Float]?
+    let shapeModelScale: Float?
     var objectPoseInQRTransform: simd_float4x4? { ARCoordinateFrame.transform(from: objectPoseInQR) }
+    var shapeModelPoseTransform: simd_float4x4 { ARCoordinateFrame.transform(from: shapeModelPose) ?? matrix_identity_float4x4 }
     /// True when THIS device's camera contributed to the scan.
     var includesThisDevice: Bool {
         let me = DeviceModel.identifier
