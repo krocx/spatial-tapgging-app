@@ -60,7 +60,7 @@
   .dots i { width:6px; height:6px; border-radius:50%; background:rgba(255,255,255,.18); transition:all .3s; cursor:pointer; }
   .dots i.on { background:var(--indigo); height:18px; border-radius:3px; }
   /* live HUD */
-  .hud { position:fixed; left:6vw; bottom:12vh; z-index:3; display:none; gap:28px; pointer-events:none; }
+  .hud { display:flex; flex-wrap:wrap; gap:28px 36px; margin:18px 0 18px; }
   .hud div { font-variant-numeric:tabular-nums; }
   .hud .n { font-size:44px; font-weight:700; letter-spacing:-.02em; line-height:1; }
   .hud .l { font-size:12px; color:var(--dim); letter-spacing:.14em; text-transform:uppercase; margin-top:6px; }
@@ -116,12 +116,6 @@
 <div class="veil"></div>
 <div class="dots" id="dots"></div>
 <div class="toast" id="toast">John (ME): look here</div>
-<div class="hud" id="hud">
-  <div><div class="n live" id="h-now">—</div><div class="l">people on tools now</div></div>
-  <div><div class="n" id="h-anchors">—</div><div class="l">chambers mapped</div></div>
-  <div><div class="n" id="h-valid">—</div><div class="l">steps validated by SIB</div></div>
-  <div><div class="n" id="h-runs">—</div><div class="l">guided runs on record</div></div>
-</div>
 
 <main>
   <!-- 0 · hero -->
@@ -178,12 +172,20 @@
     </div>
   </section>
 
-  <!-- 5 · live fab -->
+  <!-- 5 · live session data -->
   <section id="s5">
-    <div class="copy" style="margin-bottom:130px">
+    <div class="copy" style="max-width:760px">
       <div class="eyebrow">Live from this server</div>
-      <h2>Not a slide. A fab.</h2>
-      <p>Every glowing tool is someone on the platform right now. The numbers below are read from SIB as you look at them.</p>
+      <h2>Live session data.</h2>
+      <p>Read from SIB as you look at it. Every glowing tool behind is someone on the platform right now.</p>
+      <div class="hud" id="hud">
+        <div><div class="n live" id="h-now">—</div><div class="l">people on tools now</div></div>
+        <div><div class="n" id="h-anchors">—</div><div class="l">chambers mapped</div></div>
+        <div><div class="n" id="h-runs">—</div><div class="l">guided runs on record</div></div>
+        <div><div class="n" id="h-valid">—</div><div class="l">steps validated by SIB</div></div>
+        <div><div class="n" id="h-week">—</div><div class="l">sessions this week</div></div>
+      </div>
+      <a class="more" href="/portal#usage">Usage log →</a>
     </div>
   </section>
 
@@ -264,14 +266,13 @@ sections.forEach((sec, i) => { const d = document.createElement('i'); d.title = 
 let stage = 0, target = 0;
 function onScroll(){ const max = document.documentElement.scrollHeight - innerHeight; target = Math.max(0, Math.min(7, (scrollY / Math.max(1,max)) * 7)); }
 addEventListener('scroll', onScroll, { passive:true }); onScroll();
-const hud = document.getElementById('hud');
-function tickUI(){ dots.querySelectorAll('i').forEach((d,k)=> d.classList.toggle('on', Math.round(stage)===k)); hud.style.display = stage>4.85 && stage<5.9 ? 'flex' : 'none'; }
+function tickUI(){ dots.querySelectorAll('i').forEach((d,k)=> d.classList.toggle('on', Math.round(stage)===k)); }
 
 /* ───────────────── live data ───────────────── */
 async function loadStats(){
   try { const s = await (await fetch('/stats', { cache:'no-store' })).json();
     const put = (id, v) => { document.getElementById(id).textContent = (v ?? '—').toLocaleString ? (v ?? '—').toLocaleString() : (v ?? '—'); };
-    put('h-now', s.presenceNow ?? 0); put('h-anchors', s.anchors); put('h-valid', s.validatedSteps); put('h-runs', s.guidedRuns);
+    put('h-now', s.presenceNow ?? 0); put('h-anchors', s.anchors); put('h-valid', s.validatedSteps); put('h-runs', s.guidedRuns); put('h-week', s.sessionsThisWeek);
     window.__glowCount = Math.max(0, Math.min(12, s.presenceAnchors ?? 0));
   } catch {}
 }
@@ -376,11 +377,11 @@ const qrCanvas = document.createElement('canvas'); qrCanvas.width = qrCanvas.hei
   for(let y=0;y<16;y++) for(let x=0;x<16;x++) if (rnd()>0.55) g.fillRect(x*8,y*8,8,8);
   [[0,0],[104,0],[0,104]].forEach(([x,y]) => { g.fillStyle='#0b1026'; g.fillRect(x,y,24,24); g.fillStyle='#fff'; g.fillRect(x+4,y+4,16,16); g.fillStyle='#0b1026'; g.fillRect(x+8,y+8,8,8); }); }
 const qrTex = new THREE.CanvasTexture(qrCanvas); qrTex.colorSpace = THREE.SRGBColorSpace;
-const qr = new THREE.Mesh(new THREE.PlaneGeometry(0.34,0.34), new THREE.MeshBasicMaterial({ map:qrTex })); qr.position.set(-0.45, 1.05, 0.67); chamber.add(qr);
-const originRing = new THREE.Mesh(new THREE.RingGeometry(0.26,0.3,48), new THREE.MeshBasicMaterial({ color:0x818cf8, side:THREE.DoubleSide, transparent:true })); originRing.position.copy(qr.position); originRing.position.z += 0.01; chamber.add(originRing);
+const qr = new THREE.Mesh(new THREE.PlaneGeometry(0.24,0.24), new THREE.MeshBasicMaterial({ map:qrTex })); qr.position.set(-0.05, 1.0, 0.66); chamber.add(qr);
+const originRing = new THREE.Mesh(new THREE.RingGeometry(0.26,0.3,48), new THREE.MeshBasicMaterial({ color:0x818cf8, side:THREE.DoubleSide, transparent:true })); originRing.position.copy(qr.position); originRing.position.z += 0.01; originRing.scale.setScalar(0.72); chamber.add(originRing);
 const axes = new THREE.AxesHelper(0.5); axes.position.copy(qr.position); chamber.add(axes);
-fader(qr, s => s>=0.85); fader(originRing, s => s>=1.0 && s<1.9); fader(axes, s => s>=1.0 && s<1.9);
-const originLabel = sprite('Origin locked', { sub:'every iPad · every shift', w:300, h:80, stroke:'#818cf8' }); originLabel.position.set(-0.45, 1.6, 0.9); chamber.add(originLabel); fader(originLabel, s => s>=1.05 && s<1.5);
+fader(qr, s => s>=0.85 && s<2.7); fader(originRing, s => s>=1.0 && s<1.9); fader(axes, s => s>=1.0 && s<1.9);
+const originLabel = sprite('Origin locked', { sub:'every iPad · every shift', w:300, h:80, stroke:'#818cf8' }); originLabel.position.set(0.75, 1.45, 1.05); chamber.add(originLabel); fader(originLabel, s => s>=1.05 && s<1.5);
 
 // shape beat (stage 1.5–2): point cloud on the surfaces
 let cloud;
@@ -396,21 +397,24 @@ let cloud;
 const shapeLabel = sprite('Recognised by shape', { sub:'optional · follows the part', w:330, h:84, stroke:'#5eead4' }); shapeLabel.position.set(0, 4.9, 0); chamber.add(shapeLabel); fader(shapeLabel, s=> s>=1.55 && s<1.95);
 
 // AGWI (stage 2): pins + ghost part
-const pinDefs = [ {p:[0.45,0.72,0.72], t:'Open panel'}, {p:[-0.35,1.9,0.75], t:'Seat controller'}, {p:[0.0,2.5,0.62], t:'Lower tray'} ];
+const pinDefs = [ {p:[0.45,0.72,0.72], t:'Open panel', off:[0.95,0.1]}, {p:[-0.35,1.9,0.75], t:'Install the breaker', off:[1.05,-0.02]}, {p:[0.0,2.5,0.62], t:'Secure the lugs', off:[-1.0,0.18]} ];
 const pins = pinDefs.map((d,i) => {
   const g = new THREE.Group(); g.position.set(...d.p);
   g.add(new THREE.Mesh(new THREE.SphereGeometry(0.07, 24, 16), M(i===1?0x22d3ee:0x818cf8,{ emissive:i===1?0x22d3ee:0x818cf8, emissiveIntensity:.5 })));
   const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.008,0.008,0.35,8), M(0xcbd5e1)); stem.position.y = -0.18; g.add(stem);
-  const lab = sprite(`${i+1}  ${d.t}`, { w:300, h:72, size:20, stroke: i===1?'#22d3ee':'#818cf8' }); lab.position.set(0.95, 0.1, 0); g.add(lab);
+  const lab = sprite(`${i+1}  ${d.t}`, { w:300, h:64, size:19, stroke: i===1?'#22d3ee':'#818cf8' }); lab.position.set(d.off[0], d.off[1], 0); g.add(lab);
   g.userData.base = d.p.slice(); chamber.add(g); return g; });
 const ghostPart = new THREE.Mesh(new THREE.BoxGeometry(0.6,0.55,0.45), new THREE.MeshStandardMaterial({ color:0x818cf8, transparent:true, opacity:0, emissive:0x6366f1, emissiveIntensity:.5 }));
 ghostPart.position.set(-0.35, 1.55, 0.5); chamber.add(ghostPart);
 let scrub = 0, manualScrub = false; document.getElementById('scrub').addEventListener('input', e => { scrub = +e.target.value; manualScrub = true; });
 
 // validation (stage 3)
-const cone = new THREE.Mesh(new THREE.ConeGeometry(0.42, 1.4, 40, 1, true), new THREE.MeshBasicMaterial({ color:0x22d3ee, transparent:true, opacity:0, side:THREE.DoubleSide, depthWrite:false }));
-cone.position.set(0.55, 2.5, 2.15); cone.lookAt(new THREE.Vector3(-0.35,1.9,0.75)); cone.rotateX(Math.PI/2); chamber.add(cone);
-const verdict = sprite('PASS', { sub:'0.91 · evidence attached', w:300, h:84, stroke:'#22c55e', bg:'rgba(6,40,24,.9)' }); verdict.position.set(-0.35, 2.55, 0.9); chamber.add(verdict);
+const coneGeo = new THREE.ConeGeometry(0.42, 1.4, 40, 1, true); coneGeo.translate(0, -0.7, 0);   // apex at the origin, opens along -Y
+const cone = new THREE.Mesh(coneGeo, new THREE.MeshBasicMaterial({ color:0x22d3ee, transparent:true, opacity:0, side:THREE.DoubleSide, depthWrite:false }));
+cone.position.set(-0.35, 1.9, 0.75);                                                            // ON the pin
+cone.quaternion.setFromUnitVectors(new THREE.Vector3(0,-1,0), new THREE.Vector3(0.55, 0.45, 1.0).normalize());  // opens toward the viewer
+chamber.add(cone);
+const verdict = sprite('PASS', { sub:'0.91 · evidence attached', w:300, h:84, stroke:'#22c55e', bg:'rgba(6,40,24,.9)' }); verdict.position.set(0.85, 2.65, 0.95); chamber.add(verdict);
 fader(cone, s => s>=2.9 && s<3.9); fader(verdict, s => s>=3.05 && s<3.9);
 let verdictFlash = 0;
 
@@ -418,13 +422,13 @@ let verdictFlash = 0;
 function lens(name, site, color, initials, pos){ const g = new THREE.Group(); g.position.set(...pos);
   g.add(new THREE.Mesh(new THREE.SphereGeometry(0.07,16,12), M(color,{emissive:color, emissiveIntensity:.6})));
   const c = new THREE.Mesh(new THREE.ConeGeometry(0.28,0.9,32,1,true), new THREE.MeshBasicMaterial({ color, transparent:true, opacity:.14, side:THREE.DoubleSide, depthWrite:false })); c.position.z = -0.45; c.rotation.x = -Math.PI/2; g.add(c);
-  const card = sprite(name, { sub:site, w:300, h:80, dot:'#'+color.toString(16).padStart(6,'0'), initials }); card.position.y = 0.32; g.add(card);
+  const card = sprite(name, { sub:site, w:280, h:76, size:20, dot:'#'+color.toString(16).padStart(6,'0'), initials }); card.position.y = 0.34; g.add(card);
   g.lookAt(new THREE.Vector3(-0.35,1.9,0.75)); chamber.add(g); return g; }
-const john = lens('John', 'Manufacturing Engineer', 0xf472b6, 'J', [-2.3, 2.1, 1.6]);
-const dev  = lens('Dev',  'Technician · new hire',  0x22d3ee, 'D', [ 2.2, 1.8, 1.9]);
+const john = lens('John', 'Manufacturing Engineer', 0xf472b6, 'J', [ 2.5, 2.2, 0.9]);
+const dev  = lens('Dev',  'Technician · new hire',  0x22d3ee, 'D', [ 1.4, 1.5, 2.5]);
 fader(john, s => s>=3.9 && s<4.9); fader(dev, s => s>=3.9 && s<4.9);
 const lookRing = new THREE.Mesh(new THREE.TorusGeometry(0.12,0.012,12,48), new THREE.MeshBasicMaterial({ color:0xf472b6, transparent:true, opacity:0 })); lookRing.position.set(-0.35,1.9,0.78); chamber.add(lookRing);
-const lookLabel = sprite('John: look here', { w:280, h:64, size:18, bg:'rgba(244,114,182,.92)' }); lookLabel.position.set(-0.35, 2.3, 0.9); chamber.add(lookLabel);
+const lookLabel = sprite('John: look here', { w:280, h:64, size:18, bg:'rgba(244,114,182,.92)' }); lookLabel.position.set(0.55, 2.35, 1.0); chamber.add(lookLabel);
 let lookUntil = 0;
 
 // fab (stage 5) — glow count follows /stats presenceAnchors
@@ -481,8 +485,8 @@ function frame(){
 
   faders.forEach(({obj,isOn}) => { const cur = opacityOf(obj); const want = isOn(stage)?1:0; setOpacity(obj, cur + (want-cur)*0.08); });
   if (cloud.material.opacity>0.01){ cloud.material.opacity = Math.min(cloud.material.opacity, 0.9); cloud.material.size = 0.03 + 0.008*Math.sin(t*3); }
-  originRing.scale.setScalar(1 + 0.08*Math.sin(t*4)); originRing.material.opacity = Math.min(originRing.material.opacity, 0.9);
-  const qrT = Math.max(0, Math.min(1, (stage-0.85)/0.3)); qr.position.y = 1.05 + (1-ease(qrT))*2.2; qr.position.z = 0.67 + (1-ease(qrT))*1.2;
+  originRing.scale.setScalar(0.72*(1 + 0.08*Math.sin(t*4))); originRing.material.opacity = Math.min(originRing.material.opacity, 0.9);
+  const qrT = Math.max(0, Math.min(1, (stage-0.85)/0.3)); qr.position.y = 1.0 + (1-ease(qrT))*2.2; qr.position.z = 0.66 + (1-ease(qrT))*1.2;
 
   const s3 = manualScrub && stage>=1.8 && stage<2.9 ? scrub : Math.max(0, Math.min(3, (stage-1.8)*3));
   pins.forEach((g,k) => { const on = s3 > k+0.15 && stage>=1.8 && stage < (k===1?4.9:2.9) || (ladderLevel>=2 && stage>6.5 && k===1); const cur = opacityOf(g); const want=on?1:0; setOpacity(g, cur+(want-cur)*0.1); const drop = Math.max(0, 1-Math.max(0,(s3-k))*3); g.position.y = g.userData.base[1] + (stage<2.9 ? drop*1.5 : 0); });
