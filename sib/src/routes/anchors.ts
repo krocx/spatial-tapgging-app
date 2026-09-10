@@ -608,8 +608,17 @@ router.post('/:id/object', (req: Request, res: Response) => {
     if (bytes === 0) { cleanup(); return res.status(400).json({ error: 'Body must be the .arobject archive', timestamp: new Date().toISOString() }); }
     fs.rename(tmpPath, finalPath, (err) => {
       if (err) { cleanup(); return res.status(500).json({ error: `Failed to store object: ${err}`, timestamp: new Date().toISOString() }); }
+      // B1b: a MERGE keeps the original object's frame (ARReferenceObject.merging
+      // returns points in the receiver's coordinate space), so the QR calibration
+      // stays valid and the device list grows. A fresh scan resets both.
+      const prior = q.merge === '1' ? readObjectMeta(anchor.id) : undefined;
+      const device = typeof q.device === 'string' && q.device.trim() ? q.device.trim().slice(0, 40) : undefined;
       const meta: AnchorObjectMeta = {
         scannedAt: new Date().toISOString(),
+        ...(prior?.objectPoseInQR && { objectPoseInQR: prior.objectPoseInQR, calibratedAt: prior.calibratedAt }),
+        ...((prior?.scannedOn ?? device) && { scannedOn: prior?.scannedOn ?? device }),
+        ...(prior && device && { mergedFrom: [...new Set([...(prior.mergedFrom ?? []), device])] }),
+        ...(typeof q.sides === 'string' && Number.isFinite(Number(q.sides)) && { sides: Number(q.sides) }),
         ...(typeof q.scannedBy === 'string' && q.scannedBy.trim() && { scannedBy: q.scannedBy.trim().slice(0, 80) }),
         ...(triple(q.extent) && { extent: triple(q.extent) }),
         ...(triple(q.center) && { center: triple(q.center) }),

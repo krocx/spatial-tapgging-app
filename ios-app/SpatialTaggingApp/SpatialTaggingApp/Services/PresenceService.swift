@@ -119,8 +119,12 @@ final class PresenceService: ObservableObject {
         let uid  = settings.employeeId.trimmingCharacters(in: .whitespaces)
         let name = !settings.uamUserName.isEmpty ? settings.uamUserName
                  : !settings.authorName.isEmpty  ? settings.authorName : "Author"
+        // Per DEVICE, not per login: the same employee ID on two iPhones (a
+        // shared kiosk login, or one person testing with two phones) must show
+        // up as two people, or each device filters the other out as "me".
+        let dev = String(UIDevice.current.identifierForVendor?.uuidString.prefix(6) ?? "local")
         self.me = (
-            userId: uid.isEmpty ? "device-\(UIDevice.current.identifierForVendor?.uuidString.prefix(8) ?? "local")" : uid,
+            userId: uid.isEmpty ? "device-\(dev)" : "\(uid)@\(dev)",
             name:   name,
             role:   settings.uamRole.isEmpty ? nil : settings.uamRole,
             site:   PresenceService.siteLabel()
@@ -159,8 +163,11 @@ final class PresenceService: ObservableObject {
         let u = PresenceUpdate(userId: me.userId, name: me.name, role: me.role, surface: surface,
                                guideId: guideId, pose: ARCoordinateFrame.floats(from: pose),
                                focusId: focusProvider(), site: me.site)
-        if let list = try? await client.postPresence(anchorId: anchorId, update: u) {
+        do {
+            let list = try await client.postPresence(anchorId: anchorId, update: u)
             merge(list, replace: true)
+        } catch {
+            print("[Presence] post failed: \(error.localizedDescription)")
         }
     }
 

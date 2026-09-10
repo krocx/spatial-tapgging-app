@@ -143,6 +143,7 @@ struct ARGuideSessionView: View {
     /// be pinned to where the room map last saw it).
     @State private var objectOnlyFrame       = false
     @State private var objectExtent: simd_float3? = nil
+    @State private var objectMeta:   AnchorObjectMeta? = nil
     @State private var objectSearchStartedAt = Date()
     @State private var fallbackMapData: Data? = nil
     /// User chose "Place from last known position" — pins come from the room map.
@@ -911,7 +912,8 @@ struct ARGuideSessionView: View {
                     title:      "Point at the chamber",
                     extent:     objectExtent,
                     startedAt:  objectSearchStartedAt,
-                    onFallback: fallbackMapData != nil ? { placeFromLastKnownPosition() } : nil
+                    onFallback: fallbackMapData != nil ? { placeFromLastKnownPosition() } : nil,
+                    objectMeta: objectMeta
                 )
                 .padding(.horizontal, 16)
                 .padding(.bottom, 48)
@@ -1184,6 +1186,7 @@ struct ARGuideSessionView: View {
                 let ob = await ReferenceObjectCache.load(anchorId: anchor.id, client: client)
                 arManager.setReferenceObject(ob?.archive, name: anchor.id)
                 objectLoaded = ob != nil
+                objectMeta   = ob?.meta
                 if let e = ob?.meta.extent { objectExtent = simd_float3(Float(e.x), Float(e.y), Float(e.z)) }
             }
             async let mapFetch   = WorldMapCache.load(.guide(guide.id), client: client)

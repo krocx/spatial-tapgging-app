@@ -21,6 +21,10 @@ import SceneKit
 
 struct ObjectScanView: View {
     let anchor: Anchor
+    /// B1b: merge this scan INTO an existing reference object (same physical
+    /// chamber, another device's camera). The merged object keeps the
+    /// original's frame, so the QR/map calibrations stay valid.
+    var mergeInto: ARReferenceObject? = nil
     let onDone: (AnchorObjectMeta?) -> Void
 
     @EnvironmentObject private var settings: AppSettings
@@ -28,11 +32,16 @@ struct ObjectScanView: View {
     @State private var isSaving = false
     @State private var error: String? = nil
 
+    // B1b gate: sparse scans recognise badly on OTHER phones (a reference
+    // object is a sparse point cloud tied to the camera that captured it).
+    static let minPoints = 600
+    static let minSides  = 3
+    private var canSave: Bool { scanner.pointsInBox >= Self.minPoints && scanner.sidesSeen >= Self.minSides }
     private var coverageLabel: (String, Color) {
-        switch scanner.pointsInBox {
-        case ..<150:   return ("Sparse — keep walking around", .orange)
-        case ..<600:   return ("Getting there — cover the other sides", .yellow)
-        default:       return ("Good coverage", .green)
+        switch (scanner.pointsInBox, scanner.sidesSeen) {
+        case (..<Self.minPoints, _):   return ("Sparse — keep walking around", .orange)
+        case (_, ..<Self.minSides):    return ("Walk around — seen from \(scanner.sidesSeen) of 6 sides", .yellow)
+        default:                       return ("Good coverage · \(scanner.sidesSeen) of 6 sides", .green)
         }
     }
 
@@ -43,10 +52,13 @@ struct ObjectScanView: View {
             VStack {
                 // Top: title + state
                 VStack(spacing: 4) {
-                    Text(scanner.hasBox ? "Walk around the chamber" : "Tap the surface the chamber stands on")
+                    Text(scanner.hasBox ? (mergeInto != nil ? "Add this iPhone's view" : "Walk around the chamber")
+                                        : "Tap the surface the chamber stands on")
                         .font(.title3.bold()).foregroundStyle(.white)
                     Text(scanner.hasBox
-                         ? "Keep the box on the chamber. Every side you see adds points."
+                         ? (mergeInto != nil
+                            ? "Same chamber, this camera. Walk all the way round — it merges into the existing scan."
+                            : "Keep the box on the chamber. Every side you see adds points — go all the way round.")
                          : "The scan box appears where you tap. Then size it with the sliders.")
                         .font(.footnote).foregroundStyle(.white.opacity(0.7)).multilineTextAlignment(.center)
                 }
@@ -86,13 +98,13 @@ struct ObjectScanView: View {
                             Button { Task { await save() } } label: {
                                 HStack(spacing: 6) {
                                     if isSaving { ProgressView().tint(.white) }
-                                    Text(isSaving ? "Saving…" : "Save object").font(.subheadline.bold())
+                                    Text(isSaving ? "Saving…" : (mergeInto != nil ? "Merge & save" : "Save object")).font(.subheadline.bold())
                                 }
                                 .foregroundStyle(.white).frame(maxWidth: .infinity).padding(.vertical, 12)
-                                .background(scanner.pointsInBox >= 150 ? Color.indigo : Color.gray.opacity(0.5),
+                                .background(canSave ? Color.indigo : Color.gray.opacity(0.5),
                                             in: RoundedRectangle(cornerRadius: 12))
                             }
-                            .disabled(isSaving || scanner.pointsInBox < 150)
+                            .disabled(isSaving || !canSave)
                         }
                     }
                 }
@@ -119,13 +131,13 @@ struct ObjectScanView: View {
         isSaving = true; error = nil
         defer { isSaving = false }
         do {
-            let (data, ref) = try await scanner.exportReferenceObject()
+            let (data, ref) = try await scanner.exportReferenceObject(mergeInto: mergeInto)
             let client = SIBClient(settings: settings)
             let by = !settings.uamUserName.isEmpty ? settings.uamUserName : settings.authorName
             let meta = try await client.uploadAnchorObject(
                 anchorId: anchor.id, data: data,
                 extent: ref.extent, center: ref.center, featurePoints: ref.rawFeaturePoints.points.count,
-                scannedBy: by)
+                scannedBy: by, sides: scanner.sidesSeen, merge: mergeInto != nil)
             UINotificationFeedbackGenerator().notificationOccurred(.success)
             scanner.stop()
             onDone(meta)
@@ -142,6 +154,10 @@ final class ObjectScanner: NSObject, ObservableObject {
     let sceneView = ARSCNView()
     @Published var hasBox = false
     @Published var pointsInBox = 0
+    /// B1b: 60° azimuth sectors around the box the camera has looked from
+    /// while points were inside — "walked around" as a number (0–6).
+    @Published var sidesSeen = 0
+    private var sectorsSeen: Set<Int> = []
     /// Box size in metres (W, H, D). Published so the sliders bind to it.
     @Published var extent = simd_float3(1.0, 1.0, 1.0)
     /// Box bottom-centre in world space (the tapped surface point).
@@ -177,7 +193,7 @@ final class ObjectScanner: NSObject, ObservableObject {
     }
 
     func moveBox(by delta: simd_float3) { base += delta; updateBoxNode() }
-    func resetBox() { hasBox = false; boxNode?.removeFromParentNode(); boxNode = nil; pointsInBox = 0 }
+    func resetBox() { hasBox = false; boxNode?.removeFromParentNode(); boxNode = nil; pointsInBox = 0; sidesSeen = 0; sectorsSeen = [] }
 
     /// World transform of the box centre (gravity-aligned, no rotation).
     var boxTransform: simd_float4x4 {
@@ -247,17 +263,36 @@ final class ObjectScanner: NSObject, ObservableObject {
         var n = 0
         for p in pts where abs(p.x - c.x) <= half.x && abs(p.y - c.y) <= half.y && abs(p.z - c.z) <= half.z { n += 1 }
         pointsInBox = n
+        // Which side am I looking from? Only counts while the box has points.
+        if n >= 40 {
+            let cam = frame.camera.transform.columns.3
+            let az  = atan2(cam.z - c.z, cam.x - c.x)          // -π…π
+            let sector = Int(((az + .pi) / (2 * .pi) * 6).rounded(.down)) % 6
+            if sectorsSeen.insert(sector).inserted { sidesSeen = sectorsSeen.count }
+        }
     }
 
     /// Build the ARReferenceObject from the box and export the archive.
-    func exportReferenceObject() async throws -> (Data, ARReferenceObject) {
+    func exportReferenceObject(mergeInto: ARReferenceObject? = nil) async throws -> (Data, ARReferenceObject) {
         let center = simd_float3(0, 0, 0)     // relative to boxTransform (already centred)
-        let ref: ARReferenceObject = try await withCheckedThrowingContinuation { cont in
+        let fresh: ARReferenceObject = try await withCheckedThrowingContinuation { cont in
             sceneView.session.createReferenceObject(transform: boxTransform, center: center, extent: extent) { obj, err in
                 if let obj { cont.resume(returning: obj) }
                 else { cont.resume(throwing: err ?? NSError(domain: "ObjectScan", code: 1,
                                     userInfo: [NSLocalizedDescriptionKey: "Couldn't build the reference object — walk around the chamber and try again."])) }
             }
+        }
+        // B1b: merge INTO the existing object — ARKit aligns the new points to
+        // the receiver's frame, so calibrations made against it stay valid.
+        let ref: ARReferenceObject
+        if let existing = mergeInto {
+            do { ref = try existing.merging(fresh) }
+            catch {
+                throw NSError(domain: "ObjectScan", code: 2, userInfo: [NSLocalizedDescriptionKey:
+                    "Couldn't match this scan to the existing one. Make sure the box covers the same chamber, then walk round it again."])
+            }
+        } else {
+            ref = fresh
         }
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString).arobject")
         try ref.export(to: url, previewImage: nil)
@@ -336,8 +371,16 @@ struct ObjectFinderCard: View {
     var fallbackLabel: String = "Place from last known position"
     var onRescan: (() -> Void)? = nil        // author only
     var onCancel: (() -> Void)? = nil        // manual re-align in flight
+    /// B1b: the scan's provenance — after 10 s, a scan from a different iPhone
+    /// gets a "add a scan from this one" hint (recognition is camera-specific).
+    var objectMeta: AnchorObjectMeta? = nil
 
     @State private var keepLookingSince: Date? = nil
+
+    private var crossDeviceHint: String? {
+        guard let m = objectMeta, let on = m.scannedOn, !m.includesThisDevice else { return nil }
+        return "Scanned on a different iPhone (\(on)). Recognition is camera-specific — add a scan from this one: Anchor Hub → Object tracking → Improve scan on this device."
+    }
 
     private var hint: String {
         if let e = extent {
@@ -364,6 +407,12 @@ struct ObjectFinderCard: View {
                 }
                 Text(hint).font(.caption).foregroundStyle(.white.opacity(0.7))
                     .frame(maxWidth: .infinity, alignment: .leading)
+                if s >= 10, let h = crossDeviceHint {
+                    Label(h, systemImage: "iphone.gen3.radiowaves.left.and.right")
+                        .font(.caption).foregroundStyle(.yellow.opacity(0.9))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .transition(.opacity)
+                }
 
                 if showChoice {
                     VStack(spacing: 8) {

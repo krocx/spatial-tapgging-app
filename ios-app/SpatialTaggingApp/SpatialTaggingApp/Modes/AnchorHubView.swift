@@ -11,6 +11,7 @@
 //   AnchorDirectoryView → AnchorHubView → QRScanGateView → AuthorModeView / OperatorModeView
 
 import SwiftUI
+import ARKit
 
 struct AnchorHubView: View {
 
@@ -47,6 +48,8 @@ struct AnchorHubView: View {
     // B1 (2026.4.46): ARKit reference-object scan of this chamber
     @State private var showObjectScan = false
     @State private var objectMeta: AnchorObjectMeta? = nil
+    @State private var mergeTarget: ARReferenceObject? = nil   // B1b
+    @State private var isLoadingMerge = false
     @State private var showRemoveObjectConfirm = false
     // B2: origin source — mirrors the server; picker PATCHes it.
     @State private var originObject = false
@@ -214,8 +217,11 @@ struct AnchorHubView: View {
                                 Text(objectMeta == nil ? "Scan chamber as object" : "Re-scan chamber object")
                                     .font(.subheadline.bold()).foregroundStyle(.primary)
                                 if let m = objectMeta {
-                                    Text("Scanned \(m.scannedAt.prefix(10))\(m.scannedBy.map { " · \($0)" } ?? "") · \(m.featurePoints ?? 0) points")
+                                    Text("Scanned \(m.scannedAt.prefix(10))\(m.scannedBy.map { " · \($0)" } ?? "") · \(m.featurePoints ?? 0) points\(m.sides.map { " · \($0)/6 sides" } ?? "")")
                                         .font(.caption).foregroundStyle(.secondary)
+                                    // B1b provenance — recognition is camera-specific.
+                                    Text(objectProvenance(m))
+                                        .font(.caption).foregroundStyle(m.includesThisDevice ? .secondary : .orange)
                                 } else {
                                     Text("Walk around it once — lets the app find this chamber without the QR")
                                         .font(.caption).foregroundStyle(.secondary)
@@ -229,6 +235,15 @@ struct AnchorHubView: View {
                         .padding(.vertical, 2)
                     }
                     if objectMeta != nil {
+                        // B1b: add THIS iPhone's camera to the scan (merged, same frame).
+                        Button { Task { await startMergeScan() } } label: {
+                            HStack(spacing: 8) {
+                                if isLoadingMerge { ProgressView().scaleEffect(0.8) }
+                                Label(objectMeta?.includesThisDevice == true ? "Add another pass from this device" : "Improve scan on this device",
+                                      systemImage: "iphone.gen3.radiowaves.left.and.right").font(.subheadline)
+                            }
+                        }
+                        .disabled(isLoadingMerge)
                         Button(role: .destructive) { showRemoveObjectConfirm = true } label: {
                             Label("Remove object scan…", systemImage: "trash").font(.subheadline)
                         }
@@ -363,8 +378,9 @@ struct AnchorHubView: View {
             Button("OK") { unsealNote = nil }
         } message: { Text(unsealNote ?? "") }
         .fullScreenCover(isPresented: $showObjectScan) {
-            ObjectScanView(anchor: anchor) { meta in
+            ObjectScanView(anchor: anchor, mergeInto: mergeTarget) { meta in
                 if let meta { objectMeta = meta }
+                mergeTarget = nil
                 showObjectScan = false
             }
             .environmentObject(settings)
@@ -586,6 +602,33 @@ struct AnchorHubView: View {
             unsealNote = "Map unsealed. Scan this chamber's QR in Author mode to seal a new one."
         } catch {
             unsealNote = friendlyMessage(for: error)
+        }
+    }
+
+    // ── B1b helpers ──────────────────────────────────────────────────────────
+    private func objectProvenance(_ m: AnchorObjectMeta) -> String {
+        let me = DeviceModel.identifier
+        let on = m.scannedOn ?? "unknown device"
+        let merged = (m.mergedFrom ?? []).filter { $0 != m.scannedOn }
+        var line = "Scanned on \(on == me ? "this iPhone (\(on))" : on)"
+        if !merged.isEmpty { line += " · merged from \(merged.count) more" }
+        if !m.includesThisDevice { line += " — recognition may be slow on this iPhone; add a scan from it." }
+        return line
+    }
+
+    @MainActor
+    private func startMergeScan() async {
+        isLoadingMerge = true
+        defer { isLoadingMerge = false }
+        let client = SIBClient(settings: settings)
+        guard let ob = await ReferenceObjectCache.load(anchorId: anchor.id, client: client) else { return }
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("merge-\(anchor.id).arobject")
+        do {
+            try ob.archive.write(to: url, options: .atomic)
+            mergeTarget = try ARReferenceObject(archiveURL: url)
+            showObjectScan = true
+        } catch {
+            print("[AnchorHub] merge target load failed: \(error.localizedDescription)")
         }
     }
 

@@ -135,7 +135,8 @@ struct QRScanGateView: View {
                         extent:        objectExtent,
                         startedAt:     t0,
                         onFallback:    { useQRPositionInstead() },
-                        fallbackLabel: "Use the QR position"
+                        fallbackLabel: "Use the QR position",
+                        objectMeta:    objectBundle?.meta
                     )
                     .padding(.horizontal, 24).padding(.bottom, 48)
                     .transition(.move(edge: .bottom).combined(with: .opacity))

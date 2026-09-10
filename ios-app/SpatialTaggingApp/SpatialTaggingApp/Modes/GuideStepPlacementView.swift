@@ -1293,7 +1293,8 @@ struct GuideStepPlacementView: View {
                     extent:     objectExtent,
                     startedAt:  objectSearchStartedAt,
                     onFallback: relocBundle != nil ? { placeFromLastKnownPosition() } : nil,
-                    onRescan:   anchorRecord != nil ? { showObjectRescan = true } : nil
+                    onRescan:   anchorRecord != nil ? { showObjectRescan = true } : nil,
+                    objectMeta: objectBundle?.meta
                 )
                 .padding(.horizontal, 16).padding(.bottom, 48)
             }

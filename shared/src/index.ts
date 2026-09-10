@@ -198,6 +198,12 @@ export interface AnchorObjectMeta {
    */
   objectPoseInQR?: number[];
   calibratedAt?:   string;
+  /** B1b: device model that made the scan ("iPhone17,3"), for cross-device diagnosis. */
+  scannedOn?:      string;
+  /** B1b: device models whose scans were MERGED into this object (same frame as the original). */
+  mergedFrom?:     string[];
+  /** B1b: how many sides of the box had feature points at save time (1–6). */
+  sides?:          number;
 }
 
 /** C1: PATCH /anchors/:id — engineer+. configId null clears. */

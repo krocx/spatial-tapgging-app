@@ -693,9 +693,12 @@ final class SIBClient {
 
     /// Author: upload the exported `.arobject` archive (raw binary, meta in query).
     func uploadAnchorObject(anchorId: String, data: Data, extent: simd_float3, center: simd_float3,
-                            featurePoints: Int, scannedBy: String?) async throws -> AnchorObjectMeta {
+                            featurePoints: Int, scannedBy: String?,
+                            sides: Int? = nil, merge: Bool = false) async throws -> AnchorObjectMeta {
         func t(_ v: simd_float3) -> String { String(format: "%.4f,%.4f,%.4f", v.x, v.y, v.z) }
-        var q = "extent=\(t(extent))&center=\(t(center))&featurePoints=\(featurePoints)"
+        var q = "extent=\(t(extent))&center=\(t(center))&featurePoints=\(featurePoints)&device=\(DeviceModel.identifier)"
+        if let sides { q += "&sides=\(sides)" }
+        if merge { q += "&merge=1" }
         if let by = scannedBy?.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed), !by.isEmpty { q += "&scannedBy=\(by)" }
         var req = try makeRequest(method: "POST", path: "/anchors/\(anchorId)/object?\(q)")
         req.timeoutInterval = 90

@@ -69,6 +69,20 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **Object scan robustness across devices (B1b)** — an ARKit reference
+  object is a sparse point cloud tied to the camera that captured it, so a
+  scan from one iPhone can be slow to recognise on another. Four changes:
+  (1) the Save gate now requires **≥ 600 points from ≥ 3 of 6 sides** (the
+  scanner counts the 60° sectors you have looked from; the coverage line
+  reads "Good coverage · 4 of 6 sides"); (2) Anchor Hub → Object tracking
+  → **Improve scan on this device** scans the same chamber with the second
+  iPhone and merges it into the existing object (`ARReferenceObject.merging`
+  — points land in the original's frame, so the QR/map calibrations stay
+  valid; `POST /anchors/:id/object?merge=1` keeps `objectPoseInQR`); (3)
+  provenance on the object meta — `scannedOn` (hardware id), `mergedFrom`,
+  `sides` — shown in Anchor Hub with an amber note when this iPhone did not
+  contribute; (4) the chamber finder shows, after 10 s, "Scanned on a
+  different iPhone — add a scan from this one" when that is the case.
 - **Multi-user co-authoring, slice 1 — presence in Place Steps (P1)** —
   two authors can work on the same guide at once and see each other in AR,
   even from different sites: because every device localises into the
@@ -93,8 +107,9 @@ it, it gets a line.
   wins on Save" note). **Soft lock:** the step a colleague is on shows their
   initials on its tray chip. Poses are shared only while the session frame
   IS the guide map frame (relocalized / object-snapped) — never from a
-  private frame. Author mode (Spatial Inspection) and author-coaches-operator
-  are the next slices.
+  private frame. Presence identity is per device (`employeeId@device`), so
+  the same login on two iPhones is two people. Author mode (Spatial
+  Inspection) and author-coaches-operator are the next slices.
 - **Object tracking, slice 3 — movable equipment (B2e, iOS)** — for
   object-origin chambers the shape is now the **only** frame: the QR gate,
   Place Steps and the guide session start a fresh session (no

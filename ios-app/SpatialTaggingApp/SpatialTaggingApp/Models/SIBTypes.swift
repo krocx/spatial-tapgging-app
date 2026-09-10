@@ -178,7 +178,26 @@ struct AnchorObjectMeta: Codable, Equatable {
     /// B2 calibration: the object's pose in the QR frame (16 floats, column-major).
     let objectPoseInQR: [Float]?
     let calibratedAt:   String?
+    /// B1b: device model that made the scan, devices merged in, sides covered.
+    let scannedOn:      String?
+    let mergedFrom:     [String]?
+    let sides:          Int?
     var objectPoseInQRTransform: simd_float4x4? { ARCoordinateFrame.transform(from: objectPoseInQR) }
+    /// True when THIS device's camera contributed to the scan.
+    var includesThisDevice: Bool {
+        let me = DeviceModel.identifier
+        return scannedOn == me || (mergedFrom ?? []).contains(me)
+    }
+}
+
+/// "iPhone17,3" — the hardware identifier (stable, no user name in it).
+enum DeviceModel {
+    static let identifier: String = {
+        var sys = utsname(); uname(&sys)
+        return withUnsafePointer(to: &sys.machine) { p in
+            p.withMemoryRebound(to: CChar.self, capacity: Int(_SYS_NAMELEN)) { String(cString: $0) }
+        }
+    }()
 }
 
 struct CreateAnchorRequest: Codable {
