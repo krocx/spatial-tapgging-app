@@ -10,6 +10,7 @@ import { tagStore } from './tags.js';
 import { passStateStore, findPassStateByTag } from '../stores/pass-state-store.js';
 import { buildAssemblyEnvelope } from '../tag/tag-emitter.js';
 import { subscribeToAnchor } from '../tag/tag-subscribe.js';
+import { validatePresenceUpdate, updatePresence, listPresence, leavePresence } from '../sse/presence.js';
 import { model3DStore } from './models.js';
 import { guideStore } from '../guides/store.js';
 import { copyGuideToAnchor } from '../guides/copy.js';
@@ -209,6 +210,34 @@ router.get('/:id/subscribe', (req: Request, res: Response) => {
   if (!subscribeToAnchor(req.params.id, res)) {
     res.status(404).json({ error: `Anchor ${req.params.id} not found`, timestamp: new Date().toISOString() });
   }
+});
+
+// ── Presence (P1) — who is in front of this chamber right now ───────────────
+// In-memory heartbeat, ~2×/s per device, fanned out on /:id/subscribe as
+// `presence` / `presence:joined` / `presence:left`. Registered BEFORE /:id.
+router.post('/:id/presence', (req: Request, res: Response) => {
+  if (!anchorStore.findById(req.params.id)) {
+    return res.status(404).json({ error: `Anchor ${req.params.id} not found`, timestamp: new Date().toISOString() });
+  }
+  const v = validatePresenceUpdate(req.body);
+  if (v.ok === false) return res.status(400).json({ error: v.error, timestamp: new Date().toISOString() });
+  // A signed-in UAM user can't impersonate a colleague: the name follows the token.
+  const u = currentUamUser(req);
+  if (u) { v.value.name = u.name || v.value.name; v.value.role = u.role; }
+  const entry = updatePresence(req.params.id, v.value);
+  return res.json({ data: entry, others: listPresence(req.params.id).filter(e => e.userId !== entry.userId), timestamp: entry.updatedAt });
+});
+
+router.get('/:id/presence', (req: Request, res: Response) => {
+  if (!anchorStore.findById(req.params.id)) {
+    return res.status(404).json({ error: `Anchor ${req.params.id} not found`, timestamp: new Date().toISOString() });
+  }
+  return res.json({ data: listPresence(req.params.id), timestamp: new Date().toISOString() });
+});
+
+router.delete('/:id/presence/:userId', (req: Request, res: Response) => {
+  leavePresence(req.params.id, req.params.userId);
+  return res.json({ data: { ok: true }, timestamp: new Date().toISOString() });
 });
 
 // ── GET /anchors/:id — get a single anchor ────────────────────────────────────

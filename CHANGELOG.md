@@ -69,6 +69,32 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **Multi-user co-authoring, slice 1 — presence in Place Steps (P1)** —
+  two authors can work on the same guide at once and see each other in AR,
+  even from different sites: because every device localises into the
+  chamber's shared frame (sealed map / object), a colleague's camera pose is
+  directly comparable with no ARKit collaborative session. Server: in-memory
+  heartbeat `POST /anchors/:id/presence` (~2×/s per device; `userId`,
+  `name`, `surface`, `pose`, `focusId`, `site`; UAM-signed names cannot be
+  spoofed), `GET /anchors/:id/presence`, `DELETE /anchors/:id/presence/:userId`;
+  fanned out on the existing `/anchors/:id/subscribe` SSE feed as
+  `presence` / `presence:joined` / `presence:left`, entries dropped after
+  30 s of silence; guide-step store writes are announced as `guide-steps`
+  (edit echo). Nothing is persisted. iOS (`Services/PresenceService.swift`,
+  `Components/PresenceLayer.swift` — add both to the Xcode target): a
+  world-locked **lens** (initials, name, site from the time zone) at the
+  colleague's head, a translucent **view cone** and a pulsing **gaze dot**
+  where their view meets the chamber, smoothed between updates; edge
+  arrows with the name when they are off screen; a roster chip
+  ("Priya (Singapore) is here" / "3 here", tap to expand); join/leave
+  toasts with a light haptic. **Edit echo:** when a colleague saves, steps
+  you have not touched this session move to their new position with a
+  pulse and "Name · just now"; a step both of you moved keeps yours ("yours
+  wins on Save" note). **Soft lock:** the step a colleague is on shows their
+  initials on its tray chip. Poses are shared only while the session frame
+  IS the guide map frame (relocalized / object-snapped) — never from a
+  private frame. Author mode (Spatial Inspection) and author-coaches-operator
+  are the next slices.
 - **Object tracking, slice 3 — movable equipment (B2e, iOS)** — for
   object-origin chambers the shape is now the **only** frame: the QR gate,
   Place Steps and the guide session start a fresh session (no

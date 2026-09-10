@@ -154,6 +154,31 @@ export interface Anchor {
 export type OriginSource = 'worldMap' | 'object';
 
 /** B1: meta stored beside `<anchorId>.arobject` — GET /anchors/:id/object/meta */
+// ── Presence (P1, 2026.4.46): who is in front of this chamber right now ──────
+// In-memory on SIB (never persisted). Poses are expressed in the chamber's
+// shared frame (guide map / object frame), so two devices — even in front of
+// two physical units of the same chamber type — are directly comparable.
+export type PresenceSurface = 'placeSteps' | 'author' | 'operator' | 'guide';
+
+export interface PresenceUpdate {
+  userId:    string;            // employee ID (UAM) or device id
+  name:      string;
+  role?:     string;            // UAM role for the colour
+  surface:   PresenceSurface;
+  guideId?:  string;
+  /** Camera pose in the shared frame — 16 floats, column-major. */
+  pose:      number[];
+  /** What the person is working on (step id / tag id). */
+  focusId?:  string;
+  /** Free-text site label shown on the lens ("US", "Singapore"). */
+  site?:     string;
+}
+
+export interface PresenceEntry extends PresenceUpdate {
+  anchorId:  string;
+  updatedAt: string;            // ISO
+}
+
 export interface AnchorObjectMeta {
   scannedAt:      string;
   scannedBy?:     string;

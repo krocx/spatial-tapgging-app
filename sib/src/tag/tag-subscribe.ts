@@ -153,6 +153,15 @@ export function subscribeToAnchor(anchorId: string, res: Response): boolean {
   return true;
 }
 
+/** P1: push an arbitrary event to every subscriber of an anchor (presence,
+ *  edit echo). Returns the number of clients reached. */
+export function broadcastToAnchor(anchorId: string, event: string, data: unknown): number {
+  const sub = subs.get(anchorId);
+  if (!sub) return 0;
+  for (const client of sub.clients) send(client, event, data);
+  return sub.clients.size;
+}
+
 /** Test/ops hook: current subscriber counts per anchor. */
 export function subscriberCounts(): Record<string, number> {
   return Object.fromEntries([...subs].map(([id, s]) => [id, s.clients.size]));

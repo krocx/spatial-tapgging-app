@@ -18,6 +18,7 @@
 //      + upload ARWorldMap + reference photo.
 
 import SwiftUI
+import Combine
 import ARKit
 import SceneKit
 import simd
@@ -236,6 +237,17 @@ struct GuideStepPlacementView: View {
     @State private var objectCalibrationStale = false
     @State private var showRealignToast       = false
     @State private var showObjectRescan       = false
+    // P1: colleagues in front of this chamber (presence). Poses are shared
+    // only while the session frame IS the guide map frame (relocalized).
+    @State private var presence:        PresenceService? = nil
+    @State private var presenceLayer:   PresenceLayer?   = nil
+    @State private var presenceBag:     Set<AnyCancellable> = []
+    @State private var presenceOthers:  [PresenceEntry] = []
+    @State private var presenceLinked   = false
+    @State private var presenceToast:   (text: String, color: UIColor)? = nil
+    @State private var presenceFocus    = PresenceFocusBox()
+    /// Server position of each step as of the last sync — the edit-echo baseline.
+    @State private var remoteBaseline:  [String: simd_float3] = [:]
     private var objectExtent: simd_float3? {
         guard let e = objectBundle?.meta.extent else { return nil }
         return simd_float3(Float(e.x), Float(e.y), Float(e.z))
@@ -410,6 +422,27 @@ struct GuideStepPlacementView: View {
         .overlay { ARMomentCard(coach: coach, bottomInset: placementPhase.isPlacingPins ? 150 : 200, accent: .indigo) }
         .overlay { relocOverlay }
         .overlay(alignment: .top) { objectTrackOverlay }
+        .overlay(alignment: .topTrailing) {
+            if placementPhase.isPlacingPins, !presenceOthers.isEmpty {
+                PresenceRosterChip(others: presenceOthers, connected: presenceLinked)
+                    .padding(.top, 70).padding(.trailing, 12)
+            }
+        }
+        .overlay { if !presenceOthers.isEmpty { PresenceEdgeArrows(others: presenceOthers, sceneView: arManager.sceneView) } }
+        .overlay(alignment: .top) {
+            if let t = presenceToast {
+                PresenceToast(text: t.text, color: t.color).padding(.top, 110)
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: presenceToast?.text)
+        .onChange(of: relocState) { st in
+            // Share my pose only once this session's frame is the guide map's.
+            if st == .relocalized { startPresence() } else { stopPresence() }
+        }
+        .onChange(of: activeStepIndex) { idx in
+            presenceFocus.stepId = idx < steps.count ? steps[idx].id : nil
+        }
+        .onDisappear { stopPresence() }
         .overlay(alignment: .bottom) {
             if arManager.objectRealignManual, relocState == .relocalized {
                 ObjectFinderCard(title: "Re-aligning to the chamber", extent: objectExtent,
@@ -865,6 +898,16 @@ struct GuideStepPlacementView: View {
                         .background(Color.green, in: Circle())
                         .overlay(Circle().stroke(Color.black.opacity(0.35), lineWidth: 1))
                         .offset(x: 3, y: 3)
+                }
+                if let who = presenceOthers.first(where: { $0.focusId == step.id }) {
+                    // P1 soft lock: a colleague is on this step right now.
+                    Text(who.initials)
+                        .font(.system(size: 7, weight: .black)).foregroundStyle(.white)
+                        .frame(width: 15, height: 15)
+                        .background(Color(PresencePalette.color(role: who.role, userId: who.userId)), in: Circle())
+                        .overlay(Circle().stroke(Color.black.opacity(0.35), lineWidth: 1))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                        .offset(x: 4, y: -4)
                 }
                 if hasModel || step.hasModels {
                     Image(systemName: "cube.fill")
@@ -1416,6 +1459,112 @@ struct GuideStepPlacementView: View {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // MARK: P1 — presence (colleagues in front of this chamber)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private func startPresence() {
+        guard presence == nil else { return }
+        let svc = PresenceService(client: SIBClient(settings: settings), settings: settings,
+                                  anchorId: guide.anchorId, surface: "placeSteps", guideId: guide.id)
+        let mgr = arManager
+        svc.poseProvider  = { mgr.sceneView.session.currentFrame?.camera.transform }
+        let focus = presenceFocus
+        focus.stepId = activeStepIndex < steps.count ? steps[activeStepIndex].id : nil
+        svc.focusProvider = { focus.stepId }
+        let layer = PresenceLayer(sceneView: arManager.sceneView)
+        svc.$others.receive(on: RunLoop.main).sink { list in
+            presenceOthers = list
+            layer.update(list)
+        }.store(in: &presenceBag)
+        svc.$isConnected.receive(on: RunLoop.main).sink { presenceLinked = $0 }.store(in: &presenceBag)
+        svc.$event.receive(on: RunLoop.main).compactMap { $0 }.sink { ev in
+            switch ev {
+            case .joined(let e):
+                showPresenceToast("\(e.name) joined\(e.site.map { " from \($0)" } ?? "")",
+                                  color: PresencePalette.color(role: e.role, userId: e.userId))
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            case .left(_, let name):
+                showPresenceToast("\(name) left", color: .darkGray)
+            case .stepsChanged:
+                Task { await applyRemoteEdits() }
+            }
+            svc.event = nil
+        }.store(in: &presenceBag)
+        presence      = svc
+        presenceLayer = layer
+        svc.start()
+    }
+
+    private func stopPresence() {
+        presence?.stop()
+        presence = nil
+        presenceBag.removeAll()
+        presenceLayer?.removeAll()
+        presenceLayer = nil
+        presenceOthers = []
+    }
+
+    private func showPresenceToast(_ text: String, color: UIColor) {
+        withAnimation { presenceToast = (text, color) }
+        Task {
+            try? await Task.sleep(nanoseconds: 3_500_000_000)
+            if presenceToast?.text == text { withAnimation { presenceToast = nil } }
+        }
+    }
+
+    /// Edit echo: a colleague saved pins. Adopt server positions for steps I
+    /// have NOT touched this session (pulse + "Name · just now"); keep mine
+    /// where both of us moved the same step (mine wins on Save, with a note).
+    @MainActor
+    private func applyRemoteEdits() async {
+        guard relocState == .relocalized,
+              let fresh = try? await SIBClient(settings: settings).fetchGuideSteps(guideId: guide.id) else { return }
+        var adopted = 0
+        var conflicts: [String] = []
+        for s in fresh {
+            let serverPos = s.worldPosition
+            let base      = remoteBaseline[s.id]
+            let same: (simd_float3?, simd_float3?) -> Bool = { a, b in
+                switch (a, b) {
+                case (nil, nil): return true
+                case let (x?, y?): return simd_length(x - y) < 0.0005
+                default: return false
+                }
+            }
+            guard !same(serverPos, base) else { continue }        // nothing new from the server
+            let localUntouched = same(stepPositions[s.id], base)
+            let who   = presenceOthers.first { $0.focusId == s.id } ?? presenceOthers.first
+            let name  = who?.name ?? "A colleague"
+            let color = who.map { PresencePalette.color(role: $0.role, userId: $0.userId) } ?? .systemPurple
+            remoteBaseline[s.id] = serverPos
+            guard localUntouched else { conflicts.append(s.displayTitle); continue }
+            if let p = serverPos {
+                stepPositions[s.id] = p
+                if let node = stepNodes[s.id] {
+                    SCNTransaction.begin(); SCNTransaction.animationDuration = 0.5
+                    node.simdPosition = p
+                    SCNTransaction.commit()
+                } else if let idx = steps.firstIndex(where: { $0.id == s.id }) {
+                    let node = makePin(number: s.sequenceNumber, isActive: idx == activeStepIndex)
+                    node.simdPosition = p
+                    arManager.sceneView.scene.rootNode.addChildNode(node)
+                    stepNodes[s.id] = node
+                }
+                if let node = stepNodes[s.id] { PresenceLayer.pulse(node, color: color) }
+                presenceLayer?.announceEdit(at: p, name: name, color: color)
+            } else {
+                stepPositions[s.id] = nil
+                stepNodes[s.id]?.removeFromParentNode(); stepNodes[s.id] = nil
+            }
+            adopted += 1
+        }
+        if adopted > 0 { applyStepVisibility() }
+        if !conflicts.isEmpty {
+            showPresenceToast("Also moved by a colleague: \(conflicts.joined(separator: ", ")) — yours wins on Save", color: .systemOrange)
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // MARK: Training toast (T1)
     // ─────────────────────────────────────────────────────────────────────────
 
@@ -1478,7 +1627,7 @@ struct GuideStepPlacementView: View {
 
     private func initFromExistingPositions() {
         for step in steps {
-            if let pos = step.worldPosition { stepPositions[step.id] = pos }
+            if let pos = step.worldPosition { stepPositions[step.id] = pos; remoteBaseline[step.id] = pos }
         }
 
         if let firstUnplaced = steps.firstIndex(where: { $0.worldPosition == nil }) {

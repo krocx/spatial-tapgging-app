@@ -749,6 +749,34 @@ final class SIBClient {
                             body: Body(objectPoseInMap: ARCoordinateFrame.floats(from: objectPoseInMap)))
     }
 
+    // ── Presence (P1) ────────────────────────────────────────────────────────
+
+    /// Heartbeat: my camera pose in the chamber's shared frame. Returns the
+    /// other people present so the first post already populates the roster.
+    func postPresence(anchorId: String, update: PresenceUpdate) async throws -> [PresenceEntry] {
+        struct R: Decodable { let data: PresenceEntry; let others: [PresenceEntry] }
+        var req = try makeRequest(method: "POST", path: "/anchors/\(anchorId)/presence")
+        req.timeoutInterval = 4
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONEncoder().encode(update)
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        guard let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { throw URLError(.badServerResponse) }
+        return try JSONDecoder().decode(R.self, from: data).others
+    }
+
+    func leavePresence(anchorId: String, userId: String) async {
+        guard var req = try? makeRequest(method: "DELETE", path: "/anchors/\(anchorId)/presence/\(userId)") else { return }
+        req.timeoutInterval = 3
+        _ = try? await URLSession.shared.data(for: req)
+    }
+
+    /// The anchor's SSE feed with the same auth headers every request carries.
+    func anchorStreamRequest(anchorId: String) throws -> URLRequest {
+        var req = try makeRequest(method: "GET", path: "/anchors/\(anchorId)/subscribe")
+        req.timeoutInterval = 3600
+        return req
+    }
+
     /// Author: seal the map — record the origin pose alongside the uploaded map.
     func uploadWorldMapMeta(anchorId: String, anchorPose: simd_float4x4, sealedBy: String?) async throws -> WorldMapMeta {
         struct Body: Encodable { let anchorPose: [Float]; let capturedAt: String; let sealedBy: String? }
