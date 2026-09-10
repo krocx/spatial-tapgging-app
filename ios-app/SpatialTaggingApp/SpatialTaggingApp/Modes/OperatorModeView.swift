@@ -708,7 +708,8 @@ struct OperatorModeView: View {
                 // ── Session continuity path ────────────────────────────────────
                 // Link to QRScanGateView's already-running session.  The live
                 // ARImageAnchor is still tracked — no QR re-scan needed.
-                arManager.linkToExistingSession(existingSession, mapOrigin: appState.sealedMapOrigin)
+                arManager.linkToExistingSession(existingSession, mapOrigin: appState.sealedMapOrigin,
+                                                objectCalibration: appState.objectCalibration)
                 arManager.disableQRScanning()
 
                 // ── Immediate placement using already-known anchor transform ───

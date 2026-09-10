@@ -227,6 +227,19 @@ struct GuideStepPlacementView: View {
     // without waiting for ARKit relocalization — pins land exactly, QR or not.
     @State private var objectBundle: ReferenceObjectCache.Bundle? = nil
     @State private var originViaObject = false
+    // B2e: object is the ONLY frame for object-origin chambers (no initialWorldMap);
+    // the room map is an explicit fallback. Re-scan invalidates the calibration
+    // until the next Save (which writes a fresh objectPoseInMap).
+    @State private var objectOnlyFrame        = false
+    @State private var objectSearchStartedAt  = Date()
+    @State private var approximateFromMap     = false
+    @State private var objectCalibrationStale = false
+    @State private var showRealignToast       = false
+    @State private var showObjectRescan       = false
+    private var objectExtent: simd_float3? {
+        guard let e = objectBundle?.meta.extent else { return nil }
+        return simd_float3(Float(e.x), Float(e.y), Float(e.z))
+    }
 
     // ── Pin placement state ───────────────────────────────────────────────────
     @State private var stepPositions:  [String: simd_float3] = [:]
@@ -396,6 +409,16 @@ struct GuideStepPlacementView: View {
         }
         .overlay { ARMomentCard(coach: coach, bottomInset: placementPhase.isPlacingPins ? 150 : 200, accent: .indigo) }
         .overlay { relocOverlay }
+        .overlay(alignment: .top) { objectTrackOverlay }
+        .overlay(alignment: .bottom) {
+            if arManager.objectRealignManual, relocState == .relocalized {
+                ObjectFinderCard(title: "Re-aligning to the chamber", extent: objectExtent,
+                                 startedAt: objectSearchStartedAt, onCancel: { arManager.cancelRealign() })
+                    .padding(.horizontal, 16).padding(.bottom, 170)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: arManager.objectRealignManual)
         .confirmationDialog("Clear all \(placedCount) pin\(placedCount == 1 ? "" : "s")?", isPresented: $showClearAllConfirm, titleVisibility: .visible) {
             Button("Clear all pins", role: .destructive) { clearAllPins() }
             Button("Cancel", role: .cancel) {}
@@ -405,14 +428,36 @@ struct GuideStepPlacementView: View {
         .onChange(of: arManager.objectTransform) { objT in
             // B2: object found + calibrated map → re-base the world onto the map
             // frame and show the pins. Beats waiting for feature-point matching.
-            guard objT != nil, !originViaObject,
-                  relocState == .relocalizing || relocState == .timedOut,
+            // B2e: also while on the APPROXIMATE (map) frame — the chamber is the
+            // truth; snap to it with Undo. Never with a stale (re-scanned) calibration.
+            guard objT != nil, !originViaObject, !objectCalibrationStale,
+                  relocState == .relocalizing || relocState == .timedOut || (approximateFromMap && relocState == .relocalized),
                   let cal = relocBundle?.meta.objectPoseInMapTransform else { return }
             if arManager.rebaseWorld(objectPoseInFrame: cal) {
                 originViaObject = true
+                let wasApproximate = approximateFromMap
+                approximateFromMap = false
                 UINotificationFeedbackGenerator().notificationOccurred(.success)
-                withAnimation { relocState = .relocalized }
-                placeExistingPinNodes()
+                if relocState != .relocalized {
+                    withAnimation { relocState = .relocalized }
+                    placeExistingPinNodes()
+                } else if wasApproximate {
+                    flashRealignToast()
+                }
+            }
+        }
+        .onChange(of: arManager.objectRealignCount) { n in
+            guard n > 0 else { return }
+            flashRealignToast()
+        }
+        // B2e: the author re-scans the chamber from the finder ("shape changed?")
+        .fullScreenCover(isPresented: $showObjectRescan) {
+            if let a = anchorRecord {
+                ObjectScanView(anchor: a) { meta in
+                    showObjectRescan = false
+                    Task { await afterObjectRescan(meta) }
+                }
+                .environmentObject(settings)
             }
         }
         .onChange(of: arManager.relocalizationOutcome) { outcome in
@@ -476,7 +521,15 @@ struct GuideStepPlacementView: View {
                     await MainActor.run {
                         relocBundle = bundle
                         if let pd = photo ?? nil { relocPhoto = UIImage(data: pd) }
-                        if let b = bundle {
+                        if anchorRecord?.usesObjectOrigin == true, objectBundle != nil,
+                           bundle?.meta.objectPoseInMap != nil {
+                            // B2e: find the chamber by shape — the object is the frame.
+                            // The map stays loaded only as an explicit fallback.
+                            objectOnlyFrame       = true
+                            objectSearchStartedAt = Date()
+                            arManager.startSession()
+                            arManager.disableQRScanning()
+                        } else if let b = bundle {
                             arManager.startSessionWithWorldMap(b.map)
                             arManager.disableQRScanning()
                         } else {
@@ -1187,7 +1240,22 @@ struct GuideStepPlacementView: View {
 
     @ViewBuilder
     private var relocOverlay: some View {
-        if relocState == .relocalizing || relocState == .timedOut {
+        if objectOnlyFrame, relocState == .relocalizing {
+            // B2e: chamber = frame. Timer keeps the wait honest; after 15 s the
+            // fallback (room map) and re-scan are explicit choices.
+            VStack {
+                Spacer()
+                ObjectFinderCard(
+                    title:      "Point at the chamber",
+                    extent:     objectExtent,
+                    startedAt:  objectSearchStartedAt,
+                    onFallback: relocBundle != nil ? { placeFromLastKnownPosition() } : nil,
+                    onRescan:   anchorRecord != nil ? { showObjectRescan = true } : nil
+                )
+                .padding(.horizontal, 16).padding(.bottom, 48)
+            }
+            .transition(.opacity)
+        } else if relocState == .relocalizing || relocState == .timedOut {
             ZStack {
                 if relocState == .relocalizing, let img = relocPhoto {
                     Image(uiImage: img).resizable().scaledToFill()
@@ -1270,6 +1338,80 @@ struct GuideStepPlacementView: View {
                 }
             }
             .transition(.opacity)
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // MARK: B2e — movable chamber: fallback, re-scan, re-align UI
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// The author chose the room map over the chamber's shape. Pins are
+    /// approximate until the chamber is recognised (then they snap, with Undo).
+    private func placeFromLastKnownPosition() {
+        guard let b = relocBundle else { return }
+        objectOnlyFrame    = false
+        approximateFromMap = true
+        relocState         = .relocalizing
+        arManager.startSessionWithWorldMap(b.map)     // object detection still runs
+        arManager.disableQRScanning()
+    }
+
+    /// After a re-scan the object's own frame is new, so every stored
+    /// calibration is void: relocalize through the map once and Save — the
+    /// save writes objectPoseInMap for the new scan (the QR gate re-does
+    /// objectPoseInQR on the author's next scan).
+    @MainActor
+    private func afterObjectRescan(_ meta: AnchorObjectMeta?) async {
+        guard meta != nil, let a = anchorRecord else {
+            // Cancelled: resume whatever we were doing.
+            if objectOnlyFrame { arManager.startSession(); arManager.disableQRScanning() }
+            else if let b = relocBundle, relocState == .relocalizing { arManager.startSessionWithWorldMap(b.map); arManager.disableQRScanning() }
+            return
+        }
+        let client = SIBClient(settings: settings)
+        let ob = await ReferenceObjectCache.load(anchorId: a.id, client: client)
+        await MainActor.run {
+            objectBundle            = ob
+            objectCalibrationStale  = true
+            originViaObject         = false
+            arManager.setReferenceObject(ob?.archive, name: a.id)
+            if relocBundle != nil {
+                placeFromLastKnownPosition()
+            } else {
+                objectOnlyFrame = false
+                arManager.startSession(); arManager.disableQRScanning()
+                relocState = .timedOut
+            }
+        }
+    }
+
+    private func flashRealignToast() {
+        withAnimation { showRealignToast = true }
+        Task {
+            try? await Task.sleep(nanoseconds: 8_000_000_000)
+            withAnimation { showRealignToast = false }
+        }
+    }
+
+    /// Status pill under the top bar + manual re-align finder + re-align toast.
+    @ViewBuilder
+    private var objectTrackOverlay: some View {
+        if relocState == .relocalized, originViaObject || approximateFromMap, placementPhase.isPlacingPins {
+            VStack(spacing: 8) {
+                ObjectTrackPill(state: arManager.objectTrackState, approximate: approximateFromMap) {
+                    guard originViaObject else { return }
+                    objectSearchStartedAt = Date()
+                    arManager.realignToObject()
+                }
+                if showRealignToast {
+                    ObjectRealignToast {
+                        arManager.undoLastRealign()
+                        withAnimation { showRealignToast = false }
+                    }
+                }
+            }
+            .padding(.top, 70)
+            .animation(.easeInOut(duration: 0.25), value: showRealignToast)
         }
     }
 
@@ -2165,12 +2307,15 @@ struct GuideStepPlacementView: View {
                 if let meta = try? await client.fetchGuideWorldMapMeta(guideId: guide.id) {
                     WorldMapCache.store(.guide(guide.id), map: mapData, meta: meta)
                 }
+                if objectPoseInMap != nil { objectCalibrationStale = false }   // B2e: re-scan calibrated
             } catch {
                 print("[GuideStepPlacementView] World map upload failed (non-fatal): \(error)")
             }
         } else if let cal = objectPoseInMap, let t = ARCoordinateFrame.transform(from: cal) {
             // No map upload this time but the frame is the map's — refresh calibration.
-            try? await client.calibrateGuideObject(guideId: guide.id, objectPoseInMap: t)
+            if (try? await client.calibrateGuideObject(guideId: guide.id, objectPoseInMap: t)) != nil {
+                objectCalibrationStale = false
+            }
         }
         isSaving = false
         if errors.isEmpty { onDone(updatedSteps) }

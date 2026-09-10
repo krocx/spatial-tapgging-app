@@ -44,6 +44,7 @@ import ARKit
 import SceneKit
 import simd
 import CoreImage
+import UIKit
 
 @MainActor
 final class ARSessionManager: NSObject, ObservableObject {
@@ -165,8 +166,193 @@ final class ARSessionManager: NSObject, ObservableObject {
         objectTransform = objectPoseInFrame          // by construction, until ARKit refines
         relocalizationOutcome = .succeeded           // the data frame is reachable
         isRelocalizing = false
+        // B2e: from here on the object IS the frame — watch it for movement.
+        objectCalibratedPose  = objectPoseInFrame
+        lastRebaseF           = f
+        objectCandidate       = nil
+        objectRedetectFailures = 0
+        objectAwaitingRedetect = false
+        objectTrackState      = .tracking
+        startObjectWatchdog()
         print("[ARSessionManager] ✓ World re-based onto the data frame via reference object")
         return true
+    }
+
+    // ── B2e: movable equipment — re-detection watchdog ────────────────────────
+    // ARKit never moves an ARObjectAnchor once it has been added; the only way
+    // to notice that the chamber moved (gas line rolled aside, parts fitted) is
+    // to remove the anchor and let ARKit detect the object again. The watchdog
+    // does that every `redetectInterval` while the chamber's expected position
+    // is on screen, compares the fresh pose with the calibrated one, and
+    // re-bases the world only when two consecutive detections agree it moved
+    // (false matches on symmetric shapes don't jump the pins). A manual
+    // re-align — the user asked — accepts the first detection. Pins never move
+    // silently: every automatic re-base bumps `objectRealignCount` so the view
+    // toasts it with Undo.
+
+    enum ObjectTrackState: Equatable {
+        case idle        // no reference object in this session
+        case searching   // not seen yet (or manual re-align in flight)
+        case tracking    // seen; frame is the object's
+        case outOfView   // expected position off screen — last known frame kept
+        case stale       // in view but not recognised 3 cycles — shape changed?
+    }
+    @Published private(set) var objectTrackState: ObjectTrackState = .idle
+    /// Bumped on every AUTOMATIC re-alignment; views toast + offer Undo.
+    @Published private(set) var objectRealignCount = 0
+    /// True while a manual re-align is in flight (views show the finder).
+    @Published private(set) var objectRealignManual = false
+
+    nonisolated(unsafe) private var objectAnchor: ARObjectAnchor? = nil
+    private var objectCalibratedPose:  simd_float4x4? = nil
+    private var objectWatchdog:        Task<Void, Never>? = nil
+    private var objectCandidate:       simd_float4x4? = nil
+    private var objectRedetectFailures = 0
+    private var objectAwaitingRedetect = false
+    private var lastRebaseF:           simd_float4x4? = nil
+    private var autoRealignSuspended   = false
+    private let redetectInterval: UInt64 = 8_000_000_000
+    private let moveTolMetres:  Float = 0.02
+    private let moveTolDegrees: Float = 2
+
+    /// Manual "Re-align to chamber": drop the anchor and accept the next detection.
+    func realignToObject() {
+        guard objectCalibratedPose != nil else { return }
+        autoRealignSuspended = false
+        objectCandidate      = nil
+        objectRealignManual  = true
+        objectTrackState     = .searching
+        removeObjectAnchor()
+    }
+
+    /// The session was handed to another manager (QR gate → mode view): that
+    /// manager runs the watchdog now; this one must stop touching anchors.
+    func stopObjectWatchdog() {
+        objectWatchdog?.cancel(); objectWatchdog = nil
+    }
+
+    func cancelRealign() {
+        objectRealignManual = false
+        if objectTrackState == .searching { objectTrackState = .outOfView }
+    }
+
+    /// Undo the last automatic re-alignment (toast action). Auto re-align stays
+    /// suspended until the user asks for a manual one — otherwise the watchdog
+    /// would redo it eight seconds later.
+    func undoLastRealign() {
+        guard let f = lastRebaseF else { return }
+        sceneView.session.setWorldOrigin(relativeTransform: simd_inverse(f))
+        lastRebaseF          = nil
+        autoRealignSuspended = true
+        objectCandidate      = nil
+        objectTrackState     = .tracking
+        print("[ARSessionManager] ↩︎ Re-alignment undone — auto re-align suspended")
+    }
+
+    private func handleObjectPose(_ t: simd_float4x4, added: Bool) {
+        guard let cal = objectCalibratedPose else {
+            objectTransform = t             // not re-based yet — views take it from here
+            if objectTrackState == .searching || objectTrackState == .idle { objectTrackState = .tracking }
+            return
+        }
+        guard added else { return }         // refinements of a known anchor: ignore
+        objectAwaitingRedetect = false
+        objectRedetectFailures = 0
+        let d = ARCoordinateFrame.poseDelta(t, cal)
+        let moved = d.metres > moveTolMetres || d.degrees > moveTolDegrees
+        if !moved {
+            objectCandidate     = nil
+            objectRealignManual = false
+            objectTrackState    = .tracking
+            return
+        }
+        if objectRealignManual {
+            applyRealign(from: t, cal: cal)
+            objectRealignManual = false
+            return
+        }
+        if autoRealignSuspended { objectTrackState = .tracking; return }
+        if let c = objectCandidate {
+            let dc = ARCoordinateFrame.poseDelta(t, c)
+            if dc.metres <= moveTolMetres && dc.degrees <= moveTolDegrees {
+                objectCandidate = nil
+                applyRealign(from: t, cal: cal)
+                objectRealignCount += 1
+                UINotificationFeedbackGenerator().notificationOccurred(.warning)
+                print(String(format: "[ARSessionManager] ⟳ Chamber moved Δ %.0f cm · %.0f° — re-aligned", d.metres * 100, d.degrees))
+                return
+            }
+        }
+        objectCandidate = t
+        removeObjectAnchor()                // second opinion, straight away
+    }
+
+    private func applyRealign(from t: simd_float4x4, cal: simd_float4x4) {
+        let f = t * simd_inverse(cal)
+        sceneView.session.setWorldOrigin(relativeTransform: f)
+        lastRebaseF      = f
+        objectTransform  = cal
+        objectTrackState = .tracking
+    }
+
+    private func removeObjectAnchor() {
+        guard let a = objectAnchor else { return }
+        sceneView.session.remove(anchor: a)
+        objectAnchor           = nil
+        objectAwaitingRedetect = true
+    }
+
+    /// Is the calibrated object position inside the viewport (with a margin
+    /// for its extent)? Off-screen we neither re-detect nor complain.
+    private func expectedObjectOnScreen(_ cal: simd_float4x4) -> Bool {
+        let p = cal.columns.3
+        let proj = sceneView.projectPoint(SCNVector3(p.x, p.y, p.z))
+        guard proj.z > 0, proj.z < 1 else { return false }
+        let b = sceneView.bounds
+        let mx = Float(b.width) * 0.2, my = Float(b.height) * 0.2
+        return proj.x >= -mx && proj.x <= Float(b.width) + mx
+            && proj.y >= -my && proj.y <= Float(b.height) + my
+    }
+
+    private func startObjectWatchdog() {
+        objectWatchdog?.cancel()
+        objectWatchdog = Task { @MainActor [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: self?.redetectInterval ?? 8_000_000_000)
+                guard let self, !Task.isCancelled, let cal = self.objectCalibratedPose else { return }
+                let inView = self.expectedObjectOnScreen(cal)
+                if self.objectAwaitingRedetect {
+                    // Last cycle's detection never came back.
+                    if inView {
+                        self.objectRedetectFailures += 1
+                        if self.objectRedetectFailures >= 3, !self.objectRealignManual { self.objectTrackState = .stale }
+                    } else if self.objectTrackState == .tracking {
+                        self.objectTrackState = .outOfView
+                    }
+                    continue
+                }
+                guard inView else {
+                    if self.objectTrackState == .tracking { self.objectTrackState = .outOfView }
+                    continue
+                }
+                self.removeObjectAnchor()
+            }
+        }
+    }
+
+    private func resetObjectTracking() {
+        objectWatchdog?.cancel()
+        objectWatchdog         = nil
+        objectAnchor           = nil
+        objectCalibratedPose   = nil
+        objectCandidate        = nil
+        objectRedetectFailures = 0
+        objectAwaitingRedetect = false
+        lastRebaseF            = nil
+        autoRealignSuspended   = false
+        objectRealignManual    = false
+        objectTransform        = nil
+        objectTrackState       = detectionObjects.isEmpty ? .idle : .searching
     }
 
     // ── Session control ───────────────────────────────────────────────────────
@@ -175,7 +361,7 @@ final class ARSessionManager: NSObject, ObservableObject {
         let config = ARWorldTrackingConfiguration()
         config.planeDetection = [.horizontal, .vertical]
         config.detectionObjects = detectionObjects
-        objectTransform = nil
+        resetObjectTracking()
         sceneView.session.run(config, options: [.removeExistingAnchors, .resetTracking])
         imageAnchorStableFrames = 0
         pendingContext          = nil
@@ -211,7 +397,7 @@ final class ARSessionManager: NSObject, ObservableObject {
         config.planeDetection   = [.horizontal, .vertical]
         config.initialWorldMap  = worldMap
         config.detectionObjects = detectionObjects
-        objectTransform = nil
+        resetObjectTracking()
         // ⚠️ Do NOT pass .resetTracking — that discards the initialWorldMap.
         // .removeExistingAnchors clears stale geometry; ARKit will re-add the
         // image anchors from the saved map as it relocalizes.
@@ -270,7 +456,12 @@ final class ARSessionManager: NSObject, ObservableObject {
     /// - Parameter mapOrigin: B1 — pass `appState.sealedMapOrigin`. When set,
     ///   the sealed pose becomes `lockedAnchorTransform` and the live QR is NOT
     ///   restored as the origin (no per-frame refinement either).
-    func linkToExistingSession(_ session: ARSession, mapOrigin: simd_float4x4? = nil) {
+    /// - Parameter objectCalibration: B2e — the gate re-based the world onto the
+    ///   chamber's shape (`objectCalibration` = its pose in that frame). This
+    ///   manager takes over the movement watchdog so tags follow the chamber
+    ///   in Author / Operator mode too.
+    func linkToExistingSession(_ session: ARSession, mapOrigin: simd_float4x4? = nil,
+                               objectCalibration: simd_float4x4? = nil) {
         imageAnchorStableFrames = 0
         pendingContext          = nil
         poseAccumulator         = []
@@ -278,6 +469,14 @@ final class ARSessionManager: NSObject, ObservableObject {
         sceneView.session = session
         // Become the new delegate so didUpdate/didAdd anchor callbacks flow here.
         session.delegate  = self
+
+        if let objectCalibration {
+            objectCalibratedPose = objectCalibration
+            objectTransform      = objectCalibration
+            objectAnchor         = session.currentFrame?.anchors.compactMap { $0 as? ARObjectAnchor }.first
+            objectTrackState     = .tracking
+            startObjectWatchdog()
+        }
 
         if let mapOrigin {
             adoptMapOrigin(mapOrigin)
@@ -322,7 +521,10 @@ final class ARSessionManager: NSObject, ObservableObject {
         print("[ARSessionManager] restoreAnchor: no ARImageAnchor in session yet")
     }
 
-    func pauseSession() { sceneView.session.pause() }
+    func pauseSession() {
+        objectWatchdog?.cancel(); objectWatchdog = nil
+        sceneView.session.pause()
+    }
 
     func resetScan() {
         scanState             = .scanning
@@ -504,21 +706,23 @@ extension ARSessionManager: ARSessionDelegate {
 
     // ── ARImageAnchor: the accurate pose we've been waiting for ───────────────
     nonisolated func session(_ session: ARSession, didAdd anchors: [ARAnchor]) {
-        processImageAnchors(anchors)
+        processImageAnchors(anchors, added: true)
     }
 
     // Updated poses as ARKit refines its estimate — also count toward stability
     nonisolated func session(_ session: ARSession, didUpdate anchors: [ARAnchor]) {
-        processImageAnchors(anchors)
+        processImageAnchors(anchors, added: false)
     }
 
-    private nonisolated func processImageAnchors(_ anchors: [ARAnchor]) {
+    private nonisolated func processImageAnchors(_ anchors: [ARAnchor], added: Bool) {
 
-        // ── B2: reference object — publish its pose whenever ARKit refines it ──
+        // ── B2: reference object — publish its pose; B2e: a fresh detection
+        // (didAdd) after calibration is a movement check.
         for anchor in anchors {
             guard let obj = anchor as? ARObjectAnchor else { continue }
             let t = obj.transform
-            Task { @MainActor [weak self] in self?.objectTransform = t }
+            objectAnchor = obj
+            Task { @MainActor [weak self] in self?.handleObjectPose(t, added: added) }
             break
         }
 

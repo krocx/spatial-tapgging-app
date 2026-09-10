@@ -65,6 +65,35 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **Object tracking, slice 3 — movable equipment (B2e, iOS)** — for
+  object-origin chambers the shape is now the **only** frame: the QR gate,
+  Place Steps and the guide session start a fresh session (no
+  `initialWorldMap`) so a chamber that has moved — a gas line rolled to
+  today's bay — is never pinned to where the room map last saw it. The map
+  is kept as an **explicit** fallback, never a silent one. Flow:
+  *"Point at the chamber"* finder with a live **elapsed timer** (the wait
+  never looks frozen); after 15 s it offers *Keep looking* / *Place from
+  last known position* (guides: room map, amber "Approximate · from map"
+  pill; gate: *Use the QR position*) and, for authors, *Re-scan the chamber*.
+  **Auto re-align while working:** ARKit never moves an object anchor once
+  added, so `ARSessionManager` now runs a watchdog — every 8 s, when the
+  chamber's expected position is on screen, it drops the anchor and lets
+  ARKit detect again; ≤ 2 cm / 2° is ignored, a larger move confirmed by
+  two agreeing detections re-bases the world (`setWorldOrigin` composes
+  across re-bases) with a haptic and *"Chamber moved — steps re-aligned ·
+  Undo"* (Undo suspends auto re-align until a manual one). Tap the
+  tracking pill (*Tracking · chamber* / *out of view · last known* /
+  amber *looks different — tap to re-align*) for a manual re-align with the
+  same timed finder. Three failed re-detections with the chamber in view
+  mark the shape stale (pins never jump); a re-scan from the finder voids
+  the calibration until the next Save writes a fresh `objectPoseInMap`.
+  Spatial Inspection: the gate re-bases the session onto the chamber and
+  hands the calibration to Author / Operator / iLOTO views
+  (`linkToExistingSession(_:mapOrigin:objectCalibration:)`, `AppState.
+  objectCalibration`), so tags follow a moved chamber there too (haptic
+  only; pill/toast on those surfaces is a follow-up). Shared UI lives in
+  `ObjectScanView.swift` (`ObjectFinderCard`, `ObjectTrackPill`,
+  `ObjectRealignToast`). No server change.
 - **Object tracking, slice 2 — the object as origin (B2)** — a chamber can
   now be found by its **shape**. `Anchor.originSource` = `worldMap` (default)
   or `object`, chosen when creating a chamber ("How should the app find this

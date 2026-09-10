@@ -68,6 +68,11 @@ final class AppState: ObservableObject {
     /// never overrides it. nil = QR-origin session (unsealed anchor, or
     /// relocalization timed out).
     var sealedMapOrigin: simd_float4x4? = nil
+    /// B2e: the gate re-based the session frame onto the chamber's shape;
+    /// this is the chamber's pose in that frame. Successor views hand it to
+    /// `linkToExistingSession(_:mapOrigin:objectCalibration:)` so the movement
+    /// watchdog keeps tags on the chamber if it is moved mid-session.
+    var objectCalibration: simd_float4x4? = nil
 
     /// The live ARSession created by QRScanGateView and kept alive so that
     /// AuthorModeView / OperatorModeView can link to it without a session reset.
@@ -126,6 +131,7 @@ final class AppState: ObservableObject {
         anchorEncryptionKey = nil
         anchorNormalisedTransform = nil
         sealedMapOrigin = nil
+        objectCalibration = nil
         activeGroupId = nil
         // Release the shared session — any view holding a link will keep it alive
         // until it dismisses and pauses via its own onDisappear.

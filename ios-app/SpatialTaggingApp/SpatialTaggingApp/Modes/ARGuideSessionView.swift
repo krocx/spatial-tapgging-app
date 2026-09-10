@@ -138,6 +138,16 @@ struct ARGuideSessionView: View {
     /// detected, the session is re-based onto the map frame immediately.
     @State private var objectPoseInMap: simd_float4x4? = nil
     @State private var originViaObject = false
+    /// B2e: the chamber is found by shape and calibrated for this guide → the
+    /// object is the ONLY frame (no initialWorldMap: a moved chamber must not
+    /// be pinned to where the room map last saw it).
+    @State private var objectOnlyFrame       = false
+    @State private var objectExtent: simd_float3? = nil
+    @State private var objectSearchStartedAt = Date()
+    @State private var fallbackMapData: Data? = nil
+    /// User chose "Place from last known position" — pins come from the room map.
+    @State private var approximateFromMap    = false
+    @State private var showRealignToast      = false
     @State private var environmentDrift   = false
     /// Same pass threshold the inspection flow uses (OperatorModeView default).
     private let stepPassThreshold: Double = 0.60
@@ -308,13 +318,34 @@ struct ARGuideSessionView: View {
                 .onChange(of: arManager.objectTransform) { objT in
                     // B2: object seen + calibrated → world re-based onto the map
                     // frame; pins are exact without feature-point matching.
-                    guard objT != nil, !originViaObject, phase == .relocalizing,
+                    // B2e: also while navigating on the APPROXIMATE (map) frame —
+                    // the chamber showing up is the truth; snap to it, with Undo.
+                    guard objT != nil, !originViaObject, phase == .relocalizing || approximateFromMap,
                           let cal = objectPoseInMap else { return }
                     if arManager.rebaseWorld(objectPoseInFrame: cal) {
-                        originViaObject = true
+                        originViaObject    = true
+                        let wasApproximate = approximateFromMap
+                        approximateFromMap = false
                         UINotificationFeedbackGenerator().notificationOccurred(.success)
-                        showNotice("Chamber recognised — steps placed from its shape")
-                        if case .relocalizing = phase { transitionToNavigating() }
+                        if case .relocalizing = phase {
+                            showNotice("Chamber recognised — steps placed from its shape")
+                            transitionToNavigating()
+                        } else if wasApproximate {
+                            withAnimation { showRealignToast = true }
+                            Task {
+                                try? await Task.sleep(nanoseconds: 8_000_000_000)
+                                withAnimation { showRealignToast = false }
+                            }
+                        }
+                    }
+                }
+                // B2e: automatic re-alignment (chamber moved mid-session) — never silent.
+                .onChange(of: arManager.objectRealignCount) { n in
+                    guard n > 0 else { return }
+                    withAnimation { showRealignToast = true }
+                    Task {
+                        try? await Task.sleep(nanoseconds: 8_000_000_000)
+                        withAnimation { showRealignToast = false }
                     }
                 }
                 .onChange(of: arManager.isRelocalizing) { stillRelocalizing in
@@ -718,9 +749,31 @@ struct ARGuideSessionView: View {
                     .background(Color.indigo.opacity(0.92), in: Capsule())
                     .padding(.top, 62)
                     .transition(.move(edge: .top).combined(with: .opacity))
+            } else if showRealignToast {
+                ObjectRealignToast {
+                    arManager.undoLastRealign()
+                    withAnimation { showRealignToast = false }
+                    showNotice("Re-alignment undone — tap the chamber pill to re-align by hand")
+                }
+                .padding(.top, 62)
             }
         }
         .animation(.easeInOut(duration: 0.25), value: transientNotice)
+        .animation(.easeInOut(duration: 0.25), value: showRealignToast)
+        // B2e: manual re-align finder (tap on the chamber pill)
+        .overlay(alignment: .bottom) {
+            if arManager.objectRealignManual, case .navigating = phase {
+                ObjectFinderCard(
+                    title:     "Re-aligning to the chamber",
+                    extent:    objectExtent,
+                    startedAt: objectSearchStartedAt,
+                    onCancel:  { arManager.cancelRealign() }
+                )
+                .padding(.horizontal, 16).padding(.bottom, 160)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: arManager.objectRealignManual)
         // FTUE / Help sheet
         .sheet(isPresented: $showOnboarding) {
             OnboardingSheet(context: .guideOperator)
@@ -763,6 +816,14 @@ struct ARGuideSessionView: View {
             Spacer()
 
             HStack(spacing: 10) {
+                // B2e: chamber tracking status; tap = re-align by hand.
+                if case .navigating = phase, originViaObject || approximateFromMap {
+                    ObjectTrackPill(state: arManager.objectTrackState, approximate: approximateFromMap) {
+                        guard originViaObject else { return }
+                        objectSearchStartedAt = Date()
+                        arManager.realignToObject()
+                    }
+                }
                 if case .navigating(let index) = phase {
                     // A4: progress ring — completed / total at a glance.
                     let doneCount = progresses.filter { $0.isCompleted }.count
@@ -839,7 +900,43 @@ struct ARGuideSessionView: View {
 
     // ── Re-localizing overlay ─────────────────────────────────────────────────
 
+    @ViewBuilder
     private var relocalizingOverlay: some View {
+        if objectOnlyFrame {
+            // B2e: the chamber is the frame — find it by shape. The timer keeps
+            // the wait honest; after 15 s the fallback is an explicit choice.
+            VStack(spacing: 0) {
+                Spacer()
+                ObjectFinderCard(
+                    title:      "Point at the chamber",
+                    extent:     objectExtent,
+                    startedAt:  objectSearchStartedAt,
+                    onFallback: fallbackMapData != nil ? { placeFromLastKnownPosition() } : nil
+                )
+                .padding(.horizontal, 16)
+                .padding(.bottom, 48)
+            }
+        } else {
+            mapRelocalizingOverlay
+        }
+    }
+
+    /// B2e fallback: the operator chose the room map over the object.
+    private func placeFromLastKnownPosition() {
+        guard let data = fallbackMapData else { return }
+        objectOnlyFrame    = false
+        approximateFromMap = true
+        arManager.startSessionWithWorldMap(data)     // object detection still runs
+        arManager.disableQRScanning()
+        showRelocalizingTimeout = false
+        Task {
+            try? await Task.sleep(nanoseconds: 20_000_000_000)
+            guard case .relocalizing = phase else { return }
+            showRelocalizingTimeout = true
+        }
+    }
+
+    private var mapRelocalizingOverlay: some View {
         VStack(spacing: 0) {
             Spacer()
             VStack(spacing: 16) {
@@ -1082,9 +1179,12 @@ struct ARGuideSessionView: View {
             // pose at the reference photo (X1 drift check at "I'm Here").
             // B2: chamber object → detection runs alongside the map; must be set
             // before the session starts.
+            var objectLoaded = false
             if anchor.objectScannedAt != nil {
                 let ob = await ReferenceObjectCache.load(anchorId: anchor.id, client: client)
                 arManager.setReferenceObject(ob?.archive, name: anchor.id)
+                objectLoaded = ob != nil
+                if let e = ob?.meta.extent { objectExtent = simd_float3(Float(e.x), Float(e.y), Float(e.z)) }
             }
             async let mapFetch   = WorldMapCache.load(.guide(guide.id), client: client)
             async let photoFetch = client.fetchGuideWorldMapPhoto(guideId: guide.id)
@@ -1136,7 +1236,18 @@ struct ARGuideSessionView: View {
             // (non-blocking — ghost overlays attach as downloads complete)
             Task { await prefetchModels() }
 
-            if let data = mapData {
+            // B2e: chamber found by shape + calibrated for this guide → the
+            // object is the only frame. No initialWorldMap: if the chamber has
+            // moved since the author placed the steps, the room map would pin
+            // them to the old spot. The map is kept only as an EXPLICIT fallback.
+            if anchor.usesObjectOrigin, objectLoaded, objectPoseInMap != nil {
+                objectOnlyFrame       = true
+                fallbackMapData       = mapData
+                objectSearchStartedAt = Date()
+                arManager.startSession()
+                arManager.disableQRScanning()
+                phase = .relocalizing
+            } else if let data = mapData {
                 arManager.startSessionWithWorldMap(data)
                 arManager.disableQRScanning()
                 phase = .relocalizing

@@ -282,3 +282,148 @@ struct ObjectScanARView: UIViewRepresentable {
     }
     func updateUIView(_ uiView: ARSCNView, context: Context) {}
 }
+
+// ═════════════════════════════════════════════════════════════════════════════
+// B2e (2026.4.46): shared tracking UI for movable equipment
+//
+// The object is the frame — never its world map. Three pieces every AR
+// surface that tracks a chamber shares:
+//   • ObjectFinderCard   "Point at the chamber" with a live elapsed timer so a
+//                        long search never looks frozen; after `choiceAfter`
+//                        seconds it offers an explicit fallback (never silent).
+//   • ObjectTrackPill    status at a glance; tap = manual re-align.
+//   • ObjectRealignToast "Chamber moved — re-aligned · Undo" after an
+//                        automatic re-base (pins never move silently).
+// ═════════════════════════════════════════════════════════════════════════════
+
+struct ObjectFinderCard: View {
+    var title: String = "Finding the chamber…"
+    var extent: simd_float3? = nil
+    let startedAt: Date
+    var choiceAfter: TimeInterval = 15
+    var onFallback: (() -> Void)? = nil      // "Place from last known position"
+    var fallbackLabel: String = "Place from last known position"
+    var onRescan: (() -> Void)? = nil        // author only
+    var onCancel: (() -> Void)? = nil        // manual re-align in flight
+
+    @State private var keepLookingSince: Date? = nil
+
+    private var hint: String {
+        if let e = extent {
+            return String(format: "Frame the whole chamber (about %.1f × %.1f × %.1f m) and hold steady. Every side you show helps.", e.x, e.y, e.z)
+        }
+        return "Frame the whole chamber and hold steady. Every side you show helps."
+    }
+
+    var body: some View {
+        TimelineView(.periodic(from: startedAt, by: 1)) { ctx in
+            let s = max(0, Int(ctx.date.timeIntervalSince(startedAt)))
+            let since = keepLookingSince ?? startedAt
+            let showChoice = onFallback != nil && ctx.date.timeIntervalSince(since) >= choiceAfter
+            VStack(spacing: 14) {
+                HStack(spacing: 10) {
+                    ProgressView().tint(.indigo)
+                    Text(title).font(.title3.bold()).foregroundStyle(.white)
+                    Spacer()
+                    Text(String(format: "%d:%02d", s / 60, s % 60))
+                        .font(.subheadline.monospacedDigit().bold())
+                        .foregroundStyle(.white.opacity(0.8))
+                        .padding(.horizontal, 10).padding(.vertical, 4)
+                        .background(Color.white.opacity(0.12), in: Capsule())
+                }
+                Text(hint).font(.caption).foregroundStyle(.white.opacity(0.7))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                if showChoice {
+                    VStack(spacing: 8) {
+                        Text("Can't recognise the chamber yet. Still looking — or place the steps from where it was last seen?")
+                            .font(.caption.bold()).foregroundStyle(.orange)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        HStack(spacing: 8) {
+                            Button { keepLookingSince = ctx.date } label: {
+                                Text("Keep looking").font(.subheadline.bold()).foregroundStyle(.white)
+                                    .frame(maxWidth: .infinity).padding(.vertical, 11)
+                                    .background(Color.indigo, in: RoundedRectangle(cornerRadius: 12))
+                            }
+                            Button { onFallback?() } label: {
+                                Text(fallbackLabel).font(.subheadline.bold()).foregroundStyle(.white)
+                                    .frame(maxWidth: .infinity).padding(.vertical, 11)
+                                    .background(Color.white.opacity(0.14), in: RoundedRectangle(cornerRadius: 12))
+                            }
+                        }
+                        if let onRescan {
+                            Button { onRescan() } label: {
+                                Label("Re-scan the chamber (shape changed?)", systemImage: "cube.transparent")
+                                    .font(.caption.bold()).foregroundStyle(.white.opacity(0.85))
+                            }
+                            .padding(.top, 2)
+                        }
+                    }
+                    .transition(.opacity)
+                } else if let onCancel {
+                    Button { onCancel() } label: {
+                        Text("Cancel").font(.subheadline.bold()).foregroundStyle(.white.opacity(0.85))
+                            .frame(maxWidth: .infinity).padding(.vertical, 11)
+                            .background(Color.white.opacity(0.14), in: RoundedRectangle(cornerRadius: 12))
+                    }
+                }
+            }
+            .padding(18)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+            .animation(.easeInOut(duration: 0.25), value: showChoice)
+        }
+    }
+}
+
+struct ObjectTrackPill: View {
+    let state: ARSessionManager.ObjectTrackState
+    var approximate: Bool = false
+    let onTap: () -> Void
+
+    private var content: (icon: String, text: String, tint: Color) {
+        if approximate { return ("exclamationmark.triangle.fill", "Approximate · from map", .orange) }
+        switch state {
+        case .idle:      return ("cube", "Chamber", .white.opacity(0.6))
+        case .searching: return ("viewfinder", "Finding chamber…", .indigo)
+        case .tracking:  return ("checkmark.circle.fill", "Tracking · chamber", .green)
+        case .outOfView: return ("eye.slash", "Chamber out of view · last known", .white.opacity(0.7))
+        case .stale:     return ("exclamationmark.triangle.fill", "Chamber looks different — tap to re-align", .orange)
+        }
+    }
+
+    var body: some View {
+        let c = content
+        Button(action: onTap) {
+            HStack(spacing: 6) {
+                if state == .searching { ProgressView().tint(c.tint).scaleEffect(0.7) }
+                else { Image(systemName: c.icon).font(.system(size: 11, weight: .bold)) }
+                Text(c.text).font(.caption.bold()).lineLimit(1)
+            }
+            .foregroundStyle(c.tint)
+            .padding(.horizontal, 10).padding(.vertical, 6)
+            .background(Color.black.opacity(0.45), in: Capsule())
+            .overlay(Capsule().stroke(c.tint.opacity(0.5), lineWidth: 1))
+        }
+        .buttonStyle(.plain)
+        .fixedSize()
+        .animation(.easeInOut(duration: 0.2), value: state)
+    }
+}
+
+struct ObjectRealignToast: View {
+    let onUndo: () -> Void
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "arrow.triangle.2.circlepath").font(.caption.bold())
+            Text("Chamber moved — steps re-aligned").font(.caption.bold())
+            Button("Undo", action: onUndo)
+                .font(.caption.bold())
+                .padding(.horizontal, 10).padding(.vertical, 4)
+                .background(Color.white.opacity(0.2), in: Capsule())
+        }
+        .foregroundStyle(.white)
+        .padding(.horizontal, 14).padding(.vertical, 9)
+        .background(Color.indigo.opacity(0.94), in: Capsule())
+        .transition(.move(edge: .top).combined(with: .opacity))
+    }
+}
