@@ -7,6 +7,10 @@ it, it gets a line.
 ## 2026.4.46 — 2026-09-08
 
 ### Fixed
+- **Object scan box edges** — the scan box was drawn with SceneKit's
+  1 px `.lines` fill mode, which is hard to see and also draws the triangle
+  diagonals across each face. Edges are now real tubes (thickness scales
+  with the box: 2 % of its smallest side, min 4 mm) with corner beads.
 - **Procedure Designer never caught up with the guide (D)** — "Edit in
   Designer" reopened the stored map as-is and only warned when the guide had
   moved on; a step added on iOS never reached the canvas, and sending from

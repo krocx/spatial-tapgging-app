@@ -200,11 +200,42 @@ final class ObjectScanner: NSObject, ObservableObject {
         mat.isDoubleSided = true
         box.materials = [mat]
         let fill = SCNNode(geometry: box)
-        let wire = SCNNode(geometry: box.copy() as? SCNGeometry)
-        wire.geometry?.firstMaterial = {
-            let m = SCNMaterial(); m.fillMode = .lines; m.diffuse.contents = UIColor.systemIndigo; m.lightingModel = .constant; return m
-        }()
-        n.addChildNode(fill); n.addChildNode(wire)
+        n.addChildNode(fill)
+        // Edges as real tubes (fillMode .lines is 1 px and also draws the
+        // triangle diagonals). Thickness scales with the box so a 0.2 m
+        // speaker and a 2 m chamber both read clearly.
+        let r = CGFloat(max(0.004, min(extent.x, extent.y, extent.z) * 0.02))
+        let edgeMat = SCNMaterial()
+        edgeMat.diffuse.contents = UIColor.systemIndigo
+        edgeMat.emission.contents = UIColor.systemIndigo.withAlphaComponent(0.6)
+        edgeMat.lightingModel = .constant
+        let hx = extent.x / 2, hy = extent.y / 2, hz = extent.z / 2
+        let corners: [simd_float3] = [
+            [-hx,-hy,-hz], [ hx,-hy,-hz], [ hx,-hy, hz], [-hx,-hy, hz],
+            [-hx, hy,-hz], [ hx, hy,-hz], [ hx, hy, hz], [-hx, hy, hz],
+        ]
+        let edges: [(Int, Int)] = [(0,1),(1,2),(2,3),(3,0), (4,5),(5,6),(6,7),(7,4), (0,4),(1,5),(2,6),(3,7)]
+        for (a, b) in edges {
+            let p0 = corners[a], p1 = corners[b]
+            let len = simd_length(p1 - p0)
+            let cyl = SCNCylinder(radius: r, height: CGFloat(len))
+            cyl.radialSegmentCount = 8
+            cyl.materials = [edgeMat]
+            let e = SCNNode(geometry: cyl)
+            e.simdPosition = (p0 + p1) / 2
+            // Cylinder axis is +Y; rotate it onto the edge direction.
+            let dir = simd_normalize(p1 - p0)
+            let up  = simd_float3(0, 1, 0)
+            let dot = simd_dot(up, dir)
+            if dot < -0.9999 { e.simdOrientation = simd_quatf(angle: .pi, axis: [1, 0, 0]) }
+            else if dot < 0.9999 { e.simdOrientation = simd_quatf(angle: acos(dot), axis: simd_normalize(simd_cross(up, dir))) }
+            n.addChildNode(e)
+        }
+        for c in corners {
+            let s = SCNSphere(radius: r * 1.6); s.materials = [edgeMat]
+            let k = SCNNode(geometry: s); k.simdPosition = c
+            n.addChildNode(k)
+        }
         n.simdWorldTransform = boxTransform
     }
 
