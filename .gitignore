@@ -17,6 +17,9 @@ build/
 
 # ── SIB runtime data (local dev only — persisted via Render Disk in production) ─
 .sib-data/
+# Legacy DATA_DIR root (pre-2026.4.46 guide evidence) — never commit runtime data
+sib/data/
+data/
 
 # ── Environment / secrets ─────────────────────────────────────────────────────
 .env

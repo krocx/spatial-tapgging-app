@@ -20,6 +20,7 @@ import type { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import fs   from 'fs';
 import path from 'path';
+import { resolveDataFile } from '../data-dir.js';
 import type {
   Guide,
   GuideStep,
@@ -820,7 +821,7 @@ router.get('/:id/steps/:stepId/validation-ref.jpg', (req: Request, res: Response
       if (b64.startsWith('/9j/')) jpeg = Buffer.from(b64, 'base64');
     }
   } else {
-    const p = path.join(process.env.DATA_DIR ?? './data', 'guide-step-validation', `${ids.guideId}-${ids.stepId}.jpg`);
+    const p = resolveDataFile('guide-step-validation', `${ids.guideId}-${ids.stepId}.jpg`);
     if (fs.existsSync(p)) jpeg = fs.readFileSync(p);
   }
   if (!jpeg) { res.status(404).json({ error: 'No readable reference for this step', timestamp: new Date().toISOString() }); return; }

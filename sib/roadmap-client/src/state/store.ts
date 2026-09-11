@@ -18,7 +18,7 @@ import { autoLayout, type LayoutMode } from '../utils/layout.js';
 import { NODE_W, NODE_H, nodeHeight } from '../utils/geometry.js';
 import { computeSteps, stepBounds, type PresentationStep } from '../utils/presentation.js';
 import type { MindmapEdgePort, MindmapNodeShape, MindmapSettings } from '@spatial/shared';
-import { getDraftKey, type ImageImportResult } from '../api/mindmap-api.js';
+import { getDraftKey, type ImageImportResult, type ImageImportStatus } from '../api/mindmap-api.js';
 import { fileToDownscaledBase64 } from '../utils/image.js';
 import { parseGlossary, type GlossaryData } from '../utils/glossary.js';
 
@@ -104,6 +104,8 @@ interface State {
   presentation: { active: boolean; step: number; steps: PresentationStep[] };
   /** Whiteboard/screenshot import: preview awaiting user confirmation. */
   imagePreview: ImageImportResult | null;
+  /** Vision endpoint readiness on THIS server (null = not probed yet). */
+  imageImportStatus: ImageImportStatus | null;
   importingImage: boolean;
   /** In-app dictionary (docs/roadmap-glossary.md, fetched once per session). */
   glossary: GlossaryData | null;
@@ -248,8 +250,11 @@ interface Actions {
 
   // Whiteboard/screenshot import
   importFromImage(file: File): Promise<void>;
+  probeImageImport(): Promise<void>;
   discardImagePreview(): void;
-  createFromImagePreview(name: string): Promise<void>;
+  /** kind: 'procedure' turns the extracted graph into a Procedure draft —
+   *  directed edges become Next, undirected ones are dropped. */
+  createFromImagePreview(name: string, kind?: MindmapKind): Promise<void>;
 
   // Dictionary
   loadGlossary(): Promise<void>;
@@ -484,6 +489,7 @@ export const useStore = create<State & Actions>((set, get) => {
     showFilterPanel: false,
     presentation: { active: false, step: 0, steps: [] },
     imagePreview: null,
+    imageImportStatus: null,
     importingImage: false,
     glossary: null,
     showGlossary: false,
@@ -996,6 +1002,11 @@ export const useStore = create<State & Actions>((set, get) => {
 
     // ── Whiteboard / screenshot import ───────────────────────────────────
 
+    async probeImageImport() {
+      try { set({ imageImportStatus: await mindmapApi.importImageStatus() }); }
+      catch { set({ imageImportStatus: { configured: false, provider: 'none', model: '', host: '' } }); }
+    },
+
     async importFromImage(file) {
       set({ importingImage: true, error: null, imagePreview: null });
       try {
@@ -1013,15 +1024,22 @@ export const useStore = create<State & Actions>((set, get) => {
 
     discardImagePreview: () => set({ imagePreview: null }),
 
-    async createFromImagePreview(name) {
+    async createFromImagePreview(name, kind) {
       const preview = get().imagePreview;
       if (!preview) return;
+      const procedure = kind === 'procedure';
+      // A procedure edge must carry a role or the compiler treats it as
+      // unconnected; a drawn arrow is the author saying "then".
+      const edges = procedure
+        ? preview.edges.filter(e => e.type === 'directed').map(e => ({ ...e, role: 'next' as const }))
+        : preview.edges;
       try {
         const saved = await mindmapApi.save({
           name: name.trim() || preview.name,
           nodes: preview.nodes,
-          edges: preview.edges,
-          lanes: preview.lanes,
+          edges,
+          lanes: procedure ? [] : preview.lanes,
+          ...(procedure ? { kind: 'procedure' as const } : {}),
           versionLabel: `imported from image (${preview.model})`,
         });
         set({ imagePreview: null, statusMessage: `Created draft "${saved.name}"` });

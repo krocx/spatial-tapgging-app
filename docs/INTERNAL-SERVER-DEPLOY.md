@@ -33,7 +33,21 @@ SIB_DATA_DIR=C:\sib-data
 SIB_API_KEY=<choose-a-strong-key>
 ```
 
+> **Whiteboard / photo import (Roadmap → *From a photo*)** runs on this
+> server, not on the iPad. Set `SIB_VISION_URL` to an OpenAI-compatible
+> vision endpoint. Simplest on the Windows box: install Ollama, run
+> `ollama pull qwen2.5vl`, add `SIB_VISION_URL=http://localhost:11434/v1` to the
+> `sib-config.env` above and restart the service. Alternatives: vLLM on a GPU
+> box, or a company LLM gateway (`SIB_VISION_API_KEY` for the bearer).
+> Unset, SIB falls back to `ASK_LLM_URL`; with neither, the door says
+> "Not set up on this server". The photo is sent only to that endpoint.
+
 > `SIB_DATA_DIR` is where anchor data, worldmaps, and images are stored.
+> Since 2026.4.46 it is also the root for AR Guide session evidence,
+> step-validation references and platform media (`DATA_DIR` was a second,
+> unset root that defaulted to `.\data` inside the git checkout). If the
+> service log prints `Legacy data folder still in use`, move
+> `C:\sib\sib\data\*` into `C:\sib-data\` and delete `C:\sib\sib\data`.
 > Make sure the folder exists and the Node process has write access to it.
 
 The config file is loaded automatically at startup. Real environment variables always

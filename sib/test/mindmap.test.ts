@@ -531,6 +531,19 @@ test('saveMindmap preserves groups when request omits them', () => {
 
 // ── Vision adapter (image → graph, pure parsing — no model needed) ─────────
 
+test('visionConfig resolves SIB_VISION_URL → ASK_LLM_URL → not configured; status never leaks the key', async () => {
+  const { visionConfig, visionStatus } = await import('../src/adapters/vision-adapter.js');
+  const none = visionConfig({});
+  assert.equal(none.configured, false); assert.equal(none.provider, 'none');
+  const ask = visionConfig({ ASK_LLM_URL: 'http://gw.local:8080/v1/', ASK_LLM_MODEL: 'gpt-x', ASK_LLM_KEY: 'sekrit' });
+  assert.equal(ask.provider, 'ask'); assert.equal(ask.url, 'http://gw.local:8080/v1'); assert.equal(ask.model, 'gpt-x'); assert.equal(ask.apiKey, 'sekrit');
+  const vis = visionConfig({ SIB_VISION_URL: 'http://localhost:11434/v1', ASK_LLM_URL: 'http://gw.local/v1' });
+  assert.equal(vis.provider, 'vision'); assert.equal(vis.model, 'qwen2.5vl');
+  const st = visionStatus({ SIB_VISION_URL: 'http://ollama-box:11434/v1', SIB_VISION_API_KEY: 'sekrit' });
+  assert.deepEqual(st, { configured: true, provider: 'vision', model: 'qwen2.5vl', host: 'ollama-box:11434' });
+  assert.ok(!JSON.stringify(st).includes('sekrit'));
+});
+
 test('parseVisionJson strips fences and trailing prose', async () => {
   const { parseVisionJson } = await import('../src/adapters/vision-adapter.js');
   assert.deepEqual(parseVisionJson('```json\n{"a":1}\n```'), { a: 1 });

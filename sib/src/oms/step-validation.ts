@@ -12,12 +12,16 @@
 import fs from 'fs';
 import path from 'path';
 import { compareAgainstPassState } from '../perception/image-comparator.js';
+import { DATA_DIR, resolveDataFile } from '../data-dir.js';
 
-const DATA_DIR       = process.env.DATA_DIR ?? './data';
 const VALIDATION_DIR = path.join(DATA_DIR, 'guide-step-validation');
 
 function refPath(guideId: string, stepId: string): string {
   return path.join(VALIDATION_DIR, `${guideId}-${stepId}.jpg`);
+}
+/** Read-side path — also finds references written to the pre-fix ./data root. */
+function refReadPath(guideId: string, stepId: string): string {
+  return resolveDataFile('guide-step-validation', `${guideId}-${stepId}.jpg`);
 }
 
 export function saveValidationRef(guideId: string, stepId: string, base64: string): void {
@@ -26,7 +30,7 @@ export function saveValidationRef(guideId: string, stepId: string, base64: strin
 }
 
 export function hasValidationRef(guideId: string, stepId: string): boolean {
-  return fs.existsSync(refPath(guideId, stepId));
+  return fs.existsSync(refReadPath(guideId, stepId));
 }
 
 export function deleteValidationRef(guideId: string, stepId: string): void {
@@ -47,7 +51,7 @@ export async function validateStepFrame(
   stepId: string,
   liveBase64: string,
 ): Promise<StepValidationVerdict | null> {
-  const p = refPath(guideId, stepId);
+  const p = refReadPath(guideId, stepId);
   if (!fs.existsSync(p)) return null;
   const ref = fs.readFileSync(p).toString('base64');
   const r = await compareAgainstPassState([ref], liveBase64);

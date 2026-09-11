@@ -14,6 +14,7 @@
 import fs from 'fs';
 import path from 'path';
 import type { GuideSession, OmsUsageSession } from '@spatial/shared';
+import { DATA_DIR, resolveDataFile } from '../data-dir.js';
 
 // ── STORED-zip writer ────────────────────────────────────────────────────────
 
@@ -98,7 +99,6 @@ function cellNum(col: number, row: number, v: number): string {
   return `<c r="${colLetter(col)}${row}"><v>${v}</v></c>`;
 }
 
-const DATA_DIR     = process.env.DATA_DIR ?? './data';
 const EVIDENCE_DIR = path.join(DATA_DIR, 'guide-session-evidence');
 
 const EMU_PER_PX = 9525;
@@ -217,10 +217,10 @@ function usageEvidencePath(
   stepId: string,
   signOffPaths?: Map<string, string>,
 ): string | null {
-  const live = path.join(EVIDENCE_DIR, usageId, `${stepId}.jpg`);
+  const live = resolveDataFile('guide-session-evidence', usageId, `${stepId}.jpg`);
   if (fs.existsSync(live)) return live;
   if (signOffId) {
-    const p = path.join(EVIDENCE_DIR, signOffId, `${stepId}.jpg`);
+    const p = resolveDataFile('guide-session-evidence', signOffId, `${stepId}.jpg`);
     if (fs.existsSync(p)) return p;
     const stored = signOffPaths?.get(`${signOffId}:${stepId}`);
     if (stored && fs.existsSync(stored)) return stored;

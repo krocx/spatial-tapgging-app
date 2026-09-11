@@ -148,6 +148,16 @@ router.post('/export', (req: Request, res: Response) => {
   } catch (err) { return fail(res, err); }
 });
 
+// GET /mindmap/import-image/status — is a vision endpoint configured on THIS
+// server? Lets the client show "not set up" instead of a two-minute timeout.
+// Key-free summary only (provider / model / host), never the API key.
+router.get('/import-image/status', (_req: Request, res: Response) => {
+  void (async () => {
+    const { visionStatus } = await import('../adapters/vision-adapter.js');
+    return ok(res, visionStatus());
+  })();
+});
+
 // POST /mindmap/import-image — { image: base64, mimeType } → PREVIEW graph
 // (not persisted; the client creates a draft via /save if the user accepts).
 // Extraction runs on the locally configured vision model — see vision-adapter.ts.
@@ -167,8 +177,8 @@ router.post('/import-image', (req: Request, res: Response) => {
       const result = await extractMindmapFromImage(image, mime);
       return ok(res, result);
     } catch (err) {
-      const status = err instanceof MindmapError ? err.status : 502;
       const message = err instanceof Error ? err.message : 'Vision extraction failed';
+      const status = err instanceof MindmapError ? err.status : /not set up on this server/.test(message) ? 503 : 502;
       return res.status(status).json({ error: message, timestamp: new Date().toISOString() });
     }
   })();

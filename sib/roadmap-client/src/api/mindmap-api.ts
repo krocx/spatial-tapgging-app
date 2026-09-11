@@ -18,6 +18,9 @@ export async function fetchStepImageUrl(filename: string): Promise<string> {
   return URL.createObjectURL(await res.blob());
 }
 
+/** GET /mindmap/import-image/status — vision endpoint configured on the server? */
+export interface ImageImportStatus { configured: boolean; provider: string; model: string; host: string }
+
 export interface ImageImportResult {
   name: string;
   nodes: MindmapNode[];
@@ -152,6 +155,7 @@ export const mindmapApi = {
   listModels: () => request<Model3D[]>('/models'),
 
   glossary: () => request<{ markdown: string; updatedAt: number }>('/mindmap/glossary'),
+  importImageStatus: () => request<ImageImportStatus>('/mindmap/import-image/status'),
   importImage: (imageBase64: string, mimeType: string) =>
     request<ImageImportResult>('/mindmap/import-image', {
       method: 'POST',

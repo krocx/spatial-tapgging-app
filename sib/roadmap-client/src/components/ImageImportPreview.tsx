@@ -3,7 +3,7 @@
 // warnings, editable name → "Create draft" or discard.
 
 import { useMemo, useState } from 'react';
-import type { Mindmap } from '@spatial/shared';
+import type { Mindmap, MindmapKind } from '@spatial/shared';
 import { useStore } from '../state/store.js';
 import { buildSvg } from '../utils/export.js';
 
@@ -12,6 +12,7 @@ export function ImageImportPreview(): JSX.Element | null {
   const discardImagePreview = useStore(s => s.discardImagePreview);
   const createFromImagePreview = useStore(s => s.createFromImagePreview);
   const [name, setName] = useState('');
+  const [kind, setKind] = useState<MindmapKind>('roadmap');
 
   const svgDataUrl = useMemo(() => {
     if (!preview) return '';
@@ -48,14 +49,27 @@ export function ImageImportPreview(): JSX.Element | null {
             value={name}
             placeholder={preview.name}
             onChange={e => setName(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') void createFromImagePreview(name); }}
+            onKeyDown={e => { if (e.key === 'Enter') void createFromImagePreview(name, kind); }}
           />
         </label>
 
+        <div className="inspector-field">Create as
+          <div className="type-row">
+            <button className={`chip ${kind === 'roadmap' ? 'active' : ''}`} onClick={() => setKind('roadmap')}>Roadmap</button>
+            <button className={`chip ${kind === 'procedure' ? 'active' : ''}`} onClick={() => setKind('procedure')}>Procedure</button>
+          </div>
+          {kind === 'procedure' && (
+            <p className="inspector-hint">
+              Arrows become <b>Next</b> steps ({preview.edges.filter(e => e.type === 'directed').length} of {preview.edges.length});
+              plain lines and lanes are dropped. Add On-failure / Requires in the Designer.
+            </p>
+          )}
+        </div>
+
         <div className="modal-actions">
           <button className="btn" onClick={discardImagePreview}>Discard</button>
-          <button className="btn primary" onClick={() => void createFromImagePreview(name)}>
-            Create draft
+          <button className="btn primary" onClick={() => void createFromImagePreview(name, kind)}>
+            Create {kind === 'procedure' ? 'procedure' : 'roadmap'} draft
           </button>
         </div>
         <p className="modal-hint">

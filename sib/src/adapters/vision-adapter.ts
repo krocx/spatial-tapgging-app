@@ -6,11 +6,19 @@
 // it never leaves the SIB host. No cloud fallback exists unless you
 // deliberately point SIB_VISION_URL somewhere else.
 //
-// Config (env):
-//   SIB_VISION_URL      default http://localhost:11434/v1
-//   SIB_VISION_MODEL    default qwen2.5vl   (also good: llava, minicpm-v)
-//   SIB_VISION_API_KEY  optional — only for gateways that demand a bearer
+// Config (env) — resolution order:
+//   SIB_VISION_URL      explicit vision endpoint (Ollama, vLLM, LM Studio,
+//                       a company gateway, Azure OpenAI …)
+//   ASK_LLM_URL         fallback: the Ask SIB gateway, when it is multimodal
+//   (neither)           NOT CONFIGURED — /mindmap/import-image/status says so
+//                       and the client never starts a doomed upload
+//   SIB_VISION_MODEL    default qwen2.5vl (Ollama) / ASK_LLM_MODEL on fallback
+//   SIB_VISION_API_KEY  optional bearer (ASK_LLM_KEY on fallback)
 //   SIB_VISION_TIMEOUT_MS  default 120000 (local VLMs are slow, esp. first call)
+//
+// Ollama is ONE option, not a requirement — anything that speaks the OpenAI
+// chat-completions API with image_url content works. Whatever is configured,
+// the photo goes only there.
 
 import type { Mindmap, MindmapNode, MindmapEdge, MindmapLane } from '@spatial/shared';
 import { sanitizeGraphArrays, sanitizeLanes } from '../models/mindmap.model.js';
@@ -27,13 +35,39 @@ export interface VisionExtractResult {
   model: string;
 }
 
-function visionConfig() {
-  return {
-    url: (process.env.SIB_VISION_URL ?? 'http://localhost:11434/v1').replace(/\/+$/, ''),
-    model: process.env.SIB_VISION_MODEL ?? 'qwen2.5vl',
-    apiKey: process.env.SIB_VISION_API_KEY?.trim(),
-    timeoutMs: Number(process.env.SIB_VISION_TIMEOUT_MS ?? 120_000),
-  };
+export interface VisionConfig {
+  configured: boolean;
+  /** 'vision' = SIB_VISION_URL, 'ask' = ASK_LLM_URL fallback, 'none' */
+  provider: 'vision' | 'ask' | 'none';
+  url: string;
+  model: string;
+  apiKey?: string;
+  timeoutMs: number;
+}
+
+/** Resolve the vision endpoint from env (see header). Exported for /status. */
+export function visionConfig(env: NodeJS.ProcessEnv = process.env): VisionConfig {
+  const timeoutMs = Number(env.SIB_VISION_TIMEOUT_MS ?? 120_000);
+  const vurl = env.SIB_VISION_URL?.trim();
+  if (vurl) {
+    return { configured: true, provider: 'vision', url: vurl.replace(/\/+$/, ''),
+      model: env.SIB_VISION_MODEL?.trim() || 'qwen2.5vl', apiKey: env.SIB_VISION_API_KEY?.trim() || undefined, timeoutMs };
+  }
+  const aurl = env.ASK_LLM_URL?.trim();
+  if (aurl) {
+    return { configured: true, provider: 'ask', url: aurl.replace(/\/+$/, ''),
+      model: env.SIB_VISION_MODEL?.trim() || env.ASK_LLM_MODEL?.trim() || 'default',
+      apiKey: env.SIB_VISION_API_KEY?.trim() || env.ASK_LLM_KEY?.trim() || undefined, timeoutMs };
+  }
+  return { configured: false, provider: 'none', url: '', model: '', timeoutMs };
+}
+
+/** Public, key-free summary for the client (never exposes the API key). */
+export function visionStatus(env: NodeJS.ProcessEnv = process.env): { configured: boolean; provider: string; model: string; host: string } {
+  const c = visionConfig(env);
+  let host = '';
+  try { host = c.url ? new URL(c.url).host : ''; } catch { host = ''; }
+  return { configured: c.configured, provider: c.provider, model: c.model, host };
 }
 
 const SYSTEM_PROMPT = `You convert photos of whiteboards, sticky-note walls, and app screenshots into a mind-map graph. Respond with ONLY a JSON object, no prose, no markdown fences, following exactly this schema:
@@ -164,6 +198,9 @@ export function toGraph(raw: Record<string, unknown>): Omit<VisionExtractResult,
 /** Call the local vision model. Throws with a helpful message when unreachable. */
 export async function extractMindmapFromImage(imageBase64: string, mimeType: string): Promise<VisionExtractResult> {
   const cfg = visionConfig();
+  if (!cfg.configured) {
+    throw new Error('Whiteboard import is not set up on this server — set SIB_VISION_URL (or ASK_LLM_URL) to an OpenAI-compatible vision endpoint. See docs/INTERNAL-SERVER-DEPLOY.md.');
+  }
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), cfg.timeoutMs);
 
@@ -193,8 +230,8 @@ export async function extractMindmapFromImage(imageBase64: string, mimeType: str
     });
   } catch (err) {
     throw new Error(
-      `Vision model unreachable at ${cfg.url} — is your local model running? ` +
-      `(Ollama: "ollama pull ${cfg.model}" then "ollama serve"; configure via SIB_VISION_URL / SIB_VISION_MODEL.) ` +
+      `Vision model unreachable at ${cfg.url} (${cfg.provider === 'ask' ? 'ASK_LLM_URL fallback' : 'SIB_VISION_URL'}) — is the endpoint running? ` +
+      `(Ollama: "ollama pull ${cfg.model}" then "ollama serve"; or point SIB_VISION_URL at any OpenAI-compatible vision endpoint.) ` +
       `Underlying error: ${(err as Error).message}`,
     );
   } finally {

@@ -31,6 +31,7 @@ import type { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
 import path from 'path';
+import { DATA_DIR, resolveDataFile } from '../data-dir.js';
 import type {
   GuideSession,
   GuideStepCompletion,
@@ -56,7 +57,7 @@ import {
 export const guideSessionStore = new JsonFileStore<GuideSession>('guide-sessions');
 
 // Evidence photos are stored under DATA_DIR/guide-session-evidence/{sessionId}/{stepId}.jpg
-const DATA_DIR       = process.env.DATA_DIR ?? './data';
+// (DATA_DIR resolves to SIB_DATA_DIR when unset — see data-dir.ts).
 const EVIDENCE_DIR   = path.join(DATA_DIR, 'guide-session-evidence');
 
 function ensureEvidenceDir(sessionId: string): string {
@@ -320,7 +321,7 @@ function signOffEvidencePaths(): Map<string, string> {
   for (const s of guideSessionStore.findAll()) {
     for (const sc of s.stepCompletions) {
       if (sc.evidencePhotoPath && !sc.evidencePhotoPath.includes('..')) {
-        m.set(`${s.id}:${sc.stepId}`, path.join(DATA_DIR, sc.evidencePhotoPath));
+        m.set(`${s.id}:${sc.stepId}`, resolveDataFile(sc.evidencePhotoPath));
       }
     }
   }
@@ -443,7 +444,8 @@ router.get('/:id', (req: Request, res: Response): void => {
 // GET /guide-sessions/:id/evidence/:stepId — serve evidence photo
 router.get('/:id/evidence/:stepId', (req: Request, res: Response): void => {
   const { id, stepId } = req.params;
-  let filepath = path.join(EVIDENCE_DIR, id, `${stepId}.jpg`);
+  // resolveDataFile also looks in the pre-fix ./data root (data-dir.ts).
+  let filepath = resolveDataFile('guide-session-evidence', id, `${stepId}.jpg`);
 
   // Fallback: a sign-off whose evidence lives under the LIVE session id
   // (live-upload dedupe) — resolve via the stored evidencePhotoPath.
@@ -451,7 +453,7 @@ router.get('/:id/evidence/:stepId', (req: Request, res: Response): void => {
     const session = guideSessionStore.findById(id);
     const rel = session?.stepCompletions.find(c => c.stepId === stepId)?.evidencePhotoPath;
     if (rel && !rel.includes('..')) {
-      filepath = path.join(DATA_DIR, rel);
+      filepath = resolveDataFile(rel);
     }
   }
 

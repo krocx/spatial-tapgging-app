@@ -269,6 +269,10 @@
     .ul-val.fail { background: rgba(240, 86, 86, 0.15); color: var(--red, #f05656); }
     .mono { font-family: monospace; }
     .ul-thumb { height: 40px; border-radius: 5px; cursor: zoom-in; vertical-align: middle; }
+    /* Evidence thumbnails are blob-loaded after render (auth-aware fetch);
+       until the blob lands there is no src, so hide the element instead of
+       showing the browser's broken-image glyph for a beat. */
+    img[data-evidence-url]:not([data-loaded]) { visibility: hidden; }
 
     /* ── Phase 4: Sessions panel ── */
     #sessions-panel { display: none; padding: 20px 24px 56px; }

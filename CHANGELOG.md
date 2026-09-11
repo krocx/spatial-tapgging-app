@@ -7,6 +7,18 @@ it, it gets a line.
 ## 2026.4.46 — 2026-09-08
 
 ### Fixed
+- **Guide evidence written outside the data root (company server)** — the
+  Completion / Usage logs showed a broken thumbnail for a beat, then nothing,
+  and the xlsx export had no photos. Root cause: two data roots. JSON stores,
+  world maps and inspection evidence live under `SIB_DATA_DIR`; guide-session
+  evidence, step-validation references and platform media used a separate
+  `DATA_DIR` that defaulted to `./data` — inside the git checkout when only
+  `SIB_DATA_DIR` is set (the in-house server), so the photos were outside every
+  backup and gone once the checkout was touched. `sib/src/data-dir.ts` now
+  resolves one root (`DATA_DIR` → `SIB_DATA_DIR` → `./data`); readers also
+  look in the legacy `./data` so surviving photos still display; a startup
+  notice says when that folder still has files; `sib/data/` is gitignored;
+  the portal hides evidence thumbnails until the blob has loaded.
 - **Object scan box edges** — the scan box was drawn with SceneKit's
   1 px `.lines` fill mode, which is hard to see and also draws the triangle
   diagonals across each face. Edges are now real tubes (thickness scales
@@ -69,6 +81,17 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **Roadmap — "From a photo" door (server-side vision)**. The whiteboard /
+  screenshot import was hidden in the ⋯ menu and, on the in-house server,
+  waited two minutes before failing. It is now the third door on the Roadmap
+  home page; the preview creates the draft as a **Roadmap** or a
+  **Procedure** (arrows → *Next*, plain lines and lanes dropped). Extraction
+  always ran on the SIB server — the vision endpoint is now resolved
+  `SIB_VISION_URL` → `ASK_LLM_URL` → not configured, and
+  `GET /mindmap/import-image/status` (key-free) lets the door say "Not set
+  up on this server" up front. Ollama is one option, not a requirement: any
+  OpenAI-compatible endpoint with `image_url` support works (vLLM, LM
+  Studio, a company gateway). Setup in INTERNAL-SERVER-DEPLOY.md.
 - **Procedure Designer — issue bubbles on nodes (DS1)**. Compiler issues
   now ride the card as a notification badge at the top-right corner: red
   with the error glyph when any error blocks *Send to guide library*, amber

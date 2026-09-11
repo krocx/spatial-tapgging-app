@@ -19,6 +19,7 @@ import { chamberConfigStore } from './routes/chamber-configs.js';
 import { guideStore, guideStepStore } from './guides/store.js';
 import { v4 as uuidv4 } from 'uuid';
 import { presenceSummary } from './sse/presence.js';
+import { DATA_DIR, noticeLegacyDataDir } from './data-dir.js';
 import { JsonFileStore } from './stores/json-file-store.js';
 
 interface MaturityAssessment { id: string; level: number; score: number; answers: number[]; area?: string; createdAt: string }
@@ -41,6 +42,7 @@ import { PLATFORM_VERSION } from './version.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export function createApp(): express.Express {
+  noticeLegacyDataDir();
   const app = express();
 
   // --- Middleware ---
@@ -157,7 +159,7 @@ document.getElementById('f').addEventListener('submit', async function(ev){
   // committing confidential material. Bundled repo files are the fallback.
   //   DATA_DIR/platform/deck.pptx      → served at /platform.pptx
   //   DATA_DIR/platform/media/*.jpg    → served at /platform-media/* (first)
-  const PLATFORM_LOCAL = path.join(process.env.DATA_DIR ?? './data', 'platform');
+  const PLATFORM_LOCAL = path.join(DATA_DIR, 'platform');
   app.use('/platform-media', express.static(path.join(PLATFORM_LOCAL, 'media')));
   app.use('/platform-media', express.static(path.join(__dirname, '../portal/platform-media')));
   app.get('/platform.pptx', (_req, res) => {

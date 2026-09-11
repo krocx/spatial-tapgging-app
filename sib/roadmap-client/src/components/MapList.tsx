@@ -29,6 +29,8 @@ export function MapList(): JSX.Element {
   const unlockDraft = useStore(s => s.unlockDraft);
   const importFromImage = useStore(s => s.importFromImage);
   const importingImage = useStore(s => s.importingImage);
+  const imageImportStatus = useStore(s => s.imageImportStatus);
+  const probeImageImport = useStore(s => s.probeImageImport);
   const statusMessage = useStore(s => s.statusMessage);
   const fileRef = useRef<HTMLInputElement>(null);
   const imageRef = useRef<HTMLInputElement>(null);
@@ -44,6 +46,7 @@ export function MapList(): JSX.Element {
   useEffect(() => {
     void fetchAuthRequired().then(setAuthRequired);
     void refreshList();
+    void probeImageImport();
   }, []);
 
   const saveIdentity = () => {
@@ -92,7 +95,8 @@ export function MapList(): JSX.Element {
         {menuOpen && (
           <div className="home-popover home-menu">
             <button onClick={() => { setMenuOpen(false); fileRef.current?.click(); }}><Icon name="file" size={14} /> Import JSON</button>
-            <button disabled={importingImage}
+            <button disabled={importingImage || imageImportStatus?.configured !== true}
+                    title={imageImportStatus?.configured === false ? 'Not set up on this server' : undefined}
                     onClick={() => { setMenuOpen(false); imageRef.current?.click(); }}>
               {importingImage ? 'Reading image…' : <><Icon name="photo" size={14} /> From whiteboard photo</>}
             </button>
@@ -145,6 +149,33 @@ export function MapList(): JSX.Element {
             </form>
           )}
         </div>
+
+        {/* Third door — photo → map. The extraction runs on the SIB server
+            (vision endpoint configured there, never on this device); when the
+            server has none, say so here instead of a two-minute timeout. */}
+        {(() => {
+          const ready = imageImportStatus?.configured === true;
+          const probing = imageImportStatus === null;
+          return (
+            <div className={`home-door door-photo ${!ready && !probing ? 'unavailable' : ''}`}
+                 onClick={() => { if (ready && !importingImage) imageRef.current?.click(); }}
+                 title={ready ? `Extraction runs on the server (${imageImportStatus!.model})` : undefined}>
+              <div className="door-icon"><Icon name="photo" size={34} strokeWidth={1.6} /></div>
+              <h2>From a photo</h2>
+              <p className="door-tag">Start from what's on the wall</p>
+              <p className="door-desc">Snap a whiteboard, sticky wall or paper WI — SIB reads it into an editable roadmap or procedure.</p>
+              {probing && <p className="door-path">checking server…</p>}
+              {ready && (
+                <p className="door-path">
+                  {importingImage ? 'Reading image…' : 'choose a photo → preview → create draft'}
+                </p>
+              )}
+              {!ready && !probing && (
+                <p className="door-note">Not set up on this server — an admin sets <code>SIB_VISION_URL</code> (see INTERNAL-SERVER-DEPLOY.md).</p>
+              )}
+            </div>
+          );
+        })()}
       </section>
 
       {statusMessage && <p className="import-status">{statusMessage}</p>}
