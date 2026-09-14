@@ -341,6 +341,36 @@ final class SIBClient {
         try await delete(path: "/loc-tags/\(id)")
     }
 
+    // ── Gemba Walk — G1 library + G3 photos (docs/GEMBA-WALK.md) ─────────────
+
+    /// The Audit Reference Library: focus areas → questions, categories, ratings.
+    /// One call; cache by `version`.
+    func fetchGembaLibrary() async throws -> GembaLibrary {
+        try await get(GembaLibrary.self, path: "/gemba/library")
+    }
+
+    /// Append photos to an existing finding (max 6 total, server-enforced).
+    func appendLocTagPhotos(id: String, photos: [(image: UIImage, caption: String?)]) async throws -> LocTag {
+        let uploads = photos.compactMap { LocTagPhotoUpload(image: $0.image, caption: $0.caption) }
+        return try await post(LocTag.self, path: "/loc-tags/\(id)/photos",
+                              body: AppendLocTagPhotosRequest(photosBase64: uploads), timeout: 60)
+    }
+
+    /// Remove one photo from a finding (admin-gated like every DELETE).
+    func deleteLocTagPhoto(id: String, filename: String) async throws -> LocTag {
+        let data = try await delete(path: "/loc-tags/\(id)/photos/\(filename)")
+        return try JSONDecoder().decode(APIResponse<LocTag>.self, from: data).data
+    }
+
+    /// G5: attach the marked-up copy of a photo.
+    func uploadLocTagMarkup(id: String, filename: String, jpegBase64: String) async throws -> LocTag {
+        var req = try makeRequest(method: "PUT", path: "/loc-tags/\(id)/photos/\(filename)/markup")
+        req.timeoutInterval = 45
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONEncoder().encode(["base64": jpegBase64])
+        return try await perform(req, decoding: LocTag.self)
+    }
+
     // ── iLOTO (docs/ILOTO.md) ────────────────────────────────────────────────
     // Status is DERIVED by the server from the append-only event log — the
     // client never computes lock state locally.

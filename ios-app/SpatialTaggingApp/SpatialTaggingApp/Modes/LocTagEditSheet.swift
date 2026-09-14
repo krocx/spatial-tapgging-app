@@ -20,6 +20,12 @@ struct LocTagEditSheet: View {
     @State private var severity:       Severity?
     @State private var defectCategory: DefectCategory
     @State private var categoryNote:   String
+    // G4: reference-list findings edit category / risk / captions; the
+    // question itself is fixed at log time (re-place to change it).
+    @State private var findingCategory: GembaFindingCategory?
+    @State private var riskRating:      GembaRiskRating?
+    @State private var captions:        [String: String]
+    private var isReference: Bool { locTag.questionCode != nil }
 
     // ── Submission ────────────────────────────────────────────────────────────
     @State private var isSubmitting = false
@@ -33,6 +39,9 @@ struct LocTagEditSheet: View {
         _severity       = State(initialValue: locTag.severity)
         _defectCategory = State(initialValue: locTag.defectCategory)
         _categoryNote   = State(initialValue: locTag.defectCategoryNote ?? "")
+        _findingCategory = State(initialValue: locTag.findingCategory)
+        _riskRating      = State(initialValue: locTag.riskRating)
+        _captions        = State(initialValue: Dictionary(uniqueKeysWithValues: locTag.allPhotos.map { ($0.path, $0.caption ?? "") }))
     }
 
     private var isValid: Bool {
@@ -44,14 +53,45 @@ struct LocTagEditSheet: View {
             Form {
 
                 // ── Issue details ──────────────────────────────────────────────
-                Section("Issue Details") {
+                Section(isReference ? "Finding" : "Issue Details") {
+                    if isReference {
+                        LabeledContent("Question") {
+                            Text("\(locTag.questionCode ?? "") — \(locTag.questionTitle ?? "")")
+                                .foregroundStyle(.secondary).lineLimit(2).multilineTextAlignment(.trailing)
+                        }
+                    }
                     TextField("Title (required)", text: $title)
-                    TextField("Description", text: $description, axis: .vertical)
+                    TextField(isReference ? "Notes" : "Description", text: $description, axis: .vertical)
                         .lineLimit(3, reservesSpace: true)
                 }
 
+                if isReference {
+                    Section("Category & Risk") {
+                        Picker("Category", selection: $findingCategory) {
+                            ForEach(GembaFindingCategory.allCases) { c in Text(c.displayName).tag(Optional(c)) }
+                        }
+                        .pickerStyle(.segmented)
+                        Picker("Preliminary risk", selection: $riskRating) {
+                            Text("Not rated").tag(Optional<GembaRiskRating>.none)
+                            ForEach(GembaRiskRating.allCases) { r in Text(r.displayName).tag(Optional(r)) }
+                        }
+                    }
+                }
+
+                if !locTag.allPhotos.isEmpty {
+                    Section("Photo captions") {
+                        ForEach(locTag.allPhotos) { p in
+                            TextField("Caption", text: Binding(
+                                get: { captions[p.path] ?? "" },
+                                set: { captions[p.path] = $0 }
+                            ), axis: .vertical)
+                            .lineLimit(1...3)
+                        }
+                    }
+                }
+
                 // ── Classification ─────────────────────────────────────────────
-                Section("Classification") {
+                if !isReference { Section("Classification") {
                     Picker("Severity", selection: $severity) {
                         Text("Not set").tag(Optional<Severity>.none)
                         ForEach(Severity.allCases) { s in
@@ -68,7 +108,7 @@ struct LocTagEditSheet: View {
                     if defectCategory == .others {
                         TextField("Category note (optional)", text: $categoryNote)
                     }
-                }
+                } }
 
                 // ── Meta ───────────────────────────────────────────────────────
                 Section {
@@ -117,13 +157,17 @@ struct LocTagEditSheet: View {
         isSubmitting = true
         submitError  = nil
 
+        let captionEdits = locTag.allPhotos.map { UpdateLocTagRequest.PhotoCaption(path: $0.path, caption: captions[$0.path] ?? "") }
         let req = UpdateLocTagRequest(
             title:              title.trimmingCharacters(in: .whitespaces),
             description:        description.trimmingCharacters(in: .whitespaces),
-            severity:           severity,
-            defectCategory:     defectCategory,
-            defectCategoryNote: defectCategory == .others && !categoryNote.isEmpty
-                                    ? categoryNote : nil
+            severity:           isReference ? nil : severity,
+            defectCategory:     isReference ? nil : defectCategory,
+            defectCategoryNote: !isReference && defectCategory == .others && !categoryNote.isEmpty
+                                    ? categoryNote : nil,
+            findingCategory:    isReference ? findingCategory : nil,
+            riskRating:         isReference ? riskRating : nil,
+            photos:             captionEdits.isEmpty ? nil : captionEdits
         )
 
         let client = SIBClient(settings: settings)

@@ -114,6 +114,52 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **Gemba Walk — Audit Reference Library (G1)**. The PowerApps Gemba Audit
+  tool bound its pickers to SharePoint reference lists (Focus Area → Question);
+  auditors chose, never typed. That vocabulary now lives in SIB:
+  `GET /gemba/library` serves focus areas with their questions plus the fixed
+  finding categories (Strength / OFI / NC) and risk ratings (0–3) in one call;
+  Corporate Quality maintains it under Portal → GembaWalks → **📚 Audit
+  Library** (add / edit / deactivate / delete, admin-gated writes) or imports
+  the same Excel/CSV they already keep — choose file → preview → import,
+  atomic, append-by-code or replace, mirroring Import Guide. Findings will
+  record the question *code* so later library edits never rewrite history.
+  Fresh servers seed the areas seen in the PowerApps tool plus the four 6S
+  questions. `sib/src/gemba/library-core.ts`, `routes/gemba-library.ts`,
+  tests, `docs/GEMBA-WALK.md`, catalogue `audit-library`. Slices G2–G8
+  (finding model, capture flow, walk sessions, markup, multi-auditor,
+  phone-down navigation) are listed there and follow.
+- **Gemba Walk — reference-list findings (G3)**. A finding (`LocTag`) can now
+  be logged against an Audit Library question: `POST /loc-tags` takes
+  `questionCode` and snapshots focus area + question (code, title, text) onto
+  the finding, plus `findingCategory` (Strength / OFI / NC), optional
+  `riskRating` 0–3 and up to six photos with captions (`photosBase64`).
+  `referenceImagePath` keeps mirroring the first photo, so older app builds
+  and the portal keep working. New: `POST /loc-tags/:id/photos` (append),
+  `DELETE /loc-tags/:id/photos/:file`, `PUT …/photos/:file/markup` (G5
+  hook). Portal Walks table shows the category pill + risk, the question
+  under the title, and a captioned photo strip in the detail row; CSV gains
+  the new columns. iOS models + `SIBClient` (`fetchGembaLibrary`,
+  `appendLocTagPhotos`, `deleteLocTagPhoto`, `uploadLocTagMarkup`) are in;
+  the capture flow lands with G4. `sib/src/gemba/finding-core.ts`, tests.
+- **Gemba Walk — pick, don't type (G4, iOS)**. The finding sheet now runs
+  the Corporate Quality flow: **Focus Area → Question** (searchable pickers
+  from the Audit Reference Library, last focus area remembered) → **Category**
+  Strength / OFI / NC → optional **risk 0–3** → up to **six photos, each with
+  a caption** (camera or library, reorderable). Free text only when the
+  library is empty or the auditor flips the toggle. Every finding gets a
+  **floating panel** in AR — the AR OMS pill/card language: collapsed pill
+  (stop #, title, category chip) by default so the view stays clear; tap →
+  card with code, question, risk, notes, photo count; tap the card → the full
+  sheet. Operators see the same panels while walking (non-target ones dimmed)
+  and can open any finding from its card. Peek / completion / edit sheets show
+  the reference question, category, risk and a captioned photo strip with a
+  lightbox; edit changes category, risk and captions. Library is cached on
+  device and refreshed at walk start. `Components/FindingPanelNode.swift`,
+  `FindingDetailSections.swift`, `Services/GembaLibraryStore.swift`,
+  `Modes/LocTagFormSheet.swift` (rewrite), `LocTagAuthorView`,
+  `LocTagOperatorView`, `LocTagPeekSheet`, `LocTagOperatorSheet`,
+  `LocTagEditSheet`.
 - **SIB Compass — one navigator on every web surface (N1)**. Each surface had
   grown its own way home (⌂, ⚡, a text link, nothing) and the portal had no
   link to SIB home at all. `sib/portal/compass.js`, injected by `brand.js`

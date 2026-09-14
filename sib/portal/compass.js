@@ -36,7 +36,8 @@
           { id: 'models',    label: '3D Models',       href: '/portal#content/models' },
           { id: 'sessions',  label: 'Inspections',     href: '/portal#sessions' },
           { id: 'iloto',     label: 'iLOTO',           href: '/portal#iloto' },
-          { id: 'gemba',     label: 'Gemba',           href: '/portal#gemba' },
+          { id: 'gemba',     label: 'Gemba',           href: '/portal#gemba/walks' },
+          { id: 'gemba-library', label: 'Audit Library', href: '/portal#gemba/library' },
         ] },
       { id: 'admin', label: 'Admin', href: '/portal#admin/uam', color: '#f59e0b', key: 'a', hint: 'Users, configs, logs, backups',
         children: [
@@ -77,6 +78,7 @@
       const [sec, sub] = h.split('/');
       if (sec === 'admin') return ['sib', 'admin', sub || 'uam'];
       if (sec === 'content') return ['sib', 'portal', sub === 'models' ? 'models' : 'content'];
+      if (sec === 'gemba')   return ['sib', 'portal', sub === 'library' ? 'gemba-library' : 'gemba'];
       if (sec && sec !== 'home') return ['sib', 'portal', sec];
       return ['sib', 'portal'];
     }
@@ -102,11 +104,11 @@
 
   // ── Styles ────────────────────────────────────────────────────────────────
   const css = `
-  .sibc-btn{position:fixed;right:18px;bottom:18px;z-index:9400;width:48px;height:48px;border-radius:14px;border:1px solid rgba(255,255,255,.14);
+  .sibc-btn{position:fixed;right:18px;bottom:18px;z-index:9400;width:48px;height:48px;padding:0;margin:0;line-height:0;border-radius:14px;border:1px solid rgba(255,255,255,.14);
     background:rgba(12,16,28,.82);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);cursor:pointer;display:grid;place-items:center;
     box-shadow:0 8px 28px rgba(0,0,0,.35);transition:transform .15s,box-shadow .15s;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif}
   .sibc-btn:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(79,142,247,.35)}
-  .sibc-btn svg{width:26px;height:26px}
+  .sibc-btn svg{width:26px;height:26px;display:block}
   .sibc-btn .dot{position:absolute;top:-3px;right:-3px;width:11px;height:11px;border-radius:50%;background:#22c55e;border:2px solid #0c101c;display:none}
   .sibc-btn.live .dot{display:block;animation:sibc-pulse 1.6s ease-in-out infinite}
   @keyframes sibc-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.35);opacity:.6}}

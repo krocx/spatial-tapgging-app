@@ -224,6 +224,9 @@ struct LocTagAuthorView: View {
                     placedLocTags.append(newLocTag)
                     if let node = pendingNode {
                         upgradeMarker(node, id: newLocTag.id)
+                        // G4: floating panel — readable from where you stand.
+                        FindingPanel.attach(to: arManager.sceneView.scene.rootNode, tag: newLocTag,
+                                            index: placedLocTags.count - 1, pinPosition: node.simdPosition)
                         pendingNode = nil
                     }
                     pendingTap = nil
@@ -237,6 +240,7 @@ struct LocTagAuthorView: View {
             LocTagPeekSheet(locTag: tag) { updated in
                 if let idx = placedLocTags.firstIndex(where: { $0.id == updated.id }) {
                     placedLocTags[idx] = updated
+                    FindingPanel.update(in: arManager.sceneView.scene.rootNode, tag: updated, index: idx)
                 }
             }
             .environmentObject(settings)
@@ -319,7 +323,7 @@ struct LocTagAuthorView: View {
                     Image(systemName: "hand.tap.fill")
                         .font(.body)
                         .foregroundStyle(.white.opacity(0.9))
-                    Text("Tap a surface to tag an issue")
+                    Text("Tap a surface to log a finding")
                         .font(.subheadline)
                         .foregroundStyle(.white)
                     Spacer()
@@ -408,9 +412,27 @@ struct LocTagAuthorView: View {
             SCNHitTestOption.searchMode: SCNHitTestSearchMode.all.rawValue
         ])
         for hit in scnHits {
+            // G4: floating panel — pill toggles the card, card opens the sheet.
+            if let h = FindingPanel.hit(hit.node),
+               let tag = placedLocTags.first(where: { $0.id == h.tagId }) {
+                let root = sv.scene.rootNode
+                if h.part == .pill, let c = root.childNode(withName: "fpanel_\(h.tagId)", recursively: false) {
+                    FindingPanel.setMinimized(c, false)
+                } else {
+                    peekingLocTag = tag
+                }
+                return
+            }
             if let tagId = nodeTagId(hit.node),
                let tag   = placedLocTags.first(where: { $0.id == tagId }) {
                 peekingLocTag = tag
+                return
+            }
+        }
+        // Tapping empty space collapses any expanded card (keeps the AR view clear).
+        for tag in placedLocTags {
+            if let c = sv.scene.rootNode.childNode(withName: "fpanel_\(tag.id)", recursively: false), !FindingPanel.isMinimized(c) {
+                FindingPanel.setMinimized(c, true)
                 return
             }
         }
@@ -554,6 +576,9 @@ struct LocTagAuthorView: View {
 
     /// Called on appear — checks for an existing ARWorldMap and resumes if found.
     private func setupSession() async {
+        // G4: warm the Audit Reference Library so the first finding's picker
+        // opens instantly (cached copy is used if the server is slow).
+        Task { await GembaLibraryStore.shared.refresh(settings: settings) }
         guard let anchor = appState.activeAnchor else {
             arManager.startSession()
             isLoadingSession = false
@@ -609,6 +634,11 @@ struct LocTagAuthorView: View {
             )
             arManager.sceneView.scene.rootNode.addChildNode(node)
             tagNodes[locTag.id] = node
+        }
+        for (i, locTag) in placedLocTags.enumerated() {
+            let p = locTag.position
+            FindingPanel.attach(to: arManager.sceneView.scene.rootNode, tag: locTag, index: i,
+                                pinPosition: simd_float3(Float(p.x), Float(p.y), Float(p.z)))
         }
     }
 

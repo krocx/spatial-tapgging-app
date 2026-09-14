@@ -10,6 +10,7 @@ import sessionRouter from './routes/sessions.js';
 import perceptionRouter from './routes/perception.js';
 import trainingRouter from './routes/training.js';
 import locTagRouter from './routes/loc-tags.js';
+import gembaLibraryRouter from './routes/gemba-library.js';
 import worldMapRouter from './routes/worldmap.js';
 import guideRouter from './routes/guides.js';
 import guideSessionRouter from './routes/guide-sessions.js';
@@ -495,6 +496,12 @@ document.getElementById('f').addEventListener('submit', async function(ev){
   // POST   /loc-tags/:id/completion     — Operator: submit completion
   // GET    /loc-tags/:id/completions    — list completions for a LocTag
   app.use('/loc-tags', locTagRouter);
+
+  // --- G1: Gemba Audit Reference Library (focus areas → questions; categories, ratings) ---
+  // GET  /gemba/library                 — one call: everything a walk needs (iOS + portal)
+  // POST /gemba/library/import          — atomic xlsx/CSV/JSON load (admin)
+  // CRUD /gemba/library/focus-areas, /questions (admin)
+  app.use('/gemba/library', gembaLibraryRouter);
 
   // POST /worldmap/upload               — Author: save ARWorldMap after walk
   // GET  /worldmap/:anchorId            — Operator: download ARWorldMap to re-localize

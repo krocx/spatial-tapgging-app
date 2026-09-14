@@ -50,35 +50,8 @@ struct LocTagPeekSheet: View {
                     .padding(.vertical, 4)
                 }
 
-                // ── Category + severity ────────────────────────────────────────
-                Section("Classification") {
-                    LabeledContent("Category") {
-                        Text(locTag.defectCategory.displayName)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    if let sev = locTag.severity {
-                        LabeledContent("Severity") {
-                            Text(sev.displayName)
-                                .foregroundStyle(severityColor(sev))
-                        }
-                    }
-
-                    if let note = locTag.defectCategoryNote, !note.isEmpty {
-                        LabeledContent("Note") {
-                            Text(note).foregroundStyle(.secondary)
-                        }
-                    }
-                }
-
-                // ── Description ───────────────────────────────────────────────
-                if !locTag.description.isEmpty {
-                    Section("Description") {
-                        Text(locTag.description)
-                            .font(.body)
-                            .foregroundStyle(.primary)
-                    }
-                }
+                // ── G4: reference question · category + risk · photos ──────────
+                FindingDetailSections(tag: locTag)
             }
             .listStyle(.insetGrouped)
             .navigationTitle("Issue Detail")

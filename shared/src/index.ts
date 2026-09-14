@@ -700,6 +700,68 @@ export interface QRAnchorContext {
 }
 
 // ============================================================
+// Gemba Audit Reference Library (G1, 2026.4.46)
+// ------------------------------------------------------------
+// Replaces the SharePoint reference lists the PowerApps Gemba Audit tool
+// used: auditors pick a Focus Area, then one of its pre-defined Questions,
+// instead of typing a free-text finding. Corporate Quality maintains the
+// lists in the portal (CRUD + xlsx/CSV import, mirroring Import Guide).
+// ============================================================
+
+/** A numbered audit focus area, e.g. "14 — 6S Audits". */
+export interface GembaFocusArea {
+  id: string;
+  /** Short code as auditors know it ("14"). Unique, case-insensitive. */
+  code: string;
+  title: string;
+  order: number;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** A pre-defined question under a focus area, e.g. P5142 "Concept Understanding". */
+export interface GembaQuestion {
+  id: string;
+  focusAreaId: string;
+  /** Question code ("P5142"). Unique across the library, case-insensitive. */
+  code: string;
+  title: string;
+  /** The prompt the auditor reads aloud / checks. */
+  text: string;
+  order: number;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Finding category — the Corporate Quality vocabulary (labels live in sib/src/gemba/library-core.ts;
+ *  this package is types-only at runtime). */
+export type GembaFindingCategory = 'STRENGTH' | 'OFI' | 'NC';
+
+/** Preliminary risk rating (optional on a finding): 0 none · 1 minor · 2 medium · 3 high. */
+export type GembaRiskRating = 0 | 1 | 2 | 3;
+
+/** GET /gemba/library — everything the app needs to run a walk, one call. */
+export interface GembaLibrary {
+  focusAreas: (GembaFocusArea & { questions: GembaQuestion[] })[];
+  categories: { code: GembaFindingCategory; label: string }[];
+  ratings: { value: GembaRiskRating; label: string }[];
+  /** Changes on every write — clients cache by it. */
+  version: string;
+}
+
+/** POST /gemba/library/import — atomic; `mode: 'append'` upserts by code. */
+export interface GembaLibraryImport {
+  mode?: 'append' | 'replace';
+  focusAreas: {
+    code: string;
+    title: string;
+    questions?: { code: string; title?: string; text: string }[];
+  }[];
+}
+
+// ============================================================
 // Loc-Tag — Phase 2 Gemba audit walk types
 // ============================================================
 
@@ -708,6 +770,15 @@ export interface QRAnchorContext {
  * during an Author's Gemba audit walk. Unlike regular Tags, LocTags are
  * not tied to a QR anchor — the spatial reference is an ARWorldMap.
  */
+/** One photo on a finding (G3). `path` is served by GET /loc-tags/image/:filename. */
+export interface LocTagPhoto {
+  path: string;
+  caption?: string;
+  /** G5: the same photo with the auditor's markup drawn on it, if any. */
+  markupPath?: string;
+  capturedAt: string;
+}
+
 export interface LocTag {
   id: string;
   anchorId: string;
@@ -717,19 +788,45 @@ export interface LocTag {
   defectCategory: DefectCategory;
   /** Free-text field populated when defectCategory === 'OTHERS'. */
   defectCategoryNote?: string;
-  /** Filename of the reference photo stored in SIB evidence store. */
+  /** Filename of the reference photo stored in SIB evidence store.
+   *  G3: always mirrors `photos[0].path` so older clients keep working. */
   referenceImagePath?: string;
   /** ARKit world-space position within the saved ARWorldMap. */
   position: Vector3;
   /** Author-defined visit order for Operator navigation. */
   order: number;
+
+  // ── G3 (2026.4.46): reference-list finding ───────────────────────────────
+  // Snapshotted from the Audit Reference Library at log time — the library
+  // can change later; the finding keeps what the auditor actually chose.
+  focusAreaCode?: string;
+  focusAreaTitle?: string;
+  questionCode?: string;
+  questionTitle?: string;
+  questionText?: string;
+  findingCategory?: GembaFindingCategory;
+  /** Optional preliminary risk rating 0–3. */
+  riskRating?: GembaRiskRating;
+  /** All photos, in capture order (max LOC_TAG_MAX_PHOTOS). */
+  photos?: LocTagPhoto[];
+  /** G2: the walk session this finding belongs to. */
+  walkId?: string;
+
   createdAt: string;
   updatedAt: string;
 }
 
-export type CreateLocTagRequest = Omit<LocTag, 'id' | 'referenceImagePath' | 'createdAt' | 'updatedAt'> & {
-  /** Base64-encoded JPEG reference photo captured at tag placement. */
+/** Upper bound on photos per finding — keeps a walk's upload bounded. */
+export type LocTagMaxPhotos = 6;
+
+export type CreateLocTagRequest = Omit<LocTag, 'id' | 'referenceImagePath' | 'createdAt' | 'updatedAt'
+  | 'focusAreaCode' | 'focusAreaTitle' | 'questionTitle' | 'questionText' | 'photos'> & {
+  /** Base64-encoded JPEG reference photo captured at tag placement (legacy single photo). */
   referenceImageBase64?: string;
+  /** G3: multiple photos with captions; the first becomes `referenceImagePath`. */
+  photosBase64?: { base64: string; caption?: string }[];
+  /** G3: the server resolves the question and snapshots area/question fields. */
+  questionCode?: string;
 };
 
 /**

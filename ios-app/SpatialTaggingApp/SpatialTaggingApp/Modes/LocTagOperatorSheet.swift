@@ -32,17 +32,12 @@ struct LocTagOperatorSheet: View {
         NavigationStack {
             Form {
 
-                // ── Defect details (read-only) ─────────────────────────────────
-                Section("Defect Details") {
-                    LabeledContent("Title", value: tag.title)
-                    if !tag.description.isEmpty {
-                        LabeledContent("Description", value: tag.description)
-                    }
-                    LabeledContent("Category", value: tag.defectCategory.displayName)
-                    if let sev = tag.severity {
-                        LabeledContent("Severity", value: sev.displayName)
-                    }
+                // ── Finding (read-only) ────────────────────────────────────────
+                Section("Finding") {
+                    LabeledContent("Title", value: tag.questionTitle ?? tag.title)
                 }
+                // G4: reference question · category + risk · photos with captions
+                FindingDetailSections(tag: tag)
 
                 // ── Resolution ─────────────────────────────────────────────────
                 Section("Resolution") {

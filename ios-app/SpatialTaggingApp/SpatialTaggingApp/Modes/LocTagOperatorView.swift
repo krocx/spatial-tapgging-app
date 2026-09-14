@@ -76,7 +76,7 @@ struct LocTagOperatorView: View {
         ZStack(alignment: .top) {
 
             // AR camera — always present so session can run in background
-            ARContainerView(arManager: arManager, onTap: { _ in })
+            ARContainerView(arManager: arManager, onTap: handlePanelTap)
                 .ignoresSafeArea()
                 .onAppear {
                     // Actual session start happens in loadData() after world map arrives.
@@ -495,15 +495,42 @@ struct LocTagOperatorView: View {
     // ── Place 3D pins ─────────────────────────────────────────────────────────
 
     private func placePins() {
-        for tag in locTags {
+        for (i, tag) in locTags.enumerated() {
             guard tagNodes[tag.id] == nil else { continue }
             let p    = tag.position
             let node = makeLocTagPin()
             node.simdPosition = simd_float3(Float(p.x), Float(p.y), Float(p.z))
             arManager.sceneView.scene.rootNode.addChildNode(node)
             tagNodes[tag.id] = node
+            // G4: floating panel above every finding — the operator reads the
+            // finding from a distance and walks to the one that matters.
+            FindingPanel.attach(to: arManager.sceneView.scene.rootNode, tag: tag, index: i, pinPosition: node.simdPosition)
         }
         placeArrow()   // create the navigation arrow when pins are ready
+    }
+
+    /// G4: tap a pill → expand its card; tap the card → open the completion
+    /// sheet for that finding (jumping the sequence is allowed); tap empty
+    /// space → collapse any open card.
+    private func handlePanelTap(at screenPoint: CGPoint) {
+        let sv = arManager.sceneView
+        let hits = sv.hitTest(screenPoint, options: [SCNHitTestOption.searchMode: SCNHitTestSearchMode.all.rawValue])
+        for hit in hits {
+            guard let h = FindingPanel.hit(hit.node),
+                  let tag = locTags.first(where: { $0.id == h.tagId }) else { continue }
+            if h.part == .pill, let c = sv.scene.rootNode.childNode(withName: "fpanel_\(h.tagId)", recursively: false) {
+                FindingPanel.setMinimized(c, false)
+            } else if completingTag == nil {
+                completingTag = tag
+            }
+            return
+        }
+        for tag in locTags {
+            if let c = sv.scene.rootNode.childNode(withName: "fpanel_\(tag.id)", recursively: false), !FindingPanel.isMinimized(c) {
+                FindingPanel.setMinimized(c, true)
+                return
+            }
+        }
     }
 
     // ── Navigation telemetry (10 Hz) ──────────────────────────────────────────
@@ -549,6 +576,9 @@ struct LocTagOperatorView: View {
         guard index < locTags.count else { return }
         let activeId = locTags[index].id
         for (id, node) in tagNodes {
+            if let c = arManager.sceneView.scene.rootNode.childNode(withName: "fpanel_\(id)", recursively: false) {
+                FindingPanel.setDimmed(c, id != activeId)
+            }
             node.removeAllActions()
             if id == activeId {
                 node.opacity = 1.0

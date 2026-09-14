@@ -655,6 +655,10 @@
       <div class="ph-ico">🚶</div><h3>GembaWalks</h3>
       <div class="ph-sub">Audit walks — findings, defect categories, resolution</div>
       <div class="ph-stats" id="ph-stat-gemba"></div>
+      <div class="ph-subnav">
+        <span class="ph-chip" onclick="event.stopPropagation();location.hash='#gemba/walks'">🚶 Walks</span>
+        <span class="ph-chip" onclick="event.stopPropagation();location.hash='#gemba/library'">📚 Audit Library</span>
+      </div>
     </div>
     <div class="ph-tile t-admin" onclick="location.hash='#admin/uam'" data-tour="tile-admin">
       <div class="ph-ico">🛠</div><h3>Admin</h3>
@@ -710,6 +714,7 @@
 
 <!-- Gemba Walk panel -->
 <div id="gemba-panel">
+ <div id="gemba-walks-sub">
   <div class="sessions-toolbar">
     <span style="font-size:0.78rem;color:var(--muted);flex:1">Gemba audit walk completions · grouped by anchor</span>
     <button class="btn btn-ghost btn-sm" onclick="exportAllGembaCSV()" title="Export all walks as CSV">⬇ Export All</button>
@@ -721,6 +726,79 @@
     <select id="flt-gemba-anchor" onchange="setFilter('gemba')"><option value="">All anchors</option></select>
   </div>
   <div class="gemba-list"></div>
+ </div>
+
+ <!-- G1 (2026.4.46): Audit Reference Library — Focus Areas → Questions.
+      What the PowerApps tool bound to SharePoint lists; Corporate Quality
+      owns it here. Findings are logged against a question CODE, so editing
+      the library later never rewrites history. -->
+ <div id="gemba-library-sub" style="display:none">
+  <div class="sessions-toolbar">
+    <span style="font-size:0.78rem;color:var(--muted);flex:1">Focus areas → pre-defined questions · auditors pick, never type · maintained by Corporate Quality</span>
+    <button class="btn btn-sm" onclick="openGembaLibImport()" style="font-weight:600" title="Excel / CSV / JSON — same flow as Import Guide">⬆ Import</button>
+    <button class="btn btn-ghost btn-sm" onclick="gembaLibDownloadTemplate()" title="Column layout the import expects">⬇ Excel template</button>
+    <button class="btn btn-ghost btn-sm" onclick="gembaLibExport()" title="Re-importable JSON of the whole library">⬇ Export</button>
+    <button class="btn btn-ghost btn-sm" onclick="gembaLibEdit('area')">＋ Focus area</button>
+    <button class="btn btn-ghost btn-sm" onclick="loadGembaLibrary()">⟳ Refresh</button>
+  </div>
+  <div class="filter-bar">
+    <input type="search" id="glib-q" placeholder="Filter by code, title or question text…" oninput="renderGembaLibrary()">
+    <label style="font-size:0.75rem;color:var(--muted);display:flex;align-items:center;gap:6px"><input type="checkbox" id="glib-inactive" onchange="loadGembaLibrary()"> show inactive</label>
+  </div>
+  <div id="gemba-library-list"></div>
+ </div>
+</div>
+
+<!-- Audit Library: import modal (mirrors Import Guide) -->
+<div id="glib-import-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9000;align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px 32px;width:min(640px,92vw);max-height:90vh;overflow-y:auto;position:relative;">
+    <button onclick="closeGembaLibImport()" style="position:absolute;top:14px;right:16px;background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer;line-height:1">✕</button>
+    <h3 style="margin:0 0 4px;font-size:1rem;font-weight:700;color:var(--text)">⬆ Import Audit Library</h3>
+    <p style="margin:0 0 14px;font-size:0.78rem;color:var(--muted)">One row per question: <b>Focus Area #</b> · <b>Focus Area</b> · <b>Question Code</b> · <b>Question Title</b> · <b>Question</b>. A row with only the focus-area columns adds the area on its own. Codes are the identity — re-importing the same code updates that row.</p>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+      <button class="btn btn-sm" onclick="document.getElementById('glib-import-file').click()" style="font-weight:600">📄 Choose file (.xlsx / .csv / .json)</button>
+      <input type="file" id="glib-import-file" accept=".xlsx,.xls,.csv,.json" style="display:none" onchange="gembaLibImportFileChosen(event)">
+      <span id="glib-import-name" style="font-size:0.75rem;color:var(--muted)"></span>
+    </div>
+    <div style="display:flex;gap:16px;font-size:0.8rem;margin-bottom:12px">
+      <label><input type="radio" name="glib-mode" value="append" checked> Append / update by code <span style="color:var(--muted)">(safe)</span></label>
+      <label><input type="radio" name="glib-mode" value="replace"> Replace whole library <span style="color:var(--red)">(drops everything not in the file)</span></label>
+    </div>
+    <div id="glib-import-preview" style="display:none;border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:0.78rem"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-ghost btn-sm" onclick="closeGembaLibImport()">Cancel</button>
+      <button class="btn btn-sm" id="glib-import-submit" onclick="submitGembaLibImport()" disabled style="background:var(--accent);color:#fff;font-weight:600;opacity:.5">Import</button>
+    </div>
+    <p id="glib-import-error" style="display:none;color:var(--red);font-size:0.78rem;margin-top:12px"></p>
+  </div>
+</div>
+
+<!-- Audit Library: add/edit modal (focus area or question) -->
+<div id="glib-edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9000;align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px 28px;width:min(520px,92vw);position:relative;">
+    <button onclick="closeGembaLibEdit()" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer;line-height:1">✕</button>
+    <h3 id="glib-edit-title" style="margin:0 0 14px;font-size:0.95rem;font-weight:700;color:var(--text)"></h3>
+    <div id="glib-edit-area-row" style="margin-bottom:10px">
+      <label style="font-size:0.75rem;font-weight:600;display:block;margin-bottom:4px">Focus area</label>
+      <select id="glib-edit-area" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:0.85rem"></select>
+    </div>
+    <div style="display:grid;grid-template-columns:120px 1fr;gap:10px;margin-bottom:10px">
+      <div><label style="font-size:0.75rem;font-weight:600;display:block;margin-bottom:4px">Code</label>
+        <input id="glib-edit-code" placeholder="14 / P5142" style="width:100%;box-sizing:border-box;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:0.85rem"></div>
+      <div><label style="font-size:0.75rem;font-weight:600;display:block;margin-bottom:4px">Title</label>
+        <input id="glib-edit-name" placeholder="Short name shown in the picker" style="width:100%;box-sizing:border-box;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:0.85rem"></div>
+    </div>
+    <div id="glib-edit-text-row" style="margin-bottom:10px">
+      <label style="font-size:0.75rem;font-weight:600;display:block;margin-bottom:4px">Question text</label>
+      <textarea id="glib-edit-text" rows="3" placeholder="What the auditor checks or asks…" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:0.85rem;resize:vertical"></textarea>
+    </div>
+    <label style="font-size:0.8rem;display:flex;align-items:center;gap:6px;margin-bottom:14px"><input type="checkbox" id="glib-edit-active" checked> Active <span style="color:var(--muted)">(inactive items stay for history but leave the picker)</span></label>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn btn-ghost btn-sm" onclick="closeGembaLibEdit()">Cancel</button>
+      <button class="btn btn-sm" onclick="saveGembaLibEdit()" style="background:var(--accent);color:#fff;font-weight:600">Save</button>
+    </div>
+    <p id="glib-edit-error" style="display:none;color:var(--red);font-size:0.78rem;margin-top:10px"></p>
+  </div>
 </div>
 
 <!-- AR Guides Sessions panel -->
@@ -2346,7 +2424,8 @@ const SECTIONS = {
   'content':   { name: '📚 Content Library',      color: '#2dd4bf',
                  tabs: [['guides', 'Guide Library'], ['models', '3D Models']], defaultSub: 'guides' },
   'iloto':     { name: '🔒 iLOTO',                color: '#ef4444' },
-  'gemba':     { name: '🚶 GembaWalks',           color: '#fb923c' },
+  'gemba':     { name: '🚶 GembaWalks',           color: '#fb923c',
+                 tabs: [['walks', 'Walks'], ['library', '📚 Audit Library']], defaultSub: 'walks' },
   'admin':     { name: '🛠 Admin',                color: '#94a3b8',
                  tabs: [['uam', '👥 User Access'], ['configs', '🏭 Chamber Configs'], ['ops', '📜 Ops Log'], ['logs', '🐞 Device Logs'], ['backup', '💾 Backups']], defaultSub: 'uam' },
 };
@@ -2378,6 +2457,7 @@ function renderRoute() {
   if (sec === 'ar-guides')    { switchView('ar-guides'); setUsageView(sub === 'usage'); }
   else if (sec === 'content') { switchView(sub === 'models' ? 'models' : 'guide-library'); }
   else if (sec === 'admin')   { switchView('admin'); adminShowSub(sub); }
+  else if (sec === 'gemba')   { switchView('gemba'); gembaShowSub(sub); }
   else                        { switchView(sec); }
   guideStartTour(false);      // P1: first-visit page tour
   guideRefresh();             // P1: checklist follows live data
@@ -2648,6 +2728,282 @@ function adminShowSub(sub) {
   }
   if (sub === 'configs') loadChamberConfigs();
   if (sub === 'logs') qaLogsOpen(); else qaLogsClose();
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+// G1 (2026.4.46): Audit Reference Library — Focus Areas → Questions.
+// Mirrors Import Guide: choose file → preview counts/warnings → import
+// (atomic on the server). xlsx via lazy SheetJS, CSV/JSON parsed here.
+// ═════════════════════════════════════════════════════════════════════════════
+function gembaShowSub(sub) {
+  const lib = sub === 'library';
+  document.getElementById('gemba-walks-sub').style.display   = lib ? 'none' : '';
+  document.getElementById('gemba-library-sub').style.display = lib ? '' : 'none';
+  if (lib) loadGembaLibrary();
+}
+
+let gembaLib = null;   // GembaLibrary from the server (with inactive when the box is ticked)
+
+async function loadGembaLibrary() {
+  const list = document.getElementById('gemba-library-list');
+  if (!gembaLib) list.innerHTML = '<p style="color:var(--muted);padding:24px;text-align:center;font-size:0.82rem;">Loading…</p>';
+  try {
+    const all = document.getElementById('glib-inactive').checked;
+    gembaLib = (await apiFetch(`/gemba/library${all ? '?all=true' : ''}`)).data;
+    renderGembaLibrary();
+  } catch (e) {
+    list.innerHTML = `<p style="color:var(--red);padding:24px;text-align:center;font-size:0.82rem;">${esc(e.message)}</p>`;
+  }
+}
+
+function renderGembaLibrary() {
+  const list = document.getElementById('gemba-library-list');
+  if (!gembaLib) return;
+  const q = (document.getElementById('glib-q').value || '').trim().toLowerCase();
+  const hit = s => !q || String(s || '').toLowerCase().includes(q);
+  const areas = gembaLib.focusAreas
+    .map(a => ({ ...a, questions: a.questions.filter(x => hit(a.code) || hit(a.title) || hit(x.code) || hit(x.title) || hit(x.text)) }))
+    .filter(a => hit(a.code) || hit(a.title) || a.questions.length);
+  const nQ = gembaLib.focusAreas.reduce((n, a) => n + a.questions.length, 0);
+  if (!areas.length) {
+    list.innerHTML = `<div class="empty-state" style="padding:40px;text-align:center;color:var(--muted);font-size:0.85rem">
+      ${gembaLib.focusAreas.length ? 'Nothing matches that filter.' : 'The library is empty.'}<br>
+      <button class="btn btn-sm" style="margin-top:12px" onclick="openGembaLibImport()">⬆ Import from Excel</button></div>`;
+    return;
+  }
+  const dim = x => x.active ? '' : 'opacity:.45;';
+  list.innerHTML =
+    `<p style="font-size:0.72rem;color:var(--muted);margin:0 0 10px">${gembaLib.focusAreas.length} focus areas · ${nQ} questions · categories: ${gembaLib.categories.map(c => esc(c.label.split(' — ')[0])).join(', ')} · risk 0–3</p>` +
+    areas.map(a => `
+    <div class="card" style="margin-bottom:10px;padding:12px 14px;${dim(a)}">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="font-family:monospace;font-size:0.78rem;background:var(--surface-2,rgba(255,255,255,.06));border:1px solid var(--border);border-radius:6px;padding:2px 8px">${esc(a.code)}</span>
+        <b style="font-size:0.9rem;flex:1">${esc(a.title)}</b>
+        <span style="font-size:0.72rem;color:var(--muted)">${a.questions.length} question${a.questions.length === 1 ? '' : 's'}${a.active ? '' : ' · inactive'}</span>
+        <button class="btn btn-ghost btn-sm" onclick="gembaLibEdit('question', null, '${a.id}')" title="Add a question under this area">＋ Question</button>
+        <button class="btn btn-ghost btn-sm" onclick="gembaLibEdit('area', '${a.id}')" title="Edit">✏️</button>
+        <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="gembaLibDelete('area', '${a.id}')" title="Delete the area and its questions">🗑</button>
+      </div>
+      ${a.questions.length ? `<div style="margin-top:8px;display:grid;gap:4px">` + a.questions.map(x => `
+        <div style="display:grid;grid-template-columns:76px 200px 1fr auto;gap:10px;align-items:start;padding:6px 8px;border-radius:8px;background:rgba(255,255,255,.025);font-size:0.8rem;${dim(x)}">
+          <span style="font-family:monospace;color:var(--muted)">${esc(x.code)}</span>
+          <span style="font-weight:600">${esc(x.title)}</span>
+          <span style="color:var(--muted)">${esc(x.text)}</span>
+          <span style="white-space:nowrap">
+            <button class="btn btn-ghost btn-sm" style="padding:2px 6px" onclick="gembaLibEdit('question', '${x.id}')">✏️</button>
+            <button class="btn btn-ghost btn-sm" style="padding:2px 6px;color:var(--red)" onclick="gembaLibDelete('question', '${x.id}')">🗑</button>
+          </span>
+        </div>`).join('') + `</div>` : ''}
+    </div>`).join('');
+}
+
+// ── Add / edit ──────────────────────────────────────────────────────────────
+let glibEdit = null;   // { kind: 'area'|'question', id?: string }
+
+function gembaLibEdit(kind, id = null, areaId = null) {
+  glibEdit = { kind, id };
+  const m = document.getElementById('glib-edit-modal');
+  const areas = gembaLib ? gembaLib.focusAreas : [];
+  const item = id ? (kind === 'area' ? areas.find(a => a.id === id) : areas.flatMap(a => a.questions).find(x => x.id === id)) : null;
+  document.getElementById('glib-edit-title').textContent =
+    `${id ? 'Edit' : 'Add'} ${kind === 'area' ? 'focus area' : 'question'}`;
+  document.getElementById('glib-edit-area-row').style.display = kind === 'question' ? '' : 'none';
+  document.getElementById('glib-edit-text-row').style.display = kind === 'question' ? '' : 'none';
+  const sel = document.getElementById('glib-edit-area');
+  sel.innerHTML = areas.map(a => `<option value="${a.id}">${esc(a.code)} — ${esc(a.title)}</option>`).join('');
+  sel.value = (item && item.focusAreaId) || areaId || (areas[0] && areas[0].id) || '';
+  document.getElementById('glib-edit-code').value   = item ? item.code : '';
+  document.getElementById('glib-edit-name').value   = item ? item.title : '';
+  document.getElementById('glib-edit-text').value   = item && kind === 'question' ? item.text : '';
+  document.getElementById('glib-edit-active').checked = item ? item.active : true;
+  document.getElementById('glib-edit-error').style.display = 'none';
+  m.style.display = 'flex';
+  setTimeout(() => document.getElementById('glib-edit-code').focus(), 50);
+}
+function closeGembaLibEdit() { document.getElementById('glib-edit-modal').style.display = 'none'; glibEdit = null; }
+
+async function saveGembaLibEdit() {
+  if (!glibEdit) return;
+  const err = document.getElementById('glib-edit-error');
+  err.style.display = 'none';
+  const body = {
+    code:   document.getElementById('glib-edit-code').value.trim(),
+    title:  document.getElementById('glib-edit-name').value.trim(),
+    active: document.getElementById('glib-edit-active').checked,
+  };
+  if (glibEdit.kind === 'question') {
+    body.text = document.getElementById('glib-edit-text').value.trim();
+    body.focusAreaId = document.getElementById('glib-edit-area').value;
+  }
+  const base = `/gemba/library/${glibEdit.kind === 'area' ? 'focus-areas' : 'questions'}`;
+  try {
+    await apiFetch(glibEdit.id ? `${base}/${glibEdit.id}` : base, {
+      method: glibEdit.id ? 'PATCH' : 'POST', body: JSON.stringify(body),
+    });
+    closeGembaLibEdit();
+    toast('Saved');
+    await loadGembaLibrary();
+  } catch (e) { err.textContent = e.message; err.style.display = 'block'; }
+}
+
+async function gembaLibDelete(kind, id) {
+  const areas = gembaLib ? gembaLib.focusAreas : [];
+  const label = kind === 'area'
+    ? (a => a ? `focus area ${a.code} — ${a.title} and its ${a.questions.length} question(s)` : 'this focus area')(areas.find(a => a.id === id))
+    : (x => x ? `question ${x.code} — ${x.title}` : 'this question')(areas.flatMap(a => a.questions).find(x => x.id === id));
+  if (!confirm(`Delete ${label}?\n\nFindings already logged keep their code and title; only the picker changes. Prefer "inactive" if the item may come back.`)) return;
+  try {
+    await apiFetch(`/gemba/library/${kind === 'area' ? 'focus-areas' : 'questions'}/${id}`, { method: 'DELETE' });
+    toast('Deleted');
+    await loadGembaLibrary();
+  } catch (e) { toast(e.message); }
+}
+
+// ── Import ──────────────────────────────────────────────────────────────────
+let glibImportRows = null;
+
+function openGembaLibImport() {
+  glibImportRows = null;
+  document.getElementById('glib-import-name').textContent = '';
+  document.getElementById('glib-import-preview').style.display = 'none';
+  document.getElementById('glib-import-error').style.display = 'none';
+  const btn = document.getElementById('glib-import-submit'); btn.disabled = true; btn.style.opacity = '.5';
+  document.getElementById('glib-import-modal').style.display = 'flex';
+}
+function closeGembaLibImport() { document.getElementById('glib-import-modal').style.display = 'none'; }
+
+/** Header row → column indexes (order-free, case-insensitive; same helper as Import Guide). */
+function gembaLibColumns(H) {
+  const areaCode = xlsxCol(H, ['focus area #', 'area #', 'area code', 'focusarea#', 'fa#', 'area no']);
+  const code     = xlsxCol(H, ['question code', 'q code', 'qcode', 'code']);
+  return {
+    areaCode:  areaCode ?? xlsxCol(H, ['#']),
+    areaTitle: xlsxCol(H, ['focus area', 'area', 'group']),
+    code,
+    title:     xlsxCol(H, ['question title', 'title', 'name']),
+    text:      xlsxCol(H, ['question text', 'question', 'text', 'prompt']),
+  };
+}
+
+function gembaLibRowsFromTable(rows) {
+  if (rows.length < 2) throw new Error('Sheet needs a header row plus at least one data row.');
+  const H = rows[0].map(h => (h || '').toString());
+  const col = gembaLibColumns(H);
+  if (col.areaCode === null) throw new Error('No "Focus Area #" column found in the header row.');
+  const cell = (r, c) => (c !== null && r[c] !== undefined && r[c] !== null) ? r[c].toString().trim() : '';
+  return rows.slice(1)
+    .filter(r => r.some(v => v !== undefined && v !== null && String(v).trim() !== ''))
+    .map(r => ({ areaCode: cell(r, col.areaCode), areaTitle: cell(r, col.areaTitle),
+                 code: cell(r, col.code), title: cell(r, col.title), text: cell(r, col.text) }));
+}
+
+/** Minimal CSV (quoted fields, commas, CRLF) → array of arrays. */
+function gembaLibParseCSV(text) {
+  const rows = []; let row = [], field = '', inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQ) {
+      if (ch === '"') { if (text[i + 1] === '"') { field += '"'; i++; } else inQ = false; }
+      else field += ch;
+    } else if (ch === '"') inQ = true;
+    else if (ch === ',') { row.push(field); field = ''; }
+    else if (ch === '\n' || ch === '\r') { if (ch === '\r' && text[i + 1] === '\n') i++; row.push(field); rows.push(row); row = []; field = ''; }
+    else field += ch;
+  }
+  if (field !== '' || row.length) { row.push(field); rows.push(row); }
+  return rows;
+}
+
+async function gembaLibImportFileChosen(event) {
+  const file = event.target.files?.[0];
+  event.target.value = '';
+  if (!file) return;
+  document.getElementById('glib-import-name').textContent = file.name;
+  const errEl = document.getElementById('glib-import-error');
+  errEl.style.display = 'none';
+  try {
+    let rows, payload = null;
+    if (/\.(xlsx|xls)$/i.test(file.name)) {
+      await ensureSheetJS();
+      const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      rows = gembaLibRowsFromTable(XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false }));
+    } else if (/\.csv$/i.test(file.name)) {
+      rows = gembaLibRowsFromTable(gembaLibParseCSV(await file.text()));
+    } else {
+      payload = JSON.parse(await file.text());          // our own export.json shape
+      if (!Array.isArray(payload.focusAreas)) throw new Error('JSON needs a "focusAreas" array (use ⬇ Export for the shape).');
+    }
+    glibImportRows = payload ? { focusAreas: payload.focusAreas } : { rows };
+    renderGembaLibImportPreview(file.name);
+  } catch (e) {
+    glibImportRows = null;
+    errEl.textContent = `Could not read file: ${e.message}`;
+    errEl.style.display = 'block';
+  }
+}
+
+function renderGembaLibImportPreview(sourceLabel) {
+  const box = document.getElementById('glib-import-preview');
+  const btn = document.getElementById('glib-import-submit');
+  const warnings = [];
+  let areas = new Set(), questions = 0;
+  if (glibImportRows.rows) {
+    glibImportRows.rows.forEach((r, i) => {
+      if (!r.areaCode) warnings.push(`Row ${i + 2}: focus area # missing.`);
+      else areas.add(r.areaCode.toUpperCase());
+      if (r.code) { questions++; if (!r.text) warnings.push(`Row ${i + 2} (${r.code}): question text is empty.`); }
+    });
+  } else {
+    glibImportRows.focusAreas.forEach(a => { areas.add(String(a.code || '').toUpperCase()); questions += (a.questions || []).length; });
+  }
+  const fatal = warnings.length > 0 || areas.size === 0;
+  box.style.display = 'block';
+  box.innerHTML =
+    `<b>${esc(sourceLabel)}</b><br><span style="color:var(--muted)">${areas.size} focus area${areas.size === 1 ? '' : 's'} · ${questions} question${questions === 1 ? '' : 's'}</span>` +
+    (warnings.length
+      ? `<div style="margin-top:6px;color:#f97316">${warnings.slice(0, 8).map(w => '⚠ ' + esc(w)).join('<br>')}${warnings.length > 8 ? `<br>… ${warnings.length - 8} more` : ''}</div>`
+      : `<div style="margin-top:6px;color:#22c55e">✓ Ready to import</div>`);
+  btn.disabled = fatal; btn.style.opacity = fatal ? '.5' : '1';
+}
+
+async function submitGembaLibImport() {
+  if (!glibImportRows) return;
+  const mode = document.querySelector('input[name="glib-mode"]:checked').value;
+  if (mode === 'replace' && !confirm('Replace the WHOLE library with this file? Everything not in the file is removed (findings keep their codes).')) return;
+  const errEl = document.getElementById('glib-import-error');
+  const btn = document.getElementById('glib-import-submit');
+  errEl.style.display = 'none'; btn.disabled = true; btn.textContent = 'Importing…';
+  try {
+    const r = await apiFetch('/gemba/library/import', { method: 'POST', body: JSON.stringify({ mode, ...glibImportRows }) });
+    closeGembaLibImport();
+    toast(`Imported · areas +${r.areasNew} ~${r.areasUpdated} · questions +${r.questionsNew} ~${r.questionsUpdated}`, 3500);
+    await loadGembaLibrary();
+  } catch (e) {
+    errEl.textContent = e.message; errEl.style.display = 'block';
+  } finally { btn.disabled = false; btn.textContent = 'Import'; }
+}
+
+async function gembaLibDownloadTemplate() {
+  try { await ensureSheetJS(); } catch (e) { toast(e.message); return; }
+  const rows = [
+    ['Focus Area #', 'Focus Area', 'Question Code', 'Question Title', 'Question'],
+    ['14', '6S Audits', 'P5141', '6S Procedure Awareness',    'Ask people whether they know where the 6S procedure is and what it requires of their area.'],
+    ['14', '6S Audits', 'P5142', 'Concept Understanding',     'Ask people to explain the 6S program to you in their own words (check for understanding of concepts).'],
+    ['14', '6S Audits', 'P5143', 'Audit Execution & Results', 'Check and see if 6S audits are taking place and review results for alignment with actual environment.'],
+    ['15', 'ESD Controls', '', '', ''],
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:13},{wch:26},{wch:14},{wch:28},{wch:70}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Audit Library');
+  XLSX.writeFile(wb, 'gemba-audit-library-template.xlsx');
+}
+
+async function gembaLibExport() {
+  try {
+    await downloadServerFile('/gemba/library/export.json', `gemba-library-${new Date().toISOString().slice(0, 10)}.json`);
+  } catch (e) { toast(e.message); }
 }
 
 /** Home tiles: live counts. /stats is public; usage adds today's runs. */
@@ -5362,11 +5718,40 @@ function buildGembaRow(tag) {
     }).join('');
   }
 
+  // G3: reference-list findings show category (Strength / OFI / NC) + risk
+  // and the question they were logged against; legacy findings keep the
+  // defect category. Photos (up to 6, with captions) live in the detail row.
+  const catMap = { STRENGTH: ['#22c55e', 'Strength'], OFI: ['#f59e0b', 'OFI'], NC: ['#ef4444', 'NC'] };
+  let catHtml = esc(tag.defectCategory || '—');
+  if (tag.findingCategory && catMap[tag.findingCategory]) {
+    const [col, lbl] = catMap[tag.findingCategory];
+    catHtml = `<span style="display:inline-block;padding:1px 7px;border-radius:999px;font-size:0.68rem;font-weight:700;color:${col};border:1px solid ${col}55;background:${col}18">${lbl}</span>`
+      + (Number.isInteger(tag.riskRating) ? ` <span style="font-size:0.68rem;color:var(--muted)" title="Preliminary risk rating">R${tag.riskRating}</span>` : '');
+  }
+  const refHtml = tag.questionCode
+    ? `<div style="font-size:0.68rem;color:var(--muted);font-weight:400;margin-top:2px">${esc(tag.focusAreaCode ? tag.focusAreaCode + ' · ' : '')}${esc(tag.questionCode)}${tag.questionTitle ? ' — ' + esc(tag.questionTitle) : ''}</div>`
+    : '';
+  const photos = (tag.photos && tag.photos.length) ? tag.photos
+    : (tag.referenceImagePath ? [{ path: tag.referenceImagePath }] : []);
+  const photoStrip = photos.length
+    ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">` + photos.map(p => `
+        <figure style="margin:0;width:96px">
+          <img class="td-thumb" style="width:96px;height:72px;object-fit:cover" data-evidence-url="/loc-tags/image/${encodeURIComponent(p.markupPath || p.path)}" src="" alt="finding photo" />
+          ${p.caption ? `<figcaption style="font-size:0.66rem;color:var(--muted);margin-top:2px;line-height:1.2">${esc(p.caption)}</figcaption>` : ''}
+        </figure>`).join('') + `</div>`
+    : '';
+  const questionBlock = tag.questionText
+    ? `<div style="font-size:0.74rem;color:var(--text);margin-bottom:8px"><b style="color:var(--muted);font-weight:600">${esc(tag.questionCode || '')}</b> ${esc(tag.questionText)}</div>`
+    : '';
+  const descBlock = tag.description
+    ? `<div style="font-size:0.74rem;color:var(--muted);margin-bottom:8px">${esc(tag.description)}</div>` : '';
+  historyContent = questionBlock + descBlock + photoStrip + historyContent;
+
   return `
     <tr onclick="toggleGembaHistory('${tid}')" style="cursor:pointer">
       <td style="white-space:nowrap">${stopBadge}</td>
-      <td style="font-weight:600;font-size:0.81rem">${esc(tag.title)}</td>
-      <td style="font-size:0.73rem;color:var(--muted)">${esc(tag.defectCategory || '—')}</td>
+      <td style="font-weight:600;font-size:0.81rem">${esc(tag.title)}${refHtml}</td>
+      <td style="font-size:0.73rem;color:var(--muted)">${catHtml}</td>
       <td>${sevHtml}</td>
       <td>${statusHtml}</td>
       <td style="font-size:0.78rem">${operatorHtml}</td>
@@ -5409,6 +5794,13 @@ function buildGembaCSV(anchorIds) {
   const header = [
     'Anchor', 'Stop #', 'Issue Title', 'Defect Category', 'Severity',
     'Status', 'Operator', 'Completed At', 'Note', 'Has Photo',
+    'Focus Area', 'Question Code', 'Question', 'Finding Category', 'Risk Rating', 'Photos', 'Description',
+  ];
+  const g3 = tag => [
+    tag.focusAreaCode ? `${tag.focusAreaCode} ${tag.focusAreaTitle || ''}`.trim() : '',
+    tag.questionCode || '', tag.questionTitle || '', tag.findingCategory || '',
+    Number.isInteger(tag.riskRating) ? tag.riskRating : '',
+    (tag.photos || []).length || (tag.referenceImagePath ? 1 : 0), tag.description || '',
   ];
   const rows = [];
   for (const anchorId of anchorIds) {
@@ -5418,14 +5810,14 @@ function buildGembaCSV(anchorIds) {
     for (const tag of tags) {
       const comps = gembaCompletions[tag.id] || [];
       if (comps.length === 0) {
-        rows.push([anchorName, tag.order + 1, tag.title, tag.defectCategory || '', tag.severity || '', 'PENDING', '', '', '', 'No']);
+        rows.push([anchorName, tag.order + 1, tag.title, tag.defectCategory || '', tag.severity || '', 'PENDING', '', '', '', 'No', ...g3(tag)]);
       } else {
         for (const c of comps) {
           rows.push([
             anchorName, tag.order + 1, tag.title,
             tag.defectCategory || '', tag.severity || '',
             c.status, c.operatorName || '', c.completedAt,
-            c.note || '', c.completionImagePath ? 'Yes' : 'No',
+            c.note || '', c.completionImagePath ? 'Yes' : 'No', ...g3(tag),
           ]);
         }
       }

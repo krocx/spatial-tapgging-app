@@ -103,13 +103,148 @@ struct LocTag: Codable, Identifiable, Equatable {
     let defectCategory:     DefectCategory
     let defectCategoryNote: String?
     /// Filename on the SIB evidence store — fetch via GET /loc-tags/image/:filename.
+    /// G3: always mirrors `photos.first?.path`.
     let referenceImagePath: String?
     /// ARKit world-space position within the saved ARWorldMap.
     let position:           SIBVector3
     /// Author-defined visit order — drives Operator navigation sequence.
     let order:              Int
+
+    // ── G3 (2026.4.46): reference-list finding — snapshot of what was chosen ──
+    var focusAreaCode:      String?
+    var focusAreaTitle:     String?
+    var questionCode:       String?
+    var questionTitle:      String?
+    var questionText:       String?
+    var findingCategory:    GembaFindingCategory?
+    var riskRating:         GembaRiskRating?
+    var photos:             [LocTagPhoto]?
+    /// G2: the walk session this finding belongs to.
+    var walkId:             String?
+
     let createdAt:          String
     let updatedAt:          String
+
+    /// Every photo on the finding, oldest first — falls back to the legacy
+    /// single reference image for findings logged before G3.
+    var allPhotos: [LocTagPhoto] {
+        if let photos, !photos.isEmpty { return photos }
+        if let referenceImagePath { return [LocTagPhoto(path: referenceImagePath, caption: nil, markupPath: nil, capturedAt: createdAt)] }
+        return []
+    }
+    /// "14 · P5142" style line for pills and rows; nil for legacy findings.
+    var referenceLine: String? {
+        guard let questionCode else { return nil }
+        return [focusAreaCode, questionCode].compactMap { $0 }.joined(separator: " · ")
+    }
+}
+
+/// One photo on a finding. Mirrors `LocTagPhoto` in shared/src/index.ts.
+struct LocTagPhoto: Codable, Equatable, Identifiable {
+    var id: String { path }
+    let path:       String
+    var caption:    String?
+    /// G5: the same photo with the auditor's markup, if any.
+    var markupPath: String?
+    let capturedAt: String
+}
+
+/// Upper bound on photos per finding (server enforces the same).
+let locTagMaxPhotos = 6
+
+// ============================================================
+// MARK: - Audit Reference Library (G1)
+// ============================================================
+
+/// Finding category — Corporate Quality vocabulary. Mirrors `GembaFindingCategory`.
+enum GembaFindingCategory: String, Codable, CaseIterable, Identifiable {
+    var id: String { rawValue }
+    case strength = "STRENGTH"
+    case ofi      = "OFI"
+    case nc       = "NC"
+
+    var displayName: String {
+        switch self {
+        case .strength: return "Strength"
+        case .ofi:      return "OFI"
+        case .nc:       return "NC"
+        }
+    }
+    var longName: String {
+        switch self {
+        case .strength: return "Strength"
+        case .ofi:      return "Opportunity for Improvement"
+        case .nc:       return "Non-Conformance"
+        }
+    }
+    var symbol: String {
+        switch self {
+        case .strength: return "hand.thumbsup.fill"
+        case .ofi:      return "lightbulb.fill"
+        case .nc:       return "exclamationmark.triangle.fill"
+        }
+    }
+}
+
+/// Preliminary risk rating 0–3. Mirrors `GembaRiskRating`.
+enum GembaRiskRating: Int, Codable, CaseIterable, Identifiable {
+    var id: Int { rawValue }
+    case noRisk = 0, minor = 1, medium = 2, high = 3
+
+    var displayName: String {
+        switch self {
+        case .noRisk: return "0 — No risk"
+        case .minor:  return "1 — Minor risk"
+        case .medium: return "2 — Medium risk"
+        case .high:   return "3 — High risk"
+        }
+    }
+    var shortName: String {
+        switch self {
+        case .noRisk: return "R0"; case .minor: return "R1"; case .medium: return "R2"; case .high: return "R3"
+        }
+    }
+}
+
+/// A numbered audit focus area. Mirrors `GembaFocusArea` (+ nested questions from GET /gemba/library).
+struct GembaFocusArea: Codable, Identifiable, Equatable {
+    let id:        String
+    let code:      String
+    let title:     String
+    let order:     Int
+    let active:    Bool
+    var questions: [GembaQuestion]
+
+    var displayName: String { "\(code) — \(title)" }
+}
+
+/// A pre-defined question under a focus area. Mirrors `GembaQuestion`.
+struct GembaQuestion: Codable, Identifiable, Equatable {
+    let id:          String
+    let focusAreaId: String
+    let code:        String
+    let title:       String
+    let text:        String
+    let order:       Int
+    let active:      Bool
+}
+
+/// GET /gemba/library — everything a walk needs, one call. Mirrors `GembaLibrary`.
+struct GembaLibrary: Codable, Equatable {
+    struct CategoryEntry: Codable, Equatable { let code: GembaFindingCategory; let label: String }
+    struct RatingEntry:   Codable, Equatable { let value: GembaRiskRating; let label: String }
+    let focusAreas: [GembaFocusArea]
+    let categories: [CategoryEntry]
+    let ratings:    [RatingEntry]
+    let version:    String
+
+    static let empty = GembaLibrary(focusAreas: [], categories: [], ratings: [], version: "0")
+
+    func question(code: String?) -> (area: GembaFocusArea, question: GembaQuestion)? {
+        guard let code else { return nil }
+        for a in focusAreas { if let q = a.questions.first(where: { $0.code == code }) { return (a, q) } }
+        return nil
+    }
 }
 
 /// Request body for POST /loc-tags.
@@ -122,8 +257,16 @@ struct CreateLocTagRequest: Codable {
     let defectCategoryNote:   String?
     let position:             SIBVector3
     let order:                Int
-    /// Base64-encoded JPEG reference photo captured at tag placement.
+    /// Base64-encoded JPEG reference photo captured at tag placement (legacy single photo).
     let referenceImageBase64: String?
+    // ── G3 ──
+    /// The server resolves the code against the Audit Reference Library and snapshots area/question.
+    var questionCode:         String?
+    var findingCategory:      GembaFindingCategory?
+    var riskRating:           GembaRiskRating?
+    /// Photos with captions, capture order; the first becomes the reference image.
+    var photosBase64:         [LocTagPhotoUpload]?
+    var walkId:               String?
 
     init(
         anchorId:            String,
@@ -134,7 +277,12 @@ struct CreateLocTagRequest: Codable {
         defectCategoryNote:  String?        = nil,
         position:            SIBVector3,
         order:               Int,
-        referenceImage:      UIImage?       = nil
+        referenceImage:      UIImage?       = nil,
+        questionCode:        String?        = nil,
+        findingCategory:     GembaFindingCategory? = nil,
+        riskRating:          GembaRiskRating?      = nil,
+        photos:              [(image: UIImage, caption: String?)] = [],
+        walkId:              String?        = nil
     ) {
         self.anchorId            = anchorId
         self.title               = title
@@ -147,7 +295,31 @@ struct CreateLocTagRequest: Codable {
         self.referenceImageBase64 = referenceImage.flatMap {
             $0.jpegData(compressionQuality: 0.65)?.base64EncodedString()
         }
+        self.questionCode        = questionCode
+        self.findingCategory     = findingCategory
+        self.riskRating          = riskRating
+        let uploads = photos.compactMap { LocTagPhotoUpload(image: $0.image, caption: $0.caption) }
+        self.photosBase64        = uploads.isEmpty ? nil : uploads
+        self.walkId              = walkId
     }
+}
+
+/// One photo in a create / append request. Mirrors `{ base64, caption? }`.
+struct LocTagPhotoUpload: Codable {
+    let base64:  String
+    let caption: String?
+
+    init?(image: UIImage, caption: String?) {
+        guard let data = image.jpegData(compressionQuality: 0.65) else { return nil }
+        self.base64  = data.base64EncodedString()
+        let c = caption?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        self.caption = c.isEmpty ? nil : c
+    }
+}
+
+/// Request body for POST /loc-tags/:id/photos.
+struct AppendLocTagPhotosRequest: Codable {
+    let photosBase64: [LocTagPhotoUpload]
 }
 
 // ============================================================
@@ -220,19 +392,35 @@ struct UpdateLocTagRequest: Codable {
     var severity:           Severity?
     var defectCategory:     DefectCategory?
     var defectCategoryNote: String?
+    // ── G3 ── (nil = leave unchanged; the server treats an explicit null as "clear")
+    var questionCode:       String?
+    var findingCategory:    GembaFindingCategory?
+    var riskRating:         GembaRiskRating?
+    /// Caption edits: only `path` + `caption` are read by the server.
+    var photos:             [PhotoCaption]?
+
+    struct PhotoCaption: Codable { let path: String; let caption: String? }
 
     init(
         title:              String?        = nil,
         description:        String?        = nil,
         severity:           Severity?      = nil,
         defectCategory:     DefectCategory? = nil,
-        defectCategoryNote: String?        = nil
+        defectCategoryNote: String?        = nil,
+        questionCode:       String?        = nil,
+        findingCategory:    GembaFindingCategory? = nil,
+        riskRating:         GembaRiskRating?      = nil,
+        photos:             [PhotoCaption]?       = nil
     ) {
         self.title              = title
         self.description        = description
         self.severity           = severity
         self.defectCategory     = defectCategory
         self.defectCategoryNote = defectCategoryNote
+        self.questionCode       = questionCode
+        self.findingCategory    = findingCategory
+        self.riskRating         = riskRating
+        self.photos             = photos
     }
 }
 
