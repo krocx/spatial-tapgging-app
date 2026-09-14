@@ -52,6 +52,12 @@ header h1 a{color:var(--text);text-decoration:none;}
 #modeHint{position:absolute;right:14px;top:50px;font-size:10.5px;color:var(--muted);text-align:right;pointer-events:none;letter-spacing:.03em;}
 #zoomCtl{position:absolute;right:14px;top:70px;display:flex;flex-direction:column;gap:4px;z-index:5;}
 #graph.stacked .coreglow,#graph.stacked .halo{display:none;}
+#focusBar{position:absolute;right:14px;bottom:14px;z-index:5;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text);
+  background:rgba(17,26,46,.8);backdrop-filter:blur(10px);border:1px solid var(--border);border-radius:10px;padding:6px 10px;}
+#focusBar .fdot{width:8px;height:8px;border-radius:50%;background:var(--muted);}
+#focusBar .fdot.on{background:#35c635;box-shadow:0 0 8px #35c635;}
+#focusBar .fk{font-size:10px;color:var(--muted);border:1px solid var(--border);border-radius:4px;padding:1px 5px;}
+#focusBar .btn{padding:4px 10px;font-size:12px;}
 #zoomCtl button{width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:rgba(17,26,46,.75);backdrop-filter:blur(8px);color:var(--text);
   font-size:15px;cursor:pointer;line-height:1;}
 #zoomCtl button:hover{border-color:var(--accent);}
@@ -214,6 +220,7 @@ text.coresub{font-size:8.5px;fill:#bfdbfe;letter-spacing:.06em;pointer-events:no
     <svg id="graph"></svg>
     <div id="modeCtl"><button id="mode2d" class="on" title="Flat disc (key 2)">2D</button><button id="mode3d" title="Products stacked as layers (key 3)">3D</button></div>
     <div id="modeHint"></div>
+    <div id="focusBar" style="display:none"></div>
     <div id="zoomCtl">
       <button id="zoomIn" title="Zoom in">+</button>
       <button id="zoomOut" title="Zoom out">−</button>
@@ -540,6 +547,30 @@ function setMode(m3d, instant = false){
   history.replaceState(null, '', (h || '#') + (m3d ? (h && h !== '#' ? '&3d' : '?3d') : ''));
 }
 
+/* ═══════════════ focus — a quick look at one node's relationships ═══════════════
+   Pinned with the ◎ Focus button, F, or a double-click; also engages by
+   itself once you're zoomed in (k ≥ 1.35) on a selected node. First-degree
+   neighbours stay bright and labelled, second-degree ghost in for context,
+   everything else — nodes, edges, other layers — recedes. Esc leaves. */
+let focusPin = false;
+let focusAreas = null;                       // set of areas the focus touches (3D wedge dimming)
+const inFocus = () => !!selected && (focusPin || view.k >= 1.35);
+function setFocus(on){
+  focusPin = !!on && !!selected;
+  if (focusPin) zoomToFeature(selected);
+  renderFocusBar(); markDirty();
+}
+function renderFocusBar(){
+  const bar = document.getElementById('focusBar');
+  if (!selected){ bar.style.display = 'none'; return; }
+  const on = inFocus();
+  bar.style.display = 'flex';
+  bar.innerHTML = on
+    ? `<span class="fdot on"></span><b>Focused</b> on ${esc(byId[selected].name)} <span class="fk">Esc</span> exit`
+    : `<button class="btn" id="focusBtn">◎ Focus on ${esc(byId[selected].name.slice(0, 26))}</button><span class="fk">F</span>`;
+  const b = bar.querySelector('#focusBtn'); if (b) b.onclick = () => setFocus(true);
+}
+
 /* ═══════════════ drawing ═══════════════ */
 const svg = document.getElementById('graph');
 let view = { x:0, y:0, k:1 };
@@ -571,6 +602,7 @@ function buildStatic(){
     // Name path on the rim: bottom sectors run the arc the other way so the
     // text never reads upside down.
     const rr = R_MAX + 62, bottom = Math.sin(a.amid) > 0;
+    a.rimFs = rimFontSize(a.name, rr * (a.g1 - a.g0 - 0.06));
     out += `<path id="ap-${a.id}" d="${bottom ? arcPath(rr, a.g1 - 0.03, a.g0 + 0.03) : arcPath(rr, a.g0 + 0.03, a.g1 - 0.03)}"/>`;
   }
   out += '</defs>';
@@ -579,7 +611,7 @@ function buildStatic(){
     out += `<g class="wedge" data-area="${a.id}" style="--i:${i}">
       <path d="${wedgePath(R_MIN - 40, R_MAX + 46, a.g0 + 0.012, a.g1 - 0.012)}" fill="url(#wg-${a.id})" stroke="${a.color}" stroke-opacity=".22" stroke-width="1"/>
       <path d="${arcPath(R_MAX + 46, a.g0 + 0.012, a.g1 - 0.012)}" fill="none" stroke="${a.color}" stroke-opacity=".8" stroke-width="3"/>
-      <text class="albl" fill="${a.color}" data-area="${a.id}"><textPath href="#ap-${a.id}" startOffset="50%" text-anchor="middle">${esc(a.name).toUpperCase()}</textPath></text>
+      <text class="albl" fill="${a.color}" data-area="${a.id}" font-size="${a.rimFs}"><textPath href="#ap-${a.id}" startOffset="50%" text-anchor="middle">${esc(a.name).toUpperCase()}</textPath></text>
     </g>`;
   });
   // depth rings
@@ -604,12 +636,20 @@ function buildStatic(){
   staticSvg = out;
 }
 // The same picture, projected: one call per frame while stacked.
+// A rim name must fit its arc — short sectors (and foreshortened ones in 3D)
+// get a smaller face rather than a clipped word.
+function rimFontSize(name, arcLen){
+  const n = name.length, per = 0.64 + 0.22;          // glyph + letter-spacing, in em
+  return Math.max(7.5, Math.min(13, (arcLen * 0.9) / (n * per)));
+}
+const polyLen = pts => { let l = 0; for (let i = 1; i < pts.length; i++) l += Math.hypot(pts[i].x - pts[i-1].x, pts[i].y - pts[i-1].y); return l; };
 function buildStatic3D(){
   const layers = [...DATA.areas].sort((a, b) => layerIndex[a.id] - layerIndex[b.id]);
   let out = `<defs><radialGradient id="coreGrad"><stop offset="0" stop-color="#93c5fd" stop-opacity=".95"/><stop offset=".45" stop-color="#3b82f6" stop-opacity=".55"/><stop offset="1" stop-color="#3b82f6" stop-opacity="0"/></radialGradient>`;
   for (const a of layers){
     const z = zOf(a.id), outer = sampleArc(R_MAX + 62, a.g0 + 0.03, a.g1 - 0.03, z, 24);
     const pts = outer[0].x <= outer[outer.length - 1].x ? outer : outer.reverse();
+    a.rimFs3 = rimFontSize(a.name, polyLen(pts));
     out += `<path id="ap3-${a.id}" d="${poly(pts)}"/>`;
   }
   out += '</defs>';
@@ -621,7 +661,7 @@ function buildStatic3D(){
   // far layers first
   const byDepth = layers.map(a => ({ a, d: P(CX, CY, zOf(a.id)).d })).sort((x, y) => y.d - x.d);
   for (const { a } of byDepth){
-    const z = zOf(a.id), dim = activeAreas.size && !activeAreas.has(a.id);
+    const z = zOf(a.id), dim = (activeAreas.size && !activeAreas.has(a.id)) || (focusAreas && !focusAreas.has(a.id));
     const disc = sampleArc(R_MAX + 46, 0, Math.PI * 2, z, 64);
     const o = sampleArc(R_MAX + 46, a.g0 + 0.012, a.g1 - 0.012, z, 30);
     const inn = sampleArc(R_MIN - 40, a.g1 - 0.012, a.g0 + 0.012, z, 18);
@@ -631,7 +671,7 @@ function buildStatic3D(){
       <path d="${poly(o.concat(inn), true)}" fill="${a.color}" fill-opacity=".13" stroke="${a.color}" stroke-opacity=".28" stroke-width="1"/>
       <path d="${poly(o)}" fill="none" stroke="${a.color}" stroke-opacity=".85" stroke-width="3"/>
       <path d="${poly(hub, true)}" fill="#0b1220" stroke="#93c5fd" stroke-opacity=".7" stroke-width="1.2"/>
-      <text class="albl" fill="${a.color}" data-area="${a.id}"><textPath href="#ap3-${a.id}" startOffset="50%" text-anchor="middle">${esc(a.name).toUpperCase()}</textPath></text>
+      <text class="albl" fill="${a.color}" data-area="${a.id}" font-size="${a.rimFs3}"><textPath href="#ap3-${a.id}" startOffset="50%" text-anchor="middle">${esc(a.name).toUpperCase()}</textPath></text>
     </g>`;
   }
   // the core, at the foot of the spine
@@ -690,19 +730,24 @@ function draw(){
   const ts = trailSet();
   const neighbours = neighbourSet(selected);
   const hov = neighbourSet(hovered);
+  const focus = inFocus();
+  let n2 = null;                              // second-degree ring when focused
+  if (focus){ n2 = new Set(); for (const id of neighbours) for (const m of neighbourSet(id)) n2.add(m); }
+  focusAreas = focus ? new Set([...neighbours].map(i => byId[i].area)) : null;
+  renderFocusBar();
   const showAll = view.k >= 0.85;                // semantic labels: everything at reading zoom
   const tf = `translate(${view.x},${view.y}) scale(${view.k})`;
   const dimArea = a => activeAreas.size && !activeAreas.has(a);
   const flat = stack.t === 0;
   let out = `<g transform="${tf}">${flat ? staticSvg : buildStatic3D()}</g><g transform="${tf}">`;
   // dim filtered wedges via an overlay (static layer stays untouched)
-  if (flat) for (const a of DATA.areas) if (dimArea(a.id))
-    out += `<path d="${wedgePath(R_MIN - 40, R_MAX + 80, a.g0, a.g1)}" fill="#0b1220" fill-opacity=".72" pointer-events="none"/>`;
+  if (flat) for (const a of DATA.areas) if (dimArea(a.id) || (focusAreas && !focusAreas.has(a.id)))
+    out += `<path d="${wedgePath(R_MIN - 40, R_MAX + 80, a.g0, a.g1)}" fill="#0b1220" fill-opacity="${focusAreas ? .55 : .72}" pointer-events="none"/>`;
   // projected node positions for this frame
   for (const nd of nodes){ const p = P(nd.x, nd.y, zOf(nd.area)); nd.px = p.x; nd.py = p.y; nd.ps = p.s; nd.pd = p.d; }
   const layerOf = a => layerIndex[a] || 0;
   // edges
-  const focus = selected || hovered;
+  const focusId = selected || hovered;
   for (const e of edges){
     const vis = nodeVisible(e.s) && nodeVisible(e.t);
     let op = vis ? 0.22 : 0.03;
@@ -711,7 +756,11 @@ function draw(){
     else if (selected) op = touches(neighbours) && (e.s.id === selected || e.t.id === selected) ? 0.95 : 0.06;
     else if (hovered) op = touches(hov) && (e.s.id === hovered || e.t.id === hovered) ? 0.9 : 0.08;
     else if (searchQ) op = (nodeMatches(e.s) && nodeMatches(e.t)) ? 0.45 : 0.04;
-    const lit = focus && (e.s.id === focus || e.t.id === focus);
+    if (focus){
+      const touchesSel = e.s.id === selected || e.t.id === selected;
+      op = touchesSel ? 0.95 : (n2.has(e.s.id) && n2.has(e.t.id) && (neighbours.has(e.s.id) || neighbours.has(e.t.id))) ? 0.22 : 0.015;
+    }
+    const lit = focusId && (e.s.id === focusId || e.t.id === focusId);
     const d = edgePath(e);
     out += `<path d="${d}" fill="none" stroke="${areaById[e.s.area].color}" stroke-width="${lit ? 2 : 1.1}" opacity="${op}"/>`;
     // Flow: light runs from the dependency to what builds on it.
@@ -740,7 +789,7 @@ function draw(){
   // priority: the focused set first, then everything else
   for (const nd of order){ const isSel = nd.id === selected, isHov = nd.id === hovered; if (isSel || isHov || neighbours.has(nd.id) || hov.has(nd.id)) dyById[nd.id] = labelPos(nd, isSel ? 11 : isHov ? 10 : 8, true); }
   for (const nd of order){ if (nd.id in dyById) continue;
-    const want = showAll || (ts && ts.has(nd.id)) || (searchQ && nodeMatches(nd));
+    const want = !focus && (showAll || (ts && ts.has(nd.id)) || (searchQ && nodeMatches(nd)));
     dyById[nd.id] = labelPos(nd, 8, want); }
   // nodes — far layers first when stacked
   const drawOrder = flat ? nodes : [...nodes].sort((p, q) => q.pd - p.pd);
@@ -751,6 +800,7 @@ function draw(){
     else if (selected) op = neighbours.has(nd.id) ? 1 : (nodeVisible(nd) ? 0.45 : 0.07);
     else if (hovered) op = hov.has(nd.id) ? 1 : (nodeVisible(nd) ? 0.35 : 0.07);
     else if (searchQ) op = nodeMatches(nd) && nodeVisible(nd) ? 1 : 0.07;
+    if (focus) op = neighbours.has(nd.id) ? 1 : n2.has(nd.id) ? 0.3 : 0.05;
     const isSel = nd.id === selected, isHov = nd.id === hovered;
     // Stacked + selected: layers the selection doesn't touch fade back.
     if (!flat && selected && !neighbours.has(nd.id)){
@@ -824,6 +874,11 @@ document.getElementById('mode3d').onclick = () => setMode(true);
 window.addEventListener('keydown', ev => {
   if (ev.target.matches('input, textarea') || ev.metaKey || ev.ctrlKey) return;
   if (ev.key === '2') setMode(false); else if (ev.key === '3') setMode(true);
+  else if (ev.key === 'f' || ev.key === 'F'){ if (selected) setFocus(!focusPin); }
+  else if (ev.key === 'Escape'){
+    if (focusPin || inFocus()){ focusPin = false; if (view.k >= 1.35) fitAll(); renderFocusBar(); markDirty(); }
+    else if (selected){ selected = null; renderHome(); markDirty(); }
+  }
 });
 
 /* pan / zoom / node drag / click / hover */
@@ -878,19 +933,21 @@ svg.addEventListener('pointerup', ev => {
   } else if (drag && drag.type === 'area'){
     showArea(drag.id); zoomToArea(drag.id);
   } else if (drag && !drag.moved){
-    selected = null; renderHome();
+    selected = null; focusPin = false; renderHome(); renderFocusBar();
   }
   drag = null;
 });
 svg.addEventListener('pointerleave', () => { if (hovered){ hovered = null; hideTip(); markDirty(); } });
 svg.addEventListener('dblclick', ev => {
-  const g = ev.target.closest('g[data-id]'); if (g) zoomToFeature(g.dataset.id);
+  const g = ev.target.closest('g[data-id]'); if (!g) return;
+  selectFeature(g.dataset.id); setFocus(true);
 });
 svg.addEventListener('wheel', ev => {
   ev.preventDefault();
   const p = svgPoint(ev);
   const k2 = Math.max(0.4, Math.min(3.5, view.k * (ev.deltaY < 0 ? 1.12 : 0.89)));
   view.x += p.x * (view.k - k2); view.y += p.y * (view.k - k2); view.k = k2; markDirty();
+  renderFocusBar();
 }, { passive:false });
 
 // Node tooltip: what it is before you commit a click.
@@ -1044,6 +1101,8 @@ function showArea(id){
 
 function selectFeature(id){
   selected = id; markDirty();
+  if (focusPin) zoomToFeature(id);
+  renderFocusBar();
   const want = '#' + id + (mode3d ? '?3d' : '');
   if (location.hash !== want) history.replaceState(null, '', want);
   showFeature(id);

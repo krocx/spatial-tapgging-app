@@ -114,6 +114,15 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **Feature Catalogue — Focus.** A quick look at one node's relationships
+  without the rest diluting it: **◎ Focus** (bottom-right when a feature is
+  selected), key **F**, or a double-click pins focus and flies to the node;
+  it also engages by itself once you are zoomed in (≥ 1.35×) on a selection.
+  First-degree neighbours stay bright and labelled with flow on their links,
+  second-degree ghost in at 30 % for context, everything else — nodes,
+  edges, untouched product wedges / layers — recedes; **Esc** leaves. Rim
+  names now size themselves to their arc (2D and, per frame, the
+  foreshortened arc in 3D) instead of clipping.
 - **Feature Catalogue — 2D ⇄ 3D.** A `2D | 3D` switch (keys `2` / `3`)
   lifts each product wedge to its own layer along the SIB **spine**; the flat
   disc is the same picture seen from above, so the switch is one camera move
