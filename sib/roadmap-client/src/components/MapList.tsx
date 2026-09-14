@@ -73,6 +73,7 @@ export function MapList(): JSX.Element {
 
       {/* ── Identity chip + ⋯ menu (top-right) ── */}
       <div className="home-corner">
+        <span data-brand-slot style={{ display: 'flex', alignItems: 'center', marginRight: 6 }} />
         <button className="home-chip" onClick={() => { setIdentityOpen(v => !v); setMenuOpen(false); }}>
           <Icon name="person" size={14} /> {userName.trim() || 'Set your name'}
         </button>

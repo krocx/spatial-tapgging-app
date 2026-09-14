@@ -116,7 +116,7 @@
   .sibc-crumb a{color:#aab1d6;text-decoration:none}.sibc-crumb a:hover{color:#fff}.sibc-crumb b{color:#fff;font-weight:600}.sibc-crumb i{opacity:.45;font-style:normal}
   .sibc-veil{position:fixed;inset:0;z-index:9500;background:rgba(6,8,16,.62);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center}
   .sibc-veil.open{display:flex}
-  .sibc-map{position:relative;width:min(760px,94vw);height:min(600px,86vh);color:#e5e9f2;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif}
+  .sibc-map{position:relative;width:min(1180px,96vw);height:min(780px,88vh);color:#e5e9f2;font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif}
   .sibc-map svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
   .sibc-node{position:absolute;transform:translate(-50%,-50%);text-decoration:none;color:#e5e9f2;text-align:center;opacity:0;
     transition:opacity .25s,transform .35s cubic-bezier(.2,.9,.3,1.3)}
@@ -130,12 +130,12 @@
   .sibc-node .n{font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px;background:rgba(255,255,255,.14)}
   .sibc-node .live{width:7px;height:7px;border-radius:50%;background:#22c55e;animation:sibc-pulse 1.6s ease-in-out infinite}
   .sibc-node .hint{display:block;font-size:10.5px;color:#aab1d6;margin-top:3px;font-weight:400}
-  .sibc-foot{position:absolute;left:0;right:0;bottom:-8px;display:flex;flex-direction:column;gap:8px;align-items:center}
+  .sibc-foot{position:absolute;left:0;right:0;bottom:0;display:flex;flex-direction:column;gap:8px;align-items:center}
   .sibc-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center;font-size:11.5px;color:#aab1d6}
   .sibc-row .chip{color:#e5e9f2;text-decoration:none;border:1px solid rgba(255,255,255,.14);background:rgba(20,26,44,.85);border-radius:999px;padding:5px 10px;font-weight:600}
   .sibc-row .chip:hover{border-color:#fff}.sibc-row .chip.next{border-color:rgba(94,234,212,.6);color:#5eead4}
-  .sibc-keys{position:absolute;top:-6px;right:0;font-size:10.5px;color:#7c86ad;font-family:ui-monospace,Menlo,monospace}
-  .sibc-close{position:absolute;top:-6px;left:0;background:none;border:none;color:#aab1d6;font-size:20px;cursor:pointer}
+  .sibc-keys{position:absolute;top:0;left:34px;font-size:10.5px;color:#7c86ad;font-family:ui-monospace,Menlo,monospace}
+  .sibc-close{position:absolute;top:-8px;left:0;background:none;border:none;color:#aab1d6;font-size:20px;cursor:pointer}
   @media (prefers-reduced-motion: reduce){.sibc-node,.sibc-btn,.sibc-node .pill{transition:none}.sibc-btn.live .dot,.sibc-node .live{animation:none}}
   @media (max-width:640px){.sibc-crumb{display:none}.sibc-node .hint{display:none}.sibc-node.leaf{display:none}}
   `;
@@ -231,20 +231,57 @@
   function renderMap() {
     const path = locate();
     const W = mapEl.clientWidth, H = mapEl.clientHeight;
-    const cx = W / 2, cy = H / 2 - 28;
-    const R1 = Math.min(W, H) * 0.30, R2 = Math.min(W, H) * 0.46;
+    // Two ellipses: hubs on the inner one, their stops on the outer one. The
+    // foot (where-next / recents) needs ~90 px, so the centre sits a little
+    // high. Radii use the WIDTH — a laptop is wide, use it.
+    const cx = W / 2, cy = (H - 90) / 2 + 10;
+    const rx1 = W * 0.26, ry1 = (H - 90) * 0.28;
+    const rx2 = W * 0.47, ry2 = (H - 90) * 0.48;
     const hubs = TREE.children;
     const pos = { sib: [cx, cy] };
+    // Each hub owns an angular SECTOR sized by how many stops it has, so
+    // Portal (7) gets the wide top arc and Wireframe (0) a sliver — leaves of
+    // neighbouring hubs can never land on each other. Portal is centred at 12
+    // o'clock; the rest follow clockwise.
+    const weights = hubs.map(h => Math.max((h.children || []).length, 2.5));
+    const total = weights.reduce((a, b) => a + b, 0);
+    let start = -Math.PI / 2 - (weights[0] / total) * Math.PI;   // Portal's sector straddles the top
     hubs.forEach((h, i) => {
-      const a = -Math.PI / 2 + (i / hubs.length) * Math.PI * 2;
-      pos[h.id] = [cx + R1 * Math.cos(a), cy + R1 * Math.sin(a)];
+      const sector = (weights[i] / total) * Math.PI * 2;
+      const a = start + sector / 2;
+      pos[h.id] = [cx + rx1 * Math.cos(a), cy + ry1 * Math.sin(a)];
       const kids = h.children || [];
-      const spread = Math.min(Math.PI / 2.2, kids.length * 0.34);
+      const spread = kids.length <= 1 ? 0 : sector * 0.82;
       kids.forEach((k, j) => {
         const b = a + (kids.length === 1 ? 0 : (-spread / 2 + (j / (kids.length - 1)) * spread));
-        pos[k.id] = [cx + R2 * Math.cos(b), cy + R2 * Math.sin(b)];
+        pos[k.id] = [cx + rx2 * Math.cos(b), cy + ry2 * Math.sin(b)];
       });
+      start += sector;
     });
+
+    // Relax: the ring puts 16 stops on one ellipse, which is tight on a
+    // laptop. A few hundred cheap push-apart passes guarantee no two nodes
+    // sit closer than MIN px (hubs move a third as much, so the ring shape
+    // survives); everything stays inside the map with a margin.
+    const MIN = 150, PAD = 70;
+    const ids = Object.keys(pos).filter(id => id !== 'sib');
+    const isHub = new Set(hubs.map(h => h.id));
+    for (let it = 0; it < 300; it++) {
+      for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) {
+        const a = pos[ids[i]], b = pos[ids[j]];
+        let dx = b[0] - a[0], dy = b[1] - a[1];
+        const d = Math.hypot(dx, dy) || 1;
+        if (d >= MIN) continue;
+        const push = (MIN - d) / 4; dx /= d; dy /= d;
+        const wa = isHub.has(ids[i]) ? 0.3 : 1, wb = isHub.has(ids[j]) ? 0.3 : 1;
+        a[0] -= dx * push * wa; a[1] -= dy * push * wa;
+        b[0] += dx * push * wb; b[1] += dy * push * wb;
+      }
+      for (const id of ids) {
+        pos[id][0] = Math.min(W - PAD, Math.max(PAD, pos[id][0]));
+        pos[id][1] = Math.min(H - 120, Math.max(PAD, pos[id][1]));
+      }
+    }
 
     // Edges
     let svg = `<svg viewBox="0 0 ${W} ${H}">`;

@@ -7,6 +7,12 @@ it, it gets a line.
 ## 2026.4.46 — 2026-09-08
 
 ### Fixed
+- **SIB Compass map was cramped; brand strip overlapped the Procedure
+  Designer toolbar.** The map is now larger (up to 1180×780), hubs get
+  sectors sized by their stop count, and a push-apart pass keeps every node
+  ≥150 px from its neighbours. `brand.js` docks the strip into a
+  `[data-brand-slot]` when a surface provides one (Procedure Designer home
+  corner and editor toolbar) instead of floating over it.
 - **Guide run wayfinding — arrow only when you can't see the pin (iOS)**.
   The 3D floor arrow stayed up while the pin was plainly on screen, floating
   over the model. It now hides whenever the pin is in view (central 85 % of

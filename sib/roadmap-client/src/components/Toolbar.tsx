@@ -284,6 +284,8 @@ export function Toolbar(): JSX.Element | null {
       </div>
 
       {statusMessage ? <span className="status-msg">{statusMessage}</span> : null}
+      {/* Brand strip docks here (brand.js) instead of floating over the buttons. */}
+      <span data-brand-slot style={{ display: 'flex', alignItems: 'center', marginLeft: 'auto' }} />
     </div>
   );
 }

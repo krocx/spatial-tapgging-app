@@ -38,8 +38,15 @@
       };
       strip.appendChild(img);
     }
-    const slot = document.querySelector('[data-brand-slot]');
-    if (slot) slot.appendChild(strip); else { strip.classList.add('float'); document.body.appendChild(strip); }
+    // Dock into a slot when one exists, float otherwise — and keep watching:
+    // SPA surfaces (the roadmap) mount and unmount their slots as routes change.
+    const place = () => {
+      const slot = document.querySelector('[data-brand-slot]');
+      if (slot) { if (strip.parentElement !== slot) { strip.classList.remove('float'); slot.appendChild(strip); } }
+      else if (!strip.classList.contains('float')) { strip.classList.add('float'); document.body.appendChild(strip); }
+    };
+    place();
+    new MutationObserver(place).observe(document.body, { childList: true, subtree: true });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', build); else build();
 
