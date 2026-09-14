@@ -114,6 +114,23 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **Platform wordmark — "appliedx Connected Worker AR OMS Platform".** The
+  home page, portal header, catalogue, /platform and the long-form page now
+  carry the team's wordmark the way it is written in decks: *applied* in
+  AppliedX blue (#66b3ff), *x* in green (#35c635), Roboto Regular (fetched
+  when reachable, system sans on the LAN). `brand.js` renders any element
+  with `data-ax-wordmark` so a page never hand-copies the colours; the ⚡ is
+  gone from the home header.
+- **Feature Catalogue caught up to 2026.4.46.** Fifteen new cards for
+  everything shipped after the `.tag` emitter — kiosk shift start, usage log,
+  production-verified resume, step validation, chamber configurations, copy /
+  duplicate / model slots, sealed world maps, object anchoring, presence &
+  coaching, moment coach, device logs, SIB Compass, portal guided assistance,
+  the /platform story and the Gemba "walk together" set — each with API lines
+  validated against the real routes and an architecture diagram. Existing
+  cards (LocTags, walk sessions, ghost overlays, evidence, guide move) and
+  the four area flows were updated; the deep dives live in the new
+  `docs/CONNECTED-WORKER.md`; `docs/FEATURE-CATALOG.md` gains section 8.
 - **Gemba Walk — every photo in the Excel export, plus Summary and Photos
   sheets.** Auditors expect the workbook to carry the evidence, not just the
   first picture. The walk export is now three sheets: **Summary** (one row per

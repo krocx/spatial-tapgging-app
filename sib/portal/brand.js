@@ -17,7 +17,18 @@
     { file: 'logo-amat.png',     label: 'Applied Materials', h: 22 },
     { file: 'logo-appliedx.png', label: 'AppliedX',          h: 26 },
   ];
+  // The platform wordmark — "appliedx Connected Worker AR OMS Platform":
+  // "applied" in AppliedX blue, "x" in AppliedX green, Roboto Regular (400),
+  // exactly as the team writes it in decks. Any element carrying
+  // `data-ax-wordmark` is rendered as the full name; add `data-short` for
+  // just "appliedx". Roboto is fetched from Google Fonts when reachable and
+  // falls back to the system sans on the LAN — the colours carry the mark.
+  const AX_BLUE = '#66b3ff', AX_GREEN = '#35c635';
   const css = `
+    .ax-wordmark { font-family:Roboto,-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif; font-weight:400; letter-spacing:-.01em; white-space:nowrap; }
+    .ax-wordmark .ax-a { color:${AX_BLUE}; }
+    .ax-wordmark .ax-x { color:${AX_GREEN}; }
+    .ax-wordmark .ax-rest { margin-left:.28em; }
     .ax-brand { display:flex; align-items:center; gap:14px; }
     .ax-brand.float { position:fixed; top:10px; right:16px; z-index:50; }
     .ax-brand img { display:block; width:auto; object-fit:contain; opacity:.95; }
@@ -25,8 +36,23 @@
       border:1px dashed rgba(148,163,184,.45); border-radius:6px; color:rgba(148,163,184,.75); font:600 10px/1 -apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;
       letter-spacing:.06em; text-transform:uppercase; white-space:nowrap; cursor:help; }
   `;
+  function renderWordmarks() {
+    for (const el of document.querySelectorAll('[data-ax-wordmark]:not([data-ax-done])')) {
+      el.setAttribute('data-ax-done', '1');
+      el.classList.add('ax-wordmark');
+      const short = el.hasAttribute('data-short');
+      el.innerHTML = `<span class="ax-a">applied</span><span class="ax-x">x</span>` +
+        (short ? '' : `<span class="ax-rest">Connected Worker AR OMS Platform</span>`);
+    }
+  }
   function build() {
     const style = document.createElement('style'); style.textContent = css; document.head.appendChild(style);
+    if (!document.querySelector('link[href*="fonts.googleapis.com/css2?family=Roboto"]')) {
+      const l = document.createElement('link'); l.rel = 'stylesheet';
+      l.href = 'https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap';
+      document.head.appendChild(l);
+    }
+    renderWordmarks();
     const strip = document.createElement('div'); strip.className = 'ax-brand';
     for (const l of LOGOS) {
       const img = document.createElement('img');
@@ -46,7 +72,7 @@
       else if (!strip.classList.contains('float')) { strip.classList.add('float'); document.body.appendChild(strip); }
     };
     place();
-    new MutationObserver(place).observe(document.body, { childList: true, subtree: true });
+    new MutationObserver(() => { place(); renderWordmarks(); }).observe(document.body, { childList: true, subtree: true });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', build); else build();
 

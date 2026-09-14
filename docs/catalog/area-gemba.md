@@ -7,13 +7,17 @@ order: 2
 wireframe: gemba
 flow: |
   flowchart LR
-    WALK[Start walk] --> RELOC[ARWorldMap relocalizes]
+    LIB[Audit Reference Library] --> WALK[Start walk: header, continue or join]
+    WALK --> RELOC[ARWorldMap relocalizes]
     RELOC --> PIN[Tap surface: pin finding]
-    PIN --> TAX[Category + severity + photo]
-    TAX --> NEXT[Next walk: findings reappear in place]
-    NEXT --> RES[Resolve / still present / escalate]
-    RES --> PORTAL[Portal audit trail]
+    PIN --> TAX[Focus Area → Question or custom · Strength/OFI/NC · risk · photos + markup]
+    TAX --> TOG[Colleagues see it live · Live Activity guides phone-down]
+    TOG --> SUB[Submit: session summary]
+    SUB --> PORTAL[Portal Walk Sessions · 3-sheet Excel with every photo]
+    RELOC --> CK[Background / kill → welcome-back checkpoint]
 ---
 Audit rounds without preparation: no QR, no setup — tap any surface to drop a finding
-and the space itself remembers where it was. Findings carry taxonomy, severity and
-photos, persist across walks via ARWorldMap, and are tracked to closure in the portal.
+and the space itself remembers where it was. Findings are logged in Corporate
+Quality's vocabulary (or honestly as custom text) with category, risk, captioned
+photos and markup; walks carry a header and a derived summary; auditors can walk
+together; and the portal exports every photo to Excel.

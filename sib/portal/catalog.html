@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Feature Catalogue — AR Operations Platform</title>
+<title>Feature Catalogue — appliedx Connected Worker AR OMS Platform</title>
 <!--
   The /catalog surface: a live, connected view of docs/catalog/*.md.
   Everything on this page is derived from GET /catalog/data at load time —
@@ -569,7 +569,7 @@ function renderHome(){
   const s = { shipped:0, beta:0, planned:0 };
   DATA.features.forEach(f => s[f.status]++);
   panel.innerHTML = `
-    <h2>AR Operations Platform</h2>
+    <h2><span data-ax-wordmark></span></h2>
     <p class="body-text" style="color:var(--muted)">${DATA.features.length} features · ${DATA.edges.length} connections ·
       v${esc(DATA.platformVersion)} — every card on this page is generated live from
       <code style="font-size:11px">docs/catalog/</code>.</p>

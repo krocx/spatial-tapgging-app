@@ -3,7 +3,7 @@ id: ghost-overlays
 name: 3D ghost overlays per step
 area: guides
 status: shipped
-version: baseline
+version: 2026.4.45
 depends: [spatial-steps, model-library]
 terms: [CAD Import & Conversion, GLB / USDZ]
 spec: ../README.md#3d-model-library
@@ -22,5 +22,6 @@ arch: |
 ---
 A translucent 3D model rendered at a step — "the part goes here, like this" — with
 author-set scale, opacity, offset and Y-rotation, adjusted in AR with the shared
-pan/pinch/rotate gesture kit. Canvas owns model assignment; the device owns AR
-placement.
+pan/pinch/rotate gesture kit and a live opacity slider (also quick-adjustable in
+the Guide Library). A step holds up to three model slots (see guide-copy). Canvas
+owns model assignment; the device owns AR placement.

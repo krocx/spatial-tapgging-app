@@ -1,4 +1,4 @@
-# Feature Catalog — AR Operations Platform
+# Feature Catalog — appliedx Connected Worker AR OMS Platform
 
 > **This table is now a human-readable VIEW.** The canonical, machine-readable
 > source is [docs/catalog/](catalog/README.md) — one YAML-frontmatter file per
@@ -144,3 +144,28 @@ the linked docs are the single source of truth.
 | Shared TypeScript schema | One `@spatial/shared` package typed across server, portal and (mirrored) iOS | Shipped | baseline | [schemas](schemas.md) |
 | Guided onboarding (FTUE) | Six per-workflow walkthroughs + spotlight tour + contextual help | Shipped | baseline | [APP-FEATURES](APP-FEATURES.md) |
 | Guide ingestion service | Single create/upsert path for guides; spatial placement can never be overwritten by an import or canvas write | Shipped | baseline | [PROCEDURE-DESIGNER](PROCEDURE-DESIGNER.md) §8 |
+
+## 8. Connected Worker — shipped in 2026.4.45 → 2026.4.46
+
+| Feature | What it does | Status | Introduced | Docs |
+|---|---|---|---|---|
+| `.tag` virtual emitter + live subscribe | Signed, tamper-evident part / assembly envelopes; SSE change feed per chamber | Beta | 2026.4.45 | [TAG-FORMAT](TAG-FORMAT.md) |
+| User Access Management (RBAC) + guide sharing | Allow-list of users with four roles; per-user guide sharing; iOS identity | Beta | 2026.4.45 | [catalog/uam](catalog/uam.md) |
+| Kiosk shift start | Employee-ID-only sign-in + Production #; role-aware two-step gate | Shipped | 2026.4.45 | [CONNECTED-WORKER](CONNECTED-WORKER.md#kiosk-shift-start) |
+| AR OMS Usage Log | Durable per-step record derived from live events; live evidence; Excel | Shipped | 2026.4.45 | [CONNECTED-WORKER](CONNECTED-WORKER.md#ar-oms-usage-log) |
+| Production-verified resume | Resume snapshots bound to the Production #; Switch & Resume prompt; pilot hardening | Shipped | 2026.4.45 | [CONNECTED-WORKER](CONNECTED-WORKER.md#production-verified-resume) |
+| Step validation (cone · quick-shot · never-stuck) | Camera-verified step completion via the inspection comparator; focus mode; override with audit; drift check | Shipped | 2026.4.45 | [CONNECTED-WORKER](CONNECTED-WORKER.md#step-validation-ssim-cone-quick-shot-never-stuck) |
+| Chamber Configurations | Chamber types; role-aware authoring / operating; Guide Library grouped by configuration; copy to all chambers | Shipped | 2026.4.45 | [CONNECTED-WORKER](CONNECTED-WORKER.md#chamber-configurations) |
+| Copy guide · duplicate anchor · model slots | Roll authoring out across chambers; three 3D model slots per step | Shipped | 2026.4.45 | [CONNECTED-WORKER](CONNECTED-WORKER.md#copy-guide-duplicate-anchor-model-slots) |
+| Portal guided assistance | Getting-started checklist from live stats, page tours, empty-state next steps | Shipped | 2026.4.45 | [CONNECTED-WORKER](CONNECTED-WORKER.md#portal-guided-assistance) |
+| Sealed world maps | The author's map is the origin, the QR the key and drift check; shared loader | Shipped | 2026.4.46 | [CONNECTED-WORKER](CONNECTED-WORKER.md#sealed-world-maps-one-localization-doctrine) |
+| Object anchoring | Scan a chamber's shape; object as origin; movable equipment re-align; shape-model ghost | Beta | 2026.4.46 | [CONNECTED-WORKER](CONNECTED-WORKER.md#object-anchoring-scan-origin-movable-equipment-shape-ghost) |
+| Presence & coaching | Colleagues visible in AR on the same chamber; author coaches the operator with look-here markers | Shipped | 2026.4.46 | [CONNECTED-WORKER](CONNECTED-WORKER.md#presence-coaching-multi-user) |
+| In-AR moment coach | Contextual one-line cards the first time a control matters, per person; panel redesign | Shipped | 2026.4.46 | [CONNECTED-WORKER](CONNECTED-WORKER.md#in-ar-moment-coach) |
+| Device logs (QA logging) | iPhone log lines shipped to SIB; QA Mode; portal live tail and export | Shipped | 2026.4.46 | [QA-LOGGING](QA-LOGGING.md) |
+| SIB Compass | One radial navigator with live counts on every web surface | Shipped | 2026.4.46 | [CONNECTED-WORKER](CONNECTED-WORKER.md#sib-compass) |
+| Platform story (/platform) | "The Chamber" scroll story with the Connected Worker ladder and self-assessment | Shipped | 2026.4.46 | [CONNECTED-WORKER](CONNECTED-WORKER.md#platform-story-platform) |
+| Gemba Walk — Audit Reference Library | Focus Areas → Questions, categories, ratings, pick lists; import from Excel/CSV | Shipped | 2026.4.46 | [GEMBA-WALK](GEMBA-WALK.md) |
+| Gemba Walk — findings, photos, markup | Reference or custom entries, Strength/OFI/NC, risk, six captioned photos, PencilKit markup, floating panels | Shipped | 2026.4.46 | [GEMBA-WALK](GEMBA-WALK.md) |
+| Gemba Walk — sessions + Excel | Walk header, continue/join, summary, three-sheet Excel with every photo, filtered export | Shipped | 2026.4.46 | [GEMBA-WALK](GEMBA-WALK.md) |
+| Gemba Walk — together, phone-down, checkpoint | Multi-auditor presence, Live Activity navigation, welcome-back checkpoint, drift check | Shipped | 2026.4.46 | [GEMBA-WALK](GEMBA-WALK.md) |

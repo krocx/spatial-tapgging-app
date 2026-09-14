@@ -21,7 +21,8 @@ arch: |
     S->>St: Unpublish until re-placed
     S-->>P: A moved guide can never show stale geometry
 ---
-⇄ Move reassigns a guide and all its steps to another anchor. The server clears
+⇄ Move reassigns a guide and all its steps to another anchor (⧉ Copy and
+⧉ Duplicate anchor are the non-destructive siblings — see guide-copy). The server clears
 every step's AR placement — positions belong to the old anchor's world map — and
 unpublishes the guide until it is re-placed, so a moved guide can never show stale
 geometry.
