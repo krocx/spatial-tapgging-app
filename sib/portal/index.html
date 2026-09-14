@@ -656,7 +656,8 @@
       <div class="ph-sub">Audit walks — findings, defect categories, resolution</div>
       <div class="ph-stats" id="ph-stat-gemba"></div>
       <div class="ph-subnav">
-        <span class="ph-chip" onclick="event.stopPropagation();location.hash='#gemba/walks'">🚶 Walks</span>
+        <span class="ph-chip" onclick="event.stopPropagation();location.hash='#gemba/sessions'">🚶 Walk Sessions</span>
+        <span class="ph-chip" onclick="event.stopPropagation();location.hash='#gemba/walks'">📍 Findings</span>
         <span class="ph-chip" onclick="event.stopPropagation();location.hash='#gemba/library'">📚 Audit Library</span>
       </div>
     </div>
@@ -728,6 +729,22 @@
   <div class="gemba-list"></div>
  </div>
 
+ <!-- G2/G8 (2026.4.46): Walk sessions — the header the PowerApps tool
+      collected (auditor, Project ID, Org, BU, Area, Location), findings
+      attached, summary derived, xlsx per walk. -->
+ <div id="gemba-sessions-sub" style="display:none">
+  <div class="sessions-toolbar">
+    <span style="font-size:0.78rem;color:var(--muted);flex:1">One row per walk · auditor, project, org/BU, location · findings by category</span>
+    <button class="btn btn-ghost btn-sm" onclick="downloadServerFile('/gemba/walks/export.xlsx?all=true', 'gemba-walks-' + new Date().toISOString().slice(0,10) + '.xlsx').catch(e => toast(e.message))" title="Every walk, one row per finding, first photo embedded">⬇ .xlsx (all)</button>
+    <button class="btn btn-ghost btn-sm" onclick="loadGembaWalkSessions()">⟳ Refresh</button>
+  </div>
+  <div class="filter-bar">
+    <input type="search" id="gws-q" placeholder="Filter by auditor, project, org, BU, location…" oninput="renderGembaWalkSessions()">
+    <select id="gws-status" onchange="renderGembaWalkSessions()"><option value="">All statuses</option><option value="open">Open</option><option value="submitted">Submitted</option></select>
+  </div>
+  <div id="gemba-sessions-list"></div>
+ </div>
+
  <!-- G1 (2026.4.46): Audit Reference Library — Focus Areas → Questions.
       What the PowerApps tool bound to SharePoint lists; Corporate Quality
       owns it here. Findings are logged against a question CODE, so editing
@@ -746,6 +763,21 @@
     <label style="font-size:0.75rem;color:var(--muted);display:flex;align-items:center;gap:6px"><input type="checkbox" id="glib-inactive" onchange="loadGembaLibrary()"> show inactive</label>
   </div>
   <div id="gemba-library-list"></div>
+
+  <!-- G2: walk-header pick lists (Organization, BU, Area, Location) -->
+  <div class="card" style="margin-top:18px;padding:14px 16px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <b style="font-size:0.9rem">Walk header pick lists</b>
+      <span style="font-size:0.72rem;color:var(--muted)">What auditors choose from when starting a walk · one value per line</span>
+      <button class="btn btn-sm" style="margin-left:auto;font-weight:600" onclick="saveGembaLists()">Save lists</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+      <label style="font-size:0.75rem;font-weight:600">Organization<textarea id="glist-organization" rows="5" style="display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:0.8rem;font-weight:400"></textarea></label>
+      <label style="font-size:0.75rem;font-weight:600">BU<textarea id="glist-bu" rows="5" style="display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:0.8rem;font-weight:400"></textarea></label>
+      <label style="font-size:0.75rem;font-weight:600">Area<textarea id="glist-area" rows="5" style="display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:0.8rem;font-weight:400"></textarea></label>
+      <label style="font-size:0.75rem;font-weight:600">Location<textarea id="glist-location" rows="5" style="display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:0.8rem;font-weight:400"></textarea></label>
+    </div>
+  </div>
  </div>
 </div>
 
@@ -2425,7 +2457,7 @@ const SECTIONS = {
                  tabs: [['guides', 'Guide Library'], ['models', '3D Models']], defaultSub: 'guides' },
   'iloto':     { name: '🔒 iLOTO',                color: '#ef4444' },
   'gemba':     { name: '🚶 GembaWalks',           color: '#fb923c',
-                 tabs: [['walks', 'Walks'], ['library', '📚 Audit Library']], defaultSub: 'walks' },
+                 tabs: [['sessions', '🚶 Walk Sessions'], ['walks', 'Findings by Area'], ['library', '📚 Audit Library']], defaultSub: 'sessions' },
   'admin':     { name: '🛠 Admin',                color: '#94a3b8',
                  tabs: [['uam', '👥 User Access'], ['configs', '🏭 Chamber Configs'], ['ops', '📜 Ops Log'], ['logs', '🐞 Device Logs'], ['backup', '💾 Backups']], defaultSub: 'uam' },
 };
@@ -2736,10 +2768,134 @@ function adminShowSub(sub) {
 // (atomic on the server). xlsx via lazy SheetJS, CSV/JSON parsed here.
 // ═════════════════════════════════════════════════════════════════════════════
 function gembaShowSub(sub) {
-  const lib = sub === 'library';
-  document.getElementById('gemba-walks-sub').style.display   = lib ? 'none' : '';
-  document.getElementById('gemba-library-sub').style.display = lib ? '' : 'none';
-  if (lib) loadGembaLibrary();
+  const show = (id, on) => { document.getElementById(id).style.display = on ? '' : 'none'; };
+  show('gemba-walks-sub',    sub === 'walks');
+  show('gemba-sessions-sub', sub === 'sessions');
+  show('gemba-library-sub',  sub === 'library');
+  if (sub === 'library')  loadGembaLibrary();
+  if (sub === 'sessions') loadGembaWalkSessions();
+}
+
+// ── G2/G8: walk sessions ─────────────────────────────────────────────────────
+let gembaWalks = [];
+const gwsOpen = new Set();
+
+async function loadGembaWalkSessions() {
+  const list = document.getElementById('gemba-sessions-list');
+  if (!gembaWalks.length) list.innerHTML = '<p style="color:var(--muted);padding:24px;text-align:center;font-size:0.82rem;">Loading…</p>';
+  try {
+    if (allAnchors.length === 0) allAnchors = (await apiFetch('/anchors')).data || [];
+    gembaWalks = (await apiFetch('/gemba/walks')).data || [];
+    renderGembaWalkSessions();
+  } catch (e) {
+    list.innerHTML = `<p style="color:var(--red);padding:24px;text-align:center;font-size:0.82rem;">${esc(e.message)}</p>`;
+  }
+}
+
+function gwsCat(s) {
+  const chip = (n, col, lbl) => n ? `<span style="display:inline-block;padding:1px 7px;border-radius:999px;font-size:0.68rem;font-weight:700;color:${col};border:1px solid ${col}55;background:${col}18;margin-right:4px" title="${lbl}">${n} ${lbl}</span>` : '';
+  return chip(s.strength, '#22c55e', 'Strength') + chip(s.ofi, '#f59e0b', 'OFI') + chip(s.nc, '#ef4444', 'NC')
+    + (s.uncategorised ? `<span style="font-size:0.68rem;color:var(--muted)">${s.uncategorised} free-text</span>` : '')
+    + (Number.isInteger(s.maxRisk) && s.maxRisk > 0 ? ` <span style="font-size:0.68rem;color:var(--muted)" title="Highest preliminary risk">max R${s.maxRisk}</span>` : '');
+}
+
+function renderGembaWalkSessions() {
+  const list = document.getElementById('gemba-sessions-list');
+  const q = (document.getElementById('gws-q').value || '').toLowerCase().trim();
+  const st = document.getElementById('gws-status').value;
+  const rows = gembaWalks.filter(w => (!st || w.status === st) && (!q || JSON.stringify(w).toLowerCase().includes(q)));
+  if (!rows.length) {
+    list.innerHTML = `<div class="empty-state" style="padding:40px;text-align:center;color:var(--muted);font-size:0.85rem">${gembaWalks.length ? 'Nothing matches that filter.' : 'No walks yet — start one from the app (Gemba Walk → Start walk).'}</div>`;
+    return;
+  }
+  const anchorName = id => (allAnchors.find(a => a.id === id) || {}).assetId || id.slice(0, 8);
+  list.innerHTML = `<table class="data-table"><thead><tr>
+      <th>Date</th><th>Auditor</th><th>Project</th><th>Org / BU</th><th>Area · Location</th><th>Space</th><th>Findings</th><th>Status</th><th></th>
+    </tr></thead><tbody>` + rows.map(w => {
+    const d = new Date(w.startedAt);
+    const s = w.summary || {};
+    const open = gwsOpen.has(w.id);
+    return `<tr onclick="toggleGembaWalk('${w.id}')" style="cursor:pointer">
+      <td style="white-space:nowrap">${d.toLocaleDateString(undefined,{day:'2-digit',month:'short'})} <span style="color:var(--muted);font-size:0.68rem">${d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}</span></td>
+      <td style="font-weight:600">${esc(w.auditorName)}${w.auditorId ? `<div style="font-size:0.68rem;color:var(--muted);font-weight:400">${esc(w.auditorId)}</div>` : ''}</td>
+      <td>${esc(w.projectId || '—')}</td>
+      <td style="font-size:0.78rem">${esc(w.organization || '—')}${w.bu ? `<div style="color:var(--muted);font-size:0.7rem">${esc(w.bu)}</div>` : ''}</td>
+      <td style="font-size:0.78rem">${esc([w.area, w.location].filter(Boolean).join(' · ') || '—')}</td>
+      <td style="font-size:0.75rem;color:var(--muted)">${esc(anchorName(w.anchorId))}</td>
+      <td><b>${s.findings ?? 0}</b> ${gwsCat(s)}</td>
+      <td><span class="${w.status === 'submitted' ? 'b-resolved' : 'b-no-completion'}">${w.status === 'submitted' ? 'Submitted' : 'Open'}</span></td>
+      <td onclick="event.stopPropagation()" style="white-space:nowrap">
+        <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;padding:2px 7px" onclick="downloadServerFile('/gemba/walks/export.xlsx?walkId=${w.id}', 'gemba-walk-${w.id.slice(0,8)}.xlsx').catch(e => toast(e.message))" title="This walk as Excel, photos embedded">⬇ .xlsx</button>
+        ${w.status === 'submitted' ? `<button class="btn btn-ghost btn-sm" style="font-size:0.68rem;padding:2px 7px" onclick="reopenGembaWalk('${w.id}')" title="Reopen to edit the header (admin)">↩</button>` : ''}
+        <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;padding:2px 7px;color:var(--red)" onclick="deleteGembaWalk('${w.id}')" title="Delete the walk record (findings stay, detached)">🗑</button>
+      </td>
+    </tr>
+    <tr class="detail-tr" id="gws-${w.id}" style="display:${open ? '' : 'none'}"><td colspan="9"><div class="detail-inner" id="gwsd-${w.id}">${open ? 'Loading…' : ''}</div></td></tr>`;
+  }).join('') + `</tbody></table>`;
+  for (const id of gwsOpen) loadGembaWalkDetail(id);
+}
+
+async function toggleGembaWalk(id) {
+  if (gwsOpen.has(id)) gwsOpen.delete(id); else gwsOpen.add(id);
+  renderGembaWalkSessions();
+}
+
+async function loadGembaWalkDetail(id) {
+  const box = document.getElementById(`gwsd-${id}`);
+  if (!box) return;
+  try {
+    const { walk, findings } = (await apiFetch(`/gemba/walks/${id}`)).data;
+    const catMap = { STRENGTH: ['#22c55e', 'Strength'], OFI: ['#f59e0b', 'OFI'], NC: ['#ef4444', 'NC'] };
+    box.innerHTML =
+      (walk.notes ? `<div style="font-size:0.76rem;color:var(--muted);margin-bottom:8px"><b style="color:var(--text)">Closing notes:</b> ${esc(walk.notes)}</div>` : '') +
+      (walk.endedAt ? `<div style="font-size:0.7rem;color:var(--muted);margin-bottom:8px">Submitted ${new Date(walk.endedAt).toLocaleString()}</div>` : '') +
+      (findings.length ? findings.map(f => {
+        const c = catMap[f.findingCategory];
+        const photos = (f.photos && f.photos.length) ? f.photos : (f.referenceImagePath ? [{ path: f.referenceImagePath }] : []);
+        return `<div style="display:grid;grid-template-columns:36px 1fr auto;gap:10px;align-items:start;padding:8px 6px;border-top:1px solid var(--border);font-size:0.78rem">
+          <span style="font-weight:700;color:var(--muted)">#${f.order + 1}</span>
+          <div>
+            <div><b>${esc(f.questionTitle || f.title)}</b> ${f.questionCode ? `<span style="font-family:monospace;color:var(--muted);font-size:0.7rem">${esc(f.focusAreaCode ? f.focusAreaCode + ' · ' : '')}${esc(f.questionCode)}</span>` : ''}</div>
+            ${f.questionText ? `<div style="color:var(--muted);margin-top:2px">${esc(f.questionText)}</div>` : ''}
+            ${f.description ? `<div style="margin-top:2px">${esc(f.description)}</div>` : ''}
+            ${photos.length ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">` + photos.map(p => `<figure style="margin:0;width:84px"><img class="td-thumb" style="width:84px;height:64px;object-fit:cover" data-evidence-url="/loc-tags/image/${encodeURIComponent(p.markupPath || p.path)}" src="" alt="" />${p.caption ? `<figcaption style="font-size:0.62rem;color:var(--muted)">${esc(p.caption)}</figcaption>` : ''}</figure>`).join('') + `</div>` : ''}
+          </div>
+          <div style="white-space:nowrap">${c ? `<span style="display:inline-block;padding:1px 7px;border-radius:999px;font-size:0.68rem;font-weight:700;color:${c[0]};border:1px solid ${c[0]}55;background:${c[0]}18">${c[1]}</span>` : `<span style="font-size:0.68rem;color:var(--muted)">${esc(f.defectCategory || '')}</span>`}${Number.isInteger(f.riskRating) ? ` <span style="font-size:0.68rem;color:var(--muted)">R${f.riskRating}</span>` : ''}</div>
+        </div>`;
+      }).join('') : '<span style="font-size:0.75rem;color:var(--muted)">No findings on this walk.</span>');
+    loadEvidenceImagesIn(box);
+  } catch (e) { box.innerHTML = `<span style="color:var(--red);font-size:0.75rem">${esc(e.message)}</span>`; }
+}
+
+async function reopenGembaWalk(id) {
+  if (!confirm('Reopen this walk so the header can be edited?')) return;
+  try { await apiFetch(`/gemba/walks/${id}/reopen`, { method: 'POST', body: '{}' }); toast('Walk reopened'); await loadGembaWalkSessions(); }
+  catch (e) { toast(e.message); }
+}
+
+async function deleteGembaWalk(id) {
+  if (!confirm('Delete this walk record? Its findings stay in place but are no longer grouped under a walk.')) return;
+  try { await apiFetch(`/gemba/walks/${id}`, { method: 'DELETE' }); toast('Walk deleted'); await loadGembaWalkSessions(); }
+  catch (e) { toast(e.message); }
+}
+
+// ── G2: pick lists ───────────────────────────────────────────────────────────
+function fillGembaLists() {
+  const lists = (gembaLib && gembaLib.lists) || {};
+  for (const k of ['organization', 'bu', 'area', 'location']) {
+    const el = document.getElementById('glist-' + k);
+    if (el && document.activeElement !== el) el.value = (lists[k] || []).join('\n');
+  }
+}
+async function saveGembaLists() {
+  try {
+    for (const k of ['organization', 'bu', 'area', 'location']) {
+      const values = document.getElementById('glist-' + k).value.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+      await apiFetch(`/gemba/library/lists/${k}`, { method: 'PUT', body: JSON.stringify({ values }) });
+    }
+    toast('Pick lists saved');
+    await loadGembaLibrary();
+  } catch (e) { toast(e.message); }
 }
 
 let gembaLib = null;   // GembaLibrary from the server (with inactive when the box is ticked)
@@ -2751,6 +2907,7 @@ async function loadGembaLibrary() {
     const all = document.getElementById('glib-inactive').checked;
     gembaLib = (await apiFetch(`/gemba/library${all ? '?all=true' : ''}`)).data;
     renderGembaLibrary();
+    fillGembaLists();
   } catch (e) {
     list.innerHTML = `<p style="color:var(--red);padding:24px;text-align:center;font-size:0.82rem;">${esc(e.message)}</p>`;
   }

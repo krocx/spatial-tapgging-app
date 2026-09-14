@@ -747,6 +747,8 @@ export interface GembaLibrary {
   focusAreas: (GembaFocusArea & { questions: GembaQuestion[] })[];
   categories: { code: GembaFindingCategory; label: string }[];
   ratings: { value: GembaRiskRating; label: string }[];
+  /** G2: walk-header pick lists (organization, bu, area, location). */
+  lists: GembaLists;
   /** Changes on every write — clients cache by it. */
   version: string;
 }
@@ -760,6 +762,57 @@ export interface GembaLibraryImport {
     questions?: { code: string; title?: string; text: string }[];
   }[];
 }
+
+// ============================================================
+// Gemba Walk session (G2, 2026.4.46)
+// ------------------------------------------------------------
+// The header the PowerApps tool collected before the first finding —
+// auditor, Project ID, Organization, BU, Area, Location — plus start/end
+// and a summary. Findings (LocTag.walkId) attach to it; the portal reports
+// and exports per walk. Never tied to a chamber/QR: `anchorId` is the
+// walk-space anchor (world map) exactly as today.
+// ============================================================
+
+export type GembaWalkStatus = 'open' | 'submitted';
+
+export interface GembaWalk {
+  id: string;
+  anchorId: string;
+  /** Kiosk identity — employee id when known. */
+  auditorId?: string;
+  auditorName: string;
+  projectId?: string;
+  organization?: string;
+  bu?: string;
+  area?: string;
+  location?: string;
+  status: GembaWalkStatus;
+  startedAt: string;
+  endedAt?: string;
+  /** Free text on submit ("closing remarks"). */
+  notes?: string;
+  /** Derived on read: counts of attached findings. */
+  summary?: GembaWalkSummary;
+}
+
+export interface GembaWalkSummary {
+  findings: number;
+  strength: number;
+  ofi: number;
+  nc: number;
+  /** Findings with no category (legacy / free text). */
+  uncategorised: number;
+  /** Highest risk rating among findings, if any. */
+  maxRisk?: GembaRiskRating;
+  photos: number;
+}
+
+export type StartGembaWalkRequest = Pick<GembaWalk,
+  'anchorId' | 'auditorName' | 'auditorId' | 'projectId' | 'organization' | 'bu' | 'area' | 'location'>;
+
+/** Pick lists for the walk header — maintained beside the Audit Library. */
+export type GembaListKind = 'organization' | 'bu' | 'area' | 'location';
+export type GembaLists = Record<GembaListKind, string[]>;
 
 // ============================================================
 // Loc-Tag — Phase 2 Gemba audit walk types

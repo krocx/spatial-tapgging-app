@@ -19,6 +19,8 @@ struct LocTagFormSheet: View {
     let anchor:    Anchor
     let position:  SIBVector3
     let nextOrder: Int
+    /// G2: the walk session this finding belongs to (nil = no header).
+    var walkId:    String? = nil
     let onSaved:   (LocTag) -> Void
 
     @EnvironmentObject private var settings: AppSettings
@@ -306,7 +308,8 @@ struct LocTagFormSheet: View {
                 questionCode:    q.code,
                 findingCategory: category,
                 riskRating:      risk,
-                photos:          photos.map { (image: $0.image, caption: Optional($0.caption)) }
+                photos:          photos.map { (image: $0.image, caption: Optional($0.caption)) },
+                walkId:          walkId
             )
         } else {
             req = CreateLocTagRequest(
@@ -318,7 +321,8 @@ struct LocTagFormSheet: View {
                 defectCategoryNote: categoryNote.isEmpty ? nil : categoryNote,
                 position:           position,
                 order:              nextOrder,
-                photos:             photos.map { (image: $0.image, caption: Optional($0.caption)) }
+                photos:             photos.map { (image: $0.image, caption: Optional($0.caption)) },
+                walkId:             walkId
             )
         }
 

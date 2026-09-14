@@ -11,7 +11,7 @@
 // the row with the same code instead of duplicating it); ids are internal.
 
 import type {
-  GembaFocusArea, GembaQuestion, GembaFindingCategory, GembaRiskRating, GembaLibraryImport,
+  GembaFocusArea, GembaQuestion, GembaFindingCategory, GembaRiskRating, GembaLibraryImport, GembaListKind, GembaLists,
 } from '@spatial/shared';
 
 export class GembaValidationError extends Error {
@@ -155,30 +155,73 @@ export function rowsToImport(rows: FlatRow[], mode: 'append' | 'replace' = 'appe
 }
 
 // ── Seed ────────────────────────────────────────────────────────────────────
-// What the PowerApps tool showed on screen. Enough for the iOS picker to be
-// usable on a fresh server; Corporate Quality replaces it with the real
-// lists via import. Only applied when the store is empty.
+// The 15 focus areas from Corporate Quality's Gemba Audit tool. Questions are
+// NOT seeded — they arrive via import. Applied on an empty store; on a
+// server that was seeded earlier, any missing area is added (by code) and
+// the four demo 6S questions from the first seed are removed if untouched.
+
+export const SEED_FOCUS_AREAS: readonly { code: string; title: string }[] = [
+  { code: '1',  title: 'Quality policy awareness' },
+  { code: '2',  title: 'QMS awareness (relevant documents)' },
+  { code: '3',  title: 'Cleanroom Protocols / Particle Reduction' },
+  { code: '4',  title: 'Incoming Materials Control to Mfg' },
+  { code: '5',  title: 'Product Identification and Traceability' },
+  { code: '6',  title: 'Manufacturing Training and Certification' },
+  { code: '7',  title: 'Build process controls (OMS, ESD, ESW, crossover, QN\'s)' },
+  { code: '8',  title: 'Test process controls (OMS, ESW, SPC/Yield, QN\'s)' },
+  { code: '9',  title: 'Test Statistical Process Control' },
+  { code: '10', title: 'Non-Conforming Materials' },
+  { code: '11', title: 'Calibration' },
+  { code: '12', title: 'Preventive Maintenance' },
+  { code: '13', title: 'Shelf Life Management' },
+  { code: '14', title: '6S Audits' },
+  { code: '15', title: 'Shipment Release and Controls' },
+];
+
+/** Demo questions shipped with the first seed — removed by the seed upgrade when untouched. */
+export const LEGACY_SEED_QUESTIONS: readonly { code: string; text: string }[] = [
+  { code: 'P5141', text: 'Ask people whether they know where the 6S procedure is and what it requires of their area.' },
+  { code: 'P5142', text: 'Ask people to explain the 6S program to you in their own words (check for understanding of concepts).' },
+  { code: 'P5143', text: 'Check and see if 6S audits are taking place and review results for alignment with actual environment.' },
+  { code: 'P5144', text: 'Check how 6S results and actions are communicated to the area and followed up.' },
+];
 
 export function buildSeedLibrary(): GembaLibraryImport {
+  return { mode: 'replace', focusAreas: SEED_FOCUS_AREAS.map(a => ({ ...a })) };
+}
+
+// ── Walk-header pick lists (G2) ─────────────────────────────────────────────
+
+export const GEMBA_LIST_KINDS: readonly GembaListKind[] = ['organization', 'bu', 'area', 'location'];
+export const EMPTY_LISTS: GembaLists = { organization: [], bu: [], area: [], location: [] };
+const MAX_LIST_ITEMS = 200, MAX_LIST_ITEM = 80;
+
+export function isListKind(v: unknown): v is GembaListKind {
+  return typeof v === 'string' && (GEMBA_LIST_KINDS as readonly string[]).includes(v);
+}
+
+/** Trim, drop empties, de-duplicate case-insensitively (first spelling wins), cap. */
+export function validateListValues(raw: unknown): string[] {
+  if (!Array.isArray(raw)) throw new GembaValidationError(400, 'values must be an array of strings.');
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const v of raw) {
+    const t = typeof v === 'string' ? v.trim().slice(0, MAX_LIST_ITEM) : '';
+    if (!t) continue;
+    const k = t.toLowerCase();
+    if (seen.has(k)) continue;
+    seen.add(k); out.push(t);
+    if (out.length >= MAX_LIST_ITEMS) break;
+  }
+  return out;
+}
+
+/** Seed pick lists — what the PowerApps tool showed; Corporate Quality edits in the portal. */
+export function buildSeedLists(): GembaLists {
   return {
-    mode: 'replace',
-    focusAreas: [
-      { code: '1',  title: 'Quality policy awareness' },
-      { code: '2',  title: 'QMS awareness (relevant documents)' },
-      { code: '3',  title: 'Cleanroom Protocols / Particle Reduction' },
-      { code: '4',  title: 'Incoming Materials Control to Mfg' },
-      { code: '5',  title: 'Product Identification and Traceability' },
-      { code: '6',  title: 'Manufacturing Training and Certification' },
-      { code: '7',  title: 'Build process controls (OMS, ESD, ESW, crossover, QN\'s)' },
-      { code: '8',  title: 'Test process controls (OMS, ESW, SPC/Yield, QN\'s)' },
-      { code: '9',  title: 'Test Statistical Process Control' },
-      { code: '10', title: 'Non-Conforming Material' },
-      { code: '14', title: '6S Audits', questions: [
-        { code: 'P5141', title: '6S Procedure Awareness',     text: 'Ask people whether they know where the 6S procedure is and what it requires of their area.' },
-        { code: 'P5142', title: 'Concept Understanding',      text: 'Ask people to explain the 6S program to you in their own words (check for understanding of concepts).' },
-        { code: 'P5143', title: 'Audit Execution & Results',  text: 'Check and see if 6S audits are taking place and review results for alignment with actual environment.' },
-        { code: 'P5144', title: 'Communication & Follow-up',  text: 'Check how 6S results and actions are communicated to the area and followed up.' },
-      ] },
-    ],
+    organization: ['AGS', 'SPG', 'DSG'],
+    bu:           ['Headsmart, DDP, PDC'],
+    area:         ['Others'],
+    location:     ['Montana', 'Austin', 'Singapore'],
   };
 }

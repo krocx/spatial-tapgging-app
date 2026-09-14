@@ -64,6 +64,13 @@ struct LocTagAuthorView: View {
     // ── Toast ─────────────────────────────────────────────────────────────────
     @State private var toastMsg: String? = nil
 
+    // ── G2: walk session ──────────────────────────────────────────────────────
+    @State private var currentWalk:    GembaWalk? = nil
+    @State private var showWalkStart   = false
+    @State private var walkSkipped     = false
+    @State private var summaryWalk:    GembaWalk? = nil
+    @State private var summaryFindings: [LocTag] = []
+
     // ── Body ──────────────────────────────────────────────────────────────────
 
     var body: some View {
@@ -211,7 +218,8 @@ struct LocTagAuthorView: View {
                 LocTagFormSheet(
                     anchor:    anchor,
                     position:  tap.position,
-                    nextOrder: placedLocTags.count + 1
+                    nextOrder: placedLocTags.count + 1,
+                    walkId:    currentWalk?.id
                 ) { newLocTag in
                     tapSaved = true
                     // Capture reference photo at the moment of the FIRST tag save.
@@ -248,12 +256,41 @@ struct LocTagAuthorView: View {
         }
         // ── Finish confirmation ────────────────────────────────────────────────
         .confirmationDialog("Finish Audit Walk?", isPresented: $showFinishConfirm, titleVisibility: .visible) {
-            Button("Save & Upload World Map") { Task { await finishWalk() } }
+            Button(currentWalk != nil ? "Submit Walk & Save Map" : "Save & Upload World Map") { Task { await finishWalk() } }
             Button("Cancel", role: .cancel) { }
         } message: {
             let n = placedLocTags.count
             Text("Saves the AR world map (\(n) tag\(n == 1 ? "" : "s") placed) so Operators can re-localize to this space.")
         }
+        // ── G2: walk header ────────────────────────────────────────────────────
+        .sheet(isPresented: $showWalkStart) {
+            if let anchor = appState.activeAnchor {
+                GembaWalkStartSheet(anchor: anchor) { walk in
+                    currentWalk = walk
+                    showWalkStart = false
+                } onSkip: {
+                    walkSkipped = true
+                    showWalkStart = false
+                }
+                .environmentObject(settings)
+                .presentationDetents([.large])
+            }
+        }
+        // ── G8: session summary after submit ───────────────────────────────────
+        .sheet(item: $summaryWalk) { walk in
+            GembaWalkSummarySheet(walk: walk, findings: summaryFindings) {
+                summaryWalk = nil
+                exitWalk()
+            }
+        }
+    }
+
+    /// Leave the AR session and return to the hub.
+    private func exitWalk() {
+        arManager.pauseSession()
+        appState.activeARSession = nil
+        appState.reset()
+        appState.mode = .none
     }
 
     // ── Top bar ───────────────────────────────────────────────────────────────
@@ -271,11 +308,16 @@ struct LocTagAuthorView: View {
             Spacer()
 
             if let anchor = appState.activeAnchor {
-                Text(anchor.assetId)
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
+                VStack(spacing: 1) {
+                    Text(anchor.assetId)
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    if let w = currentWalk, !w.headerLine.isEmpty {
+                        Text(w.headerLine).font(.caption2).foregroundStyle(.white.opacity(0.7)).lineLimit(1)
+                    }
+                }
             }
 
             Spacer()
@@ -476,10 +518,23 @@ struct LocTagAuthorView: View {
             let mapData = try await captureWorldMap()
             let client  = SIBClient(settings: settings)
             try await client.uploadLocTagWorldMap(anchorId: anchor.id, mapData: mapData, referencePhoto: referencePhotoData)
-            arManager.pauseSession()
-            appState.activeARSession = nil
-            appState.reset()
-            appState.mode = .none
+            // G8: close the walk on SIB and show the session summary.
+            if let walk = currentWalk {
+                do {
+                    let submitted = try await client.submitGembaWalk(id: walk.id, notes: nil)
+                    let detail = try? await client.fetchGembaWalk(id: walk.id)
+                    await MainActor.run {
+                        isSavingWalk = false
+                        summaryFindings = detail?.findings ?? placedLocTags.filter { $0.walkId == walk.id }
+                        summaryWalk = submitted
+                    }
+                    return
+                } catch {
+                    AppLog.warn("gemba", "walk submit failed: \(friendlyMessage(for: error))")
+                    await MainActor.run { showToast("Map saved · walk summary unavailable (\(friendlyMessage(for: error)))") }
+                }
+            }
+            exitWalk()
         } catch {
             isSavingWalk = false
             if let arErr = error as? ARError, arErr.code == .insufficientFeatures {
@@ -620,6 +675,9 @@ struct LocTagAuthorView: View {
             showToast("Could not load previous session — starting fresh.")
         }
         isLoadingSession = false
+        // G2: collect the walk header before the first finding (or offer to
+        // continue an open walk on this space).
+        if currentWalk == nil && !walkSkipped { showWalkStart = true }
     }
 
     /// Place solid-state markers for all pre-loaded loc-tags (resume mode).

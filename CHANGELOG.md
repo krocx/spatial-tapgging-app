@@ -124,8 +124,9 @@ it, it gets a line.
   the same Excel/CSV they already keep — choose file → preview → import,
   atomic, append-by-code or replace, mirroring Import Guide. Findings will
   record the question *code* so later library edits never rewrite history.
-  Fresh servers seed the areas seen in the PowerApps tool plus the four 6S
-  questions. `sib/src/gemba/library-core.ts`, `routes/gemba-library.ts`,
+  Fresh servers seed the 15 focus areas from the PowerApps tool (no
+  questions — those come from the import); already-seeded servers gain the
+  missing areas on restart and lose the four demo 6S questions if untouched. `sib/src/gemba/library-core.ts`, `routes/gemba-library.ts`,
   tests, `docs/GEMBA-WALK.md`, catalogue `audit-library`. Slices G2–G8
   (finding model, capture flow, walk sessions, markup, multi-auditor,
   phone-down navigation) are listed there and follow.
@@ -160,6 +161,22 @@ it, it gets a line.
   `Modes/LocTagFormSheet.swift` (rewrite), `LocTagAuthorView`,
   `LocTagOperatorView`, `LocTagPeekSheet`, `LocTagOperatorSheet`,
   `LocTagEditSheet`.
+- **Gemba Walk — walk sessions, summary and Excel (G2 + G8)**. Starting a
+  walk now collects the header the PowerApps tool did — auditor (kiosk
+  identity), **Project ID, Organization, BU, Area, Location** — from pick
+  lists Corporate Quality maintains under Audit Library → *Walk header pick
+  lists* ("Other…" allows a typed value; last values remembered; an open walk
+  on the same space can be continued). Findings carry `walkId`; **Finish**
+  uploads the map, submits the walk and shows a **Session Summary** (counts
+  by Strength / OFI / NC, max risk, photos, the log). Portal → GembaWalks →
+  **🚶 Walk Sessions**: one row per walk with category chips, expandable
+  findings with captioned photos, **⬇ .xlsx** per walk or all (one row per
+  finding, first photo embedded), reopen / delete. `GET /gemba/walks`,
+  `POST /gemba/walks`, `POST /gemba/walks/:id/submit`, `GET
+  /gemba/walks/export.xlsx`, `PUT /gemba/library/lists/:kind`; `/stats`
+  gains `openGembaWalks`. `sib/src/gemba/walk-core.ts`,
+  `routes/gemba-walks.ts`, `oms/xlsx-lite.ts` (`buildTableXlsx`), iOS
+  `Modes/GembaWalkSheets.swift`, tests.
 - **SIB Compass — one navigator on every web surface (N1)**. Each surface had
   grown its own way home (⌂, ⚡, a text link, nothing) and the portal had no
   link to SIB home at all. `sib/portal/compass.js`, injected by `brand.js`

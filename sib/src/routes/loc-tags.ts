@@ -44,7 +44,7 @@ export const locTagStore       = new JsonFileStore<LocTag>('loc-tags');
 export const locTagCompletionStore = new JsonFileStore<LocTagCompletion>('loc-tag-completions');
 
 const DATA_DIR      = process.env.SIB_DATA_DIR ?? path.join(process.cwd(), '.sib-data');
-const LOCTAG_IMG_DIR = path.join(DATA_DIR, 'loctag-images');
+export const LOCTAG_IMG_DIR = path.join(DATA_DIR, 'loctag-images');
 fs.mkdirSync(LOCTAG_IMG_DIR, { recursive: true });
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

@@ -337,3 +337,28 @@ export function buildSessionsXlsx(sessions: GuideSession[]): Buffer {
     rows, images, imgCol: 9,
   });
 }
+
+// ── Generic table workbook (G8 Gemba walk exports and anything after) ───────
+
+export interface TableRow { cells: (string | number | undefined)[]; image?: Buffer }
+
+/** Header + rows, optional JPEG per row anchored in `imgCol` (0-based). */
+export function buildTableXlsx(sheetName: string, headers: string[], rows: TableRow[], colWidths: number[], imgCol = headers.length - 1): Buffer {
+  const images: Img[] = [];
+  const out: string[] = [];
+  out.push(`<row r="1">${headers.map((h, i) => cellStr(i, 1, h)).join('')}</row>`);
+  let r = 2;
+  for (const row of rows) {
+    const cells = row.cells.map((v, i) => typeof v === 'number' ? cellNum(i, r, v) : cellStr(i, r, v ?? '')).join('');
+    if (row.image) {
+      images.push({ rowIdx: r - 1, data: row.image });
+      out.push(`<row r="${r}" ht="${IMG_ROW_HT}" customHeight="1">${cells}</row>`);
+    } else {
+      out.push(`<row r="${r}">${cells}</row>`);
+    }
+    r++;
+  }
+  const widths = headers.map((_, i) => colWidths[i] ?? 16);
+  if (images.length) widths[imgCol] = Math.max(widths[imgCol], 36);
+  return assembleXlsx({ sheetName, colWidths: widths, rows: out, images, imgCol });
+}

@@ -64,12 +64,13 @@ test('rowsToImport groups flat xlsx rows into focus areas', async () => {
   assert.throws(() => rowsToImport([{ code: 'P1', text: 'x' }]), /focus area code is missing/);
 });
 
-test('seed library is importable and carries the 6S questions', async () => {
+test('seed library is the 15 focus areas, no questions', async () => {
   const { buildSeedLibrary, planImport, GEMBA_FINDING_CATEGORIES, GEMBA_RISK_RATINGS, isFindingCategory, isRiskRating } = await import('../src/gemba/library-core.js');
   const plan = planImport(buildSeedLibrary(), [], []);
   assert.equal(plan.mode, 'replace');
-  assert.ok(plan.counts.areasNew >= 11);
-  assert.equal(plan.counts.questionsNew, 4);
+  assert.equal(plan.counts.areasNew, 15);
+  assert.equal(plan.counts.questionsNew, 0);
+  assert.equal(plan.focusAreas[14].input.code, '15');
   assert.deepEqual(GEMBA_FINDING_CATEGORIES.map(c => c.code), ['STRENGTH', 'OFI', 'NC']);
   assert.deepEqual(GEMBA_RISK_RATINGS.map(r => r.value), [0, 1, 2, 3]);
   assert.ok(isFindingCategory('OFI') && !isFindingCategory('ofi'));

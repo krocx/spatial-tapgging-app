@@ -18,21 +18,53 @@
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
-import type { GembaFocusArea, GembaQuestion, GembaLibrary } from '@spatial/shared';
+import type { GembaFocusArea, GembaQuestion, GembaLibrary, GembaLists } from '@spatial/shared';
 import { JsonFileStore } from '../stores/json-file-store.js';
 import {
   GembaValidationError, GEMBA_FINDING_CATEGORIES, GEMBA_RISK_RATINGS,
   validateFocusArea, validateQuestion, planImport, rowsToImport, buildSeedLibrary, normCode,
+  SEED_FOCUS_AREAS, LEGACY_SEED_QUESTIONS, GEMBA_LIST_KINDS, EMPTY_LISTS, isListKind, validateListValues, buildSeedLists,
   type FlatRow,
 } from '../gemba/library-core.js';
 
 export const gembaFocusAreaStore = new JsonFileStore<GembaFocusArea>('gemba-focus-areas');
 export const gembaQuestionStore  = new JsonFileStore<GembaQuestion>('gemba-questions');
+/** One record per list kind: { id: kind, values, updatedAt }. */
+interface ListRecord { id: string; values: string[]; updatedAt: string }
+export const gembaListStore = new JsonFileStore<ListRecord>('gemba-lists');
+if (gembaListStore.count() === 0) {
+  const now = new Date().toISOString();
+  for (const [kind, values] of Object.entries(buildSeedLists())) gembaListStore.save({ id: kind, values, updatedAt: now });
+}
+
+export function readLists(): GembaLists {
+  const out: GembaLists = { ...EMPTY_LISTS };
+  for (const k of GEMBA_LIST_KINDS) out[k] = gembaListStore.findById(k)?.values ?? [];
+  return out;
+}
 
 // Seed once, on an empty server — never over what Corporate Quality imported.
 if (gembaFocusAreaStore.count() === 0) {
   applyImport(planImport(buildSeedLibrary(), [], []));
-  console.log(`[SIB] Gemba library seeded: ${gembaFocusAreaStore.count()} focus areas, ${gembaQuestionStore.count()} questions`);
+  console.log(`[SIB] Gemba library seeded: ${gembaFocusAreaStore.count()} focus areas`);
+} else {
+  // Seed upgrade (idempotent): add focus areas that are missing by code;
+  // drop the first seed's demo 6S questions if nobody edited them. Titles
+  // and imported questions are never touched.
+  const have = new Set(gembaFocusAreaStore.findAll().map(a => a.code));
+  const missing = SEED_FOCUS_AREAS.filter(a => !have.has(a.code));
+  if (missing.length) {
+    applyImport(planImport({ mode: 'append', focusAreas: missing.map(a => ({ ...a, order: Number(a.code) })) },
+      gembaFocusAreaStore.findAll(), gembaQuestionStore.findAll()));
+    console.log(`[SIB] Gemba library: added ${missing.length} seed focus area(s): ${missing.map(a => a.code).join(', ')}`);
+  }
+  const ten = gembaFocusAreaStore.findAll().find(a => a.code === '10' && a.title === 'Non-Conforming Material');
+  if (ten) gembaFocusAreaStore.update(ten.id, { title: 'Non-Conforming Materials', updatedAt: new Date().toISOString() });
+  const demo = gembaQuestionStore.findAll().filter(q => LEGACY_SEED_QUESTIONS.some(l => l.code === q.code && l.text === q.text));
+  if (demo.length) {
+    gembaQuestionStore.pruneWhere(q => demo.some(d => d.id === q.id));
+    console.log(`[SIB] Gemba library: removed ${demo.length} demo question(s) from the first seed`);
+  }
 }
 
 const router = Router();
@@ -46,7 +78,7 @@ function fail(res: Response, err: unknown): void {
 /** Version = newest updatedAt across both stores — cheap, and changes on every write. */
 function libraryVersion(): string {
   let v = '';
-  for (const r of [...gembaFocusAreaStore.findAll(), ...gembaQuestionStore.findAll()]) if (r.updatedAt > v) v = r.updatedAt;
+  for (const r of [...gembaFocusAreaStore.findAll(), ...gembaQuestionStore.findAll(), ...gembaListStore.findAll()]) if (r.updatedAt > v) v = r.updatedAt;
   return v || '0';
 }
 
@@ -61,6 +93,7 @@ export function buildLibrary(includeInactive = false): GembaLibrary {
     focusAreas,
     categories: [...GEMBA_FINDING_CATEGORIES],
     ratings:    [...GEMBA_RISK_RATINGS],
+    lists:      readLists(),
     version:    libraryVersion(),
   };
 }
@@ -108,6 +141,7 @@ router.get('/export.json', (_req: Request, res: Response): void => {
   const lib = buildLibrary(true);
   const payload = {
     mode: 'replace',
+    lists: lib.lists,
     focusAreas: lib.focusAreas.map(a => ({
       code: a.code, title: a.title, order: a.order, active: a.active,
       questions: a.questions.map(q => ({ code: q.code, title: q.title, text: q.text, order: q.order, active: q.active })),
@@ -121,11 +155,19 @@ router.get('/export.json', (_req: Request, res: Response): void => {
 
 router.post('/import', (req: Request, res: Response): void => {
   try {
-    const body = req.body as { mode?: string; rows?: FlatRow[]; focusAreas?: unknown };
+    const body = req.body as { mode?: string; rows?: FlatRow[]; focusAreas?: unknown; lists?: unknown };
     const mode = body.mode === 'replace' ? 'replace' : 'append';
     const payload = Array.isArray(body.rows) ? rowsToImport(body.rows, mode) : { ...body, mode };
     const plan = planImport(payload, gembaFocusAreaStore.findAll(), gembaQuestionStore.findAll());
+    // Pick lists ride along in export.json — validate before anything is applied.
+    const lists: Partial<Record<string, string[]>> = {};
+    if (body.lists && typeof body.lists === 'object') {
+      for (const [k, v] of Object.entries(body.lists as Record<string, unknown>)) {
+        if (isListKind(k)) lists[k] = validateListValues(v);
+      }
+    }
     applyImport(plan);
+    for (const [k, values] of Object.entries(lists)) gembaListStore.save({ id: k, values: values!, updatedAt: new Date().toISOString() });
     console.log(`[SIB] Gemba library import (${plan.mode}): areas +${plan.counts.areasNew}/~${plan.counts.areasUpdated}, questions +${plan.counts.questionsNew}/~${plan.counts.questionsUpdated}`);
     res.status(201).json({ mode: plan.mode, ...plan.counts,
       totalFocusAreas: gembaFocusAreaStore.count(), totalQuestions: gembaQuestionStore.count() });
@@ -210,6 +252,19 @@ router.delete('/questions/:id', (req: Request, res: Response): void => {
   if (!gembaQuestionStore.findById(req.params.id)) { res.status(404).json({ error: 'Question not found' }); return; }
   gembaQuestionStore.delete(req.params.id);
   res.json({ deleted: true });
+});
+
+// ── Walk-header pick lists (G2) ─────────────────────────────────────────────
+
+// PUT /gemba/library/lists/:kind  { values: string[] }  — whole-list replace (admin)
+router.put('/lists/:kind', (req: Request, res: Response): void => {
+  try {
+    const kind = req.params.kind;
+    if (!isListKind(kind)) throw new GembaValidationError(400, `Unknown list "${kind}" — use ${GEMBA_LIST_KINDS.join(', ')}.`);
+    const values = validateListValues((req.body as { values?: unknown })?.values);
+    gembaListStore.save({ id: kind, values, updatedAt: new Date().toISOString() });
+    res.json({ data: readLists(), timestamp: new Date().toISOString() });
+  } catch (err) { fail(res, err); }
 });
 
 /** Lookup used by loc-tag validation (G3): question by code, with its area. */

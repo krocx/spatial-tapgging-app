@@ -13,8 +13,8 @@ of the whole is visible.
 | **G1 Audit Reference Library** | Focus Areas → Questions, finding categories, risk ratings. Portal CRUD + Excel/CSV/JSON import. | **shipped** |
 | **G3 Finding model** | LocTag gains focus area, question code, finding category, risk rating, multiple photos, markup hook. | **shipped** |
 | **G4 Capture flow (iOS)** | Tap surface → Focus Area → Question → photos with captions → category + rating. Findings as collapsible floating panels. | **shipped** |
-| G2 + G8 Walk session | Project ID, Org, BU, Area, Location header; session summary; portal report + xlsx. | next |
-| G5 Markup | Draw on the captured photo (PencilKit); anchored 3D strokes later. | planned |
+| **G2 + G8 Walk session** | Project ID, Org, BU, Area, Location header; session summary; portal report + xlsx. | **shipped** |
+| G5 Markup | Draw on the captured photo (PencilKit); anchored 3D strokes later. | next |
 | G7 Multi-auditor | Presence on a walk — several auditors, findings appear live for each other. | planned |
 | G6 Phone-down walking | Live Activity / Dynamic Island: next finding + distance + haptics; raise to relocalize. | planned |
 
@@ -47,9 +47,12 @@ come back — inactive items leave the picker but stay for history.
   does not.
 * Data: `SIB_DATA_DIR/gemba-focus-areas.json`, `gemba-questions.json`.
   Included in `/admin/backup`.
-* A fresh server seeds the areas visible in the PowerApps tool plus the four
-  6S questions, so the app picker is never empty. Seeding happens only when
-  the store is empty — it never overwrites an import.
+* A fresh server seeds the 15 focus areas from the PowerApps tool (1 Quality
+  policy awareness … 15 Shipment Release and Controls) with no questions —
+  questions come from the import. On an already-seeded server, startup adds
+  any missing seed area by code and removes the four demo 6S questions from
+  the first seed if nobody edited them. Titles and imported questions are
+  never touched.
 
 ### Importing the SharePoint lists
 Same flow as *Import Guide*: choose file → preview counts and warnings →
@@ -162,3 +165,43 @@ notes, title and captions; the question is fixed at log time.
 
 Library on device: `GembaLibraryStore` (UserDefaults cache by `version`,
 refreshed at walk start and when the sheet opens, 60 s debounce).
+
+---
+
+## G2 + G8 · Walk sessions, summary, Excel
+
+**On the phone.** Opening a Gemba Walk shows *Start Gemba Walk*: auditor (from
+the kiosk identity, not editable), Project ID, and Organization / BU / Area /
+Location pickers fed by the library's pick lists (**Other…** reveals a text
+field; last values are remembered per device). If the auditor has an open walk
+on the same space it is offered under *Continue*. *Tag without a walk header*
+skips it — findings then save without a `walkId`. Every finding logged during
+the walk carries `walkId`. **Finish** → *Submit Walk & Save Map* uploads the
+world map, submits the walk and shows the **Session Summary** — header, counts
+by Strength / OFI / NC, max risk, photos, and the findings log.
+
+**In the portal.** GembaWalks → **🚶 Walk Sessions**: one row per walk (date,
+auditor + employee id, project, org/BU, area · location, space, findings with
+category chips and max risk, status). Expand for the findings with question
+text, notes and captioned photos. **⬇ .xlsx** per walk or for all walks: one
+row per finding, walk header repeated, first photo embedded. Submitted walks
+can be **reopened** (admin) to fix the header; deleting a walk detaches its
+findings but keeps them.
+
+**Pick lists** live under Audit Library → *Walk header pick lists* (one value
+per line, Save). They ride along in `export.json` / import.
+
+```
+POST   /gemba/walks                    { anchorId, auditorName, auditorId?, projectId?, organization?, bu?, area?, location? }
+GET    /gemba/walks?anchorId=&auditorId=&status=open|submitted     newest first, summary derived
+GET    /gemba/walks/:id                { walk, findings }
+PATCH  /gemba/walks/:id                header / notes (submitted walks: notes only)
+POST   /gemba/walks/:id/submit         { notes? }
+POST   /gemba/walks/:id/reopen         (admin)
+DELETE /gemba/walks/:id                (admin) — findings detached, not deleted
+GET    /gemba/walks/export.xlsx?walkId=  |  ?all=true
+PUT    /gemba/library/lists/:kind      { values: string[] }   kind ∈ organization | bu | area | location
+```
+Data: `gemba-walks.json`, `gemba-lists.json`. Code: `sib/src/gemba/walk-core.ts`,
+`routes/gemba-walks.ts`, `oms/xlsx-lite.ts` (`buildTableXlsx`); iOS
+`Modes/GembaWalkSheets.swift`, `LocTagAuthorView` (walk state, submit, summary).

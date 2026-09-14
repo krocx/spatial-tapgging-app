@@ -236,9 +236,11 @@ struct GembaLibrary: Codable, Equatable {
     let focusAreas: [GembaFocusArea]
     let categories: [CategoryEntry]
     let ratings:    [RatingEntry]
+    /// G2: walk-header pick lists. Optional so a cached pre-G2 copy still decodes.
+    var lists:      GembaLists?
     let version:    String
 
-    static let empty = GembaLibrary(focusAreas: [], categories: [], ratings: [], version: "0")
+    static let empty = GembaLibrary(focusAreas: [], categories: [], ratings: [], lists: nil, version: "0")
 
     func question(code: String?) -> (area: GembaFocusArea, question: GembaQuestion)? {
         guard let code else { return nil }
@@ -444,4 +446,70 @@ struct WorldMapUploadRequest: Codable {
         self.capturedAt           = ISO8601DateFormatter().string(from: Date())
         self.referencePhotoBase64 = referencePhoto?.base64EncodedString()
     }
+}
+
+// ============================================================
+// MARK: - Gemba Walk session (G2)
+// ============================================================
+
+/// Walk-header pick lists. Mirrors `GembaLists`.
+struct GembaLists: Codable, Equatable {
+    var organization: [String] = []
+    var bu:           [String] = []
+    var area:         [String] = []
+    var location:     [String] = []
+}
+
+enum GembaWalkStatus: String, Codable { case open, submitted }
+
+/// Derived counts of a walk's findings. Mirrors `GembaWalkSummary`.
+struct GembaWalkSummary: Codable, Equatable {
+    let findings:      Int
+    let strength:      Int
+    let ofi:           Int
+    let nc:            Int
+    let uncategorised: Int
+    let maxRisk:       GembaRiskRating?
+    let photos:        Int
+}
+
+/// A walk session — the header collected before the first finding. Mirrors `GembaWalk`.
+struct GembaWalk: Codable, Identifiable, Equatable {
+    let id:           String
+    let anchorId:     String
+    var auditorId:    String?
+    var auditorName:  String
+    var projectId:    String?
+    var organization: String?
+    var bu:           String?
+    var area:         String?
+    var location:     String?
+    var status:       GembaWalkStatus
+    let startedAt:    String
+    var endedAt:      String?
+    var notes:        String?
+    var summary:      GembaWalkSummary?
+
+    /// "KarthikDevTest2 · AGS · Montana" for the top bar.
+    var headerLine: String {
+        [projectId, organization, location].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+}
+
+/// POST /gemba/walks. Mirrors `StartGembaWalkRequest`.
+struct StartGembaWalkRequest: Codable {
+    let anchorId:     String
+    let auditorName:  String
+    var auditorId:    String?
+    var projectId:    String?
+    var organization: String?
+    var bu:           String?
+    var area:         String?
+    var location:     String?
+}
+
+/// GET /gemba/walks/:id
+struct GembaWalkDetail: Codable {
+    let walk:     GembaWalk
+    let findings: [LocTag]
 }

@@ -197,6 +197,7 @@ export function isAdminRequest(method: string, path: string): boolean {
   if (path.startsWith('/loto/quiz/questions')) return true;                      // add/edit/delete
   if (path === '/loto/quiz/import') return true;                                 // bulk replace
   if (method !== 'GET' && path.startsWith('/gemba/library')) return true;        // audit reference lists (Corporate Quality)
+  if (path.endsWith('/reopen') && path.startsWith('/gemba/walks/')) return true;  // reopening a submitted walk is a correction
   return false;
 }
 

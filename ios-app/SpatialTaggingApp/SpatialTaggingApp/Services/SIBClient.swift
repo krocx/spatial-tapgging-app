@@ -362,6 +362,29 @@ final class SIBClient {
         return try JSONDecoder().decode(APIResponse<LocTag>.self, from: data).data
     }
 
+    // ── Gemba Walk sessions (G2) ─────────────────────────────────────────────
+
+    func startGembaWalk(_ req: StartGembaWalkRequest) async throws -> GembaWalk {
+        try await post(GembaWalk.self, path: "/gemba/walks", body: req)
+    }
+
+    /// Walks on an anchor, newest first; `status` filters open / submitted.
+    func fetchGembaWalks(anchorId: String, status: GembaWalkStatus? = nil) async throws -> [GembaWalk] {
+        var path = "/gemba/walks?anchorId=\(anchorId)"
+        if let status { path += "&status=\(status.rawValue)" }
+        return try await get([GembaWalk].self, path: path)
+    }
+
+    func fetchGembaWalk(id: String) async throws -> GembaWalkDetail {
+        try await get(GembaWalkDetail.self, path: "/gemba/walks/\(id)")
+    }
+
+    /// Close the walk: stamps endedAt, returns the derived summary.
+    func submitGembaWalk(id: String, notes: String?) async throws -> GembaWalk {
+        struct Body: Codable { let notes: String? }
+        return try await post(GembaWalk.self, path: "/gemba/walks/\(id)/submit", body: Body(notes: notes))
+    }
+
     /// G5: attach the marked-up copy of a photo.
     func uploadLocTagMarkup(id: String, filename: String, jpegBase64: String) async throws -> LocTag {
         var req = try makeRequest(method: "PUT", path: "/loc-tags/\(id)/photos/\(filename)/markup")

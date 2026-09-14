@@ -11,6 +11,7 @@ import perceptionRouter from './routes/perception.js';
 import trainingRouter from './routes/training.js';
 import locTagRouter from './routes/loc-tags.js';
 import gembaLibraryRouter from './routes/gemba-library.js';
+import gembaWalkRouter, { openWalkCount } from './routes/gemba-walks.js';
 import worldMapRouter from './routes/worldmap.js';
 import guideRouter from './routes/guides.js';
 import guideSessionRouter from './routes/guide-sessions.js';
@@ -258,6 +259,7 @@ document.getElementById('f').addEventListener('submit', async function(ev){
         placedGuides,
         sessionsThisWeek,
         openGembaFindings: openFindings,
+        openGembaWalks: openWalkCount(),
         activeLotoLocks: activeLocks,
         guidedRuns,
         validatedSteps,
@@ -502,6 +504,10 @@ document.getElementById('f').addEventListener('submit', async function(ev){
   // POST /gemba/library/import          — atomic xlsx/CSV/JSON load (admin)
   // CRUD /gemba/library/focus-areas, /questions (admin)
   app.use('/gemba/library', gembaLibraryRouter);
+
+  // --- G2/G8: Gemba walk sessions (header, submit, summary, xlsx) ---
+  // POST /gemba/walks · GET /gemba/walks · GET /gemba/walks/:id · PATCH · POST :id/submit · GET export.xlsx
+  app.use('/gemba/walks', gembaWalkRouter);
 
   // POST /worldmap/upload               — Author: save ARWorldMap after walk
   // GET  /worldmap/:anchorId            — Operator: download ARWorldMap to re-localize
