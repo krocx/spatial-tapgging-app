@@ -114,6 +114,25 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **Feature Catalogue — live, touring, three views, shareable.** (1) **Live
+  pulse**: each product wedge carries a line from `/stats` under its rim name
+  (chambers, runs live / today, walks open, locks active, people on tools, QA
+  devices, guides placed) and **ripples** while something is happening right
+  now; the core beats faster while people are on tools (30 s refresh, quiet
+  on failure). (2) **▶ Tour** (header) runs the first trail as a story: each
+  stop flies the camera into focus with a caption card; ▶ Auto advances
+  every 9 s with a progress bar; Space / → next, ← back, Esc out — present it
+  standing at the screen. (3) **Map · Grid · Timeline** views: Grid is cards
+  by product; Timeline is columns by platform version with the current
+  release lit — "what shipped when" in one glance. (4) **Filters** for
+  status (shipped / beta / planned) and version (✦ new in 2026.4.46 · since
+  2026.4.45) apply to every view; the match count reads "N of 87". (5)
+  **Navigation**: ← Back in the card panel walks the cards you visited;
+  **⧉ Share** copies a link that carries the whole view (`#feature?3d&view=…
+  &areas=…&status=…&v=…`) so it opens exactly as you saw it; `/` focuses
+  search. (6) In 3D the SIB core now sits a full layer *below* the floor,
+  painted first, so no product ever overlaps it; rim names are hard-fitted
+  to their arc (`textLength`) so nothing clips at any angle.
 - **Feature Catalogue — Focus.** A quick look at one node's relationships
   without the rest diluting it: **◎ Focus** (bottom-right when a feature is
   selected), key **F**, or a double-click pins focus and flies to the node;

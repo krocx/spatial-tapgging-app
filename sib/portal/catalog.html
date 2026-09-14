@@ -46,6 +46,29 @@ header h1 a{color:var(--text);text-decoration:none;}
 #graph{width:100%;height:100%;display:block;cursor:grab;background:radial-gradient(ellipse at 50% 50%,#101a30 0%,#0b1220 62%);}
 #graph.dragging{cursor:grabbing;}
 #hint{position:absolute;left:14px;bottom:12px;font-size:11px;color:var(--muted);pointer-events:none;max-width:70%;}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--panel);}
+.seg button{border:0;background:transparent;color:var(--muted);font-size:11.5px;font-weight:700;padding:5px 11px;cursor:pointer;}
+.seg button.on{background:var(--accent);color:#fff;}
+#filterChips{display:flex;gap:6px;flex-wrap:wrap;}
+#filterChips .achip.fver.on{border-color:#35c635;color:#35c635;}
+#altView{position:absolute;inset:0;overflow:auto;padding:18px 22px 40px;}
+.vgroup{margin-bottom:22px;} .vgroup h4,.tlcol h4{font-size:12px;letter-spacing:.14em;text-transform:uppercase;margin:0 0 10px;display:flex;align-items:center;gap:8px;}
+.vgroup h4 small,.tlcol h4 small{color:var(--muted);font-weight:400;letter-spacing:0;}
+.vgroup h4 .dot{width:9px;height:9px;border-radius:50%;display:inline-block;}
+.vcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;}
+.fcard{border:1px solid var(--border);border-left:3px solid var(--c);border-radius:10px;padding:10px 12px;background:rgba(17,26,46,.7);cursor:pointer;transition:transform .12s,border-color .12s;}
+.fcard:hover{transform:translateY(-2px);border-color:var(--c);} .fcard.sel{border-color:#fff;}
+.fc-h{display:flex;align-items:center;gap:7px;font-size:13px;margin-bottom:4px;} .fc-h b{flex:1;}
+.fc-dot{width:9px;height:9px;border-radius:50%;display:inline-block;background:var(--c);}
+.fc-dot.status-beta{background:transparent;border:2px solid var(--c);} .fc-dot.status-planned{background:transparent;border:1.5px dashed var(--c);}
+.fc-new{font-size:9px;font-weight:800;letter-spacing:.1em;color:#35c635;border:1px solid #35c63566;border-radius:4px;padding:1px 5px;}
+.fc-b{font-size:11.5px;color:var(--text);opacity:.85;line-height:1.5;} .fc-m{font-size:10.5px;color:var(--muted);margin-top:6px;}
+.tl{display:flex;gap:16px;align-items:flex-start;min-height:100%;}
+.tlcol{flex:1;min-width:250px;border:1px solid var(--border);border-radius:12px;padding:12px;background:rgba(14,22,38,.5);}
+.tlcol.cur{border-color:#35c63588;box-shadow:0 0 0 1px #35c63533 inset;}
+.tlcol .vcards{grid-template-columns:1fr;}
+.pnav{display:flex;justify-content:space-between;gap:8px;margin-bottom:10px;} .pnav .btn{font-size:11.5px;padding:4px 9px;}
+.empty{color:var(--muted);padding:40px;text-align:center;}
 #modeCtl{position:absolute;right:14px;top:12px;display:flex;z-index:5;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:rgba(17,26,46,.75);backdrop-filter:blur(8px);}
 #modeCtl button{border:0;background:transparent;color:var(--muted);font-size:12px;font-weight:700;padding:6px 11px;cursor:pointer;letter-spacing:.04em;}
 #modeCtl button.on{background:var(--accent);color:#fff;}
@@ -58,6 +81,15 @@ header h1 a{color:var(--text);text-decoration:none;}
 #focusBar .fdot.on{background:#35c635;box-shadow:0 0 8px #35c635;}
 #focusBar .fk{font-size:10px;color:var(--muted);border:1px solid var(--border);border-radius:4px;padding:1px 5px;}
 #focusBar .btn{padding:4px 10px;font-size:12px;}
+#tourCap{position:absolute;left:50%;bottom:44px;transform:translateX(-50%);width:min(560px,80%);z-index:6;
+  background:rgba(17,26,46,.86);backdrop-filter:blur(14px);border:1px solid var(--border);border-radius:14px;padding:14px 18px 10px;
+  box-shadow:0 12px 40px rgba(0,0,0,.45);}
+#tourCap .tc-k{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;margin-bottom:4px;}
+#tourCap .tc-t{font-size:18px;font-weight:800;margin-bottom:6px;}
+#tourCap .tc-b{font-size:13px;line-height:1.55;color:var(--text);}
+#tourCap .tc-bar{height:2px;background:var(--border);border-radius:2px;margin-top:10px;overflow:hidden;}
+#tourCap .tc-bar i{display:block;height:100%;width:0;background:var(--accent);animation:tcfill linear forwards;}
+@keyframes tcfill{from{width:0}to{width:100%}}
 #zoomCtl button{width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:rgba(17,26,46,.75);backdrop-filter:blur(8px);color:var(--text);
   font-size:15px;cursor:pointer;line-height:1;}
 #zoomCtl button:hover{border-color:var(--accent);}
@@ -175,9 +207,14 @@ g.wedge path{pointer-events:none;}
 text.ring{font-size:9px;fill:#7d8da3;opacity:.55;letter-spacing:.14em;text-transform:uppercase;pointer-events:none;}
 text.corelbl{font-size:26px;font-weight:800;fill:#fff;letter-spacing:.08em;pointer-events:none;}
 text.coresub{font-size:8.5px;fill:#bfdbfe;letter-spacing:.06em;pointer-events:none;}
-.coreglow{animation:corePulse 4.5s ease-in-out infinite alternate;}
+.coreglow{animation:corePulse var(--beat,4.5s) ease-in-out infinite alternate;}
+text.livelbl{font-size:8.5px;letter-spacing:.12em;opacity:.55;pointer-events:none;}
+text.livelbl.on{opacity:.95;font-weight:700;}
+.ripple{animation:ripple 2.6s ease-out infinite;pointer-events:none;transform-box:fill-box;transform-origin:center;}
+.ripple.r2{animation-delay:1.3s;}
+@keyframes ripple{from{transform:scale(.3);opacity:.7}to{transform:scale(3.2);opacity:0}}
 @keyframes corePulse{from{opacity:.28}to{opacity:.5}}
-.halo.h0{animation:spin 60s linear infinite;} .halo.h1{animation:spin 45s linear infinite reverse;}
+.halo{transform-box:fill-box;transform-origin:center;} .halo.h0{animation:spin 60s linear infinite;} .halo.h1{animation:spin 45s linear infinite reverse;}
 .halo.h2{animation:spin 80s linear infinite;} .halo.h3{animation:spin 100s linear infinite reverse;}
 @keyframes spin{to{transform:rotate(360deg)}}
 /* ignite — once per session */
@@ -197,14 +234,17 @@ text.coresub{font-size:8.5px;fill:#bfdbfe;letter-spacing:.06em;pointer-events:no
 <header>
   <h1><a href="/" data-ax-wordmark data-short title="SIB home"></a> Feature Catalogue</h1>
   <span data-brand-slot style="display:flex;align-items:center;margin-left:auto;order:99"></span>
-  <input id="search" type="search" placeholder="Search features, terms…" autocomplete="off">
+  <input id="search" type="search" placeholder="Search features, terms…  ( / )" autocomplete="off">
+  <div id="viewCtl" class="seg"><button data-view="map" class="on">Map</button><button data-view="grid">Grid</button><button data-view="timeline">Timeline</button></div>
   <div id="areaChips"></div>
+  <div id="filterChips"></div>
   <div class="legend">
     <span><svg width="14" height="12"><circle cx="7" cy="6" r="5" fill="#3b82f6"/></svg> shipped</span>
     <span><svg width="14" height="12"><circle cx="7" cy="6" r="5" fill="#3b82f6" fill-opacity=".25" stroke="#3b82f6" stroke-width="1.6"/></svg> beta</span>
     <span><svg width="14" height="12"><circle cx="7" cy="6" r="5" fill="none" stroke="#3b82f6" stroke-width="1.4" stroke-dasharray="3 2"/></svg> planned</span>
     <span><svg width="14" height="12"><circle cx="6" cy="6" r="5" fill="#3b82f6"/><circle cx="10" cy="2.5" r="2.6" fill="#35c635"/></svg> new this release</span>
   </div>
+  <button class="btn" style="padding:6px 13px" onclick="startTour()" title="Guided tour — the camera flies stop to stop">▶ Tour</button>
   <button class="btn primary" style="padding:6px 13px" onclick="askOpen()">💬 Ask SIB</button>
   <div class="hlinks"><a href="/portal">Portal</a><a href="/roadmap">Roadmap</a><a href="/wireframe">Wireframe</a></div>
 </header>
@@ -212,15 +252,19 @@ text.coresub{font-size:8.5px;fill:#bfdbfe;letter-spacing:.06em;pointer-events:no
   <strong id="trailName"></strong><span class="tstep" id="trailStep"></span>
   <button class="btn" id="trailPrev">← Prev</button>
   <button class="btn primary" id="trailNext">Next →</button>
-  <button class="btn" id="trailExit">Exit trail</button>
+  <button class="btn" id="trailAuto">▶ Auto</button>
+  <span class="tstep">Space / → next · ← back · Esc exit</span>
+  <button class="btn" id="trailExit" style="margin-left:auto">Exit</button>
 </div>
 <div id="main">
   <div id="graphWrap">
     <div id="matchCount"></div>
     <svg id="graph"></svg>
+    <div id="altView" style="display:none"></div>
     <div id="modeCtl"><button id="mode2d" class="on" title="Flat disc (key 2)">2D</button><button id="mode3d" title="Products stacked as layers (key 3)">3D</button></div>
     <div id="modeHint"></div>
     <div id="focusBar" style="display:none"></div>
+    <div id="tourCap" style="display:none"></div>
     <div id="zoomCtl">
       <button id="zoomIn" title="Zoom in">+</button>
       <button id="zoomOut" title="Zoom out">−</button>
@@ -313,7 +357,8 @@ async function boot(){
   }
   DATA.areas.forEach(a => areaById[a.id] = a);
   buildGraph(); computeLayers();
-  renderAreaChips();
+  refreshStats();
+  renderAreaChips(); renderFilterChips();
   renderHome();
   startSim();
   // Renderers: vendored copies first (sib/portal/vendor/ — run `npm run
@@ -335,11 +380,33 @@ async function boot(){
   window.addEventListener('hashchange', applyHash);
 }
 
+// The hash is the whole view: #<feature-or-area>?3d&view=grid&areas=a,b&status=beta&v=2026.4.46
+// — a link from Slack opens exactly what you were looking at.
+let syncing = false;
+function syncHash(){
+  if (!DATA || syncing) return;
+  const q = [];
+  if (mode3d) q.push('3d');
+  if (currentView !== 'map') q.push('view=' + currentView);
+  if (activeAreas.size) q.push('areas=' + [...activeAreas].join(','));
+  if (statusFilter) q.push('status=' + statusFilter);
+  if (versionFilter) q.push('v=' + encodeURIComponent(versionFilter));
+  const base = selected || '';
+  const h = (base || q.length) ? '#' + base + (q.length ? '?' + q.join('&') : '') : location.pathname;
+  if (location.hash !== h && !(h === location.pathname && !location.hash)) history.replaceState(null, '', h);
+}
 function applyHash(){
-  let id = decodeURIComponent(location.hash.slice(1));
-  const want3d = /(^|[?&])3d$/.test(id);
-  id = id.replace(/(^|[?&])3d$/, '');
+  const raw = decodeURIComponent(location.hash.slice(1));
+  const [idPart, qs = ''] = raw.split('?');
+  const p = new URLSearchParams(qs);
+  const want3d = p.has('3d');
+  const id = idPart;
+  syncing = true;
   if (want3d !== mode3d) setMode(want3d, !applyHash.ran);   // instant on first load
+  if (p.get('areas')){ activeAreas = new Set(p.get('areas').split(',').filter(a => areaById[a])); renderAreaChips(); }
+  if (p.has('status') || p.has('v')){ statusFilter = p.get('status') || null; versionFilter = p.get('v') || null; applyFilters(); }
+  if (p.get('view') && p.get('view') !== currentView) setView(p.get('view'));
+  syncing = false;
   applyHash.ran = true;
   if (!id) return;
   if (id === 'ask') { askOpen(); return; }
@@ -547,6 +614,52 @@ function setMode(m3d, instant = false){
   history.replaceState(null, '', (h || '#') + (m3d ? (h && h !== '#' ? '&3d' : '?3d') : ''));
 }
 
+/* ═══════════════ live pulse — the catalogue is a live view of the platform ═══════
+   /stats (aggregate counts only) rides on each product wedge: a small line
+   under the rim name, and a ripple when something is happening right now
+   (a run live, a walk open, a lock held, someone on a tool). The core beats
+   faster while people are on tools. Refreshed every 30 s; quiet on failure. */
+let STATS = null;
+const pl = (n, one, many) => `${n} ${n === 1 ? one : (many || one + 's')}`;
+function liveOf(areaId){
+  const st = STATS; if (!st) return null;
+  switch (areaId){
+    case 'tags':     return { text: pl(st.anchors ?? 0, 'chamber'), live: (st.presenceAnchors ?? 0) > 0 };
+    case 'guides':   return (st.liveRuns ?? 0) > 0 ? { text: pl(st.liveRuns, 'run') + ' live', live: true }
+                                                     : { text: pl(st.sessionsToday ?? 0, 'run') + ' today', live: false };
+    case 'gemba':    return (st.openGembaWalks ?? 0) > 0 ? { text: pl(st.openGembaWalks, 'walk') + ' open', live: true }
+                                                          : { text: pl(st.openGembaFindings ?? 0, 'open finding'), live: false };
+    case 'iloto':    return { text: pl(st.activeLotoLocks ?? 0, 'lock') + ' active', live: (st.activeLotoLocks ?? 0) > 0 };
+    case 'portal':   return { text: pl(st.presenceNow ?? 0, 'person', 'people') + ' on tools', live: (st.presenceNow ?? 0) > 0 };
+    case 'platform': return { text: pl(st.qaDevices ?? 0, 'QA device'), live: (st.qaDevices ?? 0) > 0 };
+    case 'designer': return { text: `${st.guides ?? 0} guides · ${st.placedGuides ?? 0} placed`, live: false };
+  }
+  return null;
+}
+async function refreshStats(){
+  try {
+    const r = await fetch('/stats'); if (!r.ok) return;
+    STATS = await r.json();
+    document.documentElement.style.setProperty('--beat', (STATS.presenceNow > 0 ? 1.6 : 4.5) + 's');
+    if (stack.t === 0) buildStatic();
+    markDirty();
+  } catch { /* stats are a garnish, never a blocker */ }
+}
+setInterval(refreshStats, 30000);
+// One wedge's live line + ripple, in either projection (z = 0 when flat).
+function liveMark(a, z){
+  const lv = liveOf(a.id); if (!lv) return '';
+  const rr = R_MAX + 32, bottom = Math.sin(a.amid) > 0;
+  const arc = stack.t === 0
+    ? (bottom ? arcPath(rr, a.g1 - 0.03, a.g0 + 0.03) : arcPath(rr, a.g0 + 0.03, a.g1 - 0.03))
+    : (() => { const p = sampleArc(rr, a.g0 + 0.03, a.g1 - 0.03, z, 24); return poly(p[0].x <= p[p.length-1].x ? p : p.reverse()); })();
+  const mid = P(CX + Math.cos(a.amid) * ((R_MIN + R_MAX) / 2), CY + Math.sin(a.amid) * ((R_MIN + R_MAX) / 2), z);
+  return `<defs><path id="lp-${a.id}" d="${arc}"/></defs>
+    <text class="livelbl${lv.live ? ' on' : ''}" fill="${a.color}"><textPath href="#lp-${a.id}" startOffset="50%" text-anchor="middle">${lv.live ? '● ' : ''}${esc(lv.text)}</textPath></text>` +
+    (lv.live ? `<circle class="ripple" cx="${mid.x}" cy="${mid.y}" r="${20 * mid.s}" fill="none" stroke="${a.color}" stroke-width="1.5"/>
+               <circle class="ripple r2" cx="${mid.x}" cy="${mid.y}" r="${20 * mid.s}" fill="none" stroke="${a.color}" stroke-width="1.5"/>` : '');
+}
+
 /* ═══════════════ focus — a quick look at one node's relationships ═══════════════
    Pinned with the ◎ Focus button, F, or a double-click; also engages by
    itself once you're zoomed in (k ≥ 1.35) on a selected node. First-degree
@@ -602,7 +715,7 @@ function buildStatic(){
     // Name path on the rim: bottom sectors run the arc the other way so the
     // text never reads upside down.
     const rr = R_MAX + 62, bottom = Math.sin(a.amid) > 0;
-    a.rimFs = rimFontSize(a.name, rr * (a.g1 - a.g0 - 0.06));
+    a.rimLen = rr * (a.g1 - a.g0 - 0.06); a.rimFs = rimFontSize(a.name, a.rimLen);
     out += `<path id="ap-${a.id}" d="${bottom ? arcPath(rr, a.g1 - 0.03, a.g0 + 0.03) : arcPath(rr, a.g0 + 0.03, a.g1 - 0.03)}"/>`;
   }
   out += '</defs>';
@@ -611,7 +724,8 @@ function buildStatic(){
     out += `<g class="wedge" data-area="${a.id}" style="--i:${i}">
       <path d="${wedgePath(R_MIN - 40, R_MAX + 46, a.g0 + 0.012, a.g1 - 0.012)}" fill="url(#wg-${a.id})" stroke="${a.color}" stroke-opacity=".22" stroke-width="1"/>
       <path d="${arcPath(R_MAX + 46, a.g0 + 0.012, a.g1 - 0.012)}" fill="none" stroke="${a.color}" stroke-opacity=".8" stroke-width="3"/>
-      <text class="albl" fill="${a.color}" data-area="${a.id}" font-size="${a.rimFs}"><textPath href="#ap-${a.id}" startOffset="50%" text-anchor="middle">${esc(a.name).toUpperCase()}</textPath></text>
+      <text class="albl" fill="${a.color}" data-area="${a.id}"><textPath href="#ap-${a.id}" startOffset="50%" text-anchor="middle" ${rimFit(a.name, a.rimFs, a.rimLen)}>${esc(a.name).toUpperCase()}</textPath></text>
+      ${liveMark(a, 0)}
     </g>`;
   });
   // depth rings
@@ -625,7 +739,7 @@ function buildStatic(){
     <circle cx="${CX}" cy="${CY}" r="150" fill="url(#coreGrad)" opacity=".35" class="coreglow"/>`;
   ONT.forEach(([c, n], i) => {
     const r = 84 + i * 16;
-    out += `<circle cx="${CX}" cy="${CY}" r="${r}" fill="none" stroke="${c}" stroke-opacity=".45" stroke-width="1.2" stroke-dasharray="${i % 2 ? '3 9' : '14 10'}" class="halo h${i}" style="transform-origin:${CX}px ${CY}px"/>`;
+    out += `<circle cx="${CX}" cy="${CY}" r="${r}" fill="none" stroke="${c}" stroke-opacity=".45" stroke-width="1.2" stroke-dasharray="${i % 2 ? '3 9' : '14 10'}" class="halo h${i}"/>`;
   });
   out += `<circle cx="${CX}" cy="${CY}" r="66" fill="#0b1220" stroke="#93c5fd" stroke-opacity=".6" stroke-width="1.5"/>
     <circle cx="${CX}" cy="${CY}" r="66" fill="url(#coreGrad)" opacity=".5"/>
@@ -642,6 +756,8 @@ function rimFontSize(name, arcLen){
   const n = name.length, per = 0.64 + 0.22;          // glyph + letter-spacing, in em
   return Math.max(7.5, Math.min(13, (arcLen * 0.9) / (n * per)));
 }
+// Hard guarantee: never longer than 92 % of the arc, whatever the font does.
+const rimFit = (name, fs, arcLen) => `font-size="${fs.toFixed(1)}" textLength="${Math.min(name.length * fs * 0.86, arcLen * 0.92).toFixed(0)}" lengthAdjust="spacingAndGlyphs"`;
 const polyLen = pts => { let l = 0; for (let i = 1; i < pts.length; i++) l += Math.hypot(pts[i].x - pts[i-1].x, pts[i].y - pts[i-1].y); return l; };
 function buildStatic3D(){
   const layers = [...DATA.areas].sort((a, b) => layerIndex[a.id] - layerIndex[b.id]);
@@ -649,13 +765,21 @@ function buildStatic3D(){
   for (const a of layers){
     const z = zOf(a.id), outer = sampleArc(R_MAX + 62, a.g0 + 0.03, a.g1 - 0.03, z, 24);
     const pts = outer[0].x <= outer[outer.length - 1].x ? outer : outer.reverse();
-    a.rimFs3 = rimFontSize(a.name, polyLen(pts));
+    a.rimLen3 = polyLen(pts); a.rimFs3 = rimFontSize(a.name, a.rimLen3);
     out += `<path id="ap3-${a.id}" d="${poly(pts)}"/>`;
   }
   out += '</defs>';
   const zTop = zOf(layers[layers.length - 1].id);
-  // spine: SIB through every layer
-  const b = P(CX, CY, -40), tp = P(CX, CY, zTop + 40);
+  // The core sits a full layer BELOW the floor — it is what the foundations
+  // stand on — and is painted first so no product ever overlaps it.
+  const zCore = -LAYER_GAP * stack.t * 1.05;
+  const c0 = P(CX, CY, zCore);
+  out += `<g class="core"><circle cx="${c0.x}" cy="${c0.y}" r="${120 * c0.s}" fill="url(#coreGrad)" opacity=".28"/>
+    <circle cx="${c0.x}" cy="${c0.y}" r="${52 * c0.s}" fill="#0b1220" stroke="#93c5fd" stroke-opacity=".6" stroke-width="1.5"/>
+    <circle cx="${c0.x}" cy="${c0.y}" r="${52 * c0.s}" fill="url(#coreGrad)" opacity=".5"/>
+    <text class="corelbl" x="${c0.x}" y="${c0.y + 7 * c0.s}" text-anchor="middle" font-size="${22 * c0.s}">SIB</text></g>`;
+  // spine: from the core up through every layer
+  const b = P(CX, CY, zCore + 52), tp = P(CX, CY, zTop + 40);
   out += `<line x1="${b.x}" y1="${b.y}" x2="${tp.x}" y2="${tp.y}" stroke="#3b82f6" stroke-opacity=".35" stroke-width="${10 * b.s}" stroke-linecap="round"/>
           <line x1="${b.x}" y1="${b.y}" x2="${tp.x}" y2="${tp.y}" stroke="#bfdbfe" stroke-opacity=".8" stroke-width="${2 * b.s}" stroke-linecap="round"/>`;
   // far layers first
@@ -671,14 +795,10 @@ function buildStatic3D(){
       <path d="${poly(o.concat(inn), true)}" fill="${a.color}" fill-opacity=".13" stroke="${a.color}" stroke-opacity=".28" stroke-width="1"/>
       <path d="${poly(o)}" fill="none" stroke="${a.color}" stroke-opacity=".85" stroke-width="3"/>
       <path d="${poly(hub, true)}" fill="#0b1220" stroke="#93c5fd" stroke-opacity=".7" stroke-width="1.2"/>
-      <text class="albl" fill="${a.color}" data-area="${a.id}" font-size="${a.rimFs3}"><textPath href="#ap3-${a.id}" startOffset="50%" text-anchor="middle">${esc(a.name).toUpperCase()}</textPath></text>
+      <text class="albl" fill="${a.color}" data-area="${a.id}"><textPath href="#ap3-${a.id}" startOffset="50%" text-anchor="middle" ${rimFit(a.name, a.rimFs3, a.rimLen3)}>${esc(a.name).toUpperCase()}</textPath></text>
+      ${liveMark(a, z)}
     </g>`;
   }
-  // the core, at the foot of the spine
-  const c0 = P(CX, CY, -40);
-  out += `<g class="core"><circle cx="${c0.x}" cy="${c0.y}" r="${66 * c0.s}" fill="#0b1220" stroke="#93c5fd" stroke-opacity=".6" stroke-width="1.5"/>
-    <circle cx="${c0.x}" cy="${c0.y}" r="${66 * c0.s}" fill="url(#coreGrad)" opacity=".5"/>
-    <text class="corelbl" x="${c0.x}" y="${c0.y + 8 * c0.s}" text-anchor="middle" font-size="${26 * c0.s}">SIB</text></g>`;
   return out;
 }
 // A dependency edge in space: in-layer edges stay flat, cross-layer edges
@@ -707,8 +827,17 @@ function edgePath(e){
   return `M${e.s.x.toFixed(1)},${e.s.y.toFixed(1)}Q${cx.toFixed(1)},${cy.toFixed(1)} ${e.t.x.toFixed(1)},${e.t.y.toFixed(1)}`;
 }
 
+let statusFilter = null;          // 'shipped' | 'beta' | 'planned' | null
+let versionFilter = null;         // exact version string, or 'since:<v>', or null
+function versionOk(nd){
+  if (!versionFilter) return true;
+  if (versionFilter.startsWith('since:')) return nd.version !== 'baseline' && nd.version >= versionFilter.slice(6);
+  return nd.version === versionFilter;
+}
 function nodeVisible(nd){
   if (activeAreas.size && !activeAreas.has(nd.area)) return false;
+  if (statusFilter && nd.status !== statusFilter) return false;
+  if (!versionOk(nd)) return false;
   return true;
 }
 function nodeMatches(nd){
@@ -875,8 +1004,12 @@ window.addEventListener('keydown', ev => {
   if (ev.target.matches('input, textarea') || ev.metaKey || ev.ctrlKey) return;
   if (ev.key === '2') setMode(false); else if (ev.key === '3') setMode(true);
   else if (ev.key === 'f' || ev.key === 'F'){ if (selected) setFocus(!focusPin); }
+  else if (trail && (ev.key === 'ArrowRight' || ev.key === ' ')){ ev.preventDefault(); tourStep(1); }
+  else if (trail && ev.key === 'ArrowLeft'){ tourStep(-1); }
+  else if (ev.key === '/'){ ev.preventDefault(); document.getElementById('search').focus(); }
   else if (ev.key === 'Escape'){
-    if (focusPin || inFocus()){ focusPin = false; if (view.k >= 1.35) fitAll(); renderFocusBar(); markDirty(); }
+    if (trail){ exitTrail(); }
+    else if (focusPin || inFocus()){ focusPin = false; if (view.k >= 1.35) fitAll(); renderFocusBar(); markDirty(); }
     else if (selected){ selected = null; renderHome(); markDirty(); }
   }
 });
@@ -965,6 +1098,69 @@ function moveTip(ev){
 function hideTip(){ tip.style.display = 'none'; }
 
 /* ═══════════════ header controls ═══════════════ */
+let currentView = 'map';
+function setView(v){
+  currentView = v;
+  document.querySelectorAll('#viewCtl button').forEach(b => b.classList.toggle('on', b.dataset.view === v));
+  for (const id of ['graph', 'modeCtl', 'zoomCtl', 'hint', 'modeHint']) document.getElementById(id).style.display = v === 'map' ? '' : 'none';
+  const alt = document.getElementById('altView');
+  alt.style.display = v === 'map' ? 'none' : 'block';
+  if (v !== 'map') renderAltView();
+  syncHash();
+}
+document.querySelectorAll('#viewCtl button').forEach(b => b.onclick = () => setView(b.dataset.view));
+
+// Grid: cards by product, scannable. Timeline: columns by platform version —
+// "what shipped when" at a glance; the current release is lit.
+function featureCard(f){
+  const a = areaById[f.area];
+  return `<div class="fcard${f.id === selected ? ' sel' : ''}" data-go="${f.id}" style="--c:${a.color}">
+    <div class="fc-h"><span class="fc-dot status-${f.status}"></span><b>${esc(f.name)}</b>${f.version === DATA.platformVersion ? '<span class="fc-new">NEW</span>' : ''}</div>
+    <div class="fc-b">${esc((f.body || '').split(/(?<=\.)\s/)[0].slice(0, 140))}</div>
+    <div class="fc-m">${esc(a.name)} · ${esc(f.status)} · ${f.version === 'baseline' ? 'baseline' : 'v' + esc(f.version)}</div>
+  </div>`;
+}
+function renderAltView(){
+  const el = document.getElementById('altView');
+  const vis = nodes.filter(n => nodeVisible(n) && nodeMatches(n));
+  if (currentView === 'grid'){
+    el.innerHTML = DATA.areas.map(a => {
+      const list = vis.filter(n => n.area === a.id); if (!list.length) return '';
+      return `<section class="vgroup"><h4 style="color:${a.color}"><span class="dot" style="background:${a.color}"></span>${esc(a.name)} <small>${list.length}</small></h4>
+        <div class="vcards">${list.map(featureCard).join('')}</div></section>`;
+    }).join('') || '<p class="empty">Nothing matches the current filters.</p>';
+  } else {
+    const versions = [...new Set(nodes.map(n => n.version))].sort((x, y) => x === 'baseline' ? -1 : y === 'baseline' ? 1 : x.localeCompare(y));
+    el.innerHTML = `<div class="tl">` + versions.map(v => {
+      const list = vis.filter(n => n.version === v); if (!list.length) return '';
+      const cur = v === DATA.platformVersion;
+      return `<section class="tlcol${cur ? ' cur' : ''}"><h4>${v === 'baseline' ? 'Baseline' : 'v' + esc(v)}${cur ? ' <span class="fc-new">current</span>' : ''} <small>${list.length}</small></h4>
+        <div class="vcards">${list.map(featureCard).join('')}</div></section>`;
+    }).join('') + `</div>`;
+  }
+  el.querySelectorAll('[data-go]').forEach(c => c.onclick = () => { selectFeature(c.dataset.go); renderAltView(); });
+}
+function renderFilterChips(){
+  const el = document.getElementById('filterChips');
+  const versions = [...new Set(nodes.map(n => n.version))].filter(v => v !== 'baseline').sort();
+  const cur = DATA.platformVersion, prev = versions.length > 1 ? versions[versions.length - 2] : null;
+  const chip = (label, on, cls, attr) => `<span class="achip ${cls}${on ? ' on' : ''}" ${attr}>${label}</span>`;
+  el.innerHTML =
+    ['shipped', 'beta', 'planned'].map(st => chip(st, statusFilter === st, 'fstatus', `data-status="${st}"`)).join('') +
+    chip('✦ new in ' + cur, versionFilter === cur, 'fver', `data-version="${cur}"`) +
+    (prev ? chip('since ' + prev, versionFilter === 'since:' + prev, 'fver', `data-version="since:${prev}"`) : '');
+  el.querySelectorAll('[data-status]').forEach(c => c.onclick = () => { statusFilter = statusFilter === c.dataset.status ? null : c.dataset.status; applyFilters(); });
+  el.querySelectorAll('[data-version]').forEach(c => c.onclick = () => { versionFilter = versionFilter === c.dataset.version ? null : c.dataset.version; applyFilters(); });
+}
+function applyFilters(){
+  renderFilterChips(); markDirty();
+  if (currentView !== 'map') renderAltView();
+  const n = nodes.filter(nodeVisible).length, mc = document.getElementById('matchCount');
+  if (statusFilter || versionFilter){ mc.style.display = 'block'; mc.textContent = `${n} of ${nodes.length} features`; }
+  else if (!searchQ) mc.style.display = 'none';
+  syncHash();
+}
+
 function renderAreaChips(){
   const el = document.getElementById('areaChips');
   el.innerHTML = DATA.areas.map(a =>
@@ -976,7 +1172,8 @@ function renderAreaChips(){
       if (activeAreas.has(id)) activeAreas.delete(id);
       else activeAreas.add(id);
       if (activeAreas.size === DATA.areas.length) activeAreas.clear();
-      renderAreaChips(); showArea(id); markDirty();
+      renderAreaChips(); showArea(id); markDirty(); syncHash();
+      if (currentView !== 'map') renderAltView();
       if (activeAreas.has(id)) zoomToArea(id); else if (!activeAreas.size) fitAll();
     };
   });
@@ -986,8 +1183,9 @@ document.getElementById('search').addEventListener('input', ev => {
   const mc = document.getElementById('matchCount');
   if (searchQ){ const n = nodes.filter(nodeMatches).length;
     mc.style.display = 'block'; mc.textContent = n + ' match' + (n===1?'':'es'); }
-  else mc.style.display = 'none';
+  else if (!statusFilter && !versionFilter) mc.style.display = 'none';
   markDirty();
+  if (currentView !== 'map') renderAltView();
 });
 document.getElementById('search').addEventListener('keydown', ev => {
   if (ev.key === 'Enter'){ const hit = nodes.find(nodeMatches); if (hit) selectFeature(hit.id); }
@@ -1048,8 +1246,7 @@ document.addEventListener('keydown', ev => { if (ev.key === 'Escape') flowModal.
 const panel = document.getElementById('panel');
 
 function renderHome(){
-  selected = null; markDirty();
-  if (location.hash) history.replaceState(null, '', location.pathname);
+  selected = null; markDirty(); syncHash();
   const s = { shipped:0, beta:0, planned:0 };
   DATA.features.forEach(f => s[f.status]++);
   panel.innerHTML = `
@@ -1099,12 +1296,18 @@ function showArea(id){
   panel.classList.add('open');
 }
 
+const histStack = [];             // cards visited this session (← Back in the panel)
+function goBack(){
+  histStack.pop();                          // the current card
+  const prev = histStack.pop();
+  if (prev) selectFeature(prev); else { selected = null; renderHome(); }
+}
 function selectFeature(id){
   selected = id; markDirty();
   if (focusPin) zoomToFeature(id);
   renderFocusBar();
-  const want = '#' + id + (mode3d ? '?3d' : '');
-  if (location.hash !== want) history.replaceState(null, '', want);
+  if (histStack[histStack.length - 1] !== id){ histStack.push(id); if (histStack.length > 40) histStack.shift(); }
+  syncHash();
   showFeature(id);
 }
 
@@ -1114,7 +1317,10 @@ function showFeature(id){
   const deps = f.depends.map(d => byId[d]).filter(Boolean);
   const usedBy = edges.filter(e => e.s.id === id).map(e => e.t);
   const flow = f.flow || a.flow;
+  const prev = histStack.length > 1 ? byId[histStack[histStack.length - 2]] : null;
   panel.innerHTML = `
+    <div class="pnav">${prev ? `<button class="btn" id="pBack" title="Back to ${esc(prev.name)}">← ${esc(prev.name.length > 22 ? prev.name.slice(0, 21) + '…' : prev.name)}</button>` : `<button class="btn" id="pBack">← Overview</button>`}
+      <button class="btn" id="pShare" title="Copy a link to exactly this view">⧉ Share</button></div>
     <h2>${esc(f.name)}</h2>
     <div class="meta">
       <span class="mchip" style="color:${a.color};border-color:${a.color}55">${esc(a.name)}</span>
@@ -1148,6 +1354,8 @@ function showFeature(id){
   bindTermChips(panel);
   panel.querySelectorAll('[data-go]').forEach(el => el.onclick = () => selectFeature(el.dataset.go));
   panel.querySelector('#backHome').onclick = renderHome;
+  panel.querySelector('#pBack').onclick = goBack;
+  panel.querySelector('#pShare').onclick = () => { syncHash(); navigator.clipboard?.writeText(location.href).then(() => { const b = panel.querySelector('#pShare'); b.textContent = '✓ Link copied'; setTimeout(() => b.textContent = '⧉ Share', 1600); }); };
   // Locked features have no #specBtn (replaced by the IP-key unlock button) —
   // guard, or this throws and strands the graph's drag state mid-click.
   const specBtn = panel.querySelector('#specBtn');
@@ -1177,6 +1385,10 @@ function renderApiLine(line){
 }
 
 /* ═══════════════ trails ═══════════════ */
+// Trails double as the TOUR: each stop flies the camera to the feature in
+// focus and shows a caption card; ▶ Auto advances every 9 s (presenter-
+// friendly — stand at the screen, no mouse). Space / → next, ← back, Esc out.
+let tourAuto = null;
 function startTrail(id){
   trail = DATA.trails.find(t => t.id === id); if (!trail) return;
   trailIdx = 0;
@@ -1187,11 +1399,42 @@ function startTrail(id){
 }
 function updateTrail(){
   document.getElementById('trailStep').textContent = `stop ${trailIdx+1} of ${trail.steps.length}`;
-  selectFeature(trail.steps[trailIdx]);
+  const id = trail.steps[trailIdx];
+  selectFeature(id); setFocus(true);
+  const f = byId[id], a = areaById[f.area];
+  const cap = document.getElementById('tourCap');
+  cap.style.display = 'block';
+  cap.innerHTML = `<div class="tc-k" style="color:${a.color}">${esc(trail.name)} · stop ${trailIdx+1} of ${trail.steps.length} · ${esc(a.name)}</div>
+    <div class="tc-t">${esc(f.name)}</div>
+    <div class="tc-b">${esc(f.body.split(/(?<=\.)\s/).slice(0, 2).join(' '))}</div>
+    <div class="tc-bar"><i style="animation-duration:${tourAuto ? '9s' : '0s'};animation-play-state:${tourAuto ? 'running' : 'paused'}"></i></div>`;
+  if (tourAuto){ clearTimeout(tourAuto.t); tourAuto.t = setTimeout(tourStep, 9000); }
 }
-document.getElementById('trailNext').onclick = () => { if (trail && trailIdx < trail.steps.length-1){ trailIdx++; updateTrail(); } };
-document.getElementById('trailPrev').onclick = () => { if (trail && trailIdx > 0){ trailIdx--; updateTrail(); } };
-document.getElementById('trailExit').onclick = () => { trail = null; markDirty(); document.getElementById('trailBar').style.display = 'none'; renderHome(); };
+function tourStep(dir = 1){
+  if (!trail) return;
+  const n = trailIdx + dir;
+  if (n < 0) return;
+  if (n >= trail.steps.length){ if (tourAuto) setTourAuto(false); return; }
+  trailIdx = n; updateTrail();
+}
+function setTourAuto(on){
+  if (tourAuto){ clearTimeout(tourAuto.t); tourAuto = null; }
+  if (on) tourAuto = { t: setTimeout(tourStep, 9000) };
+  document.getElementById('trailAuto').classList.toggle('primary', !!tourAuto);
+  document.getElementById('trailAuto').textContent = tourAuto ? '⏸ Auto' : '▶ Auto';
+  if (trail) updateTrail();
+}
+function exitTrail(){
+  trail = null; setTourAuto(false); focusPin = false; markDirty();
+  document.getElementById('trailBar').style.display = 'none';
+  document.getElementById('tourCap').style.display = 'none';
+  renderFocusBar(); fitAll(); renderHome();
+}
+function startTour(){ startTrail(DATA.trails[0].id); setTourAuto(true); }
+document.getElementById('trailNext').onclick = () => tourStep(1);
+document.getElementById('trailPrev').onclick = () => tourStep(-1);
+document.getElementById('trailAuto').onclick = () => setTourAuto(!tourAuto);
+document.getElementById('trailExit').onclick = exitTrail;
 
 /* ═══════════════ Ask SIB ═══════════════ */
 let askGen = false;
