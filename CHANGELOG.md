@@ -114,8 +114,20 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
-- **Feature Catalogue map — territories, sector layout, hover, zoom controls
-  (slice A).** At 87 features the free force layout had product headings
+- **Feature Catalogue — "The Core".** The map now tells the SIB thesis by
+  its shape: **SIB sits in the centre** as a glowing core (pulsing, with the
+  four ontology halos — spatial · perception · semantic · reasoning — turning
+  slowly around it); products are clean **radar wedges** with their names
+  set along the rim arc (never upside down, never on a node); faint **depth
+  rings** read *foundations · core · surface*, so inner = what everything
+  builds on. Edges are curved arcs that bow toward the core; hover or select
+  a feature and **light flows** along its dependencies. Features stamped
+  with the current version carry a green **new-this-release** tick (legend
+  updated). Labels are collision-avoided (flip above, then yield) so nothing
+  overprints at any zoom. **Ignite** once per session — core lights, wedges
+  sweep in, nodes pop ring by ring (~2.5 s, any input skips, reduced-motion
+  honoured). Header, panel, tooltip and zoom controls are frosted glass.
+- **Feature Catalogue map — sector layout, hover, zoom controls (slice A).** At 87 features the free force layout had product headings
   landing on nodes and labels on labels. The map is now laid out by
   **sector**: each product area owns a wedge of the disc (width ∝ feature
   count), features sit on rings by dependency depth (foundations inward),

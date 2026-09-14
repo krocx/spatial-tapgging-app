@@ -22,7 +22,8 @@ body{margin:0;background:var(--bg);color:var(--text);
   font-family:-apple-system,Helvetica,Arial,sans-serif;display:flex;flex-direction:column;overflow:hidden;}
 
 /* ── Header ── */
-header{display:flex;align-items:center;gap:14px;padding:10px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+header{display:flex;align-items:center;gap:14px;padding:10px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap;
+  background:rgba(17,26,46,.72);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);}
 header h1{font-size:16px;font-weight:800;margin:0;white-space:nowrap;}
 header h1 a{color:var(--text);text-decoration:none;}
 #search{background:var(--panel);border:1px solid var(--border);border-radius:8px;color:var(--text);
@@ -42,17 +43,17 @@ header h1 a{color:var(--text);text-decoration:none;}
 /* ── Layout ── */
 #main{flex:1;display:flex;min-height:0;}
 #graphWrap{flex:1;position:relative;min-width:0;}
-#graph{width:100%;height:100%;display:block;cursor:grab;}
+#graph{width:100%;height:100%;display:block;cursor:grab;background:radial-gradient(ellipse at 50% 50%,#101a30 0%,#0b1220 62%);}
 #graph.dragging{cursor:grabbing;}
 #hint{position:absolute;left:14px;bottom:12px;font-size:11px;color:var(--muted);pointer-events:none;max-width:70%;}
 #zoomCtl{position:absolute;right:14px;top:12px;display:flex;flex-direction:column;gap:4px;z-index:5;}
-#zoomCtl button{width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:var(--panel);color:var(--text);
+#zoomCtl button{width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:rgba(17,26,46,.75);backdrop-filter:blur(8px);color:var(--text);
   font-size:15px;cursor:pointer;line-height:1;}
 #zoomCtl button:hover{border-color:var(--accent);}
 #matchCount{position:absolute;left:14px;top:10px;font-size:12px;color:var(--accent);display:none;}
 
 /* ── Side panel ── */
-#panel{width:400px;max-width:46vw;border-left:1px solid var(--border);background:var(--panel2);
+#panel{width:400px;max-width:46vw;border-left:1px solid var(--border);background:rgba(14,22,38,.82);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
   overflow-y:auto;padding:16px;}
 #panel h2{font-size:17px;margin:0 0 6px;}
 #panel h3{font-size:13px;margin:18px 0 8px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;}
@@ -122,7 +123,7 @@ header h1 a{color:var(--text);text-decoration:none;}
 #trailBar button{padding:4px 10px;font-size:12px;}
 
 /* ── Tooltip ── */
-#tip{position:fixed;display:none;max-width:320px;background:#1c2a47;border:1px solid var(--accent);
+#tip{position:fixed;display:none;max-width:320px;background:rgba(28,42,71,.9);backdrop-filter:blur(10px);border:1px solid var(--accent);
   border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.55;z-index:50;pointer-events:none;
   box-shadow:0 8px 30px rgba(0,0,0,.5);}
 #tip .tt{font-weight:700;color:#93c5fd;margin-bottom:3px;}
@@ -157,9 +158,25 @@ text.nlabel.hot{font-size:11px;fill:#fff;font-weight:600;}
    affects clicking. Two directions + varied duration/delay = organic. */
 @keyframes breatheA{from{transform:translate(0,0)}to{transform:translate(1.5px,-1.2px)}}
 @keyframes breatheB{from{transform:translate(0,0)}to{transform:translate(-1.3px,1.5px)}}
-text.albl{font-size:15px;font-weight:800;letter-spacing:.02em;cursor:pointer;opacity:.9;paint-order:stroke;stroke:#0b1220;stroke-width:4px;stroke-linejoin:round;}
-text.albl:hover{opacity:1;text-decoration:underline;}
-g.terr path{pointer-events:none;}
+text.albl{font-size:13px;font-weight:800;letter-spacing:.22em;cursor:pointer;opacity:.95;}
+text.albl:hover{opacity:1;filter:brightness(1.3);}
+g.wedge path{pointer-events:none;}
+text.ring{font-size:9px;fill:#7d8da3;opacity:.55;letter-spacing:.14em;text-transform:uppercase;pointer-events:none;}
+text.corelbl{font-size:26px;font-weight:800;fill:#fff;letter-spacing:.08em;pointer-events:none;}
+text.coresub{font-size:8.5px;fill:#bfdbfe;letter-spacing:.06em;pointer-events:none;}
+.coreglow{animation:corePulse 4.5s ease-in-out infinite alternate;}
+@keyframes corePulse{from{opacity:.28}to{opacity:.5}}
+.halo.h0{animation:spin 60s linear infinite;} .halo.h1{animation:spin 45s linear infinite reverse;}
+.halo.h2{animation:spin 80s linear infinite;} .halo.h3{animation:spin 100s linear infinite reverse;}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* ignite — once per session */
+#graph.ignite .wedge{animation:wedgeIn .7s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(.25s + var(--i) * .11s);transform-origin:700px 540px;}
+@keyframes wedgeIn{from{opacity:0;transform:scale(.6) rotate(-8deg)}to{opacity:1;transform:none}}
+#graph.ignite .node{animation:nodeIn .45s cubic-bezier(.2,.8,.2,1) both !important;animation-delay:calc(1.1s + var(--ring) * .28s) !important;}
+@keyframes nodeIn{from{opacity:0}to{opacity:1}}
+#graph.ignite .core{animation:coreIn .9s ease-out both;transform-origin:700px 540px;}
+@keyframes coreIn{from{opacity:0;transform:scale(.2)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.coreglow,.halo,#graph.ignite *{animation:none !important;}}
 .trailbadge{font-size:9px;font-weight:800;fill:#fff;pointer-events:none;}
 @media (max-width:800px){ #panel{max-width:none;width:100%;position:absolute;inset:0;z-index:10;display:none;}
   #panel.open{display:block;} }
@@ -175,6 +192,7 @@ g.terr path{pointer-events:none;}
     <span><svg width="14" height="12"><circle cx="7" cy="6" r="5" fill="#3b82f6"/></svg> shipped</span>
     <span><svg width="14" height="12"><circle cx="7" cy="6" r="5" fill="#3b82f6" fill-opacity=".25" stroke="#3b82f6" stroke-width="1.6"/></svg> beta</span>
     <span><svg width="14" height="12"><circle cx="7" cy="6" r="5" fill="none" stroke="#3b82f6" stroke-width="1.4" stroke-dasharray="3 2"/></svg> planned</span>
+    <span><svg width="14" height="12"><circle cx="6" cy="6" r="5" fill="#3b82f6"/><circle cx="10" cy="2.5" r="2.6" fill="#35c635"/></svg> new this release</span>
   </div>
   <button class="btn primary" style="padding:6px 13px" onclick="askOpen()">💬 Ask SIB</button>
   <div class="hlinks"><a href="/portal">Portal</a><a href="/roadmap">Roadmap</a><a href="/wireframe">Wireframe</a></div>
@@ -318,8 +336,8 @@ function applyHash(){
 // relaxation pass separates neighbours. A soft territory hull is drawn behind
 // each area's nodes and the heading is pinned ABOVE the hull, so it can never
 // land on a node (the old fixed-offset labels did exactly that at 87 nodes).
-const W = 1400, H = 1000, CX = W/2, CY = H/2;
-const R_MIN = 150, R_MAX = 420;
+const W = 1400, H = 1080, CX = W/2, CY = H/2;
+const R_MIN = 215, R_MAX = 430;   // an empty core sits inside R_MIN — SIB itself
 const POS_KEY = 'sib_catalog_pos';       // dragged positions, per browser
 let savedPos = {};
 try { savedPos = JSON.parse(localStorage.getItem(POS_KEY) || '{}'); } catch { savedPos = {}; }
@@ -350,7 +368,7 @@ function buildGraph(){
   let ang = -Math.PI / 2;
   areas.forEach((a, i) => {
     const span = (counts[i] / total) * Math.PI * 2;
-    a.a0 = ang + span * 0.07; a.a1 = ang + span * 0.93; ang += span;
+    a.a0 = ang + span * 0.10; a.a1 = ang + span * 0.90; a.g0 = ang; a.g1 = ang + span; ang += span;
     a.amid = (a.a0 + a.a1) / 2;
     const mine = nodes.filter(n => n.area === a.id);
     const maxD = Math.max(0, ...mine.map(n => memo[n.id]));
@@ -400,24 +418,42 @@ function tick(){
     if (nd.fx != null){ nd.x = nd.fx; nd.y = nd.fy; nd.vx = nd.vy = 0; continue; }
     nd.vx *= DAMP; nd.vy *= DAMP;
     nd.x += nd.vx * alpha; nd.y += nd.vy * alpha;
-    nd.x = Math.max(40, Math.min(W-40, nd.x)); nd.y = Math.max(60, Math.min(H-40, nd.y));
+    // Stay in the ring band: the core is SIB's, the rim is the product names'.
+    const dc = Math.hypot(nd.x - CX, nd.y - CY) || 1;
+    const rc = Math.max(R_MIN - 4, Math.min(R_MAX + 4, dc));
+    if (rc !== dc){ nd.x = CX + (nd.x - CX) * rc / dc; nd.y = CY + (nd.y - CY) * rc / dc; }
   }
   alpha *= 0.99;
 }
+let igniting = false;
 function startSim(){
   alpha = 1;
-  for (let i = 0; i < 260; i++) tick();     // settle ~90 % before first paint, then breathe in
+  for (let i = 0; i < 420; i++) tick();     // fully settled before the first paint
+  buildStatic();
+  // Ignite — once per browser session: the core lights, wedges sweep in,
+  // nodes pop ring by ring. Any input skips it. Reduced-motion users get the
+  // settled map straight away.
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!reduce && !sessionStorage.getItem('sib_catalog_ignited')){
+    igniting = true; sessionStorage.setItem('sib_catalog_ignited', '1');
+    svg.classList.add('ignite'); draw();
+    const end = () => { if (!igniting) return; igniting = false; svg.classList.remove('ignite'); dirty = true; };
+    setTimeout(end, 2600);
+    ['pointerdown', 'wheel', 'keydown'].forEach(ev => window.addEventListener(ev, end, { once: true }));
+  }
   dirty = true;
   requestAnimationFrame(function loop(){
-    if (alpha > 0.02){ tick(); dirty = true; }
-    if (dirty){ draw(); dirty = false; }
+    if (!igniting){
+      if (alpha > 0.02){ tick(); dirty = true; }
+      if (dirty){ draw(); dirty = false; }
+    }
     requestAnimationFrame(loop);
   });
 }
 function reheat(){ alpha = Math.max(alpha, 0.5); dirty = true; }
 function resetLayout(){
   savedPos = {}; localStorage.removeItem(POS_KEY);
-  buildGraph(); alpha = 1; for (let i = 0; i < 260; i++) tick(); fitAll();
+  buildGraph(); alpha = 1; for (let i = 0; i < 420; i++) tick(); fitAll();
 }
 
 /* ═══════════════ drawing ═══════════════ */
@@ -425,6 +461,72 @@ const svg = document.getElementById('graph');
 let view = { x:0, y:0, k:1 };
 let hovered = null;
 svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+const polar = (r, th) => `${(CX + Math.cos(th) * r).toFixed(1)},${(CY + Math.sin(th) * r).toFixed(1)}`;
+const arcPath = (r, t0, t1) => {
+  const large = Math.abs(t1 - t0) > Math.PI ? 1 : 0, sweep = t1 > t0 ? 1 : 0;
+  return `M${polar(r, t0)}A${r},${r} 0 ${large} ${sweep} ${polar(r, t1)}`;
+};
+// Annular wedge between two radii over [t0, t1].
+const wedgePath = (r0, r1, t0, t1) => {
+  const large = Math.abs(t1 - t0) > Math.PI ? 1 : 0;
+  return `M${polar(r1, t0)}A${r1},${r1} 0 ${large} 1 ${polar(r1, t1)}L${polar(r0, t1)}A${r0},${r0} 0 ${large} 0 ${polar(r0, t0)}Z`;
+};
+
+// The static layer — the SIB core, ontology halos, depth rings and the
+// sector wedges with their names set along the outer arc — is built once;
+// draw() only rewrites the dynamic layer, so the core can breathe with CSS.
+let staticSvg = '';
+function buildStatic(){
+  const ONT = [['#3b82f6','spatial'], ['#a78bfa','perception'], ['#22c55e','semantic'], ['#f59e0b','reasoning']];
+  let out = '<defs>';
+  out += `<radialGradient id="coreGrad"><stop offset="0" stop-color="#93c5fd" stop-opacity=".95"/><stop offset=".45" stop-color="#3b82f6" stop-opacity=".55"/><stop offset="1" stop-color="#3b82f6" stop-opacity="0"/></radialGradient>`;
+  for (const a of DATA.areas){
+    out += `<radialGradient id="wg-${a.id}" cx="${CX}" cy="${CY}" r="${R_MAX + 46}" gradientUnits="userSpaceOnUse">
+      <stop offset="${(R_MIN - 40) / (R_MAX + 46)}" stop-color="${a.color}" stop-opacity=".03"/>
+      <stop offset="1" stop-color="${a.color}" stop-opacity=".16"/></radialGradient>`;
+    // Name path on the rim: bottom sectors run the arc the other way so the
+    // text never reads upside down.
+    const rr = R_MAX + 62, bottom = Math.sin(a.amid) > 0;
+    out += `<path id="ap-${a.id}" d="${bottom ? arcPath(rr, a.g1 - 0.03, a.g0 + 0.03) : arcPath(rr, a.g0 + 0.03, a.g1 - 0.03)}"/>`;
+  }
+  out += '</defs>';
+  // wedges
+  DATA.areas.forEach((a, i) => {
+    out += `<g class="wedge" data-area="${a.id}" style="--i:${i}">
+      <path d="${wedgePath(R_MIN - 40, R_MAX + 46, a.g0 + 0.012, a.g1 - 0.012)}" fill="url(#wg-${a.id})" stroke="${a.color}" stroke-opacity=".22" stroke-width="1"/>
+      <path d="${arcPath(R_MAX + 46, a.g0 + 0.012, a.g1 - 0.012)}" fill="none" stroke="${a.color}" stroke-opacity=".8" stroke-width="3"/>
+      <text class="albl" fill="${a.color}" data-area="${a.id}"><textPath href="#ap-${a.id}" startOffset="50%" text-anchor="middle">${esc(a.name).toUpperCase()}</textPath></text>
+    </g>`;
+  });
+  // depth rings
+  const rings = [[R_MIN, 'foundations'], [(R_MIN + R_MAX) / 2, 'core'], [R_MAX, 'surface']];
+  for (const [r, name] of rings){
+    out += `<circle cx="${CX}" cy="${CY}" r="${r}" fill="none" stroke="#7d8da3" stroke-opacity=".13" stroke-dasharray="2 6"/>
+      <text class="ring" x="${CX + 6}" y="${CY - r - 5}">${name}</text>`;
+  }
+  // the core
+  out += `<g class="core">
+    <circle cx="${CX}" cy="${CY}" r="150" fill="url(#coreGrad)" opacity=".35" class="coreglow"/>`;
+  ONT.forEach(([c, n], i) => {
+    const r = 84 + i * 16;
+    out += `<circle cx="${CX}" cy="${CY}" r="${r}" fill="none" stroke="${c}" stroke-opacity=".45" stroke-width="1.2" stroke-dasharray="${i % 2 ? '3 9' : '14 10'}" class="halo h${i}" style="transform-origin:${CX}px ${CY}px"/>`;
+  });
+  out += `<circle cx="${CX}" cy="${CY}" r="66" fill="#0b1220" stroke="#93c5fd" stroke-opacity=".6" stroke-width="1.5"/>
+    <circle cx="${CX}" cy="${CY}" r="66" fill="url(#coreGrad)" opacity=".5"/>
+    <text class="corelbl" x="${CX}" y="${CY - 2}" text-anchor="middle">SIB</text>
+    <text class="coresub" x="${CX}" y="${CY + 16}" text-anchor="middle">Spatial Intelligence Backend</text>
+    <text class="coresub" x="${CX}" y="${CY + 30}" text-anchor="middle" opacity=".7">one backend · thin clients · adapters</text>
+  </g>`;
+  staticSvg = out;
+}
+function edgePath(e){
+  // Cross-area edges bow toward the core (everything meets in SIB); in-area
+  // edges stay nearly straight so a cluster reads as a cluster.
+  const mx = (e.s.x + e.t.x) / 2, my = (e.s.y + e.t.y) / 2;
+  const pull = e.s.area === e.t.area ? 0.08 : 0.32;
+  const cx = mx + (CX - mx) * pull, cy = my + (CY - my) * pull;
+  return `M${e.s.x.toFixed(1)},${e.s.y.toFixed(1)}Q${cx.toFixed(1)},${cy.toFixed(1)} ${e.t.x.toFixed(1)},${e.t.y.toFixed(1)}`;
+}
 
 function nodeVisible(nd){
   if (activeAreas.size && !activeAreas.has(nd.area)) return false;
@@ -445,46 +547,19 @@ function neighbourSet(id){
   return n;
 }
 
-// Convex hull (monotone chain) → padded, rounded territory path.
-function hull(pts){
-  if (pts.length < 3) return pts;
-  pts = [...pts].sort((a, b) => a.x - b.x || a.y - b.y);
-  const cross = (o, a, b) => (a.x-o.x)*(b.y-o.y) - (a.y-o.y)*(b.x-o.x);
-  const lo = [], up = [];
-  for (const p of pts){ while (lo.length >= 2 && cross(lo[lo.length-2], lo[lo.length-1], p) <= 0) lo.pop(); lo.push(p); }
-  for (const p of pts.reverse()){ while (up.length >= 2 && cross(up[up.length-2], up[up.length-1], p) <= 0) up.pop(); up.push(p); }
-  lo.pop(); up.pop(); return lo.concat(up);
-}
-function territory(a){
-  const pts = nodes.filter(n => n.area === a.id).map(n => ({ x: n.x, y: n.y }));
-  if (!pts.length) return null;
-  let h = hull(pts);
-  if (h.length === 1) h = [h[0], { x: h[0].x + 1, y: h[0].y }];
-  if (h.length === 2) h = [h[0], h[1], { x: h[1].x, y: h[1].y + 1 }];
-  // Heading sits OUTSIDE the disc on the sector's own bearing — never inside
-  // another area's territory, whichever way the sector faces.
-  const rMax = Math.max(...pts.map(p => Math.hypot(p.x - CX, p.y - CY)));
-  const lr = rMax + 58, lx = CX + Math.cos(a.amid) * lr, ly = CY + Math.sin(a.amid) * lr;
-  const anchor = Math.cos(a.amid) > 0.35 ? 'start' : Math.cos(a.amid) < -0.35 ? 'end' : 'middle';
-  return { d: 'M' + h.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join('L') + 'Z', labelX: lx, labelY: ly + 5, anchor };
-}
-
 function draw(){
   const ts = trailSet();
   const neighbours = neighbourSet(selected);
   const hov = neighbourSet(hovered);
-  const showAll = view.k >= 0.9;                 // semantic labels: everything at reading zoom
-  let out = `<g transform="translate(${view.x},${view.y}) scale(${view.k})">`;
-  // territories + headings (pinned above the hull, clickable)
-  for (const a of DATA.areas){
-    const t = territory(a); if (!t) continue;
-    const dim = activeAreas.size && !activeAreas.has(a.id);
-    out += `<g class="terr" data-area="${a.id}" opacity="${dim ? 0.18 : 1}">
-      <path d="${t.d}" fill="${a.color}" fill-opacity=".055" stroke="${a.color}" stroke-opacity=".10" stroke-width="88" stroke-linejoin="round"/>
-      <text class="albl" x="${t.labelX}" y="${t.labelY}" text-anchor="${t.anchor}" fill="${a.color}">${esc(a.name)}</text>
-    </g>`;
-  }
+  const showAll = view.k >= 0.85;                // semantic labels: everything at reading zoom
+  const tf = `translate(${view.x},${view.y}) scale(${view.k})`;
+  const dimArea = a => activeAreas.size && !activeAreas.has(a);
+  let out = `<g transform="${tf}">${staticSvg}</g><g transform="${tf}">`;
+  // dim filtered wedges via an overlay (static layer stays untouched)
+  for (const a of DATA.areas) if (dimArea(a.id))
+    out += `<path d="${wedgePath(R_MIN - 40, R_MAX + 80, a.g0, a.g1)}" fill="#0b1220" fill-opacity=".72" pointer-events="none"/>`;
   // edges
+  const focus = selected || hovered;
   for (const e of edges){
     const vis = nodeVisible(e.s) && nodeVisible(e.t);
     let op = vis ? 0.22 : 0.03;
@@ -493,9 +568,36 @@ function draw(){
     else if (selected) op = touches(neighbours) && (e.s.id === selected || e.t.id === selected) ? 0.95 : 0.06;
     else if (hovered) op = touches(hov) && (e.s.id === hovered || e.t.id === hovered) ? 0.9 : 0.08;
     else if (searchQ) op = (nodeMatches(e.s) && nodeMatches(e.t)) ? 0.45 : 0.04;
-    const lit = (selected && (e.s.id === selected || e.t.id === selected)) || (hovered && (e.s.id === hovered || e.t.id === hovered));
-    out += `<line x1="${e.s.x}" y1="${e.s.y}" x2="${e.t.x}" y2="${e.t.y}" stroke="${areaById[e.s.area].color}" stroke-width="${lit ? 2 : 1.2}" opacity="${op}"/>`;
+    const lit = focus && (e.s.id === focus || e.t.id === focus);
+    const d = edgePath(e);
+    out += `<path d="${d}" fill="none" stroke="${areaById[e.s.area].color}" stroke-width="${lit ? 2 : 1.1}" opacity="${op}"/>`;
+    // Flow: light runs from the dependency to what builds on it.
+    if (lit && !igniting){
+      const c = areaById[e.t.area].color;
+      for (let k = 0; k < 3; k++)
+        out += `<circle r="2.6" fill="#fff" opacity=".9"><animateMotion dur="1.5s" begin="${(k * 0.5).toFixed(1)}s" repeatCount="indefinite" path="${d}"/></circle>` +
+               `<circle r="5" fill="${c}" opacity=".35"><animateMotion dur="1.5s" begin="${(k * 0.5).toFixed(1)}s" repeatCount="indefinite" path="${d}"/></circle>`;
+    }
   }
+  // Label collision: greedy, outer rings first; a label that would overlap
+  // a placed one flips above the node, then yields. Nothing ever overprints.
+  const placed = [];
+  const labelPos = (nd, r, want) => {
+    if (!want) return null;
+    const w = Math.min(nd.name.length, 28) * 5.3, h = 11;
+    for (const dy of [r + 12, -(r + 5)]){
+      const box = { x0: nd.x - w/2, x1: nd.x + w/2, y0: nd.y + dy - h, y1: nd.y + dy };
+      if (!placed.some(b => b.x0 < box.x1 && b.x1 > box.x0 && b.y0 < box.y1 && b.y1 > box.y0)){ placed.push(box); return dy; }
+    }
+    return null;
+  };
+  const order = [...nodes].sort((p, q) => Math.hypot(q.x - CX, q.y - CY) - Math.hypot(p.x - CX, p.y - CY));
+  const dyById = {};
+  // priority: the focused set first, then everything else
+  for (const nd of order){ const isSel = nd.id === selected, isHov = nd.id === hovered; if (isSel || isHov || neighbours.has(nd.id) || hov.has(nd.id)) dyById[nd.id] = labelPos(nd, isSel ? 11 : isHov ? 10 : 8, true); }
+  for (const nd of order){ if (nd.id in dyById) continue;
+    const want = showAll || (ts && ts.has(nd.id)) || (searchQ && nodeMatches(nd));
+    dyById[nd.id] = labelPos(nd, 8, want); }
   // nodes
   for (const nd of nodes){
     const c = areaById[nd.area].color;
@@ -518,15 +620,16 @@ function draw(){
       badge = `<circle cx="${nd.x+10}" cy="${nd.y-10}" r="7" fill="${num-1===trailIdx?'#f59e0b':'#334155'}"/>
                <text class="trailbadge" x="${nd.x+10}" y="${nd.y-7}" text-anchor="middle">${num}</text>`;
     }
-    // Labels: all at reading zoom; otherwise only what you're looking at.
-    const labelled = showAll || isSel || isHov || neighbours.has(nd.id) || hov.has(nd.id)
-      || (ts && ts.has(nd.id)) || (searchQ && nodeMatches(nd));
+    const dy = dyById[nd.id];
     const name = nd.name.length > 28 ? nd.name.slice(0, 27) + '…' : nd.name;
-    const label = labelled ? `<text class="nlabel${isSel || isHov ? ' hot' : ''}" x="${nd.x}" y="${nd.y + r + 12}" text-anchor="middle">${esc(name)}</text>` : '';
+    const isNew = nd.version === DATA.platformVersion;
+    const label = dy != null ? `<text class="nlabel${isSel || isHov ? ' hot' : ''}" x="${nd.x}" y="${nd.y + dy}" text-anchor="middle">${esc(name)}</text>` : '';
+    const newTick = isNew ? `<circle cx="${nd.x + r - 1}" cy="${nd.y - r + 1}" r="3.2" fill="#35c635" stroke="#0b1220" stroke-width="1"><title>New in ${esc(DATA.platformVersion)}</title></circle>` : '';
+    const ring = Math.round((Math.hypot(nd.x - CX, nd.y - CY) - R_MIN) / ((R_MAX - R_MIN) / 2));
     const bi = nd.id.length + nd.id.charCodeAt(0);
     const breathe = `animation:${bi % 2 ? 'breatheA' : 'breatheB'} ${3.2 + (bi % 5) * 0.6}s ease-in-out ${(bi % 7) * 0.4}s infinite alternate`;
-    out += `<g opacity="${op}" data-id="${nd.id}" style="cursor:pointer;${breathe}">
-      <circle cx="${nd.x}" cy="${nd.y}" r="${r + 8}" fill="transparent"/>${halo}${shape}${label}${badge}</g>`;
+    out += `<g opacity="${op}" data-id="${nd.id}" class="node" style="cursor:pointer;${breathe};--ring:${Math.max(0, Math.min(2, ring))}">
+      <circle cx="${nd.x}" cy="${nd.y}" r="${r + 8}" fill="transparent"/>${halo}${shape}${newTick}${label}${badge}</g>`;
   }
   out += '</g>';
   svg.innerHTML = out;
@@ -574,9 +677,9 @@ function svgPoint(ev){
 }
 svg.addEventListener('pointerdown', ev => {
   const g = ev.target.closest('g[data-id]');
-  const terr = ev.target.closest('g.terr');
+  const lbl = ev.target.closest('text.albl');
   if (g){ const nd = byId[g.dataset.id]; drag = { type:'node', nd, moved:false, sx: ev.clientX, sy: ev.clientY }; nd.fx = nd.x; nd.fy = nd.y; }
-  else if (terr && ev.target.tagName === 'text'){ drag = { type:'area', id: terr.dataset.area, moved:false, sx: ev.clientX, sy: ev.clientY }; }
+  else if (lbl){ drag = { type:'area', id: lbl.dataset.area, moved:false, sx: ev.clientX, sy: ev.clientY }; }
   else drag = { type:'pan', sx: ev.clientX, sy: ev.clientY, ox: view.x, oy: view.y, moved:false };
   svg.setPointerCapture(ev.pointerId); svg.classList.add('dragging');
 });
