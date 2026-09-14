@@ -210,6 +210,7 @@ text.coresub{font-size:8.5px;fill:#bfdbfe;letter-spacing:.06em;pointer-events:no
 .coreglow{animation:corePulse var(--beat,4.5s) ease-in-out infinite alternate;}
 text.livelbl{font-size:8.5px;letter-spacing:.12em;opacity:.55;pointer-events:none;}
 text.livelbl.on{opacity:.95;font-weight:700;}
+#graph.focus .livelbl,#graph.focus .ripple{display:none;}
 .ripple{animation:ripple 2.6s ease-out infinite;pointer-events:none;transform-box:fill-box;transform-origin:center;}
 .ripple.r2{animation-delay:1.3s;}
 @keyframes ripple{from{transform:scale(.3);opacity:.7}to{transform:scale(3.2);opacity:0}}
@@ -863,6 +864,7 @@ function draw(){
   let n2 = null;                              // second-degree ring when focused
   if (focus){ n2 = new Set(); for (const id of neighbours) for (const m of neighbourSet(id)) n2.add(m); }
   focusAreas = focus ? new Set([...neighbours].map(i => byId[i].area)) : null;
+  svg.classList.toggle('focus', focus);       // focus = relationships only: live pulse steps aside
   renderFocusBar();
   const showAll = view.k >= 0.85;                // semantic labels: everything at reading zoom
   const tf = `translate(${view.x},${view.y}) scale(${view.k})`;

@@ -7,6 +7,18 @@ it, it gets a line.
 ## 2026.4.46 — 2026-09-08
 
 ### Fixed
+- **/platform on Windows — ghost text and a stage that didn't follow the
+  copy.** Chromium on Windows left stale tiles of the scrolling copy behind
+  over the fixed stage (and over the 2D fallback), stacking three or four
+  ghost headlines; the section text is now its own composited, paint-contained
+  layer and the WebGL canvas is opaque (no alpha blending path to
+  mis-invalidate). The 3D stage now follows the **section the reader is on**
+  (interpolated between section tops) instead of the page fraction, so tall
+  sections on small laptops / 150 % zoom no longer push the chamber ahead of
+  the text, and the last stop is always reachable; the dots and scroll map
+  agree again.
+- **Feature Catalogue** — the live pulse (rim lines + ripples) steps aside
+  while a feature is in focus, so the relationship view is uncluttered.
 - **SIB Compass map was cramped; brand strip overlapped the Procedure
   Designer toolbar.** The map is now larger (up to 1180×780), hubs get
   sectors sized by their stop count, and a push-apart pass keeps every node

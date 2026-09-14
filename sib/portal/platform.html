@@ -29,13 +29,17 @@
   html { scroll-behavior:smooth; }
   html,body { margin:0; background:#070a1a; color:var(--ink); font-family:-apple-system,"SF Pro Display",Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
   a { color:inherit; }
-  #stage { position:fixed; inset:0; z-index:0; }
+  /* Windows/Chromium: text scrolling over a fixed WebGL canvas left stale
+     tiles behind ("ghost text"). Give the copy its own composited layer and
+     keep the canvas opaque — no alpha blending path to mis-invalidate. */
+  #stage { position:fixed; inset:0; z-index:0; will-change:transform; }
   #stage canvas { display:block; width:100%; height:100%; }
   .veil { position:fixed; inset:0; pointer-events:none; z-index:1; background:radial-gradient(1200px 700px at 50% 40%, rgba(129,140,248,.08), transparent 60%); }
   .nogl { display:none; position:fixed; inset:0; z-index:0; background:radial-gradient(900px 600px at 60% 45%, #1b2450, #070a1a 70%); }
   body.nogl .nogl { display:block; }
-  main { position:relative; z-index:2; pointer-events:none; }
-  section { min-height:100vh; display:flex; align-items:flex-end; padding:0 6vw 12vh; }
+  main { position:relative; z-index:2; pointer-events:none; isolation:isolate; }
+  .copy { will-change:transform; transform:translateZ(0); backface-visibility:hidden; }
+  section { min-height:100vh; display:flex; align-items:flex-end; padding:0 6vw 12vh; contain:layout paint; }
   section.center { align-items:center; }
   .copy { max-width:600px; pointer-events:auto; }
   .eyebrow { font-size:12px; letter-spacing:.22em; text-transform:uppercase; color:var(--dim); margin-bottom:14px; }
@@ -51,7 +55,7 @@
   .num span { font-size:13px; color:var(--dim); }
   .gov { font-size:13px; color:var(--dim); margin:-6px 0 16px; }
   .gov b { color:#c7cdf0; font-weight:600; }
-  .brand { position:fixed; top:22px; left:6vw; z-index:3; font-size:13px; letter-spacing:.18em; text-transform:uppercase; color:var(--dim); }
+  .brand { position:fixed; top:22px; left:6vw; z-index:3; will-change:transform; font-size:13px; letter-spacing:.18em; text-transform:uppercase; color:var(--dim); }
   .brand b { color:var(--ink); }
   .topnav { position:fixed; top:18px; right:6vw; z-index:3; display:flex; gap:8px; align-items:center; }
   .topnav a { font-size:12px; color:var(--dim); text-decoration:none; padding:6px 10px; border:1px solid var(--line); border-radius:999px; background:rgba(7,10,26,.5); }
@@ -264,7 +268,18 @@ const sections = [...document.querySelectorAll('main section')];
 const dots = document.getElementById('dots');
 sections.forEach((sec, i) => { const d = document.createElement('i'); d.title = sec.querySelector('h1,h2')?.textContent || ''; d.onclick = () => sec.scrollIntoView({ behavior:'smooth' }); dots.appendChild(d); });
 let stage = 0, target = 0;
-function onScroll(){ const max = document.documentElement.scrollHeight - innerHeight; target = Math.max(0, Math.min(7, (scrollY / Math.max(1,max)) * 7)); }
+// Stage follows the SECTION the reader is on, interpolated between section
+// tops — not the page fraction. Tall sections (small laptops, 150 % zoom)
+// used to push the 3D stage ahead of the copy so the text never matched the
+// chamber; and the last stop was unreachable when the page over-scrolled.
+function onScroll(){
+  const y = scrollY + innerHeight * 0.45;
+  const tops = sections.map(s => s.offsetTop);
+  let i = 0; while (i < tops.length - 1 && y >= tops[i + 1]) i++;
+  const span = (tops[i + 1] ?? (tops[i] + innerHeight)) - tops[i];
+  target = Math.max(0, Math.min(7, i + Math.max(0, Math.min(1, (y - tops[i]) / Math.max(1, span)))));
+}
+addEventListener('resize', onScroll);
 addEventListener('scroll', onScroll, { passive:true }); onScroll();
 function tickUI(){ dots.querySelectorAll('i').forEach((d,k)=> d.classList.toggle('on', Math.round(stage)===k)); }
 
@@ -304,7 +319,8 @@ if (!hasGL) { (function loop(){ stage += (target-stage)*0.1; tickUI(); requestAn
 else {
 /* ───────────────────────── scene ───────────────────────── */
 const el = document.getElementById('stage');
-const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true, powerPreference:'high-performance' });
+const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:false, powerPreference:'high-performance' });
+renderer.setClearColor(0x070a1a, 1);
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
