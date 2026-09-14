@@ -51,3 +51,25 @@ test('applyCaptionEdits + defaultTitle', async () => {
   assert.equal(defaultTitle({ questionCode: 'P5142', questionTitle: 'Concept Understanding' }, 'x'), 'P5142 — Concept Understanding');
   assert.equal(defaultTitle({}, 'Fallback'), 'Fallback');
 });
+
+test('custom (free-text) entries carry the same shape but no codes and source "custom"', async () => {
+  const { resolveFindingFields, defaultTitle } = await import('../src/gemba/finding-core.js');
+  const f = resolveFindingFields({ customFocusArea: ' Tool Setup ', customQuestion: '  Is the torque wrench calibrated?  ', findingCategory: 'NC', riskRating: 3 }, lookup);
+  assert.equal(f.referenceSource, 'custom');
+  assert.equal(f.focusAreaCode, undefined); assert.equal(f.questionCode, undefined);
+  assert.equal(f.focusAreaTitle, 'Tool Setup');
+  assert.equal(f.questionText, 'Is the torque wrench calibrated?');
+  assert.equal(f.questionTitle, 'Is the torque wrench calibrated?');
+  assert.equal(f.findingCategory, 'NC'); assert.equal(f.riskRating, 3);
+  assert.equal(defaultTitle(f, 'fallback'), 'Is the torque wrench calibrated?');
+  // Long text → truncated title, full text kept.
+  const long = 'x'.repeat(100);
+  const g = resolveFindingFields({ customQuestion: long }, lookup);
+  assert.equal(g.questionTitle?.length, 58); assert.equal(g.questionText, long);
+  // Library code wins over custom text; empty custom question is rejected.
+  const h = resolveFindingFields({ questionCode: 'P5142', customQuestion: 'ignored' }, lookup);
+  assert.equal(h.referenceSource, 'library'); assert.equal(h.questionCode, 'P5142');
+  assert.throws(() => resolveFindingFields({ customQuestion: '   ' }, lookup), /customQuestion cannot be empty/);
+  // A stray customFocusArea alone is ignored (no question → nothing resolved).
+  assert.deepEqual(resolveFindingFields({ customFocusArea: 'Area' }, lookup), {});
+});

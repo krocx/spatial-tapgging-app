@@ -79,12 +79,19 @@ struct LocTagAuthorView: View {
     @State private var landmarkPhoto: UIImage? = nil
     @State private var landmarkPhotoFor: String? = nil
     @State private var lastResumeCount = 0
+    /// Only an interruption that involved the app going to the BACKGROUND
+    /// earns the checkpoint. Our own camera / photo picker also interrupts
+    /// ARKit (the app stays in the foreground) — that must never gate the
+    /// finding the auditor is in the middle of logging.
+    @State private var sawBackground = false
+    @Environment(\.scenePhase) private var authorScenePhase
     private let checkpointTimeout: TimeInterval = 15
 
     // ── G2: walk session ──────────────────────────────────────────────────────
     @State private var currentWalk:    GembaWalk? = nil
     @State private var showWalkStart   = false
-    @State private var walkSkipped     = false
+    @State private var walkOffline     = false      // Begin failed → findings save without a walk
+    @State private var adoptPrompt:    Int? = nil   // orphan findings offered after a walk begins
     @State private var summaryWalk:    GembaWalk? = nil
     @State private var summaryFindings: [LocTag] = []
 
@@ -235,10 +242,15 @@ struct LocTagAuthorView: View {
             }
         }
         // ── R2/R5: every interruption that ends runs the checkpoint ────────────
+        .onChange(of: authorScenePhase) { ph in if ph == .background { sawBackground = true } }
         .onChange(of: arManager.resumeCount) { n in
             guard n != lastResumeCount else { return }
             lastResumeCount = n
-            guard !isLoadingSession, !isSavingWalk else { return }
+            // Camera / photo library / share sheet interruptions: the app never
+            // left the foreground — no checkpoint, the form stays as it is.
+            guard sawBackground else { return }
+            sawBackground = false
+            guard !isLoadingSession, !isSavingWalk, pendingTap == nil, peekingLocTag == nil, !showWalkStart else { return }
             startCheckpoint()
         }
         .onChange(of: arManager.isRelocalizing) { still in
@@ -320,17 +332,30 @@ struct LocTagAuthorView: View {
         // ── G2: walk header ────────────────────────────────────────────────────
         .sheet(isPresented: $showWalkStart) {
             if let anchor = appState.activeAnchor {
-                GembaWalkStartSheet(anchor: anchor) { walk in
+                GembaWalkStartSheet(anchor: anchor, orphanCount: orphanFindings.count) { walk in
                     currentWalk = walk
                     showWalkStart = false
                     WalkProgressStore.save(WalkProgress(anchorId: anchor.id, walkId: walk.id, completedTagIds: [], currentIndex: placedLocTags.count))
-                } onSkip: {
-                    walkSkipped = true
+                    // Findings logged here without a header (offline / older
+                    // build): offer to bring them into this walk so the report
+                    // is complete — never silently.
+                    let n = orphanFindings.count
+                    if n > 0 { DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { adoptPrompt = n } }
+                } onOffline: {
+                    walkOffline = true
                     showWalkStart = false
+                    showToast("Offline — findings save without a walk header.")
                 }
                 .environmentObject(settings)
                 .presentationDetents([.large])
             }
+        }
+        .alert("Include earlier findings?", isPresented: Binding(get: { adoptPrompt != nil }, set: { if !$0 { adoptPrompt = nil } })) {
+            Button("Include in this walk") { Task { await adoptOrphans() } }
+            Button("Leave them out", role: .cancel) { }
+        } message: {
+            let n = adoptPrompt ?? 0
+            Text("\(n) finding\(n == 1 ? "" : "s") on this space \(n == 1 ? "was" : "were") logged without a walk header. Include \(n == 1 ? "it" : "them") in this walk so the report is complete?")
         }
         // ── G8: session summary after submit ───────────────────────────────────
         .sheet(item: $summaryWalk) { walk in
@@ -734,8 +759,26 @@ struct LocTagAuthorView: View {
         isLoadingSession = false
         // G2: collect the walk header before the first finding (or offer to
         // continue an open walk on this space).
-        if currentWalk == nil && !walkSkipped { showWalkStart = true }
+        if currentWalk == nil && !walkOffline { showWalkStart = true }
         startPresence()
+    }
+
+    /// Findings on this space with no walk (logged offline or before walks existed).
+    private var orphanFindings: [LocTag] { placedLocTags.filter { $0.walkId == nil } }
+
+    private func adoptOrphans() async {
+        guard let walk = currentWalk else { return }
+        let ids = orphanFindings.map { $0.id }
+        do {
+            let n = try await SIBClient(settings: settings).adoptOrphanFindings(walkId: walk.id, locTagIds: ids)
+            await MainActor.run {
+                for i in placedLocTags.indices where ids.contains(placedLocTags[i].id) { placedLocTags[i].walkId = walk.id }
+                showToast("\(n) finding\(n == 1 ? "" : "s") added to this walk.")
+            }
+            AppLog.info("gemba", "orphan findings adopted", ["walk": walk.id, "count": n])
+        } catch {
+            await MainActor.run { showToast("Could not attach findings — \(friendlyMessage(for: error))") }
+        }
     }
 
     // ── G7: presence — several auditors on one walk ───────────────────────────
@@ -783,7 +826,6 @@ struct LocTagAuthorView: View {
     // ── R2/R5: checkpoint ─────────────────────────────────────────────────────
 
     private func startCheckpoint() {
-        pendingNode?.removeFromParentNode(); pendingNode = nil; pendingTap = nil
         withAnimation { checkpoint = .relocalizing(since: Date()) }
         AppLog.info("gemba", "author checkpoint start", ["placed": placedLocTags.count])
         if let tag = placedLocTags.last, landmarkPhotoFor != tag.id,

@@ -20,29 +20,47 @@ struct FindingDetailSections: View {
     @State private var drawings: [String: PKDrawing] = [:]     // by photo path
 
     var body: some View {
-        // ── Reference question ────────────────────────────────────────────────
-        if tag.questionCode != nil {
-            Section("Audit Reference") {
-                if let fa = tag.focusAreaCode {
-                    LabeledContent("Focus Area") {
-                        Text([fa, tag.focusAreaTitle].compactMap { $0 }.joined(separator: " — "))
-                            .foregroundStyle(.secondary).multilineTextAlignment(.trailing)
+        // ── Reference question (library) or custom free-text entry ────────────
+        let isRef = tag.questionCode != nil || tag.isCustomReference
+        if isRef {
+            Section {
+                if tag.isCustomReference {
+                    if let fa = tag.focusAreaTitle, !fa.isEmpty {
+                        LabeledContent("Focus Area") { Text(fa).foregroundStyle(.secondary).multilineTextAlignment(.trailing) }
+                    }
+                    Text(tag.questionText ?? tag.title).font(.body.weight(.semibold)).padding(.vertical, 2)
+                } else {
+                    if let fa = tag.focusAreaCode {
+                        LabeledContent("Focus Area") {
+                            Text([fa, tag.focusAreaTitle].compactMap { $0 }.joined(separator: " — "))
+                                .foregroundStyle(.secondary).multilineTextAlignment(.trailing)
+                        }
+                    }
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text(tag.questionTitle ?? tag.title).font(.body.weight(.semibold))
+                            Spacer()
+                            Text(tag.questionCode ?? "").font(.caption.monospaced()).foregroundStyle(.secondary)
+                        }
+                        if let t = tag.questionText { Text(t).font(.footnote).foregroundStyle(.secondary) }
+                    }
+                    .padding(.vertical, 2)
+                }
+            } header: {
+                HStack {
+                    Text(tag.isCustomReference ? "Custom Reference" : "Audit Reference")
+                    Spacer()
+                    if tag.isCustomReference {
+                        Text("Free text").font(.caption2.weight(.semibold))
+                            .padding(.horizontal, 7).padding(.vertical, 2)
+                            .background(Color.orange.opacity(0.18), in: Capsule()).foregroundStyle(.orange)
                     }
                 }
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text(tag.questionTitle ?? tag.title).font(.body.weight(.semibold))
-                        Spacer()
-                        Text(tag.questionCode ?? "").font(.caption.monospaced()).foregroundStyle(.secondary)
-                    }
-                    if let t = tag.questionText { Text(t).font(.footnote).foregroundStyle(.secondary) }
-                }
-                .padding(.vertical, 2)
             }
         }
 
         // ── Category / risk (or legacy classification) ────────────────────────
-        Section(tag.questionCode != nil ? "Finding" : "Classification") {
+        Section(isRef ? "Finding" : "Classification") {
             if let c = tag.findingCategory {
                 LabeledContent("Category") {
                     Label(c.longName, systemImage: c.symbol)
@@ -64,7 +82,7 @@ struct FindingDetailSections: View {
         }
 
         if !tag.description.isEmpty {
-            Section(tag.questionCode != nil ? "Notes" : "Description") {
+            Section(isRef ? "Notes" : "Description") {
                 Text(tag.description).font(.body)
             }
         }
@@ -185,13 +203,18 @@ struct PhotoLightbox: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        ZStack(alignment: .bottom) {
+        ZStack {
             Color.black.ignoresSafeArea()
+            // Centred, never bottom-aligned — a 4:3 photo on a tall screen
+            // looked "clipped" when it sat on the bottom edge.
             if let image {
-                Image(uiImage: image).resizable().scaledToFit().ignoresSafeArea()
+                Image(uiImage: image).resizable().scaledToFit()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ProgressView().tint(.white)
             }
+        }
+        .overlay(alignment: .bottom) {
             if let caption, !caption.isEmpty {
                 Text(caption)
                     .font(.subheadline).foregroundStyle(.white)

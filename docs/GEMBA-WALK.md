@@ -111,14 +111,22 @@ legacy fields:
 | `questionCode`, `questionTitle`, `questionText` | snapshot | title defaults to `CODE — Title` when the client sends none |
 | `findingCategory` | `STRENGTH` / `OFI` / `NC` | |
 | `riskRating` | `0`–`3`, optional | |
+| `referenceSource` | `library` \| `custom` | `custom` = typed entry; `focusAreaTitle` / `questionText` hold the text, **no codes** |
 | `photos[]` | `{ path, caption?, markupPath?, capturedAt }` | max 6; `referenceImagePath` mirrors `photos[0]` |
 | `walkId` | G2 | the walk session |
 
 Legacy findings (defect category + one photo) are untouched; the app's
 `allPhotos` accessor folds the single reference image into the same list.
 
+**Custom (free-text) entries.** When a question is not in the library the
+auditor types it. The finding keeps the *same* shape — a focus area (optional),
+the question / observation, the same Category (required) and Preliminary risk —
+but `referenceSource: 'custom'` and no codes, so a report can never present it
+as a library item. Portal rows and the walk `.xlsx` (`Source` column:
+`library` / `custom` / `legacy`) make the distinction visible.
+
 ```
-POST   /loc-tags                       + questionCode, findingCategory, riskRating, photosBase64:[{base64, caption?}], walkId
+POST   /loc-tags                       + questionCode | customFocusArea? + customQuestion, findingCategory, riskRating, photosBase64:[{base64, caption?}], walkId
 PATCH  /loc-tags/:id                   + questionCode, findingCategory, riskRating, photos:[{path, caption}] (caption edits)
 POST   /loc-tags/:id/photos            { photosBase64:[…] }         append
 DELETE /loc-tags/:id/photos/:file                                   remove one (admin-gated like all deletes)
@@ -145,9 +153,11 @@ Code: `sib/src/gemba/finding-core.ts`, `routes/loc-tags.ts`; iOS
    ("Area identifier · issue description"); drag to reorder; first photo is the
    thumbnail everywhere.
 
-The title is derived (`P5142 — Concept Understanding`). A toggle at the bottom
-switches to the legacy free-text finding; it is also the automatic fallback when
-the server has no library yet.
+The title is derived (`P5142 — Concept Understanding`). The **Custom entry**
+toggle at the bottom swaps the two pickers for a typed focus area and
+question / observation — Category, risk, notes and photos stay identical, and
+the sheet is badged *Free text* so the auditor knows how it will be reported.
+It is also the automatic fallback when the server has no library yet.
 
 **Floating panels.** Every finding carries a world-anchored panel 0.42 m above
 its pin (`FindingPanel`): a pill (stop #, title, category chip, ring coloured by
@@ -174,10 +184,16 @@ refreshed at walk start and when the sheet opens, 60 s debounce).
 **On the phone.** Opening a Gemba Walk shows *Start Gemba Walk*: auditor (from
 the kiosk identity, not editable), Project ID, and Organization / BU / Area /
 Location pickers fed by the library's pick lists (**Other…** reveals a text
-field; last values are remembered per device). If the auditor has an open walk
-on the same space it is offered under *Continue*. *Tag without a walk header*
-skips it — findings then save without a `walkId`. Every finding logged during
-the walk carries `walkId`. **Finish** → *Submit Walk & Save Map* uploads the
+field; last values are remembered per device). **Every** open walk on the
+space is listed first — the auditor's own as *Continue*, a colleague's as
+*Join* (G7) — so a resumed session is never invisible because a different
+person opened it. *Begin* always creates a walk: every header field is
+optional, so there is no "tag without a header" path any more. The only way to
+log without a walk is the offline fallback shown after a failed *Begin*; those
+findings (and any from older builds) are counted on the start sheet and, once a
+walk begins, offered for adoption — *Include N earlier findings in this walk?*
+→ `POST /gemba/walks/:id/adopt`. Every finding logged during the walk carries
+`walkId`. **Finish** → *Submit Walk & Save Map* uploads the
 world map, submits the walk and shows the **Session Summary** — header, counts
 by Strength / OFI / NC, max risk, photos, and the findings log.
 
@@ -198,6 +214,7 @@ GET    /gemba/walks?anchorId=&auditorId=&status=open|submitted     newest first,
 GET    /gemba/walks/:id                { walk, findings }
 PATCH  /gemba/walks/:id                header / notes (submitted walks: notes only)
 POST   /gemba/walks/:id/submit         { notes? }
+POST   /gemba/walks/:id/adopt          { locTagIds? } — attach header-less findings on the space (never moves one from another walk)
 POST   /gemba/walks/:id/reopen         (admin)
 DELETE /gemba/walks/:id                (admin) — findings detached, not deleted
 GET    /gemba/walks/export.xlsx?walkId=  |  ?all=true

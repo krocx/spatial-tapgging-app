@@ -25,7 +25,7 @@ struct LocTagEditSheet: View {
     @State private var findingCategory: GembaFindingCategory?
     @State private var riskRating:      GembaRiskRating?
     @State private var captions:        [String: String]
-    private var isReference: Bool { locTag.questionCode != nil }
+    private var isReference: Bool { locTag.questionCode != nil || locTag.isCustomReference }
 
     // ── Submission ────────────────────────────────────────────────────────────
     @State private var isSubmitting = false

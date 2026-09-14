@@ -114,6 +114,18 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **Gemba Walk — custom entries + no header-less walks.** Free-text findings
+  now collect exactly what library findings do — typed focus area + question /
+  observation, the same Finding Category (required) and Preliminary risk — and
+  are stored with `referenceSource: 'custom'` and no codes, so the report is
+  true: portal rows show a *Custom* badge, the walk `.xlsx` and CSV carry a
+  `Source` column (`library` / `custom` / `legacy`). The start sheet lists
+  **every** open walk on the space (yours → *Continue*, a colleague's →
+  *Join*) instead of only the auditor's own; *Begin* always records a walk
+  (all header fields optional) — *Tag without a walk header* is gone, replaced
+  by an offline fallback that appears only after a failed *Begin*. Findings
+  without a walk (offline / older builds) are counted on the start sheet and
+  offered for inclusion once a walk begins (`POST /gemba/walks/:id/adopt`).
 - **Gemba Walk — Audit Reference Library (G1)**. The PowerApps Gemba Audit
   tool bound its pickers to SharePoint reference lists (Focus Area → Question);
   auditors chose, never typed. That vocabulary now lives in SIB:

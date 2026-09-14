@@ -6,7 +6,11 @@
 //                           Project ID, Organization, BU, Area, Location. Pick
 //                           lists come from the Audit Library; "Other…" allows
 //                           a typed value. Last values remembered per device.
-//                           Offers to continue an open walk on the same space.
+//                           Lists every open walk on the space — yours to
+//                           continue, a colleague's to join (G7). Begin always
+//                           creates a walk (every header field is optional) so
+//                           no finding is ever logged without a session; the
+//                           only exit without one is the offline fallback.
 //   GembaWalkSummarySheet — what the PowerApps "Session Summary" showed, plus
 //                           counts by category, max risk and the findings list.
 //
@@ -18,10 +22,13 @@ import SwiftUI
 
 struct GembaWalkStartSheet: View {
     let anchor:   Anchor
+    /// Findings already on this space with no walk (logged offline or before
+    /// this build). Shown so the auditor knows they'll be offered for adoption.
+    var orphanCount: Int = 0
     let onStart:  (GembaWalk) -> Void
-    /// Skip the header entirely (findings save without a walk). Kept so a
-    /// blocked network never blocks the walk itself.
-    let onSkip:   () -> Void
+    /// Offline fallback only (shown after a failed Begin): findings save
+    /// without a walk and are offered for adoption on the next session.
+    let onOffline: () -> Void
 
     @EnvironmentObject private var settings: AppSettings
     @ObservedObject private var store = GembaLibraryStore.shared
@@ -51,19 +58,38 @@ struct GembaWalkStartSheet: View {
         NavigationStack {
             Form {
                 if !openWalks.isEmpty {
-                    Section("Continue") {
+                    Section {
                         ForEach(openWalks) { w in
+                            let mine = isMine(w)
                             Button {
                                 onStart(w)
                             } label: {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(w.headerLine.isEmpty ? "Open walk" : w.headerLine).font(.body.weight(.semibold))
-                                    let n = w.summary?.findings ?? 0
-                                    Text("Started \(String(w.startedAt.prefix(16)).replacingOccurrences(of: "T", with: " ")) · \(n) finding\(n == 1 ? "" : "s")")
-                                        .font(.caption).foregroundStyle(.secondary)
+                                HStack(alignment: .top, spacing: 10) {
+                                    Image(systemName: mine ? "arrow.uturn.forward.circle.fill" : "person.2.circle.fill")
+                                        .font(.title3).foregroundStyle(mine ? .orange : .secondary)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(w.headerLine.isEmpty ? "Walk without header" : w.headerLine)
+                                            .font(.body.weight(.semibold)).foregroundStyle(.primary)
+                                        let n = w.summary?.findings ?? 0
+                                        Text("\(mine ? "Your walk" : "Started by \(w.auditorName)") · \(String(w.startedAt.prefix(16)).replacingOccurrences(of: "T", with: " ")) · \(n) finding\(n == 1 ? "" : "s")")
+                                            .font(.caption).foregroundStyle(.secondary)
+                                    }
+                                    Spacer()
+                                    Text(mine ? "Continue" : "Join").font(.caption.weight(.semibold)).foregroundStyle(.orange)
                                 }
                             }
                         }
+                    } header: {
+                        Text("Open walks on this space")
+                    } footer: {
+                        Text("Joining a colleague's walk adds your findings to their session (multi-auditor).")
+                    }
+                }
+                if orphanCount > 0 {
+                    Section {
+                        Label("\(orphanCount) finding\(orphanCount == 1 ? "" : "s") on this space \(orphanCount == 1 ? "has" : "have") no walk header. You'll be offered to include \(orphanCount == 1 ? "it" : "them") once the walk begins.",
+                              systemImage: "tray.and.arrow.down")
+                            .font(.caption).foregroundStyle(.secondary)
                     }
                 }
 
@@ -80,7 +106,7 @@ struct GembaWalkStartSheet: View {
                 } header: {
                     Text(openWalks.isEmpty ? "New walk" : "…or start a new walk")
                 } footer: {
-                    Text("Space: \(anchor.assetId). Walks are never tied to a chamber QR — tag anywhere.")
+                    Text("Space: \(anchor.assetId). All header fields are optional — the walk is still recorded as a session. Walks are never tied to a chamber QR — tag anywhere.")
                 }
 
                 Section("Where") {
@@ -91,12 +117,13 @@ struct GembaWalkStartSheet: View {
                 }
 
                 if let error {
-                    Section { Label(error, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red).font(.caption) }
-                }
-
-                Section {
-                    Button("Tag without a walk header") { onSkip() }
-                        .font(.caption).foregroundStyle(.secondary)
+                    Section {
+                        Label(error, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red).font(.caption)
+                        Button("Continue offline — attach findings to a walk later") { onOffline() }
+                            .font(.caption)
+                    } footer: {
+                        Text("Findings still save to the space. Next time a walk begins here they are offered for inclusion.")
+                    }
                 }
             }
             .navigationTitle("Start Gemba Walk")
@@ -110,13 +137,19 @@ struct GembaWalkStartSheet: View {
             .task {
                 projectId = lastProject; organization = lastOrg; bu = lastBU; area = lastArea; location = lastLocation
                 await store.refresh(settings: settings)
+                // Every open walk on the space — own first, then colleagues'.
                 if let walks = try? await SIBClient(settings: settings).fetchGembaWalks(anchorId: anchor.id, status: .open) {
-                    let me = settings.employeeId
-                    openWalks = walks.filter { me.isEmpty || $0.auditorId == nil || $0.auditorId == me }
+                    openWalks = walks.sorted { (isMine($0) ? 0 : 1, $1.startedAt) < (isMine($1) ? 0 : 1, $0.startedAt) }
                 }
             }
         }
         .interactiveDismissDisabled()
+    }
+
+    private func isMine(_ w: GembaWalk) -> Bool {
+        let me = settings.employeeId
+        if !me.isEmpty, let id = w.auditorId { return id == me }
+        return w.auditorName == auditorName
     }
 
     private func begin() async {

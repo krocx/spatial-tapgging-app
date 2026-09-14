@@ -862,6 +862,13 @@ export interface LocTag {
   findingCategory?: GembaFindingCategory;
   /** Optional preliminary risk rating 0–3. */
   riskRating?: GembaRiskRating;
+  /**
+   * Where the focus area / question came from: 'library' = picked from the
+   * Audit Reference Library (codes present); 'custom' = typed by the auditor
+   * (no codes — reports must show it as a custom entry). Absent on legacy
+   * findings (defect category only).
+   */
+  referenceSource?: 'library' | 'custom';
   /** All photos, in capture order (max LOC_TAG_MAX_PHOTOS). */
   photos?: LocTagPhoto[];
   /** G2: the walk session this finding belongs to. */
@@ -882,6 +889,9 @@ export type CreateLocTagRequest = Omit<LocTag, 'id' | 'referenceImagePath' | 'cr
   photosBase64?: { base64: string; caption?: string }[];
   /** G3: the server resolves the question and snapshots area/question fields. */
   questionCode?: string;
+  /** Free-text alternative to questionCode: typed focus area + observation, logged as 'custom'. */
+  customFocusArea?: string;
+  customQuestion?: string;
 };
 
 /**

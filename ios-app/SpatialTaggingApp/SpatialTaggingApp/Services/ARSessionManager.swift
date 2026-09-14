@@ -843,6 +843,10 @@ extension ARSessionManager: ARSessionDelegate {
     // before trusting the next capture/validation result.
     nonisolated func sessionInterruptionEnded(_ session: ARSession) {
         AppLog.info("ar", "session interruption ended — relocalizing into the previous map")
+        // Force the next frame's tracking state to be re-published even if it
+        // is already .normal (short interruptions: camera picker, a call) —
+        // otherwise isRelocalizing would stay true with nothing to clear it.
+        _lastTrackingCategory = -2
         Task { @MainActor [weak self] in
             guard let self else { return }
             self.isInterrupted = false

@@ -19,7 +19,7 @@ struct PhotoMarkupView: View {
     let onDone: (UIImage, PKDrawing) -> Void
 
     @Environment(\.dismiss) private var dismiss
-    @State private var canvas = PKCanvasView()
+    @State private var canvas = MarkupCanvasView()
     @State private var inkColor: UIColor = .systemOrange
     @State private var thick = false
     @State private var strokes = 0
@@ -35,8 +35,7 @@ struct PhotoMarkupView: View {
                     let fit = fitSize(image.size, in: geo.size)
                     ZStack {
                         Image(uiImage: image).resizable().scaledToFit()
-                        MarkupCanvas(canvas: canvas, tool: tool,
-                                     existing: existing.map { $0.transformed(using: CGAffineTransform(scaleX: fit.width / image.size.width, y: fit.width / image.size.width)) },
+                        MarkupCanvas(canvas: canvas, tool: tool, existing: existing, imageWidth: image.size.width,
                                      onStroke: { strokes = $0 })
                             .onAppear { canvasSize = fit; strokes = existing?.strokes.count ?? 0 }
                             .onChange(of: fit) { canvasSize = $0 }
@@ -124,28 +123,49 @@ struct PhotoMarkupView: View {
     }
 }
 
+/// PKCanvasView that tells us when it has a real size — the existing drawing
+/// (image-pixel coordinates) can only be scaled onto the canvas once the
+/// canvas has laid out; at makeUIView time its bounds are still zero, which
+/// is why a re-opened markup used to come back empty.
+final class MarkupCanvasView: PKCanvasView {
+    var onLayout: ((CGRect) -> Void)?
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        if bounds.width > 0 { onLayout?(bounds) }
+    }
+}
+
 /// PencilKit canvas, transparent, sized by its SwiftUI frame.
 struct MarkupCanvas: UIViewRepresentable {
-    let canvas: PKCanvasView
+    let canvas: MarkupCanvasView
     let tool: PKInkingTool
+    /// In image-pixel coordinates.
     var existing: PKDrawing?
+    var imageWidth: CGFloat
     var onStroke: (Int) -> Void
 
-    func makeUIView(context: Context) -> PKCanvasView {
+    func makeUIView(context: Context) -> MarkupCanvasView {
         canvas.backgroundColor = .clear
         canvas.isOpaque = false
         canvas.drawingPolicy = .anyInput
         canvas.alwaysBounceVertical = false
         canvas.isScrollEnabled = false
         canvas.delegate = context.coordinator
-        if let existing { canvas.drawing = existing }
         canvas.tool = tool
+        let existing = existing, imageWidth = imageWidth
+        canvas.onLayout = { [weak canvas] bounds in
+            guard let canvas, !context.coordinator.applied, let existing, imageWidth > 0 else { return }
+            context.coordinator.applied = true
+            let k = bounds.width / imageWidth
+            canvas.drawing = existing.transformed(using: CGAffineTransform(scaleX: k, y: k))
+        }
         return canvas
     }
-    func updateUIView(_ uiView: PKCanvasView, context: Context) { uiView.tool = tool }
+    func updateUIView(_ uiView: MarkupCanvasView, context: Context) { uiView.tool = tool }
     func makeCoordinator() -> Coordinator { Coordinator(onStroke: onStroke) }
 
     final class Coordinator: NSObject, PKCanvasViewDelegate {
+        var applied = false
         let onStroke: (Int) -> Void
         init(onStroke: @escaping (Int) -> Void) { self.onStroke = onStroke }
         func canvasViewDrawingDidChange(_ canvasView: PKCanvasView) { onStroke(canvasView.drawing.strokes.count) }

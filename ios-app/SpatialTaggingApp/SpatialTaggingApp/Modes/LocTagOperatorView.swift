@@ -74,6 +74,10 @@ struct LocTagOperatorView: View {
     @State private var landmarkPhotoFor: String? = nil
     @State private var lastKnownDistance: Float? = nil
     @State private var lastResumeCount = 0
+    /// Only interruptions that involved the background earn the checkpoint —
+    /// the completion sheet's camera also interrupts ARKit while the app stays
+    /// in the foreground.
+    @State private var sawBackground = false
     private let checkpointTimeout: TimeInterval = 15
     // R4: drift check on arrival — once per finding
     @State private var driftCheckedFor: String? = nil
@@ -121,7 +125,9 @@ struct LocTagOperatorView: View {
                 .onChange(of: arManager.resumeCount) { n in
                     guard n != lastResumeCount else { return }
                     lastResumeCount = n
-                    guard case .navigating = phase else { return }
+                    guard sawBackground else { return }
+                    sawBackground = false
+                    guard case .navigating = phase, completingTag == nil else { return }
                     startCheckpoint()
                 }
 
@@ -214,6 +220,7 @@ struct LocTagOperatorView: View {
         // R1: background → honest posture in the Dynamic Island; foreground is
         // handled by the ARKit interruption callbacks (resumeCount).
         .onChange(of: scenePhase) { ph in
+            if ph == .background { sawBackground = true }
             guard ph == .background, case .navigating(let i) = phase, i < locTags.count else { return }
             let t = locTags[i]
             GembaLiveActivity.shared.background(nextTitle: t.questionTitle ?? t.title, lastDistanceM: lastKnownDistance,

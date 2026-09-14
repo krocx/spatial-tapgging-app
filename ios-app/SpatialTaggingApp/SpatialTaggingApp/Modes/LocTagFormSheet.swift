@@ -5,9 +5,10 @@
 // it — pick a Focus Area, pick one of its pre-defined Questions, choose a
 // Finding Category (Strength / OFI / NC) and an optional risk rating, then
 // attach up to six photos, each with a caption. Nothing is typed that could
-// be picked. When the Audit Reference Library is empty or unreachable the
-// sheet falls back to the legacy free-text finding (title + defect category)
-// so a walk never blocks on the server.
+// be picked. A custom (free-text) entry keeps the same shape — typed focus
+// area + question, same Category and Preliminary risk — and is stored with
+// referenceSource 'custom' so the report never passes it off as a library
+// item. It is also the fallback when the library is empty or unreachable.
 //
 // Submits to SIB POST /loc-tags and calls onSaved with the result.
 
@@ -36,16 +37,14 @@ struct LocTagFormSheet: View {
     @State private var question:  GembaQuestion?   = nil
     @State private var category:  GembaFindingCategory? = nil
     @State private var risk:      GembaRiskRating? = nil
-    @State private var useLegacy = false            // library empty → free text
+    @State private var useCustom = false            // typed entry (or library empty)
 
-    // ── Legacy / shared fields ────────────────────────────────────────────────
-    @State private var title          = ""
+    // ── Custom (free-text) entry + shared fields ──────────────────────────────
+    @State private var customArea     = ""
+    @State private var customQuestion = ""
     @State private var description    = ""
-    @State private var severity:        Severity?      = nil
-    @State private var defectCategory: DefectCategory = .others
-    @State private var categoryNote   = ""
-    @State private var titleTouched  = false
-    @FocusState private var titleFocused: Bool
+    @State private var questionTouched = false
+    @FocusState private var questionFocused: Bool
 
     // ── Photos ────────────────────────────────────────────────────────────────
     struct DraftPhoto: Identifiable {
@@ -65,17 +64,19 @@ struct LocTagFormSheet: View {
     @State private var isSubmitting = false
     @State private var submitError: String? = nil
 
-    private var referenceMode: Bool { !useLegacy && !store.isEmpty }
+    private var referenceMode: Bool { !useCustom && !store.isEmpty }
+    private var customQuestionTrimmed: String { customQuestion.trimmingCharacters(in: .whitespacesAndNewlines) }
 
     private var isValid: Bool {
         if referenceMode { return question != nil && category != nil }
-        return !title.trimmingCharacters(in: .whitespaces).isEmpty
+        return !customQuestionTrimmed.isEmpty && category != nil
     }
 
     var body: some View {
         NavigationStack {
             Form {
-                if referenceMode { referenceSections } else { legacySections }
+                if referenceMode { referenceSections } else { customSections }
+                findingSection
                 photoSection
                 if let err = submitError {
                     Section {
@@ -85,12 +86,14 @@ struct LocTagFormSheet: View {
                 }
                 if !store.isEmpty {
                     Section {
-                        Toggle("Free-text finding (no reference question)", isOn: $useLegacy)
+                        Toggle("Custom entry (not from the library)", isOn: $useCustom)
                             .font(.caption)
+                    } footer: {
+                        Text("Custom entries are reported as free text, never as a library question.")
                     }
                 }
             }
-            .navigationTitle(referenceMode ? "Log Finding" : "Tag Issue")
+            .navigationTitle("Log Finding")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -193,7 +196,12 @@ struct LocTagFormSheet: View {
             }
         }
 
-        Section("Finding") {
+    }
+
+    // ── Finding (shared by both modes — same data shape) ──────────────────────
+
+    private var findingSection: some View {
+        Section {
             Picker("Category", selection: $category) {
                 Text("—").tag(Optional<GembaFindingCategory>.none)
                 ForEach(GembaFindingCategory.allCases) { c in
@@ -212,10 +220,242 @@ struct LocTagFormSheet: View {
 
             TextField("Notes (optional)", text: $description, axis: .vertical)
                 .lineLimit(2...4)
+        } header: {
+            HStack {
+                Text("Finding")
+                Spacer()
+                if category == nil {
+                    HStack(spacing: 3) { Text("*").bold().foregroundStyle(.red); Text("Category required") }
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
         }
     }
 
-    // ── Legacy sections (library unavailable) ─────────────────────────────────
+    // ── Custom (free-text) sections ───────────────────────────────────────────
+
+    @ViewBuilder
+    private var customSections: some View {
+        Section {
+            TextField("Focus area (optional)", text: $customArea)
+                .textInputAutocapitalization(.words)
+            HStack(alignment: .top, spacing: 6) {
+                TextField("Question / observation", text: $customQuestion, axis: .vertical)
+                    .lineLimit(2...5)
+                    .focused($questionFocused)
+                    .onChange(of: questionFocused) { focused in if !focused { questionTouched = true } }
+                if customQuestionTrimmed.isEmpty {
+                    Text("*").font(.system(size: 17, weight: .bold)).foregroundStyle(.red)
+                }
+            }
+            if questionTouched && customQuestionTrimmed.isEmpty {
+                Text("Required — what was checked or observed").font(.caption).foregroundStyle(.red)
+            }
+        } header: {
+            HStack {
+                Text("Custom Reference")
+                Spacer()
+                Text("Free text").font(.caption2.weight(.semibold))
+                    .padding(.horizontal, 7).padding(.vertical, 2)
+                    .background(Color.orange.opacity(0.18), in: Capsule())
+                    .foregroundStyle(.orange)
+            }
+        } footer: {
+            if store.isEmpty {
+                Text("No Audit Reference Library on this server yet. Corporate Quality can import the lists under Portal › GembaWalks › Audit Library; until then findings are logged as custom entries.")
+            } else {
+                Text("Logged as a custom entry — reports show it as free text, not a library question.")
+            }
+        }
+    }
+
+    // ── Photos ────────────────────────────────────────────────────────────────
+    struct DraftPhoto: Identifiable {
+        let id = UUID()
+        var image: UIImage
+        var caption: String = ""
+        /// G5: flattened markup copy + the strokes (for re-editing).
+        var markup: UIImage? = nil
+        var drawing: PKDrawing? = nil
+    }
+    @State private var photos: [DraftPhoto] = []
+    @State private var pickerItems: [PhotosPickerItem] = []
+    @State private var showCamera = false
+    @State private var markingUp: DraftPhoto? = nil
+
+    // ── Submission ────────────────────────────────────────────────────────────
+    @State private var isSubmitting = false
+    @State private var submitError: String? = nil
+
+    private var referenceMode: Bool { !useCustom && !store.isEmpty }
+    private var customQuestionTrimmed: String { customQuestion.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+    private var isValid: Bool {
+        if referenceMode { return question != nil && category != nil }
+        return !customQuestionTrimmed.isEmpty && category != nil
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                if referenceMode { referenceSections } else { customSections }
+                findingSection
+                photoSection
+                if let err = submitError {
+                    Section {
+                        Label(err, systemImage: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.red).font(.caption)
+                    }
+                }
+                if !store.isEmpty {
+                    Section {
+                        Toggle("Custom entry (not from the library)", isOn: $useCustom)
+                            .font(.caption)
+                    } footer: {
+                        Text("Custom entries are reported as free text, never as a library question.")
+                    }
+                }
+            }
+            .navigationTitle("Log Finding")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }.disabled(isSubmitting)
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    if isSubmitting { ProgressView() }
+                    else {
+                        Button("Save") { Task { await submit() } }
+                            .disabled(!isValid || isSubmitting)
+                            .fontWeight(.semibold)
+                    }
+                }
+            }
+            .fullScreenCover(isPresented: $showCamera) {
+                CameraPickerView { image in addPhoto(image) }
+                    .ignoresSafeArea()
+            }
+            // G5 markup — presented from the stack root: a presentation
+            // modifier on a Section inside a Form is re-evaluated with the
+            // rows and dismisses itself.
+            .fullScreenCover(item: $markingUp) { draft in
+                PhotoMarkupView(image: draft.image, existing: draft.drawing) { flattened, drawing in
+                    if let i = photos.firstIndex(where: { $0.id == draft.id }) {
+                        photos[i].markup  = drawing.strokes.isEmpty ? nil : flattened
+                        photos[i].drawing = drawing.strokes.isEmpty ? nil : drawing
+                    }
+                }
+            }
+            .task {
+                await store.refresh(settings: settings)
+                // Pre-select the focus area from the last finding on this device.
+                if focusArea == nil, !lastFocusAreaCode.isEmpty,
+                   let fa = store.library.focusAreas.first(where: { $0.code == lastFocusAreaCode }) {
+                    focusArea = fa
+                }
+            }
+            .onChange(of: pickerItems) { items in
+                guard !items.isEmpty else { return }
+                Task {
+                    for item in items {
+                        if photos.count >= locTagMaxPhotos { break }
+                        if let data = try? await item.loadTransferable(type: Data.self), let img = UIImage(data: data) {
+                            addPhoto(img)
+                        }
+                    }
+                    pickerItems = []
+                }
+            }
+        }
+    }
+
+    // ── Reference-list sections ───────────────────────────────────────────────
+
+    @ViewBuilder
+    private var referenceSections: some View {
+        Section {
+            NavigationLink {
+                FocusAreaPicker(areas: store.library.focusAreas, selected: focusArea) { fa in
+                    if fa.id != focusArea?.id { question = nil }
+                    focusArea = fa
+                    lastFocusAreaCode = fa.code
+                }
+            } label: {
+                LabeledContent("Focus Area") {
+                    Text(focusArea.map { $0.displayName } ?? "Select…")
+                        .foregroundStyle(focusArea == nil ? .secondary : .primary)
+                        .lineLimit(1)
+                }
+            }
+
+            NavigationLink {
+                if let fa = focusArea {
+                    QuestionPicker(area: fa, selected: question) { q in question = q }
+                }
+            } label: {
+                LabeledContent("Question") {
+                    Text(question.map { "\($0.code) — \($0.title)" } ?? (focusArea == nil ? "Pick a focus area first" : "Select…"))
+                        .foregroundStyle(question == nil ? .secondary : .primary)
+                        .lineLimit(1)
+                }
+            }
+            .disabled(focusArea == nil || focusArea?.questions.isEmpty == true)
+
+            if let q = question {
+                Text(q.text)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 2)
+            } else if let fa = focusArea, fa.questions.isEmpty {
+                Text("This focus area has no questions yet — ask Corporate Quality to add them in the portal, or switch to a free-text finding below.")
+                    .font(.caption).foregroundStyle(.orange)
+            }
+        } header: {
+            HStack {
+                Text("Audit Reference")
+                Spacer()
+                if store.isLoading { ProgressView().controlSize(.mini) }
+                else if store.lastError != nil { Text("offline · cached").font(.caption2).foregroundStyle(.secondary) }
+            }
+        }
+
+    }
+
+    // ── Finding (shared by both modes — same data shape) ──────────────────────
+
+    private var findingSection: some View {
+        Section {
+            Picker("Category", selection: $category) {
+                Text("—").tag(Optional<GembaFindingCategory>.none)
+                ForEach(GembaFindingCategory.allCases) { c in
+                    Text(c.displayName).tag(Optional(c))
+                }
+            }
+            .pickerStyle(.segmented)
+            if let c = category {
+                Text(c.longName).font(.caption).foregroundStyle(.secondary)
+            }
+
+            Picker("Preliminary risk", selection: $risk) {
+                Text("Not rated").tag(Optional<GembaRiskRating>.none)
+                ForEach(GembaRiskRating.allCases) { r in Text(r.displayName).tag(Optional(r)) }
+            }
+
+            TextField("Notes (optional)", text: $description, axis: .vertical)
+                .lineLimit(2...4)
+        } header: {
+            HStack {
+                Text("Finding")
+                Spacer()
+                if category == nil {
+                    HStack(spacing: 3) { Text("*").bold().foregroundStyle(.red); Text("Category required") }
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    // ── Custom (free-text) sections ───────────────────────────────────────────
 
     @ViewBuilder
     private var legacySections: some View {
@@ -338,21 +578,25 @@ struct LocTagFormSheet: View {
                 walkId:          walkId
             )
         } else {
+            let q = customQuestionTrimmed
             req = CreateLocTagRequest(
-                anchorId:           anchor.id,
-                title:              title.trimmingCharacters(in: .whitespaces),
-                description:        description.trimmingCharacters(in: .whitespacesAndNewlines),
-                severity:           severity,
-                defectCategory:     defectCategory,
-                defectCategoryNote: categoryNote.isEmpty ? nil : categoryNote,
-                position:           position,
-                order:              nextOrder,
-                photos:             photos.map { (image: $0.image, caption: Optional($0.caption)) },
-                walkId:             walkId
+                anchorId:        anchor.id,
+                title:           q.count > 60 ? String(q.prefix(57)) + "…" : q,
+                description:     description.trimmingCharacters(in: .whitespacesAndNewlines),
+                severity:        nil,
+                defectCategory:  .others,
+                position:        position,
+                order:           nextOrder,
+                customFocusArea: customArea.trimmingCharacters(in: .whitespaces).isEmpty ? nil : customArea.trimmingCharacters(in: .whitespaces),
+                customQuestion:  q,
+                findingCategory: category,
+                riskRating:      risk,
+                photos:          photos.map { (image: $0.image, caption: Optional($0.caption)) },
+                walkId:          walkId
             )
         }
 
-        AppLog.info("gemba", "finding save", ["question": req.questionCode ?? "-", "category": req.findingCategory?.rawValue ?? "-",
+        AppLog.info("gemba", "finding save", ["question": req.questionCode ?? (req.customQuestion != nil ? "custom" : "-"), "category": req.findingCategory?.rawValue ?? "-",
                                               "photos": photos.count, "order": nextOrder])
         let client = SIBClient(settings: settings)
         do {

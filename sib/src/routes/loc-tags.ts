@@ -100,8 +100,8 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
   const title = (body.title || '').trim() || defaultTitle(fields, '');
   // description is optional — an empty string is valid. defectCategory is the
   // legacy taxonomy: required unless the finding is logged against a question.
-  if (!body.anchorId || !title || (!body.defectCategory && !fields.questionCode)) {
-    res.status(400).json({ error: 'anchorId, title, and defectCategory (or questionCode) are required' });
+  if (!body.anchorId || !title || (!body.defectCategory && !fields.questionCode && fields.referenceSource !== 'custom')) {
+    res.status(400).json({ error: 'anchorId, title, and defectCategory (or questionCode / customQuestion) are required' });
     return;
   }
   if (!body.position || typeof body.position.x !== 'number') {
@@ -145,6 +145,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     questionText:         fields.questionText,
     findingCategory:      fields.findingCategory,
     riskRating:           fields.riskRating,
+    referenceSource:      fields.referenceSource,
     photos:               photos.length ? photos : undefined,
     walkId:               typeof body.walkId === 'string' && body.walkId ? body.walkId : undefined,
     createdAt:            now,
@@ -280,9 +281,10 @@ router.patch('/:id', (req: Request, res: Response): void => {
     ...(fields.clearQuestion
       ? { focusAreaCode: undefined, focusAreaTitle: undefined, questionCode: undefined, questionTitle: undefined, questionText: undefined }
       : {}),
-    ...(fields.questionCode ? {
+    ...(fields.questionCode || fields.referenceSource === 'custom' ? {
       focusAreaCode: fields.focusAreaCode, focusAreaTitle: fields.focusAreaTitle,
       questionCode: fields.questionCode, questionTitle: fields.questionTitle, questionText: fields.questionText,
+      referenceSource: fields.referenceSource,
     } : {}),
     ...('findingCategory' in fields ? { findingCategory: fields.findingCategory } : {}),
     ...('riskRating'      in fields ? { riskRating: fields.riskRating } : {}),

@@ -12,7 +12,8 @@ export const LOC_TAG_MAX_CAPTION = 300;
 export type QuestionLookup = (code: unknown) => { question: GembaQuestion; area: GembaFocusArea } | undefined;
 
 export type FindingFields = Pick<LocTag,
-  'focusAreaCode' | 'focusAreaTitle' | 'questionCode' | 'questionTitle' | 'questionText' | 'findingCategory' | 'riskRating'>;
+  'focusAreaCode' | 'focusAreaTitle' | 'questionCode' | 'questionTitle' | 'questionText' | 'findingCategory' | 'riskRating' | 'referenceSource'>;
+const MAX_CUSTOM_AREA = 120, MAX_CUSTOM_QUESTION = 2000;
 
 /**
  * Resolve the G3 fields from a request body. Returns only the keys that were
@@ -32,6 +33,23 @@ export function resolveFindingFields(body: Record<string, unknown>, lookup: Ques
       out.questionCode   = hit.question.code;
       out.questionTitle  = hit.question.title;
       out.questionText   = hit.question.text;
+      out.referenceSource = 'library';
+    }
+  }
+  // Free text: same shape (area + question) but no codes and source 'custom',
+  // so a report can never pass a typed entry off as a library item.
+  if (!out.questionCode && ('customQuestion' in body || 'customFocusArea' in body)) {
+    const q = typeof body.customQuestion === 'string' ? body.customQuestion.trim().slice(0, MAX_CUSTOM_QUESTION) : '';
+    const a = typeof body.customFocusArea === 'string' ? body.customFocusArea.trim().slice(0, MAX_CUSTOM_AREA) : '';
+    if (q) {
+      out.focusAreaCode  = undefined;
+      out.focusAreaTitle = a || undefined;
+      out.questionCode   = undefined;
+      out.questionTitle  = q.length > 60 ? q.slice(0, 57) + '…' : q;
+      out.questionText   = q;
+      out.referenceSource = 'custom';
+    } else if ('customQuestion' in body) {
+      throw new GembaValidationError(400, 'customQuestion cannot be empty.');
     }
   }
   if ('findingCategory' in body) {
@@ -88,5 +106,6 @@ export function applyCaptionEdits(photos: LocTagPhoto[], edits: unknown): LocTag
 /** Title for a finding logged against a question when the client sent none. */
 export function defaultTitle(fields: Partial<FindingFields>, fallback: string): string {
   if (fields.questionCode) return `${fields.questionCode} — ${fields.questionTitle ?? ''}`.trim();
+  if (fields.referenceSource === 'custom' && fields.questionTitle) return fields.questionTitle;
   return fallback;
 }

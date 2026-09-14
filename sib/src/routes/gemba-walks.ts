@@ -75,8 +75,8 @@ router.get('/', (req: Request, res: Response): void => {
 // ── Export (before /:id so the literal path wins) ───────────────────────────
 
 const EXPORT_COLS = ['Walk date', 'Auditor', 'Employee ID', 'Project ID', 'Organization', 'BU', 'Area', 'Location', 'Walk status',
-  'Stop #', 'Focus Area', 'Question Code', 'Question', 'Finding Category', 'Risk', 'Notes', 'Photo caption', 'Photos', 'Logged at', 'Photo'];
-const EXPORT_WIDTHS = [12, 18, 12, 16, 14, 14, 12, 14, 11, 7, 24, 13, 40, 14, 6, 30, 30, 7, 20, 36];
+  'Stop #', 'Focus Area', 'Question Code', 'Question', 'Source', 'Finding Category', 'Risk', 'Notes', 'Photo caption', 'Photos', 'Logged at', 'Photo'];
+const EXPORT_WIDTHS = [12, 18, 12, 16, 14, 14, 12, 14, 11, 7, 24, 13, 40, 9, 14, 6, 30, 30, 7, 20, 36];
 
 router.get('/export.xlsx', (req: Request, res: Response): void => {
   const q = req.query as Record<string, string | undefined>;
@@ -95,7 +95,7 @@ router.get('/export.xlsx', (req: Request, res: Response): void => {
     const head = [w.startedAt.slice(0, 10), w.auditorName, w.auditorId ?? '', w.projectId ?? '', w.organization ?? '',
                   w.bu ?? '', w.area ?? '', w.location ?? '', w.status];
     const findings = findingsOf(w.id);
-    if (!findings.length) { rows.push({ cells: [...head, '', '', '', '(no findings)'] }); continue; }
+    if (!findings.length) { rows.push({ cells: [...head, '', '', '', '(no findings)', ''] }); continue; }
     for (const f of findings) {
       const photos = f.photos ?? (f.referenceImagePath ? [{ path: f.referenceImagePath, caption: undefined as string | undefined, markupPath: undefined as string | undefined }] : []);
       const first = photos[0];
@@ -103,8 +103,10 @@ router.get('/export.xlsx', (req: Request, res: Response): void => {
       const abs = file && !file.includes('..') ? path.join(LOCTAG_IMG_DIR, file) : undefined;
       rows.push({
         cells: [...head, f.order + 1,
-          f.focusAreaCode ? `${f.focusAreaCode} ${f.focusAreaTitle ?? ''}`.trim() : '',
-          f.questionCode ?? '', f.questionText ?? f.title, f.findingCategory ?? f.defectCategory,
+          f.focusAreaCode ? `${f.focusAreaCode} ${f.focusAreaTitle ?? ''}`.trim() : (f.focusAreaTitle ?? ''),
+          f.questionCode ?? '', f.questionText ?? f.title,
+          f.referenceSource === 'custom' ? 'custom' : (f.questionCode ? 'library' : 'legacy'),
+          f.findingCategory ?? f.defectCategory,
           f.riskRating ?? '', f.description, first?.caption ?? '', photos.length, f.createdAt, ''],
         image: abs && fs.existsSync(abs) ? fs.readFileSync(abs) : undefined,
       });
@@ -150,6 +152,20 @@ router.post('/:id/submit', (req: Request, res: Response): void => {
     console.log(`[SIB] Gemba walk submitted: ${w.id} — ${out.summary?.findings ?? 0} findings`);
     res.json({ data: out, timestamp: now });
   } catch (err) { fail(res, err); }
+});
+
+// POST /gemba/walks/:id/adopt { locTagIds?: string[] } — attach findings on
+// the same space that have no walk (logged before a header existed) to this
+// walk. Default: all of them. Never moves a finding from another walk.
+router.post('/:id/adopt', (req: Request, res: Response): void => {
+  const w = gembaWalkStore.findById(req.params.id);
+  if (!w) { res.status(404).json({ error: 'Walk not found' }); return; }
+  const wanted = Array.isArray((req.body as { locTagIds?: unknown })?.locTagIds)
+    ? new Set(((req.body as { locTagIds: unknown[] }).locTagIds).filter((x): x is string => typeof x === 'string')) : null;
+  const orphans = locTagStore.findAll().filter(t => t.anchorId === w.anchorId && !t.walkId && (!wanted || wanted.has(t.id)));
+  for (const t of orphans) locTagStore.update(t.id, { walkId: w.id, updatedAt: new Date().toISOString() });
+  console.log(`[SIB] Gemba walk ${w.id}: adopted ${orphans.length} finding(s) without a header`);
+  res.json({ data: { adopted: orphans.length, walk: withSummary(gembaWalkStore.findById(w.id)!) }, timestamp: new Date().toISOString() });
 });
 
 router.post('/:id/reopen', (req: Request, res: Response): void => {

@@ -380,6 +380,13 @@ final class SIBClient {
         try await get(GembaWalkDetail.self, path: "/gemba/walks/\(id)")
     }
 
+    /// Attach findings logged without a header on this space to the walk (all when nil).
+    func adoptOrphanFindings(walkId: String, locTagIds: [String]? = nil) async throws -> Int {
+        struct Body: Codable { let locTagIds: [String]? }
+        struct Out: Codable { let adopted: Int }
+        return try await post(Out.self, path: "/gemba/walks/\(walkId)/adopt", body: Body(locTagIds: locTagIds)).adopted
+    }
+
     /// Close the walk: stamps endedAt, returns the derived summary.
     func submitGembaWalk(id: String, notes: String?) async throws -> GembaWalk {
         struct Body: Codable { let notes: String? }

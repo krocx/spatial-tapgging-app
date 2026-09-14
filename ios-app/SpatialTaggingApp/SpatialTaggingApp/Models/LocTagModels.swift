@@ -118,11 +118,15 @@ struct LocTag: Codable, Identifiable, Equatable {
     var questionText:       String?
     var findingCategory:    GembaFindingCategory?
     var riskRating:         GembaRiskRating?
+    /// 'library' (picked, codes present) or 'custom' (typed — no codes). nil on legacy findings.
+    var referenceSource:    String?
     var photos:             [LocTagPhoto]?
     /// G2: the walk session this finding belongs to.
     var walkId:             String?
 
     let createdAt:          String
+
+    var isCustomReference: Bool { referenceSource == "custom" }
     let updatedAt:          String
 
     /// Every photo on the finding, oldest first — falls back to the legacy
@@ -132,8 +136,9 @@ struct LocTag: Codable, Identifiable, Equatable {
         if let referenceImagePath { return [LocTagPhoto(path: referenceImagePath, caption: nil, markupPath: nil, drawingPath: nil, capturedAt: createdAt)] }
         return []
     }
-    /// "14 · P5142" style line for pills and rows; nil for legacy findings.
+    /// "14 · P5142" style line for pills and rows; "Custom" for typed entries; nil for legacy findings.
     var referenceLine: String? {
+        if isCustomReference { return "Custom" }
         guard let questionCode else { return nil }
         return [focusAreaCode, questionCode].compactMap { $0 }.joined(separator: " · ")
     }
@@ -266,6 +271,9 @@ struct CreateLocTagRequest: Codable {
     // ── G3 ──
     /// The server resolves the code against the Audit Reference Library and snapshots area/question.
     var questionCode:         String?
+    /// Free-text alternative to questionCode — logged as a 'custom' reference.
+    var customFocusArea:      String?
+    var customQuestion:       String?
     var findingCategory:      GembaFindingCategory?
     var riskRating:           GembaRiskRating?
     /// Photos with captions, capture order; the first becomes the reference image.
@@ -283,6 +291,8 @@ struct CreateLocTagRequest: Codable {
         order:               Int,
         referenceImage:      UIImage?       = nil,
         questionCode:        String?        = nil,
+        customFocusArea:     String?        = nil,
+        customQuestion:      String?        = nil,
         findingCategory:     GembaFindingCategory? = nil,
         riskRating:          GembaRiskRating?      = nil,
         photos:              [(image: UIImage, caption: String?)] = [],
@@ -300,6 +310,8 @@ struct CreateLocTagRequest: Codable {
             $0.jpegData(compressionQuality: 0.65)?.base64EncodedString()
         }
         self.questionCode        = questionCode
+        self.customFocusArea     = customFocusArea
+        self.customQuestion      = customQuestion
         self.findingCategory     = findingCategory
         self.riskRating          = riskRating
         let uploads = photos.compactMap { LocTagPhotoUpload(image: $0.image, caption: $0.caption) }
