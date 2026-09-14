@@ -46,7 +46,12 @@ header h1 a{color:var(--text);text-decoration:none;}
 #graph{width:100%;height:100%;display:block;cursor:grab;background:radial-gradient(ellipse at 50% 50%,#101a30 0%,#0b1220 62%);}
 #graph.dragging{cursor:grabbing;}
 #hint{position:absolute;left:14px;bottom:12px;font-size:11px;color:var(--muted);pointer-events:none;max-width:70%;}
-#zoomCtl{position:absolute;right:14px;top:12px;display:flex;flex-direction:column;gap:4px;z-index:5;}
+#modeCtl{position:absolute;right:14px;top:12px;display:flex;z-index:5;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:rgba(17,26,46,.75);backdrop-filter:blur(8px);}
+#modeCtl button{border:0;background:transparent;color:var(--muted);font-size:12px;font-weight:700;padding:6px 11px;cursor:pointer;letter-spacing:.04em;}
+#modeCtl button.on{background:var(--accent);color:#fff;}
+#modeHint{position:absolute;right:14px;top:50px;font-size:10.5px;color:var(--muted);text-align:right;pointer-events:none;letter-spacing:.03em;}
+#zoomCtl{position:absolute;right:14px;top:70px;display:flex;flex-direction:column;gap:4px;z-index:5;}
+#graph.stacked .coreglow,#graph.stacked .halo{display:none;}
 #zoomCtl button{width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:rgba(17,26,46,.75);backdrop-filter:blur(8px);color:var(--text);
   font-size:15px;cursor:pointer;line-height:1;}
 #zoomCtl button:hover{border-color:var(--accent);}
@@ -207,13 +212,15 @@ text.coresub{font-size:8.5px;fill:#bfdbfe;letter-spacing:.06em;pointer-events:no
   <div id="graphWrap">
     <div id="matchCount"></div>
     <svg id="graph"></svg>
+    <div id="modeCtl"><button id="mode2d" class="on" title="Flat disc (key 2)">2D</button><button id="mode3d" title="Products stacked as layers (key 3)">3D</button></div>
+    <div id="modeHint"></div>
     <div id="zoomCtl">
       <button id="zoomIn" title="Zoom in">+</button>
       <button id="zoomOut" title="Zoom out">−</button>
       <button id="zoomFit" title="Fit the whole map">⛶</button>
       <button id="zoomReset" title="Reset layout (forget dragged positions)">↺</button>
     </div>
-    <div id="hint">Hover for a summary · click for details · click a product name to zoom in · double-click a node to zoom to its neighbours · drag to pan · scroll to zoom</div>
+    <div id="hint">Hover for a summary · click for details · click a product name to zoom in · double-click a node to zoom to its neighbours · drag to pan (3D: orbit) · scroll to zoom · keys 2 / 3 switch view</div>
   </div>
   <div id="panel"></div>
 </div>
@@ -298,7 +305,7 @@ async function boot(){
     return;
   }
   DATA.areas.forEach(a => areaById[a.id] = a);
-  buildGraph();
+  buildGraph(); computeLayers();
   renderAreaChips();
   renderHome();
   startSim();
@@ -322,7 +329,11 @@ async function boot(){
 }
 
 function applyHash(){
-  const id = decodeURIComponent(location.hash.slice(1));
+  let id = decodeURIComponent(location.hash.slice(1));
+  const want3d = /(^|[?&])3d$/.test(id);
+  id = id.replace(/(^|[?&])3d$/, '');
+  if (want3d !== mode3d) setMode(want3d, !applyHash.ran);   // instant on first load
+  applyHash.ran = true;
   if (!id) return;
   if (id === 'ask') { askOpen(); return; }
   if (byId[id]) { if (selected !== id) selectFeature(id); }
@@ -434,7 +445,7 @@ function startSim(){
   // nodes pop ring by ring. Any input skips it. Reduced-motion users get the
   // settled map straight away.
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (!reduce && !sessionStorage.getItem('sib_catalog_ignited')){
+  if (!reduce && !/3d$/.test(location.hash) && !sessionStorage.getItem('sib_catalog_ignited')){
     igniting = true; sessionStorage.setItem('sib_catalog_ignited', '1');
     svg.classList.add('ignite'); draw();
     const end = () => { if (!igniting) return; igniting = false; svg.classList.remove('ignite'); dirty = true; };
@@ -454,6 +465,79 @@ function reheat(){ alpha = Math.max(alpha, 0.5); dirty = true; }
 function resetLayout(){
   savedPos = {}; localStorage.removeItem(POS_KEY);
   buildGraph(); alpha = 1; for (let i = 0; i < 420; i++) tick(); fitAll();
+}
+
+/* ═══════════════ 3D stack (2026.4.46) ═══════════════ */
+// Every node keeps its place on the disc; 3D lifts each product's wedge to
+// its own layer along a vertical axis and the SIB core becomes the spine
+// through all of them. The 2D view IS the 3D view seen from above with zero
+// spacing, so the switch is one camera move: tilt 0 → ~57° while layers
+// separate. Layer order is computed from the dependency graph — foundations
+// at the bottom, each product placed so as many edges as possible point UP.
+const stack = { t: 0, yaw: -0.42, tilt: 0 };   // t: 0 = flat, 1 = fully stacked
+let mode3d = false, stackAnim = null;
+const LAYER_GAP = 118, TILT_MAX = 0.98, FOCAL = 2400;
+let layerIndex = {}, layerCount = 1, crossLinks = 0;
+function computeLayers(){
+  // Layer order: Platform Foundations is the floor by definition; every other
+  // product is ranked by NET dependency flow across the catalogue (edges it
+  // provides minus edges it consumes) — providers low, consumers high — so
+  // as many links as possible point upward. Ties keep the areas' order.
+  const out = {}, inn = {};
+  crossLinks = 0;
+  for (const e of edges){ if (e.s.area === e.t.area) continue; crossLinks++; out[e.s.area] = (out[e.s.area] || 0) + 1; inn[e.t.area] = (inn[e.t.area] || 0) + 1; }
+  const floor = DATA.areas.find(a => a.id === 'platform') || [...DATA.areas].sort((x, y) => y.order - x.order)[0];
+  const score = a => a.id === floor.id ? Infinity : (out[a.id] || 0) - (inn[a.id] || 0);
+  const sorted = [...DATA.areas].sort((x, y) => (score(y) - score(x)) || (x.order - y.order));
+  layerIndex = {}; sorted.forEach((a, i) => layerIndex[a.id] = i);
+  layerCount = sorted.length;
+}
+const zOf = area => (layerIndex[area] || 0) * LAYER_GAP * stack.t;
+const zMid = () => (layerCount - 1) * LAYER_GAP * stack.t / 2;
+// World (disc x, disc y, height z) → screen. Identity when flat.
+function P(x, y, z){
+  if (stack.t === 0) return { x, y, s: 1, d: 0 };
+  const dx = x - CX, dy = y - CY, yaw = stack.yaw * stack.t;
+  const c = Math.cos(yaw), sn = Math.sin(yaw);
+  const X = dx * c - dy * sn, Y = dx * sn + dy * c, zz = z - zMid();
+  const th = stack.tilt;
+  const y2 = Y * Math.cos(th) - zz * Math.sin(th);
+  const depth = -(Y * Math.sin(th)) - zz * Math.cos(th);   // negative = nearer the eye
+  const sc = FOCAL / (FOCAL + depth);
+  return { x: CX + X * sc, y: CY + y2 * sc, s: sc, d: depth };
+}
+const pt = p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
+function sampleArc(r, t0, t1, z, n = 28){
+  const out = [];
+  for (let i = 0; i <= n; i++){ const th = t0 + (t1 - t0) * i / n; out.push(P(CX + Math.cos(th) * r, CY + Math.sin(th) * r, z)); }
+  return out;
+}
+const poly = (pts, close = false) => 'M' + pts.map(pt).join('L') + (close ? 'Z' : '');
+function setStack(t){
+  stack.t = t; stack.tilt = TILT_MAX * t; markDirty();
+  document.getElementById('modeHint').textContent = t > 0.5
+    ? `${layerCount} layers · ${crossLinks} cross-layer links · drag to orbit` : '';
+}
+function animateStack(to, ms = 1300){
+  if (stackAnim) cancelAnimationFrame(stackAnim);
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches){ setStack(to); return; }
+  const from = stack.t, t0 = performance.now();
+  const ease = x => x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+  const step = now => {
+    const u = Math.min(1, (now - t0) / ms);
+    setStack(from + (to - from) * ease(u));
+    if (u < 1) stackAnim = requestAnimationFrame(step); else stackAnim = null;
+  };
+  stackAnim = requestAnimationFrame(step);
+}
+function setMode(m3d, instant = false){
+  mode3d = m3d;
+  document.getElementById('mode2d').classList.toggle('on', !m3d);
+  document.getElementById('mode3d').classList.toggle('on', m3d);
+  svg.classList.toggle('stacked', m3d);
+  if (instant) setStack(m3d ? 1 : 0); else animateStack(m3d ? 1 : 0);
+  const h = location.hash.replace(/[?&]3d$/, '');
+  history.replaceState(null, '', (h || '#') + (m3d ? (h && h !== '#' ? '&3d' : '?3d') : ''));
 }
 
 /* ═══════════════ drawing ═══════════════ */
@@ -519,7 +603,62 @@ function buildStatic(){
   </g>`;
   staticSvg = out;
 }
+// The same picture, projected: one call per frame while stacked.
+function buildStatic3D(){
+  const layers = [...DATA.areas].sort((a, b) => layerIndex[a.id] - layerIndex[b.id]);
+  let out = `<defs><radialGradient id="coreGrad"><stop offset="0" stop-color="#93c5fd" stop-opacity=".95"/><stop offset=".45" stop-color="#3b82f6" stop-opacity=".55"/><stop offset="1" stop-color="#3b82f6" stop-opacity="0"/></radialGradient>`;
+  for (const a of layers){
+    const z = zOf(a.id), outer = sampleArc(R_MAX + 62, a.g0 + 0.03, a.g1 - 0.03, z, 24);
+    const pts = outer[0].x <= outer[outer.length - 1].x ? outer : outer.reverse();
+    out += `<path id="ap3-${a.id}" d="${poly(pts)}"/>`;
+  }
+  out += '</defs>';
+  const zTop = zOf(layers[layers.length - 1].id);
+  // spine: SIB through every layer
+  const b = P(CX, CY, -40), tp = P(CX, CY, zTop + 40);
+  out += `<line x1="${b.x}" y1="${b.y}" x2="${tp.x}" y2="${tp.y}" stroke="#3b82f6" stroke-opacity=".35" stroke-width="${10 * b.s}" stroke-linecap="round"/>
+          <line x1="${b.x}" y1="${b.y}" x2="${tp.x}" y2="${tp.y}" stroke="#bfdbfe" stroke-opacity=".8" stroke-width="${2 * b.s}" stroke-linecap="round"/>`;
+  // far layers first
+  const byDepth = layers.map(a => ({ a, d: P(CX, CY, zOf(a.id)).d })).sort((x, y) => y.d - x.d);
+  for (const { a } of byDepth){
+    const z = zOf(a.id), dim = activeAreas.size && !activeAreas.has(a.id);
+    const disc = sampleArc(R_MAX + 46, 0, Math.PI * 2, z, 64);
+    const o = sampleArc(R_MAX + 46, a.g0 + 0.012, a.g1 - 0.012, z, 30);
+    const inn = sampleArc(R_MIN - 40, a.g1 - 0.012, a.g0 + 0.012, z, 18);
+    const hub = sampleArc(22, 0, Math.PI * 2, z, 20);
+    out += `<g class="wedge" data-area="${a.id}" opacity="${dim ? 0.22 : 1}">
+      <path d="${poly(disc, true)}" fill="${a.color}" fill-opacity=".025" stroke="#7d8da3" stroke-opacity=".14" stroke-dasharray="2 6"/>
+      <path d="${poly(o.concat(inn), true)}" fill="${a.color}" fill-opacity=".13" stroke="${a.color}" stroke-opacity=".28" stroke-width="1"/>
+      <path d="${poly(o)}" fill="none" stroke="${a.color}" stroke-opacity=".85" stroke-width="3"/>
+      <path d="${poly(hub, true)}" fill="#0b1220" stroke="#93c5fd" stroke-opacity=".7" stroke-width="1.2"/>
+      <text class="albl" fill="${a.color}" data-area="${a.id}"><textPath href="#ap3-${a.id}" startOffset="50%" text-anchor="middle">${esc(a.name).toUpperCase()}</textPath></text>
+    </g>`;
+  }
+  // the core, at the foot of the spine
+  const c0 = P(CX, CY, -40);
+  out += `<g class="core"><circle cx="${c0.x}" cy="${c0.y}" r="${66 * c0.s}" fill="#0b1220" stroke="#93c5fd" stroke-opacity=".6" stroke-width="1.5"/>
+    <circle cx="${c0.x}" cy="${c0.y}" r="${66 * c0.s}" fill="url(#coreGrad)" opacity=".5"/>
+    <text class="corelbl" x="${c0.x}" y="${c0.y + 8 * c0.s}" text-anchor="middle" font-size="${26 * c0.s}">SIB</text></g>`;
+  return out;
+}
+// A dependency edge in space: in-layer edges stay flat, cross-layer edges
+// rise (or fall) between their layers, bowing toward the spine.
+function edgePath3D(e){
+  const zs = zOf(e.s.area), zt = zOf(e.t.area), n = zs === zt ? 10 : 18;
+  const mx = (e.s.x + e.t.x) / 2, my = (e.s.y + e.t.y) / 2;
+  const pull = e.s.area === e.t.area ? 0.08 : 0.32;
+  const cx = mx + (CX - mx) * pull, cy = my + (CY - my) * pull;
+  const pts = [];
+  for (let i = 0; i <= n; i++){
+    const u = i / n, a = (1 - u) * (1 - u), b = 2 * (1 - u) * u, c = u * u;
+    const x = a * e.s.x + b * cx + c * e.t.x, y = a * e.s.y + b * cy + c * e.t.y;
+    const ez = u * u * (3 - 2 * u);
+    pts.push(P(x, y, zs + (zt - zs) * ez));
+  }
+  return poly(pts);
+}
 function edgePath(e){
+  if (stack.t > 0) return edgePath3D(e);
   // Cross-area edges bow toward the core (everything meets in SIB); in-area
   // edges stay nearly straight so a cluster reads as a cluster.
   const mx = (e.s.x + e.t.x) / 2, my = (e.s.y + e.t.y) / 2;
@@ -554,10 +693,14 @@ function draw(){
   const showAll = view.k >= 0.85;                // semantic labels: everything at reading zoom
   const tf = `translate(${view.x},${view.y}) scale(${view.k})`;
   const dimArea = a => activeAreas.size && !activeAreas.has(a);
-  let out = `<g transform="${tf}">${staticSvg}</g><g transform="${tf}">`;
+  const flat = stack.t === 0;
+  let out = `<g transform="${tf}">${flat ? staticSvg : buildStatic3D()}</g><g transform="${tf}">`;
   // dim filtered wedges via an overlay (static layer stays untouched)
-  for (const a of DATA.areas) if (dimArea(a.id))
+  if (flat) for (const a of DATA.areas) if (dimArea(a.id))
     out += `<path d="${wedgePath(R_MIN - 40, R_MAX + 80, a.g0, a.g1)}" fill="#0b1220" fill-opacity=".72" pointer-events="none"/>`;
+  // projected node positions for this frame
+  for (const nd of nodes){ const p = P(nd.x, nd.y, zOf(nd.area)); nd.px = p.x; nd.py = p.y; nd.ps = p.s; nd.pd = p.d; }
+  const layerOf = a => layerIndex[a] || 0;
   // edges
   const focus = selected || hovered;
   for (const e of edges){
@@ -586,20 +729,22 @@ function draw(){
     if (!want) return null;
     const w = Math.min(nd.name.length, 28) * 5.3, h = 11;
     for (const dy of [r + 12, -(r + 5)]){
-      const box = { x0: nd.x - w/2, x1: nd.x + w/2, y0: nd.y + dy - h, y1: nd.y + dy };
+      const box = { x0: nd.px - w/2, x1: nd.px + w/2, y0: nd.py + dy - h, y1: nd.py + dy };
       if (!placed.some(b => b.x0 < box.x1 && b.x1 > box.x0 && b.y0 < box.y1 && b.y1 > box.y0)){ placed.push(box); return dy; }
     }
     return null;
   };
-  const order = [...nodes].sort((p, q) => Math.hypot(q.x - CX, q.y - CY) - Math.hypot(p.x - CX, p.y - CY));
+  const order = flat ? [...nodes].sort((p, q) => Math.hypot(q.x - CX, q.y - CY) - Math.hypot(p.x - CX, p.y - CY))
+                     : [...nodes].sort((p, q) => p.pd - q.pd);          // nearest first gets the label
   const dyById = {};
   // priority: the focused set first, then everything else
   for (const nd of order){ const isSel = nd.id === selected, isHov = nd.id === hovered; if (isSel || isHov || neighbours.has(nd.id) || hov.has(nd.id)) dyById[nd.id] = labelPos(nd, isSel ? 11 : isHov ? 10 : 8, true); }
   for (const nd of order){ if (nd.id in dyById) continue;
     const want = showAll || (ts && ts.has(nd.id)) || (searchQ && nodeMatches(nd));
     dyById[nd.id] = labelPos(nd, 8, want); }
-  // nodes
-  for (const nd of nodes){
+  // nodes — far layers first when stacked
+  const drawOrder = flat ? nodes : [...nodes].sort((p, q) => q.pd - p.pd);
+  for (const nd of drawOrder){
     const c = areaById[nd.area].color;
     let op = nodeVisible(nd) ? 1 : 0.07;
     if (ts) op = ts.has(nd.id) ? 1 : 0.08;
@@ -607,29 +752,35 @@ function draw(){
     else if (hovered) op = hov.has(nd.id) ? 1 : (nodeVisible(nd) ? 0.35 : 0.07);
     else if (searchQ) op = nodeMatches(nd) && nodeVisible(nd) ? 1 : 0.07;
     const isSel = nd.id === selected, isHov = nd.id === hovered;
-    const r = isSel ? 11 : isHov ? 10 : 8;
+    // Stacked + selected: layers the selection doesn't touch fade back.
+    if (!flat && selected && !neighbours.has(nd.id)){
+      const touched = new Set([...neighbours].map(i => byId[i].area));
+      if (!touched.has(nd.area)) op = Math.min(op, 0.18);
+    }
+    const X = nd.px, Y = nd.py, sc = nd.ps;
+    const r = (isSel ? 11 : isHov ? 10 : 8) * sc;
     let shape;
-    if (nd.status === 'shipped') shape = `<circle cx="${nd.x}" cy="${nd.y}" r="${r}" fill="${c}"/>`;
-    else if (nd.status === 'beta') shape = `<circle cx="${nd.x}" cy="${nd.y}" r="${r}" fill="${c}" fill-opacity=".25" stroke="${c}" stroke-width="2"/>`;
-    else shape = `<circle cx="${nd.x}" cy="${nd.y}" r="${r}" fill="none" stroke="${c}" stroke-width="1.6" stroke-dasharray="4 3"/>`;
-    const halo = isSel ? `<circle cx="${nd.x}" cy="${nd.y}" r="${r+5}" fill="none" stroke="#fff" stroke-width="1.4" opacity=".9"/>`
-               : isHov ? `<circle cx="${nd.x}" cy="${nd.y}" r="${r+7}" fill="${c}" fill-opacity=".18"/>` : '';
+    if (nd.status === 'shipped') shape = `<circle cx="${X}" cy="${Y}" r="${r}" fill="${c}"/>`;
+    else if (nd.status === 'beta') shape = `<circle cx="${X}" cy="${Y}" r="${r}" fill="${c}" fill-opacity=".25" stroke="${c}" stroke-width="2"/>`;
+    else shape = `<circle cx="${X}" cy="${Y}" r="${r}" fill="none" stroke="${c}" stroke-width="1.6" stroke-dasharray="4 3"/>`;
+    const halo = isSel ? `<circle cx="${X}" cy="${Y}" r="${r+5}" fill="none" stroke="#fff" stroke-width="1.4" opacity=".9"/>`
+               : isHov ? `<circle cx="${X}" cy="${Y}" r="${r+7}" fill="${c}" fill-opacity=".18"/>` : '';
     let badge = '';
     if (ts && ts.has(nd.id)){
       const num = trail.steps.indexOf(nd.id) + 1;
-      badge = `<circle cx="${nd.x+10}" cy="${nd.y-10}" r="7" fill="${num-1===trailIdx?'#f59e0b':'#334155'}"/>
-               <text class="trailbadge" x="${nd.x+10}" y="${nd.y-7}" text-anchor="middle">${num}</text>`;
+      badge = `<circle cx="${X+10}" cy="${Y-10}" r="7" fill="${num-1===trailIdx?'#f59e0b':'#334155'}"/>
+               <text class="trailbadge" x="${X+10}" y="${Y-7}" text-anchor="middle">${num}</text>`;
     }
     const dy = dyById[nd.id];
     const name = nd.name.length > 28 ? nd.name.slice(0, 27) + '…' : nd.name;
     const isNew = nd.version === DATA.platformVersion;
-    const label = dy != null ? `<text class="nlabel${isSel || isHov ? ' hot' : ''}" x="${nd.x}" y="${nd.y + dy}" text-anchor="middle">${esc(name)}</text>` : '';
-    const newTick = isNew ? `<circle cx="${nd.x + r - 1}" cy="${nd.y - r + 1}" r="3.2" fill="#35c635" stroke="#0b1220" stroke-width="1"><title>New in ${esc(DATA.platformVersion)}</title></circle>` : '';
+    const label = dy != null ? `<text class="nlabel${isSel || isHov ? ' hot' : ''}" x="${X}" y="${Y + dy}" text-anchor="middle">${esc(name)}</text>` : '';
+    const newTick = isNew ? `<circle cx="${X + r - 1}" cy="${Y - r + 1}" r="${3.2 * sc}" fill="#35c635" stroke="#0b1220" stroke-width="1"><title>New in ${esc(DATA.platformVersion)}</title></circle>` : '';
     const ring = Math.round((Math.hypot(nd.x - CX, nd.y - CY) - R_MIN) / ((R_MAX - R_MIN) / 2));
     const bi = nd.id.length + nd.id.charCodeAt(0);
     const breathe = `animation:${bi % 2 ? 'breatheA' : 'breatheB'} ${3.2 + (bi % 5) * 0.6}s ease-in-out ${(bi % 7) * 0.4}s infinite alternate`;
     out += `<g opacity="${op}" data-id="${nd.id}" class="node" style="cursor:pointer;${breathe};--ring:${Math.max(0, Math.min(2, ring))}">
-      <circle cx="${nd.x}" cy="${nd.y}" r="${r + 8}" fill="transparent"/>${halo}${shape}${newTick}${label}${badge}</g>`;
+      <circle cx="${X}" cy="${Y}" r="${r + 8}" fill="transparent"/>${halo}${shape}${newTick}${label}${badge}</g>`;
   }
   out += '</g>';
   svg.innerHTML = out;
@@ -651,6 +802,7 @@ function animateView(to, ms = 450){
 }
 function fitBounds(pts, pad = 90){
   if (!pts.length) return;
+  if (stack.t > 0) pts = pts.map(p => ({ x: p.px ?? p.x, y: p.py ?? p.y }));
   const minX = Math.min(...pts.map(p => p.x)) - pad, maxX = Math.max(...pts.map(p => p.x)) + pad;
   const minY = Math.min(...pts.map(p => p.y)) - pad, maxY = Math.max(...pts.map(p => p.y)) + pad;
   const k = Math.max(0.4, Math.min(2.4, Math.min(W / (maxX - minX), H / (maxY - minY))));
@@ -667,6 +819,12 @@ document.getElementById('zoomIn').onclick  = () => zoomBy(1.25);
 document.getElementById('zoomOut').onclick = () => zoomBy(0.8);
 document.getElementById('zoomFit').onclick = fitAll;
 document.getElementById('zoomReset').onclick = resetLayout;
+document.getElementById('mode2d').onclick = () => setMode(false);
+document.getElementById('mode3d').onclick = () => setMode(true);
+window.addEventListener('keydown', ev => {
+  if (ev.target.matches('input, textarea') || ev.metaKey || ev.ctrlKey) return;
+  if (ev.key === '2') setMode(false); else if (ev.key === '3') setMode(true);
+});
 
 /* pan / zoom / node drag / click / hover */
 let drag = null;
@@ -692,12 +850,20 @@ svg.addEventListener('pointermove', ev => {
     return;
   }
   if (drag.type === 'node'){
+    if (mode3d) return;                          // stacked: nodes are read-only, click only
     if (!drag.moved && Math.abs(ev.clientX - drag.sx) + Math.abs(ev.clientY - drag.sy) <= 5) return;
     const p = svgPoint(ev); drag.nd.fx = p.x; drag.nd.fy = p.y; drag.moved = true; hideTip(); reheat();
   } else if (drag.type === 'pan') {
     const r = svg.getBoundingClientRect();
-    view.x = drag.ox + (ev.clientX - drag.sx) / r.width * W;
-    view.y = drag.oy + (ev.clientY - drag.sy) / r.height * H;
+    if (mode3d){
+      // horizontal drag orbits the stack; vertical drag still pans
+      if (drag.yaw0 == null) drag.yaw0 = stack.yaw;
+      stack.yaw = drag.yaw0 + (ev.clientX - drag.sx) / r.width * Math.PI * 1.4;
+      view.y = drag.oy + (ev.clientY - drag.sy) / r.height * H;
+    } else {
+      view.x = drag.ox + (ev.clientX - drag.sx) / r.width * W;
+      view.y = drag.oy + (ev.clientY - drag.sy) / r.height * H;
+    }
     if (Math.abs(ev.clientX-drag.sx) + Math.abs(ev.clientY-drag.sy) > 4) drag.moved = true;
     markDirty();
   }
@@ -705,7 +871,7 @@ svg.addEventListener('pointermove', ev => {
 svg.addEventListener('pointerup', ev => {
   svg.classList.remove('dragging');
   if (drag && drag.type === 'node'){
-    if (!drag.moved) selectFeature(drag.nd.id);
+    if (!drag.moved || mode3d) selectFeature(drag.nd.id);
     else { drag.nd.tx = drag.nd.fx; drag.nd.ty = drag.nd.fy; savedPos[drag.nd.id] = { x: drag.nd.fx, y: drag.nd.fy };
            try { localStorage.setItem(POS_KEY, JSON.stringify(savedPos)); } catch {} }
     drag.nd.fx = drag.nd.fy = null; markDirty();
@@ -878,7 +1044,8 @@ function showArea(id){
 
 function selectFeature(id){
   selected = id; markDirty();
-  if (location.hash !== '#' + id) history.replaceState(null, '', '#' + id);
+  const want = '#' + id + (mode3d ? '?3d' : '');
+  if (location.hash !== want) history.replaceState(null, '', want);
   showFeature(id);
 }
 

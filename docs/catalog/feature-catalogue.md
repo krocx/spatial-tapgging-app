@@ -3,7 +3,7 @@ id: feature-catalogue
 name: Visual Feature Catalogue
 area: platform
 status: shipped
-version: 2026.4.42
+version: 2026.4.46
 depends: [home-page, versioning]
 terms: [SIB]
 spec: catalog/README.md
@@ -22,5 +22,8 @@ This surface: docs/catalog/ holds one YAML-frontmatter file per feature, and
 GET /catalog renders them as a connected graph — flows, dependencies, role trails
 and dictionary definitions, generated live at /catalog/data (which doubles as the
 AI-grounding feed). The markdown is the single source; everything visual is derived. Every card is
-linkable (/catalog#feature-id) and render libraries are vendored via
-`npm run catalog:vendor` so no CDN outage can blank a diagram.
+linkable (/catalog#feature-id, `?3d` for the stacked view) and render libraries are
+vendored via `npm run catalog:vendor` so no CDN outage can blank a diagram. The map
+is "The Core": SIB in the centre, products as radar wedges, features on depth
+rings; **3D** lifts each product to its own layer along the SIB spine so cross-product
+dependencies read as vertical links.

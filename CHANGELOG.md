@@ -114,6 +114,19 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **Feature Catalogue — 2D ⇄ 3D.** A `2D | 3D` switch (keys `2` / `3`)
+  lifts each product wedge to its own layer along the SIB **spine**; the flat
+  disc is the same picture seen from above, so the switch is one camera move
+  (tilt + layer spacing, ~1.3 s, reduced-motion snaps). Layer order is
+  computed: Platform Foundations is the floor, every other product ranks by
+  net dependency flow (providers low, consumers high) so links point upward —
+  today: Foundations → Spatial Inspection → Gemba → AR Work Instructions →
+  Designer → iLOTO → Portal. In-layer edges stay flat; cross-layer edges rise
+  between their layers and still light up with flow on hover / select;
+  selecting a feature fades every layer it doesn't touch. Drag orbits the
+  stack, scroll zooms, labels stay collision-free (nearest layer wins),
+  `#feature?3d` links open stacked. Pseudo-3D projection in the same SVG — no
+  WebGL, text stays crisp, every interaction unchanged.
 - **Feature Catalogue — "The Core".** The map now tells the SIB thesis by
   its shape: **SIB sits in the centre** as a glowing core (pulsing, with the
   four ontology halos — spatial · perception · semantic · reasoning — turning
