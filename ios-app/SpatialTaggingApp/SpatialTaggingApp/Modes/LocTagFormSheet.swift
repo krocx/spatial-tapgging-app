@@ -109,6 +109,17 @@ struct LocTagFormSheet: View {
                 CameraPickerView { image in addPhoto(image) }
                     .ignoresSafeArea()
             }
+            // G5 markup — presented from the stack root: a presentation
+            // modifier on a Section inside a Form is re-evaluated with the
+            // rows and dismisses itself.
+            .fullScreenCover(item: $markingUp) { draft in
+                PhotoMarkupView(image: draft.image, existing: draft.drawing) { flattened, drawing in
+                    if let i = photos.firstIndex(where: { $0.id == draft.id }) {
+                        photos[i].markup  = drawing.strokes.isEmpty ? nil : flattened
+                        photos[i].drawing = drawing.strokes.isEmpty ? nil : drawing
+                    }
+                }
+            }
             .task {
                 await store.refresh(settings: settings)
                 // Pre-select the focus area from the last finding on this device.
@@ -297,14 +308,6 @@ struct LocTagFormSheet: View {
             if photos.isEmpty { Text("Optional, but a photo with a short caption is what the reviewer sees first.") }
             else { Text("Tap a thumbnail to circle or mark the issue on the photo.") }
         }
-        .fullScreenCover(item: $markingUp) { draft in
-            PhotoMarkupView(image: draft.image, existing: draft.drawing) { flattened, drawing in
-                if let i = photos.firstIndex(where: { $0.id == draft.id }) {
-                    photos[i].markup  = drawing.strokes.isEmpty ? nil : flattened
-                    photos[i].drawing = drawing.strokes.isEmpty ? nil : drawing
-                }
-            }
-        }
     }
 
     private func addPhoto(_ image: UIImage) {
@@ -359,7 +362,8 @@ struct LocTagFormSheet: View {
             let stored = locTag.photos ?? []
             for (i, draft) in photos.enumerated() where draft.markup != nil && i < stored.count {
                 if let b64 = draft.markup?.jpegData(compressionQuality: 0.7)?.base64EncodedString() {
-                    do { locTag = try await client.uploadLocTagMarkup(id: locTag.id, filename: stored[i].path, jpegBase64: b64) }
+                    do { locTag = try await client.uploadLocTagMarkup(id: locTag.id, filename: stored[i].path, jpegBase64: b64,
+                                                                     drawingBase64: draft.drawing?.dataRepresentation().base64EncodedString()) }
                     catch { AppLog.warn("gemba", "markup upload failed: \(friendlyMessage(for: error))") }
                 }
             }

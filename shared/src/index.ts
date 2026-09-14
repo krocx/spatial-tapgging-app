@@ -829,6 +829,8 @@ export interface LocTagPhoto {
   caption?: string;
   /** G5: the same photo with the auditor's markup drawn on it, if any. */
   markupPath?: string;
+  /** G5: the strokes (PencilKit PKDrawing data) so the markup can be re-edited. */
+  drawingPath?: string;
   capturedAt: string;
 }
 

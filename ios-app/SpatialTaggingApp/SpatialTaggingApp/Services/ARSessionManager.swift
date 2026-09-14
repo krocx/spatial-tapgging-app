@@ -83,6 +83,10 @@ final class ARSessionManager: NSObject, ObservableObject {
     /// watch this to cancel in-flight work and prompt the user to verify
     /// alignment once tracking resumes.
     @Published var isInterrupted: Bool = false
+    /// R2: bumped every time an interruption ENDS (app came back from the
+    /// background, a call ended…). Walk views watch this to run the
+    /// "welcome back" checkpoint before trusting any pin again.
+    @Published private(set) var resumeCount: Int = 0
 
     // ── Internal ──────────────────────────────────────────────────────────────
     private(set) var sceneView = ARSCNView()
@@ -838,9 +842,22 @@ extension ARSessionManager: ARSessionDelegate {
     // clear the flag so views can prompt the user to re-verify alignment
     // before trusting the next capture/validation result.
     nonisolated func sessionInterruptionEnded(_ session: ARSession) {
-        AppLog.info("ar", "session interruption ended")
+        AppLog.info("ar", "session interruption ended — relocalizing into the previous map")
         Task { @MainActor [weak self] in
-            self?.isInterrupted = false
+            guard let self else { return }
+            self.isInterrupted = false
+            // ARKit now tries to relocalize (tracking .limited(.relocalizing));
+            // reuse the same flag the world-map start path uses, so views show
+            // the same "find your place" posture and clear it on .normal.
+            self.isRelocalizing = true
+            self.relocalizationOutcome = nil
+            self.resumeCount += 1
         }
     }
+
+    /// R2: without this ARKit RESETS the world origin after every interruption
+    /// (backgrounding the app included) and every pin respawns in the wrong
+    /// place. Returning true keeps the previous map and attempts to relocalize
+    /// into it — the auditor just has to look at something they saw before.
+    nonisolated func sessionShouldAttemptRelocalization(_ session: ARSession) -> Bool { true }
 }

@@ -184,8 +184,12 @@ it, it gets a line.
   widths, undo, clear. *Done* flattens the strokes onto a full-resolution copy
   stored beside the original (`markupPath`); the original is never changed.
   The floating panel, sheets, portal strips and the walk Excel all prefer the
-  marked-up copy. `Components/PhotoMarkupView.swift`, `LocTagFormSheet`,
-  `FindingDetailSections`, `PUT /loc-tags/:id/photos/:file/markup` (from G3).
+  marked-up copy. The strokes are stored beside the image (`drawingPath`,
+  PencilKit data, image-pixel coordinates) so re-opening a marked photo shows
+  the marks and they can be edited; **Save** keeps them, **Clear & Save**
+  removes the markup (`{ clear: true }`). `Components/PhotoMarkupView.swift`,
+  `LocTagFormSheet`, `FindingDetailSections`,
+  `PUT /loc-tags/:id/photos/:file/markup` (from G3).
 - **Gemba Walk — walk together (G7)**. Auditors on the same space see each
   other: the presence lens / view cone / roster chip from AR OMS now run on
   Gemba walks (surface `gembaWalk`, poses in the shared world-map frame,
@@ -202,6 +206,26 @@ it, it gets a line.
   `ios-app/XCODE-SETUP.md` step 10); without it the calls are no-ops.
   `Shared/GembaWalkActivity.swift`, `Services/GembaLiveActivity.swift`,
   `GembaWalkWidget/`, `NSSupportsLiveActivities` in Info.plist.
+- **Gemba Walk — resume with a checkpoint (R1–R5)**. iOS suspends ARKit the
+  moment the app leaves the foreground, and ARKit used to RESET its world on
+  return — every pin respawned in the wrong place, silently. Now:
+  *R1* the Live Activity switches to an honest posture in the background
+  ("Open SpatialTagging to continue · next #4 · last 3.2 m"); *R3* completed
+  findings, the current stop and the walk id are saved per space, so a cold
+  restart offers "Continuing at #4" (12 h window); *R2* the AR session now
+  keeps its map across interruptions (`sessionShouldAttemptRelocalization`)
+  and every return runs a **Welcome back** checkpoint — blurred view, the
+  last known finding's own photo as the landmark, "stand where you saw #4",
+  then one question over the pin: *Is #4 where the pin shows?* Yes / No,
+  re-align; no answer in 15 s → full re-localization against the saved map
+  (reference photo + I'm Here) continuing at the same stop; *R5* authors get
+  the same gate and cannot place a finding into an unconfirmed frame; *R4*
+  on arrival at a finding the live view is compared with the finding's photo
+  (`POST /loc-tags/:id/compare`, same comparator as step validation, loose
+  threshold) — low similarity shows "This doesn't look like #4 — Re-align /
+  Looks right" instead of a silent drift. `ARSessionManager` (`resumeCount`),
+  `Components/ResumeCheckpointOverlay.swift`, `Services/WalkProgressStore.swift`,
+  `LocTagOperatorView`, `LocTagAuthorView`, `GembaLiveActivity.background`.
 - **SIB Compass — one navigator on every web surface (N1)**. Each surface had
   grown its own way home (⌂, ⚡, a text link, nothing) and the portal had no
   link to SIB home at all. `sib/portal/compass.js`, injected by `brand.js`

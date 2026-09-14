@@ -129,7 +129,7 @@ struct LocTag: Codable, Identifiable, Equatable {
     /// single reference image for findings logged before G3.
     var allPhotos: [LocTagPhoto] {
         if let photos, !photos.isEmpty { return photos }
-        if let referenceImagePath { return [LocTagPhoto(path: referenceImagePath, caption: nil, markupPath: nil, capturedAt: createdAt)] }
+        if let referenceImagePath { return [LocTagPhoto(path: referenceImagePath, caption: nil, markupPath: nil, drawingPath: nil, capturedAt: createdAt)] }
         return []
     }
     /// "14 · P5142" style line for pills and rows; nil for legacy findings.
@@ -146,6 +146,8 @@ struct LocTagPhoto: Codable, Equatable, Identifiable {
     var caption:    String?
     /// G5: the same photo with the auditor's markup, if any.
     var markupPath: String?
+    /// G5: PencilKit strokes for re-editing the markup.
+    var drawingPath: String?
     let capturedAt: String
 }
 

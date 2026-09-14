@@ -84,6 +84,19 @@ final class GembaLiveActivity {
         if let d = distanceM, d > arrivedM + 1.0, arrivedFor == nextTitle { arrivedFor = nil }
     }
 
+    /// R1: app went to the background — ARKit is suspended, so say so.
+    /// Keeps the last known distance in the title text; phase 'background'.
+    func background(nextTitle: String, lastDistanceM: Float?, done: Int, total: Int) {
+        #if canImport(ActivityKit)
+        guard let activity else { return }
+        let state = GembaWalkActivityAttributes.ContentState(
+            nextTitle: nextTitle, category: nil, distanceM: lastDistanceM.map { Double($0) },
+            done: done, total: total, phase: "background")
+        lastState = nil
+        Task { await activity.update(.init(state: state, staleDate: nil)) }
+        #endif
+    }
+
     func finish(done: Int, total: Int) {
         #if canImport(ActivityKit)
         guard let activity else { return }

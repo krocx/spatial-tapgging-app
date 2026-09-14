@@ -33,6 +33,7 @@ import type {
 import type { LocTagPhoto } from '@spatial/shared';
 import { JsonFileStore } from '../stores/json-file-store.js';
 import { GembaValidationError } from '../gemba/library-core.js';
+import { compareAgainstPassState } from '../perception/image-comparator.js';
 import { findQuestionByCode } from './gemba-library.js';
 import {
   resolveFindingFields, validateIncomingPhotos, applyCaptionEdits, defaultTitle, LOC_TAG_MAX_PHOTOS,
@@ -192,7 +193,7 @@ router.get('/image/:filename', (req: Request, res: Response): void => {
     res.status(404).json({ error: 'Image not found' });
     return;
   }
-  res.setHeader('Content-Type', 'image/jpeg');
+  res.setHeader('Content-Type', filename.endsWith('.pkdrawing') ? 'application/octet-stream' : 'image/jpeg');
   res.sendFile(filePath);
 });
 
@@ -323,7 +324,7 @@ router.delete('/:id', (req: Request, res: Response): void => {
   }
 
   locTagStore.delete(id);
-  for (const p of locTag.photos ?? []) { unlinkQuiet(p.path); unlinkQuiet(p.markupPath); }
+  for (const p of locTag.photos ?? []) { unlinkQuiet(p.path); unlinkQuiet(p.markupPath); unlinkQuiet(p.drawingPath); }
   if (locTag.referenceImagePath && !(locTag.photos ?? []).some(p => p.path === locTag.referenceImagePath)) unlinkQuiet(locTag.referenceImagePath);
   // Also remove completions for this tag
   const completions = locTagCompletionStore.findAll().filter(c => c.locTagId === id);
@@ -374,7 +375,7 @@ router.delete('/:id/photos/:filename', (req: Request, res: Response): void => {
   const photos = locTag.photos ?? [];
   const victim = photos.find(p => p.path === req.params.filename);
   if (!victim) { res.status(404).json({ error: 'Photo not found on this finding' }); return; }
-  unlinkQuiet(victim.path); unlinkQuiet(victim.markupPath);
+  unlinkQuiet(victim.path); unlinkQuiet(victim.markupPath); unlinkQuiet(victim.drawingPath);
   const remaining = photos.filter(p => p !== victim);
   const updated: LocTag = { ...locTag, photos: remaining.length ? remaining : undefined,
     referenceImagePath: remaining[0]?.path, updatedAt: new Date().toISOString() };
@@ -382,21 +383,60 @@ router.delete('/:id/photos/:filename', (req: Request, res: Response): void => {
   res.json({ data: updated, timestamp: updated.updatedAt });
 });
 
-// PUT /loc-tags/:id/photos/:filename/markup — G5: { base64 } marked-up copy
+// PUT /loc-tags/:id/photos/:filename/markup — G5
+//   { base64, drawing? }  flattened JPEG + optional PKDrawing data (base64) so the
+//                         auditor can re-open and edit / clean up the strokes
+//   { clear: true }       remove the markup (original photo untouched)
 router.put('/:id/photos/:filename/markup', (req: Request, res: Response): void => {
   const locTag = locTagStore.findById(req.params.id);
   if (!locTag) { res.status(404).json({ error: `LocTag ${req.params.id} not found` }); return; }
   const photos = locTag.photos ?? [];
   const idx = photos.findIndex(p => p.path === req.params.filename);
   if (idx < 0) { res.status(404).json({ error: 'Photo not found on this finding' }); return; }
-  const base64 = typeof req.body?.base64 === 'string' ? req.body.base64.trim() : '';
-  if (base64.length < 64) { res.status(400).json({ error: 'base64 image data is missing.' }); return; }
+  const body = req.body as { base64?: unknown; drawing?: unknown; clear?: unknown };
   unlinkQuiet(photos[idx].markupPath);
-  const markupPath = saveLocTagImage(locTag.anchorId, locTag.id, base64, `m${idx + 1}`);
-  const next = photos.map((p, i) => i === idx ? { ...p, markupPath } : p);
+  unlinkQuiet(photos[idx].drawingPath);
+  let patch: Partial<LocTagPhoto>;
+  if (body.clear === true) {
+    patch = { markupPath: undefined, drawingPath: undefined };
+  } else {
+    const base64 = typeof body.base64 === 'string' ? body.base64.trim() : '';
+    if (base64.length < 64) { res.status(400).json({ error: 'base64 image data is missing.' }); return; }
+    const markupPath = saveLocTagImage(locTag.anchorId, locTag.id, base64, `m${idx + 1}`);
+    let drawingPath: string | undefined;
+    if (typeof body.drawing === 'string' && body.drawing.length > 0) {
+      drawingPath = markupPath.replace(/\.jpg$/, '.pkdrawing');
+      fs.writeFileSync(path.join(LOCTAG_IMG_DIR, drawingPath), Buffer.from(body.drawing, 'base64'));
+    }
+    patch = { markupPath, drawingPath };
+  }
+  const next = photos.map((p, i) => i === idx ? { ...p, ...patch } : p);
   const updated: LocTag = { ...locTag, photos: next, updatedAt: new Date().toISOString() };
   locTagStore.save(updated);
   res.json({ data: updated, timestamp: updated.updatedAt });
+});
+
+// ── R4: drift check on arrival ────────────────────────────────────────────────
+// POST /loc-tags/:id/compare { imageBase64 } → { data: { score, status, photos } }
+// Scores the operator's live view against the finding's own photo(s) — the
+// same comparator step validation uses. No photo → 404 so the app skips the
+// check silently. Never stored, never logged (no images in logs).
+router.post('/:id/compare', async (req: Request, res: Response): Promise<void> => {
+  const locTag = locTagStore.findById(req.params.id);
+  if (!locTag) { res.status(404).json({ error: `LocTag ${req.params.id} not found` }); return; }
+  const live = typeof req.body?.imageBase64 === 'string' ? req.body.imageBase64.trim() : '';
+  if (live.length < 64) { res.status(400).json({ error: 'imageBase64 is required' }); return; }
+  const files = (locTag.photos ?? []).map(p => p.path).concat(locTag.referenceImagePath ? [locTag.referenceImagePath] : []);
+  const refs = [...new Set(files)]
+    .map(f => path.join(LOCTAG_IMG_DIR, f))
+    .filter(f => fs.existsSync(f))
+    .map(f => fs.readFileSync(f).toString('base64'));
+  if (!refs.length) { res.status(404).json({ error: 'Finding has no photo to compare against' }); return; }
+  try {
+    // Looser than step validation: the operator stands roughly, not exactly, where the photo was taken.
+    const r = await compareAgainstPassState(refs, live, 0.40);
+    res.json({ data: { score: r.score, status: r.status, photos: refs.length }, timestamp: new Date().toISOString() });
+  } catch (err) { fail(res, err); }
 });
 
 export default router;

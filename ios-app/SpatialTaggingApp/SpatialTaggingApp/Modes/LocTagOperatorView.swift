@@ -63,6 +63,22 @@ struct LocTagOperatorView: View {
     /// and interactive behind it) — drag up or tap Expand for the full form.
     @State private var completionDetent: PresentationDetent = .height(148)
 
+    // ── R1–R3: resume, checkpoint, progress ───────────────────────────────────
+    @Environment(\.scenePhase) private var scenePhase
+    /// Where navigation continues after (re)localization — restored from
+    /// WalkProgressStore or kept across a re-align.
+    @State private var resumeIndex: Int = 0
+    @State private var checkpoint: ResumeCheckpointState? = nil
+    @State private var worldMapData: Data? = nil
+    @State private var landmarkPhoto: UIImage? = nil
+    @State private var landmarkPhotoFor: String? = nil
+    @State private var lastKnownDistance: Float? = nil
+    @State private var lastResumeCount = 0
+    private let checkpointTimeout: TimeInterval = 15
+    // R4: drift check on arrival — once per finding
+    @State private var driftCheckedFor: String? = nil
+    @State private var driftPrompt: (tagId: String, score: Double)? = nil
+
     // ── Ticker ────────────────────────────────────────────────────────────────
     private let navTicker = Timer.publish(every: 0.10, on: .main, in: .common).autoconnect()
 
@@ -92,14 +108,21 @@ struct LocTagOperatorView: View {
                 }
                 // Fired when ARKit finishes matching the saved world map
                 .onChange(of: arManager.isRelocalizing) { stillRelocalizing in
-                    guard !stillRelocalizing, phase == .relocalizing else { return }
+                    guard !stillRelocalizing else { return }
+                    // R2: back from an interruption — tracking is normal again;
+                    // ask the one question before trusting the pins.
+                    if case .some(.relocalizing) = checkpoint { withAnimation { checkpoint = .confirm }; return }
+                    guard phase == .relocalizing else { return }
                     placePins()
-                    if locTags.isEmpty {
-                        phase = .done
-                    } else {
-                        phase = .navigating(index: 0)
-                        highlightTag(index: 0)
-                    }
+                    beginNavigation()
+                }
+                // R2: every interruption that ends (background → foreground,
+                // phone call…) runs the welcome-back checkpoint.
+                .onChange(of: arManager.resumeCount) { n in
+                    guard n != lastResumeCount else { return }
+                    lastResumeCount = n
+                    guard case .navigating = phase else { return }
+                    startCheckpoint()
                 }
 
             // ── Ghost reference-photo overlay (re-localization phase only) ──────
@@ -131,6 +154,71 @@ struct LocTagOperatorView: View {
 
             // Top bar (always visible)
             topBar
+
+            // R3: continuing toast
+            if let t = resumeToast {
+                Text(t).font(.caption.weight(.semibold)).foregroundStyle(.white)
+                    .padding(.horizontal, 14).padding(.vertical, 8)
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .padding(.top, 64)
+                    .transition(.opacity)
+            }
+
+            // R4: drift prompt
+            if let d = driftPrompt, let tag = locTags.first(where: { $0.id == d.tagId }) {
+                VStack {
+                    Spacer()
+                    VStack(spacing: 10) {
+                        Text("This doesn't look like #\(tag.order + 1)")
+                            .font(.headline).foregroundStyle(.white)
+                        Text("The view here differs from the finding's photo. Check the pin — or re-align if the space has shifted.")
+                            .font(.footnote).foregroundStyle(.white.opacity(0.75)).multilineTextAlignment(.center)
+                        HStack(spacing: 12) {
+                            Button { withAnimation { driftPrompt = nil }; realignFromStart() } label: {
+                                Label("Re-align", systemImage: "arrow.triangle.2.circlepath")
+                                    .font(.subheadline.weight(.semibold))
+                                    .padding(.vertical, 10).padding(.horizontal, 14)
+                                    .background(.ultraThinMaterial, in: Capsule())
+                            }
+                            Button { withAnimation { driftPrompt = nil } } label: {
+                                Label("Looks right", systemImage: "checkmark")
+                                    .font(.subheadline.weight(.bold))
+                                    .padding(.vertical, 10).padding(.horizontal, 16)
+                                    .background(.orange, in: Capsule()).foregroundStyle(.white)
+                            }
+                        }
+                    }
+                    .padding(18)
+                    .frame(maxWidth: 360)
+                    .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .padding(.bottom, 200)
+                }
+                .transition(.opacity)
+            }
+
+            // R2: welcome-back checkpoint
+            if let cp = checkpoint {
+                let tag = landmarkTag()
+                ResumeCheckpointOverlay(
+                    state: cp,
+                    stopNumber: tag.map { ($0.order) + 1 },
+                    title: tag.map { $0.questionTitle ?? $0.title } ?? "",
+                    photo: landmarkPhoto ?? referencePhoto,
+                    timeoutSeconds: checkpointTimeout,
+                    onConfirm: confirmCheckpoint,
+                    onRealign: realignFromStart,
+                    onTimeout: realignFromStart)
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: resumeToast)
+        // R1: background → honest posture in the Dynamic Island; foreground is
+        // handled by the ARKit interruption callbacks (resumeCount).
+        .onChange(of: scenePhase) { ph in
+            guard ph == .background, case .navigating(let i) = phase, i < locTags.count else { return }
+            let t = locTags[i]
+            GembaLiveActivity.shared.background(nextTitle: t.questionTitle ?? t.title, lastDistanceM: lastKnownDistance,
+                                                done: completedTagIds.count, total: locTags.count)
+            persistProgress()
         }
         .onReceive(navTicker) { _ in
             if case .navigating(let index) = phase {
@@ -146,6 +234,7 @@ struct LocTagOperatorView: View {
             if let anchor = appState.activeAnchor {
                 LocTagOperatorSheet(tag: tag, anchor: anchor) { completion in
                     completedTagIds.insert(tag.id)
+                    persistProgress()
                     completingTag = nil
                     advanceAfterCompletion(completedId: tag.id)
                 }
@@ -274,12 +363,7 @@ struct LocTagOperatorView: View {
                 Button {
                     userConfirmedRelocalize = true
                     placePins()
-                    if locTags.isEmpty {
-                        phase = .done
-                    } else {
-                        phase = .navigating(index: 0)
-                        highlightTag(index: 0)
-                    }
+                    beginNavigation()
                 } label: {
                     Label("I'm Here", systemImage: "mappin.and.ellipse")
                         .font(.headline)
@@ -347,12 +431,17 @@ struct LocTagOperatorView: View {
                 .ignoresSafeArea()
             }
 
-            // Bottom nav panel
-            VStack {
-                Spacer()
-                navPanel(tag: tag, index: index)
+            // Bottom nav panel — hidden while the completion sheet sits in its
+            // minimized detent over the same strip (the two would stack).
+            if completingTag == nil {
+                VStack {
+                    Spacer()
+                    navPanel(tag: tag, index: index)
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
+        .animation(.easeInOut(duration: 0.2), value: completingTag == nil)
         } // end if index < locTags.count
     }
 
@@ -465,6 +554,16 @@ struct LocTagOperatorView: View {
 
             if let pd = photoData { referencePhoto = UIImage(data: pd) }
             locTags = fetched.sorted { $0.order < $1.order }
+            worldMapData = mapData
+            // R3: continue where this device left off (same space, < 12 h).
+            if let p = WalkProgressStore.load(anchorId: anchor.id) {
+                let known = Set(locTags.map { $0.id })
+                completedTagIds = Set(p.completedTagIds).intersection(known)
+                resumeIndex = min(max(p.currentIndex, 0), max(locTags.count - 1, 0))
+                if !completedTagIds.isEmpty || resumeIndex > 0 {
+                    AppLog.info("gemba", "walk progress restored", ["done": completedTagIds.count, "index": resumeIndex])
+                }
+            }
 
             if let data = mapData {
                 arManager.startSessionWithWorldMap(data)
@@ -481,16 +580,98 @@ struct LocTagOperatorView: View {
                 // No world map stored yet — place pins directly (positions may drift slightly)
                 arManager.disableQRScanning()
                 placePins()
-                if locTags.isEmpty {
-                    phase = .done
-                } else {
-                    phase = .navigating(index: 0)
-                    highlightTag(index: 0)
-                }
+                beginNavigation()
             }
         } catch {
             loadError = friendlyMessage(for: error)
         }
+    }
+
+    /// Start (or continue) navigation at the first uncompleted finding from
+    /// `resumeIndex`; done when nothing is left.
+    private func beginNavigation() {
+        guard !locTags.isEmpty else { phase = .done; return }
+        let remaining = locTags.indices.filter { !completedTagIds.contains(locTags[$0].id) }
+        guard let first = remaining.first(where: { $0 >= resumeIndex }) ?? remaining.first else {
+            phase = .done
+            GembaLiveActivity.shared.finish(done: completedTagIds.count, total: locTags.count)
+            return
+        }
+        if first > 0 || !completedTagIds.isEmpty { showResumeToast(index: first) }
+        advanceTo(index: first)
+    }
+
+    @State private var resumeToast: String? = nil
+    private func showResumeToast(index: Int) {
+        resumeToast = "Continuing at #\(index + 1) · \(completedTagIds.count) of \(locTags.count) done"
+        Task { try? await Task.sleep(nanoseconds: 3_500_000_000); resumeToast = nil }
+    }
+
+    // ── R2: welcome-back checkpoint ───────────────────────────────────────────
+
+    /// The landmark: the last completed finding's own photo, else the current
+    /// target's, else the walk's reference photo.
+    private func landmarkTag() -> LocTag? {
+        if case .navigating(let i) = phase {
+            if let lastDone = locTags.indices.filter({ $0 < i && completedTagIds.contains(locTags[$0].id) }).last { return locTags[lastDone] }
+            if i < locTags.count { return locTags[i] }
+        }
+        return locTags.first
+    }
+
+    private func startCheckpoint() {
+        let tag = landmarkTag()
+        withAnimation { checkpoint = .relocalizing(since: Date()) }
+        AppLog.info("gemba", "checkpoint start", ["landmark": tag?.id ?? "-"])
+        if let tag, landmarkPhotoFor != tag.id, let file = tag.allPhotos.first.map({ $0.markupPath ?? $0.path }) {
+            landmarkPhoto = nil; landmarkPhotoFor = tag.id
+            Task {
+                if let data = try? await SIBClient(settings: settings).fetchLocTagImage(filename: file), let img = UIImage(data: data) {
+                    await MainActor.run { landmarkPhoto = img }
+                }
+            }
+        }
+        // ARKit may already be normal (short interruption) — go straight to the question.
+        if !arManager.isRelocalizing { withAnimation { checkpoint = .confirm } }
+    }
+
+    private func confirmCheckpoint() {
+        withAnimation { checkpoint = nil }
+        AppLog.info("gemba", "checkpoint confirmed")
+        if case .navigating(let i) = phase { highlightTag(index: i) }
+    }
+
+    /// Full re-localization against the saved world map, keeping progress.
+    private func realignFromStart() {
+        withAnimation { checkpoint = nil }
+        if case .navigating(let i) = phase { resumeIndex = i }
+        AppLog.info("gemba", "checkpoint realign", ["resumeIndex": resumeIndex])
+        driftCheckedFor = nil; driftPrompt = nil
+        for (_, n) in tagNodes { n.removeFromParentNode() }
+        tagNodes.removeAll()
+        for t in locTags { FindingPanel.remove(from: arManager.sceneView.scene.rootNode, tagId: t.id) }
+        removeArrow()
+        guard let data = worldMapData else {
+            // No saved map: nothing to relocalize against — restart the session and re-pin.
+            arManager.startSession(); arManager.disableQRScanning()
+            placePins(); beginNavigation(); return
+        }
+        userConfirmedRelocalize = false
+        showRelocalizingTimeout = false
+        arManager.startSessionWithWorldMap(data)
+        arManager.disableQRScanning()
+        phase = .relocalizing
+        Task {
+            try? await Task.sleep(nanoseconds: 20_000_000_000)
+            guard case .relocalizing = phase else { return }
+            showRelocalizingTimeout = true
+        }
+    }
+
+    private func persistProgress() {
+        guard let anchor = appState.activeAnchor else { return }
+        let idx: Int = { if case .navigating(let i) = phase { return i } else { return resumeIndex } }()
+        WalkProgressStore.save(WalkProgress(anchorId: anchor.id, walkId: nil, completedTagIds: Array(completedTagIds), currentIndex: idx))
     }
 
     // ── Place 3D pins ─────────────────────────────────────────────────────────
@@ -550,6 +731,8 @@ struct LocTagOperatorView: View {
         let camPos = simd_float3(camCol.x, camCol.y, camCol.z)
         let dist   = simd_length(tagW - camPos)
         distanceM  = dist
+        lastKnownDistance = dist
+        if checkpoint != nil { return }      // R2: nothing is trusted until confirmed
 
         // G6: keep the Live Activity current (throttled inside); tracking
         // limited/lost (phone at your side) → "raise your phone" phase.
@@ -558,8 +741,25 @@ struct LocTagOperatorView: View {
                                         distanceM: trackingOK ? dist : nil, done: completedTagIds.count, total: locTags.count,
                                         trackingOK: trackingOK, arrivedM: arrivedM)
 
+        // R4: on first arrival, ask SIB whether the view matches the finding's
+        // photo. Low similarity → one question, never a silent drift.
+        if dist <= arrivedM && driftCheckedFor != tag.id && tag.allPhotos.isEmpty == false && trackingOK {
+            driftCheckedFor = tag.id
+            if let img = ARFrameImage.screenOriented(frame, maxPx: 800),
+               let b64 = img.jpegData(compressionQuality: 0.6)?.base64EncodedString() {
+                Task {
+                    guard let v = try? await SIBClient(settings: settings).compareLocTagView(id: tag.id, jpegBase64: b64) else { return }
+                    AppLog.info("gemba", "drift check", ["tag": tag.id, "score": v.score, "status": v.status])
+                    if v.status == "FAIL" {
+                        await MainActor.run { withAnimation { driftPrompt = (tag.id, v.score) } }
+                        UINotificationFeedbackGenerator().notificationOccurred(.warning)
+                    }
+                }
+            }
+        }
+
         // Auto-trigger completion sheet on arrival (opens minimized).
-        if dist <= arrivedM && completingTag == nil && !autoTriggerGuard {
+        if dist <= arrivedM && completingTag == nil && !autoTriggerGuard && driftPrompt == nil {
             autoTriggerGuard = true
             completingTag    = locTags[index]
         }
@@ -765,12 +965,14 @@ struct LocTagOperatorView: View {
         autoTriggerGuard = false
         phase = .navigating(index: index)
         highlightTag(index: index)
+        persistProgress()
     }
 
     private func advanceAfterCompletion(completedId: String) {
         let currentIdx = locTags.firstIndex(where: { $0.id == completedId }) ?? 0
         let remaining  = locTags.indices.filter { !completedTagIds.contains(locTags[$0].id) }
         if remaining.isEmpty {
+            if let a = appState.activeAnchor { WalkProgressStore.clear(anchorId: a.id) }
             GembaLiveActivity.shared.finish(done: completedTagIds.count, total: locTags.count)
             removeArrow()
             phase = .done

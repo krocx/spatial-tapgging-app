@@ -6,7 +6,20 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		251FD1623057F9E600871099 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 251FD1613057F9E600871099 /* WidgetKit.framework */; };
+		251FD1643057F9E600871099 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 251FD1633057F9E600871099 /* SwiftUI.framework */; };
+		251FD1753057F9E700871099 /* GembaWalkWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 251FD15F3057F9E600871099 /* GembaWalkWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
+		251FD1733057F9E700871099 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 258D58D72FC55E110068CCCA /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 251FD15E3057F9E600871099;
+			remoteInfo = GembaWalkWidgetExtension;
+		};
 		258D58ED2FC55E130068CCCA /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 258D58D72FC55E110068CCCA /* Project object */;
@@ -23,13 +36,48 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		251FD17A3057F9E700871099 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				251FD1753057F9E700871099 /* GembaWalkWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		251FD15F3057F9E600871099 /* GembaWalkWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = GembaWalkWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		251FD1613057F9E600871099 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		251FD1633057F9E600871099 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		258D58DF2FC55E110068CCCA /* SpatialTaggingApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SpatialTaggingApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		258D58EC2FC55E130068CCCA /* SpatialTaggingAppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SpatialTaggingAppTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		258D58F62FC55E130068CCCA /* SpatialTaggingAppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SpatialTaggingAppUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		251FD1763057F9E700871099 /* Exceptions for "GembaWalkWidget" folder in "GembaWalkWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 251FD15E3057F9E600871099 /* GembaWalkWidgetExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		251FD1653057F9E600871099 /* GembaWalkWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				251FD1763057F9E700871099 /* Exceptions for "GembaWalkWidget" folder in "GembaWalkWidgetExtension" target */,
+			);
+			path = GembaWalkWidget;
+			sourceTree = "<group>";
+		};
 		258D58E12FC55E110068CCCA /* SpatialTaggingApp */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = SpatialTaggingApp;
@@ -48,6 +96,15 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		251FD15C3057F9E600871099 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				251FD1643057F9E600871099 /* SwiftUI.framework in Frameworks */,
+				251FD1623057F9E600871099 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		258D58DC2FC55E110068CCCA /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -72,12 +129,23 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		251FD1603057F9E600871099 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				251FD1613057F9E600871099 /* WidgetKit.framework */,
+				251FD1633057F9E600871099 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		258D58D62FC55E110068CCCA = {
 			isa = PBXGroup;
 			children = (
 				258D58E12FC55E110068CCCA /* SpatialTaggingApp */,
 				258D58EF2FC55E130068CCCA /* SpatialTaggingAppTests */,
 				258D58F92FC55E130068CCCA /* SpatialTaggingAppUITests */,
+				251FD1653057F9E600871099 /* GembaWalkWidget */,
+				251FD1603057F9E600871099 /* Frameworks */,
 				258D58E02FC55E110068CCCA /* Products */,
 			);
 			sourceTree = "<group>";
@@ -88,6 +156,7 @@
 				258D58DF2FC55E110068CCCA /* SpatialTaggingApp.app */,
 				258D58EC2FC55E130068CCCA /* SpatialTaggingAppTests.xctest */,
 				258D58F62FC55E130068CCCA /* SpatialTaggingAppUITests.xctest */,
+				251FD15F3057F9E600871099 /* GembaWalkWidgetExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -95,6 +164,28 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		251FD15E3057F9E600871099 /* GembaWalkWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 251FD1773057F9E700871099 /* Build configuration list for PBXNativeTarget "GembaWalkWidgetExtension" */;
+			buildPhases = (
+				251FD15B3057F9E600871099 /* Sources */,
+				251FD15C3057F9E600871099 /* Frameworks */,
+				251FD15D3057F9E600871099 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				251FD1653057F9E600871099 /* GembaWalkWidget */,
+			);
+			name = GembaWalkWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = GembaWalkWidgetExtension;
+			productReference = 251FD15F3057F9E600871099 /* GembaWalkWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		258D58DE2FC55E110068CCCA /* SpatialTaggingApp */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 258D59002FC55E130068CCCA /* Build configuration list for PBXNativeTarget "SpatialTaggingApp" */;
@@ -102,10 +193,12 @@
 				258D58DB2FC55E110068CCCA /* Sources */,
 				258D58DC2FC55E110068CCCA /* Frameworks */,
 				258D58DD2FC55E110068CCCA /* Resources */,
+				251FD17A3057F9E700871099 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				251FD1743057F9E700871099 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				258D58E12FC55E110068CCCA /* SpatialTaggingApp */,
@@ -170,9 +263,12 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 2650;
+				LastSwiftUpdateCheck = 2660;
 				LastUpgradeCheck = 2650;
 				TargetAttributes = {
+					251FD15E3057F9E600871099 = {
+						CreatedOnToolsVersion = 26.6;
+					};
 					258D58DE2FC55E110068CCCA = {
 						CreatedOnToolsVersion = 26.5;
 					};
@@ -203,11 +299,19 @@
 				258D58DE2FC55E110068CCCA /* SpatialTaggingApp */,
 				258D58EB2FC55E130068CCCA /* SpatialTaggingAppTests */,
 				258D58F52FC55E130068CCCA /* SpatialTaggingAppUITests */,
+				251FD15E3057F9E600871099 /* GembaWalkWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		251FD15D3057F9E600871099 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		258D58DD2FC55E110068CCCA /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -232,6 +336,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		251FD15B3057F9E600871099 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		258D58DB2FC55E110068CCCA /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -256,6 +367,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		251FD1743057F9E700871099 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 251FD15E3057F9E600871099 /* GembaWalkWidgetExtension */;
+			targetProxy = 251FD1733057F9E700871099 /* PBXContainerItemProxy */;
+		};
 		258D58EE2FC55E130068CCCA /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 258D58DE2FC55E110068CCCA /* SpatialTaggingApp */;
@@ -269,6 +385,66 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		251FD1783057F9E700871099 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 3S9YQ55ABD;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = GembaWalkWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = GembaWalkWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.krocx.SpatialTaggingApp.GembaWalkWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		251FD1793057F9E700871099 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 3S9YQ55ABD;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = GembaWalkWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = GembaWalkWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.krocx.SpatialTaggingApp.GembaWalkWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		258D58FE2FC55E130068CCCA /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -531,6 +707,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		251FD1773057F9E700871099 /* Build configuration list for PBXNativeTarget "GembaWalkWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				251FD1783057F9E700871099 /* Debug */,
+				251FD1793057F9E700871099 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		258D58DA2FC55E110068CCCA /* Build configuration list for PBXProject "SpatialTaggingApp" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

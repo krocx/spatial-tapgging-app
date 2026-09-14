@@ -54,7 +54,7 @@ struct GembaWalkLiveActivity: Widget {
             } compactLeading: {
                 Image(systemName: icon(context.state)).foregroundStyle(accent(context.state))
             } compactTrailing: {
-                Text(context.state.phase == "paused" ? "↑" : distance(context.state))
+                Text(context.state.phase == "paused" ? "↑" : context.state.phase == "background" ? "⏸" : distance(context.state))
                     .font(.caption.weight(.bold).monospacedDigit()).foregroundStyle(accent(context.state))
             } minimal: {
                 Image(systemName: icon(context.state)).foregroundStyle(accent(context.state))
@@ -66,7 +66,7 @@ struct GembaWalkLiveActivity: Widget {
     private func accent(_ s: GembaWalkActivityAttributes.ContentState) -> Color {
         switch s.phase {
         case "arrived": return .green
-        case "paused":  return .gray
+        case "paused", "background": return .gray
         case "done":    return .green
         default:
             switch s.category { case "NC": return .red; case "STRENGTH": return .green; default: return .orange }
@@ -76,6 +76,7 @@ struct GembaWalkLiveActivity: Widget {
         switch s.phase {
         case "arrived": return "checkmark.circle.fill"
         case "paused":  return "iphone.radiowaves.left.and.right"
+        case "background": return "arrow.up.forward.app"
         case "done":    return "flag.checkered"
         default:        return "mappin.and.ellipse"
         }
@@ -84,6 +85,7 @@ struct GembaWalkLiveActivity: Widget {
         switch s.phase {
         case "arrived": return "You're here"
         case "paused":  return "Raise your phone to update"
+        case "background": return "Open SpatialTagging to continue"
         case "done":    return "Gemba walk complete"
         default:        return "Next finding"
         }

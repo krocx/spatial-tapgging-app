@@ -386,12 +386,29 @@ final class SIBClient {
         return try await post(GembaWalk.self, path: "/gemba/walks/\(id)/submit", body: Body(notes: notes))
     }
 
-    /// G5: attach the marked-up copy of a photo.
-    func uploadLocTagMarkup(id: String, filename: String, jpegBase64: String) async throws -> LocTag {
+    /// G5: attach the marked-up copy of a photo (+ the strokes so it can be re-edited).
+    func uploadLocTagMarkup(id: String, filename: String, jpegBase64: String, drawingBase64: String? = nil) async throws -> LocTag {
         var req = try makeRequest(method: "PUT", path: "/loc-tags/\(id)/photos/\(filename)/markup")
         req.timeoutInterval = 45
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.httpBody = try JSONEncoder().encode(["base64": jpegBase64])
+        var body: [String: String] = ["base64": jpegBase64]
+        if let drawingBase64 { body["drawing"] = drawingBase64 }
+        req.httpBody = try JSONEncoder().encode(body)
+        return try await perform(req, decoding: LocTag.self)
+    }
+
+    /// R4: does the live view look like this finding's photo? (drift check on arrival)
+    struct FindingCompareVerdict: Codable { let score: Double; let status: String; let photos: Int }
+    func compareLocTagView(id: String, jpegBase64: String) async throws -> FindingCompareVerdict {
+        try await post(FindingCompareVerdict.self, path: "/loc-tags/\(id)/compare",
+                       body: ImagePayload(imageBase64: jpegBase64), timeout: 30)
+    }
+
+    /// G5: remove a photo's markup (original untouched).
+    func clearLocTagMarkup(id: String, filename: String) async throws -> LocTag {
+        var req = try makeRequest(method: "PUT", path: "/loc-tags/\(id)/photos/\(filename)/markup")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try JSONEncoder().encode(["clear": true])
         return try await perform(req, decoding: LocTag.self)
     }
 

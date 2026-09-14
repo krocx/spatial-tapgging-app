@@ -12,8 +12,10 @@ import PencilKit
 
 struct PhotoMarkupView: View {
     let image: UIImage
-    /// Existing markup (re-editing): drawn back as the starting state if given.
+    /// Existing markup (re-editing), in IMAGE PIXEL coordinates — what `onDone`
+    /// hands back, so a drawing survives any canvas size / orientation.
     var existing: PKDrawing? = nil
+    /// (flattened photo, strokes in image pixel coordinates)
     let onDone: (UIImage, PKDrawing) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -33,8 +35,10 @@ struct PhotoMarkupView: View {
                     let fit = fitSize(image.size, in: geo.size)
                     ZStack {
                         Image(uiImage: image).resizable().scaledToFit()
-                        MarkupCanvas(canvas: canvas, tool: tool, existing: existing, onStroke: { strokes = $0 })
-                            .onAppear { canvasSize = fit }
+                        MarkupCanvas(canvas: canvas, tool: tool,
+                                     existing: existing.map { $0.transformed(using: CGAffineTransform(scaleX: fit.width / image.size.width, y: fit.width / image.size.width)) },
+                                     onStroke: { strokes = $0 })
+                            .onAppear { canvasSize = fit; strokes = existing?.strokes.count ?? 0 }
                             .onChange(of: fit) { canvasSize = $0 }
                     }
                     .frame(width: fit.width, height: fit.height)
@@ -84,7 +88,11 @@ struct PhotoMarkupView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { finish() }.fontWeight(.semibold).disabled(strokes == 0 && existing == nil)
+                    // Save = keep these strokes. With no strokes left on a photo
+                    // that had a markup, Save clears the markup.
+                    Button(strokes == 0 && existing != nil ? "Clear & Save" : "Save") { finish() }
+                        .fontWeight(.semibold)
+                        .disabled(strokes == 0 && existing == nil)
                 }
             }
         }
@@ -110,7 +118,8 @@ struct PhotoMarkupView: View {
             drawing.image(from: bounds, scale: scale).draw(in: CGRect(origin: .zero, size: image.size))
         }
         AppLog.info("gemba", "photo markup", ["strokes": drawing.strokes.count])
-        onDone(out, drawing)
+        // Hand back strokes in image pixel space so re-editing is size-independent.
+        onDone(out, drawing.transformed(using: CGAffineTransform(scaleX: scale, y: scale)))
         dismiss()
     }
 }

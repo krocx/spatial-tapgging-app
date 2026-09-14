@@ -5,6 +5,7 @@
 // their defect category + severity exactly as before.
 
 import SwiftUI
+import PencilKit
 
 struct FindingDetailSections: View {
     let tag: LocTag
@@ -16,6 +17,7 @@ struct FindingDetailSections: View {
     @State private var viewing: LocTagPhoto? = nil
     @State private var markingUp: LocTagPhoto? = nil
     @State private var markupBusy = false
+    @State private var drawings: [String: PKDrawing] = [:]     // by photo path
 
     var body: some View {
         // ── Reference question ────────────────────────────────────────────────
@@ -97,7 +99,7 @@ struct FindingDetailSections: View {
                             Spacer()
                             if onMarkup != nil {
                                 Button {
-                                    Task { await load(p.path); markingUp = p }
+                                    Task { await load(p.path); await loadDrawing(p); markingUp = p }
                                 } label: {
                                     Image(systemName: "pencil.tip.crop.circle")
                                         .font(.title3).foregroundStyle(.orange)
@@ -112,29 +114,50 @@ struct FindingDetailSections: View {
                     }
                     .task { await load(p.markupPath ?? p.path) }
                 }
-            }
-            .fullScreenCover(item: $viewing) { p in
-                PhotoLightbox(image: images[p.markupPath ?? p.path], caption: p.caption)
-            }
-            .fullScreenCover(item: $markingUp) { p in
-                if let original = images[p.path] {
-                    PhotoMarkupView(image: original) { flattened, drawing in
-                        guard !drawing.strokes.isEmpty else { return }
-                        Task { await saveMarkup(photo: p, image: flattened) }
+                // Presentation host: a stable zero-height row. Putting the
+                // covers on the Section itself re-evaluates them with the rows
+                // and the cover dismisses as soon as it appears.
+                Color.clear.frame(height: 0)
+                    .listRowInsets(EdgeInsets()).listRowBackground(Color.clear)
+                    .fullScreenCover(item: $viewing) { p in
+                        PhotoLightbox(image: images[p.markupPath ?? p.path], caption: p.caption)
                     }
-                } else {
-                    ZStack { Color.black.ignoresSafeArea(); ProgressView().tint(.white) }
-                        .onTapGesture { markingUp = nil }
-                }
+                    .fullScreenCover(item: $markingUp) { p in
+                        if let original = images[p.path] {
+                            PhotoMarkupView(image: original, existing: drawings[p.path]) { flattened, drawing in
+                                Task { await saveMarkup(photo: p, image: flattened, drawing: drawing) }
+                            }
+                        } else {
+                            ZStack { Color.black.ignoresSafeArea(); ProgressView().tint(.white) }
+                                .onTapGesture { markingUp = nil }
+                        }
+                    }
             }
         }
     }
 
-    private func saveMarkup(photo: LocTagPhoto, image: UIImage) async {
-        guard let b64 = image.jpegData(compressionQuality: 0.7)?.base64EncodedString() else { return }
+    private func loadDrawing(_ p: LocTagPhoto) async {
+        guard drawings[p.path] == nil, let dp = p.drawingPath else { return }
+        if let data = try? await SIBClient(settings: settings).fetchLocTagImage(filename: dp),
+           let d = try? PKDrawing(data: data) {
+            await MainActor.run { drawings[p.path] = d }
+        }
+    }
+
+    private func saveMarkup(photo: LocTagPhoto, image: UIImage, drawing: PKDrawing) async {
         await MainActor.run { markupBusy = true }
         do {
-            let updated = try await SIBClient(settings: settings).uploadLocTagMarkup(id: tag.id, filename: photo.path, jpegBase64: b64)
+            let client = SIBClient(settings: settings)
+            let updated: LocTag
+            if drawing.strokes.isEmpty {
+                updated = try await client.clearLocTagMarkup(id: tag.id, filename: photo.path)
+                await MainActor.run { drawings[photo.path] = nil }
+            } else {
+                guard let b64 = image.jpegData(compressionQuality: 0.7)?.base64EncodedString() else { await MainActor.run { markupBusy = false }; return }
+                updated = try await client.uploadLocTagMarkup(id: tag.id, filename: photo.path, jpegBase64: b64,
+                                                              drawingBase64: drawing.dataRepresentation().base64EncodedString())
+                await MainActor.run { drawings[photo.path] = drawing }
+            }
             await MainActor.run {
                 if let mp = updated.photos?.first(where: { $0.path == photo.path })?.markupPath { images[mp] = image }
                 markupBusy = false

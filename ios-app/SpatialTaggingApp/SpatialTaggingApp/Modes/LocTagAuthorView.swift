@@ -74,6 +74,13 @@ struct LocTagAuthorView: View {
     @State private var presenceToast:  (text: String, color: UIColor)? = nil
     @State private var syncingFindings = false
 
+    // ── R2/R5: welcome-back checkpoint (author) ───────────────────────────────
+    @State private var checkpoint: ResumeCheckpointState? = nil
+    @State private var landmarkPhoto: UIImage? = nil
+    @State private var landmarkPhotoFor: String? = nil
+    @State private var lastResumeCount = 0
+    private let checkpointTimeout: TimeInterval = 15
+
     // ── G2: walk session ──────────────────────────────────────────────────────
     @State private var currentWalk:    GembaWalk? = nil
     @State private var showWalkStart   = false
@@ -202,6 +209,20 @@ struct LocTagAuthorView: View {
                 toastOverlay(msg: msg)
             }
 
+            // R2/R5: welcome-back checkpoint — nothing is placed until confirmed
+            if let cp = checkpoint {
+                let tag = placedLocTags.last
+                ResumeCheckpointOverlay(
+                    state: cp,
+                    stopNumber: tag.map { $0.order + 1 },
+                    title: tag.map { $0.questionTitle ?? $0.title } ?? "the space you were mapping",
+                    photo: landmarkPhoto ?? referencePhoto,
+                    timeoutSeconds: checkpointTimeout,
+                    onConfirm: confirmCheckpoint,
+                    onRealign: realignAuthor,
+                    onTimeout: realignAuthor)
+            }
+
             // Saving overlay (blocks interaction while uploading world map)
             if isSavingWalk {
                 savingOverlay
@@ -212,6 +233,17 @@ struct LocTagAuthorView: View {
                 Spacer()
                 bottomPanel
             }
+        }
+        // ── R2/R5: every interruption that ends runs the checkpoint ────────────
+        .onChange(of: arManager.resumeCount) { n in
+            guard n != lastResumeCount else { return }
+            lastResumeCount = n
+            guard !isLoadingSession, !isSavingWalk else { return }
+            startCheckpoint()
+        }
+        .onChange(of: arManager.isRelocalizing) { still in
+            guard !still, case .some(.relocalizing) = checkpoint else { return }
+            withAnimation { checkpoint = .confirm }
         }
         // ── G7: presence overlays ──────────────────────────────────────────────
         .overlay(alignment: .topTrailing) {
@@ -291,6 +323,7 @@ struct LocTagAuthorView: View {
                 GembaWalkStartSheet(anchor: anchor) { walk in
                     currentWalk = walk
                     showWalkStart = false
+                    WalkProgressStore.save(WalkProgress(anchorId: anchor.id, walkId: walk.id, completedTagIds: [], currentIndex: placedLocTags.count))
                 } onSkip: {
                     walkSkipped = true
                     showWalkStart = false
@@ -468,7 +501,7 @@ struct LocTagAuthorView: View {
     // ── Tap handler ───────────────────────────────────────────────────────────
 
     private func handleTap(at screenPoint: CGPoint) {
-        guard pendingTap == nil else { return }
+        guard pendingTap == nil, checkpoint == nil else { return }   // R5: nothing placed into an unconfirmed frame
         let sv = arManager.sceneView
 
         // ── Pin-tap detection: existing tags take priority ────────────────────
@@ -745,6 +778,61 @@ struct LocTagAuthorView: View {
         }.store(in: &presenceBag)
         presence = svc; presenceLayer = layer
         svc.start()
+    }
+
+    // ── R2/R5: checkpoint ─────────────────────────────────────────────────────
+
+    private func startCheckpoint() {
+        pendingNode?.removeFromParentNode(); pendingNode = nil; pendingTap = nil
+        withAnimation { checkpoint = .relocalizing(since: Date()) }
+        AppLog.info("gemba", "author checkpoint start", ["placed": placedLocTags.count])
+        if let tag = placedLocTags.last, landmarkPhotoFor != tag.id,
+           let file = tag.allPhotos.first.map({ $0.markupPath ?? $0.path }) {
+            landmarkPhoto = nil; landmarkPhotoFor = tag.id
+            Task {
+                if let data = try? await SIBClient(settings: settings).fetchLocTagImage(filename: file), let img = UIImage(data: data) {
+                    await MainActor.run { landmarkPhoto = img }
+                }
+            }
+        }
+        if !arManager.isRelocalizing { withAnimation { checkpoint = .confirm } }
+    }
+
+    private func confirmCheckpoint() {
+        withAnimation { checkpoint = nil }
+        AppLog.info("gemba", "author checkpoint confirmed")
+    }
+
+    /// The author has no saved map for a fresh walk, so the honest options are:
+    /// keep waiting for ARKit (with the landmark photo), or — when this space
+    /// already has an uploaded map — run the full re-localization against it.
+    private func realignAuthor() {
+        guard let anchor = appState.activeAnchor else { withAnimation { checkpoint = nil }; return }
+        withAnimation { checkpoint = nil }
+        AppLog.info("gemba", "author checkpoint realign")
+        Task {
+            let client = SIBClient(settings: settings)
+            if let mapData = try? await client.fetchLocTagWorldMap(anchorId: anchor.id) {
+                await MainActor.run {
+                    for (_, n) in tagNodes { n.removeFromParentNode() }
+                    tagNodes.removeAll()
+                    for t in placedLocTags { FindingPanel.remove(from: arManager.sceneView.scene.rootNode, tagId: t.id) }
+                    isResuming = true
+                    userConfirmedRelocalize = false
+                    showRelocalizingTimeout = false
+                    arManager.startSessionWithWorldMap(mapData)
+                    placePinsFromExisting()
+                }
+            } else {
+                // No map to fall back to: the previous session is the only frame.
+                // Keep the checkpoint up; ARKit keeps trying while they look around.
+                await MainActor.run {
+                    showToast("No saved map for this space yet — keep looking at where you placed the last finding.")
+                    withAnimation { checkpoint = .relocalizing(since: Date()) }
+                    if !arManager.isRelocalizing { withAnimation { checkpoint = .confirm } }
+                }
+            }
+        }
     }
 
     private func stopPresence() {

@@ -258,3 +258,48 @@ Setup: one-time Widget Extension target (`ios-app/XCODE-SETUP.md` step 10).
 Code: `Shared/GembaWalkActivity.swift` (attributes, both targets),
 `Services/GembaLiveActivity.swift` (start / update / finish / end),
 `GembaWalkWidget/GembaWalkLiveActivity.swift` (presentation).
+
+---
+
+## R1–R5 · Resume with a checkpoint (background, kill, drift)
+
+**The constraint.** iOS suspends the camera and ARKit whenever the app leaves
+the foreground; nothing can track in the background. On return ARKit used to
+reset its world origin, so pins respawned in the wrong place with no warning —
+unacceptable for an auditor in a cleanroom.
+
+**What happens now**
+
+* **Background (R1)** — the Live Activity flips to *Open SpatialTagging to
+  continue · next #4 · last 3.2 m*, greyed. No fake live distance.
+* **Kill / restart (R3)** — completed findings, the current stop and the walk
+  id are stored per space on the device (`WalkProgressStore`, 12 h). Re-opening
+  the walk shows *Continuing at #4 · 3 of 7 done* and starts navigation there.
+* **Return to foreground (R2)** — `ARSessionManager` now answers
+  `sessionShouldAttemptRelocalization` with `true`, so ARKit keeps the previous
+  map and tries to relocalize into it. Every interruption end bumps
+  `resumeCount`; the walk view shows the **Welcome back** checkpoint: blurred AR,
+  the last known finding's own photo (or the walk's reference photo) as the
+  landmark, *Stand where you saw #4 and point the phone at it*. When tracking
+  returns to normal the view un-blurs with one question over the pin —
+  **Is #4 where the pin shows?** *Yes, continue* / *No, re-align*. No answer in
+  15 s, or *No* → the full world-map re-localization (reference photo + I'm
+  Here) and navigation continues at the same stop. Nothing is trusted (no
+  auto-arrival, no drift check) while the checkpoint is up.
+* **Authors (R5)** — the same checkpoint; taps are ignored until confirmed, so
+  no finding is placed into a drifted frame. *No, re-align* uses the space's
+  uploaded map when there is one; on a fresh walk without a map the checkpoint
+  keeps waiting with the landmark photo (the previous session is the only frame).
+* **Drift check on arrival (R4)** — the first time an operator reaches a finding,
+  the live view is scored against the finding's photo(s):
+  `POST /loc-tags/:id/compare { imageBase64 }` → `{ score, status }` (the step-
+  validation comparator, threshold 0.40 because the operator stands roughly
+  where the photo was taken). `FAIL` → *This doesn't look like #4 — Re-align /
+  Looks right* with a warning haptic. Once per finding; reset by a re-align.
+  Never stored, never logged.
+
+Code: `Services/ARSessionManager.swift` (`resumeCount`, relocalization opt-in),
+`Components/ResumeCheckpointOverlay.swift`, `Services/WalkProgressStore.swift`,
+`Modes/LocTagOperatorView.swift` (checkpoint, resume index, drift prompt),
+`Modes/LocTagAuthorView.swift` (author checkpoint), `Services/GembaLiveActivity.swift`
+(`background`), `sib/src/routes/loc-tags.ts` (`/compare`).
