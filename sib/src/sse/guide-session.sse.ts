@@ -233,6 +233,13 @@ export function closeLiveSession(liveSessionId: string, linkedSessionId: string)
 /**
  * Look up a live session by id. Returns undefined if not found.
  */
+/** Open (not yet submitted) live runs — for /stats and the Compass status dot. */
+export function liveRunCount(): number {
+  let n = 0;
+  for (const s of sessions.values()) if (!s.closedAt) n++;
+  return n;
+}
+
 export function getLiveSession(id: string): LiveGuideSession | undefined {
   return sessions.get(id);
 }

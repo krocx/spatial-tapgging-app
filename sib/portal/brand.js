@@ -42,4 +42,10 @@
     if (slot) slot.appendChild(strip); else { strip.classList.add('float'); document.body.appendChild(strip); }
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', build); else build();
+
+  // SIB Compass — the shared navigator rides in with the brand strip so every
+  // surface gets it from this one include (see compass.js).
+  if (!document.querySelector('script[src="/portal/compass.js"]')) {
+    const s = document.createElement('script'); s.src = '/portal/compass.js'; s.defer = true; document.head.appendChild(s);
+  }
 })();

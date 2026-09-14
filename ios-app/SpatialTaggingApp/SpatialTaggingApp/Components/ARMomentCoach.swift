@@ -19,7 +19,7 @@ import SwiftUI
 
 enum ARMoment: String, CaseIterable {
     // Place Steps in AR (author)
-    case placeMovePin, placeModelGestures, placeAdjustSlots, placeTrainStep, placeDeclutter, placeSaveVsDone
+    case placeMovePin, placeModelGestures, placeAdjustSlots, placeTrainStep, placeDeclutter, placeSaveVsDone, placeConfirmPin
     // Guide session (operator)
     case guideExpandPill, guidePanelButtons, guideOnePanel, guideValidation, guideHints, guideSignOff
     // Spatial Inspection author — the pulsing hand (ARTapCoach), remembered per person
@@ -29,7 +29,7 @@ enum ARMoment: String, CaseIterable {
 
     var screen: Screen {
         switch self {
-        case .placeMovePin, .placeModelGestures, .placeAdjustSlots, .placeTrainStep, .placeDeclutter, .placeSaveVsDone:
+        case .placeMovePin, .placeModelGestures, .placeAdjustSlots, .placeTrainStep, .placeDeclutter, .placeSaveVsDone, .placeConfirmPin:
             return .placeSteps
         case .inspectionPlaceTag:
             return .inspectionAuthor
@@ -41,6 +41,7 @@ enum ARMoment: String, CaseIterable {
     var icon: String {
         switch self {
         case .placeMovePin:       return "hand.tap.fill"
+        case .placeConfirmPin:    return "checkmark.circle.fill"
         case .placeModelGestures: return "hand.draw.fill"
         case .placeAdjustSlots:   return "cube.fill"
         case .placeTrainStep:     return "checkmark.seal.fill"
@@ -59,6 +60,7 @@ enum ARMoment: String, CaseIterable {
     var title: String {
         switch self {
         case .placeMovePin:       return "Tap a pin to move it"
+        case .placeConfirmPin:    return "Check the pin, then Confirm"
         case .placeModelGestures: return "Drag · pinch · twist"
         case .placeAdjustSlots:   return "Adjust any model later"
         case .placeTrainStep:     return "Train the step"
@@ -78,6 +80,8 @@ enum ARMoment: String, CaseIterable {
         switch self {
         case .placeMovePin:
             return "Tapping any placed pin makes that step active — your next tap on a surface re-places it."
+        case .placeConfirmPin:
+            return "Nothing moves on until you Confirm. Tap anywhere else to move the pin first. ⏩ in the top bar (yellow = on) skips this pause and goes straight to the next step."
         case .placeModelGestures:
             return "One finger drags the model, pinch scales it, twist rotates it. H/V flips drag to up-and-down."
         case .placeAdjustSlots:

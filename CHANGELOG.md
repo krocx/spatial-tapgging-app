@@ -7,6 +7,15 @@ it, it gets a line.
 ## 2026.4.46 — 2026-09-08
 
 ### Fixed
+- **Guide run wayfinding — arrow only when you can't see the pin (iOS)**.
+  The 3D floor arrow stayed up while the pin was plainly on screen, floating
+  over the model. It now hides whenever the pin is in view (central 85 % of
+  the screen, in front of the camera, after a 300 ms settle so edge-grazing
+  doesn't flicker) and keeps the 0.5 m arrival rule. Behind-camera fix: a pin
+  behind you projects mirrored, so the edge chevron pointed the wrong way —
+  the point is now flipped back, and past 120° the chevron gives way to a
+  "Behind you — turn left/right · 1.2 m" pill so the technician takes the
+  short turn instead of chasing a chevron around the edge.
 - **Fail-state cone training froze on guide steps (iOS)**. The Fail-state
   capture is a second `ConeCaptureView` opened from the Pass-state success
   overlay. In the guide-step flow the subject position arrives as
@@ -99,6 +108,35 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **SIB Compass — one navigator on every web surface (N1)**. Each surface had
+  grown its own way home (⌂, ⚡, a text link, nothing) and the portal had no
+  link to SIB home at all. `sib/portal/compass.js`, injected by `brand.js`
+  (roadmap and wireframe now include it too): a brand-hex button bottom-right
+  opens a radial map — SIB in the centre, Portal / Admin / Platform / Roadmap /
+  Catalogue / Wireframe around it, their stops fanning out; the current node
+  is lit with the path from the centre drawn, and every node is one click,
+  leaf to leaf. Live counts from `/stats` ride on the nodes (chambers, people
+  on tools, runs live/today, guides placed, open findings, active locks, QA
+  devices) and the button shows a pulsing dot while a guide run is live. A
+  clickable breadcrumb (`SIB › Portal › Admin › Device Logs`) sits bottom-left;
+  "Where next?" offers up to three chips from the getting-started ladder;
+  Recents keeps the last three places. Keys: `g g` map, `g h/p/m/r/c/w/a`,
+  Esc. `/stats` gains `sessionsToday`, `liveRuns`, `qaDevices`. Reduced-motion
+  respected; breadcrumb and leaves hide on narrow screens.
+- **Place Steps — confirm before moving on (iOS)**. A dropped pin no longer
+  auto-advances. The pin pops in with a green surface ring and a haptic, and
+  a placement card takes over the bottom of the screen: step number and
+  title, "Pinned · 42 cm away", **Re-tag** and **Confirm & next** (last step:
+  *Confirm & finish*). While the card is up any tap on a surface moves the
+  pin (tapping the pin itself confirms); the model chain and the advance run
+  only after Confirm, so colleagues never see a half-placed pin. The confirm
+  bar replaces the action bar in the same slot and style — nothing new covers
+  the chamber. ⏩ in the top tool row (next to the eye) toggles auto-advance
+  (per device, off by default; yellow = on, toast on every change): with it
+  on there is no interim at all — drop and go, exactly the earlier flow.
+  One-time
+  coach moment; `guide: pin placed / re-tagged / confirmed` lines in the QA
+  log so hesitation shows in the timeline.
 - **QA logging — device logs on the server (L1–L3)**. A work iPhone can't
   hand over its console, so the app now ships its log lines to SIB. iOS
   `Services/AppLog.swift`: `info/warn/error` always, `debug` with **QA Mode**

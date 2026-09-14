@@ -80,6 +80,16 @@ struct ARGuideSessionView: View {
     @State private var distanceM:        Float?   = nil
     @State private var targetScreenPos:  CGPoint? = nil
     @State private var targetIsOnScreen: Bool     = false
+    /// Pin is more than ~120° from where the camera looks — a turn, not a pan.
+    @State private var targetIsBehind:   Bool     = false
+    @State private var targetTurnRight:  Bool     = false
+    /// When the pin first came into view; wayfinding cues hide after a short
+    /// settle so a pin grazing the edge doesn't flicker them on and off.
+    @State private var targetOnScreenSince: Date? = nil
+    private var cuesHidden: Bool {
+        guard let t = targetOnScreenSince else { return false }
+        return Date().timeIntervalSince(t) >= 0.3
+    }
     /// True when Operator is within arrivedM of the step — shows full content panel.
     @State private var showContentPanel: Bool     = false
 
@@ -299,6 +309,13 @@ struct ARGuideSessionView: View {
 
     // ── Body ──────────────────────────────────────────────────────────────────
 
+    // QA logging context — kept out of the body chain (type-checker budget).
+    private func logRunOpened() {
+        AppLog.setContext("anchor", anchor.id)
+        AppLog.setContext("guide", guide.id)
+        AppLog.info("guide", "run opened: \(guide.name) (\(sortedSteps.count) steps)")
+    }
+
     var body: some View {
         ZStack(alignment: .top) {
 
@@ -492,8 +509,7 @@ struct ARGuideSessionView: View {
             }
         }
         .onAppear {
-            AppLog.setContext("anchor", anchor.id); AppLog.setContext("guide", guide.id)
-            AppLog.info("guide", "run opened: \(guide.name) (\(sortedSteps.count) steps)")
+            logRunOpened()
             progresses   = sortedSteps.map { GuideStepProgress(step: $0) }
             sessionStart = Date()
             // Interrupted run from earlier (call, battery, accidental exit)?
@@ -1040,8 +1056,31 @@ struct ARGuideSessionView: View {
             let progress = index < progresses.count ? progresses[index] : nil
 
             ZStack {
-                // Screen-edge chevron (when placed pin is off-screen)
-                if !targetIsOnScreen, let rawPos = targetScreenPos, step.worldPosition != nil {
+                // "Behind you" pill — past 120° every edge is the wrong edge.
+                if targetIsBehind, !cuesHidden, step.worldPosition != nil,
+                   (distanceM ?? 0) > arrivedM {
+                    VStack {
+                        Spacer()
+                        HStack(spacing: 8) {
+                            Image(systemName: targetTurnRight ? "arrow.turn.up.right" : "arrow.turn.up.left")
+                                .font(.subheadline.bold())
+                            Text("Behind you — turn \(targetTurnRight ? "right" : "left")")
+                                .font(.subheadline.bold())
+                            if let d = distanceM {
+                                Text(String(format: "· %.1f m", d)).font(.subheadline).opacity(0.75)
+                            }
+                        }
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 16).padding(.vertical, 10)
+                        .background(Color.indigo.opacity(0.9), in: Capsule())
+                        .padding(.bottom, 230)
+                    }
+                    .transition(.opacity)
+                }
+
+                // Screen-edge chevron (pin off-screen but not behind)
+                if !targetIsOnScreen, !cuesHidden, !targetIsBehind, let rawPos = targetScreenPos, step.worldPosition != nil,
+                   (distanceM ?? 0) > arrivedM {
                     GeometryReader { geo in
                         let center = CGPoint(x: geo.size.width / 2, y: geo.size.height / 2)
                         let dx     = rawPos.x - center.x
@@ -2166,9 +2205,31 @@ struct ARGuideSessionView: View {
 
         let sv        = arManager.sceneView
         let projected = sv.projectPoint(SCNVector3(targetW.x, targetW.y, targetW.z))
-        let pt        = CGPoint(x: CGFloat(projected.x), y: CGFloat(projected.y))
+        var pt        = CGPoint(x: CGFloat(projected.x), y: CGFloat(projected.y))
+        let behindCam = projected.z >= 1.0
+        // A point behind the camera projects MIRRORED — flip it back so the
+        // chevron sits on the edge you actually have to turn towards.
+        if behindCam {
+            let b = UIScreen.main.bounds
+            pt = CGPoint(x: b.width - pt.x, y: b.height - pt.y)
+        }
+        // Horizontal angle between the camera's forward and the pin: past
+        // 120° a chevron is misleading (any edge is "wrong") — say "behind".
+        let fwd = simd_normalize(simd_float3(-frame.camera.transform.columns.2.x, 0, -frame.camera.transform.columns.2.z))
+        let to  = targetW - camPos
+        let toH = simd_length(simd_float3(to.x, 0, to.z)) > 0.01 ? simd_normalize(simd_float3(to.x, 0, to.z)) : fwd
+        let yaw = acos(max(-1, min(1, simd_dot(fwd, toH))))
+        targetIsBehind = yaw > (120 * .pi / 180)
+        // Turn direction for the "behind you" pill: sign of the cross product.
+        targetTurnRight = (fwd.z * toH.x - fwd.x * toH.z) < 0
+
         targetScreenPos  = pt
-        targetIsOnScreen = UIScreen.main.bounds.contains(pt) && projected.z < 1.0
+        // "In view" = inside the central 85 % of the screen, in front of the camera.
+        let b = UIScreen.main.bounds.insetBy(dx: UIScreen.main.bounds.width * 0.075, dy: UIScreen.main.bounds.height * 0.075)
+        let onScreen = !behindCam && b.contains(pt)
+        if onScreen { if targetOnScreenSince == nil { targetOnScreenSince = Date() } }
+        else { targetOnScreenSince = nil }
+        targetIsOnScreen = onScreen
 
         updateArrowNode(targetW: targetW, frame: frame)
     }
@@ -2198,7 +2259,9 @@ struct ARGuideSessionView: View {
         if dist > 0.05 {
             arrow.simdEulerAngles = simd_float3(0, atan2(dx, dz), 0)
         }
-        arrow.isHidden = (distanceM ?? Float.infinity) <= arrivedM
+        // Arrived (≤ 0.5 m) or the pin is on screen → no arrow. It only earns
+        // its place when the technician can't see the pin.
+        arrow.isHidden = (distanceM ?? Float.infinity) <= arrivedM || cuesHidden
         SCNTransaction.commit()
     }
 
@@ -2234,6 +2297,8 @@ struct ARGuideSessionView: View {
         stopSpeaking()
         distanceM        = nil
         targetScreenPos  = nil
+        targetIsBehind   = false
+        targetOnScreenSince = nil
         showContentPanel = false
         phase = .navigating(index: index)
         if progresses[index].enteredAt == nil { progresses[index].enter() }

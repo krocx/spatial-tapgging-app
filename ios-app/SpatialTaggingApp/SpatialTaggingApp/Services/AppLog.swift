@@ -129,6 +129,7 @@ final class AppLog {
 
     /// Send whatever is queued now (called on background / QA toggle).
     func flush() { q.async { self.send() } }
+    static func flush() { shared.flush() }
 
     // ── Internals ─────────────────────────────────────────────────────────────
 
@@ -144,7 +145,7 @@ final class AppLog {
         let f = ISO8601DateFormatter(); f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]; return f
     }()
 
-    private func log(_ level: AppLogLevel, _ module: String, _ msg: String, _ ctx: [String: Any?]?) {
+    private func log(_ level: AppLogLevel, _ module: String, _ msg: String, _ ctx: [String: Any?]? = nil) {
         let clean = AppLog.redact(msg)
         #if DEBUG
         print("[\(module)] \(level.rawValue.uppercased()) \(clean)")

@@ -342,6 +342,10 @@ struct GuideStepPlacementView: View {
 
     // ── UX ────────────────────────────────────────────────────────────────────
     @State private var showTapHint: Bool = true
+    /// Pin dropped, awaiting Confirm / re-tag. nil = nothing pending.
+    @State private var pendingPinStepId: String? = nil
+    /// Auto-advance (⏩): skip the confirm interim entirely — drop and go. Per device.
+    @State private var autoAdvance: Bool = UserDefaults.standard.bool(forKey: "place_auto_advance")
     /// F1b: "tap where Step N should go" after a pin is tapped for re-placement —
     /// until the person has seen it (shares the `placeMovePin` memory; Replay re-arms).
     @State private var showReplaceHint  = false
@@ -413,7 +417,14 @@ struct GuideStepPlacementView: View {
             // Bottom UI switches between step tray and model adjust bar
             switch placementPhase {
             case .placingPins, .loadingModel:
-                VStack(spacing: 0) { stepTray; actionBar }
+                VStack(spacing: 0) {
+                    stepTray
+                    if let pid = pendingPinStepId, let s = steps.first(where: { $0.id == pid }) {
+                        confirmBar(for: s)
+                    } else {
+                        actionBar
+                    }
+                }
             case .adjustingModel(let stepId, let slotId):
                 if let idx = steps.firstIndex(where: { $0.id == stepId }) {
                     modelAdjustBar(for: steps[idx], slotId: slotId)
@@ -561,8 +572,7 @@ struct GuideStepPlacementView: View {
                 .environmentObject(appState)
         }
         .onAppear {
-            AppLog.setContext("anchor", anchor.id); AppLog.setContext("guide", guide.id)
-            AppLog.info("guide", "place steps opened: \(guide.name)")
+            logOpened()
             arManager.disableQRScanning()
             initFromExistingPositions()
             if steps.contains(where: { $0.worldPosition != nil }) {
@@ -649,7 +659,7 @@ struct GuideStepPlacementView: View {
             }
         }
         .onDisappear {
-            AppLog.setContext("guide", nil); AppLog.flush()
+            logClosed()
             for perStep in modelNodes.values { for node in perStep.values { node.removeFromParentNode() } }
             focusRing?.cleanup()
             focusRing = nil
@@ -728,6 +738,14 @@ struct GuideStepPlacementView: View {
                     .accessibilityLabel(hidden ? "Show this step's 3D models" : "Hide this step's 3D models")
                     .padding(.trailing, 6)
                 }
+                Button { toggleAutoAdvance() } label: {
+                    Image(systemName: "forward.fill")
+                        .font(.system(size: 18))
+                        .foregroundStyle(autoAdvance ? Color.yellow : Color.white.opacity(0.85))
+                        .frame(width: 26, height: 26)
+                }
+                .accessibilityLabel(autoAdvance ? "Auto-advance on — turn off" : "Auto-advance off — turn on")
+                .padding(.trailing, 6)
                 Button {
                     focusActiveOnly.toggle()
                     FocusPref.save(screen: "placeSteps", value: focusActiveOnly)   // G3: per person
@@ -789,6 +807,17 @@ struct GuideStepPlacementView: View {
     /// assignments when "Copy models to…" replaced them, else the server's.
     private func slots(for step: GuideStep) -> [GuideStepModel] {
         slotOverrides[step.id] ?? step.effectiveModels
+    }
+
+    // QA logging context — kept out of the body chain (type-checker budget).
+    private func logOpened() {
+        AppLog.setContext("anchor", guide.anchorId)
+        AppLog.setContext("guide", guide.id)
+        AppLog.info("guide", "place steps opened: \(guide.name)")
+    }
+    private func logClosed() {
+        AppLog.setContext("guide", nil)
+        AppLog.flush()
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -1854,6 +1883,10 @@ struct GuideStepPlacementView: View {
             var candidate: SCNNode? = hit.node
             while let n = candidate {
                 for (stepId, pinNode) in stepNodes where n === pinNode {
+                    // Interim: tapping the pending pin itself is a Confirm.
+                    if stepId == pendingPinStepId { confirmPendingPin(); return }
+                    // Another pin while one is pending → ignore; the card owns the flow.
+                    if pendingPinStepId != nil { return }
                     if let idx = steps.firstIndex(where: { $0.id == stepId }) { activateStep(idx) }
                     // F1b: teach re-placement with the hand once per session.
                     if !ARMomentStore.seen(.placeMovePin, employeeId: employeeIdNow) {
@@ -1865,9 +1898,14 @@ struct GuideStepPlacementView: View {
             }
         }
 
-        // Surface raycast → place active step
+        // Surface raycast → place active step (or re-tag the pending pin)
         guard activeStepIndex < steps.count else { return }
         guard let pos = rayCastSurface(from: point, in: sv) else { return }
+        if pendingPinStepId != nil {
+            retagPendingPin(to: pos)
+            withAnimation { showTapHint = false; showReplaceHint = false }
+            return
+        }
         placeActiveStep(at: pos)
         if showReplaceHint { ARMomentStore.markSeen(.placeMovePin, employeeId: employeeIdNow) }
         withAnimation { showTapHint = false; showReplaceHint = false }
@@ -1922,10 +1960,134 @@ struct GuideStepPlacementView: View {
         modelNodes[stepId] = nil
         modelTransforms[stepId] = nil
 
-        // Walk the step's model slots (U4) — each ready model is loaded and
-        // adjusted in turn; steps without models advance immediately.
-        startModelChain(step: step, pinPos: position, fromSlot: 0)
+        // Interim (2026.4.46): the pin is DOWN but not CONFIRMED. Feedback now;
+        // the model chain and the advance wait for Confirm (or auto-advance).
+        dropFeedback(on: stepNodes[stepId])
+        AppLog.info("guide", "pin placed step \(step.sequenceNumber)", ["auto": autoAdvance])
+        if autoAdvance {
+            // ⏩ on: drop and go — the pre-interim flow. Fix a pin the old way
+            // (tap it, tap the new spot).
+            startModelChain(step: step, pinPos: position, fromSlot: 0)
+            return
+        }
+        withAnimation(.easeInOut(duration: 0.25)) { pendingPinStepId = stepId }
+        coach.show(.placeConfirmPin)
     }
+
+    // ── Interim: confirm / re-tag ────────────────────────────────────────────
+
+    /// Pop + ring pulse + haptic — visible even in peripheral vision.
+    private func dropFeedback(on node: SCNNode?) {
+        guard let node else { return }
+        node.removeAction(forKey: "drop")
+        let pop = SCNAction.sequence([
+            .scale(to: 0.6, duration: 0.0),
+            .scale(to: 1.18, duration: 0.14),
+            .scale(to: 1.0, duration: 0.12),
+        ])
+        node.runAction(pop, forKey: "drop")
+        // Expanding ring on the surface, fades out.
+        let torus = SCNTorus(ringRadius: 0.03, pipeRadius: 0.003)
+        let m = SCNMaterial(); m.diffuse.contents = UIColor.systemGreen; m.lightingModel = .constant
+        m.emission.contents = UIColor.systemGreen; torus.firstMaterial = m
+        let ring = SCNNode(geometry: torus)
+        ring.eulerAngles = SCNVector3(Float.pi / 2, 0, 0)
+        ring.opacity = 0.9
+        node.addChildNode(ring)
+        ring.runAction(.sequence([
+            .group([.scale(to: 3.2, duration: 0.55), .fadeOut(duration: 0.55)]),
+            .removeFromParentNode(),
+        ]))
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+    }
+
+    private func retagPendingPin(to pos: simd_float3) {
+        guard let pid = pendingPinStepId, let idx = steps.firstIndex(where: { $0.id == pid }) else { return }
+        stepPositions[pid] = pos
+        if let node = stepNodes[pid] {
+            SCNTransaction.begin(); SCNTransaction.animationDuration = 0.22
+            node.simdPosition = pos
+            SCNTransaction.commit()
+            dropFeedback(on: node)
+        }
+        AppLog.info("guide", "pin re-tagged step \(steps[idx].sequenceNumber)")
+    }
+
+    private func confirmPendingPin() {
+        guard let pid = pendingPinStepId, let idx = steps.firstIndex(where: { $0.id == pid }),
+              let pos = stepPositions[pid] else { pendingPinStepId = nil; return }
+        withAnimation(.easeInOut(duration: 0.2)) { pendingPinStepId = nil; showReplaceHint = false }
+        ARMomentStore.markSeen(.placeConfirmPin, employeeId: employeeIdNow)
+        AppLog.info("guide", "pin confirmed step \(steps[idx].sequenceNumber)")
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        // Now the models (U4) and the advance — exactly the pre-interim flow.
+        startModelChain(step: steps[idx], pinPos: pos, fromSlot: 0)
+    }
+
+    /// Bottom bar while a pin awaits Confirm — same slot, height and style as
+    /// the action bar, so nothing new covers the chamber.
+    private func confirmBar(for step: GuideStep) -> some View {
+        let isLast = !steps.contains { stepPositions[$0.id] == nil && $0.id != step.id }
+        let dist: String = {
+            guard let p = stepPositions[step.id], let cam = arManager.sceneView.session.currentFrame?.camera.transform else { return "" }
+            let c = simd_float3(cam.columns.3.x, cam.columns.3.y, cam.columns.3.z)
+            return String(format: " · %.0f cm", simd_length(p - c) * 100)
+        }()
+        return VStack(spacing: 0) {
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "mappin.circle.fill").foregroundStyle(.green)
+                        Text("Step \(step.sequenceNumber) pinned\(dist)")
+                            .font(.subheadline.bold()).foregroundStyle(.white).lineLimit(1)
+                    }
+                    Text("Tap elsewhere to move it")
+                        .font(.caption).foregroundStyle(.white.opacity(0.65)).lineLimit(1)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+                HStack(spacing: 8) {
+                    Button {
+                        withAnimation { showReplaceHint = true }
+                    } label: {
+                        Text("Re-tag")
+                            .font(.subheadline.bold())
+                            .lineLimit(1).fixedSize()
+                            .padding(.horizontal, 14).padding(.vertical, 10)
+                            .background(Color.white.opacity(0.14))
+                            .foregroundStyle(.white).clipShape(Capsule())
+                    }
+                    Button { confirmPendingPin() } label: {
+                        Label(isLast ? "Finish" : "Confirm", systemImage: "checkmark.circle.fill")
+                            .font(.subheadline.bold())
+                            .lineLimit(1).fixedSize()
+                            .padding(.horizontal, 14).padding(.vertical, 10)
+                            .background(Color.green.opacity(0.85))
+                            .foregroundStyle(.white).clipShape(Capsule())
+                    }
+                }
+            }
+            .padding(.horizontal, 16).padding(.top, 12).padding(.bottom, 32)
+        }
+        .background(.ultraThinMaterial)
+    }
+
+    /// ⏩ Auto-advance: lives in the top tool row like the eye / cube toggles,
+    /// yellow when on, so its state is always visible and always one tap away.
+    private func toggleAutoAdvance() {
+        autoAdvance.toggle()
+        UserDefaults.standard.set(autoAdvance, forKey: "place_auto_advance")
+        AppLog.info("guide", "auto-advance \(autoAdvance ? "on" : "off")")
+        showPresenceToast(autoAdvance
+            ? "Auto-advance on — pins go straight to the next step. Tap ⏩ again to turn off."
+            : "Auto-advance off — confirm each pin before moving on.",
+            color: autoAdvance ? .systemYellow : .systemGray)
+        if autoAdvance, pendingPinStepId != nil { confirmPendingPin() }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // MARK: Model pre-fetch + placement
+    // ─────────────────────────────────────────────────────────────────────────
 
     /// U4: load + adjust the step's model slots one after another starting at
     /// `fromSlot`; slots whose model isn't ready are skipped silently.

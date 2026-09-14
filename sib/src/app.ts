@@ -30,7 +30,8 @@ import lotoRouter, { lotoPointStore, lotoEventStore } from './routes/loto.js';
 import catalogRouter from './routes/catalog.js';
 import adminRouter from './routes/admin.js';
 import logsRouter from './routes/logs.js';
-import { captureServerConsole, pruneLogs } from './logging/device-logs.js';
+import { captureServerConsole, pruneLogs, listLogDevices } from './logging/device-logs.js';
+import { liveRunCount } from './sse/guide-session.sse.js';
 import uamRouter, { uamUserStore } from './routes/uam.js';
 import askRouter from './routes/ask.js';
 import { sessionStore } from './routes/sessions.js';
@@ -237,7 +238,15 @@ document.getElementById('f').addEventListener('submit', async function(ev){
       }).length;
       const allAnchors = anchorStore.findAll();
       const live = presenceSummary();
+      // Compass: today's runs, live runs, devices in QA Mode (seen < 1 h).
+      const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
+      const sessionsToday = usage.filter(r => r.startedAt && new Date(r.startedAt) >= dayStart).length;
+      const hourAgo = Date.now() - 3600_000;
+      const qaDevices = listLogDevices().filter(d => d.qaMode && d.id !== 'server' && Date.parse(d.lastSeen) >= hourAgo).length;
       res.json({
+        sessionsToday,
+        liveRuns: liveRunCount(),
+        qaDevices,
         anchors: allAnchors.length,
         // PM1: who is on a tool right now (presence heartbeats, in-memory).
         presenceNow: live.people,
