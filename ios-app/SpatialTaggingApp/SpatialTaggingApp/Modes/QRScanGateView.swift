@@ -210,13 +210,13 @@ struct QRScanGateView: View {
                     // to where the room map last saw it. (Map kept for the seal.)
                     if appState.activeAnchor?.usesObjectOrigin == true,
                        objectBundle?.meta.objectPoseInQR != nil {
-                        print("[QRScanGateView] Object-origin chamber — fresh session, finding it by shape")
+                        AppLog.info("qr", "Object-origin chamber — fresh session, finding it by shape")
                         arManager.startSession()
                     } else if let b = bundle {
-                        print("[QRScanGateView] World map \(b.source == .local ? "from cache" : "downloaded") — sealed=\(b.isSealed) — relocalizing")
+                        AppLog.info("qr", "World map \(b.source == .local ? "from cache" : "downloaded") — sealed=\(b.isSealed) — relocalizing")
                         arManager.startSessionWithWorldMap(b.map)
                     } else {
-                        print("[QRScanGateView] No world map (local or remote) — starting fresh session")
+                        AppLog.info("qr", "No world map (local or remote) — starting fresh session")
                         arManager.startSession()
                     }
                 }
@@ -536,7 +536,7 @@ struct QRScanGateView: View {
             arManager.adoptMapOrigin(matrix_identity_float4x4)
             appState.sealedMapOrigin   = matrix_identity_float4x4
             appState.objectCalibration = cal
-            print("[QRScanGateView] ✓ Origin from reference object (session re-based)")
+            AppLog.info("qr", "✓ Origin from reference object (session re-based)")
         } else if let sealed = mapBundle?.meta.anchorPoseTransform, relocalized {
             originPose = sealed
             arManager.adoptMapOrigin(sealed)
@@ -545,7 +545,7 @@ struct QRScanGateView: View {
                 let d = ARCoordinateFrame.poseDelta(sealed, live)
                 if d.metres > driftMetres || d.degrees > driftDegrees {
                     originNote = String(format: "QR moved? Using the sealed map (Δ %.0f cm · %.0f°)", d.metres * 100, d.degrees)
-                    print("[QRScanGateView] ⚠ QR drift vs sealed origin: \(d.metres) m, \(d.degrees)°")
+                    AppLog.info("qr", "⚠ QR drift vs sealed origin: \(d.metres) m, \(d.degrees)°")
                 }
             }
         } else {
@@ -573,7 +573,7 @@ struct QRScanGateView: View {
                 if let meta = try? await client.calibrateAnchorObject(anchorId: aid, objectPoseInQR: cal),
                    let ob = objectBundle {
                     ReferenceObjectCache.store(aid, archive: ob.archive, meta: meta)
-                    print("[QRScanGateView] ✓ Object calibrated to QR frame")
+                    AppLog.info("qr", "✓ Object calibrated to QR frame")
                 }
             }
         }
@@ -600,12 +600,12 @@ struct QRScanGateView: View {
                     try await client.uploadWorldMap(anchorId: aid, data: mapData)
                     let meta = try await client.uploadWorldMapMeta(anchorId: aid, anchorPose: origin, sealedBy: sealedBy)
                     WorldMapCache.store(.anchor(aid), map: mapData, meta: meta)
-                    print("[QRScanGateView] ✓ World map sealed for anchor \(aid) (\(meta.capturedAt ?? "-"))")
+                    AppLog.info("qr", "✓ World map sealed for anchor \(aid) (\(meta.capturedAt ?? "-"))")
                 } catch {
                     // Keep the map usable offline on this device; the seal is retried
                     // on the author's next relocalized session.
                     WorldMapCache.store(.anchor(aid), map: mapData, meta: WorldMapMeta())
-                    print("[QRScanGateView] Seal upload failed (non-fatal, cached locally): \(error.localizedDescription)")
+                    AppLog.warn("qr", "Seal upload failed (non-fatal, cached locally): \(error.localizedDescription)")
                 }
             }
         }

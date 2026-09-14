@@ -1020,13 +1020,26 @@ final class SIBClient {
 
     private func perform<T: Decodable>(_ request: URLRequest, decoding type: T.Type) async throws -> T {
         let (data, response): (Data, URLResponse)
+        let started = Date()
         do { (data, response) = try await session.data(for: request) }
-        catch { throw SIBClientError.networkError(error) }
+        catch {
+            // Log batches go through their own path — never log the logger.
+            if request.url?.path.hasSuffix("/logs") != true {
+                AppLog.warn("net", "\(request.httpMethod ?? "GET") \(request.url?.path ?? "?") transport error: \(error.localizedDescription)")
+            }
+            throw SIBClientError.networkError(error)
+        }
 
         if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
             let msg = (try? JSONDecoder().decode(APIError.self, from: data))?.error
                 ?? String(data: data, encoding: .utf8) ?? "Unknown error"
+            AppLog.warn("net", "\(request.httpMethod ?? "GET") \(request.url?.path ?? "?") → \(http.statusCode): \(msg.prefix(200))",
+                        ["ms": Int(Date().timeIntervalSince(started) * 1000)])
             throw SIBClientError.httpError(http.statusCode, msg)
+        }
+        if let http = response as? HTTPURLResponse {
+            AppLog.debug("net", "\(request.httpMethod ?? "GET") \(request.url?.path ?? "?") → \(http.statusCode)",
+                         ["ms": Int(Date().timeIntervalSince(started) * 1000), "bytes": data.count])
         }
 
         let decoder = JSONDecoder()

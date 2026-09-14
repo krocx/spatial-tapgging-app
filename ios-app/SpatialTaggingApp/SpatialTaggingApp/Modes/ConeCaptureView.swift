@@ -620,7 +620,7 @@ struct ConeCaptureView: View {
             // visually variable this component is across training viewpoints.
             let calibMaxDist = TagFeaturePrint.calibratedMaxDist(for: featurePrints)
             meta["fp_max_dist"] = AnyCodable(Double(calibMaxDist))
-            print("[ConeCaptureView] '\(tag.label)': \(featurePrints.count) FPs, fp_max_dist=\(String(format: "%.3f", calibMaxDist))")
+            AppLog.info("cone", "'\(tag.label)': \(featurePrints.count) FPs, fp_max_dist=\(String(format: "%.3f", calibMaxDist))")
         }
 
         // PartCheck: store center-crop feature prints under a separate key.
@@ -635,7 +635,7 @@ struct ConeCaptureView: View {
             // Calibrated ceiling for the center-crop metric (same logic as full-frame).
             let ccMaxDist = TagFeaturePrint.calibratedMaxDist(for: centerCropPrints)
             meta["part_check_fp_max_dist"] = AnyCodable(Double(ccMaxDist))
-            print("[ConeCaptureView] PartCheck '\(tag.label)': \(centerCropPrints.count) center-crop FPs, cc_fp_max_dist=\(String(format: "%.3f", ccMaxDist))")
+            AppLog.info("cone", "PartCheck '\(tag.label)': \(centerCropPrints.count) center-crop FPs, cc_fp_max_dist=\(String(format: "%.3f", ccMaxDist))")
         }
 
         _ = try? await client.updateTag(
@@ -700,12 +700,15 @@ struct ConeCaptureView: View {
             return
         }
         guard guide == nil,
-              let frame = svHolder.sceneView.session.currentFrame,
-              let anchorTransform = parentArManager.lockedAnchorTransform
+              let frame = svHolder.sceneView.session.currentFrame
         else { return }
 
+        // Never-stuck rule: with no QR lock (object / sealed-map sessions) the
+        // anchor-relative lookup is impossible, so fall through to the
+        // camera-forward default instead of returning without a guide.
         let computedTagPos: simd_float3
-        if let rx = metaD(tag.metadata["anchor_rel_x"]),
+        if let anchorTransform = parentArManager.lockedAnchorTransform,
+           let rx = metaD(tag.metadata["anchor_rel_x"]),
            let ry = metaD(tag.metadata["anchor_rel_y"]),
            let rz = metaD(tag.metadata["anchor_rel_z"]) {
             computedTagPos = ARCoordinateFrame.toWorldSpace(
@@ -999,9 +1002,16 @@ struct ConeCaptureView: View {
         .fullScreenCover(isPresented: $showFailCapture) {
             // #65: pass this Pass-state capture's already-locked sphere
             // distance through so the Fail-state dome matches it exactly.
+            // The Fail-state capture is a SECOND instance of this view. In the
+            // V1 guide-step flow the subject position came in as
+            // forcedTagWorldPos (the pin) — there is no QR lock and no tag
+            // metadata to fall back on, so without passing it through the
+            // nested view's spawnGuide() bails every tick: no cone, and
+            // "Start Training" does nothing (looked like a freeze).
             ConeCaptureView(tag: tag, anchor: anchor, parentArManager: parentArManager,
                             onTrained: { _ in showFailCapture = false }, state: .fail,
-                            forcedDistanceM: lockedDistanceM)
+                            forcedDistanceM: lockedDistanceM,
+                            forcedTagWorldPos: forcedTagWorldPos ?? tagWorldPos)
                 .environmentObject(settings).environmentObject(appState)
         }
         .fullScreenCover(isPresented: $showRoiPicker) {

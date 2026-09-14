@@ -68,6 +68,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var draftURL        = ""
+    @State private var qaModeOn: Bool = AppLog.qaMode
     @State private var draftApiKey     = ""
     @State private var draftAuthorName = ""
 
@@ -335,8 +336,29 @@ struct SettingsView: View {
                     )
                 }
 
+                // ── Diagnostics (QA Mode + log export) ─────────────────────────
+                Section {
+                    Toggle(isOn: Binding(
+                        get: { AppLog.qaMode },
+                        set: { AppLog.qaMode = $0; qaModeOn = $0 }
+                    )) {
+                        Label("QA Mode — verbose logs to SIB", systemImage: "ladybug.fill")
+                    }
+                    HStack {
+                        Text("Device log id").foregroundStyle(.secondary)
+                        Spacer()
+                        Text(AppLog.deviceId).font(.caption.monospaced())
+                    }
+                    Text(qaModeOn
+                         ? "Sending debug detail (materials, poses, requests) to the server for 24 h. Find it under Portal → Admin → Logs, device \(AppLog.deviceId)."
+                         : "Errors and key events always go to the server. Turn QA Mode on when reproducing a problem, then share the device id.")
+                        .font(.caption).foregroundStyle(.secondary)
+                } header: {
+                    Text("Diagnostics")
+                }
+
                 // ── Debug log export ───────────────────────────────────────────
-                Section("Debug") {
+                Section("Inspection logs") {
                     let logs = InspectionDebugLog.shared.allLogURLs()
                     if logs.isEmpty {
                         Label("No inspection logs yet", systemImage: "doc.text")

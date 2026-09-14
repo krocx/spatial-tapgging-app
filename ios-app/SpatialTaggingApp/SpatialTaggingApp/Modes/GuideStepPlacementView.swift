@@ -31,6 +31,8 @@ private struct ModelTransformState {
     var position:  simd_float3  // absolute world position
     var scale:     Float        // uniform scale factor
     var rotationY: Float        // Y-axis rotation in radians
+    /// Ghost opacity chosen IN AR (0.1–1.0). nil = not touched this session.
+    var opacity:   Float? = nil
 }
 
 // ── Placement phase state machine ─────────────────────────────────────────────
@@ -300,6 +302,8 @@ struct GuideStepPlacementView: View {
     @State private var modelPosition: simd_float3  = .zero
     @State private var modelScale:    Float        = 1.0
     @State private var modelRotY:     Float        = 0.0
+    /// Live ghost opacity while adjusting a slot — what the operator will see.
+    @State private var modelOpacity:  Float        = 0.45
     @State private var modelPanMode:  ModelPanMode = .horizontal
 
     // Gesture baselines
@@ -557,6 +561,8 @@ struct GuideStepPlacementView: View {
                 .environmentObject(appState)
         }
         .onAppear {
+            AppLog.setContext("anchor", anchor.id); AppLog.setContext("guide", guide.id)
+            AppLog.info("guide", "place steps opened: \(guide.name)")
             arManager.disableQRScanning()
             initFromExistingPositions()
             if steps.contains(where: { $0.worldPosition != nil }) {
@@ -643,6 +649,7 @@ struct GuideStepPlacementView: View {
             }
         }
         .onDisappear {
+            AppLog.setContext("guide", nil); AppLog.flush()
             for perStep in modelNodes.values { for node in perStep.values { node.removeFromParentNode() } }
             focusRing?.cleanup()
             focusRing = nil
@@ -833,6 +840,25 @@ struct GuideStepPlacementView: View {
                 }
             }
             .padding(.top, 10).padding(.bottom, 4)
+
+            // Ghost opacity — live on the node, saved with the slot, so the
+            // right value is chosen against THIS step's real background.
+            HStack(spacing: 10) {
+                Image(systemName: "circle.lefthalf.filled")
+                    .font(.system(size: 14)).foregroundStyle(.white.opacity(0.7))
+                Slider(value: Binding(
+                    get: { Double(modelOpacity) },
+                    set: { v in
+                        modelOpacity = Float(v)
+                        modelNodes[step.id]?[slotId]?.opacity = CGFloat(v)
+                    }
+                ), in: 0.1...1.0)
+                Text("\(Int(modelOpacity * 100))%")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.white.opacity(0.7))
+                    .frame(width: 38, alignment: .trailing)
+            }
+            .padding(.horizontal, 24).padding(.bottom, 4)
 
             // Scale / rotation readout
             HStack(spacing: 24) {
@@ -1951,9 +1977,10 @@ struct GuideStepPlacementView: View {
             modelPosition = node.simdPosition
             modelScale    = node.simdScale.x
             modelRotY     = node.eulerAngles.y
+            modelOpacity  = Float(node.opacity)
             modelPanMode  = .horizontal
-            adjustStart   = ModelTransformState(position: modelPosition, scale: modelScale, rotationY: modelRotY)
-            node.opacity  = 0.65
+            adjustStart   = ModelTransformState(position: modelPosition, scale: modelScale, rotationY: modelRotY,
+                                                opacity: modelOpacity)
             hiddenModelStepIds.remove(step.id)
             applyStepVisibility()
             placementPhase = .adjustingModel(stepId: step.id, slotId: slotId)
@@ -2051,6 +2078,7 @@ struct GuideStepPlacementView: View {
             guard !children.isEmpty else { return nil }
             let wrapper = SCNNode(); wrapper.name = "model_\(model.id)_\(slot.slotId)"
             children.forEach { wrapper.addChildNode($0.clone()) }
+            ModelNodeStyle.prepare(wrapper, label: "place-steps \(slot.slotId)")
             // bb.min.y = bottom of model in local space (at scale = 1).
             // Used to snap the model's base to the pin position on first placement.
             let bb = wrapper.boundingBox
@@ -2089,10 +2117,13 @@ struct GuideStepPlacementView: View {
             // because the parent IS the scene root, so local == world.
             // simdWorldPosition requires the node to already be in the scene;
             // calling it on an unattached node silently leaves position at zero.
+            let initOpacity = Float(slot.modelOpacity ?? 0.45)
             node.simdPosition = initPos
             node.simdScale    = simd_float3(initScale, initScale, initScale)
             node.eulerAngles  = SCNVector3(0, initRotY, 0)
-            node.opacity      = 0.65
+            // Show the slot's REAL opacity (not a fixed preview value) so the
+            // author judges exactly what the operator will get.
+            node.opacity      = CGFloat(initOpacity)
 
             arManager.sceneView.scene.rootNode.addChildNode(node)
             modelNodes[step.id, default: [:]][slot.slotId] = node
@@ -2102,6 +2133,7 @@ struct GuideStepPlacementView: View {
             modelPosition = initPos
             modelScale    = initScale
             modelRotY     = initRotY
+            modelOpacity  = initOpacity
             modelPanMode  = .horizontal
 
             placementPhase = .adjustingModel(stepId: step.id, slotId: slot.slotId)
@@ -2115,9 +2147,10 @@ struct GuideStepPlacementView: View {
 
     private func confirmModelPlacement(stepId: String, slotId: String) {
         modelTransforms[stepId, default: [:]][slotId] = ModelTransformState(
-            position: modelPosition, scale: modelScale, rotationY: modelRotY
+            position: modelPosition, scale: modelScale, rotationY: modelRotY,
+            opacity: modelOpacity
         )
-        modelNodes[stepId]?[slotId]?.opacity = 0.55
+        modelNodes[stepId]?[slotId]?.opacity = CGFloat(modelOpacity)
         continueModelChain(stepId: stepId, after: slotId)
     }
 
@@ -2129,7 +2162,7 @@ struct GuideStepPlacementView: View {
                 node.simdPosition = start.position
                 node.simdScale    = simd_float3(start.scale, start.scale, start.scale)
                 node.eulerAngles  = SCNVector3(0, start.rotationY, 0)
-                node.opacity      = 0.55
+                node.opacity      = CGFloat(start.opacity ?? 0.45)
             } else if modelTransforms[stepId]?[slotId] == nil {
                 modelNodes[stepId]?[slotId]?.removeFromParentNode()
                 modelNodes[stepId]?.removeValue(forKey: slotId)
@@ -2326,7 +2359,8 @@ struct GuideStepPlacementView: View {
                                    pin.y + Float(slot.modelOffsetY ?? 0),
                                    pin.z + Float(slot.modelOffsetZ ?? 0)),
             scale:     Float(slot.modelScale ?? 1.0),
-            rotationY: Float(slot.modelRotationY ?? 0.0))
+            rotationY: Float(slot.modelRotationY ?? 0.0),
+            opacity:   slot.modelOpacity.map { Float($0) })
     }
 
     @State private var copyTargets: Set<String> = []
@@ -2408,7 +2442,7 @@ struct GuideStepPlacementView: View {
                     clone.simdPosition = t.position
                     clone.simdScale    = simd_float3(t.scale, t.scale, t.scale)
                     clone.eulerAngles  = SCNVector3(0, t.rotationY, 0)
-                    clone.opacity      = 0.55
+                    clone.opacity      = CGFloat(slot.modelOpacity ?? 0.45)
                     arManager.sceneView.scene.rootNode.addChildNode(clone)
                     modelNodes[target.id, default: [:]][slot.slotId] = clone
                 }
@@ -2461,6 +2495,7 @@ struct GuideStepPlacementView: View {
                         out.modelOffsetZ   = Double(t.position.z - newPos.z)
                         out.modelScale     = Double(t.scale)
                         out.modelRotationY = Double(t.rotationY)
+                        if let o = t.opacity { out.modelOpacity = Double(o) }
                     }
                     return out
                 }
@@ -2538,7 +2573,7 @@ struct GuideStepPlacementView: View {
                 }
                 if objectPoseInMap != nil { objectCalibrationStale = false }   // B2e: re-scan calibrated
             } catch {
-                print("[GuideStepPlacementView] World map upload failed (non-fatal): \(error)")
+                AppLog.warn("guide", "World map upload failed (non-fatal): \(error)")
             }
         } else if let cal = objectPoseInMap, let t = ARCoordinateFrame.transform(from: cal) {
             // No map upload this time but the frame is the map's — refresh calibration.

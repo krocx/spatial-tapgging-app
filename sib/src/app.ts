@@ -29,6 +29,8 @@ import mindmapRouter from './routes/mindmap.routes.js';
 import lotoRouter, { lotoPointStore, lotoEventStore } from './routes/loto.js';
 import catalogRouter from './routes/catalog.js';
 import adminRouter from './routes/admin.js';
+import logsRouter from './routes/logs.js';
+import { captureServerConsole, pruneLogs } from './logging/device-logs.js';
 import uamRouter, { uamUserStore } from './routes/uam.js';
 import askRouter from './routes/ask.js';
 import { sessionStore } from './routes/sessions.js';
@@ -43,6 +45,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export function createApp(): express.Express {
   noticeLegacyDataDir();
+  // QA logging: mirror this console into DATA_DIR/logs and prune daily.
+  captureServerConsole();
+  pruneLogs();
+  setInterval(() => pruneLogs(), 24 * 60 * 60 * 1000).unref();
   const app = express();
 
   // --- Middleware ---
@@ -439,6 +445,7 @@ document.getElementById('f').addEventListener('submit', async function(ev){
 
   // --- Ops routes (admin-gated): GET /admin/backup?scope=data|full ---
   app.use('/admin', adminRouter);
+  app.use('/logs', logsRouter);
 
   // --- UAM — User Access Management (RBAC ahead of SSO) ---
   // Login + allow-list management. Sits behind apiKeyAuth like every API

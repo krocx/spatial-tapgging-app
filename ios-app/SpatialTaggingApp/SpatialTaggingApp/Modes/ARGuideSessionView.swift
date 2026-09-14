@@ -492,6 +492,8 @@ struct ARGuideSessionView: View {
             }
         }
         .onAppear {
+            AppLog.setContext("anchor", anchor.id); AppLog.setContext("guide", guide.id)
+            AppLog.info("guide", "run opened: \(guide.name) (\(sortedSteps.count) steps)")
             progresses   = sortedSteps.map { GuideStepProgress(step: $0) }
             sessionStart = Date()
             // Interrupted run from earlier (call, battery, accidental exit)?
@@ -2678,7 +2680,7 @@ struct ARGuideSessionView: View {
                 ssim = v.score
             } catch {
                 serverUnavailable = true
-                print("[StepValidation] server compare unavailable: \(error.localizedDescription)")
+                AppLog.warn("guide", "server compare unavailable: \(error.localizedDescription)")
             }
         }
 
@@ -2690,7 +2692,7 @@ struct ARGuideSessionView: View {
         }
 
         let score = max(fpScore, ssim)
-        print("[StepValidation] fp=\(String(format: "%.3f", fpScore)) ssim=\(String(format: "%.3f", ssim)) → \(String(format: "%.3f", score))")
+        AppLog.info("validation", "fp=\(String(format: "%.3f", fpScore)) ssim=\(String(format: "%.3f", ssim)) → \(String(format: "%.3f", score))")
         if score >= stepPassThreshold {
             pushValidationEvent(index: index, mode: "system", result: "pass", score: score)
             showNotice("✓ Validated PASS — score \(String(format: "%.2f", score))")
@@ -3166,6 +3168,7 @@ struct ARGuideSessionView: View {
                     wrapper.simdPosition = finalPos
                     wrapper.eulerAngles  = SCNVector3(0, rotationY, 0)
                     wrapper.opacity      = opacity
+                    ModelNodeStyle.prepare(wrapper, label: "ghost \(slotId)")
                     return wrapper
                 }.value
 

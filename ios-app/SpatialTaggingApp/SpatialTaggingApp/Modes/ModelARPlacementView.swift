@@ -443,6 +443,7 @@ struct ModelARPlacementView: View {
             let wrapper = SCNNode()
             wrapper.name = "placement_model"
             children.forEach { wrapper.addChildNode($0.clone()) }
+            ModelNodeStyle.prepare(wrapper, label: "place-in-AR")
             return wrapper
         }.value
 

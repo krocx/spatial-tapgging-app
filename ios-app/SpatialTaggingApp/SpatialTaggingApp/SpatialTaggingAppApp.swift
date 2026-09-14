@@ -14,6 +14,8 @@ struct SpatialTaggingAppApp: App {
                 .environmentObject(appSettings)
                 .environmentObject(appState)
                 .environmentObject(tour)
+                .overlay(alignment: .topTrailing) { QAModeBadge() }
+                .onAppear { AppLog.configure(settings: appSettings) }
         }
     }
 }

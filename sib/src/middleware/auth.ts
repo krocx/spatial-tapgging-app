@@ -192,6 +192,7 @@ export function canViewRestricted(req: Request): boolean {
 export function isAdminRequest(method: string, path: string): boolean {
   if (method === 'DELETE') return true;
   if (path.startsWith('/admin/')) return true;                                   // ops: backups etc.
+  if (method === 'GET' && (path === '/logs' || path.startsWith('/logs/'))) return true;  // QA logs carry employee ids
   if (path.startsWith('/loto/quiz/admin')) return true;                          // bank WITH answers
   if (path.startsWith('/loto/quiz/questions')) return true;                      // add/edit/delete
   if (path === '/loto/quiz/import') return true;                                 // bulk replace
@@ -200,13 +201,16 @@ export function isAdminRequest(method: string, path: string): boolean {
 
 export function adminKeyAuth(req: Request, res: Response, next: NextFunction): void {
   if (!isAdminRequest(req.method, req.path)) { next(); return; }
+  // Log reads are polled by the portal — recording each one would flush the
+  // (bounded) ops log of the events it exists for. Gate them, don't log them.
+  const quiet = req.method === 'GET' && (req.path === '/logs' || req.path.startsWith('/logs/'));
 
   // UAM transition: a signed-in Owner or Manager passes the destructive gate
   // by role — no shared admin key needed. Engineers/Technicians fall through
   // to the legacy key check (and normally fail it, which is the point).
   const user = currentUamUser(req);
   if (user && (user.role === 'owner' || user.role === 'manager')) {
-    logOpsEvent({ method: req.method, path: req.path, outcome: 'allowed', ip: req.ip,
+    if (!quiet) logOpsEvent({ method: req.method, path: req.path, outcome: 'allowed', ip: req.ip,
       detail: `by role — ${user.email} (${user.role})` });
     next();
     return;
@@ -228,14 +232,17 @@ export function adminKeyAuth(req: Request, res: Response, next: NextFunction): v
     }
     // Gate not configured and UAM dormant — action proceeds, but the ops log
     // still records it (historical gate-off behaviour).
-    logOpsEvent({ method: req.method, path: req.path, outcome: 'gate-off', ip: req.ip });
+    if (!quiet) logOpsEvent({ method: req.method, path: req.path, outcome: 'gate-off', ip: req.ip });
     next();
     return;
   }
 
-  const provided = Array.isArray(req.headers['x-admin-key'])
+  // EventSource (portal live tail) cannot set headers — accept the admin
+  // key as a query parameter on that one read-only stream.
+  const fromQuery = req.path === '/logs/tail' && typeof req.query.adminKey === 'string' ? req.query.adminKey : undefined;
+  const provided = fromQuery ?? (Array.isArray(req.headers['x-admin-key'])
     ? req.headers['x-admin-key'][0]
-    : req.headers['x-admin-key'];
+    : req.headers['x-admin-key']);
 
   if (!provided || provided !== adminKey) {
     logOpsEvent({ method: req.method, path: req.path, outcome: 'denied', ip: req.ip });
@@ -245,6 +252,6 @@ export function adminKeyAuth(req: Request, res: Response, next: NextFunction): v
     });
     return;
   }
-  logOpsEvent({ method: req.method, path: req.path, outcome: 'allowed', ip: req.ip });
+  if (!quiet) logOpsEvent({ method: req.method, path: req.path, outcome: 'allowed', ip: req.ip });
   next();
 }

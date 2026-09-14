@@ -178,7 +178,7 @@ final class PresenceService: ObservableObject {
             let list = try await client.postPresence(anchorId: anchorId, update: u)
             merge(list, replace: true)
         } catch {
-            print("[Presence] post failed: \(error.localizedDescription)")
+            AppLog.warn("presence", "post failed: \(error.localizedDescription)")
         }
     }
 

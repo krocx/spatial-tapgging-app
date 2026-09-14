@@ -663,6 +663,7 @@
         <span class="ph-chip" onclick="event.stopPropagation();location.hash='#admin/uam'">👥 User Access</span>
         <span class="ph-chip" onclick="event.stopPropagation();location.hash='#admin/configs'">🏭 Chamber Configs</span>
         <span class="ph-chip" onclick="event.stopPropagation();location.hash='#admin/ops'">📜 Ops Log</span>
+        <span class="ph-chip" onclick="event.stopPropagation();location.hash='#admin/logs'">🐞 Device Logs</span>
         <span class="ph-chip" onclick="event.stopPropagation();location.hash='#admin/backup'">💾 Backups</span>
       </div>
     </div>
@@ -810,6 +811,29 @@
       <button class="btn btn-primary btn-sm" onclick="addChamberConfig()">＋ Add</button>
     </div>
     <div id="cc-list" style="font-size:0.8rem"></div>
+  </div>
+  <div class="adm-card admin-only" id="adm-logs-card" style="display:none">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
+      <h3 style="margin:0">🐞 Device logs</h3>
+      <span style="font-size:0.72rem;color:var(--muted);flex:1">what each phone (and this server) reported — QA Mode on the device adds debug detail</span>
+      <button class="btn btn-ghost btn-sm" onclick="qaLogsLoad()">⟳ Refresh</button>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+      <select id="ql-device" onchange="qaLogsLoad()" style="padding:6px 8px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.76rem;min-width:220px"><option value="">All devices</option></select>
+      <select id="ql-level" onchange="qaLogsLoad()" style="padding:6px 8px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.76rem">
+        <option value="">debug +</option><option value="info" selected>info +</option><option value="warn">warn +</option><option value="error">error only</option>
+      </select>
+      <select id="ql-module" onchange="qaLogsLoad()" style="padding:6px 8px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.76rem"><option value="">all modules</option></select>
+      <select id="ql-window" onchange="qaLogsLoad()" style="padding:6px 8px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.76rem">
+        <option value="1">last hour</option><option value="6" selected>last 6 h</option><option value="24">last 24 h</option><option value="72">last 3 days</option><option value="336">last 14 days</option>
+      </select>
+      <input id="ql-q" placeholder="search text…" onkeydown="if(event.key==='Enter')qaLogsLoad()" style="flex:1;min-width:140px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.76rem">
+      <label style="font-size:0.72rem;color:var(--muted);display:flex;align-items:center;gap:4px"><input type="checkbox" id="ql-tail" onchange="qaLogsTailToggle()"> live tail</label>
+      <button class="btn btn-ghost btn-sm" onclick="qaLogsCopy()">⎘ Copy last 200</button>
+      <button class="btn btn-ghost btn-sm" onclick="qaLogsDownload()">⬇ Download .txt</button>
+    </div>
+    <div id="ql-devices" style="font-size:0.7rem;color:var(--muted);margin-bottom:6px"></div>
+    <div id="ql-out" style="max-height:520px;overflow-y:auto;font-family:monospace;font-size:0.7rem;line-height:1.6;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);white-space:pre-wrap;word-break:break-word">Loading…</div>
   </div>
   <div class="adm-card admin-only" id="adm-ops-card">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
@@ -2324,7 +2348,7 @@ const SECTIONS = {
   'iloto':     { name: '🔒 iLOTO',                color: '#ef4444' },
   'gemba':     { name: '🚶 GembaWalks',           color: '#fb923c' },
   'admin':     { name: '🛠 Admin',                color: '#94a3b8',
-                 tabs: [['uam', '👥 User Access'], ['configs', '🏭 Chamber Configs'], ['ops', '📜 Ops Log'], ['backup', '💾 Backups']], defaultSub: 'uam' },
+                 tabs: [['uam', '👥 User Access'], ['configs', '🏭 Chamber Configs'], ['ops', '📜 Ops Log'], ['logs', '🐞 Device Logs'], ['backup', '💾 Backups']], defaultSub: 'uam' },
 };
 let portalAuthed = false;   // router renders nothing until enterPortal succeeds
 
@@ -2617,12 +2641,13 @@ function setUsageView(showUsage) {
 
 /** Admin sub-pages: one card per route (unlock banner always visible). */
 function adminShowSub(sub) {
-  const map = { uam: 'uam-card', configs: 'adm-configs-card', ops: 'adm-ops-card', backup: 'adm-backup-card' };
+  const map = { uam: 'uam-card', configs: 'adm-configs-card', ops: 'adm-ops-card', logs: 'adm-logs-card', backup: 'adm-backup-card' };
   for (const [k, id] of Object.entries(map)) {
     const el = document.getElementById(id);
     if (el) el.style.display = (k === sub) ? '' : 'none';
   }
   if (sub === 'configs') loadChamberConfigs();
+  if (sub === 'logs') qaLogsOpen(); else qaLogsClose();
 }
 
 /** Home tiles: live counts. /stats is public; usage adds today's runs. */
@@ -3730,6 +3755,81 @@ async function downloadBackup(scope) {
 }
 
 /** Ops log — admin & destructive actions, Render-log style. */
+/* ── Device logs (QA logging) ────────────────────────────────────────────── */
+let qlLines = [], qlTail = null;
+const QL_COLORS = { debug: 'var(--muted)', info: 'var(--text)', warn: '#fbbf24', error: 'var(--red)' };
+function qaLogsParams() {
+  const hours = Number(document.getElementById('ql-window').value || 6);
+  const p = new URLSearchParams();
+  const dev = document.getElementById('ql-device').value; if (dev) p.set('device', dev);
+  const lvl = document.getElementById('ql-level').value; if (lvl) p.set('level', lvl);
+  const mod = document.getElementById('ql-module').value; if (mod) p.set('module', mod);
+  const q   = document.getElementById('ql-q').value.trim(); if (q) p.set('q', q);
+  p.set('since', new Date(Date.now() - hours * 3600e3).toISOString());
+  p.set('limit', '1000');
+  return p;
+}
+function qaLogsFmt(l) {
+  const ctx = l.ctx ? ' ' + Object.entries(l.ctx).map(([k, v]) => `${k}=${v}`).join(' ') : '';
+  const t = l.ts.replace('T', ' ').replace(/\.\d+Z$/, '');
+  return `<div style="color:${QL_COLORS[l.level] || 'var(--text)'}"><span style="color:var(--muted)">${esc(t)}</span> ${esc(l.level.toUpperCase().padEnd(5))} <span style="color:var(--accent)">${esc(l.device)}${l.emp ? '/' + esc(l.emp) : ''}${l.qa ? ' 🐞' : ''}</span> ${esc(l.module)}: ${esc(l.msg)}<span style="color:var(--muted)">${esc(ctx)}</span></div>`;
+}
+async function qaLogsOpen() {
+  try {
+    const r = await fetch('/logs/devices', { headers: { 'X-API-Key': apiKey(), 'X-Admin-Key': adminKeyStored() } });
+    const j = await r.json(); if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
+    const sel = document.getElementById('ql-device'); const cur = sel.value;
+    sel.innerHTML = '<option value="">All devices</option>' + (j.data || []).map(d =>
+      `<option value="${esc(d.id)}">${esc(d.id)}${d.employeeId ? ' · ' + esc(d.employeeId) : ''}${d.model ? ' · ' + esc(d.model) : ''}${d.qaMode ? ' 🐞' : ''}</option>`).join('');
+    sel.value = cur;
+    document.getElementById('ql-devices').textContent = (j.data || []).map(d =>
+      `${d.id}${d.name ? ' (' + d.name + ')' : ''} · ${d.app || '?'} · seen ${new Date(d.lastSeen).toLocaleString()}${d.qaMode ? ' · QA on' : ''}`).join('   |   ') || 'No device has reported yet — set the SIB URL in the app; lines arrive within seconds.';
+  } catch (e) { document.getElementById('ql-devices').textContent = 'Device list unavailable: ' + e.message; }
+  qaLogsLoad();
+}
+function qaLogsClose() { if (qlTail) { qlTail.close(); qlTail = null; } const t = document.getElementById('ql-tail'); if (t) t.checked = false; }
+async function qaLogsLoad() {
+  const el = document.getElementById('ql-out');
+  el.textContent = 'Loading…';
+  try {
+    const r = await fetch('/logs?' + qaLogsParams(), { headers: { 'X-API-Key': apiKey(), 'X-Admin-Key': adminKeyStored() } });
+    const j = await r.json(); if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
+    qlLines = j.data || [];
+    const mods = [...new Set(qlLines.map(l => l.module))].sort();
+    const msel = document.getElementById('ql-module'); const cur = msel.value;
+    msel.innerHTML = '<option value="">all modules</option>' + mods.map(m => `<option value="${esc(m)}">${esc(m)}</option>`).join('');
+    msel.value = mods.includes(cur) ? cur : '';
+    el.innerHTML = qlLines.length ? qlLines.map(qaLogsFmt).join('') : '<span style="color:var(--muted)">Nothing in this window. Widen the time range, lower the level, or turn on QA Mode on the device.</span>';
+    el.scrollTop = el.scrollHeight;
+  } catch (e) { el.textContent = 'Logs unavailable: ' + e.message; }
+}
+function qaLogsTailToggle() {
+  const on = document.getElementById('ql-tail').checked;
+  if (!on) { if (qlTail) { qlTail.close(); qlTail = null; } return; }
+  const p = qaLogsParams(); p.delete('since'); p.delete('limit'); p.delete('q');
+  // EventSource can't send headers: the API key rides the sib_key cookie; the admin key goes as a query param (tail only).
+  if (adminKeyStored()) p.set('adminKey', adminKeyStored());
+  qlTail = new EventSource('/logs/tail?' + p);
+  qlTail.addEventListener('line', ev => {
+    const l = JSON.parse(ev.data); qlLines.push(l); if (qlLines.length > 2000) qlLines.shift();
+    const el = document.getElementById('ql-out');
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 40;
+    el.insertAdjacentHTML('beforeend', qaLogsFmt(l));
+    if (atBottom) el.scrollTop = el.scrollHeight;
+  });
+  qlTail.onerror = () => { document.getElementById('ql-devices').textContent += '  · live tail disconnected (admin key required?)'; };
+}
+async function qaLogsCopy() {
+  const last = qlLines.slice(-200).map(l => `${l.ts} ${l.level.toUpperCase().padEnd(5)} [${l.device}${l.emp ? '/' + l.emp : ''}] ${l.module}: ${l.msg}${l.ctx ? ' ' + Object.entries(l.ctx).map(([k, v]) => `${k}=${v}`).join(' ') : ''}`).join('\n');
+  try { await navigator.clipboard.writeText(last); toast(`Copied ${Math.min(200, qlLines.length)} lines`); } catch { toast('Clipboard blocked — use Download'); }
+}
+function qaLogsDownload() {
+  const p = qaLogsParams(); p.set('limit', '5000');
+  fetch('/logs/export.txt?' + p, { headers: { 'X-API-Key': apiKey(), 'X-Admin-Key': adminKeyStored() } })
+    .then(r => r.blob()).then(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = `sib-logs-${document.getElementById('ql-device').value || 'all'}.txt`; a.click(); })
+    .catch(e => toast('Download failed: ' + e.message));
+}
+
 async function loadOpsLog() {
   const el = document.getElementById('ops-log');
   el.textContent = 'Loading…';

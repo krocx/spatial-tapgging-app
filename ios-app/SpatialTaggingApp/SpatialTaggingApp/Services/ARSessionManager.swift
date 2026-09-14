@@ -144,10 +144,10 @@ final class ARSessionManager: NSObject, ObservableObject {
             let obj = try ARReferenceObject(archiveURL: url)
             obj.name = name
             detectionObjects = [obj]
-            print("[ARSessionManager] Reference object loaded for detection (\(obj.rawFeaturePoints.points.count) pts)")
+            AppLog.info("ar", "Reference object loaded for detection (\(obj.rawFeaturePoints.points.count) pts)")
         } catch {
             detectionObjects = []
-            print("[ARSessionManager] Reference object load failed: \(error.localizedDescription)")
+            AppLog.warn("ar", "Reference object load failed: \(error.localizedDescription)")
         }
     }
 
@@ -174,7 +174,7 @@ final class ARSessionManager: NSObject, ObservableObject {
         objectAwaitingRedetect = false
         objectTrackState      = .tracking
         startObjectWatchdog()
-        print("[ARSessionManager] ✓ World re-based onto the data frame via reference object")
+        AppLog.info("ar", "✓ World re-based onto the data frame via reference object")
         return true
     }
 
@@ -246,7 +246,7 @@ final class ARSessionManager: NSObject, ObservableObject {
         autoRealignSuspended = true
         objectCandidate      = nil
         objectTrackState     = .tracking
-        print("[ARSessionManager] ↩︎ Re-alignment undone — auto re-align suspended")
+        AppLog.info("ar", "↩︎ Re-alignment undone — auto re-align suspended")
     }
 
     private func handleObjectPose(_ t: simd_float4x4, added: Bool) {
@@ -279,7 +279,7 @@ final class ARSessionManager: NSObject, ObservableObject {
                 applyRealign(from: t, cal: cal)
                 objectRealignCount += 1
                 UINotificationFeedbackGenerator().notificationOccurred(.warning)
-                print(String(format: "[ARSessionManager] ⟳ Chamber moved Δ %.0f cm · %.0f° — re-aligned", d.metres * 100, d.degrees))
+                AppLog.info("ar", String(format: "⟳ Chamber moved Δ %.0f cm · %.0f° — re-aligned", d.metres * 100, d.degrees))
                 return
             }
         }
@@ -360,6 +360,7 @@ final class ARSessionManager: NSObject, ObservableObject {
     func startSession() {
         let config = ARWorldTrackingConfiguration()
         config.planeDetection = [.horizontal, .vertical]
+        config.environmentTexturing = .automatic   // PBR model ghosts need something to reflect
         config.detectionObjects = detectionObjects
         resetObjectTracking()
         sceneView.session.run(config, options: [.removeExistingAnchors, .resetTracking])
@@ -388,13 +389,14 @@ final class ARSessionManager: NSObject, ObservableObject {
     func startSessionWithWorldMap(_ data: Data) {
         guard let worldMap = try? NSKeyedUnarchiver.unarchivedObject(
             ofClass: ARWorldMap.self, from: data) else {
-            print("[ARSessionManager] Failed to decode ARWorldMap — starting fresh session")
+            AppLog.warn("ar", "Failed to decode ARWorldMap — starting fresh session")
             startSession()
             return
         }
 
         let config = ARWorldTrackingConfiguration()
         config.planeDetection   = [.horizontal, .vertical]
+        config.environmentTexturing = .automatic   // PBR model ghosts need something to reflect
         config.initialWorldMap  = worldMap
         config.detectionObjects = detectionObjects
         resetObjectTracking()
@@ -411,14 +413,14 @@ final class ARSessionManager: NSObject, ObservableObject {
         isRelocalizing          = true
         relocalizationOutcome   = nil
         mapIsOrigin             = false
-        print("[ARSessionManager] Session started with saved ARWorldMap — relocalizing…")
+        AppLog.info("ar", "Session started with saved ARWorldMap — relocalizing…")
 
         // Relocalization timeout: fall back to fresh session if ARKit hasn't
         // found enough matching feature points within 15 seconds.
         Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: 15_000_000_000)
             guard let self, self.isRelocalizing else { return }
-            print("[ARSessionManager] Relocalization timeout (15 s) — falling back to fresh session")
+            AppLog.warn("ar", "Relocalization timeout (15 s) — falling back to fresh session")
             self.isRelocalizing = false
             self.startSession()
             self.relocalizationOutcome = .timedOut
@@ -432,14 +434,14 @@ final class ARSessionManager: NSObject, ObservableObject {
         return await withCheckedContinuation { continuation in
             sceneView.session.getCurrentWorldMap { worldMap, error in
                 guard let worldMap else {
-                    print("[ARSessionManager] getCurrentWorldMap failed: \(error?.localizedDescription ?? "unknown")")
+                    AppLog.warn("ar", "getCurrentWorldMap failed: \(error?.localizedDescription ?? "unknown")")
                     continuation.resume(returning: nil)
                     return
                 }
                 let data = try? NSKeyedArchiver.archivedData(
                     withRootObject: worldMap, requiringSecureCoding: true)
                 if let data {
-                    print("[ARSessionManager] ARWorldMap serialized (\(data.count / 1024) KB)")
+                    AppLog.info("ar", "ARWorldMap serialized (\(data.count / 1024) KB)")
                 }
                 continuation.resume(returning: data)
             }
@@ -498,14 +500,14 @@ final class ARSessionManager: NSObject, ObservableObject {
         mapIsOrigin           = true
         _lockedImageAnchor    = nil
         lockedAnchorTransform = pose
-        print("[ARSessionManager] ✓ Origin adopted from sealed world map")
+        AppLog.info("ar", "✓ Origin adopted from sealed world map")
     }
 
     /// Searches the current session frame for an ARImageAnchor and restores
     /// lockedAnchorTransform from its live (gravity-normalised) pose.
     private func restoreLockedImageAnchorFromSession() {
         guard let anchors = sceneView.session.currentFrame?.anchors else {
-            print("[ARSessionManager] restoreAnchor: no current frame — will wait for didUpdate")
+            AppLog.info("ar", "restoreAnchor: no current frame — will wait for didUpdate")
             return
         }
         for anchor in anchors {
@@ -513,12 +515,12 @@ final class ARSessionManager: NSObject, ObservableObject {
             _lockedImageAnchor    = imageAnchor
             let normalised        = ARCoordinateFrame.normalised(from: imageAnchor.transform)
             lockedAnchorTransform = normalised
-            print("[ARSessionManager] ✓ Restored live ARImageAnchor from linked session (isTracked=\(imageAnchor.isTracked))")
+            AppLog.info("ar", "✓ Restored live ARImageAnchor from linked session (isTracked=\(imageAnchor.isTracked))")
             return
         }
         // No image anchor found yet — either not yet added or session just linked.
         // processImageAnchors will pick it up when didUpdate fires.
-        print("[ARSessionManager] restoreAnchor: no ARImageAnchor in session yet")
+        AppLog.info("ar", "restoreAnchor: no ARImageAnchor in session yet")
     }
 
     func pauseSession() {
@@ -556,7 +558,7 @@ final class ARSessionManager: NSObject, ObservableObject {
                                    corners: [CGPoint]) {
         guard case .scanning = scanState else { return }
         guard case .normal = trackingState else {
-            print("[ARSessionManager] QR detected but tracking not .normal — ignoring")
+            AppLog.info("ar", "QR detected but tracking not .normal — ignoring")
             return
         }
 
@@ -580,13 +582,14 @@ final class ARSessionManager: NSObject, ObservableObject {
             // the current world map — we just add image detection capability.
             let config = ARWorldTrackingConfiguration()
             config.planeDetection   = [.horizontal, .vertical]
+            config.environmentTexturing = .automatic   // PBR model ghosts need something to reflect
             config.detectionImages  = [refImage]
             config.maximumNumberOfTrackedImages = 1
             config.detectionObjects = detectionObjects
             sceneView.session.run(config, options: [])
-            print("[ARSessionManager] ARReferenceImage registered (\(String(format:"%.0f", context.physicalWidth * 100)) cm) — waiting for ARImageAnchor")
+            AppLog.info("ar", "ARReferenceImage registered (\(String(format:"%.0f", context.physicalWidth * 100)) cm) — waiting for ARImageAnchor")
         } else {
-            print("[ARSessionManager] Could not create ARReferenceImage — falling back to raycast")
+            AppLog.warn("ar", "Could not create ARReferenceImage — falling back to raycast")
             fallbackRaycast(context: context, visionBBox: visionBBox)
         }
     }
@@ -667,7 +670,7 @@ final class ARSessionManager: NSObject, ObservableObject {
         detectedQRCorners     = []
         qrScanner.pause()
         addIndicator(at: normalised)
-        print("[ARSessionManager] Anchor locked ✓  anchorId=\(context.anchorId)  samples=\(stableFramesRequired)")
+        AppLog.info("ar", "Anchor locked ✓  anchorId=\(context.anchorId)  samples=\(stableFramesRequired)")
     }
 
     // ── Visual indicator ──────────────────────────────────────────────────────
@@ -811,13 +814,13 @@ extension ARSessionManager: ARSessionDelegate {
             if cat == 1, self?.isRelocalizing == true {
                 self?.isRelocalizing = false
                 self?.relocalizationOutcome = .succeeded
-                print("[ARSessionManager] ✓ Relocalization complete — tracking normal")
+                AppLog.info("ar", "✓ Relocalization complete — tracking normal")
             }
         }
     }
 
     nonisolated func session(_ session: ARSession, didFailWithError error: Error) {
-        print("[ARSessionManager] failed: \(error.localizedDescription)")
+        AppLog.warn("ar", "failed: \(error.localizedDescription)")
     }
 
     // #69: fires on phone calls, Control Center, app-switcher gestures, etc.
@@ -825,7 +828,7 @@ extension ARSessionManager: ARSessionDelegate {
     // or validation that completes "successfully" during this window is
     // scoring/training against a stale frame, not what's actually in view.
     nonisolated func sessionWasInterrupted(_ session: ARSession) {
-        print("[ARSessionManager] session interrupted")
+        AppLog.info("ar", "session interrupted")
         Task { @MainActor [weak self] in
             self?.isInterrupted = true
         }
@@ -835,7 +838,7 @@ extension ARSessionManager: ARSessionDelegate {
     // clear the flag so views can prompt the user to re-verify alignment
     // before trusting the next capture/validation result.
     nonisolated func sessionInterruptionEnded(_ session: ARSession) {
-        print("[ARSessionManager] session interruption ended")
+        AppLog.info("ar", "session interruption ended")
         Task { @MainActor [weak self] in
             self?.isInterrupted = false
         }

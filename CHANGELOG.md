@@ -7,6 +7,24 @@ it, it gets a line.
 ## 2026.4.46 — 2026-09-08
 
 ### Fixed
+- **Fail-state cone training froze on guide steps (iOS)**. The Fail-state
+  capture is a second `ConeCaptureView` opened from the Pass-state success
+  overlay. In the guide-step flow the subject position arrives as
+  `forcedTagWorldPos` (the step pin) — it was not passed to the nested view,
+  which then waited for a QR lock that object / sealed-map sessions never
+  have: no cone, and Start Training did nothing. The pin now flows through,
+  and `spawnGuide()` falls back to camera-forward instead of returning
+  without a guide (never-stuck rule).
+- **Step model invisible at 100 % opacity (iOS)**. Below 1.0 SceneKit renders
+  a node through its transparent pass with a uniform alpha; at exactly 1.0 it
+  trusts the exported materials, and USDZ converted from GLB can carry
+  state that draws nothing there (opacity 0 from an alpha-blend export, fully
+  metallic PBR with no environment, flipped single-sided faces). New
+  `Components/ModelNodeStyle.swift` (add to the Xcode target) normalises
+  materials once at load — applied in Place Steps, Place-in-AR and the
+  operator ghost — and `ARSessionManager` enables `environmentTexturing`
+  so PBR surfaces have something to reflect. A one-line diagnostic is
+  printed per model (`[ModelNodeStyle] …`).
 - **Guide evidence written outside the data root (company server)** — the
   Completion / Usage logs showed a broken thumbnail for a beat, then nothing,
   and the xlsx export had no photos. Root cause: two data roots. JSON stores,
@@ -81,6 +99,26 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **QA logging — device logs on the server (L1–L3)**. A work iPhone can't
+  hand over its console, so the app now ships its log lines to SIB. iOS
+  `Services/AppLog.swift`: `info/warn/error` always, `debug` with **QA Mode**
+  (Settings → Diagnostics; per device, auto-off after 24 h, orange QA badge on
+  every screen); batches every 5 s / 50 lines, errors flush at once, redaction
+  of keys/tokens/base64 before send, rolling anchor/guide context, abnormal-exit
+  marker on next launch. ~30 `print` sites in AR/QR/cone/guide/net/model code
+  now go through it. Server `logging/device-logs.ts` + `routes/logs.ts`:
+  `POST /logs` (validated, redacted again) → JSONL per device per day under
+  `DATA_DIR/logs/`, the server's own console mirrored to `server.jsonl`,
+  `LOG_RETENTION_DAYS` (14) pruning, `GET /logs` query, `/logs/devices`,
+  `/logs/export.txt`, SSE `/logs/tail`; reads sit behind the admin gate
+  without flooding the ops log. Portal **Admin → Device Logs**: device / level /
+  module / window / search, live tail, Copy last 200, Download .txt. Doc:
+  `docs/QA-LOGGING.md`.
+- **Opacity slider in AR (Place Steps)**. The model adjust bar gains the
+  same ghost-opacity slider as Place-in-AR: live on the node, saved with the
+  slot on Confirm, so the value is chosen against the step's real background.
+  Place Steps now shows each slot at its saved opacity instead of a fixed
+  preview value — what the author sees is what the operator gets.
 - **Roadmap — "From a photo" door (server-side vision)**. The whiteboard /
   screenshot import was hidden in the ⋯ menu and, on the in-house server,
   waited two minutes before failing. It is now the third door on the Roadmap
