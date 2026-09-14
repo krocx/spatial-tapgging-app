@@ -218,3 +218,34 @@ After setup, you can:
 ✅ Enter placeholder Author/Operator views (to be replaced in Phase 2B/2C)  
 
 **Next: Phase 2B** — Tag creation + honeycomb pass-state capture within the Author mode view.
+
+---
+
+## Step 10 — Gemba walk Live Activity (G6, 2026.4.46) — one-time target setup
+
+The Dynamic Island / Lock Screen companion for phone-down walking needs a
+**Widget Extension** target. The code is already in the repo; Xcode only needs
+the target and two file memberships. Without this step the app still builds
+and runs — `GembaLiveActivity` becomes a no-op.
+
+1. **File → New → Target… → Widget Extension.** Product name `GembaWalkWidget`.
+   Untick *Include Configuration App Intent*, tick *Include Live Activity*.
+   Finish; when asked, **activate** the scheme.
+2. In the new `GembaWalkWidget` group, **delete the template files** Xcode
+   created (`GembaWalkWidget.swift`, `GembaWalkWidgetBundle.swift`,
+   `GembaWalkWidgetLiveActivity.swift`, the Assets are fine to keep).
+3. **Add** the repo files `ios-app/SpatialTaggingApp/GembaWalkWidget/`
+   (`GembaWalkWidgetBundle.swift`, `GembaWalkLiveActivity.swift`) to the
+   `GembaWalkWidget` target (drag in, *Copy items* unticked, target = widget).
+4. Select `SpatialTaggingApp/Shared/GembaWalkActivity.swift` → File
+   Inspector → **Target Membership**: tick **both** the app and
+   `GembaWalkWidget`.
+5. The app's `Info.plist` already has `NSSupportsLiveActivities = YES`. The
+   widget target's own Info.plist needs nothing extra.
+6. Build & run the **app** scheme on a device (Live Activities don't run in
+   the Simulator's Dynamic Island reliably). Start a Gemba walk as Operator —
+   the island shows pin · distance · progress; lower the phone → "Raise your
+   phone to update"; arrive → green tick + haptic.
+
+Signing: the extension inherits the team; keep its bundle id as
+`<app bundle id>.GembaWalkWidget`.

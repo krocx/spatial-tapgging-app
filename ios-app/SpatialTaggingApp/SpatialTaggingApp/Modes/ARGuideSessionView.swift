@@ -2943,7 +2943,7 @@ struct ARGuideSessionView: View {
                 showPresenceToast("\(name) left", color: .darkGray)
             case .coachHint(let sid, _):
                 if sid == liveSessionId { Task { await pullCoachHints() } }
-            case .stepsChanged, .tagsChanged:
+            case .stepsChanged, .tagsChanged, .findingsChanged:
                 break
             }
             svc.event = nil

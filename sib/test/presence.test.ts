@@ -11,6 +11,7 @@ test('validatePresenceUpdate rejects bad shapes and trims fields', () => {
   assert.equal(validatePresenceUpdate(null).ok, false);
   assert.equal(validatePresenceUpdate({ userId: 'u', name: 'n', surface: 'placeSteps', pose: [1, 2] }).ok, false);
   assert.equal(validatePresenceUpdate({ userId: 'u', name: 'n', surface: 'nope', pose }).ok, false);
+  assert.equal(validatePresenceUpdate({ userId: 'u', name: 'n', surface: 'gembaWalk', pose }).ok, true);   // G7
   const v = validatePresenceUpdate({ userId: ' u1 ', name: ' Priya ', surface: 'placeSteps', pose, site: ' US ', focusId: 's1' });
   assert.equal(v.ok, true);
   if (v.ok) {

@@ -94,6 +94,8 @@ final class PresenceService: ObservableObject {
         case tagsChanged([String])
         /// C1: a coach queued a hint for this live session — fetch it now.
         case coachHint(liveSessionId: String, from: String?)
+        /// G7: a colleague saved / edited a Gemba finding on this space.
+        case findingsChanged
     }
 
     @Published private(set) var others: [PresenceEntry] = []
@@ -221,6 +223,8 @@ final class PresenceService: ObservableObject {
                     case "guide-steps":
                         stepsVersion += 1
                         event = .stepsChanged
+                    case "loc-tags":
+                        event = .findingsChanged
                     case "changed":
                         struct Changed: Decodable { let changed: [String]? }
                         let ids = ((try? JSONDecoder().decode(Changed.self, from: data))?.changed ?? [])

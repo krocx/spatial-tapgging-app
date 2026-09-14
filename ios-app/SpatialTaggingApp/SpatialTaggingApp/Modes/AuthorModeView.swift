@@ -1114,7 +1114,7 @@ struct AuthorModeView: View {
                 showPresenceToast("\(name) left", color: .darkGray)
             case .tagsChanged(let ids):
                 Task { await applyRemoteTagEdits(ids) }
-            case .stepsChanged, .coachHint:
+            case .stepsChanged, .coachHint, .findingsChanged:
                 break
             }
             svc.event = nil

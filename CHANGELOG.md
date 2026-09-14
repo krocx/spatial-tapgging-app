@@ -151,8 +151,9 @@ it, it gets a line.
   library is empty or the auditor flips the toggle. Every finding gets a
   **floating panel** in AR — the AR OMS pill/card language: collapsed pill
   (stop #, title, category chip) by default so the view stays clear; tap →
-  card with code, question, risk, notes, photo count; tap the card → the full
-  sheet. Operators see the same panels while walking (non-target ones dimmed)
+  card with code, question, risk, notes, photo count; tap the card to collapse,
+  its **Open ›** band for the full sheet. Warm light surface, dark text, orange
+  accents (badge · ring · chips) — easier on the eye than orange-on-black. Operators see the same panels while walking (non-target ones dimmed)
   and can open any finding from its card. Peek / completion / edit sheets show
   the reference question, category, risk and a captioned photo strip with a
   lightbox; edit changes category, risk and captions. Library is cached on
@@ -177,6 +178,30 @@ it, it gets a line.
   gains `openGembaWalks`. `sib/src/gemba/walk-core.ts`,
   `routes/gemba-walks.ts`, `oms/xlsx-lite.ts` (`buildTableXlsx`), iOS
   `Modes/GembaWalkSheets.swift`, tests.
+- **Gemba Walk — mark up the photo (G5, iOS)**. Tap a photo thumbnail while
+  logging a finding (or the pencil on a photo in the peek sheet) to draw on
+  it — PencilKit, finger or Apple Pencil, orange / red / white / black, two
+  widths, undo, clear. *Done* flattens the strokes onto a full-resolution copy
+  stored beside the original (`markupPath`); the original is never changed.
+  The floating panel, sheets, portal strips and the walk Excel all prefer the
+  marked-up copy. `Components/PhotoMarkupView.swift`, `LocTagFormSheet`,
+  `FindingDetailSections`, `PUT /loc-tags/:id/photos/:file/markup` (from G3).
+- **Gemba Walk — walk together (G7)**. Auditors on the same space see each
+  other: the presence lens / view cone / roster chip from AR OMS now run on
+  Gemba walks (surface `gembaWalk`, poses in the shared world-map frame,
+  withheld while relocalising). A finding saved, edited or deleted by a
+  colleague arrives live (`loc-tags` presence event) — its pin and floating
+  panel appear on everyone's device with a toast. `sse/presence.ts`,
+  `PresenceService.findingsChanged`, `LocTagAuthorView` presence section.
+- **Gemba Walk — phone-down navigation (G6)**. Operators walk with the
+  phone at their side: a **Live Activity** in the Dynamic Island / Lock
+  Screen shows the next finding, distance and progress; arriving fires a
+  haptic and a green tick; tracking lost (phone lowered) shows the last
+  distance and "Raise your phone to update" — raising re-localises and
+  updates resume. Needs the `GembaWalkWidget` extension target (one-time,
+  `ios-app/XCODE-SETUP.md` step 10); without it the calls are no-ops.
+  `Shared/GembaWalkActivity.swift`, `Services/GembaLiveActivity.swift`,
+  `GembaWalkWidget/`, `NSSupportsLiveActivities` in Info.plist.
 - **SIB Compass — one navigator on every web surface (N1)**. Each surface had
   grown its own way home (⌂, ⚡, a text link, nothing) and the portal had no
   link to SIB home at all. `sib/portal/compass.js`, injected by `brand.js`

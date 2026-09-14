@@ -168,7 +168,7 @@ export type OriginSource = 'worldMap' | 'object';
 // In-memory on SIB (never persisted). Poses are expressed in the chamber's
 // shared frame (guide map / object frame), so two devices — even in front of
 // two physical units of the same chamber type — are directly comparable.
-export type PresenceSurface = 'placeSteps' | 'author' | 'operator' | 'guide';
+export type PresenceSurface = 'placeSteps' | 'author' | 'operator' | 'guide' | 'gembaWalk';
 
 export interface PresenceUpdate {
   userId:    string;            // employee ID (UAM) or device id

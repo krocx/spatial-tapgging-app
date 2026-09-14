@@ -1607,7 +1607,7 @@ struct GuideStepPlacementView: View {
                 showPresenceToast("\(name) left", color: .darkGray)
             case .stepsChanged:
                 Task { await applyRemoteEdits() }
-            case .tagsChanged, .coachHint:
+            case .tagsChanged, .coachHint, .findingsChanged:
                 break                                   // not this surface
             }
             svc.event = nil

@@ -3,6 +3,7 @@
 
 import Foundation
 import simd
+import UIKit   // UIImage — Gemba photo uploads (G3)
 
 enum SIBClientError: LocalizedError {
     case notConfigured

@@ -5,8 +5,7 @@
 The Gemba Walk is being brought up to the workflow Corporate Quality already
 runs in the PowerApps *Gemba Audit* tool, with the things only AR can add
 (findings pinned in space, re-found on the next walk). This document tracks
-the slices as they land. Slice G1 is live; the rest are listed so the shape
-of the whole is visible.
+the slices as they land.
 
 | Slice | What | Status |
 |---|---|---|
@@ -14,9 +13,9 @@ of the whole is visible.
 | **G3 Finding model** | LocTag gains focus area, question code, finding category, risk rating, multiple photos, markup hook. | **shipped** |
 | **G4 Capture flow (iOS)** | Tap surface → Focus Area → Question → photos with captions → category + rating. Findings as collapsible floating panels. | **shipped** |
 | **G2 + G8 Walk session** | Project ID, Org, BU, Area, Location header; session summary; portal report + xlsx. | **shipped** |
-| G5 Markup | Draw on the captured photo (PencilKit); anchored 3D strokes later. | next |
-| G7 Multi-auditor | Presence on a walk — several auditors, findings appear live for each other. | planned |
-| G6 Phone-down walking | Live Activity / Dynamic Island: next finding + distance + haptics; raise to relocalize. | planned |
+| **G5 Markup** | Draw on the captured photo (PencilKit); anchored 3D strokes later. | **shipped** |
+| **G7 Multi-auditor** | Presence on a walk — several auditors, findings appear live for each other. | **shipped** |
+| **G6 Phone-down walking** | Live Activity / Dynamic Island: next finding + distance + haptics; raise to relocalize. | **shipped** (needs widget target) |
 
 Walks never depend on a chamber or QR code — auditors walk and tag anywhere,
 exactly as today.
@@ -153,8 +152,10 @@ the server has no library yet.
 **Floating panels.** Every finding carries a world-anchored panel 0.42 m above
 its pin (`FindingPanel`): a pill (stop #, title, category chip, ring coloured by
 category) that expands on tap into a card (code, question, category + risk,
-notes, photo count, *Open ›*). Tapping the card opens the peek (author) or
-completion (operator) sheet; tapping empty space collapses. Operators see the
+notes, photo count, *Open ›*). Tapping the card collapses it; the *Open ›* band
+opens the peek (author) or completion (operator) sheet; tapping empty space
+collapses. Surface is a warm light "frosted" card with dark text — orange stays
+the accent (badge, ring, chips, Open button). Operators see the
 non-target panels dimmed while navigating and may open any finding directly.
 
 **Sheets.** `FindingDetailSections` is the one read-only body used by the peek
@@ -205,3 +206,55 @@ PUT    /gemba/library/lists/:kind      { values: string[] }   kind ∈ organizat
 Data: `gemba-walks.json`, `gemba-lists.json`. Code: `sib/src/gemba/walk-core.ts`,
 `routes/gemba-walks.ts`, `oms/xlsx-lite.ts` (`buildTableXlsx`); iOS
 `Modes/GembaWalkSheets.swift`, `LocTagAuthorView` (walk state, submit, summary).
+
+---
+
+## G5 · Photo markup
+
+While logging a finding, tap a photo thumbnail (or the orange pencil on a photo
+in the author's peek sheet) to open **Mark up photo**: a PencilKit canvas over
+the image — finger or Apple Pencil, orange / red / white / black, thin or thick,
+undo, clear. *Done* flattens the strokes onto a full-resolution copy; the draft
+keeps the strokes so the markup can be re-edited before saving. On save, each
+marked photo is sent with `PUT /loc-tags/:id/photos/:file/markup` after the
+finding exists (a failed markup never loses the finding). The original photo is
+untouched — `path` and `markupPath` live side by side — and every consumer
+(panel card, sheets, portal strips, walk Excel) shows the marked-up copy when
+present. Anchored 3D strokes in AR remain a later phase.
+
+---
+
+## G7 · Walk together
+
+Several auditors can walk one space at once. The presence system from AR OMS
+(`PresenceService` + `PresenceLayer`) runs on the walk with surface
+`gembaWalk`; poses are camera transforms in the world-map frame — on a fresh
+walk that is the author's own frame, after the map is uploaded everyone who
+relocalises shares it. Poses are withheld while a device is still relocalising
+so nobody is drawn in the wrong place. Colleagues appear as the usual lens /
+view cone / roster chip, with join/leave toasts.
+
+Findings travel live: any `loc-tags` store write (create, edit, markup, delete)
+is fanned out as a `loc-tags` presence event to every device on that anchor;
+the walk view refetches and adds new pins + panels (toast "A colleague logged a
+finding"), re-renders changed ones, and removes deleted ones. Server:
+`sib/src/sse/presence.ts`; iOS: `PresenceService.Event.findingsChanged`,
+`LocTagAuthorView.syncFindingsFromColleagues()`.
+
+---
+
+## G6 · Phone-down navigation
+
+Operators walk with the phone at their side. A **Live Activity** shows the walk
+in the Dynamic Island and on the Lock Screen: pin, next finding title, distance
+(0.1 m buckets, throttled to ~2/s), progress `done/total`; arriving turns it
+green with a success haptic; lowering the phone (ARKit tracking limited/lost)
+switches to *Raise your phone to update* keeping the last distance; raising it
+re-localises against the world map and updates resume; finishing shows *Gemba
+walk complete* for five minutes. Honest limit: ARKit cannot track a covered
+camera — this is "phone down between findings", not continuous tracking.
+
+Setup: one-time Widget Extension target (`ios-app/XCODE-SETUP.md` step 10).
+Code: `Shared/GembaWalkActivity.swift` (attributes, both targets),
+`Services/GembaLiveActivity.swift` (start / update / finish / end),
+`GembaWalkWidget/GembaWalkLiveActivity.swift` (presentation).

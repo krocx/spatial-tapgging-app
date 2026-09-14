@@ -51,7 +51,7 @@ struct LocTagPeekSheet: View {
                 }
 
                 // ── G4: reference question · category + risk · photos ──────────
-                FindingDetailSections(tag: locTag)
+                FindingDetailSections(tag: locTag, onMarkup: onUpdated)
             }
             .listStyle(.insetGrouped)
             .navigationTitle("Issue Detail")

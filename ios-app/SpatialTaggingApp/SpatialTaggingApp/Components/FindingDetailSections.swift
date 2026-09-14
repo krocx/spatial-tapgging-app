@@ -8,9 +8,14 @@ import SwiftUI
 
 struct FindingDetailSections: View {
     let tag: LocTag
+    /// G5: when set (author context) each photo gets a "Mark up" action; the
+    /// updated finding is handed back after the markup is stored on SIB.
+    var onMarkup: ((LocTag) -> Void)? = nil
     @EnvironmentObject private var settings: AppSettings
     @State private var images: [String: UIImage] = [:]
     @State private var viewing: LocTagPhoto? = nil
+    @State private var markingUp: LocTagPhoto? = nil
+    @State private var markupBusy = false
 
     var body: some View {
         // ── Reference question ────────────────────────────────────────────────
@@ -67,7 +72,9 @@ struct FindingDetailSections: View {
         if !photos.isEmpty {
             Section("Photos (\(photos.count))") {
                 ForEach(photos) { p in
-                    Button { viewing = p } label: {
+                    // Row tap → lightbox; the pencil is its own button (nested
+                    // Buttons in a List row would both fire).
+                    Group {
                         HStack(alignment: .top, spacing: 12) {
                             Group {
                                 if let img = images[p.markupPath ?? p.path] {
@@ -88,15 +95,54 @@ struct FindingDetailSections: View {
                                 }
                             }
                             Spacer()
+                            if onMarkup != nil {
+                                Button {
+                                    Task { await load(p.path); markingUp = p }
+                                } label: {
+                                    Image(systemName: "pencil.tip.crop.circle")
+                                        .font(.title3).foregroundStyle(.orange)
+                                }
+                                .buttonStyle(.borderless)
+                                .disabled(markupBusy)
+                                .accessibilityLabel("Mark up photo")
+                            }
                         }
+                        .contentShape(Rectangle())
+                        .onTapGesture { viewing = p }
                     }
-                    .buttonStyle(.plain)
                     .task { await load(p.markupPath ?? p.path) }
                 }
             }
             .fullScreenCover(item: $viewing) { p in
                 PhotoLightbox(image: images[p.markupPath ?? p.path], caption: p.caption)
             }
+            .fullScreenCover(item: $markingUp) { p in
+                if let original = images[p.path] {
+                    PhotoMarkupView(image: original) { flattened, drawing in
+                        guard !drawing.strokes.isEmpty else { return }
+                        Task { await saveMarkup(photo: p, image: flattened) }
+                    }
+                } else {
+                    ZStack { Color.black.ignoresSafeArea(); ProgressView().tint(.white) }
+                        .onTapGesture { markingUp = nil }
+                }
+            }
+        }
+    }
+
+    private func saveMarkup(photo: LocTagPhoto, image: UIImage) async {
+        guard let b64 = image.jpegData(compressionQuality: 0.7)?.base64EncodedString() else { return }
+        await MainActor.run { markupBusy = true }
+        do {
+            let updated = try await SIBClient(settings: settings).uploadLocTagMarkup(id: tag.id, filename: photo.path, jpegBase64: b64)
+            await MainActor.run {
+                if let mp = updated.photos?.first(where: { $0.path == photo.path })?.markupPath { images[mp] = image }
+                markupBusy = false
+                onMarkup?(updated)
+            }
+        } catch {
+            AppLog.warn("gemba", "markup upload failed: \(friendlyMessage(for: error))")
+            await MainActor.run { markupBusy = false }
         }
     }
 

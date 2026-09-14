@@ -86,6 +86,7 @@ struct LocTagOperatorView: View {
                 }
                 .onDisappear {
                     removeArrow()
+                    GembaLiveActivity.shared.end()
                     arManager.pauseSession()
                     appState.activeARSession = nil
                 }
@@ -507,21 +508,24 @@ struct LocTagOperatorView: View {
             FindingPanel.attach(to: arManager.sceneView.scene.rootNode, tag: tag, index: i, pinPosition: node.simdPosition)
         }
         placeArrow()   // create the navigation arrow when pins are ready
+        // G6: Dynamic Island / Lock Screen companion for phone-down walking.
+        GembaLiveActivity.shared.start(spaceName: appState.activeAnchor?.assetId ?? "Gemba walk", headerLine: "", total: locTags.count)
     }
 
-    /// G4: tap a pill → expand its card; tap the card → open the completion
-    /// sheet for that finding (jumping the sequence is allowed); tap empty
-    /// space → collapse any open card.
+    /// G4: tap a pill → expand its card; tap the card → collapse it; tap its
+    /// "Open ›" band → the completion sheet for that finding (jumping the
+    /// sequence is allowed); tap empty space → collapse any open card.
     private func handlePanelTap(at screenPoint: CGPoint) {
         let sv = arManager.sceneView
         let hits = sv.hitTest(screenPoint, options: [SCNHitTestOption.searchMode: SCNHitTestSearchMode.all.rawValue])
         for hit in hits {
-            guard let h = FindingPanel.hit(hit.node),
+            guard let h = FindingPanel.hit(hit),
                   let tag = locTags.first(where: { $0.id == h.tagId }) else { continue }
-            if h.part == .pill, let c = sv.scene.rootNode.childNode(withName: "fpanel_\(h.tagId)", recursively: false) {
-                FindingPanel.setMinimized(c, false)
-            } else if completingTag == nil {
-                completingTag = tag
+            let c = sv.scene.rootNode.childNode(withName: "fpanel_\(h.tagId)", recursively: false)
+            switch h.part {
+            case .pill:     if let c { FindingPanel.setMinimized(c, false) }
+            case .card:     if let c { FindingPanel.setMinimized(c, true) }
+            case .cardOpen: if completingTag == nil { completingTag = tag }
             }
             return
         }
@@ -546,6 +550,13 @@ struct LocTagOperatorView: View {
         let camPos = simd_float3(camCol.x, camCol.y, camCol.z)
         let dist   = simd_length(tagW - camPos)
         distanceM  = dist
+
+        // G6: keep the Live Activity current (throttled inside); tracking
+        // limited/lost (phone at your side) → "raise your phone" phase.
+        let trackingOK: Bool = { if case .normal = frame.camera.trackingState { return true } else { return false } }()
+        GembaLiveActivity.shared.update(nextTitle: tag.questionTitle ?? tag.title, category: tag.findingCategory?.rawValue,
+                                        distanceM: trackingOK ? dist : nil, done: completedTagIds.count, total: locTags.count,
+                                        trackingOK: trackingOK, arrivedM: arrivedM)
 
         // Auto-trigger completion sheet on arrival (opens minimized).
         if dist <= arrivedM && completingTag == nil && !autoTriggerGuard {
@@ -746,6 +757,7 @@ struct LocTagOperatorView: View {
         guard index < locTags.count else {
             removeArrow()
             phase = .done
+            GembaLiveActivity.shared.finish(done: completedTagIds.count, total: locTags.count)
             return
         }
         distanceM        = nil
@@ -759,6 +771,7 @@ struct LocTagOperatorView: View {
         let currentIdx = locTags.firstIndex(where: { $0.id == completedId }) ?? 0
         let remaining  = locTags.indices.filter { !completedTagIds.contains(locTags[$0].id) }
         if remaining.isEmpty {
+            GembaLiveActivity.shared.finish(done: completedTagIds.count, total: locTags.count)
             removeArrow()
             phase = .done
         } else {

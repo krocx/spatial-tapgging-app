@@ -11,6 +11,7 @@ import SwiftUI
 import ARKit
 import SceneKit
 import simd
+import Combine
 
 struct LocTagAuthorView: View {
 
@@ -64,6 +65,15 @@ struct LocTagAuthorView: View {
     // ── Toast ─────────────────────────────────────────────────────────────────
     @State private var toastMsg: String? = nil
 
+    // ── G7: colleagues on the same walk (presence in the world-map frame) ─────
+    @State private var presence:       PresenceService? = nil
+    @State private var presenceLayer:  PresenceLayer?   = nil
+    @State private var presenceBag:    Set<AnyCancellable> = []
+    @State private var presenceOthers: [PresenceEntry] = []
+    @State private var presenceLinked  = false
+    @State private var presenceToast:  (text: String, color: UIColor)? = nil
+    @State private var syncingFindings = false
+
     // ── G2: walk session ──────────────────────────────────────────────────────
     @State private var currentWalk:    GembaWalk? = nil
     @State private var showWalkStart   = false
@@ -89,6 +99,7 @@ struct LocTagAuthorView: View {
                 .onDisappear {
                     focusRing?.cleanup()
                     focusRing = nil
+                    stopPresence()
                     guard !isSavingWalk else { return }
                     arManager.pauseSession()
                     appState.activeARSession = nil
@@ -202,6 +213,18 @@ struct LocTagAuthorView: View {
                 bottomPanel
             }
         }
+        // ── G7: presence overlays ──────────────────────────────────────────────
+        .overlay(alignment: .topTrailing) {
+            if !presenceOthers.isEmpty {
+                PresenceRosterChip(others: presenceOthers, connected: presenceLinked)
+                    .padding(.top, 64).padding(.trailing, 12)
+            }
+        }
+        .overlay { if !presenceOthers.isEmpty { PresenceEdgeArrows(others: presenceOthers, sceneView: arManager.sceneView) } }
+        .overlay(alignment: .top) {
+            if let t = presenceToast { PresenceToast(text: t.text, color: t.color).padding(.top, 104) }
+        }
+        .animation(.easeInOut(duration: 0.25), value: presenceToast?.text)
         .onReceive(crosshairTicker) { _ in
             guard pendingTap == nil else { return }
             focusRing?.update(sceneView: arManager.sceneView)
@@ -287,6 +310,7 @@ struct LocTagAuthorView: View {
 
     /// Leave the AR session and return to the hub.
     private func exitWalk() {
+        stopPresence()
         arManager.pauseSession()
         appState.activeARSession = nil
         appState.reset()
@@ -455,13 +479,13 @@ struct LocTagAuthorView: View {
         ])
         for hit in scnHits {
             // G4: floating panel — pill toggles the card, card opens the sheet.
-            if let h = FindingPanel.hit(hit.node),
+            if let h = FindingPanel.hit(hit),
                let tag = placedLocTags.first(where: { $0.id == h.tagId }) {
-                let root = sv.scene.rootNode
-                if h.part == .pill, let c = root.childNode(withName: "fpanel_\(h.tagId)", recursively: false) {
-                    FindingPanel.setMinimized(c, false)
-                } else {
-                    peekingLocTag = tag
+                let c = sv.scene.rootNode.childNode(withName: "fpanel_\(h.tagId)", recursively: false)
+                switch h.part {
+                case .pill:     if let c { FindingPanel.setMinimized(c, false) }
+                case .card:     if let c { FindingPanel.setMinimized(c, true) }
+                case .cardOpen: peekingLocTag = tag
                 }
                 return
             }
@@ -678,6 +702,106 @@ struct LocTagAuthorView: View {
         // G2: collect the walk header before the first finding (or offer to
         // continue an open walk on this space).
         if currentWalk == nil && !walkSkipped { showWalkStart = true }
+        startPresence()
+    }
+
+    // ── G7: presence — several auditors on one walk ───────────────────────────
+    // The shared frame IS the world map (a fresh walk publishes its own frame;
+    // once the map is uploaded, everyone who relocalises shares it). Poses are
+    // withheld while still relocalising so nobody sees a colleague in the
+    // wrong place. Findings saved by a colleague arrive as 'loc-tags' events →
+    // refetch and add / refresh pins + panels.
+
+    private func startPresence() {
+        guard presence == nil, let anchor = appState.activeAnchor else { return }
+        let svc = PresenceService(client: SIBClient(settings: settings), settings: settings,
+                                  anchorId: anchor.id, surface: "gembaWalk", guideId: nil)
+        let mgr = arManager
+        svc.poseProvider = {
+            guard !mgr.isRelocalizing, let cam = mgr.sceneView.session.currentFrame?.camera.transform else { return nil }
+            return cam                                    // world-map frame
+        }
+        svc.accepts = { $0.surface == "gembaWalk" }
+        let layer = PresenceLayer(sceneView: arManager.sceneView)
+        svc.$others.receive(on: RunLoop.main).sink { list in
+            presenceOthers = list
+            layer.update(list)
+        }.store(in: &presenceBag)
+        svc.$isConnected.receive(on: RunLoop.main).sink { presenceLinked = $0 }.store(in: &presenceBag)
+        svc.$event.receive(on: RunLoop.main).compactMap { $0 }.sink { ev in
+            switch ev {
+            case .joined(let e):
+                showPresenceToast("\(e.name) joined the walk\(e.site.map { " from \($0)" } ?? "")",
+                                  color: PresencePalette.color(role: e.role, userId: e.userId))
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            case .left(_, let name):
+                showPresenceToast("\(name) left", color: .darkGray)
+            case .findingsChanged:
+                Task { await syncFindingsFromColleagues() }
+            case .stepsChanged, .tagsChanged, .coachHint:
+                break
+            }
+            svc.event = nil
+        }.store(in: &presenceBag)
+        presence = svc; presenceLayer = layer
+        svc.start()
+    }
+
+    private func stopPresence() {
+        presence?.stop(); presence = nil
+        presenceBag.removeAll()
+        presenceLayer?.removeAll(); presenceLayer = nil
+        presenceOthers = []
+    }
+
+    private func showPresenceToast(_ text: String, color: UIColor) {
+        withAnimation { presenceToast = (text, color) }
+        Task {
+            try? await Task.sleep(nanoseconds: 3_500_000_000)
+            if presenceToast?.text == text { withAnimation { presenceToast = nil } }
+        }
+    }
+
+    /// Pull the anchor's findings and reconcile: new ones get a pin + panel
+    /// (with a toast naming the colleague's finding), changed ones re-render.
+    private func syncFindingsFromColleagues() async {
+        guard !syncingFindings, let anchor = appState.activeAnchor else { return }
+        syncingFindings = true
+        defer { syncingFindings = false }
+        guard let remote = try? await SIBClient(settings: settings).fetchLocTags(anchorId: anchor.id) else { return }
+        await MainActor.run {
+            let root = arManager.sceneView.scene.rootNode
+            let known = Dictionary(uniqueKeysWithValues: placedLocTags.map { ($0.id, $0) })
+            var added = 0
+            for tag in remote.sorted(by: { $0.order < $1.order }) {
+                if let old = known[tag.id] {
+                    if old != tag, let i = placedLocTags.firstIndex(where: { $0.id == tag.id }) {
+                        placedLocTags[i] = tag
+                        FindingPanel.update(in: root, tag: tag, index: i)
+                    }
+                } else {
+                    let node = makeLocTagPin(placed: true)
+                    node.name = tag.id
+                    node.simdPosition = simd_float3(Float(tag.position.x), Float(tag.position.y), Float(tag.position.z))
+                    root.addChildNode(node)
+                    tagNodes[tag.id] = node
+                    placedLocTags.append(tag)
+                    FindingPanel.attach(to: root, tag: tag, index: placedLocTags.count - 1, pinPosition: node.simdPosition)
+                    added += 1
+                }
+            }
+            // Findings deleted by a colleague disappear too.
+            let remoteIds = Set(remote.map { $0.id })
+            for tag in placedLocTags where !remoteIds.contains(tag.id) {
+                tagNodes[tag.id]?.removeFromParentNode(); tagNodes[tag.id] = nil
+                FindingPanel.remove(from: root, tagId: tag.id)
+            }
+            placedLocTags.removeAll { !remoteIds.contains($0.id) }
+            if added > 0 {
+                showToast(added == 1 ? "A colleague logged a finding" : "\(added) findings logged by colleagues")
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            }
+        }
     }
 
     /// Place solid-state markers for all pre-loaded loc-tags (resume mode).

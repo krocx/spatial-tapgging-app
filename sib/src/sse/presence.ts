@@ -34,7 +34,7 @@ export function validatePresenceUpdate(body: unknown): { ok: true; value: Presen
   const b = body as Record<string, unknown>;
   if (typeof b.userId !== 'string' || !b.userId.trim()) return { ok: false, error: 'userId is required' };
   if (typeof b.name !== 'string' || !b.name.trim()) return { ok: false, error: 'name is required' };
-  const surfaces = ['placeSteps', 'author', 'operator', 'guide'];
+  const surfaces = ['placeSteps', 'author', 'operator', 'guide', 'gembaWalk'];
   if (typeof b.surface !== 'string' || !surfaces.includes(b.surface)) return { ok: false, error: `surface must be one of ${surfaces.join(', ')}` };
   if (!Array.isArray(b.pose) || b.pose.length !== 16 || !b.pose.every(n => typeof n === 'number' && Number.isFinite(n))) {
     return { ok: false, error: 'pose must be 16 finite numbers' };
@@ -127,12 +127,15 @@ function ensureHooks(): void {
   // Edit echo: a colleague's step write → every anchor with people present
   // is told to refresh its steps. Cheap (one small event), debounced.
   storeEvents.on('write', (storeName: string) => {
-    if (storeName !== 'guide-steps' && storeName !== 'guides') return;
+    if (storeName !== 'guide-steps' && storeName !== 'guides' && storeName !== 'loc-tags') return;
     if (byAnchor.size === 0) return;
     if (editTimer) clearTimeout(editTimer);
     editTimer = setTimeout(() => {
+      // G7: a colleague's finding write → 'loc-tags' to every anchor with
+      // people present (the walk views refetch and add/refresh pins).
+      const eventName = storeName === 'loc-tags' ? 'loc-tags' : 'guide-steps';
       for (const anchorId of byAnchor.keys()) {
-        broadcastToAnchor(anchorId, 'guide-steps', { anchorId, store: storeName, at: new Date().toISOString() });
+        broadcastToAnchor(anchorId, eventName, { anchorId, store: storeName, at: new Date().toISOString() });
       }
     }, EDIT_DEBOUNCE_MS);
   });

@@ -19,7 +19,7 @@ import UIKit
 
 enum FindingPanel {
 
-    enum Part { case pill, card }
+    enum Part { case pill, card, cardOpen }
 
     /// Height of the panel centre above the pin, metres.
     static let lift: Float = 0.42
@@ -83,18 +83,28 @@ enum FindingPanel {
         container.opacity = dimmed ? 0.45 : 1.0
     }
 
-    /// Resolve a hit-test node to (finding id, which part). Walks up parents.
-    static func hit(_ node: SCNNode) -> (tagId: String, part: Part)? {
-        var cur: SCNNode? = node
+    /// Resolve a hit-test result to (finding id, which part). Walks up parents.
+    /// On the card, the bottom "Open ›" band is `.cardOpen`; anywhere else on
+    /// the card is `.card` (collapse). Uses the plane's local coordinates —
+    /// the card plane is centred on its own origin, +y up.
+    static func hit(_ result: SCNHitTestResult) -> (tagId: String, part: Part)? {
+        var cur: SCNNode? = result.node
         while let n = cur {
             if let name = n.name {
                 if name.hasPrefix("fpill_") { return (String(name.dropFirst(6)), .pill) }
-                if name.hasPrefix("fcard_") { return (String(name.dropFirst(6)), .card) }
+                if name.hasPrefix("fcard_") {
+                    let h = Float((n.geometry as? SCNPlane)?.height ?? 0.2)
+                    let footerBand = Float(0.30 * footerPt / 512)      // metres
+                    let inFooter = result.node === n && result.localCoordinates.y < -h / 2 + footerBand
+                    return (String(name.dropFirst(6)), inFooter ? .cardOpen : .card)
+                }
             }
             cur = n.parent
         }
         return nil
     }
+    /// Height of the card's footer band in texture points (matches renderCard).
+    private static let footerPt: CGFloat = 64
 
     /// Re-render after an edit (new caption, category…). Keeps expanded state.
     static func update(in root: SCNNode, tag: LocTag, index: Int) {
@@ -127,7 +137,21 @@ enum FindingPanel {
         case .none:     return UIColor.systemOrange
         }
     }
-    private static let surface = UIColor(red: 0.06, green: 0.08, blue: 0.13, alpha: 1)
+    // Warm, light "frosted" surface with dark ink — easier on the eye than
+    // orange-on-black, and orange stays the Gemba identity as the accent.
+    private static let surface  = UIColor(red: 0.985, green: 0.975, blue: 0.955, alpha: 1)
+    private static let ink      = UIColor(red: 0.12, green: 0.12, blue: 0.14, alpha: 1)
+    private static let inkMuted = UIColor(red: 0.40, green: 0.40, blue: 0.44, alpha: 1)
+    private static let hairline = UIColor(red: 0.86, green: 0.83, blue: 0.78, alpha: 1)
+
+    /// Draw text vertically centred in `rect` (single line, truncating).
+    private static func drawCentered(_ text: String, in rect: CGRect, font: UIFont, color: UIColor, align: NSTextAlignment = .left) {
+        let p = NSMutableParagraphStyle(); p.lineBreakMode = .byTruncatingTail; p.alignment = align
+        let attrs: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: color, .paragraphStyle: p]
+        let h = ceil(font.lineHeight)
+        let r = CGRect(x: rect.minX, y: rect.midY - h / 2, width: rect.width, height: h)
+        (text as NSString).draw(with: r, options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], attributes: attrs, context: nil)
+    }
 
     // ── Textures ──────────────────────────────────────────────────────────────
 
@@ -138,55 +162,45 @@ enum FindingPanel {
         let accent = color(for: tag)
         return UIGraphicsImageRenderer(size: size).image { _ in
             let r = CGRect(origin: .zero, size: size)
-            surface.setFill(); UIBezierPath(roundedRect: r, cornerRadius: 26).fill()
-            let ring = UIBezierPath(roundedRect: r.insetBy(dx: 2, dy: 2), cornerRadius: 24)
-            ring.lineWidth = 4; accent.setStroke(); ring.stroke()
+            surface.setFill(); UIBezierPath(roundedRect: r, cornerRadius: 30).fill()
+            let ring = UIBezierPath(roundedRect: r.insetBy(dx: 1.5, dy: 1.5), cornerRadius: 28.5)
+            ring.lineWidth = 3; accent.withAlphaComponent(0.75).setStroke(); ring.stroke()
 
             // Badge: stop number
-            let badgeR = CGRect(x: 16, y: 22, width: 76, height: 76)
+            let badgeR = CGRect(x: 18, y: 24, width: 72, height: 72)
             accent.setFill(); UIBezierPath(ovalIn: badgeR).fill()
-            let bStr = "\(index + 1)" as NSString
-            let bAttrs: [NSAttributedString.Key: Any] = [.font: UIFont.systemFont(ofSize: 34, weight: .heavy), .foregroundColor: UIColor.white]
-            let bSz = bStr.size(withAttributes: bAttrs)
-            bStr.draw(at: CGPoint(x: badgeR.midX - bSz.width / 2, y: badgeR.midY - bSz.height / 2), withAttributes: bAttrs)
+            drawCentered("\(index + 1)", in: badgeR, font: UIFont.systemFont(ofSize: 32, weight: .heavy), color: .white, align: .center)
 
-            // Right chip: category (+ risk) or legacy defect category
+            // Right chip: category (+ risk) or legacy defect category — soft tint, accent text
             let chipText: String = {
                 if let c = tag.findingCategory {
                     return tag.riskRating.map { "\(c.displayName) · \($0.shortName)" } ?? c.displayName
                 }
                 return tag.defectCategory.displayName
             }()
-            let chipAttrs: [NSAttributedString.Key: Any] = [.font: UIFont.systemFont(ofSize: 22, weight: .bold), .foregroundColor: UIColor.white]
-            let cSz = (chipText as NSString).size(withAttributes: chipAttrs)
-            let chipW = min(cSz.width + 28, 200)
-            let chipR = CGRect(x: W - 60 - chipW, y: H / 2 - 22, width: chipW, height: 44)
-            accent.withAlphaComponent(0.9).setFill(); UIBezierPath(roundedRect: chipR, cornerRadius: 22).fill()
-            let cp = NSMutableParagraphStyle(); cp.alignment = .center; cp.lineBreakMode = .byTruncatingTail
-            var chipDraw = chipAttrs; chipDraw[.paragraphStyle] = cp
-            (chipText as NSString).draw(with: CGRect(x: chipR.minX + 8, y: chipR.minY + 8, width: chipR.width - 16, height: 30),
-                                        options: .truncatesLastVisibleLine,
-                                        attributes: chipDraw, context: nil)
+            let chipFont = UIFont.systemFont(ofSize: 21, weight: .bold)
+            let cSz = (chipText as NSString).size(withAttributes: [.font: chipFont])
+            let chipW = min(ceil(cSz.width) + 30, 210)
+            let chipR = CGRect(x: W - 62 - chipW, y: H / 2 - 21, width: chipW, height: 42)
+            accent.withAlphaComponent(0.16).setFill(); UIBezierPath(roundedRect: chipR, cornerRadius: 21).fill()
+            drawCentered(chipText, in: chipR.insetBy(dx: 10, dy: 0), font: chipFont, color: accent, align: .center)
 
             // Title
-            let tp = NSMutableParagraphStyle(); tp.lineBreakMode = .byTruncatingTail
-            let tAttrs: [NSAttributedString.Key: Any] = [.font: UIFont.systemFont(ofSize: 26, weight: .bold), .foregroundColor: UIColor.white, .paragraphStyle: tp]
-            let title = tag.questionTitle ?? tag.title
-            let titleR = CGRect(x: 108, y: H / 2 - 18, width: chipR.minX - 120, height: 36)
-            (title as NSString).draw(with: titleR, options: .truncatesLastVisibleLine, attributes: tAttrs, context: nil)
+            let titleR = CGRect(x: badgeR.maxX + 16, y: 0, width: chipR.minX - badgeR.maxX - 28, height: H)
+            drawCentered(tag.questionTitle ?? tag.title, in: titleR, font: UIFont.systemFont(ofSize: 26, weight: .semibold), color: ink)
 
-            ("›" as NSString).draw(at: CGPoint(x: 466, y: H / 2 - 26), withAttributes: [
-                .font: UIFont.systemFont(ofSize: 38, weight: .semibold), .foregroundColor: UIColor.white.withAlphaComponent(0.6)])
+            // Expand chevron
+            drawCentered("›", in: CGRect(x: W - 56, y: 0, width: 30, height: H), font: UIFont.systemFont(ofSize: 40, weight: .medium), color: inkMuted, align: .center)
         }
     }
 
     /// 512 × (content) pt ↔ 0.30 m wide. Code · category · risk · question · notes · photos.
+    /// Tap anywhere on the card to collapse; the bottom "Open ›" band opens the sheet.
     private static func renderCard(tag: LocTag, index: Int) -> UIImage {
         let W: CGFloat = 512
         let accent = color(for: tag)
         let pad: CGFloat = 24
 
-        // Measure body text to size the card.
         let title = tag.questionTitle ?? tag.title
         let body  = tag.questionText ?? (tag.description.isEmpty ? nil : tag.description)
         let notes = tag.questionText != nil && !tag.description.isEmpty ? tag.description : nil
@@ -197,80 +211,77 @@ enum FindingPanel {
             let para = NSMutableParagraphStyle(); para.lineBreakMode = .byWordWrapping
             let r = (s as NSString).boundingRect(with: CGSize(width: W - 2 * pad, height: .greatestFiniteMagnitude),
                                                  options: [.usesLineFragmentOrigin], attributes: [.font: f, .paragraphStyle: para], context: nil)
-            return min(ceil(r.height), f.lineHeight * CGFloat(maxLines)) + 8
+            return min(ceil(r.height), ceil(f.lineHeight) * CGFloat(maxLines)) + 8
         }
         let bodyH  = height(body,  bodyFont,  maxLines: 4)
         let notesH = height(notes, notesFont, maxLines: 2)
-        let H: CGFloat = 16 + 56 + 12 + 40 + bodyH + notesH + 56 + 16
+        let H: CGFloat = 16 + 56 + 12 + 40 + bodyH + notesH + footerPt + 8
         let size = CGSize(width: W, height: H)
 
         return UIGraphicsImageRenderer(size: size).image { _ in
             let r = CGRect(origin: .zero, size: size)
             surface.setFill(); UIBezierPath(roundedRect: r, cornerRadius: 26).fill()
-            let ring = UIBezierPath(roundedRect: r.insetBy(dx: 2, dy: 2), cornerRadius: 24)
-            ring.lineWidth = 4; accent.setStroke(); ring.stroke()
+            let ring = UIBezierPath(roundedRect: r.insetBy(dx: 1.5, dy: 1.5), cornerRadius: 24.5)
+            ring.lineWidth = 3; accent.withAlphaComponent(0.75).setStroke(); ring.stroke()
 
             var y: CGFloat = 16
             // Header: badge + code + chips
             let badgeR = CGRect(x: pad, y: y, width: 56, height: 56)
             accent.setFill(); UIBezierPath(ovalIn: badgeR).fill()
-            let bStr = "\(index + 1)" as NSString
-            let bAttrs: [NSAttributedString.Key: Any] = [.font: UIFont.systemFont(ofSize: 26, weight: .heavy), .foregroundColor: UIColor.white]
-            let bSz = bStr.size(withAttributes: bAttrs)
-            bStr.draw(at: CGPoint(x: badgeR.midX - bSz.width / 2, y: badgeR.midY - bSz.height / 2), withAttributes: bAttrs)
+            drawCentered("\(index + 1)", in: badgeR, font: UIFont.systemFont(ofSize: 26, weight: .heavy), color: .white, align: .center)
 
             var x = badgeR.maxX + 14
-            let codeAttrs: [NSAttributedString.Key: Any] = [.font: UIFont.monospacedSystemFont(ofSize: 22, weight: .semibold), .foregroundColor: UIColor.white.withAlphaComponent(0.85)]
+            let codeFont = UIFont.monospacedSystemFont(ofSize: 21, weight: .semibold)
             if let line = tag.referenceLine {
-                (line as NSString).draw(at: CGPoint(x: x, y: y + 4), withAttributes: codeAttrs)
-                x += (line as NSString).size(withAttributes: codeAttrs).width + 14
+                let w = ceil((line as NSString).size(withAttributes: [.font: codeFont]).width)
+                drawCentered(line, in: CGRect(x: x, y: y, width: min(w, W - pad - x), height: 26), font: codeFont, color: inkMuted)
             }
-            func chip(_ text: String, fill: UIColor) {
-                let a: [NSAttributedString.Key: Any] = [.font: UIFont.systemFont(ofSize: 19, weight: .bold), .foregroundColor: UIColor.white]
-                let s = (text as NSString).size(withAttributes: a)
-                let cr = CGRect(x: x, y: y + 30, width: s.width + 22, height: 30)
+            func chip(_ text: String, tint: UIColor, textColor: UIColor) {
+                let f = UIFont.systemFont(ofSize: 18, weight: .bold)
+                let w = ceil((text as NSString).size(withAttributes: [.font: f]).width) + 22
+                let cr = CGRect(x: x, y: y + 28, width: w, height: 28)
                 guard cr.maxX < W - pad else { return }
-                fill.setFill(); UIBezierPath(roundedRect: cr, cornerRadius: 15).fill()
-                (text as NSString).draw(at: CGPoint(x: cr.minX + 11, y: cr.minY + 4), withAttributes: a)
+                tint.setFill(); UIBezierPath(roundedRect: cr, cornerRadius: 14).fill()
+                drawCentered(text, in: cr, font: f, color: textColor, align: .center)
                 x = cr.maxX + 8
             }
-            x = badgeR.maxX + 14
-            if let c = tag.findingCategory { chip(c.displayName, fill: accent) }
-            else { chip(tag.defectCategory.displayName, fill: accent) }
-            if let rr = tag.riskRating { chip(rr.displayName, fill: UIColor.white.withAlphaComponent(0.18)) }
-            if let s = tag.severity, tag.findingCategory == nil { chip(s.displayName, fill: UIColor.white.withAlphaComponent(0.18)) }
+            if let c = tag.findingCategory { chip(c.displayName, tint: accent.withAlphaComponent(0.16), textColor: accent) }
+            else { chip(tag.defectCategory.displayName, tint: accent.withAlphaComponent(0.16), textColor: accent) }
+            if let rr = tag.riskRating { chip(rr.displayName, tint: hairline.withAlphaComponent(0.6), textColor: ink) }
+            if let s = tag.severity, tag.findingCategory == nil { chip(s.displayName, tint: hairline.withAlphaComponent(0.6), textColor: ink) }
             y = badgeR.maxY + 12
 
             // Title
-            let tp = NSMutableParagraphStyle(); tp.lineBreakMode = .byTruncatingTail
-            (title as NSString).draw(with: CGRect(x: pad, y: y, width: W - 2 * pad, height: 36), options: .truncatesLastVisibleLine,
-                                      attributes: [.font: UIFont.systemFont(ofSize: 27, weight: .bold), .foregroundColor: UIColor.white, .paragraphStyle: tp], context: nil)
+            drawCentered(title, in: CGRect(x: pad, y: y, width: W - 2 * pad, height: 36), font: UIFont.systemFont(ofSize: 27, weight: .bold), color: ink)
             y += 40
 
             // Body (question text or description)
             if let body, bodyH > 0 {
                 let p = NSMutableParagraphStyle(); p.lineBreakMode = .byTruncatingTail
                 (body as NSString).draw(with: CGRect(x: pad, y: y, width: W - 2 * pad, height: bodyH - 8), options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine],
-                                         attributes: [.font: bodyFont, .foregroundColor: UIColor.white.withAlphaComponent(0.85), .paragraphStyle: p], context: nil)
+                                         attributes: [.font: bodyFont, .foregroundColor: ink.withAlphaComponent(0.85), .paragraphStyle: p], context: nil)
                 y += bodyH
             }
             if let notes, notesH > 0 {
                 let p = NSMutableParagraphStyle(); p.lineBreakMode = .byTruncatingTail
                 ("“\(notes)”" as NSString).draw(with: CGRect(x: pad, y: y, width: W - 2 * pad, height: notesH - 8), options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine],
-                                                 attributes: [.font: notesFont, .foregroundColor: UIColor.white.withAlphaComponent(0.7), .paragraphStyle: p], context: nil)
+                                                 attributes: [.font: notesFont, .foregroundColor: inkMuted, .paragraphStyle: p], context: nil)
                 y += notesH
             }
 
-            // Footer: photos + open hint
+            // Footer band: photos summary + "Open ›" (the tappable open zone)
+            let footR = CGRect(x: 0, y: H - footerPt, width: W, height: footerPt)
+            hairline.withAlphaComponent(0.5).setFill()
+            UIBezierPath(rect: CGRect(x: pad, y: footR.minY, width: W - 2 * pad, height: 1)).fill()
             let photos = tag.allPhotos
             let foot: String = photos.isEmpty ? "No photo"
                 : (photos.count == 1 ? "📷 1 photo" : "📷 \(photos.count) photos")
                   + (photos.first?.caption.map { " · \($0)" } ?? "")
-            let fp = NSMutableParagraphStyle(); fp.lineBreakMode = .byTruncatingTail
-            (foot as NSString).draw(with: CGRect(x: pad, y: y + 14, width: W - 2 * pad - 130, height: 30), options: .truncatesLastVisibleLine,
-                                     attributes: [.font: UIFont.systemFont(ofSize: 20, weight: .medium), .foregroundColor: UIColor.white.withAlphaComponent(0.7), .paragraphStyle: fp], context: nil)
-            ("Open ›" as NSString).draw(at: CGPoint(x: W - pad - 92, y: y + 12), withAttributes: [
-                .font: UIFont.systemFont(ofSize: 22, weight: .semibold), .foregroundColor: accent])
+            drawCentered(foot, in: CGRect(x: pad, y: footR.minY, width: W - 2 * pad - 130, height: footerPt),
+                         font: UIFont.systemFont(ofSize: 20, weight: .medium), color: inkMuted)
+            let openR = CGRect(x: W - pad - 110, y: footR.minY + 12, width: 110, height: footerPt - 24)
+            accent.setFill(); UIBezierPath(roundedRect: openR, cornerRadius: (footerPt - 24) / 2).fill()
+            drawCentered("Open ›", in: openR, font: UIFont.systemFont(ofSize: 21, weight: .bold), color: .white, align: .center)
         }
     }
 }

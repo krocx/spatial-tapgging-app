@@ -13,6 +13,7 @@
 
 import SwiftUI
 import PhotosUI
+import PencilKit
 
 struct LocTagFormSheet: View {
 
@@ -51,10 +52,14 @@ struct LocTagFormSheet: View {
         let id = UUID()
         var image: UIImage
         var caption: String = ""
+        /// G5: flattened markup copy + the strokes (for re-editing).
+        var markup: UIImage? = nil
+        var drawing: PKDrawing? = nil
     }
     @State private var photos: [DraftPhoto] = []
     @State private var pickerItems: [PhotosPickerItem] = []
     @State private var showCamera = false
+    @State private var markingUp: DraftPhoto? = nil
 
     // ── Submission ────────────────────────────────────────────────────────────
     @State private var isSubmitting = false
@@ -250,10 +255,19 @@ struct LocTagFormSheet: View {
         Section {
             ForEach($photos) { $p in
                 HStack(alignment: .top, spacing: 10) {
-                    Image(uiImage: p.image)
-                        .resizable().scaledToFill()
-                        .frame(width: 64, height: 64)
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                    Button { markingUp = p } label: {
+                        Image(uiImage: p.markup ?? p.image)
+                            .resizable().scaledToFill()
+                            .frame(width: 64, height: 64)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .overlay(alignment: .bottomTrailing) {
+                                Image(systemName: p.markup == nil ? "pencil.tip.crop.circle" : "pencil.tip.crop.circle.fill")
+                                    .font(.caption).foregroundStyle(.white)
+                                    .padding(3).background(.orange, in: Circle()).offset(x: 4, y: 4)
+                            }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(p.markup == nil ? "Mark up photo" : "Edit markup")
                     TextField("Area identifier · issue description", text: $p.caption, axis: .vertical)
                         .lineLimit(1...3)
                         .font(.subheadline)
@@ -281,6 +295,15 @@ struct LocTagFormSheet: View {
             }
         } footer: {
             if photos.isEmpty { Text("Optional, but a photo with a short caption is what the reviewer sees first.") }
+            else { Text("Tap a thumbnail to circle or mark the issue on the photo.") }
+        }
+        .fullScreenCover(item: $markingUp) { draft in
+            PhotoMarkupView(image: draft.image, existing: draft.drawing) { flattened, drawing in
+                if let i = photos.firstIndex(where: { $0.id == draft.id }) {
+                    photos[i].markup  = drawing.strokes.isEmpty ? nil : flattened
+                    photos[i].drawing = drawing.strokes.isEmpty ? nil : drawing
+                }
+            }
         }
     }
 
@@ -330,8 +353,18 @@ struct LocTagFormSheet: View {
                                               "photos": photos.count, "order": nextOrder])
         let client = SIBClient(settings: settings)
         do {
-            let locTag = try await client.createLocTag(req)
-            await MainActor.run { onSaved(locTag) }
+            var locTag = try await client.createLocTag(req)
+            // G5: markups ride after the finding exists — one PUT per marked photo,
+            // matched by upload order. A failed markup never loses the finding.
+            let stored = locTag.photos ?? []
+            for (i, draft) in photos.enumerated() where draft.markup != nil && i < stored.count {
+                if let b64 = draft.markup?.jpegData(compressionQuality: 0.7)?.base64EncodedString() {
+                    do { locTag = try await client.uploadLocTagMarkup(id: locTag.id, filename: stored[i].path, jpegBase64: b64) }
+                    catch { AppLog.warn("gemba", "markup upload failed: \(friendlyMessage(for: error))") }
+                }
+            }
+            let saved = locTag
+            await MainActor.run { onSaved(saved) }
         } catch {
             await MainActor.run {
                 isSubmitting = false
