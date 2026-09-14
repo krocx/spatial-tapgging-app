@@ -114,6 +114,19 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **Gemba Walk — every photo in the Excel export, plus Summary and Photos
+  sheets.** Auditors expect the workbook to carry the evidence, not just the
+  first picture. The walk export is now three sheets: **Summary** (one row per
+  walk — header, counts by category, max risk, photos, notes), **Findings**
+  (one row per finding with *all six* photos embedded side by side, each
+  caption beside its image, marked-up copy preferred) and **Photos** (one row
+  per photo for filtering by caption / markup). `xlsx-lite` gained multi-sheet
+  workbooks, any number of anchored images per row and columns beyond Z, still
+  with zero dependencies. `?walkIds=a,b,c` exports a chosen set (≤ 200).
+- **Walk Sessions — filters that scale.** Auditor dropdown, **From / To** date
+  window (default last 90 days, applied server-side via `GET /gemba/walks?from=&to=`,
+  *All time* to clear), 50-row paging with *Show more*, and **⬇ .xlsx (N shown)**
+  which exports exactly the filtered table.
 - **Gemba Walk — custom entries + no header-less walks.** Free-text findings
   now collect exactly what library findings do — typed focus area + question /
   observation, the same Finding Category (required) and Preliminary risk — and

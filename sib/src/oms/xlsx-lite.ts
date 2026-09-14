@@ -90,7 +90,12 @@ const esc = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
    .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 
-const colLetter = (i: number) => String.fromCharCode(65 + i); // A..K (11 cols max)
+/** 0-based column index → A, B, …, Z, AA, AB … (the walk workbook passes 26). */
+const colLetter = (i: number): string => {
+  let n = i + 1, out = '';
+  while (n > 0) { const r = (n - 1) % 26; out = String.fromCharCode(65 + r) + out; n = Math.floor((n - 1) / 26); }
+  return out;
+};
 
 function cellStr(col: number, row: number, v: string): string {
   return `<c r="${colLetter(col)}${row}" t="inlineStr"><is><t xml:space="preserve">${esc(v)}</t></is></c>`;
@@ -105,99 +110,100 @@ const EMU_PER_PX = 9525;
 const IMG_W = 240, IMG_H = 180;        // px in the sheet — large enough to review
 const IMG_ROW_HT = 140;                // pt — fits the 180px image
 
-interface Img { rowIdx: number; data: Buffer; }   // rowIdx is 0-based (drawing anchor)
+/** One embedded JPEG: 0-based row + column of the drawing anchor. */
+interface Img { rowIdx: number; col: number; data: Buffer; }
 
 interface SheetSpec {
   sheetName: string;
   colWidths: number[];
   rows:      string[];   // complete <row …>…</row> strings, header included
   images:    Img[];
-  imgCol:    number;     // 0-based column the images anchor in
+  /** Legacy single-column mode: images without `col` anchor here. */
+  imgCol?:   number;
+  /** Freeze the header row (and `freezeCols` columns) — walk workbook. */
+  freezeHeader?: boolean;
 }
 
-function assembleXlsx(spec: SheetSpec): Buffer {
-  const { sheetName, colWidths, rows, images, imgCol } = spec;
+const XML_HEAD = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>`;
+const REL_NS = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
 
-  const colDefs =
-    `<cols>` +
-    colWidths.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join('') +
-    `</cols>`;
+/** Assemble a workbook of one or more sheets, each with any number of
+ *  anchored JPEGs (one drawing part per sheet; media numbered globally). */
+function assembleXlsx(specOrSpecs: SheetSpec | SheetSpec[]): Buffer {
+  const sheets = Array.isArray(specOrSpecs) ? specOrSpecs : [specOrSpecs];
+  const entries: ZipEntry[] = [];
+  const sheetOverrides: string[] = [];
+  const workbookSheets: string[] = [];
+  const workbookRels: string[] = [];
+  let mediaSeq = 0;
 
-  const sheet =
-    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
-    `<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ` +
-    `xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">` +
-    colDefs +
-    `<sheetData>${rows.join('')}</sheetData>` +
-    (images.length ? `<drawing r:id="rId1"/>` : '') +
-    `</worksheet>`;
+  sheets.forEach((spec, si) => {
+    const n = si + 1;
+    const { sheetName, colWidths, rows, images } = spec;
+    const colDefs = `<cols>` +
+      colWidths.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join('') + `</cols>`;
+    const views = spec.freezeHeader
+      ? `<sheetViews><sheetView workbookViewId="0"${si === 0 ? ' tabSelected="1"' : ''}>` +
+        `<pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>`
+      : '';
+    const sheet = XML_HEAD +
+      `<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="${REL_NS}">` +
+      views + colDefs + `<sheetData>${rows.join('')}</sheetData>` +
+      (images.length ? `<drawing r:id="rId1"/>` : '') + `</worksheet>`;
 
-  // Drawing: one anchored JPEG per evidence row, in the Evidence column.
-  const anchors = images.map((img, i) =>
-    `<xdr:oneCellAnchor>` +
-    `<xdr:from><xdr:col>${imgCol}</xdr:col><xdr:colOff>${EMU_PER_PX * 4}</xdr:colOff>` +
-    `<xdr:row>${img.rowIdx}</xdr:row><xdr:rowOff>${EMU_PER_PX * 3}</xdr:rowOff></xdr:from>` +
-    `<xdr:ext cx="${IMG_W * EMU_PER_PX}" cy="${IMG_H * EMU_PER_PX}"/>` +
-    `<xdr:pic><xdr:nvPicPr><xdr:cNvPr id="${i + 1}" name="Evidence ${i + 1}"/><xdr:cNvPicPr/></xdr:nvPicPr>` +
-    `<xdr:blipFill><a:blip r:embed="rId${i + 1}"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill>` +
-    `<xdr:spPr><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic>` +
-    `<xdr:clientData/></xdr:oneCellAnchor>`).join('');
+    workbookSheets.push(`<sheet name="${esc(sheetName)}" sheetId="${n}" r:id="rId${n}"/>`);
+    workbookRels.push(`<Relationship Id="rId${n}" Type="${REL_NS}/worksheet" Target="worksheets/sheet${n}.xml"/>`);
+    sheetOverrides.push(`<Override PartName="/xl/worksheets/sheet${n}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`);
+    entries.push({ name: `xl/worksheets/sheet${n}.xml`, data: Buffer.from(sheet) });
 
-  const drawing =
-    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
-    `<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" ` +
-    `xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" ` +
-    `xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">${anchors}</xdr:wsDr>`;
+    if (!images.length) return;
+    const first = mediaSeq;
+    const anchors = images.map((img, i) =>
+      `<xdr:oneCellAnchor>` +
+      `<xdr:from><xdr:col>${img.col ?? spec.imgCol ?? 0}</xdr:col><xdr:colOff>${EMU_PER_PX * 4}</xdr:colOff>` +
+      `<xdr:row>${img.rowIdx}</xdr:row><xdr:rowOff>${EMU_PER_PX * 3}</xdr:rowOff></xdr:from>` +
+      `<xdr:ext cx="${IMG_W * EMU_PER_PX}" cy="${IMG_H * EMU_PER_PX}"/>` +
+      `<xdr:pic><xdr:nvPicPr><xdr:cNvPr id="${i + 1}" name="Photo ${first + i + 1}"/><xdr:cNvPicPr/></xdr:nvPicPr>` +
+      `<xdr:blipFill><a:blip r:embed="rId${i + 1}"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill>` +
+      `<xdr:spPr><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic>` +
+      `<xdr:clientData/></xdr:oneCellAnchor>`).join('');
+    const drawing = XML_HEAD +
+      `<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing" ` +
+      `xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="${REL_NS}">${anchors}</xdr:wsDr>`;
+    const drawingRels = XML_HEAD +
+      `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+      images.map((_, i) => `<Relationship Id="rId${i + 1}" Type="${REL_NS}/image" Target="../media/image${first + i + 1}.jpeg"/>`).join('') +
+      `</Relationships>`;
+    sheetOverrides.push(`<Override PartName="/xl/drawings/drawing${n}.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>`);
+    entries.push(
+      { name: `xl/worksheets/_rels/sheet${n}.xml.rels`, data: Buffer.from(XML_HEAD +
+        `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+        `<Relationship Id="rId1" Type="${REL_NS}/drawing" Target="../drawings/drawing${n}.xml"/></Relationships>`) },
+      { name: `xl/drawings/drawing${n}.xml`, data: Buffer.from(drawing) },
+      { name: `xl/drawings/_rels/drawing${n}.xml.rels`, data: Buffer.from(drawingRels) },
+      ...images.map((img, i) => ({ name: `xl/media/image${first + i + 1}.jpeg`, data: img.data })),
+    );
+    mediaSeq += images.length;
+  });
 
-  const drawingRels =
-    `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
-    `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
-    images.map((_, i) =>
-      `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" ` +
-      `Target="../media/image${i + 1}.jpeg"/>`).join('') +
-    `</Relationships>`;
-
-  const entries: ZipEntry[] = [
-    { name: '[Content_Types].xml', data: Buffer.from(
-      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+  const head: ZipEntry[] = [
+    { name: '[Content_Types].xml', data: Buffer.from(XML_HEAD +
       `<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">` +
       `<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>` +
       `<Default Extension="xml" ContentType="application/xml"/>` +
       `<Default Extension="jpeg" ContentType="image/jpeg"/>` +
       `<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>` +
-      `<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>` +
-      (images.length ? `<Override PartName="/xl/drawings/drawing1.xml" ContentType="application/vnd.openxmlformats-officedocument.drawing+xml"/>` : '') +
-      `</Types>`) },
-    { name: '_rels/.rels', data: Buffer.from(
-      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
+      sheetOverrides.join('') + `</Types>`) },
+    { name: '_rels/.rels', data: Buffer.from(XML_HEAD +
       `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
-      `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>` +
-      `</Relationships>`) },
-    { name: 'xl/workbook.xml', data: Buffer.from(
-      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
-      `<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ` +
-      `xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">` +
-      `<sheets><sheet name="${esc(sheetName)}" sheetId="1" r:id="rId1"/></sheets></workbook>`) },
-    { name: 'xl/_rels/workbook.xml.rels', data: Buffer.from(
-      `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
-      `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
-      `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>` +
-      `</Relationships>`) },
-    { name: 'xl/worksheets/sheet1.xml', data: Buffer.from(sheet) },
+      `<Relationship Id="rId1" Type="${REL_NS}/officeDocument" Target="xl/workbook.xml"/></Relationships>`) },
+    { name: 'xl/workbook.xml', data: Buffer.from(XML_HEAD +
+      `<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="${REL_NS}">` +
+      `<sheets>${workbookSheets.join('')}</sheets></workbook>`) },
+    { name: 'xl/_rels/workbook.xml.rels', data: Buffer.from(XML_HEAD +
+      `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${workbookRels.join('')}</Relationships>`) },
   ];
-  if (images.length) {
-    entries.push(
-      { name: 'xl/worksheets/_rels/sheet1.xml.rels', data: Buffer.from(
-        `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>` +
-        `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
-        `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/>` +
-        `</Relationships>`) },
-      { name: 'xl/drawings/drawing1.xml', data: Buffer.from(drawing) },
-      { name: 'xl/drawings/_rels/drawing1.xml.rels', data: Buffer.from(drawingRels) },
-      ...images.map((img, i) => ({ name: `xl/media/image${i + 1}.jpeg`, data: img.data })),
-    );
-  }
-  return buildZip(entries);
+  return buildZip([...head, ...entries]);
 }
 
 // ── Usage Log workbook ───────────────────────────────────────────────────────
@@ -267,7 +273,7 @@ export function buildUsageXlsx(
         + cellStr(10, r, e.outcome)
         + cellStr(11, r, val);
       if (evi) {
-        images.push({ rowIdx: r - 1, data: fs.readFileSync(evi) });  // 0-based row for the anchor
+        images.push({ rowIdx: r - 1, col: 12, data: fs.readFileSync(evi) });  // 0-based row for the anchor
         rows.push(`<row r="${r}" ht="${IMG_ROW_HT}" customHeight="1">${cells}</row>`);
       } else {
         rows.push(`<row r="${r}">${cells}</row>`);
@@ -322,7 +328,7 @@ export function buildSessionsXlsx(sessions: GuideSession[]): Buffer {
       const rel = sc.evidencePhotoPath;
       const abs = rel && !rel.includes('..') ? path.join(DATA_DIR, rel) : null;
       if (abs && fs.existsSync(abs)) {
-        images.push({ rowIdx: r - 1, data: fs.readFileSync(abs) });
+        images.push({ rowIdx: r - 1, col: 9, data: fs.readFileSync(abs) });
         rows.push(`<row r="${r}" ht="${IMG_ROW_HT}" customHeight="1">${cells}</row>`);
       } else {
         rows.push(`<row r="${r}">${cells}</row>`);
@@ -340,25 +346,49 @@ export function buildSessionsXlsx(sessions: GuideSession[]): Buffer {
 
 // ── Generic table workbook (G8 Gemba walk exports and anything after) ───────
 
-export interface TableRow { cells: (string | number | undefined)[]; image?: Buffer }
+export interface TableRow {
+  cells: (string | number | undefined)[];
+  /** One JPEG anchored in the sheet's `imgCol`. */
+  image?: Buffer;
+  /** Any number of JPEGs, each anchored in its own column (0-based). */
+  images?: { col: number; data: Buffer }[];
+}
+
+export interface TableSheet {
+  name:      string;
+  headers:   string[];
+  rows:      TableRow[];
+  colWidths: number[];
+  /** Column for `TableRow.image` (default: last). */
+  imgCol?:   number;
+  freezeHeader?: boolean;
+}
+
+function tableToSpec(t: TableSheet): SheetSpec {
+  const imgCol = t.imgCol ?? t.headers.length - 1;
+  const images: Img[] = [];
+  const out: string[] = [];
+  out.push(`<row r="1">${t.headers.map((h, i) => cellStr(i, 1, h)).join('')}</row>`);
+  let r = 2;
+  for (const row of t.rows) {
+    const cells = row.cells.map((v, i) => typeof v === 'number' ? cellNum(i, r, v) : cellStr(i, r, v ?? '')).join('');
+    let tall = false;
+    if (row.image) { images.push({ rowIdx: r - 1, col: imgCol, data: row.image }); tall = true; }
+    for (const im of row.images ?? []) { images.push({ rowIdx: r - 1, col: im.col, data: im.data }); tall = true; }
+    out.push(tall ? `<row r="${r}" ht="${IMG_ROW_HT}" customHeight="1">${cells}</row>` : `<row r="${r}">${cells}</row>`);
+    r++;
+  }
+  const widths = t.headers.map((_, i) => t.colWidths[i] ?? 16);
+  for (const im of images) widths[im.col] = Math.max(widths[im.col] ?? 16, 36);
+  return { sheetName: t.name, colWidths: widths, rows: out, images, imgCol, freezeHeader: t.freezeHeader };
+}
 
 /** Header + rows, optional JPEG per row anchored in `imgCol` (0-based). */
 export function buildTableXlsx(sheetName: string, headers: string[], rows: TableRow[], colWidths: number[], imgCol = headers.length - 1): Buffer {
-  const images: Img[] = [];
-  const out: string[] = [];
-  out.push(`<row r="1">${headers.map((h, i) => cellStr(i, 1, h)).join('')}</row>`);
-  let r = 2;
-  for (const row of rows) {
-    const cells = row.cells.map((v, i) => typeof v === 'number' ? cellNum(i, r, v) : cellStr(i, r, v ?? '')).join('');
-    if (row.image) {
-      images.push({ rowIdx: r - 1, data: row.image });
-      out.push(`<row r="${r}" ht="${IMG_ROW_HT}" customHeight="1">${cells}</row>`);
-    } else {
-      out.push(`<row r="${r}">${cells}</row>`);
-    }
-    r++;
-  }
-  const widths = headers.map((_, i) => colWidths[i] ?? 16);
-  if (images.length) widths[imgCol] = Math.max(widths[imgCol], 36);
-  return assembleXlsx({ sheetName, colWidths: widths, rows: out, images, imgCol });
+  return assembleXlsx(tableToSpec({ name: sheetName, headers, rows, colWidths, imgCol }));
+}
+
+/** Several table sheets in one workbook (G8: Summary · Findings · Photos). */
+export function buildWorkbookXlsx(sheets: TableSheet[]): Buffer {
+  return assembleXlsx(sheets.map(tableToSpec));
 }

@@ -735,12 +735,17 @@
  <div id="gemba-sessions-sub" style="display:none">
   <div class="sessions-toolbar">
     <span style="font-size:0.78rem;color:var(--muted);flex:1">One row per walk · auditor, project, org/BU, location · findings by category</span>
-    <button class="btn btn-ghost btn-sm" onclick="downloadServerFile('/gemba/walks/export.xlsx?all=true', 'gemba-walks-' + new Date().toISOString().slice(0,10) + '.xlsx').catch(e => toast(e.message))" title="Every walk, one row per finding, first photo embedded">⬇ .xlsx (all)</button>
+    <button class="btn btn-ghost btn-sm" id="gws-export-filtered" onclick="exportFilteredGembaWalks()" title="The walks shown below — Summary · Findings (all photos embedded) · Photos sheets">⬇ .xlsx (filtered)</button>
+    <button class="btn btn-ghost btn-sm" onclick="downloadServerFile('/gemba/walks/export.xlsx?all=true', 'gemba-walks-' + new Date().toISOString().slice(0,10) + '.xlsx').catch(e => toast(e.message))" title="Every walk on the server — Summary · Findings (all photos embedded) · Photos sheets">⬇ .xlsx (all)</button>
     <button class="btn btn-ghost btn-sm" onclick="loadGembaWalkSessions()">⟳ Refresh</button>
   </div>
   <div class="filter-bar">
     <input type="search" id="gws-q" placeholder="Filter by auditor, project, org, BU, location…" oninput="renderGembaWalkSessions()">
+    <select id="gws-auditor" onchange="renderGembaWalkSessions()"><option value="">All auditors</option></select>
     <select id="gws-status" onchange="renderGembaWalkSessions()"><option value="">All statuses</option><option value="open">Open</option><option value="submitted">Submitted</option></select>
+    <label style="font-size:0.72rem;color:var(--muted);display:flex;align-items:center;gap:4px">From <input type="date" id="gws-from" onchange="loadGembaWalkSessions()" style="font-size:0.75rem"></label>
+    <label style="font-size:0.72rem;color:var(--muted);display:flex;align-items:center;gap:4px">To <input type="date" id="gws-to" onchange="loadGembaWalkSessions()" style="font-size:0.75rem"></label>
+    <button class="btn btn-ghost btn-sm" onclick="gwsAllTime()" title="Clear the date window">All time</button>
   </div>
   <div id="gemba-sessions-list"></div>
  </div>
@@ -2779,13 +2784,41 @@ function gembaShowSub(sub) {
 // ── G2/G8: walk sessions ─────────────────────────────────────────────────────
 let gembaWalks = [];
 const gwsOpen = new Set();
+const GWS_PAGE = 50;
+let gwsShown = GWS_PAGE;
+let gwsFiltered = [];
+let gwsDatesInit = false;
+
+// Default window: last 90 days (server-side from/to keeps the list small as
+// walks accumulate). "All time" clears both.
+function gwsInitDates() {
+  if (gwsDatesInit) return;
+  gwsDatesInit = true;
+  const to = new Date(), from = new Date(Date.now() - 90 * 86400000);
+  document.getElementById('gws-from').value = from.toISOString().slice(0, 10);
+  document.getElementById('gws-to').value = to.toISOString().slice(0, 10);
+}
+function gwsAllTime() {
+  gwsDatesInit = true;
+  document.getElementById('gws-from').value = ''; document.getElementById('gws-to').value = '';
+  loadGembaWalkSessions();
+}
 
 async function loadGembaWalkSessions() {
   const list = document.getElementById('gemba-sessions-list');
+  gwsInitDates();
   if (!gembaWalks.length) list.innerHTML = '<p style="color:var(--muted);padding:24px;text-align:center;font-size:0.82rem;">Loading…</p>';
   try {
     if (allAnchors.length === 0) allAnchors = (await apiFetch('/anchors')).data || [];
-    gembaWalks = (await apiFetch('/gemba/walks')).data || [];
+    const qs = new URLSearchParams();
+    const from = document.getElementById('gws-from').value, to = document.getElementById('gws-to').value;
+    if (from) qs.set('from', from); if (to) qs.set('to', to);
+    gembaWalks = (await apiFetch('/gemba/walks' + (qs.toString() ? '?' + qs : ''))).data || [];
+    // Auditor dropdown from what's loaded (keep the current choice if still present).
+    const sel = document.getElementById('gws-auditor'); const cur = sel.value;
+    const names = [...new Set(gembaWalks.map(w => w.auditorName).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+    sel.innerHTML = '<option value="">All auditors</option>' + names.map(n => `<option value="${esc(n)}"${n === cur ? ' selected' : ''}>${esc(n)}</option>`).join('');
+    gwsShown = GWS_PAGE;
     renderGembaWalkSessions();
   } catch (e) {
     list.innerHTML = `<p style="color:var(--red);padding:24px;text-align:center;font-size:0.82rem;">${esc(e.message)}</p>`;
@@ -2803,9 +2836,14 @@ function renderGembaWalkSessions() {
   const list = document.getElementById('gemba-sessions-list');
   const q = (document.getElementById('gws-q').value || '').toLowerCase().trim();
   const st = document.getElementById('gws-status').value;
-  const rows = gembaWalks.filter(w => (!st || w.status === st) && (!q || JSON.stringify(w).toLowerCase().includes(q)));
+  const au = document.getElementById('gws-auditor').value;
+  gwsFiltered = gembaWalks.filter(w => (!st || w.status === st) && (!au || w.auditorName === au) && (!q || JSON.stringify(w).toLowerCase().includes(q)));
+  const rows = gwsFiltered.slice(0, gwsShown);
+  const exportBtn = document.getElementById('gws-export-filtered');
+  if (exportBtn) { exportBtn.disabled = !gwsFiltered.length; exportBtn.textContent = `⬇ .xlsx (${gwsFiltered.length} shown)`; }
   if (!rows.length) {
-    list.innerHTML = `<div class="empty-state" style="padding:40px;text-align:center;color:var(--muted);font-size:0.85rem">${gembaWalks.length ? 'Nothing matches that filter.' : 'No walks yet — start one from the app (Gemba Walk → Start walk).'}</div>`;
+    const win = document.getElementById('gws-from').value || document.getElementById('gws-to').value;
+    list.innerHTML = `<div class="empty-state" style="padding:40px;text-align:center;color:var(--muted);font-size:0.85rem">${gembaWalks.length ? 'Nothing matches that filter.' : (win ? 'No walks in this date window — <a href="#" onclick="gwsAllTime();return false">show all time</a>.' : 'No walks yet — start one from the app (Gemba Walk → Start walk).')}</div>`;
     return;
   }
   const anchorName = id => (allAnchors.find(a => a.id === id) || {}).assetId || id.slice(0, 8);
@@ -2831,8 +2869,20 @@ function renderGembaWalkSessions() {
       </td>
     </tr>
     <tr class="detail-tr" id="gws-${w.id}" style="display:${open ? '' : 'none'}"><td colspan="9"><div class="detail-inner" id="gwsd-${w.id}">${open ? 'Loading…' : ''}</div></td></tr>`;
-  }).join('') + `</tbody></table>`;
+  }).join('') + `</tbody></table>` +
+  (gwsFiltered.length > gwsShown
+    ? `<div style="text-align:center;padding:10px"><button class="btn btn-ghost btn-sm" onclick="gwsShown += GWS_PAGE; renderGembaWalkSessions()">Show ${Math.min(GWS_PAGE, gwsFiltered.length - gwsShown)} more (${gwsFiltered.length - gwsShown} left)</button></div>`
+    : `<div style="text-align:center;padding:6px;font-size:0.7rem;color:var(--muted)">${gwsFiltered.length} walk${gwsFiltered.length === 1 ? '' : 's'}</div>`);
   for (const id of gwsOpen) loadGembaWalkDetail(id);
+}
+
+// Export exactly the table (all filtered rows, not just the page shown).
+async function exportFilteredGembaWalks() {
+  if (!gwsFiltered.length) return;
+  if (gwsFiltered.length > 200) { toast('Narrow the filter to 200 walks or fewer, or use ⬇ .xlsx (all).'); return; }
+  const ids = gwsFiltered.map(w => w.id).join(',');
+  try { await downloadServerFile('/gemba/walks/export.xlsx?walkIds=' + encodeURIComponent(ids), `gemba-walks-${gwsFiltered.length}-${new Date().toISOString().slice(0, 10)}.xlsx`); }
+  catch (e) { toast(e.message); }
 }
 
 async function toggleGembaWalk(id) {

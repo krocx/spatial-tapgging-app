@@ -199,25 +199,40 @@ by Strength / OFI / NC, max risk, photos, and the findings log.
 
 **In the portal.** GembaWalks → **🚶 Walk Sessions**: one row per walk (date,
 auditor + employee id, project, org/BU, area · location, space, findings with
-category chips and max risk, status). Expand for the findings with question
-text, notes and captioned photos. **⬇ .xlsx** per walk or for all walks: one
-row per finding, walk header repeated, first photo embedded. Submitted walks
-can be **reopened** (admin) to fix the header; deleting a walk detaches its
-findings but keeps them.
+category chips and max risk, status). Filters: free text, auditor, status,
+and a **From / To** date window (default last 90 days, *All time* clears it —
+the window is applied server-side so the list stays small); 50 rows a page
+with *Show more*. Expand for the findings with question text, notes and
+captioned photos. Submitted walks can be **reopened** (admin) to fix the
+header; deleting a walk detaches its findings but keeps them.
+
+**Excel export** — per walk (row button), **⬇ .xlsx (N shown)** for exactly
+the filtered table (≤ 200 walks), or **⬇ .xlsx (all)**. One workbook, three
+sheets, header row frozen:
+
+| Sheet | One row per | Contents |
+|---|---|---|
+| **Summary** | walk | header fields, space, started/ended, counts by Strength / OFI / NC / uncategorised, max risk, photo count, notes |
+| **Findings** | finding | walk header repeated, stop #, focus area, question code / text, source, category, risk, notes, photo + markup counts, then **Photo 1 … Photo 6 embedded side by side, each with its caption in the next column** (marked-up copy when one exists) |
+| **Photos** | photo | walk header, stop #, question, category, photo #, caption, marked up, captured at, image — filter by caption or markup |
+
+`(file missing)` marks a photo whose file is gone from disk. Built by
+`buildWorkbookXlsx` in `oms/xlsx-lite.ts` (dependency-free; any number of
+anchored JPEGs per row, columns beyond Z).
 
 **Pick lists** live under Audit Library → *Walk header pick lists* (one value
 per line, Save). They ride along in `export.json` / import.
 
 ```
 POST   /gemba/walks                    { anchorId, auditorName, auditorId?, projectId?, organization?, bu?, area?, location? }
-GET    /gemba/walks?anchorId=&auditorId=&status=open|submitted     newest first, summary derived
+GET    /gemba/walks?anchorId=&auditorId=&status=open|submitted&from=YYYY-MM-DD&to=YYYY-MM-DD   newest first, summary derived
 GET    /gemba/walks/:id                { walk, findings }
 PATCH  /gemba/walks/:id                header / notes (submitted walks: notes only)
 POST   /gemba/walks/:id/submit         { notes? }
 POST   /gemba/walks/:id/adopt          { locTagIds? } — attach header-less findings on the space (never moves one from another walk)
 POST   /gemba/walks/:id/reopen         (admin)
 DELETE /gemba/walks/:id                (admin) — findings detached, not deleted
-GET    /gemba/walks/export.xlsx?walkId=  |  ?all=true
+GET    /gemba/walks/export.xlsx?walkId=  |  ?walkIds=a,b,c (≤200)  |  ?all=true     → Summary · Findings · Photos
 PUT    /gemba/library/lists/:kind      { values: string[] }   kind ∈ organization | bu | area | location
 ```
 Data: `gemba-walks.json`, `gemba-lists.json`. Code: `sib/src/gemba/walk-core.ts`,
