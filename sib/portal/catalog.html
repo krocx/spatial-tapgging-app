@@ -44,7 +44,11 @@ header h1 a{color:var(--text);text-decoration:none;}
 #graphWrap{flex:1;position:relative;min-width:0;}
 #graph{width:100%;height:100%;display:block;cursor:grab;}
 #graph.dragging{cursor:grabbing;}
-#hint{position:absolute;left:14px;bottom:12px;font-size:11px;color:var(--muted);pointer-events:none;}
+#hint{position:absolute;left:14px;bottom:12px;font-size:11px;color:var(--muted);pointer-events:none;max-width:70%;}
+#zoomCtl{position:absolute;right:14px;top:12px;display:flex;flex-direction:column;gap:4px;z-index:5;}
+#zoomCtl button{width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:var(--panel);color:var(--text);
+  font-size:15px;cursor:pointer;line-height:1;}
+#zoomCtl button:hover{border-color:var(--accent);}
 #matchCount{position:absolute;left:14px;top:10px;font-size:12px;color:var(--accent);display:none;}
 
 /* ── Side panel ── */
@@ -146,13 +150,16 @@ header h1 a{color:var(--text);text-decoration:none;}
 .askchip:hover{border-color:var(--accent);}
 
 /* graph text */
-text.nlabel{font-size:9.5px;fill:#b8c4d6;pointer-events:none;}
+text.nlabel{font-size:9.5px;fill:#b8c4d6;pointer-events:none;paint-order:stroke;stroke:#0b1220;stroke-width:3px;stroke-linejoin:round;}
+text.nlabel.hot{font-size:11px;fill:#fff;font-weight:600;}
 /* "Alive" breathing: pure CSS, so the idle render loop stays idle and the
    hit area travels with the node — ±1.5px against a 16px target never
    affects clicking. Two directions + varied duration/delay = organic. */
 @keyframes breatheA{from{transform:translate(0,0)}to{transform:translate(1.5px,-1.2px)}}
 @keyframes breatheB{from{transform:translate(0,0)}to{transform:translate(-1.3px,1.5px)}}
-text.albl{font-size:12px;font-weight:800;pointer-events:none;opacity:.8;}
+text.albl{font-size:15px;font-weight:800;letter-spacing:.02em;cursor:pointer;opacity:.9;paint-order:stroke;stroke:#0b1220;stroke-width:4px;stroke-linejoin:round;}
+text.albl:hover{opacity:1;text-decoration:underline;}
+g.terr path{pointer-events:none;}
 .trailbadge{font-size:9px;font-weight:800;fill:#fff;pointer-events:none;}
 @media (max-width:800px){ #panel{max-width:none;width:100%;position:absolute;inset:0;z-index:10;display:none;}
   #panel.open{display:block;} }
@@ -160,7 +167,7 @@ text.albl{font-size:12px;font-weight:800;pointer-events:none;opacity:.8;}
 </head>
 <body>
 <header>
-  <h1><a href="/">⚡</a> Feature Catalogue</h1>
+  <h1><a href="/" data-ax-wordmark data-short title="SIB home"></a> Feature Catalogue</h1>
   <span data-brand-slot style="display:flex;align-items:center;margin-left:auto;order:99"></span>
   <input id="search" type="search" placeholder="Search features, terms…" autocomplete="off">
   <div id="areaChips"></div>
@@ -182,7 +189,13 @@ text.albl{font-size:12px;font-weight:800;pointer-events:none;opacity:.8;}
   <div id="graphWrap">
     <div id="matchCount"></div>
     <svg id="graph"></svg>
-    <div id="hint">Click a node for details · drag to pan · scroll to zoom · drag nodes to rearrange</div>
+    <div id="zoomCtl">
+      <button id="zoomIn" title="Zoom in">+</button>
+      <button id="zoomOut" title="Zoom out">−</button>
+      <button id="zoomFit" title="Fit the whole map">⛶</button>
+      <button id="zoomReset" title="Reset layout (forget dragged positions)">↺</button>
+    </div>
+    <div id="hint">Hover for a summary · click for details · click a product name to zoom in · double-click a node to zoom to its neighbours · drag to pan · scroll to zoom</div>
   </div>
   <div id="panel"></div>
 </div>
@@ -298,43 +311,87 @@ function applyHash(){
   else if (areaById[id]) showArea(id);
 }
 
-/* ═══════════════ graph model + force simulation ═══════════════ */
-const W = 1200, H = 800;
+/* ═══════════════ graph model + layout ═══════════════ */
+// Sector layout (2026.4.46): each product area owns an angular sector of a
+// disc; inside it, features sit on rings by dependency depth (foundations
+// inward, leaves outward). Deterministic — no random start — then a short
+// relaxation pass separates neighbours. A soft territory hull is drawn behind
+// each area's nodes and the heading is pinned ABOVE the hull, so it can never
+// land on a node (the old fixed-offset labels did exactly that at 87 nodes).
+const W = 1400, H = 1000, CX = W/2, CY = H/2;
+const R_MIN = 150, R_MAX = 420;
+const POS_KEY = 'sib_catalog_pos';       // dragged positions, per browser
+let savedPos = {};
+try { savedPos = JSON.parse(localStorage.getItem(POS_KEY) || '{}'); } catch { savedPos = {}; }
+
 function buildGraph(){
-  // Area cluster anchors on an ellipse around the canvas centre.
-  const n = DATA.areas.length;
-  DATA.areas.forEach((a, i) => {
-    const ang = (i / n) * Math.PI * 2 - Math.PI / 2;
-    a.cx = W/2 + Math.cos(ang) * W*0.36;
-    a.cy = H/2 + Math.sin(ang) * H*0.36;
+  const feats = DATA.features;
+  byId = {};
+  nodes = feats.map(f => ({ ...f, x: CX, y: CY, tx: CX, ty: CY, vx:0, vy:0, fx:null, fy:null }));
+  nodes.forEach(nd => byId[nd.id] = nd);
+  edges = DATA.edges.map(e => ({ s: byId[e.from], t: byId[e.to] })).filter(e => e.s && e.t);
+
+  // Depth within the area = longest chain of in-area dependencies.
+  const memo = {};
+  const depth = nd => {
+    if (memo[nd.id] != null) return memo[nd.id];
+    memo[nd.id] = 0;
+    const d = Math.max(0, ...nd.depends.map(id => byId[id]).filter(p => p && p.area === nd.area).map(p => depth(p) + 1));
+    return memo[nd.id] = d;
+  };
+  nodes.forEach(depth);
+
+  // Sector per area, width ∝ node count (with a floor) — the busiest areas
+  // get the room they need; the order field keeps products where people
+  // learned to find them.
+  const areas = [...DATA.areas].sort((a, b) => a.order - b.order);
+  const counts = areas.map(a => Math.max(4, nodes.filter(n => n.area === a.id).length));
+  const total = counts.reduce((x, y) => x + y, 0);
+  let ang = -Math.PI / 2;
+  areas.forEach((a, i) => {
+    const span = (counts[i] / total) * Math.PI * 2;
+    a.a0 = ang + span * 0.07; a.a1 = ang + span * 0.93; ang += span;
+    a.amid = (a.a0 + a.a1) / 2;
+    const mine = nodes.filter(n => n.area === a.id);
+    const maxD = Math.max(0, ...mine.map(n => memo[n.id]));
+    const rings = {};
+    mine.forEach(n => (rings[memo[n.id]] ||= []).push(n));
+    // Foundations on the inner ring; a single-depth area still spreads out.
+    Object.entries(rings).forEach(([d, list]) => {
+      list.sort((x, y) => x.name.localeCompare(y.name));
+      const r = maxD === 0 ? (R_MIN + R_MAX) / 2 : R_MIN + (d / maxD) * (R_MAX - R_MIN);
+      list.forEach((n, k) => {
+        const t = list.length === 1 ? 0.5 : (k + 0.5) / list.length;
+        const th = a.a0 + (a.a1 - a.a0) * t;
+        n.tx = CX + Math.cos(th) * r; n.ty = CY + Math.sin(th) * r;
+        const sp = savedPos[n.id];
+        if (sp) { n.tx = sp.x; n.ty = sp.y; }
+        n.x = n.tx; n.y = n.ty;
+      });
+    });
   });
-  nodes = DATA.features.map(f => {
-    const a = areaById[f.area];
-    return { ...f, x: a.cx + (Math.random()-0.5)*120, y: a.cy + (Math.random()-0.5)*120, vx:0, vy:0, fx:null, fy:null };
-  });
-  byId = {}; nodes.forEach(nd => byId[nd.id] = nd);
-  edges = DATA.edges.map(e => ({ s: byId[e.from], t: byId[e.to] }));
 }
 
 let alpha = 1;
-let dirty = true;                     // redraw only while simulating or after interaction
+let dirty = true;
 const markDirty = () => { dirty = true; };
 function tick(){
-  // Tuned for breathing room: stronger/longer repulsion, longer springs,
-  // gentler cluster pull — labels stop colliding at default zoom.
-  const REP = 3600, SPRING = 0.025, SPRINGLEN = 120, CLUSTER = 0.028, DAMP = 0.85;
+  // Relaxation, not a free force layout: every node is tethered to its sector
+  // slot (TETHER), neighbours push apart just enough for labels (REP), and
+  // edges pull only gently so a cluster never collapses onto one point.
+  const REP = 2600, SPRING = 0.004, SPRINGLEN = 140, TETHER = 0.06, DAMP = 0.8;
   for (let i = 0; i < nodes.length; i++){
     const a = nodes[i];
     for (let j = i+1; j < nodes.length; j++){
       const b = nodes[j];
       let dx = a.x-b.x, dy = a.y-b.y, d2 = dx*dx+dy*dy || 1;
-      if (d2 < 100000){ const f = REP/d2; const d = Math.sqrt(d2);
+      if (d2 < 40000){ const f = REP/d2; const d = Math.sqrt(d2);
         dx/=d; dy/=d; a.vx += dx*f; a.vy += dy*f; b.vx -= dx*f; b.vy -= dy*f; }
     }
-    const home = areaById[a.area];
-    a.vx += (home.cx - a.x) * CLUSTER; a.vy += (home.cy - a.y) * CLUSTER;
+    a.vx += (a.tx - a.x) * TETHER; a.vy += (a.ty - a.y) * TETHER;
   }
   for (const e of edges){
+    if (e.s.area !== e.t.area) continue;           // cross-area edges never tug the layout
     const dx = e.t.x-e.s.x, dy = e.t.y-e.s.y, d = Math.sqrt(dx*dx+dy*dy)||1;
     const f = (d - SPRINGLEN) * SPRING;
     e.s.vx += dx/d*f; e.s.vy += dy/d*f; e.t.vx -= dx/d*f; e.t.vy -= dy/d*f;
@@ -343,31 +400,30 @@ function tick(){
     if (nd.fx != null){ nd.x = nd.fx; nd.y = nd.fy; nd.vx = nd.vy = 0; continue; }
     nd.vx *= DAMP; nd.vy *= DAMP;
     nd.x += nd.vx * alpha; nd.y += nd.vy * alpha;
-    nd.x = Math.max(30, Math.min(W-30, nd.x)); nd.y = Math.max(30, Math.min(H-30, nd.y));
+    nd.x = Math.max(40, Math.min(W-40, nd.x)); nd.y = Math.max(60, Math.min(H-40, nd.y));
   }
-  alpha *= 0.995;
+  alpha *= 0.99;
 }
 function startSim(){
   alpha = 1;
-  // Pre-settle SYNCHRONOUSLY before the first paint — but only ~90% of the
-  // way. The page opens with a few seconds of gentle, REAL settling (the
-  // launch animation people liked) while movement stays small enough that
-  // the 16 px hit areas + 5 px click dead-zone keep selection reliable.
-  // (Fully live convergence was ~13 s of fast drift — clicks landed where a
-  // node WAS; fully pre-settled was reliable but static.)
-  for (let i = 0; i < 300; i++) tick();
+  for (let i = 0; i < 260; i++) tick();     // settle ~90 % before first paint, then breathe in
   dirty = true;
   requestAnimationFrame(function loop(){
-    if (alpha > 0.02){ tick(); dirty = true; }   // drag reheats simulate briefly…
-    if (dirty){ draw(); dirty = false; }         // …then redraw only on interaction
+    if (alpha > 0.02){ tick(); dirty = true; }
+    if (dirty){ draw(); dirty = false; }
     requestAnimationFrame(loop);
   });
 }
 function reheat(){ alpha = Math.max(alpha, 0.5); dirty = true; }
+function resetLayout(){
+  savedPos = {}; localStorage.removeItem(POS_KEY);
+  buildGraph(); alpha = 1; for (let i = 0; i < 260; i++) tick(); fitAll();
+}
 
 /* ═══════════════ drawing ═══════════════ */
 const svg = document.getElementById('graph');
-let view = { x:0, y:0, k:1 };  // pan/zoom
+let view = { x:0, y:0, k:1 };
+let hovered = null;
 svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
 
 function nodeVisible(nd){
@@ -381,61 +437,136 @@ function nodeMatches(nd){
     nd.body.toLowerCase().includes(q) || nd.terms.some(t => t.toLowerCase().includes(q));
 }
 function trailSet(){ return trail ? new Set(trail.steps) : null; }
+function neighbourSet(id){
+  const n = new Set();
+  if (!id || !byId[id]) return n;
+  n.add(id);
+  edges.forEach(e => { if (e.s.id === id) n.add(e.t.id); if (e.t.id === id) n.add(e.s.id); });
+  return n;
+}
+
+// Convex hull (monotone chain) → padded, rounded territory path.
+function hull(pts){
+  if (pts.length < 3) return pts;
+  pts = [...pts].sort((a, b) => a.x - b.x || a.y - b.y);
+  const cross = (o, a, b) => (a.x-o.x)*(b.y-o.y) - (a.y-o.y)*(b.x-o.x);
+  const lo = [], up = [];
+  for (const p of pts){ while (lo.length >= 2 && cross(lo[lo.length-2], lo[lo.length-1], p) <= 0) lo.pop(); lo.push(p); }
+  for (const p of pts.reverse()){ while (up.length >= 2 && cross(up[up.length-2], up[up.length-1], p) <= 0) up.pop(); up.push(p); }
+  lo.pop(); up.pop(); return lo.concat(up);
+}
+function territory(a){
+  const pts = nodes.filter(n => n.area === a.id).map(n => ({ x: n.x, y: n.y }));
+  if (!pts.length) return null;
+  let h = hull(pts);
+  if (h.length === 1) h = [h[0], { x: h[0].x + 1, y: h[0].y }];
+  if (h.length === 2) h = [h[0], h[1], { x: h[1].x, y: h[1].y + 1 }];
+  // Heading sits OUTSIDE the disc on the sector's own bearing — never inside
+  // another area's territory, whichever way the sector faces.
+  const rMax = Math.max(...pts.map(p => Math.hypot(p.x - CX, p.y - CY)));
+  const lr = rMax + 58, lx = CX + Math.cos(a.amid) * lr, ly = CY + Math.sin(a.amid) * lr;
+  const anchor = Math.cos(a.amid) > 0.35 ? 'start' : Math.cos(a.amid) < -0.35 ? 'end' : 'middle';
+  return { d: 'M' + h.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join('L') + 'Z', labelX: lx, labelY: ly + 5, anchor };
+}
 
 function draw(){
   const ts = trailSet();
-  const neighbours = new Set();
-  if (selected && byId[selected]){
-    neighbours.add(selected);
-    edges.forEach(e => { if (e.s.id === selected) neighbours.add(e.t.id); if (e.t.id === selected) neighbours.add(e.s.id); });
-  }
+  const neighbours = neighbourSet(selected);
+  const hov = neighbourSet(hovered);
+  const showAll = view.k >= 0.9;                 // semantic labels: everything at reading zoom
   let out = `<g transform="translate(${view.x},${view.y}) scale(${view.k})">`;
-  // area labels
+  // territories + headings (pinned above the hull, clickable)
   for (const a of DATA.areas){
+    const t = territory(a); if (!t) continue;
     const dim = activeAreas.size && !activeAreas.has(a.id);
-    out += `<text class="albl" x="${a.cx}" y="${a.cy - 130}" text-anchor="middle" fill="${a.color}" opacity="${dim?0.15:0.8}">${esc(a.name)}</text>`;
+    out += `<g class="terr" data-area="${a.id}" opacity="${dim ? 0.18 : 1}">
+      <path d="${t.d}" fill="${a.color}" fill-opacity=".055" stroke="${a.color}" stroke-opacity=".10" stroke-width="88" stroke-linejoin="round"/>
+      <text class="albl" x="${t.labelX}" y="${t.labelY}" text-anchor="${t.anchor}" fill="${a.color}">${esc(a.name)}</text>
+    </g>`;
   }
   // edges
   for (const e of edges){
     const vis = nodeVisible(e.s) && nodeVisible(e.t);
-    let op = vis ? 0.35 : 0.04;
-    if (ts) op = (ts.has(e.s.id) && ts.has(e.t.id)) ? 0.6 : 0.05;
-    else if (selected) op = (neighbours.has(e.s.id) && neighbours.has(e.t.id) && (e.s.id === selected || e.t.id === selected)) ? 0.9 : 0.08;
-    else if (searchQ) op = (nodeMatches(e.s) && nodeMatches(e.t)) ? 0.4 : 0.05;
-    out += `<line x1="${e.s.x}" y1="${e.s.y}" x2="${e.t.x}" y2="${e.t.y}" stroke="${areaById[e.s.area].color}" stroke-width="1.2" opacity="${op}"/>`;
+    let op = vis ? 0.22 : 0.03;
+    const touches = (set) => set.has(e.s.id) && set.has(e.t.id);
+    if (ts) op = touches(ts) ? 0.7 : 0.04;
+    else if (selected) op = touches(neighbours) && (e.s.id === selected || e.t.id === selected) ? 0.95 : 0.06;
+    else if (hovered) op = touches(hov) && (e.s.id === hovered || e.t.id === hovered) ? 0.9 : 0.08;
+    else if (searchQ) op = (nodeMatches(e.s) && nodeMatches(e.t)) ? 0.45 : 0.04;
+    const lit = (selected && (e.s.id === selected || e.t.id === selected)) || (hovered && (e.s.id === hovered || e.t.id === hovered));
+    out += `<line x1="${e.s.x}" y1="${e.s.y}" x2="${e.t.x}" y2="${e.t.y}" stroke="${areaById[e.s.area].color}" stroke-width="${lit ? 2 : 1.2}" opacity="${op}"/>`;
   }
   // nodes
   for (const nd of nodes){
     const c = areaById[nd.area].color;
     let op = nodeVisible(nd) ? 1 : 0.07;
     if (ts) op = ts.has(nd.id) ? 1 : 0.08;
+    else if (selected) op = neighbours.has(nd.id) ? 1 : (nodeVisible(nd) ? 0.45 : 0.07);
+    else if (hovered) op = hov.has(nd.id) ? 1 : (nodeVisible(nd) ? 0.35 : 0.07);
     else if (searchQ) op = nodeMatches(nd) && nodeVisible(nd) ? 1 : 0.07;
-    const r = nd.id === selected ? 11 : 8;
+    const isSel = nd.id === selected, isHov = nd.id === hovered;
+    const r = isSel ? 11 : isHov ? 10 : 8;
     let shape;
     if (nd.status === 'shipped') shape = `<circle cx="${nd.x}" cy="${nd.y}" r="${r}" fill="${c}"/>`;
     else if (nd.status === 'beta') shape = `<circle cx="${nd.x}" cy="${nd.y}" r="${r}" fill="${c}" fill-opacity=".25" stroke="${c}" stroke-width="2"/>`;
     else shape = `<circle cx="${nd.x}" cy="${nd.y}" r="${r}" fill="none" stroke="${c}" stroke-width="1.6" stroke-dasharray="4 3"/>`;
-    const sel = nd.id === selected ? `<circle cx="${nd.x}" cy="${nd.y}" r="${r+4}" fill="none" stroke="#fff" stroke-width="1.4" opacity=".9"/>` : '';
+    const halo = isSel ? `<circle cx="${nd.x}" cy="${nd.y}" r="${r+5}" fill="none" stroke="#fff" stroke-width="1.4" opacity=".9"/>`
+               : isHov ? `<circle cx="${nd.x}" cy="${nd.y}" r="${r+7}" fill="${c}" fill-opacity=".18"/>` : '';
     let badge = '';
     if (ts && ts.has(nd.id)){
       const num = trail.steps.indexOf(nd.id) + 1;
       badge = `<circle cx="${nd.x+10}" cy="${nd.y-10}" r="7" fill="${num-1===trailIdx?'#f59e0b':'#334155'}"/>
                <text class="trailbadge" x="${nd.x+10}" y="${nd.y-7}" text-anchor="middle">${num}</text>`;
     }
-    // The transparent circle is the HIT AREA — nodes are visually 8 px but
-    // clickable at 16 px, which matters for precise mice and small trackpads.
-    const bi = nd.id.length + nd.id.charCodeAt(0);            // stable per-node variation
+    // Labels: all at reading zoom; otherwise only what you're looking at.
+    const labelled = showAll || isSel || isHov || neighbours.has(nd.id) || hov.has(nd.id)
+      || (ts && ts.has(nd.id)) || (searchQ && nodeMatches(nd));
+    const name = nd.name.length > 28 ? nd.name.slice(0, 27) + '…' : nd.name;
+    const label = labelled ? `<text class="nlabel${isSel || isHov ? ' hot' : ''}" x="${nd.x}" y="${nd.y + r + 12}" text-anchor="middle">${esc(name)}</text>` : '';
+    const bi = nd.id.length + nd.id.charCodeAt(0);
     const breathe = `animation:${bi % 2 ? 'breatheA' : 'breatheB'} ${3.2 + (bi % 5) * 0.6}s ease-in-out ${(bi % 7) * 0.4}s infinite alternate`;
     out += `<g opacity="${op}" data-id="${nd.id}" style="cursor:pointer;${breathe}">
-      <circle cx="${nd.x}" cy="${nd.y}" r="${r + 8}" fill="transparent"/>${sel}${shape}
-      <text class="nlabel" x="${nd.x}" y="${nd.y + r + 11}" text-anchor="middle">${esc(nd.name.length > 26 ? nd.name.slice(0,25)+'…' : nd.name)}</text>${badge}</g>`;
+      <circle cx="${nd.x}" cy="${nd.y}" r="${r + 8}" fill="transparent"/>${halo}${shape}${label}${badge}</g>`;
   }
   out += '</g>';
   svg.innerHTML = out;
 }
 
-/* pan / zoom / node drag / click */
-let drag = null; // {type:'pan'|'node', ...}
+/* ═══════════════ view: fit / zoom / animate ═══════════════ */
+let viewAnim = null;
+function animateView(to, ms = 450){
+  if (viewAnim) cancelAnimationFrame(viewAnim);
+  const from = { ...view }, t0 = performance.now();
+  const ease = t => 1 - Math.pow(1 - t, 3);
+  const step = now => {
+    const t = Math.min(1, (now - t0) / ms), e = ease(t);
+    view = { x: from.x + (to.x - from.x) * e, y: from.y + (to.y - from.y) * e, k: from.k + (to.k - from.k) * e };
+    markDirty();
+    if (t < 1) viewAnim = requestAnimationFrame(step); else viewAnim = null;
+  };
+  viewAnim = requestAnimationFrame(step);
+}
+function fitBounds(pts, pad = 90){
+  if (!pts.length) return;
+  const minX = Math.min(...pts.map(p => p.x)) - pad, maxX = Math.max(...pts.map(p => p.x)) + pad;
+  const minY = Math.min(...pts.map(p => p.y)) - pad, maxY = Math.max(...pts.map(p => p.y)) + pad;
+  const k = Math.max(0.4, Math.min(2.4, Math.min(W / (maxX - minX), H / (maxY - minY))));
+  animateView({ k, x: (W - (minX + maxX) * k) / 2, y: (H - (minY + maxY) * k) / 2 });
+}
+function fitAll(){ animateView({ x: 0, y: 0, k: 1 }); }
+function zoomToArea(id){ fitBounds(nodes.filter(n => n.area === id), 120); }
+function zoomToFeature(id){ const n = byId[id]; if (!n) return; fitBounds([n, ...[...neighbourSet(id)].map(i => byId[i])], 140); }
+function zoomBy(f){
+  const k2 = Math.max(0.4, Math.min(3.5, view.k * f));
+  animateView({ k: k2, x: CX - (CX - view.x) * (k2 / view.k), y: CY - (CY - view.y) * (k2 / view.k) }, 220);
+}
+document.getElementById('zoomIn').onclick  = () => zoomBy(1.25);
+document.getElementById('zoomOut').onclick = () => zoomBy(0.8);
+document.getElementById('zoomFit').onclick = fitAll;
+document.getElementById('zoomReset').onclick = resetLayout;
+
+/* pan / zoom / node drag / click / hover */
+let drag = null;
 function svgPoint(ev){
   const r = svg.getBoundingClientRect();
   const px = (ev.clientX - r.left) / r.width * W, py = (ev.clientY - r.top) / r.height * H;
@@ -443,20 +574,24 @@ function svgPoint(ev){
 }
 svg.addEventListener('pointerdown', ev => {
   const g = ev.target.closest('g[data-id]');
+  const terr = ev.target.closest('g.terr');
   if (g){ const nd = byId[g.dataset.id]; drag = { type:'node', nd, moved:false, sx: ev.clientX, sy: ev.clientY }; nd.fx = nd.x; nd.fy = nd.y; }
+  else if (terr && ev.target.tagName === 'text'){ drag = { type:'area', id: terr.dataset.area, moved:false, sx: ev.clientX, sy: ev.clientY }; }
   else drag = { type:'pan', sx: ev.clientX, sy: ev.clientY, ox: view.x, oy: view.y, moved:false };
   svg.setPointerCapture(ev.pointerId); svg.classList.add('dragging');
 });
 svg.addEventListener('pointermove', ev => {
-  if (!drag) return;
+  if (!drag){
+    const g = ev.target.closest('g[data-id]');
+    const id = g ? g.dataset.id : null;
+    if (id !== hovered){ hovered = id; markDirty(); id ? showNodeTip(byId[id], ev) : hideTip(); }
+    else if (id) moveTip(ev);
+    return;
+  }
   if (drag.type === 'node'){
-    // Dead zone: Windows mice emit 1–2 px pointermove jitter between press
-    // and release, which misclassified clicks as drags — the node then never
-    // selected. Only treat it as a drag beyond 5 px of real movement.
-    if (!drag.moved &&
-        Math.abs(ev.clientX - drag.sx) + Math.abs(ev.clientY - drag.sy) <= 5) return;
-    const p = svgPoint(ev); drag.nd.fx = p.x; drag.nd.fy = p.y; drag.moved = true; reheat();
-  } else {
+    if (!drag.moved && Math.abs(ev.clientX - drag.sx) + Math.abs(ev.clientY - drag.sy) <= 5) return;
+    const p = svgPoint(ev); drag.nd.fx = p.x; drag.nd.fy = p.y; drag.moved = true; hideTip(); reheat();
+  } else if (drag.type === 'pan') {
     const r = svg.getBoundingClientRect();
     view.x = drag.ox + (ev.clientX - drag.sx) / r.width * W;
     view.y = drag.oy + (ev.clientY - drag.sy) / r.height * H;
@@ -468,11 +603,19 @@ svg.addEventListener('pointerup', ev => {
   svg.classList.remove('dragging');
   if (drag && drag.type === 'node'){
     if (!drag.moved) selectFeature(drag.nd.id);
+    else { drag.nd.tx = drag.nd.fx; drag.nd.ty = drag.nd.fy; savedPos[drag.nd.id] = { x: drag.nd.fx, y: drag.nd.fy };
+           try { localStorage.setItem(POS_KEY, JSON.stringify(savedPos)); } catch {} }
     drag.nd.fx = drag.nd.fy = null; markDirty();
+  } else if (drag && drag.type === 'area'){
+    showArea(drag.id); zoomToArea(drag.id);
   } else if (drag && !drag.moved){
-    selected = null; renderHome(); // click empty space → home panel
+    selected = null; renderHome();
   }
   drag = null;
+});
+svg.addEventListener('pointerleave', () => { if (hovered){ hovered = null; hideTip(); markDirty(); } });
+svg.addEventListener('dblclick', ev => {
+  const g = ev.target.closest('g[data-id]'); if (g) zoomToFeature(g.dataset.id);
 });
 svg.addEventListener('wheel', ev => {
   ev.preventDefault();
@@ -480,6 +623,20 @@ svg.addEventListener('wheel', ev => {
   const k2 = Math.max(0.4, Math.min(3.5, view.k * (ev.deltaY < 0 ? 1.12 : 0.89)));
   view.x += p.x * (view.k - k2); view.y += p.y * (view.k - k2); view.k = k2; markDirty();
 }, { passive:false });
+
+// Node tooltip: what it is before you commit a click.
+function showNodeTip(nd, ev){
+  const a = areaById[nd.area];
+  const first = (nd.body || '').split(/(?<=\.)\s/)[0].slice(0, 160);
+  tip.innerHTML = `<div class="tt" style="color:${a.color}">${esc(nd.name)}</div>` +
+    `<div style="color:var(--muted);font-size:11px;margin-bottom:4px">${esc(a.name)} · ${esc(nd.status)} · ${esc(nd.version)}</div>${esc(first)}`;
+  tip.style.display = 'block'; moveTip(ev);
+}
+function moveTip(ev){
+  tip.style.left = Math.min(ev.clientX + 16, innerWidth - 340) + 'px';
+  tip.style.top = Math.min(ev.clientY + 16, innerHeight - 120) + 'px';
+}
+function hideTip(){ tip.style.display = 'none'; }
 
 /* ═══════════════ header controls ═══════════════ */
 function renderAreaChips(){
@@ -494,6 +651,7 @@ function renderAreaChips(){
       else activeAreas.add(id);
       if (activeAreas.size === DATA.areas.length) activeAreas.clear();
       renderAreaChips(); showArea(id); markDirty();
+      if (activeAreas.has(id)) zoomToArea(id); else if (!activeAreas.size) fitAll();
     };
   });
 }

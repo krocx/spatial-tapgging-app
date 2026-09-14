@@ -114,6 +114,23 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **Feature Catalogue map — territories, sector layout, hover, zoom controls
+  (slice A).** At 87 features the free force layout had product headings
+  landing on nodes and labels on labels. The map is now laid out by
+  **sector**: each product area owns a wedge of the disc (width ∝ feature
+  count), features sit on rings by dependency depth (foundations inward),
+  deterministic — no random start. A soft **territory** hull is drawn behind
+  each area's nodes and the heading is pinned *outside* the disc on the
+  sector's bearing, so it can never sit on a node. **Semantic labels**: below
+  0.9× zoom only the hovered, selected, neighbouring, searched and trail
+  nodes are labelled; zoom in and everything reads. **Hover** grows the node,
+  lights its edges, dims the rest and shows a tooltip (area · status ·
+  version · first sentence). **Controls**: + − ⛶ fit ↺ reset (top-right),
+  click a product heading or chip to zoom to that territory, double-click a
+  node to zoom to it and its neighbours; dragged positions are remembered per
+  browser. Header ⚡ replaced by the appliedx wordmark. Slices B (Grid /
+  Timeline views, status + version filters) and C (panel history, related
+  rail, keyboard, shareable view URLs) are proposed next.
 - **Platform wordmark — "appliedx Connected Worker AR OMS Platform".** The
   home page, portal header, catalogue, /platform and the long-form page now
   carry the team's wordmark the way it is written in decks: *applied* in
