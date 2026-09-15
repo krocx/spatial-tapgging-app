@@ -43,7 +43,10 @@ header h1 a{color:var(--text);text-decoration:none;}
 /* ── Layout ── */
 #main{flex:1;display:flex;min-height:0;}
 #graphWrap{flex:1;position:relative;min-width:0;}
-#graph{width:100%;height:100%;display:block;cursor:grab;background:radial-gradient(ellipse at 50% 50%,#101a30 0%,#0b1220 62%);}
+#graph{width:100%;height:100%;display:block;cursor:grab;background:radial-gradient(ellipse at 50% 50%,#101a30 0%,#0b1220 62%);
+  user-select:none;-webkit-user-select:none;touch-action:none;}
+#graph text{user-select:none;-webkit-user-select:none;pointer-events:none;}
+#graph text.albl{pointer-events:auto;}
 #graph.dragging{cursor:grabbing;}
 #hint{position:absolute;left:14px;bottom:12px;font-size:11px;color:var(--muted);pointer-events:none;max-width:70%;}
 .seg{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--panel);}
@@ -528,10 +531,11 @@ function startSim(){
     ['pointerdown', 'wheel', 'keydown'].forEach(ev => window.addEventListener(ev, end, { once: true }));
   }
   dirty = true;
-  requestAnimationFrame(function loop(){
+  requestAnimationFrame(function loop(now){
     if (!igniting){
       if (alpha > 0.02){ tick(); dirty = true; }
       if (dirty){ draw(); dirty = false; }
+      animateFlow(now);
     }
     requestAnimationFrame(loop);
   });
@@ -856,6 +860,23 @@ function neighbourSet(id){
   return n;
 }
 
+let flowSeq = 0, flowNodes = [];
+function collectFlow(){
+  flowNodes = [];
+  const paths = {};
+  svg.querySelectorAll('path.flowpath').forEach(p => { paths[p.id] = { el: p, len: p.getTotalLength() }; });
+  svg.querySelectorAll('circle.flow').forEach(c => { const p = paths[c.dataset.path]; if (p) flowNodes.push({ c, p, k: +c.dataset.k }); });
+}
+function animateFlow(now){
+  if (!flowNodes.length) return;
+  const t0 = (now / 1500) % 1;
+  for (const f of flowNodes){
+    const t = (t0 + f.k / 3) % 1;
+    const pt = f.p.el.getPointAtLength(t * f.p.len);
+    f.c.setAttribute('cx', pt.x.toFixed(1)); f.c.setAttribute('cy', pt.y.toFixed(1));
+    f.c.setAttribute('opacity', (f.c.getAttribute('fill') === '#fff' ? 0.9 : 0.35) * (0.35 + 0.65 * Math.sin(t * Math.PI)));
+  }
+}
 function draw(){
   const ts = trailSet();
   const neighbours = neighbourSet(selected);
@@ -894,12 +915,15 @@ function draw(){
     const lit = focusId && (e.s.id === focusId || e.t.id === focusId);
     const d = edgePath(e);
     out += `<path d="${d}" fill="none" stroke="${areaById[e.s.area].color}" stroke-width="${lit ? 2 : 1.1}" opacity="${op}"/>`;
-    // Flow: light runs from the dependency to what builds on it.
+    // Flow: light runs from the dependency to what builds on it. Driven from
+    // the frame loop (getPointAtLength) — SMIL animateMotion was silent on
+    // Windows Chromium, and this also respects a paused/hidden tab.
     if (lit && !igniting){
-      const c = areaById[e.t.area].color;
+      const c = areaById[e.t.area].color, fid = 'fl' + flowSeq++;
+      out += `<path id="${fid}" d="${d}" fill="none" stroke="none" class="flowpath"/>`;
       for (let k = 0; k < 3; k++)
-        out += `<circle r="2.6" fill="#fff" opacity=".9"><animateMotion dur="1.5s" begin="${(k * 0.5).toFixed(1)}s" repeatCount="indefinite" path="${d}"/></circle>` +
-               `<circle r="5" fill="${c}" opacity=".35"><animateMotion dur="1.5s" begin="${(k * 0.5).toFixed(1)}s" repeatCount="indefinite" path="${d}"/></circle>`;
+        out += `<circle r="5" fill="${c}" opacity=".35" class="flow" data-path="${fid}" data-k="${k}"/>` +
+               `<circle r="2.6" fill="#fff" opacity=".9" class="flow" data-path="${fid}" data-k="${k}"/>`;
     }
   }
   // Label collision: greedy, outer rings first; a label that would overlap
@@ -965,6 +989,7 @@ function draw(){
   }
   out += '</g>';
   svg.innerHTML = out;
+  collectFlow();
 }
 
 /* ═══════════════ view: fit / zoom / animate ═══════════════ */
@@ -1023,7 +1048,10 @@ function svgPoint(ev){
   const px = (ev.clientX - r.left) / r.width * W, py = (ev.clientY - r.top) / r.height * H;
   return { x: (px - view.x) / view.k, y: (py - view.y) / view.k };
 }
+svg.addEventListener('dragstart', ev => ev.preventDefault());
 svg.addEventListener('pointerdown', ev => {
+  if (ev.button !== 0 && ev.pointerType === 'mouse') return;
+  ev.preventDefault();                 // Windows: a drag over SVG text starts a selection and swallows the pan
   const g = ev.target.closest('g[data-id]');
   const lbl = ev.target.closest('text.albl');
   if (g){ const nd = byId[g.dataset.id]; drag = { type:'node', nd, moved:false, sx: ev.clientX, sy: ev.clientY }; nd.fx = nd.x; nd.fy = nd.y; }
@@ -1073,6 +1101,8 @@ svg.addEventListener('pointerup', ev => {
   drag = null;
 });
 svg.addEventListener('pointerleave', () => { if (hovered){ hovered = null; hideTip(); markDirty(); } });
+svg.addEventListener('pointercancel', () => { if (drag){ drag = null; svg.classList.remove('dragging'); markDirty(); } });
+svg.addEventListener('lostpointercapture', () => { if (drag && drag.type !== 'node'){ drag = null; svg.classList.remove('dragging'); } });
 svg.addEventListener('dblclick', ev => {
   const g = ev.target.closest('g[data-id]'); if (!g) return;
   selectFeature(g.dataset.id); setFocus(true);

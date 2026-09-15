@@ -17,6 +17,14 @@ it, it gets a line.
   sections on small laptops / 150 % zoom no longer push the chamber ahead of
   the text, and the last stop is always reachable; the dots and scroll map
   agree again.
+- **Feature Catalogue on Windows — drag selected text, flow never showed.**
+  Dragging the map over SVG labels started a native text selection on Windows
+  Chromium and swallowed the pan, so the page looked frozen; the map now
+  disables selection and native drag, claims the pointer on `pointerdown`,
+  and recovers from `pointercancel` / lost capture. The dependency **flow
+  particles** were SMIL `animateMotion`, which stayed silent there — they are
+  now driven from the frame loop (`getPointAtLength`), identical on every
+  platform.
 - **Feature Catalogue** — the live pulse (rim lines + ripples) steps aside
   while a feature is in focus, so the relationship view is uncluttered.
 - **SIB Compass map was cramped; brand strip overlapped the Procedure
