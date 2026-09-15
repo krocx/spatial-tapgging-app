@@ -26,20 +26,27 @@
 <style>
   :root { --ink:#eef2ff; --dim:#8b93b8; --indigo:#818cf8; --cyan:#22d3ee; --amber:#fbbf24; --teal:#5eead4; --pink:#f472b6; --line:rgba(255,255,255,.12); }
   * { box-sizing:border-box; }
-  html { scroll-behavior:smooth; }
+  /* The DOCUMENT never scrolls. Long copy scrolling over full-viewport
+     position:fixed layers is the Windows/Chromium ghost-trail bug (worst in
+     software raster, where a GPU-less laptop lands): the old frame's tiles
+     are reused with the new scroll offset. So the copy lives in its own
+     scroller (<main>) and the stage / veil / fallback are plain siblings
+     behind it — nothing fixed ever sits over scrolling content. */
+  html,body { height:100%; overflow:hidden; }
   html,body { margin:0; background:#070a1a; color:var(--ink); font-family:-apple-system,"SF Pro Display",Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
   a { color:inherit; }
   /* Windows/Chromium: text scrolling over a fixed WebGL canvas left stale
      tiles behind ("ghost text"). Give the copy its own composited layer and
      keep the canvas opaque — no alpha blending path to mis-invalidate. */
-  #stage { position:fixed; inset:0; z-index:0; will-change:transform; }
-  #stage canvas { display:block; width:100%; height:100%; }
+  #stage { position:fixed; inset:0; z-index:0; }
+  #stage canvas { display:block; width:100%; height:100%; touch-action:none; }
   .veil { position:fixed; inset:0; pointer-events:none; z-index:1; background:radial-gradient(1200px 700px at 50% 40%, rgba(129,140,248,.08), transparent 60%); }
   .nogl { display:none; position:fixed; inset:0; z-index:0; background:radial-gradient(900px 600px at 60% 45%, #1b2450, #070a1a 70%); }
   body.nogl .nogl { display:block; }
-  main { position:relative; z-index:2; pointer-events:none; isolation:isolate; }
-  .copy { will-change:transform; transform:translateZ(0); backface-visibility:hidden; }
-  section { min-height:100vh; display:flex; align-items:flex-end; padding:0 6vw 12vh; contain:layout paint; }
+  main { position:fixed; inset:0; z-index:2; overflow-y:auto; overflow-x:hidden; pointer-events:none;
+         scroll-behavior:smooth; overscroll-behavior:contain; scrollbar-width:none; }
+  main::-webkit-scrollbar { display:none; }
+  section { min-height:100%; display:flex; align-items:flex-end; padding:0 6vw 12vh; }
   section.center { align-items:center; }
   .copy { max-width:600px; pointer-events:auto; }
   .eyebrow { font-size:12px; letter-spacing:.22em; text-transform:uppercase; color:var(--dim); margin-bottom:14px; }
@@ -107,7 +114,7 @@
   footer { position:relative; z-index:2; padding:30px 6vw 60px; color:#4b5280; font-size:12px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; }
   footer a { color:#8b93b8; }
   @media (max-width:700px){ section{padding-bottom:16vh} .hud{gap:16px} .hud .n{font-size:30px} .az-opts{grid-template-columns:1fr} .topnav{display:none} }
-  @media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+  @media (prefers-reduced-motion: reduce){ main{scroll-behavior:auto} }
 </style>
 </head>
 <body>
@@ -264,8 +271,24 @@ const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
 if (!hasGL) document.body.classList.add('nogl');
 
 /* ───────────────── stage / scroll (shared with the 2D fallback) ───────────────── */
+const scroller = document.querySelector('main');
 const sections = [...document.querySelectorAll('main section')];
 const dots = document.getElementById('dots');
+// <main> ignores the pointer (so drag-to-turn reaches the canvas); wheel,
+// keys and touch over the canvas are forwarded to the scroller by hand.
+addEventListener('wheel', e => {
+  if (e.target.closest && e.target.closest('main, .sheet')) return;      // native scroll handles these
+  const dy = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * scroller.clientHeight : e.deltaY;
+  scroller.scrollBy({ top: dy, behavior: 'auto' });
+}, { passive: true });
+addEventListener('keydown', e => {
+  if (e.target.matches('input, textarea, button') || e.metaKey || e.ctrlKey) return;
+  const h = scroller.clientHeight;
+  const map = { ' ': h * 0.9, PageDown: h * 0.9, ArrowDown: 80, PageUp: -h * 0.9, ArrowUp: -80 };
+  if (e.key in map){ e.preventDefault(); scroller.scrollBy({ top: e.shiftKey && e.key === ' ' ? -h * 0.9 : map[e.key], behavior: 'smooth' }); }
+  else if (e.key === 'Home'){ scroller.scrollTo({ top: 0, behavior: 'smooth' }); }
+  else if (e.key === 'End'){ scroller.scrollTo({ top: scroller.scrollHeight, behavior: 'smooth' }); }
+});
 sections.forEach((sec, i) => { const d = document.createElement('i'); d.title = sec.querySelector('h1,h2')?.textContent || ''; d.onclick = () => sec.scrollIntoView({ behavior:'smooth' }); dots.appendChild(d); });
 let stage = 0, target = 0;
 // Stage follows the SECTION the reader is on, interpolated between section
@@ -273,14 +296,14 @@ let stage = 0, target = 0;
 // used to push the 3D stage ahead of the copy so the text never matched the
 // chamber; and the last stop was unreachable when the page over-scrolled.
 function onScroll(){
-  const y = scrollY + innerHeight * 0.45;
+  const vh = scroller.clientHeight, y = scroller.scrollTop + vh * 0.45;
   const tops = sections.map(s => s.offsetTop);
   let i = 0; while (i < tops.length - 1 && y >= tops[i + 1]) i++;
-  const span = (tops[i + 1] ?? (tops[i] + innerHeight)) - tops[i];
+  const span = (tops[i + 1] ?? (tops[i] + vh)) - tops[i];
   target = Math.max(0, Math.min(7, i + Math.max(0, Math.min(1, (y - tops[i]) / Math.max(1, span)))));
 }
 addEventListener('resize', onScroll);
-addEventListener('scroll', onScroll, { passive:true }); onScroll();
+scroller.addEventListener('scroll', onScroll, { passive:true }); onScroll();
 function tickUI(){ dots.querySelectorAll('i').forEach((d,k)=> d.classList.toggle('on', Math.round(stage)===k)); }
 
 /* ───────────────── live data ───────────────── */
@@ -545,8 +568,11 @@ const ease = t => t<.5 ? 2*t*t : -1+(4-2*t)*t;
 /* input */
 let dragging=false, lastX=0, rotY=0, slideX=0, chamberOffset=0;
 const cv = renderer.domElement;
-cv.addEventListener('pointerdown', e => { dragging=true; lastX=e.clientX; cv.setPointerCapture(e.pointerId); });
-cv.addEventListener('pointermove', e => { if(!dragging) return; const dx=e.clientX-lastX; lastX=e.clientX; if (stage>=1.4 && stage<2.0) slideX = Math.max(-2.2, Math.min(2.2, slideX + dx*0.006)); else rotY += dx*0.006; });
+let lastY = 0;
+cv.addEventListener('pointerdown', e => { dragging=true; lastX=e.clientX; lastY=e.clientY; cv.setPointerCapture(e.pointerId); });
+cv.addEventListener('pointermove', e => { if(!dragging) return; const dx=e.clientX-lastX, dy=e.clientY-lastY; lastX=e.clientX; lastY=e.clientY;
+  if (e.pointerType === 'touch' && Math.abs(dy) > Math.abs(dx)){ scroller.scrollTop -= dy; return; }   // finger: scroll the story
+  if (stage>=1.4 && stage<2.0) slideX = Math.max(-2.2, Math.min(2.2, slideX + dx*0.006)); else rotY += dx*0.006; });
 cv.addEventListener('pointerup', () => dragging=false);
 cv.addEventListener('click', () => {
   if (stage>=2.8 && stage<3.9) verdictFlash = performance.now();

@@ -8,11 +8,13 @@ it, it gets a line.
 
 ### Fixed
 - **/platform on Windows — ghost text and a stage that didn't follow the
-  copy.** Chromium on Windows left stale tiles of the scrolling copy behind
-  over the fixed stage (and over the 2D fallback), stacking three or four
-  ghost headlines; the section text is now its own composited, paint-contained
-  layer and the WebGL canvas is opaque (no alpha blending path to
-  mis-invalidate). The 3D stage now follows the **section the reader is on**
+  copy.** Root cause: the *document* scrolled long copy over full-viewport
+  `position:fixed` layers (stage, veil, 2D fallback) — the Chromium ghost-
+  trail bug, worst in software raster, which is exactly where a laptop with
+  WebGL off lands. The document no longer scrolls at all: the copy lives in
+  its own scroller (`<main>`, fixed, overflow) and the stage sits behind it
+  as a plain sibling. Wheel, keys and touch over the canvas are forwarded to
+  the scroller so drag-to-turn still reaches the chamber. The 3D stage now follows the **section the reader is on**
   (interpolated between section tops) instead of the page fraction, so tall
   sections on small laptops / 150 % zoom no longer push the chamber ahead of
   the text, and the last stop is always reachable; the dots and scroll map
