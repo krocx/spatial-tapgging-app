@@ -498,8 +498,7 @@ function viewChanged(){
   const crossed = (view.k >= 0.85) !== (lastK >= 0.85) || (view.k >= 1.35) !== (lastK >= 1.35);
   lastK = view.k;
   if (crossed) { dirty = true; return; }      // (orbit/yaw marks dirty itself — that does need re-projection)
-  const tf = `translate(${view.x},${view.y}) scale(${view.k})`;
-  for (const g of svg.children) if (g.tagName === 'g') g.setAttribute('transform', tf);
+  if (scene) scene.world.setAttribute('transform', `translate(${view.x},${view.y}) scale(${view.k})`);
 }
 function tick(){
   // Relaxation, not a free force layout: every node is tethered to its sector
@@ -563,7 +562,7 @@ function startSim(){
 function reheat(){ alpha = Math.max(alpha, 0.5); dirty = true; }
 function resetLayout(){
   savedPos = {}; localStorage.removeItem(POS_KEY);
-  buildGraph(); alpha = 1; for (let i = 0; i < 420; i++) tick(); fitAll();
+  buildGraph(); alpha = 1; for (let i = 0; i < 420; i++) tick(); buildStatic(); rebuildScene(); fitAll();
 }
 
 /* ═══════════════ 3D stack (2026.4.46) ═══════════════ */
@@ -666,7 +665,7 @@ async function refreshStats(){
     const r = await fetch('/stats'); if (!r.ok) return;
     STATS = await r.json();
     document.documentElement.style.setProperty('--beat', (STATS.presenceNow > 0 ? 1.6 : 4.5) + 's');
-    if (stack.t === 0) buildStatic();
+    buildStatic(); if (scene) scene.L2.innerHTML = staticSvg;
     markDirty();
   } catch { /* stats are a garnish, never a blocker */ }
 }
@@ -728,7 +727,7 @@ function fxProbe(now){
   if (fxSamples.length === 90){
     const d = fxSamples.slice(1).map((t, i) => t - fxSamples[i]).sort((a, b) => a - b);
     fxMeasuredLite = d[Math.floor(d.length / 2)] > 20;
-    applyFx();
+    applyFx(); if (fxMeasuredLite && scene) rebuildScene();
   }
 }
 
@@ -751,7 +750,7 @@ const wedgePath = (r0, r1, t0, t1) => {
 // The static layer — the SIB core, ontology halos, depth rings and the
 // sector wedges with their names set along the outer arc — is built once;
 // draw() only rewrites the dynamic layer, so the core can breathe with CSS.
-let staticSvg = '', static3Svg = '', static3Key = null;
+let staticSvg = '';
 function buildStatic(){
   const ONT = [['#3b82f6','spatial'], ['#a78bfa','perception'], ['#22c55e','semantic'], ['#f59e0b','reasoning']];
   let out = '<defs>';
@@ -797,9 +796,6 @@ function buildStatic(){
   </g>`;
   staticSvg = out;
 }
-// The same picture, projected: one call per frame while stacked.
-// A rim name must fit its arc — short sectors (and foreshortened ones in 3D)
-// get a smaller face rather than a clipped word.
 function rimFontSize(name, arcLen){
   const n = name.length, per = 0.64 + 0.22;          // glyph + letter-spacing, in em
   return Math.max(7.5, Math.min(13, (arcLen * 0.9) / (n * per)));
@@ -807,48 +803,6 @@ function rimFontSize(name, arcLen){
 // Hard guarantee: never longer than 92 % of the arc, whatever the font does.
 const rimFit = (name, fs, arcLen) => `font-size="${fs.toFixed(1)}" textLength="${Math.min(name.length * fs * 0.86, arcLen * 0.92).toFixed(0)}" lengthAdjust="spacingAndGlyphs"`;
 const polyLen = pts => { let l = 0; for (let i = 1; i < pts.length; i++) l += Math.hypot(pts[i].x - pts[i-1].x, pts[i].y - pts[i-1].y); return l; };
-function buildStatic3D(){
-  const layers = [...DATA.areas].sort((a, b) => layerIndex[a.id] - layerIndex[b.id]);
-  let out = `<defs><radialGradient id="coreGrad"><stop offset="0" stop-color="#93c5fd" stop-opacity=".95"/><stop offset=".45" stop-color="#3b82f6" stop-opacity=".55"/><stop offset="1" stop-color="#3b82f6" stop-opacity="0"/></radialGradient>`;
-  for (const a of layers){
-    const z = zOf(a.id), outer = sampleArc(R_MAX + 62, a.g0 + 0.03, a.g1 - 0.03, z, 24);
-    const pts = outer[0].x <= outer[outer.length - 1].x ? outer : outer.reverse();
-    a.rimLen3 = polyLen(pts); a.rimFs3 = rimFontSize(a.name, a.rimLen3);
-    out += `<path id="ap3-${a.id}" d="${poly(pts)}"/>`;
-  }
-  out += '</defs>';
-  const zTop = zOf(layers[layers.length - 1].id);
-  // The core sits a full layer BELOW the floor — it is what the foundations
-  // stand on — and is painted first so no product ever overlaps it.
-  const zCore = -LAYER_GAP * stack.t * 1.05;
-  const c0 = P(CX, CY, zCore);
-  out += `<g class="core"><circle cx="${c0.x}" cy="${c0.y}" r="${120 * c0.s}" fill="url(#coreGrad)" opacity=".28"/>
-    <circle cx="${c0.x}" cy="${c0.y}" r="${52 * c0.s}" fill="#0b1220" stroke="#93c5fd" stroke-opacity=".6" stroke-width="1.5"/>
-    <circle cx="${c0.x}" cy="${c0.y}" r="${52 * c0.s}" fill="url(#coreGrad)" opacity=".5"/>
-    <text class="corelbl" x="${c0.x}" y="${c0.y + 7 * c0.s}" text-anchor="middle" font-size="${22 * c0.s}">SIB</text></g>`;
-  // spine: from the core up through every layer
-  const b = P(CX, CY, zCore + 52), tp = P(CX, CY, zTop + 40);
-  out += `<line x1="${b.x}" y1="${b.y}" x2="${tp.x}" y2="${tp.y}" stroke="#3b82f6" stroke-opacity=".35" stroke-width="${10 * b.s}" stroke-linecap="round"/>
-          <line x1="${b.x}" y1="${b.y}" x2="${tp.x}" y2="${tp.y}" stroke="#bfdbfe" stroke-opacity=".8" stroke-width="${2 * b.s}" stroke-linecap="round"/>`;
-  // far layers first
-  const byDepth = layers.map(a => ({ a, d: P(CX, CY, zOf(a.id)).d })).sort((x, y) => y.d - x.d);
-  for (const { a } of byDepth){
-    const z = zOf(a.id), dim = (activeAreas.size && !activeAreas.has(a.id)) || (focusAreas && !focusAreas.has(a.id));
-    const disc = sampleArc(R_MAX + 46, 0, Math.PI * 2, z, 64);
-    const o = sampleArc(R_MAX + 46, a.g0 + 0.012, a.g1 - 0.012, z, 30);
-    const inn = sampleArc(R_MIN - 40, a.g1 - 0.012, a.g0 + 0.012, z, 18);
-    const hub = sampleArc(22, 0, Math.PI * 2, z, 20);
-    out += `<g class="wedge" data-area="${a.id}" opacity="${dim ? 0.22 : 1}">
-      <path d="${poly(disc, true)}" fill="${a.color}" fill-opacity=".025" stroke="#7d8da3" stroke-opacity=".14" stroke-dasharray="2 6"/>
-      <path d="${poly(o.concat(inn), true)}" fill="${a.color}" fill-opacity=".13" stroke="${a.color}" stroke-opacity=".28" stroke-width="1"/>
-      <path d="${poly(o)}" fill="none" stroke="${a.color}" stroke-opacity=".85" stroke-width="3"/>
-      <path d="${poly(hub, true)}" fill="#0b1220" stroke="#93c5fd" stroke-opacity=".7" stroke-width="1.2"/>
-      <text class="albl" fill="${a.color}" data-area="${a.id}"><textPath href="#ap3-${a.id}" startOffset="50%" text-anchor="middle" ${rimFit(a.name, a.rimFs3, a.rimLen3)}>${esc(a.name).toUpperCase()}</textPath></text>
-      ${liveMark(a, z)}
-    </g>`;
-  }
-  return out;
-}
 // A dependency edge in space: in-layer edges stay flat, cross-layer edges
 // rise (or fall) between their layers, bowing toward the spine.
 function edgePath3D(e){
@@ -903,138 +857,217 @@ function neighbourSet(id){
   return n;
 }
 
-let flowSeq = 0, flowNodes = [];
-function collectFlow(){
-  flowNodes = [];
-  const paths = {};
-  svg.querySelectorAll('path.flowpath').forEach(p => { paths[p.id] = { el: p, len: p.getTotalLength() }; });
-  svg.querySelectorAll('circle.flow').forEach(c => { const p = paths[c.dataset.path]; if (p) flowNodes.push({ c, p, k: +c.dataset.k }); });
+/* ═══════════════ persistent scene ═══════════════
+   The SVG is built ONCE; after that only attributes move. Hover, selection,
+   focus, filters, the 2D→3D rotation and the orbit are all attribute updates
+   (a few hundred writes per frame) instead of re-parsing ~90 KB of markup —
+   which is what held Windows laptops at 10–15 fps during the rotation. */
+let scene = null;
+const A = (el, k, v) => { if (el.getAttribute(k) !== String(v)) el.setAttribute(k, v); };
+const SVGNS = 'http://www.w3.org/2000/svg';
+
+function buildScene(){
+  const lite = document.body.classList.contains('lite');
+  const layers = [...DATA.areas].sort((x, y) => layerIndex[x.id] - layerIndex[y.id]);
+  let h = `<g id="Lworld">`;
+  // 2D static (core, halos, rings, wedges, live marks) — string from buildStatic()
+  h += `<g id="L2">${staticSvg}</g>`;
+  // 2D dim overlays, toggled per frame
+  h += `<g id="L2dim">` + DATA.areas.map(a => `<path id="dim-${a.id}" d="${wedgePath(R_MIN - 40, R_MAX + 80, a.g0, a.g1)}" fill="#0b1220" fill-opacity=".72" pointer-events="none" display="none"/>`).join('') + `</g>`;
+  // 3D static skeleton — geometry filled in by layout3D()
+  h += `<g id="L3" display="none"><defs><radialGradient id="coreGrad3"><stop offset="0" stop-color="#93c5fd" stop-opacity=".95"/><stop offset=".45" stop-color="#3b82f6" stop-opacity=".55"/><stop offset="1" stop-color="#3b82f6" stop-opacity="0"/></radialGradient>` + layers.map(a => `<path id="ap3-${a.id}"/><path id="lp3-${a.id}"/>`).join('') + `</defs>`;
+  h += `<g class="core" id="core3"><circle id="c3-glow" fill="url(#coreGrad3)" opacity=".28"/><circle id="c3-disc" fill="#0b1220" stroke="#93c5fd" stroke-opacity=".6" stroke-width="1.5"/><circle id="c3-fill" fill="url(#coreGrad3)" opacity=".5"/><text id="c3-lbl" class="corelbl" text-anchor="middle">SIB</text></g>`;
+  h += `<line id="sp-a" stroke="#3b82f6" stroke-opacity=".35" stroke-linecap="round"/><line id="sp-b" stroke="#bfdbfe" stroke-opacity=".8" stroke-linecap="round"/>`;
+  for (const a of layers){
+    h += `<g class="wedge" id="w3-${a.id}" data-area="${a.id}">
+      <path id="w3-disc-${a.id}" fill="${a.color}" fill-opacity=".025" stroke="#7d8da3" stroke-opacity=".14" stroke-dasharray="2 6"/>
+      <path id="w3-fill-${a.id}" fill="${a.color}" fill-opacity=".13" stroke="${a.color}" stroke-opacity=".28" stroke-width="1"/>
+      <path id="w3-rim-${a.id}" fill="none" stroke="${a.color}" stroke-opacity=".85" stroke-width="3"/>
+      <path id="w3-hub-${a.id}" fill="#0b1220" stroke="#93c5fd" stroke-opacity=".7" stroke-width="1.2"/>
+      <text class="albl" fill="${a.color}" data-area="${a.id}"><textPath id="w3-lbl-${a.id}" href="#ap3-${a.id}" startOffset="50%" text-anchor="middle">${esc(a.name).toUpperCase()}</textPath></text>
+      <text class="livelbl" id="w3-live-${a.id}" fill="${a.color}"><textPath href="#lp3-${a.id}" startOffset="50%" text-anchor="middle"></textPath></text>
+      <circle class="ripple" id="w3-rip-${a.id}" fill="none" stroke="${a.color}" stroke-width="1.5" display="none"/>
+      <circle class="ripple r2" id="w3-rip2-${a.id}" fill="none" stroke="${a.color}" stroke-width="1.5" display="none"/>
+    </g>`;
+  }
+  h += `</g>`;
+  // edges
+  h += `<g id="Ledges">` + edges.map((e, i) => `<path class="edge" id="e${i}" fill="none" stroke="${areaById[e.s.area].color}" stroke-width="1.1"/>`).join('') + `</g>`;
+  h += `<g id="Lflow"></g>`;
+  // nodes — local coordinates; the group transform carries position + depth scale
+  h += `<g id="Lnodes">` + nodes.map(nd => {
+    const c = areaById[nd.area].color, bi = nd.id.length + nd.id.charCodeAt(0);
+    const breathe = lite ? '' : `animation:${bi % 2 ? 'breatheA' : 'breatheB'} ${3.2 + (bi % 5) * 0.6}s ease-in-out ${(bi % 7) * 0.4}s infinite alternate;`;
+    const ring = Math.max(0, Math.min(2, Math.round((Math.hypot(nd.x - CX, nd.y - CY) - R_MIN) / ((R_MAX - R_MIN) / 2))));
+    let shape;
+    if (nd.status === 'shipped') shape = `<circle class="shape" r="8" fill="${c}"/>`;
+    else if (nd.status === 'beta') shape = `<circle class="shape" r="8" fill="${c}" fill-opacity=".25" stroke="${c}" stroke-width="2"/>`;
+    else shape = `<circle class="shape" r="8" fill="none" stroke="${c}" stroke-width="1.6" stroke-dasharray="4 3"/>`;
+    const name = nd.name.length > 28 ? nd.name.slice(0, 27) + '…' : nd.name;
+    return `<g class="node" data-id="${nd.id}" style="cursor:pointer;${breathe}--ring:${ring}">
+      <circle class="hit" r="16" fill="transparent"/>
+      <circle class="hsel" r="16" fill="none" stroke="#fff" stroke-width="1.4" opacity=".9" display="none"/>
+      <circle class="hhov" r="17" fill="${c}" fill-opacity=".18" display="none"/>
+      ${shape}
+      ${nd.version === DATA.platformVersion ? `<circle cx="7" cy="-7" r="3.2" fill="#35c635" stroke="#0b1220" stroke-width="1"><title>New in ${esc(DATA.platformVersion)}</title></circle>` : ''}
+      <text class="nlabel" y="20" text-anchor="middle">${esc(name)}</text>
+      <g class="badge" display="none"><circle cx="10" cy="-10" r="7" fill="#334155"/><text class="trailbadge" x="10" y="-7" text-anchor="middle"></text></g>
+    </g>`;
+  }).join('') + `</g></g>`;
+  svg.innerHTML = h;
+  const $ = id => document.getElementById(id);
+  scene = {
+    world: $('Lworld'), L2: $('L2'), L3: $('L3'), Lflow: $('Lflow'), Lnodes: $('Lnodes'),
+    dim: Object.fromEntries(DATA.areas.map(a => [a.id, $('dim-' + a.id)])),
+    edgeEls: edges.map((_, i) => $('e' + i)),
+    nodeEls: Object.fromEntries([...svg.querySelectorAll('g.node')].map(g => [g.dataset.id, {
+      g, hsel: g.querySelector('.hsel'), hhov: g.querySelector('.hhov'), shape: g.querySelector('.shape'),
+      label: g.querySelector('.nlabel'), badge: g.querySelector('.badge'), badgeText: g.querySelector('.trailbadge') }])),
+    l3: Object.fromEntries(layers.map(a => [a.id, {
+      g: $('w3-' + a.id), disc: $('w3-disc-' + a.id), fill: $('w3-fill-' + a.id), rim: $('w3-rim-' + a.id), hub: $('w3-hub-' + a.id),
+      ap: $('ap3-' + a.id), lbl: $('w3-lbl-' + a.id), lp: $('lp3-' + a.id), live: $('w3-live-' + a.id), rip: $('w3-rip-' + a.id), rip2: $('w3-rip2-' + a.id) }])),
+    core: { glow: $('c3-glow'), disc: $('c3-disc'), fill: $('c3-fill'), lbl: $('c3-lbl') }, spA: $('sp-a'), spB: $('sp-b'),
+    flowKey: '', flowNodes: [],
+  };
 }
-function animateFlow(now){
-  if (!flowNodes.length) return;
-  const t0 = (now / 1500) % 1;
-  for (const f of flowNodes){
-    const t = (t0 + f.k / 3) % 1;
-    const pt = f.p.el.getPointAtLength(t * f.p.len);
-    f.c.setAttribute('cx', pt.x.toFixed(1)); f.c.setAttribute('cy', pt.y.toFixed(1));
-    f.c.setAttribute('opacity', (f.c.getAttribute('fill') === '#fff' ? 0.9 : 0.35) * (0.35 + 0.65 * Math.sin(t * Math.PI)));
+function rebuildScene(){ buildScene(); dirty = true; }
+
+// 3D static geometry: every frame while stacked (cheap — ~1 100 projected points).
+function layout3D(){
+  const layers = [...DATA.areas].sort((x, y) => layerIndex[x.id] - layerIndex[y.id]);
+  const zTop = zOf(layers[layers.length - 1].id), zCore = -LAYER_GAP * stack.t * 1.05;
+  const c0 = P(CX, CY, zCore), sc = scene.core;
+  A(sc.glow, 'cx', c0.x.toFixed(1)); A(sc.glow, 'cy', c0.y.toFixed(1)); A(sc.glow, 'r', (120 * c0.s).toFixed(1));
+  for (const el of [sc.disc, sc.fill]){ A(el, 'cx', c0.x.toFixed(1)); A(el, 'cy', c0.y.toFixed(1)); A(el, 'r', (52 * c0.s).toFixed(1)); }
+  A(sc.lbl, 'x', c0.x.toFixed(1)); A(sc.lbl, 'y', (c0.y + 7 * c0.s).toFixed(1)); A(sc.lbl, 'font-size', (22 * c0.s).toFixed(1));
+  const b = P(CX, CY, zCore + 52), tp = P(CX, CY, zTop + 40);
+  for (const [el, w] of [[scene.spA, 10], [scene.spB, 2]]){ A(el, 'x1', b.x.toFixed(1)); A(el, 'y1', b.y.toFixed(1)); A(el, 'x2', tp.x.toFixed(1)); A(el, 'y2', tp.y.toFixed(1)); A(el, 'stroke-width', (w * b.s).toFixed(2)); }
+  const byDepth = layers.map(a => ({ a, d: P(CX, CY, zOf(a.id)).d })).sort((x, y) => y.d - x.d);
+  for (const { a } of byDepth){
+    const L = scene.l3[a.id], z = zOf(a.id);
+    const dim = (activeAreas.size && !activeAreas.has(a.id)) || (focusAreas && !focusAreas.has(a.id));
+    A(L.g, 'opacity', dim ? 0.22 : 1);
+    A(L.disc, 'd', poly(sampleArc(R_MAX + 46, 0, Math.PI * 2, z, 48), true));
+    const o = sampleArc(R_MAX + 46, a.g0 + 0.012, a.g1 - 0.012, z, 24), inn = sampleArc(R_MIN - 40, a.g1 - 0.012, a.g0 + 0.012, z, 14);
+    A(L.fill, 'd', poly(o.concat(inn), true)); A(L.rim, 'd', poly(o)); A(L.hub, 'd', poly(sampleArc(22, 0, Math.PI * 2, z, 16), true));
+    const outer = sampleArc(R_MAX + 62, a.g0 + 0.03, a.g1 - 0.03, z, 20);
+    const pts = outer[0].x <= outer[outer.length - 1].x ? outer : outer.reverse();
+    A(L.ap, 'd', poly(pts));
+    const len = polyLen(pts), fs = rimFontSize(a.name, len);
+    A(L.lbl.parentNode, 'font-size', fs.toFixed(1)); A(L.lbl, 'textLength', Math.min(a.name.length * fs * 0.86, len * 0.92).toFixed(0)); A(L.lbl, 'lengthAdjust', 'spacingAndGlyphs');
+    // live line + ripple
+    const lv = liveOf(a.id);
+    if (lv){
+      const lpts = sampleArc(R_MAX + 32, a.g0 + 0.03, a.g1 - 0.03, z, 18);
+      A(L.lp, 'd', poly(lpts[0].x <= lpts[lpts.length - 1].x ? lpts : lpts.reverse()));
+      const tx = (lv.live ? '● ' : '') + lv.text; if (L.live.firstChild.textContent !== tx) L.live.firstChild.textContent = tx;
+      L.live.classList.toggle('on', lv.live);
+      const mid = P(CX + Math.cos(a.amid) * ((R_MIN + R_MAX) / 2), CY + Math.sin(a.amid) * ((R_MIN + R_MAX) / 2), z);
+      for (const r of [L.rip, L.rip2]){ A(r, 'display', lv.live ? '' : 'none'); A(r, 'cx', mid.x.toFixed(1)); A(r, 'cy', mid.y.toFixed(1)); A(r, 'r', (20 * mid.s).toFixed(1)); }
+    }
+    scene.L3.appendChild(L.g);          // far → near paint order
   }
 }
+
+function ensureFlow(litIdx){
+  const key = litIdx.join(',');
+  if (key === scene.flowKey) return;
+  scene.flowKey = key;
+  scene.Lflow.innerHTML = litIdx.map(i => { const c = areaById[edges[i].t.area].color;
+    let o = ''; for (let k = 0; k < 3; k++) o += `<circle r="5" fill="${c}" opacity=".35" class="flow" data-e="${i}" data-k="${k}"/><circle r="2.6" fill="#fff" opacity=".9" class="flow" data-e="${i}" data-k="${k}"/>`; return o; }).join('');
+  scene.flowNodes = [...scene.Lflow.querySelectorAll('circle.flow')].map(c => ({ c, e: scene.edgeEls[+c.dataset.e], k: +c.dataset.k, white: c.getAttribute('fill') === '#fff' }));
+}
+function animateFlow(now){
+  if (!scene || !scene.flowNodes.length) return;
+  const t0 = (now / 1500) % 1, lens = new Map();
+  for (const f of scene.flowNodes){
+    let L = lens.get(f.e); if (L == null){ L = f.e.getTotalLength(); lens.set(f.e, L); }
+    const t = (t0 + f.k / 3) % 1, pt = f.e.getPointAtLength(t * L);
+    f.c.setAttribute('cx', pt.x.toFixed(1)); f.c.setAttribute('cy', pt.y.toFixed(1));
+    f.c.setAttribute('opacity', ((f.white ? 0.9 : 0.35) * (0.35 + 0.65 * Math.sin(t * Math.PI))).toFixed(2));
+  }
+}
+
 function draw(){
+  if (!scene) buildScene();
   const ts = trailSet();
   const neighbours = neighbourSet(selected);
   const hov = neighbourSet(hovered);
   const focus = inFocus();
-  let n2 = null;                              // second-degree ring when focused
+  let n2 = null;
   if (focus){ n2 = new Set(); for (const id of neighbours) for (const m of neighbourSet(id)) n2.add(m); }
   focusAreas = focus ? new Set([...neighbours].map(i => byId[i].area)) : null;
-  svg.classList.toggle('focus', focus);       // focus = relationships only: live pulse steps aside
+  svg.classList.toggle('focus', focus);
   renderFocusBar();
-  const showAll = view.k >= 0.85;                // semantic labels: everything at reading zoom
-  const tf = `translate(${view.x},${view.y}) scale(${view.k})`;
-  const dimArea = a => activeAreas.size && !activeAreas.has(a);
+  const showAll = view.k >= 0.85;
   const flat = stack.t === 0;
-  const key3 = flat ? '' : [stack.t.toFixed(3), stack.yaw.toFixed(3), [...activeAreas].join(','), focusAreas ? [...focusAreas].join(',') : '', STATS ? STATS.timestamp : ''].join('|');
-  if (!flat && key3 !== static3Key){ static3Svg = buildStatic3D(); static3Key = key3; }
-  let out = `<g transform="${tf}">${flat ? staticSvg : static3Svg}</g><g transform="${tf}">`;
-  // dim filtered wedges via an overlay (static layer stays untouched)
-  if (flat) for (const a of DATA.areas) if (dimArea(a.id) || (focusAreas && !focusAreas.has(a.id)))
-    out += `<path d="${wedgePath(R_MIN - 40, R_MAX + 80, a.g0, a.g1)}" fill="#0b1220" fill-opacity="${focusAreas ? .55 : .72}" pointer-events="none"/>`;
-  // projected node positions for this frame
+  const dimArea = a => activeAreas.size && !activeAreas.has(a);
+  A(scene.world, 'transform', `translate(${view.x},${view.y}) scale(${view.k})`);
+  A(scene.L2, 'display', flat ? '' : 'none'); A(scene.L3, 'display', flat ? 'none' : '');
+  for (const a of DATA.areas) A(scene.dim[a.id], 'display', flat && (dimArea(a.id) || (focusAreas && !focusAreas.has(a.id))) ? '' : 'none');
+  if (!flat) layout3D();
+  // projected positions
   for (const nd of nodes){ const p = P(nd.x, nd.y, zOf(nd.area)); nd.px = p.x; nd.py = p.y; nd.ps = p.s; nd.pd = p.d; }
-  const layerOf = a => layerIndex[a] || 0;
   // edges
-  const focusId = selected || hovered;
-  for (const e of edges){
+  const focusId = selected || hovered, lit = [];
+  edges.forEach((e, i) => {
     const vis = nodeVisible(e.s) && nodeVisible(e.t);
     let op = vis ? 0.22 : 0.03;
-    const touches = (set) => set.has(e.s.id) && set.has(e.t.id);
+    const touches = set => set.has(e.s.id) && set.has(e.t.id);
     if (ts) op = touches(ts) ? 0.7 : 0.04;
     else if (selected) op = touches(neighbours) && (e.s.id === selected || e.t.id === selected) ? 0.95 : 0.06;
     else if (hovered) op = touches(hov) && (e.s.id === hovered || e.t.id === hovered) ? 0.9 : 0.08;
     else if (searchQ) op = (nodeMatches(e.s) && nodeMatches(e.t)) ? 0.45 : 0.04;
-    if (focus){
-      const touchesSel = e.s.id === selected || e.t.id === selected;
-      op = touchesSel ? 0.95 : (n2.has(e.s.id) && n2.has(e.t.id) && (neighbours.has(e.s.id) || neighbours.has(e.t.id))) ? 0.22 : 0.015;
-    }
-    const lit = focusId && (e.s.id === focusId || e.t.id === focusId);
-    const d = edgePath(e);
-    out += `<path d="${d}" fill="none" stroke="${areaById[e.s.area].color}" stroke-width="${lit ? 2 : 1.1}" opacity="${op}"/>`;
-    // Flow: light runs from the dependency to what builds on it. Driven from
-    // the frame loop (getPointAtLength) — SMIL animateMotion was silent on
-    // Windows Chromium, and this also respects a paused/hidden tab.
-    if (lit && !igniting){
-      const c = areaById[e.t.area].color, fid = 'fl' + flowSeq++;
-      out += `<path id="${fid}" d="${d}" fill="none" stroke="none" class="flowpath"/>`;
-      for (let k = 0; k < 3; k++)
-        out += `<circle r="5" fill="${c}" opacity=".35" class="flow" data-path="${fid}" data-k="${k}"/>` +
-               `<circle r="2.6" fill="#fff" opacity=".9" class="flow" data-path="${fid}" data-k="${k}"/>`;
-    }
-  }
-  // Label collision: greedy, outer rings first; a label that would overlap
-  // a placed one flips above the node, then yields. Nothing ever overprints.
+    if (focus){ const tsel = e.s.id === selected || e.t.id === selected; op = tsel ? 0.95 : (n2.has(e.s.id) && n2.has(e.t.id) && (neighbours.has(e.s.id) || neighbours.has(e.t.id))) ? 0.22 : 0.015; }
+    const isLit = focusId && (e.s.id === focusId || e.t.id === focusId);
+    if (isLit && !igniting) lit.push(i);
+    const el = scene.edgeEls[i];
+    A(el, 'd', edgePath(e)); A(el, 'opacity', op.toFixed(3)); A(el, 'stroke-width', isLit ? 2 : 1.1);
+  });
+  ensureFlow(lit);
+  // label collision — greedy, nearest / outermost first
   const placed = [];
   const labelPos = (nd, r, want) => {
     if (!want) return null;
-    const w = Math.min(nd.name.length, 28) * 5.3, h = 11;
+    const w = Math.min(nd.name.length, 28) * 5.3 * nd.ps, h = 11 * nd.ps;
     for (const dy of [r + 12, -(r + 5)]){
-      const box = { x0: nd.px - w/2, x1: nd.px + w/2, y0: nd.py + dy - h, y1: nd.py + dy };
+      const sy = dy * nd.ps, box = { x0: nd.px - w/2, x1: nd.px + w/2, y0: nd.py + sy - h, y1: nd.py + sy };
       if (!placed.some(b => b.x0 < box.x1 && b.x1 > box.x0 && b.y0 < box.y1 && b.y1 > box.y0)){ placed.push(box); return dy; }
     }
     return null;
   };
   const order = flat ? [...nodes].sort((p, q) => Math.hypot(q.x - CX, q.y - CY) - Math.hypot(p.x - CX, p.y - CY))
-                     : [...nodes].sort((p, q) => p.pd - q.pd);          // nearest first gets the label
+                     : [...nodes].sort((p, q) => p.pd - q.pd);
   const dyById = {};
-  // priority: the focused set first, then everything else
   for (const nd of order){ const isSel = nd.id === selected, isHov = nd.id === hovered; if (isSel || isHov || neighbours.has(nd.id) || hov.has(nd.id)) dyById[nd.id] = labelPos(nd, isSel ? 11 : isHov ? 10 : 8, true); }
   for (const nd of order){ if (nd.id in dyById) continue;
     const want = !focus && (showAll || (ts && ts.has(nd.id)) || (searchQ && nodeMatches(nd)));
     dyById[nd.id] = labelPos(nd, 8, want); }
-  // nodes — far layers first when stacked
+  // nodes
+  const touchedAreas = (!flat && selected) ? new Set([...neighbours].map(i => byId[i].area)) : null;
   const drawOrder = flat ? nodes : [...nodes].sort((p, q) => q.pd - p.pd);
   for (const nd of drawOrder){
-    const c = areaById[nd.area].color;
+    const N = scene.nodeEls[nd.id];
     let op = nodeVisible(nd) ? 1 : 0.07;
     if (ts) op = ts.has(nd.id) ? 1 : 0.08;
     else if (selected) op = neighbours.has(nd.id) ? 1 : (nodeVisible(nd) ? 0.45 : 0.07);
     else if (hovered) op = hov.has(nd.id) ? 1 : (nodeVisible(nd) ? 0.35 : 0.07);
     else if (searchQ) op = nodeMatches(nd) && nodeVisible(nd) ? 1 : 0.07;
     if (focus) op = neighbours.has(nd.id) ? 1 : n2.has(nd.id) ? 0.3 : 0.05;
-    const isSel = nd.id === selected, isHov = nd.id === hovered;
-    // Stacked + selected: layers the selection doesn't touch fade back.
-    if (!flat && selected && !neighbours.has(nd.id)){
-      const touched = new Set([...neighbours].map(i => byId[i].area));
-      if (!touched.has(nd.area)) op = Math.min(op, 0.18);
-    }
-    const X = nd.px, Y = nd.py, sc = nd.ps;
-    const r = (isSel ? 11 : isHov ? 10 : 8) * sc;
-    let shape;
-    if (nd.status === 'shipped') shape = `<circle cx="${X}" cy="${Y}" r="${r}" fill="${c}"/>`;
-    else if (nd.status === 'beta') shape = `<circle cx="${X}" cy="${Y}" r="${r}" fill="${c}" fill-opacity=".25" stroke="${c}" stroke-width="2"/>`;
-    else shape = `<circle cx="${X}" cy="${Y}" r="${r}" fill="none" stroke="${c}" stroke-width="1.6" stroke-dasharray="4 3"/>`;
-    const halo = isSel ? `<circle cx="${X}" cy="${Y}" r="${r+5}" fill="none" stroke="#fff" stroke-width="1.4" opacity=".9"/>`
-               : isHov ? `<circle cx="${X}" cy="${Y}" r="${r+7}" fill="${c}" fill-opacity=".18"/>` : '';
-    let badge = '';
-    if (ts && ts.has(nd.id)){
-      const num = trail.steps.indexOf(nd.id) + 1;
-      badge = `<circle cx="${X+10}" cy="${Y-10}" r="7" fill="${num-1===trailIdx?'#f59e0b':'#334155'}"/>
-               <text class="trailbadge" x="${X+10}" y="${Y-7}" text-anchor="middle">${num}</text>`;
-    }
+    if (touchedAreas && !neighbours.has(nd.id) && !touchedAreas.has(nd.area)) op = Math.min(op, 0.18);
+    const isSel = nd.id === selected, isHov = nd.id === hovered, r = isSel ? 11 : isHov ? 10 : 8;
+    A(N.g, 'transform', `translate(${nd.px.toFixed(1)},${nd.py.toFixed(1)}) scale(${nd.ps.toFixed(3)})`);
+    A(N.g, 'opacity', op.toFixed(3));
+    A(N.shape, 'r', r);
+    A(N.hsel, 'display', isSel ? '' : 'none'); A(N.hhov, 'display', isHov && !isSel ? '' : 'none');
     const dy = dyById[nd.id];
-    const name = nd.name.length > 28 ? nd.name.slice(0, 27) + '…' : nd.name;
-    const isNew = nd.version === DATA.platformVersion;
-    const label = dy != null ? `<text class="nlabel${isSel || isHov ? ' hot' : ''}" x="${X}" y="${Y + dy}" text-anchor="middle">${esc(name)}</text>` : '';
-    const newTick = isNew ? `<circle cx="${X + r - 1}" cy="${Y - r + 1}" r="${3.2 * sc}" fill="#35c635" stroke="#0b1220" stroke-width="1"><title>New in ${esc(DATA.platformVersion)}</title></circle>` : '';
-    const ring = Math.round((Math.hypot(nd.x - CX, nd.y - CY) - R_MIN) / ((R_MAX - R_MIN) / 2));
-    const bi = nd.id.length + nd.id.charCodeAt(0);
-    const breathe = document.body.classList.contains('lite') ? '' : `animation:${bi % 2 ? 'breatheA' : 'breatheB'} ${3.2 + (bi % 5) * 0.6}s ease-in-out ${(bi % 7) * 0.4}s infinite alternate`;
-    out += `<g opacity="${op}" data-id="${nd.id}" class="node" style="cursor:pointer;${breathe};--ring:${Math.max(0, Math.min(2, ring))}">
-      <circle cx="${X}" cy="${Y}" r="${r + 8}" fill="transparent"/>${halo}${shape}${newTick}${label}${badge}</g>`;
+    A(N.label, 'display', dy == null ? 'none' : ''); if (dy != null) A(N.label, 'y', dy);
+    A(N.label, 'class', 'nlabel' + (isSel || isHov ? ' hot' : ''));
+    const onTrail = ts && ts.has(nd.id);
+    A(N.badge, 'display', onTrail ? '' : 'none');
+    if (onTrail){ const num = trail.steps.indexOf(nd.id) + 1; N.badgeText.textContent = num; A(N.badge.firstElementChild, 'fill', num - 1 === trailIdx ? '#f59e0b' : '#334155'); }
+    if (!flat) scene.Lnodes.appendChild(N.g);      // far → near
   }
-  out += '</g>';
-  svg.innerHTML = out;
-  collectFlow();
 }
 
 /* ═══════════════ view: fit / zoom / animate ═══════════════ */
@@ -1072,7 +1105,7 @@ document.getElementById('zoomFit').onclick = fitAll;
 document.getElementById('zoomReset').onclick = resetLayout;
 document.getElementById('fxBtn').onclick = () => {
   const lite = document.body.classList.contains('lite');
-  fxTier = lite ? 'full' : 'lite'; localStorage.setItem('sib_catalog_fx', fxTier); applyFx(); markDirty();
+  fxTier = lite ? 'full' : 'lite'; localStorage.setItem('sib_catalog_fx', fxTier); applyFx(); if (scene) rebuildScene();
 };
 applyFx();
 document.getElementById('mode2d').onclick = () => setMode(false);

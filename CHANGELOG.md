@@ -17,6 +17,13 @@ it, it gets a line.
   sections on small laptops / 150 % zoom no longer push the chamber ahead of
   the text, and the last stop is always reachable; the dots and scroll map
   agree again.
+- **Feature Catalogue — persistent scene (smooth on Windows).** The map
+  used to regenerate ~90 KB of SVG markup on every frame of the 2D→3D
+  rotation, every orbit step and every hover — the real reason a laptop iGPU
+  sat at 10–15 fps. The scene is now built once; rotation, orbit, hover,
+  selection, focus and filters only update attributes (a few hundred writes
+  per frame). The disc rotation is kept as designed, now at display rate on
+  both platforms.
 - **Feature Catalogue frame rate on Windows.** Pan and zoom no longer
   rebuild the SVG — they move the two top-level groups (a rebuild happens
   only when the zoom crosses the label / focus thresholds); the 3D static
