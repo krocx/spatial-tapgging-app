@@ -613,14 +613,28 @@ function computeLayers(){
   layerIndex = {}; sorted.forEach((a, i) => layerIndex[a.id] = i);
   layerCount = sorted.length;
 }
+// Helix: when stacked, floor i turns so its wedge sits one step further
+// around the spine than floor i-1 — the stack climbs like a staircase instead
+// of piling wedges on top of each other. rotOf() is the extra in-plane turn
+// for a layer (already scaled by t inside P, so it eases in with the lift).
+const HELIX = true;
+function rotOf(area){
+  if (!HELIX || !areaById[area]) return 0;
+  const i = layerIndex[area] || 0, a = areaById[area];
+  const floor0 = DATA.areas.find(x => (layerIndex[x.id] || 0) === 0);
+  const base = floor0 ? floor0.amid : a.amid;
+  const step = Math.PI * 2 / layerCount;
+  let d = (base + i * step) - a.amid; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI;
+  return d;
+}
 const zOf = area => { const i = layerIndex[area] || 0;
   return (i * LAYER_GAP + (i > stack.floor ? 1 : i < stack.floor ? -1 : 0) * FLOOR_LIFT * stack.lift) * stack.t; };
 const zMid = () => (layerCount - 1) * LAYER_GAP * stack.t / 2;
 // World (disc x, disc y, height z) → screen. Identity when flat.
-function P(x, y, z){
+function P(x, y, z, rot = 0){
   if (stack.t === 0) return { x, y, s: 1, d: 0 };
   const rs = 1 - LIFT_SHRINK * stack.t;                   // the disc tightens as it lifts — room between floors
-  const dx = (x - CX) * rs, dy = (y - CY) * rs, yaw = (stack.yaw + par.y) * stack.t;
+  const dx = (x - CX) * rs, dy = (y - CY) * rs, yaw = (stack.yaw + par.y + rot) * stack.t;
   const c = Math.cos(yaw), sn = Math.sin(yaw);
   const X = dx * c - dy * sn, Y = dx * sn + dy * c, zz = z - zMid();
   const th = (stack.tilt + par.t) * Math.min(1, stack.t * 1.15);   // pitch arrives with the spacing
@@ -630,9 +644,9 @@ function P(x, y, z){
   return { x: CX + X * sc, y: CY + y2 * sc, s: sc, d: depth };
 }
 const pt = p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
-function sampleArc(r, t0, t1, z, n = 28){
+function sampleArc(r, t0, t1, z, n = 28, rot = 0){
   const out = [];
-  for (let i = 0; i <= n; i++){ const th = t0 + (t1 - t0) * i / n; out.push(P(CX + Math.cos(th) * r, CY + Math.sin(th) * r, z)); }
+  for (let i = 0; i <= n; i++){ const th = t0 + (t1 - t0) * i / n; out.push(P(CX + Math.cos(th) * r, CY + Math.sin(th) * r, z, rot)); }
   return out;
 }
 const poly = (pts, close = false) => 'M' + pts.map(pt).join('L') + (close ? 'Z' : '');
@@ -645,7 +659,7 @@ function updateModeHint(){
 // for a given camera — used to frame every preset at ~85 % of the viewport.
 function stackBounds(){
   const pts = [];
-  for (const a of DATA.areas){ const z = zOf(a.id); for (let i = 0; i < 24; i++){ const th = i / 24 * Math.PI * 2; pts.push(P(CX + Math.cos(th) * (R_MAX + 70), CY + Math.sin(th) * (R_MAX + 70), z)); } }
+  for (const a of DATA.areas){ const z = zOf(a.id), rot = rotOf(a.id); for (let i = 0; i < 24; i++){ const th = i / 24 * Math.PI * 2; pts.push(P(CX + Math.cos(th) * (R_MAX + 70), CY + Math.sin(th) * (R_MAX + 70), z, rot)); } }
   pts.push(P(CX, CY, -LAYER_GAP * stack.t * 1.05 - 60 * stack.t));
   pts.push(P(CX, CY, (layerCount - 1) * LAYER_GAP * stack.t + 60));
   return pts;
@@ -700,11 +714,12 @@ function markFreeCamera(){
 function flyToFeature(id){
   const nd = byId[id]; if (!nd || !mode3d) return;
   const a = areaById[nd.area];
-  const cam = { t: 1, tilt: Math.min(Math.max(stack.tilt, 0.7), 1.15), yaw: Math.PI / 2 - a.amid, lift: 1, floor: layerIndex[nd.area] || 0 };
+  const rot = rotOf(nd.area);
+  const cam = { t: 1, tilt: Math.min(Math.max(stack.tilt, 0.7), 1.15), yaw: Math.PI / 2 - (a.amid + rot), lift: 1, floor: layerIndex[nd.area] || 0 };
   flyTo(cam, 1100, () => {
     const z = zOf(nd.area), pts = [];
-    for (let i = 0; i <= 12; i++){ const th = a.g0 + (a.g1 - a.g0) * i / 12; pts.push(P(CX + Math.cos(th) * (R_MAX + 70), CY + Math.sin(th) * (R_MAX + 70), z)); pts.push(P(CX + Math.cos(th) * (R_MIN - 40), CY + Math.sin(th) * (R_MIN - 40), z)); }
-    for (const m of neighbourSet(id)){ const n = byId[m]; pts.push(P(n.x, n.y, zOf(n.area))); }
+    for (let i = 0; i <= 12; i++){ const th = a.g0 + (a.g1 - a.g0) * i / 12; pts.push(P(CX + Math.cos(th) * (R_MAX + 70), CY + Math.sin(th) * (R_MAX + 70), z, rot)); pts.push(P(CX + Math.cos(th) * (R_MIN - 40), CY + Math.sin(th) * (R_MIN - 40), z, rot)); }
+    for (const m of neighbourSet(id)){ const n = byId[m]; pts.push(P(n.x, n.y, zOf(n.area), rotOf(n.area))); }
     return viewToFit(pts, 90);
   });
 }
@@ -879,6 +894,7 @@ const polyLen = pts => { let l = 0; for (let i = 1; i < pts.length; i++) l += Ma
 // rise (or fall) between their layers, bowing toward the spine.
 function edgePath3D(e){
   const zs = zOf(e.s.area), zt = zOf(e.t.area), n = zs === zt ? 10 : 18;
+  let rs = rotOf(e.s.area), rt = rotOf(e.t.area); if (rt - rs > Math.PI) rt -= 2 * Math.PI; if (rt - rs < -Math.PI) rt += 2 * Math.PI;
   const mx = (e.s.x + e.t.x) / 2, my = (e.s.y + e.t.y) / 2;
   const pull = e.s.area === e.t.area ? 0.08 : 0.32;
   const cx = mx + (CX - mx) * pull, cy = my + (CY - my) * pull;
@@ -887,7 +903,7 @@ function edgePath3D(e){
     const u = i / n, a = (1 - u) * (1 - u), b = 2 * (1 - u) * u, c = u * u;
     const x = a * e.s.x + b * cx + c * e.t.x, y = a * e.s.y + b * cy + c * e.t.y;
     const ez = u * u * (3 - 2 * u);
-    pts.push(P(x, y, zs + (zt - zs) * ez));
+    pts.push(P(x, y, zs + (zt - zs) * ez, rs + (rt - rs) * ez));
   }
   return poly(pts);
 }
@@ -1020,20 +1036,20 @@ function layout3D(){
   const byDepth = layers.map(a => ({ a, d: P(CX, CY, zOf(a.id)).d })).sort((x, y) => y.d - x.d);
   const dFar = byDepth[0].d, dNear = byDepth[byDepth.length - 1].d, fromBelow = stack.tilt > Math.PI / 2;
   for (const { a, d } of byDepth){
-    const L = scene.l3[a.id], z = zOf(a.id);
+    const L = scene.l3[a.id], z = zOf(a.id), rot = rotOf(a.id);
     const dim = (activeAreas.size && !activeAreas.has(a.id)) || (focusAreas && !focusAreas.has(a.id));
     const otherFloor = stack.lift > 0 && (layerIndex[a.id] || 0) !== stack.floor;
     // Atmosphere: far floors recede (never the one in focus).
     const fade = dFar === dNear ? 1 : 1 - 0.45 * (d - dNear) / (dFar - dNear);
     const base = dim ? 0.22 : otherFloor ? (1 - 0.6 * stack.lift) : 1;
     A(L.g, 'opacity', (base * (otherFloor || dim ? 1 : fade)).toFixed(2));
-    A(L.disc, 'd', poly(sampleArc(R_MAX + 46, 0, Math.PI * 2, z, 48), true));
+    A(L.disc, 'd', poly(sampleArc(R_MAX + 46, 0, Math.PI * 2, z, 48, rot), true));
     // Shadow the floor casts on the one below (hidden when looking up from under).
     A(L.sh, 'display', fromBelow || (layerIndex[a.id] || 0) === 0 ? 'none' : '');
-    if (!fromBelow) A(L.sh, 'd', poly(sampleArc(R_MAX + 40, a.g0 + 0.012, a.g1 - 0.012, z - 18, 24).concat(sampleArc(R_MIN - 40, a.g1 - 0.012, a.g0 + 0.012, z - 18, 14)), true));
-    const o = sampleArc(R_MAX + 46, a.g0 + 0.012, a.g1 - 0.012, z, 24), inn = sampleArc(R_MIN - 40, a.g1 - 0.012, a.g0 + 0.012, z, 14);
+    if (!fromBelow) A(L.sh, 'd', poly(sampleArc(R_MAX + 40, a.g0 + 0.012, a.g1 - 0.012, z - 18, 24, rot).concat(sampleArc(R_MIN - 40, a.g1 - 0.012, a.g0 + 0.012, z - 18, 14, rot)), true));
+    const o = sampleArc(R_MAX + 46, a.g0 + 0.012, a.g1 - 0.012, z, 24, rot), inn = sampleArc(R_MIN - 40, a.g1 - 0.012, a.g0 + 0.012, z, 14, rot);
     A(L.fill, 'd', poly(o.concat(inn), true)); A(L.rim, 'd', poly(o)); A(L.hub, 'd', poly(sampleArc(22, 0, Math.PI * 2, z, 16), true));
-    const outer = sampleArc(R_MAX + 62, a.g0 + 0.03, a.g1 - 0.03, z, 20);
+    const outer = sampleArc(R_MAX + 62, a.g0 + 0.03, a.g1 - 0.03, z, 20, rot);
     const pts = outer[0].x <= outer[outer.length - 1].x ? outer : outer.reverse();
     A(L.ap, 'd', poly(pts));
     const len = polyLen(pts), fs = rimFontSize(a.name, len);
@@ -1041,11 +1057,11 @@ function layout3D(){
     // live line + ripple
     const lv = liveOf(a.id);
     if (lv){
-      const lpts = sampleArc(R_MAX + 32, a.g0 + 0.03, a.g1 - 0.03, z, 18);
+      const lpts = sampleArc(R_MAX + 32, a.g0 + 0.03, a.g1 - 0.03, z, 18, rot);
       A(L.lp, 'd', poly(lpts[0].x <= lpts[lpts.length - 1].x ? lpts : lpts.reverse()));
       const tx = (lv.live ? '● ' : '') + lv.text; if (L.live.firstChild.textContent !== tx) L.live.firstChild.textContent = tx;
       L.live.classList.toggle('on', lv.live);
-      const mid = P(CX + Math.cos(a.amid) * ((R_MIN + R_MAX) / 2), CY + Math.sin(a.amid) * ((R_MIN + R_MAX) / 2), z);
+      const mid = P(CX + Math.cos(a.amid) * ((R_MIN + R_MAX) / 2), CY + Math.sin(a.amid) * ((R_MIN + R_MAX) / 2), z, rot);
       for (const r of [L.rip, L.rip2]){ A(r, 'display', lv.live ? '' : 'none'); A(r, 'cx', mid.x.toFixed(1)); A(r, 'cy', mid.y.toFixed(1)); A(r, 'r', (20 * mid.s).toFixed(1)); }
     }
     scene.L3.appendChild(L.g);          // far → near paint order
@@ -1091,7 +1107,7 @@ function draw(){
   if (!flat) layout3D();
   // projected positions
   let dMin = Infinity, dMax = -Infinity;
-  for (const nd of nodes){ const p = P(nd.x, nd.y, zOf(nd.area)); nd.px = p.x; nd.py = p.y; nd.ps = p.s; nd.pd = p.d; if (p.d < dMin) dMin = p.d; if (p.d > dMax) dMax = p.d; }
+  for (const nd of nodes){ const p = P(nd.x, nd.y, zOf(nd.area), rotOf(nd.area)); nd.px = p.x; nd.py = p.y; nd.ps = p.s; nd.pd = p.d; if (p.d < dMin) dMin = p.d; if (p.d > dMax) dMax = p.d; }
   const fadeOf = nd => (flat || dMax === dMin) ? 1 : 1 - 0.5 * (nd.pd - dMin) / (dMax - dMin);
   // edges
   const focusId = selected || hovered, lit = [];

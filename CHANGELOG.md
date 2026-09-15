@@ -17,6 +17,13 @@ it, it gets a line.
   sections on small laptops / 150 % zoom no longer push the chamber ahead of
   the text, and the last stop is always reachable; the dots and scroll map
   agree again.
+- **Feature Catalogue — the stack is a staircase.** When the disc lifts,
+  each floor turns so its product wedge sits one step (360°/7) further
+  around the spine than the floor below — a helix, so no wedge ever piles
+  onto another and the eye climbs the stack floor by floor. The turn eases
+  in with the lift (the wedges swing into place during the 2D→3D flight) and
+  every dependency link follows its two floors' turns. Fly-to-feature and
+  the preset framing account for it.
 - **Feature Catalogue — the unselected stack reads cleanly; the stack is
   alive.** Floors used to overlap in perspective before anything was selected
   (98 px apart against a 480 px disc). The disc now tightens by 24 % as it
