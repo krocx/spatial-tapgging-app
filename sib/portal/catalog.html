@@ -742,13 +742,14 @@ async function refreshStats(){
 }
 setInterval(refreshStats, 30000);
 // One wedge's live line + ripple, in either projection (z = 0 when flat).
-function liveMark(a, z){
+// Flat-layer live mark. Always built in disc coordinates — the flat layer is
+// shown only when the camera is flat, but it may be REBUILT (stats refresh)
+// while the camera is stacked, and must not inherit that projection.
+function liveMark(a){
   const lv = liveOf(a.id); if (!lv) return '';
   const rr = R_MAX + 32, bottom = Math.sin(a.amid) > 0;
-  const arc = stack.t === 0
-    ? (bottom ? arcPath(rr, a.g1 - 0.03, a.g0 + 0.03) : arcPath(rr, a.g0 + 0.03, a.g1 - 0.03))
-    : (() => { const p = sampleArc(rr, a.g0 + 0.03, a.g1 - 0.03, z, 24); return poly(p[0].x <= p[p.length-1].x ? p : p.reverse()); })();
-  const mid = P(CX + Math.cos(a.amid) * ((R_MIN + R_MAX) / 2), CY + Math.sin(a.amid) * ((R_MIN + R_MAX) / 2), z);
+  const arc = bottom ? arcPath(rr, a.g1 - 0.03, a.g0 + 0.03) : arcPath(rr, a.g0 + 0.03, a.g1 - 0.03);
+  const mid = { x: CX + Math.cos(a.amid) * ((R_MIN + R_MAX) / 2), y: CY + Math.sin(a.amid) * ((R_MIN + R_MAX) / 2), s: 1 };
   return `<defs><path id="lp-${a.id}" d="${arc}"/></defs>
     <text class="livelbl${lv.live ? ' on' : ''}" fill="${a.color}"><textPath href="#lp-${a.id}" startOffset="50%" text-anchor="middle">${lv.live ? '● ' : ''}${esc(lv.text)}</textPath></text>` +
     (lv.live ? `<circle class="ripple" cx="${mid.x}" cy="${mid.y}" r="${20 * mid.s}" fill="none" stroke="${a.color}" stroke-width="1.5"/>
@@ -843,7 +844,7 @@ function buildStatic(){
       <path d="${wedgePath(R_MIN - 40, R_MAX + 46, a.g0 + 0.012, a.g1 - 0.012)}" fill="url(#wg-${a.id})" stroke="${a.color}" stroke-opacity=".22" stroke-width="1"/>
       <path d="${arcPath(R_MAX + 46, a.g0 + 0.012, a.g1 - 0.012)}" fill="none" stroke="${a.color}" stroke-opacity=".8" stroke-width="3"/>
       <text class="albl" fill="${a.color}" data-area="${a.id}"><textPath href="#ap-${a.id}" startOffset="50%" text-anchor="middle" ${rimFit(a.name, a.rimFs, a.rimLen)}>${esc(a.name).toUpperCase()}</textPath></text>
-      ${liveMark(a, 0)}
+      ${liveMark(a)}
     </g>`;
   });
   // depth rings
