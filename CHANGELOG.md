@@ -17,6 +17,14 @@ it, it gets a line.
   sections on small laptops / 150 % zoom no longer push the chamber ahead of
   the text, and the last stop is always reachable; the dots and scroll map
   agree again.
+- **Feature Catalogue frame rate on Windows.** Pan and zoom no longer
+  rebuild the SVG — they move the two top-level groups (a rebuild happens
+  only when the zoom crosses the label / focus thresholds); the 3D static
+  layer is cached and rebuilt only when camera, filters or stats change; and
+  an **effects tier** measures the first two seconds of frames and drops to
+  *Lite* (no breathing nodes, turning halos, ripples or frosted-glass blur —
+  each of which repaints the whole SVG every frame) when the median frame is
+  over 20 ms. ✦ in the controls toggles Full / Lite and remembers it.
 - **Feature Catalogue on Windows — drag selected text, flow never showed.**
   Dragging the map over SVG labels started a native text selection on Windows
   Chromium and swallowed the pan, so the page looked frozen; the map now
