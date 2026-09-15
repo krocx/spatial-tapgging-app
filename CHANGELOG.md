@@ -17,6 +17,16 @@ it, it gets a line.
   sections on small laptops / 150 % zoom no longer push the chamber ahead of
   the text, and the last stop is always reachable; the dots and scroll map
   agree again.
+- **Feature Catalogue — the unselected stack reads cleanly; the stack is
+  alive.** Floors used to overlap in perspective before anything was selected
+  (98 px apart against a 480 px disc). The disc now tightens by 24 % as it
+  lifts, the gap grows to 150 and the Stack preset pitches steeper, so the
+  floors sit apart. **Depth cues**: far floors, nodes and links fade with
+  distance (never the selection or its neighbours); every floor casts a soft
+  shadow on the one below (hidden in Under). **Idle motion**: after 4 s
+  without input the stack drifts slowly, and it leans a few degrees with the
+  mouse — both Full-tier, 3D-only, paused while a flight or drag runs and
+  when the tab is hidden, so Lite machines pay nothing.
 - **Feature Catalogue — a camera, not a slide.** Four presets (keys 1–4):
   **Top** (the flat disc), **Stack**, **Side** (floors edge-on — cross-layer
   dependencies read as wiring between storeys) and **Under** (looking up the

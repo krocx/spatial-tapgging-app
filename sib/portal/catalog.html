@@ -532,7 +532,7 @@ function tick(){
   }
   alpha *= 0.99;
 }
-let igniting = false;
+let igniting = false, loopPrev = 0;
 function startSim(){
   alpha = 1;
   for (let i = 0; i < 420; i++) tick();     // fully settled before the first paint
@@ -552,6 +552,16 @@ function startSim(){
   requestAnimationFrame(function loop(now){
     if (!igniting){
       if (alpha > 0.02){ tick(); dirty = true; }
+      // 4: the stack drifts on its own after 4 s idle, and leans a few degrees
+      // with the mouse (Full tier, 3D only). Both are re-projections, so they
+      // are skipped entirely in Lite and while a flight or drag is running.
+      if (mode3d && stack.t > 0 && !stackAnim && !drag && !document.body.classList.contains('lite') && document.visibilityState === 'visible'){
+        const dt = Math.min(50, now - (loopPrev || now));
+        if (now - lastInteract > 4000){ stack.yaw += 0.00006 * dt; dirty = true; }
+        const ny = par.y + (par.ty - par.y) * 0.08, nt = par.t + (par.tt - par.t) * 0.08;
+        if (Math.abs(ny - par.y) > 1e-4 || Math.abs(nt - par.t) > 1e-4){ par.y = ny; par.t = nt; dirty = true; }
+      }
+      loopPrev = now;
       if (dirty){ draw(); dirty = false; }
       animateFlow(now);
       if (fxSamples.length < 90) fxProbe(now);
@@ -579,12 +589,15 @@ function resetLayout(){
 const stack = { t: 0, yaw: -0.42, tilt: 0, lift: 0, floor: 0 };
 const CAMS = {
   top:   { t: 0, tilt: 0,               yaw: -0.42 },
-  stack: { t: 1, tilt: 0.98,            yaw: -0.42 },
+  stack: { t: 1, tilt: 1.06,            yaw: -0.42 },
   side:  { t: 1, tilt: 1.40,            yaw: -0.42 },
   under: { t: 1, tilt: Math.PI - 0.95,  yaw: -0.42 },
 };
 let camName = 'top', mode3d = false, stackAnim = null;
-const LAYER_GAP = 118, FOCAL = 2400, FLOOR_LIFT = 70;
+const LAYER_GAP = 150, FOCAL = 2400, FLOOR_LIFT = 80, LIFT_SHRINK = 0.24;
+// Idle drift + mouse parallax (Full tier, 3D only) — the stack is never a still image.
+const par = { y: 0, t: 0, ty: 0, tt: 0 };
+let lastInteract = 0;
 let layerIndex = {}, layerCount = 1, crossLinks = 0;
 function computeLayers(){
   // Layer order: Platform Foundations is the floor by definition; every other
@@ -606,10 +619,11 @@ const zMid = () => (layerCount - 1) * LAYER_GAP * stack.t / 2;
 // World (disc x, disc y, height z) → screen. Identity when flat.
 function P(x, y, z){
   if (stack.t === 0) return { x, y, s: 1, d: 0 };
-  const dx = x - CX, dy = y - CY, yaw = stack.yaw * stack.t;
+  const rs = 1 - LIFT_SHRINK * stack.t;                   // the disc tightens as it lifts — room between floors
+  const dx = (x - CX) * rs, dy = (y - CY) * rs, yaw = (stack.yaw + par.y) * stack.t;
   const c = Math.cos(yaw), sn = Math.sin(yaw);
   const X = dx * c - dy * sn, Y = dx * sn + dy * c, zz = z - zMid();
-  const th = stack.tilt * Math.min(1, stack.t * 1.15);   // pitch arrives with the spacing
+  const th = (stack.tilt + par.t) * Math.min(1, stack.t * 1.15);   // pitch arrives with the spacing
   const y2 = Y * Math.cos(th) - zz * Math.sin(th);
   const depth = -(Y * Math.sin(th)) - zz * Math.cos(th);   // negative = nearer the eye
   const sc = FOCAL / (FOCAL + depth);
@@ -937,6 +951,7 @@ function buildScene(){
   h += `<line id="sp-a" stroke="#3b82f6" stroke-opacity=".35" stroke-linecap="round"/><line id="sp-b" stroke="#bfdbfe" stroke-opacity=".8" stroke-linecap="round"/>`;
   for (const a of layers){
     h += `<g class="wedge" id="w3-${a.id}" data-area="${a.id}">
+      <path id="w3-sh-${a.id}" fill="#05080f" fill-opacity=".55"/>
       <path id="w3-disc-${a.id}" fill="${a.color}" fill-opacity=".025" stroke="#7d8da3" stroke-opacity=".14" stroke-dasharray="2 6"/>
       <path id="w3-fill-${a.id}" fill="${a.color}" fill-opacity=".13" stroke="${a.color}" stroke-opacity=".28" stroke-width="1"/>
       <path id="w3-rim-${a.id}" fill="none" stroke="${a.color}" stroke-opacity=".85" stroke-width="3"/>
@@ -983,7 +998,7 @@ function buildScene(){
       g, hsel: g.querySelector('.hsel'), hhov: g.querySelector('.hhov'), shape: g.querySelector('.shape'),
       label: g.querySelector('.nlabel'), badge: g.querySelector('.badge'), badgeText: g.querySelector('.trailbadge') }])),
     l3: Object.fromEntries(layers.map(a => [a.id, {
-      g: $('w3-' + a.id), disc: $('w3-disc-' + a.id), fill: $('w3-fill-' + a.id), rim: $('w3-rim-' + a.id), hub: $('w3-hub-' + a.id),
+      g: $('w3-' + a.id), sh: $('w3-sh-' + a.id), disc: $('w3-disc-' + a.id), fill: $('w3-fill-' + a.id), rim: $('w3-rim-' + a.id), hub: $('w3-hub-' + a.id),
       ap: $('ap3-' + a.id), lbl: $('w3-lbl-' + a.id), lp: $('lp3-' + a.id), live: $('w3-live-' + a.id), rip: $('w3-rip-' + a.id), rip2: $('w3-rip2-' + a.id) }])),
     core: { glow: $('c3-glow'), disc: $('c3-disc'), fill: $('c3-fill'), lbl: $('c3-lbl') }, spA: $('sp-a'), spB: $('sp-b'),
     flowKey: '', flowNodes: [],
@@ -1002,12 +1017,19 @@ function layout3D(){
   const b = P(CX, CY, zCore + 52), tp = P(CX, CY, zTop + 40);
   for (const [el, w] of [[scene.spA, 10], [scene.spB, 2]]){ A(el, 'x1', b.x.toFixed(1)); A(el, 'y1', b.y.toFixed(1)); A(el, 'x2', tp.x.toFixed(1)); A(el, 'y2', tp.y.toFixed(1)); A(el, 'stroke-width', (w * b.s).toFixed(2)); }
   const byDepth = layers.map(a => ({ a, d: P(CX, CY, zOf(a.id)).d })).sort((x, y) => y.d - x.d);
-  for (const { a } of byDepth){
+  const dFar = byDepth[0].d, dNear = byDepth[byDepth.length - 1].d, fromBelow = stack.tilt > Math.PI / 2;
+  for (const { a, d } of byDepth){
     const L = scene.l3[a.id], z = zOf(a.id);
     const dim = (activeAreas.size && !activeAreas.has(a.id)) || (focusAreas && !focusAreas.has(a.id));
     const otherFloor = stack.lift > 0 && (layerIndex[a.id] || 0) !== stack.floor;
-    A(L.g, 'opacity', dim ? 0.22 : otherFloor ? (1 - 0.6 * stack.lift).toFixed(2) : 1);
+    // Atmosphere: far floors recede (never the one in focus).
+    const fade = dFar === dNear ? 1 : 1 - 0.45 * (d - dNear) / (dFar - dNear);
+    const base = dim ? 0.22 : otherFloor ? (1 - 0.6 * stack.lift) : 1;
+    A(L.g, 'opacity', (base * (otherFloor || dim ? 1 : fade)).toFixed(2));
     A(L.disc, 'd', poly(sampleArc(R_MAX + 46, 0, Math.PI * 2, z, 48), true));
+    // Shadow the floor casts on the one below (hidden when looking up from under).
+    A(L.sh, 'display', fromBelow || (layerIndex[a.id] || 0) === 0 ? 'none' : '');
+    if (!fromBelow) A(L.sh, 'd', poly(sampleArc(R_MAX + 40, a.g0 + 0.012, a.g1 - 0.012, z - 18, 24).concat(sampleArc(R_MIN - 40, a.g1 - 0.012, a.g0 + 0.012, z - 18, 14)), true));
     const o = sampleArc(R_MAX + 46, a.g0 + 0.012, a.g1 - 0.012, z, 24), inn = sampleArc(R_MIN - 40, a.g1 - 0.012, a.g0 + 0.012, z, 14);
     A(L.fill, 'd', poly(o.concat(inn), true)); A(L.rim, 'd', poly(o)); A(L.hub, 'd', poly(sampleArc(22, 0, Math.PI * 2, z, 16), true));
     const outer = sampleArc(R_MAX + 62, a.g0 + 0.03, a.g1 - 0.03, z, 20);
@@ -1067,7 +1089,9 @@ function draw(){
   for (const a of DATA.areas) A(scene.dim[a.id], 'display', flat && (dimArea(a.id) || (focusAreas && !focusAreas.has(a.id))) ? '' : 'none');
   if (!flat) layout3D();
   // projected positions
-  for (const nd of nodes){ const p = P(nd.x, nd.y, zOf(nd.area)); nd.px = p.x; nd.py = p.y; nd.ps = p.s; nd.pd = p.d; }
+  let dMin = Infinity, dMax = -Infinity;
+  for (const nd of nodes){ const p = P(nd.x, nd.y, zOf(nd.area)); nd.px = p.x; nd.py = p.y; nd.ps = p.s; nd.pd = p.d; if (p.d < dMin) dMin = p.d; if (p.d > dMax) dMax = p.d; }
+  const fadeOf = nd => (flat || dMax === dMin) ? 1 : 1 - 0.5 * (nd.pd - dMin) / (dMax - dMin);
   // edges
   const focusId = selected || hovered, lit = [];
   edges.forEach((e, i) => {
@@ -1082,6 +1106,7 @@ function draw(){
     const isLit = focusId && (e.s.id === focusId || e.t.id === focusId);
     if (isLit && !igniting) lit.push(i);
     const el = scene.edgeEls[i];
+    if (!isLit && !flat) op *= (fadeOf(e.s) + fadeOf(e.t)) / 2;
     A(el, 'd', edgePath(e)); A(el, 'opacity', op.toFixed(3)); A(el, 'stroke-width', isLit ? 2 : 1.1);
   });
   ensureFlow(lit);
@@ -1116,6 +1141,7 @@ function draw(){
     if (focus) op = neighbours.has(nd.id) ? 1 : n2.has(nd.id) ? 0.3 : 0.05;
     if (touchedAreas && !neighbours.has(nd.id) && !touchedAreas.has(nd.area)) op = Math.min(op, 0.18);
     const isSel = nd.id === selected, isHov = nd.id === hovered, r = isSel ? 11 : isHov ? 10 : 8;
+    if (!isSel && !isHov && !neighbours.has(nd.id) && !hov.has(nd.id)) op *= fadeOf(nd);
     A(N.g, 'transform', `translate(${nd.px.toFixed(1)},${nd.py.toFixed(1)}) scale(${nd.ps.toFixed(3)})`);
     A(N.g, 'opacity', op.toFixed(3));
     A(N.shape, 'r', r);
@@ -1203,6 +1229,7 @@ svg.addEventListener('pointerdown', ev => {
   svg.setPointerCapture(ev.pointerId); svg.classList.add('dragging');
 });
 svg.addEventListener('pointermove', ev => {
+  if (mode3d){ const r = svg.getBoundingClientRect(); par.ty = ((ev.clientX - r.left) / r.width - 0.5) * 0.07; par.tt = ((ev.clientY - r.top) / r.height - 0.5) * 0.05; }
   if (!drag){
     const g = ev.target.closest('g[data-id]');
     const id = g ? g.dataset.id : null;
@@ -1245,7 +1272,8 @@ svg.addEventListener('pointerup', ev => {
   }
   drag = null;
 });
-svg.addEventListener('pointerleave', () => { if (hovered){ hovered = null; hideTip(); markDirty(); } });
+svg.addEventListener('pointerleave', () => { par.ty = 0; par.tt = 0; if (hovered){ hovered = null; hideTip(); markDirty(); } });
+['pointerdown', 'wheel', 'keydown'].forEach(ev => window.addEventListener(ev, () => { lastInteract = performance.now(); }, { passive: true }));
 svg.addEventListener('pointercancel', () => { if (drag){ drag = null; svg.classList.remove('dragging'); markDirty(); } });
 svg.addEventListener('lostpointercapture', () => { if (drag && drag.type !== 'node'){ drag = null; svg.classList.remove('dragging'); } });
 svg.addEventListener('dblclick', ev => {
