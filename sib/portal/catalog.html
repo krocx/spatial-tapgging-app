@@ -586,12 +586,15 @@ function resetLayout(){
 // π/2 edge-on, > π/2 looking up from under the floor), yaw = orbit, lift =
 // "floor focus" (the selected feature's layer stays, the others part above
 // and below it). Presets fly between named cameras; drag makes it free.
-const stack = { t: 0, yaw: -0.42, tilt: 0, lift: 0, floor: 0 };
+const stack = { t: 0, yaw: -0.42 + Math.PI, tilt: 0, lift: 0, floor: 0 };
+// Yaw is a half-turn from the original so the staircase climbs left → right
+// (Portal, the top floor, lands on the right).
+const YAW0 = -0.42 + Math.PI;
 const CAMS = {
-  top:   { t: 0, tilt: 0,               yaw: -0.42 },
-  stack: { t: 1, tilt: 1.06,            yaw: -0.42 },
-  side:  { t: 1, tilt: 1.40,            yaw: -0.42 },
-  under: { t: 1, tilt: Math.PI - 0.95,  yaw: -0.42 },
+  top:   { t: 0, tilt: 0,               yaw: YAW0 },
+  stack: { t: 1, tilt: 1.06,            yaw: YAW0 },
+  side:  { t: 1, tilt: 1.40,            yaw: YAW0 },
+  under: { t: 1, tilt: Math.PI - 0.95,  yaw: YAW0 },
 };
 let camName = 'top', mode3d = false, stackAnim = null;
 const LAYER_GAP = 150, FOCAL = 2400, FLOOR_LIFT = 80, LIFT_SHRINK = 0.24;
