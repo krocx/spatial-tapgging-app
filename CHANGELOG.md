@@ -17,6 +17,17 @@ it, it gets a line.
   sections on small laptops / 150 % zoom no longer push the chamber ahead of
   the text, and the last stop is always reachable; the dots and scroll map
   agree again.
+- **Feature Catalogue — a camera, not a slide.** Four presets (keys 1–4):
+  **Top** (the flat disc), **Stack**, **Side** (floors edge-on — cross-layer
+  dependencies read as wiring between storeys) and **Under** (looking up the
+  spine from SIB); smooth flights between them, each framed to fill the
+  viewport. **Free camera**: horizontal drag orbits, vertical drag tilts from
+  top-down to beneath the floor, shift-drag pans, wheel dollies. **The camera
+  goes to the feature**: selecting a node in 3D swings its product wedge to
+  face you, dollies in, and makes its layer the floor you stand on — the
+  floors above lift away and the ones below drop back, both faded — while
+  its related nodes on other floors stay lit. Deselecting settles the floors
+  back. `?cam=stack|side|under` in links; `?3d` still works.
 - **Feature Catalogue — persistent scene (smooth on Windows).** The map
   used to regenerate ~90 KB of SVG markup on every frame of the 2D→3D
   rotation, every orbit step and every hover — the real reason a laptop iGPU

@@ -272,7 +272,7 @@ text.livelbl.on{opacity:.95;font-weight:700;}
     <div id="matchCount"></div>
     <svg id="graph"></svg>
     <div id="altView" style="display:none"></div>
-    <div id="modeCtl"><button id="mode2d" class="on" title="Flat disc (key 2)">2D</button><button id="mode3d" title="Products stacked as layers (key 3)">3D</button></div>
+    <div id="modeCtl"><button data-cam="top" class="on" title="Top — the flat disc (key 1)">Top</button><button data-cam="stack" title="Stack — products as layers (key 2)">Stack</button><button data-cam="side" title="Side — floors edge-on, dependencies as wiring (key 3)">Side</button><button data-cam="under" title="Under — looking up the spine from SIB (key 4)">Under</button></div>
     <div id="modeHint"></div>
     <div id="focusBar" style="display:none"></div>
     <div id="tourCap" style="display:none"></div>
@@ -283,7 +283,7 @@ text.livelbl.on{opacity:.95;font-weight:700;}
       <button id="zoomReset" title="Reset layout (forget dragged positions)">↺</button>
       <button id="fxBtn" title="Effects">✦</button>
     </div>
-    <div id="hint">Hover for a summary · click for details · click a product name to zoom in · double-click a node to zoom to its neighbours · drag to pan (3D: orbit) · scroll to zoom · keys 2 / 3 switch view</div>
+    <div id="hint">Hover for a summary · click for details · click a product name to zoom in · double-click a node to zoom to its neighbours · drag to pan (3D: orbit + tilt, shift-drag pans) · scroll to zoom · keys 1–4 = Top · Stack · Side · Under</div>
   </div>
   <div id="panel"></div>
 </div>
@@ -398,7 +398,7 @@ let syncing = false;
 function syncHash(){
   if (!DATA || syncing) return;
   const q = [];
-  if (mode3d) q.push('3d');
+  if (mode3d) q.push('cam=' + (camName === 'free' ? 'stack' : camName));
   if (currentView !== 'map') q.push('view=' + currentView);
   if (activeAreas.size) q.push('areas=' + [...activeAreas].join(','));
   if (statusFilter) q.push('status=' + statusFilter);
@@ -411,10 +411,10 @@ function applyHash(){
   const raw = decodeURIComponent(location.hash.slice(1));
   const [idPart, qs = ''] = raw.split('?');
   const p = new URLSearchParams(qs);
-  const want3d = p.has('3d');
+  const wantCam = p.get('cam') || (p.has('3d') ? 'stack' : 'top');
   const id = idPart;
   syncing = true;
-  if (want3d !== mode3d) setMode(want3d, !applyHash.ran);   // instant on first load
+  if (wantCam !== camName && CAMS[wantCam]) setCam(wantCam, !applyHash.ran);   // instant on first load
   if (p.get('areas')){ activeAreas = new Set(p.get('areas').split(',').filter(a => areaById[a])); renderAreaChips(); }
   if (p.has('status') || p.has('v')){ statusFilter = p.get('status') || null; versionFilter = p.get('v') || null; applyFilters(); }
   if (p.get('view') && p.get('view') !== currentView) setView(p.get('view'));
@@ -541,7 +541,7 @@ function startSim(){
   // nodes pop ring by ring. Any input skips it. Reduced-motion users get the
   // settled map straight away.
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (!reduce && !/3d$/.test(location.hash) && !sessionStorage.getItem('sib_catalog_ignited')){
+  if (!reduce && !/3d|cam=/.test(location.hash) && !sessionStorage.getItem('sib_catalog_ignited')){
     igniting = true; sessionStorage.setItem('sib_catalog_ignited', '1');
     svg.classList.add('ignite'); draw();
     const end = () => { if (!igniting) return; igniting = false; svg.classList.remove('ignite'); dirty = true; };
@@ -572,9 +572,19 @@ function resetLayout(){
 // spacing, so the switch is one camera move: tilt 0 → ~57° while layers
 // separate. Layer order is computed from the dependency graph — foundations
 // at the bottom, each product placed so as many edges as possible point UP.
-const stack = { t: 0, yaw: -0.42, tilt: 0 };   // t: 0 = flat, 1 = fully stacked
-let mode3d = false, stackAnim = null;
-const LAYER_GAP = 118, TILT_MAX = 0.98, FOCAL = 2400;
+// Camera. t = layer spacing (0 flat … 1 stacked), tilt = pitch (0 top-down,
+// π/2 edge-on, > π/2 looking up from under the floor), yaw = orbit, lift =
+// "floor focus" (the selected feature's layer stays, the others part above
+// and below it). Presets fly between named cameras; drag makes it free.
+const stack = { t: 0, yaw: -0.42, tilt: 0, lift: 0, floor: 0 };
+const CAMS = {
+  top:   { t: 0, tilt: 0,               yaw: -0.42 },
+  stack: { t: 1, tilt: 0.98,            yaw: -0.42 },
+  side:  { t: 1, tilt: 1.40,            yaw: -0.42 },
+  under: { t: 1, tilt: Math.PI - 0.95,  yaw: -0.42 },
+};
+let camName = 'top', mode3d = false, stackAnim = null;
+const LAYER_GAP = 118, FOCAL = 2400, FLOOR_LIFT = 70;
 let layerIndex = {}, layerCount = 1, crossLinks = 0;
 function computeLayers(){
   // Layer order: Platform Foundations is the floor by definition; every other
@@ -590,7 +600,8 @@ function computeLayers(){
   layerIndex = {}; sorted.forEach((a, i) => layerIndex[a.id] = i);
   layerCount = sorted.length;
 }
-const zOf = area => (layerIndex[area] || 0) * LAYER_GAP * stack.t;
+const zOf = area => { const i = layerIndex[area] || 0;
+  return (i * LAYER_GAP + (i > stack.floor ? 1 : i < stack.floor ? -1 : 0) * FLOOR_LIFT * stack.lift) * stack.t; };
 const zMid = () => (layerCount - 1) * LAYER_GAP * stack.t / 2;
 // World (disc x, disc y, height z) → screen. Identity when flat.
 function P(x, y, z){
@@ -598,7 +609,7 @@ function P(x, y, z){
   const dx = x - CX, dy = y - CY, yaw = stack.yaw * stack.t;
   const c = Math.cos(yaw), sn = Math.sin(yaw);
   const X = dx * c - dy * sn, Y = dx * sn + dy * c, zz = z - zMid();
-  const th = stack.tilt;
+  const th = stack.tilt * Math.min(1, stack.t * 1.15);   // pitch arrives with the spacing
   const y2 = Y * Math.cos(th) - zz * Math.sin(th);
   const depth = -(Y * Math.sin(th)) - zz * Math.cos(th);   // negative = nearer the eye
   const sc = FOCAL / (FOCAL + depth);
@@ -611,33 +622,79 @@ function sampleArc(r, t0, t1, z, n = 28){
   return out;
 }
 const poly = (pts, close = false) => 'M' + pts.map(pt).join('L') + (close ? 'Z' : '');
-function setStack(t){
-  stack.t = t; stack.tilt = TILT_MAX * t; markDirty();
-  document.getElementById('modeHint').textContent = t > 0.5
-    ? `${layerCount} layers · ${crossLinks} cross-layer links · drag to orbit` : '';
+function setStack(t){ stack.t = t; markDirty(); }
+function updateModeHint(){
+  document.getElementById('modeHint').textContent = stack.t > 0.5
+    ? `${layerCount} layers · ${crossLinks} cross-layer links · drag to orbit & tilt · shift-drag to pan` : '';
 }
-function animateStack(to, ms = 1300){
+// Projected bounds of the whole stack (rims of every layer + core + spine top)
+// for a given camera — used to frame every preset at ~85 % of the viewport.
+function stackBounds(){
+  const pts = [];
+  for (const a of DATA.areas){ const z = zOf(a.id); for (let i = 0; i < 24; i++){ const th = i / 24 * Math.PI * 2; pts.push(P(CX + Math.cos(th) * (R_MAX + 70), CY + Math.sin(th) * (R_MAX + 70), z)); } }
+  pts.push(P(CX, CY, -LAYER_GAP * stack.t * 1.05 - 60 * stack.t));
+  pts.push(P(CX, CY, (layerCount - 1) * LAYER_GAP * stack.t + 60));
+  return pts;
+}
+function viewToFit(pts, pad = 40){
+  const minX = Math.min(...pts.map(p => p.x)) - pad, maxX = Math.max(...pts.map(p => p.x)) + pad;
+  const minY = Math.min(...pts.map(p => p.y)) - pad, maxY = Math.max(...pts.map(p => p.y)) + pad;
+  const k = Math.max(0.4, Math.min(3.5, Math.min(W / (maxX - minX), H / (maxY - minY)) * 0.96));
+  return { k, x: (W - (minX + maxX) * k) / 2, y: (H - (minY + maxY) * k) / 2 };
+}
+// Evaluate a framing function at a target camera without disturbing the live one.
+function withCamera(cam, fn){
+  const keep = { ...stack };
+  Object.assign(stack, cam);
+  try { return fn(); } finally { Object.assign(stack, keep); }
+}
+const lerpAngle = (a, b, u) => { let d = b - a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return a + d * u; };
+// Fly camera (t, tilt, yaw, lift, floor) and view together.
+function flyTo(cam, ms = 1300, frame = null){
   if (stackAnim) cancelAnimationFrame(stackAnim);
-  if (matchMedia('(prefers-reduced-motion: reduce)').matches){ setStack(to); return; }
-  const from = stack.t, t0 = performance.now();
+  if (viewAnim) cancelAnimationFrame(viewAnim);
+  const to = { t: stack.t, tilt: stack.tilt, yaw: stack.yaw, lift: stack.lift, floor: stack.floor, ...cam };
+  const toView = frame ? withCamera(to, frame) : (to.t === 0 ? { x: 0, y: 0, k: 1 } : withCamera(to, () => viewToFit(stackBounds())));
+  const from = { ...stack }, fromView = { ...view }, t0 = performance.now();
+  if (ms <= 0 || matchMedia('(prefers-reduced-motion: reduce)').matches){ Object.assign(stack, to); view = toView; lastK = view.k; updateModeHint(); markDirty(); return; }
   const ease = x => x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
   const step = now => {
-    const u = Math.min(1, (now - t0) / ms);
-    setStack(from + (to - from) * ease(u));
+    const u = ease(Math.min(1, (now - t0) / ms));
+    stack.t = from.t + (to.t - from.t) * u; stack.tilt = from.tilt + (to.tilt - from.tilt) * u;
+    stack.yaw = lerpAngle(from.yaw, to.yaw, u); stack.lift = from.lift + (to.lift - from.lift) * u;
+    stack.floor = u < 0.5 ? from.floor : to.floor;
+    view = { x: fromView.x + (toView.x - fromView.x) * u, y: fromView.y + (toView.y - fromView.y) * u, k: fromView.k + (toView.k - fromView.k) * u };
+    lastK = view.k; updateModeHint(); markDirty();
     if (u < 1) stackAnim = requestAnimationFrame(step); else stackAnim = null;
   };
   stackAnim = requestAnimationFrame(step);
 }
-function setMode(m3d, instant = false){
-  mode3d = m3d;
-  document.getElementById('mode2d').classList.toggle('on', !m3d);
-  document.getElementById('mode3d').classList.toggle('on', m3d);
-  svg.classList.toggle('stacked', m3d);
-  if (instant) setStack(m3d ? 1 : 0); else animateStack(m3d ? 1 : 0);
-  const h = location.hash.replace(/[?&]3d$/, '');
-  history.replaceState(null, '', (h || '#') + (m3d ? (h && h !== '#' ? '&3d' : '?3d') : ''));
+function setCam(name, instant = false){
+  const cam = CAMS[name]; if (!cam) return;
+  camName = name; mode3d = name !== 'top';
+  document.querySelectorAll('#modeCtl button').forEach(b => b.classList.toggle('on', b.dataset.cam === name));
+  svg.classList.toggle('stacked', mode3d);
+  flyTo({ ...cam, lift: selected && mode3d ? 1 : 0, floor: selected ? (layerIndex[byId[selected].area] || 0) : stack.floor }, instant ? 0 : 1300);
+  syncHash();
 }
-
+function markFreeCamera(){
+  if (camName !== 'free'){ camName = 'free'; document.querySelectorAll('#modeCtl button').forEach(b => b.classList.remove('on')); syncHash(); }
+}
+// The camera goes to the feature: its wedge swings to face you, its floor
+// becomes the one you stand on (others part above and below), and the view
+// frames the wedge.
+function flyToFeature(id){
+  const nd = byId[id]; if (!nd || !mode3d) return;
+  const a = areaById[nd.area];
+  const cam = { t: 1, tilt: Math.min(Math.max(stack.tilt, 0.7), 1.15), yaw: Math.PI / 2 - a.amid, lift: 1, floor: layerIndex[nd.area] || 0 };
+  flyTo(cam, 1100, () => {
+    const z = zOf(nd.area), pts = [];
+    for (let i = 0; i <= 12; i++){ const th = a.g0 + (a.g1 - a.g0) * i / 12; pts.push(P(CX + Math.cos(th) * (R_MAX + 70), CY + Math.sin(th) * (R_MAX + 70), z)); pts.push(P(CX + Math.cos(th) * (R_MIN - 40), CY + Math.sin(th) * (R_MIN - 40), z)); }
+    for (const m of neighbourSet(id)){ const n = byId[m]; pts.push(P(n.x, n.y, zOf(n.area))); }
+    return viewToFit(pts, 90);
+  });
+}
+function setMode(m3d, instant = false){ setCam(m3d ? 'stack' : 'top', instant); }
 /* ═══════════════ live pulse — the catalogue is a live view of the platform ═══════
    /stats (aggregate counts only) rides on each product wedge: a small line
    under the rim name, and a ripple when something is happening right now
@@ -948,7 +1005,8 @@ function layout3D(){
   for (const { a } of byDepth){
     const L = scene.l3[a.id], z = zOf(a.id);
     const dim = (activeAreas.size && !activeAreas.has(a.id)) || (focusAreas && !focusAreas.has(a.id));
-    A(L.g, 'opacity', dim ? 0.22 : 1);
+    const otherFloor = stack.lift > 0 && (layerIndex[a.id] || 0) !== stack.floor;
+    A(L.g, 'opacity', dim ? 0.22 : otherFloor ? (1 - 0.6 * stack.lift).toFixed(2) : 1);
     A(L.disc, 'd', poly(sampleArc(R_MAX + 46, 0, Math.PI * 2, z, 48), true));
     const o = sampleArc(R_MAX + 46, a.g0 + 0.012, a.g1 - 0.012, z, 24), inn = sampleArc(R_MIN - 40, a.g1 - 0.012, a.g0 + 0.012, z, 14);
     A(L.fill, 'd', poly(o.concat(inn), true)); A(L.rim, 'd', poly(o)); A(L.hub, 'd', poly(sampleArc(22, 0, Math.PI * 2, z, 16), true));
@@ -1096,25 +1154,25 @@ function fitBounds(pts, pad = 90){
 }
 function fitAll(){ animateView({ x: 0, y: 0, k: 1 }); }
 function zoomToArea(id){ fitBounds(nodes.filter(n => n.area === id), 120); }
-function zoomToFeature(id){ const n = byId[id]; if (!n) return; fitBounds([n, ...[...neighbourSet(id)].map(i => byId[i])], 140); }
+function zoomToFeature(id){ if (mode3d){ flyToFeature(id); return; } const n = byId[id]; if (!n) return; fitBounds([n, ...[...neighbourSet(id)].map(i => byId[i])], 140); }
 function zoomBy(f){
   const k2 = Math.max(0.4, Math.min(3.5, view.k * f));
   animateView({ k: k2, x: CX - (CX - view.x) * (k2 / view.k), y: CY - (CY - view.y) * (k2 / view.k) }, 220);
 }
 document.getElementById('zoomIn').onclick  = () => zoomBy(1.25);
 document.getElementById('zoomOut').onclick = () => zoomBy(0.8);
-document.getElementById('zoomFit').onclick = fitAll;
+document.getElementById('zoomFit').onclick = () => mode3d ? flyTo({}, 500) : fitAll();
 document.getElementById('zoomReset').onclick = resetLayout;
 document.getElementById('fxBtn').onclick = () => {
   const lite = document.body.classList.contains('lite');
   fxTier = lite ? 'full' : 'lite'; localStorage.setItem('sib_catalog_fx', fxTier); applyFx(); if (scene) rebuildScene();
 };
 applyFx();
-document.getElementById('mode2d').onclick = () => setMode(false);
-document.getElementById('mode3d').onclick = () => setMode(true);
+document.querySelectorAll('#modeCtl button').forEach(b => b.onclick = () => setCam(b.dataset.cam));
 window.addEventListener('keydown', ev => {
   if (ev.target.matches('input, textarea') || ev.metaKey || ev.ctrlKey) return;
-  if (ev.key === '2') setMode(false); else if (ev.key === '3') setMode(true);
+  const camKeys = { '1': 'top', '2': 'stack', '3': 'side', '4': 'under' };
+  if (camKeys[ev.key]) setCam(camKeys[ev.key]);
   else if (ev.key === 'f' || ev.key === 'F'){ if (selected) setFocus(!focusPin); }
   else if (trail && (ev.key === 'ArrowRight' || ev.key === ' ')){ ev.preventDefault(); tourStep(1); }
   else if (trail && ev.key === 'ArrowLeft'){ tourStep(-1); }
@@ -1158,17 +1216,18 @@ svg.addEventListener('pointermove', ev => {
     const p = svgPoint(ev); drag.nd.fx = p.x; drag.nd.fy = p.y; drag.moved = true; hideTip(); reheat();
   } else if (drag.type === 'pan') {
     const r = svg.getBoundingClientRect();
-    if (mode3d){
-      // horizontal drag orbits the stack; vertical drag still pans
-      if (drag.yaw0 == null) drag.yaw0 = stack.yaw;
+    if (mode3d && !ev.shiftKey){
+      // free camera: horizontal = orbit, vertical = tilt (top-down … under the floor)
+      if (drag.yaw0 == null){ drag.yaw0 = stack.yaw; drag.tilt0 = stack.tilt; if (stackAnim){ cancelAnimationFrame(stackAnim); stackAnim = null; } }
       stack.yaw = drag.yaw0 + (ev.clientX - drag.sx) / r.width * Math.PI * 1.4;
-      view.y = drag.oy + (ev.clientY - drag.sy) / r.height * H;
+      stack.tilt = Math.max(0.12, Math.min(Math.PI - 0.12, drag.tilt0 + (ev.clientY - drag.sy) / r.height * 2.2));
+      if (Math.abs(ev.clientX - drag.sx) + Math.abs(ev.clientY - drag.sy) > 4) markFreeCamera();
     } else {
       view.x = drag.ox + (ev.clientX - drag.sx) / r.width * W;
       view.y = drag.oy + (ev.clientY - drag.sy) / r.height * H;
     }
     if (Math.abs(ev.clientX-drag.sx) + Math.abs(ev.clientY-drag.sy) > 4) drag.moved = true;
-    if (mode3d) markDirty(); else viewChanged();
+    if (mode3d && !ev.shiftKey) markDirty(); else viewChanged();
   }
 });
 svg.addEventListener('pointerup', ev => {
@@ -1182,6 +1241,7 @@ svg.addEventListener('pointerup', ev => {
     showArea(drag.id); zoomToArea(drag.id);
   } else if (drag && !drag.moved){
     selected = null; focusPin = false; renderHome(); renderFocusBar();
+    if (mode3d && stack.lift > 0) flyTo({ lift: 0 }, 600, () => ({ ...view }));
   }
   drag = null;
 });
@@ -1421,7 +1481,7 @@ function goBack(){
 }
 function selectFeature(id){
   selected = id; markDirty();
-  if (focusPin) zoomToFeature(id);
+  if (mode3d) flyToFeature(id); else if (focusPin) zoomToFeature(id);
   renderFocusBar();
   if (histStack[histStack.length - 1] !== id){ histStack.push(id); if (histStack.length > 40) histStack.shift(); }
   syncHash();
