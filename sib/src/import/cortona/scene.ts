@@ -41,6 +41,9 @@ export interface SceneGraph {
   bbox:         { min: number[]; max: number[] } | null;
   /** World-space (assembly frame) bounds per DEF'd node, over its whole subtree. */
   boundsByDef:  Map<string, { min: number[]; max: number[] }>;
+  /** Material DEF → DEFs of the parts whose shapes use it. Cortona routes
+   *  transparency / colour commands at MATERIALS; the runtime addresses parts. */
+  materialOwners: Map<string, Set<string>>;
 }
 
 /** Node types treated as transform containers. Anything else is skipped as non-geometry. */
@@ -56,8 +59,16 @@ export function buildScene(scene: VrmlScene): SceneGraph {
 
   const resolve = (n: VrmlNode | VrmlUse): VrmlNode | null =>
     'use' in n ? (scene.defs.get(n.use) ?? null) : n;
+  const materialOwners = new Map<string, Set<string>>();
 
-  function shapeMesh(shape: VrmlNode): SceneMesh | null {
+  function shapeMesh(shape: VrmlNode, ownerDef?: string): SceneMesh | null {
+    // Record which part owns this shape's material (commands target materials).
+    if (ownerDef) {
+      const appRef0 = nodeField(shape, 'appearance'); const app0 = appRef0 ? resolve(appRef0) : null;
+      const matRef0 = app0 ? nodeField(app0, 'material') : null;
+      const matDef = matRef0 ? ('use' in matRef0 ? matRef0.use : matRef0.def) : undefined;
+      if (matDef) { let set = materialOwners.get(matDef); if (!set) { set = new Set(); materialOwners.set(matDef, set); } set.add(ownerDef); }
+    }
     const geomRef = nodeField(shape, 'geometry'); if (!geomRef) return null;
     const geom = resolve(geomRef); if (!geom) return null;
     const isPrim = PRIMITIVE_TYPES.has(geom.type);
@@ -110,7 +121,8 @@ export function buildScene(scene: VrmlScene): SceneGraph {
     return mesh;
   }
 
-  function build(n: VrmlNode, inheritedVisible: boolean): SceneNode | null {
+  function build(n: VrmlNode, inheritedVisible: boolean, ownerDef?: string): SceneNode | null {
+    const owner = n.def ?? ownerDef;
     const sn: SceneNode = {
       id: n.def ?? `n${counter++}`, def: n.def, type: n.type,
       matrix: localMatrix(n), visible: inheritedVisible, meshes: [], children: [], vrml: n,
@@ -119,14 +131,14 @@ export function buildScene(scene: VrmlScene): SceneGraph {
     if (n.def) byDef.set(n.def, sn);
 
     if (n.type === 'Shape') {
-      const m = shapeMesh(n); if (m) sn.meshes.push(m);
+      const m = shapeMesh(n, owner); if (m) sn.meshes.push(m);
       return sn;
     }
     if (!CONTAINER_TYPES.has(n.type)) return null; // PROTO widgets / sensors / scripts: skipped
 
     // ObjectVM may carry geometry directly (appearance + geometry fields)
     if (n.type === 'ObjectVM' && nodeField(n, 'geometry')) {
-      const m = shapeMesh(n); if (m) sn.meshes.push(m);
+      const m = shapeMesh(n, owner); if (m) sn.meshes.push(m);
     }
 
     let which = -2; // -2 = not a switch
@@ -140,7 +152,7 @@ export function buildScene(scene: VrmlScene): SceneGraph {
       let vis = inheritedVisible;
       if (n.type === 'Switch') vis = vis && which === i;
       else if (which === -1) vis = false;
-      const c = build(kn, vis); if (c) sn.children.push(c);
+      const c = build(kn, vis, owner); if (c) sn.children.push(c);
     });
     return sn;
   }
@@ -175,7 +187,7 @@ export function buildScene(scene: VrmlScene): SceneGraph {
     for (const c of node.children) stack.push({ node: c, m: mul(m, c.matrix), defs: c.def ? [...defs, c.def] : defs });
   }
   for (const [d, b] of boundsByDef) if (!Number.isFinite(b.min[0])) boundsByDef.delete(d);
-  return { roots, byDef, meshCount, triangleCount, bbox: Number.isFinite(bbox.min[0]) ? bbox : null, boundsByDef };
+  return { roots, byDef, meshCount, triangleCount, bbox: Number.isFinite(bbox.min[0]) ? bbox : null, boundsByDef, materialOwners };
 }
 
 // ── Transforms ──────────────────────────────────────────────────────────────

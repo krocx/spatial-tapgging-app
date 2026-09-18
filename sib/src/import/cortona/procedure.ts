@@ -107,7 +107,21 @@ export function classifyProtos(scene: VrmlScene): ProtoClassification {
 
 const MOTION_EPS = 1e-6;
 
-export function extractProcedure(scene: VrmlScene, widgetText: Map<string, string | undefined> = new Map()): ExtractedProcedure {
+export function extractProcedure(
+  scene: VrmlScene,
+  widgetText: Map<string, string | undefined> = new Map(),
+  materialOwners: Map<string, Set<string>> = new Map(),
+): ExtractedProcedure {
+  /** A field's value on the instance, else the PROTO interface default. Cortona
+   *  leaves most command fields at their defaults (e.g. SwitchOFF's Parameters
+   *  [0,-1] = turn OFF; an explicit [-1,0] = turn ON), so reading only the
+   *  instance is wrong more often than right. */
+  const fieldOr = (cmd: VrmlNode, name: string): number[] => {
+    const own = numField(cmd, name, []);
+    if (own.length) return own;
+    const decl = scene.protos.get(cmd.type)?.fields.find(f => f.name === name)?.value;
+    return Array.isArray(decl) && decl.every(x => typeof x === 'number') ? (decl as number[]) : [];
+  };
   const routesByFrom = new Map<string, VrmlRoute[]>();
   for (const r of scene.routes) {
     const list = routesByFrom.get(r.fromNode) ?? []; list.push(r); routesByFrom.set(r.fromNode, list);
@@ -132,7 +146,7 @@ export function extractProcedure(scene: VrmlScene, widgetText: Map<string, strin
   steps.forEach((step, si) => {
     const subs = nodesField(step, 'substeps').map(resolve).filter((s): s is VrmlNode => !!s && s.type === 'SubStep');
     subs.forEach((sub, ki) => {
-      const dur = numField(sub, 'duration', []);
+      const dur = fieldOr(sub, 'duration');           // SubStep PROTO default is 5 s
       const ss: ExtractedSubStep = {
         id: strField(sub, 'id'), title: strField(sub, 'title'), comment: strField(sub, 'comment'),
         stepId: strField(step, 'id'), stepTitle: strField(step, 'title'), stepComment: strField(step, 'comment'),
@@ -140,13 +154,24 @@ export function extractProcedure(scene: VrmlScene, widgetText: Map<string, strin
         durationSec: dur.length && dur[0] > 0 ? dur[0] : undefined,
         nodes: [], callouts: [], calloutDefs: [], unresolved: 0,
       };
+      // One delta per (part, time window): commands that share a window
+      // (translation + rotation + centre of one motion) merge; commands at
+      // different times stay separate so "fade in → flash → move" survives.
       const byNode = new Map<string, GuideStepNode>();
-      const nodeFor = (def: string): GuideStepNode => {
-        let g = byNode.get(def); if (!g) { g = { node: `cmp:${def}` }; byNode.set(def, g); ss.nodes.push(g); }
+      const nodeFor = (def: string, t0: number, t1: number): GuideStepNode => {
+        const key = `${def}|${t0.toFixed(4)}|${t1.toFixed(4)}`;
+        let g = byNode.get(key); if (!g) { g = { node: `cmp:${def}` }; byNode.set(key, g); ss.nodes.push(g); }
         return g;
       };
-      for (const cmdRef of nodesField(sub, 'commands')) {
-        const cmd = resolve(cmdRef); if (!cmd) continue;
+      // Commands carry `period` = [startFraction, endFraction, …] of the
+      // sub-step's duration. Apply them in chronological order so "last state
+      // wins" means the state at the END of the sub-step (fade-out → switch on
+      // → fade-in reads as "appears"), and keep real seconds for playback.
+      const subDur = ss.durationSec ?? 1;
+      const cmds = nodesField(sub, 'commands').map(resolve).filter((c): c is VrmlNode => !!c)
+        .map(c => { const p = fieldOr(c, 'period'); return { c, t0: (p[0] ?? 0) * subDur, t1: (p[1] ?? 1) * subDur }; })
+        .sort((a, b) => a.t0 - b.t0);
+      for (const { c: cmd, t0, t1 } of cmds) {
         out.commandCounts[cmd.type] = (out.commandCounts[cmd.type] ?? 0) + 1;
         if (cmd.type === 'Set_Viewpoint' || cmd.type === 'Set_Viewpoint2') { ss.view = viewpointOf(cmd); continue; }
         if (!HANDLED_PROTOS.has(cmd.type) || cmd.type === 'ObjectVM') continue;
@@ -157,16 +182,23 @@ export function extractProcedure(scene: VrmlScene, widgetText: Map<string, strin
           if (!scene.defs.has(r.toNode)) { ss.unresolved++; out.unresolvedRoutes++; continue; }
           if (widgetText.has(r.toNode)) {
             // A widget being revealed: its words belong to this substep, not to a part.
-            const probe: GuideStepNode = { node: r.toNode }; applyCommand(cmd, r.toField, probe, ss.durationSec);
+            const probe: GuideStepNode = { node: r.toNode }; applyCommand(cmd, r.toField, probe, fieldOr, t0, t1);
             if (probe.show !== 'hidden' && !ss.calloutDefs.includes(r.toNode)) {
               ss.calloutDefs.push(r.toNode);
               const t = widgetText.get(r.toNode); if (t) ss.callouts.push(t);
             }
             continue;
           }
-          const g = nodeFor(r.toNode);
-          if (objectID !== undefined) { g.sourceKey = String(objectID); out.objectIdByDef.set(r.toNode, objectID); }
-          applyCommand(cmd, r.toField, g, ss.durationSec);
+          // Material-targeted commands (transparency, colour) → the parts that use the material.
+          const targets: string[] = scene.defs.get(r.toNode)?.type === 'Material'
+            ? [...(materialOwners.get(r.toNode) ?? [])]
+            : [r.toNode];
+          if (!targets.length) { ss.unresolved++; out.unresolvedRoutes++; continue; }
+          for (const def of targets) {
+            const g = nodeFor(def, t0, t1);
+            if (objectID !== undefined && targets.length === 1) { g.sourceKey = String(objectID); out.objectIdByDef.set(def, objectID); }
+            applyCommand(cmd, r.toField, g, fieldOr, t0, t1);
+          }
         }
       }
       out.substeps.push(ss);
@@ -175,27 +207,34 @@ export function extractProcedure(scene: VrmlScene, widgetText: Map<string, strin
   return out;
 }
 
-function applyCommand(cmd: VrmlNode, toField: string, g: GuideStepNode, durationSec?: number): void {
-  const keyValue = numField(cmd, 'keyValue', []);
-  const period   = numField(cmd, 'period', []);
-  const dur = period.length >= 2 ? period[1] - period[0] : period.length === 1 ? period[0] : undefined;
-  if (dur && dur > 0) g.durationSec = dur; else if (durationSec) g.durationSec = durationSec;
+function applyCommand(cmd: VrmlNode, toField: string, g: GuideStepNode, fieldOr: (c: VrmlNode, n: string) => number[], t0: number, t1: number): void {
+  // Timeline: the node's delta spans the earliest start to the latest end of
+  // the commands that touch it within this sub-step.
+  const start = g.delaySec === undefined ? t0 : Math.min(g.delaySec, t0);
+  const end   = Math.max((g.delaySec ?? t0) + (g.durationSec ?? 0), t1);
+  g.delaySec = round(start); g.durationSec = round(Math.max(0, end - start));
 
   switch (cmd.type) {
     case 'SwitchOFF': {
-      // whichChoice: -1 hides. keyValue may be absent (implicit off) or [-1]/[0].
-      const last = keyValue.length ? keyValue[keyValue.length - 1] : -1;
+      // IntegerSequencer over `Parameters` (default [0,-1] = turn OFF at half
+      // period; an explicit [-1,0] = turn ON). Last value is the end state.
+      const seq = fieldOr(cmd, 'Parameters');
+      const vals = seq.length ? seq : fieldOr(cmd, 'keyValue');
+      const last = vals.length ? vals[vals.length - 1] : -1;
       g.show = last < 0 ? 'hidden' : 'solid';
+      if (g.show === 'solid') delete g.opacity;
       return;
     }
     case 'Set_transparency': {
-      const last = keyValue.length ? keyValue[keyValue.length - 1] : 0;
+      const keyValue = fieldOr(cmd, 'keyValue');          // default [0,1] = fade OUT
+      const last = keyValue.length ? keyValue[keyValue.length - 1] : 1;
       if (last >= 0.99) g.show = 'hidden';
       else if (last > 0.01) { g.show = 'ghost'; g.opacity = round(1 - last); }
-      else g.show = 'solid';
+      else { g.show = 'solid'; delete g.opacity; }
       return;
     }
     case 'Set_translation': {
+      const keyValue = fieldOr(cmd, 'keyValue');
       if (keyValue.length >= 3) {
         const from: [number, number, number] = [keyValue[0], keyValue[1], keyValue[2]];
         const n = keyValue.length - (keyValue.length % 3);
@@ -207,6 +246,7 @@ function applyCommand(cmd: VrmlNode, toField: string, g: GuideStepNode, duration
       return;
     }
     case 'Set_rotation': {
+      const keyValue = fieldOr(cmd, 'keyValue');
       if (keyValue.length >= 4) {
         const n = keyValue.length - (keyValue.length % 4);
         g.rotationFrom = [keyValue[0], keyValue[1], keyValue[2], keyValue[3]].map(round) as GuideStepNode['rotationFrom'];
@@ -216,7 +256,16 @@ function applyCommand(cmd: VrmlNode, toField: string, g: GuideStepNode, duration
       return;
     }
     case 'Set_diffuseColor': {
-      if (keyValue.length >= 3) { const n = keyValue.length - (keyValue.length % 3); g.color = [keyValue[n - 3], keyValue[n - 2], keyValue[n - 1]].map(round) as [number, number, number]; }
+      const keyValue = fieldOr(cmd, 'keyValue');
+      if (keyValue.length >= 3) {
+        const n = keyValue.length - (keyValue.length % 3);
+        const first = [keyValue[0], keyValue[1], keyValue[2]], last = [keyValue[n - 3], keyValue[n - 2], keyValue[n - 1]];
+        const same = first.every((v, i) => Math.abs(v - last[i]) < 1e-3);
+        // Alternating colours that end where they began = a "flash" (attention),
+        // not a colour change.
+        if (n >= 9 && same) { g.effect = 'flash'; }
+        else if (!same) { g.color = last.map(round) as [number, number, number]; }
+      }
       return;
     }
     case 'Set_center': case 'Set_scale':
@@ -247,7 +296,7 @@ export function classifyMotion(proc: ExtractedProcedure, restTranslationByDef: M
     if (!g.from || !g.to) continue;
     const def = g.node.replace(/^cmp:/, ''); const rest = restTranslationByDef.get(def); if (!rest) continue;
     const d = (a: number[], b: number[]) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
-    const endAtRest = d(g.to, rest) < 1e-4, startAtRest = d(g.from, rest) < 1e-4;
+    const endAtRest = d(g.to, rest) < 0.01, startAtRest = d(g.from, rest) < 0.01;   // 1 cm: exporters round keyframes
     if (endAtRest && !startAtRest) g.animate = 'insert';
     else if (startAtRest && !endAtRest) g.animate = 'remove';
   }

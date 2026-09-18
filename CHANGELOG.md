@@ -7,6 +7,19 @@ it, it gets a line.
 ## 2026.4.46 — 2026-09-08
 
 ### Fixed
+- **AR OJT: imported assembly parts vanished after their animation.** The
+  importer now reproduces the viewer's command semantics: `SwitchOFF` reads
+  `Parameters` (default off, explicit on) instead of `keyValue`; absent
+  command fields take PROTO defaults; `period` fractions × SubStep duration
+  give real `delaySec`/`durationSec`; transparency/colour commands routed to
+  Material DEFs reach their owning parts via `materialOwners`; one delta per
+  part per time window, chronological; repeated colour keys become
+  `effect: "flash"`. Initial hidden parts come from the scene Switches plus
+  the set-up step. iOS `AssemblyNode.play` schedules each delta at its own
+  offset (speed-scaled), cancels pending deltas on step change and pulses
+  emission for flashes; parts stay in their final assembled location. Portal
+  Guide Preview shows the part timeline. Shared: `GuideStepNode.delaySec`,
+  `effect`.
 - **Imported Cortona3D assembly rendered black in AR.** Our GLB carries no
   normals (viewers shade it flat); the portal's USDZ export wrote all-zero
   normals for such meshes, so SceneKit lit nothing. The converter now

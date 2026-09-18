@@ -1108,6 +1108,11 @@ export interface GuideStepNode {
   color?:        [number, number, number];
   /** Animation duration in seconds (source timing), if known. */
   durationSec?:  number;
+  /** Start offset within the step's timeline, seconds (source timing). A step
+   *  may carry several deltas for the same node — they play in order. */
+  delaySec?:     number;
+  /** Transient attention effect that leaves no state behind (Cortona "flash"). */
+  effect?:       'flash';
   /** Stable source key (Cortona3D objectID) for cross-checking. */
   sourceKey?:    string;
 }

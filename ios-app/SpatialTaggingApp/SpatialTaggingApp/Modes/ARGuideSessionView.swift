@@ -3946,6 +3946,7 @@ extension ARGuideSessionView {
 
     func teardownAssembly() {
         assemblyReplayTask?.cancel(); assemblyReplayTask = nil
+        assemblyNode?.cancelPlayback()
         assemblyNode?.root.removeFromParentNode()
         assemblyNode = nil; assemblyEngine = nil; partChip = nil
     }

@@ -68,7 +68,7 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
   const widgetText = new Map<string, string | undefined>();
   for (const [def, w] of widgets) widgetText.set(def, w.text);
 
-  const proc = extractProcedure(vrml, widgetText);
+  const proc = extractProcedure(vrml, widgetText, scene.materialOwners);
   if (proc.protos.unknown.length) {
     const msg = `unrecognised PROTO types instantiated: ${proc.protos.unknown.join(', ')}`;
     if (opts.strict) throw new Error(`cortona: ${msg}`);
@@ -109,7 +109,11 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
   const assemblyCentre: [number, number, number] | undefined = scene.bbox
     ? [0, 1, 2].map(a => round5((scene.bbox!.min[a] + scene.bbox!.max[a]) / 2)) as [number, number, number] : undefined;
   let lastCad: [number, number, number] | undefined;
-  const initialNodes = mergeSubsteps(proc.substeps.filter(ss => ss.setup)).nodes.map(pruneNode);
+  // Initial state = parts the scene starts with hidden (Switch/whichChoice -1)
+  // + the set-up step's deltas (parts moved to their exploded positions).
+  const initialNodes: GuideStepNode[] = [];
+  for (const [def, sn] of scene.byDef) if (!sn.visible && sn.meshes.length + sn.children.length > 0) initialNodes.push({ node: `cmp:${def}`, show: 'hidden' });
+  for (const n of mergeSubsteps(proc.substeps.filter(ss => ss.setup)).nodes) initialNodes.push(pruneNode(n));
 
   const finish = (title: string, text: string, subs: ExtractedSubStep[]): ImportedGuideStep => {
     const m = mergeSubsteps(subs);
@@ -215,32 +219,29 @@ function subStepText(ss: ExtractedSubStep, inter: InteractivityIndex | null): st
   return it?.text ?? it?.comment ?? ss.comment ?? stepIt?.text ?? stepIt?.comment ?? ss.stepComment ?? '';
 }
 
-/** Merge the deltas of several animation sub-steps played in sequence into one
- *  step's presentation: last state wins for show/opacity/colour, motion spans
- *  first `from` → last `to`, insert/remove outrank plain moves, durations add. */
+/** Lay several animation sub-steps out as ONE timeline: each sub-step's
+ *  deltas keep their own timing, offset by the sub-steps before it. A node may
+ *  therefore appear several times in a step (fade in → flash → attach); the
+ *  cumulative state engine applies them in order, the runtime plays them at
+ *  their offsets — exactly what the source viewer does. */
 function mergeSubsteps(subs: ExtractedSubStep[]): { nodes: GuideStepNode[]; view?: GuideStepView; callouts: string[]; durationSec?: number } {
-  const byNode = new Map<string, GuideStepNode>(); const nodes: GuideStepNode[] = [];
-  let view: GuideStepView | undefined; const callouts: string[] = []; let dur = 0;
-  const rank = { insert: 3, remove: 3, move: 1 } as const;
+  const nodes: GuideStepNode[] = [];
+  let view: GuideStepView | undefined; const callouts: string[] = []; let offset = 0;
   for (const ss of subs) {
+    const subDur = ss.durationSec ?? 1;
     for (const n of ss.nodes) {
-      let g = byNode.get(n.node); if (!g) { g = { node: n.node }; byNode.set(n.node, g); nodes.push(g); }
-      if (n.show !== undefined) { g.show = n.show; g.opacity = n.opacity; }
-      if (n.color) g.color = n.color;
-      if (n.from && !g.from) g.from = n.from;
-      if (n.to) g.to = n.to;
-      if (n.rotationFrom && !g.rotationFrom) g.rotationFrom = n.rotationFrom;
-      if (n.rotationTo) g.rotationTo = n.rotationTo;
-      if (n.animate && (!g.animate || rank[n.animate] >= rank[g.animate])) g.animate = n.animate;
-      if (n.sourceKey && !g.sourceKey) g.sourceKey = n.sourceKey;
-      if (n.durationSec) g.durationSec = (g.durationSec ?? 0) + n.durationSec;
+      const g: GuideStepNode = { ...n };
+      g.delaySec = round5((n.delaySec ?? 0) + offset);
+      if (n.durationSec === undefined) g.durationSec = round5(subDur);
+      nodes.push(g);
     }
     if (ss.view) view = ss.view;
     for (const c of ss.callouts) if (!callouts.includes(c)) callouts.push(c);
-    if (ss.durationSec) dur += ss.durationSec;
+    offset += subDur;
   }
-  for (const g of nodes) if (g.opacity === undefined) delete g.opacity;
-  return { nodes, view, callouts, durationSec: dur || undefined };
+  // Chronological (stable): the cumulative state engine applies in array order.
+  const ordered = nodes.map((n, i) => ({ n, i })).sort((a, b) => ((a.n.delaySec ?? 0) - (b.n.delaySec ?? 0)) || (a.i - b.i)).map(x => x.n);
+  return { nodes: ordered, view, callouts, durationSec: offset ? round5(offset) : undefined };
 }
 
 /** Centre of the union of the named nodes' bounds (assembly frame), if any are known. */
@@ -257,7 +258,7 @@ const round5 = (x: number): number => Math.round(x * 1e5) / 1e5;
 
 function pruneNode(n: GuideStepNode): GuideStepNode {
   const o: GuideStepNode = { node: n.node };
-  for (const k of ['show', 'opacity', 'animate', 'from', 'to', 'rotationFrom', 'rotationTo', 'color', 'durationSec', 'sourceKey'] as const) {
+  for (const k of ['show', 'opacity', 'animate', 'from', 'to', 'rotationFrom', 'rotationTo', 'color', 'durationSec', 'delaySec', 'effect', 'sourceKey'] as const) {
     const v = n[k]; if (v !== undefined) (o as unknown as Record<string, unknown>)[k] = v;
   }
   return o;

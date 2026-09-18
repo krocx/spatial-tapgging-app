@@ -177,6 +177,10 @@ struct GuideStepNode: Codable, Equatable {
     let rotationTo:   [Double]?
     let color:        [Double]?
     let durationSec:  Double?
+    /// Start offset within the step's timeline (seconds, source timing).
+    let delaySec:     Double?
+    /// Transient attention effect ("flash") — leaves no state behind.
+    let effect:       String?
     let sourceKey:    String?
 
     var partName: String { node.hasPrefix("cmp:") ? String(node.dropFirst(4)) : node }

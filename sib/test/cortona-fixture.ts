@@ -65,7 +65,7 @@ ${o.unknownProto ? '  DEF MYSTERY MysteryWidget { foo "x" }\n' : ''}] }
   ];
   routes.pop(); // C3 has no route
   const s2 = [
-    cmd('C4', 'Set_translation', 'key [ 0 0.5 1 ] keyValue [ 0.1 0.30 0, 0.1 0.18 0, 0.1 0.06 0 ] period [ 0 2 ] objectID -106464992 attributeName "translation"', 'PN_0190-10001_1', 'translation'),
+    cmd('C4', 'Set_translation', 'key [ 0 0.5 1 ] keyValue [ 0.1 0.30 0, 0.1 0.18 0, 0.1 0.06 0 ] period [ 0 0.5 ] objectID -106464992 attributeName "translation"', 'PN_0190-10001_1', 'translation'),
     cmd('C5', 'SwitchOFF', 'key [ 0 ] keyValue [ 0 ] period [ 0 0.1 ] objectID -3001 attributeName "whichChoice"', 'CALLOUT_A', 'whichChoice'),
     cmd('C6', 'SwitchOFF', 'key [ 0 ] keyValue [ 0 ] objectID -106464992 attributeName "whichChoice"', 'PN_0190-10001_1', 'whichChoice'),
   ];

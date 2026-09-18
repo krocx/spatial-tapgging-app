@@ -75,9 +75,8 @@ struct AssemblyStateEngine {
 
     // MARK: - Rules
 
-    /// Apply a list of deltas. For set-up (initial) entries the END of any
-    /// motion is the state; for step entries the same holds once the step has
-    /// played. `insert` implies solid, `remove` keeps whatever `show` says.
+    /// Apply a list of deltas in array order (chronological). The END of any
+    /// motion is the state; `insert` implies solid; a flash leaves nothing.
     private func apply(_ deltas: [GuideStepNode], to st: inout [String: PartState], asInitial: Bool) {
         for n in deltas {
             var p = st[n.node] ?? PartState()

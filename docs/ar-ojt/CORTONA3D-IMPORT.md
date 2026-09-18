@@ -209,6 +209,38 @@ changed versus the reconnaissance-based design:
   (token objects). Acceptable for one-off imports; streaming tokenizer if it
   ever matters.
 
+### Command semantics — what the viewer actually does (2026-09-18)
+
+Read from the PROTO bodies, not guessed; the importer reproduces them so a
+step plays "part appears → animation → part stays" exactly as in the viewer:
+
+- **PROTO defaults apply to absent fields.** Commands share one interface
+  (`key/keyValue/period/objectID/attributeName`); a command that omits a
+  field takes the PROTO default (`fieldOr`).
+- **`SwitchOFF` is driven by `Parameters`, not `keyValue`.** Default
+  `[0,-1]` = turn OFF; explicit `[-1,0]` = turn ON. An empty `keyValue`
+  never means hidden.
+- **`Set_transparency` default `keyValue [0,1]` = fade out; `[1,0]` = fade
+  in.** These commands ROUTE to *Material* DEFs; the scene builder records
+  `materialOwners` (material → owning part DEFs) so the delta lands on parts.
+- **`period` is a fraction of the SubStep `duration`** (`[start,end,…]`;
+  PROTO default duration 5 s). Delta timing is `delaySec = period[0]·duration`,
+  `durationSec = (period[1]−period[0])·duration` — seconds, never fractions.
+- **One delta per (part, time window)**, chronological. A part that is made
+  solid at 0.1 s, faded 0.2–1.0 s and moved 1.5–4.0 s yields three ordered
+  deltas; the cumulative engine applies them in array order, last state wins.
+- **`Set_diffuseColor` with ≥ 3 keys returning to the start colour is a
+  flash** (`effect: "flash"`, no lasting state). Colour changes with two keys
+  are highlights.
+- Parts hidden in the scene (Switch `whichChoice −1`) plus the set-up Step's
+  timeline become `assembly.initialNodes`; the runtime starts from that state.
+
+Runtime (iOS `AssemblyNode.play`): each delta is scheduled at
+`delaySec / speed`, applied on its own transaction, and never reverts —
+the part stays where the last delta left it. Pending deltas are cancelled
+on step change; flash is an emission pulse. The portal Guide Preview uses
+the same timeline (`gpAssemblyStateAt`).
+
 Office validation: import both samples through the portal (Import Guide →
 choose the `.htm`), then send back only the **import log** (Copy / Download
 in the log dialog) — it contains counts, PROTO type names, publish options

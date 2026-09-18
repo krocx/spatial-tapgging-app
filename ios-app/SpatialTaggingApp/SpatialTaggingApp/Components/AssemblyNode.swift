@@ -70,6 +70,8 @@ final class AssemblyNode {
     /// Jump to `state`: everything back to rest/solid first, then every
     /// explicit part state applied parents-first.
     func apply(state: [String: PartState]) {
+        cancelPlayback()                        // pending deltas of the previous step must not land on this state
+        root.enumerateHierarchy { n, _ in n.removeAction(forKey: "flash") }   // resetAll clears emission
         SCNTransaction.begin(); SCNTransaction.animationDuration = 0
         resetAll()
         for name in depthOrder {
@@ -81,71 +83,114 @@ final class AssemblyNode {
         SCNTransaction.commit()
     }
 
-    /// Animate a step's deltas. Call after `apply(state: after index-1)`.
-    /// Returns the longest duration so callers can schedule a replay loop.
+    /// Play a step's deltas as a TIMELINE — each at its own offset, exactly as
+    /// the source viewer sequences them (fade in → flash → move → stays).
+    /// Call after `apply(state: after index-1)`. Returns the total length so
+    /// callers can schedule a replay loop; a later call cancels pending deltas.
     @discardableResult
     func play(deltas: [GuideStepNode], speed: Double = 1.0) -> TimeInterval {
+        playGeneration &+= 1
+        let gen = playGeneration
+        let k = 1.0 / max(0.1, speed)
         var total: TimeInterval = 0
-        // Parents first, so a group delta never clobbers a child delta in the same step.
-        let ordered = deltas.sorted { (depthOf[$0.node] ?? 0) < (depthOf[$1.node] ?? 0) }
+        // Chronological; parents before children within the same instant.
+        let ordered = deltas.enumerated().sorted {
+            let a = $0.element.delaySec ?? 0, b = $1.element.delaySec ?? 0
+            if a != b { return a < b }
+            let da = depthOf[$0.element.node] ?? 0, db = depthOf[$1.element.node] ?? 0
+            return da != db ? da < db : $0.offset < $1.offset
+        }.map(\.element)
         for d in ordered {
-            guard let node = parts[d.node] else { continue }
-            // Source timings are per-substep (≈1 s) for a desktop viewer; scale
-            // by the guide's speed and floor so a motion never reads as a flash.
-            let dur = max(1.2, (d.durationSec ?? 1.0) / max(0.1, speed))
-            total = max(total, dur)
-            let from = d.from.flatMap(vec3), to = d.to.flatMap(vec3)
-            let rFrom = d.rotationFrom.flatMap(vec4), rTo = d.rotationTo.flatMap(vec4)
-            let hasMotion = to != nil || rTo != nil
-            let prior = effectiveState(of: d.node)
-
-            var target = prior
-            if let show = d.show, let s = PartShow(rawValue: show) {
-                target.show = s
-                target.opacity = s == .ghost ? Float(d.opacity ?? 0.35) : (s == .hidden ? 0 : 1)
-            } else if d.animate == "insert" || (hasMotion && prior.show == .hidden) {
-                // A part that moves must be seen moving.
-                target.show = .solid; target.opacity = 1
-            }
-            if let c = d.color, c.count == 3 { target.color = simd_float3(Float(c[0]), Float(c[1]), Float(c[2])) }
-            if let p = to { target.position = p }
-            if let r = rTo { target.rotation = r }
-
-            if hasMotion {
-                // Start instantly at `from`, faintly visible if it was hidden.
-                SCNTransaction.begin(); SCNTransaction.animationDuration = 0
-                setPose(node, name: d.node, position: from ?? prior.position, rotation: rFrom ?? prior.rotation)
-                if prior.show == .hidden {
-                    var start = target; start.show = .ghost; start.opacity = 0.15
-                    setVisual(node, state: start)
-                }
-                SCNTransaction.commit()
-            }
-
-            // Hiding a part that also moves: move first, hide at the end
-            // (otherwise it fades out while travelling and the motion is lost).
-            let hideAfter = hasMotion && target.show == .hidden
-            var during = target
-            if hideAfter { during.show = prior.show == .hidden ? .solid : prior.show; during.opacity = prior.show == .ghost ? prior.opacity : 1 }
-
-            let name = d.node
-            SCNTransaction.begin()
-            SCNTransaction.animationDuration = dur
-            SCNTransaction.animationTimingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-            if hideAfter {
-                SCNTransaction.completionBlock = { [weak self] in
-                    guard let self, self.current[name] == target else { return }
-                    SCNTransaction.begin(); SCNTransaction.animationDuration = 0.4
-                    self.setVisual(node, state: target)
-                    SCNTransaction.commit()
+            guard parts[d.node] != nil else { continue }
+            let delay = (d.delaySec ?? 0) * k
+            let hasMotion = d.to != nil || d.rotationTo != nil
+            // Real seconds from the source; floor so a motion never reads as a
+            // flash and a visibility change still animates rather than pops.
+            let raw = (d.durationSec ?? 1.0) * k
+            let dur = hasMotion ? max(0.8, raw) : (d.effect != nil ? max(0.6, raw) : max(0.25, raw))
+            total = max(total, delay + dur)
+            if delay < 0.02 {
+                fire(d, duration: dur)
+            } else {
+                DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                    guard let self, self.playGeneration == gen else { return }
+                    self.fire(d, duration: dur)
                 }
             }
-            setVisual(node, state: during)
-            if hasMotion { setPose(node, name: d.node, position: to, rotation: rTo) }
-            SCNTransaction.commit()
-            current[d.node] = target
         }
         return total
+    }
+
+    /// Stop pending deltas (step change / teardown).
+    func cancelPlayback() { playGeneration &+= 1 }
+
+    private var playGeneration: UInt64 = 0
+
+    /// Apply one delta now, animated over `dur`.
+    private func fire(_ d: GuideStepNode, duration dur: TimeInterval) {
+        guard let node = parts[d.node] else { return }
+        let from = d.from.flatMap(vec3), to = d.to.flatMap(vec3)
+        let rFrom = d.rotationFrom.flatMap(vec4), rTo = d.rotationTo.flatMap(vec4)
+        let hasMotion = to != nil || rTo != nil
+        let prior = effectiveState(of: d.node)
+
+        if d.effect == "flash" {
+            flash(node, duration: dur)
+            if !hasMotion && d.show == nil && d.color == nil { return }
+        }
+
+        var target = prior
+        if let show = d.show, let s = PartShow(rawValue: show) {
+            target.show = s
+            target.opacity = s == .ghost ? Float(d.opacity ?? 0.35) : (s == .hidden ? 0 : 1)
+        } else if d.animate == "insert" || (hasMotion && prior.show == .hidden) {
+            target.show = .solid; target.opacity = 1        // a part that moves must be seen moving
+        }
+        if let c = d.color, c.count == 3 { target.color = simd_float3(Float(c[0]), Float(c[1]), Float(c[2])) }
+        if let p = to { target.position = p }
+        if let r = rTo { target.rotation = r }
+
+        if hasMotion {
+            SCNTransaction.begin(); SCNTransaction.animationDuration = 0
+            setPose(node, name: d.node, position: from ?? prior.position, rotation: rFrom ?? prior.rotation)
+            if prior.show == .hidden { var start = target; start.show = .ghost; start.opacity = 0.15; setVisual(node, state: start) }
+            SCNTransaction.commit()
+        }
+        // Moved AND hidden in one delta: travel first, hide at the end.
+        let hideAfter = hasMotion && target.show == .hidden
+        var during = target
+        if hideAfter { during.show = prior.show == .hidden ? .solid : prior.show; during.opacity = prior.show == .ghost ? prior.opacity : 1 }
+
+        let name = d.node
+        SCNTransaction.begin()
+        SCNTransaction.animationDuration = dur
+        SCNTransaction.animationTimingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        if hideAfter {
+            SCNTransaction.completionBlock = { [weak self] in
+                guard let self, self.current[name] == target else { return }
+                SCNTransaction.begin(); SCNTransaction.animationDuration = 0.4
+                self.setVisual(node, state: target)
+                SCNTransaction.commit()
+            }
+        }
+        setVisual(node, state: during)
+        if hasMotion { setPose(node, name: d.node, position: to, rotation: rTo) }
+        SCNTransaction.commit()
+        current[d.node] = target
+    }
+
+    /// Cortona "flash": pulse the part's emission a few times, leave no state.
+    private func flash(_ node: SCNNode, duration: TimeInterval) {
+        node.removeAction(forKey: "flash")
+        let pulses = max(2, Int(duration / 0.5))
+        let on  = SCNAction.customAction(duration: 0.001) { n, _ in
+            n.enumerateHierarchy { c, _ in for m in c.geometry?.materials ?? [] { m.emission.contents = UIColor(red: 0.9, green: 0.75, blue: 0.1, alpha: 1) } }
+        }
+        let off = SCNAction.customAction(duration: 0.001) { n, _ in
+            n.enumerateHierarchy { c, _ in for m in c.geometry?.materials ?? [] { m.emission.contents = UIColor.black } }
+        }
+        let half = duration / Double(pulses) / 2
+        node.runAction(.sequence([.repeat(.sequence([on, .wait(duration: half), off, .wait(duration: half)]), count: pulses), off]), forKey: "flash")
     }
 
     /// State a part is currently shown with — its own, else inherited from

@@ -85,6 +85,7 @@ struct AssemblyPlacementView: View {
         .onReceive(reticleTimer) { _ in if phase == .aiming { followReticle() } }
         .onDisappear {
             previewTask?.cancel()
+            assemblyNode?.cancelPlayback()
             assemblyNode?.root.removeFromParentNode()
             arManager.pauseSession()
         }

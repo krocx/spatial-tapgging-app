@@ -36,29 +36,36 @@ test('importer: one step per document work Item, merged sub-step deltas, set-up 
   assert.equal(g.steps[0].title, '1. Prepare — Remove cover');
   assert.equal(g.steps[0].text, 'Lift the cover straight up and set aside.');
   assert.equal(g.steps[0].durationSec, 2);
+  // Deltas are a TIMELINE: several per node, chronological, with delaySec.
+  const of = (step: typeof g.steps[number], node: string) => step.nodes!.filter(n => n.node === node);
   // work item 1 = sub-step ss-1: SwitchOFF → hidden; transparency 0.7 → ghost 0.3; viewpoint
-  const n1 = Object.fromEntries(g.steps[0].nodes!.map(n => [n.node, n]));
-  assert.equal(n1['cmp:PN_0190-10001_1'].show, 'hidden');
-  assert.equal(n1['cmp:PN_0190-10001_1'].sourceKey, '-106464992');
-  assert.equal(n1['cmp:PN_0190-10002_1'].show, 'ghost');
-  assert.equal(n1['cmp:PN_0190-10002_1'].opacity, 0.3);
+  assert.equal(of(g.steps[0], 'cmp:PN_0190-10001_1').at(-1)!.show, 'hidden');
+  assert.equal(of(g.steps[0], 'cmp:PN_0190-10001_1')[0].sourceKey, '-106464992');
+  assert.equal(of(g.steps[0], 'cmp:PN_0190-10002_1').at(-1)!.show, 'ghost');
+  assert.equal(of(g.steps[0], 'cmp:PN_0190-10002_1').at(-1)!.opacity, 0.3);
   assert.deepEqual(g.steps[0].view?.position, [0.5, 0.3, 1.2]);
-  // work item 2 merges ss-2 + ss-3: insert (ends at rest) + solid on part 1; rotation + colour on part 2;
-  // callout + html panel text appended after the document text; durations add.
+  // work item 2 lays ss-2 + ss-3 out in sequence: insert (ends at rest) + solid on part 1;
+  // rotation + colour on part 2; ss-3 deltas start after ss-2's 4 s; durations add.
   assert.equal(g.steps[1].title, '2. Install ring — Lower the ring and lock it');
   assert.equal(g.steps[1].durationSec, 7);
-  const n2 = Object.fromEntries(g.steps[1].nodes!.map(n => [n.node, n]));
-  assert.equal(n2['cmp:PN_0190-10001_1'].animate, 'insert');
-  assert.deepEqual(n2['cmp:PN_0190-10001_1'].from, [0.1, 0.3, 0]);
-  assert.deepEqual(n2['cmp:PN_0190-10001_1'].to, [0.1, 0.06, 0]);
-  assert.equal(n2['cmp:PN_0190-10001_1'].show, 'solid');
-  assert.equal(n2['cmp:PN_0190-10002_1'].animate, 'move');
-  assert.deepEqual(n2['cmp:PN_0190-10002_1'].rotationTo, [0, 0, 1, 1.5708]);
-  assert.deepEqual(n2['cmp:PN_0190-10002_1'].color, [1, 0.2, 0.1]);
+  const p1 = of(g.steps[1], 'cmp:PN_0190-10001_1'), p2 = of(g.steps[1], 'cmp:PN_0190-10002_1');
+  const mv = p1.find(n => n.animate)!;
+  assert.equal(mv.animate, 'insert');
+  assert.deepEqual(mv.from, [0.1, 0.3, 0]);
+  assert.deepEqual(mv.to, [0.1, 0.06, 0]);
+  assert.equal(mv.delaySec, 0); assert.equal(mv.durationSec, 2);     // period [0,0.5] of a 4 s sub-step → 0–2 s
+  assert.equal(p1.at(-1)!.show, 'solid');
+  const rot = p2.find(n => n.animate)!;
+  assert.equal(rot.animate, 'move');
+  assert.deepEqual(rot.rotationTo, [0, 0, 1, 1.5708]);
+  assert.ok(rot.delaySec! >= 4, 'ss-3 deltas start after ss-2 (4 s)');
+  assert.deepEqual(p2.find(n => n.color)!.color, [1, 0.2, 0.1]);
+  const order = g.steps[1].nodes!.map(n => n.delaySec ?? 0);
+  assert.deepEqual(order, [...order].sort((a, b) => a - b), 'chronological');
   assert.ok(g.steps[1].text.startsWith('Align the ring notch with the base key.\nRotate 90° clockwise'));
   assert.ok(g.steps[1].text.includes('Torque to spec') && g.steps[1].text.includes('Check & verify') && g.steps[1].text.includes('seal seating'));
   assert.ok(!g.steps[1].text.includes('<p>'), 'html stripped');
-  assert.ok(!('cmp:CALLOUT_A' in n2), 'widgets are not part nodes');
+  assert.ok(!g.steps[1].nodes!.some(n => n.node === 'cmp:CALLOUT_A'), 'widgets are not part nodes');
   // log is content-free and complete
   const L = r.log;
   assert.equal(L.procedure.steps, 3); assert.equal(L.procedure.substeps, 4); assert.equal(L.procedure.setupSubsteps, 1);
