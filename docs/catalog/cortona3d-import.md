@@ -24,7 +24,8 @@ arch: |
     S->>B: solo+zip script block -> ZIP -> gunzip (magic bytes)
     B->>V: merged VRML97 scene
     V->>Pr: Procedure/Step/SubStep + Set_* commands + ROUTEs
-    Pr-->>S: one step per SubStep: nodes[] show/ghost/insert, view, callout text
+    Pr-->>S: per-SubStep nodes[] show/ghost/insert, view, callout text
+    S->>S: interactivity Procedure/Item -> one step per work item (sub-step deltas merged)
     V->>G: ObjectVM/Transform graph + IndexedFaceSet -> GLB (cmp:<DEF> nodes, extras)
     G->>M: registerGeneratedGlb (USDZ pending -> portal converts)
     S->>I: applyImportedGuide (assembly slot on every step)
@@ -35,8 +36,10 @@ directly into the Guide Library. The importer reads the embedded scene bundle
 with our own VRML97 parser — one that keeps PROTO declarations and instances,
 because Cortona expresses the entire procedure (steps, substeps, show/hide,
 motion, camera) as proprietary PROTOs wired by ROUTEs that every stock loader
-drops silently. Output: a draft guide with one step per SubStep (titles and
-body text from `interactivity.xml`, callout text folded in), an assembly GLB
+drops silently. Output: a draft guide with one step per document work item (`<Procedure>/<Item>`
+in `interactivity.xml`; its animation sub-steps' deltas merged; SubStep
+fallback when there is no Procedure tree; set-up steps dropped), titles and
+body text from the document, callout text folded in, an assembly GLB
 whose node names address parts (`cmp:<DEF>`, with part numbers from the BOM in
 `extras`), and per-step `nodes[]` presentation deltas (hidden / ghost /
 insert / move / colour) plus a suggested view. Unrecognised PROTO types are

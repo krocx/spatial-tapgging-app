@@ -176,6 +176,39 @@ RTF/HTML → text), `interactivity.ts` (`interactivity.xml`, `rwi`),
 `.htm` body. Tests: `sib/test/cortona-import.test.ts` against
 `sib/test/cortona-fixture.ts` (synthetic bundle from both samples' schemas).
 
+### Validated on three public Cortona3D demo publications (2026-09-18)
+
+Motorcycle (DITA WI, 22 MB scene), Axle (RWI, 12 MB), Bee drone (S1000D,
+131 MB). All import in strict mode with zero unknown PROTOs. What real bytes
+changed versus the reconnaissance-based design:
+
+- **The document step is `interactivity.xml` `<Procedure>/<Item>`, not the
+  SubStep.** Every spec has two trees: `<Simulation>` (animation atoms —
+  "Move the STEM", "Flash the BEARING") and `<Procedure>` whose leaf `<Item>`
+  is the human work step ("Apply grease to the stem (1).") listing the
+  `<Action>` ids it plays (== SubStep ids). Counts: motorcycle 18 work steps
+  for 55 sub-steps, axle 7 / 16, drone 122 / 432. The importer now emits **one
+  guide step per leaf Item**, merging its sub-steps' node deltas (last state
+  wins; motion spans first `from` → last `to`; insert/remove outrank a plain
+  move; durations add; last view kept). SubStep-per-step remains the fallback
+  when a publication has no Procedure tree; sub-steps the document never
+  references are appended at the end and counted in the log.
+- **The first VRML `Step` has `simulate FALSE`** (title "0"): scene set-up
+  commands (6 / 43 / 239 sub-steps). Never a guide step.
+- **Parametric geometry PROTOs** (`BOX`, `SPHERE`, `CYLNDR`, `TORUS`,
+  `WASHER`; `BOXDUMMY` hidden) are built at runtime by an embedded script from
+  a few parameters — regenerated in `primitives.ts` so the GLB is complete.
+  Hose/cable/rope sweeps (`HoseSplineFlow*`, `VMHose*`, `CableFlat*`,
+  `VMRope*`) are not rendered; the log warns with a count.
+- Script nodes IS-bind `eventIn`/`eventOut` inside PROTO bodies (parser fix);
+  side XML may carry a UTF-8 BOM; `Set_Viewpoint2` ≡ `Set_Viewpoint`;
+  `Set_ID` / `Set_emissiveColor` / arrows / dimension lines are ignored
+  widgets. RWI numbers its Items ("1", "2"); a numeric section title is
+  replaced by the Simulation Step title or the Text's `<h3>` heading line.
+- Resource note: the 131 MB scene parses in 3.6 s but peaks at ~1.9 GB RSS
+  (token objects). Acceptable for one-off imports; streaming tokenizer if it
+  ever matters.
+
 Office validation: import both samples through the portal (Import Guide →
 choose the `.htm`), then send back only the **import log** (Copy / Download
 in the log dialog) — it contains counts, PROTO type names, publish options

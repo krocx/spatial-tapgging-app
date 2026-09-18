@@ -179,6 +179,19 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **Cortona3D import validated on real publications (DITA WI, RWI, S1000D).**
+  Guide steps now come from the document's own step list
+  (`interactivity.xml` `<Procedure>/<Item>`), one per work item with the
+  animation sub-steps it plays merged into a single `nodes[]` presentation —
+  18 / 7 / 122 real steps instead of 61 / 59 / 671 animation atoms; set-up
+  steps (`simulate FALSE`) are dropped; SubStep-per-step remains the fallback.
+  Parametric geometry PROTOs (BOX, SPHERE, CYLNDR, TORUS, WASHER) are
+  regenerated so the assembly is complete; hoses/cables are counted in a
+  warning. Parser fixes: IS-bound events in Script nodes, BOM-prefixed side
+  XML, `Set_Viewpoint2`, ignored widget PROTOs (arrows, dimensions, `Set_ID`,
+  `Set_emissiveColor`). Multi-file launcher `.htm` now explains to zip the
+  publication folder. Log fields: `setupSubsteps`, `workItems`, `stepSource`,
+  `unreferencedSubsteps`; parse errors carry content-free token context.
 - **Cortona3D RapidManual import (AR OJT slice CI-1…4, `feature/ar-ojt`).**
   `POST /guides/import/cortona` takes a published single-file `.htm` (or its
   extracted `solo+zip` bundle) and produces a draft guide plus the assembly

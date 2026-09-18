@@ -3,18 +3,21 @@
 // Pipeline (docs/ar-ojt/CORTONA3D-IMPORT.md, Stage 2):
 //   .htm ─▶ solo+zip bundle ─▶ VRML97 (PROTOs kept) ─▶ scene graph ─▶ GLB
 //                          └▶ interactivity.xml / rwi ─▶ text, part numbers
-//   Procedure → Step → SubStep → commands ─▶ one guide step per SubStep with
-//   nodes[] deltas, suggested view, callout text, duration.
+//   Procedure → Step → SubStep → commands ─▶ per-SubStep nodes[] deltas
+//   interactivity <Procedure>/<Item> ─▶ one guide step per work Item, merging
+//   the deltas of the SubSteps (Actions) it plays; SubStep fallback when a
+//   publication carries no Procedure tree. Steps with simulate FALSE are
+//   scene set-up and are never shown.
 //
 // The import log is CONTENT-FREE by construction: counts, PROTO type names,
 // publish option names, warnings — never step text, part numbers or ids.
 
-import type { ImportedGuide, ImportedGuideStep, GuideStepNode } from '@spatial/shared';
+import type { ImportedGuide, ImportedGuideStep, GuideStepNode, GuideStepView } from '@spatial/shared';
 import { readCortonaBundle, type CortonaBundle } from './bundle.js';
 import { parseVrml, numField } from './vrml.js';
 import { buildScene } from './scene.js';
 import { writeGlb, type NodeExtras } from './glb.js';
-import { extractProcedure, classifyMotion, type ExtractedProcedure } from './procedure.js';
+import { extractProcedure, classifyMotion, type ExtractedProcedure, type ExtractedSubStep } from './procedure.js';
 import { collectWidgets } from './widgets.js';
 import { readInteractivity, readRwi, type InteractivityIndex, type RwiIndex } from './interactivity.js';
 
@@ -31,8 +34,9 @@ export interface CortonaImportLog {
   vrml:        { header: string; protosDeclared: number; routes: number };
   protos:      { handled: string[]; ignored: string[]; unknown: string[]; counts: Record<string, number> };
   scene:       { nodes: number; defs: number; meshes: number; triangles: number; extentM?: [number, number, number] };
-  procedure:   { steps: number; substeps: number; commands: Record<string, number>; unresolvedRoutes: number; withView: number; withCallouts: number };
-  text:        { substepsWithTitle: number; substepsWithText: number; fromInteractivity: number };
+  procedure:   { steps: number; substeps: number; setupSubsteps: number; workItems: number; unreferencedSubsteps: number; stepSource: 'workItems' | 'substeps';
+                 commands: Record<string, number>; unresolvedRoutes: number; withView: number; withCallouts: number };
+  text:        { stepsWithTitle: number; stepsWithText: number; fromInteractivity: number };
   parts:       { docItems: number; rwiBomRows: number; nodesWithObjectId: number; nodesWithPartNumber: number };
   publish:     Record<string, string>;
   warnings:    string[];
@@ -88,30 +92,60 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
     extras.set(def, e);
   }
 
-  // steps
-  let fromInter = 0, withTitle = 0, withText = 0, withView = 0, withCallouts = 0;
-  const steps: ImportedGuideStep[] = proc.substeps.map((ss, i) => {
-    const it = ss.id ? inter?.textById.get(ss.id) : undefined;
-    const stepIt = ss.stepId ? inter?.textById.get(ss.stepId) : undefined;
-    if (it) fromInter++;
-    const subTitle  = it?.title ?? ss.title;
-    const stepTitle = stepIt?.title ?? ss.stepTitle;
-    const title = [stepTitle && `${ss.stepIndex}. ${stepTitle}`, subTitle && subTitle !== stepTitle ? subTitle : undefined]
-      .filter(Boolean).join(' — ') || `Step ${ss.stepIndex}.${ss.subIndex}`;
-    const bodyParts = [it?.text, it?.comment, ss.comment, ...ss.callouts]
-      .map(s => (s ?? '').trim()).filter(Boolean);
-    const dedup = bodyParts.filter((s, k) => bodyParts.indexOf(s) === k);
-    let text = dedup.join('\n\n');
-    if (!text) text = stepIt?.text ?? stepIt?.comment ?? ss.stepComment ?? title;
-    if (subTitle || stepTitle) withTitle++; if (dedup.length) withText++;
-    if (ss.view) withView++; if (ss.callouts.length) withCallouts++;
+  // steps — one per work Item (document step) when the interactivity file has a
+  // Procedure tree; otherwise one per animation SubStep.
+  let fromInter = 0, withTitle = 0, withText = 0, withView = 0, withCallouts = 0, unreferenced = 0;
+  const shown = proc.substeps.filter(ss => !ss.setup);
+  const setupSubsteps = proc.substeps.length - shown.length;
+  const bySubId = new Map<string, ExtractedSubStep>();
+  for (const ss of shown) if (ss.id) bySubId.set(ss.id, ss);
+  const workItems = inter?.workItems ?? [];
+  const stepSource: 'workItems' | 'substeps' = workItems.length ? 'workItems' : 'substeps';
+  const steps: ImportedGuideStep[] = [];
 
-    const step: ImportedGuideStep = { sequenceNumber: i + 1, title, text, completionRequired: true };
-    if (ss.nodes.length) step.nodes = ss.nodes.map(pruneNode);
-    if (ss.view) step.view = ss.view;
-    if (ss.durationSec) step.durationSec = ss.durationSec;
+  const finish = (title: string, text: string, subs: ExtractedSubStep[]): ImportedGuideStep => {
+    const m = mergeSubsteps(subs);
+    const parts = [text, ...m.callouts].map(x => x.trim()).filter(Boolean);
+    const dedup = parts.filter((x, k) => parts.indexOf(x) === k);
+    const body = dedup.join('\n\n') || title;
+    if (dedup.length) withText++; if (m.view) withView++; if (m.callouts.length) withCallouts++;
+    const step: ImportedGuideStep = { sequenceNumber: steps.length + 1, title, text: body, completionRequired: true };
+    if (m.nodes.length) step.nodes = m.nodes.map(pruneNode);
+    if (m.view) step.view = m.view;
+    if (m.durationSec) step.durationSec = m.durationSec;
+    steps.push(step);
     return step;
-  });
+  };
+
+  if (stepSource === 'workItems') {
+    const referenced = new Set<string>();
+    for (const wi of workItems) {
+      const subs = wi.actionIds.map(id => bySubId.get(id)).filter((x): x is ExtractedSubStep => !!x);
+      for (const ss of subs) referenced.add(ss.id!);
+      // Section title: the document's top-level Item, unless that is a bare number
+      // (RWI numbers its steps) — then the Simulation Step's own title.
+      const simStep = subs[0]?.stepId ? inter?.textById.get(subs[0].stepId)?.title : undefined;
+      const candidates = [wi.path[0], simStep, subs[0]?.stepTitle].filter((x): x is string => !!x);
+      const top = candidates.find(x => !/^[\d.\s]+$/.test(x));
+      let leaf = wi.title; let text = wi.text ?? wi.comment ?? '';
+      // No Description but the Text opens with a short heading line (DITA/RWI <h3>) — promote it.
+      if ((!leaf || /^[\d.\s]+$/.test(leaf)) && text.includes('\n')) {
+        const [first, ...rest] = text.split('\n'); const restText = rest.join('\n').trim();
+        if (first.length <= 80 && restText) { leaf = leaf && !/^[\d.\s]+$/.test(leaf) ? leaf : first.trim(); text = restText; }
+      }
+      const title = (top ? [`${wi.topIndex}. ${top}`, leaf && leaf !== top ? leaf : undefined] : [leaf ? `${wi.topIndex}. ${leaf}` : undefined]).filter(Boolean).join(' — ') || `Step ${wi.topIndex}`;
+      if (top || leaf) withTitle++; fromInter++;
+      finish(title, text, subs);
+    }
+    // animation sub-steps the document never references: keep them, after the document steps, so nothing is lost
+    for (const ss of shown) if (ss.id && !referenced.has(ss.id)) { unreferenced++; finish(subStepTitle(ss, inter), subStepText(ss, inter), [ss]); }
+  } else {
+    for (const ss of shown) {
+      const it = ss.id ? inter?.textById.get(ss.id) : undefined; if (it) fromInter++;
+      if (it?.title || ss.title || ss.stepTitle) withTitle++;
+      finish(subStepTitle(ss, inter), subStepText(ss, inter), [ss]);
+    }
+  }
 
   const procTitle = (proc.id && inter?.textById.get(proc.id)?.title) || proc.title;
   const name = (opts.name ?? procTitle ?? rwi?.jobTitle ?? bundle.vrmlName.replace(/\.wrl$/i, '')).trim() || 'Imported procedure';
@@ -130,8 +164,9 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
     protos: proc.protos,
     scene:  { nodes: countNodes(scene.roots), defs: scene.byDef.size, meshes: scene.meshCount, triangles: scene.triangleCount,
               extentM: scene.bbox ? [0, 1, 2].map(a => round(scene.bbox!.max[a] - scene.bbox!.min[a])) as [number, number, number] : undefined },
-    procedure: { steps: proc.stepCount, substeps: proc.substeps.length, commands: proc.commandCounts, unresolvedRoutes: proc.unresolvedRoutes, withView, withCallouts },
-    text:   { substepsWithTitle: withTitle, substepsWithText: withText, fromInteractivity: fromInter },
+    procedure: { steps: proc.stepCount, substeps: proc.substeps.length, setupSubsteps, workItems: workItems.length, unreferencedSubsteps: unreferenced, stepSource,
+                 commands: proc.commandCounts, unresolvedRoutes: proc.unresolvedRoutes, withView, withCallouts },
+    text:   { stepsWithTitle: withTitle, stepsWithText: withText, fromInteractivity: fromInter },
     parts:  { docItems: inter?.partByObjectID.size ?? 0, rwiBomRows: rwi?.bom.length ?? 0, nodesWithObjectId: proc.objectIdByDef.size, nodesWithPartNumber: nodesWithPart },
     publish, warnings, strict: !!opts.strict,
   };
@@ -143,6 +178,47 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
   if (rwi && rwi.stepCount === 0 && rwi.taskCount > 0) { /* expected: rwi is not a step source */ }
 
   return { imported, glb, log, extras };
+}
+
+function subStepTitle(ss: ExtractedSubStep, inter: InteractivityIndex | null): string {
+  const it = ss.id ? inter?.textById.get(ss.id) : undefined;
+  const stepIt = ss.stepId ? inter?.textById.get(ss.stepId) : undefined;
+  const subTitle = it?.title ?? ss.title; const stepTitle = stepIt?.title ?? ss.stepTitle;
+  return [stepTitle && `${ss.stepIndex}. ${stepTitle}`, subTitle && subTitle !== stepTitle ? subTitle : undefined]
+    .filter(Boolean).join(' — ') || `Step ${ss.stepIndex}.${ss.subIndex}`;
+}
+function subStepText(ss: ExtractedSubStep, inter: InteractivityIndex | null): string {
+  const it = ss.id ? inter?.textById.get(ss.id) : undefined;
+  const stepIt = ss.stepId ? inter?.textById.get(ss.stepId) : undefined;
+  return it?.text ?? it?.comment ?? ss.comment ?? stepIt?.text ?? stepIt?.comment ?? ss.stepComment ?? '';
+}
+
+/** Merge the deltas of several animation sub-steps played in sequence into one
+ *  step's presentation: last state wins for show/opacity/colour, motion spans
+ *  first `from` → last `to`, insert/remove outrank plain moves, durations add. */
+function mergeSubsteps(subs: ExtractedSubStep[]): { nodes: GuideStepNode[]; view?: GuideStepView; callouts: string[]; durationSec?: number } {
+  const byNode = new Map<string, GuideStepNode>(); const nodes: GuideStepNode[] = [];
+  let view: GuideStepView | undefined; const callouts: string[] = []; let dur = 0;
+  const rank = { insert: 3, remove: 3, move: 1 } as const;
+  for (const ss of subs) {
+    for (const n of ss.nodes) {
+      let g = byNode.get(n.node); if (!g) { g = { node: n.node }; byNode.set(n.node, g); nodes.push(g); }
+      if (n.show !== undefined) { g.show = n.show; g.opacity = n.opacity; }
+      if (n.color) g.color = n.color;
+      if (n.from && !g.from) g.from = n.from;
+      if (n.to) g.to = n.to;
+      if (n.rotationFrom && !g.rotationFrom) g.rotationFrom = n.rotationFrom;
+      if (n.rotationTo) g.rotationTo = n.rotationTo;
+      if (n.animate && (!g.animate || rank[n.animate] >= rank[g.animate])) g.animate = n.animate;
+      if (n.sourceKey && !g.sourceKey) g.sourceKey = n.sourceKey;
+      if (n.durationSec) g.durationSec = (g.durationSec ?? 0) + n.durationSec;
+    }
+    if (ss.view) view = ss.view;
+    for (const c of ss.callouts) if (!callouts.includes(c)) callouts.push(c);
+    if (ss.durationSec) dur += ss.durationSec;
+  }
+  for (const g of nodes) if (g.opacity === undefined) delete g.opacity;
+  return { nodes, view, callouts, durationSec: dur || undefined };
 }
 
 function pruneNode(n: GuideStepNode): GuideStepNode {

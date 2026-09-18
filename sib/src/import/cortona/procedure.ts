@@ -35,6 +35,8 @@ export interface ExtractedSubStep {
   stepComment?: string;
   stepIndex:    number;      // 1-based index of parent Step
   subIndex:     number;      // 1-based index within Step
+  /** Parent Step has simulate FALSE: scene set-up commands, never shown to the operator. */
+  setup:        boolean;
   durationSec?: number;
   nodes:        GuideStepNode[];
   view?:        GuideStepView;
@@ -134,7 +136,7 @@ export function extractProcedure(scene: VrmlScene, widgetText: Map<string, strin
       const ss: ExtractedSubStep = {
         id: strField(sub, 'id'), title: strField(sub, 'title'), comment: strField(sub, 'comment'),
         stepId: strField(step, 'id'), stepTitle: strField(step, 'title'), stepComment: strField(step, 'comment'),
-        stepIndex: si + 1, subIndex: ki + 1,
+        stepIndex: si + 1, subIndex: ki + 1, setup: boolField(step, 'simulate') === false,
         durationSec: dur.length && dur[0] > 0 ? dur[0] : undefined,
         nodes: [], callouts: [], calloutDefs: [], unresolved: 0,
       };

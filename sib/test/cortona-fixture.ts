@@ -74,7 +74,13 @@ ${o.unknownProto ? '  DEF MYSTERY MysteryWidget { foo "x" }\n' : ''}] }
     cmd('C8', 'Set_diffuseColor', 'key [ 0 1 ] keyValue [ 0.7 0.72 0.75, 1 0.2 0.1 ] period [ 0 0.5 ] objectID -2001 attributeName "diffuseColor"', 'PN_0190-10002_1', 'diffuseColor'),
     cmd('C9', 'SwitchOFF', 'key [ 0 ] keyValue [ 0 ] objectID -4001 attributeName "whichChoice"', 'PANEL_A', 'whichChoice'),
   ];
+  const s0 = [
+    cmd('C0', 'SwitchOFF', 'key [ 0 ] keyValue [ -1 ] objectID -2001 attributeName "whichChoice"', 'PN_0190-10002_1', 'whichChoice'),
+  ];
   const proc = `DEF PROC Procedure { id "proc-1" title "Sample assembly" steps [
+    DEF ST0 Step { id "st-0" title "0" simulate FALSE substeps [
+${sub('ss-0', 'initial state', 0, s0.join('\n'))}
+    ] }
     DEF ST1 Step { id "st-1" title "Prepare" substeps [
 ${sub('ss-1', 'Remove cover', 2, s1.join('\n'))}
     ] }
@@ -83,7 +89,7 @@ ${sub('ss-2', 'Lower ring into place', 4, s2.join('\n'))}
 ${sub('ss-3', 'Rotate and lock', 3, s3.join('\n'))}
     ] }
   ] }
-DEF PLAYER protoSimulationPlayer { version_num 2 AllSubSteps [ USE SS_ss-1 USE SS_ss-2 USE SS_ss-3 ] }
+DEF PLAYER protoSimulationPlayer { version_num 2 AllSubSteps [ USE SS_ss-0 USE SS_ss-1 USE SS_ss-2 USE SS_ss-3 ] }
 `;
   cmds.length;
   return protos + scene + proc + routes.join('\n') + '\n';
@@ -96,12 +102,13 @@ export function buildInteractivity(): string {
     <Options><Value name="GLTF" type="0">No</Value><Value name="X3D" type="0">No</Value><Value name="UpRight" type="0">No</Value><Value name="SingleHTMLBundle" type="0">Yes</Value></Options>
   </SimulationInformation>
   <Procedure id="proc-1"><Description>Sample assembly</Description>
-    <Item id="st-1"><Description>Prepare</Description><Item id="grp-1"><Action id="ss-1"><Description>Remove cover</Description><Text>Lift the cover straight up and set aside.</Text></Action></Item></Item>
-    <Item id="st-2"><Description>Install ring</Description><Item id="grp-2">
-      <Action id="ss-2"><Description>Lower ring into place</Description><Text>Align the ring notch with the base key.</Text><Comment>Two-person lift.</Comment></Action>
-      <Action id="ss-3"><Description>Rotate and lock</Description><Text>Rotate 90° clockwise until it clicks.</Text></Action></Item></Item>
+    <Item id="st-1"><Description>Prepare</Description>
+      <Item id="wi-1"><Action id="ss-1"></Action><Description>Remove cover</Description><Text><![CDATA[<p>Lift the cover straight up and set aside.</p>]]></Text></Item></Item>
+    <Item id="st-2"><Description>Install ring</Description>
+      <Item id="wi-2"><Action id="ss-2"></Action><Action id="ss-3"></Action><Description>Lower the ring and lock it</Description>
+        <Text><![CDATA[<p>Align the ring notch with the base key.</p><p>Rotate 90&#176; clockwise until it clicks.</p>]]></Text><Comment><![CDATA[<p>Two-person lift.</p>]]></Comment></Item></Item>
   </Procedure>
-  <Simulation id="sim-1"><Step id="st-1"><Substep id="ss-1"/></Step><Step id="st-2"><Substep id="ss-2"/><Substep id="ss-3"/></Step></Simulation>
+  <Simulation id="sim-1"><Step id="st-0"><Description>0</Description><Substep id="ss-0"/></Step><Step id="st-1"><Description>Prepare</Description><Substep id="ss-1"/></Step><Step id="st-2"><Description>Install ring</Description><Substep id="ss-2"/><Substep id="ss-3"/></Step></Simulation>
   <DocItems>
     <DocItem id="di-1" objectID="-106464992"><metadata><value decl-id="d1" name="Part number" type="1">0190-10001</value><value decl-id="d2" name="Description" type="1">RING, UPPER</value><value decl-id="d3" name="Quantity" type="0">1</value></metadata></DocItem>
     <DocItem id="di-2" objectID="-2001"><metadata><value decl-id="d1" name="Part number" type="1">0190-10002</value><value decl-id="d2" name="Description" type="1">SEAL</value></metadata></DocItem>

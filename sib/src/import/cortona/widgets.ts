@@ -59,7 +59,9 @@ export function htmlToText(html: string): string {
     .replace(/<\s*(br|p|div|li|tr|h\d)[^>]*>/gi, '\n')
     .replace(/<[^>]+>/g, '')
     .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
-    .replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+    .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(Number(d))).replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+    .split('\n').map(l => l.replace(/\s+/g, ' ').trim()).join('\n')
+    .replace(/\n{3,}/g, '\n\n').trim();
 }
 
 /** Minimal RTF reader: drops control words, keeps text, honours \par, \line, \'hh, \u. Skips font/colour tables. */

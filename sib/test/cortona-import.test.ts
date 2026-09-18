@@ -9,7 +9,7 @@ test('vrml: parses PROTO declarations, instances, DEF/USE and ROUTEs', async () 
   assert.ok(s.protos.has('Procedure') && s.protos.has('Set_translation') && s.protos.has('IndexedFaceSetWithEdges'));
   assert.equal(s.protos.get('IndexedFaceSetWithEdges')!.external?.length, 1);
   assert.ok(s.defs.has('PN_0190-10001_1') && s.defs.has('SS_ss-2') && s.defs.has('C4'));
-  assert.equal(s.routes.length, 8);
+  assert.equal(s.routes.length, 9);
   const r = s.routes.find(r => r.fromNode === 'C4')!;
   assert.deepEqual(r, { fromNode: 'C4', fromField: 'value_changed', toNode: 'PN_0190-10001_1', toField: 'translation' });
   const proto = s.protos.get('SubStep')!;
@@ -27,40 +27,43 @@ test('bundle: extracts solo+zip from .htm, sniffs kinds, gunzips the scene', asy
   assert.equal(readCortonaBundle(buildBundleZip()).vrmlName, 'Sample.wrl');
 });
 
-test('importer: steps per SubStep, node deltas from commands, text from interactivity, callouts, parts', async () => {
+test('importer: one step per document work Item, merged sub-step deltas, set-up step dropped, callouts, parts', async () => {
   const { importCortonaBundle } = await import('../src/import/cortona/importer.js');
   const r = importCortonaBundle(buildHtm());
   const g = r.imported;
   assert.equal(g.name, 'Sample assembly');
-  assert.equal(g.steps.length, 3);
+  assert.equal(g.steps.length, 2, 'set-up step (simulate FALSE) is not a guide step');
   assert.equal(g.steps[0].title, '1. Prepare — Remove cover');
   assert.equal(g.steps[0].text, 'Lift the cover straight up and set aside.');
   assert.equal(g.steps[0].durationSec, 2);
-  // step 1: SwitchOFF → hidden; transparency 0.7 → ghost 0.3; viewpoint
+  // work item 1 = sub-step ss-1: SwitchOFF → hidden; transparency 0.7 → ghost 0.3; viewpoint
   const n1 = Object.fromEntries(g.steps[0].nodes!.map(n => [n.node, n]));
   assert.equal(n1['cmp:PN_0190-10001_1'].show, 'hidden');
   assert.equal(n1['cmp:PN_0190-10001_1'].sourceKey, '-106464992');
   assert.equal(n1['cmp:PN_0190-10002_1'].show, 'ghost');
   assert.equal(n1['cmp:PN_0190-10002_1'].opacity, 0.3);
   assert.deepEqual(g.steps[0].view?.position, [0.5, 0.3, 1.2]);
-  // step 2: translation ends at rest → insert; callout text appended; SwitchOFF 0 → solid
+  // work item 2 merges ss-2 + ss-3: insert (ends at rest) + solid on part 1; rotation + colour on part 2;
+  // callout + html panel text appended after the document text; durations add.
+  assert.equal(g.steps[1].title, '2. Install ring — Lower the ring and lock it');
+  assert.equal(g.steps[1].durationSec, 7);
   const n2 = Object.fromEntries(g.steps[1].nodes!.map(n => [n.node, n]));
   assert.equal(n2['cmp:PN_0190-10001_1'].animate, 'insert');
   assert.deepEqual(n2['cmp:PN_0190-10001_1'].from, [0.1, 0.3, 0]);
   assert.deepEqual(n2['cmp:PN_0190-10001_1'].to, [0.1, 0.06, 0]);
   assert.equal(n2['cmp:PN_0190-10001_1'].show, 'solid');
-  assert.ok(g.steps[1].text.includes('Align the ring notch') && g.steps[1].text.includes('Two-person lift.') && g.steps[1].text.includes('Torque to spec'));
+  assert.equal(n2['cmp:PN_0190-10002_1'].animate, 'move');
+  assert.deepEqual(n2['cmp:PN_0190-10002_1'].rotationTo, [0, 0, 1, 1.5708]);
+  assert.deepEqual(n2['cmp:PN_0190-10002_1'].color, [1, 0.2, 0.1]);
+  assert.ok(g.steps[1].text.startsWith('Align the ring notch with the base key.\nRotate 90° clockwise'));
+  assert.ok(g.steps[1].text.includes('Torque to spec') && g.steps[1].text.includes('Check & verify') && g.steps[1].text.includes('seal seating'));
+  assert.ok(!g.steps[1].text.includes('<p>'), 'html stripped');
   assert.ok(!('cmp:CALLOUT_A' in n2), 'widgets are not part nodes');
-  // step 3: rotation + colour + html panel text
-  const n3 = Object.fromEntries(g.steps[2].nodes!.map(n => [n.node, n]));
-  assert.equal(n3['cmp:PN_0190-10002_1'].animate, 'move');
-  assert.deepEqual(n3['cmp:PN_0190-10002_1'].rotationTo, [0, 0, 1, 1.5708]);
-  assert.deepEqual(n3['cmp:PN_0190-10002_1'].color, [1, 0.2, 0.1]);
-  assert.ok(g.steps[2].text.includes('Check & verify') && g.steps[2].text.includes('seal seating'));
   // log is content-free and complete
   const L = r.log;
-  assert.equal(L.procedure.steps, 2); assert.equal(L.procedure.substeps, 3);
-  assert.equal(L.procedure.commands.SwitchOFF, 4);
+  assert.equal(L.procedure.steps, 3); assert.equal(L.procedure.substeps, 4); assert.equal(L.procedure.setupSubsteps, 1);
+  assert.equal(L.procedure.workItems, 2); assert.equal(L.procedure.stepSource, 'workItems'); assert.equal(L.procedure.unreferencedSubsteps, 0);
+  assert.equal(L.procedure.commands.SwitchOFF, 5);
   assert.equal(L.procedure.unresolvedRoutes, 0);
   assert.equal(L.parts.docItems, 2); assert.equal(L.parts.nodesWithPartNumber, 2); assert.equal(L.parts.rwiBomRows, 2);
   assert.equal(L.publish.GLTF, 'No');
