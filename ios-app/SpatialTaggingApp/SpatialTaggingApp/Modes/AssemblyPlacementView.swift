@@ -38,6 +38,7 @@ struct AssemblyPlacementView: View {
 
     // Assembly
     @State private var assemblyNode: AssemblyNode? = nil
+    @State private var isLoading = false
     @State private var bottomCentre: simd_float3 = .zero
     @State private var size: simd_float3 = .zero
     @State private var hadWorldMap = false
@@ -158,7 +159,11 @@ struct AssemblyPlacementView: View {
                     }
                     .disabled(surfacePoint == nil)
                 } else if phase == .placed {
-                    Button { phase = .aiming; status = "Aim at the surface and tap Place here" } label: {
+                    Button {
+                        previewTask?.cancel(); assemblyNode?.cancelPlayback(); assemblyNode?.apply(state: [:])
+                        assemblyNode?.root.opacity = 0.6
+                        phase = .aiming; status = "Aim at the surface and tap Place here"
+                    } label: {
                         Label("Re-aim", systemImage: "scope").font(.subheadline.bold())
                             .padding(.vertical, 14).padding(.horizontal, 16)
                             .background(Color.white.opacity(0.15)).foregroundStyle(.white)
@@ -269,6 +274,13 @@ struct AssemblyPlacementView: View {
     // MARK: - Load
 
     private func load() async {
+        // `.task` can fire again on the same view (SwiftUI re-appear after a
+        // cover/sheet cycle); a second load would leave the first node behind
+        // at its old pose — the "duplicate assembly" seen on re-aim.
+        guard assemblyNode == nil, !isLoading else {
+            AppLog.warn("assembly", "placement load() called again — ignored (node=\(assemblyNode != nil))"); return
+        }
+        isLoading = true; defer { isLoading = false }
         let client = SIBClient(settings: settings)
         guard let asm = guide.assembly else { phase = .failed; errorText = "This guide has no assembly model."; return }
 
@@ -294,6 +306,9 @@ struct AssemblyPlacementView: View {
         node.root.opacity = 0.6
         if let b = asm.bounds { bottomCentre = b.bottomCentre; size = b.size }
         else if let b = glb.bounds { bottomCentre = simd_float3((b.min.x + b.max.x) / 2, b.min.y, (b.min.z + b.max.z) / 2); size = b.max - b.min }
+        // Never two assemblies in one scene: drop any stale root first.
+        for stale in arManager.sceneView.scene.rootNode.childNodes where stale.name == "assembly" { stale.removeFromParentNode() }
+        node.root.isHidden = true                 // shown by followReticle on the first surface hit / by applyPose
         assemblyNode = node
         arManager.sceneView.scene.rootNode.addChildNode(node.root)
 
@@ -307,6 +322,7 @@ struct AssemblyPlacementView: View {
             surfacePoint = p.simdPosition + rotateY(bottomCentre * scale, yaw)
             applyPose()
             node.root.opacity = 1
+            node.root.isHidden = false
             phase = .placed
             status = "Assembly placed (\(p.source)). Adjust if needed, then Done."
         } else {
@@ -361,6 +377,7 @@ struct AssemblyPlacementView: View {
         guard surfacePoint != nil else { return }
         assemblyNode?.root.opacity = 1
         phase = .placed
+        if previewOn { playPreview() }          // re-aim paused the loop
         await save()
         status = "Placed — every step now follows the assembly. Adjust if needed, then Done."
     }

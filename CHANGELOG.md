@@ -7,6 +7,11 @@ it, it gets a line.
 ## 2026.4.46 — 2026-09-08
 
 ### Fixed
+- **Place Assembly showed two copies of the model while aiming / re-aiming.**
+  `load()` could run twice on the same view, leaving the first node behind at
+  its old pose. Load is now guarded, any stale `assembly` root is removed
+  before adding, the model stays hidden until the first surface hit, Re-aim
+  ghosts it and pauses the step preview (resumed after Place here).
 - **AR OJT: imported assembly parts vanished after their animation.** The
   importer now reproduces the viewer's command semantics: `SwitchOFF` reads
   `Parameters` (default off, explicit on) instead of `keyValue`; absent
