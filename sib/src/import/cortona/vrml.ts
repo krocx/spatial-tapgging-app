@@ -122,7 +122,13 @@ class Parser {
   private next(): Tok { const t = this.toks[this.p++]; if (!t) throw new Error('vrml: unexpected end of input'); return t; }
   private expectSym(s: string): void {
     const t = this.next();
-    if (t.t !== 'sym' || t.v !== s) throw new Error(`vrml: expected "${s}" at line ${t.line}, got "${t.v}"`);
+    if (t.t !== 'sym' || t.v !== s) throw new Error(`vrml: expected "${s}" at line ${t.line}, got "${t.v}"${this.context()}`);
+  }
+  /** Content-free context for error messages: the preceding tokens, strings masked. */
+  private context(): string {
+    const from = Math.max(0, this.p - 9);
+    const parts = this.toks.slice(from, this.p - 1).map(t => t.t === 'str' ? '"…"' : t.v);
+    return parts.length ? ` (after: ${parts.join(' ')})` : '';
   }
   private isSym(s: string, o = 0): boolean { const t = this.peek(o); return !!t && t.t === 'sym' && t.v === s; }
   private isId(s: string, o = 0): boolean { const t = this.peek(o); return !!t && t.t === 'id' && t.v === s; }
