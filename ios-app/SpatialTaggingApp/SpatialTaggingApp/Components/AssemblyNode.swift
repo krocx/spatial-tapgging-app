@@ -67,7 +67,9 @@ final class AssemblyNode {
         var total: TimeInterval = 0
         for d in deltas {
             guard let node = parts[d.node] else { continue }
-            let dur = max(0.4, (d.durationSec ?? 1.0)) / max(0.1, speed)
+            // Source timings are per-substep (≈1 s); scale by the guide's speed
+            // and floor the result so a motion never reads as a flash.
+            let dur = max(1.2, (d.durationSec ?? 1.0) / max(0.1, speed))
             total = max(total, dur)
             let from = d.from.flatMap(vec3), to = d.to.flatMap(vec3)
             let rFrom = d.rotationFrom.flatMap(vec4), rTo = d.rotationTo.flatMap(vec4)

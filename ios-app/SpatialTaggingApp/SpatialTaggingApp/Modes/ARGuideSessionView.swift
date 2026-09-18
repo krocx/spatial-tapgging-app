@@ -252,6 +252,7 @@ struct ARGuideSessionView: View {
     @State private var assemblyEngine:     AssemblyStateEngine? = nil
     @State private var assemblyReplayTask: Task<Void, Never>?   = nil
     @State private var assemblyStepIndex:  Int                  = -1
+    @State private var assemblyLoading:    Bool                 = false
     /// Part chip: the step's focus part, or whatever the operator tapped.
     @State private var partChip: (title: String, partNumber: String?, tapped: Bool)? = nil
 
@@ -3208,7 +3209,7 @@ struct ARGuideSessionView: View {
         // step pending so the download completion re-attaches everything).
         // AR OJT: the assembly slot is rendered once, live, by AssemblyNode —
         // never as a per-step ghost copy.
-        let slots = step.effectiveModels.filter { assemblyNode == nil || $0.slotId != "assembly" }
+        let slots = step.effectiveModels.filter { guide.assembly?.pose == nil || $0.slotId != "assembly" }
         guard !slots.isEmpty, let pos = step.worldPosition else {
             pendingGhostStep = nil
             return
@@ -3887,7 +3888,8 @@ extension ARGuideSessionView {
     /// at the guide's saved pose and show the initial (pre-step-1) state.
     @MainActor
     func loadAssembly() async {
-        guard assemblyNode == nil, let asm = guide.assembly, let pose = asm.pose else { return }
+        guard assemblyNode == nil, !assemblyLoading, let asm = guide.assembly, let pose = asm.pose else { return }
+        assemblyLoading = true; defer { assemblyLoading = false }
         let client = SIBClient(settings: settings)
         guard let data = try? await client.downloadModelGLB(id: asm.modelId) else {
             AppLog.warn("assembly", "GLB download failed for \(asm.modelId)"); return
@@ -3929,7 +3931,7 @@ extension ARGuideSessionView {
         let index = assemblyStepIndex
         assemblyReplayTask?.cancel()
         node.apply(state: engine.state(after: index - 1))
-        let dur = node.play(deltas: engine.deltas(at: index))
+        let dur = node.play(deltas: engine.deltas(at: index), speed: guide.assembly?.effectiveAnimationSpeed ?? 0.5)
         guard dur > 0 else { return }
         assemblyReplayTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: UInt64((dur + 2.0) * 1_000_000_000))

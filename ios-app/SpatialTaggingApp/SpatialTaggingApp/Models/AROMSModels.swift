@@ -153,11 +153,16 @@ struct AssemblyBounds: Codable, Equatable {
 }
 
 struct GuideAssembly: Codable, Equatable {
-    let modelId:      String
-    let pose:         AssemblyPose?
-    let initialNodes: [GuideStepNode]?
-    let bounds:       AssemblyBounds?
-    let source:       String?
+    let modelId:        String
+    let pose:           AssemblyPose?
+    let initialNodes:   [GuideStepNode]?
+    let bounds:         AssemblyBounds?
+    let source:         String?
+    /// Step-animation playback multiplier (0.1–3). Default 0.5: source timings
+    /// are authored for a desktop viewer and read too fast in AR.
+    let animationSpeed: Double?
+
+    var effectiveAnimationSpeed: Double { animationSpeed ?? 0.5 }
 }
 
 /// One node-level presentation delta (mirrors GuideStepNode in shared).
@@ -203,8 +208,9 @@ struct UpdateARGuideRequest: Encodable {
     var published:         Bool?
     var assemblyPose:      AssemblyPose?
     var clearAssemblyPose: Bool = false
+    var assemblyAnimationSpeed: Double?
 
-    enum CodingKeys: String, CodingKey { case name, description, published, assemblyPose }
+    enum CodingKeys: String, CodingKey { case name, description, published, assemblyPose, assemblyAnimationSpeed }
     func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encodeIfPresent(name, forKey: .name)
@@ -212,6 +218,7 @@ struct UpdateARGuideRequest: Encodable {
         try c.encodeIfPresent(published, forKey: .published)
         if clearAssemblyPose { try c.encodeNil(forKey: .assemblyPose) }
         else { try c.encodeIfPresent(assemblyPose, forKey: .assemblyPose) }
+        try c.encodeIfPresent(assemblyAnimationSpeed, forKey: .assemblyAnimationSpeed)
     }
 }
 

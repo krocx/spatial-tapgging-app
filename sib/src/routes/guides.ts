@@ -481,6 +481,12 @@ router.patch('/:id', (req: Request, res: Response): void => {
     }
     assemblyChanged = true;
   }
+  if (body.assemblyAnimationSpeed !== undefined) {
+    if (!guide.assembly) { res.status(400).json({ error: 'This guide has no assembly model', timestamp: now }); return; }
+    const v = Number(body.assemblyAnimationSpeed);
+    if (!Number.isFinite(v) || v < 0.1 || v > 3) { res.status(400).json({ error: 'assemblyAnimationSpeed must be between 0.1 and 3', timestamp: now }); return; }
+    assembly = { ...(assembly ?? guide.assembly), animationSpeed: Math.round(v * 100) / 100 };
+  }
 
   const updated: Guide = {
     ...guide,

@@ -184,6 +184,14 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **AR OJT: animation speed + author preview.** `Guide.assembly.animationSpeed`
+  (default 0.5× — Cortona timings are authored for a desktop viewer) with
+  `PATCH /guides/:id { assemblyAnimationSpeed }`; Place Assembly gets a
+  **Preview steps** toggle (◀ ▶ step through, ↻ replay) and a tortoise/hare
+  speed slider saved with the guide; per-motion floor of 1.2 s. The
+  per-step ghost copy of the assembly slot is never shown once the guide's
+  assembly is placed (it duplicated the live assembly while it loaded);
+  double-load guard on the operator side.
 - **AR OJT slices 2–4 (iOS) — the assembly in AR, one tap to place, steps
   drive the parts.** Own GLB→SceneKit loader (`Services/GLBLoader.swift`:
   node names + extras preserved, flat normals; USDZ export renamed nodes so

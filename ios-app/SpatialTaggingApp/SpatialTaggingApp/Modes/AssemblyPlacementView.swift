@@ -49,6 +49,14 @@ struct AssemblyPlacementView: View {
     @State private var dirty = false
     @State private var isSaving = false
 
+    // Step preview (author checks the animation and sets its speed)
+    @State private var previewOn = false
+    @State private var previewIndex = 0
+    @State private var speed: Double = 0.5
+    @State private var speedDirty = false
+    @State private var previewTask: Task<Void, Never>? = nil
+    private var engine: AssemblyStateEngine { AssemblyStateEngine(initial: guide.assembly?.initialNodes, steps: steps) }
+
     // Gesture baselines
     @State private var panBase: simd_float3 = .zero
     @State private var panDepth: Float = 0.5
@@ -76,6 +84,7 @@ struct AssemblyPlacementView: View {
         .task { await load() }
         .onReceive(reticleTimer) { _ in if phase == .aiming { followReticle() } }
         .onDisappear {
+            previewTask?.cancel()
             assemblyNode?.root.removeFromParentNode()
             arManager.pauseSession()
         }
@@ -136,6 +145,8 @@ struct AssemblyPlacementView: View {
                 .font(.caption).foregroundStyle(.white.opacity(0.7))
             }
 
+            if phase == .placed { previewBar }
+
             HStack(spacing: 12) {
                 if phase == .aiming {
                     Button { Task { await placeHere() } } label: {
@@ -179,6 +190,61 @@ struct AssemblyPlacementView: View {
         }
         .padding(.top, 12)
         .background(.ultraThinMaterial)
+    }
+
+    /// Step-by-step animation preview + playback speed, saved with the guide.
+    private var previewBar: some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 10) {
+                Toggle(isOn: $previewOn) { Text("Preview steps").font(.subheadline.bold()).foregroundStyle(.white) }
+                    .toggleStyle(.switch).tint(.indigo)
+                    .onChange(of: previewOn) { on in
+                        if on { previewIndex = 0; playPreview() } else { stopPreview() }
+                    }
+                if previewOn {
+                    Spacer()
+                    Button { previewIndex = max(0, previewIndex - 1); playPreview() } label: { Image(systemName: "chevron.left.circle.fill").font(.title2) }
+                        .disabled(previewIndex == 0)
+                    Text("\(previewIndex + 1) / \(max(1, steps.count))").font(.caption.monospacedDigit()).foregroundStyle(.white).frame(minWidth: 52)
+                    Button { previewIndex = min(steps.count - 1, previewIndex + 1); playPreview() } label: { Image(systemName: "chevron.right.circle.fill").font(.title2) }
+                        .disabled(previewIndex >= steps.count - 1)
+                    Button { playPreview() } label: { Image(systemName: "arrow.counterclockwise.circle.fill").font(.title2) }
+                }
+            }
+            .foregroundStyle(.white)
+            if previewOn, previewIndex < steps.count {
+                Text(steps[previewIndex].displayTitle).font(.caption).foregroundStyle(.white.opacity(0.8)).lineLimit(2).multilineTextAlignment(.center)
+            }
+            HStack(spacing: 8) {
+                Image(systemName: "tortoise.fill").font(.caption).foregroundStyle(.white.opacity(0.7))
+                Slider(value: $speed, in: 0.1 ... 2.0, step: 0.05) { _ in speedDirty = true; dirty = true; if previewOn { playPreview() } }
+                    .tint(.indigo)
+                Image(systemName: "hare.fill").font(.caption).foregroundStyle(.white.opacity(0.7))
+                Text(String(format: "%.2f×", speed)).font(.caption.monospacedDigit()).foregroundStyle(.white).frame(width: 48)
+            }
+        }
+        .padding(.horizontal, 16)
+    }
+
+    private func playPreview() {
+        guard let node = assemblyNode, previewOn, previewIndex < steps.count else { return }
+        previewTask?.cancel()
+        let eng = engine
+        node.apply(state: eng.state(after: previewIndex - 1))
+        let dur = node.play(deltas: eng.deltas(at: previewIndex), speed: speed)
+        node.focus(parts: eng.focusParts(at: previewIndex))
+        previewTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: UInt64((dur + 2.0) * 1_000_000_000))
+            guard !Task.isCancelled, previewOn else { return }
+            playPreview()
+        }
+    }
+
+    private func stopPreview() {
+        previewTask?.cancel(); previewTask = nil
+        guard let node = assemblyNode else { return }
+        node.focus(parts: [])
+        node.apply(state: [:])            // whole assembly, rest pose, solid
     }
 
     private func hint(_ icon: String, _ label: String) -> some View {
@@ -227,6 +293,7 @@ struct AssemblyPlacementView: View {
         arManager.sceneView.scene.rootNode.addChildNode(node.root)
 
         // Existing pose → start in "placed" so the author can nudge.
+        speed = asm.effectiveAnimationSpeed
         if let p = asm.pose {
             scale = Float(p.scale ?? 1)
             let q = p.simdRotation
@@ -303,7 +370,8 @@ struct AssemblyPlacementView: View {
         isSaving = true; errorText = nil
         let client = SIBClient(settings: settings)
         do {
-            let updated = try await client.setAssemblyPose(guideId: guide.id, pose: pose)
+            var updated = try await client.setAssemblyPose(guideId: guide.id, pose: pose)
+            if speedDirty { updated = try await client.setAssemblyAnimationSpeed(guideId: guide.id, speed: speed); speedDirty = false }
             dirty = false
             // A fresh session has no saved map yet — upload it so operators (and
             // Place Steps) relocalize into the same frame this pose lives in.

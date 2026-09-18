@@ -592,6 +592,12 @@ final class SIBClient {
         return try await patch(ARGuide.self, path: "/guides/\(guideId)", body: req)
     }
 
+    /// AR OJT: save the assembly's step-animation playback speed (0.1–3).
+    func setAssemblyAnimationSpeed(guideId: String, speed: Double) async throws -> ARGuide {
+        var req = UpdateARGuideRequest(); req.assemblyAnimationSpeed = speed
+        return try await patch(ARGuide.self, path: "/guides/\(guideId)", body: req)
+    }
+
     /// Author: cascade-delete a Guide and all its Steps.
     func deleteGuide(id: String) async throws {
         try await delete(path: "/guides/\(id)")

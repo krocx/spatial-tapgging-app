@@ -1153,6 +1153,9 @@ export interface GuideAssembly {
   bounds?:       { min: [number, number, number]; max: [number, number, number] };
   /** Where the assembly + node data came from. */
   source?:       'cortona' | 'cad';
+  /** Playback speed multiplier for step animations (0.1–3; default 0.5 —
+   *  source timings are authored for a desktop viewer and read too fast in AR). */
+  animationSpeed?: number;
 }
 
 export interface GuideStepModel {
@@ -1221,6 +1224,8 @@ export type UpdateGuideRequest = {
   /** Set (or clear with null) the assembly placement. The server re-derives
    *  every cad-positioned step's pin and assembly-slot offsets from it. */
   assemblyPose?: AssemblyPose | null;
+  /** Step-animation playback speed for the assembly (see GuideAssembly.animationSpeed). */
+  assemblyAnimationSpeed?: number;
 };
 
 /**
