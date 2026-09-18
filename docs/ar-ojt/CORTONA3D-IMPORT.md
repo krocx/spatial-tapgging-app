@@ -49,6 +49,70 @@ strings survive into the report.
 > 6. If the script errors, send the full error text and the output of
 >    `dir /s C:\cortona-sample` with file *sizes* only.
 
+## Findings from the office reconnaissance (2026-09-18)
+
+Sample: RapidManual 13.1 (RapidGenerator 9.9, MicroStation import), published with
+Cortona3D Solo 2.8.0 as a single self-contained `.htm` (WebAssembly/WebGL viewer,
+no plugin). The findings report is content-free and stays with the office
+Cowork; this is the structural digest that drives the importer.
+
+**The import source is the published `.htm`, not the `.vmp`.** Script block 2
+(`type="application/solo+zip"`, a base64 `data:application/x-cortona3d` URI)
+decodes to a ZIP with exactly three entries: `<title>.wrl` (gzip VRML97, one
+merged scene, ~3.3 MB), `<title>.interactivity.xml` (step/action index +
+`DocItems` part table), `<title>.xml` (the `rwi` step list). This replaces the
+`.vmp`'s 75 hash-named entries, two disjoint id spaces, a mis-extensioned 8.5 MB
+XML "`.wrl`", double compression and 772 KB of build logs carrying source paths.
+
+**Animation lives in proprietary VRML PROTOs, nowhere else.** Zero standard
+interpolators in the `.vmp`; in the published `.wrl` the procedure is a PROTO
+tree `Procedure → Step → SubStep{duration} → commands`, and each command is a
+PROTO instance sharing one interface (`key`, `keyValue`, `period`, `objectID`,
+`attributeName`, `value_changed`) bound to its target by
+`ROUTE <cmd>.value_changed TO <targetDEF>.<field>`. Command mix in the sample:
+`Set_transparency` 44, `SwitchOFF` 39, `Set_Viewpoint` 21, `Set_translation` 9,
+`Set_rotation` 7, `Set_center` 2, `Set_diffuseColor` 2, `Set_Arrow2` 1 (125
+total; 83 are visibility, 16 are motion). A stock VRML loader drops all of it
+silently — our parser must keep PROTO declarations and instances.
+
+**Scene graph:** 36 `ObjectVM` PROTO instances (`translation`, `rotation`,
+`center`, `scale`, `parent`, `children`, `name`, `whichChoice`…) + 42 standard
+`Transform`s; leaf meshes are plain `IndexedFaceSet`. Units metres, Y-up as
+written by RapidGenerator (MicroStation source is Z-up — verify against one
+known-orientation part per configuration). Viewpoints per SubStep
+(`Set_Viewpoint`, 9-number tuple whose layout must be decoded empirically).
+
+**Part identity is the weak point.** Published `DEF` names are lossy slugs of
+display text (`A+_A+_A+`, truncated ≈30 chars, collision-suffixed) plus some
+part-number-like `A+9-9999999_9`; `objectID` is an opaque 32-bit key (not an
+index); the id→part-number table (`DocItems`, `rwi/bom`) has only 2 rows against
+thousands of units. The importer keys nodes on `DEF` + `objectID` and treats
+part numbers as *enrichment*, verified against a procedure with a known BOM.
+
+**Steps:** three counts disagree (39 authoring `step` / 9 `Step` + 21 `SubStep`
+runtime / 11 `rwi` steps). Canonical = the **21 SubSteps** (the level that
+carries `duration` and commands), grouped under 9 Steps. Titles/text come from
+`interactivity.xml` (`Description`, `Comment`, `Text`); `rwi` titles are bare
+integers — never use them for UI. Order = document order; no branching.
+
+**Callouts:** 15 annotation widgets (`PanelImg`, `CalloutM`, `VMTighten`,
+`VMRope`, `PanelHtml`) with model-coordinate parameters (`pos`, `Point1/2`,
+`translation`) and body copy as RTF/HTML (`richtext`, `htmlbody`) → tags bound
+to nodes, text via an RTF/HTML-to-plain pass. **No POI construct, no
+AR/REFLEKT export** in this sample — tracking is entirely ours (PartFrame).
+
+**Traps to encode as tests:** sniff magic bytes never extensions; gunzip inside
+stored ZIP entries; `GeometryID` is a decoy (`presentation@id + ".wrl"` is the
+real link in the `.vmp`, irrelevant on the published path); 13 VRML `Script`
+nodes with inline JavaScript (behaviour partly imperative — ignore, we
+re-implement presentation from commands); `PublicPath` internal URL (strip);
+mixed LF/CRLF.
+
+**Single most actionable item:** the publisher was configured `GLTF=No`,
+`X3D=No`. Re-publishing the same procedure with `GLTF=Yes` (and `X3D=Yes`)
+may hand us standard geometry and possibly standard animation, retiring most
+of the VRML/PROTO work. Test before writing the parser.
+
 ## Stage 2 — importer (here, against the report)
 
 From the report we learn, without seeing content: how steps are delimited and
@@ -60,13 +124,16 @@ whether an AR/REFLEKT scenario file is present. That fixes the adapter design:
 
 | RapidManual | SIB | Adapter work |
 |---|---|---|
-| `.wrl`/X3D with `DEF` names | assembly USDZ, nodes `base` + `cmp:<DEF>` | VRML97 parser (own code) → glTF → USDZ via existing pipeline; one rigid frame transform + unit scale per configuration |
-| procedure XML / step list | guide steps (`title`, `text`, `nodes[]`) | new `rapidmanual` source in `instructions-source-adapter` |
-| interpolator keyframes routed to a part | `nodes[].animate = insert`, `axis`, `travel` from first/last key | keyframe reduction; intermediate keys dropped in v1 |
-| callouts / POIs with positions | tags bound to nodes (`node` + offset) | positions already in the model frame |
-| information screens / text | step text, reference link | direct |
-| viewpoints | optional "suggested view" | ignored by the tracked-part runtime |
-| REFLEKT/VisionLib tracking config | — | discarded; PartFrame shape prior + `base` replace it |
+| `.htm` script block 2 (`solo+zip` base64) | — | extract, unzip, gunzip (magic-byte sniffing) |
+| published `.wrl`: `ObjectVM`/`Transform` graph + `IndexedFaceSet` leaves | assembly USDZ, nodes `base` + `cmp:<DEF>` (+ `objectID` as stable key) | own VRML97 parser **with PROTO support** → glTF → USDZ; metres, Y-up; one rigid frame transform per configuration |
+| `Procedure → Step → SubStep{duration}` PROTOs | guide steps: 21 SubSteps grouped by Step; `duration` kept | `rapidmanual` source in `instructions-source-adapter` |
+| `Set_transparency` / `SwitchOFF` commands + ROUTE targets | `nodes[].show = ghost / hidden / solid` | 83 of 125 commands — do first |
+| `Set_translation` / `Set_rotation` (`key`/`keyValue` over `period`) | `nodes[].animate = insert`, `axis`, `travel` from first/last key | 16 commands; intermediate keys dropped in v1 |
+| `Set_Viewpoint` (9-number tuple) | optional "suggested view" | decode layout empirically; ignored by tracked-part runtime |
+| `interactivity.xml` `Description`/`Comment`/`Text`, `DocItems` | step title/text; part-number enrichment | verify BOM coverage — only 2 rows in the sample |
+| callout widgets (`pos`, `Point1/2`, `richtext`/`htmlbody`) | tags bound to nodes; plain text | RTF/HTML → text |
+| `rwi` step list | job metadata only | titles are integers — never display |
+| `Script` nodes, `PublicPath`, build logs | — | ignored / stripped |
 
 Acceptance: import the sample; the Guide Library shows the steps in order with
 text; the Guide Preview plays each step's node presentation on the converted
