@@ -3718,7 +3718,17 @@ function renderModels(models) {
     const s = m.usdzStatus ?? (m.hasUSDZ ? 'ready' : m.hasGLB ? 'pending' : null);
     if (!s) return '';
     const labels = { ready: '🍎 USDZ Ready', pending: '⏳ USDZ Pending', converting: '🔄 Converting USDZ…', failed: '✗ USDZ Failed' };
-    return `<span class="usdz-status ${s}" id="usdz-badge-${m.id}">${labels[s] || s}</span>`;
+    const redo = m.hasGLB && s !== 'converting' ? ` <button class="btn-ghost" style="padding:0 4px;font-size:0.7rem" title="Re-convert USDZ from the GLB" onclick="reconvertUSDZ('${m.id}')">↻</button>` : '';
+    return `<span class="usdz-status ${s}" id="usdz-badge-${m.id}">${labels[s] || s}</span>${redo}`;
+  };
+  // Re-run the browser-side GLB→USDZ conversion for a model that already has a GLB on the server.
+  window.reconvertUSDZ = async (modelId) => {
+    try {
+      const r = await fetch(`/models/${encodeURIComponent(modelId)}/file.glb`, { headers: { 'X-API-Key': apiKey() } });
+      if (!r.ok) throw new Error(`GLB download failed (${r.status})`);
+      const blob = await r.blob();
+      await window.convertAndUploadUSDZ(modelId, blob);
+    } catch (e) { toast(`Re-convert failed: ${e.message}`, 5000); }
   };
 
   const formatBytes = (b) => {
