@@ -24,6 +24,7 @@
 import Foundation
 import SceneKit
 import simd
+import UIKit
 
 /// Result of loading an assembly GLB.
 struct GLBAssembly {
