@@ -113,6 +113,54 @@ mixed LF/CRLF.
 may hand us standard geometry and possibly standard animation, retiring most
 of the VRML/PROTO work. Test before writing the parser.
 
+## Sample 2 confirmation (2026-09-18)
+
+A second, ~26× larger procedure (394 `.vmp` entries, 3,290 animation commands,
+203 steps / 210 SubSteps, 12.5 MB `.htm`) from the same toolchain. **Every
+structural invariant held**: flat ZIP; the mis-extensioned XML "`.wrl`"; gzip
+VRML97 flat leaf meshes; `presentation@id + .wrl` resolving 375/375; assembly
+tree in XML `unit` nesting; metres / Y-up / `UpRight=No`; no VRML interpolators
+anywhere; the same `Procedure → Step → SubStep → Set_* / SwitchOFF` PROTO
+command tree with the same interface, wired by `ROUTE`; `DEF`+`ROUTE` linkage
+in the published scene; SubStep count agreeing across `interactivity.xml` and
+the `.wrl` (210 = 210); no branching; no POI construct; no AR export;
+`GLTF=No`, `X3D=No`. Command histogram at scale: `SwitchOFF` 1,006,
+`Set_translation` 807, `Set_transparency` 637, `Set_rotation` 315,
+`Set_diffuseColor` 218, `Set_Viewpoint` 210, `Set_Arrow2` 169, `Set_center`
+128. 4,896 ROUTEs; new target fields `addChildren` / `removeChildren` (170 each).
+
+**Resolved:** part identity. `DocItems` has 68 rows and `rwi/bom/part` 238 —
+sample 1's two-row table was a small-procedure artefact, not a format limit.
+Q3 confidence → high. Part numbers are recoverable from RapidManual.
+
+**Differences are features, not format** — design for the union and fail
+loudly on anything unrecognised rather than dropping it:
+
+- wider PROTO / handler surface: `VMSectionPlane`, `ClippingPlane`,
+  `ClippingPlaneCanceller`, `CompositeTexture3D`, `Loupe5`, `ScreenedShape`,
+  `PanelImg11`, heavy `Set_Arrow2`; `param_handler` ProgIDs `PanelHtml8` 22,
+  `PanelImg8` 16, `CalloutM5` 13 (+ singles);
+- 2D illustrations: `.cgm` in the `.vmp` → `.svg` in the published bundle
+  (bundle = **5** entries here: `.wrl`, `.interactivity.xml`, `rwi .xml`, 2 × `.svg`);
+  consume the bundle's SVG, never parse CGM;
+- mixed `.png` / `.PNG` filename case → case-insensitive matching;
+- `rwi` has **0** `step` elements (68 `task` only) — `rwi` is BOM + job/task
+  index only, never a step source;
+- no build-log XML in this archive — treat as optional, skip by root element;
+- `IPCCfgVersion` 4.5 vs 5.1, `template_id` 8 vs 12 distinct — read, tolerate,
+  never switch on.
+
+**Still opaque, still non-blocking:** `.vmp` keyframe payload internals and
+`template_id` semantics (off the published path); the 9-number
+`Set_Viewpoint` tuple layout (decode empirically once the parser exists; only
+affects the optional "suggested view").
+
+**Decision:** the format is stable across decks; one importer targeting the
+published bundle, keeping PROTOs, is viable now. The glTF/X3D republish test
+stays worthwhile (it would remove the mesh-parsing half) but is no longer a
+prerequisite — the parser is written against a schema that two independent
+samples corroborate.
+
 ## Stage 2 — importer (here, against the report)
 
 From the report we learn, without seeing content: how steps are delimited and
