@@ -103,8 +103,87 @@ struct ARGuide: Codable, Identifiable, Equatable {
     let description: String
     let published:   Bool
     let createdBy:   String
+    /// AR OJT: assembly model + its one-time placement. Nil for hand-authored guides.
+    let assembly:    GuideAssembly?
     let createdAt:   String
     let updatedAt:   String
+
+    /// The guide renders from an assembly model (CAD-driven content).
+    var hasAssembly: Bool { assembly != nil }
+    /// The assembly still needs its single placement (tap / object / config).
+    var assemblyUnplaced: Bool { assembly != nil && assembly?.pose == nil }
+}
+
+// ── AR OJT: assembly placement (mirrors AssemblyPose / GuideAssembly in shared) ──
+
+/// Where the assembly sits, in the ANCHOR frame (same frame as step pins).
+struct AssemblyPose: Codable, Equatable {
+    var position: [Double]          // [x, y, z]
+    var rotation: [Double]          // quaternion [x, y, z, w]
+    var scale:    Double?
+    var source:   String            // "tap" | "object" | "config" | "partframe"
+    var setAt:    String?
+    var setBy:    String?
+
+    var simdPosition: simd_float3 { simd_float3(Float(position[0]), Float(position[1]), Float(position[2])) }
+    var simdRotation: simd_quatf {
+        simd_quatf(ix: Float(rotation[0]), iy: Float(rotation[1]), iz: Float(rotation[2]), r: Float(rotation[3]))
+    }
+    var transform: simd_float4x4 {
+        var m = simd_float4x4(simdRotation)
+        let s = Float(scale ?? 1)
+        m.columns.0 *= s; m.columns.1 *= s; m.columns.2 *= s
+        m.columns.3 = simd_float4(simdPosition, 1)
+        return m
+    }
+    init(position: simd_float3, rotation: simd_quatf, scale: Double? = nil, source: String) {
+        self.position = [Double(position.x), Double(position.y), Double(position.z)]
+        self.rotation = [Double(rotation.imag.x), Double(rotation.imag.y), Double(rotation.imag.z), Double(rotation.real)]
+        self.scale = scale; self.source = source
+    }
+}
+
+struct AssemblyBounds: Codable, Equatable {
+    let min: [Double]
+    let max: [Double]
+    var centre: simd_float3 { simd_float3(Float((min[0] + max[0]) / 2), Float((min[1] + max[1]) / 2), Float((min[2] + max[2]) / 2)) }
+    /// Bottom-centre in the assembly frame — what goes on the tapped surface.
+    var bottomCentre: simd_float3 { simd_float3(Float((min[0] + max[0]) / 2), Float(min[1]), Float((min[2] + max[2]) / 2)) }
+    var size: simd_float3 { simd_float3(Float(max[0] - min[0]), Float(max[1] - min[1]), Float(max[2] - min[2])) }
+}
+
+struct GuideAssembly: Codable, Equatable {
+    let modelId:      String
+    let pose:         AssemblyPose?
+    let initialNodes: [GuideStepNode]?
+    let bounds:       AssemblyBounds?
+    let source:       String?
+}
+
+/// One node-level presentation delta (mirrors GuideStepNode in shared).
+struct GuideStepNode: Codable, Equatable {
+    let node:         String            // "cmp:<name>" in the assembly model
+    let show:         String?           // "hidden" | "ghost" | "solid"
+    let opacity:      Double?
+    let animate:      String?           // "insert" | "remove" | "move"
+    let from:         [Double]?
+    let to:           [Double]?
+    let rotationFrom: [Double]?         // axis-angle [x, y, z, rad]
+    let rotationTo:   [Double]?
+    let color:        [Double]?
+    let durationSec:  Double?
+    let sourceKey:    String?
+
+    var partName: String { node.hasPrefix("cmp:") ? String(node.dropFirst(4)) : node }
+}
+
+/// Suggested camera for a step, in the assembly frame.
+struct GuideStepView: Codable, Equatable {
+    let position:     [Double]?
+    let orientation:  [Double]?
+    let center:       [Double]?
+    let fieldOfView:  Double?
+    let orthographic: Bool?
 }
 
 /// Request body for POST /guides.
@@ -116,11 +195,24 @@ struct CreateARGuideRequest: Codable {
 }
 
 /// Request body for PATCH /guides/:id.
-/// All fields are optional — only send what changed.
-struct UpdateARGuideRequest: Codable {
-    var name:        String?
-    var description: String?
-    var published:   Bool?
+/// All fields are optional — only send what changed. `clearAssemblyPose`
+/// sends `assemblyPose: null` (un-places every CAD step).
+struct UpdateARGuideRequest: Encodable {
+    var name:              String?
+    var description:       String?
+    var published:         Bool?
+    var assemblyPose:      AssemblyPose?
+    var clearAssemblyPose: Bool = false
+
+    enum CodingKeys: String, CodingKey { case name, description, published, assemblyPose }
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encodeIfPresent(name, forKey: .name)
+        try c.encodeIfPresent(description, forKey: .description)
+        try c.encodeIfPresent(published, forKey: .published)
+        if clearAssemblyPose { try c.encodeNil(forKey: .assemblyPose) }
+        else { try c.encodeIfPresent(assemblyPose, forKey: .assemblyPose) }
+    }
 }
 
 // ============================================================
@@ -186,6 +278,10 @@ struct GuideStep: Codable, Identifiable, Equatable {
     /// U4: model slots (≤ guideStepMaxModelSlots). The server mirrors slot 1
     /// into the legacy fields above; read `effectiveModels` instead of either.
     let models:             [GuideStepModel]?
+    // AR OJT: CAD-driven presentation — node deltas, suggested view, pin in the assembly frame
+    let nodes:              [GuideStepNode]?
+    let view:               GuideStepView?
+    let cadPosition:        [Double]?
     // Conditional task graph (Step 2 of AI-readiness) — all optional, nil = linear/default behaviour
     let nextOnSuccess:      String?     // step ID to navigate to on completion; nil → sequenceNumber+1
     let nextOnFailure:      String?     // step ID to navigate to on failure/retry; nil → stay on step
@@ -222,6 +318,12 @@ struct GuideStep: Codable, Identifiable, Equatable {
                                modelRotationY: modelRotationY)]
     }
     var hasModels: Bool { !effectiveModels.isEmpty }
+    /// AR OJT: the step drives parts of the guide's assembly model.
+    var hasNodes: Bool { !(nodes ?? []).isEmpty }
+    var cadPositionSimd: simd_float3? {
+        guard let c = cadPosition, c.count == 3 else { return nil }
+        return simd_float3(Float(c[0]), Float(c[1]), Float(c[2]))
+    }
 
     /// Effective voice text: ttsText if set, else falls back to the instruction text.
     var effectiveTTSText: String { ttsText ?? text }
@@ -268,6 +370,9 @@ struct GuideStep: Codable, Identifiable, Equatable {
         modelOffsetZ       = try c.decodeIfPresent(Double.self,             forKey: .modelOffsetZ)
         modelRotationY     = try c.decodeIfPresent(Double.self,             forKey: .modelRotationY)
         models             = try c.decodeIfPresent([GuideStepModel].self,  forKey: .models)
+        nodes              = try c.decodeIfPresent([GuideStepNode].self,   forKey: .nodes)
+        view               = try c.decodeIfPresent(GuideStepView.self,     forKey: .view)
+        cadPosition        = try c.decodeIfPresent([Double].self,          forKey: .cadPosition)
         // Conditional task graph — absent on guides created before Step 2
         nextOnSuccess      = try c.decodeIfPresent(String.self,             forKey: .nextOnSuccess)
         nextOnFailure      = try c.decodeIfPresent(String.self,             forKey: .nextOnFailure)

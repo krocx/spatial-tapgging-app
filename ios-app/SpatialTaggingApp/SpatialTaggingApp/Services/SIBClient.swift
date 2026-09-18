@@ -579,6 +579,14 @@ final class SIBClient {
         try await patch(ARGuide.self, path: "/guides/\(id)", body: req)
     }
 
+    /// AR OJT: place (or clear with nil) the guide's assembly. The server derives
+    /// every CAD step's pin and assembly-slot offsets from the pose.
+    func setAssemblyPose(guideId: String, pose: AssemblyPose?) async throws -> ARGuide {
+        var req = UpdateARGuideRequest()
+        if let p = pose { req.assemblyPose = p } else { req.clearAssemblyPose = true }
+        return try await patch(ARGuide.self, path: "/guides/\(guideId)", body: req)
+    }
+
     /// Author: cascade-delete a Guide and all its Steps.
     func deleteGuide(id: String) async throws {
         try await delete(path: "/guides/\(id)")
