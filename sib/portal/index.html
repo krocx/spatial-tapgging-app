@@ -6566,6 +6566,20 @@ window.convertAndUploadUSDZ = async function(modelId, file) {
       new GLTFLoader().parse(arrayBuffer, '', resolve, reject);
     });
 
+    // Meshes without normals (our own GLB writer emits positions + indices only;
+    // glTF viewers shade them flat) would be exported with all-zero normals and
+    // render black in SceneKit. Un-index + compute flat normals first so CAD
+    // edges stay crisp in AR.
+    let fixedNormals = 0;
+    gltf.scene.traverse((o) => {
+      if (o.isMesh && o.geometry && !o.geometry.attributes.normal) {
+        if (o.geometry.index) o.geometry = o.geometry.toNonIndexed();
+        o.geometry.computeVertexNormals();
+        fixedNormals++;
+      }
+    });
+    if (fixedNormals) console.info(`[Portal] USDZ: flat normals generated for ${fixedNormals} mesh(es)`);
+
     // Export to USDZ.
     const exporter    = new USDZExporter();
     const usdzBuffer  = await exporter.parseAsync(gltf.scene);

@@ -7,6 +7,11 @@ it, it gets a line.
 ## 2026.4.46 — 2026-09-08
 
 ### Fixed
+- **Imported Cortona3D assembly rendered black in AR.** Our GLB carries no
+  normals (viewers shade it flat); the portal's USDZ export wrote all-zero
+  normals for such meshes, so SceneKit lit nothing. The converter now
+  un-indexes and computes flat normals for any mesh without them before
+  export. Re-run the conversion (Models → 🔄) for models imported earlier.
 - **/platform on Windows — ghost text and a stage that didn't follow the
   copy.** Root cause: the *document* scrolled long copy over full-viewport
   `position:fixed` layers (stage, veil, 2D fallback) — the Chromium ghost-
