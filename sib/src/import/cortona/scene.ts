@@ -12,6 +12,7 @@ import {
   type VrmlNode, type VrmlUse, type VrmlScene,
   numField, strField, boolField, nodeField, nodesField,
 } from './vrml.js';
+import { PRIMITIVE_TYPES, buildPrimitive } from './primitives.js';
 
 export interface SceneMesh {
   positions:    Float32Array;   // xyz triples
@@ -56,22 +57,30 @@ export function buildScene(scene: VrmlScene): SceneGraph {
 
   function shapeMesh(shape: VrmlNode): SceneMesh | null {
     const geomRef = nodeField(shape, 'geometry'); if (!geomRef) return null;
-    const geom = resolve(geomRef); if (!geom || !MESH_TYPES.has(geom.type)) return null;
+    const geom = resolve(geomRef); if (!geom) return null;
+    const isPrim = PRIMITIVE_TYPES.has(geom.type);
+    if (!isPrim && !MESH_TYPES.has(geom.type)) return null;
     if (meshCache.has(geom)) return meshCache.get(geom)!;
-    const coordRef = nodeField(geom, 'coord'); const coord = coordRef ? resolve(coordRef) : null;
-    const pts = coord ? numField(coord, 'point', []) : [];
-    const idx = numField(geom, 'coordIndex', []);
-    const ccw = boolField(geom, 'ccw') ?? true;
-    const tris: number[] = [];
-    let face: number[] = [];
-    const flush = () => {
-      for (let k = 1; k + 1 < face.length; k++) {
-        if (ccw) tris.push(face[0], face[k], face[k + 1]); else tris.push(face[0], face[k + 1], face[k]);
-      }
-      face = [];
-    };
-    for (const v of idx) { if (v < 0) flush(); else face.push(v); }
-    flush();
+    let pts: number[] = []; const tris: number[] = [];
+    if (isPrim) {
+      const prim = buildPrimitive(geom.type, (name, fb) => numField(geom, name, fb));
+      if (!prim) { meshCache.set(geom, null); return null; }
+      pts = prim.positions; tris.push(...prim.indices);
+    } else {
+      const coordRef = nodeField(geom, 'coord'); const coord = coordRef ? resolve(coordRef) : null;
+      pts = coord ? numField(coord, 'point', []) : [];
+      const idx = numField(geom, 'coordIndex', []);
+      const ccw = boolField(geom, 'ccw') ?? true;
+      let face: number[] = [];
+      const flush = () => {
+        for (let k = 1; k + 1 < face.length; k++) {
+          if (ccw) tris.push(face[0], face[k], face[k + 1]); else tris.push(face[0], face[k + 1], face[k]);
+        }
+        face = [];
+      };
+      for (const v of idx) { if (v < 0) flush(); else face.push(v); }
+      flush();
+    }
     if (!pts.length || !tris.length) { meshCache.set(geom, null); return null; }
     const maxIndex = pts.length / 3 - 1;
     const safe = tris.every(t => t <= maxIndex);

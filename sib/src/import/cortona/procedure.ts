@@ -71,7 +71,9 @@ export interface ExtractedProcedure {
 export const HANDLED_PROTOS = new Set([
   'Procedure', 'Step', 'SubStep', 'ObjectVM',
   'Set_translation', 'Set_rotation', 'Set_transparency', 'SwitchOFF', 'Set_center',
-  'Set_diffuseColor', 'Set_Viewpoint', 'Set_scale',
+  'Set_diffuseColor', 'Set_Viewpoint', 'Set_Viewpoint2', 'Set_scale',
+  // parametric geometry PROTOs rendered by scene.ts / primitives.ts
+  'BOX', 'SPHERE', 'CYLNDR', 'TORUS', 'WASHER', 'BOXDUMMY',
 ]);
 // Known non-procedural PROTOs (annotation widgets, viewer chrome, sequencers,
 // sectioning tools, typed-field helpers). Counted, logged, not imported.
@@ -82,7 +84,9 @@ export const IGNORED_PROTO_PATTERNS: RegExp[] = [
   /^(Old)?AxesPanel$/, /^Slider$/, /^Button$/, /^protoSimulationPlayer$/, /^protoSF\w+$/, /^protoMF\w+$/,
   /^IndexedFaceSetWithEdges$/, /^Panel$/, /^HTMLText$/, /^TransformSensor$/, /^ViewportSensor$/,
   /^Set_ID$/,              // command that relabels a part's ID for the viewer HUD — no presentation effect
-  /^HoseSplineFlow\d*$/,   // procedural hose/cable geometry (spline sweep) — not rendered; counted in the log
+  /^Set_emissiveColor$/,   // highlight "flash" effect — transient, not a state change
+  /^HoseSplineFlow\d*$/, /^VMHose\d*$/, /^CableFlat\d*$/,   // procedural hose/cable/spring sweeps — not rendered; counted in the log
+  /^(Animated)?Arrow\d*$/, /^VMDimension\d*$/,              // annotation widgets (arrows, dimension lines)
 ];
 
 export function classifyProtos(scene: VrmlScene): ProtoClassification {
@@ -142,7 +146,7 @@ export function extractProcedure(scene: VrmlScene, widgetText: Map<string, strin
       for (const cmdRef of nodesField(sub, 'commands')) {
         const cmd = resolve(cmdRef); if (!cmd) continue;
         out.commandCounts[cmd.type] = (out.commandCounts[cmd.type] ?? 0) + 1;
-        if (cmd.type === 'Set_Viewpoint') { ss.view = viewpointOf(cmd); continue; }
+        if (cmd.type === 'Set_Viewpoint' || cmd.type === 'Set_Viewpoint2') { ss.view = viewpointOf(cmd); continue; }
         if (!HANDLED_PROTOS.has(cmd.type) || cmd.type === 'ObjectVM') continue;
         const routes = cmd.def ? (routesByFrom.get(cmd.def) ?? []).filter(r => r.fromField === 'value_changed') : [];
         const oid = numField(cmd, 'objectID', []); const objectID = oid.length ? oid[0] : undefined;

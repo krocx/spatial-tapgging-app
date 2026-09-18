@@ -108,3 +108,33 @@ test('widgets: rtf and html to plain text', async () => {
   assert.equal(rtfToText('{\\rtf1\\ansi{\\fonttbl{\\f0 Arial;}}\\f0 Hello \\b bold\\b0  world\\par second\\line line \\u8364? x}'), 'Hello bold world\nsecond\nline € x');
   assert.equal(htmlToText('<p>A &amp; B</p><p>C</p>'), 'A & B\nC');
 });
+
+test('vrml: IS-bound eventIn/eventOut inside Script nodes (seen in real publications)', async () => {
+  const { parseVrml } = await import('../src/import/cortona/vrml.js');
+  const src = `#VRML V2.0 utf8
+PROTO W [ field SFNode p NULL eventIn SFBool _rebuild_ eventOut SFBool _geom_changed_ ] {
+  Group { children [ DEF S Script { url "javascript: function f(){}"
+    field SFNode parent IS p
+    eventIn SFBool rebuild IS _rebuild_
+    eventOut SFBool _geom_changed_ IS _geom_changed_
+    eventIn SFVec3f allPosition
+    field SFBool pos_changed FALSE } ] } }
+DEF X W { }`;
+  const s = parseVrml(src);
+  assert.ok(s.protos.has('W') && s.defs.has('X'));
+});
+
+test('primitives: parametric geometry PROTOs produce closed meshes', async () => {
+  const { buildPrimitive } = await import('../src/import/cortona/primitives.js');
+  const f = (vals: Record<string, number[]>) => (name: string, fb: number[]) => vals[name] ?? fb;
+  const box = buildPrimitive('BOX', f({ scale: [0.2, 0.1, 0.05] }))!;
+  assert.equal(box.positions.length, 24); assert.equal(box.indices.length, 36);
+  assert.equal(Math.max(...box.positions.filter((_, i) => i % 3 === 0)), 0.1);
+  const cyl = buildPrimitive('CYLNDR', f({ D: [0.1], H: [0.3], quality: [16] }))!;
+  assert.equal(Math.max(...cyl.positions.filter((_, i) => i % 3 === 1)), 0.3);
+  for (const t of ['SPHERE', 'TORUS', 'WASHER']) {
+    const m = buildPrimitive(t, f({}))!;
+    assert.ok(m.indices.length % 3 === 0 && m.indices.every(i => i < m.positions.length / 3), t);
+  }
+  assert.equal(buildPrimitive('BOXDUMMY', f({})), null);
+});
