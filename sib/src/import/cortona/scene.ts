@@ -39,6 +39,8 @@ export interface SceneGraph {
   meshCount:    number;
   triangleCount: number;
   bbox:         { min: number[]; max: number[] } | null;
+  /** World-space (assembly frame) bounds per DEF'd node, over its whole subtree. */
+  boundsByDef:  Map<string, { min: number[]; max: number[] }>;
 }
 
 /** Node types treated as transform containers. Anything else is skipped as non-geometry. */
@@ -146,10 +148,19 @@ export function buildScene(scene: VrmlScene): SceneGraph {
   const roots: SceneNode[] = [];
   for (const n of scene.nodes) { const r = build(n, true); if (r) roots.push(r); }
 
-  // bbox over world-space positions
-  const stack: { node: SceneNode; m: number[] }[] = roots.map(r => ({ node: r, m: r.matrix }));
+  // bbox over world-space positions — overall, and per DEF'd subtree (the
+  // per-node bounds give each imported step its pin: the centroid of the
+  // parts it touches, in the assembly frame).
+  const boundsByDef = new Map<string, { min: number[]; max: number[] }>();
+  const grow = (b: { min: number[]; max: number[] }, wx: number, wy: number, wz: number) => {
+    if (wx < b.min[0]) b.min[0] = wx; if (wx > b.max[0]) b.max[0] = wx;
+    if (wy < b.min[1]) b.min[1] = wy; if (wy > b.max[1]) b.max[1] = wy;
+    if (wz < b.min[2]) b.min[2] = wz; if (wz > b.max[2]) b.max[2] = wz;
+  };
+  const stack: { node: SceneNode; m: number[]; defs: string[] }[] = roots.map(r => ({ node: r, m: r.matrix, defs: r.def ? [r.def] : [] }));
   while (stack.length) {
-    const { node, m } = stack.pop()!;
+    const { node, m, defs } = stack.pop()!;
+    const owners = defs.map(d => { let b = boundsByDef.get(d); if (!b) { b = { min: [Infinity, Infinity, Infinity], max: [-Infinity, -Infinity, -Infinity] }; boundsByDef.set(d, b); } return b; });
     for (const mesh of node.meshes) {
       const p = mesh.positions;
       for (let i = 0; i < p.length; i += 3) {
@@ -157,14 +168,14 @@ export function buildScene(scene: VrmlScene): SceneGraph {
         const wx = m[0] * x + m[4] * y + m[8]  * z + m[12];
         const wy = m[1] * x + m[5] * y + m[9]  * z + m[13];
         const wz = m[2] * x + m[6] * y + m[10] * z + m[14];
-        if (wx < bbox.min[0]) bbox.min[0] = wx; if (wx > bbox.max[0]) bbox.max[0] = wx;
-        if (wy < bbox.min[1]) bbox.min[1] = wy; if (wy > bbox.max[1]) bbox.max[1] = wy;
-        if (wz < bbox.min[2]) bbox.min[2] = wz; if (wz > bbox.max[2]) bbox.max[2] = wz;
+        grow(bbox, wx, wy, wz);
+        for (const b of owners) grow(b, wx, wy, wz);
       }
     }
-    for (const c of node.children) stack.push({ node: c, m: mul(m, c.matrix) });
+    for (const c of node.children) stack.push({ node: c, m: mul(m, c.matrix), defs: c.def ? [...defs, c.def] : defs });
   }
-  return { roots, byDef, meshCount, triangleCount, bbox: Number.isFinite(bbox.min[0]) ? bbox : null };
+  for (const [d, b] of boundsByDef) if (!Number.isFinite(b.min[0])) boundsByDef.delete(d);
+  return { roots, byDef, meshCount, triangleCount, bbox: Number.isFinite(bbox.min[0]) ? bbox : null, boundsByDef };
 }
 
 // ── Transforms ──────────────────────────────────────────────────────────────

@@ -47,6 +47,10 @@ export interface CortonaImportResult {
   imported:  ImportedGuide;
   glb:       Buffer;
   log:       CortonaImportLog;
+  /** State before step 1 (the simulate FALSE set-up step's deltas, merged). */
+  initialNodes: GuideStepNode[];
+  /** Geometry bounds in the assembly frame. */
+  bounds?: { min: [number, number, number]; max: [number, number, number] };
   /** Per-node metadata (DEF → objectID/part number) for callers that build tags. */
   extras:    Map<string, NodeExtras>;
 }
@@ -102,6 +106,10 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
   const workItems = inter?.workItems ?? [];
   const stepSource: 'workItems' | 'substeps' = workItems.length ? 'workItems' : 'substeps';
   const steps: ImportedGuideStep[] = [];
+  const assemblyCentre: [number, number, number] | undefined = scene.bbox
+    ? [0, 1, 2].map(a => round5((scene.bbox!.min[a] + scene.bbox!.max[a]) / 2)) as [number, number, number] : undefined;
+  let lastCad: [number, number, number] | undefined;
+  const initialNodes = mergeSubsteps(proc.substeps.filter(ss => ss.setup)).nodes.map(pruneNode);
 
   const finish = (title: string, text: string, subs: ExtractedSubStep[]): ImportedGuideStep => {
     const m = mergeSubsteps(subs);
@@ -111,6 +119,19 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
     if (dedup.length) withText++; if (m.view) withView++; if (m.callouts.length) withCallouts++;
     const step: ImportedGuideStep = { sequenceNumber: steps.length + 1, title, text: body, completionRequired: true };
     if (m.nodes.length) step.nodes = m.nodes.map(pruneNode);
+    // Pin = centroid of the parts the step is ABOUT: moving parts first, then
+    // highlighted, then revealed-solid, then anything it touches (a "ghost the
+    // whole assembly" step must not pin to the centre of the machine).
+    const tiers = [
+      m.nodes.filter(n => n.animate),
+      m.nodes.filter(n => n.color),
+      m.nodes.filter(n => n.show === 'solid'),
+      m.nodes,
+    ];
+    let cad: [number, number, number] | undefined;
+    for (const t of tiers) { cad = centroidOf(t.map(n => n.node.replace(/^cmp:/, '')), scene.boundsByDef); if (cad) break; }
+    cad = cad ?? lastCad ?? assemblyCentre;
+    if (cad) { step.cadPosition = cad; lastCad = cad; }
     if (m.view) step.view = m.view;
     if (m.durationSec) step.durationSec = m.durationSec;
     steps.push(step);
@@ -177,7 +198,8 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
   }
   if (rwi && rwi.stepCount === 0 && rwi.taskCount > 0) { /* expected: rwi is not a step source */ }
 
-  return { imported, glb, log, extras };
+  const bounds = scene.bbox ? { min: scene.bbox.min.map(round5) as [number, number, number], max: scene.bbox.max.map(round5) as [number, number, number] } : undefined;
+  return { imported, glb, log, extras, initialNodes, bounds };
 }
 
 function subStepTitle(ss: ExtractedSubStep, inter: InteractivityIndex | null): string {
@@ -220,6 +242,18 @@ function mergeSubsteps(subs: ExtractedSubStep[]): { nodes: GuideStepNode[]; view
   for (const g of nodes) if (g.opacity === undefined) delete g.opacity;
   return { nodes, view, callouts, durationSec: dur || undefined };
 }
+
+/** Centre of the union of the named nodes' bounds (assembly frame), if any are known. */
+function centroidOf(defs: string[], bounds: Map<string, { min: number[]; max: number[] }>): [number, number, number] | undefined {
+  const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity]; let n = 0;
+  for (const d of defs) {
+    const b = bounds.get(d); if (!b) continue; n++;
+    for (let a = 0; a < 3; a++) { if (b.min[a] < min[a]) min[a] = b.min[a]; if (b.max[a] > max[a]) max[a] = b.max[a]; }
+  }
+  if (!n) return undefined;
+  return [0, 1, 2].map(a => round5((min[a] + max[a]) / 2)) as [number, number, number];
+}
+const round5 = (x: number): number => Math.round(x * 1e5) / 1e5;
 
 function pruneNode(n: GuideStepNode): GuideStepNode {
   const o: GuideStepNode = { node: n.node };

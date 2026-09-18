@@ -248,13 +248,17 @@ export interface ChamberConfig {
   name:         string;
   description?: string;
   createdBy?:   string;
+  /** Assembly placement relative to the chamber QR, shared by every chamber of
+   *  this configuration: a guide imported onto such a chamber is placed with
+   *  no author tap (source 'config'). */
+  defaultAssemblyPose?: AssemblyPose;
   createdAt:    string;
   updatedAt:    string;
 }
 
 export type CreateChamberConfigRequest = Pick<ChamberConfig, 'code' | 'name'> &
   Partial<Pick<ChamberConfig, 'description' | 'createdBy'>>;
-export type UpdateChamberConfigRequest = Partial<Pick<ChamberConfig, 'code' | 'name' | 'description'>>;
+export type UpdateChamberConfigRequest = Partial<Pick<ChamberConfig, 'code' | 'name' | 'description'>> & { defaultAssemblyPose?: AssemblyPose | null };
 
 export interface CreateAnchorRequest {
   id?: string;
@@ -967,7 +971,10 @@ export interface GuideStep {
   posY?:              number;
   posZ?:              number;
   isPlaced:           boolean;     // true once Author has placed the pin in AR
-  positionSource?:    'tap' | 'cad';  // forward-compat hook: 'tap' = Author placed; 'cad' = imported
+  positionSource?:    'tap' | 'cad';  // 'tap' = Author placed; 'cad' = derived from cadPosition + Guide.assembly.pose
+  /** Pin location in the ASSEMBLY frame (metres) — centroid of the parts this
+   *  step touches. posX/Y/Z are derived from it whenever the assembly pose is set. */
+  cadPosition?:       [number, number, number];
   // 3D model ghost overlay (Phase 2 — Model3D library)
   modelId?:           string;      // Model3D.id from anchor asset library
   modelScale?:        number;      // uniform scale factor applied to the model (default 1.0)
@@ -1115,6 +1122,39 @@ export interface GuideStepView {
   orthographic?: boolean;
 }
 
+/**
+ * Where a guide's assembly model sits, in the ANCHOR frame (same frame as
+ * GuideStep.posX/Y/Z). Set once per guide — every step with a `cadPosition`
+ * derives its pin from it, so the author places the assembly, not the steps.
+ * `source` records how it was obtained; PartFrame will supply it live later.
+ */
+export interface AssemblyPose {
+  position: [number, number, number];
+  /** Quaternion [x, y, z, w]. */
+  rotation: [number, number, number, number];
+  scale?:   number;                  // default 1 (models are exported in metres)
+  source:   'tap' | 'object' | 'config' | 'partframe';
+  setAt?:   string;
+  setBy?:   string;
+}
+
+/** Assembly model attached to a guide (AR OJT / CAD-driven content). */
+export interface GuideAssembly {
+  modelId:       string;
+  /** Absent = not yet placed; steps with cadPosition are unplaced until it is set. */
+  pose?:         AssemblyPose;
+  /** State before step 1 (e.g. parts not yet installed are hidden). Deltas
+   *  of the steps then apply cumulatively on top. For these entries `show`
+   *  and the END of any motion (`to` / `rotationTo`) ARE the initial state. */
+  initialNodes?: GuideStepNode[];
+  /** Geometry bounds in the assembly frame (metres). The model origin is often
+   *  far from the geometry (CAD world origin), so placement UIs put the
+   *  bottom-centre of these bounds on the tapped surface, not the origin. */
+  bounds?:       { min: [number, number, number]; max: [number, number, number] };
+  /** Where the assembly + node data came from. */
+  source?:       'cortona' | 'cad';
+}
+
 export interface GuideStepModel {
   slotId:          string;
   modelId:         string;
@@ -1145,6 +1185,8 @@ export interface Guide {
    * Managers and Owners always see every guide.
    */
   sharedWith?: string[];
+  /** AR OJT: assembly model + its one-time placement (see GuideAssembly). */
+  assembly?:   GuideAssembly;
   createdAt:   string;
   updatedAt:   string;
 }
@@ -1176,6 +1218,9 @@ export type UpdateGuideRequest = {
   /** Replace the sharing list (see Guide.sharedWith). [] = all technicians.
    *  Emails must exist in the UAM allow-list. Requires Engineer role or above. */
   sharedWith?:  string[];
+  /** Set (or clear with null) the assembly placement. The server re-derives
+   *  every cad-positioned step's pin and assembly-slot offsets from it. */
+  assemblyPose?: AssemblyPose | null;
 };
 
 /**
@@ -1452,6 +1497,8 @@ export interface ImportedGuideStep {
    *  ignored. Placement is still device-owned: a slot keeps its saved
    *  offsets when its slotId AND modelId are unchanged. */
   models?:              ImportedStepModel[];
+  /** Pin in the assembly frame (see GuideStep.cadPosition). */
+  cadPosition?:         [number, number, number];
   /** CAD-driven node presentation (see GuideStep.nodes). Passed through verbatim. */
   nodes?:               GuideStepNode[];
   view?:                GuideStepView;
@@ -1472,6 +1519,9 @@ export interface ImportedGuide {
   name:         string;
   description?: string;
   steps:        ImportedGuideStep[];
+  /** Assembly model + initial node state (AR OJT imports). Pose is never part
+   *  of an import — it is placed on device or inherited from the configuration. */
+  assembly?:    Omit<GuideAssembly, 'pose'>;
 }
 
 /**

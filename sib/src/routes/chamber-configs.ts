@@ -9,6 +9,7 @@
 // chambers (anchors / QRs) point at it via Anchor.configId. The app scopes
 // authoring to a config and resolves an operator's config from the QR scan.
 
+import { normalizeAssemblyPose, validateAssemblyPose } from '../guides/assembly.js';
 import { Router } from 'express';
 import type { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
@@ -95,6 +96,14 @@ router.patch('/:id', (req: Request, res: Response) => {
   if ('description' in body) {
     const d = typeof body.description === 'string' ? body.description.trim() : '';
     if (d) updated.description = d; else delete updated.description;
+  }
+  if ('defaultAssemblyPose' in body) {
+    if (body.defaultAssemblyPose === null) delete updated.defaultAssemblyPose;
+    else {
+      const err = validateAssemblyPose(body.defaultAssemblyPose);
+      if (err) return res.status(400).json({ error: err.replace('assemblyPose', 'defaultAssemblyPose'), timestamp: now() });
+      updated.defaultAssemblyPose = normalizeAssemblyPose(body.defaultAssemblyPose!, currentUamUser(req)?.name);
+    }
   }
   chamberConfigStore.save(updated);
   return res.json({ data: withCounts([updated])[0], timestamp: now() });

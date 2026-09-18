@@ -55,6 +55,26 @@ PART-FRAME.md §6).
 The Procedure Designer's compiler gains a node picker; the reverse compiler
 round-trips `nodes`. Guides keep `steps[]` and the branch graph unchanged.
 
+## 3a. Assembly placement (implemented 2026-09-18, slice 1)
+
+Until PartFrame supplies the registration live, a guide carries **one**
+`assembly` record (`Guide.assembly`: `modelId`, `pose?`, `initialNodes?`,
+`bounds?`, `source`). The pose is in the anchor frame and comes from exactly
+one of: a single author tap on device (`tap`), the anchor's object scan
+(`object`), the chamber configuration's `defaultAssemblyPose` (`config`, no
+author involvement — inherited at import), or, later, the tracker
+(`partframe`). Every imported step carries `cadPosition` (assembly frame —
+the centroid of the parts it moves, else highlights, else reveals, else
+touches); the server derives `posX/Y/Z`, `isPlaced`, `positionSource = 'cad'`
+and the `assembly` model-slot offsets from the pose (`sib/src/guides/assembly.ts`),
+so the current iOS app already renders the assembly at the right place.
+`PATCH /guides/:id { assemblyPose }` sets it, `null` clears it (steps become
+unplaced again); moving a guide to another anchor clears it. `initialNodes`
+is the set-up step of the source publication: the state before step 1, on
+which step deltas apply cumulatively. `bounds` lets placement UIs put the
+bottom-centre of the geometry on the tapped surface rather than the CAD
+origin, which is often metres away.
+
 ## 4. Registration
 
 Registration = PartFrame acquiring `.locked` on the base part. There is no

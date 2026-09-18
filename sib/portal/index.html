@@ -4695,6 +4695,24 @@ function gpRender() {
 }
 
 /** CAD-driven presentation (AR OJT / Cortona3D import): what the assembly model does on this step. */
+/** Cumulative part state after step `idx`: initialNodes, then every step's
+ *  deltas in order (last state wins). Mirrors what the AR runtime shows. */
+function gpAssemblyStateAt(idx) {
+  const state = new Map();
+  const apply = (n) => {
+    const cur = state.get(n.node) || {};
+    if (n.show !== undefined) cur.show = n.show;
+    else if (n.animate === 'insert') cur.show = 'solid';
+    else if (n.animate === 'remove') cur.show = 'hidden';
+    state.set(n.node, cur);
+  };
+  for (const n of (gp.guide && gp.guide.assembly && gp.guide.assembly.initialNodes) || []) apply(n);
+  for (let i = 0; i <= idx && i < gp.steps.length; i++) for (const n of (gp.steps[i].nodes || [])) apply(n);
+  let solid = 0, ghost = 0, hidden = 0;
+  for (const v of state.values()) { if (v.show === 'hidden') hidden++; else if (v.show === 'ghost') ghost++; else solid++; }
+  return { solid, ghost, hidden, touched: state.size };
+}
+
 function gpPartsHtml(step) {
   const nodes = Array.isArray(step.nodes) ? step.nodes : [];
   if (!nodes.length && !step.view) return '';
@@ -4708,7 +4726,9 @@ function gpPartsHtml(step) {
   }).join('');
   const more = nodes.length > 8 ? `<div style="color:var(--muted)">… +${nodes.length - 8} more</div>` : '';
   const view = step.view ? `<div style="color:var(--muted)">📷 suggested view${step.durationSec ? ` · ${step.durationSec}s` : ''}</div>` : (step.durationSec ? `<div style="color:var(--muted)">⏱ ${step.durationSec}s</div>` : '');
-  return `<div style="border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:0.72rem;display:flex;flex-direction:column;gap:2px"><div style="font-weight:600">🧩 Parts on this step (${nodes.length})</div>${rows}${more}${view}</div>`;
+  const st = gpAssemblyStateAt(gp.idx);
+  const cum = st.touched ? `<div style="color:var(--muted);border-top:1px solid var(--border);margin-top:3px;padding-top:3px">After this step: ${st.solid} shown · ${st.ghost} ghost · ${st.hidden} hidden${step.cadPosition ? ' · 📍 pin from CAD' : ''}</div>` : '';
+  return `<div style="border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:0.72rem;display:flex;flex-direction:column;gap:2px"><div style="font-weight:600">🧩 Parts on this step (${nodes.length})</div>${rows}${more}${view}${cum}</div>`;
 }
 
 async function gpLoadImage(mediaPath) {
@@ -4976,6 +4996,13 @@ function renderGuideLibrary() {
         : '';
       const warnBadge  = hasUnplaced
         ? `<span class="gl-badge gl-badge-warn">⚠ Unplaced steps</span>` : '';
+      // AR OJT: an imported assembly is placed ONCE (tap on device, or inherited
+      // from the chamber configuration); every CAD step follows it.
+      const asmBadge   = guide.assembly
+        ? (guide.assembly.pose
+            ? `<span class="gl-badge" style="background:rgba(61,214,140,0.12);color:var(--green)" title="Assembly placed (${esc(guide.assembly.pose.source)})">🧩 Assembly placed · ${esc(guide.assembly.pose.source)}</span>`
+            : `<span class="gl-badge gl-badge-warn" title="Open the guide on the iPad and tap once to place the assembly — all steps follow">🧩 Place assembly on device</span>`)
+        : '';
 
       const pubLabel   = guide.published ? 'Unpublish' : 'Publish';
       const pubColor   = guide.published ? 'color:var(--red)' : 'color:#86efac';
@@ -4983,7 +5010,7 @@ function renderGuideLibrary() {
       html += `<div class="gl-guide-card${hasUnplaced ? ' unplaced' : ''}" id="gl-card-${guide.id}">
         <div class="gl-guide-hdr">
           <span class="gl-guide-name" title="${esc(guide.name)}">📋 ${esc(guide.name)}</span>
-          ${pubBadge}${warnBadge}${placePill}
+          ${pubBadge}${asmBadge}${warnBadge}${placePill}
           <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;${pubColor}" onclick="togglePublishGuide('${guide.id}','${anchorId}',${guide.published})">${pubLabel}</button>
           <button class="btn btn-ghost btn-sm" style="font-size:0.68rem" onclick="toggleGuideSteps('${guide.id}','${anchorId}')" id="gl-toggle-${guide.id}">▶ Steps</button>
           <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;color:#a78bfa" onclick="toggleGuideGraph('${guide.id}','${anchorId}')" id="gl-graph-toggle-${guide.id}">⬡ Graph</button>

@@ -46,6 +46,7 @@ import {
   deleteStepImage,
 } from '../guides/store.js';
 import { applyImportedGuide } from '../guides/ingest.js';
+import { deriveStepsFromAssembly, normalizeAssemblyPose, validateAssemblyPose } from '../guides/assembly.js';
 import { copyGuideToAnchor } from '../guides/copy.js';
 import { guideVisibleTo } from '../uam/guide-visibility.js';
 import { currentUamUser, uamIsActive } from '../middleware/auth.js';
@@ -196,6 +197,11 @@ router.post(
       category: 'cortona', originalFilename: (req.headers['x-filename'] as string | undefined)?.replace(/\.[^.]+$/, '') + '.glb',
     });
     for (const s of result.imported.steps) s.models = [{ slotId: 'assembly', modelId: model.id, modelOpacity: 1 }];
+    result.imported.assembly = {
+      modelId: model.id, source: 'cortona',
+      ...(result.initialNodes.length ? { initialNodes: result.initialNodes } : {}),
+      ...(result.bounds ? { bounds: result.bounds } : {}),
+    };
 
     const applied = await applyImportedGuide(result.imported, { anchorId, createdBy });
     const summary = { guideId: applied.guide.id, steps: applied.steps.length, modelId: model.id, glbBytes: result.glb.length };
@@ -458,6 +464,24 @@ router.patch('/:id', (req: Request, res: Response): void => {
     sharedWith = normalized.length ? normalized : undefined;   // [] clears back to "everyone"
   }
 
+  // Assembly placement (AR OJT): one pose for the guide; null clears it.
+  let assembly = guide.assembly;
+  let assemblyChanged = false;
+  if (body.assemblyPose !== undefined) {
+    if (!guide.assembly) {
+      res.status(400).json({ error: 'This guide has no assembly model to place', timestamp: now });
+      return;
+    }
+    if (body.assemblyPose === null) {
+      assembly = { ...guide.assembly }; delete assembly.pose;
+    } else {
+      const err = validateAssemblyPose(body.assemblyPose);
+      if (err) { res.status(400).json({ error: err, timestamp: now }); return; }
+      assembly = { ...guide.assembly, pose: normalizeAssemblyPose(body.assemblyPose, currentUamUser(req)?.name) };
+    }
+    assemblyChanged = true;
+  }
+
   const updated: Guide = {
     ...guide,
     name:        body.name?.trim()        ?? guide.name,
@@ -465,8 +489,17 @@ router.patch('/:id', (req: Request, res: Response): void => {
     published:   body.published    != null ? body.published           : guide.published,
     anchorId:    body.anchorId?.trim()    || guide.anchorId,
     sharedWith,
+    ...(assembly ? { assembly } : {}),
     updatedAt:   now,
   };
+
+  if (assemblyChanged) {
+    const steps = guideStepStore.findAll().filter(s => s.guideId === guide.id);
+    const changed = deriveStepsFromAssembly(updated, steps, now);
+    for (const st of changed) guideStepStore.save(st);
+    if (!updated.assembly?.pose && updated.published && changed.length) updated.published = false;
+    console.log(`[SIB] Guide ${guide.id} assembly pose ${updated.assembly?.pose ? 'set (' + updated.assembly.pose.source + ')' : 'cleared'}: ${changed.length} CAD steps re-derived`);
+  }
 
   // Moving a guide to another anchor: anchorId is denormalised onto every
   // step, so they move together. Spatial placement is CLEARED — positions
@@ -487,6 +520,7 @@ router.patch('/:id', (req: Request, res: Response): void => {
         updatedAt: now,
       });
     }
+    if (updated.assembly?.pose) { updated.assembly = { ...updated.assembly }; delete updated.assembly.pose; }
     // A published guide with suddenly-unplaced steps would break operators.
     if (updated.published) updated.published = false;
     console.log(`[SIB] Guide ${guide.id} moved ${guide.anchorId} → ${updated.anchorId}: ${moved.length} steps unplaced, guide unpublished`);

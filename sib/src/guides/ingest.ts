@@ -34,6 +34,9 @@ import {
 } from './store.js';
 import { designerImagePath } from '../procedure/designer-images.js';
 import { applyLegacyToSlots, applySlotsToLegacy } from './step-models.js';
+import { deriveStepsFromAssembly, normalizeAssemblyPose } from './assembly.js';
+import { anchorStore } from '../routes/anchors.js';
+import { chamberConfigStore } from '../routes/chamber-configs.js';
 
 export interface ApplyImportedGuideOptions {
   anchorId:   string;
@@ -119,6 +122,12 @@ export async function applyImportedGuide(
       description: imported.description?.trim() ?? existing.description,
       updatedAt:   now,
     };
+    // Assembly: the import owns model + initial state; the PLACEMENT (pose)
+    // is device/config-owned and survives a re-import of the same model.
+    if (imported.assembly) {
+      const keepPose = existing.assembly?.modelId === imported.assembly.modelId ? existing.assembly?.pose : undefined;
+      guide.assembly = { ...imported.assembly, ...(keepPose ? { pose: keepPose } : {}) };
+    }
   } else {
     guide = {
       id:          opts.guideId ?? uuidv4(),
@@ -130,6 +139,17 @@ export async function applyImportedGuide(
       createdAt:   now,
       updatedAt:   now,
     };
+    if (imported.assembly) {
+      guide.assembly = { ...imported.assembly };
+      // Zero-touch placement: the chamber's configuration may already know
+      // where the assembly sits relative to the QR (set once on the first
+      // chamber, shared by all of them).
+      const anchor = anchorStore.findById(opts.anchorId);
+      const cfg = anchor?.configId ? chamberConfigStore.findById(anchor.configId) : undefined;
+      if (cfg?.defaultAssemblyPose) {
+        guide.assembly.pose = normalizeAssemblyPose({ ...cfg.defaultAssemblyPose, source: 'config' }, opts.createdBy);
+      }
+    }
   }
   guideStore.save(guide);
 
@@ -212,6 +232,7 @@ export async function applyImportedGuide(
       // suggested view outright — they are authoring data, not placement.
       ...(s.nodes && s.nodes.length ? { nodes: s.nodes } : {}),
       ...(s.view ? { view: s.view } : {}),
+      ...(s.cadPosition ? { cadPosition: s.cadPosition } : {}),
       isPlaced:           false,
       nextOnSuccess:      s.nextOnSuccessSeq !== undefined ? seqToId.get(s.nextOnSuccessSeq) : undefined,
       nextOnFailure:      s.nextOnFailureSeq !== undefined ? seqToId.get(s.nextOnFailureSeq) : undefined,
@@ -269,6 +290,11 @@ export async function applyImportedGuide(
     if (prior.mediaPath) deleteStepImage(prior.mediaPath);
     guideStepStore.delete(prior.id);
     removed++;
+  }
+
+  // CAD-positioned steps derive their pins from the assembly pose (if any).
+  if (guide.assembly) {
+    for (const step of deriveStepsFromAssembly(guide, written, now)) guideStepStore.save(step);
   }
 
   const unplaced = written.filter(s => !s.isPlaced).length;

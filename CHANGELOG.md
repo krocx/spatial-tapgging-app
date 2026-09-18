@@ -184,6 +184,15 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **AR OJT slice 1 — one placement for the whole assembly (server/shared).**
+  `Guide.assembly` (model, `pose`, `initialNodes`, `bounds`) and
+  `GuideStep.cadPosition`; `PATCH /guides/:id { assemblyPose }` derives every
+  CAD step's pin and assembly-slot offsets from a single pose (`null` clears
+  and un-places). Cortona imports compute per-step pins from part bounds and
+  carry the set-up step as `initialNodes`. `ChamberConfig.defaultAssemblyPose`
+  places a guide at import with no author tap (`source: config`). Portal:
+  assembly badge on guide cards; Guide Preview shows the cumulative part
+  state after each step. Tests: `guide-assembly.test.ts`.
 - **Cortona3D import validated on real publications (DITA WI, RWI, S1000D).**
   Guide steps now come from the document's own step list
   (`interactivity.xml` `<Procedure>/<Item>`), one per work item with the

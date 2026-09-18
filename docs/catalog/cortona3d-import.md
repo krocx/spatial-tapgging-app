@@ -9,6 +9,8 @@ terms: [Instruction Import, Assembly Model]
 spec: ar-ojt/CORTONA3D-IMPORT.md
 api: |
   POST /guides/import/cortona — published RapidManual .htm (or bundle ZIP) → draft guide + assembly GLB (portal · API key)
+  PATCH /guides/:id — { assemblyPose } places the whole assembly once; null clears it (iOS · portal · API key)
+  PATCH /chamber-configs/:id — { defaultAssemblyPose } shared placement for every chamber of a configuration (portal · Engineer+)
 wireframe: portal
 arch: |
   sequenceDiagram
