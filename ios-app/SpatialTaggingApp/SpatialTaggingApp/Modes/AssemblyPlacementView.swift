@@ -177,8 +177,12 @@ struct AssemblyPlacementView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
                 } else if phase == .failed {
+                    Button { phase = .loading; errorText = nil; Task { await load() } } label: {
+                        Text("Retry").font(.headline.bold()).frame(maxWidth: .infinity).padding(.vertical, 14)
+                            .background(Color.indigo).foregroundStyle(.white).clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
                     Button { dismiss() } label: {
-                        Text("Close").font(.headline.bold()).frame(maxWidth: .infinity).padding(.vertical, 14)
+                        Text("Close").font(.headline.bold()).padding(.vertical, 14).padding(.horizontal, 18)
                             .background(Color.gray).foregroundStyle(.white).clipShape(RoundedRectangle(cornerRadius: 12))
                     }
                 } else {
@@ -276,9 +280,9 @@ struct AssemblyPlacementView: View {
         arManager.disableQRScanning()
 
         status = "Downloading assembly…"
-        guard let data = try? await client.downloadModelGLB(id: asm.modelId) else {
-            phase = .failed; errorText = "Could not download the assembly model."; return
-        }
+        let data: Data
+        do { data = try await AssemblyModelCache.glb(modelId: asm.modelId, client: client) }
+        catch { phase = .failed; errorText = "Could not download the assembly model — \(AssemblyModelCache.reason(error))"; return }
         status = "Building assembly…"
         let built: GLBAssembly? = await Task.detached(priority: .userInitiated) { try? GLBLoader.load(data: data) }.value
         guard let glb = built, !glb.parts.isEmpty else {

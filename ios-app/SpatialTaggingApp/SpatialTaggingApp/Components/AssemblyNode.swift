@@ -6,13 +6,16 @@
 //  the operations the guide runtime needs on them.
 //
 //    apply(state:)                  jump to a cumulative PartState map (no animation)
-//    play(deltas:duration:)         animate a step's deltas from the current pose
-//                                   (insert: from→to fading in; remove: to→from…)
+//    play(deltas:speed:)            animate a step's deltas from the current pose
 //    focus(parts:)                  pulse the parts a step is about
-//    partName(hit:)                 which part a tap landed on
+//    partName(hit:)                 which (visible) part a tap landed on
 //
-//  Ghost/solid/hidden are expressed with node opacity + material transparency
-//  so a part keeps its own colour; a highlight multiplies the diffuse colour.
+//  Visibility is expressed on MATERIALS (transparency), never on node opacity:
+//  node opacity multiplies down the hierarchy, so a ghosted group would dim a
+//  child the step just made solid. Instead every explicit part state is
+//  applied to its subtree, parents before children, so a child's own state
+//  overrides its group's — the same semantics the source viewer has (a
+//  transparency command on "FULL BIKE" then a solid command on "STEM").
 //  Everything is SceneKit + simd; no third-party code.
 //
 
@@ -27,7 +30,14 @@ final class AssemblyNode {
     let root: SCNNode
     private(set) var parts: [String: SCNNode]
     private let rest: [String: simd_float4x4]
-    private var baseColors: [String: [UIColor]] = [:]     // per part, per material, the model's own colour
+    /// Part names sorted parents-first (ancestor count), so a child's explicit
+    /// state is applied after — and therefore overrides — its group's.
+    private let depthOrder: [String]
+    private let depthOf: [String: Int]
+    /// The model's own colour / alpha per material (restored on reset).
+    private var baseColor: [ObjectIdentifier: UIColor] = [:]
+    private var baseAlpha: [ObjectIdentifier: CGFloat] = [:]
+    private var current: [String: PartState] = [:]
     private var focused: Set<String> = []
     let extras: [String: [String: Any]]
     let bounds: (min: simd_float3, max: simd_float3)?
@@ -38,70 +48,126 @@ final class AssemblyNode {
         rest = assembly.restTransforms
         extras = assembly.extras
         bounds = assembly.bounds
+        var depth: [String: Int] = [:]
         for (name, node) in parts {
-            var colors: [UIColor] = []
-            node.enumerateHierarchy { n, _ in
-                for m in n.geometry?.materials ?? [] { colors.append((m.diffuse.contents as? UIColor) ?? .lightGray) }
+            var d = 0; var p = node.parent
+            while let n = p { if let nm = n.name, nm.hasPrefix("cmp:") { d += 1 }; p = n.parent }
+            depth[name] = d
+        }
+        depthOf = depth
+        depthOrder = parts.keys.sorted { (depth[$0] ?? 0, $0) < (depth[$1] ?? 0, $1) }
+        root.enumerateHierarchy { n, _ in
+            for m in n.geometry?.materials ?? [] {
+                let id = ObjectIdentifier(m)
+                baseColor[id] = (m.diffuse.contents as? UIColor) ?? .lightGray
+                baseAlpha[id] = m.transparency
             }
-            baseColors[name] = colors
         }
     }
 
     // MARK: - State
 
-    /// Jump every part to `state` (missing parts → rest pose, solid).
+    /// Jump to `state`: everything back to rest/solid first, then every
+    /// explicit part state applied parents-first.
     func apply(state: [String: PartState]) {
         SCNTransaction.begin(); SCNTransaction.animationDuration = 0
-        for (name, node) in parts {
-            let p = state[name] ?? PartState()
-            setVisual(node, name: name, state: p)
+        resetAll()
+        for name in depthOrder {
+            guard let p = state[name], let node = parts[name] else { continue }
+            setVisual(node, state: p)
             setPose(node, name: name, position: p.position, rotation: p.rotation)
         }
+        current = state
         SCNTransaction.commit()
     }
 
-    /// Animate a step's deltas. Called after `apply(state: after index-1)`.
-    /// Returns the total duration so callers can schedule a replay loop.
+    /// Animate a step's deltas. Call after `apply(state: after index-1)`.
+    /// Returns the longest duration so callers can schedule a replay loop.
     @discardableResult
     func play(deltas: [GuideStepNode], speed: Double = 1.0) -> TimeInterval {
         var total: TimeInterval = 0
-        for d in deltas {
+        // Parents first, so a group delta never clobbers a child delta in the same step.
+        let ordered = deltas.sorted { (depthOf[$0.node] ?? 0) < (depthOf[$1.node] ?? 0) }
+        for d in ordered {
             guard let node = parts[d.node] else { continue }
-            // Source timings are per-substep (≈1 s); scale by the guide's speed
-            // and floor the result so a motion never reads as a flash.
+            // Source timings are per-substep (≈1 s) for a desktop viewer; scale
+            // by the guide's speed and floor so a motion never reads as a flash.
             let dur = max(1.2, (d.durationSec ?? 1.0) / max(0.1, speed))
             total = max(total, dur)
             let from = d.from.flatMap(vec3), to = d.to.flatMap(vec3)
             let rFrom = d.rotationFrom.flatMap(vec4), rTo = d.rotationTo.flatMap(vec4)
-            var target = PartState()
-            if let show = d.show, let s = PartShow(rawValue: show) { target.show = s; target.opacity = s == .ghost ? Float(d.opacity ?? 0.35) : (s == .hidden ? 0 : 1) }
-            else if d.animate == "insert" { target.show = .solid; target.opacity = 1 }
-            else { target.show = currentShow(node); target.opacity = Float(node.opacity) }
-            if let c = d.color, c.count == 3 { target.color = simd_float3(Float(c[0]), Float(c[1]), Float(c[2])) }
+            let hasMotion = to != nil || rTo != nil
+            let prior = effectiveState(of: d.node)
 
-            // Start of the motion (if any): put the part at `from` instantly,
-            // visible enough to be seen arriving.
-            if from != nil || rFrom != nil {
+            var target = prior
+            if let show = d.show, let s = PartShow(rawValue: show) {
+                target.show = s
+                target.opacity = s == .ghost ? Float(d.opacity ?? 0.35) : (s == .hidden ? 0 : 1)
+            } else if d.animate == "insert" || (hasMotion && prior.show == .hidden) {
+                // A part that moves must be seen moving.
+                target.show = .solid; target.opacity = 1
+            }
+            if let c = d.color, c.count == 3 { target.color = simd_float3(Float(c[0]), Float(c[1]), Float(c[2])) }
+            if let p = to { target.position = p }
+            if let r = rTo { target.rotation = r }
+
+            if hasMotion {
+                // Start instantly at `from`, faintly visible if it was hidden.
                 SCNTransaction.begin(); SCNTransaction.animationDuration = 0
-                setPose(node, name: d.node, position: from, rotation: rFrom)
-                if d.animate == "insert" { node.isHidden = false; node.opacity = 0.15 }
+                setPose(node, name: d.node, position: from ?? prior.position, rotation: rFrom ?? prior.rotation)
+                if prior.show == .hidden {
+                    var start = target; start.show = .ghost; start.opacity = 0.15
+                    setVisual(node, state: start)
+                }
                 SCNTransaction.commit()
             }
+
+            // Hiding a part that also moves: move first, hide at the end
+            // (otherwise it fades out while travelling and the motion is lost).
+            let hideAfter = hasMotion && target.show == .hidden
+            var during = target
+            if hideAfter { during.show = prior.show == .hidden ? .solid : prior.show; during.opacity = prior.show == .ghost ? prior.opacity : 1 }
+
+            let name = d.node
             SCNTransaction.begin()
             SCNTransaction.animationDuration = dur
             SCNTransaction.animationTimingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-            setVisual(node, name: d.node, state: target)
-            if to != nil || rTo != nil { setPose(node, name: d.node, position: to, rotation: rTo) }
+            if hideAfter {
+                SCNTransaction.completionBlock = { [weak self] in
+                    guard let self, self.current[name] == target else { return }
+                    SCNTransaction.begin(); SCNTransaction.animationDuration = 0.4
+                    self.setVisual(node, state: target)
+                    SCNTransaction.commit()
+                }
+            }
+            setVisual(node, state: during)
+            if hasMotion { setPose(node, name: d.node, position: to, rotation: rTo) }
             SCNTransaction.commit()
+            current[d.node] = target
         }
         return total
+    }
+
+    /// State a part is currently shown with — its own, else inherited from
+    /// the nearest group above it that has one, else rest/solid.
+    func effectiveState(of name: String) -> PartState {
+        if let s = current[name] { return s }
+        var p = parts[name]?.parent
+        while let n = p {
+            if let nm = n.name, nm.hasPrefix("cmp:"), let s = current[nm] {
+                var inherited = PartState(); inherited.show = s.show; inherited.opacity = s.opacity; inherited.color = s.color
+                return inherited
+            }
+            p = n.parent
+        }
+        return PartState()
     }
 
     // MARK: - Focus
 
     /// Pulse the given parts (and stop pulsing the previous ones).
     func focus(parts names: [String]) {
-        for n in focused { parts[n]?.removeAction(forKey: "focus-pulse") ; parts[n]?.scale = SCNVector3(1, 1, 1) }
+        for n in focused { parts[n]?.removeAction(forKey: "focus-pulse"); parts[n]?.scale = SCNVector3(1, 1, 1) }
         focused = Set(names)
         for n in names {
             guard let node = parts[n] else { continue }
@@ -111,7 +177,7 @@ final class AssemblyNode {
         }
     }
 
-    /// World-space centroid of the named parts (root-relative bounds → world).
+    /// World-space centroid of the named parts.
     func worldCentre(of names: [String]) -> simd_float3? {
         var acc = simd_float3(0, 0, 0); var n: Float = 0
         for name in names {
@@ -126,11 +192,14 @@ final class AssemblyNode {
 
     // MARK: - Hit test
 
-    /// The part a hit landed on (walks up to the `cmp:` ancestor).
+    /// The part a hit landed on (nearest `cmp:` ancestor), ignoring hidden ones —
+    /// transparent geometry is still hit-testable.
     func partName(hit node: SCNNode) -> String? {
         var cur: SCNNode? = node
         while let n = cur {
-            if let name = n.name, name.hasPrefix("cmp:") { return name }
+            if let name = n.name, name.hasPrefix("cmp:") {
+                return effectiveState(of: name).show == .hidden ? nil : name
+            }
             cur = n.parent
         }
         return nil
@@ -145,29 +214,38 @@ final class AssemblyNode {
 
     // MARK: - Internals
 
-    private func currentShow(_ node: SCNNode) -> PartShow {
-        if node.isHidden { return .hidden }
-        return node.opacity < 0.95 ? .ghost : .solid
+    private func resetAll() {
+        root.enumerateHierarchy { n, _ in
+            for m in n.geometry?.materials ?? [] {
+                let id = ObjectIdentifier(m)
+                m.diffuse.contents = baseColor[id] ?? UIColor.lightGray
+                m.emission.contents = UIColor.black
+                m.transparency = baseAlpha[id] ?? 1
+            }
+        }
+        for (name, node) in parts { if let r = rest[name] { node.simdTransform = r } }
+        current = [:]
     }
 
-    private func setVisual(_ node: SCNNode, name: String, state p: PartState) {
+    /// Apply visibility + colour to the part's whole subtree (materials only).
+    private func setVisual(_ node: SCNNode, state p: PartState) {
+        let alphaFactor: CGFloat
         switch p.show {
-        case .hidden: node.opacity = 0; node.isHidden = true
-        case .ghost:  node.isHidden = false; node.opacity = CGFloat(max(0.05, p.opacity))
-        case .solid:  node.isHidden = false; node.opacity = 1
+        case .hidden: alphaFactor = 0
+        case .ghost:  alphaFactor = CGFloat(max(0.05, min(1, p.opacity)))
+        case .solid:  alphaFactor = 1
         }
-        // colour override / restore
-        let base = baseColors[name] ?? []
-        var k = 0
         node.enumerateHierarchy { n, _ in
             for m in n.geometry?.materials ?? [] {
+                let id = ObjectIdentifier(m)
+                m.transparency = (baseAlpha[id] ?? 1) * alphaFactor
                 if let c = p.color {
-                    m.diffuse.contents = UIColor(red: CGFloat(c.x), green: CGFloat(c.y), blue: CGFloat(c.z), alpha: 1)
+                    m.diffuse.contents  = UIColor(red: CGFloat(c.x), green: CGFloat(c.y), blue: CGFloat(c.z), alpha: 1)
                     m.emission.contents = UIColor(red: CGFloat(c.x) * 0.35, green: CGFloat(c.y) * 0.35, blue: CGFloat(c.z) * 0.35, alpha: 1)
-                } else if k < base.count {
-                    m.diffuse.contents = base[k]; m.emission.contents = UIColor.black
+                } else {
+                    m.diffuse.contents  = baseColor[id] ?? UIColor.lightGray
+                    m.emission.contents = UIColor.black
                 }
-                k += 1
             }
         }
     }
@@ -175,7 +253,7 @@ final class AssemblyNode {
     private func setPose(_ node: SCNNode, name: String, position: simd_float3?, rotation: simd_float4?) {
         guard let r = rest[name] else { return }
         // Cortona/glTF deltas are in the part's PARENT frame; keep the rest
-        // matrix's scale/centre and replace translation / rotation only.
+        // matrix's scale and replace translation / rotation only.
         var m = r
         if let rot = rotation {
             let axis = simd_float3(rot.x, rot.y, rot.z)

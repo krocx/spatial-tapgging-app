@@ -3891,8 +3891,12 @@ extension ARGuideSessionView {
         guard assemblyNode == nil, !assemblyLoading, let asm = guide.assembly, let pose = asm.pose else { return }
         assemblyLoading = true; defer { assemblyLoading = false }
         let client = SIBClient(settings: settings)
-        guard let data = try? await client.downloadModelGLB(id: asm.modelId) else {
-            AppLog.warn("assembly", "GLB download failed for \(asm.modelId)"); return
+        let data: Data
+        do { data = try await AssemblyModelCache.glb(modelId: asm.modelId, client: client) }
+        catch {
+            AppLog.warn("assembly", "GLB download failed for \(asm.modelId): \(AssemblyModelCache.reason(error))")
+            showNotice("Assembly model unavailable — \(AssemblyModelCache.reason(error))")
+            return
         }
         let built: GLBAssembly? = await Task.detached(priority: .userInitiated) { try? GLBLoader.load(data: data) }.value
         guard let glb = built, !glb.parts.isEmpty else {

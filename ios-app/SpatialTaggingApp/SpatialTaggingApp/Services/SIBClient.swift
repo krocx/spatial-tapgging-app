@@ -961,7 +961,7 @@ final class SIBClient {
     /// 60s timeout — GLB files can be several MB.
     func downloadModelGLB(id: String) async throws -> Data {
         var req = try makeRequest(method: "GET", path: "/models/\(id)/file.glb")
-        req.timeoutInterval = 60
+        req.timeoutInterval = 180   // assembly GLBs reach 25 MB; slow links must not fail at 60 s
         let (data, response): (Data, URLResponse)
         do { (data, response) = try await session.data(for: req) }
         catch { throw SIBClientError.networkError(error) }

@@ -184,6 +184,14 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **AR OJT: parts fading / vanishing during animation.** Visibility is now
+  applied on materials with parents-first ordering, so a group ghosted by a
+  step (e.g. "whole bike 91 % transparent") no longer dims the child part
+  the same step makes solid; a hidden part that moves is shown moving; a
+  part that is moved and then hidden travels first and hides at the end.
+  Assembly GLBs are cached on disk (`AssemblyModelCache`), the download
+  timeout is 180 s, and failures show the real reason (404 = model deleted →
+  re-import; network) with a Retry in Place Assembly.
 - **AR OJT: animation speed + author preview.** `Guide.assembly.animationSpeed`
   (default 0.5× — Cortona timings are authored for a desktop viewer) with
   `PATCH /guides/:id { assemblyAnimationSpeed }`; Place Assembly gets a
