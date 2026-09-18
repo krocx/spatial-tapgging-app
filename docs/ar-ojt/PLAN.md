@@ -11,7 +11,7 @@ straight to the marker-free tracker; the items before it are its prerequisites.
 | 1 | **PartFrame service skeleton** + `PartAnchor` + debug HUD (axes, confidence, state, per-source estimates) | Everything else plugs into it | HUD shows a fused frame from a stub source |
 | 2 | **LiDAR disc fit** (PART-FRAME §4) | Initialiser and recovery; gives position/axis at ±1 cm immediately | Centre within 1 cm of the calibration grid, stationary and while sliding |
 | 3 | **Yaw solve v0** (contour template) + face vote v0 (PART-FRAME §5, §8) | Completes the 6th DoF; makes content drawable | Yaw ≤ 2° on the common config; correct face after flip |
-| 4 | **CAD content model** (CAD-CONTENT §2–3) + node-based step rendering on PartAnchor | Content appears at CAD positions with no placement | A 5-step guide renders on the tracked plate |
+| 4 | **CAD content model** (CAD-CONTENT §2–3) + node-based step rendering on PartAnchor — *done 2026-09-18 on a tap-placed assembly pose (CAD-CONTENT §3a); PartFrame later replaces the tap* | Content appears at CAD positions with no placement | A 5-step guide renders on the tracked plate |
 | 5 | **Edge-based refinement** (PART-FRAME §6) incl. assembly-state-aware model + depth residual | The tracker proper: ≤ 1 cm / 1° at 30 Hz with occlusion | Acceptance table PART-FRAME §11 |
 | 6 | **Fusion + freeze/follow + pinning** (PART-FRAME §7) | Usability: rock-steady when working, catches up when moved | No visible jitter when locked; ≤ 300 ms catch-up |
 | 7 | **Validation on PartFrame** (CAD-CONTENT §5: rectified captured, rendered, geometric) | K4 verdicts must survive viewpoint changes | Verdict stable across the arm's envelope |

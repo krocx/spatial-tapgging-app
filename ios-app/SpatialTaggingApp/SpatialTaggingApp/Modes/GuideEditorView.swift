@@ -64,6 +64,9 @@ struct GuideEditorView: View {
     // Phase 2: AR placement flow
     @State private var showScanGate      = false
     @State private var showPlacementView = false
+    // AR OJT slice 3: one placement for an imported assembly (steps follow).
+    @State private var showAssemblyPlacement = false
+    @State private var gateOpensAssembly     = false
     // G1 (2026.4.46): reset the guide's world map (unplaces every step).
     @State private var showResetMapConfirm = false
     @State private var resetMapNote: String? = nil
@@ -163,10 +166,47 @@ struct GuideEditorView: View {
                         Text("Drag ≡ to reorder. Steps are shown in sequence to the Operator during the AR session.")
                     }
 
+                    // ── AR OJT: assembly placement (one tap places every CAD step) ──
+                    if let g = currentGuide, let asm = g.assembly, !isLoading {
+                        Section {
+                            Button {
+                                gateOpensAssembly = true
+                                showScanGate = true
+                            } label: {
+                                HStack(spacing: 12) {
+                                    ZStack {
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill((asm.pose == nil ? Color.orange : Color.green).opacity(0.12))
+                                            .frame(width: 36, height: 36)
+                                        Image(systemName: "cube.transparent")
+                                            .font(.system(size: 16, weight: .semibold))
+                                            .foregroundStyle(asm.pose == nil ? .orange : .green)
+                                    }
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(asm.pose == nil ? "Place Assembly in AR" : "Adjust Assembly in AR")
+                                            .font(.subheadline.bold())
+                                            .foregroundStyle(asm.pose == nil ? .orange : .green)
+                                        Text(asm.pose == nil
+                                             ? "One tap on the equipment — all \(steps.filter { $0.cadPosition != nil }.count) CAD steps follow"
+                                             : "Placed · \(asm.pose!.source) · \(steps.filter { $0.positionSource == "cad" && $0.isPlaced }.count) steps derived")
+                                            .font(.caption).foregroundStyle(.secondary)
+                                    }
+                                    Spacer()
+                                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(.secondary)
+                                }
+                                .padding(.vertical, 4)
+                            }
+                            .buttonStyle(.plain)
+                        } footer: {
+                            Text("Imported from CAD/Cortona3D: the assembly is placed once; each step's pin and part presentation are derived from it. Hand-authored steps (if any) are still placed below.")
+                        }
+                    }
+
                     // ── AR step placement (Phase 2) ────────────────────────────
                     if !steps.isEmpty && !isLoading {
                         Section {
                             Button {
+                                gateOpensAssembly = false
                                 showScanGate = true
                             } label: {
                                 HStack(spacing: 12) {
@@ -303,8 +343,8 @@ struct GuideEditorView: View {
                     QRScanGateView(
                         mode: .author,
                         onSessionReady: {
-                            showScanGate     = false
-                            showPlacementView = true
+                            showScanGate = false
+                            if gateOpensAssembly { showAssemblyPlacement = true } else { showPlacementView = true }
                         },
                         onCancel: {
                             showScanGate = false
@@ -319,6 +359,19 @@ struct GuideEditorView: View {
             // onDismiss reloads steps from the server so the editor always reflects
             // the freshly-saved isPlaced flags — belt-and-suspenders alongside the
             // onAppear reload that SwiftUI fires when a fullScreenCover closes.
+            .fullScreenCover(isPresented: $showAssemblyPlacement, onDismiss: {
+                if let g = currentGuide {
+                    Task {
+                        await loadSteps(guideId: g.id)
+                        if let fresh = try? await SIBClient(settings: settings).fetchGuide(id: g.id) { activeGuide = fresh }
+                    }
+                }
+            }) {
+                if let g = currentGuide {
+                    AssemblyPlacementView(guide: g, steps: steps) { updated in activeGuide = updated }
+                        .environmentObject(settings)
+                }
+            }
             .fullScreenCover(isPresented: $showPlacementView, onDismiss: {
                 if let g = currentGuide { Task { await loadSteps(guideId: g.id) } }
             }) {

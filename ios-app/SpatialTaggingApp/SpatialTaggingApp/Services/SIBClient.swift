@@ -569,6 +569,11 @@ final class SIBClient {
         return try await get([ARGuide].self, path: "/guides?anchorId=\(anchorId)\(suffix)")
     }
 
+    /// One guide by id (carries `assembly` for AR OJT imports).
+    func fetchGuide(id: String) async throws -> ARGuide {
+        try await get(ARGuide.self, path: "/guides/\(id)")
+    }
+
     /// Author: create a new Guide (always starts as draft — published=false).
     func createGuide(_ req: CreateARGuideRequest) async throws -> ARGuide {
         try await post(ARGuide.self, path: "/guides", body: req)

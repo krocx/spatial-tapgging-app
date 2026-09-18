@@ -245,6 +245,16 @@ struct ARGuideSessionView: View {
     /// once the ghost is successfully built and added to the scene.
     @State private var pendingGhostStep: GuideStep?  = nil
 
+    // ── AR OJT (slice 4): the assembly model, driven per step ─────────────────
+    /// Present when the guide has an assembly with a saved pose; every step's
+    /// part deltas are applied cumulatively on it (initial state + steps 0…i).
+    @State private var assemblyNode:       AssemblyNode?        = nil
+    @State private var assemblyEngine:     AssemblyStateEngine? = nil
+    @State private var assemblyReplayTask: Task<Void, Never>?   = nil
+    @State private var assemblyStepIndex:  Int                  = -1
+    /// Part chip: the step's focus part, or whatever the operator tapped.
+    @State private var partChip: (title: String, partNumber: String?, tapped: Bool)? = nil
+
     // ── Ticker ────────────────────────────────────────────────────────────────
     private let navTicker = Timer.publish(every: 0.10, on: .main, in: .common).autoconnect()
 
@@ -342,6 +352,7 @@ struct ARGuideSessionView: View {
                     panelContainers.removeAll()
                     // Remove 3D ghost model overlay
                     removeGhostOverlay()
+                    teardownAssembly()
                     stopPresence()
                     arManager.pauseSession()
                 }
@@ -423,6 +434,7 @@ struct ARGuideSessionView: View {
             // Top bar — always visible
             topBar
         }
+        .overlay(alignment: .bottomTrailing) { assemblyChipView }
         .onReceive(navTicker) { _ in
             if case .navigating(let index) = phase {
                 updateNavTelemetry(index: index)
@@ -1348,6 +1360,7 @@ struct ARGuideSessionView: View {
     private func transitionToNavigating() {
         placePins()
         placeArrow()
+        Task { await loadAssembly() }
         // C2: my pose is only meaningful in the guide-map frame.
         if originViaObject || arManager.relocalizationOutcome == .succeeded || userConfirmedRelocalize {
             startPresence()
@@ -1554,6 +1567,17 @@ struct ARGuideSessionView: View {
                     return
                 }
                 candidate = n.parent
+            }
+        }
+        // AR OJT: a tap on a part shows its name / part number (OJT free explore).
+        if let asm = assemblyNode {
+            for hit in hits {
+                if let name = asm.partName(hit: hit.node) {
+                    let info = asm.partInfo(name)
+                    partChip = (info.title, info.partNumber, true)
+                    asm.focus(parts: [name])
+                    return
+                }
             }
         }
     }
@@ -2313,6 +2337,7 @@ struct ARGuideSessionView: View {
         updatePanelVisibility(currentIndex: index)
         // Swap ghost overlay for this step
         attachGhostOverlay(for: step)
+        showAssemblyStep(index)
         // Push step:entered live event (fire-and-forget)
         if let lsId = liveSessionId {
             Task {
@@ -3181,7 +3206,9 @@ struct ARGuideSessionView: View {
         // Step must have at least one model and a placed world position (U4:
         // every slot is rendered; slots whose file isn't cached yet make the
         // step pending so the download completion re-attaches everything).
-        let slots = step.effectiveModels
+        // AR OJT: the assembly slot is rendered once, live, by AssemblyNode —
+        // never as a per-step ghost copy.
+        let slots = step.effectiveModels.filter { assemblyNode == nil || $0.slotId != "assembly" }
         guard !slots.isEmpty, let pos = step.worldPosition else {
             pendingGhostStep = nil
             return
@@ -3848,5 +3875,95 @@ struct SessionSignOffView: View {
         let m     = total / 60
         let s     = total % 60
         return m > 0 ? "\(m) min \(s) sec" : "\(s) sec"
+    }
+}
+
+
+// ── AR OJT slice 4: assembly driven per step ─────────────────────────────────
+
+extension ARGuideSessionView {
+
+    /// Download + build the assembly once the session is navigating; place it
+    /// at the guide's saved pose and show the initial (pre-step-1) state.
+    @MainActor
+    func loadAssembly() async {
+        guard assemblyNode == nil, let asm = guide.assembly, let pose = asm.pose else { return }
+        let client = SIBClient(settings: settings)
+        guard let data = try? await client.downloadModelGLB(id: asm.modelId) else {
+            AppLog.warn("assembly", "GLB download failed for \(asm.modelId)"); return
+        }
+        let built: GLBAssembly? = await Task.detached(priority: .userInitiated) { try? GLBLoader.load(data: data) }.value
+        guard let glb = built, !glb.parts.isEmpty else {
+            AppLog.warn("assembly", "GLB unreadable or has no named parts — falling back to per-step ghosts"); return
+        }
+        let node = AssemblyNode(assembly: glb)
+        node.root.simdTransform = pose.transform
+        arManager.sceneView.scene.rootNode.addChildNode(node.root)
+        let engine = AssemblyStateEngine(initial: asm.initialNodes, steps: sortedSteps)
+        node.apply(state: engine.initialState())
+        assemblyNode = node; assemblyEngine = engine
+        AppLog.info("assembly", "loaded parts=\(glb.parts.count) tris=\(glb.triangleCount) pose=\(pose.source)")
+        // Per-step ghost copies of the assembly slot are redundant now.
+        if case .navigating(let i) = phase { attachGhostOverlay(for: sortedSteps[i]); showAssemblyStep(i) }
+    }
+
+    /// Cumulative state up to the previous step, then animate this step's deltas
+    /// on a loop while the operator stays on it.
+    func showAssemblyStep(_ index: Int) {
+        guard let node = assemblyNode, let engine = assemblyEngine, index < sortedSteps.count else { return }
+        assemblyReplayTask?.cancel()
+        assemblyStepIndex = index
+        let focus = engine.focusParts(at: index)
+        if let first = focus.first {
+            let info = node.partInfo(first)
+            partChip = (focus.count > 1 ? "\(info.title) +\(focus.count - 1)" : info.title, info.partNumber, false)
+        } else {
+            partChip = nil
+        }
+        node.focus(parts: focus)
+        replayAssemblyStep()
+    }
+
+    func replayAssemblyStep() {
+        guard let node = assemblyNode, let engine = assemblyEngine else { return }
+        let index = assemblyStepIndex
+        assemblyReplayTask?.cancel()
+        node.apply(state: engine.state(after: index - 1))
+        let dur = node.play(deltas: engine.deltas(at: index))
+        guard dur > 0 else { return }
+        assemblyReplayTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: UInt64((dur + 2.0) * 1_000_000_000))
+            guard !Task.isCancelled, assemblyStepIndex == index else { return }
+            replayAssemblyStep()
+        }
+    }
+
+    func teardownAssembly() {
+        assemblyReplayTask?.cancel(); assemblyReplayTask = nil
+        assemblyNode?.root.removeFromParentNode()
+        assemblyNode = nil; assemblyEngine = nil; partChip = nil
+    }
+
+    @ViewBuilder
+    var assemblyChipView: some View {
+        if assemblyNode != nil, case .navigating = phase, coneValidateIndex == nil, let chip = partChip {
+            HStack(spacing: 8) {
+                Image(systemName: chip.tapped ? "hand.tap.fill" : "cube.fill").font(.caption)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(chip.title).font(.caption.bold()).lineLimit(1)
+                    if let pn = chip.partNumber { Text(pn).font(.system(size: 10, design: .monospaced)).opacity(0.8) }
+                }
+                Button { replayAssemblyStep() } label: {
+                    Image(systemName: "arrow.counterclockwise.circle.fill").font(.title3)
+                }
+                .accessibilityLabel("Replay step animation")
+            }
+            .padding(.horizontal, 12).padding(.vertical, 8)
+            .background(.ultraThinMaterial, in: Capsule())
+            .foregroundStyle(.white)
+            .padding(.trailing, 14)
+            .padding(.bottom, 170)
+            .transition(.opacity)
+        }
     }
 }

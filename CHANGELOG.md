@@ -184,6 +184,22 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **AR OJT slices 2–4 (iOS) — the assembly in AR, one tap to place, steps
+  drive the parts.** Own GLB→SceneKit loader (`Services/GLBLoader.swift`:
+  node names + extras preserved, flat normals; USDZ export renamed nodes so
+  per-part control was impossible), `AssemblyStateEngine` (cumulative part
+  state from `initialNodes` + step deltas, replay-safe) and `AssemblyNode`
+  (apply / play insert-remove-move animations / focus pulse / hit-test →
+  part info). Author: **Place Assembly in AR** in the guide editor — the
+  ghost follows a reticle on the surface (bottom-centre of the geometry,
+  facing the author); one tap saves the pose and every CAD step's pin
+  follows; drag / twist / pinch to nudge; a fresh session uploads its world
+  map on first save. Operator: the assembly appears at the saved pose in
+  its initial state; each step applies its deltas cumulatively, animates
+  the parts it installs/removes on a loop (↻ replay), pulses the focus
+  part with a name + part-number chip, and a tap on any part shows what it
+  is. Per-step ghost copies of the assembly slot are suppressed while the
+  live assembly is shown.
 - **AR OJT slice 1 — one placement for the whole assembly (server/shared).**
   `Guide.assembly` (model, `pose`, `initialNodes`, `bounds`) and
   `GuideStep.cadPosition`; `PATCH /guides/:id { assemblyPose }` derives every
