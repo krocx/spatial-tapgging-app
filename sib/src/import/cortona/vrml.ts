@@ -227,6 +227,7 @@ class Parser {
       if (node.type === 'Script' && (ft.v === 'field' || ft.v === 'exposedField' || ft.v === 'eventIn' || ft.v === 'eventOut')) {
         const type = this.next().v; const name = this.next().v;
         if (ft.v === 'field' || ft.v === 'exposedField') node.fields[name] = this.parseValue(type, inProto);
+        else if (this.isId('IS')) { this.next(); this.next(); }   // eventIn/eventOut may be IS-bound inside PROTO bodies
         continue;
       }
       const declType = decl?.fields.find(f => f.name === ft.v)?.type;

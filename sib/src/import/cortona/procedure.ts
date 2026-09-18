@@ -81,6 +81,8 @@ export const IGNORED_PROTO_PATTERNS: RegExp[] = [
   /^IntegerSequencer$/, /^Layer3D$/, /^OrthographicViewpoint$/, /^Transform2D$/, /^Viewpoint3$/, /^WorldInfo\d*$/,
   /^(Old)?AxesPanel$/, /^Slider$/, /^Button$/, /^protoSimulationPlayer$/, /^protoSF\w+$/, /^protoMF\w+$/,
   /^IndexedFaceSetWithEdges$/, /^Panel$/, /^HTMLText$/, /^TransformSensor$/, /^ViewportSensor$/,
+  /^Set_ID$/,              // command that relabels a part's ID for the viewer HUD — no presentation effect
+  /^HoseSplineFlow\d*$/,   // procedural hose/cable geometry (spline sweep) — not rendered; counted in the log
 ];
 
 export function classifyProtos(scene: VrmlScene): ProtoClassification {

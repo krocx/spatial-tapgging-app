@@ -67,6 +67,8 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
     warnings.push(msg);
   }
   if (!proc.substeps.length) warnings.push('no Procedure/Step/SubStep tree found — guide will have no steps');
+  const hoses = Object.entries(proc.protos.counts).filter(([k]) => /^HoseSplineFlow\d*$/.test(k)).reduce((a, [, n]) => a + n, 0);
+  if (hoses) warnings.push(`${hoses} procedural hose/cable object(s) (HoseSplineFlow) are not rendered in the assembly model`);
 
   // rest poses for insert/remove classification
   const rest = new Map<string, number[]>();

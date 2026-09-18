@@ -35,9 +35,10 @@ const DATA_URI    = /data:[^;,]*;base64,([A-Za-z0-9+/=\s]+)/;
 export function sniffKind(buf: Buffer): 'gzip' | 'zip' | 'vrml' | 'xml' | 'svg' | 'html' | 'binary' {
   if (buf.length >= 2 && buf[0] === 0x1f && buf[1] === 0x8b) return 'gzip';
   if (isZip(buf)) return 'zip';
-  const head = buf.subarray(0, 512).toString('latin1');
+  const bom = buf.length >= 3 && buf[0] === 0xef && buf[1] === 0xbb && buf[2] === 0xbf ? 3 : 0;   // UTF-8 BOM (seen on DITA task xml)
+  const head = buf.subarray(bom, bom + 512).toString('latin1');
   if (head.startsWith('#VRML')) return 'vrml';
-  const t = head.replace(/^﻿/, '').trimStart();
+  const t = head.trimStart();
   if (/^<\?xml/i.test(t) || t.startsWith('<')) {
     if (/<svg[\s>]/i.test(head)) return 'svg';
     if (/<html[\s>]|<!doctype html/i.test(head)) return 'html';
