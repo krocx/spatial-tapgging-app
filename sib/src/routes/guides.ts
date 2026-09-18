@@ -15,8 +15,10 @@
 //   DELETE /guides/:id/steps/:stepId         — Author: delete a single Step
 //   GET    /guides/step-image/:filename      — Serve a step media image
 
-import { Router } from 'express';
+import express, { Router } from 'express';
 import type { Request, Response } from 'express';
+import { importCortonaBundle } from '../import/cortona/importer.js';
+import { registerGeneratedGlb } from './models.js';
 import { v4 as uuidv4 } from 'uuid';
 import fs   from 'fs';
 import path from 'path';
@@ -159,6 +161,55 @@ router.post('/import', async (req: Request, res: Response): Promise<void> => {
   const resp: ApiResponse<ImportGuideResult> = { data: result, timestamp: new Date().toISOString() };
   res.status(201).json(resp);
 });
+
+// POST /guides/import/cortona — import a published Cortona3D RapidManual .htm
+//
+// Body: the raw .htm (or the extracted solo+zip bundle). Query: anchorId,
+// createdBy, name?, strict? ("1" refuses unrecognised PROTO types).
+// Registers the assembly as a Model3D (GLB; USDZ conversion is the portal's
+// browser-side job as for any GLB upload), assigns it to every step's
+// `assembly` slot, and persists the steps through the shared ingest path so
+// the placement invariant holds. The returned log is content-free.
+// Registered before /:id like /import.
+router.post(
+  '/import/cortona',
+  (req: Request, res: Response, next) => { express.raw({ type: '*/*', limit: '250mb' })(req, res, next); },
+  async (req: Request, res: Response): Promise<void> => {
+    const q = req.query as Record<string, string | undefined>;
+    const anchorId = (q.anchorId ?? '').trim(); const createdBy = (q.createdBy ?? '').trim();
+    if (!anchorId || !createdBy) { res.status(400).json({ error: 'anchorId and createdBy query parameters are required', timestamp: new Date().toISOString() }); return; }
+    const body = req.body as Buffer;
+    if (!Buffer.isBuffer(body) || body.length === 0) { res.status(400).json({ error: 'Request body must be the published .htm (or bundle ZIP)', timestamp: new Date().toISOString() }); return; }
+
+    let result;
+    try {
+      result = importCortonaBundle(body, { strict: q.strict === '1' || q.strict === 'true', name: q.name?.trim() || undefined });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error('[SIB] Cortona import failed:', msg);
+      res.status(422).json({ error: `Cortona3D import failed: ${msg}`, timestamp: new Date().toISOString() });
+      return;
+    }
+
+    const model = registerGeneratedGlb({
+      name: `${result.imported.name} — assembly`, glb: result.glb, anchorId, uploadedBy: createdBy,
+      category: 'cortona', originalFilename: (req.headers['x-filename'] as string | undefined)?.replace(/\.[^.]+$/, '') + '.glb',
+    });
+    for (const s of result.imported.steps) s.models = [{ slotId: 'assembly', modelId: model.id, modelOpacity: 1 }];
+
+    const applied = await applyImportedGuide(result.imported, { anchorId, createdBy });
+    const summary = { guideId: applied.guide.id, steps: applied.steps.length, modelId: model.id, glbBytes: result.glb.length };
+    console.log(`[SIB] Guide imported (cortona): ${applied.guide.id} — ${applied.steps.length} steps, model ${model.id}, ` +
+      `${result.log.procedure.commands ? Object.values(result.log.procedure.commands).reduce((a, b) => a + b, 0) : 0} commands` +
+      (result.log.warnings.length ? `, ${result.log.warnings.length} warning(s)` : ''));
+
+    const resp: ApiResponse<{ guide: Guide; steps: GuideStep[]; model: unknown; log: unknown; summary: typeof summary }> = {
+      data: { guide: applied.guide, steps: applied.steps, model, log: result.log, summary },
+      timestamp: new Date().toISOString(),
+    };
+    res.status(201).json(resp);
+  },
+);
 
 // GET /guides/step-image/:filename — serve a step media image
 // IMPORTANT: must be registered BEFORE /:id routes to avoid "step-image" matching as an id.

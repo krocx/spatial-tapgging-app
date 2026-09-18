@@ -985,6 +985,16 @@ export interface GuideStep {
    * slots alone. Readers should prefer `models` when present.
    */
   models?:            GuideStepModel[];
+  /**
+   * CAD-driven presentation (AR OJT, docs/ar-ojt/CAD-CONTENT.md §3): per-node
+   * show/animate deltas addressed by node NAME inside the assembly model
+   * assigned to this step (slot `assembly`). Nodes not listed inherit the
+   * previous step's state. Written by importers (Cortona3D) and the designer;
+   * ignored by app builds that predate it.
+   */
+  nodes?:             GuideStepNode[];
+  /** Optional suggested camera for this step (model frame). */
+  view?:              GuideStepView;
   // Conditional task graph (Step 2 of AI-readiness) — all optional for backward compat
   nextOnSuccess?:     string;      // step ID to navigate to on completion; nil → sequenceNumber+1
   nextOnFailure?:     string;      // step ID to navigate to on failure/retry; nil → stay on step
@@ -1072,6 +1082,39 @@ export type UpdateGuideStepRequest = {
  *  are metres from the step's pin; rotation is Y-axis radians. The max-slots
  *  limit (3) is a VALUE — it lives as GUIDE_STEP_MAX_MODELS in
  *  sib/src/guides/step-models.ts and iOS AROMSModels.swift. */
+/** One node-level presentation delta inside a step (see GuideStep.nodes). */
+export interface GuideStepNode {
+  /** glTF/USDZ node name in the assembly model, e.g. `cmp:PN_0190-12345`. */
+  node:          string;
+  show?:         'hidden' | 'ghost' | 'solid';
+  /** Opacity when `show` = ghost (0–1). */
+  opacity?:      number;
+  /** Motion: `insert` = from → to (installing), `remove` = to → from, `move` = generic. */
+  animate?:      'insert' | 'remove' | 'move';
+  /** Start / end translation in the node's parent frame (metres). */
+  from?:         [number, number, number];
+  to?:           [number, number, number];
+  /** Start / end rotation as axis-angle [x, y, z, radians]. */
+  rotationFrom?: [number, number, number, number];
+  rotationTo?:   [number, number, number, number];
+  /** Diffuse colour override [r, g, b] 0–1 (highlighting). */
+  color?:        [number, number, number];
+  /** Animation duration in seconds (source timing), if known. */
+  durationSec?:  number;
+  /** Stable source key (Cortona3D objectID) for cross-checking. */
+  sourceKey?:    string;
+}
+
+/** Suggested camera for a step, in the model frame. */
+export interface GuideStepView {
+  position?:     [number, number, number];
+  /** axis-angle [x, y, z, radians] */
+  orientation?:  [number, number, number, number];
+  center?:       [number, number, number];
+  fieldOfView?:  number;
+  orthographic?: boolean;
+}
+
 export interface GuideStepModel {
   slotId:          string;
   modelId:         string;
@@ -1409,6 +1452,11 @@ export interface ImportedGuideStep {
    *  ignored. Placement is still device-owned: a slot keeps its saved
    *  offsets when its slotId AND modelId are unchanged. */
   models?:              ImportedStepModel[];
+  /** CAD-driven node presentation (see GuideStep.nodes). Passed through verbatim. */
+  nodes?:               GuideStepNode[];
+  view?:                GuideStepView;
+  /** Optional seconds of source timing for the step (e.g. Cortona SubStep.duration). */
+  durationSec?:         number;
   // Conditional task graph — expressed as sequence numbers; server resolves to UUIDs
   nextOnSuccessSeq?:    number;
   nextOnFailureSeq?:    number;
@@ -1433,7 +1481,7 @@ export interface ImportedGuide {
 export interface ImportGuideRequest {
   anchorId:     string;
   createdBy:    string;
-  sourceType?:  'manual' | 'mes';
+  sourceType?:  'manual' | 'mes' | 'rapidmanual';
   /** Full ImportedGuide payload — passed through to the active adapter. */
   payload:      ImportedGuide;
 }

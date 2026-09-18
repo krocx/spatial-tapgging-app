@@ -54,6 +54,36 @@ const DATA_DIR    = process.env.SIB_DATA_DIR ?? path.join(process.cwd(), '.sib-d
 const MODELS_DIR  = path.join(DATA_DIR, 'models-3d');
 fs.mkdirSync(MODELS_DIR, { recursive: true });
 
+/**
+ * Register a GLB produced server-side (e.g. the Cortona3D importer) as a
+ * Model3D. Same storage doctrine as POST /models with a GLB body: GLB stored,
+ * USDZ pending until the portal's browser-side converter uploads it.
+ */
+export function registerGeneratedGlb(opts: { name: string; glb: Buffer; anchorId?: string; uploadedBy?: string; category?: string; originalFilename?: string }): Model3D {
+  const id = uuidv4(); const now = new Date().toISOString();
+  fs.writeFileSync(path.join(MODELS_DIR, `${id}.glb`), opts.glb);
+  const model: Model3D = {
+    id,
+    anchorId:         opts.anchorId || undefined,
+    anchorIds:        opts.anchorId ? [opts.anchorId] : [],
+    name:             opts.name.trim() || 'Imported assembly',
+    originalFormat:   'glb',
+    originalFilename: opts.originalFilename ?? `${opts.name.trim() || 'assembly'}.glb`,
+    fileSizeBytes:    opts.glb.length,
+    status:           'ready',
+    hasGLB:           true,
+    hasUSDZ:          false,
+    usdzStatus:       'pending',
+    category:         opts.category?.trim() || undefined,
+    uploadedBy:       opts.uploadedBy?.trim() || undefined,
+    createdAt:        now,
+    updatedAt:        now,
+  };
+  model3DStore.save(model);
+  console.log(`[SIB/models] Registered generated GLB "${model.name}" (${model.id}, ${opts.glb.length} B)`);
+  return model;
+}
+
 // ── Format detection ──────────────────────────────────────────────────────────
 
 const MIME_TO_FORMAT: Record<string, ModelFormat> = {

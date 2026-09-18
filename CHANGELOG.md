@@ -179,6 +179,33 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **Cortona3D RapidManual import (AR OJT slice CI-1…4, `feature/ar-ojt`).**
+  `POST /guides/import/cortona` takes a published single-file `.htm` (or its
+  extracted `solo+zip` bundle) and produces a draft guide plus the assembly
+  as a GLB `Model3D`. Everything is our own code, dependency-free: a ZIP
+  reader, a VRML97 parser that **keeps PROTO declarations and instances**
+  (the procedure — `Procedure → Step → SubStep → Set_* / SwitchOFF` — lives
+  entirely in proprietary PROTOs bound by `ROUTE`, which stock loaders drop
+  silently), a scene builder (`ObjectVM`/`Transform`/`Switch` +
+  `IndexedFaceSet`, content-hash mesh dedupe, VRML transform composition),
+  a minimal glTF 2.0 writer (nodes named `cmp:<DEF>`, `extras` with
+  objectID / part number / description from `DocItems`), an
+  `interactivity.xml` + `rwi` reader (titles, body text, BOM; the `rwi`
+  is never a step source), and RTF/HTML-to-text for callout widgets.
+  One guide step per SubStep with `nodes[]` deltas (`SwitchOFF` /
+  `Set_transparency` → hidden / ghost / solid; `Set_translation` /
+  `Set_rotation` → from/to, classified insert / remove / move against the
+  rest pose; `Set_diffuseColor` → highlight; `Set_Viewpoint` → suggested
+  view), callout text folded into the step, source duration kept. New
+  shared types `GuideStepNode` / `GuideStepView` on `GuideStep` and
+  `ImportedGuideStep` (optional; older app builds ignore them). Portal:
+  the Import Guide modal accepts `.htm`, shows a strict-mode toggle, opens a
+  **content-free import log** (counts, PROTO names, publish options,
+  warnings — copy / download) and kicks off the usual browser-side GLB→USDZ
+  conversion; Guide Preview lists the parts each step shows / hides / moves;
+  step rows carry a 🧩 parts chip. Tests: synthetic bundle generator built
+  from both reconnaissance reports' schemas (`sib/test/cortona-fixture.ts`),
+  parser / bundle / importer / GLB / strict-mode / text tests.
 - **Feature Catalogue — live, touring, three views, shareable.** (1) **Live
   pulse**: each product wedge carries a line from `/stats` under its rim name
   (chambers, runs live / today, walks open, locks active, people on tools, QA

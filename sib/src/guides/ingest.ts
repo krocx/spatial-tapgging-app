@@ -208,6 +208,10 @@ export async function applyImportedGuide(
       mediaPath,
       completionRequired: s.completionRequired ?? true,
       ...(s.evidenceRequired === true ? { evidenceRequired: true } : {}),
+      // CAD-driven presentation (AR OJT): the import owns node deltas and the
+      // suggested view outright — they are authoring data, not placement.
+      ...(s.nodes && s.nodes.length ? { nodes: s.nodes } : {}),
+      ...(s.view ? { view: s.view } : {}),
       isPlaced:           false,
       nextOnSuccess:      s.nextOnSuccessSeq !== undefined ? seqToId.get(s.nextOnSuccessSeq) : undefined,
       nextOnFailure:      s.nextOnFailureSeq !== undefined ? seqToId.get(s.nextOnFailureSeq) : undefined,

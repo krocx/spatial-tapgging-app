@@ -1,6 +1,6 @@
 # Cortona3D RapidManual → SIB import — assessment plan
 
-Status: v0.1 (2026-09-18) · branch `feature/ar-ojt`
+Status: v0.2 (2026-09-18) · branch `feature/ar-ojt` · **Stage 2 implemented** (`sib/src/import/cortona/`, `POST /guides/import/cortona`, portal Import modal)
 
 ## Decision
 
@@ -161,7 +161,28 @@ stays worthwhile (it would remove the mesh-parsing half) but is no longer a
 prerequisite — the parser is written against a schema that two independent
 samples corroborate.
 
-## Stage 2 — importer (here, against the report)
+## Stage 2 — importer (implemented)
+
+Code: `sib/src/import/cortona/` — `zip-lite.ts` (stored/deflate ZIP),
+`bundle.ts` (solo+zip extraction, magic-byte sniffing), `vrml.ts` (VRML97
+parser keeping PROTO/EXTERNPROTO/ROUTE/DEF/USE), `scene.ts` (ObjectVM /
+Transform / Switch graph, IndexedFaceSet triangulation, content-hash mesh
+dedupe), `glb.ts` (glTF 2.0 binary writer, `cmp:<DEF>` nodes + extras),
+`procedure.ts` (Procedure → Step → SubStep → commands, ROUTE binding, PROTO
+classification handled / ignored / unknown), `widgets.ts` (callout widgets,
+RTF/HTML → text), `interactivity.ts` (`interactivity.xml`, `rwi`),
+`importer.ts` (orchestration + content-free log). Route:
+`POST /guides/import/cortona?anchorId&createdBy&strict&name` with the raw
+`.htm` body. Tests: `sib/test/cortona-import.test.ts` against
+`sib/test/cortona-fixture.ts` (synthetic bundle from both samples' schemas).
+
+Office validation: import both samples through the portal (Import Guide →
+choose the `.htm`), then send back only the **import log** (Copy / Download
+in the log dialog) — it contains counts, PROTO type names, publish options
+and warnings, never text or part numbers. If `protos UNKNOWN` is non-empty,
+those names are the next thing to add to `procedure.ts`.
+
+### Original plan
 
 From the report we learn, without seeing content: how steps are delimited and
 referenced (XML vocabulary), whether part links are `DEF` names or ids, how
