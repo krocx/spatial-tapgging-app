@@ -255,6 +255,9 @@ struct ARGuideSessionView: View {
     @State private var assemblyLoading:    Bool                 = false
     /// Part chip: the step's focus part, or whatever the operator tapped.
     @State private var partChip: (title: String, partNumber: String?, tapped: Bool)? = nil
+    /// "Look from here": distance/angle to the step's source viewpoint; nil = no view or aligned long enough.
+    @State private var lookHint: (distance: Float, angle: Float, aligned: Bool)? = nil
+    @State private var lookAlignedSince: Date? = nil
 
     // ── Ticker ────────────────────────────────────────────────────────────────
     private let navTicker = Timer.publish(every: 0.10, on: .main, in: .common).autoconnect()
@@ -440,6 +443,7 @@ struct ARGuideSessionView: View {
             if case .navigating(let index) = phase {
                 updateNavTelemetry(index: index)
                 if index < sortedSteps.count { presenceFocus.stepId = sortedSteps[index].id }
+                if assemblyNode != nil { updateLookHint() }
             }
             // V2/X1: live validation guidance at 10 Hz. Pose readiness (trained
             // stance: cone_dist_m ±30 % / ≥8 cm, aim, shot direction) is now
@@ -3927,7 +3931,28 @@ extension ARGuideSessionView {
             partChip = nil
         }
         node.focus(parts: focus)
+        node.setViewHint(sortedSteps[index].view)
+        lookHint = nil; lookAlignedSince = nil
         replayAssemblyStep()
+    }
+
+    /// 10 Hz: compare the camera with the hinted viewpoint. Aligned = within
+    /// 0.5 m and 30°; the chip turns green, then hides after 2 s and stays
+    /// hidden until the operator drifts well away again (0.9 m / 45°).
+    func updateLookHint() {
+        guard let node = assemblyNode, let frame = arManager.sceneView.session.currentFrame,
+              let a = node.viewAlignment(cameraTransform: frame.camera.transform) else {
+            if lookHint != nil { lookHint = nil }; return
+        }
+        let wasAligned = lookHint?.aligned ?? false
+        let aligned = wasAligned ? (a.distance < 0.9 && a.angle < 45) : (a.distance < 0.5 && a.angle < 30)
+        if aligned {
+            if lookAlignedSince == nil { lookAlignedSince = Date() }
+            if let t = lookAlignedSince, Date().timeIntervalSince(t) > 2 { node.setViewHintHidden(true); lookHint = nil; return }
+        } else {
+            lookAlignedSince = nil; node.setViewHintHidden(false)
+        }
+        lookHint = (a.distance, a.angle, aligned)
     }
 
     func replayAssemblyStep() {
@@ -3948,12 +3973,35 @@ extension ARGuideSessionView {
         assemblyReplayTask?.cancel(); assemblyReplayTask = nil
         assemblyNode?.cancelPlayback()
         assemblyNode?.root.removeFromParentNode()
-        assemblyNode = nil; assemblyEngine = nil; partChip = nil
+        assemblyNode = nil; assemblyEngine = nil; partChip = nil; lookHint = nil
     }
 
     @ViewBuilder
     var assemblyChipView: some View {
-        if assemblyNode != nil, case .navigating = phase, coneValidateIndex == nil, let chip = partChip {
+        if assemblyNode != nil, case .navigating = phase, coneValidateIndex == nil {
+            VStack(alignment: .trailing, spacing: 8) {
+                if let h = lookHint {
+                    HStack(spacing: 6) {
+                        Image(systemName: h.aligned ? "checkmark.circle.fill" : "camera.viewfinder").font(.caption)
+                        Text(h.aligned ? "Good view" : (h.distance >= 0.5 ? String(format: "Look from here · %.1f m", h.distance) : "Turn to the marker"))
+                            .font(.caption.bold()).lineLimit(1)
+                    }
+                    .padding(.horizontal, 12).padding(.vertical, 7)
+                    .background(h.aligned ? Color.green.opacity(0.85) : Color.blue.opacity(0.85), in: Capsule())
+                    .foregroundStyle(.white)
+                    .accessibilityLabel(h.aligned ? "You are at the recommended viewpoint" : "Move to the blue camera marker to see this step as intended")
+                    .transition(.opacity)
+                }
+                if let chip = partChip { assemblyPartChip(chip) }
+            }
+            .padding(.trailing, 14)
+            .padding(.bottom, 170)
+            .animation(.easeInOut(duration: 0.25), value: lookHint?.aligned)
+        }
+    }
+
+    @ViewBuilder
+    func assemblyPartChip(_ chip: (title: String, partNumber: String?, tapped: Bool)) -> some View {
             HStack(spacing: 8) {
                 Image(systemName: chip.tapped ? "hand.tap.fill" : "cube.fill").font(.caption)
                 VStack(alignment: .leading, spacing: 1) {
@@ -3968,9 +4016,6 @@ extension ARGuideSessionView {
             .padding(.horizontal, 12).padding(.vertical, 8)
             .background(.ultraThinMaterial, in: Capsule())
             .foregroundStyle(.white)
-            .padding(.trailing, 14)
-            .padding(.bottom, 170)
             .transition(.opacity)
-        }
     }
 }

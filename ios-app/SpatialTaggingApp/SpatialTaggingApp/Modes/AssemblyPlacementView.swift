@@ -243,6 +243,7 @@ struct AssemblyPlacementView: View {
         node.apply(state: eng.state(after: previewIndex - 1))
         let dur = node.play(deltas: eng.deltas(at: previewIndex), speed: speed)
         node.focus(parts: eng.focusParts(at: previewIndex))
+        node.setViewHint(steps[previewIndex].view)      // blue camera = where the source viewed this step from
         previewTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: UInt64((dur + 2.0) * 1_000_000_000))
             guard !Task.isCancelled, previewOn else { return }
@@ -254,6 +255,7 @@ struct AssemblyPlacementView: View {
         previewTask?.cancel(); previewTask = nil
         guard let node = assemblyNode else { return }
         node.focus(parts: [])
+        node.setViewHint(nil)
         node.apply(state: [:])            // whole assembly, rest pose, solid
     }
 

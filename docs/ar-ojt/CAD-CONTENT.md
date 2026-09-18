@@ -75,6 +75,16 @@ which step deltas apply cumulatively. `bounds` lets placement UIs put the
 bottom-centre of the geometry on the tapped surface rather than the CAD
 origin, which is often metres away.
 
+## 3b. Look-from-here (implemented 2026-09-18, slice 5)
+
+`GuideStep.view` (source viewpoint: position, orientation axis-angle, optional
+center, in the assembly frame) is rendered as a small camera marker child of
+the assembly root (`AssemblyNode.setViewHint`), inverse-scaled so it reads the
+same at any placement scale. The operator session compares the device camera
+with it at 10 Hz (`viewAlignment`: metres to the viewpoint, degrees between
+forward vectors) and shows a chip until aligned (0.5 m / 30°, release at
+0.9 m / 45°). It is advisory only — nothing is gated on it.
+
 ## 4. Registration
 
 Registration = PartFrame acquiring `.locked` on the base part. There is no

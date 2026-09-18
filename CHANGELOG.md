@@ -202,6 +202,13 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **AR OJT "look from here".** Imported steps carry the source procedure's
+  viewpoint (`step.view`); the assembly now shows a small pulsing blue camera
+  marker at that viewpoint, aimed at the step's target. Operator: a chip says
+  "Look from here · 1.2 m" / "Turn to the marker" until the device is within
+  0.5 m / 30°, then "Good view" and the marker hides (returns if the operator
+  drifts past 0.9 m / 45°). Author: the marker appears per step in Preview
+  steps. iOS only; no schema change.
 - **AR OJT: parts fading / vanishing during animation.** Visibility is now
   applied on materials with parents-first ordering, so a group ghosted by a
   step (e.g. "whole bike 91 % transparent") no longer dims the child part

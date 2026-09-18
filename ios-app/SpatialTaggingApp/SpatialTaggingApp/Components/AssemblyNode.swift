@@ -235,6 +235,63 @@ final class AssemblyNode {
         return n > 0 ? acc / n : nil
     }
 
+    // MARK: - View hint ("look from here")
+
+    /// Where the source procedure viewed this step from, as a small camera
+    /// marker in the assembly frame (VRML Viewpoint: `position`, `orientation`
+    /// axis-angle rotating the default −Z look direction; `center` wins when
+    /// present). Kept a constant on-screen size regardless of the root scale.
+    private var viewHintNode: SCNNode?
+    private var viewTarget: simd_float3?          // model frame
+
+    func setViewHint(_ view: GuideStepView?) {
+        viewHintNode?.removeFromParentNode(); viewHintNode = nil; viewTarget = nil
+        guard let v = view, let p = v.position, p.count == 3 else { return }
+        let pos = simd_float3(Float(p[0]), Float(p[1]), Float(p[2]))
+        var dir = simd_float3(0, 0, -1)
+        if let o = v.orientation, o.count == 4, simd_length(simd_float3(Float(o[0]), Float(o[1]), Float(o[2]))) > 0.001 {
+            let q = simd_quatf(angle: Float(o[3]), axis: simd_normalize(simd_float3(Float(o[0]), Float(o[1]), Float(o[2]))))
+            dir = q.act(dir)
+        }
+        var target = pos + dir * max(0.3, simd_length(pos))
+        if let c = v.center, c.count == 3 { target = simd_float3(Float(c[0]), Float(c[1]), Float(c[2])); dir = simd_normalize(target - pos) }
+        viewTarget = target
+
+        let hint = SCNNode(); hint.name = "view-hint"
+        hint.simdPosition = pos
+        // Camera body + lens cone pointing along −Z of the hint node.
+        let body = SCNNode(geometry: SCNBox(width: 0.06, height: 0.04, length: 0.03, chamferRadius: 0.006))
+        let lens = SCNNode(geometry: SCNCone(topRadius: 0.012, bottomRadius: 0.024, height: 0.03))
+        lens.eulerAngles.x = -.pi / 2; lens.position.z = -0.03
+        for n in [body, lens] {
+            let m = SCNMaterial(); m.diffuse.contents = UIColor.systemBlue; m.emission.contents = UIColor.systemBlue.withAlphaComponent(0.6)
+            m.transparency = 0.85; n.geometry?.materials = [m]
+        }
+        hint.addChildNode(body); hint.addChildNode(lens)
+        root.addChildNode(hint)                                   // world-space look needs the parent
+        hint.simdLook(at: root.simdConvertPosition(target, to: nil), up: simd_float3(0, 1, 0), localFront: simd_float3(0, 0, -1))
+        let rs = max(0.05, root.simdScale.x)
+        hint.simdScale = simd_float3(repeating: 1 / rs)
+        hint.runAction(.repeatForever(.sequence([.fadeOpacity(to: 0.45, duration: 0.8), .fadeOpacity(to: 1, duration: 0.8)])))
+        viewHintNode = hint
+    }
+
+    /// How far the camera is from the hinted viewpoint: metres to the viewpoint
+    /// and degrees between the camera's forward and the hinted look direction.
+    /// nil when the step has no view.
+    func viewAlignment(cameraTransform t: simd_float4x4) -> (distance: Float, angle: Float, viewpointWorld: simd_float3)? {
+        guard let hint = viewHintNode, let target = viewTarget else { return nil }
+        let vpW = simd_float3(hint.simdWorldPosition)
+        let tgW = root.simdConvertPosition(target, to: nil)
+        let cam = simd_float3(t.columns.3.x, t.columns.3.y, t.columns.3.z)
+        let camFwd = -simd_normalize(simd_float3(t.columns.2.x, t.columns.2.y, t.columns.2.z))
+        let want = simd_normalize(tgW - vpW)
+        let cosA = max(-1, min(1, simd_dot(camFwd, want)))
+        return (simd_length(cam - vpW), acos(cosA) * 180 / .pi, vpW)
+    }
+
+    func setViewHintHidden(_ hidden: Bool) { viewHintNode?.isHidden = hidden }
+
     // MARK: - Hit test
 
     /// The part a hit landed on (nearest `cmp:` ancestor), ignoring hidden ones —
@@ -261,6 +318,7 @@ final class AssemblyNode {
 
     private func resetAll() {
         root.enumerateHierarchy { n, _ in
+            if n.parent?.name == "view-hint" { return }          // the camera marker keeps its own look
             for m in n.geometry?.materials ?? [] {
                 let id = ObjectIdentifier(m)
                 m.diffuse.contents = baseColor[id] ?? UIColor.lightGray
