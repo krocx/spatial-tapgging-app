@@ -50,7 +50,15 @@ export function sniffKind(buf: Buffer): 'gzip' | 'zip' | 'vrml' | 'xml' | 'svg' 
 export function extractSoloZip(htm: Buffer | string): Buffer {
   const text = typeof htm === 'string' ? htm : htm.toString('utf8');
   const m = SOLO_SCRIPT.exec(text);
-  if (!m) throw new Error('cortona: no <script type="application/solo+zip"> block found in the .htm');
+  if (!m) {
+    // Multi-file publication (SingleHTMLBundle=No): the .htm is only a viewer
+    // launcher that points at <title>.interactivity.xml beside it.
+    if (/Cortona3DSolo\.uniview|src:\s*['"][^'"]*\.interactivity\.xml['"]/i.test(text)) {
+      throw new Error('cortona: this .htm is a multi-file publication launcher (no embedded scene). ' +
+        'Zip the whole publication folder (the .htm together with its .interactivity.xml, .wrl and .xml files) and import the .zip instead');
+    }
+    throw new Error('cortona: no <script type="application/solo+zip"> block found in the .htm');
+  }
   const d = DATA_URI.exec(m[1]);
   const b64 = (d ? d[1] : m[1]).replace(/\s+/g, '');
   const zip = Buffer.from(b64, 'base64');
