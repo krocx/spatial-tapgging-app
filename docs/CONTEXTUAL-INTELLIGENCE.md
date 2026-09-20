@@ -1,7 +1,8 @@
 # Contextual intelligence — the device is a sensor, SIB is the judge
 
 Status: C1 shipped 2026-09-20 (observations + baselines); C2 shipped
-2026-09-21 (signals → hints). C3 (effectiveness loop + portal page) follows.
+2026-09-21 (signals → hints); C3 shipped 2026-09-21 (effectiveness loop +
+portal Intelligence page).
 
 Proprietary & Confidential · Applied Materials.
 
@@ -119,10 +120,58 @@ dwell-type hints as a quiet chip. Each fired hint is recorded on the visit
   description → part number) so hints, chips and the portal never show a raw
   node id.
 
-## C3 — Effectiveness loop + portal (after)
+## C3 — Effectiveness loop + portal (shipped)
 
-Every hint records whether the operator progressed within a window; hints
-are ranked by effectiveness per step and the weaker phrasings retire. A
-portal "Intelligence" page shows per-step heat — where people stall, look
-away, tap the wrong part, fail validation — so authors fix the content, not
-just the hints.
+`sib/src/oms/intelligence.ts`. Every hint C2 fired is scored by what happened
+**after** it, from the raw samples C1 already keeps
+(`observations/<session>.jsonl`, `t` relative to step entry) and the visit
+outcome. The hint time inside the visit is `hint.ts − visit.enteredAt`.
+
+| Signal | "Helped" means |
+|---|---|
+| dwell | the visit completed within max(30 s, step p50 dwell) of the hint |
+| wrong-part | no `tap-wrong-part` sample after the hint (and something was observed after) |
+| attention-off | on-target ratio after the hint > before |
+| look-away | a `viewAligned` (or `look-aligned`) sample after the hint |
+| validate-retry | the visit completed with a pass verdict |
+
+Muted hints count separately. Scores roll up per (step, signal, phrasing
+`via`) over the **last 50 visits** of the step, so a bad early phrasing can
+recover.
+
+### Retirement — the loop closes
+
+`evaluateSignals` (C2) asks `retiredSignals(guideId, stepId)` before firing
+and `preferredVia(...)` before phrasing:
+
+- shown ≥ 5 and effectiveness < 0.3 → the signal is **retired** on that step;
+- shown + muted ≥ 4 and mute rate ≥ 0.5 → retired (people said no);
+- both `llm` and `template` phrasings with ≥ 5 shown and the LLM below the
+  template → that step uses the template.
+
+Nothing is configured; retirement lifts on its own when newer visits push the
+score back over the line. Coach (human) hints are never scored or retired.
+
+### `GET /guide-sessions/intelligence/:guideId`
+
+Per step: completed visits, dwell p50/p90, and the rates that make the
+**heat** score (0–100, weighted: left/failed 0.35, validation fail 0.2, wrong
+part 0.15, stalled 0.15, attention off 0.1, never at viewpoint 0.05); the hint
+table (signal × via: shown / helped / muted / effectiveness / retired +
+reason); and author-facing **notes** generated from the numbers only when
+there is enough behind them (≥ 3 visits with observations), e.g. "38 % of
+visits tap a part that is not in this step — the part label or photo is not
+distinguishing it." Header: runs seen, baseline confidence (none / low < 3
+runs / medium < 10 / high), retired hints. Cached 60 s.
+
+### Portal
+
+AR Guides Sessions → **🧠 Intelligence**: guide picker (guides with runs),
+heat strip per step (click → the step card), per-step rate tiles, hint
+effectiveness table with 🔕 retired badges, and the fix notes. Read-only.
+
+### Tests
+
+`sib/test/intelligence.test.ts`: per-signal scoring, muted never helps,
+retirement on low effectiveness and on mute rate, recovery when newer visits
+help, heat/confidence, empty guide.

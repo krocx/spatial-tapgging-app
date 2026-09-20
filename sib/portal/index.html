@@ -858,6 +858,8 @@
   </div>
   <div id="ar-guides-list" class="sessions-list"></div>
   <div id="usage-log-view" class="sessions-list" style="display:none"></div>
+  <!-- C3 (2026.4.46): Intelligence — per-step heat, hint effectiveness, what to fix -->
+  <div id="intel-view" class="sessions-list" style="display:none"></div>
 </div>
 
 <!-- Admin panel — dedicated ops page: unlock, backups, ops log -->
@@ -2458,7 +2460,7 @@ const SECTIONS = {
   'anchors':   { name: '🔗 Anchors',              color: '#3b82f6' },
   'sessions':  { name: '🔍 Inspection Sessions',  color: '#22d3ee' },
   'ar-guides': { name: '📋 AR Guides Sessions',   color: '#818cf8',
-                 tabs: [['completions', 'Completions'], ['usage', '📊 Usage Log']], defaultSub: 'completions' },
+                 tabs: [['completions', 'Completions'], ['usage', '📊 Usage Log'], ['intelligence', '🧠 Intelligence']], defaultSub: 'completions' },
   'content':   { name: '📚 Content Library',      color: '#2dd4bf',
                  tabs: [['guides', 'Guide Library'], ['models', '3D Models']], defaultSub: 'guides' },
   'iloto':     { name: '🔒 iLOTO',                color: '#ef4444' },
@@ -2492,7 +2494,7 @@ function renderRoute() {
   sub = sub || def.defaultSub;
 
   // Section → internal panel
-  if (sec === 'ar-guides')    { switchView('ar-guides'); setUsageView(sub === 'usage'); }
+  if (sec === 'ar-guides')    { switchView('ar-guides'); setUsageView(sub === 'usage'); setIntelView(sub === 'intelligence'); }
   else if (sec === 'content') { switchView(sub === 'models' ? 'models' : 'guide-library'); }
   else if (sec === 'admin')   { switchView('admin'); adminShowSub(sub); }
   else if (sec === 'gemba')   { switchView('gemba'); gembaShowSub(sub); }
@@ -2755,6 +2757,75 @@ function guideEmptyState(kind) {
 /** AR Guides sub-view: deterministic setter over the existing toggle. */
 function setUsageView(showUsage) {
   if (usageLogVisible !== showUsage) toggleUsageLog();
+}
+
+// ── C3: Intelligence page ──────────────────────────────────────────────────────
+let intelGuideId = '';
+function setIntelView(on) {
+  const iv = document.getElementById('intel-view');
+  iv.style.display = on ? '' : 'none';
+  if (on) {
+    document.getElementById('ar-guides-list').style.display = 'none';
+    document.getElementById('usage-log-view').style.display = 'none';
+    loadIntelligence();
+  } else {
+    document.getElementById('ar-guides-list').style.display = usageLogVisible ? 'none' : '';
+    document.getElementById('usage-log-view').style.display = usageLogVisible ? '' : 'none';
+  }
+}
+async function loadIntelligence() {
+  const iv = document.getElementById('intel-view');
+  iv.innerHTML = '<div class="empty-state">Loading…</div>';
+  try {
+    const body = await apiFetch('/guide-sessions/usage');
+    const seen = new Map();
+    for (const s of body.data || []) if (!seen.has(s.guideId)) seen.set(s.guideId, { id: s.guideId, name: s.guideName, n: 0 });
+    for (const s of body.data || []) seen.get(s.guideId).n++;
+    const guides = [...seen.values()].sort((a, b) => b.n - a.n);
+    if (!guides.length) { iv.innerHTML = '<div class="empty-state">No guide runs yet. Intelligence learns from the Usage Log — run a guide on the iPad or the XR kit and come back.</div>'; return; }
+    if (!intelGuideId || !seen.has(intelGuideId)) intelGuideId = guides[0].id;
+    const picker = `<div class="sessions-toolbar" style="margin-bottom:10px"><span style="font-size:0.78rem;color:var(--muted)">Guide</span>
+      <select id="intel-guide" onchange="intelGuideId=this.value;loadIntelligence()" style="font-size:0.8rem">${guides.map(g => `<option value="${esc(g.id)}"${g.id === intelGuideId ? ' selected' : ''}>${esc(g.name)} (${g.n} run${g.n === 1 ? '' : 's'})</option>`).join('')}</select>
+      <span style="flex:1"></span><button class="btn btn-ghost btn-sm" onclick="loadIntelligence()">⟳ Refresh</button></div>`;
+    const gi = (await apiFetch(`/guide-sessions/intelligence/${encodeURIComponent(intelGuideId)}`)).data;
+    iv.innerHTML = picker + renderIntelligence(gi);
+  } catch (e) {
+    iv.innerHTML = `<div class="empty-state">Could not load intelligence — ${esc(e.message || 'server error')}</div>`;
+  }
+}
+function heatColor(h) { return h >= 60 ? '#ef4444' : h >= 35 ? '#f59e0b' : h >= 15 ? '#facc15' : '#22c55e'; }
+function pctCell(v) { return v === undefined ? '<span style="color:var(--muted)">–</span>' : `${Math.round(v * 100)} %`; }
+function renderIntelligence(gi) {
+  const conf = { none: ['No data', 'var(--muted)'], low: ['Low — fewer than 3 runs', '#f59e0b'], medium: ['Medium — 3 to 9 runs', '#facc15'], high: ['High — 10+ runs', '#22c55e'] }[gi.confidence] || ['–', 'var(--muted)'];
+  const head = `<div style="display:flex;gap:18px;flex-wrap:wrap;font-size:0.8rem;margin:0 0 12px;padding:10px 12px;border:1px solid var(--border);border-radius:10px">
+    <div><span style="color:var(--muted)">Runs seen</span> <b>${gi.sessions}</b></div>
+    <div><span style="color:var(--muted)">Baseline confidence</span> <b style="color:${conf[1]}">${conf[0]}</b></div>
+    <div><span style="color:var(--muted)">Retired hints</span> <b>${gi.retiredHints}</b></div>
+    <div style="color:var(--muted);flex:1;min-width:240px">Heat = where people struggle: left the step, failed validation, tapped the wrong part, stalled, looked away. Hints are scored by what happened after them; weak ones retire per step and come back when newer runs improve.</div>
+  </div>`;
+  const steps = gi.steps;
+  if (!steps.length) return head + '<div class="empty-state">No step data yet.</div>';
+  const strip = `<div style="display:flex;gap:4px;align-items:flex-end;height:64px;margin:0 0 6px;padding:0 4px">${steps.map((s, i) => `<div title="Step ${s.stepIndex ?? i + 1}: heat ${s.heat}" onclick="document.getElementById('intel-step-${i}').scrollIntoView({behavior:'smooth',block:'center'})" style="flex:1;min-width:10px;height:${Math.max(6, s.heat)}%;background:${heatColor(s.heat)};border-radius:3px 3px 0 0;cursor:pointer;opacity:${s.visits ? 1 : 0.3}"></div>`).join('')}</div>
+  <div style="display:flex;gap:4px;padding:0 4px;margin-bottom:14px;font-size:0.62rem;color:var(--muted)">${steps.map((s, i) => `<div style="flex:1;min-width:10px;text-align:center;overflow:hidden">${s.stepIndex ?? i + 1}</div>`).join('')}</div>`;
+  const rows = steps.map((s, i) => {
+    const hints = s.hints.length ? `<table style="width:100%;font-size:0.72rem;border-collapse:collapse;margin-top:6px">
+      <tr style="color:var(--muted)"><th style="text-align:left;font-weight:500">Hint</th><th style="font-weight:500">Phrasing</th><th style="font-weight:500">Shown</th><th style="font-weight:500">Helped</th><th style="font-weight:500">Muted</th><th style="font-weight:500">Effectiveness</th></tr>
+      ${s.hints.map(h => `<tr style="${h.retired ? 'opacity:.75' : ''}"><td>${esc(h.signal)}${h.retired ? ` <span title="${esc(h.reason || '')}" style="color:#f59e0b">🔕 retired</span>` : ''}</td><td style="text-align:center">${h.via}</td><td style="text-align:center">${h.shown}</td><td style="text-align:center">${h.helped}</td><td style="text-align:center">${h.muted}</td><td style="text-align:center">${h.effectiveness === undefined ? '–' : `<span style="display:inline-block;width:70px;height:8px;background:var(--border);border-radius:4px;vertical-align:middle;overflow:hidden"><span style="display:block;width:${Math.round(h.effectiveness * 100)}%;height:100%;background:${h.effectiveness >= 0.5 ? '#22c55e' : h.effectiveness >= 0.3 ? '#facc15' : '#ef4444'}"></span></span> ${Math.round(h.effectiveness * 100)} %`}</td></tr>`).join('')}
+    </table>` : '<div style="font-size:0.72rem;color:var(--muted);margin-top:6px">No automatic hints fired on this step yet.</div>';
+    const notes = s.notes.length ? `<ul style="margin:8px 0 0;padding-left:18px;font-size:0.76rem">${s.notes.map(n => `<li style="margin:2px 0">${esc(n)}</li>`).join('')}</ul>` : '';
+    return `<div id="intel-step-${i}" class="anchor-group" style="padding:12px 16px;border-left:4px solid ${heatColor(s.heat)}">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <b style="font-size:0.86rem">Step ${s.stepIndex ?? i + 1}${s.title ? ` · ${esc(s.title)}` : ''}</b>
+        <span class="badge" style="background:${heatColor(s.heat)}22;color:${heatColor(s.heat)}">heat ${s.heat}</span>
+        <span style="font-size:0.72rem;color:var(--muted)">${s.visits} completed visit${s.visits === 1 ? '' : 's'}${s.dwellSec ? ` · typical ${s.dwellSec.p50} s · slowest tenth ${s.dwellSec.p90} s` : ''}</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:6px;margin-top:8px;font-size:0.72rem">
+        ${[['Left / failed', s.leftRate], ['Validation fail', s.validationFailRate], ['Wrong part', s.wrongPartRate], ['Stalled', s.stallRate], ['Attention off', s.attentionOffRate], ['Never at viewpoint', s.lookAwayRate]].map(([l, v]) => `<div style="border:1px solid var(--border);border-radius:8px;padding:5px 8px"><div style="color:var(--muted);font-size:0.64rem">${l}</div><div style="font-weight:600;color:${v === undefined ? 'var(--muted)' : v >= 0.4 ? '#ef4444' : v >= 0.2 ? '#f59e0b' : 'inherit'}">${pctCell(v)}</div></div>`).join('')}
+      </div>
+      ${hints}${notes}
+    </div>`;
+  }).join('');
+  return head + strip + rows;
 }
 
 /** Admin sub-pages: one card per route (unlock banner always visible). */

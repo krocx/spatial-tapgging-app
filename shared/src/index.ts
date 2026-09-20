@@ -1510,6 +1510,54 @@ export interface GuideBaselines {
   steps:       StepBaseline[];
 }
 
+// ── C3 (2026.4.46): effectiveness loop ───────────────────────────────────────
+// Every hint is scored by what happened after it (from the raw observation
+// samples + the visit outcome); scores feed back into C2 (weak signals retire
+// per step) and the portal Intelligence page.
+
+/** One (step, signal, phrasing) cell of the effectiveness table. */
+export interface HintEffectiveness {
+  signal:        string;            // SignalKind
+  via:           'llm' | 'template';
+  shown:         number;
+  muted:         number;
+  helped:        number;            // shown hints after which the symptom eased
+  /** helped / shown, 0–1; undefined until at least one hint was shown. */
+  effectiveness?: number;
+  /** C3 rule: retired on this step (not fired) — low effectiveness or high mute rate. */
+  retired:       boolean;
+  reason?:       string;
+}
+
+export interface StepIntelligence {
+  stepId:            string;
+  stepIndex?:        number;
+  title?:            string;
+  visits:            number;        // completed visits
+  dwellSec?:         { p50: number; p90: number };
+  stallRate?:        number;        // visits with a stall / visits
+  wrongPartRate?:    number;        // visits with ≥ 1 wrong-part tap / visits with observations
+  attentionOffRate?: number;        // visits with on-target ratio < 0.5 / visits with ≥ 15 samples
+  lookAwayRate?:     number;        // step has a view: visits never aligned / visits with ≥ 20 samples
+  validationFailRate?: number;
+  leftRate?:         number;        // visits that ended 'left' or 'failed' / all visits
+  /** 0–100 — weighted sum of the rates above; the portal heat strip. */
+  heat:              number;
+  hints:             HintEffectiveness[];
+  /** Author-facing notes generated from the numbers ("38 % tap a part that isn't in this step"). */
+  notes:             string[];
+}
+
+export interface GuideIntelligence {
+  guideId:     string;
+  computedAt:  string;
+  sessions:    number;              // usage sessions considered
+  /** Learning status for the header. */
+  confidence:  'none' | 'low' | 'medium' | 'high';
+  retiredHints: number;
+  steps:       StepIntelligence[];
+}
+
 export interface PushGuideSessionEventRequest {
   type:             GuideSessionEventType;
   stepId?:          string;

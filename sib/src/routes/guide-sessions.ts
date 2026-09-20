@@ -25,6 +25,8 @@
 import { Router } from 'express';
 import { usageOpen, usageRecordEvent, usageLinkSignOff, listUsage, usageMarkEvidence } from '../oms/usage-log.js';
 import { ingestObservations, guideBaselines } from '../oms/observations.js';
+import { guideIntelligence, setIntelligenceStepLookup } from '../oms/intelligence.js';
+import { guideStepStore } from './guides.js';
 import type { ObservationBatchRequest } from '@spatial/shared';
 import { buildUsageXlsx, buildSessionsXlsx } from '../oms/xlsx-lite.js';
 import { currentUamUser } from '../middleware/auth.js';
@@ -355,6 +357,14 @@ function signOffEvidencePaths(): Map<string, string> {
 // fail rate, stall rate) from completed visits in the usage log.
 router.get('/baselines/:guideId', (req: Request, res: Response): void => {
   res.json({ data: guideBaselines(req.params.guideId), timestamp: new Date().toISOString() });
+});
+
+// GET /guide-sessions/intelligence/:guideId — C3: per-step heat (stall /
+// wrong-part / attention / look-away / validation / left rates), the hint
+// effectiveness table with retirements, and author-facing notes. 60 s cache.
+setIntelligenceStepLookup(guideId => guideStepStore.findAll().filter(s => s.guideId === guideId));
+router.get('/intelligence/:guideId', (req: Request, res: Response): void => {
+  res.json({ data: guideIntelligence(req.params.guideId, true), timestamp: new Date().toISOString() });
 });
 
 // GET /guide-sessions/usage/export.xlsx — Excel export with evidence photos

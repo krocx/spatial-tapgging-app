@@ -109,9 +109,10 @@ export function templateHint(signal: Signal, step: GuideStep, partNames: string[
 }
 
 /** Phrase with the LLM when configured; always falls back to the template. */
-export async function phraseHint(signal: Signal, step: GuideStep, partNames: string[] = []): Promise<{ text: string; via: 'llm' | 'template' }> {
+export async function phraseHint(signal: Signal, step: GuideStep, partNames: string[] = [], opts: { forceTemplate?: boolean } = {}): Promise<{ text: string; via: 'llm' | 'template' }> {
   const fallback = templateHint(signal, step, partNames);
-  if (!llmConfig()) return { text: fallback, via: 'template' };
+  // C3: a step where the LLM phrasing scored below the template falls back.
+  if (opts.forceTemplate || !llmConfig()) return { text: fallback, via: 'template' };
   try {
     const text = await chatCompletion([
       { role: 'system', content:

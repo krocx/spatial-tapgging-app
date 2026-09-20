@@ -35,6 +35,7 @@ import {
 } from '../adapters/ai-guide-adapter.js';
 import { guideStepStore } from '../routes/guides.js';
 import { omsUsageStore } from '../oms/usage-log.js';
+import { preferredVia, retiredSignals } from '../oms/intelligence.js';
 import { guideBaselines } from '../oms/observations.js';
 import { detectSignals, phraseHint, type SignalKind } from '../oms/signals.js';
 
@@ -363,7 +364,9 @@ export function evaluateSignals(liveSessionId: string): void {
 
   const baseline = guideBaselines(session.guideId).steps.find(b => b.stepId === visit.stepId);
   const elapsedSec = Math.max(0, (Date.now() - Date.parse(visit.enteredAt)) / 1000);
-  const signals = detectSignals({ visit, elapsedSec, baseline, step, alreadyFired: fired });
+  // C3: signals retired on this step (low effectiveness / muted) never fire.
+  const retired = retiredSignals(session.guideId, visit.stepId);
+  const signals = detectSignals({ visit, elapsedSec, baseline, step, alreadyFired: fired }).filter(s => !retired.has(s.kind));
   if (!signals.length) return;
   for (const s of signals) fired.add(s.kind);
 
@@ -374,7 +377,7 @@ export function evaluateSignals(liveSessionId: string): void {
   signalInFlight.add(liveSessionId);
   (async () => {
     for (const sig of signals) {
-      const { text, via } = await phraseHint(sig, step, partNames);
+      const { text, via } = await phraseHint(sig, step, partNames, { forceTemplate: preferredVia(session.guideId, step.id, sig.kind) === 'template' });
       const hint: AIHint = {
         id: uuidv4(), liveSessionId, stepId: step.id, text, action: 'none',
         trigger: 'signal', source: 'ai', signal: sig.kind, evidence: sig.evidence, via,

@@ -217,6 +217,20 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **Effectiveness loop + portal Intelligence page (C3).** Every automatic
+  hint is now scored by what happened after it — from the raw observation
+  samples and the visit outcome (completed within the window, no more
+  wrong-part taps, attention back on the part, viewpoint reached, validation
+  passed). Per step and signal, over the last 50 visits, a hint that helps
+  fewer than 30 % of the time (≥ 5 shown) or is muted half the time (≥ 4)
+  is **retired** on that step — C2 stops firing it — and comes back on its
+  own when newer runs improve; where LLM and template phrasings both have
+  evidence and the LLM scores lower, the step falls back to the template.
+  `GET /guide-sessions/intelligence/:guideId` returns per-step heat (left /
+  validation / wrong-part / stall / attention / viewpoint rates), the hint
+  table and author-facing fix notes. Portal: AR Guides Sessions → **🧠
+  Intelligence** (guide picker, heat strip, rate tiles, hint table with 🔕
+  retired badges, notes). Tests `intelligence.test.ts`.
 - **XR assessment kit — `/xr?guide=<id>` (B3).** A guide runs in any WebXR
   browser (headset browser, Android Chrome) or as a desktop 3D preview with
   no game engine and no third-party tracking: own code on the vendored
