@@ -98,7 +98,7 @@ scope backups). Rotation: delete the file, restart, re-pin readers.
 Trust model v1: **trust-on-first-scan, pin thereafter.** A reader may accept
 the embedded key on first contact with a deployment, then MUST pin it and
 reject envelopes signed by any other key. Enterprise PKI (per-site issuer
-certificates) is an L2/M2 concern.
+certificates) belongs to the Reader Conformance Profile and the live subscription.
 
 ## 5. Stream registry (v1)
 
@@ -142,7 +142,7 @@ reconnect it re-emits, compares `contentVersion`/hashes, and refreshes only
 streams whose hashes changed. Reference reader:
 `ios-app/.../Services/TagEnvelope.swift`.
 
-**Live subscription (M2 — the continuous emitter).** While connected, a
+**Live subscription (the continuous emitter).** While connected, a
 reader MAY open the SSE feed at `GET /anchors/:id/subscribe` (the first
 `subscribe.hints` entry of every assembly envelope):
 
@@ -160,7 +160,7 @@ names only** — never content — so the subscribe channel grants nothing the
 API key doesn't already grant. Reference listener: `TagSubscription` in
 `TagEnvelope.swift`.
 
-## 8a. tag/1.1 — the frame, spelled out (B2, 2026-09-21)
+## 8a. tag/1.1 — the frame, spelled out (2026-09-21)
 
 v1.1 is additive. Its purpose is that a reader on **any** engine — Unity,
 Android, WebXR, native — can place everything an envelope describes without

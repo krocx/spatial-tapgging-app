@@ -9,20 +9,20 @@ the slices as they land.
 
 | Slice | What | Status |
 |---|---|---|
-| **G1 Audit Reference Library** | Focus Areas → Questions, finding categories, risk ratings. Portal CRUD + Excel/CSV/JSON import. | **shipped** |
-| **G3 Finding model** | LocTag gains focus area, question code, finding category, risk rating, multiple photos, markup hook. | **shipped** |
-| **G4 Capture flow (iOS)** | Tap surface → Focus Area → Question → photos with captions → category + rating. Findings as collapsible floating panels. | **shipped** |
-| **G2 + G8 Walk session** | Project ID, Org, BU, Area, Location header; session summary; portal report + xlsx. | **shipped** |
-| **G5 Markup** | Draw on the captured photo (PencilKit); anchored 3D strokes later. | **shipped** |
-| **G7 Multi-auditor** | Presence on a walk — several auditors, findings appear live for each other. | **shipped** |
-| **G6 Phone-down walking** | Live Activity / Dynamic Island: next finding + distance + haptics; raise to relocalize. | **shipped** (needs widget target) |
+| **Audit Reference Library** | Focus Areas → Questions, finding categories, risk ratings. Portal CRUD + Excel/CSV/JSON import. | **shipped** |
+| **Finding model** | LocTag gains focus area, question code, finding category, risk rating, multiple photos, markup hook. | **shipped** |
+| **Capture flow (iOS)** | Tap surface → Focus Area → Question → photos with captions → category + rating. Findings as collapsible floating panels. | **shipped** |
+| **Walk session** | Project ID, Org, BU, Area, Location header; session summary; portal report + xlsx. | **shipped** |
+| **Markup** | Draw on the captured photo (PencilKit); anchored 3D strokes later. | **shipped** |
+| **Multi-auditor** | Presence on a walk — several auditors, findings appear live for each other. | **shipped** |
+| **Phone-down walking** | Live Activity / Dynamic Island: next finding + distance + haptics; raise to relocalize. | **shipped** (needs widget target) |
 
 Walks never depend on a chamber or QR code — auditors walk and tag anywhere,
 exactly as today.
 
 ---
 
-## G1 · Audit Reference Library
+## Audit Reference Library
 
 ### What it is
 Three lists, served in one call:
@@ -100,7 +100,7 @@ Code: `sib/src/gemba/library-core.ts` (validation, import plan, seed),
 
 ---
 
-## G3 · Reference-list findings
+## Reference-list findings
 
 A finding (`LocTag`) logged through the new flow carries, in addition to the
 legacy fields:
@@ -113,7 +113,7 @@ legacy fields:
 | `riskRating` | `0`–`3`, optional | |
 | `referenceSource` | `library` \| `custom` | `custom` = typed entry; `focusAreaTitle` / `questionText` hold the text, **no codes** |
 | `photos[]` | `{ path, caption?, markupPath?, capturedAt }` | max 6; `referenceImagePath` mirrors `photos[0]` |
-| `walkId` | G2 | the walk session |
+| `walkId` | walk session | the walk session |
 
 Legacy findings (defect category + one photo) are untouched; the app's
 `allPhotos` accessor folds the single reference image into the same list.
@@ -130,7 +130,7 @@ POST   /loc-tags                       + questionCode | customFocusArea? + custo
 PATCH  /loc-tags/:id                   + questionCode, findingCategory, riskRating, photos:[{path, caption}] (caption edits)
 POST   /loc-tags/:id/photos            { photosBase64:[…] }         append
 DELETE /loc-tags/:id/photos/:file                                   remove one (admin-gated like all deletes)
-PUT    /loc-tags/:id/photos/:file/markup { base64 }                 G5: attach the marked-up copy
+PUT    /loc-tags/:id/photos/:file/markup { base64 }                 attach the marked-up copy
 ```
 An unknown `questionCode` is rejected (400) before any image is written.
 Code: `sib/src/gemba/finding-core.ts`, `routes/loc-tags.ts`; iOS
@@ -139,7 +139,7 @@ Code: `sib/src/gemba/finding-core.ts`, `routes/loc-tags.ts`; iOS
 
 ---
 
-## G4 · Capture flow (iOS)
+## Capture flow (iOS)
 
 **Author (log a finding).** Tap a surface → *Log Finding* sheet:
 
@@ -179,14 +179,14 @@ refreshed at walk start and when the sheet opens, 60 s debounce).
 
 ---
 
-## G2 + G8 · Walk sessions, summary, Excel
+## Walk sessions, summary, Excel
 
 **On the phone.** Opening a Gemba Walk shows *Start Gemba Walk*: auditor (from
 the kiosk identity, not editable), Project ID, and Organization / BU / Area /
 Location pickers fed by the library's pick lists (**Other…** reveals a text
 field; last values are remembered per device). **Every** open walk on the
 space is listed first — the auditor's own as *Continue*, a colleague's as
-*Join* (G7) — so a resumed session is never invisible because a different
+*Join* (see Walk together) — so a resumed session is never invisible because a different
 person opened it. *Begin* always creates a walk: every header field is
 optional, so there is no "tag without a header" path any more. The only way to
 log without a walk is the offline fallback shown after a failed *Begin*; those
@@ -241,7 +241,7 @@ Data: `gemba-walks.json`, `gemba-lists.json`. Code: `sib/src/gemba/walk-core.ts`
 
 ---
 
-## G5 · Photo markup
+## Photo markup
 
 While logging a finding, tap a photo thumbnail (or the orange pencil on a photo
 in the author's peek sheet) to open **Mark up photo**: a PencilKit canvas over
@@ -256,7 +256,7 @@ present. Anchored 3D strokes in AR remain a later phase.
 
 ---
 
-## G7 · Walk together
+## Walk together
 
 Several auditors can walk one space at once. The presence system from AR OMS
 (`PresenceService` + `PresenceLayer`) runs on the walk with surface
@@ -275,7 +275,7 @@ finding"), re-renders changed ones, and removes deleted ones. Server:
 
 ---
 
-## G6 · Phone-down navigation
+## Phone-down navigation
 
 Operators walk with the phone at their side. A **Live Activity** shows the walk
 in the Dynamic Island and on the Lock Screen: pin, next finding title, distance
@@ -293,7 +293,7 @@ Code: `Shared/GembaWalkActivity.swift` (attributes, both targets),
 
 ---
 
-## R1–R5 · Resume with a checkpoint (background, kill, drift)
+## Resume with a checkpoint (background, kill, drift)
 
 **The constraint.** iOS suspends the camera and ARKit whenever the app leaves
 the foreground; nothing can track in the background. On return ARKit used to
@@ -302,12 +302,12 @@ unacceptable for an auditor in a cleanroom.
 
 **What happens now**
 
-* **Background (R1)** — the Live Activity flips to *Open SpatialTagging to
+* **Background** — the Live Activity flips to *Open SpatialTagging to
   continue · next #4 · last 3.2 m*, greyed. No fake live distance.
-* **Kill / restart (R3)** — completed findings, the current stop and the walk
+* **Kill / restart** — completed findings, the current stop and the walk
   id are stored per space on the device (`WalkProgressStore`, 12 h). Re-opening
   the walk shows *Continuing at #4 · 3 of 7 done* and starts navigation there.
-* **Return to foreground (R2)** — `ARSessionManager` now answers
+* **Return to foreground** — `ARSessionManager` now answers
   `sessionShouldAttemptRelocalization` with `true`, so ARKit keeps the previous
   map and tries to relocalize into it. Every interruption end bumps
   `resumeCount`; the walk view shows the **Welcome back** checkpoint: blurred AR,
@@ -318,11 +318,11 @@ unacceptable for an auditor in a cleanroom.
   15 s, or *No* → the full world-map re-localization (reference photo + I'm
   Here) and navigation continues at the same stop. Nothing is trusted (no
   auto-arrival, no drift check) while the checkpoint is up.
-* **Authors (R5)** — the same checkpoint; taps are ignored until confirmed, so
+* **Authors** — the same checkpoint; taps are ignored until confirmed, so
   no finding is placed into a drifted frame. *No, re-align* uses the space's
   uploaded map when there is one; on a fresh walk without a map the checkpoint
   keeps waiting with the landmark photo (the previous session is the only frame).
-* **Drift check on arrival (R4)** — the first time an operator reaches a finding,
+* **Drift check on arrival** — the first time an operator reaches a finding,
   the live view is scored against the finding's photo(s):
   `POST /loc-tags/:id/compare { imageBase64 }` → `{ score, status }` (the step-
   validation comparator, threshold 0.40 because the operator stands roughly

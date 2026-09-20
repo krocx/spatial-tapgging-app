@@ -1,6 +1,6 @@
 # Connected Worker — platform capabilities added in 2026.4.45 → 2026.4.46
 
-The reference for everything the platform gained after the `.tag` emitter (M1).
+The reference for everything the platform gained after the `.tag` emitter.
 Each section is the "deep dive" behind a Feature Catalogue card; the changelog
 carries the per-slice detail and the fix history. Version stamps are the
 platform version the capability shipped in.
@@ -56,7 +56,7 @@ Resume snapshots are stamped with the shift's work context; picking one up on
 the same Production # works silently. A snapshot from a different Production #
 gets an explicit prompt — **Switch & Resume** (moves the shift to that #) or
 **Start fresh on the current #** — so work is never logged against the wrong
-system. Unstamped (pre-K3) snapshots resume as before. Pilot hardening in the
+system. Snapshots saved before Production # stamping resume as before. Pilot hardening in the
 same release: fail-branch action, offline sign-off queue, name prefill from the
 kiosk identity, incomplete-submit warning and redirect toast.
 
@@ -168,7 +168,7 @@ author pins land where they were.
 
 *2026.4.46 · iOS + server.* A chamber can be found by its **shape**.
 
-- **Scan & store (B1).** `ARObjectScanningConfiguration` on the iPad: tap the
+- **Scan & store.** `ARObjectScanningConfiguration` on the iPad: tap the
   floor, size the box, walk around while the point count grows, *Save
   object*. The `.arobject` (sparse point cloud — no mesh, no photo) is stored
   with `POST/GET/DELETE /anchors/:id/object` (30 MB cap) and
@@ -176,19 +176,19 @@ author pins land where they were.
   sides; **Improve scan on this device** merges a second iPhone's scan
   (`?merge=1`) in the original frame; provenance (`scannedOn`, `mergedFrom`,
   `sides`) shows in Anchor Hub and the portal.
-- **Object as origin (B2).** `Anchor.originSource` = `worldMap` | `object`.
+- **Object as origin.** `Anchor.originSource` = `worldMap` | `object`.
   Tags stay QR-relative and pins map-relative — the object supplies the frame
   through stored calibrations: `objectPoseInQR` (object meta,
   `PATCH /anchors/:id/object/meta`) and `objectPoseInMap` (guide map meta,
   `PATCH /worldmap/guide/:id/meta`). The QR gate derives the frame with
   priority **object › sealed map › live QR**; Place Steps and guide sessions
   re-base the world onto the map frame the moment the object is recognised.
-- **Movable equipment (B2e).** A watchdog re-detects the object and, on a
+- **Movable equipment.** A watchdog re-detects the object and, on a
   real move (delta + hysteresis), re-aligns with a "Chamber moved —
   re-aligned · Undo" toast; a tracking pill offers manual re-align through a
   timed finder; object-only sessions can start without a QR. The same overlay
   runs in Spatial Inspection Author / Operator and iLOTO.
-- **Shape model ghost (B3).** Pick a USDZ from the chamber's kit, fit it once
+- **Shape model ghost.** Pick a USDZ from the chamber's kit, fit it once
   on the chamber (`shapeModelPose` / `shapeModelScale` in the object's
   frame); every recognition and re-alignment flashes it as an indigo ghost for
   ~6 s so a glance confirms the frame.
@@ -286,11 +286,11 @@ is vendored with a 2D fallback; the full write-up lives at `/platform/long`.
 
 ## Gemba Walk additions (2026.4.46)
 
-Covered in depth in [GEMBA-WALK.md](GEMBA-WALK.md): Audit Reference Library
-(G1), reference-list findings with category and risk (G3), pick-don't-type
-capture with six captioned photos and floating finding panels (G4), PencilKit
-photo markup with persisted strokes (G5), walk sessions with header, summary
-and a three-sheet Excel that embeds every photo (G2 + G8), walking together
-(G7), phone-down navigation with a Live Activity (G6), resume with a
-checkpoint after background or kill (R1–R5), custom free-text entries logged
+Covered in depth in [GEMBA-WALK.md](GEMBA-WALK.md): Audit Reference Library,
+reference-list findings with category and risk, pick-don't-type
+capture with six captioned photos and floating finding panels, PencilKit
+photo markup with persisted strokes, walk sessions with header, summary
+and a three-sheet Excel that embeds every photo, walking together
+(presence on a walk), phone-down navigation with a Live Activity, resume with a
+checkpoint after background or kill, custom free-text entries logged
 truthfully as `custom`, and no walk without a session header.

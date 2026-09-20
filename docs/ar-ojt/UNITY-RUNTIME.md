@@ -7,7 +7,7 @@ contract is kept engine-neutral while the iOS runtime evolves.
 Proprietary & Confidential · Applied Materials. The guide JSON and the
 assembly GLB are SIB output; this document describes their consumption only.
 
-## 0. Start here: the Guide Bundle (B1, 2026-09-20)
+## 0. Start here: the Guide Bundle (2026-09-20)
 
 `GET /guides/:id/bundle` returns everything below in **one** JSON document
 (`schema: "sib.guide-bundle/1"`): the guide, its ordered steps, a model
@@ -21,7 +21,7 @@ builds a bundle and checks it against the schema, so the server cannot drift
 from the contract. A new client integrates against the bundle; the sections
 below explain what each part means.
 
-## 0a. The contract has a second implementation: `/xr` (B3, 2026-09-21)
+## 0a. The contract has a second implementation: `/xr` (2026-09-21)
 
 `sib/portal/xr.html` + `sib/portal/xr-engine.js` is a WebXR client of the
 bundle written on the vendored Three.js and the browser's WebXR API — no
@@ -220,5 +220,5 @@ class AssemblyPose { float[] position, rotation; float? scale; string source; }
 - Sessions, evidence, usage log, presence and coach hints are the same REST /
   SSE endpoints the iOS app uses (`docs/catalog/`); none of them assume the
   client platform.
-- The `.tag` envelope (M1) remains the signed hand-off for equipment identity;
+- The `.tag` envelope remains the signed hand-off for equipment identity;
   a Unity client reads it the same way the iOS reader does.

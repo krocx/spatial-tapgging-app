@@ -7,6 +7,16 @@ it, it gets a line.
 ## 2026.4.46 — 2026-09-08
 
 ### Fixed
+- **Catalogue reads for everyone.** Internal build-phase codes (C1/C2/C3,
+  B1–B3, G1–G8, R1–R5, M1/M2…) are gone from every catalogue card and the
+  specs it serves (Contextual Intelligence, Connected Worker, Gemba Walk,
+  .tag format, Unity runtime) — sections are named by what they do.
+- **Catalogue flow + architecture diagrams are readable.** Each diagram now
+  wears its product's colour (node fill, borders, arrows, and a colour bar
+  on the box — the same colour as the product chip and the map), uses the
+  catalogue palette and font, renders at natural size with a larger type
+  (scroll sideways in the panel when wider), and the enlarge view opens at
+  reading size (≥ 1.4× natural, ≥ 760 px). The side panel is wider (520 px).
 - **XR kit: no animations, no part selection.** Three's GLTFLoader strips
   `:` from node names, so every `cmp:` part went unmatched. The page now
   restores the original glTF names from the loader's node associations

@@ -1,8 +1,8 @@
 # Contextual intelligence — the device is a sensor, SIB is the judge
 
-Status: C1 shipped 2026-09-20 (observations + baselines); C2 shipped
-2026-09-21 (signals → hints); C3 shipped 2026-09-21 (effectiveness loop +
-portal Intelligence page).
+Status: shipped in three parts — observations + baselines (2026-09-20),
+signals → hints (2026-09-21), effectiveness loop + portal Intelligence page
+(2026-09-21).
 
 Proprietary & Confidential · Applied Materials.
 
@@ -17,7 +17,7 @@ knowledge that phrases the hint is the same Ask-SIB knowledge the team already
 uses. All of it lives in SIB, so any client — iPad, Unity, WebXR, glasses —
 gets the same intelligence by sending the same observations.
 
-## C1 — Observations (shipped)
+## Part 1 — Observations (shipped)
 
 ### Contract
 
@@ -72,7 +72,7 @@ Nothing is hard-coded: every number is a percentile of what real operators
 did. With one session the baseline is that session; it sharpens as more
 arrive. Cached for a minute.
 
-## C2 — Signals → hints (shipped)
+## Part 2 — Signals → hints (shipped)
 
 After every observation batch, SIB compares the *current visit* with the
 step's baseline and queues a hint for each new deviation — once per visit,
@@ -100,7 +100,7 @@ over-long falls back to the template. The client shows the reason per
 signal ("Taking longer than usual here", "That's not the part for this
 step") and opens the card for wrong-part / validate-retry, leaving
 dwell-type hints as a quiet chip. Each fired hint is recorded on the visit
-(`OmsUsageStepEntry.hints`) so C3 can score it by what happened next.
+(`OmsUsageStepEntry.hints`) so Part 3 can score it by what happened next.
 
 ### Operator controls (UX, shipped 2026-09-21)
 
@@ -114,16 +114,16 @@ dwell-type hints as a quiet chip. Each fired hint is recorded on the visit
   Human coach hints are never muted. Muted automatic hints are dropped on
   the device and reported as `hint:muted { hintId, scope }`; delivered ones
   as `hint:shown` — both land on the visit's hint record (`delivery`,
-  `muteScope`) so C3 scores shown, muted and ignored separately. Observations
+  `muteScope`) so Part 3 scores shown, muted and ignored separately. Observations
   keep streaming while muted.
 - **Names.** Imported step nodes carry `label` (source object name → BOM
   description → part number) so hints, chips and the portal never show a raw
   node id.
 
-## C3 — Effectiveness loop + portal (shipped)
+## Part 3 — Effectiveness loop + portal (shipped)
 
-`sib/src/oms/intelligence.ts`. Every hint C2 fired is scored by what happened
-**after** it, from the raw samples C1 already keeps
+`sib/src/oms/intelligence.ts`. Every automatic hint is scored by what happened
+**after** it, from the raw samples Part 1 already keeps
 (`observations/<session>.jsonl`, `t` relative to step entry) and the visit
 outcome. The hint time inside the visit is `hint.ts − visit.enteredAt`.
 
@@ -141,7 +141,7 @@ recover.
 
 ### Retirement — the loop closes
 
-`evaluateSignals` (C2) asks `retiredSignals(guideId, stepId)` before firing
+`evaluateSignals` (Part 2) asks `retiredSignals(guideId, stepId)` before firing
 and `preferredVia(...)` before phrasing:
 
 - shown ≥ 5 and effectiveness < 0.3 → the signal is **retired** on that step;
