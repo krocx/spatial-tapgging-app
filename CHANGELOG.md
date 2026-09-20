@@ -212,6 +212,16 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **.tag v1.1 — the frame, spelled out (B2).** Envelopes now carry
+  `frame` (`kind: "qr"`, `markerId`, `markerSizeM`, sealed `anchorPose`,
+  `originSource`) and assembly members repeat `spatial` + `type`, so a reader
+  on any engine places every part from one envelope without ARKit. Additive:
+  `tag/1.0` still validates; iOS accepts every `tag/1.x`. JSON Schema at
+  `docs/schema/tag-envelope.schema.json` (`GET /catalog/schema/tag-envelope`);
+  `npm run tag:verify -- envelope.json [--pubkey] [--sib url --key k]`
+  verifies structure, determinism, canonical hash and Ed25519 signature
+  offline and re-hashes members against a live server — the reference a
+  C# / Kotlin / Rust reader is checked against.
 - **Contextual hints — spotlight + operator controls.** The step's parts
   now glow (cyan pulse) with a leader line from the pin; "Show me" on a hint
   or tapping the part chip flashes the right parts while the rest ghosts for

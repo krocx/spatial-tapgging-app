@@ -1,5 +1,5 @@
 //
-//  TagEnvelope.swift — .tag envelope reader (spec: docs/TAG-FORMAT.md, tag/1.0)
+//  TagEnvelope.swift — .tag envelope reader (spec: docs/TAG-FORMAT.md, tag/1.x)
 //
 //  PROPRIETARY & CONFIDENTIAL — Applied Materials. Patent pending.
 //
@@ -87,7 +87,8 @@ enum TagEnvelopeReader {
         else { throw TagEnvelopeError.malformed("missing payload or signature block") }
 
         guard alg == "Ed25519" else { throw TagEnvelopeError.malformed("unknown signature alg \(alg)") }
-        guard let format = payloadObj["format"] as? String, format == "tag/1.0"
+        // Minor versions are additive (spec §8): accept every tag/1.x.
+        guard let format = payloadObj["format"] as? String, format.hasPrefix("tag/1.")
         else { throw TagEnvelopeError.unsupportedFormat((payloadObj["format"] as? String) ?? "?") }
 
         if let pinned = pinnedIssuerKey, pinned != pubB64 { throw TagEnvelopeError.issuerMismatch }

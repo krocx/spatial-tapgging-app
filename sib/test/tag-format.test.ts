@@ -171,3 +171,47 @@ test('emitter: assembly never embeds the anchor encryption key', () => {
   const asm = buildAssemblyEnvelope('anc-1')!;
   assert.ok(!JSON.stringify(asm).includes('encryptionKey') || !JSON.stringify(asm).match(/"encryptionKey":"[^"]/));
 });
+
+// ── v1.1 (B2, 2026-09-21): frame block, member spatial, CLI parity ──────────
+
+test('v1.1: envelopes carry the anchor frame and members carry spatial', async () => {
+  const { anchorStore: aStore } = await import('../src/routes/anchors.js');
+  aStore.update('anc-1', { qrSizeCm: 12, originSource: 'qr' } as never);
+  const asm = buildAssemblyEnvelope('anc-1')!;
+  assert.equal(asm.payload.format, 'tag/1.1');
+  assert.deepEqual(asm.payload.frame, { kind: 'qr', markerId: 'anc-1', markerSizeM: '0.120000', originSource: 'qr' });
+  const m = asm.payload.members!.find(x => x.tagId === 'tag-1')!;
+  assert.deepEqual(m.spatial, { x: '0.100000', y: '0.200000', z: '0.300000' });
+  assert.equal(asm.payload.members!.find(x => x.tagId === 'tag-2')!.spatial, undefined);
+  const part = buildPartEnvelope('tag-1')!;
+  assert.equal(part.payload.frame?.markerId, 'anc-1');
+  assert.deepEqual(validateTagEnvelope(asm), []);
+  assert.deepEqual(validateTagEnvelope(part), []);
+});
+
+test('v1.1: a tag/1.0 envelope still validates; a bad frame is rejected', () => {
+  const old = signed({ ...basePayload(), format: 'tag/1.0' as never });
+  assert.deepEqual(validateTagEnvelope(old), []);
+  const bad = signed({ ...basePayload(), frame: { kind: 'qr', markerId: 'a1', anchorPose: ['1.000000'] } });
+  assert.ok(validateTagEnvelope(bad).some(e => e.includes('anchorPose')));
+});
+
+test('v1.1: the tag-verify CLI agrees with validateTagEnvelope', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const fsMod = await import('node:fs');
+  const pathMod = await import('node:path');
+  const osMod = await import('node:os');
+  const { fileURLToPath } = await import('node:url');
+  const here = pathMod.dirname(fileURLToPath(import.meta.url));
+  const cli = [pathMod.join(here, '../../scripts/tag-verify.mjs'), pathMod.join(here, '../../../scripts/tag-verify.mjs')].find(p => fsMod.existsSync(p))!;
+  const dir = fsMod.mkdtempSync(pathMod.join(osMod.tmpdir(), 'tagv-'));
+  const good = pathMod.join(dir, 'good.json'); fsMod.writeFileSync(good, JSON.stringify(buildAssemblyEnvelope('anc-1')));
+  const out = execFileSync(process.execPath, [cli, good], { encoding: 'utf8' });
+  assert.match(out, /OK — conformant/);
+  assert.match(out, /frame\s+qr anc-1 · 0\.120000 m/);
+  const env = buildAssemblyEnvelope('anc-1')!; env.payload.subject.label = 'tampered';
+  const badFile = pathMod.join(dir, 'bad.json'); fsMod.writeFileSync(badFile, JSON.stringify(env));
+  let failed = false;
+  try { execFileSync(process.execPath, [cli, badFile], { encoding: 'utf8' }); } catch (e) { failed = true; assert.match(String((e as { stdout: string }).stdout), /signature does not verify/); }
+  assert.ok(failed, 'tampered envelope must fail');
+});

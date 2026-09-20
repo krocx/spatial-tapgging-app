@@ -46,13 +46,15 @@ Mirroring CAD part / part-assembly files:
 ```jsonc
 {
   "payload": {
-    "format": "tag/1.0",
+    "format": "tag/1.1",
     "kind": "part" | "assembly",
     "subject":  { "id", "label", "anchorId?", "assetId?", "type?" },
     "issuer":   { "platform": "SIB", "version": "<platform version>" },
     "spatial?": { "x": "0.100000", "y": "0.200000", "z": "0.300000" },
+    "frame?":   { "kind": "qr", "markerId", "markerSizeM?": "0.120000",     // v1.1
+                  "anchorPose?": [ 16 fixed strings ], "originSource?" },
     "streams":  [ { "name", "ref", "sha256", "contentVersion?" } ],
-    "members?": [ { "tagId", "label", "ref", "sha256" } ],   // assembly only
+    "members?": [ { "tagId", "label", "ref", "sha256", "spatial?", "type?" } ],   // assembly only
     "subscribe": { "hints": [ "<url>" ] },                    // v1: hints only
     "contentVersion": "<max updatedAt of committed content>"
   },
@@ -157,6 +159,41 @@ for binary artifacts that bypass the JSON stores. Push carries **hashes and
 names only** — never content — so the subscribe channel grants nothing the
 API key doesn't already grant. Reference listener: `TagSubscription` in
 `TagEnvelope.swift`.
+
+## 8a. tag/1.1 — the frame, spelled out (B2, 2026-09-21)
+
+v1.1 is additive. Its purpose is that a reader on **any** engine — Unity,
+Android, WebXR, native — can place everything an envelope describes without
+ARKit and without fetching each member:
+
+- `payload.frame` names the anchor frame every `spatial` value is expressed
+  in: `kind: "qr"`, the marker's payload (`markerId`), its printed edge length
+  in metres (`markerSizeM`) and, when an author sealed a world map, the
+  marker's pose in that map (`anchorPose`, column-major 4×4 as 16 fixed
+  strings). Convention: metres, Y-up, right-handed, origin at the marker
+  centre, +Z out of the print. Absent on anchors that have no printed marker
+  (Gemba areas).
+- `members[].spatial` and `members[].type` repeat each part's position and
+  type inside the assembly manifest, so one envelope places all parts.
+- `format` is `tag/1.1`; readers accept `tag/1.0` unchanged. The JSON Schema
+  is `docs/schema/tag-envelope.schema.json` (served at
+  `GET /catalog/schema/tag-envelope`).
+
+Verifying outside SIB: `npm run tag:verify -- envelope.json [--pubkey <b64>]
+[--sib <url> --key <api key>]` (`scripts/tag-verify.mjs`, Node crypto only)
+checks structure, determinism, the canonical hash and the Ed25519 signature,
+and with `--sib` re-hashes every member against the live server. It is the
+reference a C# / Kotlin / Rust reader is checked against: same canonical
+bytes, same hash, same signature — or it is not conformant.
+
+Reader notes per platform (standard libraries only):
+
+| Platform | Ed25519 verify | Canonical JSON |
+|---|---|---|
+| Unity / .NET | `NSec` or BouncyCastle `Ed25519Signer`; libsodium via `Sodium.Core` | sort keys recursively, `JsonSerializer` with no indentation, `\uXXXX` escapes for control chars only |
+| Android / Kotlin | `java.security.Signature.getInstance("Ed25519")` (API 33+) or BouncyCastle | `JSONObject` with sorted keys or a manual writer |
+| Web / WebXR | `crypto.subtle.verify({ name: "Ed25519" }, …)` | the JS in `scripts/tag-verify.mjs` verbatim |
+| iOS (ours) | CryptoKit `Curve25519.Signing` | `TagEnvelope.swift` |
 
 ## 8. Versioning
 

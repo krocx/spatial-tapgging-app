@@ -22,9 +22,10 @@ import { PLATFORM_VERSION } from '../version.js';
 import {
   TAG_FORMAT_VERSION, TagEnvelope, TagPayload, TagStreamRef, TagMemberRef,
   canonicalize, sha256Hex, payloadHash, signPayload, rawPublicKey,
+  type TagFrame,
 } from './tag-core.js';
 import { tagStore } from '../routes/tags.js';
-import { anchorStore } from '../routes/anchors.js';
+import { anchorStore, readWorldMapMeta } from '../routes/anchors.js';
 import { tagGroupStore } from '../routes/tag-groups.js';
 import { sessionStore } from '../routes/sessions.js';
 import { model3DStore } from '../routes/models.js';
@@ -90,6 +91,22 @@ const maxVersion = (...stamps: (string | undefined)[]): string =>
 const fixed = (n: unknown): string | undefined =>
   typeof n === 'number' && Number.isFinite(n) ? n.toFixed(6) : undefined;
 
+/** v1.1: the anchor frame block for `anchorId` (undefined for non-QR anchors). */
+function frameFor(anchorId: string): TagFrame | undefined {
+  const anchor = anchorStore.findById(anchorId);
+  if (!anchor) return undefined;
+  if (anchor.anchorType && anchor.anchorType !== 'QR' && anchor.anchorType !== 'LOTO') return undefined;
+  const meta = readWorldMapMeta(anchor.id);
+  const pose = Array.isArray(meta.anchorPose) && meta.anchorPose.length === 16 ? meta.anchorPose.map(v => Number(v).toFixed(6)) : undefined;
+  return {
+    kind: 'qr',
+    markerId: anchor.id,
+    ...(typeof anchor.qrSizeCm === 'number' && { markerSizeM: (anchor.qrSizeCm / 100).toFixed(6) }),
+    ...(pose && { anchorPose: pose }),
+    ...(anchor.originSource && { originSource: String(anchor.originSource) }),
+  };
+}
+
 // ── Part envelope ────────────────────────────────────────────────────────────
 
 export function buildPartEnvelope(tagId: string): TagEnvelope | null {
@@ -134,6 +151,7 @@ export function buildPartEnvelope(tagId: string): TagEnvelope | null {
     subject: { id: tag.id, label: tag.label, anchorId: tag.anchorId, type: tag.type },
     issuer: { platform: 'SIB', version: PLATFORM_VERSION },
     ...(x && y && z ? { spatial: { x, y, z } } : {}),
+    ...(frameFor(tag.anchorId) && { frame: frameFor(tag.anchorId) }),
     streams,
     subscribe: { hints: [`/perception/pass-state/${tag.id}`] },
     contentVersion: maxVersion(tag.updatedAt, ...streams.map(s => s.contentVersion)),
@@ -211,6 +229,8 @@ export function buildAssemblyEnvelope(anchorId: string): TagEnvelope | null {
       label: part.label,
       ref: `/tags/${part.id}/emit`,
       sha256: payloadHash(env.payload),
+      ...(env.payload.spatial && { spatial: env.payload.spatial }),
+      ...(part.type && { type: part.type }),
     });
   }
 
@@ -219,6 +239,7 @@ export function buildAssemblyEnvelope(anchorId: string): TagEnvelope | null {
     kind: 'assembly',
     subject: { id: anchor.id, label: String(anchor.metadata?.name ?? anchor.assetId), assetId: anchor.assetId },
     issuer: { platform: 'SIB', version: PLATFORM_VERSION },
+    ...(frameFor(anchor.id) && { frame: frameFor(anchor.id) }),
     streams,
     members,
     // M2: the first hint is now a REAL SSE feed — connect for live deltas.

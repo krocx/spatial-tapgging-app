@@ -16,7 +16,29 @@
 
 import crypto from 'crypto';
 
-export const TAG_FORMAT_VERSION = 'tag/1.0';
+export const TAG_FORMAT_VERSION = 'tag/1.1';
+/** Formats this implementation reads. Minor versions are additive (spec §8). */
+export const TAG_FORMAT_ACCEPTED = ['tag/1.0', 'tag/1.1'] as const;
+
+/**
+ * v1.1 — the anchor FRAME, spelled out so a reader on any engine can place
+ * the envelope's content without ARKit: which printed marker to find, how
+ * big it is, and (when the author sealed a world map) the marker's pose in
+ * that map. Every `spatial` in the envelope is expressed in this frame:
+ * metres, Y-up, right-handed, origin at the marker centre, +Z out of the
+ * print. Fixed-precision strings by the determinism rule.
+ */
+export interface TagFrame {
+  kind: 'qr';
+  /** The payload the printed marker carries (anchor id). */
+  markerId: string;
+  /** Printed edge length, metres ("0.100000"). */
+  markerSizeM?: string;
+  /** Column-major 4×4 (16 fixed strings): marker pose inside the sealed world map. */
+  anchorPose?: string[];
+  /** How the anchor's origin was established: 'qr' | 'object' | 'worldmap'. */
+  originSource?: string;
+}
 
 export interface TagStreamRef {
   /** Stream name from the spec registry (checkpoint, training, worldmap, …). */
@@ -36,6 +58,10 @@ export interface TagMemberRef {
   ref: string;
   /** SHA-256 (hex) of the member's canonical payload — the Merkle link. */
   sha256: string;
+  /** v1.1: the member's position in the anchor frame, so an assembly
+   *  envelope alone places every part (no per-member fetch). */
+  spatial?: { x: string; y: string; z: string };
+  type?: string;
 }
 
 export interface TagPayload {
@@ -54,6 +80,8 @@ export interface TagPayload {
   issuer: { platform: 'SIB'; version: string };
   /** Fixed-precision string coordinates (determinism rule — no JSON numbers). */
   spatial?: { x: string; y: string; z: string };
+  /** v1.1: the frame `spatial` values are expressed in (assembly + part). */
+  frame?: TagFrame;
   streams: TagStreamRef[];
   /** assembly only — one entry per part beneath this chamber. */
   members?: TagMemberRef[];
@@ -141,7 +169,11 @@ export function validateTagEnvelope(env: TagEnvelope, expectedPublicKey?: string
   const errs: string[] = [];
   const p = env?.payload;
   if (!p) return ['missing payload'];
-  if (p.format !== TAG_FORMAT_VERSION) errs.push(`unknown format "${p.format}"`);
+  if (!(TAG_FORMAT_ACCEPTED as readonly string[]).includes(p.format)) errs.push(`unknown format "${p.format}"`);
+  if (p.frame) {
+    if (p.frame.kind !== 'qr' || !p.frame.markerId) errs.push('frame needs kind "qr" and markerId');
+    if (p.frame.anchorPose && (!Array.isArray(p.frame.anchorPose) || p.frame.anchorPose.length !== 16)) errs.push('frame.anchorPose must be 16 fixed-precision strings');
+  }
   if (p.kind !== 'part' && p.kind !== 'assembly') errs.push(`unknown kind "${p.kind}"`);
   if (!p.subject?.id || !p.subject?.label) errs.push('subject.id and subject.label are required');
   if (!p.issuer?.platform || !p.issuer?.version) errs.push('issuer.platform and issuer.version are required');

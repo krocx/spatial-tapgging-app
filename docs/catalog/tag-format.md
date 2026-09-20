@@ -3,12 +3,13 @@ id: tag-format
 name: .tag virtual emitter (v1)
 area: platform
 status: beta
-version: 2026.4.45
+version: 2026.4.46
 depends: [qr-anchoring, shared-schema]
 terms: [Anchor]
 spec: TAG-FORMAT.md
 sensitivity: restricted
 api: |
+  GET /catalog/schema/:name — JSON Schema, e.g. tag-envelope (any client · public)
   GET /tags/:id/emit — signed part-level .tag envelope (app · API key)
   GET /anchors/:id/emit — signed assembly-level (chamber) .tag envelope with member manifest (app · API key)
   GET /anchors/:id/subscribe — SSE change feed: state on connect, changed with per-stream/member delta names (app · API key)

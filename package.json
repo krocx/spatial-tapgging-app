@@ -15,6 +15,7 @@
     "build:roadmap": "npm run build --workspace=@spatial/roadmap-client",
     "test:sib": "npm run test --workspace=@spatial/sib",
     "catalog:check": "node scripts/catalog-check.mjs",
+    "tag:verify": "node scripts/tag-verify.mjs",
     "catalog:vendor": "node scripts/vendor-catalog-libs.mjs",
     "icons:doc": "node scripts/iconography.mjs",
     "build": "npm run build --workspaces --if-present",
