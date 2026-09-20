@@ -7,6 +7,11 @@ it, it gets a line.
 ## 2026.4.46 — 2026-09-08
 
 ### Fixed
+- **Assist card overlapped the part / look-from-here chips.** The chips step
+  aside while the hint card is open. Portal Usage Log step rows now show
+  **Attention** (on-target %, wrong-part taps, replays, aligned seconds,
+  validation attempts, stall) and **Hints** (which signals fired, with the
+  phrasing route in the tooltip).
 - **Place Assembly showed two copies of the model while aiming / re-aiming.**
   `load()` could run twice on the same view, leaving the first node behind at
   its old pose. Load is now guarded, any stale `assembly` root is removed

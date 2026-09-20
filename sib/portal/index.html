@@ -3476,14 +3476,36 @@ function renderUsageLog() {
           : u.signOffSessionId
             ? `<img class="ul-thumb" data-evidence-url="/guide-sessions/${encodeURIComponent(u.signOffSessionId)}/evidence/${encodeURIComponent(e.stepId)}" alt="">`
             : ''}</td>` +
+        `<td>${obsCell(e.observations)}</td>` +
+        `<td>${hintsCell(e.hints)}</td>` +
         `<td class="ul-dim mono">${esc(e.stepId.slice(0, 8))}</td></tr>`).join('');
       html += `<tr id="${id}" class="ul-detail"><td></td><td colspan="10">` +
-        `<table class="usage-steps"><thead><tr><th class="num">#</th><th>Entered</th><th class="num">Time</th><th>Outcome</th><th>Validation</th><th>Evidence</th><th>Step</th></tr></thead>` +
-        `<tbody>${stepRows || '<tr><td colspan="7" class="ul-dim">No step activity recorded</td></tr>'}</tbody></table></td></tr>`;
+        `<table class="usage-steps"><thead><tr><th class="num">#</th><th>Entered</th><th class="num">Time</th><th>Outcome</th><th>Validation</th><th>Evidence</th><th title="C1 observations: attention on target · wrong-part taps · replays · aligned seconds">Attention</th><th title="C2 hints fired on this visit">Hints</th><th>Step</th></tr></thead>` +
+        `<tbody>${stepRows || '<tr><td colspan="9" class="ul-dim">No step activity recorded</td></tr>'}</tbody></table></td></tr>`;
     }
   }
   html += '</tbody></table>';
   view.innerHTML = html;
+}
+
+// C1/C2: compact cells for the usage-log step rows. Numbers only — the
+// observation contract carries no images or free text.
+function obsCell(o) {
+  if (!o || !o.samples) return '<span class="ul-dim">—</span>';
+  const pct = Math.round((o.onTargetRatio || 0) * 100);
+  const col = pct >= 60 ? 'var(--green)' : pct >= 30 ? 'var(--amber, #d9a400)' : 'var(--red)';
+  const bits = [`<span style="color:${col}" title="share of ${o.samples} samples with the step target in view">${pct}% on target</span>`];
+  if (o.wrongPartTaps) bits.push(`<span style="color:var(--red)" title="taps on parts this step is not about">${o.wrongPartTaps} wrong-part</span>`);
+  if (o.replays)        bits.push(`<span class="ul-dim">${o.replays}× replay</span>`);
+  if (o.alignedSec !== undefined) bits.push(`<span class="ul-dim" title="seconds at the recommended viewpoint">${o.alignedSec}s aligned</span>`);
+  if (o.validateAttempts) bits.push(`<span class="ul-dim">${o.validateAttempts} validate</span>`);
+  if (o.stalls)         bits.push(`<span style="color:var(--amber, #d9a400)">stalled</span>`);
+  return `<span style="font-size:11px;white-space:nowrap">${bits.join(' · ')}</span>`;
+}
+function hintsCell(h) {
+  if (!Array.isArray(h) || !h.length) return '<span class="ul-dim">—</span>';
+  const LABEL = { dwell: 'taking longer', 'attention-off': 'looked away', 'wrong-part': 'wrong part', 'look-away': 'viewpoint', 'validate-retry': 'validation' };
+  return h.map(x => `<span class="badge" style="font-size:10px" title="${esc(x.via || '')} · ${esc(x.ts || '')}">✨ ${esc(LABEL[x.signal] || x.signal)}</span>`).join(' ');
 }
 
 // ── AR Guide Sessions ─────────────────────────────────────────────────────────

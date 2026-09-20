@@ -4097,7 +4097,9 @@ extension ARGuideSessionView {
 
     @ViewBuilder
     var assemblyChipView: some View {
-        if assemblyNode != nil, case .navigating = phase, coneValidateIndex == nil {
+        // The assist card (hints) sits in the same corner; while it is open the
+        // part / look-from-here chips step aside instead of stacking on it.
+        if assemblyNode != nil, case .navigating = phase, coneValidateIndex == nil, !(activeHint != nil && assistExpanded) {
             VStack(alignment: .trailing, spacing: 8) {
                 if let h = lookHint {
                     HStack(spacing: 6) {
@@ -4116,6 +4118,7 @@ extension ARGuideSessionView {
             .padding(.trailing, 14)
             .padding(.bottom, 170)
             .animation(.easeInOut(duration: 0.25), value: lookHint?.aligned)
+            .transition(.opacity)
         }
     }
 
