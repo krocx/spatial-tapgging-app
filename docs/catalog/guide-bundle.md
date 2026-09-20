@@ -19,7 +19,7 @@ arch: |
     S --> F["anchor frames: QR (marker size, anchorPose)<br/>sealed world map · guide world map · object scan"]
     S --> V["validation refs + verdict URLs"]
     S --> P["playback conventions<br/>m · Y-up · right-handed · axis-angle · xyzw · cumulative timeline"]
-    J["docs/schema/guide-bundle.schema.json"] -. checked by guide-bundle.test .-> S
+    J["docs/schema/guide-bundle.schema.json"] -->|conformance test| S
 ---
 One versioned JSON document (`schema: sib.guide-bundle/1`) that carries
 everything a client needs to run a guide, whatever renders it: the guide and

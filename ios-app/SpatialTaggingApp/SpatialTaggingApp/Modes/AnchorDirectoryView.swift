@@ -808,15 +808,20 @@ struct CreateAnchorSheet: View {
                             .buttonStyle(.plain)
                     }
                 }
-                .padding(.vertical, 6)
-                // The stroke is the ROW background itself (same rectangle the
-                // list draws for the cell), so outline and field coincide.
-                .listRowBackground(
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(Color(.secondarySystemGroupedBackground))
-                        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
-                            .strokeBorder(assetId.isEmpty ? Color.blue.opacity(0.8) : Color.green.opacity(0.7), lineWidth: 1.5))
-                )
+                .padding(.horizontal, 14).padding(.vertical, 12)
+                // The box is drawn entirely on the content, INSIDE the row, and
+                // the row itself draws nothing (clear background, zero insets,
+                // no separator). The list's own cell shape — which has a
+                // different corner radius and clipped the earlier stroke — is
+                // no longer part of the picture. The 20-pt outer padding
+                // matches the inset-grouped margin of the neighbouring rows.
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(assetId.isEmpty ? Color.blue.opacity(0.8) : Color.green.opacity(0.7), lineWidth: 1.5))
+                .padding(.horizontal, 20)
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
             } header: {
                 HStack(spacing: 6) {
                     Text("Location Name")

@@ -15,12 +15,12 @@ arch: |
   flowchart LR
     G["iOS kiosk gate<br/>employee ID → role"] --> L["POST /uam/login (kiosk path)"]
     L --> T{"role"}
-    T -->|Engineer+| A["authoring / operating"]
+    T -->|Engineer or above| A["authoring / operating"]
     T -->|Technician| A2["operating"]
     A & A2 --> H["Home: What are you working on?"]
-    H -->|AR OMS| C["Production # (operate) · configuration (author)<br/>→ chamber QR / chamber directory"]
+    H -->|AR OMS| C["Production number (operate) · configuration (author)<br/>→ chamber QR / chamber directory"]
     H -->|Gemba Audit| GA["Project ID at walk start"]
-    H -->|iLOTO| LO["Test bay # → iLOTO panels<br/>stamped on every event"]
+    H -->|iLOTO| LO["Test bay number → iLOTO panels<br/>stamped on every event"]
     C & GA & LO --> U["context on every usage / event record"]
 ---
 A shared iPad opens on a shift screen: the technician types only an employee
