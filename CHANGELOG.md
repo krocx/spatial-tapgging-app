@@ -7,6 +7,11 @@ it, it gets a line.
 ## 2026.4.46 — 2026-09-08
 
 ### Fixed
+- **Part highlight spoiled the model / "Show me" lit the tapped part.** The
+  highlight is now a rim glow (own Metal shader modifier): the part keeps its
+  colour and shading, a cyan light hugs its silhouette and breathes. Tapping
+  a part gives a white rim that fades in 1.2 s and no longer replaces the
+  step focus, so "Show me" always flashes the step's own parts.
 - **Assist card overlapped the part / look-from-here chips.** The chips step
   aside while the hint card is open. Portal Usage Log step rows now show
   **Attention** (on-target %, wrong-part taps, replays, aligned seconds,

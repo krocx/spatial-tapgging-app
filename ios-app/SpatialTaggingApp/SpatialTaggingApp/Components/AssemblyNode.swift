@@ -61,6 +61,36 @@ final class AssemblyNode {
                 let id = ObjectIdentifier(m)
                 baseColor[id] = (m.diffuse.contents as? UIColor) ?? .lightGray
                 baseAlpha[id] = m.transparency
+                // Rim-light highlight (own Metal snippet): the part keeps its
+                // colour and shading; a glow hugs its silhouette. Intensity 0
+                // = invisible, so it is installed once and only animated later.
+                m.shaderModifiers = [.fragment: AssemblyNode.rimShader]
+                m.setValue(NSValue(scnVector3: SCNVector3(0.2, 0.85, 1.0)), forKey: "rimColor")
+                m.setValue(NSNumber(value: 0), forKey: "rimIntensity")
+            }
+        }
+    }
+
+    static let rimShader = """
+    #pragma arguments
+    float3 rimColor;
+    float rimIntensity;
+    #pragma body
+    float3 n = normalize(_surface.normal);
+    float3 v = normalize(_surface.view);
+    float rim = pow(1.0 - saturate(dot(n, v)), 2.2);
+    _output.color.rgb += rimColor * (rim * rimIntensity + 0.12 * rimIntensity);
+    """
+
+    private func setRim(_ node: SCNNode, color: UIColor? = nil, intensity: Float) {
+        node.enumerateHierarchy { c, _ in
+            for m in c.geometry?.materials ?? [] {
+                if let color {
+                    var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+                    color.getRed(&r, green: &g, blue: &b, alpha: &a)
+                    m.setValue(NSValue(scnVector3: SCNVector3(Float(r), Float(g), Float(b))), forKey: "rimColor")
+                }
+                m.setValue(NSNumber(value: intensity), forKey: "rimIntensity")
             }
         }
     }
@@ -225,9 +255,12 @@ final class AssemblyNode {
         let glow = UIColor(red: 0.20, green: 0.85, blue: 1.0, alpha: 1)
         for n in names {
             guard let node = parts[n] else { continue }
-            let on  = SCNAction.customAction(duration: 0.001) { nd, _ in nd.enumerateHierarchy { c, _ in for m in c.geometry?.materials ?? [] { m.emission.contents = glow } } }
-            let dim = SCNAction.customAction(duration: 0.001) { nd, _ in nd.enumerateHierarchy { c, _ in for m in c.geometry?.materials ?? [] { m.emission.contents = glow.withAlphaComponent(0.25) } } }
-            node.runAction(.repeatForever(.sequence([on, .wait(duration: 0.55), dim, .wait(duration: 0.55)])), forKey: "focus-pulse")
+            // Breathing rim: 0.35 → 1.0 → 0.35 over 1.6 s. Colour and shading stay.
+            let pulse = SCNAction.customAction(duration: 1.6) { [weak self] nd, t in
+                let phase = Float(t / 1.6) * 2 * Float.pi
+                self?.setRim(nd, color: glow, intensity: 0.675 + 0.325 * sin(phase - .pi / 2))
+            }
+            node.runAction(.repeatForever(pulse), forKey: "focus-pulse")
         }
         if let from = leaderFrom, let to = worldCentre(of: names), simd_length(to - from) > 0.03 {
             leaderNode = makeLeader(from: from, to: to, color: glow)
@@ -245,7 +278,16 @@ final class AssemblyNode {
             st.show = .ghost; st.opacity = 0.18; setVisual(node, state: st)
         }
         SCNTransaction.commit()
-        for n in names { parts[n]?.runAction(.sequence([.scale(to: 1.12, duration: 0.15), .scale(to: 1.0, duration: 0.15), .scale(to: 1.12, duration: 0.15), .scale(to: 1.0, duration: 0.15), .scale(to: 1.12, duration: 0.15), .scale(to: 1.0, duration: 0.15)]), forKey: "spot-flash") }
+        for (name, node) in parts where !targets.contains(name) { node.removeAction(forKey: "select-pulse"); if !focused.contains(name) { setRim(node, intensity: 0) } }
+        for n in names {
+            guard let node = parts[n] else { continue }
+            node.removeAction(forKey: "select-pulse")
+            let flash = SCNAction.customAction(duration: 1.8) { [weak self] nd, t in
+                let k = Float(abs(sin(Float(t / 1.8) * 3 * .pi)))      // three peaks
+                self?.setRim(nd, color: .white, intensity: 0.6 + 1.6 * k)
+            }
+            node.runAction(flash, forKey: "spot-flash")
+        }
         DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { [weak self] in
             guard let self else { return }
             SCNTransaction.begin(); SCNTransaction.animationDuration = 0.35
@@ -263,6 +305,24 @@ final class AssemblyNode {
 
     private func restoreEmission(_ node: SCNNode) {
         node.enumerateHierarchy { c, _ in for m in c.geometry?.materials ?? [] { m.emission.contents = UIColor.black } }
+        setRim(node, intensity: 0)
+    }
+
+    /// Tap feedback: a white rim that fades over 1.2 s. It never changes the
+    /// step focus — the step's parts keep their cyan breathing.
+    func selectPulse(part name: String) {
+        guard let node = parts[name] else { return }
+        node.removeAction(forKey: "select-pulse")
+        let isFocused = focused.contains(name)
+        let fade = SCNAction.customAction(duration: 1.2) { [weak self] nd, t in
+            let k = Float(1 - t / 1.2)
+            self?.setRim(nd, color: .white, intensity: 1.4 * k)
+        }
+        let restore = SCNAction.customAction(duration: 0.001) { [weak self] nd, _ in
+            if isFocused { self?.setRim(nd, color: UIColor(red: 0.2, green: 0.85, blue: 1.0, alpha: 1), intensity: 0.6) }
+            else { self?.setRim(nd, intensity: 0) }
+        }
+        node.runAction(.sequence([fade, restore]), forKey: "select-pulse")
     }
 
     private func makeLeader(from a: simd_float3, to b: simd_float3, color: UIColor) -> SCNNode {

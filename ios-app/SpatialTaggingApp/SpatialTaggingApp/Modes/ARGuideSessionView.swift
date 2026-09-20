@@ -1611,7 +1611,7 @@ struct ARGuideSessionView: View {
                 if let name = asm.partName(hit: hit.node) {
                     let info = asm.partInfo(name)
                     partChip = (info.title, info.partNumber, true)
-                    asm.focus(parts: [name])
+                    asm.selectPulse(part: name)          // feedback only — the step focus stays
                     // C1: was that the part this step is about?
                     let focus = assemblyEngine.map { $0.focusParts(at: assemblyStepIndex) } ?? []
                     observeInteraction(focus.isEmpty || focus.contains(name) ? "tap-part" : "tap-wrong-part", node: name)
