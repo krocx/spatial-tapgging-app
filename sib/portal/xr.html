@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>SIB · XR assessment kit</title>
+  <!--
+    B3 (2026.4.46): the glasses assessment kit without Unity.
+    Own code on vendored Three.js (r169) + the browser's WebXR API; no
+    third-party tracking, no engine. Loads a Guide Bundle, anchors on the
+    printed QR where the browser offers image tracking (or by tap-place
+    otherwise), plays the same timeline the iOS app plays, and posts the same
+    live-session / observation / sign-off records — so a headset browser can
+    be measured against the iPad with SIB unchanged.
+    Proprietary & Confidential · Applied Materials.
+  -->
+  <script>
+    (function () {
+      var local = false;
+      try {
+        var probe = new XMLHttpRequest();
+        probe.open('HEAD', '/portal/vendor/three/three.module.js', false);
+        probe.send();
+        local = probe.status === 200;
+      } catch (e) { /* stay on CDN */ }
+      var map = local
+        ? { imports: { 'three': '/portal/vendor/three/three.module.js', 'three/addons/': '/portal/vendor/three/addons/' } }
+        : { imports: { 'three': 'https://unpkg.com/three@0.169.0/build/three.module.js', 'three/addons/': 'https://unpkg.com/three@0.169.0/examples/jsm/' } };
+      document.write('<script type="importmap">' + JSON.stringify(map) + '<\/script>');
+    })();
+  </script>
+  <style>
+    :root { --bg:#0a0a0f; --panel:rgba(14,16,24,.86); --border:rgba(255,255,255,.12); --text:#f1f3f8; --muted:#9aa3b5; --blue:#3b82f6; --cyan:#22d3ee; --green:#22c55e; --red:#ef4444; --amber:#f59e0b; }
+    * { box-sizing:border-box; }
+    html, body { margin:0; height:100%; background:var(--bg); color:var(--text); font:14px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow:hidden; }
+    #view { position:fixed; inset:0; }
+    #overlay { position:fixed; inset:0; pointer-events:none; display:flex; flex-direction:column; justify-content:space-between; padding:max(10px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom)); }
+    #overlay > * { pointer-events:auto; }
+    .bar { display:flex; align-items:center; gap:10px; background:var(--panel); border:1px solid var(--border); border-radius:12px; padding:8px 12px; backdrop-filter:blur(10px); }
+    .bar .title { font-weight:600; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .pill { font-size:12px; padding:2px 8px; border-radius:999px; border:1px solid var(--border); color:var(--muted); white-space:nowrap; }
+    .pill.ok { color:var(--green); border-color:rgba(34,197,94,.4); }
+    .pill.warn { color:var(--amber); border-color:rgba(245,158,11,.4); }
+    .card { background:var(--panel); border:1px solid var(--border); border-radius:14px; padding:12px 14px; backdrop-filter:blur(10px); max-width:560px; width:100%; margin:0 auto; }
+    .card h2 { margin:0 0 4px; font-size:16px; }
+    .card p { margin:0; color:var(--text); white-space:pre-wrap; max-height:5.6em; overflow:auto; }
+    .row { display:flex; gap:8px; align-items:center; margin-top:10px; flex-wrap:wrap; }
+    .row .grow { flex:1; }
+    button { font:inherit; color:var(--text); background:rgba(255,255,255,.08); border:1px solid var(--border); border-radius:10px; padding:9px 14px; cursor:pointer; }
+    button:disabled { opacity:.4; cursor:default; }
+    button.primary { background:var(--blue); border-color:var(--blue); }
+    button.pass { background:rgba(34,197,94,.2); border-color:var(--green); }
+    button.fail { background:rgba(239,68,68,.2); border-color:var(--red); }
+    button.ghost { background:transparent; }
+    input { font:inherit; color:var(--text); background:rgba(255,255,255,.06); border:1px solid var(--border); border-radius:10px; padding:9px 12px; width:100%; }
+    #toast { position:fixed; left:50%; top:64px; transform:translateX(-50%); background:var(--panel); border:1px solid var(--border); border-radius:10px; padding:8px 14px; font-size:13px; opacity:0; transition:opacity .25s; pointer-events:none; max-width:90vw; text-align:center; }
+    #toast.show { opacity:1; }
+    #reticleHint { text-align:center; color:var(--muted); font-size:13px; }
+    #gate { position:fixed; inset:0; background:var(--bg); display:flex; align-items:center; justify-content:center; padding:20px; }
+    #gate .card { max-width:460px; }
+    .brand { font-weight:700; letter-spacing:.04em; }
+    .brand small { color:var(--muted); font-weight:400; margin-left:8px; }
+    .muted { color:var(--muted); font-size:12px; }
+    .hint { border-left:3px solid var(--cyan); padding-left:10px; margin-top:8px; color:var(--text); font-size:13px; }
+    .hidden { display:none !important; }
+    .chips { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
+    .chip { font-size:12px; padding:3px 8px; border-radius:999px; background:rgba(34,211,238,.12); border:1px solid rgba(34,211,238,.35); color:var(--cyan); cursor:pointer; }
+  </style>
+</head>
+<body>
+  <canvas id="view"></canvas>
+
+  <div id="gate">
+    <div class="card">
+      <div class="brand">appliedx <small>Connected Worker AR OMS Platform · XR assessment kit</small></div>
+      <h2 style="margin-top:10px" id="gateTitle">Loading guide…</h2>
+      <p id="gateText" class="muted">Fetching the Guide Bundle.</p>
+      <div id="gateKey" class="row hidden">
+        <input id="keyInput" placeholder="SIB API key (this server is key-locked)" autocomplete="off">
+        <button class="primary" id="keySave">Use key</button>
+      </div>
+      <div class="row" style="margin-top:14px">
+        <input id="opName" placeholder="Your name (for the session record)" autocomplete="name">
+      </div>
+      <div class="row">
+        <button class="primary grow" id="startAR" disabled>Start in AR</button>
+        <button class="grow" id="startDesk" disabled>Desktop preview</button>
+      </div>
+      <div class="muted" id="capLine" style="margin-top:10px"></div>
+    </div>
+  </div>
+
+  <div id="overlay" class="hidden">
+    <div class="bar">
+      <span class="title" id="topTitle">Guide</span>
+      <span class="pill" id="stepPill">–</span>
+      <span class="pill" id="framePill">not placed</span>
+      <button class="ghost" id="btnExit" title="End session">✕</button>
+    </div>
+    <div>
+      <div id="reticleHint" class="hidden">Aim at the surface where the equipment stands, then tap to place. Tap again to move; Lock when it looks right.</div>
+      <div id="hintCard" class="card hidden" style="margin-bottom:8px">
+        <div class="hint" id="hintText"></div>
+        <div class="row"><button class="ghost" id="hintOk">Got it</button></div>
+      </div>
+      <div class="card" id="stepCard">
+        <h2 id="stepTitle">–</h2>
+        <p id="stepText"></p>
+        <div class="chips" id="partChips"></div>
+        <div class="row" id="placeRow">
+          <button class="primary grow" id="btnLock" disabled>Lock placement</button>
+        </div>
+        <div class="row hidden" id="verdictRow">
+          <span class="muted grow">Validation for this step:</span>
+          <button class="pass" id="btnPass">Pass</button>
+          <button class="fail" id="btnFail">Fail</button>
+        </div>
+        <div class="row hidden" id="navRow">
+          <button id="btnPrev">‹ Back</button>
+          <button id="btnReplay">↻ Replay</button>
+          <button id="btnShow" title="Pulse the parts this step is about">Show me</button>
+          <span class="grow"></span>
+          <button class="primary" id="btnNext">Next ›</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="signoff" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:20px">
+    <div class="card">
+      <h2>Sign off</h2>
+      <p class="muted" id="soSummary"></p>
+      <div class="row"><input id="soName" placeholder="Signed off by"></div>
+      <div class="row"><button class="ghost" id="soCancel">Back</button><span class="grow"></span><button class="primary" id="soSubmit">Sign &amp; submit</button></div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { DEFAULT_SPEED, GHOST_OPACITY, stateBefore, scheduleStep, scheduleLength, stepParts, originForSurface, attentionFor } from '/portal/xr-engine.js';
+
+// ── Config / auth ────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+const guideId = params.get('guide') || '';
+const apiKey = () => localStorage.getItem('sib_api_key') || '';
+const hdr = (extra = {}) => ({ ...(apiKey() ? { 'X-API-Key': apiKey() } : {}), ...extra });
+async function api(path, init = {}) {
+  const r = await fetch(path, { ...init, headers: hdr({ ...(init.body ? { 'Content-Type': 'application/json' } : {}), ...(init.headers || {}) }) });
+  if (r.status === 401) { $('gateKey').classList.remove('hidden'); throw new Error('unauthorised'); }
+  if (!r.ok) throw new Error(`${path} → ${r.status}`);
+  return r.headers.get('content-type')?.includes('json') ? r.json() : r;
+}
+function toast(msg, ms = 2200) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), ms); }
+
+// ── Three.js scene ───────────────────────────────────────────────────────────
+const canvas = $('view');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.xr.enabled = true;
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.01, 50);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x445566, 1.1));
+const key = new THREE.DirectionalLight(0xffffff, 0.9); key.position.set(1, 2, 1); scene.add(key);
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+
+const assembly = new THREE.Group(); assembly.name = 'assembly'; assembly.visible = false; scene.add(assembly);
+const reticle = new THREE.Mesh(new THREE.RingGeometry(0.06, 0.08, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x22d3ee, transparent: true, opacity: 0.9 }));
+reticle.matrixAutoUpdate = false; reticle.visible = false; scene.add(reticle);
+const viewMarker = new THREE.Group(); viewMarker.visible = false; assembly.add(viewMarker);
+{
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.04, 0.03), new THREE.MeshBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.7 }));
+  const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.02, 12).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x93c5fd }));
+  lens.position.z = -0.025; viewMarker.add(body, lens);
+}
+
+// ── Bundle + model ───────────────────────────────────────────────────────────
+let bundle, guide, steps = [], speed = DEFAULT_SPEED;
+const parts = new Map();      // node name → { obj, rest:{pos,quat}, meshes:[{mesh, mats:[]}], depth, center }
+let assemblyBounds = null;
+let modelBox = null;
+
+async function loadBundle() {
+  if (!guideId) { $('gateTitle').textContent = 'No guide given'; $('gateText').textContent = 'Open this page as /xr?guide=<guideId> (from the portal Guide Library).'; return; }
+  const res = await api(`/guides/${encodeURIComponent(guideId)}/bundle`);
+  bundle = res.data || res; guide = bundle.guide; steps = bundle.steps || [];
+  speed = bundle.playback?.animationSpeed ?? guide.assembly?.animationSpeed ?? DEFAULT_SPEED;
+  $('gateTitle').textContent = guide.name;
+  $('gateText').textContent = `${steps.length} step${steps.length === 1 ? '' : 's'} · ${bundle.anchor?.assetId || 'anchor'}${bundle.anchor?.frames?.qr?.markerSizeM ? ` · QR ${Math.round(bundle.anchor.frames.qr.markerSizeM * 100)} cm` : ''}`;
+  const model = (bundle.models || []).find(m => m.role === 'assembly' && m.glbUrl);
+  if (!model) { $('gateText').textContent += ' · no assembly model on this guide — steps play as text only.'; return; }
+  $('gateText').textContent += ' · loading model…';
+  const buf = await (await fetch(model.glbUrl, { headers: hdr() })).arrayBuffer();
+  const gltf = await new Promise((ok, err) => new GLTFLoader().parse(buf, '', ok, err));
+  const root = gltf.scene;
+  root.traverse(o => {
+    if (o.isMesh) {
+      if (!o.geometry.attributes.normal) o.geometry.computeVertexNormals();
+      const mats = (Array.isArray(o.material) ? o.material : [o.material]).map(m => { const c = m.clone(); c.transparent = true; c.flatShading = true; c.side = THREE.DoubleSide; c.needsUpdate = true; return c; });
+      o.material = Array.isArray(o.material) ? mats : mats[0];
+      o.userData.mats = mats;
+    }
+  });
+  const depthOf = o => { let d = 0, c = o; while (c && c !== root) { d++; c = c.parent; } return d; };
+  root.traverse(o => {
+    if (typeof o.name === 'string' && o.name.startsWith('cmp:')) {
+      const meshes = []; o.traverse(m => { if (m.isMesh) meshes.push(m); });
+      const bb = new THREE.Box3().setFromObject(o); const center = bb.isEmpty() ? new THREE.Vector3() : bb.getCenter(new THREE.Vector3());
+      o.updateMatrixWorld();
+      parts.set(o.name, { obj: o, rest: { pos: o.position.clone(), quat: o.quaternion.clone() }, meshes, depth: depthOf(o), centerLocal: o.parent ? o.parent.worldToLocal(center.clone()) : center, displayName: o.userData?.displayName || o.userData?.def || o.name.slice(4) });
+    }
+  });
+  const s = model.defaultScale ?? 1;
+  assembly.add(root);
+  modelBox = new THREE.Box3().setFromObject(root);
+  assemblyBounds = guide.assembly?.bounds || { min: modelBox.min.toArray(), max: modelBox.max.toArray() };
+  assembly.userData.scale = guide.assembly?.pose?.scale ?? s;
+  $('gateText').textContent = $('gateText').textContent.replace(' · loading model…', ` · ${parts.size} parts`);
+}
+
+// ── State + player (UNITY-RUNTIME.md §4) ─────────────────────────────────────
+const tweens = new Set();
+let playGeneration = 0, timers = [];
+const partDepth = name => parts.get(name)?.depth ?? 0;
+
+function setPartOpacity(p, alpha, colorArr) {
+  for (const m of p.meshes) for (const mat of m.userData.mats || []) {
+    mat.opacity = alpha; mat.visible = alpha > 0.001; mat.depthWrite = alpha > 0.95;
+    if (colorArr) mat.color.setRGB(colorArr[0], colorArr[1], colorArr[2]);
+    else if (mat.userData.baseColor) mat.color.copy(mat.userData.baseColor);
+    if (!mat.userData.baseColor) mat.userData.baseColor = mat.color.clone();
+  }
+}
+function applyState(state) {
+  for (const p of parts.values()) { p.obj.position.copy(p.rest.pos); p.obj.quaternion.copy(p.rest.quat); setPartOpacity(p, 1); }
+  const ordered = [...state.entries()].filter(([n]) => parts.has(n)).sort((a, b) => partDepth(a[0]) - partDepth(b[0]));
+  for (const [name, st] of ordered) {
+    const p = parts.get(name);
+    if (st.position) p.obj.position.fromArray(st.position);
+    if (st.rotation) p.obj.quaternion.setFromAxisAngle(new THREE.Vector3(st.rotation[0], st.rotation[1], st.rotation[2]).normalize(), st.rotation[3]);
+    const alpha = st.show === 'hidden' ? 0 : st.show === 'ghost' ? (st.opacity ?? GHOST_OPACITY) : 1;
+    // Parents first (sorted by depth above): a group's state paints its whole
+    // subtree, then a child's own state overrides — the iOS order.
+    setPartOpacity(p, alpha, st.color);
+  }
+}
+function tween(ms, fn, done) { const t = { t0: performance.now(), ms: Math.max(1, ms), fn, done }; tweens.add(t); return t; }
+function stepTweens(now) {
+  for (const t of tweens) { const k = Math.min(1, (now - t.t0) / t.ms); t.fn(k < 1 ? k * k * (3 - 2 * k) : 1); if (k >= 1) { tweens.delete(t); t.done?.(); } }
+}
+function cancelPlayback() { playGeneration++; for (const h of timers) clearTimeout(h); timers = []; tweens.clear(); }
+function currentAlpha(p) { const m = p.meshes[0]?.userData.mats?.[0]; return m ? (m.visible ? m.opacity : 0) : 1; }
+
+function playStep(k) {
+  cancelPlayback();
+  const gen = playGeneration;
+  applyState(stateBefore(guide.assembly?.initialNodes, steps, k));
+  const sched = scheduleStep(steps[k]?.nodes, speed, partDepth);
+  for (const e of sched) {
+    timers.push(setTimeout(() => { if (gen !== playGeneration) return; fire(e); }, e.startSec * 1000));
+  }
+  return scheduleLength(sched);
+}
+function fire(e) {
+  const d = e.delta, p = parts.get(d.node); if (!p) return;
+  const ms = e.durationSec * 1000;
+  if (e.flash) {
+    const mats = p.meshes.flatMap(m => m.userData.mats || []);
+    tween(ms, k => { const s = Math.sin(k * Math.PI * 3) * 0.5 + 0.5; for (const m of mats) m.emissive?.setScalar(0.6 * s); }, () => { for (const m of mats) m.emissive?.setScalar(0); });
+    if (d.show === undefined && !e.motion && !d.color) return;
+  }
+  const a0 = currentAlpha(p);
+  const targetAlpha = d.show === 'hidden' ? 0 : d.show === 'ghost' ? (d.opacity ?? GHOST_OPACITY) : (d.show === 'solid' || d.animate === 'insert' || (e.motion && a0 < 0.01)) ? 1 : a0;
+  if (e.motion) {
+    const fromPos = d.from ? new THREE.Vector3().fromArray(d.from) : p.obj.position.clone();
+    const toPos = d.to ? new THREE.Vector3().fromArray(d.to) : fromPos.clone();
+    const q0 = d.rotationFrom ? new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(...d.rotationFrom.slice(0, 3)).normalize(), d.rotationFrom[3]) : p.obj.quaternion.clone();
+    const q1 = d.rotationTo ? new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(...d.rotationTo.slice(0, 3)).normalize(), d.rotationTo[3]) : q0.clone();
+    p.obj.position.copy(fromPos); p.obj.quaternion.copy(q0);
+    const revealTo = e.hideAfterMotion ? Math.max(a0, 1) : targetAlpha;
+    tween(ms, k => { p.obj.position.lerpVectors(fromPos, toPos, k); p.obj.quaternion.slerpQuaternions(q0, q1, k); setPartOpacity(p, a0 + (revealTo - a0) * Math.min(1, k * 3), d.color); },
+      () => { if (e.hideAfterMotion) tween(250, k => setPartOpacity(p, revealTo * (1 - k), d.color)); });
+    return;
+  }
+  tween(ms, k => setPartOpacity(p, a0 + (targetAlpha - a0) * k, d.color));
+}
+function pulseParts(names, seconds = 1.6) {
+  const mats = names.flatMap(n => parts.get(n)?.meshes.flatMap(m => m.userData.mats || []) || []);
+  tween(seconds * 1000, k => { const s = Math.sin(k * Math.PI * 4) * 0.5 + 0.5; for (const m of mats) m.emissive?.setRGB(0.1 * s, 0.7 * s, 0.9 * s); }, () => { for (const m of mats) m.emissive?.setScalar(0); });
+}
+
+// ── Placement ────────────────────────────────────────────────────────────────
+let placed = false, locked = false, frameKind = 'none';
+function placeAt(hitMatrix) {
+  const pos = new THREE.Vector3(), q = new THREE.Quaternion(), sc = new THREE.Vector3();
+  hitMatrix.decompose(pos, q, sc);
+  // Face the operator: yaw only, from the camera position.
+  const camPos = new THREE.Vector3().setFromMatrixPosition(camera.matrixWorld);
+  const yaw = Math.atan2(camPos.x - pos.x, camPos.z - pos.z);
+  const rot = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+  const scale = assembly.userData.scale ?? 1;
+  const origin = originForSurface(pos.toArray(), assemblyBounds, scale, v => new THREE.Vector3(...v).applyQuaternion(rot).toArray());
+  assembly.position.fromArray(origin); assembly.quaternion.copy(rot); assembly.scale.setScalar(scale); assembly.visible = true;
+  placed = true; frameKind = 'tap';
+  $('framePill').textContent = 'placed (tap)'; $('framePill').className = 'pill warn'; $('btnLock').disabled = false;
+}
+function placeFromQR(imagePose) {
+  // frames.qr: the assembly pose is in the QR frame only when it came from the
+  // chamber configuration; a tap-placed pose lives in the guide world map, so
+  // the QR confirms identity and we still tap-place the model.
+  const pose = guide.assembly?.pose;
+  if (!pose || pose.source !== 'config') { $('framePill').textContent = 'QR seen · tap to place'; $('framePill').className = 'pill ok'; return; }
+  const m = new THREE.Matrix4().fromArray(imagePose.transform.matrix);
+  const local = new THREE.Matrix4().compose(new THREE.Vector3(...pose.position), new THREE.Quaternion(...pose.rotation), new THREE.Vector3().setScalar(pose.scale ?? 1));
+  m.multiply(local).decompose(assembly.position, assembly.quaternion, assembly.scale);
+  assembly.visible = true; placed = true; frameKind = 'qr';
+  $('framePill').textContent = 'anchored on QR'; $('framePill').className = 'pill ok'; $('btnLock').disabled = false;
+}
+
+// ── Session ──────────────────────────────────────────────────────────────────
+let live = null, idx = -1, stepEnteredAt = 0, sessionStartedAt = null, completions = [], verdicts = {};
+const opName = () => $('opName').value.trim() || localStorage.getItem('sib_xr_operator') || 'XR assessor';
+async function ev(type, extra = {}) {
+  if (!live) return;
+  try { await api(`/guide-sessions/live/${live.id}/events`, { method: 'POST', body: JSON.stringify({ type, stepId: steps[idx]?.id, stepIndex: idx >= 0 ? idx : undefined, ...extra }) }); } catch { /* fire-and-forget */ }
+}
+async function openLive() {
+  try {
+    const r = await api('/guide-sessions/live', { method: 'POST', body: JSON.stringify({
+      guideId, anchorId: guide.anchorId, guideName: guide.name, anchorName: bundle.anchor?.assetId || '', operatorName: opName(),
+      workContext: { client: 'webxr', frame: frameKind, userAgent: navigator.userAgent.slice(0, 120) },
+    }) });
+    live = r.data || r; sessionStartedAt = new Date().toISOString();
+    await ev('session:started');
+  } catch (e) { toast('Could not open a live session — running unrecorded'); }
+}
+function validationFor(step) { return (bundle.validation || []).find(v => v.stepId === step.id); }
+
+function showStep(k) {
+  flushObservations();
+  idx = k; const st = steps[k]; stepEnteredAt = performance.now();
+  $('stepPill').textContent = `Step ${k + 1} / ${steps.length}`;
+  $('stepTitle').textContent = st.title || `Step ${k + 1}`;
+  $('stepText').textContent = st.text || '';
+  const names = stepParts(st);
+  $('partChips').innerHTML = names.slice(0, 6).map(n => `<span class="chip" data-node="${n}">${(parts.get(n)?.displayName || n.replace(/^cmp:/, '')).replace(/[<>&]/g, '')}</span>`).join('');
+  const v = validationFor(st);
+  $('verdictRow').classList.toggle('hidden', !v);
+  $('btnNext').textContent = k === steps.length - 1 ? 'Done ✓' : 'Next ›';
+  $('btnPrev').disabled = k === 0;
+  $('btnNext').disabled = !!v && !verdicts[st.id];
+  if (st.view?.position) {
+    viewMarker.position.fromArray(st.view.position);
+    if (st.view.orientation) viewMarker.quaternion.setFromAxisAngle(new THREE.Vector3(...st.view.orientation.slice(0, 3)).normalize(), st.view.orientation[3]);
+    else if (st.view.center) viewMarker.lookAt(new THREE.Vector3(...st.view.center));
+    viewMarker.visible = true;
+  } else viewMarker.visible = false;
+  playStep(k);
+  setTimeout(() => pulseParts(names), 300);
+  ev('step:entered');
+}
+function completeStep() {
+  const st = steps[idx]; const dur = Math.round((performance.now() - stepEnteredAt) / 1000);
+  completions.push({ stepId: st.id, enteredAt: new Date(Date.now() - dur * 1000).toISOString(), completedAt: new Date().toISOString(), durationSeconds: dur });
+  ev('step:completed', { durationSeconds: dur });
+  if (idx < steps.length - 1) showStep(idx + 1); else openSignoff();
+}
+function openSignoff() {
+  flushObservations();
+  applyState(stateBefore(guide.assembly?.initialNodes, steps, steps.length));
+  $('soName').value = opName();
+  $('soSummary').textContent = `${completions.length} of ${steps.length} steps completed · ${Object.values(verdicts).filter(v => v === 'fail').length} failed validation · frame: ${frameKind}`;
+  $('signoff').classList.remove('hidden');
+}
+async function submit() {
+  const name = $('soName').value.trim(); if (!name) { toast('Enter a name'); return; }
+  localStorage.setItem('sib_xr_operator', name);
+  const completedAt = new Date().toISOString();
+  try {
+    await api('/guide-sessions', { method: 'POST', body: JSON.stringify({
+      guideId, anchorId: guide.anchorId, guideName: guide.name, anchorName: bundle.anchor?.assetId || '',
+      signedOffBy: name, startedAt: sessionStartedAt || completedAt, completedAt,
+      durationSeconds: Math.max(0, Math.round((Date.now() - Date.parse(sessionStartedAt || completedAt)) / 1000)),
+      stepCompletions: completions, ...(live ? { liveSessionId: live.id } : {}),
+    }) });
+    await ev('session:submitted');
+    toast('Session recorded — thank you'); $('signoff').classList.add('hidden');
+    setTimeout(() => location.reload(), 1800);
+  } catch (e) { toast('Sign-off failed: ' + e.message, 4000); }
+}
+
+// ── Observations (C1) — 1 Hz samples, 5 s batches ────────────────────────────
+let obsBuf = [], obsT0 = 0, lastCam = null, panelOpen = false, pendingInteraction = null;
+const ray = new THREE.Raycaster();
+function observeTick() {
+  if (!live || idx < 0) return;
+  const st = steps[idx]; const names = stepParts(st);
+  const camPos = new THREE.Vector3().setFromMatrixPosition(camera.matrixWorld);
+  const camFwd = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+  let hitsTarget = false, hitsAssembly = false;
+  if (placed) {
+    ray.set(camPos, camFwd);
+    const hits = ray.intersectObject(assembly, true).filter(h => h.object.visible && (h.object.material?.opacity ?? 1) > 0.01);
+    if (hits.length) {
+      hitsAssembly = true;
+      let o = hits[0].object; while (o && !(o.name || '').startsWith('cmp:')) o = o.parent;
+      if (o && names.includes(o.name)) hitsTarget = true;
+    }
+  }
+  const o = { t: Math.round((performance.now() - stepEnteredAt) / 100) / 10, attention: attentionFor({ hitsTarget, hitsAssembly, placed, panelOpen }) };
+  const first = names[0] && parts.get(names[0]);
+  if (first && placed) {
+    const w = first.obj.parent.localToWorld(first.centerLocal.clone());
+    o.targetDistM = camPos.distanceTo(w);
+    o.targetAngleDeg = Math.round(THREE.MathUtils.radToDeg(camFwd.angleTo(w.clone().sub(camPos).normalize())));
+  }
+  if (st.view?.position && placed) {
+    const vp = assembly.localToWorld(new THREE.Vector3(...st.view.position));
+    const tg = assembly.localToWorld(new THREE.Vector3(...(st.view.center || [0, 0, 0])));
+    const ang = THREE.MathUtils.radToDeg(camFwd.angleTo(tg.sub(vp).normalize()));
+    o.viewAligned = camPos.distanceTo(vp) < 0.45 && ang < 25;
+    if (o.viewAligned && !observeTick._aligned) { o.interaction = 'look-aligned'; observeTick._aligned = true; }
+  }
+  if (lastCam) o.moving = camPos.distanceTo(lastCam) > 0.05;
+  lastCam = camPos;
+  if (pendingInteraction) { o.interaction = pendingInteraction.kind; if (pendingInteraction.node) o.node = pendingInteraction.node; pendingInteraction = null; }
+  obsBuf.push(o);
+  if (performance.now() - obsT0 > 5000) flushObservations();
+}
+function observeInteraction(kind, node) { pendingInteraction = { kind, node }; }
+function flushObservations() {
+  observeTick._aligned = false;
+  if (!live || !obsBuf.length || idx < 0) { obsBuf = []; obsT0 = performance.now(); return; }
+  const batch = { stepId: steps[idx].id, stepIndex: idx, observations: obsBuf }; obsBuf = []; obsT0 = performance.now();
+  api(`/guide-sessions/live/${live.id}/observations`, { method: 'POST', body: JSON.stringify(batch) }).catch(() => {});
+}
+setInterval(observeTick, 1000);
+
+// Hints (C2): poll the queue the iOS app drains.
+async function pollHints() {
+  if (!live) return;
+  try {
+    const r = await api(`/guide-sessions/live/${live.id}/hints`);
+    const list = r.data || r || [];
+    const h = Array.isArray(list) ? list[0] : null;
+    if (h) { $('hintText').textContent = h.text; $('hintCard').classList.remove('hidden'); ev('hint:shown', { payload: { hintId: h.id, signal: h.signal } }); }
+  } catch { /* quiet */ }
+}
+setInterval(pollHints, 4000);
+
+// ── XR session ───────────────────────────────────────────────────────────────
+let xrSession = null, hitTestSource = null, refSpace = null, qrBitmap = null;
+async function startAR() {
+  localStorage.setItem('sib_xr_operator', opName());
+  const opt = { requiredFeatures: ['hit-test'], optionalFeatures: ['dom-overlay', 'local-floor'], domOverlay: { root: $('overlay') } };
+  const qr = bundle.anchor?.frames?.qr;
+  if (qr?.available && qr.markerSizeM && bundle.anchor?.id) {
+    try {
+      const blob = await (await fetch(`/anchors/${bundle.anchor.id}/qrimage`, { headers: hdr() })).blob();
+      qrBitmap = await createImageBitmap(blob);
+      opt.optionalFeatures.push('image-tracking');
+      opt.trackedImages = [{ image: qrBitmap, widthInMeters: qr.markerSizeM }];
+    } catch { qrBitmap = null; }
+  }
+  try { xrSession = await navigator.xr.requestSession('immersive-ar', opt); }
+  catch (e) { toast('AR session refused: ' + e.message, 4000); return; }
+  await renderer.xr.setSession(xrSession);
+  refSpace = await xrSession.requestReferenceSpace('local');
+  const viewer = await xrSession.requestReferenceSpace('viewer');
+  hitTestSource = await xrSession.requestHitTestSource({ space: viewer });
+  xrSession.addEventListener('end', () => { xrSession = null; hitTestSource = null; $('overlay').classList.add('hidden'); $('gate').classList.remove('hidden'); });
+  xrSession.addEventListener('select', () => { if (!locked && reticle.visible) { placeAt(reticle.matrix); observeInteraction('realign'); } });
+  enterSession('ar');
+}
+function startDesktop() {
+  localStorage.setItem('sib_xr_operator', opName());
+  const controls = new OrbitControls(camera, renderer.domElement);
+  assembly.visible = true; assembly.scale.setScalar(assembly.userData.scale ?? 1);
+  const b = new THREE.Box3().setFromObject(assembly); const c = b.getCenter(new THREE.Vector3()); const size = b.getSize(new THREE.Vector3()).length() || 1;
+  camera.position.copy(c).add(new THREE.Vector3(size * 0.6, size * 0.4, size * 0.9)); controls.target.copy(c); controls.update();
+  placed = true; locked = true; frameKind = 'desktop';
+  $('framePill').textContent = 'desktop preview'; $('framePill').className = 'pill';
+  canvas.addEventListener('click', e => {
+    const m = new THREE.Vector2((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+    ray.setFromCamera(m, camera); tapAt(ray);
+  });
+  enterSession('desktop');
+  lockPlacement();
+}
+function tapAt(rc) {
+  const hits = rc.intersectObject(assembly, true).filter(h => h.object.visible && (h.object.material?.opacity ?? 1) > 0.01);
+  if (!hits.length) return;
+  let o = hits[0].object; while (o && !(o.name || '').startsWith('cmp:')) o = o.parent;
+  if (!o) return;
+  const names = stepParts(steps[idx] || {});
+  const wrong = names.length && !names.includes(o.name);
+  observeInteraction(wrong ? 'tap-wrong-part' : 'tap-part', o.name);
+  pulseParts([o.name], 0.8);
+  toast(`${parts.get(o.name)?.displayName || o.name}${wrong ? ' — not part of this step' : ''}`);
+}
+async function enterSession(kind) {
+  $('gate').classList.add('hidden'); $('overlay').classList.remove('hidden');
+  $('topTitle').textContent = guide.name;
+  $('reticleHint').classList.toggle('hidden', kind !== 'ar');
+  $('stepTitle').textContent = kind === 'ar' ? 'Place the equipment' : guide.name;
+  $('stepText').textContent = kind === 'ar' ? (qrBitmap ? 'Look at the printed QR to confirm the equipment, then tap the surface it stands on.' : 'Tap the surface the equipment stands on.') : 'Desktop preview — orbit with the mouse, click parts to identify them.';
+  await openLive();
+}
+function lockPlacement() {
+  locked = true; reticle.visible = false;
+  $('reticleHint').classList.add('hidden'); $('placeRow').classList.add('hidden'); $('navRow').classList.remove('hidden');
+  if (frameKind === 'tap' || frameKind === 'qr') { $('framePill').textContent = frameKind === 'qr' ? 'anchored on QR' : 'placed'; }
+  showStep(0);
+}
+
+renderer.setAnimationLoop((t, frame) => {
+  stepTweens(performance.now());
+  if (frame && xrSession && hitTestSource) {
+    if (!locked) {
+      const hits = frame.getHitTestResults(hitTestSource);
+      if (hits.length) { const pose = hits[0].getPose(refSpace); reticle.visible = true; reticle.matrix.fromArray(pose.transform.matrix); } else reticle.visible = false;
+    }
+    if (qrBitmap && !locked && frame.getImageTrackingResults) {
+      for (const r of frame.getImageTrackingResults()) {
+        if (r.trackingState === 'tracked') { const pose = frame.getPose(r.imageSpace, refSpace); if (pose) placeFromQR(pose); }
+      }
+    }
+  }
+  renderer.render(scene, camera);
+});
+
+// ── Wiring ───────────────────────────────────────────────────────────────────
+$('keySave').onclick = () => { localStorage.setItem('sib_api_key', $('keyInput').value.trim()); location.reload(); };
+$('startAR').onclick = startAR;
+$('startDesk').onclick = startDesktop;
+$('btnLock').onclick = lockPlacement;
+$('btnNext').onclick = completeStep;
+$('btnPrev').onclick = () => { if (idx > 0) showStep(idx - 1); };
+$('btnReplay').onclick = () => { observeInteraction('replay'); ev('step:retried'); playStep(idx); };
+$('btnShow').onclick = () => pulseParts(stepParts(steps[idx] || {}));
+$('btnPass').onclick = () => verdict('pass');
+$('btnFail').onclick = () => verdict('fail');
+$('hintOk').onclick = () => $('hintCard').classList.add('hidden');
+$('btnExit').onclick = () => { if (xrSession) xrSession.end(); else location.reload(); };
+$('soCancel').onclick = () => $('signoff').classList.add('hidden');
+$('soSubmit').onclick = submit;
+$('partChips').onclick = e => { const n = e.target?.dataset?.node; if (n) { pulseParts([n]); observeInteraction('tap-part', n); } };
+// Reading the text counts as "panel" attention for the next few seconds (the
+// iPad logs panel-open/close on its content panel).
+let panelTimer = null;
+$('stepText').onclick = () => { panelOpen = true; observeInteraction('panel-open'); clearTimeout(panelTimer); panelTimer = setTimeout(() => { panelOpen = false; observeInteraction('panel-close'); }, 6000); };
+function verdict(result) {
+  const st = steps[idx]; verdicts[st.id] = result;
+  observeInteraction('validate-attempt');
+  ev('perception:result', { payload: { mode: 'manual', result, client: 'webxr' } });
+  $('btnNext').disabled = false;
+  toast(result === 'pass' ? 'Recorded: pass' : 'Recorded: fail — you may continue');
+}
+
+// ── Boot ─────────────────────────────────────────────────────────────────────
+(async () => {
+  $('opName').value = localStorage.getItem('sib_xr_operator') || '';
+  const xrOk = !!navigator.xr && await navigator.xr.isSessionSupported?.('immersive-ar').catch(() => false);
+  $('capLine').textContent = xrOk
+    ? 'WebXR AR available on this browser' + (navigator.xr && 'XRSession' in window ? '' : '')
+    : 'No WebXR AR on this browser — desktop preview only (Quest / Android Chrome / a WebXR-capable headset browser is needed for the AR run).';
+  try { await loadBundle(); } catch (e) { $('gateText').textContent = e.message === 'unauthorised' ? 'This server needs an API key.' : 'Could not load: ' + e.message; return; }
+  $('startAR').disabled = !xrOk; $('startDesk').disabled = false;
+})();
+</script>
+</body>
+</html>

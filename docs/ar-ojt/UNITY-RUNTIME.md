@@ -21,6 +21,22 @@ builds a bundle and checks it against the schema, so the server cannot drift
 from the contract. A new client integrates against the bundle; the sections
 below explain what each part means.
 
+## 0a. The contract has a second implementation: `/xr` (B3, 2026-09-21)
+
+`sib/portal/xr.html` + `sib/portal/xr-engine.js` is a WebXR client of the
+bundle written on the vendored Three.js and the browser's WebXR API — no
+engine, no third-party tracking. It is the reference for "did we port §4
+correctly": `xr-engine.js` holds the pure state fold and schedule and
+`sib/test/xr-engine.test.ts` pins them (cumulative last-write-wins, motion on
+a hidden part reveals it, speed division, the 0.8 s / 0.25 s floors,
+parents-first ordering, hide-after-motion, flash-only deltas change nothing,
+bottom-centre placement). A Unity port should reproduce those tests one for
+one. The page also shows what a non-iOS client does for frames: tap-place by
+default; the printed QR (WebXR `image-tracking`, size from
+`frames.qr.markerSizeM`) confirms identity and places directly only when
+`assembly.pose.source === 'config'`. It posts the same live session, events,
+observations and sign-off as the iOS app (`docs/catalog/xr-kit.md`).
+
 ## 1. What a guide is, engine-neutrally
 
 A converted guide (from Cortona3D or any CAD source) is three things, all

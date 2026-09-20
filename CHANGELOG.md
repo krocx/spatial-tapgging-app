@@ -212,6 +212,19 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **XR assessment kit — `/xr?guide=<id>` (B3).** A guide runs in any WebXR
+  browser (headset browser, Android Chrome) or as a desktop 3D preview with
+  no game engine and no third-party tracking: own code on the vendored
+  Three.js and the browser's WebXR API. It loads the Guide Bundle and the
+  GLB, tap-places the assembly (bottom-centre rule, facing the operator;
+  the printed QR confirms identity where the browser offers image tracking
+  and places directly for configuration poses), plays the same cumulative
+  timeline as the iPad (pure engine in `sib/portal/xr-engine.js`, tested
+  against UNITY-RUNTIME §4), shows step text + part chips + viewpoint
+  marker, takes manual Pass/Fail on validation steps, and posts the same
+  live session, step events, 1 Hz observations, hint polls and sign-off —
+  so headset runs land in the Usage Log and baselines next to iPad runs.
+  Portal Guide Library: **🥽 XR kit** link per guide. Catalogue `xr-kit`.
 - **.tag v1.1 — the frame, spelled out (B2).** Envelopes now carry
   `frame` (`kind: "qr"`, `markerId`, `markerSizeM`, sealed `anchorPose`,
   `originSource`) and assembly members repeat `spatial` + `type`, so a reader

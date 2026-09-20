@@ -160,6 +160,14 @@ document.getElementById('f').addEventListener('submit', async function(ev){
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.sendFile(path.join(__dirname, '../portal/platform.html'));
   });
+  // GET /xr?guide=<id> — B3 (2026.4.46): the WebXR assessment kit. Own code on
+  // vendored Three.js + the browser's WebXR API; loads the Guide Bundle and
+  // posts the same session records as the iOS app. Behind the same gate as
+  // every other page; its data calls carry the API key from localStorage.
+  app.get('/xr', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.sendFile(path.join(__dirname, '../portal/xr.html'));
+  });
   // Screenshot / clip slots for the /platform product cards. Drop files
   // named wi-1.jpg, sv-2.jpg … into sib/portal/platform-media/ and they
   // appear in place of the labelled slots — no page change needed.
