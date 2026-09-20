@@ -202,6 +202,16 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **Contextual intelligence C2 — deviations become hints.** After each
+  observation batch SIB compares the current visit with the step's learned
+  baseline and queues one hint per new deviation: `dwell` (past the p90),
+  `attention-off` (below the p10), `wrong-part` (beyond the p90), `look-away`
+  (viewed step, never aligned, past the median), `validate-retry` (3 misses).
+  Hints carry `signal`, `evidence` and `via`; text is a template quoting the
+  baseline and part names, or the Ask-SIB model (`ASK_LLM_URL`, 8 s budget)
+  with the template as fallback. Recorded on the visit for C3. iOS shows the
+  reason per signal and opens the card for wrong-part / validate-retry. The
+  LLM call moved to `ask/llm.ts`, shared with Ask SIB.
 - **Contextual intelligence C1 — observations + learned baselines.** The
   operator session streams engine-neutral 1 Hz observations (attention
   target, distance/aim to the step target, look-from-here alignment,

@@ -48,6 +48,7 @@ import {
   pushEvent,
   closeLiveSession,
   getLiveSession,
+  evaluateSignals,
   subscribeSse,
   drainHints,
   queueHumanHint,
@@ -158,6 +159,7 @@ router.post('/live/:id/observations', (req: Request, res: Response): void => {
     return;
   }
   const summary = ingestObservations(req.params.id, body);
+  if (summary) evaluateSignals(req.params.id);          // C2: deviations → hints (async, never blocks)
   res.status(summary ? 201 : 202).json({ data: summary ?? null, timestamp: new Date().toISOString() });
 });
 

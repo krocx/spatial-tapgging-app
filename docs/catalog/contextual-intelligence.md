@@ -1,6 +1,6 @@
 ---
 id: contextual-intelligence
-name: Contextual intelligence — observations and learned baselines
+name: Contextual intelligence — observations, baselines, signal hints
 area: guides
 status: shipped
 version: 2026.4.46
@@ -18,7 +18,9 @@ arch: |
     O --> J["observations/<session>.jsonl (raw)"]
     R --> B["computeBaselines(): percentiles over completed visits"]
     B --> G["GET /guide-sessions/baselines/:guideId"]
-    G -. C2: deviations become hints .-> H["hint queue (existing)"]
+    G --> S["signals.ts: this visit vs. baseline<br/>dwell · attention-off · wrong-part · look-away · validate-retry"]
+    S --> P["phrase: template (baseline facts) or LLM via ask/llm.ts"]
+    P --> H["hint queue → GET /guide-sessions/live/:id/hints"]
 ---
 The device is a sensor and SIB is the judge. While an operator is on a step,
 the client streams a compact, engine-neutral observation record — what the
@@ -28,5 +30,10 @@ or replaying the animation. SIB rolls these into the usage record and learns
 per-guide, per-step baselines from completed visits: dwell percentiles,
 on-target ratio, wrong-part taps, replays, validation fail rate, stall rate.
 Nothing is hard-coded; the numbers come from real sessions and sharpen with
-every one, and a Unity, WebXR or glasses client gets the same intelligence
-by posting the same JSON.
+every one. After each batch the current visit is compared with that baseline
+and each new deviation (dwell past the p90, attention below the p10, wrong-part
+taps beyond the p90, never aligned on a viewed step, repeated validation
+misses) becomes one hint — phrased from the baseline facts, or by the Ask-SIB
+model when one is configured — delivered through the hint queue every client
+already polls. A Unity, WebXR or glasses client gets the same intelligence by
+posting the same JSON.

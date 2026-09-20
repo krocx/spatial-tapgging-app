@@ -666,6 +666,10 @@ struct AIHint: Decodable, Identifiable {
     let source:        String?
     let from:          String?
     let pointer:       [Float]?
+    /// C2: baseline deviation that fired ("dwell", "attention-off",
+    /// "wrong-part", "look-away", "validate-retry") + compact evidence.
+    let signal:        String?
+    let evidence:      String?
     var isHuman: Bool { source == "human" }
     var pointerPosition: simd_float3? {
         guard let p = pointer, p.count == 3 else { return nil }

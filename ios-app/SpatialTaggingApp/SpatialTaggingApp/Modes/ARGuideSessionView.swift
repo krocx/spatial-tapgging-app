@@ -2413,6 +2413,15 @@ struct ARGuideSessionView: View {
         case "stall": return "This step's been open a while"
         case "retry": return "That step took a few tries"
         case "coach": return "\(hint.from ?? "A colleague") says"
+        case "signal":
+            switch hint.signal {
+            case "dwell":          return "Taking longer than usual here"
+            case "attention-off":  return "The part is out of view"
+            case "wrong-part":     return "That's not the part for this step"
+            case "look-away":      return "Better from the marked viewpoint"
+            case "validate-retry": return "Validation keeps missing"
+            default:               return "Noticed something on this step"
+            }
         default:      return "A tip for this step"
         }
     }
@@ -2949,7 +2958,10 @@ struct ARGuideSessionView: View {
                     hintHistory.append(first)
                     coach.show(.guideHints)   // F1
                     // Stall = stuck, open the card. Retry (or legacy nil) = quiet chip.
+                    // C2 signals that mean "you are doing the wrong thing" open the
+                    // card too; dwell-type signals stay a quiet chip like a retry.
                     assistExpanded = (first.trigger == "stall")
+                        || (first.trigger == "signal" && (first.signal == "wrong-part" || first.signal == "validate-retry"))
                     UIImpactFeedbackGenerator(style: .soft).impactOccurred()
                 }
             }

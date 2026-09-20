@@ -34,6 +34,9 @@ import {
   type AIGuideContext,
 } from '../adapters/ai-guide-adapter.js';
 import { guideStepStore } from '../routes/guides.js';
+import { omsUsageStore } from '../oms/usage-log.js';
+import { guideBaselines } from '../oms/observations.js';
+import { detectSignals, phraseHint, type SignalKind } from '../oms/signals.js';
 
 // ── In-memory store ───────────────────────────────────────────────────────────
 
@@ -54,6 +57,10 @@ const hintQueues = new Map<string, AIHint[]>();
  * on the *current* step. Reset to 0 whenever the step changes.
  */
 const retryCounters = new Map<string, number>();
+
+/** C2: signals already fired per session, keyed by step visit ("stepId#enteredAt"). */
+const firedSignals = new Map<string, Map<string, Set<SignalKind>>>();
+const signalInFlight = new Set<string>();
 
 /** Auto-evict closed sessions after this window to avoid unbounded growth. */
 const EVICT_AFTER_MS = 60 * 60 * 1000; // 1 hour
@@ -193,6 +200,7 @@ export function drainHints(liveSessionId: string): AIHint[] {
  * Links the resulting GuideSession id so observers can follow up.
  */
 export function closeLiveSession(liveSessionId: string, linkedSessionId: string): void {
+  firedSignals.delete(liveSessionId);
   const session = sessions.get(liveSessionId);
   if (!session) return;
 
@@ -331,6 +339,56 @@ function maybeGenerateHint(
   }).catch((err: unknown) => {
     console.error('[ai-guide] generateHint error:', err);
   });
+}
+
+/**
+ * C2: after an observation batch lands, compare the current visit with the
+ * step's learned baseline and queue a hint for each NEW deviation. Runs at
+ * most once per session at a time; never blocks the ingest response.
+ */
+export function evaluateSignals(liveSessionId: string): void {
+  const session = sessions.get(liveSessionId);
+  if (!session || session.closedAt || signalInFlight.has(liveSessionId)) return;
+  const rec = omsUsageStore.findById(liveSessionId);
+  if (!rec) return;
+  const visit = [...rec.steps].reverse().find(e => e.outcome === 'open');
+  if (!visit) return;
+  const step = guideStepStore.findById(visit.stepId);
+  if (!step) return;
+  const key = `${visit.stepId}#${visit.enteredAt}`;
+  let perSession = firedSignals.get(liveSessionId);
+  if (!perSession) { perSession = new Map(); firedSignals.set(liveSessionId, perSession); }
+  let fired = perSession.get(key);
+  if (!fired) { fired = new Set(); perSession.set(key, fired); }
+
+  const baseline = guideBaselines(session.guideId).steps.find(b => b.stepId === visit.stepId);
+  const elapsedSec = Math.max(0, (Date.now() - Date.parse(visit.enteredAt)) / 1000);
+  const signals = detectSignals({ visit, elapsedSec, baseline, step, alreadyFired: fired });
+  if (!signals.length) return;
+  for (const s of signals) fired.add(s.kind);
+
+  // Part names the step is about — display names from the model's extras are
+  // not stored server-side; fall back to the node names without the prefix.
+  const partNames = (step.nodes ?? []).map(n => n.node.replace(/^cmp:/, '').replace(/_/g, ' ')).filter((v, i, a) => a.indexOf(v) === i);
+
+  signalInFlight.add(liveSessionId);
+  (async () => {
+    for (const sig of signals) {
+      const { text, via } = await phraseHint(sig, step, partNames);
+      const hint: AIHint = {
+        id: uuidv4(), liveSessionId, stepId: step.id, text, action: 'none',
+        trigger: 'signal', source: 'ai', signal: sig.kind, evidence: sig.evidence, via,
+        ts: new Date().toISOString(),
+      };
+      hintQueues.get(liveSessionId)?.push(hint);
+      // Record on the visit for C3 (effectiveness = what happened after).
+      const fresh = omsUsageStore.findById(liveSessionId);
+      const entry = fresh?.steps.find(e => e.stepId === visit.stepId && e.enteredAt === visit.enteredAt);
+      if (fresh && entry) { (entry.hints ??= []).push({ id: hint.id, signal: sig.kind, ts: hint.ts, via }); omsUsageStore.save(fresh); }
+      console.log(`[ci] hint (${sig.kind}, ${via}) for session ${liveSessionId}: ${sig.evidence}`);
+    }
+  })().catch(err => console.error('[ci] evaluateSignals error:', err))
+    .finally(() => signalInFlight.delete(liveSessionId));
 }
 
 function broadcastToSubscribers(liveSessionId: string, event: GuideSessionEvent): void {

@@ -1389,6 +1389,8 @@ export interface OmsUsageStepEntry {
   evidence?: boolean;
   /** C1: roll-up of the observations streamed while on this visit. */
   observations?: StepObservationSummary;
+  /** C2: hints fired on this visit (C3 scores them by what happened next). */
+  hints?: { id: string; signal: string; ts: string; via: 'llm' | 'template' }[];
   // K5 (evidence) extends this entry.
 }
 
@@ -1524,13 +1526,19 @@ export interface AIHint {
   targetStepId?:  string;   // step to navigate to when action === 'navigate'
   /** Why the adapter fired: drives assist UX (stall auto-expands the card;
    *  retry stays as a quiet chip). Optional for backward compatibility. */
-  trigger?:       'stall' | 'retry' | 'coach';
+  trigger?:       'stall' | 'retry' | 'coach' | 'signal';
   ts:             string;   // ISO 8601
   /** C1: a HUMAN hint from a coaching author (presence). */
   source?:        'ai' | 'human';
   from?:          string;   // coach display name
   /** "Look here": a point in the guide-map frame (x, y, z) the operator's AR marks. */
   pointer?:       number[];
+  /** C2: which baseline deviation fired (trigger = 'signal'). */
+  signal?:        'dwell' | 'attention-off' | 'wrong-part' | 'look-away' | 'validate-retry';
+  /** C2: compact evidence, e.g. "on step 95 s; 90 % of 12 visits finished within 60 s". */
+  evidence?:      string;
+  /** C2: how the text was phrased. */
+  via?:           'llm' | 'template';
 }
 
 // ============================================================

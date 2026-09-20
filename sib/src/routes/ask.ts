@@ -23,6 +23,7 @@ import { Router } from 'express';
 import { retrieve, buildAskContext, buildMessages } from '../ask/ask-core.js';
 import { readCatalog } from './catalog.js';
 import { canViewRestricted } from '../middleware/auth.js';
+import { llmConfig, chatCompletion, type ChatMessage } from '../ask/llm.js';
 
 const LLM_TIMEOUT_MS = 90_000;
 
@@ -35,16 +36,6 @@ function rateLimited(ip: string): boolean {
   times.push(now);
   askLog.set(ip, times);
   return times.length > 12;
-}
-
-function llmConfig() {
-  const url = process.env.ASK_LLM_URL?.trim();
-  if (!url) return null;
-  return {
-    url: url.replace(/\/$/, ''),
-    model: process.env.ASK_LLM_MODEL?.trim() || 'default',
-    key: process.env.ASK_LLM_KEY?.trim(),
-  };
 }
 
 const router = Router();
@@ -88,27 +79,7 @@ router.post('/', async (req, res) => {
 
   try {
     const context = buildAskContext(visible, retrieval);
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), LLM_TIMEOUT_MS);
-    const resp = await fetch(`${cfg.url}/chat/completions`, {
-      method: 'POST',
-      signal: ctrl.signal,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(cfg.key ? { Authorization: `Bearer ${cfg.key}` } : {}),
-      },
-      body: JSON.stringify({
-        model: cfg.model,
-        messages: buildMessages(context, question),
-        temperature: 0.2,
-        stream: false,
-      }),
-    });
-    clearTimeout(timer);
-    if (!resp.ok) throw new Error(`LLM HTTP ${resp.status}`);
-    const data = await resp.json() as { choices?: { message?: { content?: string } }[] };
-    const answer = data.choices?.[0]?.message?.content?.trim();
-    if (!answer) throw new Error('LLM returned no content');
+    const answer = await chatCompletion(buildMessages(context, question) as ChatMessage[], { timeoutMs: LLM_TIMEOUT_MS });
     return res.json({ ...base, tier: 'generation', model: cfg.model, answer });
   } catch (err) {
     // Model down or misconfigured → the docs still answer.

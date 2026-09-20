@@ -1,7 +1,7 @@
 # Contextual intelligence — the device is a sensor, SIB is the judge
 
-Status: C1 shipped 2026-09-20 (observations + baselines). C2 (signals →
-hints) and C3 (effectiveness loop + portal page) follow.
+Status: C1 shipped 2026-09-20 (observations + baselines); C2 shipped
+2026-09-21 (signals → hints). C3 (effectiveness loop + portal page) follows.
 
 Proprietary & Confidential · Applied Materials.
 
@@ -71,17 +71,35 @@ Nothing is hard-coded: every number is a percentile of what real operators
 did. With one session the baseline is that session; it sharpens as more
 arrive. Cached for a minute.
 
-## C2 — Signals → hints (next)
+## C2 — Signals → hints (shipped)
 
-A deviation from the step's baseline is the signal, not a fixed threshold:
-dwell beyond `dwellSec.p90`, attention on target below `onTargetRatio.p10`
-for longer than typical, wrong-part taps beyond `p90`, no `look-aligned` on a
-step where most people align within the first N seconds. Each signal, with the
-step text, part info and what worked for others on that step, goes to the
-LLM adapter behind Ask SIB to phrase a hint; the hint rides the existing
-consume-once queue (`GET /guide-sessions/live/:id/hints`) so every client
-already knows how to show it. The iOS stall timer becomes one observation
-among several rather than the trigger.
+After every observation batch, SIB compares the *current visit* with the
+step's baseline and queues a hint for each new deviation — once per visit,
+through the same consume-once queue every client already polls
+(`GET /guide-sessions/live/:id/hints`, `trigger: "signal"`).
+
+| Signal | Fires when (this visit vs. baseline) |
+|---|---|
+| `dwell` | elapsed > `dwellSec.p90` (baseline needs ≥ 3 completed visits) |
+| `attention-off` | ≥ 15 samples and `onTargetRatio` < baseline `p10` |
+| `wrong-part` | wrong-part taps > baseline `wrongPartTaps.p90` (floor 2 without a baseline) |
+| `look-away` | step has a view, ≥ 20 samples, never aligned, and past the median dwell |
+| `validate-retry` | ≥ 3 validation attempts on the visit without a pass |
+
+The thresholds are the baseline's own percentiles; the only constants are
+floors that stop a two-session baseline from firing on noise. Each hint
+carries `signal`, `evidence` ("on step 95 s; 90 % of 12 visits finished
+within 60 s") and `via`.
+
+Phrasing: a template that quotes the baseline and the step's part names is
+the ground truth. When `ASK_LLM_URL` is set, the same facts (step text, part
+names, signal, evidence, fallback) go to the model behind Ask SIB with an
+8-second budget and a 160-character brief; anything slow, empty or
+over-long falls back to the template. The client shows the reason per
+signal ("Taking longer than usual here", "That's not the part for this
+step") and opens the card for wrong-part / validate-retry, leaving
+dwell-type hints as a quiet chip. Each fired hint is recorded on the visit
+(`OmsUsageStepEntry.hints`) so C3 can score it by what happened next.
 
 ## C3 — Effectiveness loop + portal (after)
 
