@@ -18,7 +18,7 @@ arch: |
     T -->|Engineer+| A["authoring / operating"]
     T -->|Technician| A2["operating"]
     A & A2 --> H["Home: What are you working on?"]
-    H -->|Chambers| C["Production # (operate) · configuration (author)<br/>→ chamber QR / chamber directory"]
+    H -->|AR OMS| C["Production # (operate) · configuration (author)<br/>→ chamber QR / chamber directory"]
     H -->|Gemba Audit| GA["Project ID at walk start"]
     H -->|iLOTO| LO["Test bay # → iLOTO panels<br/>stamped on every event"]
     C & GA & LO --> U["context on every usage / event record"]
@@ -29,7 +29,7 @@ whether they author or operate this shift. Nothing else is asked there,
 because the app cannot know which product the person will pick. The home
 screen then offers three product doors, each asking only for its own context,
 prefilled from local memory with a "Change" affordance and a "last used"
-badge: Chambers (Production # for operators, chamber configuration for
+badge: AR OMS (Production # for operators, chamber configuration for
 authors), Gemba Audit (Project ID at walk start) and iLOTO (Test bay #, the
 raceway the panel sits in, stamped on every lock/tag event). The gate owns its
 own server connection (retries, dormant-UAM skip) so it never waits on a

@@ -128,7 +128,7 @@ struct ModeSelectionView: View {
 
                     if settings.hasProduct("aroms") {
                         ProductDoor(
-                            title: "Chambers", subtitle: "Spatial Inspection · AR work instructions",
+                            title: "AR OMS", subtitle: "Spatial Inspection · AR work instructions",
                             icon: settings.isAuthoringShift ? "pencil.circle.fill" : "qrcode.viewfinder",
                             accent: settings.isAuthoringShift ? .blue : .green,
                             context: settings.isAuthoringShift
@@ -680,7 +680,7 @@ private struct ShareQRCard: View {
 
 extension ModeSelectionView {
     fileprivate func productTitle(_ p: String) -> String {
-        switch p { case "chambers": return "Chambers"; case "gemba": return "Gemba Audit"; case "iloto": return "iLOTO"; default: return p }
+        switch p { case "chambers": return "AR OMS"; case "gemba": return "Gemba Audit"; case "iloto": return "iLOTO"; default: return p }
     }
 
     fileprivate func openDirectory(_ scope: DirectoryScope) {

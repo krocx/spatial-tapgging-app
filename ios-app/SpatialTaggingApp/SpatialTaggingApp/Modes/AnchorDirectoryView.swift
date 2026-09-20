@@ -21,7 +21,7 @@ enum DirectoryScope {
     var title: String {
         switch self {
         case .all:      return "Anchor Directory"
-        case .chambers: return "Chambers"
+        case .chambers: return "AR OMS"
         case .gemba:    return "Gemba areas"
         case .loto:     return "iLOTO panels"
         }
@@ -808,14 +808,15 @@ struct CreateAnchorSheet: View {
                             .buttonStyle(.plain)
                     }
                 }
-                .padding(.vertical, 4)
-                .listRowBackground(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(Color(.secondarySystemGroupedBackground))
-                        .overlay(RoundedRectangle(cornerRadius: 10)
-                            .strokeBorder(assetId.isEmpty ? Color.blue.opacity(0.8) : Color.green.opacity(0.7), lineWidth: 1.5))
-                        .padding(.vertical, 2)
-                )
+                .padding(.horizontal, 14).padding(.vertical, 12)
+                // Draw the box on the row content itself so the stroke and the
+                // field are the same rectangle (a listRowBackground is inset
+                // differently from the content and looked misaligned).
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 10))
+                .overlay(RoundedRectangle(cornerRadius: 10)
+                    .strokeBorder(assetId.isEmpty ? Color.blue.opacity(0.8) : Color.green.opacity(0.7), lineWidth: 1.5))
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
             } header: {
                 HStack(spacing: 6) {
                     Text("Location Name")

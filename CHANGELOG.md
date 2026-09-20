@@ -204,7 +204,7 @@ it, it gets a line.
 ### Added
 - **Product doors — context per product, not at the kiosk (A).** The kiosk
   asks for identity only (plus authoring/operating for engineers). The home
-  screen asks "What are you working on?" with three doors: **Chambers**
+  screen asks "What are you working on?" with three doors: **AR OMS**
   (Spatial Inspection + AR work instructions — operators enter a Production #
   then scan the chamber QR; authors pick the chamber configuration), **Gemba
   Audit** (Project ID stays at walk start) and **iLOTO** (new **Test bay #**,
