@@ -24,6 +24,8 @@
 
 import { Router } from 'express';
 import { usageOpen, usageRecordEvent, usageLinkSignOff, listUsage, usageMarkEvidence } from '../oms/usage-log.js';
+import { ingestObservations, guideBaselines } from '../oms/observations.js';
+import type { ObservationBatchRequest } from '@spatial/shared';
 import { buildUsageXlsx, buildSessionsXlsx } from '../oms/xlsx-lite.js';
 import { currentUamUser } from '../middleware/auth.js';
 import { broadcastToAnchor } from '../tag/tag-subscribe.js';
@@ -139,6 +141,24 @@ router.post('/live/:id/events', (req: Request, res: Response): void => {
   }
 
   res.status(201).json({ data: event, timestamp: new Date().toISOString() });
+});
+
+// POST /guide-sessions/live/:id/observations — C1 (2026.4.46): a batch of
+// engine-neutral observations for the current step (attention, distance,
+// alignment, movement, interactions). Rolled up into the usage record and
+// appended raw to a per-session JSONL. Never images, never free text.
+router.post('/live/:id/observations', (req: Request, res: Response): void => {
+  const body = req.body as ObservationBatchRequest;
+  if (!body || typeof body.stepId !== 'string' || !Array.isArray(body.observations)) {
+    res.status(400).json({ error: 'stepId and observations[] are required', timestamp: new Date().toISOString() });
+    return;
+  }
+  if (!getLiveSession(req.params.id)) {
+    res.status(404).json({ error: `Live session ${req.params.id} not found`, timestamp: new Date().toISOString() });
+    return;
+  }
+  const summary = ingestObservations(req.params.id, body);
+  res.status(summary ? 201 : 202).json({ data: summary ?? null, timestamp: new Date().toISOString() });
 });
 
 // GET /guide-sessions/live/:id/stream — SSE stream for AI agents / dashboards
@@ -327,6 +347,13 @@ function signOffEvidencePaths(): Map<string, string> {
   }
   return m;
 }
+
+// GET /guide-sessions/baselines/:guideId — C1: learned per-step baselines
+// (dwell percentiles, on-target ratio, wrong-part taps, replays, validation
+// fail rate, stall rate) from completed visits in the usage log.
+router.get('/baselines/:guideId', (req: Request, res: Response): void => {
+  res.json({ data: guideBaselines(req.params.guideId), timestamp: new Date().toISOString() });
+});
 
 // GET /guide-sessions/usage/export.xlsx — Excel export with evidence photos
 // EMBEDDED per row (dependency-free writer — see oms/xlsx-lite.ts).

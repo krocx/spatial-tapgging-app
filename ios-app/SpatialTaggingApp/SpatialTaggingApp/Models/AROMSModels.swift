@@ -618,6 +618,27 @@ struct PushGuideSessionEventRequest: Encodable {
     var payload:         [String: AnyCodable]? = nil
 }
 
+// MARK: - C1 (2026.4.46): contextual-intelligence observations
+// Engine-neutral 1 Hz samples of what the operator is doing; SIB learns
+// per-step baselines from them. Mirrors `SessionObservation` in shared.
+
+struct SessionObservation: Encodable {
+    var t:              Double
+    var attention:      String? = nil       // target · assembly · pin · panel · away · none
+    var targetDistM:    Double? = nil
+    var targetAngleDeg: Double? = nil
+    var viewAligned:    Bool?   = nil
+    var moving:         Bool?   = nil
+    var interaction:    String? = nil       // tap-part · tap-wrong-part · replay · panel-open · panel-close · validate-attempt · realign · look-aligned · stall
+    var node:           String? = nil
+}
+
+struct ObservationBatchRequest: Encodable {
+    let stepId:       String
+    let stepIndex:    Int?
+    let observations: [SessionObservation]
+}
+
 // MARK: - AI Hint (Step 3: AI Dynamic Instructions adapter)
 
 /// Action the AI adapter recommends alongside a hint.

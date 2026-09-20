@@ -1387,6 +1387,8 @@ export interface OmsUsageStepEntry {
   validation?: { mode: 'system' | 'manual'; result: 'pass' | 'fail'; score?: number; overridden?: boolean };
   /** Live evidence photo uploaded for this step (served from the usage id). */
   evidence?: boolean;
+  /** C1: roll-up of the observations streamed while on this visit. */
+  observations?: StepObservationSummary;
   // K5 (evidence) extends this entry.
 }
 
@@ -1419,6 +1421,83 @@ export interface OmsUsageSession {
   configId?:          string;
   configCode?:        string;
   steps:              OmsUsageStepEntry[];
+}
+
+// ── C1 (2026.4.46): contextual-intelligence observations ─────────────────────
+// A client streams a compact, ENGINE-NEUTRAL observation record (~1 Hz,
+// batched) while the operator is on a step. SIB — not the device — decides
+// what it means: per-guide/per-step baselines are learned from these records
+// so guidance is measured against how people really do the step, never
+// against a hard-coded threshold. Nothing here is Apple-specific.
+
+/** What the centre of the operator's view is on. */
+export type ObservationAttention = 'target' | 'assembly' | 'pin' | 'panel' | 'away' | 'none';
+
+/** A discrete thing the operator did in the window. */
+export type ObservationInteraction =
+  | 'tap-part' | 'tap-wrong-part' | 'replay' | 'panel-open' | 'panel-close'
+  | 'validate-attempt' | 'realign' | 'look-aligned' | 'stall';
+
+export interface SessionObservation {
+  /** Seconds since the step was entered (client clock, monotonic). */
+  t:               number;
+  attention?:      ObservationAttention;
+  /** Camera → step target (pin / part centroid), metres. */
+  targetDistM?:    number;
+  /** Camera forward vs direction to the step target, degrees. */
+  targetAngleDeg?: number;
+  /** Look-from-here alignment (only when the step carries a view). */
+  viewAligned?:    boolean;
+  /** Device translating faster than ~0.15 m/s over the window. */
+  moving?:         boolean;
+  interaction?:    ObservationInteraction;
+  /** Part name for tap-* interactions (no images, no text). */
+  node?:           string;
+}
+
+export interface ObservationBatchRequest {
+  stepId:        string;
+  stepIndex?:    number;
+  observations:  SessionObservation[];
+}
+
+/** Per-step roll-up kept on the usage record (raw samples go to a JSONL file). */
+export interface StepObservationSummary {
+  samples:         number;
+  /** Seconds of attention per class (1 Hz samples ≈ seconds). */
+  attention:       Partial<Record<ObservationAttention, number>>;
+  /** Share of samples with attention on target/assembly/pin (0–1). */
+  onTargetRatio:   number;
+  /** Seconds with viewAligned = true; undefined when the step has no view. */
+  alignedSec?:     number;
+  wrongPartTaps:   number;
+  partTaps:        number;
+  replays:         number;
+  validateAttempts: number;
+  realigns:        number;
+  stalls:          number;
+  /** Median camera→target distance over the samples that had one. */
+  medianDistM?:    number;
+  movingSec:       number;
+}
+
+/** Learned per-step baseline — what "normal" looks like on this step. */
+export interface StepBaseline {
+  stepId:           string;
+  sessions:         number;         // completed visits contributing
+  dwellSec:         { p50: number; p90: number };
+  onTargetRatio?:   { p50: number; p10: number };
+  wrongPartTaps?:   { p50: number; p90: number };
+  replays?:         { p50: number };
+  validationFailRate?: number;      // failed / verdicts
+  stallRate?:       number;         // visits with a stall / visits
+}
+
+export interface GuideBaselines {
+  guideId:     string;
+  computedAt:  string;
+  sessions:    number;              // usage sessions considered
+  steps:       StepBaseline[];
 }
 
 export interface PushGuideSessionEventRequest {

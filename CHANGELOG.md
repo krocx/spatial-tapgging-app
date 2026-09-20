@@ -202,6 +202,18 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **Contextual intelligence C1 — observations + learned baselines.** The
+  operator session streams engine-neutral 1 Hz observations (attention
+  target, distance/aim to the step target, look-from-here alignment,
+  movement, interactions: tap-part / tap-wrong-part / replay / panel /
+  validate-attempt / realign / look-aligned / stall) in 5-second batches to
+  `POST /guide-sessions/live/:id/observations`. SIB rolls them into the usage
+  record per visit (`OmsUsageStepEntry.observations`), keeps the raw samples
+  as JSONL, and learns per-guide/per-step baselines from completed visits —
+  dwell p50/p90, on-target ratio, wrong-part taps, replays, validation fail
+  rate, stall rate — at `GET /guide-sessions/baselines/:guideId`. Nothing
+  hard-coded. Spec `docs/CONTEXTUAL-INTELLIGENCE.md`; catalogue
+  `contextual-intelligence`.
 - **Guide Bundle — the engine-neutral guide contract (B1).**
   `GET /guides/:id/bundle` returns one versioned JSON (`sib.guide-bundle/1`)
   with the guide, ordered steps, model manifest (GLB/USDZ URLs), the anchor

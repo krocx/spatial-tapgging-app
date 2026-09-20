@@ -258,6 +258,14 @@ struct ARGuideSessionView: View {
     /// "Look from here": distance/angle to the step's source viewpoint; nil = no view or aligned long enough.
     @State private var lookHint: (distance: Float, angle: Float, aligned: Bool)? = nil
     @State private var lookAlignedSince: Date? = nil
+    // C1: observation sampler — 1 Hz samples, flushed every 5 s to SIB.
+    @State private var obsBuffer: [SessionObservation] = []
+    @State private var obsLastSample: Date = .distantPast
+    @State private var obsLastFlush: Date = .distantPast
+    @State private var obsStepStart: Date = Date()
+    @State private var obsLastCamPos: simd_float3? = nil
+    @State private var obsLastCamTime: Date = .distantPast
+    @State private var obsWasAligned = false
 
     // ── Ticker ────────────────────────────────────────────────────────────────
     private let navTicker = Timer.publish(every: 0.10, on: .main, in: .common).autoconnect()
@@ -389,6 +397,7 @@ struct ARGuideSessionView: View {
                 // B2e: automatic re-alignment (chamber moved mid-session) — never silent.
                 .onChange(of: arManager.objectRealignCount) { n in
                     guard n > 0 else { return }
+                    observeInteraction("realign")
                     shapeGhost?.update(objectTransform: arManager.objectTransform); shapeGhost?.flash()
                     withAnimation { showRealignToast = true }
                     Task {
@@ -444,6 +453,7 @@ struct ARGuideSessionView: View {
                 updateNavTelemetry(index: index)
                 if index < sortedSteps.count { presenceFocus.stepId = sortedSteps[index].id }
                 if assemblyNode != nil { updateLookHint() }
+                observeTick(index: index)
             }
             // V2/X1: live validation guidance at 10 Hz. Pose readiness (trained
             // stance: cone_dist_m ±30 % / ≥8 cm, aim, shot direction) is now
@@ -584,6 +594,7 @@ struct ARGuideSessionView: View {
                 liveSessionId: liveSessionId,
                 uploadedEvidenceSteps: uploadedEvidenceSteps
             ) {
+                flushObservations(force: true)     // C1: last batch before the phase changes
                 showSignOff = false
                 phase       = .submitted
                 stopSpeaking()
@@ -1581,6 +1592,9 @@ struct ARGuideSessionView: View {
                     let info = asm.partInfo(name)
                     partChip = (info.title, info.partNumber, true)
                     asm.focus(parts: [name])
+                    // C1: was that the part this step is about?
+                    let focus = assemblyEngine.map { $0.focusParts(at: assemblyStepIndex) } ?? []
+                    observeInteraction(focus.isEmpty || focus.contains(name) ? "tap-part" : "tap-wrong-part", node: name)
                     return
                 }
             }
@@ -1591,6 +1605,7 @@ struct ARGuideSessionView: View {
     /// No animation — instant switch to avoid flicker against AR background.
     private func togglePanel(stepId: String, minimize: Bool) {
         panelMinimized[stepId] = minimize
+        observeInteraction(minimize ? "panel-close" : "panel-open")
         if !minimize { coach.show(.guidePanelButtons) }   // F1
         guard let container = panelContainers[stepId] else { return }
         let pillNode = container.childNode(withName: "pill_\(stepId)", recursively: true)
@@ -2305,6 +2320,8 @@ struct ARGuideSessionView: View {
 
     private func navigateTo(index: Int) {
         guard index >= 0, index < sortedSteps.count else { return }
+        flushObservations(force: true)          // C1: close the previous step's batch
+        obsStepStart = Date(); obsWasAligned = false
 
         // Precondition gate: if this step requires another step to be completed first
         // and it isn't yet, redirect to that prerequisite instead.
@@ -2594,6 +2611,7 @@ struct ARGuideSessionView: View {
     /// Show the training cone at the step pin and let the ticker drive live
     /// distance/aim guidance until the operator captures.
     private func startConeValidation(at index: Int) {
+        observeInteraction("validate-attempt")
         guard let pos = sortedSteps[index].worldPosition else {
             validationCameraIndex = index      // no pin? fall back to photo sheet
             return
@@ -3061,6 +3079,7 @@ struct ARGuideSessionView: View {
         let stepId = sortedSteps[idx].id
         guard !stallFiredSteps.contains(stepId) else { return }
         stallFiredSteps.insert(stepId)
+        observeInteraction("stall")
 
         Task {
             await SIBClient(settings: settings).pushGuideSessionEvent(
@@ -3953,6 +3972,8 @@ extension ARGuideSessionView {
             lookAlignedSince = nil; node.setViewHintHidden(false)
         }
         lookHint = (a.distance, a.angle, aligned)
+        if aligned && !obsWasAligned { observeInteraction("look-aligned") }
+        obsWasAligned = aligned
     }
 
     func replayAssemblyStep() {
@@ -3967,6 +3988,92 @@ extension ARGuideSessionView {
             guard !Task.isCancelled, assemblyStepIndex == index else { return }
             replayAssemblyStep()
         }
+    }
+
+    // ── C1: observation sampler ───────────────────────────────────────────────
+    // What the device can SEE, not what it thinks it means: where the view
+    // centre lands, how far/which way the step target is, whether the
+    // look-from-here marker is matched, whether the device is moving, and the
+    // discrete interactions above. SIB compares these with what other people
+    // did on the same step; nothing here decides "stuck" or "wrong".
+
+    private func observeInteraction(_ kind: String, node: String? = nil) {
+        guard liveSessionId != nil, case .navigating = phase else { return }
+        obsBuffer.append(SessionObservation(t: Date().timeIntervalSince(obsStepStart), interaction: kind, node: node))
+        if obsBuffer.count >= 30 { flushObservations(force: true) }
+    }
+
+    private func observeTick(index: Int) {
+        guard liveSessionId != nil, index < sortedSteps.count,
+              let frame = arManager.sceneView.session.currentFrame else { return }
+        let now = Date()
+        guard now.timeIntervalSince(obsLastSample) >= 1.0 else {
+            if now.timeIntervalSince(obsLastFlush) >= 5 { flushObservations(force: false) }
+            return
+        }
+        obsLastSample = now
+        let t = frame.camera.transform
+        let cam = simd_float3(t.columns.3.x, t.columns.3.y, t.columns.3.z)
+        let fwd = -simd_normalize(simd_float3(t.columns.2.x, t.columns.2.y, t.columns.2.z))
+        var o = SessionObservation(t: now.timeIntervalSince(obsStepStart))
+
+        // Movement: translation speed over the last sample.
+        if let last = obsLastCamPos {
+            let dt = Float(now.timeIntervalSince(obsLastCamTime))
+            if dt > 0 { o.moving = simd_length(cam - last) / dt > 0.15 }
+        }
+        obsLastCamPos = cam; obsLastCamTime = now
+
+        // Target: the step's pin (or the focused parts' centroid when the
+        // assembly carries the step).
+        let step = sortedSteps[index]
+        var target: simd_float3? = pinNodes[step.id].map { $0.simdWorldPosition }
+        if target == nil, let asm = assemblyNode, let eng = assemblyEngine {
+            target = asm.worldCentre(of: eng.focusParts(at: index))
+        }
+        if let tg = target {
+            let d = tg - cam
+            o.targetDistM = Double(simd_length(d))
+            let cosA = max(-1, min(1, simd_dot(fwd, simd_normalize(d))))
+            o.targetAngleDeg = Double(acos(cosA) * 180 / .pi)
+        }
+        if let h = lookHint { o.viewAligned = h.aligned } else if assemblyNode != nil, step.view != nil { o.viewAligned = obsWasAligned }
+
+        // Attention: what the view centre lands on.
+        let sv = arManager.sceneView
+        let centre = CGPoint(x: sv.bounds.midX, y: sv.bounds.midY)
+        let hits = sv.hitTest(centre, options: [.searchMode: SCNHitTestSearchMode.closest.rawValue, .ignoreHiddenNodes: true])
+        var attention = "none"
+        if let hit = hits.first {
+            var n: SCNNode? = hit.node; var found = "away"
+            while let cur = n {
+                if cur == pinNodes[step.id] { found = "pin"; break }
+                if pinNodes.values.contains(cur) { found = "away"; break }
+                if panelContainers.values.contains(cur) { found = "panel"; break }
+                if let nm = cur.name, nm.hasPrefix("cmp:") {
+                    let focus = assemblyEngine.map { $0.focusParts(at: index) } ?? []
+                    found = focus.contains(nm) ? "target" : "assembly"
+                    if found == "target" { break }
+                }
+                n = cur.parent
+            }
+            attention = found
+        } else if let a = o.targetAngleDeg, a < 12 {
+            attention = "target"                 // nothing hit but the camera is aimed at the target
+        }
+        o.attention = attention
+        obsBuffer.append(o)
+        if now.timeIntervalSince(obsLastFlush) >= 5 { flushObservations(force: false) }
+    }
+
+    private func flushObservations(force: Bool) {
+        guard let lsId = liveSessionId, !obsBuffer.isEmpty, case .navigating(let idx) = phase, idx < sortedSteps.count else {
+            if force { obsBuffer.removeAll() }
+            return
+        }
+        let batch = ObservationBatchRequest(stepId: sortedSteps[idx].id, stepIndex: idx, observations: obsBuffer)
+        obsBuffer.removeAll(); obsLastFlush = Date()
+        Task { await SIBClient(settings: settings).pushObservations(liveSessionId: lsId, batch: batch) }
     }
 
     func teardownAssembly() {
@@ -4008,7 +4115,7 @@ extension ARGuideSessionView {
                     Text(chip.title).font(.caption.bold()).lineLimit(1)
                     if let pn = chip.partNumber { Text(pn).font(.system(size: 10, design: .monospaced)).opacity(0.8) }
                 }
-                Button { replayAssemblyStep() } label: {
+                Button { observeInteraction("replay"); replayAssemblyStep() } label: {
                     Image(systemName: "arrow.counterclockwise.circle.fill").font(.title3)
                 }
                 .accessibilityLabel("Replay step animation")

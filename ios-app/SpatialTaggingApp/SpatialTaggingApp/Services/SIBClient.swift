@@ -713,6 +713,12 @@ final class SIBClient {
         )
     }
 
+    /// C1: stream a batch of observations for the current step. Fire-and-forget.
+    func pushObservations(liveSessionId: String, batch: ObservationBatchRequest) async {
+        struct Ack: Decodable {}
+        _ = try? await post(Ack.self, path: "/guide-sessions/live/\(liveSessionId)/observations", body: batch)
+    }
+
     /// Poll for AI-generated hints for the current live session.
     /// Returns all pending hints and clears the server queue (consume-once).
     /// Returns [] silently on any network or decode error — never throws.
