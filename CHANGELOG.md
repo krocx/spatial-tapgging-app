@@ -7,6 +7,11 @@ it, it gets a line.
 ## 2026.4.46 — 2026-09-08
 
 ### Fixed
+- **XR kit: no animations, no part selection.** Three's GLTFLoader strips
+  `:` from node names, so every `cmp:` part went unmatched. The page now
+  restores the original glTF names from the loader's node associations
+  (fallback `extras.def`), warns on the start card when step nodes are not
+  found in the model, and ignores the click at the end of an orbit drag.
 - **Part highlight spoiled the model / "Show me" lit the tapped part.** The
   highlight is now a rim glow (own Metal shader modifier): the part keeps its
   colour and shading, a cyan light hugs its silhouette and breathes. Tapping

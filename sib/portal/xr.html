@@ -198,6 +198,17 @@ async function loadBundle() {
   const buf = await (await fetch(model.glbUrl, { headers: hdr() })).arrayBuffer();
   const gltf = await new Promise((ok, err) => new GLTFLoader().parse(buf, '', ok, err));
   const root = gltf.scene;
+  // GLTFLoader sanitizes node names (strips ':' '.' '/' '[' ']'), so
+  // `cmp:PN_0190-1` would come out as `cmpPN_0190-1`. Part control is by
+  // name, so restore the original glTF names from the parser's associations
+  // (fallback: the exporter's extras.def).
+  const gltfNodes = gltf.parser?.json?.nodes || [];
+  root.traverse(o => {
+    const idx = gltf.parser?.associations?.get(o)?.nodes;
+    const orig = idx !== undefined ? gltfNodes[idx]?.name : undefined;
+    if (orig) o.name = orig;
+    else if (o.userData?.def && !String(o.name).startsWith('cmp:')) o.name = `cmp:${o.userData.def}`;
+  });
   root.traverse(o => {
     if (o.isMesh) {
       if (!o.geometry.attributes.normal) o.geometry.computeVertexNormals();
@@ -220,7 +231,11 @@ async function loadBundle() {
   modelBox = new THREE.Box3().setFromObject(root);
   assemblyBounds = guide.assembly?.bounds || { min: modelBox.min.toArray(), max: modelBox.max.toArray() };
   assembly.userData.scale = guide.assembly?.pose?.scale ?? s;
-  $('gateText').textContent = $('gateText').textContent.replace(' · loading model…', ` · ${parts.size} parts`);
+  const referenced = new Set([...(guide.assembly?.initialNodes || []), ...steps.flatMap(s => s.nodes || [])].map(d => d.node));
+  const missing = [...referenced].filter(n => !parts.has(n));
+  $('gateText').textContent = $('gateText').textContent.replace(' · loading model…', ` · ${parts.size} parts`)
+    + (missing.length ? ` · ⚠ ${missing.length} of ${referenced.size} step nodes not found in the model` : '');
+  if (missing.length) console.warn('[xr] step nodes missing from model:', missing.slice(0, 20));
 }
 
 // ── State + player (UNITY-RUNTIME.md §4) ─────────────────────────────────────
@@ -485,7 +500,11 @@ function startDesktop() {
   camera.position.copy(c).add(new THREE.Vector3(size * 0.6, size * 0.4, size * 0.9)); controls.target.copy(c); controls.update();
   placed = true; locked = true; frameKind = 'desktop';
   $('framePill').textContent = 'desktop preview'; $('framePill').className = 'pill';
+  // A click at the end of an orbit drag is not a tap on a part.
+  let down = null;
+  canvas.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; });
   canvas.addEventListener('click', e => {
+    if (down && Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 6) return;
     const m = new THREE.Vector2((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
     ray.setFromCamera(m, camera); tapAt(ray);
   });
