@@ -101,6 +101,24 @@ step") and opens the card for wrong-part / validate-retry, leaving
 dwell-type hints as a quiet chip. Each fired hint is recorded on the visit
 (`OmsUsageStepEntry.hints`) so C3 can score it by what happened next.
 
+### Operator controls (UX, shipped 2026-09-21)
+
+- **Spotlight.** The step's parts glow cyan (pulsing) with a leader line
+  from the step pin to their centroid. "Show me" on a hint, or tapping the
+  part chip, flashes the right parts three times while the rest of the
+  assembly ghosts for 2.5 s. Replay is a labelled pill.
+- **Mute.** The hint card's "…" menu and the ✨ top-bar control offer *Mute
+  for this step* (clears when the step changes) and *Mute for this guide*
+  (this session); Settings → Contextual hints is the device-wide switch.
+  Human coach hints are never muted. Muted automatic hints are dropped on
+  the device and reported as `hint:muted { hintId, scope }`; delivered ones
+  as `hint:shown` — both land on the visit's hint record (`delivery`,
+  `muteScope`) so C3 scores shown, muted and ignored separately. Observations
+  keep streaming while muted.
+- **Names.** Imported step nodes carry `label` (source object name → BOM
+  description → part number) so hints, chips and the portal never show a raw
+  node id.
+
 ## C3 — Effectiveness loop + portal (after)
 
 Every hint records whether the operator progressed within a window; hints

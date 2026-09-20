@@ -207,6 +207,16 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **Contextual hints — spotlight + operator controls.** The step's parts
+  now glow (cyan pulse) with a leader line from the pin; "Show me" on a hint
+  or tapping the part chip flashes the right parts while the rest ghosts for
+  2.5 s; Replay is a labelled pill. Hints can be muted for this step (auto-
+  clears on step change), for this guide (session) or device-wide (Settings →
+  Contextual hints); the ✨ top-bar control shows the state and unmutes. Coach
+  hints are never muted. Delivery is reported back (`hint:shown` /
+  `hint:muted {scope}`) onto the visit's hint record for C3; the Usage Log
+  strikes through muted hints. Imported step nodes carry a friendly `label`
+  (object name → BOM description → part number) used by hints.
 - **Contextual intelligence C2 — deviations become hints.** After each
   observation batch SIB compares the current visit with the step's learned
   baseline and queues one hint per new deviation: `dwell` (past the p90),

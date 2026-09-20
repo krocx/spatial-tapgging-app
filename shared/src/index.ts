@@ -1115,6 +1115,9 @@ export interface GuideStepNode {
   effect?:       'flash';
   /** Stable source key (Cortona3D objectID) for cross-checking. */
   sourceKey?:    string;
+  /** Human name for the part (source object name → BOM description → part
+   *  number). Used by hints, chips and the portal so nobody sees a raw id. */
+  label?:        string;
 }
 
 /** Suggested camera for a step, in the model frame. */
@@ -1316,6 +1319,11 @@ export type GuideSessionEventType =
    *  typically the QR / a prominent object moved. Pins may be off; the app
    *  falls back to image alignment. payload: { distanceM, angleDeg }. */
   | 'environment:drift'
+  /** C2 UX: what the client did with an automatic hint — shown to the
+   *  operator, or dropped because hints were muted (step / guide / device).
+   *  payload: { hintId, signal?, scope?: 'step' | 'guide' | 'device' }. */
+  | 'hint:shown'
+  | 'hint:muted'
   | 'session:submitted';
 
 export interface GuideSessionEvent {
@@ -1390,7 +1398,7 @@ export interface OmsUsageStepEntry {
   /** C1: roll-up of the observations streamed while on this visit. */
   observations?: StepObservationSummary;
   /** C2: hints fired on this visit (C3 scores them by what happened next). */
-  hints?: { id: string; signal: string; ts: string; via: 'llm' | 'template' }[];
+  hints?: { id: string; signal: string; ts: string; via: 'llm' | 'template'; delivery?: 'shown' | 'muted'; muteScope?: 'step' | 'guide' | 'device' }[];
   // K5 (evidence) extends this entry.
 }
 

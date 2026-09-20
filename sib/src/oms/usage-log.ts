@@ -137,6 +137,20 @@ export function usageRecordEvent(
       }
       break;
     }
+    case 'hint:shown':
+    case 'hint:muted': {
+      const pl = (req.payload ?? {}) as { hintId?: string; scope?: string };
+      if (typeof pl.hintId !== 'string') return;
+      for (let i = rec.steps.length - 1; i >= 0; i--) {
+        const h = rec.steps[i].hints?.find(x => x.id === pl.hintId);
+        if (h) {
+          h.delivery = type === 'hint:shown' ? 'shown' : 'muted';
+          if (type === 'hint:muted' && (pl.scope === 'step' || pl.scope === 'guide' || pl.scope === 'device')) h.muteScope = pl.scope;
+          break;
+        }
+      }
+      break;
+    }
     case 'environment:drift': {
       const pl = (req.payload ?? {}) as { distanceM?: number; angleDeg?: number };
       if (typeof pl.distanceM !== 'number' || typeof pl.angleDeg !== 'number') return;

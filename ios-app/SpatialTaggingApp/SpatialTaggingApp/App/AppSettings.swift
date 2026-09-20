@@ -104,6 +104,11 @@ final class AppSettings: ObservableObject {
     @Published var testBay: String {
         didSet { UserDefaults.standard.set(testBay, forKey: "test_bay") }
     }
+    /// C2 UX: automatic contextual hints (device-wide). Observations and the
+    /// server's hint log continue regardless — this is the UI only.
+    @Published var contextualHintsEnabled: Bool {
+        didSet { UserDefaults.standard.set(contextualHintsEnabled, forKey: "contextual_hints_enabled") }
+    }
     /// The product door last used ("chambers" | "gemba" | "iloto") — local
     /// memory so the home page can say "last time you did X" without guessing.
     @Published var lastProduct: String {
@@ -215,6 +220,7 @@ final class AppSettings: ObservableObject {
         chamberConfigLabel = UserDefaults.standard.string(forKey: "chamber_config_label") ?? ""
         lastChamberAssetId = UserDefaults.standard.string(forKey: "last_chamber_asset")    ?? ""
         testBay            = UserDefaults.standard.string(forKey: "test_bay")             ?? ""
+        contextualHintsEnabled = UserDefaults.standard.object(forKey: "contextual_hints_enabled") as? Bool ?? true
         lastProduct        = UserDefaults.standard.string(forKey: "last_product")         ?? ""
 
         // Author name: use stored value if set; otherwise extract first name from device name

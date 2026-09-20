@@ -3505,7 +3505,7 @@ function obsCell(o) {
 function hintsCell(h) {
   if (!Array.isArray(h) || !h.length) return '<span class="ul-dim">—</span>';
   const LABEL = { dwell: 'taking longer', 'attention-off': 'looked away', 'wrong-part': 'wrong part', 'look-away': 'viewpoint', 'validate-retry': 'validation' };
-  return h.map(x => `<span class="badge" style="font-size:10px" title="${esc(x.via || '')} · ${esc(x.ts || '')}">✨ ${esc(LABEL[x.signal] || x.signal)}</span>`).join(' ');
+  return h.map(x => `<span class="badge" style="font-size:10px${x.delivery === 'muted' ? ';opacity:.45;text-decoration:line-through' : ''}" title="${esc(x.via || '')} · ${x.delivery === 'muted' ? 'muted (' + esc(x.muteScope || '?') + ')' : (x.delivery || 'queued')} · ${esc(x.ts || '')}">✨ ${esc(LABEL[x.signal] || x.signal)}</span>`).join(' ');
 }
 
 // ── AR Guide Sessions ─────────────────────────────────────────────────────────

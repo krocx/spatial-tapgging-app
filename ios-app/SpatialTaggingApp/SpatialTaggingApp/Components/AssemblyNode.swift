@@ -210,16 +210,73 @@ final class AssemblyNode {
 
     // MARK: - Focus
 
-    /// Pulse the given parts (and stop pulsing the previous ones).
-    func focus(parts names: [String]) {
-        for n in focused { parts[n]?.removeAction(forKey: "focus-pulse"); parts[n]?.scale = SCNVector3(1, 1, 1) }
+    /// Spotlight the parts a step is about: a cyan emissive glow that pulses,
+    /// plus a leader line from `leaderFrom` (the step pin) to their centroid.
+    /// Materials are per part (GLBLoader clones them), so the glow never
+    /// bleeds into neighbours. A 4 % scale pulse was invisible on small parts.
+    func focus(parts names: [String], leaderFrom: simd_float3? = nil) {
+        for n in focused {
+            parts[n]?.removeAction(forKey: "focus-pulse")
+            parts[n]?.scale = SCNVector3(1, 1, 1)
+            if let node = parts[n] { restoreEmission(node) }
+        }
         focused = Set(names)
+        leaderNode?.removeFromParentNode(); leaderNode = nil
+        let glow = UIColor(red: 0.20, green: 0.85, blue: 1.0, alpha: 1)
         for n in names {
             guard let node = parts[n] else { continue }
-            let up = SCNAction.scale(to: 1.04, duration: 0.6), down = SCNAction.scale(to: 1.0, duration: 0.6)
-            up.timingMode = .easeInEaseOut; down.timingMode = .easeInEaseOut
-            node.runAction(.repeatForever(.sequence([up, down])), forKey: "focus-pulse")
+            let on  = SCNAction.customAction(duration: 0.001) { nd, _ in nd.enumerateHierarchy { c, _ in for m in c.geometry?.materials ?? [] { m.emission.contents = glow } } }
+            let dim = SCNAction.customAction(duration: 0.001) { nd, _ in nd.enumerateHierarchy { c, _ in for m in c.geometry?.materials ?? [] { m.emission.contents = glow.withAlphaComponent(0.25) } } }
+            node.runAction(.repeatForever(.sequence([on, .wait(duration: 0.55), dim, .wait(duration: 0.55)])), forKey: "focus-pulse")
         }
+        if let from = leaderFrom, let to = worldCentre(of: names), simd_length(to - from) > 0.03 {
+            leaderNode = makeLeader(from: from, to: to, color: glow)
+            root.parent?.addChildNode(leaderNode!)
+        }
+    }
+
+    /// Wrong part tapped / "Show me": the right parts flash three times while
+    /// everything else steps back to a ghost for `seconds`, then normal.
+    func spotlightFlash(parts names: [String], seconds: TimeInterval = 2.5) {
+        let targets = Set(names)
+        SCNTransaction.begin(); SCNTransaction.animationDuration = 0.25
+        for (name, node) in parts where !targets.contains(name) && !isAncestorOfAny(node, targets) {
+            var st = effectiveState(of: name); if st.show == .hidden { continue }
+            st.show = .ghost; st.opacity = 0.18; setVisual(node, state: st)
+        }
+        SCNTransaction.commit()
+        for n in names { parts[n]?.runAction(.sequence([.scale(to: 1.12, duration: 0.15), .scale(to: 1.0, duration: 0.15), .scale(to: 1.12, duration: 0.15), .scale(to: 1.0, duration: 0.15), .scale(to: 1.12, duration: 0.15), .scale(to: 1.0, duration: 0.15)]), forKey: "spot-flash") }
+        DispatchQueue.main.asyncAfter(deadline: .now() + seconds) { [weak self] in
+            guard let self else { return }
+            SCNTransaction.begin(); SCNTransaction.animationDuration = 0.35
+            for (name, node) in self.parts where !targets.contains(name) { self.setVisual(node, state: self.effectiveState(of: name)) }
+            SCNTransaction.commit()
+        }
+    }
+
+    private var leaderNode: SCNNode?
+
+    private func isAncestorOfAny(_ node: SCNNode, _ names: Set<String>) -> Bool {
+        for n in names { var p = parts[n]?.parent; while let c = p { if c == node { return true }; p = c.parent } }
+        return false
+    }
+
+    private func restoreEmission(_ node: SCNNode) {
+        node.enumerateHierarchy { c, _ in for m in c.geometry?.materials ?? [] { m.emission.contents = UIColor.black } }
+    }
+
+    private func makeLeader(from a: simd_float3, to b: simd_float3, color: UIColor) -> SCNNode {
+        let d = b - a; let len = simd_length(d)
+        let cyl = SCNCylinder(radius: 0.0025, height: CGFloat(len))
+        let m = SCNMaterial(); m.diffuse.contents = color; m.emission.contents = color; m.transparency = 0.85; cyl.materials = [m]
+        let n = SCNNode(geometry: cyl); n.name = "focus-leader"
+        n.simdPosition = (a + b) / 2
+        let dir = d / max(0.001, len)
+        n.simdLook(at: b, up: abs(dir.y) > 0.9 ? simd_float3(1, 0, 0) : simd_float3(0, 1, 0), localFront: simd_float3(0, 1, 0))
+        let dot = SCNNode(geometry: SCNSphere(radius: 0.008)); dot.geometry?.materials = [m]; dot.simdPosition = simd_float3(0, len / 2, 0)
+        n.addChildNode(dot)
+        n.runAction(.repeatForever(.sequence([.fadeOpacity(to: 0.4, duration: 0.55), .fadeOpacity(to: 1, duration: 0.55)])))
+        return n
     }
 
     /// World-space centroid of the named parts.
@@ -291,6 +348,9 @@ final class AssemblyNode {
     }
 
     func setViewHintHidden(_ hidden: Bool) { viewHintNode?.isHidden = hidden }
+
+    /// Remove scene-level helpers (leader line) — call before removing `root`.
+    func removeHelpers() { leaderNode?.removeFromParentNode(); leaderNode = nil }
 
     // MARK: - Hit test
 

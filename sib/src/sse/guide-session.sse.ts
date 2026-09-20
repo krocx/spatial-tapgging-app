@@ -369,7 +369,7 @@ export function evaluateSignals(liveSessionId: string): void {
 
   // Part names the step is about — display names from the model's extras are
   // not stored server-side; fall back to the node names without the prefix.
-  const partNames = (step.nodes ?? []).map(n => n.node.replace(/^cmp:/, '').replace(/_/g, ' ')).filter((v, i, a) => a.indexOf(v) === i);
+  const partNames = (step.nodes ?? []).map(n => n.label ?? n.node.replace(/^cmp:/, '').replace(/_/g, ' ')).filter((v, i, a) => a.indexOf(v) === i);
 
   signalInFlight.add(liveSessionId);
   (async () => {

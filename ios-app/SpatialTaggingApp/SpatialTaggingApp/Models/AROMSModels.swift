@@ -181,6 +181,7 @@ struct GuideStepNode: Codable, Equatable {
     let delaySec:     Double?
     /// Transient attention effect ("flash") — leaves no state behind.
     let effect:       String?
+    let label:        String?           // friendly part name (source name → BOM description → part number)
     let sourceKey:    String?
 
     var partName: String { node.hasPrefix("cmp:") ? String(node.dropFirst(4)) : node }
@@ -603,6 +604,8 @@ enum GuideSessionEventType: String, Codable {
     case stepStalled     = "step:stalled"
     case perceptionResult = "perception:result"
     case environmentDrift = "environment:drift"   // X1: re-localization disagreed with the author's pose
+    case hintShown        = "hint:shown"          // C2 UX: automatic hint reached the operator
+    case hintMuted        = "hint:muted"          // C2 UX: dropped because hints were muted (payload.scope)
     case sessionSubmitted = "session:submitted"
 }
 

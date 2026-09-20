@@ -256,6 +256,10 @@ struct ARGuideSessionView: View {
     /// Part chip: the step's focus part, or whatever the operator tapped.
     @State private var partChip: (title: String, partNumber: String?, tapped: Bool)? = nil
     /// "Look from here": distance/angle to the step's source viewpoint; nil = no view or aligned long enough.
+    // C2 UX: hint muting — UI only; observations and the server log continue.
+    @State private var hintsMutedStepId: String? = nil       // cleared on step change
+    @State private var hintsMutedGuide = false               // this session
+    @State private var showHintMenu = false
     @State private var lookHint: (distance: Float, angle: Float, aligned: Bool)? = nil
     @State private var lookAlignedSince: Date? = nil
     // C1: observation sampler — 1 Hz samples, flushed every 5 s to SIB.
@@ -918,6 +922,22 @@ struct ARGuideSessionView: View {
                     Text("\(index + 1) / \(sortedSteps.count)")
                         .font(.subheadline.monospacedDigit())
                         .foregroundStyle(.white.opacity(0.7))
+
+                    // C2 UX: hint state — sparkles = on, slashed = muted. Tap
+                    // unmutes; when on, tap opens the mute menu.
+                    Menu {
+                        if hintsMuted {
+                            Button { unmuteHints() } label: { Label("Turn hints back on", systemImage: "sparkles") }
+                        } else {
+                            Button { muteHints(scope: "step", hint: nil) } label: { Label("Mute for this step", systemImage: "sparkles.slash") }
+                            Button { muteHints(scope: "guide", hint: nil) } label: { Label("Mute for this guide", systemImage: "moon.zzz") }
+                        }
+                    } label: {
+                        Image(systemName: hintsMuted ? "sparkles.slash" : "sparkles")
+                            .font(.system(size: 16))
+                            .foregroundStyle(hintsMuted ? Color.white.opacity(0.45) : Color.yellow)
+                    }
+                    .accessibilityLabel(hintsMuted ? "Hints muted — tap to turn on" : "Contextual hints on")
 
                     // Panel visibility toggle: eye = show all, eye.slash = current only
                     Button {
@@ -2322,6 +2342,7 @@ struct ARGuideSessionView: View {
         guard index >= 0, index < sortedSteps.count else { return }
         flushObservations(force: true)          // C1: close the previous step's batch
         obsStepStart = Date(); obsWasAligned = false
+        hintsMutedStepId = nil                  // "mute for this step" ends with the step
 
         // Precondition gate: if this step requires another step to be completed first
         // and it isn't yet, redirect to that prerequisite instead.
@@ -2461,6 +2482,15 @@ struct ARGuideSessionView: View {
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(.secondary)
                 Spacer()
+                if !hint.isHuman {
+                    Menu {
+                        Button { muteHints(scope: "step", hint: hint) } label: { Label("Mute for this step", systemImage: "sparkles.slash") }
+                        Button { muteHints(scope: "guide", hint: hint) } label: { Label("Mute for this guide", systemImage: "moon.zzz") }
+                    } label: {
+                        Image(systemName: "ellipsis.circle").font(.system(size: 15)).foregroundStyle(.secondary)
+                    }
+                    .accessibilityLabel("Hint options")
+                }
                 if hintHistory.count > 1 {
                     Button { showAssistTray = true } label: {
                         Image(systemName: "clock.arrow.circlepath")
@@ -2491,6 +2521,26 @@ struct ARGuideSessionView: View {
                             .font(.footnote.bold())
                             .padding(.horizontal, 12).padding(.vertical, 7)
                             .background(Color.orange, in: Capsule())
+                            .foregroundStyle(.white)
+                    }
+                    .buttonStyle(.plain)
+                }
+                if assemblyNode != nil, hint.signal == "wrong-part" || hint.signal == "attention-off" || hint.signal == "dwell" {
+                    Button { locateStepParts() } label: {
+                        Label("Show me", systemImage: "scope")
+                            .font(.footnote.bold())
+                            .padding(.horizontal, 12).padding(.vertical, 7)
+                            .background(Color.cyan.opacity(0.85), in: Capsule())
+                            .foregroundStyle(.black)
+                    }
+                    .buttonStyle(.plain)
+                }
+                if assemblyNode != nil, hint.signal == "look-away" {
+                    Button { assemblyNode?.setViewHintHidden(false); showNotice("Stand at the blue camera marker") } label: {
+                        Label("Show viewpoint", systemImage: "camera.viewfinder")
+                            .font(.footnote.bold())
+                            .padding(.horizontal, 12).padding(.vertical, 7)
+                            .background(Color.blue.opacity(0.85), in: Capsule())
                             .foregroundStyle(.white)
                     }
                     .buttonStyle(.plain)
@@ -2947,7 +2997,17 @@ struct ARGuideSessionView: View {
             Task { @MainActor in
                 let client = SIBClient(settings: settings)
                 let hints = await client.fetchGuideHints(liveSessionId: liveSessionId)
-                if let first = hints.first, activeHint == nil, !isHintStale(first) {
+                // C2 UX: muted automatic hints are dropped here and reported as
+                // hint:muted; human coach hints are never muted.
+                var deliverable: [AIHint] = []
+                for h in hints {
+                    if let scope = muteScope(for: h) {
+                        Task { await SIBClient(settings: settings).pushGuideSessionEvent(liveSessionId: liveSessionId, event: PushGuideSessionEventRequest(
+                            type: .hintMuted, stepId: h.stepId, stepIndex: nil, durationSeconds: nil,
+                            payload: ["hintId": AnyCodable(h.id), "scope": AnyCodable(scope)])) }
+                    } else { deliverable.append(h) }
+                }
+                if let first = deliverable.first, activeHint == nil, !isHintStale(first) {
                     // Cooldown: a hint for the step the user JUST dismissed a
                     // hint on, within 30 s, is nagging — drop it.
                     if let at = lastHintDismissedAt, let dismissedStep = lastDismissedStepId,
@@ -2963,6 +3023,13 @@ struct ARGuideSessionView: View {
                     assistExpanded = (first.trigger == "stall")
                         || (first.trigger == "signal" && (first.signal == "wrong-part" || first.signal == "validate-retry"))
                     UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                    if !first.isHuman {
+                        Task { await SIBClient(settings: settings).pushGuideSessionEvent(liveSessionId: liveSessionId, event: PushGuideSessionEventRequest(
+                            type: .hintShown, stepId: first.stepId, stepIndex: nil, durationSeconds: nil,
+                            payload: ["hintId": AnyCodable(first.id)])) }
+                    }
+                    // Wrong part → show the right one on the model, not just in words.
+                    if first.signal == "wrong-part" || first.signal == "attention-off" { locateStepParts() }
                 }
             }
         }
@@ -3961,7 +4028,7 @@ extension ARGuideSessionView {
         } else {
             partChip = nil
         }
-        node.focus(parts: focus)
+        node.focus(parts: focus, leaderFrom: pinNodes[sortedSteps[index].id]?.simdWorldPosition)
         node.setViewHint(sortedSteps[index].view)
         lookHint = nil; lookAlignedSince = nil
         replayAssemblyStep()
@@ -4000,6 +4067,46 @@ extension ARGuideSessionView {
             guard !Task.isCancelled, assemblyStepIndex == index else { return }
             replayAssemblyStep()
         }
+    }
+
+    // ── C2 UX: hint muting + spotlight ───────────────────────────────────────
+
+    private var hintsMuted: Bool {
+        if !settings.contextualHintsEnabled || hintsMutedGuide { return true }
+        if case .navigating(let i) = phase, i < sortedSteps.count, hintsMutedStepId == sortedSteps[i].id { return true }
+        return false
+    }
+
+    /// nil = deliver; otherwise the mute scope to report. Coach hints never mute.
+    private func muteScope(for h: AIHint) -> String? {
+        if h.isHuman { return nil }
+        if !settings.contextualHintsEnabled { return "device" }
+        if hintsMutedGuide { return "guide" }
+        if let stepId = hintsMutedStepId, h.stepId == stepId || h.stepId == nil { return "step" }
+        return nil
+    }
+
+    private func muteHints(scope: String, hint: AIHint?) {
+        if scope == "guide" { hintsMutedGuide = true }
+        else if case .navigating(let i) = phase, i < sortedSteps.count { hintsMutedStepId = sortedSteps[i].id }
+        if let hint, activeHint?.id == hint.id { withAnimation(.easeOut(duration: 0.2)) { activeHint = nil; assistExpanded = false } }
+        showNotice(scope == "guide" ? "Hints muted for this guide — tap ✨ to turn on" : "Hints muted for this step — tap ✨ to turn on")
+        AppLog.info("ci", "hints muted scope=\(scope)")
+    }
+
+    private func unmuteHints() {
+        hintsMutedGuide = false; hintsMutedStepId = nil
+        if !settings.contextualHintsEnabled { settings.contextualHintsEnabled = true }
+        showNotice("Hints on")
+    }
+
+    /// Spotlight the step's parts: right parts flash, the rest ghost briefly.
+    private func locateStepParts() {
+        guard let asm = assemblyNode, let eng = assemblyEngine else { return }
+        let focus = eng.focusParts(at: assemblyStepIndex)
+        guard !focus.isEmpty else { return }
+        asm.spotlightFlash(parts: focus)
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
     }
 
     // ── C1: observation sampler ───────────────────────────────────────────────
@@ -4091,6 +4198,7 @@ extension ARGuideSessionView {
     func teardownAssembly() {
         assemblyReplayTask?.cancel(); assemblyReplayTask = nil
         assemblyNode?.cancelPlayback()
+        assemblyNode?.removeHelpers()
         assemblyNode?.root.removeFromParentNode()
         assemblyNode = nil; assemblyEngine = nil; partChip = nil; lookHint = nil
     }
@@ -4125,14 +4233,25 @@ extension ARGuideSessionView {
     @ViewBuilder
     func assemblyPartChip(_ chip: (title: String, partNumber: String?, tapped: Bool)) -> some View {
             HStack(spacing: 8) {
-                Image(systemName: chip.tapped ? "hand.tap.fill" : "cube.fill").font(.caption)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(chip.title).font(.caption.bold()).lineLimit(1)
-                    if let pn = chip.partNumber { Text(pn).font(.system(size: 10, design: .monospaced)).opacity(0.8) }
+                // Tap the name → spotlight the step's parts again ("locate").
+                Button { locateStepParts() } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: chip.tapped ? "hand.tap.fill" : "scope").font(.caption)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(chip.title).font(.caption.bold()).lineLimit(1)
+                            if let pn = chip.partNumber { Text(pn).font(.system(size: 10, design: .monospaced)).opacity(0.8) }
+                        }
+                    }
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Locate the parts for this step")
                 Button { observeInteraction("replay"); replayAssemblyStep() } label: {
-                    Image(systemName: "arrow.counterclockwise.circle.fill").font(.title3)
+                    Label("Replay", systemImage: "arrow.counterclockwise")
+                        .font(.caption.bold())
+                        .padding(.horizontal, 9).padding(.vertical, 5)
+                        .background(Color.white.opacity(0.18), in: Capsule())
                 }
+                .buttonStyle(.plain)
                 .accessibilityLabel("Replay step animation")
             }
             .padding(.horizontal, 12).padding(.vertical, 8)

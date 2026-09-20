@@ -15,7 +15,7 @@
 import type { ImportedGuide, ImportedGuideStep, GuideStepNode, GuideStepView } from '@spatial/shared';
 import { readCortonaBundle, type CortonaBundle } from './bundle.js';
 import { parseVrml, numField } from './vrml.js';
-import { buildScene } from './scene.js';
+import { buildScene, type SceneGraph } from './scene.js';
 import { writeGlb, type NodeExtras } from './glb.js';
 import { extractProcedure, classifyMotion, type ExtractedProcedure, type ExtractedSubStep } from './procedure.js';
 import { collectWidgets } from './widgets.js';
@@ -122,7 +122,7 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
     const body = dedup.join('\n\n') || title;
     if (dedup.length) withText++; if (m.view) withView++; if (m.callouts.length) withCallouts++;
     const step: ImportedGuideStep = { sequenceNumber: steps.length + 1, title, text: body, completionRequired: true };
-    if (m.nodes.length) step.nodes = m.nodes.map(pruneNode);
+    if (m.nodes.length) step.nodes = m.nodes.map(n => { const p = pruneNode(n); const l = labelFor(n.node.replace(/^cmp:/, ''), scene, extras); return l ? { ...p, label: l } : p; });
     // Pin = centroid of the parts the step is ABOUT: moving parts first, then
     // highlighted, then revealed-solid, then anything it touches (a "ghost the
     // whole assembly" step must not pin to the centre of the machine).
@@ -255,6 +255,15 @@ function centroidOf(defs: string[], bounds: Map<string, { min: number[]; max: nu
   return [0, 1, 2].map(a => round5((min[a] + max[a]) / 2)) as [number, number, number];
 }
 const round5 = (x: number): number => Math.round(x * 1e5) / 1e5;
+
+/** Friendly name for a part: source object name → BOM description → part number → nothing. */
+function labelFor(def: string, scene: SceneGraph, extras: Map<string, NodeExtras>): string | undefined {
+  const sn = scene.byDef.get(def);
+  const name = sn?.name?.trim();
+  if (name) return name;
+  const e = extras.get(def);
+  return e?.description?.trim() || e?.partNumber?.trim() || undefined;
+}
 
 function pruneNode(n: GuideStepNode): GuideStepNode {
   const o: GuideStepNode = { node: n.node };

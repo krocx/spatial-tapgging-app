@@ -336,6 +336,15 @@ struct SettingsView: View {
                     )
                 }
 
+                // ── Contextual hints (C2 UX) ───────────────────────────────────
+                Section {
+                    Toggle(isOn: $settings.contextualHintsEnabled) {
+                        Label("Contextual hints", systemImage: "sparkles")
+                    }
+                } footer: {
+                    Text("Automatic tips while running a guide (taking longer than usual, wrong part, viewpoint). Turning this off hides the tips on this device only; a colleague's coaching messages still show, and observations keep being recorded.")
+                }
+
                 // ── Diagnostics (QA Mode + log export) ─────────────────────────
                 Section {
                     Toggle(isOn: Binding(
