@@ -58,6 +58,17 @@ router.get('/', (_req, res) => {
   res.sendFile(path.join(__dirname, '../../portal/catalog.html'));
 });
 
+// GET /catalog/schema/:name — B1 (2026.4.46): JSON Schemas under docs/schema/
+// (e.g. guide-bundle). Public: a schema describes shape, never content.
+router.get('/schema/:name', (req, res) => {
+  const name = String(req.params.name).replace(/[^a-z0-9-]/gi, '');
+  const docsDir = resolveDocsDir();
+  const file = docsDir ? path.join(docsDir, 'schema', `${name}.schema.json`) : null;
+  if (!file || !fs.existsSync(file)) { res.status(404).json({ error: `No schema named ${name}` }); return; }
+  res.setHeader('Cache-Control', 'no-cache');
+  res.type('application/schema+json').send(fs.readFileSync(file, 'utf8'));
+});
+
 router.get('/data', (req, res) => {
   const format = String(req.query.format ?? 'json');
   if (format === 'toon') {

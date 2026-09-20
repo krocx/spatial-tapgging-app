@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sib.appliedx/schema/guide-bundle.schema.json",
+  "title": "SIB Guide Bundle",
+  "description": "One document that carries everything a client needs to run a guide on any engine. Served by GET /guides/:id/bundle. Additive changes keep schema 'sib.guide-bundle/1'; breaking changes bump it.",
+  "type": "object",
+  "required": ["schema", "generatedAt", "guide", "steps", "models", "anchor", "validation", "playback", "links"],
+  "properties": {
+    "schema":      { "const": "sib.guide-bundle/1" },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "guide": {
+      "type": "object",
+      "required": ["id", "anchorId", "name", "published"],
+      "properties": {
+        "id":        { "type": "string" },
+        "anchorId":  { "type": "string" },
+        "name":      { "type": "string" },
+        "published": { "type": "boolean" },
+        "assembly":  { "$ref": "#/$defs/assembly" }
+      }
+    },
+    "steps": { "type": "array", "items": { "$ref": "#/$defs/step" } },
+    "models": { "type": "array", "items": { "$ref": "#/$defs/model" } },
+    "anchor": {
+      "type": "object",
+      "required": ["id", "assetId", "anchorType", "frames"],
+      "properties": {
+        "id":           { "type": "string" },
+        "assetId":      { "type": "string" },
+        "anchorType":   { "enum": ["QR", "LOC_TAG", "LOTO"] },
+        "configId":     { "type": "string" },
+        "originSource": { "type": "string" },
+        "frames": {
+          "type": "object",
+          "required": ["qr", "worldMap", "guideWorldMap", "object"],
+          "properties": {
+            "qr": { "type": "object", "required": ["available"], "properties": {
+              "available": { "type": "boolean" }, "markerSizeM": { "type": "number" }, "anchorPose": { "$ref": "#/$defs/mat16" } } },
+            "worldMap": { "type": "object", "required": ["available"], "properties": {
+              "available": { "type": "boolean" }, "url": { "type": "string" }, "sealedAt": { "type": "string" } } },
+            "guideWorldMap": { "type": "object", "required": ["available"], "properties": {
+              "available": { "type": "boolean" }, "url": { "type": "string" }, "photoUrl": { "type": "string" },
+              "referenceCameraPose": { "$ref": "#/$defs/mat16" }, "objectPoseInMap": { "$ref": "#/$defs/mat16" } } },
+            "object": { "type": "object", "required": ["available"], "properties": {
+              "available": { "type": "boolean" }, "url": { "type": "string" }, "calibrated": { "type": "boolean" },
+              "objectPoseInQR": { "$ref": "#/$defs/mat16" } } }
+          }
+        }
+      }
+    },
+    "validation": { "type": "array", "items": {
+      "type": "object", "required": ["stepId", "required", "mode"],
+      "properties": {
+        "stepId": { "type": "string" }, "required": { "type": "boolean" },
+        "mode": { "enum": ["single", "cone", "none"] }, "trainedAt": { "type": "string" },
+        "referenceUrl": { "type": "string" }, "verdictUrl": { "type": "string" } } } },
+    "playback": {
+      "type": "object", "required": ["animationSpeed", "conventions"],
+      "properties": {
+        "animationSpeed": { "type": "number", "minimum": 0.1, "maximum": 3 },
+        "conventions": { "type": "object",
+          "required": ["units", "up", "handedness", "rotation", "quaternion", "matrices", "timeline"],
+          "properties": {
+            "units": { "const": "m" }, "up": { "const": "Y" }, "handedness": { "const": "right" },
+            "rotation": { "const": "axis-angle-xyz-rad" }, "quaternion": { "const": "xyzw" },
+            "matrices": { "const": "column-major-16" }, "timeline": { "const": "cumulative-last-write-wins" },
+            "contract": { "type": "string" } } } } },
+    "links": { "type": "object", "required": ["self", "guide", "steps"], "properties": {
+      "self": { "type": "string" }, "guide": { "type": "string" }, "steps": { "type": "string" }, "liveSession": { "type": "string" } } }
+  },
+  "$defs": {
+    "vec3":  { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 },
+    "vec4":  { "type": "array", "items": { "type": "number" }, "minItems": 4, "maxItems": 4 },
+    "mat16": { "type": "array", "items": { "type": "number" }, "minItems": 16, "maxItems": 16 },
+    "pose": {
+      "type": "object", "required": ["position", "rotation", "source"],
+      "properties": {
+        "position": { "$ref": "#/$defs/vec3" }, "rotation": { "$ref": "#/$defs/vec4" },
+        "scale": { "type": "number" }, "source": { "enum": ["tap", "object", "config", "partframe"] },
+        "setAt": { "type": "string" }, "setBy": { "type": "string" } } },
+    "assembly": {
+      "type": "object", "required": ["modelId"],
+      "properties": {
+        "modelId": { "type": "string" }, "pose": { "$ref": "#/$defs/pose" },
+        "initialNodes": { "type": "array", "items": { "$ref": "#/$defs/nodeDelta" } },
+        "bounds": { "type": "object", "required": ["min", "max"], "properties": { "min": { "$ref": "#/$defs/vec3" }, "max": { "$ref": "#/$defs/vec3" } } },
+        "animationSpeed": { "type": "number" }, "source": { "type": "string" } } },
+    "nodeDelta": {
+      "type": "object", "required": ["node"],
+      "properties": {
+        "node": { "type": "string" }, "show": { "enum": ["hidden", "ghost", "solid"] },
+        "opacity": { "type": "number" }, "animate": { "enum": ["insert", "remove", "move"] },
+        "from": { "$ref": "#/$defs/vec3" }, "to": { "$ref": "#/$defs/vec3" },
+        "rotationFrom": { "$ref": "#/$defs/vec4" }, "rotationTo": { "$ref": "#/$defs/vec4" },
+        "color": { "$ref": "#/$defs/vec3" }, "durationSec": { "type": "number" }, "delaySec": { "type": "number" },
+        "effect": { "enum": ["flash"] }, "sourceKey": { "type": "string" } } },
+    "view": {
+      "type": "object",
+      "properties": {
+        "position": { "$ref": "#/$defs/vec3" }, "orientation": { "$ref": "#/$defs/vec4" },
+        "center": { "$ref": "#/$defs/vec3" }, "fieldOfView": { "type": "number" }, "orthographic": { "type": "boolean" } } },
+    "step": {
+      "type": "object", "required": ["id", "guideId", "sequenceNumber", "text"],
+      "properties": {
+        "id": { "type": "string" }, "guideId": { "type": "string" }, "sequenceNumber": { "type": "integer" },
+        "title": { "type": "string" }, "text": { "type": "string" },
+        "posX": { "type": "number" }, "posY": { "type": "number" }, "posZ": { "type": "number" },
+        "isPlaced": { "type": "boolean" }, "positionSource": { "enum": ["tap", "cad"] },
+        "cadPosition": { "$ref": "#/$defs/vec3" },
+        "nodes": { "type": "array", "items": { "$ref": "#/$defs/nodeDelta" } },
+        "view": { "$ref": "#/$defs/view" },
+        "nextOnSuccess": { "type": "string" }, "nextOnFailure": { "type": "string" }, "precondition": { "type": "string" },
+        "validationRequired": { "type": "boolean" }, "evidenceRequired": { "type": "boolean" },
+        "models": { "type": "array", "items": { "type": "object", "required": ["slotId", "modelId"], "properties": {
+          "slotId": { "type": "string" }, "modelId": { "type": "string" } } } } } },
+    "model": {
+      "type": "object", "required": ["id", "name", "role", "fileSizeBytes"],
+      "properties": {
+        "id": { "type": "string" }, "name": { "type": "string" }, "role": { "enum": ["assembly", "step"] },
+        "glbUrl": { "type": "string" }, "usdzUrl": { "type": "string" },
+        "defaultScale": { "type": "number" }, "fileSizeBytes": { "type": "number" } } }
+  }
+}

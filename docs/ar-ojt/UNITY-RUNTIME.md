@@ -7,6 +7,20 @@ contract is kept engine-neutral while the iOS runtime evolves.
 Proprietary & Confidential · Applied Materials. The guide JSON and the
 assembly GLB are SIB output; this document describes their consumption only.
 
+## 0. Start here: the Guide Bundle (B1, 2026-09-20)
+
+`GET /guides/:id/bundle` returns everything below in **one** JSON document
+(`schema: "sib.guide-bundle/1"`): the guide, its ordered steps, a model
+manifest with GLB URLs, the anchor and the frames it offers (QR marker size
+and sealed pose, anchor world map, guide world map with reference camera
+pose, scanned object), validation references and verdict URLs, and the
+playback conventions spelled out. Its JSON Schema is served at
+`GET /catalog/schema/guide-bundle` and lives in
+`docs/schema/guide-bundle.schema.json`; `sib/test/guide-bundle.test.ts`
+builds a bundle and checks it against the schema, so the server cannot drift
+from the contract. A new client integrates against the bundle; the sections
+below explain what each part means.
+
 ## 1. What a guide is, engine-neutrally
 
 A converted guide (from Cortona3D or any CAD source) is three things, all

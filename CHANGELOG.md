@@ -202,6 +202,16 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **Guide Bundle — the engine-neutral guide contract (B1).**
+  `GET /guides/:id/bundle` returns one versioned JSON (`sib.guide-bundle/1`)
+  with the guide, ordered steps, model manifest (GLB/USDZ URLs), the anchor
+  and every frame it offers (QR marker size + sealed pose, anchor world map,
+  guide world map + reference camera pose, scanned object + calibration),
+  validation references and verdict URLs, and the playback conventions
+  (metres, Y-up, right-handed, axis-angle, xyzw, column-major, cumulative
+  timeline). JSON Schema at `docs/schema/guide-bundle.schema.json`, served
+  by `GET /catalog/schema/guide-bundle`; a test builds a bundle and checks it
+  against the schema. Catalogue entry `guide-bundle`; UNITY-RUNTIME.md §0.
 - **Product doors — context per product, not at the kiosk (A).** The kiosk
   asks for identity only (plus authoring/operating for engineers). The home
   screen asks "What are you working on?" with three doors: **AR OMS**

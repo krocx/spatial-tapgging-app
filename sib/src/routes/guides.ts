@@ -56,7 +56,10 @@ import { guideToProcedureMap, toMindmapRecord } from '../procedure/reverse-compi
 import { mergeGuideIntoMap } from '../procedure/map-merge.js';
 import { broadcastMapSync } from '../ws/mindmap.ws.js';
 import { tagStore } from './tags.js';
-import { anchorStore } from './anchors.js';
+import { anchorStore, readObjectMeta, readWorldMapMeta, anchorWorldMapSealed } from './anchors.js';
+import { readGuideWorldMapInfo } from './worldmap.js';
+import { model3DStore } from './models.js';
+import { buildGuideBundle } from '../guides/bundle.js';
 import { decryptImageBase64 } from './training.js';
 import { passStateStore, findPassStateByTag } from '../stores/pass-state-store.js';
 import { compareAgainstPassState } from '../perception/image-comparator.js';
@@ -316,6 +319,27 @@ router.get('/:id', (req: Request, res: Response): void => {
     return;
   }
   res.json({ data: guide, timestamp: new Date().toISOString() });
+});
+
+// GET /guides/:id/bundle — B1 (2026.4.46): the engine-neutral Guide Bundle.
+// One JSON with guide + ordered steps + model manifest + anchor frames +
+// validation references + playback conventions. Schema:
+// docs/schema/guide-bundle.schema.json. Same visibility rule as GET /guides/:id.
+router.get('/:id/bundle', (req: Request, res: Response): void => {
+  const guide = guideStore.findById(req.params.id);
+  if (!guide || !guideVisibleTo(currentUamUser(req), guide)) {
+    res.status(404).json({ error: `Guide ${req.params.id} not found`, timestamp: new Date().toISOString() });
+    return;
+  }
+  const steps = guideStepStore.findAll().filter(s => s.guideId === guide.id);
+  const bundle = buildGuideBundle(guide, steps, {
+    anchor: id => anchorStore.findById(id),
+    model:  id => model3DStore.findById(id),
+    anchorWorldMap: id => { const m = readWorldMapMeta(id); return { sealed: anchorWorldMapSealed(id), anchorPose: m.anchorPose, capturedAt: m.capturedAt }; },
+    anchorObject: id => { const o = readObjectMeta(id); return o ? { available: true, calibrated: !!o.objectPoseInQR, objectPoseInQR: o.objectPoseInQR } : undefined; },
+    guideWorldMap: readGuideWorldMapInfo,
+  });
+  res.json(bundle);
 });
 
 // PATCH /guides/:id — Author updates name, description, or published flag

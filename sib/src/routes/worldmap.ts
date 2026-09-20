@@ -53,6 +53,24 @@ function guideRefPosePath(guideId: string): string {
   return path.join(GUIDE_WORLDMAPS_DIR, `${guideId}.refpose.json`);
 }
 
+/** B1 (2026.4.46): what the guide bundle reports about this guide's own
+ *  world map — existence, reference photo, and the poses stored alongside. */
+export function readGuideWorldMapInfo(guideId: string): {
+  available: boolean; photo: boolean; referenceCameraPose?: number[]; objectPoseInMap?: number[];
+} {
+  const available = fs.existsSync(guideWorldMapPath(guideId));
+  const photo     = fs.existsSync(guideRefPhotoPath(guideId));
+  let meta: { referenceCameraPose?: number[]; objectPoseInMap?: number[] } = {};
+  try {
+    if (fs.existsSync(guideRefPosePath(guideId))) meta = JSON.parse(fs.readFileSync(guideRefPosePath(guideId), 'utf8'));
+  } catch { meta = {}; }
+  return {
+    available, photo,
+    ...(Array.isArray(meta.referenceCameraPose) && meta.referenceCameraPose.length === 16 && { referenceCameraPose: meta.referenceCameraPose }),
+    ...(Array.isArray(meta.objectPoseInMap) && meta.objectPoseInMap.length === 16 && { objectPoseInMap: meta.objectPoseInMap }),
+  };
+}
+
 function isValidAnchorId(anchorId: string): boolean {
   return !anchorId.includes('..') && !anchorId.includes('/');
 }

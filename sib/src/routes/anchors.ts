@@ -37,7 +37,7 @@ fs.mkdirSync(OBJECTS_DIR,   { recursive: true });
 
 const objectPath     = (id: string) => path.join(OBJECTS_DIR, `${id}.arobject`);
 const objectMetaPath = (id: string) => path.join(OBJECTS_DIR, `${id}.object.json`);
-function readObjectMeta(id: string): AnchorObjectMeta | undefined {
+export function readObjectMeta(id: string): AnchorObjectMeta | undefined {
   try {
     if (!fs.existsSync(objectMetaPath(id)) || !fs.existsSync(objectPath(id))) return undefined;
     return JSON.parse(fs.readFileSync(objectMetaPath(id), 'utf8')) as AnchorObjectMeta;
@@ -507,6 +507,11 @@ export interface WorldMapMeta {
   anchorPose?: number[];
   capturedAt?: string;
   sealedBy?:   string;
+}
+
+/** B1: sealed = meta with anchorPose AND the map file exist. */
+export function anchorWorldMapSealed(anchorId: string): boolean {
+  return !!readWorldMapMeta(anchorId).anchorPose && fs.existsSync(path.join(WORLDMAPS_DIR, `${anchorId}.worldmap`));
 }
 
 export function readWorldMapMeta(anchorId: string): WorldMapMeta {
