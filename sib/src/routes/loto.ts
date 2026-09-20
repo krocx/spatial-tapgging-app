@@ -239,6 +239,7 @@ router.post('/events', (req: Request, res: Response): void => {
       ...(photoPath && { photoPath }),
       ...(body.override && { override: body.override }),
       ...(body.note?.trim() && { note: body.note.trim() }),
+      ...(typeof body.testBay === 'string' && body.testBay.trim() && { testBay: body.testBay.trim().slice(0, 64) }),
       createdAt: now,
     };
     lotoEventStore.save(event);

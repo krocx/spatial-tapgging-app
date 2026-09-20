@@ -202,6 +202,21 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **Product doors — context per product, not at the kiosk (A).** The kiosk
+  asks for identity only (plus authoring/operating for engineers). The home
+  screen asks "What are you working on?" with three doors: **Chambers**
+  (Spatial Inspection + AR work instructions — operators enter a Production #
+  then scan the chamber QR; authors pick the chamber configuration), **Gemba
+  Audit** (Project ID stays at walk start) and **iLOTO** (new **Test bay #**,
+  the raceway the panel sits in; stamped on every lock/tag event, shown in
+  the iLOTO hub, portal event list and CSV export). Every prompt is prefilled
+  from local memory with a "Change" affordance, the last-used door is badged,
+  and the anchor directory opens scoped to the product (chambers / Gemba
+  areas / iLOTO panels) with the new-anchor type fixed. "Browse all anchors"
+  keeps the unscoped list. Shared: `LotoEvent.testBay?`.
+- **New Anchor: the Location Name field is unmissable.** Bordered, accented
+  field with a pin icon, a REQUIRED badge, clear button, auto-focus, and the
+  type picker collapses to a chip when the product door already fixed it.
 - **AR OJT "look from here".** Imported steps carry the source procedure's
   viewpoint (`step.view`); the assembly now shows a small pulsing blue camera
   marker at that viewpoint, aimed at the step's target. Operator: a chip says

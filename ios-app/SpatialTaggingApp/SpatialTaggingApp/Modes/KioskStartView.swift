@@ -1,17 +1,13 @@
 // KioskStartView.swift — shift start screen for shared (kiosk) iPads.
 //
-// Two steps (C2, 2026.4.45):
-//   1. Identify — employee ID only; the server resolves name/email/role from
-//      the allow-list (POST /uam/login, kiosk path).
-//   2. Context — depends on who you are:
-//        • Technician → Production / Slot # (free text now; MES later). The
-//          chamber configuration is NOT chosen here — the chamber's QR
-//          resolves it on scan, so there is nothing to get wrong.
-//        • Engineer+  → "I'm authoring" (pick the Chamber Configuration to
-//          author against) or "I'm operating" (Production #, like a
-//          technician). GembaWalk-only users see an audit/project name.
-// The chosen context travels with every AR OMS session and lands in the
-// usage log. "Not you?" switches accounts.
+// Identity only (A, 2026.4.46):
+//   1. Identify — employee ID; the server resolves name/email/role from the
+//      allow-list (POST /uam/login, kiosk path).
+//   2. Engineers+ pick the hat they wear this shift (authoring / operating).
+// Work context is NOT asked here — the app cannot know which product the
+// person will pick. Each product door on the home screen asks for its own
+// (Production #, chamber configuration, Test bay #, Project ID), prefilled
+// from local memory. "Not you?" switches accounts.
 
 import SwiftUI
 
@@ -24,15 +20,8 @@ struct KioskStartView: View {
     let onDone: () -> Void
 
     @State private var employeeIdInput = ""
-    @State private var productionInput = ""
     // C2: authoring context
     @State private var intent: String = "operate"          // "author" | "operate"
-    @State private var configs: [ChamberConfig] = []
-    @State private var configsLoading = false
-    @State private var selectedConfigId: String = ""
-    @State private var showNewConfig = false
-    @State private var newConfigCode = ""
-    @State private var newConfigName = ""
     @State private var isVerifying     = false
     @State private var errorText: String? = nil
 
@@ -49,15 +38,6 @@ struct KioskStartView: View {
     @State private var showSettings = false
 
     private var identified: Bool { settings.uamSignedIn && !switchingUser }
-
-    /// E1: the work-context label follows the user's product. A returning
-    /// GembaWalk-only user is asked for an audit/project name; everyone else
-    /// (and fresh sign-ins, whose products are unknown yet) sees Production #.
-    private var contextLabel: String {
-        identified && settings.uamProducts == "gemba"
-            ? "Audit / project name"
-            : "Production # (chamber / system)"
-    }
 
     /// Identified users only set a (local) Production # — no server needed
     /// (the config list is fetched opportunistically; a stale list still works).
@@ -108,8 +88,8 @@ struct KioskStartView: View {
                                     : "Start your shift")
                         .font(.largeTitle.bold()).foregroundColor(.white)
                     Text(!identified ? "Enter your employee ID to begin."
-                         : authoring  ? "Choose the chamber configuration you're authoring for."
-                         : "Set the production / slot you're working on today.")
+                         : canAuthor  ? "Are you authoring or operating this shift?"
+                         : "You're set — pick what you're doing on the next screen.")
                         .font(.subheadline).foregroundColor(.white.opacity(0.6))
                 }
 
@@ -125,19 +105,13 @@ struct KioskStartView: View {
                                 Label("I'm operating", systemImage: "play.circle").tag("operate")
                             }
                             .pickerStyle(.segmented)
-                            .onChange(of: intent) { v in if v == "author" { Task { await loadConfigs() } } }
                         }
-                        if authoring {
-                            configPicker
-                        } else {
-                            kioskField(contextLabel, text: $productionInput,
-                                       icon: "number.square", contentType: nil)
-                            if settings.uamProducts != "gemba" {
-                                Text("The chamber configuration comes from the QR you scan — no need to pick it.")
-                                    .font(.caption2).foregroundColor(.white.opacity(0.4))
-                                    .multilineTextAlignment(.center)
-                            }
-                        }
+                        // A (2026.4.46): no context here. Production #, chamber
+                        // configuration, Test bay # and Project ID are asked by
+                        // the product you pick on the home screen.
+                        Text("Production #, chamber configuration, test bay or project are asked when you pick what you're working on.")
+                            .font(.caption2).foregroundColor(.white.opacity(0.4))
+                            .multilineTextAlignment(.center)
                     }
                 }
                 .frame(maxWidth: 420)
@@ -169,7 +143,7 @@ struct KioskStartView: View {
                 Button(action: begin) {
                     HStack {
                         if isVerifying { ProgressView().tint(.white) }
-                        Text(isVerifying ? "Verifying…" : !identified ? "Continue" : authoring ? "Start Authoring" : "Begin Work")
+                        Text(isVerifying ? "Verifying…" : !identified ? "Continue" : authoring ? "Continue as Author" : "Begin Work")
                             .font(.headline)
                     }
                     .frame(maxWidth: 420)
@@ -221,10 +195,7 @@ struct KioskStartView: View {
                 .environmentObject(tour)
         }
         .onAppear {
-            productionInput  = settings.productionNumber
-            intent           = settings.shiftIntent == "author" ? "author" : "operate"
-            selectedConfigId = settings.chamberConfigId
-            if identified && !settings.isTechnician { Task { await loadConfigs() } }
+            intent = settings.shiftIntent == "author" ? "author" : "operate"
         }
         .task { await connect() }
         .interactiveDismissDisabled()   // the gate is the point — no swipe-away
@@ -235,25 +206,15 @@ struct KioskStartView: View {
         if !identified {
             return link != .ready || employeeIdInput.trimmingCharacters(in: .whitespaces).isEmpty
         }
-        if authoring { return selectedConfigId.isEmpty }
-        return productionInput.trimmingCharacters(in: .whitespaces).isEmpty
+        return false
     }
 
     private func begin() {
         errorText = nil
-        let production = productionInput.trimmingCharacters(in: .whitespaces)
 
-        // Already identified — record this shift's context.
+        // Already identified — record the hat; context comes at the product door.
         if identified {
-            if authoring {
-                guard let cfg = configs.first(where: { $0.id == selectedConfigId }) else { return }
-                settings.shiftIntent        = "author"
-                settings.chamberConfigId    = cfg.id
-                settings.chamberConfigLabel = cfg.label
-            } else {
-                settings.shiftIntent      = "operate"
-                settings.productionNumber = production
-            }
+            settings.shiftIntent = authoring ? "author" : "operate"
             onDone()
             return
         }
@@ -275,7 +236,8 @@ struct KioskStartView: View {
                 // engineers+ choose authoring/operating (default: last choice).
                 intent = (r.user.role == "technician") ? "operate"
                        : (settings.shiftIntent == "author" ? "author" : "operate")
-                if r.user.role != "technician" { Task { await loadConfigs() } }
+                // Technicians have nothing to choose — straight to the home page.
+                if r.user.role == "technician" { settings.shiftIntent = "operate"; onDone() }
             } catch let SIBClientError.httpError(_, msg) {
                 isVerifying = false
                 errorText = msg
@@ -283,92 +245,6 @@ struct KioskStartView: View {
                 isVerifying = false
                 errorText = "Can't reach the server — check the connection and try again."
             }
-        }
-    }
-
-    // ── C2: chamber configuration picker ─────────────────────────────────────
-
-    @ViewBuilder
-    private var configPicker: some View {
-        VStack(spacing: 10) {
-            if configsLoading && configs.isEmpty {
-                HStack { ProgressView().tint(.white); Text("Loading configurations…") }
-                    .font(.footnote).foregroundColor(.white.opacity(0.6))
-            } else if configs.isEmpty && !showNewConfig {
-                Text("No chamber configurations yet.")
-                    .font(.footnote).foregroundColor(.white.opacity(0.6))
-            } else {
-                ScrollView(.vertical, showsIndicators: true) {
-                    VStack(spacing: 6) {
-                        ForEach(configs) { c in
-                            Button { selectedConfigId = c.id } label: {
-                                HStack(spacing: 10) {
-                                    Image(systemName: selectedConfigId == c.id ? "checkmark.circle.fill" : "circle")
-                                        .foregroundColor(selectedConfigId == c.id ? .cyan : .white.opacity(0.4))
-                                    VStack(alignment: .leading, spacing: 1) {
-                                        Text(c.code).font(.subheadline.bold()).foregroundColor(.white)
-                                        Text(c.name).font(.caption).foregroundColor(.white.opacity(0.65))
-                                    }
-                                    Spacer()
-                                    if let n = c.chamberCount {
-                                        Text("\(n) chamber\(n == 1 ? "" : "s")")
-                                            .font(.caption2).foregroundColor(.white.opacity(0.4))
-                                    }
-                                }
-                                .padding(.horizontal, 12).padding(.vertical, 9)
-                                .background(selectedConfigId == c.id ? Color.cyan.opacity(0.15) : Color.white.opacity(0.06))
-                                .cornerRadius(10)
-                            }
-                        }
-                    }
-                }
-                .frame(maxHeight: 220)
-            }
-            if showNewConfig {
-                HStack(spacing: 8) {
-                    kioskField("Code (e.g. PXP-A)", text: $newConfigCode, icon: "tag", contentType: nil)
-                        .frame(maxWidth: 150)
-                    kioskField("Name", text: $newConfigName, icon: "textformat", contentType: nil)
-                }
-                HStack {
-                    Button("Cancel") { showNewConfig = false }
-                        .font(.footnote).foregroundColor(.white.opacity(0.6))
-                    Spacer()
-                    Button("Add configuration") { Task { await createConfig() } }
-                        .font(.footnote.bold()).foregroundColor(.cyan)
-                        .disabled(newConfigCode.trimmingCharacters(in: .whitespaces).isEmpty
-                                  || newConfigName.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
-            } else {
-                Button { showNewConfig = true } label: {
-                    Label("New configuration", systemImage: "plus.circle")
-                        .font(.footnote).foregroundColor(.cyan)
-                }
-            }
-        }
-    }
-
-    private func loadConfigs() async {
-        configsLoading = true
-        defer { configsLoading = false }
-        if let list = try? await SIBClient(settings: settings).fetchChamberConfigs() {
-            configs = list
-            if selectedConfigId.isEmpty, configs.count == 1 { selectedConfigId = configs[0].id }
-        }
-    }
-
-    private func createConfig() async {
-        errorText = nil
-        do {
-            let c = try await SIBClient(settings: settings).createChamberConfig(
-                code: newConfigCode.trimmingCharacters(in: .whitespaces),
-                name: newConfigName.trimmingCharacters(in: .whitespaces))
-            configs.append(c)
-            configs.sort { $0.code.localizedCaseInsensitiveCompare($1.code) == .orderedAscending }
-            selectedConfigId = c.id
-            newConfigCode = ""; newConfigName = ""; showNewConfig = false
-        } catch {
-            errorText = friendlyMessage(for: error)
         }
     }
 

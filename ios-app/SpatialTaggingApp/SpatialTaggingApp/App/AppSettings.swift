@@ -99,14 +99,22 @@ final class AppSettings: ObservableObject {
     @Published var lastChamberAssetId: String {
         didSet { UserDefaults.standard.set(lastChamberAssetId, forKey: "last_chamber_asset") }
     }
+    /// A (2026.4.46): iLOTO context — the raceway / test bay the panel sits in.
+    /// Asked at the iLOTO door, prefilled from last time, stamped on events.
+    @Published var testBay: String {
+        didSet { UserDefaults.standard.set(testBay, forKey: "test_bay") }
+    }
+    /// The product door last used ("chambers" | "gemba" | "iloto") — local
+    /// memory so the home page can say "last time you did X" without guessing.
+    @Published var lastProduct: String {
+        didSet { UserDefaults.standard.set(lastProduct, forKey: "last_product") }
+    }
     /// Authoring this shift (engineer+ who picked "I'm authoring").
     var isAuthoringShift: Bool { !isTechnician && shiftIntent == "author" }
-    /// The kiosk gate is satisfied: signed in, plus the context the shift needs
-    /// (a configuration when authoring, a Production # when operating).
-    var shiftReady: Bool {
-        guard uamSignedIn else { return false }
-        return isAuthoringShift ? !chamberConfigId.isEmpty : !productionNumber.isEmpty
-    }
+    /// The kiosk gate is satisfied: signed in. Context (Production #,
+    /// configuration, Test bay #, Project ID) is asked at each product's door
+    /// (A, 2026.4.46) — the kiosk no longer needs to know what you'll pick.
+    var shiftReady: Bool { uamSignedIn }
 
     var uamSignedIn: Bool { !uamToken.isEmpty && !uamRole.isEmpty }
     /// Technicians get operator-only surfaces. Unknown role = ungated
@@ -206,6 +214,8 @@ final class AppSettings: ObservableObject {
         chamberConfigId    = UserDefaults.standard.string(forKey: "chamber_config_id")    ?? ""
         chamberConfigLabel = UserDefaults.standard.string(forKey: "chamber_config_label") ?? ""
         lastChamberAssetId = UserDefaults.standard.string(forKey: "last_chamber_asset")    ?? ""
+        testBay            = UserDefaults.standard.string(forKey: "test_bay")             ?? ""
+        lastProduct        = UserDefaults.standard.string(forKey: "last_product")         ?? ""
 
         // Author name: use stored value if set; otherwise extract first name from device name
         // e.g. "Karthik's iPhone" → "Karthik", bare "iPhone" → full device name as fallback

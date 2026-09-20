@@ -124,7 +124,7 @@ struct ILOTOHubView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(anchor.assetId)
                         .font(.headline)
-                    Text("Control panel · QR + world map")
+                    Text(settings.testBay.isEmpty ? "Control panel · QR + world map" : "Test bay # \(settings.testBay) · control panel")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()

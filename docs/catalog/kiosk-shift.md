@@ -1,9 +1,9 @@
 ---
 id: kiosk-shift
-name: Kiosk shift start (employee ID + Production #)
+name: Kiosk shift start (identity) + product doors
 area: platform
 status: shipped
-version: 2026.4.45
+version: 2026.4.46
 depends: [uam, chamber-configs]
 terms: [RBAC, Operator Mode]
 spec: CONNECTED-WORKER.md#kiosk-shift-start
@@ -15,15 +15,23 @@ arch: |
   flowchart LR
     G["iOS kiosk gate<br/>employee ID → role"] --> L["POST /uam/login (kiosk path)"]
     L --> T{"role"}
-    T -->|Technician| P["Production / Slot #<br/>configuration comes from the chamber QR"]
-    T -->|Engineer+| A["I'm authoring (pick configuration)<br/>or I'm operating"]
-    P & A --> H["Home chip: identity · Production # · configuration"]
-    H --> U["work context on every usage-log session"]
+    T -->|Engineer+| A["authoring / operating"]
+    T -->|Technician| A2["operating"]
+    A & A2 --> H["Home: What are you working on?"]
+    H -->|Chambers| C["Production # (operate) · configuration (author)<br/>→ chamber QR / chamber directory"]
+    H -->|Gemba Audit| GA["Project ID at walk start"]
+    H -->|iLOTO| LO["Test bay # → iLOTO panels<br/>stamped on every event"]
+    C & GA & LO --> U["context on every usage / event record"]
 ---
 A shared iPad opens on a shift screen: the technician types only an employee
-ID — the server resolves who they are and what they may do — plus the
-Production # they will work on. Both persist for the shift, ride on every usage
-record, and a home chip switches technician or system between shifts. The gate
-owns its own server connection (retries, dormant-UAM skip) so it never waits on
-a network probe to appear. Pre-SSO trade-off, approved: ID alone authenticates
+ID — the server resolves who they are and what they may do; engineers add
+whether they author or operate this shift. Nothing else is asked there,
+because the app cannot know which product the person will pick. The home
+screen then offers three product doors, each asking only for its own context,
+prefilled from local memory with a "Change" affordance and a "last used"
+badge: Chambers (Production # for operators, chamber configuration for
+authors), Gemba Audit (Project ID at walk start) and iLOTO (Test bay #, the
+raceway the panel sits in, stamped on every lock/tag event). The gate owns its
+own server connection (retries, dormant-UAM skip) so it never waits on a
+network probe to appear. Pre-SSO trade-off, approved: ID alone authenticates
 on kiosk iPads until corporate SSO lands.

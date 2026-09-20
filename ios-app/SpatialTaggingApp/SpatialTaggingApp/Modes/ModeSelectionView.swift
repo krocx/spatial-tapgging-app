@@ -20,6 +20,11 @@ struct ModeSelectionView: View {
     @State private var showAuthorDirectory  = false
     @State private var showOperatorDirectory = false
     @State private var showChamberScan       = false      // C3
+    // A (2026.4.46): product doors — each asks for its own context first.
+    @State private var directoryScope: DirectoryScope = .all
+    @State private var showProductionPrompt  = false
+    @State private var showTestBayPrompt     = false
+    @State private var showConfigPicker      = false
     @State private var showSettings         = false
     /// Kiosk gate — presented when UAM is active and there's no signed-in
     /// technician, or no Production # set for the shift.
@@ -89,18 +94,8 @@ struct ModeSelectionView: View {
                                     .foregroundColor(.green)
                                 Text(settings.uamUserName.isEmpty ? settings.employeeId : settings.uamUserName)
                                     .fontWeight(.semibold)
-                                // C2/C3: the shift context — what you author FOR or work ON.
-                                if settings.isAuthoringShift, !settings.chamberConfigLabel.isEmpty {
-                                    Text("· 🏭 \(settings.chamberConfigLabel)")
-                                        .foregroundColor(.cyan).lineLimit(1)
-                                } else if !settings.productionNumber.isEmpty {
-                                    Text("· Prod # \(settings.productionNumber)")
-                                        .foregroundColor(.cyan)
-                                    if !settings.chamberConfigLabel.isEmpty {
-                                        Text("· \(settings.chamberConfigLabel)\(settings.lastChamberAssetId.isEmpty ? "" : " · \(settings.lastChamberAssetId)")")
-                                            .foregroundColor(.white.opacity(0.6)).lineLimit(1)
-                                    }
-                                }
+                                Text(settings.isAuthoringShift ? "· authoring" : "· operating")
+                                    .foregroundColor(.cyan)
                                 Image(systemName: "chevron.right")
                                     .font(.caption2).foregroundColor(.white.opacity(0.4))
                             }
@@ -117,53 +112,75 @@ struct ModeSelectionView: View {
 
                 Spacer()
 
-                // Mode buttons
+                // Product doors (A, 2026.4.46). The app cannot know what you
+                // will pick, so it asks nothing until you do — then only what
+                // that product needs, prefilled from last time.
                 VStack(spacing: 16) {
-                    // C3: operating shift — the chamber QR is the front door.
-                    // Authors keep their tools below; technicians see this first.
-                    if !settings.isAuthoringShift {
-                        ModeButton(title: "Scan chamber QR",
-                                   subtitle: "Start work — the QR picks the configuration",
-                                   icon: "qrcode.viewfinder", accentColor: .green,
-                                   isEnabled: settings.isConfigured) { showChamberScan = true }
+                    HStack {
+                        Text("What are you working on?")
+                            .font(.subheadline.weight(.semibold)).foregroundColor(.white.opacity(0.7))
+                        Spacer()
+                        if !settings.lastProduct.isEmpty {
+                            Text("Last time: \(productTitle(settings.lastProduct))")
+                                .font(.caption).foregroundColor(.white.opacity(0.45))
+                        }
                     }
 
-                    // RBAC: Technicians run procedures — authoring surfaces are
-                    // hidden for them (and refused server-side regardless).
-                    if !settings.isTechnician {
-                    ModeButton(title: "Author Mode",
-                               subtitle: settings.chamberConfigLabel.isEmpty
-                                   ? "Create and train inspection tags"
-                                   : "Chambers of \(settings.chamberConfigLabel)",
-                               icon: "pencil.circle.fill", accentColor: .blue,
-                               isEnabled: settings.isConfigured) { showAuthorDirectory = true }
-                    .background(
-                        GeometryReader { geo in
-                            Color.clear.preference(
-                                key: TourFrameKey.self,
-                                value: [.tapAuthor: geo.frame(in: .global)]
-                            )
-                        }
-                    )
+                    if settings.hasProduct("aroms") {
+                        ProductDoor(
+                            title: "Chambers", subtitle: "Spatial Inspection · AR work instructions",
+                            icon: settings.isAuthoringShift ? "pencil.circle.fill" : "qrcode.viewfinder",
+                            accent: settings.isAuthoringShift ? .blue : .green,
+                            context: settings.isAuthoringShift
+                                ? (settings.chamberConfigLabel.isEmpty ? nil : "🏭 \(settings.chamberConfigLabel)")
+                                : (settings.productionNumber.isEmpty ? nil : "Prod # \(settings.productionNumber)\(settings.lastChamberAssetId.isEmpty ? "" : " · \(settings.lastChamberAssetId)")"),
+                            contextPrompt: settings.isAuthoringShift ? "pick a configuration" : "enter a Production #",
+                            lastUsed: settings.lastProduct == "chambers",
+                            isEnabled: settings.isConfigured,
+                            onTap: { openChambers(reprompt: false) },
+                            onChange: { openChambers(reprompt: true) }
+                        )
+                        .background(GeometryReader { geo in
+                            Color.clear.preference(key: TourFrameKey.self, value: [.tapAuthor: geo.frame(in: .global)])
+                        })
                     }
 
-                    // Directory entry stays for GembaWalk areas and iLOTO panels
-                    // (not chambers — no QR-resolved configuration) and for
-                    // authors who want to run something on their config.
-                    ModeButton(title: settings.isAuthoringShift ? "Operator Mode" : "Browse areas & panels",
-                               subtitle: settings.isAuthoringShift ? "Run inspections and guides on your chambers"
-                                                                   : "GembaWalk areas · iLOTO panels · all chambers",
-                               icon: settings.isAuthoringShift ? "eye.circle.fill" : "list.bullet.circle.fill",
-                               accentColor: settings.isAuthoringShift ? .green : .gray,
-                               isEnabled: settings.isConfigured) { showOperatorDirectory = true }
-                    .background(
-                        GeometryReader { geo in
-                            Color.clear.preference(
-                                key: TourFrameKey.self,
-                                value: [.tapOperator: geo.frame(in: .global)]
-                            )
-                        }
-                    )
+                    if settings.hasProduct("gemba") {
+                        ProductDoor(
+                            title: "Gemba Audit", subtitle: "Walk an area, tag findings",
+                            icon: "figure.walk.circle.fill", accent: .orange,
+                            context: nil, contextPrompt: "Project ID is asked when the walk starts",
+                            lastUsed: settings.lastProduct == "gemba",
+                            isEnabled: settings.isConfigured,
+                            onTap: { openDirectory(.gemba); settings.lastProduct = "gemba" },
+                            onChange: nil
+                        )
+                        .background(GeometryReader { geo in
+                            Color.clear.preference(key: TourFrameKey.self, value: [.tapOperator: geo.frame(in: .global)])
+                        })
+                    }
+
+                    if settings.hasProduct("iloto") {
+                        ProductDoor(
+                            title: "iLOTO", subtitle: "Lockout / tagout on control panels",
+                            icon: "lock.shield.fill", accent: .red,
+                            context: settings.testBay.isEmpty ? nil : "Test bay # \(settings.testBay)",
+                            contextPrompt: "enter a Test bay #",
+                            lastUsed: settings.lastProduct == "iloto",
+                            isEnabled: settings.isConfigured,
+                            onTap: { openLoto(reprompt: false) },
+                            onChange: { openLoto(reprompt: true) }
+                        )
+                    }
+
+                    Button {
+                        directoryScope = .all
+                        if settings.isAuthoringShift { showAuthorDirectory = true } else { showOperatorDirectory = true }
+                    } label: {
+                        Label("Browse all anchors", systemImage: "list.bullet")
+                            .font(.footnote).foregroundColor(.white.opacity(0.5))
+                    }
+                    .disabled(!settings.isConfigured)
 
                     // ── Continue last Author session ───────────────────────────
                     if let session = lastSession, settings.isConfigured, !settings.isTechnician {
@@ -299,6 +316,7 @@ struct ModeSelectionView: View {
         .fullScreenCover(isPresented: $showAuthorDirectory) {
             AnchorDirectoryView(
                 mode: .author,
+                scope: directoryScope,
                 onSessionReady: { anchor, tags in
                     showAuthorDirectory = false
                     appState.activeAnchor = anchor
@@ -315,6 +333,7 @@ struct ModeSelectionView: View {
         .fullScreenCover(isPresented: $showOperatorDirectory) {
             AnchorDirectoryView(
                 mode: .operator,
+                scope: directoryScope,
                 onSessionReady: { anchor, tags in
                     showOperatorDirectory = false
                     appState.activeAnchor = anchor
@@ -341,6 +360,34 @@ struct ModeSelectionView: View {
             .environmentObject(settings)
             .environmentObject(appState)
             .environmentObject(tour)
+        }
+        // A: product context prompts
+        .sheet(isPresented: $showProductionPrompt) {
+            ContextPromptSheet(title: "Which production / slot?", label: "Production # (chamber / system)",
+                               icon: "qrcode.viewfinder",
+                               hint: "The chamber configuration comes from the QR you scan next — only the Production # is needed.",
+                               cta: "Scan chamber QR", value: $settings.productionNumber) {
+                settings.lastProduct = "chambers"
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { showChamberScan = true }
+            }
+            .environmentObject(settings)
+        }
+        .sheet(isPresented: $showTestBayPrompt) {
+            ContextPromptSheet(title: "Which test bay?", label: "Test bay # (raceway)",
+                               icon: "lock.shield.fill",
+                               hint: "Every raceway in the cleanroom has its own identifier. It is stamped on each lock and tag event you record.",
+                               cta: "Open iLOTO", value: $settings.testBay) {
+                settings.lastProduct = "iloto"
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { openDirectory(.loto) }
+            }
+            .environmentObject(settings)
+        }
+        .sheet(isPresented: $showConfigPicker) {
+            ChamberConfigPickerSheet {
+                settings.lastProduct = "chambers"
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { openDirectory(.chambers) }
+            }
+            .environmentObject(settings)
         }
         // Continue: hub → QR gate → AuthorModeView (skips directory)
         // AnchorHubView doesn't carry its own NavigationStack, so we wrap it here.
@@ -628,6 +675,102 @@ private struct ShareQRCard: View {
 }
 
 // ── Mode button ───────────────────────────────────────────────────────────────
+
+// MARK: - A: product doors
+
+extension ModeSelectionView {
+    fileprivate func productTitle(_ p: String) -> String {
+        switch p { case "chambers": return "Chambers"; case "gemba": return "Gemba Audit"; case "iloto": return "iLOTO"; default: return p }
+    }
+
+    fileprivate func openDirectory(_ scope: DirectoryScope) {
+        directoryScope = scope
+        if settings.isAuthoringShift { showAuthorDirectory = true } else { showOperatorDirectory = true }
+    }
+
+    /// Chambers door: authors need a configuration, operators a Production #.
+    /// Remembered values open straight through; `reprompt` re-asks.
+    fileprivate func openChambers(reprompt: Bool) {
+        if settings.isAuthoringShift {
+            if reprompt || settings.chamberConfigId.isEmpty { showConfigPicker = true }
+            else { settings.lastProduct = "chambers"; openDirectory(.chambers) }
+        } else {
+            if reprompt || settings.productionNumber.isEmpty { showProductionPrompt = true }
+            else { settings.lastProduct = "chambers"; showChamberScan = true }
+        }
+    }
+
+    fileprivate func openLoto(reprompt: Bool) {
+        if reprompt || settings.testBay.isEmpty { showTestBayPrompt = true }
+        else { settings.lastProduct = "iloto"; openDirectory(.loto) }
+    }
+}
+
+/// One product door: what it is, the context it remembers, a "Change" affordance.
+private struct ProductDoor: View {
+    let title: String
+    let subtitle: String
+    let icon: String
+    let accent: Color
+    let context: String?
+    let contextPrompt: String
+    let lastUsed: Bool
+    let isEnabled: Bool
+    let onTap: () -> Void
+    let onChange: (() -> Void)?
+
+    var body: some View {
+        // Not a Button: the inline "Change" is its own Button and must not
+        // also fire the door. The HStack takes the tap instead.
+        Group {
+            HStack(spacing: 16) {
+                Image(systemName: icon)
+                    .font(.system(size: 30))
+                    .foregroundStyle(isEnabled ? accent : .gray)
+                    .frame(width: 42)
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        Text(title).font(.headline).foregroundColor(isEnabled ? .white : .gray)
+                        if lastUsed {
+                            Text("LAST USED").font(.system(size: 9, weight: .bold))
+                                .padding(.horizontal, 6).padding(.vertical, 2)
+                                .background(accent.opacity(0.25), in: Capsule())
+                                .foregroundColor(accent)
+                        }
+                    }
+                    Text(subtitle).font(.subheadline).foregroundColor(.white.opacity(0.5))
+                    HStack(spacing: 6) {
+                        if let context {
+                            Image(systemName: "clock.arrow.circlepath").font(.caption2)
+                            Text(context).font(.caption).lineLimit(1)
+                            if let onChange {
+                                Button("Change", action: onChange)
+                                    .font(.caption.weight(.semibold)).foregroundColor(accent)
+                                    .buttonStyle(.plain)
+                            }
+                        } else {
+                            Text("Next: \(contextPrompt)").font(.caption)
+                        }
+                    }
+                    .foregroundColor(.white.opacity(0.6))
+                }
+                Spacer()
+                Image(systemName: "chevron.right").foregroundColor(.white.opacity(0.3))
+            }
+            .padding(18)
+            .background(Color.white.opacity(isEnabled ? 0.08 : 0.03))
+            .overlay(RoundedRectangle(cornerRadius: 18)
+                .stroke(isEnabled ? accent.opacity(lastUsed ? 0.7 : 0.3) : Color.clear, lineWidth: lastUsed ? 1.5 : 1))
+            .clipShape(RoundedRectangle(cornerRadius: 18))
+            .contentShape(RoundedRectangle(cornerRadius: 18))
+            .onTapGesture { if isEnabled { onTap() } }
+        }
+        .opacity(isEnabled ? 1 : 0.6)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityLabel("\(title). \(subtitle). \(context ?? "Next: " + contextPrompt)")
+    }
+}
 
 private struct ModeButton: View {
     let title: String

@@ -6494,6 +6494,7 @@ function renderLotoAudit(el, events, perAnchor) {
       <span>${verb}</span> ${extra}
       <span style="color:var(--muted)">· ${esc(e.anchorName ?? '')}</span>
       ${e.lockSerial ? `<span style="color:var(--muted)">· lock ${esc(e.lockSerial)}</span>` : ''}
+      ${e.testBay ? `<span style="color:var(--muted)">· bay ${esc(e.testBay)}</span>` : ''}
       ${photo}
       <span style="color:var(--muted);margin-left:auto">${relTime(e.createdAt)}</span>
     </div>`;
@@ -6546,9 +6547,9 @@ function relTime(iso) {
 
 function exportLotoEventsCSV() {
   if (!lotoEventsCache.length) { toast('No iLOTO events to export.'); return; }
-  const head = ['createdAt','anchor','pointId','type','user','lockSerial','checklist','supervisor','overrideReason','photo'];
+  const head = ['createdAt','anchor','pointId','type','user','lockSerial','testBay','checklist','supervisor','overrideReason','photo'];
   const lines = lotoEventsCache.map(e => [
-    e.createdAt, e.anchorName ?? '', e.pointId, e.type, e.userName, e.lockSerial ?? '',
+    e.createdAt, e.anchorName ?? '', e.pointId, e.type, e.userName, e.lockSerial ?? '', e.testBay ?? '',
     Object.entries(e.checklist ?? {}).map(([k, v]) => `${k}=${v}`).join('; '),
     e.override?.supervisorName ?? '', e.override?.reason ?? '', e.photoPath ?? '',
   ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(','));

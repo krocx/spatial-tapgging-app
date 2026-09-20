@@ -142,6 +142,8 @@ struct LotoEvent: Codable, Identifiable, Equatable {
     let photoPath:  String?
     let override:   LotoOverride?
     let note:       String?
+    /// A (2026.4.46): Test bay # (raceway) the panel sits in, from the iLOTO door.
+    let testBay:    String?
     let createdAt:  String
 }
 
@@ -156,6 +158,7 @@ struct CreateLotoEventRequest: Codable {
     let photoBase64: String?
     let override:    LotoOverride?
     let note:        String?
+    let testBay:     String?
 }
 
 /// Response from POST /loto/events — the recorded event plus the point's

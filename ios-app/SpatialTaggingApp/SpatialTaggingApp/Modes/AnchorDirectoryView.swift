@@ -12,9 +12,38 @@
 
 import SwiftUI
 
+/// A (2026.4.46): which product's anchors the directory shows. Each product
+/// door opens its own scope so a user never has to pick between chambers,
+/// Gemba areas and LOTO panels in one list.
+enum DirectoryScope {
+    case all, chambers, gemba, loto
+
+    var title: String {
+        switch self {
+        case .all:      return "Anchor Directory"
+        case .chambers: return "Chambers"
+        case .gemba:    return "Gemba areas"
+        case .loto:     return "iLOTO panels"
+        }
+    }
+    /// The anchor type a new anchor takes in this scope (nil = user picks).
+    var fixedType: AnchorType? {
+        switch self { case .chambers: return .qr; case .gemba: return .locTag; case .loto: return .loto; case .all: return nil }
+    }
+    func includes(_ a: Anchor) -> Bool {
+        switch self {
+        case .all:      return true
+        case .chambers: return a.isChamber
+        case .gemba:    return a.anchorType == .locTag
+        case .loto:     return a.anchorType == .loto
+        }
+    }
+}
+
 struct AnchorDirectoryView: View {
 
     let mode: AppMode                           // .author or .operator
+    var scope: DirectoryScope = .all            // A: product door scope
     let onSessionReady: (Anchor, [Tag]) -> Void // called when QR scan gate completes
     let onCancel: () -> Void
 
@@ -48,9 +77,10 @@ struct AnchorDirectoryView: View {
 
     // ── Computed ──────────────────────────────────────────────────────────────
     private var filtered: [Anchor] {
-        if searchText.isEmpty { return anchors }
+        let scoped = anchors.filter { scope.includes($0) }
+        if searchText.isEmpty { return scoped }
         let q = searchText.lowercased()
-        return anchors.filter {
+        return scoped.filter {
             $0.id.lowercased().contains(q) ||
             $0.assetId.lowercased().contains(q)
         }
@@ -76,6 +106,7 @@ struct AnchorDirectoryView: View {
     // they keep their own section so those products are untouched.
     private var configScoped: Bool {
         mode == .author && settings.isAuthoringShift && !settings.chamberConfigId.isEmpty
+            && (scope == .all || scope == .chambers)
     }
     private var configChambers: [Anchor] { filtered.filter { $0.isChamber && $0.configId == settings.chamberConfigId } }
     private var otherChambers:  [Anchor] { filtered.filter { $0.isChamber && $0.configId != settings.chamberConfigId } }
@@ -105,7 +136,7 @@ struct AnchorDirectoryView: View {
                     anchorList
                 }
             }
-            .navigationTitle("Anchor Directory")
+            .navigationTitle(scope.title)
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -228,7 +259,7 @@ struct AnchorDirectoryView: View {
             Text("Creates a new anchor (new QR code and key) with the same guides and 3D model kit. Steps arrive unplaced and untrained — scan the new tool's world map, place the pins, then publish.")
         }
         .sheet(isPresented: $showCreateSheet) {
-            CreateAnchorSheet { newAnchor in
+            CreateAnchorSheet(fixedType: scope.fixedType) { newAnchor in
                 // Claim this anchor on the local device — this is what drives
                 // the My Anchors / Shared split, independently of server state.
                 settings.myAnchorIds.insert(newAnchor.id)
@@ -650,6 +681,9 @@ private struct AnchorDirectoryRow: View {
 
 struct CreateAnchorSheet: View {
 
+    /// A: opened from a product door → the type is known; the picker is
+    /// replaced by a one-line chip so the name field is the first thing seen.
+    var fixedType: AnchorType? = nil
     let onCreated: (Anchor) -> Void
 
     @EnvironmentObject private var settings: AppSettings
@@ -660,6 +694,7 @@ struct CreateAnchorSheet: View {
     @State private var assetId    = ""
     @State private var anchorId   = ""
     @State private var isCreating = false
+    @FocusState private var nameFocused: Bool
     @State private var createError: String? = nil
     /// Phase 2: anchor type — QR (default) or Loc-Tag (Gemba walk, no QR required)
     @State private var selectedAnchorType: AnchorType = .qr
@@ -707,9 +742,20 @@ struct CreateAnchorSheet: View {
                     .listRowBackground(Color.clear)
             }
 
-            // ── Anchor type picker ──────────────────────────────────────────────
+            // ── Anchor type picker (or a chip when the product door fixed it) ──
             Section {
-                anchorTypePicker
+                if let t = fixedType {
+                    HStack(spacing: 10) {
+                        Image(systemName: t == .qr ? "qrcode.viewfinder" : t == .loto ? "lock.shield" : "figure.walk.circle")
+                            .foregroundStyle(t == .qr ? Color.blue : t == .loto ? Color.red : Color.orange)
+                        Text(t == .qr ? "QR Anchor · chamber" : t == .loto ? "iLOTO · control panel" : "Gemba Walk · area")
+                            .font(.subheadline.weight(.semibold))
+                        Spacer()
+                    }
+                    .listRowBackground(Color.clear)
+                } else {
+                    anchorTypePicker
+                }
             } header: {
                 Text("Anchor Type")
             } footer: {
@@ -742,20 +788,43 @@ struct CreateAnchorSheet: View {
                 }
             }
 
-            // ── Name ────────────────────────────────────────────────────────────
+            // ── Name — the one thing the author must type; make it unmissable ──
             Section {
-                TextField(
-                    selectedAnchorType == .qr ? "e.g. Pump-Station-A"
-                        : selectedAnchorType == .loto ? "e.g. Control-Panel-CP07"
-                        : "e.g. Assembly-Line-3-Bay-7",
-                    text: $assetId
+                HStack(spacing: 10) {
+                    Image(systemName: "mappin.and.ellipse")
+                        .foregroundStyle(assetId.isEmpty ? Color.blue : Color.green)
+                    TextField(
+                        selectedAnchorType == .qr ? "e.g. Pump-Station-A"
+                            : selectedAnchorType == .loto ? "e.g. Control-Panel-CP07"
+                            : "e.g. Assembly-Line-3-Bay-7",
+                        text: $assetId
+                    )
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .focused($nameFocused)
+                    .font(.body.weight(.medium))
+                    if !assetId.isEmpty {
+                        Button { assetId = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary) }
+                            .buttonStyle(.plain)
+                    }
+                }
+                .padding(.vertical, 4)
+                .listRowBackground(
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(Color(.secondarySystemGroupedBackground))
+                        .overlay(RoundedRectangle(cornerRadius: 10)
+                            .strokeBorder(assetId.isEmpty ? Color.blue.opacity(0.8) : Color.green.opacity(0.7), lineWidth: 1.5))
+                        .padding(.vertical, 2)
                 )
-                .autocorrectionDisabled()
-                .textInputAutocapitalization(.never)
             } header: {
-                Text("Location Name (required)")
+                HStack(spacing: 6) {
+                    Text("Location Name")
+                    Text("REQUIRED").font(.system(size: 9, weight: .bold))
+                        .padding(.horizontal, 5).padding(.vertical, 2)
+                        .background(Color.blue.opacity(0.2), in: Capsule()).foregroundStyle(Color.blue)
+                }
             } footer: {
-                Text("Identifies the physical location this anchor covers.")
+                Text("Identifies the physical location this anchor covers. Type it here, then tap Continue.")
             }
 
             // ── Anchor ID (QR-flow types — advanced option) ─────────────────────
@@ -789,6 +858,10 @@ struct CreateAnchorSheet: View {
         }
         .navigationTitle("New Anchor")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            if let t = fixedType { selectedAnchorType = t }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { nameFocused = true }
+        }
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel") { dismiss() }

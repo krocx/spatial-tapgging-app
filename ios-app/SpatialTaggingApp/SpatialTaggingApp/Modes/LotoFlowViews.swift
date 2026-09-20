@@ -247,7 +247,8 @@ struct LotoApplyFlowView: View {
             checklist:   confirms,
             photoBase64: base64,
             override:    nil,
-            note:        note.trimmingCharacters(in: .whitespaces).isEmpty ? nil : note
+            note:        note.trimmingCharacters(in: .whitespaces).isEmpty ? nil : note,
+            testBay:     settings.testBay.isEmpty ? nil : settings.testBay
         )
         do {
             let resp = try await SIBClient(settings: settings).submitLotoEvent(req)
@@ -493,7 +494,8 @@ struct LotoRemoveFlowView: View {
             checklist:   confirms,
             photoBase64: base64,
             override:    override,
-            note:        nil
+            note:        nil,
+            testBay:     settings.testBay.isEmpty ? nil : settings.testBay
         )
         do {
             let resp = try await SIBClient(settings: settings).submitLotoEvent(req)

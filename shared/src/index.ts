@@ -1670,6 +1670,9 @@ export interface LotoEvent {
   photoPath?:  string;
   override?:   LotoOverride;  // present iff type === 'override-remove'
   note?:       string;
+  /** A (2026.4.46): Test bay # — the raceway the panel sits in, entered at
+   *  the iLOTO door on the device (free text, prefilled from last time). */
+  testBay?:    string;
   createdAt:   string;
 }
 
