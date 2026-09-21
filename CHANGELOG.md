@@ -238,18 +238,20 @@ it, it gets a line.
 
 ### Added
 - **Design system — slice 1.** SIB now has one look, written down once in
-  `sib/portal/brand/`: tokens (the Applied team library's greys, Primary
-  blue, Focus blue, Warm green with contrast-safe ink variants; no orange in
-  the system; Gemba Audit and iLOTO keep their product colours), components
-  (buttons, chips, cards, tables, notices, forms, tiles, bars, heat strips,
-  empty states), the registration mark + lock-in motion, Arial (the company
-  standard — on every device, nothing to vendor) at the team library's
-  scale, and an icon sprite that replaces
+  `sib/portal/brand/`, and it is the iPad app's look: tokens transcribed
+  from the kiosk, hubs and sheets (charcoal gradient page, 8 %-white cards
+  with accent strokes, white text in the app's opacity tiers, the iOS system
+  accents, 18-pt cards / 14-pt CTAs / 12-pt fields / capsule chips), the
+  door colours as product colours, components shaped like their iPad
+  counterparts (doors, buttons, chips, cards, tables, notices, forms, tiles,
+  bars, heat strips, empty states), the appliedx wordmark component, the
+  registration mark + lock-in motion, Arial (the company standard) at the
+  app's text scale, and an icon sprite that replaces
   every emoji (`npm run brand:icons`, 96 icons). `/brand` is the living
   brand guidelines site — chapters with a tracking side nav (principles,
-  wordmark with do/don't, mark & motion, colour with contrast pairings,
-  typography, components in use, the AR surface, icons, voice, rules,
-  roadmap) rendered from that same CSS; `npm run brand:check` fails a
+  "same family" kiosk-beside-portal, wordmark with do/don't, colour, mark
+  & motion, typography, components in use, the AR surface, icons, voice,
+  rules, roadmap) rendered from that same CSS; `npm run brand:check` fails a
   governed page on any drift; `docs/BRAND.md` is the doctrine and
   `CLAUDE.md` states it for anyone generating pages in this repo. No
   existing page changed yet — portal and catalogue migrate next.

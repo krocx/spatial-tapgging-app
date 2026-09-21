@@ -1,6 +1,7 @@
 # The SIB design system — doctrine
 
-Status: slice 1 shipped 2026-09-21 (`sib/portal/brand/`, `/brand`, `brand:check`).
+Status: slice 1 shipped 2026-09-21 (`sib/portal/brand/`, `/brand`, `brand:check`);
+re-based on the iPad app's look the same day.
 Slices 2–3 migrate the pages; slice 4 lands the same tokens in the iPad app.
 
 Proprietary & Confidential · Applied Materials.
@@ -8,50 +9,59 @@ Proprietary & Confidential · Applied Materials.
 ## Why a system, not a theme
 
 Every SIB web surface used to carry its own palette, and all of them looked
-like the dashboard any assistant generates by default: dark navy, electric
-blue, glass blur, rounded cards, emoji for icons. People who had produced
-one of those themselves saw ours and said "same thing". The remedy is not a
-different colour; it is a language derived from what SIB *is*, written down
-once, enforced automatically, and deep enough that copying the CSS gets the
-skin and not the system.
+like the dashboard any assistant generates by default: navy, electric blue,
+glass blur, emoji for icons. People who had produced one of those themselves
+saw ours and said "same thing". Meanwhile the iPad app already had a look
+the team likes and will not change. So the system is that look, transcribed
+to the web, written down once, enforced automatically, and carrying a few
+signatures — the wordmark, the registration mark, lock-in, the AR rim — that
+a template cannot copy.
 
-## The direction: Cleanroom
+## The direction: the app is the reference
 
-Light paper, hairline rules, near-square corners, no shadows, no glass, no
-gradients — the room the product lives in. One motif and one motion carry
-recognition:
+The iPad app already has a look people like and will not change. SIB carries
+it to the web exactly: the kiosk's charcoal gradient, 8 %-white cards with an
+accent stroke and 18-pt corners, white text in the app's opacity tiers
+(100 / 70 / 50 / 35 %), the iOS system accents in their dark appearance, the
+blue→cyan title gradient, capsule chips, 14-pt CTAs and 12-pt fields. If the
+app does it, SIB does it; if the app doesn't, SIB doesn't invent it. On top
+of that, four signatures make a SIB page unmistakably ours:
 
 * **The registration mark** — four brackets closing on a target. It is the
   QR finder square, the wafer alignment cross and the AR anchor at once. It is
   the focus ring, the loading state, the section marker and the wordmark's
   dot. `<span class="ax-mark"><i></i><em></em></span>`.
 * **Lock-in** — elements *register* (scale 1.35 → 1, 220 ms, the brand
-  ease). Nothing fades or slides. In AR only, the **rim-light** in Warm green
-  breathes around the part to look at — the same highlight the iPad app
-  draws on the 3D model.
+  ease). Nothing fades or slides.
+* **The rim-light** — in AR, green breathes around the part to look at, the
+  same highlight the iPad app draws on the 3D model.
+* **The wordmark** — `appliedx`, lowercase, *applied* in `66B3FF` and *x* in
+  `35C635`, regular weight, on every surface; those two colours belong to the
+  wordmark alone.
 
-## Colour — the Applied team library, used the way its note asks
+## Colour — the app's palette, transcribed
 
-| Token | Value | Role |
-|---|---|---|
-| `--ax-bg` / `--ax-paper` | `F8F9FA` / `FFFFFF` | page / surfaces |
-| `--ax-rule` | `DADCE0` | hairlines (elevation is a hairline) |
-| `--ax-ink` / `-2` / `-3` | `222528` / `404040` / `6F6F6F` | text |
-| `--ax-blue` | `2675C4` | Primary blue — the mark, primary actions, product Spatial Inspection (4.75:1) |
-| `--ax-blue-ink` | `1B5A9A` | small text, **warnings** (7.1:1) |
-| `--ax-focus` | `66B3FF` | Focus blue — rings, halos, wordmark "applied". **Never text** (2.2:1) |
-| `--ax-green` | `35C635` | Warm green — fills, borders, wordmark "x", AR rim. **Never text** (2.3:1) |
-| `--ax-green-ink` | `1E7F21` | verified / anchored / pass text (5.1:1) |
-| `--ax-bad` | `B3261E` | the one red: real failures, destructive actions |
+| Token | Value | In the app | Meaning |
+|---|---|---|---|
+| `--ax-bg` → `--ax-bg-2` | `121212` → `1F1F1F` | `Color(white: 0.07)` → `0.12` gradient | the page |
+| `--ax-paper` | white 8 % | `Color.white.opacity(0.08)` | cards, doors, rows |
+| `--ax-rule` | white 15 % | strokes | hairlines |
+| `--ax-ink` / `-2` / `-3` / `-4` | white 100 / 70 / 50 / 35 % | `.white.opacity(…)` | text tiers |
+| `--ax-blue` | `0A84FF` | `.blue` | actions · Author · Spatial Inspection |
+| `--ax-cyan` | `64D2FF` | `.cyan` | title gradient · links · Portal |
+| `--ax-green` | `30D158` | `.green` | AR OMS · verified · AR rim |
+| `--ax-orange` | `FF9F0A` | `.orange` | Gemba Audit · checking / attention |
+| `--ax-red` | `FF453A` | `.red` | iLOTO · failure · destructive |
+| `--ax-indigo` / `--ax-teal` | `5E5CE6` / `40C8E0` | `.indigo` / `.teal` | Procedure Designer · hub features |
+| `--ax-wm-blue` / `--ax-wm-green` | `66B3FF` / `35C635` | the wordmark | *applied* / *x* only |
 
-There is **no orange** in the system. Warnings are deep blue ink with the
-mark. The only orange is the Gemba Audit product colour, kept — with iLOTO's
-red — because users already know them from the app.
+Status follows the app: green verified, orange attention, red failure. A
+colour is never decoration — every hue has one meaning, and there is no hue
+the app does not have.
 
-Products (`--ax-p-*`): Spatial Inspection `2675C4`, AR OMS `1E7F21`, iLOTO
-`EF4444`, Gemba Audit `F59E0B`, Procedure Designer `4D5BC9`, Portal
-`5B7C9C`, Platform `6F6F6F`. The same colour on the catalogue map, the
-portal chip, the diagram bar and the app.
+Products (`--ax-p-*`): Spatial Inspection blue, AR OMS green, iLOTO red,
+Gemba Audit orange, Procedure Designer indigo, Portal cyan, Platform grey —
+the door colours, carried to chips, cards, diagram bars and the catalogue map.
 
 ## Type — Arial, the company standard, at the team library scale
 
@@ -76,27 +86,27 @@ scripts/brand-icons.mjs  npm run brand:icons   (source: roadmap-client icons.ts 
 scripts/brand-check.mjs  npm run brand:check   (fails on drift — see below)
 ```
 
-The AR surface is the one dark context: scope a subtree with
-`data-surface="ar"` and the tokens switch to near-black paper, Warm green
-rim, Focus blue ring.
+In AR (over live video) scope a subtree with `data-surface="ar"`: cards
+become opaque near-black and `.ax-rim` is the breathing green outline on the
+part to look at.
 
 ## Rules — enforced by `npm run brand:check`
 
 Governed files (the list in `brand-check.mjs` grows as pages migrate) may not
 contain: a hex or rgb colour outside `tokens.css`; an emoji; `backdrop-filter`;
-a linear/radial gradient on a surface; a `box-shadow` that is not the token
-ring/rim; a `font-family` outside the brand stack; a border-radius above 4 px.
-`tokens.css` itself may not contain an orange-ish value other than the Gemba
-product mark. A line may carry `/* brand-check: allow */` for a justified
-exception, which a reviewer will see.
+a gradient written in a page (the page and title gradients are tokens); a
+`box-shadow` that is not the token ring/rim; a `font-family` outside the brand
+stack; a border-radius that is not one of the app's (18 · 14 · 12 · capsule).
+A line may carry `/* brand-check: allow */` for a justified exception, which
+a reviewer will see.
 
 For anyone generating code in this repo — including assistants — the short
 form is in `CLAUDE.md` at the repo root: tokens only, sprite icons only, the
-mark and lock-in, no glass, no gradients, no emoji, no orange.
+mark and lock-in, the app's corners and colours, no glass, no emoji.
 
 ## Migration plan
 
 1. **Slice 1 (this):** `brand/`, `/brand`, icon sprite, checker, doctrine. No existing page touched.
 2. **Slice 2:** Portal (`index.html`) and Catalogue (`catalog.html`) — the most seen. Each page drops its own palette, imports `brand.css`, swaps emoji for sprite icons, and joins the governed list.
 3. **Slice 3:** Platform, Wireframe, Roadmap client, XR kit, Home, Unlock.
-4. **Slice 4:** `Brand.swift` in the iPad app — same tokens for kiosk, hubs and sheets; AR overlays keep the rim-light.
+4. **Slice 4:** `Brand.swift` in the iPad app — no visual change; it names the values the app already uses so both sides read one list.

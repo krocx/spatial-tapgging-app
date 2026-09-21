@@ -1,116 +1,117 @@
 /* ─────────────────────────────────────────────────────────────────────────────
    appliedx · SIB design tokens — the ONE place a colour, size or duration is
-   written down. Every SIB web surface reads these variables; no page carries
-   its own palette. Source: the Applied team library (Figma "Color, Typography")
-   + the Cleanroom direction (docs/BRAND.md).
+   written down. Every SIB web surface reads these; no page carries its own
+   palette. The reference is the iPad app: SIB looks like the app, on the web.
+   (Kiosk / hubs / sheets in ios-app: charcoal gradient, 8 %-white cards with
+   an accent hairline, white text in opacity tiers, iOS system accents,
+   18-pt corners, capsule chips, SF Symbols.)
 
-   Rules of the road (enforced by `npm run brand:check`):
-     · no hex colours outside this file          · no glass / backdrop-filter
-     · no gradients on surfaces                  · no emoji as icons (use the sprite)
-     · Focus blue and Warm green never carry text (they fail contrast) —
-       they are fills, rings and marks; the *-ink variants do the reading work
+   Enforced by `npm run brand:check`:
+     · no hex / rgb colours outside this file       · no glass / backdrop-filter
+     · no emoji as icons (use the sprite)            · no page-level font
    ───────────────────────────────────────────────────────────────────────────── */
 :root {
-  /* ── Surfaces (light, the cleanroom) ── */
-  --ax-bg:         #F8F9FA;   /* page                        Figma "highlight"  */
-  --ax-paper:      #FFFFFF;   /* cards, panels, inputs        Figma "background" */
-  --ax-paper-2:    #F1F3F5;   /* table header, quiet fills                       */
-  --ax-rule:       #DADCE0;   /* hairline                     Figma "divider"    */
-  --ax-rule-2:     #ECEEF0;   /* fainter hairline (grids, row separators)        */
-  --ax-grey:       #9AA0A6;   /* disabled, placeholders       Figma grey         */
+  /* ── Surfaces — the app's charcoal ── */
+  --ax-bg:         #121212;                       /* Color(white: 0.07)   */
+  --ax-bg-2:       #1F1F1F;                       /* Color(white: 0.12)   */
+  --ax-page:       linear-gradient(180deg, var(--ax-bg) 0%, var(--ax-bg-2) 100%);   /* the kiosk / hub backdrop */
+  --ax-paper:      rgba(255, 255, 255, .08);      /* cards, doors, rows   Color.white.opacity(0.08) */
+  --ax-paper-2:    rgba(255, 255, 255, .05);      /* quiet fills                            (0.05) */
+  --ax-paper-3:    rgba(255, 255, 255, .12);      /* hover / pressed                        (0.12) */
+  --ax-rule:       rgba(255, 255, 255, .15);      /* hairline                               (0.15) */
+  --ax-rule-2:     rgba(255, 255, 255, .08);      /* fainter hairline                              */
+  --ax-solid:      #1C1C1E;                       /* opaque surface for menus, modals, sheets      */
 
-  /* ── Ink ── */
-  --ax-ink:        #222528;   /* Figma "primary"   */
-  --ax-ink-2:      #404040;   /* Figma "secondary" */
-  --ax-ink-3:      #6F6F6F;   /* Figma "tertiary"  (5.0:1 on paper — AA) */
+  /* ── Text — white in the app's opacity tiers ── */
+  --ax-ink:        #FFFFFF;
+  --ax-ink-2:      rgba(255, 255, 255, .70);      /* .white.opacity(0.7)  secondary labels  */
+  --ax-ink-3:      rgba(255, 255, 255, .50);      /* .white.opacity(0.5)  subtitles, hints  */
+  --ax-ink-4:      rgba(255, 255, 255, .35);      /* .white.opacity(0.35) placeholders      */
+  --ax-grey:       #8E8E93;                       /* .gray — disabled                       */
 
-  /* ── Brand ── */
-  --ax-blue:       #2675C4;   /* Primary blue — the mark, primary actions (4.75:1 on paper) */
-  --ax-blue-ink:   #1B5A9A;   /* Primary blue for small text / warnings (7.1:1) */
-  --ax-blue-tint:  #E6F2FF;   /* selected rows, marked buttons                  */
-  --ax-focus:      #66B3FF;   /* Focus blue — rings, halos, wordmark "applied"; NEVER text */
-  --ax-green:      #35C635;   /* Warm green — fills, borders, wordmark "x", AR rim; NEVER text */
-  --ax-green-ink:  #1E7F21;   /* verified / anchored / pass text (5.1:1)        */
-  --ax-green-tint: #E9F8E9;
+  /* ── Accents — iOS system colours, dark appearance, exactly as the app renders them ── */
+  --ax-blue:       #0A84FF;   /* .blue    actions · Author · Spatial Inspection */
+  --ax-cyan:       #64D2FF;   /* .cyan    the headline gradient's second stop · secondary emphasis */
+  --ax-green:      #30D158;   /* .green   AR OMS · verified · operating         */
+  --ax-orange:     #FF9F0A;   /* .orange  Gemba Audit · checking / attention    */
+  --ax-red:        #FF453A;   /* .red     iLOTO · failure · destructive         */
+  --ax-indigo:     #5E5CE6;   /* .indigo  designer · secondary features         */
+  --ax-teal:       #40C8E0;   /* .teal    hub features                          */
+  --ax-yellow:     #FFD60A;   /* .yellow  pins · highlights                     */
+  --ax-purple:     #BF5AF2;   /* .purple  rarely                                */
+  --ax-title:      linear-gradient(90deg, var(--ax-blue), var(--ax-cyan));   /* the kiosk headline */
 
-  /* ── Status ── the system has no orange; warnings are deep blue ink + the mark */
-  --ax-ok:         var(--ax-green-ink);
-  --ax-ok-fill:    var(--ax-green-tint);
-  --ax-warn:       var(--ax-blue-ink);
-  --ax-warn-fill:  var(--ax-blue-tint);
-  --ax-bad:        #B3261E;   /* the only red: real failures, destructive actions */
-  --ax-bad-fill:   #FBEAE8;
-  --ax-on-blue:    #FFFFFF;   /* text on Primary blue  */
-  --ax-on-green:   #0A1A0A;   /* text on Warm green    */
-  --ax-scrim:      rgba(34, 37, 40, .48);
-  --ax-rim-soft:   rgba(53, 198, 53, .25);
+  /* ── The appliedx wordmark — official colours, never anything else ── */
+  --ax-wm-blue:    #66B3FF;   /* "applied" */
+  --ax-wm-green:   #35C635;   /* "x"       */
 
-  /* ── Products ── the seven colours the catalogue map, chips and diagrams share.
-     Gemba Audit and iLOTO keep the colours users already know from the app. */
-  --ax-p-tags:     #2675C4;   /* Spatial Inspection */
-  --ax-p-guides:   #1E7F21;   /* AR OMS             */
-  --ax-p-iloto:    #EF4444;   /* iLOTO              */
-  --ax-p-gemba:    #F59E0B;   /* Gemba Audit        */
-  --ax-p-designer: #4D5BC9;   /* Procedure Designer */
-  --ax-p-portal:   #5B7C9C;   /* Portal             */
-  --ax-p-platform: #6F6F6F;   /* Platform           */
+  /* ── Status — follows the app ── */
+  --ax-ok:         var(--ax-green);
+  --ax-warn:       var(--ax-orange);
+  --ax-bad:        var(--ax-red);
+  --ax-ok-fill:    rgba(48, 209, 88, .15);
+  --ax-warn-fill:  rgba(255, 159, 10, .15);
+  --ax-bad-fill:   rgba(255, 69, 58, .15);
+  --ax-blue-fill:  rgba(10, 132, 255, .15);       /* .blue.opacity(0.15) selected / focus tint */
+  --ax-indigo-fill: rgba(94, 92, 230, .12);
+  --ax-teal-fill:  rgba(64, 200, 224, .12);
+  --ax-on-accent:  #FFFFFF;                       /* text on a filled accent button */
+  --ax-scrim:      rgba(0, 0, 0, .55);
 
-  /* ── Type ── Arial, the company-wide standard, at the team library's scale.
-     Arial ships with Windows, macOS and iPadOS, so nothing is vendored; on
-     Android / headset browsers the stack falls to Liberation Sans (metric-
-     compatible) or the system sans. Mono: the platform's own monospace. */
+  /* ── Products — the door colours in the app, carried everywhere ── */
+  --ax-p-tags:     var(--ax-blue);      /* Spatial Inspection */
+  --ax-p-guides:   var(--ax-green);     /* AR OMS             */
+  --ax-p-iloto:    var(--ax-red);       /* iLOTO              */
+  --ax-p-gemba:    var(--ax-orange);    /* Gemba Audit        */
+  --ax-p-designer: var(--ax-indigo);    /* Procedure Designer */
+  --ax-p-portal:   var(--ax-cyan);      /* Portal             */
+  --ax-p-platform: var(--ax-grey);      /* Platform           */
+
+  /* ── Type — Arial (company standard) at the team library's scale; SF on the iPad ── */
   --ax-font:       Arial, "Liberation Sans", "Helvetica Neue", Helvetica, sans-serif;
   --ax-mono:       "SF Mono", Menlo, Consolas, "Liberation Mono", "Courier New", monospace;
-  --ax-h1:  700 24px/32px var(--ax-font);   /* Heading            */
-  --ax-h2:  500 22px/30px var(--ax-font);   /* Title / Large      */
-  --ax-h3:  500 20px/28px var(--ax-font);   /* Title / Medium     */
+  --ax-h1:  700 34px/40px var(--ax-font);   /* .largeTitle.bold  (kiosk / hub titles) */
+  --ax-h2:  700 24px/32px var(--ax-font);   /* Heading            */
+  --ax-h3:  500 20px/28px var(--ax-font);   /* Title / Medium · .headline */
   --ax-label:     500 16px/24px var(--ax-font);
   --ax-label-r:   400 16px/24px var(--ax-font);
-  --ax-label-s:   400 13px/20px var(--ax-font);
-  --ax-eyebrow:   400 12px/16px var(--ax-font);   /* LABEL: uppercase, tracked */
-  --ax-body:      400 14px/21px var(--ax-font);   /* Paragraph Regular  */
-  --ax-body-m:    500 14px/21px var(--ax-font);   /* Paragraph Medium   */
-  --ax-body-b:    700 14px/21px var(--ax-font);   /* Paragraph Bold     */
+  --ax-label-s:   400 13px/20px var(--ax-font);   /* .subheadline / .footnote */
+  --ax-eyebrow:   700 11px/16px var(--ax-font);   /* "LAST USED" style caps  */
+  --ax-body:      400 14px/21px var(--ax-font);
+  --ax-body-m:    500 14px/21px var(--ax-font);
+  --ax-body-b:    700 14px/21px var(--ax-font);
   --ax-num:       400 13px/20px var(--ax-mono);
-  --ax-tracking-eyebrow: .12em;
+  --ax-tracking-eyebrow: .08em;
 
-  /* ── Space · shape · elevation ── 4-px grid, near-square corners, no shadows */
+  /* ── Space · shape ── the app's radii: 18 for cards and doors, 12 for fields, 14 for CTAs, capsule for chips ── */
   --ax-s1: 4px;  --ax-s2: 8px;  --ax-s3: 12px; --ax-s4: 16px; --ax-s5: 24px; --ax-s6: 32px; --ax-s7: 48px;
-  --ax-r:  2px;               /* everything            */
-  --ax-r-pill: 2px;           /* chips are NOT pills   */
-  --ax-hair: 1px solid var(--ax-rule);
+  --ax-r:      18px;
+  --ax-r-field: 12px;
+  --ax-r-cta:  14px;
+  --ax-r-pill: 999px;
+  --ax-hair:   1px solid var(--ax-rule);
   --ax-hair-2: 1px solid var(--ax-rule-2);
-  --ax-shadow: none;          /* elevation is a hairline, never a shadow */
+  --ax-shadow: none;                              /* the app has no drop shadows; a stroke marks a card */
 
-  /* ── Motion ── one signature: lock-in (things register; nothing fades or slides) */
+  /* ── Motion — one signature: lock-in (things register; nothing fades or slides) ── */
   --ax-t:      220ms;
   --ax-t-slow: 360ms;
   --ax-ease:   cubic-bezier(.2, .7, .2, 1);
-  --ax-ring:   0 0 0 2px var(--ax-paper), 0 0 0 4px var(--ax-focus);
+  --ax-ring:   0 0 0 2px var(--ax-bg), 0 0 0 4px var(--ax-blue);
+  --ax-rim:    0 0 0 1px var(--ax-green), 0 0 22px 3px rgba(48, 209, 88, .55);   /* AR: the part to look at */
+  --ax-rim-soft: rgba(48, 209, 88, .25);
 
   /* ── Layout ── */
   --ax-measure: 68ch;
   --ax-panel-w: 520px;
 }
 
-/* ── AR / camera surface ── the one dark context: what you look *through*.
-   Warm green is the rim-light; Focus blue keeps the UI focus ring. Scope a
-   subtree with data-surface="ar" (the XR kit, AR preview frames, coach cards). */
+/* AR / camera surface — the overlay over live video: opaque near-black cards
+   instead of translucent ones, so text stays readable over any scene. */
 [data-surface="ar"] {
-  --ax-bg:        #0A0A0A;
-  --ax-paper:     rgba(10, 10, 10, .86);
-  --ax-paper-2:   rgba(255, 255, 255, .06);
-  --ax-rule:      rgba(255, 255, 255, .22);
-  --ax-rule-2:    rgba(255, 255, 255, .12);
-  --ax-ink:       #F1F3F5;
-  --ax-ink-2:     #D5D9DE;
-  --ax-ink-3:     #9AA0A6;
-  --ax-blue-tint: rgba(102, 179, 255, .18);
-  --ax-green-tint: rgba(53, 198, 53, .18);
-  --ax-ok:        var(--ax-green);       /* on black, Warm green itself passes (8.9:1) */
-  --ax-warn:      var(--ax-focus);       /* Focus blue on black: 7.9:1 */
-  --ax-rim:       0 0 0 1px var(--ax-green), 0 0 22px 3px rgba(53, 198, 53, .55);
-  --ax-ring:      0 0 0 2px #0A0A0A, 0 0 0 4px var(--ax-focus);
+  --ax-paper:   rgba(10, 10, 10, .86);
+  --ax-paper-2: rgba(255, 255, 255, .06);
+  --ax-rule:    rgba(255, 255, 255, .22);
 }
 
 @media (prefers-reduced-motion: reduce) {

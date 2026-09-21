@@ -5,97 +5,87 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>appliedx · Brand guidelines</title>
 <!-- appliedx brand guidelines — rendered from sib/portal/brand/, the same CSS
-     every SIB page uses. If it looks right here, it looks right everywhere.
-     Proprietary & Confidential · Applied Materials. -->
+     every SIB page uses. The reference is the iPad app: if this page looks
+     like the kiosk and the hubs, SIB will too. Proprietary & Confidential · Applied Materials. -->
 <link rel="stylesheet" href="/portal/brand/brand.css">
 <style>
   /* page layout only — every colour, size and duration below is a token */
   body { margin: 0; }
-  .shell { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
-  /* ── side navigation ── */
-  .side { position: sticky; top: 0; height: 100vh; overflow: auto; border-right: var(--ax-hair); background: var(--ax-paper); padding: var(--ax-s5) var(--ax-s4); }
-  .side .ax-wordmark { margin-bottom: var(--ax-s5); }
-  .side nav a { display: grid; grid-template-columns: 28px 1fr; gap: 6px; align-items: baseline; padding: 6px 8px; border-radius: var(--ax-r); color: var(--ax-ink-2); border-bottom: 0; border-left: 2px solid transparent; }
-  .side nav a small { font: var(--ax-num); color: var(--ax-grey); }
-  .side nav a:hover { background: var(--ax-paper-2); color: var(--ax-ink); }
-  .side nav a.is-on { border-left-color: var(--ax-blue); color: var(--ax-ink); background: var(--ax-blue-tint); }
+  .shell { display: grid; grid-template-columns: 250px 1fr; min-height: 100vh; }
+  .side { position: sticky; top: 0; height: 100vh; overflow: auto; border-right: var(--ax-hair); background: var(--ax-paper-2); padding: var(--ax-s5) var(--ax-s4); }
+  .side .ax-wordmark { margin-bottom: var(--ax-s5); font-size: 20px; }
+  .side nav a { display: grid; grid-template-columns: 28px 1fr; gap: 6px; align-items: baseline; padding: 7px 10px; border-radius: 10px; color: var(--ax-ink-2); }
+  .side nav a small { font: var(--ax-num); color: var(--ax-ink-4); }
+  .side nav a:hover { background: var(--ax-paper); color: var(--ax-ink); text-decoration: none; }
+  .side nav a.is-on { color: var(--ax-ink); background: var(--ax-blue-fill); }
   .side .foot { margin-top: var(--ax-s6); font: var(--ax-label-s); color: var(--ax-ink-3); }
-  /* ── chapters ── */
   main { min-width: 0; }
   .chapter { padding: var(--ax-s7) 56px; border-bottom: var(--ax-hair); max-width: 1180px; }
-  .chapter .num { font: var(--ax-num); color: var(--ax-blue); letter-spacing: .12em; margin-bottom: var(--ax-s2); display: flex; align-items: center; gap: 8px; }
-  .chapter h2 { font: 700 34px/40px var(--ax-font); margin: 0 0 var(--ax-s3); letter-spacing: -.01em; }
+  .chapter .num { font: var(--ax-num); color: var(--ax-cyan); letter-spacing: .12em; margin-bottom: var(--ax-s2); display: flex; align-items: center; gap: 8px; }
+  .chapter h2 { font: var(--ax-h1); margin: 0 0 var(--ax-s3); letter-spacing: -.01em; }
   .chapter .lead { font: var(--ax-label-r); color: var(--ax-ink-2); max-width: 64ch; margin-bottom: var(--ax-s5); }
-  .chapter p { max-width: 64ch; }
+  .chapter p { max-width: 64ch; color: var(--ax-ink-2); }
   .reveal { opacity: 0; } .reveal.ax-lockin { opacity: 1; }
-  /* ── hero ── */
-  .hero { padding: 96px 56px 72px; border-bottom: var(--ax-hair); background: var(--ax-paper); }
+  /* hero — the kiosk */
+  .hero { padding: 96px 56px 72px; border-bottom: var(--ax-hair); }
   .hero .big { font: 400 clamp(64px, 9vw, 128px)/1 var(--ax-font); letter-spacing: -.03em; display: flex; align-items: baseline; gap: .1em; }
-  .hero .big .ax-x { color: var(--ax-green); } .hero .big .ax-a { color: var(--ax-focus); }
+  .hero .big .ax-a { color: var(--ax-wm-blue); } .hero .big .ax-x { color: var(--ax-wm-green); }
   .hero .big .ax-mark { font-size: .22em; margin-left: .18em; align-self: center; }
-  .hero h1 { font: 500 22px/30px var(--ax-font); color: var(--ax-ink-2); margin: var(--ax-s4) 0 0; }
+  .hero h1 { font: 700 30px/36px var(--ax-font); margin: var(--ax-s4) 0 0; }
   .hero .sub { font: var(--ax-label-r); color: var(--ax-ink-3); max-width: 60ch; margin: var(--ax-s3) 0 var(--ax-s5); }
-  .starts { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--ax-s3); max-width: 900px; }
-  .start { display: block; border: var(--ax-hair); border-radius: var(--ax-r); padding: var(--ax-s4); color: inherit; border-bottom: var(--ax-hair); background: var(--ax-bg); }
-  .start:hover { border-color: var(--ax-blue); border-bottom-color: var(--ax-blue); }
-  .start b { display: block; font: var(--ax-label); margin: 6px 0 2px; }
-  .start span { font: var(--ax-label-s); color: var(--ax-ink-3); }
-  /* ── generic grids ── */
+  .starts { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--ax-s3); max-width: 960px; }
   .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--ax-s4); }
   .g3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--ax-s4); }
   .g4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--ax-s3); }
-  .principle { border-top: 2px solid var(--ax-blue); padding-top: var(--ax-s3); }
-  .principle b { display: block; font: var(--ax-h3); margin-bottom: 4px; }
-  .principle p { font: var(--ax-body); color: var(--ax-ink-2); }
-  /* ── wordmark chapter ── */
-  .wm-stage { border: var(--ax-hair); border-radius: var(--ax-r); padding: var(--ax-s6); display: flex; align-items: center; justify-content: center; background: var(--ax-paper); min-height: 180px; }
-  .wm-stage.dark { background: var(--ax-ink); }
+  .principle { background: var(--ax-paper); border-radius: var(--ax-r); padding: var(--ax-s4); border: var(--ax-hair); }
+  .principle b { display: block; font: var(--ax-h3); margin: 8px 0 4px; }
+  .principle p { font: var(--ax-body); color: var(--ax-ink-2); margin: 0; }
+  /* wordmark */
+  .wm-stage { border: var(--ax-hair); border-radius: var(--ax-r); padding: var(--ax-s6); display: flex; align-items: center; justify-content: center; min-height: 180px; }
+  .wm-stage.dark { background: var(--ax-bg); } .wm-stage.light { background: var(--ax-ink); }
   .wm-big { font: 400 56px/1 var(--ax-font); letter-spacing: -.02em; }
-  .wm-big .ax-a { color: var(--ax-focus); } .wm-big .ax-x { color: var(--ax-green); }
+  .wm-big .ax-a { color: var(--ax-wm-blue); } .wm-big .ax-x { color: var(--ax-wm-green); }
   .wm-clear { position: relative; display: inline-block; padding: 28px; outline: 1px dashed var(--ax-rule); }
-  .wm-clear::after { content: "clear space = height of the x"; position: absolute; right: 6px; bottom: 4px; font: var(--ax-eyebrow); color: var(--ax-grey); letter-spacing: .06em; }
-  .dd { border: var(--ax-hair); border-radius: var(--ax-r); padding: var(--ax-s3) var(--ax-s4); display: flex; flex-direction: column; gap: 6px; }
+  .wm-clear::after { content: "clear space = height of the x"; position: absolute; right: 6px; bottom: 4px; font: var(--ax-eyebrow); color: var(--ax-ink-4); }
+  .dd { background: var(--ax-paper); border-radius: var(--ax-r-field); padding: var(--ax-s3) var(--ax-s4); display: flex; flex-direction: column; gap: 6px; }
   .dd .tag { font: var(--ax-eyebrow); letter-spacing: .1em; text-transform: uppercase; }
-  .dd.do .tag { color: var(--ax-green-ink); } .dd.dont .tag { color: var(--ax-bad); }
-  .dd .sample { font: 400 26px/1.1 var(--ax-font); letter-spacing: -.01em; padding: 10px 0; }
-  .dd .sample.mono { font-family: var(--ax-mono); }
+  .dd.do .tag { color: var(--ax-green); } .dd.dont .tag { color: var(--ax-red); }
+  .dd .sample { font: 400 26px/1.1 var(--ax-font); letter-spacing: -.01em; padding: 10px 0; color: var(--ax-ink); }
   .dd .why { font: var(--ax-label-s); color: var(--ax-ink-3); }
-  /* ── colour chapter ── */
-  .sw { border: var(--ax-hair); border-radius: var(--ax-r); overflow: hidden; background: var(--ax-paper); }
-  .sw i { display: block; height: 96px; }
-  .sw.big i { height: 150px; }
-  .sw div { padding: 8px 10px; }
-  .sw b { display: block; font: var(--ax-body-m); }
-  .sw code { display: block; color: var(--ax-ink-3); }
-  .sw small { display: block; font: var(--ax-label-s); color: var(--ax-ink-3); margin-top: 2px; }
-  .pair { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-radius: var(--ax-r); font: var(--ax-body-m); }
-  .pair code { font: var(--ax-num); opacity: .8; }
-  /* ── type chapter ── */
+  /* same family */
+  .pair2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--ax-s4); align-items: start; }
+  .device { background: var(--ax-bg); border: var(--ax-hair); border-radius: 26px; padding: 22px; } /* brand-check: allow — device bezel in a mock, not a component */
+  .device .cap { font: var(--ax-eyebrow); color: var(--ax-ink-4); margin-bottom: 12px; }
+  .screen { background: var(--ax-page); border-radius: var(--ax-r); padding: 20px; border: var(--ax-hair); }
+  .screen h3 { margin: 0 0 2px; }
+  .screen .sub { font: var(--ax-label-s); color: var(--ax-ink-3); margin-bottom: 14px; }
+  .doors { display: flex; flex-direction: column; gap: 10px; }
+  /* colour */
+  .sw { background: var(--ax-paper); border-radius: var(--ax-r-field); overflow: hidden; }
+  .sw i { display: block; height: 96px; } .sw.big i { height: 140px; }
+  .sw div { padding: 8px 12px; } .sw b { display: block; font: var(--ax-body-m); }
+  .sw code { display: block; color: var(--ax-ink-3); } .sw small { display: block; font: var(--ax-label-s); color: var(--ax-ink-3); margin-top: 2px; }
+  .tier { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-radius: var(--ax-r-field); background: var(--ax-paper-2); font: var(--ax-label-r); }
+  .tier code { font: var(--ax-num); color: var(--ax-ink-3); }
+  /* type */
   .spec { display: grid; grid-template-columns: 260px 1fr; gap: var(--ax-s4); align-items: baseline; padding: 14px 0; border-bottom: var(--ax-hair-2); }
-  .spec code { color: var(--ax-ink-3); display: block; }
-  .spec small { display: block; font: var(--ax-label-s); color: var(--ax-grey); }
-  /* ── motion ── */
-  .stage { border: var(--ax-hair); border-radius: var(--ax-r); padding: var(--ax-s5); display: flex; align-items: center; gap: var(--ax-s5); background: var(--ax-paper); min-height: 140px; }
+  .spec code { color: var(--ax-ink-3); display: block; } .spec small { display: block; font: var(--ax-label-s); color: var(--ax-ink-4); }
+  .stage { background: var(--ax-paper); border-radius: var(--ax-r); padding: var(--ax-s5); display: flex; align-items: center; gap: var(--ax-s5); min-height: 140px; }
   .stage .ax-mark { font-size: 56px; }
-  /* ── icons ── */
   .icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
-  .icons div { border: var(--ax-hair-2); border-radius: var(--ax-r); padding: 12px 4px 8px; text-align: center; font: var(--ax-eyebrow); color: var(--ax-ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: var(--ax-paper); }
+  .icons div { background: var(--ax-paper-2); border-radius: var(--ax-r-field); padding: 12px 4px 8px; text-align: center; font: var(--ax-eyebrow); color: var(--ax-ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: none; letter-spacing: 0; }
   .icons .ax-icon { width: 24px; height: 24px; display: block; margin: 0 auto 8px; color: var(--ax-ink); }
-  /* ── AR ── */
   .ar-demo { position: relative; min-height: 220px; border: var(--ax-hair); border-radius: var(--ax-r); padding: var(--ax-s3); background: var(--ax-bg); }
-  .ar-demo .part { position: absolute; left: 30%; top: 28%; width: 140px; height: 72px; border: 1px solid var(--ax-rule); }
-  .ar-demo .stepcard { position: absolute; left: 12px; right: 12px; bottom: 12px; padding: 10px 12px; }
-  /* ── voice ── */
+  .ar-demo .part { position: absolute; left: 30%; top: 28%; width: 140px; height: 72px; border: 1px solid var(--ax-rule); border-radius: 6px; }
+  .ar-demo .stepcard { position: absolute; left: 12px; right: 12px; bottom: 12px; padding: 12px 14px; }
   .voice { display: grid; grid-template-columns: 1fr 1fr; gap: var(--ax-s3); }
   .voice .dd .sample { font: var(--ax-label-r); padding: 4px 0; }
-  /* ── roadmap ── */
   .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--ax-s3); }
-  .step { border: var(--ax-hair); border-radius: var(--ax-r); padding: var(--ax-s4); background: var(--ax-paper); }
-  .step .n { font: 500 28px/1 var(--ax-mono); color: var(--ax-blue); }
-  .step.done { border-top: 3px solid var(--ax-green); } .step.next { border-top: 3px solid var(--ax-blue); }
-  .step b { display: block; font: var(--ax-label); margin: 8px 0 4px; }
-  .step span { font: var(--ax-label-s); color: var(--ax-ink-3); }
-  @media (max-width: 960px) { .shell { grid-template-columns: 1fr; } .side { position: static; height: auto; border-right: 0; border-bottom: var(--ax-hair); } .chapter, .hero { padding-left: 24px; padding-right: 24px; } .g2, .g3, .g4, .starts, .steps, .voice { grid-template-columns: 1fr; } .spec { grid-template-columns: 1fr; } }
+  .step { background: var(--ax-paper); border-radius: var(--ax-r); padding: var(--ax-s4); border: var(--ax-hair); }
+  .step .n { font: 500 28px/1 var(--ax-mono); color: var(--ax-cyan); }
+  .step.done { border-color: color-mix(in srgb, var(--ax-green) 50%, transparent); } .step.next { border-color: color-mix(in srgb, var(--ax-blue) 60%, transparent); }
+  .step b { display: block; font: var(--ax-label); margin: 8px 0 4px; } .step span { font: var(--ax-label-s); color: var(--ax-ink-3); }
+  @media (max-width: 960px) { .shell { grid-template-columns: 1fr; } .side { position: static; height: auto; border-right: 0; border-bottom: var(--ax-hair); } .chapter, .hero { padding-left: 24px; padding-right: 24px; } .g2, .g3, .g4, .starts, .steps, .voice, .pair2 { grid-template-columns: 1fr; } .spec { grid-template-columns: 1fr; } }
   @media print { .side { display: none; } .shell { display: block; } .reveal { opacity: 1; } }
 </style>
 </head>
@@ -106,16 +96,17 @@
     <nav>
       <a href="#start"><small>00</small>Start here</a>
       <a href="#principles"><small>01</small>Principles</a>
-      <a href="#wordmark"><small>02</small>The wordmark</a>
-      <a href="#mark"><small>03</small>Mark &amp; motion</a>
+      <a href="#family"><small>02</small>Same family</a>
+      <a href="#wordmark"><small>03</small>The wordmark</a>
       <a href="#colour"><small>04</small>Colour</a>
-      <a href="#type"><small>05</small>Typography</a>
-      <a href="#components"><small>06</small>Components</a>
-      <a href="#ar"><small>07</small>The AR surface</a>
-      <a href="#icons"><small>08</small>Icons</a>
-      <a href="#voice"><small>09</small>Voice</a>
-      <a href="#rules"><small>10</small>Rules</a>
-      <a href="#roadmap"><small>11</small>Where next</a>
+      <a href="#mark"><small>05</small>Mark &amp; motion</a>
+      <a href="#type"><small>06</small>Typography</a>
+      <a href="#components"><small>07</small>Components</a>
+      <a href="#ar"><small>08</small>The AR surface</a>
+      <a href="#icons"><small>09</small>Icons</a>
+      <a href="#voice"><small>10</small>Voice</a>
+      <a href="#rules"><small>11</small>Rules</a>
+      <a href="#roadmap"><small>12</small>Where next</a>
     </nav>
     <div class="foot"><span id="ver">Connected Worker AR OMS Platform</span><br>Proprietary &amp; Confidential<br>Applied Materials</div>
   </aside>
@@ -123,126 +114,150 @@
   <main>
     <section class="hero" id="start">
       <div class="big"><span class="ax-a">applied</span><span class="ax-x">x</span><span class="ax-mark"><i></i><em></em></span></div>
-      <h1>Brand guidelines for the Connected Worker AR OMS Platform</h1>
-      <p class="sub">How SIB looks, sounds and moves — on the portal, the catalogue, the platform story, the XR kit and the iPad. One system, written down once, so every surface we ship feels like the same place, and so people who see it want to come back.</p>
+      <h1><span class="ax-title">Brand guidelines</span> for the Connected Worker AR OMS Platform</h1>
+      <p class="sub">The iPad app is the reference. Everything SIB shows on the web — the portal, the catalogue, the platform story, the XR kit — wears the app's colours, corners and type, so a person who knows the app already knows SIB. This page is that agreement, written down and enforced.</p>
       <div class="starts">
-        <a class="start" href="#principles"><span class="ax-mark"><i></i><em></em></span><b>New here? Read the principles</b><span>Three ideas explain every decision on this page.</span></a>
-        <a class="start" href="#colour"><span class="ax-mark is-green"><i></i><em></em></span><b>Designing a screen? Colour &amp; type</b><span>The palette, the pairings that pass, the scale.</span></a>
-        <a class="start" href="#components"><span class="ax-mark is-ink"><i></i><em></em></span><b>Building a page? Components</b><span>Buttons, chips, tables, notices — one implementation each.</span></a>
+        <a class="ax-door" data-product="portal" href="#principles"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-mark"/></svg><span><b>New here?</b><span>Three ideas explain every decision on this page.</span></span><svg class="ax-icon ax-chev"><use href="/portal/brand/icons.svg#i-chevron"/></svg></a>
+        <a class="ax-door" data-product="guides" href="#colour"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-target"/></svg><span><b>Designing a screen?</b><span>The palette, the tiers, the corners.</span></span><svg class="ax-icon ax-chev"><use href="/portal/brand/icons.svg#i-chevron"/></svg></a>
+        <a class="ax-door" data-product="tags" href="#components"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-layers"/></svg><span><b>Building a page?</b><span>Doors, cards, chips, tables — one implementation each.</span></span><svg class="ax-icon ax-chev"><use href="/portal/brand/icons.svg#i-chevron"/></svg></a>
       </div>
     </section>
 
     <section class="chapter reveal" id="principles">
       <div class="num"><span class="ax-mark"><i></i><em></em></span>01 · PRINCIPLES</div>
       <h2>Three ideas behind everything</h2>
-      <p class="lead">SIB lives in a cleanroom and puts instructions on real equipment. Its look comes from that — not from a dashboard template. If a design choice can't be traced to one of these three, it doesn't belong.</p>
+      <p class="lead">The app already has a look people like. The system's job is to carry it to the web exactly, and to add the few signatures that make a SIB page unmistakably ours.</p>
       <div class="g3">
-        <div class="principle"><b>Cleanroom</b><p>Light paper, hairline rules, near-square corners. No glass, no gradients, no shadows. Calm surfaces let the equipment, the model and the data be the colour.</p></div>
-        <div class="principle"><b>Register</b><p>Things don't fade in — they <em>lock in</em>. The registration mark (QR finder square, wafer alignment cross, AR anchor) is our motif: focus, loading and section markers all use it.</p></div>
-        <div class="principle"><b>Honest colour</b><p>Blue is the mark and the action. Green means verified. Red is reserved for real failure. There is no orange in the system; the two product colours users already know — Gemba, iLOTO — stay exactly as they are.</p></div>
+        <div class="principle"><span class="ax-icon-tile" data-product="portal"><svg class="ax-icon ax-icon--lg"><use href="/portal/brand/icons.svg#i-chamber"/></svg></span><b>The app is the reference</b><p>Charcoal surfaces, 8 %-white cards with an accent stroke, white text in opacity tiers, iOS accents, 18-pt corners, capsule chips. If the app does it, SIB does it. If the app doesn't, SIB doesn't invent it.</p></div>
+        <div class="principle"><span class="ax-icon-tile" data-product="tags"><svg class="ax-icon ax-icon--lg"><use href="/portal/brand/icons.svg#i-mark"/></svg></span><b>Register</b><p>Our signatures: the appliedx wordmark on every surface, the registration mark for focus and loading, the lock-in motion, the green rim-light in AR. Those are what a template can't copy.</p></div>
+        <div class="principle"><span class="ax-icon-tile" data-product="guides"><svg class="ax-icon ax-icon--lg"><use href="/portal/brand/icons.svg#i-check"/></svg></span><b>Honest colour</b><p>Colours mean the same thing everywhere: blue acts, green is verified or AR OMS, orange is attention or Gemba, red is failure or iLOTO. A colour is never decoration.</p></div>
+      </div>
+    </section>
+
+    <section class="chapter reveal" id="family">
+      <div class="num"><span class="ax-mark"><i></i><em></em></span>02 · SAME FAMILY</div>
+      <h2>The kiosk on the iPad, and the same thing on the web</h2>
+      <p class="lead">Left: the app's home screen as it is built today. Right: the same content in SIB components. Same surfaces, same doors, same product colours, same "last used" capsule. That is the test every SIB page has to pass.</p>
+      <div class="pair2">
+        <div class="device"><div class="cap">iPad · ModeSelectionView (as shipped)</div>
+          <div class="screen">
+            <h3><span class="ax-title">What are you working on?</span></h3><div class="sub">Signed in as Karthik · Production # 1042-7</div>
+            <div class="doors">
+              <div class="ax-door" data-product="guides"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-cube"/></svg><span><b>AR OMS <span class="ax-chip ax-chip--product" data-product="guides" style="vertical-align:2px">Last used</span></b><span>Spatial Inspection · AR work instructions</span></span><svg class="ax-icon ax-chev"><use href="/portal/brand/icons.svg#i-chevron"/></svg></div>
+              <div class="ax-door" data-product="gemba"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-technician"/></svg><span><b>Gemba Audit</b><span>Walk an area, tag findings</span></span><svg class="ax-icon ax-chev"><use href="/portal/brand/icons.svg#i-chevron"/></svg></div>
+              <div class="ax-door" data-product="iloto"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-lockout"/></svg><span><b>iLOTO</b><span>Lockout / tagout on control panels</span></span><svg class="ax-icon ax-chev"><use href="/portal/brand/icons.svg#i-chevron"/></svg></div>
+            </div>
+          </div>
+        </div>
+        <div class="device"><div class="cap">SIB portal · home (with the system)</div>
+          <div class="screen">
+            <h3><span class="ax-title">Where do you want to go?</span></h3><div class="sub">appliedx · v2026.4.46 · 3 live sessions</div>
+            <div class="doors">
+              <div class="ax-door" data-product="guides"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-cube"/></svg><span><b>AR Guides Sessions <span class="ax-chip ax-chip--ok" style="vertical-align:2px">12 today</span></b><span>Completions · Usage log · Intelligence</span></span><svg class="ax-icon ax-chev"><use href="/portal/brand/icons.svg#i-chevron"/></svg></div>
+              <div class="ax-door" data-product="gemba"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-technician"/></svg><span><b>GembaWalks</b><span>Walk sessions · findings by area · audit library</span></span><svg class="ax-icon ax-chev"><use href="/portal/brand/icons.svg#i-chevron"/></svg></div>
+              <div class="ax-door" data-product="iloto"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-lockout"/></svg><span><b>iLOTO</b><span>Points · events · training</span></span><svg class="ax-icon ax-chev"><use href="/portal/brand/icons.svg#i-chevron"/></svg></div>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
     <section class="chapter reveal" id="wordmark">
-      <div class="num"><span class="ax-mark"><i></i><em></em></span>02 · THE WORDMARK</div>
+      <div class="num"><span class="ax-mark"><i></i><em></em></span>03 · THE WORDMARK</div>
       <h2>appliedx — always lowercase, always two colours</h2>
-      <p class="lead">The name is one word: <b>applied</b> in Focus blue, <b>x</b> in Warm green, in the brand face at regular weight. It is written this way in decks, on the portal, in the app and in prose. Never "AppliedX", never one colour, never a different face.</p>
+      <p class="lead">One word. <b style="color:var(--ax-wm-blue)">applied</b> in the wordmark blue, <b style="color:var(--ax-wm-green)">x</b> in the wordmark green, regular weight — as the team writes it in decks, on the portal, in the app, in prose. Never "AppliedX", never one colour, never a different face. These two colours belong to the wordmark alone.</p>
       <div class="g2">
-        <div class="wm-stage"><span class="wm-clear"><span class="wm-big"><span class="ax-a">applied</span><span class="ax-x">x</span></span></span></div>
-        <div class="wm-stage dark"><span class="wm-big"><span class="ax-a">applied</span><span class="ax-x">x</span></span></div>
+        <div class="wm-stage dark"><span class="wm-clear"><span class="wm-big"><span class="ax-a">applied</span><span class="ax-x">x</span></span></span></div>
+        <div class="wm-stage light"><span class="wm-big"><span class="ax-a">applied</span><span class="ax-x">x</span></span></div>
       </div>
       <div class="g4" style="margin-top:var(--ax-s4)">
-        <div class="dd do"><span class="tag">Do</span><div class="sample"><span style="color:var(--ax-focus)">applied</span><span style="color:var(--ax-green)">x</span></div><span class="why">Lowercase, two colours, regular weight.</span></div>
-        <div class="dd do"><span class="tag">Do</span><div class="sample" style="font-size:16px"><span style="color:var(--ax-focus)">applied</span><span style="color:var(--ax-green)">x</span> <span style="color:var(--ax-ink-3)">Connected Worker AR OMS Platform</span></div><span class="why">With the platform name in tertiary ink, when there is room.</span></div>
-        <div class="dd dont"><span class="tag">Don't</span><div class="sample" style="color:var(--ax-ink)">AppliedX</div><span class="why">Capitals break the mark. In running text it is still appliedx.</span></div>
+        <div class="dd do"><span class="tag">Do</span><div class="sample"><span style="color:var(--ax-wm-blue)">applied</span><span style="color:var(--ax-wm-green)">x</span></div><span class="why">Lowercase, two colours, regular weight.</span></div>
+        <div class="dd do"><span class="tag">Do</span><div class="sample" style="font-size:16px"><span style="color:var(--ax-wm-blue)">applied</span><span style="color:var(--ax-wm-green)">x</span> <span style="color:var(--ax-ink-3)">Connected Worker AR OMS Platform</span></div><span class="why">With the platform name in the 50 % tier, when there is room.</span></div>
+        <div class="dd dont"><span class="tag">Don't</span><div class="sample">AppliedX</div><span class="why">Capitals break the mark. In running text it is still appliedx.</span></div>
         <div class="dd dont"><span class="tag">Don't</span><div class="sample" style="color:var(--ax-blue)"><i>appliedx</i></div><span class="why">One colour, italics, bold or a different typeface.</span></div>
       </div>
-      <p style="margin-top:var(--ax-s4)">In HTML use the component so it is never hand-typed: <code>&lt;span class="ax-wordmark"&gt;&lt;span class="ax-a"&gt;applied&lt;/span&gt;&lt;span class="ax-x"&gt;x&lt;/span&gt;&lt;/span&gt;</code>. Clear space around the mark is the height of the x. The smallest size on screen is 14 px.</p>
-    </section>
-
-    <section class="chapter reveal" id="mark">
-      <div class="num"><span class="ax-mark"><i></i><em></em></span>03 · MARK &amp; MOTION</div>
-      <h2>The registration mark, and the one way things move</h2>
-      <p class="lead">Four brackets closing on a target. It is what an operator sees on the printed QR, what a tool sees on a wafer, and what the app draws when it anchors. It is the focus ring, the loading state, the section marker and the dot in the wordmark.</p>
-      <div class="g2">
-        <div class="stage"><span class="ax-mark"><i></i><em></em></span><span class="ax-mark is-green"><i></i><em></em></span><span class="ax-mark is-ink"><i></i><em></em></span><div><b>Three colours only.</b><br><span class="ax-label-s">Blue for focus and navigation, green for verified and anchored, ink for structure.</span></div></div>
-        <div class="stage"><span class="ax-mark is-loading"><i></i><em></em></span><div><b>Lock-in.</b><br><span class="ax-label-s">Elements register: scale 1.35 → 1 in 220 ms on the brand ease. Nothing fades or slides. Loading is the mark locking in. Reduced-motion collapses it to 1 ms.</span></div></div>
-      </div>
-      <p style="margin-top:var(--ax-s4)"><code>&lt;span class="ax-mark"&gt;&lt;i&gt;&lt;/i&gt;&lt;em&gt;&lt;/em&gt;&lt;/span&gt;</code> sized with <code>font-size</code> · <code>.ax-lockin</code> on arrival · <code>.ax-loading</code> on a container while it waits.</p>
+      <p style="margin-top:var(--ax-s4)">In HTML always the component, never hand-typed: <code>&lt;span class="ax-wordmark"&gt;&lt;span class="ax-a"&gt;applied&lt;/span&gt;&lt;span class="ax-x"&gt;x&lt;/span&gt;&lt;/span&gt;</code>. Clear space is the height of the x; the smallest size on screen is 14 px.</p>
     </section>
 
     <section class="chapter reveal" id="colour">
       <div class="num"><span class="ax-mark"><i></i><em></em></span>04 · COLOUR</div>
-      <h2>The Applied palette, used the way its note asks</h2>
-      <p class="lead">The team library says Focus blue and Warm green don't pass contrast for text — so they never carry text. They are rings, fills, marks and the wordmark. Their <em>ink</em> variants do the reading work. Warnings are deep blue with the mark; one red is kept for real failure.</p>
-      <div class="ax-eyebrow" style="margin-bottom:var(--ax-s2)">Brand</div>
-      <div class="g4" id="sw-brand"></div>
-      <div class="ax-eyebrow" style="margin:var(--ax-s5) 0 var(--ax-s2)">Surfaces &amp; ink</div>
+      <h2>The app's palette, transcribed</h2>
+      <p class="lead">Surfaces are the kiosk's charcoal. Text is white in the app's opacity tiers. Accents are the iOS system colours in their dark appearance — the exact values the iPad renders — so a green on the web is the green on the tablet.</p>
+      <div class="ax-eyebrow" style="margin-bottom:var(--ax-s2)">Accents — one meaning each</div>
+      <div class="g4" id="sw-accent"></div>
+      <div class="ax-eyebrow" style="margin:var(--ax-s5) 0 var(--ax-s2)">Surfaces</div>
       <div class="g4" id="sw-surface"></div>
-      <div class="ax-eyebrow" style="margin:var(--ax-s5) 0 var(--ax-s2)">Status — no orange, ever</div>
-      <div class="g3" id="sw-status"></div>
-      <div class="ax-eyebrow" style="margin:var(--ax-s5) 0 var(--ax-s2)">Pairings that pass (WCAG AA for text is 4.5 : 1)</div>
-      <div class="g3">
-        <div class="pair" style="background:var(--ax-paper);color:var(--ax-blue);border:var(--ax-hair)">Primary blue on paper <code>4.75</code></div>
-        <div class="pair" style="background:var(--ax-blue);color:var(--ax-on-blue)">Paper on Primary blue <code>4.75</code></div>
-        <div class="pair" style="background:var(--ax-paper);color:var(--ax-blue-ink);border:var(--ax-hair)">Blue ink on paper <code>7.06</code></div>
-        <div class="pair" style="background:var(--ax-paper);color:var(--ax-green-ink);border:var(--ax-hair)">Green ink on paper <code>5.11</code></div>
-        <div class="pair" style="background:var(--ax-green-tint);color:var(--ax-green-ink)">Green ink on green tint <code>4.64</code></div>
-        <div class="pair" style="background:var(--ax-ink);color:var(--ax-green)">Warm green on ink (AR) <code>8.9</code></div>
+      <div class="ax-eyebrow" style="margin:var(--ax-s5) 0 var(--ax-s2)">Text tiers — white at the app's opacities</div>
+      <div class="g4">
+        <div class="tier" style="color:var(--ax-ink)">Titles, body <code>100 %</code></div>
+        <div class="tier" style="color:var(--ax-ink-2)">Labels, secondary <code>70 %</code></div>
+        <div class="tier" style="color:var(--ax-ink-3)">Subtitles, hints <code>50 %</code></div>
+        <div class="tier" style="color:var(--ax-ink-4)">Placeholders <code>35 %</code></div>
       </div>
-      <div class="g2" style="margin-top:var(--ax-s4)">
-        <div class="dd dont"><span class="tag">Don't</span><div class="sample" style="font-size:18px;color:var(--ax-focus)">Focus blue as text — 2.2 : 1</div><span class="why">Use Primary blue or blue ink for words; Focus blue for rings and the wordmark.</span></div>
-        <div class="dd dont"><span class="tag">Don't</span><div class="sample" style="font-size:18px;color:var(--ax-green)">Warm green as text — 2.3 : 1</div><span class="why">Use green ink for "verified"; Warm green for fills, borders and the AR rim.</span></div>
-      </div>
-      <div class="ax-eyebrow" style="margin:var(--ax-s5) 0 var(--ax-s2)">Products — the same colour on the map, the portal, the diagrams and the app</div>
+      <div class="ax-eyebrow" style="margin:var(--ax-s5) 0 var(--ax-s2)">Products — the door colours, carried everywhere</div>
       <div class="ax-row" id="sw-products"></div>
+      <div class="g2" style="margin-top:var(--ax-s4)">
+        <div class="dd do"><span class="tag">Do</span><div class="sample" style="font-size:18px"><span class="ax-chip ax-chip--warn">checking</span> <span class="ax-chip ax-chip--ok">verified</span> <span class="ax-chip ax-chip--bad">failed</span></div><span class="why">Status colours follow the app: orange is attention, green is verified, red is failure.</span></div>
+        <div class="dd dont"><span class="tag">Don't</span><div class="sample" style="font-size:18px;color:var(--ax-purple)">A purple heading because it looked nice</div><span class="why">No colour without a meaning. Emphasis is the title gradient or the 100 % tier, not a new hue.</span></div>
+      </div>
+    </section>
+
+    <section class="chapter reveal" id="mark">
+      <div class="num"><span class="ax-mark"><i></i><em></em></span>05 · MARK &amp; MOTION</div>
+      <h2>The registration mark, and the one way things move</h2>
+      <p class="lead">Four brackets closing on a target: what an operator sees on the printed QR, what a tool sees on a wafer, what the app draws when it anchors. It is the focus ring, the loading state, the section marker and the dot in the wordmark. It is the one thing on a SIB page that no template has.</p>
+      <div class="g2">
+        <div class="stage"><span class="ax-mark"><i></i><em></em></span><span class="ax-mark is-green"><i></i><em></em></span><span class="ax-mark is-ink"><i></i><em></em></span><div><b>Three colours only.</b><br><span class="ax-label-s">Blue for focus and navigation, green for verified and anchored, white for structure.</span></div></div>
+        <div class="stage"><span class="ax-mark is-loading"><i></i><em></em></span><div><b>Lock-in.</b><br><span class="ax-label-s">Elements register: scale 1.35 → 1 in 220 ms on the brand ease. Nothing fades or slides. Loading is the mark locking in. Reduced-motion collapses it to 1 ms.</span></div></div>
+      </div>
     </section>
 
     <section class="chapter reveal" id="type">
-      <div class="num"><span class="ax-mark"><i></i><em></em></span>05 · TYPOGRAPHY</div>
-      <h2>Arial, at the team library's scale</h2>
-      <p class="lead">The company standard, on every device already — nothing to download, nothing for the LAN to fetch. Identifiers, part numbers and every number in a table sit in the platform's monospace so columns align and IDs look like IDs.</p>
-      <div class="spec"><div><code>Heading · Bold 24/32</code><small>--ax-h1</small></div><div style="font:var(--ax-h1)">Fit the cylinder head</div></div>
-      <div class="spec"><div><code>Title Large · Medium 22/30</code><small>--ax-h2</small></div><div style="font:var(--ax-h2)">Usage log · Producer XP · Chamber 14</div></div>
-      <div class="spec"><div><code>Title Medium · Medium 20/28</code><small>--ax-h3</small></div><div style="font:var(--ax-h3)">Step 4 of 8</div></div>
+      <div class="num"><span class="ax-mark"><i></i><em></em></span>06 · TYPOGRAPHY</div>
+      <h2>Arial on the web, SF on the iPad — the same scale</h2>
+      <p class="lead">The company standard, on every device already. The scale mirrors the app's text styles; identifiers, part numbers and every number in a table sit in the platform monospace so columns align.</p>
+      <div class="spec"><div><code>Large title · Bold 34/40</code><small>--ax-h1 · .largeTitle.bold</small></div><div style="font:var(--ax-h1)"><span class="ax-title">What are you working on?</span></div></div>
+      <div class="spec"><div><code>Heading · Bold 24/32</code><small>--ax-h2</small></div><div style="font:var(--ax-h2)">Fit the cylinder head</div></div>
+      <div class="spec"><div><code>Title · Medium 20/28</code><small>--ax-h3 · .headline</small></div><div style="font:var(--ax-h3)">Step 4 of 8</div></div>
       <div class="spec"><div><code>Label · Medium 16/24</code><small>--ax-label</small></div><div style="font:var(--ax-label)">Anchor — the physical asset this guide is performed on</div></div>
-      <div class="spec"><div><code>Label · Regular 13/20</code><small>--ax-label-s</small></div><div style="font:var(--ax-label-s)">Steps are placed in AR on device before publishing.</div></div>
-      <div class="spec"><div><code>LABEL · 12 caps, tracked</code><small>--ax-eyebrow</small></div><div class="ax-eyebrow">Intelligence · Motorcycle engine · 12 runs</div></div>
-      <div class="spec"><div><code>Paragraph · Regular 14/21</code><small>--ax-body</small></div><div style="font:var(--ax-body);max-width:64ch">Every hint is scored by what happened after it. A hint that helps fewer than 30 % of the time is retired on that step, and comes back on its own when newer runs improve.</div></div>
+      <div class="spec"><div><code>Label · Regular 13/20</code><small>--ax-label-s · .subheadline</small></div><div style="font:var(--ax-label-s);color:var(--ax-ink-3)">Steps are placed in AR on device before publishing.</div></div>
+      <div class="spec"><div><code>Caps · Bold 11</code><small>--ax-eyebrow · "LAST USED"</small></div><div class="ax-eyebrow">Intelligence · Motorcycle engine · 12 runs</div></div>
+      <div class="spec"><div><code>Body · Regular 14/21</code><small>--ax-body</small></div><div style="font:var(--ax-body);max-width:64ch;color:var(--ax-ink-2)">Every hint is scored by what happened after it. A hint that helps fewer than 30 % of the time is retired on that step, and comes back on its own when newer runs improve.</div></div>
       <div class="spec"><div><code>Identifiers · mono 13/20</code><small>--ax-num</small></div><div class="ax-num">CH-14 · PN 0190-12345 · 52 s · 38 % · 2026.4.46</div></div>
     </section>
 
     <section class="chapter reveal" id="components">
-      <div class="num"><span class="ax-mark"><i></i><em></em></span>06 · COMPONENTS</div>
-      <h2>One implementation of each, in use</h2>
-      <p class="lead">Pages compose these; they never restyle them. If something you need isn't here, it gets added here first — then used.</p>
+      <div class="num"><span class="ax-mark"><i></i><em></em></span>07 · COMPONENTS</div>
+      <h2>One implementation of each, shaped like the app</h2>
+      <p class="lead">Doors, cards, chips, fields, tables, notices — each exists once and looks like its iPad counterpart. Pages compose them; they never restyle them.</p>
       <div class="g2">
         <div class="ax-card">
-          <div class="ax-eyebrow">Buttons</div>
-          <div class="ax-row" style="margin-top:8px"><button class="ax-btn ax-btn--primary">Scan chamber QR</button><button class="ax-btn">Directory</button><button class="ax-btn ax-btn--mark"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-xr"/></svg>XR kit</button><button class="ax-btn ax-btn--ok">Verified</button><button class="ax-btn ax-btn--danger">Delete</button><button class="ax-btn ax-btn--quiet">Cancel</button><button class="ax-btn" disabled>Disabled</button><button class="ax-btn ax-btn--sm">Small</button></div>
-          <div class="ax-eyebrow" style="margin-top:16px">Chips</div>
-          <div class="ax-row" style="margin-top:8px"><span class="ax-chip">shipped</span><span class="ax-chip ax-chip--ok">anchored on QR</span><span class="ax-chip ax-chip--warn">unplaced</span><span class="ax-chip ax-chip--bad">failed</span><span class="ax-chip ax-chip--product" data-product="guides">AR OMS</span><span class="ax-chip ax-chip--product" data-product="iloto">iLOTO</span><span class="ax-chip ax-chip--product" data-product="gemba">Gemba Audit</span><span class="ax-chip is-on">v2026.4.46</span></div>
-          <div class="ax-eyebrow" style="margin-top:16px">Notices</div>
+          <div class="ax-eyebrow">Buttons — filled accent CTA, 8 %-white secondary</div>
+          <div class="ax-row" style="margin-top:8px"><button class="ax-btn ax-btn--primary">Scan chamber QR</button><button class="ax-btn">Directory</button><button class="ax-btn ax-btn--tint"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-xr"/></svg>XR kit</button><button class="ax-btn ax-btn--ok">Verified</button><button class="ax-btn ax-btn--danger">Delete</button><button class="ax-btn ax-btn--quiet">Cancel</button><button class="ax-btn" disabled>Disabled</button><button class="ax-btn ax-btn--sm">Small</button></div>
+          <div class="ax-eyebrow" style="margin-top:16px">Chips — capsules</div>
+          <div class="ax-row" style="margin-top:8px"><span class="ax-chip">shipped</span><span class="ax-chip ax-chip--ok">anchored on QR</span><span class="ax-chip ax-chip--warn">unplaced</span><span class="ax-chip ax-chip--bad">failed</span><span class="ax-chip ax-chip--info">v2026.4.46</span><span class="ax-chip ax-chip--product" data-product="guides">AR OMS</span><span class="ax-chip ax-chip--product" data-product="iloto">iLOTO</span><span class="ax-chip ax-chip--product" data-product="gemba">Gemba Audit</span><span class="ax-chip ax-chip--text">Production # 1042-7</span></div>
+          <div class="ax-eyebrow" style="margin-top:16px">Notices — tinted bands</div>
           <div class="ax-stack" style="margin-top:8px">
             <div class="ax-notice ax-notice--ok"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-check"/></svg><div><b>World map sealed.</b> Operators will localise from the printed QR.</div></div>
-            <div class="ax-notice ax-notice--warn"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-mark"/></svg><div><b>3 steps unplaced.</b> Place them on the iPad before publishing.</div></div>
+            <div class="ax-notice ax-notice--warn"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-alert"/></svg><div><b>3 steps unplaced.</b> Place them on the iPad before publishing.</div></div>
             <div class="ax-notice ax-notice--bad"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-error"/></svg><div><b>Import failed.</b> The publication uses a 3D feature we don't recognise.</div></div>
           </div>
         </div>
         <div class="ax-card">
-          <div class="ax-eyebrow">Form</div>
+          <div class="ax-eyebrow">Form — the kiosk field</div>
           <div class="ax-field" style="margin-top:8px"><label>Anchor — the physical asset this guide is performed on</label><select class="ax-select"><option>XRCenterDemo-SOCp (1e0a60e7…)</option></select></div>
           <div class="ax-field"><label>Author name</label><input class="ax-input" placeholder="Name on the record"><span class="ax-help">Prefilled from the kiosk sign-in when there is one.</span></div>
           <label class="ax-check"><input type="checkbox"> Strict — refuse the import if the publication uses 3D features we don't recognise</label>
           <div class="ax-eyebrow" style="margin-top:16px">Segmented · tabs</div>
           <div class="ax-row" style="margin-top:8px"><div class="ax-seg"><button class="is-on">Completions</button><button>Usage log</button><button>Intelligence</button></div></div>
           <div class="ax-tabs" style="margin-top:10px"><button class="is-on">Anchors</button><button>AR OMS</button><button>iLOTO</button><button>Gemba</button></div>
+          <button class="ax-btn ax-btn--primary ax-btn--block" style="margin-top:16px">Start Authoring</button>
         </div>
       </div>
       <div class="ax-card ax-card--product" data-product="guides" style="margin-top:var(--ax-s4)">
         <div class="ax-eyebrow">Intelligence · Motorcycle engine · 12 runs</div>
         <h3 style="margin-top:4px">Step 4 · Fit the cylinder head</h3>
-        <div class="ax-heat"><i style="height:20%"></i><i style="height:35%"></i><i style="height:15%"></i><i class="is-hot" style="height:90%"></i><i style="height:40%"></i><i style="height:25%"></i><i class="is-cool" style="height:10%"></i><i style="height:55%"></i></div>
+        <div class="ax-heat"><i style="height:20%"></i><i style="height:35%"></i><i style="height:15%"></i><i class="is-hot" style="height:90%"></i><i class="is-warm" style="height:40%"></i><i style="height:25%"></i><i class="is-cool" style="height:10%"></i><i style="height:55%"></i></div>
         <div class="ax-tiles" style="margin:12px 0">
           <div class="ax-tile is-bad"><div class="ax-eyebrow">Wrong part</div><div class="ax-value">38 %</div></div>
           <div class="ax-tile"><div class="ax-eyebrow">Typical dwell</div><div class="ax-value">52 s</div></div>
@@ -256,62 +271,62 @@
       </div>
       <div class="g2" style="margin-top:var(--ax-s4)">
         <div class="ax-empty"><span class="ax-mark"><i></i><em></em></span>No guide runs yet. Intelligence learns from the Usage Log — run a guide on the iPad or the XR kit and come back.</div>
-        <div class="ax-diagram" data-product="tags" style="min-height:120px"><div class="ax-eyebrow">Diagram frame · grid paper · product colour bar</div></div>
+        <div class="ax-diagram" data-product="tags" style="min-height:120px"><div class="ax-eyebrow">Diagram frame · product colour bar</div></div>
       </div>
     </section>
 
     <section class="chapter reveal" id="ar">
-      <div class="num"><span class="ax-mark is-green"><i></i><em></em></span>07 · THE AR SURFACE</div>
-      <h2>The one dark context: what you look through</h2>
-      <p class="lead">Camera video is the background, so the AR overlay is near-black with hairlines — no glass blur. Warm green becomes the rim-light on the part to look at, exactly the highlight the iPad app draws on the 3D model. Focus blue stays the UI focus ring.</p>
+      <div class="num"><span class="ax-mark is-green"><i></i><em></em></span>08 · THE AR SURFACE</div>
+      <h2>Over live video</h2>
+      <p class="lead">Camera video is the background, so the AR overlay uses opaque near-black cards instead of translucent ones. Green becomes the rim-light on the part to look at — the same highlight the iPad draws on the 3D model — and the app's green CTA carries over.</p>
       <div class="ar-demo" data-surface="ar">
         <span class="ax-chip ax-chip--ok" style="position:absolute;top:12px;right:12px">anchored on QR</span>
         <div class="part ax-rim"></div>
-        <div class="ax-card stepcard"><div class="ax-eyebrow" style="color:var(--ax-green)">Step 4 of 8</div>Fit the cylinder head. Torque in the sequence shown.<div class="ax-row" style="margin-top:8px"><button class="ax-btn ax-btn--sm"><svg class="ax-icon ax-icon--sm"><use href="/portal/brand/icons.svg#i-replay"/></svg>Replay</button><button class="ax-btn ax-btn--primary ax-btn--sm">Show me</button></div></div>
+        <div class="ax-card stepcard"><div class="ax-eyebrow" style="color:var(--ax-green)">Step 4 of 8</div>Fit the cylinder head. Torque in the sequence shown.<div class="ax-row" style="margin-top:8px"><button class="ax-btn ax-btn--sm"><svg class="ax-icon ax-icon--sm"><use href="/portal/brand/icons.svg#i-replay"/></svg>Replay</button><button class="ax-btn ax-btn--ok ax-btn--sm">Show me</button></div></div>
       </div>
-      <p style="margin-top:var(--ax-s4)">Scope any subtree with <code>data-surface="ar"</code> and the tokens switch: near-black paper, Warm-green rim (<code>.ax-rim</code>), green primary button, Focus-blue ring.</p>
+      <p style="margin-top:var(--ax-s4)">Scope any subtree with <code>data-surface="ar"</code>; <code>.ax-rim</code> is the breathing green outline.</p>
     </section>
 
     <section class="chapter reveal" id="icons">
-      <div class="num"><span class="ax-mark"><i></i><em></em></span>08 · ICONS</div>
-      <h2>One sprite, drawn by us</h2>
-      <p class="lead">The AppliedX icon library the Procedure Designer draws with, plus the UI set that replaces every emoji. 24-grid, 1.5-px round strokes, current colour. Text is text and icons are icons — never an emoji standing in for either.</p>
+      <div class="num"><span class="ax-mark"><i></i><em></em></span>09 · ICONS</div>
+      <h2>One sprite, drawn by us, in the app's weight</h2>
+      <p class="lead">The AppliedX icon library the Procedure Designer draws with, plus the UI set that replaces every emoji. Stroked like SF Symbols so a web icon and a tablet icon sit together. Text is text and icons are icons — never an emoji standing in for either.</p>
       <div class="icons" id="icons"></div>
-      <p style="margin-top:var(--ax-s4)"><code>&lt;svg class="ax-icon"&gt;&lt;use href="/portal/brand/icons.svg#i-check"/&gt;&lt;/svg&gt;</code> · sizes <code>ax-icon--sm</code> 14, default 18, <code>ax-icon--lg</code> 24 · regenerate with <code>npm run brand:icons</code>.</p>
+      <p style="margin-top:var(--ax-s4)"><code>&lt;svg class="ax-icon"&gt;&lt;use href="/portal/brand/icons.svg#i-check"/&gt;&lt;/svg&gt;</code> · sizes 14 / 18 / 24 / 30 · a product-coloured tile with <code>.ax-icon-tile</code> · regenerate with <code>npm run brand:icons</code>.</p>
     </section>
 
     <section class="chapter reveal" id="voice">
-      <div class="num"><span class="ax-mark"><i></i><em></em></span>09 · VOICE</div>
+      <div class="num"><span class="ax-mark"><i></i><em></em></span>10 · VOICE</div>
       <h2>Plain words, for the person in front of the equipment</h2>
       <p class="lead">Our reader is standing at a chamber with a tablet, or a leader with two minutes. Every sentence we ship should be understood by both on first read.</p>
       <div class="voice">
-        <div class="dd do"><span class="tag">Do</span><div class="sample">3 steps unplaced. Place them on the iPad before publishing.</div><span class="why">Says what is true and what to do next, in that order.</span></div>
+        <div class="dd do"><span class="tag">Do</span><div class="sample">3 steps unplaced. Place them on the iPad before publishing.</div><span class="why">What is true, then what to do next.</span></div>
         <div class="dd dont"><span class="tag">Don't</span><div class="sample">Warning: validation state inconsistent (K4/X1).</div><span class="why">Internal codes and phase names never appear in the product or the catalogue.</span></div>
         <div class="dd do"><span class="tag">Do</span><div class="sample">Most people finish this step in about 50 s.</div><span class="why">Numbers from real runs, phrased like a colleague would.</span></div>
-        <div class="dd dont"><span class="tag">Don't</span><div class="sample">Oops! Something went wrong 🙂</div><!-- brand-check: allow — a "don't" example --><span class="why">No exclamation, no cheer, no emoji. Calm is the brand.</span></div>
+        <div class="dd dont"><span class="tag">Don't</span><div class="sample">Oops! Something went wrong 🙂</div><span class="why">No exclamation, no cheer, no emoji. Calm is the brand.</span></div><!-- brand-check: allow — a "don't" example -->
         <div class="dd do"><span class="tag">Do</span><div class="sample">appliedx · AR OMS · iLOTO · Gemba Audit · Procedure Designer</div><span class="why">Product names exactly as written here, every time.</span></div>
         <div class="dd dont"><span class="tag">Don't</span><div class="sample">AppliedX / Applied-X / the AR OMS tool / LOTO app</div><span class="why">Variants erode the mark. One spelling each.</span></div>
       </div>
     </section>
 
     <section class="chapter reveal" id="rules">
-      <div class="num"><span class="ax-mark"><i></i><em></em></span>10 · RULES</div>
+      <div class="num"><span class="ax-mark"><i></i><em></em></span>11 · RULES</div>
       <h2>Self-enforcing, so it stays ours</h2>
       <p class="lead">The system is a set of files, not a memory. <code>npm run brand:check</code> fails any governed page that drifts, and the doctrine in the repo tells anyone — or any assistant — generating a page here how it must look.</p>
       <div class="g2">
-        <div class="ax-card"><div class="ax-eyebrow" style="color:var(--ax-green-ink)">Always</div><ul style="margin:8px 0 0;padding-left:18px"><li>Colours, sizes and durations from the tokens only.</li><li>Icons from the sprite.</li><li>The mark for focus, loading and section markers; lock-in for arrival.</li><li>Arial for reading, the monospace for identifiers and numbers.</li><li>Product colour on chips, cards and diagram bars — the same colour on the map, the portal and the app.</li><li>Hairlines for elevation; 2-px corners.</li></ul></div>
-        <div class="ax-card"><div class="ax-eyebrow" style="color:var(--ax-bad)">Never</div><ul style="margin:8px 0 0;padding-left:18px"><li>Glass blur, gradients on surfaces, drop shadows.</li><li>Emoji as icons. Rounded 12-px cards. Pill chips.</li><li>Orange, amber or yellow anywhere but the Gemba product mark.</li><li>Focus blue or Warm green as text.</li><li>Navy dashboards, electric-blue accents, system-blue links.</li><li>A page-level palette or font — if it is not in <code>brand/</code>, it does not exist.</li></ul></div>
+        <div class="ax-card"><div class="ax-eyebrow" style="color:var(--ax-green)">Always</div><ul style="margin:8px 0 0;padding-left:18px;color:var(--ax-ink-2)"><li>Colours, sizes and durations from the tokens only — the app's values.</li><li>Icons from the sprite.</li><li>The wordmark component; the mark for focus, loading and section markers; lock-in for arrival.</li><li>Arial for reading, the monospace for identifiers and numbers.</li><li>Product colour on doors, chips, cards and diagram bars — the same colour as the app's door.</li><li>18-pt cards, 14-pt CTAs, 12-pt fields, capsule chips.</li></ul></div>
+        <div class="ax-card"><div class="ax-eyebrow" style="color:var(--ax-red)">Never</div><ul style="margin:8px 0 0;padding-left:18px;color:var(--ax-ink-2)"><li>Glass blur or drop shadows — a stroke marks a card, as in the app.</li><li>Emoji as icons.</li><li>A colour without a meaning. A new hue the app doesn't have.</li><li>"AppliedX", a one-colour wordmark, or the wordmark colours used anywhere else.</li><li>A page-level palette or font — if it is not in <code>brand/</code>, it does not exist.</li><li>Internal codes in anything a user reads.</li></ul></div>
       </div>
     </section>
 
     <section class="chapter reveal" id="roadmap">
-      <div class="num"><span class="ax-mark"><i></i><em></em></span>11 · WHERE NEXT</div>
-      <h2>How the platform moves onto the system</h2>
+      <div class="num"><span class="ax-mark"><i></i><em></em></span>12 · WHERE NEXT</div>
+      <h2>How the web surfaces move onto the system</h2>
       <div class="steps">
-        <div class="step done"><div class="n">1</div><b>Foundation</b><span>Tokens, components, mark, icons, this page, the checker. Shipped.</span></div>
+        <div class="step done"><div class="n">1</div><b>Foundation</b><span>Tokens from the app, components, mark, icons, this page, the checker. Shipped.</span></div>
         <div class="step next"><div class="n">2</div><b>Portal &amp; Catalogue</b><span>The most-seen pages drop their own palette and join the checker.</span></div>
         <div class="step"><div class="n">3</div><b>Platform, Wireframe, Roadmap, XR kit, Home</b><span>Every remaining web surface.</span></div>
-        <div class="step"><div class="n">4</div><b>The iPad app</b><span>Same tokens in Swift for kiosk, hubs and sheets; AR overlays keep the rim-light.</span></div>
+        <div class="step"><div class="n">4</div><b>The iPad app</b><span>Unchanged in look — a <code>Brand.swift</code> names the values it already uses, so both sides read one list.</span></div>
       </div>
       <p style="margin-top:var(--ax-s5)" class="ax-label-s">Source: <code>sib/portal/brand/</code> · doctrine <code>docs/BRAND.md</code> · catalogue entry <a href="/catalog#brand-system">Design system</a>.</p>
     </section>
@@ -322,23 +337,20 @@
   const cs = getComputedStyle(document.documentElement);
   const v = n => cs.getPropertyValue(n).trim();
   const card = (label, tok, note, big) => `<div class="sw${big ? ' big' : ''}"><i style="background:var(${tok})"></i><div><b>${label}</b><code>${v(tok)}</code>${note ? `<small>${note}</small>` : ''}</div></div>`;
-  document.getElementById('sw-brand').innerHTML = [
-    ['Primary blue', '--ax-blue', 'the mark · primary actions · text', true], ['Focus blue', '--ax-focus', 'rings · halos · wordmark "applied" · never text', true],
-    ['Warm green', '--ax-green', 'fills · borders · wordmark "x" · AR rim · never text', true], ['Green ink', '--ax-green-ink', 'verified · anchored · pass', true],
+  document.getElementById('sw-accent').innerHTML = [
+    ['Blue', '--ax-blue', 'actions · Author · Spatial Inspection', true], ['Cyan', '--ax-cyan', 'title gradient · links · Portal', true],
+    ['Green', '--ax-green', 'AR OMS · verified · operating · AR rim', true], ['Orange', '--ax-orange', 'Gemba Audit · checking / attention', true],
+    ['Red', '--ax-red', 'iLOTO · failure · destructive', true], ['Indigo', '--ax-indigo', 'Procedure Designer · secondary features', true],
+    ['Teal', '--ax-teal', 'hub features', true], ['Yellow', '--ax-yellow', 'pins · highlights', true],
   ].map(a => card(...a)).join('');
   document.getElementById('sw-surface').innerHTML = [
-    ['Page', '--ax-bg', 'the cleanroom'], ['Paper', '--ax-paper', 'cards · panels · inputs'], ['Quiet fill', '--ax-paper-2', 'table heads · wells'], ['Hairline', '--ax-rule', 'every edge'],
-    ['Ink', '--ax-ink', 'headings · body'], ['Secondary', '--ax-ink-2', 'labels'], ['Tertiary', '--ax-ink-3', 'eyebrows · help'], ['Grey', '--ax-grey', 'disabled · placeholders'],
-  ].map(a => card(...a)).join('');
-  document.getElementById('sw-status').innerHTML = [
-    ['Verified', '--ax-green-ink', 'green ink on green tint'], ['Warning', '--ax-blue-ink', 'blue ink + the mark — never orange'], ['Failure', '--ax-bad', 'the one red · destructive actions'],
+    ['Charcoal', '--ax-bg', 'page top · Color(white: 0.07)'], ['Charcoal 2', '--ax-bg-2', 'page bottom · Color(white: 0.12)'], ['Card', '--ax-paper', 'white 8 %'], ['Solid', '--ax-solid', 'sheets · menus · toasts'],
   ].map(a => card(...a)).join('');
   document.getElementById('sw-products').innerHTML = [['tags', 'Spatial Inspection'], ['guides', 'AR OMS'], ['iloto', 'iLOTO'], ['gemba', 'Gemba Audit'], ['designer', 'Procedure Designer'], ['portal', 'Portal'], ['platform', 'Platform']]
     .map(([k, n]) => `<span class="ax-chip ax-chip--product" data-product="${k}">${n}</span>`).join('');
   try { const names = await (await fetch('/portal/brand/icons.json')).json();
     document.getElementById('icons').innerHTML = names.map(n => `<div title="${n}"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-${n}"/></svg>${n}</div>`).join(''); } catch {}
   try { const c = await (await fetch('/config')).json(); if (c.platformVersion) document.getElementById('ver').textContent = 'Connected Worker AR OMS Platform · v' + c.platformVersion; } catch {}
-  // chapters lock in as they arrive; the side nav tracks the reader
   const links = [...document.querySelectorAll('.side nav a')];
   const io = new IntersectionObserver(es => es.forEach(e => {
     if (e.isIntersecting) { e.target.classList.add('ax-lockin'); links.forEach(a => a.classList.toggle('is-on', a.getAttribute('href') === '#' + e.target.id)); }
