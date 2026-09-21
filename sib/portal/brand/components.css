@@ -44,10 +44,10 @@
 .ax-rim { animation: ax-rim 1200ms ease-in-out infinite alternate; }
 
 /* ── Wordmark ── appliedx: "applied" wordmark blue · "x" wordmark green · regular · lowercase */
-.ax-wordmark { font: 400 17px/1 var(--ax-font); letter-spacing: -.01em; white-space: nowrap; display: inline-flex; align-items: center; gap: .45em; }
+.ax-wordmark { font: 400 17px/1 var(--ax-font); letter-spacing: -.01em; white-space: nowrap; display: inline-flex; align-items: center; gap: 0; }
 .ax-wordmark .ax-a { color: var(--ax-wm-blue); }
 .ax-wordmark .ax-x { color: var(--ax-wm-green); }
-.ax-wordmark .ax-rest { font: var(--ax-label-s); color: var(--ax-ink-3); }
+.ax-wordmark .ax-rest { font: var(--ax-label-s); color: var(--ax-ink-3); margin-left: .5em; }
 
 /* ── Header / nav ── */
 .ax-header { display: flex; align-items: center; gap: var(--ax-s4); padding: var(--ax-s3) var(--ax-s4); border-bottom: var(--ax-hair); }

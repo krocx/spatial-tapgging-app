@@ -40,6 +40,7 @@
       --radius:   var(--ax-r);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 18px; }
     body { background: var(--ax-page); background-attachment: fixed; color: var(--text); font-family: var(--ax-font); min-height: 100vh; }
 
     /* ── Header ── */
@@ -388,13 +389,15 @@
     .gl-anchor-hdr { font-size:0.78rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; padding:0 0 8px; border-bottom:1px solid var(--border); margin-bottom:12px; }
     .gl-guide-card { border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:10px; }
     .gl-guide-card.unplaced { border-color: var(--ax-warn-fill); }
-    .gl-guide-hdr { background:var(--ax-paper-2); padding:12px 14px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .gl-guide-hdr { background:var(--ax-paper-2); padding:12px 14px; }
+    .gl-guide-hdr .btn-sm { font-size:0.8rem; padding:6px 12px; }
+    .gl-guide-hdr {  display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
     .gl-guide-name { font-size:0.88rem; font-weight:600; color:var(--text); flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .gl-badge { font-size:0.63rem; font-weight:700; border-radius:8px; padding:2px 7px; white-space:nowrap; }
+    .gl-badge { font-size:0.72rem; font-weight:700; border-radius:var(--ax-r-pill); padding:4px 10px; white-space:nowrap; display:inline-flex; align-items:center; gap:5px; }
     .gl-badge-published { background:var(--ax-ok-fill); color:var(--ax-green); }
-    .gl-badge-draft     { background:var(--ax-ink-4); color:var(--ax-ink-3); }
-    .gl-badge-warn      { background:var(--ax-warn-fill); color:var(--ax-yellow); }
-    .gl-placement-pill  { font-size:0.68rem; color:var(--muted); white-space:nowrap; }
+    .gl-badge-draft     { background:var(--ax-paper-3); color:var(--ax-ink-2); border:1px solid var(--ax-rule); }
+    .gl-badge-warn      { background:var(--ax-warn-fill); color:var(--ax-orange); }
+    .gl-placement-pill  { font-size:0.74rem; color:var(--muted); white-space:nowrap; }
     .gl-guide-desc { font-size:0.75rem; color:var(--muted); padding:0 14px 10px; margin-top:-4px; }
     .gl-warn-banner { background:var(--ax-paper); border-top:1px solid var(--ax-paper); padding:7px 14px; font-size:0.74rem; color:var(--ax-orange); }
     .gl-steps-list { display:none; border-top:1px solid var(--border); }
@@ -593,7 +596,7 @@
 <header>
   <div class="logo">
     <span class="ax-mark" style="font-size:22px" aria-hidden="true"><i></i><em></em></span>
-    <h1><span data-ax-wordmark></span> <span>· Portal</span> <span id="platform-version" style="font-size:0.62rem;color:var(--muted);font-weight:400;margin-left:6px"></span></h1>
+    <h1><span data-ax-wordmark></span> <span>· Portal</span> <span id="platform-version" class="ax-chip ax-chip--text" style="margin-left:10px;font-family:var(--ax-mono)"></span></h1>
   </div>
   <div class="actions">
     <span data-brand-slot style="display:flex;align-items:center;margin-right:10px"></span>
@@ -2922,9 +2925,9 @@ function renderGembaWalkSessions() {
       <td><b>${s.findings ?? 0}</b> ${gwsCat(s)}</td>
       <td><span class="${w.status === 'submitted' ? 'b-resolved' : 'b-no-completion'}">${w.status === 'submitted' ? 'Submitted' : 'Open'}</span></td>
       <td onclick="event.stopPropagation()" style="white-space:nowrap">
-        <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;padding:2px 7px" onclick="downloadServerFile('/gemba/walks/export.xlsx?walkId=${w.id}', 'gemba-walk-${w.id.slice(0,8)}.xlsx').catch(e => toast(e.message))" title="This walk as Excel, photos embedded"> .xlsx</button>
-        ${w.status === 'submitted' ? `<button class="btn btn-ghost btn-sm" style="font-size:0.68rem;padding:2px 7px" onclick="reopenGembaWalk('${w.id}')" title="Reopen to edit the header (admin)">↩</button>` : ''}
-        <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;padding:2px 7px;color:var(--red)" onclick="deleteGembaWalk('${w.id}')" title="Delete the walk record (findings stay, detached)"></button>
+        <button class="btn btn-ghost btn-sm" style="padding:2px 7px" onclick="downloadServerFile('/gemba/walks/export.xlsx?walkId=${w.id}', 'gemba-walk-${w.id.slice(0,8)}.xlsx').catch(e => toast(e.message))" title="This walk as Excel, photos embedded"> .xlsx</button>
+        ${w.status === 'submitted' ? `<button class="btn btn-ghost btn-sm" style="padding:2px 7px" onclick="reopenGembaWalk('${w.id}')" title="Reopen to edit the header (admin)">↩</button>` : ''}
+        <button class="btn btn-ghost btn-sm" style="padding:2px 7px;color:var(--red)" onclick="deleteGembaWalk('${w.id}')" title="Delete the walk record (findings stay, detached)"></button>
       </td>
     </tr>
     <tr class="detail-tr" id="gws-${w.id}" style="display:${open ? '' : 'none'}"><td colspan="9"><div class="detail-inner" id="gwsd-${w.id}">${open ? 'Loading…' : ''}</div></td></tr>`;
@@ -3626,9 +3629,9 @@ function renderARGuideSessions() {
             <span class="ag-steps-badge ${stepsClass}">${completedCount} step${completedCount !== 1 ? 's' : ''} completed</span>
             ${hasEvidence ? '<span style="font-size:0.72rem;color:var(--ax-green)"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-camera"/></svg> evidence</span>' : ''}
             <span class="ag-dur">⏱ ${dur}</span>
-            <button onclick="event.stopPropagation();agExportSessionXlsx('${sess.id}')" class="btn btn-ghost btn-sm" style="font-size:0.68rem;padding:2px 7px;margin-left:auto" title="Export this session as Excel with evidence photos embedded"> .xlsx</button>
-            <button onclick="event.stopPropagation();agExportSessionCSV('${sess.id}')" class="btn btn-ghost btn-sm" style="font-size:0.68rem;padding:2px 7px" title="Export this session as CSV (no images)"> .csv</button>
-            <button onclick="event.stopPropagation();deleteARGuideSession('${sess.id}')" class="btn btn-ghost btn-sm" style="font-size:0.68rem;padding:2px 7px;color:var(--red)" title="Delete this session"></button>
+            <button onclick="event.stopPropagation();agExportSessionXlsx('${sess.id}')" class="btn btn-ghost btn-sm" style="padding:2px 7px;margin-left:auto" title="Export this session as Excel with evidence photos embedded"> .xlsx</button>
+            <button onclick="event.stopPropagation();agExportSessionCSV('${sess.id}')" class="btn btn-ghost btn-sm" style="padding:2px 7px" title="Export this session as CSV (no images)"> .csv</button>
+            <button onclick="event.stopPropagation();deleteARGuideSession('${sess.id}')" class="btn btn-ghost btn-sm" style="padding:2px 7px;color:var(--red)" title="Delete this session"></button>
           </div>
         </div>
         <div class="ag-detail" id="ag-detail-${sess.id}">
@@ -5066,18 +5069,18 @@ function renderGuideLibrary() {
         <div class="gl-guide-hdr">
           <span class="gl-guide-name" title="${esc(guide.name)}"> ${esc(guide.name)}</span>
           ${pubBadge}${asmBadge}${warnBadge}${placePill}
-          <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;${pubColor}" onclick="togglePublishGuide('${guide.id}','${anchorId}',${guide.published})">${pubLabel}</button>
-          <button class="btn btn-ghost btn-sm" style="font-size:0.68rem" onclick="toggleGuideSteps('${guide.id}','${anchorId}')" id="gl-toggle-${guide.id}">▶ Steps</button>
-          <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;color:var(--ax-indigo)" onclick="toggleGuideGraph('${guide.id}','${anchorId}')" id="gl-graph-toggle-${guide.id}"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-graph"/></svg> Graph</button>
-          <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;color:var(--ax-green)" title="Walk the step sequence as the operator will experience it — no headset needed" onclick="openGuidePreview('${guide.id}')">▶ Preview</button>
-          <a class="btn btn-ghost btn-sm" style="font-size:0.68rem;color:var(--ax-indigo);text-decoration:none" title="Run this guide in a WebXR browser (headset or Android) or as a desktop 3D preview — same session records as the iPad" href="/xr?guide=${guide.id}" target="_blank" rel="noopener"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-xr"/></svg> XR kit</a>
-          <button class="btn btn-ghost btn-sm" style="font-size:0.68rem" title="Edit this guide visually in the Procedure Designer" onclick="editGuideInDesigner('${guide.id}')"> Edit in Designer</button>
-          <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;color:var(--ax-cyan)" title="Choose which technicians can see and run this guide" onclick="openShareModal('${guide.id}','${anchorId}')"> Share${(guide.sharedWith && guide.sharedWith.length) ? ` (${guide.sharedWith.length})` : ''}</button>
-          <button class="btn btn-ghost btn-sm" style="font-size:0.68rem" title="Move to another anchor (steps become unplaced)" onclick="moveGuideToAnchor('${guide.id}','${anchorId}')">⇄ Move</button>
-          <button class="btn btn-ghost btn-sm" style="font-size:0.68rem" title="Copy to another anchor as a draft (steps unplaced, training not copied)" onclick="copyGuideToAnchor('${guide.id}','${anchorId}')">⧉ Copy</button>
-          ${siblings.length ? `<button class="btn btn-ghost btn-sm" style="font-size:0.68rem;color:var(--ax-cyan)" title="Copy this guide to every other chamber of ${esc(cfg.code)} (${siblings.length}) as drafts" onclick="copyGuideToConfigChambers('${guide.id}','${anchorId}','${cfg.id}')">⧉⧉ All ${siblings.length}</button>` : ''}
-          <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;color:var(--ax-orange)" title="Delete this guide's world map and unplace every step — the author re-places them in a fresh map on iOS" onclick="resetGuideMap('${guide.id}','${anchorId}')"> Reset map</button>
-          <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;color:var(--red)" onclick="deleteGuideFromLibrary('${guide.id}','${anchorId}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg></button>
+          <button class="btn btn-ghost btn-sm" style="${pubColor}" onclick="togglePublishGuide('${guide.id}','${anchorId}',${guide.published})">${pubLabel}</button>
+          <button class="btn btn-ghost btn-sm"  onclick="toggleGuideSteps('${guide.id}','${anchorId}')" id="gl-toggle-${guide.id}">▶ Steps</button>
+          <button class="btn btn-ghost btn-sm" style="color:var(--ax-indigo)" onclick="toggleGuideGraph('${guide.id}','${anchorId}')" id="gl-graph-toggle-${guide.id}"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-graph"/></svg> Graph</button>
+          <button class="btn btn-ghost btn-sm" style="color:var(--ax-green)" title="Walk the step sequence as the operator will experience it — no headset needed" onclick="openGuidePreview('${guide.id}')">▶ Preview</button>
+          <a class="btn btn-ghost btn-sm" style="color:var(--ax-indigo);text-decoration:none" title="Run this guide in a WebXR browser (headset or Android) or as a desktop 3D preview — same session records as the iPad" href="/xr?guide=${guide.id}" target="_blank" rel="noopener"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-xr"/></svg> XR kit</a>
+          <button class="btn btn-ghost btn-sm"  title="Edit this guide visually in the Procedure Designer" onclick="editGuideInDesigner('${guide.id}')"> Edit in Designer</button>
+          <button class="btn btn-ghost btn-sm" style="color:var(--ax-cyan)" title="Choose which technicians can see and run this guide" onclick="openShareModal('${guide.id}','${anchorId}')"> Share${(guide.sharedWith && guide.sharedWith.length) ? ` (${guide.sharedWith.length})` : ''}</button>
+          <button class="btn btn-ghost btn-sm"  title="Move to another anchor (steps become unplaced)" onclick="moveGuideToAnchor('${guide.id}','${anchorId}')">⇄ Move</button>
+          <button class="btn btn-ghost btn-sm"  title="Copy to another anchor as a draft (steps unplaced, training not copied)" onclick="copyGuideToAnchor('${guide.id}','${anchorId}')">⧉ Copy</button>
+          ${siblings.length ? `<button class="btn btn-ghost btn-sm" style="color:var(--ax-cyan)" title="Copy this guide to every other chamber of ${esc(cfg.code)} (${siblings.length}) as drafts" onclick="copyGuideToConfigChambers('${guide.id}','${anchorId}','${cfg.id}')">⧉⧉ All ${siblings.length}</button>` : ''}
+          <button class="btn btn-ghost btn-sm" style="color:var(--ax-orange)" title="Delete this guide's world map and unplace every step — the author re-places them in a fresh map on iOS" onclick="resetGuideMap('${guide.id}','${anchorId}')"> Reset map</button>
+          <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteGuideFromLibrary('${guide.id}','${anchorId}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg></button>
         </div>`;
 
       if (guide.description) {
@@ -5783,8 +5786,8 @@ function buildSessionRow(s, tagLabels, colCount) {
       ${tagCells}
       <td>${overall}</td>
       <td onclick="event.stopPropagation()" style="white-space:nowrap">
-        <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;padding:2px 7px" onclick="exportSessionCSV('${sid}')">CSV</button>
-        <button class="btn btn-ghost btn-sm" style="font-size:0.68rem;padding:2px 7px;color:var(--red)" onclick="deleteSession('${sid}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg></button>
+        <button class="btn btn-ghost btn-sm" style="padding:2px 7px" onclick="exportSessionCSV('${sid}')">CSV</button>
+        <button class="btn btn-ghost btn-sm" style="padding:2px 7px;color:var(--red)" onclick="deleteSession('${sid}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg></button>
       </td>
     </tr>
     <tr class="detail-tr" id="dtr-${sid}" style="display:none">
