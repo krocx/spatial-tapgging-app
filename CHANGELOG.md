@@ -242,8 +242,9 @@ it, it gets a line.
   blue, Focus blue, Warm green with contrast-safe ink variants; no orange in
   the system; Gemba Audit and iLOTO keep their product colours), components
   (buttons, chips, cards, tables, notices, forms, tiles, bars, heat strips,
-  empty states), the registration mark + lock-in motion, Roboto / Roboto
-  Mono self-hosted (`npm run brand:fonts`), and an icon sprite that replaces
+  empty states), the registration mark + lock-in motion, Arial (the company
+  standard — on every device, nothing to vendor) at the team library's
+  scale, and an icon sprite that replaces
   every emoji (`npm run brand:icons`, 96 icons). `/brand` is the living
   style guide rendered from that same CSS; `npm run brand:check` fails a
   governed page on any drift; `docs/BRAND.md` is the doctrine and

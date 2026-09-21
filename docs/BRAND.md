@@ -53,14 +53,15 @@ Products (`--ax-p-*`): Spatial Inspection `2675C4`, AR OMS `1E7F21`, iLOTO
 `5B7C9C`, Platform `6F6F6F`. The same colour on the catalogue map, the
 portal chip, the diagram bar and the app.
 
-## Type — Roboto, the team library scale
+## Type — Arial, the company standard, at the team library scale
 
 Heading Bold 24/32 · Title Medium 22/30 and 20/28 · Label Medium 16 ·
 Regular 16 · Regular 13 · LABEL 12 caps tracked · Paragraph 14/21 Regular /
-Medium / Bold. **Roboto Mono** for identifiers, part numbers and every
-number in a table. Self-hosted: `npm run brand:fonts` downloads the woff2
-faces (Apache 2.0) into `sib/portal/brand/fonts/`; commit them; the LAN
-server needs no internet.
+Medium / Bold. Arial ships with Windows, macOS and iPadOS, so nothing is
+vendored and the LAN server needs no internet; Arial is not redistributable,
+so on Android / headset browsers the stack falls to Liberation Sans
+(metric-compatible) or the system sans. Identifiers, part numbers and every
+number in a table use the platform monospace (`--ax-mono`).
 
 ## Where it lives
 
@@ -68,7 +69,6 @@ server needs no internet.
 sib/portal/brand/
   tokens.css        every colour, size, duration — the only place a value is written
   components.css    .ax-btn .ax-chip .ax-card .ax-table .ax-notice .ax-mark … one implementation each
-  fonts.css         @font-face for the vendored Roboto / Roboto Mono
   brand.css         the single include:  <link rel="stylesheet" href="/portal/brand/brand.css">  + class="ax" on <html>
   icons.svg         the sprite: AppliedX icon library + the UI set that replaces every emoji
 sib/portal/brand.html   → /brand   the living style guide, rendered from the same CSS
@@ -96,7 +96,7 @@ mark and lock-in, no glass, no gradients, no emoji, no orange.
 
 ## Migration plan
 
-1. **Slice 1 (this):** `brand/`, `/brand`, icon sprite, font vendoring, checker, doctrine. No existing page touched.
+1. **Slice 1 (this):** `brand/`, `/brand`, icon sprite, checker, doctrine. No existing page touched.
 2. **Slice 2:** Portal (`index.html`) and Catalogue (`catalog.html`) — the most seen. Each page drops its own palette, imports `brand.css`, swaps emoji for sprite icons, and joins the governed list.
 3. **Slice 3:** Platform, Wireframe, Roadmap client, XR kit, Home, Unlock.
 4. **Slice 4:** `Brand.swift` in the iPad app — same tokens for kiosk, hubs and sheets; AR overlays keep the rim-light.

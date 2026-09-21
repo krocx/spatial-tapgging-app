@@ -8,7 +8,7 @@
 //   · backdrop-filter / glass                           (no glass)
 //   · linear-/radial-gradient on a surface              (repeating hairline grids are fine)
 //   · box-shadow that is not a token ring/rim           (elevation is a hairline)
-//   · a font-family that is not the brand stack         (Roboto / Roboto Mono via tokens)
+//   · a font-family that is not the brand stack         (Arial via tokens)
 //   · border-radius above 4px                           (near-square corners)
 //
 // Add a page to GOVERNED when it migrates; the list grows, never shrinks.
@@ -20,7 +20,6 @@ import { fileURLToPath } from 'node:url';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const GOVERNED = [
   'sib/portal/brand/components.css',
-  'sib/portal/brand/fonts.css',
   'sib/portal/brand/brand.css',
   'sib/portal/brand.html',
 ];
@@ -36,7 +35,7 @@ const rules = [
   { name: 'backdrop-filter (glass)',     test: l => /backdrop-filter/.test(l) },
   { name: 'gradient on a surface',       test: l => /(?<!repeating-)(linear|radial)-gradient\(/.test(l) },
   { name: 'box-shadow not a token',      test: l => /box-shadow\s*:/.test(l) && !/var\(--ax-(ring|rim|shadow)\)|--ax-rim|0 0 0 1px var\(--ax-green\)/.test(l) },
-  { name: 'font-family not the brand',   test: l => /font-family\s*:/.test(l) && !/var\(--ax-(font|mono)\)/.test(l) && !/@font-face|font-family: "Roboto/.test(l) },
+  { name: 'font-family not the brand',   test: l => /font-family\s*:/.test(l) && !/var\(--ax-(font|mono)\)/.test(l) },
   { name: 'border-radius above 4px',     test: l => /border-radius\s*:\s*(\d+)px/.test(l) && +l.match(/border-radius\s*:\s*(\d+)px/)[1] > 4 && !/50%/.test(l) },
 ];
 

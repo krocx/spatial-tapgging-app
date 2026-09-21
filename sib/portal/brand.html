@@ -41,7 +41,7 @@
     <span class="ax-wordmark"><span class="ax-a">applied</span><span class="ax-x">x</span><span class="ax-rest">Connected Worker AR OMS Platform</span></span>
     <span class="ax-chip" id="ver">v…</span>
   </div>
-  <p>One source of truth for how SIB looks: <code>sib/portal/brand/</code> — tokens, components, motif, motion, icons, fonts. Every page reads it; nothing here is copied into a page. Rules are enforced by <code>npm run brand:check</code>. Doctrine: <a href="/catalog#brand-system">Catalogue › Design system</a>.</p>
+  <p>One source of truth for how SIB looks: <code>sib/portal/brand/</code> — tokens, components, motif, motion, icons. Every page reads it; nothing here is copied into a page. Rules are enforced by <code>npm run brand:check</code>. Doctrine: <a href="/catalog#brand-system">Catalogue › Design system</a>.</p>
   <nav class="toc">
     <a class="ax-chip ax-chip--interactive" href="#colour">Colour</a><a class="ax-chip ax-chip--interactive" href="#type">Type</a><a class="ax-chip ax-chip--interactive" href="#mark">Mark &amp; motion</a>
     <a class="ax-chip ax-chip--interactive" href="#components">Components</a><a class="ax-chip ax-chip--interactive" href="#ar">AR surface</a><a class="ax-chip ax-chip--interactive" href="#icons">Icons</a><a class="ax-chip ax-chip--interactive" href="#rules">Rules</a>
@@ -58,7 +58,7 @@
   </section>
 
   <section class="ax-section" id="type"><h2><span class="ax-mark"><i></i><em></em></span>Type</h2>
-    <p>Roboto, exactly the team library scale. Roboto Mono for identifiers, part numbers and every number in a table so columns align. Self-hosted (<code>npm run brand:fonts</code>) — no internet needed on the LAN.</p>
+    <p>Arial — the company-wide standard — at the team library's scale (Heading 24, Title 22 / 20, Label 16 / 13 / 12, Paragraph 14/21). It ships with Windows, macOS and iPadOS, so nothing is vendored and the LAN needs no internet; other platforms fall back to a metric-compatible sans. Identifiers, part numbers and every number in a table sit in the platform's monospace so columns align.</p>
     <div class="type-row"><code>--ax-h1 · Heading · Bold 24/32</code><div style="font:var(--ax-h1)">Fit the cylinder head</div></div>
     <div class="type-row"><code>--ax-h2 · Title Large · Medium 22/30</code><div style="font:var(--ax-h2)">Usage log · Producer XP</div></div>
     <div class="type-row"><code>--ax-h3 · Title Medium · Medium 20/28</code><div style="font:var(--ax-h3)">Step 4 of 8</div></div>
@@ -66,7 +66,7 @@
     <div class="type-row"><code>--ax-label-s · Regular 13/20</code><div style="font:var(--ax-label-s)">Steps are placed in AR on device before publishing.</div></div>
     <div class="type-row"><code>--ax-eyebrow · LABEL 12 caps</code><div class="ax-eyebrow">Intelligence · Motorcycle engine · 12 runs</div></div>
     <div class="type-row"><code>--ax-body · Paragraph 14/21</code><div style="font:var(--ax-body)">Every hint is scored by what happened after it. A hint that helps fewer than 30 % of the time is retired on that step and comes back on its own when newer runs improve.</div></div>
-    <div class="type-row"><code>--ax-num · Roboto Mono 13/20</code><div class="ax-num">CH-14 · PN 0190-12345 · 52 s · 38 %</div></div>
+    <div class="type-row"><code>--ax-num · mono 13/20</code><div class="ax-num">CH-14 · PN 0190-12345 · 52 s · 38 %</div></div>
   </section>
 
   <section class="ax-section" id="mark"><h2><span class="ax-mark"><i></i><em></em></span>The mark &amp; the motion</h2>
@@ -143,7 +143,7 @@
 
   <section class="ax-section" id="rules"><h2><span class="ax-mark"><i></i><em></em></span>Rules — enforced by <code>npm run brand:check</code></h2>
     <div class="grid2">
-      <div class="ax-card"><div class="ax-eyebrow do">Always</div><ul style="margin:8px 0 0;padding-left:18px"><li>Colours, sizes and durations from <code>tokens.css</code> only.</li><li>Icons from the sprite; text is text, icons are icons.</li><li>The mark for focus, loading and section markers; lock-in for arrival.</li><li>Roboto for reading, Roboto Mono for identifiers and numbers.</li><li>Product colour on chips, cards and diagram bars — the same colour on the map, the portal and the app.</li><li>Hairlines for elevation; 2-px corners.</li></ul></div>
+      <div class="ax-card"><div class="ax-eyebrow do">Always</div><ul style="margin:8px 0 0;padding-left:18px"><li>Colours, sizes and durations from <code>tokens.css</code> only.</li><li>Icons from the sprite; text is text, icons are icons.</li><li>The mark for focus, loading and section markers; lock-in for arrival.</li><li>Arial for reading, the platform monospace for identifiers and numbers.</li><li>Product colour on chips, cards and diagram bars — the same colour on the map, the portal and the app.</li><li>Hairlines for elevation; 2-px corners.</li></ul></div>
       <div class="ax-card"><div class="ax-eyebrow dont">Never</div><ul style="margin:8px 0 0;padding-left:18px"><li>Glass blur, gradients on surfaces, drop shadows.</li><li>Emoji as icons. Rounded 12-px cards. Pill chips.</li><li>Orange, amber or yellow anywhere but the Gemba product mark.</li><li>Focus blue or Warm green as text.</li><li>Navy dashboards, electric-blue accents, system-blue links.</li><li>A page-level palette or font — if it is not in <code>brand/</code>, it does not exist.</li></ul></div>
     </div>
   </section>

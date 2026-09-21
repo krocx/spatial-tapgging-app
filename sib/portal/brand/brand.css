@@ -1,5 +1,4 @@
 /* appliedx · SIB brand — the single include for every SIB web surface.
    <link rel="stylesheet" href="/portal/brand/brand.css">  and add class="ax" on <html>. */
-@import url("/portal/brand/fonts.css");
 @import url("/portal/brand/tokens.css");
 @import url("/portal/brand/components.css");

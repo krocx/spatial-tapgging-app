@@ -55,9 +55,12 @@
   --ax-p-portal:   #5B7C9C;   /* Portal             */
   --ax-p-platform: #6F6F6F;   /* Platform           */
 
-  /* ── Type ── Roboto (team library) · Roboto Mono for identifiers and numbers */
-  --ax-font:       "Roboto", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
-  --ax-mono:       "Roboto Mono", "SF Mono", Menlo, Consolas, monospace;
+  /* ── Type ── Arial, the company-wide standard, at the team library's scale.
+     Arial ships with Windows, macOS and iPadOS, so nothing is vendored; on
+     Android / headset browsers the stack falls to Liberation Sans (metric-
+     compatible) or the system sans. Mono: the platform's own monospace. */
+  --ax-font:       Arial, "Liberation Sans", "Helvetica Neue", Helvetica, sans-serif;
+  --ax-mono:       "SF Mono", Menlo, Consolas, "Liberation Mono", "Courier New", monospace;
   --ax-h1:  700 24px/32px var(--ax-font);   /* Heading            */
   --ax-h2:  500 22px/30px var(--ax-font);   /* Title / Large      */
   --ax-h3:  500 20px/28px var(--ax-font);   /* Title / Medium     */

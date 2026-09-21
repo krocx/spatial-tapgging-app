@@ -12,13 +12,11 @@ api: |
 wireframe: portal
 arch: |
   flowchart LR
-    F["Applied team library<br/>Figma: colours · Roboto scale"] --> T["tokens.css<br/>every colour, size, duration"]
+    F["Applied team library<br/>Figma: colours · type scale"] --> T["tokens.css<br/>every colour, size, duration · Arial scale"]
     T --> C["components.css<br/>btn · chip · card · table · notice · mark · lock-in"]
     I["roadmap-client icons.ts + UI set"] -->|npm run brand:icons| S["icons.svg sprite"]
-    G["Google Fonts"] -->|npm run brand:fonts, once| W["brand/fonts/*.woff2<br/>self-hosted"]
     C --> B["brand.css — the single include"]
     S --> B
-    W --> B
     B --> P["every SIB page<br/>portal · catalogue · platform · wireframe · XR kit · home"]
     B --> L["/brand — living style guide"]
     K["npm run brand:check<br/>no hex outside tokens · no emoji · no glass · no gradients · no orange"] -.guards.-> P
@@ -28,8 +26,8 @@ SIB has one look, written down once. `sib/portal/brand/` holds the tokens
 blue, Focus blue and Warm green, with contrast-safe ink variants and no
 orange in the system), the components (buttons, chips, cards, tables,
 notices, forms, tiles, bars, heat strips, empty states), the registration
-mark and the lock-in motion, the Roboto / Roboto Mono faces self-hosted for
-the LAN, and the icon sprite that replaces every emoji. `/brand` renders the
+mark and the lock-in motion, Arial — the company standard, on every device
+already — at the team library's scale, and the icon sprite that replaces every emoji. `/brand` renders the
 whole system from that same CSS (`/portal/brand/brand.css`, the single
 include; `/portal/brand/icons.svg`, the sprite), so what you see there is
 what every page gets. Gemba Audit and iLOTO keep the product colours users know from the
