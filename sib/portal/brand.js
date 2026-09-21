@@ -29,6 +29,8 @@
     .ax-wordmark .ax-a { color:${AX_BLUE}; }
     .ax-wordmark .ax-x { color:${AX_GREEN}; }
     .ax-wordmark .ax-rest { margin-left:.28em; }
+  `;
+  const stripCss = `
     .ax-brand { display:flex; align-items:center; gap:14px; }
     .ax-brand.float { position:fixed; top:10px; right:16px; z-index:50; }
     .ax-brand img { display:block; width:auto; object-fit:contain; opacity:.95; }
@@ -46,8 +48,12 @@
     }
   }
   function build() {
-    const style = document.createElement('style'); style.textContent = css; document.head.appendChild(style);
-    if (!document.querySelector('link[href*="fonts.googleapis.com/css2?family=Roboto"]')) {
+    // Pages on the design system (html.ax) already carry the wordmark styles
+    // from brand/components.css and never load a web font; only the legacy
+    // pages get the inline CSS and the Roboto link until they migrate.
+    const onSystem = document.documentElement.classList.contains('ax');
+    const style = document.createElement('style'); style.textContent = (onSystem ? '' : css) + stripCss; document.head.appendChild(style);
+    if (!onSystem && !document.querySelector('link[href*="fonts.googleapis.com/css2?family=Roboto"]')) {
       const l = document.createElement('link'); l.rel = 'stylesheet';
       l.href = 'https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap';
       document.head.appendChild(l);
