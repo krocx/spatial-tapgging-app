@@ -237,6 +237,11 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **Intelligence — "why this number".** The heat chip on every step now
+  explains itself: hover or focus it for the weighted breakdown (each
+  signal's rate × weight, the sum, the bands). Steps with fewer than 3
+  completed visits show heat as *provisional* in grey — in the chip, the
+  card edge and the strip — with a note on how far one visit moves the score.
 - **Design system — slice 2: the Portal.** `sib/portal/index.html` now runs on
   `brand.css`: its palette is the app's tokens (charcoal page, 8 %-white
   cards, the iOS accents, product colours on the home tiles), every emoji
