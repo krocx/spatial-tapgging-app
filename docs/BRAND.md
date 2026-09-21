@@ -1,8 +1,9 @@
 # The SIB design system — doctrine
 
-Status: slice 1 shipped 2026-09-21 (`sib/portal/brand/`, `/brand`, `brand:check`);
-re-based on the iPad app's look the same day.
-Slices 2–3 migrate the pages; slice 4 lands the same tokens in the iPad app.
+Status: slice 1 shipped 2026-09-21 (`sib/portal/brand/`, `/brand`, `brand:check`),
+re-based on the iPad app's look the same day; slice 2 (the Portal) shipped
+2026-09-21. Slice 3 migrates the remaining pages; slice 4 lands the same
+tokens in the iPad app.
 
 Proprietary & Confidential · Applied Materials.
 
@@ -107,6 +108,6 @@ mark and lock-in, the app's corners and colours, no glass, no emoji.
 ## Migration plan
 
 1. **Slice 1 (this):** `brand/`, `/brand`, icon sprite, checker, doctrine. No existing page touched.
-2. **Slice 2:** Portal (`index.html`) and Catalogue (`catalog.html`) — the most seen. Each page drops its own palette, imports `brand.css`, swaps emoji for sprite icons, and joins the governed list.
-3. **Slice 3:** Platform, Wireframe, Roadmap client, XR kit, Home, Unlock.
+2. **Slice 2 (shipped):** the Portal (`index.html`, incl. the Intelligence page) — the most seen. It dropped its own palette, imports `brand.css`, swapped 175 emoji for sprite icons, and joined the governed list.
+3. **Slice 3:** Catalogue, Platform, Wireframe, Roadmap client, XR kit, Home, Unlock — same recipe, one page at a time.
 4. **Slice 4:** `Brand.swift` in the iPad app — no visual change; it names the values the app already uses so both sides read one list.

@@ -237,6 +237,14 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **Design system — slice 2: the Portal.** `sib/portal/index.html` now runs on
+  `brand.css`: its palette is the app's tokens (charcoal page, 8 %-white
+  cards, the iOS accents, product colours on the home tiles), every emoji
+  (175 of them) is a sprite icon or plain text, the header carries the
+  registration mark and the `appliedx` wordmark component, the Intelligence
+  page is built from `.ax-card--product` / `.ax-tiles` / `.ax-heat` /
+  `.ax-table` / `.ax-chip` / `.ax-bar`, and the portal joins the governed
+  list — `npm run brand:check` passes with it. No behaviour changes.
 - **Design system — slice 1.** SIB now has one look, written down once in
   `sib/portal/brand/`, and it is the iPad app's look: tokens transcribed
   from the kiosk, hubs and sheets (charcoal gradient page, 8 %-white cards
