@@ -1,0 +1,115 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   appliedx · SIB design tokens — the ONE place a colour, size or duration is
+   written down. Every SIB web surface reads these variables; no page carries
+   its own palette. Source: the Applied team library (Figma "Color, Typography")
+   + the Cleanroom direction (docs/BRAND.md).
+
+   Rules of the road (enforced by `npm run brand:check`):
+     · no hex colours outside this file          · no glass / backdrop-filter
+     · no gradients on surfaces                  · no emoji as icons (use the sprite)
+     · Focus blue and Warm green never carry text (they fail contrast) —
+       they are fills, rings and marks; the *-ink variants do the reading work
+   ───────────────────────────────────────────────────────────────────────────── */
+:root {
+  /* ── Surfaces (light, the cleanroom) ── */
+  --ax-bg:         #F8F9FA;   /* page                        Figma "highlight"  */
+  --ax-paper:      #FFFFFF;   /* cards, panels, inputs        Figma "background" */
+  --ax-paper-2:    #F1F3F5;   /* table header, quiet fills                       */
+  --ax-rule:       #DADCE0;   /* hairline                     Figma "divider"    */
+  --ax-rule-2:     #ECEEF0;   /* fainter hairline (grids, row separators)        */
+  --ax-grey:       #9AA0A6;   /* disabled, placeholders       Figma grey         */
+
+  /* ── Ink ── */
+  --ax-ink:        #222528;   /* Figma "primary"   */
+  --ax-ink-2:      #404040;   /* Figma "secondary" */
+  --ax-ink-3:      #6F6F6F;   /* Figma "tertiary"  (5.0:1 on paper — AA) */
+
+  /* ── Brand ── */
+  --ax-blue:       #2675C4;   /* Primary blue — the mark, primary actions (4.75:1 on paper) */
+  --ax-blue-ink:   #1B5A9A;   /* Primary blue for small text / warnings (7.1:1) */
+  --ax-blue-tint:  #E6F2FF;   /* selected rows, marked buttons                  */
+  --ax-focus:      #66B3FF;   /* Focus blue — rings, halos, wordmark "applied"; NEVER text */
+  --ax-green:      #35C635;   /* Warm green — fills, borders, wordmark "x", AR rim; NEVER text */
+  --ax-green-ink:  #1E7F21;   /* verified / anchored / pass text (5.1:1)        */
+  --ax-green-tint: #E9F8E9;
+
+  /* ── Status ── the system has no orange; warnings are deep blue ink + the mark */
+  --ax-ok:         var(--ax-green-ink);
+  --ax-ok-fill:    var(--ax-green-tint);
+  --ax-warn:       var(--ax-blue-ink);
+  --ax-warn-fill:  var(--ax-blue-tint);
+  --ax-bad:        #B3261E;   /* the only red: real failures, destructive actions */
+  --ax-bad-fill:   #FBEAE8;
+  --ax-on-blue:    #FFFFFF;   /* text on Primary blue  */
+  --ax-on-green:   #0A1A0A;   /* text on Warm green    */
+  --ax-scrim:      rgba(34, 37, 40, .48);
+  --ax-rim-soft:   rgba(53, 198, 53, .25);
+
+  /* ── Products ── the seven colours the catalogue map, chips and diagrams share.
+     Gemba Audit and iLOTO keep the colours users already know from the app. */
+  --ax-p-tags:     #2675C4;   /* Spatial Inspection */
+  --ax-p-guides:   #1E7F21;   /* AR OMS             */
+  --ax-p-iloto:    #EF4444;   /* iLOTO              */
+  --ax-p-gemba:    #F59E0B;   /* Gemba Audit        */
+  --ax-p-designer: #4D5BC9;   /* Procedure Designer */
+  --ax-p-portal:   #5B7C9C;   /* Portal             */
+  --ax-p-platform: #6F6F6F;   /* Platform           */
+
+  /* ── Type ── Roboto (team library) · Roboto Mono for identifiers and numbers */
+  --ax-font:       "Roboto", -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+  --ax-mono:       "Roboto Mono", "SF Mono", Menlo, Consolas, monospace;
+  --ax-h1:  700 24px/32px var(--ax-font);   /* Heading            */
+  --ax-h2:  500 22px/30px var(--ax-font);   /* Title / Large      */
+  --ax-h3:  500 20px/28px var(--ax-font);   /* Title / Medium     */
+  --ax-label:     500 16px/24px var(--ax-font);
+  --ax-label-r:   400 16px/24px var(--ax-font);
+  --ax-label-s:   400 13px/20px var(--ax-font);
+  --ax-eyebrow:   400 12px/16px var(--ax-font);   /* LABEL: uppercase, tracked */
+  --ax-body:      400 14px/21px var(--ax-font);   /* Paragraph Regular  */
+  --ax-body-m:    500 14px/21px var(--ax-font);   /* Paragraph Medium   */
+  --ax-body-b:    700 14px/21px var(--ax-font);   /* Paragraph Bold     */
+  --ax-num:       400 13px/20px var(--ax-mono);
+  --ax-tracking-eyebrow: .12em;
+
+  /* ── Space · shape · elevation ── 4-px grid, near-square corners, no shadows */
+  --ax-s1: 4px;  --ax-s2: 8px;  --ax-s3: 12px; --ax-s4: 16px; --ax-s5: 24px; --ax-s6: 32px; --ax-s7: 48px;
+  --ax-r:  2px;               /* everything            */
+  --ax-r-pill: 2px;           /* chips are NOT pills   */
+  --ax-hair: 1px solid var(--ax-rule);
+  --ax-hair-2: 1px solid var(--ax-rule-2);
+  --ax-shadow: none;          /* elevation is a hairline, never a shadow */
+
+  /* ── Motion ── one signature: lock-in (things register; nothing fades or slides) */
+  --ax-t:      220ms;
+  --ax-t-slow: 360ms;
+  --ax-ease:   cubic-bezier(.2, .7, .2, 1);
+  --ax-ring:   0 0 0 2px var(--ax-paper), 0 0 0 4px var(--ax-focus);
+
+  /* ── Layout ── */
+  --ax-measure: 68ch;
+  --ax-panel-w: 520px;
+}
+
+/* ── AR / camera surface ── the one dark context: what you look *through*.
+   Warm green is the rim-light; Focus blue keeps the UI focus ring. Scope a
+   subtree with data-surface="ar" (the XR kit, AR preview frames, coach cards). */
+[data-surface="ar"] {
+  --ax-bg:        #0A0A0A;
+  --ax-paper:     rgba(10, 10, 10, .86);
+  --ax-paper-2:   rgba(255, 255, 255, .06);
+  --ax-rule:      rgba(255, 255, 255, .22);
+  --ax-rule-2:    rgba(255, 255, 255, .12);
+  --ax-ink:       #F1F3F5;
+  --ax-ink-2:     #D5D9DE;
+  --ax-ink-3:     #9AA0A6;
+  --ax-blue-tint: rgba(102, 179, 255, .18);
+  --ax-green-tint: rgba(53, 198, 53, .18);
+  --ax-ok:        var(--ax-green);       /* on black, Warm green itself passes (8.9:1) */
+  --ax-warn:      var(--ax-focus);       /* Focus blue on black: 7.9:1 */
+  --ax-rim:       0 0 0 1px var(--ax-green), 0 0 22px 3px rgba(53, 198, 53, .55);
+  --ax-ring:      0 0 0 2px #0A0A0A, 0 0 0 4px var(--ax-focus);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --ax-t: 1ms; --ax-t-slow: 1ms; }
+}

@@ -1,0 +1,9 @@
+/* Roboto + Roboto Mono, self-hosted (Apache 2.0) so the company server needs
+   no internet. Files come from `npm run brand:fonts` (scripts/vendor-brand-fonts.mjs)
+   into sib/portal/brand/fonts/. Until they exist the stack in tokens.css falls
+   back to the system sans — the layout does not change, only the face. */
+@font-face { font-family: "Roboto"; font-style: normal; font-weight: 400; font-display: swap; src: url("/portal/brand/fonts/Roboto-400.woff2") format("woff2"); }
+@font-face { font-family: "Roboto"; font-style: normal; font-weight: 500; font-display: swap; src: url("/portal/brand/fonts/Roboto-500.woff2") format("woff2"); }
+@font-face { font-family: "Roboto"; font-style: normal; font-weight: 700; font-display: swap; src: url("/portal/brand/fonts/Roboto-700.woff2") format("woff2"); }
+@font-face { font-family: "Roboto Mono"; font-style: normal; font-weight: 400; font-display: swap; src: url("/portal/brand/fonts/RobotoMono-400.woff2") format("woff2"); }
+@font-face { font-family: "Roboto Mono"; font-style: normal; font-weight: 500; font-display: swap; src: url("/portal/brand/fonts/RobotoMono-500.woff2") format("woff2"); }

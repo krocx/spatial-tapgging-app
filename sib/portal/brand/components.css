@@ -1,0 +1,182 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   appliedx · SIB components — one implementation of every UI primitive,
+   built only from tokens.css. Class prefix `ax-`. Pages compose these; they
+   do not restyle them. Living reference: /brand.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* ── Base ── */
+.ax, .ax body { background: var(--ax-bg); color: var(--ax-ink); font: var(--ax-body); -webkit-font-smoothing: antialiased; }
+.ax *, .ax *::before, .ax *::after { box-sizing: border-box; }
+.ax h1 { font: var(--ax-h1); margin: 0 0 var(--ax-s3); }
+.ax h2 { font: var(--ax-h2); margin: 0 0 var(--ax-s2); }
+.ax h3 { font: var(--ax-h3); margin: 0 0 var(--ax-s2); }
+.ax p  { margin: 0 0 var(--ax-s3); max-width: var(--ax-measure); }
+.ax a  { color: var(--ax-blue-ink); text-decoration: none; border-bottom: 1px solid transparent; }
+.ax a:hover { border-bottom-color: currentColor; }
+.ax code, .ax .ax-num, .ax .ax-id { font: var(--ax-num); }
+.ax hr { border: 0; border-top: var(--ax-hair); margin: var(--ax-s5) 0; }
+.ax :focus-visible { outline: none; box-shadow: var(--ax-ring); border-radius: var(--ax-r); }
+.ax ::selection { background: var(--ax-blue-tint); }
+
+/* ── Eyebrow / labels ── */
+.ax-eyebrow { font: var(--ax-eyebrow); letter-spacing: var(--ax-tracking-eyebrow); text-transform: uppercase; color: var(--ax-ink-3); }
+.ax-label   { font: var(--ax-label); }
+.ax-label-s { font: var(--ax-label-s); color: var(--ax-ink-2); }
+.ax-muted   { color: var(--ax-ink-3); }
+
+/* ── The registration mark ── four brackets closing on a target. Focus ring,
+   loading state, section marker, the wordmark's dot. Size with font-size. */
+.ax-mark { position: relative; display: inline-block; width: 1em; height: 1em; vertical-align: -.15em; color: var(--ax-blue); }
+.ax-mark::before, .ax-mark::after, .ax-mark i::before, .ax-mark i::after {
+  content: ""; position: absolute; width: .32em; height: .32em; border: .09em solid currentColor; }
+.ax-mark::before { left: 0; top: 0; border-right: 0; border-bottom: 0; }
+.ax-mark::after  { right: 0; top: 0; border-left: 0; border-bottom: 0; }
+.ax-mark i::before { left: 0; bottom: 0; border-right: 0; border-top: 0; }
+.ax-mark i::after  { right: 0; bottom: 0; border-left: 0; border-top: 0; }
+.ax-mark em { position: absolute; left: 50%; top: 50%; width: .16em; height: .16em; margin: -.08em; background: currentColor; border-radius: 50%; }
+.ax-mark.is-green { color: var(--ax-green); }
+.ax-mark.is-ink   { color: var(--ax-ink); }
+
+/* Lock-in — the one motion. Elements *register*: brackets converge, nothing fades or slides. */
+@keyframes ax-lockin { 0% { transform: scale(1.35); opacity: 0; } 60% { opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+.ax-lockin { animation: ax-lockin var(--ax-t) var(--ax-ease) both; }
+.ax-loading .ax-mark, .ax-mark.is-loading { animation: ax-lockin 900ms var(--ax-ease) infinite alternate; }
+/* Rim breath — AR only (data-surface="ar"): the part you should look at. */
+@keyframes ax-rim { 0% { box-shadow: 0 0 0 1px var(--ax-green), 0 0 6px 0 var(--ax-rim-soft); } 100% { box-shadow: var(--ax-rim); } }
+[data-surface="ar"] .ax-rim { animation: ax-rim 1200ms ease-in-out infinite alternate; }
+
+/* ── Wordmark ── "applied" Focus blue · "x" Warm green (the team writes it this way) */
+.ax-wordmark { font: 400 17px/1 var(--ax-font); letter-spacing: -.01em; white-space: nowrap; display: inline-flex; align-items: center; gap: .45em; }
+.ax-wordmark .ax-a { color: var(--ax-focus); }
+.ax-wordmark .ax-x { color: var(--ax-green); }
+.ax-wordmark .ax-rest { font: var(--ax-label-s); color: var(--ax-ink-3); }
+
+/* ── Header / nav ── */
+.ax-header { display: flex; align-items: center; gap: var(--ax-s4); padding: var(--ax-s3) var(--ax-s4); background: var(--ax-paper); border-bottom: var(--ax-hair); }
+.ax-nav { display: flex; gap: var(--ax-s4); font: var(--ax-label-s); }
+.ax-nav a { color: var(--ax-ink-2); padding: var(--ax-s1) 0; border-bottom: 2px solid transparent; }
+.ax-nav a:hover { color: var(--ax-ink); border-bottom-color: transparent; }
+.ax-nav a.is-on, .ax-nav a[aria-current="page"] { color: var(--ax-ink); border-bottom-color: var(--ax-blue); }
+
+/* ── Surfaces ── */
+.ax-card  { background: var(--ax-paper); border: var(--ax-hair); border-radius: var(--ax-r); padding: var(--ax-s4); }
+.ax-card--product { border-left-width: 3px; border-left-color: var(--ax-pc, var(--ax-blue)); }
+.ax-panel { background: var(--ax-paper); border-left: var(--ax-hair); padding: var(--ax-s4); }
+.ax-well  { background: var(--ax-paper-2); border-radius: var(--ax-r); padding: var(--ax-s3) var(--ax-s4); }
+.ax-empty { border: 1px dashed var(--ax-rule); border-radius: var(--ax-r); padding: var(--ax-s6) var(--ax-s4); text-align: center; color: var(--ax-ink-3); }
+.ax-empty .ax-mark { font-size: 28px; color: var(--ax-grey); margin-bottom: var(--ax-s3); display: block; margin-inline: auto; }
+
+/* ── Buttons ── flat, hairline, square-ish; primary is Primary blue; danger is the one red */
+.ax-btn { display: inline-flex; align-items: center; gap: var(--ax-s2); font: var(--ax-body-m); color: var(--ax-ink); background: var(--ax-paper);
+  border: 1px solid var(--ax-ink); border-radius: var(--ax-r); padding: 8px 14px; cursor: pointer; text-decoration: none; white-space: nowrap;
+  transition: background var(--ax-t) var(--ax-ease), border-color var(--ax-t) var(--ax-ease); }
+.ax-btn:hover { background: var(--ax-paper-2); }
+.ax-btn:disabled, .ax-btn[aria-disabled="true"] { color: var(--ax-grey); border-color: var(--ax-rule); background: var(--ax-paper); cursor: default; }
+.ax-btn--primary { background: var(--ax-blue); border-color: var(--ax-blue); color: var(--ax-on-blue); }
+.ax-btn--primary:hover { background: var(--ax-blue-ink); border-color: var(--ax-blue-ink); }
+.ax-btn--mark { background: var(--ax-blue-tint); border-color: var(--ax-blue); color: var(--ax-blue-ink); }
+.ax-btn--ok   { background: var(--ax-ok-fill); border-color: var(--ax-green); color: var(--ax-green-ink); }
+.ax-btn--danger { background: var(--ax-paper); border-color: var(--ax-bad); color: var(--ax-bad); }
+.ax-btn--danger:hover { background: var(--ax-bad-fill); }
+.ax-btn--quiet { border-color: transparent; background: transparent; color: var(--ax-ink-2); }
+.ax-btn--quiet:hover { background: var(--ax-paper-2); color: var(--ax-ink); }
+.ax-btn--sm { font: var(--ax-label-s); padding: 4px 10px; }
+.ax-btn .ax-icon { width: 16px; height: 16px; }
+[data-surface="ar"] .ax-btn { color: var(--ax-ink); border-color: var(--ax-rule); background: transparent; }
+[data-surface="ar"] .ax-btn--primary { background: var(--ax-green); border-color: var(--ax-green); color: var(--ax-on-green); }
+
+/* ── Chips ── uppercase, tracked, square; product chips carry the product colour */
+.ax-chip { display: inline-flex; align-items: center; gap: 6px; font: var(--ax-eyebrow); letter-spacing: .06em; text-transform: uppercase;
+  border: 1px solid var(--ax-rule); border-radius: var(--ax-r-pill); padding: 3px 8px; color: var(--ax-ink-2); background: var(--ax-paper); white-space: nowrap; }
+.ax-chip--ok   { border-color: var(--ax-green); background: var(--ax-ok-fill);   color: var(--ax-green-ink); }
+.ax-chip--warn { border-color: var(--ax-blue);  background: var(--ax-warn-fill); color: var(--ax-blue-ink); }
+.ax-chip--bad  { border-color: var(--ax-bad);   background: var(--ax-bad-fill);  color: var(--ax-bad); }
+.ax-chip--product { border-color: var(--ax-pc, var(--ax-blue)); color: var(--ax-ink); }
+.ax-chip--product::before { content: ""; width: 8px; height: 8px; background: var(--ax-pc, var(--ax-blue)); }
+.ax-chip--interactive { cursor: pointer; } .ax-chip--interactive:hover { border-color: var(--ax-ink-3); }
+.ax-chip.is-on { border-color: var(--ax-blue); background: var(--ax-blue-tint); color: var(--ax-blue-ink); }
+
+/* ── Product colour helpers ── set --ax-pc on any element from a product key */
+[data-product="tags"]     { --ax-pc: var(--ax-p-tags); }
+[data-product="guides"]   { --ax-pc: var(--ax-p-guides); }
+[data-product="iloto"]    { --ax-pc: var(--ax-p-iloto); }
+[data-product="gemba"]    { --ax-pc: var(--ax-p-gemba); }
+[data-product="designer"] { --ax-pc: var(--ax-p-designer); }
+[data-product="portal"]   { --ax-pc: var(--ax-p-portal); }
+[data-product="platform"] { --ax-pc: var(--ax-p-platform); }
+.ax-swatch { display: inline-block; width: 10px; height: 10px; background: var(--ax-pc, var(--ax-blue)); vertical-align: -1px; margin-right: 6px; }
+
+/* ── Forms ── */
+.ax-input, .ax-select, .ax-textarea { font: var(--ax-body); color: var(--ax-ink); background: var(--ax-paper); border: var(--ax-hair); border-radius: var(--ax-r);
+  padding: 8px 12px; width: 100%; transition: border-color var(--ax-t) var(--ax-ease); }
+.ax-input::placeholder { color: var(--ax-grey); }
+.ax-input:focus, .ax-select:focus, .ax-textarea:focus { border-color: var(--ax-blue); }
+.ax-input[aria-invalid="true"] { border-color: var(--ax-bad); }
+.ax-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: var(--ax-s4); }
+.ax-field > label { font: var(--ax-label-s); color: var(--ax-ink-2); }
+.ax-field .ax-help { font: var(--ax-label-s); color: var(--ax-ink-3); }
+.ax-check { display: inline-flex; align-items: center; gap: 8px; font: var(--ax-body); cursor: pointer; }
+.ax-check input { width: 16px; height: 16px; accent-color: var(--ax-blue); margin: 0; }
+
+/* ── Tables ── dense, hairline rows, numbers in mono and right-aligned */
+.ax-table { width: 100%; border-collapse: collapse; font: var(--ax-body); }
+.ax-table th { text-align: left; font: var(--ax-eyebrow); letter-spacing: .08em; text-transform: uppercase; color: var(--ax-ink-3);
+  padding: 8px 10px; border-bottom: var(--ax-hair); background: var(--ax-paper-2); }
+.ax-table td { padding: 8px 10px; border-bottom: var(--ax-hair-2); vertical-align: top; }
+.ax-table tr:hover td { background: var(--ax-paper-2); }
+.ax-table tr.is-selected td { background: var(--ax-blue-tint); }
+.ax-table td.ax-num, .ax-table th.ax-num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ── Stat tiles · bars · heat ── */
+.ax-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: var(--ax-s2); }
+.ax-tile { border: var(--ax-hair); border-radius: var(--ax-r); padding: 8px 10px; background: var(--ax-paper); }
+.ax-tile .ax-eyebrow { font-size: 10.5px; }
+.ax-tile .ax-value { font: 500 20px/26px var(--ax-mono); }
+.ax-tile.is-bad .ax-value { color: var(--ax-bad); } .ax-tile.is-warn .ax-value { color: var(--ax-blue-ink); } .ax-tile.is-ok .ax-value { color: var(--ax-green-ink); }
+.ax-bar { height: 6px; background: var(--ax-rule-2); position: relative; }
+.ax-bar > i { position: absolute; inset: 0 auto 0 0; background: var(--ax-blue); transition: width var(--ax-t-slow) var(--ax-ease); }
+.ax-bar--ok > i { background: var(--ax-green); } .ax-bar--bad > i { background: var(--ax-bad); }
+.ax-heat { display: flex; gap: 3px; align-items: flex-end; height: 44px; }
+.ax-heat > i { flex: 1; min-width: 6px; background: var(--ax-blue); opacity: .9; cursor: pointer; }
+.ax-heat > i.is-hot { background: var(--ax-bad); } .ax-heat > i.is-cool { background: var(--ax-green); }
+
+/* ── Notices · toasts ── warnings are blue ink with the mark; there is no orange */
+.ax-notice { display: flex; gap: var(--ax-s3); align-items: flex-start; border: var(--ax-hair); border-left-width: 3px; border-radius: var(--ax-r); padding: var(--ax-s3) var(--ax-s4); background: var(--ax-paper); }
+.ax-notice--ok   { border-left-color: var(--ax-green); }
+.ax-notice--warn { border-left-color: var(--ax-blue); }
+.ax-notice--bad  { border-left-color: var(--ax-bad); }
+.ax-notice .ax-icon { flex: none; width: 18px; height: 18px; margin-top: 2px; }
+.ax-toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--ax-ink); color: var(--ax-on-blue); font: var(--ax-body-m);
+  padding: 10px 16px; border-radius: var(--ax-r); border-left: 3px solid var(--ax-green); z-index: 100; }
+.ax-toast--bad { border-left-color: var(--ax-bad); }
+
+/* ── Icons ── SVG sprite (/portal/brand/icons.svg), 1.5-px strokes, currentColor. Never emoji. */
+.ax-icon { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; vertical-align: -.2em; flex: none; }
+.ax-icon--fill { fill: currentColor; stroke: none; }
+.ax-icon--sm { width: 14px; height: 14px; } .ax-icon--lg { width: 24px; height: 24px; }
+
+/* ── Tabs · segmented ── */
+.ax-tabs { display: flex; gap: 0; border-bottom: var(--ax-hair); }
+.ax-tabs > * { font: var(--ax-label-s); color: var(--ax-ink-2); padding: 8px 12px; border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer; background: none; border-top: 0; border-left: 0; border-right: 0; }
+.ax-tabs > .is-on { color: var(--ax-ink); border-bottom-color: var(--ax-blue); }
+.ax-seg { display: inline-flex; border: var(--ax-hair); border-radius: var(--ax-r); overflow: hidden; }
+.ax-seg > * { font: var(--ax-label-s); padding: 5px 11px; background: var(--ax-paper); color: var(--ax-ink-2); border: 0; cursor: pointer; }
+.ax-seg > * + * { border-left: var(--ax-hair); }
+.ax-seg > .is-on { background: var(--ax-ink); color: var(--ax-on-blue); }
+
+/* ── Modal · sheet ── */
+.ax-scrim { position: fixed; inset: 0; background: var(--ax-scrim); display: flex; align-items: center; justify-content: center; padding: var(--ax-s5); z-index: 90; }
+.ax-modal { background: var(--ax-paper); border: var(--ax-hair); border-radius: var(--ax-r); padding: var(--ax-s5); width: min(560px, 100%); max-height: 88vh; overflow: auto; }
+.ax-modal h2 { display: flex; align-items: center; gap: var(--ax-s2); }
+
+/* ── Layout helpers ── */
+.ax-row { display: flex; align-items: center; gap: var(--ax-s2); flex-wrap: wrap; }
+.ax-row--between { justify-content: space-between; }
+.ax-stack { display: flex; flex-direction: column; gap: var(--ax-s3); }
+.ax-grow { flex: 1; }
+.ax-section { margin-top: var(--ax-s6); }
+.ax-section > h2 { display: flex; align-items: center; gap: var(--ax-s2); padding-bottom: var(--ax-s2); border-bottom: var(--ax-hair); }
+
+/* ── Diagram frame ── (mermaid / SVG) grid paper, product colour bar */
+.ax-diagram { background: repeating-linear-gradient(0deg, transparent 0 23px, var(--ax-rule-2) 23px 24px), repeating-linear-gradient(90deg, transparent 0 23px, var(--ax-rule-2) 23px 24px), var(--ax-paper);
+  border: var(--ax-hair); border-left: 3px solid var(--ax-pc, var(--ax-blue)); border-radius: var(--ax-r); padding: var(--ax-s3); overflow-x: auto; }

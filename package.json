@@ -18,6 +18,9 @@
     "tag:verify": "node scripts/tag-verify.mjs",
     "catalog:vendor": "node scripts/vendor-catalog-libs.mjs",
     "icons:doc": "node scripts/iconography.mjs",
+    "brand:icons": "node scripts/brand-icons.mjs",
+    "brand:fonts": "node scripts/vendor-brand-fonts.mjs",
+    "brand:check": "node scripts/brand-check.mjs",
     "build": "npm run build --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present"
   },

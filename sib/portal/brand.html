@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en" class="ax">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>appliedx · SIB design system</title>
+<!-- The living style guide: rendered from the same CSS every SIB page uses.
+     If it looks right here, it looks right everywhere. Proprietary & Confidential · Applied Materials. -->
+<link rel="stylesheet" href="/portal/brand/brand.css">
+<style>
+  /* page-only layout; every colour, font and size below is a token */
+  .wrap { max-width: 1120px; margin: 0 auto; padding: var(--ax-s5) var(--ax-s5) var(--ax-s7); }
+  .hero { display: flex; align-items: baseline; gap: var(--ax-s4); flex-wrap: wrap; margin-bottom: var(--ax-s5); }
+  .hero .ax-mark { font-size: 34px; }
+  .toc { display: flex; gap: var(--ax-s3); flex-wrap: wrap; margin-bottom: var(--ax-s5); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--ax-s4); }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--ax-s3); }
+  .sw { border: var(--ax-hair); border-radius: var(--ax-r); overflow: hidden; }
+  .sw i { display: block; height: 52px; }
+  .sw div { padding: 6px 8px; font: var(--ax-label-s); }
+  .sw code { display: block; color: var(--ax-ink-3); }
+  .type-row { display: grid; grid-template-columns: 220px 1fr; gap: var(--ax-s3); align-items: baseline; padding: 8px 0; border-bottom: var(--ax-hair-2); }
+  .type-row code { color: var(--ax-ink-3); }
+  .icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 6px; }
+  .icons div { border: var(--ax-hair-2); border-radius: var(--ax-r); padding: 10px 4px 6px; text-align: center; font: var(--ax-eyebrow); color: var(--ax-ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .icons .ax-icon { width: 22px; height: 22px; display: block; margin: 0 auto 6px; color: var(--ax-ink); }
+  .dont { color: var(--ax-bad); } .do { color: var(--ax-green-ink); }
+  .ar-demo { position: relative; min-height: 170px; border: var(--ax-hair); border-radius: var(--ax-r); padding: var(--ax-s3); background: var(--ax-bg); }
+  .ar-demo .part { position: absolute; left: 30%; top: 30%; width: 120px; height: 62px; border: 1px solid var(--ax-rule); }
+  .ar-demo .stepcard { position: absolute; left: 12px; right: 12px; bottom: 12px; padding: 8px 10px; }
+  .motion-demo { display: flex; align-items: center; gap: var(--ax-s5); padding: var(--ax-s4); border: var(--ax-hair); border-radius: var(--ax-r); }
+  .motion-demo .ax-mark { font-size: 44px; }
+  @media (max-width: 800px) { .grid2, .grid3 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <span class="ax-mark"><i></i><em></em></span>
+    <h1 style="margin:0">SIB design system</h1>
+    <span class="ax-wordmark"><span class="ax-a">applied</span><span class="ax-x">x</span><span class="ax-rest">Connected Worker AR OMS Platform</span></span>
+    <span class="ax-chip" id="ver">v…</span>
+  </div>
+  <p>One source of truth for how SIB looks: <code>sib/portal/brand/</code> — tokens, components, motif, motion, icons, fonts. Every page reads it; nothing here is copied into a page. Rules are enforced by <code>npm run brand:check</code>. Doctrine: <a href="/catalog#brand-system">Catalogue › Design system</a>.</p>
+  <nav class="toc">
+    <a class="ax-chip ax-chip--interactive" href="#colour">Colour</a><a class="ax-chip ax-chip--interactive" href="#type">Type</a><a class="ax-chip ax-chip--interactive" href="#mark">Mark &amp; motion</a>
+    <a class="ax-chip ax-chip--interactive" href="#components">Components</a><a class="ax-chip ax-chip--interactive" href="#ar">AR surface</a><a class="ax-chip ax-chip--interactive" href="#icons">Icons</a><a class="ax-chip ax-chip--interactive" href="#rules">Rules</a>
+  </nav>
+
+  <section class="ax-section" id="colour"><h2><span class="ax-mark"><i></i><em></em></span>Colour</h2>
+    <p>From the Applied team library. Focus blue and Warm green <b>never carry text</b> — they fail contrast on paper (2.2:1 and 2.3:1). They are fills, rings, marks and the wordmark; the <code>-ink</code> variants do the reading work. The system has no orange: warnings are deep blue ink with the mark, and one red is reserved for real failures.</p>
+    <div class="ax-eyebrow" style="margin:var(--ax-s4) 0 var(--ax-s2)">Surfaces &amp; ink</div>
+    <div class="grid3" id="sw-surface"></div>
+    <div class="ax-eyebrow" style="margin:var(--ax-s4) 0 var(--ax-s2)">Brand &amp; status</div>
+    <div class="grid3" id="sw-brand"></div>
+    <div class="ax-eyebrow" style="margin:var(--ax-s4) 0 var(--ax-s2)">Products — Gemba Audit and iLOTO keep the colours users know from the app</div>
+    <div class="ax-row" id="sw-products"></div>
+  </section>
+
+  <section class="ax-section" id="type"><h2><span class="ax-mark"><i></i><em></em></span>Type</h2>
+    <p>Roboto, exactly the team library scale. Roboto Mono for identifiers, part numbers and every number in a table so columns align. Self-hosted (<code>npm run brand:fonts</code>) — no internet needed on the LAN.</p>
+    <div class="type-row"><code>--ax-h1 · Heading · Bold 24/32</code><div style="font:var(--ax-h1)">Fit the cylinder head</div></div>
+    <div class="type-row"><code>--ax-h2 · Title Large · Medium 22/30</code><div style="font:var(--ax-h2)">Usage log · Producer XP</div></div>
+    <div class="type-row"><code>--ax-h3 · Title Medium · Medium 20/28</code><div style="font:var(--ax-h3)">Step 4 of 8</div></div>
+    <div class="type-row"><code>--ax-label · Medium 16/24</code><div style="font:var(--ax-label)">Anchor — the physical asset this guide is performed on</div></div>
+    <div class="type-row"><code>--ax-label-s · Regular 13/20</code><div style="font:var(--ax-label-s)">Steps are placed in AR on device before publishing.</div></div>
+    <div class="type-row"><code>--ax-eyebrow · LABEL 12 caps</code><div class="ax-eyebrow">Intelligence · Motorcycle engine · 12 runs</div></div>
+    <div class="type-row"><code>--ax-body · Paragraph 14/21</code><div style="font:var(--ax-body)">Every hint is scored by what happened after it. A hint that helps fewer than 30 % of the time is retired on that step and comes back on its own when newer runs improve.</div></div>
+    <div class="type-row"><code>--ax-num · Roboto Mono 13/20</code><div class="ax-num">CH-14 · PN 0190-12345 · 52 s · 38 %</div></div>
+  </section>
+
+  <section class="ax-section" id="mark"><h2><span class="ax-mark"><i></i><em></em></span>The mark &amp; the motion</h2>
+    <div class="grid2">
+      <div class="ax-card"><div class="ax-eyebrow">Registration mark</div>
+        <p style="margin-top:6px">Four brackets closing on a target: the QR finder square, the wafer alignment cross, the AR anchor. It is the focus ring, the loading state, the section marker and the wordmark's dot. <code>&lt;span class="ax-mark"&gt;&lt;i&gt;&lt;/i&gt;&lt;em&gt;&lt;/em&gt;&lt;/span&gt;</code>, sized with <code>font-size</code>.</p>
+        <div class="ax-row" style="font-size:40px;gap:24px"><span class="ax-mark"><i></i><em></em></span><span class="ax-mark is-green"><i></i><em></em></span><span class="ax-mark is-ink"><i></i><em></em></span><span class="ax-mark" style="font-size:20px"><i></i><em></em></span></div>
+      </div>
+      <div class="ax-card"><div class="ax-eyebrow">Lock-in — the one motion</div>
+        <p style="margin-top:6px">Elements <em>register</em>: scale 1.35 → 1 in 220 ms on the brand ease. Nothing fades in, nothing slides. Loading is the mark locking in. <code>.ax-lockin</code> on arrival, <code>.ax-loading</code> on a container. Reduced-motion collapses it to 1 ms.</p>
+        <div class="motion-demo"><span class="ax-mark is-loading"><i></i><em></em></span><div class="ax-label-s">Page load · found the QR · new item · focus</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="ax-section" id="components"><h2><span class="ax-mark"><i></i><em></em></span>Components</h2>
+    <div class="grid2">
+      <div class="ax-card">
+        <div class="ax-eyebrow">Buttons</div>
+        <div class="ax-row" style="margin-top:8px"><button class="ax-btn ax-btn--primary">Scan chamber QR</button><button class="ax-btn">Directory</button><button class="ax-btn ax-btn--mark"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-xr"/></svg>XR kit</button><button class="ax-btn ax-btn--ok">Verified</button><button class="ax-btn ax-btn--danger">Delete</button><button class="ax-btn ax-btn--quiet">Cancel</button><button class="ax-btn" disabled>Disabled</button><button class="ax-btn ax-btn--sm">Small</button></div>
+        <div class="ax-eyebrow" style="margin-top:16px">Chips</div>
+        <div class="ax-row" style="margin-top:8px"><span class="ax-chip">shipped</span><span class="ax-chip ax-chip--ok">anchored on QR</span><span class="ax-chip ax-chip--warn">unplaced</span><span class="ax-chip ax-chip--bad">failed</span><span class="ax-chip ax-chip--product" data-product="guides">AR OMS</span><span class="ax-chip ax-chip--product" data-product="iloto">iLOTO</span><span class="ax-chip ax-chip--product" data-product="gemba">Gemba Audit</span><span class="ax-chip is-on">v2026.4.46</span></div>
+        <div class="ax-eyebrow" style="margin-top:16px">Notices — no orange, ever</div>
+        <div class="ax-stack" style="margin-top:8px">
+          <div class="ax-notice ax-notice--ok"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-check"/></svg><div><b>World map sealed.</b> Operators will localise from the printed QR.</div></div>
+          <div class="ax-notice ax-notice--warn"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-mark"/></svg><div><b>3 steps unplaced.</b> Place them on the iPad before publishing.</div></div>
+          <div class="ax-notice ax-notice--bad"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-error"/></svg><div><b>Import failed.</b> The publication uses a 3D feature we do not recognise.</div></div>
+        </div>
+      </div>
+      <div class="ax-card">
+        <div class="ax-eyebrow">Form</div>
+        <div class="ax-field" style="margin-top:8px"><label>Anchor — the physical asset this guide is performed on</label><select class="ax-select"><option>XRCenterDemo-SOCp (1e0a60e7…)</option></select></div>
+        <div class="ax-field"><label>Author name</label><input class="ax-input" placeholder="Name on the record"><span class="ax-help">Prefilled from the kiosk sign-in when there is one.</span></div>
+        <label class="ax-check"><input type="checkbox"> Strict — refuse the import if the publication uses 3D features we don't recognise</label>
+        <div class="ax-eyebrow" style="margin-top:16px">Segmented · tabs</div>
+        <div class="ax-row" style="margin-top:8px"><div class="ax-seg"><button class="is-on">Completions</button><button>Usage log</button><button>Intelligence</button></div></div>
+        <div class="ax-tabs" style="margin-top:10px"><button class="is-on">Anchors</button><button>AR OMS</button><button>iLOTO</button><button>Gemba</button></div>
+      </div>
+    </div>
+    <div class="ax-card ax-card--product" data-product="guides" style="margin-top:var(--ax-s4)">
+      <div class="ax-eyebrow">Intelligence · Motorcycle engine · 12 runs</div>
+      <h3 style="margin-top:4px">Step 4 · Fit the cylinder head</h3>
+      <div class="ax-heat"><i style="height:20%"></i><i style="height:35%"></i><i style="height:15%"></i><i class="is-hot" style="height:90%"></i><i style="height:40%"></i><i style="height:25%"></i><i class="is-cool" style="height:10%"></i><i style="height:55%"></i></div>
+      <div class="ax-tiles" style="margin:12px 0">
+        <div class="ax-tile is-bad"><div class="ax-eyebrow">Wrong part</div><div class="ax-value">38 %</div></div>
+        <div class="ax-tile"><div class="ax-eyebrow">Typical dwell</div><div class="ax-value">52 s</div></div>
+        <div class="ax-tile is-warn"><div class="ax-eyebrow">Validation fail</div><div class="ax-value">17 %</div></div>
+        <div class="ax-tile is-ok"><div class="ax-eyebrow">Completed</div><div class="ax-value">92 %</div></div>
+      </div>
+      <table class="ax-table"><thead><tr><th>Hint</th><th>Phrasing</th><th class="ax-num">Shown</th><th class="ax-num">Helped</th><th>Effectiveness</th></tr></thead>
+        <tbody><tr><td>wrong-part</td><td>template</td><td class="ax-num">9</td><td class="ax-num">6</td><td><div class="ax-bar ax-bar--ok"><i style="width:67%"></i></div></td></tr>
+        <tr><td>dwell <span class="ax-chip ax-chip--warn"><svg class="ax-icon ax-icon--sm"><use href="/portal/brand/icons.svg#i-muted"/></svg>retired</span></td><td>llm</td><td class="ax-num">6</td><td class="ax-num">1</td><td><div class="ax-bar ax-bar--bad"><i style="width:17%"></i></div></td></tr></tbody></table>
+      <div class="ax-row" style="margin-top:12px"><button class="ax-btn ax-btn--primary"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-edit"/></svg>Open in Designer</button><button class="ax-btn"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-play"/></svg>Guide Preview</button><span class="ax-grow"></span><span class="ax-chip">shipped</span></div>
+    </div>
+    <div class="grid2" style="margin-top:var(--ax-s4)">
+      <div class="ax-empty"><span class="ax-mark"><i></i><em></em></span>No guide runs yet. Intelligence learns from the Usage Log — run a guide on the iPad or the XR kit and come back.</div>
+      <div class="ax-diagram" data-product="tags" style="min-height:120px"><div class="ax-eyebrow">Diagram frame · grid paper · product colour bar</div></div>
+    </div>
+  </section>
+
+  <section class="ax-section" id="ar"><h2><span class="ax-mark is-green"><i></i><em></em></span>The AR surface</h2>
+    <p>The one dark context is what you look <em>through</em>. Scope it with <code>data-surface="ar"</code>: Warm green becomes the rim-light on the part you should look at (the same highlight the iPad app draws), Focus blue stays the UI focus ring, and the step card is near-black with hairlines — no glass blur.</p>
+    <div class="ar-demo" data-surface="ar">
+      <span class="ax-chip ax-chip--ok" style="position:absolute;top:12px;right:12px">anchored on QR</span>
+      <div class="part ax-rim"></div>
+      <div class="ax-card stepcard"><div class="ax-eyebrow" style="color:var(--ax-green)">Step 4 of 8</div>Fit the cylinder head. Torque in the sequence shown.<div class="ax-row" style="margin-top:8px"><button class="ax-btn ax-btn--sm"><svg class="ax-icon ax-icon--sm"><use href="/portal/brand/icons.svg#i-replay"/></svg>Replay</button><button class="ax-btn ax-btn--primary ax-btn--sm">Show me</button></div></div>
+    </div>
+  </section>
+
+  <section class="ax-section" id="icons"><h2><span class="ax-mark"><i></i><em></em></span>Icons</h2>
+    <p>One sprite, <code>/portal/brand/icons.svg</code>: the AppliedX icon library the Procedure Designer draws with plus the UI set that replaces every emoji. 24-grid, 1.5-px round strokes, <code>currentColor</code>. <code>&lt;svg class="ax-icon"&gt;&lt;use href="/portal/brand/icons.svg#i-check"/&gt;&lt;/svg&gt;</code></p>
+    <div class="icons" id="icons"></div>
+  </section>
+
+  <section class="ax-section" id="rules"><h2><span class="ax-mark"><i></i><em></em></span>Rules — enforced by <code>npm run brand:check</code></h2>
+    <div class="grid2">
+      <div class="ax-card"><div class="ax-eyebrow do">Always</div><ul style="margin:8px 0 0;padding-left:18px"><li>Colours, sizes and durations from <code>tokens.css</code> only.</li><li>Icons from the sprite; text is text, icons are icons.</li><li>The mark for focus, loading and section markers; lock-in for arrival.</li><li>Roboto for reading, Roboto Mono for identifiers and numbers.</li><li>Product colour on chips, cards and diagram bars — the same colour on the map, the portal and the app.</li><li>Hairlines for elevation; 2-px corners.</li></ul></div>
+      <div class="ax-card"><div class="ax-eyebrow dont">Never</div><ul style="margin:8px 0 0;padding-left:18px"><li>Glass blur, gradients on surfaces, drop shadows.</li><li>Emoji as icons. Rounded 12-px cards. Pill chips.</li><li>Orange, amber or yellow anywhere but the Gemba product mark.</li><li>Focus blue or Warm green as text.</li><li>Navy dashboards, electric-blue accents, system-blue links.</li><li>A page-level palette or font — if it is not in <code>brand/</code>, it does not exist.</li></ul></div>
+    </div>
+  </section>
+</div>
+<script>
+(async () => {
+  const cs = getComputedStyle(document.documentElement);
+  const v = n => cs.getPropertyValue(n).trim();
+  const sw = (id, list) => document.getElementById(id).innerHTML = list.map(([label, tok]) =>
+    `<div class="sw"><i style="background:var(${tok})"></i><div>${label}<code>${tok} · ${v(tok)}</code></div></div>`).join('');
+  sw('sw-surface', [['page', '--ax-bg'], ['paper', '--ax-paper'], ['quiet fill', '--ax-paper-2'], ['hairline', '--ax-rule'], ['grey', '--ax-grey'], ['ink', '--ax-ink'], ['secondary', '--ax-ink-2'], ['tertiary', '--ax-ink-3']]);
+  sw('sw-brand', [['Primary blue', '--ax-blue'], ['blue · text', '--ax-blue-ink'], ['blue · tint', '--ax-blue-tint'], ['Focus blue · never text', '--ax-focus'], ['Warm green · never text', '--ax-green'], ['green · text', '--ax-green-ink'], ['green · tint', '--ax-green-tint'], ['the one red', '--ax-bad']]);
+  document.getElementById('sw-products').innerHTML = [['tags', 'Spatial Inspection'], ['guides', 'AR OMS'], ['iloto', 'iLOTO'], ['gemba', 'Gemba Audit'], ['designer', 'Procedure Designer'], ['portal', 'Portal'], ['platform', 'Platform']]
+    .map(([k, n]) => `<span class="ax-chip ax-chip--product" data-product="${k}">${n}</span>`).join('');
+  try { const r = await fetch('/portal/brand/icons.json'); const names = await r.json();
+    document.getElementById('icons').innerHTML = names.map(n => `<div title="${n}"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-${n}"/></svg>${n}</div>`).join(''); } catch {}
+  try { const r = await fetch('/config'); const c = await r.json(); document.getElementById('ver').textContent = 'v' + (c.platformVersion || c.data?.platformVersion || '—'); } catch { document.getElementById('ver').textContent = 'design system'; }
+})();
+</script>
+</body>
+</html>

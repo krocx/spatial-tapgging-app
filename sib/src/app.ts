@@ -164,6 +164,13 @@ document.getElementById('f').addEventListener('submit', async function(ev){
   // vendored Three.js + the browser's WebXR API; loads the Guide Bundle and
   // posts the same session records as the iOS app. Behind the same gate as
   // every other page; its data calls carry the API key from localStorage.
+  // GET /brand — the living style guide, rendered from sib/portal/brand/ (the
+  // same tokens + components every page reads). If it looks right here it
+  // looks right everywhere.
+  app.get('/brand', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-cache');
+    res.sendFile(path.join(__dirname, '../portal/brand.html'));
+  });
   app.get('/xr', (_req, res) => {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.sendFile(path.join(__dirname, '../portal/xr.html'));

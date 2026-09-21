@@ -237,6 +237,18 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **Design system — slice 1.** SIB now has one look, written down once in
+  `sib/portal/brand/`: tokens (the Applied team library's greys, Primary
+  blue, Focus blue, Warm green with contrast-safe ink variants; no orange in
+  the system; Gemba Audit and iLOTO keep their product colours), components
+  (buttons, chips, cards, tables, notices, forms, tiles, bars, heat strips,
+  empty states), the registration mark + lock-in motion, Roboto / Roboto
+  Mono self-hosted (`npm run brand:fonts`), and an icon sprite that replaces
+  every emoji (`npm run brand:icons`, 96 icons). `/brand` is the living
+  style guide rendered from that same CSS; `npm run brand:check` fails a
+  governed page on any drift; `docs/BRAND.md` is the doctrine and
+  `CLAUDE.md` states it for anyone generating pages in this repo. No
+  existing page changed yet — portal and catalogue migrate next.
 - **Effectiveness loop + portal Intelligence page (C3).** Every automatic
   hint is now scored by what happened after it — from the raw observation
   samples and the visit outcome (completed within the window, no more
