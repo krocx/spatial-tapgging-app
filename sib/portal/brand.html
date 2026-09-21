@@ -72,9 +72,18 @@
   .spec code { color: var(--ax-ink-3); display: block; } .spec small { display: block; font: var(--ax-label-s); color: var(--ax-ink-4); }
   .stage { background: var(--ax-paper); border-radius: var(--ax-r); padding: var(--ax-s5); display: flex; align-items: center; gap: var(--ax-s5); min-height: 140px; }
   .stage .ax-mark { font-size: 56px; }
-  .icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
-  .icons div { background: var(--ax-paper-2); border-radius: var(--ax-r-field); padding: 12px 4px 8px; text-align: center; font: var(--ax-eyebrow); color: var(--ax-ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: none; letter-spacing: 0; }
-  .icons .ax-icon { width: 24px; height: 24px; display: block; margin: 0 auto 8px; color: var(--ax-ink); }
+  .icon-tools { display: flex; align-items: center; gap: var(--ax-s3); margin-bottom: var(--ax-s4); }
+  .icon-tools .ax-input { max-width: 320px; }
+  .icon-group { margin-top: var(--ax-s5); }
+  .icon-group h3 { display: flex; align-items: baseline; gap: 10px; margin-bottom: var(--ax-s3); }
+  .icon-group h3 small { font: var(--ax-label-s); color: var(--ax-ink-3); }
+  .icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 10px; }
+  .icon-tile { display: flex; flex-direction: column; align-items: center; gap: 8px; background: var(--ax-paper); border: var(--ax-hair); border-radius: var(--ax-r-field); padding: 16px 8px 12px; min-height: 108px; cursor: pointer; }
+  .icon-tile:hover { background: var(--ax-paper-3); border-color: var(--ax-blue); }
+  .icon-tile .ax-icon { width: 28px; height: 28px; color: var(--ax-ink); }
+  .icon-tile b { font: var(--ax-label-s); color: var(--ax-ink); text-align: center; line-height: 16px; }
+  .icon-tile code { font: var(--ax-num); font-size: 11px; color: var(--ax-ink-4); text-align: center; }
+  .icon-tile.is-hidden { display: none; }
   .ar-demo { position: relative; min-height: 220px; border: var(--ax-hair); border-radius: var(--ax-r); padding: var(--ax-s3); background: var(--ax-bg); }
   .ar-demo .part { position: absolute; left: 30%; top: 28%; width: 140px; height: 72px; border: 1px solid var(--ax-rule); border-radius: 6px; }
   .ar-demo .stepcard { position: absolute; left: 12px; right: 12px; bottom: 12px; padding: 12px 14px; }
@@ -291,8 +300,9 @@
       <div class="num"><span class="ax-mark"><i></i><em></em></span>09 · ICONS</div>
       <h2>One sprite, drawn by us, in the app's weight</h2>
       <p class="lead">The AppliedX icon library the Procedure Designer draws with, plus the UI set that replaces every emoji. Stroked like SF Symbols so a web icon and a tablet icon sit together. Text is text and icons are icons — never an emoji standing in for either.</p>
-      <div class="icons" id="icons"></div>
-      <p style="margin-top:var(--ax-s4)"><code>&lt;svg class="ax-icon"&gt;&lt;use href="/portal/brand/icons.svg#i-check"/&gt;&lt;/svg&gt;</code> · sizes 14 / 18 / 24 / 30 · a product-coloured tile with <code>.ax-icon-tile</code> · regenerate with <code>npm run brand:icons</code>.</p>
+      <div class="icon-tools"><input class="ax-input" id="iconSearch" placeholder="Search icons…" autocomplete="off"><span class="ax-label-s" id="iconCount"></span><span class="ax-grow"></span><span class="ax-label-s">Click a tile to copy its markup</span></div>
+      <div id="icons"></div>
+      <p style="margin-top:var(--ax-s5)"><code>&lt;svg class="ax-icon"&gt;&lt;use href="/portal/brand/icons.svg#i-check"/&gt;&lt;/svg&gt;</code> · sizes 14 / 18 / 24 / 30 · a product-coloured tile with <code>.ax-icon-tile</code> · regenerate with <code>npm run brand:icons</code>.</p>
     </section>
 
     <section class="chapter reveal" id="voice">
@@ -348,8 +358,26 @@
   ].map(a => card(...a)).join('');
   document.getElementById('sw-products').innerHTML = [['tags', 'Spatial Inspection'], ['guides', 'AR OMS'], ['iloto', 'iLOTO'], ['gemba', 'Gemba Audit'], ['designer', 'Procedure Designer'], ['portal', 'Portal'], ['platform', 'Platform']]
     .map(([k, n]) => `<span class="ax-chip ax-chip--product" data-product="${k}">${n}</span>`).join('');
-  try { const names = await (await fetch('/portal/brand/icons.json')).json();
-    document.getElementById('icons').innerHTML = names.map(n => `<div title="${n}"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-${n}"/></svg>${n}</div>`).join(''); } catch {}
+  try {
+    const { groups, icons } = await (await fetch('/portal/brand/icons.json')).json();
+    const order = ['web', 'node', 'step', 'ui'];
+    const host = document.getElementById('icons');
+    host.innerHTML = order.filter(g => icons.some(i => i.group === g)).map(g => `
+      <section class="icon-group" data-group="${g}"><h3>${groups[g] || g}<small>${icons.filter(i => i.group === g).length}</small></h3>
+        <div class="icon-grid" style="display:grid">${icons.filter(i => i.group === g).map(i =>
+          `<button class="icon-tile" type="button" data-name="${i.name}" data-q="${(i.name + ' ' + i.label).toLowerCase()}" title="Copy markup for ${i.name}">
+             <svg class="ax-icon"><use href="/portal/brand/icons.svg#i-${i.name}"/></svg><b>${i.label}</b><code>${i.name}</code></button>`).join('')}</div>
+      </section>`).join('');
+    const count = document.getElementById('iconCount'); count.textContent = `${icons.length} icons`;
+    document.getElementById('iconSearch').addEventListener('input', e => {
+      const q = e.target.value.trim().toLowerCase(); let n = 0;
+      host.querySelectorAll('.icon-tile').forEach(t => { const hit = !q || t.dataset.q.includes(q); t.classList.toggle('is-hidden', !hit); if (hit) n++; });
+      host.querySelectorAll('.icon-group').forEach(g => g.style.display = g.querySelector('.icon-tile:not(.is-hidden)') ? '' : 'none');
+      count.textContent = q ? `${n} of ${icons.length}` : `${icons.length} icons`;
+    });
+    host.addEventListener('click', e => { const t = e.target.closest('.icon-tile'); if (!t) return;
+      navigator.clipboard?.writeText(`<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-${t.dataset.name}"/></svg>`).then(() => { const b = t.querySelector('b'); const was = b.textContent; b.textContent = 'Copied'; setTimeout(() => b.textContent = was, 900); }); });
+  } catch {}
   try { const c = await (await fetch('/config')).json(); if (c.platformVersion) document.getElementById('ver').textContent = 'Connected Worker AR OMS Platform · v' + c.platformVersion; } catch {}
   const links = [...document.querySelectorAll('.side nav a')];
   const io = new IntersectionObserver(es => es.forEach(e => {

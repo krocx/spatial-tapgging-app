@@ -20,6 +20,10 @@ const m = src.match(/export const ICON_PATHS[^=]*=\s*\{([\s\S]*?)\n\};/);
 if (!m) throw new Error('ICON_PATHS not found');
 const paths = {};
 for (const x of m[1].matchAll(/^\s*(?:'([^']+)'|([A-Za-z0-9_-]+))\s*:\s*'([^']+)'\s*,/gm)) paths[x[1] ?? x[2]] = x[3];
+// labels + groups from ICON_META (node = Procedure Designer nodes, step = step kinds, ui = designer chrome)
+const meta = {};
+const mm = src.match(/export const ICON_META[^=]*=\s*\{([\s\S]*?)\n\};/);
+if (mm) for (const x of mm[1].matchAll(/^\s*(?:'([^']+)'|([A-Za-z0-9_-]+))\s*:\s*\{\s*label:\s*'([^']*)'[^}]*group:\s*'([a-z]+)'/gm)) meta[x[1] ?? x[2]] = { label: x[3], group: x[4] };
 
 // UI icons — the ones the web surfaces need that the designer library lacks.
 const UI = {
@@ -72,5 +76,11 @@ ${symbols}
 </svg>
 `;
 writeFileSync(join(ROOT, 'sib/portal/brand/icons.svg'), out);
-writeFileSync(join(ROOT, 'sib/portal/brand/icons.json'), JSON.stringify(Object.keys(all), null, 0));
+const UI_LABELS = { chart: 'Chart', intelligence: 'Intelligence', xr: 'XR kit', share: 'Share', move: 'Move', copy: 'Copy', 'copy-all': 'Copy to all', 'map-reset': 'Reset map',
+  download: 'Download', upload: 'Upload', refresh: 'Refresh', trash: 'Delete', edit: 'Edit', play: 'Preview', graph: 'Graph', steps: 'Steps', search: 'Search', muted: 'Muted',
+  'lock-restricted': 'Restricted', unlock: 'Unlock', close: 'Close', chevron: 'Chevron', back: 'Back', next: 'Next', replay: 'Replay', external: 'Open', home: 'Home', compass: 'Compass',
+  logs: 'Logs', backup: 'Backup', users: 'Users', config: 'Configuration', filter: 'Filter', info: 'Info', 'anchor-qr': 'Anchor QR', mark: 'Registration mark' };
+const GROUP_NAMES = { node: 'Procedure Designer · nodes', step: 'Step kinds', ui: 'Designer chrome', web: 'Web UI (replaces emoji)' };
+const manifest = Object.keys(all).map(name => ({ name, label: meta[name]?.label ?? UI_LABELS[name] ?? name, group: UI[name] ? 'web' : (meta[name]?.group ?? 'node') }));
+writeFileSync(join(ROOT, 'sib/portal/brand/icons.json'), JSON.stringify({ groups: GROUP_NAMES, icons: manifest }, null, 0));
 console.log(`✓ sib/portal/brand/icons.svg — ${Object.keys(all).length} icons`);
