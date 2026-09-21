@@ -348,7 +348,7 @@ async function openLive() {
   try {
     const r = await api('/guide-sessions/live', { method: 'POST', body: JSON.stringify({
       guideId, anchorId: guide.anchorId, guideName: guide.name, anchorName: bundle.anchor?.assetId || '', operatorName: opName(),
-      workContext: { client: 'webxr', frame: frameKind, userAgent: navigator.userAgent.slice(0, 120) },
+      workContext: `XR kit · ${frameKind}`,          // a string, like the iPad's Production #
     }) });
     live = r.data || r; sessionStartedAt = new Date().toISOString();
     await ev('session:started');

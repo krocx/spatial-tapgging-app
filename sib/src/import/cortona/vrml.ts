@@ -294,12 +294,17 @@ export function parseVrml(text: string): VrmlScene {
 
 // ── Helpers for consumers ────────────────────────────────────────────────────
 
+// Field readers tolerate a USE / IS reference or a null slipping in where a
+// node was expected (a top-level `USE X`, an IS-bound child): they read as
+// "no such field" instead of throwing on `.fields` of undefined.
+const fieldsOf = (n: unknown): Record<string, VrmlValue> =>
+  n && typeof n === 'object' && 'fields' in n && (n as VrmlNode).fields ? (n as VrmlNode).fields : {};
 export function numField(n: VrmlNode, name: string, fallback: number[]): number[] {
-  const v = n.fields[name];
+  const v = fieldsOf(n)[name];
   return Array.isArray(v) && v.every(x => typeof x === 'number') ? (v as number[]) : fallback;
 }
 export function strField(n: VrmlNode, name: string): string | undefined {
-  const v = n.fields[name];
+  const v = fieldsOf(n)[name];
   if (typeof v === 'string') return v;
   if (Array.isArray(v) && typeof v[0] === 'string') return v[0] as string;
   return undefined;
@@ -308,20 +313,20 @@ export function boolField(n: VrmlNode, name: string): boolean | undefined {
   const v = n.fields[name]; return typeof v === 'boolean' ? v : undefined;
 }
 export function nodeField(n: VrmlNode, name: string): VrmlNode | VrmlUse | null {
-  const v = n.fields[name];
+  const v = fieldsOf(n)[name];
   if (v && typeof v === 'object' && !Array.isArray(v) && ('type' in v || 'use' in v)) return v as VrmlNode | VrmlUse;
   return null;
 }
 export function nodesField(n: VrmlNode, name: string): (VrmlNode | VrmlUse)[] {
-  const v = n.fields[name];
-  if (Array.isArray(v)) return (v as unknown[]).filter((x): x is VrmlNode | VrmlUse => !!x && typeof x === 'object') ;
+  const v = fieldsOf(n)[name];
+  if (Array.isArray(v)) return (v as unknown[]).filter((x): x is VrmlNode | VrmlUse => !!x && typeof x === 'object' && ('type' in x || 'use' in x));
   if (v && typeof v === 'object' && ('type' in v || 'use' in v)) return [v as VrmlNode | VrmlUse];
   return [];
 }
 /** Walk every node in the scene (not PROTO bodies), depth-first. */
 export function walkNodes(nodes: (VrmlNode | VrmlUse | null)[], fn: (n: VrmlNode, parent: VrmlNode | null) => void, parent: VrmlNode | null = null): void {
   for (const n of nodes) {
-    if (!n || 'use' in n) continue;
+    if (!n || typeof n !== 'object' || !('fields' in n) || !n.fields) continue;   // USE / IS refs: skip
     fn(n, parent);
     for (const v of Object.values(n.fields)) {
       if (Array.isArray(v)) walkNodes(v.filter((x): x is VrmlNode | VrmlUse | null => x === null || typeof x === 'object'), fn, n);

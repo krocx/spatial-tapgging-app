@@ -47,7 +47,8 @@ export function usageOpen(
     startedAt:    live.startedAt,
     completed:    false,
     steps:        [],
-    ...(req.workContext?.trim() ? { workContext: req.workContext.trim() } : {}),
+    // Any client may send this; only a non-empty string is a work context.
+    ...(typeof req.workContext === 'string' && req.workContext.trim() ? { workContext: req.workContext.trim() } : {}),
     // C: the configuration the chamber belongs to — derived here so every
     // client (any app build) is covered and the record can't lie.
     ...(() => {

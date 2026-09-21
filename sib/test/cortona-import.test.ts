@@ -134,6 +134,23 @@ DEF X W { }`;
   assert.ok(s.protos.has('W') && s.defs.has('X'));
 });
 
+test('scene: a top-level USE and IS-bound children do not crash the scene build (small publications)', async () => {
+  const { parseVrml, walkNodes } = await import('../src/import/cortona/vrml.js');
+  const { buildScene } = await import('../src/import/cortona/scene.js');
+  const src = `#VRML V2.0 utf8
+DEF PART_A Transform { translation 1 2 3 children [ Shape { appearance Appearance { material Material { diffuseColor 1 0 0 } }
+  geometry IndexedFaceSet { coord Coordinate { point [ 0 0 0, 1 0 0, 0 1 0 ] } coordIndex [ 0 1 2 -1 ] } } ] }
+USE PART_A
+Group { children [ USE PART_A, NULL ] }`;
+  const s = parseVrml(src);
+  let count = 0; walkNodes(s.nodes, () => { count++; });
+  assert.ok(count >= 3);
+  const g = buildScene(s);                                  // used to throw: Cannot read properties of undefined (reading 'translation')
+  assert.equal(g.roots.length, 3);
+  assert.ok(g.byDef.has('PART_A'));
+  assert.equal(g.meshCount, 1);                              // same geometry content, deduped
+});
+
 test('primitives: parametric geometry PROTOs produce closed meshes', async () => {
   const { buildPrimitive } = await import('../src/import/cortona/primitives.js');
   const f = (vals: Record<string, number[]>) => (name: string, fb: number[]) => vals[name] ?? fb;

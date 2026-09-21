@@ -57,8 +57,14 @@ export function buildScene(scene: VrmlScene): SceneGraph {
   let counter = 0; let meshCount = 0; let triangleCount = 0;
   const bbox = { min: [Infinity, Infinity, Infinity], max: [-Infinity, -Infinity, -Infinity] };
 
-  const resolve = (n: VrmlNode | VrmlUse): VrmlNode | null =>
-    'use' in n ? (scene.defs.get(n.use) ?? null) : n;
+  // A top-level `USE X` (the exporter does this for a re-used assembly in small
+  // publications) or an IS-bound reference resolves through the DEF table;
+  // anything that is not a real node with fields is skipped, not built.
+  const resolve = (n: VrmlNode | VrmlUse | null | undefined): VrmlNode | null => {
+    if (!n || typeof n !== 'object') return null;
+    if ('use' in n) return scene.defs.get(n.use) ?? null;
+    return 'fields' in n && n.fields ? n : null;
+  };
   const materialOwners = new Map<string, Set<string>>();
 
   function shapeMesh(shape: VrmlNode, ownerDef?: string): SceneMesh | null {
@@ -158,7 +164,7 @@ export function buildScene(scene: VrmlScene): SceneGraph {
   }
 
   const roots: SceneNode[] = [];
-  for (const n of scene.nodes) { const r = build(n, true); if (r) roots.push(r); }
+  for (const n of scene.nodes) { const rn = resolve(n); if (!rn) continue; const r = build(rn, true); if (r) roots.push(r); }
 
   // bbox over world-space positions — overall, and per DEF'd subtree (the
   // per-node bounds give each imported step its pin: the centroid of the

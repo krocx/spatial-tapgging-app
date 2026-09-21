@@ -7,6 +7,16 @@ it, it gets a line.
 ## 2026.4.46 — 2026-09-08
 
 ### Fixed
+- **Cortona3D import failed on some publications with "Cannot read
+  properties of undefined (reading 'translation')".** Small publications
+  re-use an assembly with a top-level `USE X` (and IS-bound children inside
+  PROTO bodies); the scene builder treated the reference as a node and read
+  its transform. References now resolve through the DEF table (or are
+  skipped), and every field reader tolerates a reference where a node was
+  expected. Regression test added.
+- **XR kit run crashed the live-session open** (`workContext.trim is not a
+  function`): the kit sent an object where the iPad sends a Production #.
+  The kit now sends a string and the server ignores non-string values.
 - **Catalogue reads for everyone.** Internal build-phase codes (C1/C2/C3,
   B1–B3, G1–G8, R1–R5, M1/M2…) are gone from every catalogue card and the
   specs it serves (Contextual Intelligence, Connected Worker, Gemba Walk,
