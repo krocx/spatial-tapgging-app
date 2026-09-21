@@ -246,7 +246,10 @@ it, it gets a line.
   standard — on every device, nothing to vendor) at the team library's
   scale, and an icon sprite that replaces
   every emoji (`npm run brand:icons`, 96 icons). `/brand` is the living
-  style guide rendered from that same CSS; `npm run brand:check` fails a
+  brand guidelines site — chapters with a tracking side nav (principles,
+  wordmark with do/don't, mark & motion, colour with contrast pairings,
+  typography, components in use, the AR surface, icons, voice, rules,
+  roadmap) rendered from that same CSS; `npm run brand:check` fails a
   governed page on any drift; `docs/BRAND.md` is the doctrine and
   `CLAUDE.md` states it for anyone generating pages in this repo. No
   existing page changed yet — portal and catalogue migrate next.
