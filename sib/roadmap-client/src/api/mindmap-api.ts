@@ -2,7 +2,7 @@
 // GET /config reports whether SIB_API_KEY is enforced; the key is kept in
 // localStorage and sent as X-API-Key on every request.
 
-import type { Mindmap, MindmapSummary, MindmapVersion, MindmapNode, MindmapEdge, MindmapLane, SaveMindmapRequest, ApiResponse, ProcedureCompileResult, ProcedureExportRequest, ProcedureExportResult, Model3D } from '@spatial/shared';
+import type { Mindmap, MindmapSummary, MindmapVersion, MindmapNode, MindmapEdge, MindmapLane, SaveMindmapRequest, ApiResponse, ProcedureCompileResult, ProcedureExportRequest, ProcedureExportResult, Model3D, Anchor, ChamberConfig } from '@spatial/shared';
 
 /**
  * Fetch a step image as an object URL. Needed because <img src> cannot carry
@@ -167,6 +167,9 @@ export const mindmapApi = {
 
   /** Global 3D model library (SIB /models) — for the step model picker. */
   listModels: () => request<Model3D[]>('/models'),
+  /** Chambers (anchors) + configurations — the send-to-Guide-Library target picker. */
+  listAnchors: () => request<Anchor[]>('/anchors'),
+  listChamberConfigs: () => request<ChamberConfig[]>('/chamber-configs'),
   /** 2026.4.46: part tree of a model's GLB (names + hierarchy) for the parts picker. */
   modelNodes: (id: string) => request<GlbPartTree>(`/models/${encodeURIComponent(id)}/nodes`),
 

@@ -475,8 +475,8 @@ input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 .pc-muted { color: #94a3b8; }
 .procedure-actions { margin-left: auto; display: flex; gap: 6px; align-items: center; }
 .pc-anchor {
-  font-size: 0.72rem; padding: 3px 7px; width: 150px;
-  border: 1px solid #cbd5e1; border-radius: 5px;
+  font-size: 0.72rem; padding: 3px 7px; max-width: 220px;
+  border: 1px solid #cbd5e1; border-radius: 5px; background: #fff;
 }
 .procedure-actions button {
   font-size: 0.72rem; padding: 4px 10px; border-radius: 5px;

@@ -9,11 +9,61 @@
 // happens on device. See docs/PROCEDURE-DESIGNER.md.
 
 import { useEffect, useState } from 'react';
-import type { Model3D } from '@spatial/shared';
+import type { Model3D, Anchor, ChamberConfig } from '@spatial/shared';
 import { useStore } from '../state/store.js';
 import { ROLE_COLORS } from '../canvas/EdgeView.js';
 import { mindmapApi } from '../api/mindmap-api.js';
 import { Icon } from './Icon.js';
+
+/**
+ * 2026.4.46: which chamber the procedure is sent to. A new map has no anchor,
+ * and nobody knows anchor ids by heart — list the chambers by name, grouped
+ * by configuration, and remember the last choice.
+ */
+function AnchorPicker({ value, onChange }: { value: string; onChange: (id: string) => void }): JSX.Element {
+  const [anchors, setAnchors] = useState<Anchor[] | null>(null);
+  const [configs, setConfigs] = useState<ChamberConfig[]>([]);
+  useEffect(() => {
+    let live = true;
+    Promise.all([mindmapApi.listAnchors(), mindmapApi.listChamberConfigs().catch(() => [] as ChamberConfig[])])
+      .then(([a, c]) => {
+        if (!live) return;
+        const chambers = a.filter(x => !x.anchorType || x.anchorType === 'QR')
+          .sort((x, y) => (x.assetId ?? '').localeCompare(y.assetId ?? '', undefined, { sensitivity: 'base' }));
+        setAnchors(chambers); setConfigs(c);
+        const last = localStorage.getItem('procedure-anchor');
+        if (!value && last && chambers.some(x => x.id === last)) onChange(last);
+      })
+      .catch(() => { if (live) setAnchors([]); });
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const cfgName = (id?: string) => configs.find(c => c.id === id);
+  const groups = new Map<string, Anchor[]>();
+  for (const a of anchors ?? []) {
+    const c = cfgName(a.configId);
+    const key = c ? `${c.code} · ${c.name}` : 'No configuration';
+    (groups.get(key) ?? groups.set(key, []).get(key)!).push(a);
+  }
+
+  return (
+    <select
+      className="pc-anchor"
+      value={value}
+      disabled={anchors === null}
+      onChange={e => { onChange(e.target.value); if (e.target.value) localStorage.setItem('procedure-anchor', e.target.value); }}
+      title="Which chamber this procedure belongs to — the guide is created on it"
+    >
+      <option value="">{anchors === null ? 'loading chambers…' : anchors.length ? 'Send to chamber…' : 'No chambers yet — create one in the portal'}</option>
+      {[...groups.entries()].map(([label, list]) => (
+        <optgroup key={label} label={label}>
+          {list.map(a => <option key={a.id} value={a.id}>{a.assetId || a.id.slice(0, 8)}</option>)}
+        </optgroup>
+      ))}
+    </select>
+  );
+}
 
 /**
  * 2026.4.46: the assembly this procedure builds up (or takes apart). Chosen
@@ -139,15 +189,7 @@ export function ProcedureBar(): JSX.Element | null {
         )}
 
         <span className="procedure-actions">
-          {!map.anchorId && (
-            <input
-              className="pc-anchor"
-              placeholder="Anchor id"
-              value={anchorId}
-              onChange={e => setAnchorId(e.target.value)}
-              title="Which anchor this procedure belongs to"
-            />
-          )}
+          {!map.anchorId && <AnchorPicker value={anchorId} onChange={setAnchorId} />}
           <button onClick={() => void validate()} disabled={busy}>Re-check</button>
           <button
             onClick={startPreview}
@@ -159,9 +201,9 @@ export function ProcedureBar(): JSX.Element | null {
             onClick={() => doSend(false)}
             disabled={!canSend}
             title={
-              procedure?.ok
-                ? 'Create or update a draft guide in the Guide Library'
-                : 'Fix the blocking problems first'
+              !procedure?.ok ? 'Fix the blocking problems first'
+              : !map.anchorId && !anchorId.trim() ? 'Choose the chamber to send it to first'
+              : 'Create or update a draft guide in the Guide Library'
             }
           >
             Send to Guide Library
