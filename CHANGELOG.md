@@ -273,6 +273,19 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **Insights** — the leadership view under AR Guides Sessions. Headline
+  tiles (runs, completion rate, typical run time, hints that helped, wrong
+  parts per run) each with a sparkline and a delta against the previous
+  period; runs-per-day bars with completions; the "hints that helped" line;
+  a per-guide table with typical / slowest-tenth times and the Intelligence
+  heat strip per step, linking to the hottest step. 7 / 30 / 90-day window,
+  configuration and guide filters, *Save as image* for decks. Own SVG, no
+  chart library. `GET /guide-sessions/insights` (`oms/insights.ts`, pure,
+  tested) derives everything from the usage log.
+- **Icons are identity.** Section tabs carry their icons; the brain marks
+  Intelligence everywhere and the four-point sparkle (the app's contextual
+  hint mark) sits on every hints column, tile and chart. Two sprite
+  additions: `sparkles`, `insights`.
 - **Portal home** — larger tiles with product-coloured icon tiles and
   stat chips (the same family as the SIB home doors and the Roadmap home);
   the registration mark no longer sits before the wordmark in the header.

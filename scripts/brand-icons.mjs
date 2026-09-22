@@ -29,6 +29,9 @@ if (mm) for (const x of mm[1].matchAll(/^\s*(?:'([^']+)'|([A-Za-z0-9_-]+))\s*:\s
 const UI = {
   chart:        'M4 20V10M10 20V4M16 20v-7M22 20H2',
   intelligence: 'M9 4a4 4 0 0 0-4 4v1a3 3 0 0 0 0 6v1a4 4 0 0 0 4 4h1V4H9zm6 0a4 4 0 0 1 4 4v1a3 3 0 0 1 0 6v1a4 4 0 0 1-4 4h-1V4h1zM10 9h4M10 15h4',
+  // Contextual hints — the same four-point sparkle the iPad app shows on its hint chip and the ✨ toggle.
+  sparkles:     'M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3zM5 17l.7 1.8L7.5 19.5l-1.8.7L5 22l-.7-1.8-1.8-.7 1.8-.7L5 17zM19 15l.6 1.4 1.4.6-1.4.6L19 19l-.6-1.4-1.4-.6 1.4-.6L19 15z',
+  insights:     'M4 19h16M6 15l4-5 3 3 5-7M17 6h1v1',
   xr:           'M3 9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-3l-2-2h-4l-2 2H5a2 2 0 0 1-2-2V9zM8 11.5h.01M16 11.5h.01',
   share:        'M16 5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM8 9.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zm8 4.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM10.2 11l3.6-2.1M10.2 13l3.6 2.1',
   move:         'M4 8h13l-3-3M20 16H7l3 3',
@@ -76,7 +79,7 @@ ${symbols}
 </svg>
 `;
 writeFileSync(join(ROOT, 'sib/portal/brand/icons.svg'), out);
-const UI_LABELS = { chart: 'Chart', intelligence: 'Intelligence', xr: 'XR kit', share: 'Share', move: 'Move', copy: 'Copy', 'copy-all': 'Copy to all', 'map-reset': 'Reset map',
+const UI_LABELS = { chart: 'Chart', intelligence: 'Intelligence', sparkles: 'Contextual hint', insights: 'Insights', xr: 'XR kit', share: 'Share', move: 'Move', copy: 'Copy', 'copy-all': 'Copy to all', 'map-reset': 'Reset map',
   download: 'Download', upload: 'Upload', refresh: 'Refresh', trash: 'Delete', edit: 'Edit', play: 'Preview', graph: 'Graph', steps: 'Steps', search: 'Search', muted: 'Muted',
   'lock-restricted': 'Restricted', unlock: 'Unlock', close: 'Close', chevron: 'Chevron', back: 'Back', next: 'Next', replay: 'Replay', external: 'Open', home: 'Home', compass: 'Compass',
   logs: 'Logs', backup: 'Backup', users: 'Users', config: 'Configuration', filter: 'Filter', info: 'Info', 'anchor-qr': 'Anchor QR', mark: 'Registration mark' };

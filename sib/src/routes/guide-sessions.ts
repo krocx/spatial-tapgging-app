@@ -25,7 +25,9 @@
 import { Router } from 'express';
 import { usageOpen, usageRecordEvent, usageLinkSignOff, listUsage, usageMarkEvidence } from '../oms/usage-log.js';
 import { ingestObservations, guideBaselines } from '../oms/observations.js';
-import { guideIntelligence, setIntelligenceStepLookup } from '../oms/intelligence.js';
+import { guideIntelligence, setIntelligenceStepLookup, readSamples } from '../oms/intelligence.js';
+import { computeInsights } from '../oms/insights.js';
+import { omsUsageStore } from '../oms/usage-log.js';
 import { guideStepStore } from './guides.js';
 import type { ObservationBatchRequest } from '@spatial/shared';
 import { buildUsageXlsx, buildSessionsXlsx } from '../oms/xlsx-lite.js';
@@ -365,6 +367,17 @@ router.get('/baselines/:guideId', (req: Request, res: Response): void => {
 setIntelligenceStepLookup(guideId => guideStepStore.findAll().filter(s => s.guideId === guideId));
 router.get('/intelligence/:guideId', (req: Request, res: Response): void => {
   res.json({ data: guideIntelligence(req.params.guideId, true), timestamp: new Date().toISOString() });
+});
+
+// GET /guide-sessions/insights?days=30&configId=&guideId= — the leadership
+// view: headline numbers with the previous period, runs per day, per-guide
+// times and heat. Pure aggregation over the usage log (oms/insights.ts).
+router.get('/insights', (req: Request, res: Response): void => {
+  const days = [7, 30, 90].includes(Number(req.query.days)) ? Number(req.query.days) : 30;
+  const configId = typeof req.query.configId === 'string' && req.query.configId ? req.query.configId : undefined;
+  const guideId  = typeof req.query.guideId === 'string' && req.query.guideId ? req.query.guideId : undefined;
+  const data = computeInsights(omsUsageStore.findAll(), gid => guideStepStore.findAll().filter(s => s.guideId === gid), readSamples, { days, configId, guideId });
+  res.json({ data, timestamp: new Date().toISOString() });
 });
 
 // GET /guide-sessions/usage/export.xlsx — Excel export with evidence photos

@@ -1559,6 +1559,36 @@ export interface StepIntelligence {
   notes:             string[];
 }
 
+// ── Insights (2026.4.46): the leadership view, derived from the usage log ────
+export interface InsightsHeadline {
+  runs:              number;
+  completed:         number;
+  completionRate:    number;    // 0–1
+  medianRunSec:      number;
+  p90RunSec:         number;
+  hintsShown:        number;
+  hintsHelped:       number;
+  hintEffectiveness: number;    // 0–1
+  wrongTapsPerRun:   number;
+  operators:         number;    // distinct people
+}
+export interface InsightsDay { date: string; runs: number; completed: number; hintsShown: number; hintsHelped: number; wrongTaps: number }
+export interface InsightsGuide {
+  guideId: string; name: string; configCode?: string;
+  runs: number; completed: number; medianRunSec: number; p90RunSec: number; wrongTapsPerRun: number;
+  /** Intelligence heat per step (0–100), in step order. */
+  heat: number[]; hottestStep?: number;
+}
+export interface GuideInsights {
+  period:      { days: number; from: string; until: string };
+  headline:    InsightsHeadline;
+  /** The same numbers for the period before — deltas are computed client-side. */
+  previous:    InsightsHeadline;
+  perDay:      InsightsDay[];
+  perGuide:    InsightsGuide[];
+  generatedAt: string;
+}
+
 export interface GuideIntelligence {
   guideId:     string;
   computedAt:  string;

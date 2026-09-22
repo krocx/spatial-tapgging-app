@@ -397,6 +397,32 @@
     /* Guide Library panel */
     #guide-library-panel { display:none; padding:20px 24px 56px; }
     #guide-library-panel.visible { display:block; }
+    /* Insights */
+    .ins-head { display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap; margin: 4px 0 6px; }
+    .ins-title { display:flex; align-items:center; gap:10px; font-size:1.4rem; font-weight:800; margin:0 0 4px; }
+    .ins-title .ax-icon { width:24px; height:24px; color: var(--ax-cyan); }
+    .ins-lede { margin:0; color:var(--muted); font-size:0.9rem; }
+    .ins-filters { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .ins-tiles { display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:14px; }
+    .ins-tile { padding:18px 20px 12px; border-top: 3px solid var(--ac, var(--ax-blue)); }
+    .ins-tile .ax-eyebrow { color: var(--ax-ink-2); }
+    .ins-value { font: 600 34px/40px var(--ax-mono); margin: 6px 0 2px; color: var(--text); }
+    .ins-sub { font-size: 0.8rem; color: var(--muted); min-height: 20px; }
+    .ins-spark { width:100%; height:32px; margin-top:8px; opacity:.9; }
+    .ins-delta { font-weight:700; } .ins-delta.good { color: var(--ax-green); } .ins-delta.bad { color: var(--ax-orange); } .ins-delta.neutral { color: var(--ax-ink-3); }
+    .ins-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap:16px; }
+    .ins-panel { padding: 18px 20px; }
+    .ins-panel-h { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:10px; font-size:0.98rem; }
+    .ins-panel-h b { display:flex; align-items:center; gap:8px; }
+    .ins-legend { font-size:0.78rem; color:var(--muted); display:flex; align-items:center; gap:6px; }
+    .ins-legend i { display:inline-block; width:10px; height:10px; border-radius:2px; margin-left:8px; }
+    .ins-chart { width:100%; height:auto; display:block; }
+    .ins-grid-line, .ins-grid { stroke: var(--ax-rule); stroke-width: 1; }
+    .ins-axis { fill: var(--ax-ink-3); font: 11px var(--ax-font); }
+    .ins-bar-a { fill: var(--ax-paper-3); }
+    .ins-foot { font-size:0.8rem; color:var(--muted); display:flex; gap:6px; align-items:center; margin-top:4px; }
+    .ins-link { color: var(--ax-cyan); text-decoration:none; display:inline-flex; align-items:center; gap:4px; }
+    .ax-select { background: var(--ax-paper); color: var(--text); border:1px solid var(--border); border-radius: var(--ax-r-field); padding: 6px 10px; font: var(--ax-body); }
     /* Intelligence: the engine line reads as quiet chips, never as a shout */
     .intel-engine { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:10px; }
     .intel-engine-k { font-size:0.8rem; color:var(--muted); margin-right:2px; }
@@ -887,6 +913,7 @@
   <div id="usage-log-view" class="sessions-list" style="display:none"></div>
   <!-- C3 (2026.4.46): Intelligence — per-step heat, hint effectiveness, what to fix -->
   <div id="intel-view" class="sessions-list" style="display:none"></div>
+  <div id="insights-view" class="sessions-list" style="display:none"></div>
 </div>
 
 <!-- Admin panel — dedicated ops page: unlock, backups, ops log -->
@@ -2471,14 +2498,14 @@ const SECTIONS = {
   'anchors':   { name: 'Anchors',              color: 'var(--ax-p-tags)' },
   'sessions':  { name: 'Inspection Sessions',  color: 'var(--ax-p-tags)' },
   'ar-guides': { name: 'AR Guides Sessions',   color: 'var(--ax-p-guides)',
-                 tabs: [['completions', 'Completions'], ['usage', ' Usage Log'], ['intelligence', ' Intelligence']], defaultSub: 'completions' },
+                 tabs: [['completions', 'Completions', 'check'], ['usage', 'Usage Log', 'logs'], ['intelligence', 'Intelligence', 'intelligence'], ['insights', 'Insights', 'insights']], defaultSub: 'completions' },
   'content':   { name: 'Content Library',      color: 'var(--ax-p-portal)',
-                 tabs: [['guides', 'Guide Library'], ['models', '3D Models']], defaultSub: 'guides' },
+                 tabs: [['guides', 'Guide Library', 'steps'], ['models', '3D Models', 'cube']], defaultSub: 'guides' },
   'iloto':     { name: 'iLOTO',                color: 'var(--ax-p-iloto)' },
   'gemba':     { name: 'GembaWalks',           color: 'var(--ax-p-gemba)',
-                 tabs: [['sessions', ' Walk Sessions'], ['walks', 'Findings by Area'], ['library', ' Audit Library']], defaultSub: 'sessions' },
+                 tabs: [['sessions', 'Walk Sessions', 'map'], ['walks', 'Findings by Area', 'pin'], ['library', 'Audit Library', 'book']], defaultSub: 'sessions' },
   'admin':     { name: 'Admin',                color: 'var(--ax-p-platform)',
-                 tabs: [['uam', ' User Access'], ['configs', ' Chamber Configs'], ['ops', ' Ops Log'], ['logs', ' Device Logs'], ['backup', ' Backups']], defaultSub: 'uam' },
+                 tabs: [['uam', 'User Access', 'users'], ['configs', 'Chamber Configs', 'chamber'], ['ops', 'Ops Log', 'logs'], ['logs', 'Device Logs', 'logs'], ['backup', 'Backups', 'backup']], defaultSub: 'uam' },
 };
 let portalAuthed = false;   // router renders nothing until enterPortal succeeds
 
@@ -2505,7 +2532,7 @@ function renderRoute() {
   sub = sub || def.defaultSub;
 
   // Section → internal panel
-  if (sec === 'ar-guides')    { switchView('ar-guides'); setUsageView(sub === 'usage'); setIntelView(sub === 'intelligence'); }
+  if (sec === 'ar-guides')    { switchView('ar-guides'); setUsageView(sub === 'usage'); setIntelView(sub === 'intelligence'); setInsightsView(sub === 'insights'); }
   else if (sec === 'content') { switchView(sub === 'models' ? 'models' : 'guide-library'); }
   else if (sec === 'admin')   { switchView('admin'); adminShowSub(sub); }
   else if (sec === 'gemba')   { switchView('gemba'); gembaShowSub(sub); }
@@ -2517,8 +2544,8 @@ function renderRoute() {
   const nameEl = document.getElementById('sb-name');
   nameEl.textContent = def.name;
   nameEl.style.color = def.color;
-  document.getElementById('sb-tabs').innerHTML = (def.tabs || []).map(([id, label]) =>
-    `<button class="sb-tab ${id === sub ? 'active' : ''}" onclick="location.hash='#${sec}/${id}'">${label}</button>` ).join('');
+  document.getElementById('sb-tabs').innerHTML = (def.tabs || []).map(([id, label, icon]) =>
+    `<button class="sb-tab ${id === sub ? 'active' : ''}" onclick="location.hash='#${sec}/${id}'">${icon ? `<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-${icon}"/></svg> ` : ''}${label}</button>` ).join('');
 }
 window.addEventListener('hashchange', renderRoute);
 
@@ -2765,6 +2792,137 @@ function setUsageView(showUsage) {
   if (usageLogVisible !== showUsage) toggleUsageLog();
 }
 
+
+// ── Insights: the leadership view ─────────────────────────────────────────────
+// Own SVG, no chart library: one accent per chart, a lot of air, and the same
+// tokens as everything else. Numbers come from GET /guide-sessions/insights.
+let insightsDays = Number(localStorage.getItem('sib_insights_days') || 30);
+let insightsConfig = '', insightsGuide = '';
+function setInsightsView(on) {
+  const v = document.getElementById('insights-view');
+  v.style.display = on ? '' : 'none';
+  if (on) {
+    document.getElementById('ar-guides-list').style.display = 'none';
+    document.getElementById('usage-log-view').style.display = 'none';
+    document.getElementById('intel-view').style.display = 'none';
+    loadInsights();
+  }
+}
+async function loadInsights() {
+  const v = document.getElementById('insights-view');
+  if (!v.dataset.ready) v.innerHTML = '<div class="empty-state"><span class="ax-mark"><i></i><em></em></span> Gathering the numbers…</div>';
+  try {
+    const qs = new URLSearchParams({ days: String(insightsDays) });
+    if (insightsConfig) qs.set('configId', insightsConfig);
+    if (insightsGuide) qs.set('guideId', insightsGuide);
+    const [ins, cfgs] = await Promise.all([apiFetch(`/guide-sessions/insights?${qs}`), apiFetch('/chamber-configs').catch(() => ({ data: [] }))]);
+    v.innerHTML = renderInsights(ins.data, cfgs.data || []); v.dataset.ready = '1';
+  } catch (e) { v.innerHTML = `<div class="empty-state">Could not load insights — ${esc(e.message)}</div>`; }
+}
+const fmtSec = s => !s ? '–' : s >= 3600 ? `${(s / 3600).toFixed(1)} h` : s >= 60 ? `${Math.round(s / 60)} min` : `${Math.round(s)} s`;
+const fmtPct = x => `${Math.round(x * 100)} %`;
+function delta(cur, prev, { invert = false, fmt = x => String(Math.round(x)) } = {}) {
+  if (!prev && !cur) return '';
+  if (!prev) return `<span class="ins-delta neutral">new</span>`;
+  const d = cur - prev; if (Math.abs(d) < 1e-9) return `<span class="ins-delta neutral">no change</span>`;
+  const good = invert ? d < 0 : d > 0;
+  return `<span class="ins-delta ${good ? 'good' : 'bad'}">${d > 0 ? '▲' : '▼'} ${fmt(Math.abs(d))} vs previous ${insightsDays} d</span>`;
+}
+/** Tiny line: values → polyline in a 120×32 box. */
+function sparkline(vals, color) {
+  const w = 120, h = 32, n = vals.length; if (!n) return '';
+  const max = Math.max(1, ...vals);
+  const pts = vals.map((v, i) => `${(i / Math.max(1, n - 1)) * w},${h - 2 - (v / max) * (h - 6)}`).join(' ');
+  return `<svg class="ins-spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+}
+/** Bars with an overlay: runs (quiet) and completed (accent) per day. */
+function barsChart(days, keyA, keyB, colorB) {
+  const w = 720, h = 180, padL = 34, padB = 26, padT = 10;
+  const n = days.length, iw = (w - padL) / n, bw = Math.max(2, iw * 0.62);
+  const max = Math.max(1, ...days.map(d => d[keyA]));
+  const y = v => padT + (h - padT - padB) * (1 - v / max);
+  const ticks = [0, Math.ceil(max / 2), max].filter((v, i, a) => a.indexOf(v) === i);
+  let g = `<svg class="ins-chart" viewBox="0 0 ${w} ${h}" role="img">`;
+  for (const t of ticks) g += `<line x1="${padL}" x2="${w}" y1="${y(t)}" y2="${y(t)}" class="ins-grid"/><text x="${padL - 6}" y="${y(t) + 4}" class="ins-axis" text-anchor="end">${t}</text>`;
+  days.forEach((d, i) => {
+    const x = padL + i * iw + (iw - bw) / 2;
+    g += `<rect x="${x}" y="${y(d[keyA])}" width="${bw}" height="${h - padB - y(d[keyA])}" rx="2" class="ins-bar-a"><title>${d.date} · ${d[keyA]} runs · ${d[keyB]} completed</title></rect>`;
+    g += `<rect x="${x}" y="${y(d[keyB])}" width="${bw}" height="${h - padB - y(d[keyB])}" rx="2" fill="${colorB}"/>`;
+    const every = n > 45 ? 7 : n > 10 ? 5 : 1;
+    if (i % every === 0 || i === n - 1) g += `<text x="${x + bw / 2}" y="${h - 8}" class="ins-axis" text-anchor="middle">${d.date.slice(5)}</text>`;
+  });
+  return g + '</svg>';
+}
+/** Line over days of a ratio (0–1); dots where there is data. */
+function ratioLine(days, num, den, color, label) {
+  const w = 720, h = 160, padL = 40, padB = 26, padT = 10;
+  const n = days.length, xs = i => padL + (i / Math.max(1, n - 1)) * (w - padL - 8);
+  const y = v => padT + (h - padT - padB) * (1 - v);
+  let g = `<svg class="ins-chart" viewBox="0 0 ${w} ${h}" role="img">`;
+  for (const t of [0, 0.5, 1]) g += `<line x1="${padL}" x2="${w}" y1="${y(t)}" y2="${y(t)}" class="ins-grid"/><text x="${padL - 6}" y="${y(t) + 4}" class="ins-axis" text-anchor="end">${Math.round(t * 100)} %</text>`;
+  const pts = []; let lastX = null;
+  days.forEach((d, i) => { if (d[den] > 0) { const p = [xs(i), y(d[num] / d[den])]; pts.push(p); g += `<circle cx="${p[0]}" cy="${p[1]}" r="3.5" fill="${color}"><title>${d.date} · ${d[num]} of ${d[den]} ${label}</title></circle>`; lastX = p[0]; } });
+  if (pts.length > 1) g += `<polyline points="${pts.map(p => p.join(',')).join(' ')}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>`;
+  if (!pts.length) g += `<text x="${(w + padL) / 2}" y="${h / 2}" class="ins-axis" text-anchor="middle">No ${label} in this period</text>`;
+  const every = n > 45 ? 7 : n > 10 ? 5 : 1;
+  days.forEach((d, i) => { if (i % every === 0 || i === n - 1) g += `<text x="${xs(i)}" y="${h - 8}" class="ins-axis" text-anchor="middle">${d.date.slice(5)}</text>`; });
+  return g + '</svg>';
+}
+function heatStrip(heat) {
+  if (!heat.length) return '<span class="ul-dim">no step data</span>';
+  return `<div class="ax-heat" style="height:28px;gap:2px;min-width:140px">${heat.map((h, i) => `<i class="${heatClass(h)}" title="Step ${i + 1} · heat ${h}" style="height:${Math.max(12, h)}%"></i>`).join('')}</div>`;
+}
+function renderInsights(d, configs) {
+  const H = d.headline, P = d.previous;
+  const pills = [7, 30, 90].map(n => `<button class="ax-chip ax-chip--text ax-chip--interactive ${n === insightsDays ? 'is-on' : ''}" onclick="insightsDays=${n};localStorage.setItem('sib_insights_days',${n});loadInsights()">${n} days</button>`).join('');
+  const cfgOpts = ['<option value="">All configurations</option>', ...configs.map(c => `<option value="${esc(c.id)}" ${c.id === insightsConfig ? 'selected' : ''}>${esc(c.code)} · ${esc(c.name || '')}</option>`)].join('');
+  const guideOpts = ['<option value="">All guides</option>', ...d.perGuide.map(g => `<option value="${esc(g.guideId)}" ${g.guideId === insightsGuide ? 'selected' : ''}>${esc(g.name)}</option>`)].join('');
+  const tile = (label, value, sub, spark, color) => `<div class="ax-card ins-tile" style="--ac:${color}"><div class="ax-eyebrow">${label}</div><div class="ins-value">${value}</div><div class="ins-sub">${sub}</div>${spark}</div>`;
+  const runsSpark = sparkline(d.perDay.map(x => x.runs), 'var(--ax-blue)');
+  const compSpark = sparkline(d.perDay.map(x => x.runs ? x.completed / x.runs : 0), 'var(--ax-green)');
+  const hintSpark = sparkline(d.perDay.map(x => x.hintsShown ? x.hintsHelped / x.hintsShown : 0), 'var(--ax-yellow)');
+  const wrongSpark = sparkline(d.perDay.map(x => x.runs ? x.wrongTaps / x.runs : 0), 'var(--ax-orange)');
+  return `
+  <div class="ins-head">
+    <div><h2 class="ins-title"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-insights"/></svg> Insights</h2>
+      <p class="ins-lede">How the guides are doing — every number here is derived from the same runs the Usage Log records.</p></div>
+    <div class="ins-filters">${pills}
+      <select class="ax-select" onchange="insightsConfig=this.value;loadInsights()">${cfgOpts}</select>
+      <select class="ax-select" onchange="insightsGuide=this.value;loadInsights()">${guideOpts}</select></div>
+  </div>
+  <div class="ins-tiles">
+    ${tile('Runs', H.runs, `${H.operators} ${H.operators === 1 ? 'person' : 'people'} · ${delta(H.runs, P.runs)}`, runsSpark, 'var(--ax-blue)')}
+    ${tile('Completed', fmtPct(H.completionRate), `${H.completed} of ${H.runs} · ${delta(H.completionRate, P.completionRate, { fmt: x => Math.round(x * 100) + ' pts' })}`, compSpark, 'var(--ax-green)')}
+    ${tile('Typical run', fmtSec(H.medianRunSec), `slowest tenth ${fmtSec(H.p90RunSec)} · ${delta(H.medianRunSec, P.medianRunSec, { invert: true, fmt: fmtSec })}`, sparkline(d.perDay.map(x => x.runs), 'var(--ax-cyan)'), 'var(--ax-cyan)')}
+    ${tile('<svg class="ax-icon" style="width:14px;height:14px;vertical-align:-2px;color:var(--ax-yellow)"><use href="/portal/brand/icons.svg#i-sparkles"/></svg> Hints that helped', H.hintsShown ? fmtPct(H.hintEffectiveness) : '–', `${H.hintsHelped} of ${H.hintsShown} shown · ${delta(H.hintEffectiveness, P.hintEffectiveness, { fmt: x => Math.round(x * 100) + ' pts' })}`, hintSpark, 'var(--ax-yellow)')}
+    ${tile('Wrong parts per run', H.wrongTapsPerRun.toFixed(1), `taps on parts not in the step · ${delta(H.wrongTapsPerRun, P.wrongTapsPerRun, { invert: true, fmt: x => x.toFixed(1) })}`, wrongSpark, 'var(--ax-orange)')}
+  </div>
+  <div class="ins-grid">
+    <div class="ax-card ins-panel"><div class="ins-panel-h"><b>Runs per day</b><span class="ins-legend"><i style="background:var(--ax-paper-3)"></i>started <i style="background:var(--ax-green)"></i>completed</span></div>${barsChart(d.perDay, 'runs', 'completed', 'var(--ax-green)')}</div>
+    <div class="ax-card ins-panel"><div class="ins-panel-h"><b><svg class="ax-icon" style="color:var(--ax-yellow)"><use href="/portal/brand/icons.svg#i-sparkles"/></svg> Hints that helped</b><span class="ins-legend">share of hints followed by the right action</span></div>${ratioLine(d.perDay, 'hintsHelped', 'hintsShown', 'var(--ax-yellow)', 'hints')}</div>
+  </div>
+  <div class="ax-card ins-panel">
+    <div class="ins-panel-h"><b><svg class="ax-icon" style="color:var(--ax-p-guides)"><use href="/portal/brand/icons.svg#i-intelligence"/></svg> Where people struggle</b><span class="ins-legend">per guide · heat by step, from Intelligence</span></div>
+    ${d.perGuide.length ? `<table class="ax-table"><tr><th>Guide</th><th class="ax-num">Runs</th><th class="ax-num">Completed</th><th class="ax-num">Typical</th><th class="ax-num">Slowest tenth</th><th class="ax-num">Wrong parts / run</th><th>Heat by step</th><th>Hottest</th></tr>
+      ${d.perGuide.map(g => `<tr><td><b>${esc(g.name)}</b>${g.configCode ? ` <span class="ax-chip ax-chip--product ax-chip--text" data-product="guides">${esc(g.configCode)}</span>` : ''}</td><td class="ax-num">${g.runs}</td><td class="ax-num">${fmtPct(g.runs ? g.completed / g.runs : 0)}</td><td class="ax-num">${fmtSec(g.medianRunSec)}</td><td class="ax-num">${fmtSec(g.p90RunSec)}</td><td class="ax-num">${g.wrongTapsPerRun.toFixed(1)}</td><td>${heatStrip(g.heat)}</td><td>${g.hottestStep ? `<a class="ins-link" href="#ar-guides/intelligence" onclick="intelGuideId='${esc(g.guideId)}'">Step ${g.hottestStep} →</a>` : '–'}</td></tr>`).join('')}
+    </table>` : '<div class="ax-empty"><span class="ax-mark"><i></i><em></em></span>No runs in this period.</div>'}
+  </div>
+  <div class="ins-foot">Generated ${new Date(d.generatedAt).toLocaleString()} · ${d.period.days}-day period · <a class="ins-link" href="#" onclick="exportInsightsPng();return false;"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Save as image</a></div>`;
+}
+/** Export the page as PNG for decks: renders the view's SVG/HTML through a canvas via foreignObject. */
+async function exportInsightsPng() {
+  const v = document.getElementById('insights-view');
+  const w = v.scrollWidth, h = v.scrollHeight;
+  const css = [...document.styleSheets].map(ss => { try { return [...ss.cssRules].map(r => r.cssText).join('\n'); } catch { return ''; } }).join('\n');
+  const html = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}"><foreignObject width="100%" height="100%"><div xmlns="http://www.w3.org/1999/xhtml" class="ax" style="background:var(--ax-bg);padding:16px;color:var(--ax-ink)"><style>${css}</style>${v.innerHTML}</div></foreignObject></svg>`;
+  const img = new Image(); img.onload = () => {
+    const c = document.createElement('canvas'); c.width = w * 2; c.height = h * 2; const ctx = c.getContext('2d'); ctx.scale(2, 2); ctx.drawImage(img, 0, 0);
+    const a = document.createElement('a'); a.download = `sib-insights-${new Date().toISOString().slice(0, 10)}.png`; a.href = c.toDataURL('image/png'); a.click();
+  };
+  img.onerror = () => toast('Could not render the image in this browser — use a screenshot.', 4000);
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(html);
+}
+
 // ── C3: Intelligence page ──────────────────────────────────────────────────────
 let intelGuideId = '';
 function setIntelView(on) {
@@ -2773,8 +2931,9 @@ function setIntelView(on) {
   if (on) {
     document.getElementById('ar-guides-list').style.display = 'none';
     document.getElementById('usage-log-view').style.display = 'none';
+    document.getElementById('insights-view').style.display = 'none';
     loadIntelligence();
-  } else {
+  } else if (document.getElementById('insights-view').style.display === 'none') {
     document.getElementById('ar-guides-list').style.display = usageLogVisible ? 'none' : '';
     document.getElementById('usage-log-view').style.display = usageLogVisible ? '' : 'none';
   }
@@ -2831,7 +2990,7 @@ function renderIntelligence(gi) {
     <div class="ax-tiles">
       <div class="ax-tile"><div class="ax-eyebrow">Runs seen</div><div class="ax-value">${gi.sessions}</div></div>
       <div class="ax-tile ${conf[1]}"><div class="ax-eyebrow">Baseline confidence</div><div class="ax-value" style="font:600 14px/28px var(--ax-font)">${conf[0]}</div></div>
-      <div class="ax-tile"><div class="ax-eyebrow">Retired hints</div><div class="ax-value">${gi.retiredHints}</div></div>
+      <div class="ax-tile"><div class="ax-eyebrow"><svg class="ax-icon" style="width:14px;height:14px;vertical-align:-2px;color:var(--ax-yellow)"><use href="/portal/brand/icons.svg#i-sparkles"/></svg> Retired hints</div><div class="ax-value">${gi.retiredHints}</div></div>
     </div>
     <p style="margin:14px 0 0;font-size:0.86rem;line-height:1.5;color:var(--muted)">Heat = where people struggle: left the step, failed validation, tapped the wrong part, stalled, looked away. Hints are scored by what happened after them; weak ones retire per step and come back when newer runs improve.</p>
   </div>`;
@@ -2841,7 +3000,7 @@ function renderIntelligence(gi) {
   <div style="display:flex;gap:3px;padding:6px 6px 0;margin-bottom:18px;font-size:12px;color:var(--muted)">${steps.map((s, i) => `<div style="flex:1;min-width:6px;text-align:center;overflow:hidden">${s.stepIndex ?? i + 1}</div>`).join('')}</div>`;
   const rows = steps.map((s, i) => {
     const hints = s.hints.length ? `<table class="ax-table" style="margin-top:14px">
-      <tr><th>Hint</th><th>Phrasing</th><th class="ax-num">Shown</th><th class="ax-num">Helped</th><th class="ax-num">Muted</th><th>Effectiveness</th></tr>
+      <tr><th><svg class="ax-icon" style="color:var(--ax-yellow)"><use href="/portal/brand/icons.svg#i-sparkles"/></svg> Hint</th><th>Phrasing</th><th class="ax-num">Shown</th><th class="ax-num">Helped</th><th class="ax-num">Muted</th><th>Effectiveness</th></tr>
       ${s.hints.map(h => `<tr style="${h.retired ? 'opacity:.7' : ''}"><td>${esc(h.signal)}${h.retired ? ` <span class="ax-chip ax-chip--warn" title="${esc(h.reason || '')}">retired</span>` : ''}</td><td>${h.via}</td><td class="ax-num">${h.shown}</td><td class="ax-num">${h.helped}</td><td class="ax-num">${h.muted}</td><td>${h.effectiveness === undefined ? '–' : `<span class="ax-bar ${h.effectiveness >= 0.5 ? 'ax-bar--ok' : h.effectiveness >= 0.3 ? 'ax-bar--warn' : 'ax-bar--bad'}" style="display:inline-block;width:70px;vertical-align:middle"><i style="width:${Math.round(h.effectiveness * 100)}%"></i></span> ${Math.round(h.effectiveness * 100)} %`}</td></tr>`).join('')}
     </table>` : '<div style="font-size:0.84rem;color:var(--muted);margin-top:14px">No automatic hints fired on this step yet.</div>';
     const notes = s.notes.length ? `<ul style="margin:14px 0 0;padding-left:20px;font-size:0.88rem;line-height:1.55;color:var(--ax-ink-2)">${s.notes.map(n => `<li style="margin:4px 0">${esc(n)}</li>`).join('')}</ul>` : '';
@@ -3577,7 +3736,7 @@ function renderUsageLog() {
         `<td>${hintsCell(e.hints)}</td>` +
         `<td class="ul-dim mono">${esc(e.stepId.slice(0, 8))}</td></tr>`).join('');
       html += `<tr id="${id}" class="ul-detail"><td></td><td colspan="10">` +
-        `<table class="usage-steps"><thead><tr><th class="num">#</th><th>Entered</th><th class="num">Time</th><th>Outcome</th><th>Validation</th><th>Evidence</th><th title="C1 observations: attention on target · wrong-part taps · replays · aligned seconds">Attention</th><th title="C2 hints fired on this visit">Hints</th><th>Step</th></tr></thead>` +
+        `<table class="usage-steps"><thead><tr><th class="num">#</th><th>Entered</th><th class="num">Time</th><th>Outcome</th><th>Validation</th><th>Evidence</th><th title="C1 observations: attention on target · wrong-part taps · replays · aligned seconds">Attention</th><th title="C2 hints fired on this visit"><svg class="ax-icon" style="color:var(--ax-yellow)"><use href="/portal/brand/icons.svg#i-sparkles"/></svg> Hints</th><th>Step</th></tr></thead>` +
         `<tbody>${stepRows || '<tr><td colspan="9" class="ul-dim">No step activity recorded</td></tr>'}</tbody></table></td></tr>`;
     }
   }
