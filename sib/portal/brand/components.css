@@ -127,17 +127,17 @@
 
 /* ── Tables — dense, hairline rows, numbers in mono and right-aligned ── */
 .ax-table { width: 100%; border-collapse: collapse; font: var(--ax-body); }
-.ax-table th { text-align: left; font: var(--ax-eyebrow); letter-spacing: var(--ax-tracking-eyebrow); text-transform: uppercase; color: var(--ax-ink-3); padding: 8px 10px; border-bottom: var(--ax-hair); }
-.ax-table td { padding: 8px 10px; border-bottom: var(--ax-hair-2); vertical-align: top; }
+.ax-table th { text-align: left; font: 600 13px/18px var(--ax-font); color: var(--ax-ink-2); padding: 10px 12px; border-bottom: var(--ax-hair); white-space: nowrap; }  /* sentence case — uppercase eyebrows are for section labels, never a row of headers */
+.ax-table td { padding: 11px 12px; border-bottom: var(--ax-hair-2); vertical-align: middle; }
 .ax-table tr:hover td { background: var(--ax-paper-2); }
 .ax-table tr.is-selected td { background: var(--ax-blue-fill); }
 .ax-table td.ax-num, .ax-table th.ax-num { text-align: right; font-variant-numeric: tabular-nums; }
 
 /* ── Stat tiles · bars · heat ── */
-.ax-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: var(--ax-s2); }
-.ax-tile { background: var(--ax-paper); border-radius: var(--ax-r-field); padding: 10px 12px; }
-.ax-tile .ax-eyebrow { font-size: 10px; }
-.ax-tile .ax-value { font: 500 22px/28px var(--ax-mono); }
+.ax-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--ax-s3); }
+.ax-tile { background: var(--ax-paper); border-radius: var(--ax-r-field); padding: 14px 16px; }
+.ax-tile .ax-eyebrow { font: var(--ax-label-s); letter-spacing: 0; text-transform: none; color: var(--ax-ink-2); }   /* the label is read, not shouted */
+.ax-tile .ax-value { font: 500 24px/30px var(--ax-mono); margin-top: 2px; }
 .ax-tile.is-bad .ax-value { color: var(--ax-red); } .ax-tile.is-warn .ax-value { color: var(--ax-orange); } .ax-tile.is-ok .ax-value { color: var(--ax-green); }
 .ax-bar { height: 6px; background: var(--ax-paper-3); border-radius: var(--ax-r-pill); position: relative; overflow: hidden; }
 .ax-bar > i { position: absolute; inset: 0 auto 0 0; background: var(--ax-blue); transition: width var(--ax-t-slow) var(--ax-ease); }

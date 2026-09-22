@@ -265,12 +265,12 @@
 
     /* ── AR OMS Usage Log (K2) — dense grouped table ── */
     .usage-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
-    .usage-table th { text-align: left; padding: 6px 8px; font-size: 0.68rem; text-transform: uppercase;
-      letter-spacing: 0.04em; color: var(--muted); border-bottom: 1px solid var(--border); white-space: nowrap; }
-    .usage-table td { padding: 5px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .usage-table th { text-align: left; padding: 10px 10px; font-size: 0.8rem; font-weight: 600; text-transform: none;
+      letter-spacing: 0; color: var(--ax-ink-2); border-bottom: 1px solid var(--border); white-space: nowrap; }
+    .usage-table td { padding: 10px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; line-height: 1.4; }
     .usage-table .num { text-align: right; font-variant-numeric: tabular-nums; }
-    .ul-group td { background: var(--ax-blue-fill); padding: 7px 8px; font-size: 0.8rem; }
-    .ul-group-meta { float: right; color: var(--muted); font-size: 0.72rem; }
+    .ul-group td { background: var(--ax-blue-fill); padding: 10px 12px; font-size: 0.9rem; }
+    .ul-group-meta { float: right; color: var(--muted); font-size: 0.8rem; }
     .ul-row { cursor: pointer; }
     .ul-row:hover td { background: var(--ax-paper-2); }
     .ul-caret { color: var(--muted); width: 18px; transition: transform 0.12s; }
@@ -278,13 +278,13 @@
     .ul-detail { display: none; }
     .ul-detail.open { display: table-row; }
     .ul-detail > td { background: var(--ax-scrim); padding: 8px 10px 12px; }
-    .usage-steps { width: 100%; border-collapse: collapse; font-size: 0.74rem; }
-    .usage-steps th { padding: 4px 8px; font-size: 0.64rem; }
-    .usage-steps td { padding: 3px 8px; border-bottom: 1px solid var(--ax-paper-2); }
+    .usage-steps { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+    .usage-steps th { padding: 8px 10px; font-size: 0.78rem; }
+    .usage-steps td { padding: 8px 10px; border-bottom: 1px solid var(--ax-paper-2); line-height: 1.4; }
     .ul-ok { color: var(--green, var(--ax-green)); }
     .ul-bad { color: var(--red, var(--ax-red)); }
     .ul-dim { color: var(--muted); }
-    .ul-val { font-weight: 700; font-size: 0.7rem; padding: 1px 7px; border-radius: var(--ax-r-pill); }
+    .ul-val { font-weight: 700; font-size: 0.76rem; padding: 3px 9px; border-radius: var(--ax-r-pill); }
     .ul-val.pass { background: var(--ax-ok-fill); color: var(--green, var(--ax-green)); }
     .ul-val.fail { background: var(--ax-bad-fill); color: var(--red, var(--ax-red)); }
     .mono { font-family: var(--ax-mono); }
@@ -336,8 +336,8 @@
     .iloto-table th { text-align: left; color: var(--muted); font-weight: 600;
       padding: 6px 8px; border-bottom: 1px solid var(--border); font-size: 0.72rem; }
     .iloto-table td { padding: 7px 8px; border-bottom: 1px solid var(--border); }
-    .sessions-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; max-width: 960px; margin-left: auto; margin-right: auto; }
-    .sessions-list { display: flex; flex-direction: column; gap: 12px; max-width: 960px; margin: 0 auto; }
+    .sessions-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; max-width: 1120px; margin-left: auto; margin-right: auto; }
+    .sessions-list { display: flex; flex-direction: column; gap: 16px; max-width: 1120px; margin: 0 auto; }
 
     /* Anchor groups */
     .anchor-group { background: var(--surface); border: 1px solid var(--border); border-radius: var(--ax-r); overflow: hidden; }
@@ -397,6 +397,11 @@
     /* Guide Library panel */
     #guide-library-panel { display:none; padding:20px 24px 56px; }
     #guide-library-panel.visible { display:block; }
+    /* Intelligence: the engine line reads as quiet chips, never as a shout */
+    .intel-engine { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:10px; }
+    .intel-engine-k { font-size:0.8rem; color:var(--muted); margin-right:2px; }
+    .intel-engine .ax-chip { background: var(--ax-paper-2); color: var(--ax-ink-2); font-size: 12px; }
+    .intel-engine .ax-chip--warn { background: var(--ax-warn-fill); color: var(--ax-orange); }
     /* Intelligence: "why this number" popover on the heat chip (hover / focus) */
     .heat-chip { position: relative; cursor: help; }
     .heat-pop { display: none; position: absolute; left: 0; top: calc(100% + 6px); z-index: 30; width: 360px; max-width: 80vw; padding: 12px 14px; background: var(--ax-solid); border: 1px solid var(--ax-rule); border-radius: var(--ax-r-field); text-transform: none; letter-spacing: 0; font: var(--ax-body); color: var(--text); text-align: left; white-space: normal; }
@@ -436,18 +441,18 @@
     .gl-step-unplaced { background:var(--ax-paper);  color:var(--ax-orange); }
     .gl-step-img      { background:var(--ax-blue-fill); color:var(--ax-indigo); }
     .gl-step-branch   { background:var(--ax-blue-fill);  color:var(--ax-indigo); }
-    .ag-anchor-group { max-width:960px;margin:0 auto 24px; }
-    .ag-anchor-hdr { font-size:0.8rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;padding:6px 0;border-bottom:1px solid var(--border);margin-bottom:12px; }
+    .ag-anchor-group { max-width:1120px;margin:0 auto 24px; }
+    .ag-anchor-hdr { font-size:0.95rem;font-weight:700;color:var(--text);padding:8px 0;border-bottom:1px solid var(--border);margin-bottom:12px;display:flex;align-items:center;gap:8px; }
     .ag-guide-group { margin-bottom:16px;border:1px solid var(--border);border-radius:10px;overflow:hidden; }
-    .ag-guide-hdr { background:var(--ax-paper-2);padding:10px 14px;font-size:0.82rem;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px; }
-    .ag-guide-badge { background:var(--accent);color:var(--ax-ink);font-size:0.65rem;font-weight:700;border-radius:10px;padding:2px 7px; }
+    .ag-guide-hdr { background:var(--ax-paper-2);padding:12px 16px;font-size:0.92rem;font-weight:600;color:var(--text);display:flex;align-items:center;gap:10px; }
+    .ag-guide-badge { background:var(--ax-blue-fill);color:var(--ax-cyan);font-size:0.74rem;font-weight:700;border-radius:var(--ax-r-pill);padding:3px 9px; }
     .ag-session-row { border-top:1px solid var(--border);padding:10px 14px;cursor:pointer;transition:background 0.12s; }
     .ag-session-row:hover { background:var(--ax-paper-2); }
-    .ag-session-meta { display:flex;align-items:center;gap:10px;font-size:0.78rem; }
+    .ag-session-meta { display:flex;align-items:center;gap:12px;font-size:0.88rem; }
     .ag-operator { font-weight:600;color:var(--text); }
     .ag-date { color:var(--muted); }
     .ag-dur { color:var(--muted);margin-left:auto; }
-    .ag-steps-badge { font-size:0.68rem;font-weight:700;padding:2px 7px;border-radius:8px; }
+    .ag-steps-badge { font-size:0.74rem;font-weight:700;padding:3px 9px;border-radius:var(--ax-r-pill); }
     .ag-steps-full { background:var(--ax-ok-fill);color:var(--ax-green); }
     .ag-steps-part { background:var(--ax-warn-fill);color:var(--ax-yellow); }
     .ag-detail { display:none;background:var(--ax-paper-2);border-top:1px solid var(--border);padding:10px 14px; }
@@ -560,7 +565,7 @@
     #admin-btn.unlocked { color:var(--ax-green); }
 
     /* ── Pilot filters ────────────────────────────────────────────────────── */
-    .filter-bar { display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:8px auto 0;max-width:960px; }
+    .filter-bar { display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:8px auto 0;max-width:1120px; }
     .filter-bar input[type="search"], .filter-bar input[type="date"], .filter-bar select {
       background:var(--surface);border:1px solid var(--border);border-radius:8px;
       color:var(--text);font-size:0.75rem;padding:6px 9px; }
@@ -2828,28 +2833,28 @@ function renderIntelligence(gi) {
       <div class="ax-tile ${conf[1]}"><div class="ax-eyebrow">Baseline confidence</div><div class="ax-value" style="font:600 14px/28px var(--ax-font)">${conf[0]}</div></div>
       <div class="ax-tile"><div class="ax-eyebrow">Retired hints</div><div class="ax-value">${gi.retiredHints}</div></div>
     </div>
-    <p style="margin:10px 0 0;font-size:0.76rem;color:var(--muted)">Heat = where people struggle: left the step, failed validation, tapped the wrong part, stalled, looked away. Hints are scored by what happened after them; weak ones retire per step and come back when newer runs improve.</p>
+    <p style="margin:14px 0 0;font-size:0.86rem;line-height:1.5;color:var(--muted)">Heat = where people struggle: left the step, failed validation, tapped the wrong part, stalled, looked away. Hints are scored by what happened after them; weak ones retire per step and come back when newer runs improve.</p>
   </div>`;
   const steps = gi.steps;
   if (!steps.length) return head + '<div class="ax-empty"><span class="ax-mark"><i></i><em></em></span>No step data yet.</div>';
-  const strip = `<div class="ax-heat" style="margin:0 0 6px;padding:0 4px">${steps.map((s, i) => `<i class="${heatClass(s.heat)}" title="Step ${s.stepIndex ?? i + 1}: heat ${s.heat}${s.visits < HEAT_MIN_VISITS ? ' (provisional — ' + s.visits + ' visits)' : ''}" onclick="document.getElementById('intel-step-${i}').scrollIntoView({behavior:'smooth',block:'center'})" style="height:${Math.max(6, s.heat)}%;opacity:${!s.visits ? 0.3 : s.visits < HEAT_MIN_VISITS ? 0.5 : 1}${s.visits && s.visits < HEAT_MIN_VISITS ? ';background:var(--ax-ink-4)' : ''}"></i>`).join('')}</div>
-  <div style="display:flex;gap:3px;padding:0 4px;margin-bottom:14px;font:var(--ax-eyebrow);color:var(--muted)">${steps.map((s, i) => `<div style="flex:1;min-width:6px;text-align:center;overflow:hidden">${s.stepIndex ?? i + 1}</div>`).join('')}</div>`;
+  const strip = `<div class="ax-heat" style="margin:0 0 6px;padding:8px 6px 0;height:72px;border-bottom:1px solid var(--ax-rule)">${steps.map((s, i) => `<i class="${heatClass(s.heat)}" title="Step ${s.stepIndex ?? i + 1}: heat ${s.heat}${s.visits < HEAT_MIN_VISITS ? ' (provisional — ' + s.visits + ' visits)' : ''}" onclick="document.getElementById('intel-step-${i}').scrollIntoView({behavior:'smooth',block:'center'})" style="height:${Math.max(6, s.heat)}%;opacity:${!s.visits ? 0.3 : s.visits < HEAT_MIN_VISITS ? 0.5 : 1}${s.visits && s.visits < HEAT_MIN_VISITS ? ';background:var(--ax-ink-4)' : ''}"></i>`).join('')}</div>
+  <div style="display:flex;gap:3px;padding:6px 6px 0;margin-bottom:18px;font-size:12px;color:var(--muted)">${steps.map((s, i) => `<div style="flex:1;min-width:6px;text-align:center;overflow:hidden">${s.stepIndex ?? i + 1}</div>`).join('')}</div>`;
   const rows = steps.map((s, i) => {
-    const hints = s.hints.length ? `<table class="ax-table" style="margin-top:8px;font-size:0.74rem">
+    const hints = s.hints.length ? `<table class="ax-table" style="margin-top:14px">
       <tr><th>Hint</th><th>Phrasing</th><th class="ax-num">Shown</th><th class="ax-num">Helped</th><th class="ax-num">Muted</th><th>Effectiveness</th></tr>
       ${s.hints.map(h => `<tr style="${h.retired ? 'opacity:.7' : ''}"><td>${esc(h.signal)}${h.retired ? ` <span class="ax-chip ax-chip--warn" title="${esc(h.reason || '')}">retired</span>` : ''}</td><td>${h.via}</td><td class="ax-num">${h.shown}</td><td class="ax-num">${h.helped}</td><td class="ax-num">${h.muted}</td><td>${h.effectiveness === undefined ? '–' : `<span class="ax-bar ${h.effectiveness >= 0.5 ? 'ax-bar--ok' : h.effectiveness >= 0.3 ? 'ax-bar--warn' : 'ax-bar--bad'}" style="display:inline-block;width:70px;vertical-align:middle"><i style="width:${Math.round(h.effectiveness * 100)}%"></i></span> ${Math.round(h.effectiveness * 100)} %`}</td></tr>`).join('')}
-    </table>` : '<div style="font-size:0.72rem;color:var(--muted);margin-top:8px">No automatic hints fired on this step yet.</div>';
-    const notes = s.notes.length ? `<ul style="margin:8px 0 0;padding-left:18px;font-size:0.76rem">${s.notes.map(n => `<li style="margin:2px 0">${esc(n)}</li>`).join('')}</ul>` : '';
+    </table>` : '<div style="font-size:0.84rem;color:var(--muted);margin-top:14px">No automatic hints fired on this step yet.</div>';
+    const notes = s.notes.length ? `<ul style="margin:14px 0 0;padding-left:20px;font-size:0.88rem;line-height:1.55;color:var(--ax-ink-2)">${s.notes.map(n => `<li style="margin:4px 0">${esc(n)}</li>`).join('')}</ul>` : '';
     const rate = v => v === undefined ? '' : v >= 0.4 ? 'is-bad' : v >= 0.2 ? 'is-warn' : '';
-    return `<div id="intel-step-${i}" class="ax-card" style="padding:12px 16px;margin-bottom:8px;border-left:3px solid ${s.visits < HEAT_MIN_VISITS ? 'var(--ax-ink-4)' : heatEdge(s.heat)}">
-      <div class="ax-row" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-        <b style="font-size:0.86rem">Step ${s.stepIndex ?? i + 1}${s.title ? ` · ${esc(s.title)}` : ''}</b>
+    return `<div id="intel-step-${i}" class="ax-card" style="padding:18px 20px;margin-bottom:16px;border-left:3px solid ${s.visits < HEAT_MIN_VISITS ? 'var(--ax-ink-4)' : heatEdge(s.heat)}">
+      <div class="ax-row" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <b style="font-size:1rem">Step ${s.stepIndex ?? i + 1}${s.title ? ` · ${esc(s.title)}` : ''}</b>
         <span class="ax-chip ${s.visits < HEAT_MIN_VISITS ? '' : heatChip(s.heat)} heat-chip" tabindex="0" style="${s.visits < HEAT_MIN_VISITS ? 'background:var(--ax-paper-3);color:var(--ax-ink-3);border:1px dashed var(--ax-rule)' : ''}" title="${s.visits < HEAT_MIN_VISITS ? 'Provisional — fewer than ' + HEAT_MIN_VISITS + ' visits' : 'How is this number calculated?'}">heat ${s.heat}${s.visits < HEAT_MIN_VISITS ? ' · provisional' : ''}<svg class="ax-icon" style="width:12px;height:12px;margin-left:4px"><use href="/portal/brand/icons.svg#i-info"/></svg>${heatPopover(s)}</span>
-        <span style="font-size:0.72rem;color:var(--muted)">${s.visits} completed visit${s.visits === 1 ? '' : 's'}${s.dwellSec ? ` · typical ${Math.round(s.dwellSec.p50)} s · slowest tenth ${Math.round(s.dwellSec.p90)} s` : ''}</span>
+        <span style="font-size:0.84rem;color:var(--muted)">${s.visits} completed visit${s.visits === 1 ? '' : 's'}${s.dwellSec ? ` · typical ${Math.round(s.dwellSec.p50)} s · slowest tenth ${Math.round(s.dwellSec.p90)} s` : ''}</span>
       </div>
-      ${s.triggers ? `<div style="margin-top:6px;font:var(--ax-eyebrow);letter-spacing:var(--ax-tracking-eyebrow);text-transform:uppercase;color:var(--ax-ink-3)" title="What the engine needs on this step right now: floors, tightened by the baseline where it is stricter">Engine · ${s.triggers.mode === 'demo' ? '<span style="color:var(--ax-orange)">demo</span> · ' : ''}wrong part at ${s.triggers.wrongTaps} taps · attention under ${s.triggers.attentionBelowPct} % · look-away after ${s.triggers.lookAwayAfterSec} s${s.triggers.dwellAfterSec ? ` · dwell after ${s.triggers.dwellAfterSec} s` : ''}</div>` : ''}
-      <div class="ax-tiles" style="margin-top:8px">
-        ${[['Left / failed', s.leftRate], ['Validation fail', s.validationFailRate], ['Wrong part', s.wrongPartRate], ['Stalled', s.stallRate], ['Attention off', s.attentionOffRate], ['Never at viewpoint', s.lookAwayRate]].map(([l, v]) => `<div class="ax-tile ${rate(v)}" style="background:var(--ax-paper-2)"><div class="ax-eyebrow">${l}</div><div class="ax-value" style="font-size:16px;line-height:22px">${pctCell(v)}</div></div>`).join('')}
+      ${s.triggers ? `<div class="intel-engine" title="What the engine needs on this step right now: floors, tightened by the baseline where it is stricter"><span class="intel-engine-k">Fires at</span>${s.triggers.mode === 'demo' ? '<span class="ax-chip ax-chip--warn ax-chip--text">demo mode</span>' : ''}<span class="ax-chip ax-chip--text">${s.triggers.wrongTaps} wrong taps</span><span class="ax-chip ax-chip--text">attention under ${s.triggers.attentionBelowPct} %</span><span class="ax-chip ax-chip--text">look-away after ${Math.round(s.triggers.lookAwayAfterSec)} s</span>${s.triggers.dwellAfterSec ? `<span class="ax-chip ax-chip--text">dwell after ${Math.round(s.triggers.dwellAfterSec)} s</span>` : ''}</div>` : ''}
+      <div class="ax-tiles" style="margin-top:14px">
+        ${[['Left or failed', s.leftRate], ['Validation failed', s.validationFailRate], ['Wrong part tapped', s.wrongPartRate], ['Stalled', s.stallRate], ['Attention off', s.attentionOffRate], ['Never at viewpoint', s.lookAwayRate]].map(([l, v]) => `<div class="ax-tile ${rate(v)}" style="background:var(--ax-paper-2)"><div class="ax-eyebrow">${l}</div><div class="ax-value" style="font-size:20px;line-height:26px">${pctCell(v)}</div></div>`).join('')}
       </div>
       ${hints}${notes}
     </div>`;
