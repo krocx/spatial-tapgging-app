@@ -7,6 +7,22 @@ it, it gets a line.
 ## 2026.4.46 — 2026-09-08
 
 ### Fixed
+- **XR kit — model drift on Android.** The kit never pinned three.js's
+  reference space, so the camera rendered in `local-floor` while hit-test
+  poses were taken in `local`; ARCore keeps re-estimating the floor, so the
+  two spaces moved apart during a session and the placed assembly slid.
+  Both now use `local` (as the three.js hit-test sample does), and the
+  placement is attached to an `XRAnchor` (hit-test or image-tracking) that
+  the assembly follows every frame, so map corrections move the model with
+  the world instead of away from it.
+- **Portal on Windows.** Modals, panels, popovers and the tour card were on
+  8 %-white paper — see-through over the page. Everything that floats is
+  now opaque (`--ax-solid`); native controls follow the dark scheme
+  (`color-scheme: dark`, so `<select>` popups and date pickers stop
+  rendering white); paragraphs no longer inherit the prose measure, which
+  had pushed the home subtitle off-centre.
+- **Completion log** orders anchors and guides by their most recent
+  session, newest first, like the Usage Log and Intelligence.
 - **Contextual intelligence — it now fires when it should.** Signals were
   purely baseline-relative, so a fresh guide (or one whose baseline was a
   tester's own wrong taps) never coached: the wrong-part cap was the past
@@ -257,6 +273,9 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **Portal home** — larger tiles with product-coloured icon tiles and
+  stat chips (the same family as the SIB home doors and the Roadmap home);
+  the registration mark no longer sits before the wordmark in the header.
 - **Demo / training mode per guide.** `Guide.ciMode = 'demo'` (Guide Library
   → *Demo* button; `PATCH /guides/:id { ciMode }`): floors only, no
   baselines, no retirement — every run coaches the same way. Intelligence

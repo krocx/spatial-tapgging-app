@@ -329,12 +329,13 @@ function placeFromQR(imagePose) {
   // chamber configuration; a tap-placed pose lives in the guide world map, so
   // the QR confirms identity and we still tap-place the model.
   const pose = guide.assembly?.pose;
-  if (!pose || pose.source !== 'config') { $('framePill').textContent = 'QR seen · tap to place'; $('framePill').className = 'pill ok'; return; }
+  if (!pose || pose.source !== 'config') { $('framePill').textContent = 'QR seen · tap to place'; $('framePill').className = 'pill ok'; return false; }
   const m = new THREE.Matrix4().fromArray(imagePose.transform.matrix);
   const local = new THREE.Matrix4().compose(new THREE.Vector3(...pose.position), new THREE.Quaternion(...pose.rotation), new THREE.Vector3().setScalar(pose.scale ?? 1));
   m.multiply(local).decompose(assembly.position, assembly.quaternion, assembly.scale);
   assembly.visible = true; placed = true; frameKind = 'qr';
   $('framePill').textContent = 'anchored on QR'; $('framePill').className = 'pill ok'; $('btnLock').disabled = false;
+  return true;
 }
 
 // ── Session ──────────────────────────────────────────────────────────────────
@@ -470,9 +471,36 @@ setInterval(pollHints, 4000);
 
 // ── XR session ───────────────────────────────────────────────────────────────
 let xrSession = null, hitTestSource = null, refSpace = null, qrBitmap = null;
+// Drift fix: the assembly is attached to an XRAnchor (like the WebXR samples),
+// not to a one-off pose in 'local' space. ARCore keeps refining its map after
+// placement; a bare pose stays where the map WAS, an anchor moves with the
+// world. `anchorOffset` = assembly pose expressed in the anchor's frame.
+let worldAnchor = null, anchorOffset = null, lastHit = null;
+async function attachAnchor(makeAnchor) {
+  if (!makeAnchor) return;
+  try {
+    const a = await makeAnchor();
+    if (!a) return;
+    if (worldAnchor?.delete) { try { worldAnchor.delete(); } catch {} }
+    worldAnchor = a; anchorOffset = null;   // computed on the first frame that has the anchor's pose
+    $('framePill').textContent += ' · anchored';
+  } catch (e) { console.warn('[xr] anchor unavailable — falling back to a fixed pose', e); }
+}
+function followAnchor(frame) {
+  if (!worldAnchor || !placed) return;
+  const pose = frame.getPose(worldAnchor.anchorSpace, refSpace); if (!pose) return;
+  const am = new THREE.Matrix4().fromArray(pose.transform.matrix);
+  if (!anchorOffset) { anchorOffset = new THREE.Matrix4().copy(am).invert().multiply(assembly.matrix); return; }
+  new THREE.Matrix4().multiplyMatrices(am, anchorOffset).decompose(assembly.position, assembly.quaternion, assembly.scale);
+}
 async function startAR() {
   localStorage.setItem('sib_xr_operator', opName());
-  const opt = { requiredFeatures: ['hit-test'], optionalFeatures: ['dom-overlay', 'local-floor'], domOverlay: { root: $('overlay') } };
+  // One reference space for everything. three.js defaults the camera to
+  // 'local-floor'; our hit-test poses were in 'local' — ARCore re-estimates the
+  // floor while you work, so the two drifted apart and the model slid. The
+  // three.js hit-test sample pins 'local' for both; so do we.
+  renderer.xr.setReferenceSpaceType('local');
+  const opt = { requiredFeatures: ['hit-test'], optionalFeatures: ['dom-overlay', 'anchors'], domOverlay: { root: $('overlay') } };
   const qr = bundle.anchor?.frames?.qr;
   if (qr?.available && qr.markerSizeM && bundle.anchor?.id) {
     try {
@@ -485,11 +513,18 @@ async function startAR() {
   try { xrSession = await navigator.xr.requestSession('immersive-ar', opt); }
   catch (e) { toast('AR session refused: ' + e.message, 4000); return; }
   await renderer.xr.setSession(xrSession);
-  refSpace = await xrSession.requestReferenceSpace('local');
+  refSpace = renderer.xr.getReferenceSpace() || await xrSession.requestReferenceSpace('local');
   const viewer = await xrSession.requestReferenceSpace('viewer');
   hitTestSource = await xrSession.requestHitTestSource({ space: viewer });
-  xrSession.addEventListener('end', () => { xrSession = null; hitTestSource = null; $('overlay').classList.add('hidden'); $('gate').classList.remove('hidden'); });
-  xrSession.addEventListener('select', () => { if (!locked && reticle.visible) { placeAt(reticle.matrix); observeInteraction('realign'); } });
+  xrSession.addEventListener('end', () => { xrSession = null; hitTestSource = null; worldAnchor = null; anchorOffset = null; lastHit = null; $('overlay').classList.add('hidden'); $('gate').classList.remove('hidden'); });
+  xrSession.addEventListener('select', () => {
+    if (!locked && reticle.visible) {
+      placeAt(reticle.matrix); observeInteraction('realign');
+      assembly.updateMatrix();
+      const hit = lastHit;
+      attachAnchor(hit?.createAnchor ? () => hit.createAnchor() : (frameRef?.createAnchor ? () => frameRef.createAnchor(new XRRigidTransform(assembly.position, assembly.quaternion), refSpace) : null));
+    }
+  });
   enterSession('ar');
 }
 function startDesktop() {
@@ -537,18 +572,24 @@ function lockPlacement() {
   showStep(0);
 }
 
+let frameRef = null;
 renderer.setAnimationLoop((t, frame) => {
   stepTweens(performance.now());
   if (frame && xrSession && hitTestSource) {
+    frameRef = frame;
     if (!locked) {
       const hits = frame.getHitTestResults(hitTestSource);
-      if (hits.length) { const pose = hits[0].getPose(refSpace); reticle.visible = true; reticle.matrix.fromArray(pose.transform.matrix); } else reticle.visible = false;
+      if (hits.length) { const pose = hits[0].getPose(refSpace); reticle.visible = true; reticle.matrix.fromArray(pose.transform.matrix); lastHit = hits[0]; } else { reticle.visible = false; lastHit = null; }
     }
     if (qrBitmap && !locked && frame.getImageTrackingResults) {
       for (const r of frame.getImageTrackingResults()) {
-        if (r.trackingState === 'tracked') { const pose = frame.getPose(r.imageSpace, refSpace); if (pose) placeFromQR(pose); }
+        if (r.trackingState === 'tracked') {
+          const pose = frame.getPose(r.imageSpace, refSpace);
+          if (pose && placeFromQR(pose) && !worldAnchor && frame.createAnchor) { assembly.updateMatrix(); attachAnchor(() => frame.createAnchor(pose.transform, refSpace)); }
+        }
       }
     }
+    followAnchor(frame);
   }
   renderer.render(scene, camera);
 });

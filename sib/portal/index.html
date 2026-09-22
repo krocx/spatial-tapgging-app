@@ -117,7 +117,14 @@
     /* ── Modal ── */
     .overlay { display: none; position: fixed; inset: 0; background: var(--ax-scrim); z-index: 100; align-items: center; justify-content: center; padding: 24px; }
     .overlay.open { display: flex; }
-    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--ax-r); padding: 24px; width: 100%; max-width: 440px; }
+    .modal { background: var(--ax-solid); border: 1px solid var(--border); border-radius: var(--ax-r); padding: 24px; width: 100%; max-width: 440px; }
+    /* Anything that floats over other content is OPAQUE (the app's sheets are). 8 %-white paper
+       is for cards on the page, never for a modal, menu, panel or popover. */
+    .overlay > *, [id$="-modal"] > div:first-child, #gs-panel, #tour-card, .heat-pop { background: var(--ax-solid) !important; }
+    /* Native controls follow the dark scheme (select popups, date pickers, scrollbars on Windows). */
+    html { color-scheme: dark; }
+    /* An app, not an article: paragraphs span their container. */
+    .ax p { max-width: none; }
     .modal h2 { font-size: 1rem; margin-bottom: 16px; }
     .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
 
@@ -210,21 +217,26 @@
     #portal-home.visible { display:block; }
     .ph-hero { text-align:center; margin: 26px 0 10px; }
     .ph-hero h2 { font-size: clamp(21px, 3vw, 30px); font-weight:800; margin:0 0 6px; color:var(--text); }
-    .ph-hero p { color: var(--muted); font-size: 0.85rem; margin:0; }
-    .ph-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap:16px;
-               max-width:1180px; margin: 20px auto 0; }
-    .ph-tile { border-radius:18px; padding: 18px 20px 14px; cursor:pointer;
+    .ph-hero p { color: var(--muted); font-size: 0.85rem; margin:0 auto; }
+    .ph-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:18px;
+               max-width:1280px; margin: 26px auto 0; }
+    .ph-tile { border-radius:18px; padding: 24px 24px 20px; cursor:pointer; min-height: 200px;
                background: var(--ax-paper); border: 2px solid var(--border);
                transition: transform var(--ax-t) var(--ax-ease), background var(--ax-t) var(--ax-ease), border-color var(--ax-t) var(--ax-ease); }
     .ph-tile:hover { transform: translateY(-3px); }
-    .ph-ico { font-size: 28px; } .ph-ico .ax-icon { width: 28px; height: 28px; }
-    .ph-tile h3 { margin: 6px 0 2px; font-size: 1.02rem; font-weight: 800; color: var(--text); }
-    .ph-sub { font-size: 0.74rem; color: var(--muted); line-height: 1.45; }
+    /* the product colour lives on the icon tile — same family as the SIB home doors */
+    .ph-ico { width: 48px; height: 48px; border-radius: var(--ax-r-field); display:flex; align-items:center; justify-content:center;
+              background: color-mix(in srgb, var(--pc, var(--ax-blue)) 18%, transparent); color: var(--pc, var(--ax-blue)); margin-bottom: 8px; }
+    .ph-ico .ax-icon { width: 26px; height: 26px; }
+    .t-anchors, .t-inspect { --pc: var(--ax-p-tags); } .t-arguides { --pc: var(--ax-p-guides); } .t-content { --pc: var(--ax-p-portal); }
+    .t-iloto { --pc: var(--ax-p-iloto); } .t-gemba { --pc: var(--ax-p-gemba); } .t-admin { --pc: var(--ax-p-platform); }
+    .ph-tile h3 { margin: 6px 0 4px; font-size: 1.2rem; font-weight: 800; color: var(--text); }
+    .ph-sub { font-size: 0.84rem; color: var(--muted); line-height: 1.5; }
     .ph-stats { margin-top: 10px; display:flex; gap:8px; flex-wrap:wrap; min-height: 22px; }
-    .ph-stat { font-size: 0.7rem; font-weight: 700; border-radius: 999px; padding: 3px 10px;
-               background: var(--ax-paper); color: var(--text); font-variant-numeric: tabular-nums; }
+    .ph-stat { font-size: 0.76rem; font-weight: 700; border-radius: 999px; padding: 4px 11px;
+               background: color-mix(in srgb, var(--pc, var(--ax-blue)) 14%, transparent); color: var(--text); font-variant-numeric: tabular-nums; }
     .ph-subnav { margin-top: 9px; display:flex; gap:6px; flex-wrap:wrap; }
-    .ph-chip { font-size: 0.68rem; font-weight: 700; padding: 3px 10px; border-radius: 8px;
+    .ph-chip { font-size: 0.74rem; font-weight: 700; padding: 4px 11px; border-radius: 8px;
                background: var(--ax-paper); color: var(--text); }
     .ph-chip:hover { background: var(--ax-paper-3); }
     /* product colours: the same as the app's doors — a stroke, never a glow */
@@ -600,7 +612,6 @@
 
 <header>
   <div class="logo">
-    <span class="ax-mark" style="font-size:22px" aria-hidden="true"><i></i><em></em></span>
     <h1><span data-ax-wordmark></span> <span>· Portal</span> <span id="platform-version" class="ax-chip ax-chip--text" style="margin-left:10px;font-family:var(--ax-mono)"></span></h1>
   </div>
   <div class="actions">
@@ -3629,11 +3640,15 @@ function renderARGuideSessions() {
   }
 
   let html = '';
-  for (const [anchorName, guides] of Object.entries(byAnchor).sort()) {
+  // Most recent first at every level — the anchor / guide with the newest
+  // completion leads, same as the Usage Log and Intelligence.
+  const latest = sessions => sessions.reduce((m, x) => (x.completedAt > m ? x.completedAt : m), '');
+  const latestOfGuides = guides => Object.values(guides).reduce((m, ss) => { const l = latest(ss); return l > m ? l : m; }, '');
+  for (const [anchorName, guides] of Object.entries(byAnchor).sort((a, b) => latestOfGuides(b[1]).localeCompare(latestOfGuides(a[1])))) {
     html += `<div class="ag-anchor-group">
       <div class="ag-anchor-hdr"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-pin"/></svg> ${esc(anchorName)}</div>`;
 
-    for (const [guideName, sessions] of Object.entries(guides).sort()) {
+    for (const [guideName, sessions] of Object.entries(guides).sort((a, b) => latest(b[1]).localeCompare(latest(a[1])))) {
       const totalSessions = sessions.length;
       html += `<div class="ag-guide-group">
         <div class="ag-guide-hdr">
