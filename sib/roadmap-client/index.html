@@ -4,22 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>SIB Roadmap — Mind Mapper</title>
+  <!-- three.js for the assembly preview (Procedure Designer parts picker):
+       the copy vendored for the portal, resolved at runtime by the browser.
+       Must precede the module script — Vite keeps it in place. -->
+  <script type="importmap">
+    { "imports": { "three": "/portal/vendor/three/three.module.js", "three/addons/": "/portal/vendor/three/addons/" } }
+  </script>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='30' cy='50' r='14' fill='%232f6fed'/><circle cx='72' cy='28' r='11' fill='%2316a34a'/><circle cx='72' cy='72' r='11' fill='%23f59e0b'/><line x1='30' y1='50' x2='72' y2='28' stroke='%2394a3b8' stroke-width='5'/><line x1='30' y1='50' x2='72' y2='72' stroke='%2394a3b8' stroke-width='5'/></svg>" />
 </head>
 <body>
-  <!-- three.js for the assembly preview (Procedure Designer parts picker):
-       the copy vendored for the portal, CDN only as fallback. Written
-       synchronously so the import map exists before the app's dynamic import. -->
-  <script>
-    (function () {
-      var local = false;
-      try { var p = new XMLHttpRequest(); p.open('HEAD', '/portal/vendor/three/three.module.js', false); p.send(); local = p.status === 200; } catch (e) {}
-      var map = local
-        ? { imports: { 'three': '/portal/vendor/three/three.module.js', 'three/addons/': '/portal/vendor/three/addons/' } }
-        : { imports: { 'three': 'https://unpkg.com/three@0.169.0/build/three.module.js', 'three/addons/': 'https://unpkg.com/three@0.169.0/examples/jsm/' } };
-      document.write('<script type="importmap">' + JSON.stringify(map) + '<\/script>');
-    })();
-  </script>
   <div id="root"></div>
   <script src="/portal/brand.js" defer></script>
   <script type="module" src="/src/main.tsx"></script>
