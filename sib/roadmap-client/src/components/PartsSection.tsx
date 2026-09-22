@@ -156,12 +156,14 @@ export function usePartsPicker(nodeId: string | null) {
   const q = query.trim().toLowerCase();
   const matches = (n: GlbPartNode): boolean => !q || n.name.toLowerCase().includes(q) || n.children.some(matches);
   const verb = assembly?.start === 'complete' ? 'removes' : 'installs';
+  // Build-up starts empty: a part no step installs is simply not there yet.
+  const buildUp = !!assembly && assembly.start !== 'complete';
 
   const renderNode = (n: GlbPartNode, depth: number): JSX.Element | null => {
     if (!matches(n)) return null;
     const isOpen = open.has(n.name) || !!q;
     const own = partSet.has(n.name);
-    const eff = effectiveState(n.name, states, parents);
+    const eff = effectiveState(n.name, states, parents) ?? (buildUp ? 'after' : undefined);
     const viaParent = !own && eff === 'this';
     const cls = eff === 'this' ? 'is-this' : eff === 'before' ? 'is-before' : eff === 'after' ? 'is-after' : '';
     return (
@@ -210,7 +212,7 @@ export function usePartsPicker(nodeId: string | null) {
     <span className="step-check-hint"> — {parts.length} chosen · {earlier.size} {assembly.start === 'complete' ? 'removed' : 'installed'} earlier</span>
   ) : null;
 
-  return { assembly, modelId, tree, parts, earlier, states, partNames, parents, toggle, verb, chips, treeBlock, search, summary, groupsBlock };
+  return { assembly, modelId, tree, parts, earlier, states, partNames, parents, toggle, verb, chips, treeBlock, search, summary, groupsBlock, buildUp };
 }
 
 // ── Inspector block ──────────────────────────────────────────────────────────
@@ -238,7 +240,7 @@ export function PartsSection({ nodeId }: { nodeId: string }): JSX.Element | null
       {chips}
       {groupsBlock}
       {showPreview && modelId && tree && !studioOpen && (
-        <AssemblyPreview modelId={modelId} partNames={partNames} states={states} parents={parents} onPick={toggle} onExpand={() => openStudio(nodeId)} />
+        <AssemblyPreview modelId={modelId} partNames={partNames} states={states} parents={parents} unmentioned={pk.buildUp ? 'after' : 'base'} onPick={toggle} onExpand={() => openStudio(nodeId)} />
       )}
       <div className="pt-toolbar">
         {search}
@@ -307,7 +309,7 @@ export function PartsStudio(): JSX.Element | null {
         <div className="pt-modal-main">
           <div className="pt-modal-3d">
             {pk.tree && (
-              <AssemblyPreview modelId={pk.modelId} partNames={pk.partNames} states={pk.states} parents={pk.parents} onPick={pk.toggle} fill />
+              <AssemblyPreview modelId={pk.modelId} partNames={pk.partNames} states={pk.states} parents={pk.parents} unmentioned={pk.buildUp ? 'after' : 'base'} onPick={pk.toggle} fill />
             )}
           </div>
           {/* Step strip: every step, its part count, click to jump. */}

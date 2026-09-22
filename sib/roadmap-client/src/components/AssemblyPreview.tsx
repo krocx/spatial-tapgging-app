@@ -26,6 +26,8 @@ interface Props {
   /** name → parent name (from the part tree) — unused here beyond typing parity; the
    *  scene graph itself carries the hierarchy. */
   parents?: Map<string, string>;
+  /** State of parts no step and no initial entry mentions: 'after' (hidden — build-up) or 'base'. */
+  unmentioned?: PartState;
   onPick?: (name: string) => void;
   height?: number;
   /** Fill the parent instead of a fixed height (expanded view). */
@@ -51,7 +53,7 @@ interface Scene3 {
 /** GLTFLoader sanitises node names (drops `:` `.` `/`), keeping the original in userData.name. */
 const partName = (o: any): string | undefined => (o?.userData?.name as string | undefined) ?? o?.name;
 
-export function AssemblyPreview({ modelId, partNames, states, onPick, height = 220, fill = false, onExpand }: Props): JSX.Element {
+export function AssemblyPreview({ modelId, partNames, states, onPick, height = 220, fill = false, onExpand, unmentioned = 'base' }: Props): JSX.Element {
   const hostRef  = useRef<HTMLDivElement | null>(null);
   const s3       = useRef<Scene3 | null>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -174,7 +176,7 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, height = 2
         if (n && partNames.has(n)) { const s = states.get(n); if (s) return s; }
         p = p.parent;
       }
-      return 'base';
+      return unmentioned;
     };
     const thisBox = new THREE.Box3();
     let anyThis = false;
@@ -209,7 +211,7 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, height = 2
       st.camera.position.copy(c).add(offset);
       st.controls.update();
     }
-  }, [states, partNames, ghostAfter, status]);
+  }, [states, partNames, ghostAfter, status, unmentioned]);
 
   // ── Click → part name (drag = orbit, so only short clicks pick) ────────
   useEffect(() => {

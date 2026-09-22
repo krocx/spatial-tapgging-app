@@ -188,7 +188,9 @@ enum GLBLoader {
             // exports use `cmp:<part>`, designer-picked CAD exports use whatever
             // the CAD tool named the node — the Procedure Designer lists the
             // same names from the GLB, so they always agree.
-            if nj["name"] as? String != nil { parts[name] = node; rest[name] = local }
+            // Unnamed nodes get the same `node<i>` name the server's part tree
+            // uses, so a hidden root reaches the app under one name.
+            parts[name] = node; rest[name] = local
             if let ex = nj["extras"] as? [String: Any] { extras[name] = ex }
             if let mi = nj["mesh"] as? Int {
                 let geos = try geometries(forMesh: mi)

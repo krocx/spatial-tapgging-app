@@ -277,8 +277,10 @@ removes its parts). Each step then lists the parts it installs
 names (`GET /models/:id/nodes` — read from the file's JSON chunk, no rendering on
 the server) beside an in-browser 3D preview that tints *this step* / *installed
 earlier* / *later* and toggles a part on click. The compiler derives the per-step
-node deltas and the initial state from that list; parts no step mentions are the
-fixed base and stay visible. Imported (Cortona3D) presentation — motion, view,
+node deltas and the initial state from that list. *Build up* starts EMPTY: at
+ingest the model's root nodes are hidden in the initial state, so a part no step
+installs is simply not there yet (the designer preview shows the same). *Take
+apart* starts complete: a part no step removes stays. Imported (Cortona3D) presentation — motion, view,
 CAD pins — round-trips verbatim; editing an imported step's parts only decides
 `show`, its motion fields are kept. On device the assembly is placed once
 ("Place assembly"), the runtime applies the cumulative state per step, and the

@@ -18,7 +18,7 @@ import fs from 'fs';
 import path from 'path';
 import type { AssemblyPose, Guide, GuideStep, GuideStepModel } from '@spatial/shared';
 import { applySlotsToLegacy } from './step-models.js';
-import { partBoundsFromGlb, unionBounds, centreOf, type Bounds } from '../models/glb-nodes.js';
+import { partBoundsFromGlb, partTreeFromGlb, unionBounds, centreOf, type Bounds } from '../models/glb-nodes.js';
 
 // ── Auto-pin from parts (2026.4.46) ──────────────────────────────────────────
 //
@@ -41,6 +41,40 @@ export function partBoundsForModel(modelId: string): Map<string, Bounds> | undef
       boundsCache.set(modelId, hit);
     }
     return hit.bounds;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Build-up guides start EMPTY: hide the model's root nodes in the initial
+ * state so nothing is visible until a step installs it (children explicitly
+ * shown by a step override their hidden ancestor on every renderer). Idempotent.
+ */
+export function hideRootsForBuildUp(guide: Guide, rootsFor = rootNamesForModel): boolean {
+  const asm = guide.assembly;
+  if (!asm || asm.start !== 'empty') return false;
+  const roots = rootsFor(asm.modelId);
+  if (!roots?.length) return false;
+  const initial = asm.initialNodes ?? [];
+  const have = new Set(initial.map(n => n.node));
+  const add = roots.filter(r => !have.has(r)).map(r => ({ node: r, show: 'hidden' as const }));
+  if (!add.length) return false;
+  asm.initialNodes = [...add, ...initial];      // roots first: parents before children
+  return true;
+}
+
+const rootsCache = new Map<string, { mtimeMs: number; roots: string[] }>();
+export function rootNamesForModel(modelId: string): string[] | undefined {
+  const file = path.join(MODELS_DIR, `${modelId}.glb`);
+  try {
+    const mtimeMs = fs.statSync(file).mtimeMs;
+    let hit = rootsCache.get(modelId);
+    if (!hit || hit.mtimeMs !== mtimeMs) {
+      hit = { mtimeMs, roots: partTreeFromGlb(fs.readFileSync(file)).roots.map(r => r.name) };
+      rootsCache.set(modelId, hit);
+    }
+    return hit.roots;
   } catch {
     return undefined;
   }

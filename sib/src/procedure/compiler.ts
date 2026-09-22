@@ -431,7 +431,7 @@ export function compileProcedure(map: Mindmap): ProcedureCompileResult {
     const initial = new Map<string, GuideStepNode>((assembly.initialNodes ?? []).map(n => [n.node, n]));
     const before: GuideStepNode['show'] = asmStart === 'complete' ? 'solid' : 'hidden';
     for (const s of steps) for (const n of s.nodes ?? []) if (!initial.has(n.node)) initial.set(n.node, { node: n.node, show: before });
-    guide.assembly = { modelId: assembly.modelId, source: 'cad', initialNodes: [...initial.values()] };
+    guide.assembly = { modelId: assembly.modelId, source: 'cad', start: asmStart, initialNodes: [...initial.values()] };
   }
 
   return { ok: true, issues, census, guide, order };

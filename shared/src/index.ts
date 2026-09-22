@@ -1166,6 +1166,10 @@ export interface GuideAssembly {
   bounds?:       { min: [number, number, number]; max: [number, number, number] };
   /** Where the assembly + node data came from. */
   source?:       'cortona' | 'cad';
+  /** 2026.4.46: 'empty' = build-up (everything hidden until a step installs
+   *  it — ingest hides the model's root nodes in the initial state);
+   *  'complete' = take-apart. Absent for imports that carry their own state. */
+  start?:        'empty' | 'complete';
   /** Playback speed multiplier for step animations (0.1–3; default 0.5 —
    *  source timings are authored for a desktop viewer and read too fast in AR). */
   animationSpeed?: number;

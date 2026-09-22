@@ -272,6 +272,15 @@ it, it gets a line.
   alone — loaded at its saved offsets, or at the pin if never positioned —
   with Confirm returning to pin placement and Cancel restoring the model.
 
+### Fixed
+- **Build-up guides start empty.** A part no step installs was treated as a
+  visible "base", so a build-up from a full CAD assembly showed the whole
+  thing and only highlighted the step's part. Build-up now hides the model's
+  root nodes in the initial state (ingest) and the designer preview/tree treat
+  unassigned parts as "later"; take-apart is unchanged. `GuideAssembly.start`
+  carries the mode; the iPad registers unnamed nodes under the same
+  `node<i>` name the server uses.
+
 ### Added
 - **Parts Studio, auto-pins and part sets (Procedure Designer).** The parts
   picker opens full-screen as the *Parts Studio*: model large on the left,

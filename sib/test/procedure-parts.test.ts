@@ -147,3 +147,17 @@ test('GLB part bounds from accessor min/max + node transforms; auto CAD pin at t
   assert.deepEqual(steps[2].cadPosition, [0, 0, 0]);
   assert.equal(steps[3].cadPosition, undefined);
 });
+
+test('build-up starts empty: root nodes hidden in the initial state (idempotent); take-apart untouched', async () => {
+  const { hideRootsForBuildUp } = await import('../src/guides/assembly.js');
+  const roots = () => ['Scene', 'orphan'];
+  const g = { assembly: { modelId: 'm', start: 'empty', initialNodes: [{ node: 'cmp:a', show: 'hidden' }] } } as unknown as Guide;
+  assert.equal(hideRootsForBuildUp(g, roots), true);
+  assert.deepEqual(g.assembly!.initialNodes, [{ node: 'Scene', show: 'hidden' }, { node: 'orphan', show: 'hidden' }, { node: 'cmp:a', show: 'hidden' }]);
+  assert.equal(hideRootsForBuildUp(g, roots), false, 'second pass adds nothing');
+  const t = { assembly: { modelId: 'm', start: 'complete' } } as unknown as Guide;
+  assert.equal(hideRootsForBuildUp(t, roots), false);
+  assert.equal(t.assembly!.initialNodes, undefined);
+  const r = compileProcedure(M([N('a', 0, { parts: ['cmp:x'] })], [], { modelId: 'mdl-1' }));
+  assert.equal(r.guide!.assembly!.start, 'empty', 'compiler tags the guide so ingest knows to hide the roots');
+});

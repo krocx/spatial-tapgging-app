@@ -34,7 +34,7 @@ import {
 } from './store.js';
 import { designerImagePath } from '../procedure/designer-images.js';
 import { applyLegacyToSlots, applySlotsToLegacy } from './step-models.js';
-import { deriveStepsFromAssembly, normalizeAssemblyPose, autoCadPositions } from './assembly.js';
+import { deriveStepsFromAssembly, normalizeAssemblyPose, autoCadPositions, hideRootsForBuildUp } from './assembly.js';
 import { anchorStore } from '../routes/anchors.js';
 import { chamberConfigStore } from '../routes/chamber-configs.js';
 
@@ -153,6 +153,8 @@ export async function applyImportedGuide(
       }
     }
   }
+  // Build-up assemblies start with nothing visible (root nodes hidden).
+  hideRootsForBuildUp(guide);
   guideStore.save(guide);
 
   // ── Pass 1: assign ids, build seq → id map ────────────────────────────────
