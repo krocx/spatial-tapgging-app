@@ -9,6 +9,7 @@ import { FilterPanel } from './components/FilterPanel.js';
 import { PresentationBar } from './components/PresentationBar.js';
 import { GlossaryPanel } from './components/GlossaryPanel.js';
 import { ProcedureBar } from './components/ProcedureBar.js';
+import { PartsStudio } from './components/PartsSection.js';
 import { PreviewPanel } from './components/PreviewPanel.js';
 import { ErrorBoundary } from './components/ErrorBoundary.js';
 import { CanvasStage } from './canvas/CanvasStage.js';
@@ -54,6 +55,7 @@ export default function App(): JSX.Element {
         {!presenting && !previewing && <Inspector />}
         {!presenting && <PreviewPanel />}
       </div>
+      {!presenting && <PartsStudio />}
       <PresentationBar />
       {!presenting && (
         <div className="hint-bar">

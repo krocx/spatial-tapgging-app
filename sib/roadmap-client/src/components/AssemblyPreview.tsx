@@ -21,8 +21,11 @@ interface Props {
   modelId: string;
   /** Every part name the picker knows (from GET /models/:id/nodes). */
   partNames: Set<string>;
-  /** Part → state at the selected step. Unlisted parts are `base`. */
+  /** Part → state at the selected step. Unlisted parts inherit their group's state, else `base`. */
   states: Map<string, PartState>;
+  /** name → parent name (from the part tree) — unused here beyond typing parity; the
+   *  scene graph itself carries the hierarchy. */
+  parents?: Map<string, string>;
   onPick?: (name: string) => void;
   height?: number;
   /** Fill the parent instead of a fixed height (expanded view). */
@@ -162,12 +165,13 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, height = 2
     const ACCENT = new THREE.Color(0x2f6fed);
     const GHOST  = 0.18;
 
-    // Nearest ancestor that is a known part decides a mesh's state.
+    // Nearest ancestor-or-self WITH A STATE decides a mesh: a selected group
+    // covers all its children; a selected child overrides its group.
     const stateOf = (o: any): PartState => {
       let p = o;
       while (p) {
         const n = partName(p);
-        if (n && partNames.has(n)) return states.get(n) ?? 'base';
+        if (n && partNames.has(n)) { const s = states.get(n); if (s) return s; }
         p = p.parent;
       }
       return 'base';

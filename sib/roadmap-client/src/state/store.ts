@@ -100,6 +100,10 @@ interface State {
   /** View filters — per-client, never synced or persisted. */
   filters: ViewFilters;
   showFilterPanel: boolean;
+  /** 2026.4.46: Parts Studio (full-screen assembly view) — the step it shows, or null. */
+  partsStudioNodeId: string | null;
+  openPartsStudio(nodeId: string): void;
+  closePartsStudio(): void;
   /** Presentation mode — per-client walkthrough of lanes/groups. */
   presentation: { active: boolean; step: number; steps: PresentationStep[] };
   /** Whiteboard/screenshot import: preview awaiting user confirmation. */
@@ -487,6 +491,7 @@ export const useStore = create<State & Actions>((set, get) => {
     layoutMode: 'freeform',
     filters: EMPTY_FILTERS,
     showFilterPanel: false,
+    partsStudioNodeId: null,
     presentation: { active: false, step: 0, steps: [] },
     imagePreview: null,
     imageImportStatus: null,
@@ -934,6 +939,8 @@ export const useStore = create<State & Actions>((set, get) => {
 
     clearFilters: () => set({ filters: EMPTY_FILTERS }),
     setShowFilterPanel: v => set({ showFilterPanel: v }),
+    openPartsStudio: nodeId => set({ partsStudioNodeId: nodeId }),
+    closePartsStudio: () => set({ partsStudioNodeId: null }),
 
     // ── Style settings (map-level, synced, no undo entry — it's cosmetic) ─
 
