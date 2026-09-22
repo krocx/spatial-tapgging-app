@@ -563,6 +563,30 @@ input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 .asm-sw-this { background: #2f6fed; }
 .asm-sw-before { background: #94a3b8; }
 .asm-hint { flex-basis: 100%; }
+.asm-preview { position: relative; }
+.asm-preview-fill { height: 100%; display: flex; flex-direction: column; }
+.asm-preview-fill .asm-preview-canvas { flex: 1; min-height: 0; }
+.asm-expand { position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; border-radius: 6px;
+  border: 1px solid var(--border); background: #fff; color: #334155; cursor: pointer; font-size: 14px; }
+.asm-expand:hover { background: #f1f5f9; }
+.asm-toggle-btn { font-size: 11px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--border);
+  background: #fff; color: #334155; cursor: pointer; }
+.asm-toggle-btn.on { background: #dbeafe; border-color: #93c5fd; color: #1e40af; }
+.asm-preview-fill .asm-preview-bar { font-size: 12.5px; gap: 12px; padding: 8px 12px; }
+.asm-preview-fill .asm-toggle-btn { font-size: 12.5px; padding: 5px 12px; }
+
+/* Large parts view */
+.pt-modal { position: fixed; inset: 0; z-index: 1000; background: #fff; display: flex; flex-direction: column; color: #0f172a; }
+.pt-modal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 10px 16px; border-bottom: 1px solid var(--border); font-size: 14px; }
+.pt-modal-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pt-modal-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 360px; }
+.pt-modal-3d { min-width: 0; min-height: 0; padding: 12px; }
+.pt-modal-3d .asm-preview { height: 100%; }
+.pt-modal-side { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-left: 1px solid var(--border); min-height: 0; overflow: hidden; }
+.pt-modal-side .pt-tree { max-height: none; flex: 1; min-height: 0; font-size: 13px; }
+.pt-modal-side .pt-row { padding: 5px 8px 5px 0; }
+.pt-modal-side .pt-chip { font-size: 12px; }
 
 /* ── Inspector: procedure step section ────────────────────── */
 .step-section { display: flex; flex-direction: column; gap: 10px;

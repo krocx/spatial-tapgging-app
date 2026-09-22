@@ -44,6 +44,17 @@ export function PartsSection({ nodeId }: { nodeId: string }): JSX.Element | null
   const [query, setQuery]   = useState('');
   const [open, setOpen]     = useState<Set<string>>(() => new Set());
   const [showPreview, setShowPreview] = useState(true);
+  const [expanded, setExpanded] = useState(false);
+  const stepTitle = useStore(s => s.map?.nodes.find(n => n.id === nodeId)?.text ?? '');
+  const stepSeq   = useStore(s => s.procedure?.order?.[nodeId]);
+
+  // Esc closes the large view.
+  useEffect(() => {
+    if (!expanded) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setExpanded(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [expanded]);
 
   const modelId = assembly?.modelId;
   useEffect(() => {
@@ -123,39 +134,70 @@ export function PartsSection({ nodeId }: { nodeId: string }): JSX.Element | null
     );
   };
 
-  return (
-    <div className="parts-section">
-      <div className="inspector-field">
-        Parts this step {verb}
-        <span className="step-check-hint"> — {parts.length} chosen · {earlier.size} {assembly.start === 'complete' ? 'removed' : 'installed'} earlier</span>
-      </div>
-
-      {parts.length > 0 && (
-        <div className="pt-chips">
-          {parts.map(p => (
-            <span key={p} className="pt-chip" title={p}>
-              <span className="pt-chip-name">{p}</span>
-              <button onClick={() => toggle(p)} title="Remove from this step">✕</button>
-            </span>
-          ))}
-        </div>
-      )}
-
-      {showPreview && modelId && tree && (
-        <AssemblyPreview modelId={modelId} partNames={partNames} states={states} onPick={toggle} />
-      )}
-
-      <div className="pt-toolbar">
-        <input className="pt-search" placeholder="Find a part…" value={query} onChange={e => setQuery(e.target.value)} />
-        <button className="btn ghost" onClick={() => setShowPreview(v => !v)}>{showPreview ? 'Hide 3D' : 'Show 3D'}</button>
-      </div>
-
+  const summary = (
+    <span className="step-check-hint"> — {parts.length} chosen · {earlier.size} {assembly.start === 'complete' ? 'removed' : 'installed'} earlier</span>
+  );
+  const chips = parts.length > 0 && (
+    <div className="pt-chips">
+      {parts.map(p => (
+        <span key={p} className="pt-chip" title={p}>
+          <span className="pt-chip-name">{p}</span>
+          <button onClick={() => toggle(p)} title="Remove from this step">✕</button>
+        </span>
+      ))}
+    </div>
+  );
+  const treeBlock = (
+    <>
       {treeErr && <span className="step-check-hint">Couldn't read the model's parts: {treeErr}</span>}
       {!tree && !treeErr && <span className="step-check-hint">Reading parts…</span>}
       {tree && (
         <div className="pt-tree">
           {tree.roots.map(r => renderNode(r, 0))}
           {tree.nodeCount === 0 && <span className="step-check-hint">This model has no named parts.</span>}
+        </div>
+      )}
+    </>
+  );
+  const search = <input className="pt-search" placeholder="Find a part…" value={query} onChange={e => setQuery(e.target.value)} />;
+
+  return (
+    <div className="parts-section">
+      <div className="inspector-field">Parts this step {verb}{summary}</div>
+
+      {chips}
+
+      {showPreview && modelId && tree && !expanded && (
+        <AssemblyPreview modelId={modelId} partNames={partNames} states={states} onPick={toggle} onExpand={() => setExpanded(true)} />
+      )}
+
+      <div className="pt-toolbar">
+        {search}
+        <button className="btn ghost" onClick={() => setShowPreview(v => !v)}>{showPreview ? 'Hide 3D' : 'Show 3D'}</button>
+        {modelId && tree && <button className="btn ghost" onClick={() => setExpanded(true)} title="Open the model large">⤢ Large</button>}
+      </div>
+
+      {!expanded && treeBlock}
+
+      {/* Large view: model fills the left, parts on the right — same state, same clicks. */}
+      {expanded && modelId && tree && (
+        <div className="pt-modal" role="dialog" aria-label="Parts on this step">
+          <div className="pt-modal-head">
+            <div className="pt-modal-title">
+              <b>Step {stepSeq ?? '?'}</b> · {stepTitle} — parts this step {verb}{summary}
+            </div>
+            <button className="btn" onClick={() => setExpanded(false)}>Close ✕</button>
+          </div>
+          <div className="pt-modal-body">
+            <div className="pt-modal-3d">
+              <AssemblyPreview modelId={modelId} partNames={partNames} states={states} onPick={toggle} fill />
+            </div>
+            <div className="pt-modal-side">
+              {chips}
+              {search}
+              {treeBlock}
+            </div>
+          </div>
         </div>
       )}
     </div>

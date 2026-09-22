@@ -25,6 +25,9 @@ interface Props {
   states: Map<string, PartState>;
   onPick?: (name: string) => void;
   height?: number;
+  /** Fill the parent instead of a fixed height (expanded view). */
+  fill?: boolean;
+  onExpand?: () => void;
 }
 
 // Bare specifiers resolved by the import map — hidden from Vite's resolver.
@@ -42,7 +45,10 @@ interface Scene3 {
   own: Map<any, any>;
 }
 
-export function AssemblyPreview({ modelId, partNames, states, onPick, height = 220 }: Props): JSX.Element {
+/** GLTFLoader sanitises node names (drops `:` `.` `/`), keeping the original in userData.name. */
+const partName = (o: any): string | undefined => (o?.userData?.name as string | undefined) ?? o?.name;
+
+export function AssemblyPreview({ modelId, partNames, states, onPick, height = 220, fill = false, onExpand }: Props): JSX.Element {
   const hostRef  = useRef<HTMLDivElement | null>(null);
   const s3       = useRef<Scene3 | null>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -67,11 +73,12 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, height = 2
 
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
-        renderer.setSize(host.clientWidth, height);
+        const H = () => (fill ? host.clientHeight : height);
+        renderer.setSize(host.clientWidth, H());
         host.appendChild(renderer.domElement);
 
         const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(40, host.clientWidth / height, 0.01, 1000);
+        const camera = new THREE.PerspectiveCamera(40, host.clientWidth / H(), 0.01, 1000);
         scene.add(new THREE.HemisphereLight(0xffffff, 0x8899aa, 1.1));
         const key = new THREE.DirectionalLight(0xffffff, 1.4); key.position.set(3, 5, 4); scene.add(key);
         const controls = new OrbitControls(camera, renderer.domElement);
@@ -122,14 +129,18 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, height = 2
 
     const onResize = () => {
       const st = s3.current; if (!st || !host) return;
-      st.renderer.setSize(host.clientWidth, height);
-      st.camera.aspect = host.clientWidth / height; st.camera.updateProjectionMatrix();
+      const h = fill ? host.clientHeight : height;
+      st.renderer.setSize(host.clientWidth, h);
+      st.camera.aspect = host.clientWidth / h; st.camera.updateProjectionMatrix();
     };
     window.addEventListener('resize', onResize);
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(onResize) : null;
+    ro?.observe(host);
 
     return () => {
       cancelled = true;
       window.removeEventListener('resize', onResize);
+      ro?.disconnect();
       const st = s3.current;
       if (st) {
         st.disposed = true;
@@ -141,7 +152,7 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, height = 2
       s3.current = null;
       if (blobUrl) URL.revokeObjectURL(blobUrl);
     };
-  }, [modelId, height]);
+  }, [modelId, height, fill]);
 
   // ── Tint by state whenever the selection changes ───────────────────────
   useEffect(() => {
@@ -155,11 +166,14 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, height = 2
     const stateOf = (o: any): PartState => {
       let p = o;
       while (p) {
-        if (p.name && partNames.has(p.name)) return states.get(p.name) ?? 'base';
+        const n = partName(p);
+        if (n && partNames.has(n)) return states.get(n) ?? 'base';
         p = p.parent;
       }
       return 'base';
     };
+    const thisBox = new THREE.Box3();
+    let anyThis = false;
 
     st.root.traverse((o: any) => {
       if (!o.isMesh) return;
@@ -167,6 +181,7 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, height = 2
       const mats = Array.isArray(o.material) ? o.material : [o.material];
       const state = stateOf(o);
       o.visible = !(state === 'after' && !ghostAfter);
+      if (state === 'this') { thisBox.expandByObject(o); anyThis = true; }
       mats.forEach((m: any, i: number) => {
         const b = base[i];
         if (!m || !b) return;
@@ -182,6 +197,14 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, height = 2
         m.needsUpdate = true;
       });
     });
+    // Re-centre the orbit on this step's parts so the author sees what they picked.
+    if (anyThis && !thisBox.isEmpty()) {
+      const c = thisBox.getCenter(new THREE.Vector3());
+      const offset = st.camera.position.clone().sub(st.controls.target);
+      st.controls.target.copy(c);
+      st.camera.position.copy(c).add(offset);
+      st.controls.update();
+    }
   }, [states, partNames, ghostAfter, status]);
 
   // ── Click → part name (drag = orbit, so only short clicks pick) ────────
@@ -204,8 +227,9 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, height = 2
       const hit = hits[0]?.object;
       if (!hit) return;
       let p = hit;
-      while (p && !(p.name && partNames.has(p.name))) p = p.parent;
-      if (p?.name) onPickRef.current?.(p.name);
+      while (p && !(partName(p) && partNames.has(partName(p)!))) p = p.parent;
+      const n = p ? partName(p) : undefined;
+      if (n) onPickRef.current?.(n);
     };
     host.addEventListener('pointerdown', onDown);
     host.addEventListener('pointerup', onUp);
@@ -213,17 +237,20 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, height = 2
   }, [partNames]);
 
   return (
-    <div className="asm-preview">
-      <div ref={hostRef} className="asm-preview-canvas" style={{ height }} />
+    <div className={`asm-preview${fill ? ' asm-preview-fill' : ''}`}>
+      <div ref={hostRef} className="asm-preview-canvas" style={fill ? undefined : { height }} />
+      {onExpand && status === 'ready' && (
+        <button className="asm-expand" onClick={onExpand} title="Open large">⤢</button>
+      )}
       {status === 'loading' && <div className="asm-preview-note">Loading model…</div>}
       {status === 'error'   && <div className="asm-preview-note asm-preview-err">{error}</div>}
       {status === 'ready' && (
         <div className="asm-preview-bar">
           <span className="asm-legend"><i className="asm-sw asm-sw-this" /> this step</span>
           <span className="asm-legend"><i className="asm-sw asm-sw-before" /> installed earlier</span>
-          <label className="asm-legend asm-toggle">
-            <input type="checkbox" checked={ghostAfter} onChange={e => setGhostAfter(e.target.checked)} /> show later parts as ghost
-          </label>
+          <button className={`asm-toggle-btn${ghostAfter ? ' on' : ''}`} onClick={() => setGhostAfter(v => !v)}>
+            {ghostAfter ? 'Later parts: ghost' : 'Later parts: hidden'}
+          </button>
           <span className="asm-hint">Click a part to add or remove it · drag to orbit</span>
         </div>
       )}
