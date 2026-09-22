@@ -194,3 +194,22 @@ test('importer: cameras that look at the model upside-down rotate the assembly s
   const v = flipped.imported.steps.find(s => s.view)?.view!;
   assert.ok(v && v.orientation, 'view kept');
 });
+
+test('vrml: DEF names with spaces (Cortona part descriptions) parse, and USE / ROUTE resolve them', async () => {
+  const { parseVrml } = await import('../src/import/cortona/vrml.js');
+  const src = `#VRML V2.0 utf8
+DEF Callout_P/N_-_0022-22449_HOUSING LIFT_e0c Transform { translation 1 2 3 children [ DEF Plain Shape { } ] }
+DEF Timer TimeSensor { }
+Group { children [ USE Callout_P/N_-_0022-22449_HOUSING LIFT_e0c USE Plain ] }
+ROUTE Timer.fraction_changed TO Callout_P/N_-_0022-22449_HOUSING LIFT_e0c.set_translation
+ROUTE Callout_P/N_-_0022-22449_HOUSING LIFT_e0c.translation_changed TO Timer.startTime
+`;
+  const s = parseVrml(src);
+  const name = 'Callout_P/N_-_0022-22449_HOUSING LIFT_e0c';
+  assert.ok(s.defs.has(name), [...s.defs.keys()].join(' | '));
+  assert.equal(s.defs.get(name)!.type, 'Transform');
+  const grp = s.nodes.find(n => 'type' in n && n.type === 'Group') as unknown as { fields: { children: unknown[] } };
+  assert.deepEqual(grp.fields.children, [{ use: name }, { use: 'Plain' }]);
+  assert.deepEqual(s.routes[0], { fromNode: 'Timer', fromField: 'fraction_changed', toNode: name, toField: 'set_translation' });
+  assert.deepEqual(s.routes[1], { fromNode: name, fromField: 'translation_changed', toNode: 'Timer', toField: 'startTime' });
+});

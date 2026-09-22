@@ -118,6 +118,8 @@ class Parser {
   private routeSink: VrmlRoute[] = [];
   constructor(private toks: Tok[]) {}
 
+  /** DEF names that contain spaces (Cortona part descriptions) — for USE / ROUTE matching. */
+  private spacedDefs: string[] = [];
   private peek(o = 0): Tok | undefined { return this.toks[this.p + o]; }
   private next(): Tok { const t = this.toks[this.p++]; if (!t) throw new Error('vrml: unexpected end of input'); return t; }
   private expectSym(s: string): void {
@@ -157,8 +159,15 @@ class Parser {
 
   private parseRoute(): VrmlRoute {
     this.next(); // ROUTE
-    const from = this.next().v; if (!this.isId('TO')) throw new Error('vrml: ROUTE missing TO'); this.next();
-    const to = this.next().v;
+    // Endpoints are `node.field`; a DEF name with spaces spreads over several
+    // tokens, so gather until the one that carries the ".field" tail.
+    const endpoint = (): string => {
+      let v = this.next().v;
+      while (!v.includes('.') && this.peek()?.t === 'id' && !this.isId('TO')) v += ' ' + this.next().v;
+      return v;
+    };
+    const from = endpoint(); if (!this.isId('TO')) throw new Error('vrml: ROUTE missing TO'); this.next();
+    const to = endpoint();
     const [fromNode, fromField] = splitDot(from); const [toNode, toField] = splitDot(to);
     return { fromNode, fromField, toNode, toField };
   }
@@ -208,10 +217,29 @@ class Parser {
 
   private parseNodeStatement(inProto: boolean): VrmlNode | VrmlUse {
     const t = this.next();
-    if (t.v === 'USE') return { use: this.next().v };
+    if (t.v === 'USE') {
+      let name = this.next().v;
+      // A USE of a spaced DEF name: extend while a known name continues this way.
+      while (this.peek()?.t === 'id' && this.spacedDefs.some(d => d === name + ' ' + this.peek()!.v || d.startsWith(name + ' ' + this.peek()!.v + ' '))) name += ' ' + this.next().v;
+      return { use: name };
+    }
     let def: string | undefined;
     let typeTok = t;
-    if (t.v === 'DEF') { def = this.next().v; typeTok = this.next(); }
+    if (t.v === 'DEF') {
+      def = this.next().v;
+      typeTok = this.next();
+      // Cortona writes DEF names straight from part descriptions, spaces
+      // included ("DEF Callout_P/N_0022_HOUSING LIFT_e0c ObjectVM {"), which
+      // VRML97 forbids but the viewer accepts. The name is everything up to
+      // the token that is followed by "{" — that token is the node type.
+      while (typeTok.t === 'id' && !this.isSym('{')) {
+        const nxt = this.peek();
+        if (!nxt || nxt.t !== 'id') break;
+        def += ' ' + typeTok.v;
+        typeTok = this.next();
+      }
+      if (def.includes(' ') && !this.spacedDefs.includes(def)) this.spacedDefs.push(def);
+    }
     if (typeTok.t !== 'id') throw new Error(`vrml: expected node type at line ${typeTok.line}`);
     const node: VrmlNode = { type: typeTok.v, fields: {} };
     if (def) node.def = def;

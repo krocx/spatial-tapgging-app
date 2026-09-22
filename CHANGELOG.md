@@ -283,6 +283,12 @@ it, it gets a line.
   still overrides per step; the portal Guide Preview notes it.
 
 ### Fixed
+- **Cortona3D import: DEF names with spaces.** Some publications name nodes
+  straight from part descriptions ("DEF Callout_P/N_-_0022-22449_HOUSING
+  LIFT_e0c"), which VRML97 forbids but Cortona's viewer accepts; the parser
+  failed with `expected "{"`. DEF now takes everything up to the node type,
+  and USE / ROUTE resolve those names too.
+### Fixed
 - **Operator top bar on phones.** The icon cluster wrapped ("2 / 18" stacked
   vertically) and the title truncated mid-word. The bar now keeps Exit and
   the icons at their natural size, gives the title the remaining width, drops
