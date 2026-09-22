@@ -34,7 +34,7 @@ import {
 } from './store.js';
 import { designerImagePath } from '../procedure/designer-images.js';
 import { applyLegacyToSlots, applySlotsToLegacy } from './step-models.js';
-import { deriveStepsFromAssembly, normalizeAssemblyPose } from './assembly.js';
+import { deriveStepsFromAssembly, normalizeAssemblyPose, autoCadPositions } from './assembly.js';
 import { anchorStore } from '../routes/anchors.js';
 import { chamberConfigStore } from '../routes/chamber-configs.js';
 
@@ -301,8 +301,11 @@ export async function applyImportedGuide(
   }
 
   // CAD-positioned steps derive their pins from the assembly pose (if any).
+  // Designer-authored steps get their CAD pin from the parts they install.
   if (guide.assembly) {
-    for (const step of deriveStepsFromAssembly(guide, written, now)) guideStepStore.save(step);
+    const auto = new Set(autoCadPositions(guide, written).map(s => s.id));
+    const derived = new Set(deriveStepsFromAssembly(guide, written, now).map(s => s.id));
+    for (const step of written) if (auto.has(step.id) || derived.has(step.id)) guideStepStore.save(step);
   }
 
   const unplaced = written.filter(s => !s.isPlaced).length;

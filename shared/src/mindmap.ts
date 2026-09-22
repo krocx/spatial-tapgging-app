@@ -182,6 +182,13 @@ export interface MindmapAssembly {
    * with the `start`-derived state at compile time.
    */
   initialNodes?: GuideStepNode[];
+  /** Named part sets ("Bolt set A") an author reuses across steps. */
+  groups?: MindmapPartGroup[];
+}
+
+export interface MindmapPartGroup {
+  name:  string;
+  parts: string[];
 }
 
 export interface Mindmap {

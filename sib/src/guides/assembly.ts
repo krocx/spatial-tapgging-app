@@ -14,8 +14,56 @@
 // Clearing the pose un-places those steps again (isPlaced = false), which the
 // operator guard already understands.
 
+import fs from 'fs';
+import path from 'path';
 import type { AssemblyPose, Guide, GuideStep, GuideStepModel } from '@spatial/shared';
 import { applySlotsToLegacy } from './step-models.js';
+import { partBoundsFromGlb, unionBounds, centreOf, type Bounds } from '../models/glb-nodes.js';
+
+// ── Auto-pin from parts (2026.4.46) ──────────────────────────────────────────
+//
+// A designer-authored step names the parts it installs but has no CAD pin.
+// Its pin is the centre of those parts in the assembly frame — read from the
+// GLB's accessor bounds — so once the assembly is placed on device every such
+// step is placed too, and Place Steps is never needed for an assembly guide.
+
+const boundsCache = new Map<string, { mtimeMs: number; bounds: Map<string, Bounds> }>();
+// Same root the models router writes to (routes/models.ts MODELS_DIR).
+const MODELS_DIR = path.join(process.env.SIB_DATA_DIR ?? path.join(process.cwd(), '.sib-data'), 'models-3d');
+
+export function partBoundsForModel(modelId: string): Map<string, Bounds> | undefined {
+  const file = path.join(MODELS_DIR, `${modelId}.glb`);
+  try {
+    const mtimeMs = fs.statSync(file).mtimeMs;
+    let hit = boundsCache.get(modelId);
+    if (!hit || hit.mtimeMs !== mtimeMs) {
+      hit = { mtimeMs, bounds: partBoundsFromGlb(fs.readFileSync(file)) };
+      boundsCache.set(modelId, hit);
+    }
+    return hit.bounds;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Fill `cadPosition` on steps that list parts but have none; returns the steps changed. */
+export function autoCadPositions(guide: Guide, steps: GuideStep[], boundsFor = partBoundsForModel): GuideStep[] {
+  const modelId = guide.assembly?.modelId;
+  if (!modelId) return [];
+  const changed: GuideStep[] = [];
+  let bounds: Map<string, Bounds> | undefined | null = null;   // lazy: only read the GLB when a step needs it
+  for (const step of steps) {
+    if (step.cadPosition || !step.nodes?.length) continue;
+    if (bounds === null) bounds = boundsFor(modelId);
+    if (!bounds) return changed;
+    const b = unionBounds(step.nodes.map(n => bounds!.get(n.node)));
+    if (!b) continue;
+    const c = centreOf(b);
+    step.cadPosition = [round(c[0]), round(c[1]), round(c[2])];
+    changed.push(step);
+  }
+  return changed;
+}
 
 export const ASSEMBLY_SLOT = 'assembly';
 

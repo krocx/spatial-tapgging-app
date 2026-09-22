@@ -112,3 +112,38 @@ test('GLB part tree: names, hierarchy, mesh flags, orphans, cycles', () => {
   assert.equal(t.roots[0].children[1].children[0].name, 'node3');
   assert.equal(t.roots[0].children[1].children.length, 1, 'cycle/duplicate reference dropped');
 });
+
+test('GLB part bounds from accessor min/max + node transforms; auto CAD pin at the parts centre', async () => {
+  const { partBoundsOf } = await import('../src/models/glb-nodes.js');
+  const { autoCadPositions } = await import('../src/guides/assembly.js');
+  const gltf = {
+    scene: 0, scenes: [{ nodes: [0] }],
+    nodes: [
+      { name: 'root', children: [1, 2] },
+      { name: 'cmp:a', mesh: 0, translation: [10, 0, 0] },
+      { name: 'grp', translation: [0, 5, 0], children: [3] },
+      { name: 'cmp:b', mesh: 0, scale: [2, 2, 2] },
+    ],
+    meshes: [{ primitives: [{ attributes: { POSITION: 0 } }] }],
+    accessors: [{ min: [-1, -1, -1], max: [1, 1, 1] }],
+  };
+  const b = partBoundsOf(gltf);
+  assert.deepEqual(b.get('cmp:a'), { min: [9, -1, -1], max: [11, 1, 1] });
+  assert.deepEqual(b.get('cmp:b'), { min: [-2, 3, -2], max: [2, 7, 2] }, 'scale then parent translation');
+  assert.deepEqual(b.get('grp'), { min: [-2, 3, -2], max: [2, 7, 2] }, 'group = union of its subtree');
+  assert.deepEqual(b.get('root')!.min, [-2, -1, -2]);
+
+  const guide = { id: 'g', assembly: { modelId: 'm' } } as unknown as Guide;
+  const steps = [
+    { id: 's1', nodes: [{ node: 'cmp:a', show: 'solid' }] },
+    { id: 's2', nodes: [{ node: 'cmp:a' }, { node: 'grp' }] },
+    { id: 's3', nodes: [{ node: 'cmp:a' }], cadPosition: [0, 0, 0] },   // already pinned — untouched
+    { id: 's4' },                                                       // no parts — untouched
+  ] as unknown as GuideStep[];
+  const changed = autoCadPositions(guide, steps, () => b);
+  assert.deepEqual(changed.map(s => s.id), ['s1', 's2']);
+  assert.deepEqual(steps[0].cadPosition, [10, 0, 0]);
+  assert.deepEqual(steps[1].cadPosition, [4.5, 3, 0]);
+  assert.deepEqual(steps[2].cadPosition, [0, 0, 0]);
+  assert.equal(steps[3].cadPosition, undefined);
+});

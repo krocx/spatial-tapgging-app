@@ -105,6 +105,14 @@ export function sanitizeSettings(raw: unknown): MindmapSettings | null {
       const nodes = asm.initialNodes.filter(n => n && typeof n === 'object' && typeof (n as { node?: unknown }).node === 'string');
       if (nodes.length) clean.initialNodes = nodes;
     }
+    if (Array.isArray(asm.groups)) {
+      const groups = asm.groups
+        .filter(g => g && typeof g === 'object' && typeof (g as { name?: unknown }).name === 'string' && Array.isArray((g as { parts?: unknown }).parts))
+        .map(g => ({ name: String(g.name).trim().slice(0, 60), parts: [...new Set((g.parts as unknown[]).filter((p): p is string => typeof p === 'string' && !!p.trim()))].slice(0, 500) }))
+        .filter(g => g.name && g.parts.length)
+        .slice(0, 100);
+      if (groups.length) clean.groups = groups;
+    }
     out.assembly = clean;
   }
   return out;   // defaults ('parent'/'curved') stay implicit

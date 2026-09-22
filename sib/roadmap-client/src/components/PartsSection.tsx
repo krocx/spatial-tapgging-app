@@ -118,6 +118,39 @@ export function usePartsPicker(nodeId: string | null) {
 
   const write = (next: string[]) => { if (nodeId) patchStepMeta(nodeId, { parts: next }); };
   const toggle = (name: string) => write(partSet.has(name) ? parts.filter(p => p !== name) : [...parts, name]);
+
+  // Named groups (map-level): apply adds the group's parts; save captures this step's list.
+  const updateSettings = useStore(s => s.updateSettings);
+  const groups = assembly?.groups ?? [];
+  const writeGroups = (next: { name: string; parts: string[] }[]) => {
+    if (!assembly) return;
+    updateSettings({ assembly: { ...assembly, ...(next.length ? { groups: next } : { groups: undefined }) } });
+  };
+  const applyGroup = (g: { name: string; parts: string[] }) => {
+    const all = g.parts.every(p => partSet.has(p));
+    write(all ? parts.filter(p => !g.parts.includes(p)) : [...parts, ...g.parts.filter(p => !partSet.has(p))]);
+  };
+  const saveGroup = () => {
+    if (!parts.length) return;
+    const name = window.prompt('Name this part set (e.g. "Bolt set A"):', '')?.trim();
+    if (!name) return;
+    writeGroups([...groups.filter(g => g.name !== name), { name, parts: [...parts] }]);
+  };
+  const removeGroup = (name: string) => { if (window.confirm(`Delete part set "${name}"?`)) writeGroups(groups.filter(g => g.name !== name)); };
+  const groupsBlock = (
+    <div className="pt-groups">
+      {groups.map(g => {
+        const all = g.parts.every(p => partSet.has(p));
+        return (
+          <span key={g.name} className={`pt-group${all ? ' on' : ''}`} title={`${g.parts.length} part${g.parts.length === 1 ? '' : 's'} — click to ${all ? 'remove from' : 'add to'} this step`}>
+            <button className="pt-group-apply" onClick={() => applyGroup(g)}>{g.name} <small>{g.parts.length}</small></button>
+            <button className="pt-group-x" onClick={() => removeGroup(g.name)} title="Delete this part set">✕</button>
+          </span>
+        );
+      })}
+      <button className="btn ghost pt-group-save" onClick={saveGroup} disabled={!parts.length} title="Save this step's parts as a reusable set">+ Save as set</button>
+    </div>
+  );
   const toggleOpen = (name: string) => setOpen(prev => { const n = new Set(prev); if (n.has(name)) n.delete(name); else n.add(name); return n; });
 
   const q = query.trim().toLowerCase();
@@ -177,7 +210,7 @@ export function usePartsPicker(nodeId: string | null) {
     <span className="step-check-hint"> — {parts.length} chosen · {earlier.size} {assembly.start === 'complete' ? 'removed' : 'installed'} earlier</span>
   ) : null;
 
-  return { assembly, modelId, tree, parts, earlier, states, partNames, parents, toggle, verb, chips, treeBlock, search, summary };
+  return { assembly, modelId, tree, parts, earlier, states, partNames, parents, toggle, verb, chips, treeBlock, search, summary, groupsBlock };
 }
 
 // ── Inspector block ──────────────────────────────────────────────────────────
@@ -197,12 +230,13 @@ export function PartsSection({ nodeId }: { nodeId: string }): JSX.Element | null
       </div>
     );
   }
-  const { modelId, tree, partNames, states, parents, toggle, verb, chips, treeBlock, search, summary } = pk;
+  const { modelId, tree, partNames, states, parents, toggle, verb, chips, treeBlock, search, summary, groupsBlock } = pk;
 
   return (
     <div className="parts-section">
       <div className="inspector-field">Parts this step {verb}{summary}</div>
       {chips}
+      {groupsBlock}
       {showPreview && modelId && tree && !studioOpen && (
         <AssemblyPreview modelId={modelId} partNames={partNames} states={states} parents={parents} onPick={toggle} onExpand={() => openStudio(nodeId)} />
       )}
@@ -291,6 +325,7 @@ export function PartsStudio(): JSX.Element | null {
         </div>
         <div className="pt-modal-side">
           {pk.chips}
+          {pk.groupsBlock}
           {pk.search}
           {pk.treeBlock}
         </div>

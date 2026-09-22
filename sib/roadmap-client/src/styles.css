@@ -597,6 +597,14 @@ input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 .pt-step.on .pt-step-c { background: rgba(255,255,255,.25); }
 .pt-row.via-parent .pt-name { color: #1e40af; opacity: .8; }
 .pt-tag-group { color: #1e40af; background: #dbeafe; }
+.pt-groups { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.pt-group { display: inline-flex; align-items: stretch; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; font-size: 11.5px; background: #fff; }
+.pt-group.on { border-color: #93c5fd; background: #dbeafe; color: #1e40af; }
+.pt-group-apply { border: 0; background: transparent; color: inherit; cursor: pointer; padding: 3px 8px; }
+.pt-group-apply small { opacity: .7; margin-left: 2px; }
+.pt-group-x { border: 0; border-left: 1px solid var(--border); background: transparent; color: #94a3b8; cursor: pointer; padding: 0 6px; font-size: 10px; }
+.pt-group-x:hover { color: #b91c1c; }
+.pt-group-save { font-size: 11.5px; padding: 3px 9px; }
 .pt-modal-3d .asm-preview { height: 100%; }
 .pt-modal-side { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-left: 1px solid var(--border); min-height: 0; overflow: hidden; }
 .pt-modal-side .pt-tree { max-height: none; flex: 1; min-height: 0; font-size: 13px; }

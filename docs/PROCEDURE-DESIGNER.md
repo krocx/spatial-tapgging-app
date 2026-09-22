@@ -285,6 +285,19 @@ CAD pins — round-trips verbatim; editing an imported step's parts only decides
 operator can ghost the not-yet-installed parts with "Show whole assembly"
 (per step; off again on the next step).
 
+**Parts Studio.** The picker opens full-screen with step navigation (◀ ▶, ← →,
+a step strip with part counts) so the whole procedure is authored in one view;
+moving there also selects the node on the canvas. A ticked group covers all its
+descendants; a ticked child overrides its group — preview, tree, compiler and
+device agree. Named **part sets** (`settings.assembly.groups`) are saved on the
+map and applied to a step in one click.
+
+**Auto-pin.** A step that lists parts but has no `cadPosition` gets one at
+ingest: the centre of those parts' bounds in the assembly frame (read from the
+GLB's POSITION accessor `min`/`max` under the node transforms — no buffer
+decoding). With the assembly placed on device, `deriveStepsFromAssembly` then
+places every such step, so Place Steps is unnecessary for an assembly guide.
+
 ### Slice 4 — shared sequencing
 
 Extract the lane/sequence algorithm into one module consumed by the designer, the

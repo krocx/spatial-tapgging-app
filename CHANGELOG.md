@@ -273,6 +273,19 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **Parts Studio, auto-pins and part sets (Procedure Designer).** The parts
+  picker opens full-screen as the *Parts Studio*: model large on the left,
+  parts on the right, ◀ ▶ / ← → and a step strip along the bottom to walk the
+  whole procedure without leaving the view (the model stays loaded). A ticked
+  group covers all its children and a ticked child overrides its group — the
+  same rule in the preview, the tree, the compiler and on the iPad. Steps that
+  list parts now get their CAD pin automatically at the centre of those parts
+  (from the GLB's accessor bounds, no geometry decoding), so once the assembly
+  is placed on device every step is placed — Place Steps is no longer needed
+  for a designer-authored assembly guide. Reusable **part sets** ("Bolt set
+  A") are saved on the map and applied to a step with one click. Fixes:
+  three.js strips `:` from node names — the preview now matches on the
+  original name; imported initial-hidden parts count as "later".
 - **Parts per step in the Procedure Designer + whole-assembly context on
   device.** A procedure map binds one assembly model (procedure bar: model +
   *build up* / *take apart*); every step then picks the parts it installs from

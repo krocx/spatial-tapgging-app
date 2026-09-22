@@ -35,7 +35,7 @@ function AssemblyPicker(): JSX.Element {
   const set = (patch: { modelId?: string; start?: 'empty' | 'complete' } | null) => {
     if (patch === null) updateSettings({ assembly: undefined });
     else if (patch.modelId !== undefined && !patch.modelId) updateSettings({ assembly: undefined });
-    else updateSettings({ assembly: { modelId: patch.modelId ?? assembly?.modelId ?? '', ...(assembly?.start === 'complete' || patch.start === 'complete' ? { start: patch.start ?? assembly?.start } : {}), ...(assembly?.initialNodes ? { initialNodes: assembly.initialNodes } : {}) } });
+    else updateSettings({ assembly: { modelId: patch.modelId ?? assembly?.modelId ?? '', ...(assembly?.start === 'complete' || patch.start === 'complete' ? { start: patch.start ?? assembly?.start } : {}), ...(assembly?.initialNodes ? { initialNodes: assembly.initialNodes } : {}), ...(assembly?.groups && patch.modelId === undefined ? { groups: assembly.groups } : {}) } });
     void validate();
   };
 
