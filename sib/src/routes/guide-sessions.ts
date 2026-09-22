@@ -30,7 +30,7 @@ import { computeInsights } from '../oms/insights.js';
 import { omsUsageStore } from '../oms/usage-log.js';
 import { guideStepStore } from './guides.js';
 import type { ObservationBatchRequest } from '@spatial/shared';
-import { buildUsageXlsx, buildSessionsXlsx } from '../oms/xlsx-lite.js';
+import { buildUsageXlsx, buildSessionsXlsx, buildWorkbookXlsx } from '../oms/xlsx-lite.js';
 import { currentUamUser } from '../middleware/auth.js';
 import { broadcastToAnchor } from '../tag/tag-subscribe.js';
 import type { Request, Response } from 'express';
@@ -378,6 +378,33 @@ router.get('/insights', (req: Request, res: Response): void => {
   const guideId  = typeof req.query.guideId === 'string' && req.query.guideId ? req.query.guideId : undefined;
   const data = computeInsights(omsUsageStore.findAll(), gid => guideStepStore.findAll().filter(s => s.guideId === gid), readSamples, { days, configId, guideId });
   res.json({ data, timestamp: new Date().toISOString() });
+});
+
+// GET /guide-sessions/insights/export.xlsx — the same numbers as the page:
+// Summary (this period vs previous) · Per day · Per guide.
+router.get('/insights/export.xlsx', (req: Request, res: Response): void => {
+  const days = [7, 30, 90].includes(Number(req.query.days)) ? Number(req.query.days) : 30;
+  const configId = typeof req.query.configId === 'string' && req.query.configId ? req.query.configId : undefined;
+  const guideId  = typeof req.query.guideId === 'string' && req.query.guideId ? req.query.guideId : undefined;
+  const d = computeInsights(omsUsageStore.findAll(), gid => guideStepStore.findAll().filter(s => s.guideId === gid), readSamples, { days, configId, guideId });
+  const pct = (x: number) => Math.round(x * 100);
+  const H = d.headline, P = d.previous;
+  const buf = buildWorkbookXlsx([
+    { name: 'Summary', headers: ['Metric', `This period (${days} d)`, 'Previous period'], colWidths: [30, 22, 22], freezeHeader: true, rows: [
+      { cells: ['Runs', H.runs, P.runs] }, { cells: ['Completed', H.completed, P.completed] }, { cells: ['Completion rate %', pct(H.completionRate), pct(P.completionRate)] },
+      { cells: ['Typical run (s)', Math.round(H.medianRunSec), Math.round(P.medianRunSec)] }, { cells: ['Slowest tenth (s)', Math.round(H.p90RunSec), Math.round(P.p90RunSec)] },
+      { cells: ['Hints shown', H.hintsShown, P.hintsShown] }, { cells: ['Hints that helped', H.hintsHelped, P.hintsHelped] }, { cells: ['Hint effectiveness %', pct(H.hintEffectiveness), pct(P.hintEffectiveness)] },
+      { cells: ['Wrong parts per run', +H.wrongTapsPerRun.toFixed(2), +P.wrongTapsPerRun.toFixed(2)] }, { cells: ['People', H.operators, P.operators] },
+      { cells: ['Period', `${d.period.from.slice(0, 10)} → ${d.period.until.slice(0, 10)}`, ''] },
+    ] },
+    { name: 'Per day', headers: ['Date', 'Runs', 'Completed', 'Hints shown', 'Hints helped', 'Wrong taps'], colWidths: [14, 10, 12, 13, 13, 12], freezeHeader: true,
+      rows: d.perDay.map(x => ({ cells: [x.date, x.runs, x.completed, x.hintsShown, x.hintsHelped, x.wrongTaps] })) },
+    { name: 'Per guide', headers: ['Guide', 'Configuration', 'Runs', 'Completed', 'Completion %', 'Typical (s)', 'Slowest tenth (s)', 'Wrong parts / run', 'Hottest step', 'Heat by step'], colWidths: [36, 16, 8, 11, 13, 12, 17, 17, 13, 40], freezeHeader: true,
+      rows: d.perGuide.map(g => ({ cells: [g.name, g.configCode ?? '', g.runs, g.completed, g.runs ? pct(g.completed / g.runs) : 0, Math.round(g.medianRunSec), Math.round(g.p90RunSec), +g.wrongTapsPerRun.toFixed(2), g.hottestStep ?? '', g.heat.join(' · ')] })) },
+  ]);
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="sib-insights-${days}d.xlsx"`);
+  res.send(buf);
 });
 
 // GET /guide-sessions/usage/export.xlsx — Excel export with evidence photos

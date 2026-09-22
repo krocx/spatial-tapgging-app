@@ -251,9 +251,11 @@
     #section-bar { display:none; align-items:center; gap:12px; padding: 8px 24px;
                    border-bottom: 1px solid var(--border); }
     #section-bar.visible { display:flex; }
-    .sb-home { font-size: 1rem; background: var(--ax-paper); border:1px solid var(--border);
-               color: var(--text); border-radius: 10px; padding: 5px 12px; cursor:pointer; }
-    .sb-home:hover { background: var(--ax-paper-3); }
+    .sb-home { font-size: 0.82rem; font-weight: 600; background: transparent; border:1px solid transparent;
+               color: var(--muted); border-radius: var(--ax-r-pill); padding: 5px 12px 5px 8px; cursor:pointer;
+               display:inline-flex; align-items:center; gap:4px; transition: background var(--ax-t) var(--ax-ease), color var(--ax-t) var(--ax-ease); }
+    .sb-home .ax-icon { width:16px; height:16px; }
+    .sb-home:hover { background: var(--ax-paper-3); color: var(--text); }
     .sb-name { font-weight: 800; font-size: 0.92rem; }
     .sb-tabs { display:flex; gap:4px; margin-left: 6px; }
     .sb-tab { font-size: 0.78rem; padding: 5px 14px; border-radius: 8px; color: var(--muted);
@@ -403,6 +405,9 @@
     .ins-title .ax-icon { width:24px; height:24px; color: var(--ax-cyan); }
     .ins-lede { margin:0; color:var(--muted); font-size:0.9rem; }
     .ins-filters { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .ins-filters .ax-select { width: auto; max-width: 260px; }
+    #insights-view { gap: 16px; }
+    #insights-view > * { min-width: 0; }
     .ins-tiles { display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:14px; }
     .ins-tile { padding:18px 20px 12px; border-top: 3px solid var(--ac, var(--ax-blue)); }
     .ins-tile .ax-eyebrow { color: var(--ax-ink-2); }
@@ -411,14 +416,19 @@
     .ins-spark { width:100%; height:32px; margin-top:8px; opacity:.9; }
     .ins-delta { font-weight:700; } .ins-delta.good { color: var(--ax-green); } .ins-delta.bad { color: var(--ax-orange); } .ins-delta.neutral { color: var(--ax-ink-3); }
     .ins-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap:16px; }
-    .ins-panel { padding: 18px 20px; }
+    .ins-grid > * { min-width: 0; }
+    .ins-whisker { fill: var(--ax-ink-3); }
+    .ins-panel { padding: 18px 20px; min-width: 0; overflow-x: auto; }
+    .ins-panel .ax-table { min-width: 720px; }
+    .ins-panel .ax-table td:first-child { min-width: 220px; }
+    .ins-panel .ax-table td:first-child .ax-chip { margin-left: 6px; vertical-align: middle; }
     .ins-panel-h { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:10px; font-size:0.98rem; }
     .ins-panel-h b { display:flex; align-items:center; gap:8px; }
     .ins-legend { font-size:0.78rem; color:var(--muted); display:flex; align-items:center; gap:6px; }
     .ins-legend i { display:inline-block; width:10px; height:10px; border-radius:2px; margin-left:8px; }
     .ins-chart { width:100%; height:auto; display:block; }
     .ins-grid-line, .ins-grid { stroke: var(--ax-rule); stroke-width: 1; }
-    .ins-axis { fill: var(--ax-ink-3); font: 11px var(--ax-font); }
+    .ins-axis { fill: var(--ax-ink-3); font: 14px var(--ax-font); }
     .ins-bar-a { fill: var(--ax-paper-3); }
     .ins-foot { font-size:0.8rem; color:var(--muted); display:flex; gap:6px; align-items:center; margin-top:4px; }
     .ins-link { color: var(--ax-cyan); text-decoration:none; display:inline-flex; align-items:center; gap:4px; }
@@ -659,7 +669,7 @@
 <!-- Phase 4: View nav tabs (hidden until authenticated) -->
 <!-- Section bar — slim ⌂ bar shown INSIDE a section (replaces the tab strip) -->
 <div id="section-bar">
-  <button class="sb-home" onclick="location.hash='#home'" title="Portal home">⌂</button>
+  <button class="sb-home" onclick="location.hash='#home'" title="Portal home"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-back"/></svg> Home</button>
   <span id="sb-name" class="sb-name"></span>
   <div id="sb-tabs" class="sb-tabs"></div>
 </div>
@@ -893,7 +903,7 @@
 
 <!-- AR Guides Sessions panel -->
 <div id="ar-guides-panel">
-  <div class="sessions-toolbar">
+  <div class="sessions-toolbar" id="ag-toolbar">
     <span style="font-size:0.78rem;color:var(--muted);flex:1">AR Guide completions · grouped by anchor → guide</span>
     <button class="btn btn-ghost btn-sm" id="usage-log-btn" onclick="toggleUsageLog()" title="Per-step timing per Production #" data-tour="usage-log"> Usage Log</button>
     <button class="btn btn-ghost btn-sm" id="usage-xlsx-btn" style="display:none" onclick="exportUsageXlsx()" title="Excel with evidence photos embedded per row"> .xlsx</button>
@@ -903,7 +913,7 @@
     <button class="btn btn-ghost btn-sm" onclick="loadARGuideSessions()">⟳ Refresh</button>
     <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteAllARGuideSessions()" title="Delete all AR Guide sessions"> Delete All</button>
   </div>
-  <div class="filter-bar">
+  <div class="filter-bar" id="ag-filters">
     <input type="search" id="flt-ag-q" placeholder="Search operator, guide, anchor…" oninput="setFilter('ag')">
     <select id="flt-ag-anchor" onchange="setFilter('ag')"><option value="">All anchors</option></select>
     <span class="flt-lbl">from</span><input type="date" id="flt-ag-from" onchange="setFilter('ag')">
@@ -2801,6 +2811,8 @@ let insightsConfig = '', insightsGuide = '';
 function setInsightsView(on) {
   const v = document.getElementById('insights-view');
   v.style.display = on ? '' : 'none';
+  // Insights has its own filters — the completions toolbar and date filters step aside.
+  for (const id of ['ag-toolbar', 'ag-filters']) { const el = document.getElementById(id); if (el) el.style.display = on ? 'none' : ''; }
   if (on) {
     document.getElementById('ar-guides-list').style.display = 'none';
     document.getElementById('usage-log-view').style.display = 'none';
@@ -2868,6 +2880,40 @@ function ratioLine(days, num, den, color, label) {
   days.forEach((d, i) => { if (i % every === 0 || i === n - 1) g += `<text x="${xs(i)}" y="${h - 8}" class="ins-axis" text-anchor="middle">${d.date.slice(5)}</text>`; });
   return g + '</svg>';
 }
+/** Horizontal bars: median run time per guide with a p90 whisker. */
+function timeChart(guides) {
+  const rows = guides.filter(g => g.medianRunSec > 0).slice(0, 8);
+  const w = 720, rh = 34, padL = 190, padR = 70, h = Math.max(60, rows.length * rh + 16);
+  if (!rows.length) return `<svg class="ins-chart" viewBox="0 0 ${w} 80"><text x="${w / 2}" y="44" class="ins-axis" text-anchor="middle">No timed runs in this period</text></svg>`;
+  const max = Math.max(...rows.map(r => r.p90RunSec || r.medianRunSec), 1);
+  const x = v => padL + (v / max) * (w - padL - padR);
+  let g = `<svg class="ins-chart" viewBox="0 0 ${w} ${h}" role="img">`;
+  rows.forEach((r, i) => {
+    const y = 10 + i * rh, name = r.name.length > 26 ? r.name.slice(0, 25) + '…' : r.name;
+    g += `<text x="${padL - 10}" y="${y + 17}" class="ins-axis" text-anchor="end" style="fill:var(--ax-ink-2)">${esc(name)}</text>`;
+    g += `<rect x="${padL}" y="${y + 6}" width="${x(r.medianRunSec) - padL}" height="14" rx="3" fill="var(--ax-cyan)"><title>${esc(r.name)} · typical ${fmtSec(r.medianRunSec)} · slowest tenth ${fmtSec(r.p90RunSec)}</title></rect>`;
+    if (r.p90RunSec > r.medianRunSec) g += `<line x1="${x(r.medianRunSec)}" x2="${x(r.p90RunSec)}" y1="${y + 13}" y2="${y + 13}" stroke="var(--ax-ink-3)" stroke-width="2"/><line x1="${x(r.p90RunSec)}" x2="${x(r.p90RunSec)}" y1="${y + 7}" y2="${y + 19}" stroke="var(--ax-ink-3)" stroke-width="2"/>`;
+    g += `<text x="${x(Math.max(r.medianRunSec, r.p90RunSec)) + 8}" y="${y + 17}" class="ins-axis">${fmtSec(r.medianRunSec)}</text>`;
+  });
+  return g + '</svg>';
+}
+/** Wrong-part taps per run, per day (the quality proxy) — a line with dots on days that had runs. */
+function perRunLine(days, color) {
+  const w = 720, h = 160, padL = 40, padB = 26, padT = 10;
+  const n = days.length, xs = i => padL + (i / Math.max(1, n - 1)) * (w - padL - 8);
+  const vals = days.map(d => d.runs ? d.wrongTaps / d.runs : null);
+  const max = Math.max(1, ...vals.filter(v => v !== null));
+  const y = v => padT + (h - padT - padB) * (1 - v / max);
+  let g = `<svg class="ins-chart" viewBox="0 0 ${w} ${h}" role="img">`;
+  for (const t of [0, max / 2, max]) g += `<line x1="${padL}" x2="${w}" y1="${y(t)}" y2="${y(t)}" class="ins-grid"/><text x="${padL - 6}" y="${y(t) + 4}" class="ins-axis" text-anchor="end">${t.toFixed(t >= 10 ? 0 : 1)}</text>`;
+  const pts = [];
+  vals.forEach((v, i) => { if (v !== null) { const p = [xs(i), y(v)]; pts.push(p); g += `<circle cx="${p[0]}" cy="${p[1]}" r="3.5" fill="${color}"><title>${days[i].date} · ${v.toFixed(1)} wrong taps per run</title></circle>`; } });
+  if (pts.length > 1) g += `<polyline points="${pts.map(p => p.join(',')).join(' ')}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round"/>`;
+  if (!pts.length) g += `<text x="${(w + padL) / 2}" y="${h / 2}" class="ins-axis" text-anchor="middle">No runs in this period</text>`;
+  const every = n > 45 ? 7 : n > 10 ? 5 : 1;
+  days.forEach((d, i) => { if (i % every === 0 || i === n - 1) g += `<text x="${xs(i)}" y="${h - 8}" class="ins-axis" text-anchor="middle">${d.date.slice(5)}</text>`; });
+  return g + '</svg>';
+}
 function heatStrip(heat) {
   if (!heat.length) return '<span class="ul-dim">no step data</span>';
   return `<div class="ax-heat" style="height:28px;gap:2px;min-width:140px">${heat.map((h, i) => `<i class="${heatClass(h)}" title="Step ${i + 1} · heat ${h}" style="height:${Math.max(12, h)}%"></i>`).join('')}</div>`;
@@ -2901,13 +2947,23 @@ function renderInsights(d, configs) {
     <div class="ax-card ins-panel"><div class="ins-panel-h"><b>Runs per day</b><span class="ins-legend"><i style="background:var(--ax-paper-3)"></i>started <i style="background:var(--ax-green)"></i>completed</span></div>${barsChart(d.perDay, 'runs', 'completed', 'var(--ax-green)')}</div>
     <div class="ax-card ins-panel"><div class="ins-panel-h"><b><svg class="ax-icon" style="color:var(--ax-yellow)"><use href="/portal/brand/icons.svg#i-sparkles"/></svg> Hints that helped</b><span class="ins-legend">share of hints followed by the right action</span></div>${ratioLine(d.perDay, 'hintsHelped', 'hintsShown', 'var(--ax-yellow)', 'hints')}</div>
   </div>
+  <div class="ins-grid">
+    <div class="ax-card ins-panel"><div class="ins-panel-h"><b>Time per guide</b><span class="ins-legend">typical run · whisker to the slowest tenth</span></div>${timeChart(d.perGuide)}</div>
+    <div class="ax-card ins-panel"><div class="ins-panel-h"><b>Wrong parts per run</b><span class="ins-legend">taps on parts not in the step — lower is better</span></div>${perRunLine(d.perDay, 'var(--ax-orange)')}</div>
+  </div>
   <div class="ax-card ins-panel">
     <div class="ins-panel-h"><b><svg class="ax-icon" style="color:var(--ax-p-guides)"><use href="/portal/brand/icons.svg#i-intelligence"/></svg> Where people struggle</b><span class="ins-legend">per guide · heat by step, from Intelligence</span></div>
     ${d.perGuide.length ? `<table class="ax-table"><tr><th>Guide</th><th class="ax-num">Runs</th><th class="ax-num">Completed</th><th class="ax-num">Typical</th><th class="ax-num">Slowest tenth</th><th class="ax-num">Wrong parts / run</th><th>Heat by step</th><th>Hottest</th></tr>
       ${d.perGuide.map(g => `<tr><td><b>${esc(g.name)}</b>${g.configCode ? ` <span class="ax-chip ax-chip--product ax-chip--text" data-product="guides">${esc(g.configCode)}</span>` : ''}</td><td class="ax-num">${g.runs}</td><td class="ax-num">${fmtPct(g.runs ? g.completed / g.runs : 0)}</td><td class="ax-num">${fmtSec(g.medianRunSec)}</td><td class="ax-num">${fmtSec(g.p90RunSec)}</td><td class="ax-num">${g.wrongTapsPerRun.toFixed(1)}</td><td>${heatStrip(g.heat)}</td><td>${g.hottestStep ? `<a class="ins-link" href="#ar-guides/intelligence" onclick="intelGuideId='${esc(g.guideId)}'">Step ${g.hottestStep} →</a>` : '–'}</td></tr>`).join('')}
     </table>` : '<div class="ax-empty"><span class="ax-mark"><i></i><em></em></span>No runs in this period.</div>'}
   </div>
-  <div class="ins-foot">Generated ${new Date(d.generatedAt).toLocaleString()} · ${d.period.days}-day period · <a class="ins-link" href="#" onclick="exportInsightsPng();return false;"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Save as image</a></div>`;
+  <div class="ins-foot">Generated ${new Date(d.generatedAt).toLocaleString()} · ${d.period.days}-day period · <a class="ins-link" href="#" onclick="exportInsightsPng();return false;"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Save as image</a> · <a class="ins-link" href="#" onclick="exportInsightsXlsx();return false;"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> .xlsx</a></div>`;
+}
+async function exportInsightsXlsx() {
+  const qs = new URLSearchParams({ days: String(insightsDays) });
+  if (insightsConfig) qs.set('configId', insightsConfig); if (insightsGuide) qs.set('guideId', insightsGuide);
+  try { await downloadServerFile(`/guide-sessions/insights/export.xlsx?${qs}`, `sib-insights-${insightsDays}d-${new Date().toISOString().slice(0, 10)}.xlsx`); }
+  catch (e) { toast(`Export failed: ${e.message}`, 4000); }
 }
 /** Export the page as PNG for decks: renders the view's SVG/HTML through a canvas via foreignObject. */
 async function exportInsightsPng() {
