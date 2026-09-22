@@ -17,6 +17,7 @@ import type {
   MindmapGroup,
   MindmapComment,
   MindmapSettings,
+  MindmapAssembly,
   MindmapVersion,
   MindmapWsEvent,
   MindmapSummary,
@@ -95,6 +96,17 @@ export function sanitizeSettings(raw: unknown): MindmapSettings | null {
   // edgeStyle default flipped to 'curved' in 2026.4.45, so 'straight' is now
   // an explicit choice and must be persisted; absent = curved.
   if (s.edgeStyle === 'curved' || s.edgeStyle === 'straight') out.edgeStyle = s.edgeStyle;
+  // 2026.4.46: assembly binding for procedure maps (validated, never trusted raw).
+  const asm = s.assembly as Partial<MindmapAssembly> | undefined;
+  if (asm && typeof asm === 'object' && typeof asm.modelId === 'string' && asm.modelId.trim()) {
+    const clean: MindmapAssembly = { modelId: asm.modelId.trim() };
+    if (asm.start === 'complete') clean.start = 'complete';
+    if (Array.isArray(asm.initialNodes)) {
+      const nodes = asm.initialNodes.filter(n => n && typeof n === 'object' && typeof (n as { node?: unknown }).node === 'string');
+      if (nodes.length) clean.initialNodes = nodes;
+    }
+    out.assembly = clean;
+  }
   return out;   // defaults ('parent'/'curved') stay implicit
 }
 

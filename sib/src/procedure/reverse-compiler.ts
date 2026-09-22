@@ -20,7 +20,7 @@
 //     same direction the forward compiler expects.
 
 import { v4 as uuidv4 } from 'uuid';
-import type { Guide, GuideStep, Mindmap, MindmapNode, MindmapEdge } from '@spatial/shared';
+import type { Guide, GuideStep, Mindmap, MindmapNode, MindmapEdge, MindmapSettings } from '@spatial/shared';
 import { effectiveStepModels } from '../guides/step-models.js';
 
 const COL_W  = 240;   // horizontal spacing along a chain
@@ -34,6 +34,8 @@ export interface ReverseCompileResult {
   anchorId: string;
   nodes:    MindmapNode[];
   edges:    MindmapEdge[];
+  /** 2026.4.46: assembly binding (model + imported initial state) for the parts picker. */
+  settings?: MindmapSettings;
 }
 
 /** Effective success target: explicit branch, else next in sequence. */
@@ -93,6 +95,15 @@ export function guideToProcedureMap(guide: Guide, rawSteps: GuideStep[],
     if (s.modelId)                    stepMeta.modelId      = s.modelId;
     if (s.modelScale !== undefined)   stepMeta.modelScale   = s.modelScale;
     if (s.modelOpacity !== undefined) stepMeta.modelOpacity = s.modelOpacity;
+    // 2026.4.46: CAD presentation round-trips verbatim; `parts` is what the
+    // designer edits (non-hidden nodes), so an untouched step compiles back
+    // to exactly what it was.
+    if (s.nodes?.length) {
+      stepMeta.nodes = s.nodes;
+      if (guide.assembly) stepMeta.parts = s.nodes.filter(n => n.show !== 'hidden').map(n => n.node);
+    }
+    if (s.view)        stepMeta.view        = s.view;
+    if (s.cadPosition) stepMeta.cadPosition = s.cadPosition;
     // U5: every slot (assignment only — placement never reaches the canvas).
     const slots = effectiveStepModels(s);
     if (slots.length > 0) {
@@ -139,12 +150,20 @@ export function guideToProcedureMap(guide: Guide, rawSteps: GuideStep[],
     if (s.precondition)  edge(s.precondition, s.id, 'requires');
   });
 
+  const settings: MindmapSettings | undefined = guide.assembly ? {
+    assembly: {
+      modelId: guide.assembly.modelId,
+      ...(guide.assembly.initialNodes?.length ? { initialNodes: guide.assembly.initialNodes } : {}),
+    },
+  } : undefined;
+
   return {
     name: `[Guide] ${guide.name}`.slice(0, 120),
     kind: 'procedure',
     anchorId: guide.anchorId,
     nodes,
     edges,
+    ...(settings ? { settings } : {}),
   };
 }
 
@@ -160,6 +179,7 @@ export function toMindmapRecord(r: ReverseCompileResult, guide: Guide): Mindmap 
     edges: r.edges,
     kind: r.kind,
     anchorId: r.anchorId,
+    ...(r.settings ? { settings: r.settings } : {}),
     // Stale-map detection: guide edits after this moment (iOS, portal) mean
     // the map no longer reflects the guide — the UI warns before re-sync.
     guideSync: { guideId: guide.id, syncedAt: now },

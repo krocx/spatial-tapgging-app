@@ -273,6 +273,21 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **Parts per step in the Procedure Designer + whole-assembly context on
+  device.** A procedure map binds one assembly model (procedure bar: model +
+  *build up* / *take apart*); every step then picks the parts it installs from
+  a searchable part tree with an in-browser 3D preview (this step / installed
+  earlier / later, click a part to toggle it). No server GPU: the part tree is
+  read from the GLB's JSON chunk (`GET /models/:id/nodes`) and the preview
+  renders in the author's browser with the vendored three.js. The compiler
+  derives per-step node deltas and the initial state; warnings for a step with
+  no parts, a part listed twice, and parts without an assembly. Cortona3D
+  presentation (motion, view, CAD pins) round-trips through the designer
+  verbatim — re-sending an imported guide no longer drops it. On the iPad every
+  named GLB node is now a part (not only `cmp:*`), and the operator gets a
+  "Show whole assembly" button that ghosts the not-yet-installed parts for
+  orientation (per step). Rebuild the designer bundle on the Mac before pushing:
+  `npm run build --workspace=@spatial/roadmap-client`.
 - **Model orientation per step + one-tool-at-a-time placement (iOS).** A part
   that the operator flips over between steps can now be shown flipped: every
   model slot carries `modelRotationX` / `modelRotationZ` (tilt / roll) beside

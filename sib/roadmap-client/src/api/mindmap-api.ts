@@ -18,6 +18,20 @@ export async function fetchStepImageUrl(filename: string): Promise<string> {
   return URL.createObjectURL(await res.blob());
 }
 
+/** Part tree returned by GET /models/:id/nodes. */
+export interface GlbPartNode { name: string; index: number; mesh: boolean; extras?: Record<string, unknown>; children: GlbPartNode[] }
+export interface GlbPartTree { modelId: string; name: string; roots: GlbPartNode[]; names: string[]; nodeCount: number; meshCount: number }
+
+/** The GLB itself, fetched with auth → blob URL for the in-browser preview. */
+export async function fetchModelGlbUrl(id: string): Promise<string> {
+  const headers: Record<string, string> = {};
+  const key = getApiKey();
+  if (key) headers['X-API-Key'] = key;
+  const res = await fetch(`/models/${encodeURIComponent(id)}/file.glb`, { headers });
+  if (!res.ok) throw new Error(`Model fetch failed (${res.status})`);
+  return URL.createObjectURL(await res.blob());
+}
+
 /** GET /mindmap/import-image/status — vision endpoint configured on the server? */
 export interface ImageImportStatus { configured: boolean; provider: string; model: string; host: string }
 
@@ -153,6 +167,8 @@ export const mindmapApi = {
 
   /** Global 3D model library (SIB /models) — for the step model picker. */
   listModels: () => request<Model3D[]>('/models'),
+  /** 2026.4.46: part tree of a model's GLB (names + hierarchy) for the parts picker. */
+  modelNodes: (id: string) => request<GlbPartTree>(`/models/${encodeURIComponent(id)}/nodes`),
 
   glossary: () => request<{ markdown: string; updatedAt: number }>('/mindmap/glossary'),
   importImageStatus: () => request<ImageImportStatus>('/mindmap/import-image/status'),

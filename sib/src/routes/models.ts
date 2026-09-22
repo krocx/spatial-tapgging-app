@@ -45,6 +45,7 @@ import type {
   ApiResponse,
 } from '@spatial/shared';
 import { JsonFileStore } from '../stores/json-file-store.js';
+import { partTreeFromGlb, type GlbPartTree } from '../models/glb-nodes.js';
 
 // ── Storage ───────────────────────────────────────────────────────────────────
 
@@ -240,6 +241,28 @@ function runBlenderConversion(modelId: string, inputPath: string): void {
 // ── Router ────────────────────────────────────────────────────────────────────
 
 const router = Router();
+
+// ── GET /models/:id/nodes ────────────────────────────────────────────────────
+// Part tree (names + hierarchy) from the GLB's JSON chunk — feeds the Procedure
+// Designer parts picker. Cached per model id + file mtime; no rendering.
+const partTreeCache = new Map<string, { mtimeMs: number; tree: GlbPartTree }>();
+router.get('/:id/nodes', (req: Request, res: Response): void => {
+  const model = model3DStore.findById(req.params.id);
+  if (!model) { res.status(404).json({ error: 'Model not found' }); return; }
+  const filePath = path.join(MODELS_DIR, `${model.id}.glb`);
+  if (!model.hasGLB || !fs.existsSync(filePath)) { res.status(409).json({ error: 'GLB not available for this model' }); return; }
+  try {
+    const mtimeMs = fs.statSync(filePath).mtimeMs;
+    let hit = partTreeCache.get(model.id);
+    if (!hit || hit.mtimeMs !== mtimeMs) {
+      hit = { mtimeMs, tree: partTreeFromGlb(fs.readFileSync(filePath)) };
+      partTreeCache.set(model.id, hit);
+    }
+    res.json({ data: { modelId: model.id, name: model.name, ...hit.tree }, timestamp: new Date().toISOString() });
+  } catch (err) {
+    res.status(422).json({ error: `Could not read the model's node tree: ${(err as Error).message}` });
+  }
+});
 
 // ── GET /models/:id/file.glb ─────────────────────────────────────────────────
 // Registered BEFORE /:id to avoid "file.glb" being matched as a model id.

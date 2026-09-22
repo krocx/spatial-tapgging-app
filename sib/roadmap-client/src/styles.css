@@ -526,6 +526,44 @@ input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
   background: #fff; cursor: pointer; color: inherit;
 }
 
+/* ── Procedure bar: assembly picker (2026.4.46) ─────────────── */
+.pc-assembly { display: inline-flex; align-items: center; gap: 5px; margin-left: 10px; font-size: 0.78rem; color: var(--muted); }
+.pc-assembly select { font-size: 0.76rem; padding: 2px 6px; max-width: 180px; border: 1px solid var(--border); border-radius: 5px; background: #fff; }
+
+/* ── Inspector: parts on this step (2026.4.46) ───────────────── */
+.parts-section { display: flex; flex-direction: column; gap: 8px; }
+.pt-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.pt-chip { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; font-size: 11px;
+  padding: 2px 4px 2px 8px; border-radius: 999px; background: #dbeafe; color: #1e40af; }
+.pt-chip-name { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pt-chip button { border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 10px; padding: 0 3px; }
+.pt-toolbar { display: flex; gap: 6px; }
+.pt-search { flex: 1; min-width: 0; padding: 5px 8px; font-size: 12px; border: 1px solid var(--border); border-radius: 6px; }
+.pt-tree { max-height: 260px; overflow: auto; border: 1px solid var(--border); border-radius: 8px; font-size: 12px; background: #fff; }
+.pt-row { display: flex; align-items: center; gap: 4px; padding: 3px 6px 3px 0; min-width: 0; }
+.pt-row:hover { background: #f1f5f9; }
+.pt-row.is-this   { background: #eff6ff; }
+.pt-row.is-before .pt-name { color: #475569; }
+.pt-row.is-after  .pt-name { color: #94a3b8; }
+.pt-twisty { width: 16px; border: 0; background: transparent; cursor: pointer; color: var(--muted); font-size: 11px; padding: 0; text-align: center; }
+.pt-leaf { cursor: default; }
+.pt-label { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1; cursor: pointer; }
+.pt-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pt-tag { font-size: 10px; color: #475569; background: #e2e8f0; border-radius: 999px; padding: 1px 6px; }
+.pt-tag-after { color: #94a3b8; background: #f1f5f9; }
+.asm-preview { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: #f8fafc; }
+.asm-preview-canvas { width: 100%; cursor: grab; }
+.asm-preview-canvas canvas { display: block; width: 100% !important; }
+.asm-preview-note { padding: 8px; font-size: 11.5px; color: var(--muted); }
+.asm-preview-err { color: #b91c1c; }
+.asm-preview-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 6px 8px; font-size: 10.5px; color: var(--muted); border-top: 1px solid var(--border); }
+.asm-legend { display: inline-flex; align-items: center; gap: 4px; }
+.asm-toggle input { margin: 0; }
+.asm-sw { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.asm-sw-this { background: #2f6fed; }
+.asm-sw-before { background: #94a3b8; }
+.asm-hint { flex-basis: 100%; }
+
 /* ── Inspector: procedure step section ────────────────────── */
 .step-section { display: flex; flex-direction: column; gap: 10px;
   border-top: 1px solid var(--border); padding-top: 12px; }

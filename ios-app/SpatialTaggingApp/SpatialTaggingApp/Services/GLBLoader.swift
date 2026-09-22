@@ -184,7 +184,11 @@ enum GLBLoader {
             let local = localMatrix(nj)
             node.simdTransform = local
             let world = parentWorld * local
-            if name.hasPrefix("cmp:") { parts[name] = node; rest[name] = local }
+            // Every named node is addressable as a part (2026.4.46): Cortona
+            // exports use `cmp:<part>`, designer-picked CAD exports use whatever
+            // the CAD tool named the node — the Procedure Designer lists the
+            // same names from the GLB, so they always agree.
+            if nj["name"] as? String != nil { parts[name] = node; rest[name] = local }
             if let ex = nj["extras"] as? [String: Any] { extras[name] = ex }
             if let mi = nj["mesh"] as? Int {
                 let geos = try geometries(forMesh: mi)

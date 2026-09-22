@@ -232,9 +232,13 @@ export async function applyImportedGuide(
       ...(s.evidenceRequired === true ? { evidenceRequired: true } : {}),
       // CAD-driven presentation (AR OJT): the import owns node deltas and the
       // suggested view outright — they are authoring data, not placement.
-      ...(s.nodes && s.nodes.length ? { nodes: s.nodes } : {}),
-      ...(s.view ? { view: s.view } : {}),
-      ...(s.cadPosition ? { cadPosition: s.cadPosition } : {}),
+      // A source that knows nothing about the assembly (older designer maps,
+      // MES) must not wipe presentation an import authored earlier.
+      ...(s.nodes && s.nodes.length ? { nodes: s.nodes }
+          : !imported.assembly && existing?.nodes?.length ? { nodes: existing.nodes } : {}),
+      ...(s.view ? { view: s.view } : existing?.view && !imported.assembly ? { view: existing.view } : {}),
+      ...(s.cadPosition ? { cadPosition: s.cadPosition }
+          : existing?.cadPosition && !imported.assembly ? { cadPosition: existing.cadPosition } : {}),
       isPlaced:           false,
       nextOnSuccess:      s.nextOnSuccessSeq !== undefined ? seqToId.get(s.nextOnSuccessSeq) : undefined,
       nextOnFailure:      s.nextOnFailureSeq !== undefined ? seqToId.get(s.nextOnFailureSeq) : undefined,

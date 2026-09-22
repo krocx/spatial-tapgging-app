@@ -946,6 +946,7 @@ export const useStore = create<State & Actions>((set, get) => {
       // is the explicit, persisted choice now.
       if (settings.edgeColor !== 'neutral') delete settings.edgeColor;
       if (settings.edgeStyle !== 'straight' && settings.edgeStyle !== 'curved') delete settings.edgeStyle;
+      if (!settings.assembly?.modelId) delete settings.assembly;   // "none" clears the binding
       mutateGraph(m => { m.settings = settings; });
       collab?.send('map:settings', { settings });
     },

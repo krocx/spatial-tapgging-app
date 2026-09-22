@@ -49,9 +49,10 @@ final class AssemblyNode {
         extras = assembly.extras
         bounds = assembly.bounds
         var depth: [String: Int] = [:]
-        for (name, node) in parts {
+        let partNames = Set(assembly.parts.keys)
+        for (name, node) in assembly.parts {
             var d = 0; var p = node.parent
-            while let n = p { if let nm = n.name, nm.hasPrefix("cmp:") { d += 1 }; p = n.parent }
+            while let n = p { if let nm = n.name, partNames.contains(nm) { d += 1 }; p = n.parent }
             depth[name] = d
         }
         depthOf = depth
@@ -445,7 +446,8 @@ final class AssemblyNode {
     /// Display info for a part from the GLB extras (part number, description).
     func partInfo(_ name: String) -> (title: String, partNumber: String?, description: String?) {
         let ex = extras[name] ?? [:]
-        let display = (ex["displayName"] as? String) ?? String(name.dropFirst(4)).replacingOccurrences(of: "_", with: " ")
+        let bare = name.hasPrefix("cmp:") ? String(name.dropFirst(4)) : name
+        let display = (ex["displayName"] as? String) ?? bare.replacingOccurrences(of: "_", with: " ")
         return (display, ex["partNumber"] as? String, ex["description"] as? String)
     }
 

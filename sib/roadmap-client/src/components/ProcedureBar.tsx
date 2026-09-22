@@ -8,10 +8,61 @@
 // Sending never publishes: every new step arrives unplaced, and placement only
 // happens on device. See docs/PROCEDURE-DESIGNER.md.
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import type { Model3D } from '@spatial/shared';
 import { useStore } from '../state/store.js';
 import { ROLE_COLORS } from '../canvas/EdgeView.js';
+import { mindmapApi } from '../api/mindmap-api.js';
 import { Icon } from './Icon.js';
+
+/**
+ * 2026.4.46: the assembly this procedure builds up (or takes apart). Chosen
+ * once per map; every step then picks its parts in the Inspector. Stored in
+ * map settings so every collaborator sees the same model.
+ */
+function AssemblyPicker(): JSX.Element {
+  const assembly       = useStore(s => s.map?.settings?.assembly);
+  const updateSettings = useStore(s => s.updateSettings);
+  const validate       = useStore(s => s.validateProcedure);
+  const [models, setModels] = useState<Model3D[] | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    mindmapApi.listModels().then(m => { if (live) setModels(m.filter(x => x.hasGLB)); }).catch(() => { if (live) setModels([]); });
+    return () => { live = false; };
+  }, []);
+
+  const set = (patch: { modelId?: string; start?: 'empty' | 'complete' } | null) => {
+    if (patch === null) updateSettings({ assembly: undefined });
+    else if (patch.modelId !== undefined && !patch.modelId) updateSettings({ assembly: undefined });
+    else updateSettings({ assembly: { modelId: patch.modelId ?? assembly?.modelId ?? '', ...(assembly?.start === 'complete' || patch.start === 'complete' ? { start: patch.start ?? assembly?.start } : {}), ...(assembly?.initialNodes ? { initialNodes: assembly.initialNodes } : {}) } });
+    void validate();
+  };
+
+  return (
+    <span className="pc-assembly" title="The 3D assembly whose parts the steps install. Pick parts per step in the Inspector.">
+      <Icon name="cube" size={13} /> Assembly
+      <select
+        value={assembly?.modelId ?? ''}
+        disabled={models === null}
+        onChange={e => set({ modelId: e.target.value })}
+      >
+        <option value="">{models === null ? 'loading…' : models.length ? 'none' : 'no models in library'}</option>
+        {(models ?? []).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+        {assembly && models && !models.some(m => m.id === assembly.modelId) && (
+          <option value={assembly.modelId}>{assembly.modelId} (not in library)</option>
+        )}
+      </select>
+      {assembly && (
+        <select value={assembly.start === 'complete' ? 'complete' : 'empty'} onChange={e => set({ start: e.target.value as 'empty' | 'complete' })}
+          title="Build up: parts start hidden and each step installs its parts. Take apart: everything starts in place and each step removes its parts.">
+          <option value="empty">build up</option>
+          <option value="complete">take apart</option>
+        </select>
+      )}
+    </span>
+  );
+}
 
 export function ProcedureBar(): JSX.Element | null {
   const map        = useStore(s => s.map);
@@ -64,6 +115,7 @@ export function ProcedureBar(): JSX.Element | null {
               <span className="pc-line dashed" style={{ color: ROLE_COLORS.requires }} />requires <b>{c.requires}</b>
             </span>
             <span className="pc-stat">lanes <b>{c.lanes}</b></span>
+            <AssemblyPicker />
             <button
               className="pc-help"
               title="What do the connection types mean?"

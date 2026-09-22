@@ -127,6 +127,10 @@ export function mergeGuideIntoMap(
     anchorId: guide.anchorId,
     nodes: out,
     edges,
+    // Assembly binding follows the guide; the designer's other settings stay.
+    ...(fresh.settings?.assembly
+      ? { settings: { ...map.settings, assembly: { ...map.settings?.assembly, ...fresh.settings.assembly } } }
+      : {}),
     updatedAt: now,
     guideSync: { guideId: guide.id, syncedAt: now },
   };

@@ -155,6 +155,9 @@ both places.
 | Loop with no exit path | may be intentional retry, may be a mistake |
 | Terminal node with no incoming edge | probably a stranded draft node |
 | Step with no voice script | falls back to instruction text |
+| Step lists no parts (assembly maps) | the assembly won't change on this step |
+| Same part on two steps | usually a copy-paste slip |
+| Parts listed but no assembly chosen | nothing will render them |
 
 Warnings never block. Blocking errors list the offending node and select it on click.
 
@@ -263,6 +266,24 @@ Visio and Figma"):
 
 Open an existing guide into a map, diff dialog, published-guide guard UI,
 `metadata.guide` reconciliation.
+
+### Slice 3.5 — parts per step (shipped 2026.4.46)
+
+An **assembly** (a GLB from the model library) is bound to a procedure map once,
+in the procedure bar, with a start state: *build up* (parts begin hidden and each
+step installs its parts) or *take apart* (everything begins in place and each step
+removes its parts). Each step then lists the parts it installs
+(`metadata.step.parts`) in the Inspector: a searchable tree of the GLB's node
+names (`GET /models/:id/nodes` — read from the file's JSON chunk, no rendering on
+the server) beside an in-browser 3D preview that tints *this step* / *installed
+earlier* / *later* and toggles a part on click. The compiler derives the per-step
+node deltas and the initial state from that list; parts no step mentions are the
+fixed base and stay visible. Imported (Cortona3D) presentation — motion, view,
+CAD pins — round-trips verbatim; editing an imported step's parts only decides
+`show`, its motion fields are kept. On device the assembly is placed once
+("Place assembly"), the runtime applies the cumulative state per step, and the
+operator can ghost the not-yet-installed parts with "Show whole assembly"
+(per step; off again on the next step).
 
 ### Slice 4 — shared sequencing
 

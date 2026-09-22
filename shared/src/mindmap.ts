@@ -6,7 +6,7 @@
 
 // Type-only import — erased at compile time, so this does not create a runtime
 // cycle with index.ts (which re-exports this module).
-import type { ImportedGuide } from './index.js';
+import type { ImportedGuide, GuideStepNode } from './index.js';
 
 // --- Node ontology (SIB layers) ---
 
@@ -156,6 +156,32 @@ export interface MindmapSettings {
    * stored explicitly so the choice survives the default flip.
    */
   edgeStyle?: 'straight' | 'curved';
+  /**
+   * Procedure maps (2026.4.46): the assembly model the steps build up (or
+   * take apart). Each step then lists the parts it installs
+   * (`metadata.step.parts`); the compiler derives per-step node deltas and
+   * the initial state from `start`. Map-level like lanes/groups so every
+   * collaborator sees the same model.
+   */
+  assembly?: MindmapAssembly;
+}
+
+/** Assembly model bound to a procedure map. */
+export interface MindmapAssembly {
+  /** Model3D id (global library) — a GLB whose named nodes are the parts. */
+  modelId: string;
+  /**
+   * 'empty' (default): the operator builds the assembly — parts start hidden
+   * and each step's parts become solid. 'complete': disassembly — everything
+   * starts solid and each step's parts are removed (hidden).
+   */
+  start?: 'empty' | 'complete';
+  /**
+   * Imported initial state (Cortona / CAD) carried through the round-trip
+   * untouched; parts the designer mentions that are absent here are added
+   * with the `start`-derived state at compile time.
+   */
+  initialNodes?: GuideStepNode[];
 }
 
 export interface Mindmap {

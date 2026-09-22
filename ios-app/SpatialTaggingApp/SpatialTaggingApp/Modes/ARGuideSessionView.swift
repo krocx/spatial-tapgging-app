@@ -268,6 +268,9 @@ struct ARGuideSessionView: View {
     @State private var assemblyEngine:     AssemblyStateEngine? = nil
     @State private var assemblyReplayTask: Task<Void, Never>?   = nil
     @State private var assemblyStepIndex:  Int                  = -1
+    /// 2026.4.46: "Show whole assembly" — parts not yet installed render as a
+    /// faint ghost for orientation. Turns itself off on the next step.
+    @State private var assemblyContext:    Bool                 = false
     @State private var assemblyLoading:    Bool                 = false
     /// Part chip: the step's focus part, or whatever the operator tapped.
     @State private var partChip: (title: String, partNumber: String?, tapped: Bool)? = nil
@@ -962,6 +965,23 @@ struct ARGuideSessionView: View {
                             .foregroundStyle(hintsMuted ? Color.white.opacity(0.45) : Color.yellow)
                     }
                     .accessibilityLabel(hintsMuted ? "Hints muted — tap to turn on" : "Contextual hints on")
+
+                    // 2026.4.46: whole-assembly context (only when an assembly is loaded)
+                    if assemblyNode != nil {
+                        Button {
+                            assemblyContext.toggle()
+                            replayAssemblyStep()
+                            let label = assemblyContext ? "Whole assembly shown" : "Installed parts only"
+                            withAnimation(.easeOut(duration: 0.15)) { visibilityToast = label }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { withAnimation { if visibilityToast == label { visibilityToast = nil } } }
+                        } label: {
+                            Image(systemName: assemblyContext ? "cube.transparent.fill" : "cube.transparent")
+                                .font(.system(size: 16))
+                                .foregroundStyle(assemblyContext ? Color.green : Color.white)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(assemblyContext ? "Whole assembly shown — tap to show installed parts only" : "Show whole assembly")
+                    }
 
                     // Visibility cycle: tag + panel → all steps → panel only → tag only → none
                     Button {
@@ -4092,6 +4112,7 @@ extension ARGuideSessionView {
         guard let node = assemblyNode, let engine = assemblyEngine, index < sortedSteps.count else { return }
         assemblyReplayTask?.cancel()
         assemblyStepIndex = index
+        assemblyContext = false          // context is per step — the next step starts clean
         tagTucked = false
         let focus = engine.focusParts(at: index)
         if let first = focus.first {
@@ -4132,7 +4153,7 @@ extension ARGuideSessionView {
         guard let node = assemblyNode, let engine = assemblyEngine else { return }
         let index = assemblyStepIndex
         assemblyReplayTask?.cancel()
-        node.apply(state: engine.state(after: index - 1))
+        node.apply(state: assemblyDisplayState(engine.state(after: index - 1)))
         let dur = node.play(deltas: engine.deltas(at: index), speed: guide.assembly?.effectiveAnimationSpeed ?? 0.5)
         guard dur > 0 else { return }
         assemblyReplayTask = Task { @MainActor in
@@ -4140,6 +4161,18 @@ extension ARGuideSessionView {
             guard !Task.isCancelled, assemblyStepIndex == index else { return }
             replayAssemblyStep()
         }
+    }
+
+    /// With "Show whole assembly" on, parts that are still hidden at this
+    /// point in the guide render as a faint ghost so the operator can see
+    /// where the piece they hold belongs. Everything else is untouched.
+    private func assemblyDisplayState(_ st: [String: PartState]) -> [String: PartState] {
+        guard assemblyContext else { return st }
+        var out = st
+        for (name, p) in st where p.show == .hidden {
+            var g = p; g.show = .ghost; g.opacity = 0.15; out[name] = g
+        }
+        return out
     }
 
     // ── C2 UX: hint muting + spotlight ───────────────────────────────────────

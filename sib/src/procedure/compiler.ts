@@ -31,6 +31,8 @@ import type {
   ImportedGuideStep,
   ImportedStepModel,
   ProcedureCompileResult,
+  GuideStepNode,
+  GuideStepView,
   ProcedureIssue,
 } from '@spatial/shared';
 
@@ -72,6 +74,47 @@ interface StepMeta {
   modelOpacity?: number;
   /** U5: model slots (max 3). Wins over the three legacy keys when present. */
   models?:       ImportedStepModel[];
+  /** 2026.4.46: parts of the map's assembly this step installs (or removes). */
+  parts?:        string[];
+  /** Imported CAD presentation carried through the round-trip verbatim. */
+  nodes?:        GuideStepNode[];
+  view?:         GuideStepView;
+  cadPosition?:  [number, number, number];
+}
+
+const MAX_STEP_PARTS = 200;
+
+/** Trimmed, de-duplicated part names. */
+function partsOf(raw: unknown): string[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const r of raw) {
+    if (typeof r !== 'string') continue;
+    const name = r.trim();
+    if (!name || seen.has(name)) continue;
+    seen.add(name); out.push(name);
+    if (out.length >= MAX_STEP_PARTS) break;
+  }
+  return out;
+}
+
+function nodesOf(raw: unknown): GuideStepNode[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const out = raw.filter((n): n is GuideStepNode => !!n && typeof n === 'object' && typeof (n as { node?: unknown }).node === 'string');
+  return out.length ? out : undefined;
+}
+
+/**
+ * Per-step node deltas from the parts the designer picked. `start: 'empty'`
+ * installs (solid), `'complete'` removes (hidden). Imported entries for the
+ * same node keep their motion fields; only `show` is decided here.
+ */
+function stepNodesOf(meta: StepMeta, start: 'empty' | 'complete'): GuideStepNode[] | undefined {
+  if (!meta.parts) return meta.nodes;
+  const show: GuideStepNode['show'] = start === 'complete' ? 'hidden' : 'solid';
+  const imported = new Map((meta.nodes ?? []).map(n => [n.node, n]));
+  return meta.parts.map(name => ({ ...(imported.get(name) ?? {}), node: name, show }));
 }
 
 const MAX_STEP_MODELS = 3;
@@ -114,6 +157,11 @@ function stepMetaOf(node: MindmapNode): StepMeta {
     modelScale:   typeof m.modelScale === 'number' && isFinite(m.modelScale) && m.modelScale > 0 ? m.modelScale : undefined,
     modelOpacity: typeof m.modelOpacity === 'number' && m.modelOpacity >= 0 && m.modelOpacity <= 1 ? m.modelOpacity : undefined,
     models:       stepModelsOf(m.models),
+    parts:        partsOf(m.parts),
+    nodes:        nodesOf(m.nodes),
+    view:         m.view && typeof m.view === 'object' ? m.view as GuideStepView : undefined,
+    cadPosition:  Array.isArray(m.cadPosition) && m.cadPosition.length === 3 && m.cadPosition.every(x => typeof x === 'number')
+                    ? m.cadPosition as [number, number, number] : undefined,
   };
 }
 
@@ -297,6 +345,30 @@ export function compileProcedure(map: Mindmap): ProcedureCompileResult {
     }
   }
 
+  // ── Assembly / parts checks (2026.4.46) ───────────────────────────────────
+  const assembly = map.settings?.assembly;
+  const asmStart: 'empty' | 'complete' = assembly?.start === 'complete' ? 'complete' : 'empty';
+  if (assembly) {
+    const firstSeen = new Map<string, string>();   // part → node id that first lists it
+    for (const id of orderedIds) {
+      const meta = stepMetaOf(byId.get(id)!);
+      const parts = meta.parts ?? (meta.nodes ?? []).filter(n => n.show !== 'hidden').map(n => n.node);
+      if (parts.length === 0 && !meta.nodes) {
+        warn('no-parts', `Step ${seqOf.get(id)} lists no parts — the assembly won't change on this step.`, id);
+      }
+      for (const p of parts) {
+        const prev = firstSeen.get(p);
+        if (prev) {
+          warn('part-twice', `"${p}" is listed on step ${seqOf.get(prev)} and again on step ${seqOf.get(id)}.`, id);
+        } else {
+          firstSeen.set(p, id);
+        }
+      }
+    }
+  } else if (orderedIds.some(id => (stepMetaOf(byId.get(id)!).parts?.length ?? 0) > 0)) {
+    warn('parts-no-assembly', 'Steps list parts but no assembly model is chosen for this procedure — pick one in the procedure bar.');
+  }
+
   const hasErrors = issues.some(i => i.level === 'error');
   if (hasErrors) return { ok: false, issues, census, order };
 
@@ -336,6 +408,10 @@ export function compileProcedure(map: Mindmap): ProcedureCompileResult {
       if (meta.modelScale   !== undefined) step.modelScale   = meta.modelScale;
       if (meta.modelOpacity !== undefined) step.modelOpacity = meta.modelOpacity;
     }
+    const stepNodes = assembly ? stepNodesOf(meta, asmStart) : meta.nodes;
+    if (stepNodes?.length) step.nodes = stepNodes;
+    if (meta.view)         step.view = meta.view;
+    if (meta.cadPosition)  step.cadPosition = meta.cadPosition;
     if (nextId   && seqOf.has(nextId))   step.nextOnSuccessSeq = seqOf.get(nextId);
     if (failId   && seqOf.has(failId))   step.nextOnFailureSeq = seqOf.get(failId);
     if (prereqId && seqOf.has(prereqId)) step.preconditionSeq  = seqOf.get(prereqId);
@@ -348,6 +424,15 @@ export function compileProcedure(map: Mindmap): ProcedureCompileResult {
     name: (map.name ?? '').trim() || 'Untitled procedure',
     steps,
   };
+  if (assembly) {
+    // Initial state: imported entries verbatim, then every part any step
+    // mentions gets the opposite of its step state so the deltas have
+    // something to change. Parts never mentioned are the fixed base — visible.
+    const initial = new Map<string, GuideStepNode>((assembly.initialNodes ?? []).map(n => [n.node, n]));
+    const before: GuideStepNode['show'] = asmStart === 'complete' ? 'solid' : 'hidden';
+    for (const s of steps) for (const n of s.nodes ?? []) if (!initial.has(n.node)) initial.set(n.node, { node: n.node, show: before });
+    guide.assembly = { modelId: assembly.modelId, source: 'cad', initialNodes: [...initial.values()] };
+  }
 
   return { ok: true, issues, census, guide, order };
 }
