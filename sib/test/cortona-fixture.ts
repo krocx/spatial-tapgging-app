@@ -8,6 +8,8 @@ export interface FixtureOptions {
   unknownProto?: boolean;   // add an unrecognised PROTO instance (strict-mode test)
   withSvg?: boolean;
   parts?: number;           // number of leaf parts (default 4)
+  upsideDown?: boolean;     // every camera carries a π-about-X rotation (deck authored in a flipped frame)
+  colourOnObjectVM?: boolean; // leaf Shape has an empty Material {}; the colour sits on ObjectVM.appearance
 }
 
 export function buildVrml(o: FixtureOptions = {}): string {
@@ -35,16 +37,16 @@ PROTO protoSimulationPlayer [ field SFInt32 version_num 2 field SFString OP "" f
 EXTERNPROTO IndexedFaceSetWithEdges [ exposedField SFNode coord exposedField MFInt32 coordIndex field SFFloat creaseAngle field SFBool solid ] "urn:inet:parallelgraphics.com:cortona:IndexedFaceSetWithEdges"
 ${o.unknownProto ? 'PROTO MysteryWidget [ field SFString foo "" ] { Group {} }\n' : ''}
 NavigationInfo { avatarSize [ 0.25, 1.6, 0.75 ] type [ "EXAMINE" ] }
-DEF BaseViewpoint1 Viewpoint { position 0.6 0.2 1.59 orientation 0 1 0 0 fieldOfView 0.785 description "start" }
+DEF BaseViewpoint1 Viewpoint { position 0.6 0.2 1.59 orientation ${o.upsideDown ? '1 0 0 3.1' : '0 1 0 0'} fieldOfView 0.785 description "start" }
 `;
-  const box = (x: number) => `Shape { appearance Appearance { material Material { diffuseColor 0.7 0.72 0.75 } }
+  const box = (x: number) => `Shape { appearance Appearance { material Material { ${o.colourOnObjectVM ? '' : 'diffuseColor 0.7 0.72 0.75'} } }
   geometry IndexedFaceSet { ccw TRUE creaseAngle 0.5 coord Coordinate { point [ ${x} 0 0, ${x + 0.05} 0 0, ${x + 0.05} 0.05 0, ${x} 0.05 0, ${x} 0 0.05, ${x + 0.05} 0 0.05, ${x + 0.05} 0.05 0.05, ${x} 0.05 0.05 ] }
     coordIndex [ 0 1 2 3 -1, 4 5 6 7 -1, 0 1 5 4 -1, 2 3 7 6 -1, 1 2 6 5 -1, 0 3 7 4 -1 ] } }`;
   let scene = `DEF ASSEMBLY_ROOT ObjectVM { name "Assembly" translation 0 0 0 children [
   DEF BASE_PLATE ObjectVM { name "Base plate" translation 0 0 0 children [ ${box(0)} ] }
 `;
   for (let i = 1; i <= parts; i++) {
-    scene += `  DEF PN_0190-1000${i}_1 ObjectVM { name "Part ${i}" translation ${(0.1 * i).toFixed(3)} 0.06 0 children [ ${box(0)} ] }\n`;
+    scene += `  DEF PN_0190-1000${i}_1 ObjectVM { name "Part ${i}" ${o.colourOnObjectVM ? 'appearance Appearance { material Material { diffuseColor 0.9 0.1 0.1 } }' : ''} translation ${(0.1 * i).toFixed(3)} 0.06 0 children [ ${box(0)} ] }\n`;
   }
   scene += `  DEF CALLOUT_A CalloutM6 { translation 0.1 0.12 0 string "Torque to spec" whichChoice -1 }
   DEF PANEL_A PanelHtml9 { translation 0.3 0.12 0 htmlbody [ "<html><body><p>Check &amp; verify</p><p>seal seating</p></body></html>" ] whichChoice -1 }
@@ -61,7 +63,7 @@ ${o.unknownProto ? '  DEF MYSTERY MysteryWidget { foo "x" }\n' : ''}] }
   const s1 = [
     cmd('C1', 'SwitchOFF', 'key [ 0 1 ] keyValue [ -1 -1 ] period [ 0 1 ] objectID -106464992 attributeName "whichChoice"', 'PN_0190-10001_1', 'whichChoice'),
     cmd('C2', 'Set_transparency', 'key [ 0 1 ] keyValue [ 0 0.7 ] period [ 0 1 ] objectID -2001 attributeName "transparency"', 'PN_0190-10002_1', 'transparency'),
-    cmd('C3', 'Set_Viewpoint', 'position 0.5 0.3 1.2 orientation 0 1 0 0.3 fieldOfView 0.7', '', ''),
+    cmd('C3', 'Set_Viewpoint', `position 0.5 0.3 1.2 orientation ${o.upsideDown ? '1 0 0 3.0' : '0 1 0 0.3'} fieldOfView 0.7`, '', ''),
   ];
   routes.pop(); // C3 has no route
   const s2 = [

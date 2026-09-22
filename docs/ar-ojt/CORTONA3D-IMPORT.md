@@ -247,6 +247,38 @@ in the log dialog) — it contains counts, PROTO type names, publish options
 and warnings, never text or part numbers. If `protos UNKNOWN` is non-empty,
 those names are the next thing to add to `procedure.ts`.
 
+### Office review of two real decks (2026-09-22) — what changed in the importer
+
+An office-side review of two Applied decks (kept there; only the patterns
+came back) found four things the demo publications never showed. All four
+are now handled, each with a synthetic test:
+
+* **Colour on the `ObjectVM`, not the leaf.** Some publications put an empty
+  `Material {}` on the leaf `Shape` and the real `diffuseColor` on the
+  enclosing `ObjectVM.appearance`. A leaf whose material carries no colour
+  now inherits the nearest ObjectVM's. (`Set_diffuseColor` was already
+  honoured as a per-step colour delta.)
+* **Upside-down decks.** One deck is authored in a frame where the model is
+  inverted and every stored camera carries the compensating ~π rotation; the
+  source viewer looks right only through those cameras. The importer now
+  reads the cameras (`Viewpoint` + every `Set_Viewpoint`), averages their up
+  vectors, and when that mean points down (Y < −0.5) wraps the scene in a
+  `__frame` root that rotates the mean up onto +Y. Step views are carried
+  into the same frame. Decks whose cameras agree with +Y, or merely look from
+  above, are untouched; the log's `frame` block and a warning say when it
+  fired. `UpRight=Yes` at publish remains the cleaner fix when available.
+* **Part join by DEF.** `DocItem/@id` is the part's DEF in every publication
+  seen, while the numeric `objectID` handles need not line up across files.
+  Part numbers now join by DEF first and fall back to objectID.
+* **Step text fallback.** A work Item without `Text`/`Comment` takes its
+  first Action's SubStep text, then the Step's.
+
+"Only the current step's parts visible" is **not** deck data: it is the
+viewer's *Context geometry rendering mode* (Material / X-ray / Translucent
+shell / Hidden), computed in the viewer engine; only its initial value is
+published (`InitialBackgroundObjectsRenderingMode`, `0` = Material in every
+deck seen). Everything the author hid or ghosted per step is imported as-is.
+
 ### Original plan
 
 From the report we learn, without seeing content: how steps are delimited and

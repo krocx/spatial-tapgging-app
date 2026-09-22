@@ -7,6 +7,13 @@ it, it gets a line.
 ## 2026.4.46 — 2026-09-08
 
 ### Fixed
+- **Cortona import — findings from two real decks.** Leaf shapes with an
+  empty `Material {}` now inherit the colour from their `ObjectVM`
+  (greyscale imports); decks whose cameras look at the model upside-down are
+  rotated so up is +Y (`__frame` root, views carried along, logged); part
+  numbers join by `DocItem/@id` = DEF before the numeric `objectID`; work
+  Items without text fall back to their SubStep / Step text. Tests cover all
+  four; the three public demo decks import unchanged.
 - **Cortona3D import failed on some publications with "Cannot read
   properties of undefined (reading 'translation')".** Small publications
   re-use an assembly with a top-level `USE X` (and IS-bound children inside

@@ -14,8 +14,8 @@
 
 import type { ImportedGuide, ImportedGuideStep, GuideStepNode, GuideStepView } from '@spatial/shared';
 import { readCortonaBundle, type CortonaBundle } from './bundle.js';
-import { parseVrml, numField } from './vrml.js';
-import { buildScene, type SceneGraph } from './scene.js';
+import { parseVrml, numField, walkNodes } from './vrml.js';
+import { buildScene, axisAngle, mul, type SceneGraph } from './scene.js';
 import { writeGlb, type NodeExtras } from './glb.js';
 import { extractProcedure, classifyMotion, type ExtractedProcedure, type ExtractedSubStep } from './procedure.js';
 import { collectWidgets } from './widgets.js';
@@ -39,6 +39,8 @@ export interface CortonaImportLog {
   text:        { stepsWithTitle: number; stepsWithText: number; fromInteractivity: number };
   parts:       { docItems: number; rwiBomRows: number; nodesWithObjectId: number; nodesWithPartNumber: number };
   publish:     Record<string, string>;
+  /** Up-axis correction derived from the deck's cameras (see frameCorrection). */
+  frame:       { corrected: boolean; cameraUpY: number; cameras: number; axis?: [number, number, number]; angleDeg?: number };
   warnings:    string[];
   strict:      boolean;
 }
@@ -63,7 +65,9 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
   const kind: 'htm' | 'zip' = input.length >= 4 && input.readUInt32LE(0) === 0x04034b50 ? 'zip' : 'htm';
 
   const vrml  = parseVrml(bundle.vrmlText);
-  const scene = buildScene(vrml);
+  const frame = frameCorrection(vrml);
+  if (frame.corrected) warnings.push(`cameras look at the model upside-down (mean camera-up Y = ${frame.cameraUpY.toFixed(2)}) — assembly rotated ${frame.angleDeg}° so up is +Y`);
+  const scene = buildScene(vrml, { frame: frame.matrix });
   const widgets = collectWidgets(vrml);
   const widgetText = new Map<string, string | undefined>();
   for (const [def, w] of widgets) widgetText.set(def, w.text);
@@ -87,11 +91,17 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
   const rwi:   RwiIndex | null           = bundle.rwi ? safe(() => readRwi(bundle.rwi!), warnings, 'rwi') : null;
 
   // node extras: objectID from commands, part info from DocItems
+  // DocItem/@id IS the part's DEF in every publication seen (the objectID
+  // handles are runtime-only and may not line up across files), so join by
+  // DEF first and fall back to the objectID learned from the commands.
   const extras = new Map<string, NodeExtras>();
   let nodesWithPart = 0;
-  for (const [def, oid] of proc.objectIdByDef) {
-    const e: NodeExtras = { objectID: oid };
-    const p = inter?.partByObjectID.get(oid);
+  for (const def of scene.byDef.keys()) {
+    const oid = proc.objectIdByDef.get(def);
+    const p = inter?.partByDocId.get(def) ?? (oid !== undefined ? inter?.partByObjectID.get(oid) : undefined);
+    if (oid === undefined && !p) continue;
+    const e: NodeExtras = {};
+    if (oid !== undefined) e.objectID = oid; else if (p?.objectID !== undefined) e.objectID = p.objectID;
     if (p) { if (p.partNumber) { e.partNumber = p.partNumber; nodesWithPart++; } if (p.description) e.description = p.description; }
     extras.set(def, e);
   }
@@ -136,7 +146,7 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
     for (const t of tiers) { cad = centroidOf(t.map(n => n.node.replace(/^cmp:/, '')), scene.boundsByDef); if (cad) break; }
     cad = cad ?? lastCad ?? assemblyCentre;
     if (cad) { step.cadPosition = cad; lastCad = cad; }
-    if (m.view) step.view = m.view;
+    if (m.view) step.view = frame.corrected ? rotateView(m.view, frame.matrix!) : m.view;
     if (m.durationSec) step.durationSec = m.durationSec;
     steps.push(step);
     return step;
@@ -152,7 +162,8 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
       const simStep = subs[0]?.stepId ? inter?.textById.get(subs[0].stepId)?.title : undefined;
       const candidates = [wi.path[0], simStep, subs[0]?.stepTitle].filter((x): x is string => !!x);
       const top = candidates.find(x => !/^[\d.\s]+$/.test(x));
-      let leaf = wi.title; let text = wi.text ?? wi.comment ?? '';
+      // Text: the Item's own Text/Comment, else the first Action/SubStep's, else the Step's.
+      let leaf = wi.title; let text = wi.text ?? wi.comment ?? (subs[0] ? subStepText(subs[0], inter) : '');
       // No Description but the Text opens with a short heading line (DITA/RWI <h3>) — promote it.
       if ((!leaf || /^[\d.\s]+$/.test(leaf)) && text.includes('\n')) {
         const [first, ...rest] = text.split('\n'); const restText = rest.join('\n').trim();
@@ -194,6 +205,7 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
     text:   { stepsWithTitle: withTitle, stepsWithText: withText, fromInteractivity: fromInter },
     parts:  { docItems: inter?.partByObjectID.size ?? 0, rwiBomRows: rwi?.bom.length ?? 0, nodesWithObjectId: proc.objectIdByDef.size, nodesWithPartNumber: nodesWithPart },
     publish, warnings, strict: !!opts.strict,
+    frame: { corrected: frame.corrected, cameraUpY: round(frame.cameraUpY), cameras: frame.cameras, ...(frame.axis && { axis: frame.axis, angleDeg: frame.angleDeg }) },
   };
   if (scene.bbox) {
     const ext = log.scene.extentM!; const maxExt = Math.max(...ext);
@@ -204,6 +216,57 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
 
   const bounds = scene.bbox ? { min: scene.bbox.min.map(round5) as [number, number, number], max: scene.bbox.max.map(round5) as [number, number, number] } : undefined;
   return { imported, glb, log, extras, initialNodes, bounds };
+}
+
+/**
+ * Up-axis correction. Some decks are authored in a frame where the model is
+ * upside-down and every stored camera carries the compensating rotation
+ * (their `orientation` is ~π about X); the source viewer looks right only
+ * through those cameras. We never read the cameras for placement, so such a
+ * deck imports tilted. Detect it from the cameras themselves: rotate the
+ * camera's up vector (0,1,0) by each Viewpoint / Set_Viewpoint orientation
+ * and average. Up pointing down (mean Y < -0.5) ⇒ rotate the whole assembly
+ * by the minimal rotation taking that mean up-vector onto +Y. Decks whose
+ * cameras look from above/below (mean Y near 0, as in an overhead deck) are
+ * left alone, and so is every deck whose cameras agree with +Y.
+ */
+function frameCorrection(vrml: ReturnType<typeof parseVrml>): { corrected: boolean; cameraUpY: number; cameras: number; matrix?: number[]; axis?: [number, number, number]; angleDeg?: number } {
+  const ups: number[][] = [];
+  walkNodes(vrml.nodes, n => {
+    if (!/^(Viewpoint|Set_Viewpoint)/.test(n.type)) return;
+    const o = numField(n, 'orientation', []); if (o.length !== 4) return;
+    const m = axisAngle(o); ups.push([m[4], m[5], m[6]]);   // column 1 = rotated (0,1,0)
+  });
+  if (!ups.length) return { corrected: false, cameraUpY: 1, cameras: 0 };
+  const u = [0, 1, 2].map(a => ups.reduce((s, v) => s + v[a], 0) / ups.length);
+  const len = Math.hypot(u[0], u[1], u[2]) || 1; const un = u.map(x => x / len);
+  if (un[1] > -0.5) return { corrected: false, cameraUpY: un[1], cameras: ups.length };
+  // minimal rotation un → +Y: axis = un × Y, angle = acos(un·Y); for un ≈ -Y use X.
+  let ax = [un[2], 0, -un[0]]; let al = Math.hypot(ax[0], ax[1], ax[2]);
+  if (al < 1e-6) { ax = [1, 0, 0]; al = 1; }
+  const axis: [number, number, number] = [ax[0] / al, ax[1] / al, ax[2] / al];
+  const angle = Math.acos(Math.max(-1, Math.min(1, un[1])));
+  return { corrected: true, cameraUpY: un[1], cameras: ups.length, matrix: axisAngle([...axis, angle]), axis: axis.map(round) as [number, number, number], angleDeg: Math.round(angle * 180 / Math.PI) };
+}
+
+/** Carry a step's suggested camera into the corrected assembly frame. */
+function rotateView(v: GuideStepView, m: number[]): GuideStepView {
+  const rot = (p: [number, number, number]): [number, number, number] => [
+    round5(m[0] * p[0] + m[4] * p[1] + m[8]  * p[2]),
+    round5(m[1] * p[0] + m[5] * p[1] + m[9]  * p[2]),
+    round5(m[2] * p[0] + m[6] * p[1] + m[10] * p[2]),
+  ];
+  const out: GuideStepView = { ...v };
+  if (v.position) out.position = rot(v.position);
+  if (v.center) out.center = rot(v.center);
+  if (v.orientation) {
+    // R · axisAngle(orientation) → back to axis-angle
+    const r = mul(m, axisAngle(v.orientation));
+    const angle = Math.acos(Math.max(-1, Math.min(1, (r[0] + r[5] + r[10] - 1) / 2)));
+    const s = 2 * Math.sin(angle);
+    out.orientation = s < 1e-6 ? [0, 0, 1, 0] : [round5((r[6] - r[9]) / s), round5((r[8] - r[2]) / s), round5((r[1] - r[4]) / s), round5(angle)];
+  }
+  return out;
 }
 
 function subStepTitle(ss: ExtractedSubStep, inter: InteractivityIndex | null): string {

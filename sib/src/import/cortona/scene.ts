@@ -50,7 +50,14 @@ export interface SceneGraph {
 const CONTAINER_TYPES = new Set(['Transform', 'Group', 'Switch', 'ObjectVM', 'Collision', 'Billboard', 'Anchor']);
 const MESH_TYPES      = new Set(['IndexedFaceSet', 'IndexedFaceSetWithEdges']);
 
-export function buildScene(scene: VrmlScene): SceneGraph {
+export interface BuildSceneOptions {
+  /** A rotation applied above every root (4x4 column-major): the up-axis
+   *  correction derived from the deck's cameras (importer.ts). Wrapped as a
+   *  synthetic root node so every DEF keeps its own local frame. */
+  frame?: number[];
+}
+
+export function buildScene(scene: VrmlScene, opts: BuildSceneOptions = {}): SceneGraph {
   const byDef = new Map<string, SceneNode>();
   const meshCache = new Map<VrmlNode, SceneMesh | null>();
   const meshByContent = new Map<string, SceneMesh>();   // content-addressed dedupe (the exporter emits identical copies)
@@ -67,7 +74,7 @@ export function buildScene(scene: VrmlScene): SceneGraph {
   };
   const materialOwners = new Map<string, Set<string>>();
 
-  function shapeMesh(shape: VrmlNode, ownerDef?: string): SceneMesh | null {
+  function shapeMesh(shape: VrmlNode, ownerDef?: string, inheritedMat?: VrmlNode | null): SceneMesh | null {
     // Record which part owns this shape's material (commands target materials).
     if (ownerDef) {
       const appRef0 = nodeField(shape, 'appearance'); const app0 = appRef0 ? resolve(appRef0) : null;
@@ -106,7 +113,10 @@ export function buildScene(scene: VrmlScene): SceneGraph {
     // material
     let color: [number, number, number] = [0.8, 0.8, 0.8]; let transparency = 0;
     const appRef = nodeField(shape, 'appearance'); const app = appRef ? resolve(appRef) : null;
-    const matRef = app ? nodeField(app, 'material') : null; const mat = matRef ? resolve(matRef) : null;
+    const matRef = app ? nodeField(app, 'material') : null; let mat = matRef ? resolve(matRef) : null;
+    // Some publications put an empty `Material {}` on the leaf shape and keep
+    // the real colour on the enclosing ObjectVM's `appearance` — inherit it.
+    if ((!mat || !numField(mat, 'diffuseColor', []).length) && inheritedMat) mat = inheritedMat;
     if (mat) {
       const dc = numField(mat, 'diffuseColor', []); if (dc.length === 3) color = [dc[0], dc[1], dc[2]];
       const tr = numField(mat, 'transparency', []); if (tr.length === 1) transparency = tr[0];
@@ -127,8 +137,16 @@ export function buildScene(scene: VrmlScene): SceneGraph {
     return mesh;
   }
 
-  function build(n: VrmlNode, inheritedVisible: boolean, ownerDef?: string): SceneNode | null {
+  /** Material of an ObjectVM's own `appearance`, if it carries a colour. */
+  const ownMaterial = (n: VrmlNode): VrmlNode | null => {
+    const appRef = nodeField(n, 'appearance'); const app = appRef ? resolve(appRef) : null;
+    const matRef = app ? nodeField(app, 'material') : null; const mat = matRef ? resolve(matRef) : null;
+    return mat && numField(mat, 'diffuseColor', []).length === 3 ? mat : null;
+  };
+
+  function build(n: VrmlNode, inheritedVisible: boolean, ownerDef?: string, inheritedMat: VrmlNode | null = null): SceneNode | null {
     const owner = n.def ?? ownerDef;
+    const mat = n.type === 'ObjectVM' ? (ownMaterial(n) ?? inheritedMat) : inheritedMat;
     const sn: SceneNode = {
       id: n.def ?? `n${counter++}`, def: n.def, type: n.type,
       matrix: localMatrix(n), visible: inheritedVisible, meshes: [], children: [], vrml: n,
@@ -137,7 +155,7 @@ export function buildScene(scene: VrmlScene): SceneGraph {
     if (n.def) byDef.set(n.def, sn);
 
     if (n.type === 'Shape') {
-      const m = shapeMesh(n, owner); if (m) sn.meshes.push(m);
+      const m = shapeMesh(n, owner, inheritedMat); if (m) sn.meshes.push(m);
       return sn;
     }
     if (!CONTAINER_TYPES.has(n.type)) return null; // PROTO widgets / sensors / scripts: skipped
@@ -158,13 +176,17 @@ export function buildScene(scene: VrmlScene): SceneGraph {
       let vis = inheritedVisible;
       if (n.type === 'Switch') vis = vis && which === i;
       else if (which === -1) vis = false;
-      const c = build(kn, vis, owner); if (c) sn.children.push(c);
+      const c = build(kn, vis, owner, mat); if (c) sn.children.push(c);
     });
     return sn;
   }
 
-  const roots: SceneNode[] = [];
+  let roots: SceneNode[] = [];
   for (const n of scene.nodes) { const rn = resolve(n); if (!rn) continue; const r = build(rn, true); if (r) roots.push(r); }
+  if (opts.frame && !isIdentity(opts.frame)) {
+    const frame: SceneNode = { id: '__frame', type: 'Transform', matrix: opts.frame, visible: true, meshes: [], children: roots, vrml: { type: 'Transform', fields: {} } as VrmlNode };
+    roots = [frame];
+  }
 
   // bbox over world-space positions — overall, and per DEF'd subtree (the
   // per-node bounds give each imported step its pin: the centroid of the

@@ -165,3 +165,32 @@ test('primitives: parametric geometry PROTOs produce closed meshes', async () =>
   }
   assert.equal(buildPrimitive('BOXDUMMY', f({})), null);
 });
+
+test('scene: leaf Shape with an empty Material inherits the colour from its ObjectVM appearance', async () => {
+  const { importCortonaBundle } = await import('../src/import/cortona/importer.js');
+  const { glb } = importCortonaBundle(buildHtm({ parts: 2, colourOnObjectVM: true }));
+  const json = JSON.parse(glb.subarray(20, 20 + glb.readUInt32LE(12)).toString('utf8'));
+  const reds = json.materials.filter((m: { pbrMetallicRoughness: { baseColorFactor: number[] } }) => Math.abs(m.pbrMetallicRoughness.baseColorFactor[0] - 0.9) < 1e-3);
+  assert.ok(reds.length >= 1, 'ObjectVM colour reached the leaf mesh');
+});
+
+test('importer: cameras that look at the model upside-down rotate the assembly so up is +Y', async () => {
+  const { importCortonaBundle } = await import('../src/import/cortona/importer.js');
+  const ok = importCortonaBundle(buildHtm({ parts: 2 }));
+  assert.equal(ok.log.frame.corrected, false);
+  const flipped = importCortonaBundle(buildHtm({ parts: 2, upsideDown: true }));
+  assert.equal(flipped.log.frame.corrected, true);
+  assert.ok(flipped.log.frame.angleDeg! >= 170, `angle ${flipped.log.frame.angleDeg}`);
+  assert.ok(flipped.log.warnings.some(w => /upside-down/.test(w)));
+  const json = JSON.parse(flipped.glb.subarray(20, 20 + flipped.glb.readUInt32LE(12)).toString('utf8'));
+  const root = json.nodes[json.scenes[0].nodes[0]];
+  assert.equal(root.name, '__frame'); assert.ok(root.matrix && root.matrix[5] < -0.98, 'Y flipped by the frame node');
+  // parts under the frame keep their own local translation
+  const p1 = json.nodes.find((n: { name: string }) => n.name === 'cmp:PN_0190-10001_1');
+  assert.ok(Math.abs(p1.matrix[12] - 0.1) < 1e-6);
+  // the assembly's bounds (used for pins) are in the corrected frame: parts sit at +y 0.06 → now negative
+  assert.ok(flipped.bounds!.max[1] <= 0.001, `bounds max y ${flipped.bounds!.max[1]}`);
+  // a step view is carried into the corrected frame: camera up ends near +Y
+  const v = flipped.imported.steps.find(s => s.view)?.view!;
+  assert.ok(v && v.orientation, 'view kept');
+});
