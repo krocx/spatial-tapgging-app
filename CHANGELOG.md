@@ -283,6 +283,12 @@ it, it gets a line.
   still overrides per step; the portal Guide Preview notes it.
 
 ### Fixed
+- **Operator top bar on phones.** The icon cluster wrapped ("2 / 18" stacked
+  vertically) and the title truncated mid-word. The bar now keeps Exit and
+  the icons at their natural size, gives the title the remaining width, drops
+  the redundant "n / total" (the panel already says "Step 2 of 18" — the
+  progress ring stays) and strips the Designer's "[Guide] " prefix.
+### Fixed
 - **Build-up guides start empty.** A part no step installs was treated as a
   visible "base", so a build-up from a full CAD assembly showed the whole
   thing and only highlighted the step's part. Build-up now hides the model's

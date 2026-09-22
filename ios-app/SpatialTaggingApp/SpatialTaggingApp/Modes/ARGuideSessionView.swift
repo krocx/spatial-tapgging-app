@@ -915,17 +915,18 @@ struct ARGuideSessionView: View {
                     .font(.subheadline)
                     .foregroundStyle(.white.opacity(0.85))
             }
+            .fixedSize()
 
-            Spacer()
-
-            Text(guide.name)
+            // Title takes whatever is left; the icon cluster never wraps.
+            // "[Guide] " is the Designer's map-name prefix — not for operators.
+            Text(guide.name.hasPrefix("[Guide] ") ? String(guide.name.dropFirst(8)) : guide.name)
                 .font(.headline).foregroundStyle(.white)
-                .lineLimit(1).truncationMode(.middle)
-                .frame(maxWidth: 200)
+                .lineLimit(1).truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .layoutPriority(-1)
+                .padding(.horizontal, 8)
 
-            Spacer()
-
-            HStack(spacing: 10) {
+            HStack(spacing: 12) {
                 // B2e: chamber tracking status; tap = re-align by hand.
                 if case .navigating = phase, originViaObject || approximateFromMap {
                     ObjectTrackPill(state: arManager.objectTrackState, approximate: approximateFromMap) {
@@ -949,9 +950,8 @@ struct ARGuideSessionView: View {
                             .foregroundStyle(.white)
                     }
                     .frame(width: 24, height: 24)
-                    Text("\(index + 1) / \(sortedSteps.count)")
-                        .font(.subheadline.monospacedDigit())
-                        .foregroundStyle(.white.opacity(0.7))
+                    .accessibilityLabel("\(doneCount) of \(sortedSteps.count) steps done")
+                    // (step "n / total" lives in the panel — "Step 2 of 18" — not here)
 
                     // C2 UX: hint state — sparkles = on, slashed = muted. Tap
                     // unmutes; when on, tap opens the mute menu.
@@ -1012,6 +1012,7 @@ struct ARGuideSessionView: View {
                 }
                 .buttonStyle(.plain)
             }
+            .fixedSize()
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
