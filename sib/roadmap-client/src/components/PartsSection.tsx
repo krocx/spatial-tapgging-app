@@ -117,6 +117,26 @@ export function usePartsPicker(nodeId: string | null) {
   }, [tree, order, nodeId, mapNodes, partSet, assembly?.start, assembly?.initialNodes]);
 
   const write = (next: string[]) => { if (nodeId) patchStepMeta(nodeId, { parts: next }); };
+
+  // Operator context for this step: what surrounds the parts being installed.
+  type Ctx = 'installed' | 'ghost' | 'solid';
+  const context: Ctx = stepMeta?.context === 'ghost' || stepMeta?.context === 'solid' ? stepMeta.context : 'installed';
+  const setContext = (c: Ctx) => { if (nodeId) patchStepMeta(nodeId, { context: c === 'installed' ? null : c }); };
+  const setContextAll = (c: Ctx) => {
+    for (const n of mapNodes ?? []) patchStepMeta(n.id, { context: c === 'installed' ? null : c });
+  };
+  const contextBlock = (
+    <div className="pt-context">
+      <span className="pt-context-label" title="What the operator sees around this step's parts">Operator sees</span>
+      <div className="pt-context-seg" role="radiogroup">
+        {([['installed', 'Installed only'], ['ghost', 'Whole · ghost'], ['solid', 'Whole · solid']] as [Ctx, string][]).map(([v, l]) => (
+          <button key={v} role="radio" aria-checked={context === v} className={context === v ? 'on' : ''} onClick={() => setContext(v)}
+            title={v === 'installed' ? 'Only what has been built so far' : v === 'ghost' ? 'The whole assembly as a faint ghost — orientation without hiding progress' : 'The whole assembly opaque'}>{l}</button>
+        ))}
+      </div>
+      <button className="btn ghost pt-context-all" onClick={() => setContextAll(context)} title="Use this context on every step of the procedure">all steps</button>
+    </div>
+  );
   const toggle = (name: string) => write(partSet.has(name) ? parts.filter(p => p !== name) : [...parts, name]);
 
   // Named groups (map-level): apply adds the group's parts; save captures this step's list.
@@ -212,7 +232,7 @@ export function usePartsPicker(nodeId: string | null) {
     <span className="step-check-hint"> — {parts.length} chosen · {earlier.size} {assembly.start === 'complete' ? 'removed' : 'installed'} earlier</span>
   ) : null;
 
-  return { assembly, modelId, tree, parts, earlier, states, partNames, parents, toggle, verb, chips, treeBlock, search, summary, groupsBlock, buildUp };
+  return { assembly, modelId, tree, parts, earlier, states, partNames, parents, toggle, verb, chips, treeBlock, search, summary, groupsBlock, buildUp, contextBlock, context };
 }
 
 // ── Inspector block ──────────────────────────────────────────────────────────
@@ -239,8 +259,9 @@ export function PartsSection({ nodeId }: { nodeId: string }): JSX.Element | null
       <div className="inspector-field">Parts this step {verb}{summary}</div>
       {chips}
       {groupsBlock}
+      {pk.contextBlock}
       {showPreview && modelId && tree && !studioOpen && (
-        <AssemblyPreview modelId={modelId} partNames={partNames} states={states} parents={parents} unmentioned={pk.buildUp ? 'after' : 'base'} onPick={toggle} onExpand={() => openStudio(nodeId)} />
+        <AssemblyPreview modelId={modelId} partNames={partNames} states={states} parents={parents} unmentioned={pk.buildUp ? 'after' : 'base'} context={pk.context} onPick={toggle} onExpand={() => openStudio(nodeId)} />
       )}
       <div className="pt-toolbar">
         {search}
@@ -309,7 +330,7 @@ export function PartsStudio(): JSX.Element | null {
         <div className="pt-modal-main">
           <div className="pt-modal-3d">
             {pk.tree && (
-              <AssemblyPreview modelId={pk.modelId} partNames={pk.partNames} states={pk.states} parents={pk.parents} unmentioned={pk.buildUp ? 'after' : 'base'} onPick={pk.toggle} fill />
+              <AssemblyPreview modelId={pk.modelId} partNames={pk.partNames} states={pk.states} parents={pk.parents} unmentioned={pk.buildUp ? 'after' : 'base'} context={pk.context} onPick={pk.toggle} fill />
             )}
           </div>
           {/* Step strip: every step, its part count, click to jump. */}
@@ -326,6 +347,7 @@ export function PartsStudio(): JSX.Element | null {
           </div>
         </div>
         <div className="pt-modal-side">
+          {pk.contextBlock}
           {pk.chips}
           {pk.groupsBlock}
           {pk.search}

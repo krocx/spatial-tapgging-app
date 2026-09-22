@@ -80,6 +80,8 @@ interface StepMeta {
   nodes?:        GuideStepNode[];
   view?:         GuideStepView;
   cadPosition?:  [number, number, number];
+  /** Operator context around this step's parts (see GuideStep.context). */
+  context?:      'installed' | 'ghost' | 'solid';
 }
 
 const MAX_STEP_PARTS = 200;
@@ -160,6 +162,7 @@ function stepMetaOf(node: MindmapNode): StepMeta {
     parts:        partsOf(m.parts),
     nodes:        nodesOf(m.nodes),
     view:         m.view && typeof m.view === 'object' ? m.view as GuideStepView : undefined,
+    context:      m.context === 'ghost' || m.context === 'solid' ? m.context : undefined,
     cadPosition:  Array.isArray(m.cadPosition) && m.cadPosition.length === 3 && m.cadPosition.every(x => typeof x === 'number')
                     ? m.cadPosition as [number, number, number] : undefined,
   };
@@ -411,6 +414,7 @@ export function compileProcedure(map: Mindmap): ProcedureCompileResult {
     const stepNodes = assembly ? stepNodesOf(meta, asmStart) : meta.nodes;
     if (stepNodes?.length) step.nodes = stepNodes;
     if (meta.view)         step.view = meta.view;
+    if (meta.context)      step.context = meta.context;
     if (meta.cadPosition)  step.cadPosition = meta.cadPosition;
     if (nextId   && seqOf.has(nextId))   step.nextOnSuccessSeq = seqOf.get(nextId);
     if (failId   && seqOf.has(failId))   step.nextOnFailureSeq = seqOf.get(failId);

@@ -294,6 +294,12 @@ descendants; a ticked child overrides its group — preview, tree, compiler and
 device agree. Named **part sets** (`settings.assembly.groups`) are saved on the
 map and applied to a step in one click.
 
+**Operator context.** Per step, `metadata.step.context` → `GuideStep.context`:
+`installed` (default — only what is built so far), `ghost` (whole assembly as
+a faint outline; this step's parts stay highlighted, installed ones solid) or
+`solid`. The device seeds its "Show whole assembly" toggle from it; the
+operator can still flip it for that step.
+
 **Auto-pin.** A step that lists parts but has no `cadPosition` gets one at
 ingest: the centre of those parts' bounds in the assembly frame (read from the
 GLB's POSITION accessor `min`/`max` under the node transforms — no buffer

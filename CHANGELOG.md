@@ -272,6 +272,16 @@ it, it gets a line.
   alone — loaded at its saved offsets, or at the pin if never positioned —
   with Confirm returning to pin placement and Cancel restoring the model.
 
+### Added
+- **Per-step operator context.** In the Designer (parts block and Parts
+  Studio) each step chooses what the operator sees around the parts being
+  installed: *Installed only* (default), *Whole · ghost* (the whole assembly
+  as a faint outline — orientation without losing progress) or *Whole ·
+  solid*, with "all steps" to apply it everywhere. The 3D preview shows the
+  chosen context; `GuideStep.context` carries it (compiler, reverse compiler,
+  ingest); on the iPad the step opens in that context and the cube button
+  still overrides per step; the portal Guide Preview notes it.
+
 ### Fixed
 - **Build-up guides start empty.** A part no step installs was treated as a
   visible "base", so a build-up from a full CAD assembly showed the whole

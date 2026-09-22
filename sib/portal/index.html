@@ -5056,7 +5056,7 @@ function gpPartsHtml(step) {
   const more = nodes.length > 12 ? `<div style="color:var(--muted)">… +${nodes.length - 12} more</div>` : '';
   const view = step.view ? `<div style="color:var(--muted)"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-camera"/></svg> suggested view${step.durationSec ? ` · ${step.durationSec}s` : ''}</div>` : (step.durationSec ? `<div style="color:var(--muted)">⏱ ${step.durationSec}s</div>` : '');
   const st = gpAssemblyStateAt(gp.idx);
-  const cum = st.touched ? `<div style="color:var(--muted);border-top:1px solid var(--border);margin-top:3px;padding-top:3px">After this step: ${st.solid} shown · ${st.ghost} ghost · ${st.hidden} hidden${step.cadPosition ? ' · <svg class="ax-icon"><use href="/portal/brand/icons.svg#i-pin"/></svg> pin from CAD' : ''}</div>` : '';
+  const cum = st.touched ? `<div style="color:var(--muted);border-top:1px solid var(--border);margin-top:3px;padding-top:3px">After this step: ${st.solid} shown · ${st.ghost} ghost · ${st.hidden} hidden${step.cadPosition ? ' · <svg class="ax-icon"><use href="/portal/brand/icons.svg#i-pin"/></svg> pin from CAD' : ''}${step.context === 'ghost' ? ' · operator sees the whole assembly (ghost)' : step.context === 'solid' ? ' · operator sees the whole assembly (solid)' : ''}</div>` : '';
   return `<div style="border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:0.72rem;display:flex;flex-direction:column;gap:2px"><div style="font-weight:600"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-layers"/></svg> Part timeline (${nodes.length} deltas${step.durationSec ? ` · ${step.durationSec.toFixed(1)}s` : ''})</div>${rows}${more}${view}${cum}</div>`;
 }
 

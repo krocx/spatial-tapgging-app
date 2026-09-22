@@ -271,6 +271,9 @@ struct ARGuideSessionView: View {
     /// 2026.4.46: "Show whole assembly" — parts not yet installed render as a
     /// faint ghost for orientation. Turns itself off on the next step.
     @State private var assemblyContext:    Bool                 = false
+    /// The author's per-step choice (GuideStep.context) — 'ghost' or 'solid'
+    /// makes the whole assembly visible without the operator tapping.
+    @State private var assemblyContextSolid: Bool               = false
     @State private var assemblyLoading:    Bool                 = false
     /// Part chip: the step's focus part, or whatever the operator tapped.
     @State private var partChip: (title: String, partNumber: String?, tapped: Bool)? = nil
@@ -4112,7 +4115,10 @@ extension ARGuideSessionView {
         guard let node = assemblyNode, let engine = assemblyEngine, index < sortedSteps.count else { return }
         assemblyReplayTask?.cancel()
         assemblyStepIndex = index
-        assemblyContext = false          // context is per step — the next step starts clean
+        // The author's per-step context seeds the toggle; the operator can still flip it.
+        let ctx = sortedSteps[index].context
+        assemblyContext = ctx == "ghost" || ctx == "solid"
+        assemblyContextSolid = ctx == "solid"
         tagTucked = false
         let focus = engine.focusParts(at: index)
         if let first = focus.first {
@@ -4170,7 +4176,9 @@ extension ARGuideSessionView {
         guard assemblyContext else { return st }
         var out = st
         for (name, p) in st where p.show == .hidden {
-            var g = p; g.show = .ghost; g.opacity = 0.15; out[name] = g
+            var g = p
+            if assemblyContextSolid { g.show = .solid; g.opacity = 1 } else { g.show = .ghost; g.opacity = 0.15 }
+            out[name] = g
         }
         return out
     }

@@ -239,6 +239,7 @@ export async function applyImportedGuide(
       ...(s.nodes && s.nodes.length ? { nodes: s.nodes }
           : !imported.assembly && existing?.nodes?.length ? { nodes: existing.nodes } : {}),
       ...(s.view ? { view: s.view } : existing?.view && !imported.assembly ? { view: existing.view } : {}),
+      ...(s.context === 'ghost' || s.context === 'solid' ? { context: s.context } : {}),
       ...(s.cadPosition ? { cadPosition: s.cadPosition }
           : existing?.cadPosition && !imported.assembly ? { cadPosition: existing.cadPosition } : {}),
       isPlaced:           false,

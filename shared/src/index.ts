@@ -1005,6 +1005,11 @@ export interface GuideStep {
   nodes?:             GuideStepNode[];
   /** Optional suggested camera for this step (model frame). */
   view?:              GuideStepView;
+  /** 2026.4.46: what the operator sees around this step's parts — 'installed'
+   *  (default: only what's built so far), 'ghost' (whole assembly faint, for
+   *  orientation) or 'solid' (whole assembly opaque). The device toggle still
+   *  overrides per step. */
+  context?:           'installed' | 'ghost' | 'solid';
   // Conditional task graph (Step 2 of AI-readiness) — all optional for backward compat
   nextOnSuccess?:     string;      // step ID to navigate to on completion; nil → sequenceNumber+1
   nextOnFailure?:     string;      // step ID to navigate to on failure/retry; nil → stay on step
@@ -1707,6 +1712,7 @@ export interface ImportedGuideStep {
   /** CAD-driven node presentation (see GuideStep.nodes). Passed through verbatim. */
   nodes?:               GuideStepNode[];
   view?:                GuideStepView;
+  context?:             'installed' | 'ghost' | 'solid';
   /** Optional seconds of source timing for the step (e.g. Cortona SubStep.duration). */
   durationSec?:         number;
   // Conditional task graph — expressed as sequence numbers; server resolves to UUIDs

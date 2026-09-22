@@ -161,3 +161,17 @@ test('build-up starts empty: root nodes hidden in the initial state (idempotent)
   const r = compileProcedure(M([N('a', 0, { parts: ['cmp:x'] })], [], { modelId: 'mdl-1' }));
   assert.equal(r.guide!.assembly!.start, 'empty', 'compiler tags the guide so ingest knows to hide the roots');
 });
+
+test('step context (operator sees whole assembly) compiles, round-trips, and defaults to installed-only', () => {
+  const map = M([N('a', 0, { parts: ['cmp:x'], context: 'ghost' }), N('b', 100, { parts: ['cmp:y'], context: 'bogus' }), N('c', 200, { parts: ['cmp:z'] })],
+    [E('a', 'b'), E('b', 'c')], { modelId: 'mdl-1' });
+  const r = compileProcedure(map);
+  assert.ok(r.ok);
+  assert.equal(r.guide!.steps[0].context, 'ghost');
+  assert.equal(r.guide!.steps[1].context, undefined, 'unknown values are dropped');
+  assert.equal(r.guide!.steps[2].context, undefined);
+  const guide = { id: 'g', anchorId: 'an', name: 'G', description: '', published: false, createdBy: 'x', createdAt: 't', updatedAt: 't', assembly: { modelId: 'mdl-1' } } as unknown as Guide;
+  const steps = [{ id: 's1', guideId: 'g', anchorId: 'an', sequenceNumber: 1, text: 't', completionRequired: true, isPlaced: false, createdAt: 't', updatedAt: 't', context: 'solid', nodes: [{ node: 'cmp:x', show: 'solid' }] }] as unknown as GuideStep[];
+  const back = guideToProcedureMap(guide, steps);
+  assert.equal((back.nodes[0].metadata?.step as Record<string, unknown>).context, 'solid');
+});

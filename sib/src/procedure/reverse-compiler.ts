@@ -103,6 +103,7 @@ export function guideToProcedureMap(guide: Guide, rawSteps: GuideStep[],
       if (guide.assembly) stepMeta.parts = s.nodes.filter(n => n.show !== 'hidden').map(n => n.node);
     }
     if (s.view)        stepMeta.view        = s.view;
+    if (s.context === 'ghost' || s.context === 'solid') stepMeta.context = s.context;
     if (s.cadPosition) stepMeta.cadPosition = s.cadPosition;
     // U5: every slot (assignment only — placement never reaches the canvas).
     const slots = effectiveStepModels(s);

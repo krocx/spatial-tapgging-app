@@ -28,6 +28,8 @@ interface Props {
   parents?: Map<string, string>;
   /** State of parts no step and no initial entry mentions: 'after' (hidden — build-up) or 'base'. */
   unmentioned?: PartState;
+  /** The step's operator context: how "later" parts render. Undefined = the local toggle decides. */
+  context?: 'installed' | 'ghost' | 'solid';
   onPick?: (name: string) => void;
   height?: number;
   /** Fill the parent instead of a fixed height (expanded view). */
@@ -53,7 +55,7 @@ interface Scene3 {
 /** GLTFLoader sanitises node names (drops `:` `.` `/`), keeping the original in userData.name. */
 const partName = (o: any): string | undefined => (o?.userData?.name as string | undefined) ?? o?.name;
 
-export function AssemblyPreview({ modelId, partNames, states, onPick, height = 220, fill = false, onExpand, unmentioned = 'base' }: Props): JSX.Element {
+export function AssemblyPreview({ modelId, partNames, states, onPick, height = 220, fill = false, onExpand, unmentioned = 'base', context }: Props): JSX.Element {
   const hostRef  = useRef<HTMLDivElement | null>(null);
   const s3       = useRef<Scene3 | null>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -166,6 +168,8 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, height = 2
     const { THREE } = st;
     const ACCENT = new THREE.Color(0x2f6fed);
     const GHOST  = 0.18;
+    // Step context wins over the local toggle: what the operator will see.
+    const laterMode: 'hidden' | 'ghost' | 'solid' = context === 'ghost' ? 'ghost' : context === 'solid' ? 'solid' : context === 'installed' ? 'hidden' : (ghostAfter ? 'ghost' : 'hidden');
 
     // Nearest ancestor-or-self WITH A STATE decides a mesh: a selected group
     // covers all its children; a selected child overrides its group.
@@ -186,7 +190,7 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, height = 2
       const base = st.own.get(o) ?? [];
       const mats = Array.isArray(o.material) ? o.material : [o.material];
       const state = stateOf(o);
-      o.visible = !(state === 'after' && !ghostAfter);
+      o.visible = !(state === 'after' && laterMode === 'hidden');
       if (state === 'this') { thisBox.expandByObject(o); anyThis = true; }
       mats.forEach((m: any, i: number) => {
         const b = base[i];
@@ -197,7 +201,7 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, height = 2
         if (state === 'this') {
           if (m.emissive) { m.emissive.copy(ACCENT); m.emissiveIntensity = 0.55; }
           else if (m.color) m.color.lerp(ACCENT, 0.6);
-        } else if (state === 'after') {
+        } else if (state === 'after' && laterMode === 'ghost') {
           m.transparent = true; m.opacity = GHOST;
         }
         m.needsUpdate = true;
@@ -211,7 +215,7 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, height = 2
       st.camera.position.copy(c).add(offset);
       st.controls.update();
     }
-  }, [states, partNames, ghostAfter, status, unmentioned]);
+  }, [states, partNames, ghostAfter, status, unmentioned, context]);
 
   // ── Click → part name (drag = orbit, so only short clicks pick) ────────
   useEffect(() => {
@@ -254,9 +258,11 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, height = 2
         <div className="asm-preview-bar">
           <span className="asm-legend"><i className="asm-sw asm-sw-this" /> this step</span>
           <span className="asm-legend"><i className="asm-sw asm-sw-before" /> installed earlier</span>
-          <button className={`asm-toggle-btn${ghostAfter ? ' on' : ''}`} onClick={() => setGhostAfter(v => !v)}>
-            {ghostAfter ? 'Later parts: ghost' : 'Later parts: hidden'}
-          </button>
+          {context
+            ? <span className="asm-legend asm-ctx">Step context: {context === 'installed' ? 'installed only' : context === 'ghost' ? 'whole assembly, ghost' : 'whole assembly, solid'}</span>
+            : <button className={`asm-toggle-btn${ghostAfter ? ' on' : ''}`} onClick={() => setGhostAfter(v => !v)}>
+                {ghostAfter ? 'Later parts: ghost' : 'Later parts: hidden'}
+              </button>}
           <span className="asm-hint">Click a part to add or remove it · drag to orbit</span>
         </div>
       )}

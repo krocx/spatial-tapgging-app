@@ -605,6 +605,14 @@ input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 .pt-group-x { border: 0; border-left: 1px solid var(--border); background: transparent; color: #94a3b8; cursor: pointer; padding: 0 6px; font-size: 10px; }
 .pt-group-x:hover { color: #b91c1c; }
 .pt-group-save { font-size: 11.5px; padding: 3px 9px; }
+.pt-context { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 11.5px; }
+.pt-context-label { color: var(--muted); }
+.pt-context-seg { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; background: #fff; }
+.pt-context-seg button { border: 0; background: transparent; padding: 3px 9px; font-size: 11.5px; color: #334155; cursor: pointer; }
+.pt-context-seg button + button { border-left: 1px solid var(--border); }
+.pt-context-seg button.on { background: #2f6fed; color: #fff; }
+.pt-context-all { font-size: 11px; padding: 2px 8px; }
+.asm-ctx { color: #1e40af; }
 .pt-modal-3d .asm-preview { height: 100%; }
 .pt-modal-side { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-left: 1px solid var(--border); min-height: 0; overflow: hidden; }
 .pt-modal-side .pt-tree { max-height: none; flex: 1; min-height: 0; font-size: 13px; }

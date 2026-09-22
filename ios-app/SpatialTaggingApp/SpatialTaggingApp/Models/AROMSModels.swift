@@ -302,6 +302,8 @@ struct GuideStep: Codable, Identifiable, Equatable {
     let nodes:              [GuideStepNode]?
     let view:               GuideStepView?
     let cadPosition:        [Double]?
+    /// 2026.4.46: what surrounds this step's parts — "installed" (default), "ghost" or "solid".
+    let context:            String?
     // Conditional task graph (Step 2 of AI-readiness) — all optional, nil = linear/default behaviour
     let nextOnSuccess:      String?     // step ID to navigate to on completion; nil → sequenceNumber+1
     let nextOnFailure:      String?     // step ID to navigate to on failure/retry; nil → stay on step
@@ -395,6 +397,7 @@ struct GuideStep: Codable, Identifiable, Equatable {
         nodes              = try c.decodeIfPresent([GuideStepNode].self,   forKey: .nodes)
         view               = try c.decodeIfPresent(GuideStepView.self,     forKey: .view)
         cadPosition        = try c.decodeIfPresent([Double].self,          forKey: .cadPosition)
+        context            = try c.decodeIfPresent(String.self,            forKey: .context)
         // Conditional task graph — absent on guides created before Step 2
         nextOnSuccess      = try c.decodeIfPresent(String.self,             forKey: .nextOnSuccess)
         nextOnFailure      = try c.decodeIfPresent(String.self,             forKey: .nextOnFailure)
