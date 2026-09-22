@@ -3408,7 +3408,7 @@ struct ARGuideSessionView: View {
             let slotId    = slot.slotId
             let scale     = Float(slot.modelScale     ?? 1.0)
             let opacity   = CGFloat(slot.modelOpacity ?? 0.45)
-            let rotationY = Float(slot.modelRotationY ?? 0.0)
+            let euler     = slot.eulerAngles
             let finalPos  = simd_float3(
                 pos.x + Float(slot.modelOffsetX ?? 0),
                 pos.y + Float(slot.modelOffsetY ?? 0),
@@ -3432,7 +3432,7 @@ struct ARGuideSessionView: View {
                     children.forEach { wrapper.addChildNode($0.clone()) }
                     wrapper.simdScale    = simd_float3(scale, scale, scale)
                     wrapper.simdPosition = finalPos
-                    wrapper.eulerAngles  = SCNVector3(0, rotationY, 0)
+                    wrapper.eulerAngles  = euler
                     wrapper.opacity      = opacity
                     ModelNodeStyle.prepare(wrapper, label: "ghost \(slotId)")
                     return wrapper

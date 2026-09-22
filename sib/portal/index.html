@@ -5467,6 +5467,16 @@ function renderStepsInCard(guideId, anchorId) {
     const slotCount  = Array.isArray(step.models) ? step.models.length : (step.modelId ? 1 : 0);
     const modelsTag  = slotCount > 1
       ? `<span class="gl-step-tag gl-step-img" title="3D models on this step"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-cube"/></svg> ${slotCount} models</span>` : '';
+    // 2026.4.46: orientation set in the app (Turn / Tilt / roll) — shown so an
+    // author can see at a glance which steps flip the part.
+    const rotSlot = (Array.isArray(step.models) && step.models[0]) || step;
+    const deg = r => Math.round((r || 0) * 180 / Math.PI);
+    const rotParts = [];
+    if (deg(rotSlot.modelRotationY)) rotParts.push(`turn ${deg(rotSlot.modelRotationY)}°`);
+    if (deg(rotSlot.modelRotationX)) rotParts.push(`tilt ${deg(rotSlot.modelRotationX)}°`);
+    if (deg(rotSlot.modelRotationZ)) rotParts.push(`roll ${deg(rotSlot.modelRotationZ)}°`);
+    const rotTag = rotParts.length
+      ? `<span class="gl-step-tag gl-step-img" title="Model orientation set in the app">${rotParts.join(' · ')}</span>` : '';
     const partsTag   = Array.isArray(step.nodes) && step.nodes.length
       ? `<span class="gl-step-tag gl-step-img" title="CAD-driven part presentation (show / hide / motion) on this step"> ${step.nodes.length} part${step.nodes.length !== 1 ? 's' : ''}</span>` : '';
 
@@ -5475,7 +5485,7 @@ function renderStepsInCard(guideId, anchorId) {
       <div class="gl-step-body">
         <div class="gl-step-title">${esc(title)}</div>
         <div class="gl-step-text">${esc(step.text)}</div>
-        <div class="gl-step-tags">${placedTag}${imgTag}${branchTag}${modelsTag}${partsTag}${opacityCtl}</div>
+        <div class="gl-step-tags">${placedTag}${imgTag}${branchTag}${modelsTag}${rotTag}${partsTag}${opacityCtl}</div>
       </div>
     </div>`;
   }

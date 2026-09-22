@@ -983,6 +983,9 @@ export interface GuideStep {
   modelOffsetY?:      number;
   modelOffsetZ?:      number;
   modelRotationY?:    number;      // Y-axis rotation in radians (Author-placed via AR placement UI)
+  /** Tilt (X) and roll (Z) in radians — 0 when absent. Set on device; a 180° X tilt = "upside down". */
+  modelRotationX?:    number;
+  modelRotationZ?:    number;
   /**
    * U4 (2026.4.45): up to GUIDE_STEP_MAX_MODELS 3D assets per step, each with
    * its own scale/opacity/placement (same slot doctrine as LotoPoint.models).
@@ -1070,6 +1073,8 @@ export type UpdateGuideStepRequest = {
   modelOffsetY?:       number;
   modelOffsetZ?:       number;
   modelRotationY?:     number;     // Y-axis rotation in radians
+  modelRotationX?:     number;
+  modelRotationZ?:     number;
   /** U4: replace ALL model slots (max 3; [] clears every model). When present
    *  the legacy modelId/… keys in the same body are ignored. A slot whose
    *  modelId changed (matched by slotId) has its placement dropped. */
@@ -1175,6 +1180,8 @@ export interface GuideStepModel {
   modelOffsetY?:   number;
   modelOffsetZ?:   number;
   modelRotationY?: number;
+  modelRotationX?: number;
+  modelRotationZ?: number;
 }
 
 /**
@@ -1785,6 +1792,8 @@ export interface LotoPoint {
   modelOffsetY?:   number;
   modelOffsetZ?:   number;
   modelRotationY?: number;
+  modelRotationX?: number;
+  modelRotationZ?: number;
   createdBy:   string;
   createdAt:   string;
   updatedAt:   string;
@@ -1801,6 +1810,8 @@ export interface LotoPointModel {
   modelOffsetY?:   number;
   modelOffsetZ?:   number;
   modelRotationY?: number;
+  modelRotationX?: number;
+  modelRotationZ?: number;
 }
 
 // NOTE: the max-slots limit (3) is a VALUE and therefore deliberately NOT
@@ -1814,7 +1825,7 @@ export type CreateLotoPointRequest =
 export type UpdateLotoPointRequest = Partial<
   Pick<LotoPoint, 'label' | 'circuitId' | 'position' | 'models'
                 | 'modelId' | 'modelScale'
-                | 'modelOffsetX' | 'modelOffsetY' | 'modelOffsetZ' | 'modelRotationY'>>;
+                | 'modelOffsetX' | 'modelOffsetY' | 'modelOffsetZ' | 'modelRotationY' | 'modelRotationX' | 'modelRotationZ'>>;
 
 /**
  * Event types. 'override-remove' is the OSHA 1910.147 exception procedure —

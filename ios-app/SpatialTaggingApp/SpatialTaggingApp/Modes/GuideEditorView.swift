@@ -1342,7 +1342,8 @@ struct EditStepSheet: View {
             slots.append(GuideStepModel(slotId: slot1Id, modelId: mid,
                                         modelScale: modelScale, modelOpacity: modelOpacity,
                                         modelOffsetX: prior?.modelOffsetX, modelOffsetY: prior?.modelOffsetY,
-                                        modelOffsetZ: prior?.modelOffsetZ, modelRotationY: prior?.modelRotationY))
+                                        modelOffsetZ: prior?.modelOffsetZ, modelRotationY: prior?.modelRotationY,
+                                        modelRotationX: prior?.modelRotationX, modelRotationZ: prior?.modelRotationZ))
             slots.append(contentsOf: extraSlots)   // extras only exist under a slot-1 model
         }
         req.models = slots

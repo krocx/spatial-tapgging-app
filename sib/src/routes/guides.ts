@@ -547,7 +547,7 @@ router.patch('/:id', (req: Request, res: Response): void => {
         posX: undefined, posY: undefined, posZ: undefined,
         isPlaced: false, positionSource: undefined,
         modelOffsetX: undefined, modelOffsetY: undefined,
-        modelOffsetZ: undefined, modelRotationY: undefined,
+        modelOffsetZ: undefined, modelRotationY: undefined, modelRotationX: undefined, modelRotationZ: undefined,
         models: stripSlotPlacements(step.models),
         updatedAt: now,
       });
@@ -799,6 +799,8 @@ router.patch('/:id/steps/:stepId', (req: Request, res: Response): void => {
     modelOffsetY:       'modelOffsetY'    in body ? body.modelOffsetY     : step.modelOffsetY,
     modelOffsetZ:       'modelOffsetZ'    in body ? body.modelOffsetZ     : step.modelOffsetZ,
     modelRotationY:     'modelRotationY'  in body ? body.modelRotationY   : step.modelRotationY,
+    modelRotationX:     'modelRotationX'  in body ? body.modelRotationX   : step.modelRotationX,
+    modelRotationZ:     'modelRotationZ'  in body ? body.modelRotationZ   : step.modelRotationZ,
     models:             step.models,
     // Conditional task graph fields — null in body clears, key absent keeps existing
     nextOnSuccess:      'nextOnSuccess'   in body ? (body.nextOnSuccess ?? undefined) : step.nextOnSuccess,

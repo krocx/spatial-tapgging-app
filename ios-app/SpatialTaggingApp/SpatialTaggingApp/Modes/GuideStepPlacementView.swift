@@ -9,8 +9,8 @@
 //   3. Active step = first unplaced step (or first if all were already placed).
 //   4. Tap any surface → raycast → place pin for active step.
 //      If that step has a 3D model → download it and enter Model Adjust mode.
-//   5. Model Adjust mode: 1-finger pan (H/V), 2-finger pinch (scale),
-//      2-finger rotate (Y-axis). Confirm → save transform, advance to next step.
+//   5. Model Adjust mode: one tool at a time (Move · Lift · Turn · Tilt · Scale)
+//      — see PlacementTools.swift. Confirm → save transform, advance to next step.
 //      Skip → discard model placement for this step, advance.
 //   6. Tap an existing pin → make that step active for re-placement.
 //   7. Tap a step chip in the bottom tray → make it active for (re-)placement.
@@ -30,9 +30,12 @@ import CryptoKit
 private struct ModelTransformState {
     var position:  simd_float3  // absolute world position
     var scale:     Float        // uniform scale factor
-    var rotationY: Float        // Y-axis rotation in radians
+    var rotationY: Float        // Y-axis rotation in radians (turn)
+    var rotationX: Float = 0    // X-axis (tilt)
+    var rotationZ: Float = 0    // Z-axis (roll)
     /// Ghost opacity chosen IN AR (0.1–1.0). nil = not touched this session.
     var opacity:   Float? = nil
+    var euler: SCNVector3 { SCNVector3(rotationX, rotationY, rotationZ) }
 }
 
 // ── Placement phase state machine ─────────────────────────────────────────────
@@ -58,120 +61,6 @@ private enum PlacementPhase: Equatable {
         return false
     }
     var isPlacingPins: Bool { self == .placingPins }
-}
-
-// ── Pan mode for model adjustment ────────────────────────────────────────────
-
-private enum ModelPanMode { case horizontal, vertical }
-
-// ── Combined AR gesture container ─────────────────────────────────────────────
-//
-// Single UIViewRepresentable that wraps arManager.sceneView and adds tap,
-// pan, pinch, and rotate recognisers in one pass (no view-swap required).
-// Phase-conditional callbacks let the SwiftUI layer decide what each gesture does.
-
-private struct ARPlacementContainer: UIViewRepresentable {
-
-    @ObservedObject var arManager: ARSessionManager
-
-    // Tap (pin placement)
-    var onTap:          ((CGPoint) -> Void)?
-
-    // 1-finger pan (model translate)
-    var onPanBegan:     ((CGPoint) -> Void)?
-    var onPanChanged:   ((CGPoint) -> Void)?
-    var onPanEnded:     (() -> Void)?
-
-    // Pinch (model scale)
-    var onPinchBegan:   (() -> Void)?
-    var onPinchChanged: ((CGFloat) -> Void)?
-    var onPinchEnded:   ((CGFloat) -> Void)?
-
-    // Rotation (model Y-axis)
-    var onRotBegan:     (() -> Void)?
-    var onRotChanged:   ((CGFloat) -> Void)?
-    var onRotEnded:     ((CGFloat) -> Void)?
-
-    // ── Coordinator ───────────────────────────────────────────────────────────
-
-    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
-        var parent: ARPlacementContainer
-        init(_ parent: ARPlacementContainer) { self.parent = parent }
-
-        // All recognisers run simultaneously (pan + pinch + rotate)
-        func gestureRecognizer(
-            _ g1: UIGestureRecognizer,
-            shouldRecognizeSimultaneouslyWith g2: UIGestureRecognizer
-        ) -> Bool { true }
-
-        @objc func handleTap(_ r: UITapGestureRecognizer) {
-            guard r.state == .ended, let v = r.view else { return }
-            parent.onTap?(r.location(in: v))
-        }
-
-        @objc func handlePan(_ r: UIPanGestureRecognizer) {
-            guard r.numberOfTouches == 1, let v = r.view else { return }
-            let pt = r.location(in: v)
-            switch r.state {
-            case .began:             parent.onPanBegan?(pt)
-            case .changed:           parent.onPanChanged?(pt)
-            case .ended, .cancelled: parent.onPanEnded?()
-            default: break
-            }
-        }
-
-        @objc func handlePinch(_ r: UIPinchGestureRecognizer) {
-            switch r.state {
-            case .began:             r.scale = 1; parent.onPinchBegan?()
-            case .changed:           parent.onPinchChanged?(r.scale)
-            case .ended, .cancelled: parent.onPinchEnded?(r.scale)
-            default: break
-            }
-        }
-
-        @objc func handleRotation(_ r: UIRotationGestureRecognizer) {
-            switch r.state {
-            case .began:             r.rotation = 0; parent.onRotBegan?()
-            case .changed:           parent.onRotChanged?(r.rotation)
-            case .ended, .cancelled: parent.onRotEnded?(r.rotation)
-            default: break
-            }
-        }
-    }
-
-    func makeCoordinator() -> Coordinator { Coordinator(self) }
-
-    func makeUIView(context: Context) -> ARSCNView {
-        let view = arManager.sceneView
-        let c    = context.coordinator
-
-        let tap = UITapGestureRecognizer(target: c, action: #selector(Coordinator.handleTap(_:)))
-        tap.delegate = c
-        view.addGestureRecognizer(tap)
-
-        let pan = UIPanGestureRecognizer(target: c, action: #selector(Coordinator.handlePan(_:)))
-        pan.minimumNumberOfTouches = 1
-        pan.maximumNumberOfTouches = 1
-        pan.delegate = c
-        view.addGestureRecognizer(pan)
-
-        let pinch = UIPinchGestureRecognizer(target: c, action: #selector(Coordinator.handlePinch(_:)))
-        pinch.delegate = c
-        view.addGestureRecognizer(pinch)
-
-        let rot = UIRotationGestureRecognizer(target: c, action: #selector(Coordinator.handleRotation(_:)))
-        rot.delegate = c
-        view.addGestureRecognizer(rot)
-
-        return view
-    }
-
-    // Always update coordinator so latest closures are used
-    func updateUIView(_ uiView: ARSCNView, context: Context) {
-        context.coordinator.parent = self
-    }
-
-    static func dismantleUIView(_ uiView: ARSCNView, coordinator: Coordinator) {}
 }
 
 // ── Main view ─────────────────────────────────────────────────────────────────
@@ -302,16 +191,20 @@ struct GuideStepPlacementView: View {
     @State private var modelPosition: simd_float3  = .zero
     @State private var modelScale:    Float        = 1.0
     @State private var modelRotY:     Float        = 0.0
+    @State private var modelRotX:     Float        = 0.0
+    @State private var modelRotZ:     Float        = 0.0
+    /// Where this slot started the current adjustment — Reset returns here.
+    @State private var modelInitial:  ModelTransformState? = nil
     /// Live ghost opacity while adjusting a slot — what the operator will see.
     @State private var modelOpacity:  Float        = 0.45
-    @State private var modelPanMode:  ModelPanMode = .horizontal
+    @State private var placementTool: PlacementTool = .move
 
     // Gesture baselines
     @State private var panBasePos:    simd_float3 = .zero
     @State private var panDepthZ:     Float       = 0.5
     @State private var panStartWorld: simd_float3 = .zero
     @State private var scaleBase:     Float       = 1.0
-    @State private var rotYBase:      Float       = 0.0
+    @State private var rotBase:       SCNVector3  = SCNVector3Zero
 
     // ── Save state ────────────────────────────────────────────────────────────
     @State private var isSaving:           Bool    = false
@@ -375,20 +268,19 @@ struct GuideStepPlacementView: View {
         ZStack(alignment: .bottom) {
 
             // Single AR container — never swapped, always live
-            ARPlacementContainer(
+            PlacementGestureContainer(
                 arManager:      arManager,
+                tool:           placementTool,
+                // Drag/pinch only live in model-adjust phase — and only the active tool's.
+                active:         placementPhase.isAdjusting,
                 // Tap only fires in pin-placement phase
                 onTap:          placementPhase.isPlacingPins ? handleTap : nil,
-                // Pan/pinch/rotate only fire in model-adjust phase
-                onPanBegan:     placementPhase.isAdjusting  ? handleModelPanBegan   : nil,
-                onPanChanged:   placementPhase.isAdjusting  ? handleModelPanChanged : nil,
-                onPanEnded:     placementPhase.isAdjusting  ? { handleModelPanEnded()   } : nil,
-                onPinchBegan:   placementPhase.isAdjusting  ? { handleModelPinchBegan() } : nil,
-                onPinchChanged: placementPhase.isAdjusting  ? handleModelPinchChanged   : nil,
-                onPinchEnded:   placementPhase.isAdjusting  ? handleModelPinchEnded     : nil,
-                onRotBegan:     placementPhase.isAdjusting  ? { handleModelRotBegan()   } : nil,
-                onRotChanged:   placementPhase.isAdjusting  ? handleModelRotChanged     : nil,
-                onRotEnded:     placementPhase.isAdjusting  ? handleModelRotEnded       : nil
+                onPanBegan:     handleModelPanBegan,
+                onPanChanged:   handleModelPanChanged,
+                onPanEnded:     {},
+                onPinchBegan:   { scaleBase = modelScale },
+                onPinchChanged: handleModelPinchChanged,
+                onPinchEnded:   { _ in }
             )
             .ignoresSafeArea()
 
@@ -842,32 +734,17 @@ struct GuideStepPlacementView: View {
     // ─────────────────────────────────────────────────────────────────────────
 
     private func modelAdjustBar(for step: GuideStep, slotId: String) -> some View {
-        VStack(spacing: 0) {
-            // Gesture hints + H/V toggle
-            HStack(alignment: .top, spacing: 16) {
-                modelGestureHint(
-                    icon:  modelPanMode == .horizontal ? "hand.draw.fill"    : "arrow.up.and.down",
-                    label: modelPanMode == .horizontal ? "Drag\nto move"     : "Drag\nup/down"
-                )
-                modelGestureHint(icon: "arrow.up.left.and.arrow.down.right", label: "Pinch\nto scale")
-                modelGestureHint(icon: "rotate.right.fill", label: "Twist\nto rotate")
-
-                Button {
-                    modelPanMode = (modelPanMode == .horizontal) ? .vertical : .horizontal
-                } label: {
-                    VStack(spacing: 4) {
-                        Image(systemName: modelPanMode == .horizontal
-                              ? "arrow.left.and.right" : "arrow.up.and.down")
-                            .font(.system(size: 18)).foregroundStyle(.white.opacity(0.9))
-                        Text(modelPanMode == .horizontal ? "H" : "V")
-                            .font(.system(size: 10).bold()).foregroundStyle(.white.opacity(0.75))
-                    }
-                    .padding(.horizontal, 10).padding(.vertical, 6)
-                    .background(modelPanMode == .horizontal
-                                ? Color.white.opacity(0.12) : Color.indigo.opacity(0.55))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                }
-            }
+        let copyPrevious: () -> Void = { copyFromPrevious(step: step, slotId: slotId) }
+        let canCopy = previousTransform(for: step, slotId: slotId) != nil
+        return VStack(spacing: 0) {
+            PlacementToolbar(
+                tool: $placementTool,
+                readout: modelReadout,
+                onFlip:   { nudgeModelTurn(step: step, slotId: slotId, by: .pi) },
+                onTurn90: { nudgeModelTurn(step: step, slotId: slotId, by: .pi / 2) },
+                onReset:  { resetModelTransform(step: step, slotId: slotId) },
+                onCopyPrevious: canCopy ? copyPrevious : nil
+            )
             .padding(.top, 10).padding(.bottom, 4)
 
             // Ghost opacity — live on the node, saved with the slot, so the
@@ -888,16 +765,6 @@ struct GuideStepPlacementView: View {
                     .frame(width: 38, alignment: .trailing)
             }
             .padding(.horizontal, 24).padding(.bottom, 4)
-
-            // Scale / rotation readout
-            HStack(spacing: 24) {
-                Label("\(String(format: "%.2f", modelScale))×",
-                      systemImage: "arrow.up.left.and.arrow.down.right")
-                    .font(.caption).foregroundStyle(.white.opacity(0.7))
-                Label("\(Int(modelRotY * 180 / .pi))°", systemImage: "rotate.right")
-                    .font(.caption).foregroundStyle(.white.opacity(0.7))
-            }
-            .padding(.bottom, 8)
 
             // Confirm + Skip
             HStack(spacing: 12) {
@@ -923,12 +790,57 @@ struct GuideStepPlacementView: View {
         .background(.ultraThinMaterial)
     }
 
-    private func modelGestureHint(icon: String, label: String) -> some View {
-        VStack(spacing: 4) {
-            Image(systemName: icon).font(.system(size: 18)).foregroundStyle(.white.opacity(0.8))
-            Text(label).font(.system(size: 10)).foregroundStyle(.white.opacity(0.6))
-                .multilineTextAlignment(.center)
+    private var modelReadout: String {
+        String(format: "%.2f×", modelScale)
+            + "  ·  turn \(PlacementMath.degrees(modelRotY))°"
+            + "  ·  tilt \(PlacementMath.degrees(modelRotX))°"
+            + (modelRotZ == 0 ? "" : "  ·  roll \(PlacementMath.degrees(modelRotZ))°")
+    }
+
+    private func applyModelRotation(step: GuideStep, slotId: String) {
+        modelNodes[step.id]?[slotId]?.eulerAngles = SCNVector3(modelRotX, modelRotY, modelRotZ)
+    }
+
+    private func nudgeModelTurn(step: GuideStep, slotId: String, by radians: Float) {
+        modelRotY = PlacementMath.snap(modelRotY + radians)
+        applyModelRotation(step: step, slotId: slotId)
+    }
+
+    private func applyModelTransform(_ t: ModelTransformState, step: GuideStep, slotId: String) {
+        modelPosition = t.position; modelScale = t.scale
+        modelRotX = t.rotationX; modelRotY = t.rotationY; modelRotZ = t.rotationZ
+        if let node = modelNodes[step.id]?[slotId] {
+            node.simdWorldPosition = t.position
+            node.simdScale = simd_float3(t.scale, t.scale, t.scale)
+            node.eulerAngles = t.euler
         }
+    }
+
+    private func resetModelTransform(step: GuideStep, slotId: String) {
+        guard let t = modelInitial else { return }
+        applyModelTransform(t, step: step, slotId: slotId)
+    }
+
+    /// The same slot on the nearest earlier step that has a placement, if any.
+    private func previousTransform(for step: GuideStep, slotId: String) -> (step: GuideStep, t: ModelTransformState)? {
+        guard let idx = steps.firstIndex(where: { $0.id == step.id }) else { return nil }
+        for prev in steps[..<idx].reversed() {
+            guard let slot = slots(for: prev).first(where: { $0.slotId == slotId }),
+                  let t = worldTransform(step: prev, slot: slot) else { continue }
+            return (prev, t)
+        }
+        return nil
+    }
+
+    /// Copy scale + orientation + pin-relative offset from the previous step's
+    /// slot, so a part that sits the same way on every step is placed once.
+    private func copyFromPrevious(step: GuideStep, slotId: String) {
+        guard let pv = previousTransform(for: step, slotId: slotId),
+              let prevPin = stepPositions[pv.step.id], let pin = stepPositions[step.id] else { return }
+        var copy = pv.t
+        copy.position = pin + (pv.t.position - prevPin)
+        copy.opacity  = nil
+        applyModelTransform(copy, step: step, slotId: slotId)
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -2139,10 +2051,13 @@ struct GuideStepPlacementView: View {
             modelPosition = node.simdPosition
             modelScale    = node.simdScale.x
             modelRotY     = node.eulerAngles.y
+            modelRotX     = node.eulerAngles.x
+            modelRotZ     = node.eulerAngles.z
             modelOpacity  = Float(node.opacity)
-            modelPanMode  = .horizontal
+            placementTool = .move
             adjustStart   = ModelTransformState(position: modelPosition, scale: modelScale, rotationY: modelRotY,
-                                                opacity: modelOpacity)
+                                                rotationX: modelRotX, rotationZ: modelRotZ, opacity: modelOpacity)
+            modelInitial  = adjustStart
             hiddenModelStepIds.remove(step.id)
             applyStepVisibility()
             placementPhase = .adjustingModel(stepId: step.id, slotId: slotId)
@@ -2261,6 +2176,8 @@ struct GuideStepPlacementView: View {
             // Initial transform: preserve the slot's saved values, fall back to model defaults
             let initScale = Float(slot.modelScale    ?? model.defaultScale ?? 1.0)
             let initRotY  = Float(slot.modelRotationY ?? 0.0)
+            let initRotX  = Float(slot.modelRotationX ?? 0.0)
+            let initRotZ  = Float(slot.modelRotationZ ?? 0.0)
 
             // On first placement (no saved Y offset), auto-snap the model's base to the
             // pin position. baseY is bbMin.y at scale=1; -baseY * scale shifts the node
@@ -2282,7 +2199,7 @@ struct GuideStepPlacementView: View {
             let initOpacity = Float(slot.modelOpacity ?? 0.45)
             node.simdPosition = initPos
             node.simdScale    = simd_float3(initScale, initScale, initScale)
-            node.eulerAngles  = SCNVector3(0, initRotY, 0)
+            node.eulerAngles  = SCNVector3(initRotX, initRotY, initRotZ)
             // Show the slot's REAL opacity (not a fixed preview value) so the
             // author judges exactly what the operator will get.
             node.opacity      = CGFloat(initOpacity)
@@ -2295,8 +2212,12 @@ struct GuideStepPlacementView: View {
             modelPosition = initPos
             modelScale    = initScale
             modelRotY     = initRotY
+            modelRotX     = initRotX
+            modelRotZ     = initRotZ
             modelOpacity  = initOpacity
-            modelPanMode  = .horizontal
+            placementTool = .move
+            modelInitial  = ModelTransformState(position: initPos, scale: initScale, rotationY: initRotY,
+                                                rotationX: initRotX, rotationZ: initRotZ, opacity: initOpacity)
 
             placementPhase = .adjustingModel(stepId: step.id, slotId: slot.slotId)
             coach.show(.placeModelGestures)   // F1
@@ -2310,7 +2231,7 @@ struct GuideStepPlacementView: View {
     private func confirmModelPlacement(stepId: String, slotId: String) {
         modelTransforms[stepId, default: [:]][slotId] = ModelTransformState(
             position: modelPosition, scale: modelScale, rotationY: modelRotY,
-            opacity: modelOpacity
+            rotationX: modelRotX, rotationZ: modelRotZ, opacity: modelOpacity
         )
         modelNodes[stepId]?[slotId]?.opacity = CGFloat(modelOpacity)
         continueModelChain(stepId: stepId, after: slotId)
@@ -2323,7 +2244,7 @@ struct GuideStepPlacementView: View {
             if let start = adjustStart, let node = modelNodes[stepId]?[slotId] {
                 node.simdPosition = start.position
                 node.simdScale    = simd_float3(start.scale, start.scale, start.scale)
-                node.eulerAngles  = SCNVector3(0, start.rotationY, 0)
+                node.eulerAngles  = start.euler
                 node.opacity      = CGFloat(start.opacity ?? 0.45)
             } else if modelTransforms[stepId]?[slotId] == nil {
                 modelNodes[stepId]?[slotId]?.removeFromParentNode()
@@ -2452,6 +2373,7 @@ struct GuideStepPlacementView: View {
 
     private func handleModelPanBegan(_ pt: CGPoint) {
         panBasePos = modelPosition
+        rotBase    = SCNVector3(modelRotX, modelRotY, modelRotZ)
         let sv   = arManager.sceneView
         let proj = sv.projectPoint(SCNVector3(modelPosition.x, modelPosition.y, modelPosition.z))
         panDepthZ    = proj.z
@@ -2459,24 +2381,32 @@ struct GuideStepPlacementView: View {
         panStartWorld = simd_float3(worldPt.x, worldPt.y, worldPt.z)
     }
 
-    private func handleModelPanChanged(_ pt: CGPoint) {
-        let sv      = arManager.sceneView
-        let worldPt = sv.unprojectPoint(SCNVector3(Float(pt.x), Float(pt.y), panDepthZ))
-        let delta: simd_float3
-        switch modelPanMode {
-        case .horizontal: delta = simd_float3(worldPt.x - panStartWorld.x, 0,                      worldPt.z - panStartWorld.z)
-        case .vertical:   delta = simd_float3(0,                            worldPt.y - panStartWorld.y, 0)
-        }
-        let newPos = panBasePos + delta
-        modelPosition = newPos
-        if case .adjustingModel(let stepId, let slotId) = placementPhase {
-            modelNodes[stepId]?[slotId]?.simdWorldPosition = newPos
+    private func handleModelPanChanged(_ pt: CGPoint, _ translation: CGPoint) {
+        guard case .adjustingModel(let stepId, let slotId) = placementPhase else { return }
+        switch placementTool {
+        case .move, .lift:
+            let sv      = arManager.sceneView
+            let worldPt = sv.unprojectPoint(SCNVector3(Float(pt.x), Float(pt.y), panDepthZ))
+            let delta = placementTool == .move
+                ? simd_float3(worldPt.x - panStartWorld.x, 0, worldPt.z - panStartWorld.z)
+                : simd_float3(0, worldPt.y - panStartWorld.y, 0)
+            modelPosition = panBasePos + delta
+            modelNodes[stepId]?[slotId]?.simdWorldPosition = modelPosition
+        case .turn:
+            modelRotY = PlacementMath.snap(rotBase.y + PlacementMath.dragToRadians(translation.x))
+            modelNodes[stepId]?[slotId]?.eulerAngles = SCNVector3(modelRotX, modelRotY, modelRotZ)
+        case .tilt:
+            // Dominant axis wins so a diagonal drag doesn't tip AND roll.
+            if abs(translation.y) >= abs(translation.x) {
+                modelRotX = PlacementMath.snap(rotBase.x + PlacementMath.dragToRadians(translation.y))
+            } else {
+                modelRotZ = PlacementMath.snap(rotBase.z - PlacementMath.dragToRadians(translation.x))
+            }
+            modelNodes[stepId]?[slotId]?.eulerAngles = SCNVector3(modelRotX, modelRotY, modelRotZ)
+        case .scale:
+            break
         }
     }
-
-    private func handleModelPanEnded() {}
-
-    private func handleModelPinchBegan() { scaleBase = modelScale }
 
     private func handleModelPinchChanged(_ factor: CGFloat) {
         let newScale = max(0.05, min(20.0, scaleBase * Float(factor)))
@@ -2485,20 +2415,6 @@ struct GuideStepPlacementView: View {
             modelNodes[stepId]?[slotId]?.simdScale = simd_float3(newScale, newScale, newScale)
         }
     }
-
-    private func handleModelPinchEnded(_ factor: CGFloat) {}
-
-    private func handleModelRotBegan() { rotYBase = modelRotY }
-
-    private func handleModelRotChanged(_ rotation: CGFloat) {
-        let newRot = rotYBase + Float(rotation)
-        modelRotY = newRot
-        if case .adjustingModel(let stepId, let slotId) = placementPhase {
-            modelNodes[stepId]?[slotId]?.eulerAngles = SCNVector3(0, newRot, 0)
-        }
-    }
-
-    private func handleModelRotEnded(_ rotation: CGFloat) {}
 
     // ─────────────────────────────────────────────────────────────────────────
     // MARK: U4 — Copy models to other steps
@@ -2522,6 +2438,8 @@ struct GuideStepPlacementView: View {
                                    pin.z + Float(slot.modelOffsetZ ?? 0)),
             scale:     Float(slot.modelScale ?? 1.0),
             rotationY: Float(slot.modelRotationY ?? 0.0),
+            rotationX: Float(slot.modelRotationX ?? 0.0),
+            rotationZ: Float(slot.modelRotationZ ?? 0.0),
             opacity:   slot.modelOpacity.map { Float($0) })
     }
 
@@ -2603,7 +2521,7 @@ struct GuideStepPlacementView: View {
                     let clone = srcNode.clone()
                     clone.simdPosition = t.position
                     clone.simdScale    = simd_float3(t.scale, t.scale, t.scale)
-                    clone.eulerAngles  = SCNVector3(0, t.rotationY, 0)
+                    clone.eulerAngles  = t.euler
                     clone.opacity      = CGFloat(slot.modelOpacity ?? 0.45)
                     arManager.sceneView.scene.rootNode.addChildNode(clone)
                     modelNodes[target.id, default: [:]][slot.slotId] = clone
@@ -2657,6 +2575,8 @@ struct GuideStepPlacementView: View {
                         out.modelOffsetZ   = Double(t.position.z - newPos.z)
                         out.modelScale     = Double(t.scale)
                         out.modelRotationY = Double(t.rotationY)
+                        out.modelRotationX = Double(t.rotationX)
+                        out.modelRotationZ = Double(t.rotationZ)
                         if let o = t.opacity { out.modelOpacity = Double(o) }
                     }
                     return out

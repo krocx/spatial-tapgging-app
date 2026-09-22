@@ -3,130 +3,22 @@
 // Lets the Author position a 3D model in the guide's AR world space so it
 // aligns precisely with the real-world component.
 //
-// Interactions (same as iOS AR Quick Look + vertical mode):
-//   1-finger pan     → translate model on XZ plane (H mode) or up/down Y (V mode)
-//   H/V button       → toggle between Horizontal and Vertical pan mode
-//   2-finger pinch   → uniform scale
-//   2-finger rotate  → Y-axis rotation
+// One tool at a time (PlacementTools.swift): Move · Lift · Turn · Tilt · Scale.
+// Only the active tool's gesture is live, so a scale can never sneak into a
+// turn. Turn/Tilt snap softly to 15°; quick actions Flip 180° · Turn 90° ·
+// Reset.
 //
 // On save, PATCHes the step with new modelOffsetX/Y/Z (relative to step pin),
-// modelScale, and modelRotationY.
+// modelScale and modelRotationX/Y/Z.
 
 import SwiftUI
 import ARKit
 import SceneKit
 import simd
 
-// ── UIViewRepresentable for gesture-enhanced AR container ─────────────────────
-
-struct ARModelGestureContainer: UIViewRepresentable {
-
-    @ObservedObject var arManager: ARSessionManager
-
-    // Pan (1-finger translate)
-    var onPanBegan:   ((CGPoint) -> Void)?
-    var onPanChanged: ((CGPoint) -> Void)?
-    var onPanEnded:   (() -> Void)?
-
-    // Pinch (2-finger scale)
-    var onPinchBegan:   (() -> Void)?
-    var onPinchChanged: ((CGFloat) -> Void)?
-    var onPinchEnded:   ((CGFloat) -> Void)?
-
-    // Rotation (2-finger Y-axis rotate)
-    var onRotBegan:   (() -> Void)?
-    var onRotChanged: ((CGFloat) -> Void)?
-    var onRotEnded:   ((CGFloat) -> Void)?
-
-    // ── Coordinator ───────────────────────────────────────────────────────────
-
-    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
-        var parent: ARModelGestureContainer
-
-        init(_ parent: ARModelGestureContainer) { self.parent = parent }
-
-        // All three gesture recognizers run simultaneously
-        func gestureRecognizer(
-            _ g1: UIGestureRecognizer,
-            shouldRecognizeSimultaneouslyWith g2: UIGestureRecognizer
-        ) -> Bool { true }
-
-        @objc func handlePan(_ r: UIPanGestureRecognizer) {
-            // Only track 1-finger pans; 2-finger gestures go to pinch/rotate
-            guard r.numberOfTouches == 1, let v = r.view else { return }
-            let pt = r.location(in: v)
-            switch r.state {
-            case .began:             parent.onPanBegan?(pt)
-            case .changed:           parent.onPanChanged?(pt)
-            case .ended, .cancelled: parent.onPanEnded?()
-            default: break
-            }
-        }
-
-        @objc func handlePinch(_ r: UIPinchGestureRecognizer) {
-            switch r.state {
-            case .began:
-                r.scale = 1
-                parent.onPinchBegan?()
-            case .changed:
-                parent.onPinchChanged?(r.scale)
-            case .ended, .cancelled:
-                parent.onPinchEnded?(r.scale)
-            default: break
-            }
-        }
-
-        @objc func handleRotation(_ r: UIRotationGestureRecognizer) {
-            switch r.state {
-            case .began:
-                r.rotation = 0
-                parent.onRotBegan?()
-            case .changed:
-                parent.onRotChanged?(r.rotation)
-            case .ended, .cancelled:
-                parent.onRotEnded?(r.rotation)
-            default: break
-            }
-        }
-    }
-
-    func makeCoordinator() -> Coordinator { Coordinator(self) }
-
-    func makeUIView(context: Context) -> ARSCNView {
-        let view = arManager.sceneView
-        let c = context.coordinator
-
-        let pan = UIPanGestureRecognizer(target: c, action: #selector(Coordinator.handlePan(_:)))
-        pan.minimumNumberOfTouches = 1
-        pan.maximumNumberOfTouches = 1
-        pan.delegate = c
-        view.addGestureRecognizer(pan)
-
-        let pinch = UIPinchGestureRecognizer(target: c, action: #selector(Coordinator.handlePinch(_:)))
-        pinch.delegate = c
-        view.addGestureRecognizer(pinch)
-
-        let rot = UIRotationGestureRecognizer(target: c, action: #selector(Coordinator.handleRotation(_:)))
-        rot.delegate = c
-        view.addGestureRecognizer(rot)
-
-        return view
-    }
-
-    func updateUIView(_ uiView: ARSCNView, context: Context) {
-        // Refresh all closure captures so SwiftUI @State is always current
-        context.coordinator.parent = self
-    }
-
-    // Session is paused by ModelARPlacementView.onDisappear — not here
-    static func dismantleUIView(_ uiView: ARSCNView, coordinator: Coordinator) {}
-}
-
 // ── Main placement view ───────────────────────────────────────────────────────
 
 struct ModelARPlacementView: View {
-
-    enum PanMode { case horizontal, vertical }
 
     @EnvironmentObject private var settings: AppSettings
     @Environment(\.dismiss) private var dismiss
@@ -144,7 +36,11 @@ struct ModelARPlacementView: View {
     /// Absolute world-space position of the model (updated live during gestures).
     @State private var position:  simd_float3 = .zero
     @State private var scale:     Float       = 1.0
-    @State private var rotationY: Float       = 0.0
+    @State private var rotationX: Float       = 0.0   // tilt (pitch)
+    @State private var rotationY: Float       = 0.0   // turn (yaw)
+    @State private var rotationZ: Float       = 0.0   // roll
+    /// Where the model started this session — what Reset returns to.
+    @State private var initial:   (position: simd_float3, scale: Float, rot: SCNVector3)? = nil
 
     // ── Gesture baseline values (captured at gesture begin) ───────────────────
 
@@ -153,7 +49,7 @@ struct ModelARPlacementView: View {
     @State private var panStartWorld:   simd_float3 = .zero
 
     @State private var scaleBase: Float = 1.0
-    @State private var rotYBase:  Float = 0.0
+    @State private var rotBase:   SCNVector3 = SCNVector3Zero
 
     // ── Node & UI state ───────────────────────────────────────────────────────
 
@@ -164,7 +60,7 @@ struct ModelARPlacementView: View {
     @State private var phase:     Phase    = .loading
     @State private var isSaving:  Bool     = false
     @State private var error:     String?  = nil
-    @State private var panMode:   PanMode  = .horizontal
+    @State private var tool:      PlacementTool = .move
 
     enum Phase { case loading, placing }
 
@@ -174,17 +70,16 @@ struct ModelARPlacementView: View {
         ZStack(alignment: .bottom) {
 
             // Full-screen AR + gesture container
-            ARModelGestureContainer(
+            PlacementGestureContainer(
                 arManager: arManager,
+                tool: tool,
+                active: phase == .placing,
                 onPanBegan:     handlePanBegan,
                 onPanChanged:   handlePanChanged,
-                onPanEnded:     handlePanEnded,
-                onPinchBegan:   handlePinchBegan,
+                onPanEnded:     {},
+                onPinchBegan:   { scaleBase = scale },
                 onPinchChanged: handlePinchChanged,
-                onPinchEnded:   handlePinchEnded,
-                onRotBegan:     handleRotBegan,
-                onRotChanged:   handleRotChanged,
-                onRotEnded:     handleRotEnded
+                onPinchEnded:   { _ in }
             )
             .ignoresSafeArea()
 
@@ -275,36 +170,13 @@ struct ModelARPlacementView: View {
                     .transition(.move(edge: .top).combined(with: .opacity))
             }
 
-            // Hint row + H/V mode toggle
-            HStack(alignment: .top, spacing: 16) {
-                gestureHint(
-                    icon:  panMode == .horizontal ? "hand.draw.fill"    : "arrow.up.and.down",
-                    label: panMode == .horizontal ? "Drag\nto move"     : "Drag\nup/down"
-                )
-                gestureHint(icon: "arrow.up.left.and.arrow.down.right", label: "Pinch\nto scale")
-                gestureHint(icon: "rotate.right.fill", label: "Twist\nto rotate")
-
-                // Pan-mode toggle
-                Button {
-                    panMode = (panMode == .horizontal) ? .vertical : .horizontal
-                } label: {
-                    VStack(spacing: 4) {
-                        Image(systemName: panMode == .horizontal
-                              ? "arrow.left.and.right" : "arrow.up.and.down")
-                            .font(.system(size: 18))
-                            .foregroundStyle(.white.opacity(0.9))
-                        Text(panMode == .horizontal ? "H" : "V")
-                            .font(.system(size: 10).bold())
-                            .foregroundStyle(.white.opacity(0.75))
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(panMode == .horizontal
-                                ? Color.white.opacity(0.12)
-                                : Color.indigo.opacity(0.55))
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                }
-            }
+            PlacementToolbar(
+                tool: $tool,
+                readout: readout,
+                onFlip:   { nudgeTurn(.pi) },
+                onTurn90: { nudgeTurn(.pi / 2) },
+                onReset:  resetTransform
+            )
             .padding(.top, 10)
             .padding(.bottom, 6)
 
@@ -327,15 +199,6 @@ struct ModelARPlacementView: View {
             .padding(.horizontal, 24)
             .padding(.bottom, 4)
 
-            // Scale / rotation readout
-            HStack(spacing: 24) {
-                Label("\(String(format: "%.2f", scale))×", systemImage: "arrow.up.left.and.arrow.down.right")
-                    .font(.caption).foregroundStyle(.white.opacity(0.7))
-                Label("\(Int(rotationY * 180 / .pi))°", systemImage: "rotate.right")
-                    .font(.caption).foregroundStyle(.white.opacity(0.7))
-            }
-            .padding(.bottom, 8)
-
             // Save button
             Button {
                 Task { await savePlacement() }
@@ -356,16 +219,29 @@ struct ModelARPlacementView: View {
         .animation(.easeInOut(duration: 0.2), value: error)
     }
 
-    private func gestureHint(icon: String, label: String) -> some View {
-        VStack(spacing: 4) {
-            Image(systemName: icon)
-                .font(.system(size: 18))
-                .foregroundStyle(.white.opacity(0.8))
-            Text(label)
-                .font(.system(size: 10))
-                .foregroundStyle(.white.opacity(0.6))
-                .multilineTextAlignment(.center)
-        }
+    private var readout: String {
+        String(format: "%.2f×", scale)
+            + "  ·  turn \(PlacementMath.degrees(rotationY))°"
+            + "  ·  tilt \(PlacementMath.degrees(rotationX))°"
+            + (rotationZ == 0 ? "" : "  ·  roll \(PlacementMath.degrees(rotationZ))°")
+    }
+
+    private func applyRotation() {
+        modelNode?.eulerAngles = SCNVector3(rotationX, rotationY, rotationZ)
+    }
+
+    private func nudgeTurn(_ radians: Float) {
+        rotationY = PlacementMath.snap(rotationY + radians)
+        applyRotation()
+    }
+
+    private func resetTransform() {
+        guard let i = initial else { return }
+        position = i.position; scale = i.scale
+        rotationX = i.rot.x; rotationY = i.rot.y; rotationZ = i.rot.z
+        modelNode?.simdWorldPosition = position
+        modelNode?.simdScale = simd_float3(scale, scale, scale)
+        applyRotation()
     }
 
     // ── Saving overlay ────────────────────────────────────────────────────────
@@ -403,7 +279,10 @@ struct ModelARPlacementView: View {
             pinPos.z + Float(step.modelOffsetZ  ?? 0)
         )
         scale     = Float(step.modelScale     ?? 1.0)
+        rotationX = Float(step.modelRotationX ?? 0.0)
         rotationY = Float(step.modelRotationY ?? 0.0)
+        rotationZ = Float(step.modelRotationZ ?? 0.0)
+        initial   = (position, scale, SCNVector3(rotationX, rotationY, rotationZ))
         opacity   = step.modelOpacity ?? 0.45          // A2: seed the live slider
 
         // 3. Download model file (USDZ preferred — SCNScene loads it natively on iOS 12+)
@@ -454,7 +333,7 @@ struct ModelARPlacementView: View {
 
         node.simdWorldPosition = position
         node.simdScale         = simd_float3(scale, scale, scale)
-        node.eulerAngles       = SCNVector3(0, rotationY, 0)
+        node.eulerAngles       = SCNVector3(rotationX, rotationY, rotationZ)
         node.opacity           = CGFloat(opacity)
 
         arManager.sceneView.scene.rootNode.addChildNode(node)
@@ -476,7 +355,9 @@ struct ModelARPlacementView: View {
         req.modelOffsetY   = Double(position.y - pinPos.y)
         req.modelOffsetZ   = Double(position.z - pinPos.z)
         req.modelScale     = Double(scale)
+        req.modelRotationX = Double(rotationX)
         req.modelRotationY = Double(rotationY)
+        req.modelRotationZ = Double(rotationZ)
         req.modelOpacity   = opacity    // A2: adjusted live in this view
         // modelId is not changed here — EditStepSheet owns it
 
@@ -489,77 +370,50 @@ struct ModelARPlacementView: View {
         isSaving = false
     }
 
-    // ── Pan handlers (1-finger translate) ────────────────────────────────────
+    // ── Drag handlers (Move · Lift · Turn · Tilt) ────────────────────────────
 
     private func handlePanBegan(_ screenPt: CGPoint) {
         panBasePosition = position
+        rotBase = SCNVector3(rotationX, rotationY, rotationZ)
         let sv = arManager.sceneView
         // projectPoint returns SCNVector3 whose .z is the NDC depth (0=near, 1=far)
         let proj = sv.projectPoint(SCNVector3(position.x, position.y, position.z))
-        panDepthZ = proj.z  // Float
-        // Unproject the finger's starting screen point at the node's depth
+        panDepthZ = proj.z
         let worldPt = sv.unprojectPoint(SCNVector3(Float(screenPt.x), Float(screenPt.y), panDepthZ))
         panStartWorld = simd_float3(worldPt.x, worldPt.y, worldPt.z)
     }
 
-    private func handlePanChanged(_ screenPt: CGPoint) {
-        let sv      = arManager.sceneView
-        let worldPt = sv.unprojectPoint(SCNVector3(Float(screenPt.x), Float(screenPt.y), panDepthZ))
-        let delta: simd_float3
-        switch panMode {
-        case .horizontal:
-            // Lock Y — move on the XZ ground plane only
-            delta = simd_float3(
-                worldPt.x - panStartWorld.x,
-                0,
-                worldPt.z - panStartWorld.z
-            )
-        case .vertical:
-            // Lock XZ — move up/down (Y axis) only
-            delta = simd_float3(
-                0,
-                worldPt.y - panStartWorld.y,
-                0
-            )
+    private func handlePanChanged(_ screenPt: CGPoint, _ translation: CGPoint) {
+        switch tool {
+        case .move, .lift:
+            let sv      = arManager.sceneView
+            let worldPt = sv.unprojectPoint(SCNVector3(Float(screenPt.x), Float(screenPt.y), panDepthZ))
+            let delta = tool == .move
+                ? simd_float3(worldPt.x - panStartWorld.x, 0, worldPt.z - panStartWorld.z)   // ground plane
+                : simd_float3(0, worldPt.y - panStartWorld.y, 0)                             // up / down
+            position = panBasePosition + delta
+            modelNode?.simdWorldPosition = position
+        case .turn:
+            rotationY = PlacementMath.snap(rotBase.y + PlacementMath.dragToRadians(translation.x))
+            applyRotation()
+        case .tilt:
+            // Dominant axis wins so a diagonal drag doesn't tip AND roll.
+            if abs(translation.y) >= abs(translation.x) {
+                rotationX = PlacementMath.snap(rotBase.x + PlacementMath.dragToRadians(translation.y))
+            } else {
+                rotationZ = PlacementMath.snap(rotBase.z - PlacementMath.dragToRadians(translation.x))
+            }
+            applyRotation()
+        case .scale:
+            break
         }
-        let newPos = panBasePosition + delta
-        position = newPos
-        modelNode?.simdWorldPosition = newPos
     }
 
-    private func handlePanEnded() {
-        // position is already committed in handlePanChanged
-    }
-
-    // ── Pinch handlers (scale) ────────────────────────────────────────────────
-
-    private func handlePinchBegan() {
-        scaleBase = scale
-    }
+    // ── Pinch (Scale) ─────────────────────────────────────────────────────────
 
     private func handlePinchChanged(_ factor: CGFloat) {
         let newScale = max(0.05, min(20.0, scaleBase * Float(factor)))
         scale = newScale
         modelNode?.simdScale = simd_float3(newScale, newScale, newScale)
-    }
-
-    private func handlePinchEnded(_ factor: CGFloat) {
-        // scale already committed
-    }
-
-    // ── Rotation handlers (Y-axis) ────────────────────────────────────────────
-
-    private func handleRotBegan() {
-        rotYBase = rotationY
-    }
-
-    private func handleRotChanged(_ rotation: CGFloat) {
-        let newRot = rotYBase + Float(rotation)
-        rotationY = newRot
-        modelNode?.eulerAngles = SCNVector3(0, newRot, 0)
-    }
-
-    private func handleRotEnded(_ rotation: CGFloat) {
-        // rotationY already committed
     }
 }

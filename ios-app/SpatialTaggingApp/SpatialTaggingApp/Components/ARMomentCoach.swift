@@ -61,7 +61,7 @@ enum ARMoment: String, CaseIterable {
         switch self {
         case .placeMovePin:       return "Tap a pin to move it"
         case .placeConfirmPin:    return "Check the pin, then Confirm"
-        case .placeModelGestures: return "Drag · pinch · twist"
+        case .placeModelGestures: return "One tool at a time"
         case .placeAdjustSlots:   return "Adjust any model later"
         case .placeTrainStep:     return "Train the step"
         case .placeDeclutter:     return "Declutter the view"
@@ -83,7 +83,7 @@ enum ARMoment: String, CaseIterable {
         case .placeConfirmPin:
             return "Nothing moves on until you Confirm. Tap anywhere else to move the pin first. ⏩ in the top bar (yellow = on) skips this pause and goes straight to the next step."
         case .placeModelGestures:
-            return "One finger drags the model, pinch scales it, twist rotates it. H/V flips drag to up-and-down."
+            return "Pick Move, Lift, Turn, Tilt or Scale — only that gesture is live, so nothing changes by accident. Turn and Tilt snap to 15°; Flip 180° is one tap."
         case .placeAdjustSlots:
             return "Tap ⬢1 ⬢2 ⬢3 under a step to position that model on its own — no need to re-drop the pin."
         case .placeTrainStep:

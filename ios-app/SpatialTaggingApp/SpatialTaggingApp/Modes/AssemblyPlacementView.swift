@@ -3,9 +3,9 @@
 // The author never places steps for an imported guide. The assembly ghost
 // follows a reticle on the detected surface (bottom-centre of the geometry on
 // the surface, facing the author); ONE tap ("Place here") saves the pose — the
-// server derives every CAD step's pin from it. Gestures then nudge:
-//   1-finger pan → slide on the surface · 2-finger rotate → yaw · pinch → scale
-// "Done" re-saves if anything moved.
+// server derives every CAD step's pin from it. Then one tool at a time
+// (PlacementTools.swift): Move slides on the surface · Turn spins it · Scale
+// pinches. "Done" re-saves if anything moved.
 //
 // Frame: same convention as Place Steps / Place Model — the guide's world map
 // frame when one exists (session relocalizes into it), else a fresh session
@@ -64,16 +64,16 @@ struct AssemblyPlacementView: View {
     @State private var panStartWorld: simd_float3 = .zero
     @State private var scaleBase: Float = 1
     @State private var yawBase: Float = 0
+    @State private var tool: PlacementTool = .move
 
     private let reticleTimer = Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            ARModelGestureContainer(
-                arManager: arManager,
+            PlacementGestureContainer(
+                arManager: arManager, tool: tool, active: phase == .placed,
                 onPanBegan: panBegan, onPanChanged: panChanged, onPanEnded: {},
-                onPinchBegan: { scaleBase = scale }, onPinchChanged: pinchChanged, onPinchEnded: { _ in },
-                onRotBegan: { yawBase = yaw }, onRotChanged: rotChanged, onRotEnded: { _ in }
+                onPinchBegan: { scaleBase = scale }, onPinchChanged: pinchChanged, onPinchEnded: { _ in }
             )
             .ignoresSafeArea()
 
@@ -132,19 +132,13 @@ struct AssemblyPlacementView: View {
             Text(status).font(.subheadline).foregroundStyle(.white.opacity(0.85)).multilineTextAlignment(.center).padding(.horizontal)
 
             if phase == .placed {
-                HStack(spacing: 22) {
-                    hint("hand.draw", "Drag to slide")
-                    hint("rotate.3d", "Twist to turn")
-                    hint("arrow.up.left.and.arrow.down.right", "Pinch to scale")
-                }
-                HStack(spacing: 18) {
-                    Label(String(format: "%.2f×", scale), systemImage: "arrow.up.left.and.arrow.down.right")
-                    Label("\(Int(yaw * 180 / .pi))°", systemImage: "rotate.right")
-                    if size != .zero {
-                        Label(String(format: "%.2f × %.2f × %.2f m", size.x * scale, size.y * scale, size.z * scale), systemImage: "cube")
-                    }
-                }
-                .font(.caption).foregroundStyle(.white.opacity(0.7))
+                PlacementToolbar(
+                    tool: $tool, tools: [.move, .turn, .scale],
+                    readout: String(format: "%.2f×", scale) + "  ·  turn \(PlacementMath.degrees(yaw))°"
+                        + (size == .zero ? "" : String(format: "  ·  %.2f × %.2f × %.2f m", size.x * scale, size.y * scale, size.z * scale)),
+                    onFlip:   { yaw = PlacementMath.snap(yaw + .pi);     dirty = true; applyPose() },
+                    onTurn90: { yaw = PlacementMath.snap(yaw + .pi / 2); dirty = true; applyPose() }
+                )
             }
 
             if phase == .placed { previewBar }
@@ -257,13 +251,6 @@ struct AssemblyPlacementView: View {
         node.focus(parts: [])
         node.setViewHint(nil)
         node.apply(state: [:])            // whole assembly, rest pose, solid
-    }
-
-    private func hint(_ icon: String, _ label: String) -> some View {
-        VStack(spacing: 4) {
-            Image(systemName: icon).font(.system(size: 18)).foregroundStyle(.white.opacity(0.8))
-            Text(label).font(.system(size: 10)).foregroundStyle(.white.opacity(0.6))
-        }
     }
 
     private var savingOverlay: some View {
@@ -423,14 +410,18 @@ struct AssemblyPlacementView: View {
 
     private func panBegan(_ pt: CGPoint) {
         guard phase == .placed, let p = surfacePoint else { return }
-        panBase = p
+        panBase = p; yawBase = yaw
         let sv = arManager.sceneView
         panDepth = sv.projectPoint(SCNVector3(p)).z
         let w = sv.unprojectPoint(SCNVector3(Float(pt.x), Float(pt.y), panDepth))
         panStartWorld = simd_float3(w)
     }
-    private func panChanged(_ pt: CGPoint) {
+    private func panChanged(_ pt: CGPoint, _ translation: CGPoint) {
         guard phase == .placed else { return }
+        if tool == .turn {
+            yaw = PlacementMath.snap(yawBase + PlacementMath.dragToRadians(translation.x)); dirty = true; applyPose()
+            return
+        }
         let sv = arManager.sceneView
         let w = simd_float3(sv.unprojectPoint(SCNVector3(Float(pt.x), Float(pt.y), panDepth)))
         surfacePoint = panBase + simd_float3(w.x - panStartWorld.x, 0, w.z - panStartWorld.z)
@@ -439,9 +430,5 @@ struct AssemblyPlacementView: View {
     private func pinchChanged(_ f: CGFloat) {
         guard phase == .placed else { return }
         scale = max(0.05, min(20, scaleBase * Float(f))); dirty = true; applyPose()
-    }
-    private func rotChanged(_ r: CGFloat) {
-        guard phase == .placed else { return }
-        yaw = yawBase + Float(r); dirty = true; applyPose()
     }
 }

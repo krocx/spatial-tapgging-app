@@ -42,6 +42,8 @@ function slotsFromLegacy(step: GuideStep): GuideStepModel[] {
     ...(step.modelOffsetY   !== undefined && { modelOffsetY:   step.modelOffsetY }),
     ...(step.modelOffsetZ   !== undefined && { modelOffsetZ:   step.modelOffsetZ }),
     ...(step.modelRotationY !== undefined && { modelRotationY: step.modelRotationY }),
+    ...(step.modelRotationX !== undefined && { modelRotationX: step.modelRotationX }),
+    ...(step.modelRotationZ !== undefined && { modelRotationZ: step.modelRotationZ }),
   }];
 }
 
@@ -76,10 +78,14 @@ export function sanitizeStepModelSlots(raw: unknown, existing: GuideStepModel[] 
       const oy = finiteOrUndef(s.modelOffsetY);
       const oz = finiteOrUndef(s.modelOffsetZ);
       const ry = finiteOrUndef(s.modelRotationY);
+      const rx = finiteOrUndef(s.modelRotationX);
+      const rz = finiteOrUndef(s.modelRotationZ);
       if (ox !== undefined) slot.modelOffsetX   = ox;
       if (oy !== undefined) slot.modelOffsetY   = oy;
       if (oz !== undefined) slot.modelOffsetZ   = oz;
       if (ry !== undefined) slot.modelRotationY = ry;
+      if (rx !== undefined) slot.modelRotationX = rx;
+      if (rz !== undefined) slot.modelRotationZ = rz;
     }
     return slot;
   });
@@ -96,6 +102,8 @@ export function applySlotsToLegacy(step: GuideStep): GuideStep {
   step.modelOffsetY   = first?.modelOffsetY;
   step.modelOffsetZ   = first?.modelOffsetZ;
   step.modelRotationY = first?.modelRotationY;
+  step.modelRotationX = first?.modelRotationX;
+  step.modelRotationZ = first?.modelRotationZ;
   if (step.models && step.models.length === 0) delete step.models;
   return step;
 }
@@ -120,6 +128,8 @@ export function applyLegacyToSlots(step: GuideStep): GuideStep {
   if (step.modelOffsetY   !== undefined) first.modelOffsetY   = step.modelOffsetY;
   if (step.modelOffsetZ   !== undefined) first.modelOffsetZ   = step.modelOffsetZ;
   if (step.modelRotationY !== undefined) first.modelRotationY = step.modelRotationY;
+  if (step.modelRotationX !== undefined) first.modelRotationX = step.modelRotationX;
+  if (step.modelRotationZ !== undefined) first.modelRotationZ = step.modelRotationZ;
   step.models = [first, ...rest];
   return step;
 }
@@ -137,5 +147,5 @@ export function stripSlotPlacements(models: GuideStepModel[] | undefined): Guide
 
 export const LEGACY_MODEL_KEYS = [
   'modelId', 'modelScale', 'modelOpacity',
-  'modelOffsetX', 'modelOffsetY', 'modelOffsetZ', 'modelRotationY',
+  'modelOffsetX', 'modelOffsetY', 'modelOffsetZ', 'modelRotationY', 'modelRotationX', 'modelRotationZ',
 ] as const;

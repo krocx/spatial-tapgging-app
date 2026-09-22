@@ -6,6 +6,7 @@
 
 import UIKit    // UIImage convenience inits for base64 image encoding
 import simd     // simd_float3 for AR world-space positions
+import SceneKit // SCNVector3 for model euler angles
 
 // ============================================================
 // MARK: - Enumerations
@@ -243,11 +244,16 @@ struct GuideStepModel: Codable, Identifiable, Equatable {
     var modelOffsetY:   Double?
     var modelOffsetZ:   Double?
     var modelRotationY: Double?
+    /// Tilt (X) and roll (Z) in radians — nil = 0. A π tilt is "upside down".
+    var modelRotationX: Double?
+    var modelRotationZ: Double?
     var id: String { slotId }
 
     var hasPlacement: Bool {
-        modelOffsetX != nil || modelOffsetY != nil || modelOffsetZ != nil || modelRotationY != nil
+        modelOffsetX != nil || modelOffsetY != nil || modelOffsetZ != nil || modelRotationY != nil || modelRotationX != nil || modelRotationZ != nil
     }
+    /// Euler angles (x tilt, y turn, z roll) for SceneKit.
+    var eulerAngles: SCNVector3 { SCNVector3(Float(modelRotationX ?? 0), Float(modelRotationY ?? 0), Float(modelRotationZ ?? 0)) }
 }
 
 /// Max 3D model slots per step — mirrors GUIDE_STEP_MAX_MODELS on the server.
@@ -287,6 +293,8 @@ struct GuideStep: Codable, Identifiable, Equatable {
     let modelOffsetY:       Double?     // Y offset from step worldPosition in metres (default 0)
     let modelOffsetZ:       Double?     // Z offset from step worldPosition in metres (default 0)
     let modelRotationY:     Double?     // Y-axis rotation in radians (default 0); set by AR placement UI
+    let modelRotationX:     Double?     // tilt in radians (default 0)
+    let modelRotationZ:     Double?     // roll in radians (default 0)
     /// U4: model slots (≤ guideStepMaxModelSlots). The server mirrors slot 1
     /// into the legacy fields above; read `effectiveModels` instead of either.
     let models:             [GuideStepModel]?
@@ -327,7 +335,7 @@ struct GuideStep: Codable, Identifiable, Equatable {
         return [GuideStepModel(slotId: "slot-1", modelId: mid, modelScale: modelScale,
                                modelOpacity: modelOpacity, modelOffsetX: modelOffsetX,
                                modelOffsetY: modelOffsetY, modelOffsetZ: modelOffsetZ,
-                               modelRotationY: modelRotationY)]
+                               modelRotationY: modelRotationY, modelRotationX: modelRotationX, modelRotationZ: modelRotationZ)]
     }
     var hasModels: Bool { !effectiveModels.isEmpty }
     /// AR OJT: the step drives parts of the guide's assembly model.
@@ -381,6 +389,8 @@ struct GuideStep: Codable, Identifiable, Equatable {
         modelOffsetY       = try c.decodeIfPresent(Double.self,             forKey: .modelOffsetY)
         modelOffsetZ       = try c.decodeIfPresent(Double.self,             forKey: .modelOffsetZ)
         modelRotationY     = try c.decodeIfPresent(Double.self,             forKey: .modelRotationY)
+        modelRotationX     = try c.decodeIfPresent(Double.self,             forKey: .modelRotationX)
+        modelRotationZ     = try c.decodeIfPresent(Double.self,             forKey: .modelRotationZ)
         models             = try c.decodeIfPresent([GuideStepModel].self,  forKey: .models)
         nodes              = try c.decodeIfPresent([GuideStepNode].self,   forKey: .nodes)
         view               = try c.decodeIfPresent(GuideStepView.self,     forKey: .view)
@@ -466,6 +476,8 @@ struct UpdateGuideStepRequest: Codable {
     var modelOffsetY:       Double?
     var modelOffsetZ:       Double?
     var modelRotationY:     Double?
+    var modelRotationX:     Double?
+    var modelRotationZ:     Double?
     /// U4: replace ALL model slots (max 3; [] clears every model). When set, the
     /// legacy model* keys above are ignored by the server.
     var models:             [GuideStepModel]?

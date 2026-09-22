@@ -273,6 +273,19 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **Model orientation per step + one-tool-at-a-time placement (iOS).** A part
+  that the operator flips over between steps can now be shown flipped: every
+  model slot carries `modelRotationX` / `modelRotationZ` (tilt / roll) beside
+  the existing Y turn, persisted by the server, honoured by the operator's
+  ghost overlay and copied with the guide. Placing a model — Place Model,
+  per-step slot adjustment and Place Assembly — now uses one shared toolbar
+  (`PlacementTools.swift`): pick **Move · Lift · Turn · Tilt · Scale** and
+  only that gesture is live, so a pinch can no longer sneak a scale into a
+  turn. Turn/Tilt snap softly to 15° with a live readout; quick actions
+  **Flip 180°**, **Turn 90°**, **Reset** and **Copy previous** (same slot on
+  the nearest earlier step, re-based on this step's pin). One-time coach line
+  on first use. Guide Library step rows show the orientation ("turn 180° ·
+  tilt 90°") so an author can see which steps flip the part.
 - **Insights** — the leadership view under AR Guides Sessions. Headline
   tiles (runs, completion rate, typical run time, hints that helped, wrong
   parts per run) each with a sparkline and a delta against the previous

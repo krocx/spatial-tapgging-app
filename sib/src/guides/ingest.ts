@@ -101,6 +101,8 @@ function carrySpatial(target: GuideStep, existing: GuideStep, importSetsModel: b
     target.modelOffsetY   = existing.modelOffsetY;
     target.modelOffsetZ   = existing.modelOffsetZ;
     target.modelRotationY = existing.modelRotationY;
+    target.modelRotationX = existing.modelRotationX;
+    target.modelRotationZ = existing.modelRotationZ;
   }
   // else: new model assigned from the canvas — placement starts fresh on device.
 }
@@ -268,6 +270,8 @@ export async function applyImportedGuide(
           if (was.modelOffsetY   !== undefined) slot.modelOffsetY   = was.modelOffsetY;
           if (was.modelOffsetZ   !== undefined) slot.modelOffsetZ   = was.modelOffsetZ;
           if (was.modelRotationY !== undefined) slot.modelRotationY = was.modelRotationY;
+          if (was.modelRotationX !== undefined) slot.modelRotationX = was.modelRotationX;
+          if (was.modelRotationZ !== undefined) slot.modelRotationZ = was.modelRotationZ;
         }
         return slot;
       });
