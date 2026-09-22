@@ -35,11 +35,13 @@ import type {
 import { DATA_DIR } from '../data-dir.js';
 import { omsUsageStore } from './usage-log.js';
 import { computeBaselines } from './observations.js';
+import { effectiveTriggers } from './signals.js';
+import { guideStore } from '../guides/store.js';
 
 export const RECENT_VISITS = 50;
-export const MIN_SHOWN_FOR_RETIRE = 5;
+export const MIN_SHOWN_FOR_RETIRE = 10;
 export const LOW_EFFECTIVENESS = 0.3;
-export const MIN_FOR_MUTE_RETIRE = 4;
+export const MIN_FOR_MUTE_RETIRE = 6;
 export const HIGH_MUTE_RATE = 0.5;
 
 export type RawSample = SessionObservation & { step: string };
@@ -102,7 +104,7 @@ function rate(n: number, d: number): number | undefined { return d > 0 ? Math.ro
 /** Build the whole picture for one guide (pure apart from the injected sample reader). */
 export function computeIntelligence(
   guideId: string, sessions: OmsUsageSession[], steps: GuideStep[], samplesFor: SampleReader,
-  now = new Date().toISOString(),
+  now = new Date().toISOString(), mode: 'normal' | 'demo' = 'normal',
 ): GuideIntelligence {
   const mine = sessions.filter(s => s.guideId === guideId).sort((a, b) => a.startedAt.localeCompare(b.startedAt));
   const baselines = computeBaselines(guideId, mine, now);
@@ -168,6 +170,11 @@ export function computeIntelligence(
       visits: a?.visits ?? 0, heat: 0, hints: [], notes: [],
       ...(baseline && { dwellSec: baseline.dwellSec }),
     };
+    // What the engine needs on this step right now (portal "engine" line) — floors on a fresh guide.
+    {
+      const t = effectiveTriggers(baseline, mode);
+      si.triggers = { wrongTaps: t.wrongTaps, attentionBelowPct: Math.round(t.attentionBelow * 100), lookAwayAfterSec: t.lookAwayAfterSec, ...(t.dwellAfterSec !== undefined && { dwellAfterSec: Math.round(t.dwellAfterSec) }), mode };
+    }
     if (a) {
       si.stallRate        = rate(a.stalled, a.obsVisits);
       si.wrongPartRate    = rate(a.wrongVisits, a.obsVisits);
@@ -198,6 +205,7 @@ export function computeIntelligence(
       // Heat: weighted rates, 0–100.
       const w = (v: number | undefined, k: number) => (v ?? 0) * k;
       si.heat = Math.min(100, Math.round(100 * (w(si.leftRate, 0.35) + w(si.validationFailRate, 0.2) + w(si.wrongPartRate, 0.15) + w(si.stallRate, 0.15) + w(si.attentionOffRate, 0.1) + w(si.lookAwayRate, 0.05))));
+
       // Author-facing notes — only when there is enough behind the number.
       const pct = (v: number) => `${Math.round(v * 100)} %`;
       if (a.obsVisits >= 3 && (si.wrongPartRate ?? 0) >= 0.3) si.notes.push(`${pct(si.wrongPartRate!)} of visits tap a part that is not in this step — the part label or photo is not distinguishing it.`);
@@ -230,7 +238,7 @@ export function setIntelligenceStepLookup(fn: (guideId: string) => GuideStep[]):
 export function guideIntelligence(guideId: string, fresh = false): GuideIntelligence {
   const hit = cache.get(guideId);
   if (!fresh && hit && Date.now() - hit.at < TTL_MS) return hit.value;
-  const value = computeIntelligence(guideId, omsUsageStore.findAll(), stepLookup(guideId), readSamples);
+  const value = computeIntelligence(guideId, omsUsageStore.findAll(), stepLookup(guideId), readSamples, new Date().toISOString(), guideStore.findById(guideId)?.ciMode ?? 'normal');
   cache.set(guideId, { at: Date.now(), value });
   return value;
 }

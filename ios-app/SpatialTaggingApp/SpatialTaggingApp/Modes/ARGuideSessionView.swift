@@ -180,6 +180,22 @@ struct ARGuideSessionView: View {
     /// When false (default), only the current step's panel is shown.
     /// When true, all steps' panels are visible simultaneously.
     @State private var showAllPanels: Bool = false
+    /// What the eye button shows for the CURRENT step: the 3D tag (pin) and/or
+    /// the floating info panel. Cycles tag+panel → all steps → panel only →
+    /// tag only → none. Remembered per device.
+    enum PinVisibility: Int, CaseIterable { case tagAndPanel = 0, all, panelOnly, tagOnly, none
+        var label: String { switch self { case .tagAndPanel: return "Tag + panel"; case .all: return "All steps"; case .panelOnly: return "Panel only"; case .tagOnly: return "Tag only"; case .none: return "Tags hidden" } }
+        var icon: String { switch self { case .tagAndPanel: return "eye"; case .all: return "eye.fill"; case .panelOnly: return "rectangle.on.rectangle"; case .tagOnly: return "mappin"; case .none: return "eye.slash" } }
+        var showsTag: Bool { self == .tagAndPanel || self == .all || self == .tagOnly }
+        var showsPanel: Bool { self == .tagAndPanel || self == .all || self == .panelOnly }
+    }
+    @State private var pinVisibility: PinVisibility = PinVisibility(rawValue: UserDefaults.standard.integer(forKey: "guidePinVisibility")) ?? .tagAndPanel
+    @State private var visibilityToast: String? = nil
+    /// Proximity auto-hide: under 0.35 m the tag tucks into a dot; past 0.5 m it grows back.
+    @State private var tagTucked: Bool = false
+    @State private var tagTuckExplained: Bool = UserDefaults.standard.bool(forKey: "tagAutoHideExplained")
+    /// Height of the bottom stack (assist + panel) so the part / view chips sit above it.
+    @State private var bottomStackHeight: CGFloat = 170
 
     // ── Live session (AI readiness Step 1) ───────────────────────────────────
     /// Set once `openLiveGuideSession` succeeds; nil if the request fails or is skipped.
@@ -203,7 +219,7 @@ struct ARGuideSessionView: View {
     /// Guardrail: after a dismissal, no new hint for the same step for 30 s.
     @State private var lastHintDismissedAt: Date? = nil
     @State private var lastDismissedStepId: String? = nil
-    /// Timer that polls /live/:id/hints every 5 s while a live session is open.
+    /// Timer that polls /live/:id/hints every 2 s while a live session is open.
     @State private var hintPollTimer: Timer? = nil
 
     // ── C2: presence + coaching (a colleague author can see me and send hints) ──
@@ -452,6 +468,14 @@ struct ARGuideSessionView: View {
             topBar
         }
         .overlay(alignment: .bottomTrailing) { assemblyChipView }
+        .overlay(alignment: .top) {
+            if let t = visibilityToast {
+                Text(t).font(.caption.bold()).foregroundStyle(.white)
+                    .padding(.horizontal, 12).padding(.vertical, 6)
+                    .background(Color.black.opacity(0.7), in: Capsule())
+                    .padding(.top, 64).transition(.opacity)
+            }
+        }
         .onReceive(navTicker) { _ in
             if case .navigating(let index) = phase {
                 updateNavTelemetry(index: index)
@@ -939,18 +963,22 @@ struct ARGuideSessionView: View {
                     }
                     .accessibilityLabel(hintsMuted ? "Hints muted — tap to turn on" : "Contextual hints on")
 
-                    // Panel visibility toggle: eye = show all, eye.slash = current only
+                    // Visibility cycle: tag + panel → all steps → panel only → tag only → none
                     Button {
-                        showAllPanels.toggle()
+                        let all = PinVisibility.allCases
+                        pinVisibility = all[(pinVisibility.rawValue + 1) % all.count]
+                        showAllPanels = pinVisibility == .all
+                        UserDefaults.standard.set(pinVisibility.rawValue, forKey: "guidePinVisibility")
                         updatePanelVisibility()
+                        withAnimation(.easeOut(duration: 0.15)) { visibilityToast = pinVisibility.label }
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { withAnimation { if visibilityToast == pinVisibility.label { visibilityToast = nil } } }
                     } label: {
-                        Image(systemName: showAllPanels ? "eye.fill" : "eye.slash")
+                        Image(systemName: pinVisibility.icon)
                             .font(.system(size: 16))
-                            .foregroundStyle(showAllPanels
-                                             ? Color.white
-                                             : Color.white.opacity(0.45))
+                            .foregroundStyle(pinVisibility == .none ? Color.white.opacity(0.45) : Color.white)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Tag and panel visibility: \(pinVisibility.label). Tap to change.")
                 }
 
                 // Help button — always visible; F1: controls cheat-sheet (overview inside)
@@ -1159,6 +1187,7 @@ struct ARGuideSessionView: View {
                                 .transition(.opacity)
                         }
                     }
+                    Group {
                     if showContentPanel || step.worldPosition == nil {
                         GuideContentPanel(
                             step:            step,
@@ -1188,7 +1217,10 @@ struct ARGuideSessionView: View {
                     } else {
                         miniNavCard(step: step, index: index)
                     }
+                    }
+                    .background(GeometryReader { g in Color.clear.preference(key: BottomStackHeightKey.self, value: g.size.height) })
                 }
+                .onPreferenceChange(BottomStackHeightKey.self) { h in if abs(h - bottomStackHeight) > 1 { bottomStackHeight = h } }
             }
         }
     }
@@ -2116,6 +2148,40 @@ struct ARGuideSessionView: View {
 
     // ── makeGuidePin (indigo sphere + torus + badge) ──────────────────────────
 
+    /// Proximity auto-hide with hysteresis: under 0.35 m the pin tucks into a
+    /// small dot (badge and ring fold away, 220 ms spring); past 0.5 m it
+    /// registers back. The bottom bar carries the step meanwhile — said once.
+    private func updateTagTuck(step: GuideStep, dist: Float) {
+        let tuck = tagTucked ? dist < 0.5 : dist < 0.35
+        guard tuck != tagTucked, let pin = pinNodes[step.id] else { return }
+        tagTucked = tuck
+        setPinTucked(pin, tuck)
+        if tuck && !tagTuckExplained {
+            tagTuckExplained = true
+            UserDefaults.standard.set(true, forKey: "tagAutoHideExplained")
+            showNotice("Tag tucked away while you're close — the bar below keeps the step.")
+        }
+    }
+
+    private func setPinTucked(_ pin: SCNNode, _ tucked: Bool) {
+        let base = Float(pin.value(forKey: "baseScale") as? CGFloat ?? 1)
+        let target = tucked ? base * 0.3 : base
+        let scale = SCNAction.scale(to: CGFloat(target), duration: 0.22)
+        scale.timingMode = .easeOut
+        pin.runAction(scale, forKey: "tuck")
+        for child in pin.childNodes where child.name == "badge" || child.name == "ring" {
+            child.runAction(.fadeOpacity(to: tucked ? 0 : 1, duration: 0.22), forKey: "tuck")
+        }
+    }
+
+    /// Size the pin to the part it marks: a 3 mm washer must not carry a 5 cm
+    /// ring. Scale = part radius / 4.6 cm, clamped 0.5…1 (≈ 2.5 cm ring minimum).
+    private func fitPin(_ pin: SCNNode, toPartRadius r: Float?) {
+        let scale = CGFloat(max(0.5, min(1.0, (r ?? 0.046) / 0.046)))
+        pin.setValue(scale, forKey: "baseScale")
+        if !tagTucked { pin.scale = SCNVector3(scale, scale, scale) }
+    }
+
     private func makeGuidePin(number: Int, isActive: Bool) -> SCNNode {
         let root  = SCNNode()
         let color = UIColor.systemIndigo
@@ -2137,10 +2203,12 @@ struct ARGuideSessionView: View {
         tMat.lightingModel     = .constant
         torus.firstMaterial    = tMat
         let ring               = SCNNode(geometry: torus)
+        ring.name              = "ring"
         ring.eulerAngles       = SCNVector3(Float.pi / 2, 0, 0)
         root.addChildNode(ring)
 
         let badge = makeNumberBadge(number: number)
+        badge.name = "badge"
         badge.position = SCNVector3(0, 0.055, 0)
         root.addChildNode(badge)
 
@@ -2256,6 +2324,7 @@ struct ARGuideSessionView: View {
         let camPos = simd_float3(camCol.x, camCol.y, camCol.z)
         let dist   = simd_length(targetW - camPos)
         distanceM  = dist
+        updateTagTuck(step: step, dist: dist)
 
         // A4: distance-aware panel scaling — beyond 1.5 m the current panel
         // grows with distance (capped 2.2×) so type never drops below the
@@ -2404,9 +2473,10 @@ struct ARGuideSessionView: View {
         SCNTransaction.begin()
         SCNTransaction.animationDuration = 0.2
         for (i, step) in sortedSteps.enumerated() {
-            let shouldShow = showAllPanels || i == idx
-            panelContainers[step.id]?.isHidden = !shouldShow
-            pinNodes[step.id]?.isHidden        = !shouldShow
+            let current = i == idx
+            let all = pinVisibility == .all
+            panelContainers[step.id]?.isHidden = !(all || (current && pinVisibility.showsPanel))
+            pinNodes[step.id]?.isHidden        = !(all || (current && pinVisibility.showsTag))
         }
         SCNTransaction.commit()
         // A1: the newly-current step's textures must flip to the blue
@@ -2993,7 +3063,8 @@ struct ARGuideSessionView: View {
     /// Safe to call multiple times — invalidates any existing timer first.
     private func startHintPolling(liveSessionId: String) {
         hintPollTimer?.invalidate()
-        hintPollTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { _ in
+        // 2 s (was 5): a wrong-part hint has to land while the wrong part is still in hand.
+        hintPollTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { _ in
             Task { @MainActor in
                 let client = SIBClient(settings: settings)
                 let hints = await client.fetchGuideHints(liveSessionId: liveSessionId)
@@ -4021,6 +4092,7 @@ extension ARGuideSessionView {
         guard let node = assemblyNode, let engine = assemblyEngine, index < sortedSteps.count else { return }
         assemblyReplayTask?.cancel()
         assemblyStepIndex = index
+        tagTucked = false
         let focus = engine.focusParts(at: index)
         if let first = focus.first {
             let info = node.partInfo(first)
@@ -4029,6 +4101,7 @@ extension ARGuideSessionView {
             partChip = nil
         }
         node.focus(parts: focus, leaderFrom: pinNodes[sortedSteps[index].id]?.simdWorldPosition)
+        if let pin = pinNodes[sortedSteps[index].id] { fitPin(pin, toPartRadius: node.extent(of: focus)) }
         node.setViewHint(sortedSteps[index].view)
         lookHint = nil; lookAlignedSince = nil
         replayAssemblyStep()
@@ -4119,7 +4192,8 @@ extension ARGuideSessionView {
     private func observeInteraction(_ kind: String, node: String? = nil) {
         guard liveSessionId != nil, case .navigating = phase else { return }
         obsBuffer.append(SessionObservation(t: Date().timeIntervalSince(obsStepStart), interaction: kind, node: node))
-        if obsBuffer.count >= 30 { flushObservations(force: true) }
+        // A wrong tap or a validation attempt is what the engine reacts to — send it now, not at the next 5 s tick.
+        if obsBuffer.count >= 30 || kind == "tap-wrong-part" || kind == "validate-attempt" { flushObservations(force: true) }
     }
 
     private func observeTick(index: Int) {
@@ -4224,8 +4298,9 @@ extension ARGuideSessionView {
                 if let chip = partChip { assemblyPartChip(chip) }
             }
             .padding(.trailing, 14)
-            .padding(.bottom, 170)
+            .padding(.bottom, bottomStackHeight + 10)
             .animation(.easeInOut(duration: 0.25), value: lookHint?.aligned)
+            .animation(.easeInOut(duration: 0.2), value: bottomStackHeight)
             .transition(.opacity)
         }
     }
@@ -4259,4 +4334,10 @@ extension ARGuideSessionView {
             .foregroundStyle(.white)
             .transition(.opacity)
     }
+}
+
+
+private struct BottomStackHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 170
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
 }

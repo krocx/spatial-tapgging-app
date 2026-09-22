@@ -2834,8 +2834,9 @@ function renderIntelligence(gi) {
       <div class="ax-row" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <b style="font-size:0.86rem">Step ${s.stepIndex ?? i + 1}${s.title ? ` · ${esc(s.title)}` : ''}</b>
         <span class="ax-chip ${s.visits < HEAT_MIN_VISITS ? '' : heatChip(s.heat)} heat-chip" tabindex="0" style="${s.visits < HEAT_MIN_VISITS ? 'background:var(--ax-paper-3);color:var(--ax-ink-3);border:1px dashed var(--ax-rule)' : ''}" title="${s.visits < HEAT_MIN_VISITS ? 'Provisional — fewer than ' + HEAT_MIN_VISITS + ' visits' : 'How is this number calculated?'}">heat ${s.heat}${s.visits < HEAT_MIN_VISITS ? ' · provisional' : ''}<svg class="ax-icon" style="width:12px;height:12px;margin-left:4px"><use href="/portal/brand/icons.svg#i-info"/></svg>${heatPopover(s)}</span>
-        <span style="font-size:0.72rem;color:var(--muted)">${s.visits} completed visit${s.visits === 1 ? '' : 's'}${s.dwellSec ? ` · typical ${s.dwellSec.p50} s · slowest tenth ${s.dwellSec.p90} s` : ''}</span>
+        <span style="font-size:0.72rem;color:var(--muted)">${s.visits} completed visit${s.visits === 1 ? '' : 's'}${s.dwellSec ? ` · typical ${Math.round(s.dwellSec.p50)} s · slowest tenth ${Math.round(s.dwellSec.p90)} s` : ''}</span>
       </div>
+      ${s.triggers ? `<div style="margin-top:6px;font:var(--ax-eyebrow);letter-spacing:var(--ax-tracking-eyebrow);text-transform:uppercase;color:var(--ax-ink-3)" title="What the engine needs on this step right now: floors, tightened by the baseline where it is stricter">Engine · ${s.triggers.mode === 'demo' ? '<span style="color:var(--ax-orange)">demo</span> · ' : ''}wrong part at ${s.triggers.wrongTaps} taps · attention under ${s.triggers.attentionBelowPct} % · look-away after ${s.triggers.lookAwayAfterSec} s${s.triggers.dwellAfterSec ? ` · dwell after ${s.triggers.dwellAfterSec} s` : ''}</div>` : ''}
       <div class="ax-tiles" style="margin-top:8px">
         ${[['Left / failed', s.leftRate], ['Validation fail', s.validationFailRate], ['Wrong part', s.wrongPartRate], ['Stalled', s.stallRate], ['Attention off', s.attentionOffRate], ['Never at viewpoint', s.lookAwayRate]].map(([l, v]) => `<div class="ax-tile ${rate(v)}" style="background:var(--ax-paper-2)"><div class="ax-eyebrow">${l}</div><div class="ax-value" style="font-size:16px;line-height:22px">${pctCell(v)}</div></div>`).join('')}
       </div>
@@ -5095,8 +5096,9 @@ function renderGuideLibrary() {
       html += `<div class="gl-guide-card${hasUnplaced ? ' unplaced' : ''}" id="gl-card-${guide.id}">
         <div class="gl-guide-hdr">
           <span class="gl-guide-name" title="${esc(guide.name)}"> ${esc(guide.name)}</span>
-          ${pubBadge}${asmBadge}${warnBadge}${placePill}
+          ${pubBadge}${guide.ciMode === 'demo' ? '<span class="gl-badge gl-badge-warn" title="Contextual intelligence in demo mode: floors only, no baselines, no retirement">Demo mode</span>' : ''}${asmBadge}${warnBadge}${placePill}
           <button class="btn btn-ghost btn-sm" style="${pubColor}" onclick="togglePublishGuide('${guide.id}','${anchorId}',${guide.published})">${pubLabel}</button>
+          <button class="btn btn-ghost btn-sm" style="${guide.ciMode === 'demo' ? 'color:var(--ax-orange)' : ''}" title="${guide.ciMode === 'demo' ? 'Hints fire at the floors on every run (demo / training). Tap to return to normal.' : 'Demo / training mode: hints fire at the floors on every run — no baselines, no retirement'}" onclick="toggleGuideCiMode('${guide.id}','${anchorId}','${guide.ciMode || 'normal'}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-intelligence"/></svg> ${guide.ciMode === 'demo' ? 'Demo on' : 'Demo'}</button>
           <button class="btn btn-ghost btn-sm"  onclick="toggleGuideSteps('${guide.id}','${anchorId}')" id="gl-toggle-${guide.id}">▶ Steps</button>
           <button class="btn btn-ghost btn-sm" style="color:var(--ax-indigo)" onclick="toggleGuideGraph('${guide.id}','${anchorId}')" id="gl-graph-toggle-${guide.id}"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-graph"/></svg> Graph</button>
           <button class="btn btn-ghost btn-sm" style="color:var(--ax-green)" title="Walk the step sequence as the operator will experience it — no headset needed" onclick="openGuidePreview('${guide.id}')">▶ Preview</button>
@@ -5602,6 +5604,18 @@ function renderGuideGraph(guideId, anchorId) {
 
   graphEl.innerHTML = header +
     `<div style="overflow-x:auto;padding:8px 14px 10px">${svg}</div>`;
+}
+
+/** Contextual-intelligence mode: normal ⇄ demo (floors only, every run alike). */
+async function toggleGuideCiMode(guideId, anchorId, current) {
+  const next = current === 'demo' ? 'normal' : 'demo';
+  try {
+    const resp = await apiFetch(`/guides/${encodeURIComponent(guideId)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ciMode: next }) });
+    const entry = guideLibraryData[anchorId];
+    if (entry) { const i = entry.guides.findIndex(g => g.id === guideId); if (i !== -1) entry.guides[i] = resp.data; }
+    toast(next === 'demo' ? 'Demo mode: hints fire at the floors on every run.' : 'Normal mode: baselines and retirement back on.');
+    renderGuideLibrary();
+  } catch (e) { toast(`Failed: ${e.message}`, 4000); }
 }
 
 async function togglePublishGuide(guideId, anchorId, currentlyPublished) {

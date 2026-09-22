@@ -520,8 +520,10 @@ router.patch('/:id', (req: Request, res: Response): void => {
     anchorId:    body.anchorId?.trim()    || guide.anchorId,
     sharedWith,
     ...(assembly ? { assembly } : {}),
+    ...(body.ciMode !== undefined ? (body.ciMode === 'demo' ? { ciMode: 'demo' as const } : { ciMode: undefined }) : {}),
     updatedAt:   now,
   };
+  if (updated.ciMode === undefined) delete (updated as { ciMode?: unknown }).ciMode;
 
   if (assemblyChanged) {
     const steps = guideStepStore.findAll().filter(s => s.guideId === guide.id);

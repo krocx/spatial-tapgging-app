@@ -34,6 +34,7 @@ import {
   type AIGuideContext,
 } from '../adapters/ai-guide-adapter.js';
 import { guideStepStore } from '../routes/guides.js';
+import { guideStore } from '../guides/store.js';
 import { omsUsageStore } from '../oms/usage-log.js';
 import { preferredVia, retiredSignals } from '../oms/intelligence.js';
 import { guideBaselines } from '../oms/observations.js';
@@ -364,9 +365,10 @@ export function evaluateSignals(liveSessionId: string): void {
 
   const baseline = guideBaselines(session.guideId).steps.find(b => b.stepId === visit.stepId);
   const elapsedSec = Math.max(0, (Date.now() - Date.parse(visit.enteredAt)) / 1000);
-  // C3: signals retired on this step (low effectiveness / muted) never fire.
-  const retired = retiredSignals(session.guideId, visit.stepId);
-  const signals = detectSignals({ visit, elapsedSec, baseline, step, alreadyFired: fired }).filter(s => !retired.has(s.kind));
+  const mode = guideStore.findById(session.guideId)?.ciMode ?? 'normal';
+  // C3: signals retired on this step (low effectiveness / muted) never fire — except in demo mode.
+  const retired = mode === 'demo' ? new Set<string>() : retiredSignals(session.guideId, visit.stepId);
+  const signals = detectSignals({ visit, elapsedSec, baseline, step, alreadyFired: fired, mode }).filter(s => !retired.has(s.kind));
   if (!signals.length) return;
   for (const s of signals) fired.add(s.kind);
 

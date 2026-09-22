@@ -63,8 +63,8 @@ test('scoreVisit — attention-off, look-away, validate-retry', () => {
 test('computeIntelligence — retires a signal with low effectiveness, keeps a good one, lifts when recent visits improve', () => {
   const steps = [step('s1', 1), step('s2', 2)];
   const sessions: OmsUsageSession[] = [];
-  // s1: 6 wrong-part hints shown, only 1 helped → retired.
-  for (let i = 0; i < 6; i++) {
+  // s1: 12 wrong-part hints shown, only 1 helped → retired (≥ 10 shows).
+  for (let i = 0; i < 12; i++) {
     sessions.push(session(`bad${i}`, [visit('s1', i * 100, 60, { observations: obs({ wrongPartTaps: 3 }), hints: [{ id: `h${i}`, signal: 'wrong-part', ts: iso(i * 100 + 20), via: 'template', delivery: 'shown' }] })]));
   }
   // s2: 6 dwell hints, all helped.
@@ -73,11 +73,11 @@ test('computeIntelligence — retires a signal with low effectiveness, keeps a g
   }
   const samplesFor = (id: string): RawSample[] => id === 'bad0' ? [{ step: 's1', t: 30, attention: 'target' }] : id.startsWith('bad') ? [{ step: 's1', t: 30, interaction: 'tap-wrong-part' }] : [];
   const gi = computeIntelligence('g1', sessions, steps, samplesFor, iso(1000));
-  assert.equal(gi.sessions, 12);
+  assert.equal(gi.sessions, 18);
   assert.equal(gi.confidence, 'high');
   const s1 = gi.steps.find(s => s.stepId === 's1')!;
   const wp = s1.hints.find(h => h.signal === 'wrong-part')!;
-  assert.equal(wp.shown, 6); assert.equal(wp.helped, 1); assert.equal(wp.retired, true);
+  assert.equal(wp.shown, 12); assert.equal(wp.helped, 1); assert.equal(wp.retired, true);
   assert.ok(wp.effectiveness! < LOW_EFFECTIVENESS && wp.shown >= MIN_SHOWN_FOR_RETIRE);
   assert.equal(s1.wrongPartRate, 1);
   assert.ok(s1.notes.some(n => n.includes('not in this step')));
@@ -86,8 +86,8 @@ test('computeIntelligence — retires a signal with low effectiveness, keeps a g
   assert.equal(s2.hints[0].retired, false); assert.equal(s2.hints[0].effectiveness, 1);
   assert.equal(gi.retiredHints, 1);
 
-  // Add 6 newer helped visits on s1 → 7/12 helped → lifts.
-  for (let i = 0; i < 6; i++) {
+  // Add 12 newer helped visits on s1 → 13/24 helped → lifts.
+  for (let i = 0; i < 12; i++) {
     sessions.push(session(`fix${i}`, [visit('s1', 2000 + i * 100, 60, { observations: obs(), hints: [{ id: `f${i}`, signal: 'wrong-part', ts: iso(2000 + i * 100 + 20), via: 'template', delivery: 'shown' }] })]));
   }
   const gi2 = computeIntelligence('g1', sessions, steps, (id) => id.startsWith('fix') ? [{ step: 's1', t: 30, attention: 'target' }] : samplesFor(id), iso(5000));
@@ -97,15 +97,15 @@ test('computeIntelligence — retires a signal with low effectiveness, keeps a g
 test('computeIntelligence — mute rate retires; heat and confidence scale', () => {
   const steps = [step('s1', 1)];
   const sessions: OmsUsageSession[] = [];
-  for (let i = 0; i < 4; i++) {
-    sessions.push(session(`m${i}`, [visit('s1', i * 100, 60, { outcome: i < 2 ? 'left' : 'completed', observations: obs({ stalls: 1 }), hints: [{ id: `h${i}`, signal: 'dwell', ts: iso(i * 100 + 20), via: 'template', delivery: i < 3 ? 'muted' : 'shown', ...(i < 3 && { muteScope: 'guide' as const }) }] })]));
+  for (let i = 0; i < 6; i++) {
+    sessions.push(session(`m${i}`, [visit('s1', i * 100, 60, { outcome: i < 2 ? 'left' : 'completed', observations: obs({ stalls: 1 }), hints: [{ id: `h${i}`, signal: 'dwell', ts: iso(i * 100 + 20), via: 'template', delivery: i < 4 ? 'muted' : 'shown', ...(i < 4 && { muteScope: 'guide' as const }) }] })]));
   }
   const gi = computeIntelligence('g1', sessions, steps, () => [], iso(1000));
   const s1 = gi.steps[0];
   const d = s1.hints.find(h => h.signal === 'dwell')!;
-  assert.equal(d.muted, 3); assert.equal(d.shown, 1); assert.equal(d.retired, true);
-  assert.match(d.reason!, /muted 3 of 4/);
-  assert.equal(s1.leftRate, 0.5); assert.equal(s1.stallRate, 1);
+  assert.equal(d.muted, 4); assert.equal(d.shown, 2); assert.equal(d.retired, true);
+  assert.match(d.reason!, /muted 4 of 6/);
+  assert.equal(s1.leftRate, 0.33); assert.equal(s1.stallRate, 1);
   assert.ok(s1.heat > 0 && s1.heat <= 100);
   assert.equal(gi.confidence, 'medium');
   assert.equal(computeIntelligence('g1', [], steps, () => [], iso(0)).confidence, 'none');

@@ -340,6 +340,21 @@ final class AssemblyNode {
     }
 
     /// World-space centroid of the named parts.
+    /// Largest world-space radius among the named parts (half the bounding
+    /// box diagonal, scaled). Lets the pin size itself to the part.
+    func extent(of names: [String]) -> Float? {
+        var best: Float = 0; var any = false
+        for name in names {
+            guard let node = parts[name] else { continue }
+            let (lo, hi) = node.boundingBox
+            let dx = Float(hi.x - lo.x), dy = Float(hi.y - lo.y), dz = Float(hi.z - lo.z)
+            let s = node.convertVector(SCNVector3(1, 1, 1), to: nil)
+            let r = 0.5 * sqrt(dx * dx + dy * dy + dz * dz) * max(abs(Float(s.x)), abs(Float(s.y)), abs(Float(s.z))) / sqrt(3)
+            best = max(best, r); any = true
+        }
+        return any ? best : nil
+    }
+
     func worldCentre(of names: [String]) -> simd_float3? {
         var acc = simd_float3(0, 0, 0); var n: Float = 0
         for name in names {

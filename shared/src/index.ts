@@ -1198,6 +1198,13 @@ export interface Guide {
   sharedWith?: string[];
   /** AR OJT: assembly model + its one-time placement (see GuideAssembly). */
   assembly?:   GuideAssembly;
+  /**
+   * Contextual-intelligence mode. `normal` (default): floors + baselines that
+   * can only tighten them, retirement after 10 low-effect shows. `demo`:
+   * floors only — no baselines, no retirement — so a training / demo run
+   * behaves the same every time.
+   */
+  ciMode?:     'normal' | 'demo';
   createdAt:   string;
   updatedAt:   string;
 }
@@ -1229,6 +1236,8 @@ export type UpdateGuideRequest = {
   /** Replace the sharing list (see Guide.sharedWith). [] = all technicians.
    *  Emails must exist in the UAM allow-list. Requires Engineer role or above. */
   sharedWith?:  string[];
+  /** Contextual-intelligence mode (see Guide.ciMode). 'normal' clears it. */
+  ciMode?:      'normal' | 'demo';
   /** Set (or clear with null) the assembly placement. The server re-derives
    *  every cad-positioned step's pin and assembly-slot offsets from it. */
   assemblyPose?: AssemblyPose | null;
@@ -1543,6 +1552,8 @@ export interface StepIntelligence {
   leftRate?:         number;        // visits that ended 'left' or 'failed' / all visits
   /** 0–100 — weighted sum of the rates above; the portal heat strip. */
   heat:              number;
+  /** What the engine currently needs on this step to fire (floors ∧ baseline). */
+  triggers?:         { wrongTaps: number; attentionBelowPct: number; lookAwayAfterSec: number; dwellAfterSec?: number; mode: 'normal' | 'demo' };
   hints:             HintEffectiveness[];
   /** Author-facing notes generated from the numbers ("38 % tap a part that isn't in this step"). */
   notes:             string[];

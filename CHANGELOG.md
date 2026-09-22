@@ -7,6 +7,19 @@ it, it gets a line.
 ## 2026.4.46 — 2026-09-08
 
 ### Fixed
+- **Contextual intelligence — it now fires when it should.** Signals were
+  purely baseline-relative, so a fresh guide (or one whose baseline was a
+  tester's own wrong taps) never coached: the wrong-part cap was the past
+  p90 (the more you tested, the higher it climbed), attention-off needed to
+  be *below* everyone else, look-away waited 45 s, and a hint shown 5 times
+  retired. Now: absolute floors (3 wrong taps · attention under 20 % over
+  15 s · look-away after 20 s); baselines can only make a trigger earlier,
+  never later; retirement needs 10 low-effect shows (mute: 4 of 6); the app
+  flushes a wrong tap / validation attempt immediately and polls hints every
+  2 s (was 5). Tests updated for the new contract.
+- **AR guide session — chips no longer overlap the panel.** "Look from
+  here" and the part chip sit above the measured height of the bottom
+  stack (assist + panel), whatever is expanded.
 - **Cortona import — findings from two real decks.** Leaf shapes with an
   empty `Material {}` now inherit the colour from their `ObjectVM`
   (greyscale imports); decks whose cameras look at the model upside-down are
@@ -244,6 +257,17 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **Demo / training mode per guide.** `Guide.ciMode = 'demo'` (Guide Library
+  → *Demo* button; `PATCH /guides/:id { ciMode }`): floors only, no
+  baselines, no retirement — every run coaches the same way. Intelligence
+  shows an *Engine* line per step with what it currently needs to fire
+  (wrong taps · attention % · look-away s · dwell s, and the mode).
+- **AR guide tag — tucks when you're close.** Under 0.35 m the 3D pin folds
+  to a small dot (badge and ring fade, 220 ms); past 0.5 m it registers
+  back. Explained once. The pin is sized to the part it marks (2.5 cm ring
+  minimum, full size from ~9 cm parts). The eye button now cycles
+  tag + panel → all steps → panel only → tag only → hidden, with a 1.5 s
+  label; remembered per device.
 - **Intelligence — "why this number".** The heat chip on every step now
   explains itself: hover or focus it for the weighted breakdown (each
   signal's rate × weight, the sum, the bands). Steps with fewer than 3

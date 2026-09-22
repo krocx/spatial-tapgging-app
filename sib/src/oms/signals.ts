@@ -7,11 +7,17 @@
 //   signal          fires when (this visit vs. baseline)
 //   ─────────────── ─────────────────────────────────────────────────────────
 //   dwell           elapsed > dwellSec.p90 (baseline needs ≥ 3 visits)
-//   attention-off   ≥ 15 samples and onTargetRatio < onTargetRatio.p10
-//   wrong-part      wrongPartTaps > wrongPartTaps.p90 (and ≥ 2)
-//   look-away       step has a view, ≥ 20 samples, never aligned, and the
-//                   visit is already past the median dwell
+//   attention-off   ≥ 15 samples and onTargetRatio < 20 % (FLOOR), or below
+//                   the baseline p10 when that is stricter
+//   wrong-part      wrongPartTaps ≥ 3 (FLOOR); a baseline p90 of 1 tightens
+//                   it to 2 — a noisy baseline never LOOSENS it
+//   look-away       step has a view, ≥ 20 samples, never aligned (FLOOR: 20 s;
+//                   a baseline median under 20 s brings it earlier)
 //   validate-retry  ≥ 3 validation attempts on the visit, no pass verdict
+//
+// Floors are absolute so a fresh guide — or one whose baseline is a tester's
+// own wrong taps — still coaches. Baselines can only make a trigger EARLIER.
+// `mode: 'demo'` ignores baselines altogether: floors only, every run alike.
 //
 // Each signal fires ONCE per visit. Phrasing: a template that quotes the
 // baseline ("most people finish this in about 50 s") — or, when an LLM is
@@ -34,8 +40,23 @@ export interface Signal {
   facts:     Record<string, number | string>;
 }
 
+/** The floors — the most a signal ever needs. */
+export const FLOORS = { wrongTaps: 3, attentionBelow: 0.20, attentionSamples: 15, lookAwaySec: 20, dwellMinSec: 20 };
+
+/** What a step currently needs to fire, given its baseline and mode. */
+export function effectiveTriggers(baseline: StepBaseline | undefined, mode: 'normal' | 'demo' = 'normal') {
+  const trusted = mode === 'normal' && !!baseline && baseline.sessions >= MIN_BASELINE_VISITS;
+  const wrongTaps = trusted && baseline?.wrongPartTaps ? Math.min(FLOORS.wrongTaps, Math.max(2, baseline.wrongPartTaps.p90 + 1)) : FLOORS.wrongTaps;
+  const attentionBelow = trusted && baseline?.onTargetRatio ? Math.max(FLOORS.attentionBelow, baseline.onTargetRatio.p10) : FLOORS.attentionBelow;
+  const lookAwayAfterSec = trusted && baseline ? Math.min(FLOORS.lookAwaySec, Math.max(10, baseline.dwellSec.p50)) : FLOORS.lookAwaySec;
+  const dwellAfterSec = trusted && baseline ? Math.max(FLOORS.dwellMinSec, baseline.dwellSec.p90) : undefined;
+  return { wrongTaps, attentionBelow, lookAwayAfterSec, dwellAfterSec, mode };
+}
+
 export interface SignalInput {
   visit:        OmsUsageStepEntry;
+  /** Guide CI mode (Guide.ciMode); demo = floors only. */
+  mode?:        'normal' | 'demo';
   elapsedSec:   number;
   baseline?:    StepBaseline;
   step:         GuideStep;
@@ -46,39 +67,35 @@ const MIN_BASELINE_VISITS = 3;
 
 export function detectSignals(input: SignalInput): Signal[] {
   const { visit, elapsedSec, baseline, step, alreadyFired } = input;
+  const mode = input.mode ?? 'normal';
   const out: Signal[] = [];
   const o = visit.observations;
-  const trusted = !!baseline && baseline.sessions >= MIN_BASELINE_VISITS;
+  const trusted = mode === 'normal' && !!baseline && baseline.sessions >= MIN_BASELINE_VISITS;
+  const eff = effectiveTriggers(baseline, mode);
 
-  if (trusted && baseline && !alreadyFired.has('dwell') && elapsedSec > Math.max(20, baseline.dwellSec.p90)) {
+  if (trusted && baseline && eff.dwellAfterSec !== undefined && !alreadyFired.has('dwell') && elapsedSec > eff.dwellAfterSec) {
     out.push({ kind: 'dwell',
       evidence: `on step ${Math.round(elapsedSec)} s; 90 % of ${baseline.sessions} visits finished within ${baseline.dwellSec.p90} s`,
       facts: { elapsedSec: Math.round(elapsedSec), typicalSec: baseline.dwellSec.p50, p90Sec: baseline.dwellSec.p90, visits: baseline.sessions } });
   }
 
-  if (o && trusted && baseline?.onTargetRatio && !alreadyFired.has('attention-off')
-      && o.samples >= 15 && o.onTargetRatio < baseline.onTargetRatio.p10) {
+  if (o && !alreadyFired.has('attention-off') && o.samples >= FLOORS.attentionSamples && o.onTargetRatio < eff.attentionBelow) {
+    const typical = trusted && baseline?.onTargetRatio ? Math.round(baseline.onTargetRatio.p50 * 100) : Math.round(eff.attentionBelow * 100);
     out.push({ kind: 'attention-off',
-      evidence: `attention on target ${Math.round(o.onTargetRatio * 100)} % over ${o.samples} s; others ≥ ${Math.round(baseline.onTargetRatio.p10 * 100)} %`,
-      facts: { onTargetPct: Math.round(o.onTargetRatio * 100), typicalPct: Math.round(baseline.onTargetRatio.p50 * 100), samples: o.samples } });
+      evidence: `attention on target ${Math.round(o.onTargetRatio * 100)} % over ${o.samples} s; needs ≥ ${Math.round(eff.attentionBelow * 100)} %`,
+      facts: { onTargetPct: Math.round(o.onTargetRatio * 100), typicalPct: typical, samples: o.samples } });
   }
 
-  if (o && !alreadyFired.has('wrong-part')) {
-    const cap = trusted && baseline?.wrongPartTaps ? Math.max(1, baseline.wrongPartTaps.p90) : 2;
-    if (o.wrongPartTaps > cap) {
-      out.push({ kind: 'wrong-part',
-        evidence: `${o.wrongPartTaps} taps on parts this step is not about (others ≤ ${cap})`,
-        facts: { wrongTaps: o.wrongPartTaps, cap } });
-    }
+  if (o && !alreadyFired.has('wrong-part') && o.wrongPartTaps >= eff.wrongTaps) {
+    out.push({ kind: 'wrong-part',
+      evidence: `${o.wrongPartTaps} taps on parts this step is not about (fires at ${eff.wrongTaps})`,
+      facts: { wrongTaps: o.wrongPartTaps, cap: eff.wrongTaps - 1 } });
   }
 
-  if (o && step.view && !alreadyFired.has('look-away') && o.samples >= 20 && (o.alignedSec ?? 0) === 0) {
-    const pastTypical = trusted && baseline ? elapsedSec > baseline.dwellSec.p50 : elapsedSec > 45;
-    if (pastTypical) {
-      out.push({ kind: 'look-away',
-        evidence: `never matched the recommended viewpoint in ${o.samples} s`,
-        facts: { samples: o.samples } });
-    }
+  if (o && step.view && !alreadyFired.has('look-away') && o.samples >= FLOORS.lookAwaySec && (o.alignedSec ?? 0) === 0 && elapsedSec > eff.lookAwayAfterSec) {
+    out.push({ kind: 'look-away',
+      evidence: `never matched the recommended viewpoint in ${o.samples} s`,
+      facts: { samples: o.samples } });
   }
 
   if (o && !alreadyFired.has('validate-retry') && o.validateAttempts >= 3 && visit.validation?.result !== 'pass') {

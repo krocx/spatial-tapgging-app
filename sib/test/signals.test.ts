@@ -28,12 +28,35 @@ test('dwell fires past the p90 of a trusted baseline, once', () => {
   assert.deepEqual(again.map(s => s.kind), []);
 });
 
-test('thin baselines keep dwell and attention quiet; wrong-part still has a floor', () => {
+test('floors: a thin or absent baseline still coaches — 3 wrong taps, attention under 20 %', () => {
   const thin: StepBaseline = { ...baseline, sessions: 2 };
   const r = detectSignals({ visit: visit(obs({ onTargetRatio: 0.1, wrongPartTaps: 3 })), elapsedSec: 500, baseline: thin, step: step(), alreadyFired: new Set() });
-  assert.deepEqual(r.map(s => s.kind), ['wrong-part']);
+  assert.deepEqual(r.map(s => s.kind).sort(), ['attention-off', 'wrong-part']);
   const noBase = detectSignals({ visit: visit(obs({ wrongPartTaps: 2 })), elapsedSec: 500, step: step(), alreadyFired: new Set() });
-  assert.deepEqual(noBase, []);                          // 2 taps is at the no-baseline cap, not above it
+  assert.deepEqual(noBase, []);                          // 2 taps is under the floor of 3
+  const dwellQuiet = detectSignals({ visit: visit(obs()), elapsedSec: 500, baseline: thin, step: step(), alreadyFired: new Set() });
+  assert.deepEqual(dwellQuiet, []);                      // dwell has no floor — it needs a trusted baseline
+});
+
+test('baselines only tighten: a noisy p90 never raises the wrong-part bar above the floor; a clean one lowers it to 2', () => {
+  const noisy: StepBaseline = { ...baseline, wrongPartTaps: { p50: 3, p90: 6 } };
+  const r = detectSignals({ visit: visit(obs({ wrongPartTaps: 3 })), elapsedSec: 10, baseline: noisy, step: step(), alreadyFired: new Set() });
+  assert.deepEqual(r.map(s => s.kind), ['wrong-part']);
+  const clean: StepBaseline = { ...baseline, wrongPartTaps: { p50: 0, p90: 0 } };
+  const two = detectSignals({ visit: visit(obs({ wrongPartTaps: 2 })), elapsedSec: 10, baseline: clean, step: step(), alreadyFired: new Set() });
+  assert.deepEqual(two.map(s => s.kind), ['wrong-part']);
+  const one = detectSignals({ visit: visit(obs({ wrongPartTaps: 1 })), elapsedSec: 10, baseline: clean, step: step(), alreadyFired: new Set() });
+  assert.deepEqual(one, []);                             // never below 2
+});
+
+test('demo mode: floors only — baselines ignored', () => {
+  const clean: StepBaseline = { ...baseline, wrongPartTaps: { p50: 0, p90: 0 } };
+  const two = detectSignals({ visit: visit(obs({ wrongPartTaps: 2 })), elapsedSec: 10, baseline: clean, step: step(), alreadyFired: new Set(), mode: 'demo' });
+  assert.deepEqual(two, []);
+  const three = detectSignals({ visit: visit(obs({ wrongPartTaps: 3 })), elapsedSec: 10, baseline: clean, step: step(), alreadyFired: new Set(), mode: 'demo' });
+  assert.deepEqual(three.map(s => s.kind), ['wrong-part']);
+  const dwell = detectSignals({ visit: visit(obs()), elapsedSec: 500, baseline, step: step(), alreadyFired: new Set(), mode: 'demo' });
+  assert.deepEqual(dwell, []);
 });
 
 test('attention-off compares with the p10 of the baseline', () => {
@@ -43,11 +66,11 @@ test('attention-off compares with the p10 of the baseline', () => {
   assert.deepEqual(fine, []);
 });
 
-test('look-away only on steps with a view, after the typical dwell, when never aligned', () => {
+test('look-away only on steps with a view, after 20 s (or the typical dwell if shorter), when never aligned', () => {
   const withView = step({ view: { position: [0, 1, 2] } });
-  const early = detectSignals({ visit: visit(obs({ alignedSec: 0 })), elapsedSec: 30, baseline, step: withView, alreadyFired: new Set() });
+  const early = detectSignals({ visit: visit(obs({ alignedSec: 0, samples: 12 })), elapsedSec: 12, baseline, step: withView, alreadyFired: new Set() });
   assert.deepEqual(early, []);
-  const late = detectSignals({ visit: visit(obs({ alignedSec: 0 })), elapsedSec: 60, baseline, step: withView, alreadyFired: new Set() });
+  const late = detectSignals({ visit: visit(obs({ alignedSec: 0 })), elapsedSec: 25, baseline, step: withView, alreadyFired: new Set() });
   assert.deepEqual(late.map(s => s.kind), ['look-away']);
   const aligned = detectSignals({ visit: visit(obs({ alignedSec: 3 })), elapsedSec: 60, baseline, step: withView, alreadyFired: new Set() });
   assert.deepEqual(aligned, []);
