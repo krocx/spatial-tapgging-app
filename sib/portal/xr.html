@@ -142,6 +142,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { DEFAULT_SPEED, GHOST_OPACITY, stateBefore, scheduleStep, scheduleLength, stepParts, originForSurface, attentionFor } from '/portal/xr-engine.js';
+import { XRPanel } from '/portal/xr-panel.js';
 
 // ── Config / auth ────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
@@ -155,7 +156,10 @@ async function api(path, init = {}) {
   if (!r.ok) throw new Error(`${path} → ${r.status}`);
   return r.headers.get('content-type')?.includes('json') ? r.json() : r;
 }
-function toast(msg, ms = 2200) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), ms); }
+function toast(msg, ms = 2200) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), ms);
+  if (panelMode) { panel.setContent({ toast: msg }); clearTimeout(toast._p); toast._p = setTimeout(() => panel.setContent({ toast: '' }), ms); }
+}
 
 // ── Three.js scene ───────────────────────────────────────────────────────────
 const canvas = $('view');
@@ -177,6 +181,47 @@ const viewMarker = new THREE.Group(); viewMarker.visible = false; assembly.add(v
   const body = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.04, 0.03), new THREE.MeshBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.7 }));
   const lens = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.02, 12).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0x93c5fd }));
   lens.position.z = -0.025; viewMarker.add(body, lens);
+}
+
+// ── In-world step panel (headsets: no DOM overlay) ───────────────────────────
+// Quest Browser draws no HTML inside an immersive session; Android Chrome does
+// (dom-overlay). When the session comes up without an overlay the same card is
+// drawn on a plane that follows the head, with the same buttons. `?panel=1`
+// forces it on Android for testing.
+const cssVar = (n, fb) => (getComputedStyle(document.documentElement).getPropertyValue(n) || '').trim() || fb;
+const panel = new XRPanel(THREE, { colors: { text: cssVar('--text', '#f4f6fa'), muted: cssVar('--muted', '#9aa4b2'), border: cssVar('--border', 'rgba(255,255,255,.18)') } });
+scene.add(panel.mesh);
+let panelMode = false;
+const pointerRays = new Map();   // XRInputSource → THREE.Line (controller ray)
+const panelRay = new THREE.Raycaster();
+/** Mirror the visible DOM card into the panel — the DOM is the source of truth. */
+function syncPanel() {
+  const vis = id => !$(id).classList.contains('hidden');
+  const btn = (id, o = {}) => ({ id, label: $(id).textContent.trim(), disabled: $(id).disabled, ...o });
+  const rows = [];
+  if (vis('placeRow')) rows.push({ buttons: [btn('btnLock', { primary: true, grow: true })] });
+  if (vis('verdictRow')) rows.push({ label: 'Validation for this step:', buttons: [btn('btnPass', { pass: true }), btn('btnFail', { fail: true })] });
+  if (vis('navRow')) rows.push({ buttons: [btn('btnPrev'), btn('btnReplay'), btn('btnShow'), btn('btnNext', { primary: true, grow: true })] });
+  rows.push({ buttons: [btn('btnExit', { ghost: true })].map(b => ({ ...b, label: 'End session' })) });
+  panel.setContent({
+    title: $('topTitle').textContent, pill: $('stepPill').textContent, frame: $('framePill').textContent,
+    heading: $('stepTitle').textContent,
+    text: vis('reticleHint') ? `${$('stepText').textContent}\n${$('reticleHint').textContent}` : $('stepText').textContent,
+    chips: [...$('partChips').querySelectorAll('.chip')].map(c => c.textContent),
+    hint: vis('hintCard') ? $('hintText').textContent : '',
+    rows,
+  });
+}
+new MutationObserver(() => { if (panelMode) syncPanel(); }).observe($('overlay'), { subtree: true, childList: true, characterData: true, attributes: true });
+/** Ray from an XR input source (controller / hand / screen tap) in world space. */
+function inputRay(frame, src) {
+  if (!src?.targetRaySpace || !refSpace) return null;
+  const pose = frame.getPose(src.targetRaySpace, refSpace); if (!pose) return null;
+  const m = new THREE.Matrix4().fromArray(pose.transform.matrix);
+  const origin = new THREE.Vector3().setFromMatrixPosition(m);
+  const dir = new THREE.Vector3(0, 0, -1).transformDirection(m);
+  panelRay.set(origin, dir);
+  return panelRay;
 }
 
 // ── Bundle + model ───────────────────────────────────────────────────────────
@@ -388,6 +433,8 @@ function completeStep() {
 }
 function openSignoff() {
   flushObservations();
+  // The sign-off form is HTML — on a headset it only shows once the immersive session ends.
+  if (panelMode && xrSession) { toast('Leaving AR for sign-off'); xrSession.end(); }
   applyState(stateBefore(guide.assembly?.initialNodes, steps, steps.length));
   $('soName').value = opName();
   $('soSummary').textContent = `${completions.length} of ${steps.length} steps completed · ${Object.values(verdicts).filter(v => v === 'fail').length} failed validation · frame: ${frameKind}`;
@@ -516,8 +563,21 @@ async function startAR() {
   refSpace = renderer.xr.getReferenceSpace() || await xrSession.requestReferenceSpace('local');
   const viewer = await xrSession.requestReferenceSpace('viewer');
   hitTestSource = await xrSession.requestHitTestSource({ space: viewer });
-  xrSession.addEventListener('end', () => { xrSession = null; hitTestSource = null; worldAnchor = null; anchorOffset = null; lastHit = null; $('overlay').classList.add('hidden'); $('gate').classList.remove('hidden'); });
-  xrSession.addEventListener('select', () => {
+  xrSession.addEventListener('end', () => {
+    xrSession = null; hitTestSource = null; worldAnchor = null; anchorOffset = null; lastHit = null;
+    panelMode = false; panel.mesh.visible = false; for (const l of pointerRays.values()) scene.remove(l); pointerRays.clear();
+    $('overlay').classList.add('hidden'); $('gate').classList.remove('hidden');
+  });
+  // No DOM inside the session (Quest) → draw the card in the world.
+  panelMode = !xrSession.domOverlayState || params.get('panel') === '1';
+  if (panelMode) { panel.mesh.visible = true; syncPanel(); }
+  xrSession.addEventListener('select', e => {
+    // A panel button under the pointer wins over placement.
+    if (panelMode && e.frame) {
+      const r = inputRay(e.frame, e.inputSource);
+      const id = r && panel.hitTest(r);
+      if (id) { if (id !== '__panel__') $(id).click(); return; }
+    }
     if (!locked && reticle.visible) {
       placeAt(reticle.matrix); observeInteraction('realign');
       assembly.updateMatrix();
@@ -590,6 +650,30 @@ renderer.setAnimationLoop((t, frame) => {
       }
     }
     followAnchor(frame);
+    if (panelMode) {
+      panel.follow(renderer.xr.getCamera(), 1 / 60);
+      // Hover highlight + a short ray for tracked controllers / hands.
+      let hov = null;
+      const seen = new Set();
+      for (const src of xrSession.inputSources) {
+        const r = inputRay(frame, src); if (!r) continue;
+        const id = panel.hitTest(r); if (id && id !== '__panel__') hov = id;
+        if (src.targetRayMode === 'tracked-pointer') {
+          seen.add(src);
+          let l = pointerRays.get(src);
+          if (!l) {
+            l = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), new THREE.Vector3(0, 0, 1)]),
+              new THREE.LineBasicMaterial({ color: 0x22d3ee, transparent: true, opacity: 0.6 }));
+            scene.add(l); pointerRays.set(src, l);
+          }
+          l.position.copy(r.ray.origin); l.lookAt(r.ray.origin.clone().add(r.ray.direction));
+          const d = panel.hitTest(r) ? r.intersectObject(panel.mesh, false)[0]?.distance ?? 1 : 1;
+          l.scale.set(1, 1, Math.max(0.05, d));
+        }
+      }
+      for (const [src, l] of pointerRays) if (!seen.has(src)) { scene.remove(l); pointerRays.delete(src); }
+      panel.setHovered(hov);
+    }
   }
   renderer.render(scene, camera);
 });

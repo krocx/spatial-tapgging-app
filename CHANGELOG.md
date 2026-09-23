@@ -283,6 +283,19 @@ it, it gets a line.
   still overrides per step; the portal Guide Preview notes it.
 
 ### Fixed
+- **XR kit on headsets: step navigation was invisible.** The card was an
+  HTML overlay (WebXR `dom-overlay`), which Android Chrome draws inside the
+  session and Meta Quest Browser does not — on Quest you could place the
+  model and then saw no steps. When a session starts without a DOM overlay
+  the same card is now drawn in the world (`xr-panel.js`: canvas texture on a
+  plane that lazily follows the head, ~1.1 m ahead) with the same buttons —
+  Lock placement, Back / Replay / Show me / Next, Pass / Fail, hint "Got it",
+  End session — hit by controller ray, hand pinch or screen tap, with hover
+  highlight and a short pointer ray. The DOM stays the source of truth (the
+  panel mirrors it and clicks the matching button); sign-off leaves immersive
+  mode so the HTML form shows. `?panel=1` forces the panel on Android for
+  testing.
+### Fixed
 - **Cortona3D import: DEF names with spaces.** Some publications name nodes
   straight from part descriptions ("DEF Callout_P/N_-_0022-22449_HOUSING
   LIFT_e0c"), which VRML97 forbids but Cortona's viewer accepts; the parser
