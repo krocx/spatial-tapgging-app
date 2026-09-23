@@ -468,6 +468,8 @@ final class ARSessionManager: NSObject, ObservableObject {
         lastPublishedOrigin = nil
         lastRebaseAt        = 0
         rebasePending       = false
+        rebaseSuspended     = false
+        lastCorrectedDelta  = nil
         originCorrections   = 0
         _liveImageAnchor    = nil
         mapOriginPose       = nil
@@ -581,13 +583,25 @@ final class ARSessionManager: NSObject, ObservableObject {
     /// map coordinates (tags, pins, cones, models) is corrected at once, and
     /// the frame everyone shares stays the author's. Throttled + dead-banded.
     private nonisolated func rebaseIfDrifted(_ t: simd_float4x4, from p: simd_float4x4, now: TimeInterval) {
-        guard !rebasePending, now - lastRebaseAt >= 0.5 else { return }
+        // ARKit re-expresses anchors a few frames after setWorldOrigin; give
+        // it a full second before judging the previous correction.
+        guard !rebasePending, !rebaseSuspended, now - lastRebaseAt >= 1.0 else { return }
         let d = Self.fullDelta(p, t)
         guard d.mm > driftRebaseMetres * 1000 || d.deg > driftRebaseDegrees else { return }
+        // Self-check: a correction that worked changes the next measurement.
+        // The same number again means the world-origin change is not showing
+        // up in the anchor we read — repeating it would stack the offset.
+        if let last = lastCorrectedDelta, abs(last.mm - d.mm) < 0.3, abs(last.deg - d.deg) < 0.05 {
+            rebaseSuspended = true
+            Task { @MainActor in AppLog.warn("ar", String(format: "Drift correction had no effect (%.1f mm again) — suspended for this session", d.mm)) }
+            return
+        }
         rebasePending = true
         lastRebaseAt  = now
         Task { @MainActor [weak self] in self?.rebaseOntoOrigin(observed: t, expected: p, delta: d) }
     }
+    nonisolated(unsafe) private var rebaseSuspended = false
+    nonisolated(unsafe) private var lastCorrectedDelta: PoseDelta? = nil
 
     private func rebaseOntoOrigin(observed t: simd_float4x4, expected p: simd_float4x4, delta d: PoseDelta) {
         defer { rebasePending = false }
@@ -595,6 +609,8 @@ final class ARSessionManager: NSObject, ObservableObject {
         guard objectCalibratedPose == nil, originAnchorId != nil else { return }
         sceneView.session.setWorldOrigin(relativeTransform: t * simd_inverse(p))
         originSamples = []
+        lastCorrectedDelta = d
+        lastRebaseAt = ProcessInfo.processInfo.systemUptime
         originCorrections += 1
         AppLog.info("ar", String(format: "⟲ Origin drift corrected: %.1f mm · %.2f° (#%d)", d.mm, d.deg, originCorrections))
     }
