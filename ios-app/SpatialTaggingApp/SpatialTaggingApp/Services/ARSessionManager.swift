@@ -213,6 +213,8 @@ final class ARSessionManager: NSObject, ObservableObject {
         qrScanner.onLost = { [weak self] in
             if case .detected = self?.scanState { self?.scanState = .scanning }
             self?.detectedQRCorners = []
+            self?.qrSeenWhileRelocalizingAt = nil
+            self?.qrWaitingForMap = false
         }
     }
 
@@ -693,11 +695,26 @@ final class ARSessionManager: NSObject, ObservableObject {
             try? await Task.sleep(nanoseconds: 15_000_000_000)
             guard let self, self.isRelocalizing else { return }
             AppLog.warn("ar", "Relocalization timeout (15 s) — falling back to fresh session")
-            self.isRelocalizing = false
-            self.startSession()
-            self.relocalizationOutcome = .timedOut
+            self.fallBackToFreshSession()
         }
     }
+
+    /// Relocalization gave up (timeout, or a QR held too long without a map
+    /// match): fresh frame, origin from the live QR, outcome `.timedOut`.
+    private func fallBackToFreshSession() {
+        guard isRelocalizing else { return }
+        isRelocalizing = false
+        qrSeenWhileRelocalizingAt = nil
+        qrWaitingForMap = false
+        startSession()
+        relocalizationOutcome = .timedOut
+    }
+
+    /// True while a QR is in view but the map hasn't matched yet (gate shows
+    /// "look around"). Clears on match, fallback or when the QR leaves view.
+    @Published private(set) var qrWaitingForMap = false
+    private var qrSeenWhileRelocalizingAt: TimeInterval? = nil
+    private let qrWaitCeiling: TimeInterval = 6
 
     /// Serialise the current ARWorldMap and return it as Data.
     /// Call this after a successful QR lock, then upload via SIBClient.uploadWorldMap().
@@ -859,9 +876,26 @@ final class ARSessionManager: NSObject, ObservableObject {
                                    corners: [CGPoint]) {
         guard case .scanning = scanState else { return }
         guard case .normal = trackingState else {
-            AppLog.info("ar", "QR detected but tracking not .normal — ignoring")
+            // Trust layer: a QR in view while ARKit is still matching the map
+            // usually means the operator is staring at a 10 cm code — too few
+            // features to relocalize on. Tell the view (it asks them to look
+            // around), and after `qrWaitCeiling` stop waiting: fresh frame, QR
+            // origin, "reduced accuracy" — better than 15 s of nothing.
+            if isRelocalizing {
+                let now = ProcessInfo.processInfo.systemUptime
+                if qrSeenWhileRelocalizingAt == nil {
+                    qrSeenWhileRelocalizingAt = now
+                    qrWaitingForMap = true
+                    AppLog.info("ar", "QR in view while relocalizing — waiting up to \(Int(qrWaitCeiling)) s for the map")
+                } else if now - (qrSeenWhileRelocalizingAt ?? now) >= qrWaitCeiling {
+                    AppLog.warn("ar", "QR held \(Int(qrWaitCeiling)) s without a map match — falling back to the QR origin")
+                    fallBackToFreshSession()
+                }
+            }
             return
         }
+        qrSeenWhileRelocalizingAt = nil
+        qrWaitingForMap = false
 
         scanState           = .detected(context)
         pendingContext      = context

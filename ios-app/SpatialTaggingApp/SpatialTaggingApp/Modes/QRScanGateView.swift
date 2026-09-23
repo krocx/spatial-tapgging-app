@@ -299,7 +299,9 @@ struct QRScanGateView: View {
                 if arManager.isRelocalizing {
                     Image(systemName: "arrow.triangle.2.circlepath")
                         .foregroundStyle(.orange)
-                    Text("Relocalizing… look around the anchor area")
+                    Text(arManager.qrWaitingForMap
+                         ? "QR found — look around the chamber for a moment so the map can match"
+                         : "Relocalizing… look around the anchor area")
                         .font(.subheadline)
                         .foregroundStyle(.white)
                 } else {

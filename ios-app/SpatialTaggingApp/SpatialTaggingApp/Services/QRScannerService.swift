@@ -23,8 +23,15 @@ final class QRScannerService {
     var onLost:     QRLostCallback?
 
     // Call from ARSessionDelegate / ARSCNViewDelegate on every frame.
+    /// Vision on a full camera frame is not free; ~8 Hz is plenty for a code
+    /// held in view (the precise pose comes from ARImageAnchor, not from here)
+    /// and leaves ARKit the headroom it needs to relocalize.
+    private var lastRunAt: TimeInterval = 0
+    private let minInterval: TimeInterval = 0.12
+
     func processFrame(_ frame: ARFrame) {
-        guard !isProcessing, !isPaused else { return }
+        guard !isProcessing, !isPaused, frame.timestamp - lastRunAt >= minInterval else { return }
+        lastRunAt = frame.timestamp
         isProcessing = true
         let pixelBuffer = frame.capturedImage
         let orientation = exifOrientation()

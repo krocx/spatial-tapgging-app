@@ -21,6 +21,13 @@ it, it gets a line.
   and Place Steps hold their pins until it settles, and whenever ARKit later
   refines the anchor the world is re-based onto it, so pins, tags, cones
   and models are corrected together instead of drifting apart.
+- **QR gate no longer stalls on a sealed map.** Staring at a 10 cm code gives
+  ARKit too little to match the map against, and every detection was refused
+  for 15 s. The gate now says "QR found — look around the chamber for a
+  moment", and after 6 s with the QR in view and no match it falls back to
+  the QR origin instead of waiting out the timeout. Vision QR detection is
+  throttled to ~8 Hz (the pose comes from ARImageAnchor anyway), leaving
+  ARKit the headroom it needs.
 - **Wrong QR no longer discards the sealed map.** Scanning another
   chamber's code used to restart a fresh session; the session and its
   relocalized frame are now kept and only the wrong code's reference image
