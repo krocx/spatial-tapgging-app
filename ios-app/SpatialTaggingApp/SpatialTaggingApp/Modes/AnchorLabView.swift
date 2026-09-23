@@ -259,7 +259,9 @@ struct LabRigView: View {
             QRScanGateView(mode: .author, onSessionReady: {
                 showPlaceGate = false
                 appState.returnToLab = true
-                appState.mode = .author
+                // ModeSelectionView closes the Lab cover, then enters Author
+                // mode — never swap the root view under a live cover.
+                appState.labPendingMode = .author
             }, onCancel: { showPlaceGate = false })
             .environmentObject(settings).environmentObject(appState).environmentObject(tour)
         }

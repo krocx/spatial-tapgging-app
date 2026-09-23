@@ -325,8 +325,13 @@ struct ModeSelectionView: View {
                 .animation(.easeInOut(duration: 0.25), value: tour.currentStep)
             }
         }
+        .onChange(of: appState.labPendingMode) { m in
+            if m != nil { showAnchorLab = false }      // onDismiss enters the mode
+        }
         // Anchor Lab door (2026.4.46) — rigs, runs, history.
-        .fullScreenCover(isPresented: $showAnchorLab) {
+        .fullScreenCover(isPresented: $showAnchorLab, onDismiss: {
+            if let m = appState.labPendingMode { appState.labPendingMode = nil; appState.mode = m }
+        }) {
             AnchorLabHomeView()
                 .environmentObject(settings)
                 .environmentObject(appState)

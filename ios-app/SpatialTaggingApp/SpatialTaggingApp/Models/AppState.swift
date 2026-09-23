@@ -80,6 +80,10 @@ final class AppState: ObservableObject {
     /// Anchor Lab: the Author session was opened from the Lab door — go back
     /// there (not the home page) when it ends.
     var returnToLab: Bool = false
+    /// Anchor Lab: the mode to enter once the Lab cover has been dismissed.
+    /// Switching the root view while the cover is still up re-parents the AR
+    /// view mid-transition and leaves the camera feed flipped.
+    @Published var labPendingMode: AppMode? = nil
 
     /// The live ARSession created by QRScanGateView and kept alive so that
     /// AuthorModeView / OperatorModeView can link to it without a session reset.
