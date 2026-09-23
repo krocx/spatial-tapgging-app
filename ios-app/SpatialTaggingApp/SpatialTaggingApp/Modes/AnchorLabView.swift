@@ -173,6 +173,7 @@ struct LabRigView: View {
     @State private var customLabel = ""
     @State private var showRunGate = false        // QR + map → gate first
     @State private var showRun = false            // LabRunView
+    @State private var pendingRun = false         // gate locked → open the run after its cover dismisses
     @State private var error: String? = nil
 
     private var client: SIBClient { SIBClient(settings: settings) }
@@ -266,10 +267,14 @@ struct LabRigView: View {
             .environmentObject(settings).environmentObject(appState).environmentObject(tour)
         }
         // QR + map run: gate first, then the lean run view on the same session.
-        .fullScreenCover(isPresented: $showRunGate) {
+        .fullScreenCover(isPresented: $showRunGate, onDismiss: {
+            // Present the run only once the gate cover is fully gone —
+            // stacking covers mid-dismiss re-runs the run view's task.
+            if pendingRun { pendingRun = false; showRun = true }
+        }) {
             QRScanGateView(mode: .operator, onSessionReady: {
+                pendingRun = true
                 showRunGate = false
-                showRun = true
             }, onCancel: { showRunGate = false })
             .environmentObject(settings).environmentObject(appState).environmentObject(tour)
         }
@@ -344,6 +349,7 @@ struct LabRunView: View {
     @State private var showSummary = false
     @State private var history: SIBClient.AnchorAccuracySummary? = nil
     @State private var startedAt = Date()
+    @State private var started = false
 
     private var client: SIBClient { SIBClient(settings: settings) }
 
@@ -385,7 +391,7 @@ struct LabRunView: View {
                     statusCard(icon: "exclamationmark.triangle.fill", tint: .orange, title: "Couldn't localize", text: why)
                     HStack {
                         Button("Try again") { Task { await start() } }.buttonStyle(.borderedProminent)
-                        Button("Leave") { onDone() }.buttonStyle(.bordered)
+                        Button("Leave") { leave() }.buttonStyle(.bordered)
                     }
                 }
             case .ready:
@@ -405,12 +411,14 @@ struct LabRunView: View {
                 )
             }
         }
-        .task { await start() }
-        .onDisappear {
-            arManager.pauseSession()
-            appState.activeARSession = nil
+        .task {
+            // A cover presented during another cover's dismissal can appear
+            // twice; the session must be set up exactly once.
+            guard !started else { return }
+            started = true
+            await start()
         }
-        .sheet(isPresented: $showSummary, onDismiss: { onDone() }) { summarySheet }
+        .sheet(isPresented: $showSummary, onDismiss: { leave() }) { summarySheet }
     }
 
     // ── Session ───────────────────────────────────────────────────────────────
@@ -421,7 +429,7 @@ struct LabRunView: View {
         case .qr:
             // The gate did the work: relocalized (or not), origin chosen, report filled.
             guard let session = appState.activeARSession, let o = appState.anchorNormalisedTransform else {
-                phase = .failed("The QR gate didn't hand over a session."); return
+                phase = .failed("The QR gate's session is gone — leave and start the run again."); return
             }
             arManager.linkToExistingSession(session, mapOrigin: appState.sealedMapOrigin, objectCalibration: nil)
             arManager.disableQRScanning()
@@ -501,6 +509,13 @@ struct LabRunView: View {
     private func finish() {
         Task { history = try? await client.fetchAnchorAccuracy(anchorId: rig.id).summary }
         showSummary = true
+    }
+
+    /// Explicit exit: only now is the AR session released.
+    private func leave() {
+        arManager.pauseSession()
+        appState.activeARSession = nil
+        onDone()
     }
 
     private func num(_ any: AnyCodable?) -> Double? {
