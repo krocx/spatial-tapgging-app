@@ -11,7 +11,7 @@ test('sanitize: requires tagId, finite errorMm, known originSource; trims and bo
   assert.equal(typeof sanitizeAccuracySample('a1', { tagId: 't', errorMm: 3, originSource: 'magic' }), 'string');
   const s = sanitizeAccuracySample('a1', {
     tagId: ' t1 ', errorMm: 12.345, originSource: 'sealed', device: 'iPhone17,3', run: 'door · evening',
-    relocalizeS: 2.5, lightLux: 'bright', at: 'not-a-date', dxMm: 1, dyMm: -2, dzMm: 3,
+    relocalizeS: 2.5, lightLux: 'bright', at: 'not-a-date', dxMm: 1, dyMm: -2, dzMm: 3, runType: 'map',
   });
   assert.notEqual(typeof s, 'string');
   const ok = s as AnchorAccuracySample;
@@ -23,6 +23,9 @@ test('sanitize: requires tagId, finite errorMm, known originSource; trims and bo
   assert.equal(ok.lightLux, undefined, 'non-numeric optional fields are dropped');
   assert.ok(ok.id && ok.at && !Number.isNaN(Date.parse(ok.at)), 'id + server timestamp when at is unusable');
   assert.deepEqual([ok.dxMm, ok.dyMm, ok.dzMm], [1, -2, 3]);
+  assert.equal(ok.runType, 'map');
+  const bad = sanitizeAccuracySample('a1', { tagId: 't', errorMm: 1, originSource: 'qr', runType: 'walk' }) as AnchorAccuracySample;
+  assert.equal(bad.runType, undefined, 'unknown run types are dropped, not rejected');
 });
 
 test('summary: median / p90 / max overall and per device, origin, run', () => {

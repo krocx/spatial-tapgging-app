@@ -903,6 +903,31 @@ final class SIBClient {
         var device: String?, osVersion: String?, appVersion: String?
         var run: String?, by: String?
         var at: String?
+        var runType: String? = nil      // "map" | "qr" (Anchor Lab door)
+    }
+
+    struct AnchorAccuracyBucket: Codable, Identifiable {
+        var id: String { key }
+        let key: String; let n: Int; let medianMm: Double; let p90Mm: Double; let maxMm: Double
+    }
+    struct AnchorAccuracySummary: Codable {
+        let n: Int; let medianMm: Double; let p90Mm: Double; let maxMm: Double
+        let byDevice: [AnchorAccuracyBucket]; let byOrigin: [AnchorAccuracyBucket]
+        let byRun: [AnchorAccuracyBucket]; let byRunType: [AnchorAccuracyBucket]?
+        let lastAt: String?
+    }
+    struct AnchorAccuracyRecord: Codable {
+        let samples: [AnchorAccuracySample]
+        let summary: AnchorAccuracySummary
+    }
+    /// Anchor Lab history for a rig.
+    func fetchAnchorAccuracy(anchorId: String) async throws -> AnchorAccuracyRecord {
+        struct R: Decodable { let data: AnchorAccuracyRecord }
+        let req = try makeRequest(method: "GET", path: "/anchors/\(anchorId)/accuracy")
+        return try await perform(req, decoding: R.self).data
+    }
+    func clearAnchorAccuracy(anchorId: String) async throws {
+        try await delete(path: "/anchors/\(anchorId)/accuracy")
     }
 
     /// One measured tag → SIB. Small, fire-and-forget from the Lab overlay.

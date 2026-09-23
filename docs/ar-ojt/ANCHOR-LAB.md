@@ -29,6 +29,29 @@ on the wall or table, the sealed world map, the equipment's own geometry.
 Legacy sealed maps (no origin anchor) still work from the meta pose; the
 author's next relocalized Author-mode scan re-seals with the anchor.
 
+## The Lab door (how the team runs it)
+
+Home → **Anchor Lab** (users with the `lab` entitlement in Portal → Admin →
+Users). Rigs are anchors of type LAB — they never show up in AR OMS,
+Gemba or iLOTO directories, and the portal grid hides them behind a *Lab
+rigs* toggle.
+
+1. **New rig** → name it → **QR** → print at 10 cm. Tape it next to the
+   object.
+2. **Place tags on real features** → scan the rig's QR → tap a tag onto
+   each feature you can aim at later (hinge pin, screw head, corner; 3–5)
+   → Save. That seals the map with the origin anchor. Do this once per rig.
+3. **Run** → pick the run type and a label chip → Start.
+   - *Map only*: relocalize into the sealed map, no code in view. Look at
+     the rig from roughly where the tags were placed; tags appear when the
+     origin has settled.
+   - *QR + map*: the gate first, then the same run view.
+   Pick each tag, aim the crosshair at its physical feature from ≤ 60 cm,
+   **Mark where it really is**. Two viewpoints per tag. **Done** shows this
+   run's median next to the rig's history by run type.
+4. **History** on the rig (or Portal → Anchors → Lab rigs → *Lab* badge)
+   for the full picture.
+
 ## The measurement
 
 1. Settings → **Anchor Lab** on (tester devices only). The gate now
@@ -75,7 +98,8 @@ about 5 mm — it can tell 5 from 15 from 40, which is what we need.
 **Author once per rig** from a normal standing spot, in daylight. That seals
 the map with the origin anchor.
 
-**Runs** — each run = every tag marked from two viewpoints, one run label:
+**Runs** — each run = every tag marked from two viewpoints, one run label
+(the chips in the Lab door), done once as *Map only* and once as *QR + map*:
 
 | Run label | Who / how |
 |---|---|

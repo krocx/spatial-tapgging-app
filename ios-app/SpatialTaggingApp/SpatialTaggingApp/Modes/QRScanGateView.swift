@@ -189,7 +189,7 @@ struct QRScanGateView: View {
             // viewpoint.  This removes the need to "walk around to trace the worldmap".
             // Anchor Lab: ask for the LiDAR scene mesh so truth raycasts hit
             // real surfaces (ignored on devices without LiDAR).
-            arManager.wantsSceneMesh = settings.anchorLabEnabled
+            arManager.wantsSceneMesh = settings.lidarMeshEnabled || settings.anchorLabEnabled
             Task {
                 guard let anchorId = appState.activeAnchor?.id else {
                     arManager.startSession()

@@ -25,6 +25,7 @@ struct ModeSelectionView: View {
     @State private var showProductionPrompt  = false
     @State private var showTestBayPrompt     = false
     @State private var showConfigPicker      = false
+    @State private var showAnchorLab         = false      // Anchor Lab door (2026.4.46)
     @State private var showSettings         = false
     /// Kiosk gate — presented when UAM is active and there's no signed-in
     /// technician, or no Production # set for the shift.
@@ -173,6 +174,18 @@ struct ModeSelectionView: View {
                         )
                     }
 
+                    if settings.hasProduct("lab") {
+                        ProductDoor(
+                            title: "Anchor Lab", subtitle: "Test anchoring accuracy on a rig — every run ends in mm",
+                            icon: "scope", accent: .cyan,
+                            context: nil, contextPrompt: "rigs are separate from chambers",
+                            lastUsed: settings.lastProduct == "lab",
+                            isEnabled: settings.isConfigured,
+                            onTap: { settings.lastProduct = "lab"; showAnchorLab = true },
+                            onChange: nil
+                        )
+                    }
+
                     Button {
                         directoryScope = .all
                         if settings.isAuthoringShift { showAuthorDirectory = true } else { showOperatorDirectory = true }
@@ -312,6 +325,13 @@ struct ModeSelectionView: View {
                 .animation(.easeInOut(duration: 0.25), value: tour.currentStep)
             }
         }
+        // Anchor Lab door (2026.4.46) — rigs, runs, history.
+        .fullScreenCover(isPresented: $showAnchorLab) {
+            AnchorLabHomeView()
+                .environmentObject(settings)
+                .environmentObject(appState)
+                .environmentObject(tour)
+        }
         // Author: directory → hub → (QR gate | direct) → AuthorModeView / LocTagAuthorView
         .fullScreenCover(isPresented: $showAuthorDirectory) {
             AnchorDirectoryView(
@@ -436,6 +456,9 @@ struct ModeSelectionView: View {
         .onAppear {
             // Load last Author session for "Continue" card
             lastSession = appState.loadLastAuthorSession()
+            // Anchor Lab: an Author session opened from the Lab door ended —
+            // go back to the Lab, not the home page.
+            if appState.returnToLab { appState.returnToLab = false; showAnchorLab = true }
 
             // UAM: silently refresh the access token + role on launch when
             // identity is configured. Offline/failed network keeps the cached
@@ -680,7 +703,7 @@ private struct ShareQRCard: View {
 
 extension ModeSelectionView {
     fileprivate func productTitle(_ p: String) -> String {
-        switch p { case "chambers": return "AR OMS"; case "gemba": return "Gemba Audit"; case "iloto": return "iLOTO"; default: return p }
+        switch p { case "chambers": return "AR OMS"; case "gemba": return "Gemba Audit"; case "iloto": return "iLOTO"; case "lab": return "Anchor Lab"; default: return p }
     }
 
     fileprivate func openDirectory(_ scope: DirectoryScope) {

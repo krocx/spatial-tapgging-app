@@ -49,6 +49,7 @@ export function sanitizeAccuracySample(anchorId: string, body: unknown): AnchorA
     ['qrDriftMm', num(b.qrDriftMm)], ['qrDriftDeg', num(b.qrDriftDeg)], ['lightLux', num(b.lightLux)],
     ['approachDeg', num(b.approachDeg)], ['device', str(b.device, 40)], ['osVersion', str(b.osVersion, 40)],
     ['appVersion', str(b.appVersion, 40)], ['run', str(b.run, 80)], ['by', str(b.by, 80)],
+    ['runType', b.runType === 'map' || b.runType === 'qr' ? b.runType : undefined],
   ];
   for (const [k, v] of opt) if (v !== undefined) (s as unknown as Record<string, unknown>)[k] = v;
   return s;
@@ -115,6 +116,7 @@ export function summariseAccuracy(samples: AnchorAccuracySample[]): AnchorAccura
     byDevice: groupBy(samples, s => s.device ?? 'unknown'),
     byOrigin: groupBy(samples, s => s.originSource),
     byRun:    groupBy(samples.filter(s => s.run), s => s.run!),
+    byRunType: groupBy(samples.filter(s => s.runType), s => s.runType!),
     ...(lastAt && { lastAt }),
   };
 }

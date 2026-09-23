@@ -85,6 +85,9 @@ enum AnchorType: String, Codable {
     case qr     = "QR"
     case locTag = "LOC_TAG"
     case loto   = "LOTO"
+    /// Anchor Lab rig (2026.4.46): an anchoring test bed. Only the Lab door
+    /// lists it; every production directory filters it out.
+    case lab    = "LAB"
 }
 
 // ============================================================

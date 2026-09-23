@@ -347,8 +347,13 @@ struct SettingsView: View {
 
                 // ── Diagnostics (QA Mode + log export) ─────────────────────────
                 Section {
+                    Toggle(isOn: $settings.lidarMeshEnabled) {
+                        Label("LiDAR scene mesh", systemImage: "cube.transparent")
+                    }
+                    Text("Depth-assisted tracking and surface raycasts on LiDAR devices. Turn off for lighter sessions on hot or old devices.")
+                        .font(.caption).foregroundStyle(.secondary)
                     Toggle(isOn: $settings.anchorLabEnabled) {
-                        Label("Anchor Lab — measure anchoring", systemImage: "scope")
+                        Label("Anchor Lab card in Operator mode", systemImage: "scope")
                     }
                     if settings.anchorLabEnabled {
                         Text("In Operator mode: a lock report (how the origin was found) and a per-tag “mark where it really is” tool. Each mark sends the rendered-vs-physical error in mm to SIB — numbers only, never images. See Portal → Anchors → Lab.")

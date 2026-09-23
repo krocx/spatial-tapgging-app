@@ -73,8 +73,13 @@ final class AppSettings: ObservableObject {
     /// Unsigned or unscoped users see everything; operator flows are NOT
     /// gated here — session/guide assignment governs those.
     func hasProduct(_ p: String) -> Bool {
-        guard uamSignedIn, !uamProducts.isEmpty else { return true }
-        return uamProducts.split(separator: ",").map(String.init).contains(p)
+        let list = uamProducts.split(separator: ",").map(String.init)
+        // Anchor Lab is opt-in: "all products" (empty list) does NOT include
+        // it. Only people explicitly given `lab` see the door — the test bed
+        // is for the team assessing anchoring, not every technician.
+        if p == "lab" { return uamSignedIn && list.contains("lab") }
+        guard uamSignedIn, !list.isEmpty else { return true }
+        return list.contains(p)
     }
     /// Production # — the chamber/system the technician works on this shift.
     /// Entered on the kiosk start screen; free text by design (2026.4.45).
@@ -114,6 +119,12 @@ final class AppSettings: ObservableObject {
     /// tool per tag. Tester-only; off by default.
     @Published var anchorLabEnabled: Bool {
         didSet { UserDefaults.standard.set(anchorLabEnabled, forKey: "anchor_lab_enabled") }
+    }
+    /// LiDAR scene mesh in AR sessions (devices with LiDAR only). Feeds
+    /// depth-assisted tracking and truth raycasts; on by default — the Lab
+    /// measures whether it earns its cost. Off = lighter sessions.
+    @Published var lidarMeshEnabled: Bool {
+        didSet { UserDefaults.standard.set(lidarMeshEnabled, forKey: "lidar_mesh_enabled") }
     }
     /// The product door last used ("chambers" | "gemba" | "iloto") — local
     /// memory so the home page can say "last time you did X" without guessing.
@@ -228,6 +239,7 @@ final class AppSettings: ObservableObject {
         testBay            = UserDefaults.standard.string(forKey: "test_bay")             ?? ""
         contextualHintsEnabled = UserDefaults.standard.object(forKey: "contextual_hints_enabled") as? Bool ?? true
         anchorLabEnabled   = UserDefaults.standard.bool(forKey: "anchor_lab_enabled")
+        lidarMeshEnabled   = UserDefaults.standard.object(forKey: "lidar_mesh_enabled") as? Bool ?? true
         lastProduct        = UserDefaults.standard.string(forKey: "last_product")         ?? ""
 
         // Author name: use stored value if set; otherwise extract first name from device name

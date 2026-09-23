@@ -200,6 +200,23 @@ already spawned.
   origin source and run. `GET /anchors/:id/accuracy` returns samples +
   summary; `DELETE` clears. Protocol for the home rig:
   `docs/ar-ojt/ANCHOR-LAB.md`.
+- **The Anchor Lab door.** A fourth product door for the team assessing
+  anchoring, shown only to users explicitly entitled to `lab` (UAM
+  products; unlike the others it is *not* implied by "all products").
+  Inside: **rigs** — anchors of type `LAB` that never appear in production
+  directories or the portal grid (a *Lab rigs* toggle reveals them) — each
+  with *Print QR*, *Place tags* (the real Author flow, so a lab tag is a
+  real tag and Save seals the map with the origin anchor), *Run* and
+  *History*. A run is one of two types operators meet in production:
+  **Map only** (relocalize into the sealed map, no code in view — what AR
+  work-instruction runs do) or **QR + map** (through the gate — what
+  Spatial Inspection does), labelled from the protocol's chips (author
+  spot, door, opposite side, evening, dim, second person, after move). The
+  lean run view holds tags until the origin settles, shows the lock report
+  and the mark-truth tool, and ends in a summary: this run's median vs the
+  rig's history split by run type. Samples carry `runType`; the portal Lab
+  view adds a *Run type* table. Settings gain *LiDAR scene mesh* (on by
+  default on LiDAR devices; the Lab is where its worth gets measured).
 
 ## Object anchoring (scan · origin · movable equipment · shape ghost)
 

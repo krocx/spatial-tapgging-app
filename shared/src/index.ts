@@ -13,7 +13,9 @@
  *              an ARWorldMap is saved so Operators can re-localize without a QR.
  * Defaults to 'QR' when absent for backward-compatibility with existing anchors.
  */
-export type AnchorType = 'QR' | 'LOC_TAG' | 'LOTO';
+/** 'LAB' (2026.4.46): an Anchor Lab rig — a test bed for anchoring accuracy.
+ *  Lives only behind the Lab door; production directories never list it. */
+export type AnchorType = 'QR' | 'LOC_TAG' | 'LOTO' | 'LAB';
 
 // --- Defect Categories (Loc-Tag / Gemba audit walk) ---
 
@@ -265,6 +267,8 @@ export interface AnchorAccuracySample {
   appVersion?:   string;
   /** Free text the tester types once per run ("door · evening · 2 m"). */
   run?:          string;
+  /** How the session found its frame: 'map' (relocalize only, no code) or 'qr' (the QR gate). */
+  runType?:      'map' | 'qr';
   by?:           string;
   at?:           string;       // ISO, server-stamped when absent
 }
@@ -285,6 +289,7 @@ export interface AnchorAccuracySummary {
   byDevice:   AnchorAccuracyBucket[];
   byOrigin:   AnchorAccuracyBucket[];
   byRun:      AnchorAccuracyBucket[];
+  byRunType:  AnchorAccuracyBucket[];
   lastAt?:    string;
 }
 
@@ -2103,7 +2108,9 @@ export type UamRole = 'owner' | 'manager' | 'engineer' | 'technician';
  * driven by session/guide assignment (per-user sharing), so run-time
  * delegation is uniform across products.
  */
-export type SibProduct = 'aroms' | 'iloto' | 'gemba';
+export type SibProduct = 'aroms' | 'iloto' | 'gemba' | 'lab';
+// 'lab' (Anchor Lab door) is OPT-IN: unlike the others it is NOT implied by
+// an absent/empty products list — only users explicitly given it see the door.
 // NB: no value export here — @spatial/shared stays types-only at runtime
 // (the Render-crash doctrine). Consumers keep their own whitelist array.
 

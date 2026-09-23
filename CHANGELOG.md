@@ -316,6 +316,17 @@ it, it gets a line.
   (own SVG, colour per device, 10 / 25 mm bands) and buckets by device,
   origin and run; `GET`/`DELETE /anchors/:id/accuracy`. Home protocol:
   `docs/ar-ojt/ANCHOR-LAB.md`.
+- **Anchor Lab door.** A product door for the team assessing anchoring,
+  visible only to users explicitly entitled to `lab` (UAM products — not
+  implied by "all"). Rigs (anchors of type `LAB`, hidden from every
+  production directory and from the portal grid unless *Lab rigs* is
+  ticked) with Print QR, Place tags (the real Author flow), Run and
+  History. Runs are *Map only* (relocalize, no code in view) or *QR + map*
+  (through the gate), labelled from the protocol's chips; the lean run view
+  holds tags until the origin settles, offers the mark-truth tool, and ends
+  in a summary against the rig's history by run type. `runType` on
+  accuracy samples; portal Lab view gains a Run-type table. Settings:
+  *LiDAR scene mesh* (on by default on LiDAR devices).
 - **Per-step operator context.** In the Designer (parts block and Parts
   Studio) each step chooses what the operator sees around the parts being
   installed: *Installed only* (default), *Whole · ghost* (the whole assembly

@@ -754,6 +754,7 @@
 <div id="toolbar" style="display:none">
   <input id="search" type="search" placeholder="Search by anchor ID or asset…" oninput="renderAnchors()" />
   <button class="btn btn-ghost btn-sm" onclick="loadAnchors()">⟳ Refresh</button>
+  <label style="font-size:0.78rem;color:var(--muted);display:inline-flex;align-items:center;gap:6px;margin-left:8px" title="Anchor Lab rigs are anchoring test beds; they never appear in production directories"><input type="checkbox" id="show-lab-rigs" onchange="renderAnchors()"> Lab rigs</label>
   <button class="btn btn-danger btn-sm" onclick="deleteAllAnchors()" style="margin-left:auto"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg> Delete All</button>
 </div>
 
@@ -1734,6 +1735,7 @@ const UAM_PRODUCTS = [
   { id: 'aroms', label: 'AR OMS', title: 'AR Work Instructions authoring' },
   { id: 'iloto', label: 'iLOTO',  title: 'Lockout/Tagout authoring' },
   { id: 'gemba', label: 'Gemba',  title: 'GembaWalk audit authoring' },
+  { id: 'lab',   label: 'Lab',    title: 'Anchor Lab door — anchoring accuracy test bed (opt-in; not implied by "all")' },
 ];
 async function uamSetProducts(id, cell, email) {
   const products = [...cell.querySelectorAll('input[data-product]:checked')].map(i => i.dataset.product);
@@ -1990,7 +1992,9 @@ async function loadAnchors() {
 // ── Render anchors ─────────────────────────────────────────────────────────────
 function renderAnchors() {
   const q = (document.getElementById('search')?.value || '').toLowerCase();
-  const filtered = allAnchors.filter(a =>
+  // Anchor Lab rigs are test beds, not chambers — hidden unless asked for.
+  const showLab = document.getElementById('show-lab-rigs')?.checked;
+  const filtered = allAnchors.filter(a => (showLab ? a.anchorType === 'LAB' : a.anchorType !== 'LAB')).filter(a =>
     !q ||
     a.id.toLowerCase().includes(q) ||
     a.assetId.toLowerCase().includes(q) ||
@@ -2133,6 +2137,7 @@ function renderAnchorLab(d) {
       <span style="margin-left:auto">● sealed map &nbsp; ■ object &nbsp; ○ QR / approximate</span>
     </div>
     ${bucketTable('Device', summary.byDevice)}
+    ${bucketTable('Run type', (summary.byRunType || []).map(b => ({ ...b, key: b.key === 'map' ? 'Map only (no code)' : 'QR + map' })))}
     ${bucketTable('Origin', summary.byOrigin)}
     ${bucketTable('Run', summary.byRun)}
     <details style="margin-top:12px"><summary style="font-size:0.8rem;color:var(--muted);cursor:pointer">All marks (${sorted.length})</summary>
@@ -2154,8 +2159,8 @@ function buildCard(anchor) {
 
   const short  = anchor.id.length > 22 ? anchor.id.slice(0,10)+'…'+anchor.id.slice(-8) : anchor.id;
   const date   = new Date(anchor.createdAt).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
-  const badge  = count > 0
-    ? `<span class="badge badge-green">${count} tag${count!==1?'s':''}</span>` : `<span class="badge badge-orange">No tags</span>`;
+  const badge  = (anchor.anchorType === 'LAB' ? '<span class="badge badge-muted" title="Anchor Lab rig — a test bed, not a chamber">LAB RIG</span> ' : '') + (count > 0
+    ? `<span class="badge badge-green">${count} tag${count!==1?'s':''}</span>` : `<span class="badge badge-orange">No tags</span>`);
 
   const hasKey  = !!anchor.encryptionKey;
   const keyHtml = hasKey

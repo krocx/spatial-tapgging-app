@@ -245,7 +245,7 @@ router.delete('/users/:id', (req: Request, res: Response) => {
 });
 
 /** E1: product-entitlement whitelist (shared stays types-only at runtime). */
-const SIB_PRODUCTS = ['aroms', 'iloto', 'gemba'] as const;
+const SIB_PRODUCTS = ['aroms', 'iloto', 'gemba', 'lab'] as const;
 type SibProductVal = typeof SIB_PRODUCTS[number];
 
 /**

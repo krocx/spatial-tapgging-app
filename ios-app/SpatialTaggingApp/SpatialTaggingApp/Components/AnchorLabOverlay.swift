@@ -35,6 +35,12 @@ struct AnchorLabOverlay: View {
     let originTransform: simd_float4x4?
     let client: SIBClient
     let by: String
+    /// Lab door: "map" (relocalize only) or "qr" (the gate). Nil in Operator mode.
+    var runType: String? = nil
+    /// Lab door: a preset run label (chips) overrides the free-text field.
+    var presetRun: String? = nil
+    /// Lab door: told after every mark (label, mm, sent) so the run summary can build.
+    var onMark: ((String, Double, Bool) -> Void)? = nil
 
     @State private var expanded = true
     @State private var armedTagId: String? = nil
@@ -101,8 +107,8 @@ struct AnchorLabOverlay: View {
 
             Divider().overlay(Color.white.opacity(0.2))
 
-            // Run label — typed once, remembered
-            HStack(spacing: 6) {
+            // Run label — typed once, remembered (the Lab door passes a preset instead)
+            if presetRun == nil { HStack(spacing: 6) {
                 Image(systemName: "tag").font(.caption2).foregroundStyle(.white.opacity(0.6))
                 TextField("run label (door · evening · 2 m)", text: $run)
                     .font(.caption2).foregroundStyle(.white)
@@ -110,7 +116,7 @@ struct AnchorLabOverlay: View {
                     .onChange(of: run) { UserDefaults.standard.set($0, forKey: "anchor_lab_run") }
             }
             .padding(.horizontal, 8).padding(.vertical, 5)
-            .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+            .background(Color.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 8)) }
 
             // Tag chips → arm one
             Text(armedTagId == nil ? "Pick a tag, then aim the crosshair at its real feature"
@@ -204,8 +210,8 @@ struct AnchorLabOverlay: View {
             qrDriftDeg: (qrDiscrepancy?.deg ?? report?.qrDriftDeg).map { Double($0) },
             lightLux: report?.lightLux, approachDeg: report?.approachDeg.map { Double($0) },
             device: DeviceModel.identifier, osVersion: UIDevice.current.systemVersion, appVersion: AppVersion.current,
-            run: run.isEmpty ? nil : run, by: by.isEmpty ? nil : by,
-            at: ISO8601DateFormatter().string(from: Date()))
+            run: (presetRun ?? run).isEmpty ? nil : (presetRun ?? run), by: by.isEmpty ? nil : by,
+            at: ISO8601DateFormatter().string(from: Date()), runType: runType)
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         armedTagId = nil
         sending = true
@@ -216,6 +222,7 @@ struct AnchorLabOverlay: View {
             do { try await client.postAnchorAccuracy(anchorId: anchorId, sample: sample) }
             catch { ok = false; toast = "Saved locally only — \(error.localizedDescription)" }
             rows.append((label, mm, ok))
+            onMark?(label, mm, ok)
             sending = false
         }
     }

@@ -32,8 +32,8 @@ enum DirectoryScope {
     }
     func includes(_ a: Anchor) -> Bool {
         switch self {
-        case .all:      return true
-        case .chambers: return a.isChamber
+        case .all:      return a.anchorType != .lab      // lab rigs live behind the Lab door only
+        case .chambers: return a.isChamber && a.anchorType != .lab
         case .gemba:    return a.anchorType == .locTag
         case .loto:     return a.anchorType == .loto
         }

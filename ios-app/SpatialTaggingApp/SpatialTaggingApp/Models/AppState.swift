@@ -77,6 +77,9 @@ final class AppState: ObservableObject {
     /// relocalize / converge times, QR drift, light. Anchor Lab attaches it
     /// to every accuracy sample.
     var originLockReport: ARSessionManager.OriginLockReport? = nil
+    /// Anchor Lab: the Author session was opened from the Lab door — go back
+    /// there (not the home page) when it ends.
+    var returnToLab: Bool = false
 
     /// The live ARSession created by QRScanGateView and kept alive so that
     /// AuthorModeView / OperatorModeView can link to it without a session reset.
