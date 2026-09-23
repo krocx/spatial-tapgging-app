@@ -28,6 +28,12 @@ it, it gets a line.
   the QR origin instead of waiting out the timeout. Vision QR detection is
   throttled to ~8 Hz (the pose comes from ARImageAnchor anyway), leaving
   ARKit the headroom it needs.
+- **Camera frames no longer queue behind the UI.** ARKit delivered every
+  frame callback on the main thread, so during pin/panel creation or a
+  network post it kept one `ARFrame` alive per queued callback ("delegate
+  is retaining 11–12 ARFrames") and then throttled the camera. The session
+  delegate now runs on its own queue; the delegate only hops to the main
+  actor to publish.
 - **Wrong QR no longer discards the sealed map.** Scanning another
   chamber's code used to restart a fresh session; the session and its
   relocalized frame are now kept and only the wrong code's reference image

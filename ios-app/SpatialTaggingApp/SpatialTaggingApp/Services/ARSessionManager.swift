@@ -195,10 +195,19 @@ final class ARSessionManager: NSObject, ObservableObject {
     var wantsSceneMesh = false
 
     // ── Init ──────────────────────────────────────────────────────────────────
+    /// ARKit hands frames to the delegate on this queue instead of main. With
+    /// no queue set, every `didUpdate frame` waits behind SwiftUI layout,
+    /// panel texture redraws and network posts on the main thread; ARKit
+    /// keeps one ARFrame alive per queued callback and warns at ~11 — and
+    /// then throttles the camera. Everything in our delegate is `nonisolated`
+    /// and hops to the main actor only to publish, so it runs here safely.
+    nonisolated static let delegateQueue = DispatchQueue(label: "com.spatial.arsession.delegate", qos: .userInteractive)
+
     override init() {
         super.init()
         sceneView.delegate         = self
         sceneView.session.delegate = self
+        sceneView.session.delegateQueue = Self.delegateQueue
         sceneView.autoenablesDefaultLighting = true
         // Black background prevents the white ARSCNView flash that appears
         // before ARKit acquires the camera feed (especially on first present).
@@ -776,6 +785,7 @@ final class ARSessionManager: NSObject, ObservableObject {
         sceneView.session = session
         // Become the new delegate so didUpdate/didAdd anchor callbacks flow here.
         session.delegate  = self
+        session.delegateQueue = Self.delegateQueue
 
         if let objectCalibration {
             objectCalibratedPose = objectCalibration
