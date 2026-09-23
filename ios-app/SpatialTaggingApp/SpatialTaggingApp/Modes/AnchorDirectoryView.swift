@@ -768,6 +768,9 @@ struct CreateAnchorSheet: View {
                     Text("Tap any surface in AR to place issue tags. No QR code needed — the space itself is the anchor.")
                 case .loto:
                     Text("One anchor per control panel. A QR code is printed and mounted on the panel; Safe Off and LOTO points are placed against its world map.")
+                case .lab:
+                    // Lab rigs are created from the Anchor Lab door, never here.
+                    Text("An anchoring test bed. Create rigs from the Anchor Lab door.")
                 }
             }
 
