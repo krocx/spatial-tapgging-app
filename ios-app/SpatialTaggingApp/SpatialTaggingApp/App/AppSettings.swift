@@ -121,8 +121,9 @@ final class AppSettings: ObservableObject {
         didSet { UserDefaults.standard.set(anchorLabEnabled, forKey: "anchor_lab_enabled") }
     }
     /// LiDAR scene mesh in AR sessions (devices with LiDAR only). Feeds
-    /// depth-assisted tracking and truth raycasts; on by default — the Lab
-    /// measures whether it earns its cost. Off = lighter sessions.
+    /// depth-assisted tracking and truth raycasts, but reconstruction runs
+    /// continuously and halves the frame rate on a phone — OFF by default;
+    /// the Lab is where its worth gets measured.
     @Published var lidarMeshEnabled: Bool {
         didSet { UserDefaults.standard.set(lidarMeshEnabled, forKey: "lidar_mesh_enabled") }
     }
@@ -239,7 +240,7 @@ final class AppSettings: ObservableObject {
         testBay            = UserDefaults.standard.string(forKey: "test_bay")             ?? ""
         contextualHintsEnabled = UserDefaults.standard.object(forKey: "contextual_hints_enabled") as? Bool ?? true
         anchorLabEnabled   = UserDefaults.standard.bool(forKey: "anchor_lab_enabled")
-        lidarMeshEnabled   = UserDefaults.standard.object(forKey: "lidar_mesh_enabled") as? Bool ?? true
+        lidarMeshEnabled   = UserDefaults.standard.object(forKey: "lidar_mesh_enabled") as? Bool ?? false
         lastProduct        = UserDefaults.standard.string(forKey: "last_product")         ?? ""
 
         // Author name: use stored value if set; otherwise extract first name from device name

@@ -438,8 +438,13 @@ struct LabRunView: View {
             arManager.disableQRScanning()
             phase = .relocalizing
             // Wait for the trust layer: locked / approximate, or the 15 s fallback.
+            // Hard stop at 40 s so a stuck session can never hang the run.
+            let waitStart = Date()
             while true {
                 try? await Task.sleep(nanoseconds: 150_000_000)
+                if Date().timeIntervalSince(waitStart) > 40 {
+                    phase = .failed("The origin never settled. Move closer to the rig and try again."); return
+                }
                 if arManager.relocalizationOutcome == .timedOut {
                     phase = .failed("ARKit couldn't match the map in 15 s. Stand where the tags were placed, look at the rig, and try again."); return
                 }

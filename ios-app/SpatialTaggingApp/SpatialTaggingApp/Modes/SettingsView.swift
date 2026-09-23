@@ -350,7 +350,7 @@ struct SettingsView: View {
                     Toggle(isOn: $settings.lidarMeshEnabled) {
                         Label("LiDAR scene mesh", systemImage: "cube.transparent")
                     }
-                    Text("Depth-assisted tracking and surface raycasts on LiDAR devices. Turn off for lighter sessions on hot or old devices.")
+                    Text("Depth-assisted tracking and surface raycasts on LiDAR devices. Costs frame rate — leave off unless a Lab run is comparing it.")
                         .font(.caption).foregroundStyle(.secondary)
                     Toggle(isOn: $settings.anchorLabEnabled) {
                         Label("Anchor Lab card in Operator mode", systemImage: "scope")

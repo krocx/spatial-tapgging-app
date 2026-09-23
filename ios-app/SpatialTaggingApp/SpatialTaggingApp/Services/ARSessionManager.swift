@@ -171,6 +171,10 @@ final class ARSessionManager: NSObject, ObservableObject {
     nonisolated(unsafe) private var originSamples: [(t: TimeInterval, m: simd_float4x4)] = []
     nonisolated(unsafe) private var sessionStartAt: TimeInterval = 0
     nonisolated(unsafe) private var trackingNormalAt: TimeInterval? = nil
+    /// First normal frame after relocalization — the convergence ceiling runs
+    /// from here, so a device whose tracking flickers normal↔limited still
+    /// gets an answer (approximate) instead of waiting forever.
+    nonisolated(unsafe) private var firstNormalAt: TimeInterval? = nil
     nonisolated(unsafe) private var convergedAt: TimeInterval? = nil
     nonisolated(unsafe) private var convergenceArmed = false
     nonisolated(unsafe) private var lastPublishedOrigin: simd_float4x4? = nil
@@ -472,6 +476,7 @@ final class ARSessionManager: NSObject, ObservableObject {
         originSamples       = []
         sessionStartAt      = ProcessInfo.processInfo.systemUptime
         trackingNormalAt    = nil
+        firstNormalAt       = nil
         convergedAt         = nil
         convergenceArmed    = false
         lastPublishedOrigin = nil
@@ -543,14 +548,25 @@ final class ARSessionManager: NSObject, ObservableObject {
         let now = frame.timestamp
         // "Normal" must be sustained: ARKit reports a normal frame or two
         // right at start-up before VIO has anything — that is not relocalized.
-        if trackingNormal { if trackingNormalAt == nil { trackingNormalAt = now } }
-        else { trackingNormalAt = nil; originSamples = [] }
+        if trackingNormal {
+            if trackingNormalAt == nil { trackingNormalAt = now }
+            if firstNormalAt == nil { firstNormalAt = now }
+        } else { trackingNormalAt = nil; originSamples = [] }
         guard convergenceArmed, convergedAt == nil else {
             // Already locked: keep the world on the anchor (refinements after lock).
             if let id = originAnchorId, let p = mapOriginPoseUnsafe,
                let a = frame.anchors.first(where: { $0.identifier == id }) {
                 rebaseIfDrifted(a.transform, from: p, now: now)
             }
+            return
+        }
+        // Ceiling first: measured from the FIRST normal frame, not the latest.
+        if let first = firstNormalAt, now - first >= convergeCeiling {
+            convergedAt = now
+            let convergeS = now - first
+            let light = frame.lightEstimate.map { Double($0.ambientIntensity) }
+            let cam = frame.camera.transform
+            Task { @MainActor [weak self] in self?.markConverged(convergeS: convergeS, light: light, camera: cam, approximate: "Origin still settling — placed approximately") }
             return
         }
         guard let normalAt = trackingNormalAt else { return }
@@ -572,15 +588,12 @@ final class ARSessionManager: NSObject, ObservableObject {
             settled = now - normalAt >= holdWindow
         }
 
-        let done = settled && now - normalAt >= 1.0
-        let ceiling = !done && now - normalAt >= convergeCeiling
-        if done || ceiling {
+        if settled, now - normalAt >= 1.0 {
             convergedAt = now
-            let convergeS = now - normalAt
+            let convergeS = now - (firstNormalAt ?? normalAt)
             let light = frame.lightEstimate.map { Double($0.ambientIntensity) }
             let cam = frame.camera.transform
-            let why: String? = ceiling ? "Origin still settling — placed approximately" : nil
-            Task { @MainActor [weak self] in self?.markConverged(convergeS: convergeS, light: light, camera: cam, approximate: why) }
+            Task { @MainActor [weak self] in self?.markConverged(convergeS: convergeS, light: light, camera: cam, approximate: nil) }
         }
     }
 
@@ -627,7 +640,7 @@ final class ARSessionManager: NSObject, ObservableObject {
     private func markConverged(convergeS: Double, light: Double?, camera: simd_float4x4, approximate: String?) {
         guard originConfidence == .aligning || originConfidence == .relocalizing else { return }
         lockReport.convergeS   = (convergeS * 100).rounded() / 100
-        lockReport.relocalizeS = trackingNormalAt.map { (($0 - sessionStartAt) * 100).rounded() / 100 }
+        lockReport.relocalizeS = (firstNormalAt ?? trackingNormalAt).map { (($0 - sessionStartAt) * 100).rounded() / 100 }
         lockReport.lightLux    = light
         if let o = lockedAnchorTransform ?? mapOriginPose {
             let camFwd = -simd_float3(camera.columns.2.x, 0, camera.columns.2.z)
