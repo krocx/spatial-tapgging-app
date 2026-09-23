@@ -519,6 +519,36 @@ struct AuthorModeView: View {
         }
     }
 
+    // ── Trust layer: re-seal on exit ──────────────────────────────────────────
+    // Eligible when this session's frame IS the map's frame: the gate
+    // relocalized into the sealed map (sealedMapOrigin set) or sealed it
+    // fresh in this very session (the anchor had no map when we entered).
+    // A timed-out gate (fresh frame over an existing map) must not upload.
+    private func resealMapIfFrameIsMapFrame() async {
+        guard let anchor = appState.activeAnchor,
+              let origin = appState.anchorNormalisedTransform else { return }
+        let eligible = appState.sealedMapOrigin != nil || anchor.mapSealedAt == nil
+        guard eligible else { AppLog.info("qr", "Exit: frame is not the map frame — map not re-sealed"); return }
+        arManager.ensureOriginAnchor(fallback: origin)
+        try? await Task.sleep(nanoseconds: 300_000_000)
+        guard let mapData = await arManager.saveCurrentWorldMap() else { return }
+        let client   = SIBClient(settings: settings)
+        let sealedBy = !settings.uamUserName.isEmpty ? settings.uamUserName : settings.authorName
+        let aid      = anchor.id
+        // Upload in the background — leaving Author mode must stay snappy.
+        Task {
+            do {
+                try await client.uploadWorldMap(anchorId: aid, data: mapData)
+                let meta = try await client.uploadWorldMapMeta(anchorId: aid, anchorPose: origin, sealedBy: sealedBy)
+                WorldMapCache.store(.anchor(aid), map: mapData, meta: meta)
+                AppLog.info("qr", "✓ Map re-sealed on exit (\(mapData.count / 1024) KB)")
+            } catch {
+                WorldMapCache.store(.anchor(aid), map: mapData, meta: WorldMapMeta())
+                AppLog.warn("qr", "Re-seal upload failed (cached locally): \(error.localizedDescription)")
+            }
+        }
+    }
+
     // ── Top bar (Screen 6) ────────────────────────────────────────────────────
 
     private var topBar: some View {
@@ -526,9 +556,16 @@ struct AuthorModeView: View {
             // Done — exits session, saves state
             Button("Done") {
                 appState.saveLastAuthorSession()
-                arManager.pauseSession()
-                appState.reset()
-                appState.mode = .none
+                // Trust layer: re-seal the map NOW, when it contains the tags
+                // and everything the author looked at — the gate sealed a
+                // seconds-old map at QR lock, which operators then failed to
+                // relocalize into. Same frame, same origin, richer map.
+                Task {
+                    await resealMapIfFrameIsMapFrame()
+                    arManager.pauseSession()
+                    appState.reset()
+                    appState.mode = .none
+                }
             }
             .font(.body)
             .foregroundStyle(.white.opacity(0.85))

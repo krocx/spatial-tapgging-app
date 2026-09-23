@@ -21,6 +21,12 @@ it, it gets a line.
   and Place Steps hold their pins until it settles, and whenever ARKit later
   refines the anchor the world is re-based onto it, so pins, tags, cones
   and models are corrected together instead of drifting apart.
+- **Author mode re-seals the map on exit.** The gate sealed the world map
+  seconds after the QR lock — before any tag was placed or the equipment
+  looked at — so operators relocalized into an almost empty map and timed
+  out. Leaving Author mode now saves the map again (same frame, same
+  origin anchor, everything the author looked at), the way Place Steps
+  already does on Save. Only when the session's frame is the map's frame.
 - **QR gate no longer stalls on a sealed map.** Staring at a 10 cm code gives
   ARKit too little to match the map against, and every detection was refused
   for 15 s. The gate now says "QR found — look around the chamber for a
