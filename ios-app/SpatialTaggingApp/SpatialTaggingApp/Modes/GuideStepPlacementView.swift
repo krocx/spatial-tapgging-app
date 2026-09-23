@@ -428,11 +428,17 @@ struct GuideStepPlacementView: View {
             guard relocState == .relocalizing else { return }
             switch outcome {
             case .succeeded:
-                // Same as the operator session: snap the moment ARKit matches —
-                // no tap needed. Haptic so the author knows the pins are live.
-                UINotificationFeedbackGenerator().notificationOccurred(.success)
-                withAnimation { relocState = .relocalized }
-                placeExistingPinNodes()
+                // Trust layer: ARKit matched, but the fit is still settling.
+                // Hold the pins until the origin anchor is still (≤ 8 s).
+                Task {
+                    while arManager.originConfidence == .aligning || arManager.originConfidence == .relocalizing {
+                        try? await Task.sleep(nanoseconds: 100_000_000)
+                    }
+                    guard relocState == .relocalizing else { return }
+                    UINotificationFeedbackGenerator().notificationOccurred(.success)
+                    withAnimation { relocState = .relocalized }
+                    placeExistingPinNodes()
+                }
             case .timedOut:
                 relocState = .timedOut
             case .none:
@@ -2634,6 +2640,18 @@ struct GuideStepPlacementView: View {
         let photoData = firstStepPhotoData
         // A: never upload a map from a frame that isn't the guide's frame.
         let frameIsMapFrame = relocBundle == nil || relocState == .relocalized || relocState == .replaceAll
+        // Trust layer: the guide map carries its origin anchor (near the pins)
+        // so operator sessions can converge onto it and re-base the world.
+        if frameIsMapFrame {
+            var centre = matrix_identity_float4x4
+            let placed = steps.compactMap { $0.worldPosition }
+            if !placed.isEmpty {
+                let c = placed.reduce(simd_float3(repeating: 0), +) / Float(placed.count)
+                centre.columns.3 = simd_float4(c.x, c.y, c.z, 1)
+            }
+            arManager.ensureOriginAnchor(fallback: centre)
+            try? await Task.sleep(nanoseconds: 300_000_000)
+        }
         let mapData   = frameIsMapFrame ? await arManager.saveCurrentWorldMap() : nil
         let (updatedSteps, errors) = await patchChangedPositions()
         // B2: the object's pose in the map frame — valid only while the session

@@ -16,7 +16,15 @@ it, it gets a line.
   handoff (*Aligning…*) until the origin has been still for 1.5 s (8 s
   ceiling → *approximate*, said on screen). The live QR's disagreement with
   the origin is published instead of ignored. Legacy sealed maps keep
-  working from the meta pose until the author re-seals.
+  working from the meta pose until the author re-seals. Guide maps carry
+  the same origin anchor (planted by Place Steps near the pins): guide runs
+  and Place Steps hold their pins until it settles, and whenever ARKit later
+  refines the anchor the world is re-based onto it, so pins, tags, cones
+  and models are corrected together instead of drifting apart.
+- **Wrong QR no longer discards the sealed map.** Scanning another
+  chamber's code used to restart a fresh session; the session and its
+  relocalized frame are now kept and only the wrong code's reference image
+  is dropped.
 - **XR kit — model drift on Android.** The kit never pinned three.js's
   reference space, so the camera rendered in `local-floor` while hit-test
   poses were taken in `local`; ARCore keeps re-estimating the floor, so the

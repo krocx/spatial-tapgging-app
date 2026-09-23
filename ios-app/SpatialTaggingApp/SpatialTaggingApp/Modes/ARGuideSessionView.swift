@@ -433,7 +433,16 @@ struct ARGuideSessionView: View {
                 }
                 .onChange(of: arManager.isRelocalizing) { stillRelocalizing in
                     guard !stillRelocalizing, phase == .relocalizing else { return }
-                    transitionToNavigating()
+                    // Trust layer: ARKit matched the map; wait for the origin
+                    // anchor to settle (≤ 8 s) so pins spawn on the final fit.
+                    Task {
+                        while arManager.originConfidence == .aligning || arManager.originConfidence == .relocalizing {
+                            try? await Task.sleep(nanoseconds: 100_000_000)
+                        }
+                        guard phase == .relocalizing else { return }
+                        if case .approximate(let why) = arManager.originConfidence { AppLog.warn("guide", why) }
+                        transitionToNavigating()
+                    }
                 }
 
             // Ghost reference-photo overlay (re-localization phase only)
@@ -1101,8 +1110,10 @@ struct ARGuideSessionView: View {
                 }
 
                 HStack(spacing: 8) {
-                    ProgressView().scaleEffect(0.8).tint(.indigo)
-                    Text("ARKit is matching the space…")
+                    ProgressView().scaleEffect(0.8).tint(arManager.originConfidence == .aligning ? .green : .indigo)
+                    Text(arManager.originConfidence == .aligning
+                         ? "Matched — settling the fit, hold the view…"
+                         : "ARKit is matching the space…")
                         .font(.caption).foregroundStyle(.white.opacity(0.55))
                 }
 
