@@ -93,6 +93,7 @@
     .badge { display: inline-block; font-size: 0.70rem; font-weight: 700; padding: 2px 8px; border-radius: 100px; }
     .badge-green  { background: var(--ax-ok-fill); color: var(--green); }
     .badge-orange { background: var(--ax-warn-fill);  color: var(--orange); }
+    .badge-red    { background: var(--ax-bad-fill);   color: var(--ax-bad); }
     .badge-muted  { background: var(--border); color: var(--muted); }
 
     .qr-wrap { display: flex; justify-content: center; margin: 12px 0; }
@@ -1233,6 +1234,19 @@
   </div>
 </div>
 
+<!-- Anchor Lab (2026.4.46): measured anchoring accuracy -->
+<div id="anchor-lab-modal" class="overlay">
+  <div class="modal" style="max-width:860px;max-height:88vh;overflow:auto">
+    <h2><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-target"/></svg> Anchor Lab · <span id="lab-title"></span></h2>
+    <p style="font-size:0.8rem;color:var(--muted);margin-bottom:12px">Each mark is the distance between where a tag rendered and where the tester aimed at its real feature. Bands: ≤ 10 mm good · ≤ 25 mm acceptable · above needs work. Protocol in docs/ANCHOR-LAB.md.</p>
+    <div id="lab-body"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="clearAnchorLab()">Clear marks</button>
+      <button class="btn btn-primary" onclick="closeAnchorLab()">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- D (2026.4.46): designer ↔ guide sync choice -->
 <div id="sync-modal" class="overlay">
   <div class="modal">
@@ -2041,6 +2055,96 @@ async function removeObjectScan(anchorId, assetId) {
   } catch (e) { toast(`Remove failed: ${e.message}`, 4000); }
 }
 
+// Anchor Lab (2026.4.46): measured accuracy on file → badge that opens the lab view.
+function anchorLabHtml(anchor) {
+  const a = anchor.accuracy;
+  if (!a || !a.n) return '';
+  const tone = a.medianMm <= 10 ? 'badge-green' : a.medianMm <= 25 ? 'badge-orange' : 'badge-red';
+  return `<button class="badge ${tone}" style="cursor:pointer;border:0" title="Anchor Lab — rendered-vs-physical error measured in the app (${a.n} marks). Click for the chart." onclick="openAnchorLab('${anchor.id}','${jsEsc(anchor.assetId)}')">Lab · ${a.n} · median ${a.medianMm} mm</button>`;
+}
+
+let anchorLabId = null;
+async function openAnchorLab(anchorId, assetId) {
+  anchorLabId = anchorId;
+  document.getElementById('lab-title').textContent = assetId;
+  document.getElementById('lab-body').innerHTML = '<p style="color:var(--muted);font-size:0.85rem">Loading…</p>';
+  document.getElementById('anchor-lab-modal').classList.add('open');
+  try {
+    const r = await apiFetch(`/anchors/${encodeURIComponent(anchorId)}/accuracy`);
+    renderAnchorLab(r.data);
+  } catch (e) {
+    document.getElementById('lab-body').innerHTML = `<p style="color:var(--ax-bad)">${esc(e.message)}</p>`;
+  }
+}
+function closeAnchorLab() { anchorLabId = null; document.getElementById('anchor-lab-modal').classList.remove('open'); }
+async function clearAnchorLab() {
+  if (!anchorLabId || !confirm('Clear every Anchor Lab mark for this chamber? The tags and map are untouched.')) return;
+  try { await _apiDelete(`/anchors/${encodeURIComponent(anchorLabId)}/accuracy`); toast('Lab cleared.'); closeAnchorLab(); loadAnchors(); }
+  catch (e) { toast(`Clear failed: ${e.message}`, 4000); }
+}
+
+// Own SVG, no chart library: error (mm) per mark over time, one colour per
+// device, dashed lines at the 10 / 25 mm bands used everywhere in the app.
+function renderAnchorLab(d) {
+  const { samples, summary } = d;
+  const body = document.getElementById('lab-body');
+  if (!samples.length) { body.innerHTML = '<p style="color:var(--muted);font-size:0.85rem">No marks yet. In the app: Settings → Anchor Lab, then Operator mode → pick a tag → aim → Mark.</p>'; return; }
+  const sorted = [...samples].sort((a, b) => (a.at || '').localeCompare(b.at || ''));
+  const devices = [...new Set(sorted.map(x => x.device || 'unknown'))];
+  const palette = ['var(--ax-blue)', 'var(--ax-green)', 'var(--ax-orange)', 'var(--ax-cyan)', 'var(--ax-red)', 'var(--ax-ink-2)'];
+  const colour = dev => palette[devices.indexOf(dev) % palette.length];
+  const W = 760, H = 240, L = 44, R = 12, T = 14, B = 28;
+  const maxMm = Math.max(30, ...sorted.map(x => x.errorMm)) * 1.1;
+  const x = i => L + (sorted.length === 1 ? (W - L - R) / 2 : i * (W - L - R) / (sorted.length - 1));
+  const y = mm => T + (H - T - B) * (1 - mm / maxMm);
+  const grid = [10, 25].filter(v => v < maxMm).map(v =>
+    `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="var(--ax-rule)" stroke-dasharray="4 4"/>
+     <text x="${L - 6}" y="${y(v) + 4}" text-anchor="end" font-size="11" fill="var(--ax-ink-3)">${v}</text>`).join('');
+  const ticks = [0, Math.round(maxMm / 2), Math.round(maxMm)].map(v =>
+    `<text x="${L - 6}" y="${y(v) + 4}" text-anchor="end" font-size="11" fill="var(--ax-ink-3)">${v}</text>`).join('');
+  const dots = sorted.map((s, i) => {
+    const tip = `${esc(s.tagLabel || s.tagId)} · ${s.errorMm} mm · ${esc(s.device || '?')} · ${esc(s.originSource)}${s.run ? ' · ' + esc(s.run) : ''}${s.at ? ' · ' + new Date(s.at).toLocaleString() : ''}`;
+    const shape = s.originSource === 'sealed' ? `<circle cx="${x(i)}" cy="${y(s.errorMm)}" r="5" fill="${colour(s.device || 'unknown')}"/>`
+      : s.originSource === 'object' ? `<rect x="${x(i) - 4.5}" y="${y(s.errorMm) - 4.5}" width="9" height="9" fill="${colour(s.device || 'unknown')}"/>`
+      : `<circle cx="${x(i)}" cy="${y(s.errorMm)}" r="5" fill="none" stroke="${colour(s.device || 'unknown')}" stroke-width="2"/>`;
+    return `<g><title>${tip}</title>${shape}</g>`;
+  }).join('');
+  const legend = devices.map(dev => `<span class="ax-chip"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${colour(dev)};margin-right:6px"></span>${esc(dev)}</span>`).join(' ');
+  const bucketTable = (title, rows) => rows.length ? `
+    <h3 style="font-size:0.8rem;color:var(--muted);margin:14px 0 6px">${title}</h3>
+    <table class="ax-table"><thead><tr><th>${title}</th><th>Marks</th><th>Median</th><th>p90</th><th>Max</th></tr></thead>
+    <tbody>${rows.map(b => `<tr><td>${esc(b.key)}</td><td class="ax-num">${b.n}</td><td class="ax-num">${b.medianMm} mm</td><td class="ax-num">${b.p90Mm} mm</td><td class="ax-num">${b.maxMm} mm</td></tr>`).join('')}</tbody></table>` : '';
+  body.innerHTML = `
+    <div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:10px">
+      <div><div style="font-size:0.7rem;color:var(--muted)">Marks</div><div class="ax-num" style="font-size:1.4rem">${summary.n}</div></div>
+      <div><div style="font-size:0.7rem;color:var(--muted)">Median</div><div class="ax-num" style="font-size:1.4rem;color:${summary.medianMm <= 10 ? 'var(--ax-ok)' : summary.medianMm <= 25 ? 'var(--ax-warn)' : 'var(--ax-bad)'}">${summary.medianMm} mm</div></div>
+      <div><div style="font-size:0.7rem;color:var(--muted)">p90</div><div class="ax-num" style="font-size:1.4rem">${summary.p90Mm} mm</div></div>
+      <div><div style="font-size:0.7rem;color:var(--muted)">Worst</div><div class="ax-num" style="font-size:1.4rem">${summary.maxMm} mm</div></div>
+    </div>
+    <svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Anchoring error per mark over time">
+      <line x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}" stroke="var(--ax-rule)"/>
+      ${grid}${ticks}${dots}
+      <text x="${L}" y="${H - 8}" font-size="11" fill="var(--ax-ink-3)">first mark</text>
+      <text x="${W - R}" y="${H - 8}" font-size="11" fill="var(--ax-ink-3)" text-anchor="end">latest</text>
+      <text x="${L - 6}" y="${T + 2}" font-size="10" fill="var(--ax-ink-3)" text-anchor="end">mm</text>
+    </svg>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:0.72rem;color:var(--muted)">
+      ${legend}
+      <span style="margin-left:auto">● sealed map &nbsp; ■ object &nbsp; ○ QR / approximate</span>
+    </div>
+    ${bucketTable('Device', summary.byDevice)}
+    ${bucketTable('Origin', summary.byOrigin)}
+    ${bucketTable('Run', summary.byRun)}
+    <details style="margin-top:12px"><summary style="font-size:0.8rem;color:var(--muted);cursor:pointer">All marks (${sorted.length})</summary>
+      <table class="ax-table" style="margin-top:6px"><thead><tr><th>When</th><th>Tag</th><th>Error</th><th>Device</th><th>Origin</th><th>Reloc</th><th>Converge</th><th>QR drift</th><th>Run</th></tr></thead>
+      <tbody>${[...sorted].reverse().map(s => `<tr>
+        <td>${s.at ? new Date(s.at).toLocaleString() : '—'}</td><td>${esc(s.tagLabel || s.tagId)}</td>
+        <td class="ax-num">${s.errorMm} mm</td><td>${esc(s.device || '—')}</td><td>${esc(s.originSource)}</td>
+        <td class="ax-num">${s.relocalizeS != null ? s.relocalizeS + ' s' : '—'}</td><td class="ax-num">${s.convergeS != null ? s.convergeS + ' s' : '—'}</td>
+        <td class="ax-num">${s.qrDriftMm != null ? Math.round(s.qrDriftMm) + ' mm' : '—'}</td><td>${esc(s.run || '—')}</td></tr>`).join('')}</tbody></table>
+    </details>`;
+}
+
 // ── Build anchor card ──────────────────────────────────────────────────────────
 function buildCard(anchor) {
   const count = tagCounts[anchor.id] ?? 0;
@@ -2070,6 +2174,7 @@ function buildCard(anchor) {
       <span>${anchor.coordinateSystem}</span>
       ${mapSealedHtml(anchor)}
       ${objectScanHtml(anchor)}
+      ${anchorLabHtml(anchor)}
     </div>
     ${configRowHtml(anchor)}
     ${keyHtml}

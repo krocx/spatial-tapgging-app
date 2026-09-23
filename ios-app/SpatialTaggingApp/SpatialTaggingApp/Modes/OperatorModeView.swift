@@ -702,6 +702,23 @@ struct OperatorModeView: View {
                 retakeCaptureOverlay(tagId: tagId)
                     .zIndex(11)
             }
+
+            // ── Anchor Lab (2026.4.46) — measure anchoring accuracy ──────────
+            if settings.anchorLabEnabled, let anchorId = appState.activeAnchor?.id {
+                AnchorLabOverlay(
+                    anchorId: anchorId,
+                    tags: appState.activeTags,
+                    report: appState.originLockReport,
+                    confidence: arManager.originConfidence,
+                    qrDiscrepancy: arManager.qrDiscrepancy,
+                    renderedPosition: { id in tagMarkerNodes[id].map { $0.simdWorldPosition } },
+                    probe: { labProbe() },
+                    originTransform: appState.anchorNormalisedTransform,
+                    client: SIBClient(settings: settings),
+                    by: !settings.uamUserName.isEmpty ? settings.uamUserName : settings.authorName
+                )
+                .zIndex(9)
+            }
         }
         .onAppear {
             lastProgressAt  = Date()   // #89: start the idle clock fresh for this session
@@ -1322,6 +1339,24 @@ struct OperatorModeView: View {
             .padding(.horizontal, 24)
             .padding(.bottom, 160)
         }
+    }
+
+    // ── Anchor Lab: the real-world point under the crosshair ─────────────────
+    // Estimated-plane raycast from the screen centre; with LiDAR (scene mesh
+    // requested by the gate when the Lab is on) this hits the actual surface.
+    private func labProbe() -> (hit: simd_float3, camera: simd_float3)? {
+        let view = arManager.sceneView
+        let centre = CGPoint(x: view.bounds.midX, y: view.bounds.midY)
+        guard let cam = view.session.currentFrame?.camera.transform else { return nil }
+        let camPos = simd_float3(cam.columns.3.x, cam.columns.3.y, cam.columns.3.z)
+        for target in [ARRaycastQuery.Target.existingPlaneGeometry, .estimatedPlane] {
+            if let q = view.raycastQuery(from: centre, allowing: target, alignment: .any),
+               let hit = view.session.raycast(q).first {
+                let p = hit.worldTransform.columns.3
+                return (simd_float3(p.x, p.y, p.z), camPos)
+            }
+        }
+        return nil
     }
 
     // ── AR marker placement ───────────────────────────────────────────────────

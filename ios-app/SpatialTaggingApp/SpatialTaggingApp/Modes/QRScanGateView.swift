@@ -79,6 +79,8 @@ struct QRScanGateView: View {
     @State private var objectWaitStart: Date? = nil
     @State private var shapeGhost: ObjectShapeGhost? = nil     // B3
     @State private var pendingLockContext: QRAnchorContext? = nil
+    /// Trust layer: the live QR pose the moment we chose the origin (drift record).
+    @State private var liveQRPoseAtLock: simd_float4x4? = nil
     private var objectExtent: simd_float3? {
         guard let e = objectBundle?.meta.extent else { return nil }
         return simd_float3(Float(e.x), Float(e.y), Float(e.z))
@@ -92,6 +94,7 @@ struct QRScanGateView: View {
         case waiting          // scanning, no QR detected yet
         case detected         // QR found, stabilising
         case locking          // verifying anchor match
+        case aligning         // origin adopted, ARKit still settling the map (trust layer)
         case locked           // success — short feedback before auto-proceed
         case error(String)
     }
@@ -143,6 +146,13 @@ struct QRScanGateView: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
 
+                // ── Trust layer: settling ──────────────────────────────────────
+                if scanPhase == .aligning {
+                    aligningCard
+                        .padding(.horizontal, 24).padding(.bottom, 48)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+
                 // ── Locked confirmation ────────────────────────────────────────
                 if case .locked = scanPhase {
                     lockedCard
@@ -177,6 +187,9 @@ struct QRScanGateView: View {
             // Using a saved map lets ARKit relocalize into the ORIGINAL feature-point
             // cloud so all tag positions match regardless of the operator's starting
             // viewpoint.  This removes the need to "walk around to trace the worldmap".
+            // Anchor Lab: ask for the LiDAR scene mesh so truth raycasts hit
+            // real surfaces (ignored on devices without LiDAR).
+            arManager.wantsSceneMesh = settings.anchorLabEnabled
             Task {
                 guard let anchorId = appState.activeAnchor?.id else {
                     arManager.startSession()
@@ -312,6 +325,10 @@ struct QRScanGateView: View {
                 } else {
                     Text("Locking origin…").font(.subheadline).foregroundStyle(.white)
                 }
+            case .aligning:
+                ProgressView().tint(.green).scaleEffect(0.8)
+                Text("Aligning to the sealed map — hold the chamber in view")
+                    .font(.subheadline).foregroundStyle(.white)
             case .locked:
                 if let note = originNote {
                     Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
@@ -388,6 +405,26 @@ struct QRScanGateView: View {
             }
             Spacer()
             ProgressView().tint(.white)
+        }
+        .padding(16)
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    /// Trust layer: shown between origin adoption and convergence. The tags
+    /// are deliberately NOT on screen yet — nothing to be wrong about.
+    private var aligningCard: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                Circle().stroke(Color.green.opacity(0.25), lineWidth: 3).frame(width: 44, height: 44)
+                ProgressView().tint(.green)
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Aligning…").font(.headline).foregroundStyle(.white)
+                Text("Matching the author's map to what the camera sees. Tags appear once the fit is steady.")
+                    .font(.caption).foregroundStyle(.white.opacity(0.7)).lineLimit(3)
+            }
+            Spacer()
         }
         .padding(16)
         .background(.regularMaterial)
@@ -511,6 +548,7 @@ struct QRScanGateView: View {
         // object (calibrated) → derive the QR frame from the live object pose;
         // sealed map + relocalized → the author's pose; else the live QR.
         let livePose    = arManager.lockedAnchorTransform
+        liveQRPoseAtLock = livePose
         let relocalized = arManager.relocalizationOutcome == .succeeded
         var originPose  = livePose
         originNote      = nil
@@ -534,10 +572,15 @@ struct QRScanGateView: View {
             originPose     = matrix_identity_float4x4
             originIsObject = true
             arManager.adoptMapOrigin(matrix_identity_float4x4)
+            arManager.noteObjectOrigin()
             appState.sealedMapOrigin   = matrix_identity_float4x4
             appState.objectCalibration = cal
             AppLog.info("qr", "✓ Origin from reference object (session re-based)")
-        } else if let sealed = mapBundle?.meta.anchorPoseTransform, relocalized {
+        } else if let sealedMeta = mapBundle?.meta.anchorPoseTransform, relocalized {
+            // Trust layer: prefer the `sib-origin` anchor ARKit restored and
+            // refined over the static meta pose (same value the day it was
+            // sealed; the anchor is the one that keeps improving).
+            let sealed = arManager.currentOriginPose ?? sealedMeta
             originPose = sealed
             arManager.adoptMapOrigin(sealed)
             appState.sealedMapOrigin = sealed
@@ -550,6 +593,7 @@ struct QRScanGateView: View {
             }
         } else {
             appState.sealedMapOrigin = nil
+            arManager.noteQROrigin()
             if appState.activeAnchor?.usesObjectOrigin == true, objectBundle != nil, objectNow == nil {
                 originNote = objectBundle?.meta.objectPoseInQR != nil
                     ? "Chamber not recognised — using the QR position (approximate if the chamber moved)"
@@ -594,7 +638,12 @@ struct QRScanGateView: View {
             let client   = sibClient
             let aid      = context.anchorId
             let sealedBy = !settings.uamUserName.isEmpty ? settings.uamUserName : settings.authorName
+            // Trust layer: the origin travels INSIDE the map as an ARAnchor so
+            // operators relocalize onto something ARKit refines, not a matrix.
+            arManager.plantOriginAnchor(at: origin)
             Task {
+                // Give ARKit a beat to fold the new anchor into the map.
+                try? await Task.sleep(nanoseconds: 300_000_000)
                 guard let mapData = await arManager.saveCurrentWorldMap() else { return }
                 do {
                     try await client.uploadWorldMap(anchorId: aid, data: mapData)
@@ -618,6 +667,45 @@ struct QRScanGateView: View {
         // dismisses so the successor view starts on the correct next step).
         let qrStep: TourStep = mode == .author ? .scanQRAuthor : .scanQROperator
         tour.advancePast(qrStep)
+
+        // ── Trust layer: hold the handoff until the origin has settled ────────
+        // Sealed-map sessions: tags spawn in the mode view the moment it
+        // appears, so leaving now would freeze them on ARKit's first coarse
+        // alignment. Wait for `.locked` (or the 8 s ceiling → approximate).
+        if appState.sealedMapOrigin != nil, !originIsObject,
+           arManager.originConfidence == .aligning || arManager.originConfidence == .relocalizing {
+            withAnimation { scanPhase = .aligning }
+            Task {
+                while arManager.originConfidence == .aligning || arManager.originConfidence == .relocalizing {
+                    try? await Task.sleep(nanoseconds: 100_000_000)
+                }
+                // The anchor may have moved while we waited — adopt its final pose.
+                if let refined = arManager.currentOriginPose {
+                    arManager.adoptMapOrigin(refined)
+                    appState.sealedMapOrigin = refined
+                    appState.anchorNormalisedTransform = refined
+                }
+                finishHandoff(context: context)
+            }
+        } else {
+            finishHandoff(context: context)
+        }
+    }
+
+    private func finishHandoff(context: QRAnchorContext) {
+        // Lock report for Anchor Lab: QR drift vs the adopted origin.
+        var report = arManager.lockReport
+        if let d = arManager.qrDiscrepancy {
+            report.qrDriftMm = d.mm; report.qrDriftDeg = d.deg
+        } else if let origin = arManager.lockedAnchorTransform, let live = liveQRPoseAtLock {
+            let d = ARSessionManager.fullDelta(origin, live)
+            report.qrDriftMm = (d.mm * 10).rounded() / 10; report.qrDriftDeg = (d.deg * 10).rounded() / 10
+        }
+        if case .approximate(let why) = arManager.originConfidence {
+            originNote = originNote ?? why
+        }
+        appState.originLockReport = report
+
         withAnimation { scanPhase = .locked }
         // B1: linger long enough to read a drift / reduced-accuracy note.
         DispatchQueue.main.asyncAfter(deadline: .now() + (originNote == nil ? 0.9 : 2.4)) {

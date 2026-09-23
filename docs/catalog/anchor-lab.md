@@ -1,0 +1,32 @@
+---
+id: anchor-lab
+name: Anchor trust layer & Anchor Lab
+area: tags
+status: beta
+version: 2026.4.46
+depends: [sealed-worldmap, qr-anchoring]
+terms: [Anchor, ARWorldMap]
+spec: CONNECTED-WORKER.md#anchor-trust-layer-anchor-lab-measured-accuracy
+api: |
+  POST /anchors/:id/accuracy — one measured mark (rendered-vs-physical mm + lock report) (app · API key)
+  GET /anchors/:id/accuracy — samples + summary by device / origin / run (portal · API key)
+  DELETE /anchors/:id/accuracy — clear the lab record (portal · API key)
+wireframe: operator
+arch: |
+  flowchart LR
+    SEAL["Author seals: ARAnchor sib-origin<br/>planted inside the world map"] --> MAP[("sealed .worldmap")]
+    MAP --> RELOC["Operator relocalizes<br/>ARKit restores + refines sib-origin"]
+    RELOC --> GATE["convergence gate<br/>still 1.5 s → locked · 8 s → approximate"]
+    GATE --> TAGS["tags spawn on the settled frame<br/>and follow later refinements"]
+    QR["live QR"] -.witness.-> GATE
+    GATE --> LAB["Anchor Lab card<br/>lock report · mark truth"]
+    LAB -->|"POST /anchors/:id/accuracy"| ACC[("accuracy/{anchor}.jsonl")]
+    ACC --> PORTAL["portal: Lab badge + chart<br/>by device · origin · run"]
+---
+Anchoring you can trust because it is measured. The origin travels inside the
+sealed world map as an ARKit anchor that keeps improving after relocalization,
+tags wait for it to settle before they appear, and the live QR's disagreement is
+always visible. Anchor Lab turns "it looks a bit off" into millimetres: a tester
+marks where each tag's feature really is and the portal charts the error per
+device, origin source and run, so the home rig and the cleanroom compare on the
+same number.

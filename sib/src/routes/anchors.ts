@@ -17,6 +17,7 @@ import { copyGuideToAnchor } from '../guides/copy.js';
 import { currentUamUser, uamIsActive } from '../middleware/auth.js';
 import { chamberConfigStore } from './chamber-configs.js';
 import { logOpsEvent } from '../ops-log.js';
+import { sanitizeAccuracySample, appendAccuracySample, listAccuracySamples, deleteAccuracySamples, summariseAccuracy } from '../oms/anchor-accuracy.js';
 
 export const anchorStore = new JsonFileStore<Anchor>('anchors');
 
@@ -169,9 +170,12 @@ function withMapSealed(anchor: Anchor): Anchor {
   const meta = readWorldMapMeta(anchor.id);
   const obj  = readObjectMeta(anchor.id);
   const sealed = !!meta.anchorPose && fs.existsSync(path.join(WORLDMAPS_DIR, `${anchor.id}.worldmap`));
+  const acc = listAccuracySamples(anchor.id);
+  const accSummary = acc.length ? summariseAccuracy(acc) : undefined;
   return {
     ...anchor,
     ...(sealed && { mapSealedAt: meta.capturedAt }),
+    ...(accSummary && { accuracy: { n: accSummary.n, medianMm: accSummary.medianMm, ...(accSummary.lastAt && { lastAt: accSummary.lastAt }) } }),
     ...(obj?.scannedAt && { objectScannedAt: obj.scannedAt }),
     ...(obj?.scannedAt && { objectInfo: {
       ...(obj.scannedOn && { scannedOn: obj.scannedOn }),
@@ -739,6 +743,43 @@ router.get('/:id/worldmap/meta', (req: Request, res: Response) => {
   const hasMap = fs.existsSync(path.join(WORLDMAPS_DIR, `${anchor.id}.worldmap`));
   res.setHeader('Cache-Control', 'no-store');
   return res.json({ data: { ...meta, sealed: hasMap && !!meta.anchorPose }, timestamp: new Date().toISOString() });
+});
+
+// ── Anchor Lab (2026.4.46): measured anchoring accuracy ──────────────────────
+//   POST   /anchors/:id/accuracy   one AnchorAccuracySample (see shared)
+//   GET    /anchors/:id/accuracy   { samples, summary }
+//   DELETE /anchors/:id/accuracy   clear the lab record for this anchor
+// Numbers only — never images, never keys. See docs/ANCHOR-LAB.md.
+router.post('/:id/accuracy', express.json(), (req: Request, res: Response) => {
+  const anchor = anchorStore.findById(req.params.id);
+  if (!anchor) {
+    return res.status(404).json({ error: `Anchor ${req.params.id} not found`, timestamp: new Date().toISOString() });
+  }
+  const s = sanitizeAccuracySample(anchor.id, req.body);
+  if (typeof s === 'string') return res.status(400).json({ error: s, timestamp: new Date().toISOString() });
+  appendAccuracySample(s);
+  return res.status(201).json({ data: s, timestamp: new Date().toISOString() });
+});
+
+router.get('/:id/accuracy', (req: Request, res: Response) => {
+  const anchor = anchorStore.findById(req.params.id);
+  if (!anchor) {
+    return res.status(404).json({ error: `Anchor ${req.params.id} not found`, timestamp: new Date().toISOString() });
+  }
+  const samples = listAccuracySamples(anchor.id);
+  res.setHeader('Cache-Control', 'no-store');
+  return res.json({ data: { samples, summary: summariseAccuracy(samples) }, timestamp: new Date().toISOString() });
+});
+
+router.delete('/:id/accuracy', (req: Request, res: Response) => {
+  const anchor = anchorStore.findById(req.params.id);
+  if (!anchor) {
+    return res.status(404).json({ error: `Anchor ${req.params.id} not found`, timestamp: new Date().toISOString() });
+  }
+  const removed = deleteAccuracySamples(anchor.id);
+  logOpsEvent({ method: 'DELETE', path: `/anchors/${anchor.id}/accuracy`, outcome: 'allowed', ip: req.ip,
+                detail: `anchor lab cleared "${anchor.assetId}"` });
+  return res.json({ data: { anchorId: anchor.id, removed }, timestamp: new Date().toISOString() });
 });
 
 // ── DELETE /anchors — cascade-delete ALL anchors + tags + pass-states ────────

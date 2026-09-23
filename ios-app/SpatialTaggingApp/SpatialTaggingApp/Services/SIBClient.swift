@@ -888,6 +888,29 @@ final class SIBClient {
         return try JSONDecoder().decode(R.self, from: data).others
     }
 
+    // ── Anchor Lab (2026.4.46) ───────────────────────────────────────────────
+
+    struct AnchorAccuracySample: Codable {
+        var tagId: String
+        var tagLabel: String?
+        var errorMm: Double
+        var dxMm: Double?, dyMm: Double?, dzMm: Double?
+        var distanceM: Double?
+        var originSource: String
+        var relocalizeS: Double?, convergeS: Double?
+        var qrDriftMm: Double?, qrDriftDeg: Double?
+        var lightLux: Double?, approachDeg: Double?
+        var device: String?, osVersion: String?, appVersion: String?
+        var run: String?, by: String?
+        var at: String?
+    }
+
+    /// One measured tag → SIB. Small, fire-and-forget from the Lab overlay.
+    func postAnchorAccuracy(anchorId: String, sample: AnchorAccuracySample) async throws {
+        struct R: Decodable { let data: AnchorAccuracySample }
+        _ = try await post(R.self, path: "/anchors/\(anchorId)/accuracy", body: sample, timeout: 10)
+    }
+
     /// C1: coach → operator. Text plus an optional "look here" point (map frame).
     func sendCoachHint(liveSessionId: String, text: String, from: String?, stepId: String?, pointer: simd_float3?) async throws {
         struct Body: Encodable { let text: String; let from: String?; let stepId: String?; let pointer: [Float]? }

@@ -109,6 +109,12 @@ final class AppSettings: ObservableObject {
     @Published var contextualHintsEnabled: Bool {
         didSet { UserDefaults.standard.set(contextualHintsEnabled, forKey: "contextual_hints_enabled") }
     }
+    /// Anchor Lab (2026.4.46): measure anchoring accuracy in Operator mode —
+    /// HUD with the origin's lock report and a "mark where it really is"
+    /// tool per tag. Tester-only; off by default.
+    @Published var anchorLabEnabled: Bool {
+        didSet { UserDefaults.standard.set(anchorLabEnabled, forKey: "anchor_lab_enabled") }
+    }
     /// The product door last used ("chambers" | "gemba" | "iloto") — local
     /// memory so the home page can say "last time you did X" without guessing.
     @Published var lastProduct: String {
@@ -221,6 +227,7 @@ final class AppSettings: ObservableObject {
         lastChamberAssetId = UserDefaults.standard.string(forKey: "last_chamber_asset")    ?? ""
         testBay            = UserDefaults.standard.string(forKey: "test_bay")             ?? ""
         contextualHintsEnabled = UserDefaults.standard.object(forKey: "contextual_hints_enabled") as? Bool ?? true
+        anchorLabEnabled   = UserDefaults.standard.bool(forKey: "anchor_lab_enabled")
         lastProduct        = UserDefaults.standard.string(forKey: "last_product")         ?? ""
 
         // Author name: use stored value if set; otherwise extract first name from device name

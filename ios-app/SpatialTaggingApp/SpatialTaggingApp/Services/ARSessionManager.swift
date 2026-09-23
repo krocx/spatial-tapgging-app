@@ -39,6 +39,24 @@
 // Multi-anchor readiness: each ARImageAnchor.referenceImage.name == anchorId.
 // When multi-anchor is implemented, we hold multiple pending contexts and match
 // each ARImageAnchor by name → correct anchorId.
+//
+// ── Trust layer (2026.4.46) ──────────────────────────────────────────────────
+// Why tags used to land "slightly off": the sealed origin was a fixed matrix
+// (meta.anchorPose) and tags were plain SCNNodes at fixed world coordinates.
+// ARKit's relocalization gives a COARSE first alignment the moment tracking
+// turns .normal, then keeps refining its map for a few seconds — but nothing
+// we drew moved with it, and the tags had already spawned. Three changes:
+//   1. The origin is an ARAnchor named `sib-origin` INSIDE the sealed world
+//      map. ARKit restores it on relocalization and refines its transform as
+//      the map settles; `lockedAnchorTransform` follows it, so every surface
+//      that repositions on that publisher (tags, pins) rides the refinement.
+//   2. A convergence gate: `originConfidence` goes .relocalizing → .aligning
+//      → .locked only once the origin has been still (< 3 mm, < 0.3°) for
+//      1.5 s with normal tracking. Views hold their content until then; an
+//      8 s ceiling yields .approximate so nobody waits forever.
+//   3. The live QR is never silently ignored: while the map is the origin,
+//      its disagreement with the origin is published (`qrDiscrepancy`) and
+//      recorded in the lock report — the number Anchor Lab charts.
 
 import ARKit
 import SceneKit
@@ -112,6 +130,59 @@ final class ARSessionManager: NSObject, ObservableObject {
 
     // Throttle trackingState publishes — only fire when category changes
     nonisolated(unsafe) private var _lastTrackingCategory: Int8 = -1
+
+    // ── Trust layer state ─────────────────────────────────────────────────────
+    static let originAnchorName = "sib-origin"
+
+    enum OriginConfidence: Equatable {
+        case none                 // no origin in play yet (fresh session / scanning)
+        case relocalizing         // map loaded, ARKit still matching features
+        case aligning             // tracking normal, origin still settling
+        case locked               // origin still for the hold window — trust it
+        case approximate(String)  // ceiling hit — usable, but say so
+    }
+    @Published private(set) var originConfidence: OriginConfidence = .none
+
+    struct PoseDelta: Equatable { let mm: Float; let deg: Float }
+    /// Live QR pose vs the adopted origin (map or object). Nil until the QR
+    /// has been seen while another source is the origin.
+    @Published private(set) var qrDiscrepancy: PoseDelta? = nil
+
+    /// Everything Anchor Lab wants to know about how THIS session found its origin.
+    struct OriginLockReport: Equatable {
+        var source: String = "qr"          // sealed | qr | object | approximate
+        var relocalizeS: Double? = nil     // session start → tracking .normal
+        var convergeS: Double? = nil       // .normal → origin settled
+        var qrDriftMm: Float? = nil        // live QR vs origin at lock
+        var qrDriftDeg: Float? = nil
+        var lightLux: Double? = nil        // ARKit ambient estimate at lock
+        var approachDeg: Float? = nil      // camera yaw vs origin +Z at lock
+        var hadOriginAnchor = false        // sealed map carried `sib-origin`
+    }
+    @Published private(set) var lockReport = OriginLockReport()
+
+    /// The `sib-origin` pose as stored in the loaded map (map frame), if any.
+    @Published private(set) var mapOriginPose: simd_float4x4? = nil
+
+    nonisolated(unsafe) private var originAnchorId: UUID? = nil
+    nonisolated(unsafe) private var followOrigin = false
+    nonisolated(unsafe) private var originSamples: [(t: TimeInterval, m: simd_float4x4)] = []
+    nonisolated(unsafe) private var sessionStartAt: TimeInterval = 0
+    nonisolated(unsafe) private var trackingNormalAt: TimeInterval? = nil
+    nonisolated(unsafe) private var convergedAt: TimeInterval? = nil
+    nonisolated(unsafe) private var convergenceArmed = false
+    nonisolated(unsafe) private var lastPublishedOrigin: simd_float4x4? = nil
+    nonisolated(unsafe) private var lastDiscrepancyAt: TimeInterval = 0
+    /// Kept even when the map is the origin, for the discrepancy check.
+    nonisolated(unsafe) private var _liveImageAnchor: ARImageAnchor? = nil
+    private let holdWindow: TimeInterval = 1.5
+    private let settleMetres: Float = 0.003
+    private let settleDegrees: Float = 0.3
+    private let convergeCeiling: TimeInterval = 8
+
+    /// Anchor Lab: request LiDAR scene reconstruction (better truth raycasts).
+    /// Read when a configuration is built; no effect on devices without LiDAR.
+    var wantsSceneMesh = false
 
     // ── Init ──────────────────────────────────────────────────────────────────
     override init() {
@@ -361,11 +432,37 @@ final class ARSessionManager: NSObject, ObservableObject {
 
     // ── Session control ───────────────────────────────────────────────────────
 
-    func startSession() {
+    /// One place for the session configuration so every run (fresh, map, QR
+    /// image registration) carries the same options.
+    private func makeConfiguration() -> ARWorldTrackingConfiguration {
         let config = ARWorldTrackingConfiguration()
         config.planeDetection = [.horizontal, .vertical]
         config.environmentTexturing = .automatic   // PBR model ghosts need something to reflect
         config.detectionObjects = detectionObjects
+        if wantsSceneMesh, ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh) {
+            config.sceneReconstruction = .mesh
+        }
+        return config
+    }
+
+    private func resetTrustState(relocalizing: Bool) {
+        originAnchorId      = nil
+        followOrigin        = false
+        originSamples       = []
+        sessionStartAt      = ProcessInfo.processInfo.systemUptime
+        trackingNormalAt    = nil
+        convergedAt         = nil
+        convergenceArmed    = false
+        lastPublishedOrigin = nil
+        _liveImageAnchor    = nil
+        mapOriginPose       = nil
+        qrDiscrepancy       = nil
+        lockReport          = OriginLockReport()
+        originConfidence    = relocalizing ? .relocalizing : .none
+    }
+
+    func startSession() {
+        let config = makeConfiguration()
         resetObjectTracking()
         sceneView.session.run(config, options: [.removeExistingAnchors, .resetTracking])
         imageAnchorStableFrames = 0
@@ -377,6 +474,124 @@ final class ARSessionManager: NSObject, ObservableObject {
         isRelocalizing          = false
         relocalizationOutcome   = nil
         mapIsOrigin             = false
+        resetTrustState(relocalizing: false)
+    }
+
+    // ── Trust layer: the origin lives in the map ──────────────────────────────
+
+    /// AUTHOR, before sealing: put the origin into the world map as an
+    /// ARAnchor so operators relocalize onto something ARKit itself refines.
+    /// Replaces any earlier `sib-origin` (re-seal at the same pose).
+    func plantOriginAnchor(at pose: simd_float4x4) {
+        if let anchors = sceneView.session.currentFrame?.anchors {
+            for a in anchors where a.name == Self.originAnchorName { sceneView.session.remove(anchor: a) }
+        }
+        let anchor = ARAnchor(name: Self.originAnchorName, transform: pose)
+        sceneView.session.add(anchor: anchor)
+        originAnchorId = anchor.identifier
+        AppLog.info("ar", "Origin anchor planted in the world map")
+    }
+
+    /// The origin's CURRENT pose in this session: the refined `sib-origin`
+    /// anchor when the map carries one, else nil (caller falls back to meta).
+    var currentOriginPose: simd_float4x4? {
+        guard let id = originAnchorId,
+              let a = sceneView.session.currentFrame?.anchors.first(where: { $0.identifier == id }) else { return nil }
+        return a.transform
+    }
+
+    /// Nonisolated, cheap, per-frame: origin sample window + convergence.
+    private nonisolated func observeOrigin(in frame: ARFrame, trackingNormal: Bool) {
+        let now = frame.timestamp
+        if trackingNormal, trackingNormalAt == nil { trackingNormalAt = now }
+        guard convergenceArmed, convergedAt == nil else {
+            // Already locked: keep following the anchor (refinements after lock).
+            if followOrigin, let id = originAnchorId,
+               let a = frame.anchors.first(where: { $0.identifier == id }) {
+                publishOriginIfMoved(a.transform)
+            }
+            return
+        }
+        guard let normalAt = trackingNormalAt else { return }
+
+        var settled = false
+        if let id = originAnchorId, let a = frame.anchors.first(where: { $0.identifier == id }) {
+            originSamples.append((now, a.transform))
+            originSamples.removeAll { now - $0.t > holdWindow }
+            if followOrigin { publishOriginIfMoved(a.transform) }
+            if let first = originSamples.first, now - first.t >= holdWindow * 0.9 {
+                let latest = a.transform
+                settled = originSamples.allSatisfy { s in
+                    let d = Self.fullDelta(s.m, latest)
+                    return d.mm <= settleMetres * 1000 && d.deg <= settleDegrees
+                }
+            }
+        } else {
+            // Legacy sealed map without an origin anchor: nothing to observe —
+            // give ARKit the hold window after .normal and move on.
+            settled = now - normalAt >= holdWindow
+        }
+
+        let done = settled && now - normalAt >= 1.0
+        let ceiling = !done && now - normalAt >= convergeCeiling
+        if done || ceiling {
+            convergedAt = now
+            let convergeS = now - normalAt
+            let light = frame.lightEstimate.map { Double($0.ambientIntensity) }
+            let cam = frame.camera.transform
+            let why: String? = ceiling ? "Origin still settling — placed approximately" : nil
+            Task { @MainActor [weak self] in self?.markConverged(convergeS: convergeS, light: light, camera: cam, approximate: why) }
+        }
+    }
+
+    private nonisolated func publishOriginIfMoved(_ t: simd_float4x4) {
+        if let last = lastPublishedOrigin {
+            let d = Self.fullDelta(last, t)
+            guard d.mm > 1 || d.deg > 0.1 else { return }
+        }
+        lastPublishedOrigin = t
+        Task { @MainActor [weak self] in
+            guard let self, self.mapIsOrigin else { return }
+            self.lockedAnchorTransform = t
+        }
+    }
+
+    private func markConverged(convergeS: Double, light: Double?, camera: simd_float4x4, approximate: String?) {
+        guard originConfidence == .aligning || originConfidence == .relocalizing else { return }
+        lockReport.convergeS   = (convergeS * 100).rounded() / 100
+        lockReport.relocalizeS = trackingNormalAt.map { (($0 - sessionStartAt) * 100).rounded() / 100 }
+        lockReport.lightLux    = light
+        if let o = lockedAnchorTransform ?? mapOriginPose {
+            let camFwd = -simd_float3(camera.columns.2.x, 0, camera.columns.2.z)
+            let oriFwd = -simd_float3(o.columns.2.x, 0, o.columns.2.z)
+            if simd_length(camFwd) > 0, simd_length(oriFwd) > 0 {
+                let c = simd_dot(simd_normalize(camFwd), simd_normalize(oriFwd))
+                lockReport.approachDeg = acos(max(-1, min(1, c))) * 180 / .pi
+            }
+        }
+        if let why = approximate {
+            originConfidence = .approximate(why)
+            lockReport.source = "approximate"
+            AppLog.warn("ar", "Origin convergence ceiling (\(Int(convergeCeiling)) s) — \(why)")
+        } else {
+            originConfidence = .locked
+            AppLog.info("ar", String(format: "✓ Origin converged in %.1f s (relocalize %.1f s)", convergeS, lockReport.relocalizeS ?? 0))
+        }
+    }
+
+    /// Full 3-D distance (mm) + rotation angle (deg) between two poses —
+    /// unlike `ARCoordinateFrame.poseDelta`, height counts here.
+    nonisolated static func fullDelta(_ a: simd_float4x4, _ b: simd_float4x4) -> PoseDelta {
+        let dp = simd_float3(b.columns.3.x - a.columns.3.x, b.columns.3.y - a.columns.3.y, b.columns.3.z - a.columns.3.z)
+        let ra = simd_quatf(simd_float3x3(simd_float3(a.columns.0.x, a.columns.0.y, a.columns.0.z),
+                                          simd_float3(a.columns.1.x, a.columns.1.y, a.columns.1.z),
+                                          simd_float3(a.columns.2.x, a.columns.2.y, a.columns.2.z)))
+        let rb = simd_quatf(simd_float3x3(simd_float3(b.columns.0.x, b.columns.0.y, b.columns.0.z),
+                                          simd_float3(b.columns.1.x, b.columns.1.y, b.columns.1.z),
+                                          simd_float3(b.columns.2.x, b.columns.2.y, b.columns.2.z)))
+        let d = abs(simd_dot(simd_normalize(ra), simd_normalize(rb)))
+        let deg = 2 * acos(min(1, d)) * 180 / .pi
+        return PoseDelta(mm: simd_length(dp) * 1000, deg: deg.isNaN ? 0 : deg)
     }
 
     /// Start the AR session using a previously saved ARWorldMap so ARKit can
@@ -398,16 +613,14 @@ final class ARSessionManager: NSObject, ObservableObject {
             return
         }
 
-        let config = ARWorldTrackingConfiguration()
-        config.planeDetection   = [.horizontal, .vertical]
-        config.environmentTexturing = .automatic   // PBR model ghosts need something to reflect
+        let config = makeConfiguration()
         config.initialWorldMap  = worldMap
-        config.detectionObjects = detectionObjects
         resetObjectTracking()
         // ⚠️ Do NOT pass .resetTracking — that discards the initialWorldMap.
-        // .removeExistingAnchors clears stale geometry; ARKit will re-add the
-        // image anchors from the saved map as it relocalizes.
-        sceneView.session.run(config, options: [.removeExistingAnchors])
+        // No .removeExistingAnchors either: this manager's session is fresh,
+        // and the map's own anchors (the `sib-origin` the author planted) are
+        // exactly what must survive into this run.
+        sceneView.session.run(config, options: [])
         imageAnchorStableFrames = 0
         pendingContext          = nil
         _lockedImageAnchor      = nil
@@ -417,7 +630,14 @@ final class ARSessionManager: NSObject, ObservableObject {
         isRelocalizing          = true
         relocalizationOutcome   = nil
         mapIsOrigin             = false
-        AppLog.info("ar", "Session started with saved ARWorldMap — relocalizing…")
+        resetTrustState(relocalizing: true)
+        if let origin = worldMap.anchors.first(where: { $0.name == Self.originAnchorName }) {
+            originAnchorId = origin.identifier
+            mapOriginPose  = origin.transform
+            lockReport.hadOriginAnchor = true
+        }
+        convergenceArmed = true
+        AppLog.info("ar", "Session started with saved ARWorldMap (\(worldMap.anchors.count) anchors, origin anchor: \(originAnchorId != nil)) — relocalizing…")
 
         // Relocalization timeout: fall back to fresh session if ARKit hasn't
         // found enough matching feature points within 15 seconds.
@@ -485,6 +705,16 @@ final class ARSessionManager: NSObject, ObservableObject {
         }
 
         if let mapOrigin {
+            // Trust layer: the gate already converged; keep following the
+            // origin anchor so post-lock refinements still reach the tags.
+            if let a = session.currentFrame?.anchors.first(where: { $0.name == Self.originAnchorName }) {
+                originAnchorId = a.identifier
+                mapOriginPose  = a.transform
+            }
+            convergedAt      = ProcessInfo.processInfo.systemUptime
+            convergenceArmed = false
+            originConfidence = .locked
+            _liveImageAnchor = session.currentFrame?.anchors.compactMap { $0 as? ARImageAnchor }.first
             adoptMapOrigin(mapOrigin)
             return
         }
@@ -504,8 +734,18 @@ final class ARSessionManager: NSObject, ObservableObject {
         mapIsOrigin           = true
         _lockedImageAnchor    = nil
         lockedAnchorTransform = pose
-        AppLog.info("ar", "✓ Origin adopted from sealed world map")
+        lastPublishedOrigin   = pose
+        followOrigin          = originAnchorId != nil
+        if lockReport.source == "qr" { lockReport.source = "sealed" }
+        AppLog.info("ar", "✓ Origin adopted from sealed world map\(followOrigin ? " (following the origin anchor)" : "")")
     }
+
+    /// Object origin: the session was re-based so the frame IS the data
+    /// frame; nothing to follow, but the report should say so.
+    func noteObjectOrigin() { lockReport.source = "object"; originConfidence = .locked }
+
+    /// Fresh-frame / QR origin: no map to converge on.
+    func noteQROrigin() { lockReport.source = "qr" }
 
     /// Searches the current session frame for an ARImageAnchor and restores
     /// lockedAnchorTransform from its live (gravity-normalised) pose.
@@ -584,12 +824,9 @@ final class ARSessionManager: NSObject, ObservableObject {
             // Update the running session to detect this specific QR image.
             // .run() without .resetTracking preserves all existing anchors and
             // the current world map — we just add image detection capability.
-            let config = ARWorldTrackingConfiguration()
-            config.planeDetection   = [.horizontal, .vertical]
-            config.environmentTexturing = .automatic   // PBR model ghosts need something to reflect
+            let config = makeConfiguration()
             config.detectionImages  = [refImage]
             config.maximumNumberOfTrackedImages = 1
-            config.detectionObjects = detectionObjects
             sceneView.session.run(config, options: [])
             AppLog.info("ar", "ARReferenceImage registered (\(String(format:"%.0f", context.physicalWidth * 100)) cm) — waiting for ARImageAnchor")
         } else {
@@ -667,6 +904,7 @@ final class ARSessionManager: NSObject, ObservableObject {
                              context: QRAnchorContext) {
         let normalised        = ARCoordinateFrame.normalised(from: transform)
         _lockedImageAnchor    = imageAnchor         // keep for continuous live refinement
+        _liveImageAnchor      = imageAnchor         // kept for the discrepancy check too
         lockedAnchorTransform = normalised
         scanState             = .locked(context)
         pendingContext        = nil
@@ -769,7 +1007,25 @@ extension ARSessionManager: ARSessionDelegate {
         // AuthorModeView / OperatorModeView can reposition tag nodes to match.
         // B1: never when the sealed map is the origin (adoptMapOrigin nils
         // _lockedImageAnchor, so this guard also covers that case).
-        guard let lockedAnchor = _lockedImageAnchor else { return }
+        guard let lockedAnchor = _lockedImageAnchor else {
+            // Trust layer: the map/object is the origin — the QR is a witness.
+            // Publish how far it disagrees (≤ 2 Hz); never move anything.
+            guard let live = _liveImageAnchor else { return }
+            for anchor in anchors {
+                guard anchor === live, let imageAnchor = anchor as? ARImageAnchor, imageAnchor.isTracked else { continue }
+                let t = imageAnchor.transform
+                Task { @MainActor [weak self] in
+                    guard let self, let origin = self.lockedAnchorTransform else { return }
+                    let now = ProcessInfo.processInfo.systemUptime
+                    guard now - self.lastDiscrepancyAt >= 0.5 else { return }
+                    self.lastDiscrepancyAt = now
+                    let d = Self.fullDelta(origin, ARCoordinateFrame.normalised(from: t))
+                    self.qrDiscrepancy = PoseDelta(mm: (d.mm * 10).rounded() / 10, deg: (d.deg * 10).rounded() / 10)
+                }
+                break
+            }
+            return
+        }
         for anchor in anchors {
             guard anchor === lockedAnchor,
                   let imageAnchor = anchor as? ARImageAnchor,
@@ -809,6 +1065,9 @@ extension ARSessionManager: ARSessionDelegate {
         case .normal:       cat =  1
         @unknown default:   cat = -1
         }
+        // Trust layer: watch the origin anchor every frame (cheap; no publishes
+        // unless something actually changed).
+        if originAnchorId != nil || convergenceArmed { observeOrigin(in: frame, trackingNormal: cat == 1) }
         guard cat != _lastTrackingCategory else { return }
         _lastTrackingCategory = cat
         Task { @MainActor [weak self] in
@@ -818,6 +1077,7 @@ extension ARSessionManager: ARSessionDelegate {
             if cat == 1, self?.isRelocalizing == true {
                 self?.isRelocalizing = false
                 self?.relocalizationOutcome = .succeeded
+                if self?.originConfidence == .relocalizing { self?.originConfidence = .aligning }
                 AppLog.info("ar", "✓ Relocalization complete — tracking normal")
             }
         }

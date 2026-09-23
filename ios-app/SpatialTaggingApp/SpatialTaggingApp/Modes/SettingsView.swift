@@ -347,6 +347,13 @@ struct SettingsView: View {
 
                 // ── Diagnostics (QA Mode + log export) ─────────────────────────
                 Section {
+                    Toggle(isOn: $settings.anchorLabEnabled) {
+                        Label("Anchor Lab — measure anchoring", systemImage: "scope")
+                    }
+                    if settings.anchorLabEnabled {
+                        Text("In Operator mode: a lock report (how the origin was found) and a per-tag “mark where it really is” tool. Each mark sends the rendered-vs-physical error in mm to SIB — numbers only, never images. See Portal → Anchors → Lab.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                     Toggle(isOn: Binding(
                         get: { AppLog.qaMode },
                         set: { AppLog.qaMode = $0; qaModeOn = $0 }

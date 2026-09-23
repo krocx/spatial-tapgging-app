@@ -73,6 +73,10 @@ final class AppState: ObservableObject {
     /// `linkToExistingSession(_:mapOrigin:objectCalibration:)` so the movement
     /// watchdog keeps tags on the chamber if it is moved mid-session.
     var objectCalibration: simd_float4x4? = nil
+    /// Trust layer (2026.4.46): how the gate found this session's origin —
+    /// relocalize / converge times, QR drift, light. Anchor Lab attaches it
+    /// to every accuracy sample.
+    var originLockReport: ARSessionManager.OriginLockReport? = nil
 
     /// The live ARSession created by QRScanGateView and kept alive so that
     /// AuthorModeView / OperatorModeView can link to it without a session reset.
@@ -132,6 +136,7 @@ final class AppState: ObservableObject {
         anchorNormalisedTransform = nil
         sealedMapOrigin = nil
         objectCalibration = nil
+        originLockReport = nil
         activeGroupId = nil
         // Release the shared session — any view holding a link will keep it alive
         // until it dismisses and pauses via its own onDisappear.

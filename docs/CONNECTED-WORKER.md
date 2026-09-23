@@ -164,6 +164,43 @@ sessions and model placement — meta first, local copy reused when
 into the guide map too (ghost + "I'm Here", frozen pins until localized), so
 author pins land where they were.
 
+## Anchor trust layer & Anchor Lab (measured accuracy)
+
+*2026.4.46 · iOS + server + portal.* Why tags landed "slightly off" and what
+changed. The sealed origin used to be a fixed matrix (`meta.anchorPose`) and
+tags were plain nodes at fixed world coordinates; ARKit's relocalization gives
+a **coarse first alignment** the moment tracking turns normal, then refines its
+map for a few seconds — but nothing we drew moved with it, and the tags had
+already spawned.
+
+- **The origin lives in the map.** Sealing plants an `ARAnchor` named
+  `sib-origin` at the QR pose *inside* the world map. On relocalization ARKit
+  restores that anchor and keeps refining its transform as the map settles;
+  `lockedAnchorTransform` follows it, so every surface that repositions on
+  that publisher rides the refinement. Legacy sealed maps without the anchor
+  still work from the meta pose.
+- **Convergence gate.** `originConfidence` goes *relocalizing → aligning →
+  locked* only once the origin has been still (< 3 mm, < 0.3°) for 1.5 s with
+  normal tracking; the QR gate shows *Aligning…* and holds the handoff so tags
+  spawn on the settled frame. An 8 s ceiling yields *approximate* — usable,
+  and it says so.
+- **The QR is a witness, never ignored.** While the map or object is the
+  origin, the live QR's disagreement with it is published (`qrDiscrepancy`,
+  mm / °) and recorded in the session's lock report together with relocalize
+  and converge seconds, ambient light and approach angle.
+- **Anchor Lab** (Settings → *Anchor Lab*, Operator mode). A card shows the
+  lock report; pick a tag, aim the crosshair at the **physical** feature it
+  was placed on, *Mark where it really is* — the LiDAR raycast gives the real
+  point, the error is the distance to where the tag rendered. Each mark is
+  one `AnchorAccuracySample` (`POST /anchors/:id/accuracy`; numbers only,
+  never an image) with the lock report, device, OS, app version and a free
+  run label ("door · evening · 2 m"). The portal's anchor card shows
+  **Lab · n · median mm**; the Lab view charts error per mark over time
+  (own SVG, one colour per device, 10 / 25 mm bands) and buckets by device,
+  origin source and run. `GET /anchors/:id/accuracy` returns samples +
+  summary; `DELETE` clears. Protocol for the home rig:
+  `docs/ar-ojt/ANCHOR-LAB.md`.
+
 ## Object anchoring (scan · origin · movable equipment · shape ghost)
 
 *2026.4.46 · iOS + server.* A chamber can be found by its **shape**.

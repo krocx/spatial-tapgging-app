@@ -148,6 +148,8 @@ export interface Anchor {
     shapeModel:   boolean;    // shapeModelId present
     shapeAligned: boolean;    // shapeModelPose present
   };
+  /** Anchor Lab (read-only, derived): measured accuracy samples on file. */
+  accuracy?: { n: number; medianMm: number; lastAt?: string };
   /**
    * B2 (2026.4.46): how AR sessions find this chamber's origin.
    *   'worldMap' (default, absent) — sealed ARWorldMap; QR is the key + drift check.
@@ -221,6 +223,69 @@ export interface AnchorObjectMeta {
   /** Model pose in the reference object's frame (16 floats, column-major). */
   shapeModelPose?:  number[];
   shapeModelScale?: number;
+}
+
+// ── Anchor Lab (2026.4.46) — measured anchoring accuracy ──────────────────────
+// One sample = one tag whose PHYSICAL position the tester marked with the
+// crosshair after the session locked its origin. The error is the distance
+// between where the tag rendered and where the feature really is, so the
+// same rig can be compared across devices, approach angles, lighting and
+// origin strategies over time. Stored as JSONL per anchor (server never sees
+// images or keys). POST /anchors/:id/accuracy.
+export type AnchorOriginSource = 'sealed' | 'qr' | 'object' | 'approximate';
+
+export interface AnchorAccuracySample {
+  id?:           string;
+  anchorId?:     string;
+  tagId:         string;
+  tagLabel?:     string;
+  /** Rendered-vs-physical distance in millimetres. */
+  errorMm:       number;
+  /** Error vector in the anchor (origin) frame, millimetres. */
+  dxMm?:         number;
+  dyMm?:         number;
+  dzMm?:         number;
+  /** Camera → tag distance when the truth was marked (m). */
+  distanceM?:    number;
+  /** Where the origin came from in this session. */
+  originSource:  AnchorOriginSource;
+  /** Seconds from session start to ARKit tracking .normal (relocalization). */
+  relocalizeS?:  number;
+  /** Seconds from tracking .normal to the origin settling (convergence gate). */
+  convergeS?:    number;
+  /** Live QR pose vs adopted origin at lock time. */
+  qrDriftMm?:    number;
+  qrDriftDeg?:   number;
+  /** ARKit ambient light estimate at lock (lux-ish). */
+  lightLux?:     number;
+  /** Camera yaw relative to the origin at lock, degrees (approach angle). */
+  approachDeg?:  number;
+  device?:       string;       // "iPhone17,3"
+  osVersion?:    string;
+  appVersion?:   string;
+  /** Free text the tester types once per run ("door · evening · 2 m"). */
+  run?:          string;
+  by?:           string;
+  at?:           string;       // ISO, server-stamped when absent
+}
+
+export interface AnchorAccuracyBucket {
+  key:      string;
+  n:        number;
+  medianMm: number;
+  p90Mm:    number;
+  maxMm:    number;
+}
+
+export interface AnchorAccuracySummary {
+  n:          number;
+  medianMm:   number;
+  p90Mm:      number;
+  maxMm:      number;
+  byDevice:   AnchorAccuracyBucket[];
+  byOrigin:   AnchorAccuracyBucket[];
+  byRun:      AnchorAccuracyBucket[];
+  lastAt?:    string;
 }
 
 /** C1: PATCH /anchors/:id — engineer+. configId null clears. */

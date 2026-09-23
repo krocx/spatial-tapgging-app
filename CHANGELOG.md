@@ -7,6 +7,16 @@ it, it gets a line.
 ## 2026.4.46 — 2026-09-08
 
 ### Fixed
+- **Anchoring — tags no longer freeze on ARKit's first coarse alignment.**
+  The sealed origin was a fixed matrix and tags spawned the moment tracking
+  turned normal, before relocalization had settled, so every session
+  carried a small, viewpoint-dependent offset. The origin now travels
+  inside the sealed map as an `ARAnchor` (`sib-origin`) that ARKit restores
+  and refines; `lockedAnchorTransform` follows it; the QR gate holds the
+  handoff (*Aligning…*) until the origin has been still for 1.5 s (8 s
+  ceiling → *approximate*, said on screen). The live QR's disagreement with
+  the origin is published instead of ignored. Legacy sealed maps keep
+  working from the meta pose until the author re-seals.
 - **XR kit — model drift on Android.** The kit never pinned three.js's
   reference space, so the camera rendered in `local-floor` while hit-test
   poses were taken in `local`; ARCore keeps re-estimating the floor, so the
@@ -273,6 +283,18 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **Anchor Lab — anchoring accuracy as a number.** Settings → *Anchor Lab*
+  adds a card in Operator mode with the session's lock report (origin
+  source, relocalize / converge seconds, approach angle, light, QR vs
+  origin) and a per-tag *Mark where it really is* tool: aim the crosshair
+  at the physical feature, the LiDAR raycast gives the true point, the
+  rendered-vs-physical error in mm is sent as an `AnchorAccuracySample`
+  (`POST /anchors/:id/accuracy` — numbers only, never images) with device,
+  OS, app version and a free run label. Portal anchor cards show
+  **Lab · n · median mm**; the Lab view charts error per mark over time
+  (own SVG, colour per device, 10 / 25 mm bands) and buckets by device,
+  origin and run; `GET`/`DELETE /anchors/:id/accuracy`. Home protocol:
+  `docs/ar-ojt/ANCHOR-LAB.md`.
 - **Per-step operator context.** In the Designer (parts block and Parts
   Studio) each step chooses what the operator sees around the parts being
   installed: *Installed only* (default), *Whole · ghost* (the whole assembly
