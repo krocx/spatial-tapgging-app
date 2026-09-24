@@ -7,6 +7,17 @@ it, it gets a line.
 ## 2026.4.46 — 2026-09-08
 
 ### Fixed
+- **Gemba pick lists come back on their own.** An emptied Organization / BU /
+  Area / Location list is refilled from the seed at boot, and Audit Library
+  has *Restore defaults* (`POST /gemba/library/lists/restore`, `?all=1` to
+  replace edited lists too). Focus areas already re-seed by code at boot;
+  imported questions are not seed data and must be re-imported.
+- **Walk Sessions page rebuilt on the design system.** One card, a full-width
+  `.ax-table`, status chips, labelled Excel / Reopen / Delete buttons with
+  icons, readable secondary lines. Every remaining "⟳ Refresh" and every
+  button whose icon had been stripped to a leading space (Export, Delete
+  All, .xlsx, .csv across Anchors, Sessions, AR Guides, Guide Library,
+  Models, iLOTO, Logs, Ops log, Intelligence) now carries a sprite icon.
 - **Portal — seven Edit / Delete buttons were empty.** When emoji left the
   portal, the tag row's edit and delete, the chamber-config, Gemba area,
   walk, session and completion deletes were left as blank buttons; they

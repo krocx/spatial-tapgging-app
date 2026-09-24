@@ -609,6 +609,16 @@
 
     /* ── Pilot filters ────────────────────────────────────────────────────── */
     .filter-bar { display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:8px auto 0;max-width:1120px; }
+    /* Walk Sessions (Gemba) — the page is one card, the table fills it. */
+    .gws-wrap { max-width: 1120px; margin: 16px auto 0; }
+    .gws-wrap .ax-card { padding: 0; overflow: hidden; }
+    .gws-wrap .ax-table th:first-child, .gws-wrap .ax-table td:first-child { padding-left: 18px; }
+    .gws-wrap .ax-table th:last-child,  .gws-wrap .ax-table td:last-child  { padding-right: 14px; }
+    .gws-wrap .ax-table tr.detail-tr:hover td { background: transparent; }
+    .gws-wrap .ax-table tr.detail-tr td { padding: 0; }
+    .gws-sub { display: block; color: var(--muted); font-size: 0.8rem; margin-top: 2px; }
+    .gws-acts { display: flex; gap: 6px; justify-content: flex-end; white-space: nowrap; }
+    .gws-foot { text-align: center; padding: 12px; color: var(--muted); font-size: 0.85rem; border-top: var(--ax-hair-2); }
     .filter-bar input[type="search"], .filter-bar input[type="date"], .filter-bar select {
       background:var(--surface);border:1px solid var(--border);border-radius:8px;
       color:var(--text);font-size:0.78rem;padding:6px 9px; }
@@ -759,7 +769,7 @@
 <!-- Toolbar -->
 <div id="toolbar" style="display:none">
   <input id="search" type="search" placeholder="Search by anchor ID or asset…" oninput="renderAnchors()" />
-  <button class="btn btn-ghost btn-sm" onclick="loadAnchors()">⟳ Refresh</button>
+  <button class="btn btn-ghost btn-sm" onclick="loadAnchors()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-refresh"/></svg> Refresh</button>
   <label style="font-size:0.78rem;color:var(--muted);display:inline-flex;align-items:center;gap:6px;margin-left:8px" title="Anchor Lab rigs are anchoring test beds; they never appear in production directories"><input type="checkbox" id="show-lab-rigs" onchange="renderAnchors()"> Lab rigs</label>
   <button class="btn btn-danger btn-sm" onclick="deleteAllAnchors()" style="margin-left:auto"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg> Delete All</button>
 </div>
@@ -771,9 +781,9 @@
 <div id="sessions-panel">
   <div class="sessions-toolbar">
     <span style="font-size:0.78rem;color:var(--muted);flex:1">Grouped by anchor · most recent first</span>
-    <button class="btn btn-ghost btn-sm" onclick="exportAllCSV()" title="Export all sessions as CSV"> Export All</button>
-    <button class="btn btn-ghost btn-sm" onclick="loadSessions()">⟳ Refresh</button>
-    <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteAllSessions()" title="Delete all inspection sessions"> Delete All</button>
+    <button class="btn btn-ghost btn-sm" onclick="exportAllCSV()" title="Export all sessions as CSV"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Export All</button>
+    <button class="btn btn-ghost btn-sm" onclick="loadSessions()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-refresh"/></svg> Refresh</button>
+    <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteAllSessions()" title="Delete all inspection sessions"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg> Delete All</button>
   </div>
   <div class="filter-bar">
     <input type="search" id="flt-sess-q" placeholder="Search operator, tag, anchor…" oninput="setFilter('sessions')">
@@ -789,9 +799,9 @@
  <div id="gemba-walks-sub">
   <div class="sessions-toolbar">
     <span style="font-size:0.78rem;color:var(--muted);flex:1">Gemba audit walk completions · grouped by anchor</span>
-    <button class="btn btn-ghost btn-sm" onclick="exportAllGembaCSV()" title="Export all walks as CSV"> Export All</button>
-    <button class="btn btn-ghost btn-sm" onclick="loadGembaWalks()">⟳ Refresh</button>
-    <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteAllGembaCompletions()" title="Delete all Gemba Walk completion records"> Delete All</button>
+    <button class="btn btn-ghost btn-sm" onclick="exportAllGembaCSV()" title="Export all walks as CSV"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Export All</button>
+    <button class="btn btn-ghost btn-sm" onclick="loadGembaWalks()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-refresh"/></svg> Refresh</button>
+    <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteAllGembaCompletions()" title="Delete all Gemba Walk completion records"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg> Delete All</button>
   </div>
   <div class="filter-bar">
     <input type="search" id="flt-gemba-q" placeholder="Search finding, category, severity…" oninput="setFilter('gemba')">
@@ -805,20 +815,20 @@
       attached, summary derived, xlsx per walk. -->
  <div id="gemba-sessions-sub" style="display:none">
   <div class="sessions-toolbar">
-    <span style="font-size:0.78rem;color:var(--muted);flex:1">One row per walk · auditor, project, org/BU, location · findings by category</span>
-    <button class="btn btn-ghost btn-sm" id="gws-export-filtered" onclick="exportFilteredGembaWalks()" title="The walks shown below — Summary · Findings (all photos embedded) · Photos sheets"> .xlsx (filtered)</button>
-    <button class="btn btn-ghost btn-sm" onclick="downloadServerFile('/gemba/walks/export.xlsx?all=true', 'gemba-walks-' + new Date().toISOString().slice(0,10) + '.xlsx').catch(e => toast(e.message))" title="Every walk on the server — Summary · Findings (all photos embedded) · Photos sheets"> .xlsx (all)</button>
-    <button class="btn btn-ghost btn-sm" onclick="loadGembaWalkSessions()">⟳ Refresh</button>
+    <span style="font-size:0.85rem;color:var(--muted);flex:1">One row per walk · auditor, project, org/BU, location · findings by category</span>
+    <button class="btn btn-ghost btn-sm" id="gws-export-filtered" onclick="exportFilteredGembaWalks()" title="The walks shown below — Summary · Findings (all photos embedded) · Photos sheets"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Excel (shown)</button>
+    <button class="btn btn-ghost btn-sm" onclick="downloadServerFile('/gemba/walks/export.xlsx?all=true', 'gemba-walks-' + new Date().toISOString().slice(0,10) + '.xlsx').catch(e => toast(e.message))" title="Every walk on the server — Summary · Findings (all photos embedded) · Photos sheets"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Excel (all)</button>
+    <button class="btn btn-ghost btn-sm" onclick="loadGembaWalkSessions()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-refresh"/></svg> Refresh</button>
   </div>
   <div class="filter-bar">
     <input type="search" id="gws-q" placeholder="Filter by auditor, project, org, BU, location…" oninput="renderGembaWalkSessions()">
     <select id="gws-auditor" onchange="renderGembaWalkSessions()"><option value="">All auditors</option></select>
     <select id="gws-status" onchange="renderGembaWalkSessions()"><option value="">All statuses</option><option value="open">Open</option><option value="submitted">Submitted</option></select>
-    <label style="font-size:0.78rem;color:var(--muted);display:flex;align-items:center;gap:4px">From <input type="date" id="gws-from" onchange="loadGembaWalkSessions()" style="font-size:0.78rem"></label>
-    <label style="font-size:0.78rem;color:var(--muted);display:flex;align-items:center;gap:4px">To <input type="date" id="gws-to" onchange="loadGembaWalkSessions()" style="font-size:0.78rem"></label>
+    <label style="font-size:0.85rem;color:var(--muted);display:flex;align-items:center;gap:6px">From <input type="date" id="gws-from" onchange="loadGembaWalkSessions()"></label>
+    <label style="font-size:0.85rem;color:var(--muted);display:flex;align-items:center;gap:6px">To <input type="date" id="gws-to" onchange="loadGembaWalkSessions()"></label>
     <button class="btn btn-ghost btn-sm" onclick="gwsAllTime()" title="Clear the date window">All time</button>
   </div>
-  <div id="gemba-sessions-list"></div>
+  <div id="gemba-sessions-list" class="gws-wrap"></div>
  </div>
 
  <!-- G1 (2026.4.46): Audit Reference Library — Focus Areas → Questions.
@@ -830,9 +840,9 @@
     <span style="font-size:0.78rem;color:var(--muted);flex:1">Focus areas → pre-defined questions · auditors pick, never type · maintained by Corporate Quality</span>
     <button class="btn btn-sm" onclick="openGembaLibImport()" style="font-weight:600" title="Excel / CSV / JSON — same flow as Import Guide"> Import</button>
     <button class="btn btn-ghost btn-sm" onclick="gembaLibDownloadTemplate()" title="Column layout the import expects"> Excel template</button>
-    <button class="btn btn-ghost btn-sm" onclick="gembaLibExport()" title="Re-importable JSON of the whole library"> Export</button>
+    <button class="btn btn-ghost btn-sm" onclick="gembaLibExport()" title="Re-importable JSON of the whole library"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Export</button>
     <button class="btn btn-ghost btn-sm" onclick="gembaLibEdit('area')">＋ Focus area</button>
-    <button class="btn btn-ghost btn-sm" onclick="loadGembaLibrary()">⟳ Refresh</button>
+    <button class="btn btn-ghost btn-sm" onclick="loadGembaLibrary()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-refresh"/></svg> Refresh</button>
   </div>
   <div class="filter-bar">
     <input type="search" id="glib-q" placeholder="Filter by code, title or question text…" oninput="renderGembaLibrary()">
@@ -845,7 +855,8 @@
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
       <b style="font-size:0.9rem">Walk header pick lists</b>
       <span style="font-size:0.78rem;color:var(--muted)">What auditors choose from when starting a walk · one value per line</span>
-      <button class="btn btn-sm" style="margin-left:auto;font-weight:600" onclick="saveGembaLists()">Save lists</button>
+      <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="restoreGembaLists()" title="Bring back the default values for any list that is empty"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-restart"/></svg> Restore defaults</button>
+      <button class="btn btn-sm" style="font-weight:600" onclick="saveGembaLists()">Save lists</button>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
       <label style="font-size:0.78rem;font-weight:600">Organization<textarea id="glist-organization" rows="5" style="display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:0.8rem;font-weight:400"></textarea></label>
@@ -914,12 +925,12 @@
   <div class="sessions-toolbar" id="ag-toolbar">
     <span style="font-size:0.78rem;color:var(--muted);flex:1">AR Guide completions · grouped by anchor → guide</span>
     <button class="btn btn-ghost btn-sm" id="usage-log-btn" onclick="toggleUsageLog()" title="Per-step timing per Production #" data-tour="usage-log"> Usage Log</button>
-    <button class="btn btn-ghost btn-sm" id="usage-xlsx-btn" style="display:none" onclick="exportUsageXlsx()" title="Excel with evidence photos embedded per row"> .xlsx</button>
+    <button class="btn btn-ghost btn-sm" id="usage-xlsx-btn" style="display:none" onclick="exportUsageXlsx()" title="Excel with evidence photos embedded per row"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> .xlsx</button>
     <button class="btn btn-ghost btn-sm" onclick="openImportGuideModal()" title="Import a guide from JSON or MES"> Import Guide</button>
-    <button class="btn btn-ghost btn-sm" id="ag-xlsx-btn" onclick="exportARGuidesXlsx()" title="Excel with evidence photos embedded per step" data-tour="ag-export"> .xlsx</button>
-    <button class="btn btn-ghost btn-sm" id="ag-csv-btn" onclick="exportARGuidesCSV()" title="Export as CSV (no images)"> .csv</button>
-    <button class="btn btn-ghost btn-sm" onclick="loadARGuideSessions()">⟳ Refresh</button>
-    <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteAllARGuideSessions()" title="Delete all AR Guide sessions"> Delete All</button>
+    <button class="btn btn-ghost btn-sm" id="ag-xlsx-btn" onclick="exportARGuidesXlsx()" title="Excel with evidence photos embedded per step" data-tour="ag-export"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> .xlsx</button>
+    <button class="btn btn-ghost btn-sm" id="ag-csv-btn" onclick="exportARGuidesCSV()" title="Export as CSV (no images)"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> .csv</button>
+    <button class="btn btn-ghost btn-sm" onclick="loadARGuideSessions()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-refresh"/></svg> Refresh</button>
+    <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteAllARGuideSessions()" title="Delete all AR Guide sessions"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg> Delete All</button>
   </div>
   <div class="filter-bar" id="ag-filters">
     <input type="search" id="flt-ag-q" placeholder="Search operator, guide, anchor…" oninput="setFilter('ag')">
@@ -1003,7 +1014,7 @@
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
       <h3 style="margin:0"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-logs"/></svg> Device logs</h3>
       <span style="font-size:0.78rem;color:var(--muted);flex:1">what each phone (and this server) reported — QA Mode on the device adds debug detail</span>
-      <button class="btn btn-ghost btn-sm" onclick="qaLogsLoad()">⟳ Refresh</button>
+      <button class="btn btn-ghost btn-sm" onclick="qaLogsLoad()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-refresh"/></svg> Refresh</button>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
       <select id="ql-device" onchange="qaLogsLoad()" style="padding:6px 8px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.78rem;min-width:220px"><option value="">All devices</option></select>
@@ -1026,7 +1037,7 @@
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
       <h3 style="margin:0"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-doc"/></svg> Ops log</h3>
       <span style="font-size:0.78rem;color:var(--muted);flex:1">every admin &amp; destructive action, newest first — allowed / denied / gate-off, with IP</span>
-      <button class="btn btn-ghost btn-sm" onclick="loadOpsLog()">⟳ Refresh</button>
+      <button class="btn btn-ghost btn-sm" onclick="loadOpsLog()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-refresh"/></svg> Refresh</button>
     </div>
     <div id="ops-log" style="max-height:420px;overflow-y:auto;font-family:var(--ax-mono);font-size:0.78rem;line-height:1.7;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--muted)">Loading…</div>
   </div>
@@ -1076,7 +1087,7 @@
     <input id="gl-search" type="search" placeholder="Filter guides…" oninput="filterGuideLibrary(this.value)" style="flex:1;min-width:140px;padding:6px 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:0.78rem">
     <button class="btn btn-sm" onclick="openImportGuideModal()" style="font-weight:600" data-tour="gl-import"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-upload"/></svg> Import Guide</button>
     <a class="btn btn-ghost btn-sm" href="/roadmap" target="_blank" title="Draw a procedure on a canvas and send it here as a guide" data-tour="gl-designer"> Procedure Designer</a>
-    <button class="btn btn-ghost btn-sm" onclick="loadGuideLibrary()">⟳ Refresh</button>
+    <button class="btn btn-ghost btn-sm" onclick="loadGuideLibrary()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-refresh"/></svg> Refresh</button>
   </div>
   <div id="guide-library-list"></div>
 </div>
@@ -1087,7 +1098,7 @@
     <div class="models-anchor-bar">
       <span style="font-size:0.92rem;font-weight:700;color:var(--text)"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-cube"/></svg> Global 3D Library</span>
       <span style="font-size:0.78rem;color:var(--muted);flex:1;margin-left:8px">Upload once · assign to any anchor</span>
-      <button class="btn btn-ghost btn-sm" onclick="loadModels()" style="margin-left:auto">⟳ Refresh</button>
+      <button class="btn btn-ghost btn-sm" onclick="loadModels()" style="margin-left:auto"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-refresh"/></svg> Refresh</button>
     </div>
 
     <div id="model-dropzone" class="model-dropzone" ondragover="onModelDragOver(event)" ondragleave="onModelDragLeave(event)" ondrop="onModelDrop(event)" onclick="document.getElementById('model-file-input').click()">
@@ -1137,7 +1148,7 @@
       </span>
       <button class="btn btn-ghost btn-sm" onclick="exportLotoEventsCSV()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Events CSV</button>
       <button class="btn btn-ghost btn-sm" onclick="exportLotoCertsCSV()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Certs CSV</button>
-      <button class="btn btn-ghost btn-sm" onclick="loadILoto()">⟳ Refresh</button>
+      <button class="btn btn-ghost btn-sm" onclick="loadILoto()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-refresh"/></svg> Refresh</button>
     </div>
     <div class="iloto-section-title">Panel status</div>
     <div id="iloto-status-board"><p style="color:var(--muted);font-size:0.82rem">Loading…</p></div>
@@ -3142,7 +3153,7 @@ async function loadIntelligence() {
     if (!intelGuideId || !seen.has(intelGuideId)) intelGuideId = guides[0].id;
     const picker = `<div class="sessions-toolbar" style="margin-bottom:10px"><span style="font-size:0.78rem;color:var(--muted)">Guide</span>
       <select id="intel-guide" onchange="intelGuideId=this.value;loadIntelligence()" style="font-size:0.8rem">${guides.map(g => `<option value="${esc(g.id)}"${g.id === intelGuideId ? ' selected' : ''}>${esc(g.name)} (${g.n} run${g.n === 1 ? '' : 's'})</option>`).join('')}</select>
-      <span style="flex:1"></span><button class="btn btn-ghost btn-sm" onclick="loadIntelligence()">⟳ Refresh</button></div>`;
+      <span style="flex:1"></span><button class="btn btn-ghost btn-sm" onclick="loadIntelligence()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-refresh"/></svg> Refresh</button></div>`;
     const gi = (await apiFetch(`/guide-sessions/intelligence/${encodeURIComponent(intelGuideId)}`)).data;
     iv.innerHTML = picker + renderIntelligence(gi);
   } catch (e) {
@@ -3296,45 +3307,46 @@ function renderGembaWalkSessions() {
   gwsFiltered = gembaWalks.filter(w => (!st || w.status === st) && (!au || w.auditorName === au) && (!q || JSON.stringify(w).toLowerCase().includes(q)));
   const rows = gwsFiltered.slice(0, gwsShown);
   const exportBtn = document.getElementById('gws-export-filtered');
-  if (exportBtn) { exportBtn.disabled = !gwsFiltered.length; exportBtn.textContent = ` .xlsx (${gwsFiltered.length} shown)`; }
+  if (exportBtn) { exportBtn.disabled = !gwsFiltered.length; exportBtn.lastChild.textContent = ` Excel (${gwsFiltered.length} shown)`; }
   if (!rows.length) {
     const win = document.getElementById('gws-from').value || document.getElementById('gws-to').value;
     list.innerHTML = `<div class="empty-state" style="padding:40px;text-align:center;color:var(--muted);font-size:0.85rem">${gembaWalks.length ? 'Nothing matches that filter.' : (win ? 'No walks in this date window — <a href="#" onclick="gwsAllTime();return false">show all time</a>.' : 'No walks yet — start one from the app (Gemba Walk → Start walk).')}</div>`;
     return;
   }
   const anchorName = id => (allAnchors.find(a => a.id === id) || {}).assetId || id.slice(0, 8);
-  list.innerHTML = `<table class="data-table"><thead><tr>
-      <th>Date</th><th>Auditor</th><th>Project</th><th>Org / BU</th><th>Area · Location</th><th>Space</th><th>Findings</th><th>Status</th><th></th>
+  list.innerHTML = `<div class="ax-card"><table class="ax-table"><thead><tr>
+      <th>Date</th><th>Auditor</th><th>Project</th><th>Org / BU</th><th>Area · Location</th><th>Space</th><th class="ax-num">Findings</th><th>Status</th><th></th>
     </tr></thead><tbody>` + rows.map(w => {
     const d = new Date(w.startedAt);
     const s = w.summary || {};
     const open = gwsOpen.has(w.id);
-    return `<tr onclick="toggleGembaWalk('${w.id}')" style="cursor:pointer">
-      <td style="white-space:nowrap">${d.toLocaleDateString(undefined,{day:'2-digit',month:'short'})} <span style="color:var(--muted);font-size:0.78rem">${d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}</span></td>
-      <td style="font-weight:600">${esc(w.auditorName)}${w.auditorId ? `<div style="font-size:0.78rem;color:var(--muted);font-weight:400">${esc(w.auditorId)}</div>` : ''}</td>
+    return `<tr onclick="toggleGembaWalk('${w.id}')" style="cursor:pointer" class="${open ? 'is-selected' : ''}">
+      <td style="white-space:nowrap">${d.toLocaleDateString(undefined,{day:'2-digit',month:'short'})}<span class="gws-sub">${d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}</span></td>
+      <td style="font-weight:600">${esc(w.auditorName)}${w.auditorId ? `<span class="gws-sub" style="font-weight:400">${esc(w.auditorId)}</span>` : ''}</td>
       <td>${esc(w.projectId || '—')}</td>
-      <td style="font-size:0.78rem">${esc(w.organization || '—')}${w.bu ? `<div style="color:var(--muted);font-size:0.78rem">${esc(w.bu)}</div>` : ''}</td>
-      <td style="font-size:0.78rem">${esc([w.area, w.location].filter(Boolean).join(' · ') || '—')}</td>
-      <td style="font-size:0.78rem;color:var(--muted)">${esc(anchorName(w.anchorId))}</td>
-      <td><b>${s.findings ?? 0}</b> ${gwsCat(s)}</td>
-      <td><span class="${w.status === 'submitted' ? 'b-resolved' : 'b-no-completion'}">${w.status === 'submitted' ? 'Submitted' : 'Open'}</span></td>
-      <td onclick="event.stopPropagation()" style="white-space:nowrap">
-        <button class="btn btn-ghost btn-sm" style="padding:2px 7px" onclick="downloadServerFile('/gemba/walks/export.xlsx?walkId=${w.id}', 'gemba-walk-${w.id.slice(0,8)}.xlsx').catch(e => toast(e.message))" title="This walk as Excel, photos embedded"> .xlsx</button>
-        ${w.status === 'submitted' ? `<button class="btn btn-ghost btn-sm" style="padding:2px 7px" onclick="reopenGembaWalk('${w.id}')" title="Reopen to edit the header (admin)">↩</button>` : ''}
-        <button class="btn btn-ghost btn-sm" style="padding:2px 7px;color:var(--red)" onclick="deleteGembaWalk('${w.id}')" title="Delete the walk record (findings stay, detached)"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg></button>
-      </td>
+      <td>${esc(w.organization || '—')}${w.bu ? `<span class="gws-sub">${esc(w.bu)}</span>` : ''}</td>
+      <td>${esc([w.area, w.location].filter(Boolean).join(' · ') || '—')}</td>
+      <td style="color:var(--muted)">${esc(anchorName(w.anchorId))}</td>
+      <td class="ax-num"><b>${s.findings ?? 0}</b>${gwsCat(s) ? `<span class="gws-sub">${gwsCat(s)}</span>` : ''}</td>
+      <td><span class="ax-chip ${w.status === 'submitted' ? 'ax-chip--ok' : 'ax-chip--warn'}">${w.status === 'submitted' ? 'Submitted' : 'Open'}</span></td>
+      <td onclick="event.stopPropagation()"><div class="gws-acts">
+        <button class="btn btn-ghost btn-sm" onclick="downloadServerFile('/gemba/walks/export.xlsx?walkId=${w.id}', 'gemba-walk-${w.id.slice(0,8)}.xlsx').catch(e => toast(e.message))" title="This walk as Excel, photos embedded"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Excel</button>
+        ${w.status === 'submitted' ? `<button class="btn btn-ghost btn-sm" onclick="reopenGembaWalk('${w.id}')" title="Reopen to edit the header (admin)"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-undo"/></svg> Reopen</button>` : ''}
+        <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteGembaWalk('${w.id}')" title="Delete the walk record (findings stay, detached)" aria-label="Delete walk"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg></button>
+      </div></td>
     </tr>
     <tr class="detail-tr" id="gws-${w.id}" style="display:${open ? '' : 'none'}"><td colspan="9"><div class="detail-inner" id="gwsd-${w.id}">${open ? 'Loading…' : ''}</div></td></tr>`;
   }).join('') + `</tbody></table>` +
   (gwsFiltered.length > gwsShown
-    ? `<div style="text-align:center;padding:10px"><button class="btn btn-ghost btn-sm" onclick="gwsShown += GWS_PAGE; renderGembaWalkSessions()">Show ${Math.min(GWS_PAGE, gwsFiltered.length - gwsShown)} more (${gwsFiltered.length - gwsShown} left)</button></div>` : `<div style="text-align:center;padding:6px;font-size:0.78rem;color:var(--muted)">${gwsFiltered.length} walk${gwsFiltered.length === 1 ? '' : 's'}</div>`);
+    ? `<div class="gws-foot"><button class="btn btn-ghost btn-sm" onclick="gwsShown += GWS_PAGE; renderGembaWalkSessions()">Show ${Math.min(GWS_PAGE, gwsFiltered.length - gwsShown)} more (${gwsFiltered.length - gwsShown} left)</button></div>`
+    : `<div class="gws-foot">${gwsFiltered.length} walk${gwsFiltered.length === 1 ? '' : 's'}</div>`) + `</div>`;
   for (const id of gwsOpen) loadGembaWalkDetail(id);
 }
 
 // Export exactly the table (all filtered rows, not just the page shown).
 async function exportFilteredGembaWalks() {
   if (!gwsFiltered.length) return;
-  if (gwsFiltered.length > 200) { toast('Narrow the filter to 200 walks or fewer, or use  .xlsx (all).'); return; }
+  if (gwsFiltered.length > 200) { toast('Narrow the filter to 200 walks or fewer, or use Excel (all).'); return; }
   const ids = gwsFiltered.map(w => w.id).join(',');
   try { await downloadServerFile('/gemba/walks/export.xlsx?walkIds=' + encodeURIComponent(ids), `gemba-walks-${gwsFiltered.length}-${new Date().toISOString().slice(0, 10)}.xlsx`); }
   catch (e) { toast(e.message); }
@@ -3399,6 +3411,16 @@ async function saveGembaLists() {
       await apiFetch(`/gemba/library/lists/${k}`, { method: 'PUT', body: JSON.stringify({ values }) });
     }
     toast('Pick lists saved');
+    await loadGembaLibrary();
+  } catch (e) { toast(e.message); }
+}
+
+async function restoreGembaLists() {
+  const all = confirm('Restore the default values for every list?\n\nOK = all lists (replaces your edits) · Cancel = only lists that are empty');
+  try {
+    const r = await apiFetch(`/gemba/library/lists/restore${all ? '?all=1' : ''}`, { method: 'POST', body: '{}' });
+    const t = (r.data && r.data.restored) || [];
+    toast(t.length ? `Restored: ${t.join(', ')}` : 'Nothing to restore — no list is empty');
     await loadGembaLibrary();
   } catch (e) { toast(e.message); }
 }
@@ -4027,8 +4049,8 @@ function renderARGuideSessions() {
             <span class="ag-steps-badge ${stepsClass}">${completedCount} step${completedCount !== 1 ? 's' : ''} completed</span>
             ${hasEvidence ? '<span style="font-size:0.78rem;color:var(--ax-green)"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-camera"/></svg> evidence</span>' : ''}
             <span class="ag-dur">⏱ ${dur}</span>
-            <button onclick="event.stopPropagation();agExportSessionXlsx('${sess.id}')" class="btn btn-ghost btn-sm" style="padding:2px 7px;margin-left:auto" title="Export this session as Excel with evidence photos embedded"> .xlsx</button>
-            <button onclick="event.stopPropagation();agExportSessionCSV('${sess.id}')" class="btn btn-ghost btn-sm" style="padding:2px 7px" title="Export this session as CSV (no images)"> .csv</button>
+            <button onclick="event.stopPropagation();agExportSessionXlsx('${sess.id}')" class="btn btn-ghost btn-sm" style="padding:2px 7px;margin-left:auto" title="Export this session as Excel with evidence photos embedded"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> .xlsx</button>
+            <button onclick="event.stopPropagation();agExportSessionCSV('${sess.id}')" class="btn btn-ghost btn-sm" style="padding:2px 7px" title="Export this session as CSV (no images)"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> .csv</button>
             <button onclick="event.stopPropagation();deleteARGuideSession('${sess.id}')" class="btn btn-ghost btn-sm" style="padding:4px 9px;color:var(--red)" title="Delete this session"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg></button>
           </div>
         </div>

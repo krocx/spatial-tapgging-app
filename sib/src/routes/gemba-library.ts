@@ -37,6 +37,21 @@ if (gembaListStore.count() === 0) {
   for (const [kind, values] of Object.entries(buildSeedLists())) gembaListStore.save({ id: kind, values, updatedAt: now });
 }
 
+/** Restore the seed values for pick lists. Empty lists only by default (a
+ *  cleared list is a mistake, never a choice — the app needs the values);
+ *  `all` overwrites every list with the seed. Returns the kinds touched. */
+export function restoreSeedLists(all = false): string[] {
+  const now = new Date().toISOString();
+  const touched: string[] = [];
+  for (const [kind, values] of Object.entries(buildSeedLists())) {
+    const cur = gembaListStore.findById(kind)?.values ?? [];
+    if (all || cur.length === 0) { gembaListStore.save({ id: kind, values, updatedAt: now }); touched.push(kind); }
+  }
+  return touched;
+}
+// Boot: an emptied list comes back on its own — nobody has to remember the seed.
+{ const t = restoreSeedLists(); if (t.length) console.log(`[SIB] Gemba pick lists restored from seed: ${t.join(', ')}`); }
+
 export function readLists(): GembaLists {
   const out: GembaLists = { ...EMPTY_LISTS };
   for (const k of GEMBA_LIST_KINDS) out[k] = gembaListStore.findById(k)?.values ?? [];
@@ -265,6 +280,14 @@ router.put('/lists/:kind', (req: Request, res: Response): void => {
     gembaListStore.save({ id: kind, values, updatedAt: new Date().toISOString() });
     res.json({ data: readLists(), timestamp: new Date().toISOString() });
   } catch (err) { fail(res, err); }
+});
+
+// POST /gemba/library/lists/restore?all=1 — bring the seed pick lists back
+// (empty lists only unless all=1). Corporate Quality's own values are kept.
+router.post('/lists/restore', (req: Request, res: Response): void => {
+  const all = req.query.all === '1' || req.query.all === 'true';
+  const touched = restoreSeedLists(all);
+  res.json({ data: { restored: touched, lists: readLists() }, timestamp: new Date().toISOString() });
 });
 
 /** Lookup used by loc-tag validation (G3): question by code, with its area. */
