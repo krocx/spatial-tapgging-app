@@ -204,7 +204,9 @@ struct LabRigView: View {
             Section("1 · Set up") {
                 Button { showPlace = true } label: {
                     Label(placedTags.isEmpty ? "Tap to tag real features" : "Add / remove tags (\(placedTags.count))", systemImage: "mappin.and.ellipse")
+                        .font(.body.bold()).frame(maxWidth: .infinity, minHeight: 48)
                 }
+                .buttonStyle(.borderedProminent).tint(.cyan).foregroundStyle(.black)
                 if runReady, runType == .qr {
                     Button { startPlacing() } label: {
                         Label("Place with the QR (full Author mode)", systemImage: "qrcode.viewfinder").font(.subheadline)
@@ -231,7 +233,7 @@ struct LabRigView: View {
                         ForEach(labRunPresets, id: \.self) { p in
                             Button(p) { runLabel = p; customLabel = "" }
                                 .buttonStyle(.bordered).tint(runLabel == p ? .cyan : .gray)
-                                .font(.caption)
+                                .font(.subheadline).controlSize(.large)
                         }
                     }
                 }
@@ -239,7 +241,9 @@ struct LabRigView: View {
                     .onChange(of: customLabel) { v in if !v.isEmpty { runLabel = v } }
                 Button { startRun() } label: {
                     Label("Start run · \(runLabel)", systemImage: "play.fill")
+                        .font(.body.bold()).frame(maxWidth: .infinity, minHeight: 48)
                 }
+                .buttonStyle(.borderedProminent).tint(.cyan).foregroundStyle(.black)
             } }
 
             Section("3 · History") {
@@ -395,8 +399,8 @@ struct LabRunView: View {
             VStack {
                 HStack(spacing: 8) {
                     Button { finish() } label: {
-                        Label("Done", systemImage: "checkmark").font(.caption.bold())
-                            .padding(.horizontal, 12).padding(.vertical, 7)
+                        Label("Done", systemImage: "checkmark").font(.subheadline.bold())
+                            .padding(.horizontal, 16).padding(.vertical, 11)
                             .background(Color.cyan, in: Capsule()).foregroundStyle(.black)
                     }
                     VStack(alignment: .leading, spacing: 1) {
@@ -487,14 +491,14 @@ struct LabRunView: View {
             Divider().overlay(Color.white.opacity(0.2))
             Text(armedTagId == nil ? "Tap a tag (or a chip), then aim the orange ring at its real feature"
                                    : (ringTracking ? "Aim the orange ring at the feature, then tap — or Mark" : "Move closer until the ring finds the surface"))
-                .font(.caption2).foregroundStyle(.white.opacity(0.75))
+                .font(.subheadline).foregroundStyle(.white.opacity(0.8))
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
                     ForEach(tags) { tag in
                         let placed = markerNodes[tag.id] != nil
                         Button { if armedTagId == tag.id { disarm() } else { arm(tag.id) } } label: {
-                            Text(tag.label).font(.caption2.bold()).lineLimit(1)
-                                .padding(.horizontal, 9).padding(.vertical, 5)
+                            Text(tag.label).font(.subheadline.bold()).lineLimit(1)
+                                .padding(.horizontal, 16).padding(.vertical, 11)
                                 .background(armedTagId == tag.id ? Color.orange : Color.white.opacity(placed ? 0.14 : 0.05), in: Capsule())
                                 .foregroundStyle(armedTagId == tag.id ? .black : (placed ? .white : .white.opacity(0.4)))
                         }
@@ -506,9 +510,9 @@ struct LabRunView: View {
                 Button { mark(tagId: id) } label: {
                     HStack {
                         if sending { ProgressView().tint(.black).scaleEffect(0.7) }
-                        Text("Mark where it really is").font(.caption.bold())
+                        Text("Mark where it really is").font(.body.bold())
                     }
-                    .frame(maxWidth: .infinity).padding(.vertical, 8)
+                    .frame(maxWidth: .infinity).padding(.vertical, 14)
                     .background(ringTracking ? Color.orange : Color.gray, in: RoundedRectangle(cornerRadius: 10))
                     .foregroundStyle(.black)
                 }
@@ -733,9 +737,9 @@ struct LabRunView: View {
     }
     private func labRow(_ k: String, _ v: String, tint: Color = .white) -> some View {
         HStack(spacing: 6) {
-            Text(k).font(.caption2).foregroundStyle(.white.opacity(0.6))
+            Text(k).font(.caption).foregroundStyle(.white.opacity(0.6))
             Spacer(minLength: 4)
-            Text(v).font(.caption2.monospacedDigit()).foregroundStyle(tint)
+            Text(v).font(.caption.monospacedDigit()).foregroundStyle(tint)
         }
     }
     private func median(_ xs: [Double]) -> Double {
@@ -744,8 +748,8 @@ struct LabRunView: View {
     }
     private func toggle(_ icon: String, on: Bool, _ action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(systemName: icon).font(.caption.bold())
-                .frame(width: 30, height: 30)
+            Image(systemName: icon).font(.body.bold())
+                .frame(width: 44, height: 44)
                 .background(on ? Color.cyan : Color.black.opacity(0.6), in: Circle())
                 .foregroundStyle(on ? .black : .white)
         }
@@ -1072,13 +1076,15 @@ struct LabPlaceView: View {
                 HStack(spacing: 10) {
                     Button("Cancel") { leave() }
                         .font(.body).foregroundStyle(.white.opacity(0.85))
+                        .padding(.horizontal, 12).padding(.vertical, 11)
+                        .background(Color.black.opacity(0.5), in: Capsule())
                     Spacer()
                     Text(rig.assetId).font(.headline).foregroundStyle(.white).lineLimit(1)
                     Spacer()
                     Button { Task { await save() } } label: {
                         Text(phase == .saving ? "Saving…" : "Save")
                             .font(.body.bold())
-                            .padding(.horizontal, 14).padding(.vertical, 7)
+                            .padding(.horizontal, 20).padding(.vertical, 11)
                             .background(Color.cyan, in: Capsule()).foregroundStyle(.black)
                     }
                     .disabled(phase != .ready || tags.isEmpty)
@@ -1116,11 +1122,11 @@ struct LabPlaceView: View {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 6) {
                                 ForEach(tags) { t in
-                                    HStack(spacing: 4) {
-                                        Text(t.label).font(.caption.bold())
-                                        Button { Task { await remove(t) } } label: { Image(systemName: "xmark.circle.fill") }
+                                    HStack(spacing: 8) {
+                                        Text(t.label).font(.subheadline.bold())
+                                        Button { Task { await remove(t) } } label: { Image(systemName: "xmark.circle.fill").font(.title3) }
                                     }
-                                    .padding(.horizontal, 10).padding(.vertical, 6)
+                                    .padding(.horizontal, 14).padding(.vertical, 10)
                                     .background(Color.black.opacity(0.6), in: Capsule()).foregroundStyle(.white)
                                 }
                             }.padding(.horizontal, 16)

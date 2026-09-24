@@ -338,6 +338,8 @@ it, it gets a line.
   pins (fold to a dot under 0.35 m, back past 0.5 m) so up close the feature
   is visible and a drift mark is made against it, not the tag; the panel
   says whether marks land on the LiDAR mesh or an estimated plane. The Lab
+  Lab controls are sized for testers who are not twenty-five: 44-pt toggles,
+  48-pt primary buttons, larger chips and hint text. The
   rig page shows the Run section only once tags are placed and sealed, and
   the QR button / QR placement only when the QR + map run type is chosen.
   The Lab always uses the
