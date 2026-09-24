@@ -50,3 +50,23 @@ test('summary: median / p90 / max overall and per device, origin, run', () => {
   const empty = summariseAccuracy([]);
   assert.deepEqual([empty.n, empty.medianMm, empty.p90Mm, empty.maxMm], [0, 0, 0, 0]);
 });
+
+test('runs: sanitizeLabRun requires runId + marks, keeps the summary fields, drops junk', async () => {
+  const { sanitizeLabRun } = await import('../src/oms/anchor-accuracy.js');
+  assert.equal(typeof sanitizeLabRun('a1', {}), 'string');
+  assert.equal(typeof sanitizeLabRun('a1', { runId: 'r', marks: -1 }), 'string');
+  const r = sanitizeLabRun('a1', {
+    runId: 'r1', marks: 6.4, run: 'door · day', runType: 'map', device: 'iPad16,3', medianMm: 9.5, p90Mm: 14,
+    originSource: 'sealed', relocalizeS: 2.1, convergeS: 1.6, corrections: 1, interrupted: false, mapGrew: true,
+    mapKB: 2200, ghostUsed: 'yes', endedAt: 'nope', startedAt: '2026-09-24T04:00:00Z',
+  });
+  assert.notEqual(typeof r, 'string');
+  const ok = r as Exclude<typeof r, string>;
+  assert.equal(ok.anchorId, 'a1');
+  assert.equal(ok.marks, 6);
+  assert.equal(ok.mapGrew, true);
+  assert.equal(ok.ghostUsed, undefined, 'non-boolean flags are dropped');
+  assert.equal(ok.originSource, 'sealed');
+  assert.ok(ok.id && ok.endedAt && !Number.isNaN(Date.parse(ok.endedAt)), 'server stamps endedAt when unusable');
+  assert.equal(ok.startedAt, '2026-09-24T04:00:00Z');
+});

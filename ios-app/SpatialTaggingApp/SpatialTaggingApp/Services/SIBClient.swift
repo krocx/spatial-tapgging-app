@@ -904,6 +904,32 @@ final class SIBClient {
         var run: String?, by: String?
         var at: String?
         var runType: String? = nil      // "map" | "qr" (Anchor Lab door)
+        var runId: String? = nil        // groups the marks of one Start…Done run
+    }
+    /// One Lab run, Start → Done (the summary the phone computed).
+    struct AnchorLabRun: Codable {
+        var runId: String
+        var run: String?
+        var runType: String?
+        var device: String?
+        var osVersion: String?
+        var appVersion: String?
+        var by: String?
+        var startedAt: String?
+        var endedAt: String?
+        var durationS: Double?
+        var marks: Int
+        var medianMm: Double?
+        var p90Mm: Double?
+        var maxMm: Double?
+        var originSource: String?
+        var relocalizeS: Double?
+        var convergeS: Double?
+        var corrections: Int?
+        var interrupted: Bool?
+        var mapGrew: Bool?
+        var mapKB: Int?
+        var ghostUsed: Bool?
     }
 
     struct AnchorAccuracyBucket: Codable, Identifiable {
@@ -918,6 +944,7 @@ final class SIBClient {
     }
     struct AnchorAccuracyRecord: Codable {
         let samples: [AnchorAccuracySample]
+        let runs: [AnchorLabRun]?
         let summary: AnchorAccuracySummary
     }
     /// Anchor Lab history for a rig.
@@ -934,6 +961,25 @@ final class SIBClient {
     func postAnchorAccuracy(anchorId: String, sample: AnchorAccuracySample) async throws {
         struct R: Decodable { let data: AnchorAccuracySample }
         _ = try await post(R.self, path: "/anchors/\(anchorId)/accuracy", body: sample, timeout: 10)
+    }
+    /// Anchor Lab: the run summary on Done.
+    func postAnchorLabRun(anchorId: String, run: AnchorLabRun) async throws {
+        struct R: Decodable { let data: AnchorLabRun }
+        _ = try await post(R.self, path: "/anchors/\(anchorId)/accuracy/runs", body: run, timeout: 10)
+    }
+    /// Anchor Lab: the reference photo — where the author stood when the map
+    /// was sealed. Shown as a ghost during relocalization when asked for.
+    func uploadWorldMapPhoto(anchorId: String, jpeg: Data) async throws {
+        var req = try makeRequest(method: "PUT", path: "/anchors/\(anchorId)/worldmap/photo")
+        req.timeoutInterval = 30
+        req.setValue("image/jpeg", forHTTPHeaderField: "Content-Type")
+        req.httpBody = jpeg
+        let (_, response): (Data, URLResponse)
+        do { (_, response) = try await session.data(for: req) }
+        catch { throw SIBClientError.networkError(error) }
+        if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+            throw SIBClientError.httpError(http.statusCode, "Reference photo upload failed (\(http.statusCode))")
+        }
     }
 
     /// C1: coach → operator. Text plus an optional "look here" point (map frame).
@@ -959,11 +1005,13 @@ final class SIBClient {
     }
 
     /// Author: seal the map — record the origin pose alongside the uploaded map.
-    func uploadWorldMapMeta(anchorId: String, anchorPose: simd_float4x4, sealedBy: String?) async throws -> WorldMapMeta {
-        struct Body: Encodable { let anchorPose: [Float]; let capturedAt: String; let sealedBy: String? }
+    func uploadWorldMapMeta(anchorId: String, anchorPose: simd_float4x4, sealedBy: String?,
+                            referenceCameraPose: simd_float4x4? = nil) async throws -> WorldMapMeta {
+        struct Body: Encodable { let anchorPose: [Float]; let capturedAt: String; let sealedBy: String?; let referenceCameraPose: [Float]? }
         let body = Body(anchorPose: ARCoordinateFrame.floats(from: anchorPose),
                         capturedAt: ISO8601DateFormatter().string(from: Date()),
-                        sealedBy:   sealedBy?.isEmpty == false ? sealedBy : nil)
+                        sealedBy:   sealedBy?.isEmpty == false ? sealedBy : nil,
+                        referenceCameraPose: referenceCameraPose.map { ARCoordinateFrame.floats(from: $0) })
         return try await post(WorldMapMeta.self, path: "/anchors/\(anchorId)/worldmap/meta", body: body)
     }
 

@@ -269,8 +269,42 @@ export interface AnchorAccuracySample {
   run?:          string;
   /** How the session found its frame: 'map' (relocalize only, no code) or 'qr' (the QR gate). */
   runType?:      'map' | 'qr';
+  /** Groups the marks of one Start…Done run (see AnchorLabRun). */
+  runId?:        string;
   by?:           string;
   at?:           string;       // ISO, server-stamped when absent
+}
+
+/** One Lab run, Start → Done: the summary the phone computed, stored so the
+ *  portal can list runs (not just marks) and follow a rig over time. */
+export interface AnchorLabRun {
+  id:            string;
+  anchorId?:     string;
+  runId:         string;       // the phone's id; samples carry it as runId
+  run?:          string;       // label chip
+  runType?:      'map' | 'qr';
+  device?:       string;
+  osVersion?:    string;
+  appVersion?:   string;
+  by?:           string;
+  startedAt?:    string;
+  endedAt?:      string;       // server-stamped when absent
+  durationS?:    number;
+  marks:         number;
+  medianMm?:     number;
+  p90Mm?:        number;
+  maxMm?:        number;
+  originSource?: AnchorOriginSource;
+  relocalizeS?:  number;
+  convergeS?:    number;
+  corrections?:  number;
+  /** True if the session was interrupted (app switch, call) during the run. */
+  interrupted?:  boolean;
+  /** Map growth: the run's map was saved back over the sealed one. */
+  mapGrew?:      boolean;
+  mapKB?:        number;       // size of the map at the end of the run
+  /** The reference-photo ghost was shown during relocalization. */
+  ghostUsed?:    boolean;
 }
 
 export interface AnchorAccuracyBucket {
@@ -291,6 +325,8 @@ export interface AnchorAccuracySummary {
   byRun:      AnchorAccuracyBucket[];
   byRunType:  AnchorAccuracyBucket[];
   lastAt?:    string;
+  /** Number of stored runs (AnchorLabRun). */
+  runs?:      number;
 }
 
 /** C1: PATCH /anchors/:id — engineer+. configId null clears. */

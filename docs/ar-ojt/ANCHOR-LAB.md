@@ -65,6 +65,26 @@ rigs* toggle.
 4. **History** on the rig (or Portal → Anchors → Lab rigs → *Lab* badge)
    for the full picture.
 
+## What a run records, and what it learns
+
+Every **Done** posts one run record (`POST /anchors/:id/accuracy/runs`): run
+label and type, device, marks, median / p90 / max, origin source, relocalize
+and converge seconds, corrections, whether the session was interrupted,
+whether the ghost was used, the map size — and whether the map **grew**. The
+portal's Lab view lists runs newest first; the rig's History does the same.
+
+**Map growth (Lab only, for now).** A clean run — relocalized into the sealed
+map, origin *locked* (not approximate), never interrupted — saves its map
+back over the sealed one if it is at least 5 % larger. Every viewpoint the
+testers use is then in the map for the next run. Watch the *Runs* table: the
+map column should grow over the first runs and relocalize times fall. This is
+the measurement that decides whether production gets the same behaviour.
+
+**Ghost.** Save in placement stores a photo of what the camera saw and the
+pose it was taken from. In a run the ghost is off by default (toggle in the
+top bar); after 8 s of relocalizing without a lock the app offers it once.
+Nothing is tracked against it — it only tells a tester where to stand.
+
 ## The measurement
 
 1. Settings → **Anchor Lab** on (tester devices only). The gate now

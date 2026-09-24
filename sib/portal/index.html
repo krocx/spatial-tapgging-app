@@ -2091,8 +2091,9 @@ async function clearAnchorLab() {
 // device, dashed lines at the 10 / 25 mm bands used everywhere in the app.
 function renderAnchorLab(d) {
   const { samples, summary } = d;
+  const runs = d.runs || [];
   const body = document.getElementById('lab-body');
-  if (!samples.length) { body.innerHTML = '<p style="color:var(--muted);font-size:0.85rem">No marks yet. In the app: Settings → Anchor Lab, then Operator mode → pick a tag → aim → Mark.</p>'; return; }
+  if (!samples.length && !runs.length) { body.innerHTML = '<p style="color:var(--muted);font-size:0.85rem">No marks yet. In the app: Settings → Anchor Lab, then Operator mode → pick a tag → aim → Mark.</p>'; return; }
   const sorted = [...samples].sort((a, b) => (a.at || '').localeCompare(b.at || ''));
   const devices = [...new Set(sorted.map(x => x.device || 'unknown'))];
   const palette = ['var(--ax-blue)', 'var(--ax-green)', 'var(--ax-orange)', 'var(--ax-cyan)', 'var(--ax-red)', 'var(--ax-ink-2)'];
@@ -2114,6 +2115,21 @@ function renderAnchorLab(d) {
     return `<g><title>${tip}</title>${shape}</g>`;
   }).join('');
   const legend = devices.map(dev => `<span class="ax-chip"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${colour(dev)};margin-right:6px"></span>${esc(dev)}</span>`).join(' ');
+  // Runs — Start → Done, newest first. The one table that answers "is the
+  // rig getting better run after run?" (map growth, ghost, interruptions).
+  const mmCell = v => v == null ? '—' : `<span style="color:${v <= 10 ? 'var(--ax-ok)' : v <= 25 ? 'var(--ax-warn)' : 'var(--ax-bad)'}">${v} mm</span>`;
+  const runsTable = rows => rows.length ? `
+    <h3 style="font-size:0.8rem;color:var(--muted);margin:14px 0 6px">Runs (${rows.length})</h3>
+    <table class="ax-table"><thead><tr><th>When</th><th>Run</th><th>Type</th><th>Device</th><th>Marks</th><th>Median</th><th>p90</th><th>Origin</th><th>Reloc</th><th>Converge</th><th>Corr.</th><th>Map</th><th>Notes</th></tr></thead>
+    <tbody>${[...rows].sort((a, b) => (b.endedAt || '').localeCompare(a.endedAt || '')).map(r => `<tr>
+      <td>${r.endedAt ? new Date(r.endedAt).toLocaleString() : '—'}</td><td>${esc(r.run || '—')}</td>
+      <td>${r.runType === 'qr' ? 'QR + map' : 'Map only'}</td><td>${esc(r.device || '—')}</td>
+      <td class="ax-num">${r.marks}</td><td class="ax-num">${mmCell(r.medianMm)}</td><td class="ax-num">${mmCell(r.p90Mm)}</td>
+      <td>${esc(r.originSource || '—')}</td>
+      <td class="ax-num">${r.relocalizeS != null ? r.relocalizeS + ' s' : '—'}</td><td class="ax-num">${r.convergeS != null ? r.convergeS + ' s' : '—'}</td>
+      <td class="ax-num">${r.corrections ?? '—'}</td>
+      <td class="ax-num">${r.mapKB != null ? r.mapKB + ' KB' : '—'}${r.mapGrew ? ' <span class="ax-chip">grew</span>' : ''}</td>
+      <td>${[r.interrupted ? 'interrupted' : '', r.ghostUsed ? 'ghost' : ''].filter(Boolean).join(' · ') || '—'}</td></tr>`).join('')}</tbody></table>` : '';
   const bucketTable = (title, rows) => rows.length ? `
     <h3 style="font-size:0.8rem;color:var(--muted);margin:14px 0 6px">${title}</h3>
     <table class="ax-table"><thead><tr><th>${title}</th><th>Marks</th><th>Median</th><th>p90</th><th>Max</th></tr></thead>
@@ -2136,6 +2152,7 @@ function renderAnchorLab(d) {
       ${legend}
       <span style="margin-left:auto">● sealed map &nbsp; ■ object &nbsp; ○ QR / approximate</span>
     </div>
+    ${runsTable(runs)}
     ${bucketTable('Device', summary.byDevice)}
     ${bucketTable('Run type', (summary.byRunType || []).map(b => ({ ...b, key: b.key === 'map' ? 'Map only (no code)' : 'QR + map' })))}
     ${bucketTable('Origin', summary.byOrigin)}

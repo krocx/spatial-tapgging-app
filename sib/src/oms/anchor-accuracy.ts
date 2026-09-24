@@ -10,7 +10,7 @@
 import fs   from 'fs';
 import path from 'path';
 import { randomUUID } from 'crypto';
-import type { AnchorAccuracySample, AnchorAccuracySummary, AnchorAccuracyBucket, AnchorOriginSource } from '@spatial/shared';
+import type { AnchorAccuracySample, AnchorAccuracySummary, AnchorAccuracyBucket, AnchorOriginSource, AnchorLabRun } from '@spatial/shared';
 
 const DATA_DIR     = process.env.SIB_DATA_DIR ?? path.join(process.cwd(), '.sib-data');
 const ACCURACY_DIR = path.join(DATA_DIR, 'accuracy');
@@ -19,6 +19,8 @@ const ORIGINS: ReadonlySet<string> = new Set<AnchorOriginSource>(['sealed', 'qr'
 const MAX_SAMPLES = 5000;   // per anchor; older lines are dropped on append
 
 const filePath = (anchorId: string) => path.join(ACCURACY_DIR, `${anchorId}.jsonl`);
+const runsPath = (anchorId: string) => path.join(ACCURACY_DIR, `${anchorId}.runs.jsonl`);
+const MAX_RUNS = 2000;
 
 const num = (v: unknown): number | undefined =>
   typeof v === 'number' && Number.isFinite(v) ? v : undefined;
@@ -50,6 +52,7 @@ export function sanitizeAccuracySample(anchorId: string, body: unknown): AnchorA
     ['approachDeg', num(b.approachDeg)], ['device', str(b.device, 40)], ['osVersion', str(b.osVersion, 40)],
     ['appVersion', str(b.appVersion, 40)], ['run', str(b.run, 80)], ['by', str(b.by, 80)],
     ['runType', b.runType === 'map' || b.runType === 'qr' ? b.runType : undefined],
+    ['runId', str(b.runId, 80)],
   ];
   for (const [k, v] of opt) if (v !== undefined) (s as unknown as Record<string, unknown>)[k] = v;
   return s;
@@ -77,9 +80,60 @@ export function listAccuracySamples(anchorId: string): AnchorAccuracySample[] {
 
 export function deleteAccuracySamples(anchorId: string): boolean {
   const p = filePath(anchorId);
+  const r = runsPath(anchorId);
+  if (fs.existsSync(r)) fs.unlinkSync(r);
   if (!fs.existsSync(p)) return false;
   fs.unlinkSync(p);
   return true;
+}
+
+// ── Runs (Start → Done) ───────────────────────────────────────────────────────
+
+const bool = (v: unknown): boolean | undefined => typeof v === 'boolean' ? v : undefined;
+
+/** Validate + normalise a posted run summary. Returns an error string when unusable. */
+export function sanitizeLabRun(anchorId: string, body: unknown): AnchorLabRun | string {
+  const b = (body ?? {}) as Record<string, unknown>;
+  const runId = str(b.runId, 80);
+  if (!runId) return 'runId is required';
+  const marks = num(b.marks);
+  if (marks === undefined || marks < 0 || marks > 10_000) return 'marks must be a number in 0…10000';
+  const endedAt = str(b.endedAt, 40);
+  const r: AnchorLabRun = {
+    id: randomUUID(), anchorId, runId, marks: Math.round(marks),
+    endedAt: endedAt && !Number.isNaN(Date.parse(endedAt)) ? new Date(endedAt).toISOString() : new Date().toISOString(),
+  };
+  const origin = typeof b.originSource === 'string' && ORIGINS.has(b.originSource) ? b.originSource as AnchorOriginSource : undefined;
+  const opt: Array<[keyof AnchorLabRun, unknown]> = [
+    ['run', str(b.run, 80)], ['runType', b.runType === 'map' || b.runType === 'qr' ? b.runType : undefined],
+    ['device', str(b.device, 40)], ['osVersion', str(b.osVersion, 40)], ['appVersion', str(b.appVersion, 40)],
+    ['by', str(b.by, 80)], ['startedAt', str(b.startedAt, 40)], ['durationS', num(b.durationS)],
+    ['medianMm', num(b.medianMm)], ['p90Mm', num(b.p90Mm)], ['maxMm', num(b.maxMm)],
+    ['originSource', origin], ['relocalizeS', num(b.relocalizeS)], ['convergeS', num(b.convergeS)],
+    ['corrections', num(b.corrections)], ['interrupted', bool(b.interrupted)], ['mapGrew', bool(b.mapGrew)],
+    ['mapKB', num(b.mapKB)], ['ghostUsed', bool(b.ghostUsed)],
+  ];
+  for (const [k, v] of opt) if (v !== undefined) (r as unknown as Record<string, unknown>)[k] = v;
+  return r;
+}
+
+export function appendLabRun(run: AnchorLabRun): void {
+  fs.mkdirSync(ACCURACY_DIR, { recursive: true });
+  const p = runsPath(run.anchorId!);
+  fs.appendFileSync(p, JSON.stringify(run) + '\n');
+  const lines = fs.readFileSync(p, 'utf8').split('\n').filter(Boolean);
+  if (lines.length > MAX_RUNS) fs.writeFileSync(p, lines.slice(-MAX_RUNS).join('\n') + '\n');
+}
+
+export function listLabRuns(anchorId: string): AnchorLabRun[] {
+  const p = runsPath(anchorId);
+  if (!fs.existsSync(p)) return [];
+  const out: AnchorLabRun[] = [];
+  for (const line of fs.readFileSync(p, 'utf8').split('\n')) {
+    if (!line.trim()) continue;
+    try { out.push(JSON.parse(line) as AnchorLabRun); } catch { /* skip a torn line */ }
+  }
+  return out;
 }
 
 /** Count of samples without reading them all into memory twice (card badge). */

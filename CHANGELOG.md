@@ -328,6 +328,17 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **Anchor Lab — runs, map growth, ghost.** Every Done posts a run record
+  (`POST /anchors/:id/accuracy/runs`: label, type, device, marks, median /
+  p90 / max, origin, relocalize / converge, corrections, interrupted, map
+  size, map grew, ghost used); marks carry a `runId` so two "door · day" runs
+  never merge. The portal's Lab view and the rig's History list runs newest
+  first. A clean map-only run (locked, not interrupted, map ≥ 5 % larger)
+  saves its map back over the sealed one — Lab only, the measurement before
+  production gets the same. Save in placement stores a reference photo and
+  pose (`PUT /anchors/:id/worldmap/photo`, `referenceCameraPose` in the meta,
+  removed on unseal); a run can show it as a ghost (toggle, off by default,
+  offered once after 8 s of relocalizing).
 - **Anchor Lab — tap to tag, clean runs.** Placing is the AR OMS gesture:
   tap a real feature, the pin drops with the pop / ring / haptic and is
   *Tag N* — no code, no naming. A run shows only the tags by default; the

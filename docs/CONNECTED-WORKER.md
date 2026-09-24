@@ -217,7 +217,10 @@ already spawned.
   spot, door, opposite side, evening, dim, second person, after move). The
   lean run view holds tags until the origin settles, keeps the screen clean
   (origin axes and the lab panel are toggles), and to report drift the
-  tester taps a tag and aims the orange 3-D ring; it shows the lock report
+  tester taps a tag and aims the orange 3-D ring; every Done stores a run
+  record, a clean run grows the rig's map (Lab only — the measurement before
+  production gets it), and a ghost photo can be turned on to show where the
+  map was made; it shows the lock report
   and the mark-truth tool, and ends in a summary: this run's median vs the
   rig's history split by run type. Samples carry `runType`; the portal Lab
   view adds a *Run type* table. Settings gain *LiDAR scene mesh* (on by

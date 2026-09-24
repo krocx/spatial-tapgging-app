@@ -17,7 +17,7 @@ import { copyGuideToAnchor } from '../guides/copy.js';
 import { currentUamUser, uamIsActive } from '../middleware/auth.js';
 import { chamberConfigStore } from './chamber-configs.js';
 import { logOpsEvent } from '../ops-log.js';
-import { sanitizeAccuracySample, appendAccuracySample, listAccuracySamples, deleteAccuracySamples, summariseAccuracy } from '../oms/anchor-accuracy.js';
+import { sanitizeLabRun, appendLabRun, listLabRuns, sanitizeAccuracySample, appendAccuracySample, listAccuracySamples, deleteAccuracySamples, summariseAccuracy } from '../oms/anchor-accuracy.js';
 
 export const anchorStore = new JsonFileStore<Anchor>('anchors');
 
@@ -511,6 +511,8 @@ export interface WorldMapMeta {
   anchorPose?: number[];
   capturedAt?: string;
   sealedBy?:   string;
+  /** Camera pose (map frame) of the reference photo — the relocalization ghost. */
+  referenceCameraPose?: number[];
 }
 
 /** B1: sealed = meta with anchorPose AND the map file exist. */
@@ -532,7 +534,7 @@ router.post('/:id/worldmap/meta', express.json(), (req: Request, res: Response) 
   if (!anchor) {
     return res.status(404).json({ error: `Anchor ${req.params.id} not found`, timestamp: new Date().toISOString() });
   }
-  const { anchorPose, capturedAt, sealedBy } = (req.body ?? {}) as Partial<WorldMapMeta>;
+  const { anchorPose, capturedAt, sealedBy, referenceCameraPose } = (req.body ?? {}) as Partial<WorldMapMeta>;
   if (!Array.isArray(anchorPose) || anchorPose.length !== 16 ||
       !anchorPose.every(v => typeof v === 'number' && Number.isFinite(v))) {
     return res.status(400).json({ error: 'anchorPose must be 16 finite numbers (column-major 4×4)', timestamp: new Date().toISOString() });
@@ -541,6 +543,12 @@ router.post('/:id/worldmap/meta', express.json(), (req: Request, res: Response) 
     anchorPose,
     capturedAt: typeof capturedAt === 'string' && capturedAt ? capturedAt : new Date().toISOString(),
     ...(typeof sealedBy === 'string' && sealedBy.trim() && { sealedBy: sealedBy.trim().slice(0, 80) }),
+    // Ghost (Lab): where the author stood when the map was sealed. Kept from
+    // the previous meta when a re-seal (map growth) doesn't send one.
+    ...(Array.isArray(referenceCameraPose) && referenceCameraPose.length === 16
+        && referenceCameraPose.every(v => typeof v === 'number' && Number.isFinite(v))
+        ? { referenceCameraPose }
+        : (readWorldMapMeta(anchor.id).referenceCameraPose ? { referenceCameraPose: readWorldMapMeta(anchor.id).referenceCameraPose } : {})),
   };
   try {
     fs.writeFileSync(worldMapMetaPath(anchor.id), JSON.stringify(meta));
@@ -550,6 +558,27 @@ router.post('/:id/worldmap/meta', express.json(), (req: Request, res: Response) 
   const hasMap = fs.existsSync(path.join(WORLDMAPS_DIR, `${anchor.id}.worldmap`));
   console.log(`[SIB] World map sealed for anchor ${anchor.id} (${meta.capturedAt}${meta.sealedBy ? ` by ${meta.sealedBy}` : ''}${hasMap ? '' : ' — map not uploaded yet'})`);
   return res.status(201).json({ data: { ...meta, sealed: hasMap }, timestamp: new Date().toISOString() });
+});
+
+// ── PUT /anchors/:id/worldmap/photo — the reference photo (JPEG, ≤ 2 MB) ──────
+// Served by GET /worldmap/:anchorId/reference-photo. Together with
+// referenceCameraPose in the meta it is the "stand here" ghost during
+// relocalization. Removed with the map on unseal.
+router.put('/:id/worldmap/photo', express.raw({ type: 'image/jpeg', limit: '2mb' }), (req: Request, res: Response) => {
+  const anchor = anchorStore.findById(req.params.id);
+  if (!anchor) {
+    return res.status(404).json({ error: `Anchor ${req.params.id} not found`, timestamp: new Date().toISOString() });
+  }
+  const buf = req.body as Buffer;
+  if (!Buffer.isBuffer(buf) || buf.length < 100) {
+    return res.status(400).json({ error: 'Body must be a JPEG (Content-Type image/jpeg)', timestamp: new Date().toISOString() });
+  }
+  try {
+    fs.writeFileSync(path.join(WORLDMAPS_DIR, `${anchor.id}.refphoto.jpg`), buf);
+  } catch (err) {
+    return res.status(500).json({ error: `Failed to store reference photo: ${err}`, timestamp: new Date().toISOString() });
+  }
+  return res.status(201).json({ data: { anchorId: anchor.id, bytes: buf.length }, timestamp: new Date().toISOString() });
 });
 
 // ── DELETE /anchors/:id/worldmap — G1 (2026.4.46): unseal ────────────────────
@@ -565,7 +594,7 @@ router.delete('/:id/worldmap', (req: Request, res: Response) => {
     return res.status(403).json({ error: 'Unsealing a world map requires Engineer role or above', timestamp: new Date().toISOString() });
   }
   let removed = 0;
-  for (const p of [path.join(WORLDMAPS_DIR, `${anchor.id}.worldmap`), worldMapMetaPath(anchor.id)]) {
+  for (const p of [path.join(WORLDMAPS_DIR, `${anchor.id}.worldmap`), worldMapMetaPath(anchor.id), path.join(WORLDMAPS_DIR, `${anchor.id}.refphoto.jpg`)]) {
     try { fs.unlinkSync(p); removed++; } catch { /* not present */ }
   }
   logOpsEvent({ method: 'DELETE', path: `/anchors/${anchor.id}/worldmap`, outcome: 'allowed', ip: req.ip,
@@ -767,8 +796,21 @@ router.get('/:id/accuracy', (req: Request, res: Response) => {
     return res.status(404).json({ error: `Anchor ${req.params.id} not found`, timestamp: new Date().toISOString() });
   }
   const samples = listAccuracySamples(anchor.id);
+  const runs    = listLabRuns(anchor.id);
   res.setHeader('Cache-Control', 'no-store');
-  return res.json({ data: { samples, summary: summariseAccuracy(samples) }, timestamp: new Date().toISOString() });
+  return res.json({ data: { samples, runs, summary: { ...summariseAccuracy(samples), runs: runs.length } }, timestamp: new Date().toISOString() });
+});
+
+// POST /anchors/:id/accuracy/runs — one AnchorLabRun (Start → Done summary)
+router.post('/:id/accuracy/runs', express.json(), (req: Request, res: Response) => {
+  const anchor = anchorStore.findById(req.params.id);
+  if (!anchor) {
+    return res.status(404).json({ error: `Anchor ${req.params.id} not found`, timestamp: new Date().toISOString() });
+  }
+  const r = sanitizeLabRun(anchor.id, req.body);
+  if (typeof r === 'string') return res.status(400).json({ error: r, timestamp: new Date().toISOString() });
+  appendLabRun(r);
+  return res.status(201).json({ data: r, timestamp: new Date().toISOString() });
 });
 
 router.delete('/:id/accuracy', (req: Request, res: Response) => {

@@ -384,16 +384,45 @@ struct LabRunView: View {
     @State private var sending = false
     @State private var toast: String? = nil
     @State private var tucked = Set<String>()
+    // Run record (5): one id for every mark of this Start…Done, posted on Done.
+    @State private var runId = UUID().uuidString
+    @State private var resumeAtStart = 0
+    @State private var sealedBytes = 0
+    @State private var mapGrew = false
+    @State private var mapKB: Int? = nil
+    // Ghost (3): the photo taken where the map was sealed. Off by default;
+    // offered after 8 s of relocalizing without a lock.
+    @State private var ghost: UIImage? = nil
+    @State private var showGhost = false
+    @State private var ghostUsed = false
+    @State private var offerGhost = false
     private let ticker = Timer.publish(every: 1.0 / 30.0, on: .main, in: .common).autoconnect()
 
     private var client: SIBClient { SIBClient(settings: settings) }
     private var report: ARSessionManager.OriginLockReport { appState.originLockReport ?? arManager.lockReport }
+    private var interrupted: Bool { arManager.resumeCount > resumeAtStart }
 
     var body: some View {
         ZStack {
             PlacementGestureContainer(arManager: arManager, tool: .move, active: false,
                                       onTap: phase == .ready ? handleTap : nil)
                 .ignoresSafeArea()
+
+            // Ghost: the sealed-map photo over the camera, so the tester can
+            // stand where the author stood. A 2-D overlay, nothing tracked.
+            if showGhost, let g = ghost {
+                Image(uiImage: g).resizable().scaledToFill()
+                    .opacity(0.35).ignoresSafeArea().allowsHitTesting(false)
+                VStack {
+                    Spacer().frame(height: 110)
+                    Text("Line the ghost up with the room, then hold still")
+                        .font(.subheadline).foregroundStyle(.white)
+                        .padding(.horizontal, 14).padding(.vertical, 9)
+                        .background(Color.black.opacity(0.7), in: Capsule())
+                    Spacer()
+                }
+                .allowsHitTesting(false)
+            }
 
             // Top bar: Done · rig/run · toggles · progress
             VStack {
@@ -408,6 +437,9 @@ struct LabRunView: View {
                         Text("\(runType.title) · \(runLabel)").font(.caption2).foregroundStyle(.white.opacity(0.7)).lineLimit(1)
                     }
                     Spacer()
+                    if ghost != nil {
+                        toggle("person.crop.rectangle", on: showGhost) { showGhost.toggle(); if showGhost { ghostUsed = true; offerGhost = false } }
+                    }
                     toggle("move.3d", on: showAxes) { showAxes.toggle(); axisNode?.isHidden = !showAxes }
                     toggle("scope",   on: showLab)  { withAnimation(.easeInOut(duration: 0.2)) { showLab.toggle() }; if !showLab { disarm() } }
                     Text("\(marks.count)/\(tags.count)").font(.caption.monospacedDigit().bold()).foregroundStyle(.white)
@@ -421,10 +453,23 @@ struct LabRunView: View {
             case .loading:
                 statusCard(icon: "arrow.down.circle", tint: .white, title: "Loading the rig's map…", text: nil)
             case .relocalizing:
-                statusCard(icon: "arrow.triangle.2.circlepath", tint: .green,
-                           title: arManager.originConfidence == .aligning ? "Matched — settling the fit" : "Relocalizing…",
-                           text: arManager.originConfidence == .aligning ? "Hold the view a moment. Tags appear once the origin is still."
-                                                                          : "Look at the rig from roughly where the tags were placed. No code needed.")
+                VStack(spacing: 10) {
+                    Spacer()
+                    if offerGhost, !showGhost, ghost != nil {
+                        Button {
+                            showGhost = true; ghostUsed = true; offerGhost = false
+                        } label: {
+                            Label("Show where the map was made", systemImage: "person.crop.rectangle")
+                                .font(.body.bold()).frame(maxWidth: .infinity, minHeight: 48)
+                        }
+                        .buttonStyle(.borderedProminent).tint(.cyan).foregroundStyle(.black)
+                        .padding(.horizontal, 24)
+                    }
+                    statusCard(icon: "arrow.triangle.2.circlepath", tint: .green,
+                               title: arManager.originConfidence == .aligning ? "Matched — settling the fit" : "Relocalizing…",
+                               text: arManager.originConfidence == .aligning ? "Hold the view a moment. Tags appear once the origin is still."
+                                                                              : "Look at the rig from roughly where the tags were placed. No code needed.")
+                }
             case .failed(let why):
                 VStack(spacing: 12) {
                     statusCard(icon: "exclamationmark.triangle.fill", tint: .orange, title: "Couldn't localize", text: why)
@@ -544,9 +589,16 @@ struct LabRunView: View {
 
     private func start() async {
         startedAt = Date()
+        runId = UUID().uuidString
+        marks = []; mapGrew = false; mapKB = nil
         // The Lab measures millimetres: pins and truth marks must land on the
         // real surface, so the scene mesh is always on here (LiDAR devices).
         arManager.wantsSceneMesh = true
+        // Ghost photo (if the rig was sealed with one) — fetched in the background.
+        if ghost == nil {
+            let c = client, id = rig.id
+            Task { if let d = try? await c.fetchLocTagReferencePhoto(anchorId: id), let img = UIImage(data: d) { ghost = img } }
+        }
         switch runType {
         case .qr:
             // The gate did the work: relocalized (or not), origin chosen, report filled.
@@ -563,14 +615,18 @@ struct LabRunView: View {
             guard let bundle = await WorldMapCache.load(.anchor(rig.id), client: client), bundle.isSealed else {
                 phase = .failed("This rig has no sealed map yet. Place tags first — Save seals it."); return
             }
+            sealedBytes = bundle.map.count
             arManager.startSessionWithWorldMap(bundle.map)
             arManager.disableQRScanning()
             phase = .relocalizing
+            offerGhost = false
             // Wait for the trust layer: locked / approximate, or the 15 s fallback.
             // Hard stop at 40 s so a stuck session can never hang the run.
             let waitStart = Date()
             while true {
                 try? await Task.sleep(nanoseconds: 150_000_000)
+                // Struggling to find the map? Offer the ghost after 8 s (never forced).
+                if !offerGhost, !showGhost, ghost != nil, Date().timeIntervalSince(waitStart) > 8 { offerGhost = true }
                 if Date().timeIntervalSince(waitStart) > 40 {
                     phase = .failed("The origin never settled. Move closer to the rig and try again."); return
                 }
@@ -591,6 +647,58 @@ struct LabRunView: View {
             placeMarkers()
             phase = .ready
         }
+        resumeAtStart = arManager.resumeCount
+        // The ghost helped the tester stand; once locked it only hides the rig.
+        if showGhost { showGhost = false }
+    }
+
+    // ── Map growth (2): a clean run's map replaces the sealed one ─────────────
+    //
+    // The Lab is where this is measured before production gets it. Conditions
+    // are strict — relocalized, locked (not approximate), never interrupted,
+    // and the new map is at least 5 % larger — so a bad session can never
+    // shrink or poison the rig's map.
+    private func growMapIfClean() async {
+        guard runType == .map, arManager.relocalizationOutcome == .succeeded, !interrupted,
+              case .locked = arManager.originConfidence else {
+            AppLog.info("lab", "map kept — run not clean enough to grow it (interrupted: \(interrupted))"); return
+        }
+        guard let data = await arManager.saveCurrentWorldMap() else { return }
+        mapKB = data.count / 1024
+        guard data.count > Int(Double(sealedBytes) * 1.05) else {
+            AppLog.info("lab", "map kept — \(data.count / 1024) KB vs sealed \(sealedBytes / 1024) KB"); return
+        }
+        let pose = arManager.currentOriginPose ?? origin ?? matrix_identity_float4x4
+        let sealedBy = !settings.uamUserName.isEmpty ? settings.uamUserName : settings.authorName
+        do {
+            try await client.uploadWorldMap(anchorId: rig.id, data: data)
+            let meta = try await client.uploadWorldMapMeta(anchorId: rig.id, anchorPose: pose, sealedBy: sealedBy)
+            WorldMapCache.store(.anchor(rig.id), map: data, meta: meta)
+            mapGrew = true
+            AppLog.info("lab", "map grew \(sealedBytes / 1024) → \(data.count / 1024) KB")
+        } catch { AppLog.warn("lab", "map growth upload failed: \(error.localizedDescription)") }
+    }
+
+    private func postRunRecord() async {
+        let mms = marks.map { $0.mm }.sorted()
+        func q(_ p: Double) -> Double? {
+            guard !mms.isEmpty else { return nil }
+            let pos = Double(mms.count - 1) * p; let lo = Int(pos.rounded(.down)), hi = Int(pos.rounded(.up))
+            return ((mms[lo] + (mms[hi] - mms[lo]) * (pos - Double(lo))) * 10).rounded() / 10
+        }
+        let src: String = { if case .approximate = arManager.originConfidence { return "approximate" }; return report.source }()
+        let run = SIBClient.AnchorLabRun(
+            runId: runId, run: runLabel, runType: runType.rawValue,
+            device: DeviceModel.identifier, osVersion: UIDevice.current.systemVersion, appVersion: AppVersion.current,
+            by: !settings.uamUserName.isEmpty ? settings.uamUserName : settings.authorName,
+            startedAt: ISO8601DateFormatter().string(from: startedAt), endedAt: ISO8601DateFormatter().string(from: Date()),
+            durationS: Date().timeIntervalSince(startedAt).rounded(), marks: marks.count,
+            medianMm: q(0.5), p90Mm: q(0.9), maxMm: mms.last,
+            originSource: src, relocalizeS: report.relocalizeS, convergeS: report.convergeS,
+            corrections: arManager.originCorrections, interrupted: interrupted,
+            mapGrew: mapGrew, mapKB: mapKB, ghostUsed: ghostUsed)
+        do { try await client.postAnchorLabRun(anchorId: rig.id, run: run) }
+        catch { AppLog.warn("lab", "run record upload failed: \(error.localizedDescription)") }
     }
 
     private func placeMarkers() {
@@ -663,12 +771,14 @@ struct LabRunView: View {
         let hit    = simd_float3(t.columns.3.x, t.columns.3.y, t.columns.3.z)
         let camPos = simd_float3(cam.columns.3.x, cam.columns.3.y, cam.columns.3.z)
         let label  = tags.first { $0.id == tagId }?.label ?? tagId
-        let (sample, mm) = AnchorLabOverlay.makeSample(
+        let (built, mm) = AnchorLabOverlay.makeSample(
             tagId: tagId, label: label, rendered: rendered, hit: hit, camera: camPos,
             originTransform: origin, confidence: arManager.originConfidence, report: report,
             qrDiscrepancy: arManager.qrDiscrepancy, run: runLabel,
             by: !settings.uamUserName.isEmpty ? settings.uamUserName : settings.authorName,
             runType: runType.rawValue)
+        var sample = built
+        sample.runId = runId
 
         // Leave the truth where it was marked + a hairline to the tag, so the
         // offset is visible in the room, not just as a number.
@@ -694,7 +804,12 @@ struct LabRunView: View {
     }
 
     private func finish() {
-        Task { history = try? await client.fetchAnchorAccuracy(anchorId: rig.id).summary }
+        disarm()
+        Task {
+            await growMapIfClean()
+            await postRunRecord()
+            history = try? await client.fetchAnchorAccuracy(anchorId: rig.id).summary
+        }
         showSummary = true
     }
 
@@ -795,6 +910,11 @@ struct LabRunView: View {
                     HStack { Text("Origin"); Spacer(); Text(report.source).foregroundStyle(.secondary) }
                     HStack { Text("Corrections"); Spacer(); Text("\(arManager.originCorrections)").foregroundStyle(.secondary) }
                     HStack { Text("Duration"); Spacer(); Text(String(format: "%.0f s", Date().timeIntervalSince(startedAt))).foregroundStyle(.secondary) }
+                    HStack { Text("Map"); Spacer()
+                        Text(mapGrew ? "grew to \(mapKB ?? 0) KB" : (mapKB != nil ? "kept (\(mapKB!) KB)" : "kept"))
+                            .foregroundStyle(mapGrew ? .green : .secondary) }
+                    if interrupted { HStack { Text("Interrupted"); Spacer(); Text("yes — marks after it are suspect").foregroundStyle(.orange) } }
+                    if ghostUsed  { HStack { Text("Ghost");       Spacer(); Text("used").foregroundStyle(.secondary) } }
                 }
                 if !marks.isEmpty {
                     Section("Marks") {
@@ -842,6 +962,25 @@ struct LabHistoryView: View {
                     row("p90", String(format: "%.0f mm", r.summary.p90Mm))
                     row("Worst", String(format: "%.0f mm", r.summary.maxMm))
                 }
+                if let runs = r.runs, !runs.isEmpty {
+                    Section("Runs (\(runs.count))") {
+                        ForEach(Array(runs.reversed().prefix(50).enumerated()), id: \.offset) { _, run in
+                            HStack {
+                                VStack(alignment: .leading) {
+                                    Text([run.run, run.runType.map { $0 == "map" ? "map only" : "QR + map" }].compactMap { $0 }.joined(separator: " · ")).font(.subheadline)
+                                    Text([run.endedAt.map { shortWhen($0) }, run.device, run.mapGrew == true ? "map grew" : nil, run.interrupted == true ? "interrupted" : nil]
+                                            .compactMap { $0 }.joined(separator: " · "))
+                                        .font(.caption2).foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                if let m = run.medianMm {
+                                    Text(String(format: "%.0f mm · %d", m, run.marks)).monospacedDigit()
+                                        .foregroundStyle(m <= 10 ? .green : m <= 25 ? .orange : .red)
+                                } else { Text("\(run.marks) marks").foregroundStyle(.secondary) }
+                            }
+                        }
+                    }
+                }
                 bucketSection("Run type", r.summary.byRunType ?? [], rename: { $0 == "map" ? "Map only" : $0 == "qr" ? "QR + map" : $0 })
                 bucketSection("Device", r.summary.byDevice)
                 bucketSection("Origin", r.summary.byOrigin)
@@ -877,6 +1016,10 @@ struct LabHistoryView: View {
     }
     private func row(_ k: String, _ v: String) -> some View {
         HStack { Text(k); Spacer(); Text(v).foregroundStyle(.secondary).monospacedDigit() }
+    }
+    private func shortWhen(_ iso: String) -> String {
+        guard let d = ISO8601DateFormatter().date(from: iso) else { return iso }
+        return d.formatted(date: .abbreviated, time: .shortened)
     }
     @ViewBuilder
     private func bucketSection(_ title: String, _ rows: [SIBClient.AnchorAccuracyBucket], rename: @escaping (String) -> String = { $0 }) -> some View {
@@ -1274,13 +1417,19 @@ struct LabPlaceView: View {
         phase = .saving
         arManager.ensureOriginAnchor(fallback: origin)
         try? await Task.sleep(nanoseconds: 300_000_000)
+        // Ghost: the camera as it is now, plus its pose — "stand here" for later runs.
+        let frame = arManager.sceneView.session.currentFrame
+        let photo = frame.flatMap { ARFrameImage.screenOriented($0, maxPx: 1000)?.jpegData(compressionQuality: 0.7) }
+        let camPose = frame?.camera.transform
         guard let mapData = await arManager.saveCurrentWorldMap() else { show("Couldn't capture the map — move a little and try again"); phase = .ready; return }
         let sealedBy = !settings.uamUserName.isEmpty ? settings.uamUserName : settings.authorName
         do {
             try await client.uploadWorldMap(anchorId: rig.id, data: mapData)
-            let meta = try await client.uploadWorldMapMeta(anchorId: rig.id, anchorPose: origin, sealedBy: sealedBy)
+            let meta = try await client.uploadWorldMapMeta(anchorId: rig.id, anchorPose: origin, sealedBy: sealedBy,
+                                                          referenceCameraPose: photo != nil ? camPose : nil)
             WorldMapCache.store(.anchor(rig.id), map: mapData, meta: meta)
-            AppLog.info("lab", "rig sealed without a code (\(mapData.count / 1024) KB, \(tags.count) tags)")
+            if let photo { try? await client.uploadWorldMapPhoto(anchorId: rig.id, jpeg: photo) }
+            AppLog.info("lab", "rig sealed without a code (\(mapData.count / 1024) KB, \(tags.count) tags, ghost: \(photo != nil))")
             leave()
         } catch {
             WorldMapCache.store(.anchor(rig.id), map: mapData, meta: WorldMapMeta())
