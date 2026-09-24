@@ -7,6 +7,10 @@ it, it gets a line.
 ## 2026.4.46 — 2026-09-08
 
 ### Fixed
+- **Anchors grid — cards no longer stretch to the tallest in the row.**
+  Opening one card's tag list stretched its neighbours, leaving blank paper
+  under their buttons; cards now size to their content. The tag-list chevron
+  is the sprite icon.
 - **Gemba pick lists come back on their own.** An emptied Organization / BU /
   Area / Location list is refilled from the seed at boot, and Audit Library
   has *Restore defaults* (`POST /gemba/library/lists/restore`, `?all=1` to

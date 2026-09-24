@@ -82,7 +82,10 @@
     #search::placeholder { color: var(--muted); }
 
     /* ── Anchor grid ── */
-    #anchor-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 16px; padding: 16px 24px 48px; }
+    /* align-items: start — a card is as tall as its content. Otherwise opening one
+       card's tag list stretches every card in the row, leaving blank paper under
+       the neighbours' buttons. */
+    #anchor-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 16px; padding: 16px 24px 48px; align-items: start; }
 
     /* ── Anchor card ── */
     .anchor-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--ax-r); padding: 16px; transition: border-color 0.2s; }
@@ -164,8 +167,9 @@
       border-radius: 100px; background: var(--border); color: var(--muted);
       flex-shrink: 0;
     }
-    .tag-chevron { font-size: 0.78rem; color: var(--muted); transition: transform 0.2s; flex-shrink: 0; }
-    .tag-chevron.open { transform: rotate(180deg); }
+    .tag-chevron { display: inline-flex; color: var(--muted); transition: transform 0.2s; flex-shrink: 0; transform: rotate(90deg); }
+    .tag-chevron .ax-icon { width: 16px; height: 16px; }
+    .tag-chevron.open { transform: rotate(-90deg); }
 
     .tag-body { margin-top: 8px; }
     .tag-list { display: flex; flex-direction: column; gap: 3px; }
@@ -2304,7 +2308,7 @@ function buildTagSection(anchor) {
         <span class="tag-section-title">Tags</span>
         <span class="tag-count-chip">${chipLabel}</span>
         <button class="btn btn-ghost btn-sm" style="padding:3px 10px;font-size:0.78rem;flex-shrink:0" onclick="event.stopPropagation();openCreateTagModal('${anchorId}')">+ Add</button>
-        <span id="tag-chevron-${safe}" class="tag-chevron${isExpanded ? ' open' : ''}">▼</span>
+        <span id="tag-chevron-${safe}" class="tag-chevron${isExpanded ? ' open' : ''}"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chevron"/></svg></span>
       </div>
       <div id="tag-body-${safe}" class="tag-body" style="display:${isExpanded ? 'block' : 'none'}">
         ${listHtml}
