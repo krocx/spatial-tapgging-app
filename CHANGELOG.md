@@ -373,6 +373,15 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **Chambers page rebuilt as the fleet view.** A list — chamber ·
+  configuration · origin · tags (n · trained) · lab median · last activity —
+  in one card, sorted by last activity; a row opens the chamber in a detail
+  panel beside the list (QR at print size with Print, origin state and
+  Unseal, configuration, tag list with edit / delete, quiet Duplicate /
+  Delete). Row actions live in a `⋯` menu; *New chamber* is the one primary;
+  *Delete all* moved to Admin's danger zone. Toolbar: search, configuration
+  filter, Lab-rigs switch. Keyboard: ↑ ↓ Enter Esc. The pattern and every
+  decision behind it are recorded in docs/BRAND.md → Portal patterns.
 - **Anchor Lab — runs, map growth, ghost.** Every Done posts a run record
   (`POST /anchors/:id/accuracy/runs`: label, type, device, marks, median /
   p90 / max, origin, relocalize / converge, corrections, interrupted, map

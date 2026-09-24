@@ -76,16 +76,45 @@
     .field input[type=number] { width: 100%; }
 
     /* ── Toolbar ── */
-    #toolbar { padding: 16px 24px 0; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-    #search { flex: 1; min-width: 180px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 9px 14px; color: var(--text); font-size: 0.9rem; outline: none; }
-    #search:focus { border-color: var(--accent); }
-    #search::placeholder { color: var(--muted); }
+    #toolbar { padding: 16px 24px 0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; max-width: 1360px; margin: 0 auto; }
+    #toolbar #search { flex: 1; min-width: 220px; padding: 10px 14px; }
+    #toolbar .ax-select { width: auto; max-width: 260px; padding: 10px 34px 10px 14px; }
+    #toolbar .ax-chip { padding: 8px 12px; font: var(--ax-label-s); text-transform: none; letter-spacing: 0; cursor: pointer; }
 
-    /* ── Anchor grid ── */
-    /* align-items: start — a card is as tall as its content. Otherwise opening one
-       card's tag list stretches every card in the row, leaving blank paper under
-       the neighbours' buttons. */
-    #anchor-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 16px; padding: 16px 24px 48px; align-items: start; }
+    /* ── The fleet — list + panel ── */
+    .fleet-wrap { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 16px 24px 48px; max-width: 1360px; margin: 0 auto; align-items: start; }
+    .fleet-wrap.has-panel { grid-template-columns: minmax(0, 1fr) 400px; }
+    .fleet-list { padding: 0; overflow: hidden; }
+    .fleet-list .ax-table th:first-child, .fleet-list .ax-table td:first-child { padding-left: 18px; }
+    .fleet-row { cursor: pointer; }
+    .fleet-row:focus-visible { outline: none; }
+    .fleet-row:focus-visible td { background: var(--ax-blue-fill); }
+    .fleet-row td b { font: var(--ax-body-m); }
+    .fleet-more { text-align: right; width: 44px; }
+    .fleet-more .ax-btn { font-size: 18px; line-height: 1; padding: 4px 8px; letter-spacing: 1px; }
+    .fleet-foot { padding: 10px 18px; color: var(--ax-ink-3); font: var(--ax-label-s); border-top: var(--ax-hair-2); }
+    .fleet-panel { position: sticky; top: 16px; }
+    .fleet-detail { padding: 20px; }
+    .fleet-detail-hdr { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .fleet-detail-hdr h2 { margin: 0; font: var(--ax-h2); }
+    .fleet-id { display: flex; align-items: center; gap: 4px; margin-top: 4px; color: var(--ax-ink-3); }
+    .fleet-id code { font: var(--ax-num); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 250px; }
+    .fleet-qr { display: flex; gap: 16px; align-items: center; margin: 16px 0 4px; }
+    .fleet-qr .qr-wrap { margin: 0; flex: none; }
+    .fleet-qr .qr-wrap img, .fleet-qr .qr-wrap .qr-loading { width: 120px; height: 120px; }
+    .fleet-qr-side { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+    .fleet-sec { margin-top: 18px; padding-top: 14px; border-top: var(--ax-hair-2); }
+    .fleet-sec .ax-eyebrow { margin-bottom: 8px; }
+    .fleet-sec--quiet { border-top: 0; margin-top: 10px; padding-top: 6px; }
+    .fleet-menu { position: absolute; z-index: 60; min-width: 190px; padding: 6px; display: flex; flex-direction: column; }
+    .fleet-menu button { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: transparent; border: 0; color: var(--ax-ink); font: var(--ax-body); padding: 9px 12px; border-radius: 10px; cursor: pointer; }
+    .fleet-menu button:hover { background: var(--ax-paper-3); }
+    .fleet-menu button.is-danger { color: var(--ax-red); }
+    .fleet-menu hr { border: 0; border-top: var(--ax-hair); margin: 4px 0; }
+    @media (max-width: 900px) {
+      .fleet-wrap.has-panel { grid-template-columns: 1fr; }
+      .fleet-panel { position: static; }
+    }
 
     /* ── Anchor card ── */
     .anchor-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--ax-r); padding: 16px; transition: border-color 0.2s; }
@@ -217,7 +246,7 @@
 
     /* ── Responsive ── */
     @media (max-width: 480px) {
-      #anchor-grid { grid-template-columns: 1fr; padding: 12px; }
+      .fleet-wrap { padding: 12px; }
       header { padding: 16px 12px 0; }
       #toolbar { padding: 12px 12px 0; }
     }
@@ -683,7 +712,7 @@
     <button class="btn btn-ghost btn-sm" id="admin-btn" onclick="toggleAdmin()" style="display:none" title="Destructive actions (delete, quiz editing) require the admin key"> Admin</button>
     <button class="btn btn-ghost btn-sm" onclick="showSettings()" data-tour="settings"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-gear"/></svg> Settings</button>
     <button class="btn btn-ghost btn-sm" id="guide-help-btn" onclick="guideStartTour(true)" title="Show me around this page" style="display:none"> Show me</button>
-    <button class="btn btn-primary btn-sm" onclick="openCreateModal()" data-tour="new-anchor">+ New Anchor</button>
+    <button class="btn btn-primary btn-sm" onclick="openCreateModal()" data-tour="new-anchor">+ New chamber</button>
   </div>
 </header>
 
@@ -770,15 +799,15 @@
   <button class="btn btn-primary" onclick="saveSettings()">Connect</button>
 </div>
 
-<!-- Toolbar -->
+<!-- Toolbar — search, one filter, the lab-rigs switch, refresh. The one primary (New chamber) lives in the header. -->
 <div id="toolbar" style="display:none">
-  <input id="search" type="search" placeholder="Search by anchor ID or asset…" oninput="renderAnchors()" />
-  <button class="btn btn-ghost btn-sm" onclick="loadAnchors()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-refresh"/></svg> Refresh</button>
-  <label style="font-size:0.78rem;color:var(--muted);display:inline-flex;align-items:center;gap:6px;margin-left:8px" title="Anchor Lab rigs are anchoring test beds; they never appear in production directories"><input type="checkbox" id="show-lab-rigs" onchange="renderAnchors()"> Lab rigs</label>
-  <button class="btn btn-danger btn-sm" onclick="deleteAllAnchors()" style="margin-left:auto"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg> Delete All</button>
+  <input id="search" class="ax-input" type="search" placeholder="Find a chamber by name, ID or configuration" oninput="renderAnchors()" />
+  <select id="fleet-config" class="ax-select" onchange="renderAnchors()" title="Show one configuration"><option value="">All configurations</option></select>
+  <button id="show-lab-rigs" class="ax-chip ax-chip--interactive" aria-pressed="false" onclick="toggleLabRigs(this)" title="Anchor Lab rigs are anchoring test beds; they never appear in production directories"><svg class="ax-icon ax-icon--sm"><use href="/portal/brand/icons.svg#i-target"/></svg> Lab rigs</button>
+  <button class="ax-btn ax-btn--quiet ax-btn--sm" onclick="loadAnchors()" aria-label="Refresh"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-refresh"/></svg></button>
 </div>
 
-<!-- Anchor grid -->
+<!-- The fleet: list + detail panel (rendered by renderAnchors) -->
 <div id="anchor-grid"></div>
 
 <!-- Phase 4: Sessions panel -->
@@ -997,6 +1026,11 @@
       <button class="btn btn-ghost" id="bk-full-btn" onclick="downloadBackup('full')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Full backup</button>
     </div>
     <div id="bk-status" style="display:none;margin-top:12px;font-size:0.78rem;font-family:var(--ax-mono);color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px"></div>
+    <hr style="border:0;border-top:var(--ax-hair);margin:16px 0 12px">
+    <div class="ax-row">
+      <span class="ax-label-s ax-muted" style="flex:1">Danger zone — removes every chamber, its tags and pass states. Take a backup first.</span>
+      <button class="ax-btn ax-btn--outline ax-btn--sm" style="color:var(--ax-red)" onclick="deleteAllAnchors()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg> Delete all chambers</button>
+    </div>
   </div>
   <div class="card" id="adm-configs-card" style="display:none">
     <h3><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chamber"/></svg> Chamber Configurations</h3>
@@ -2010,34 +2044,245 @@ async function loadAnchors() {
   }
 }
 
-// ── Render anchors ─────────────────────────────────────────────────────────────
+// ── Chambers (Anchors) — the fleet view ──────────────────────────────────────
+// One job: the state of every chamber in two seconds, and one click to the
+// chamber. A list (name · configuration · sealed · tags · lab · last activity)
+// and a detail panel that opens on the same page. docs/BRAND.md → Portal
+// patterns records why each element is where it is.
+let fleetSelectedId = null;          // the chamber open in the panel
+let fleetRows       = [];            // the rows currently listed, in order
+
+function fleetLastActivity(a) {
+  const t = [a.mapSealedAt, a.objectScannedAt, a.accuracy && a.accuracy.lastAt, a.createdAt].filter(Boolean).sort().pop();
+  return t ? new Date(t) : null;
+}
+function fleetWhen(d) {
+  if (!d) return '—';
+  const days = (Date.now() - d.getTime()) / 86400000;
+  if (days < 1)  return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  if (days < 7)  return d.toLocaleDateString(undefined, { weekday: 'short' });
+  return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+}
+function fleetSealChip(a) {
+  if (a.originSource === 'object' && a.objectScannedAt) return `<span class="ax-chip ax-chip--ok">Object</span>`;
+  return a.mapSealedAt ? `<span class="ax-chip ax-chip--ok">Sealed</span>` : `<span class="ax-chip ax-chip--warn">Not sealed</span>`;
+}
+function fleetTagsCell(a) {
+  const tags = tagsByAnchor[a.id] || [];
+  if (!tags.length) return `<span class="ax-muted">none</span>`;
+  const trained = tags.filter(t => t.isTrained).length;
+  const tone = trained === tags.length ? 'ax-chip--ok' : trained ? 'ax-chip--warn' : '';
+  return `<span class="ax-chip ax-chip--text ${tone}">${tags.length} · ${trained} trained</span>`;
+}
+function fleetLabCell(a) {
+  const l = a.accuracy;
+  if (!l || (!l.n && !l.runs)) return `<span class="ax-muted">—</span>`;
+  if (!l.n) return `<span class="ax-chip ax-chip--text">${l.runs} run${l.runs === 1 ? '' : 's'}</span>`;
+  const tone = l.medianMm <= 10 ? 'ax-chip--ok' : l.medianMm <= 25 ? 'ax-chip--warn' : 'ax-chip--bad';
+  return `<span class="ax-chip ax-chip--text ${tone}">${l.medianMm} mm</span>`;
+}
+
 function renderAnchors() {
   const q = (document.getElementById('search')?.value || '').toLowerCase();
-  // Anchor Lab rigs are test beds, not chambers — hidden unless asked for.
-  const showLab = document.getElementById('show-lab-rigs')?.checked;
-  const filtered = allAnchors.filter(a => (showLab ? a.anchorType === 'LAB' : a.anchorType !== 'LAB')).filter(a =>
-    !q ||
-    a.id.toLowerCase().includes(q) ||
-    a.assetId.toLowerCase().includes(q) ||
-    (configLabel(a.configId) || '').toLowerCase().includes(q)
-  );
+  const showLab = document.getElementById('show-lab-rigs')?.classList.contains('is-on');
+  const cfg = document.getElementById('fleet-config')?.value || '';
+  const filtered = allAnchors
+    .filter(a => (showLab ? a.anchorType === 'LAB' : a.anchorType !== 'LAB'))
+    .filter(a => !cfg || a.configId === cfg)
+    .filter(a => !q || a.id.toLowerCase().includes(q) || a.assetId.toLowerCase().includes(q) || (configLabel(a.configId) || '').toLowerCase().includes(q));
 
-  const grid = document.getElementById('anchor-grid');
+  const host = document.getElementById('anchor-grid');
+  const cfgSel = document.getElementById('fleet-config');
+  if (cfgSel && cfgSel.options.length !== chamberConfigs.length + 1) {
+    const cur = cfgSel.value;
+    cfgSel.innerHTML = '<option value="">All configurations</option>' + chamberConfigs.map(c => `<option value="${c.id}">${esc(c.code)} · ${esc(c.name)}</option>`).join('');
+    cfgSel.value = cur;
+  }
 
   if (!filtered.length) {
     const guided = !allAnchors.length ? guideEmptyState('anchors') : null;   // P1
-    grid.innerHTML = guided ? `<div style="grid-column:1/-1">${guided}</div>` : `<div class="empty" style="grid-column:1/-1">
-      <div style="font-size:2rem"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-doc"/></svg></div>
-      <p>${allAnchors.length ? 'No anchors match your search.' : 'No anchors yet. Create one to get started.'}</p>
-    </div>`;
+    host.innerHTML = guided ? `<div class="fleet-wrap">${guided}</div>` : `<div class="fleet-wrap"><div class="ax-empty ax-card">
+      <span class="ax-mark"><i></i><em></em></span>
+      <p>${allAnchors.length ? (showLab ? 'No lab rigs match.' : 'No chambers match.') : 'No chambers yet — create the first one and print its code.'}</p>
+      ${allAnchors.length ? '' : '<button class="ax-btn ax-btn--primary" onclick="openCreateModal()">New chamber</button>'}
+    </div></div>`;
+    fleetRows = []; fleetSelectedId = null;
     return;
   }
 
-  // Sort newest first
-  const sorted = [...filtered].sort((a,b) => b.createdAt.localeCompare(a.createdAt));
-  grid.innerHTML = '';
-  sorted.forEach(a => grid.appendChild(buildCard(a)));
+  fleetRows = [...filtered].sort((a, b) => (fleetLastActivity(b)?.getTime() || 0) - (fleetLastActivity(a)?.getTime() || 0));
+  if (fleetSelectedId && !fleetRows.some(a => a.id === fleetSelectedId)) fleetSelectedId = null;
+
+  host.innerHTML = `<div class="fleet-wrap${fleetSelectedId ? ' has-panel' : ''}">
+    <div class="ax-card fleet-list">
+      <table class="ax-table" id="fleet-table"><thead><tr>
+        <th>Chamber</th><th>Configuration</th><th>Origin</th><th>Tags</th><th>Lab</th><th>Last activity</th><th></th>
+      </tr></thead><tbody>${fleetRows.map(buildCard).join('')}</tbody></table>
+      <div class="fleet-foot">${fleetRows.length} ${showLab ? 'lab rig' : 'chamber'}${fleetRows.length === 1 ? '' : 's'}</div>
+    </div>
+    <aside class="fleet-panel" id="anchor-panel"></aside>
+  </div>`;
+  if (fleetSelectedId) renderAnchorPanel(fleetSelectedId, false);
 }
+
+/** One row. Kept as `card-${id}` so scroll-to-new and rebuildCard still work. */
+function buildCard(anchor) {
+  const isLab = anchor.anchorType === 'LAB';
+  const cfg = anchor.anchorType && anchor.anchorType !== 'QR' ? '' : (configLabel(anchor.configId) || '');
+  return `<tr id="card-${anchor.id}" class="fleet-row${anchor.id === fleetSelectedId ? ' is-selected' : ''}" tabindex="0"
+      onclick="selectAnchor('${anchor.id}')" onkeydown="fleetRowKey(event,'${anchor.id}')">
+    <td><b>${esc(anchor.assetId)}</b>${isLab ? ' <span class="ax-chip">Lab rig</span>' : ''}</td>
+    <td>${cfg ? esc(cfg) : (isLab ? '<span class="ax-muted">—</span>' : '<span class="ax-chip ax-chip--warn">Unassigned</span>')}</td>
+    <td>${fleetSealChip(anchor)}</td>
+    <td>${fleetTagsCell(anchor)}</td>
+    <td>${fleetLabCell(anchor)}</td>
+    <td class="ax-muted">${fleetWhen(fleetLastActivity(anchor))}</td>
+    <td class="fleet-more" onclick="event.stopPropagation()"><button class="ax-btn ax-btn--quiet ax-btn--sm" aria-label="More" onclick="openRowMenu(event,'${anchor.id}')">⋯</button></td>
+  </tr>`;
+}
+
+function rebuildCard(anchorId) {
+  const anchor = allAnchors.find(a => a.id === anchorId);
+  if (!anchor) return;
+  tagCounts[anchorId] = (tagsByAnchor[anchorId] || []).length;
+  const old = document.getElementById(`card-${anchorId}`);
+  if (old) { const tmp = document.createElement('tbody'); tmp.innerHTML = buildCard(anchor); old.replaceWith(tmp.firstElementChild); }
+  if (fleetSelectedId === anchorId) renderAnchorPanel(anchorId, false);
+}
+
+function selectAnchor(id) {
+  if (fleetSelectedId === id) { closeAnchorPanel(); return; }
+  fleetSelectedId = id;
+  document.querySelectorAll('#fleet-table tr.is-selected').forEach(r => r.classList.remove('is-selected'));
+  document.getElementById(`card-${id}`)?.classList.add('is-selected');
+  document.querySelector('.fleet-wrap')?.classList.add('has-panel');
+  renderAnchorPanel(id, true);
+}
+function closeAnchorPanel() {
+  fleetSelectedId = null;
+  document.querySelectorAll('#fleet-table tr.is-selected').forEach(r => r.classList.remove('is-selected'));
+  document.querySelector('.fleet-wrap')?.classList.remove('has-panel');
+  const p = document.getElementById('anchor-panel'); if (p) p.innerHTML = '';
+}
+function fleetRowKey(e, id) {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectAnchor(id); return; }
+  if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+  e.preventDefault();
+  const i = fleetRows.findIndex(a => a.id === id);
+  const n = fleetRows[i + (e.key === 'ArrowDown' ? 1 : -1)];
+  if (n) { document.getElementById(`card-${n.id}`)?.focus(); if (fleetSelectedId) { fleetSelectedId = n.id; document.querySelectorAll('#fleet-table tr.is-selected').forEach(r => r.classList.remove('is-selected')); document.getElementById(`card-${n.id}`)?.classList.add('is-selected'); renderAnchorPanel(n.id, false); } }
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeRowMenu(); if (fleetSelectedId && location.hash.startsWith('#anchors')) closeAnchorPanel(); } });
+
+/** The detail panel: everything about one chamber, on the same page. */
+function renderAnchorPanel(id, arriving) {
+  const a = allAnchors.find(x => x.id === id);
+  const p = document.getElementById('anchor-panel');
+  if (!a || !p) return;
+  const isLab  = a.anchorType === 'LAB';
+  const isTech = UAM_USER && UAM_USER.role === 'technician';
+  const tags = [...(tagsByAnchor[id] || [])].sort((x, y) => ((x.order ?? Infinity) - (y.order ?? Infinity)) || (x.createdAt || '').localeCompare(y.createdAt || ''));
+  const trained = tags.filter(t => t.isTrained).length;
+  const created = new Date(a.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+  const sealed  = a.mapSealedAt ? new Date(a.mapSealedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : null;
+  const cfgOpts = ['<option value="">— unassigned —</option>'].concat(chamberConfigs.map(c => `<option value="${c.id}" ${c.id === a.configId ? 'selected' : ''}>${esc(c.code)} · ${esc(c.name)}</option>`)).join('');
+  const lab = a.accuracy && (a.accuracy.n || a.accuracy.runs) ? a.accuracy : null;
+
+  p.innerHTML = `<div class="ax-card fleet-detail${arriving ? ' ax-lockin' : ''}">
+    <div class="fleet-detail-hdr">
+      <div>
+        <h2>${esc(a.assetId)}</h2>
+        <div class="fleet-id"><code>${a.id}</code> <button class="ax-btn ax-btn--quiet ax-btn--sm" onclick="copyAnchorId('${a.id}')" aria-label="Copy ID"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-copy"/></svg></button></div>
+      </div>
+      <button class="ax-btn ax-btn--quiet ax-btn--sm" onclick="closeAnchorPanel()" aria-label="Close"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-close"/></svg></button>
+    </div>
+
+    <div class="fleet-qr">
+      <div class="qr-wrap" id="qr-${safeId(a.id)}"></div>
+      <div class="fleet-qr-side">
+        <div class="ax-label-s">Print at ${a.qrSizeCm ?? 10} cm · the code is the chamber's key</div>
+        <button class="ax-btn ax-btn--sm" onclick="openQRPrint('${a.id}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-doc"/></svg> Print QR</button>
+        <div class="ax-label-s ax-muted">Created ${created}${isLab ? ' · Lab rig' : ''}</div>
+      </div>
+    </div>
+
+    <section class="fleet-sec">
+      <div class="ax-eyebrow">Origin</div>
+      <div class="ax-row">
+        ${fleetSealChip(a)}
+        <span class="ax-label-s">${a.mapSealedAt ? `World map sealed ${sealed}` : 'No sealed world map yet — an author seals it on the first scan (Lab: tap to tag, then Save)'}</span>
+        ${a.mapSealedAt ? `<button class="ax-btn ax-btn--quiet ax-btn--sm" onclick="unsealAnchorMap('${a.id}','${jsEsc(a.assetId)}')">Unseal</button>` : ''}
+      </div>
+      ${objectScanHtml(a) ? `<div class="ax-row" style="margin-top:8px">${objectScanHtml(a)}</div>` : ''}
+      ${lab ? `<div class="ax-row" style="margin-top:8px">${anchorLabHtml(a)}</div>` : ''}
+    </section>
+
+    ${isLab || (a.anchorType && a.anchorType !== 'QR') ? '' : `<section class="fleet-sec">
+      <div class="ax-eyebrow">Configuration</div>
+      ${isTech ? `<div>${esc(configLabel(a.configId) || 'Unassigned')}</div>`
+               : `<select class="ax-select" onchange="assignAnchorConfig('${a.id}', this.value)">${cfgOpts}</select>
+                  <div class="ax-help ax-label-s ax-muted" style="margin-top:6px">Engineers and operators find this chamber by its configuration.</div>`}
+    </section>`}
+
+    <section class="fleet-sec">
+      <div class="ax-row ax-row--between">
+        <div class="ax-eyebrow">Tags${tags.length ? ` · ${tags.length} · ${trained} trained` : ''}</div>
+        <button class="ax-btn ax-btn--sm" onclick="openCreateTagModal('${a.id}')">+ Add tag</button>
+      </div>
+      ${tags.length ? `<div class="tag-list" style="margin-top:8px">${tags.map(tag => {
+        const ti = tagTypeInfo(tag.type);
+        const src = tag.metadata && tag.metadata.source;
+        return `<div class="tag-row">
+          <div class="tag-dot" style="background:${ti.color}"></div>
+          <div class="tag-info"><div class="tag-lbl" title="${esc(tag.label)}">${esc(tag.label)}</div><div class="tag-typ">${esc(ti.label)}${tag.order != null ? ` · #${tag.order}` : ''}</div></div>
+          ${tag.isTrained ? '<span class="ax-chip ax-chip--ok">Trained</span>' : '<span class="ax-chip ax-chip--warn">Untrained</span>'}
+          ${src === 'excel' ? '<span class="ax-chip">Excel</span>' : src === 'mes' ? '<span class="ax-chip ax-chip--info">MES</span>' : ''}
+          <div class="tag-acts">
+            <button class="btn-icon" title="Edit tag" aria-label="Edit tag" onclick="openEditTagModal('${tag.id}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-edit"/></svg></button>
+            <button class="btn-icon danger" title="Delete tag" aria-label="Delete tag" onclick="openDeleteTagModal('${tag.id}','${a.id}','${jsEsc(tag.label)}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg></button>
+          </div>
+        </div>`; }).join('')}</div>`
+        : `<div class="ax-empty" style="padding:18px;margin-top:8px"><p style="margin:0">No tags yet — add one here, or place them in the app.</p></div>`}
+    </section>
+
+    <section class="fleet-sec fleet-sec--quiet">
+      <div class="ax-row">
+        <button class="ax-btn ax-btn--quiet ax-btn--sm" title="New chamber (new QR + key) with the same guides and 3D model kit — no world map or tags" onclick="duplicateAnchor('${a.id}','${jsEsc(a.assetId)}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-copy"/></svg> Duplicate</button>
+        <button class="ax-btn ax-btn--quiet ax-btn--sm" style="color:var(--ax-red)" onclick="openDeleteModal('${a.id}','${jsEsc(a.assetId)}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg> Delete chamber</button>
+      </div>
+    </section>
+  </div>`;
+  setTimeout(() => loadQRImage(a), 0);
+  if (arriving && window.matchMedia('(max-width: 900px)').matches) p.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── Row menu — everything a row can do, without shouting from every row ──────
+let rowMenuEl = null;
+function openRowMenu(ev, id) {
+  closeRowMenu();
+  const a = allAnchors.find(x => x.id === id); if (!a) return;
+  const m = document.createElement('div');
+  m.className = 'fleet-menu ax-solid ax-lockin';
+  m.innerHTML = `
+    <button onclick="selectAnchor('${id}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-eye"/></svg> Open</button>
+    <button onclick="openQRPrint('${id}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-doc"/></svg> Print QR</button>
+    <button onclick="copyAnchorId('${id}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-copy"/></svg> Copy ID</button>
+    <button onclick="duplicateAnchor('${id}','${jsEsc(a.assetId)}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-copy-all"/></svg> Duplicate</button>
+    ${a.mapSealedAt ? `<button onclick="unsealAnchorMap('${id}','${jsEsc(a.assetId)}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-unlock"/></svg> Unseal map</button>` : ''}
+    <hr>
+    <button class="is-danger" onclick="openDeleteModal('${id}','${jsEsc(a.assetId)}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg> Delete chamber</button>`;
+  document.body.appendChild(m);
+  const r = ev.currentTarget.getBoundingClientRect();
+  const w = m.offsetWidth;
+  m.style.top  = (r.bottom + window.scrollY + 4) + 'px';
+  m.style.left = Math.max(8, r.right + window.scrollX - w) + 'px';
+  rowMenuEl = m;
+  setTimeout(() => document.addEventListener('click', closeRowMenuOnOutside), 0);
+}
+function closeRowMenuOnOutside(e) { if (rowMenuEl && !rowMenuEl.contains(e.target)) closeRowMenu(); }
+function closeRowMenu() { if (rowMenuEl) { rowMenuEl.remove(); rowMenuEl = null; } document.removeEventListener('click', closeRowMenuOnOutside); }
+
+function toggleLabRigs(el) { el.classList.toggle('is-on'); el.setAttribute('aria-pressed', el.classList.contains('is-on')); closeAnchorPanel(); renderAnchors(); }
 
 // B1 (2026.4.46): sealed-map badge. The author's world map is the origin for
 // tags; an unsealed anchor still works, from the QR pose (less consistent).
@@ -2190,150 +2435,6 @@ function renderAnchorLab(d) {
     </details>`;
 }
 
-// ── Build anchor card ──────────────────────────────────────────────────────────
-function buildCard(anchor) {
-  const count = tagCounts[anchor.id] ?? 0;
-  const card  = document.createElement('div');
-  card.className = 'anchor-card';
-  card.id = `card-${anchor.id}`;
-
-  const short  = anchor.id.length > 22 ? anchor.id.slice(0,10)+'…'+anchor.id.slice(-8) : anchor.id;
-  const date   = new Date(anchor.createdAt).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
-  const badge  = (anchor.anchorType === 'LAB' ? '<span class="badge badge-muted" title="Anchor Lab rig — a test bed, not a chamber">LAB RIG</span> ' : '') + (count > 0
-    ? `<span class="badge badge-green">${count} tag${count!==1?'s':''}</span>` : `<span class="badge badge-orange">No tags</span>`);
-
-  const hasKey  = !!anchor.encryptionKey;
-  const keyHtml = hasKey
-    ? `<p class="key-ok"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-key"/></svg> Encryption key included — QR matches the iOS-generated code.</p>` : `<p class="key-warn"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-alert"/></svg> No encryption key stored for this anchor. For secure inspections, regenerate the QR from the iOS app (Author mode → QR icon) to embed the key.</p>`;
-
-  card.innerHTML = ` <div class="card-header">
-      <div class="card-ids">
-        <h3 title="${anchor.id}">${short}</h3>
-        <div class="asset">${anchor.assetId}</div>
-      </div>
-      ${badge}
-    </div>
-    <div class="qr-wrap" id="qr-${safeId(anchor.id)}"></div>
-    <div class="card-meta">
-      <span>Created ${date}</span>
-      <span>${anchor.coordinateSystem}</span>
-      ${mapSealedHtml(anchor)}
-      ${objectScanHtml(anchor)}
-      ${anchorLabHtml(anchor)}
-    </div>
-    ${configRowHtml(anchor)}
-    ${keyHtml}
-    ${buildTagSection(anchor)}
-    <div class="card-actions" style="margin-top:12px">
-      <span class="qr-size-label" style="font-size:11px;color:var(--ax-ink-3);align-self:center">
-        <svg class="ax-icon"><use href="/portal/brand/icons.svg#i-target"/></svg> ${anchor.qrSizeCm ?? 10} cm print size
-      </span>
-      <button class="btn btn-ghost btn-sm" onclick="openQRPrint('${anchor.id}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-doc"/></svg> Print / PDF</button>
-      <button class="btn btn-ghost btn-sm" onclick="copyAnchorId('${anchor.id}')">Copy ID</button>
-      <button class="btn btn-ghost btn-sm" title="New anchor (new QR + key) with the same guides and 3D model kit — no world map or tags" onclick="duplicateAnchor('${anchor.id}','${jsEsc(anchor.assetId)}')">⧉ Duplicate</button>
-      <button class="btn btn-danger btn-sm" onclick="openDeleteModal('${anchor.id}','${jsEsc(anchor.assetId)}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg> Delete</button>
-    </div>
-  `;
-
-  // Fetch canonical QR image from server
-  setTimeout(() => loadQRImage(anchor), 0);
-  return card;
-}
-
-// ── Rebuild a single card after tag CRUD ──────────────────────────────────────
-// Replaces the card node in-place. Expand state is preserved via expandedAnchors.
-function rebuildCard(anchorId) {
-  const anchor = allAnchors.find(a => a.id === anchorId);
-  if (!anchor) return;
-  const old = document.getElementById(`card-${anchorId}`);
-  if (!old) return;
-  tagCounts[anchorId] = (tagsByAnchor[anchorId] || []).length;
-  old.replaceWith(buildCard(anchor));
-}
-
-// ── T96: Build tag section HTML string ───────────────────────────────────────
-function buildTagSection(anchor) {
-  const anchorId = anchor.id;
-  const safe     = safeId(anchorId);
-
-  // Sort by order (ascending), then by createdAt
-  const tags = [...(tagsByAnchor[anchorId] || [])].sort((a, b) => {
-    const ao = a.order != null ? a.order : Infinity;
-    const bo = b.order != null ? b.order : Infinity;
-    if (ao !== bo) return ao - bo;
-    return (a.createdAt || '').localeCompare(b.createdAt || '');
-  });
-
-  const isExpanded   = expandedAnchors.has(anchorId);
-  const trainedCount = tags.filter(t => t.isTrained).length;
-
-  // Build tag rows
-  let listHtml;
-  if (tags.length === 0) {
-    listHtml = `<div class="tags-empty">No tags yet — tap "+ Add" to create the first one.</div>`;
-  } else {
-    listHtml = '<div class="tag-list">' + tags.map(tag => {
-      const ti         = tagTypeInfo(tag.type);
-      const trainBadge = tag.isTrained
-        ? `<span class="badge-trained">Trained</span>` : `<span class="badge-untrained">Untrained</span>`;
-
-      // Source chip — visible only for non-manual sources (excel / mes / unknown)
-      const src = tag.metadata && tag.metadata.source;
-      let srcChip = '';
-      if      (src === 'excel') srcChip = `<span class="source-chip excel">EXCEL</span>`;
-      else if (src === 'mes')   srcChip = `<span class="source-chip mes">MES</span>`;
-
-      const orderNote = tag.order != null ? ` · #${tag.order}` : '';
-
-      return `<div class="tag-row">
-        <div class="tag-dot" style="background:${ti.color}"></div>
-        <div class="tag-info">
-          <div class="tag-lbl" title="${esc(tag.label)}">${esc(tag.label)}</div>
-          <div class="tag-typ">${esc(ti.label)}${orderNote}</div>
-        </div>
-        ${trainBadge}
-        ${srcChip}
-        <div class="tag-acts">
-          <button class="btn-icon" title="Edit tag" aria-label="Edit tag" onclick="openEditTagModal('${tag.id}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-edit"/></svg></button>
-          <button class="btn-icon danger" title="Delete tag" aria-label="Delete tag" onclick="openDeleteTagModal('${tag.id}','${anchorId}','${jsEsc(tag.label)}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg></button>
-        </div>
-      </div>`;
-    }).join('') + '</div>';
-  }
-
-  const chipLabel = tags.length > 0 ? `${trainedCount}/${tags.length} trained` : '0 tags';
-
-  return ` <div class="tag-section">
-      <div class="tag-section-hdr" onclick="toggleTagSection('${anchorId}')">
-        <span class="tag-section-title">Tags</span>
-        <span class="tag-count-chip">${chipLabel}</span>
-        <button class="btn btn-ghost btn-sm" style="padding:3px 10px;font-size:0.78rem;flex-shrink:0" onclick="event.stopPropagation();openCreateTagModal('${anchorId}')">+ Add</button>
-        <span id="tag-chevron-${safe}" class="tag-chevron${isExpanded ? ' open' : ''}"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chevron"/></svg></span>
-      </div>
-      <div id="tag-body-${safe}" class="tag-body" style="display:${isExpanded ? 'block' : 'none'}">
-        ${listHtml}
-      </div>
-    </div>`;
-}
-
-// ── T96: Toggle tag section open/closed (instant DOM, no rebuild) ─────────────
-function toggleTagSection(anchorId) {
-  const safe    = safeId(anchorId);
-  const body    = document.getElementById(`tag-body-${safe}`);
-  const chevron = document.getElementById(`tag-chevron-${safe}`);
-  if (!body || !chevron) return;
-
-  if (expandedAnchors.has(anchorId)) {
-    expandedAnchors.delete(anchorId);
-    body.style.display = 'none';
-    chevron.classList.remove('open');
-  } else {
-    expandedAnchors.add(anchorId);
-    body.style.display = 'block';
-    chevron.classList.add('open');
-  }
-}
-
 // ── QR image — fetched from the server ────────────────────────────────────────
 // The server generates the canonical QR PNG once at anchor creation using the
 // `qrcode` npm library (ECC level M, 512×512).  We fetch it here with the API
@@ -2416,9 +2517,10 @@ async function submitCreateAnchor() {
     allAnchors.unshift(newAnchor);
     tagsByAnchor[newAnchor.id] = [];
     tagCounts[newAnchor.id]    = 0;
+    fleetSelectedId = newAnchor.id;     // open it — the next step is printing its code
     renderAnchors();
     closeCreateModal();
-    toast(`Anchor created: ${newAnchor.id.slice(0,16)}…`);
+    toast(`Chamber created: ${newAnchor.assetId}`);
     setTimeout(() => {
       document.getElementById(`card-${newAnchor.id}`)?.scrollIntoView({behavior:'smooth', block:'center'});
     }, 100);
@@ -2473,7 +2575,7 @@ async function confirmDeleteAnchor() {
     delete tagCounts[id];
     expandedAnchors.delete(id);
     renderAnchors();
-    toast('Anchor deleted.');
+    toast('Chamber deleted.');
   } catch (e) {
     alert(`Failed to delete anchor: ${e.message}`);
   }

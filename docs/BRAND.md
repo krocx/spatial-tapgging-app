@@ -105,6 +105,57 @@ For anyone generating code in this repo — including assistants — the short
 form is in `CLAUDE.md` at the repo root: tokens only, sprite icons only, the
 mark and lock-in, the app's corners and colours, no glass, no emoji.
 
+## Portal patterns — every element earns its place
+
+The tokens make the portal look like the app; these patterns make it *behave*
+like it. Chambers (Anchors) is the reference page; every list page adopts the
+same shape, and each decision below carries its reason so the next page is
+built from the pattern, not reinvented.
+
+**The page has one job.** Chambers answers "what is the state of my fleet, and
+take me to one" — nothing else. Everything on the page serves that; anything
+that doesn't (the QR code on every card, the UUID as a title, six equal
+buttons per chamber) was removed or moved.
+
+**A list, not a gallery.** Many things with the same fields want rows: the
+eye compares down a column, and a scan of the *Origin* and *Tags* columns
+finds the chamber that needs attention without reading. Cards are for a few
+things that differ in kind (the Home doors), never for a fleet.
+
+**Only what changes a decision is a column.** Name · configuration · origin
+(sealed / not sealed / object) · tags (n · trained) · lab median · last
+activity. IDs, creation dates and internal codes are not decisions; they live
+in the panel, in mono, with a copy button.
+
+**One primary per screen.** *New chamber* in the header is the only filled
+blue button. Every row action sits in a `⋯` menu — reachable, never
+shouting. Destructive actions are quiet, red only in colour, always behind a
+confirmation that says what will be lost. *Delete all* is not on the page at
+all; it is a danger-zone action in Admin next to Backups.
+
+**Detail opens beside the list.** Clicking a row opens the chamber in a
+panel on the same page (`.ax-lockin` arrival, the app's signature), so the
+place in the list is never lost. The panel holds the QR at print-preview size
+with the one thing you do with it (Print), the origin state, the
+configuration, the tag list with edit / delete, and the quiet actions.
+Esc closes, ↑ ↓ move between rows, Enter opens.
+
+**Empty states say the next step.** "No chambers yet — create the first one
+and print its code" with the button that does it. A filtered-empty list says
+what was filtered, never a generic "nothing found".
+
+**Copy in the app's voice.** Chamber, not anchor, in user-facing text (Lab
+rigs are called that). Sentence case. No internal codes (`ASSET_FRAME`,
+`QR`), no jargon a technician wouldn't say.
+
+**Nothing decorative.** No icon that doesn't identify, no chip that doesn't
+carry a state, no animation that doesn't confirm something real. The
+registration mark marks loading and empty; the wordmark is the only
+flourish.
+
+Adoption order: Chambers (shipped) → Guide Library → Sessions → the Lab
+modal → Admin pages.
+
 ## Migration plan
 
 1. **Slice 1 (this):** `brand/`, `/brand`, icon sprite, checker, doctrine. No existing page touched.
