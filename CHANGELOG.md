@@ -338,7 +338,9 @@ it, it gets a line.
   pins (fold to a dot under 0.35 m, back past 0.5 m) so up close the feature
   is visible and a drift mark is made against it, not the tag; the panel
   says whether marks land on the LiDAR mesh or an estimated plane. The Lab
-  always uses the
+  rig page shows the Run section only once tags are placed and sealed, and
+  the QR button / QR placement only when the QR + map run type is chosen.
+  The Lab always uses the
   LiDAR scene mesh so taps and marks land on the object, not the plane
   behind it. The QR path stays as *Place with the QR* for QR + map runs.
 - **Add-tag picker trimmed.** Cone and QuickShot only; OCR is shown but

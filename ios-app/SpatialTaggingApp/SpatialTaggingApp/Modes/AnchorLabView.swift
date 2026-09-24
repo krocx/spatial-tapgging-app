@@ -181,6 +181,8 @@ struct LabRigView: View {
 
     private var client: SIBClient { SIBClient(settings: settings) }
     private var placedTags: [Tag] { tags.filter { $0.metadata["anchor_rel_x"] != nil } }
+    /// Tags placed and the map sealed — the only state a run makes sense in.
+    private var runReady: Bool { !placedTags.isEmpty && sealedAt != nil }
 
     var body: some View {
         List {
@@ -192,7 +194,10 @@ struct LabRigView: View {
                             .font(.caption).foregroundStyle(sealedAt == nil ? .orange : .secondary)
                     }
                     Spacer()
-                    Button { showQR = true } label: { Label("QR", systemImage: "qrcode") }.buttonStyle(.bordered)
+                    // The code only matters for QR + map runs — no QR clutter otherwise.
+                    if runReady, runType == .qr {
+                        Button { showQR = true } label: { Label("QR", systemImage: "qrcode") }.buttonStyle(.bordered)
+                    }
                 }
             }
 
@@ -200,19 +205,23 @@ struct LabRigView: View {
                 Button { showPlace = true } label: {
                     Label(placedTags.isEmpty ? "Tap to tag real features" : "Add / remove tags (\(placedTags.count))", systemImage: "mappin.and.ellipse")
                 }
-                Button { startPlacing() } label: {
-                    Label("Place with the QR (full Author mode)", systemImage: "qrcode.viewfinder").font(.subheadline)
-                }.foregroundStyle(.secondary)
+                if runReady, runType == .qr {
+                    Button { startPlacing() } label: {
+                        Label("Place with the QR (full Author mode)", systemImage: "qrcode.viewfinder").font(.subheadline)
+                    }.foregroundStyle(.secondary)
+                }
                 if !placedTags.isEmpty {
                     ForEach(placedTags) { t in
                         Text(t.label).font(.subheadline)
                     }
                 }
-                Text("No code needed: aim the ring at a physical feature you can find again — a hinge pin, a screw head, a corner — and place a pin. Three to five is plenty. Save seals the map, with everything you looked at, as the rig's frame.")
+                Text(runReady ? "Tap to tag again to add or remove tags; Save re-seals the map."
+                              : "No code needed: tap a physical feature you can find again — a hinge pin, a screw head, a corner. Three to five is plenty. Save seals the map, with everything you looked at, as the rig's frame.")
                     .font(.caption).foregroundStyle(.secondary)
             }
 
-            Section("2 · Run") {
+            // The run section appears only once there is something to run.
+            if runReady { Section("2 · Run") {
                 Picker("Run type", selection: $runType) {
                     ForEach(LabRunType.allCases) { Text($0.title).tag($0) }
                 }.pickerStyle(.segmented)
@@ -231,11 +240,7 @@ struct LabRigView: View {
                 Button { startRun() } label: {
                     Label("Start run · \(runLabel)", systemImage: "play.fill")
                 }
-                .disabled(placedTags.isEmpty || sealedAt == nil)
-                if placedTags.isEmpty || sealedAt == nil {
-                    Text("Tag the rig first (Save seals the map).").font(.caption).foregroundStyle(.orange)
-                }
-            }
+            } }
 
             Section("3 · History") {
                 if let h = history, h.n > 0 {
