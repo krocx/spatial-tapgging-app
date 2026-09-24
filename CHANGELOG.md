@@ -334,7 +334,11 @@ it, it gets a line.
   origin axes and the lab panel are toggles. To report drift, tap a tag and
   aim the orange 3-D ring (the tag-placing ring, recoloured), tap to mark;
   the mark stays as an orange dot with a hairline to the tag. The panel is
-  docked at the bottom so it never covers the rig. The Lab always uses the
+  docked at the bottom so it never covers the rig. Lab pins tuck like AR OMS
+  pins (fold to a dot under 0.35 m, back past 0.5 m) so up close the feature
+  is visible and a drift mark is made against it, not the tag; the panel
+  says whether marks land on the LiDAR mesh or an estimated plane. The Lab
+  always uses the
   LiDAR scene mesh so taps and marks land on the object, not the plane
   behind it. The QR path stays as *Place with the QR* for QR + map runs.
 - **Add-tag picker trimmed.** Cone and QuickShot only; OCR is shown but

@@ -56,7 +56,9 @@ rigs* toggle.
    the top bar: the origin axes, and the **Lab panel** (lock report, tag
    chips, marks). To report drift: tap a tag (or its chip), aim the **orange
    ring** — the same 3-D ring used to place tags — at its physical feature
-   from ≤ 60 cm, then tap again or press **Mark where it really is**. An
+   from ≤ 60 cm — the pin tucks to a dot as you get close (AR OMS rule) so
+   the feature itself is what you aim at — then tap again or press **Mark
+   where it really is**. An
    orange dot stays where you marked, with a hairline to the tag, so the
    offset is visible in the room. Two viewpoints per tag. **Done** shows this
    run's median next to the rig's history by run type.
@@ -83,6 +85,11 @@ What the mark measures: the 3-D distance between where the tag *rendered*
 and the raycast point. Aiming error at 50 cm with the crosshair is ≈ 1–2 mm;
 LiDAR raycast error at that range is ≈ 3–5 mm. So the floor of this method is
 about 5 mm — it can tell 5 from 15 from 40, which is what we need.
+
+**Devices without LiDAR** run the same flow; taps and marks land on ARKit's
+estimated planes instead of the mesh (the panel's *Surface* row says which).
+Expect a higher floor (≈ 1–3 cm on flat features, worse on small raised
+parts); compare such runs by device in the portal, never against a LiDAR run.
 
 ## Bands (used in the app, the card badge and the portal)
 

@@ -374,6 +374,7 @@ struct LabRunView: View {
     @State private var ringTracking = false
     @State private var sending = false
     @State private var toast: String? = nil
+    @State private var tucked = Set<String>()
     private let ticker = Timer.publish(every: 1.0 / 30.0, on: .main, in: .common).autoconnect()
 
     private var client: SIBClient { SIBClient(settings: settings) }
@@ -445,6 +446,9 @@ struct LabRunView: View {
             await start()
         }
         .onReceive(ticker) { _ in
+            if phase == .ready, let cam = arManager.sceneView.session.currentFrame?.camera.transform {
+                LabMarker.updateTuck(markerNodes, camera: simd_float3(cam.columns.3.x, cam.columns.3.y, cam.columns.3.z), tucked: &tucked)
+            }
             guard let ring = truthRing else { return }
             ring.update(sceneView: arManager.sceneView)
             if ringTracking != ring.isTracking { ringTracking = ring.isTracking }
@@ -466,6 +470,8 @@ struct LabRunView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     if let a = report.approachDeg { labRow("Approach", String(format: "%.0f°", a)) }
                     if let l = report.lightLux    { labRow("Light",    String(format: "%.0f", l)) }
+                    labRow("Surface", ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh) ? "LiDAR mesh" : "est. plane",
+                           tint: ARWorldTrackingConfiguration.supportsSceneReconstruction(.mesh) ? .green : .orange)
                     if let d = arManager.qrDiscrepancy {
                         labRow("QR vs origin", String(format: "%.0f mm", d.mm), tint: d.mm > 20 ? .orange : .green)
                     } else {
@@ -582,6 +588,7 @@ struct LabRunView: View {
         guard let o = origin else { return }
         markerNodes.values.forEach { $0.removeFromParentNode() }
         markerNodes = [:]
+        tucked = []
         for (i, tag) in tags.enumerated() {
             guard let x = num(tag.metadata["anchor_rel_x"]), let y = num(tag.metadata["anchor_rel_y"]), let z = num(tag.metadata["anchor_rel_z"]) else { continue }
             let p = ARCoordinateFrame.toWorldSpace(anchorRelativePos: simd_float3(Float(x), Float(y), Float(z)), anchorTransform: o)
@@ -903,12 +910,34 @@ enum LabMarker {
         torus.firstMaterial    = tMat
         let ring               = SCNNode(geometry: torus)
         ring.eulerAngles       = SCNVector3(Float.pi / 2, 0, 0)
+        ring.name              = "ring"
         root.addChildNode(ring)
 
         let badge = numberBadge(number: number, color: color)
         badge.simdPosition = simd_float3(0, 0.055, 0)
+        badge.name         = "badge"
         root.addChildNode(badge)
         return root
+    }
+
+    /// AR OMS proximity tuck, verbatim: under 0.35 m the pin folds to a small
+    /// dot (badge and ring fade, 220 ms); past 0.5 m it registers back. Up
+    /// close the tag must not hide the feature it marks — which is also what
+    /// makes a drift mark honest: the tester sees the feature, not the tag.
+    static func updateTuck(_ nodes: [String: SCNNode], camera: simd_float3, tucked: inout Set<String>) {
+        for (id, pin) in nodes {
+            let dist = simd_length(pin.simdWorldPosition - camera)
+            let was  = tucked.contains(id)
+            let now  = was ? dist < 0.5 : dist < 0.35
+            guard now != was else { continue }
+            if now { tucked.insert(id) } else { tucked.remove(id) }
+            let scale = SCNAction.scale(to: now ? 0.3 : 1.0, duration: 0.22)
+            scale.timingMode = .easeOut
+            pin.runAction(scale, forKey: "tuck")
+            for child in pin.childNodes where child.name == "badge" || child.name == "ring" {
+                child.runAction(.fadeOpacity(to: now ? 0 : 1, duration: 0.22), forKey: "tuck")
+            }
+        }
     }
 
     private static func numberBadge(number: Int, color: UIColor) -> SCNNode {
@@ -1022,6 +1051,8 @@ struct LabPlaceView: View {
     @State private var toast: String? = nil
     @State private var started = false
     @State private var dirty = false
+    @State private var tucked = Set<String>()
+    private let ticker = Timer.publish(every: 1.0 / 20.0, on: .main, in: .common).autoconnect()
 
     private var client: SIBClient { SIBClient(settings: settings) }
     private var nextNumber: Int { (tags.compactMap { Int($0.label.split(separator: " ").last ?? "") }.max() ?? tags.count) + 1 }
@@ -1107,6 +1138,10 @@ struct LabPlaceView: View {
             }
         }
         .task { guard !started else { return }; started = true; await start() }
+        .onReceive(ticker) { _ in
+            guard phase == .ready || phase == .saving, let cam = arManager.sceneView.session.currentFrame?.camera.transform else { return }
+            LabMarker.updateTuck(nodes, camera: simd_float3(cam.columns.3.x, cam.columns.3.y, cam.columns.3.z), tucked: &tucked)
+        }
     }
 
     // ── Session ───────────────────────────────────────────────────────────────
@@ -1217,7 +1252,7 @@ struct LabPlaceView: View {
     private func remove(_ t: Tag) async {
         do {
             try await client.deleteTag(id: t.id)
-            nodes[t.id]?.removeFromParentNode(); nodes[t.id] = nil
+            nodes[t.id]?.removeFromParentNode(); nodes[t.id] = nil; tucked.remove(t.id)
             tags.removeAll { $0.id == t.id }
             dirty = true
         } catch { show("Couldn't delete: \(error.localizedDescription)") }
