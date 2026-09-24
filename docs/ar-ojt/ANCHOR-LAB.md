@@ -76,7 +76,9 @@ portal's Lab view lists runs newest first; the rig's History does the same.
 **Map growth (Lab only, for now).** A clean run — relocalized into the sealed
 map, origin *locked* (not approximate), never interrupted — saves its map
 back over the sealed one if it is at least 5 % larger. Every viewpoint the
-testers use is then in the map for the next run. Watch the *Runs* table: the
+testers use is then in the map for the next run. The upload happens behind
+the run summary; the rig page has a *Grow the map on clean runs* switch (on
+by default) for A/B runs with growth off. Watch the *Runs* table: the
 map column should grow over the first runs and relocalize times fall. This is
 the measurement that decides whether production gets the same behaviour.
 

@@ -7,6 +7,11 @@ it, it gets a line.
 ## 2026.4.46 — 2026-09-08
 
 ### Fixed
+- **Anchor Lab — Done is quick again.** Only the map serialisation (≈ 1 s)
+  happens before the summary; the 2 MB upload and the run record go on in
+  the background while the summary is read (its Map row updates when the
+  upload settles). Map growth has a switch on the rig page (on by default).
+  The rig page's controls are back to standard size.
 - **Anchor Lab — portal badge for rigs with runs but no marks.** The *Lab*
   badge (the only way into the Lab modal) appeared only once a rig had marks,
   so a rig with runs and 0 marks showed nothing. It now appears for runs too

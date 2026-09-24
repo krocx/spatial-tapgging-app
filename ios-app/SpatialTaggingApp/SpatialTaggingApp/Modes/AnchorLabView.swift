@@ -174,6 +174,7 @@ struct LabRigView: View {
     @State private var runType: LabRunType = .map
     @State private var runLabel: String = UserDefaults.standard.string(forKey: "anchor_lab_run") ?? "author spot"
     @State private var customLabel = ""
+    @AppStorage("lab_map_growth") private var growMap = true
     @State private var showRunGate = false        // QR + map → gate first
     @State private var showRun = false            // LabRunView
     @State private var pendingRun = false         // gate locked → open the run after its cover dismisses
@@ -204,9 +205,7 @@ struct LabRigView: View {
             Section("1 · Set up") {
                 Button { showPlace = true } label: {
                     Label(placedTags.isEmpty ? "Tap to tag real features" : "Add / remove tags (\(placedTags.count))", systemImage: "mappin.and.ellipse")
-                        .font(.body.bold()).frame(maxWidth: .infinity, minHeight: 48)
                 }
-                .buttonStyle(.borderedProminent).tint(.cyan).foregroundStyle(.black)
                 if runReady, runType == .qr {
                     Button { startPlacing() } label: {
                         Label("Place with the QR (full Author mode)", systemImage: "qrcode.viewfinder").font(.subheadline)
@@ -233,17 +232,21 @@ struct LabRigView: View {
                         ForEach(labRunPresets, id: \.self) { p in
                             Button(p) { runLabel = p; customLabel = "" }
                                 .buttonStyle(.bordered).tint(runLabel == p ? .cyan : .gray)
-                                .font(.subheadline).controlSize(.large)
+                                .font(.caption)
                         }
                     }
                 }
                 TextField("or a custom run label", text: $customLabel)
                     .onChange(of: customLabel) { v in if !v.isEmpty { runLabel = v } }
+                Toggle(isOn: $growMap) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Grow the map on clean runs")
+                        Text("A locked, uninterrupted run saves its map back after Done (in the background).").font(.caption).foregroundStyle(.secondary)
+                    }
+                }
                 Button { startRun() } label: {
                     Label("Start run · \(runLabel)", systemImage: "play.fill")
-                        .font(.body.bold()).frame(maxWidth: .infinity, minHeight: 48)
                 }
-                .buttonStyle(.borderedProminent).tint(.cyan).foregroundStyle(.black)
             } }
 
             Section("3 · History") {
@@ -386,6 +389,8 @@ struct LabRunView: View {
     @State private var tucked = Set<String>()
     // Run record (5): one id for every mark of this Start…Done, posted on Done.
     @State private var finishing = false
+    @State private var mapPending = false
+    @State private var grownPose: simd_float4x4 = matrix_identity_float4x4
     @State private var runId = UUID().uuidString
     @State private var resumeAtStart = 0
     @State private var sealedBytes = 0
@@ -499,7 +504,7 @@ struct LabRunView: View {
                     Spacer()
                     if let t = toast, showLab || finishing { hintPill(t, icon: "info.circle", tint: .white).padding(.bottom, 6) }
                     if finishing {
-                        hintPill("Saving the run…", icon: "icloud.and.arrow.up", tint: .cyan)
+                        hintPill("Finishing…", icon: "checkmark.circle", tint: .cyan)
                     } else if arManager.isRelocalizing {
                         hintPill("Relocalizing — hold the rig in view", icon: "arrow.triangle.2.circlepath", tint: .orange)
                     } else if showLab {
@@ -677,21 +682,31 @@ struct LabRunView: View {
     // are strict — relocalized, locked (not approximate), never interrupted,
     // and the new map is at least 5 % larger — so a bad session can never
     // shrink or poison the rig's map.
-    private func growMapIfClean() async {
+    /// Serialise the map if this run may grow it. Needs the live session.
+    /// Returns nil when the run isn't clean, growth is off, or the map didn't grow.
+    private func grabMapIfClean() async -> Data? {
+        guard UserDefaults.standard.object(forKey: "lab_map_growth") as? Bool ?? true else {
+            AppLog.info("lab", "map kept — growth is off for this device"); return nil
+        }
         guard runType == .map, arManager.relocalizationOutcome == .succeeded, !interrupted,
               case .locked = arManager.originConfidence else {
-            AppLog.info("lab", "map kept — run not clean enough to grow it (interrupted: \(interrupted))"); return
+            AppLog.info("lab", "map kept — run not clean enough to grow it (interrupted: \(interrupted))"); return nil
         }
-        guard let data = await arManager.saveCurrentWorldMap() else { return }
+        guard let data = await arManager.saveCurrentWorldMap() else { return nil }
         mapKB = data.count / 1024
         guard data.count > Int(Double(sealedBytes) * 1.05) else {
-            AppLog.info("lab", "map kept — \(data.count / 1024) KB vs sealed \(sealedBytes / 1024) KB"); return
+            AppLog.info("lab", "map kept — \(data.count / 1024) KB vs sealed \(sealedBytes / 1024) KB"); return nil
         }
-        let pose = arManager.currentOriginPose ?? origin ?? matrix_identity_float4x4
+        grownPose = arManager.currentOriginPose ?? origin ?? matrix_identity_float4x4
+        return data
+    }
+
+    /// Upload the grown map — session-independent, runs behind the summary.
+    private func uploadGrownMap(_ data: Data) async {
         let sealedBy = !settings.uamUserName.isEmpty ? settings.uamUserName : settings.authorName
         do {
             try await client.uploadWorldMap(anchorId: rig.id, data: data)
-            let meta = try await client.uploadWorldMapMeta(anchorId: rig.id, anchorPose: pose, sealedBy: sealedBy)
+            let meta = try await client.uploadWorldMapMeta(anchorId: rig.id, anchorPose: grownPose, sealedBy: sealedBy)
             WorldMapCache.store(.anchor(rig.id), map: data, meta: meta)
             mapGrew = true
             AppLog.info("lab", "map grew \(sealedBytes / 1024) → \(data.count / 1024) KB")
@@ -824,22 +839,28 @@ struct LabRunView: View {
         }
     }
 
-    /// Done: grow the map (bounded), post the run record, THEN the summary.
-    /// The summary's dismiss releases the AR session, so nothing that needs
-    /// the session may still be running when it appears.
+    /// Done: the only thing that needs the live session is serialising the map
+    /// (~1 s), so that happens first; the summary appears right after, and the
+    /// upload + run record go on in the background while it is read. The
+    /// summary's Map row updates when the upload settles.
     private func finish() {
         guard !finishing else { return }
         finishing = true
         disarm()
         Task {
-            let growth = Task { await growMapIfClean() }
-            let timeout = Task { try? await Task.sleep(nanoseconds: 12_000_000_000); growth.cancel() }
-            _ = await growth.value
+            let grab = Task { await grabMapIfClean() }
+            let timeout = Task { try? await Task.sleep(nanoseconds: 6_000_000_000); grab.cancel() }
+            let data = await grab.value
             timeout.cancel()
-            await postRunRecord()
-            history = try? await client.fetchAnchorAccuracy(anchorId: rig.id).summary
             finishing = false
+            mapPending = data != nil
             showSummary = true
+            Task {
+                if let data { await uploadGrownMap(data) }
+                mapPending = false
+                await postRunRecord()
+                history = try? await client.fetchAnchorAccuracy(anchorId: rig.id).summary
+            }
         }
     }
 
@@ -942,8 +963,9 @@ struct LabRunView: View {
                     HStack { Text("Corrections"); Spacer(); Text("\(arManager.originCorrections)").foregroundStyle(.secondary) }
                     HStack { Text("Duration"); Spacer(); Text(String(format: "%.0f s", Date().timeIntervalSince(startedAt))).foregroundStyle(.secondary) }
                     HStack { Text("Map"); Spacer()
-                        Text(mapGrew ? "grew to \(mapKB ?? 0) KB" : (mapKB != nil ? "kept (\(mapKB!) KB)" : "kept"))
-                            .foregroundStyle(mapGrew ? .green : .secondary) }
+                        if mapPending { ProgressView().controlSize(.small); Text("saving \(mapKB ?? 0) KB…").foregroundStyle(.secondary) }
+                        else { Text(mapGrew ? "grew to \(mapKB ?? 0) KB" : (mapKB != nil ? "kept (\(mapKB!) KB)" : "kept"))
+                            .foregroundStyle(mapGrew ? .green : .secondary) } }
                     if interrupted { HStack { Text("Interrupted"); Spacer(); Text("yes — marks after it are suspect").foregroundStyle(.orange) } }
                     if ghostUsed  { HStack { Text("Ghost");       Spacer(); Text("used").foregroundStyle(.secondary) } }
                 }
