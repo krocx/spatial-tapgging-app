@@ -7,6 +7,13 @@ it, it gets a line.
 ## 2026.4.46 — 2026-09-08
 
 ### Fixed
+- **Training cover no longer starves the device.** Cone / quick-shot capture
+  opens its own AR view on the Author session while the Author view keeps
+  rendering underneath — two renderers on one session retained frames until
+  iOS killed the app. The parent renderer now pauses (session untouched)
+  while a capture view owns the screen and resumes on return.
+- **Lab rigs — no "QR moved?" note.** Rigs placed without a code seal at the
+  identity origin, so the gate no longer compares the live QR against it.
 - **Anchoring — tags no longer freeze on ARKit's first coarse alignment.**
   The sealed origin was a fixed matrix and tags spawned the moment tracking
   turned normal, before relocalization had settled, so every session
@@ -310,6 +317,14 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **Anchor Lab — place pins without a code.** *Place pins on real features*
+  is the rig's default: a fresh session with the world map as origin, a
+  focus ring and a "+" that pins the ring's hit (AR OMS look and feel), name,
+  chips to delete, Save seals the map with the origin anchor. Re-opening
+  relocalizes into the sealed map first. The QR path stays as *Place with
+  the QR* for QR + map runs.
+- **Add-tag picker trimmed.** Cone and QuickShot only; OCR is shown but
+  disabled ("soon"); Honeycomb is hidden (feature kept).
 - **Anchor Lab — anchoring accuracy as a number.** Settings → *Anchor Lab*
   adds a card in Operator mode with the session's lock report (origin
   source, relocalize / converge seconds, approach angle, light, QR vs

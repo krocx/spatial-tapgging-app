@@ -113,9 +113,10 @@ struct AddTagSheet: View {
 
             // ── Capture mode chips ─────────────────────────────────────────────
             HStack(spacing: 8) {
-                captureModeChip(mode: .honeycomb, icon: "⬡", label: "Honeycomb")
+                // Honeycomb stays in the code (existing tags keep working) but is
+                // no longer offered; OCR is shown, disabled, until it earns its place.
                 captureModeChip(mode: .cone,      icon: "▲", label: "Cone")
-                captureModeChip(mode: .ocr,       icon: "T", label: "OCR")
+                captureModeChip(mode: .ocr,       icon: "T", label: "OCR · soon", disabled: true)
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 12)
@@ -289,9 +290,10 @@ struct AddTagSheet: View {
 
     // ── Capture mode chip ─────────────────────────────────────────────────────
 
-    private func captureModeChip(mode: TagCaptureMode, icon: String, label chipLabel: String) -> some View {
+    private func captureModeChip(mode: TagCaptureMode, icon: String, label chipLabel: String, disabled: Bool = false) -> some View {
         let isSelected = captureMode == mode
         return Button {
+            guard !disabled else { return }
             // Switch mode → reset to default type and clear label
             tagType = defaultType(for: mode)
             label   = ""
@@ -315,8 +317,10 @@ struct AddTagSheet: View {
                     .stroke(isSelected ? Color.blue.opacity(0.45) : Color.clear, lineWidth: 1)
             )
             .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+            .opacity(disabled ? 0.4 : 1)
         }
         .buttonStyle(.plain)
+        .disabled(disabled)
     }
 
     // ── Save ──────────────────────────────────────────────────────────────────

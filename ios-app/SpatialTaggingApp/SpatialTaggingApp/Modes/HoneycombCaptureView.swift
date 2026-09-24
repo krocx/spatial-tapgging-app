@@ -137,13 +137,15 @@ struct HoneycombCaptureView: View {
             // was set in AuthorModeView.onAppear.  Sharing the session preserves the
             // world frame so anchorRelativeInspectionPoint() returns the correct
             // physical tag location without requiring QR re-scan.
+            parentArManager.sceneView.pause(nil)   // one renderer per session
             svHolder.sceneView.session = parentArManager.sceneView.session
             anchorRedetected = true   // anchor transform is already known
         }
         .onDisappear {
             guide?.cleanup()
             retakeTask?.cancel()
-            // DO NOT pause — session belongs to parentArManager.
+            // DO NOT pause the session — it belongs to parentArManager. Resume its renderer.
+            parentArManager.sceneView.play(nil)
         }
         .onReceive(ticker) { _ in tick() }
     }

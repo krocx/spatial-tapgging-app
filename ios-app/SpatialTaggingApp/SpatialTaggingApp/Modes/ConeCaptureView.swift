@@ -229,6 +229,11 @@ struct ConeCaptureView: View {
             }
         }
         .onAppear {
+            // One session, one renderer. The parent's ARSCNView keeps pulling
+            // frames while it is hidden behind this cover — two renderers on one
+            // session is what retains ARFrames and starves the device. Pause the
+            // parent's display link (not the AR session) while we own the screen.
+            parentArManager.sceneView.pause(nil)
             svHolder.sceneView.session = parentArManager.sceneView.session
             anchorReady = true
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
@@ -240,6 +245,7 @@ struct ConeCaptureView: View {
             guide?.cleanup()
             domeGuide?.cleanup()
             domeGuide = nil
+            parentArManager.sceneView.play(nil)
         }
         .onReceive(ticker) { _ in tick() }
     }

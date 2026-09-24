@@ -1,7 +1,7 @@
 # Anchor Lab — measuring anchoring accuracy at home, then in the cleanroom
 
 Proprietary & Confidential · Applied Materials
-Status: v0.1 (2026-09-23) · Owner: AppliedX
+Status: v0.2 (2026-09-24) · Owner: AppliedX
 
 ## Why
 
@@ -36,11 +36,15 @@ Users). Rigs are anchors of type LAB — they never show up in AR OMS,
 Gemba or iLOTO directories, and the portal grid hides them behind a *Lab
 rigs* toggle.
 
-1. **New rig** → name it → **QR** → print at 10 cm. Tape it next to the
-   object.
-2. **Place tags on real features** → scan the rig's QR → tap a tag onto
-   each feature you can aim at later (hinge pin, screw head, corner; 3–5)
-   → Save. That seals the map with the origin anchor. Do this once per rig.
+1. **New rig** → name it. No code is needed for the default path — the
+   rig's world map is the origin. (**QR** is still there, printed at 10 cm,
+   for the *QR + map* run type only.)
+2. **Place pins on real features** (default, no code) → look at the object
+   until the ring settles → "+" puts a pin at the ring → name it (hinge pin,
+   screw head, corner; 3–5) → Save. That seals the map with the origin
+   anchor at the spot you stood. Re-opening it relocalizes into the sealed
+   map first so more pins can be added. Do this once per rig. *Place with
+   the QR* (full Author mode) remains as the secondary path.
 3. **Run** → pick the run type and a label chip → Start.
    - *Map only*: relocalize into the sealed map, no code in view. Look at
      the rig from roughly where the tags were placed; tags appear when the

@@ -93,10 +93,12 @@ struct OCRCaptureView: View {
             // Link our local ARSCNView to AuthorModeView's already-running session.
             // No startSession() — that would reset the world frame and invalidate
             // the anchor transform that was locked in QRScanGateView.
+            parentArManager.sceneView.pause(nil)   // one renderer per session
             svHolder.sceneView.session = parentArManager.sceneView.session
         }
         .onDisappear {
-            // DO NOT pause — session belongs to parentArManager (AuthorModeView).
+            // DO NOT pause the session — it belongs to parentArManager. Resume its renderer.
+            parentArManager.sceneView.play(nil)
         }
     }
 

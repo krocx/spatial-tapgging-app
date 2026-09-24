@@ -586,7 +586,9 @@ struct QRScanGateView: View {
             originPose = sealed
             arManager.adoptMapOrigin(sealed)
             appState.sealedMapOrigin = sealed
-            if let live = livePose {
+            // Lab rigs placed without a code seal at the identity origin — the QR
+            // is not that frame's witness, so a "moved?" note would be noise.
+            if let live = livePose, appState.activeAnchor?.anchorType != .lab {
                 let d = ARCoordinateFrame.poseDelta(sealed, live)
                 if d.metres > driftMetres || d.degrees > driftDegrees {
                     originNote = String(format: "QR moved? Using the sealed map (Δ %.0f cm · %.0f°)", d.metres * 100, d.degrees)

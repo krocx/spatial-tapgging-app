@@ -205,8 +205,10 @@ already spawned.
   products; unlike the others it is *not* implied by "all products").
   Inside: **rigs** — anchors of type `LAB` that never appear in production
   directories or the portal grid (a *Lab rigs* toggle reveals them) — each
-  with *Print QR*, *Place tags* (the real Author flow, so a lab tag is a
-  real tag and Save seals the map with the origin anchor), *Run* and
+  with *Place pins* (no code: the rig's world map is the origin — look at
+  the object, "+" pins the ring's hit on a real feature, Save seals the map
+  with the origin anchor; re-opening relocalizes first so pins accumulate),
+  *Place with the QR* (the full Author flow, secondary), *Run* and
   *History*. A run is one of two types operators meet in production:
   **Map only** (relocalize into the sealed map, no code in view — what AR
   work-instruction runs do) or **QR + map** (through the gate — what
