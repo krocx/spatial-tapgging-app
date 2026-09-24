@@ -205,16 +205,19 @@ already spawned.
   products; unlike the others it is *not* implied by "all products").
   Inside: **rigs** — anchors of type `LAB` that never appear in production
   directories or the portal grid (a *Lab rigs* toggle reveals them) — each
-  with *Place pins* (no code: the rig's world map is the origin — look at
-  the object, "+" pins the ring's hit on a real feature, Save seals the map
-  with the origin anchor; re-opening relocalizes first so pins accumulate),
+  with *Tap to tag* (no code: the rig's world map is the origin — tap a real
+  feature and the pin drops exactly as in AR OMS, named *Tag N*; Save seals
+  the map with the origin anchor; re-opening relocalizes first so tags
+  accumulate),
   *Place with the QR* (the full Author flow, secondary), *Run* and
   *History*. A run is one of two types operators meet in production:
   **Map only** (relocalize into the sealed map, no code in view — what AR
   work-instruction runs do) or **QR + map** (through the gate — what
   Spatial Inspection does), labelled from the protocol's chips (author
   spot, door, opposite side, evening, dim, second person, after move). The
-  lean run view holds tags until the origin settles, shows the lock report
+  lean run view holds tags until the origin settles, keeps the screen clean
+  (origin axes and the lab panel are toggles), and to report drift the
+  tester taps a tag and aims the orange 3-D ring; it shows the lock report
   and the mark-truth tool, and ends in a summary: this run's median vs the
   rig's history split by run type. Samples carry `runType`; the portal Lab
   view adds a *Run type* table. Settings gain *LiDAR scene mesh* (on by

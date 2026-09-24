@@ -54,9 +54,14 @@ final class ARFocusRing {
     // Distance from camera when searching (no surface found)
     private let searchingDist: Float = 0.25  // metres
 
+    /// Colour once a surface is found. Cyan = placing a tag; the Lab passes
+    /// orange when the same ring is used to report where a tag really is.
+    private let accent: UIColor
+
     // ── Init ──────────────────────────────────────────────────────────────────
 
-    init(sceneView: ARSCNView) {
+    init(sceneView: ARSCNView, accent: UIColor = .cyan) {
+        self.accent = accent
         // ── Ring ────────────────────────────────────────────────────────────
         // Lies in the XZ plane; Y axis = ring axis (used for surface alignment).
         // IMPORTANT: ringRadius is set directly on the geometry — never via
@@ -166,10 +171,10 @@ final class ARFocusRing {
         let dur: TimeInterval = animated ? 0.22 : 0
         SCNTransaction.begin()
         SCNTransaction.animationDuration = dur
-        ringMat.diffuse.contents  = UIColor.cyan
-        ringMat.emission.contents = UIColor.cyan.withAlphaComponent(0.55)
-        dotMat.diffuse.contents   = UIColor.cyan
-        dotMat.emission.contents  = UIColor.cyan.withAlphaComponent(0.70)
+        ringMat.diffuse.contents  = accent
+        ringMat.emission.contents = accent.withAlphaComponent(0.55)
+        dotMat.diffuse.contents   = accent
+        dotMat.emission.contents  = accent.withAlphaComponent(0.70)
         rootNode.opacity = 1.0
         rootNode.scale   = SCNVector3(1, 1, 1)
         SCNTransaction.commit()

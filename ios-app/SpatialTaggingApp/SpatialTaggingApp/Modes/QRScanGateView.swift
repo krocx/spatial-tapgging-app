@@ -649,6 +649,12 @@ struct QRScanGateView: View {
                 // Give ARKit a beat to fold the new anchor into the map.
                 try? await Task.sleep(nanoseconds: 300_000_000)
                 guard let mapData = await arManager.saveCurrentWorldMap() else { return }
+                // Guard the seal: a map far smaller than the one we relocalized
+                // into means tracking was reset underneath us — keep the old one.
+                if let prior = mapBundle?.map.count, prior > 0, mapData.count < prior / 2 {
+                    AppLog.warn("qr", "Seal skipped — new map \(mapData.count / 1024) KB vs sealed \(prior / 1024) KB (tracking reset?)")
+                    return
+                }
                 do {
                     try await client.uploadWorldMap(anchorId: aid, data: mapData)
                     let meta = try await client.uploadWorldMapMeta(anchorId: aid, anchorPose: origin, sealedBy: sealedBy)

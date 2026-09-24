@@ -198,6 +198,13 @@ final class ARSessionManager: NSObject, ObservableObject {
     /// Read when a configuration is built; no effect on devices without LiDAR.
     var wantsSceneMesh = false
 
+    /// True from `startSessionWithWorldMap` until the next fresh `startSession`:
+    /// the running session carries a saved map that must not be dropped.
+    private(set) var sessionHasWorldMap = false
+    /// Bumped on every (re)start and every interruption: the 15 s relocalization
+    /// timeout belongs to one start and must never fire on a later one.
+    private var relocGeneration = 0
+
     // ── Init ──────────────────────────────────────────────────────────────────
     /// ARKit hands frames to the delegate on this queue instead of main. With
     /// no queue set, every `didUpdate frame` waits behind SwiftUI layout,
@@ -506,6 +513,8 @@ final class ARSessionManager: NSObject, ObservableObject {
         isRelocalizing          = false
         relocalizationOutcome   = nil
         mapIsOrigin             = false
+        sessionHasWorldMap      = false
+        relocGeneration        += 1
         resetTrustState(relocalizing: false)
     }
 
@@ -725,13 +734,19 @@ final class ARSessionManager: NSObject, ObservableObject {
             lockReport.hadOriginAnchor = true
         }
         convergenceArmed = true
+        sessionHasWorldMap = true
+        relocGeneration += 1
+        let gen = relocGeneration
         AppLog.info("ar", "Session started with saved ARWorldMap (\(worldMap.anchors.count) anchors, origin anchor: \(originAnchorId != nil)) — relocalizing…")
 
         // Relocalization timeout: fall back to fresh session if ARKit hasn't
-        // found enough matching feature points within 15 seconds.
+        // found enough matching feature points within 15 seconds — of THIS
+        // start only. An interruption later in the session re-enters
+        // relocalizing with the map still in memory; that must never turn
+        // into a fresh frame under tags that are already placed.
         Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: 15_000_000_000)
-            guard let self, self.isRelocalizing else { return }
+            guard let self, self.isRelocalizing, self.relocGeneration == gen else { return }
             AppLog.warn("ar", "Relocalization timeout (15 s) — falling back to fresh session")
             self.fallBackToFreshSession()
         }
@@ -945,6 +960,17 @@ final class ARSessionManager: NSObject, ObservableObject {
         // This lets ARKit use its PnP solver to compute accurate 6DOF pose from
         // the QR's known physical dimensions, rather than a plane raycast.
         guard let frame = sceneView.session.currentFrame else {
+            fallbackRaycast(context: context, visionBBox: visionBBox)
+            return
+        }
+
+        // A session that relocalized into a saved map must keep it: re-running
+        // the configuration for image detection re-initialises tracking on
+        // device (map_size 0), and the next seal would overwrite a 2 MB map
+        // with a 200 KB one. Here the map is the origin and the QR is only
+        // its witness, so the raycast pose is enough.
+        if sessionHasWorldMap, relocalizationOutcome == .succeeded {
+            AppLog.info("ar", "QR seen on a relocalized map — raycast pose (no config re-run)")
             fallbackRaycast(context: context, visionBBox: visionBBox)
             return
         }
@@ -1245,6 +1271,7 @@ extension ARSessionManager: ARSessionDelegate {
             // the same "find your place" posture and clear it on .normal.
             self.isRelocalizing = true
             self.relocalizationOutcome = nil
+            self.relocGeneration += 1     // retire any pending start-timeout
             self.resumeCount += 1
         }
     }

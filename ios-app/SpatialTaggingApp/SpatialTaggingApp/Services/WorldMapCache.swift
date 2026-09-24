@@ -187,6 +187,10 @@ enum WorldMapCache {
 
     // ── Private ───────────────────────────────────────────────────────────────
 
+    /// Size of the locally cached map, if any — a cheap sanity check before a
+    /// re-seal overwrites it.
+    static func localSize(_ scope: Scope) -> Int? { loadLocal(scope)?.count }
+
     private static func loadLocal(_ scope: Scope) -> Data? {
         guard let url = fileURL(scope, ext: "worldmap") else { return nil }
         return try? Data(contentsOf: url)

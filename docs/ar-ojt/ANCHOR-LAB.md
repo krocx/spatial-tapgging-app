@@ -39,19 +39,26 @@ rigs* toggle.
 1. **New rig** → name it. No code is needed for the default path — the
    rig's world map is the origin. (**QR** is still there, printed at 10 cm,
    for the *QR + map* run type only.)
-2. **Place pins on real features** (default, no code) → look at the object
-   until the ring settles → "+" puts a pin at the ring → name it (hinge pin,
-   screw head, corner; 3–5) → Save. That seals the map with the origin
-   anchor at the spot you stood. Re-opening it relocalizes into the sealed
-   map first so more pins can be added. Do this once per rig. *Place with
-   the QR* (full Author mode) remains as the secondary path.
+2. **Tap to tag** (default, no code) → look at the object and tap a real
+   feature (hinge pin, screw head, corner; 3–5). The pin drops with the same
+   pop / ring / haptic as AR OMS and is named *Tag N* → Save. That seals the
+   map with the origin anchor at the spot you stood. Re-opening relocalizes
+   into the sealed map first so more tags can be added. Do this once per
+   rig. *Place with the QR* (full Author mode) remains as the secondary path.
+   The Lab always requests the LiDAR scene mesh so a tap lands on the feature,
+   not on the table plane behind it.
 3. **Run** → pick the run type and a label chip → Start.
    - *Map only*: relocalize into the sealed map, no code in view. Look at
      the rig from roughly where the tags were placed; tags appear when the
      origin has settled.
    - *QR + map*: the gate first, then the same run view.
-   Pick each tag, aim the crosshair at its physical feature from ≤ 60 cm,
-   **Mark where it really is**. Two viewpoints per tag. **Done** shows this
+   The screen is clean by default — just the tags on the rig. Two toggles in
+   the top bar: the origin axes, and the **Lab panel** (lock report, tag
+   chips, marks). To report drift: tap a tag (or its chip), aim the **orange
+   ring** — the same 3-D ring used to place tags — at its physical feature
+   from ≤ 60 cm, then tap again or press **Mark where it really is**. An
+   orange dot stays where you marked, with a hairline to the tag, so the
+   offset is visible in the room. Two viewpoints per tag. **Done** shows this
    run's median next to the rig's history by run type.
 4. **History** on the rig (or Portal → Anchors → Lab rigs → *Lab* badge)
    for the full picture.
@@ -138,6 +145,13 @@ mm; no run where tags spawned before *locked* (convergeS always present).
   print size is wrong; the map is right.
 - **iPad ≫ iPhone on the same rig** → device-specific; check LiDAR on/off
   and camera intrinsics, not the doctrine.
+- **Every tag off by the same ~10 cm+ in one run** → the frame was replaced
+  under the tags (a fresh session after an interruption). Fixed in 2026.4.46:
+  the start timeout no longer fires after an interruption; marks are blocked
+  while relocalizing. Discard such a run's marks (History → Clear).
+- **Marks 5–8 cm off without the scene mesh** → the tap and the mark landed
+  on the estimated plane behind the object, not on it. The Lab now always
+  uses the mesh; runs made before that are not anchoring numbers.
 
 ## Data
 

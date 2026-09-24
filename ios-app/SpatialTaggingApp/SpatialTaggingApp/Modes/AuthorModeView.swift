@@ -532,6 +532,10 @@ struct AuthorModeView: View {
         arManager.ensureOriginAnchor(fallback: origin)
         try? await Task.sleep(nanoseconds: 300_000_000)
         guard let mapData = await arManager.saveCurrentWorldMap() else { return }
+        if let prior = WorldMapCache.localSize(.anchor(anchor.id)), prior > 0, mapData.count < prior / 2 {
+            AppLog.warn("qr", "Exit re-seal skipped — new map \(mapData.count / 1024) KB vs sealed \(prior / 1024) KB (tracking reset?)")
+            return
+        }
         let client   = SIBClient(settings: settings)
         let sealedBy = !settings.uamUserName.isEmpty ? settings.uamUserName : settings.authorName
         let aid      = anchor.id

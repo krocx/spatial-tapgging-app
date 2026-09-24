@@ -169,6 +169,36 @@ struct PlacementGestureContainer: UIViewRepresentable {
     static func dismantleUIView(_ uiView: ARSCNView, coordinator: Coordinator) {}
 }
 
+// ── Pin drop feedback ─────────────────────────────────────────────────────────
+
+/// The "tap to tag" signature, shared by every surface that drops a pin:
+/// pop, an expanding ring on the surface, a success haptic. One look and one
+/// feel across AR OMS, iLOTO, Gemba and the Lab.
+enum ARPinFX {
+    static func drop(on node: SCNNode?, accent: UIColor = .systemGreen) {
+        guard let node else { return }
+        node.removeAction(forKey: "drop")
+        let pop = SCNAction.sequence([
+            .scale(to: 0.6, duration: 0.0),
+            .scale(to: 1.18, duration: 0.14),
+            .scale(to: 1.0, duration: 0.12),
+        ])
+        node.runAction(pop, forKey: "drop")
+        let torus = SCNTorus(ringRadius: 0.03, pipeRadius: 0.003)
+        let m = SCNMaterial(); m.diffuse.contents = accent; m.lightingModel = .constant
+        m.emission.contents = accent; torus.firstMaterial = m
+        let ring = SCNNode(geometry: torus)
+        ring.eulerAngles = SCNVector3(Float.pi / 2, 0, 0)
+        ring.opacity = 0.9
+        node.addChildNode(ring)
+        ring.runAction(.sequence([
+            .group([.scale(to: 3.2, duration: 0.55), .fadeOut(duration: 0.55)]),
+            .removeFromParentNode(),
+        ]))
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+    }
+}
+
 // ── Toolbar ───────────────────────────────────────────────────────────────────
 
 /// The tool picker + live readout + quick actions. Same bar everywhere a

@@ -183,7 +183,33 @@ struct AnchorLabOverlay: View {
     private func mark(tagId: String) {
         guard let rendered = renderedPosition(tagId) else { toast = "Tag isn't placed yet"; return }
         guard let p = probe() else { toast = "No surface under the crosshair — move closer"; return }
-        let delta = p.hit - rendered
+        let label = tags.first { $0.id == tagId }?.label ?? tagId
+        let (sample, mm) = AnchorLabOverlay.makeSample(
+            tagId: tagId, label: label, rendered: rendered, hit: p.hit, camera: p.camera,
+            originTransform: originTransform, confidence: confidence, report: report,
+            qrDiscrepancy: qrDiscrepancy, run: presetRun ?? run, by: by, runType: runType)
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        armedTagId = nil
+        sending = true
+        toast = nil
+        AppLog.info("lab", String(format: "Anchor Lab mark %@: %.1f mm (%@)", label, mm, sample.originSource))
+        Task {
+            var ok = true
+            do { try await client.postAnchorAccuracy(anchorId: anchorId, sample: sample) }
+            catch { ok = false; toast = "Saved locally only — \(error.localizedDescription)" }
+            rows.append((label, mm, ok))
+            onMark?(label, mm, ok)
+            sending = false
+        }
+    }
+
+    /// One measured mark → the sample SIB stores. Shared by the Operator-mode
+    /// card and the Lab door's run view so both report the same numbers.
+    static func makeSample(tagId: String, label: String, rendered: simd_float3, hit: simd_float3, camera: simd_float3,
+                           originTransform: simd_float4x4?, confidence: ARSessionManager.OriginConfidence,
+                           report: ARSessionManager.OriginLockReport?, qrDiscrepancy: ARSessionManager.PoseDelta?,
+                           run: String, by: String, runType: String?) -> (SIBClient.AnchorAccuracySample, Double) {
+        let delta = hit - rendered
         let mm = Double(simd_length(delta)) * 1000
         // Error vector in the origin's frame (rotation only), so runs from
         // different sides are comparable.
@@ -195,7 +221,6 @@ struct AnchorLabOverlay: View {
             let local = simd_inverse(r) * delta
             dx = local.x; dy = local.y; dz = local.z
         }
-        let label = tags.first { $0.id == tagId }?.label ?? tagId
         let source: String = {
             if case .approximate = confidence { return "approximate" }
             return report?.source ?? "qr"
@@ -203,28 +228,16 @@ struct AnchorLabOverlay: View {
         let sample = SIBClient.AnchorAccuracySample(
             tagId: tagId, tagLabel: label, errorMm: (mm * 10).rounded() / 10,
             dxMm: Double(dx) * 1000, dyMm: Double(dy) * 1000, dzMm: Double(dz) * 1000,
-            distanceM: Double(simd_length(p.hit - p.camera)),
+            distanceM: Double(simd_length(hit - camera)),
             originSource: source,
             relocalizeS: report?.relocalizeS, convergeS: report?.convergeS,
             qrDriftMm: (qrDiscrepancy?.mm ?? report?.qrDriftMm).map { Double($0) },
             qrDriftDeg: (qrDiscrepancy?.deg ?? report?.qrDriftDeg).map { Double($0) },
             lightLux: report?.lightLux, approachDeg: report?.approachDeg.map { Double($0) },
             device: DeviceModel.identifier, osVersion: UIDevice.current.systemVersion, appVersion: AppVersion.current,
-            run: (presetRun ?? run).isEmpty ? nil : (presetRun ?? run), by: by.isEmpty ? nil : by,
+            run: run.isEmpty ? nil : run, by: by.isEmpty ? nil : by,
             at: ISO8601DateFormatter().string(from: Date()), runType: runType)
-        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        armedTagId = nil
-        sending = true
-        toast = nil
-        AppLog.info("lab", String(format: "Anchor Lab mark %@: %.1f mm (%@)", label, mm, source))
-        Task {
-            var ok = true
-            do { try await client.postAnchorAccuracy(anchorId: anchorId, sample: sample) }
-            catch { ok = false; toast = "Saved locally only — \(error.localizedDescription)" }
-            rows.append((label, mm, ok))
-            onMark?(label, mm, ok)
-            sending = false
-        }
+        return (sample, mm)
     }
 
     // ── Bits ──────────────────────────────────────────────────────────────────

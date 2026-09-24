@@ -1895,29 +1895,7 @@ struct GuideStepPlacementView: View {
     // ── Interim: confirm / re-tag ────────────────────────────────────────────
 
     /// Pop + ring pulse + haptic — visible even in peripheral vision.
-    private func dropFeedback(on node: SCNNode?) {
-        guard let node else { return }
-        node.removeAction(forKey: "drop")
-        let pop = SCNAction.sequence([
-            .scale(to: 0.6, duration: 0.0),
-            .scale(to: 1.18, duration: 0.14),
-            .scale(to: 1.0, duration: 0.12),
-        ])
-        node.runAction(pop, forKey: "drop")
-        // Expanding ring on the surface, fades out.
-        let torus = SCNTorus(ringRadius: 0.03, pipeRadius: 0.003)
-        let m = SCNMaterial(); m.diffuse.contents = UIColor.systemGreen; m.lightingModel = .constant
-        m.emission.contents = UIColor.systemGreen; torus.firstMaterial = m
-        let ring = SCNNode(geometry: torus)
-        ring.eulerAngles = SCNVector3(Float.pi / 2, 0, 0)
-        ring.opacity = 0.9
-        node.addChildNode(ring)
-        ring.runAction(.sequence([
-            .group([.scale(to: 3.2, duration: 0.55), .fadeOut(duration: 0.55)]),
-            .removeFromParentNode(),
-        ]))
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
-    }
+    private func dropFeedback(on node: SCNNode?) { ARPinFX.drop(on: node) }
 
     private func retagPendingPin(to pos: simd_float3) {
         guard let pid = pendingPinStepId, let idx = steps.firstIndex(where: { $0.id == pid }) else { return }

@@ -7,6 +7,17 @@ it, it gets a line.
 ## 2026.4.46 — 2026-09-08
 
 ### Fixed
+- **A relocalization timeout can no longer replace the frame under placed
+  tags.** The 15 s "fall back to a fresh session" timer set at session start
+  could fire after a later interruption re-entered relocalizing — every tag
+  then sat ~10 cm off by the same amount. The timer is now bound to its own
+  start; interruptions keep the map and simply relocalize.
+- **Seeing the QR on a relocalized map no longer resets tracking.**
+  Re-running the configuration for image detection re-initialised tracking
+  (map size 0), and the seal that followed overwrote a 2 MB map with a
+  200 KB one. On a relocalized map the QR pose now comes from the raycast
+  (the map is the origin; the code is its witness). Seals and exit re-seals
+  also refuse a map under half the size of the one on record.
 - **Training cover no longer starves the device.** Cone / quick-shot capture
   opens its own AR view on the Author session while the Author view keeps
   rendering underneath — two renderers on one session retained frames until
@@ -317,12 +328,15 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
-- **Anchor Lab — place pins without a code.** *Place pins on real features*
-  is the rig's default: a fresh session with the world map as origin, a
-  focus ring and a "+" that pins the ring's hit (AR OMS look and feel), name,
-  chips to delete, Save seals the map with the origin anchor. Re-opening
-  relocalizes into the sealed map first. The QR path stays as *Place with
-  the QR* for QR + map runs.
+- **Anchor Lab — tap to tag, clean runs.** Placing is the AR OMS gesture:
+  tap a real feature, the pin drops with the pop / ring / haptic and is
+  *Tag N* — no code, no naming. A run shows only the tags by default; the
+  origin axes and the lab panel are toggles. To report drift, tap a tag and
+  aim the orange 3-D ring (the tag-placing ring, recoloured), tap to mark;
+  the mark stays as an orange dot with a hairline to the tag. The panel is
+  docked at the bottom so it never covers the rig. The Lab always uses the
+  LiDAR scene mesh so taps and marks land on the object, not the plane
+  behind it. The QR path stays as *Place with the QR* for QR + map runs.
 - **Add-tag picker trimmed.** Cone and QuickShot only; OCR is shown but
   disabled ("soon"); Honeycomb is hidden (feature kept).
 - **Anchor Lab — anchoring accuracy as a number.** Settings → *Anchor Lab*

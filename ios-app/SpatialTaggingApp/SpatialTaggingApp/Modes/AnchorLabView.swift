@@ -14,9 +14,10 @@
 //             (what AR work-instruction runs do)
 //   QR + map  through the QR gate (what Spatial Inspection does)
 //
-// Placing tags reuses the real Author flow (gate + AuthorModeView) so a lab
-// tag is a real tag — same metadata, same seal, same trust layer. Nothing in
-// here is a second implementation of anchoring; it is the product measured.
+// Placing tags is tap-to-tag on the rig's own world map (no code); the QR
+// path (gate + AuthorModeView) remains for QR + map runs. A lab tag is a
+// real tag — same metadata, same seal, same trust layer. Nothing in here is
+// a second implementation of anchoring; it is the product measured.
 //
 // Visible only to users explicitly entitled to `lab` (UAM products).
 
@@ -187,7 +188,7 @@ struct LabRigView: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(rig.assetId).font(.title3.bold())
-                        Text(sealedAt == nil ? "Map not sealed yet — place pins, then Save" : "Sealed \(shortDate(sealedAt!))")
+                        Text(sealedAt == nil ? "Map not sealed yet — tap to tag, then Save" : "Sealed \(shortDate(sealedAt!))")
                             .font(.caption).foregroundStyle(sealedAt == nil ? .orange : .secondary)
                     }
                     Spacer()
@@ -197,7 +198,7 @@ struct LabRigView: View {
 
             Section("1 · Set up") {
                 Button { showPlace = true } label: {
-                    Label(placedTags.isEmpty ? "Place pins on real features" : "Add / remove pins (\(placedTags.count))", systemImage: "mappin.and.ellipse")
+                    Label(placedTags.isEmpty ? "Tap to tag real features" : "Add / remove tags (\(placedTags.count))", systemImage: "mappin.and.ellipse")
                 }
                 Button { startPlacing() } label: {
                     Label("Place with the QR (full Author mode)", systemImage: "qrcode.viewfinder").font(.subheadline)
@@ -232,7 +233,7 @@ struct LabRigView: View {
                 }
                 .disabled(placedTags.isEmpty || sealedAt == nil)
                 if placedTags.isEmpty || sealedAt == nil {
-                    Text("Place pins first (Save seals the map).").font(.caption).foregroundStyle(.orange)
+                    Text("Tag the rig first (Save seals the map).").font(.caption).foregroundStyle(.orange)
                 }
             }
 
@@ -356,21 +357,37 @@ struct LabRunView: View {
     @State private var phase: Phase = .loading
     @State private var origin: simd_float4x4? = nil
     @State private var markerNodes: [String: SCNNode] = [:]
+    @State private var truthNodes: [SCNNode] = []
+    @State private var axisNode: SCNNode? = nil
     @State private var marks: [(label: String, mm: Double, ok: Bool)] = []
     @State private var showSummary = false
     @State private var history: SIBClient.AnchorAccuracySummary? = nil
     @State private var startedAt = Date()
     @State private var started = false
 
+    // The lab panel and the origin axes are OFF by default: a run is first of
+    // all "do the tags sit on the features?" seen with a clean screen.
+    @State private var showLab  = false
+    @State private var showAxes = false
+    @State private var armedTagId: String? = nil
+    @State private var truthRing: ARFocusRing? = nil
+    @State private var ringTracking = false
+    @State private var sending = false
+    @State private var toast: String? = nil
+    private let ticker = Timer.publish(every: 1.0 / 30.0, on: .main, in: .common).autoconnect()
+
     private var client: SIBClient { SIBClient(settings: settings) }
+    private var report: ARSessionManager.OriginLockReport { appState.originLockReport ?? arManager.lockReport }
 
     var body: some View {
         ZStack {
-            ARContainerView(arManager: arManager).ignoresSafeArea()
+            PlacementGestureContainer(arManager: arManager, tool: .move, active: false,
+                                      onTap: phase == .ready ? handleTap : nil)
+                .ignoresSafeArea()
 
-            // Top bar
+            // Top bar: Done · rig/run · toggles · progress
             VStack {
-                HStack(spacing: 10) {
+                HStack(spacing: 8) {
                     Button { finish() } label: {
                         Label("Done", systemImage: "checkmark").font(.caption.bold())
                             .padding(.horizontal, 12).padding(.vertical, 7)
@@ -381,6 +398,8 @@ struct LabRunView: View {
                         Text("\(runType.title) · \(runLabel)").font(.caption2).foregroundStyle(.white.opacity(0.7)).lineLimit(1)
                     }
                     Spacer()
+                    toggle("move.3d", on: showAxes) { showAxes.toggle(); axisNode?.isHidden = !showAxes }
+                    toggle("scope",   on: showLab)  { withAnimation(.easeInOut(duration: 0.2)) { showLab.toggle() }; if !showLab { disarm() } }
                     Text("\(marks.count)/\(tags.count)").font(.caption.monospacedDigit().bold()).foregroundStyle(.white)
                         .padding(.horizontal, 8).padding(.vertical, 4).background(Color.black.opacity(0.6), in: Capsule())
                 }
@@ -388,7 +407,6 @@ struct LabRunView: View {
                 Spacer()
             }
 
-            // Phase cards
             switch phase {
             case .loading:
                 statusCard(icon: "arrow.down.circle", tint: .white, title: "Loading the rig's map…", text: nil)
@@ -406,20 +424,17 @@ struct LabRunView: View {
                     }
                 }
             case .ready:
-                AnchorLabOverlay(
-                    anchorId: rig.id, tags: tags,
-                    report: appState.originLockReport ?? arManager.lockReport,
-                    confidence: arManager.originConfidence,
-                    qrDiscrepancy: arManager.qrDiscrepancy,
-                    renderedPosition: { id in markerNodes[id].map { $0.simdWorldPosition } },
-                    probe: { probe() },
-                    originTransform: origin,
-                    client: client,
-                    by: !settings.uamUserName.isEmpty ? settings.uamUserName : settings.authorName,
-                    runType: runType.rawValue,
-                    presetRun: runLabel,
-                    onMark: { l, mm, ok in marks.append((l, mm, ok)) }
-                )
+                VStack {
+                    Spacer()
+                    if arManager.isRelocalizing {
+                        hintPill("Relocalizing — hold the rig in view", icon: "arrow.triangle.2.circlepath", tint: .orange)
+                    } else if showLab {
+                        labPanel
+                    } else if let t = toast {
+                        hintPill(t, icon: "info.circle", tint: .white)
+                    }
+                }
+                .padding(.bottom, 24)
             }
         }
         .task {
@@ -429,13 +444,94 @@ struct LabRunView: View {
             started = true
             await start()
         }
+        .onReceive(ticker) { _ in
+            guard let ring = truthRing else { return }
+            ring.update(sceneView: arManager.sceneView)
+            if ringTracking != ring.isTracking { ringTracking = ring.isTracking }
+        }
         .sheet(isPresented: $showSummary, onDismiss: { leave() }) { summarySheet }
+    }
+
+    // ── Lab panel (bottom-docked so it never sits on the rig) ────────────────
+
+    private var labPanel: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Lock report — two compact columns
+            HStack(alignment: .top, spacing: 14) {
+                VStack(alignment: .leading, spacing: 2) {
+                    labRow("Origin", sourceLabel, tint: sourceTint)
+                    if let s = report.relocalizeS { labRow("Relocalize", String(format: "%.1f s", s)) }
+                    if let s = report.convergeS   { labRow("Converge",   String(format: "%.1f s", s)) }
+                }
+                VStack(alignment: .leading, spacing: 2) {
+                    if let a = report.approachDeg { labRow("Approach", String(format: "%.0f°", a)) }
+                    if let l = report.lightLux    { labRow("Light",    String(format: "%.0f", l)) }
+                    if let d = arManager.qrDiscrepancy {
+                        labRow("QR vs origin", String(format: "%.0f mm", d.mm), tint: d.mm > 20 ? .orange : .green)
+                    } else {
+                        labRow("Corrections", "\(arManager.originCorrections)")
+                    }
+                }
+            }
+            Divider().overlay(Color.white.opacity(0.2))
+            Text(armedTagId == nil ? "Tap a tag (or a chip), then aim the orange ring at its real feature"
+                                   : (ringTracking ? "Aim the orange ring at the feature, then tap — or Mark" : "Move closer until the ring finds the surface"))
+                .font(.caption2).foregroundStyle(.white.opacity(0.75))
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(tags) { tag in
+                        let placed = markerNodes[tag.id] != nil
+                        Button { if armedTagId == tag.id { disarm() } else { arm(tag.id) } } label: {
+                            Text(tag.label).font(.caption2.bold()).lineLimit(1)
+                                .padding(.horizontal, 9).padding(.vertical, 5)
+                                .background(armedTagId == tag.id ? Color.orange : Color.white.opacity(placed ? 0.14 : 0.05), in: Capsule())
+                                .foregroundStyle(armedTagId == tag.id ? .black : (placed ? .white : .white.opacity(0.4)))
+                        }
+                        .disabled(!placed)
+                    }
+                }
+            }
+            if let id = armedTagId {
+                Button { mark(tagId: id) } label: {
+                    HStack {
+                        if sending { ProgressView().tint(.black).scaleEffect(0.7) }
+                        Text("Mark where it really is").font(.caption.bold())
+                    }
+                    .frame(maxWidth: .infinity).padding(.vertical, 8)
+                    .background(ringTracking ? Color.orange : Color.gray, in: RoundedRectangle(cornerRadius: 10))
+                    .foregroundStyle(.black)
+                }
+                .disabled(sending || !ringTracking)
+            }
+            if !marks.isEmpty {
+                Divider().overlay(Color.white.opacity(0.2))
+                ForEach(Array(marks.suffix(3).enumerated()), id: \.offset) { _, r in
+                    HStack {
+                        Text(r.label).font(.caption2).foregroundStyle(.white.opacity(0.8)).lineLimit(1)
+                        Spacer()
+                        Text(String(format: "%.0f mm", r.mm)).font(.caption2.monospacedDigit().bold())
+                            .foregroundStyle(r.mm <= 10 ? .green : r.mm <= 25 ? .orange : .red)
+                        Image(systemName: r.ok ? "checkmark.icloud" : "icloud.slash").font(.caption2)
+                            .foregroundStyle(r.ok ? .green : .orange)
+                    }
+                }
+                let med = median(marks.map { $0.mm })
+                labRow("Median (\(marks.count))", String(format: "%.0f mm", med), tint: med <= 10 ? .green : med <= 25 ? .orange : .red)
+            }
+            if let t = toast { Text(t).font(.caption2).foregroundStyle(.orange).lineLimit(2) }
+        }
+        .padding(12)
+        .background(Color.black.opacity(0.78), in: RoundedRectangle(cornerRadius: 14))
+        .padding(.horizontal, 16)
     }
 
     // ── Session ───────────────────────────────────────────────────────────────
 
     private func start() async {
         startedAt = Date()
+        // The Lab measures millimetres: pins and truth marks must land on the
+        // real surface, so the scene mesh is always on here (LiDAR devices).
+        arManager.wantsSceneMesh = true
         switch runType {
         case .qr:
             // The gate did the work: relocalized (or not), origin chosen, report filled.
@@ -449,7 +545,6 @@ struct LabRunView: View {
             phase = .ready
         case .map:
             phase = .loading
-            arManager.wantsSceneMesh = settings.lidarMeshEnabled
             guard let bundle = await WorldMapCache.load(.anchor(rig.id), client: client), bundle.isSealed else {
                 phase = .failed("This rig has no sealed map yet. Place tags first — Save seals it."); return
             }
@@ -487,34 +582,99 @@ struct LabRunView: View {
         guard let o = origin else { return }
         markerNodes.values.forEach { $0.removeFromParentNode() }
         markerNodes = [:]
-        for tag in tags {
+        for (i, tag) in tags.enumerated() {
             guard let x = num(tag.metadata["anchor_rel_x"]), let y = num(tag.metadata["anchor_rel_y"]), let z = num(tag.metadata["anchor_rel_z"]) else { continue }
             let p = ARCoordinateFrame.toWorldSpace(anchorRelativePos: simd_float3(Float(x), Float(y), Float(z)), anchorTransform: o)
-            let node = LabMarker.make(label: tag.label)
+            let node = LabMarker.pin(number: i + 1)
             node.simdPosition = p
             arManager.sceneView.scene.rootNode.addChildNode(node)
             markerNodes[tag.id] = node
         }
-        // Origin marker — a small cyan axis at the rig's origin, so the tester
-        // can also see where the app thinks the QR is.
+        // Origin axes — where the app thinks the rig's frame is. Hidden until
+        // the tester asks for them.
+        axisNode?.removeFromParentNode()
         let axis = LabMarker.axis()
         axis.simdTransform = o
+        axis.isHidden = !showAxes
         arManager.sceneView.scene.rootNode.addChildNode(axis)
+        axisNode = axis
     }
 
-    private func probe() -> (hit: simd_float3, camera: simd_float3)? {
-        let view = arManager.sceneView
-        let centre = CGPoint(x: view.bounds.midX, y: view.bounds.midY)
-        guard let cam = view.session.currentFrame?.camera.transform else { return nil }
-        let camPos = simd_float3(cam.columns.3.x, cam.columns.3.y, cam.columns.3.z)
-        for target in [ARRaycastQuery.Target.existingPlaneGeometry, .estimatedPlane] {
-            if let q = view.raycastQuery(from: centre, allowing: target, alignment: .any),
-               let hit = view.session.raycast(q).first {
-                let p = hit.worldTransform.columns.3
-                return (simd_float3(p.x, p.y, p.z), camPos)
+    // ── Marking ───────────────────────────────────────────────────────────────
+
+    /// Tap on a tag → arm it (the lab panel opens, the orange ring appears).
+    /// Tap anywhere while armed → mark where the ring sits.
+    private func handleTap(_ point: CGPoint) {
+        guard !arManager.isRelocalizing else { return }
+        if let id = armedTagId {
+            mark(tagId: id)
+            return
+        }
+        let sv = arManager.sceneView
+        let hits = sv.hitTest(point, options: [SCNHitTestOption.searchMode: SCNHitTestSearchMode.all.rawValue])
+        for hit in hits {
+            var candidate: SCNNode? = hit.node
+            while let n = candidate {
+                if let entry = markerNodes.first(where: { $0.value === n }) {
+                    withAnimation(.easeInOut(duration: 0.2)) { showLab = true }
+                    arm(entry.key)
+                    return
+                }
+                candidate = n.parent
             }
         }
-        return nil
+    }
+
+    private func arm(_ tagId: String) {
+        armedTagId = tagId
+        if truthRing == nil { truthRing = ARFocusRing(sceneView: arManager.sceneView, accent: .systemOrange) }
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
+
+    private func disarm() {
+        armedTagId = nil
+        truthRing?.cleanup(); truthRing = nil
+        ringTracking = false
+    }
+
+    private func mark(tagId: String) {
+        guard !sending else { return }
+        guard let rendered = markerNodes[tagId]?.simdWorldPosition else { show("Tag isn't placed yet"); return }
+        guard let ring = truthRing, let t = ring.lastHitTransform,
+              let cam = arManager.sceneView.session.currentFrame?.camera.transform else {
+            show("No surface under the ring — move closer"); return
+        }
+        let hit    = simd_float3(t.columns.3.x, t.columns.3.y, t.columns.3.z)
+        let camPos = simd_float3(cam.columns.3.x, cam.columns.3.y, cam.columns.3.z)
+        let label  = tags.first { $0.id == tagId }?.label ?? tagId
+        let (sample, mm) = AnchorLabOverlay.makeSample(
+            tagId: tagId, label: label, rendered: rendered, hit: hit, camera: camPos,
+            originTransform: origin, confidence: arManager.originConfidence, report: report,
+            qrDiscrepancy: arManager.qrDiscrepancy, run: runLabel,
+            by: !settings.uamUserName.isEmpty ? settings.uamUserName : settings.authorName,
+            runType: runType.rawValue)
+
+        // Leave the truth where it was marked + a hairline to the tag, so the
+        // offset is visible in the room, not just as a number.
+        let truth = LabMarker.truth()
+        truth.simdPosition = hit
+        arManager.sceneView.scene.rootNode.addChildNode(truth)
+        let line = LabMarker.line(from: hit, to: rendered)
+        arManager.sceneView.scene.rootNode.addChildNode(line)
+        truthNodes.append(contentsOf: [truth, line])
+        ARPinFX.drop(on: truth, accent: .systemOrange)
+
+        disarm()
+        sending = true
+        toast = nil
+        AppLog.info("lab", String(format: "Anchor Lab mark %@: %.1f mm (%@)", label, mm, sample.originSource))
+        Task {
+            var ok = true
+            do { try await client.postAnchorAccuracy(anchorId: rig.id, sample: sample) }
+            catch { ok = false; show("Saved locally only — \(error.localizedDescription)") }
+            marks.append((label, mm, ok))
+            sending = false
+        }
     }
 
     private func finish() {
@@ -524,9 +684,15 @@ struct LabRunView: View {
 
     /// Explicit exit: only now is the AR session released.
     private func leave() {
+        disarm()
         arManager.pauseSession()
         appState.activeARSession = nil
         onDone()
+    }
+
+    private func show(_ s: String) {
+        toast = s
+        Task { try? await Task.sleep(nanoseconds: 3_000_000_000); if toast == s { toast = nil } }
     }
 
     private func num(_ any: AnyCodable?) -> Double? {
@@ -537,6 +703,49 @@ struct LabRunView: View {
     }
 
     // ── Bits ──────────────────────────────────────────────────────────────────
+
+    private var sourceLabel: String {
+        switch arManager.originConfidence {
+        case .approximate: return "approximate"
+        case .relocalizing: return "relocalizing…"
+        case .aligning: return "aligning…"
+        default: return report.source
+        }
+    }
+    private var sourceTint: Color {
+        switch arManager.originConfidence {
+        case .approximate: return .orange
+        case .locked: return .green
+        default: return .white
+        }
+    }
+    private func labRow(_ k: String, _ v: String, tint: Color = .white) -> some View {
+        HStack(spacing: 6) {
+            Text(k).font(.caption2).foregroundStyle(.white.opacity(0.6))
+            Spacer(minLength: 4)
+            Text(v).font(.caption2.monospacedDigit()).foregroundStyle(tint)
+        }
+    }
+    private func median(_ xs: [Double]) -> Double {
+        let s = xs.sorted(); guard !s.isEmpty else { return 0 }
+        return s.count % 2 == 1 ? s[s.count / 2] : (s[s.count / 2 - 1] + s[s.count / 2]) / 2
+    }
+    private func toggle(_ icon: String, on: Bool, _ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon).font(.caption.bold())
+                .frame(width: 30, height: 30)
+                .background(on ? Color.cyan : Color.black.opacity(0.6), in: Circle())
+                .foregroundStyle(on ? .black : .white)
+        }
+    }
+    private func hintPill(_ text: String, icon: String, tint: Color) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon).foregroundStyle(tint)
+            Text(text).font(.caption).foregroundStyle(.white)
+        }
+        .padding(.horizontal, 14).padding(.vertical, 9)
+        .background(Color.black.opacity(0.7), in: Capsule())
+    }
 
     private func statusCard(icon: String, tint: Color, title: String, text: String?) -> some View {
         VStack {
@@ -669,25 +878,104 @@ struct LabHistoryView: View {
 // ── Markers ───────────────────────────────────────────────────────────────────
 
 enum LabMarker {
-    /// A 2.5 cm cyan sphere with a floating label — deliberately plain so the
-    /// eye judges the sphere's centre against the physical feature.
-    static func make(label: String) -> SCNNode {
-        let root = SCNNode()
-        let s = SCNSphere(radius: 0.0125)
-        s.firstMaterial?.diffuse.contents = UIColor.cyan
-        s.firstMaterial?.emission.contents = UIColor.cyan.withAlphaComponent(0.5)
-        root.addChildNode(SCNNode(geometry: s))
-        let text = SCNText(string: label, extrusionDepth: 0.2)
-        text.font = UIFont.systemFont(ofSize: 6, weight: .semibold)
-        text.firstMaterial?.diffuse.contents = UIColor.white
-        text.flatness = 0.3
-        let tn = SCNNode(geometry: text)
-        let (mn, mx) = text.boundingBox
-        tn.scale = SCNVector3(0.004, 0.004, 0.004)
-        tn.position = SCNVector3(-(mx.x - mn.x) * 0.002, 0.02, 0)
-        tn.constraints = [SCNBillboardConstraint()]
-        root.addChildNode(tn)
+    /// The AR OMS pin — sphere, ring, numbered badge — in the Lab's cyan. The
+    /// sphere's centre IS the tag position, which is what a truth mark is
+    /// measured against.
+    static func pin(number: Int) -> SCNNode {
+        let color = UIColor.cyan
+        let root  = SCNNode()
+
+        let sphere = SCNSphere(radius: 0.015)
+        let sMat   = SCNMaterial()
+        sMat.diffuse.contents  = color
+        sMat.emission.contents = color.withAlphaComponent(0.55)
+        sMat.lightingModel     = .constant
+        sphere.firstMaterial   = sMat
+        root.addChildNode(SCNNode(geometry: sphere))
+
+        let torus        = SCNTorus()
+        torus.ringRadius = 0.023
+        torus.pipeRadius = 0.004
+        let tMat         = SCNMaterial()
+        tMat.diffuse.contents  = color
+        tMat.emission.contents = color.withAlphaComponent(0.4)
+        tMat.lightingModel     = .constant
+        torus.firstMaterial    = tMat
+        let ring               = SCNNode(geometry: torus)
+        ring.eulerAngles       = SCNVector3(Float.pi / 2, 0, 0)
+        root.addChildNode(ring)
+
+        let badge = numberBadge(number: number, color: color)
+        badge.simdPosition = simd_float3(0, 0.055, 0)
+        root.addChildNode(badge)
         return root
+    }
+
+    private static func numberBadge(number: Int, color: UIColor) -> SCNNode {
+        let side: CGFloat = 96
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: side, height: side))
+        let img = renderer.image { _ in
+            color.withAlphaComponent(0.92).setFill()
+            UIBezierPath(ovalIn: CGRect(x: 4, y: 4, width: side - 8, height: side - 8)).fill()
+            UIColor.white.withAlphaComponent(0.65).setStroke()
+            let ring = UIBezierPath(ovalIn: CGRect(x: 5, y: 5, width: side - 10, height: side - 10))
+            ring.lineWidth = 3.5; ring.stroke()
+            let str  = "\(number)" as NSString
+            let para = NSMutableParagraphStyle(); para.alignment = .center
+            let attrs: [NSAttributedString.Key: Any] = [
+                .font: UIFont.systemFont(ofSize: side * 0.44, weight: .black),
+                .foregroundColor: UIColor.black,
+                .paragraphStyle: para,
+            ]
+            let ts = str.size(withAttributes: attrs)
+            str.draw(at: CGPoint(x: (side - ts.width) / 2, y: (side - ts.height) / 2), withAttributes: attrs)
+        }
+        let plane = SCNPlane(width: 0.054, height: 0.054)
+        let mat   = SCNMaterial()
+        mat.diffuse.contents = img
+        mat.lightingModel    = .constant
+        mat.isDoubleSided    = true
+        plane.firstMaterial  = mat
+        let node      = SCNNode(geometry: plane)
+        let billboard = SCNBillboardConstraint(); billboard.freeAxes = .all
+        node.constraints = [billboard]
+        return node
+    }
+
+    /// Where the tester said the feature really is: a small orange sphere.
+    static func truth() -> SCNNode {
+        let s = SCNSphere(radius: 0.006)
+        let m = SCNMaterial()
+        m.diffuse.contents  = UIColor.systemOrange
+        m.emission.contents = UIColor.systemOrange.withAlphaComponent(0.6)
+        m.lightingModel     = .constant
+        s.firstMaterial     = m
+        return SCNNode(geometry: s)
+    }
+
+    /// Hairline between the truth mark and the tag — the error, drawn.
+    static func line(from a: simd_float3, to b: simd_float3) -> SCNNode {
+        let d = b - a
+        let len = simd_length(d)
+        let cyl = SCNCylinder(radius: 0.0008, height: CGFloat(max(len, 0.001)))
+        let m = SCNMaterial()
+        m.diffuse.contents = UIColor.systemOrange.withAlphaComponent(0.9)
+        m.lightingModel    = .constant
+        cyl.firstMaterial  = m
+        let node = SCNNode(geometry: cyl)
+        node.simdPosition = (a + b) / 2
+        if len > 0.0005 {
+            let up  = simd_float3(0, 1, 0)
+            let dir = d / len
+            let axis = simd_cross(up, dir)
+            let dot  = simd_dot(up, dir)
+            if simd_length(axis) > 1e-5 {
+                node.simdOrientation = simd_quatf(angle: acos(max(-1, min(1, dot))), axis: simd_normalize(axis))
+            } else if dot < 0 {
+                node.simdOrientation = simd_quatf(angle: .pi, axis: simd_float3(1, 0, 0))
+            }
+        }
+        return node
     }
 
     /// A 6 cm axis triad at the origin (x red, y green, z blue).
@@ -710,8 +998,8 @@ enum LabMarker {
 // The Lab measures the world-map anchoring, so authoring should not depend on
 // the QR either: the rig is picked from the list (identity known), the map's
 // own frame is the origin, and Save seals the map with `sib-origin` in it.
-// Looks and behaves like Place Steps in AR OMS: focus ring at the crosshair,
-// one button to drop a pin where the ring sits, name it, Save. Lab pins are
+// Tap to tag — exactly the AR OMS Place Steps gesture: tap a real feature,
+// the pin drops with the pop / ring / haptic, and it is "Tag N". Lab pins are
 // real tags (anchor_rel_* relative to the map origin), so every run type —
 // Map only or QR + map — reads them unchanged.
 
@@ -729,21 +1017,20 @@ struct LabPlaceView: View {
     @State private var origin: simd_float4x4 = matrix_identity_float4x4
     @State private var tags: [Tag] = []
     @State private var nodes: [String: SCNNode] = [:]
-    @State private var focusRing: ARFocusRing? = nil
-    @State private var ringTracking = false
-    @State private var pendingPos: simd_float3? = nil
-    @State private var askLabel = false
-    @State private var newLabel = ""
+    @State private var placing = false
+    @State private var showTapHint = true
     @State private var toast: String? = nil
     @State private var started = false
     @State private var dirty = false
-    private let ticker = Timer.publish(every: 1.0 / 30.0, on: .main, in: .common).autoconnect()
 
     private var client: SIBClient { SIBClient(settings: settings) }
+    private var nextNumber: Int { (tags.compactMap { Int($0.label.split(separator: " ").last ?? "") }.max() ?? tags.count) + 1 }
 
     var body: some View {
         ZStack {
-            ARContainerView(arManager: arManager).ignoresSafeArea()
+            PlacementGestureContainer(arManager: arManager, tool: .move, active: false,
+                                      onTap: phase == .ready ? handleTap : nil)
+                .ignoresSafeArea()
 
             VStack {
                 HStack(spacing: 10) {
@@ -770,7 +1057,7 @@ struct LabPlaceView: View {
             case .relocalizing:
                 card(icon: "arrow.triangle.2.circlepath", tint: .green,
                      title: arManager.originConfidence == .aligning ? "Matched — settling" : "Matching the rig's map…",
-                     text: "Look at the rig from where you placed the tags. Existing pins appear once the fit is steady.")
+                     text: "Look at the rig from where you placed the tags. Existing tags appear once the fit is steady.")
             case .failed(let why):
                 VStack(spacing: 12) {
                     card(icon: "exclamationmark.triangle.fill", tint: .orange, title: "Couldn't match the map", text: why)
@@ -780,9 +1067,15 @@ struct LabPlaceView: View {
                     }
                 }
             case .ready, .saving:
+                if showTapHint, tags.isEmpty {
+                    ARTapCoach(title: "Tap any surface to place Tag 1",
+                               subtitle: "Point at a real feature — a hinge, a screw head, a corner",
+                               accent: .cyan,
+                               onDismiss: { withAnimation(.easeOut(duration: 0.3)) { showTapHint = false } })
+                    .transition(.opacity)
+                }
                 VStack {
                     Spacer()
-                    // Pin strip
                     if !tags.isEmpty {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(spacing: 6) {
@@ -797,25 +1090,14 @@ struct LabPlaceView: View {
                             }.padding(.horizontal, 16)
                         }
                     }
-                    HStack(spacing: 12) {
-                        Text(ringTracking ? "Aim the ring at a real feature, then place" : "Move the phone slowly until the ring finds a surface")
-                            .font(.subheadline).foregroundStyle(.white)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.horizontal, 14).padding(.vertical, 12)
-                            .background(Color.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 14))
-                        Button {
-                            guard let t = focusRing?.lastHitTransform else { return }
-                            pendingPos = simd_float3(t.columns.3.x, t.columns.3.y, t.columns.3.z)
-                            newLabel = "Pin \(tags.count + 1)"
-                            askLabel = true
-                        } label: {
-                            Image(systemName: "plus").font(.title2.bold())
-                                .frame(width: 56, height: 56)
-                                .background(ringTracking ? Color.cyan : Color.gray, in: Circle()).foregroundStyle(.black)
-                        }
-                        .disabled(!ringTracking || phase == .saving)
-                    }
-                    .padding(.horizontal, 16).padding(.bottom, 28)
+                    Text(arManager.isRelocalizing ? "Relocalizing — hold the rig in view"
+                         : tags.isEmpty ? "Tap a real feature to place Tag 1"
+                         : "Tap the next feature to place Tag \(nextNumber) · Save when done")
+                        .font(.subheadline).foregroundStyle(.white)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 14).padding(.vertical, 12)
+                        .background(Color.black.opacity(0.6), in: RoundedRectangle(cornerRadius: 14))
+                        .padding(.horizontal, 16).padding(.bottom, 28)
                 }
             }
 
@@ -825,25 +1107,17 @@ struct LabPlaceView: View {
             }
         }
         .task { guard !started else { return }; started = true; await start() }
-        .onReceive(ticker) { _ in
-            guard phase == .ready, let ring = focusRing else { return }
-            ring.update(sceneView: arManager.sceneView)
-            if ringTracking != ring.isTracking { ringTracking = ring.isTracking }
-        }
-        .alert("Name this pin", isPresented: $askLabel) {
-            TextField("hinge pin, screw head, corner…", text: $newLabel)
-            Button("Place") { Task { await place() } }
-            Button("Cancel", role: .cancel) { pendingPos = nil }
-        } message: { Text("Name the physical feature so a tester can aim at it later.") }
     }
 
     // ── Session ───────────────────────────────────────────────────────────────
 
     private func start() async {
         tags = existing.filter { $0.metadata["anchor_rel_x"] != nil }
-        arManager.wantsSceneMesh = settings.lidarMeshEnabled
+        // Always the scene mesh in the Lab: a tap must land on the feature,
+        // not on the table plane behind it (that alone read as 5–7 cm "drift").
+        arManager.wantsSceneMesh = true
         if let bundle = await WorldMapCache.load(.anchor(rig.id), client: client), bundle.isSealed, !tags.isEmpty {
-            // Extend the existing map: relocalize, then place more pins in its frame.
+            // Extend the existing map: relocalize, then place more tags in its frame.
             arManager.startSessionWithWorldMap(bundle.map)
             arManager.disableQRScanning()
             phase = .relocalizing
@@ -851,7 +1125,7 @@ struct LabPlaceView: View {
             while true {
                 try? await Task.sleep(nanoseconds: 150_000_000)
                 if arManager.relocalizationOutcome == .timedOut {
-                    phase = .failed("ARKit couldn't match the rig's map in 15 s. Stand where you placed the pins, or start over with a new map."); return
+                    phase = .failed("ARKit couldn't match the rig's map in 15 s. Stand where you placed the tags, or start over with a new map."); return
                 }
                 if Date().timeIntervalSince(t0) > 40 { phase = .failed("The origin never settled."); return }
                 if case .locked = arManager.originConfidence { break }
@@ -870,11 +1144,12 @@ struct LabPlaceView: View {
     private func startFresh() async {
         tags = []
         nodes.values.forEach { $0.removeFromParentNode() }; nodes = [:]
+        arManager.wantsSceneMesh = true
         arManager.startSession()
         arManager.disableQRScanning()
         origin = matrix_identity_float4x4
         phase = .starting
-        // Wait for tracking so the ring has something to hit.
+        // Wait for tracking so a tap has something to hit.
         for _ in 0..<100 {
             if case .normal = arManager.trackingState { break }
             try? await Task.sleep(nanoseconds: 100_000_000)
@@ -886,25 +1161,40 @@ struct LabPlaceView: View {
     }
 
     private func becomeReady() {
-        focusRing = ARFocusRing(sceneView: arManager.sceneView)
-        for t in tags { drawPin(t) }
+        for (i, t) in tags.enumerated() { drawPin(t, number: i + 1) }
         phase = .ready
     }
 
-    private func drawPin(_ t: Tag) {
+    private func drawPin(_ t: Tag, number: Int) {
         guard let x = num(t.metadata["anchor_rel_x"]), let y = num(t.metadata["anchor_rel_y"]), let z = num(t.metadata["anchor_rel_z"]) else { return }
         let p = ARCoordinateFrame.toWorldSpace(anchorRelativePos: simd_float3(Float(x), Float(y), Float(z)), anchorTransform: origin)
-        let node = LabMarker.make(label: t.label)
+        let node = LabMarker.pin(number: number)
         node.simdPosition = p
         arManager.sceneView.scene.rootNode.addChildNode(node)
         nodes[t.id] = node
     }
 
-    private func place() async {
-        guard let p = pendingPos else { return }
-        let label = newLabel.trimmingCharacters(in: .whitespaces)
-        guard !label.isEmpty else { return }
-        pendingPos = nil
+    // ── Tap to tag ────────────────────────────────────────────────────────────
+
+    private func handleTap(_ point: CGPoint) {
+        guard phase == .ready, !placing, !arManager.isRelocalizing else { return }
+        let sv = arManager.sceneView
+        var pos: simd_float3? = nil
+        for target in [ARRaycastQuery.Target.existingPlaneGeometry, .estimatedPlane] {
+            if let q = sv.raycastQuery(from: point, allowing: target, alignment: .any),
+               let h = sv.session.raycast(q).first {
+                let c = h.worldTransform.columns.3; pos = simd_float3(c.x, c.y, c.z); break
+            }
+        }
+        guard let p = pos else { show("No surface there — tap a spot on the rig"); return }
+        withAnimation { showTapHint = false }
+        Task { await place(at: p) }
+    }
+
+    private func place(at p: simd_float3) async {
+        placing = true; defer { placing = false }
+        let number = nextNumber
+        let label  = "Tag \(number)"
         let rel = ARCoordinateFrame.toAnchorRelative(worldPos: p, anchorTransform: origin)
         let meta: [String: AnyCodable] = [
             "pos_x": AnyCodable(Double(p.x)), "pos_y": AnyCodable(Double(p.y)), "pos_z": AnyCodable(Double(p.z)),
@@ -913,14 +1203,15 @@ struct LabPlaceView: View {
         ]
         let req = CreateTagRequest(anchorId: rig.id, type: .presenceCheck, label: label,
                                    expectedOutcome: "\(label) is where the tag says", checkDescription: nil,
-                                   order: tags.count + 1, groupId: nil, metadata: meta)
+                                   order: number, groupId: nil, metadata: meta)
         do {
             let tag = try await client.createTag(req)
             tags.append(tag)
-            drawPin(tag)
+            drawPin(tag, number: number)
+            ARPinFX.drop(on: nodes[tag.id], accent: .cyan)
             dirty = true
-            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-        } catch { show("Couldn't save the pin: \(error.localizedDescription)") }
+            AppLog.info("lab", "tag placed \(label)")
+        } catch { show("Couldn't save the tag: \(error.localizedDescription)") }
     }
 
     private func remove(_ t: Tag) async {
@@ -932,7 +1223,7 @@ struct LabPlaceView: View {
         } catch { show("Couldn't delete: \(error.localizedDescription)") }
     }
 
-    /// Seal: the map as it is NOW (with every pin's surroundings in it) + the origin.
+    /// Seal: the map as it is NOW (with every tag's surroundings in it) + the origin.
     private func save() async {
         phase = .saving
         arManager.ensureOriginAnchor(fallback: origin)
@@ -943,7 +1234,7 @@ struct LabPlaceView: View {
             try await client.uploadWorldMap(anchorId: rig.id, data: mapData)
             let meta = try await client.uploadWorldMapMeta(anchorId: rig.id, anchorPose: origin, sealedBy: sealedBy)
             WorldMapCache.store(.anchor(rig.id), map: mapData, meta: meta)
-            AppLog.info("lab", "rig sealed without a code (\(mapData.count / 1024) KB, \(tags.count) pins)")
+            AppLog.info("lab", "rig sealed without a code (\(mapData.count / 1024) KB, \(tags.count) tags)")
             leave()
         } catch {
             WorldMapCache.store(.anchor(rig.id), map: mapData, meta: WorldMapMeta())
@@ -953,7 +1244,6 @@ struct LabPlaceView: View {
     }
 
     private func leave() {
-        focusRing?.cleanup(); focusRing = nil
         arManager.pauseSession()
         onDone()
     }
