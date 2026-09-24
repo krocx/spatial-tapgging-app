@@ -385,6 +385,7 @@ struct LabRunView: View {
     @State private var toast: String? = nil
     @State private var tucked = Set<String>()
     // Run record (5): one id for every mark of this Start…Done, posted on Done.
+    @State private var finishing = false
     @State private var runId = UUID().uuidString
     @State private var resumeAtStart = 0
     @State private var sealedBytes = 0
@@ -432,6 +433,7 @@ struct LabRunView: View {
                             .padding(.horizontal, 16).padding(.vertical, 11)
                             .background(Color.cyan, in: Capsule()).foregroundStyle(.black)
                     }
+                    .disabled(finishing)
                     VStack(alignment: .leading, spacing: 1) {
                         Text(rig.assetId).font(.caption.bold()).foregroundStyle(.white).lineLimit(1)
                         Text("\(runType.title) · \(runLabel)").font(.caption2).foregroundStyle(.white.opacity(0.7)).lineLimit(1)
@@ -481,7 +483,9 @@ struct LabRunView: View {
             case .ready:
                 VStack {
                     Spacer()
-                    if arManager.isRelocalizing {
+                    if finishing {
+                        hintPill("Saving the run…", icon: "icloud.and.arrow.up", tint: .cyan)
+                    } else if arManager.isRelocalizing {
                         hintPill("Relocalizing — hold the rig in view", icon: "arrow.triangle.2.circlepath", tint: .orange)
                     } else if showLab {
                         labPanel
@@ -697,8 +701,10 @@ struct LabRunView: View {
             originSource: src, relocalizeS: report.relocalizeS, convergeS: report.convergeS,
             corrections: arManager.originCorrections, interrupted: interrupted,
             mapGrew: mapGrew, mapKB: mapKB, ghostUsed: ghostUsed)
-        do { try await client.postAnchorLabRun(anchorId: rig.id, run: run) }
-        catch { AppLog.warn("lab", "run record upload failed: \(error.localizedDescription)") }
+        do {
+            try await client.postAnchorLabRun(anchorId: rig.id, run: run)
+            AppLog.info("lab", "run record stored: \(runLabel) · \(marks.count) marks · median \(q(0.5).map { String(format: "%.0f", $0) } ?? "—") mm")
+        } catch { AppLog.warn("lab", "run record upload failed: \(error.localizedDescription)") }
     }
 
     private func placeMarkers() {
@@ -803,14 +809,23 @@ struct LabRunView: View {
         }
     }
 
+    /// Done: grow the map (bounded), post the run record, THEN the summary.
+    /// The summary's dismiss releases the AR session, so nothing that needs
+    /// the session may still be running when it appears.
     private func finish() {
+        guard !finishing else { return }
+        finishing = true
         disarm()
         Task {
-            await growMapIfClean()
+            let growth = Task { await growMapIfClean() }
+            let timeout = Task { try? await Task.sleep(nanoseconds: 12_000_000_000); growth.cancel() }
+            _ = await growth.value
+            timeout.cancel()
             await postRunRecord()
             history = try? await client.fetchAnchorAccuracy(anchorId: rig.id).summary
+            finishing = false
+            showSummary = true
         }
-        showSummary = true
     }
 
     /// Explicit exit: only now is the AR session released.

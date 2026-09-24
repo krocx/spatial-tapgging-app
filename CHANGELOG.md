@@ -7,6 +7,10 @@ it, it gets a line.
 ## 2026.4.46 — 2026-09-08
 
 ### Fixed
+- **Anchor Lab — the run record could be lost on a quick Done.** The summary
+  appeared while the map-growth save was still running; dismissing it paused
+  the session under that save and the record was never posted. Done now
+  finishes the save (12 s bound), posts the record, then shows the summary.
 - **A relocalization timeout can no longer replace the frame under placed
   tags.** The 15 s "fall back to a fresh session" timer set at session start
   could fire after a later interruption re-entered relocalizing — every tag
