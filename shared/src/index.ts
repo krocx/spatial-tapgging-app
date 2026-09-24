@@ -151,7 +151,7 @@ export interface Anchor {
     shapeAligned: boolean;    // shapeModelPose present
   };
   /** Anchor Lab (read-only, derived): measured accuracy samples on file. */
-  accuracy?: { n: number; medianMm: number; lastAt?: string };
+  accuracy?: { n: number; medianMm: number; lastAt?: string; runs?: number };
   /**
    * B2 (2026.4.46): how AR sessions find this chamber's origin.
    *   'worldMap' (default, absent) — sealed ARWorldMap; QR is the key + drift check.

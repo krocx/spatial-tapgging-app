@@ -2062,9 +2062,11 @@ async function removeObjectScan(anchorId, assetId) {
 // Anchor Lab (2026.4.46): measured accuracy on file → badge that opens the lab view.
 function anchorLabHtml(anchor) {
   const a = anchor.accuracy;
-  if (!a || !a.n) return '';
-  const tone = a.medianMm <= 10 ? 'badge-green' : a.medianMm <= 25 ? 'badge-orange' : 'badge-red';
-  return `<button class="badge ${tone}" style="cursor:pointer;border:0" title="Anchor Lab — rendered-vs-physical error measured in the app (${a.n} marks). Click for the chart." onclick="openAnchorLab('${anchor.id}','${jsEsc(anchor.assetId)}')">Lab · ${a.n} · median ${a.medianMm} mm</button>`;
+  if (!a || (!a.n && !a.runs)) return '';
+  // A rig with runs but no marks yet still opens — the Runs table is the point.
+  const tone = !a.n ? 'badge-muted' : a.medianMm <= 10 ? 'badge-green' : a.medianMm <= 25 ? 'badge-orange' : 'badge-red';
+  const text = a.n ? `Lab · ${a.n} marks · median ${a.medianMm} mm${a.runs ? ` · ${a.runs} runs` : ''}` : `Lab · ${a.runs} runs · no marks`;
+  return `<button class="badge ${tone}" style="cursor:pointer;border:0" title="Anchor Lab — runs and rendered-vs-physical error measured in the app. Click to open." onclick="openAnchorLab('${anchor.id}','${jsEsc(anchor.assetId)}')">${text} ▸</button>`;
 }
 
 let anchorLabId = null;
@@ -2093,7 +2095,7 @@ function renderAnchorLab(d) {
   const { samples, summary } = d;
   const runs = d.runs || [];
   const body = document.getElementById('lab-body');
-  if (!samples.length && !runs.length) { body.innerHTML = '<p style="color:var(--muted);font-size:0.85rem">No marks yet. In the app: Settings → Anchor Lab, then Operator mode → pick a tag → aim → Mark.</p>'; return; }
+  if (!samples.length && !runs.length) { body.innerHTML = '<p style="color:var(--muted);font-size:0.85rem">No runs or marks yet. In the app: Anchor Lab → rig → Start run; Done stores the run, and the scope toggle lets a tester mark where each tag really is.</p>'; return; }
   const sorted = [...samples].sort((a, b) => (a.at || '').localeCompare(b.at || ''));
   const devices = [...new Set(sorted.map(x => x.device || 'unknown'))];
   const palette = ['var(--ax-blue)', 'var(--ax-green)', 'var(--ax-orange)', 'var(--ax-cyan)', 'var(--ax-red)', 'var(--ax-ink-2)'];

@@ -171,11 +171,12 @@ function withMapSealed(anchor: Anchor): Anchor {
   const obj  = readObjectMeta(anchor.id);
   const sealed = !!meta.anchorPose && fs.existsSync(path.join(WORLDMAPS_DIR, `${anchor.id}.worldmap`));
   const acc = listAccuracySamples(anchor.id);
-  const accSummary = acc.length ? summariseAccuracy(acc) : undefined;
+  const runs = listLabRuns(anchor.id).length;
+  const accSummary = acc.length || runs ? summariseAccuracy(acc) : undefined;
   return {
     ...anchor,
     ...(sealed && { mapSealedAt: meta.capturedAt }),
-    ...(accSummary && { accuracy: { n: accSummary.n, medianMm: accSummary.medianMm, ...(accSummary.lastAt && { lastAt: accSummary.lastAt }) } }),
+    ...(accSummary && { accuracy: { n: accSummary.n, medianMm: accSummary.medianMm, runs, ...(accSummary.lastAt && { lastAt: accSummary.lastAt }) } }),
     ...(obj?.scannedAt && { objectScannedAt: obj.scannedAt }),
     ...(obj?.scannedAt && { objectInfo: {
       ...(obj.scannedOn && { scannedOn: obj.scannedOn }),

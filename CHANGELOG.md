@@ -7,6 +7,16 @@ it, it gets a line.
 ## 2026.4.46 — 2026-09-08
 
 ### Fixed
+- **Anchor Lab — portal badge for rigs with runs but no marks.** The *Lab*
+  badge (the only way into the Lab modal) appeared only once a rig had marks,
+  so a rig with runs and 0 marks showed nothing. It now appears for runs too
+  ("Lab · 2 runs · no marks") and reads as a button.
+- **Anchor Lab — run top bar and ghost layout.** Done wrapped onto two lines
+  with the third toggle; Done and the rig text are compact again, only the
+  toggles are 44 pt. The ghost image widened the whole layout and pushed the
+  status card off the left edge; it is now sized by the screen. The ghost
+  turns off and dims once tags are up ("Tags are placed — the ghost isn't
+  needed now").
 - **Anchor Lab — the run record could be lost on a quick Done.** The summary
   appeared while the map-growth save was still running; dismissing it paused
   the session under that save and the record was never posted. Done now

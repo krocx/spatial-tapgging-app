@@ -412,7 +412,11 @@ struct LabRunView: View {
             // Ghost: the sealed-map photo over the camera, so the tester can
             // stand where the author stood. A 2-D overlay, nothing tracked.
             if showGhost, let g = ghost {
-                Image(uiImage: g).resizable().scaledToFill()
+                // Sized by the screen, never by the photo — a bare scaledToFill
+                // image widens the whole ZStack and pushes the cards off-screen.
+                Color.clear
+                    .overlay(Image(uiImage: g).resizable().scaledToFill())
+                    .clipped()
                     .opacity(0.35).ignoresSafeArea().allowsHitTesting(false)
                 VStack {
                     Spacer().frame(height: 110)
@@ -429,25 +433,35 @@ struct LabRunView: View {
             VStack {
                 HStack(spacing: 8) {
                     Button { finish() } label: {
-                        Label("Done", systemImage: "checkmark").font(.subheadline.bold())
-                            .padding(.horizontal, 16).padding(.vertical, 11)
+                        Label("Done", systemImage: "checkmark").font(.caption.bold())
+                            .padding(.horizontal, 12).padding(.vertical, 7)
                             .background(Color.cyan, in: Capsule()).foregroundStyle(.black)
                     }
+                    .fixedSize()
                     .disabled(finishing)
                     VStack(alignment: .leading, spacing: 1) {
                         Text(rig.assetId).font(.caption.bold()).foregroundStyle(.white).lineLimit(1)
                         Text("\(runType.title) · \(runLabel)").font(.caption2).foregroundStyle(.white.opacity(0.7)).lineLimit(1)
                     }
-                    Spacer()
+                    .layoutPriority(-1)
+                    Spacer(minLength: 4)
                     if ghost != nil {
-                        toggle("person.crop.rectangle", on: showGhost) { showGhost.toggle(); if showGhost { ghostUsed = true; offerGhost = false } }
+                        toggle("person.crop.rectangle", on: showGhost, dimmed: phase == .ready) {
+                            if phase == .ready {
+                                showGhost = false
+                                show("Tags are placed — the ghost isn't needed now")
+                            } else {
+                                showGhost.toggle(); if showGhost { ghostUsed = true; offerGhost = false }
+                            }
+                        }
                     }
                     toggle("move.3d", on: showAxes) { showAxes.toggle(); axisNode?.isHidden = !showAxes }
                     toggle("scope",   on: showLab)  { withAnimation(.easeInOut(duration: 0.2)) { showLab.toggle() }; if !showLab { disarm() } }
                     Text("\(marks.count)/\(tags.count)").font(.caption.monospacedDigit().bold()).foregroundStyle(.white)
                         .padding(.horizontal, 8).padding(.vertical, 4).background(Color.black.opacity(0.6), in: Capsule())
+                        .fixedSize()
                 }
-                .padding(.horizontal, 16).padding(.top, 54)
+                .padding(.horizontal, 12).padding(.top, 54)
                 Spacer()
             }
 
@@ -483,6 +497,7 @@ struct LabRunView: View {
             case .ready:
                 VStack {
                     Spacer()
+                    if let t = toast, showLab || finishing { hintPill(t, icon: "info.circle", tint: .white).padding(.bottom, 6) }
                     if finishing {
                         hintPill("Saving the run…", icon: "icloud.and.arrow.up", tint: .cyan)
                     } else if arManager.isRelocalizing {
@@ -876,12 +891,13 @@ struct LabRunView: View {
         let s = xs.sorted(); guard !s.isEmpty else { return 0 }
         return s.count % 2 == 1 ? s[s.count / 2] : (s[s.count / 2 - 1] + s[s.count / 2]) / 2
     }
-    private func toggle(_ icon: String, on: Bool, _ action: @escaping () -> Void) -> some View {
+    private func toggle(_ icon: String, on: Bool, dimmed: Bool = false, _ action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: icon).font(.body.bold())
                 .frame(width: 44, height: 44)
                 .background(on ? Color.cyan : Color.black.opacity(0.6), in: Circle())
                 .foregroundStyle(on ? .black : .white)
+                .opacity(dimmed ? 0.45 : 1)
         }
     }
     private func hintPill(_ text: String, icon: String, tint: Color) -> some View {
