@@ -32,7 +32,7 @@
       --surface:  var(--ax-paper);
       --border:   var(--ax-rule);
       --text:     var(--ax-ink);
-      --muted:    var(--ax-ink-3);
+      --muted:    var(--ax-ink-2);   /* secondary text at the app's 0.7 tier — 0.5 was unreadable on Windows */
       --accent:   var(--ax-blue);
       --green:    var(--ax-green);
       --orange:   var(--ax-orange);
@@ -58,9 +58,9 @@
     button:active, .btn:active { transform: scale(0.97); }
     .btn-primary { background: var(--accent); color: var(--ax-on-accent); }
     .btn-primary:hover { background: var(--accent); opacity: .9; }
-    .btn-ghost   { background: transparent; color: var(--ax-ink-2); border: 1px solid var(--border); }
+    .btn-ghost   { background: var(--ax-paper-2); color: var(--ax-ink); border: 1px solid var(--ax-ink-4); }
     .btn-ghost:hover { border-color: var(--accent); color: var(--ax-ink); background: var(--ax-paper-2); }
-    .btn-sm { padding: 5px 12px; font-size: 0.78rem; border-radius: 10px; }
+    .btn-sm { padding: 6px 13px; font-size: 0.82rem; border-radius: 10px; }
     .btn-danger { background: var(--red); color: var(--ax-on-accent); }
     .btn .ax-icon, button .ax-icon { width: 15px; height: 15px; }
 
@@ -90,7 +90,7 @@
     .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
     .card-ids h3 { font-size: 0.92rem; font-weight: 700; margin-bottom: 2px; word-break: break-all; }
     .card-ids .asset { font-size: 0.78rem; color: var(--muted); font-family: var(--ax-mono); }
-    .badge { display: inline-block; font-size: 0.70rem; font-weight: 700; padding: 2px 8px; border-radius: 100px; }
+    .badge { display: inline-block; font-size: 0.78rem; font-weight: 700; padding: 2px 8px; border-radius: 100px; }
     .badge-green  { background: var(--ax-ok-fill); color: var(--green); }
     .badge-orange { background: var(--ax-warn-fill);  color: var(--orange); }
     .badge-red    { background: var(--ax-bad-fill);   color: var(--ax-bad); }
@@ -98,9 +98,9 @@
 
     .qr-wrap { display: flex; justify-content: center; margin: 12px 0; }
     .qr-wrap img { border-radius: 8px; border: 4px solid var(--ax-ink); display: block; width: 180px; height: 180px; }
-    .qr-wrap .qr-loading { width: 180px; height: 180px; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 0.75rem; }
+    .qr-wrap .qr-loading { width: 180px; height: 180px; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 0.78rem; }
 
-    .card-meta { font-size: 0.75rem; color: var(--muted); margin-bottom: 12px; }
+    .card-meta { font-size: 0.78rem; color: var(--muted); margin-bottom: 12px; }
     .card-meta span + span::before { content: ' · '; }
 
     .card-actions { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -124,6 +124,10 @@
     .overlay > *, [id$="-modal"] > div:first-child, #gs-panel, #tour-card, .heat-pop { background: var(--ax-solid) !important; }
     /* Native controls follow the dark scheme (select popups, date pickers, scrollbars on Windows). */
     html { color-scheme: dark; }
+    /* Windows Chrome/Edge render the popup list with their own background and ignore the
+       scheme for it; without explicit colours the options are white-on-white. */
+    select, select option, select optgroup { background: var(--ax-solid); color: var(--ax-ink); }
+    select option:checked, select option:hover { background: var(--ax-blue); color: var(--ax-on-accent); }
     /* An app, not an article: paragraphs span their container. */
     .ax p { max-width: none; }
     .modal h2 { font-size: 1rem; margin-bottom: 16px; }
@@ -134,8 +138,8 @@
     #toast.show { opacity: 1; }
 
     /* ── Key status ── */
-    .key-ok   { font-size: 0.72rem; color: var(--green);  margin-top: 8px; line-height: 1.4; }
-    .key-warn { font-size: 0.72rem; color: var(--orange); margin-top: 8px; line-height: 1.4; }
+    .key-ok   { font-size: 0.78rem; color: var(--green);  margin-top: 8px; line-height: 1.4; }
+    .key-warn { font-size: 0.78rem; color: var(--orange); margin-top: 8px; line-height: 1.4; }
 
     /* ── Delete anchor confirm modal ── */
     #delete-modal .modal { max-width: 380px; }
@@ -149,18 +153,18 @@
       cursor: pointer; user-select: none; padding: 2px 0;
     }
     .tag-section-title {
-      font-size: 0.74rem; font-weight: 700; color: var(--muted);
+      font-size: 0.78rem; font-weight: 700; color: var(--muted);
       text-transform: uppercase; letter-spacing: 0.5px; flex: 1;
       transition: color 0.15s;
     }
     .tag-section-hdr:hover .tag-section-title { color: var(--text); }
 
     .tag-count-chip {
-      font-size: 0.68rem; font-weight: 700; padding: 1px 7px;
+      font-size: 0.78rem; font-weight: 700; padding: 1px 7px;
       border-radius: 100px; background: var(--border); color: var(--muted);
       flex-shrink: 0;
     }
-    .tag-chevron { font-size: 0.60rem; color: var(--muted); transition: transform 0.2s; flex-shrink: 0; }
+    .tag-chevron { font-size: 0.78rem; color: var(--muted); transition: transform 0.2s; flex-shrink: 0; }
     .tag-chevron.open { transform: rotate(180deg); }
 
     .tag-body { margin-top: 8px; }
@@ -178,30 +182,32 @@
 
     .tag-info { flex: 1; min-width: 0; }
     .tag-lbl { font-size: 0.81rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .tag-typ { font-size: 0.67rem; color: var(--muted); }
+    .tag-typ { font-size: 0.78rem; color: var(--muted); }
 
-    .badge-trained   { font-size: 0.63rem; font-weight: 700; padding: 1px 6px; border-radius: 100px; background: var(--ax-ok-fill); color: var(--green); flex-shrink: 0; }
-    .badge-untrained { font-size: 0.63rem; font-weight: 700; padding: 1px 6px; border-radius: 100px; background: var(--ax-warn-fill); color: var(--orange); flex-shrink: 0; }
+    .badge-trained   { font-size: 0.78rem; font-weight: 700; padding: 1px 6px; border-radius: 100px; background: var(--ax-ok-fill); color: var(--green); flex-shrink: 0; }
+    .badge-untrained { font-size: 0.78rem; font-weight: 700; padding: 1px 6px; border-radius: 100px; background: var(--ax-warn-fill); color: var(--orange); flex-shrink: 0; }
 
     /* Source chip — scalable: "manual" (portal), "excel" (batch import), "mes" (MES REST sync) */
-    .source-chip { font-size: 0.59rem; font-weight: 700; padding: 1px 5px; border-radius: 4px; background: var(--border); color: var(--muted); flex-shrink: 0; letter-spacing: 0.3px; }
+    .source-chip { font-size: 0.78rem; font-weight: 700; padding: 1px 5px; border-radius: 4px; background: var(--border); color: var(--muted); flex-shrink: 0; letter-spacing: 0.3px; }
     .source-chip.excel { background: var(--ax-ok-fill); color: var(--green); }
     .source-chip.mes   { background: var(--ax-blue-fill); color: var(--accent); }
 
-    .tag-acts { display: flex; gap: 3px; opacity: 0; transition: opacity 0.15s; }
-    .tag-row:hover .tag-acts { opacity: 1; }
+    /* Actions are always visible — hover-only controls are invisible on a tablet and
+       painful for everyone else. */
+    .tag-acts { display: flex; gap: 4px; }
 
     .btn-icon {
-      background: transparent; border: 1px solid var(--border);
-      border-radius: 5px; padding: 2px 6px; font-size: 0.68rem;
-      cursor: pointer; color: var(--muted);
-      transition: color 0.12s, border-color 0.12s;
+      background: var(--ax-paper); border: 1px solid var(--ax-rule);
+      border-radius: 8px; padding: 5px 8px; font-size: 0.8rem; line-height: 1;
+      cursor: pointer; color: var(--ax-ink-2);
+      transition: color 0.12s, border-color 0.12s, background 0.12s;
     }
+    .btn-icon .ax-icon { width: 16px; height: 16px; }
     .btn-icon:hover        { color: var(--text); border-color: var(--muted); }
     .btn-icon.danger:hover { color: var(--red);  border-color: var(--red); }
 
     .tags-empty {
-      font-size: 0.75rem; color: var(--muted); text-align: center; padding: 12px 8px;
+      font-size: 0.78rem; color: var(--muted); text-align: center; padding: 12px 8px;
       border: 1px dashed var(--border); border-radius: 7px; margin-bottom: 2px;
     }
 
@@ -234,10 +240,10 @@
     .ph-tile h3 { margin: 6px 0 4px; font-size: 1.2rem; font-weight: 800; color: var(--text); }
     .ph-sub { font-size: 0.84rem; color: var(--muted); line-height: 1.5; }
     .ph-stats { margin-top: 10px; display:flex; gap:8px; flex-wrap:wrap; min-height: 22px; }
-    .ph-stat { font-size: 0.76rem; font-weight: 700; border-radius: 999px; padding: 4px 11px;
+    .ph-stat { font-size: 0.78rem; font-weight: 700; border-radius: 999px; padding: 4px 11px;
                background: color-mix(in srgb, var(--pc, var(--ax-blue)) 14%, transparent); color: var(--text); font-variant-numeric: tabular-nums; }
     .ph-subnav { margin-top: 9px; display:flex; gap:6px; flex-wrap:wrap; }
-    .ph-chip { font-size: 0.74rem; font-weight: 700; padding: 4px 11px; border-radius: 8px;
+    .ph-chip { font-size: 0.78rem; font-weight: 700; padding: 4px 11px; border-radius: 8px;
                background: var(--ax-paper); color: var(--text); }
     .ph-chip:hover { background: var(--ax-paper-3); }
     /* product colours: the same as the app's doors — a stroke, never a glow */
@@ -287,7 +293,7 @@
     .ul-ok { color: var(--green, var(--ax-green)); }
     .ul-bad { color: var(--red, var(--ax-red)); }
     .ul-dim { color: var(--muted); }
-    .ul-val { font-weight: 700; font-size: 0.76rem; padding: 3px 9px; border-radius: var(--ax-r-pill); }
+    .ul-val { font-weight: 700; font-size: 0.78rem; padding: 3px 9px; border-radius: var(--ax-r-pill); }
     .ul-val.pass { background: var(--ax-ok-fill); color: var(--green, var(--ax-green)); }
     .ul-val.fail { background: var(--ax-bad-fill); color: var(--red, var(--ax-red)); }
     .mono { font-family: var(--ax-mono); }
@@ -325,7 +331,7 @@
     .iloto-point-row { display: flex; align-items: center; gap: 10px; padding: 7px 0;
       border-top: 1px solid var(--border); font-size: 0.82rem; }
     .iloto-dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
-    .iloto-badge { font-size: 0.68rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
+    .iloto-badge { font-size: 0.78rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; }
     .iloto-badge.red    { background: var(--ax-bad-fill);  color: var(--ax-red); }
     .iloto-badge.yellow { background: var(--ax-warn-fill);  color: var(--ax-yellow); }
     .iloto-badge.green  { background: var(--ax-ok-fill);  color: var(--ax-green); }
@@ -334,10 +340,10 @@
       border-top: 1px solid var(--border); font-size: 0.8rem; flex-wrap: wrap; }
     .iloto-event.override { background: var(--ax-bad-fill); margin: 0 -16px;
       padding-left: 16px; padding-right: 16px; border-left: 3px solid var(--ax-orange); }
-    .iloto-photo-link { color: var(--accent); cursor: pointer; font-size: 0.75rem; }
+    .iloto-photo-link { color: var(--accent); cursor: pointer; font-size: 0.78rem; }
     .iloto-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
     .iloto-table th { text-align: left; color: var(--muted); font-weight: 600;
-      padding: 6px 8px; border-bottom: 1px solid var(--border); font-size: 0.72rem; }
+      padding: 6px 8px; border-bottom: 1px solid var(--border); font-size: 0.78rem; }
     .iloto-table td { padding: 7px 8px; border-bottom: 1px solid var(--border); }
     .sessions-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; max-width: 1120px; margin-left: auto; margin-right: auto; }
     .sessions-list { display: flex; flex-direction: column; gap: 16px; max-width: 1120px; margin: 0 auto; }
@@ -348,7 +354,7 @@
     .ag-hdr:hover { background: var(--ax-paper-2); }
     .ag-title { font-size: 0.88rem; font-weight: 700; flex: 1; }
     .ag-chips { display: flex; gap: 5px; align-items: center; flex-shrink: 0; }
-    .ag-chevron { color: var(--muted); font-size: 0.6rem; transition: transform 0.2s; flex-shrink: 0; }
+    .ag-chevron { color: var(--muted); font-size: 0.78rem; transition: transform 0.2s; flex-shrink: 0; }
     .ag-chevron.open { transform: rotate(180deg); }
     .ag-body { display: none; border-top: 1px solid var(--border); }
     .ag-body.open { display: block; }
@@ -358,7 +364,7 @@
     .sessions-tbl-wrap { overflow-x: auto; }
     .sessions-tbl { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
     .sessions-tbl thead tr { border-bottom: 1px solid var(--border); }
-    .sessions-tbl th { text-align: left; padding: 7px 11px; color: var(--muted); font-weight: 600; font-size: 0.68rem; letter-spacing: 0.02em; white-space: nowrap; }
+    .sessions-tbl th { text-align: left; padding: 7px 11px; color: var(--muted); font-weight: 600; font-size: 0.78rem; letter-spacing: 0.02em; white-space: nowrap; }
     .sessions-tbl td { padding: 8px 11px; border-bottom: 1px solid var(--ax-paper-2); vertical-align: middle; }
     .sessions-tbl tbody tr:last-child td { border-bottom: none; }
     .sessions-tbl tbody tr:hover td { background: var(--ax-paper-2); cursor: pointer; }
@@ -376,20 +382,20 @@
     #evidence-lightbox img { max-width: 100%; max-height: 90vh; border-radius: 10px; }
 
     /* Status badges */
-    .b-pass    { font-size: 0.68rem; font-weight: 700; padding: 2px 8px; border-radius: 100px; background: var(--ax-ok-fill); color: var(--green); }
-    .b-fail    { font-size: 0.68rem; font-weight: 700; padding: 2px 8px; border-radius: 100px; background: var(--ax-bad-fill); color: var(--red); }
-    .b-none    { font-size: 0.68rem; font-weight: 700; padding: 2px 8px; border-radius: 100px; background: var(--border); color: var(--muted); }
-    .b-fixed   { font-size: 0.63rem; font-weight: 700; padding: 1px 6px; border-radius: 100px; background: var(--ax-warn-fill); color: var(--orange); }
+    .b-pass    { font-size: 0.78rem; font-weight: 700; padding: 2px 8px; border-radius: 100px; background: var(--ax-ok-fill); color: var(--green); }
+    .b-fail    { font-size: 0.78rem; font-weight: 700; padding: 2px 8px; border-radius: 100px; background: var(--ax-bad-fill); color: var(--red); }
+    .b-none    { font-size: 0.78rem; font-weight: 700; padding: 2px 8px; border-radius: 100px; background: var(--border); color: var(--muted); }
+    .b-fixed   { font-size: 0.78rem; font-weight: 700; padding: 1px 6px; border-radius: 100px; background: var(--ax-warn-fill); color: var(--orange); }
 
     /* ── Gemba Walk completion status badges ── */
-    .b-resolved      { font-size:0.68rem;font-weight:700;padding:2px 8px;border-radius:100px;background:var(--ax-ok-fill);color:var(--green); }
-    .b-still-present { font-size:0.68rem;font-weight:700;padding:2px 8px;border-radius:100px;background:var(--ax-bad-fill);color:var(--red); }
-    .b-escalated     { font-size:0.68rem;font-weight:700;padding:2px 8px;border-radius:100px;background:var(--ax-warn-fill);color:var(--orange); }
-    .b-no-completion { font-size:0.68rem;font-weight:700;padding:2px 8px;border-radius:100px;background:var(--border);color:var(--muted); }
-    .stop-badge { display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--orange);color:var(--ax-ink);font-size:0.68rem;font-weight:700;flex-shrink:0; }
-    .sev-low  { color:var(--green);font-weight:700;font-size:0.75rem; }
-    .sev-med  { color:var(--orange);font-weight:700;font-size:0.75rem; }
-    .sev-high { color:var(--red);font-weight:700;font-size:0.75rem; }
+    .b-resolved      { font-size:0.78rem;font-weight:700;padding:2px 8px;border-radius:100px;background:var(--ax-ok-fill);color:var(--green); }
+    .b-still-present { font-size:0.78rem;font-weight:700;padding:2px 8px;border-radius:100px;background:var(--ax-bad-fill);color:var(--red); }
+    .b-escalated     { font-size:0.78rem;font-weight:700;padding:2px 8px;border-radius:100px;background:var(--ax-warn-fill);color:var(--orange); }
+    .b-no-completion { font-size:0.78rem;font-weight:700;padding:2px 8px;border-radius:100px;background:var(--border);color:var(--muted); }
+    .stop-badge { display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--orange);color:var(--ax-ink);font-size:0.78rem;font-weight:700;flex-shrink:0; }
+    .sev-low  { color:var(--green);font-weight:700;font-size:0.78rem; }
+    .sev-med  { color:var(--orange);font-weight:700;font-size:0.78rem; }
+    .sev-high { color:var(--red);font-weight:700;font-size:0.78rem; }
     #gemba-panel { display:none; padding:20px 24px 56px; }
     #gemba-panel.visible { display:block; }
     .gemba-list { display:flex;flex-direction:column;gap:12px;max-width:960px;margin:0 auto; }
@@ -452,15 +458,15 @@
     .gl-guide-hdr .btn-sm { font-size:0.8rem; padding:6px 12px; }
     .gl-guide-hdr {  display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
     .gl-guide-name { font-size:0.88rem; font-weight:600; color:var(--text); flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .gl-badge { font-size:0.72rem; font-weight:700; border-radius:var(--ax-r-pill); padding:4px 10px; white-space:nowrap; display:inline-flex; align-items:center; gap:5px; }
+    .gl-badge { font-size:0.78rem; font-weight:700; border-radius:var(--ax-r-pill); padding:4px 10px; white-space:nowrap; display:inline-flex; align-items:center; gap:5px; }
     .gl-badge-published { background:var(--ax-ok-fill); color:var(--ax-green); }
     .gl-badge-draft     { background:var(--ax-paper-3); color:var(--ax-ink-2); border:1px solid var(--ax-rule); }
     .gl-badge-warn      { background:var(--ax-warn-fill); color:var(--ax-orange); }
-    .gl-placement-pill  { font-size:0.74rem; color:var(--muted); white-space:nowrap; }
-    .gl-guide-desc { font-size:0.75rem; color:var(--muted); padding:0 14px 10px; margin-top:-4px; }
-    .gl-warn-banner { background:var(--ax-paper); border-top:1px solid var(--ax-paper); padding:7px 14px; font-size:0.74rem; color:var(--ax-orange); }
+    .gl-placement-pill  { font-size:0.78rem; color:var(--muted); white-space:nowrap; }
+    .gl-guide-desc { font-size:0.78rem; color:var(--muted); padding:0 14px 10px; margin-top:-4px; }
+    .gl-warn-banner { background:var(--ax-paper); border-top:1px solid var(--ax-paper); padding:7px 14px; font-size:0.78rem; color:var(--ax-orange); }
     .gl-steps-list { display:none; border-top:1px solid var(--border); }
-    .gl-opacity { display:inline-flex; align-items:center; gap:6px; margin-left:8px; font-size:0.72rem; }
+    .gl-opacity { display:inline-flex; align-items:center; gap:6px; margin-left:8px; font-size:0.78rem; }
     .gl-opacity input[type=range] { width:90px; accent-color: var(--accent, var(--ax-blue)); }
     .gl-opacity-val { color: var(--muted); min-width:32px; font-variant-numeric: tabular-nums; }
     .gl-steps-list.open { display:block; }
@@ -473,7 +479,7 @@
     .gl-step-title { font-weight:600; color:var(--text); margin-bottom:2px; }
     .gl-step-text  { color:var(--muted); line-height:1.4; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
     .gl-step-tags  { display:flex; gap:5px; margin-top:5px; flex-wrap:wrap; }
-    .gl-step-tag   { font-size:0.62rem; padding:1px 6px; border-radius:6px; }
+    .gl-step-tag   { font-size:0.78rem; padding:1px 6px; border-radius:6px; }
     .gl-step-placed   { background:var(--ax-ok-fill);  color:var(--ax-green); }
     .gl-step-unplaced { background:var(--ax-paper);  color:var(--ax-orange); }
     .gl-step-img      { background:var(--ax-blue-fill); color:var(--ax-indigo); }
@@ -482,20 +488,20 @@
     .ag-anchor-hdr { font-size:0.95rem;font-weight:700;color:var(--text);padding:8px 0;border-bottom:1px solid var(--border);margin-bottom:12px;display:flex;align-items:center;gap:8px; }
     .ag-guide-group { margin-bottom:16px;border:1px solid var(--border);border-radius:10px;overflow:hidden; }
     .ag-guide-hdr { background:var(--ax-paper-2);padding:12px 16px;font-size:0.92rem;font-weight:600;color:var(--text);display:flex;align-items:center;gap:10px; }
-    .ag-guide-badge { background:var(--ax-blue-fill);color:var(--ax-cyan);font-size:0.74rem;font-weight:700;border-radius:var(--ax-r-pill);padding:3px 9px; }
+    .ag-guide-badge { background:var(--ax-blue-fill);color:var(--ax-cyan);font-size:0.78rem;font-weight:700;border-radius:var(--ax-r-pill);padding:3px 9px; }
     .ag-session-row { border-top:1px solid var(--border);padding:10px 14px;cursor:pointer;transition:background 0.12s; }
     .ag-session-row:hover { background:var(--ax-paper-2); }
     .ag-session-meta { display:flex;align-items:center;gap:12px;font-size:0.88rem; }
     .ag-operator { font-weight:600;color:var(--text); }
     .ag-date { color:var(--muted); }
     .ag-dur { color:var(--muted);margin-left:auto; }
-    .ag-steps-badge { font-size:0.74rem;font-weight:700;padding:3px 9px;border-radius:var(--ax-r-pill); }
+    .ag-steps-badge { font-size:0.78rem;font-weight:700;padding:3px 9px;border-radius:var(--ax-r-pill); }
     .ag-steps-full { background:var(--ax-ok-fill);color:var(--ax-green); }
     .ag-steps-part { background:var(--ax-warn-fill);color:var(--ax-yellow); }
     .ag-detail { display:none;background:var(--ax-paper-2);border-top:1px solid var(--border);padding:10px 14px; }
     .ag-detail.open { display:block; }
-    .ag-step-row { display:flex;align-items:center;gap:8px;padding:5px 0;font-size:0.75rem; }
-    .ag-step-icon { width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.65rem;font-weight:700;flex-shrink:0; }
+    .ag-step-row { display:flex;align-items:center;gap:8px;padding:5px 0;font-size:0.78rem; }
+    .ag-step-icon { width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.78rem;font-weight:700;flex-shrink:0; }
     .ag-step-done { background:var(--ax-ok-fill);color:var(--ax-green); }
     .ag-step-skip { background:var(--ax-warn-fill);color:var(--ax-yellow); }
     .ag-step-pend { background:var(--ax-paper);color:var(--muted); }
@@ -517,14 +523,14 @@
     .model-dropzone p { color:var(--muted); font-size:0.85rem; margin-top:6px; }
     .model-dropzone strong { color:var(--text); font-size:0.92rem; }
     .model-dropzone .fmt-chips { display:flex; justify-content:center; gap:6px; flex-wrap:wrap; margin-top:10px; }
-    .fmt-chip { font-size:0.68rem; font-weight:700; padding:2px 8px; border-radius:6px; background:var(--border); color:var(--muted); }
+    .fmt-chip { font-size:0.78rem; font-weight:700; padding:2px 8px; border-radius:6px; background:var(--border); color:var(--muted); }
     .fmt-chip.ar-ready { background:var(--ax-ok-fill); color:var(--green); }
 
     /* Upload progress */
     #upload-progress-wrap { display:none; margin-bottom:16px; }
     .upload-bar-bg { height:6px; background:var(--border); border-radius:3px; overflow:hidden; margin-bottom:4px; }
     .upload-bar-fill { height:100%; background:var(--accent); border-radius:3px; transition:width 0.2s; width:0%; }
-    .upload-status { font-size:0.75rem; color:var(--muted); }
+    .upload-status { font-size:0.78rem; color:var(--muted); }
 
     /* Model cards */
     .models-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:12px; }
@@ -536,31 +542,31 @@
     .model-icon.cad   { background:var(--ax-warn-fill); }
     .model-icon.other { background:var(--border); }
     .model-name { font-size:0.85rem; font-weight:700; word-break:break-word; line-height:1.3; }
-    .model-meta { font-size:0.72rem; color:var(--muted); margin-top:2px; }
-    .model-status { display:inline-flex; align-items:center; gap:5px; font-size:0.72rem; font-weight:700; padding:3px 8px; border-radius:6px; margin-bottom:8px; }
+    .model-meta { font-size:0.78rem; color:var(--muted); margin-top:2px; }
+    .model-status { display:inline-flex; align-items:center; gap:5px; font-size:0.78rem; font-weight:700; padding:3px 8px; border-radius:6px; margin-bottom:8px; }
     .model-status.ready      { background:var(--ax-ok-fill); color:var(--green); }
     .model-status.processing { background:var(--ax-warn-fill); color:var(--orange); }
     .model-status.failed     { background:var(--ax-bad-fill);  color:var(--red); }
     .model-status.uploading  { background:var(--border); color:var(--muted); }
-    .usdz-status { display:inline-flex; align-items:center; gap:5px; font-size:0.70rem; font-weight:700; padding:2px 7px; border-radius:6px; margin-bottom:6px; margin-left:4px; }
+    .usdz-status { display:inline-flex; align-items:center; gap:5px; font-size:0.78rem; font-weight:700; padding:2px 7px; border-radius:6px; margin-bottom:6px; margin-left:4px; }
     .usdz-status.ready      { background:var(--ax-ok-fill); color:var(--green); }
     .usdz-status.pending    { background:var(--border); color:var(--muted); }
     .usdz-status.converting { background:var(--ax-warn-fill); color:var(--orange); }
     .usdz-status.failed     { background:var(--ax-bad-fill);  color:var(--red); }
-    .model-error { font-size:0.72rem; color:var(--red); margin-bottom:8px; line-height:1.4; }
+    .model-error { font-size:0.78rem; color:var(--red); margin-bottom:8px; line-height:1.4; }
     .model-actions { display:flex; gap:6px; flex-wrap:wrap; }
-    .model-actions a { font-size:0.73rem; font-weight:600; padding:4px 10px; border-radius:6px; background:var(--ax-blue-fill); color:var(--accent); text-decoration:none; }
+    .model-actions a { font-size:0.78rem; font-weight:600; padding:4px 10px; border-radius:6px; background:var(--ax-blue-fill); color:var(--accent); text-decoration:none; }
     .model-actions a:hover { background:var(--ax-blue-fill); }
-    .model-card .step-assign { font-size:0.72rem; color:var(--muted); margin-top:10px; border-top:1px solid var(--border); padding-top:8px; }
+    .model-card .step-assign { font-size:0.78rem; color:var(--muted); margin-top:10px; border-top:1px solid var(--border); padding-top:8px; }
     .model-card .step-assign span { color:var(--accent); }
-    .category-badge { display:inline-flex; align-items:center; gap:4px; font-size:0.68rem; font-weight:700; padding:2px 7px; border-radius:6px; background:var(--ax-indigo-fill); color:var(--ax-indigo); margin-bottom:6px; margin-left:4px; }
+    .category-badge { display:inline-flex; align-items:center; gap:4px; font-size:0.78rem; font-weight:700; padding:2px 7px; border-radius:6px; background:var(--ax-indigo-fill); color:var(--ax-indigo); margin-bottom:6px; margin-left:4px; }
     .model-filter-tabs { display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap; }
     .model-filter-tabs .btn { opacity:0.55; }
     .model-filter-tabs .btn.active { opacity:1; border-color:var(--accent); }
 
     /* Step model picker (inline in AR Guides step editor) */
     .step-model-row { display:flex; align-items:center; gap:8px; font-size:0.78rem; padding:6px 0; }
-    .step-model-select { background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:4px 8px; color:var(--text); font-size:0.75rem; outline:none; flex:1; }
+    .step-model-select { background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:4px 8px; color:var(--text); font-size:0.78rem; outline:none; flex:1; }
 
     /* ── 3D Model Preview modal ── */
     #model-preview-modal { z-index:150; }
@@ -575,20 +581,20 @@
     #gp-modal{display:none;position:fixed;inset:0;background:var(--ax-scrim);z-index:9500;align-items:center;justify-content:center;}
     #gp-modal.open{display:flex;}
     .gp-shell{display:flex;flex-direction:column;align-items:center;gap:10px;max-height:96vh;}
-    .gp-banner{font-size:0.72rem;padding:6px 12px;border-radius:8px;max-width:352px;text-align:center;}
+    .gp-banner{font-size:0.78rem;padding:6px 12px;border-radius:8px;max-width:352px;text-align:center;}
     .gp-banner.warn{background:var(--ax-warn-fill);color:var(--ax-yellow);}
     .gp-banner.ok{background:var(--ax-ok-fill);color:var(--ax-green);}
     .gp-phone{width:344px;height:min(640px,78vh);background:var(--ax-bg);border:6px solid var(--ax-rule);border-radius:34px;
       padding:16px 14px;display:flex;flex-direction:column;gap:10px;color:var(--ax-ink);overflow-y:auto;}
-    .gp-hdr{display:flex;justify-content:space-between;align-items:center;font-size:0.7rem;color:var(--ax-ink-3);}
+    .gp-hdr{display:flex;justify-content:space-between;align-items:center;font-size:0.78rem;color:var(--ax-ink-3);}
     .gp-title{font-size:1rem;font-weight:700;color:var(--ax-ink);}
-    .gp-note{font-size:0.72rem;color:var(--ax-orange);background:var(--ax-warn-fill);border-radius:8px;padding:6px 9px;}
+    .gp-note{font-size:0.78rem;color:var(--ax-orange);background:var(--ax-warn-fill);border-radius:8px;padding:6px 9px;}
     .gp-text{font-size:0.82rem;line-height:1.55;color:var(--ax-ink-2);white-space:pre-wrap;}
     .gp-img{width:100%;border-radius:10px;max-height:180px;object-fit:cover;background:var(--ax-solid);}
     .gp-btns{display:flex;gap:8px;margin-top:auto;padding-top:10px;}
     .gp-btn{flex:1;padding:11px 0;border:none;border-radius:10px;font-weight:700;font-size:0.8rem;cursor:pointer;}
     .gp-ok{background:var(--ax-green);color:var(--ax-ink);} .gp-bad{background:var(--ax-red);color:var(--ax-ink);} .gp-skip{background:var(--ax-rule);color:var(--ax-ink-2);}
-    .gp-foot{display:flex;gap:12px;align-items:center;font-size:0.72rem;color:var(--ax-ink-2);}
+    .gp-foot{display:flex;gap:12px;align-items:center;font-size:0.78rem;color:var(--ax-ink-2);}
     .gp-foot .btn{color:var(--text);}
     .gp-sum{font-size:0.8rem;line-height:1.6;}
     .gp-sum ul{margin:4px 0 10px;padding-left:18px;}
@@ -605,9 +611,9 @@
     .filter-bar { display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:8px auto 0;max-width:1120px; }
     .filter-bar input[type="search"], .filter-bar input[type="date"], .filter-bar select {
       background:var(--surface);border:1px solid var(--border);border-radius:8px;
-      color:var(--text);font-size:0.75rem;padding:6px 9px; }
+      color:var(--text);font-size:0.78rem;padding:6px 9px; }
     .filter-bar input[type="search"] { flex:1;min-width:150px; }
-    .filter-bar .flt-lbl { font-size:0.68rem;color:var(--muted); }
+    .filter-bar .flt-lbl { font-size:0.78rem;color:var(--muted); }
     .show-more-row { text-align:center;padding:12px; }
 
     /* ── Tablet layout (floor iPads) ─────────────────────────────────────── */
@@ -634,9 +640,9 @@
     .gs-item.done .gs-ck { background:var(--ax-green); border-color:var(--ax-green); color:var(--ax-ok-fill); }
     .gs-item.next .gs-ck { border-color:var(--ax-blue); box-shadow:var(--ax-ring); }
     .gs-item .gs-t { font-weight:600; } .gs-item.done .gs-t { color:var(--muted); text-decoration:line-through; }
-    .gs-item .gs-d { color:var(--muted); font-size:0.72rem; margin-top:2px; }
+    .gs-item .gs-d { color:var(--muted); font-size:0.78rem; margin-top:2px; }
     .gs-item.next .gs-d { color:var(--text); }
-    .gs-foot { padding:8px 14px; font-size:0.7rem; color:var(--muted); border-top:1px solid var(--border); display:flex; gap:10px; }
+    .gs-foot { padding:8px 14px; font-size:0.78rem; color:var(--muted); border-top:1px solid var(--border); display:flex; gap:10px; }
     .gs-foot a { color:var(--accent); cursor:pointer; }
     #tour-mask { position:fixed; inset:0; z-index:700; pointer-events:none; }
     #tour-ring { position:fixed; z-index:701; border-radius:12px; box-shadow:0 0 0 9999px var(--ax-scrim), 0 0 0 3px var(--ax-blue); /* brand-check: allow — spotlight scrim */
@@ -645,7 +651,7 @@
       padding:14px 16px; box-shadow:none; font-size:0.82rem; }
     #tour-card h4 { margin:0 0 6px; font-size:0.95rem; } #tour-card p { margin:0 0 12px; color:var(--muted); line-height:1.45; }
     #tour-card .tour-nav { display:flex; align-items:center; gap:8px; }
-    #tour-card .tour-nav .tour-step { flex:1; color:var(--muted); font-size:0.7rem; }
+    #tour-card .tour-nav .tour-step { flex:1; color:var(--muted); font-size:0.78rem; }
     .tour-empty { text-align:center; padding:28px 16px; color:var(--muted); }
     .tour-empty .btn { margin-top:10px; }
   </style>
@@ -658,7 +664,7 @@
   </div>
   <div class="actions">
     <span data-brand-slot style="display:flex;align-items:center;margin-right:10px"></span>
-    <span id="uam-chip" style="display:none;font-size:0.72rem;color:var(--muted);margin-right:4px"></span>
+    <span id="uam-chip" style="display:none;font-size:0.78rem;color:var(--muted);margin-right:4px"></span>
     <button class="btn btn-ghost btn-sm" id="uam-signout" onclick="uamLogout()" style="display:none">Sign out</button>
     <button class="btn btn-ghost btn-sm" id="admin-btn" onclick="toggleAdmin()" style="display:none" title="Destructive actions (delete, quiz editing) require the admin key"> Admin</button>
     <button class="btn btn-ghost btn-sm" onclick="showSettings()" data-tour="settings"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-gear"/></svg> Settings</button>
@@ -808,8 +814,8 @@
     <input type="search" id="gws-q" placeholder="Filter by auditor, project, org, BU, location…" oninput="renderGembaWalkSessions()">
     <select id="gws-auditor" onchange="renderGembaWalkSessions()"><option value="">All auditors</option></select>
     <select id="gws-status" onchange="renderGembaWalkSessions()"><option value="">All statuses</option><option value="open">Open</option><option value="submitted">Submitted</option></select>
-    <label style="font-size:0.72rem;color:var(--muted);display:flex;align-items:center;gap:4px">From <input type="date" id="gws-from" onchange="loadGembaWalkSessions()" style="font-size:0.75rem"></label>
-    <label style="font-size:0.72rem;color:var(--muted);display:flex;align-items:center;gap:4px">To <input type="date" id="gws-to" onchange="loadGembaWalkSessions()" style="font-size:0.75rem"></label>
+    <label style="font-size:0.78rem;color:var(--muted);display:flex;align-items:center;gap:4px">From <input type="date" id="gws-from" onchange="loadGembaWalkSessions()" style="font-size:0.78rem"></label>
+    <label style="font-size:0.78rem;color:var(--muted);display:flex;align-items:center;gap:4px">To <input type="date" id="gws-to" onchange="loadGembaWalkSessions()" style="font-size:0.78rem"></label>
     <button class="btn btn-ghost btn-sm" onclick="gwsAllTime()" title="Clear the date window">All time</button>
   </div>
   <div id="gemba-sessions-list"></div>
@@ -830,7 +836,7 @@
   </div>
   <div class="filter-bar">
     <input type="search" id="glib-q" placeholder="Filter by code, title or question text…" oninput="renderGembaLibrary()">
-    <label style="font-size:0.75rem;color:var(--muted);display:flex;align-items:center;gap:6px"><input type="checkbox" id="glib-inactive" onchange="loadGembaLibrary()"> show inactive</label>
+    <label style="font-size:0.78rem;color:var(--muted);display:flex;align-items:center;gap:6px"><input type="checkbox" id="glib-inactive" onchange="loadGembaLibrary()"> show inactive</label>
   </div>
   <div id="gemba-library-list"></div>
 
@@ -838,14 +844,14 @@
   <div class="card" style="margin-top:18px;padding:14px 16px">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
       <b style="font-size:0.9rem">Walk header pick lists</b>
-      <span style="font-size:0.72rem;color:var(--muted)">What auditors choose from when starting a walk · one value per line</span>
+      <span style="font-size:0.78rem;color:var(--muted)">What auditors choose from when starting a walk · one value per line</span>
       <button class="btn btn-sm" style="margin-left:auto;font-weight:600" onclick="saveGembaLists()">Save lists</button>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
-      <label style="font-size:0.75rem;font-weight:600">Organization<textarea id="glist-organization" rows="5" style="display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:0.8rem;font-weight:400"></textarea></label>
-      <label style="font-size:0.75rem;font-weight:600">BU<textarea id="glist-bu" rows="5" style="display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:0.8rem;font-weight:400"></textarea></label>
-      <label style="font-size:0.75rem;font-weight:600">Area<textarea id="glist-area" rows="5" style="display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:0.8rem;font-weight:400"></textarea></label>
-      <label style="font-size:0.75rem;font-weight:600">Location<textarea id="glist-location" rows="5" style="display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:0.8rem;font-weight:400"></textarea></label>
+      <label style="font-size:0.78rem;font-weight:600">Organization<textarea id="glist-organization" rows="5" style="display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:0.8rem;font-weight:400"></textarea></label>
+      <label style="font-size:0.78rem;font-weight:600">BU<textarea id="glist-bu" rows="5" style="display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:0.8rem;font-weight:400"></textarea></label>
+      <label style="font-size:0.78rem;font-weight:600">Area<textarea id="glist-area" rows="5" style="display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:0.8rem;font-weight:400"></textarea></label>
+      <label style="font-size:0.78rem;font-weight:600">Location<textarea id="glist-location" rows="5" style="display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:8px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:0.8rem;font-weight:400"></textarea></label>
     </div>
   </div>
  </div>
@@ -860,7 +866,7 @@
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
       <button class="btn btn-sm" onclick="document.getElementById('glib-import-file').click()" style="font-weight:600"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-doc"/></svg> Choose file (.xlsx / .csv / .json)</button>
       <input type="file" id="glib-import-file" accept=".xlsx,.xls,.csv,.json" style="display:none" onchange="gembaLibImportFileChosen(event)">
-      <span id="glib-import-name" style="font-size:0.75rem;color:var(--muted)"></span>
+      <span id="glib-import-name" style="font-size:0.78rem;color:var(--muted)"></span>
     </div>
     <div style="display:flex;gap:16px;font-size:0.8rem;margin-bottom:12px">
       <label><input type="radio" name="glib-mode" value="append" checked> Append / update by code <span style="color:var(--muted)">(safe)</span></label>
@@ -881,17 +887,17 @@
     <button onclick="closeGembaLibEdit()" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer;line-height:1"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-close"/></svg></button>
     <h3 id="glib-edit-title" style="margin:0 0 14px;font-size:0.95rem;font-weight:700;color:var(--text)"></h3>
     <div id="glib-edit-area-row" style="margin-bottom:10px">
-      <label style="font-size:0.75rem;font-weight:600;display:block;margin-bottom:4px">Focus area</label>
+      <label style="font-size:0.78rem;font-weight:600;display:block;margin-bottom:4px">Focus area</label>
       <select id="glib-edit-area" style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:0.85rem"></select>
     </div>
     <div style="display:grid;grid-template-columns:120px 1fr;gap:10px;margin-bottom:10px">
-      <div><label style="font-size:0.75rem;font-weight:600;display:block;margin-bottom:4px">Code</label>
+      <div><label style="font-size:0.78rem;font-weight:600;display:block;margin-bottom:4px">Code</label>
         <input id="glib-edit-code" placeholder="14 / P5142" style="width:100%;box-sizing:border-box;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:0.85rem"></div>
-      <div><label style="font-size:0.75rem;font-weight:600;display:block;margin-bottom:4px">Title</label>
+      <div><label style="font-size:0.78rem;font-weight:600;display:block;margin-bottom:4px">Title</label>
         <input id="glib-edit-name" placeholder="Short name shown in the picker" style="width:100%;box-sizing:border-box;padding:7px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:0.85rem"></div>
     </div>
     <div id="glib-edit-text-row" style="margin-bottom:10px">
-      <label style="font-size:0.75rem;font-weight:600;display:block;margin-bottom:4px">Question text</label>
+      <label style="font-size:0.78rem;font-weight:600;display:block;margin-bottom:4px">Question text</label>
       <textarea id="glib-edit-text" rows="3" placeholder="What the auditor checks or asks…" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:0.85rem;resize:vertical"></textarea>
     </div>
     <label style="font-size:0.8rem;display:flex;align-items:center;gap:6px;margin-bottom:14px"><input type="checkbox" id="glib-edit-active" checked> Active <span style="color:var(--muted)">(inactive items stay for history but leave the picker)</span></label>
@@ -935,9 +941,9 @@
     <h2 style="margin:0 0 4px;font-size:1.15rem">Sign in to SIB</h2>
     <p style="margin:0 0 18px;font-size:0.78rem;color:var(--muted)">Enter your work email. Access is limited to the allow-list managed by the platform owner.</p>
     <input id="uam-email" type="email" placeholder="you@company.com" autocomplete="email" style="width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.9rem" onkeydown="if(event.key==='Enter')uamSubmitLogin()">
-    <div id="uam-login-err" style="display:none;margin-top:10px;font-size:0.75rem;color:var(--red,var(--ax-red))"></div>
+    <div id="uam-login-err" style="display:none;margin-top:10px;font-size:0.78rem;color:var(--red,var(--ax-red))"></div>
     <button class="btn btn-primary" style="width:100%;margin-top:16px" onclick="uamSubmitLogin()">Sign in</button>
-    <p style="margin:14px 0 0;font-size:0.68rem;color:var(--muted)">SSO with HYPR arrives later — this identifies you against the access list until then.</p>
+    <p style="margin:14px 0 0;font-size:0.78rem;color:var(--muted)">SSO with HYPR arrives later — this identifies you against the access list until then.</p>
   </div>
 </div>
 
@@ -945,7 +951,7 @@
   <div id="adm-lock-banner"></div>
   <div class="card" id="uam-card">
     <h3><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-users"/></svg> User Access Management</h3>
-    <p style="font-size:0.75rem;color:var(--muted);margin:4px 0 12px">
+    <p style="font-size:0.78rem;color:var(--muted);margin:4px 0 12px">
       The allow-list that gates sign-in, and each user's role. Roles: <strong>Owner</strong> (full control) ·
       <strong>Manager</strong> (manages users except Owners) · <strong>Engineer</strong> (creates/edits guides) ·
       <strong>Technician</strong> (runs shared guides). With an empty list, login is off — add the first Owner to activate.
@@ -966,7 +972,7 @@
   </div>
   <div class="adm-card admin-only" id="adm-backup-card">
     <h3><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-backup"/></svg> Backups</h3>
-    <p style="font-size:0.75rem;color:var(--muted);margin:0 0 12px">
+    <p style="font-size:0.78rem;color:var(--muted);margin:0 0 12px">
       <strong>Data</strong> = JSON stores only (small — take one weekly).
       <strong>Full</strong> = evidence photos, world maps and 3D models too (large — take before upgrades).
       Restore is deliberately manual: stop the service → unpack over the data directory → start it again
@@ -979,7 +985,7 @@
   </div>
   <div class="card" id="adm-configs-card" style="display:none">
     <h3><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chamber"/></svg> Chamber Configurations</h3>
-    <p style="font-size:0.75rem;color:var(--muted);margin:4px 0 12px">
+    <p style="font-size:0.78rem;color:var(--muted);margin:4px 0 12px">
       A configuration is a chamber <strong>type</strong> (e.g. <em>Producer XP · Cfg A</em>). Each physical chamber's
       anchor (QR) is assigned to one configuration; MEs author against a configuration in the app, and an operator's
       QR scan resolves the chamber → configuration → its libraries. Engineers and above can add or edit;
@@ -996,33 +1002,33 @@
   <div class="adm-card admin-only" id="adm-logs-card" style="display:none">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
       <h3 style="margin:0"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-logs"/></svg> Device logs</h3>
-      <span style="font-size:0.72rem;color:var(--muted);flex:1">what each phone (and this server) reported — QA Mode on the device adds debug detail</span>
+      <span style="font-size:0.78rem;color:var(--muted);flex:1">what each phone (and this server) reported — QA Mode on the device adds debug detail</span>
       <button class="btn btn-ghost btn-sm" onclick="qaLogsLoad()">⟳ Refresh</button>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
-      <select id="ql-device" onchange="qaLogsLoad()" style="padding:6px 8px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.76rem;min-width:220px"><option value="">All devices</option></select>
-      <select id="ql-level" onchange="qaLogsLoad()" style="padding:6px 8px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.76rem">
+      <select id="ql-device" onchange="qaLogsLoad()" style="padding:6px 8px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.78rem;min-width:220px"><option value="">All devices</option></select>
+      <select id="ql-level" onchange="qaLogsLoad()" style="padding:6px 8px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.78rem">
         <option value="">debug +</option><option value="info" selected>info +</option><option value="warn">warn +</option><option value="error">error only</option>
       </select>
-      <select id="ql-module" onchange="qaLogsLoad()" style="padding:6px 8px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.76rem"><option value="">all modules</option></select>
-      <select id="ql-window" onchange="qaLogsLoad()" style="padding:6px 8px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.76rem">
+      <select id="ql-module" onchange="qaLogsLoad()" style="padding:6px 8px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.78rem"><option value="">all modules</option></select>
+      <select id="ql-window" onchange="qaLogsLoad()" style="padding:6px 8px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.78rem">
         <option value="1">last hour</option><option value="6" selected>last 6 h</option><option value="24">last 24 h</option><option value="72">last 3 days</option><option value="336">last 14 days</option>
       </select>
-      <input id="ql-q" placeholder="search text…" onkeydown="if(event.key==='Enter')qaLogsLoad()" style="flex:1;min-width:140px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.76rem">
-      <label style="font-size:0.72rem;color:var(--muted);display:flex;align-items:center;gap:4px"><input type="checkbox" id="ql-tail" onchange="qaLogsTailToggle()"> live tail</label>
+      <input id="ql-q" placeholder="search text…" onkeydown="if(event.key==='Enter')qaLogsLoad()" style="flex:1;min-width:140px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.78rem">
+      <label style="font-size:0.78rem;color:var(--muted);display:flex;align-items:center;gap:4px"><input type="checkbox" id="ql-tail" onchange="qaLogsTailToggle()"> live tail</label>
       <button class="btn btn-ghost btn-sm" onclick="qaLogsCopy()">⎘ Copy last 200</button>
       <button class="btn btn-ghost btn-sm" onclick="qaLogsDownload()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Download .txt</button>
     </div>
-    <div id="ql-devices" style="font-size:0.7rem;color:var(--muted);margin-bottom:6px"></div>
-    <div id="ql-out" style="max-height:520px;overflow-y:auto;font-family:var(--ax-mono);font-size:0.7rem;line-height:1.6;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);white-space:pre-wrap;word-break:break-word">Loading…</div>
+    <div id="ql-devices" style="font-size:0.78rem;color:var(--muted);margin-bottom:6px"></div>
+    <div id="ql-out" style="max-height:520px;overflow-y:auto;font-family:var(--ax-mono);font-size:0.78rem;line-height:1.6;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);white-space:pre-wrap;word-break:break-word">Loading…</div>
   </div>
   <div class="adm-card admin-only" id="adm-ops-card">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
       <h3 style="margin:0"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-doc"/></svg> Ops log</h3>
-      <span style="font-size:0.72rem;color:var(--muted);flex:1">every admin &amp; destructive action, newest first — allowed / denied / gate-off, with IP</span>
+      <span style="font-size:0.78rem;color:var(--muted);flex:1">every admin &amp; destructive action, newest first — allowed / denied / gate-off, with IP</span>
       <button class="btn btn-ghost btn-sm" onclick="loadOpsLog()">⟳ Refresh</button>
     </div>
-    <div id="ops-log" style="max-height:420px;overflow-y:auto;font-family:var(--ax-mono);font-size:0.72rem;line-height:1.7;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--muted)">Loading…</div>
+    <div id="ops-log" style="max-height:420px;overflow-y:auto;font-family:var(--ax-mono);font-size:0.78rem;line-height:1.7;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--muted)">Loading…</div>
   </div>
 </div>
 
@@ -1044,16 +1050,16 @@
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
       <button class="btn btn-sm" onclick="document.getElementById('import-guide-file').click()" style="font-weight:600"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-doc"/></svg> Choose file (.xlsx / .json / .htm)</button>
       <input type="file" id="import-guide-file" accept=".xlsx,.xls,.json,.htm,.html,.zip" style="display:none" onchange="importGuideFileChosen(event)">
-      <span id="import-file-name" style="font-size:0.75rem;color:var(--muted)"></span>
+      <span id="import-file-name" style="font-size:0.78rem;color:var(--muted)"></span>
       <button class="btn btn-ghost btn-sm" onclick="downloadGuideXlsxTemplate()" style="margin-left:auto"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Excel template</button>
     </div>
 
-    <details style="margin-bottom:12px"><summary style="font-size:0.75rem;color:var(--muted);cursor:pointer">…or paste ImportedGuide JSON</summary>
+    <details style="margin-bottom:12px"><summary style="font-size:0.78rem;color:var(--muted);cursor:pointer">…or paste ImportedGuide JSON</summary>
       <textarea id="import-payload-json" rows="8" placeholder='{"name":"Startup Procedure","steps":[{"sequenceNumber":1,"text":"Open valve A","imageUrl":"https://..."}]}' oninput="importGuideJsonTyped()" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:0.78rem;font-family:var(--ax-mono);resize:vertical;margin-top:8px"></textarea>
     </details>
 
     <div id="import-preview" style="display:none;border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:0.78rem"></div>
-    <label id="import-cortona-strict-row" style="display:none;font-size:0.75rem;color:var(--muted);margin:-6px 0 12px;align-items:center;gap:6px"><input type="checkbox" id="import-cortona-strict"> Strict — refuse the import if the publication uses 3D features we don't recognise (otherwise they are listed in the log)</label>
+    <label id="import-cortona-strict-row" style="display:none;font-size:0.78rem;color:var(--muted);margin:-6px 0 12px;align-items:center;gap:6px"><input type="checkbox" id="import-cortona-strict"> Strict — refuse the import if the publication uses 3D features we don't recognise (otherwise they are listed in the log)</label>
 
     <div style="display:flex;gap:10px;justify-content:flex-end">
       <button class="btn btn-ghost btn-sm" onclick="closeImportGuideModal()">Cancel</button>
@@ -1080,7 +1086,7 @@
   <div class="models-inner">
     <div class="models-anchor-bar">
       <span style="font-size:0.92rem;font-weight:700;color:var(--text)"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-cube"/></svg> Global 3D Library</span>
-      <span style="font-size:0.75rem;color:var(--muted);flex:1;margin-left:8px">Upload once · assign to any anchor</span>
+      <span style="font-size:0.78rem;color:var(--muted);flex:1;margin-left:8px">Upload once · assign to any anchor</span>
       <button class="btn btn-ghost btn-sm" onclick="loadModels()" style="margin-left:auto">⟳ Refresh</button>
     </div>
 
@@ -1148,7 +1154,7 @@
         <button class="btn btn-ghost btn-sm" onclick="lotoQuizShowEditor(null)">＋ Add question</button>
         <button class="btn btn-ghost btn-sm" onclick="document.getElementById('loto-quiz-import-file').click()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-upload"/></svg> Import JSON/CSV</button>
         <input type="file" id="loto-quiz-import-file" accept=".json,.csv" style="display:none" onchange="lotoQuizImportFile(event)">
-        <label style="font-size:0.72rem;color:var(--muted);display:flex;align-items:center;gap:5px">
+        <label style="font-size:0.78rem;color:var(--muted);display:flex;align-items:center;gap:5px">
           <input type="checkbox" id="loto-quiz-replace"> replace existing bank on import
         </label>
         <button class="btn btn-ghost btn-sm" onclick="lotoQuizExport()" style="margin-left:auto"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Export JSON</button>
@@ -1182,7 +1188,7 @@
     <div class="field">
       <label>Chamber configuration</label>
       <select id="new-config-id" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.85rem"></select>
-      <p style="font-size:0.7rem;color:var(--muted);margin:4px 0 0">Operators reach a chamber through its QR → configuration. Unassigned chambers can't be scanned into. Manage the catalog under <a href="#" onclick="closeCreateModal();location.hash='#admin/configs';return false" style="color:var(--accent)">Admin → Chamber Configs</a>.</p>
+      <p style="font-size:0.78rem;color:var(--muted);margin:4px 0 0">Operators reach a chamber through its QR → configuration. Unassigned chambers can't be scanned into. Manage the catalog under <a href="#" onclick="closeCreateModal();location.hash='#admin/configs';return false" style="color:var(--accent)">Admin → Chamber Configs</a>.</p>
     </div>
     <div class="field">
       <label>Anchor ID <span style="color:var(--muted)">(optional — auto-generated)</span></label>
@@ -1203,13 +1209,13 @@
       <label>API Key</label>
       <input type="password" id="settings-key" placeholder="sk-…" autocomplete="off" />
     </div>
-    <p style="font-size:0.72rem;color:var(--muted);margin:4px 0 0">Backups and the ops log live on the <a href="#" onclick="closeSettings();location.hash='#admin/backup';return false" style="color:var(--accent)"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-wrench"/></svg> Admin page</a>.</p>
+    <p style="font-size:0.78rem;color:var(--muted);margin:4px 0 0">Backups and the ops log live on the <a href="#" onclick="closeSettings();location.hash='#admin/backup';return false" style="color:var(--accent)"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-wrench"/></svg> Admin page</a>.</p>
     <div class="field" style="margin-top:14px">
       <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
         <input type="checkbox" id="settings-guide" onchange="guideSetEnabled(this.checked)" style="width:auto">
         Guided assistance
       </label>
-      <p style="font-size:0.72rem;color:var(--muted);margin:4px 0 0">Getting-started checklist and short page tours for new users. On by default.
+      <p style="font-size:0.78rem;color:var(--muted);margin:4px 0 0">Getting-started checklist and short page tours for new users. On by default.
         <a href="#" onclick="guideReset();return false" style="color:var(--accent)">Restart tours</a></p>
     </div>
     <div class="modal-actions">
@@ -1290,7 +1296,7 @@
     </div>
     <div class="field">
       <label>Order
-        <span style="color:var(--muted);font-size:0.72rem;font-weight:400;text-transform:none;letter-spacing:0">
+        <span style="color:var(--muted);font-size:0.78rem;font-weight:400;text-transform:none;letter-spacing:0">
           (inspection sequence — optional)
         </span>
       </label>
@@ -1309,7 +1315,7 @@
     <h2><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-edit"/></svg> Edit Tag</h2>
     <div class="field">
       <label>Type
-        <span style="color:var(--muted);font-size:0.72rem;font-weight:400;text-transform:none;letter-spacing:0">
+        <span style="color:var(--muted);font-size:0.78rem;font-weight:400;text-transform:none;letter-spacing:0">
           (set at creation — cannot change)
         </span>
       </label>
@@ -1330,7 +1336,7 @@
     </div>
     <div class="field">
       <label>Order
-        <span style="color:var(--muted);font-size:0.72rem;font-weight:400;text-transform:none;letter-spacing:0">
+        <span style="color:var(--muted);font-size:0.78rem;font-weight:400;text-transform:none;letter-spacing:0">
           (inspection sequence — optional)
         </span>
       </label>
@@ -1368,7 +1374,7 @@
     <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);flex-shrink:0">
       <div>
         <div style="font-size:0.9rem;font-weight:700" id="preview-model-name">Model</div>
-        <div style="font-size:0.72rem;color:var(--muted);margin-top:2px" id="preview-model-dims">–</div>
+        <div style="font-size:0.78rem;color:var(--muted);margin-top:2px" id="preview-model-dims">–</div>
       </div>
       <button class="btn btn-ghost btn-sm" onclick="closeModelPreview()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-close"/></svg> Close</button>
     </div>
@@ -1385,16 +1391,16 @@
     <!-- Footer: scale controls -->
     <div class="preview-footer">
       <div class="preview-scale-row">
-        <span style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;white-space:nowrap">Scale</span>
+        <span style="font-size:0.78rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em;white-space:nowrap">Scale</span>
         <input type="range" id="preview-scale-slider" min="-3" max="2" step="0.005" value="0" oninput="onPreviewScaleInput(this.value)">
         <span style="font-size:0.82rem;font-weight:700;color:var(--accent);min-width:58px;text-align:right;font-family:var(--ax-mono)" id="preview-scale-val">1.000×</span>
       </div>
-      <div style="font-size:0.75rem;color:var(--muted);white-space:nowrap">
+      <div style="font-size:0.78rem;color:var(--muted);white-space:nowrap">
         H: <span id="preview-height-val" style="color:var(--text)">–</span>
       </div>
-      <button onclick="saveDefaultScale()" style="font-size:0.75rem;font-weight:600;padding:5px 12px;border-radius:7px;background:var(--ax-ok-fill);color:var(--green);border:1px solid var(--ax-ok-fill);cursor:pointer;white-space:nowrap;flex-shrink:0"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-backup"/></svg> Save as default</button>
-      <div style="font-size:0.72rem;padding:3px 9px;border-radius:6px;background:var(--ax-blue-fill);color:var(--ax-blue);border:1px solid var(--ax-blue-fill);white-space:nowrap"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-mark"/></svg> = 1.8 m person</div>
-      <div style="font-size:0.70rem;color:var(--muted)">Orbit: drag · Zoom: scroll</div>
+      <button onclick="saveDefaultScale()" style="font-size:0.78rem;font-weight:600;padding:5px 12px;border-radius:7px;background:var(--ax-ok-fill);color:var(--green);border:1px solid var(--ax-ok-fill);cursor:pointer;white-space:nowrap;flex-shrink:0"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-backup"/></svg> Save as default</button>
+      <div style="font-size:0.78rem;padding:3px 9px;border-radius:6px;background:var(--ax-blue-fill);color:var(--ax-blue);border:1px solid var(--ax-blue-fill);white-space:nowrap"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-mark"/></svg> = 1.8 m person</div>
+      <div style="font-size:0.78rem;color:var(--muted)">Orbit: drag · Zoom: scroll</div>
     </div>
   </div>
 </div>
@@ -1696,16 +1702,16 @@ async function loadUamUsers() {
         <td style="padding:6px 8px">${esc(u.employeeId)}</td>
         <td style="padding:6px 8px">${esc(u.name)}</td>
         <td style="padding:6px 8px">
-          <select onchange="uamSetRole('${u.id}', this.value, '${esc(u.email)}')" style="padding:4px 6px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:0.74rem">
+          <select onchange="uamSetRole('${u.id}', this.value, '${esc(u.email)}')" style="padding:4px 6px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:0.78rem">
             ${['technician','engineer','manager','owner'].map(rr =>
               `<option value="${rr}" ${u.role === rr ? 'selected' : ''}>${UAM_ROLE_LABEL[rr]}</option>`).join('')}
           </select></td>
         <td style="padding:6px 8px;white-space:nowrap">
-          ${UAM_PRODUCTS.map(pr => `<label style="margin-right:8px;font-size:0.72rem;cursor:pointer" title="${pr.title}">
+          ${UAM_PRODUCTS.map(pr => `<label style="margin-right:8px;font-size:0.78rem;cursor:pointer" title="${pr.title}">
             <input type="checkbox" ${((u.products && u.products.length) ? u.products.includes(pr.id) : false) ? 'checked' : ''}
                    onchange="uamSetProducts('${u.id}', this.closest('td'), '${esc(u.email)}')" data-product="${pr.id}"> ${pr.label}
           </label>`).join('')}
-          ${(!u.products || !u.products.length) ? '<span style="color:var(--muted);font-size:0.68rem">(all)</span>' : ''}
+          ${(!u.products || !u.products.length) ? '<span style="color:var(--muted);font-size:0.78rem">(all)</span>' : ''}
         </td>
         <td style="padding:6px 8px;text-align:right">
           <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="uamRemoveUser('${u.id}','${esc(u.email)}')">Remove</button></td>
@@ -1890,7 +1896,7 @@ function configRowHtml(anchor) {
     ? `<span class="badge badge-green" title="Chamber configuration"> ${esc(configLabel(anchor.configId) || '?')}</span>` : `<span class="badge badge-orange" title="Assign a chamber configuration so MEs and operators find this chamber"> No configuration</span>`;
   return `<div style="display:flex;align-items:center;gap:8px;margin:6px 0;flex-wrap:wrap">
     ${badge}
-    ${isTech ? '' : `<select style="font-size:0.72rem;padding:3px 6px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text)" onchange="assignAnchorConfig('${anchor.id}', this.value)" title="Assign configuration">${opts}</select>`}
+    ${isTech ? '' : `<select style="font-size:0.78rem;padding:3px 6px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text)" onchange="assignAnchorConfig('${anchor.id}', this.value)" title="Assign configuration">${opts}</select>`}
   </div>`;
 }
 
@@ -1924,7 +1930,7 @@ async function loadChamberConfigs() {
       <td class="num">${c.chamberCount ?? 0}</td>
       <td style="white-space:nowrap">
         <button class="btn btn-ghost btn-sm" onclick="editChamberConfig('${c.id}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-edit"/></svg></button>
-        ${canDelete ? `<button class="btn btn-ghost btn-sm" style="color:var(--red)" ${c.chamberCount ? 'disabled title="Reassign its chambers first"' : ''} onclick="deleteChamberConfig('${c.id}','${jsEsc(c.code)}')"></button>` : ''}
+        ${canDelete ? `<button class="btn btn-ghost btn-sm" style="color:var(--red)" ${c.chamberCount ? 'disabled title="Reassign its chambers first"' : ''} onclick="deleteChamberConfig('${c.id}','${jsEsc(c.code)}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg> Delete</button>` : ''}
       </td></tr>`).join('') + '</tbody></table>';
 }
 
@@ -2025,7 +2031,7 @@ function mapSealedHtml(anchor) {
     return `<span class="badge badge-orange" title="No sealed world map yet — tags are placed from the QR pose each scan. Author: scan this QR once in Author mode to seal.">Map not sealed</span>`;
   }
   const d = new Date(anchor.mapSealedAt).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
-  return `<span class="badge badge-green" title="Author's world map is the origin — operators relocalize into it; the QR is the key and a drift check (${anchor.mapSealedAt})"> Map sealed · ${d}</span> <button class="btn btn-ghost btn-sm" style="font-size:0.62rem;padding:1px 6px" title="Remove the sealed map so an Author can create a new one (tags stay)" onclick="unsealAnchorMap('${anchor.id}','${jsEsc(anchor.assetId)}')">Unseal</button>`;
+  return `<span class="badge badge-green" title="Author's world map is the origin — operators relocalize into it; the QR is the key and a drift check (${anchor.mapSealedAt})"> Map sealed · ${d}</span> <button class="btn btn-ghost btn-sm" style="font-size:0.78rem;padding:1px 6px" title="Remove the sealed map so an Author can create a new one (tags stay)" onclick="unsealAnchorMap('${anchor.id}','${jsEsc(anchor.assetId)}')">Unseal</button>`;
 }
 
 // B1 (2026.4.46): reference-object badge. Scanned on the iPad (ARKit, on
@@ -2048,7 +2054,7 @@ function objectScanHtml(anchor) {
   ].filter(Boolean).join(' · ');
   const provBadge = anchor.objectInfo
     ? ` <span class="badge" style="background:var(--ax-paper);color:var(--ax-ink-2)" title="${prov}">${oi.scannedOn || 'device ?'}${oi.mergedFrom && oi.mergedFrom.length ? ' +' + oi.mergedFrom.length : ''} · ${oi.sides !== undefined ? oi.sides + '/6' : '?'} sides${oi.calibrated ? ' ·  cal' : ' · <span style="color:var(--ax-orange)">cal pending</span>'}${oi.shapeModel ? (oi.shapeAligned ? ' · ◧ model' : ' · <span style="color:var(--ax-orange)">◧ align model</span>') : ''}</span>` : '';
-  return src + provBadge + ` <span class="badge badge-green" title="ARKit reference object scanned on device (${anchor.objectScannedAt}) — sparse feature points, no mesh or photo">◈ Object scanned · ${d}</span> <button class="btn btn-ghost btn-sm" style="font-size:0.62rem;padding:1px 6px" title="Remove the object scan (the Author can scan again)" onclick="removeObjectScan('${anchor.id}','${jsEsc(anchor.assetId)}')">Remove</button>`;
+  return src + provBadge + ` <span class="badge badge-green" title="ARKit reference object scanned on device (${anchor.objectScannedAt}) — sparse feature points, no mesh or photo">◈ Object scanned · ${d}</span> <button class="btn btn-ghost btn-sm" style="font-size:0.78rem;padding:1px 6px" title="Remove the object scan (the Author can scan again)" onclick="removeObjectScan('${anchor.id}','${jsEsc(anchor.assetId)}')">Remove</button>`;
 }
 async function removeObjectScan(anchorId, assetId) {
   if (!confirm(`Remove the object scan of "${assetId}"?\n\nThe chamber falls back to its world map / QR until an Author scans it again.`)) return;
@@ -2138,10 +2144,10 @@ function renderAnchorLab(d) {
     <tbody>${rows.map(b => `<tr><td>${esc(b.key)}</td><td class="ax-num">${b.n}</td><td class="ax-num">${b.medianMm} mm</td><td class="ax-num">${b.p90Mm} mm</td><td class="ax-num">${b.maxMm} mm</td></tr>`).join('')}</tbody></table>` : '';
   body.innerHTML = `
     <div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:10px">
-      <div><div style="font-size:0.7rem;color:var(--muted)">Marks</div><div class="ax-num" style="font-size:1.4rem">${summary.n}</div></div>
-      <div><div style="font-size:0.7rem;color:var(--muted)">Median</div><div class="ax-num" style="font-size:1.4rem;color:${summary.medianMm <= 10 ? 'var(--ax-ok)' : summary.medianMm <= 25 ? 'var(--ax-warn)' : 'var(--ax-bad)'}">${summary.medianMm} mm</div></div>
-      <div><div style="font-size:0.7rem;color:var(--muted)">p90</div><div class="ax-num" style="font-size:1.4rem">${summary.p90Mm} mm</div></div>
-      <div><div style="font-size:0.7rem;color:var(--muted)">Worst</div><div class="ax-num" style="font-size:1.4rem">${summary.maxMm} mm</div></div>
+      <div><div style="font-size:0.78rem;color:var(--muted)">Marks</div><div class="ax-num" style="font-size:1.4rem">${summary.n}</div></div>
+      <div><div style="font-size:0.78rem;color:var(--muted)">Median</div><div class="ax-num" style="font-size:1.4rem;color:${summary.medianMm <= 10 ? 'var(--ax-ok)' : summary.medianMm <= 25 ? 'var(--ax-warn)' : 'var(--ax-bad)'}">${summary.medianMm} mm</div></div>
+      <div><div style="font-size:0.78rem;color:var(--muted)">p90</div><div class="ax-num" style="font-size:1.4rem">${summary.p90Mm} mm</div></div>
+      <div><div style="font-size:0.78rem;color:var(--muted)">Worst</div><div class="ax-num" style="font-size:1.4rem">${summary.maxMm} mm</div></div>
     </div>
     <svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Anchoring error per mark over time">
       <line x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}" stroke="var(--ax-rule)"/>
@@ -2150,7 +2156,7 @@ function renderAnchorLab(d) {
       <text x="${W - R}" y="${H - 8}" font-size="11" fill="var(--ax-ink-3)" text-anchor="end">latest</text>
       <text x="${L - 6}" y="${T + 2}" font-size="10" fill="var(--ax-ink-3)" text-anchor="end">mm</text>
     </svg>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:0.72rem;color:var(--muted)">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-size:0.78rem;color:var(--muted)">
       ${legend}
       <span style="margin-left:auto">● sealed map &nbsp; ■ object &nbsp; ○ QR / approximate</span>
     </div>
@@ -2273,8 +2279,8 @@ function buildTagSection(anchor) {
         ${trainBadge}
         ${srcChip}
         <div class="tag-acts">
-          <button class="btn-icon" title="Edit tag" onclick="openEditTagModal('${tag.id}')"></button>
-          <button class="btn-icon danger" title="Delete tag" onclick="openDeleteTagModal('${tag.id}','${anchorId}','${jsEsc(tag.label)}')"></button>
+          <button class="btn-icon" title="Edit tag" aria-label="Edit tag" onclick="openEditTagModal('${tag.id}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-edit"/></svg></button>
+          <button class="btn-icon danger" title="Delete tag" aria-label="Delete tag" onclick="openDeleteTagModal('${tag.id}','${anchorId}','${jsEsc(tag.label)}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg></button>
         </div>
       </div>`;
     }).join('') + '</div>';
@@ -2286,7 +2292,7 @@ function buildTagSection(anchor) {
       <div class="tag-section-hdr" onclick="toggleTagSection('${anchorId}')">
         <span class="tag-section-title">Tags</span>
         <span class="tag-count-chip">${chipLabel}</span>
-        <button class="btn btn-ghost btn-sm" style="padding:3px 10px;font-size:0.72rem;flex-shrink:0" onclick="event.stopPropagation();openCreateTagModal('${anchorId}')">+ Add</button>
+        <button class="btn btn-ghost btn-sm" style="padding:3px 10px;font-size:0.78rem;flex-shrink:0" onclick="event.stopPropagation();openCreateTagModal('${anchorId}')">+ Add</button>
         <span id="tag-chevron-${safe}" class="tag-chevron${isExpanded ? ' open' : ''}">▼</span>
       </div>
       <div id="tag-body-${safe}" class="tag-body" style="display:${isExpanded ? 'block' : 'none'}">
@@ -2770,7 +2776,7 @@ function renderGettingStarted() {
   const nextIdx = ms.findIndex(m => !m.done);
   panel.innerHTML = ` <div class="gs-hdr" onclick="guideToggleMin()">
       <span><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-compass"/></svg></span><b>Getting started</b>
-      <span style="color:var(--muted);font-size:0.72rem">${done} of ${ms.length}</span>
+      <span style="color:var(--muted);font-size:0.78rem">${done} of ${ms.length}</span>
       <span style="color:var(--muted)">${min ? '▴' : '▾'}</span>
     </div>
     ${min ? '' : ` <div class="gs-bar"><i style="width:${Math.round(done / ms.length * 100)}%"></i></div>
@@ -3160,12 +3166,12 @@ function heatPopover(s) {
   const thin = s.visits < HEAT_MIN_VISITS;
   return `<div class="heat-pop" role="tooltip">
     <div class="ax-eyebrow" style="margin-bottom:6px">How heat ${b.total} is calculated</div>
-    <table class="ax-table" style="font-size:0.72rem">
+    <table class="ax-table" style="font-size:0.78rem">
       <tr><th>Signal</th><th class="ax-num">Rate</th><th class="ax-num">×</th><th class="ax-num">Weight</th><th class="ax-num">=</th></tr>
       ${b.rows.map(x => `<tr style="${x.r === undefined ? 'opacity:.5' : ''}"><td>${x.label}</td><td class="ax-num">${x.r === undefined ? '–' : Math.round(x.r * 100) + ' %'}</td><td class="ax-num"></td><td class="ax-num">${x.w.toFixed(2)}</td><td class="ax-num">${x.r === undefined ? '–' : (100 * x.term).toFixed(1)}</td></tr>`).join('')}
       <tr><td colspan="4"><b>Heat</b> = sum, capped at 100</td><td class="ax-num"><b>${b.total}</b></td></tr>
     </table>
-    <p style="margin:8px 0 0;font-size:0.7rem;color:var(--muted)">Rates are the share of the last ${50} completed visits on which each thing happened. Bands: ≥ 60 hot · 35–59 warm · 15–34 normal · &lt; 15 cool.${thin ? ` <b>Only ${s.visits} visit${s.visits === 1 ? '' : 's'} so far — one visit moves the score by ${Math.round(100 / Math.max(1, s.visits))} points; treat as provisional.</b>` : ''}</p>
+    <p style="margin:8px 0 0;font-size:0.78rem;color:var(--muted)">Rates are the share of the last ${50} completed visits on which each thing happened. Bands: ≥ 60 hot · 35–59 warm · 15–34 normal · &lt; 15 cool.${thin ? ` <b>Only ${s.visits} visit${s.visits === 1 ? '' : 's'} so far — one visit moves the score by ${Math.round(100 / Math.max(1, s.visits))} points; treat as provisional.</b>` : ''}</p>
   </div>`;
 }
 function pctCell(v) { return v === undefined ? '<span style="color:var(--muted)">–</span>' : `${Math.round(v * 100)} %`; }
@@ -3276,10 +3282,10 @@ async function loadGembaWalkSessions() {
 }
 
 function gwsCat(s) {
-  const chip = (n, col, lbl) => n ? `<span style="display:inline-block;padding:1px 7px;border-radius:999px;font-size:0.68rem;font-weight:700;color:${col};border:1px solid ${col}55;background:${col}18;margin-right:4px" title="${lbl}">${n} ${lbl}</span>` : '';
+  const chip = (n, col, lbl) => n ? `<span style="display:inline-block;padding:1px 7px;border-radius:999px;font-size:0.78rem;font-weight:700;color:${col};border:1px solid ${col}55;background:${col}18;margin-right:4px" title="${lbl}">${n} ${lbl}</span>` : '';
   return chip(s.strength, 'var(--ax-green)', 'Strength') + chip(s.ofi, 'var(--ax-orange)', 'OFI') + chip(s.nc, 'var(--ax-red)', 'NC')
-    + (s.uncategorised ? `<span style="font-size:0.68rem;color:var(--muted)">${s.uncategorised} free-text</span>` : '')
-    + (Number.isInteger(s.maxRisk) && s.maxRisk > 0 ? ` <span style="font-size:0.68rem;color:var(--muted)" title="Highest preliminary risk">max R${s.maxRisk}</span>` : '');
+    + (s.uncategorised ? `<span style="font-size:0.78rem;color:var(--muted)">${s.uncategorised} free-text</span>` : '')
+    + (Number.isInteger(s.maxRisk) && s.maxRisk > 0 ? ` <span style="font-size:0.78rem;color:var(--muted)" title="Highest preliminary risk">max R${s.maxRisk}</span>` : '');
 }
 
 function renderGembaWalkSessions() {
@@ -3304,24 +3310,24 @@ function renderGembaWalkSessions() {
     const s = w.summary || {};
     const open = gwsOpen.has(w.id);
     return `<tr onclick="toggleGembaWalk('${w.id}')" style="cursor:pointer">
-      <td style="white-space:nowrap">${d.toLocaleDateString(undefined,{day:'2-digit',month:'short'})} <span style="color:var(--muted);font-size:0.68rem">${d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}</span></td>
-      <td style="font-weight:600">${esc(w.auditorName)}${w.auditorId ? `<div style="font-size:0.68rem;color:var(--muted);font-weight:400">${esc(w.auditorId)}</div>` : ''}</td>
+      <td style="white-space:nowrap">${d.toLocaleDateString(undefined,{day:'2-digit',month:'short'})} <span style="color:var(--muted);font-size:0.78rem">${d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}</span></td>
+      <td style="font-weight:600">${esc(w.auditorName)}${w.auditorId ? `<div style="font-size:0.78rem;color:var(--muted);font-weight:400">${esc(w.auditorId)}</div>` : ''}</td>
       <td>${esc(w.projectId || '—')}</td>
-      <td style="font-size:0.78rem">${esc(w.organization || '—')}${w.bu ? `<div style="color:var(--muted);font-size:0.7rem">${esc(w.bu)}</div>` : ''}</td>
+      <td style="font-size:0.78rem">${esc(w.organization || '—')}${w.bu ? `<div style="color:var(--muted);font-size:0.78rem">${esc(w.bu)}</div>` : ''}</td>
       <td style="font-size:0.78rem">${esc([w.area, w.location].filter(Boolean).join(' · ') || '—')}</td>
-      <td style="font-size:0.75rem;color:var(--muted)">${esc(anchorName(w.anchorId))}</td>
+      <td style="font-size:0.78rem;color:var(--muted)">${esc(anchorName(w.anchorId))}</td>
       <td><b>${s.findings ?? 0}</b> ${gwsCat(s)}</td>
       <td><span class="${w.status === 'submitted' ? 'b-resolved' : 'b-no-completion'}">${w.status === 'submitted' ? 'Submitted' : 'Open'}</span></td>
       <td onclick="event.stopPropagation()" style="white-space:nowrap">
         <button class="btn btn-ghost btn-sm" style="padding:2px 7px" onclick="downloadServerFile('/gemba/walks/export.xlsx?walkId=${w.id}', 'gemba-walk-${w.id.slice(0,8)}.xlsx').catch(e => toast(e.message))" title="This walk as Excel, photos embedded"> .xlsx</button>
         ${w.status === 'submitted' ? `<button class="btn btn-ghost btn-sm" style="padding:2px 7px" onclick="reopenGembaWalk('${w.id}')" title="Reopen to edit the header (admin)">↩</button>` : ''}
-        <button class="btn btn-ghost btn-sm" style="padding:2px 7px;color:var(--red)" onclick="deleteGembaWalk('${w.id}')" title="Delete the walk record (findings stay, detached)"></button>
+        <button class="btn btn-ghost btn-sm" style="padding:2px 7px;color:var(--red)" onclick="deleteGembaWalk('${w.id}')" title="Delete the walk record (findings stay, detached)"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg></button>
       </td>
     </tr>
     <tr class="detail-tr" id="gws-${w.id}" style="display:${open ? '' : 'none'}"><td colspan="9"><div class="detail-inner" id="gwsd-${w.id}">${open ? 'Loading…' : ''}</div></td></tr>`;
   }).join('') + `</tbody></table>` +
   (gwsFiltered.length > gwsShown
-    ? `<div style="text-align:center;padding:10px"><button class="btn btn-ghost btn-sm" onclick="gwsShown += GWS_PAGE; renderGembaWalkSessions()">Show ${Math.min(GWS_PAGE, gwsFiltered.length - gwsShown)} more (${gwsFiltered.length - gwsShown} left)</button></div>` : `<div style="text-align:center;padding:6px;font-size:0.7rem;color:var(--muted)">${gwsFiltered.length} walk${gwsFiltered.length === 1 ? '' : 's'}</div>`);
+    ? `<div style="text-align:center;padding:10px"><button class="btn btn-ghost btn-sm" onclick="gwsShown += GWS_PAGE; renderGembaWalkSessions()">Show ${Math.min(GWS_PAGE, gwsFiltered.length - gwsShown)} more (${gwsFiltered.length - gwsShown} left)</button></div>` : `<div style="text-align:center;padding:6px;font-size:0.78rem;color:var(--muted)">${gwsFiltered.length} walk${gwsFiltered.length === 1 ? '' : 's'}</div>`);
   for (const id of gwsOpen) loadGembaWalkDetail(id);
 }
 
@@ -3346,24 +3352,24 @@ async function loadGembaWalkDetail(id) {
     const { walk, findings } = (await apiFetch(`/gemba/walks/${id}`)).data;
     const catMap = { STRENGTH: ['var(--ax-green)', 'Strength'], OFI: ['var(--ax-orange)', 'OFI'], NC: ['var(--ax-red)', 'NC'] };
     box.innerHTML =
-      (walk.notes ? `<div style="font-size:0.76rem;color:var(--muted);margin-bottom:8px"><b style="color:var(--text)">Closing notes:</b> ${esc(walk.notes)}</div>` : '') +
-      (walk.endedAt ? `<div style="font-size:0.7rem;color:var(--muted);margin-bottom:8px">Submitted ${new Date(walk.endedAt).toLocaleString()}</div>` : '') +
+      (walk.notes ? `<div style="font-size:0.78rem;color:var(--muted);margin-bottom:8px"><b style="color:var(--text)">Closing notes:</b> ${esc(walk.notes)}</div>` : '') +
+      (walk.endedAt ? `<div style="font-size:0.78rem;color:var(--muted);margin-bottom:8px">Submitted ${new Date(walk.endedAt).toLocaleString()}</div>` : '') +
       (findings.length ? findings.map(f => {
         const c = catMap[f.findingCategory];
         const photos = (f.photos && f.photos.length) ? f.photos : (f.referenceImagePath ? [{ path: f.referenceImagePath }] : []);
         return `<div style="display:grid;grid-template-columns:36px 1fr auto;gap:10px;align-items:start;padding:8px 6px;border-top:1px solid var(--border);font-size:0.78rem">
           <span style="font-weight:700;color:var(--muted)">#${f.order + 1}</span>
           <div>
-            <div><b>${esc(f.questionTitle || f.title)}</b> ${f.questionCode ? `<span style="font-family:var(--ax-mono);color:var(--muted);font-size:0.7rem">${esc(f.focusAreaCode ? f.focusAreaCode + ' · ' : '')}${esc(f.questionCode)}</span>` : (f.referenceSource === 'custom' ? `<span style="display:inline-block;padding:0 6px;border-radius:999px;font-size:0.62rem;font-weight:700;color:var(--ax-orange);border:1px solid var(--ax-warn-fill);background:var(--ax-warn-fill);vertical-align:middle" title="Free-text entry — not from the Audit Reference Library">Custom</span>${f.focusAreaTitle ? ` <span style="color:var(--muted);font-size:0.7rem">${esc(f.focusAreaTitle)}</span>` : ''}` : '')}</div>
+            <div><b>${esc(f.questionTitle || f.title)}</b> ${f.questionCode ? `<span style="font-family:var(--ax-mono);color:var(--muted);font-size:0.78rem">${esc(f.focusAreaCode ? f.focusAreaCode + ' · ' : '')}${esc(f.questionCode)}</span>` : (f.referenceSource === 'custom' ? `<span style="display:inline-block;padding:0 6px;border-radius:999px;font-size:0.78rem;font-weight:700;color:var(--ax-orange);border:1px solid var(--ax-warn-fill);background:var(--ax-warn-fill);vertical-align:middle" title="Free-text entry — not from the Audit Reference Library">Custom</span>${f.focusAreaTitle ? ` <span style="color:var(--muted);font-size:0.78rem">${esc(f.focusAreaTitle)}</span>` : ''}` : '')}</div>
             ${f.questionText ? `<div style="color:var(--muted);margin-top:2px">${esc(f.questionText)}</div>` : ''}
             ${f.description ? `<div style="margin-top:2px">${esc(f.description)}</div>` : ''}
-            ${photos.length ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">` + photos.map(p => `<figure style="margin:0;width:84px"><img class="td-thumb" style="width:84px;height:64px;object-fit:cover" data-evidence-url="/loc-tags/image/${encodeURIComponent(p.markupPath || p.path)}" src="" alt="" />${p.caption ? `<figcaption style="font-size:0.62rem;color:var(--muted)">${esc(p.caption)}</figcaption>` : ''}</figure>`).join('') + `</div>` : ''}
+            ${photos.length ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">` + photos.map(p => `<figure style="margin:0;width:84px"><img class="td-thumb" style="width:84px;height:64px;object-fit:cover" data-evidence-url="/loc-tags/image/${encodeURIComponent(p.markupPath || p.path)}" src="" alt="" />${p.caption ? `<figcaption style="font-size:0.78rem;color:var(--muted)">${esc(p.caption)}</figcaption>` : ''}</figure>`).join('') + `</div>` : ''}
           </div>
-          <div style="white-space:nowrap">${c ? `<span style="display:inline-block;padding:1px 7px;border-radius:999px;font-size:0.68rem;font-weight:700;color:${c[0]};border:1px solid ${c[0]}55;background:${c[0]}18">${c[1]}</span>` : `<span style="font-size:0.68rem;color:var(--muted)">${esc(f.defectCategory || '')}</span>`}${Number.isInteger(f.riskRating) ? ` <span style="font-size:0.68rem;color:var(--muted)">R${f.riskRating}</span>` : ''}</div>
+          <div style="white-space:nowrap">${c ? `<span style="display:inline-block;padding:1px 7px;border-radius:999px;font-size:0.78rem;font-weight:700;color:${c[0]};border:1px solid ${c[0]}55;background:${c[0]}18">${c[1]}</span>` : `<span style="font-size:0.78rem;color:var(--muted)">${esc(f.defectCategory || '')}</span>`}${Number.isInteger(f.riskRating) ? ` <span style="font-size:0.78rem;color:var(--muted)">R${f.riskRating}</span>` : ''}</div>
         </div>`;
-      }).join('') : '<span style="font-size:0.75rem;color:var(--muted)">No findings on this walk.</span>');
+      }).join('') : '<span style="font-size:0.78rem;color:var(--muted)">No findings on this walk.</span>');
     loadEvidenceImagesIn(box);
-  } catch (e) { box.innerHTML = `<span style="color:var(--red);font-size:0.75rem">${esc(e.message)}</span>`; }
+  } catch (e) { box.innerHTML = `<span style="color:var(--red);font-size:0.78rem">${esc(e.message)}</span>`; }
 }
 
 async function reopenGembaWalk(id) {
@@ -3429,15 +3435,15 @@ function renderGembaLibrary() {
   }
   const dim = x => x.active ? '' : 'opacity:.45;';
   list.innerHTML =
-    `<p style="font-size:0.72rem;color:var(--muted);margin:0 0 10px">${gembaLib.focusAreas.length} focus areas · ${nQ} questions · categories: ${gembaLib.categories.map(c => esc(c.label.split(' — ')[0])).join(', ')} · risk 0–3</p>` +
+    `<p style="font-size:0.78rem;color:var(--muted);margin:0 0 10px">${gembaLib.focusAreas.length} focus areas · ${nQ} questions · categories: ${gembaLib.categories.map(c => esc(c.label.split(' — ')[0])).join(', ')} · risk 0–3</p>` +
     areas.map(a => ` <div class="card" style="margin-bottom:10px;padding:12px 14px;${dim(a)}">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <span style="font-family:var(--ax-mono);font-size:0.78rem;background:var(--surface-2,var(--ax-paper));border:1px solid var(--border);border-radius:6px;padding:2px 8px">${esc(a.code)}</span>
         <b style="font-size:0.9rem;flex:1">${esc(a.title)}</b>
-        <span style="font-size:0.72rem;color:var(--muted)">${a.questions.length} question${a.questions.length === 1 ? '' : 's'}${a.active ? '' : ' · inactive'}</span>
+        <span style="font-size:0.78rem;color:var(--muted)">${a.questions.length} question${a.questions.length === 1 ? '' : 's'}${a.active ? '' : ' · inactive'}</span>
         <button class="btn btn-ghost btn-sm" onclick="gembaLibEdit('question', null, '${a.id}')" title="Add a question under this area">＋ Question</button>
-        <button class="btn btn-ghost btn-sm" onclick="gembaLibEdit('area', '${a.id}')" title="Edit"></button>
-        <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="gembaLibDelete('area', '${a.id}')" title="Delete the area and its questions"></button>
+        <button class="btn btn-ghost btn-sm" onclick="gembaLibEdit('area', '${a.id}')" title="Edit"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-edit"/></svg> Edit</button>
+        <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="gembaLibDelete('area', '${a.id}')" title="Delete the area and its questions"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg> Delete</button>
       </div>
       ${a.questions.length ? `<div style="margin-top:8px;display:grid;gap:4px">` + a.questions.map(x => ` <div style="display:grid;grid-template-columns:76px 200px 1fr auto;gap:10px;align-items:start;padding:6px 8px;border-radius:8px;background:var(--ax-paper-2);font-size:0.8rem;${dim(x)}">
           <span style="font-family:var(--ax-mono);color:var(--muted)">${esc(x.code)}</span>
@@ -3899,7 +3905,7 @@ function renderUsageLog() {
       html += `<tr class="ul-row" onclick="const d=document.getElementById('${id}');d.classList.toggle('open');this.classList.toggle('open');if(d.classList.contains('open'))loadEvidenceImagesIn(d)">` +
         `<td class="ul-caret">▸</td>` +
         `<td>${esc(u.workContext || '—')}</td>` +
-        `<td>${u.configCode ? `<span class="badge badge-green" style="font-size:0.68rem">${esc(u.configCode)}</span> ` : ''}<span class="ul-dim">${esc(u.anchorName || '')}</span></td>` +
+        `<td>${u.configCode ? `<span class="badge badge-green" style="font-size:0.78rem">${esc(u.configCode)}</span> ` : ''}<span class="ul-dim">${esc(u.anchorName || '')}</span></td>` +
         `<td><strong>${esc(u.guideName)}</strong></td>` +
         `<td>${esc(u.operatorName)}${u.operatorEmployeeId ? ' <span class="ul-dim">· ' + esc(u.operatorEmployeeId) + '</span>' : ''}</td>` +
         `<td>${new Date(u.startedAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>` +
@@ -4019,11 +4025,11 @@ function renderARGuideSessions() {
             <span class="ag-operator"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-user"/></svg> ${esc(sess.signedOffBy)}</span>
             <span class="ag-date">${esc(dateStr)}</span>
             <span class="ag-steps-badge ${stepsClass}">${completedCount} step${completedCount !== 1 ? 's' : ''} completed</span>
-            ${hasEvidence ? '<span style="font-size:0.72rem;color:var(--ax-green)"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-camera"/></svg> evidence</span>' : ''}
+            ${hasEvidence ? '<span style="font-size:0.78rem;color:var(--ax-green)"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-camera"/></svg> evidence</span>' : ''}
             <span class="ag-dur">⏱ ${dur}</span>
             <button onclick="event.stopPropagation();agExportSessionXlsx('${sess.id}')" class="btn btn-ghost btn-sm" style="padding:2px 7px;margin-left:auto" title="Export this session as Excel with evidence photos embedded"> .xlsx</button>
             <button onclick="event.stopPropagation();agExportSessionCSV('${sess.id}')" class="btn btn-ghost btn-sm" style="padding:2px 7px" title="Export this session as CSV (no images)"> .csv</button>
-            <button onclick="event.stopPropagation();deleteARGuideSession('${sess.id}')" class="btn btn-ghost btn-sm" style="padding:2px 7px;color:var(--red)" title="Delete this session"></button>
+            <button onclick="event.stopPropagation();deleteARGuideSession('${sess.id}')" class="btn btn-ghost btn-sm" style="padding:4px 9px;color:var(--red)" title="Delete this session"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg></button>
           </div>
         </div>
         <div class="ag-detail" id="ag-detail-${sess.id}">
@@ -4047,7 +4053,7 @@ function toggleAGDetail(sessionId) {
 function renderAGStepRows(sess) {
   const completions = sess.stepCompletions || [];
   if (!completions.length) {
-    return '<p style="color:var(--muted);font-size:0.75rem;padding:4px 0">No steps marked complete in this session.</p>';
+    return '<p style="color:var(--muted);font-size:0.78rem;padding:4px 0">No steps marked complete in this session.</p>';
   }
   let html = '';
   completions.forEach((sc, i) => {
@@ -4057,7 +4063,7 @@ function renderAGStepRows(sess) {
     html += `<div class="ag-step-row">
       <div class="ag-step-icon ag-step-done"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-check"/></svg></div>
       <div class="ag-step-txt">Step ${i + 1}
-        <span style="color:var(--muted);font-size:0.68rem"> · ${esc(doneAt)} · ${dur}</span>
+        <span style="color:var(--muted);font-size:0.78rem"> · ${esc(doneAt)} · ${dur}</span>
       </div>`;
     if (hasEvidence) {
       const evidUrl = `/guide-sessions/${sess.id}/evidence/${sc.stepId}`;
@@ -4184,7 +4190,7 @@ function renderModels(models) {
     const s = m.usdzStatus ?? (m.hasUSDZ ? 'ready' : m.hasGLB ? 'pending' : null);
     if (!s) return '';
     const labels = { ready: ' USDZ Ready', pending: '⏳ USDZ Pending', converting: '<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-refresh"/></svg> Converting USDZ…', failed: '<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-close"/></svg> USDZ Failed' };
-    const redo = m.hasGLB && s !== 'converting' ? ` <button class="btn-ghost" style="padding:0 4px;font-size:0.7rem" title="Re-convert USDZ from the GLB" onclick="reconvertUSDZ('${m.id}')">↻</button>` : '';
+    const redo = m.hasGLB && s !== 'converting' ? ` <button class="btn-ghost" style="padding:0 4px;font-size:0.78rem" title="Re-convert USDZ from the GLB" onclick="reconvertUSDZ('${m.id}')">↻</button>` : '';
     return `<span class="usdz-status ${s}" id="usdz-badge-${m.id}">${labels[s] || s}</span>${redo}`;
   };
   // Re-run the browser-side GLB→USDZ conversion for a model that already has a GLB on the server.
@@ -4214,7 +4220,7 @@ function renderModels(models) {
 
     // Default scale display
     const scaleInfo = m.defaultScale != null
-      ? `<div style="font-size:0.70rem;color:var(--muted);margin-bottom:6px">Default scale: <span style="color:var(--accent);font-family:var(--ax-mono)">${m.defaultScale.toFixed(3)}×</span></div>` : '';
+      ? `<div style="font-size:0.78rem;color:var(--muted);margin-bottom:6px">Default scale: <span style="color:var(--accent);font-family:var(--ax-mono)">${m.defaultScale.toFixed(3)}×</span></div>` : '';
 
     // Category badge + toggle
     const catBadge = m.category === 'general' ? `<span class="category-badge"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-external"/></svg> General</span>` : '';
@@ -4223,7 +4229,7 @@ function renderModels(models) {
     // Anchor kit usage
     const kitIds  = m.anchorIds ?? (m.anchorId ? [m.anchorId] : []);
     const kitInfo = kitIds.length > 0
-      ? `<div style="font-size:0.70rem;color:var(--muted);margin-bottom:6px"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-link"/></svg> ${kitIds.length} anchor${kitIds.length !== 1 ? 's' : ''} in kit</div>` : (m.category === 'general' ? '' : `<div style="font-size:0.70rem;color:var(--muted);margin-bottom:6px">Not assigned to any anchor</div>`);
+      ? `<div style="font-size:0.78rem;color:var(--muted);margin-bottom:6px"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-link"/></svg> ${kitIds.length} anchor${kitIds.length !== 1 ? 's' : ''} in kit</div>` : (m.category === 'general' ? '' : `<div style="font-size:0.78rem;color:var(--muted);margin-bottom:6px">Not assigned to any anchor</div>`);
 
     html += `<div class="model-card" id="model-card-${m.id}">
       <div class="model-card-hdr">
@@ -4388,7 +4394,7 @@ function openKitModal(modelId, anchorIds) {
       return `<label style="display:flex;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid var(--border);cursor:pointer">
         <input type="checkbox" value="${a.id}" ${checked} style="accent-color:var(--accent)">
         <span style="font-size:0.85rem;font-weight:600">${esc(a.assetId)}</span>
-        <span style="font-size:0.72rem;color:var(--muted);font-family:var(--ax-mono);margin-left:auto">${a.id.slice(0,8)}…</span>
+        <span style="font-size:0.78rem;color:var(--muted);font-family:var(--ax-mono);margin-left:auto">${a.id.slice(0,8)}…</span>
       </label>`;
     }).join('');
   }
@@ -4774,8 +4780,8 @@ function showCortonaImportLog() {
     m.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px 26px;width:min(760px,94vw);max-height:88vh;overflow:auto;position:relative">
       <button onclick="document.getElementById('cortona-log-modal').style.display='none'" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-close"/></svg></button>
       <h3 style="margin:0 0 6px;font-size:1rem;font-weight:700">Cortona3D import log</h3>
-      <p style="margin:0 0 10px;font-size:0.75rem;color:var(--muted)">Content-free: counts, structure and warnings only — no step text or part numbers. Safe to share with the AppliedX team.</p>
-      <pre id="cortona-log-pre" style="white-space:pre-wrap;font-size:0.72rem;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;max-height:56vh;overflow:auto"></pre>
+      <p style="margin:0 0 10px;font-size:0.78rem;color:var(--muted)">Content-free: counts, structure and warnings only — no step text or part numbers. Safe to share with the AppliedX team.</p>
+      <pre id="cortona-log-pre" style="white-space:pre-wrap;font-size:0.78rem;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;max-height:56vh;overflow:auto"></pre>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
         <button class="btn btn-ghost btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('cortona-log-pre').textContent).then(()=>toast('Log copied'))">Copy</button>
         <button class="btn btn-sm" onclick="downloadCortonaImportLog()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Download .txt</button>
@@ -5186,7 +5192,7 @@ function gpPartsHtml(step) {
   const view = step.view ? `<div style="color:var(--muted)"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-camera"/></svg> suggested view${step.durationSec ? ` · ${step.durationSec}s` : ''}</div>` : (step.durationSec ? `<div style="color:var(--muted)">⏱ ${step.durationSec}s</div>` : '');
   const st = gpAssemblyStateAt(gp.idx);
   const cum = st.touched ? `<div style="color:var(--muted);border-top:1px solid var(--border);margin-top:3px;padding-top:3px">After this step: ${st.solid} shown · ${st.ghost} ghost · ${st.hidden} hidden${step.cadPosition ? ' · <svg class="ax-icon"><use href="/portal/brand/icons.svg#i-pin"/></svg> pin from CAD' : ''}${step.context === 'ghost' ? ' · operator sees the whole assembly (ghost)' : step.context === 'solid' ? ' · operator sees the whole assembly (solid)' : ''}</div>` : '';
-  return `<div style="border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:0.72rem;display:flex;flex-direction:column;gap:2px"><div style="font-weight:600"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-layers"/></svg> Part timeline (${nodes.length} deltas${step.durationSec ? ` · ${step.durationSec.toFixed(1)}s` : ''})</div>${rows}${more}${view}${cum}</div>`;
+  return `<div style="border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:0.78rem;display:flex;flex-direction:column;gap:2px"><div style="font-weight:600"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-layers"/></svg> Part timeline (${nodes.length} deltas${step.durationSec ? ` · ${step.durationSec.toFixed(1)}s` : ''})</div>${rows}${more}${view}${cum}</div>`;
 }
 
 async function gpLoadImage(mediaPath) {
@@ -5324,7 +5330,7 @@ async function openShareModal(guideId) {
     list.innerHTML = tRes.data.map(t => ` <label style="display:flex;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid var(--border);cursor:pointer">
         <input type="checkbox" class="share-tech-cb" value="${esc(t.email)}" ${current.has(t.email) ? 'checked' : ''}>
         <span style="color:var(--text);font-size:0.82rem">${esc(t.name)}</span>
-        <span style="color:var(--muted);font-size:0.72rem">${esc(t.email)}</span>
+        <span style="color:var(--muted);font-size:0.78rem">${esc(t.email)}</span>
       </label>`).join('');
   } catch (e) {
     list.innerHTML = `<span style="color:var(--red);font-size:0.8rem">Could not load: ${esc(e.message)}</span>`;
@@ -5426,7 +5432,7 @@ function renderGuideLibrary() {
     const grpLabel = gk === '__none' ? '<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-alert"/></svg> Chambers without a configuration' : gk === '__areas' ? '<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-technician"/></svg> GembaWalk areas & <svg class="ax-icon"><use href="/portal/brand/icons.svg#i-lock-restricted"/></svg> iLOTO panels' : `<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chamber"/></svg> ${esc(cfg ? `${cfg.code} · ${cfg.name}` : gk)}`;
     const chambers = groups.get(gk).entries;
     html += `<div class="gl-config-hdr" style="font-size:0.9rem;font-weight:800;margin:18px 0 8px;color:var(--text)">${grpLabel}
-      <span class="ul-dim" style="font-weight:400;font-size:0.72rem;margin-left:8px">${chambers.length} chamber${chambers.length !== 1 ? 's' : ''}</span></div>`;
+      <span class="ul-dim" style="font-weight:400;font-size:0.78rem;margin-left:8px">${chambers.length} chamber${chambers.length !== 1 ? 's' : ''}</span></div>`;
 
   for (const [anchorId, entry] of chambers) {
     const anchorLabel = entry.anchor.assetId || anchorId;
@@ -5956,7 +5962,7 @@ function renderGuideGraph(guideId, anchorId) {
   // or that the guide genuinely has no branches. These counts disambiguate.
   const laneCount = laneCounter + 1;
   const chip = (label, value, colour) =>
-    `<span style="display:inline-block;margin-right:12px;font-size:0.7rem;color:var(--muted)">
+    `<span style="display:inline-block;margin-right:12px;font-size:0.78rem;color:var(--muted)">
        ${label} <b style="color:${colour}">${value}</b></span>`;
 
   let header = `<div style="padding:10px 14px 0;display:flex;flex-wrap:wrap;align-items:center">
@@ -5970,7 +5976,7 @@ function renderGuideGraph(guideId, anchorId) {
   // The one case worth calling out explicitly, because it is the difference
   // between "the graph is broken" and "there is nothing to branch".
   if (nFailure === 0 && nSuccess === 0) {
-    header += `<div style="padding:6px 14px 0;font-size:0.7rem;color:var(--ax-orange)">
+    header += `<div style="padding:6px 14px 0;font-size:0.78rem;color:var(--ax-orange)">
       <svg class="ax-icon"><use href="/portal/brand/icons.svg#i-alert"/></svg> No branch links on any step — this guide is purely sequential, so a
       single row is the correct rendering. Add a failure branch in the step
       editor to see lanes.</div>`;
@@ -6130,7 +6136,7 @@ function buildAnchorGroup(anchorKey, group, tagLabels) {
   }
   const countLabel = `${sessions.length} session${sessions.length !== 1 ? 's' : ''}`;
   const chipsHtml = [
-    `<span style="font-size:0.7rem;color:var(--muted)">${countLabel}</span>`,
+    `<span style="font-size:0.78rem;color:var(--muted)">${countLabel}</span>`,
     totalPass > 0 ? `<span class="b-pass">${totalPass} PASS</span>` : '',
     totalFail > 0 ? `<span class="b-fail">${totalFail} FAIL</span>` : '',
   ].join('');
@@ -6191,11 +6197,11 @@ function buildSessionRow(s, tagLabels, colCount) {
   // Detail row (notes, hidden by default)
   const noted = (s.tagRecords || []).filter(r => r.note);
   const detailContent = noted.length
-    ? noted.map(r => `<div style="font-size:0.76rem;margin-bottom:4px"><strong>${esc(r.tagLabel)}</strong>: <em style="color:var(--muted)">“${esc(r.note)}”</em></div>`).join('')
-    : '<span style="font-size:0.75rem;color:var(--muted)">No operator notes recorded for this session.</span>';
+    ? noted.map(r => `<div style="font-size:0.78rem;margin-bottom:4px"><strong>${esc(r.tagLabel)}</strong>: <em style="color:var(--muted)">“${esc(r.note)}”</em></div>`).join('')
+    : '<span style="font-size:0.78rem;color:var(--muted)">No operator notes recorded for this session.</span>';
 
   return ` <tr data-sid="${sid}" onclick="toggleSessionDetail('${sid}')">
-      <td style="white-space:nowrap">${dateStr}<br><span style="color:var(--muted);font-size:0.68rem">${timeStr}</span></td>
+      <td style="white-space:nowrap">${dateStr}<br><span style="color:var(--muted);font-size:0.78rem">${timeStr}</span></td>
       <td>${op}</td>
       <td style="white-space:nowrap">${dur}</td>
       ${tagCells}
@@ -6442,7 +6448,7 @@ function buildGembaGroup(anchorId, anchorName, locTags) {
   }
 
   const chipsHtml = [
-    `<span style="font-size:0.7rem;color:var(--muted)">${locTags.length} stop${locTags.length !== 1 ? 's' : ''}</span>`,
+    `<span style="font-size:0.78rem;color:var(--muted)">${locTags.length} stop${locTags.length !== 1 ? 's' : ''}</span>`,
     nResolved     > 0 ? `<span class="b-resolved">${nResolved} Resolved</span>` : '',
     nStillPresent > 0 ? `<span class="b-still-present">${nStillPresent} Still Present</span>` : '',
     nEscalated    > 0 ? `<span class="b-escalated">${nEscalated} Escalated</span>` : '',
@@ -6513,7 +6519,7 @@ function buildGembaRow(tag) {
     statusHtml   = `<span class="${cls}">${lbl}</span>`;
     operatorHtml = esc(latest.operatorName || '—');
     const d      = new Date(latest.completedAt);
-    dateHtml     = `${d.toLocaleDateString(undefined,{day:'2-digit',month:'short'})} ` + `<span style="color:var(--muted);font-size:0.68rem">${d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}</span>`;
+    dateHtml     = `${d.toLocaleDateString(undefined,{day:'2-digit',month:'short'})} ` + `<span style="color:var(--muted);font-size:0.78rem">${d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}</span>`;
     if (latest.completionImagePath) {
       photoHtml = `<img class="td-thumb" data-evidence-url="/loc-tags/image/${encodeURIComponent(latest.completionImagePath)}" src="" alt="completion" />`;
     }
@@ -6522,7 +6528,7 @@ function buildGembaRow(tag) {
   // Build history/notes content for the expandable detail row
   let historyContent;
   if (comps.length === 0) {
-    historyContent = '<span style="font-size:0.75rem;color:var(--muted)">Not yet completed.</span>';
+    historyContent = '<span style="font-size:0.78rem;color:var(--muted)">Not yet completed.</span>';
   } else {
     const statusMap = {
       RESOLVED:      ['b-resolved',      'Resolved'],
@@ -6534,13 +6540,13 @@ function buildGembaRow(tag) {
       const d          = new Date(c.completedAt);
       const dateStr    = `${d.toLocaleDateString()} ${d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}`;
       const noteStr    = c.note
-        ? `<em style="color:var(--muted);font-size:0.73rem;margin-left:6px">"${esc(c.note)}"</em>` : '';
-      return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:0.76rem">
+        ? `<em style="color:var(--muted);font-size:0.78rem;margin-left:6px">"${esc(c.note)}"</em>` : '';
+      return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:0.78rem">
         <span class="${cls}">${lbl}</span>
         <span style="color:var(--text)">${esc(c.operatorName || '—')}</span>
         <span style="color:var(--muted)">${dateStr}</span>
         ${noteStr}
-        <button onclick="deleteGembaCompletion('${esc(c.id)}')" class="btn btn-ghost btn-sm" style="font-size:0.65rem;padding:1px 5px;color:var(--red);margin-left:4px" title="Delete this completion record"></button>
+        <button onclick="deleteGembaCompletion('${esc(c.id)}')" class="btn btn-ghost btn-sm" style="font-size:0.78rem;padding:1px 5px;color:var(--red);margin-left:4px" title="Delete this completion record"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg></button>
       </div>`;
     }).join('');
   }
@@ -6552,27 +6558,27 @@ function buildGembaRow(tag) {
   let catHtml = esc(tag.defectCategory || '—');
   if (tag.findingCategory && catMap[tag.findingCategory]) {
     const [col, lbl] = catMap[tag.findingCategory];
-    catHtml = `<span style="display:inline-block;padding:1px 7px;border-radius:999px;font-size:0.68rem;font-weight:700;color:${col};border:1px solid ${col}55;background:${col}18">${lbl}</span>` + (Number.isInteger(tag.riskRating) ? ` <span style="font-size:0.68rem;color:var(--muted)" title="Preliminary risk rating">R${tag.riskRating}</span>` : '');
+    catHtml = `<span style="display:inline-block;padding:1px 7px;border-radius:999px;font-size:0.78rem;font-weight:700;color:${col};border:1px solid ${col}55;background:${col}18">${lbl}</span>` + (Number.isInteger(tag.riskRating) ? ` <span style="font-size:0.78rem;color:var(--muted)" title="Preliminary risk rating">R${tag.riskRating}</span>` : '');
   }
   const refHtml = tag.questionCode
-    ? `<div style="font-size:0.68rem;color:var(--muted);font-weight:400;margin-top:2px">${esc(tag.focusAreaCode ? tag.focusAreaCode + ' · ' : '')}${esc(tag.questionCode)}${tag.questionTitle ? ' — ' + esc(tag.questionTitle) : ''}</div>` : (tag.referenceSource === 'custom' ? `<div style="font-size:0.68rem;color:var(--muted);font-weight:400;margin-top:2px"><span style="display:inline-block;padding:0 6px;border-radius:999px;font-size:0.62rem;font-weight:700;color:var(--ax-orange);border:1px solid var(--ax-warn-fill);background:var(--ax-warn-fill);vertical-align:middle" title="Free-text entry — not from the Audit Reference Library">Custom</span>${tag.focusAreaTitle ? ' ' + esc(tag.focusAreaTitle) : ''}</div>` : '');
+    ? `<div style="font-size:0.78rem;color:var(--muted);font-weight:400;margin-top:2px">${esc(tag.focusAreaCode ? tag.focusAreaCode + ' · ' : '')}${esc(tag.questionCode)}${tag.questionTitle ? ' — ' + esc(tag.questionTitle) : ''}</div>` : (tag.referenceSource === 'custom' ? `<div style="font-size:0.78rem;color:var(--muted);font-weight:400;margin-top:2px"><span style="display:inline-block;padding:0 6px;border-radius:999px;font-size:0.78rem;font-weight:700;color:var(--ax-orange);border:1px solid var(--ax-warn-fill);background:var(--ax-warn-fill);vertical-align:middle" title="Free-text entry — not from the Audit Reference Library">Custom</span>${tag.focusAreaTitle ? ' ' + esc(tag.focusAreaTitle) : ''}</div>` : '');
   const photos = (tag.photos && tag.photos.length) ? tag.photos
     : (tag.referenceImagePath ? [{ path: tag.referenceImagePath }] : []);
   const photoStrip = photos.length
     ? `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">` + photos.map(p => ` <figure style="margin:0;width:96px">
           <img class="td-thumb" style="width:96px;height:72px;object-fit:cover" data-evidence-url="/loc-tags/image/${encodeURIComponent(p.markupPath || p.path)}" src="" alt="finding photo" />
-          ${p.caption ? `<figcaption style="font-size:0.66rem;color:var(--muted);margin-top:2px;line-height:1.2">${esc(p.caption)}</figcaption>` : ''}
+          ${p.caption ? `<figcaption style="font-size:0.78rem;color:var(--muted);margin-top:2px;line-height:1.2">${esc(p.caption)}</figcaption>` : ''}
         </figure>`).join('') + `</div>` : '';
   const questionBlock = tag.questionText
-    ? `<div style="font-size:0.74rem;color:var(--text);margin-bottom:8px"><b style="color:var(--muted);font-weight:600">${esc(tag.questionCode || '')}</b> ${esc(tag.questionText)}</div>` : '';
+    ? `<div style="font-size:0.78rem;color:var(--text);margin-bottom:8px"><b style="color:var(--muted);font-weight:600">${esc(tag.questionCode || '')}</b> ${esc(tag.questionText)}</div>` : '';
   const descBlock = tag.description
-    ? `<div style="font-size:0.74rem;color:var(--muted);margin-bottom:8px">${esc(tag.description)}</div>` : '';
+    ? `<div style="font-size:0.78rem;color:var(--muted);margin-bottom:8px">${esc(tag.description)}</div>` : '';
   historyContent = questionBlock + descBlock + photoStrip + historyContent;
 
   return ` <tr onclick="toggleGembaHistory('${tid}')" style="cursor:pointer">
       <td style="white-space:nowrap">${stopBadge}</td>
       <td style="font-weight:600;font-size:0.81rem">${esc(tag.title)}${refHtml}</td>
-      <td style="font-size:0.73rem;color:var(--muted)">${catHtml}</td>
+      <td style="font-size:0.78rem;color:var(--muted)">${catHtml}</td>
       <td>${sevHtml}</td>
       <td>${statusHtml}</td>
       <td style="font-size:0.78rem">${operatorHtml}</td>
@@ -6734,12 +6740,12 @@ async function loadLotoQuiz() {
       return;
     }
     el.innerHTML =
-      `<p style="color:var(--muted);font-size:0.72rem;margin:0 0 6px">${lotoQuizAdmin.length} questions · ${pass}% required to pass</p>` +
+      `<p style="color:var(--muted);font-size:0.78rem;margin:0 0 6px">${lotoQuizAdmin.length} questions · ${pass}% required to pass</p>` +
       lotoQuizAdmin.map((q, i) => ` <div class="iloto-event" style="align-items:flex-start;flex-wrap:nowrap">
           <span style="color:var(--muted);flex:none">${i + 1}.</span>
           <div style="flex:1;min-width:0">
             <div style="font-weight:600">${esc(q.prompt)}</div>
-            <div style="color:var(--ax-green);font-size:0.74rem;margin-top:2px"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-check"/></svg> ${esc(q.choices[q.correctIndex] ?? '?')}</div>
+            <div style="color:var(--ax-green);font-size:0.78rem;margin-top:2px"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-check"/></svg> ${esc(q.choices[q.correctIndex] ?? '?')}</div>
           </div>
           <span style="flex:none;display:flex;gap:6px">
             <button class="btn btn-ghost btn-sm" onclick="lotoQuizShowEditor('${q.id}')">Edit</button>
@@ -6768,7 +6774,7 @@ function lotoQuizShowEditor(id) {
       <div style="display:flex;gap:8px;margin-top:10px">
         <button class="btn btn-sm" onclick="lotoQuizSave(${id ? `'${id}'` : 'null'})">Save</button>
         <button class="btn btn-ghost btn-sm" onclick="document.getElementById('loto-quiz-editor').style.display='none'">Cancel</button>
-        <span style="font-size:0.7rem;color:var(--muted);align-self:center">Radio = correct answer · blank choices are dropped</span>
+        <span style="font-size:0.78rem;color:var(--muted);align-self:center">Radio = correct answer · blank choices are dropped</span>
       </div>
     </div>`;
   box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -6904,7 +6910,7 @@ function renderLotoBoard(el, perAnchor) {
         <span class="iloto-badge red">${status.lotoActive} LOTO</span>
         <span class="iloto-badge yellow">${status.safeOffActive} safe off</span>
         <span class="iloto-badge green">${points.filter(p => p.state !== 'locked').length} clear</span>
-        <span style="color:var(--muted);font-size:0.72rem;margin-left:auto">${status.lastEventAt ? 'last event ' + relTime(status.lastEventAt) : 'no events yet'}</span>
+        <span style="color:var(--muted);font-size:0.78rem;margin-left:auto">${status.lastEventAt ? 'last event ' + relTime(status.lastEventAt) : 'no events yet'}</span>
       </div>
       ${rows || '<p style="color:var(--muted);font-size:0.78rem;margin:8px 0 0">No points defined.</p>'}
     </div>`;

@@ -7,6 +7,17 @@ it, it gets a line.
 ## 2026.4.46 — 2026-09-08
 
 ### Fixed
+- **Portal — seven Edit / Delete buttons were empty.** When emoji left the
+  portal, the tag row's edit and delete, the chamber-config, Gemba area,
+  walk, session and completion deletes were left as blank buttons; they
+  now carry the sprite's edit / trash icons and a label where there is room.
+  Tag-row actions are always visible (they were hover-only — invisible on a
+  tablet). Import Guide's anchor list on Windows rendered white-on-white:
+  native select popups now carry the dark scheme's colours explicitly.
+- **Portal legibility.** Secondary text uses the app's 0.7 tier (was 0.5),
+  nothing renders under 0.78 rem (badges, chips, table notes were down to
+  0.59 rem), ghost buttons have a visible edge and a quiet fill, small
+  buttons are one step larger.
 - **Anchor Lab — Done is quick again.** Only the map serialisation (≈ 1 s)
   happens before the summary; the 2 MB upload and the run record go on in
   the background while the summary is read (its Map row updates when the
