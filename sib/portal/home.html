@@ -1,108 +1,114 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="ax">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>appliedx Connected Worker AR OMS Platform - SIB</title>
+<link rel="stylesheet" href="/portal/brand/brand.css">
 <style>
-:root{--bg:#0b1220;--card:#111a2e;--border:#22304b;--text:#e2e8f0;--muted:#7d8da3;--accent:#3b82f6;}
-*{box-sizing:border-box;}
-body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);
-  font-family:-apple-system,Helvetica,Arial,sans-serif;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;padding:32px 20px;}
-h1{font-size:26px;font-weight:400;margin:0 0 4px;text-align:center;}
-.sub{color:var(--muted);font-size:13.5px;margin:0 0 34px;text-align:center;}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;width:min(880px,100%);}
-a.card{display:block;background:var(--card);border:1px solid var(--border);border-radius:14px;
-  padding:22px 20px;text-decoration:none;color:var(--text);transition:border-color .15s, transform .15s;}
-a.card:hover{border-color:var(--accent);transform:translateY(-3px);}
-.ci{font-size:26px;margin-bottom:10px;}
-.ct{font-size:15.5px;font-weight:700;margin:0 0 4px;}
-.cd{font-size:12.5px;color:var(--muted);margin:0;line-height:1.5;}
-.foot{margin-top:36px;font-size:12px;color:var(--muted);display:flex;gap:16px;flex-wrap:wrap;justify-content:center;}
-.foot a{color:var(--muted);}
-.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#475569;margin-right:5px;vertical-align:middle;}
-.dot.ok{background:#22c55e;}
-.stats{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin:0 0 26px;}
-.stat{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:10px 18px;text-align:center;min-width:118px;}
-.stat .sv{font-size:22px;font-weight:800;line-height:1.2;}
-.stat .sl{font-size:11px;color:var(--muted);}
-.stat.alert .sv{color:#ef4444;}
-.stat.alert{border-color:#7f1d1d;}
+  /* The front door: the wordmark, the live pulse, the doors. Built only from the
+     brand system - it is the page every other surface is compared with. */
+  body { margin: 0; }
+  .hm-header { display: flex; align-items: center; gap: var(--ax-s4); padding: var(--ax-s4) var(--ax-s5); }
+  .hm-header .ax-chip { margin-left: auto; }
+  .hm-wrap { max-width: 1120px; margin: 0 auto; padding: var(--ax-s6) var(--ax-s5) var(--ax-s7); }
+  .hm-hero h1 { margin: 0 0 var(--ax-s2); }
+  .hm-hero h1 .ax-wordmark { font: inherit; display: inline; }
+  .hm-hero p { color: var(--ax-ink-2); margin: 0 0 var(--ax-s5); max-width: 720px; }
+  .hm-pulse { margin-bottom: var(--ax-s6); }
+  .hm-pulse a.ax-tile { display: block; color: inherit; text-decoration: none; }
+  .hm-pulse a.ax-tile:hover { background: var(--ax-paper-3); text-decoration: none; }
+  .hm-doors { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--ax-s4); }
+  .hm-doors .ax-door { align-items: flex-start; }
+  .hm-doors .ax-icon-tile { flex: none; }
+  .hm-doors b { margin-bottom: 2px; }
+  .hm-doors span { display: block; font: var(--ax-label-s); color: var(--ax-ink-3); }
+  .hm-doors .ax-chev { align-self: center; }
+  .hm-foot { display: flex; gap: var(--ax-s4); flex-wrap: wrap; align-items: center; margin-top: var(--ax-s7); font: var(--ax-label-s); color: var(--ax-ink-3); }
+  .hm-foot a { color: var(--ax-ink-3); }
+  .hm-foot .ax-mark { font-size: 12px; margin-right: 6px; }
 </style>
 </head>
 <body>
-  <div data-brand-slot style="position:absolute;top:14px;right:18px"></div>
-  <h1><span data-ax-wordmark></span></h1>
-  <p class="sub">Spatial tagging · AR work instructions · Gemba walks · iLOTO · one server</p>
+<header class="hm-header">
+  <span class="ax-wordmark"><span class="ax-a">applied</span><span class="ax-x">x</span><span class="ax-rest">Connected Worker AR OMS Platform</span></span>
+  <span class="ax-chip" id="version"></span>
+  <span data-brand-slot style="display:flex;align-items:center;margin-left:12px"></span>
+</header>
+
+<main class="hm-wrap">
+  <div class="hm-hero">
+    <div class="ax-eyebrow">SIB · Spatial Intelligence Backbone</div>
+    <h1><span class="ax-wordmark"><span class="ax-a">applied</span><span class="ax-x">x</span></span> Connected Worker AR OMS Platform</h1>
+    <p>Spatial inspection, AR work instructions, Gemba walks and iLOTO on one self-hosted server - the right instruction, check and record exactly where the work happens.</p>
+  </div>
 
   <!-- Live site pulse - aggregate counts only, from GET /stats (public). -->
-  <div class="stats" id="stats" style="display:none">
-    <div class="stat"><div class="sv" id="st-anchors">–</div><div class="sl">anchors</div></div>
-    <div class="stat"><div class="sv" id="st-sessions">–</div><div class="sl">sessions · 7 days</div></div>
-    <div class="stat"><div class="sv" id="st-gemba">–</div><div class="sl">open Gemba findings</div></div>
-    <div class="stat" id="st-loto-card"><div class="sv" id="st-loto">–</div><div class="sl">active LOTO locks</div></div>
-    <a class="stat" id="st-az-card" href="/platform#assess" style="display:none;text-decoration:none"><div class="sv" id="st-az">–</div><div class="sl" id="st-az-l">areas assessed</div></a>
+  <div class="ax-tiles hm-pulse" id="stats" style="display:none">
+    <div class="ax-tile"><div class="ax-eyebrow">Chambers</div><div class="ax-value" id="st-anchors">-</div></div>
+    <div class="ax-tile"><div class="ax-eyebrow">Sessions · 7 days</div><div class="ax-value" id="st-sessions">-</div></div>
+    <div class="ax-tile"><div class="ax-eyebrow">Open Gemba findings</div><div class="ax-value" id="st-gemba">-</div></div>
+    <div class="ax-tile" id="st-loto-card"><div class="ax-eyebrow">Active LOTO locks</div><div class="ax-value" id="st-loto">-</div></div>
+    <a class="ax-tile" id="st-az-card" href="/platform#assess" style="display:none"><div class="ax-eyebrow" id="st-az-l">Areas assessed</div><div class="ax-value" id="st-az">-</div></a>
   </div>
 
-  <div class="grid">
-    <a class="card" href="/portal">
-      <div class="ci">🗂</div>
-      <p class="ct">Web Portal</p>
-      <p class="cd">Anchors, inspection sessions, AR Guides &amp; Guide Library, Gemba walks, 3D model library, iLOTO status &amp; audit.</p>
+  <div class="hm-doors">
+    <a class="ax-door" href="/learn" data-product="platform">
+      <span class="ax-icon-tile"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-book"/></svg></span>
+      <div style="min-width:0"><b>Learn</b><span>Six five-minute reads on how the platform works. Start here if you're new.</span></div>
+      <span class="ax-chev"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chevron"/></svg></span>
     </a>
-    <a class="card" href="/platform">
-      <div class="ci">🛰</div>
-      <p class="ct">Platform Map</p>
-      <p class="cd">The whole platform in one visual - four products, authoring &amp; content, governance, and the SIB backbone, with how we got here. Editable slide included.</p>
+    <a class="ax-door" href="/portal" data-product="portal">
+      <span class="ax-icon-tile"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-home"/></svg></span>
+      <div style="min-width:0"><b>Portal</b><span>Chambers, sessions, AR Guides and the Guide Library, Gemba walks, 3D models, iLOTO status and audit.</span></div>
+      <span class="ax-chev"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chevron"/></svg></span>
     </a>
-    <a class="card" href="/roadmap">
-      <div class="ci">🗺</div>
-      <p class="ct">Roadmap &amp; Procedure Designer</p>
-      <p class="cd">Collaborative mind-map canvas for planning - and the night-mode Procedure Designer that compiles straight into AR work instructions.</p>
+    <a class="ax-door" href="/catalog" data-product="platform">
+      <span class="ax-icon-tile"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-graph"/></svg></span>
+      <div style="min-width:0"><b>Feature Catalogue</b><span>Every feature as a connected map - flows, dependencies and definitions, generated from the docs. The detail behind every Learn stop.</span></div>
+      <span class="ax-chev"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chevron"/></svg></span>
     </a>
-    <a class="card" href="/wireframe">
-      <div class="ci">📱</div>
-      <p class="ct">App Wireframe</p>
-      <p class="cd">Interactive click-through of all seven app flows with design notes - the two-minute tour for new team members.</p>
+    <a class="ax-door" href="/roadmap" data-product="designer">
+      <span class="ax-icon-tile"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-procedure"/></svg></span>
+      <div style="min-width:0"><b>Roadmap &amp; Procedure Designer</b><span>The collaborative canvas for planning, and the Procedure Designer that compiles straight into AR work instructions.</span></div>
+      <span class="ax-chev"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chevron"/></svg></span>
     </a>
-    <a class="card" href="/learn">
-      <div class="ci">◎</div>
-      <p class="ct">Learn</p>
-      <p class="cd">Six five-minute reads - how anchoring works, how a procedure reaches the machine, how a step is proved, walks, lockout, the platform. Start here if you're new.</p>
+    <a class="ax-door" href="/platform" data-product="platform">
+      <span class="ax-icon-tile"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-map"/></svg></span>
+      <div style="min-width:0"><b>Platform story</b><span>The whole platform in one visual - four products, content, governance and the SIB backbone, in the order a fab adopts it.</span></div>
+      <span class="ax-chev"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chevron"/></svg></span>
     </a>
-    <a class="card" href="/catalog">
-      <div class="ci">🕸</div>
-      <p class="ct">Feature Catalogue</p>
-      <p class="cd">Every feature as a connected graph - flows, dependencies and dictionary definitions, generated live from the docs - the detail behind every Learn stop.</p>
+    <a class="ax-door" href="/wireframe" data-product="tags">
+      <span class="ax-icon-tile"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-scan"/></svg></span>
+      <div style="min-width:0"><b>App wireframe</b><span>A click-through of all seven app flows with design notes - the two-minute tour of the iPad app.</span></div>
+      <span class="ax-chev"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chevron"/></svg></span>
     </a>
-    <a class="card" href="/portal#admin">
-      <div class="ci">🛠</div>
-      <p class="ct">Admin &amp; Backups</p>
-      <p class="cd">Dedicated admin page - unlock admin mode, download data or full backups, and watch the ops log of every admin action.</p>
+    <a class="ax-door" href="/catalog#ask" data-product="platform">
+      <span class="ax-icon-tile"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-sparkles"/></svg></span>
+      <div style="min-width:0"><b>Ask SIB</b><span>Ask the platform anything - answers grounded in the Catalogue, every feature cited and one click away.</span></div>
+      <span class="ax-chev"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chevron"/></svg></span>
     </a>
-    <a class="card" href="/catalog#ask">
-      <div class="ci">💬</div>
-      <p class="ct">Ask SIB</p>
-      <p class="cd">Ask the platform anything - answers grounded in the Feature Catalogue and dictionary, with every feature cited and one click away.</p>
+    <a class="ax-door" href="/portal#admin" data-product="portal">
+      <span class="ax-icon-tile"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-wrench"/></svg></span>
+      <div style="min-width:0"><b>Admin &amp; backups</b><span>User access, chamber configurations, backups, the ops log and device logs.</span></div>
+      <span class="ax-chev"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chevron"/></svg></span>
     </a>
   </div>
 
-  <div class="foot">
-    <span id="status"><span class="dot"></span>checking…</span>
-    <span id="version"></span>
+  <div class="hm-foot">
+    <span id="status"><span class="ax-mark is-loading"><i></i><em></em></span>checking…</span>
     <a href="/health">/health</a>
     <a href="/config">/config</a>
+    <a href="/brand">/brand</a>
   </div>
+</main>
 
 <script>
 fetch('/config').then(function(r){ return r.json(); }).then(function(cfg){
-  document.getElementById('status').innerHTML = '<span class="dot ok"></span>SIB online';
-  if (cfg.platformVersion) {
-    document.getElementById('version').textContent = 'v' + cfg.platformVersion;
-  }
+  document.getElementById('status').innerHTML = '<span class="ax-mark is-green"><i></i><em></em></span>SIB online';
+  if (cfg.platformVersion) document.getElementById('version').textContent = 'v' + cfg.platformVersion;
 }).catch(function(){
-  document.getElementById('status').innerHTML = '<span class="dot"></span>server unreachable';
+  document.getElementById('status').innerHTML = '<span class="ax-mark"><i></i><em></em></span>server unreachable';
 });
 fetch('/stats').then(function(r){ return r.json(); }).then(function(st){
   document.getElementById('st-anchors').textContent  = st.anchors;
@@ -110,14 +116,14 @@ fetch('/stats').then(function(r){ return r.json(); }).then(function(st){
   document.getElementById('st-gemba').textContent    = st.openGembaFindings;
   document.getElementById('st-loto').textContent     = st.activeLotoLocks;
   // Locks held right now are worth a red flag on the front door.
-  if (st.activeLotoLocks > 0) document.getElementById('st-loto-card').classList.add('alert');
-  document.getElementById('stats').style.display = 'flex';
+  if (st.activeLotoLocks > 0) document.getElementById('st-loto-card').classList.add('is-bad');
+  document.getElementById('stats').style.display = '';
 }).catch(function(){ /* strip stays hidden if stats are unavailable */ });
 // M2: Connected Worker maturity pulse - anonymous aggregate from /platform/assess/summary.
 fetch('/platform/assess/summary').then(function(r){ return r.json(); }).then(function(p){
   if (!p.count) return;
   document.getElementById('st-az').textContent   = p.count;
-  document.getElementById('st-az-l').textContent = 'areas assessed · avg level ' + p.avgLevel;
+  document.getElementById('st-az-l').textContent = 'Areas assessed · avg level ' + p.avgLevel;
   document.getElementById('st-az-card').style.display = '';
 }).catch(function(){});
 </script>
