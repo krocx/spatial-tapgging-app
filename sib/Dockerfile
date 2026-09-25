@@ -86,6 +86,7 @@ COPY sib/roadmap/ ./sib/roadmap/
 #   README.md            → catalogue specs that point at ../README.md
 COPY docs/*.md ./docs/
 COPY docs/catalog/ ./docs/catalog/
+COPY docs/learn/   ./docs/learn/
 COPY docs/APP-WIREFRAME.html ./docs/APP-WIREFRAME.html
 COPY README.md ./README.md
 
