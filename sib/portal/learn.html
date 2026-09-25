@@ -17,7 +17,9 @@
 
   /* Landing */
   .ln-hero h1 { margin: 0 0 var(--ax-s2); }
-  .ln-hero p  { color: var(--ax-ink-2); margin: 0 0 var(--ax-s6); }
+  .ln-hero p  { color: var(--ax-ink-2); margin: 0 0 var(--ax-s3); max-width: 760px; }
+  .ln-hero p:last-of-type { margin-bottom: var(--ax-s6); }
+  .ln-hero h1 .ax-wordmark { display: inline; }
   .ln-doors { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--ax-s4); }
   .ln-door { text-align: left; border: 1px solid color-mix(in srgb, var(--ax-pc, var(--ax-blue)) 30%, transparent); }
   .ln-door .ln-ring { flex: none; width: 44px; height: 44px; }
@@ -154,8 +156,9 @@ function renderLanding() {
   const total = DATA.journeys.length, doneN = DATA.journeys.filter(j => prog(j.id).done).length;
   document.getElementById('ln-main').innerHTML = `<div class="ln-hero">
       <div class="ax-eyebrow">Learn</div>
-      <h1>Welcome to the Connected Worker platform.</h1>
-      <p>It puts the right instruction, check and record exactly where the work happens, on the equipment itself, so people on the floor are guided, proven and protected without paperwork. These six short journeys explain how, in the order you would meet it: five minutes each, one idea per screen, the platform's own diagrams, and the Catalogue a click away for the detail.${doneN ? ` <b>${doneN} of ${total} done.</b>` : ''}</p>
+      <h1>Welcome to the <span class="ax-wordmark" style="font:inherit"><span class="ax-a">applied</span><span class="ax-x">x</span></span> Connected Worker AR OMS Platform.</h1>
+      <p>The platform makes our existing work instructions ready for spatial computing devices. It puts the right instruction exactly where the work happens, on the equipment itself, so technicians stay in the strike zone and get guided assistance the moment they need it. It is device-agnostic, built for the next generation of spatial computing hardware, and developed fully in-house by the <span class="ax-wordmark" style="font:inherit;display:inline"><span class="ax-a">applied</span><span class="ax-x">x</span></span> Immersive Tech team for WMO, as part of the Connected Worker initiative.</p>
+      <p>This is a research and development initiative: capabilities are added as the technology matures, so come back to this space regularly to learn the platform's core components, and use the <a href="/catalog">Catalogue</a> for the complete map of everything it does.${doneN ? ` <b>${doneN} of ${total} journeys done.</b>` : ''}</p>
     </div>
     <div class="ln-doors">${doors}</div>`;
 }
