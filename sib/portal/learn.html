@@ -14,6 +14,8 @@
   .ln-header .ax-nav { margin-left: var(--ax-s4); }
   .ln-header .ax-chip { margin-left: auto; }
   .ln-wrap { max-width: 1120px; margin: 0 auto; padding: var(--ax-s6) var(--ax-s5) var(--ax-s7); }
+  /* A journey uses the whole width: the diagram is the point of the screen. */
+  .ln-wrap.is-journey { max-width: none; padding: var(--ax-s5) var(--ax-s6) var(--ax-s7); }
 
   /* Landing */
   .ln-hero h1 { margin: 0 0 var(--ax-s2); }
@@ -40,14 +42,18 @@
   .ln-marks .ax-mark { font-size: 14px; color: var(--ax-ink-4); cursor: pointer; }
   .ln-marks .ax-mark.is-passed { color: var(--ax-green); }
   .ln-marks .ax-mark.is-now { color: var(--ax-blue); }
-  .ln-stop { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--ax-s5); align-items: start; }
+  .ln-stop { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: var(--ax-s6); align-items: start; }
   .ln-copy .ax-eyebrow { margin-bottom: var(--ax-s2); }
   .ln-copy h1 { margin: 0 0 var(--ax-s3); font: var(--ax-h2); font-size: 28px; line-height: 36px; }
   .ln-copy p  { font: var(--ax-label-r); color: var(--ax-ink-2); max-width: none; }
   .ln-copy .ax-notice { margin-top: var(--ax-s4); }
   .ln-copy .ln-more { display: inline-flex; align-items: center; gap: 6px; margin-top: var(--ax-s4); }
-  .ln-diagram { padding: var(--ax-s4); min-height: 280px; display: flex; align-items: center; justify-content: center; overflow: auto; }
-  .ln-diagram svg { max-width: 100%; height: auto; }
+  .ln-diagram { padding: var(--ax-s5); min-height: min(560px, 70vh); display: flex; align-items: center; justify-content: flex-start; overflow: auto; position: relative; }
+  /* Natural size by default: a wide flow scrolls sideways rather than shrinking its type to nothing. */
+  .ln-diagram svg { max-width: none; height: auto; }
+  .ln-diagram.is-fit { justify-content: center; }
+  .ln-diagram.is-fit svg { width: 100%; }
+  .ln-fit { position: absolute; top: var(--ax-s3); right: var(--ax-s3); }
   .ln-diagram pre { font: var(--ax-num); color: var(--ax-ink-3); white-space: pre-wrap; margin: 0; }
   .ln-nav { display: flex; gap: var(--ax-s3); margin-top: var(--ax-s5); align-items: center; }
   .ln-nav .ln-hint { margin-left: auto; color: var(--ax-ink-4); font: var(--ax-label-s); }
@@ -135,6 +141,7 @@ function go(i) {
 
 // ── Landing: six doors ───────────────────────────────────────────────────────
 function renderLanding() {
+  document.getElementById('ln-main').classList.remove('is-journey');
   const doors = DATA.journeys.map(j => {
     const p = prog(j.id); const n = j.stops.length;
     const done = !!p.done; const frac = done ? 1 : Math.min(1, (p.reached || 0) / n);
@@ -165,6 +172,7 @@ function renderLanding() {
 
 // ── One stop ─────────────────────────────────────────────────────────────────
 function renderStop(arriving) {
+  document.getElementById('ln-main').classList.add('is-journey');
   const n = journey.stops.length;
   if (stop >= n) return renderQuiz();
   const s = journey.stops[stop];
@@ -198,6 +206,11 @@ function renderStop(arriving) {
 
 // ── Quiz - recognition, not memory: three questions, immediate feedback ──────
 let answers = [];
+function toggleFit(btn) {
+  const el = document.getElementById('ln-diagram');
+  el.classList.toggle('is-fit');
+  btn.textContent = el.classList.contains('is-fit') ? 'Actual size' : 'Fit';
+}
 function renderQuiz() {
   answers = journey.quiz.map(() => null);
   const qs = journey.quiz.map((q, qi) => `<div class="ln-q" id="ln-q${qi}">
@@ -262,7 +275,8 @@ async function drawDiagram(code, area) {
   const solid = cssVar('--ax-solid'), ink = cssVar('--ax-ink'), ink2 = cssVar('--ax-ink-2'), bg2 = cssVar('--ax-bg-2');
   try {
     window.mermaid.initialize({ startOnLoad: false, theme: 'base', securityLevel: 'loose', suppressErrorRendering: true,
-      themeVariables: { darkMode: true, background: solid, fontFamily: cssVar('--ax-font'), fontSize: '14px',
+      flowchart: { useMaxWidth: false, htmlLabels: true, nodeSpacing: 40, rankSpacing: 50 }, sequence: { useMaxWidth: false },
+      themeVariables: { darkMode: true, background: solid, fontFamily: cssVar('--ax-font'), fontSize: '16px',
         primaryColor: bg2, primaryBorderColor: accent, primaryTextColor: ink, lineColor: ink2, textColor: ink,
         secondaryColor: bg2, secondaryBorderColor: accent, tertiaryColor: solid, tertiaryBorderColor: accent,
         mainBkg: bg2, nodeBorder: accent, clusterBkg: solid, clusterBorder: accent, edgeLabelBackground: solid, titleColor: ink,
@@ -270,7 +284,10 @@ async function drawDiagram(code, area) {
         labelBoxBkgColor: bg2, labelBoxBorderColor: accent, labelTextColor: ink, loopTextColor: ink, noteBkgColor: bg2, noteBorderColor: accent, noteTextColor: ink,
         activationBkgColor: bg2, activationBorderColor: accent } });
     const { svg } = await window.mermaid.render('ln' + (++seq), code);
-    el.innerHTML = svg;
+    el.innerHTML = svg + `<button class="ax-btn ax-btn--quiet ax-btn--sm ln-fit" onclick="toggleFit(this)" title="Fit the diagram to the card / show it at reading size">Fit</button>`;
+    const g = el.querySelector('svg'); if (g) { g.removeAttribute('height'); g.style.maxWidth = 'none'; }
+    // If it already fits, there is nothing to toggle.
+    if (g && g.getBoundingClientRect().width <= el.clientWidth - 48) el.querySelector('.ln-fit').remove();
   } catch { el.innerHTML = `<pre>${esc(code)}</pre>`; }
 }
 </script>
