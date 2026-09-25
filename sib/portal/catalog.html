@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="ax">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -11,19 +11,21 @@
   sib/portal/vendor/ (run `npm run catalog:vendor` once) with cdnjs as
   fallback; both degrade gracefully to <pre>.
 -->
+<link rel="stylesheet" href="/portal/brand/brand.css">
 <style>
 :root{
-  --bg:#0b1220; --panel:#111a2e; --panel2:#0e1626; --border:#22304b;
-  --text:#e2e8f0; --muted:#7d8da3; --accent:#3b82f6; --chip:#1a2540;
+  /* The catalogue reads the design system; its old names are aliases of the tokens. */
+  --bg:var(--ax-bg); --panel:var(--ax-solid); --panel2:var(--ax-bg-2); --border:var(--ax-rule);
+  --text:var(--ax-ink); --muted:var(--ax-ink-3); --accent:var(--ax-blue); --chip:var(--ax-paper-3);
 }
 *{box-sizing:border-box;}
 html,body{height:100%;}
 body{margin:0;background:var(--bg);color:var(--text);
-  font-family:-apple-system,Helvetica,Arial,sans-serif;display:flex;flex-direction:column;overflow:hidden;}
+  font-family:var(--ax-font);display:flex;flex-direction:column;overflow:hidden;}
 
 /* ── Header ── */
 header{display:flex;align-items:center;gap:14px;padding:10px 16px;border-bottom:1px solid var(--border);flex-wrap:wrap;
-  background:rgba(17,26,46,.72);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);}
+  background:var(--ax-solid);-webkit-}
 header h1{font-size:16px;font-weight:800;margin:0;white-space:nowrap;}
 header h1 a{color:var(--text);text-decoration:none;}
 #search{background:var(--panel);border:1px solid var(--border);border-radius:8px;color:var(--text);
@@ -31,7 +33,7 @@ header h1 a{color:var(--text);text-decoration:none;}
 #search:focus{border-color:var(--accent);}
 #areaChips{display:flex;gap:6px;flex-wrap:wrap;}
 .achip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--border);
-  border-radius:20px;font-size:11.5px;cursor:pointer;color:var(--muted);background:var(--panel);user-select:none;}
+  border-radius:100px;font-size:11.5px;cursor:pointer;color:var(--muted);background:var(--panel);user-select:none;}
 .achip .dot{width:8px;height:8px;border-radius:50%;}
 .achip.on{color:var(--text);border-color:var(--accent);}
 .legend{display:flex;gap:12px;font-size:11px;color:var(--muted);align-items:center;margin-left:auto;}
@@ -43,7 +45,7 @@ header h1 a{color:var(--text);text-decoration:none;}
 /* ── Layout ── */
 #main{flex:1;display:flex;min-height:0;}
 #graphWrap{flex:1;position:relative;min-width:0;}
-#graph{width:100%;height:100%;display:block;cursor:grab;background:radial-gradient(ellipse at 50% 50%,#101a30 0%,#0b1220 62%);
+#graph{width:100%;height:100%;display:block;cursor:grab;background:var(--ax-page);
   user-select:none;-webkit-user-select:none;touch-action:none;}
 #graph text{user-select:none;-webkit-user-select:none;pointer-events:none;}
 #graph text.albl{pointer-events:auto;}
@@ -51,73 +53,73 @@ header h1 a{color:var(--text);text-decoration:none;}
 #hint{position:absolute;left:14px;bottom:12px;font-size:11px;color:var(--muted);pointer-events:none;max-width:70%;}
 .seg{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--panel);}
 .seg button{border:0;background:transparent;color:var(--muted);font-size:11.5px;font-weight:700;padding:5px 11px;cursor:pointer;}
-.seg button.on{background:var(--accent);color:#fff;}
+.seg button.on{background:var(--accent);color:var(--ax-ink);}
 #filterChips{display:flex;gap:6px;flex-wrap:wrap;}
-#filterChips .achip.fver.on{border-color:#35c635;color:#35c635;}
+#filterChips .achip.fver.on{border-color:var(--ax-green);color:var(--ax-green);}
 #altView{position:absolute;inset:0;overflow:auto;padding:18px 22px 40px;}
 .vgroup{margin-bottom:22px;} .vgroup h4,.tlcol h4{font-size:12px;letter-spacing:.14em;text-transform:uppercase;margin:0 0 10px;display:flex;align-items:center;gap:8px;}
 .vgroup h4 small,.tlcol h4 small{color:var(--muted);font-weight:400;letter-spacing:0;}
 .vgroup h4 .dot{width:9px;height:9px;border-radius:50%;display:inline-block;}
 .vcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;}
-.fcard{border:1px solid var(--border);border-left:3px solid var(--c);border-radius:10px;padding:10px 12px;background:rgba(17,26,46,.7);cursor:pointer;transition:transform .12s,border-color .12s;}
-.fcard:hover{transform:translateY(-2px);border-color:var(--c);} .fcard.sel{border-color:#fff;}
+.fcard{border:1px solid var(--border);border-left:3px solid var(--c);border-radius:10px;padding:10px 12px;background:var(--ax-solid);cursor:pointer;transition:transform .12s,border-color .12s;}
+.fcard:hover{transform:translateY(-2px);border-color:var(--c);} .fcard.sel{border-color:var(--ax-ink);}
 .fc-h{display:flex;align-items:center;gap:7px;font-size:13px;margin-bottom:4px;} .fc-h b{flex:1;}
 .fc-dot{width:9px;height:9px;border-radius:50%;display:inline-block;background:var(--c);}
 .fc-dot.status-beta{background:transparent;border:2px solid var(--c);} .fc-dot.status-planned{background:transparent;border:1.5px dashed var(--c);}
-.fc-new{font-size:9px;font-weight:800;letter-spacing:.1em;color:#35c635;border:1px solid #35c63566;border-radius:4px;padding:1px 5px;}
+.fc-new{font-size:9px;font-weight:800;letter-spacing:.1em;color:var(--ax-green);border:1px solid var(--ax-green);border-radius:4px;padding:1px 5px;}
 .fc-b{font-size:11.5px;color:var(--text);opacity:.85;line-height:1.5;} .fc-m{font-size:10.5px;color:var(--muted);margin-top:6px;}
 .tl{display:flex;gap:16px;align-items:flex-start;min-height:100%;}
-.tlcol{flex:1;min-width:250px;border:1px solid var(--border);border-radius:12px;padding:12px;background:rgba(14,22,38,.5);}
-.tlcol.cur{border-color:#35c63588;box-shadow:0 0 0 1px #35c63533 inset;}
+.tlcol{flex:1;min-width:250px;border:1px solid var(--border);border-radius:12px;padding:12px;background:var(--ax-solid);}
+.tlcol.cur{border-color:var(--ax-green);}
 .tlcol .vcards{grid-template-columns:1fr;}
 .pnav{display:flex;justify-content:space-between;gap:8px;margin-bottom:10px;} .pnav .btn{font-size:11.5px;padding:4px 9px;}
 .empty{color:var(--muted);padding:40px;text-align:center;}
-#modeCtl{position:absolute;right:14px;top:12px;display:flex;z-index:5;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:rgba(17,26,46,.75);backdrop-filter:blur(8px);}
+#modeCtl{position:absolute;right:14px;top:12px;display:flex;z-index:5;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--ax-solid);}
 #modeCtl button{border:0;background:transparent;color:var(--muted);font-size:12px;font-weight:700;padding:6px 11px;cursor:pointer;letter-spacing:.04em;}
-#modeCtl button.on{background:var(--accent);color:#fff;}
+#modeCtl button.on{background:var(--accent);color:var(--ax-ink);}
 #modeHint{position:absolute;right:14px;top:50px;font-size:10.5px;color:var(--muted);text-align:right;pointer-events:none;letter-spacing:.03em;}
 #zoomCtl{position:absolute;right:14px;top:70px;display:flex;flex-direction:column;gap:4px;z-index:5;}
 #graph.stacked .coreglow,#graph.stacked .halo{display:none;}
 #focusBar{position:absolute;right:14px;bottom:14px;z-index:5;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text);
-  background:rgba(17,26,46,.8);backdrop-filter:blur(10px);border:1px solid var(--border);border-radius:10px;padding:6px 10px;}
+  background:var(--ax-solid);border:1px solid var(--border);border-radius:10px;padding:6px 10px;}
 #focusBar .fdot{width:8px;height:8px;border-radius:50%;background:var(--muted);}
-#focusBar .fdot.on{background:#35c635;box-shadow:0 0 8px #35c635;}
+#focusBar .fdot.on{background:var(--ax-green);}
 #focusBar .fk{font-size:10px;color:var(--muted);border:1px solid var(--border);border-radius:4px;padding:1px 5px;}
 #focusBar .btn{padding:4px 10px;font-size:12px;}
 #tourCap{position:absolute;left:50%;bottom:44px;transform:translateX(-50%);width:min(560px,80%);z-index:6;
-  background:rgba(17,26,46,.86);backdrop-filter:blur(14px);border:1px solid var(--border);border-radius:14px;padding:14px 18px 10px;
-  box-shadow:0 12px 40px rgba(0,0,0,.45);}
+  background:var(--ax-solid);border:1px solid var(--border);border-radius:14px;padding:14px 18px 10px;
+  }
 #tourCap .tc-k{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;margin-bottom:4px;}
 #tourCap .tc-t{font-size:18px;font-weight:800;margin-bottom:6px;}
 #tourCap .tc-b{font-size:13px;line-height:1.55;color:var(--text);}
 #tourCap .tc-bar{height:2px;background:var(--border);border-radius:2px;margin-top:10px;overflow:hidden;}
 #tourCap .tc-bar i{display:block;height:100%;width:0;background:var(--accent);animation:tcfill linear forwards;}
 @keyframes tcfill{from{width:0}to{width:100%}}
-#zoomCtl button{width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:rgba(17,26,46,.75);backdrop-filter:blur(8px);color:var(--text);
+#zoomCtl button{width:30px;height:30px;border-radius:8px;border:1px solid var(--border);background:var(--ax-solid);color:var(--text);
   font-size:15px;cursor:pointer;line-height:1;}
 #zoomCtl button:hover{border-color:var(--accent);}
-#zoomCtl #fxBtn{color:var(--muted);} #zoomCtl #fxBtn.on{color:#fbbf24;}
+#zoomCtl #fxBtn{color:var(--muted);} #zoomCtl #fxBtn.on{color:var(--ax-orange);}
 /* Lite tier - no per-frame repaint sources */
 body.lite .node,body.lite .node .breathe{animation:none !important;}
 body.lite .halo,body.lite .coreglow,body.lite .ripple{animation:none !important;}
 body.lite .ripple{display:none;}
-body.lite header,body.lite #panel,body.lite #tip,body.lite #zoomCtl button,body.lite #modeCtl,body.lite #focusBar,body.lite #tourCap{backdrop-filter:none;-webkit-backdrop-filter:none;}
-body.lite header{background:rgba(17,26,46,.96);} body.lite #panel{background:rgba(14,22,38,.98);}
+body.lite header,body.lite #panel,body.lite #tip,body.lite #zoomCtl button,body.lite #modeCtl,body.lite #focusBar,body.lite #tourCap{-webkit-}
+body.lite header{background:var(--ax-solid);} body.lite #panel{background:var(--ax-solid);}
 #matchCount{position:absolute;left:14px;top:10px;font-size:12px;color:var(--accent);display:none;}
 
 /* ── Side panel ── */
-#panel{width:520px;max-width:52vw;border-left:1px solid var(--border);background:rgba(14,22,38,.82);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+#panel{width:520px;max-width:52vw;border-left:1px solid var(--border);background:var(--ax-solid);-webkit-
   overflow-y:auto;padding:16px;}
 #panel h2{font-size:17px;margin:0 0 6px;}
 #panel h3{font-size:13px;margin:18px 0 8px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;}
 .meta{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 12px;}
 .mchip{font-size:11px;padding:3px 9px;border-radius:12px;background:var(--chip);border:1px solid var(--border);color:var(--muted);}
-.mchip.status-shipped{color:#4ade80;border-color:#14532d;}
-.mchip.status-beta{color:#fbbf24;border-color:#78350f;}
-.mchip.status-planned{color:#94a3b8;border-color:#334155;}
+.mchip.status-shipped{color:var(--ax-green);border-color:var(--ax-ok-fill);}
+.mchip.status-beta{color:var(--ax-orange);border-color:var(--ax-warn-fill);}
+.mchip.status-planned{color:var(--ax-ink-2);border-color:var(--ax-paper-3);}
 .body-text{font-size:13px;line-height:1.65;color:var(--text);}
 .termchip{display:inline-block;font-size:11.5px;padding:3px 9px;margin:0 5px 6px 0;border-radius:12px;
-  background:var(--chip);border:1px solid var(--border);color:#93c5fd;cursor:help;position:relative;}
+  background:var(--chip);border:1px solid var(--border);color:var(--ax-cyan);cursor:help;position:relative;}
 .deplink{display:inline-block;font-size:12px;padding:3px 9px;margin:0 5px 6px 0;border-radius:8px;
   background:var(--panel);border:1px solid var(--border);color:var(--text);cursor:pointer;}
 .deplink:hover{border-color:var(--accent);}
@@ -131,7 +133,7 @@ body.lite header{background:rgba(17,26,46,.96);} body.lite #panel{background:rgb
   background:var(--chip);padding:2px 8px;border-radius:10px;pointer-events:none;}
 
 /* ── Flow lightbox ── */
-#flowModal{position:fixed;inset:0;display:none;z-index:100;background:rgba(4,8,18,.92);
+#flowModal{position:fixed;inset:0;display:none;z-index:100;background:var(--ax-scrim);
   align-items:center;justify-content:center;flex-direction:column;padding:4vh 3vw;cursor:zoom-out;}
 #flowModal.open{display:flex;}
 #flowModal .fmtitle{color:var(--text);font-size:15px;font-weight:700;margin-bottom:14px;}
@@ -143,15 +145,15 @@ body.lite header{background:rgba(17,26,46,.96);} body.lite #panel{background:rgb
 .btn{background:var(--panel);border:1px solid var(--border);border-radius:8px;color:var(--text);
   padding:7px 12px;font-size:12.5px;cursor:pointer;}
 .btn:hover{border-color:var(--accent);}
-.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--ax-ink);}
 .apibox{display:flex;flex-direction:column;gap:5px;margin:4px 0 2px;}
 .apiline{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;font-size:12px;line-height:1.45;}
 .apiline .method{flex:none;font-weight:700;font-size:10px;letter-spacing:0.4px;padding:1px 7px;border-radius:5px;border:1px solid;}
-.apiline .m-GET{color:#4ade80;border-color:#4ade8055;}
-.apiline .m-POST{color:#93c5fd;border-color:#93c5fd55;}
-.apiline .m-PUT,.apiline .m-PATCH{color:#fbbf24;border-color:#fbbf2455;}
-.apiline .m-DELETE{color:#f87171;border-color:#f8717155;}
-.apiline .m-WS{color:#c4b5fd;border-color:#c4b5fd55;}
+.apiline .m-GET{color:var(--ax-green);border-color:var(--ax-ok-fill);}
+.apiline .m-POST{color:var(--ax-cyan);border-color:var(--ax-blue-fill);}
+.apiline .m-PUT,.apiline .m-PATCH{color:var(--ax-orange);border-color:var(--ax-warn-fill);}
+.apiline .m-DELETE{color:var(--ax-red);border-color:var(--ax-bad-fill);}
+.apiline .m-WS{color:var(--ax-indigo);border-color:var(--ax-rule);}
 .apiline code{background:var(--chip);padding:1px 6px;border-radius:4px;font-size:11.5px;word-break:break-all;}
 .apiline .apinote{color:var(--muted);font-size:11.5px;}
 #specBox{display:none;margin-top:12px;border-top:1px solid var(--border);padding-top:12px;}
@@ -163,7 +165,7 @@ body.lite header{background:rgba(17,26,46,.96);} body.lite #panel{background:rgb
 #specBox .md pre code{background:none;padding:0;}
 #specBox .md table{border-collapse:collapse;font-size:11.5px;}
 #specBox .md th,#specBox .md td{border:1px solid var(--border);padding:4px 8px;text-align:left;}
-#specBox .md a{color:#93c5fd;}
+#specBox .md a{color:var(--ax-cyan);}
 #specBox .md blockquote{border-left:3px solid var(--border);margin:8px 0;padding:2px 12px;color:var(--muted);}
 
 /* ── Trails ── */
@@ -178,15 +180,15 @@ body.lite header{background:rgba(17,26,46,.96);} body.lite #panel{background:rgb
 #trailBar button{padding:4px 10px;font-size:12px;}
 
 /* ── Tooltip ── */
-#tip{position:fixed;display:none;max-width:320px;background:rgba(28,42,71,.9);backdrop-filter:blur(10px);border:1px solid var(--accent);
+#tip{position:fixed;display:none;max-width:320px;background:var(--ax-solid);border:1px solid var(--accent);
   border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.55;z-index:50;pointer-events:none;
-  box-shadow:0 8px 30px rgba(0,0,0,.5);}
-#tip .tt{font-weight:700;color:#93c5fd;margin-bottom:3px;}
+  }
+#tip .tt{font-weight:700;color:var(--ax-cyan);margin-bottom:3px;}
 
 /* ── Ask SIB drawer ── */
 #askDrawer{position:fixed;top:0;right:0;bottom:0;width:min(430px,94vw);background:var(--panel2);
   border-left:1px solid var(--border);z-index:60;display:flex;flex-direction:column;
-  transform:translateX(102%);transition:transform .22s ease;box-shadow:-12px 0 40px rgba(0,0,0,.45);}
+  transform:translateX(102%);transition:transform .22s ease;}
 #askDrawer.open{transform:none;}
 #askDrawer .ahdr{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--border);}
 #askDrawer .ahdr h2{font-size:15px;margin:0;flex:1;}
@@ -195,19 +197,19 @@ body.lite header{background:rgba(17,26,46,.96);} body.lite #panel{background:rgb
 #askBody .aq{color:var(--muted);font-size:12px;margin:14px 0 4px;}
 #askBody .aa{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px 14px;}
 #askBody .aa code{background:var(--chip);padding:1px 5px;border-radius:4px;font-size:11.5px;}
-#askBody .anote{font-size:11.5px;color:#fbbf24;margin-top:6px;}
+#askBody .anote{font-size:11.5px;color:var(--ax-orange);margin-top:6px;}
 #askBody .asrc{margin-top:8px;}
 #askForm{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border);}
-#askInput{flex:1;background:var(--panel);border:1px solid var(--border);border-radius:9px;
+#askInput{flex:1;background:var(--panel);border:1px solid var(--border);border-radius:10px;
   color:var(--text);padding:9px 12px;font-size:13px;outline:none;}
 #askInput:focus{border-color:var(--accent);}
 .askchip{display:inline-block;font-size:11.5px;padding:3px 9px;margin:0 5px 6px 0;border-radius:8px;
-  background:var(--panel);border:1px solid var(--border);color:#93c5fd;cursor:pointer;}
+  background:var(--panel);border:1px solid var(--border);color:var(--ax-cyan);cursor:pointer;}
 .askchip:hover{border-color:var(--accent);}
 
 /* graph text */
-text.nlabel{font-size:9.5px;fill:#b8c4d6;pointer-events:none;paint-order:stroke;stroke:#0b1220;stroke-width:3px;stroke-linejoin:round;}
-text.nlabel.hot{font-size:11px;fill:#fff;font-weight:600;}
+text.nlabel{font-size:9.5px;fill:var(--ax-ink-2);pointer-events:none;paint-order:stroke;stroke:var(--ax-bg);stroke-width:3px;stroke-linejoin:round;}
+text.nlabel.hot{font-size:11px;fill:var(--ax-ink);font-weight:600;}
 /* "Alive" breathing: pure CSS, so the idle render loop stays idle and the
    hit area travels with the node - ±1.5px against a 16px target never
    affects clicking. Two directions + varied duration/delay = organic. */
@@ -216,9 +218,9 @@ text.nlabel.hot{font-size:11px;fill:#fff;font-weight:600;}
 text.albl{font-size:13px;font-weight:800;letter-spacing:.22em;cursor:pointer;opacity:.95;}
 text.albl:hover{opacity:1;filter:brightness(1.3);}
 g.wedge path{pointer-events:none;}
-text.ring{font-size:9px;fill:#7d8da3;opacity:.55;letter-spacing:.14em;text-transform:uppercase;pointer-events:none;}
-text.corelbl{font-size:26px;font-weight:800;fill:#fff;letter-spacing:.08em;pointer-events:none;}
-text.coresub{font-size:8.5px;fill:#bfdbfe;letter-spacing:.06em;pointer-events:none;}
+text.ring{font-size:9px;fill:var(--ax-ink-3);opacity:.55;letter-spacing:.14em;text-transform:uppercase;pointer-events:none;}
+text.corelbl{font-size:26px;font-weight:800;fill:var(--ax-ink);letter-spacing:.08em;pointer-events:none;}
+text.coresub{font-size:8.5px;fill:var(--ax-cyan);letter-spacing:.06em;pointer-events:none;}
 .coreglow{animation:corePulse var(--beat,4.5s) ease-in-out infinite alternate;}
 text.livelbl{font-size:8.5px;letter-spacing:.12em;opacity:.55;pointer-events:none;}
 text.livelbl.on{opacity:.95;font-weight:700;}
@@ -238,7 +240,7 @@ text.livelbl.on{opacity:.95;font-weight:700;}
 #graph.ignite .core{animation:coreIn .9s ease-out both;transform-origin:700px 540px;}
 @keyframes coreIn{from{opacity:0;transform:scale(.2)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.coreglow,.halo,#graph.ignite *{animation:none !important;}}
-.trailbadge{font-size:9px;font-weight:800;fill:#fff;pointer-events:none;}
+.trailbadge{font-size:9px;font-weight:800;fill:var(--ax-ink);pointer-events:none;}
 @media (max-width:800px){ #panel{max-width:none;width:100%;position:absolute;inset:0;z-index:10;display:none;}
   #panel.open{display:block;} }
 </style>
@@ -252,13 +254,13 @@ text.livelbl.on{opacity:.95;font-weight:700;}
   <div id="areaChips"></div>
   <div id="filterChips"></div>
   <div class="legend">
-    <span><svg width="14" height="12"><circle cx="7" cy="6" r="5" fill="#3b82f6"/></svg> shipped</span>
-    <span><svg width="14" height="12"><circle cx="7" cy="6" r="5" fill="#3b82f6" fill-opacity=".25" stroke="#3b82f6" stroke-width="1.6"/></svg> beta</span>
-    <span><svg width="14" height="12"><circle cx="7" cy="6" r="5" fill="none" stroke="#3b82f6" stroke-width="1.4" stroke-dasharray="3 2"/></svg> planned</span>
-    <span><svg width="14" height="12"><circle cx="6" cy="6" r="5" fill="#3b82f6"/><circle cx="10" cy="2.5" r="2.6" fill="#35c635"/></svg> new this release</span>
+    <span><svg width="14" height="12"><circle cx="7" cy="6" r="5" fill="var(--ax-blue)"/></svg> shipped</span>
+    <span><svg width="14" height="12"><circle cx="7" cy="6" r="5" fill="var(--ax-blue)" fill-opacity=".25" stroke="var(--ax-blue)" stroke-width="1.6"/></svg> beta</span>
+    <span><svg width="14" height="12"><circle cx="7" cy="6" r="5" fill="none" stroke="var(--ax-blue)" stroke-width="1.4" stroke-dasharray="3 2"/></svg> planned</span>
+    <span><svg width="14" height="12"><circle cx="6" cy="6" r="5" fill="var(--ax-blue)"/><circle cx="10" cy="2.5" r="2.6" fill="var(--ax-green)"/></svg> new this release</span>
   </div>
   <button class="btn" style="padding:6px 13px" onclick="startTour()" title="Guided tour - the camera flies stop to stop">▶ Tour</button>
-  <button class="btn primary" style="padding:6px 13px" onclick="askOpen()">💬 Ask SIB</button>
+  <button class="btn primary" style="padding:6px 13px" onclick="askOpen()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-sparkles"/></svg> Ask SIB</button>
   <div class="hlinks"><a href="/portal">Portal</a><a href="/roadmap">Roadmap</a><a href="/wireframe">Wireframe</a></div>
 </header>
 <div id="trailBar">
@@ -281,9 +283,9 @@ text.livelbl.on{opacity:.95;font-weight:700;}
     <div id="zoomCtl">
       <button id="zoomIn" title="Zoom in">+</button>
       <button id="zoomOut" title="Zoom out">−</button>
-      <button id="zoomFit" title="Fit the whole map">⛶</button>
+      <button id="zoomFit" title="Fit the whole map" aria-label="Fit"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-scan"/></svg></button>
       <button id="zoomReset" title="Reset layout (forget dragged positions)">↺</button>
-      <button id="fxBtn" title="Effects">✦</button>
+      <button id="fxBtn" title="Effects" aria-label="Effects"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-sparkles"/></svg></button>
     </div>
     <div id="hint">Hover for a summary · click for details · click a product name to zoom in · double-click a node to zoom to its neighbours · drag to pan (3D: orbit + tilt, shift-drag pans) · scroll to zoom · keys 1–4 = Top · Stack · Side · Under</div>
   </div>
@@ -292,9 +294,9 @@ text.livelbl.on{opacity:.95;font-weight:700;}
 <div id="tip"></div>
 <div id="askDrawer">
   <div class="ahdr">
-    <h2>💬 Ask SIB</h2>
+    <h2><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-sparkles"/></svg> Ask SIB</h2>
     <span class="atier" id="askTier">docs search</span>
-    <button class="btn" onclick="askClose()">✕</button>
+    <button class="btn" onclick="askClose()" aria-label="Close"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-close"/></svg></button>
   </div>
   <div id="askBody">
     <p style="color:var(--muted);font-size:12.5px">Ask anything about the platform - answers come from the
@@ -369,7 +371,10 @@ async function boot(){
       '<h2>Catalogue unavailable</h2><p class="body-text">' + esc(e.message) + '</p>';
     return;
   }
-  DATA.areas.forEach(a => areaById[a.id] = a);
+  // Area colours come from the docs as hex; on the design system the products
+  // wear the app's accents, so map them here (the md files stay engine-neutral).
+  const PC = { tags: '--ax-blue', guides: '--ax-green', iloto: '--ax-red', gemba: '--ax-orange', designer: '--ax-indigo', portal: '--ax-cyan', platform: '--ax-grey' };
+  DATA.areas.forEach(a => { if (PC[a.id]) a.color = cssVar(PC[a.id]) || a.color; areaById[a.id] = a; });
   buildGraph(); computeLayers();
   refreshStats();
   renderAreaChips(); renderFilterChips();
@@ -382,7 +387,7 @@ async function boot(){
   lib('/portal/vendor/mermaid.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js')
     .then(() => { window.mermaid.initialize({ startOnLoad:false, theme:'dark', securityLevel:'loose',
       suppressErrorRendering:true, // a bad diagram falls back to <pre>; never bomb-icons the page
-      themeVariables:{ darkMode:true, background:'#111a2e', primaryColor:'#1a2540', lineColor:'#7d8da3' } });
+      themeVariables:{ darkMode:true } });
       mermaidReady = true; if (selected) showFeature(selected); })
     .catch(() => {});
   lib('/portal/vendor/marked.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js')
@@ -805,7 +810,7 @@ function renderFocusBar(){
    those repaints the whole SVG each frame, which a laptop iGPU on Windows
    cannot keep at 60 fps. We measure the first two seconds of frames and drop
    to Lite (no per-frame CSS animation, no backdrop blur) when the median
-   frame is over 20 ms; ✦ in the controls toggles it and remembers the choice. */
+   frame is over 20 ms; the Effects control toggles it and remembers the choice. */
 let fxTier = localStorage.getItem('sib_catalog_fx') || 'auto';
 function applyFx(){
   const lite = fxTier === 'lite' || (fxTier === 'auto' && fxMeasuredLite);
@@ -844,9 +849,9 @@ const wedgePath = (r0, r1, t0, t1) => {
 // draw() only rewrites the dynamic layer, so the core can breathe with CSS.
 let staticSvg = '';
 function buildStatic(){
-  const ONT = [['#3b82f6','spatial'], ['#a78bfa','perception'], ['#22c55e','semantic'], ['#f59e0b','reasoning']];
+  const ONT = [['var(--ax-blue)','spatial'], ['var(--ax-indigo)','perception'], ['var(--ax-green)','semantic'], ['var(--ax-orange)','reasoning']];
   let out = '<defs>';
-  out += `<radialGradient id="coreGrad"><stop offset="0" stop-color="#93c5fd" stop-opacity=".95"/><stop offset=".45" stop-color="#3b82f6" stop-opacity=".55"/><stop offset="1" stop-color="#3b82f6" stop-opacity="0"/></radialGradient>`;
+  out += `<radialGradient id="coreGrad"><stop offset="0" stop-color="var(--ax-cyan)" stop-opacity=".95"/><stop offset=".45" stop-color="var(--ax-blue)" stop-opacity=".55"/><stop offset="1" stop-color="var(--ax-blue)" stop-opacity="0"/></radialGradient>`;
   for (const a of DATA.areas){
     out += `<radialGradient id="wg-${a.id}" cx="${CX}" cy="${CY}" r="${R_MAX + 46}" gradientUnits="userSpaceOnUse">
       <stop offset="${(R_MIN - 40) / (R_MAX + 46)}" stop-color="${a.color}" stop-opacity=".03"/>
@@ -870,7 +875,7 @@ function buildStatic(){
   // depth rings
   const rings = [[R_MIN, 'foundations'], [(R_MIN + R_MAX) / 2, 'core'], [R_MAX, 'surface']];
   for (const [r, name] of rings){
-    out += `<circle cx="${CX}" cy="${CY}" r="${r}" fill="none" stroke="#7d8da3" stroke-opacity=".13" stroke-dasharray="2 6"/>
+    out += `<circle cx="${CX}" cy="${CY}" r="${r}" fill="none" stroke="var(--ax-ink-3)" stroke-opacity=".13" stroke-dasharray="2 6"/>
       <text class="ring" x="${CX + 6}" y="${CY - r - 5}">${name}</text>`;
   }
   // the core
@@ -880,7 +885,7 @@ function buildStatic(){
     const r = 84 + i * 16;
     out += `<circle cx="${CX}" cy="${CY}" r="${r}" fill="none" stroke="${c}" stroke-opacity=".45" stroke-width="1.2" stroke-dasharray="${i % 2 ? '3 9' : '14 10'}" class="halo h${i}"/>`;
   });
-  out += `<circle cx="${CX}" cy="${CY}" r="66" fill="#0b1220" stroke="#93c5fd" stroke-opacity=".6" stroke-width="1.5"/>
+  out += `<circle cx="${CX}" cy="${CY}" r="66" fill="var(--ax-bg)" stroke="var(--ax-cyan)" stroke-opacity=".6" stroke-width="1.5"/>
     <circle cx="${CX}" cy="${CY}" r="66" fill="url(#coreGrad)" opacity=".5"/>
     <text class="corelbl" x="${CX}" y="${CY - 2}" text-anchor="middle">SIB</text>
     <text class="coresub" x="${CX}" y="${CY + 16}" text-anchor="middle">Spatial Intelligence Backend</text>
@@ -966,18 +971,18 @@ function buildScene(){
   // 2D static (core, halos, rings, wedges, live marks) - string from buildStatic()
   h += `<g id="L2">${staticSvg}</g>`;
   // 2D dim overlays, toggled per frame
-  h += `<g id="L2dim">` + DATA.areas.map(a => `<path id="dim-${a.id}" d="${wedgePath(R_MIN - 40, R_MAX + 80, a.g0, a.g1)}" fill="#0b1220" fill-opacity=".72" pointer-events="none" display="none"/>`).join('') + `</g>`;
+  h += `<g id="L2dim">` + DATA.areas.map(a => `<path id="dim-${a.id}" d="${wedgePath(R_MIN - 40, R_MAX + 80, a.g0, a.g1)}" fill="var(--ax-bg)" fill-opacity=".72" pointer-events="none" display="none"/>`).join('') + `</g>`;
   // 3D static skeleton - geometry filled in by layout3D()
-  h += `<g id="L3" display="none"><defs><radialGradient id="coreGrad3"><stop offset="0" stop-color="#93c5fd" stop-opacity=".95"/><stop offset=".45" stop-color="#3b82f6" stop-opacity=".55"/><stop offset="1" stop-color="#3b82f6" stop-opacity="0"/></radialGradient>` + layers.map(a => `<path id="ap3-${a.id}"/><path id="lp3-${a.id}"/>`).join('') + `</defs>`;
-  h += `<g class="core" id="core3"><circle id="c3-glow" fill="url(#coreGrad3)" opacity=".28"/><circle id="c3-disc" fill="#0b1220" stroke="#93c5fd" stroke-opacity=".6" stroke-width="1.5"/><circle id="c3-fill" fill="url(#coreGrad3)" opacity=".5"/><text id="c3-lbl" class="corelbl" text-anchor="middle">SIB</text></g>`;
-  h += `<line id="sp-a" stroke="#3b82f6" stroke-opacity=".35" stroke-linecap="round"/><line id="sp-b" stroke="#bfdbfe" stroke-opacity=".8" stroke-linecap="round"/>`;
+  h += `<g id="L3" display="none"><defs><radialGradient id="coreGrad3"><stop offset="0" stop-color="var(--ax-cyan)" stop-opacity=".95"/><stop offset=".45" stop-color="var(--ax-blue)" stop-opacity=".55"/><stop offset="1" stop-color="var(--ax-blue)" stop-opacity="0"/></radialGradient>` + layers.map(a => `<path id="ap3-${a.id}"/><path id="lp3-${a.id}"/>`).join('') + `</defs>`;
+  h += `<g class="core" id="core3"><circle id="c3-glow" fill="url(#coreGrad3)" opacity=".28"/><circle id="c3-disc" fill="var(--ax-bg)" stroke="var(--ax-cyan)" stroke-opacity=".6" stroke-width="1.5"/><circle id="c3-fill" fill="url(#coreGrad3)" opacity=".5"/><text id="c3-lbl" class="corelbl" text-anchor="middle">SIB</text></g>`;
+  h += `<line id="sp-a" stroke="var(--ax-blue)" stroke-opacity=".35" stroke-linecap="round"/><line id="sp-b" stroke="var(--ax-cyan)" stroke-opacity=".8" stroke-linecap="round"/>`;
   for (const a of layers){
     h += `<g class="wedge" id="w3-${a.id}" data-area="${a.id}">
-      <path id="w3-sh-${a.id}" fill="#05080f" fill-opacity=".55"/>
-      <path id="w3-disc-${a.id}" fill="${a.color}" fill-opacity=".025" stroke="#7d8da3" stroke-opacity=".14" stroke-dasharray="2 6"/>
+      <path id="w3-sh-${a.id}" fill="var(--ax-bg)" fill-opacity=".55"/>
+      <path id="w3-disc-${a.id}" fill="${a.color}" fill-opacity=".025" stroke="var(--ax-ink-3)" stroke-opacity=".14" stroke-dasharray="2 6"/>
       <path id="w3-fill-${a.id}" fill="${a.color}" fill-opacity=".13" stroke="${a.color}" stroke-opacity=".28" stroke-width="1"/>
       <path id="w3-rim-${a.id}" fill="none" stroke="${a.color}" stroke-opacity=".85" stroke-width="3"/>
-      <path id="w3-hub-${a.id}" fill="#0b1220" stroke="#93c5fd" stroke-opacity=".7" stroke-width="1.2"/>
+      <path id="w3-hub-${a.id}" fill="var(--ax-bg)" stroke="var(--ax-cyan)" stroke-opacity=".7" stroke-width="1.2"/>
       <text class="albl" fill="${a.color}" data-area="${a.id}"><textPath id="w3-lbl-${a.id}" href="#ap3-${a.id}" startOffset="50%" text-anchor="middle">${esc(a.name).toUpperCase()}</textPath></text>
       <text class="livelbl" id="w3-live-${a.id}" fill="${a.color}"><textPath href="#lp3-${a.id}" startOffset="50%" text-anchor="middle"></textPath></text>
       <circle class="ripple" id="w3-rip-${a.id}" fill="none" stroke="${a.color}" stroke-width="1.5" display="none"/>
@@ -1002,12 +1007,12 @@ function buildScene(){
     // positioned group would override its transform attribute (all nodes at 0,0).
     return `<g class="node" data-id="${nd.id}" style="cursor:pointer;--ring:${ring}"><g class="breathe" style="${breathe}">
       <circle class="hit" r="16" fill="transparent"/>
-      <circle class="hsel" r="16" fill="none" stroke="#fff" stroke-width="1.4" opacity=".9" display="none"/>
+      <circle class="hsel" r="16" fill="none" stroke="var(--ax-ink)" stroke-width="1.4" opacity=".9" display="none"/>
       <circle class="hhov" r="17" fill="${c}" fill-opacity=".18" display="none"/>
       ${shape}
-      ${nd.version === DATA.platformVersion ? `<circle cx="7" cy="-7" r="3.2" fill="#35c635" stroke="#0b1220" stroke-width="1"><title>New in ${esc(DATA.platformVersion)}</title></circle>` : ''}
+      ${nd.version === DATA.platformVersion ? `<circle cx="7" cy="-7" r="3.2" fill="var(--ax-green)" stroke="var(--ax-bg)" stroke-width="1"><title>New in ${esc(DATA.platformVersion)}</title></circle>` : ''}
       <text class="nlabel" y="20" text-anchor="middle">${esc(name)}</text>
-      <g class="badge" display="none"><circle cx="10" cy="-10" r="7" fill="#334155"/><text class="trailbadge" x="10" y="-7" text-anchor="middle"></text></g>
+      <g class="badge" display="none"><circle cx="10" cy="-10" r="7" fill="var(--ax-paper-3)"/><text class="trailbadge" x="10" y="-7" text-anchor="middle"></text></g>
     </g></g>`;
   }).join('') + `</g></g>`;
   svg.innerHTML = h;
@@ -1078,8 +1083,8 @@ function ensureFlow(litIdx){
   if (key === scene.flowKey) return;
   scene.flowKey = key;
   scene.Lflow.innerHTML = litIdx.map(i => { const c = areaById[edges[i].t.area].color;
-    let o = ''; for (let k = 0; k < 3; k++) o += `<circle r="5" fill="${c}" opacity=".35" class="flow" data-e="${i}" data-k="${k}"/><circle r="2.6" fill="#fff" opacity=".9" class="flow" data-e="${i}" data-k="${k}"/>`; return o; }).join('');
-  scene.flowNodes = [...scene.Lflow.querySelectorAll('circle.flow')].map(c => ({ c, e: scene.edgeEls[+c.dataset.e], k: +c.dataset.k, white: c.getAttribute('fill') === '#fff' }));
+    let o = ''; for (let k = 0; k < 3; k++) o += `<circle r="5" fill="${c}" opacity=".35" class="flow" data-e="${i}" data-k="${k}"/><circle r="2.6" fill="var(--ax-ink)" opacity=".9" class="flow" data-e="${i}" data-k="${k}"/>`; return o; }).join('');
+  scene.flowNodes = [...scene.Lflow.querySelectorAll('circle.flow')].map(c => ({ c, e: scene.edgeEls[+c.dataset.e], k: +c.dataset.k, white: c.getAttribute('fill') === 'var(--ax-ink)' }));
 }
 function animateFlow(now){
   if (!scene || !scene.flowNodes.length) return;
@@ -1173,7 +1178,7 @@ function draw(){
     A(N.label, 'class', 'nlabel' + (isSel || isHov ? ' hot' : ''));
     const onTrail = ts && ts.has(nd.id);
     A(N.badge, 'display', onTrail ? '' : 'none');
-    if (onTrail){ const num = trail.steps.indexOf(nd.id) + 1; N.badgeText.textContent = num; A(N.badge.firstElementChild, 'fill', num - 1 === trailIdx ? '#f59e0b' : '#334155'); }
+    if (onTrail){ const num = trail.steps.indexOf(nd.id) + 1; N.badgeText.textContent = num; A(N.badge.firstElementChild, 'fill', num - 1 === trailIdx ? 'var(--ax-orange)' : 'var(--ax-paper-3)'); }
     if (!flat) scene.Lnodes.appendChild(N.g);      // far → near
   }
 }
@@ -1374,7 +1379,7 @@ function renderFilterChips(){
   const chip = (label, on, cls, attr) => `<span class="achip ${cls}${on ? ' on' : ''}" ${attr}>${label}</span>`;
   el.innerHTML =
     ['shipped', 'beta', 'planned'].map(st => chip(st, statusFilter === st, 'fstatus', `data-status="${st}"`)).join('') +
-    chip('✦ new in ' + cur, versionFilter === cur, 'fver', `data-version="${cur}"`) +
+    chip('New in ' + cur, versionFilter === cur, 'fver', `data-version="${cur}"`) +
     (prev ? chip('since ' + prev, versionFilter === 'since:' + prev, 'fver', `data-version="since:${prev}"`) : '');
   el.querySelectorAll('[data-status]').forEach(c => c.onclick = () => { statusFilter = statusFilter === c.dataset.status ? null : c.dataset.status; applyFilters(); });
   el.querySelectorAll('[data-version]').forEach(c => c.onclick = () => { versionFilter = versionFilter === c.dataset.version ? null : c.dataset.version; applyFilters(); });
@@ -1451,20 +1456,22 @@ function mix(hex, bg, t){
   const a = h(hex), b = h(bg);
   return '#' + a.map((v, i) => Math.round(v * t + b[i] * (1 - t)).toString(16).padStart(2, '0')).join('');
 }
+const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 function themed(code, color, size){
   if (/^\s*%%\{init/.test(code)) return code;               // author already themed it
-  const c = color || '#3b82f6';
+  const SOLID = cssVar('--ax-solid'), INK = cssVar('--ax-ink'), BG2 = cssVar('--ax-bg-2'), RULE = cssVar('--ax-paper-3'), BG = cssVar('--ax-bg');
+  const c = (color && /^#/.test(color)) ? color : cssVar('--ax-blue');
   const tv = {
-    darkMode: true, background: '#111a2e', fontFamily: '-apple-system,Helvetica,Arial,sans-serif', fontSize: size + 'px',
-    primaryColor: mix(c, '#111a2e', 0.22), primaryBorderColor: c, primaryTextColor: '#e2e8f0',
-    secondaryColor: '#1a2540', secondaryBorderColor: '#22304b', secondaryTextColor: '#e2e8f0',
-    tertiaryColor: '#0e1626', tertiaryBorderColor: '#22304b', tertiaryTextColor: '#e2e8f0',
-    lineColor: mix(c, '#e2e8f0', 0.55), textColor: '#e2e8f0', mainBkg: mix(c, '#111a2e', 0.22), nodeBorder: c,
-    clusterBkg: '#0e1626', clusterBorder: '#22304b', edgeLabelBackground: '#111a2e', titleColor: '#e2e8f0',
-    actorBkg: mix(c, '#111a2e', 0.22), actorBorder: c, actorTextColor: '#e2e8f0', actorLineColor: '#7d8da3',
-    signalColor: '#e2e8f0', signalTextColor: '#e2e8f0', labelBoxBkgColor: '#1a2540', labelBoxBorderColor: c,
-    labelTextColor: '#e2e8f0', loopTextColor: '#e2e8f0', noteBkgColor: '#1a2540', noteBorderColor: '#22304b', noteTextColor: '#e2e8f0',
-    activationBkgColor: mix(c, '#111a2e', 0.35), activationBorderColor: c, sequenceNumberColor: '#0b1220',
+    darkMode: true, background: SOLID, fontFamily: cssVar('--ax-font'), fontSize: size + 'px',
+    primaryColor: mix(c, SOLID, 0.22), primaryBorderColor: c, primaryTextColor: INK,
+    secondaryColor: BG2, secondaryBorderColor: RULE, secondaryTextColor: INK,
+    tertiaryColor: BG2, tertiaryBorderColor: RULE, tertiaryTextColor: INK,
+    lineColor: mix(c, INK, 0.55), textColor: INK, mainBkg: mix(c, SOLID, 0.22), nodeBorder: c,
+    clusterBkg: BG2, clusterBorder: RULE, edgeLabelBackground: SOLID, titleColor: INK,
+    actorBkg: mix(c, SOLID, 0.22), actorBorder: c, actorTextColor: INK, actorLineColor: cssVar('--ax-grey'),
+    signalColor: INK, signalTextColor: INK, labelBoxBkgColor: BG2, labelBoxBorderColor: c,
+    labelTextColor: INK, loopTextColor: INK, noteBkgColor: BG2, noteBorderColor: RULE, noteTextColor: INK,
+    activationBkgColor: mix(c, SOLID, 0.35), activationBorderColor: c, sequenceNumberColor: BG,
   };
   const init = { theme: 'base', themeVariables: tv, flowchart: { htmlLabels: true, curve: 'basis', nodeSpacing: 34, rankSpacing: 46, padding: 10 },
                  sequence: { actorMargin: 40, messageMargin: 32 } };
@@ -1476,14 +1483,14 @@ function naturalWidth(svg){ return parseFloat((svg.style.maxWidth || '').replace
 async function renderFlow(el, code, title, color){
   if (!code){ el.style.display = 'none'; return; }
   if (color) el.style.setProperty('--fc', color);
-  if (!mermaidReady){ el.innerHTML = '<pre style="font-size:11px;color:#7d8da3;margin:0;">' + esc(code) + '</pre>'; return; }
+  if (!mermaidReady){ el.innerHTML = '<pre style="font-size:11px;color:var(--ax-ink-3);margin:0;">' + esc(code) + '</pre>'; return; }
   try {
     const { svg: out } = await window.mermaid.render('mm' + (++mermaidSeq), themed(code, color, 15));
     el.innerHTML = out + '<span class="expandhint">⤢ enlarge</span>' +
       (color ? `<div class="fclegend"><i></i>${esc(title || '')} · click to enlarge</div>` : '');
     const svg = el.querySelector('svg');
     if (svg){ const w = Math.max(naturalWidth(svg), el.clientWidth - 24); svg.style.maxWidth = 'none'; svg.style.width = w + 'px'; }
-  } catch { el.innerHTML = '<pre style="font-size:11px;color:#7d8da3;margin:0;">' + esc(code) + '</pre>'; }
+  } catch { el.innerHTML = '<pre style="font-size:11px;color:var(--ax-ink-3);margin:0;">' + esc(code) + '</pre>'; }
   // Click → full-screen lightbox with the flow re-rendered at reading size.
   el.onclick = () => openFlowModal(code, title || '', color);
 }
@@ -1492,7 +1499,7 @@ async function openFlowModal(code, title, color){
   document.getElementById('fmTitle').textContent = title;
   const body = document.getElementById('fmBody');
   body.style.setProperty('--fc', color || 'var(--accent)');
-  body.innerHTML = '<pre style="font-size:12px;color:#7d8da3;margin:0;">' + esc(code) + '</pre>';
+  body.innerHTML = '<pre style="font-size:12px;color:var(--ax-ink-3);margin:0;">' + esc(code) + '</pre>';
   flowModal.classList.add('open');
   if (mermaidReady){
     try {
@@ -1588,13 +1595,13 @@ function showFeature(id){
   const prev = histStack.length > 1 ? byId[histStack[histStack.length - 2]] : null;
   panel.innerHTML = `
     <div class="pnav">${prev ? `<button class="btn" id="pBack" title="Back to ${esc(prev.name)}">← ${esc(prev.name.length > 22 ? prev.name.slice(0, 21) + '…' : prev.name)}</button>` : `<button class="btn" id="pBack">← Overview</button>`}
-      <button class="btn" id="pShare" title="Copy a link to exactly this view">⧉ Share</button></div>
+      <button class="btn" id="pShare" title="Copy a link to exactly this view">Share</button></div>
     <h2>${esc(f.name)}</h2>
     <div class="meta">
       <span class="mchip" style="color:${a.color};border-color:${a.color}55">${esc(a.name)}</span>
       <span class="mchip status-${f.status}">${f.status}</span>
       <span class="mchip">${f.version === 'baseline' ? 'baseline' : 'v' + esc(f.version)}</span>
-      ${f.sensitivity === 'restricted' ? `<span class="mchip" style="color:#fbbf24;border-color:#fbbf2455">🔒 restricted</span>` : ''}
+      ${f.sensitivity === 'restricted' ? `<span class="mchip" style="color:var(--ax-orange);border-color:var(--ax-warn-fill)"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-lock-restricted"/></svg> restricted</span>` : ''}
     </div>
     <p class="body-text">${esc(f.body)}</p>
     ${f.terms.length ? `<h3>Dictionary</h3>${f.terms.map(t =>
@@ -1611,7 +1618,7 @@ function showFeature(id){
       `<span class="deplink" data-go="${d.id}">${esc(d.name)}</span>`).join('')}` : ''}
     <div class="btnrow">
       ${f.locked
-        ? `<button class="btn primary" onclick="ipUnlock()">🔓 Enter IP key</button>`
+        ? `<button class="btn primary" onclick="ipUnlock()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-unlock"/></svg> Enter IP key</button>`
         : `<button class="btn primary" id="specBtn">Read the spec ↓</button>`}
       ${f.wireframe ? `<button class="btn" onclick="location.href='/wireframe#${esc(f.wireframe)}'">App Wireframe</button>` : ''}
       <button class="btn" id="backHome">← Overview</button>
@@ -1623,7 +1630,7 @@ function showFeature(id){
   panel.querySelectorAll('[data-go]').forEach(el => el.onclick = () => selectFeature(el.dataset.go));
   panel.querySelector('#backHome').onclick = renderHome;
   panel.querySelector('#pBack').onclick = goBack;
-  panel.querySelector('#pShare').onclick = () => { syncHash(); navigator.clipboard?.writeText(location.href).then(() => { const b = panel.querySelector('#pShare'); b.textContent = '✓ Link copied'; setTimeout(() => b.textContent = '⧉ Share', 1600); }); };
+  panel.querySelector('#pShare').onclick = () => { syncHash(); navigator.clipboard?.writeText(location.href).then(() => { const b = panel.querySelector('#pShare'); b.textContent = 'Link copied'; setTimeout(() => b.textContent = 'Share', 1600); }); };
   // Locked features have no #specBtn (replaced by the IP-key unlock button) -
   // guard, or this throws and strands the graph's drag state mid-click.
   const specBtn = panel.querySelector('#specBtn');
@@ -1742,14 +1749,14 @@ async function askSubmit(ev){
         + j.sources.map(sr => `<div style="margin-bottom:8px"><span class="askchip" onclick="selectFeature('${esc(sr.id)}')">${esc(sr.name)}</span>
            <div style="font-size:12px;color:var(--muted)">${esc(sr.excerpt)}</div></div>`).join('')
         + (j.glossary.length ? '<div style="color:var(--muted);font-size:12px;margin:6px 0 4px">Dictionary:</div>'
-          + j.glossary.map(g => `<div style="font-size:12px"><strong style="color:#93c5fd">${esc(g.term)}</strong> - ${esc(g.definition)}</div>`).join('') : '')
+          + j.glossary.map(g => `<div style="font-size:12px"><strong style="color:var(--ax-cyan)">${esc(g.term)}</strong> - ${esc(g.definition)}</div>`).join('') : '')
         + (j.note ? `<div class="anote">${esc(j.note)}</div>` : '');
     } else {
       box.textContent = "That's not in my docs. Try naming a feature, area or dictionary term - or browse the graph.";
     }
   } catch (e) {
     const box = document.getElementById('askPending');
-    if (box){ box.removeAttribute('id'); box.innerHTML = '<span style="color:#ef4444">' + esc(e.message) + '</span>'; }
+    if (box){ box.removeAttribute('id'); box.innerHTML = '<span style="color:var(--ax-red)">' + esc(e.message) + '</span>'; }
   }
   body.scrollTop = body.scrollHeight;
 }

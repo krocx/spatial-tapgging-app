@@ -25,6 +25,7 @@ const GOVERNED = [
   'sib/portal/index.html',          // the portal (slice 2)
   'sib/portal/learn.html',          // /learn (built on the system from day one)
   'sib/portal/home.html',           // the front door
+  'sib/portal/catalog.html',        // the catalogue
 ];
 const TOKENS = 'sib/portal/brand/tokens.css';
 
