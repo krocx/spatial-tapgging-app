@@ -376,6 +376,14 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **SIB home, Catalogue and Guide Library on the design system.** The home
+  page is rebuilt (wordmark header, live pulse tiles, product-coloured doors);
+  the Catalogue keeps its map but every colour is a token, Open Sans, opaque
+  panels, sprite icons, product accents on areas and diagrams; the Guide
+  Library is re-skinned in place - a card per chamber, a row per guide,
+  state chips, the six everyday actions (Steps, Graph, Preview, Designer,
+  Share, Publish) visible and the rest (XR kit, demo mode, move, copy, copy
+  to all, reset map, delete) in a menu. All three are governed.
 - **/learn - six five-minute reads.** How the app knows where it is · how a
   procedure gets onto the machine · how a step is proved · how a walk becomes
   findings · how lockout is kept honest · how the platform runs. Each journey

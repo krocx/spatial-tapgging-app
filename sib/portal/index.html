@@ -107,8 +107,8 @@
     .fleet-sec .ax-eyebrow { margin-bottom: 8px; }
     .fleet-sec--quiet { border-top: 0; margin-top: 10px; padding-top: 6px; }
     .fleet-menu { position: absolute; z-index: 60; min-width: 190px; padding: 6px; display: flex; flex-direction: column; }
-    .fleet-menu button { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: transparent; border: 0; color: var(--ax-ink); font: var(--ax-body); padding: 9px 12px; border-radius: 10px; cursor: pointer; }
-    .fleet-menu button:hover { background: var(--ax-paper-3); }
+    .fleet-menu button, .fleet-menu a { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; background: transparent; border: 0; color: var(--ax-ink); font: var(--ax-body); padding: 9px 12px; border-radius: 10px; cursor: pointer; }
+    .fleet-menu button:hover, .fleet-menu a:hover { background: var(--ax-paper-3); text-decoration: none; color: var(--ax-ink); }
     .fleet-menu button.is-danger { color: var(--ax-red); }
     .fleet-menu hr { border: 0; border-top: var(--ax-hair); margin: 4px 0; }
     @media (max-width: 900px) {
@@ -483,40 +483,47 @@
     .heat-pop { display: none; position: absolute; left: 0; top: calc(100% + 6px); z-index: 30; width: 360px; max-width: 80vw; padding: 12px 14px; background: var(--ax-solid); border: 1px solid var(--ax-rule); border-radius: var(--ax-r-field); text-transform: none; letter-spacing: 0; font: var(--ax-body); color: var(--text); text-align: left; white-space: normal; }
     .heat-chip:hover .heat-pop, .heat-chip:focus .heat-pop, .heat-chip:focus-within .heat-pop { display: block; }
     .heat-pop .ax-table th, .heat-pop .ax-table td { padding: 4px 6px; }
-    .gl-anchor-section { margin-bottom:28px; }
-    .gl-anchor-hdr { font-size:0.78rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; padding:0 0 8px; border-bottom:1px solid var(--border); margin-bottom:12px; }
-    .gl-guide-card { border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:10px; }
-    .gl-guide-card.unplaced { border-color: var(--ax-warn-fill); }
-    .gl-guide-hdr { background:var(--ax-paper-2); padding:12px 14px; }
-    .gl-guide-hdr .btn-sm { font-size:0.8rem; padding:6px 12px; }
-    .gl-guide-hdr {  display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-    .gl-guide-name { font-size:0.88rem; font-weight:600; color:var(--text); flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .gl-badge { font-size:0.78rem; font-weight:700; border-radius:var(--ax-r-pill); padding:4px 10px; white-space:nowrap; display:inline-flex; align-items:center; gap:5px; }
+    /* Guide Library - re-skinned on the system: one card per chamber, one row per guide,
+       chips for state, a quiet action row, secondary actions in a menu. */
+    #guide-library-panel { max-width: 1360px; margin: 0 auto; }
+    #guide-library-panel .sessions-toolbar { max-width: none; }
+    #gl-search { flex:1; min-width:220px; padding:10px 14px; }
+    .gl-config-hdr { font: var(--ax-label); color: var(--ax-ink); margin: 22px 0 10px; display:flex; align-items:center; gap:8px; }
+    .gl-config-hdr .ul-dim { font: var(--ax-label-s); color: var(--ax-ink-3); }
+    .gl-anchor-section { background: var(--ax-paper); border: var(--ax-hair); border-radius: var(--ax-r); padding: 14px 16px 6px; margin-bottom: 14px; }
+    .gl-anchor-hdr { font: var(--ax-eyebrow); letter-spacing: var(--ax-tracking-eyebrow); text-transform: uppercase; color: var(--ax-ink-3); display:flex; align-items:center; gap:6px; padding: 0 0 10px; }
+    .gl-guide-card { border-top: var(--ax-hair-2); }
+    .gl-guide-card.unplaced .gl-guide-name::after { content: ""; }
+    .gl-guide-hdr { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding: 12px 0; }
+    .gl-guide-name { font: var(--ax-body-m); color: var(--ax-ink); min-width: 0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width: 40%; }
+    .gl-guide-hdr .gl-acts { margin-left:auto; display:flex; gap:4px; align-items:center; }
+    .gl-guide-hdr .gl-acts .ax-btn--sm { padding: 6px 10px; }
+    .gl-badge { display:inline-flex; align-items:center; gap:5px; font: var(--ax-label-s); border-radius: var(--ax-r-pill); padding: 3px 9px; white-space:nowrap; background: var(--ax-paper); color: var(--ax-ink-2); }
     .gl-badge-published { background:var(--ax-ok-fill); color:var(--ax-green); }
-    .gl-badge-draft     { background:var(--ax-paper-3); color:var(--ax-ink-2); border:1px solid var(--ax-rule); }
+    .gl-badge-draft     { background:var(--ax-paper-3); color:var(--ax-ink-2); }
     .gl-badge-warn      { background:var(--ax-warn-fill); color:var(--ax-orange); }
-    .gl-placement-pill  { font-size:0.78rem; color:var(--muted); white-space:nowrap; }
-    .gl-guide-desc { font-size:0.78rem; color:var(--muted); padding:0 14px 10px; margin-top:-4px; }
-    .gl-warn-banner { background:var(--ax-paper); border-top:1px solid var(--ax-paper); padding:7px 14px; font-size:0.78rem; color:var(--ax-orange); }
-    .gl-steps-list { display:none; border-top:1px solid var(--border); }
-    .gl-opacity { display:inline-flex; align-items:center; gap:6px; margin-left:8px; font-size:0.78rem; }
-    .gl-opacity input[type=range] { width:90px; accent-color: var(--accent, var(--ax-blue)); }
-    .gl-opacity-val { color: var(--muted); min-width:32px; font-variant-numeric: tabular-nums; }
+    .gl-placement-pill  { font: var(--ax-label-s); color: var(--ax-ink-3); white-space:nowrap; }
+    .gl-guide-desc { font: var(--ax-label-s); color: var(--ax-ink-3); padding: 0 0 10px; margin-top:-6px; }
+    .gl-warn-banner { display:flex; align-items:center; gap:8px; background: var(--ax-warn-fill); border-radius: var(--ax-r-field); padding: 8px 12px; margin: 0 0 10px; font: var(--ax-label-s); color: var(--ax-orange); }
+    .gl-steps-list { display:none; border-top: var(--ax-hair-2); margin: 0 0 6px; }
+    .gl-opacity { display:inline-flex; align-items:center; gap:6px; margin-left:8px; font: var(--ax-label-s); }
+    .gl-opacity input[type=range] { width:90px; accent-color: var(--ax-blue); }
+    .gl-opacity-val { color: var(--ax-ink-3); min-width:32px; font-variant-numeric: tabular-nums; }
     .gl-steps-list.open { display:block; }
-    .gl-graph-panel { display:none; border-top:1px solid var(--border); background:var(--ax-scrim); }
+    .gl-graph-panel { display:none; border-top: var(--ax-hair-2); background: var(--ax-paper-2); border-radius: var(--ax-r-field); margin: 0 0 10px; }
     .gl-graph-panel.open { display:block; }
-    .gl-step-row { display:flex; align-items:flex-start; gap:10px; padding:9px 14px; border-bottom:1px solid var(--ax-paper-2); font-size:0.78rem; }
+    .gl-step-row { display:flex; align-items:flex-start; gap:10px; padding: 10px 0; border-bottom: var(--ax-hair-2); font: var(--ax-body); }
     .gl-step-row:last-child { border-bottom:none; }
-    .gl-step-seq { font-weight:700; color:var(--accent); min-width:24px; }
+    .gl-step-seq { font: var(--ax-num); color: var(--ax-blue); min-width: 26px; padding-top: 2px; }
     .gl-step-body { flex:1; min-width:0; }
-    .gl-step-title { font-weight:600; color:var(--text); margin-bottom:2px; }
-    .gl-step-text  { color:var(--muted); line-height:1.4; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
-    .gl-step-tags  { display:flex; gap:5px; margin-top:5px; flex-wrap:wrap; }
-    .gl-step-tag   { font-size:0.78rem; padding:1px 6px; border-radius:6px; }
+    .gl-step-title { font: var(--ax-body-m); color: var(--ax-ink); margin-bottom:2px; }
+    .gl-step-text  { color: var(--ax-ink-2); overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+    .gl-step-tags  { display:flex; gap:5px; margin-top:6px; flex-wrap:wrap; align-items:center; }
+    .gl-step-tag   { display:inline-flex; align-items:center; gap:4px; font: var(--ax-label-s); padding: 2px 8px; border-radius: var(--ax-r-pill); background: var(--ax-paper); color: var(--ax-ink-2); }
     .gl-step-placed   { background:var(--ax-ok-fill);  color:var(--ax-green); }
-    .gl-step-unplaced { background:var(--ax-paper);  color:var(--ax-orange); }
-    .gl-step-img      { background:var(--ax-blue-fill); color:var(--ax-indigo); }
-    .gl-step-branch   { background:var(--ax-blue-fill);  color:var(--ax-indigo); }
+    .gl-step-unplaced { background:var(--ax-warn-fill); color:var(--ax-orange); }
+    .gl-step-img      { background:var(--ax-blue-fill); color:var(--ax-cyan); }
+    .gl-step-branch   { background:var(--ax-blue-fill); color:var(--ax-cyan); }
     .ag-anchor-group { max-width:1120px;margin:0 auto 24px; }
     .ag-anchor-hdr { font-size:0.95rem;font-weight:700;color:var(--text);padding:8px 0;border-bottom:1px solid var(--border);margin-bottom:12px;display:flex;align-items:center;gap:8px; }
     .ag-guide-group { margin-bottom:16px;border:1px solid var(--border);border-radius:10px;overflow:hidden; }
@@ -1121,11 +1128,10 @@
 <!-- Guide Library panel -->
 <div id="guide-library-panel">
   <div class="sessions-toolbar">
-    <span style="font-size:0.78rem;color:var(--muted)">All guides · grouped by anchor</span>
-    <input id="gl-search" type="search" placeholder="Filter guides…" oninput="filterGuideLibrary(this.value)" style="flex:1;min-width:140px;padding:6px 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface);color:var(--text);font-size:0.78rem">
-    <button class="btn btn-sm" onclick="openImportGuideModal()" style="font-weight:600" data-tour="gl-import"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-upload"/></svg> Import Guide</button>
-    <a class="btn btn-ghost btn-sm" href="/roadmap" target="_blank" title="Draw a procedure on a canvas and send it here as a guide" data-tour="gl-designer"> Procedure Designer</a>
-    <button class="btn btn-ghost btn-sm" onclick="loadGuideLibrary()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-refresh"/></svg> Refresh</button>
+    <input id="gl-search" class="ax-input" type="search" placeholder="Find a guide by name, chamber or configuration" oninput="filterGuideLibrary(this.value)">
+    <button class="ax-btn ax-btn--primary ax-btn--sm" onclick="openImportGuideModal()" data-tour="gl-import"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-upload"/></svg> Import guide</button>
+    <a class="ax-btn ax-btn--sm" href="/roadmap" target="_blank" title="Draw a procedure on a canvas and send it here as a guide" data-tour="gl-designer"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-procedure"/></svg> Procedure Designer</a>
+    <button class="ax-btn ax-btn--quiet ax-btn--sm" onclick="loadGuideLibrary()" aria-label="Refresh"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-refresh"/></svg></button>
   </div>
   <div id="guide-library-list"></div>
 </div>
@@ -5576,7 +5582,7 @@ function renderGuideLibrary() {
       const hasUnplaced  = steps && !allPlaced;
 
       const pubBadge   = guide.published
-        ? `<span class="gl-badge gl-badge-published">● Published</span>` : `<span class="gl-badge gl-badge-draft">◌ Draft</span>`;
+        ? `<span class="gl-badge gl-badge-published"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-check"/></svg> Published</span>` : `<span class="gl-badge gl-badge-draft">Draft</span>`;
       const placePill  = steps
         ? `<span class="gl-placement-pill">${placedCount}/${totalSteps} placed</span>` : '';
       const warnBadge  = hasUnplaced
@@ -5585,7 +5591,7 @@ function renderGuideLibrary() {
       // from the chamber configuration); every CAD step follows it.
       const asmBadge   = guide.assembly
         ? (guide.assembly.pose
-            ? `<span class="gl-badge" style="background:var(--ax-ok-fill);color:var(--green)" title="Assembly placed (${esc(guide.assembly.pose.source)})"> Assembly placed · ${esc(guide.assembly.pose.source)}</span>` : `<span class="gl-badge gl-badge-warn" title="Open the guide on the iPad and tap once to place the assembly - all steps follow"> Place assembly on device</span>`)
+            ? `<span class="gl-badge gl-badge-published" title="Assembly placed (${esc(guide.assembly.pose.source)})"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-cube"/></svg> Assembly placed</span>` : `<span class="gl-badge gl-badge-warn" title="Open the guide on the iPad and tap once to place the assembly - all steps follow"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-cube"/></svg> Place assembly on device</span>`)
         : '';
 
       const pubLabel   = guide.published ? 'Unpublish' : 'Publish';
@@ -5595,19 +5601,15 @@ function renderGuideLibrary() {
         <div class="gl-guide-hdr">
           <span class="gl-guide-name" title="${esc(guide.name)}"> ${esc(guide.name)}</span>
           ${pubBadge}${guide.ciMode === 'demo' ? '<span class="gl-badge gl-badge-warn" title="Contextual intelligence in demo mode: floors only, no baselines, no retirement">Demo mode</span>' : ''}${asmBadge}${warnBadge}${placePill}
-          <button class="btn btn-ghost btn-sm" style="${pubColor}" onclick="togglePublishGuide('${guide.id}','${anchorId}',${guide.published})">${pubLabel}</button>
-          <button class="btn btn-ghost btn-sm" style="${guide.ciMode === 'demo' ? 'color:var(--ax-orange)' : ''}" title="${guide.ciMode === 'demo' ? 'Hints fire at the floors on every run (demo / training). Tap to return to normal.' : 'Demo / training mode: hints fire at the floors on every run - no baselines, no retirement'}" onclick="toggleGuideCiMode('${guide.id}','${anchorId}','${guide.ciMode || 'normal'}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-intelligence"/></svg> ${guide.ciMode === 'demo' ? 'Demo on' : 'Demo'}</button>
-          <button class="btn btn-ghost btn-sm"  onclick="toggleGuideSteps('${guide.id}','${anchorId}')" id="gl-toggle-${guide.id}">▶ Steps</button>
-          <button class="btn btn-ghost btn-sm" style="color:var(--ax-indigo)" onclick="toggleGuideGraph('${guide.id}','${anchorId}')" id="gl-graph-toggle-${guide.id}"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-graph"/></svg> Graph</button>
-          <button class="btn btn-ghost btn-sm" style="color:var(--ax-green)" title="Walk the step sequence as the operator will experience it - no headset needed" onclick="openGuidePreview('${guide.id}')">▶ Preview</button>
-          <a class="btn btn-ghost btn-sm" style="color:var(--ax-indigo);text-decoration:none" title="Run this guide in a WebXR browser (headset or Android) or as a desktop 3D preview - same session records as the iPad" href="/xr?guide=${guide.id}" target="_blank" rel="noopener"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-xr"/></svg> XR kit</a>
-          <button class="btn btn-ghost btn-sm"  title="Edit this guide visually in the Procedure Designer" onclick="editGuideInDesigner('${guide.id}')"> Edit in Designer</button>
-          <button class="btn btn-ghost btn-sm" style="color:var(--ax-cyan)" title="Choose which technicians can see and run this guide" onclick="openShareModal('${guide.id}','${anchorId}')"> Share${(guide.sharedWith && guide.sharedWith.length) ? ` (${guide.sharedWith.length})` : ''}</button>
-          <button class="btn btn-ghost btn-sm"  title="Move to another anchor (steps become unplaced)" onclick="moveGuideToAnchor('${guide.id}','${anchorId}')">⇄ Move</button>
-          <button class="btn btn-ghost btn-sm"  title="Copy to another anchor as a draft (steps unplaced, training not copied)" onclick="copyGuideToAnchor('${guide.id}','${anchorId}')">⧉ Copy</button>
-          ${siblings.length ? `<button class="btn btn-ghost btn-sm" style="color:var(--ax-cyan)" title="Copy this guide to every other chamber of ${esc(cfg.code)} (${siblings.length}) as drafts" onclick="copyGuideToConfigChambers('${guide.id}','${anchorId}','${cfg.id}')">⧉⧉ All ${siblings.length}</button>` : ''}
-          <button class="btn btn-ghost btn-sm" style="color:var(--ax-orange)" title="Delete this guide's world map and unplace every step - the author re-places them in a fresh map on iOS" onclick="resetGuideMap('${guide.id}','${anchorId}')"> Reset map</button>
-          <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteGuideFromLibrary('${guide.id}','${anchorId}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg></button>
+          <div class="gl-acts">
+            <button class="ax-btn ax-btn--quiet ax-btn--sm" onclick="toggleGuideSteps('${guide.id}','${anchorId}')" id="gl-toggle-${guide.id}"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-steps"/></svg> Steps</button>
+            <button class="ax-btn ax-btn--quiet ax-btn--sm" onclick="toggleGuideGraph('${guide.id}','${anchorId}')" id="gl-graph-toggle-${guide.id}"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-graph"/></svg> Graph</button>
+            <button class="ax-btn ax-btn--quiet ax-btn--sm" title="Walk the step sequence as the operator will experience it - no headset needed" onclick="openGuidePreview('${guide.id}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-play"/></svg> Preview</button>
+            <button class="ax-btn ax-btn--quiet ax-btn--sm" title="Edit this guide visually in the Procedure Designer" onclick="editGuideInDesigner('${guide.id}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-procedure"/></svg> Designer</button>
+            <button class="ax-btn ax-btn--quiet ax-btn--sm" title="Choose which technicians can see and run this guide" onclick="openShareModal('${guide.id}','${anchorId}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-share"/></svg> Share${(guide.sharedWith && guide.sharedWith.length) ? ` (${guide.sharedWith.length})` : ''}</button>
+            <button class="ax-btn ${guide.published ? 'ax-btn--quiet' : 'ax-btn--tint'} ax-btn--sm" onclick="togglePublishGuide('${guide.id}','${anchorId}',${guide.published})">${pubLabel}</button>
+            <button class="ax-btn ax-btn--quiet ax-btn--sm" aria-label="More" onclick="openGuideMenu(event,'${guide.id}','${anchorId}','${cfg ? cfg.id : ''}',${siblings.length},'${guide.ciMode || 'normal'}')">⋯</button>
+          </div>
         </div>`;
 
       if (guide.description) {
@@ -5619,11 +5621,11 @@ function renderGuideLibrary() {
       }
 
       html += `<div class="gl-steps-list" id="gl-steps-${guide.id}">
-        <div style="padding:12px 14px;color:var(--muted);font-size:0.78rem">Loading steps…</div>
+        <div class="ax-label-s ax-muted" style="padding:12px 0"><span class="ax-mark is-loading"><i></i><em></em></span> Loading steps…</div>
       </div>`;
 
       html += `<div class="gl-graph-panel" id="gl-graph-${guide.id}">
-        <div style="padding:12px 14px;color:var(--muted);font-size:0.78rem">Loading graph…</div>
+        <div class="ax-label-s ax-muted" style="padding:12px"><span class="ax-mark is-loading"><i></i><em></em></span> Loading graph…</div>
       </div>`;
 
       html += `</div>`; // gl-guide-card
@@ -5635,6 +5637,29 @@ function renderGuideLibrary() {
 
   if (!html) html = guideEmptyState('guides') || '<p style="color:var(--muted);padding:40px 0;text-align:center">No guides yet.</p>';
   list.innerHTML = html;
+}
+
+// Secondary guide actions - reachable, never shouting (the Chambers pattern).
+function openGuideMenu(ev, guideId, anchorId, configId, siblings, ciMode) {
+  closeRowMenu();
+  const m = document.createElement('div');
+  m.className = 'fleet-menu ax-solid ax-lockin';
+  m.innerHTML = `
+    <a href="/xr?guide=${guideId}" target="_blank" rel="noopener" onclick="closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-xr"/></svg> Open in XR kit</a>
+    <button onclick="toggleGuideCiMode('${guideId}','${anchorId}','${ciMode}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-intelligence"/></svg> ${ciMode === 'demo' ? 'Demo mode off' : 'Demo mode on'}</button>
+    <hr>
+    <button onclick="moveGuideToAnchor('${guideId}','${anchorId}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-move"/></svg> Move to another chamber</button>
+    <button onclick="copyGuideToAnchor('${guideId}','${anchorId}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-copy"/></svg> Copy to another chamber</button>
+    ${siblings ? `<button onclick="copyGuideToConfigChambers('${guideId}','${anchorId}','${configId}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-copy-all"/></svg> Copy to all ${siblings} chambers of this configuration</button>` : ''}
+    <hr>
+    <button onclick="resetGuideMap('${guideId}','${anchorId}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-map-reset"/></svg> Reset map and unplace steps</button>
+    <button class="is-danger" onclick="deleteGuideFromLibrary('${guideId}','${anchorId}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg> Delete guide</button>`;
+  document.body.appendChild(m);
+  const r = ev.currentTarget.getBoundingClientRect();
+  m.style.top  = (r.bottom + window.scrollY + 4) + 'px';
+  m.style.left = Math.max(8, r.right + window.scrollX - m.offsetWidth) + 'px';
+  rowMenuEl = m;
+  setTimeout(() => document.addEventListener('click', closeRowMenuOnOutside), 0);
 }
 
 // D: push one guide to every other chamber of its configuration (U2 copy per
@@ -5671,12 +5696,12 @@ async function toggleGuideSteps(guideId, anchorId) {
 
   if (isOpen) {
     stepsEl.classList.remove('open');
-    toggleEl.textContent = '▶ Steps';
+    toggleEl.innerHTML = '<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-steps"/></svg> Steps';
     return;
   }
 
   stepsEl.classList.add('open');
-  toggleEl.textContent = '▾ Steps';
+  toggleEl.innerHTML = '<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-steps"/></svg> Hide steps';
 
   // Lazy-load steps if not already fetched
   const entry = guideLibraryData[anchorId];
@@ -5716,7 +5741,7 @@ function renderStepsInCard(guideId, anchorId) {
     const imgTag     = step.mediaPath
       ? `<span class="gl-step-tag gl-step-img"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-camera"/></svg> Image</span>` : '';
     const branchTag  = (step.nextOnSuccess || step.nextOnFailure)
-      ? `<span class="gl-step-tag gl-step-branch">⇒ Branch</span>` : '';
+      ? `<span class="gl-step-tag gl-step-branch"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-link"/></svg> Branch</span>` : '';
     const title      = step.title || `Step ${step.sequenceNumber}`;
     // A2 (2026.4.45): quick ghost-opacity control for steps with a 3D model -
     // adjust here without opening the app. Debounced PATCH on input.
@@ -5781,7 +5806,7 @@ async function toggleGuideGraph(guideId, anchorId) {
 
   if (isOpen) {
     graphEl.classList.remove('open');
-    toggleEl.textContent = 'Graph';
+    toggleEl.innerHTML = '<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-graph"/></svg> Graph';
     return;
   }
 
@@ -5789,15 +5814,15 @@ async function toggleGuideGraph(guideId, anchorId) {
   const entry = guideLibraryData[anchorId];
   if (!entry?.steps[guideId]) {
     graphEl.classList.add('open');
-    toggleEl.textContent = '▲ Graph';
-    graphEl.innerHTML = '<div style="padding:12px 14px;color:var(--muted);font-size:0.78rem">Loading steps…</div>';
+    toggleEl.innerHTML = '<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-graph"/></svg> Hide graph';
+    graphEl.innerHTML = '<div class="ax-label-s ax-muted" style="padding:12px 0"><span class="ax-mark is-loading"><i></i><em></em></span> Loading steps…</div>';
     try {
       const resp = await apiFetch(`/guides/${encodeURIComponent(guideId)}/steps`);
       entry.steps        = entry.steps || {};
       entry.steps[guideId] = resp.data || [];
       renderGuideLibrary();
       document.getElementById(`gl-graph-${guideId}`).classList.add('open');
-      document.getElementById(`gl-graph-toggle-${guideId}`).textContent = '▲ Graph';
+      document.getElementById(`gl-graph-toggle-${guideId}`).innerHTML = '<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-graph"/></svg> Hide graph';
     } catch (e) {
       graphEl.innerHTML = `<div style="padding:10px 14px;color:var(--red);font-size:0.78rem"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-alert"/></svg> ${e.message}</div>`;
       return;
