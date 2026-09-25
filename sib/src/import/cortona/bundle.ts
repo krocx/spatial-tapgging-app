@@ -16,8 +16,8 @@
 import { isZip, readZip, ungzipIfNeeded, type ZipEntry } from './zip-lite.js';
 
 export interface CortonaBundle {
-  /** Decoded (gunzipped) VRML97 text of the merged scene. */
-  vrmlText:      string;
+  /** Decoded (gunzipped) VRML97 scene - kept as bytes; the parser tokenizes the buffer directly. */
+  vrmlText:      Buffer;
   vrmlName:      string;
   /** interactivity.xml text, if present. */
   interactivity?: string;
@@ -74,10 +74,10 @@ export function readCortonaBundle(input: Buffer): CortonaBundle {
   if (!zip) throw new Error(`cortona: expected a published .htm or a bundle ZIP, got ${kind}`);
 
   const entries = readZip(zip);
-  const bundle: CortonaBundle = { vrmlText: '', vrmlName: '', svgs: {}, inventory: [] };
+  const bundle: CortonaBundle = { vrmlText: Buffer.alloc(0), vrmlName: '', svgs: {}, inventory: [] };
 
   for (const e of entries) classify(e, bundle);
-  if (!bundle.vrmlText) throw new Error('cortona: bundle contains no VRML97 scene');
+  if (!bundle.vrmlText.length) throw new Error('cortona: bundle contains no VRML97 scene');
   return bundle;
 }
 
@@ -87,8 +87,8 @@ function classify(e: ZipEntry, b: CortonaBundle): void {
   b.inventory.push({ name: e.name, kind, bytes: data.length });
   const lower = e.name.toLowerCase();
   if (kind === 'vrml') {
-    if (b.vrmlText) throw new Error('cortona: more than one VRML scene in bundle');
-    b.vrmlText = data.toString('utf8'); b.vrmlName = e.name;
+    if (b.vrmlText.length) throw new Error('cortona: more than one VRML scene in bundle');
+    b.vrmlText = data; b.vrmlName = e.name;
   } else if (kind === 'svg') {
     b.svgs[e.name] = data.toString('utf8');
   } else if (kind === 'xml') {

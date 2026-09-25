@@ -7,6 +7,14 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Fixed
+- **Cortona import uses a quarter of the memory.** The VRML tokenizer built
+  one object and one string per number before parsing began - ~2 GB for a
+  43 MB, 128-step publication, which killed a 512 MB Render instance. It now
+  streams tokens from the decoded bytes (never a two-byte JS string) and
+  frees the text once parsed: 43 MB → 490 MB peak, 54 MB → 460 MB, 11 MB →
+  190 MB. The route refuses a file that would not fit this server's memory
+  (cgroup-aware, ~9x file size) with a clear 413 instead of taking the
+  service down.
 - **Large assemblies no longer crash the iPhone or vanish on the iPad.** The
   GLB loader un-indexed every mesh into flat-shaded triangles through
   temporary arrays - three vertices per triangle, tens of millions of floats

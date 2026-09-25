@@ -21,6 +21,7 @@ import { importCortonaBundle } from '../import/cortona/importer.js';
 import { registerGeneratedGlb } from './models.js';
 import { v4 as uuidv4 } from 'uuid';
 import fs   from 'fs';
+import os   from 'os';
 import path from 'path';
 import { resolveDataFile } from '../data-dir.js';
 import type {
@@ -175,6 +176,19 @@ router.post('/import', async (req: Request, res: Response): Promise<void> => {
 // `assembly` slot, and persists the steps through the shared ingest path so
 // the placement invariant holds. The returned log is content-free.
 // Registered before /:id like /import.
+
+/** The memory this process may use: the cgroup limit in a container (Render,
+ *  Docker), else the machine's RAM. */
+function memoryLimitBytes(): number {
+  for (const p of ['/sys/fs/cgroup/memory.max', '/sys/fs/cgroup/memory/memory.limit_in_bytes']) {
+    try {
+      const v = fs.readFileSync(p, 'utf8').trim();
+      if (v && v !== 'max') { const n = Number(v); if (Number.isFinite(n) && n > 0 && n < 1e15) return n; }
+    } catch { /* not a container */ }
+  }
+  return os.totalmem();
+}
+
 router.post(
   '/import/cortona',
   (req: Request, res: Response, next) => { express.raw({ type: '*/*', limit: '250mb' })(req, res, next); },
@@ -184,6 +198,18 @@ router.post(
     if (!anchorId || !createdBy) { res.status(400).json({ error: 'anchorId and createdBy query parameters are required', timestamp: new Date().toISOString() }); return; }
     const body = req.body as Buffer;
     if (!Buffer.isBuffer(body) || body.length === 0) { res.status(400).json({ error: 'Request body must be the published .htm (or bundle ZIP)', timestamp: new Date().toISOString() }); return; }
+
+    // Memory guard: a Cortona import peaks at roughly 9x the file size (measured:
+    // 43 MB → ~400 MB). Refuse with a clear message rather than let the whole
+    // service be killed for memory and restart under everyone.
+    const needMB = Math.round(body.length / 1048576 * 9) + 60;
+    const haveMB = Math.round(memoryLimitBytes() / 1048576);
+    if (needMB > haveMB) {
+      console.warn(`[SIB] Cortona import refused: ~${needMB} MB needed, ${haveMB} MB on this server`);
+      res.status(413).json({ error: `This file needs about ${needMB} MB of memory to import and this server has ${haveMB} MB. ` +
+        `Import it on the company server, or raise this instance's memory.`, timestamp: new Date().toISOString() });
+      return;
+    }
 
     let result;
     try {

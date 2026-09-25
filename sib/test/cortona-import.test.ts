@@ -19,7 +19,7 @@ test('vrml: parses PROTO declarations, instances, DEF/USE and ROUTEs', async () 
 test('bundle: extracts solo+zip from .htm, sniffs kinds, gunzips the scene', async () => {
   const { readCortonaBundle } = await import('../src/import/cortona/bundle.js');
   const b = readCortonaBundle(buildHtm({ withSvg: true }));
-  assert.ok(b.vrmlText.startsWith('#VRML V2.0 utf8'));
+  assert.ok(b.vrmlText.toString('utf8', 0, 20).startsWith('#VRML V2.0 utf8'));
   assert.ok(b.interactivity && b.rwi);
   assert.equal(Object.keys(b.svgs).length, 1);
   assert.deepEqual(b.inventory.map(e => e.kind).sort(), ['svg', 'vrml', 'xml', 'xml']);

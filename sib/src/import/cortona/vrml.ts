@@ -55,81 +55,110 @@ export interface VrmlScene {
 }
 
 // ── Tokenizer ────────────────────────────────────────────────────────────────
+//
+// Streaming (2026.4.46): a 43 MB Cortona VRML holds several million numbers;
+// materialising one token object + one string per number needed ~2 GB and
+// killed a 512 MB Render instance. The stream produces tokens on demand into
+// a small lookahead window and keeps the last few for error context, so the
+// parser's memory is the parsed scene, not the text.
 
 type Tok = { t: 'id' | 'num' | 'str' | 'sym'; v: string; line: number };
 
-function tokenize(src: string): Tok[] {
-  const toks: Tok[] = [];
-  const n = src.length;
-  let i = 0, line = 1;
-  while (i < n) {
-    const c = src.charCodeAt(i);
-    if (c === 10) { line++; i++; continue; }
-    if (c === 32 || c === 9 || c === 13 || c === 44 /* , */) { i++; continue; }
-    if (c === 35 /* # */) { while (i < n && src.charCodeAt(i) !== 10) i++; continue; }
-    if (c === 34 /* " */) {
-      let j = i + 1; let s = '';
-      while (j < n) {
-        const d = src[j];
-        if (d === '\\' && j + 1 < n) { s += src[j + 1]; j += 2; continue; }
-        if (d === '"') break;
-        if (d === '\n') line++;
-        s += d; j++;
-      }
-      toks.push({ t: 'str', v: s, line }); i = j + 1; continue;
-    }
-    if (c === 123 || c === 125 || c === 91 || c === 93) { toks.push({ t: 'sym', v: src[i], line }); i++; continue; }
-    // number: [+-]?(digits[.digits]?|.digits)([eE][+-]?digits)? or 0x hex
-    if ((c >= 48 && c <= 57) || c === 45 || c === 43 || c === 46) {
-      let j = i;
-      if (src[j] === '+' || src[j] === '-') j++;
-      if (src[j] === '0' && (src[j + 1] === 'x' || src[j + 1] === 'X')) {
-        j += 2; while (j < n && /[0-9a-fA-F]/.test(src[j])) j++;
-        toks.push({ t: 'num', v: String(parseInt(src.slice(i, j), 16)), line }); i = j; continue;
-      }
-      const start = j;
-      while (j < n && src.charCodeAt(j) >= 48 && src.charCodeAt(j) <= 57) j++;
-      if (src[j] === '.') { j++; while (j < n && src.charCodeAt(j) >= 48 && src.charCodeAt(j) <= 57) j++; }
-      if (j === start || (j === start + 1 && src[start] === '.')) {
-        // lone sign / dot - treat as identifier char to avoid infinite loop
-        let k = i; while (k < n && !/[\s,{}\[\]"]/.test(src[k])) k++;
-        toks.push({ t: 'id', v: src.slice(i, k), line }); i = k; continue;
-      }
-      if (src[j] === 'e' || src[j] === 'E') {
-        let k = j + 1; if (src[k] === '+' || src[k] === '-') k++;
-        if (/[0-9]/.test(src[k] ?? '')) { j = k; while (j < n && /[0-9]/.test(src[j])) j++; }
-      }
-      toks.push({ t: 'num', v: src.slice(i, j), line }); i = j; continue;
-    }
-    // identifier: anything up to whitespace/comma/brace/bracket/quote
-    let k = i; while (k < n && !/[\s,{}\[\]"#]/.test(src[k])) k++;
-    if (k === i) { i++; continue; }
-    toks.push({ t: 'id', v: src.slice(i, k), line }); i = k;
+class TokenStream {
+  private i = 0; private line = 1;
+  private readonly n: number;
+  private readonly src: Buffer;       // bytes, not a JS string: a 125 MB VRML with one accented
+                                      // description would otherwise be a 250 MB two-byte string
+  private ahead: Tok[] = [];          // lookahead window (peek offsets)
+  private recent: Tok[] = [];         // last consumed, for error context
+  constructor(src: Buffer | string) { this.src = typeof src === 'string' ? Buffer.from(src, 'utf8') : src; this.n = this.src.length; }
+
+  peek(o = 0): Tok | undefined {
+    while (this.ahead.length <= o) { const t = this.scan(); if (!t) return undefined; this.ahead.push(t); }
+    return this.ahead[o];
   }
-  return toks;
+  next(): Tok | undefined {
+    const t = this.ahead.length ? this.ahead.shift() : this.scan();
+    if (t) { this.recent.push(t); if (this.recent.length > 9) this.recent.shift(); }
+    return t;
+  }
+  contextTokens(): Tok[] { return this.recent.slice(0, -1); }
+
+  private scan(): Tok | undefined {
+    const src = this.src, n = this.n;
+    const isWs = (b: number) => b === 32 || b === 9 || b === 13 || b === 10 || b === 44;
+    const isDelim = (b: number) => isWs(b) || b === 123 || b === 125 || b === 91 || b === 93 || b === 34;
+    let i = this.i;
+    while (i < n) {
+      const c = src[i];
+      if (c === 10) { this.line++; i++; continue; }
+      if (c === 32 || c === 9 || c === 13 || c === 44 /* , */) { i++; continue; }
+      if (c === 35 /* # */) { while (i < n && src[i] !== 10) i++; continue; }
+      const line = this.line;
+      if (c === 34 /* " */) {
+        let j = i + 1; let s = ''; let run = j;
+        while (j < n) {
+          const d = src[j];
+          if (d === 92 /* \\ */ && j + 1 < n) { s += src.toString('utf8', run, j) + String.fromCharCode(src[j + 1]); j += 2; run = j; continue; }
+          if (d === 34) break;
+          if (d === 10) this.line++;
+          j++;
+        }
+        s += src.toString('utf8', run, j);
+        this.i = j + 1; return { t: 'str', v: s, line };
+      }
+      if (c === 123 || c === 125 || c === 91 || c === 93) { this.i = i + 1; return { t: 'sym', v: String.fromCharCode(c), line }; }
+      // number: [+-]?(digits[.digits]?|.digits)([eE][+-]?digits)? or 0x hex
+      if ((c >= 48 && c <= 57) || c === 45 || c === 43 || c === 46) {
+        let j = i;
+        if (src[j] === 43 || src[j] === 45) j++;
+        if (src[j] === 48 && (src[j + 1] === 120 || src[j + 1] === 88)) {
+          j += 2; while (j < n && /[0-9a-fA-F]/.test(String.fromCharCode(src[j]))) j++;
+          this.i = j; return { t: 'num', v: String(parseInt(src.toString('latin1', i, j), 16)), line };
+        }
+        const start = j;
+        while (j < n && src[j] >= 48 && src[j] <= 57) j++;
+        if (src[j] === 46) { j++; while (j < n && src[j] >= 48 && src[j] <= 57) j++; }
+        if (j === start || (j === start + 1 && src[start] === 46)) {
+          // lone sign / dot - treat as identifier char to avoid infinite loop
+          let k = i; while (k < n && !isDelim(src[k])) k++;
+          this.i = k; return { t: 'id', v: src.toString('utf8', i, k), line };
+        }
+        if (src[j] === 101 || src[j] === 69) {
+          let k = j + 1; if (src[k] === 43 || src[k] === 45) k++;
+          if (src[k] >= 48 && src[k] <= 57) { j = k; while (j < n && src[j] >= 48 && src[j] <= 57) j++; }
+        }
+        this.i = j; return { t: 'num', v: src.toString('latin1', i, j), line };
+      }
+      // identifier: anything up to whitespace/comma/brace/bracket/quote/#
+      let k = i; while (k < n && !isDelim(src[k]) && src[k] !== 35) k++;
+      if (k === i) { i++; continue; }
+      this.i = k; return { t: 'id', v: src.toString('utf8', i, k), line };
+    }
+    this.i = i;
+    return undefined;
+  }
 }
 
 // ── Parser ───────────────────────────────────────────────────────────────────
 
 class Parser {
-  private p = 0;
   readonly protos = new Map<string, ProtoDecl>();
   readonly defs   = new Map<string, VrmlNode>();
   private routeSink: VrmlRoute[] = [];
-  constructor(private toks: Tok[]) {}
+  constructor(private toks: TokenStream) {}
 
   /** DEF names that contain spaces (Cortona part descriptions) - for USE / ROUTE matching. */
   private spacedDefs: string[] = [];
-  private peek(o = 0): Tok | undefined { return this.toks[this.p + o]; }
-  private next(): Tok { const t = this.toks[this.p++]; if (!t) throw new Error('vrml: unexpected end of input'); return t; }
+  private peek(o = 0): Tok | undefined { return this.toks.peek(o); }
+  private next(): Tok { const t = this.toks.next(); if (!t) throw new Error('vrml: unexpected end of input'); return t; }
   private expectSym(s: string): void {
     const t = this.next();
     if (t.t !== 'sym' || t.v !== s) throw new Error(`vrml: expected "${s}" at line ${t.line}, got "${t.v}"${this.context()}`);
   }
   /** Content-free context for error messages: the preceding tokens, strings masked. */
   private context(): string {
-    const from = Math.max(0, this.p - 9);
-    const parts = this.toks.slice(from, this.p - 1).map(t => t.t === 'str' ? '"…"' : t.v);
+    const parts = this.toks.contextTokens().map(t => t.t === 'str' ? '"…"' : t.v);
     return parts.length ? ` (after: ${parts.join(' ')})` : '';
   }
   private isSym(s: string, o = 0): boolean { const t = this.peek(o); return !!t && t.t === 'sym' && t.v === s; }
@@ -246,11 +275,12 @@ class Parser {
     this.expectSym('{');
     const decl = this.protos.get(node.type);
     while (!this.isSym('}')) {
+      // Peek before consuming: ROUTE / PROTO statements parse themselves from their keyword.
+      if (this.isId('ROUTE')) { this.routeSink.push(this.parseRoute()); continue; }
+      if (this.isId('PROTO')) { this.parseProto(); continue; }
+      if (this.isId('EXTERNPROTO')) { this.parseExternProto(); continue; }
       const ft = this.next();
       if (ft.t !== 'id') throw new Error(`vrml: expected field name in ${node.type} at line ${ft.line}, got "${ft.v}"`);
-      if (ft.v === 'ROUTE') { this.p--; this.routeSink.push(this.parseRoute()); continue; }
-      if (ft.v === 'PROTO') { this.p--; this.parseProto(); continue; }
-      if (ft.v === 'EXTERNPROTO') { this.p--; this.parseExternProto(); continue; }
       // Script nodes declare their own interface inline: field SFInt32 x 0 / eventIn ... / url ...
       if (node.type === 'Script' && (ft.v === 'field' || ft.v === 'exposedField' || ft.v === 'eventIn' || ft.v === 'eventOut')) {
         const type = this.next().v; const name = this.next().v;
@@ -312,10 +342,12 @@ function splitDot(s: string): [string, string] {
   return [s.slice(0, i), s.slice(i + 1)];
 }
 
-export function parseVrml(text: string): VrmlScene {
-  const header = text.split('\n', 1)[0].trim();
+export function parseVrml(text: Buffer | string): VrmlScene {
+  const buf = typeof text === 'string' ? Buffer.from(text, 'utf8') : text;
+  const nl = buf.indexOf(10);
+  const header = buf.toString('utf8', 0, nl < 0 ? Math.min(buf.length, 80) : nl).trim();
   if (!header.startsWith('#VRML V2.0')) throw new Error(`vrml: not a VRML97 file (header "${header.slice(0, 40)}")`);
-  const parser = new Parser(tokenize(text));
+  const parser = new Parser(new TokenStream(buf));
   const { nodes, routes } = parser.parseScene();
   return { nodes, routes, protos: parser.protos, defs: parser.defs, header };
 }

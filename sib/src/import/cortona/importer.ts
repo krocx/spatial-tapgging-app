@@ -65,6 +65,7 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
   const kind: 'htm' | 'zip' = input.length >= 4 && input.readUInt32LE(0) === 0x04034b50 ? 'zip' : 'htm';
 
   const vrml  = parseVrml(bundle.vrmlText);
+  bundle.vrmlText = Buffer.alloc(0);   // the scene is parsed - let the 100+ MB of text go
   const frame = frameCorrection(vrml);
   if (frame.corrected) warnings.push(`cameras look at the model upside-down (mean camera-up Y = ${frame.cameraUpY.toFixed(2)}) - assembly rotated ${frame.angleDeg}° so up is +Y`);
   const scene = buildScene(vrml, { frame: frame.matrix });
