@@ -60,8 +60,10 @@
 .ax-card  { background: var(--ax-paper); border: var(--ax-hair); border-radius: var(--ax-r); padding: var(--ax-s4); }
 .ax-card--product { border-color: color-mix(in srgb, var(--ax-pc, var(--ax-blue)) 35%, transparent); }
 .ax-card--product.is-active { border-color: color-mix(in srgb, var(--ax-pc, var(--ax-blue)) 70%, transparent); border-width: 1.5px; }
-.ax-door { display: flex; align-items: center; gap: var(--ax-s4); padding: 18px; background: var(--ax-paper); border: 1px solid color-mix(in srgb, var(--ax-pc, var(--ax-blue)) 30%, transparent); border-radius: var(--ax-r); color: var(--ax-ink); cursor: pointer; }
-.ax-door:hover { background: var(--ax-paper-3); text-decoration: none; }
+.ax-door { display: flex; align-items: center; gap: var(--ax-s4); padding: 18px; background: var(--ax-paper); border: 1px solid color-mix(in srgb, var(--ax-pc, var(--ax-blue)) 30%, transparent); border-radius: var(--ax-r); color: var(--ax-ink); cursor: pointer;
+  transition: transform var(--ax-t) var(--ax-ease), border-color var(--ax-t) var(--ax-ease), background var(--ax-t) var(--ax-ease); }
+/* Hover is the same everywhere a door or tile is offered (SIB home, portal home, Learn): a 3-px lift and the product colour on the stroke. */
+.ax-door:hover { transform: translateY(-3px); border-color: color-mix(in srgb, var(--ax-pc, var(--ax-blue)) 70%, transparent); background: var(--ax-paper-3); text-decoration: none; }
 .ax-door .ax-icon { width: 30px; height: 30px; color: var(--ax-pc, var(--ax-blue)); flex: none; }
 .ax-door b { display: block; font: var(--ax-h3); font-size: 17px; line-height: 22px; }
 .ax-door span { display: block; font: var(--ax-label-s); color: var(--ax-ink-3); }
