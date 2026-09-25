@@ -154,8 +154,8 @@ function renderLanding() {
   const total = DATA.journeys.length, doneN = DATA.journeys.filter(j => prog(j.id).done).length;
   document.getElementById('ln-main').innerHTML = `<div class="ln-hero">
       <div class="ax-eyebrow">Learn</div>
-      <h1>Six five-minute reads.</h1>
-      <p>Each one answers a question you'll hear on the floor, in the order you'd meet it - one idea per screen, the platform's own diagrams, and a link to the Catalogue when you want the detail.${doneN ? ` <b>${doneN} of ${total} done.</b>` : ''}</p>
+      <h1>Welcome to the Connected Worker platform.</h1>
+      <p>It puts the right instruction, check and record exactly where the work happens, on the equipment itself, so people on the floor are guided, proven and protected without paperwork. These six short journeys explain how, in the order you would meet it: five minutes each, one idea per screen, the platform's own diagrams, and the Catalogue a click away for the detail.${doneN ? ` <b>${doneN} of ${total} done.</b>` : ''}</p>
     </div>
     <div class="ln-doors">${doors}</div>`;
 }
