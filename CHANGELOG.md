@@ -373,6 +373,12 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **Open Sans on every SIB web surface.** The company's standard web font
+  replaces Arial in `--ax-font`, self-hosted: `npm run brand:fonts` vendors
+  the latin WOFF2 files (OFL-1.1) into `sib/portal/brand/fonts/`, declared
+  with `local()` first; fallback is the system sans (SF / Segoe), never a
+  CDN — the checker now fails on any font loaded from one. Doctrine updated
+  in docs/BRAND.md and CLAUDE.md.
 - **Chambers page rebuilt as the fleet view.** A list — chamber ·
   configuration · origin · tags (n · trained) · lab median · last activity —
   in one card, sorted by last activity; a row opens the chamber in a detail

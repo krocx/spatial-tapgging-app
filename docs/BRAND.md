@@ -64,15 +64,19 @@ Products (`--ax-p-*`): Spatial Inspection blue, AR OMS green, iLOTO red,
 Gemba Audit orange, Procedure Designer indigo, Portal cyan, Platform grey —
 the door colours, carried to chips, cards, diagram bars and the catalogue map.
 
-## Type — Arial, the company standard, at the team library scale
+## Type — Open Sans, the company's web standard, at the team library scale
 
 Heading Bold 24/32 · Title Medium 22/30 and 20/28 · Label Medium 16 ·
 Regular 16 · Regular 13 · LABEL 12 caps tracked · Paragraph 14/21 Regular /
-Medium / Bold. Arial ships with Windows, macOS and iPadOS, so nothing is
-vendored and the LAN server needs no internet; Arial is not redistributable,
-so on Android / headset browsers the stack falls to Liberation Sans
-(metric-compatible) or the system sans. Identifiers, part numbers and every
-number in a table use the platform monospace (`--ax-mono`).
+Medium / Bold. Open Sans is the standard web font in the brand guidelines
+(it is what appliedmaterials.com sets), designed for screens, and sits well
+beside SF Pro on the iPad. It is **self-hosted**: `npm run brand:fonts`
+vendors the latin WOFF2 files (OFL-1.1) into `sib/portal/brand/fonts/`, and
+`tokens.css` declares them with `local()` first, so the LAN server needs no
+internet and no SIB surface ever loads a font from a CDN. The fallback stack
+is the system sans — SF on Apple, Segoe on Windows — never a metric
+stranger. Identifiers, part numbers and every number in a table use the
+platform monospace (`--ax-mono`).
 
 ## Where it lives
 

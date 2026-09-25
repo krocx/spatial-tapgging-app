@@ -8,7 +8,7 @@
 //   · backdrop-filter / glass                           (no glass)
 //   · linear-/radial-gradient on a surface              (repeating hairline grids are fine)
 //   · box-shadow that is not a token ring/rim           (the app has no drop shadows)
-//   · a font-family that is not the brand stack         (Arial via tokens)
+//   · a font-family that is not the brand stack         (Open Sans via tokens)
 //   · a border-radius that is not one of the app's       (18 card · 14 CTA · 12 field · capsule)
 //
 // Add a page to GOVERNED when it migrates; the list grows, never shrinks.
@@ -37,6 +37,7 @@ const rules = [
   { name: 'gradient on a surface',       test: l => /(?<!repeating-)(linear|radial)-gradient\(/.test(l) },
   { name: 'box-shadow not a token',      test: l => /box-shadow\s*:/.test(l) && !/var\(--ax-(ring|rim|shadow)\)|--ax-rim|0 0 0 1px var\(--ax-green\)|box-shadow\s*:\s*none/.test(l) },
   { name: 'font-family not the brand',   test: l => /font-family\s*:/.test(l) && !/var\(--ax-(font|mono)\)/.test(l) },
+  { name: 'font loaded from a CDN',      test: l => /fonts\.googleapis\.com|fonts\.gstatic\.com|use\.typekit|fonts\.bunny/.test(l) },
   { name: 'border-radius not the app\'s', test: l => /border-radius\s*:/.test(l) && !/var\(--ax-r|50%|999px|100px|\b(18|14|12|10|8|6|4|3|2)px\b/.test(l) },
 ];
 
