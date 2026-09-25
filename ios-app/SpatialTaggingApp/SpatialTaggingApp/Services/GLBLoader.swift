@@ -14,9 +14,16 @@
 //  is ignored rather than failing, and any GLB we did not write is handled the
 //  same way; callers fall back to the USDZ path when `parts` comes back empty.
 //
-//  Normals: the GLB carries none (viewers shade flat). We un-index every
-//  primitive and compute flat normals so CAD edges stay crisp under SceneKit's
-//  PBR lighting - the same fix the portal applies before its USDZ export.
+//  Normals: the GLB carries none. Small models are un-indexed with flat
+//  normals so CAD edges stay crisp; anything larger stays INDEXED with
+//  area-weighted vertex normals - a third of the vertices and no temporary
+//  arrays of SCNVector3, which is the difference between a 185-step Cortona
+//  assembly playing on an iPhone and the app being killed for memory.
+//
+//  Budget (2026.4.46): every device has a triangle budget from its memory;
+//  a model over budget is reduced on the way in by our own vertex-clustering
+//  decimation (grid cells, cluster average, degenerate faces dropped) until it
+//  fits. The load reports what it did so the session can say so.
 //
 //  Apple SDKs only (Foundation, SceneKit, simd). No third-party code.
 //
@@ -40,6 +47,40 @@ struct GLBAssembly {
     let triangleCount: Int
     /// Bounds in the assembly frame (root-local), if any geometry.
     let bounds:    (min: simd_float3, max: simd_float3)?
+    /// What the loader had to do to fit the device.
+    let info:      GLBLoadInfo
+}
+
+struct GLBLoadInfo {
+    /// Triangles in the file (instances counted once per node reference).
+    var sourceTriangles: Int = 0
+    /// Triangles actually built.
+    var loadedTriangles: Int = 0
+    var budget: Int = 0
+    var reduced: Bool { loadedTriangles < sourceTriangles }
+    var flatShaded: Bool = false
+    var seconds: Double = 0
+    var summary: String {
+        let m = { (n: Int) in n >= 1_000_000 ? String(format: "%.1fM", Double(n) / 1e6) : n >= 1000 ? "\(n / 1000)k" : "\(n)" }
+        return reduced ? "\(m(sourceTriangles)) triangles, reduced to \(m(loadedTriangles)) for this device"
+                       : "\(m(loadedTriangles)) triangles"
+    }
+}
+
+struct GLBLoadOptions {
+    /// Triangles this device renders comfortably in an AR session alongside a world map.
+    var triangleBudget: Int
+    /// Up to this many triangles the model is un-indexed with flat normals (crisp CAD edges).
+    var flatShadingUpTo: Int = 150_000
+    /// 0…1 while parsing, building and (if needed) reducing.
+    var progress: (@Sendable (Double) -> Void)? = nil
+
+    /// Memory is the honest proxy: a world map, the camera and SceneKit share it.
+    static func forThisDevice() -> GLBLoadOptions {
+        let gb = Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824
+        let budget = gb >= 12 ? 2_500_000 : gb >= 7.5 ? 1_200_000 : gb >= 5.5 ? 700_000 : 350_000
+        return GLBLoadOptions(triangleBudget: budget)
+    }
 }
 
 enum GLBLoaderError: Error, LocalizedError {
@@ -56,11 +97,11 @@ enum GLBLoader {
 
     // MARK: - Public
 
-    static func load(url: URL) throws -> GLBAssembly {
-        try load(data: try Data(contentsOf: url, options: .mappedIfSafe))
+    static func load(url: URL, options: GLBLoadOptions = .forThisDevice()) throws -> GLBAssembly {
+        try load(data: try Data(contentsOf: url, options: .mappedIfSafe), options: options)
     }
 
-    static func load(data: Data) throws -> GLBAssembly {
+    static func load(data: Data, options: GLBLoadOptions = .forThisDevice()) throws -> GLBAssembly {
         // Header: magic 'glTF', version 2, total length; then chunks (JSON, BIN).
         guard data.count >= 20, data.readUInt32(at: 0) == 0x46546C67 else { throw GLBLoaderError.notGLB }
         guard data.readUInt32(at: 4) == 2 else { throw GLBLoaderError.malformed("unsupported GLB version") }
@@ -79,12 +120,14 @@ enum GLBLoader {
               let json = try JSONSerialization.jsonObject(with: jd) as? [String: Any] else {
             throw GLBLoaderError.malformed("no JSON chunk")
         }
-        return try build(json: json, bin: bin ?? Data())
+        return try build(json: json, bin: bin ?? Data(), options: options)
     }
 
     // MARK: - Build
 
-    private static func build(json: [String: Any], bin: Data) throws -> GLBAssembly {
+    private static func build(json: [String: Any], bin: Data, options: GLBLoadOptions) throws -> GLBAssembly {
+        let t0 = Date()
+        var info = GLBLoadInfo(); info.budget = options.triangleBudget
         let bufferViews = json["bufferViews"] as? [[String: Any]] ?? []
         let accessors   = json["accessors"]   as? [[String: Any]] ?? []
         let meshesJ     = json["meshes"]      as? [[String: Any]] ?? []
@@ -118,6 +161,33 @@ enum GLBLoader {
             mat.isDoubleSided = true; return mat
         }()
 
+        // Census first: how many triangles will this scene draw? (instances count
+        // once per reference). Decides flat vs indexed and whether to reduce.
+        let sceneIdx0   = json["scene"] as? Int ?? 0
+        var meshRefs: [Int: Int] = [:]
+        func census(_ i: Int, _ seen: inout Set<Int>) {
+            guard i < nodesJ.count, !seen.contains(i) else { return }; seen.insert(i)
+            if let mi = nodesJ[i]["mesh"] as? Int { meshRefs[mi, default: 0] += 1 }
+            for c in nodesJ[i]["children"] as? [Int] ?? [] { census(c, &seen) }
+        }
+        var seen = Set<Int>()
+        for r in (sceneIdx0 < scenesJ.count ? scenesJ[sceneIdx0]["nodes"] as? [Int] : nil) ?? Array(nodesJ.indices) { census(r, &seen) }
+        func primTriangles(_ p: [String: Any]) -> Int {
+            if let ia = p["indices"] as? Int, ia < accessors.count { return (accessors[ia]["count"] as? Int ?? 0) / 3 }
+            if let attrs = p["attributes"] as? [String: Any], let pa = attrs["POSITION"] as? Int, pa < accessors.count { return (accessors[pa]["count"] as? Int ?? 0) / 3 }
+            return 0
+        }
+        for (mi, refs) in meshRefs where mi < meshesJ.count {
+            for p in meshesJ[mi]["primitives"] as? [[String: Any]] ?? [] where (p["mode"] as? Int ?? 4) == 4 { info.sourceTriangles += primTriangles(p) * refs }
+        }
+        let flat = info.sourceTriangles <= options.flatShadingUpTo
+        info.flatShaded = flat
+        // Reduction factor: keep everything under budget; every mesh is reduced
+        // by the same ratio so parts keep their relative detail.
+        let ratio = info.sourceTriangles > options.triangleBudget ? Double(options.triangleBudget) / Double(info.sourceTriangles) : 1
+        var trianglesSoFar = 0
+        options.progress?(0.05)
+
         // Meshes - built once, geometry shared between nodes that reference the same mesh.
         var geometryCache: [Int: [SCNGeometry]] = [:]
         var meshCount = 0, triangleCount = 0
@@ -137,30 +207,24 @@ enum GLBLoader {
                 } else {
                     indices = (0 ..< UInt32(positions.count)).map { $0 }
                 }
-                let triCount = indices.count / 3
+                var triCount = indices.count / 3
                 guard triCount > 0 else { continue }
-                // Un-index + flat normals.
-                var flatPos = [simd_float3](); flatPos.reserveCapacity(triCount * 3)
-                var flatNrm = [simd_float3](); flatNrm.reserveCapacity(triCount * 3)
-                for t in 0 ..< triCount {
-                    let i0 = Int(indices[t * 3]), i1 = Int(indices[t * 3 + 1]), i2 = Int(indices[t * 3 + 2])
-                    guard i0 < positions.count, i1 < positions.count, i2 < positions.count else { continue }
-                    let a = positions[i0], b = positions[i1], c = positions[i2]
-                    var n = simd_cross(b - a, c - a)
-                    let len = simd_length(n); n = len > 1e-12 ? n / len : simd_float3(0, 1, 0)
-                    flatPos.append(a); flatPos.append(b); flatPos.append(c)
-                    flatNrm.append(n); flatNrm.append(n); flatNrm.append(n)
+                var geo: SCNGeometry
+                if flat {
+                    geo = flatGeometry(positions: positions, indices: indices)
+                } else {
+                    var pos = positions, idx = indices
+                    if ratio < 1 { (pos, idx) = decimate(positions: pos, indices: idx, keep: ratio) }
+                    triCount = idx.count / 3
+                    guard triCount > 0 else { continue }
+                    geo = indexedGeometry(positions: pos, indices: idx)
                 }
-                guard !flatPos.isEmpty else { continue }
-                let vsrc = SCNGeometrySource(vertices: flatPos.map { SCNVector3($0) })
-                let nsrc = SCNGeometrySource(normals: flatNrm.map { SCNVector3($0) })
-                let idx: [UInt32] = (0 ..< UInt32(flatPos.count)).map { $0 }
-                let elem = SCNGeometryElement(indices: idx, primitiveType: .triangles)
-                let geo = SCNGeometry(sources: [vsrc, nsrc], elements: [elem])
+                trianglesSoFar += triCount
+                if info.sourceTriangles > 0 { options.progress?(0.05 + 0.85 * min(1, Double(trianglesSoFar) / Double(max(1, Int(Double(info.sourceTriangles) * ratio))))) }
                 let mi2 = p["material"] as? Int
                 geo.materials = [(mi2 != nil && mi2! < materials.count) ? materials[mi2!] : fallbackMaterial]
                 out.append(geo)
-                meshCount += 1; triangleCount += flatPos.count / 3
+                meshCount += 1; triangleCount += triCount
             }
             geometryCache[mi] = out
             return out
@@ -227,10 +291,115 @@ enum GLBLoader {
             }
         }
 
-        AppLog.info("model", "[GLBLoader] parts=\(parts.count) meshes=\(meshCount) tris=\(triangleCount)")
+        info.loadedTriangles = triangleCount
+        info.seconds = Date().timeIntervalSince(t0)
+        options.progress?(1)
+        AppLog.info("model", String(format: "[GLBLoader] parts=%d meshes=%d tris=%d (source %d, budget %d, %@) in %.1f s",
+                                    parts.count, meshCount, triangleCount, info.sourceTriangles, info.budget, flat ? "flat" : "indexed", info.seconds))
         return GLBAssembly(root: root, parts: parts, extras: extras, restTransforms: rest,
                            meshCount: meshCount, triangleCount: triangleCount,
-                           bounds: anyGeometry ? (bmin, bmax) : nil)
+                           bounds: anyGeometry ? (bmin, bmax) : nil, info: info)
+    }
+
+    // MARK: - Geometry builders (no SCNVector3 arrays - straight into buffers)
+
+    /// Small models: un-indexed, one flat normal per face - crisp CAD edges.
+    private static func flatGeometry(positions: [simd_float3], indices: [UInt32]) -> SCNGeometry {
+        let triCount = indices.count / 3
+        var v = [Float](); v.reserveCapacity(triCount * 9)
+        var n = [Float](); n.reserveCapacity(triCount * 9)
+        for t in 0 ..< triCount {
+            let i0 = Int(indices[t * 3]), i1 = Int(indices[t * 3 + 1]), i2 = Int(indices[t * 3 + 2])
+            guard i0 < positions.count, i1 < positions.count, i2 < positions.count else { continue }
+            let a = positions[i0], b = positions[i1], c = positions[i2]
+            var fn = simd_cross(b - a, c - a)
+            let len = simd_length(fn); fn = len > 1e-12 ? fn / len : simd_float3(0, 1, 0)
+            for q in [a, b, c] { v.append(q.x); v.append(q.y); v.append(q.z); n.append(fn.x); n.append(fn.y); n.append(fn.z) }
+        }
+        let count = v.count / 3
+        let vsrc = SCNGeometrySource(data: v.withUnsafeBufferPointer { Data(buffer: $0) }, semantic: .vertex, vectorCount: count,
+                                     usesFloatComponents: true, componentsPerVector: 3, bytesPerComponent: 4, dataOffset: 0, dataStride: 12)
+        let nsrc = SCNGeometrySource(data: n.withUnsafeBufferPointer { Data(buffer: $0) }, semantic: .normal, vectorCount: count,
+                                     usesFloatComponents: true, componentsPerVector: 3, bytesPerComponent: 4, dataOffset: 0, dataStride: 12)
+        var idx = [UInt32](); idx.reserveCapacity(count); for i in 0 ..< UInt32(count) { idx.append(i) }
+        let elem = SCNGeometryElement(data: idx.withUnsafeBufferPointer { Data(buffer: $0) }, primitiveType: .triangles,
+                                      primitiveCount: count / 3, bytesPerIndex: 4)
+        return SCNGeometry(sources: [vsrc, nsrc], elements: [elem])
+    }
+
+    /// Large models: indexed, area-weighted vertex normals (CAD exports keep
+    /// hard edges as split vertices, so creases survive; shared vertices smooth).
+    private static func indexedGeometry(positions: [simd_float3], indices: [UInt32]) -> SCNGeometry {
+        let n = positions.count
+        var acc = [simd_float3](repeating: .zero, count: n)
+        let triCount = indices.count / 3
+        for t in 0 ..< triCount {
+            let i0 = Int(indices[t * 3]), i1 = Int(indices[t * 3 + 1]), i2 = Int(indices[t * 3 + 2])
+            guard i0 < n, i1 < n, i2 < n else { continue }
+            let fn = simd_cross(positions[i1] - positions[i0], positions[i2] - positions[i0])   // area-weighted
+            acc[i0] += fn; acc[i1] += fn; acc[i2] += fn
+        }
+        var v = [Float](); v.reserveCapacity(n * 3)
+        var nn = [Float](); nn.reserveCapacity(n * 3)
+        for i in 0 ..< n {
+            let p = positions[i]; v.append(p.x); v.append(p.y); v.append(p.z)
+            let l = simd_length(acc[i]); let q = l > 1e-12 ? acc[i] / l : simd_float3(0, 1, 0)
+            nn.append(q.x); nn.append(q.y); nn.append(q.z)
+        }
+        let vsrc = SCNGeometrySource(data: v.withUnsafeBufferPointer { Data(buffer: $0) }, semantic: .vertex, vectorCount: n,
+                                     usesFloatComponents: true, componentsPerVector: 3, bytesPerComponent: 4, dataOffset: 0, dataStride: 12)
+        let nsrc = SCNGeometrySource(data: nn.withUnsafeBufferPointer { Data(buffer: $0) }, semantic: .normal, vectorCount: n,
+                                     usesFloatComponents: true, componentsPerVector: 3, bytesPerComponent: 4, dataOffset: 0, dataStride: 12)
+        let elem: SCNGeometryElement
+        if n < 65_536 {
+            let i16 = indices.map { UInt16($0) }
+            elem = SCNGeometryElement(data: i16.withUnsafeBufferPointer { Data(buffer: $0) }, primitiveType: .triangles, primitiveCount: triCount, bytesPerIndex: 2)
+        } else {
+            elem = SCNGeometryElement(data: indices.withUnsafeBufferPointer { Data(buffer: $0) }, primitiveType: .triangles, primitiveCount: triCount, bytesPerIndex: 4)
+        }
+        return SCNGeometry(sources: [vsrc, nsrc], elements: [elem])
+    }
+
+    // MARK: - Decimation (own code): vertex clustering on a grid
+
+    /// Reduce a mesh to about `keep` of its triangles: vertices in the same grid
+    /// cell collapse to their average, faces that lose a corner are dropped.
+    /// Coarsens the grid until the target is met (a few passes at most).
+    /// Silhouettes and large faces survive; tiny detail (thread, chamfers) goes -
+    /// exactly what a device over budget cannot show anyway.
+    static func decimate(positions: [simd_float3], indices: [UInt32], keep: Double) -> ([simd_float3], [UInt32]) {
+        let triCount = indices.count / 3
+        let target = max(12, Int(Double(triCount) * keep))
+        guard triCount > target, positions.count > 8 else { return (positions, indices) }
+        var lo = simd_float3(repeating: .greatestFiniteMagnitude), hi = simd_float3(repeating: -.greatestFiniteMagnitude)
+        for p in positions { lo = simd_min(lo, p); hi = simd_max(hi, p) }
+        let ext = max(hi.x - lo.x, hi.y - lo.y, hi.z - lo.z, 1e-6)
+        // Cells per axis from the target: a surface's triangle count grows with k².
+        var k = max(4.0, (Double(target) * 0.9).squareRoot())
+        var best: ([simd_float3], [UInt32]) = (positions, indices)
+        for _ in 0 ..< 6 {
+            let cell = ext / Float(k)
+            var cellOf = [Int32](repeating: -1, count: positions.count)
+            var map: [Int64: Int32] = [:]
+            var sums: [simd_float3] = [], counts: [Int32] = []
+            for (i, p) in positions.enumerated() {
+                let g = SIMD3<Int32>((p - lo) / cell, rounding: .down)
+                let key = Int64(g.x) &* 73856093 ^ Int64(g.y) &* 19349663 ^ Int64(g.z) &* 83492791
+                if let c = map[key] { cellOf[i] = c; sums[Int(c)] += p; counts[Int(c)] += 1 }
+                else { let c = Int32(sums.count); map[key] = c; cellOf[i] = c; sums.append(p); counts.append(1) }
+            }
+            var newPos = [simd_float3](); newPos.reserveCapacity(sums.count)
+            for (i, s) in sums.enumerated() { newPos.append(s / Float(counts[i])) }
+            var newIdx = [UInt32](); newIdx.reserveCapacity(target * 3)
+            for t in 0 ..< triCount {
+                let a = cellOf[Int(indices[t * 3])], b = cellOf[Int(indices[t * 3 + 1])], c = cellOf[Int(indices[t * 3 + 2])]
+                if a != b, b != c, a != c { newIdx.append(UInt32(a)); newIdx.append(UInt32(b)); newIdx.append(UInt32(c)) }
+            }
+            best = (newPos, newIdx)
+            if newIdx.count / 3 <= Int(Double(target) * 1.25) { break }
+            k *= 0.7
+        }
+        return best
     }
 
     // MARK: - glTF node transform

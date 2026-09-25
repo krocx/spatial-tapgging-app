@@ -7,6 +7,17 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Fixed
+- **Large assemblies no longer crash the iPhone or vanish on the iPad.** The
+  GLB loader un-indexed every mesh into flat-shaded triangles through
+  temporary arrays - three vertices per triangle, tens of millions of floats
+  for a 185-step Cortona export - and the app was killed for memory (iPhone)
+  or the build never finished (iPad). Models over 150k triangles are now
+  built indexed with area-weighted normals straight into SceneKit buffers;
+  every device gets a triangle budget from its memory (350k … 2.5M) and a
+  model over budget is reduced on the way in by our own vertex-clustering
+  decimation until it fits. The session shows download size and build
+  progress, then "Assembly ready · 2.1M triangles, reduced to 1.2M for this
+  device" when it had to. Own code, Apple SDKs only.
 - **No more em dashes.** Every "—" in user-facing text, docs, code strings
   and comments is a plain hyphen now - 5,800 of them across web, server,
   iOS and docs. Less to read past.

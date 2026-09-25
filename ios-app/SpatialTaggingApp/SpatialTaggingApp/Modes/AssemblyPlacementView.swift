@@ -286,10 +286,16 @@ struct AssemblyPlacementView: View {
         do { data = try await AssemblyModelCache.glb(modelId: asm.modelId, client: client) }
         catch { phase = .failed; errorText = "Could not download the assembly model - \(AssemblyModelCache.reason(error))"; return }
         status = "Building assembly…"
-        let built: GLBAssembly? = await Task.detached(priority: .userInitiated) { try? GLBLoader.load(data: data) }.value
+        let opts: GLBLoadOptions = {
+            var o = GLBLoadOptions.forThisDevice()
+            o.progress = { p in Task { @MainActor in status = "Building assembly… \(Int(p * 10) * 10)%" } }
+            return o
+        }()
+        let built: GLBAssembly? = await Task.detached(priority: .userInitiated) { try? GLBLoader.load(data: data, options: opts) }.value
         guard let glb = built, !glb.parts.isEmpty else {
             phase = .failed; errorText = "The assembly model could not be read."; return
         }
+        if glb.info.reduced { status = glb.info.summary }
         let node = AssemblyNode(assembly: glb)
         // Show the complete assembly, ghosted, while aiming.
         node.root.opacity = 0.6

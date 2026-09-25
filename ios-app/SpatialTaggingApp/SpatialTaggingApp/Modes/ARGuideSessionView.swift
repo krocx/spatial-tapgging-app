@@ -275,6 +275,7 @@ struct ARGuideSessionView: View {
     /// makes the whole assembly visible without the operator tapping.
     @State private var assemblyContextSolid: Bool               = false
     @State private var assemblyLoading:    Bool                 = false
+    @State private var assemblyLoadPct = -1
     /// Part chip: the step's focus part, or whatever the operator tapped.
     @State private var partChip: (title: String, partNumber: String?, tapped: Bool)? = nil
     /// "Look from here": distance/angle to the step's source viewpoint; nil = no view or aligned long enough.
@@ -4097,6 +4098,7 @@ extension ARGuideSessionView {
     @MainActor
     func loadAssembly() async {
         guard assemblyNode == nil, !assemblyLoading, let asm = guide.assembly, let pose = asm.pose else { return }
+        assemblyLoadPct = -1
         assemblyLoading = true; defer { assemblyLoading = false }
         let client = SIBClient(settings: settings)
         let data: Data
@@ -4106,9 +4108,27 @@ extension ARGuideSessionView {
             showNotice("Assembly model unavailable - \(AssemblyModelCache.reason(error))")
             return
         }
-        let built: GLBAssembly? = await Task.detached(priority: .userInitiated) { try? GLBLoader.load(data: data) }.value
+        // Build off the main thread with a device budget; the operator sees
+        // progress instead of a frozen camera, and is told if the model was
+        // reduced to fit this device.
+        let mb = Double(data.count) / 1_048_576
+        showNotice(String(format: "Loading assembly model · %.1f MB", mb))
+        let opts: GLBLoadOptions = {
+            var o = GLBLoadOptions.forThisDevice()
+            o.progress = { p in
+                let pct = Int(p * 10) * 10          // every 10 %
+                Task { @MainActor in
+                    guard pct != assemblyLoadPct else { return }
+                    assemblyLoadPct = pct
+                    showNotice(String(format: "Loading assembly model · %.1f MB · %d%%", mb, pct))
+                }
+            }
+            return o
+        }()
+        let built: GLBAssembly? = await Task.detached(priority: .userInitiated) { try? GLBLoader.load(data: data, options: opts) }.value
         guard let glb = built, !glb.parts.isEmpty else {
-            AppLog.warn("assembly", "GLB unreadable or has no named parts - falling back to per-step ghosts"); return
+            AppLog.warn("assembly", "GLB unreadable or has no named parts - falling back to per-step ghosts")
+            showNotice("Assembly model could not be read on this device"); return
         }
         let node = AssemblyNode(assembly: glb)
         node.root.simdTransform = pose.transform
@@ -4116,7 +4136,8 @@ extension ARGuideSessionView {
         let engine = AssemblyStateEngine(initial: asm.initialNodes, steps: sortedSteps)
         node.apply(state: engine.initialState())
         assemblyNode = node; assemblyEngine = engine
-        AppLog.info("assembly", "loaded parts=\(glb.parts.count) tris=\(glb.triangleCount) pose=\(pose.source)")
+        AppLog.info("assembly", "loaded parts=\(glb.parts.count) tris=\(glb.triangleCount) source=\(glb.info.sourceTriangles) budget=\(glb.info.budget) pose=\(pose.source)")
+        showNotice(glb.info.reduced ? "Assembly ready · \(glb.info.summary)" : "Assembly ready")
         // Per-step ghost copies of the assembly slot are redundant now.
         if case .navigating(let i) = phase { attachGhostOverlay(for: sortedSteps[i]); showAssemblyStep(i) }
     }
