@@ -1,12 +1,12 @@
-// EditTagSheet.swift — Phase 2E
+// EditTagSheet.swift - Phase 2E
 // Presented from AuthorModeView's tag list.
 // Lets an author:
 //   • Edit the tag label, check description, and expected outcome.
 //   • Re-train the pass-state for just this tag (launches HoneycombCaptureView).
 //
 // Callbacks:
-//   onSaved(updatedTag) — tag was patched on SIB; caller should update activeTags
-//   onRetrain()        — caller should dismiss sheet and open HoneycombCaptureView
+//   onSaved(updatedTag) - tag was patched on SIB; caller should update activeTags
+//   onRetrain()        - caller should dismiss sheet and open HoneycombCaptureView
 
 import SwiftUI
 

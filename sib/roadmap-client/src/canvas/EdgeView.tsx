@@ -1,6 +1,6 @@
-// EdgeView.tsx — one edge. Honors map-level style settings:
+// EdgeView.tsx - one edge. Honors map-level style settings:
 //   edgeColor 'parent' (default): edge + arrowhead take the SOURCE node's
-//   layer color — the flow visually carries its origin's story.
+//   layer color - the flow visually carries its origin's story.
 //   edgeStyle 'curved': cubic bezier with controls along the dominant axis.
 // Wide invisible hit area; double-click toggles direction.
 
@@ -41,7 +41,7 @@ export function edgeMidpoint(p1: Point, p2: Point, curved: boolean, fromPort?: s
 }
 
 /** Self-loop: leaves one port, arcs outside the card, re-enters another.
- *  Rendered curved regardless of the map's edge style — a straight self-loop
+ *  Rendered curved regardless of the map's edge style - a straight self-loop
  *  has zero length. Exported for the SVG export. */
 export function selfLoopGeometry(n: MindmapNode, fromPort?: string, toPort?: string): { d: string; mid: Point; p1: Point; p2: Point } {
   const fp = fromPort ?? 'right';
@@ -61,12 +61,12 @@ export function selfLoopGeometry(n: MindmapNode, fromPort?: string, toPort?: str
 /**
  * Procedure edge palette. Deliberately identical to the Guide Library graph
  * view in the portal, so what an author draws here is what a reviewer sees
- * there — same colour, same meaning, no translation step.
+ * there - same colour, same meaning, no translation step.
  */
 export const ROLE_COLORS: Record<string, string> = {
-  next:     '#4ade80',   // green  — success path
-  failure:  '#f87171',   // red    — recovery path
-  requires: '#fbbf24',   // amber  — prerequisite
+  next:     '#4ade80',   // green  - success path
+  failure:  '#f87171',   // red    - recovery path
+  requires: '#fbbf24',   // amber  - prerequisite
 };
 
 export const ROLE_LABELS: Record<string, string> = {
@@ -115,7 +115,7 @@ export function EdgeView({ edge, dimmed = false }: { edge: MindmapEdge; dimmed?:
     mid = edgeMidpoint(p1, p2, curved, edge.fromPort, edge.toPort);
   }
   const marker = edge.type === 'directed' ? `url(#${markerId})` : undefined;
-  // Prerequisites are a gate rather than a flow — dashed, as in the portal graph.
+  // Prerequisites are a gate rather than a flow - dashed, as in the portal graph.
   const dash = role === 'requires' ? '6,4' : undefined;
 
   return (

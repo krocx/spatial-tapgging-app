@@ -1,14 +1,14 @@
-// loto.ts — iLOTO routes: points, append-only events, derived status,
+// loto.ts - iLOTO routes: points, append-only events, derived status,
 // training quiz + certifications. See docs/ILOTO.md.
 //
 // Two properties of this file matter more than any endpoint:
 //
-//   1. Events are APPEND-ONLY. There is no PATCH or DELETE for events —
+//   1. Events are APPEND-ONLY. There is no PATCH or DELETE for events -
 //      deliberately, including for admins. Status is derived on read
 //      (loto-core.ts), so nothing can "fix" history without leaving a trail.
 //
 //   2. The server is the referee. validateEvent() enforces the checklist,
-//      one-lock-one-person, and the override conditions — a client that
+//      one-lock-one-person, and the override conditions - a client that
 //      skips a step gets a 4xx, not a quiet pass.
 
 import { Router } from 'express';
@@ -58,7 +58,7 @@ const DATA_DIR       = process.env.SIB_DATA_DIR ?? path.join(process.cwd(), '.si
 const LOTO_PHOTO_DIR = path.join(DATA_DIR, 'loto-photos');
 fs.mkdirSync(LOTO_PHOTO_DIR, { recursive: true });
 
-// Pass threshold + certification validity — env-overridable site policy.
+// Pass threshold + certification validity - env-overridable site policy.
 const PASS_RATIO    = Number(process.env.LOTO_PASS_RATIO ?? 0.8);
 const VALIDITY_DAYS = Number(process.env.LOTO_CERT_VALIDITY_DAYS ?? 365);
 
@@ -99,7 +99,7 @@ const router = Router();
 
 // ── Points ───────────────────────────────────────────────────────────────────
 
-// POST /loto/points — author defines an isolation point (placed in AR on device).
+// POST /loto/points - author defines an isolation point (placed in AR on device).
 router.post('/points', (req: Request, res: Response): void => {
   const body = req.body as CreateLotoPointRequest;
   if (!body.anchorId || !body.label?.trim() || !body.position ||
@@ -136,10 +136,10 @@ router.get('/points', (req: Request, res: Response): void => {
   res.json(anchorId ? all.filter(p => p.anchorId === anchorId) : all);
 });
 
-// PATCH /loto/points/:id — label/circuit/model/position/placement.
+// PATCH /loto/points/:id - label/circuit/model/position/placement.
 // Model doctrine (same as GuideStep): ASSIGNMENT (modelId/scale) may change
 // freely; switching to a DIFFERENT model clears the old model's PLACEMENT
-// (offsets/rotation) — placement belongs to a shape, not a point.
+// (offsets/rotation) - placement belongs to a shape, not a point.
 router.patch('/points/:id', (req: Request, res: Response): void => {
   const point = lotoPointStore.findById(req.params.id);
   if (!point) { res.status(404).json({ error: 'Point not found' }); return; }
@@ -147,7 +147,7 @@ router.patch('/points/:id', (req: Request, res: Response): void => {
   try {
     // ── Slots path (new builds): full-array replace, per-slot doctrine ──────
     // sanitizeModelSlots strips placement from any slot whose modelId changed.
-    // Sending `models` also clears the legacy single-model fields — the array
+    // Sending `models` also clears the legacy single-model fields - the array
     // becomes the single source of truth for this point from then on.
     const slotsPatch = body.models !== undefined
       ? {
@@ -188,7 +188,7 @@ router.patch('/points/:id', (req: Request, res: Response): void => {
   } catch (err) { fail(res, err); }
 });
 
-// DELETE /loto/points/:id — blocked while a lock is active on it. The event
+// DELETE /loto/points/:id - blocked while a lock is active on it. The event
 // history for the point is KEPT: deleting an audit trail is not a thing.
 router.delete('/points/:id', (req: Request, res: Response): void => {
   const point = lotoPointStore.findById(req.params.id);
@@ -196,7 +196,7 @@ router.delete('/points/:id', (req: Request, res: Response): void => {
   const status = derivePointStatus(point, lotoEventStore.findAll());
   if (status.state === 'locked') {
     res.status(409).json({
-      error: `Point is locked by ${status.lockedByName} — remove the lock before deleting the point.`,
+      error: `Point is locked by ${status.lockedByName} - remove the lock before deleting the point.`,
     });
     return;
   }
@@ -206,7 +206,7 @@ router.delete('/points/:id', (req: Request, res: Response): void => {
 
 // ── Events (append-only) ─────────────────────────────────────────────────────
 
-// POST /loto/events — apply / remove / override-remove. The referee.
+// POST /loto/events - apply / remove / override-remove. The referee.
 router.post('/events', (req: Request, res: Response): void => {
   try {
     const body    = req.body as CreateLotoEventRequest;
@@ -245,7 +245,7 @@ router.post('/events', (req: Request, res: Response): void => {
     lotoEventStore.save(event);
     if (body.type === 'override-remove') {
       console.log(`[SIB] iLOTO OVERRIDE: ${body.override?.supervisorName} removed ` +
-        `${point!.label} lock (applied by ${current?.lockedByName}) — ${body.override?.reason}`);
+        `${point!.label} lock (applied by ${current?.lockedByName}) - ${body.override?.reason}`);
     }
     res.status(201).json({
       event,
@@ -254,7 +254,7 @@ router.post('/events', (req: Request, res: Response): void => {
   } catch (err) { fail(res, err); }
 });
 
-// GET /loto/events?anchorId=&pointId= — audit trail, newest first.
+// GET /loto/events?anchorId=&pointId= - audit trail, newest first.
 router.get('/events', (req: Request, res: Response): void => {
   const anchorId = req.query.anchorId as string | undefined;
   const pointId  = req.query.pointId  as string | undefined;
@@ -265,7 +265,7 @@ router.get('/events', (req: Request, res: Response): void => {
   res.json(events);
 });
 
-// GET /loto/events/photo/:filename — evidence photo.
+// GET /loto/events/photo/:filename - evidence photo.
 router.get('/events/photo/:filename', (req: Request, res: Response): void => {
   // Photos are named <eventId>.jpg by us; reject anything path-like.
   if (!/^[a-zA-Z0-9-]+\.jpg$/.test(req.params.filename)) {
@@ -279,14 +279,14 @@ router.get('/events/photo/:filename', (req: Request, res: Response): void => {
 
 // ── Derived status ───────────────────────────────────────────────────────────
 
-// GET /loto/status?anchorId= — per-point states + panel summary (hub banner).
+// GET /loto/status?anchorId= - per-point states + panel summary (hub banner).
 router.get('/status', (req: Request, res: Response): void => {
   const anchorId = req.query.anchorId as string | undefined;
   if (!anchorId) { res.status(400).json({ error: 'anchorId is required' }); return; }
   res.json(deriveAnchorStatus(anchorId, lotoPointStore.findAll(), lotoEventStore.findAll()));
 });
 
-// GET /loto/my?userId= — my active locks across ALL anchors (My LOTO).
+// GET /loto/my?userId= - my active locks across ALL anchors (My LOTO).
 router.get('/my', (req: Request, res: Response): void => {
   const userId = req.query.userId as string | undefined;
   if (!userId) { res.status(400).json({ error: 'userId is required' }); return; }
@@ -311,7 +311,7 @@ router.get('/my', (req: Request, res: Response): void => {
 // Versioned: every save creates version+1; prior versions are kept (cheap,
 // and "what did the map say then" is a question EHS asks). GET returns the
 // highest version. DELETE removes the map entirely (authoring content, not
-// audit — events are the untouchable record, the map is a drawing).
+// audit - events are the untouchable record, the map is a drawing).
 
 function latestMap(anchorId: string): LotoMap | undefined {
   return lotoMapStore.findAll()
@@ -326,7 +326,7 @@ const isFiniteVec = (v: unknown): boolean => {
       && typeof p?.z === 'number' && isFinite(p.z);
 };
 
-// POST /loto/map — save a new version of the panel's flow map.
+// POST /loto/map - save a new version of the panel's flow map.
 router.post('/map', (req: Request, res: Response): void => {
   const body = req.body as SaveLotoMapRequest;
   if (!body.anchorId || !Array.isArray(body.strokes)) {
@@ -362,7 +362,7 @@ router.post('/map', (req: Request, res: Response): void => {
   res.status(201).json(map);
 });
 
-// GET /loto/map?anchorId= — latest version (404 when none).
+// GET /loto/map?anchorId= - latest version (404 when none).
 router.get('/map', (req: Request, res: Response): void => {
   const anchorId = req.query.anchorId as string | undefined;
   if (!anchorId) { res.status(400).json({ error: 'anchorId is required' }); return; }
@@ -371,7 +371,7 @@ router.get('/map', (req: Request, res: Response): void => {
   res.json(map);
 });
 
-// DELETE /loto/map?anchorId= — remove the map (all versions).
+// DELETE /loto/map?anchorId= - remove the map (all versions).
 router.delete('/map', (req: Request, res: Response): void => {
   const anchorId = req.query.anchorId as string | undefined;
   if (!anchorId) { res.status(400).json({ error: 'anchorId is required' }); return; }
@@ -381,15 +381,15 @@ router.delete('/map', (req: Request, res: Response): void => {
 
 // ── Training ─────────────────────────────────────────────────────────────────
 
-// GET /loto/quiz — questions WITHOUT answers (grading is server-side only).
+// GET /loto/quiz - questions WITHOUT answers (grading is server-side only).
 router.get('/quiz', (_req: Request, res: Response): void => {
   const publicQuestions: LotoQuizQuestionPublic[] = lotoQuizStore.findAll()
     .map(({ id, prompt, choices }) => ({ id, prompt, choices }));
   res.json({ questions: publicQuestions, passRatio: PASS_RATIO });
 });
 
-// POST /loto/quiz/submit — grade + issue a certification record (pass or fail
-// — failed attempts are records too; the gate checks `passed` + expiry).
+// POST /loto/quiz/submit - grade + issue a certification record (pass or fail
+// - failed attempts are records too; the gate checks `passed` + expiry).
 router.post('/quiz/submit', (req: Request, res: Response): void => {
   const body = req.body as SubmitLotoQuizRequest;
   if (!body.userId?.trim() || !body.userName?.trim() || typeof body.answers !== 'object') {
@@ -419,17 +419,17 @@ router.post('/quiz/submit', (req: Request, res: Response): void => {
 
 // ── Quiz administration (portal EHS editor) ──────────────────────────────────
 // The public GET /loto/quiz strips answers; these admin routes carry them.
-// Editing never touches issued certifications — a cert records what was
+// Editing never touches issued certifications - a cert records what was
 // passed WHEN it was passed; future takers face the current bank.
 
-// GET /loto/quiz/admin — full questions incl. correctIndex + explanation.
+// GET /loto/quiz/admin - full questions incl. correctIndex + explanation.
 router.get('/quiz/admin', (_req: Request, res: Response): void => {
   const questions = lotoQuizStore.findAll()
     .sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1));
   res.json({ questions, passRatio: PASS_RATIO });
 });
 
-// POST /loto/quiz/questions — add one question.
+// POST /loto/quiz/questions - add one question.
 router.post('/quiz/questions', (req: Request, res: Response): void => {
   try {
     const [input] = validateQuizQuestions([req.body]);
@@ -440,7 +440,7 @@ router.post('/quiz/questions', (req: Request, res: Response): void => {
   } catch (err) { fail(res, err); }
 });
 
-// PATCH /loto/quiz/questions/:id — full-field update (the editor sends the
+// PATCH /loto/quiz/questions/:id - full-field update (the editor sends the
 // whole question; partial patches of a 4-way choice list invite index bugs).
 router.patch('/quiz/questions/:id', (req: Request, res: Response): void => {
   try {
@@ -454,7 +454,7 @@ router.patch('/quiz/questions/:id', (req: Request, res: Response): void => {
   } catch (err) { fail(res, err); }
 });
 
-// DELETE /loto/quiz/questions/:id — the portal warns when the bank runs low;
+// DELETE /loto/quiz/questions/:id - the portal warns when the bank runs low;
 // an empty bank simply blocks new certifications (submit returns 503).
 router.delete('/quiz/questions/:id', (req: Request, res: Response): void => {
   if (!lotoQuizStore.findById(req.params.id)) {
@@ -465,7 +465,7 @@ router.delete('/quiz/questions/:id', (req: Request, res: Response): void => {
   res.json({ deleted: true, remaining: lotoQuizStore.findAll().length });
 });
 
-// POST /loto/quiz/import — bulk load. ATOMIC: everything validates first,
+// POST /loto/quiz/import - bulk load. ATOMIC: everything validates first,
 // then applies; a half-imported bank can never exist.
 // Body: { mode: 'append' | 'replace', questions: [...] }
 router.post('/quiz/import', (req: Request, res: Response): void => {
@@ -488,7 +488,7 @@ router.post('/quiz/import', (req: Request, res: Response): void => {
   } catch (err) { fail(res, err); }
 });
 
-// GET /loto/certifications?userId= — newest first; head is the current one.
+// GET /loto/certifications?userId= - newest first; head is the current one.
 router.get('/certifications', (req: Request, res: Response): void => {
   const userId = req.query.userId as string | undefined;
   let certs = lotoCertStore.findAll();

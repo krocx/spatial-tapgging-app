@@ -1,4 +1,4 @@
-// ARContainerView.swift — Phase 2B
+// ARContainerView.swift - Phase 2B
 // UIViewRepresentable bridge: puts the ARSCNView into the SwiftUI hierarchy.
 // Supports an optional onTap closure for tap-to-place gestures.
 

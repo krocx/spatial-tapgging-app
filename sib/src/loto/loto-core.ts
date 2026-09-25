@@ -1,5 +1,5 @@
-// loto-core.ts — pure iLOTO domain logic: event validation, derived status,
-// quiz grading. No I/O, no Express, no stores — the same pattern as the
+// loto-core.ts - pure iLOTO domain logic: event validation, derived status,
+// quiz grading. No I/O, no Express, no stores - the same pattern as the
 // procedure compiler, because this is the code an EHS audit will ask about
 // and it must be unit-testable in isolation.
 //
@@ -21,17 +21,17 @@ import type {
 } from '@spatial/shared';
 
 /** Max 3D asset slots per point (lock + tag + hasp covers the field cases).
- *  Lives here, not in @spatial/shared — that package is types-only at runtime. */
+ *  Lives here, not in @spatial/shared - that package is types-only at runtime. */
 export const LOTO_MAX_MODELS = 3;
 
-// ── Checklist definitions (v1 — docs/ILOTO.md §6) ───────────────────────────
+// ── Checklist definitions (v1 - docs/ILOTO.md §6) ───────────────────────────
 // Keys are part of each event's snapshot, so changing these later never
 // rewrites history: old events still show exactly what was confirmed.
 
 export const CHECKLISTS: Record<LotoPointKind, Record<'apply' | 'remove', string[]>> = {
   loto: {
     // Full OSHA sequence. tryTestNoStart is the verification-of-isolation
-    // step ("try test") — the one most often skipped in the field, and the
+    // step ("try test") - the one most often skipped in the field, and the
     // one this app exists to make unskippable.
     apply:  ['notifiedAffected', 'shutDown', 'tryTestNoStart'],
     remove: ['toolsRemoved', 'personnelClear', 'notifiedAffected'],
@@ -99,11 +99,11 @@ export function deriveAnchorStatus(
  * The referee. Throws LotoValidationError (→ 4xx) unless the event is
  * legitimate against the point's CURRENT derived state.
  *
- *   apply           — point clear (v1: one active lock per point), full
+ *   apply           - point clear (v1: one active lock per point), full
  *                     checklist for the kind confirmed, photo present.
- *   remove          — point locked, AND the remover is the applier
+ *   remove          - point locked, AND the remover is the applier
  *                     (OSHA: one lock, one person).
- *   override-remove — point locked, all three OSHA exception confirmations
+ *   override-remove - point locked, all three OSHA exception confirmations
  *                     true, supervisor + reason given. Never a silent
  *                     fallback: the client must choose this path explicitly.
  */
@@ -114,7 +114,7 @@ export function validateEvent(
 ): void {
   if (!point) throw new LotoValidationError(404, 'Unknown LOTO point');
   if (!req.userId?.trim() || !req.userName?.trim()) {
-    throw new LotoValidationError(400, 'userId and userName are required — every event is attributable');
+    throw new LotoValidationError(400, 'userId and userName are required - every event is attributable');
   }
   const type: LotoEventType = req.type;
 
@@ -181,7 +181,7 @@ const finiteOrUndef = (v: unknown): number | undefined =>
 /**
  * Validates incoming model slots and enforces the placement doctrine PER SLOT:
  * a slot whose modelId CHANGED (matched by slotId against the existing point)
- * has its placement stripped — placement belongs to a shape, and the old
+ * has its placement stripped - placement belongs to a shape, and the old
  * shape is gone. Unchanged slots keep whatever placement the client sent
  * (which is how the AR adjust gestures persist).
  *
@@ -254,7 +254,7 @@ export interface QuizQuestionInput {
 
 /**
  * Validates raw question input (portal editor or import file). Throws on the
- * FIRST problem with a message naming the question number — imports are
+ * FIRST problem with a message naming the question number - imports are
  * all-or-nothing so a half-imported bank can never exist.
  */
 export function validateQuizQuestions(raw: unknown): QuizQuestionInput[] {

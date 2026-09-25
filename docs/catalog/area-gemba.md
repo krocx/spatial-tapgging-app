@@ -16,7 +16,7 @@ flow: |
     SUB --> PORTAL[Portal Walk Sessions · 3-sheet Excel with every photo]
     RELOC --> CK[Background / kill → welcome-back checkpoint]
 ---
-Audit rounds without preparation: no QR, no setup — tap any surface to drop a finding
+Audit rounds without preparation: no QR, no setup - tap any surface to drop a finding
 and the space itself remembers where it was. Findings are logged in Corporate
 Quality's vocabulary (or honestly as custom text) with category, risk, captioned
 photos and markup; walks carry a header and a derived summary; auditors can walk

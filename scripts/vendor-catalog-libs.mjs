@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 /**
- * Vendor the portal's third-party browser libraries — `npm run catalog:vendor`
+ * Vendor the portal's third-party browser libraries - `npm run catalog:vendor`
  *
  * Downloads exact pinned versions into sib/portal/vendor/ so the pages work
  * on networks that block CDNs and stop depending on cdnjs/unpkg being alive
- * (or uncompromised — the portal holds an API key) for the life of this
+ * (or uncompromised - the portal holds an API key) for the life of this
  * platform. Run once on a machine with open internet, commit the files,
- * done — catalog.html and the portal's Three.js import map load the local
+ * done - catalog.html and the portal's Three.js import map load the local
  * copies first and only fall back to the CDN when they're absent.
  *
  *   mermaid + marked → /catalog renderers
@@ -21,7 +21,7 @@ const LIBS = [
   // Catalogue renderers
   { name: 'mermaid.min.js', url: 'https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js' },
   { name: 'marked.min.js',  url: 'https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js' },
-  // Three.js r169 — the portal's GLB→USDZ converter + 3D preview. Directory
+  // Three.js r169 - the portal's GLB→USDZ converter + 3D preview. Directory
   // structure mirrors the package so the addons' relative imports
   // ('../libs/fflate.module.js', '../utils/BufferGeometryUtils.js') resolve.
   { name: 'three/three.module.js',                  url: `${THREE}/build/three.module.js` },
@@ -46,4 +46,4 @@ for (const lib of LIBS) {
   fs.writeFileSync(dest, body);
   console.log(`${(body.length / 1024).toFixed(0)} KB → sib/portal/vendor/${lib.name}`);
 }
-console.log('✓ vendored — commit sib/portal/vendor/ so every deployment ships them.');
+console.log('✓ vendored - commit sib/portal/vendor/ so every deployment ships them.');

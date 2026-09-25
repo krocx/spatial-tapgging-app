@@ -1,19 +1,19 @@
-// guides.ts — AR OMS Phase 1: Guide + Step routes
+// guides.ts - AR OMS Phase 1: Guide + Step routes
 //
 // Endpoints:
-//   POST   /guides                           — Author: create a Guide
-//   POST   /guides/import                    — Import a guide from an InstructionsSourceAdapter
-//   GET    /guides?anchorId=xxx              — List published guides for an anchor
-//   GET    /guides?anchorId=xxx&all=true     — List all guides (drafts + published) for Authors
-//   GET    /guides/:id                       — Get a single Guide
-//   PATCH  /guides/:id                       — Author: update name, description, published flag
-//   POST   /guides/:id/copy                  — Author: copy the guide onto another anchor (U2)
-//   DELETE /guides/:id                       — Author: cascade-delete Guide + all Steps
-//   GET    /guides/:id/steps                 — List steps in sequence order
-//   POST   /guides/:id/steps                 — Author: create a Step (with optional image)
-//   PATCH  /guides/:id/steps/:stepId         — Author: update Step text / sequence / media
-//   DELETE /guides/:id/steps/:stepId         — Author: delete a single Step
-//   GET    /guides/step-image/:filename      — Serve a step media image
+//   POST   /guides                           - Author: create a Guide
+//   POST   /guides/import                    - Import a guide from an InstructionsSourceAdapter
+//   GET    /guides?anchorId=xxx              - List published guides for an anchor
+//   GET    /guides?anchorId=xxx&all=true     - List all guides (drafts + published) for Authors
+//   GET    /guides/:id                       - Get a single Guide
+//   PATCH  /guides/:id                       - Author: update name, description, published flag
+//   POST   /guides/:id/copy                  - Author: copy the guide onto another anchor (U2)
+//   DELETE /guides/:id                       - Author: cascade-delete Guide + all Steps
+//   GET    /guides/:id/steps                 - List steps in sequence order
+//   POST   /guides/:id/steps                 - Author: create a Step (with optional image)
+//   PATCH  /guides/:id/steps/:stepId         - Author: update Step text / sequence / media
+//   DELETE /guides/:id/steps/:stepId         - Author: delete a single Step
+//   GET    /guides/step-image/:filename      - Serve a step media image
 
 import express, { Router } from 'express';
 import type { Request, Response } from 'express';
@@ -72,7 +72,7 @@ import {
   stripSlotPlacements, effectiveStepModels, StepModelsError, LEGACY_MODEL_KEYS,
 } from '../guides/step-models.js';
 
-/** U4: what clients read — `models` always present when any model is assigned. */
+/** U4: what clients read - `models` always present when any model is assigned. */
 function withEffectiveModels(step: GuideStep): GuideStep {
   const models = effectiveStepModels(step);
   return models.length > 0 ? { ...step, models } : step;
@@ -89,7 +89,7 @@ export { guideStore, guideStepStore };
 
 const router = Router();
 
-// POST /guides/import — import a guide from an InstructionsSourceAdapter
+// POST /guides/import - import a guide from an InstructionsSourceAdapter
 //
 // MUST be registered before /:id routes so the literal "import" path is not
 // treated as a guide id by Express.
@@ -149,13 +149,13 @@ router.post('/import', async (req: Request, res: Response): Promise<void> => {
   // Persistence, image download and seq→UUID resolution all live in the shared
   // ingestion service, which the Procedure Designer export also calls. Keeping
   // one implementation matters most for the rule that a write must never
-  // overwrite spatial placement — see sib/src/guides/ingest.ts.
+  // overwrite spatial placement - see sib/src/guides/ingest.ts.
   const applied = await applyImportedGuide(imported, {
     anchorId:  body.anchorId,
     createdBy: body.createdBy,
   });
 
-  console.log(`[SIB] Guide imported (${adapter.name}): ${applied.guide.id} ("${applied.guide.name}") — ${applied.steps.length} steps`);
+  console.log(`[SIB] Guide imported (${adapter.name}): ${applied.guide.id} ("${applied.guide.name}") - ${applied.steps.length} steps`);
 
   const result: ImportGuideResult = {
     guide:       applied.guide,
@@ -166,7 +166,7 @@ router.post('/import', async (req: Request, res: Response): Promise<void> => {
   res.status(201).json(resp);
 });
 
-// POST /guides/import/cortona — import a published Cortona3D RapidManual .htm
+// POST /guides/import/cortona - import a published Cortona3D RapidManual .htm
 //
 // Body: the raw .htm (or the extracted solo+zip bundle). Query: anchorId,
 // createdBy, name?, strict? ("1" refuses unrecognised PROTO types).
@@ -196,7 +196,7 @@ router.post(
     }
 
     const model = registerGeneratedGlb({
-      name: `${result.imported.name} — assembly`, glb: result.glb, anchorId, uploadedBy: createdBy,
+      name: `${result.imported.name} - assembly`, glb: result.glb, anchorId, uploadedBy: createdBy,
       category: 'cortona', originalFilename: (req.headers['x-filename'] as string | undefined)?.replace(/\.[^.]+$/, '') + '.glb',
     });
     for (const s of result.imported.steps) s.models = [{ slotId: 'assembly', modelId: model.id, modelOpacity: 1 }];
@@ -208,7 +208,7 @@ router.post(
 
     const applied = await applyImportedGuide(result.imported, { anchorId, createdBy });
     const summary = { guideId: applied.guide.id, steps: applied.steps.length, modelId: model.id, glbBytes: result.glb.length };
-    console.log(`[SIB] Guide imported (cortona): ${applied.guide.id} — ${applied.steps.length} steps, model ${model.id}, ` +
+    console.log(`[SIB] Guide imported (cortona): ${applied.guide.id} - ${applied.steps.length} steps, model ${model.id}, ` +
       `${result.log.procedure.commands ? Object.values(result.log.procedure.commands).reduce((a, b) => a + b, 0) : 0} commands` +
       (result.log.warnings.length ? `, ${result.log.warnings.length} warning(s)` : ''));
 
@@ -220,7 +220,7 @@ router.post(
   },
 );
 
-// GET /guides/step-image/:filename — serve a step media image
+// GET /guides/step-image/:filename - serve a step media image
 // IMPORTANT: must be registered BEFORE /:id routes to avoid "step-image" matching as an id.
 router.get('/step-image/:filename', (req: Request, res: Response): void => {
   const filename = req.params.filename;
@@ -238,7 +238,7 @@ router.get('/step-image/:filename', (req: Request, res: Response): void => {
   res.sendFile(filePath);
 });
 
-// POST /guides — Author creates a new Guide
+// POST /guides - Author creates a new Guide
 router.post('/', (req: Request, res: Response): void => {
   const body = req.body as CreateGuideRequest;
 
@@ -269,7 +269,7 @@ router.post('/', (req: Request, res: Response): void => {
   res.status(201).json(resp);
 });
 
-// GET /guides?anchorId=xxx — list guides for an anchor
+// GET /guides?anchorId=xxx - list guides for an anchor
 // ?all=true  → include drafts (Author view)
 // (default)  → published only (Operator view)
 router.get('/', (req: Request, res: Response): void => {
@@ -306,10 +306,10 @@ router.get('/', (req: Request, res: Response): void => {
   res.json(resp);
 });
 
-// GET /guides/:id — get a single Guide
+// GET /guides/:id - get a single Guide
 router.get('/:id', (req: Request, res: Response): void => {
   const guide = guideStore.findById(req.params.id);
-  // Sharing: a guide outside a technician's list answers 404, not 403 —
+  // Sharing: a guide outside a technician's list answers 404, not 403 -
   // deep links must not confirm existence of unshared work.
   if (!guide || !guideVisibleTo(currentUamUser(req), guide)) {
     res.status(404).json({
@@ -321,7 +321,7 @@ router.get('/:id', (req: Request, res: Response): void => {
   res.json({ data: guide, timestamp: new Date().toISOString() });
 });
 
-// GET /guides/:id/bundle — B1 (2026.4.46): the engine-neutral Guide Bundle.
+// GET /guides/:id/bundle - B1 (2026.4.46): the engine-neutral Guide Bundle.
 // One JSON with guide + ordered steps + model manifest + anchor frames +
 // validation references + playback conventions. Schema:
 // docs/schema/guide-bundle.schema.json. Same visibility rule as GET /guides/:id.
@@ -342,8 +342,8 @@ router.get('/:id/bundle', (req: Request, res: Response): void => {
   res.json(bundle);
 });
 
-// PATCH /guides/:id — Author updates name, description, or published flag
-// POST /guides/:id/edit-map — open (or create) the procedure map for a guide.
+// PATCH /guides/:id - Author updates name, description, or published flag
+// POST /guides/:id/edit-map - open (or create) the procedure map for a guide.
 //
 // The round-trip's front door: guides born on the canvas already have a linked
 // map (via guideSync / node provenance) and simply re-open it; imported or
@@ -351,7 +351,7 @@ router.get('/:id/bundle', (req: Request, res: Response): void => {
 // "[Guide] <name>", published immediately (no draft key needed to edit), with
 // per-node provenance so re-sync updates steps in place and placement survives.
 //
-// D (2026.4.46) — the guide is the source of truth; the map is a VIEW that
+// D (2026.4.46) - the guide is the source of truth; the map is a VIEW that
 // keeps its own presentation. When the guide changed after the map last
 // agreed with it (a step added on iOS, text edited in the portal…), the map
 // is brought up to date on open by mergeGuideIntoMap: content re-derived,
@@ -412,7 +412,7 @@ router.post('/:id/edit-map', (req: Request, res: Response): void => {
       try {
         const buf = fs.readFileSync(path.join(STEP_IMG_DIR, st.mediaPath));
         imageFileByStepId[st.id] = saveDesignerImage(buf.toString('base64'));
-      } catch { /* missing on disk — ingest keeps the guide's mediaPath anyway */ }
+      } catch { /* missing on disk - ingest keeps the guide's mediaPath anyway */ }
     }
     const { map: merged, summary } = mergeGuideIntoMap(linked, guide, steps, imageFileByStepId);
     mindmapStore.save(merged);
@@ -442,7 +442,7 @@ router.post('/:id/edit-map', (req: Request, res: Response): void => {
   const compiled = guideToProcedureMap(guide, steps, imageFileByStepId);
   const map = toMindmapRecord(compiled, guide);
   mindmapStore.save(map);
-  // Published from birth — an edit map must open without a draft key.
+  // Published from birth - an edit map must open without a draft key.
   mindmapAccessStore.save({ id: map.id, draftKey: uuidv4(), published: true });
   console.log(`[edit-map] Generated "${map.name}" (${map.nodes.length} nodes) for guide ${guide.id}`);
 
@@ -534,7 +534,7 @@ router.patch('/:id', (req: Request, res: Response): void => {
   }
 
   // Moving a guide to another anchor: anchorId is denormalised onto every
-  // step, so they move together. Spatial placement is CLEARED — positions
+  // step, so they move together. Spatial placement is CLEARED - positions
   // were captured in the OLD anchor's world map and are meaningless (and
   // dangerous, floating mid-air) in the new one. Steps must be re-placed on
   // device, exactly like a fresh import.
@@ -565,7 +565,7 @@ router.patch('/:id', (req: Request, res: Response): void => {
   res.json(resp);
 });
 
-// POST /guides/:id/copy — copy this guide onto another anchor (U2, 2026.4.45).
+// POST /guides/:id/copy - copy this guide onto another anchor (U2, 2026.4.45).
 //
 // Body: { anchorId, name?, createdBy? }. Steps, media, model assignments and
 // flags travel; pins, model placement, validation training and sharing do
@@ -602,7 +602,7 @@ router.post('/:id/copy', (req: Request, res: Response): void => {
   res.status(201).json({ data: { ...result.guide, stepCount: result.steps.length }, timestamp: now });
 });
 
-// DELETE /guides/:id — cascade-delete guide + all its steps
+// DELETE /guides/:id - cascade-delete guide + all its steps
 router.delete('/:id', (req: Request, res: Response): void => {
   const guide = guideStore.findById(req.params.id);
   if (!guide) {
@@ -624,10 +624,10 @@ router.delete('/:id', (req: Request, res: Response): void => {
   res.status(204).send();
 });
 
-// GET /guides/:id/steps — list steps in ascending sequenceNumber order
+// GET /guides/:id/steps - list steps in ascending sequenceNumber order
 router.get('/:id/steps', (req: Request, res: Response): void => {
   const guide = guideStore.findById(req.params.id);
-  // Same visibility rule as GET /:id — steps of an unshared guide are 404
+  // Same visibility rule as GET /:id - steps of an unshared guide are 404
   // for technicians outside its list (no enumeration via deep links).
   if (!guide || !guideVisibleTo(currentUamUser(req), guide)) {
     res.status(404).json({
@@ -649,7 +649,7 @@ router.get('/:id/steps', (req: Request, res: Response): void => {
   res.json(resp);
 });
 
-// POST /guides/:id/steps — Author adds a step to a Guide
+// POST /guides/:id/steps - Author adds a step to a Guide
 router.post('/:id/steps', (req: Request, res: Response): void => {
   const guide = guideStore.findById(req.params.id);
   if (!guide) {
@@ -706,7 +706,7 @@ router.post('/:id/steps', (req: Request, res: Response): void => {
     mediaType:          body.mediaType,
     mediaPath,
     completionRequired: body.completionRequired ?? true,
-    // Phase 2: spatial placement — new steps start unplaced
+    // Phase 2: spatial placement - new steps start unplaced
     isPlaced:           false,
     createdAt:          now,
     updatedAt:          now,
@@ -729,7 +729,7 @@ router.post('/:id/steps', (req: Request, res: Response): void => {
   res.status(201).json(resp);
 });
 
-// PATCH /guides/:id/steps/:stepId — Author updates a step
+// PATCH /guides/:id/steps/:stepId - Author updates a step
 router.patch('/:id/steps/:stepId', (req: Request, res: Response): void => {
   const guide = guideStore.findById(req.params.id);
   if (!guide) {
@@ -791,7 +791,7 @@ router.patch('/:id/steps/:stepId', (req: Request, res: Response): void => {
     isPlaced:           'isPlaced'        in body ? (body.isPlaced ?? step.isPlaced) : step.isPlaced,
     positionSource:     'positionSource'  in body ? body.positionSource  : step.positionSource,
     // 3D model ghost overlay fields (only update when explicitly provided)
-    // body.modelId may be null (explicit clear) — coerce null → undefined for the stored record
+    // body.modelId may be null (explicit clear) - coerce null → undefined for the stored record
     modelId:            'modelId'         in body ? (body.modelId ?? undefined) : step.modelId,
     modelScale:         'modelScale'      in body ? body.modelScale       : step.modelScale,
     modelOpacity:       'modelOpacity'    in body ? body.modelOpacity     : step.modelOpacity,
@@ -802,17 +802,17 @@ router.patch('/:id/steps/:stepId', (req: Request, res: Response): void => {
     modelRotationX:     'modelRotationX'  in body ? body.modelRotationX   : step.modelRotationX,
     modelRotationZ:     'modelRotationZ'  in body ? body.modelRotationZ   : step.modelRotationZ,
     models:             step.models,
-    // Conditional task graph fields — null in body clears, key absent keeps existing
+    // Conditional task graph fields - null in body clears, key absent keeps existing
     nextOnSuccess:      'nextOnSuccess'   in body ? (body.nextOnSuccess ?? undefined) : step.nextOnSuccess,
     nextOnFailure:      'nextOnFailure'   in body ? (body.nextOnFailure ?? undefined) : step.nextOnFailure,
     precondition:       'precondition'    in body ? (body.precondition  ?? undefined) : step.precondition,
-    // Step validation (K4). validationTrainedAt is SERVER-owned — set only by
+    // Step validation (K4). validationTrainedAt is SERVER-owned - set only by
     // the validation-ref routes below, never by a PATCH body.
     validationRequired: 'validationRequired' in body ? (body.validationRequired || undefined) : step.validationRequired,
     evidenceRequired:   'evidenceRequired'   in body ? (body.evidenceRequired   || undefined) : step.evidenceRequired,
     updatedAt: now,
   };
-  // W1: a validated step always yields an evidence photo — the validation
+  // W1: a validated step always yields an evidence photo - the validation
   // frame IS the evidence. Enforce the implication server-side so no client
   // (app, portal, import) can produce a validated step without evidence.
   if (updated.validationRequired) updated.evidenceRequired = true;
@@ -843,7 +843,7 @@ router.patch('/:id/steps/:stepId', (req: Request, res: Response): void => {
   res.json(resp);
 });
 
-// ── Step validation (K4) — train / untrain / score ───────────────────────────
+// ── Step validation (K4) - train / untrain / score ───────────────────────────
 
 /** Shared 404 guard: guide must exist and own the step. */
 function findGuideStep(req: Request, res: Response): { guideId: string; stepId: string } | null {
@@ -859,7 +859,7 @@ function findGuideStep(req: Request, res: Response): { guideId: string; stepId: 
   return { guideId: guide.id, stepId: step.id };
 }
 
-// PUT /guides/:id/steps/:stepId/validation-ref — Author trains the step:
+// PUT /guides/:id/steps/:stepId/validation-ref - Author trains the step:
 // stores the reference photo and stamps validationTrainedAt on the step.
 router.put('/:id/steps/:stepId/validation-ref', (req: Request, res: Response): void => {
   const ids = findGuideStep(req, res);
@@ -878,7 +878,7 @@ router.put('/:id/steps/:stepId/validation-ref', (req: Request, res: Response): v
   }
   const now  = new Date().toISOString();
   const step = guideStepStore.findById(ids.stepId)!;
-  // Switching to single-photo mode supersedes any cone training — drop the
+  // Switching to single-photo mode supersedes any cone training - drop the
   // hidden tag and its pass-states so nothing is left orphaned.
   if (step.validationTagId) {
     for (const kind of ['PASS', 'FAIL'] as const) {
@@ -893,7 +893,7 @@ router.put('/:id/steps/:stepId/validation-ref', (req: Request, res: Response): v
   res.json({ data: { validationTrainedAt: now }, timestamp: now });
 });
 
-// POST /guides/:id/steps/:stepId/validation-trained — V1: Author trained the
+// POST /guides/:id/steps/:stepId/validation-trained - V1: Author trained the
 // step through the Spatial Inspection cone (multi-angle pass-state stored via
 // POST /perception/train under a hidden step-validation tag). The body names
 // that tag; we verify the pass-state exists, then stamp the step.
@@ -906,7 +906,7 @@ router.post('/:id/steps/:stepId/validation-trained', (req: Request, res: Respons
     return;
   }
   if (!findPassStateByTag(tagId, 'PASS')) {
-    res.status(409).json({ error: `No pass-state trained for tag ${tagId} — run the cone sweep first`,
+    res.status(409).json({ error: `No pass-state trained for tag ${tagId} - run the cone sweep first`,
                            timestamp: new Date().toISOString() });
     return;
   }
@@ -914,13 +914,13 @@ router.post('/:id/steps/:stepId/validation-trained', (req: Request, res: Respons
   const step = guideStepStore.findById(ids.stepId)!;
   guideStepStore.save({ ...step, validationTrainedAt: now, validationMode: 'cone',
                         validationTagId: tagId, updatedAt: now });
-  // The single-photo ref (if any) is superseded — drop it so DELETE semantics stay clean.
+  // The single-photo ref (if any) is superseded - drop it so DELETE semantics stay clean.
   deleteValidationRef(ids.guideId, ids.stepId);
   console.log(`[SIB] Step validation trained (cone): ${ids.stepId} in guide ${ids.guideId} → tag ${tagId}`);
   res.json({ data: { validationTrainedAt: now, validationMode: 'cone', validationTagId: tagId }, timestamp: now });
 });
 
-// GET /guides/:id/steps/:stepId/validation-ref.jpg — W2: the trained
+// GET /guides/:id/steps/:stepId/validation-ref.jpg - W2: the trained
 // reference frame for the operator's ghost-overlay alignment. Cone/shot
 // mode: first pass-state image, decrypted in-memory with the anchor key;
 // single mode: the stored reference file. Never persisted decrypted.
@@ -949,7 +949,7 @@ router.get('/:id/steps/:stepId/validation-ref.jpg', (req: Request, res: Response
   res.send(jpeg);
 });
 
-// DELETE /guides/:id/steps/:stepId/validation-ref — Author removes training.
+// DELETE /guides/:id/steps/:stepId/validation-ref - Author removes training.
 // Works for both modes: clears the single-photo ref, and for cone-trained
 // steps also deletes the hidden tag's pass-states and the tag record itself.
 router.delete('/:id/steps/:stepId/validation-ref', (req: Request, res: Response): void => {
@@ -971,7 +971,7 @@ router.delete('/:id/steps/:stepId/validation-ref', (req: Request, res: Response)
   res.json({ data: { removed: true }, timestamp: now });
 });
 
-// POST /guides/:id/steps/:stepId/validate — score a live frame against the
+// POST /guides/:id/steps/:stepId/validate - score a live frame against the
 // trained reference. Used by the Author to VERIFY training and by the
 // Operator for the system verdict. 409 when the step is untrained (client
 // falls back to manual Pass/Fail).
@@ -994,7 +994,7 @@ router.post('/:id/steps/:stepId/validate', (req: Request, res: Response): void =
         const tagRec = tagStore.findById(step.validationTagId!);
         // ConeCaptureView AES-256-GCM-encrypts every reference with the
         // anchor's key. The key lives in the anchor record, so decrypt
-        // in-memory here — an encrypted ref fed to the comparator raw is
+        // in-memory here - an encrypted ref fed to the comparator raw is
         // the classic "0.00 FAIL" (task #66). Refs that fail to decrypt
         // (legacy/unencrypted) pass through unchanged.
         const encKey = tagRec ? anchorStore.findById(tagRec.anchorId)?.encryptionKey : undefined;
@@ -1004,16 +1004,16 @@ router.post('/:id/steps/:stepId/validate', (req: Request, res: Response): void =
           catch { return img.imageBase64; }
         });
         // A reference that isn't a JPEG after (attempted) decryption was
-        // encrypted with a key the server doesn't hold — scoring it would
+        // encrypted with a key the server doesn't hold - scoring it would
         // yield a meaningless 0.00. Say so explicitly instead.
         const readable = refs.filter(r => r.startsWith('/9j/'));
         if (readable.length === 0) {
-          const e = new Error('Validation references are unreadable (encryption key mismatch) — retrain this step');
+          const e = new Error('Validation references are unreadable (encryption key mismatch) - retrain this step');
           (e as Error & { code?: string }).code = 'UNREADABLE_REFS';
           throw e;
         }
         if (readable.length < refs.length) {
-          console.warn(`[SIB] Step ${ids.stepId}: ${refs.length - readable.length}/${refs.length} references unreadable — scoring the rest`);
+          console.warn(`[SIB] Step ${ids.stepId}: ${refs.length - readable.length}/${refs.length} references unreadable - scoring the rest`);
         }
         const r = await compareAgainstPassState(readable, imageBase64, undefined, tagRec?.roi);
         return { status: r.status, score: r.score };
@@ -1038,7 +1038,7 @@ router.post('/:id/steps/:stepId/validate', (req: Request, res: Response): void =
     });
 });
 
-// DELETE /guides/:id/steps/:stepId — Author deletes a single step
+// DELETE /guides/:id/steps/:stepId - Author deletes a single step
 router.delete('/:id/steps/:stepId', (req: Request, res: Response): void => {
   const guide = guideStore.findById(req.params.id);
   if (!guide) {

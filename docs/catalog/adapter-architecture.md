@@ -8,8 +8,8 @@ depends: []
 terms: [Adapter]
 spec: technical-architecture.md
 api: |
-  GET /perception/adapters — registered perception adapters (any · API key)
-  POST /perception/analyze-image — raw adapter analysis, no tag context (any · API key)
+  GET /perception/adapters - registered perception adapters (any · API key)
+  POST /perception/analyze-image - raw adapter analysis, no tag context (any · API key)
 arch: |
   flowchart LR
     subgraph SIB["sib/src/adapters/"]
@@ -26,6 +26,6 @@ arch: |
     MM --> RULE
     RULE --> NO["No vendor ever hard-coded into the platform"]
 ---
-Anything external — perception models, instruction sources, AI guidance, vision
-stacks — is an isolated, swappable module behind a stable interface, and every
+Anything external - perception models, instruction sources, AI guidance, vision
+stacks - is an isolated, swappable module behind a stable interface, and every
 adapter ships with a working default. No vendor is ever hard-coded into the platform.

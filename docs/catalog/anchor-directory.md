@@ -8,9 +8,9 @@ depends: [qr-anchoring]
 terms: [Anchor, QR Spatial Anchoring]
 spec: SERVER-REFERENCE.md
 api: |
-  GET /anchors — full directory with CSV export source (portal · API key)
-  GET /anchors/:id/readiness — trained / placed / world-map summary (portal · API key)
-  POST /anchors — create anchor with auto-generated key (portal · API key)
+  GET /anchors - full directory with CSV export source (portal · API key)
+  GET /anchors/:id/readiness - trained / placed / world-map summary (portal · API key)
+  POST /anchors - create anchor with auto-generated key (portal · API key)
 wireframe: portal
 arch: |
   flowchart LR
@@ -21,5 +21,5 @@ arch: |
     DEL["Delete cascades: tags, pass states, QR blob, worldmap"] --> CRUD
 ---
 Anchors are created and managed in the browser, and the QR PDF prints at true
-physical size — which matters, because the printed size is what the 6-DOF tracking
+physical size - which matters, because the printed size is what the 6-DOF tracking
 trusts. Encryption keys are auto-generated for portal-created anchors.

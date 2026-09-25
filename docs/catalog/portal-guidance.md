@@ -8,7 +8,7 @@ depends: [home-page, chamber-configs, guide-library]
 terms: [Anchor Portal]
 spec: CONNECTED-WORKER.md#portal-guided-assistance
 api: |
-  GET /stats — chamberConfigs, chambersAssigned, guides, placedGuides drive the checklist (browser · public)
+  GET /stats - chamberConfigs, chambersAssigned, guides, placedGuides drive the checklist (browser · public)
 wireframe: portal
 flow: |
   flowchart LR

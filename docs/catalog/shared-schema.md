@@ -15,6 +15,6 @@ arch: |
     RULE --> WHY["A value export once resolved to .ts in production and crashed the container - constants live in the workspace that executes them"]
 ---
 One `@spatial/shared` package types the contract across server and portal, mirrored
-by hand in Swift. It is deliberately types-only at runtime — value exports from it
+by hand in Swift. It is deliberately types-only at runtime - value exports from it
 have crashed production builds before, so constants live in the workspace that
 executes them.

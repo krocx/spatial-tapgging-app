@@ -1,4 +1,4 @@
-// ModelARPlacementView.swift — AR OMS: Author 3D Model Placement
+// ModelARPlacementView.swift - AR OMS: Author 3D Model Placement
 //
 // Lets the Author position a 3D model in the guide's AR world space so it
 // aligns precisely with the real-world component.
@@ -39,7 +39,7 @@ struct ModelARPlacementView: View {
     @State private var rotationX: Float       = 0.0   // tilt (pitch)
     @State private var rotationY: Float       = 0.0   // turn (yaw)
     @State private var rotationZ: Float       = 0.0   // roll
-    /// Where the model started this session — what Reset returns to.
+    /// Where the model started this session - what Reset returns to.
     @State private var initial:   (position: simd_float3, scale: Float, rot: SCNVector3)? = nil
 
     // ── Gesture baseline values (captured at gesture begin) ───────────────────
@@ -54,7 +54,7 @@ struct ModelARPlacementView: View {
     // ── Node & UI state ───────────────────────────────────────────────────────
 
     @State private var modelNode: SCNNode? = nil
-    /// A2 (2026.4.45): live ghost opacity — adjusted here, in context, and
+    /// A2 (2026.4.45): live ghost opacity - adjusted here, in context, and
     /// saved with the placement. Seeded from the step's stored value.
     @State private var opacity:   Double   = 0.45
     @State private var phase:     Phase    = .loading
@@ -180,7 +180,7 @@ struct ModelARPlacementView: View {
             .padding(.top, 10)
             .padding(.bottom, 6)
 
-            // A2: ghost opacity — live on the node, saved with the placement.
+            // A2: ghost opacity - live on the node, saved with the placement.
             HStack(spacing: 10) {
                 Image(systemName: "circle.lefthalf.filled")
                     .font(.system(size: 14)).foregroundStyle(.white.opacity(0.7))
@@ -262,7 +262,7 @@ struct ModelARPlacementView: View {
     private func loadAndPlace() async {
         let client = SIBClient(settings: settings)
 
-        // 1. Guide's ARWorldMap via the shared cache (B1) — re-localize into the
+        // 1. Guide's ARWorldMap via the shared cache (B1) - re-localize into the
         //    Author's coordinate frame.
         if let bundle = await WorldMapCache.load(.guide(guide.id), client: client) {
             arManager.startSessionWithWorldMap(bundle.map)
@@ -285,7 +285,7 @@ struct ModelARPlacementView: View {
         initial   = (position, scale, SCNVector3(rotationX, rotationY, rotationZ))
         opacity   = step.modelOpacity ?? 0.45          // A2: seed the live slider
 
-        // 3. Download model file (USDZ preferred — SCNScene loads it natively on iOS 12+)
+        // 3. Download model file (USDZ preferred - SCNScene loads it natively on iOS 12+)
         let ext:  String
         let data: Data?
         if model.hasUSDZ {
@@ -359,7 +359,7 @@ struct ModelARPlacementView: View {
         req.modelRotationY = Double(rotationY)
         req.modelRotationZ = Double(rotationZ)
         req.modelOpacity   = opacity    // A2: adjusted live in this view
-        // modelId is not changed here — EditStepSheet owns it
+        // modelId is not changed here - EditStepSheet owns it
 
         do {
             _ = try await client.updateGuideStep(guideId: guide.id, stepId: step.id, req: req)

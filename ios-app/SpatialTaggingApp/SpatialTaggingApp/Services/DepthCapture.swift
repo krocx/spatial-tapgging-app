@@ -3,8 +3,8 @@
 // Captures and compares depth maps from ARKit for cone-based inspection.
 //
 // ── Data sources ──────────────────────────────────────────────────────────────
-// LiDAR  (iPhone 12 Pro+, iPad Pro): ARFrame.sceneDepth   — dense, ±1–5 mm
-// Non-LiDAR (all A12+ devices):      ARFrame.estimatedDepthData — ML-estimated,
+// LiDAR  (iPhone 12 Pro+, iPad Pro): ARFrame.sceneDepth   - dense, ±1–5 mm
+// Non-LiDAR (all A12+ devices):      ARFrame.estimatedDepthData - ML-estimated,
 //                                    ±10–30 mm, lower resolution
 //
 // The isLiDAR flag is stored alongside the depth map so the comparison engine
@@ -20,12 +20,12 @@
 // score = 1 − mean(|a_i − b_i|) / kTolerance
 // Tolerance differs by source:
 //   LiDAR → 0.05 (5 % of the normalised range ≈ fine surface changes)
-//   Estimated → 0.15 (15 % — coarser, accounts for ML estimation noise)
+//   Estimated → 0.15 (15 % - coarser, accounts for ML estimation noise)
 //
 // ── Multi-anchor readiness ────────────────────────────────────────────────────
 // Depth maps are captured from the cone's inspection angle and stored
 // alongside the cone quaternion in anchor-relative metadata.  No changes
-// needed when multi-anchor is implemented — the cone quaternion determines
+// needed when multi-anchor is implemented - the cone quaternion determines
 // the comparison angle, not the world origin.
 
 import ARKit
@@ -40,8 +40,8 @@ struct DepthCapture {
 
     // ── Constants ─────────────────────────────────────────────────────────────
 
-    private static let kMinDepth: Float  = 0.10    // 10 cm — below this is noise
-    private static let kMaxDepth: Float  = 5.00    // 5 m   — beyond this is background
+    private static let kMinDepth: Float  = 0.10    // 10 cm - below this is noise
+    private static let kMaxDepth: Float  = 5.00    // 5 m   - beyond this is background
     private static let kLiDARTol: Double = 0.05    // tolerance for LiDAR comparison
     private static let kEstTol:   Double = 0.15    // tolerance for estimated depth
 

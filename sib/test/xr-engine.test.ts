@@ -1,5 +1,5 @@
-// xr-engine.test.ts — B3: the WebXR kit's pure engine (sib/portal/xr-engine.js)
-// follows the timeline contract in docs/ar-ojt/UNITY-RUNTIME.md §4 — the same
+// xr-engine.test.ts - B3: the WebXR kit's pure engine (sib/portal/xr-engine.js)
+// follows the timeline contract in docs/ar-ojt/UNITY-RUNTIME.md §4 - the same
 // one the iOS AssemblyState / AssemblyNode implement.
 
 import { test } from 'node:test';

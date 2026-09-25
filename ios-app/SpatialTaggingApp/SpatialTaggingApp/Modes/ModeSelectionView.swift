@@ -1,4 +1,4 @@
-// ModeSelectionView.swift — Phase 3
+// ModeSelectionView.swift - Phase 3
 // Home screen: choose Author or Operator mode, shows SIB connection status.
 //
 // Phase 3 flow:
@@ -20,14 +20,14 @@ struct ModeSelectionView: View {
     @State private var showAuthorDirectory  = false
     @State private var showOperatorDirectory = false
     @State private var showChamberScan       = false      // C3
-    // A (2026.4.46): product doors — each asks for its own context first.
+    // A (2026.4.46): product doors - each asks for its own context first.
     @State private var directoryScope: DirectoryScope = .all
     @State private var showProductionPrompt  = false
     @State private var showTestBayPrompt     = false
     @State private var showConfigPicker      = false
     @State private var showAnchorLab         = false      // Anchor Lab door (2026.4.46)
     @State private var showSettings         = false
-    /// Kiosk gate — presented when UAM is active and there's no signed-in
+    /// Kiosk gate - presented when UAM is active and there's no signed-in
     /// technician, or no Production # set for the shift.
     @State private var showKioskStart       = false
     @State private var showOnboarding       = false
@@ -37,10 +37,10 @@ struct ModeSelectionView: View {
     @State private var lastSession: LastAuthorSession? = nil
     @State private var isResuming  = false
     @State private var resumeError: String? = nil
-    /// Set by resumeLastSession — presents AnchorHubView directly (skips directory)
+    /// Set by resumeLastSession - presents AnchorHubView directly (skips directory)
     @State private var hubResumeAnchor: Anchor? = nil
 
-    // Share Anchor QR — home-screen shortcut
+    // Share Anchor QR - home-screen shortcut
     @State private var showQRSheet   = false
     @State private var qrAnchor:     Anchor?  = nil
     @State private var qrKeyB64:     String?  = nil
@@ -85,7 +85,7 @@ struct ModeSelectionView: View {
                     Text("Connected Worker AR OMS · v\(AppVersion.current)")
                         .font(.subheadline).foregroundColor(.white.opacity(0.5))
 
-                    // Shift chip — who is signed in + which system they work
+                    // Shift chip - who is signed in + which system they work
                     // on. Tapping reopens the kiosk screen (change production
                     // number or switch technician between shifts).
                     if settings.uamSignedIn || !settings.productionNumber.isEmpty {
@@ -114,7 +114,7 @@ struct ModeSelectionView: View {
                 Spacer()
 
                 // Product doors (A, 2026.4.46). The app cannot know what you
-                // will pick, so it asks nothing until you do — then only what
+                // will pick, so it asks nothing until you do - then only what
                 // that product needs, prefilled from last time.
                 VStack(spacing: 16) {
                     HStack {
@@ -176,7 +176,7 @@ struct ModeSelectionView: View {
 
                     if settings.hasProduct("lab") {
                         ProductDoor(
-                            title: "Anchor Lab", subtitle: "Test anchoring accuracy on a rig — every run ends in mm",
+                            title: "Anchor Lab", subtitle: "Test anchoring accuracy on a rig - every run ends in mm",
                             icon: "scope", accent: .cyan,
                             context: nil, contextPrompt: "rigs are separate from chambers",
                             lastUsed: settings.lastProduct == "lab",
@@ -209,7 +209,7 @@ struct ModeSelectionView: View {
                             lastSession = nil
                         }
 
-                        // ── Share Anchor QR — shown when Keychain has a key ────
+                        // ── Share Anchor QR - shown when Keychain has a key ────
                         // Lets the Author share the app-generated QR (with embedded
                         // encryption key) directly from the home screen, without
                         // needing to re-enter Author mode and scan the old physical QR.
@@ -273,7 +273,7 @@ struct ModeSelectionView: View {
                 .padding(.horizontal, 24).padding(.bottom, 40)
             }
 
-            // ── Kiosk shift gate (2026.4.45) — topmost ZStack layer. Rendered
+            // ── Kiosk shift gate (2026.4.45) - topmost ZStack layer. Rendered
             // as STATE, not as a modal presentation: a fullScreenCover set
             // during launch can be silently dropped by SwiftUI; a ZStack
             // layer cannot. KioskStartView paints its own full background.
@@ -309,7 +309,7 @@ struct ModeSelectionView: View {
                     onNext:     {
                         // For navigation-gating spotlight steps, open the target screen.
                         // The existing onChange handlers call advancePast(), which advances
-                        // the step — so we must NOT also call tour.advance() here or the
+                        // the step - so we must NOT also call tour.advance() here or the
                         // step would jump twice.
                         switch tour.currentStep {
                         case .tapSettings:  showSettings          = true
@@ -328,7 +328,7 @@ struct ModeSelectionView: View {
         .onChange(of: appState.labPendingMode) { m in
             if m != nil { showAnchorLab = false }      // onDismiss enters the mode
         }
-        // Anchor Lab door (2026.4.46) — rigs, runs, history.
+        // Anchor Lab door (2026.4.46) - rigs, runs, history.
         .fullScreenCover(isPresented: $showAnchorLab, onDismiss: {
             if let m = appState.labPendingMode { appState.labPendingMode = nil; appState.mode = m }
         }) {
@@ -390,7 +390,7 @@ struct ModeSelectionView: View {
         .sheet(isPresented: $showProductionPrompt) {
             ContextPromptSheet(title: "Which production / slot?", label: "Production # (chamber / system)",
                                icon: "qrcode.viewfinder",
-                               hint: "The chamber configuration comes from the QR you scan next — only the Production # is needed.",
+                               hint: "The chamber configuration comes from the QR you scan next - only the Production # is needed.",
                                cta: "Scan chamber QR", value: $settings.productionNumber) {
                 settings.lastProduct = "chambers"
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { showChamberScan = true }
@@ -452,7 +452,7 @@ struct ModeSelectionView: View {
         .sheet(isPresented: $showOnboarding) {
             OnboardingSheet(context: .home)
         }
-        // Share Anchor QR sheet — opened from the home-screen ShareQRCard
+        // Share Anchor QR sheet - opened from the home-screen ShareQRCard
         .sheet(isPresented: $showQRSheet, onDismiss: { qrAnchor = nil; qrKeyB64 = nil }) {
             if let anchor = qrAnchor, let key = qrKeyB64 {
                 QRGeneratorView(anchor: anchor, encryptionKey: key)
@@ -461,14 +461,14 @@ struct ModeSelectionView: View {
         .onAppear {
             // Load last Author session for "Continue" card
             lastSession = appState.loadLastAuthorSession()
-            // Anchor Lab: an Author session opened from the Lab door ended —
+            // Anchor Lab: an Author session opened from the Lab door ended -
             // go back to the Lab, not the home page.
             if appState.returnToLab { appState.returnToLab = false; showAnchorLab = true }
 
             // UAM: silently refresh the access token + role on launch when
             // identity is configured. Offline/failed network keeps the cached
             // role (server enforces regardless); a 401 means access was
-            // revoked or details changed — clear the session so the UI
+            // revoked or details changed - clear the session so the UI
             // ungates and Settings shows the reason on next verify.
             if !settings.workEmail.isEmpty && !settings.employeeId.isEmpty && settings.isConfigured {
                 Task {
@@ -483,12 +483,12 @@ struct ModeSelectionView: View {
                         settings.uamToken = ""
                         settings.uamRole  = ""
                         settings.uamUserName = ""
-                        showKioskStart = true   // access changed — re-identify
-                    } catch { /* offline — keep cached role */ }
+                        showKioskStart = true   // access changed - re-identify
+                    } catch { /* offline - keep cached role */ }
                 }
             }
 
-            // Kiosk gate (2026.4.45): DETERMINISTIC — whenever no shift is
+            // Kiosk gate (2026.4.45): DETERMINISTIC - whenever no shift is
             // set (nobody signed in, or no Production #), the gate shows
             // immediately. The gate screen owns the server connection itself
             // (connecting state, cold-start retries, dormant-UAM auto-skip);
@@ -500,7 +500,7 @@ struct ModeSelectionView: View {
 
             // Guided tour: auto-start on very first launch (takes priority over FTUE home page)
             if showKioskStart || (settings.isConfigured && !settings.shiftReady) {
-                // Kiosk gate takes priority — tour/FTUE can run on a later launch.
+                // Kiosk gate takes priority - tour/FTUE can run on a later launch.
             } else if settings.guidedTourEnabled && !settings.guidedTourSeen {
                 settings.guidedTourSeen = true
                 // Small delay so the view is fully laid out before spotlighting
@@ -534,7 +534,7 @@ struct ModeSelectionView: View {
         do {
             let anchor = try await client.fetchAnchor(id: session.anchorId)
             guard let key = AnchorEncryption.loadExistingKey(anchorId: session.anchorId) else {
-                qrLoadError = "Encryption key not found — open Author mode first."
+                qrLoadError = "Encryption key not found - open Author mode first."
                 isLoadingQR = false
                 return
             }
@@ -549,7 +549,7 @@ struct ModeSelectionView: View {
 
     // ── Resume last Author session ────────────────────────────────────────────
     // Phase 3: navigates to AnchorHubView directly (QR scan still required to
-    // lock origin — no session entry bypasses the QR gate).
+    // lock origin - no session entry bypasses the QR gate).
 
     private func resumeLastSession(_ saved: LastAuthorSession) async {
         isResuming = true
@@ -566,7 +566,7 @@ struct ModeSelectionView: View {
                 appState.anchorEncryptionKey = kbKey
             }
             isResuming = false
-            // Navigate to hub — user still must scan QR to lock origin
+            // Navigate to hub - user still must scan QR to lock origin
             hubResumeAnchor = anchor
         } catch {
             resumeError = "Resume failed: \(error.localizedDescription)"
@@ -650,7 +650,7 @@ private struct ContinueSessionCard: View {
 
 // ── Share Anchor QR card ──────────────────────────────────────────────────────
 // Shown on the home screen when the device's Keychain holds a key for the last
-// Author session anchor — lets the Author distribute the app-generated QR
+// Author session anchor - lets the Author distribute the app-generated QR
 // (with embedded encryption key) without re-entering Author mode.
 
 private struct ShareQRCard: View {

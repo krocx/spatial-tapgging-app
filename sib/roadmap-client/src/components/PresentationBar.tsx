@@ -1,4 +1,4 @@
-// PresentationBar.tsx — minimal chrome during presentation mode: step title,
+// PresentationBar.tsx - minimal chrome during presentation mode: step title,
 // progress dots, prev/next, exit. Arrow keys / Esc are handled by the
 // keyboard hook; this bar mirrors them for mouse/touch use.
 

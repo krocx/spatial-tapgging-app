@@ -8,8 +8,8 @@ depends: [iloto-anchors, loto-event-log, loto-training]
 terms: [LOTO, Try Test, ARWorldMap]
 spec: ILOTO.md
 api: |
-  POST /loto/events — apply / remove / override with checklist + photo (app · API key)
-  GET /loto/status?anchorId= — derived per-point lock state (app, portal · API key)
+  POST /loto/events - apply / remove / override with checklist + photo (app · API key)
+  GET /loto/status?anchorId= - derived per-point lock state (app, portal · API key)
 wireframe: iloto
 arch: |
   sequenceDiagram
@@ -25,7 +25,7 @@ arch: |
     Note over G: Author exit re-saves the worldmap for the next session
 ---
 Every iLOTO AR surface starts with the mandatory panel-QR scan (origin lock, then
-worldmap relocalization) — the scan at the panel IS the you-are-here confirmation.
+worldmap relocalization) - the scan at the panel IS the you-are-here confirmation.
 Authors tap breakers and switches to place points; operators run ordered apply
 checklists (notify → shutdown → lock → photo → try test → serial) and remove
 checklists, with the override form behind an explicit second decision and server 4xx

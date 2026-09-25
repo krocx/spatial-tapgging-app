@@ -1,12 +1,12 @@
-// LocTagFormSheet.swift — Phase 2 (Task E) · G4 (2026.4.46)
+// LocTagFormSheet.swift - Phase 2 (Task E) · G4 (2026.4.46)
 // Form sheet presented by LocTagAuthorView after a surface tap.
 //
 // G4: the finding is logged the way Corporate Quality's Gemba Audit tool did
-// it — pick a Focus Area, pick one of its pre-defined Questions, choose a
+// it - pick a Focus Area, pick one of its pre-defined Questions, choose a
 // Finding Category (Strength / OFI / NC) and an optional risk rating, then
 // attach up to six photos, each with a caption. Nothing is typed that could
-// be picked. A custom (free-text) entry keeps the same shape — typed focus
-// area + question, same Category and Preliminary risk — and is stored with
+// be picked. A custom (free-text) entry keeps the same shape - typed focus
+// area + question, same Category and Preliminary risk - and is stored with
 // referenceSource 'custom' so the report never passes it off as a library
 // item. It is also the fallback when the library is empty or unreachable.
 //
@@ -29,7 +29,7 @@ struct LocTagFormSheet: View {
     @Environment(\.dismiss) private var dismiss
     @ObservedObject private var store = GembaLibraryStore.shared
 
-    /// The auditor usually works one focus area at a time — remember it.
+    /// The auditor usually works one focus area at a time - remember it.
     @AppStorage("gemba_last_focus_area") private var lastFocusAreaCode = ""
 
     // ── Reference-list finding ────────────────────────────────────────────────
@@ -112,7 +112,7 @@ struct LocTagFormSheet: View {
                 CameraPickerView { image in addPhoto(image) }
                     .ignoresSafeArea()
             }
-            // G5 markup — presented from the stack root: a presentation
+            // G5 markup - presented from the stack root: a presentation
             // modifier on a Section inside a Form is re-evaluated with the
             // rows and dismisses itself.
             .fullScreenCover(item: $markingUp) { draft in
@@ -171,7 +171,7 @@ struct LocTagFormSheet: View {
                 }
             } label: {
                 LabeledContent("Question") {
-                    Text(question.map { "\($0.code) — \($0.title)" } ?? (focusArea == nil ? "Pick a focus area first" : "Select…"))
+                    Text(question.map { "\($0.code) - \($0.title)" } ?? (focusArea == nil ? "Pick a focus area first" : "Select…"))
                         .foregroundStyle(question == nil ? .secondary : .primary)
                         .lineLimit(1)
                 }
@@ -184,7 +184,7 @@ struct LocTagFormSheet: View {
                     .foregroundStyle(.secondary)
                     .padding(.vertical, 2)
             } else if let fa = focusArea, fa.questions.isEmpty {
-                Text("This focus area has no questions yet — ask Corporate Quality to add them in the portal, or switch to a free-text finding below.")
+                Text("This focus area has no questions yet - ask Corporate Quality to add them in the portal, or switch to a free-text finding below.")
                     .font(.caption).foregroundStyle(.orange)
             }
         } header: {
@@ -198,12 +198,12 @@ struct LocTagFormSheet: View {
 
     }
 
-    // ── Finding (shared by both modes — same data shape) ──────────────────────
+    // ── Finding (shared by both modes - same data shape) ──────────────────────
 
     private var findingSection: some View {
         Section {
             Picker("Category", selection: $category) {
-                Text("—").tag(Optional<GembaFindingCategory>.none)
+                Text("-").tag(Optional<GembaFindingCategory>.none)
                 ForEach(GembaFindingCategory.allCases) { c in
                     Text(c.displayName).tag(Optional(c))
                 }
@@ -249,7 +249,7 @@ struct LocTagFormSheet: View {
                 }
             }
             if questionTouched && customQuestionTrimmed.isEmpty {
-                Text("Required — what was checked or observed").font(.caption).foregroundStyle(.red)
+                Text("Required - what was checked or observed").font(.caption).foregroundStyle(.red)
             }
         } header: {
             HStack {
@@ -264,7 +264,7 @@ struct LocTagFormSheet: View {
             if store.isEmpty {
                 Text("No Audit Reference Library on this server yet. Corporate Quality can import the lists under Portal › GembaWalks › Audit Library; until then findings are logged as custom entries.")
             } else {
-                Text("Logged as a custom entry — reports show it as free text, not a library question.")
+                Text("Logged as a custom entry - reports show it as free text, not a library question.")
             }
         }
     }
@@ -334,7 +334,7 @@ struct LocTagFormSheet: View {
         if referenceMode, let q = question {
             req = CreateLocTagRequest(
                 anchorId:        anchor.id,
-                title:           "\(q.code) — \(q.title)",
+                title:           "\(q.code) - \(q.title)",
                 description:     description.trimmingCharacters(in: .whitespacesAndNewlines),
                 severity:        nil,
                 defectCategory:  .others,
@@ -370,7 +370,7 @@ struct LocTagFormSheet: View {
         let client = SIBClient(settings: settings)
         do {
             var locTag = try await client.createLocTag(req)
-            // G5: markups ride after the finding exists — one PUT per marked photo,
+            // G5: markups ride after the finding exists - one PUT per marked photo,
             // matched by upload order. A failed markup never loses the finding.
             let stored = locTag.photos ?? []
             for (i, draft) in photos.enumerated() where draft.markup != nil && i < stored.count {
@@ -434,7 +434,7 @@ struct FocusAreaPicker: View {
     }
 }
 
-/// Questions under one focus area — code, title and the prompt itself.
+/// Questions under one focus area - code, title and the prompt itself.
 struct QuestionPicker: View {
     let area: GembaFocusArea
     let selected: GembaQuestion?
@@ -466,7 +466,7 @@ struct QuestionPicker: View {
             }
         }
         .searchable(text: $query, prompt: "Search questions")
-        .navigationTitle("\(area.code) — \(area.title)")
+        .navigationTitle("\(area.code) - \(area.title)")
         .navigationBarTitleDisplayMode(.inline)
     }
 }

@@ -1,4 +1,4 @@
-// Image Capture — grabs a frame from the live camera feed.
+// Image Capture - grabs a frame from the live camera feed.
 // Returns a base64-encoded JPEG string ready to send to SIB /perception/analyze-image.
 //
 // On WebXR (Android): reads from the renderer canvas (which includes the passthrough feed).
@@ -31,7 +31,7 @@ export class ImageCapture {
     }
 
     const dataUrl = sourceCanvas.toDataURL('image/jpeg', quality);
-    // Strip the "data:image/jpeg;base64," prefix — SIB expects raw base64.
+    // Strip the "data:image/jpeg;base64," prefix - SIB expects raw base64.
     const imageBase64 = dataUrl.split(',')[1] ?? '';
 
     return {

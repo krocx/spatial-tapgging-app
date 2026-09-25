@@ -1,4 +1,4 @@
-// AR.js Engine — iOS Safari
+// AR.js Engine - iOS Safari
 // AR.js does not support WebXR hit-testing on iOS, so we use marker-based
 // or image-tracking mode via the AR.js Three.js build (loaded via CDN in index.html).
 //

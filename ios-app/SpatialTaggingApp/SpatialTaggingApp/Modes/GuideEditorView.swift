@@ -1,4 +1,4 @@
-// GuideEditorView.swift — AR OMS Phase 2
+// GuideEditorView.swift - AR OMS Phase 2
 //
 // Author-only form for creating and editing an AR Guide.
 //
@@ -13,7 +13,7 @@
 //   • Each step shows a StepEditorRow with text, TTS toggle, and photo.
 //   • Save patches the guide record.
 //
-// All network operations are async — errors surface as in-view banners.
+// All network operations are async - errors surface as in-view banners.
 
 import SwiftUI
 import AVFoundation
@@ -21,7 +21,7 @@ import AVFoundation
 // Used by AddStepSheet and EditStepSheet to avoid a race between setting
 // `imageSourceType` and `showImagePicker = true` in the same Button action.
 // By using sheet(item:) with an enum that carries the source type, SwiftUI
-// reads the source type from the presented item itself — no race condition.
+// reads the source type from the presented item itself - no race condition.
 private enum ImagePickerSource: Identifiable {
     case camera, library
     var id: Self { self }
@@ -71,11 +71,11 @@ struct GuideEditorView: View {
     @State private var showResetMapConfirm = false
     @State private var resetMapNote: String? = nil
 
-    // 3D models for the anchor — passed into GuideStepPlacementView
+    // 3D models for the anchor - passed into GuideStepPlacementView
     @State private var anchorModels: [Model3D] = []
 
     // Prevents onAppear from resetting editable fields (name / description /
-    // published) on subsequent firings — e.g. when a fullScreenCover closes and
+    // published) on subsequent firings - e.g. when a fullScreenCover closes and
     // SwiftUI re-fires onAppear on the underlying Form.
     @State private var stateLoaded = false
 
@@ -111,7 +111,7 @@ struct GuideEditorView: View {
                 if currentGuide != nil {
                     Section {
                         Toggle(isOn: $published) {
-                            Label(published ? "Live — visible to Operators" : "Draft — Authors only",
+                            Label(published ? "Live - visible to Operators" : "Draft - Authors only",
                                   systemImage: published ? "checkmark.circle.fill" : "pencil.circle")
                                 .foregroundStyle(published ? .green : .orange)
                         }
@@ -133,7 +133,7 @@ struct GuideEditorView: View {
                         if isLoading {
                             HStack { Spacer(); ProgressView("Loading steps…"); Spacer() }
                         } else if steps.isEmpty {
-                            Label("No steps yet — tap Add Step below.", systemImage: "info.circle")
+                            Label("No steps yet - tap Add Step below.", systemImage: "info.circle")
                                 .font(.caption).foregroundStyle(.secondary)
                         } else {
                             ForEach(steps) { step in
@@ -187,7 +187,7 @@ struct GuideEditorView: View {
                                             .font(.subheadline.bold())
                                             .foregroundStyle(asm.pose == nil ? .orange : .green)
                                         Text(asm.pose == nil
-                                             ? "One tap on the equipment — all \(steps.filter { $0.cadPosition != nil }.count) CAD steps follow"
+                                             ? "One tap on the equipment - all \(steps.filter { $0.cadPosition != nil }.count) CAD steps follow"
                                              : "Placed · \(asm.pose!.source) · \(steps.filter { $0.positionSource == "cad" && $0.isPlaced }.count) steps derived")
                                             .font(.caption).foregroundStyle(.secondary)
                                     }
@@ -244,7 +244,7 @@ struct GuideEditorView: View {
                             Text("Scan the anchor's QR code to enter AR, then tap surfaces to pin each step's location. Operators navigate to these pins in sequence.")
                         }
                         .confirmationDialog("Reset the world map?", isPresented: $showResetMapConfirm, titleVisibility: .visible) {
-                            Button("Reset — \(placedCount) pin\(placedCount == 1 ? "" : "s") to re-place", role: .destructive) {
+                            Button("Reset - \(placedCount) pin\(placedCount == 1 ? "" : "s") to re-place", role: .destructive) {
                                 Task { await resetMap() }
                             }
                             Button("Cancel", role: .cancel) {}
@@ -279,7 +279,7 @@ struct GuideEditorView: View {
                             .bold()
                             .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
                     }
-                    // Edit mode: no top-right button — Done (left) handles save + dismiss
+                    // Edit mode: no top-right button - Done (left) handles save + dismiss
                 }
                 ToolbarItem(placement: .cancellationAction) {
                     if isCreating {
@@ -306,7 +306,7 @@ struct GuideEditorView: View {
                         published   = g.published
                         stateLoaded = true
                     }
-                    // Always reload steps — refreshes isPlaced counts after placement.
+                    // Always reload steps - refreshes isPlaced counts after placement.
                     Task { await loadSteps(guideId: g.id) }
                     // Load anchor model library for integrated step+model placement.
                     if anchorModels.isEmpty {
@@ -357,7 +357,7 @@ struct GuideEditorView: View {
             }
             // ── Phase 2: AR step placement view ───────────────────────────────
             // onDismiss reloads steps from the server so the editor always reflects
-            // the freshly-saved isPlaced flags — belt-and-suspenders alongside the
+            // the freshly-saved isPlaced flags - belt-and-suspenders alongside the
             // onAppear reload that SwiftUI fires when a fullScreenCover closes.
             .fullScreenCover(isPresented: $showAssemblyPlacement, onDismiss: {
                 if let g = currentGuide {
@@ -425,7 +425,7 @@ struct GuideEditorView: View {
         guard let g = currentGuide else { return }
         do {
             let n = try await SIBClient(settings: settings).deleteGuideWorldMap(guideId: g.id)
-            resetMapNote = "Map reset. \(n) step\(n == 1 ? "" : "s") unplaced — open Place Steps in AR to place them in a fresh map."
+            resetMapNote = "Map reset. \(n) step\(n == 1 ? "" : "s") unplaced - open Place Steps in AR to place them in a fresh map."
             await loadSteps(guideId: g.id)
         } catch {
             resetMapNote = friendlyMessage(for: error)
@@ -539,7 +539,7 @@ struct StepEditorRow: View {
                         Label(n > 1 ? "3D ×\(n)" : "3D", systemImage: "cube")
                             .font(.caption2).foregroundStyle(.teal)
                     }
-                    // B2: validation / evidence status at a glance — the
+                    // B2: validation / evidence status at a glance - the
                     // pre-publish training checklist for the Author.
                     if step.needsValidation {
                         if step.validationTrained {
@@ -589,13 +589,13 @@ struct AddStepSheet: View {
     @State private var isSaving           = false
     @State private var error:             String? = nil
 
-    // Step validation flags (K4/K5 — B1). The step doesn't exist until Add,
+    // Step validation flags (K4/K5 - B1). The step doesn't exist until Add,
     // so the flags ride a patch-after-create (same pattern as the 3D model);
     // reference-photo training then happens from the step's ✏️ Edit sheet.
     @State private var evidenceOn   = false
     @State private var validationOn = false
 
-    // 3D model picker state (Phase 3D — same as EditStepSheet)
+    // 3D model picker state (Phase 3D - same as EditStepSheet)
     @State private var anchorModels:    [Model3D] = []
     @State private var isLoadingModels  = false
     @State private var selectedModelId: String?   = nil
@@ -610,7 +610,7 @@ struct AddStepSheet: View {
                     TextField("e.g. Check oil level", text: $stepTitle)
                         .autocorrectionDisabled()
                 } header: {
-                    Text("Step \(nextSequence) — Title (optional)")
+                    Text("Step \(nextSequence) - Title (optional)")
                 } footer: {
                     Text("Short label shown on the 3D floating panel header and pilot tab. Defaults to \"Step \(nextSequence)\" when left blank.")
                 }
@@ -619,7 +619,7 @@ struct AddStepSheet: View {
                     TextField("Describe what the Operator needs to do…", text: $text, axis: .vertical)
                         .lineLimit(3...6)
                 } header: {
-                    Text("Step \(nextSequence) — Description *")
+                    Text("Step \(nextSequence) - Description *")
                 } footer: {
                     Text("Shown in full when the floating panel is expanded.")
                 }
@@ -637,16 +637,16 @@ struct AddStepSheet: View {
                     Text("When 'Mark complete required' is on, the Operator must tap ✓ before advancing to the next step.")
                 }
 
-                // ── Step validation (K4/K5 — B1: same controls as Edit Step) ──
+                // ── Step validation (K4/K5 - B1: same controls as Edit Step) ──
                 Section {
                     Toggle("Require validation", isOn: $validationOn)
                         .onChange(of: validationOn) { on in if on { evidenceOn = true } }
-                    // W1: a validated step always yields an evidence photo — the
+                    // W1: a validated step always yields an evidence photo - the
                     // validation frame IS the evidence, so the toggle is locked on.
                     Toggle("Require evidence photo", isOn: $evidenceOn)
                         .disabled(validationOn)
                     if validationOn {
-                        Text("Evidence is captured automatically by validation — no second photo.")
+                        Text("Evidence is captured automatically by validation - no second photo.")
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                     if validationOn {
@@ -736,7 +736,7 @@ struct AddStepSheet: View {
                             }
                             .disabled(_previewTarget?.hasUSDZ != true)
                             if _previewTarget?.hasUSDZ != true {
-                                Text("USDZ pending — convert in portal first")
+                                Text("USDZ pending - convert in portal first")
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
                             }
@@ -828,7 +828,7 @@ struct AddStepSheet: View {
         do {
             let newStep = try await client.createGuideStep(guideId: guide.id, req: req)
             // Patch-after-create: model assignment and validation/evidence flags
-            // aren't part of the create request — PATCH them onto the new step.
+            // aren't part of the create request - PATCH them onto the new step.
             if selectedModelId != nil || validationOn || evidenceOn {
                 var patch = UpdateGuideStepRequest()
                 if let modelId = selectedModelId {
@@ -910,7 +910,7 @@ struct EditStepSheet: View {
                     TextField("e.g. Check oil level", text: $stepTitle)
                         .autocorrectionDisabled()
                 } header: {
-                    Text("Step \(step.sequenceNumber) — Title (optional)")
+                    Text("Step \(step.sequenceNumber) - Title (optional)")
                 } footer: {
                     Text("Short label on the 3D panel header. Defaults to \"Step \(step.sequenceNumber)\" when blank.")
                 }
@@ -919,7 +919,7 @@ struct EditStepSheet: View {
                     TextField("Describe what the Operator needs to do…", text: $text, axis: .vertical)
                         .lineLimit(3...6)
                 } header: {
-                    Text("Step \(step.sequenceNumber) — Description")
+                    Text("Step \(step.sequenceNumber) - Description")
                 }
 
                 Section {
@@ -931,34 +931,34 @@ struct EditStepSheet: View {
                     Toggle("Mark complete required", isOn: $completionRequired)
                 }
 
-                // ── Step validation (K4) — Spatial Inspection on this step ────
+                // ── Step validation (K4) - Spatial Inspection on this step ────
                 Section {
                     Toggle("Require validation", isOn: $validationOn)
                         .onChange(of: validationOn) { on in if on { evidenceOn = true } }
-                    // W1: a validated step always yields an evidence photo — the
+                    // W1: a validated step always yields an evidence photo - the
                     // validation frame IS the evidence, so the toggle is locked on.
                     Toggle("Require evidence photo", isOn: $evidenceOn)
                         .disabled(validationOn)
                     if validationOn {
-                        Text("Evidence is captured automatically by validation — no second photo.")
+                        Text("Evidence is captured automatically by validation - no second photo.")
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                     if validationOn {
                         HStack {
                             Image(systemName: trainedAt != nil ? "checkmark.seal.fill" : "seal")
                                 .foregroundColor(trainedAt != nil ? .green : .secondary)
-                            Text(trainedAt != nil ? "Trained — system verdict active" : "Not trained — operator sees manual Pass/Fail")
+                            Text(trainedAt != nil ? "Trained - system verdict active" : "Not trained - operator sees manual Pass/Fail")
                                 .font(.footnote)
                             Spacer()
                         }
-                        // W2: training happens IN AR — from "Place Steps in AR",
+                        // W2: training happens IN AR - from "Place Steps in AR",
                         // tap the step's 🛡 Cone (multi-angle sweep) or 📷 quick-shot
                         // button. Both record where the Author stood, so the
                         // operator is guided back to the same viewpoint. The old
                         // form-camera training (no stance, unreliable) is retired.
                         Label(trainedAt != nil
-                              ? "Retrain from \"Place Steps in AR\" — 🛡 Cone (multi-angle) or 📷 quick-shot."
-                              : "Train from \"Place Steps in AR\" — 🛡 Cone (multi-angle) or 📷 quick-shot from where the operator should stand.",
+                              ? "Retrain from \"Place Steps in AR\" - 🛡 Cone (multi-angle) or 📷 quick-shot."
+                              : "Train from \"Place Steps in AR\" - 🛡 Cone (multi-angle) or 📷 quick-shot from where the operator should stand.",
                               systemImage: "arkit")
                             .font(.footnote).foregroundStyle(.secondary)
                         if trainedAt != nil {
@@ -1088,7 +1088,7 @@ struct EditStepSheet: View {
                             }
                             .disabled(_previewTarget?.hasUSDZ != true)
                             if _previewTarget?.hasUSDZ != true {
-                                Text("USDZ pending — convert in portal first")
+                                Text("USDZ pending - convert in portal first")
                                     .font(.caption2)
                                     .foregroundStyle(.secondary)
                             }
@@ -1145,7 +1145,7 @@ struct EditStepSheet: View {
                 } header: {
                     Text("3D Ghost Overlay (optional)")
                 } footer: {
-                    Text("Up to \(guideStepMaxModelSlots) models per step. Positions are set when you place the step pin in AR — tap \"Place Steps in AR\" in the guide editor and position each model after the pin drop.")
+                    Text("Up to \(guideStepMaxModelSlots) models per step. Positions are set when you place the step pin in AR - tap \"Place Steps in AR\" in the guide editor and position each model after the pin drop.")
                 }
 
                 // ── Branch Logic (Conditional task graph) ────────────────────
@@ -1285,8 +1285,8 @@ struct EditStepSheet: View {
                 let v = try await client.validateStep(
                     guideId: guide.id, stepId: step.id, jpegBase64: jpeg.base64EncodedString())
                 validationNote = v.status == "PASS"
-                    ? "Verify PASS — score \(String(format: "%.2f", v.score)). Training looks good."
-                    : "Verify FAIL — score \(String(format: "%.2f", v.score)). Retrain from the operator's viewpoint, or expect manual checks."
+                    ? "Verify PASS - score \(String(format: "%.2f", v.score)). Training looks good."
+                    : "Verify FAIL - score \(String(format: "%.2f", v.score)). Retrain from the operator's viewpoint, or expect manual checks."
             }
         } catch {
             validationNote = friendlyMessage(for: error)
@@ -1300,7 +1300,7 @@ struct EditStepSheet: View {
         do {
             try await client.removeStepValidation(guideId: guide.id, stepId: step.id)
             trainedAt = nil
-            validationNote = "Training removed — operators will validate manually."
+            validationNote = "Training removed - operators will validate manually."
         } catch {
             validationNote = friendlyMessage(for: error)
         }
@@ -1312,7 +1312,7 @@ struct EditStepSheet: View {
         error    = nil
         let client = SIBClient(settings: settings)
 
-        // Use no-arg convenience init — preserves synthesized memberwise init
+        // Use no-arg convenience init - preserves synthesized memberwise init
         // (partial memberwise calls won't compile; no-arg + property assignment is the pattern)
         var req = UpdateGuideStepRequest()
         let trimmedTitle       = stepTitle.trimmingCharacters(in: .whitespaces)
@@ -1332,7 +1332,7 @@ struct EditStepSheet: View {
         }
         // else: req.mediaBase64 stays nil → key omitted from JSON → server keeps existing
 
-        // U4: model slots are sent as a whole — "None" with no extras clears
+        // U4: model slots are sent as a whole - "None" with no extras clears
         // every model (previously impossible from this sheet). Slot 1 keeps its
         // stable slotId and existing placement; the server drops placement for
         // any slot whose model changed.
@@ -1348,14 +1348,14 @@ struct EditStepSheet: View {
         }
         req.models = slots
 
-        // Branch logic — always send so Author can clear a previously-set branch
+        // Branch logic - always send so Author can clear a previously-set branch
         // (nil = key absent = server keeps existing; "" would also work but pickers use nil)
         req.nextOnSuccess = nextOnSuccess
         req.nextOnFailure = nextOnFailure
         req.precondition  = precondition
 
         // Step validation flag (K4). Training itself happens immediately via
-        // its own endpoints — only the requirement flag rides the PATCH.
+        // its own endpoints - only the requirement flag rides the PATCH.
         req.validationRequired = validationOn
         req.evidenceRequired   = evidenceOn   // K5
 

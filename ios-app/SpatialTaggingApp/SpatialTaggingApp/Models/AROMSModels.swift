@@ -1,4 +1,4 @@
-// AROMSModels.swift — AR OMS Phase 2: Guided work instruction types with spatial placement
+// AROMSModels.swift - AR OMS Phase 2: Guided work instruction types with spatial placement
 //
 // Swift equivalents of the AR OMS types in shared/src/index.ts.
 // All raw values match the TypeScript string literals exactly so JSON
@@ -14,7 +14,7 @@ import SceneKit // SCNVector3 for model euler angles
 
 /// Media type for a step's attached asset.
 /// Mirrors `GuideStepMediaType` in shared/src/index.ts.
-/// 'video' and 'glb' are reserved for Phase 2 — only 'image' is used in MVP.
+/// 'video' and 'glb' are reserved for Phase 2 - only 'image' is used in MVP.
 enum GuideStepMediaType: String, Codable {
     case image = "image"
     case video = "video"
@@ -52,7 +52,7 @@ enum ModelStatus: String, Codable {
 /// Mirrors `Model3D` in shared/src/index.ts.
 struct Model3D: Codable, Identifiable, Equatable {
     let id:               String
-    let anchorId:         String?   // optional — global library models may omit this
+    let anchorId:         String?   // optional - global library models may omit this
     let anchorIds:        [String]? // anchor kit membership (v2 global library)
     let name:             String
     let originalFormat:   ModelFormat
@@ -64,11 +64,11 @@ struct Model3D: Codable, Identifiable, Equatable {
     let hasUSDZ:          Bool
     /// USDZ conversion state set by the portal browser after GLB→USDZ conversion.
     /// 'pending' = not yet converted; 'ready' = USDZ available; 'failed' = conversion error.
-    /// Nil on legacy records — infer from hasUSDZ.
+    /// Nil on legacy records - infer from hasUSDZ.
     let usdzStatus:       String?
     /// Organizational category. 'general' = visible to ALL anchors without kit assignment.
     let category:         String?
-    /// Author-saved default scale — pre-fills the model scale slider in EditStepSheet.
+    /// Author-saved default scale - pre-fills the model scale slider in EditStepSheet.
     let defaultScale:     Double?
     let uploadedBy:       String?
     let createdAt:        String
@@ -148,7 +148,7 @@ struct AssemblyBounds: Codable, Equatable {
     let min: [Double]
     let max: [Double]
     var centre: simd_float3 { simd_float3(Float((min[0] + max[0]) / 2), Float((min[1] + max[1]) / 2), Float((min[2] + max[2]) / 2)) }
-    /// Bottom-centre in the assembly frame — what goes on the tapped surface.
+    /// Bottom-centre in the assembly frame - what goes on the tapped surface.
     var bottomCentre: simd_float3 { simd_float3(Float((min[0] + max[0]) / 2), Float(min[1]), Float((min[2] + max[2]) / 2)) }
     var size: simd_float3 { simd_float3(Float(max[0] - min[0]), Float(max[1] - min[1]), Float(max[2] - min[2])) }
 }
@@ -180,7 +180,7 @@ struct GuideStepNode: Codable, Equatable {
     let durationSec:  Double?
     /// Start offset within the step's timeline (seconds, source timing).
     let delaySec:     Double?
-    /// Transient attention effect ("flash") — leaves no state behind.
+    /// Transient attention effect ("flash") - leaves no state behind.
     let effect:       String?
     let label:        String?           // friendly part name (source name → BOM description → part number)
     let sourceKey:    String?
@@ -206,7 +206,7 @@ struct CreateARGuideRequest: Codable {
 }
 
 /// Request body for PATCH /guides/:id.
-/// All fields are optional — only send what changed. `clearAssemblyPose`
+/// All fields are optional - only send what changed. `clearAssemblyPose`
 /// sends `assemblyPose: null` (un-places every CAD step).
 struct UpdateARGuideRequest: Encodable {
     var name:              String?
@@ -232,7 +232,7 @@ struct UpdateARGuideRequest: Encodable {
 // MARK: - GuideStep
 // ============================================================
 
-/// U4 (2026.4.45): one 3D asset on a guide step — assignment (which model, how
+/// U4 (2026.4.45): one 3D asset on a guide step - assignment (which model, how
 /// big, how transparent) + device-owned placement (offsets from the pin, Y rot).
 /// Mirrors `GuideStepModel` in shared/src/index.ts. slotId is stable across edits.
 struct GuideStepModel: Codable, Identifiable, Equatable {
@@ -244,7 +244,7 @@ struct GuideStepModel: Codable, Identifiable, Equatable {
     var modelOffsetY:   Double?
     var modelOffsetZ:   Double?
     var modelRotationY: Double?
-    /// Tilt (X) and roll (Z) in radians — nil = 0. A π tilt is "upside down".
+    /// Tilt (X) and roll (Z) in radians - nil = 0. A π tilt is "upside down".
     var modelRotationX: Double?
     var modelRotationZ: Double?
     var id: String { slotId }
@@ -256,12 +256,12 @@ struct GuideStepModel: Codable, Identifiable, Equatable {
     var eulerAngles: SCNVector3 { SCNVector3(Float(modelRotationX ?? 0), Float(modelRotationY ?? 0), Float(modelRotationZ ?? 0)) }
 }
 
-/// Max 3D model slots per step — mirrors GUIDE_STEP_MAX_MODELS on the server.
+/// Max 3D model slots per step - mirrors GUIDE_STEP_MAX_MODELS on the server.
 let guideStepMaxModelSlots = 3
 
 /// One instruction step within an ARGuide.
 /// `sequenceNumber` is 1-based and determines display order in the floating panel.
-/// `ttsText` overrides the voice synthesis text — defaults to `text` when nil.
+/// `ttsText` overrides the voice synthesis text - defaults to `text` when nil.
 /// `mediaPath` is the filename on the SIB guide-step-images store.
 /// Phase 2: posX/posY/posZ are ARKit world-space coordinates (relative to the saved ARWorldMap).
 /// Mirrors `GuideStep` in shared/src/index.ts.
@@ -284,7 +284,7 @@ struct GuideStep: Codable, Identifiable, Equatable {
     let posY:               Double?
     let posZ:               Double?
     let isPlaced:           Bool        // non-optional; custom init defaults to false
-    let positionSource:     String?     // "tap" | "cad" — forward compat for CAD import
+    let positionSource:     String?     // "tap" | "cad" - forward compat for CAD import
     // Phase 3D: 3D model assignment
     let modelId:            String?     // ID of Model3D in this anchor's library; nil = no ghost
     let modelScale:         Double?     // world-space uniform scale factor (default 1.0)
@@ -298,20 +298,20 @@ struct GuideStep: Codable, Identifiable, Equatable {
     /// U4: model slots (≤ guideStepMaxModelSlots). The server mirrors slot 1
     /// into the legacy fields above; read `effectiveModels` instead of either.
     let models:             [GuideStepModel]?
-    // AR OJT: CAD-driven presentation — node deltas, suggested view, pin in the assembly frame
+    // AR OJT: CAD-driven presentation - node deltas, suggested view, pin in the assembly frame
     let nodes:              [GuideStepNode]?
     let view:               GuideStepView?
     let cadPosition:        [Double]?
-    /// 2026.4.46: what surrounds this step's parts — "installed" (default), "ghost" or "solid".
+    /// 2026.4.46: what surrounds this step's parts - "installed" (default), "ghost" or "solid".
     let context:            String?
-    // Conditional task graph (Step 2 of AI-readiness) — all optional, nil = linear/default behaviour
+    // Conditional task graph (Step 2 of AI-readiness) - all optional, nil = linear/default behaviour
     let nextOnSuccess:      String?     // step ID to navigate to on completion; nil → sequenceNumber+1
     let nextOnFailure:      String?     // step ID to navigate to on failure/retry; nil → stay on step
     let precondition:       String?     // step ID that must be completed before this step is reachable
     // Step validation (K4)
     let validationRequired:  Bool?      // author demands a verdict before completion
     let validationTrainedAt: String?    // server-stamped when a reference photo exists
-    // V1: how the step was trained — "single" (one photo) or "cone" (multi-angle
+    // V1: how the step was trained - "single" (one photo) or "cone" (multi-angle
     // Spatial Inspection sweep against the hidden validationTagId tag).
     let validationMode:      String?
     let validationTagId:     String?
@@ -329,7 +329,7 @@ struct GuideStep: Codable, Identifiable, Equatable {
     /// An evidence photo is required before completing (K5).
     var needsEvidence: Bool { evidenceRequired == true }
 
-    /// U4: the step's 3D model slots — `models` when present, else the legacy
+    /// U4: the step's 3D model slots - `models` when present, else the legacy
     /// single-model fields lifted into one slot (older servers / records).
     var effectiveModels: [GuideStepModel] {
         if let m = models, !m.isEmpty { return m }
@@ -360,7 +360,7 @@ struct GuideStep: Codable, Identifiable, Equatable {
         return simd_float3(Float(x), Float(y), Float(z))
     }
 
-    // Custom decoder — provides safe defaults for Phase 2 fields (`isPlaced`, `posX/Y/Z`,
+    // Custom decoder - provides safe defaults for Phase 2 fields (`isPlaced`, `posX/Y/Z`,
     // `positionSource`) that older server builds might not include in the response.
     // Without this, a missing `isPlaced` key causes a decodingError and the step
     // creation / fetch call surfaces "Got an unexpected response from the server."
@@ -377,13 +377,13 @@ struct GuideStep: Codable, Identifiable, Equatable {
         mediaPath          = try c.decodeIfPresent(String.self,             forKey: .mediaPath)
         linkUrl            = try c.decodeIfPresent(String.self,             forKey: .linkUrl)
         completionRequired = try c.decode(Bool.self,                forKey: .completionRequired)
-        // Phase 2 placement fields — default to unplaced when absent (pre-Phase-2 server builds)
+        // Phase 2 placement fields - default to unplaced when absent (pre-Phase-2 server builds)
         posX               = try c.decodeIfPresent(Double.self,             forKey: .posX)
         posY               = try c.decodeIfPresent(Double.self,             forKey: .posY)
         posZ               = try c.decodeIfPresent(Double.self,             forKey: .posZ)
         isPlaced           = (try? c.decode(Bool.self,              forKey: .isPlaced)) ?? false
         positionSource     = try c.decodeIfPresent(String.self,             forKey: .positionSource)
-        // Phase 3D: model assignment — default nil (key absent) when not yet assigned
+        // Phase 3D: model assignment - default nil (key absent) when not yet assigned
         modelId            = try c.decodeIfPresent(String.self,             forKey: .modelId)
         modelScale         = try c.decodeIfPresent(Double.self,             forKey: .modelScale)
         modelOpacity       = try c.decodeIfPresent(Double.self,             forKey: .modelOpacity)
@@ -398,7 +398,7 @@ struct GuideStep: Codable, Identifiable, Equatable {
         view               = try c.decodeIfPresent(GuideStepView.self,     forKey: .view)
         cadPosition        = try c.decodeIfPresent([Double].self,          forKey: .cadPosition)
         context            = try c.decodeIfPresent(String.self,            forKey: .context)
-        // Conditional task graph — absent on guides created before Step 2
+        // Conditional task graph - absent on guides created before Step 2
         nextOnSuccess      = try c.decodeIfPresent(String.self,             forKey: .nextOnSuccess)
         nextOnFailure      = try c.decodeIfPresent(String.self,             forKey: .nextOnFailure)
         precondition       = try c.decodeIfPresent(String.self,             forKey: .precondition)
@@ -422,7 +422,7 @@ struct CreateGuideStepRequest: Codable {
     let mediaBase64:        String?
     let completionRequired: Bool
 
-    /// Convenience init — accepts a UIImage directly and encodes it.
+    /// Convenience init - accepts a UIImage directly and encodes it.
     init(
         sequenceNumber:     Int,
         title:              String?     = nil,
@@ -442,7 +442,7 @@ struct CreateGuideStepRequest: Codable {
 }
 
 /// Request body for PATCH /guides/:id/steps/:stepId.
-/// All fields are Optional — Swift synthesizes a no-arg init() automatically.
+/// All fields are Optional - Swift synthesizes a no-arg init() automatically.
 /// Use UpdateGuideStepRequest() then set only the fields that changed.
 ///
 /// Media update rules (server-side):
@@ -451,7 +451,7 @@ struct CreateGuideStepRequest: Codable {
 ///   nil     (key absent in JSON)    → server keeps existing (Swift encodeIfPresent omits nil)
 ///
 /// NOTE: Swift's synthesized Encodable uses encodeIfPresent for Optional properties,
-/// which omits nil keys from JSON entirely — NOT as JSON null.  Do NOT set mediaBase64
+/// which omits nil keys from JSON entirely - NOT as JSON null.  Do NOT set mediaBase64
 /// to nil to clear; use "" (empty string sentinel) instead.
 struct UpdateGuideStepRequest: Codable {
     var sequenceNumber:     Int?
@@ -470,7 +470,7 @@ struct UpdateGuideStepRequest: Codable {
     // Phase 3D: 3D model assignment
     // Note: Swift's encodeIfPresent omits nil keys entirely (does NOT send JSON null).
     // Setting modelId = nil therefore means "don't change"; assigning a real ID sets/replaces.
-    // Clearing the model (sending JSON null) is not yet supported via this struct —
+    // Clearing the model (sending JSON null) is not yet supported via this struct -
     // it would require a custom encoder or an explicit null-sentinel wrapper type.
     var modelId:            String?
     var modelScale:         Double?
@@ -484,11 +484,11 @@ struct UpdateGuideStepRequest: Codable {
     /// U4: replace ALL model slots (max 3; [] clears every model). When set, the
     /// legacy model* keys above are ignored by the server.
     var models:             [GuideStepModel]?
-    // Conditional task graph — nil omits the key (keeps existing); set to "" to clear
+    // Conditional task graph - nil omits the key (keeps existing); set to "" to clear
     var nextOnSuccess:      String?
     var nextOnFailure:      String?
     var precondition:       String?
-    // Step validation (K4) — nil keeps existing; true/false sets
+    // Step validation (K4) - nil keeps existing; true/false sets
     var validationRequired: Bool?
     // K5
     var evidenceRequired:   Bool?
@@ -505,21 +505,21 @@ struct UpdateGuideStepRequest: Codable {
 /// Completion record for a single step within a session.
 /// Mirrors `GuideStepCompletion` in shared/src/index.ts.
 ///
-/// `evidencePhotoBase64` — Optional JPEG evidence photo captured by the Operator
+/// `evidencePhotoBase64` - Optional JPEG evidence photo captured by the Operator
 /// at this step.  Sent in the sign-off request; the server saves it to disk and
 /// returns `evidencePhotoPath` in its place.  Both are Optional so existing
 /// sessions without evidence decode cleanly.
 struct GuideStepCompletion: Codable, Equatable {
     let stepId:               String
-    var enteredAt:            String?  // ISO 8601 — when step first shown; nil on legacy records
+    var enteredAt:            String?  // ISO 8601 - when step first shown; nil on legacy records
     let completedAt:          String   // ISO 8601
     let durationSeconds:      Double   // elapsed from step entry to checkmark tap
-    var evidencePhotoBase64:  String?  // request only — stripped by server on receipt
-    var evidencePhotoPath:    String?  // response only — set by server after save
+    var evidencePhotoBase64:  String?  // request only - stripped by server on receipt
+    var evidencePhotoPath:    String?  // response only - set by server after save
 }
 
 /// Full session record submitted atomically at sign-off.
-/// Created in one POST — there is no "open / close" lifecycle.
+/// Created in one POST - there is no "open / close" lifecycle.
 /// Mirrors `GuideSession` in shared/src/index.ts.
 struct ARGuideSession: Codable, Identifiable {
     let id:              String
@@ -547,7 +547,7 @@ struct CreateARGuideSessionRequest: Codable {
     let completedAt:     String
     let durationSeconds: Double
     let stepCompletions: [GuideStepCompletion]
-    /// Live session id opened at session start — optional for backward compat.
+    /// Live session id opened at session start - optional for backward compat.
     /// When present the server closes the SSE stream and broadcasts session:submitted.
     let liveSessionId:   String?
 }
@@ -582,7 +582,7 @@ struct GuideStepProgress {
         completedAt  = Date()
     }
 
-    /// includePhoto: false when the photo was already uploaded live —
+    /// includePhoto: false when the photo was already uploaded live -
     /// the server links the existing file, so sending base64 again would
     /// only waste bandwidth (and main-thread encode time).
     func toCompletion(includePhoto: Bool = true) -> GuideStepCompletion? {
@@ -605,7 +605,7 @@ struct GuideStepProgress {
 }
 
 // ============================================================
-// MARK: - Live Guide Session (real-time telemetry — Step 1 AI readiness)
+// MARK: - Live Guide Session (real-time telemetry - Step 1 AI readiness)
 // ============================================================
 
 /// Step-event types pushed by the Operator device during an active guide walk.
@@ -674,12 +674,12 @@ struct AIHint: Decodable, Identifiable {
     let text:          String       // guidance shown to the Operator
     let action:        AIHintAction?
     let targetStepId:  String?      // navigate target when action == .navigate
-    /// Why the adapter fired: "stall" (operator stuck — assist card auto-expands)
-    /// or "retry" (operator busy — stays as a quiet chip). Optional: older
+    /// Why the adapter fired: "stall" (operator stuck - assist card auto-expands)
+    /// or "retry" (operator busy - stays as a quiet chip). Optional: older
     /// servers omit it, and we treat nil like a retry.
     let trigger:       String?
     let ts:            String       // ISO 8601
-    /// C1: a human hint from a coaching author — `from` names them and
+    /// C1: a human hint from a coaching author - `from` names them and
     /// `pointer` (guide-map frame x,y,z) draws a "look here" marker.
     let source:        String?
     let from:          String?

@@ -1,4 +1,4 @@
-# Phase 2 Architecture — Multi-Tag Spatial Inspection
+# Phase 2 Architecture - Multi-Tag Spatial Inspection
 ### Spatial Tagging App · iPhone (Native iOS) + Macbook (SIB Server)
 
 ---
@@ -9,11 +9,11 @@
 |---|---|---|
 | iPhone client | WebXR / AR.js in Safari | Native Swift + ARKit + SwiftUI |
 | Anchor tracking | Device orientation + QR | ARKit image tracking on QR code |
-| Tags per anchor | 1 (de-facto) | N — multiple independent checks |
+| Tags per anchor | 1 (de-facto) | N - multiple independent checks |
 | Validation result | Single PASS/FAIL | Per-tag PASS/FAIL + anchor summary |
 | Detection engine | SSIM + histogram (single) | SSIM + histogram (per-tag, batched) |
 | Macbook role | Development only | SIB server host on local network |
-| Operator guidance | One score | Which specific checks failed — with label |
+| Operator guidance | One score | Which specific checks failed - with label |
 
 The core SIB backend stays in Node.js/TypeScript on the Macbook and continues to be the source of truth. The browser AR client is retired for cleanroom use; the native iOS app replaces it entirely.
 
@@ -41,28 +41,28 @@ The Macbook runs `npm run dev` (or a packaged SIB server) and exposes the API on
 
 ---
 
-## 3. Anchor Reliability — The Real-World Anchor Problem
+## 3. Anchor Reliability - The Real-World Anchor Problem
 
 ### Phase 1 problem
-QR scanning in Safari via WebXR provided no 6DOF pose — only an identifier. Spatial position was approximated from device orientation, which drifted.
+QR scanning in Safari via WebXR provided no 6DOF pose - only an identifier. Spatial position was approximated from device orientation, which drifted.
 
 ### Phase 2 solution: ARKit Image Tracking on QR Code
 
 Each cleanroom QR code serves dual purpose:
-1. **Identifier** — encodes `assetId` and `anchorId` as a JSON payload (existing)
-2. **Physical marker** — registered as an `ARReferenceImage` so ARKit continuously tracks its 6DOF pose (position + orientation) in world space
+1. **Identifier** - encodes `assetId` and `anchorId` as a JSON payload (existing)
+2. **Physical marker** - registered as an `ARReferenceImage` so ARKit continuously tracks its 6DOF pose (position + orientation) in world space
 
 **How it works:**
 - QR codes are printed at known physical size (e.g., 10cm × 10cm) and affixed to equipment
 - The app registers the QR image with ARKit's `ARImageTrackingConfiguration`
-- ARKit returns an `ARImageAnchor` — the exact 3D pose of the QR in camera space
+- ARKit returns an `ARImageAnchor` - the exact 3D pose of the QR in camera space
 - All tag positions are stored relative to this QR anchor frame
 - When operator returns days later: scan same QR → ARKit re-detects → all tag markers snap back to correct positions
 
 **Why this is reliable:**
 - ARKit's Vision-based image tracking works even if the device moves away and returns
 - No world map, no drift, no need for SLAM initialization
-- The QR IS the anchor — robust to cleanroom re-entry, app restarts, different devices
+- The QR IS the anchor - robust to cleanroom re-entry, app restarts, different devices
 - Works under controlled cleanroom lighting
 
 ### QR Code Requirements (Production)
@@ -73,20 +73,20 @@ Each cleanroom QR code serves dual purpose:
 
 ---
 
-## 4. Multi-Tag Per Anchor — The Core Phase 2 Feature
+## 4. Multi-Tag Per Anchor - The Core Phase 2 Feature
 
 ### Concept
 
 ```
 Anchor (= QR location)
-  ├── Tag 1: "Warning Label — Present"        → PassState → PASS ✓
-  ├── Tag 2: "Warning Label — Language EN"    → PassState → FAIL ✗  ← technician sees this
-  ├── Tag 3: "Cable Routing — Left Panel"     → PassState → PASS ✓
-  ├── Tag 4: "Gas Line A — Connected"         → PassState → PASS ✓
-  └── Tag 5: "Gas Line B — Not Swapped"       → PassState → FAIL ✗  ← and this
+  ├── Tag 1: "Warning Label - Present"        → PassState → PASS ✓
+  ├── Tag 2: "Warning Label - Language EN"    → PassState → FAIL ✗  ← technician sees this
+  ├── Tag 3: "Cable Routing - Left Panel"     → PassState → PASS ✓
+  ├── Tag 4: "Gas Line A - Connected"         → PassState → PASS ✓
+  └── Tag 5: "Gas Line B - Not Swapped"       → PassState → FAIL ✗  ← and this
 ```
 
-The Operator arrives at one QR location and immediately sees which of the N checks at that location are passing and which are failing — without scanning multiple codes or running separate sessions.
+The Operator arrives at one QR location and immediately sees which of the N checks at that location are passing and which are failing - without scanning multiple codes or running separate sessions.
 
 ### Tag Types for Cleanroom (extends Phase 1 ontology)
 
@@ -107,11 +107,11 @@ export type TagType =
   | 'PART_CHECK';           // Is part present and correct?
 ```
 
-These are semantic labels only — they don't change the detection engine. All checks still use SSIM + histogram. The type helps the UI display the right icon and the report label the correct category.
+These are semantic labels only - they don't change the detection engine. All checks still use SSIM + histogram. The type helps the UI display the right icon and the report label the correct category.
 
 ---
 
-## 5. Author Mode — Multi-Tag Training Flow
+## 5. Author Mode - Multi-Tag Training Flow
 
 ### User Journey
 
@@ -156,7 +156,7 @@ These are semantic labels only — they don't change the detection engine. All c
 
 ---
 
-## 6. Operator Mode — Multi-Tag Validation Flow
+## 6. Operator Mode - Multi-Tag Validation Flow
 
 ### User Journey
 
@@ -169,11 +169,11 @@ These are semantic labels only — they don't change the detection engine. All c
 6. Camera captures frame
 7. Sent to SIB: POST /perception/validate-all
 8. Results return per tag:
-      ✓ Warning Label — Present     [PASS 0.87]
-      ✗ Warning Label — Language    [FAIL 0.31] ← RED
+      ✓ Warning Label - Present     [PASS 0.87]
+      ✗ Warning Label - Language    [FAIL 0.31] ← RED
       ✓ Cable Routing               [PASS 0.76]
       ✓ Gas Line A                  [PASS 0.82]
-      ✗ Gas Line B — Not Swapped    [FAIL 0.29] ← RED
+      ✗ Gas Line B - Not Swapped    [FAIL 0.29] ← RED
 9. Anchor status: PARTIAL (some passed, some failed)
 10. Technician addresses failing items → re-scan → confirm
 11. Session records all ValidationResults
@@ -188,17 +188,17 @@ These are semantic labels only — they don't change the detection engine. All c
 | FAIL | Score < threshold | Red |
 | PARTIAL | Some pass, some fail (anchor-level) | Amber |
 
-### iOS Operator Mode — Result Overlay
+### iOS Operator Mode - Result Overlay
 
 ```
 ┌─────────────────────────────────────┐
-│  Panel A — Inspection Results       │
+│  Panel A - Inspection Results       │
 │  ─────────────────────────────────  │
-│  ✓  Warning Label — Present   0.87  │
-│  ✗  Warning Label — Language  0.31  │ ← tap for reference image
+│  ✓  Warning Label - Present   0.87  │
+│  ✗  Warning Label - Language  0.31  │ ← tap for reference image
 │  ✓  Cable Routing L-Panel     0.76  │
-│  ✓  Gas Line A — Connected    0.82  │
-│  ✗  Gas Line B — Swapped      0.29  │ ← tap for reference image
+│  ✓  Gas Line A - Connected    0.82  │
+│  ✗  Gas Line B - Swapped      0.29  │ ← tap for reference image
 │                                     │
 │  Status: PARTIAL (3/5 passed)       │
 │                                     │
@@ -210,7 +210,7 @@ Tapping a FAIL row shows the pass-state reference image alongside the live captu
 
 ---
 
-## 7. SIB v0.2 — Backend Enhancements
+## 7. SIB v0.2 - Backend Enhancements
 
 ### New Endpoint: Batch Validation
 
@@ -240,8 +240,8 @@ POST /perception/validate-all
     "failCount": 2,
     "totalCount": 5,
     "tagResults": [
-      { "tagId": "t1", "tagLabel": "Warning Label — Present", "status": "PASS", "confidence": 0.87 },
-      { "tagId": "t2", "tagLabel": "Warning Label — Language", "status": "FAIL", "confidence": 0.31 },
+      { "tagId": "t1", "tagLabel": "Warning Label - Present", "status": "PASS", "confidence": 0.87 },
+      { "tagId": "t2", "tagLabel": "Warning Label - Language", "status": "FAIL", "confidence": 0.31 },
       ...
     ],
     "evaluatedAt": "2026-05-26T10:00:00Z"
@@ -311,7 +311,7 @@ export interface Tag {
 The SIB must bind to `0.0.0.0` (not just `localhost`) so the iPhone can reach it:
 
 ```typescript
-// sib/src/index.ts — change
+// sib/src/index.ts - change
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`[SIB] Listening on 0.0.0.0:${PORT}`);
 });
@@ -319,7 +319,7 @@ app.listen(PORT, '0.0.0.0', () => {
 
 ---
 
-## 8. iOS App — Technical Stack
+## 8. iOS App - Technical Stack
 
 | Component | Technology |
 |---|---|
@@ -365,7 +365,7 @@ SpatialTaggingApp/
 
 ## 9. Implementation Roadmap
 
-### Phase 2A — Foundation (Week 1–2)
+### Phase 2A - Foundation (Week 1–2)
 - [ ] iOS app skeleton: SwiftUI + ARKit setup
 - [ ] QR scanning via Vision framework → decode JSON payload
 - [ ] ARKit image tracking on QR (6DOF pose)
@@ -373,7 +373,7 @@ SpatialTaggingApp/
 - [ ] Settings screen: enter SIB base URL
 - [ ] SIB: bind to 0.0.0.0, test from iPhone
 
-### Phase 2B — Multi-Tag Author Mode (Week 3–4)
+### Phase 2B - Multi-Tag Author Mode (Week 3–4)
 - [ ] Load/create anchor on QR scan
 - [ ] Tag list screen: show all tags for anchor
 - [ ] Add Tag sheet: name, type, description
@@ -381,7 +381,7 @@ SpatialTaggingApp/
 - [ ] Submit PassState to SIB: POST /perception/train
 - [ ] Visual confirmation: trained tag turns green
 
-### Phase 2C — Multi-Tag Operator Mode (Week 5–6)
+### Phase 2C - Multi-Tag Operator Mode (Week 5–6)
 - [ ] Load all tags for anchor on QR scan
 - [ ] New SIB endpoint: POST /perception/validate-all
 - [ ] New SIB schema: AnchorValidationResult, BatchValidateRequest
@@ -390,12 +390,12 @@ SpatialTaggingApp/
 - [ ] Re-scan button
 - [ ] Session recording of AnchorValidationResult
 
-### Phase 2D — Polish & Macbook Dashboard (Week 7–8)
+### Phase 2D - Polish & Macbook Dashboard (Week 7–8)
 - [ ] Macbook: simple web dashboard (existing browser client repurposed as admin UI)
 - [ ] View all sessions and their anchor results
 - [ ] Export session report (CSV or PDF)
-- [ ] SIB: GET /sessions/:id/results — return full anchor result history
-- [ ] iOS: offline queue — store captures locally if LAN drops, sync on reconnect
+- [ ] SIB: GET /sessions/:id/results - return full anchor result history
+- [ ] iOS: offline queue - store captures locally if LAN drops, sync on reconnect
 
 ---
 
@@ -404,27 +404,27 @@ SpatialTaggingApp/
 ### Why one image → all tags at an anchor?
 
 Sending one image and running all N tag comparisons server-side is the right model because:
-1. The technician doesn't need to change position between checks — all checks at a location are evaluated from the same vantage point
+1. The technician doesn't need to change position between checks - all checks at a location are evaluated from the same vantage point
 2. Reduces round-trips (1 request vs N)
 3. Server can parallelize comparisons
-4. Keeps client thin — no per-check logic on device
+4. Keeps client thin - no per-check logic on device
 
 The tradeoff is that all tags at an anchor should be detectable from a similar viewpoint. If some checks require very different angles (e.g., top vs. front), those should be on separate anchors.
 
 ### Why SSIM for cleanroom checks?
 
 For the listed use cases, SSIM is sufficient because:
-- **Warning label present/missing** — label occupies a known region; SSIM drops sharply when it's absent
-- **Correct language** — different language = different text = different pixel structure → SSIM catches this
-- **Cable routing** — wrong routing = visual difference from reference → SSIM catches this
-- **Missing parts** — absent part = structural difference → SSIM + histogram catches this
-- **Gas line swapped** — different connector position = visual difference → SSIM catches this
+- **Warning label present/missing** - label occupies a known region; SSIM drops sharply when it's absent
+- **Correct language** - different language = different text = different pixel structure → SSIM catches this
+- **Cable routing** - wrong routing = visual difference from reference → SSIM catches this
+- **Missing parts** - absent part = structural difference → SSIM + histogram catches this
+- **Gas line swapped** - different connector position = visual difference → SSIM catches this
 
 The threshold tuning (currently `PASS_THRESHOLD=0.60`) may need per-tag adjustment. Consider adding a `threshold` field to Tag in a future iteration.
 
 ### iPhone as the only capture device
 
-All inspection capture happens on iPhone. The Macbook is purely the SIB server — no camera use. This means:
+All inspection capture happens on iPhone. The Macbook is purely the SIB server - no camera use. This means:
 - Authors must be in the cleanroom with the iPhone for training
 - Operators use the iPhone in cleanroom for inspection
 - Macbook stays outside cleanroom (or in clean office area) running SIB
@@ -433,8 +433,8 @@ All inspection capture happens on iPhone. The Macbook is purely the SIB server �
 
 ## 11. Open Questions for Future Phases
 
-1. **Per-tag confidence thresholds** — currently one global `PASS_THRESHOLD`. Should each tag type have its own threshold (e.g., language checks may need higher confidence)?
-2. **Offline mode** — if WiFi drops in cleanroom, should the iPhone queue captures and sync later? 
-3. **Multiple captures per validation** — should Operator take 3 angles like Author, or is 1 frame enough?
-4. **QR code re-print strategy** — if QR is damaged, how do we re-associate a new QR with existing anchor+tags?
-5. **Report format** — what does the downstream QA system expect? CSV, PDF, API push?
+1. **Per-tag confidence thresholds** - currently one global `PASS_THRESHOLD`. Should each tag type have its own threshold (e.g., language checks may need higher confidence)?
+2. **Offline mode** - if WiFi drops in cleanroom, should the iPhone queue captures and sync later? 
+3. **Multiple captures per validation** - should Operator take 3 angles like Author, or is 1 frame enough?
+4. **QR code re-print strategy** - if QR is damaged, how do we re-associate a new QR with existing anchor+tags?
+5. **Report format** - what does the downstream QA system expect? CSV, PDF, API push?

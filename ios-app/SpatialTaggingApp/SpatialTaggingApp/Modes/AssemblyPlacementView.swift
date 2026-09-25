@@ -1,13 +1,13 @@
-// AssemblyPlacementView.swift — AR OJT slice 3: place the whole assembly once.
+// AssemblyPlacementView.swift - AR OJT slice 3: place the whole assembly once.
 //
 // The author never places steps for an imported guide. The assembly ghost
 // follows a reticle on the detected surface (bottom-centre of the geometry on
-// the surface, facing the author); ONE tap ("Place here") saves the pose — the
+// the surface, facing the author); ONE tap ("Place here") saves the pose - the
 // server derives every CAD step's pin from it. Then one tool at a time
 // (PlacementTools.swift): Move slides on the surface · Turn spins it · Scale
 // pinches. "Done" re-saves if anything moved.
 //
-// Frame: same convention as Place Steps / Place Model — the guide's world map
+// Frame: same convention as Place Steps / Place Model - the guide's world map
 // frame when one exists (session relocalizes into it), else a fresh session
 // whose map is uploaded with the first save so operators can relocalize.
 //
@@ -265,15 +265,15 @@ struct AssemblyPlacementView: View {
     private func load() async {
         // `.task` can fire again on the same view (SwiftUI re-appear after a
         // cover/sheet cycle); a second load would leave the first node behind
-        // at its old pose — the "duplicate assembly" seen on re-aim.
+        // at its old pose - the "duplicate assembly" seen on re-aim.
         guard assemblyNode == nil, !isLoading else {
-            AppLog.warn("assembly", "placement load() called again — ignored (node=\(assemblyNode != nil))"); return
+            AppLog.warn("assembly", "placement load() called again - ignored (node=\(assemblyNode != nil))"); return
         }
         isLoading = true; defer { isLoading = false }
         let client = SIBClient(settings: settings)
         guard let asm = guide.assembly else { phase = .failed; errorText = "This guide has no assembly model."; return }
 
-        // Session frame — the guide's map when it has one.
+        // Session frame - the guide's map when it has one.
         if let bundle = await WorldMapCache.load(.guide(guide.id), client: client) {
             arManager.startSessionWithWorldMap(bundle.map); hadWorldMap = true
         } else {
@@ -284,7 +284,7 @@ struct AssemblyPlacementView: View {
         status = "Downloading assembly…"
         let data: Data
         do { data = try await AssemblyModelCache.glb(modelId: asm.modelId, client: client) }
-        catch { phase = .failed; errorText = "Could not download the assembly model — \(AssemblyModelCache.reason(error))"; return }
+        catch { phase = .failed; errorText = "Could not download the assembly model - \(AssemblyModelCache.reason(error))"; return }
         status = "Building assembly…"
         let built: GLBAssembly? = await Task.detached(priority: .userInitiated) { try? GLBLoader.load(data: data) }.value
         guard let glb = built, !glb.parts.isEmpty else {
@@ -368,7 +368,7 @@ struct AssemblyPlacementView: View {
         phase = .placed
         if previewOn { playPreview() }          // re-aim paused the loop
         await save()
-        status = "Placed — every step now follows the assembly. Adjust if needed, then Done."
+        status = "Placed - every step now follows the assembly. Adjust if needed, then Done."
     }
 
     private func done() async {
@@ -384,7 +384,7 @@ struct AssemblyPlacementView: View {
             var updated = try await client.setAssemblyPose(guideId: guide.id, pose: pose)
             if speedDirty { updated = try await client.setAssemblyAnimationSpeed(guideId: guide.id, speed: speed); speedDirty = false }
             dirty = false
-            // A fresh session has no saved map yet — upload it so operators (and
+            // A fresh session has no saved map yet - upload it so operators (and
             // Place Steps) relocalize into the same frame this pose lives in.
             if !hadWorldMap, let mapData = await arManager.saveCurrentWorldMap() {
                 let photo = arManager.sceneView.snapshot().jpegData(compressionQuality: 0.72)

@@ -79,7 +79,7 @@ router.post('/analyze-image', async (req: Request, res: Response) => {
   return res.status(200).json(response);
 });
 
-// GET /perception/adapters — list registered adapters
+// GET /perception/adapters - list registered adapters
 router.get('/adapters', (_req: Request, res: Response) => {
   return res.json({
     data: listAdapters(),

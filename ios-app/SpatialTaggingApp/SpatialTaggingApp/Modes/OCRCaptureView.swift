@@ -1,9 +1,9 @@
-// OCRCaptureView.swift — G12
+// OCRCaptureView.swift - G12
 // Single-capture OCR training screen for TagType.languageCheck tags.
 //
 // Flow:
 //  1. Author sees live camera with "Point at label" instruction (ready state).
-//  2. Taps "Scan Label" — camera snapshot + Vision VNRecognizeTextRequest run in parallel.
+//  2. Taps "Scan Label" - camera snapshot + Vision VNRecognizeTextRequest run in parallel.
 //  3. Detected text shown in an editable field so Author can correct misreads.
 //  4. "Confirm & Train" →
 //       a. PATCH /tags/:id to store detected text in tag.expectedOutcome
@@ -16,7 +16,7 @@
 //   capture is sufficient for both OCR extraction and visual SSIM backup.
 //   Walking around a paper label in 3D gives no additional information.
 //
-// OCR engine: Apple Vision VNRecognizeTextRequest — on-device, free, no network.
+// OCR engine: Apple Vision VNRecognizeTextRequest - on-device, free, no network.
 // Supported scripts: Latin + all scripts supported by the OS locale.
 
 import SwiftUI
@@ -54,7 +54,7 @@ struct OCRCaptureView: View {
         let sceneView: ARSCNView
         func makeUIView(context: Context) -> ARSCNView { sceneView }
         func updateUIView(_ uiView: ARSCNView, context: Context) {}
-        // No dismantleUIView — session lifecycle owned by parentArManager
+        // No dismantleUIView - session lifecycle owned by parentArManager
     }
 
     // ── State ─────────────────────────────────────────────────────────────────
@@ -91,13 +91,13 @@ struct OCRCaptureView: View {
         }
         .onAppear {
             // Link our local ARSCNView to AuthorModeView's already-running session.
-            // No startSession() — that would reset the world frame and invalidate
+            // No startSession() - that would reset the world frame and invalidate
             // the anchor transform that was locked in QRScanGateView.
             parentArManager.sceneView.pause(nil)   // one renderer per session
             svHolder.sceneView.session = parentArManager.sceneView.session
         }
         .onDisappear {
-            // DO NOT pause the session — it belongs to parentArManager. Resume its renderer.
+            // DO NOT pause the session - it belongs to parentArManager. Resume its renderer.
             parentArManager.sceneView.play(nil)
         }
     }
@@ -137,14 +137,14 @@ struct OCRCaptureView: View {
         }
     }
 
-    // ── Center content — switches on phase ────────────────────────────────────
+    // ── Center content - switches on phase ────────────────────────────────────
 
     @ViewBuilder
     private var centerContent: some View {
         switch phase {
 
         case .ready:
-            // Framing guide — crosshair to align the label in the center
+            // Framing guide - crosshair to align the label in the center
             VStack(spacing: 14) {
                 Image(systemName: "text.viewfinder")
                     .font(.system(size: 52, weight: .light))
@@ -206,7 +206,7 @@ struct OCRCaptureView: View {
                             .stroke(Color.indigo.opacity(0.3), lineWidth: 1))
 
                     if editedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        Text("No text detected — type the label content manually.")
+                        Text("No text detected - type the label content manually.")
                             .font(.caption)
                             .foregroundStyle(.orange)
                     } else {
@@ -256,7 +256,7 @@ struct OCRCaptureView: View {
 
             case .review:
                 VStack(spacing: 10) {
-                    // Confirm — stores text + uploads image
+                    // Confirm - stores text + uploads image
                     Button { Task { await confirmAndTrain() } } label: {
                         Label("Confirm & Train", systemImage: "checkmark.circle.fill")
                             .font(.headline)
@@ -268,7 +268,7 @@ struct OCRCaptureView: View {
                     .disabled(editedText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     .padding(.horizontal, 24)
 
-                    // Rescan — go back to ready state
+                    // Rescan - go back to ready state
                     Button { rescan() } label: {
                         Label("Rescan", systemImage: "arrow.counterclockwise")
                             .font(.subheadline)
@@ -299,7 +299,7 @@ struct OCRCaptureView: View {
                     .symbolEffect(.bounce, value: showSuccess)
                 Text("Label Trained!")
                     .font(.title.bold()).foregroundColor(.white)
-                Text("\"\(tag.label)\" — OCR expected text stored.")
+                Text("\"\(tag.label)\" - OCR expected text stored.")
                     .font(.subheadline).foregroundStyle(.white.opacity(0.75))
                     .multilineTextAlignment(.center).padding(.horizontal, 32)
                 let preview = editedText.count > 80
@@ -322,7 +322,7 @@ struct OCRCaptureView: View {
     // ── Scan ──────────────────────────────────────────────────────────────────
 
     private func scanLabel() {
-        // Use raw camera image (zero AR artifacts) — same fix as honeycomb/cone
+        // Use raw camera image (zero AR artifacts) - same fix as honeycomb/cone
         let frame    = svHolder.sceneView.session.currentFrame
         let snapshot = frame.flatMap { HoneycombCaptureView.rawCameraImage(from: $0) }
                        ?? svHolder.sceneView.snapshot()
@@ -336,7 +336,7 @@ struct OCRCaptureView: View {
         withAnimation(.easeOut(duration: 0.25)) { flashOpacity = 0 }
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
 
-        // Vision OCR — accurate mode, language correction on
+        // Vision OCR - accurate mode, language correction on
         guard let cgImage = snapshot.cgImage else {
             detectedText = ""; editedText = ""; phase = .review; return
         }
@@ -395,7 +395,7 @@ struct OCRCaptureView: View {
                 )
             )
         } catch {
-            // Non-fatal — log and continue so the reference image is still uploaded
+            // Non-fatal - log and continue so the reference image is still uploaded
             print("[OCRCapture] Could not update expectedOutcome: \(error.localizedDescription)")
         }
 
@@ -416,7 +416,7 @@ struct OCRCaptureView: View {
         let image = PassStateImage(
             id: nil, tagId: tag.id, anchorId: anchor.id, assetId: anchor.assetId,
             imageBase64: payload, mimeType: "image/jpeg",
-            // Identity pose — single straight-on capture, position not meaningful
+            // Identity pose - single straight-on capture, position not meaningful
             pose: CameraPose(position: .zero, rotation: .identity),
             capturedAt: now
         )

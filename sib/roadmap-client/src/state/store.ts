@@ -1,4 +1,4 @@
-// store.ts — Zustand store: all business logic for the mind-map editor.
+// store.ts - Zustand store: all business logic for the mind-map editor.
 // Components stay presentational; every mutation flows through an action here
 // so local state, the undo stack, and the collaboration channel never diverge.
 //
@@ -97,14 +97,14 @@ interface State {
   searchQuery: string;
   /** Last applied auto-layout; any manual node move resets to 'freeform'. */
   layoutMode: 'freeform' | 'hierarchical' | 'grid';
-  /** View filters — per-client, never synced or persisted. */
+  /** View filters - per-client, never synced or persisted. */
   filters: ViewFilters;
   showFilterPanel: boolean;
-  /** 2026.4.46: Parts Studio (full-screen assembly view) — the step it shows, or null. */
+  /** 2026.4.46: Parts Studio (full-screen assembly view) - the step it shows, or null. */
   partsStudioNodeId: string | null;
   openPartsStudio(nodeId: string): void;
   closePartsStudio(): void;
-  /** Presentation mode — per-client walkthrough of lanes/groups. */
+  /** Presentation mode - per-client walkthrough of lanes/groups. */
   presentation: { active: boolean; step: number; steps: PresentationStep[] };
   /** Whiteboard/screenshot import: preview awaiting user confirmation. */
   imagePreview: ImageImportResult | null;
@@ -118,7 +118,7 @@ interface State {
   // ── Procedure Designer (kind: 'procedure' maps only) ──────────────────────
   /**
    * A connection has been dropped and is waiting for the author to say what it
-   * means. On procedure maps an edge is never created until a role is chosen —
+   * means. On procedure maps an edge is never created until a role is chosen -
    * an unroled edge is silently ignored by the compiler, which would be a
    * confusing way to lose work.
    */
@@ -134,7 +134,7 @@ interface State {
   /** Set when a send is refused because the target guide is published. */
   procedurePublishedConflict: string | null;
   /**
-   * Canvas day/night theme. Per-client, per-map-kind (localStorage) — a view
+   * Canvas day/night theme. Per-client, per-map-kind (localStorage) - a view
    * preference like filters, never synced. Procedure maps default to night so
    * an executable procedure is visually unmistakable from a planning roadmap;
    * node cards stay white in both themes so nothing inside them can lose
@@ -144,7 +144,7 @@ interface State {
   /**
    * Preview walkthrough (procedure maps): simulates the operator's run in a
    * phone-frame panel while the canvas highlights the current step. Purely
-   * client-side — traverses the same next/failure/requires edges the compiler
+   * client-side - traverses the same next/failure/requires edges the compiler
    * emits and the iOS runtime walks, so what you rehearse is what ships.
    */
   preview: {
@@ -256,7 +256,7 @@ interface Actions {
   importFromImage(file: File): Promise<void>;
   probeImageImport(): Promise<void>;
   discardImagePreview(): void;
-  /** kind: 'procedure' turns the extracted graph into a Procedure draft —
+  /** kind: 'procedure' turns the extracted graph into a Procedure draft -
    *  directed edges become Next, undirected ones are dropped. */
   createFromImagePreview(name: string, kind?: MindmapKind): Promise<void>;
 
@@ -312,7 +312,7 @@ export const useStore = create<State & Actions>((set, get) => {
     set({ map: next, dirty: true });
   }
 
-  /** Patch one node (history + WS broadcast) — shared by all field editors. */
+  /** Patch one node (history + WS broadcast) - shared by all field editors. */
   function patchNode(id: string, patch: Partial<MindmapNode>): void {
     pushHistory();
     let updated: MindmapNode | undefined;
@@ -534,7 +534,7 @@ export const useStore = create<State & Actions>((set, get) => {
           undoStack: [], redoStack: [], peers: {},
           pendingRolePick: null, procedure: null, preview: null,
           procedureSent: null, procedurePublishedConflict: null,
-          // Stored per map KIND so flipping one procedure map flips them all —
+          // Stored per map KIND so flipping one procedure map flips them all -
           // the theme is a "which tool am I in" signal, not a per-map setting.
           canvasTheme: (localStorage.getItem(`canvas-theme:${map.kind ?? 'roadmap'}`)
             ?? (map.kind === 'procedure' ? 'night' : 'day')) as 'day' | 'night',
@@ -735,7 +735,7 @@ export const useStore = create<State & Actions>((set, get) => {
         void get().validateProcedure();
       } catch (err) {
         const message = (err as Error).message;
-        // 409 — the target guide is published and may be in use right now.
+        // 409 - the target guide is published and may be in use right now.
         if (/published/i.test(message)) {
           set({ procedureBusy: false, procedurePublishedConflict: message });
         } else {
@@ -762,7 +762,7 @@ export const useStore = create<State & Actions>((set, get) => {
         if (step[k] === null || step[k] === undefined || step[k] === '') delete step[k];
       }
       patchNode(nodeId, { metadata: { ...node.metadata, step } });
-      // Step content affects compile output (warnings, tts, media) — revalidate.
+      // Step content affects compile output (warnings, tts, media) - revalidate.
       void get().validateProcedure();
     },
 
@@ -775,7 +775,7 @@ export const useStore = create<State & Actions>((set, get) => {
     //   not been completed → blocked, offer a jump to the prerequisite (the
     //   on-device behaviour is the same redirect).
     // Divergence between this walk and the compiled guide is a bug in ONE of
-    // them — keep both against docs/PROCEDURE-DESIGNER.md §sequencing.
+    // them - keep both against docs/PROCEDURE-DESIGNER.md §sequencing.
 
     startPreview() {
       const { map, procedure } = get();
@@ -816,7 +816,7 @@ export const useStore = create<State & Actions>((set, get) => {
       const { preview } = get();
       if (!preview?.blockedBy) return;
       // The operator is redirected to the prerequisite; on completing it they
-      // come back — modelled here by simply making it the current step (its
+      // come back - modelled here by simply making it the current step (its
       // `next` chain leads back through the flow).
       set({ preview: { ...preview, currentId: preview.blockedBy, blockedBy: null } });
       get().jumpToNode(preview.blockedBy);
@@ -942,13 +942,13 @@ export const useStore = create<State & Actions>((set, get) => {
     openPartsStudio: nodeId => set({ partsStudioNodeId: nodeId }),
     closePartsStudio: () => set({ partsStudioNodeId: null }),
 
-    // ── Style settings (map-level, synced, no undo entry — it's cosmetic) ─
+    // ── Style settings (map-level, synced, no undo entry - it's cosmetic) ─
 
     updateSettings(patch) {
       const { map } = get();
       if (!map) return;
       const settings: MindmapSettings = { ...map.settings, ...patch };
-      // Defaults stay implicit — drop keys set back to their default value.
+      // Defaults stay implicit - drop keys set back to their default value.
       // edgeStyle: default flipped to 'curved' in 2026.4.45, so 'straight'
       // is the explicit, persisted choice now.
       if (settings.edgeColor !== 'neutral') delete settings.edgeColor;
@@ -970,7 +970,7 @@ export const useStore = create<State & Actions>((set, get) => {
       if (!map) return;
       try {
         const updated = await mindmapApi.publish(map.id);
-        set({ map: { ...map, published: updated.published }, statusMessage: 'Published — visible to everyone', error: null });
+        set({ map: { ...map, published: updated.published }, statusMessage: 'Published - visible to everyone', error: null });
         void get().refreshList();
       } catch (err) { set({ error: (err as Error).message }); }
     },
@@ -980,7 +980,7 @@ export const useStore = create<State & Actions>((set, get) => {
       if (!map) return;
       try {
         const updated = await mindmapApi.unpublish(map.id);
-        set({ map: { ...map, published: updated.published }, statusMessage: 'Unpublished — draft-key holders only', error: null });
+        set({ map: { ...map, published: updated.published }, statusMessage: 'Unpublished - draft-key holders only', error: null });
         void get().refreshList();
       } catch (err) { set({ error: (err as Error).message }); }
     },
@@ -988,7 +988,7 @@ export const useStore = create<State & Actions>((set, get) => {
     // ── Dictionary ───────────────────────────────────────────────────────
 
     async loadGlossary() {
-      // Cache only a SUCCESSFUL load — an empty/failed result retries on the
+      // Cache only a SUCCESSFUL load - an empty/failed result retries on the
       // next open instead of sticking for the whole session.
       const existing = get().glossary;
       if (existing && existing.entries.length > 0) return;
@@ -996,7 +996,7 @@ export const useStore = create<State & Actions>((set, get) => {
         const { markdown } = await mindmapApi.glossary();
         set({ glossary: parseGlossary(markdown) });
       } catch {
-        // Missing glossary is non-fatal — the 📖 panel shows a note.
+        // Missing glossary is non-fatal - the 📖 panel shows a note.
         set({ glossary: { sections: [], entries: [] } });
       }
     },
@@ -1021,7 +1021,7 @@ export const useStore = create<State & Actions>((set, get) => {
         const { base64, mimeType } = await fileToDownscaledBase64(file);
         const result = await mindmapApi.importImage(base64, mimeType);
         if (result.nodes.length === 0) {
-          set({ error: 'No diagram found in that image — try a clearer photo.', importingImage: false });
+          set({ error: 'No diagram found in that image - try a clearer photo.', importingImage: false });
           return;
         }
         set({ imagePreview: result, importingImage: false });
@@ -1200,10 +1200,10 @@ export const useStore = create<State & Actions>((set, get) => {
         const name = typeof parsed.name === 'string' && parsed.name.trim()
           ? `${parsed.name.trim()} (imported)`
           : 'Imported map';
-        // New id on this server — an export from Render becomes a fresh map here.
+        // New id on this server - an export from Render becomes a fresh map here.
         // kind/anchorId MUST travel with the import: kind is create-only, and
         // dropping it here silently demoted procedure maps to plain roadmaps on
-        // the destination server (no role picker, no procedure bar) — found
+        // the destination server (no role picker, no procedure bar) - found
         // when moving maps between Render and an internal deploy.
         const saved = await mindmapApi.save({
           name,

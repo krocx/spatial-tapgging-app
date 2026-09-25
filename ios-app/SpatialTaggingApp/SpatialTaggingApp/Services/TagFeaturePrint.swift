@@ -4,7 +4,7 @@
 // invariant semantic embeddings for inspection images.
 //
 // ── Why this matters ──────────────────────────────────────────────────────────
-// SSIM and histogram comparison are pixel-level metrics — they require the
+// SSIM and histogram comparison are pixel-level metrics - they require the
 // camera to be in nearly the same position as the training viewpoint.  In
 // practice, Operators stand wherever is convenient and rarely match one of
 // the 7 training positions exactly, causing confidence scores of 35–50 % on
@@ -15,7 +15,7 @@
 // WHERE each pixel is.  The same component photographed from different angles
 // produces embeddings with a small L2 distance; completely different components
 // produce a large distance.  Apple uses this for "visually similar photos"
-// search — exactly our use case.
+// search - exactly our use case.
 //
 // ── Architecture ─────────────────────────────────────────────────────────────
 // Training  (HoneycombCaptureView): extract 7 feature prints → store as an
@@ -29,16 +29,16 @@
 // ── Distance normalisation ────────────────────────────────────────────────────
 // score = clamp(1 − distance / maxDist, 0, 1)
 //
-// kMaxDist = 2.0 — global fallback used when no per-tag calibration is stored.
+// kMaxDist = 2.0 - global fallback used when no per-tag calibration is stored.
 // Cross-session comparisons (Author trains Monday, Operator inspects Tuesday)
 // produce larger distances than same-session comparisons because of lighting
 // variance, exact pose differences, and device orientation.  kMaxDist = 1.4
 // was too tight: a same-component cross-session dist of 0.8 would yield a
 // score of 0.43 (FAIL at 0.60 threshold).  With kMaxDist = 2.0:
 //   dist 0.0 → score 1.00  (identical frame)
-//   dist 0.4 → score 0.80  (same component, same session — clearly PASS)
-//   dist 0.8 → score 0.60  (same component, cross-session — barely PASS)
-//   dist 1.2 → score 0.40  (different component — FAIL)
+//   dist 0.4 → score 0.80  (same component, same session - clearly PASS)
+//   dist 0.8 → score 0.60  (same component, cross-session - barely PASS)
+//   dist 1.2 → score 0.40  (different component - FAIL)
 //   dist ≥ 2.0 → score 0.00 (completely different content)
 //
 // Per-tag calibration (fp_max_dist in tag metadata): after training,
@@ -138,7 +138,7 @@ struct TagFeaturePrint {
     ///   stored in metadata as `fp_max_dist`).  Pass nil to use the global
     ///   `kMaxDist` fallback.
     ///
-    /// The Operator need not be at any specific training viewpoint — as long as
+    /// The Operator need not be at any specific training viewpoint - as long as
     /// they're looking at the same component the closest reference will match.
     static func bestScore(live: TagFeaturePrint,
                           references: [TagFeaturePrint],

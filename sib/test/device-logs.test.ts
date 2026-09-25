@@ -1,4 +1,4 @@
-// device-logs.test.ts — QA logging: validation, redaction, append/query, retention.
+// device-logs.test.ts - QA logging: validation, redaction, append/query, retention.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'fs';

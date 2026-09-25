@@ -1,4 +1,4 @@
-// SettingsView.swift — Phase 2.5 + server quick-select + guided tour overlay
+// SettingsView.swift - Phase 2.5 + server quick-select + guided tour overlay
 // Configure SIB URL, API key, asset ID, test connectivity, and export debug logs.
 
 import SwiftUI
@@ -89,7 +89,7 @@ struct SettingsView: View {
             settings.uamRole  = result.user.role
             settings.uamUserName = result.user.name
             settings.uamProducts = (result.user.products ?? []).joined(separator: ",")
-            accessStatus = "✓ Verified — signed in as \(result.user.name) (\(result.user.role.capitalized))"
+            accessStatus = "✓ Verified - signed in as \(result.user.name) (\(result.user.role.capitalized))"
         } catch {
             settings.uamToken = ""
             settings.uamRole  = ""
@@ -282,7 +282,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Identity")
                 } footer: {
-                    Text("Auto-detected from your device name — update it here if needed. This name tags every anchor you create and determines what appears under \"My Anchors\" in the directory.")
+                    Text("Auto-detected from your device name - update it here if needed. This name tags every anchor you create and determines what appears under \"My Anchors\" in the directory.")
                 }
 
                 // ── Test Connection ────────────────────────────────────────────
@@ -350,20 +350,20 @@ struct SettingsView: View {
                     Toggle(isOn: $settings.lidarMeshEnabled) {
                         Label("LiDAR scene mesh", systemImage: "cube.transparent")
                     }
-                    Text("Depth-assisted tracking and surface raycasts on LiDAR devices. Costs frame rate — leave off unless a Lab run is comparing it.")
+                    Text("Depth-assisted tracking and surface raycasts on LiDAR devices. Costs frame rate - leave off unless a Lab run is comparing it.")
                         .font(.caption).foregroundStyle(.secondary)
                     Toggle(isOn: $settings.anchorLabEnabled) {
                         Label("Anchor Lab card in Operator mode", systemImage: "scope")
                     }
                     if settings.anchorLabEnabled {
-                        Text("In Operator mode: a lock report (how the origin was found) and a per-tag “mark where it really is” tool. Each mark sends the rendered-vs-physical error in mm to SIB — numbers only, never images. See Portal → Anchors → Lab.")
+                        Text("In Operator mode: a lock report (how the origin was found) and a per-tag “mark where it really is” tool. Each mark sends the rendered-vs-physical error in mm to SIB - numbers only, never images. See Portal → Anchors → Lab.")
                             .font(.caption).foregroundStyle(.secondary)
                     }
                     Toggle(isOn: Binding(
                         get: { AppLog.qaMode },
                         set: { AppLog.qaMode = $0; qaModeOn = $0 }
                     )) {
-                        Label("QA Mode — verbose logs to SIB", systemImage: "ladybug.fill")
+                        Label("QA Mode - verbose logs to SIB", systemImage: "ladybug.fill")
                     }
                     HStack {
                         Text("Device log id").foregroundStyle(.secondary)
@@ -455,7 +455,7 @@ struct SettingsView: View {
                             }
                             settings.authorName = newName
                         }
-                        // Mark confirmed — dismisses the home-screen name nudge.
+                        // Mark confirmed - dismisses the home-screen name nudge.
                         settings.authorNameConfirmed = true
                         // Tour: advance past saveSettings before dismissing
                         tour.advancePast(.saveSettings)
@@ -518,4 +518,4 @@ struct SettingsView: View {
     }
 }
 
-// ShareSheet is defined in QRGeneratorView.swift — used here via that shared definition.
+// ShareSheet is defined in QRGeneratorView.swift - used here via that shared definition.

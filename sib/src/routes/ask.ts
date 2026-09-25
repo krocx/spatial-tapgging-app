@@ -1,7 +1,7 @@
 /**
- * Ask SIB routes — docs-grounded assistant over the Feature Catalogue.
+ * Ask SIB routes - docs-grounded assistant over the Feature Catalogue.
  *
- * GET  /ask/config → { generation, model } — which tier this deployment runs.
+ * GET  /ask/config → { generation, model } - which tier this deployment runs.
  * POST /ask        → { question } →
  *   retrieval tier (always): ranked sources + glossary from ask-core.
  *   generation tier (ASK_LLM_URL set): answer from an OpenAI-compatible
@@ -14,10 +14,10 @@
  *     ASK_LLM_MODEL  model name the runtime expects
  *     ASK_LLM_KEY    optional bearer token
  *
- * Public (no API key): grounding is docs/catalog + glossary ONLY — no site
+ * Public (no API key): grounding is docs/catalog + glossary ONLY - no site
  * data flows through here. A small in-memory rate limit keeps it polite.
  * If the LLM call fails, the response degrades to the retrieval tier with
- * a note — the assistant never hard-fails because a model is down.
+ * a note - the assistant never hard-fails because a model is down.
  */
 import { Router } from 'express';
 import { retrieve, buildAskContext, buildMessages } from '../ask/ask-core.js';
@@ -28,7 +28,7 @@ import { llmConfig, chatCompletion, type ChatMessage } from '../ask/llm.js';
 const LLM_TIMEOUT_MS = 90_000;
 
 // Naive per-IP rate limit: 12 questions/minute. Enough for humans, a wall
-// for loops. In-memory on purpose — this is politeness, not security.
+// for loops. In-memory on purpose - this is politeness, not security.
 const askLog = new Map<string, number[]>();
 function rateLimited(ip: string): boolean {
   const now = Date.now();
@@ -50,14 +50,14 @@ router.post('/', async (req, res) => {
   if (!question) return res.status(400).json({ error: 'question is required' });
   if (question.length > 500) return res.status(400).json({ error: 'question too long (max 500 chars)' });
   if (rateLimited(req.ip ?? 'unknown')) {
-    return res.status(429).json({ error: 'Too many questions — wait a minute.' });
+    return res.status(429).json({ error: 'Too many questions - wait a minute.' });
   }
 
   const cat = readCatalog();
   if (!cat) return res.status(404).json({ error: 'Catalogue not available on this deployment' });
 
   // IP-sensitivity: restricted features never enter retrieval (or the LLM
-  // context) for callers without the secondary key — Ask SIB must not become
+  // context) for callers without the secondary key - Ask SIB must not become
   // a side-channel around the catalogue redaction.
   const visible = canViewRestricted(req)
     ? cat.data
@@ -72,7 +72,7 @@ router.post('/', async (req, res) => {
 
   const cfg = llmConfig();
   if (!cfg || retrieval.sources.length === 0) {
-    // Retrieval-only deployments — and questions that matched nothing get an
+    // Retrieval-only deployments - and questions that matched nothing get an
     // honest empty result rather than an LLM guessing with no context.
     return res.json({ ...base, tier: 'retrieval' });
   }
@@ -86,7 +86,7 @@ router.post('/', async (req, res) => {
     return res.json({
       ...base,
       tier: 'retrieval',
-      note: `Assistant model unavailable (${err instanceof Error ? err.message : 'error'}) — showing best matches from the docs instead.`,
+      note: `Assistant model unavailable (${err instanceof Error ? err.message : 'error'}) - showing best matches from the docs instead.`,
     });
   }
 });

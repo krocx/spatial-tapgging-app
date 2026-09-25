@@ -1,4 +1,4 @@
-// mindmap.controller.ts — business logic for the /mindmap/* REST surface.
+// mindmap.controller.ts - business logic for the /mindmap/* REST surface.
 // Routes stay thin (validation + HTTP mapping); everything stateful runs here
 // so the WS layer and tests reuse the same functions.
 
@@ -59,7 +59,7 @@ export function saveMindmap(body: SaveMindmapRequest, draftKey?: string): SaveMi
   // Updates to unpublished drafts require the draft key.
   if (existing) assertAccess(existing.id, draftKey);
 
-  // Same sanitization rules as the WS path — REST saves and JSON imports
+  // Same sanitization rules as the WS path - REST saves and JSON imports
   // can't persist unsafe links, bogus shapes, or dangling edges.
   const { nodes, edges } = sanitizeGraphArrays(body.nodes, body.edges);
 
@@ -80,14 +80,14 @@ export function saveMindmap(body: SaveMindmapRequest, draftKey?: string): SaveMi
     settings: body.settings !== undefined
       ? (sanitizeSettings(body.settings) ?? existing?.settings)
       : existing?.settings,
-    // Kind is set at creation and immutable thereafter — flipping a roadmap
+    // Kind is set at creation and immutable thereafter - flipping a roadmap
     // into an executable procedure would silently change what every node means.
     kind: existing ? existing.kind : (body.kind === 'procedure' ? 'procedure' : undefined),
     // Anchor is updatable; the procedure export pins it on first send.
     anchorId: body.anchorId ?? existing?.anchorId,
     // Guide round-trip bookkeeping is SERVER-OWNED: always carried over from
     // the stored record, never taken from the request body. (This is exactly
-    // the sanitizer-drop bug class that once ate edge.role — hence explicit.)
+    // the sanitizer-drop bug class that once ate edge.role - hence explicit.)
     guideSync: existing?.guideSync,
   };
   delete map.published;   // publication state lives in the access store only
@@ -98,7 +98,7 @@ export function saveMindmap(body: SaveMindmapRequest, draftKey?: string): SaveMi
   mindmapStore.save(map);
   snapshotVersion(map, body.versionLabel ?? 'manual save');
 
-  // New maps start life as private drafts — the creator gets the key once.
+  // New maps start life as private drafts - the creator gets the key once.
   let newDraftKey: string | undefined;
   if (!existing) {
     newDraftKey = uuidv4();
@@ -109,7 +109,7 @@ export function saveMindmap(body: SaveMindmapRequest, draftKey?: string): SaveMi
 
 export interface SaveMindmapResult {
   map: Mindmap;
-  /** Present only on creation — the caller must store it. */
+  /** Present only on creation - the caller must store it. */
   draftKey?: string;
 }
 
@@ -144,7 +144,7 @@ export function publishMindmap(id: string, draftKey: string | undefined, publish
   const access = getAccess(id);
   if (!access.draftKey) {
     // Pre-publish-era map: no key exists, it is de-facto published; give it
-    // an owner on first publish-toggle attempt? No — refuse silently instead:
+    // an owner on first publish-toggle attempt? No - refuse silently instead:
     // legacy maps stay published (nothing to unpublish with).
     if (!publish) throw new MindmapError(400, 'This map predates the publish workflow and is permanently published.');
     return withPublished(map);
@@ -222,7 +222,7 @@ export function exportMindmap(id: string, format: string): ExportResult {
       body: JSON.stringify(buildSibDraft(map), null, 2),
     };
   }
-  // PNG rendering needs a raster canvas — done client-side in /roadmap to keep
+  // PNG rendering needs a raster canvas - done client-side in /roadmap to keep
   // SIB dependency-free. The endpoint stays honest about that.
   throw new MindmapError(400, `Unsupported export format "${format}". Server supports: json, svg, sib-json. PNG export is available in the /roadmap client.`);
 }

@@ -1,16 +1,16 @@
-# Feature Catalogue — source files
+# Feature Catalogue - source files
 
 This folder is the **canonical, machine-readable source** of the feature catalogue.
-Everything the `/catalog` web surface shows — the graph, the cards, the flows, the
-glossary chips — is derived from these files at request time. Nothing here is
+Everything the `/catalog` web surface shows - the graph, the cards, the flows, the
+glossary chips - is derived from these files at request time. Nothing here is
 generated; everything downstream of here is.
 
 ## File types
 
-- **Feature files** (`<id>.md`) — one per capability. YAML frontmatter + a short prose body.
-- **Area files** (`area-<id>.md`) — one per product area (`kind: area`), each with a
+- **Feature files** (`<id>.md`) - one per capability. YAML frontmatter + a short prose body.
+- **Area files** (`area-<id>.md`) - one per product area (`kind: area`), each with a
   Mermaid flowchart of how the area's features connect in use.
-- **`trails.md`** — the three "start here" reading orders for new team members.
+- **`trails.md`** - the three "start here" reading orders for new team members.
 
 ## Frontmatter contract
 
@@ -25,16 +25,16 @@ depends: [shared-schema]  # ids of features this one builds on (drawn as graph e
 terms: [Anchor]           # glossary names from docs/roadmap-glossary.md (hover definitions)
 spec: APP-FEATURES.md     # the deep-dive doc in docs/ (rendered in place on the card);
                           # append #heading-slug to render just that section
-api: |                    # OPTIONAL endpoint list — one line each, exactly:
-  GET /x — purpose (app · API key)
-                          # "METHOD /path — purpose (caller · auth tier)".
+api: |                    # OPTIONAL endpoint list - one line each, exactly:
+  GET /x - purpose (app · API key)
+                          # "METHOD /path - purpose (caller · auth tier)".
                           # Callers: app | portal | designer | browser | any.
                           # Auth: API key | admin key | public. The checker
                           # validates every HTTP line against the real Express
-                          # routes in sib/src — a renamed endpoint fails CI.
+                          # routes in sib/src - a renamed endpoint fails CI.
                           # Omit entirely for UX-only features (no filler).
 wireframe: author         # flow tab in the App Wireframe (/wireframe), if one exists
-sensitivity: restricted   # OPTIONAL — IP-sensitive feature: redacted from
+sensitivity: restricted   # OPTIONAL - IP-sensitive feature: redacted from
                           # /catalog/data, /catalog/doc and Ask SIB for anyone
                           # without the secondary SIB_IP_KEY. Omit for normal
                           # features. Future SSO/RBAC replaces the key check
@@ -42,7 +42,7 @@ sensitivity: restricted   # OPTIONAL — IP-sensitive feature: redacted from
 flow: |                   # OPTIONAL per-feature Mermaid; omit to inherit the area flow
   flowchart LR
     A --> B
-arch: |                   # OPTIONAL architecture Mermaid — the SYSTEM's story, with
+arch: |                   # OPTIONAL architecture Mermaid - the SYSTEM's story, with
   sequenceDiagram         # REAL route paths, module files and stores (e.g.
     App->>SIB: POST /x    # "POST /guides/import", "ingest.ts"). flow = what the
                           # user experiences; arch = what the system does.
@@ -60,7 +60,7 @@ a teammate would actually need. No marketing language.
 3. **Bodies are short on purpose.** The card links to the spec for depth;
    duplicated prose is where drift is born.
 4. **Obsidian-friendly.** Open this folder as a vault and the graph view mirrors
-   `/catalog` — frontmatter links are plain ids by design.
+   `/catalog` - frontmatter links are plain ids by design.
 
 [FEATURE-CATALOG.md](../FEATURE-CATALOG.md) remains the human table-of-record view;
 it now carries a "generated view" header and must agree with these files.

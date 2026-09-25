@@ -1,5 +1,5 @@
 /**
- * Per-user guide sharing — visibility predicate rules.
+ * Per-user guide sharing - visibility predicate rules.
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

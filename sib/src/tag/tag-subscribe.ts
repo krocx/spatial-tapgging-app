@@ -1,10 +1,10 @@
-// tag-subscribe.ts — the .tag continuous emitter (M2): live per-chamber push.
+// tag-subscribe.ts - the .tag continuous emitter (M2): live per-chamber push.
 //
-// PROPRIETARY & CONFIDENTIAL — Applied Materials. Patent pending.
+// PROPRIETARY & CONFIDENTIAL - Applied Materials. Patent pending.
 //
 // SSE subscribers on GET /anchors/:id/subscribe receive:
-//   event: state    — on connect: current contentVersion + payload hash
-//   event: changed  — whenever the chamber's assembly envelope changes,
+//   event: state    - on connect: current contentVersion + payload hash
+//   event: changed  - whenever the chamber's assembly envelope changes,
 //                     naming exactly which streams/members moved so readers
 //                     re-fetch only the delta
 //   heartbeat comments every 25s keep proxies from closing idle streams.
@@ -72,7 +72,7 @@ function send(res: Response, event: string, data: unknown): void {
 function recheckAll(): void {
   for (const [anchorId, sub] of subs) {
     const env = buildAssemblyEnvelope(anchorId);
-    if (!env) continue;                       // anchor deleted — clients will see silence + heartbeats
+    if (!env) continue;                       // anchor deleted - clients will see silence + heartbeats
     const hash = payloadHash(env.payload);
     if (hash === sub.lastHash) continue;
     const changed = diffAssemblyPayloads(sub.lastPayload, env.payload);

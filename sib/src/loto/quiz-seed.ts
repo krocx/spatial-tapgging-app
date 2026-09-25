@@ -1,7 +1,7 @@
-// quiz-seed.ts — the standard LOTO training question bank, drafted from
+// quiz-seed.ts - the standard LOTO training question bank, drafted from
 // OSHA 29 CFR 1910.147 plus this site's Safe Off convention (docs/ILOTO.md §2).
 //
-// Seeded into the loto-quiz store ONLY when it is empty — after that the
+// Seeded into the loto-quiz store ONLY when it is empty - after that the
 // stored questions are the truth and EHS may edit them freely (they are data,
 // not code). Re-deploying never overwrites edits.
 
@@ -20,7 +20,7 @@ const SEEDS: Seed[] = [
       'Apply lock → shut down → verify → notify affected',
     ],
     1,
-    'OSHA 1910.147 fixes the sequence: notification, shutdown, isolation, lockout device, stored-energy release, then verification. Order matters — verifying before releasing stored energy proves nothing.',
+    'OSHA 1910.147 fixes the sequence: notification, shutdown, isolation, lockout device, stored-energy release, then verification. Order matters - verifying before releasing stored energy proves nothing.',
   ],
   [
     'What is the purpose of the "try test" (verification of isolation)?',
@@ -31,7 +31,7 @@ const SEEDS: Seed[] = [
       'To check the tag is legible',
     ],
     2,
-    'Verification means attempting to start the equipment with its normal controls and confirming no energization — then returning controls to off/neutral. A lock on the wrong isolator looks identical to a lock on the right one until you try.',
+    'Verification means attempting to start the equipment with its normal controls and confirming no energization - then returning controls to off/neutral. A lock on the wrong isolator looks identical to a lock on the right one until you try.',
   ],
   [
     'Who may remove a lockout device?',
@@ -42,7 +42,7 @@ const SEEDS: Seed[] = [
       'Anyone, once the work is visibly complete',
     ],
     2,
-    'One lock, one person. Each device is removed by the employee who applied it. Anything else follows the documented exception procedure — never a casual removal.',
+    'One lock, one person. Each device is removed by the employee who applied it. Anything else follows the documented exception procedure - never a casual removal.',
   ],
   [
     'Under what conditions may someone else\'s lock be removed?',
@@ -70,7 +70,7 @@ const SEEDS: Seed[] = [
     'At this site, what does a RED lock mean?',
     [
       'The equipment is out of service for operational reasons',
-      'A person is working on the equipment — a personal danger lock protecting a life',
+      'A person is working on the equipment - a personal danger lock protecting a life',
       'The equipment failed inspection',
       'The breaker is scheduled for replacement',
     ],
@@ -82,11 +82,11 @@ const SEEDS: Seed[] = [
     [
       'A person is working inside the equipment',
       'The equipment is safe to operate',
-      'Safe Off — the equipment is out of service / de-energized for operational reasons; nobody is working inside it',
+      'Safe Off - the equipment is out of service / de-energized for operational reasons; nobody is working inside it',
       'The lock is a spare',
     ],
     2,
-    'Yellow is the Safe Off out-of-service lock on a circuit breaker. It keeps equipment down but is not personal protection — that is what red LOTO locks are for.',
+    'Yellow is the Safe Off out-of-service lock on a circuit breaker. It keeps equipment down but is not personal protection - that is what red LOTO locks are for.',
   ],
   [
     'Which of these are forms of stored energy that must be released or restrained?',
@@ -102,13 +102,13 @@ const SEEDS: Seed[] = [
   [
     'Before removing locks and re-energizing, what must happen?',
     [
-      'Nothing — remove the lock and start up',
+      'Nothing - remove the lock and start up',
       'Inspect the work area, remove tools and materials, confirm all personnel are clear, and notify affected employees',
       'Take a photo of the machine',
       'Wait 15 minutes',
     ],
     1,
-    'Release is the mirror of application: area inspected, tools out, people clear, affected employees notified — then the device comes off.',
+    'Release is the mirror of application: area inspected, tools out, people clear, affected employees notified - then the device comes off.',
   ],
   [
     'When is a tag alone (without a lock) acceptable?',
@@ -116,7 +116,7 @@ const SEEDS: Seed[] = [
       'Whenever locks are in short supply',
       'Only where the energy isolating device cannot physically accept a lock, with additional protective measures',
       'For jobs shorter than one hour',
-      'Always — tags and locks are equivalent',
+      'Always - tags and locks are equivalent',
     ],
     1,
     'A tag is a warning, not a physical restraint. Tagout alone is permitted only where lockout is infeasible, and requires measures giving equivalent protection.',
@@ -152,7 +152,7 @@ const SEEDS: Seed[] = [
       'The supervisor holds all keys overnight',
     ],
     1,
-    'Protection must be continuous across shift change — the off-going worker\'s lock is exchanged for the on-coming worker\'s in an orderly handoff, never a gap.',
+    'Protection must be continuous across shift change - the off-going worker\'s lock is exchanged for the on-coming worker\'s in an orderly handoff, never a gap.',
   ],
   [
     'Which situations require retraining?',
@@ -163,7 +163,7 @@ const SEEDS: Seed[] = [
       'Retraining is never required after initial certification',
     ],
     2,
-    'Retraining follows change and demonstrated gaps — new duties, new hazards, revised procedures, or observed deviations. This app also expires certifications on a fixed schedule as a site control.',
+    'Retraining follows change and demonstrated gaps - new duties, new hazards, revised procedures, or observed deviations. This app also expires certifications on a fixed schedule as a site control.',
   ],
   [
     'After a successful try test, what must you do with the machine controls?',
@@ -180,12 +180,12 @@ const SEEDS: Seed[] = [
     'What does a "locked" status in this app prove?',
     [
       'That the equipment is physically safe to touch',
-      'That an apply event was recorded, with evidence — physical verification at the panel is still required before body contact',
+      'That an apply event was recorded, with evidence - physical verification at the panel is still required before body contact',
       'That OSHA has inspected the panel',
       'That the breaker cannot physically be turned on',
     ],
     1,
-    'The app is the record and verification aid. The physical lock — and your own try test — are the safety controls. Never substitute a screen for verification at the panel.',
+    'The app is the record and verification aid. The physical lock - and your own try test - are the safety controls. Never substitute a screen for verification at the panel.',
   ],
 ];
 

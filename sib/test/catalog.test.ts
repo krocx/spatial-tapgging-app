@@ -1,5 +1,5 @@
 /**
- * Feature Catalogue core tests — parser contract + graph integrity rules.
+ * Feature Catalogue core tests - parser contract + graph integrity rules.
  * Pure fixtures only; the live docs/catalog/ files are exercised by the
  * drift checker and the boot e2e, not here.
  */
@@ -34,8 +34,8 @@ A body long enough to look like a real catalogue entry for testing purposes.`,
 
 const GLOSS = `# Dictionary
 ## Platform Foundations
-- **Anchor** ✅ — a fixed spatial origin on a physical asset.
-- **Tag / Spatial Tagging** ✅ — an inspection checkpoint pinned in 3D space.
+- **Anchor** ✅ - a fixed spatial origin on a physical asset.
+- **Tag / Spatial Tagging** ✅ - an inspection checkpoint pinned in 3D space.
 ## Acronym Quick Reference
 | Acronym | Expansion |
 |---|---|
@@ -168,7 +168,7 @@ test('sensitivity: parsed when restricted, invalid values rejected, redaction st
     name: 'r.md',
     content: feature('r').content.replace(
       '---\nA body',
-      'sensitivity: restricted\napi: |\n  GET /secret — x (app · API key)\narch: |\n  flowchart LR\n    A --> B\n---\nA body',
+      'sensitivity: restricted\napi: |\n  GET /secret - x (app · API key)\narch: |\n  flowchart LR\n    A --> B\n---\nA body',
     ),
   };
   const cat = buildCatalog([restricted, feature('open')], GLOSS, 'v');
@@ -197,13 +197,13 @@ test('buildCatalog: api block splits to trimmed lines; absent api stays undefine
     name: 'a.md',
     content: feature('a').content.replace(
       '---\nA body',
-      'api: |\n  GET /x — one (app · API key)\n  POST /x — two (portal · admin key)\n---\nA body',
+      'api: |\n  GET /x - one (app · API key)\n  POST /x - two (portal · admin key)\n---\nA body',
     ),
   };
   const cat = buildCatalog([withApi, feature('b')], GLOSS, 'v');
   assert.deepEqual(cat.features.find(f => f.id === 'a')!.api, [
-    'GET /x — one (app · API key)',
-    'POST /x — two (portal · admin key)',
+    'GET /x - one (app · API key)',
+    'POST /x - two (portal · admin key)',
   ]);
   assert.equal(cat.features.find(f => f.id === 'b')!.api, undefined);
 });

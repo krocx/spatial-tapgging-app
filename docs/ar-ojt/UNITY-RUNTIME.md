@@ -24,7 +24,7 @@ below explain what each part means.
 ## 0a. The contract has a second implementation: `/xr` (2026-09-21)
 
 `sib/portal/xr.html` + `sib/portal/xr-engine.js` is a WebXR client of the
-bundle written on the vendored Three.js and the browser's WebXR API — no
+bundle written on the vendored Three.js and the browser's WebXR API - no
 engine, no third-party tracking. It is the reference for "did we port §4
 correctly": `xr-engine.js` holds the pure state fold and schedule and
 `sib/test/xr-engine.test.ts` pins them (cumulative last-write-wins, motion on
@@ -59,13 +59,13 @@ on; the company server on the LAN needs neither.
 
 ## 2. Loading the model
 
-Use a glTF importer that keeps node names and hierarchy — Unity's `glTFast`
+Use a glTF importer that keeps node names and hierarchy - Unity's `glTFast`
 (Unity package, Apache-2.0) does. Requirements the importer must meet:
 
 - Node names must survive verbatim: part control is by name (`cmp:<DEF>`).
   Nothing else in the file is relied on; `extras` are informational.
 - Missing normals must be generated (glTFast does this; flat normals are the
-  correct look for CAD tessellation — the portal generates them the same way).
+  correct look for CAD tessellation - the portal generates them the same way).
 - Materials: import as opaque; visibility and ghosting are applied at runtime
   by the client (§4), so the material needs an alpha-capable shader variant or
   a swap to one when a part is ghosted.
@@ -74,8 +74,8 @@ Use a glTF importer that keeps node names and hierarchy — Unity's `glTFast`
 
 Handedness: glTF is right-handed, Unity is left-handed. glTFast already
 converts the *model* (it negates X by convention). Everything SIB sends
-alongside the model — `pose`, `from/to`, `rotationFrom/To`, `cadPosition`,
-`bounds`, `view` — is in the glTF (right-handed) frame and must be converted
+alongside the model - `pose`, `from/to`, `rotationFrom/To`, `cadPosition`,
+`bounds`, `view` - is in the glTF (right-handed) frame and must be converted
 with the **same** convention the importer used, or the parts will fly the
 wrong way. With glTFast's default (negate X):
 
@@ -96,11 +96,11 @@ for every field and never convert the model twice.
 the **anchor frame** of the guide. Which physical frame that is depends on how
 the guide was placed:
 
-- `source: 'config'` — the chamber configuration's default pose, expressed in
+- `source: 'config'` - the chamber configuration's default pose, expressed in
   the anchor's QR-marker frame. A Unity client that tracks the same printed QR
   (AR Foundation image tracking, marker size from the anchor) reproduces it
   directly: `assemblyRoot = qrTransform × pose`.
-- `source: 'tap'` — placed by an author in the guide's ARKit world map.
+- `source: 'tap'` - placed by an author in the guide's ARKit world map.
   On iOS, AR Foundation can load that map (`ARKitSessionSubsystem.ApplyWorldMap`
   with `GET /worldmap/guide/:id`), after which the pose is directly in session
   space. On other platforms there is no map; fall back to the anchor QR frame
@@ -108,13 +108,13 @@ the guide was placed:
   the operator tap-place with the same bottom-centre rule as iOS: the
   bottom-centre of `assembly.bounds` sits on the tapped surface, the model
   origin is `surfacePoint − R·(bottomCentre·scale)`.
-- `source: 'partframe'` (future) — the pose is the tracked part frame; a
+- `source: 'partframe'` (future) - the pose is the tracked part frame; a
   Unity client would need its own tracker or take the pose over the wire.
 
 `cadPosition` on a step (a part centroid in the assembly frame) is what the
 step pin / callout is attached to: `pinWorld = assemblyRoot × cadPosition`.
 
-## 4. Playing steps — the timeline contract
+## 4. Playing steps - the timeline contract
 
 This is the part worth getting exactly right, because it is what makes the
 converted guide behave like the source viewer (part appears → animation →
@@ -137,7 +137,7 @@ Each `nodes[]` entry is one delta for one part in one time window:
 | `color` | diffuse override `[r,g,b]` (highlight; absent = model colour) |
 | `delaySec` | start offset within the step, seconds (source timing) |
 | `durationSec` | length, seconds (source timing) |
-| `effect` | `flash` — transient emission pulse, leaves no state |
+| `effect` | `flash` - transient emission pulse, leaves no state |
 
 A step may carry several deltas for the same node; array order is
 chronological.
@@ -156,9 +156,9 @@ state(k)     = initial ⊕ deltas(step 0) ⊕ … ⊕ deltas(step k)   // last w
 motion on a hidden part → solid; `to` → position; `rotationTo` → rotation;
 `color` → color. Flash-only deltas change nothing.
 
-Entering step `k`: jump (no animation) to `state(k−1)` — every part back to
+Entering step `k`: jump (no animation) to `state(k−1)` - every part back to
 rest, then each explicit state applied **parents first** so a child's own
-state overrides its group's — then play `deltas(step k)`.
+state overrides its group's - then play `deltas(step k)`.
 
 ### 4.3 Playback
 

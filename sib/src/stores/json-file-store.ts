@@ -1,8 +1,8 @@
-// JsonFileStore — drop-in replacement for InMemoryStore that persists records
+// JsonFileStore - drop-in replacement for InMemoryStore that persists records
 // to a JSON file under <cwd>/.sib-data/<storeName>.json.
 //
 // On startup the file is loaded so data survives SIB restarts.
-// Writes are synchronous and happen on every mutation — fine for Phase 1 with
+// Writes are synchronous and happen on every mutation - fine for Phase 1 with
 // small data volumes.  Replace with a proper DB adapter in Phase 2.
 
 import fs   from 'fs';
@@ -11,7 +11,7 @@ import { EventEmitter } from 'events';
 import { InMemoryStore } from './in-memory-store.js';
 
 /**
- * Global store-write bus — emits ('write', storeName) after every persisted
+ * Global store-write bus - emits ('write', storeName) after every persisted
  * mutation. The ONE hook point for reactive consumers (the .tag subscription
  * manager debounces on this instead of polling or instrumenting every route).
  */
@@ -34,7 +34,7 @@ export class JsonFileStore<T extends { id: string }> extends InMemoryStore<T> {
     this.hydrate();
   }
 
-  // ── Overrides — persist after every mutation ─────────────────────────────
+  // ── Overrides - persist after every mutation ─────────────────────────────
 
   override save(record: T): T {
     const result = super.save(record);
@@ -56,7 +56,7 @@ export class JsonFileStore<T extends { id: string }> extends InMemoryStore<T> {
 
   // Remove every record for which `shouldRemove` returns true, in a single
   // flush. Used for bounded-retention pruning (e.g. expiring old sessions)
-  // so the in-memory Map — and the JSON file it's mirrored to — don't grow
+  // so the in-memory Map - and the JSON file it's mirrored to - don't grow
   // forever. Returns the number of records removed.
   pruneWhere(shouldRemove: (record: T) => boolean): number {
     const toRemove = this.findAll().filter(shouldRemove);
@@ -78,7 +78,7 @@ export class JsonFileStore<T extends { id: string }> extends InMemoryStore<T> {
       rows.forEach(r => super.save(r));   // use super to avoid re-flushing
       console.log(`[JsonFileStore] Loaded ${rows.length} records from ${this.filePath}`);
     } catch (err) {
-      console.warn(`[JsonFileStore] Could not load ${this.filePath}: ${err} — starting empty`);
+      console.warn(`[JsonFileStore] Could not load ${this.filePath}: ${err} - starting empty`);
     }
   }
 
@@ -88,7 +88,7 @@ export class JsonFileStore<T extends { id: string }> extends InMemoryStore<T> {
     } catch (err) {
       console.error(`[JsonFileStore] Failed to write ${this.filePath}: ${err}`);
     }
-    // After the write, whether it succeeded or not — listeners recompute from
+    // After the write, whether it succeeded or not - listeners recompute from
     // the in-memory truth, which has already mutated either way.
     storeEvents.emit('write', this.storeName);
   }

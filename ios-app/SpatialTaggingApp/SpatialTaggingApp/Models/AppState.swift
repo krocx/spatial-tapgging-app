@@ -1,7 +1,7 @@
-// AppState.swift — Phase 2.5
+// AppState.swift - Phase 2.5
 // Global app state shared across all views.
 // Phase 2.5 adds: anchorEncryptionKey (AES-256-GCM key from QR or Keychain)
-// Phase 2.5 (origin): anchorNormalisedTransform — gravity-aligned QR frame stored
+// Phase 2.5 (origin): anchorNormalisedTransform - gravity-aligned QR frame stored
 //   on scan so tag positions can be saved as anchor-relative offsets.
 
 import Foundation
@@ -13,9 +13,9 @@ enum AppMode: Equatable {
     case none
     case author
     case `operator`
-    /// Phase 2 — Gemba audit walk: Author places Loc-Tags via surface tap.
+    /// Phase 2 - Gemba audit walk: Author places Loc-Tags via surface tap.
     case locTagAuthor
-    /// Phase 2 — Gemba audit walk: Operator re-localizes and resolves Loc-Tags.
+    /// Phase 2 - Gemba audit walk: Operator re-localizes and resolves Loc-Tags.
     case locTagOperator
 }
 
@@ -59,7 +59,7 @@ final class AppState: ObservableObject {
     ///
     /// Tag positions stored as `anchor_rel_x/y/z` in tag metadata are expressed
     /// relative to this frame.  Converting them to world-space requires the CURRENT
-    /// session's normalised transform — set once per session by QRScanGateView.
+    /// session's normalised transform - set once per session by QRScanGateView.
     var anchorNormalisedTransform: simd_float4x4? = nil
 
     /// B1 (2026.4.46): non-nil when this session's origin came from the
@@ -73,11 +73,11 @@ final class AppState: ObservableObject {
     /// `linkToExistingSession(_:mapOrigin:objectCalibration:)` so the movement
     /// watchdog keeps tags on the chamber if it is moved mid-session.
     var objectCalibration: simd_float4x4? = nil
-    /// Trust layer (2026.4.46): how the gate found this session's origin —
+    /// Trust layer (2026.4.46): how the gate found this session's origin -
     /// relocalize / converge times, QR drift, light. Anchor Lab attaches it
     /// to every accuracy sample.
     var originLockReport: ARSessionManager.OriginLockReport? = nil
-    /// Anchor Lab: the Author session was opened from the Lab door — go back
+    /// Anchor Lab: the Author session was opened from the Lab door - go back
     /// there (not the home page) when it ends.
     var returnToLab: Bool = false
     /// Anchor Lab: the mode to enter once the Lab cover has been dismissed.
@@ -145,7 +145,7 @@ final class AppState: ObservableObject {
         objectCalibration = nil
         originLockReport = nil
         activeGroupId = nil
-        // Release the shared session — any view holding a link will keep it alive
+        // Release the shared session - any view holding a link will keep it alive
         // until it dismisses and pauses via its own onDisappear.
         activeARSession = nil
     }

@@ -1,4 +1,4 @@
-// primitives.ts — Cortona3D parametric geometry PROTOs (PGVMRepHandler.*).
+// primitives.ts - Cortona3D parametric geometry PROTOs (PGVMRepHandler.*).
 //
 // Published scenes use a small library of geometry PROTOs whose mesh is built
 // at runtime by an embedded Script from a few parameters (the PROTO body is an

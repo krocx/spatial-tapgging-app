@@ -1,14 +1,14 @@
-// LotoStatusViews.swift — iLOTO slice 2: point detail, per-kind management,
+// LotoStatusViews.swift - iLOTO slice 2: point detail, per-kind management,
 // and the panel status list.
 //
-//   LotoPointDetailSheet — one point: state, owner, serial, event history with
+//   LotoPointDetailSheet - one point: state, owner, serial, event history with
 //                          evidence photos, contextual Apply/Remove (cert-gated).
 //                          Shared by the lists AND the AR walk.
-//   LotoKindView         — Safe Off / LOTO tile destination: that kind's points
+//   LotoKindView         - Safe Off / LOTO tile destination: that kind's points
 //                          with live state, "Define points in AR" for authoring.
-//   LotoStatusListView   — Check Status tile destination: every point + AR walk.
+//   LotoStatusListView   - Check Status tile destination: every point + AR walk.
 //
-// All state shown here is SERVER-derived (GET /loto/status) — the client never
+// All state shown here is SERVER-derived (GET /loto/status) - the client never
 // computes lock state from cached events.
 
 import SwiftUI
@@ -28,7 +28,7 @@ struct LotoPointDetailSheet: View {
     let onChanged: (LotoPointStatus) -> Void
     let onDeleted: () -> Void
     /// Present only when opened from an AR authoring session. Called with the
-    /// SLOT id to adjust — dismisses the sheet and enters the gesture phase.
+    /// SLOT id to adjust - dismisses the sheet and enters the gesture phase.
     var onAdjustModel: ((String) -> Void)? = nil
 
     @EnvironmentObject private var settings: AppSettings
@@ -96,10 +96,10 @@ struct LotoPointDetailSheet: View {
                 } header: {
                     Text("History")
                 } footer: {
-                    Text("Events are permanent records — nothing here can be edited or deleted.")
+                    Text("Events are permanent records - nothing here can be edited or deleted.")
                 }
 
-                // ── 3D assets (author contexts) — up to 3 slots ─────────────
+                // ── 3D assets (author contexts) - up to 3 slots ─────────────
                 if allowDelete {
                     Section {
                         ForEach(point.modelSlots) { slot in
@@ -172,7 +172,7 @@ struct LotoPointDetailSheet: View {
                     } footer: {
                         Text(usableModels.isEmpty && point.modelSlots.isEmpty
                              ? "Upload lock/tag/hasp models in the portal's 3D Models tab first."
-                             : "Up to \(lotoMaxModelSlots) per point. Changing a slot's model resets that slot's AR placement (⌖ = placed) — others are untouched.")
+                             : "Up to \(lotoMaxModelSlots) per point. Changing a slot's model resets that slot's AR placement (⌖ = placed) - others are untouched.")
                     }
                 }
 
@@ -238,7 +238,7 @@ struct LotoPointDetailSheet: View {
                     }
                 }
             } else {
-                Text("Clear — no lock applied").font(.subheadline)
+                Text("Clear - no lock applied").font(.subheadline)
             }
             Spacer()
         }
@@ -323,7 +323,7 @@ struct LotoPointDetailSheet: View {
         do {
             let updated = try await SIBClient(settings: settings).updateLotoPoint(id: point.id, req: req)
             isSavingModel = false
-            // Same lock state, refreshed point — caller re-renders markers.
+            // Same lock state, refreshed point - caller re-renders markers.
             onChanged(LotoPointStatus(
                 point: updated, state: status.state,
                 lockedBy: status.lockedBy, lockedByName: status.lockedByName,
@@ -556,7 +556,7 @@ struct LotoMapHomeView: View {
         .confirmationDialog("Delete the flow map?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Delete all versions", role: .destructive) { Task { await deleteMap() } }
         } message: {
-            Text("Removes the drawing only — points, locks and the audit trail are untouched.")
+            Text("Removes the drawing only - points, locks and the audit trail are untouched.")
         }
     }
 

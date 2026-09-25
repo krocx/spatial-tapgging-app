@@ -1,4 +1,4 @@
-# Home test rig — testing PartFrame without a cleanroom
+# Home test rig - testing PartFrame without a cleanroom
 
 Proprietary & Confidential · Applied Materials
 Status: v0.1 (2026-09-16)
@@ -9,14 +9,14 @@ The tracker depends on **geometry and kinematics** (a thick disc with an
 asymmetric hole pattern, resting on a plane, rotated/slid/flipped, progressively
 covered by rigid components), not on the part being a real cathode plate. A 1:1
 proxy with the same geometry reproduces every failure mode we care about at
-home. What a proxy cannot reproduce — anodised/machined surface finish,
-specular highlights, cleanroom lighting — is exactly what cleanroom sessions
+home. What a proxy cannot reproduce - anodised/machined surface finish,
+specular highlights, cleanroom lighting - is exactly what cleanroom sessions
 are reserved for, and those are confirmation runs, not development runs.
 
 ## Rig, in order of importance
 
 1. **Disc proxy (1:1).** Two plywood/MDF discs cut to the plate's CAD
-   diameter, stacked to 7–8 cm (or one disc plus a foam ring under it — only
+   diameter, stacked to 7–8 cm (or one disc plus a foam ring under it - only
    the top face and the outer wall matter to the tracker). Drill or paint the
    **real hole/port pattern** from the CAD onto the top face; mark face B
    differently (different pattern or a painted sector) so flip detection has
@@ -24,7 +24,7 @@ are reserved for, and those are confirmation runs, not development runs.
    the pattern taped on is enough to drill by. Keep the surface matte and
    mid-grey (like the real part's reflectance class, without the speculars).
 2. **Proxy CAD.** Because the proxy is *our* design, we build its CAD ourselves
-   (a disc + cylinders for holes + a few blocks for "components") — no
+   (a disc + cylinders for holes + a few blocks for "components") - no
    dependency on the company assembly for development. Same file structure as
    CAD-CONTENT.md §2 (`base`, `cmp:*`), so the pipeline is exercised end to
    end. When the real CAD arrives it's a data swap.

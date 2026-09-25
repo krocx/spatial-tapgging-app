@@ -1,6 +1,6 @@
-// compiler.ts — compiles a `kind: 'procedure'` Mindmap into an ImportedGuide.
+// compiler.ts - compiles a `kind: 'procedure'` Mindmap into an ImportedGuide.
 //
-// Pure: no I/O, no stores, no Express. That is deliberate — the sequencing
+// Pure: no I/O, no stores, no Express. That is deliberate - the sequencing
 // logic here is the same logic the Guide Library graph uses to lay out lanes
 // and the same order an Operator walks on device. It needs to be unit-testable
 // in isolation, because a silent disagreement between "what the canvas shows"
@@ -10,7 +10,7 @@
 //
 // ── Sequencing ───────────────────────────────────────────────────────────────
 // Unlike the portal graph renderer, there is no pre-existing sequenceNumber to
-// fall back on — the graph is defined purely by edges. So:
+// fall back on - the graph is defined purely by edges. So:
 //
 //   1. start      = the only node with no incoming `next` or `failure` edge
 //   2. spine      = walk `next` from start                      → lane 0
@@ -49,7 +49,7 @@ function titleOf(node: MindmapNode, seq: number): string {
 
 /**
  * Instruction body. Prefers the node's notes (the inspector's long field), and
- * falls back to the node title so a quickly-sketched map still compiles —
+ * falls back to the node title so a quickly-sketched map still compiles -
  * a step with a title and no notes is under-specified, not invalid.
  */
 function bodyOf(node: MindmapNode): string {
@@ -121,7 +121,7 @@ function stepNodesOf(meta: StepMeta, start: 'empty' | 'complete'): GuideStepNode
 
 const MAX_STEP_MODELS = 3;
 
-/** Parse metadata.step.models — assignment fields only, capped, ids trimmed. */
+/** Parse metadata.step.models - assignment fields only, capped, ids trimmed. */
 function stepModelsOf(raw: unknown): ImportedStepModel[] | undefined {
   if (!Array.isArray(raw)) return undefined;
   const out: ImportedStepModel[] = [];
@@ -152,7 +152,7 @@ function stepMetaOf(node: MindmapNode): StepMeta {
     optional:     m.optional === true,
     evidenceRequired: m.evidenceRequired === true,
     imageFile:    typeof m.imageFile === 'string' && m.imageFile ? m.imageFile : undefined,
-    // Only http(s) survives — anything else would produce a dead button on device.
+    // Only http(s) survives - anything else would produce a dead button on device.
     linkUrl:      typeof m.linkUrl === 'string' && /^https?:\/\//i.test(m.linkUrl.trim())
                     ? m.linkUrl.trim() : undefined,
     modelId:      typeof m.modelId === 'string' && m.modelId ? m.modelId : undefined,
@@ -253,8 +253,8 @@ export function compileProcedure(map: Mindmap): ProcedureCompileResult {
   // gives the genuine first step an incoming *failure* edge. Disqualifying on
   // that would report a perfectly normal procedure as having no way in.
   //
-  //   tier 1 — no incoming next AND not a failure target : a true entry point
-  //   tier 2 — no incoming next                          : entry inside a retry loop
+  //   tier 1 - no incoming next AND not a failure target : a true entry point
+  //   tier 2 - no incoming next                          : entry inside a retry loop
   //
   // Nodes that are failure targets are branch roots, not alternative starts, so
   // they are excluded from tier 1 rather than reported as competing entries.
@@ -321,11 +321,11 @@ export function compileProcedure(map: Mindmap): ProcedureCompileResult {
         id);
     } else if (bodyOf(node).length > 280) {
       warn('long-text',
-        `Step ${seqOf.get(id)}'s instruction is ${bodyOf(node).length} characters — on the AR panel it will truncate behind a "More" control. Consider splitting it into two steps.`,
+        `Step ${seqOf.get(id)}'s instruction is ${bodyOf(node).length} characters - on the AR panel it will truncate behind a "More" control. Consider splitting it into two steps.`,
         id);
     } else if ((node.notes ?? '').trim().length === 0) {
       warn('title-only',
-        `Step ${seqOf.get(id)} has no detail — its title will be used as the instruction.`,
+        `Step ${seqOf.get(id)} has no detail - its title will be used as the instruction.`,
         id);
     }
     if (!stepMetaOf(node).imageFile) {
@@ -357,7 +357,7 @@ export function compileProcedure(map: Mindmap): ProcedureCompileResult {
       const meta = stepMetaOf(byId.get(id)!);
       const parts = meta.parts ?? (meta.nodes ?? []).filter(n => n.show !== 'hidden').map(n => n.node);
       if (parts.length === 0 && !meta.nodes) {
-        warn('no-parts', `Step ${seqOf.get(id)} lists no parts — the assembly won't change on this step.`, id);
+        warn('no-parts', `Step ${seqOf.get(id)} lists no parts - the assembly won't change on this step.`, id);
       }
       for (const p of parts) {
         const prev = firstSeen.get(p);
@@ -369,7 +369,7 @@ export function compileProcedure(map: Mindmap): ProcedureCompileResult {
       }
     }
   } else if (orderedIds.some(id => (stepMetaOf(byId.get(id)!).parts?.length ?? 0) > 0)) {
-    warn('parts-no-assembly', 'Steps list parts but no assembly model is chosen for this procedure — pick one in the procedure bar.');
+    warn('parts-no-assembly', 'Steps list parts but no assembly model is chosen for this procedure - pick one in the procedure bar.');
   }
 
   const hasErrors = issues.some(i => i.level === 'error');
@@ -431,7 +431,7 @@ export function compileProcedure(map: Mindmap): ProcedureCompileResult {
   if (assembly) {
     // Initial state: imported entries verbatim, then every part any step
     // mentions gets the opposite of its step state so the deltas have
-    // something to change. Parts never mentioned are the fixed base — visible.
+    // something to change. Parts never mentioned are the fixed base - visible.
     const initial = new Map<string, GuideStepNode>((assembly.initialNodes ?? []).map(n => [n.node, n]));
     const before: GuideStepNode['show'] = asmStart === 'complete' ? 'solid' : 'hidden';
     for (const s of steps) for (const n of s.nodes ?? []) if (!initial.has(n.node)) initial.set(n.node, { node: n.node, show: before });

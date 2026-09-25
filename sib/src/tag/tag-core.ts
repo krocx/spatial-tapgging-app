@@ -1,6 +1,6 @@
-// tag-core.ts — the .tag envelope format, pure logic (no I/O, no stores).
+// tag-core.ts - the .tag envelope format, pure logic (no I/O, no stores).
 //
-// PROPRIETARY & CONFIDENTIAL — Applied Materials. Patent pending.
+// PROPRIETARY & CONFIDENTIAL - Applied Materials. Patent pending.
 // Spec: docs/TAG-FORMAT.md. This module is the reference implementation of
 // the L1 envelope layer; the emitter (tag-emitter.ts) and the conformance
 // validator both build on it.
@@ -21,7 +21,7 @@ export const TAG_FORMAT_VERSION = 'tag/1.1';
 export const TAG_FORMAT_ACCEPTED = ['tag/1.0', 'tag/1.1'] as const;
 
 /**
- * v1.1 — the anchor FRAME, spelled out so a reader on any engine can place
+ * v1.1 - the anchor FRAME, spelled out so a reader on any engine can place
  * the envelope's content without ARKit: which printed marker to find, how
  * big it is, and (when the author sealed a world map) the marker's pose in
  * that map. Every `spatial` in the envelope is expressed in this frame:
@@ -47,7 +47,7 @@ export interface TagStreamRef {
   ref: string;
   /** SHA-256 (hex) of the stream's canonical content at emission time. */
   sha256: string;
-  /** updatedAt of the underlying record(s) — content version, not emit time. */
+  /** updatedAt of the underlying record(s) - content version, not emit time. */
   contentVersion?: string;
 }
 
@@ -56,7 +56,7 @@ export interface TagMemberRef {
   label: string;
   /** Relative URL of the member's own .tag emission. */
   ref: string;
-  /** SHA-256 (hex) of the member's canonical payload — the Merkle link. */
+  /** SHA-256 (hex) of the member's canonical payload - the Merkle link. */
   sha256: string;
   /** v1.1: the member's position in the anchor frame, so an assembly
    *  envelope alone places every part (no per-member fetch). */
@@ -78,12 +78,12 @@ export interface TagPayload {
     type?: string;
   };
   issuer: { platform: 'SIB'; version: string };
-  /** Fixed-precision string coordinates (determinism rule — no JSON numbers). */
+  /** Fixed-precision string coordinates (determinism rule - no JSON numbers). */
   spatial?: { x: string; y: string; z: string };
   /** v1.1: the frame `spatial` values are expressed in (assembly + part). */
   frame?: TagFrame;
   streams: TagStreamRef[];
-  /** assembly only — one entry per part beneath this chamber. */
+  /** assembly only - one entry per part beneath this chamber. */
   members?: TagMemberRef[];
   /** v1: hint URLs only; live per-anchor push arrives in M2. */
   subscribe: { hints: string[] };
@@ -147,7 +147,7 @@ function keyObjectFromRaw(publicKeyRawB64: string): crypto.KeyObject {
   return crypto.createPublicKey({ key: der, format: 'der', type: 'spki' });
 }
 
-// ── Conformance validation (spec §6 — seed of the L2 profile) ────────────────
+// ── Conformance validation (spec §6 - seed of the L2 profile) ────────────────
 
 const HEX64 = /^[0-9a-f]{64}$/;
 
@@ -162,7 +162,7 @@ function findNumbers(value: unknown, path: string, out: string[]): void {
 /**
  * Validate an envelope: structure, determinism rules, and signature.
  * Returns [] when conformant; a list of human-readable violations otherwise.
- * `expectedPublicKey` (raw base64) pins the issuer — omit to trust the
+ * `expectedPublicKey` (raw base64) pins the issuer - omit to trust the
  * embedded key (offline first-scan; the app pins it thereafter).
  */
 export function validateTagEnvelope(env: TagEnvelope, expectedPublicKey?: string): string[] {
@@ -193,7 +193,7 @@ export function validateTagEnvelope(env: TagEnvelope, expectedPublicKey?: string
   }
   const numbers: string[] = [];
   findNumbers(p, 'payload', numbers);
-  if (numbers.length) errs.push(`determinism rule: no JSON numbers allowed — found at ${numbers.slice(0, 3).join(', ')}`);
+  if (numbers.length) errs.push(`determinism rule: no JSON numbers allowed - found at ${numbers.slice(0, 3).join(', ')}`);
 
   const sig = env.signature;
   if (!sig || sig.alg !== 'Ed25519' || !sig.publicKey || !sig.sig) {
@@ -210,7 +210,7 @@ export function validateTagEnvelope(env: TagEnvelope, expectedPublicKey?: string
       keyObjectFromRaw(sig.publicKey),
       Buffer.from(sig.sig, 'base64'),
     );
-    if (!ok) errs.push('signature verification failed — payload does not match signature');
+    if (!ok) errs.push('signature verification failed - payload does not match signature');
   } catch (e) {
     errs.push(`signature verification error: ${(e as Error).message}`);
   }

@@ -1,4 +1,4 @@
-// gemba-walk.test.ts — G2: walk header validation + derived summary; pick lists.
+// gemba-walk.test.ts - G2: walk header validation + derived summary; pick lists.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 

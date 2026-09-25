@@ -1,16 +1,16 @@
 //
-//  GuideRunStore.swift — operator-run resilience (pilot hardening)
+//  GuideRunStore.swift - operator-run resilience (pilot hardening)
 //
 //  Two small disk-backed stores that stop a technician's work evaporating:
 //
-//  1. GuideRunSnapshot — in-progress step state, saved after every completion /
+//  1. GuideRunSnapshot - in-progress step state, saved after every completion /
 //     failure / evidence capture. A phone call, battery death or accidental
 //     Exit mid-procedure no longer means redoing everything: on next launch
 //     the session view offers "Resume where you left off?". Cleared on
 //     successful (or queued) sign-off, and ignored after 12 h (a new shift
 //     should start clean).
 //
-//  2. PendingSessionQueue — sign-offs that could not reach the server are
+//  2. PendingSessionQueue - sign-offs that could not reach the server are
 //     serialized whole (evidence photos included, base64 in the request) and
 //     drained on the next visit to the guide list. An audit record becomes a
 //     delay, never a loss.
@@ -41,7 +41,7 @@ struct GuideRunSnapshot: Codable {
 
 enum GuideRunStore {
 
-    /// Snapshots older than this are stale — a fresh shift starts clean.
+    /// Snapshots older than this are stale - a fresh shift starts clean.
     static let maxAge: TimeInterval = 12 * 3600
 
     private static var dir: URL {
@@ -142,7 +142,7 @@ enum PendingSessionQueue {
     }
 
     /// Try to submit every queued sign-off; deletes each on success.
-    /// Returns the number synced. Safe to call often — no-op when empty.
+    /// Returns the number synced. Safe to call often - no-op when empty.
     static func drain(client: SIBClient) async -> Int {
         guard let files = try? FileManager.default
             .contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)
@@ -158,7 +158,7 @@ enum PendingSessionQueue {
                 try? FileManager.default.removeItem(at: file)
                 synced += 1
             } catch {
-                break   // server still unreachable — keep the rest for later
+                break   // server still unreachable - keep the rest for later
             }
         }
         return synced

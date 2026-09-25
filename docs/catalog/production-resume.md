@@ -17,7 +17,7 @@ flow: |
 ---
 An interrupted guide run belongs to its Production #: resume snapshots carry the
 shift's work context, and a snapshot from a different system is never picked up
-silently — the operator chooses Switch & Resume or Start fresh. The same release
+silently - the operator chooses Switch & Resume or Start fresh. The same release
 hardened the pilot loop: a fail-branch action on the FAIL dialog, an offline
 sign-off queue that finalises when the network returns, name prefill from the
 kiosk identity, an incomplete-submit warning and a redirect toast.

@@ -1,4 +1,4 @@
-// step-models.test.ts — U4 slot doctrine + legacy mirroring.
+// step-models.test.ts - U4 slot doctrine + legacy mirroring.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type { GuideStep } from '@spatial/shared';

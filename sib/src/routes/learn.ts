@@ -1,5 +1,5 @@
 /**
- * Learn routes — /learn, the five-minute reading orders.
+ * Learn routes - /learn, the five-minute reading orders.
  *
  * GET /learn        → the page (sib/portal/learn.html, single file, brand system)
  * GET /learn/data   → docs/learn/journeys.json joined with the catalogue: every
@@ -9,7 +9,7 @@
  *                     without the IP key. The catalogue stays the source of
  *                     truth; this endpoint only arranges it in reading order.
  *
- * No auth — read-only documentation, same access model as /catalog.
+ * No auth - read-only documentation, same access model as /catalog.
  */
 import { Router, type Request, type Response } from 'express';
 import fs from 'fs';
@@ -44,8 +44,8 @@ router.get('/data', (req: Request, res: Response) => {
   const cat = readCatalog();
   if (!cat) return res.status(404).json({ error: 'Catalogue not available on this deployment' });
   if (!fs.existsSync(path.join(cat.docsDir, 'learn', 'journeys.json'))) {
-    // Say so, loudly — an image that forgot docs/learn/ must not look like an empty page.
-    return res.status(404).json({ error: 'docs/learn/journeys.json is not on this deployment — check the Docker COPY list / the checkout' });
+    // Say so, loudly - an image that forgot docs/learn/ must not look like an empty page.
+    return res.status(404).json({ error: 'docs/learn/journeys.json is not on this deployment - check the Docker COPY list / the checkout' });
   }
   const unlocked = canViewRestricted(req);
   const features = new Map(cat.data.features.map(f => [f.id, unlocked ? f : redactFeature(f)]));
@@ -62,7 +62,7 @@ router.get('/data', (req: Request, res: Response) => {
         status:   f?.status,
         locked:   !!f?.locked,
         // The diagram the stop shows: the feature's own architecture, else its
-        // flow, else the area's flow — never nothing.
+        // flow, else the area's flow - never nothing.
         diagram:  f?.locked ? null : (f?.arch || f?.flow || areas.get(f?.area ?? j.area)?.flow || null),
         catalog:  `/catalog#${s.feature}`,
       };

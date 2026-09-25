@@ -1,7 +1,7 @@
 // PlacementReticle
 // A visual ray from the camera to a green ring 1.5 m ahead.
 // Shows the user exactly where a tag will be placed before they confirm.
-// Updates every frame — call update() from the render loop.
+// Updates every frame - call update() from the render loop.
 
 import * as THREE from 'three';
 
@@ -89,7 +89,7 @@ export class PlacementReticle {
     }
   }
 
-  // Returns current world position of the ring — use this as the tag position.
+  // Returns current world position of the ring - use this as the tag position.
   getPosition(): THREE.Vector3 {
     return this.ring.position.clone();
   }

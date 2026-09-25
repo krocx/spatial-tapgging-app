@@ -8,8 +8,8 @@ depends: []
 terms: [ARWorldMap]
 spec: APP-FEATURES.md
 api: |
-  POST /worldmap/upload — share ARWorldMap for an anchor (app · API key)
-  GET /worldmap/:anchorId — download shared map for relocalization (app · API key)
+  POST /worldmap/upload - share ARWorldMap for an anchor (app · API key)
+  GET /worldmap/:anchorId - download shared map for relocalization (app · API key)
 wireframe: gemba
 arch: |
   sequenceDiagram
@@ -29,4 +29,4 @@ arch: |
 ---
 Apple's saved "memory of a space": the device recognises a previously-mapped area and
 restores findings in their true positions without any marker. This is the persistence
-layer under Gemba walks — and the relocalization fallback for every AR surface.
+layer under Gemba walks - and the relocalization fallback for every AR surface.

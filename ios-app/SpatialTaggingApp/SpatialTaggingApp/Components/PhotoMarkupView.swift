@@ -1,18 +1,18 @@
-// PhotoMarkupView.swift — G5 (2026.4.46): draw on a finding photo.
+// PhotoMarkupView.swift - G5 (2026.4.46): draw on a finding photo.
 //
-// Circle the issue, draw an arrow, write a number — the auditor's hand on the
+// Circle the issue, draw an arrow, write a number - the auditor's hand on the
 // evidence. PencilKit canvas over the photo, finger or Apple Pencil, four
-// ink colours (orange first — Gemba identity), two widths, undo, clear.
+// ink colours (orange first - Gemba identity), two widths, undo, clear.
 // "Done" flattens the strokes onto a copy of the photo at full resolution;
 // the original is never modified (the server keeps both: `path` and
-// `markupPath`). Phase 2 — anchored 3D strokes in AR — is separate.
+// `markupPath`). Phase 2 - anchored 3D strokes in AR - is separate.
 
 import SwiftUI
 import PencilKit
 
 struct PhotoMarkupView: View {
     let image: UIImage
-    /// Existing markup (re-editing), in IMAGE PIXEL coordinates — what `onDone`
+    /// Existing markup (re-editing), in IMAGE PIXEL coordinates - what `onDone`
     /// hands back, so a drawing survives any canvas size / orientation.
     var existing: PKDrawing? = nil
     /// (flattened photo, strokes in image pixel coordinates)
@@ -45,7 +45,7 @@ struct PhotoMarkupView: View {
                 }
                 .padding(.bottom, 64)
 
-                // Tool strip — house style: thin material bar, capsule controls
+                // Tool strip - house style: thin material bar, capsule controls
                 VStack {
                     Spacer()
                     HStack(spacing: 14) {
@@ -123,7 +123,7 @@ struct PhotoMarkupView: View {
     }
 }
 
-/// PKCanvasView that tells us when it has a real size — the existing drawing
+/// PKCanvasView that tells us when it has a real size - the existing drawing
 /// (image-pixel coordinates) can only be scaled onto the canvas once the
 /// canvas has laid out; at makeUIView time its bounds are still zero, which
 /// is why a re-opened markup used to come back empty.

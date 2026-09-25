@@ -1,4 +1,4 @@
-import './load-config.js';           // MUST be first — loads sib-config.env into process.env (no-op on Render)
+import './load-config.js';           // MUST be first - loads sib-config.env into process.env (no-op on Render)
 import { createApp } from './app.js';
 import { attachMindmapWs } from './ws/mindmap.ws.js';
 import { networkInterfaces } from 'os';
@@ -50,14 +50,14 @@ server.listen(PORT, HOST, () => {
 });
 
 async function warmUpComparator(): Promise<void> {
-  // A minimal 1×1 PNG — Jimp upscales it to the 256×256 working canvas,
+  // A minimal 1×1 PNG - Jimp upscales it to the 256×256 working canvas,
   // which is enough for V8 to JIT-compile all Float32Array loops in
   // image-comparator.ts before any real operator inspection arrives.
   const dummy =
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
   try {
     await compareAgainstPassState([dummy], dummy);
-    console.log('[warmup] Comparator pre-warmed — first inspection will be fast.');
+    console.log('[warmup] Comparator pre-warmed - first inspection will be fast.');
   } catch {
     // Warm-up failure must never prevent the server from serving real requests.
   }

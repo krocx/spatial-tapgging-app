@@ -1,4 +1,4 @@
-# SIB Server — Internal Deployment Guide
+# SIB Server - Internal Deployment Guide
 
 **Server:** `dca-qa-330.amat.com` · **Port:** `447`
 
@@ -10,7 +10,7 @@
 
 ---
 
-## Step 1 — Clone the repo
+## Step 1 - Clone the repo
 
 ```bash
 git clone <your-bitbucket-repo-url> C:\sib
@@ -20,7 +20,7 @@ git checkout feature/loc-tag
 
 ---
 
-## Step 2 — Create the config file
+## Step 2 - Create the config file
 
 Create a file called `sib-config.env` **in the root of the repo** (`C:\sib\sib-config.env`):
 
@@ -55,7 +55,7 @@ take priority over file values, so existing `SET` / system env vars are never ov
 
 ---
 
-## Step 3 — Install and build
+## Step 3 - Install and build
 
 ```bash
 cd C:\sib\sib
@@ -65,7 +65,7 @@ npm run build
 
 ---
 
-## Step 4 — Start the server
+## Step 4 - Start the server
 
 ```bash
 npm start
@@ -76,7 +76,7 @@ On a successful start you should see:
 ```
 [config] Loading config file: C:\sib\sib-config.env
 SIB v0.2 running on 0.0.0.0:447 (HTTPS)
-[warmup] Comparator pre-warmed — first inspection will be fast.
+[warmup] Comparator pre-warmed - first inspection will be fast.
 ```
 
 The web portal is then available at:
@@ -87,7 +87,7 @@ https://dca-qa-330.amat.com:447/portal
 
 ---
 
-## Step 5 — Run as a Windows Service (survives reboots)
+## Step 5 - Run as a Windows Service (survives reboots)
 
 Download [NSSM](https://nssm.cc/download) and run the following from an **Administrator** command prompt:
 
@@ -147,16 +147,16 @@ Two admin-gated downloads in the portal (⚙ Settings → 🗄 Backups, requires
 🔒 Admin unlock when `SIB_ADMIN_KEY` is set), or directly:
 
 ```
-GET /admin/backup?scope=data   # JSON stores only — small; take one weekly
+GET /admin/backup?scope=data   # JSON stores only - small; take one weekly
 GET /admin/backup?scope=full   # + evidence photos, world maps, 3D models, QR
-                               #   images, step images — large; take before upgrades
+                               #   images, step images - large; take before upgrades
 ```
 
 Both stream a `.tar.gz` of the data directory (`SIB_DATA_DIR`, default
 `.sib-data`). Requires the system `tar` binary (present on Linux, macOS and
 Windows 10 / Server 2019+).
 
-**Restore is deliberately manual** — a restore button on a web page is a
+**Restore is deliberately manual** - a restore button on a web page is a
 footgun. Procedure:
 
 1. Stop the SIB service (`nssm stop <ServiceName>` / stop the container).
@@ -167,7 +167,7 @@ footgun. Procedure:
 5. Start the service and verify: `/config` up, portal shows the expected
    anchors/sessions, `/stats` counts look right.
 
-A `data` backup restores stores only — evidence photos, world maps and models
+A `data` backup restores stores only - evidence photos, world maps and models
 referenced by the restored records must still exist on disk (or restore a
 `full` archive). Version note: restore onto the same or newer platform
 version; stores are forward-compatible, not backward.

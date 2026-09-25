@@ -5,10 +5,10 @@
 //
 // The ring is a flat SCNTorus that tracks detected AR surfaces in real time:
 //
-//   Tracking  — cyan ring sits flush on the surface, aligned to the surface
+//   Tracking  - cyan ring sits flush on the surface, aligned to the surface
 //               normal. Position is exponentially smoothed to reduce jitter.
 //
-//   Searching — white semi-transparent ring floats 0.25 m in front of the
+//   Searching - white semi-transparent ring floats 0.25 m in front of the
 //               camera, facing the user, while ARKit scans for a plane.
 //               Pulses and spins to signal active scanning.
 //
@@ -39,7 +39,7 @@ final class ARFocusRing {
     private let dotNode:  SCNNode
 
     // Keep geometry references so we can update ringRadius directly
-    // (never via node scaling — that would shrink pipeRadius to invisible)
+    // (never via node scaling - that would shrink pipeRadius to invisible)
     private let ringGeo:  SCNTorus
     private let dotGeo:   SCNSphere
 
@@ -64,16 +64,16 @@ final class ARFocusRing {
         self.accent = accent
         // ── Ring ────────────────────────────────────────────────────────────
         // Lies in the XZ plane; Y axis = ring axis (used for surface alignment).
-        // IMPORTANT: ringRadius is set directly on the geometry — never via
+        // IMPORTANT: ringRadius is set directly on the geometry - never via
         // node scaling, which would also scale pipeRadius to invisible.
         ringGeo                  = SCNTorus()
         ringGeo.ringRadius       = 0.038   // ≈ 7.6 cm diameter on surface
-        ringGeo.pipeRadius       = 0.0030  // 3 mm tube — fixed
+        ringGeo.pipeRadius       = 0.0030  // 3 mm tube - fixed
         ringGeo.ringSegmentCount = 48
         ringGeo.pipeSegmentCount = 12
         ringMat                  = SCNMaterial()
         ringMat.lightingModel    = .constant
-        ringGeo.firstMaterial    = ringMat  // explicit assign — not optional chain
+        ringGeo.firstMaterial    = ringMat  // explicit assign - not optional chain
 
         // ── Centre dot ────────────────────────────────────────────────────
         dotGeo                = SCNSphere(radius: 0.007)
@@ -93,7 +93,7 @@ final class ARFocusRing {
         applySearchingVisuals(animated: false)
     }
 
-    // ── Update — call from AuthorModeView.updateCrosshair() every 0.1 s ──────
+    // ── Update - call from AuthorModeView.updateCrosshair() every 0.1 s ──────
 
     func update(sceneView: ARSCNView) {
         guard sceneView.bounds.width > 0, sceneView.bounds.height > 0 else { return }
@@ -127,7 +127,7 @@ final class ARFocusRing {
             if !isTracking { transitionToTracking() }
 
         } else {
-            // ── No surface — float in front of camera ─────────────────────
+            // ── No surface - float in front of camera ─────────────────────
             lastHitTransform = nil
             smoothedPos      = nil
 
@@ -178,7 +178,7 @@ final class ARFocusRing {
         rootNode.opacity = 1.0
         rootNode.scale   = SCNVector3(1, 1, 1)
         SCNTransaction.commit()
-        // No ongoing animation when tracking — ring just follows the surface
+        // No ongoing animation when tracking - ring just follows the surface
     }
 
     private func applySearchingVisuals(animated: Bool) {
@@ -205,7 +205,7 @@ final class ARFocusRing {
         ])))
     }
 
-    // ── Orientation helper — same quaternion logic as ConeARGuide.orientNode ──
+    // ── Orientation helper - same quaternion logic as ConeARGuide.orientNode ──
     //
     // Rotates `node` so its local +Y axis aligns with `targetY`.
     // For a SCNTorus, +Y is the ring axis → ring lies flat in the XZ plane.

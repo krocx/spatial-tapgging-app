@@ -1,10 +1,10 @@
-// step-validation.ts — Spatial Inspection for AR OMS steps (K4, 2026.4.45).
+// step-validation.ts - Spatial Inspection for AR OMS steps (K4, 2026.4.45).
 //
 // One reference photo per (guide, step), captured by the Author in-app
 // ("train"), verified with a live test compare, published with the guide.
 // The Operator's live frame is scored against it by the SAME comparator
 // engine tag inspection uses (coarse translation registration → SSIM +
-// patch-grid) — one perception doctrine across the platform.
+// patch-grid) - one perception doctrine across the platform.
 //
 // Storage: <DATA_DIR>/guide-step-validation/<guideId>-<stepId>.jpg
 // The step's `validationTrainedAt` stamp is owned by the routes layer.
@@ -19,7 +19,7 @@ const VALIDATION_DIR = path.join(DATA_DIR, 'guide-step-validation');
 function refPath(guideId: string, stepId: string): string {
   return path.join(VALIDATION_DIR, `${guideId}-${stepId}.jpg`);
 }
-/** Read-side path — also finds references written to the pre-fix ./data root. */
+/** Read-side path - also finds references written to the pre-fix ./data root. */
 function refReadPath(guideId: string, stepId: string): string {
   return resolveDataFile('guide-step-validation', `${guideId}-${stepId}.jpg`);
 }

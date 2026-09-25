@@ -17,6 +17,6 @@ arch: |
     ALL["All persisted via POST /mindmap/save - no separate service"] -.-> N
 ---
 Per-node execution status (planned / in-progress / done / blocked) is tracked
-separately from review verdict (approved / rejected / needs validation) — a node can
+separately from review verdict (approved / rejected / needs validation) - a node can
 be in-progress AND needs-validation on purpose. Threaded comments and gold-diamond
 milestones complete the picture.

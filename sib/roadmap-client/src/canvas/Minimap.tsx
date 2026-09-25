@@ -1,4 +1,4 @@
-// Minimap.tsx — bottom-right overview: node rects colored by SIB layer,
+// Minimap.tsx - bottom-right overview: node rects colored by SIB layer,
 // current viewport outline, click/drag to jump.
 
 import { useCallback, useRef } from 'react';
@@ -19,13 +19,13 @@ export function Minimap(): JSX.Element | null {
 
   // NO early return above the hooks. The old `if (nodes.length === 0) return null`
   // sat between useRef and useCallback, so the moment a map went from empty to
-  // one node the component rendered MORE hooks than the previous render —
+  // one node the component rendered MORE hooks than the previous render -
   // React error #310, full unmount, blank page on every first node.
   // All hooks must run unconditionally; the bail-out happens after them.
   const nodes = map?.nodes ?? [];
   const empty = nodes.length === 0;
 
-  // Safe fallbacks when empty — never rendered, only kept finite for the deps.
+  // Safe fallbacks when empty - never rendered, only kept finite for the deps.
   const minX = empty ? 0 : Math.min(...nodes.map(n => n.x)) - PAD;
   const minY = empty ? 0 : Math.min(...nodes.map(n => n.y)) - PAD;
   const maxX = empty ? MM_W : Math.max(...nodes.map(n => n.x)) + NODE_W + PAD;

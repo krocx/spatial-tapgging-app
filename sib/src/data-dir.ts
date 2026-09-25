@@ -1,17 +1,17 @@
-// data-dir.ts — ONE data root for everything SIB writes to disk.
+// data-dir.ts - ONE data root for everything SIB writes to disk.
 //
 // History: the JSON stores, world maps, inspection evidence, 3D models and QR
 // images always lived under SIB_DATA_DIR (default .sib-data). A second root,
 // DATA_DIR (default ./data), crept in for guide-session evidence, step
 // validation references and platform media. Render sets both; the company
-// server sets only SIB_DATA_DIR — so guide evidence landed in ./data INSIDE
+// server sets only SIB_DATA_DIR - so guide evidence landed in ./data INSIDE
 // the git checkout, outside every backup, and vanished whenever the checkout
 // was touched (2026.4.46 fix).
 //
 // Resolution order, first match wins:
-//   1. DATA_DIR        — explicit override (Render keeps working unchanged)
-//   2. SIB_DATA_DIR    — the store root; evidence now sits beside the stores
-//   3. ./data          — the historical default (dev only)
+//   1. DATA_DIR        - explicit override (Render keeps working unchanged)
+//   2. SIB_DATA_DIR    - the store root; evidence now sits beside the stores
+//   3. ./data          - the historical default (dev only)
 //
 // LEGACY_DATA_DIR is the pre-fix location (./data relative to cwd). Readers
 // fall back to it so evidence written before the fix keeps displaying; a
@@ -50,6 +50,6 @@ export function noticeLegacyDataDir(log: (msg: string) => void = console.warn): 
   if (noticed) return;
   noticed = true;
   if (legacyDataDirInUse()) {
-    log(`[SIB] Legacy data folder still in use: ${LEGACY_DATA_DIR} — files there are read but never written or backed up. Move its contents into ${path.resolve(DATA_DIR)} and delete it.`);
+    log(`[SIB] Legacy data folder still in use: ${LEGACY_DATA_DIR} - files there are read but never written or backed up. Move its contents into ${path.resolve(DATA_DIR)} and delete it.`);
   }
 }

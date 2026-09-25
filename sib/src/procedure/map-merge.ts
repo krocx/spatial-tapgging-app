@@ -1,9 +1,9 @@
-// map-merge.ts — D (2026.4.46): bring a procedure map up to date with its guide.
+// map-merge.ts - D (2026.4.46): bring a procedure map up to date with its guide.
 //
 // Doctrine: the GUIDE is the source of truth; the map is a VIEW of it that
 // carries presentation the guide doesn't (layout, shapes, icons, comments,
 // annotation nodes). "Edit in Designer" used to reopen the stored map as-is
-// and merely warn when the guide had moved on — a step added on iOS never
+// and merely warn when the guide had moved on - a step added on iOS never
 // reached the canvas, and re-sending from that canvas would have dropped it.
 //
 // This merge re-derives the CONTENT from the guide (via the reverse compiler)
@@ -32,7 +32,7 @@ export interface MergeSummary {
   added:   number;
   updated: number;
   removed: number;
-  /** Titles of added steps — for the portal toast. */
+  /** Titles of added steps - for the portal toast. */
   addedTitles: string[];
 }
 
@@ -41,7 +41,7 @@ function stepIdOf(n: MindmapNode): string | undefined {
   return typeof g?.stepId === 'string' ? g.stepId : undefined;
 }
 
-/** Nearest free slot at/below (x, y) — never stack a new node on an old one. */
+/** Nearest free slot at/below (x, y) - never stack a new node on an old one. */
 function freeSpot(nodes: MindmapNode[], x: number, y: number): { x: number; y: number } {
   const taken = (px: number, py: number) => nodes.some(n => Math.abs(n.x - px) < 60 && Math.abs(n.y - py) < 60);
   let yy = y;
@@ -108,12 +108,12 @@ export function mergeGuideIntoMap(
   };
 
   const edges: MindmapEdge[] = [];
-  // Non-role edges (drawn by hand on the canvas) — keep while endpoints live.
+  // Non-role edges (drawn by hand on the canvas) - keep while endpoints live.
   for (const e of map.edges) {
     if (e.role) continue;
     if (survivingIds.has(e.from) && survivingIds.has(e.to)) edges.push(e);
   }
-  // Role edges — the guide decides; reuse ids where the same edge existed.
+  // Role edges - the guide decides; reuse ids where the same edge existed.
   for (const fe of fresh.edges) {
     const from = mergedIdOfFresh(fe.from), to = mergedIdOfFresh(fe.to);
     if (!from || !to) continue;
@@ -123,7 +123,7 @@ export function mergeGuideIntoMap(
 
   const mergedMap: Mindmap = {
     ...map,
-    name: map.name,                       // the designer may have renamed it — keep
+    name: map.name,                       // the designer may have renamed it - keep
     anchorId: guide.anchorId,
     nodes: out,
     edges,

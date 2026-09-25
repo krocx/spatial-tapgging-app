@@ -1,4 +1,4 @@
-// PlacementTools.swift — one tool at a time for 3D placement (2026.4.46).
+// PlacementTools.swift - one tool at a time for 3D placement (2026.4.46).
 //
 // Every place a model is positioned in AR (Place Model, per-step slot
 // adjustment, Place Assembly) shares this: the author picks ONE tool, and only
@@ -87,7 +87,7 @@ struct PlacementGestureContainer: UIViewRepresentable {
     /// False disables every placement gesture (e.g. while aiming or loading).
     var active: Bool = true
 
-    // Tap — only used by screens that also drop pins.
+    // Tap - only used by screens that also drop pins.
     var onTap:          ((CGPoint) -> Void)?
 
     // 1-finger drag: location + translation since began.
@@ -165,7 +165,7 @@ struct PlacementGestureContainer: UIViewRepresentable {
         context.coordinator.sync()
     }
 
-    // Sessions are paused by the owning view's onDisappear — not here.
+    // Sessions are paused by the owning view's onDisappear - not here.
     static func dismantleUIView(_ uiView: ARSCNView, coordinator: Coordinator) {}
 }
 
@@ -218,7 +218,7 @@ struct PlacementToolbar: View {
 
     var body: some View {
         VStack(spacing: 8) {
-            // Tool picker — one segment is lit; only its gesture is live.
+            // Tool picker - one segment is lit; only its gesture is live.
             HStack(spacing: 6) {
                 ForEach(tools) { t in
                     Button {
@@ -240,8 +240,8 @@ struct PlacementToolbar: View {
             }
             .padding(.horizontal, 12)
 
-            // Hint for the active tool — or the one-time coach line.
-            Text(explained ? tool.hint : "One tool at a time — pick it, then drag or pinch.")
+            // Hint for the active tool - or the one-time coach line.
+            Text(explained ? tool.hint : "One tool at a time - pick it, then drag or pinch.")
                 .font(.caption).foregroundStyle(.white.opacity(0.75))
                 .multilineTextAlignment(.center).lineLimit(2)
                 .padding(.horizontal, 16)

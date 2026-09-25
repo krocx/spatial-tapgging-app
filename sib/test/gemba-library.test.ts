@@ -1,4 +1,4 @@
-// gemba-library.test.ts — G1 Audit Reference Library: validation, import
+// gemba-library.test.ts - G1 Audit Reference Library: validation, import
 // planning (atomic, upsert-by-code), flat-row conversion, seed shape.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

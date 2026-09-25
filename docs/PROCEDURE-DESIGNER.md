@@ -1,4 +1,4 @@
-# Procedure Designer — visual authoring for AR work instructions
+# Procedure Designer - visual authoring for AR work instructions
 
 Status: **approved, slice 1 in build**
 Owner: Karthik
@@ -8,7 +8,7 @@ Related: [AR OMS section of the README](../README.md), `sib/src/routes/guides.ts
 
 ## 1. What this is
 
-The Roadmap Mind-Mapper gains a second map type — a **procedure map** — whose nodes are
+The Roadmap Mind-Mapper gains a second map type - a **procedure map** - whose nodes are
 work-instruction steps and whose edges are the branch logic of a guide. A finished
 procedure map compiles into an `ImportedGuide` and lands in the Guide Library as a
 draft, ready for spatial placement on device.
@@ -16,7 +16,7 @@ draft, ready for spatial placement on device.
 It exists because authoring a branching procedure through the iOS step editor means
 holding the whole graph in your head. A canvas makes the shape of a procedure visible
 while you design it, which is exactly the argument for the ⬡ Graph view we already
-added to the Guide Library — this is that view, made editable, and moved to the front
+added to the Guide Library - this is that view, made editable, and moved to the front
 of the process.
 
 ---
@@ -73,7 +73,7 @@ path, or chosen at send time from the roadmap path.
 | Edge `role: 'requires'` | `precondition` | amber, drawn **into** the gated step |
 | Attached image | `mediaPath` | uploaded via existing step-image store |
 | Attached model | `modelId` + transform | picked from the shared 3D library |
-| — | `posX/posY/posZ`, `isPlaced` | **device only — never written from canvas** |
+| - | `posX/posY/posZ`, `isPlaced` | **device only - never written from canvas** |
 
 ### Step numbering
 
@@ -102,7 +102,7 @@ spine walk silently absorbed branch steps; it should exist exactly once.
 - a node may have at most one outgoing `next` edge;
 - a node may have at most one outgoing `failure` edge;
 - `requires` edges are unconstrained in number (a step may have several prerequisites,
-  though only the first compiles to `precondition` until the model supports more — see
+  though only the first compiles to `precondition` until the model supports more - see
   §10).
 
 Drawing a second edge of a constrained role must either replace the existing one with a
@@ -133,8 +133,8 @@ the one genuinely unsafe action available here, and it stays behind the device.
 
 ## 7. Pre-flight validation
 
-The census strip reuses the counts already shown in the Guide Library graph header —
-steps, next, on failure, requires, lanes — so the same numbers mean the same thing in
+The census strip reuses the counts already shown in the Guide Library graph header -
+steps, next, on failure, requires, lanes - so the same numbers mean the same thing in
 both places.
 
 ### Blocking (cannot send)
@@ -209,7 +209,7 @@ blocking conflict rather than removed.
 
 **Multiple preconditions.** `GuideStep.precondition` is a single step ID. The canvas
 allows several `requires` edges into one node, but only the first compiles. Either the
-canvas should constrain this to one, or `precondition` should become an array — the
+canvas should constrain this to one, or `precondition` should become an array - the
 latter is the better model and is deferred, not rejected.
 
 **Re-sync versus in-flight sessions.** Live sessions hold step IDs in server memory
@@ -221,7 +221,7 @@ it is tracked as an open risk.
 
 ## 11. Build phasing
 
-### Slice 1 — thin vertical slice (in build)
+### Slice 1 - thin vertical slice (in build)
 
 Proves the whole path on real data before investing in the richer UI.
 
@@ -233,55 +233,55 @@ Proves the whole path on real data before investing in the richer UI.
 | 1d | canvas: procedure map type, relationship picker on edge draw, coloured edges, send dialog |
 | 1e | verification: compiler unit tests incl. the branch shapes from the graph fix, plus end-to-end curl |
 
-### Slice 2 — authoring depth
+### Slice 2 - authoring depth
 
 Inspector fields (voice, required, image, model), pre-flight panel in the canvas,
 step palette (decision, terminal), keyboard flow.
 
-### Slice 2.5 — UX polish + preview (shipped 2026.4.42, from field feedback)
+### Slice 2.5 - UX polish + preview (shipped 2026.4.42, from field feedback)
 
 Driven by first non-developer use of the deployed designer ("teams are used to
 Visio and Figma"):
 
-- **Edge type switcher** — a selected connection's role (Next / On failure /
+- **Edge type switcher** - a selected connection's role (Next / On failure /
   Requires) is editable in the Inspector; drawing no longer commits you.
-- **Role comprehension** — picker copy rewritten around *paths vs rules*
+- **Role comprehension** - picker copy rewritten around *paths vs rules*
   (Next/On failure are travelled; Requires only gates), Enter defaults to Next,
   Requires visually demoted; census strip doubles as a colour legend with a
   ? explainer panel.
-- **Auto-sizing nodes** — cards wrap titles up to 4 lines and grow; all
+- **Auto-sizing nodes** - cards wrap titles up to 4 lines and grow; all
   geometry reads `nodeHeight()` (see geometry.ts), never the `NODE_H` constant.
-- **Autosave fields** — Notes and Voice script commit on blur AND unmount
+- **Autosave fields** - Notes and Voice script commit on blur AND unmount
   (the unmount path was silently dropping text); Saved ✓ affordance.
-- **Reference link per step** — `metadata.step.linkUrl` (http/https only)
+- **Reference link per step** - `metadata.step.linkUrl` (http/https only)
   → compiler → `ImportedGuideStep.linkUrl` → `GuideStep.linkUrl` → "Reference"
   button on the iOS AR panel (opens in Safari; nothing stored server-side).
-- **Preview mode** — client-side phone-frame walkthrough traversing the real
+- **Preview mode** - client-side phone-frame walkthrough traversing the real
   edge graph (Complete/Failed), speech-synthesis voice, requires-gate
   redirects, canvas you-are-here highlight, branch-coverage exit summary.
   Traversal must stay semantically identical to the compiler and the iOS
   runtime; a divergence is a bug in one of the three.
 
-### Slice 3 — round-trip
+### Slice 3 - round-trip
 
 Open an existing guide into a map, diff dialog, published-guide guard UI,
 `metadata.guide` reconciliation.
 
-### Slice 3.5 — parts per step (shipped 2026.4.46)
+### Slice 3.5 - parts per step (shipped 2026.4.46)
 
 An **assembly** (a GLB from the model library) is bound to a procedure map once,
 in the procedure bar, with a start state: *build up* (parts begin hidden and each
 step installs its parts) or *take apart* (everything begins in place and each step
 removes its parts). Each step then lists the parts it installs
 (`metadata.step.parts`) in the Inspector: a searchable tree of the GLB's node
-names (`GET /models/:id/nodes` — read from the file's JSON chunk, no rendering on
+names (`GET /models/:id/nodes` - read from the file's JSON chunk, no rendering on
 the server) beside an in-browser 3D preview that tints *this step* / *installed
 earlier* / *later* and toggles a part on click. The compiler derives the per-step
 node deltas and the initial state from that list. *Build up* starts EMPTY: at
 ingest the model's root nodes are hidden in the initial state, so a part no step
 installs is simply not there yet (the designer preview shows the same). *Take
-apart* starts complete: a part no step removes stays. Imported (Cortona3D) presentation — motion, view,
-CAD pins — round-trips verbatim; editing an imported step's parts only decides
+apart* starts complete: a part no step removes stays. Imported (Cortona3D) presentation - motion, view,
+CAD pins - round-trips verbatim; editing an imported step's parts only decides
 `show`, its motion fields are kept. On device the assembly is placed once
 ("Place assembly"), the runtime applies the cumulative state per step, and the
 operator can ghost the not-yet-installed parts with "Show whole assembly"
@@ -290,23 +290,23 @@ operator can ghost the not-yet-installed parts with "Show whole assembly"
 **Parts Studio.** The picker opens full-screen with step navigation (◀ ▶, ← →,
 a step strip with part counts) so the whole procedure is authored in one view;
 moving there also selects the node on the canvas. A ticked group covers all its
-descendants; a ticked child overrides its group — preview, tree, compiler and
+descendants; a ticked child overrides its group - preview, tree, compiler and
 device agree. Named **part sets** (`settings.assembly.groups`) are saved on the
 map and applied to a step in one click.
 
 **Operator context.** Per step, `metadata.step.context` → `GuideStep.context`:
-`installed` (default — only what is built so far), `ghost` (whole assembly as
+`installed` (default - only what is built so far), `ghost` (whole assembly as
 a faint outline; this step's parts stay highlighted, installed ones solid) or
 `solid`. The device seeds its "Show whole assembly" toggle from it; the
 operator can still flip it for that step.
 
 **Auto-pin.** A step that lists parts but has no `cadPosition` gets one at
 ingest: the centre of those parts' bounds in the assembly frame (read from the
-GLB's POSITION accessor `min`/`max` under the node transforms — no buffer
+GLB's POSITION accessor `min`/`max` under the node transforms - no buffer
 decoding). With the assembly placed on device, `deriveStepsFromAssembly` then
 places every such step, so Place Steps is unnecessary for an assembly guide.
 
-### Slice 4 — shared sequencing
+### Slice 4 - shared sequencing
 
 Extract the lane/sequence algorithm into one module consumed by the designer, the
 Guide Library graph and the compiler. Deliberately last, so the contract is proven by
@@ -318,7 +318,7 @@ three real callers before it is frozen.
 
 1. Should `precondition` become an array? (§10) Affects shared types, server, iOS
    runtime and the Guide Library graph.
-2. Should a procedure map be able to target multiple anchors — the same procedure run
-   against several assets — or stay one-to-one?
+2. Should a procedure map be able to target multiple anchors - the same procedure run
+   against several assets - or stay one-to-one?
 3. Does the draft-key model suffice for "who may send to the Guide Library", or does
    this need real permissions ahead of SSO/RBAC?

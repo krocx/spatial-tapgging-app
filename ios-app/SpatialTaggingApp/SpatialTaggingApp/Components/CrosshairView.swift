@@ -1,13 +1,13 @@
-// CrosshairView.swift — Phase 3
+// CrosshairView.swift - Phase 3
 //
 // Apple Measure App-style crosshair reticle.
 // Positioned at screen centre; animates between two states:
 //
 //   "Searching" (locked = false):
-//     — Small white dot + faint outer ring.  Indicates ARKit is scanning.
+//     - Small white dot + faint outer ring.  Indicates ARKit is scanning.
 //
 //   "Locked" (locked = true):
-//     — Larger cyan dot + crisp outer ring + four corner brackets.
+//     - Larger cyan dot + crisp outer ring + four corner brackets.
 //       Indicates a surface has been raycasted at the centre and tapping
 //       will place a tag at that point.
 //

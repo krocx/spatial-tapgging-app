@@ -1,10 +1,10 @@
-// tag-emitter.ts — builds and signs .tag envelopes from live SIB stores.
+// tag-emitter.ts - builds and signs .tag envelopes from live SIB stores.
 //
-// PROPRIETARY & CONFIDENTIAL — Applied Materials. Patent pending.
+// PROPRIETARY & CONFIDENTIAL - Applied Materials. Patent pending.
 //
 // Two emissions (CAD part / part-assembly model):
-//   buildPartEnvelope(tagId)       — one tagged part on a chamber
-//   buildAssemblyEnvelope(anchorId)— the chamber: chamber streams + a member
+//   buildPartEnvelope(tagId)       - one tagged part on a chamber
+//   buildAssemblyEnvelope(anchorId)- the chamber: chamber streams + a member
 //                                    manifest hashing every part envelope
 //                                    beneath it (Merkle-style integrity tree:
 //                                    change any part → its hash changes → the
@@ -64,7 +64,7 @@ export function issuerKeys(): { privateKey: crypto.KeyObject; publicKeyRaw: Buff
   return cachedKeys;
 }
 
-/** Test hook — forget the cached key (e.g. after pointing SIB_DATA_DIR elsewhere). */
+/** Test hook - forget the cached key (e.g. after pointing SIB_DATA_DIR elsewhere). */
 export function resetIssuerKeysForTest(): void { cachedKeys = null; }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -216,7 +216,7 @@ export function buildAssemblyEnvelope(anchorId: string): TagEnvelope | null {
     streams.push({ name: 'inspections', ref: `/sessions`, sha256: recordHash(sessions) });
   }
 
-  // Member manifest — the Merkle links to every part on this chamber.
+  // Member manifest - the Merkle links to every part on this chamber.
   const parts = tagStore.findAll()
     .filter(t => t.anchorId === anchor.id)
     .sort((a, b) => a.id.localeCompare(b.id));
@@ -242,7 +242,7 @@ export function buildAssemblyEnvelope(anchorId: string): TagEnvelope | null {
     ...(frameFor(anchor.id) && { frame: frameFor(anchor.id) }),
     streams,
     members,
-    // M2: the first hint is now a REAL SSE feed — connect for live deltas.
+    // M2: the first hint is now a REAL SSE feed - connect for live deltas.
     subscribe: { hints: [`/anchors/${anchor.id}/subscribe`, `/loto/status?anchorId=${anchor.id}`, '/guide-sessions/live'] },
     contentVersion: maxVersion(
       ...streams.map(s => s.contentVersion),

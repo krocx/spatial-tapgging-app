@@ -1,6 +1,6 @@
-# Contextual intelligence — the device is a sensor, SIB is the judge
+# Contextual intelligence - the device is a sensor, SIB is the judge
 
-Status: shipped in three parts — observations + baselines (2026-09-20),
+Status: shipped in three parts - observations + baselines (2026-09-20),
 signals → hints (2026-09-21), effectiveness loop + portal Intelligence page
 (2026-09-21).
 
@@ -14,10 +14,10 @@ move to glasses without being rewritten per device. The intent is guidance
 that **organically evolves**: what "normal" looks like on a step is learned
 from how people actually do it, deviations from that are the signal, and the
 knowledge that phrases the hint is the same Ask-SIB knowledge the team already
-uses. All of it lives in SIB, so any client — iPad, Unity, WebXR, glasses —
+uses. All of it lives in SIB, so any client - iPad, Unity, WebXR, glasses -
 gets the same intelligence by sending the same observations.
 
-## Part 1 — Observations (shipped)
+## Part 1 - Observations (shipped)
 
 ### Contract
 
@@ -55,7 +55,7 @@ The iOS sampler is `observeTick` / `observeInteraction` in
   distance, moving seconds. Durable, small, exportable.
 - Appends the raw samples to `observations/<liveSessionId>.jsonl` under the
   data dir for later analysis (capped at 4 MB per session).
-- Learns **baselines** per guide and step from *completed* visits —
+- Learns **baselines** per guide and step from *completed* visits -
   `GET /guide-sessions/baselines/:guideId`:
 
 ```json
@@ -72,10 +72,10 @@ Nothing is hard-coded: every number is a percentile of what real operators
 did. With one session the baseline is that session; it sharpens as more
 arrive. Cached for a minute.
 
-## Part 2 — Signals → hints (shipped)
+## Part 2 - Signals → hints (shipped)
 
 After every observation batch, SIB compares the *current visit* with the
-step's baseline and queues a hint for each new deviation — once per visit,
+step's baseline and queues a hint for each new deviation - once per visit,
 through the same consume-once queue every client already polls
 (`GET /guide-sessions/live/:id/hints`, `trigger: "signal"`).
 
@@ -113,14 +113,14 @@ dwell-type hints as a quiet chip. Each fired hint is recorded on the visit
   (this session); Settings → Contextual hints is the device-wide switch.
   Human coach hints are never muted. Muted automatic hints are dropped on
   the device and reported as `hint:muted { hintId, scope }`; delivered ones
-  as `hint:shown` — both land on the visit's hint record (`delivery`,
+  as `hint:shown` - both land on the visit's hint record (`delivery`,
   `muteScope`) so Part 3 scores shown, muted and ignored separately. Observations
   keep streaming while muted.
 - **Names.** Imported step nodes carry `label` (source object name → BOM
   description → part number) so hints, chips and the portal never show a raw
   node id.
 
-## Part 3 — Effectiveness loop + portal (shipped)
+## Part 3 - Effectiveness loop + portal (shipped)
 
 `sib/src/oms/intelligence.ts`. Every automatic hint is scored by what happened
 **after** it, from the raw samples Part 1 already keeps
@@ -139,7 +139,7 @@ Muted hints count separately. Scores roll up per (step, signal, phrasing
 `via`) over the **last 50 visits** of the step, so a bad early phrasing can
 recover.
 
-### Retirement — the loop closes
+### Retirement - the loop closes
 
 `evaluateSignals` (Part 2) asks `retiredSignals(guideId, stepId)` before firing
 and `preferredVia(...)` before phrasing:
@@ -160,7 +160,7 @@ part 0.15, stalled 0.15, attention off 0.1, never at viewpoint 0.05); the hint
 table (signal × via: shown / helped / muted / effectiveness / retired +
 reason); and author-facing **notes** generated from the numbers only when
 there is enough behind them (≥ 3 visits with observations), e.g. "38 % of
-visits tap a part that is not in this step — the part label or photo is not
+visits tap a part that is not in this step - the part label or photo is not
 distinguishing it." Header: runs seen, baseline confidence (none / low < 3
 runs / medium < 10 / high), retired hints. Cached 60 s.
 

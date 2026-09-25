@@ -1,4 +1,4 @@
-// assembly.ts — one placement for the whole assembly; every CAD-positioned step
+// assembly.ts - one placement for the whole assembly; every CAD-positioned step
 // derives from it (AR OJT slice 1).
 //
 // The author (or the chamber configuration, or later PartFrame) supplies ONE
@@ -23,8 +23,8 @@ import { partBoundsFromGlb, partTreeFromGlb, unionBounds, centreOf, type Bounds 
 // ── Auto-pin from parts (2026.4.46) ──────────────────────────────────────────
 //
 // A designer-authored step names the parts it installs but has no CAD pin.
-// Its pin is the centre of those parts in the assembly frame — read from the
-// GLB's accessor bounds — so once the assembly is placed on device every such
+// Its pin is the centre of those parts in the assembly frame - read from the
+// GLB's accessor bounds - so once the assembly is placed on device every such
 // step is placed too, and Place Steps is never needed for an assembly guide.
 
 const boundsCache = new Map<string, { mtimeMs: number; bounds: Map<string, Bounds> }>();
@@ -137,7 +137,7 @@ export function rotate(q: [number, number, number, number], v: [number, number, 
   ];
 }
 
-/** Yaw (rotation about +Y) of a quaternion, radians — the only rotation the
+/** Yaw (rotation about +Y) of a quaternion, radians - the only rotation the
  *  legacy per-step model fields can express. */
 export function yawOf(q: [number, number, number, number]): number {
   const [x, y, z, w] = q;

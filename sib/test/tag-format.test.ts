@@ -1,7 +1,7 @@
 /**
- * .tag envelope format tests — canonicalization determinism, signing,
+ * .tag envelope format tests - canonicalization determinism, signing,
  * conformance validation, and the emitter's Merkle member manifest.
- * Spec: docs/TAG-FORMAT.md (PROPRIETARY & CONFIDENTIAL — patent pending).
+ * Spec: docs/TAG-FORMAT.md (PROPRIETARY & CONFIDENTIAL - patent pending).
  */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -10,7 +10,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 
-// Emitter + stores read SIB_DATA_DIR at module load — set it FIRST.
+// Emitter + stores read SIB_DATA_DIR at module load - set it FIRST.
 const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'tagfmt-'));
 process.env.SIB_DATA_DIR = TMP;
 
@@ -82,7 +82,7 @@ test('validate: determinism rule rejects JSON numbers anywhere in the payload', 
   assert.ok(errs.some(e => /no JSON numbers/.test(e)), errs.join('; '));
 });
 
-test('validate: structural rules — kind, streams, members discipline', () => {
+test('validate: structural rules - kind, streams, members discipline', () => {
   const bad = basePayload();
   (bad as { kind: string }).kind = 'blob';
   bad.streams = [];
@@ -207,7 +207,7 @@ test('v1.1: the tag-verify CLI agrees with validateTagEnvelope', async () => {
   const dir = fsMod.mkdtempSync(pathMod.join(osMod.tmpdir(), 'tagv-'));
   const good = pathMod.join(dir, 'good.json'); fsMod.writeFileSync(good, JSON.stringify(buildAssemblyEnvelope('anc-1')));
   const out = execFileSync(process.execPath, [cli, good], { encoding: 'utf8' });
-  assert.match(out, /OK — conformant/);
+  assert.match(out, /OK - conformant/);
   assert.match(out, /frame\s+qr anc-1 · 0\.120000 m/);
   const env = buildAssemblyEnvelope('anc-1')!; env.payload.subject.label = 'tampered';
   const badFile = pathMod.join(dir, 'bad.json'); fsMod.writeFileSync(badFile, JSON.stringify(env));

@@ -1,8 +1,8 @@
-// LocTagEditSheet.swift — Phase 2 (Task #135)
+// LocTagEditSheet.swift - Phase 2 (Task #135)
 // Edit sheet for modifying an existing LocTag's metadata.
 // Pre-populates all editable fields from the LocTag passed in, sends a
 // PATCH /loc-tags/:id to the SIB, and calls onUpdated with the fresh copy.
-// Note: position and order are not editable here — those are set at placement.
+// Note: position and order are not editable here - those are set at placement.
 
 import SwiftUI
 
@@ -56,7 +56,7 @@ struct LocTagEditSheet: View {
                 Section(isReference ? "Finding" : "Issue Details") {
                     if isReference {
                         LabeledContent("Question") {
-                            Text("\(locTag.questionCode ?? "") — \(locTag.questionTitle ?? "")")
+                            Text("\(locTag.questionCode ?? "") - \(locTag.questionTitle ?? "")")
                                 .foregroundStyle(.secondary).lineLimit(2).multilineTextAlignment(.trailing)
                         }
                     }

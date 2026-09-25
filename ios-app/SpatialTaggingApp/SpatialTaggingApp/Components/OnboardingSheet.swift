@@ -30,9 +30,9 @@ enum OnboardingContext {
         case .home:
             return "Your AR-powered cleanroom inspection system. Here's a quick overview to get you up and running."
         case .author:
-            return "Build the inspection blueprint — place tags, train reference views, and share with your team."
+            return "Build the inspection blueprint - place tags, train reference views, and share with your team."
         case .operatorMode:
-            return "Run the inspection — scan the anchor, walk the path, and get real-time PASS/FAIL results."
+            return "Run the inspection - scan the anchor, walk the path, and get real-time PASS/FAIL results."
         case .gembaAuthor:
             return "Walk the floor, pin every issue you find, and build the audit trail Operators will resolve."
         case .gembaOperator:
@@ -112,11 +112,11 @@ enum OnboardingContent {
         OnboardingStep(
             icon:   "hand.tap.fill",
             title:  "Place Tags",
-            detail: "Tap any flat surface to place a tag. Give it a label, a type, and an expected outcome — this becomes the pass/fail criteria at inspection time."),
+            detail: "Tap any flat surface to place a tag. Give it a label, a type, and an expected outcome - this becomes the pass/fail criteria at inspection time."),
         OnboardingStep(
             icon:   "camera.viewfinder",
             title:  "Train Each Tag",
-            detail: "Walk to a tag and tap Train. Capture it from multiple angles — the app builds a visual reference it will compare against during every inspection."),
+            detail: "Walk to a tag and tap Train. Capture it from multiple angles - the app builds a visual reference it will compare against during every inspection."),
         OnboardingStep(
             icon:   "checkmark.circle.fill",
             title:  "Track Your Progress",
@@ -124,22 +124,22 @@ enum OnboardingContent {
         OnboardingStep(
             icon:   "qrcode",
             title:  "Share with the Team",
-            detail: "Once all tags are trained, generate an encrypted QR code from the top bar. Share it with Operators — it contains the decryption key for this asset."),
+            detail: "Once all tags are trained, generate an encrypted QR code from the top bar. Share it with Operators - it contains the decryption key for this asset."),
     ]
 
     static let operatorMode: [OnboardingStep] = [
         OnboardingStep(
             icon:   "qrcode.viewfinder",
             title:  "Scan the Anchor QR",
-            detail: "Point at the anchor QR code near the equipment. This locks the AR session — floating tag markers will appear in exactly the right locations."),
+            detail: "Point at the anchor QR code near the equipment. This locks the AR session - floating tag markers will appear in exactly the right locations."),
         OnboardingStep(
             icon:   "scope",
             title:  "Walk to Each Tag",
-            detail: "Tag markers float in AR showing you where to look. Step into the alignment cone and hold steady — validation starts automatically."),
+            detail: "Tag markers float in AR showing you where to look. Step into the alignment cone and hold steady - validation starts automatically."),
         OnboardingStep(
             icon:   "waveform.path.ecg",
             title:  "Watch the Live Status",
-            detail: "As each tag validates you'll see live progress: capturing → connecting → comparing. No waiting, no guessing — you'll know the moment a result is in."),
+            detail: "As each tag validates you'll see live progress: capturing → connecting → comparing. No waiting, no guessing - you'll know the moment a result is in."),
         OnboardingStep(
             icon:   "checkmark.seal.fill",
             title:  "Review Results",
@@ -147,16 +147,16 @@ enum OnboardingContent {
         OnboardingStep(
             icon:   "arrow.counterclockwise",
             title:  "Re-inspect if Needed",
-            detail: "Tap 'Re-inspect Failed' to re-run only the failing tags — no need to repeat checks that already passed."),
+            detail: "Tap 'Re-inspect Failed' to re-run only the failing tags - no need to repeat checks that already passed."),
     ]
 
-    // ── Gemba Walk — Author ───────────────────────────────────────────────────
+    // ── Gemba Walk - Author ───────────────────────────────────────────────────
 
     static let gembaAuthor: [OnboardingStep] = [
         OnboardingStep(
             icon:   "hand.tap.fill",
             title:  "Pin Issues by Tapping",
-            detail: "Walk the space and tap any flat surface to drop an issue pin. Give each stop a title, defect category, and severity — this becomes the audit record Operators will act on."),
+            detail: "Walk the space and tap any flat surface to drop an issue pin. Give each stop a title, defect category, and severity - this becomes the audit record Operators will act on."),
         OnboardingStep(
             icon:   "camera.fill",
             title:  "Reference Photo Captured Automatically",
@@ -175,13 +175,13 @@ enum OnboardingContent {
             detail: "Once the walk is complete, Operators load it from the same Anchor Hub. They navigate each numbered stop in AR and log their resolution status directly on the floor."),
     ]
 
-    // ── Gemba Walk — Operator ─────────────────────────────────────────────────
+    // ── Gemba Walk - Operator ─────────────────────────────────────────────────
 
     static let gembaOperator: [OnboardingStep] = [
         OnboardingStep(
             icon:   "camera.viewfinder",
             title:  "Re-Localize to the Space",
-            detail: "On entry, hold up your device and walk briefly through the area. The app matches your surroundings to the Author's saved map — orange pins appear once the space is locked."),
+            detail: "On entry, hold up your device and walk briefly through the area. The app matches your surroundings to the Author's saved map - orange pins appear once the space is locked."),
         OnboardingStep(
             icon:   "photo.fill",
             title:  "Use the Reference Photo",
@@ -189,18 +189,18 @@ enum OnboardingContent {
         OnboardingStep(
             icon:   "mappin.and.ellipse",
             title:  "Navigate Each Numbered Stop",
-            detail: "Floating orange pins guide you through every flagged issue in order. Follow the on-screen arrow to the next stop — the number on each pin matches the audit list in the hub."),
+            detail: "Floating orange pins guide you through every flagged issue in order. Follow the on-screen arrow to the next stop - the number on each pin matches the audit list in the hub."),
         OnboardingStep(
             icon:   "checkmark.circle.fill",
             title:  "Log Your Resolution",
-            detail: "At each stop, tap the pin and choose: Resolved, Still Present, or Escalated. Add an evidence photo and a note for the record — all completions sync to the server immediately."),
+            detail: "At each stop, tap the pin and choose: Resolved, Still Present, or Escalated. Add an evidence photo and a note for the record - all completions sync to the server immediately."),
         OnboardingStep(
             icon:   "chart.bar.doc.horizontal",
             title:  "Results in the Portal",
             detail: "All completions appear in the Gemba Walks tab of the web portal, grouped by location. Supervisors can track resolution status and export reports without leaving their desk."),
     ]
 
-    // ── AR Guide Session — Operator ───────────────────────────────────────────
+    // ── AR Guide Session - Operator ───────────────────────────────────────────
 
     static let guideOperator: [OnboardingStep] = [
         OnboardingStep(
@@ -210,11 +210,11 @@ enum OnboardingContent {
         OnboardingStep(
             icon:   "checkmark.circle.fill",
             title:  "Mark Steps Complete",
-            detail: "When you've performed a step, tap \"Mark Complete\" on the card. Required steps (marked with a lock icon) must be completed before you can advance — optional steps can be skipped."),
+            detail: "When you've performed a step, tap \"Mark Complete\" on the card. Required steps (marked with a lock icon) must be completed before you can advance - optional steps can be skipped."),
         OnboardingStep(
             icon:   "arrow.triangle.branch",
             title:  "Branch Steps",
-            detail: "Some guides branch based on outcome — completing a step may take you to a different next step than usual. The panel always shows exactly where you'll go next."),
+            detail: "Some guides branch based on outcome - completing a step may take you to a different next step than usual. The panel always shows exactly where you'll go next."),
         OnboardingStep(
             icon:   "waveform.badge.magnifyingglass",
             title:  "AI Hint Banner",
@@ -222,7 +222,7 @@ enum OnboardingContent {
         OnboardingStep(
             icon:   "signature",
             title:  "Sign Off When Done",
-            detail: "Once all required steps are complete, the final step shows a \"Sign Off\" button. Tapping it records the session, your name, and a timestamp — all synced to the portal immediately."),
+            detail: "Once all required steps are complete, the final step shows a \"Sign Off\" button. Tapping it records the session, your name, and a timestamp - all synced to the portal immediately."),
     ]
 }
 
@@ -240,7 +240,7 @@ struct OnboardingSheet: View {
 
     var body: some View {
         ZStack {
-            // Dark background — matches the app's AR chrome
+            // Dark background - matches the app's AR chrome
             LinearGradient(
                 colors: [Color(white: 0.06), Color(white: 0.10)],
                 startPoint: .top, endPoint: .bottom

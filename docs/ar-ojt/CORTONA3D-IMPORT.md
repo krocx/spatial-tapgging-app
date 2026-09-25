@@ -1,4 +1,4 @@
-# Cortona3D RapidManual → SIB import — assessment plan
+# Cortona3D RapidManual → SIB import - assessment plan
 
 Status: v0.2 (2026-09-18) · branch `feature/ar-ojt` · **Stage 2 implemented** (`sib/src/import/cortona/`, `POST /guides/import/cortona`, portal Import modal)
 
@@ -12,10 +12,10 @@ CAD-driven content (CAD-CONTENT.md) possible. The importer is written against
 the *structure* of a real export, which is obtained by the two-stage process
 below without moving any procedure content off the company network.
 
-## Stage 1 — structural reconnaissance (office side, ~10 minutes)
+## Stage 1 - structural reconnaissance (office side, ~10 minutes)
 
 Run `sib/tools/cortona-recon.py` on the export. It reads the `.vmp` (a ZIP
-container in every version we know of — the script also handles the case where
+container in every version we know of - the script also handles the case where
 it isn't) and the published `.htm` folder, and writes a **report.md /
 report.json** that contains only the *shape* of the data:
 
@@ -28,13 +28,13 @@ report.json** that contains only the *shape* of the data:
 - HTML/JS: script/link file names, embedded asset extensions, `data-*`
   attributes, id patterns, JSON key vocabulary.
 
-No free text, part numbers, labels, coordinates or geometry are included — the
+No free text, part numbers, labels, coordinates or geometry are included - the
 report is safe to send back here. Verified on synthetic inputs: zero content
 strings survive into the report.
 
 ### Instructions to pass to the office Cowork (copy verbatim)
 
-> 1. Put the `.vmp` and the `.htm` (with the folder it references — usually a
+> 1. Put the `.vmp` and the `.htm` (with the folder it references - usually a
 >    sibling folder of the same name containing `.wrl`/`.x3d`/`.js`/`.xml`) in
 >    one directory, e.g. `C:\cortona-sample\`.
 > 2. Copy `sib/tools/cortona-recon.py` from the `feature/ar-ojt` branch of
@@ -73,12 +73,12 @@ PROTO instance sharing one interface (`key`, `keyValue`, `period`, `objectID`,
 `Set_transparency` 44, `SwitchOFF` 39, `Set_Viewpoint` 21, `Set_translation` 9,
 `Set_rotation` 7, `Set_center` 2, `Set_diffuseColor` 2, `Set_Arrow2` 1 (125
 total; 83 are visibility, 16 are motion). A stock VRML loader drops all of it
-silently — our parser must keep PROTO declarations and instances.
+silently - our parser must keep PROTO declarations and instances.
 
 **Scene graph:** 36 `ObjectVM` PROTO instances (`translation`, `rotation`,
 `center`, `scale`, `parent`, `children`, `name`, `whichChoice`…) + 42 standard
 `Transform`s; leaf meshes are plain `IndexedFaceSet`. Units metres, Y-up as
-written by RapidGenerator (MicroStation source is Z-up — verify against one
+written by RapidGenerator (MicroStation source is Z-up - verify against one
 known-orientation part per configuration). Viewpoints per SubStep
 (`Set_Viewpoint`, 9-number tuple whose layout must be decoded empirically).
 
@@ -93,18 +93,18 @@ part numbers as *enrichment*, verified against a procedure with a known BOM.
 runtime / 11 `rwi` steps). Canonical = the **21 SubSteps** (the level that
 carries `duration` and commands), grouped under 9 Steps. Titles/text come from
 `interactivity.xml` (`Description`, `Comment`, `Text`); `rwi` titles are bare
-integers — never use them for UI. Order = document order; no branching.
+integers - never use them for UI. Order = document order; no branching.
 
 **Callouts:** 15 annotation widgets (`PanelImg`, `CalloutM`, `VMTighten`,
 `VMRope`, `PanelHtml`) with model-coordinate parameters (`pos`, `Point1/2`,
 `translation`) and body copy as RTF/HTML (`richtext`, `htmlbody`) → tags bound
 to nodes, text via an RTF/HTML-to-plain pass. **No POI construct, no
-AR/REFLEKT export** in this sample — tracking is entirely ours (PartFrame).
+AR/REFLEKT export** in this sample - tracking is entirely ours (PartFrame).
 
 **Traps to encode as tests:** sniff magic bytes never extensions; gunzip inside
 stored ZIP entries; `GeometryID` is a decoy (`presentation@id + ".wrl"` is the
 real link in the `.vmp`, irrelevant on the published path); 13 VRML `Script`
-nodes with inline JavaScript (behaviour partly imperative — ignore, we
+nodes with inline JavaScript (behaviour partly imperative - ignore, we
 re-implement presentation from commands); `PublicPath` internal URL (strip);
 mixed LF/CRLF.
 
@@ -129,11 +129,11 @@ the `.wrl` (210 = 210); no branching; no POI construct; no AR export;
 `Set_diffuseColor` 218, `Set_Viewpoint` 210, `Set_Arrow2` 169, `Set_center`
 128. 4,896 ROUTEs; new target fields `addChildren` / `removeChildren` (170 each).
 
-**Resolved:** part identity. `DocItems` has 68 rows and `rwi/bom/part` 238 —
+**Resolved:** part identity. `DocItems` has 68 rows and `rwi/bom/part` 238 -
 sample 1's two-row table was a small-procedure artefact, not a format limit.
 Q3 confidence → high. Part numbers are recoverable from RapidManual.
 
-**Differences are features, not format** — design for the union and fail
+**Differences are features, not format** - design for the union and fail
 loudly on anything unrecognised rather than dropping it:
 
 - wider PROTO / handler surface: `VMSectionPlane`, `ClippingPlane`,
@@ -144,10 +144,10 @@ loudly on anything unrecognised rather than dropping it:
   (bundle = **5** entries here: `.wrl`, `.interactivity.xml`, `rwi .xml`, 2 × `.svg`);
   consume the bundle's SVG, never parse CGM;
 - mixed `.png` / `.PNG` filename case → case-insensitive matching;
-- `rwi` has **0** `step` elements (68 `task` only) — `rwi` is BOM + job/task
+- `rwi` has **0** `step` elements (68 `task` only) - `rwi` is BOM + job/task
   index only, never a step source;
-- no build-log XML in this archive — treat as optional, skip by root element;
-- `IPCCfgVersion` 4.5 vs 5.1, `template_id` 8 vs 12 distinct — read, tolerate,
+- no build-log XML in this archive - treat as optional, skip by root element;
+- `IPCCfgVersion` 4.5 vs 5.1, `template_id` 8 vs 12 distinct - read, tolerate,
   never switch on.
 
 **Still opaque, still non-blocking:** `.vmp` keyframe payload internals and
@@ -158,12 +158,12 @@ affects the optional "suggested view").
 **Decision:** the format is stable across decks; one importer targeting the
 published bundle, keeping PROTOs, is viable now. The glTF/X3D republish test
 stays worthwhile (it would remove the mesh-parsing half) but is no longer a
-prerequisite — the parser is written against a schema that two independent
+prerequisite - the parser is written against a schema that two independent
 samples corroborate.
 
-## Stage 2 — importer (implemented)
+## Stage 2 - importer (implemented)
 
-Code: `sib/src/import/cortona/` — `zip-lite.ts` (stored/deflate ZIP),
+Code: `sib/src/import/cortona/` - `zip-lite.ts` (stored/deflate ZIP),
 `bundle.ts` (solo+zip extraction, magic-byte sniffing), `vrml.ts` (VRML97
 parser keeping PROTO/EXTERNPROTO/ROUTE/DEF/USE), `scene.ts` (ObjectVM /
 Transform / Switch graph, IndexedFaceSet triangulation, content-hash mesh
@@ -183,7 +183,7 @@ Motorcycle (DITA WI, 22 MB scene), Axle (RWI, 12 MB), Bee drone (S1000D,
 changed versus the reconnaissance-based design:
 
 - **The document step is `interactivity.xml` `<Procedure>/<Item>`, not the
-  SubStep.** Every spec has two trees: `<Simulation>` (animation atoms —
+  SubStep.** Every spec has two trees: `<Simulation>` (animation atoms -
   "Move the STEM", "Flash the BEARING") and `<Procedure>` whose leaf `<Item>`
   is the human work step ("Apply grease to the stem (1).") listing the
   `<Action>` ids it plays (== SubStep ids). Counts: motorcycle 18 work steps
@@ -197,7 +197,7 @@ changed versus the reconnaissance-based design:
   commands (6 / 43 / 239 sub-steps). Never a guide step.
 - **Parametric geometry PROTOs** (`BOX`, `SPHERE`, `CYLNDR`, `TORUS`,
   `WASHER`; `BOXDUMMY` hidden) are built at runtime by an embedded script from
-  a few parameters — regenerated in `primitives.ts` so the GLB is complete.
+  a few parameters - regenerated in `primitives.ts` so the GLB is complete.
   Hose/cable/rope sweeps (`HoseSplineFlow*`, `VMHose*`, `CableFlat*`,
   `VMRope*`) are not rendered; the log warns with a count.
 - Script nodes IS-bind `eventIn`/`eventOut` inside PROTO bodies (parser fix);
@@ -209,7 +209,7 @@ changed versus the reconnaissance-based design:
   (token objects). Acceptable for one-off imports; streaming tokenizer if it
   ever matters.
 
-### Command semantics — what the viewer actually does (2026-09-18)
+### Command semantics - what the viewer actually does (2026-09-18)
 
 Read from the PROTO bodies, not guessed; the importer reproduces them so a
 step plays "part appears → animation → part stays" exactly as in the viewer:
@@ -225,7 +225,7 @@ step plays "part appears → animation → part stays" exactly as in the viewer:
   `materialOwners` (material → owning part DEFs) so the delta lands on parts.
 - **`period` is a fraction of the SubStep `duration`** (`[start,end,…]`;
   PROTO default duration 5 s). Delta timing is `delaySec = period[0]·duration`,
-  `durationSec = (period[1]−period[0])·duration` — seconds, never fractions.
+  `durationSec = (period[1]−period[0])·duration` - seconds, never fractions.
 - **One delta per (part, time window)**, chronological. A part that is made
   solid at 0.1 s, faded 0.2–1.0 s and moved 1.5–4.0 s yields three ordered
   deltas; the cumulative engine applies them in array order, last state wins.
@@ -236,18 +236,18 @@ step plays "part appears → animation → part stays" exactly as in the viewer:
   timeline become `assembly.initialNodes`; the runtime starts from that state.
 
 Runtime (iOS `AssemblyNode.play`): each delta is scheduled at
-`delaySec / speed`, applied on its own transaction, and never reverts —
+`delaySec / speed`, applied on its own transaction, and never reverts -
 the part stays where the last delta left it. Pending deltas are cancelled
 on step change; flash is an emission pulse. The portal Guide Preview uses
 the same timeline (`gpAssemblyStateAt`).
 
 Office validation: import both samples through the portal (Import Guide →
 choose the `.htm`), then send back only the **import log** (Copy / Download
-in the log dialog) — it contains counts, PROTO type names, publish options
+in the log dialog) - it contains counts, PROTO type names, publish options
 and warnings, never text or part numbers. If `protos UNKNOWN` is non-empty,
 those names are the next thing to add to `procedure.ts`.
 
-### Office review of two real decks (2026-09-22) — what changed in the importer
+### Office review of two real decks (2026-09-22) - what changed in the importer
 
 An office-side review of two Applied decks (kept there; only the patterns
 came back) found four things the demo publications never showed. All four
@@ -290,22 +290,22 @@ whether an AR/REFLEKT scenario file is present. That fixes the adapter design:
 
 | RapidManual | SIB | Adapter work |
 |---|---|---|
-| `.htm` script block 2 (`solo+zip` base64) | — | extract, unzip, gunzip (magic-byte sniffing) |
+| `.htm` script block 2 (`solo+zip` base64) | - | extract, unzip, gunzip (magic-byte sniffing) |
 | published `.wrl`: `ObjectVM`/`Transform` graph + `IndexedFaceSet` leaves | assembly USDZ, nodes `base` + `cmp:<DEF>` (+ `objectID` as stable key) | own VRML97 parser **with PROTO support** → glTF → USDZ; metres, Y-up; one rigid frame transform per configuration |
 | `Procedure → Step → SubStep{duration}` PROTOs | guide steps: 21 SubSteps grouped by Step; `duration` kept | `rapidmanual` source in `instructions-source-adapter` |
-| `Set_transparency` / `SwitchOFF` commands + ROUTE targets | `nodes[].show = ghost / hidden / solid` | 83 of 125 commands — do first |
+| `Set_transparency` / `SwitchOFF` commands + ROUTE targets | `nodes[].show = ghost / hidden / solid` | 83 of 125 commands - do first |
 | `Set_translation` / `Set_rotation` (`key`/`keyValue` over `period`) | `nodes[].animate = insert`, `axis`, `travel` from first/last key | 16 commands; intermediate keys dropped in v1 |
 | `Set_Viewpoint` (9-number tuple) | optional "suggested view" | decode layout empirically; ignored by tracked-part runtime |
-| `interactivity.xml` `Description`/`Comment`/`Text`, `DocItems` | step title/text; part-number enrichment | verify BOM coverage — only 2 rows in the sample |
+| `interactivity.xml` `Description`/`Comment`/`Text`, `DocItems` | step title/text; part-number enrichment | verify BOM coverage - only 2 rows in the sample |
 | callout widgets (`pos`, `Point1/2`, `richtext`/`htmlbody`) | tags bound to nodes; plain text | RTF/HTML → text |
-| `rwi` step list | job metadata only | titles are integers — never display |
-| `Script` nodes, `PublicPath`, build logs | — | ignored / stripped |
+| `rwi` step list | job metadata only | titles are integers - never display |
+| `Script` nodes, `PublicPath`, build logs | - | ignored / stripped |
 
 Acceptance: import the sample; the Guide Library shows the steps in order with
 text; the Guide Preview plays each step's node presentation on the converted
 model; a Procedure Designer round-trip (edit-map) preserves node bindings.
 
-## Stage 3 — validation on the real sample (office side)
+## Stage 3 - validation on the real sample (office side)
 
 Run the importer on the office machine against the same files (SIB runs on the
 company server; the sample never leaves it) and send back only the import log,

@@ -1,4 +1,4 @@
-// presentation.ts — computes the step sequence for presentation mode (pure).
+// presentation.ts - computes the step sequence for presentation mode (pure).
 // Steps: column lanes (left→right), then row lanes (top→bottom). Maps without
 // lanes fall back to groups; without groups, a single whole-map step.
 
@@ -7,7 +7,7 @@ import { NODE_W, nodeHeight } from './geometry.js';
 
 export interface PresentationStep {
   name: string;
-  /** Node ids in focus this step — empty means "everything". */
+  /** Node ids in focus this step - empty means "everything". */
   nodeIds: string[];
 }
 

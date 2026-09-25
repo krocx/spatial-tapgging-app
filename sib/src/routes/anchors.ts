@@ -26,7 +26,7 @@ export const anchorStore = new JsonFileStore<Anchor>('anchors');
 const DATA_DIR      = process.env.SIB_DATA_DIR ?? path.join(process.cwd(), '.sib-data');
 const QRIMAGES_DIR  = path.join(DATA_DIR, 'qrimages');
 const WORLDMAPS_DIR = path.join(DATA_DIR, 'worldmaps');
-// B1 (2026.4.46): ARKit reference objects — on-device scans, on-premise files.
+// B1 (2026.4.46): ARKit reference objects - on-device scans, on-premise files.
 const OBJECTS_DIR   = path.join(DATA_DIR, 'objects');
 
 // Exported so app.ts can serve the pre-auth /anchors/:id/qrprint endpoint
@@ -52,7 +52,7 @@ const router = Router();
 // anchor (e.g. "Pump-Station-A"). Two anchors with the identical name are
 // confusing in the directory list and QR scans (both portal and iOS match on
 // assetId for the "Wrong QR" check), so collisions are disambiguated here by
-// appending the current time as an HH:MM:SS suffix — done server-side so it
+// appending the current time as an HH:MM:SS suffix - done server-side so it
 // applies uniformly regardless of which client (iOS or portal) created it.
 function ensureUniqueAssetId(assetId: string): string {
   const collision = anchorStore.findAll().some(
@@ -84,7 +84,7 @@ function buildCanonicalQRPayload(anchor: Anchor): string {
 // ── QR image generation ───────────────────────────────────────────────────────
 // Generates a 512×512 PNG with ECC level M (matching iOS CIQRCodeGenerator setting)
 // and stores it in QRIMAGES_DIR/{anchorId}.png.
-// Using `qrcode` npm package as the canonical generator — both portal and iOS fetch
+// Using `qrcode` npm package as the canonical generator - both portal and iOS fetch
 // this file so all clients always display the same pixel pattern.
 async function generateAndStoreQRImage(anchor: Anchor): Promise<void> {
   const payload = buildCanonicalQRPayload(anchor);
@@ -100,7 +100,7 @@ async function generateAndStoreQRImage(anchor: Anchor): Promise<void> {
   console.log(`[SIB] QR image generated for anchor ${anchor.id} (${pngBuffer.length} bytes)`);
 }
 
-// ── POST /anchors — create a new spatial anchor ───────────────────────────────
+// ── POST /anchors - create a new spatial anchor ───────────────────────────────
 router.post('/', async (req: Request, res: Response) => {
   const body = req.body as CreateAnchorRequest;
 
@@ -138,11 +138,11 @@ router.post('/', async (req: Request, res: Response) => {
     qrSizeCm: typeof (body as any).qrSizeCm === 'number' ? (body as any).qrSizeCm : 10.0,
     anchorType: body.anchorType,
     createdBy: body.createdBy,
-    // C1: chamber configuration (validated — an unknown id is dropped, not stored)
+    // C1: chamber configuration (validated - an unknown id is dropped, not stored)
     ...(typeof body.configId === 'string' && body.configId.trim()
         && chamberConfigStore.findById(body.configId.trim())
         ? { configId: body.configId.trim() } : {}),
-    // B2: origin source — 'object' is a declared intent at creation (the scan
+    // B2: origin source - 'object' is a declared intent at creation (the scan
     // comes next); sessions fall back to map/QR until the scan exists.
     ...(body.originSource === 'object' ? { originSource: 'object' as const } : {}),
     createdAt: now,
@@ -151,7 +151,7 @@ router.post('/', async (req: Request, res: Response) => {
 
   anchorStore.save(anchor);
 
-  // Generate canonical QR PNG in the background — don't block the response.
+  // Generate canonical QR PNG in the background - don't block the response.
   generateAndStoreQRImage(anchor).catch(err =>
     console.error(`[SIB] QR image generation failed for ${anchor.id}: ${err}`)
   );
@@ -164,7 +164,7 @@ router.post('/', async (req: Request, res: Response) => {
   return res.status(201).json(response);
 });
 
-// B1: derived read-only field — when the author sealed the world map (see
+// B1: derived read-only field - when the author sealed the world map (see
 // worldmap/meta below). Computed from files so the store never carries it.
 function withMapSealed(anchor: Anchor): Anchor {
   const meta = readWorldMapMeta(anchor.id);
@@ -190,7 +190,7 @@ function withMapSealed(anchor: Anchor): Anchor {
   };
 }
 
-// ── GET /anchors — list all anchors ───────────────────────────────────────────
+// ── GET /anchors - list all anchors ───────────────────────────────────────────
 router.get('/', (_req: Request, res: Response) => {
   const anchors = anchorStore.findAll().map(withMapSealed);
   return res.json({
@@ -199,7 +199,7 @@ router.get('/', (_req: Request, res: Response) => {
   });
 });
 
-// ── GET /anchors/:id/emit — the assembly-level .tag envelope ─────────────────
+// ── GET /anchors/:id/emit - the assembly-level .tag envelope ─────────────────
 // Signed Ed25519 emission for the chamber: chamber streams + a member manifest
 // carrying the SHA-256 of every part envelope beneath it (Merkle-style tree).
 // Registered BEFORE /:id so "emit" isn't swallowed by the param route.
@@ -216,7 +216,7 @@ router.get('/:id/emit', (req: Request, res: Response) => {
   return res.json(envelope);
 });
 
-// ── GET /anchors/:id/subscribe — the continuous emitter (SSE) ────────────────
+// ── GET /anchors/:id/subscribe - the continuous emitter (SSE) ────────────────
 // Live per-chamber push (spec §7): `state` on connect, `changed` whenever the
 // assembly envelope moves, naming the exact streams/members that changed so
 // readers re-fetch only the delta. Registered BEFORE /:id.
@@ -226,7 +226,7 @@ router.get('/:id/subscribe', (req: Request, res: Response) => {
   }
 });
 
-// ── Presence (P1) — who is in front of this chamber right now ───────────────
+// ── Presence (P1) - who is in front of this chamber right now ───────────────
 // In-memory heartbeat, ~2×/s per device, fanned out on /:id/subscribe as
 // `presence` / `presence:joined` / `presence:left`. Registered BEFORE /:id.
 router.post('/:id/presence', (req: Request, res: Response) => {
@@ -254,7 +254,7 @@ router.delete('/:id/presence/:userId', (req: Request, res: Response) => {
   return res.json({ data: { ok: true }, timestamp: new Date().toISOString() });
 });
 
-// ── GET /anchors/:id — get a single anchor ────────────────────────────────────
+// ── GET /anchors/:id - get a single anchor ────────────────────────────────────
 router.get('/:id', (req: Request, res: Response) => {
   const anchor = anchorStore.findById(req.params.id);
   if (!anchor) {
@@ -266,7 +266,7 @@ router.get('/:id', (req: Request, res: Response) => {
   return res.json({ data: withMapSealed(anchor), timestamp: new Date().toISOString() });
 });
 
-// ── GET /anchors/:id/qrimage — serve the canonical QR PNG ────────────────────
+// ── GET /anchors/:id/qrimage - serve the canonical QR PNG ────────────────────
 // The QR PNG is generated once at anchor creation time using a single canonical
 // algorithm (qrcode npm, ECC level M).  Both the portal and the iOS app fetch
 // this image so all platforms always display the identical pixel pattern.
@@ -292,11 +292,11 @@ router.get('/:id/qrimage', async (req: Request, res: Response) => {
   }
 
   res.setHeader('Content-Type', 'image/png');
-  res.setHeader('Cache-Control', 'public, max-age=86400');  // 24 h — QR only changes if regenerated
+  res.setHeader('Cache-Control', 'public, max-age=86400');  // 24 h - QR only changes if regenerated
   return res.sendFile(filePath);
 });
 
-// ── POST /anchors/:id/qrimage — (re)generate canonical QR PNG ────────────────
+// ── POST /anchors/:id/qrimage - (re)generate canonical QR PNG ────────────────
 // Call this after updating an anchor's encryptionKey or qrSizeCm to refresh the
 // stored QR so the portal and iOS app get the updated image.
 router.post('/:id/qrimage', async (req: Request, res: Response) => {
@@ -369,11 +369,11 @@ router.get('/:id/readiness', (req: Request, res: Response) => {
   });
 });
 
-// ── POST /anchors/:id/worldmap — store an ARWorldMap binary blob ──────────────
+// ── POST /anchors/:id/worldmap - store an ARWorldMap binary blob ──────────────
 // The iOS app serialises an ARWorldMap (NSKeyedArchiver binary plist) and uploads
 // it here after a successful QR lock.  On the next session for the same anchor,
 // the app downloads this blob and passes it as config.initialWorldMap so ARKit
-// relocates into the same feature-point cloud — giving scan-position-independent
+// relocates into the same feature-point cloud - giving scan-position-independent
 // tag placement across sessions and across devices.
 //
 // Body: raw application/octet-stream binary (ARWorldMap NSKeyedArchiver data).
@@ -383,7 +383,7 @@ router.get('/:id/readiness', (req: Request, res: Response) => {
 // buffer the *entire* upload into one in-memory Buffer before the handler even
 // runs, so a handful of concurrent 5–10MB world-map uploads (which we observed
 // happening within seconds of each other on the same anchor) can transiently
-// hold tens of MB on top of everything else the process already has resident —
+// hold tens of MB on top of everything else the process already has resident -
 // a direct contributor to the Render Starter 512MB OOM. Streaming the request
 // straight to a file keeps peak memory to a small fixed buffer regardless of
 // upload size.
@@ -466,7 +466,7 @@ router.post('/:id/worldmap', (req: Request, res: Response) => {
   req.pipe(writeStream);
 });
 
-// ── GET /anchors/:id/worldmap — retrieve a stored ARWorldMap ──────────────────
+// ── GET /anchors/:id/worldmap - retrieve a stored ARWorldMap ──────────────────
 // Returns 404 if no world map has been stored yet for this anchor (first session).
 // The iOS app interprets a 404 as "no map available" and starts a fresh session.
 router.get('/:id/worldmap', (req: Request, res: Response) => {
@@ -503,7 +503,7 @@ router.get('/:id/worldmap', (req: Request, res: Response) => {
 //   GET  /anchors/:id/worldmap/meta  → { anchorPose?, capturedAt?, sealedBy?, sealed: boolean }
 //
 // Uploading the map without meta (older app builds) leaves the anchor
-// unsealed — the app keeps today's QR-origin behaviour for it.
+// unsealed - the app keeps today's QR-origin behaviour for it.
 export function worldMapMetaPath(anchorId: string): string {
   return path.join(WORLDMAPS_DIR, `${anchorId}.anchorpose.json`);
 }
@@ -512,7 +512,7 @@ export interface WorldMapMeta {
   anchorPose?: number[];
   capturedAt?: string;
   sealedBy?:   string;
-  /** Camera pose (map frame) of the reference photo — the relocalization ghost. */
+  /** Camera pose (map frame) of the reference photo - the relocalization ghost. */
   referenceCameraPose?: number[];
 }
 
@@ -557,11 +557,11 @@ router.post('/:id/worldmap/meta', express.json(), (req: Request, res: Response) 
     return res.status(500).json({ error: `Failed to store world map meta: ${err}`, timestamp: new Date().toISOString() });
   }
   const hasMap = fs.existsSync(path.join(WORLDMAPS_DIR, `${anchor.id}.worldmap`));
-  console.log(`[SIB] World map sealed for anchor ${anchor.id} (${meta.capturedAt}${meta.sealedBy ? ` by ${meta.sealedBy}` : ''}${hasMap ? '' : ' — map not uploaded yet'})`);
+  console.log(`[SIB] World map sealed for anchor ${anchor.id} (${meta.capturedAt}${meta.sealedBy ? ` by ${meta.sealedBy}` : ''}${hasMap ? '' : ' - map not uploaded yet'})`);
   return res.status(201).json({ data: { ...meta, sealed: hasMap }, timestamp: new Date().toISOString() });
 });
 
-// ── PUT /anchors/:id/worldmap/photo — the reference photo (JPEG, ≤ 2 MB) ──────
+// ── PUT /anchors/:id/worldmap/photo - the reference photo (JPEG, ≤ 2 MB) ──────
 // Served by GET /worldmap/:anchorId/reference-photo. Together with
 // referenceCameraPose in the meta it is the "stand here" ghost during
 // relocalization. Removed with the map on unseal.
@@ -582,7 +582,7 @@ router.put('/:id/worldmap/photo', express.raw({ type: 'image/jpeg', limit: '2mb'
   return res.status(201).json({ data: { anchorId: anchor.id, bytes: buf.length }, timestamp: new Date().toISOString() });
 });
 
-// ── DELETE /anchors/:id/worldmap — G1 (2026.4.46): unseal ────────────────────
+// ── DELETE /anchors/:id/worldmap - G1 (2026.4.46): unseal ────────────────────
 // Removes the map AND the sealed origin. Tags stay (they are QR-relative and
 // still valid); the next Author scan re-seals. Technicians can't.
 router.delete('/:id/worldmap', (req: Request, res: Response) => {
@@ -609,7 +609,7 @@ router.delete('/:id/worldmap', (req: Request, res: Response) => {
 
 // ── B1 (2026.4.46): ARKit reference object per chamber ────────────────────────
 // The Author scans the chamber once on the iPad (ARObjectScanningConfiguration
-// — entirely on-device); the resulting ARReferenceObject archive is stored
+// - entirely on-device); the resulting ARReferenceObject archive is stored
 // here and cached by the app, so detection runs offline too. It is a sparse
 // feature-point cloud, not a mesh or a photo. Meta rides in the query string
 // because the body is the raw binary (streamed, like world maps).
@@ -704,7 +704,7 @@ router.get('/:id/object/meta', (req: Request, res: Response) => {
   return res.json({ data: meta, timestamp: new Date().toISOString() });
 });
 
-// B2: calibration — the object's pose in the QR frame, written by an Author
+// B2: calibration - the object's pose in the QR frame, written by an Author
 // session that saw both. Sixteen finite numbers, column-major.
 router.patch('/:id/object/meta', express.json(), (req: Request, res: Response) => {
   const anchor = anchorStore.findById(req.params.id);
@@ -724,7 +724,7 @@ router.patch('/:id/object/meta', express.json(), (req: Request, res: Response) =
     touched = true;
     console.log(`[SIB] Object calibrated to QR frame for anchor ${anchor.id}`);
   }
-  // B3: shape model — null clears; pose/scale optional (identity / 1 until aligned).
+  // B3: shape model - null clears; pose/scale optional (identity / 1 until aligned).
   if (body.shapeModelId !== undefined) {
     if (body.shapeModelId === null) {
       const { shapeModelId: _a, shapeModelPose: _b, shapeModelScale: _c, ...rest } = next;
@@ -779,7 +779,7 @@ router.get('/:id/worldmap/meta', (req: Request, res: Response) => {
 //   POST   /anchors/:id/accuracy   one AnchorAccuracySample (see shared)
 //   GET    /anchors/:id/accuracy   { samples, summary }
 //   DELETE /anchors/:id/accuracy   clear the lab record for this anchor
-// Numbers only — never images, never keys. See docs/ANCHOR-LAB.md.
+// Numbers only - never images, never keys. See docs/ANCHOR-LAB.md.
 router.post('/:id/accuracy', express.json(), (req: Request, res: Response) => {
   const anchor = anchorStore.findById(req.params.id);
   if (!anchor) {
@@ -802,7 +802,7 @@ router.get('/:id/accuracy', (req: Request, res: Response) => {
   return res.json({ data: { samples, runs, summary: { ...summariseAccuracy(samples), runs: runs.length } }, timestamp: new Date().toISOString() });
 });
 
-// POST /anchors/:id/accuracy/runs — one AnchorLabRun (Start → Done summary)
+// POST /anchors/:id/accuracy/runs - one AnchorLabRun (Start → Done summary)
 router.post('/:id/accuracy/runs', express.json(), (req: Request, res: Response) => {
   const anchor = anchorStore.findById(req.params.id);
   if (!anchor) {
@@ -825,7 +825,7 @@ router.delete('/:id/accuracy', (req: Request, res: Response) => {
   return res.json({ data: { anchorId: anchor.id, removed }, timestamp: new Date().toISOString() });
 });
 
-// ── DELETE /anchors — cascade-delete ALL anchors + tags + pass-states ────────
+// ── DELETE /anchors - cascade-delete ALL anchors + tags + pass-states ────────
 router.delete('/', (_req: Request, res: Response) => {
   const anchors = anchorStore.findAll();
   let deletedAnchors = 0;
@@ -864,9 +864,9 @@ router.delete('/', (_req: Request, res: Response) => {
   });
 });
 
-// ── DELETE /anchors/:id — cascade-delete anchor + tags + pass-states ──────────
-// ── PATCH /anchors/:id — C1: rename / assign chamber configuration ─────────────
-// Body: { assetId?, configId? } — configId null clears. Engineer+ (technicians
+// ── DELETE /anchors/:id - cascade-delete anchor + tags + pass-states ──────────
+// ── PATCH /anchors/:id - C1: rename / assign chamber configuration ─────────────
+// Body: { assetId?, configId? } - configId null clears. Engineer+ (technicians
 // never edit anchors). Nothing spatial changes: pins, world map, tags stay.
 router.patch('/:id', (req: Request, res: Response) => {
   const now = new Date().toISOString();
@@ -907,14 +907,14 @@ router.patch('/:id', (req: Request, res: Response) => {
   return res.json({ data: withMapSealed(updated), timestamp: now });
 });
 
-// ── POST /anchors/:id/duplicate — template copy (U3, 2026.4.45) ───────────────
+// ── POST /anchors/:id/duplicate - template copy (U3, 2026.4.45) ───────────────
 //
 // Body: { assetId?, createdBy? }. Creates a NEW anchor (new id, new QR, its
 // own encryption key) that carries the source's metadata, anchor type, QR
 // size and 3D model kit membership, then copies every guide onto it via the
 // U2 copy (steps + media + model assignments; pins, placement and validation
 // training cleared). The world map, tags, loc-tags and LOTO points are NOT
-// copied — they describe the source's physical location. The author scans
+// copied - they describe the source's physical location. The author scans
 // the new tool's world map and re-places the steps.
 router.post('/:id/duplicate', (req: Request, res: Response) => {
   const now    = new Date().toISOString();
@@ -1001,7 +1001,7 @@ router.delete('/:id', (req: Request, res: Response) => {
 
   anchorStore.delete(req.params.id);
 
-  // Clean up binary blobs (QR image + world map) — ignore errors if files don't exist
+  // Clean up binary blobs (QR image + world map) - ignore errors if files don't exist
   const qrPath  = path.join(QRIMAGES_DIR,  `${req.params.id}.png`);
   const mapPath = path.join(WORLDMAPS_DIR, `${req.params.id}.worldmap`);
   try { fs.unlinkSync(qrPath);  } catch { /* not present */ }

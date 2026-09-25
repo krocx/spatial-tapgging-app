@@ -1,18 +1,18 @@
-// PresenceService.swift — P1 (2026.4.46): who else is in front of this chamber.
+// PresenceService.swift - P1 (2026.4.46): who else is in front of this chamber.
 //
 // Multi-user co-authoring without ARKit collaborative sessions: every device
 // already localises into the chamber's SHARED FRAME (sealed map / object), so
-// a camera pose from another iPad — even one in front of a different physical
-// unit of the same chamber type, on another continent — is directly
+// a camera pose from another iPad - even one in front of a different physical
+// unit of the same chamber type, on another continent - is directly
 // comparable. SIB just relays.
 //
-//   • Poster   — my pose (in the shared frame) + what I'm working on, 2×/s,
+//   • Poster   - my pose (in the shared frame) + what I'm working on, 2×/s,
 //                POST /anchors/:id/presence. The reply carries everyone else.
-//   • Listener — the anchor's SSE feed (GET /anchors/:id/subscribe):
+//   • Listener - the anchor's SSE feed (GET /anchors/:id/subscribe):
 //                presence / presence:joined / presence:left / guide-steps.
 //
 // `poseProvider` returns nil until the session frame IS the shared frame
-// (relocalized / object-rebased) — we never publish a pose in a private frame.
+// (relocalized / object-rebased) - we never publish a pose in a private frame.
 
 import Foundation
 import simd
@@ -92,7 +92,7 @@ final class PresenceService: ObservableObject {
         case stepsChanged
         /// M2 `changed` on the anchor feed: "member:<tagId>" entries name the tags.
         case tagsChanged([String])
-        /// C1: a coach queued a hint for this live session — fetch it now.
+        /// C1: a coach queued a hint for this live session - fetch it now.
         case coachHint(liveSessionId: String, from: String?)
         /// G7: a colleague saved / edited a Gemba finding on this space.
         case findingsChanged
@@ -144,7 +144,7 @@ final class PresenceService: ObservableObject {
         )
     }
 
-    /// "Singapore", "Los Angeles", "Berlin" — from the time zone; enough for
+    /// "Singapore", "Los Angeles", "Berlin" - from the time zone; enough for
     /// the lens and it needs no setup.
     static func siteLabel() -> String {
         let id = TimeZone.current.identifier

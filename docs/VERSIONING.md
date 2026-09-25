@@ -1,7 +1,7 @@
-# Versioning Standard — AR Operations Platform
+# Versioning Standard - AR Operations Platform
 
 Status: **adopted** (approved 2026-08-11)
-Applies to: iOS app, SIB server, portal, roadmap client, shared schema — the whole release train.
+Applies to: iOS app, SIB server, portal, roadmap client, shared schema - the whole release train.
 
 ---
 
@@ -11,7 +11,7 @@ One platform version, fiscal CalVer:
 
 ```
 YEAR.QUARTER.WEEK[.BUILD]
-e.g.  2026.4.42        (platform version — server, portal, roadmap)
+e.g.  2026.4.42        (platform version - server, portal, roadmap)
       2026.4.42.02     (a specific iOS archive: platform version + build counter)
 ```
 
@@ -35,21 +35,21 @@ begins the following week). Quarters are 13-week blocks:
 | Q4 | 40–52 (53 in a 53-week fiscal year) |
 
 So fiscal week 42 → Q4 → `2026.4.42`. The quarter is always derivable from the
-week with this table — if the two components ever disagree, the week wins and
+week with this table - if the two components ever disagree, the week wins and
 the quarter is a typo.
 
 This is the scheme `AppVersion.swift` has documented since the version display
-shipped — this standard promotes it from an iOS convention to the platform
+shipped - this standard promotes it from an iOS convention to the platform
 convention. There is deliberately **no notion of major/minor/breaking** in the
 number: the platform deploys as one unit from one repo, nobody runs old versions
 by choice, so the useful information is *when a build shipped*, not a
 compatibility promise. (That is the SemVer-vs-CalVer trade-off; we choose CalVer
 for the same reason Ubuntu and JetBrains do. Apple, for reference, uses
 SemVer-shaped marketing versions on an annual calendar cadence plus a separate
-always-increasing build number — we keep their two-identifier *mechanics* with
+always-increasing build number - we keep their two-identifier *mechanics* with
 calendar semantics.)
 
-The `QUARTER` component is derivable from `WEEK` and therefore redundant — it is
+The `QUARTER` component is derivable from `WEEK` and therefore redundant - it is
 kept deliberately because fiscal quarters are how progress is communicated to
 leadership, and it costs one digit.
 
@@ -59,10 +59,10 @@ The version is defined in **exactly one place** and read everywhere else:
 
 | Where | Role |
 |---|---|
-|  `sib/src/version.ts` → `PLATFORM_VERSION` | **The source of truth.** A string like `'2026.4.42'`. (Lives in sib, not @spatial/shared — the shared package is types-only at runtime; a value import of it crashes compiled server code.) |
+|  `sib/src/version.ts` → `PLATFORM_VERSION` | **The source of truth.** A string like `'2026.4.42'`. (Lives in sib, not @spatial/shared - the shared package is types-only at runtime; a value import of it crashes compiled server code.) |
 | `GET /config` → `platformVersion` | How any client or human asks a server what it's running. |
 | Portal header | Displays `v<version>` fetched from `/config`. |
-| Roadmap client | Displays the same (from `/config`) — wire in the next client build. |
+| Roadmap client | Displays the same (from `/config`) - wire in the next client build. |
 | iOS `MARKETING_VERSION` (Xcode) | Set manually to match `PLATFORM_VERSION` at release time; `CFBundleVersion` is the per-archive BUILD counter. |
 
 The iOS value cannot read the TypeScript constant, so keeping them in step is a
@@ -83,7 +83,7 @@ On the Monday of a release week (or whenever cutting a release):
 6. One commit: version bump + changelog + catalog stamps + bundle. Tag it
    `v<version>` in git.
 
-Hotfixes within a week do **not** bump the platform version — they increment the
+Hotfixes within a week do **not** bump the platform version - they increment the
 iOS BUILD counter and/or redeploy the server; the changelog entry goes under the
 current week's section marked *(hotfix)*.
 
@@ -91,14 +91,14 @@ current week's section marked *(hotfix)*.
 
 Features change more often than they are born, so the catalog tracks both:
 
-- **Introduced** — the platform version in which the feature first shipped.
-- **Updated** — the version of its most recent meaningful change (behaviour,
+- **Introduced** - the platform version in which the feature first shipped.
+- **Updated** - the version of its most recent meaningful change (behaviour,
   not refactors). Add the column to a row the first time it's needed.
-- Features shipped before this standard are stamped `baseline` and left alone —
+- Features shipped before this standard are stamped `baseline` and left alone -
   back-dating versions from git archaeology is guesswork and adds nothing.
 
 Status transitions (`Beta → Shipped`, `Stub → Shipped`) are recorded by editing
-the status and stamping *Updated* — the changelog carries the narrative.
+the status and stamping *Updated* - the changelog carries the narrative.
 
 ## 5. Changelog
 
@@ -106,7 +106,7 @@ the status and stamping *Updated* — the changelog carries the narrative.
 in [Keep a Changelog](https://keepachangelog.com) spirit but with our sections:
 
 ```markdown
-## 2026.3.36 — 2026-08-11
+## 2026.3.36 - 2026-08-11
 ### Added
 - Procedure Designer: procedure maps on the Roadmap canvas compile to draft guides.
 ### Changed
@@ -123,9 +123,9 @@ reconstructed at release time.
 
 - **API compatibility between iOS builds and server builds.** CalVer makes no
   compatibility promise. If drift becomes a real problem, the right tool is an
-  explicit check — iOS compares `/config.platformVersion` against its own and
-  warns past a threshold — not a switch to SemVer. Tracked as a future item.
+  explicit check - iOS compares `/config.platformVersion` against its own and
+  warns past a threshold - not a switch to SemVer. Tracked as a future item.
 - **Per-component versions.** Rejected: everything ships from one repo as one
   train; four independent numbers would drift and answer no question anyone asks.
-- **The shared schema's `v1.0` header comment** — historical, not a version in
+- **The shared schema's `v1.0` header comment** - historical, not a version in
   this scheme.

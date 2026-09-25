@@ -1,4 +1,4 @@
-// guides/bundle.ts — B1 (2026.4.46): the Guide Bundle.
+// guides/bundle.ts - B1 (2026.4.46): the Guide Bundle.
 //
 // One versioned JSON document that carries everything a client needs to run
 // a guide, on any engine: the guide, its ordered steps, the models it uses
@@ -30,7 +30,7 @@ export interface BundleModel {
 }
 
 export interface BundleFrames {
-  /** Printed QR on the equipment — always the fallback identity + frame. */
+  /** Printed QR on the equipment - always the fallback identity + frame. */
   qr: { available: boolean; markerSizeM?: number; anchorPose?: number[] };
   /** Anchor world map sealed by an author (ARKit; AR Foundation can apply it on iOS). */
   worldMap: { available: boolean; url?: string; sealedAt?: string };

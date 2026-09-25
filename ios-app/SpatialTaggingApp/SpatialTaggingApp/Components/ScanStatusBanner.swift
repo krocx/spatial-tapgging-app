@@ -1,6 +1,6 @@
-// ScanStatusBanner.swift — Phase 2A / 2.5
+// ScanStatusBanner.swift - Phase 2A / 2.5
 // Animated status banner overlaid on the AR camera view.
-// Phase 2.5: TrackingLimitedBanner added — shown when ARKit tracking is not
+// Phase 2.5: TrackingLimitedBanner added - shown when ARKit tracking is not
 // yet .normal so the user knows to wait before the QR lock is accepted.
 
 import SwiftUI
@@ -42,7 +42,7 @@ struct ScanStatusBanner: View {
     private var title: String {
         switch scanState {
         case .scanning:        return "Scanning for QR Code…"
-        case .detected:        return "QR Detected — Locking…"
+        case .detected:        return "QR Detected - Locking…"
         case .locked(let ctx): return "Anchor Locked ✓"
         }
     }
@@ -89,15 +89,15 @@ struct TrackingLimitedBanner: View {
     private var message: String {
         switch reason {
         case .initializing:
-            return "Initialising AR — move device slowly to build the scene"
+            return "Initialising AR - move device slowly to build the scene"
         case .excessiveMotion:
-            return "Moving too fast — slow down for a stable lock"
+            return "Moving too fast - slow down for a stable lock"
         case .insufficientFeatures:
-            return "Not enough visual detail — point at a textured surface"
+            return "Not enough visual detail - point at a textured surface"
         case .relocalizing:
-            return "Relocalising — slowly scan the environment"
+            return "Relocalising - slowly scan the environment"
         @unknown default:
-            return "Tracking limited — move device slowly"
+            return "Tracking limited - move device slowly"
         }
     }
 }

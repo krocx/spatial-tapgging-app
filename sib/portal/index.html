@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>appliedx Connected Worker AR OMS Platform · Portal</title>
   <link rel="stylesheet" href="/portal/brand/brand.css">
-  <!-- Three.js r169 import map — vendored copy first (npm run catalog:vendor,
+  <!-- Three.js r169 import map - vendored copy first (npm run catalog:vendor,
        committed under portal/vendor/three/), unpkg CDN only as fallback when
        the vendored files are absent. Import maps are processed once before any
        module loads, so the choice is made synchronously at parse time. -->
@@ -32,7 +32,7 @@
       --surface:  var(--ax-paper);
       --border:   var(--ax-rule);
       --text:     var(--ax-ink);
-      --muted:    var(--ax-ink-2);   /* secondary text at the app's 0.7 tier — 0.5 was unreadable on Windows */
+      --muted:    var(--ax-ink-2);   /* secondary text at the app's 0.7 tier - 0.5 was unreadable on Windows */
       --accent:   var(--ax-blue);
       --green:    var(--ax-green);
       --orange:   var(--ax-orange);
@@ -81,7 +81,7 @@
     #toolbar .ax-select { width: auto; max-width: 260px; padding: 10px 34px 10px 14px; }
     #toolbar .ax-chip { padding: 8px 12px; font: var(--ax-label-s); text-transform: none; letter-spacing: 0; cursor: pointer; }
 
-    /* ── The fleet — list + panel ── */
+    /* ── The fleet - list + panel ── */
     .fleet-wrap { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 16px 24px 48px; max-width: 1360px; margin: 0 auto; align-items: start; }
     .fleet-wrap.has-panel { grid-template-columns: minmax(0, 1fr) 400px; }
     .fleet-list { padding: 0; overflow: hidden; }
@@ -220,12 +220,12 @@
     .badge-trained   { font-size: 0.78rem; font-weight: 700; padding: 1px 6px; border-radius: 100px; background: var(--ax-ok-fill); color: var(--green); flex-shrink: 0; }
     .badge-untrained { font-size: 0.78rem; font-weight: 700; padding: 1px 6px; border-radius: 100px; background: var(--ax-warn-fill); color: var(--orange); flex-shrink: 0; }
 
-    /* Source chip — scalable: "manual" (portal), "excel" (batch import), "mes" (MES REST sync) */
+    /* Source chip - scalable: "manual" (portal), "excel" (batch import), "mes" (MES REST sync) */
     .source-chip { font-size: 0.78rem; font-weight: 700; padding: 1px 5px; border-radius: 4px; background: var(--border); color: var(--muted); flex-shrink: 0; letter-spacing: 0.3px; }
     .source-chip.excel { background: var(--ax-ok-fill); color: var(--green); }
     .source-chip.mes   { background: var(--ax-blue-fill); color: var(--accent); }
 
-    /* Actions are always visible — hover-only controls are invisible on a tablet and
+    /* Actions are always visible - hover-only controls are invisible on a tablet and
        painful for everyone else. */
     .tag-acts { display: flex; gap: 4px; }
 
@@ -252,7 +252,7 @@
     }
 
     /* ── Phase 4: Nav tabs ── */
-    /* Portal home + section bar (2026.4.45 redesign) — nav-tabs retired */
+    /* Portal home + section bar (2026.4.45 redesign) - nav-tabs retired */
     #portal-home { display:none; padding: 10px 32px 46px; }
     #portal-home.visible { display:block; }
     .ph-hero { text-align:center; margin: 26px 0 10px; }
@@ -264,7 +264,7 @@
                background: var(--ax-paper); border: 2px solid var(--border);
                transition: transform var(--ax-t) var(--ax-ease), background var(--ax-t) var(--ax-ease), border-color var(--ax-t) var(--ax-ease); }
     .ph-tile:hover { transform: translateY(-3px); }
-    /* the product colour lives on the icon tile — same family as the SIB home doors */
+    /* the product colour lives on the icon tile - same family as the SIB home doors */
     .ph-ico { width: 48px; height: 48px; border-radius: var(--ax-r-field); display:flex; align-items:center; justify-content:center;
               background: color-mix(in srgb, var(--pc, var(--ax-blue)) 18%, transparent); color: var(--pc, var(--ax-blue)); margin-bottom: 8px; }
     .ph-ico .ax-icon { width: 26px; height: 26px; }
@@ -279,7 +279,7 @@
     .ph-chip { font-size: 0.78rem; font-weight: 700; padding: 4px 11px; border-radius: 8px;
                background: var(--ax-paper); color: var(--text); }
     .ph-chip:hover { background: var(--ax-paper-3); }
-    /* product colours: the same as the app's doors — a stroke, never a glow */
+    /* product colours: the same as the app's doors - a stroke, never a glow */
     .t-anchors:hover  { border-color:var(--ax-p-tags);     background: var(--ax-paper-3); }
     .t-inspect:hover  { border-color:var(--ax-p-tags);     background: var(--ax-paper-3); }
     .t-arguides:hover { border-color:var(--ax-p-guides);   background: var(--ax-paper-3); }
@@ -305,7 +305,7 @@
     .nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
     .nav-tab:hover:not(.active) { color: var(--text); }
 
-    /* ── AR OMS Usage Log (K2) — dense grouped table ── */
+    /* ── AR OMS Usage Log (K2) - dense grouped table ── */
     .usage-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
     .usage-table th { text-align: left; padding: 10px 10px; font-size: 0.8rem; font-weight: 600; text-transform: none;
       letter-spacing: 0; color: var(--ax-ink-2); border-bottom: 1px solid var(--border); white-space: nowrap; }
@@ -340,7 +340,7 @@
     #sessions-panel { display: none; padding: 20px 24px 56px; }
     #sessions-panel.visible { display: block; }
 
-    /* Post-import highlight — the new guide announces itself */
+    /* Post-import highlight - the new guide announces itself */
     @keyframes glflash { 0%,60% { box-shadow: var(--ax-ring); } 100% { box-shadow: none; } }
     .gl-flash { animation: glflash 3.2s ease-out; }
 
@@ -634,7 +634,7 @@
 
     /* ── Pilot hardening: admin lock ─────────────────────────────────────── */
     /* When locked, every button whose onclick invokes a delete* function is
-       hidden — one rule covers Delete All AND per-row deletes everywhere. */
+       hidden - one rule covers Delete All AND per-row deletes everywhere. */
     body.admin-locked button[onclick*="delete"],
     body.admin-locked button[onclick*="Delete"] { display:none !important; }
     body.admin-locked .admin-only { display:none !important; }
@@ -642,7 +642,7 @@
 
     /* ── Pilot filters ────────────────────────────────────────────────────── */
     .filter-bar { display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:8px auto 0;max-width:1120px; }
-    /* Walk Sessions (Gemba) — the page is one card, the table fills it. */
+    /* Walk Sessions (Gemba) - the page is one card, the table fills it. */
     .gws-wrap { max-width: 1120px; margin: 16px auto 0; }
     .gws-wrap .ax-card { padding: 0; overflow: hidden; }
     .gws-wrap .ax-table th:first-child, .gws-wrap .ax-table td:first-child { padding-left: 18px; }
@@ -688,7 +688,7 @@
     .gs-foot { padding:8px 14px; font-size:0.78rem; color:var(--muted); border-top:1px solid var(--border); display:flex; gap:10px; }
     .gs-foot a { color:var(--accent); cursor:pointer; }
     #tour-mask { position:fixed; inset:0; z-index:700; pointer-events:none; }
-    #tour-ring { position:fixed; z-index:701; border-radius:12px; box-shadow:0 0 0 9999px var(--ax-scrim), 0 0 0 3px var(--ax-blue); /* brand-check: allow — spotlight scrim */
+    #tour-ring { position:fixed; z-index:701; border-radius:12px; box-shadow:0 0 0 9999px var(--ax-scrim), 0 0 0 3px var(--ax-blue); /* brand-check: allow - spotlight scrim */
       transition:all .25s ease; pointer-events:none; }
     #tour-card { position:fixed; z-index:702; width:320px; background:var(--surface); border:1px solid var(--border); border-radius:14px;
       padding:14px 16px; box-shadow:none; font-size:0.82rem; }
@@ -717,28 +717,28 @@
 </header>
 
 <!-- Phase 4: View nav tabs (hidden until authenticated) -->
-<!-- Section bar — slim ⌂ bar shown INSIDE a section (replaces the tab strip) -->
+<!-- Section bar - slim ⌂ bar shown INSIDE a section (replaces the tab strip) -->
 <div id="section-bar">
   <button class="sb-home" onclick="location.hash='#home'" title="Portal home"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-back"/></svg> Home</button>
   <span id="sb-name" class="sb-name"></span>
   <div id="sb-tabs" class="sb-tabs"></div>
 </div>
 
-<!-- Portal home — the tile grid landing (approved mockup) -->
+<!-- Portal home - the tile grid landing (approved mockup) -->
 <div id="portal-home">
   <div class="ph-hero">
     <h2>Where do you want to work?</h2>
-    <p>Live counts refresh with the platform — home doubles as a status glance.</p>
+    <p>Live counts refresh with the platform - home doubles as a status glance.</p>
   </div>
   <div class="ph-grid">
     <div class="ph-tile t-anchors" onclick="location.hash='#anchors'" data-tour="tile-anchors">
       <div class="ph-ico"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-link"/></svg></div><h3>Anchors</h3>
-      <div class="ph-sub">QR codes, tags &amp; training — the spatial backbone</div>
+      <div class="ph-sub">QR codes, tags &amp; training - the spatial backbone</div>
       <div class="ph-stats" id="ph-stat-anchors"></div>
     </div>
     <div class="ph-tile t-inspect" onclick="location.hash='#sessions'">
       <div class="ph-ico"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-search"/></svg></div><h3>Inspection Sessions</h3>
-      <div class="ph-sub">Spatial Inspection results — pass/fail, evidence, reports</div>
+      <div class="ph-sub">Spatial Inspection results - pass/fail, evidence, reports</div>
       <div class="ph-stats" id="ph-stat-inspect"></div>
     </div>
     <div class="ph-tile t-arguides" onclick="location.hash='#ar-guides'" data-tour="tile-arguides">
@@ -766,7 +766,7 @@
     </div>
     <div class="ph-tile t-gemba" onclick="location.hash='#gemba'">
       <div class="ph-ico"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-technician"/></svg></div><h3>GembaWalks</h3>
-      <div class="ph-sub">Audit walks — findings, defect categories, resolution</div>
+      <div class="ph-sub">Audit walks - findings, defect categories, resolution</div>
       <div class="ph-stats" id="ph-stat-gemba"></div>
       <div class="ph-subnav">
         <span class="ph-chip" onclick="event.stopPropagation();location.hash='#gemba/sessions'"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-technician"/></svg> Walk Sessions</span>
@@ -776,7 +776,7 @@
     </div>
     <div class="ph-tile t-admin" onclick="location.hash='#admin/uam'" data-tour="tile-admin">
       <div class="ph-ico"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-wrench"/></svg></div><h3>Admin</h3>
-      <div class="ph-sub">Platform operations — each on its own page</div>
+      <div class="ph-sub">Platform operations - each on its own page</div>
       <div class="ph-subnav">
         <span class="ph-chip" onclick="event.stopPropagation();location.hash='#admin/uam'"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-users"/></svg> User Access</span>
         <span class="ph-chip" onclick="event.stopPropagation();location.hash='#admin/configs'"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chamber"/></svg> Chamber Configs</span>
@@ -799,7 +799,7 @@
   <button class="btn btn-primary" onclick="saveSettings()">Connect</button>
 </div>
 
-<!-- Toolbar — search, one filter, the lab-rigs switch, refresh. The one primary (New chamber) lives in the header. -->
+<!-- Toolbar - search, one filter, the lab-rigs switch, refresh. The one primary (New chamber) lives in the header. -->
 <div id="toolbar" style="display:none">
   <input id="search" class="ax-input" type="search" placeholder="Find a chamber by name, ID or configuration" oninput="renderAnchors()" />
   <select id="fleet-config" class="ax-select" onchange="renderAnchors()" title="Show one configuration"><option value="">All configurations</option></select>
@@ -843,14 +843,14 @@
   <div class="gemba-list"></div>
  </div>
 
- <!-- G2/G8 (2026.4.46): Walk sessions — the header the PowerApps tool
+ <!-- G2/G8 (2026.4.46): Walk sessions - the header the PowerApps tool
       collected (auditor, Project ID, Org, BU, Area, Location), findings
       attached, summary derived, xlsx per walk. -->
  <div id="gemba-sessions-sub" style="display:none">
   <div class="sessions-toolbar">
     <span style="font-size:0.85rem;color:var(--muted);flex:1">One row per walk · auditor, project, org/BU, location · findings by category</span>
-    <button class="btn btn-ghost btn-sm" id="gws-export-filtered" onclick="exportFilteredGembaWalks()" title="The walks shown below — Summary · Findings (all photos embedded) · Photos sheets"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Excel (shown)</button>
-    <button class="btn btn-ghost btn-sm" onclick="downloadServerFile('/gemba/walks/export.xlsx?all=true', 'gemba-walks-' + new Date().toISOString().slice(0,10) + '.xlsx').catch(e => toast(e.message))" title="Every walk on the server — Summary · Findings (all photos embedded) · Photos sheets"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Excel (all)</button>
+    <button class="btn btn-ghost btn-sm" id="gws-export-filtered" onclick="exportFilteredGembaWalks()" title="The walks shown below - Summary · Findings (all photos embedded) · Photos sheets"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Excel (shown)</button>
+    <button class="btn btn-ghost btn-sm" onclick="downloadServerFile('/gemba/walks/export.xlsx?all=true', 'gemba-walks-' + new Date().toISOString().slice(0,10) + '.xlsx').catch(e => toast(e.message))" title="Every walk on the server - Summary · Findings (all photos embedded) · Photos sheets"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Excel (all)</button>
     <button class="btn btn-ghost btn-sm" onclick="loadGembaWalkSessions()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-refresh"/></svg> Refresh</button>
   </div>
   <div class="filter-bar">
@@ -864,14 +864,14 @@
   <div id="gemba-sessions-list" class="gws-wrap"></div>
  </div>
 
- <!-- G1 (2026.4.46): Audit Reference Library — Focus Areas → Questions.
+ <!-- G1 (2026.4.46): Audit Reference Library - Focus Areas → Questions.
       What the PowerApps tool bound to SharePoint lists; Corporate Quality
       owns it here. Findings are logged against a question CODE, so editing
       the library later never rewrites history. -->
  <div id="gemba-library-sub" style="display:none">
   <div class="sessions-toolbar">
     <span style="font-size:0.78rem;color:var(--muted);flex:1">Focus areas → pre-defined questions · auditors pick, never type · maintained by Corporate Quality</span>
-    <button class="btn btn-sm" onclick="openGembaLibImport()" style="font-weight:600" title="Excel / CSV / JSON — same flow as Import Guide"> Import</button>
+    <button class="btn btn-sm" onclick="openGembaLibImport()" style="font-weight:600" title="Excel / CSV / JSON - same flow as Import Guide"> Import</button>
     <button class="btn btn-ghost btn-sm" onclick="gembaLibDownloadTemplate()" title="Column layout the import expects"> Excel template</button>
     <button class="btn btn-ghost btn-sm" onclick="gembaLibExport()" title="Re-importable JSON of the whole library"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Export</button>
     <button class="btn btn-ghost btn-sm" onclick="gembaLibEdit('area')">＋ Focus area</button>
@@ -906,7 +906,7 @@
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px 32px;width:min(640px,92vw);max-height:90vh;overflow-y:auto;position:relative;">
     <button onclick="closeGembaLibImport()" style="position:absolute;top:14px;right:16px;background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer;line-height:1"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-close"/></svg></button>
     <h3 style="margin:0 0 4px;font-size:1rem;font-weight:700;color:var(--text)"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-upload"/></svg> Import Audit Library</h3>
-    <p style="margin:0 0 14px;font-size:0.78rem;color:var(--muted)">One row per question: <b>Focus Area #</b> · <b>Focus Area</b> · <b>Question Code</b> · <b>Question Title</b> · <b>Question</b>. A row with only the focus-area columns adds the area on its own. Codes are the identity — re-importing the same code updates that row.</p>
+    <p style="margin:0 0 14px;font-size:0.78rem;color:var(--muted)">One row per question: <b>Focus Area #</b> · <b>Focus Area</b> · <b>Question Code</b> · <b>Question Title</b> · <b>Question</b>. A row with only the focus-area columns adds the area on its own. Codes are the identity - re-importing the same code updates that row.</p>
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
       <button class="btn btn-sm" onclick="document.getElementById('glib-import-file').click()" style="font-weight:600"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-doc"/></svg> Choose file (.xlsx / .csv / .json)</button>
       <input type="file" id="glib-import-file" accept=".xlsx,.xls,.csv,.json" style="display:none" onchange="gembaLibImportFileChosen(event)">
@@ -973,13 +973,13 @@
   </div>
   <div id="ar-guides-list" class="sessions-list"></div>
   <div id="usage-log-view" class="sessions-list" style="display:none"></div>
-  <!-- C3 (2026.4.46): Intelligence — per-step heat, hint effectiveness, what to fix -->
+  <!-- C3 (2026.4.46): Intelligence - per-step heat, hint effectiveness, what to fix -->
   <div id="intel-view" class="sessions-list" style="display:none"></div>
   <div id="insights-view" class="sessions-list" style="display:none"></div>
 </div>
 
-<!-- Admin panel — dedicated ops page: unlock, backups, ops log -->
-<!-- UAM email login — shown when the allow-list is active and no session cookie -->
+<!-- Admin panel - dedicated ops page: unlock, backups, ops log -->
+<!-- UAM email login - shown when the allow-list is active and no session cookie -->
 <div id="uam-login" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:900;align-items:center;justify-content:center">
   <div style="width:min(400px,92vw);background:var(--card,var(--ax-solid));border:1px solid var(--border);border-radius:14px;padding:30px 28px">
     <h2 style="margin:0 0 4px;font-size:1.15rem">Sign in to SIB</h2>
@@ -987,7 +987,7 @@
     <input id="uam-email" type="email" placeholder="you@company.com" autocomplete="email" style="width:100%;box-sizing:border-box;padding:11px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.9rem" onkeydown="if(event.key==='Enter')uamSubmitLogin()">
     <div id="uam-login-err" style="display:none;margin-top:10px;font-size:0.78rem;color:var(--red,var(--ax-red))"></div>
     <button class="btn btn-primary" style="width:100%;margin-top:16px" onclick="uamSubmitLogin()">Sign in</button>
-    <p style="margin:14px 0 0;font-size:0.78rem;color:var(--muted)">SSO with HYPR arrives later — this identifies you against the access list until then.</p>
+    <p style="margin:14px 0 0;font-size:0.78rem;color:var(--muted)">SSO with HYPR arrives later - this identifies you against the access list until then.</p>
   </div>
 </div>
 
@@ -998,7 +998,7 @@
     <p style="font-size:0.78rem;color:var(--muted);margin:4px 0 12px">
       The allow-list that gates sign-in, and each user's role. Roles: <strong>Owner</strong> (full control) ·
       <strong>Manager</strong> (manages users except Owners) · <strong>Engineer</strong> (creates/edits guides) ·
-      <strong>Technician</strong> (runs shared guides). With an empty list, login is off — add the first Owner to activate.
+      <strong>Technician</strong> (runs shared guides). With an empty list, login is off - add the first Owner to activate.
     </p>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
       <input id="uam-add-email" data-tour="uam-add" type="email" placeholder="email" style="flex:2;min-width:160px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.78rem">
@@ -1017,8 +1017,8 @@
   <div class="adm-card admin-only" id="adm-backup-card">
     <h3><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-backup"/></svg> Backups</h3>
     <p style="font-size:0.78rem;color:var(--muted);margin:0 0 12px">
-      <strong>Data</strong> = JSON stores only (small — take one weekly).
-      <strong>Full</strong> = evidence photos, world maps and 3D models too (large — take before upgrades).
+      <strong>Data</strong> = JSON stores only (small - take one weekly).
+      <strong>Full</strong> = evidence photos, world maps and 3D models too (large - take before upgrades).
       Restore is deliberately manual: stop the service → unpack over the data directory → start it again
       (see INTERNAL-SERVER-DEPLOY.md).</p>
     <div style="display:flex;gap:10px;align-items:center">
@@ -1028,7 +1028,7 @@
     <div id="bk-status" style="display:none;margin-top:12px;font-size:0.78rem;font-family:var(--ax-mono);color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px"></div>
     <hr style="border:0;border-top:var(--ax-hair);margin:16px 0 12px">
     <div class="ax-row">
-      <span class="ax-label-s ax-muted" style="flex:1">Danger zone — removes every chamber, its tags and pass states. Take a backup first.</span>
+      <span class="ax-label-s ax-muted" style="flex:1">Danger zone - removes every chamber, its tags and pass states. Take a backup first.</span>
       <button class="ax-btn ax-btn--outline ax-btn--sm" style="color:var(--ax-red)" onclick="deleteAllAnchors()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg> Delete all chambers</button>
     </div>
   </div>
@@ -1051,7 +1051,7 @@
   <div class="adm-card admin-only" id="adm-logs-card" style="display:none">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
       <h3 style="margin:0"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-logs"/></svg> Device logs</h3>
-      <span style="font-size:0.78rem;color:var(--muted);flex:1">what each phone (and this server) reported — QA Mode on the device adds debug detail</span>
+      <span style="font-size:0.78rem;color:var(--muted);flex:1">what each phone (and this server) reported - QA Mode on the device adds debug detail</span>
       <button class="btn btn-ghost btn-sm" onclick="qaLogsLoad()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-refresh"/></svg> Refresh</button>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
@@ -1074,7 +1074,7 @@
   <div class="adm-card admin-only" id="adm-ops-card">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
       <h3 style="margin:0"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-doc"/></svg> Ops log</h3>
-      <span style="font-size:0.78rem;color:var(--muted);flex:1">every admin &amp; destructive action, newest first — allowed / denied / gate-off, with IP</span>
+      <span style="font-size:0.78rem;color:var(--muted);flex:1">every admin &amp; destructive action, newest first - allowed / denied / gate-off, with IP</span>
       <button class="btn btn-ghost btn-sm" onclick="loadOpsLog()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-refresh"/></svg> Refresh</button>
     </div>
     <div id="ops-log" style="max-height:420px;overflow-y:auto;font-family:var(--ax-mono);font-size:0.78rem;line-height:1.7;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--muted)">Loading…</div>
@@ -1086,11 +1086,11 @@
   <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px 32px;width:min(640px,92vw);max-height:90vh;overflow-y:auto;position:relative;">
     <button onclick="closeImportGuideModal()" style="position:absolute;top:14px;right:16px;background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer;line-height:1"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-close"/></svg></button>
     <h3 style="margin:0 0 4px;font-size:1rem;font-weight:700;color:var(--text)"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-upload"/></svg> Import Guide</h3>
-    <p style="margin:0 0 16px;font-size:0.78rem;color:var(--muted)">Upload an Excel (.xlsx), JSON, or a <b>Cortona3D RapidManual publication (.htm)</b> — or paste JSON. The guide is created as a draft on the chosen anchor and appears in the Guide Library immediately; steps are placed in AR on device before publishing. Cortona3D imports also create the assembly 3D model and per-step part presentation.</p>
+    <p style="margin:0 0 16px;font-size:0.78rem;color:var(--muted)">Upload an Excel (.xlsx), JSON, or a <b>Cortona3D RapidManual publication (.htm)</b> - or paste JSON. The guide is created as a draft on the chosen anchor and appears in the Guide Library immediately; steps are placed in AR on device before publishing. Cortona3D imports also create the assembly 3D model and per-step part presentation.</p>
 
-    <label style="font-size:0.8rem;font-weight:600;color:var(--text);display:block;margin-bottom:6px">Anchor <span style="font-weight:400;color:var(--muted)">— the physical asset this guide is performed on</span></label>
+    <label style="font-size:0.8rem;font-weight:600;color:var(--text);display:block;margin-bottom:6px">Anchor <span style="font-weight:400;color:var(--muted)">- the physical asset this guide is performed on</span></label>
     <select id="import-anchor-select" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font-size:0.85rem;margin-bottom:14px">
-      <option value="">— select anchor —</option>
+      <option value="">- select anchor -</option>
     </select>
 
     <label style="font-size:0.8rem;font-weight:600;color:var(--text);display:block;margin-bottom:6px">Author name</label>
@@ -1108,7 +1108,7 @@
     </details>
 
     <div id="import-preview" style="display:none;border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:0.78rem"></div>
-    <label id="import-cortona-strict-row" style="display:none;font-size:0.78rem;color:var(--muted);margin:-6px 0 12px;align-items:center;gap:6px"><input type="checkbox" id="import-cortona-strict"> Strict — refuse the import if the publication uses 3D features we don't recognise (otherwise they are listed in the log)</label>
+    <label id="import-cortona-strict-row" style="display:none;font-size:0.78rem;color:var(--muted);margin:-6px 0 12px;align-items:center;gap:6px"><input type="checkbox" id="import-cortona-strict"> Strict - refuse the import if the publication uses 3D features we don't recognise (otherwise they are listed in the log)</label>
 
     <div style="display:flex;gap:10px;justify-content:flex-end">
       <button class="btn btn-ghost btn-sm" onclick="closeImportGuideModal()">Cancel</button>
@@ -1157,7 +1157,7 @@
     <div style="margin:10px 0 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
       <label style="font-size:0.82rem;color:var(--muted);white-space:nowrap">Upload category:</label>
       <select id="model-category-upload" style="font-size:0.82rem;padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);color:var(--text);outline:none">
-        <option value="">— none (assign to anchor kits) —</option>
+        <option value="">- none (assign to anchor kits) -</option>
         <option value="general"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-external"/></svg> General (visible to all anchors)</option>
       </select>
     </div>
@@ -1177,7 +1177,7 @@
   </div>
 </div>
 
-<!-- iLOTO panel — status board · audit trail · certification registry -->
+<!-- iLOTO panel - status board · audit trail · certification registry -->
 <div id="iloto-panel">
   <div class="iloto-inner">
     <div class="sessions-toolbar" style="margin-bottom:0">
@@ -1190,13 +1190,13 @@
     </div>
     <div class="iloto-section-title">Panel status</div>
     <div id="iloto-status-board"><p style="color:var(--muted);font-size:0.82rem">Loading…</p></div>
-    <div class="iloto-section-title">Audit trail <span style="text-transform:none;font-weight:400">— overrides pinned first</span></div>
+    <div class="iloto-section-title">Audit trail <span style="text-transform:none;font-weight:400">- overrides pinned first</span></div>
     <div id="iloto-audit" class="iloto-panel-card"></div>
     <div class="iloto-section-title">Certification registry</div>
     <div id="iloto-certs" class="iloto-panel-card"></div>
 
     <div class="iloto-section-title admin-only">Training questions
-      <span style="text-transform:none;font-weight:400">— what future takers face; issued certifications are unaffected</span>
+      <span style="text-transform:none;font-weight:400">- what future takers face; issued certifications are unaffected</span>
     </div>
     <div class="iloto-panel-card admin-only">
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
@@ -1240,7 +1240,7 @@
       <p style="font-size:0.78rem;color:var(--muted);margin:4px 0 0">Operators reach a chamber through its QR → configuration. Unassigned chambers can't be scanned into. Manage the catalog under <a href="#" onclick="closeCreateModal();location.hash='#admin/configs';return false" style="color:var(--accent)">Admin → Chamber Configs</a>.</p>
     </div>
     <div class="field">
-      <label>Anchor ID <span style="color:var(--muted)">(optional — auto-generated)</span></label>
+      <label>Anchor ID <span style="color:var(--muted)">(optional - auto-generated)</span></label>
       <input type="text" id="new-anchor-id" placeholder="Leave blank to auto-generate" />
     </div>
     <div class="modal-actions">
@@ -1308,12 +1308,12 @@
   <div class="modal">
     <h2><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-move"/></svg> The guide changed since the Designer last saw it</h2>
     <p style="font-size:0.875rem;color:var(--muted);margin-bottom:10px">
-      The Designer also has edits it hasn't sent to the Guide Library yet. Your <strong style="color:var(--text)">layout is kept either way</strong> — only step content can collide.
+      The Designer also has edits it hasn't sent to the Guide Library yet. Your <strong style="color:var(--text)">layout is kept either way</strong> - only step content can collide.
     </p>
     <div class="modal-actions" style="flex-direction:column;align-items:stretch;gap:8px">
-      <button class="btn btn-primary" onclick="syncChoice('refresh')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-refresh"/></svg> Refresh from guide <span class="ul-dim" style="font-weight:400">— iOS/portal edits win on changed steps</span></button>
+      <button class="btn btn-primary" onclick="syncChoice('refresh')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-refresh"/></svg> Refresh from guide <span class="ul-dim" style="font-weight:400">- iOS/portal edits win on changed steps</span></button>
       <button class="btn btn-ghost" onclick="syncChoice('send-first')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-upload"/></svg> Send my Designer edits first, then refresh</button>
-      <button class="btn btn-ghost" onclick="syncChoice('asis')">Open as-is <span class="ul-dim" style="font-weight:400">— I'll sort it out on the canvas</span></button>
+      <button class="btn btn-ghost" onclick="syncChoice('asis')">Open as-is <span class="ul-dim" style="font-weight:400">- I'll sort it out on the canvas</span></button>
       <button class="btn btn-ghost" onclick="syncChoice(null)">Cancel</button>
     </div>
   </div>
@@ -1346,7 +1346,7 @@
     <div class="field">
       <label>Order
         <span style="color:var(--muted);font-size:0.78rem;font-weight:400;text-transform:none;letter-spacing:0">
-          (inspection sequence — optional)
+          (inspection sequence - optional)
         </span>
       </label>
       <input type="number" id="ct-order" placeholder="e.g. 1" min="1" />
@@ -1365,7 +1365,7 @@
     <div class="field">
       <label>Type
         <span style="color:var(--muted);font-size:0.78rem;font-weight:400;text-transform:none;letter-spacing:0">
-          (set at creation — cannot change)
+          (set at creation - cannot change)
         </span>
       </label>
       <input type="text" id="et-type-display" disabled
@@ -1386,7 +1386,7 @@
     <div class="field">
       <label>Order
         <span style="color:var(--muted);font-size:0.78rem;font-weight:400;text-transform:none;letter-spacing:0">
-          (inspection sequence — optional)
+          (inspection sequence - optional)
         </span>
       </label>
       <input type="number" id="et-order" min="1" />
@@ -1457,7 +1457,7 @@
 <!-- ══════════════════════════════════════════════════════════════
      3D MODEL KIT ASSIGNMENT MODAL
 ══════════════════════════════════════════════════════════════ -->
-<!-- Guide sharing — pick which technicians see this guide -->
+<!-- Guide sharing - pick which technicians see this guide -->
 <div id="share-modal" class="overlay">
   <div class="modal" onclick="event.stopPropagation()" style="max-width:480px">
     <h2><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-users"/></svg> Share Guide</h2>
@@ -1490,13 +1490,13 @@
 
 <div id="toast"></div>
 
-<!-- Guide Preview modal — phone-frame walkthrough of the step sequence -->
+<!-- Guide Preview modal - phone-frame walkthrough of the step sequence -->
 <div id="gp-modal">
   <div class="gp-shell">
     <div class="gp-banner" id="gp-banner"></div>
     <div class="gp-phone" id="gp-phone"></div>
     <div class="gp-foot">
-      <span>Voice is your browser's — the app sounds different on iOS.</span>
+      <span>Voice is your browser's - the app sounds different on iOS.</span>
       <button class="btn btn-ghost btn-sm" onclick="closeGuidePreview()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-close"/></svg> Close</button>
     </div>
   </div>
@@ -1506,9 +1506,9 @@
 // ══════════════════════════════════════════════════════════════════════════════
 // T96: Tag type registry
 // Mirrors TagType enum in SIBTypes.swift.  Add new entries here when the iOS
-// app gains new types — no other changes required.
+// app gains new types - no other changes required.
 //
-// Scalability note — tag metadata.source tracks origin:
+// Scalability note - tag metadata.source tracks origin:
 //   "manual" → created in this portal  (default for all portal-created tags)
 //   "excel" → imported via Excel batch upload  (future)
 //   "mes" → synced from MES REST API          (future)
@@ -1575,7 +1575,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     adminRequired = cfg.adminRequired === true;
     uamActive = cfg.uamActive === true;
     applyAdminUI();
-    // Platform version — single source of truth is PLATFORM_VERSION in
+    // Platform version - single source of truth is PLATFORM_VERSION in
     // sib/src/version.ts, surfaced here so "what's running?" has an answer.
     if (cfg.platformVersion) {
       const el = document.getElementById('platform-version');
@@ -1584,17 +1584,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   } catch { /* keep authRequired = true */ }
 
   // Deep link from the home page's Admin tile: /portal#admin opens the
-  // dedicated <svg class="ax-icon"><use href="/portal/brand/icons.svg#i-wrench"/></svg> Admin page. /admin/* itself is an API namespace — headers
+  // dedicated <svg class="ax-icon"><use href="/portal/brand/icons.svg#i-wrench"/></svg> Admin page. /admin/* itself is an API namespace - headers
   // only, no browser page.
   if (location.hash === '#admin') {
     setTimeout(() => { location.hash = '#admin/uam'; }, 300);
   }
 
   if (!authRequired) {
-    // Company network / local server — no key needed.
+    // Company network / local server - no key needed.
     await enterPortal();
   } else {
-    // Render / externally-accessible server — require a stored API key.
+    // Render / externally-accessible server - require a stored API key.
     const key = localStorage.getItem('sib_api_key');
     if (!key) {
       document.getElementById('setup-banner').style.display = 'block';
@@ -1615,12 +1615,12 @@ async function enterPortal() {
   if (uamActive) {
     try {
       const j = await apiFetch('/uam/me');
-      // legacyAdmin (admin key, no personal session) is NOT an identity —
+      // legacyAdmin (admin key, no personal session) is NOT an identity -
       // with the allow-list active, everyone signs in as themselves.
       if (j.data.legacyAdmin) throw new Error('sign-in required');
       UAM_USER = j.data;
     } catch (e) {
-      // 401 (no/expired session) or network error — show the sign-in screen.
+      // 401 (no/expired session) or network error - show the sign-in screen.
       document.getElementById('uam-login').style.display = 'flex';
       return;
     }
@@ -1637,7 +1637,7 @@ async function uamSubmitLogin() {
   if (!email) { errEl.style.display = 'block'; errEl.textContent = 'Enter your email.'; return; }
   try {
     await apiFetch('/uam/login', { method: 'POST', body: JSON.stringify({ email }) });
-    location.reload();   // cookie is set — reload enters signed in
+    location.reload();   // cookie is set - reload enters signed in
   } catch (e) {
     errEl.style.display = 'block';
     errEl.textContent = e.message;
@@ -1664,7 +1664,7 @@ function applyUamUI() {
     if (adminTile && UAM_USER.role !== 'owner' && UAM_USER.role !== 'manager') {
       adminTile.style.display = 'none';
     }
-    // Owner/Manager act destructively by ROLE — recompute the admin lock.
+    // Owner/Manager act destructively by ROLE - recompute the admin lock.
     applyAdminUI();
   }
 }
@@ -1679,7 +1679,7 @@ function adminLockedNow() {
 // ── Admin mode (pilot hardening) ──────────────────────────────────────────────
 // adminRequired comes from /config (SIB_ADMIN_KEY set server-side). While
 // locked, all delete-invoking buttons and the quiz editor are hidden by CSS,
-// and the SERVER also refuses destructive requests without X-Admin-Key — the
+// and the SERVER also refuses destructive requests without X-Admin-Key - the
 // UI is convenience, the middleware is the guarantee.
 let adminRequired = false;
 function adminKeyStored() { return localStorage.getItem('sib_admin_key') || ''; }
@@ -1708,24 +1708,24 @@ function toggleAdmin() {
 }
 
 /** The dedicated <svg class="ax-icon"><use href="/portal/brand/icons.svg#i-wrench"/></svg> Admin page: lock-state banner, then (when unlocked or the
- * gate is off) the Backups and Ops log cards — which the admin-locked CSS
+ * gate is off) the Backups and Ops log cards - which the admin-locked CSS
  * hides automatically while locked. */
 function renderAdminPanel() {
   const banner = document.getElementById('adm-lock-banner');
   const locked = adminLockedNow();
   if (UAM_USER && (UAM_USER.role === 'owner' || UAM_USER.role === 'manager')) {
     banner.className = 'adm-lock-banner unlocked';
-    banner.innerHTML = `<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-unlock"/></svg> <strong>Unlocked by role</strong>&nbsp;— signed in as ${esc(UAM_USER.name)} (${UAM_ROLE_LABEL[UAM_USER.role]}). Destructive actions, backups and user management enabled.`;
+    banner.innerHTML = `<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-unlock"/></svg> <strong>Unlocked by role</strong>&nbsp;- signed in as ${esc(UAM_USER.name)} (${UAM_ROLE_LABEL[UAM_USER.role]}). Destructive actions, backups and user management enabled.`;
   } else if (!adminRequired) {
     banner.className = 'adm-lock-banner unlocked';
-    banner.innerHTML = '<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-unlock"/></svg> <strong>Admin gate is off</strong>&nbsp;— no SIB_ADMIN_KEY set on this server; destructive actions are open. Fine for local/dev, set the key for pilots.';
+    banner.innerHTML = '<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-unlock"/></svg> <strong>Admin gate is off</strong>&nbsp;- no SIB_ADMIN_KEY set on this server; destructive actions are open. Fine for local/dev, set the key for pilots.';
   } else if (locked) {
     banner.className = 'adm-lock-banner locked';
-    banner.innerHTML = '<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-lock-restricted"/></svg> <strong>Admin locked</strong>&nbsp;— backups, the ops log and destructive actions need the admin key.&nbsp;' +
+    banner.innerHTML = '<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-lock-restricted"/></svg> <strong>Admin locked</strong>&nbsp;- backups, the ops log and destructive actions need the admin key.&nbsp;' +
       '<button class="btn btn-primary btn-sm" onclick="toggleAdmin()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-unlock"/></svg> Unlock admin</button>';
   } else {
     banner.className = 'adm-lock-banner unlocked';
-    banner.innerHTML = '<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-unlock"/></svg> <strong>Admin unlocked</strong>&nbsp;— destructive actions and backups enabled on this browser.&nbsp;' +
+    banner.innerHTML = '<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-unlock"/></svg> <strong>Admin unlocked</strong>&nbsp;- destructive actions and backups enabled on this browser.&nbsp;' +
       '<button class="btn btn-ghost btn-sm" onclick="toggleAdmin()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-lock-restricted"/></svg> Lock</button>';
   }
   if (!locked) { loadOpsLog(); loadUamUsers(); }
@@ -1738,14 +1738,14 @@ async function loadUamUsers() {
   try {
     const j = await apiFetch('/uam/users');
     if (!j.data.length) {
-      el.innerHTML = '<em>No users yet — UAM login is dormant. Add yourself as Owner to activate it.</em>';
+      el.innerHTML = '<em>No users yet - UAM login is dormant. Add yourself as Owner to activate it.</em>';
       return;
     }
     el.innerHTML = `<table style="width:100%;border-collapse:collapse">
       <tr style="text-align:left;color:var(--muted)">
         <th style="padding:6px 8px">Email</th><th style="padding:6px 8px">Employee ID</th>
         <th style="padding:6px 8px">Name</th><th style="padding:6px 8px">Role</th>
-        <th style="padding:6px 8px" title="Product access — none checked = all products">Products</th><th></th></tr>
+        <th style="padding:6px 8px" title="Product access - none checked = all products">Products</th><th></th></tr>
       ${j.data.map(u => `<tr style="border-top:1px solid var(--border)">
         <td style="padding:6px 8px;color:var(--text)">${esc(u.email)}</td>
         <td style="padding:6px 8px">${esc(u.employeeId)}</td>
@@ -1785,12 +1785,12 @@ async function uamAddUser() {
   } catch (e) { toast(`Add failed: ${e.message}`, true); }
 }
 
-// E1: product entitlements — none checked = all products (backward default).
+// E1: product entitlements - none checked = all products (backward default).
 const UAM_PRODUCTS = [
   { id: 'aroms', label: 'AR OMS', title: 'AR Work Instructions authoring' },
   { id: 'iloto', label: 'iLOTO',  title: 'Lockout/Tagout authoring' },
   { id: 'gemba', label: 'Gemba',  title: 'GembaWalk audit authoring' },
-  { id: 'lab',   label: 'Lab',    title: 'Anchor Lab door — anchoring accuracy test bed (opt-in; not implied by "all")' },
+  { id: 'lab',   label: 'Lab',    title: 'Anchor Lab door - anchoring accuracy test bed (opt-in; not implied by "all")' },
 ];
 async function uamSetProducts(id, cell, email) {
   const products = [...cell.querySelectorAll('input[data-product]:checked')].map(i => i.dataset.product);
@@ -1800,7 +1800,7 @@ async function uamSetProducts(id, cell, email) {
   } catch (e) {
     toast(`Change refused: ${e.message}`, true);
   }
-  loadUamUsers();   // re-render either way — refused changes snap back
+  loadUamUsers();   // re-render either way - refused changes snap back
 }
 
 async function uamSetRole(id, role, email) {
@@ -1810,7 +1810,7 @@ async function uamSetRole(id, role, email) {
   } catch (e) {
     toast(`Role change failed: ${e.message}`, true);
   }
-  loadUamUsers();   // re-render either way — a refused change must snap back
+  loadUamUsers();   // re-render either way - a refused change must snap back
 }
 
 async function uamRemoveUser(id, email) {
@@ -1864,7 +1864,7 @@ function populateAnchorFilters() {
 }
 function showMoreRow(kind, shown, total, rerenderFn) {
   if (shown >= total) return '';
-  return `<div class="show-more-row"><button class="btn btn-ghost btn-sm" onclick="FILTERS.${kind}.limit += 100; ${rerenderFn}()">Show more — ${shown} of ${total}</button></div>`;
+  return `<div class="show-more-row"><button class="btn btn-ghost btn-sm" onclick="FILTERS.${kind}.limit += 100; ${rerenderFn}()">Show more - ${shown} of ${total}</button></div>`;
 }
 
 // ── Auth helpers ───────────────────────────────────────────────────────────────
@@ -1884,7 +1884,7 @@ async function apiFetch(path, opts = {}) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(err.error || `HTTP ${res.status}`);
   }
-  if (res.status === 204) return null; // No Content — nothing to parse (e.g. DELETE)
+  if (res.status === 204) return null; // No Content - nothing to parse (e.g. DELETE)
   return res.json();
 }
 
@@ -1908,7 +1908,7 @@ function jsEsc(str) {
 function safeId(id) { return id.replace(/[^a-z0-9]/gi,'_'); }
 
 // ── Load anchors ──────────────────────────────────────────────────────────────
-// U3 (2026.4.45): template copy of an anchor — guides (drafts, unplaced,
+// U3 (2026.4.45): template copy of an anchor - guides (drafts, unplaced,
 // untrained) + model kit on a brand-new QR/key. World map and tags stay.
 async function duplicateAnchor(anchorId, assetId) {
   const name = prompt(`Duplicate "${assetId}" as a new anchor.\n\nNew asset name:`, `${assetId} copy`);
@@ -1920,7 +1920,7 @@ async function duplicateAnchor(anchorId, assetId) {
       body: JSON.stringify({ assetId: name.trim() || undefined, createdBy: (UAM_USER && UAM_USER.name) || 'portal' }),
     });
     const c = r.data.copied || {};
-    toast(`Created "${r.data.assetId}" — ${c.guides || 0} guide(s), ${c.kitModels || 0} kit model(s). Print its QR and scan the world map.`);
+    toast(`Created "${r.data.assetId}" - ${c.guides || 0} guide(s), ${c.kitModels || 0} kit model(s). Print its QR and scan the world map.`);
     loadAnchors();
   } catch (e) { toast(`Duplicate failed: ${e.message}`); }
 }
@@ -1934,11 +1934,11 @@ function configLabel(id) {
 }
 
 /** Anchor card row: current configuration + inline reassign (engineer+). Gemba
- *  and iLOTO anchors are areas/panels, not chambers — the row is hidden. */
+ *  and iLOTO anchors are areas/panels, not chambers - the row is hidden. */
 function configRowHtml(anchor) {
   if (anchor.anchorType && anchor.anchorType !== 'QR') return '';
   const isTech = UAM_USER && UAM_USER.role === 'technician';
-  const opts = ['<option value="">— unassigned —</option>']
+  const opts = ['<option value="">- unassigned -</option>']
     .concat(chamberConfigs.map(c => `<option value="${c.id}" ${c.id === anchor.configId ? 'selected' : ''}>${esc(c.code)} · ${esc(c.name)}</option>`))
     .join('');
   const badge = anchor.configId
@@ -1969,7 +1969,7 @@ async function loadChamberConfigs() {
   try {
     chamberConfigs = (await apiFetch('/chamber-configs')).data || [];
   } catch (e) { el.innerHTML = `<span style="color:var(--red)">${esc(e.message)}</span>`; return; }
-  if (!chamberConfigs.length) { el.innerHTML = guideEmptyState('configs') || '<div class="empty-state">No configurations yet — add the first one above.</div>'; return; }
+  if (!chamberConfigs.length) { el.innerHTML = guideEmptyState('configs') || '<div class="empty-state">No configurations yet - add the first one above.</div>'; return; }
   const canDelete = UAM_USER && (UAM_USER.role === 'owner' || UAM_USER.role === 'manager');
   el.innerHTML = '<table class="usage-table"><thead><tr><th>Code</th><th>Name</th><th>Description</th><th class="num">Chambers</th><th></th></tr></thead><tbody>' +
     chamberConfigs.map(c => `<tr>
@@ -2044,7 +2044,7 @@ async function loadAnchors() {
   }
 }
 
-// ── Chambers (Anchors) — the fleet view ──────────────────────────────────────
+// ── Chambers (Anchors) - the fleet view ──────────────────────────────────────
 // One job: the state of every chamber in two seconds, and one click to the
 // chamber. A list (name · configuration · sealed · tags · lab · last activity)
 // and a detail panel that opens on the same page. docs/BRAND.md → Portal
@@ -2057,7 +2057,7 @@ function fleetLastActivity(a) {
   return t ? new Date(t) : null;
 }
 function fleetWhen(d) {
-  if (!d) return '—';
+  if (!d) return '-';
   const days = (Date.now() - d.getTime()) / 86400000;
   if (days < 1)  return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
   if (days < 7)  return d.toLocaleDateString(undefined, { weekday: 'short' });
@@ -2076,7 +2076,7 @@ function fleetTagsCell(a) {
 }
 function fleetLabCell(a) {
   const l = a.accuracy;
-  if (!l || (!l.n && !l.runs)) return `<span class="ax-muted">—</span>`;
+  if (!l || (!l.n && !l.runs)) return `<span class="ax-muted">-</span>`;
   if (!l.n) return `<span class="ax-chip ax-chip--text">${l.runs} run${l.runs === 1 ? '' : 's'}</span>`;
   const tone = l.medianMm <= 10 ? 'ax-chip--ok' : l.medianMm <= 25 ? 'ax-chip--warn' : 'ax-chip--bad';
   return `<span class="ax-chip ax-chip--text ${tone}">${l.medianMm} mm</span>`;
@@ -2103,7 +2103,7 @@ function renderAnchors() {
     const guided = !allAnchors.length ? guideEmptyState('anchors') : null;   // P1
     host.innerHTML = guided ? `<div class="fleet-wrap">${guided}</div>` : `<div class="fleet-wrap"><div class="ax-empty ax-card">
       <span class="ax-mark"><i></i><em></em></span>
-      <p>${allAnchors.length ? (showLab ? 'No lab rigs match.' : 'No chambers match.') : 'No chambers yet — create the first one and print its code.'}</p>
+      <p>${allAnchors.length ? (showLab ? 'No lab rigs match.' : 'No chambers match.') : 'No chambers yet - create the first one and print its code.'}</p>
       ${allAnchors.length ? '' : '<button class="ax-btn ax-btn--primary" onclick="openCreateModal()">New chamber</button>'}
     </div></div>`;
     fleetRows = []; fleetSelectedId = null;
@@ -2132,7 +2132,7 @@ function buildCard(anchor) {
   return `<tr id="card-${anchor.id}" class="fleet-row${anchor.id === fleetSelectedId ? ' is-selected' : ''}" tabindex="0"
       onclick="selectAnchor('${anchor.id}')" onkeydown="fleetRowKey(event,'${anchor.id}')">
     <td><b>${esc(anchor.assetId)}</b>${isLab ? ' <span class="ax-chip">Lab rig</span>' : ''}</td>
-    <td>${cfg ? esc(cfg) : (isLab ? '<span class="ax-muted">—</span>' : '<span class="ax-chip ax-chip--warn">Unassigned</span>')}</td>
+    <td>${cfg ? esc(cfg) : (isLab ? '<span class="ax-muted">-</span>' : '<span class="ax-chip ax-chip--warn">Unassigned</span>')}</td>
     <td>${fleetSealChip(anchor)}</td>
     <td>${fleetTagsCell(anchor)}</td>
     <td>${fleetLabCell(anchor)}</td>
@@ -2185,7 +2185,7 @@ function renderAnchorPanel(id, arriving) {
   const trained = tags.filter(t => t.isTrained).length;
   const created = new Date(a.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
   const sealed  = a.mapSealedAt ? new Date(a.mapSealedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }) : null;
-  const cfgOpts = ['<option value="">— unassigned —</option>'].concat(chamberConfigs.map(c => `<option value="${c.id}" ${c.id === a.configId ? 'selected' : ''}>${esc(c.code)} · ${esc(c.name)}</option>`)).join('');
+  const cfgOpts = ['<option value="">- unassigned -</option>'].concat(chamberConfigs.map(c => `<option value="${c.id}" ${c.id === a.configId ? 'selected' : ''}>${esc(c.code)} · ${esc(c.name)}</option>`)).join('');
   const lab = a.accuracy && (a.accuracy.n || a.accuracy.runs) ? a.accuracy : null;
 
   p.innerHTML = `<div class="ax-card fleet-detail${arriving ? ' ax-lockin' : ''}">
@@ -2210,7 +2210,7 @@ function renderAnchorPanel(id, arriving) {
       <div class="ax-eyebrow">Origin</div>
       <div class="ax-row">
         ${fleetSealChip(a)}
-        <span class="ax-label-s">${a.mapSealedAt ? `World map sealed ${sealed}` : 'No sealed world map yet — an author seals it on the first scan (Lab: tap to tag, then Save)'}</span>
+        <span class="ax-label-s">${a.mapSealedAt ? `World map sealed ${sealed}` : 'No sealed world map yet - an author seals it on the first scan (Lab: tap to tag, then Save)'}</span>
         ${a.mapSealedAt ? `<button class="ax-btn ax-btn--quiet ax-btn--sm" onclick="unsealAnchorMap('${a.id}','${jsEsc(a.assetId)}')">Unseal</button>` : ''}
       </div>
       ${objectScanHtml(a) ? `<div class="ax-row" style="margin-top:8px">${objectScanHtml(a)}</div>` : ''}
@@ -2242,12 +2242,12 @@ function renderAnchorPanel(id, arriving) {
             <button class="btn-icon danger" title="Delete tag" aria-label="Delete tag" onclick="openDeleteTagModal('${tag.id}','${a.id}','${jsEsc(tag.label)}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg></button>
           </div>
         </div>`; }).join('')}</div>`
-        : `<div class="ax-empty" style="padding:18px;margin-top:8px"><p style="margin:0">No tags yet — add one here, or place them in the app.</p></div>`}
+        : `<div class="ax-empty" style="padding:18px;margin-top:8px"><p style="margin:0">No tags yet - add one here, or place them in the app.</p></div>`}
     </section>
 
     <section class="fleet-sec fleet-sec--quiet">
       <div class="ax-row">
-        <button class="ax-btn ax-btn--quiet ax-btn--sm" title="New chamber (new QR + key) with the same guides and 3D model kit — no world map or tags" onclick="duplicateAnchor('${a.id}','${jsEsc(a.assetId)}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-copy"/></svg> Duplicate</button>
+        <button class="ax-btn ax-btn--quiet ax-btn--sm" title="New chamber (new QR + key) with the same guides and 3D model kit - no world map or tags" onclick="duplicateAnchor('${a.id}','${jsEsc(a.assetId)}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-copy"/></svg> Duplicate</button>
         <button class="ax-btn ax-btn--quiet ax-btn--sm" style="color:var(--ax-red)" onclick="openDeleteModal('${a.id}','${jsEsc(a.assetId)}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg> Delete chamber</button>
       </div>
     </section>
@@ -2256,7 +2256,7 @@ function renderAnchorPanel(id, arriving) {
   if (arriving && window.matchMedia('(max-width: 900px)').matches) p.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-// ── Row menu — everything a row can do, without shouting from every row ──────
+// ── Row menu - everything a row can do, without shouting from every row ──────
 let rowMenuEl = null;
 function openRowMenu(ev, id) {
   closeRowMenu();
@@ -2288,10 +2288,10 @@ function toggleLabRigs(el) { el.classList.toggle('is-on'); el.setAttribute('aria
 // tags; an unsealed anchor still works, from the QR pose (less consistent).
 function mapSealedHtml(anchor) {
   if (!anchor.mapSealedAt) {
-    return `<span class="badge badge-orange" title="No sealed world map yet — tags are placed from the QR pose each scan. Author: scan this QR once in Author mode to seal.">Map not sealed</span>`;
+    return `<span class="badge badge-orange" title="No sealed world map yet - tags are placed from the QR pose each scan. Author: scan this QR once in Author mode to seal.">Map not sealed</span>`;
   }
   const d = new Date(anchor.mapSealedAt).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
-  return `<span class="badge badge-green" title="Author's world map is the origin — operators relocalize into it; the QR is the key and a drift check (${anchor.mapSealedAt})"> Map sealed · ${d}</span> <button class="btn btn-ghost btn-sm" style="font-size:0.78rem;padding:1px 6px" title="Remove the sealed map so an Author can create a new one (tags stay)" onclick="unsealAnchorMap('${anchor.id}','${jsEsc(anchor.assetId)}')">Unseal</button>`;
+  return `<span class="badge badge-green" title="Author's world map is the origin - operators relocalize into it; the QR is the key and a drift check (${anchor.mapSealedAt})"> Map sealed · ${d}</span> <button class="btn btn-ghost btn-sm" style="font-size:0.78rem;padding:1px 6px" title="Remove the sealed map so an Author can create a new one (tags stay)" onclick="unsealAnchorMap('${anchor.id}','${jsEsc(anchor.assetId)}')">Unseal</button>`;
 }
 
 // B1 (2026.4.46): reference-object badge. Scanned on the iPad (ARKit, on
@@ -2302,7 +2302,7 @@ function objectScanHtml(anchor) {
   const src = anchor.originSource === 'object' ? `<span class="badge" style="background:var(--ax-ok-fill);color:var(--ax-teal)" title="Origin source: detected object (world map kept as fallback, QR is the key)">◈ Origin: object${anchor.objectScannedAt ? '' : ' · scan pending'}</span>` : '';
   if (!anchor.objectScannedAt) return src;
   const d = new Date(anchor.objectScannedAt).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});
-  // B1b/B2/B3 provenance — device, merged scans, sides, calibration, shape model.
+  // B1b/B2/B3 provenance - device, merged scans, sides, calibration, shape model.
   const oi = anchor.objectInfo || {};
   const prov = [
     oi.scannedOn ? `Scanned on ${oi.scannedOn}` : 'Device unknown',
@@ -2314,7 +2314,7 @@ function objectScanHtml(anchor) {
   ].filter(Boolean).join(' · ');
   const provBadge = anchor.objectInfo
     ? ` <span class="badge" style="background:var(--ax-paper);color:var(--ax-ink-2)" title="${prov}">${oi.scannedOn || 'device ?'}${oi.mergedFrom && oi.mergedFrom.length ? ' +' + oi.mergedFrom.length : ''} · ${oi.sides !== undefined ? oi.sides + '/6' : '?'} sides${oi.calibrated ? ' ·  cal' : ' · <span style="color:var(--ax-orange)">cal pending</span>'}${oi.shapeModel ? (oi.shapeAligned ? ' · ◧ model' : ' · <span style="color:var(--ax-orange)">◧ align model</span>') : ''}</span>` : '';
-  return src + provBadge + ` <span class="badge badge-green" title="ARKit reference object scanned on device (${anchor.objectScannedAt}) — sparse feature points, no mesh or photo">◈ Object scanned · ${d}</span> <button class="btn btn-ghost btn-sm" style="font-size:0.78rem;padding:1px 6px" title="Remove the object scan (the Author can scan again)" onclick="removeObjectScan('${anchor.id}','${jsEsc(anchor.assetId)}')">Remove</button>`;
+  return src + provBadge + ` <span class="badge badge-green" title="ARKit reference object scanned on device (${anchor.objectScannedAt}) - sparse feature points, no mesh or photo">◈ Object scanned · ${d}</span> <button class="btn btn-ghost btn-sm" style="font-size:0.78rem;padding:1px 6px" title="Remove the object scan (the Author can scan again)" onclick="removeObjectScan('${anchor.id}','${jsEsc(anchor.assetId)}')">Remove</button>`;
 }
 async function removeObjectScan(anchorId, assetId) {
   if (!confirm(`Remove the object scan of "${assetId}"?\n\nThe chamber falls back to its world map / QR until an Author scans it again.`)) return;
@@ -2329,10 +2329,10 @@ async function removeObjectScan(anchorId, assetId) {
 function anchorLabHtml(anchor) {
   const a = anchor.accuracy;
   if (!a || (!a.n && !a.runs)) return '';
-  // A rig with runs but no marks yet still opens — the Runs table is the point.
+  // A rig with runs but no marks yet still opens - the Runs table is the point.
   const tone = !a.n ? 'badge-muted' : a.medianMm <= 10 ? 'badge-green' : a.medianMm <= 25 ? 'badge-orange' : 'badge-red';
   const text = a.n ? `Lab · ${a.n} marks · median ${a.medianMm} mm${a.runs ? ` · ${a.runs} runs` : ''}` : `Lab · ${a.runs} runs · no marks`;
-  return `<button class="badge ${tone}" style="cursor:pointer;border:0" title="Anchor Lab — runs and rendered-vs-physical error measured in the app. Click to open." onclick="openAnchorLab('${anchor.id}','${jsEsc(anchor.assetId)}')">${text} ▸</button>`;
+  return `<button class="badge ${tone}" style="cursor:pointer;border:0" title="Anchor Lab - runs and rendered-vs-physical error measured in the app. Click to open." onclick="openAnchorLab('${anchor.id}','${jsEsc(anchor.assetId)}')">${text} ▸</button>`;
 }
 
 let anchorLabId = null;
@@ -2383,21 +2383,21 @@ function renderAnchorLab(d) {
     return `<g><title>${tip}</title>${shape}</g>`;
   }).join('');
   const legend = devices.map(dev => `<span class="ax-chip"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${colour(dev)};margin-right:6px"></span>${esc(dev)}</span>`).join(' ');
-  // Runs — Start → Done, newest first. The one table that answers "is the
+  // Runs - Start → Done, newest first. The one table that answers "is the
   // rig getting better run after run?" (map growth, ghost, interruptions).
-  const mmCell = v => v == null ? '—' : `<span style="color:${v <= 10 ? 'var(--ax-ok)' : v <= 25 ? 'var(--ax-warn)' : 'var(--ax-bad)'}">${v} mm</span>`;
+  const mmCell = v => v == null ? '-' : `<span style="color:${v <= 10 ? 'var(--ax-ok)' : v <= 25 ? 'var(--ax-warn)' : 'var(--ax-bad)'}">${v} mm</span>`;
   const runsTable = rows => rows.length ? `
     <h3 style="font-size:0.8rem;color:var(--muted);margin:14px 0 6px">Runs (${rows.length})</h3>
     <table class="ax-table"><thead><tr><th>When</th><th>Run</th><th>Type</th><th>Device</th><th>Marks</th><th>Median</th><th>p90</th><th>Origin</th><th>Reloc</th><th>Converge</th><th>Corr.</th><th>Map</th><th>Notes</th></tr></thead>
     <tbody>${[...rows].sort((a, b) => (b.endedAt || '').localeCompare(a.endedAt || '')).map(r => `<tr>
-      <td>${r.endedAt ? new Date(r.endedAt).toLocaleString() : '—'}</td><td>${esc(r.run || '—')}</td>
-      <td>${r.runType === 'qr' ? 'QR + map' : 'Map only'}</td><td>${esc(r.device || '—')}</td>
+      <td>${r.endedAt ? new Date(r.endedAt).toLocaleString() : '-'}</td><td>${esc(r.run || '-')}</td>
+      <td>${r.runType === 'qr' ? 'QR + map' : 'Map only'}</td><td>${esc(r.device || '-')}</td>
       <td class="ax-num">${r.marks}</td><td class="ax-num">${mmCell(r.medianMm)}</td><td class="ax-num">${mmCell(r.p90Mm)}</td>
-      <td>${esc(r.originSource || '—')}</td>
-      <td class="ax-num">${r.relocalizeS != null ? r.relocalizeS + ' s' : '—'}</td><td class="ax-num">${r.convergeS != null ? r.convergeS + ' s' : '—'}</td>
-      <td class="ax-num">${r.corrections ?? '—'}</td>
-      <td class="ax-num">${r.mapKB != null ? r.mapKB + ' KB' : '—'}${r.mapGrew ? ' <span class="ax-chip">grew</span>' : ''}</td>
-      <td>${[r.interrupted ? 'interrupted' : '', r.ghostUsed ? 'ghost' : ''].filter(Boolean).join(' · ') || '—'}</td></tr>`).join('')}</tbody></table>` : '';
+      <td>${esc(r.originSource || '-')}</td>
+      <td class="ax-num">${r.relocalizeS != null ? r.relocalizeS + ' s' : '-'}</td><td class="ax-num">${r.convergeS != null ? r.convergeS + ' s' : '-'}</td>
+      <td class="ax-num">${r.corrections ?? '-'}</td>
+      <td class="ax-num">${r.mapKB != null ? r.mapKB + ' KB' : '-'}${r.mapGrew ? ' <span class="ax-chip">grew</span>' : ''}</td>
+      <td>${[r.interrupted ? 'interrupted' : '', r.ghostUsed ? 'ghost' : ''].filter(Boolean).join(' · ') || '-'}</td></tr>`).join('')}</tbody></table>` : '';
   const bucketTable = (title, rows) => rows.length ? `
     <h3 style="font-size:0.8rem;color:var(--muted);margin:14px 0 6px">${title}</h3>
     <table class="ax-table"><thead><tr><th>${title}</th><th>Marks</th><th>Median</th><th>p90</th><th>Max</th></tr></thead>
@@ -2428,14 +2428,14 @@ function renderAnchorLab(d) {
     <details style="margin-top:12px"><summary style="font-size:0.8rem;color:var(--muted);cursor:pointer">All marks (${sorted.length})</summary>
       <table class="ax-table" style="margin-top:6px"><thead><tr><th>When</th><th>Tag</th><th>Error</th><th>Device</th><th>Origin</th><th>Reloc</th><th>Converge</th><th>QR drift</th><th>Run</th></tr></thead>
       <tbody>${[...sorted].reverse().map(s => `<tr>
-        <td>${s.at ? new Date(s.at).toLocaleString() : '—'}</td><td>${esc(s.tagLabel || s.tagId)}</td>
-        <td class="ax-num">${s.errorMm} mm</td><td>${esc(s.device || '—')}</td><td>${esc(s.originSource)}</td>
-        <td class="ax-num">${s.relocalizeS != null ? s.relocalizeS + ' s' : '—'}</td><td class="ax-num">${s.convergeS != null ? s.convergeS + ' s' : '—'}</td>
-        <td class="ax-num">${s.qrDriftMm != null ? Math.round(s.qrDriftMm) + ' mm' : '—'}</td><td>${esc(s.run || '—')}</td></tr>`).join('')}</tbody></table>
+        <td>${s.at ? new Date(s.at).toLocaleString() : '-'}</td><td>${esc(s.tagLabel || s.tagId)}</td>
+        <td class="ax-num">${s.errorMm} mm</td><td>${esc(s.device || '-')}</td><td>${esc(s.originSource)}</td>
+        <td class="ax-num">${s.relocalizeS != null ? s.relocalizeS + ' s' : '-'}</td><td class="ax-num">${s.convergeS != null ? s.convergeS + ' s' : '-'}</td>
+        <td class="ax-num">${s.qrDriftMm != null ? Math.round(s.qrDriftMm) + ' mm' : '-'}</td><td>${esc(s.run || '-')}</td></tr>`).join('')}</tbody></table>
     </details>`;
 }
 
-// ── QR image — fetched from the server ────────────────────────────────────────
+// ── QR image - fetched from the server ────────────────────────────────────────
 // The server generates the canonical QR PNG once at anchor creation using the
 // `qrcode` npm library (ECC level M, 512×512).  We fetch it here with the API
 // key and display it as a blob URL so all clients always see the same pattern.
@@ -2469,7 +2469,7 @@ async function loadQRImage(anchor) {
   }
 }
 
-// #104: openQRPrint — opens the server-side print page in a new tab.
+// #104: openQRPrint - opens the server-side print page in a new tab.
 // The page embeds the QR at its true physical print size and auto-opens
 // the browser's Print dialog so the user can Save as PDF in one step.
 // Placed before apiKeyAuth on the server so no auth header is needed.
@@ -2487,7 +2487,7 @@ function openCreateModal() {
   // A (2026.4.45): configuration select, pre-filled with the last one used.
   const sel = document.getElementById('new-config-id');
   const last = localStorage.getItem('sib.lastConfigId') || '';
-  sel.innerHTML = '<option value="">— unassigned —</option>' +
+  sel.innerHTML = '<option value="">- unassigned -</option>' +
     chamberConfigs.map(c => `<option value="${c.id}" ${c.id === last ? 'selected' : ''}>${esc(c.code)} · ${esc(c.name)}</option>`).join('');
   document.getElementById('create-modal').classList.add('open');
 }
@@ -2517,7 +2517,7 @@ async function submitCreateAnchor() {
     allAnchors.unshift(newAnchor);
     tagsByAnchor[newAnchor.id] = [];
     tagCounts[newAnchor.id]    = 0;
-    fleetSelectedId = newAnchor.id;     // open it — the next step is printing its code
+    fleetSelectedId = newAnchor.id;     // open it - the next step is printing its code
     renderAnchors();
     closeCreateModal();
     toast(`Chamber created: ${newAnchor.assetId}`);
@@ -2653,7 +2653,7 @@ function openEditTagModal(tagId) {
     const t = tags.find(t => t.id === tagId);
     if (t) { found = t; break; }
   }
-  if (!found) { toast('Tag not found — try refreshing.'); return; }
+  if (!found) { toast('Tag not found - try refreshing.'); return; }
 
   pendingEditTag = found;
   const ti = tagTypeInfo(found.type);
@@ -2697,7 +2697,7 @@ async function submitEditTag() {
       body:   JSON.stringify(patchBody),
     });
     const updated = resp.data;
-    // Preserve isTrained from local state — PATCH response doesn't re-enrich
+    // Preserve isTrained from local state - PATCH response doesn't re-enrich
     updated.isTrained = tag.isTrained;
 
     const anchorId = tag.anchorId;
@@ -2812,17 +2812,17 @@ function renderRoute() {
 window.addEventListener('hashchange', renderRoute);
 
 // ═════════════════════════════════════════════════════════════════════════════
-// P1 (2026.4.45): Guided assistance — the portal's FTUE.
+// P1 (2026.4.45): Guided assistance - the portal's FTUE.
 //
 // Same philosophy as the iOS tour: guided, exploratory, discoverable, and it
 // should leave people feeling capable. Three layers, one switch:
-//   1. Getting-started checklist — five milestones that turn green from LIVE
+//   1. Getting-started checklist - five milestones that turn green from LIVE
 //      data (/stats), each a link into the right page. Minimises itself once
 //      you're rolling; disappears when everything is green.
-//   2. Page tours — a 2–4 step spotlight on the controls that matter on the
+//   2. Page tours - a 2–4 step spotlight on the controls that matter on the
 //      page you just opened, once per page per browser. "<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-info"/></svg> Show me" replays.
 //   3. Toggle in <svg class="ax-icon"><use href="/portal/brand/icons.svg#i-gear"/></svg> Settings (on by default) + "Restart tours".
-// Technicians never see any of it — they live in the AR app.
+// Technicians never see any of it - they live in the AR app.
 // ═════════════════════════════════════════════════════════════════════════════
 
 const GUIDE_KEY = { on: 'sib.guide.on', seen: 'sib.guide.seen.', min: 'sib.guide.min', done: 'sib.guide.done' };
@@ -2842,7 +2842,7 @@ function guideReset() {
   closeSettings();
   guideRefresh();
   guideStartTour(true);
-  toast('Tours reset — welcome back to the start ');
+  toast('Tours reset - welcome back to the start ');
 }
 
 // ── 1. Getting-started checklist ─────────────────────────────────────────────
@@ -2852,7 +2852,7 @@ function guideMilestones(st) {
   return [
     { id: 'config',  hash: '#admin/configs',   done: (st.chamberConfigs || 0) > 0,
       t: 'Name your first chamber configuration',
-      d: 'A configuration is a chamber type — "Producer XP · Cfg A". Everything you author hangs off it.' },
+      d: 'A configuration is a chamber type - "Producer XP · Cfg A". Everything you author hangs off it.' },
     { id: 'chamber', hash: '#anchors',         done: (st.chambersAssigned || 0) > 0,
       t: 'Register a chamber and print its QR',
       d: 'One anchor per physical chamber, assigned to its configuration. The QR is what operators scan.' },
@@ -2864,7 +2864,7 @@ function guideMilestones(st) {
       d: 'Open the guide in the iOS app → Place Steps in AR. This turns text into pins on the tool.' },
     { id: 'run',     hash: '#ar-guides',       done: (st.guidedRuns || 0) > 0,
       t: 'Run it once and watch it land here',
-      d: 'A technician scans the chamber QR and runs the guide — the Completion and Usage logs fill in.' },
+      d: 'A technician scans the chamber QR and runs the guide - the Completion and Usage logs fill in.' },
   ];
 }
 
@@ -2883,7 +2883,7 @@ function renderGettingStarted() {
     // Everything green: one celebratory moment, then get out of the way.
     if (!localStorage.getItem(GUIDE_KEY.done)) {
       localStorage.setItem(GUIDE_KEY.done, '1');
-      toast(' You’ve set up the whole loop — configuration → chamber → guide → placed → run. Nice work.');
+      toast(' You’ve set up the whole loop - configuration → chamber → guide → placed → run. Nice work.');
     }
     panel?.remove(); return;
   }
@@ -2916,23 +2916,23 @@ function guideToggleMin() {
 const PAGE_TOURS = {
   home: [
     { sel: null, h: 'Welcome to the appliedx Connected Worker AR OMS Platform ',
-      p: 'This portal is where MEs set things up; technicians do their work in the AR app. Let’s take the 60-second tour — you can replay it from <svg class="ax-icon"><use href="/portal/brand/icons.svg#i-info"/></svg> Show me at any time.' },
+      p: 'This portal is where MEs set things up; technicians do their work in the AR app. Let’s take the 60-second tour - you can replay it from <svg class="ax-icon"><use href="/portal/brand/icons.svg#i-info"/></svg> Show me at any time.' },
     { sel: '[data-tour="tile-anchors"]', h: 'Chambers live here',
       p: 'Every physical chamber is an anchor with a printed QR. Create it, assign its configuration, print the code.' },
     { sel: '[data-tour="tile-content"]', h: 'Your guide library',
-      p: 'Work instructions per chamber — import them, draw them in the Procedure Designer, preview them, copy them to sister chambers.' },
+      p: 'Work instructions per chamber - import them, draw them in the Procedure Designer, preview them, copy them to sister chambers.' },
     { sel: '[data-tour="tile-arguides"]', h: 'See it come back',
       p: 'Every guided run lands here: completions with evidence photos, and the usage log by Production #.' },
-    { sel: '[data-tour="tile-admin"]', h: 'Admin — users and configurations',
+    { sel: '[data-tour="tile-admin"]', h: 'Admin - users and configurations',
       p: 'The allow-list of who can sign in, and the catalog of chamber configurations. Start there if you’re new.' },
   ],
   anchors: [
     { sel: '[data-tour="new-anchor"]', h: 'Create a chamber',
-      p: 'Tap + New Anchor. Give it the name on the tool, pick its configuration — the server mints the encryption key and the QR for you.' },
+      p: 'Tap + New Anchor. Give it the name on the tool, pick its configuration - the server mints the encryption key and the QR for you.' },
     { sel: '.anchor-card select', h: 'Assign a configuration', optional: true,
-      p: 'Each card shows the chamber’s configuration. Unassigned chambers can’t be scanned into by operators — fix that here.' },
+      p: 'Each card shows the chamber’s configuration. Unassigned chambers can’t be scanned into by operators - fix that here.' },
     { sel: '.anchor-card .card-actions', h: 'Print the QR', optional: true,
-      p: 'Print / PDF at the stored size and mount it on the chamber. The same QR is used by authors and operators — it never changes.' },
+      p: 'Print / PDF at the stored size and mount it on the chamber. The same QR is used by authors and operators - it never changes.' },
   ],
   'guide-library': [
     { sel: '[data-tour="gl-import"]', h: 'Bring a guide in',
@@ -2946,13 +2946,13 @@ const PAGE_TOURS = {
     { sel: '[data-tour="usage-log"]', h: 'Two views of the same work',
       p: 'Completions are signed-off runs with evidence. Usage Log is per-step timing by Production #, with validation verdicts.' },
     { sel: '[data-tour="ag-export"]', h: 'Take it with you',
-      p: 'Export to Excel — evidence photos embedded per step — or CSV for the data crowd.' },
+      p: 'Export to Excel - evidence photos embedded per step - or CSV for the data crowd.' },
   ],
   admin: [
     { sel: '[data-tour="uam-add"]', h: 'Who gets in', optional: true,
       p: 'Add people by email and employee ID. Engineers author; technicians run. Technicians sign in on the kiosk with just their ID.' },
     { sel: '[data-tour="cc-add"]', h: 'Chamber configurations', optional: true,
-      p: 'Add a code and a name — "PXP-A · Producer XP Config A". Chambers point at it; MEs author against it.' },
+      p: 'Add a code and a name - "PXP-A · Producer XP Config A". Chambers point at it; MEs author against it.' },
   ],
 };
 
@@ -3017,7 +3017,7 @@ function tourNext() {
   if (tourIdx >= tourSteps.length - 1) {
     tourEnd();
     const page = guideCurrentPage();
-    if (page === 'home') setTimeout(() => toast('Explore freely — the  checklist keeps your place.'), 300);
+    if (page === 'home') setTimeout(() => toast('Explore freely - the  checklist keeps your place.'), 300);
     return;
   }
   tourIdx++; tourShow();
@@ -3037,14 +3037,14 @@ function guideEmptyState(kind) {
     case 'anchors':
       return cfgOk
         ? `<div class="tour-empty"><div style="font-size:2rem"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-pin"/></svg></div><p>No chambers yet. Register the first one and print its QR.</p>
-             <button class="btn btn-primary btn-sm" onclick="openCreateModal()">+ New Anchor</button></div>` : `<div class="tour-empty"><div style="font-size:2rem"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chamber"/></svg></div><p>Start with a chamber configuration — chambers are assigned to one.</p>
+             <button class="btn btn-primary btn-sm" onclick="openCreateModal()">+ New Anchor</button></div>` : `<div class="tour-empty"><div style="font-size:2rem"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chamber"/></svg></div><p>Start with a chamber configuration - chambers are assigned to one.</p>
              <button class="btn btn-primary btn-sm" onclick="location.hash='#admin/configs'">Add a configuration</button></div>`;
     case 'guides':
       return `<div class="tour-empty"><div style="font-size:2rem"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-checklist"/></svg></div><p>No guides yet. Import one, or draw it in the Procedure Designer.</p>
         <button class="btn btn-primary btn-sm" onclick="openImportGuideModal()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-upload"/></svg> Import Guide</button>
         <a class="btn btn-ghost btn-sm" href="/roadmap" target="_blank"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-map"/></svg> Open Designer</a></div>`;
     case 'configs':
-      return `<div class="tour-empty"><div style="font-size:2rem"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chamber"/></svg></div><p>Add your first configuration above — a code like <b>PXP-A</b> and a readable name.</p></div>`;
+      return `<div class="tour-empty"><div style="font-size:2rem"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chamber"/></svg></div><p>Add your first configuration above - a code like <b>PXP-A</b> and a readable name.</p></div>`;
     default: return null;
   }
 }
@@ -3063,7 +3063,7 @@ let insightsConfig = '', insightsGuide = '';
 function setInsightsView(on) {
   const v = document.getElementById('insights-view');
   v.style.display = on ? '' : 'none';
-  // Insights has its own filters — the completions toolbar and date filters step aside.
+  // Insights has its own filters - the completions toolbar and date filters step aside.
   for (const id of ['ag-toolbar', 'ag-filters']) { const el = document.getElementById(id); if (el) el.style.display = on ? 'none' : ''; }
   if (on) {
     document.getElementById('ar-guides-list').style.display = 'none';
@@ -3081,7 +3081,7 @@ async function loadInsights() {
     if (insightsGuide) qs.set('guideId', insightsGuide);
     const [ins, cfgs] = await Promise.all([apiFetch(`/guide-sessions/insights?${qs}`), apiFetch('/chamber-configs').catch(() => ({ data: [] }))]);
     v.innerHTML = renderInsights(ins.data, cfgs.data || []); v.dataset.ready = '1';
-  } catch (e) { v.innerHTML = `<div class="empty-state">Could not load insights — ${esc(e.message)}</div>`; }
+  } catch (e) { v.innerHTML = `<div class="empty-state">Could not load insights - ${esc(e.message)}</div>`; }
 }
 const fmtSec = s => !s ? '–' : s >= 3600 ? `${(s / 3600).toFixed(1)} h` : s >= 60 ? `${Math.round(s / 60)} min` : `${Math.round(s)} s`;
 const fmtPct = x => `${Math.round(x * 100)} %`;
@@ -3149,7 +3149,7 @@ function timeChart(guides) {
   });
   return g + '</svg>';
 }
-/** Wrong-part taps per run, per day (the quality proxy) — a line with dots on days that had runs. */
+/** Wrong-part taps per run, per day (the quality proxy) - a line with dots on days that had runs. */
 function perRunLine(days, color) {
   const w = 720, h = 160, padL = 40, padB = 26, padT = 10;
   const n = days.length, xs = i => padL + (i / Math.max(1, n - 1)) * (w - padL - 8);
@@ -3183,7 +3183,7 @@ function renderInsights(d, configs) {
   return `
   <div class="ins-head">
     <div><h2 class="ins-title"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-insights"/></svg> Insights</h2>
-      <p class="ins-lede">How the guides are doing — every number here is derived from the same runs the Usage Log records.</p></div>
+      <p class="ins-lede">How the guides are doing - every number here is derived from the same runs the Usage Log records.</p></div>
     <div class="ins-filters">${pills}
       <select class="ax-select" onchange="insightsConfig=this.value;loadInsights()">${cfgOpts}</select>
       <select class="ax-select" onchange="insightsGuide=this.value;loadInsights()">${guideOpts}</select></div>
@@ -3201,7 +3201,7 @@ function renderInsights(d, configs) {
   </div>
   <div class="ins-grid">
     <div class="ax-card ins-panel"><div class="ins-panel-h"><b>Time per guide</b><span class="ins-legend">typical run · whisker to the slowest tenth</span></div>${timeChart(d.perGuide)}</div>
-    <div class="ax-card ins-panel"><div class="ins-panel-h"><b>Wrong parts per run</b><span class="ins-legend">taps on parts not in the step — lower is better</span></div>${perRunLine(d.perDay, 'var(--ax-orange)')}</div>
+    <div class="ax-card ins-panel"><div class="ins-panel-h"><b>Wrong parts per run</b><span class="ins-legend">taps on parts not in the step - lower is better</span></div>${perRunLine(d.perDay, 'var(--ax-orange)')}</div>
   </div>
   <div class="ax-card ins-panel">
     <div class="ins-panel-h"><b><svg class="ax-icon" style="color:var(--ax-p-guides)"><use href="/portal/brand/icons.svg#i-intelligence"/></svg> Where people struggle</b><span class="ins-legend">per guide · heat by step, from Intelligence</span></div>
@@ -3227,7 +3227,7 @@ async function exportInsightsPng() {
     const c = document.createElement('canvas'); c.width = w * 2; c.height = h * 2; const ctx = c.getContext('2d'); ctx.scale(2, 2); ctx.drawImage(img, 0, 0);
     const a = document.createElement('a'); a.download = `sib-insights-${new Date().toISOString().slice(0, 10)}.png`; a.href = c.toDataURL('image/png'); a.click();
   };
-  img.onerror = () => toast('Could not render the image in this browser — use a screenshot.', 4000);
+  img.onerror = () => toast('Could not render the image in this browser - use a screenshot.', 4000);
   img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(html);
 }
 
@@ -3255,7 +3255,7 @@ async function loadIntelligence() {
     for (const s of body.data || []) if (!seen.has(s.guideId)) seen.set(s.guideId, { id: s.guideId, name: s.guideName, n: 0 });
     for (const s of body.data || []) seen.get(s.guideId).n++;
     const guides = [...seen.values()].sort((a, b) => b.n - a.n);
-    if (!guides.length) { iv.innerHTML = '<div class="empty-state">No guide runs yet. Intelligence learns from the Usage Log — run a guide on the iPad or the XR kit and come back.</div>'; return; }
+    if (!guides.length) { iv.innerHTML = '<div class="empty-state">No guide runs yet. Intelligence learns from the Usage Log - run a guide on the iPad or the XR kit and come back.</div>'; return; }
     if (!intelGuideId || !seen.has(intelGuideId)) intelGuideId = guides[0].id;
     const picker = `<div class="sessions-toolbar" style="margin-bottom:10px"><span style="font-size:0.78rem;color:var(--muted)">Guide</span>
       <select id="intel-guide" onchange="intelGuideId=this.value;loadIntelligence()" style="font-size:0.8rem">${guides.map(g => `<option value="${esc(g.id)}"${g.id === intelGuideId ? ' selected' : ''}>${esc(g.name)} (${g.n} run${g.n === 1 ? '' : 's'})</option>`).join('')}</select>
@@ -3263,16 +3263,16 @@ async function loadIntelligence() {
     const gi = (await apiFetch(`/guide-sessions/intelligence/${encodeURIComponent(intelGuideId)}`)).data;
     iv.innerHTML = picker + renderIntelligence(gi);
   } catch (e) {
-    iv.innerHTML = `<div class="empty-state">Could not load intelligence — ${esc(e.message || 'server error')}</div>`;
+    iv.innerHTML = `<div class="empty-state">Could not load intelligence - ${esc(e.message || 'server error')}</div>`;
   }
 }
 function heatClass(h) { return h >= 60 ? 'is-hot' : h >= 35 ? 'is-warm' : h >= 15 ? '' : 'is-cool'; }
 function heatChip(h) { return h >= 60 ? 'ax-chip--bad' : h >= 35 ? 'ax-chip--warn' : h >= 15 ? 'ax-chip--info' : 'ax-chip--ok'; }
 function heatEdge(h) { return h >= 60 ? 'var(--ax-red)' : h >= 35 ? 'var(--ax-orange)' : h >= 15 ? 'var(--ax-blue)' : 'var(--ax-green)'; }
-// Mirrors sib/src/oms/intelligence.ts — heat = 100 × Σ(rate × weight), capped at 100.
+// Mirrors sib/src/oms/intelligence.ts - heat = 100 × Σ(rate × weight), capped at 100.
 const HEAT_WEIGHTS = [['Left / failed', 'leftRate', 0.35], ['Validation fail', 'validationFailRate', 0.20], ['Wrong part', 'wrongPartRate', 0.15], ['Stalled', 'stallRate', 0.15], ['Attention off', 'attentionOffRate', 0.10], ['Never at viewpoint', 'lookAwayRate', 0.05]];
 const HEAT_MIN_VISITS = 3;
-/** "Why this number" — the weighted terms behind a step's heat, for the popover. */
+/** "Why this number" - the weighted terms behind a step's heat, for the popover. */
 function heatBreakdown(s) {
   const rows = HEAT_WEIGHTS.map(([label, key, w]) => { const r = s[key]; const term = r === undefined ? 0 : r * w; return { label, w, r, term }; });
   const sum = rows.reduce((a, x) => a + x.term, 0);
@@ -3288,12 +3288,12 @@ function heatPopover(s) {
       ${b.rows.map(x => `<tr style="${x.r === undefined ? 'opacity:.5' : ''}"><td>${x.label}</td><td class="ax-num">${x.r === undefined ? '–' : Math.round(x.r * 100) + ' %'}</td><td class="ax-num"></td><td class="ax-num">${x.w.toFixed(2)}</td><td class="ax-num">${x.r === undefined ? '–' : (100 * x.term).toFixed(1)}</td></tr>`).join('')}
       <tr><td colspan="4"><b>Heat</b> = sum, capped at 100</td><td class="ax-num"><b>${b.total}</b></td></tr>
     </table>
-    <p style="margin:8px 0 0;font-size:0.78rem;color:var(--muted)">Rates are the share of the last ${50} completed visits on which each thing happened. Bands: ≥ 60 hot · 35–59 warm · 15–34 normal · &lt; 15 cool.${thin ? ` <b>Only ${s.visits} visit${s.visits === 1 ? '' : 's'} so far — one visit moves the score by ${Math.round(100 / Math.max(1, s.visits))} points; treat as provisional.</b>` : ''}</p>
+    <p style="margin:8px 0 0;font-size:0.78rem;color:var(--muted)">Rates are the share of the last ${50} completed visits on which each thing happened. Bands: ≥ 60 hot · 35–59 warm · 15–34 normal · &lt; 15 cool.${thin ? ` <b>Only ${s.visits} visit${s.visits === 1 ? '' : 's'} so far - one visit moves the score by ${Math.round(100 / Math.max(1, s.visits))} points; treat as provisional.</b>` : ''}</p>
   </div>`;
 }
 function pctCell(v) { return v === undefined ? '<span style="color:var(--muted)">–</span>' : `${Math.round(v * 100)} %`; }
 function renderIntelligence(gi) {
-  const conf = { none: ['No data', ''], low: ['Low — fewer than 3 runs', 'is-warn'], medium: ['Medium — 3 to 9 runs', ''], high: ['High — 10+ runs', 'is-ok'] }[gi.confidence] || ['–', ''];
+  const conf = { none: ['No data', ''], low: ['Low - fewer than 3 runs', 'is-warn'], medium: ['Medium - 3 to 9 runs', ''], high: ['High - 10+ runs', 'is-ok'] }[gi.confidence] || ['–', ''];
   const head = `<div class="ax-card ax-card--product" data-product="guides" style="margin:0 0 12px">
     <div class="ax-tiles">
       <div class="ax-tile"><div class="ax-eyebrow">Runs seen</div><div class="ax-value">${gi.sessions}</div></div>
@@ -3304,7 +3304,7 @@ function renderIntelligence(gi) {
   </div>`;
   const steps = gi.steps;
   if (!steps.length) return head + '<div class="ax-empty"><span class="ax-mark"><i></i><em></em></span>No step data yet.</div>';
-  const strip = `<div class="ax-heat" style="margin:0 0 6px;padding:8px 6px 0;height:72px;border-bottom:1px solid var(--ax-rule)">${steps.map((s, i) => `<i class="${heatClass(s.heat)}" title="Step ${s.stepIndex ?? i + 1}: heat ${s.heat}${s.visits < HEAT_MIN_VISITS ? ' (provisional — ' + s.visits + ' visits)' : ''}" onclick="document.getElementById('intel-step-${i}').scrollIntoView({behavior:'smooth',block:'center'})" style="height:${Math.max(6, s.heat)}%;opacity:${!s.visits ? 0.3 : s.visits < HEAT_MIN_VISITS ? 0.5 : 1}${s.visits && s.visits < HEAT_MIN_VISITS ? ';background:var(--ax-ink-4)' : ''}"></i>`).join('')}</div>
+  const strip = `<div class="ax-heat" style="margin:0 0 6px;padding:8px 6px 0;height:72px;border-bottom:1px solid var(--ax-rule)">${steps.map((s, i) => `<i class="${heatClass(s.heat)}" title="Step ${s.stepIndex ?? i + 1}: heat ${s.heat}${s.visits < HEAT_MIN_VISITS ? ' (provisional - ' + s.visits + ' visits)' : ''}" onclick="document.getElementById('intel-step-${i}').scrollIntoView({behavior:'smooth',block:'center'})" style="height:${Math.max(6, s.heat)}%;opacity:${!s.visits ? 0.3 : s.visits < HEAT_MIN_VISITS ? 0.5 : 1}${s.visits && s.visits < HEAT_MIN_VISITS ? ';background:var(--ax-ink-4)' : ''}"></i>`).join('')}</div>
   <div style="display:flex;gap:3px;padding:6px 6px 0;margin-bottom:18px;font-size:12px;color:var(--muted)">${steps.map((s, i) => `<div style="flex:1;min-width:6px;text-align:center;overflow:hidden">${s.stepIndex ?? i + 1}</div>`).join('')}</div>`;
   const rows = steps.map((s, i) => {
     const hints = s.hints.length ? `<table class="ax-table" style="margin-top:14px">
@@ -3316,7 +3316,7 @@ function renderIntelligence(gi) {
     return `<div id="intel-step-${i}" class="ax-card" style="padding:18px 20px;margin-bottom:16px;border-left:3px solid ${s.visits < HEAT_MIN_VISITS ? 'var(--ax-ink-4)' : heatEdge(s.heat)}">
       <div class="ax-row" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         <b style="font-size:1rem">Step ${s.stepIndex ?? i + 1}${s.title ? ` · ${esc(s.title)}` : ''}</b>
-        <span class="ax-chip ${s.visits < HEAT_MIN_VISITS ? '' : heatChip(s.heat)} heat-chip" tabindex="0" style="${s.visits < HEAT_MIN_VISITS ? 'background:var(--ax-paper-3);color:var(--ax-ink-3);border:1px dashed var(--ax-rule)' : ''}" title="${s.visits < HEAT_MIN_VISITS ? 'Provisional — fewer than ' + HEAT_MIN_VISITS + ' visits' : 'How is this number calculated?'}">heat ${s.heat}${s.visits < HEAT_MIN_VISITS ? ' · provisional' : ''}<svg class="ax-icon" style="width:12px;height:12px;margin-left:4px"><use href="/portal/brand/icons.svg#i-info"/></svg>${heatPopover(s)}</span>
+        <span class="ax-chip ${s.visits < HEAT_MIN_VISITS ? '' : heatChip(s.heat)} heat-chip" tabindex="0" style="${s.visits < HEAT_MIN_VISITS ? 'background:var(--ax-paper-3);color:var(--ax-ink-3);border:1px dashed var(--ax-rule)' : ''}" title="${s.visits < HEAT_MIN_VISITS ? 'Provisional - fewer than ' + HEAT_MIN_VISITS + ' visits' : 'How is this number calculated?'}">heat ${s.heat}${s.visits < HEAT_MIN_VISITS ? ' · provisional' : ''}<svg class="ax-icon" style="width:12px;height:12px;margin-left:4px"><use href="/portal/brand/icons.svg#i-info"/></svg>${heatPopover(s)}</span>
         <span style="font-size:0.84rem;color:var(--muted)">${s.visits} completed visit${s.visits === 1 ? '' : 's'}${s.dwellSec ? ` · typical ${Math.round(s.dwellSec.p50)} s · slowest tenth ${Math.round(s.dwellSec.p90)} s` : ''}</span>
       </div>
       ${s.triggers ? `<div class="intel-engine" title="What the engine needs on this step right now: floors, tightened by the baseline where it is stricter"><span class="intel-engine-k">Fires at</span>${s.triggers.mode === 'demo' ? '<span class="ax-chip ax-chip--warn ax-chip--text">demo mode</span>' : ''}<span class="ax-chip ax-chip--text">${s.triggers.wrongTaps} wrong taps</span><span class="ax-chip ax-chip--text">attention under ${s.triggers.attentionBelowPct} %</span><span class="ax-chip ax-chip--text">look-away after ${Math.round(s.triggers.lookAwayAfterSec)} s</span>${s.triggers.dwellAfterSec ? `<span class="ax-chip ax-chip--text">dwell after ${Math.round(s.triggers.dwellAfterSec)} s</span>` : ''}</div>` : ''}
@@ -3341,7 +3341,7 @@ function adminShowSub(sub) {
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
-// G1 (2026.4.46): Audit Reference Library — Focus Areas → Questions.
+// G1 (2026.4.46): Audit Reference Library - Focus Areas → Questions.
 // Mirrors Import Guide: choose file → preview counts/warnings → import
 // (atomic on the server). xlsx via lazy SheetJS, CSV/JSON parsed here.
 // ═════════════════════════════════════════════════════════════════════════════
@@ -3416,7 +3416,7 @@ function renderGembaWalkSessions() {
   if (exportBtn) { exportBtn.disabled = !gwsFiltered.length; exportBtn.lastChild.textContent = ` Excel (${gwsFiltered.length} shown)`; }
   if (!rows.length) {
     const win = document.getElementById('gws-from').value || document.getElementById('gws-to').value;
-    list.innerHTML = `<div class="empty-state" style="padding:40px;text-align:center;color:var(--muted);font-size:0.85rem">${gembaWalks.length ? 'Nothing matches that filter.' : (win ? 'No walks in this date window — <a href="#" onclick="gwsAllTime();return false">show all time</a>.' : 'No walks yet — start one from the app (Gemba Walk → Start walk).')}</div>`;
+    list.innerHTML = `<div class="empty-state" style="padding:40px;text-align:center;color:var(--muted);font-size:0.85rem">${gembaWalks.length ? 'Nothing matches that filter.' : (win ? 'No walks in this date window - <a href="#" onclick="gwsAllTime();return false">show all time</a>.' : 'No walks yet - start one from the app (Gemba Walk → Start walk).')}</div>`;
     return;
   }
   const anchorName = id => (allAnchors.find(a => a.id === id) || {}).assetId || id.slice(0, 8);
@@ -3429,9 +3429,9 @@ function renderGembaWalkSessions() {
     return `<tr onclick="toggleGembaWalk('${w.id}')" style="cursor:pointer" class="${open ? 'is-selected' : ''}">
       <td style="white-space:nowrap">${d.toLocaleDateString(undefined,{day:'2-digit',month:'short'})}<span class="gws-sub">${d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}</span></td>
       <td style="font-weight:600">${esc(w.auditorName)}${w.auditorId ? `<span class="gws-sub" style="font-weight:400">${esc(w.auditorId)}</span>` : ''}</td>
-      <td>${esc(w.projectId || '—')}</td>
-      <td>${esc(w.organization || '—')}${w.bu ? `<span class="gws-sub">${esc(w.bu)}</span>` : ''}</td>
-      <td>${esc([w.area, w.location].filter(Boolean).join(' · ') || '—')}</td>
+      <td>${esc(w.projectId || '-')}</td>
+      <td>${esc(w.organization || '-')}${w.bu ? `<span class="gws-sub">${esc(w.bu)}</span>` : ''}</td>
+      <td>${esc([w.area, w.location].filter(Boolean).join(' · ') || '-')}</td>
       <td style="color:var(--muted)">${esc(anchorName(w.anchorId))}</td>
       <td class="ax-num"><b>${s.findings ?? 0}</b>${gwsCat(s) ? `<span class="gws-sub">${gwsCat(s)}</span>` : ''}</td>
       <td><span class="ax-chip ${w.status === 'submitted' ? 'ax-chip--ok' : 'ax-chip--warn'}">${w.status === 'submitted' ? 'Submitted' : 'Open'}</span></td>
@@ -3478,7 +3478,7 @@ async function loadGembaWalkDetail(id) {
         return `<div style="display:grid;grid-template-columns:36px 1fr auto;gap:10px;align-items:start;padding:8px 6px;border-top:1px solid var(--border);font-size:0.78rem">
           <span style="font-weight:700;color:var(--muted)">#${f.order + 1}</span>
           <div>
-            <div><b>${esc(f.questionTitle || f.title)}</b> ${f.questionCode ? `<span style="font-family:var(--ax-mono);color:var(--muted);font-size:0.78rem">${esc(f.focusAreaCode ? f.focusAreaCode + ' · ' : '')}${esc(f.questionCode)}</span>` : (f.referenceSource === 'custom' ? `<span style="display:inline-block;padding:0 6px;border-radius:999px;font-size:0.78rem;font-weight:700;color:var(--ax-orange);border:1px solid var(--ax-warn-fill);background:var(--ax-warn-fill);vertical-align:middle" title="Free-text entry — not from the Audit Reference Library">Custom</span>${f.focusAreaTitle ? ` <span style="color:var(--muted);font-size:0.78rem">${esc(f.focusAreaTitle)}</span>` : ''}` : '')}</div>
+            <div><b>${esc(f.questionTitle || f.title)}</b> ${f.questionCode ? `<span style="font-family:var(--ax-mono);color:var(--muted);font-size:0.78rem">${esc(f.focusAreaCode ? f.focusAreaCode + ' · ' : '')}${esc(f.questionCode)}</span>` : (f.referenceSource === 'custom' ? `<span style="display:inline-block;padding:0 6px;border-radius:999px;font-size:0.78rem;font-weight:700;color:var(--ax-orange);border:1px solid var(--ax-warn-fill);background:var(--ax-warn-fill);vertical-align:middle" title="Free-text entry - not from the Audit Reference Library">Custom</span>${f.focusAreaTitle ? ` <span style="color:var(--muted);font-size:0.78rem">${esc(f.focusAreaTitle)}</span>` : ''}` : '')}</div>
             ${f.questionText ? `<div style="color:var(--muted);margin-top:2px">${esc(f.questionText)}</div>` : ''}
             ${f.description ? `<div style="margin-top:2px">${esc(f.description)}</div>` : ''}
             ${photos.length ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">` + photos.map(p => `<figure style="margin:0;width:84px"><img class="td-thumb" style="width:84px;height:64px;object-fit:cover" data-evidence-url="/loc-tags/image/${encodeURIComponent(p.markupPath || p.path)}" src="" alt="" />${p.caption ? `<figcaption style="font-size:0.78rem;color:var(--muted)">${esc(p.caption)}</figcaption>` : ''}</figure>`).join('') + `</div>` : ''}
@@ -3526,7 +3526,7 @@ async function restoreGembaLists() {
   try {
     const r = await apiFetch(`/gemba/library/lists/restore${all ? '?all=1' : ''}`, { method: 'POST', body: '{}' });
     const t = (r.data && r.data.restored) || [];
-    toast(t.length ? `Restored: ${t.join(', ')}` : 'Nothing to restore — no list is empty');
+    toast(t.length ? `Restored: ${t.join(', ')}` : 'Nothing to restore - no list is empty');
     await loadGembaLibrary();
   } catch (e) { toast(e.message); }
 }
@@ -3563,7 +3563,7 @@ function renderGembaLibrary() {
   }
   const dim = x => x.active ? '' : 'opacity:.45;';
   list.innerHTML =
-    `<p style="font-size:0.78rem;color:var(--muted);margin:0 0 10px">${gembaLib.focusAreas.length} focus areas · ${nQ} questions · categories: ${gembaLib.categories.map(c => esc(c.label.split(' — ')[0])).join(', ')} · risk 0–3</p>` +
+    `<p style="font-size:0.78rem;color:var(--muted);margin:0 0 10px">${gembaLib.focusAreas.length} focus areas · ${nQ} questions · categories: ${gembaLib.categories.map(c => esc(c.label.split(' - ')[0])).join(', ')} · risk 0–3</p>` +
     areas.map(a => ` <div class="card" style="margin-bottom:10px;padding:12px 14px;${dim(a)}">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <span style="font-family:var(--ax-mono);font-size:0.78rem;background:var(--surface-2,var(--ax-paper));border:1px solid var(--border);border-radius:6px;padding:2px 8px">${esc(a.code)}</span>
@@ -3598,7 +3598,7 @@ function gembaLibEdit(kind, id = null, areaId = null) {
   document.getElementById('glib-edit-area-row').style.display = kind === 'question' ? '' : 'none';
   document.getElementById('glib-edit-text-row').style.display = kind === 'question' ? '' : 'none';
   const sel = document.getElementById('glib-edit-area');
-  sel.innerHTML = areas.map(a => `<option value="${a.id}">${esc(a.code)} — ${esc(a.title)}</option>`).join('');
+  sel.innerHTML = areas.map(a => `<option value="${a.id}">${esc(a.code)} - ${esc(a.title)}</option>`).join('');
   sel.value = (item && item.focusAreaId) || areaId || (areas[0] && areas[0].id) || '';
   document.getElementById('glib-edit-code').value   = item ? item.code : '';
   document.getElementById('glib-edit-name').value   = item ? item.title : '';
@@ -3636,8 +3636,8 @@ async function saveGembaLibEdit() {
 
 async function gembaLibDelete(kind, id) {
   const areas = gembaLib ? gembaLib.focusAreas : [];
-  const label = kind === 'area' ? (a => a ? `focus area ${a.code} — ${a.title} and its ${a.questions.length} question(s)` : 'this focus area')(areas.find(a => a.id === id))
-    : (x => x ? `question ${x.code} — ${x.title}` : 'this question')(areas.flatMap(a => a.questions).find(x => x.id === id));
+  const label = kind === 'area' ? (a => a ? `focus area ${a.code} - ${a.title} and its ${a.questions.length} question(s)` : 'this focus area')(areas.find(a => a.id === id))
+    : (x => x ? `question ${x.code} - ${x.title}` : 'this question')(areas.flatMap(a => a.questions).find(x => x.id === id));
   if (!confirm(`Delete ${label}?\n\nFindings already logged keep their code and title; only the picker changes. Prefer "inactive" if the item may come back.`)) return;
   try {
     await apiFetch(`/gemba/library/${kind === 'area' ? 'focus-areas' : 'questions'}/${id}`, { method: 'DELETE' });
@@ -3800,11 +3800,11 @@ async function loadHomeStats() {
   };
   try {
     const st = await (await fetch('/stats')).json();
-    put('ph-stat-anchors', [`${st.anchors ?? '—'} anchors`]);
-    put('ph-stat-inspect', [`${st.sessionsThisWeek ?? '—'} this week`]);
+    put('ph-stat-anchors', [`${st.anchors ?? '-'} anchors`]);
+    put('ph-stat-inspect', [`${st.sessionsThisWeek ?? '-'} this week`]);
     put('ph-stat-iloto',   [`${st.activeLotoLocks ?? 0} active lock${st.activeLotoLocks === 1 ? '' : 's'}`]);
     put('ph-stat-gemba',   [`${st.openGembaFindings ?? 0} open finding${st.openGembaFindings === 1 ? '' : 's'}`]);
-  } catch { /* stats are decoration — tiles work without them */ }
+  } catch { /* stats are decoration - tiles work without them */ }
   try {
     const usage = (await apiFetch('/guide-sessions/usage')).data || [];
     const today = new Date().toISOString().slice(0, 10);
@@ -3975,12 +3975,12 @@ async function loadUsageLog() {
     usageLogData = body.data || [];
     renderUsageLog();
   } catch (e) {
-    view.innerHTML = `<div class="empty-state">Could not load the usage log — ${esc(e.message || 'server error')}</div>`;
+    view.innerHTML = `<div class="empty-state">Could not load the usage log - ${esc(e.message || 'server error')}</div>`;
   }
 }
 
 function fmtDur(s) {
-  if (s === undefined || s === null) return '—';
+  if (s === undefined || s === null) return '-';
   if (s < 60) return s + 's';
   const m = Math.floor(s / 60);
   return m < 60 ? `${m}m ${s % 60}s` : `${Math.floor(m / 60)}h ${m % 60}m`;
@@ -4003,7 +4003,7 @@ function renderUsageLog() {
     <select onchange="setUsageConfigFilter(this.value)">
       <option value="" ${usageConfigFilter === '' ? 'selected' : ''}>All</option>
       ${[...cfgSeen].sort((a, b) => a[1].localeCompare(b[1])).map(([id, code]) => `<option value="${id}" ${usageConfigFilter === id ? 'selected' : ''}>${esc(code)}</option>`).join('')}
-      <option value="__none" ${usageConfigFilter === '__none' ? 'selected' : ''}>— no configuration —</option>
+      <option value="__none" ${usageConfigFilter === '__none' ? 'selected' : ''}>- no configuration -</option>
     </select></div>`;
   const shown = usageLogData.filter(u =>
     usageConfigFilter === '' ? true : usageConfigFilter === '__none' ? !u.configId : u.configId === usageConfigFilter);
@@ -4014,7 +4014,7 @@ function renderUsageLog() {
     groups.get(key).push(u);
   }
   const OUT = { completed: '<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-check"/></svg>', failed: '<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-error"/></svg>', left: '↷', open: '⏳' };
-  const valBadge = v => !v ? '' : `<span class="ul-val ${v.result}" ${v.overridden ? 'title="Validation failed — operator chose to proceed"' : ''}>${v.mode === 'system' ? '' : ''} ${v.result.toUpperCase()}${v.score !== undefined ? ' ' + v.score.toFixed(2) : ''}${v.overridden ? ' · proceeded' : ''}</span>`;
+  const valBadge = v => !v ? '' : `<span class="ul-val ${v.result}" ${v.overridden ? 'title="Validation failed - operator chose to proceed"' : ''}>${v.mode === 'system' ? '' : ''} ${v.result.toUpperCase()}${v.score !== undefined ? ' ' + v.score.toFixed(2) : ''}${v.overridden ? ' · proceeded' : ''}</span>`;
 
   let html = filterBar + '<table class="usage-table"><thead><tr>' +
     '<th></th><th>Production #</th><th>Configuration · Chamber</th><th>Guide</th><th>Operator</th><th>Started</th>' +
@@ -4032,7 +4032,7 @@ function renderUsageLog() {
       const failed = steps.filter(e => e.outcome === 'failed').length;
       html += `<tr class="ul-row" onclick="const d=document.getElementById('${id}');d.classList.toggle('open');this.classList.toggle('open');if(d.classList.contains('open'))loadEvidenceImagesIn(d)">` +
         `<td class="ul-caret">▸</td>` +
-        `<td>${esc(u.workContext || '—')}</td>` +
+        `<td>${esc(u.workContext || '-')}</td>` +
         `<td>${u.configCode ? `<span class="badge badge-green" style="font-size:0.78rem">${esc(u.configCode)}</span> ` : ''}<span class="ul-dim">${esc(u.anchorName || '')}</span></td>` +
         `<td><strong>${esc(u.guideName)}</strong></td>` +
         `<td>${esc(u.operatorName)}${u.operatorEmployeeId ? ' <span class="ul-dim">· ' + esc(u.operatorEmployeeId) + '</span>' : ''}</td>` +
@@ -4041,7 +4041,7 @@ function renderUsageLog() {
         `<td class="num">${steps.length}</td>` +
         `<td class="num ul-ok">${done}</td>` +
         `<td class="num ul-bad">${failed || ''}</td>` +
-        `<td>${u.completed ? ' Signed off' : '⏳ Open'}${u.drift ? ` <span class="ul-val fail" title="Re-localization disagreed with the author's reference pose by ${u.drift.distanceM.toFixed(2)} m / ${Math.round(u.drift.angleDeg)}° — QR or equipment may have moved; steps should be re-placed"> drift</span>` : ''}</td></tr>`;
+        `<td>${u.completed ? ' Signed off' : '⏳ Open'}${u.drift ? ` <span class="ul-val fail" title="Re-localization disagreed with the author's reference pose by ${u.drift.distanceM.toFixed(2)} m / ${Math.round(u.drift.angleDeg)}° - QR or equipment may have moved; steps should be re-placed"> drift</span>` : ''}</td></tr>`;
       const stepRows = steps.map(e => `<tr>` +
         `<td class="num">${e.stepIndex !== undefined ? e.stepIndex + 1 : '·'}</td>` +
         `<td>${new Date(e.enteredAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</td>` +
@@ -4063,10 +4063,10 @@ function renderUsageLog() {
   view.innerHTML = html;
 }
 
-// C1/C2: compact cells for the usage-log step rows. Numbers only — the
+// C1/C2: compact cells for the usage-log step rows. Numbers only - the
 // observation contract carries no images or free text.
 function obsCell(o) {
-  if (!o || !o.samples) return '<span class="ul-dim">—</span>';
+  if (!o || !o.samples) return '<span class="ul-dim">-</span>';
   const pct = Math.round((o.onTargetRatio || 0) * 100);
   const col = pct >= 60 ? 'var(--green)' : pct >= 30 ? 'var(--amber, var(--ax-yellow))' : 'var(--red)';
   const bits = [`<span style="color:${col}" title="share of ${o.samples} samples with the step target in view">${pct}% on target</span>`];
@@ -4078,7 +4078,7 @@ function obsCell(o) {
   return `<span style="font-size:11px;white-space:nowrap">${bits.join(' · ')}</span>`;
 }
 function hintsCell(h) {
-  if (!Array.isArray(h) || !h.length) return '<span class="ul-dim">—</span>';
+  if (!Array.isArray(h) || !h.length) return '<span class="ul-dim">-</span>';
   const LABEL = { dwell: 'taking longer', 'attention-off': 'looked away', 'wrong-part': 'wrong part', 'look-away': 'viewpoint', 'validate-retry': 'validation' };
   return h.map(x => `<span class="badge" style="font-size:10px${x.delivery === 'muted' ? ';opacity:.45;text-decoration:line-through' : ''}" title="${esc(x.via || '')} · ${x.delivery === 'muted' ? 'muted (' + esc(x.muteScope || '?') + ')' : (x.delivery || 'queued')} · ${esc(x.ts || '')}"> ${esc(LABEL[x.signal] || x.signal)}</span>`).join(' ');
 }
@@ -4091,7 +4091,7 @@ async function loadARGuideSessions() {
   const list = document.getElementById('ar-guides-list');
   list.innerHTML = '<p style="color:var(--muted);padding:20px 0;text-align:center">Loading…</p>';
   try {
-    // apiFetch already resolves res.json() — result is the parsed object directly.
+    // apiFetch already resolves res.json() - result is the parsed object directly.
     const body = await apiFetch('/guide-sessions?all=true');
     arGuideSessions = body.data || [];
     renderARGuideSessions();
@@ -4123,7 +4123,7 @@ function renderARGuideSessions() {
   }
 
   let html = '';
-  // Most recent first at every level — the anchor / guide with the newest
+  // Most recent first at every level - the anchor / guide with the newest
   // completion leads, same as the Usage Log and Intelligence.
   const latest = sessions => sessions.reduce((m, x) => (x.completedAt > m ? x.completedAt : m), '');
   const latestOfGuides = guides => Object.values(guides).reduce((m, ss) => { const l = latest(ss); return l > m ? l : m; }, '');
@@ -4229,7 +4229,7 @@ function exportARGuidesCSV() {
 }
 
 
-// ── 3D Models — Global Library ────────────────────────────────────────────────
+// ── 3D Models - Global Library ────────────────────────────────────────────────
 
 let modelsData        = [];
 const modelPollTimers = {};   // modelId → intervalId
@@ -4313,7 +4313,7 @@ function renderModels(models) {
 
   // USDZ badge: shown for models that have a GLB (need browser conversion) or were uploaded as USDZ.
   const usdzBadge = (m) => {
-    if (!m.hasGLB && !m.hasUSDZ) return '';   // CAD not yet converted to GLB — skip
+    if (!m.hasGLB && !m.hasUSDZ) return '';   // CAD not yet converted to GLB - skip
     // Infer status for legacy records that predate usdzStatus field
     const s = m.usdzStatus ?? (m.hasUSDZ ? 'ready' : m.hasGLB ? 'pending' : null);
     if (!s) return '';
@@ -4416,7 +4416,7 @@ async function uploadModel(file) {
       progressWrap.style.display = 'none';
       if (xhr.status >= 200 && xhr.status < 300) {
         const m = JSON.parse(xhr.responseText).data ?? JSON.parse(xhr.responseText);
-        toast(`Uploaded "${m.name}" — ${m.status === 'processing' ? 'CAD conversion queued' : 'ready'}.`);
+        toast(`Uploaded "${m.name}" - ${m.status === 'processing' ? 'CAD conversion queued' : 'ready'}.`);
         await loadModels();
         if (m.status === 'processing') pollModelStatus(m.id);
         // If a GLB was uploaded and USDZ is pending, kick off browser-side conversion now.
@@ -4491,12 +4491,12 @@ async function saveDefaultScale() {
   }
 }
 
-/** Rename a model — display name only; files, kit assignments and ids untouched. */
+/** Rename a model - display name only; files, kit assignments and ids untouched. */
 async function renameModel(modelId, currentName) {
   const input = prompt('New model name:', currentName);
   if (input === null) return;                       // cancelled
   const name = input.trim();
-  if (!name || name === currentName) return;        // empty or unchanged — no-op
+  if (!name || name === currentName) return;        // empty or unchanged - no-op
   try {
     await apiFetch(`/models/${encodeURIComponent(modelId)}`, {
       method: 'PATCH',
@@ -4638,7 +4638,7 @@ async function deleteAllARGuideSessions() {
 function openImportGuideModal() {
   // Populate anchor dropdown from the already-loaded anchors list
   const sel = document.getElementById('import-anchor-select');
-  sel.innerHTML = '<option value="">— select anchor —</option>';
+  sel.innerHTML = '<option value="">- select anchor -</option>';
   const anchors = allAnchors || [];
   for (const a of anchors) {
     const opt = document.createElement('option');
@@ -4685,7 +4685,7 @@ function closeImportGuideModal() {
 // ── Parse state: the payload waiting to be imported (from file or paste) ─────
 let importParsedPayload = null;
 
-/** SheetJS is only needed for .xlsx — lazy-load it on first use. */
+/** SheetJS is only needed for .xlsx - lazy-load it on first use. */
 function ensureSheetJS() {
   return new Promise((resolve, reject) => {
     if (window.XLSX) return resolve();
@@ -4748,7 +4748,7 @@ function parseGuideXlsx(arrayBuffer, fileName) {
   return { name, steps };
 }
 
-/** Preview the parsed payload with warnings BEFORE anything is imported —
+/** Preview the parsed payload with warnings BEFORE anything is imported -
  *  the moment to catch a wrong file, not after. */
 function renderImportPreview(payload, sourceLabel) {
   importParsedPayload = null;
@@ -4787,7 +4787,7 @@ async function importGuideFileChosen(event) {
   importCortonaFile = null;
   document.getElementById('import-cortona-strict-row').style.display = 'none';
   if (/\.(htm|html|zip)$/i.test(file.name)) {
-    // Cortona3D RapidManual publication — parsed on the server (VRML97 + PROTOs).
+    // Cortona3D RapidManual publication - parsed on the server (VRML97 + PROTOs).
     importCortonaFile = file;
     importParsedPayload = null;
     const box = document.getElementById('import-preview');
@@ -4818,7 +4818,7 @@ function importGuideJsonTyped() {
   const raw = document.getElementById('import-payload-json').value.trim();
   if (!raw) return;
   try { renderImportPreview(JSON.parse(raw), 'pasted JSON'); }
-  catch { /* keep typing — preview updates when the JSON becomes valid */ }
+  catch { /* keep typing - preview updates when the JSON becomes valid */ }
 }
 
 async function downloadGuideXlsxTemplate() {
@@ -4857,8 +4857,8 @@ async function submitImportCortona(anchorId, createdBy) {
     closeImportGuideModal();
     importCortonaFile = null;
     const cmds = Object.values(log.procedure.commands || {}).reduce((a, b) => a + b, 0);
-    toast(`Imported "${guide.name}" — ${steps.length} steps, ${cmds} presentation commands, ${log.scene.meshes} meshes. ` +
-          (log.warnings.length ? `${log.warnings.length} warning(s) — see log.` : 'No warnings.'), 5000);
+    toast(`Imported "${guide.name}" - ${steps.length} steps, ${cmds} presentation commands, ${log.scene.meshes} meshes. ` +
+          (log.warnings.length ? `${log.warnings.length} warning(s) - see log.` : 'No warnings.'), 5000);
     showCortonaImportLog();
     location.hash = '#content/guides';
     await loadGuideLibrary();
@@ -4880,12 +4880,12 @@ async function submitImportCortona(anchorId, createdBy) {
 }
 
 let lastCortonaImportLog = null;
-/** Content-free import log (counts, PROTO names, warnings) — safe to copy into a ticket or send to the AppliedX team. */
+/** Content-free import log (counts, PROTO names, warnings) - safe to copy into a ticket or send to the AppliedX team. */
 function showCortonaImportLog() {
   if (!lastCortonaImportLog) return;
   const L = lastCortonaImportLog.log;
   const lines = [
-    `Cortona3D import log — ${new Date().toISOString()}`,
+    `Cortona3D import log - ${new Date().toISOString()}`,
     `guide ${lastCortonaImportLog.guideId} · ${lastCortonaImportLog.steps} steps · model ${lastCortonaImportLog.modelId} (${(lastCortonaImportLog.glbBytes/1048576).toFixed(2)} MB GLB)`,
     `source: ${L.source.kind} ${(L.source.bytes/1048576).toFixed(1)} MB · bundle entries ${L.bundle.entries} (${L.bundle.inventory.map(e => e.kind).join(', ')}) · interactivity ${L.bundle.hasInteractivity} · rwi ${L.bundle.hasRwi} · svg ${L.bundle.svgs}`,
     `vrml: ${L.vrml.header} · ${L.vrml.protosDeclared} PROTOs declared · ${L.vrml.routes} ROUTEs`,
@@ -4895,8 +4895,8 @@ function showCortonaImportLog() {
     `text: ${L.text.stepsWithTitle} titled · ${L.text.stepsWithText} with body · ${L.text.fromInteractivity} from interactivity.xml`,
     `parts: DocItems ${L.parts.docItems} · rwi BOM rows ${L.parts.rwiBomRows} · nodes with objectID ${L.parts.nodesWithObjectId} · with part number ${L.parts.nodesWithPartNumber}`,
     `protos handled: ${L.protos.handled.join(', ')}`,
-    `protos ignored: ${L.protos.ignored.join(', ') || '—'}`,
-    `protos UNKNOWN: ${L.protos.unknown.join(', ') || '—'}`,
+    `protos ignored: ${L.protos.ignored.join(', ') || '-'}`,
+    `protos UNKNOWN: ${L.protos.unknown.join(', ') || '-'}`,
     `publish: ${JSON.stringify(L.publish)}`,
     `warnings: ${L.warnings.length ? '\n  - ' + L.warnings.join('\n  - ') : 'none'}`,
   ];
@@ -4908,7 +4908,7 @@ function showCortonaImportLog() {
     m.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px 26px;width:min(760px,94vw);max-height:88vh;overflow:auto;position:relative">
       <button onclick="document.getElementById('cortona-log-modal').style.display='none'" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-close"/></svg></button>
       <h3 style="margin:0 0 6px;font-size:1rem;font-weight:700">Cortona3D import log</h3>
-      <p style="margin:0 0 10px;font-size:0.78rem;color:var(--muted)">Content-free: counts, structure and warnings only — no step text or part numbers. Safe to share with the AppliedX team.</p>
+      <p style="margin:0 0 10px;font-size:0.78rem;color:var(--muted)">Content-free: counts, structure and warnings only - no step text or part numbers. Safe to share with the AppliedX team.</p>
       <pre id="cortona-log-pre" style="white-space:pre-wrap;font-size:0.78rem;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px;max-height:56vh;overflow:auto"></pre>
       <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">
         <button class="btn btn-ghost btn-sm" onclick="navigator.clipboard.writeText(document.getElementById('cortona-log-pre').textContent).then(()=>toast('Log copied'))">Copy</button>
@@ -4931,10 +4931,10 @@ async function submitImportGuide() {
   const createdBy  = document.getElementById('import-author-name').value.trim();
   errEl.style.display = 'none';
 
-  if (!anchorId)  { errEl.textContent = 'Please select an anchor — the guide is performed on a physical asset.'; errEl.style.display = 'block'; return; }
+  if (!anchorId)  { errEl.textContent = 'Please select an anchor - the guide is performed on a physical asset.'; errEl.style.display = 'block'; return; }
   if (!createdBy) { errEl.textContent = 'Author name is required.'; errEl.style.display = 'block'; return; }
   if (importCortonaFile) { localStorage.setItem('sibAuthorName', createdBy); await submitImportCortona(anchorId, createdBy); return; }
-  if (!importParsedPayload) { errEl.textContent = 'Choose a file or paste JSON first — the preview must show "Ready to import".'; errEl.style.display = 'block'; return; }
+  if (!importParsedPayload) { errEl.textContent = 'Choose a file or paste JSON first - the preview must show "Ready to import".'; errEl.style.display = 'block'; return; }
   localStorage.setItem('sibAuthorName', createdBy);
 
   try {
@@ -4946,7 +4946,7 @@ async function submitImportGuide() {
     const { guide, steps, imageErrors } = result.data;
     closeImportGuideModal();
     importParsedPayload = null;
-    let msg = `Imported "${guide.name}" — ${steps.length} step${steps.length !== 1 ? 's' : ''}.`;
+    let msg = `Imported "${guide.name}" - ${steps.length} step${steps.length !== 1 ? 's' : ''}.`;
     if (imageErrors.length) msg += ` (${imageErrors.length} image(s) failed to download)`;
     toast(msg, imageErrors.length ? 4000 : 2500);
     // The fix for "imported it, can't see it": go straight to the guide.
@@ -5018,7 +5018,7 @@ async function downloadBackup(scope) {
     a.download = name;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 30000);
-    bkStatus(`<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-check"/></svg> ${name} — ${(blob.size / 1048576).toFixed(1)} MB saved to your Downloads.`, 'var(--ax-green)');
+    bkStatus(`<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-check"/></svg> ${name} - ${(blob.size / 1048576).toFixed(1)} MB saved to your Downloads.`, 'var(--ax-green)');
   } catch (e) {
     bkStatus(`<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-close"/></svg> Backup failed: ${e.message}`, 'var(--red)');
   } finally {
@@ -5027,7 +5027,7 @@ async function downloadBackup(scope) {
   }
 }
 
-/** Ops log — admin & destructive actions, Render-log style. */
+/** Ops log - admin & destructive actions, Render-log style. */
 /* ── Device logs (QA logging) ────────────────────────────────────────────── */
 let qlLines = [], qlTail = null;
 const QL_COLORS = { debug: 'var(--muted)', info: 'var(--text)', warn: 'var(--ax-orange)', error: 'var(--red)' };
@@ -5056,7 +5056,7 @@ async function qaLogsOpen() {
       `<option value="${esc(d.id)}">${esc(d.id)}${d.employeeId ? ' · ' + esc(d.employeeId) : ''}${d.model ? ' · ' + esc(d.model) : ''}${d.qaMode ? ' <svg class="ax-icon"><use href="/portal/brand/icons.svg#i-logs"/></svg>' : ''}</option>`).join('');
     sel.value = cur;
     document.getElementById('ql-devices').textContent = (j.data || []).map(d =>
-      `${d.id}${d.name ? ' (' + d.name + ')' : ''} · ${d.app || '?'} · seen ${new Date(d.lastSeen).toLocaleString()}${d.qaMode ? ' · QA on' : ''}`).join(' |   ') || 'No device has reported yet — set the SIB URL in the app; lines arrive within seconds.';
+      `${d.id}${d.name ? ' (' + d.name + ')' : ''} · ${d.app || '?'} · seen ${new Date(d.lastSeen).toLocaleString()}${d.qaMode ? ' · QA on' : ''}`).join(' |   ') || 'No device has reported yet - set the SIB URL in the app; lines arrive within seconds.';
   } catch (e) { document.getElementById('ql-devices').textContent = 'Device list unavailable: ' + e.message; }
   qaLogsLoad();
 }
@@ -5094,7 +5094,7 @@ function qaLogsTailToggle() {
 }
 async function qaLogsCopy() {
   const last = qlLines.slice(-200).map(l => `${l.ts} ${l.level.toUpperCase().padEnd(5)} [${l.device}${l.emp ? '/' + l.emp : ''}] ${l.module}: ${l.msg}${l.ctx ? ' ' + Object.entries(l.ctx).map(([k, v]) => `${k}=${v}`).join(' ') : ''}`).join('\n');
-  try { await navigator.clipboard.writeText(last); toast(`Copied ${Math.min(200, qlLines.length)} lines`); } catch { toast('Clipboard blocked — use Download'); }
+  try { await navigator.clipboard.writeText(last); toast(`Copied ${Math.min(200, qlLines.length)} lines`); } catch { toast('Clipboard blocked - use Download'); }
 }
 function qaLogsDownload() {
   const p = qaLogsParams(); p.set('limit', '5000');
@@ -5119,7 +5119,7 @@ async function loadOpsLog() {
       return `<div><span style="color:var(--muted)">${esc(t)}</span> ` +
         `<span style="color:${col}">${esc(ev.outcome.toUpperCase())}</span> ` +
         `${esc(ev.method)} ${esc(ev.path)}` +
-        `${ev.detail ? ' — ' + esc(ev.detail) : ''}` +
+        `${ev.detail ? ' - ' + esc(ev.detail) : ''}` +
         `<span style="color:var(--muted)"> · ${esc(ev.ip || '')}</span></div>`;
     }).join('');
   } catch (e) { el.textContent = 'Ops log unavailable: ' + e.message; }
@@ -5130,7 +5130,7 @@ async function loadOpsLog() {
  * nextOnSuccess (or the next sequence number), Failed follows nextOnFailure
  * (or stays put, like the operator retrying), requires-gates redirect, and
  * the exit summary lists what a happy-path review never exercised.
- * Purely client-side — nothing is saved or sent. */
+ * Purely client-side - nothing is saved or sent. */
 let gp = null;                       // preview state
 const gpImgCache = {};               // mediaPath → object URL
 
@@ -5151,12 +5151,12 @@ async function openGuidePreview(guideId) {
     const banner = document.getElementById('gp-banner');
     if (guide.published && placed === steps.length) {
       banner.className = 'gp-banner ok';
-      banner.textContent = `Published — live for operators · ${steps.length} steps, all placed`;
+      banner.textContent = `Published - live for operators · ${steps.length} steps, all placed`;
     } else {
       banner.className = 'gp-banner warn';
       banner.textContent = `${placed} of ${steps.length} steps placed · ` +
         (guide.published ? 'published' : 'DRAFT') +
-        ` — operators can't run this guide yet`;
+        ` - operators can't run this guide yet`;
     }
     document.getElementById('gp-modal').classList.add('open');
     gpEnter(0);
@@ -5179,7 +5179,7 @@ function gpEnter(idx, note) {
     if (req && reqIdx !== -1) {
       gp.idx = reqIdx;
       gp.note = `Blocked: "${step.title || 'Step ' + step.sequenceNumber}" requires ` +
-        `"${req.title || 'Step ' + req.sequenceNumber}" first — jumped there.`;
+        `"${req.title || 'Step ' + req.sequenceNumber}" first - jumped there.`;
       gp.visited.add(req.id);
       gpRender();
       return;
@@ -5214,10 +5214,10 @@ function gpFail() {
   if (step.nextOnFailure && gp.byId[step.nextOnFailure]) {
     gp.failTaken.add(step.id);
     gpEnter(gp.steps.indexOf(gp.byId[step.nextOnFailure]),
-      '↩ Recovery branch taken — this is what a failure routes to.');
+      '↩ Recovery branch taken - this is what a failure routes to.');
     return;
   }
-  gp.note = '<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-close"/></svg> Failed — no recovery branch, so the operator retries this step.';
+  gp.note = '<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-close"/></svg> Failed - no recovery branch, so the operator retries this step.';
   gpRender();
 }
 
@@ -5314,7 +5314,7 @@ function gpPartsHtml(step) {
     if (n.color) bits.push('highlight');
     if (n.effect === 'flash') bits.push('flash');
     const t = n.delaySec !== undefined ? `<span style="color:var(--muted);font-variant-numeric:tabular-nums;min-width:52px">${n.delaySec.toFixed(1)}s</span>` : '';
-    return `<div style="display:flex;justify-content:space-between;gap:8px">${t}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${label(n)}</span><span style="color:var(--muted);white-space:nowrap">${bits.join(' · ') || '—'}</span></div>`;
+    return `<div style="display:flex;justify-content:space-between;gap:8px">${t}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1">${label(n)}</span><span style="color:var(--muted);white-space:nowrap">${bits.join(' · ') || '-'}</span></div>`;
   }).join('');
   const more = nodes.length > 12 ? `<div style="color:var(--muted)">… +${nodes.length - 12} more</div>` : '';
   const view = step.view ? `<div style="color:var(--muted)"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-camera"/></svg> suggested view${step.durationSec ? ` · ${step.durationSec}s` : ''}</div>` : (step.durationSec ? `<div style="color:var(--muted)">⏱ ${step.durationSec}s</div>` : '');
@@ -5339,7 +5339,7 @@ async function gpLoadImage(mediaPath) {
 /** Open (or create) the guide's procedure map and jump into the Designer.
  * Round-trip doctrine: the canvas edits CONTENT and STRUCTURE; AR placement
  * always survives a re-sync. `stale` means the guide changed elsewhere since
- * the map last agreed with it — re-syncing from the map would overwrite that,
+ * the map last agreed with it - re-syncing from the map would overwrite that,
  * so the user must acknowledge before opening. */
 // D (2026.4.46): the guide is the source of truth; the map is a view that
 // keeps its layout. Opening refreshes the map from the guide when the guide
@@ -5378,9 +5378,9 @@ async function editGuideInDesigner(guideId, mode) {
       const bits = [];
       if (sm.added)   bits.push(`+${sm.added} step${sm.added !== 1 ? 's' : ''}${sm.addedTitles?.length ? ` (${sm.addedTitles.slice(0, 3).join(', ')}${sm.addedTitles.length > 3 ? '…' : ''})` : ''}`);
       if (sm.removed) bits.push(`−${sm.removed} removed`);
-      toast(`Updated from the guide${bits.length ? ' · ' + bits.join(' · ') : ''} — opening the Designer…`, 3500);
+      toast(`Updated from the guide${bits.length ? ' · ' + bits.join(' · ') : ''} - opening the Designer…`, 3500);
     } else {
-      toast(d.created ? `Created "${d.mapName}" — opening the Designer…` : (d.stale ? 'Opening as-is — the guide has newer edits.' : 'Opening the linked procedure map…'));
+      toast(d.created ? `Created "${d.mapName}" - opening the Designer…` : (d.stale ? 'Opening as-is - the guide has newer edits.' : 'Opening the linked procedure map…'));
     }
     window.open(`/roadmap?map=${encodeURIComponent(d.mapId)}`, '_blank');
   } catch (e) {
@@ -5389,7 +5389,7 @@ async function editGuideInDesigner(guideId, mode) {
 }
 
 /** Move a guide (and its steps) to another anchor. Placement clears and a
- *  published guide unpublishes — the server explains why in its own docs. */
+ *  published guide unpublishes - the server explains why in its own docs. */
 async function moveGuideToAnchor(guideId, fromAnchorId) {
   const others = (allAnchors || []).filter(a => a.id !== fromAnchorId);
   if (!others.length) { toast('No other anchors to move to.'); return; }
@@ -5402,18 +5402,18 @@ async function moveGuideToAnchor(guideId, fromAnchorId) {
       method: 'PATCH',
       body: JSON.stringify({ anchorId: others[idx].id }),
     });
-    toast(`Moved to ${others[idx].assetId || others[idx].id} — steps need AR placement.`);
+    toast(`Moved to ${others[idx].assetId || others[idx].id} - steps need AR placement.`);
     loadGuideLibrary();
   } catch (e) { toast(`Move failed: ${e.message}`); }
 }
 
 // U2 (2026.4.45): copy a guide onto another anchor (or duplicate on the same
 // one). Same prompt-style picker as Move; the copy is a draft with unplaced
-// steps and no validation training — see sib/src/guides/copy.ts.
+// steps and no validation training - see sib/src/guides/copy.ts.
 async function copyGuideToAnchor(guideId, fromAnchorId) {
   const list = (allAnchors || []).slice().sort((a, b) => (a.id === fromAnchorId ? -1 : b.id === fromAnchorId ? 1 : 0));
   if (!list.length) { toast('No anchors available.'); return; }
-  const listing = list.map((a, i) => `${i + 1}. ${a.assetId || a.id}${a.id === fromAnchorId ? ' (this anchor — duplicate)' : ''}`).join('\n');
+  const listing = list.map((a, i) => `${i + 1}. ${a.assetId || a.id}${a.id === fromAnchorId ? ' (this anchor - duplicate)' : ''}`).join('\n');
   const pick = prompt(`Copy guide to which anchor?\n\n${listing}\n\nEnter a number (1–${list.length}).\nThe copy is a draft: steps must be placed in AR on that tool and validation retrained.`);
   const idx = parseInt(pick, 10) - 1;
   if (!Number.isInteger(idx) || idx < 0 || idx >= list.length) return;
@@ -5423,7 +5423,7 @@ async function copyGuideToAnchor(guideId, fromAnchorId) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ anchorId: list[idx].id, createdBy: (UAM_USER && UAM_USER.name) || 'portal' }),
     });
-    toast(`Copied "${r.data.name}" (${r.data.stepCount} steps) to ${list[idx].assetId || list[idx].id} — place its steps in AR.`);
+    toast(`Copied "${r.data.name}" (${r.data.stepCount} steps) to ${list[idx].assetId || list[idx].id} - place its steps in AR.`);
     loadGuideLibrary();
   } catch (e) { toast(`Copy failed: ${e.message}`); }
 }
@@ -5452,7 +5452,7 @@ async function openShareModal(guideId) {
     ]);
     const current = new Set(gRes.data.sharedWith || []);
     if (!tRes.data.length) {
-      list.innerHTML = '<p style="color:var(--muted);padding:12px;font-size:0.8rem">No technicians in the access list yet — add them on the <svg class="ax-icon"><use href="/portal/brand/icons.svg#i-wrench"/></svg> Admin page first.</p>';
+      list.innerHTML = '<p style="color:var(--muted);padding:12px;font-size:0.8rem">No technicians in the access list yet - add them on the <svg class="ax-icon"><use href="/portal/brand/icons.svg#i-wrench"/></svg> Admin page first.</p>';
       return;
     }
     list.innerHTML = tRes.data.map(t => ` <label style="display:flex;align-items:center;gap:10px;padding:8px 2px;border-bottom:1px solid var(--border);cursor:pointer">
@@ -5585,7 +5585,7 @@ function renderGuideLibrary() {
       // from the chamber configuration); every CAD step follows it.
       const asmBadge   = guide.assembly
         ? (guide.assembly.pose
-            ? `<span class="gl-badge" style="background:var(--ax-ok-fill);color:var(--green)" title="Assembly placed (${esc(guide.assembly.pose.source)})"> Assembly placed · ${esc(guide.assembly.pose.source)}</span>` : `<span class="gl-badge gl-badge-warn" title="Open the guide on the iPad and tap once to place the assembly — all steps follow"> Place assembly on device</span>`)
+            ? `<span class="gl-badge" style="background:var(--ax-ok-fill);color:var(--green)" title="Assembly placed (${esc(guide.assembly.pose.source)})"> Assembly placed · ${esc(guide.assembly.pose.source)}</span>` : `<span class="gl-badge gl-badge-warn" title="Open the guide on the iPad and tap once to place the assembly - all steps follow"> Place assembly on device</span>`)
         : '';
 
       const pubLabel   = guide.published ? 'Unpublish' : 'Publish';
@@ -5596,17 +5596,17 @@ function renderGuideLibrary() {
           <span class="gl-guide-name" title="${esc(guide.name)}"> ${esc(guide.name)}</span>
           ${pubBadge}${guide.ciMode === 'demo' ? '<span class="gl-badge gl-badge-warn" title="Contextual intelligence in demo mode: floors only, no baselines, no retirement">Demo mode</span>' : ''}${asmBadge}${warnBadge}${placePill}
           <button class="btn btn-ghost btn-sm" style="${pubColor}" onclick="togglePublishGuide('${guide.id}','${anchorId}',${guide.published})">${pubLabel}</button>
-          <button class="btn btn-ghost btn-sm" style="${guide.ciMode === 'demo' ? 'color:var(--ax-orange)' : ''}" title="${guide.ciMode === 'demo' ? 'Hints fire at the floors on every run (demo / training). Tap to return to normal.' : 'Demo / training mode: hints fire at the floors on every run — no baselines, no retirement'}" onclick="toggleGuideCiMode('${guide.id}','${anchorId}','${guide.ciMode || 'normal'}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-intelligence"/></svg> ${guide.ciMode === 'demo' ? 'Demo on' : 'Demo'}</button>
+          <button class="btn btn-ghost btn-sm" style="${guide.ciMode === 'demo' ? 'color:var(--ax-orange)' : ''}" title="${guide.ciMode === 'demo' ? 'Hints fire at the floors on every run (demo / training). Tap to return to normal.' : 'Demo / training mode: hints fire at the floors on every run - no baselines, no retirement'}" onclick="toggleGuideCiMode('${guide.id}','${anchorId}','${guide.ciMode || 'normal'}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-intelligence"/></svg> ${guide.ciMode === 'demo' ? 'Demo on' : 'Demo'}</button>
           <button class="btn btn-ghost btn-sm"  onclick="toggleGuideSteps('${guide.id}','${anchorId}')" id="gl-toggle-${guide.id}">▶ Steps</button>
           <button class="btn btn-ghost btn-sm" style="color:var(--ax-indigo)" onclick="toggleGuideGraph('${guide.id}','${anchorId}')" id="gl-graph-toggle-${guide.id}"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-graph"/></svg> Graph</button>
-          <button class="btn btn-ghost btn-sm" style="color:var(--ax-green)" title="Walk the step sequence as the operator will experience it — no headset needed" onclick="openGuidePreview('${guide.id}')">▶ Preview</button>
-          <a class="btn btn-ghost btn-sm" style="color:var(--ax-indigo);text-decoration:none" title="Run this guide in a WebXR browser (headset or Android) or as a desktop 3D preview — same session records as the iPad" href="/xr?guide=${guide.id}" target="_blank" rel="noopener"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-xr"/></svg> XR kit</a>
+          <button class="btn btn-ghost btn-sm" style="color:var(--ax-green)" title="Walk the step sequence as the operator will experience it - no headset needed" onclick="openGuidePreview('${guide.id}')">▶ Preview</button>
+          <a class="btn btn-ghost btn-sm" style="color:var(--ax-indigo);text-decoration:none" title="Run this guide in a WebXR browser (headset or Android) or as a desktop 3D preview - same session records as the iPad" href="/xr?guide=${guide.id}" target="_blank" rel="noopener"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-xr"/></svg> XR kit</a>
           <button class="btn btn-ghost btn-sm"  title="Edit this guide visually in the Procedure Designer" onclick="editGuideInDesigner('${guide.id}')"> Edit in Designer</button>
           <button class="btn btn-ghost btn-sm" style="color:var(--ax-cyan)" title="Choose which technicians can see and run this guide" onclick="openShareModal('${guide.id}','${anchorId}')"> Share${(guide.sharedWith && guide.sharedWith.length) ? ` (${guide.sharedWith.length})` : ''}</button>
           <button class="btn btn-ghost btn-sm"  title="Move to another anchor (steps become unplaced)" onclick="moveGuideToAnchor('${guide.id}','${anchorId}')">⇄ Move</button>
           <button class="btn btn-ghost btn-sm"  title="Copy to another anchor as a draft (steps unplaced, training not copied)" onclick="copyGuideToAnchor('${guide.id}','${anchorId}')">⧉ Copy</button>
           ${siblings.length ? `<button class="btn btn-ghost btn-sm" style="color:var(--ax-cyan)" title="Copy this guide to every other chamber of ${esc(cfg.code)} (${siblings.length}) as drafts" onclick="copyGuideToConfigChambers('${guide.id}','${anchorId}','${cfg.id}')">⧉⧉ All ${siblings.length}</button>` : ''}
-          <button class="btn btn-ghost btn-sm" style="color:var(--ax-orange)" title="Delete this guide's world map and unplace every step — the author re-places them in a fresh map on iOS" onclick="resetGuideMap('${guide.id}','${anchorId}')"> Reset map</button>
+          <button class="btn btn-ghost btn-sm" style="color:var(--ax-orange)" title="Delete this guide's world map and unplace every step - the author re-places them in a fresh map on iOS" onclick="resetGuideMap('${guide.id}','${anchorId}')"> Reset map</button>
           <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteGuideFromLibrary('${guide.id}','${anchorId}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg></button>
         </div>`;
 
@@ -5638,7 +5638,7 @@ function renderGuideLibrary() {
 }
 
 // D: push one guide to every other chamber of its configuration (U2 copy per
-// chamber — drafts, steps unplaced, training not copied). Skips chambers that
+// chamber - drafts, steps unplaced, training not copied). Skips chambers that
 // already have a guide of the same name so a re-run never duplicates.
 async function copyGuideToConfigChambers(guideId, fromAnchorId, configId) {
   const targets = allAnchors.filter(a => a.configId === configId && a.id !== fromAnchorId
@@ -5649,7 +5649,7 @@ async function copyGuideToConfigChambers(guideId, fromAnchorId, configId) {
   const todo = targets.filter(a => !(guideLibraryData[a.id]?.guides || []).some(g => g.name === name));
   const skipped = targets.length - todo.length;
   if (!todo.length) { toast(`Every chamber already has "${name}".`); return; }
-  if (!confirm(`Copy "${name}" to ${todo.length} chamber(s)${skipped ? ` (${skipped} already have it)` : ''}?\nEach copy is a draft — place its steps in AR on that chamber.`)) return;
+  if (!confirm(`Copy "${name}" to ${todo.length} chamber(s)${skipped ? ` (${skipped} already have it)` : ''}?\nEach copy is a draft - place its steps in AR on that chamber.`)) return;
   let ok = 0, fail = 0;
   for (const a of todo) {
     try {
@@ -5718,7 +5718,7 @@ function renderStepsInCard(guideId, anchorId) {
     const branchTag  = (step.nextOnSuccess || step.nextOnFailure)
       ? `<span class="gl-step-tag gl-step-branch">⇒ Branch</span>` : '';
     const title      = step.title || `Step ${step.sequenceNumber}`;
-    // A2 (2026.4.45): quick ghost-opacity control for steps with a 3D model —
+    // A2 (2026.4.45): quick ghost-opacity control for steps with a 3D model -
     // adjust here without opening the app. Debounced PATCH on input.
     const opacityCtl = step.modelId
       ? `<span class="gl-opacity" onclick="event.stopPropagation()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-ghost"/></svg>
@@ -5730,7 +5730,7 @@ function renderStepsInCard(guideId, anchorId) {
     const slotCount  = Array.isArray(step.models) ? step.models.length : (step.modelId ? 1 : 0);
     const modelsTag  = slotCount > 1
       ? `<span class="gl-step-tag gl-step-img" title="3D models on this step"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-cube"/></svg> ${slotCount} models</span>` : '';
-    // 2026.4.46: orientation set in the app (Turn / Tilt / roll) — shown so an
+    // 2026.4.46: orientation set in the app (Turn / Tilt / roll) - shown so an
     // author can see at a glance which steps flip the part.
     const rotSlot = (Array.isArray(step.models) && step.models[0]) || step;
     const deg = r => Math.round((r || 0) * 180 / Math.PI);
@@ -5833,14 +5833,14 @@ function renderGuideGraph(guideId, anchorId) {
   // ── Link census ───────────────────────────────────────────────────────────
   // Counted up front and surfaced in the panel header. If a guide renders as a
   // single row, this says immediately whether that's a layout problem or simply
-  // a guide with no branch data — the two look identical on screen otherwise.
+  // a guide with no branch data - the two look identical on screen otherwise.
   const nSuccess = sorted.filter(s => s.nextOnSuccess && byId[s.nextOnSuccess]).length;
   const nFailure = sorted.filter(s => s.nextOnFailure && byId[s.nextOnFailure]).length;
   const nPrecond = sorted.filter(s => s.precondition  && byId[s.precondition]).length;
 
   // ── Lane assignment ───────────────────────────────────────────────────────
   // The subtle failure this replaces: the spine walk used to fall back to plain
-  // sequence order, so from step 1 it marched through EVERY step — including the
+  // sequence order, so from step 1 it marched through EVERY step - including the
   // ones that belong to failure branches. Those targets were therefore already
   // on lane 0 by the time the branch pass ran, so no branch ever opened a lane
   // and the graph always collapsed to one row.
@@ -5857,11 +5857,11 @@ function renderGuideGraph(guideId, anchorId) {
   // A forward branch is a failure link that jumps ahead in the sequence AND
   // lands somewhere other than where success goes. Comparing against the
   // success target rather than against sequence position matters for the
-  // common "success skips ahead, failure takes the adjacent detour" shape —
+  // common "success skips ahead, failure takes the adjacent detour" shape -
   // e.g. check oil (2): pass → inspect hoses (4), fail → top up oil (3).
   // Step 3 is adjacent to step 2, yet is genuinely a branch.
   // A failure link pointing backwards is a retry loop, and one pointing where
-  // success already goes is just the normal flow — neither earns a lane.
+  // success already goes is just the normal flow - neither earns a lane.
   const isForwardBranch = s => {
     if (!s.nextOnFailure || !byId[s.nextOnFailure]) return false;
     if (stepIdx(s.nextOnFailure) <= stepIdx(s.id))  return false;
@@ -5938,7 +5938,7 @@ function renderGuideGraph(guideId, anchorId) {
   });
 
   // ── Build edges ───────────────────────────────────────────────────────────
-  // Sequential edges are only drawn within the same lane — a cross-lane
+  // Sequential edges are only drawn within the same lane - a cross-lane
   // seqNext would spuriously connect the main path into a failure branch.
   const edges = [];
   sorted.forEach(step => {
@@ -5990,7 +5990,7 @@ function renderGuideGraph(guideId, anchorId) {
 
   // ── Build SVG ─────────────────────────────────────────────────────────────
   const gid = guideId.replace(/[^a-z0-9]/gi, '_');
-  let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${svgW}" height="${svgH}" style="display:block;min-width:${svgW}px;font-family:Arial,Helvetica,sans-serif">`; /* brand-check: allow — standalone SVG export has no token scope */
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${svgW}" height="${svgH}" style="display:block;min-width:${svgW}px;font-family:Arial,Helvetica,sans-serif">`; /* brand-check: allow - standalone SVG export has no token scope */
 
   // Arrowhead markers
   Object.entries(EST).forEach(([type, s]) => {
@@ -6105,7 +6105,7 @@ function renderGuideGraph(guideId, anchorId) {
   // between "the graph is broken" and "there is nothing to branch".
   if (nFailure === 0 && nSuccess === 0) {
     header += `<div style="padding:6px 14px 0;font-size:0.78rem;color:var(--ax-orange)">
-      <svg class="ax-icon"><use href="/portal/brand/icons.svg#i-alert"/></svg> No branch links on any step — this guide is purely sequential, so a
+      <svg class="ax-icon"><use href="/portal/brand/icons.svg#i-alert"/></svg> No branch links on any step - this guide is purely sequential, so a
       single row is the correct rendering. Add a failure branch in the step
       editor to see lanes.</div>`;
   }
@@ -6219,7 +6219,7 @@ async function loadSessions() {
   }
 }
 
-// ── Rendering — grouped by anchor ─────────────────────────────────────────────
+// ── Rendering - grouped by anchor ─────────────────────────────────────────────
 
 function renderSessions() {
   const list = document.querySelector('.sessions-list');
@@ -6269,7 +6269,7 @@ function buildAnchorGroup(anchorKey, group, tagLabels) {
     totalFail > 0 ? `<span class="b-fail">${totalFail} FAIL</span>` : '',
   ].join('');
 
-  // Table header — fixed cols + one col per tag + Overall + Export
+  // Table header - fixed cols + one col per tag + Overall + Export
   const tagThs = tagLabels.map(l => `<th>${esc(l)}</th>`).join('');
   const thead = `<tr><th>Date / Time</th><th>Operator</th><th>Duration</th>${tagThs}<th>Overall</th><th></th></tr>`;
 
@@ -6300,8 +6300,8 @@ function buildSessionRow(s, tagLabels, colCount) {
   const d       = new Date(s.startTime);
   const dateStr = d.toLocaleDateString(undefined, { day:'2-digit', month:'short', year:'numeric' });
   const timeStr = d.toLocaleTimeString(undefined, { hour:'2-digit', minute:'2-digit' });
-  const dur     = s.durationSeconds != null ? formatDuration(s.durationSeconds) : '—';
-  const op      = esc(s.ownerName || s.userId || '—');
+  const dur     = s.durationSeconds != null ? formatDuration(s.durationSeconds) : '-';
+  const op      = esc(s.ownerName || s.userId || '-');
 
   // Index tag records by label for this session
   const byLabel = {};
@@ -6309,7 +6309,7 @@ function buildSessionRow(s, tagLabels, colCount) {
 
   const tagCells = tagLabels.map(label => {
     const r = byLabel[label];
-    if (!r) return '<td style="color:var(--muted)">—</td>';
+    if (!r) return '<td style="color:var(--muted)">-</td>';
     const cls   = r.status === 'PASS' ? 'b-pass' : r.status === 'FAIL' ? 'b-fail' : 'b-none';
     const fixed = r.fixedInSession ? ` <span class="b-fixed">FIXED</span>` : '';
     const thumb = r.imagePath
@@ -6318,7 +6318,7 @@ function buildSessionRow(s, tagLabels, colCount) {
   }).join('');
 
   const ovCls  = s.overallStatus === 'PASS' ? 'b-pass' : s.overallStatus === 'FAIL' ? 'b-fail' : 'b-none';
-  const overall = s.overallStatus ? `<span class="${ovCls}">${s.overallStatus}</span>` : '—';
+  const overall = s.overallStatus ? `<span class="${ovCls}">${s.overallStatus}</span>` : '-';
   const sid    = esc(s.id);
   const totalCols = 3 + tagLabels.length + 2;
 
@@ -6471,7 +6471,7 @@ function formatDuration(secs) {
 
 function openLightbox(url, filename) {
   document.getElementById('evidence-lightbox-img').src = url;
-  // Blob URLs carry no filename/extension — saving one directly yields an
+  // Blob URLs carry no filename/extension - saving one directly yields an
   // "unknown format" file. The Download button names it properly.
   const dl = document.getElementById('evidence-lightbox-dl');
   dl.href = url;
@@ -6487,9 +6487,9 @@ function closeLightbox() {
 // ══════════════════════════════════════════════════════════════════════════════
 // Gemba Walk (Loc-Tag) view
 // Endpoints used:
-//   GET /loc-tags?anchorId=xxx        — list LocTags for an anchor
-//   GET /loc-tags/:id/completions     — list completions for a LocTag
-//   GET /loc-tags/image/:filename     — serve completion/reference photo
+//   GET /loc-tags?anchorId=xxx        - list LocTags for an anchor
+//   GET /loc-tags/:id/completions     - list completions for a LocTag
+//   GET /loc-tags/image/:filename     - serve completion/reference photo
 // ══════════════════════════════════════════════════════════════════════════════
 
 let gembaLocTags     = {};  // anchorId → LocTag[]
@@ -6618,7 +6618,7 @@ function buildGembaGroup(anchorId, anchorName, locTags) {
 
 function buildGembaRow(tag) {
   const comps  = gembaCompletions[tag.id] || [];
-  // Completions are sorted ascending by completedAt — latest is last
+  // Completions are sorted ascending by completedAt - latest is last
   const latest = comps.length > 0 ? comps[comps.length - 1] : null;
   const tid    = esc(tag.id);
 
@@ -6626,15 +6626,15 @@ function buildGembaRow(tag) {
   const stopBadge = `<span class="stop-badge">${tag.order + 1}</span>`;
 
   // Severity
-  let sevHtml = '<span style="color:var(--muted)">—</span>';
+  let sevHtml = '<span style="color:var(--muted)">-</span>';
   if      (tag.severity === 'low')    sevHtml = '<span class="sev-low">Low</span>';
   else if (tag.severity === 'medium') sevHtml = '<span class="sev-med">Medium</span>';
   else if (tag.severity === 'high')   sevHtml = '<span class="sev-high">High</span>';
 
   // Latest completion cells
   let statusHtml   = '<span class="b-no-completion">Pending</span>';
-  let operatorHtml = '<span style="color:var(--muted)">—</span>';
-  let dateHtml     = '<span style="color:var(--muted)">—</span>';
+  let operatorHtml = '<span style="color:var(--muted)">-</span>';
+  let dateHtml     = '<span style="color:var(--muted)">-</span>';
   let photoHtml    = '<div class="td-thumb-ph"></div>';
 
   if (latest) {
@@ -6645,7 +6645,7 @@ function buildGembaRow(tag) {
     };
     const [cls, lbl] = statusMap[latest.status] || ['b-no-completion', latest.status];
     statusHtml   = `<span class="${cls}">${lbl}</span>`;
-    operatorHtml = esc(latest.operatorName || '—');
+    operatorHtml = esc(latest.operatorName || '-');
     const d      = new Date(latest.completedAt);
     dateHtml     = `${d.toLocaleDateString(undefined,{day:'2-digit',month:'short'})} ` + `<span style="color:var(--muted);font-size:0.78rem">${d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}</span>`;
     if (latest.completionImagePath) {
@@ -6671,7 +6671,7 @@ function buildGembaRow(tag) {
         ? `<em style="color:var(--muted);font-size:0.78rem;margin-left:6px">"${esc(c.note)}"</em>` : '';
       return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:0.78rem">
         <span class="${cls}">${lbl}</span>
-        <span style="color:var(--text)">${esc(c.operatorName || '—')}</span>
+        <span style="color:var(--text)">${esc(c.operatorName || '-')}</span>
         <span style="color:var(--muted)">${dateStr}</span>
         ${noteStr}
         <button onclick="deleteGembaCompletion('${esc(c.id)}')" class="btn btn-ghost btn-sm" style="font-size:0.78rem;padding:1px 5px;color:var(--red);margin-left:4px" title="Delete this completion record"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg></button>
@@ -6683,13 +6683,13 @@ function buildGembaRow(tag) {
   // and the question they were logged against; legacy findings keep the
   // defect category. Photos (up to 6, with captions) live in the detail row.
   const catMap = { STRENGTH: ['var(--ax-green)', 'Strength'], OFI: ['var(--ax-orange)', 'OFI'], NC: ['var(--ax-red)', 'NC'] };
-  let catHtml = esc(tag.defectCategory || '—');
+  let catHtml = esc(tag.defectCategory || '-');
   if (tag.findingCategory && catMap[tag.findingCategory]) {
     const [col, lbl] = catMap[tag.findingCategory];
     catHtml = `<span style="display:inline-block;padding:1px 7px;border-radius:999px;font-size:0.78rem;font-weight:700;color:${col};border:1px solid ${col}55;background:${col}18">${lbl}</span>` + (Number.isInteger(tag.riskRating) ? ` <span style="font-size:0.78rem;color:var(--muted)" title="Preliminary risk rating">R${tag.riskRating}</span>` : '');
   }
   const refHtml = tag.questionCode
-    ? `<div style="font-size:0.78rem;color:var(--muted);font-weight:400;margin-top:2px">${esc(tag.focusAreaCode ? tag.focusAreaCode + ' · ' : '')}${esc(tag.questionCode)}${tag.questionTitle ? ' — ' + esc(tag.questionTitle) : ''}</div>` : (tag.referenceSource === 'custom' ? `<div style="font-size:0.78rem;color:var(--muted);font-weight:400;margin-top:2px"><span style="display:inline-block;padding:0 6px;border-radius:999px;font-size:0.78rem;font-weight:700;color:var(--ax-orange);border:1px solid var(--ax-warn-fill);background:var(--ax-warn-fill);vertical-align:middle" title="Free-text entry — not from the Audit Reference Library">Custom</span>${tag.focusAreaTitle ? ' ' + esc(tag.focusAreaTitle) : ''}</div>` : '');
+    ? `<div style="font-size:0.78rem;color:var(--muted);font-weight:400;margin-top:2px">${esc(tag.focusAreaCode ? tag.focusAreaCode + ' · ' : '')}${esc(tag.questionCode)}${tag.questionTitle ? ' - ' + esc(tag.questionTitle) : ''}</div>` : (tag.referenceSource === 'custom' ? `<div style="font-size:0.78rem;color:var(--muted);font-weight:400;margin-top:2px"><span style="display:inline-block;padding:0 6px;border-radius:999px;font-size:0.78rem;font-weight:700;color:var(--ax-orange);border:1px solid var(--ax-warn-fill);background:var(--ax-warn-fill);vertical-align:middle" title="Free-text entry - not from the Audit Reference Library">Custom</span>${tag.focusAreaTitle ? ' ' + esc(tag.focusAreaTitle) : ''}</div>` : '');
   const photos = (tag.photos && tag.photos.length) ? tag.photos
     : (tag.referenceImagePath ? [{ path: tag.referenceImagePath }] : []);
   const photoStrip = photos.length
@@ -6806,7 +6806,7 @@ function toast(msg, duration=2200) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// iLOTO view — status board, audit trail (overrides pinned), cert registry.
+// iLOTO view - status board, audit trail (overrides pinned), cert registry.
 // Everything rendered here is server-DERIVED from the append-only event log
 // (docs/ILOTO.md). This tab never writes: the portal is where EHS reviews,
 // not where locks change.
@@ -6828,7 +6828,7 @@ async function loadILoto() {
     // NOTE: /anchors wraps in {data:[…]}; the /loto/* endpoints return raw JSON.
     const anchors = ((await apiFetch('/anchors')).data || []).filter(a => a.anchorType === 'LOTO');
     if (anchors.length === 0) {
-      board.innerHTML = '<div class="iloto-panel-card" style="color:var(--muted);font-size:0.82rem">No iLOTO control panels yet — create one from the app (anchor type “iLOTO”).</div>';
+      board.innerHTML = '<div class="iloto-panel-card" style="color:var(--muted);font-size:0.82rem">No iLOTO control panels yet - create one from the app (anchor type “iLOTO”).</div>';
       audit.innerHTML = '<p style="color:var(--muted);font-size:0.8rem;margin:0">No events.</p>';
     } else {
       const perAnchor = await Promise.all(anchors.map(async a => ({
@@ -6852,7 +6852,7 @@ async function loadILoto() {
 }
 
 // ── Training questions editor ────────────────────────────────────────────────
-// Uses the admin endpoints (answers included). Every write reloads the list —
+// Uses the admin endpoints (answers included). Every write reloads the list -
 // the server's validation messages surface via toast, verbatim.
 
 let lotoQuizAdmin = [];
@@ -6864,7 +6864,7 @@ async function loadLotoQuiz() {
     lotoQuizAdmin = payload.questions;
     const pass = Math.round((payload.passRatio ?? 0.8) * 100);
     if (!lotoQuizAdmin.length) {
-      el.innerHTML = '<p style="color:var(--ax-orange);font-size:0.8rem;margin:0">Bank is EMPTY — nobody can get certified until questions exist.</p>';
+      el.innerHTML = '<p style="color:var(--ax-orange);font-size:0.8rem;margin:0">Bank is EMPTY - nobody can get certified until questions exist.</p>';
       return;
     }
     el.innerHTML =
@@ -6885,7 +6885,7 @@ async function loadLotoQuiz() {
   }
 }
 
-/** Inline editor — add (id null) or edit an existing question. */
+/** Inline editor - add (id null) or edit an existing question. */
 function lotoQuizShowEditor(id) {
   const q = id ? lotoQuizAdmin.find(x => x.id === id) : null;
   const choices = q?.choices ?? ['', '', '', ''];
@@ -6930,7 +6930,7 @@ async function lotoQuizSave(id) {
 
 async function lotoQuizDelete(id) {
   if (lotoQuizAdmin.length <= 3 &&
-      !confirm('The bank is nearly empty — certification becomes impossible without questions. Delete anyway?')) return;
+      !confirm('The bank is nearly empty - certification becomes impossible without questions. Delete anyway?')) return;
   try {
     const r = await apiFetch(`/loto/quiz/questions/${id}`, { method: 'DELETE' });
     toast(`Deleted · ${r.remaining} questions remain.`);
@@ -7015,7 +7015,7 @@ function renderLotoBoard(el, perAnchor) {
   el.innerHTML = perAnchor.map(({ anchor, status }) => {
     if (!status) {
       return `<div class="iloto-panel-card"><strong style="font-size:0.88rem">${esc(anchor.assetId)}</strong>
-        <span style="color:var(--muted);font-size:0.78rem"> — status unavailable</span></div>`;
+        <span style="color:var(--muted);font-size:0.78rem"> - status unavailable</span></div>`;
     }
     const points = status.points ?? [];
     const rows = points.map(st => {
@@ -7052,7 +7052,7 @@ function renderLotoAudit(el, events, perAnchor) {
   }
   const labelOf = {};
   perAnchor.forEach(p => (p.status?.points ?? []).forEach(st => { labelOf[st.point.id] = st.point.label; }));
-  // Overrides pinned first — the records an audit reads before anything else.
+  // Overrides pinned first - the records an audit reads before anything else.
   const ordered = [...events.filter(e => e.type === 'override-remove'),
                    ...events.filter(e => e.type !== 'override-remove')].slice(0, 200);
   el.innerHTML = ordered.map(e => {
@@ -7060,7 +7060,7 @@ function renderLotoAudit(el, events, perAnchor) {
     const icon  = e.type === 'apply' ? '<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-lock-restricted"/></svg>' : (isOverride ? '<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-alert"/></svg>' : '<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-unlock"/></svg>');
     const verb  = e.type === 'apply' ? 'applied' : (isOverride ? 'OVERRIDE removal' : 'removed');
     const extra = isOverride && e.override
-      ? `<span style="color:var(--ax-orange)">by supervisor ${esc(e.override.supervisorName)} — ${esc(e.override.reason)} (applied by ${esc(e.userName)})</span>` : `by <strong>${esc(e.userName)}</strong>`;
+      ? `<span style="color:var(--ax-orange)">by supervisor ${esc(e.override.supervisorName)} - ${esc(e.override.reason)} (applied by ${esc(e.userName)})</span>` : `by <strong>${esc(e.userName)}</strong>`;
     const photo = e.photoPath
       ? `<span class="iloto-photo-link" onclick="openLotoPhoto('${esc(e.photoPath)}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-camera"/></svg> evidence</span>` : '';
     return `<div class="iloto-event${isOverride ? ' override' : ''}">
@@ -7142,7 +7142,7 @@ function exportLotoCertsCSV() {
 </script>
 
 <!-- ══════════════════════════════════════════════════════════════
-     3D MODEL PREVIEW  — Three.js ES module
+     3D MODEL PREVIEW  - Three.js ES module
      Exposes openModelPreview / closeModelPreview / onPreviewScaleInput
      on window so plain onclick="" attributes can call them.
 ══════════════════════════════════════════════════════════════ -->
@@ -7208,7 +7208,7 @@ window.convertAndUploadUSDZ = async function(modelId, file) {
     });
 
     if (resp.ok) {
-      toast('USDZ conversion complete — model ready for iOS.');
+      toast('USDZ conversion complete - model ready for iOS.');
       await loadModels();   // refresh cards to show updated badge + download link
     } else {
       const errJson = await resp.json().catch(() => ({}));
@@ -7354,7 +7354,7 @@ function _initScene() {
   _ctrl.maxDistance    = 40;
   _ctrl.update();
 
-  // Resize observer — keeps renderer sized to canvas CSS box
+  // Resize observer - keeps renderer sized to canvas CSS box
   _obs = new ResizeObserver(() => {
     if (!_r) return;
     const w = canvas.clientWidth, h = canvas.clientHeight;

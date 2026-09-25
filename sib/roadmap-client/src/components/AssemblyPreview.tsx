@@ -1,16 +1,16 @@
-// AssemblyPreview.tsx — the assembly as the operator will see it at this step.
+// AssemblyPreview.tsx - the assembly as the operator will see it at this step.
 //
 // Runs entirely in the browser: three.js (the copy vendored for the portal,
 // resolved through the import map in index.html) loads the model's GLB, and
 // every part is tinted by its state at the selected step:
-//   this    parts this step installs — accent, the thing the author is editing
-//   before  installed on earlier steps — the model's own look
-//   after   not yet installed — hidden (or ghosted with the toggle)
-//   base    never mentioned by any step — the model's own look
+//   this    parts this step installs - accent, the thing the author is editing
+//   before  installed on earlier steps - the model's own look
+//   after   not yet installed - hidden (or ghosted with the toggle)
+//   base    never mentioned by any step - the model's own look
 // Clicking a part toggles it on the current step, so cryptic CAD names never
 // have to be read to pick a bracket.
 //
-// The GPU here is the author's laptop — nothing renders on the server.
+// The GPU here is the author's laptop - nothing renders on the server.
 
 import { useEffect, useRef, useState } from 'react';
 import { fetchModelGlbUrl } from '../api/mindmap-api.js';
@@ -23,10 +23,10 @@ interface Props {
   partNames: Set<string>;
   /** Part → state at the selected step. Unlisted parts inherit their group's state, else `base`. */
   states: Map<string, PartState>;
-  /** name → parent name (from the part tree) — unused here beyond typing parity; the
+  /** name → parent name (from the part tree) - unused here beyond typing parity; the
    *  scene graph itself carries the hierarchy. */
   parents?: Map<string, string>;
-  /** State of parts no step and no initial entry mentions: 'after' (hidden — build-up) or 'base'. */
+  /** State of parts no step and no initial entry mentions: 'after' (hidden - build-up) or 'base'. */
   unmentioned?: PartState;
   /** The step's operator context: how "later" parts render. Undefined = the local toggle decides. */
   context?: 'installed' | 'ghost' | 'solid';
@@ -37,7 +37,7 @@ interface Props {
   onExpand?: () => void;
 }
 
-// Bare specifiers resolved by the import map — hidden from Vite's resolver.
+// Bare specifiers resolved by the import map - hidden from Vite's resolver.
 const THREE_SPEC  = 'three';
 const GLTF_SPEC   = 'three/addons/loaders/GLTFLoader.js';
 const ORBIT_SPEC  = 'three/addons/controls/OrbitControls.js';

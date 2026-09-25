@@ -1,4 +1,4 @@
-// GuideStepPlacementView.swift — AR OMS Phase 2 + 3D Model Placement
+// GuideStepPlacementView.swift - AR OMS Phase 2 + 3D Model Placement
 //
 // Author AR view for placing numbered step pins in world space, with integrated
 // 3D model positioning immediately after each pin is dropped.
@@ -10,7 +10,7 @@
 //   4. Tap any surface → raycast → place pin for active step.
 //      If that step has a 3D model → download it and enter Model Adjust mode.
 //   5. Model Adjust mode: one tool at a time (Move · Lift · Turn · Tilt · Scale)
-//      — see PlacementTools.swift. Confirm → save transform, advance to next step.
+//      - see PlacementTools.swift. Confirm → save transform, advance to next step.
 //      Skip → discard model placement for this step, advance.
 //   6. Tap an existing pin → make that step active for re-placement.
 //   7. Tap a step chip in the bottom tray → make it active for (re-)placement.
@@ -88,7 +88,7 @@ struct GuideStepPlacementView: View {
 
     @StateObject private var arManager = ARSessionManager()
 
-    // F1 (2026.4.46): in-session FTUE — moment cards + ? cheat-sheet.
+    // F1 (2026.4.46): in-session FTUE - moment cards + ? cheat-sheet.
     @StateObject private var coach = ARMomentCoach(employeeId: {
         UserDefaults.standard.string(forKey: "uam_employee_id") ?? ""
     })
@@ -99,14 +99,14 @@ struct GuideStepPlacementView: View {
     // ── A (2026.4.46): relocalize into the guide's world map before showing pins ──
     // Saved pin positions are coordinates in the AUTHOR's ORIGINAL session frame.
     // A fresh ARKit session has a different frame, so drawing them there put every
-    // pin wherever the new origin happened to be — and Save wrote those wrong
+    // pin wherever the new origin happened to be - and Save wrote those wrong
     // positions back. Now, like the operator session, Place Steps relocalizes
     // into the guide map first; pins stay hidden until ARKit confirms the frame.
     private enum RelocState: Equatable {
         case none            // new guide / nothing placed yet → fresh frame is fine
         case relocalizing    // map loaded, waiting for ARKit + "I'm Here"
-        case relocalized     // same frame as the map — pins trustworthy, Save extends the map
-        case timedOut        // ARKit couldn't match — author must choose
+        case relocalized     // same frame as the map - pins trustworthy, Save extends the map
+        case timedOut        // ARKit couldn't match - author must choose
         case replaceAll      // author chose a fresh frame: every pin is re-placed, map replaced
     }
     @State private var relocState: RelocState = .none
@@ -116,7 +116,7 @@ struct GuideStepPlacementView: View {
     @State private var relocMissingMap = false     // pins exist but no map on SIB (legacy guide)
     // B2: the chamber's reference object. When detected and the guide map is
     // calibrated (objectPoseInMap), the session is re-based onto the map frame
-    // without waiting for ARKit relocalization — pins land exactly, QR or not.
+    // without waiting for ARKit relocalization - pins land exactly, QR or not.
     @State private var objectBundle: ReferenceObjectCache.Bundle? = nil
     @State private var originViaObject = false
     // B2e: object is the ONLY frame for object-origin chambers (no initialWorldMap);
@@ -141,7 +141,7 @@ struct GuideStepPlacementView: View {
     // C2: coaching an operator who is running this guide right now
     @State private var coachTarget:      PresenceEntry? = nil
     @State private var coachPointerMode  = false
-    /// Server position of each step as of the last sync — the edit-echo baseline.
+    /// Server position of each step as of the last sync - the edit-echo baseline.
     @State private var remoteBaseline:  [String: simd_float3] = [:]
     private var objectExtent: simd_float3? {
         guard let e = objectBundle?.meta.extent else { return nil }
@@ -176,7 +176,7 @@ struct GuideStepPlacementView: View {
     @State private var singleSlotAdjust = false
     @State private var adjustStart: ModelTransformState? = nil
 
-    /// T1 (2026.4.46): training feedback toast — the author sees the capture
+    /// T1 (2026.4.46): training feedback toast - the author sees the capture
     /// happen instead of a silent chip flip. Same toast for quick-shot and cone.
     private enum TrainingToast: Equatable {
         case holdSteady, training(String), trained, failed(String)
@@ -193,9 +193,9 @@ struct GuideStepPlacementView: View {
     @State private var modelRotY:     Float        = 0.0
     @State private var modelRotX:     Float        = 0.0
     @State private var modelRotZ:     Float        = 0.0
-    /// Where this slot started the current adjustment — Reset returns here.
+    /// Where this slot started the current adjustment - Reset returns here.
     @State private var modelInitial:  ModelTransformState? = nil
-    /// Live ghost opacity while adjusting a slot — what the operator will see.
+    /// Live ghost opacity while adjusting a slot - what the operator will see.
     @State private var modelOpacity:  Float        = 0.45
     @State private var placementTool: PlacementTool = .move
 
@@ -212,7 +212,7 @@ struct GuideStepPlacementView: View {
     @State private var saveError:          String? = nil
     @State private var lastSaveSucceeded:  Bool    = false
     @State private var firstStepPhotoData: Data?   = nil
-    /// X1: camera transform at the moment firstStepPhotoData was taken —
+    /// X1: camera transform at the moment firstStepPhotoData was taken -
     /// uploaded with the world map so operators can detect drift.
     @State private var firstStepCameraPose: simd_float4x4? = nil
     /// Resume sessions may refresh the Step-1 reference once, only when looking at it.
@@ -237,22 +237,22 @@ struct GuideStepPlacementView: View {
     @State private var showTapHint: Bool = true
     /// Pin dropped, awaiting Confirm / re-tag. nil = nothing pending.
     @State private var pendingPinStepId: String? = nil
-    /// Auto-advance (⏩): skip the confirm interim entirely — drop and go. Per device.
+    /// Auto-advance (⏩): skip the confirm interim entirely - drop and go. Per device.
     @State private var autoAdvance: Bool = UserDefaults.standard.bool(forKey: "place_auto_advance")
-    /// F1b: "tap where Step N should go" after a pin is tapped for re-placement —
+    /// F1b: "tap where Step N should go" after a pin is tapped for re-placement -
     /// until the person has seen it (shares the `placeMovePin` memory; Replay re-arms).
     @State private var showReplaceHint  = false
     private var employeeIdNow: String { UserDefaults.standard.string(forKey: "uam_employee_id") ?? "" }
 
-    /// U1: when true, only the active step's pin/label/model is visible —
+    /// U1: when true, only the active step's pin/label/model is visible -
     /// declutters the scene while retraining or repositioning one step in a
     /// dense guide. Session-only (not saved). Mirrors the Operator-mode eye.
     @State private var focusActiveOnly: Bool = FocusPref.load(screen: "placeSteps")
     /// G3 fix: the step the eye focuses on. `activeStepIndex == steps.count` is
     /// the "all placed" sentinel (a surface tap must NOT re-place anything), so
-    /// the focus needs its own memory — the last step tapped/placed, else Step 1.
+    /// the focus needs its own memory - the last step tapped/placed, else Step 1.
     @State private var focusStepId: String? = nil
-    // G2: "Clear all pins" — every step unplaced on Save (map kept; frame unchanged).
+    // G2: "Clear all pins" - every step unplaced on Save (map kept; frame unchanged).
     @State private var clearedAllPins = false
     @State private var showClearAllConfirm = false
 
@@ -267,11 +267,11 @@ struct GuideStepPlacementView: View {
     var body: some View {
         ZStack(alignment: .bottom) {
 
-            // Single AR container — never swapped, always live
+            // Single AR container - never swapped, always live
             PlacementGestureContainer(
                 arManager:      arManager,
                 tool:           placementTool,
-                // Drag/pinch only live in model-adjust phase — and only the active tool's.
+                // Drag/pinch only live in model-adjust phase - and only the active tool's.
                 active:         placementPhase.isAdjusting,
                 // Tap only fires in pin-placement phase
                 onTap:          placementPhase.isPlacingPins ? handleTap : nil,
@@ -284,7 +284,7 @@ struct GuideStepPlacementView: View {
             )
             .ignoresSafeArea()
 
-            // F1b: the pulsing hand — first pin, and once more on the first re-place.
+            // F1b: the pulsing hand - first pin, and once more on the first re-place.
             if placementPhase.isPlacingPins, activeStepIndex < steps.count,
                (showTapHint && stepPositions.isEmpty) || showReplaceHint {
                 let n = steps[activeStepIndex].sequenceNumber
@@ -391,7 +391,7 @@ struct GuideStepPlacementView: View {
             if objT != nil { shapeGhost?.update(objectTransform: objT); shapeGhost?.flash() }
             // B2: object found + calibrated map → re-base the world onto the map
             // frame and show the pins. Beats waiting for feature-point matching.
-            // B2e: also while on the APPROXIMATE (map) frame — the chamber is the
+            // B2e: also while on the APPROXIMATE (map) frame - the chamber is the
             // truth; snap to it with Undo. Never with a stale (re-scanned) calibration.
             guard objT != nil, !originViaObject, !objectCalibrationStale,
                   relocState == .relocalizing || relocState == .timedOut || (approximateFromMap && relocState == .relocalized),
@@ -478,7 +478,7 @@ struct GuideStepPlacementView: View {
                 relocState = .relocalizing
                 Task {
                     let client = SIBClient(settings: settings)
-                    // B2: chamber object (if scanned) — detection runs alongside the map.
+                    // B2: chamber object (if scanned) - detection runs alongside the map.
                     if let a = try? await client.fetchAnchor(id: guide.anchorId) {
                         await MainActor.run { anchorRecord = a }
                         if a.objectScannedAt != nil {
@@ -495,7 +495,7 @@ struct GuideStepPlacementView: View {
                         if let pd = photo ?? nil { relocPhoto = UIImage(data: pd) }
                         if anchorRecord?.usesObjectOrigin == true, objectBundle != nil,
                            bundle?.meta.objectPoseInMap != nil {
-                            // B2e: find the chamber by shape — the object is the frame.
+                            // B2e: find the chamber by shape - the object is the frame.
                             // The map stays loaded only as an explicit fallback.
                             objectOnlyFrame       = true
                             objectSearchStartedAt = Date()
@@ -544,7 +544,7 @@ struct GuideStepPlacementView: View {
             focusRing = ARFocusRing(sceneView: arManager.sceneView)
             // Seed from parent immediately (may be non-empty if parent loaded in time)
             if !models.isEmpty { resolvedModels = models }
-            // Fetch fresh from server regardless — guarantees models are available
+            // Fetch fresh from server regardless - guarantees models are available
             // even when the parent's async fetch hadn't finished before this view opened.
             // Then pre-download the file for every step that has a model, so the
             // model is ready the instant the author taps to place a pin.
@@ -581,7 +581,7 @@ struct GuideStepPlacementView: View {
                 if case .adjustingModel(let stepId, let slotId) = placementPhase {
                     skipModelPlacement(stepId: stepId, slotId: slotId)
                 } else if case .loadingModel(let stepId, let slotId) = placementPhase {
-                    // "Tap ✕ above to skip" — skip this slot, keep the session.
+                    // "Tap ✕ above to skip" - skip this slot, keep the session.
                     skipModelPlacement(stepId: stepId, slotId: slotId)
                 } else {
                     onDone(steps)
@@ -618,8 +618,8 @@ struct GuideStepPlacementView: View {
 
             Spacer()
 
-            // U1: eye toggle — hide every other step while working on one.
-            // U4: cube toggle — hide the ACTIVE step's models while placing its pin.
+            // U1: eye toggle - hide every other step while working on one.
+            // U4: cube toggle - hide the ACTIVE step's models while placing its pin.
             if placementPhase.isPlacingPins {
                 if activeStepIndex < steps.count, !(modelNodes[steps[activeStepIndex].id] ?? [:]).isEmpty {
                     let sid = steps[activeStepIndex].id
@@ -642,7 +642,7 @@ struct GuideStepPlacementView: View {
                         .foregroundStyle(autoAdvance ? Color.yellow : Color.white.opacity(0.85))
                         .frame(width: 26, height: 26)
                 }
-                .accessibilityLabel(autoAdvance ? "Auto-advance on — turn off" : "Auto-advance off — turn on")
+                .accessibilityLabel(autoAdvance ? "Auto-advance on - turn off" : "Auto-advance off - turn on")
                 .padding(.trailing, 6)
                 Button {
                     focusActiveOnly.toggle()
@@ -701,13 +701,13 @@ struct GuideStepPlacementView: View {
         return name.map { "\(base) · \($0)" } ?? base
     }
 
-    /// U4: the slots this session will render/save for a step — the copied
+    /// U4: the slots this session will render/save for a step - the copied
     /// assignments when "Copy models to…" replaced them, else the server's.
     private func slots(for step: GuideStep) -> [GuideStepModel] {
         slotOverrides[step.id] ?? step.effectiveModels
     }
 
-    // QA logging context — kept out of the body chain (type-checker budget).
+    // QA logging context - kept out of the body chain (type-checker budget).
     private func logOpened() {
         AppLog.setContext("anchor", guide.anchorId)
         AppLog.setContext("guide", guide.id)
@@ -753,7 +753,7 @@ struct GuideStepPlacementView: View {
             )
             .padding(.top, 10).padding(.bottom, 4)
 
-            // Ghost opacity — live on the node, saved with the slot, so the
+            // Ghost opacity - live on the node, saved with the slot, so the
             // right value is chosen against THIS step's real background.
             HStack(spacing: 10) {
                 Image(systemName: "circle.lefthalf.filled")
@@ -880,7 +880,7 @@ struct GuideStepPlacementView: View {
         let hasModel  = !(modelTransforms[step.id] ?? [:]).isEmpty
 
         VStack(spacing: 4) {
-            // H1: the NUMBER is always the face of the chip — a 20-step tray is
+            // H1: the NUMBER is always the face of the chip - a 20-step tray is
             // navigated by counting, not by reading. State lives on the rim.
             ZStack(alignment: .bottomTrailing) {
                 Circle()
@@ -926,7 +926,7 @@ struct GuideStepPlacementView: View {
                 .foregroundStyle(isActive ? .white : .white.opacity(0.55))
                 .lineLimit(2).multilineTextAlignment(.center).frame(width: 62)
 
-            // V1: cone training for validation steps — tap the seal to train
+            // V1: cone training for validation steps - tap the seal to train
             // this step with the Spatial Inspection dome sweep. Only shown
             // once the step has a pin (the cone anchors at the pin).
             if step.needsValidation && placed {
@@ -943,7 +943,7 @@ struct GuideStepPlacementView: View {
                             .padding(.horizontal, 7).padding(.vertical, 3)
                             .background(Color.black.opacity(0.35), in: Capsule())
                     }
-                    // W2: quick-shot — one frame from where you stand now, with
+                    // W2: quick-shot - one frame from where you stand now, with
                     // the stance recorded so the operator is guided back to it.
                     Button {
                         Task { await quickShotTrain(for: step) }
@@ -959,7 +959,7 @@ struct GuideStepPlacementView: View {
                 .disabled(isPreparingTraining)
             }
 
-            // U4b: per-slot adjust — every model of a PLACED step can be
+            // U4b: per-slot adjust - every model of a PLACED step can be
             // positioned on its own, any time, without re-dropping the pin
             // (which restarts the whole chain from slot 1).
             if placed, placementPhase.isPlacingPins {
@@ -1036,7 +1036,7 @@ struct GuideStepPlacementView: View {
                 }
 
                 HStack(spacing: 8) {
-                    // ⋯ — the rarer actions live here so Save / Done never wrap.
+                    // ⋯ - the rarer actions live here so Save / Done never wrap.
                     let canCopy = activeStepIndex < steps.count && canCopyModels(from: steps[activeStepIndex])
                     if placedCount > 0 || canCopy {
                         Menu {
@@ -1092,7 +1092,7 @@ struct GuideStepPlacementView: View {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // MARK: V1 — cone training for validation steps
+    // MARK: V1 - cone training for validation steps
     // ─────────────────────────────────────────────────────────────────────────
 
     /// Resolve the anchor (once), pin the SERVER encryption key, and get the
@@ -1108,13 +1108,13 @@ struct GuideStepPlacementView: View {
             guard let anchor = anchorRecord else { return nil }
 
             // ConeCaptureView encrypts every reference with
-            // appState.anchorEncryptionKey — and falls back to a LOCAL random
+            // appState.anchorEncryptionKey - and falls back to a LOCAL random
             // key when that is nil. The server validates step references on
             // its own (no operator-supplied key), so the references MUST be
             // encrypted with the key stored on the anchor record. Pin it here.
             guard let serverKeyB64 = anchor.encryptionKey,
                   let serverKey = AnchorEncryption.key(fromBase64: serverKeyB64) else {
-                saveError = "This anchor has no encryption key on the server — regenerate its QR from the portal, then train."
+                saveError = "This anchor has no encryption key on the server - regenerate its QR from the portal, then train."
                 return nil
             }
             appState.anchorEncryptionKey = serverKey
@@ -1124,10 +1124,10 @@ struct GuideStepPlacementView: View {
                                               "step_id":         AnyCodable(step.id)]
             let tag: Tag
             if let existingId = sessionTagIds[step.id] ?? step.validationTagId {
-                // Reuse the existing hidden tag record — retraining replaces
+                // Reuse the existing hidden tag record - retraining replaces
                 // its pass-state; no need to fetch, the fields are deterministic.
                 tag = Tag(id: existingId, anchorId: anchor.id, type: .configurationCheck,
-                          label: "\(step.displayTitle) — validation",
+                          label: "\(step.displayTitle) - validation",
                           expectedOutcome: "Step completed correctly",
                           checkDescription: nil, order: nil, roi: nil, groupId: nil,
                           metadata: meta, isTrained: true, hasFailState: nil, createdAt: "", updatedAt: "")
@@ -1135,7 +1135,7 @@ struct GuideStepPlacementView: View {
                 tag = try await client.createTag(CreateTagRequest(
                     anchorId:        anchor.id,
                     type:            .configurationCheck,   // captureMode == .cone
-                    label:           "\(step.displayTitle) — validation",
+                    label:           "\(step.displayTitle) - validation",
                     expectedOutcome: "Step completed correctly",
                     checkDescription: nil, order: nil, groupId: nil, metadata: meta))
             }
@@ -1147,7 +1147,7 @@ struct GuideStepPlacementView: View {
         }
     }
 
-    /// Cone (multi-angle) training — presents ConeCaptureView at the pin.
+    /// Cone (multi-angle) training - presents ConeCaptureView at the pin.
     @MainActor
     private func beginConeTraining(for step: GuideStep) async {
         guard !isPreparingTraining, let pos = stepPositions[step.id] else { return }
@@ -1157,10 +1157,10 @@ struct GuideStepPlacementView: View {
         trainingTarget = StepTrainingTarget(step: step, tag: tag, anchor: anchor, worldPos: pos)
     }
 
-    /// W2 — Quick-shot training: ONE raw frame from where the Author is
+    /// W2 - Quick-shot training: ONE raw frame from where the Author is
     /// standing right now, plus the stance (distance + direction from the
     /// pin) so the operator can be guided back to the same viewpoint with a
-    /// ghost overlay. Stored as a one-image pass-state on the hidden tag —
+    /// ghost overlay. Stored as a one-image pass-state on the hidden tag -
     /// so scoring, decryption and the operator flow are identical to cone.
     @MainActor
     private func quickShotTrain(for step: GuideStep) async {
@@ -1168,12 +1168,12 @@ struct GuideStepPlacementView: View {
               arManager.sceneView.session.currentFrame != nil else { return }
         isPreparingTraining = true
         defer { isPreparingTraining = false }
-        // T1: "Hold steady" beat — lets the author settle before the frame is
+        // T1: "Hold steady" beat - lets the author settle before the frame is
         // read, and makes the capture visible. The frame is re-read after it.
         showTrainingToast(.holdSteady)
         try? await Task.sleep(nanoseconds: 600_000_000)
         guard let frame = arManager.sceneView.session.currentFrame else {
-            showTrainingToast(.failed("Camera frame unavailable — try again."), autoHide: false); return
+            showTrainingToast(.failed("Camera frame unavailable - try again."), autoHide: false); return
         }
         showTrainingToast(.training("Building the reference for step \(step.sequenceNumber)"))
         guard let (tag, anchor, key) = await prepareValidationTag(for: step) else {
@@ -1187,11 +1187,11 @@ struct GuideStepPlacementView: View {
         let dist = simd_length(vec)
         let dir  = dist > 0.001 ? simd_normalize(vec) : simd_float3(0, 0, 1)
 
-        // Raw frame (zero AR artifacts — same path as cone training)
+        // Raw frame (zero AR artifacts - same path as cone training)
         guard let img = rawCameraImage(from: frame),
               let jpeg = img.jpegData(compressionQuality: 0.65) else {
-            saveError = "Couldn't capture the camera frame — try again."
-            showTrainingToast(.failed("Couldn't capture the camera frame — try again."), autoHide: false)
+            saveError = "Couldn't capture the camera frame - try again."
+            showTrainingToast(.failed("Couldn't capture the camera frame - try again."), autoHide: false)
             return
         }
         let client = SIBClient(settings: settings)
@@ -1230,14 +1230,14 @@ struct GuideStepPlacementView: View {
         }
     }
 
-    /// Raw sensor frame, portrait, ≤ 800 px — identical to ConeCaptureView's
+    /// Raw sensor frame, portrait, ≤ 800 px - identical to ConeCaptureView's
     /// capture so quick-shot references are comparable to cone references.
     private func rawCameraImage(from frame: ARFrame) -> UIImage? {
         // C: rotated to the SCREEN orientation (iPad landscape safe), ≤ 800 px.
         ARFrameImage.screenOriented(frame, maxPx: 800)
     }
 
-    /// The cone sweep finished uploading its pass-state — stamp the step so
+    /// The cone sweep finished uploading its pass-state - stamp the step so
     /// the operator flow knows a system verdict is available (mode 'cone').
     private func finishConeTraining(step: GuideStep, tagId: String) async {
         await MainActor.run { showTrainingToast(.training("Sealing step \(step.sequenceNumber)")) }
@@ -1251,8 +1251,8 @@ struct GuideStepPlacementView: View {
             }
         } catch {
             await MainActor.run {
-                saveError = "Training captured, but marking the step failed — retry from the seal button. (\(error.localizedDescription))"
-                showTrainingToast(.failed("Captured, but sealing the step failed — retry from the seal button."), autoHide: false)
+                saveError = "Training captured, but marking the step failed - retry from the seal button. (\(error.localizedDescription))"
+                showTrainingToast(.failed("Captured, but sealing the step failed - retry from the seal button."), autoHide: false)
             }
         }
     }
@@ -1324,7 +1324,7 @@ struct GuideStepPlacementView: View {
                                 } else {
                                     ProgressView().scaleEffect(0.8).tint(.indigo)
                                     Text(objectBundle != nil && relocBundle?.meta.objectPoseInMap != nil
-                                         ? "Matching the space — or look at the chamber to find it by shape…"
+                                         ? "Matching the space - or look at the chamber to find it by shape…"
                                          : "Matching the space…")
                                         .font(.caption).foregroundStyle(.white.opacity(0.55))
                                 }
@@ -1340,7 +1340,7 @@ struct GuideStepPlacementView: View {
                             // this row is the "still matching" status.
                             HStack(spacing: 8) {
                                 Image(systemName: "mappin.and.ellipse").foregroundStyle(.white.opacity(0.6))
-                                Text(matched ? "Matched — showing your pins" : "Walk to Step 1 and hold the view steady")
+                                Text(matched ? "Matched - showing your pins" : "Walk to Step 1 and hold the view steady")
                                     .font(.caption).foregroundStyle(.white.opacity(0.7))
                             }
                             .frame(maxWidth: .infinity).padding(.vertical, 10)
@@ -1352,7 +1352,7 @@ struct GuideStepPlacementView: View {
                                     .font(.title3.bold()).foregroundStyle(.white)
                                 Text(relocMissingMap
                                      ? "These pins were saved before maps were kept, so their positions can't be trusted. Re-place them to seal a map."
-                                     : "The pins can't be shown safely in an unmatched space — they would land in the wrong place and Save would keep them there.")
+                                     : "The pins can't be shown safely in an unmatched space - they would land in the wrong place and Save would keep them there.")
                                     .font(.caption).foregroundStyle(.white.opacity(0.7)).multilineTextAlignment(.center)
                             }
                             if let b = relocBundle {
@@ -1385,7 +1385,7 @@ struct GuideStepPlacementView: View {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // MARK: B2e — movable chamber: fallback, re-scan, re-align UI
+    // MARK: B2e - movable chamber: fallback, re-scan, re-align UI
     // ─────────────────────────────────────────────────────────────────────────
 
     /// The author chose the room map over the chamber's shape. Pins are
@@ -1400,7 +1400,7 @@ struct GuideStepPlacementView: View {
     }
 
     /// After a re-scan the object's own frame is new, so every stored
-    /// calibration is void: relocalize through the map once and Save — the
+    /// calibration is void: relocalize through the map once and Save - the
     /// save writes objectPoseInMap for the new scan (the QR gate re-does
     /// objectPoseInQR on the author's next scan).
     @MainActor
@@ -1495,7 +1495,7 @@ struct GuideStepPlacementView: View {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // MARK: P1 — presence (colleagues in front of this chamber)
+    // MARK: P1 - presence (colleagues in front of this chamber)
     // ─────────────────────────────────────────────────────────────────────────
 
     private func startPresence() {
@@ -1600,7 +1600,7 @@ struct GuideStepPlacementView: View {
         }
         if adopted > 0 { applyStepVisibility() }
         if !conflicts.isEmpty {
-            showPresenceToast("Also moved by a colleague: \(conflicts.joined(separator: ", ")) — yours wins on Save", color: .systemOrange)
+            showPresenceToast("Also moved by a colleague: \(conflicts.joined(separator: ", ")) - yours wins on Save", color: .systemOrange)
         }
     }
 
@@ -1673,14 +1673,14 @@ struct GuideStepPlacementView: View {
         if let firstUnplaced = steps.firstIndex(where: { $0.worldPosition == nil }) {
             activeStepIndex = firstUnplaced
         } else if !steps.isEmpty {
-            activeStepIndex = steps.count   // all placed — user taps pins to re-place
+            activeStepIndex = steps.count   // all placed - user taps pins to re-place
         }
 
-        // Pin nodes are created by placeExistingPinNodes() — only once the
+        // Pin nodes are created by placeExistingPinNodes() - only once the
         // session frame is known to be the map's frame (A).
 
         // NOTE: no blind timed snapshot here. The re-localization reference
-        // must be a view of STEP 1 — on resume it is captured by the ticker
+        // must be a view of STEP 1 - on resume it is captured by the ticker
         // only while the camera is actually looking at Step 1's pin (see
         // captureResumeReferenceIfLookingAtStep1). A 2 s snapshot of wherever
         // the Author happened to point (e.g. Step 3, opened just to train it)
@@ -1717,11 +1717,11 @@ struct GuideStepPlacementView: View {
         applyStepVisibility()
     }
 
-    /// A: the author gave up matching — every pin is re-placed in a fresh frame
+    /// A: the author gave up matching - every pin is re-placed in a fresh frame
     /// and Save/Done replaces the map. Server positions of steps not re-placed
     /// this session are cleared on Save so no pin can point into the old frame.
     private func startReplaceAll() {
-        // G1: the old map must not linger on the server — Save/Done seals a new one.
+        // G1: the old map must not linger on the server - Save/Done seals a new one.
         let gid = guide.id
         Task { _ = try? await SIBClient(settings: settings).deleteGuideWorldMap(guideId: gid) }
         relocBundle = nil
@@ -1748,7 +1748,7 @@ struct GuideStepPlacementView: View {
         let cam  = simd_float3(frame.camera.transform.columns.3.x, frame.camera.transform.columns.3.y, frame.camera.transform.columns.3.z)
         let dist = simd_length(cam - node.simdWorldPosition)
         guard dist <= 1.5, arManager.sceneView.isNode(node, insideFrustumOf: pov) else { return }
-        // Must also be roughly centred — projected within the middle 60 % of the screen.
+        // Must also be roughly centred - projected within the middle 60 % of the screen.
         let p  = arManager.sceneView.projectPoint(node.worldPosition)
         let b  = arManager.sceneView.bounds
         let px = CGFloat(p.x), py = CGFloat(p.y)
@@ -1780,14 +1780,14 @@ struct GuideStepPlacementView: View {
         guard relocState != .relocalizing, relocState != .timedOut else { return }
         let sv = arManager.sceneView
 
-        // C2: "Point here" — this tap is a look-here marker for the operator, not a pin.
+        // C2: "Point here" - this tap is a look-here marker for the operator, not a pin.
         if coachPointerMode, coachTarget != nil {
             if let q = sv.raycastQuery(from: point, allowing: .estimatedPlane, alignment: .any),
                let hit = sv.session.raycast(q).first {
                 let p = simd_float3(hit.worldTransform.columns.3.x, hit.worldTransform.columns.3.y, hit.worldTransform.columns.3.z)
                 sendCoachHint("Look here", pointer: p)
             } else {
-                showPresenceToast("No surface there — try a spot on the chamber", color: .systemOrange)
+                showPresenceToast("No surface there - try a spot on the chamber", color: .systemOrange)
             }
             coachPointerMode = false
             return
@@ -1856,7 +1856,7 @@ struct GuideStepPlacementView: View {
         }
 
         stepPositions[stepId] = position
-        // F1 moments — first pin: move it; second pin: declutter; validation step: train.
+        // F1 moments - first pin: move it; second pin: declutter; validation step: train.
         if stepPositions.count == 1 { coach.show(.placeMovePin) }
         if stepPositions.count == 2 { coach.show(.placeDeclutter) }
         if step.needsValidation      { coach.show(.placeTrainStep) }
@@ -1872,7 +1872,7 @@ struct GuideStepPlacementView: View {
             stepNodes[stepId] = node
         }
 
-        // U4: re-placing a pin restarts the model chain — drop this session's
+        // U4: re-placing a pin restarts the model chain - drop this session's
         // nodes/transforms for the step so every slot is positioned afresh.
         for node in (modelNodes[stepId] ?? [:]).values { node.removeFromParentNode() }
         modelNodes[stepId] = nil
@@ -1883,7 +1883,7 @@ struct GuideStepPlacementView: View {
         dropFeedback(on: stepNodes[stepId])
         AppLog.info("guide", "pin placed step \(step.sequenceNumber)", ["auto": autoAdvance])
         if autoAdvance {
-            // ⏩ on: drop and go — the pre-interim flow. Fix a pin the old way
+            // ⏩ on: drop and go - the pre-interim flow. Fix a pin the old way
             // (tap it, tap the new spot).
             startModelChain(step: step, pinPos: position, fromSlot: 0)
             return
@@ -1894,7 +1894,7 @@ struct GuideStepPlacementView: View {
 
     // ── Interim: confirm / re-tag ────────────────────────────────────────────
 
-    /// Pop + ring pulse + haptic — visible even in peripheral vision.
+    /// Pop + ring pulse + haptic - visible even in peripheral vision.
     private func dropFeedback(on node: SCNNode?) { ARPinFX.drop(on: node) }
 
     private func retagPendingPin(to pos: simd_float3) {
@@ -1916,11 +1916,11 @@ struct GuideStepPlacementView: View {
         ARMomentStore.markSeen(.placeConfirmPin, employeeId: employeeIdNow)
         AppLog.info("guide", "pin confirmed step \(steps[idx].sequenceNumber)")
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        // Now the models (U4) and the advance — exactly the pre-interim flow.
+        // Now the models (U4) and the advance - exactly the pre-interim flow.
         startModelChain(step: steps[idx], pinPos: pos, fromSlot: 0)
     }
 
-    /// Bottom bar while a pin awaits Confirm — same slot, height and style as
+    /// Bottom bar while a pin awaits Confirm - same slot, height and style as
     /// the action bar, so nothing new covers the chamber.
     private func confirmBar(for step: GuideStep) -> some View {
         let isLast = !steps.contains { stepPositions[$0.id] == nil && $0.id != step.id }
@@ -1975,8 +1975,8 @@ struct GuideStepPlacementView: View {
         UserDefaults.standard.set(autoAdvance, forKey: "place_auto_advance")
         AppLog.info("guide", "auto-advance \(autoAdvance ? "on" : "off")")
         showPresenceToast(autoAdvance
-            ? "Auto-advance on — pins go straight to the next step. Tap ⏩ again to turn off."
-            : "Auto-advance off — confirm each pin before moving on.",
+            ? "Auto-advance on - pins go straight to the next step. Tap ⏩ again to turn off."
+            : "Auto-advance off - confirm each pin before moving on.",
             color: autoAdvance ? .systemYellow : .systemGray)
         if autoAdvance, pendingPinStepId != nil { confirmPendingPin() }
     }
@@ -2007,7 +2007,7 @@ struct GuideStepPlacementView: View {
 
     /// Continue the chain after `slotId` was confirmed or skipped.
     private func continueModelChain(stepId: String, after slotId: String) {
-        // U4b: a single-slot adjust from the tray ends here — back to pins.
+        // U4b: a single-slot adjust from the tray ends here - back to pins.
         if singleSlotAdjust {
             singleSlotAdjust = false
             adjustStart      = nil
@@ -2079,7 +2079,7 @@ struct GuideStepPlacementView: View {
     }
 
     /// Download the USDZ file and write it to the temp cache.
-    /// Only USDZ is supported on iOS — GLB requires the ModelIO→SceneKit bridge removed in iOS 26.
+    /// Only USDZ is supported on iOS - GLB requires the ModelIO→SceneKit bridge removed in iOS 26.
     private func cacheModelFile(_ model: Model3D) async {
         guard await MainActor.run(resultType: URL?.self) { modelFileCache[model.id] } == nil else { return }
         guard model.hasUSDZ else { return }   // skip models still pending browser conversion
@@ -2098,13 +2098,13 @@ struct GuideStepPlacementView: View {
     /// Uses the pre-cached file URL when available; falls back to downloading on demand.
     private func downloadAndPlaceModel(model: Model3D, step: GuideStep, slot: GuideStepModel,
                                        pinPos: simd_float3, cachedURL: URL? = nil) async {
-        // Resolve file URL — use pre-cache if available, otherwise download now.
+        // Resolve file URL - use pre-cache if available, otherwise download now.
         let fileURL: URL
         if let cached = cachedURL {
             fileURL = cached
         } else {
             // On-demand download: only proceed if USDZ is available.
-            // GLB is not renderable on iOS 26+ — the portal converts it in the browser.
+            // GLB is not renderable on iOS 26+ - the portal converts it in the browser.
             guard model.hasUSDZ else {
                 await MainActor.run { continueModelChain(stepId: step.id, after: slot.slotId) }
                 return
@@ -2128,7 +2128,7 @@ struct GuideStepPlacementView: View {
 
         // Build SCNNode off-main thread; also compute bounding box for base-snapping.
         // SCNScene(url:) loads USDZ natively (iOS 12+). GLB requires ModelIO which
-        // was removed in iOS 26 — the server auto-converts GLB → USDZ so hasUSDZ
+        // was removed in iOS 26 - the server auto-converts GLB → USDZ so hasUSDZ
         // will be true for all models by the time the iOS app downloads them.
         let buildResult: (SCNNode, Float)? = await Task.detached(priority: .utility) { () -> (SCNNode, Float)? in
             guard let scene = try? SCNScene(url: fileURL, options: [
@@ -2152,7 +2152,7 @@ struct GuideStepPlacementView: View {
         }
 
         await MainActor.run {
-            // The author skipped (✕) while this was loading — drop it silently.
+            // The author skipped (✕) while this was loading - drop it silently.
             guard placementPhase == .loadingModel(stepId: step.id, slotId: slot.slotId) else { return }
             // Remove stale node for this slot (re-placement)
             modelNodes[step.id]?[slot.slotId]?.removeFromParentNode()
@@ -2167,7 +2167,7 @@ struct GuideStepPlacementView: View {
             // pin position. baseY is bbMin.y at scale=1; -baseY * scale shifts the node
             // so the model's bottom face sits at pinPos.y instead of floating above it.
             // When the user has already manually adjusted Y (modelOffsetY != nil), use
-            // their saved value directly — the auto-offset was already baked in on save.
+            // their saved value directly - the auto-offset was already baked in on save.
             let hasManualY:  Bool  = slot.modelOffsetY != nil
             let autoYOffset: Float = hasManualY ? 0.0 : (-baseY * initScale)
             let initPos   = simd_float3(
@@ -2176,7 +2176,7 @@ struct GuideStepPlacementView: View {
                 pinPos.z + Float(slot.modelOffsetZ ?? 0)
             )
 
-            // Set position BEFORE addChildNode — simdPosition (local) is correct here
+            // Set position BEFORE addChildNode - simdPosition (local) is correct here
             // because the parent IS the scene root, so local == world.
             // simdWorldPosition requires the node to already be in the scene;
             // calling it on an unattached node silently leaves position at zero.
@@ -2224,7 +2224,7 @@ struct GuideStepPlacementView: View {
     private func skipModelPlacement(stepId: String, slotId: String) {
         if singleSlotAdjust {
             // Cancel: put the node back where it was (or drop a freshly loaded
-            // one that was never positioned) — nothing is recorded.
+            // one that was never positioned) - nothing is recorded.
             if let start = adjustStart, let node = modelNodes[stepId]?[slotId] {
                 node.simdPosition = start.position
                 node.simdScale    = simd_float3(start.scale, start.scale, start.scale)
@@ -2401,7 +2401,7 @@ struct GuideStepPlacementView: View {
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // MARK: U4 — Copy models to other steps
+    // MARK: U4 - Copy models to other steps
     // ─────────────────────────────────────────────────────────────────────────
 
     /// A step can be a copy source once it has a pin and at least one slot
@@ -2462,7 +2462,7 @@ struct GuideStepPlacementView: View {
                     } header: {
                         Text("Copy \(slots(for: source).count) model(s) from Step \(source.sequenceNumber) to…")
                     } footer: {
-                        Text("Models land at the same physical spot on every selected step — useful when one part is shared across steps. Saved on the next Save / Done.")
+                        Text("Models land at the same physical spot on every selected step - useful when one part is shared across steps. Saved on the next Save / Done.")
                     }
                 }
             }
@@ -2494,7 +2494,7 @@ struct GuideStepPlacementView: View {
             modelNodes[target.id] = [:]
             modelTransforms[target.id] = [:]
             slotOverrides[target.id] = srcSlots.map { slot in
-                // Assignment only — placement comes from the copied world transform.
+                // Assignment only - placement comes from the copied world transform.
                 GuideStepModel(slotId: slot.slotId, modelId: slot.modelId,
                                modelScale: slot.modelScale, modelOpacity: slot.modelOpacity)
             }
@@ -2603,7 +2603,7 @@ struct GuideStepPlacementView: View {
                 withAnimation { lastSaveSucceeded = false }
             }
         } else {
-            saveError = "Save incomplete — " + errors.joined(separator: "; ")
+            saveError = "Save incomplete - " + errors.joined(separator: "; ")
         }
     }
 
@@ -2632,7 +2632,7 @@ struct GuideStepPlacementView: View {
         }
         let mapData   = frameIsMapFrame ? await arManager.saveCurrentWorldMap() : nil
         let (updatedSteps, errors) = await patchChangedPositions()
-        // B2: the object's pose in the map frame — valid only while the session
+        // B2: the object's pose in the map frame - valid only while the session
         // frame IS the map frame (which includes an object-rebased session).
         let objectPoseInMap: [Float]? = (frameIsMapFrame && objectBundle != nil)
             ? arManager.objectTransform.map { ARCoordinateFrame.floats(from: $0) } : nil
@@ -2654,13 +2654,13 @@ struct GuideStepPlacementView: View {
                 AppLog.warn("guide", "World map upload failed (non-fatal): \(error)")
             }
         } else if let cal = objectPoseInMap, let t = ARCoordinateFrame.transform(from: cal) {
-            // No map upload this time but the frame is the map's — refresh calibration.
+            // No map upload this time but the frame is the map's - refresh calibration.
             if (try? await client.calibrateGuideObject(guideId: guide.id, objectPoseInMap: t)) != nil {
                 objectCalibrationStale = false
             }
         }
         isSaving = false
         if errors.isEmpty { onDone(updatedSteps) }
-        else { saveError = "Save incomplete — " + errors.joined(separator: "; ") }
+        else { saveError = "Save incomplete - " + errors.joined(separator: "; ") }
     }
 }

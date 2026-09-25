@@ -4,7 +4,7 @@
 #
 # Why root context?
 #   sib depends on @spatial/shared (a workspace sibling).
-#   npm workspaces resolves it via the root node_modules symlink — the lock file
+#   npm workspaces resolves it via the root node_modules symlink - the lock file
 #   and shared/ source must both be present for the build to succeed.
 
 # ── Stage 1: Build ────────────────────────────────────────────────────────────
@@ -37,7 +37,7 @@ COPY sib/src/           ./sib/src/
 RUN npm run build --workspace=@spatial/sib
 
 # ── Boot smoke test ───────────────────────────────────────────────────────────
-# Run the compiled output with plain node — exactly as production does — and
+# Run the compiled output with plain node - exactly as production does - and
 # hit /health. Catches the compiles-clean-but-crashes-on-boot class of failure
 # at BUILD time instead of on deploy. Real incident this guards against: the
 # first-ever runtime VALUE import of @spatial/shared resolved to .ts source and
@@ -90,7 +90,7 @@ COPY docs/learn/   ./docs/learn/
 COPY docs/APP-WIREFRAME.html ./docs/APP-WIREFRAME.html
 COPY README.md ./README.md
 
-# Persistent data directory — mount a Render disk at /data.
+# Persistent data directory - mount a Render disk at /data.
 # SIB writes anchor/tag data here so it survives container restarts and redeploys.
 RUN mkdir -p /data/.sib-data
 ENV SIB_DATA_DIR=/data/.sib-data
@@ -98,8 +98,8 @@ ENV SIB_DATA_DIR=/data/.sib-data
 # Runtime config (override in Render environment variables)
 ENV NODE_ENV=production
 ENV PORT=3001
-# SIB_API_KEY    — set in Render env vars (required in production)
-# PASS_THRESHOLD — optional, defaults to 0.60
+# SIB_API_KEY    - set in Render env vars (required in production)
+# PASS_THRESHOLD - optional, defaults to 0.60
 
 EXPOSE 3001
 

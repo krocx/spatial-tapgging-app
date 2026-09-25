@@ -1,8 +1,8 @@
-// gemba/library-core.ts — Audit Reference Library: pure validation, import
+// gemba/library-core.ts - Audit Reference Library: pure validation, import
 // planning and the seed. No I/O here; routes/gemba-library.ts owns the stores.
 //
 // Why a library at all (G1, 2026.4.46): the PowerApps Gemba Audit tool bound
-// its pickers to SharePoint reference lists — Focus Area → Question → finding.
+// its pickers to SharePoint reference lists - Focus Area → Question → finding.
 // Auditors never typed a category; they chose one, so findings roll up
 // cleanly. This module is that vocabulary, owned by Corporate Quality via
 // the portal, consumed by iOS in one GET.
@@ -20,15 +20,15 @@ export class GembaValidationError extends Error {
 
 export const GEMBA_FINDING_CATEGORIES: readonly { code: GembaFindingCategory; label: string }[] = [
   { code: 'STRENGTH', label: 'Strength' },
-  { code: 'OFI',      label: 'OFI — Opportunity for Improvement' },
-  { code: 'NC',       label: 'NC — Non-Conformance' },
+  { code: 'OFI',      label: 'OFI - Opportunity for Improvement' },
+  { code: 'NC',       label: 'NC - Non-Conformance' },
 ];
 
 export const GEMBA_RISK_RATINGS: readonly { value: GembaRiskRating; label: string }[] = [
-  { value: 0, label: '0 — No risk' },
-  { value: 1, label: '1 — Minor risk' },
-  { value: 2, label: '2 — Medium risk' },
-  { value: 3, label: '3 — High risk' },
+  { value: 0, label: '0 - No risk' },
+  { value: 1, label: '1 - Minor risk' },
+  { value: 2, label: '2 - Medium risk' },
+  { value: 3, label: '3 - High risk' },
 ];
 
 export function isFindingCategory(v: unknown): v is GembaFindingCategory {
@@ -156,7 +156,7 @@ export function rowsToImport(rows: FlatRow[], mode: 'append' | 'replace' = 'appe
 
 // ── Seed ────────────────────────────────────────────────────────────────────
 // The 15 focus areas from Corporate Quality's Gemba Audit tool. Questions are
-// NOT seeded — they arrive via import. Applied on an empty store; on a
+// NOT seeded - they arrive via import. Applied on an empty store; on a
 // server that was seeded earlier, any missing area is added (by code) and
 // the four demo 6S questions from the first seed are removed if untouched.
 
@@ -178,7 +178,7 @@ export const SEED_FOCUS_AREAS: readonly { code: string; title: string }[] = [
   { code: '15', title: 'Shipment Release and Controls' },
 ];
 
-/** Demo questions shipped with the first seed — removed by the seed upgrade when untouched. */
+/** Demo questions shipped with the first seed - removed by the seed upgrade when untouched. */
 export const LEGACY_SEED_QUESTIONS: readonly { code: string; text: string }[] = [
   { code: 'P5141', text: 'Ask people whether they know where the 6S procedure is and what it requires of their area.' },
   { code: 'P5142', text: 'Ask people to explain the 6S program to you in their own words (check for understanding of concepts).' },
@@ -216,7 +216,7 @@ export function validateListValues(raw: unknown): string[] {
   return out;
 }
 
-/** Seed pick lists — what the PowerApps tool showed; Corporate Quality edits in the portal. */
+/** Seed pick lists - what the PowerApps tool showed; Corporate Quality edits in the portal. */
 export function buildSeedLists(): GembaLists {
   return {
     organization: ['AGS', 'SPG', 'DSG'],

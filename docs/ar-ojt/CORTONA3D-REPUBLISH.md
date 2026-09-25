@@ -1,4 +1,4 @@
-# Request to the RapidManual team — re-publish one procedure with glTF / X3D on
+# Request to the RapidManual team - re-publish one procedure with glTF / X3D on
 
 Purpose: find out what Cortona3D's publisher emits when its glTF and X3D output
 options are enabled, so our importer can use standard geometry instead of
@@ -34,9 +34,9 @@ again from RapidManual with the glTF and X3D output options enabled, into a
 5. Send back **three things** (no procedure content is needed):
    a. a screenshot or list of the *option names* shown in the publish
       options dialog (so we know exactly which options exist in your version),
-   b. `dir /s C:\cortona-republish` — the file list with sizes,
+   b. `dir /s C:\cortona-republish` - the file list with sizes,
    c. **Help ▸ About** version strings for RapidManual and the publisher.
-6. If a "glTF" or "X3D" option **does not exist** in the dialog, tell us that —
+6. If a "glTF" or "X3D" option **does not exist** in the dialog, tell us that -
    it is a useful answer on its own (the option may be a RapidDataConverter /
    Teamcenter feature not present in your edition). If publishing fails with
    those options on, send the error text.
@@ -63,24 +63,24 @@ and answers only these questions (content-free, patterns only):
 
 If (2) shows `animations > 0` or (3) shows standard interpolators, the
 importer's animation path simplifies substantially. If not, we keep the
-PROTO parser for steps/commands and use glTF for geometry only — still a
+PROTO parser for steps/commands and use glTF for geometry only - still a
 net win over parsing `IndexedFaceSet`s ourselves.
 
 ---
 
-## Larger sample — delta questionnaire for the office Cowork
+## Larger sample - delta questionnaire for the office Cowork
 
 Run `cortona-recon.py` on the larger sample as before, then answer **only**
 these (same confidentiality rules as CORTONA3D-RECON-PROMPT.md; skip anything
 that is identical to the first report):
 
-1. Version strings (RapidManual, Solo, exporter) — same or different?
+1. Version strings (RapidManual, Solo, exporter) - same or different?
 2. Published `solo+zip` ZIP: still exactly 3 entries? Sizes.
 3. `Procedure`/`Step`/`SubStep` counts; command histogram (`Set_*`,
    `SwitchOFF`); any command types not seen before.
 4. Any `ROUTE` whose target field is not in {translation, rotation,
    transparency, center, diffuseColor, whichChoice, set_viewpoint}.
-5. `DocItems` row count vs `ObjectVM` count vs published `DEF` count — does the
+5. `DocItems` row count vs `ObjectVM` count vs published `DEF` count - does the
    id→part-number table cover more parts this time?
 6. Any branching / conditional / `goto`-like construct in `interactivity.xml`
    or the PROTO tree; any `Step` with `simulate = FALSE`.
@@ -88,5 +88,5 @@ that is identical to the first report):
    their *magnitude class* (e.g. `~1`, `~0.01`, `0`, `>10`) so we can infer
    the layout (position / centre / orientation / fov).
 8. Callout widget counts by type; any type not seen before.
-9. Units/axes reading — still metres, Y-up?
+9. Units/axes reading - still metres, Y-up?
 10. New traps (anything under Q13 of the first report that changed).

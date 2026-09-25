@@ -1,4 +1,4 @@
-// routes/logs.ts — QA logging endpoints (see logging/device-logs.ts).
+// routes/logs.ts - QA logging endpoints (see logging/device-logs.ts).
 //
 //   POST /logs               { device, entries[] }  ← iOS AppLog batches (API-key gated like all writes)
 //   GET  /logs               ?device&since&until&level&module&q&limit   → JSON lines   (admin gate)

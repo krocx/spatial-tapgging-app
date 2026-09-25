@@ -1,22 +1,22 @@
-// vision-adapter.ts — whiteboard/screenshot → mind-map graph extraction.
+// vision-adapter.ts - whiteboard/screenshot → mind-map graph extraction.
 //
 // Speaks the OpenAI-compatible chat-completions API so any LOCAL runtime
 // works: Ollama (default, http://localhost:11434/v1), LM Studio, vLLM.
-// The image is sent only to the configured endpoint — with the defaults,
+// The image is sent only to the configured endpoint - with the defaults,
 // it never leaves the SIB host. No cloud fallback exists unless you
 // deliberately point SIB_VISION_URL somewhere else.
 //
-// Config (env) — resolution order:
+// Config (env) - resolution order:
 //   SIB_VISION_URL      explicit vision endpoint (Ollama, vLLM, LM Studio,
 //                       a company gateway, Azure OpenAI …)
 //   ASK_LLM_URL         fallback: the Ask SIB gateway, when it is multimodal
-//   (neither)           NOT CONFIGURED — /mindmap/import-image/status says so
+//   (neither)           NOT CONFIGURED - /mindmap/import-image/status says so
 //                       and the client never starts a doomed upload
 //   SIB_VISION_MODEL    default qwen2.5vl (Ollama) / ASK_LLM_MODEL on fallback
 //   SIB_VISION_API_KEY  optional bearer (ASK_LLM_KEY on fallback)
 //   SIB_VISION_TIMEOUT_MS  default 120000 (local VLMs are slow, esp. first call)
 //
-// Ollama is ONE option, not a requirement — anything that speaks the OpenAI
+// Ollama is ONE option, not a requirement - anything that speaks the OpenAI
 // chat-completions API with image_url content works. Whatever is configured,
 // the photo goes only there.
 
@@ -79,7 +79,7 @@ const SYSTEM_PROMPT = `You convert photos of whiteboards, sticky-note walls, and
 }
 Rules:
 - One node per distinct box/sticky/bubble/phrase. Keep text short (max ~8 words), preserve the original wording.
-- x/y are the item's center as PERCENT of image width/height — preserve the spatial arrangement faithfully.
+- x/y are the item's center as PERCENT of image width/height - preserve the spatial arrangement faithfully.
 - Edges only where a line/arrow visibly connects two items. "directed": true when there is an arrowhead.
 - "type" only when obvious from color/context, else "generic". "status" only when marked (checkmark/done → done, cross → blocked), else omit.
 - "lanes" only when the board clearly has column or row bands (e.g. Now/Next/Later); "start"/"end" are percent along the relevant axis.
@@ -108,7 +108,7 @@ export function parseVisionJson(text: string): Record<string, unknown> | null {
 /**
  * Model JSON → sanitized graph. Percent coordinates are scaled onto a
  * 1600×1000 world canvas; nodes with unusable positions fall back to a grid.
- * Pure — unit-testable without any model.
+ * Pure - unit-testable without any model.
  */
 export function toGraph(raw: Record<string, unknown>): Omit<VisionExtractResult, 'model'> {
   const warnings: string[] = [];
@@ -148,7 +148,7 @@ export function toGraph(raw: Record<string, unknown>): Omit<VisionExtractResult,
         ? { status: n.status as MindmapNode['status'] } : {}),
     }];
   });
-  if (gridSlot > 0) warnings.push(`${gridSlot} node(s) had no usable position — placed on a grid`);
+  if (gridSlot > 0) warnings.push(`${gridSlot} node(s) had no usable position - placed on a grid`);
 
   const rawEdges = Array.isArray(raw.edges) ? raw.edges : [];
   const edges: MindmapEdge[] = rawEdges.flatMap((re, i) => {
@@ -199,7 +199,7 @@ export function toGraph(raw: Record<string, unknown>): Omit<VisionExtractResult,
 export async function extractMindmapFromImage(imageBase64: string, mimeType: string): Promise<VisionExtractResult> {
   const cfg = visionConfig();
   if (!cfg.configured) {
-    throw new Error('Whiteboard import is not set up on this server — set SIB_VISION_URL (or ASK_LLM_URL) to an OpenAI-compatible vision endpoint. See docs/INTERNAL-SERVER-DEPLOY.md.');
+    throw new Error('Whiteboard import is not set up on this server - set SIB_VISION_URL (or ASK_LLM_URL) to an OpenAI-compatible vision endpoint. See docs/INTERNAL-SERVER-DEPLOY.md.');
   }
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), cfg.timeoutMs);
@@ -230,7 +230,7 @@ export async function extractMindmapFromImage(imageBase64: string, mimeType: str
     });
   } catch (err) {
     throw new Error(
-      `Vision model unreachable at ${cfg.url} (${cfg.provider === 'ask' ? 'ASK_LLM_URL fallback' : 'SIB_VISION_URL'}) — is the endpoint running? ` +
+      `Vision model unreachable at ${cfg.url} (${cfg.provider === 'ask' ? 'ASK_LLM_URL fallback' : 'SIB_VISION_URL'}) - is the endpoint running? ` +
       `(Ollama: "ollama pull ${cfg.model}" then "ollama serve"; or point SIB_VISION_URL at any OpenAI-compatible vision endpoint.) ` +
       `Underlying error: ${(err as Error).message}`,
     );

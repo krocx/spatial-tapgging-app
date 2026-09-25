@@ -1,7 +1,7 @@
 ---
 id: iloto
 kind: area
-name: iLOTO — Lockout/Tagout
+name: iLOTO - Lockout/Tagout
 color: "#ef4444"
 order: 5
 wireframe: iloto
@@ -18,6 +18,6 @@ flow: |
     OVR[Supervisor override] -.exception.-> LOG
 ---
 Spatial Lockout/Tagout on OSHA 1910.147 lines: yellow Safe Off points on breakers,
-red LOTO points on switches, and an append-only event log the server referees —
+red LOTO points on switches, and an append-only event log the server referees -
 checklists, mandatory try test, photo evidence, one-lock-one-person. Status is always
 derived from the log, never edited; the app records, the physical lock protects.

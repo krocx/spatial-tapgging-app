@@ -1,16 +1,16 @@
-// procedure.ts — extract steps and per-node presentation from the PROTO tree.
+// procedure.ts - extract steps and per-node presentation from the PROTO tree.
 //
 // Published Cortona3D scenes carry the procedure as PROTO instances:
 //   Procedure { title comment id steps [ Step … ] }
 //   Step      { title comment id simulate substeps [ SubStep … ] }
 //   SubStep   { title comment id duration commands [ <command> … ] }
-// where each command is a DEF'd PROTO instance sharing one interface —
+// where each command is a DEF'd PROTO instance sharing one interface -
 //   key (MFFloat normalised times), keyValue (typed per command), period,
-//   objectID (opaque numeric key), attributeName (channel), value_changed —
+//   objectID (opaque numeric key), attributeName (channel), value_changed -
 // and is bound to its target part by  ROUTE <cmdDEF>.value_changed TO <targetDEF>.<field>.
 //
 // This module resolves that into SIB's step model: one guide step per SubStep
-// (the level that carries duration and commands — 210 = 210 across the two
+// (the level that carries duration and commands - 210 = 210 across the two
 // side files in both samples), grouped under its Step, with `nodes[]` deltas
 // per targeted part. Two commands make up two-thirds of every deck seen so
 // far (SwitchOFF, Set_transparency); those map to `show`; motion commands map
@@ -85,9 +85,9 @@ export const IGNORED_PROTO_PATTERNS: RegExp[] = [
   /^IntegerSequencer$/, /^Layer3D$/, /^OrthographicViewpoint$/, /^Transform2D$/, /^Viewpoint3$/, /^WorldInfo\d*$/,
   /^(Old)?AxesPanel$/, /^Slider$/, /^Button$/, /^protoSimulationPlayer$/, /^protoSF\w+$/, /^protoMF\w+$/,
   /^IndexedFaceSetWithEdges$/, /^Panel$/, /^HTMLText$/, /^TransformSensor$/, /^ViewportSensor$/,
-  /^Set_ID$/,              // command that relabels a part's ID for the viewer HUD — no presentation effect
-  /^Set_emissiveColor$/,   // highlight "flash" effect — transient, not a state change
-  /^HoseSplineFlow\d*$/, /^VMHose\d*$/, /^CableFlat\d*$/,   // procedural hose/cable/spring sweeps — not rendered; counted in the log
+  /^Set_ID$/,              // command that relabels a part's ID for the viewer HUD - no presentation effect
+  /^Set_emissiveColor$/,   // highlight "flash" effect - transient, not a state change
+  /^HoseSplineFlow\d*$/, /^VMHose\d*$/, /^CableFlat\d*$/,   // procedural hose/cable/spring sweeps - not rendered; counted in the log
   /^(Animated)?Arrow\d*$/, /^VMDimension\d*$/,              // annotation widgets (arrows, dimension lines)
 ];
 

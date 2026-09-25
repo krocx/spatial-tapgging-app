@@ -45,7 +45,7 @@ final class AppSettings: ObservableObject {
     // ── UAM identity (RBAC ahead of SSO) ─────────────────────────────────────
     // Work email + employee ID are verified against the server's allow-list
     // via POST /uam/login; the returned token travels on every request as
-    // X-User-Token. Role is cached so gating survives offline sessions —
+    // X-User-Token. Role is cached so gating survives offline sessions -
     // the SERVER re-reads the live role on each request regardless.
     @Published var workEmail: String {
         didSet { UserDefaults.standard.set(workEmail, forKey: "uam_work_email") }
@@ -65,23 +65,23 @@ final class AppSettings: ObservableObject {
         didSet { UserDefaults.standard.set(uamUserName, forKey: "uam_user_name") }
     }
     /// E1: product entitlements, comma-joined ("aroms,iloto"). Empty = ALL
-    /// products (backward compatible — unscoped users keep full access).
+    /// products (backward compatible - unscoped users keep full access).
     @Published var uamProducts: String {
         didSet { UserDefaults.standard.set(uamProducts, forKey: "uam_products") }
     }
     /// Author-surface gate for a product ("aroms" | "iloto" | "gemba").
     /// Unsigned or unscoped users see everything; operator flows are NOT
-    /// gated here — session/guide assignment governs those.
+    /// gated here - session/guide assignment governs those.
     func hasProduct(_ p: String) -> Bool {
         let list = uamProducts.split(separator: ",").map(String.init)
         // Anchor Lab is opt-in: "all products" (empty list) does NOT include
-        // it. Only people explicitly given `lab` see the door — the test bed
+        // it. Only people explicitly given `lab` see the door - the test bed
         // is for the team assessing anchoring, not every technician.
         if p == "lab" { return uamSignedIn && list.contains("lab") }
         guard uamSignedIn, !list.isEmpty else { return true }
         return list.contains(p)
     }
-    /// Production # — the chamber/system the technician works on this shift.
+    /// Production # - the chamber/system the technician works on this shift.
     /// Entered on the kiosk start screen; free text by design (2026.4.45).
     @Published var productionNumber: String {
         didSet { UserDefaults.standard.set(productionNumber, forKey: "production_number") }
@@ -104,17 +104,17 @@ final class AppSettings: ObservableObject {
     @Published var lastChamberAssetId: String {
         didSet { UserDefaults.standard.set(lastChamberAssetId, forKey: "last_chamber_asset") }
     }
-    /// A (2026.4.46): iLOTO context — the raceway / test bay the panel sits in.
+    /// A (2026.4.46): iLOTO context - the raceway / test bay the panel sits in.
     /// Asked at the iLOTO door, prefilled from last time, stamped on events.
     @Published var testBay: String {
         didSet { UserDefaults.standard.set(testBay, forKey: "test_bay") }
     }
     /// C2 UX: automatic contextual hints (device-wide). Observations and the
-    /// server's hint log continue regardless — this is the UI only.
+    /// server's hint log continue regardless - this is the UI only.
     @Published var contextualHintsEnabled: Bool {
         didSet { UserDefaults.standard.set(contextualHintsEnabled, forKey: "contextual_hints_enabled") }
     }
-    /// Anchor Lab (2026.4.46): measure anchoring accuracy in Operator mode —
+    /// Anchor Lab (2026.4.46): measure anchoring accuracy in Operator mode -
     /// HUD with the origin's lock report and a "mark where it really is"
     /// tool per tag. Tester-only; off by default.
     @Published var anchorLabEnabled: Bool {
@@ -122,12 +122,12 @@ final class AppSettings: ObservableObject {
     }
     /// LiDAR scene mesh in AR sessions (devices with LiDAR only). Feeds
     /// depth-assisted tracking and truth raycasts, but reconstruction runs
-    /// continuously and halves the frame rate on a phone — OFF by default;
+    /// continuously and halves the frame rate on a phone - OFF by default;
     /// the Lab is where its worth gets measured.
     @Published var lidarMeshEnabled: Bool {
         didSet { UserDefaults.standard.set(lidarMeshEnabled, forKey: "lidar_mesh_enabled") }
     }
-    /// The product door last used ("chambers" | "gemba" | "iloto") — local
+    /// The product door last used ("chambers" | "gemba" | "iloto") - local
     /// memory so the home page can say "last time you did X" without guessing.
     @Published var lastProduct: String {
         didSet { UserDefaults.standard.set(lastProduct, forKey: "last_product") }
@@ -136,7 +136,7 @@ final class AppSettings: ObservableObject {
     var isAuthoringShift: Bool { !isTechnician && shiftIntent == "author" }
     /// The kiosk gate is satisfied: signed in. Context (Production #,
     /// configuration, Test bay #, Project ID) is asked at each product's door
-    /// (A, 2026.4.46) — the kiosk no longer needs to know what you'll pick.
+    /// (A, 2026.4.46) - the kiosk no longer needs to know what you'll pick.
     var shiftReady: Bool { uamSignedIn }
 
     var uamSignedIn: Bool { !uamToken.isEmpty && !uamRole.isEmpty }
@@ -144,14 +144,14 @@ final class AppSettings: ObservableObject {
     /// (transition behaviour until the device verifies access).
     var isTechnician: Bool { uamRole == "technician" }
 
-    /// Current name plus all previous names — kept for display purposes
+    /// Current name plus all previous names - kept for display purposes
     /// (the "by [name]" caption in Shared rows). Not used for filtering.
     var allKnownNames: [String] {
         ([authorName] + previousAuthorNames).filter { !$0.isEmpty }
     }
 
     /// IDs of anchors created on THIS device. Used as the authoritative
-    /// My Anchors / Shared split — more reliable than name matching because
+    /// My Anchors / Shared split - more reliable than name matching because
     /// it survives renames and doesn't break when authorName drifts between
     /// creation and display time. Clears only if app data is wiped.
     @Published var myAnchorIds: Set<String> {
@@ -177,7 +177,7 @@ final class AppSettings: ObservableObject {
         didSet { UserDefaults.standard.set(ftueEnabled, forKey: "ftue_enabled") }
     }
 
-    /// Per-mode seen flags — set true the moment the auto-show fires so it won't repeat.
+    /// Per-mode seen flags - set true the moment the auto-show fires so it won't repeat.
     @Published var ftueHomeSeen: Bool {
         didSet { UserDefaults.standard.set(ftueHomeSeen, forKey: "ftue_home_seen") }
     }

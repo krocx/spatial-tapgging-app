@@ -18,7 +18,7 @@ arch: |
     R --> PREM["On-prem Windows - NSSM service, git pull + build ritual"]
     D[("JsonFileStore - plain JSON on OUR disk")] --- R
 ---
-The whole platform runs on infrastructure we control — Render or on-prem Windows
-under NSSM — and no third party ever sees site data. Deployment is a single Docker
+The whole platform runs on infrastructure we control - Render or on-prem Windows
+under NSSM - and no third party ever sees site data. Deployment is a single Docker
 image with a build-time boot smoke test, plus the committed portal and roadmap
 bundles.

@@ -8,8 +8,8 @@ depends: [guide-ingestion, roadmap-collab]
 terms: [AR Work Instructions]
 spec: PROCEDURE-DESIGNER.md
 api: |
-  POST /mindmap/:id/procedure/validate — graph rules check, no side effects (designer · API key)
-  POST /mindmap/:id/procedure/export — compile map into a draft guide (designer · API key)
+  POST /mindmap/:id/procedure/validate - graph rules check, no side effects (designer · API key)
+  POST /mindmap/:id/procedure/export - compile map into a draft guide (designer · API key)
 wireframe: procdes
 flow: |
   flowchart LR
@@ -37,4 +37,4 @@ arch: |
 Procedures drawn as flowcharts on the Roadmap canvas (`kind: procedure`): role-typed
 edges, server-derived step numbers, pre-flight validation, and one click to the Guide
 Library as a draft. Re-sync updates steps in place and can never overwrite AR
-placement — the spatial work survives every content edit.
+placement - the spatial work survives every content edit.

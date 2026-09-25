@@ -1,14 +1,14 @@
-// LotoTrainingView.swift — iLOTO slice 3: the certification quiz.
+// LotoTrainingView.swift - iLOTO slice 3: the certification quiz.
 //
 // One question at a time (a checklist mindset, not an exam cram screen), then
-// a single submit at the end. Grading is SERVER-side — the questions arrive
-// without answers, so the quiz cannot be scraped from the app — and the
+// a single submit at the end. Grading is SERVER-side - the questions arrive
+// without answers, so the quiz cannot be scraped from the app - and the
 // response carries per-question feedback with the correct answer and an
 // explanation, because the point is learning, not gatekeeping.
 //
 // Pass → certification record with an expiry date; the hub gate reads it live.
 // Fail → full review of every miss, then retry. Failed attempts are records
-// too (the server stores them) — an audit can see how many tries certification
+// too (the server stores them) - an audit can see how many tries certification
 // took, which is itself a signal EHS cares about.
 
 import SwiftUI
@@ -181,7 +181,7 @@ struct LotoTrainingView: View {
                 .listRowBackground(Color.clear)
             }
 
-            // Review — every question, misses first. The explanations are the
+            // Review - every question, misses first. The explanations are the
             // training; a silent score would waste the moment of attention.
             let misses = result.results.filter { !$0.correct }
             if !misses.isEmpty {
@@ -199,7 +199,7 @@ struct LotoTrainingView: View {
                     Button {
                         dismiss()
                     } label: {
-                        HStack { Spacer(); Text("Done — Safe Off and LOTO are unlocked").bold(); Spacer() }
+                        HStack { Spacer(); Text("Done - Safe Off and LOTO are unlocked").bold(); Spacer() }
                     }
                 } else {
                     Button {
@@ -247,7 +247,7 @@ struct LotoTrainingView: View {
             index = 0
             answers.removeAll()
             phase = questions.isEmpty
-                ? .failed("The question bank is empty — ask EHS to seed it on the server.")
+                ? .failed("The question bank is empty - ask EHS to seed it on the server.")
                 : .quiz
         } catch {
             phase = .failed(error.localizedDescription)

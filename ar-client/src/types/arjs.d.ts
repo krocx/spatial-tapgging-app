@@ -1,4 +1,4 @@
-// Type declarations for AR.js (loaded as a CDN script — not an npm package).
+// Type declarations for AR.js (loaded as a CDN script - not an npm package).
 // AR.js exposes its API under window.THREEx at runtime.
 // These are minimal stubs for Phase 1; expand as needed.
 

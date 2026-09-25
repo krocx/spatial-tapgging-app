@@ -1,4 +1,4 @@
-// export.ts — controller for turning a procedure map into a real guide.
+// export.ts - controller for turning a procedure map into a real guide.
 //
 // Sits between the compiler (pure graph → ImportedGuide) and the ingestion
 // service (ImportedGuide → Guide + GuideStep records). Its own job is the
@@ -58,7 +58,7 @@ export function assertProcedureMap(map: Mindmap): void {
   }
 }
 
-/** Compile only — used by the pre-flight panel. Never writes. */
+/** Compile only - used by the pre-flight panel. Never writes. */
 export function validateProcedure(map: Mindmap): ProcedureCompileResult {
   assertProcedureMap(map);
   return compileProcedure(map);
@@ -118,7 +118,7 @@ export async function exportProcedure(
   // added or removed) apply LIVE: placement is untouched by ingest, operators
   // just see better wording/voice/images. STRUCTURAL edits (steps added or
   // removed) change what "fully placed" means, so they require the caller to
-  // confirm — and the guide unpublishes until the new steps are placed.
+  // confirm - and the guide unpublishes until the new steps are placed.
   const existing = targetGuideId ? guideStore.findById(targetGuideId) : undefined;
   if (existing?.published) {
     const existingCount = guideStepStore.findAll()
@@ -131,11 +131,11 @@ export async function exportProcedure(
     if (!contentOnly && !opts.confirmUnpublish) {
       throw new ProcedureError(409,
         `"${existing.name}" is published and this change adds or removes steps. ` +
-        'Confirm to apply — the guide will be unpublished until the new steps are placed in AR.');
+        'Confirm to apply - the guide will be unpublished until the new steps are placed in AR.');
     }
     if (!contentOnly && opts.confirmUnpublish) {
       guideStore.save({ ...existing, published: false, updatedAt: new Date().toISOString() });
-      console.log(`[procedure] Unpublished ${existing.id} ("${existing.name}") — structural re-sync`);
+      console.log(`[procedure] Unpublished ${existing.id} ("${existing.name}") - structural re-sync`);
     }
     // contentOnly → fall through: live in-place update, stays published.
   }

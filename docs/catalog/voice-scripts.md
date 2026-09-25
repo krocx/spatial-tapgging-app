@@ -16,5 +16,5 @@ arch: |
     IOS --> HF["Hands and eyes stay on the work"]
 ---
 An optional per-step spoken instruction, read aloud when the operator reaches the
-step — hands and eyes stay on the work. Authored in the step form or on the
+step - hands and eyes stay on the work. Authored in the step form or on the
 Procedure Designer canvas, previewed with browser speech synthesis.

@@ -8,10 +8,10 @@ depends: []
 terms: [Anchor, QR Spatial Anchoring, 6-DOF]
 spec: APP-FEATURES.md
 api: |
-  POST /anchors — create anchor, returns id + encryption key for the QR (app, portal · API key)
-  GET /anchors/:id — resolve a scanned QR to its anchor (app · API key)
-  GET /anchors/:id/qrimage — server-rendered QR PNG (portal · API key)
-  GET /anchors/:id/qrprint — print-exact A4 QR page (portal · API key)
+  POST /anchors - create anchor, returns id + encryption key for the QR (app, portal · API key)
+  GET /anchors/:id - resolve a scanned QR to its anchor (app · API key)
+  GET /anchors/:id/qrimage - server-rendered QR PNG (portal · API key)
+  GET /anchors/:id/qrprint - print-exact A4 QR page (portal · API key)
 wireframe: author
 flow: |
   flowchart LR
@@ -34,5 +34,5 @@ arch: |
 ---
 A printed QR code establishes a six-degrees-of-freedom coordinate frame on the asset,
 gravity-normalised so the scan angle never shifts tag positions. Cheap, robust, works
-on day one in any environment — and it is the spatial root every other feature hangs
+on day one in any environment - and it is the spatial root every other feature hangs
 content from.

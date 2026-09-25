@@ -1,4 +1,4 @@
-// Operator Mode — validate a tag's current state against its trained pass state.
+// Operator Mode - validate a tag's current state against its trained pass state.
 //
 // Flow:
 //   1. QR scan → get { assetId, anchorId }
@@ -96,7 +96,7 @@ export class OperatorMode {
       const dist = typeof meta.tagDistance === 'number' ? meta.tagDistance : 1.5;
 
       if (!relMeta) {
-        // Legacy tag — no stored relative rotation.
+        // Legacy tag - no stored relative rotation.
         // Place straight ahead of the operator's camera at QR-scan time
         // (same direction as the QR code, just a bit further out).
         return new THREE.Vector3(0, 0, -1).applyQuaternion(opScanQ).multiplyScalar(dist);
@@ -151,7 +151,7 @@ export class OperatorMode {
     });
 
     this.cb.onStatus(
-      `Tag "${tag.label}" loaded — ${passState.images.length} reference images. ` +
+      `Tag "${tag.label}" loaded - ${passState.images.length} reference images. ` +
       `Follow the gold guide lines then tap Capture.`,
     );
 
@@ -176,8 +176,8 @@ export class OperatorMode {
         this.updateIndicatorColor(result.status === 'PASS' ? 0x00dd66 : 0xff3333);
         this.cb.onStatus(
           result.status === 'PASS'
-            ? `✓ PASS — confidence ${(result.confidence * 100).toFixed(0)}%`
-            : `✗ FAIL — confidence ${(result.confidence * 100).toFixed(0)}%`,
+            ? `✓ PASS - confidence ${(result.confidence * 100).toFixed(0)}%`
+            : `✗ FAIL - confidence ${(result.confidence * 100).toFixed(0)}%`,
         );
       } catch (err) {
         this.cb.onError(`Validation error: ${err instanceof Error ? err.message : String(err)}`);

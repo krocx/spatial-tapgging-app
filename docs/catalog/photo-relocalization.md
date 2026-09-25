@@ -8,8 +8,8 @@ depends: [arworldmap-memory]
 terms: [ARWorldMap]
 spec: APP-FEATURES.md
 api: |
-  GET /worldmap/:anchorId/reference-photo — author viewpoint card (app · API key)
-  GET /worldmap/guide/:guideId/photo — guide re-localization photo (app · API key)
+  GET /worldmap/:anchorId/reference-photo - author viewpoint card (app · API key)
+  GET /worldmap/guide/:guideId/photo - guide re-localization photo (app · API key)
 wireframe: gemba
 arch: |
   sequenceDiagram
@@ -24,5 +24,5 @@ arch: |
     D->>D: Findings restore at their saved positions
 ---
 When relocalization needs help, the author's original viewpoint is shown as a
-reference card — stand roughly here, look roughly there — with an explicit "I'm here"
+reference card - stand roughly here, look roughly there - with an explicit "I'm here"
 override for when the space has changed too much to match automatically.

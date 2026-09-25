@@ -1,4 +1,4 @@
-// anchor-accuracy.test.ts — Anchor Lab samples (2026.4.46).
+// anchor-accuracy.test.ts - Anchor Lab samples (2026.4.46).
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

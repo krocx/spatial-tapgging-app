@@ -7,18 +7,18 @@
 // (0.0–1.0 fractions of image width/height, origin top-left) so it applies
 // identically regardless of the live frame's resolution.
 //
-// Entirely optional — if the Author taps "Skip", no ROI is set and the tag
+// Entirely optional - if the Author taps "Skip", no ROI is set and the tag
 // validates against the full frame exactly as it did before this feature
 // existed.
 //
 // ── Interaction notes ────────────────────────────────────────────────────────
 // v2 fixes a real bug (not just a polish pass): the original drag math read
-// `rect` — already mutated by the PREVIOUS onChanged call in the same
-// gesture — and then added DragGesture's `translation`, which is the TOTAL
+// `rect` - already mutated by the PREVIOUS onChanged call in the same
+// gesture - and then added DragGesture's `translation`, which is the TOTAL
 // delta since the finger went down, not an incremental delta since the last
 // callback. Every callback re-applied translation on top of an already-
 // shifted rect, so the box raced ahead of the finger and got worse the
-// longer you dragged — exactly the "hard to scale or move" complaint. Fixed
+// longer you dragged - exactly the "hard to scale or move" complaint. Fixed
 // by snapshotting the rect ONCE per gesture (`@GestureState`) and always
 // computing `base + totalTranslation`, never `current + totalTranslation`.
 //
@@ -50,18 +50,18 @@ struct ROIPickerView: View {
     @State private var rect: CGRect = ROIPickerView.defaultRect
     @State private var imageFrame: CGRect = .zero   // where the image is actually laid out on screen
 
-    // Snapshot of `rect` taken once at the start of the current drag — every
+    // Snapshot of `rect` taken once at the start of the current drag - every
     // onChanged computes from THIS, never from the live `rect`, so deltas
     // never compound. Explicitly captured on the first onChanged of a given
-    // gesture and cleared onEnded (plain @State, not @GestureState — there
-    // are 9 separate gesture recognizers here — move + 8 handles — and
+    // gesture and cleared onEnded (plain @State, not @GestureState - there
+    // are 9 separate gesture recognizers here - move + 8 handles - and
     // explicit capture/clear is unambiguous about which one currently owns
     // the snapshot, rather than relying on ten distinct `.updating` chains
     // sharing one piece of gesture state).
     @State private var dragBaseRect: CGRect?
 
     // UI-only state (not gesture math): which handle is currently grabbed,
-    // and where the finger actually is — drives the highlight + magnifier.
+    // and where the finger actually is - drives the highlight + magnifier.
     @State private var activeHandle: Handle?
     @State private var fingerPoint: CGPoint?
     @State private var isMovingBox = false
@@ -201,7 +201,7 @@ struct ROIPickerView: View {
             .fill(Color.black.opacity(0.55), style: FillStyle(eoFill: true))
             .allowsHitTesting(false)
 
-            // Rule-of-thirds reference grid — only while actively adjusting,
+            // Rule-of-thirds reference grid - only while actively adjusting,
             // so it doesn't clutter the view at rest.
             if isMovingBox || activeHandle != nil {
                 thirdsGrid(boxRect: boxRect)
@@ -239,7 +239,7 @@ struct ROIPickerView: View {
 
     // Visual handle: a small dot/bar that grows slightly while grabbed,
     // sitting inside a much larger (44×44pt minimum) invisible tap target so
-    // a finger near — not exactly on — the corner still grabs it.
+    // a finger near - not exactly on - the corner still grabs it.
     @ViewBuilder
     private func handleView(_ handle: Handle, boxRect: CGRect) -> some View {
         let point = anchorPoint(for: handle, in: boxRect)
@@ -281,7 +281,7 @@ struct ROIPickerView: View {
     // Both gestures snapshot `rect` into `dragBaseRect` exactly once (the
     // `if state == nil` guard inside `.updating`) and compute every frame as
     // `base + totalTranslation`. This is the actual fix for the reported
-    // "hard to scale/move" behaviour — the previous version recomputed from
+    // "hard to scale/move" behaviour - the previous version recomputed from
     // the live, already-mutated `rect` every callback and added the
     // cumulative-since-drag-start translation on top of that each time,
     // so the box visibly raced ahead of the finger.
@@ -323,7 +323,7 @@ struct ROIPickerView: View {
                 rect = resizedRect(from: base, handle: handle, dxFrac: dxFrac, dyFrac: dyFrac)
 
                 // Track the actual finger position (base anchor + raw point
-                // translation, in screen points) — not the clamped handle —
+                // translation, in screen points) - not the clamped handle -
                 // so the magnifier follows the touch exactly even once the
                 // box itself has hit a size/edge limit.
                 let baseAnchor = anchorPoint(for: handle, in: screenRect(base, in: displayFrame))
@@ -341,7 +341,7 @@ struct ROIPickerView: View {
 
     // Pure function: given the rect at drag-start and the total translation
     // so far (as unit fractions), returns the resulting rect. Never reads
-    // `rect` directly — always operates on the passed-in `base` snapshot.
+    // `rect` directly - always operates on the passed-in `base` snapshot.
     private func resizedRect(from base: CGRect, handle: Handle, dxFrac: CGFloat, dyFrac: CGFloat) -> CGRect {
         switch handle {
         case .topLeft:
@@ -382,7 +382,7 @@ struct ROIPickerView: View {
 
     // ── Magnifier loupe ───────────────────────────────────────────────────────
     // Floats above the finger (never under it) showing a zoomed crop of the
-    // reference image centred on the exact touch point, with a crosshair —
+    // reference image centred on the exact touch point, with a crosshair -
     // this is what makes fine corner/edge placement actually precise instead
     // of guessing where your fingertip is relative to the line underneath it.
     private func magnifier(at point: CGPoint, displayFrame: CGRect, viewSize: CGSize) -> some View {

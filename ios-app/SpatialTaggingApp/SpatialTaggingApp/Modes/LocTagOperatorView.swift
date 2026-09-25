@@ -1,4 +1,4 @@
-// LocTagOperatorView.swift — Phase 2 (Task F)
+// LocTagOperatorView.swift - Phase 2 (Task F)
 // AR session for the Gemba audit walk Operator flow:
 //   1. Download ARWorldMap + LocTags from SIB in parallel.
 //   2. Load world map into ARSession → wait for re-localization.
@@ -46,7 +46,7 @@ struct LocTagOperatorView: View {
     @State private var referencePhoto:           UIImage? = nil
     /// True once user taps "I'm Here" (manual position confirm, bypasses ARKit wait)
     @State private var userConfirmedRelocalize:  Bool     = false
-    /// True after 20 seconds in .relocalizing phase — shows extra hint
+    /// True after 20 seconds in .relocalizing phase - shows extra hint
     @State private var showRelocalizingTimeout:  Bool     = false
     /// Opacity of the ghost reference-photo overlay (0.15–0.65, adjustable via slider)
     @State private var ghostOpacity:             Double   = 0.38
@@ -54,18 +54,18 @@ struct LocTagOperatorView: View {
     // ── Completion ────────────────────────────────────────────────────────────
     @State private var completingTag:   LocTag?        = nil
     @State private var completedTagIds: Set<String>    = []
-    /// Guard against auto-trigger firing again while the sheet is open — and,
+    /// Guard against auto-trigger firing again while the sheet is open - and,
     /// after a dismiss, until the operator WALKS AWAY (> approachingM). The old
     /// on-dismiss reset re-opened the form instantly while still standing at
     /// the tag, hiding the very marker they were trying to look at.
     @State private var autoTriggerGuard = false
     /// Sheet detent: arrives MINIMIZED (compact header strip, AR view visible
-    /// and interactive behind it) — drag up or tap Expand for the full form.
+    /// and interactive behind it) - drag up or tap Expand for the full form.
     @State private var completionDetent: PresentationDetent = .height(148)
 
     // ── R1–R3: resume, checkpoint, progress ───────────────────────────────────
     @Environment(\.scenePhase) private var scenePhase
-    /// Where navigation continues after (re)localization — restored from
+    /// Where navigation continues after (re)localization - restored from
     /// WalkProgressStore or kept across a re-align.
     @State private var resumeIndex: Int = 0
     @State private var checkpoint: ResumeCheckpointState? = nil
@@ -74,12 +74,12 @@ struct LocTagOperatorView: View {
     @State private var landmarkPhotoFor: String? = nil
     @State private var lastKnownDistance: Float? = nil
     @State private var lastResumeCount = 0
-    /// Only interruptions that involved the background earn the checkpoint —
+    /// Only interruptions that involved the background earn the checkpoint -
     /// the completion sheet's camera also interrupts ARKit while the app stays
     /// in the foreground.
     @State private var sawBackground = false
     private let checkpointTimeout: TimeInterval = 15
-    // R4: drift check on arrival — once per finding
+    // R4: drift check on arrival - once per finding
     @State private var driftCheckedFor: String? = nil
     @State private var driftPrompt: (tagId: String, score: Double)? = nil
 
@@ -95,7 +95,7 @@ struct LocTagOperatorView: View {
     var body: some View {
         ZStack(alignment: .top) {
 
-            // AR camera — always present so session can run in background
+            // AR camera - always present so session can run in background
             ARContainerView(arManager: arManager, onTap: handlePanelTap)
                 .ignoresSafeArea()
                 .onAppear {
@@ -113,7 +113,7 @@ struct LocTagOperatorView: View {
                 // Fired when ARKit finishes matching the saved world map
                 .onChange(of: arManager.isRelocalizing) { stillRelocalizing in
                     guard !stillRelocalizing else { return }
-                    // R2: back from an interruption — tracking is normal again;
+                    // R2: back from an interruption - tracking is normal again;
                     // ask the one question before trusting the pins.
                     if case .some(.relocalizing) = checkpoint { withAnimation { checkpoint = .confirm }; return }
                     guard phase == .relocalizing else { return }
@@ -177,7 +177,7 @@ struct LocTagOperatorView: View {
                     VStack(spacing: 10) {
                         Text("This doesn't look like #\(tag.order + 1)")
                             .font(.headline).foregroundStyle(.white)
-                        Text("The view here differs from the finding's photo. Check the pin — or re-align if the space has shifted.")
+                        Text("The view here differs from the finding's photo. Check the pin - or re-align if the space has shifted.")
                             .font(.footnote).foregroundStyle(.white.opacity(0.75)).multilineTextAlignment(.center)
                         HStack(spacing: 12) {
                             Button { withAnimation { driftPrompt = nil }; realignFromStart() } label: {
@@ -233,7 +233,7 @@ struct LocTagOperatorView: View {
             }
         }
         .task { await loadData() }
-        // Per-tag completion sheet — presented MINIMIZED so the operator can
+        // Per-tag completion sheet - presented MINIMIZED so the operator can
         // still see (and move around) the tag location; the AR view stays
         // interactive behind the compact strip. Guard is NOT reset on dismiss:
         // it re-arms only after walking away (see updateNavTelemetry).
@@ -354,7 +354,7 @@ struct LocTagOperatorView: View {
                         .transition(.opacity)
                 }
 
-                // Ghost opacity slider — lets user dial the overlay up/down
+                // Ghost opacity slider - lets user dial the overlay up/down
                 if referencePhoto != nil {
                     HStack(spacing: 10) {
                         Image(systemName: "photo.fill")
@@ -366,7 +366,7 @@ struct LocTagOperatorView: View {
                     }
                 }
 
-                // "I'm Here" — manual position confirmation
+                // "I'm Here" - manual position confirmation
                 Button {
                     userConfirmedRelocalize = true
                     placePins()
@@ -438,7 +438,7 @@ struct LocTagOperatorView: View {
                 .ignoresSafeArea()
             }
 
-            // Bottom nav panel — hidden while the completion sheet sits in its
+            // Bottom nav panel - hidden while the completion sheet sits in its
             // minimized detent over the same strip (the two would stack).
             if completingTag == nil {
                 VStack {
@@ -584,7 +584,7 @@ struct LocTagOperatorView: View {
                     showRelocalizingTimeout = true
                 }
             } else {
-                // No world map stored yet — place pins directly (positions may drift slightly)
+                // No world map stored yet - place pins directly (positions may drift slightly)
                 arManager.disableQRScanning()
                 placePins()
                 beginNavigation()
@@ -638,7 +638,7 @@ struct LocTagOperatorView: View {
                 }
             }
         }
-        // ARKit may already be normal (short interruption) — go straight to the question.
+        // ARKit may already be normal (short interruption) - go straight to the question.
         if !arManager.isRelocalizing { withAnimation { checkpoint = .confirm } }
     }
 
@@ -659,7 +659,7 @@ struct LocTagOperatorView: View {
         for t in locTags { FindingPanel.remove(from: arManager.sceneView.scene.rootNode, tagId: t.id) }
         removeArrow()
         guard let data = worldMapData else {
-            // No saved map: nothing to relocalize against — restart the session and re-pin.
+            // No saved map: nothing to relocalize against - restart the session and re-pin.
             arManager.startSession(); arManager.disableQRScanning()
             placePins(); beginNavigation(); return
         }
@@ -691,7 +691,7 @@ struct LocTagOperatorView: View {
             node.simdPosition = simd_float3(Float(p.x), Float(p.y), Float(p.z))
             arManager.sceneView.scene.rootNode.addChildNode(node)
             tagNodes[tag.id] = node
-            // G4: floating panel above every finding — the operator reads the
+            // G4: floating panel above every finding - the operator reads the
             // finding from a distance and walks to the one that matters.
             FindingPanel.attach(to: arManager.sceneView.scene.rootNode, tag: tag, index: i, pinPosition: node.simdPosition)
         }
@@ -770,7 +770,7 @@ struct LocTagOperatorView: View {
             autoTriggerGuard = true
             completingTag    = locTags[index]
         }
-        // Re-arm only after the operator walks AWAY — dismissing the sheet
+        // Re-arm only after the operator walks AWAY - dismissing the sheet
         // while still at the tag must not bounce it straight back open.
         if dist > approachingM && completingTag == nil && autoTriggerGuard {
             autoTriggerGuard = false
@@ -840,7 +840,7 @@ struct LocTagOperatorView: View {
     // ── 3D navigation arrow ───────────────────────────────────────────────────
 
     /// Create the floating orange arrow and add it to the scene.
-    /// Called once by placePins() — stays alive until done or exit.
+    /// Called once by placePins() - stays alive until done or exit.
     private func placeArrow() {
         guard arrowNode == nil else { return }
         let node = makeArrowNode()
@@ -869,7 +869,7 @@ struct LocTagOperatorView: View {
         coreMat.isDoubleSided     = true
 
         // ── Glow halo material: larger, nearly transparent warm-orange emission ─
-        // transparency = 0.18 → 18 % opaque — just enough to see a soft halo ring.
+        // transparency = 0.18 → 18 % opaque - just enough to see a soft halo ring.
         let glowMat = SCNMaterial()
         glowMat.diffuse.contents  = UIColor.clear
         glowMat.emission.contents = UIColor(red: 1.0, green: 0.55, blue: 0.0, alpha: 1.0)
@@ -886,7 +886,7 @@ struct LocTagOperatorView: View {
         shaftNode.position    = SCNVector3(0, 0, 0.04)   // center z=0.04 → shaft -0.02…0.10
         root.addChildNode(shaftNode)
 
-        // Glow shaft — wider radius, same length, halo-only
+        // Glow shaft - wider radius, same length, halo-only
         let glowShaft = SCNCylinder(radius: 0.022, height: 0.12)
         glowShaft.firstMaterial = glowMat
         let glowShaftNode = SCNNode(geometry: glowShaft)
@@ -903,7 +903,7 @@ struct LocTagOperatorView: View {
         headNode.position    = SCNVector3(0, 0, 0.13)   // base=0.10, tip=0.16
         root.addChildNode(headNode)
 
-        // Glow head — slightly larger cone for the arrowhead halo
+        // Glow head - slightly larger cone for the arrowhead halo
         let glowHead = SCNCone(topRadius: 0, bottomRadius: 0.042, height: 0.08)
         glowHead.firstMaterial = glowMat
         let glowHeadNode = SCNNode(geometry: glowHead)

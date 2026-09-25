@@ -1,7 +1,7 @@
 //
-//  TagEnvelope.swift — .tag envelope reader (spec: docs/TAG-FORMAT.md, tag/1.x)
+//  TagEnvelope.swift - .tag envelope reader (spec: docs/TAG-FORMAT.md, tag/1.x)
 //
-//  PROPRIETARY & CONFIDENTIAL — Applied Materials. Patent pending.
+//  PROPRIETARY & CONFIDENTIAL - Applied Materials. Patent pending.
 //
 //  The reference conformant reader (spec §6): parse → canonicalize →
 //  verify Ed25519 → pin issuer → cache for offline. The payload contains no
@@ -43,7 +43,7 @@ struct TagEnvelopeSignature: Codable {
 }
 
 /// Decoded view of the payload for app consumption. Verification does NOT
-/// use this struct — it canonicalizes the raw JSON so unknown (future)
+/// use this struct - it canonicalizes the raw JSON so unknown (future)
 /// fields still count toward the signature.
 struct TagPayloadView: Codable {
     let format: String
@@ -63,9 +63,9 @@ enum TagEnvelopeError: Error, LocalizedError {
     var errorDescription: String? {
         switch self {
         case .malformed(let d):        return "Malformed .tag envelope: \(d)"
-        case .unsupportedFormat(let f): return "Unsupported .tag format \(f) — update the app"
-        case .signatureInvalid:        return ".tag signature verification failed — envelope may be tampered"
-        case .issuerMismatch:          return ".tag signed by an unknown issuer — does not match the pinned server key"
+        case .unsupportedFormat(let f): return "Unsupported .tag format \(f) - update the app"
+        case .signatureInvalid:        return ".tag signature verification failed - envelope may be tampered"
+        case .issuerMismatch:          return ".tag signed by an unknown issuer - does not match the pinned server key"
         }
     }
 }
@@ -75,7 +75,7 @@ enum TagEnvelopeError: Error, LocalizedError {
 enum TagEnvelopeReader {
 
     /// Parse + verify an envelope (spec §6 steps 1–3).
-    /// `pinnedIssuerKey` — base64 raw key from a previous scan; nil on first
+    /// `pinnedIssuerKey` - base64 raw key from a previous scan; nil on first
     /// contact (trust-on-first-scan, then call `pinIssuer`).
     static func read(_ data: Data, pinnedIssuerKey: String?) throws -> TagPayloadView {
         guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
@@ -93,7 +93,7 @@ enum TagEnvelopeReader {
 
         if let pinned = pinnedIssuerKey, pinned != pubB64 { throw TagEnvelopeError.issuerMismatch }
 
-        // Verify over the canonical payload bytes — includes unknown fields.
+        // Verify over the canonical payload bytes - includes unknown fields.
         let canonical = try canonicalize(payloadObj)
         guard let pubRaw = Data(base64Encoded: pubB64), pubRaw.count == 32,
               let sigRaw = Data(base64Encoded: sigB64), sigRaw.count == 64,
@@ -136,7 +136,7 @@ enum TagEnvelopeReader {
         try? envelopeData.write(to: cacheDir.appendingPathComponent("\(subjectId).tag"), options: .atomic)
     }
 
-    /// Cached envelope — re-verified against the pinned issuer on every read,
+    /// Cached envelope - re-verified against the pinned issuer on every read,
     /// so a tampered cache file fails exactly like a tampered download.
     static func cached(subjectId: String) -> (data: Data, payload: TagPayloadView)? {
         guard let data = try? Data(contentsOf: cacheDir.appendingPathComponent("\(subjectId).tag")),
@@ -145,7 +145,7 @@ enum TagEnvelopeReader {
         return (data, payload)
     }
 
-    // MARK: Canonicalization (spec §3 — must match tag-core.ts byte-for-byte)
+    // MARK: Canonicalization (spec §3 - must match tag-core.ts byte-for-byte)
 
     static func canonicalize(_ value: Any) throws -> String {
         if value is NSNull { return "null" }
@@ -153,7 +153,7 @@ enum TagEnvelopeReader {
         if let b = value as? Bool { return b ? "true" : "false" }   // NSNumber bools first
         if value is NSNumber {
             // Format rule: payloads carry no JSON numbers (spec §2).
-            throw TagEnvelopeError.malformed("determinism rule violated — JSON number in payload")
+            throw TagEnvelopeError.malformed("determinism rule violated - JSON number in payload")
         }
         if let arr = value as? [Any] {
             return "[" + (try arr.map { try canonicalize($0) }).joined(separator: ",") + "]"
@@ -192,13 +192,13 @@ enum TagEnvelopeReader {
     }
 }
 
-// MARK: - Live subscription (spec §7 — the continuous emitter, M2)
+// MARK: - Live subscription (spec §7 - the continuous emitter, M2)
 
 /// A `changed` push from GET /anchors/:id/subscribe.
 struct TagChangeEvent: Codable {
     let contentVersion: String
     let payloadSha256: String
-    /// "stream:<name>" / "member:<tagId>" — re-fetch only these.
+    /// "stream:<name>" / "member:<tagId>" - re-fetch only these.
     let changed: [String]?
 }
 

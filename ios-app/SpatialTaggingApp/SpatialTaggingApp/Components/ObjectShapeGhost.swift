@@ -1,10 +1,10 @@
-// ObjectShapeGhost.swift — B3 (2026.4.46): a library 3D model as a ghost ON
+// ObjectShapeGhost.swift - B3 (2026.4.46): a library 3D model as a ghost ON
 // the detected chamber.
 //
 // Why: a reference object is an invisible point cloud. When the app says
 // "chamber recognised", nothing on screen proves WHERE it thinks the chamber
 // is. Attaching the chamber's own 3D model (from the library) as a translucent
-// ghost at the detected pose makes recognition — and every B2e re-alignment —
+// ghost at the detected pose makes recognition - and every B2e re-alignment -
 // visible at a glance: if the ghost sits on the metal, the frame is right.
 //
 //   ObjectShapeGhost      SceneKit node = objectPose × shapeModelPose, scaled;

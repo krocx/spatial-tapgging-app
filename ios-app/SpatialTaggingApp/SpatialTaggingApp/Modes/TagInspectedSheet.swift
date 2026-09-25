@@ -1,4 +1,4 @@
-// TagInspectedSheet.swift — Phase 4: Session Reporting
+// TagInspectedSheet.swift - Phase 4: Session Reporting
 //
 // Bottom sheet presented over the AR view when a tag's inspection
 // result is ready for operator confirmation.
@@ -8,10 +8,10 @@
 //   • FAIL held 6 s: loop paused after FAIL persists for 6 consecutive seconds
 //
 // Buttons:
-//   • "Re-inspect"    — dismiss sheet, restart live loop for this tag
-//   • "Tag Inspected" — confirm result, store note, upload evidence, mark complete
+//   • "Re-inspect"    - dismiss sheet, restart live loop for this tag
+//   • "Tag Inspected" - confirm result, store note, upload evidence, mark complete
 //
-// The sheet intentionally does NOT pause the AR session itself — only the
+// The sheet intentionally does NOT pause the AR session itself - only the
 // validation loop is paused. The camera feed stays live so the operator
 // can see the physical part while deciding whether to confirm or re-inspect.
 
@@ -30,7 +30,7 @@ struct TagInspectedSheet: View {
 
     let onReInspect:    () -> Void
     let onConfirm:      (_ note: String?) -> Void
-    /// Operator wants to re-frame the shot — dismiss sheet, show live AR with a capture button.
+    /// Operator wants to re-frame the shot - dismiss sheet, show live AR with a capture button.
     let onRetakeImage:  () -> Void
 
     // ── Local state ────────────────────────────────────────────────────────────

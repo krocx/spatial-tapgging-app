@@ -1,4 +1,4 @@
-# Build context is the repo root — exclude everything not needed for the sib Docker build.
+# Build context is the repo root - exclude everything not needed for the sib Docker build.
 
 # Dependencies (reinstalled inside the image)
 node_modules/
@@ -11,10 +11,10 @@ dist/
 # SIB local data (never baked into the image; lives on the Render disk at runtime)
 **/.sib-data/
 
-# iOS app — not part of the server build
+# iOS app - not part of the server build
 ios-app/
 
-# AR client — not part of the server build
+# AR client - not part of the server build
 ar-client/src/
 ar-client/public/
 
@@ -23,7 +23,7 @@ docs/
 skills/
 *.md
 # …except the docs the server SERVES at runtime (each needs a re-include or the
-# image build fails with "not found" — learned the hard way with the wireframe):
+# image build fails with "not found" - learned the hard way with the wireframe):
 #   /mindmap/glossary + /catalog term definitions → docs/roadmap-glossary.md
 #   /catalog/doc/:id spec deep-dives             → all top-level docs/*.md
 #   /catalog/data                                → docs/catalog/*.md

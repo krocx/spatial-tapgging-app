@@ -1,4 +1,4 @@
-// LocTagOperatorSheet.swift — Phase 2 (Task G)
+// LocTagOperatorSheet.swift - Phase 2 (Task G)
 // Per-tag completion sheet for the Gemba audit walk Operator.
 // Shown when the Operator arrives at a tag (auto) or taps "Complete Tag" (manual).
 // Submits a LocTagCompletion via POST /loc-tags/:id/completion.
@@ -41,7 +41,7 @@ struct LocTagOperatorSheet: View {
 
                 // ── Resolution ─────────────────────────────────────────────────
                 Section("Resolution") {
-                    // Segmented picker — fast to tap while standing at a tag
+                    // Segmented picker - fast to tap while standing at a tag
                     Picker("Status", selection: $status) {
                         ForEach(LocTagCompletionStatus.allCases) { s in
                             Text(s.displayName).tag(s)

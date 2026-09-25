@@ -1,4 +1,4 @@
-// insights.test.ts — the leadership view is derived from the usage log:
+// insights.test.ts - the leadership view is derived from the usage log:
 // period windows, previous-period deltas, per-day spine, per-guide heat.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';

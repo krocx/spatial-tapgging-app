@@ -1,4 +1,4 @@
-// guide-ingest.test.ts — behaviour lock for the shared guide ingestion service.
+// guide-ingest.test.ts - behaviour lock for the shared guide ingestion service.
 //
 // applyImportedGuide is the single path from an ImportedGuide to real Guide +
 // GuideStep records. It is reached from POST /guides/import and from the
@@ -36,7 +36,7 @@ const stepsFor = (guideId: string): GuideStep[] =>
     .filter(s => s.guideId === guideId)
     .sort((a, b) => a.sequenceNumber - b.sequenceNumber);
 
-// ── Create mode — pins the original POST /guides/import behaviour ────────────
+// ── Create mode - pins the original POST /guides/import behaviour ────────────
 
 test('creates a draft guide with steps in sequence order', async () => {
   const r = await applyImportedGuide(
@@ -115,7 +115,7 @@ test('an unreachable image url is non-fatal and reported', async () => {
   assert.equal(r.imageErrors.length, 1);
 });
 
-// ── Upsert mode — new re-sync semantics ─────────────────────────────────────
+// ── Upsert mode - new re-sync semantics ─────────────────────────────────────
 
 test('placement survives a re-sync', async () => {
   const first = await applyImportedGuide(
@@ -251,7 +251,7 @@ test('re-sync preserves the guide id, creation time and published flag', async (
   assert.equal(again.guide.createdAt, first.guide.createdAt);
   assert.equal(again.guide.name, 'New name', 'the name follows the map');
   assert.equal(again.guide.published, true,
-    'ingest does not change publication state — the caller guards that');
+    'ingest does not change publication state - the caller guards that');
 });
 
 test('an unknown existing step id falls back to creating a fresh step', async () => {

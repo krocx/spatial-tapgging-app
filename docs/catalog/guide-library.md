@@ -8,9 +8,9 @@ depends: [guide-lifecycle, guide-import]
 terms: [AR Work Instructions]
 spec: ../README.md#anchor-portal-portal
 api: |
-  GET /guides — all guides across anchors (portal · API key)
-  PATCH /guides/:id — publish / unpublish from the library (portal · API key)
-  GET /guides/:id/steps — step list with placement status (portal · API key)
+  GET /guides - all guides across anchors (portal · API key)
+  PATCH /guides/:id - publish / unpublish from the library (portal · API key)
+  GET /guides/:id/steps - step list with placement status (portal · API key)
 wireframe: portal
 arch: |
   flowchart LR
@@ -22,5 +22,5 @@ arch: |
     LIB --> FILT["Live filter + post-import jump-and-flash"]
 ---
 Browse, filter, publish/unpublish, import and delete guides, with per-step placement
-status at a glance. The library is where an authored or imported procedure becomes —
-or stops being — something operators can see.
+status at a glance. The library is where an authored or imported procedure becomes -
+or stops being - something operators can see.

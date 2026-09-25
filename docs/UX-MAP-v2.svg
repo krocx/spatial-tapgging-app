@@ -1,12 +1,12 @@
 <svg viewBox="0 0 820 1316" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, system-ui, sans-serif">
-<title>Spatial Tagging App — UX Map v2</title>
+<title>Spatial Tagging App - UX Map v2</title>
 <defs>
   <marker id="arrA" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#3b82f6"/></marker>
   <marker id="arrG" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L0,6 L7,3 z" fill="#34d399"/></marker>
 </defs>
 <rect width="820" height="1300" fill="#0f1117"/>
-<text x="410.0" y="30" fill="#f3f4f6" font-size="15" font-weight="700" text-anchor="middle" style="">Spatial Tagging App — UX Map v2 (Post Dual-State / ROI Update)</text>
-<text x="410.0" y="48" fill="#9ca3af" font-size="10" font-weight="400" text-anchor="middle" style="">Updated from the 3-weeks-ago review — reflects Pass/Fail training, ROI crop, and Phase 2.5 audit findings</text>
+<text x="410.0" y="30" fill="#f3f4f6" font-size="15" font-weight="700" text-anchor="middle" style="">Spatial Tagging App - UX Map v2 (Post Dual-State / ROI Update)</text>
+<text x="410.0" y="48" fill="#9ca3af" font-size="10" font-weight="400" text-anchor="middle" style="">Updated from the 3-weeks-ago review - reflects Pass/Fail training, ROI crop, and Phase 2.5 audit findings</text>
 <rect x="20" y="64" width="12" height="12" rx="2" fill="#3b82f6"/>
 <text x="36" y="74" fill="#9ca3af" font-size="10" font-weight="400" text-anchor="start" style="">Author flow</text>
 <rect x="213" y="64" width="12" height="12" rx="2" fill="#34d399"/>
@@ -26,7 +26,7 @@
 <line x1="548" y1="90" x2="548" y2="1240" stroke="#1e2130" stroke-width="1"/>
 <rect x="30" y="118" width="240" height="46" rx="7" fill="#1e2130"/>
 <text x="42" y="137" fill="#f3f4f6" font-size="11" font-weight="600" text-anchor="start" style="">QR Scan</text>
-<text x="42" y="152" fill="#9ca3af" font-size="9" font-weight="400" text-anchor="start" style="">AnchorScanView — locks anchor</text>
+<text x="42" y="152" fill="#9ca3af" font-size="9" font-weight="400" text-anchor="start" style="">AnchorScanView - locks anchor</text>
 <line x1="150.0" y1="164" x2="150.0" y2="180" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrA)"/>
 <rect x="30" y="180" width="240" height="46" rx="7" fill="#1e2130"/>
 <text x="42" y="199" fill="#f3f4f6" font-size="11" font-weight="600" text-anchor="start" style="">AR Tap-to-Place</text>
@@ -42,19 +42,19 @@
 <line x1="150.0" y1="350" x2="150.0" y2="366" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrA)"/>
 <rect x="30" y="366" width="240" height="46" rx="7" fill="#1e2130"/>
 <text x="42" y="385" fill="#f3f4f6" font-size="11" font-weight="600" text-anchor="start" style="">Train Fail State?</text>
-<text x="42" y="400" fill="#9ca3af" font-size="9" font-weight="400" text-anchor="start" style="">NEW — optional second reference set</text>
+<text x="42" y="400" fill="#9ca3af" font-size="9" font-weight="400" text-anchor="start" style="">NEW - optional second reference set</text>
 <circle cx="256" cy="380" r="11" fill="#22c55e"/>
 <text x="256" y="384" fill="#ffffff" font-size="9" font-weight="700" text-anchor="middle" style="">✓</text>
 <line x1="150.0" y1="412" x2="150.0" y2="428" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrA)"/>
 <rect x="30" y="428" width="240" height="46" rx="7" fill="#1e2130"/>
 <text x="42" y="447" fill="#f3f4f6" font-size="11" font-weight="600" text-anchor="start" style="">Mark ROI</text>
-<text x="42" y="462" fill="#9ca3af" font-size="9" font-weight="400" text-anchor="start" style="">NEW — drag-box crop, 8 handles + loupe</text>
+<text x="42" y="462" fill="#9ca3af" font-size="9" font-weight="400" text-anchor="start" style="">NEW - drag-box crop, 8 handles + loupe</text>
 <circle cx="256" cy="442" r="11" fill="#22c55e"/>
 <text x="256" y="446" fill="#ffffff" font-size="9" font-weight="700" text-anchor="middle" style="">✓</text>
 <line x1="150.0" y1="474" x2="150.0" y2="490" stroke="#3b82f6" stroke-width="1.5" marker-end="url(#arrA)"/>
 <rect x="30" y="490" width="240" height="46" rx="7" fill="#1e2130"/>
 <text x="42" y="509" fill="#f3f4f6" font-size="11" font-weight="600" text-anchor="start" style="">Tag List / Edit</text>
-<text x="42" y="524" fill="#9ca3af" font-size="9" font-weight="400" text-anchor="start" style="">label, retrain Pass/Fail, adjust ROI — all independent</text>
+<text x="42" y="524" fill="#9ca3af" font-size="9" font-weight="400" text-anchor="start" style="">label, retrain Pass/Fail, adjust ROI - all independent</text>
 <circle cx="256" cy="504" r="11" fill="#22c55e"/>
 <text x="256" y="508" fill="#ffffff" font-size="9" font-weight="700" text-anchor="middle" style="">✓</text>
 <rect x="300" y="118" width="240" height="46" rx="7" fill="#1e2130"/>
@@ -84,25 +84,25 @@
 <text x="577" y="152" fill="#9ca3af" font-size="8.7" font-weight="400" text-anchor="start" style="">SIB URL, test connection</text>
 <rect x="565" y="178" width="225" height="46" rx="7" fill="#16241c" stroke="#22c55e" stroke-width="1"/>
 <text x="577" y="197" fill="#f3f4f6" font-size="10.5" font-weight="600" text-anchor="start" style="">QR Generator</text>
-<text x="577" y="212" fill="#86efac" font-size="8.7" font-weight="400" text-anchor="start" style="">RESOLVED — in-app, no external tool needed</text>
+<text x="577" y="212" fill="#86efac" font-size="8.7" font-weight="400" text-anchor="start" style="">RESOLVED - in-app, no external tool needed</text>
 <circle cx="776" cy="192" r="11" fill="#22c55e"/>
 <text x="776" y="196" fill="#ffffff" font-size="9" font-weight="700" text-anchor="middle" style="">✓</text>
 <rect x="565" y="238" width="225" height="46" rx="7" fill="#16241c" stroke="#22c55e" stroke-width="1"/>
 <text x="577" y="257" fill="#f3f4f6" font-size="10.5" font-weight="600" text-anchor="start" style="">Edit Tag sheet</text>
-<text x="577" y="272" fill="#86efac" font-size="8.7" font-weight="400" text-anchor="start" style="">RESOLVED — label edit + independent re-train/ROI</text>
+<text x="577" y="272" fill="#86efac" font-size="8.7" font-weight="400" text-anchor="start" style="">RESOLVED - label edit + independent re-train/ROI</text>
 <circle cx="776" cy="252" r="11" fill="#22c55e"/>
 <text x="776" y="256" fill="#ffffff" font-size="9" font-weight="700" text-anchor="middle" style="">✓</text>
 <rect x="565" y="298" width="225" height="46" rx="7" fill="#16241c" stroke="#22c55e" stroke-width="1"/>
 <text x="577" y="317" fill="#f3f4f6" font-size="10.5" font-weight="600" text-anchor="start" style="">Blocked tag creation w/o AR placement</text>
-<text x="577" y="332" fill="#86efac" font-size="8.7" font-weight="400" text-anchor="start" style="">RESOLVED — prevents orphaned/unpositioned tags</text>
+<text x="577" y="332" fill="#86efac" font-size="8.7" font-weight="400" text-anchor="start" style="">RESOLVED - prevents orphaned/unpositioned tags</text>
 <circle cx="776" cy="312" r="11" fill="#22c55e"/>
 <text x="776" y="316" fill="#ffffff" font-size="9" font-weight="700" text-anchor="middle" style="">✓</text>
 <line x1="20" y1="562" x2="800" y2="562" stroke="#1e2130" stroke-width="1"/>
-<text x="20" y="584" fill="#f3f4f6" font-size="12" font-weight="700" text-anchor="start" style="">GAPS &amp; OPEN QUESTIONS — found during Phase 2.5 UX audit (tasks #62–75)</text>
+<text x="20" y="584" fill="#f3f4f6" font-size="12" font-weight="700" text-anchor="start" style="">GAPS &amp; OPEN QUESTIONS - found during Phase 2.5 UX audit (tasks #62–75)</text>
 <rect x="30" y="596" width="240" height="56" rx="7" fill="#2d1515" stroke="#ef4444" stroke-width="1.2"/>
 <text x="38" y="611" fill="#ef4444" font-size="9.5" font-weight="700" text-anchor="start" style="">⚠ GAP #62</text>
 <text x="38" y="625" fill="#fca5a5" font-size="8.7" font-weight="400" text-anchor="start" style="">First tag placement always misfires 'No</text>
-<text x="38" y="636" fill="#fca5a5" font-size="8.7" font-weight="400" text-anchor="start" style="">surface detected' — closing sheet +</text>
+<text x="38" y="636" fill="#fca5a5" font-size="8.7" font-weight="400" text-anchor="start" style="">surface detected' - closing sheet +</text>
 <text x="38" y="647" fill="#fca5a5" font-size="8.7" font-weight="400" text-anchor="start" style="">retry fixes it. Every new anchor, every</text>
 <text x="38" y="658" fill="#fca5a5" font-size="8.7" font-weight="400" text-anchor="start" style="">time.</text>
 <rect x="30" y="662" width="240" height="56" rx="7" fill="#2d1515" stroke="#ef4444" stroke-width="1.2"/>
@@ -113,7 +113,7 @@
 <text x="38" y="724" fill="#fca5a5" font-size="8.7" font-weight="400" text-anchor="start" style="">reselects anchor.</text>
 <rect x="565" y="596" width="225" height="56" rx="7" fill="#2d1515" stroke="#ef4444" stroke-width="1.2"/>
 <text x="573" y="611" fill="#ef4444" font-size="9.5" font-weight="700" text-anchor="start" style="">⚠ GAP #64</text>
-<text x="573" y="625" fill="#fca5a5" font-size="8.7" font-weight="400" text-anchor="start" style="">Anchors can share the same name —</text>
+<text x="573" y="625" fill="#fca5a5" font-size="8.7" font-weight="400" text-anchor="start" style="">Anchors can share the same name -</text>
 <text x="573" y="636" fill="#fca5a5" font-size="8.7" font-weight="400" text-anchor="start" style="">propose HH:MM:SS suffix for</text>
 <text x="573" y="647" fill="#fca5a5" font-size="8.7" font-weight="400" text-anchor="start" style="">uniqueness + Portal searchability.</text>
 <rect x="300" y="596" width="240" height="56" rx="7" fill="#2d1515" stroke="#ef4444" stroke-width="1.2"/>
@@ -156,7 +156,7 @@
 <rect x="565" y="794" width="225" height="56" rx="7" fill="#2d1515" stroke="#ef4444" stroke-width="1.2"/>
 <text x="573" y="809" fill="#ef4444" font-size="9.5" font-weight="700" text-anchor="start" style="">⚠ GAP #74</text>
 <text x="573" y="823" fill="#fca5a5" font-size="8.7" font-weight="400" text-anchor="start" style="">Client and server each implement</text>
-<text x="573" y="834" fill="#fca5a5" font-size="8.7" font-weight="400" text-anchor="start" style="">their own ROI-crop math — risk of</text>
+<text x="573" y="834" fill="#fca5a5" font-size="8.7" font-weight="400" text-anchor="start" style="">their own ROI-crop math - risk of</text>
 <text x="573" y="845" fill="#fca5a5" font-size="8.7" font-weight="400" text-anchor="start" style="">drift.</text>
 <rect x="30" y="860" width="240" height="56" rx="7" fill="#2d1515" stroke="#ef4444" stroke-width="1.2"/>
 <text x="38" y="875" fill="#ef4444" font-size="9.5" font-weight="700" text-anchor="start" style="">⚠ GAP #75</text>
@@ -166,10 +166,10 @@
 <text x="38" y="941" fill="#ef4444" font-size="9.5" font-weight="700" text-anchor="start" style="">⚠ GAP #65</text>
 <text x="38" y="955" fill="#fca5a5" font-size="8.7" font-weight="400" text-anchor="start" style="">Fail-state training honeycomb sits</text>
 <text x="38" y="966" fill="#fca5a5" font-size="8.7" font-weight="400" text-anchor="start" style="">farther from the tag than the Pass-state</text>
-<text x="38" y="977" fill="#fca5a5" font-size="8.7" font-weight="400" text-anchor="start" style="">one (low priority — leave as-is if</text>
+<text x="38" y="977" fill="#fca5a5" font-size="8.7" font-weight="400" text-anchor="start" style="">one (low priority - leave as-is if</text>
 <text x="38" y="988" fill="#fca5a5" font-size="8.7" font-weight="400" text-anchor="start" style="">intentional).</text>
 <line x1="20" y1="1002" x2="800" y2="1002" stroke="#1e2130" stroke-width="1"/>
-<text x="20" y="1024" fill="#f3f4f6" font-size="12" font-weight="700" text-anchor="start" style="">OPEN QUESTIONS — carried from last review, still unanswered</text>
+<text x="20" y="1024" fill="#f3f4f6" font-size="12" font-weight="700" text-anchor="start" style="">OPEN QUESTIONS - carried from last review, still unanswered</text>
 <rect x="20" y="1038" width="780" height="32" rx="7" fill="#2d2010" stroke="#f59e0b" stroke-width="1.2"/>
 <text x="30" y="1051" fill="#f59e0b" font-size="9.5" font-weight="700" text-anchor="start" style="">? Q1</text>
 <text x="30" y="1064" fill="#fde68a" font-size="9.3" font-weight="400" text-anchor="start" style="">Should Author mode persist across app restarts, or reset each time?</text>

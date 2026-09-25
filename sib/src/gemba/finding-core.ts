@@ -1,4 +1,4 @@
-// gemba/finding-core.ts — G3: the reference-list fields on a finding (LocTag).
+// gemba/finding-core.ts - G3: the reference-list fields on a finding (LocTag).
 // Pure: resolves and validates what POST/PATCH /loc-tags send, snapshotting
 // the chosen question from the Audit Reference Library so the finding is
 // self-contained forever. No I/O; the route passes in the lookup.
@@ -27,7 +27,7 @@ export function resolveFindingFields(body: Record<string, unknown>, lookup: Ques
       out.clearQuestion = true;
     } else {
       const hit = lookup(body.questionCode);
-      if (!hit) throw new GembaValidationError(400, `Unknown question code "${normCode(body.questionCode)}" — not in the Audit Reference Library.`);
+      if (!hit) throw new GembaValidationError(400, `Unknown question code "${normCode(body.questionCode)}" - not in the Audit Reference Library.`);
       out.focusAreaCode  = hit.area.code;
       out.focusAreaTitle = hit.area.title;
       out.questionCode   = hit.question.code;
@@ -105,7 +105,7 @@ export function applyCaptionEdits(photos: LocTagPhoto[], edits: unknown): LocTag
 
 /** Title for a finding logged against a question when the client sent none. */
 export function defaultTitle(fields: Partial<FindingFields>, fallback: string): string {
-  if (fields.questionCode) return `${fields.questionCode} — ${fields.questionTitle ?? ''}`.trim();
+  if (fields.questionCode) return `${fields.questionCode} - ${fields.questionTitle ?? ''}`.trim();
   if (fields.referenceSource === 'custom' && fields.questionTitle) return fields.questionTitle;
   return fallback;
 }

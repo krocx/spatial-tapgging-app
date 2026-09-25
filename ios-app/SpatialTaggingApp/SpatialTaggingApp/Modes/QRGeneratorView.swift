@@ -1,4 +1,4 @@
-// QRGeneratorView.swift — Phase 2.5 G7
+// QRGeneratorView.swift - Phase 2.5 G7
 // In-app QR code generator for Author mode.
 //
 // Generates a QR code that encodes:
@@ -9,10 +9,10 @@
 //   2. Obtain the AES-256-GCM decryption key for pass-state images
 //
 // The encryption key is generated once per anchor and stored in iOS Keychain.
-// It is NEVER sent to the SIB server — only distributed via QR code.
+// It is NEVER sent to the SIB server - only distributed via QR code.
 //
 // QR image source priority (Phase 3 fix):
-//   1. Server-generated PNG via GET /anchors/:id/qrimage  (canonical — same pattern as portal)
+//   1. Server-generated PNG via GET /anchors/:id/qrimage  (canonical - same pattern as portal)
 //   2. Local CIQRCodeGenerator fallback (offline / SIB unreachable)
 // Using the server image ensures the iOS app and the portal always display
 // the identical QR pixel pattern (same mask selection), eliminating user confusion.
@@ -25,10 +25,10 @@ struct QRGeneratorView: View {
     let anchor: Anchor
     let encryptionKey: String  // base64-encoded AES-256 key
     /// Physical QR print size in cm, read from the anchor stored in SIB.
-    /// Set once at anchor creation — never changes — so every device and the
+    /// Set once at anchor creation - never changes - so every device and the
     /// portal produce the same QR pixel pattern.
     var qrSizeCm: Double = 10.0
-    /// When false the "Done" button is omitted — useful when this view is
+    /// When false the "Done" button is omitted - useful when this view is
     /// embedded inside a parent sheet that provides its own navigation actions.
     var showDoneButton: Bool = true
 
@@ -37,7 +37,7 @@ struct QRGeneratorView: View {
 
     @State private var qrImage: UIImage? = nil
     @State private var showShareSheet = false
-    /// Items prepared for the share sheet — a PDF URL (primary) or UIImage fallback.
+    /// Items prepared for the share sheet - a PDF URL (primary) or UIImage fallback.
     @State private var shareItems: [Any] = []
 
     var body: some View {
@@ -93,7 +93,7 @@ struct QRGeneratorView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("How to use this QR code")
                         .font(.subheadline.bold())
-                    Text("Print or display this code near the physical anchor location. Operator devices scan it to begin inspection. The code contains the encryption key — treat it like a physical key to the anchor.")
+                    Text("Print or display this code near the physical anchor location. Operator devices scan it to begin inspection. The code contains the encryption key - treat it like a physical key to the anchor.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.leading)
@@ -176,7 +176,7 @@ struct QRGeneratorView: View {
         let pdfData = renderer.pdfData { ctx in
             ctx.beginPage()
 
-            // Asset name — title
+            // Asset name - title
             let titleAttrs: [NSAttributedString.Key: Any] = [
                 .font:            UIFont.boldSystemFont(ofSize: 18),
                 .foregroundColor: UIColor.black,
@@ -199,7 +199,7 @@ struct QRGeneratorView: View {
                 y: topMargin + 26
             ))
 
-            // QR image — UIGraphicsPDFRenderer uses UIKit coordinates (y=0 top-left)
+            // QR image - UIGraphicsPDFRenderer uses UIKit coordinates (y=0 top-left)
             image.draw(in: CGRect(x: qrOriginX, y: qrOriginY,
                                   width: qrSizePts, height: qrSizePts))
 
@@ -252,7 +252,7 @@ struct QRGeneratorView: View {
                 qrImage = uiImage
                 return
             }
-            // Attempt 2: SIB unreachable or offline — generate locally as fallback.
+            // Attempt 2: SIB unreachable or offline - generate locally as fallback.
             // Note: the local image may differ visually from the server image
             // (different mask selection), but it encodes the identical data and
             // will scan correctly.  It is used only for display/sharing when
@@ -261,7 +261,7 @@ struct QRGeneratorView: View {
         }
     }
 
-    /// Local CIQRCodeGenerator fallback — used when SIB is unreachable.
+    /// Local CIQRCodeGenerator fallback - used when SIB is unreachable.
     private func generateQRLocally() {
         let jsonString = QRAnchorContext.buildCanonicalPayload(
             assetId:       anchor.assetId,

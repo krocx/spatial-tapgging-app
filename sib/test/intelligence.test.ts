@@ -1,4 +1,4 @@
-// intelligence.test.ts — C3: hint scoring, retirement rules, heat + notes.
+// intelligence.test.ts - C3: hint scoring, retirement rules, heat + notes.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -26,7 +26,7 @@ function session(id: string, steps: OmsUsageStepEntry[]): OmsUsageSession {
   return { id, guideId: 'g1', guideName: 'G', anchorId: 'a', anchorName: 'A', operatorName: 'op', startedAt: iso(0), completed: true, steps };
 }
 
-test('scoreVisit — wrong-part helped when no wrong tap after the hint', () => {
+test('scoreVisit - wrong-part helped when no wrong tap after the hint', () => {
   const v = visit('s1', 0, 60, { hints: [{ id: 'h', signal: 'wrong-part', ts: iso(20), via: 'template', delivery: 'shown' }] });
   const before: RawSample[] = [{ step: 's1', t: 5, interaction: 'tap-wrong-part' }, { step: 's1', t: 10, interaction: 'tap-wrong-part' }];
   const afterGood: RawSample[] = [{ step: 's1', t: 25, attention: 'target' }, { step: 's1', t: 30, interaction: 'tap-part' }];
@@ -36,7 +36,7 @@ test('scoreVisit — wrong-part helped when no wrong tap after the hint', () => 
   assert.equal(scoreVisit(v, before)[0].helped, false);           // nothing observed after → not credited
 });
 
-test('scoreVisit — dwell helped only when completed within the window; muted never helps', () => {
+test('scoreVisit - dwell helped only when completed within the window; muted never helps', () => {
   const b = { stepId: 's1', sessions: 5, dwellSec: { p50: 40, p90: 90 } };
   const quick = visit('s1', 0, 70, { hints: [{ id: 'h', signal: 'dwell', ts: iso(50), via: 'llm', delivery: 'shown' }] });
   const slow  = visit('s1', 0, 200, { hints: [{ id: 'h', signal: 'dwell', ts: iso(50), via: 'llm', delivery: 'shown' }] });
@@ -46,7 +46,7 @@ test('scoreVisit — dwell helped only when completed within the window; muted n
   assert.deepEqual(scoreVisit(muted, [], b)[0], { signal: 'dwell', via: 'llm', delivery: 'muted', helped: false });
 });
 
-test('scoreVisit — attention-off, look-away, validate-retry', () => {
+test('scoreVisit - attention-off, look-away, validate-retry', () => {
   const att = visit('s1', 0, 60, { hints: [{ id: 'h', signal: 'attention-off', ts: iso(20), via: 'template', delivery: 'shown' }] });
   const rows: RawSample[] = [
     { step: 's1', t: 5, attention: 'away' }, { step: 's1', t: 10, attention: 'away' },
@@ -60,7 +60,7 @@ test('scoreVisit — attention-off, look-away, validate-retry', () => {
   assert.equal(scoreVisit(val, [])[0].helped, true);
 });
 
-test('computeIntelligence — retires a signal with low effectiveness, keeps a good one, lifts when recent visits improve', () => {
+test('computeIntelligence - retires a signal with low effectiveness, keeps a good one, lifts when recent visits improve', () => {
   const steps = [step('s1', 1), step('s2', 2)];
   const sessions: OmsUsageSession[] = [];
   // s1: 12 wrong-part hints shown, only 1 helped → retired (≥ 10 shows).
@@ -94,7 +94,7 @@ test('computeIntelligence — retires a signal with low effectiveness, keeps a g
   assert.equal(gi2.steps.find(s => s.stepId === 's1')!.hints.find(h => h.signal === 'wrong-part')!.retired, false);
 });
 
-test('computeIntelligence — mute rate retires; heat and confidence scale', () => {
+test('computeIntelligence - mute rate retires; heat and confidence scale', () => {
   const steps = [step('s1', 1)];
   const sessions: OmsUsageSession[] = [];
   for (let i = 0; i < 6; i++) {

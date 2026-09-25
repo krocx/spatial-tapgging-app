@@ -1,7 +1,7 @@
-// guide-bundle.test.ts — B1: the Guide Bundle is built from stores and
+// guide-bundle.test.ts - B1: the Guide Bundle is built from stores and
 // conforms to docs/schema/guide-bundle.schema.json. The checker below is a
 // small own-code subset of JSON Schema (type / required / properties / enum /
-// const / items / minItems / maxItems / $ref within $defs) — enough to keep
+// const / items / minItems / maxItems / $ref within $defs) - enough to keep
 // the contract honest without a validator dependency.
 
 import { test } from 'node:test';

@@ -1,9 +1,9 @@
-// chamber-configs.ts — C1 (2026.4.45): Chamber Configuration catalog.
+// chamber-configs.ts - C1 (2026.4.45): Chamber Configuration catalog.
 //
-//   GET    /chamber-configs            — list (any signed-in user; includes chamber counts)
-//   POST   /chamber-configs            — engineer+: create { code, name, description? }
-//   PATCH  /chamber-configs/:id        — engineer+: rename / re-code / describe
-//   DELETE /chamber-configs/:id        — owner/manager: only when no anchor references it
+//   GET    /chamber-configs            - list (any signed-in user; includes chamber counts)
+//   POST   /chamber-configs            - engineer+: create { code, name, description? }
+//   PATCH  /chamber-configs/:id        - engineer+: rename / re-code / describe
+//   DELETE /chamber-configs/:id        - owner/manager: only when no anchor references it
 //
 // A configuration is a TYPE of chamber ("Producer XP · Cfg A"). Physical
 // chambers (anchors / QRs) point at it via Anchor.configId. The app scopes
@@ -119,7 +119,7 @@ router.delete('/:id', (req: Request, res: Response) => {
   const inUse = anchorStore.findAll().filter(a => a.configId === c.id).length;
   if (inUse > 0) {
     return res.status(409).json({
-      error: `"${c.code}" still has ${inUse} chamber(s) assigned — reassign them first`,
+      error: `"${c.code}" still has ${inUse} chamber(s) assigned - reassign them first`,
       timestamp: now(),
     });
   }

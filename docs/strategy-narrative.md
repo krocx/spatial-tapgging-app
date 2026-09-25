@@ -6,7 +6,7 @@
 
 # **1. Executive Summary**
 
-Industrial operations are entering a new era where **context** — not just data — determines efficiency, safety, and automation readiness.  
+Industrial operations are entering a new era where **context** - not just data - determines efficiency, safety, and automation readiness.  
 Today, factories rely on fragmented systems:
 
 - AI cameras detect defects  
@@ -23,7 +23,7 @@ What’s missing is a **unified intelligence layer** that understands:
 - **What should happen next**  
 - **Who or what (human, wearable, robot) should act**  
 
-This document introduces the **Spatial Intelligence Backend (SIB)** — a foundational enterprise capability that unifies spatial context, semantic meaning, and multi‑model perception into a single brain.
+This document introduces the **Spatial Intelligence Backend (SIB)** - a foundational enterprise capability that unifies spatial context, semantic meaning, and multi‑model perception into a single brain.
 
 SIB is not an app.  
 SIB is not a model.  
@@ -36,7 +36,7 @@ SIB is not a UI.
 # **2. Why Now?**
 
 ## **2.1 The industry is shifting from digital tools to contextual intelligence**  
-Factories have digitized documents, dashboards, and workflows — but none of these systems understand **physical context**.
+Factories have digitized documents, dashboards, and workflows - but none of these systems understand **physical context**.
 
 - MES knows *what* to do  
 - SCADA knows *how* machines behave  
@@ -63,7 +63,7 @@ Modern tablets + WebXR + AR.js allow **zero‑install AR** for technicians today
 This enables immediate validation of spatial workflows.
 
 ## **2.4 AI models are becoming commodities**  
-Sodavision, Neurocle, Python scripts, foundation models —  
+Sodavision, Neurocle, Python scripts, foundation models -  
 all are becoming plug‑and‑play.
 
 The differentiator is no longer the model.  

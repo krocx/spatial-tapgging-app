@@ -16,5 +16,5 @@ arch: |
     LT -.label set for future defect-detection training.-> ML["Evidence photos + categories = the data flywheel"]
 ---
 Every finding carries a defect category and a severity, chosen at pin time. The
-taxonomy is what turns a pile of photos into trendable data — and it is the label set
+taxonomy is what turns a pile of photos into trendable data - and it is the label set
 future defect-detection models will be trained against.

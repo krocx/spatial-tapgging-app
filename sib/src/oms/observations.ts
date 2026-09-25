@@ -1,4 +1,4 @@
-// oms/observations.ts — C1 (2026.4.46): contextual-intelligence observations.
+// oms/observations.ts - C1 (2026.4.46): contextual-intelligence observations.
 //
 // The device is a sensor; SIB is the judge. Clients stream compact,
 // engine-neutral observation records while the operator is on a step
@@ -6,12 +6,12 @@
 // discrete interactions). This module:
 //
 //   • folds a batch into the usage record's per-visit roll-up
-//     (OmsUsageStepEntry.observations) — durable, small, exportable;
+//     (OmsUsageStepEntry.observations) - durable, small, exportable;
 //   • appends the raw samples to a per-session JSONL file for later analysis
 //     (one line per observation; never images, never free text);
 //   • learns per-guide / per-step BASELINES from completed visits: dwell
 //     percentiles, on-target ratio, wrong-part taps, replays, validation fail
-//     rate, stall rate. Nothing hard-coded — every number comes from real
+//     rate, stall rate. Nothing hard-coded - every number comes from real
 //     sessions and moves as more arrive. C2 turns deviations from these
 //     baselines into hints; C3 closes the loop on hint effectiveness.
 //
@@ -35,7 +35,7 @@ import { omsUsageStore } from './usage-log.js';
 const OBS_DIR = path.join(DATA_DIR, 'observations');
 fs.mkdirSync(OBS_DIR, { recursive: true });
 
-const MAX_BATCH = 600;            // 10 min at 1 Hz — anything larger is a bug or abuse
+const MAX_BATCH = 600;            // 10 min at 1 Hz - anything larger is a bug or abuse
 const MAX_FILE_BYTES = 4 * 1024 * 1024;
 
 function obsPath(liveSessionId: string): string {
@@ -110,7 +110,7 @@ export function ingestObservations(liveSessionId: string, batch: ObservationBatc
     .slice(0, MAX_BATCH).map(sanitizeObservation).filter((o): o is SessionObservation => !!o);
   if (!clean.length) return null;
 
-  // Newest visit of this step (the open one, or the last closed one — the
+  // Newest visit of this step (the open one, or the last closed one - the
   // client may flush after completing).
   let entry = undefined as OmsUsageSession['steps'][number] | undefined;
   for (let i = rec.steps.length - 1; i >= 0; i--) {

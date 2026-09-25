@@ -1,6 +1,6 @@
-// LocTagAuthorView.swift — Phase 2 (Task E)
+// LocTagAuthorView.swift - Phase 2 (Task E)
 // AR session for the Gemba audit walk Author flow:
-//   • Start a fresh ARKit session (no QR lock — positions are stored in world space
+//   • Start a fresh ARKit session (no QR lock - positions are stored in world space
 //     relative to the saved ARWorldMap, not an anchor-relative frame).
 //   • Tap any surface to place an orange Loc-Tag pin.
 //   • Fill LocTagFormSheet (title, description, severity, defect category, optional photo).
@@ -21,15 +21,15 @@ struct LocTagAuthorView: View {
     @StateObject private var arManager = ARSessionManager()
 
     // ── Session mode ──────────────────────────────────────────────────────────
-    /// True when an existing ARWorldMap was found — we re-localize instead of fresh scan.
+    /// True when an existing ARWorldMap was found - we re-localize instead of fresh scan.
     @State private var isResuming: Bool = false
     /// True during the initial worldmap check + session startup.
     @State private var isLoadingSession: Bool = true
-    /// Reference photo downloaded from SIB — shown to guide Author to starting position.
+    /// Reference photo downloaded from SIB - shown to guide Author to starting position.
     @State private var referencePhoto: UIImage? = nil
-    /// True once the Author taps "I'm Here" — dismisses the re-localization overlay.
+    /// True once the Author taps "I'm Here" - dismisses the re-localization overlay.
     @State private var userConfirmedRelocalize: Bool = false
-    /// True 20 seconds into re-localization — shows extended hint.
+    /// True 20 seconds into re-localization - shows extended hint.
     @State private var showRelocalizingTimeout: Bool = false
 
     // ── Placed loc-tags ───────────────────────────────────────────────────────
@@ -37,7 +37,7 @@ struct LocTagAuthorView: View {
     @State private var tagNodes: [String: SCNNode] = [:]
 
     // ── Reference photo ───────────────────────────────────────────────────────
-    /// JPEG captured at the first tag save — uploaded with the world map so
+    /// JPEG captured at the first tag save - uploaded with the world map so
     /// Operators can see where to stand when re-localizing.
     @State private var referencePhotoData: Data? = nil
 
@@ -45,7 +45,7 @@ struct LocTagAuthorView: View {
     @State private var peekingLocTag: LocTag? = nil
 
     // ── Pending placement ─────────────────────────────────────────────────────
-    // .sheet(item:) pattern — same race-free approach as AuthorModeView/AddTagSheet.
+    // .sheet(item:) pattern - same race-free approach as AuthorModeView/AddTagSheet.
     private struct PendingTap: Identifiable {
         let id = UUID()
         let position: SIBVector3
@@ -81,7 +81,7 @@ struct LocTagAuthorView: View {
     @State private var lastResumeCount = 0
     /// Only an interruption that involved the app going to the BACKGROUND
     /// earns the checkpoint. Our own camera / photo picker also interrupts
-    /// ARKit (the app stays in the foreground) — that must never gate the
+    /// ARKit (the app stays in the foreground) - that must never gate the
     /// finding the auditor is in the middle of logging.
     @State private var sawBackground = false
     @Environment(\.scenePhase) private var authorScenePhase
@@ -216,7 +216,7 @@ struct LocTagAuthorView: View {
                 toastOverlay(msg: msg)
             }
 
-            // R2/R5: welcome-back checkpoint — nothing is placed until confirmed
+            // R2/R5: welcome-back checkpoint - nothing is placed until confirmed
             if let cp = checkpoint {
                 let tag = placedLocTags.last
                 ResumeCheckpointOverlay(
@@ -247,7 +247,7 @@ struct LocTagAuthorView: View {
             guard n != lastResumeCount else { return }
             lastResumeCount = n
             // Camera / photo library / share sheet interruptions: the app never
-            // left the foreground — no checkpoint, the form stays as it is.
+            // left the foreground - no checkpoint, the form stays as it is.
             guard sawBackground else { return }
             sawBackground = false
             guard !isLoadingSession, !isSavingWalk, pendingTap == nil, peekingLocTag == nil, !showWalkStart else { return }
@@ -299,7 +299,7 @@ struct LocTagAuthorView: View {
                     placedLocTags.append(newLocTag)
                     if let node = pendingNode {
                         upgradeMarker(node, id: newLocTag.id)
-                        // G4: floating panel — readable from where you stand.
+                        // G4: floating panel - readable from where you stand.
                         FindingPanel.attach(to: arManager.sceneView.scene.rootNode, tag: newLocTag,
                                             index: placedLocTags.count - 1, pinPosition: node.simdPosition)
                         pendingNode = nil
@@ -338,13 +338,13 @@ struct LocTagAuthorView: View {
                     WalkProgressStore.save(WalkProgress(anchorId: anchor.id, walkId: walk.id, completedTagIds: [], currentIndex: placedLocTags.count))
                     // Findings logged here without a header (offline / older
                     // build): offer to bring them into this walk so the report
-                    // is complete — never silently.
+                    // is complete - never silently.
                     let n = orphanFindings.count
                     if n > 0 { DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { adoptPrompt = n } }
                 } onOffline: {
                     walkOffline = true
                     showWalkStart = false
-                    showToast("Offline — findings save without a walk header.")
+                    showToast("Offline - findings save without a walk header.")
                 }
                 .environmentObject(settings)
                 .presentationDetents([.large])
@@ -456,7 +456,7 @@ struct LocTagAuthorView: View {
                 .padding(.horizontal, 14)
                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
 
-                // FAB — places from focus ring's last cached hit
+                // FAB - places from focus ring's last cached hit
                 Button {
                     if let hitT = focusRing?.lastHitTransform {
                         let col = hitT.columns.3
@@ -536,7 +536,7 @@ struct LocTagAuthorView: View {
             SCNHitTestOption.searchMode: SCNHitTestSearchMode.all.rawValue
         ])
         for hit in scnHits {
-            // G4: floating panel — pill toggles the card, card opens the sheet.
+            // G4: floating panel - pill toggles the card, card opens the sheet.
             if let h = FindingPanel.hit(hit),
                let tag = placedLocTags.first(where: { $0.id == h.tagId }) {
                 let c = sv.scene.rootNode.childNode(withName: "fpanel_\(h.tagId)", recursively: false)
@@ -620,7 +620,7 @@ struct LocTagAuthorView: View {
         } catch {
             isSavingWalk = false
             if let arErr = error as? ARError, arErr.code == .insufficientFeatures {
-                showToast("Not enough features mapped yet — slowly pan the camera around the room, focusing on textured objects or surfaces, then tap Finish again.")
+                showToast("Not enough features mapped yet - slowly pan the camera around the room, focusing on textured objects or surfaces, then tap Finish again.")
             } else {
                 showToast(friendlyMessage(for: error))
             }
@@ -640,7 +640,7 @@ struct LocTagAuthorView: View {
                         domain:   "LocTagAuthor",
                         code:     1,
                         userInfo: [NSLocalizedDescriptionKey:
-                            "World map not available — walk the space more to build tracking data."]))
+                            "World map not available - walk the space more to build tracking data."]))
                     return
                 }
                 do {
@@ -711,7 +711,7 @@ struct LocTagAuthorView: View {
 
     // ── Session setup ─────────────────────────────────────────────────────────
 
-    /// Called on appear — checks for an existing ARWorldMap and resumes if found.
+    /// Called on appear - checks for an existing ARWorldMap and resumes if found.
     private func setupSession() async {
         // G4: warm the Audit Reference Library so the first finding's picker
         // opens instantly (cached copy is used if the server is slow).
@@ -749,12 +749,12 @@ struct LocTagAuthorView: View {
                 arManager.startSession()
             }
         } catch {
-            // Worldmap fetch failed — fall back to a fresh session silently.
+            // Worldmap fetch failed - fall back to a fresh session silently.
             // The author can still place new tags; any existing ones are lost
             // only from the local view (not from SIB storage).
             isResuming = false
             arManager.startSession()
-            showToast("Could not load previous session — starting fresh.")
+            showToast("Could not load previous session - starting fresh.")
         }
         isLoadingSession = false
         // G2: collect the walk header before the first finding (or offer to
@@ -777,11 +777,11 @@ struct LocTagAuthorView: View {
             }
             AppLog.info("gemba", "orphan findings adopted", ["walk": walk.id, "count": n])
         } catch {
-            await MainActor.run { showToast("Could not attach findings — \(friendlyMessage(for: error))") }
+            await MainActor.run { showToast("Could not attach findings - \(friendlyMessage(for: error))") }
         }
     }
 
-    // ── G7: presence — several auditors on one walk ───────────────────────────
+    // ── G7: presence - several auditors on one walk ───────────────────────────
     // The shared frame IS the world map (a fresh walk publishes its own frame;
     // once the map is uploaded, everyone who relocalises shares it). Poses are
     // withheld while still relocalising so nobody sees a colleague in the
@@ -846,8 +846,8 @@ struct LocTagAuthorView: View {
     }
 
     /// The author has no saved map for a fresh walk, so the honest options are:
-    /// keep waiting for ARKit (with the landmark photo), or — when this space
-    /// already has an uploaded map — run the full re-localization against it.
+    /// keep waiting for ARKit (with the landmark photo), or - when this space
+    /// already has an uploaded map - run the full re-localization against it.
     private func realignAuthor() {
         guard let anchor = appState.activeAnchor else { withAnimation { checkpoint = nil }; return }
         withAnimation { checkpoint = nil }
@@ -869,7 +869,7 @@ struct LocTagAuthorView: View {
                 // No map to fall back to: the previous session is the only frame.
                 // Keep the checkpoint up; ARKit keeps trying while they look around.
                 await MainActor.run {
-                    showToast("No saved map for this space yet — keep looking at where you placed the last finding.")
+                    showToast("No saved map for this space yet - keep looking at where you placed the last finding.")
                     withAnimation { checkpoint = .relocalizing(since: Date()) }
                     if !arManager.isRelocalizing { withAnimation { checkpoint = .confirm } }
                 }

@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────────
-   appliedx · SIB design tokens — the ONE place a colour, size or duration is
+   appliedx · SIB design tokens - the ONE place a colour, size or duration is
    written down. Every SIB web surface reads these; no page carries its own
    palette. The reference is the iPad app: SIB looks like the app, on the web.
    (Kiosk / hubs / sheets in ios-app: charcoal gradient, 8 %-white cards with
@@ -10,7 +10,7 @@
      · no hex / rgb colours outside this file       · no glass / backdrop-filter
      · no emoji as icons (use the sprite)            · no page-level font
    ───────────────────────────────────────────────────────────────────────────── */
-/* Open Sans, self-hosted — see brand/fonts/README.md. `local()` first so a machine that has it installed skips the download. */
+/* Open Sans, self-hosted - see brand/fonts/README.md. `local()` first so a machine that has it installed skips the download. */
 @font-face { font-family: "Open Sans"; font-style: normal; font-weight: 400; font-display: swap; src: local("Open Sans Regular"), local("OpenSans-Regular"), url("/portal/brand/fonts/open-sans-latin-400-normal.woff2") format("woff2"); }
 @font-face { font-family: "Open Sans"; font-style: normal; font-weight: 500; font-display: swap; src: local("Open Sans Medium"), local("OpenSans-Medium"), url("/portal/brand/fonts/open-sans-latin-500-normal.woff2") format("woff2"); }
 @font-face { font-family: "Open Sans"; font-style: normal; font-weight: 600; font-display: swap; src: local("Open Sans SemiBold"), local("OpenSans-SemiBold"), url("/portal/brand/fonts/open-sans-latin-600-normal.woff2") format("woff2"); }
@@ -18,7 +18,7 @@
 @font-face { font-family: "Open Sans"; font-style: italic; font-weight: 400; font-display: swap; src: local("Open Sans Italic"), local("OpenSans-Italic"), url("/portal/brand/fonts/open-sans-latin-400-italic.woff2") format("woff2"); }
 
 :root {
-  /* ── Surfaces — the app's charcoal ── */
+  /* ── Surfaces - the app's charcoal ── */
   --ax-bg:         #121212;                       /* Color(white: 0.07)   */
   --ax-bg-2:       #1F1F1F;                       /* Color(white: 0.12)   */
   --ax-page:       linear-gradient(180deg, var(--ax-bg) 0%, var(--ax-bg-2) 100%);   /* the kiosk / hub backdrop */
@@ -29,14 +29,14 @@
   --ax-rule-2:     rgba(255, 255, 255, .08);      /* fainter hairline                              */
   --ax-solid:      #1C1C1E;                       /* opaque surface for menus, modals, sheets      */
 
-  /* ── Text — white in the app's opacity tiers ── */
+  /* ── Text - white in the app's opacity tiers ── */
   --ax-ink:        #FFFFFF;
   --ax-ink-2:      rgba(255, 255, 255, .70);      /* .white.opacity(0.7)  secondary labels  */
   --ax-ink-3:      rgba(255, 255, 255, .50);      /* .white.opacity(0.5)  subtitles, hints  */
   --ax-ink-4:      rgba(255, 255, 255, .35);      /* .white.opacity(0.35) placeholders      */
-  --ax-grey:       #8E8E93;                       /* .gray — disabled                       */
+  --ax-grey:       #8E8E93;                       /* .gray - disabled                       */
 
-  /* ── Accents — iOS system colours, dark appearance, exactly as the app renders them ── */
+  /* ── Accents - iOS system colours, dark appearance, exactly as the app renders them ── */
   --ax-blue:       #0A84FF;   /* .blue    actions · Author · Spatial Inspection */
   --ax-cyan:       #64D2FF;   /* .cyan    the headline gradient's second stop · secondary emphasis */
   --ax-green:      #30D158;   /* .green   AR OMS · verified · operating         */
@@ -48,11 +48,11 @@
   --ax-purple:     #BF5AF2;   /* .purple  rarely                                */
   --ax-title:      linear-gradient(90deg, var(--ax-blue), var(--ax-cyan));   /* the kiosk headline */
 
-  /* ── The appliedx wordmark — official colours, never anything else ── */
+  /* ── The appliedx wordmark - official colours, never anything else ── */
   --ax-wm-blue:    #66B3FF;   /* "applied" */
   --ax-wm-green:   #35C635;   /* "x"       */
 
-  /* ── Status — follows the app ── */
+  /* ── Status - follows the app ── */
   --ax-ok:         var(--ax-green);
   --ax-warn:       var(--ax-orange);
   --ax-bad:        var(--ax-red);
@@ -65,7 +65,7 @@
   --ax-on-accent:  #FFFFFF;                       /* text on a filled accent button */
   --ax-scrim:      rgba(0, 0, 0, .55);
 
-  /* ── Products — the door colours in the app, carried everywhere ── */
+  /* ── Products - the door colours in the app, carried everywhere ── */
   --ax-p-tags:     var(--ax-blue);      /* Spatial Inspection */
   --ax-p-guides:   var(--ax-green);     /* AR OMS             */
   --ax-p-iloto:    var(--ax-red);       /* iLOTO              */
@@ -74,10 +74,10 @@
   --ax-p-portal:   var(--ax-cyan);      /* Portal             */
   --ax-p-platform: var(--ax-grey);      /* Platform           */
 
-  /* ── Type — Arial (company standard) at the team library's scale; SF on the iPad ── */
-  /* Open Sans — the company's standard web font (brand guidelines; appliedmaterials.com),
-     self-hosted from brand/fonts/ (npm run brand:fonts). Falls back to the system sans —
-     SF on Apple (what the iPad app uses), Segoe on Windows — never to a CDN. */
+  /* ── Type - Arial (company standard) at the team library's scale; SF on the iPad ── */
+  /* Open Sans - the company's standard web font (brand guidelines; appliedmaterials.com),
+     self-hosted from brand/fonts/ (npm run brand:fonts). Falls back to the system sans -
+     SF on Apple (what the iPad app uses), Segoe on Windows - never to a CDN. */
   --ax-font:       "Open Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
   --ax-mono:       "SF Mono", Menlo, Consolas, "Liberation Mono", "Courier New", monospace;
   --ax-h1:  700 34px/40px var(--ax-font);   /* .largeTitle.bold  (kiosk / hub titles) */
@@ -103,7 +103,7 @@
   --ax-hair-2: 1px solid var(--ax-rule-2);
   --ax-shadow: none;                              /* the app has no drop shadows; a stroke marks a card */
 
-  /* ── Motion — one signature: lock-in (things register; nothing fades or slides) ── */
+  /* ── Motion - one signature: lock-in (things register; nothing fades or slides) ── */
   --ax-t:      220ms;
   --ax-t-slow: 360ms;
   --ax-ease:   cubic-bezier(.2, .7, .2, 1);
@@ -116,7 +116,7 @@
   --ax-panel-w: 520px;
 }
 
-/* AR / camera surface — the overlay over live video: opaque near-black cards
+/* AR / camera surface - the overlay over live video: opaque near-black cards
    instead of translucent ones, so text stays readable over any scene. */
 [data-surface="ar"] {
   --ax-paper:   rgba(10, 10, 10, .86);

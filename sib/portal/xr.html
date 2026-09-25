@@ -10,7 +10,7 @@
     third-party tracking, no engine. Loads a Guide Bundle, anchors on the
     printed QR where the browser offers image tracking (or by tap-place
     otherwise), plays the same timeline the iOS app plays, and posts the same
-    live-session / observation / sign-off records — so a headset browser can
+    live-session / observation / sign-off records - so a headset browser can
     be measured against the iPad with SIB unchanged.
     Proprietary & Confidential · Applied Materials.
   -->
@@ -194,7 +194,7 @@ scene.add(panel.mesh);
 let panelMode = false;
 const pointerRays = new Map();   // XRInputSource → THREE.Line (controller ray)
 const panelRay = new THREE.Raycaster();
-/** Mirror the visible DOM card into the panel — the DOM is the source of truth. */
+/** Mirror the visible DOM card into the panel - the DOM is the source of truth. */
 function syncPanel() {
   const vis = id => !$(id).classList.contains('hidden');
   const btn = (id, o = {}) => ({ id, label: $(id).textContent.trim(), disabled: $(id).disabled, ...o });
@@ -238,7 +238,7 @@ async function loadBundle() {
   $('gateTitle').textContent = guide.name;
   $('gateText').textContent = `${steps.length} step${steps.length === 1 ? '' : 's'} · ${bundle.anchor?.assetId || 'anchor'}${bundle.anchor?.frames?.qr?.markerSizeM ? ` · QR ${Math.round(bundle.anchor.frames.qr.markerSizeM * 100)} cm` : ''}`;
   const model = (bundle.models || []).find(m => m.role === 'assembly' && m.glbUrl);
-  if (!model) { $('gateText').textContent += ' · no assembly model on this guide — steps play as text only.'; return; }
+  if (!model) { $('gateText').textContent += ' · no assembly model on this guide - steps play as text only.'; return; }
   $('gateText').textContent += ' · loading model…';
   const buf = await (await fetch(model.glbUrl, { headers: hdr() })).arrayBuffer();
   const gltf = await new Promise((ok, err) => new GLTFLoader().parse(buf, '', ok, err));
@@ -305,7 +305,7 @@ function applyState(state) {
     if (st.rotation) p.obj.quaternion.setFromAxisAngle(new THREE.Vector3(st.rotation[0], st.rotation[1], st.rotation[2]).normalize(), st.rotation[3]);
     const alpha = st.show === 'hidden' ? 0 : st.show === 'ghost' ? (st.opacity ?? GHOST_OPACITY) : 1;
     // Parents first (sorted by depth above): a group's state paints its whole
-    // subtree, then a child's own state overrides — the iOS order.
+    // subtree, then a child's own state overrides - the iOS order.
     setPartOpacity(p, alpha, st.color);
   }
 }
@@ -398,7 +398,7 @@ async function openLive() {
     }) });
     live = r.data || r; sessionStartedAt = new Date().toISOString();
     await ev('session:started');
-  } catch (e) { toast('Could not open a live session — running unrecorded'); }
+  } catch (e) { toast('Could not open a live session - running unrecorded'); }
 }
 function validationFor(step) { return (bundle.validation || []).find(v => v.stepId === step.id); }
 
@@ -433,7 +433,7 @@ function completeStep() {
 }
 function openSignoff() {
   flushObservations();
-  // The sign-off form is HTML — on a headset it only shows once the immersive session ends.
+  // The sign-off form is HTML - on a headset it only shows once the immersive session ends.
   if (panelMode && xrSession) { toast('Leaving AR for sign-off'); xrSession.end(); }
   applyState(stateBefore(guide.assembly?.initialNodes, steps, steps.length));
   $('soName').value = opName();
@@ -452,12 +452,12 @@ async function submit() {
       stepCompletions: completions, ...(live ? { liveSessionId: live.id } : {}),
     }) });
     await ev('session:submitted');
-    toast('Session recorded — thank you'); $('signoff').classList.add('hidden');
+    toast('Session recorded - thank you'); $('signoff').classList.add('hidden');
     setTimeout(() => location.reload(), 1800);
   } catch (e) { toast('Sign-off failed: ' + e.message, 4000); }
 }
 
-// ── Observations (C1) — 1 Hz samples, 5 s batches ────────────────────────────
+// ── Observations (C1) - 1 Hz samples, 5 s batches ────────────────────────────
 let obsBuf = [], obsT0 = 0, lastCam = null, panelOpen = false, pendingInteraction = null;
 const ray = new THREE.Raycaster();
 function observeTick() {
@@ -531,7 +531,7 @@ async function attachAnchor(makeAnchor) {
     if (worldAnchor?.delete) { try { worldAnchor.delete(); } catch {} }
     worldAnchor = a; anchorOffset = null;   // computed on the first frame that has the anchor's pose
     $('framePill').textContent += ' · anchored';
-  } catch (e) { console.warn('[xr] anchor unavailable — falling back to a fixed pose', e); }
+  } catch (e) { console.warn('[xr] anchor unavailable - falling back to a fixed pose', e); }
 }
 function followAnchor(frame) {
   if (!worldAnchor || !placed) return;
@@ -543,7 +543,7 @@ function followAnchor(frame) {
 async function startAR() {
   localStorage.setItem('sib_xr_operator', opName());
   // One reference space for everything. three.js defaults the camera to
-  // 'local-floor'; our hit-test poses were in 'local' — ARCore re-estimates the
+  // 'local-floor'; our hit-test poses were in 'local' - ARCore re-estimates the
   // floor while you work, so the two drifted apart and the model slid. The
   // three.js hit-test sample pins 'local' for both; so do we.
   renderer.xr.setReferenceSpaceType('local');
@@ -615,14 +615,14 @@ function tapAt(rc) {
   const wrong = names.length && !names.includes(o.name);
   observeInteraction(wrong ? 'tap-wrong-part' : 'tap-part', o.name);
   pulseParts([o.name], 0.8);
-  toast(`${parts.get(o.name)?.displayName || o.name}${wrong ? ' — not part of this step' : ''}`);
+  toast(`${parts.get(o.name)?.displayName || o.name}${wrong ? ' - not part of this step' : ''}`);
 }
 async function enterSession(kind) {
   $('gate').classList.add('hidden'); $('overlay').classList.remove('hidden');
   $('topTitle').textContent = guide.name;
   $('reticleHint').classList.toggle('hidden', kind !== 'ar');
   $('stepTitle').textContent = kind === 'ar' ? 'Place the equipment' : guide.name;
-  $('stepText').textContent = kind === 'ar' ? (qrBitmap ? 'Look at the printed QR to confirm the equipment, then tap the surface it stands on.' : 'Tap the surface the equipment stands on.') : 'Desktop preview — orbit with the mouse, click parts to identify them.';
+  $('stepText').textContent = kind === 'ar' ? (qrBitmap ? 'Look at the printed QR to confirm the equipment, then tap the surface it stands on.' : 'Tap the surface the equipment stands on.') : 'Desktop preview - orbit with the mouse, click parts to identify them.';
   await openLive();
 }
 function lockPlacement() {
@@ -703,7 +703,7 @@ function verdict(result) {
   observeInteraction('validate-attempt');
   ev('perception:result', { payload: { mode: 'manual', result, client: 'webxr' } });
   $('btnNext').disabled = false;
-  toast(result === 'pass' ? 'Recorded: pass' : 'Recorded: fail — you may continue');
+  toast(result === 'pass' ? 'Recorded: pass' : 'Recorded: fail - you may continue');
 }
 
 // ── Boot ─────────────────────────────────────────────────────────────────────
@@ -712,7 +712,7 @@ function verdict(result) {
   const xrOk = !!navigator.xr && await navigator.xr.isSessionSupported?.('immersive-ar').catch(() => false);
   $('capLine').textContent = xrOk
     ? 'WebXR AR available on this browser' + (navigator.xr && 'XRSession' in window ? '' : '')
-    : 'No WebXR AR on this browser — desktop preview only (Quest / Android Chrome / a WebXR-capable headset browser is needed for the AR run).';
+    : 'No WebXR AR on this browser - desktop preview only (Quest / Android Chrome / a WebXR-capable headset browser is needed for the AR run).';
   try { await loadBundle(); } catch (e) { $('gateText').textContent = e.message === 'unauthorised' ? 'This server needs an API key.' : 'Could not load: ' + e.message; return; }
   $('startAR').disabled = !xrOk; $('startDesk').disabled = false;
 })();

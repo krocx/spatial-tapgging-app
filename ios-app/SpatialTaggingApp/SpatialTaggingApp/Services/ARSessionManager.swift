@@ -1,4 +1,4 @@
-// ARSessionManager.swift — Phase 3 (ARReferenceImage anchor + ARWorldMap persistence)
+// ARSessionManager.swift - Phase 3 (ARReferenceImage anchor + ARWorldMap persistence)
 //
 // ── Why ARReferenceImage instead of plane raycasts ────────────────────────────
 // Previous approach: Vision decodes QR → screen point → ARKit plane raycast.
@@ -44,21 +44,21 @@
 // Why tags used to land "slightly off": the sealed origin was a fixed matrix
 // (meta.anchorPose) and tags were plain SCNNodes at fixed world coordinates.
 // ARKit's relocalization gives a COARSE first alignment the moment tracking
-// turns .normal, then keeps refining its map for a few seconds — but nothing
+// turns .normal, then keeps refining its map for a few seconds - but nothing
 // we drew moved with it, and the tags had already spawned. Three changes:
 //   1. The origin is an ARAnchor named `sib-origin` INSIDE the world map
 //      (anchor maps from the QR gate, guide maps from Place Steps). ARKit
 //      restores it on relocalization and refines its transform as the map
 //      settles; whenever it drifts from where the map says it is, the WORLD
 //      is re-based onto it (`setWorldOrigin`), so everything placed in map
-//      coordinates — tags, pins, cones, models — is corrected at once.
+//      coordinates - tags, pins, cones, models - is corrected at once.
 //   2. A convergence gate: `originConfidence` goes .relocalizing → .aligning
 //      → .locked only once the origin has been still (< 3 mm, < 0.3°) for
 //      1.5 s with normal tracking. Views hold their content until then; an
 //      8 s ceiling yields .approximate so nobody waits forever.
 //   3. The live QR is never silently ignored: while the map is the origin,
 //      its disagreement with the origin is published (`qrDiscrepancy`) and
-//      recorded in the lock report — the number Anchor Lab charts.
+//      recorded in the lock report - the number Anchor Lab charts.
 
 import ARKit
 import SceneKit
@@ -85,7 +85,7 @@ final class ARSessionManager: NSObject, ObservableObject {
     enum RelocalizationOutcome { case succeeded, timedOut }
     @Published var relocalizationOutcome: RelocalizationOutcome? = nil
     /// B1: true when the origin was adopted from the SEALED map (not the live
-    /// QR). While set, live ARImageAnchor refinement is ignored — otherwise a
+    /// QR). While set, live ARImageAnchor refinement is ignored - otherwise a
     /// moved/re-stuck QR would drag every tag back to wherever it is now.
     @Published private(set) var mapIsOrigin: Bool = false
     /// B2: the detected reference object's pose in the current session frame
@@ -96,7 +96,7 @@ final class ARSessionManager: NSObject, ObservableObject {
     /// Set before startSession()/startSessionWithWorldMap(); survives re-runs.
     nonisolated(unsafe) private var detectionObjects: Set<ARReferenceObject> = []
     /// True between ARSessionDelegate's sessionWasInterrupted/sessionInterruptionEnded
-    /// callbacks — e.g. a phone call, Control Center, or multitasking switch.
+    /// callbacks - e.g. a phone call, Control Center, or multitasking switch.
     /// #69: previously nothing observed these callbacks, so a capture or
     /// validation in flight during an interruption had no way to know its
     /// result might be against a stale/frozen frame. Author/Operator views
@@ -115,13 +115,13 @@ final class ARSessionManager: NSObject, ObservableObject {
 
     /// Context waiting for its ARImageAnchor to fire.
     /// nonisolated(unsafe): set on MainActor before reference image registration;
-    /// read from ARKit delegate thread after ARImageAnchor fires — safe ordering.
+    /// read from ARKit delegate thread after ARImageAnchor fires - safe ordering.
     nonisolated(unsafe) private var pendingContext: QRAnchorContext? = nil
     /// The live ARImageAnchor returned by ARKit's PnP solver.
     /// Set from @MainActor in lockAnchor(); read from ARKit delegate thread
-    /// in processImageAnchors() for continuous refinement — safe write-before-read ordering.
+    /// in processImageAnchors() for continuous refinement - safe write-before-read ordering.
     nonisolated(unsafe) private var _lockedImageAnchor: ARImageAnchor? = nil
-    /// Stability counter — needs unsafe because incremented from ARKit thread.
+    /// Stability counter - needs unsafe because incremented from ARKit thread.
     nonisolated(unsafe) private var imageAnchorStableFrames = 0
     /// Collect per-frame pose observations during stabilisation and average them
     /// to reduce single-frame PnP noise before locking.
@@ -130,7 +130,7 @@ final class ARSessionManager: NSObject, ObservableObject {
     /// At ~20 ARKit anchor-update events/s this is ~1 second of smoothing.
     private let stableFramesRequired = 20
 
-    // Throttle trackingState publishes — only fire when category changes
+    // Throttle trackingState publishes - only fire when category changes
     nonisolated(unsafe) private var _lastTrackingCategory: Int8 = -1
 
     // ── Trust layer state ─────────────────────────────────────────────────────
@@ -140,8 +140,8 @@ final class ARSessionManager: NSObject, ObservableObject {
         case none                 // no origin in play yet (fresh session / scanning)
         case relocalizing         // map loaded, ARKit still matching features
         case aligning             // tracking normal, origin still settling
-        case locked               // origin still for the hold window — trust it
-        case approximate(String)  // ceiling hit — usable, but say so
+        case locked               // origin still for the hold window - trust it
+        case approximate(String)  // ceiling hit - usable, but say so
     }
     @Published private(set) var originConfidence: OriginConfidence = .none
 
@@ -171,7 +171,7 @@ final class ARSessionManager: NSObject, ObservableObject {
     nonisolated(unsafe) private var originSamples: [(t: TimeInterval, m: simd_float4x4)] = []
     nonisolated(unsafe) private var sessionStartAt: TimeInterval = 0
     nonisolated(unsafe) private var trackingNormalAt: TimeInterval? = nil
-    /// First normal frame after relocalization — the convergence ceiling runs
+    /// First normal frame after relocalization - the convergence ceiling runs
     /// from here, so a device whose tracking flickers normal↔limited still
     /// gets an answer (approximate) instead of waiting forever.
     nonisolated(unsafe) private var firstNormalAt: TimeInterval? = nil
@@ -209,7 +209,7 @@ final class ARSessionManager: NSObject, ObservableObject {
     /// ARKit hands frames to the delegate on this queue instead of main. With
     /// no queue set, every `didUpdate frame` waits behind SwiftUI layout,
     /// panel texture redraws and network posts on the main thread; ARKit
-    /// keeps one ARFrame alive per queued callback and warns at ~11 — and
+    /// keeps one ARFrame alive per queued callback and warns at ~11 - and
     /// then throttles the camera. Everything in our delegate is `nonisolated`
     /// and hops to the main actor only to publish, so it runs here safely.
     nonisolated static let delegateQueue = DispatchQueue(label: "com.spatial.arsession.delegate", qos: .userInteractive)
@@ -261,7 +261,7 @@ final class ARSessionManager: NSObject, ObservableObject {
     /// B2: re-base the session's world frame onto a stored data frame using
     /// the detected object. `objectPoseInFrame` is the object's pose in that
     /// frame (guide map, sealed QR frame…). After this call the session's
-    /// world coordinates ARE that frame, so map-frame positions render as-is —
+    /// world coordinates ARE that frame, so map-frame positions render as-is -
     /// no per-node transforms anywhere. Returns false if the object isn't
     /// detected yet.
     @discardableResult
@@ -273,7 +273,7 @@ final class ARSessionManager: NSObject, ObservableObject {
         objectTransform = objectPoseInFrame          // by construction, until ARKit refines
         relocalizationOutcome = .succeeded           // the data frame is reachable
         isRelocalizing = false
-        // B2e: from here on the object IS the frame — watch it for movement.
+        // B2e: from here on the object IS the frame - watch it for movement.
         objectCalibratedPose  = objectPoseInFrame
         lastRebaseF           = f
         objectCandidate       = nil
@@ -285,7 +285,7 @@ final class ARSessionManager: NSObject, ObservableObject {
         return true
     }
 
-    // ── B2e: movable equipment — re-detection watchdog ────────────────────────
+    // ── B2e: movable equipment - re-detection watchdog ────────────────────────
     // ARKit never moves an ARObjectAnchor once it has been added; the only way
     // to notice that the chamber moved (gas line rolled aside, parts fitted) is
     // to remove the anchor and let ARKit detect the object again. The watchdog
@@ -293,7 +293,7 @@ final class ARSessionManager: NSObject, ObservableObject {
     // is on screen, compares the fresh pose with the calibrated one, and
     // re-bases the world only when two consecutive detections agree it moved
     // (false matches on symmetric shapes don't jump the pins). A manual
-    // re-align — the user asked — accepts the first detection. Pins never move
+    // re-align - the user asked - accepts the first detection. Pins never move
     // silently: every automatic re-base bumps `objectRealignCount` so the view
     // toasts it with Undo.
 
@@ -301,8 +301,8 @@ final class ARSessionManager: NSObject, ObservableObject {
         case idle        // no reference object in this session
         case searching   // not seen yet (or manual re-align in flight)
         case tracking    // seen; frame is the object's
-        case outOfView   // expected position off screen — last known frame kept
-        case stale       // in view but not recognised 3 cycles — shape changed?
+        case outOfView   // expected position off screen - last known frame kept
+        case stale       // in view but not recognised 3 cycles - shape changed?
     }
     @Published private(set) var objectTrackState: ObjectTrackState = .idle
     /// Bumped on every AUTOMATIC re-alignment; views toast + offer Undo.
@@ -344,7 +344,7 @@ final class ARSessionManager: NSObject, ObservableObject {
     }
 
     /// Undo the last automatic re-alignment (toast action). Auto re-align stays
-    /// suspended until the user asks for a manual one — otherwise the watchdog
+    /// suspended until the user asks for a manual one - otherwise the watchdog
     /// would redo it eight seconds later.
     func undoLastRealign() {
         guard let f = lastRebaseF else { return }
@@ -353,12 +353,12 @@ final class ARSessionManager: NSObject, ObservableObject {
         autoRealignSuspended = true
         objectCandidate      = nil
         objectTrackState     = .tracking
-        AppLog.info("ar", "↩︎ Re-alignment undone — auto re-align suspended")
+        AppLog.info("ar", "↩︎ Re-alignment undone - auto re-align suspended")
     }
 
     private func handleObjectPose(_ t: simd_float4x4, added: Bool) {
         guard let cal = objectCalibratedPose else {
-            objectTransform = t             // not re-based yet — views take it from here
+            objectTransform = t             // not re-based yet - views take it from here
             if objectTrackState == .searching || objectTrackState == .idle { objectTrackState = .tracking }
             return
         }
@@ -386,7 +386,7 @@ final class ARSessionManager: NSObject, ObservableObject {
                 applyRealign(from: t, cal: cal)
                 objectRealignCount += 1
                 UINotificationFeedbackGenerator().notificationOccurred(.warning)
-                AppLog.info("ar", String(format: "⟳ Chamber moved Δ %.0f cm · %.0f° — re-aligned", d.metres * 100, d.degrees))
+                AppLog.info("ar", String(format: "⟳ Chamber moved Δ %.0f cm · %.0f° - re-aligned", d.metres * 100, d.degrees))
                 return
             }
         }
@@ -536,7 +536,7 @@ final class ARSessionManager: NSObject, ObservableObject {
     }
 
     /// Guide maps: make sure the map being saved carries an origin anchor.
-    /// Keeps an existing one (relocalized session — it is already the map's
+    /// Keeps an existing one (relocalized session - it is already the map's
     /// frame); otherwise plants one at `fallback` (near the pins).
     func ensureOriginAnchor(fallback: simd_float4x4) {
         if let id = originAnchorId,
@@ -556,7 +556,7 @@ final class ARSessionManager: NSObject, ObservableObject {
     private nonisolated func observeOrigin(in frame: ARFrame, trackingNormal: Bool) {
         let now = frame.timestamp
         // "Normal" must be sustained: ARKit reports a normal frame or two
-        // right at start-up before VIO has anything — that is not relocalized.
+        // right at start-up before VIO has anything - that is not relocalized.
         if trackingNormal {
             if trackingNormalAt == nil { trackingNormalAt = now }
             if firstNormalAt == nil { firstNormalAt = now }
@@ -575,7 +575,7 @@ final class ARSessionManager: NSObject, ObservableObject {
             let convergeS = now - first
             let light = frame.lightEstimate.map { Double($0.ambientIntensity) }
             let cam = frame.camera.transform
-            Task { @MainActor [weak self] in self?.markConverged(convergeS: convergeS, light: light, camera: cam, approximate: "Origin still settling — placed approximately") }
+            Task { @MainActor [weak self] in self?.markConverged(convergeS: convergeS, light: light, camera: cam, approximate: "Origin still settling - placed approximately") }
             return
         }
         guard let normalAt = trackingNormalAt else { return }
@@ -592,7 +592,7 @@ final class ARSessionManager: NSObject, ObservableObject {
                 }
             }
         } else {
-            // Legacy sealed map without an origin anchor: nothing to observe —
+            // Legacy sealed map without an origin anchor: nothing to observe -
             // give ARKit the hold window after .normal and move on.
             settled = now - normalAt >= holdWindow
         }
@@ -610,7 +610,7 @@ final class ARSessionManager: NSObject, ObservableObject {
     nonisolated(unsafe) private var mapOriginPoseUnsafe: simd_float4x4? = nil
 
     /// The anchor should sit at `p` (its pose in the map). If ARKit now sees
-    /// it at `t`, move the WORLD so it is back at `p` — every node placed in
+    /// it at `t`, move the WORLD so it is back at `p` - every node placed in
     /// map coordinates (tags, pins, cones, models) is corrected at once, and
     /// the frame everyone shares stays the author's. Throttled + dead-banded.
     private nonisolated func rebaseIfDrifted(_ t: simd_float4x4, from p: simd_float4x4, now: TimeInterval) {
@@ -621,10 +621,10 @@ final class ARSessionManager: NSObject, ObservableObject {
         guard d.mm > driftRebaseMetres * 1000 || d.deg > driftRebaseDegrees else { return }
         // Self-check: a correction that worked changes the next measurement.
         // The same number again means the world-origin change is not showing
-        // up in the anchor we read — repeating it would stack the offset.
+        // up in the anchor we read - repeating it would stack the offset.
         if let last = lastCorrectedDelta, abs(last.mm - d.mm) < 0.3, abs(last.deg - d.deg) < 0.05 {
             rebaseSuspended = true
-            Task { @MainActor in AppLog.warn("ar", String(format: "Drift correction had no effect (%.1f mm again) — suspended for this session", d.mm)) }
+            Task { @MainActor in AppLog.warn("ar", String(format: "Drift correction had no effect (%.1f mm again) - suspended for this session", d.mm)) }
             return
         }
         rebasePending = true
@@ -668,14 +668,14 @@ final class ARSessionManager: NSObject, ObservableObject {
         if let why = approximate {
             originConfidence = .approximate(why)
             lockReport.source = "approximate"
-            AppLog.warn("ar", "Origin convergence ceiling (\(Int(convergeCeiling)) s) — \(why)")
+            AppLog.warn("ar", "Origin convergence ceiling (\(Int(convergeCeiling)) s) - \(why)")
         } else {
             originConfidence = .locked
             AppLog.info("ar", String(format: "✓ Origin converged in %.1f s (relocalize %.1f s)", convergeS, lockReport.relocalizeS ?? 0))
         }
     }
 
-    /// Full 3-D distance (mm) + rotation angle (deg) between two poses —
+    /// Full 3-D distance (mm) + rotation angle (deg) between two poses -
     /// unlike `ARCoordinateFrame.poseDelta`, height counts here.
     nonisolated static func fullDelta(_ a: simd_float4x4, _ b: simd_float4x4) -> PoseDelta {
         let dp = simd_float3(b.columns.3.x - a.columns.3.x, b.columns.3.y - a.columns.3.y, b.columns.3.z - a.columns.3.z)
@@ -695,7 +695,7 @@ final class ARSessionManager: NSObject, ObservableObject {
     ///
     /// When this succeeds, ARKit will restore all feature points from the
     /// saved map, and the QR scan will fire an ARImageAnchor at the same
-    /// world transform as the original session — giving tag positions that are
+    /// world transform as the original session - giving tag positions that are
     /// independent of where the operator is standing when they scan.
     ///
     /// If the NSKeyedUnarchiver cannot decode the data, falls back to startSession().
@@ -704,7 +704,7 @@ final class ARSessionManager: NSObject, ObservableObject {
     func startSessionWithWorldMap(_ data: Data) {
         guard let worldMap = try? NSKeyedUnarchiver.unarchivedObject(
             ofClass: ARWorldMap.self, from: data) else {
-            AppLog.warn("ar", "Failed to decode ARWorldMap — starting fresh session")
+            AppLog.warn("ar", "Failed to decode ARWorldMap - starting fresh session")
             startSession()
             return
         }
@@ -712,7 +712,7 @@ final class ARSessionManager: NSObject, ObservableObject {
         let config = makeConfiguration()
         config.initialWorldMap  = worldMap
         resetObjectTracking()
-        // ⚠️ Do NOT pass .resetTracking — that discards the initialWorldMap.
+        // ⚠️ Do NOT pass .resetTracking - that discards the initialWorldMap.
         // No .removeExistingAnchors either: this manager's session is fresh,
         // and the map's own anchors (the `sib-origin` the author planted) are
         // exactly what must survive into this run.
@@ -737,17 +737,17 @@ final class ARSessionManager: NSObject, ObservableObject {
         sessionHasWorldMap = true
         relocGeneration += 1
         let gen = relocGeneration
-        AppLog.info("ar", "Session started with saved ARWorldMap (\(worldMap.anchors.count) anchors, origin anchor: \(originAnchorId != nil)) — relocalizing…")
+        AppLog.info("ar", "Session started with saved ARWorldMap (\(worldMap.anchors.count) anchors, origin anchor: \(originAnchorId != nil)) - relocalizing…")
 
         // Relocalization timeout: fall back to fresh session if ARKit hasn't
-        // found enough matching feature points within 15 seconds — of THIS
+        // found enough matching feature points within 15 seconds - of THIS
         // start only. An interruption later in the session re-enters
         // relocalizing with the map still in memory; that must never turn
         // into a fresh frame under tags that are already placed.
         Task { @MainActor [weak self] in
             try? await Task.sleep(nanoseconds: 15_000_000_000)
             guard let self, self.isRelocalizing, self.relocGeneration == gen else { return }
-            AppLog.warn("ar", "Relocalization timeout (15 s) — falling back to fresh session")
+            AppLog.warn("ar", "Relocalization timeout (15 s) - falling back to fresh session")
             self.fallBackToFreshSession()
         }
     }
@@ -797,10 +797,10 @@ final class ARSessionManager: NSObject, ObservableObject {
     ///   (including the locked ARImageAnchor) alive and continuously updated.
     /// - After linking, processImageAnchors will resume publishing lockedAnchorTransform
     ///   updates as ARKit refines the QR pose each frame.
-    /// - Parameter mapOrigin: B1 — pass `appState.sealedMapOrigin`. When set,
+    /// - Parameter mapOrigin: B1 - pass `appState.sealedMapOrigin`. When set,
     ///   the sealed pose becomes `lockedAnchorTransform` and the live QR is NOT
     ///   restored as the origin (no per-frame refinement either).
-    /// - Parameter objectCalibration: B2e — the gate re-based the world onto the
+    /// - Parameter objectCalibration: B2e - the gate re-based the world onto the
     ///   chamber's shape (`objectCalibration` = its pose in that frame). This
     ///   manager takes over the movement watchdog so tags follow the chamber
     ///   in Author / Operator mode too.
@@ -839,7 +839,7 @@ final class ARSessionManager: NSObject, ObservableObject {
             return
         }
 
-        // The session is already running — find the ARImageAnchor ARKit locked
+        // The session is already running - find the ARImageAnchor ARKit locked
         // during QRScanGateView and restore our local reference to it.
         // A short delay ensures the session delivers its first frame to us.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self] in
@@ -871,7 +871,7 @@ final class ARSessionManager: NSObject, ObservableObject {
     /// lockedAnchorTransform from its live (gravity-normalised) pose.
     private func restoreLockedImageAnchorFromSession() {
         guard let anchors = sceneView.session.currentFrame?.anchors else {
-            AppLog.info("ar", "restoreAnchor: no current frame — will wait for didUpdate")
+            AppLog.info("ar", "restoreAnchor: no current frame - will wait for didUpdate")
             return
         }
         for anchor in anchors {
@@ -882,7 +882,7 @@ final class ARSessionManager: NSObject, ObservableObject {
             AppLog.info("ar", "✓ Restored live ARImageAnchor from linked session (isTracked=\(imageAnchor.isTracked))")
             return
         }
-        // No image anchor found yet — either not yet added or session just linked.
+        // No image anchor found yet - either not yet added or session just linked.
         // processImageAnchors will pick it up when didUpdate fires.
         AppLog.info("ar", "restoreAnchor: no ARImageAnchor in session yet")
     }
@@ -902,12 +902,12 @@ final class ARSessionManager: NSObject, ObservableObject {
         detectedQRCorners     = []
         qrIndicatorNode?.removeFromParentNode()
         qrIndicatorNode = nil
-        // #63: every successful detection — right anchor or wrong — runs through
+        // #63: every successful detection - right anchor or wrong - runs through
         // lockAnchor(), which pauses qrScanner so it stops burning CPU once
         // locked. A wrong-QR result resets scanState back to .scanning here,
         // but without resuming the scanner too, isPaused stays true forever
         // and no future QR (including the correct one) is ever detected again
-        // — the session looks alive but is permanently deaf to new codes.
+        // - the session looks alive but is permanently deaf to new codes.
         qrScanner.resume()
         // Trust layer: a wrong QR must NOT cost the sealed map. Keep the
         // session and its frame (relocalization, origin anchor); only drop the
@@ -917,7 +917,7 @@ final class ARSessionManager: NSObject, ObservableObject {
         }
         sceneView.session.run(makeConfiguration(), options: [])
         _liveImageAnchor = nil
-        AppLog.info("ar", "Scan reset — session frame and map kept")
+        AppLog.info("ar", "Scan reset - session frame and map kept")
     }
 
     func disableQRScanning() { qrScanner.pause() }
@@ -931,18 +931,18 @@ final class ARSessionManager: NSObject, ObservableObject {
         guard case .scanning = scanState else { return }
         guard case .normal = trackingState else {
             // Trust layer: a QR in view while ARKit is still matching the map
-            // usually means the operator is staring at a 10 cm code — too few
+            // usually means the operator is staring at a 10 cm code - too few
             // features to relocalize on. Tell the view (it asks them to look
             // around), and after `qrWaitCeiling` stop waiting: fresh frame, QR
-            // origin, "reduced accuracy" — better than 15 s of nothing.
+            // origin, "reduced accuracy" - better than 15 s of nothing.
             if isRelocalizing {
                 let now = ProcessInfo.processInfo.systemUptime
                 if qrSeenWhileRelocalizingAt == nil {
                     qrSeenWhileRelocalizingAt = now
                     qrWaitingForMap = true
-                    AppLog.info("ar", "QR in view while relocalizing — waiting up to \(Int(qrWaitCeiling)) s for the map")
+                    AppLog.info("ar", "QR in view while relocalizing - waiting up to \(Int(qrWaitCeiling)) s for the map")
                 } else if now - (qrSeenWhileRelocalizingAt ?? now) >= qrWaitCeiling {
-                    AppLog.warn("ar", "QR held \(Int(qrWaitCeiling)) s without a map match — falling back to the QR origin")
+                    AppLog.warn("ar", "QR held \(Int(qrWaitCeiling)) s without a map match - falling back to the QR origin")
                     fallBackToFreshSession()
                 }
             }
@@ -970,7 +970,7 @@ final class ARSessionManager: NSObject, ObservableObject {
         // with a 200 KB one. Here the map is the origin and the QR is only
         // its witness, so the raycast pose is enough.
         if sessionHasWorldMap, relocalizationOutcome == .succeeded {
-            AppLog.info("ar", "QR seen on a relocalized map — raycast pose (no config re-run)")
+            AppLog.info("ar", "QR seen on a relocalized map - raycast pose (no config re-run)")
             fallbackRaycast(context: context, visionBBox: visionBBox)
             return
         }
@@ -979,14 +979,14 @@ final class ARSessionManager: NSObject, ObservableObject {
             from: frame, corners: corners, physicalWidth: context.physicalWidth) {
             // Update the running session to detect this specific QR image.
             // .run() without .resetTracking preserves all existing anchors and
-            // the current world map — we just add image detection capability.
+            // the current world map - we just add image detection capability.
             let config = makeConfiguration()
             config.detectionImages  = [refImage]
             config.maximumNumberOfTrackedImages = 1
             sceneView.session.run(config, options: [])
-            AppLog.info("ar", "ARReferenceImage registered (\(String(format:"%.0f", context.physicalWidth * 100)) cm) — waiting for ARImageAnchor")
+            AppLog.info("ar", "ARReferenceImage registered (\(String(format:"%.0f", context.physicalWidth * 100)) cm) - waiting for ARImageAnchor")
         } else {
-            AppLog.warn("ar", "Could not create ARReferenceImage — falling back to raycast")
+            AppLog.warn("ar", "Could not create ARReferenceImage - falling back to raycast")
             fallbackRaycast(context: context, visionBBox: visionBBox)
         }
     }
@@ -994,7 +994,7 @@ final class ARSessionManager: NSObject, ObservableObject {
     // ── ARReferenceImage construction ─────────────────────────────────────────
 
     /// Crops the QR region from the current ARFrame and creates an ARReferenceImage.
-    /// The physical width drives ARKit's PnP solver — must match the printed size.
+    /// The physical width drives ARKit's PnP solver - must match the printed size.
     private func makeReferenceImage(from frame: ARFrame,
                                     corners: [CGPoint],
                                     physicalWidth: CGFloat) -> ARReferenceImage? {
@@ -1110,14 +1110,14 @@ extension ARSessionManager: ARSessionDelegate {
         processImageAnchors(anchors, added: true)
     }
 
-    // Updated poses as ARKit refines its estimate — also count toward stability
+    // Updated poses as ARKit refines its estimate - also count toward stability
     nonisolated func session(_ session: ARSession, didUpdate anchors: [ARAnchor]) {
         processImageAnchors(anchors, added: false)
     }
 
     private nonisolated func processImageAnchors(_ anchors: [ARAnchor], added: Bool) {
 
-        // ── B2: reference object — publish its pose; B2e: a fresh detection
+        // ── B2: reference object - publish its pose; B2e: a fresh detection
         // (didAdd) after calibration is a movement check.
         for anchor in anchors {
             guard let obj = anchor as? ARObjectAnchor else { continue }
@@ -1157,14 +1157,14 @@ extension ARSessionManager: ARSessionDelegate {
             return
         }
 
-        // ── Case B: anchor already locked — continuous live refinement ────────
+        // ── Case B: anchor already locked - continuous live refinement ────────
         // When the QR is visible, ARKit keeps updating the ARImageAnchor's
         // transform.  We republish the gravity-normalised pose so that
         // AuthorModeView / OperatorModeView can reposition tag nodes to match.
         // B1: never when the sealed map is the origin (adoptMapOrigin nils
         // _lockedImageAnchor, so this guard also covers that case).
         guard let lockedAnchor = _lockedImageAnchor else {
-            // Trust layer: the map/object is the origin — the QR is a witness.
+            // Trust layer: the map/object is the origin - the QR is a witness.
             // Publish how far it disagrees (≤ 2 Hz); never move anything.
             guard let live = _liveImageAnchor else { return }
             for anchor in anchors {
@@ -1229,12 +1229,12 @@ extension ARSessionManager: ARSessionDelegate {
         Task { @MainActor [weak self] in
             self?.trackingState = newState
             // When ARKit reaches .normal after a world-map session, relocalization
-            // has succeeded — clear the flag so QRScanGateView shows "scan QR" again.
+            // has succeeded - clear the flag so QRScanGateView shows "scan QR" again.
             if cat == 1, self?.isRelocalizing == true {
                 self?.isRelocalizing = false
                 self?.relocalizationOutcome = .succeeded
                 if self?.originConfidence == .relocalizing { self?.originConfidence = .aligning }
-                AppLog.info("ar", "✓ Relocalization complete — tracking normal")
+                AppLog.info("ar", "✓ Relocalization complete - tracking normal")
             }
         }
     }
@@ -1244,7 +1244,7 @@ extension ARSessionManager: ARSessionDelegate {
     }
 
     // #69: fires on phone calls, Control Center, app-switcher gestures, etc.
-    // The camera feed freezes/stops updating for the duration — any capture
+    // The camera feed freezes/stops updating for the duration - any capture
     // or validation that completes "successfully" during this window is
     // scoring/training against a stale frame, not what's actually in view.
     nonisolated func sessionWasInterrupted(_ session: ARSession) {
@@ -1258,9 +1258,9 @@ extension ARSessionManager: ARSessionDelegate {
     // clear the flag so views can prompt the user to re-verify alignment
     // before trusting the next capture/validation result.
     nonisolated func sessionInterruptionEnded(_ session: ARSession) {
-        AppLog.info("ar", "session interruption ended — relocalizing into the previous map")
+        AppLog.info("ar", "session interruption ended - relocalizing into the previous map")
         // Force the next frame's tracking state to be re-published even if it
-        // is already .normal (short interruptions: camera picker, a call) —
+        // is already .normal (short interruptions: camera picker, a call) -
         // otherwise isRelocalizing would stay true with nothing to clear it.
         _lastTrackingCategory = -2
         Task { @MainActor [weak self] in
@@ -1279,6 +1279,6 @@ extension ARSessionManager: ARSessionDelegate {
     /// R2: without this ARKit RESETS the world origin after every interruption
     /// (backgrounding the app included) and every pin respawns in the wrong
     /// place. Returning true keeps the previous map and attempts to relocalize
-    /// into it — the auditor just has to look at something they saw before.
+    /// into it - the auditor just has to look at something they saw before.
     nonisolated func sessionShouldAttemptRelocalization(_ session: ARSession) -> Bool { true }
 }

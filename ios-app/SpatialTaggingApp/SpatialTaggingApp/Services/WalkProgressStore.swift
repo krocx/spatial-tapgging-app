@@ -1,4 +1,4 @@
-// WalkProgressStore.swift — R3 (2026.4.46): a Gemba walk survives an app kill.
+// WalkProgressStore.swift - R3 (2026.4.46): a Gemba walk survives an app kill.
 //
 // Per space (anchor), on this device: which findings the operator completed,
 // the index they were walking to, and the walk id (author side). Written on

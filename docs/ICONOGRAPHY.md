@@ -1,6 +1,6 @@
 # AppliedX iconography
 
-Generated 2026-09-10 from `sib/roadmap-client/src/utils/icons.ts` by `npm run icons:doc` — do not edit by hand.
+Generated 2026-09-10 from `sib/roadmap-client/src/utils/icons.ts` by `npm run icons:doc` - do not edit by hand.
 
 60 icons · 24×24 grid · 2 px round strokes · `stroke=currentColor`, `fill=none`. Rendered in-app by `components/Icon.tsx`; node cards draw the same path in white at 0.75 scale. Rendered sheet: [docs/iconography.html](iconography.html).
 
@@ -11,7 +11,7 @@ Generated 2026-09-10 from `sib/roadmap-client/src/utils/icons.ts` by `npm run ic
 - Fab vocabulary first: chamber, wafer, gas line, breaker, torque, lockout, evidence, ME, technician, Production #.
 - Add an icon → add path + meta in icons.ts → `npm run icons:doc` → `npm run build:roadmap`.
 
-## Node icons — pickable in the Inspector
+## Node icons - pickable in the Inspector
 
 | Name | Label | Used in | Path |
 |---|---|---|---|
@@ -56,7 +56,7 @@ Generated 2026-09-10 from `sib/roadmap-client/src/utils/icons.ts` by `npm run ic
 | `pin` | Spatial pin | Inspector icon grid | `M12 21.5s-6.5-6.2-6.5-11a6.5 6.5 0 0 1 13 0c0 4.8-6.5 11-6.5 11zm0-8.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z` |
 | `scan` | Scan | Inspector icon grid | `M3.5 8V5.5a2 2 0 0 1 2-2H8M16 3.5h2.5a2 2 0 0 1 2 2V8M20.5 16v2.5a2 2 0 0 1-2 2H16M8 20.5H5.5a2 2 0 0 1-2-2V16M4 12h16` |
 
-## Step content glyphs — procedure node pill
+## Step content glyphs - procedure node pill
 
 | Name | Label | Used in | Path |
 |---|---|---|---|
@@ -64,7 +64,7 @@ Generated 2026-09-10 from `sib/roadmap-client/src/utils/icons.ts` by `npm run ic
 | `step-image` | Step has image | NodeView step pill | `M4 5.5h16v13H4zM4 15l4.5-4.5 4 4 2.5-2.5 5 5M16 9.5h.01` |
 | `step-model` | Step has 3D model | NodeView step pill | `M12 2.5 20.5 7v10L12 21.5 3.5 17V7zM12 12l8.5-5M12 12 3.5 7M12 12v9.5` |
 
-## UI chrome — toolbar, map list, panels, issues
+## UI chrome - toolbar, map list, panels, issues
 
 | Name | Label | Used in | Path |
 |---|---|---|---|

@@ -8,11 +8,11 @@ depends: [sealed-worldmap, tag-format, ai-guidance, uam]
 terms: [AR Work Instructions, Author Mode, Operator Mode]
 spec: CONNECTED-WORKER.md#presence-coaching-multi-user
 api: |
-  POST /anchors/:id/presence — heartbeat ~2×/s: pose, surface, focus, site, session (app · API key)
-  GET /anchors/:id/presence — who is on this chamber right now (app, portal · API key)
-  DELETE /anchors/:id/presence/:userId — leave (app · API key)
-  GET /anchors/:id/subscribe — SSE: presence / presence:joined / presence:left / coach-hint on the chamber feed (app · API key)
-  POST /guide-sessions/live/:id/hints — human coach hint with optional look-here pointer (app · API key)
+  POST /anchors/:id/presence - heartbeat ~2×/s: pose, surface, focus, site, session (app · API key)
+  GET /anchors/:id/presence - who is on this chamber right now (app, portal · API key)
+  DELETE /anchors/:id/presence/:userId - leave (app · API key)
+  GET /anchors/:id/subscribe - SSE: presence / presence:joined / presence:left / coach-hint on the chamber feed (app · API key)
+  POST /guide-sessions/live/:id/hints - human coach hint with optional look-here pointer (app · API key)
 wireframe: arguides
 arch: |
   flowchart LR
@@ -25,7 +25,7 @@ arch: |
     O --> V["'Priya says …' card · ring + beam 'look here' 20 s"]
 ---
 Because every device localises into the chamber's shared frame, a colleague's
-camera pose is directly comparable — no ARKit collaborative session. People on
+camera pose is directly comparable - no ARKit collaborative session. People on
 the same chamber see each other as a world-locked lens, view cone and gaze dot,
 with edit echo when someone saves and a soft lock on the step they are on.
 Operators publish presence too, so an author in Place Steps can coach them: a

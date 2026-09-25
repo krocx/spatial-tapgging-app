@@ -1,11 +1,11 @@
-// ErrorBoundary.tsx — turns render crashes into a readable message instead of
+// ErrorBoundary.tsx - turns render crashes into a readable message instead of
 // a blank white page.
 //
 // Exists because of a real incident: a Rules-of-Hooks violation in Minimap
 // (React #310) unmounted the entire tree the moment a first node was added,
 // leaving users staring at a white screen with no clue the map had actually
 // saved. With this boundary the same class of bug shows the error text and a
-// reload button — reportable in one screenshot instead of a debugging session.
+// reload button - reportable in one screenshot instead of a debugging session.
 
 import { Component, type ReactNode } from 'react';
 
@@ -36,7 +36,7 @@ export class ErrorBoundary extends Component<Props, State> {
           Something went wrong rendering the canvas
         </h2>
         <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b', maxWidth: 480 }}>
-          Your map is saved on the server — nothing is lost. Reload to continue.
+          Your map is saved on the server - nothing is lost. Reload to continue.
           If this keeps happening, screenshot the message below and report it.
         </p>
         <code style={{

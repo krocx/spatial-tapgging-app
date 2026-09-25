@@ -1,9 +1,9 @@
-// LotoModels.swift — iLOTO data models. Mirrors the iLOTO section of
+// LotoModels.swift - iLOTO data models. Mirrors the iLOTO section of
 // shared/src/index.ts (see docs/ILOTO.md).
 //
 // Design invariants that shape these types:
 //   • Events are append-only on the server; STATUS IS DERIVED, never edited.
-//     The client renders what /loto/status returns — it never computes its own
+//     The client renders what /loto/status returns - it never computes its own
 //     lock state from cached events.
 //   • The server is the referee: checklists, one-lock-one-person and override
 //     conditions are validated server-side. The client shows friendly flows;
@@ -47,7 +47,7 @@ struct LotoPointModelSlot: Codable, Identifiable, Equatable {
     }
 }
 
-/// Max 3D asset slots per point — mirrors LOTO_MAX_MODELS on the server.
+/// Max 3D asset slots per point - mirrors LOTO_MAX_MODELS on the server.
 let lotoMaxModelSlots = 3
 
 /// An authored isolation point on a control panel (placed in AR).
@@ -61,7 +61,7 @@ struct LotoPoint: Codable, Identifiable, Equatable {
     let position:   SIBVector3
     /// 3D asset slots (≤ lotoMaxModelSlots). Wins over the legacy fields below.
     let models:     [LotoPointModelSlot]?
-    // Legacy single-model fields (pre-slots builds) — read via modelSlots.
+    // Legacy single-model fields (pre-slots builds) - read via modelSlots.
     let modelId:    String?
     let modelScale: Double?
     let modelOffsetX:   Double?
@@ -84,7 +84,7 @@ struct LotoPoint: Codable, Identifiable, Equatable {
     }
 }
 
-/// PATCH /loto/points/:id — send only what changes. Sending `models` replaces
+/// PATCH /loto/points/:id - send only what changes. Sending `models` replaces
 /// the whole slot array (server strips placement from any slot whose modelId
 /// changed, and clears the legacy single-model fields).
 struct UpdateLotoPointRequest: Codable {
@@ -120,7 +120,7 @@ enum LotoEventType: String, Codable {
     case overrideRemove = "override-remove"
 }
 
-/// OSHA exception procedure record — all three confirmations must be true.
+/// OSHA exception procedure record - all three confirmations must be true.
 struct LotoOverride: Codable, Equatable {
     let supervisorName:         String
     let reason:                 String
@@ -161,7 +161,7 @@ struct CreateLotoEventRequest: Codable {
     let testBay:     String?
 }
 
-/// Response from POST /loto/events — the recorded event plus the point's
+/// Response from POST /loto/events - the recorded event plus the point's
 /// freshly derived status (so the UI updates without a second round-trip).
 struct LotoEventResponse: Codable {
     let event:  LotoEvent
@@ -184,7 +184,7 @@ struct LotoPointStatus: Codable, Equatable {
     var isLocked: Bool { state == "locked" }
 }
 
-/// Panel-level summary — drives the hub status banner.
+/// Panel-level summary - drives the hub status banner.
 struct LotoAnchorStatus: Codable, Equatable {
     let anchorId:      String
     let points:        [LotoPointStatus]
@@ -205,7 +205,7 @@ struct MyLotoEntry: Codable, Equatable {
 // ============================================================
 
 /// One drawn flow line: ordered world-space vertices in the panel's QR-locked
-/// frame. `fedByPointId` links the stroke to the Safe Off breaker feeding it —
+/// frame. `fedByPointId` links the stroke to the Safe Off breaker feeding it -
 /// when that breaker is locked out, the stroke renders de-energized.
 struct LotoMapStroke: Codable, Identifiable, Equatable {
     let id:           String
@@ -214,7 +214,7 @@ struct LotoMapStroke: Codable, Identifiable, Equatable {
     var fedByPointId: String?
 }
 
-/// Versioned flow map — GET returns the highest version.
+/// Versioned flow map - GET returns the highest version.
 struct LotoMap: Codable, Identifiable, Equatable {
     let id:        String
     let anchorId:  String
@@ -234,7 +234,7 @@ struct SaveLotoMapRequest: Codable {
 // MARK: - Training / certification
 // ============================================================
 
-/// A quiz question as the CLIENT sees it — the server withholds the answer;
+/// A quiz question as the CLIENT sees it - the server withholds the answer;
 /// grading happens on submit.
 struct LotoQuizQuestionPublic: Codable, Identifiable, Equatable {
     let id:      String

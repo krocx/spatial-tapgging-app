@@ -1,9 +1,9 @@
-// HoneycombDiagram.swift — G11
+// HoneycombDiagram.swift - G11
 // A 2D spatial map of the 7 honeycomb capture positions.
 //
 // Used in two contexts:
-//  • Ready screen  (size ≈ 240, showLabels: true)  — static briefing diagram
-//  • Top bar       (size ≈ 62,  showLabels: false)  — live progress mini-map
+//  • Ready screen  (size ≈ 240, showLabels: true)  - static briefing diagram
+//  • Top bar       (size ≈ 62,  showLabels: false)  - live progress mini-map
 //
 // Layout (matches HoneycombARGuide world positions):
 //
@@ -29,11 +29,11 @@ struct HoneycombDiagram: View {
     // Matches the angular offsets in HoneycombARGuide (viewed as a front-face diagram).
     // Y axis: +1 = up, -1 = down   (flipped from screen coords so "above" appears at top)
     private static let positions: [(x: CGFloat, y: CGFloat)] = [
-        ( 0.000,  0.000),   // 0: Straight On  — center
-        ( 0.000, -1.000),   // 1: From Above   — top
+        ( 0.000,  0.000),   // 0: Straight On  - center
+        ( 0.000, -1.000),   // 1: From Above   - top
         ( 0.866, -0.500),   // 2: Upper Right
         ( 0.866,  0.500),   // 3: Lower Right
-        ( 0.000,  1.000),   // 4: From Below   — bottom
+        ( 0.000,  1.000),   // 4: From Below   - bottom
         (-0.866,  0.500),   // 5: Lower Left
         (-0.866, -0.500),   // 6: Upper Left
     ]
@@ -135,13 +135,13 @@ struct HoneycombDiagram: View {
         return .white.opacity(0.28)
     }
 
-    /// Offset direction for a slot label — outward from center, with special
+    /// Offset direction for a slot label - outward from center, with special
     /// cases to keep labels from overlapping dots or each other.
     private func labelOffset(index: Int) -> CGPoint {
         let pos = Self.positions[index]
         let mag = sqrt(pos.x * pos.x + pos.y * pos.y)
         guard mag > 0.001 else {
-            return CGPoint(x: 22, y: 0) // center slot — push label right
+            return CGPoint(x: 22, y: 0) // center slot - push label right
         }
         let dist: CGFloat = 24
         return CGPoint(x: pos.x / mag * dist, y: pos.y / mag * dist)
@@ -150,14 +150,14 @@ struct HoneycombDiagram: View {
 
 // ── Preview ───────────────────────────────────────────────────────────────────
 
-#Preview("Large — ready screen (3 captured)") {
+#Preview("Large - ready screen (3 captured)") {
     ZStack {
         Color.black.ignoresSafeArea()
         HoneycombDiagram(capturedCount: 3, currentSlot: 3, size: 260, showLabels: true)
     }
 }
 
-#Preview("Small — top bar (1 captured)") {
+#Preview("Small - top bar (1 captured)") {
     ZStack {
         Color.black.ignoresSafeArea()
         HoneycombDiagram(capturedCount: 1, currentSlot: 1, size: 62, showLabels: false)

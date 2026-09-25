@@ -1,9 +1,9 @@
-// HoneycombSphere v2 — screen-space alignment + billboard nodes
+// HoneycombSphere v2 - screen-space alignment + billboard nodes
 //
 // UX model (matches Vuforia Expert Capture style):
 //   • 8 ring-shaped nodes distributed around the tag via Fibonacci lattice.
 //   • Nodes always face the camera (billboard).
-//   • One "target" node (next to capture) pulses cyan — the user aims the
+//   • One "target" node (next to capture) pulses cyan - the user aims the
 //     screen crosshair AT it.
 //   • Alignment is checked in screen space: if the target node's screen
 //     position is within ALIGN_PX_RATIO of screen centre → aligned.
@@ -32,7 +32,7 @@ export interface HoneycombNode {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const NODE_COUNT     = 8;
-const SPHERE_RADIUS  = 0.40;   // metres — sphere around the tag
+const SPHERE_RADIUS  = 0.40;   // metres - sphere around the tag
 const NODE_INNER     = 0.028;  // ring inner radius (m)
 const NODE_OUTER     = 0.055;  // ring outer radius (m)
 const ALIGN_PX_RATIO = 0.14;   // screen-space threshold: fraction of min(W,H)
@@ -66,7 +66,7 @@ export class HoneycombSphere {
 
     // ── Nodes ────────────────────────────────────────────────────────────────
     fibonacciSphere(NODE_COUNT).forEach((dir, i) => {
-      // Main ring — starts in XY plane, then billboarded via lookAt each frame
+      // Main ring - starts in XY plane, then billboarded via lookAt each frame
       const ringGeo = new THREE.RingGeometry(NODE_INNER, NODE_OUTER, 36);
       const ringMat = new THREE.MeshBasicMaterial({
         color: i === 0 ? COLOR_TARGET : COLOR_PENDING,
@@ -78,7 +78,7 @@ export class HoneycombSphere {
       const mesh = new THREE.Mesh(ringGeo, ringMat);
       mesh.position.copy(dir.clone().multiplyScalar(SPHERE_RADIUS));
 
-      // Outer glow ring — visible only when this node is target / aligned
+      // Outer glow ring - visible only when this node is target / aligned
       const glowGeo = new THREE.RingGeometry(NODE_OUTER * 1.15, NODE_OUTER * 1.55, 36);
       const glowMat = new THREE.MeshBasicMaterial({
         color: COLOR_TARGET,
@@ -88,7 +88,7 @@ export class HoneycombSphere {
         depthWrite: false,
       });
       const glowRing = new THREE.Mesh(glowGeo, glowMat);
-      mesh.add(glowRing);   // child — inherits billboard transform
+      mesh.add(glowRing);   // child - inherits billboard transform
 
       this.group.add(mesh);
 
@@ -119,7 +119,7 @@ export class HoneycombSphere {
       const glowMat = node.glowRing.material as THREE.MeshBasicMaterial;
 
       if (node.captured) {
-        // Already captured — static green, no glow
+        // Already captured - static green, no glow
         mat.color.set(COLOR_CAPTURED);
         mat.opacity   = 0.85;
         glowMat.opacity = 0;
@@ -128,7 +128,7 @@ export class HoneycombSphere {
       }
 
       if (node.index === this.alignedIndex) {
-        // Crosshair on this node — bright white + fast glow pulse
+        // Crosshair on this node - bright white + fast glow pulse
         mat.color.set(COLOR_ALIGNED);
         mat.opacity = 1.0;
         glowMat.color.set(COLOR_ALIGNED);
@@ -136,7 +136,7 @@ export class HoneycombSphere {
         node.mesh.scale.setScalar(1.0);
 
       } else if (node.index === this.targetIndex) {
-        // This is the NEXT node to capture — slow cyan pulse
+        // This is the NEXT node to capture - slow cyan pulse
         const pulse = 1 + 0.12 * Math.sin(t * 3);
         node.mesh.scale.setScalar(pulse);
         mat.color.set(COLOR_TARGET);
@@ -145,7 +145,7 @@ export class HoneycombSphere {
         glowMat.opacity = 0.18 * (0.5 + 0.5 * Math.sin(t * 3));
 
       } else {
-        // Pending — dim, no animation
+        // Pending - dim, no animation
         node.mesh.scale.setScalar(1.0);
         mat.color.set(COLOR_PENDING);
         mat.opacity   = 0.45;

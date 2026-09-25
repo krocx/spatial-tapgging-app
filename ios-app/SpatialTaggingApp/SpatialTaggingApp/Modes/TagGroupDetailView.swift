@@ -31,7 +31,7 @@ struct TagGroupDetailView: View {
     @State private var loadError:  String? = nil
     @State private var showScanGate = false
 
-    // Cached tags for the AR session — set when "Enter AR" is tapped so the
+    // Cached tags for the AR session - set when "Enter AR" is tapped so the
     // fullScreenCover content closure doesn't race against the @State refresh.
     @State private var sessionTags: [Tag] = []
 
@@ -143,7 +143,7 @@ struct TagGroupDetailView: View {
         .task { await loadTags() }
         // ── QR scan gate ──────────────────────────────────────────────────────
         // QRScanGateView requires appState.activeAnchor + appState.activeTags
-        // to be set before presentation — done above when "Enter AR" is tapped.
+        // to be set before presentation - done above when "Enter AR" is tapped.
         .fullScreenCover(isPresented: $showScanGate) {
             QRScanGateView(
                 mode: mode,

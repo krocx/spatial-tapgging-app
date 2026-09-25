@@ -8,9 +8,9 @@ depends: [iloto-anchors, loto-event-log]
 terms: [LOTO, Energy Isolation Point]
 spec: ILOTO.md
 api: |
-  POST /loto/map — save isolation sequence map (app · API key)
-  GET /loto/map?anchorId= — load map with live point status (app · API key)
-  DELETE /loto/map?anchorId= — remove map (portal · admin key)
+  POST /loto/map - save isolation sequence map (app · API key)
+  GET /loto/map?anchorId= - load map with live point status (app · API key)
+  DELETE /loto/map?anchorId= - remove map (portal · admin key)
 wireframe: iloto
 arch: |
   flowchart LR
@@ -24,5 +24,5 @@ arch: |
 ---
 The panel's electricity flow drawn in AR by tapping vertices along the conduit;
 starting a line on a Safe Off marker links it to that breaker, making the map
-status-aware — lock the breaker out and its lines go grey and pulse-free live,
+status-aware - lock the breaker out and its lines go grey and pulse-free live,
 restore it and the teal flow pulse returns. Saves are versioned with history.

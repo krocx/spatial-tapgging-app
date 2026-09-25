@@ -8,9 +8,9 @@ depends: [guide-move, ghost-overlays, model-library]
 terms: [AR Work Instructions, Anchor, CAD Import & Conversion]
 spec: CONNECTED-WORKER.md#copy-guide-duplicate-anchor-model-slots
 api: |
-  POST /guides/:id/copy — clone a guide onto another anchor (or same, as "(copy)"); pins and training stay behind (app, portal · API key)
-  POST /anchors/:id/duplicate — template copy: new id, QR and key; metadata, kit and guides copied (app, portal · API key)
-  PATCH /guides/:id/steps/:stepId — models[] (max 3 slots), slot 1 mirrored to legacy modelId fields (app, portal, designer · API key)
+  POST /guides/:id/copy - clone a guide onto another anchor (or same, as "(copy)"); pins and training stay behind (app, portal · API key)
+  POST /anchors/:id/duplicate - template copy: new id, QR and key; metadata, kit and guides copied (app, portal · API key)
+  PATCH /guides/:id/steps/:stepId - models[] (max 3 slots), slot 1 mirrored to legacy modelId fields (app, portal, designer · API key)
 wireframe: portal
 arch: |
   flowchart LR
@@ -20,7 +20,7 @@ arch: |
     S --> PS["Place Steps: adjust each slot · cube toggle · Copy models to…"]
 ---
 Authoring once and rolling out many: copy a guide to another chamber (a draft
-until re-placed — pins, placements and validation training belong to the source
+until re-placed - pins, placements and validation training belong to the source
 map), or duplicate a whole chamber as a template (new QR, its own encryption key,
 guides copied, nothing that describes the old physical location). A step now
 holds up to three 3D model slots with their own scale, opacity and placement;

@@ -1,15 +1,15 @@
-// oms/intelligence.ts — C3 (2026.4.46): the effectiveness loop.
+// oms/intelligence.ts - C3 (2026.4.46): the effectiveness loop.
 //
 // Every hint C2 fired is scored by what happened AFTER it, using the raw
 // observation samples already on disk (observations/<session>.jsonl) and the
 // visit outcome. Scores roll up per (step, signal, phrasing) and feed back:
 //
-//   • C2 asks `retiredSignals(guideId, stepId)` before firing — a signal with
+//   • C2 asks `retiredSignals(guideId, stepId)` before firing - a signal with
 //     low effectiveness or a high mute rate on a step is retired there;
 //   • `preferredVia(guideId, stepId, signal)` lets a step fall back to the
 //     template when the LLM phrasing scores lower;
 //   • the portal Intelligence page reads `GET /guide-sessions/intelligence/:id`
-//     — per-step heat (stall / wrong-part / attention / look-away / validation
+//     - per-step heat (stall / wrong-part / attention / look-away / validation
 //     / left rates), the hint table, and author-facing notes.
 //
 // "Helped" per signal (the symptom eased after the hint):
@@ -170,7 +170,7 @@ export function computeIntelligence(
       visits: a?.visits ?? 0, heat: 0, hints: [], notes: [],
       ...(baseline && { dwellSec: baseline.dwellSec }),
     };
-    // What the engine needs on this step right now (portal "engine" line) — floors on a fresh guide.
+    // What the engine needs on this step right now (portal "engine" line) - floors on a fresh guide.
     {
       const t = effectiveTriggers(baseline, mode);
       si.triggers = { wrongTaps: t.wrongTaps, attentionBelowPct: Math.round(t.attentionBelow * 100), lookAwayAfterSec: t.lookAwayAfterSec, ...(t.dwellAfterSec !== undefined && { dwellAfterSec: Math.round(t.dwellAfterSec) }), mode };
@@ -191,7 +191,7 @@ export function computeIntelligence(
         const eff = t.shown ? t.helped / t.shown : undefined;
         const muteRate = t.shown + t.muted ? t.muted / (t.shown + t.muted) : 0;
         let reason: string | undefined;
-        if (t.shown >= MIN_SHOWN_FOR_RETIRE && eff !== undefined && eff < LOW_EFFECTIVENESS) reason = `helped ${t.helped} of ${t.shown} — below ${Math.round(LOW_EFFECTIVENESS * 100)} %`;
+        if (t.shown >= MIN_SHOWN_FOR_RETIRE && eff !== undefined && eff < LOW_EFFECTIVENESS) reason = `helped ${t.helped} of ${t.shown} - below ${Math.round(LOW_EFFECTIVENESS * 100)} %`;
         else if (t.shown + t.muted >= MIN_FOR_MUTE_RETIRE && muteRate >= HIGH_MUTE_RATE) reason = `muted ${t.muted} of ${t.shown + t.muted} times`;
         const cell: HintEffectiveness = {
           signal, via, shown: c.shown, muted: c.muted, helped: c.helped,
@@ -206,16 +206,16 @@ export function computeIntelligence(
       const w = (v: number | undefined, k: number) => (v ?? 0) * k;
       si.heat = Math.min(100, Math.round(100 * (w(si.leftRate, 0.35) + w(si.validationFailRate, 0.2) + w(si.wrongPartRate, 0.15) + w(si.stallRate, 0.15) + w(si.attentionOffRate, 0.1) + w(si.lookAwayRate, 0.05))));
 
-      // Author-facing notes — only when there is enough behind the number.
+      // Author-facing notes - only when there is enough behind the number.
       const pct = (v: number) => `${Math.round(v * 100)} %`;
-      if (a.obsVisits >= 3 && (si.wrongPartRate ?? 0) >= 0.3) si.notes.push(`${pct(si.wrongPartRate!)} of visits tap a part that is not in this step — the part label or photo is not distinguishing it.`);
-      if (a.obsVisits >= 3 && (si.stallRate ?? 0) >= 0.3) si.notes.push(`${pct(si.stallRate!)} of visits stall here — the instruction may be missing a sub-step or the animation is too fast.`);
-      if (a.attnVisits >= 3 && (si.attentionOffRate ?? 0) >= 0.4) si.notes.push(`${pct(si.attentionOffRate!)} of visits spend most of the step looking away from the part — check the pin and the model placement.`);
-      if (a.viewVisits >= 3 && (si.lookAwayRate ?? 0) >= 0.5) si.notes.push(`${pct(si.lookAwayRate!)} of visits never reach the recommended viewpoint — it may be unreachable on the floor; consider re-recording it.`);
-      if (baseline && baseline.sessions >= 3 && (si.validationFailRate ?? 0) >= 0.4) si.notes.push(`${pct(si.validationFailRate!)} of validations fail on the first verdict — retrain the reference or relax the framing.`);
-      if (a.all >= 3 && (si.leftRate ?? 0) >= 0.3) si.notes.push(`${pct(si.leftRate!)} of visits end without completing — people give up or branch away here.`);
-      if (baseline && baseline.sessions >= 3 && baseline.dwellSec.p90 > 3 * Math.max(10, baseline.dwellSec.p50)) si.notes.push(`Dwell is uneven: typical ${baseline.dwellSec.p50} s, slowest tenth ${baseline.dwellSec.p90} s — some people are lost on this step.`);
-      for (const h of si.hints.filter(h => h.retired)) if (!si.notes.some(n => n.includes(`"${h.signal}"`))) si.notes.push(`The "${h.signal}" hint is retired on this step (${h.reason}) — the step content, not the hint, needs the fix.`);
+      if (a.obsVisits >= 3 && (si.wrongPartRate ?? 0) >= 0.3) si.notes.push(`${pct(si.wrongPartRate!)} of visits tap a part that is not in this step - the part label or photo is not distinguishing it.`);
+      if (a.obsVisits >= 3 && (si.stallRate ?? 0) >= 0.3) si.notes.push(`${pct(si.stallRate!)} of visits stall here - the instruction may be missing a sub-step or the animation is too fast.`);
+      if (a.attnVisits >= 3 && (si.attentionOffRate ?? 0) >= 0.4) si.notes.push(`${pct(si.attentionOffRate!)} of visits spend most of the step looking away from the part - check the pin and the model placement.`);
+      if (a.viewVisits >= 3 && (si.lookAwayRate ?? 0) >= 0.5) si.notes.push(`${pct(si.lookAwayRate!)} of visits never reach the recommended viewpoint - it may be unreachable on the floor; consider re-recording it.`);
+      if (baseline && baseline.sessions >= 3 && (si.validationFailRate ?? 0) >= 0.4) si.notes.push(`${pct(si.validationFailRate!)} of validations fail on the first verdict - retrain the reference or relax the framing.`);
+      if (a.all >= 3 && (si.leftRate ?? 0) >= 0.3) si.notes.push(`${pct(si.leftRate!)} of visits end without completing - people give up or branch away here.`);
+      if (baseline && baseline.sessions >= 3 && baseline.dwellSec.p90 > 3 * Math.max(10, baseline.dwellSec.p50)) si.notes.push(`Dwell is uneven: typical ${baseline.dwellSec.p50} s, slowest tenth ${baseline.dwellSec.p90} s - some people are lost on this step.`);
+      for (const h of si.hints.filter(h => h.retired)) if (!si.notes.some(n => n.includes(`"${h.signal}"`))) si.notes.push(`The "${h.signal}" hint is retired on this step (${h.reason}) - the step content, not the hint, needs the fix.`);
     }
     out.push(si);
   }

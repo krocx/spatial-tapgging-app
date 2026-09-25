@@ -1,10 +1,10 @@
-// GembaLiveActivity.swift — G6 (2026.4.46): drive the Gemba walk Live
+// GembaLiveActivity.swift - G6 (2026.4.46): drive the Gemba walk Live
 // Activity (Dynamic Island + Lock Screen) from the operator navigation.
 //
 // Why: the operator walks with the phone at their side and only raises it
 // at a finding. The Dynamic Island keeps "next: #3 · 4.2 m · 1/5" visible
 // without the app on screen, and a haptic says "you're there". Honest limit:
-// ARKit cannot track with the camera pointed at a pocket — while tracking is
+// ARKit cannot track with the camera pointed at a pocket - while tracking is
 // lost the activity shows the LAST known distance and "raise your phone";
 // raising it re-localises (world map) and updates resume. This is
 // "phone down between findings", not continuous tracking.
@@ -60,7 +60,7 @@ final class GembaLiveActivity {
         #endif
     }
 
-    /// Throttled update — at most ~2/s and only when something visible changed.
+    /// Throttled update - at most ~2/s and only when something visible changed.
     /// `distanceM` nil = tracking lost (phase paused, last distance kept by the widget).
     func update(nextTitle: String, category: String?, distanceM: Float?, done: Int, total: Int, trackingOK: Bool, arrivedM: Float) {
         #if canImport(ActivityKit)
@@ -76,7 +76,7 @@ final class GembaLiveActivity {
             done: done, total: total, phase: phase)
         Task { await activity.update(.init(state: state, staleDate: Date().addingTimeInterval(120))) }
         #endif
-        // Arrival haptic — once per finding, regardless of the widget.
+        // Arrival haptic - once per finding, regardless of the widget.
         if trackingOK, let d = distanceM, d <= arrivedM, arrivedFor != nextTitle {
             arrivedFor = nextTitle
             arrivalHaptic.notificationOccurred(.success)
@@ -84,7 +84,7 @@ final class GembaLiveActivity {
         if let d = distanceM, d > arrivedM + 1.0, arrivedFor == nextTitle { arrivedFor = nil }
     }
 
-    /// R1: app went to the background — ARKit is suspended, so say so.
+    /// R1: app went to the background - ARKit is suspended, so say so.
     /// Keeps the last known distance in the title text; phase 'background'.
     func background(nextTitle: String, lastDistanceM: Float?, done: Int, total: Int) {
         #if canImport(ActivityKit)

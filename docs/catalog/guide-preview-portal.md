@@ -8,8 +8,8 @@ depends: [guide-library, conditional-graph]
 terms: [AR Work Instructions]
 spec: PROCEDURE-DESIGNER.md
 api: |
-  GET /guides/:id/steps — walkthrough source (portal · API key)
-  GET /guides/step-image/:filename — step images in the phone frame (portal · API key)
+  GET /guides/:id/steps - walkthrough source (portal · API key)
+  GET /guides/step-image/:filename - step images in the phone frame (portal · API key)
 wireframe: portal
 arch: |
   flowchart LR
@@ -27,5 +27,5 @@ arch: |
 Walk any guide's real branch graph from a desk: a phone-frame walkthrough in the
 Guide Library with Complete/Failed/Skip traversal, requires-gate redirects, step
 images, voice playback, and an exit summary of everything a happy-path review
-never exercised. A placement banner keeps reviewers honest — approving content
+never exercised. A placement banner keeps reviewers honest - approving content
 is not the same as the guide being runnable on the floor.

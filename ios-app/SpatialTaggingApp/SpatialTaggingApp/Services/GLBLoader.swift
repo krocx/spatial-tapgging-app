@@ -2,13 +2,13 @@
 //  GLBLoader.swift
 //  SpatialTaggingApp
 //
-//  AR OJT slice 2 — our own glTF 2.0 binary reader → SceneKit.
+//  AR OJT slice 2 - our own glTF 2.0 binary reader → SceneKit.
 //
 //  Why not USDZ: the portal's USDZ export renames every node ("Object_123"),
 //  so per-part show/hide/animate cannot address the assembly's parts. The GLB
-//  that SIB's Cortona3D importer writes is a deliberately small subset —
+//  that SIB's Cortona3D importer writes is a deliberately small subset -
 //  nodes with names + a 4x4 matrix (or TRS), POSITION + indices, a base-colour
-//  material — and this loader reads exactly that subset, preserving node
+//  material - and this loader reads exactly that subset, preserving node
 //  names (`cmp:<part>`) and glTF `extras` (part number / description).
 //  Anything outside the subset (textures, skins, animations, sparse accessors)
 //  is ignored rather than failing, and any GLB we did not write is handled the
@@ -16,7 +16,7 @@
 //
 //  Normals: the GLB carries none (viewers shade flat). We un-index every
 //  primitive and compute flat normals so CAD edges stay crisp under SceneKit's
-//  PBR lighting — the same fix the portal applies before its USDZ export.
+//  PBR lighting - the same fix the portal applies before its USDZ export.
 //
 //  Apple SDKs only (Foundation, SceneKit, simd). No third-party code.
 //
@@ -93,7 +93,7 @@ enum GLBLoader {
         let scenesJ     = json["scenes"]      as? [[String: Any]] ?? []
         let sceneIdx    = json["scene"] as? Int ?? 0
 
-        // Materials — one SCNMaterial per glTF material, cloned per part later
+        // Materials - one SCNMaterial per glTF material, cloned per part later
         // so highlight/ghost changes stay local to a part.
         let materials: [SCNMaterial] = materialsJ.map { m in
             let mat = SCNMaterial()
@@ -118,7 +118,7 @@ enum GLBLoader {
             mat.isDoubleSided = true; return mat
         }()
 
-        // Meshes — built once, geometry shared between nodes that reference the same mesh.
+        // Meshes - built once, geometry shared between nodes that reference the same mesh.
         var geometryCache: [Int: [SCNGeometry]] = [:]
         var meshCount = 0, triangleCount = 0
         func geometries(forMesh mi: Int) throws -> [SCNGeometry] {
@@ -186,7 +186,7 @@ enum GLBLoader {
             let world = parentWorld * local
             // Every named node is addressable as a part (2026.4.46): Cortona
             // exports use `cmp:<part>`, designer-picked CAD exports use whatever
-            // the CAD tool named the node — the Procedure Designer lists the
+            // the CAD tool named the node - the Procedure Designer lists the
             // same names from the GLB, so they always agree.
             // Unnamed nodes get the same `node<i>` name the server's part tree
             // uses, so a hidden root reaches the app under one name.

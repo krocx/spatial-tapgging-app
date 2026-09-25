@@ -1,4 +1,4 @@
-// SpatialTaggingApp — Phase 2A entry point
+// SpatialTaggingApp - Phase 2A entry point
 import SwiftUI
 
 @main

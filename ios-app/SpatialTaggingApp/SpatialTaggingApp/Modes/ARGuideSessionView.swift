@@ -1,12 +1,12 @@
-// ARGuideSessionView.swift — AR OMS Phase 3
+// ARGuideSessionView.swift - AR OMS Phase 3
 //
 // Full-screen AR session for an Operator running a published Guide.
 //
 // State machine:
-//   .loading      — download ARWorldMap + reference photo (steps pre-fetched by caller)
-//   .relocalizing — ghost photo overlay + "I'm Here" + ARKit worldmap matching
-//   .navigating(index:) — 3D pins + world-anchored floating panels + distance telemetry
-//   .submitted    — done overlay after sign-off
+//   .loading      - download ARWorldMap + reference photo (steps pre-fetched by caller)
+//   .relocalizing - ghost photo overlay + "I'm Here" + ARKit worldmap matching
+//   .navigating(index:) - 3D pins + world-anchored floating panels + distance telemetry
+//   .submitted    - done overlay after sign-off
 //
 // Phase 3 additions:
 //   • 3D world-anchored floating panel per step (SCNPlane + SCNBillboardConstraint)
@@ -39,7 +39,7 @@ struct ARGuideSessionView: View {
     // ── AR session ────────────────────────────────────────────────────────────
     @StateObject private var arManager = ARSessionManager()
 
-    // F1 (2026.4.46): in-session FTUE — moment cards + ? cheat-sheet.
+    // F1 (2026.4.46): in-session FTUE - moment cards + ? cheat-sheet.
     @StateObject private var coach = ARMomentCoach(employeeId: {
         UserDefaults.standard.string(forKey: "uam_employee_id") ?? ""
     })
@@ -65,14 +65,14 @@ struct ARGuideSessionView: View {
     @State private var arrowNode: SCNNode? = nil
 
     // ── 3D floating panels (Phase 3) ──────────────────────────────────────────
-    /// Container node per step — added to scene ROOT (not pin child) so it
+    /// Container node per step - added to scene ROOT (not pin child) so it
     /// doesn't inherit the pin's pulsing opacity animation.
     @State private var panelContainers: [String: SCNNode] = [:]
     /// true = minimized pill shown, false = maximized card shown (default).
     @State private var panelMinimized:  [String: Bool]    = [:]
-    /// A1: per-panel "▼ More" expansion — lifts the body-height cap.
+    /// A1: per-panel "▼ More" expansion - lifts the body-height cap.
     @State private var panelExpanded:   [String: Bool]    = [:]
-    /// Steps whose evidence photo is already uploaded (live) — sign-off skips
+    /// Steps whose evidence photo is already uploaded (live) - sign-off skips
     /// re-encoding these entirely.
     @State private var uploadedEvidenceSteps: Set<String> = []
 
@@ -80,7 +80,7 @@ struct ARGuideSessionView: View {
     @State private var distanceM:        Float?   = nil
     @State private var targetScreenPos:  CGPoint? = nil
     @State private var targetIsOnScreen: Bool     = false
-    /// Pin is more than ~120° from where the camera looks — a turn, not a pan.
+    /// Pin is more than ~120° from where the camera looks - a turn, not a pan.
     @State private var targetIsBehind:   Bool     = false
     @State private var targetTurnRight:  Bool     = false
     /// When the pin first came into view; wayfinding cues hide after a short
@@ -90,7 +90,7 @@ struct ARGuideSessionView: View {
         guard let t = targetOnScreenSince else { return false }
         return Date().timeIntervalSince(t) >= 0.3
     }
-    /// True when Operator is within arrivedM of the step — shows full content panel.
+    /// True when Operator is within arrivedM of the step - shows full content panel.
     @State private var showContentPanel: Bool     = false
 
     // ── Re-localization photo ──────────────────────────────────────────────────
@@ -130,7 +130,7 @@ struct ARGuideSessionView: View {
     @State private var coneReadyTicks     = 0        // consecutive 100 ms ticks in position
     @State private var coneAutoFired      = false    // one auto-capture per attempt
     private let coneDwellTicks            = 8        // 0.8 s steady = capture
-    // X1: never-stuck validation. The pose gate is ADVISORY — image alignment
+    // X1: never-stuck validation. The pose gate is ADVISORY - image alignment
     // (on-device feature-print similarity to the trained refs) can open the
     // gate on its own, and after coneEscapeSeconds the shutter works anyway.
     @State private var coneImgScore:      Double = 0            // live fp similarity 0…1
@@ -143,9 +143,9 @@ struct ARGuideSessionView: View {
     private let coneEscapeSeconds: TimeInterval = 8
     private let coneImgAlignThreshold: Double   = 0.60          // = stepPassThreshold
     /// X1: author's camera pose at the reference photo (world-map coords) and
-    /// whether "I'm Here" disagreed with it — pins are then suspect.
+    /// whether "I'm Here" disagreed with it - pins are then suspect.
     @State private var referenceCameraPose: simd_float4x4? = nil
-    /// B2: the guide map's object calibration — when the chamber object is
+    /// B2: the guide map's object calibration - when the chamber object is
     /// detected, the session is re-based onto the map frame immediately.
     @State private var objectPoseInMap: simd_float4x4? = nil
     @State private var originViaObject = false
@@ -158,7 +158,7 @@ struct ARGuideSessionView: View {
     @State private var shapeGhost:   ObjectShapeGhost? = nil     // B3
     @State private var objectSearchStartedAt = Date()
     @State private var fallbackMapData: Data? = nil
-    /// User chose "Place from last known position" — pins come from the room map.
+    /// User chose "Place from last known position" - pins come from the room map.
     @State private var approximateFromMap    = false
     @State private var showRealignToast      = false
     @State private var environmentDrift   = false
@@ -170,7 +170,7 @@ struct ARGuideSessionView: View {
     private struct ValidationFail: Identifiable { let id = UUID(); let index: Int; let score: Double }
     /// Saved run offered for resume on entry; nil once answered.
     @State private var resumeOffer: GuideRunSnapshot? = nil
-    /// Snapshot from a DIFFERENT Production # — needs an explicit switch (K3).
+    /// Snapshot from a DIFFERENT Production # - needs an explicit switch (K3).
     @State private var resumeMismatch: GuideRunSnapshot? = nil
 
     // ── FTUE / Help ───────────────────────────────────────────────────────────
@@ -204,15 +204,15 @@ struct ARGuideSessionView: View {
     // ── AI hints (Step 3: AI Dynamic Instructions) ────────────────────────────
     /// The hint currently shown to the Operator; nil = assist hidden.
     /// FIX: the old banner lived INSIDE GuideContentPanel, which is hidden by
-    /// default (showContentPanel starts false) — hints were fetched and logged
+    /// default (showContentPanel starts false) - hints were fetched and logged
     /// but rendered inside a panel that wasn't on screen. Assist is now its
     /// own overlay layer, visible in every panel state.
     @State private var activeHint: AIHint? = nil
     /// Whether the assist card is expanded (true) or collapsed to the ✨ chip.
-    /// Stall-triggered hints auto-expand — the operator is stuck; retry hints
+    /// Stall-triggered hints auto-expand - the operator is stuck; retry hints
     /// stay collapsed so they never pile onto someone mid-recovery.
     @State private var assistExpanded = false
-    /// Every hint received this session — the assist tray makes dismissed
+    /// Every hint received this session - the assist tray makes dismissed
     /// hints recoverable instead of gone.
     @State private var hintHistory: [AIHint] = []
     @State private var showAssistTray = false
@@ -249,7 +249,7 @@ struct ARGuideSessionView: View {
     @State private var evidencePickerStepIndex: Int? = nil
 
     // ── 3D ghost model overlay (Phase 3D) ────────────────────────────────────
-    /// Metadata for all models in this anchor's library — fetched once on load.
+    /// Metadata for all models in this anchor's library - fetched once on load.
     @State private var anchorModels:   [Model3D]    = []
     /// Local disk cache: modelId → temp .glb file URL (populated in background on load).
     @State private var glbCache:       [String: URL] = [:]
@@ -268,23 +268,23 @@ struct ARGuideSessionView: View {
     @State private var assemblyEngine:     AssemblyStateEngine? = nil
     @State private var assemblyReplayTask: Task<Void, Never>?   = nil
     @State private var assemblyStepIndex:  Int                  = -1
-    /// 2026.4.46: "Show whole assembly" — parts not yet installed render as a
+    /// 2026.4.46: "Show whole assembly" - parts not yet installed render as a
     /// faint ghost for orientation. Turns itself off on the next step.
     @State private var assemblyContext:    Bool                 = false
-    /// The author's per-step choice (GuideStep.context) — 'ghost' or 'solid'
+    /// The author's per-step choice (GuideStep.context) - 'ghost' or 'solid'
     /// makes the whole assembly visible without the operator tapping.
     @State private var assemblyContextSolid: Bool               = false
     @State private var assemblyLoading:    Bool                 = false
     /// Part chip: the step's focus part, or whatever the operator tapped.
     @State private var partChip: (title: String, partNumber: String?, tapped: Bool)? = nil
     /// "Look from here": distance/angle to the step's source viewpoint; nil = no view or aligned long enough.
-    // C2 UX: hint muting — UI only; observations and the server log continue.
+    // C2 UX: hint muting - UI only; observations and the server log continue.
     @State private var hintsMutedStepId: String? = nil       // cleared on step change
     @State private var hintsMutedGuide = false               // this session
     @State private var showHintMenu = false
     @State private var lookHint: (distance: Float, angle: Float, aligned: Bool)? = nil
     @State private var lookAlignedSince: Date? = nil
-    // C1: observation sampler — 1 Hz samples, flushed every 5 s to SIB.
+    // C1: observation sampler - 1 Hz samples, flushed every 5 s to SIB.
     @State private var obsBuffer: [SessionObservation] = []
     @State private var obsLastSample: Date = .distantPast
     @State private var obsLastFlush: Date = .distantPast
@@ -315,7 +315,7 @@ struct ARGuideSessionView: View {
 
     /// Required steps gate sign-off ONLY if the Operator actually visited them.
     /// Branching guides legitimately bypass whole limbs (oil was fine → skip
-    /// "Top Up Oil") — a required step on a path never taken must not make
+    /// "Top Up Oil") - a required step on a path never taken must not make
     /// sign-off unreachable. Steps that WERE entered can only be left by
     /// completing them (Next is gated), so this stays sound.
     var allRequiredDone: Bool {
@@ -327,7 +327,7 @@ struct ARGuideSessionView: View {
 
     /// Steps reachable ONLY via a failure branch: someone's nextOnFailure
     /// target that no success path points to. Sequential auto-advance must
-    /// never walk into these — they are entered by explicit routing only.
+    /// never walk into these - they are entered by explicit routing only.
     var failureOnlyStepIds: Set<String> {
         let failTargets    = Set(sortedSteps.compactMap { $0.nextOnFailure })
         let successTargets = Set(sortedSteps.compactMap { $0.nextOnSuccess })
@@ -348,7 +348,7 @@ struct ARGuideSessionView: View {
 
     /// Terminal = no authored continuation and no sequential successor that
     /// isn't failure-only. Both the happy-path end AND a failure dead-end
-    /// (e.g. "Tag Out of Service") are terminals — each can end the session.
+    /// (e.g. "Tag Out of Service") are terminals - each can end the session.
     func isTerminal(index: Int) -> Bool {
         guard index < sortedSteps.count else { return false }
         if sortedSteps[index].nextOnSuccess != nil { return false }
@@ -357,7 +357,7 @@ struct ARGuideSessionView: View {
 
     // ── Body ──────────────────────────────────────────────────────────────────
 
-    // QA logging context — kept out of the body chain (type-checker budget).
+    // QA logging context - kept out of the body chain (type-checker budget).
     private func logRunOpened() {
         AppLog.setContext("anchor", anchor.id)
         AppLog.setContext("guide", guide.id)
@@ -367,7 +367,7 @@ struct ARGuideSessionView: View {
     var body: some View {
         ZStack(alignment: .top) {
 
-            // AR camera — always present so the feed stays live
+            // AR camera - always present so the feed stays live
             ARContainerView(arManager: arManager, onTap: handleARTap)
                 .ignoresSafeArea()
                 .onAppear {
@@ -399,7 +399,7 @@ struct ARGuideSessionView: View {
                     if objT != nil { shapeGhost?.update(objectTransform: objT); shapeGhost?.flash() }
                     // B2: object seen + calibrated → world re-based onto the map
                     // frame; pins are exact without feature-point matching.
-                    // B2e: also while navigating on the APPROXIMATE (map) frame —
+                    // B2e: also while navigating on the APPROXIMATE (map) frame -
                     // the chamber showing up is the truth; snap to it, with Undo.
                     guard objT != nil, !originViaObject, phase == .relocalizing || approximateFromMap,
                           let cal = objectPoseInMap else { return }
@@ -409,7 +409,7 @@ struct ARGuideSessionView: View {
                         approximateFromMap = false
                         UINotificationFeedbackGenerator().notificationOccurred(.success)
                         if case .relocalizing = phase {
-                            showNotice("Chamber recognised — steps placed from its shape")
+                            showNotice("Chamber recognised - steps placed from its shape")
                             transitionToNavigating()
                         } else if wasApproximate {
                             withAnimation { showRealignToast = true }
@@ -420,7 +420,7 @@ struct ARGuideSessionView: View {
                         }
                     }
                 }
-                // B2e: automatic re-alignment (chamber moved mid-session) — never silent.
+                // B2e: automatic re-alignment (chamber moved mid-session) - never silent.
                 .onChange(of: arManager.objectRealignCount) { n in
                     guard n > 0 else { return }
                     observeInteraction("realign")
@@ -473,13 +473,13 @@ struct ARGuideSessionView: View {
                 }
             }
 
-            // V2/X2: in-AR validation — focus mode (see validationFocusUI).
+            // V2/X2: in-AR validation - focus mode (see validationFocusUI).
             if let idx = coneValidateIndex, idx < sortedSteps.count {
                 validationFocusUI(index: idx)
                     .transition(.opacity)
             }
 
-            // Top bar — always visible
+            // Top bar - always visible
             topBar
         }
         .overlay(alignment: .bottomTrailing) { assemblyChipView }
@@ -500,7 +500,7 @@ struct ARGuideSessionView: View {
             }
             // V2/X1: live validation guidance at 10 Hz. Pose readiness (trained
             // stance: cone_dist_m ±30 % / ≥8 cm, aim, shot direction) is now
-            // ADVISORY — image alignment against the trained references can
+            // ADVISORY - image alignment against the trained references can
             // open the gate on its own, so a moved QR (pins off) never traps
             // the operator. After coneEscapeSeconds the shutter works regardless.
             if let g = coneValidateGuide,
@@ -529,7 +529,7 @@ struct ARGuideSessionView: View {
                 let angP   = max(0, 1 - Double(angle) / 90)
                 conePoseProgress = poseOK ? 1 : min(distP, angP) * 0.9
 
-                // X1: image alignment — feature print of the raw frame vs the
+                // X1: image alignment - feature print of the raw frame vs the
                 // trained refs, every 0.5 s, one in flight at a time.
                 if coneTick % 5 == 0, !coneImgInFlight, !coneRefPrints.isEmpty, !validationInFlight,
                    let img = rawCameraImage(from: frame) {
@@ -554,17 +554,17 @@ struct ARGuideSessionView: View {
                 let pct = Int((coneImgScore * 100).rounded())
                 coneStatusText =
                     coneAutoFired ? "✓ In position"
-                    : ready       ? "✓ Hold still — capturing…"
+                    : ready       ? "✓ Hold still - capturing…"
                     // Pins suspect (drift) or the stance is far off: steer by the ghost.
                     : (environmentDrift || !distOK && abs(dist - train) > train)
                                   ? "Match the ghost view · \(pct)% match"
-                    : !distOK     ? (dist > train ? "Move closer — \(Int(((dist - train) * 100).rounded())) cm"
-                                                  : "Step back — \(Int(((train - dist) * 100).rounded())) cm")
+                    : !distOK     ? (dist > train ? "Move closer - \(Int(((dist - train) * 100).rounded())) cm"
+                                                  : "Step back - \(Int(((train - dist) * 100).rounded())) cm")
                     : !dirOK      ? "Move around to match the ghost view"
                     : angle >= 25 ? "Aim at the ring"
                     : "Line up with the ghost · \(pct)% match"
 
-                // W3: dwell auto-capture — 0.8 s steady in position fires once
+                // W3: dwell auto-capture - 0.8 s steady in position fires once
                 // per attempt; the shutter stays as a backup.
                 if ready && !validationInFlight && !coneAutoFired {
                     coneReadyTicks += 1
@@ -642,7 +642,7 @@ struct ARGuideSessionView: View {
                 phase       = .submitted
                 stopSpeaking()
                 arManager.pauseSession()
-                // Submitted (or queued for sync) — the resume snapshot is done.
+                // Submitted (or queued for sync) - the resume snapshot is done.
                 GuideRunStore.clear(guideId: guide.id)
             }
             .environmentObject(settings)
@@ -659,7 +659,7 @@ struct ARGuideSessionView: View {
                 }
             }
         }
-        // System check FAILED — retry, take the recovery branch, or cancel.
+        // System check FAILED - retry, take the recovery branch, or cancel.
         .confirmationDialog(
             "Validation FAILED",
             isPresented: Binding(
@@ -680,17 +680,17 @@ struct ARGuideSessionView: View {
                 }
                 validationFailInfo = nil
             }
-            Button("Mark step failed — go to recovery", role: .destructive) {
+            Button("Mark step failed - go to recovery", role: .destructive) {
                 if let info = validationFailInfo { markFailed(at: info.index) }
                 validationFailInfo = nil
             }
-            // V3: the gate is never a dead end — the operator may proceed,
+            // V3: the gate is never a dead end - the operator may proceed,
             // but the FAIL + override is recorded in the usage log.
             Button("Proceed anyway (logged as failed)") {
                 if let info = validationFailInfo {
                     pushValidationEvent(index: info.index, mode: "system", result: "fail",
                                         score: info.score, overridden: true)
-                    showNotice("⚠️ Proceeding — validation FAIL recorded in the log")
+                    showNotice("⚠️ Proceeding - validation FAIL recorded in the log")
                     markComplete(at: info.index)
                     autoAdvance(from: info.index)
                 }
@@ -699,10 +699,10 @@ struct ARGuideSessionView: View {
             Button("Cancel", role: .cancel) { validationFailInfo = nil }
         } message: {
             if let info = validationFailInfo {
-                Text("The system check scored \(String(format: "%.2f", info.score)) — below the pass threshold. Re-check the work and retry, take the recovery path, or proceed with the failure on record.")
+                Text("The system check scored \(String(format: "%.2f", info.score)) - below the pass threshold. Re-check the work and retry, take the recovery path, or proceed with the failure on record.")
             }
         }
-        // Untrained validation step — the operator decides, and it's logged.
+        // Untrained validation step - the operator decides, and it's logged.
         .confirmationDialog(
             "Validate this step",
             isPresented: Binding(
@@ -711,7 +711,7 @@ struct ARGuideSessionView: View {
             ),
             titleVisibility: .visible
         ) {
-            Button("Pass — work is correct") {
+            Button("Pass - work is correct") {
                 if let idx = manualValidationIndex {
                     pushValidationEvent(index: idx, mode: "manual", result: "pass", score: nil)
                     showNotice("✓ Manually validated PASS")
@@ -720,7 +720,7 @@ struct ARGuideSessionView: View {
                 }
                 manualValidationIndex = nil
             }
-            Button("Fail — go to recovery", role: .destructive) {
+            Button("Fail - go to recovery", role: .destructive) {
                 if let idx = manualValidationIndex {
                     pushValidationEvent(index: idx, mode: "manual", result: "fail", score: nil)
                     markFailed(at: idx)
@@ -728,11 +728,11 @@ struct ARGuideSessionView: View {
                 manualValidationIndex = nil
             }
             // V3: fail-but-proceed, honestly recorded.
-            Button("Fail — proceed anyway (logged)") {
+            Button("Fail - proceed anyway (logged)") {
                 if let idx = manualValidationIndex {
                     pushValidationEvent(index: idx, mode: "manual", result: "fail",
                                         score: nil, overridden: true)
-                    showNotice("⚠️ Proceeding — manual FAIL recorded in the log")
+                    showNotice("⚠️ Proceeding - manual FAIL recorded in the log")
                     markComplete(at: idx)
                     autoAdvance(from: idx)
                 }
@@ -740,7 +740,7 @@ struct ARGuideSessionView: View {
             }
             Button("Cancel", role: .cancel) { manualValidationIndex = nil }
         } message: {
-            Text("This step requires validation but has no trained reference. Confirm the result — your verdict is recorded in the usage log.")
+            Text("This step requires validation but has no trained reference. Confirm the result - your verdict is recorded in the usage log.")
         }
         // Evidence camera picker (Phase 3)
         .sheet(isPresented: $showEvidencePicker) {
@@ -763,7 +763,7 @@ struct ARGuideSessionView: View {
                                     jpegBase64: jpeg.base64EncodedString())
                                 await MainActor.run { _ = uploadedEvidenceSteps.insert(stepId) }
                             } catch {
-                                // Offline — the sign-off will carry the photo instead.
+                                // Offline - the sign-off will carry the photo instead.
                             }
                         }
                     }
@@ -828,7 +828,7 @@ struct ARGuideSessionView: View {
             ),
             titleVisibility: .visible
         ) {
-            Button("Step failed — go to recovery", role: .destructive) {
+            Button("Step failed - go to recovery", role: .destructive) {
                 if let idx = failConfirmIndex { markFailed(at: idx) }
                 failConfirmIndex = nil
             }
@@ -859,14 +859,14 @@ struct ARGuideSessionView: View {
                 ObjectRealignToast {
                     arManager.undoLastRealign()
                     withAnimation { showRealignToast = false }
-                    showNotice("Re-alignment undone — tap the chamber pill to re-align by hand")
+                    showNotice("Re-alignment undone - tap the chamber pill to re-align by hand")
                 }
                 .padding(.top, 62)
             }
         }
         .animation(.easeInOut(duration: 0.25), value: transientNotice)
         .animation(.easeInOut(duration: 0.25), value: showRealignToast)
-        // C2: colleagues (a coaching author) — chip, edge arrows, toasts
+        // C2: colleagues (a coaching author) - chip, edge arrows, toasts
         .overlay(alignment: .topTrailing) {
             if case .navigating = phase, !presenceOthers.isEmpty, coneValidateIndex == nil {
                 PresenceRosterChip(others: presenceOthers, connected: presenceLinked)
@@ -927,7 +927,7 @@ struct ARGuideSessionView: View {
             .fixedSize()
 
             // Title takes whatever is left; the icon cluster never wraps.
-            // "[Guide] " is the Designer's map-name prefix — not for operators.
+            // "[Guide] " is the Designer's map-name prefix - not for operators.
             Text(guide.name.hasPrefix("[Guide] ") ? String(guide.name.dropFirst(8)) : guide.name)
                 .font(.headline).foregroundStyle(.white)
                 .lineLimit(1).truncationMode(.tail)
@@ -945,7 +945,7 @@ struct ARGuideSessionView: View {
                     }
                 }
                 if case .navigating(let index) = phase {
-                    // A4: progress ring — completed / total at a glance.
+                    // A4: progress ring - completed / total at a glance.
                     let doneCount = progresses.filter { $0.isCompleted }.count
                     ZStack {
                         Circle().stroke(Color.white.opacity(0.18), lineWidth: 3)
@@ -960,9 +960,9 @@ struct ARGuideSessionView: View {
                     }
                     .frame(width: 24, height: 24)
                     .accessibilityLabel("\(doneCount) of \(sortedSteps.count) steps done")
-                    // (step "n / total" lives in the panel — "Step 2 of 18" — not here)
+                    // (step "n / total" lives in the panel - "Step 2 of 18" - not here)
 
-                    // C2 UX: hint state — sparkles = on, slashed = muted. Tap
+                    // C2 UX: hint state - sparkles = on, slashed = muted. Tap
                     // unmutes; when on, tap opens the mute menu.
                     Menu {
                         if hintsMuted {
@@ -976,7 +976,7 @@ struct ARGuideSessionView: View {
                             .font(.system(size: 16))
                             .foregroundStyle(hintsMuted ? Color.white.opacity(0.45) : Color.yellow)
                     }
-                    .accessibilityLabel(hintsMuted ? "Hints muted — tap to turn on" : "Contextual hints on")
+                    .accessibilityLabel(hintsMuted ? "Hints muted - tap to turn on" : "Contextual hints on")
 
                     // 2026.4.46: whole-assembly context (only when an assembly is loaded)
                     if assemblyNode != nil {
@@ -992,7 +992,7 @@ struct ARGuideSessionView: View {
                                 .foregroundStyle(assemblyContext ? Color.green : Color.white)
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel(assemblyContext ? "Whole assembly shown — tap to show installed parts only" : "Show whole assembly")
+                        .accessibilityLabel(assemblyContext ? "Whole assembly shown - tap to show installed parts only" : "Show whole assembly")
                     }
 
                     // Visibility cycle: tag + panel → all steps → panel only → tag only → none
@@ -1013,7 +1013,7 @@ struct ARGuideSessionView: View {
                     .accessibilityLabel("Tag and panel visibility: \(pinVisibility.label). Tap to change.")
                 }
 
-                // Help button — always visible; F1: controls cheat-sheet (overview inside)
+                // Help button - always visible; F1: controls cheat-sheet (overview inside)
                 Button { showCheatSheet = true } label: {
                     Image(systemName: "questionmark.circle")
                         .font(.system(size: 16))
@@ -1060,7 +1060,7 @@ struct ARGuideSessionView: View {
     @ViewBuilder
     private var relocalizingOverlay: some View {
         if objectOnlyFrame {
-            // B2e: the chamber is the frame — find it by shape. The timer keeps
+            // B2e: the chamber is the frame - find it by shape. The timer keeps
             // the wait honest; after 15 s the fallback is an explicit choice.
             VStack(spacing: 0) {
                 Spacer()
@@ -1112,7 +1112,7 @@ struct ARGuideSessionView: View {
                 HStack(spacing: 8) {
                     ProgressView().scaleEffect(0.8).tint(arManager.originConfidence == .aligning ? .green : .indigo)
                     Text(arManager.originConfidence == .aligning
-                         ? "Matched — settling the fit, hold the view…"
+                         ? "Matched - settling the fit, hold the view…"
                          : "ARKit is matching the space…")
                         .font(.caption).foregroundStyle(.white.opacity(0.55))
                 }
@@ -1167,7 +1167,7 @@ struct ARGuideSessionView: View {
             let progress = index < progresses.count ? progresses[index] : nil
 
             ZStack {
-                // "Behind you" pill — past 120° every edge is the wrong edge.
+                // "Behind you" pill - past 120° every edge is the wrong edge.
                 if targetIsBehind, !cuesHidden, step.worldPosition != nil,
                    (distanceM ?? 0) > arrivedM {
                     VStack {
@@ -1175,7 +1175,7 @@ struct ARGuideSessionView: View {
                         HStack(spacing: 8) {
                             Image(systemName: targetTurnRight ? "arrow.turn.up.right" : "arrow.turn.up.left")
                                 .font(.subheadline.bold())
-                            Text("Behind you — turn \(targetTurnRight ? "right" : "left")")
+                            Text("Behind you - turn \(targetTurnRight ? "right" : "left")")
                                 .font(.subheadline.bold())
                             if let d = distanceM {
                                 Text(String(format: "· %.1f m", d)).font(.subheadline).opacity(0.75)
@@ -1212,7 +1212,7 @@ struct ARGuideSessionView: View {
                 // Bottom 2D panel: full content when arrived, mini nav card en-route
                 VStack {
                     Spacer()
-                    // ── Assist layer — its own overlay, independent of panel state ──
+                    // ── Assist layer - its own overlay, independent of panel state ──
                     if let hint = activeHint {
                         if assistExpanded {
                             assistCard(hint: hint, step: step)
@@ -1361,7 +1361,7 @@ struct ARGuideSessionView: View {
     private func loadData() async {
         let client = SIBClient(settings: settings)
         do {
-            // B1: same loader as the Spatial Inspection gate — meta-checked
+            // B1: same loader as the Spatial Inspection gate - meta-checked
             // local cache → SIB → none. The meta carries the author's camera
             // pose at the reference photo (X1 drift check at "I'm Here").
             // B2: chamber object → detection runs alongside the map; must be set
@@ -1388,7 +1388,7 @@ struct ARGuideSessionView: View {
 
             if let pd = photoData { referencePhoto = UIImage(data: pd) }
 
-            // Open live session for real-time telemetry (fire-and-forget — AR session
+            // Open live session for real-time telemetry (fire-and-forget - AR session
             // continues normally if this fails).
             // Prefer the kiosk identity (verified name) over the free-text
             // author name; attach the shift's work context (Production #).
@@ -1416,7 +1416,7 @@ struct ARGuideSessionView: View {
                         )
                     }
                 }
-                // Start AI hint poll — every 5 s, drain server hint queue and show
+                // Start AI hint poll - every 5 s, drain server hint queue and show
                 // the first pending hint as a banner in GuideContentPanel.
                 startHintPolling(liveSessionId: lsId)
                 // Start the dwell watchdog. Step 0's clock starts now rather than
@@ -1426,7 +1426,7 @@ struct ARGuideSessionView: View {
             }
 
             // Kick off background GLB prefetch for all steps that have a 3D model
-            // (non-blocking — ghost overlays attach as downloads complete)
+            // (non-blocking - ghost overlays attach as downloads complete)
             Task { await prefetchModels() }
 
             // B2e: chamber found by shape + calibrated for this guide → the
@@ -1474,7 +1474,7 @@ struct ARGuideSessionView: View {
             phase = .navigating(index: 0)
             highlightPin(index: 0)
             if sortedSteps[0].worldPosition == nil { showContentPanel = true }
-            // F1 moments — the pill is the first thing they see; the eye
+            // F1 moments - the pill is the first thing they see; the eye
             // matters once several panels share the view.
             if sortedSteps[0].worldPosition != nil { coach.show(.guideExpandPill) }
             if sortedSteps.filter({ $0.worldPosition != nil }).count >= 2 { coach.show(.guideOnePanel) }
@@ -1505,14 +1505,14 @@ struct ARGuideSessionView: View {
             // Attach the 3D floating panel above this pin
             attachFloatingPanel(to: node, for: step, index: i)
         }
-        // A3: apply the focus rule to freshly-placed pins too — without this,
+        // A3: apply the focus rule to freshly-placed pins too - without this,
         // every pin is visible until the first step change.
         updatePanelVisibility()
     }
 
     // ── Floating panel construction (Phase 3) ─────────────────────────────────
 
-    /// Attaches a world-anchored floating panel directly to the scene root — NOT as a
+    /// Attaches a world-anchored floating panel directly to the scene root - NOT as a
     /// child of the pin node.  Keeping it at root-level prevents it from inheriting the
     /// pin's pulsing opacity animation (which was the primary blink cause).
     /// The panel floats 0.55 m above the pin and is connected by a dotted dash line.
@@ -1525,7 +1525,7 @@ struct ARGuideSessionView: View {
         let pp = pinNode.simdPosition
         container.simdPosition = simd_float3(pp.x, pp.y + 0.55, pp.z)
 
-        // Full billboard — panel always directly faces the camera on every axis,
+        // Full billboard - panel always directly faces the camera on every axis,
         // which maximises readability. Opaque materials avoid alpha-sort flicker.
         let billboard = SCNBillboardConstraint()
         billboard.freeAxes = .all
@@ -1540,7 +1540,7 @@ struct ARGuideSessionView: View {
             m.diffuse.contents = image
             m.lightingModel    = .constant
             m.isDoubleSided    = true
-            // blendMode stays at default (.none = opaque) — no alpha blending,
+            // blendMode stays at default (.none = opaque) - no alpha blending,
             // no per-frame depth-sort, no flicker.
             return m
         }
@@ -1555,7 +1555,7 @@ struct ARGuideSessionView: View {
 
         // ── Maximized card (A1: width fixed 0.30 m, HEIGHT content-derived) ──
         // Geometry, texture and hit-button positions are all applied by
-        // refreshPanelTextures() from the computed CardLayout — this creates
+        // refreshPanelTextures() from the computed CardLayout - this creates
         // placeholders only.
         let cardPlane = SCNPlane(width: 0.30, height: 0.40)
         let cardNode = SCNNode(geometry: cardPlane)
@@ -1584,7 +1584,7 @@ struct ARGuideSessionView: View {
             pinNode.addChildNode(dNode)
         }
 
-        // ── Add panel to SCENE ROOT (not pin child) — avoids pulse inheritance ─
+        // ── Add panel to SCENE ROOT (not pin child) - avoids pulse inheritance ─
         arManager.sceneView.scene.rootNode.addChildNode(container)
         panelContainers[step.id] = container
         refreshPanelTextures(stepId: step.id)   // A1: apply real layout + texture
@@ -1610,7 +1610,7 @@ struct ARGuideSessionView: View {
         // Only process taps during navigation
         guard case .navigating(let currentIndex) = phase else { return }
 
-        // Use .all so every node at the tap point is returned — alpha-blended
+        // Use .all so every node at the tap point is returned - alpha-blended
         // planes don't write depth reliably, making .closest pick the wrong node.
         let hits = arManager.sceneView.hitTest(point, options: [
             SCNHitTestOption.searchMode: SCNHitTestSearchMode.all.rawValue,
@@ -1678,7 +1678,7 @@ struct ARGuideSessionView: View {
                 if let name = asm.partName(hit: hit.node) {
                     let info = asm.partInfo(name)
                     partChip = (info.title, info.partNumber, true)
-                    asm.selectPulse(part: name)          // feedback only — the step focus stays
+                    asm.selectPulse(part: name)          // feedback only - the step focus stays
                     // C1: was that the part this step is about?
                     let focus = assemblyEngine.map { $0.focusParts(at: assemblyStepIndex) } ?? []
                     observeInteraction(focus.isEmpty || focus.contains(name) ? "tap-part" : "tap-wrong-part", node: name)
@@ -1689,7 +1689,7 @@ struct ARGuideSessionView: View {
     }
 
     /// Toggle a panel between minimized pill and maximized card.
-    /// No animation — instant switch to avoid flicker against AR background.
+    /// No animation - instant switch to avoid flicker against AR background.
     private func togglePanel(stepId: String, minimize: Bool) {
         panelMinimized[stepId] = minimize
         observeInteraction(minimize ? "panel-close" : "panel-open")
@@ -1723,7 +1723,7 @@ struct ARGuideSessionView: View {
         }
         _ = isMinimized  // suppress unused warning (visibility already set in togglePanel)
 
-        // Re-render card texture — A1: geometry follows the computed layout.
+        // Re-render card texture - A1: geometry follows the computed layout.
         let cardNode = container.childNode(withName: "card_\(stepId)", recursively: true)
         if let cardNode, let cardGeo = cardNode.geometry as? SCNPlane {
             let (image, layout) = renderCardTexture(
@@ -1733,7 +1733,7 @@ struct ARGuideSessionView: View {
             // Plane: width fixed 0.30 m; height from canvas (512 pt ↔ 0.30 m).
             let hM = CGFloat(layout.H) / Self.cardW * 0.30
             cardGeo.height = hM
-            // Keep the panel BOTTOM anchored where the 0.40 m base put it —
+            // Keep the panel BOTTOM anchored where the 0.40 m base put it -
             // extra height grows upward, away from the machine.
             cardNode.position.y = Float((hM - 0.40) / 2)
 
@@ -1762,7 +1762,7 @@ struct ARGuideSessionView: View {
     // applied as SCNMaterial.diffuse.contents.  All drawing is in pixel space;
     // the SCNPlane's physical size controls real-world scale.
 
-    /// Minimized pill — A1 refresh (512 × 120 pt ↔ 0.30 × 0.07 m).
+    /// Minimized pill - A1 refresh (512 × 120 pt ↔ 0.30 × 0.07 m).
     /// Same design language as the card: solid dark surface, a state-coloured
     /// badge (number, or ✓ when done), 26 pt title, audio + expand affordances.
     private func renderPillTexture(step: GuideStep, index: Int) -> UIImage {
@@ -1806,7 +1806,7 @@ struct ARGuideSessionView: View {
             badgeStr.draw(at: CGPoint(x: badgeR.midX - bSz.width/2, y: badgeR.midY - bSz.height/2),
                           withAttributes: badgeAttrs)
 
-            // ── Title — 26 pt bold, left-aligned in the free zone ────────────
+            // ── Title - 26 pt bold, left-aligned in the free zone ────────────
             let titlePara = NSMutableParagraphStyle()
             titlePara.lineBreakMode = .byTruncatingTail
             let titleAttrs: [NSAttributedString.Key: Any] = [
@@ -1831,12 +1831,12 @@ struct ARGuideSessionView: View {
         }
     }
 
-    // ── A1 (2026.4.45): redesigned card — solid surface, state band, big type ──
+    // ── A1 (2026.4.45): redesigned card - solid surface, state band, big type ──
     //
     // Doctrine (same as the canvas): one state colour, high contrast, a body
     // font floor that NEVER shrinks. Width is fixed (0.30 m); HEIGHT adapts to
     // the content up to a cap, then the body truncates behind a "▼ More"
-    // control that lifts the cap. Long text grows the panel — it never shrinks
+    // control that lifts the cap. Long text grows the panel - it never shrinks
     // the font.
     //
     // Canvas width is 512 pt ↔ 0.30 m. Heights are computed per step.
@@ -1852,7 +1852,7 @@ struct ARGuideSessionView: View {
         var imageRect:    CGRect? = nil
         var barY:         CGFloat = 0      // action bar top
         var collapsed     = false          // non-current step: band+title(+stamp)
-        // Hit zones (canvas coords) — converted to node space in refresh.
+        // Hit zones (canvas coords) - converted to node space in refresh.
         var audioRect     = CGRect.zero
         var camRect       = CGRect.zero
         var primaryRect   = CGRect.zero
@@ -1908,7 +1908,7 @@ struct ARGuideSessionView: View {
             y += 48
         }
 
-        // Chips row (Required / Validated / Evidence) — only when relevant.
+        // Chips row (Required / Validated / Evidence) - only when relevant.
         if step.completionRequired || step.needsValidation || step.needsEvidence {
             l.chipsY = y
             y += 48
@@ -1940,7 +1940,7 @@ struct ARGuideSessionView: View {
         return ceil(bounds.height)
     }
 
-    /// Redesigned card texture. Height is CONTENT-DERIVED — callers use the
+    /// Redesigned card texture. Height is CONTENT-DERIVED - callers use the
     /// returned layout to size the SCNPlane and reposition hit buttons.
     private func renderCardTexture(
         step:           GuideStep,
@@ -1963,7 +1963,7 @@ struct ARGuideSessionView: View {
                                        hasImage: referenceImage != nil && isCurrent)
         let size = CGSize(width: W, height: layout.H)
 
-        // State palette — the Designer's role colours, verbatim.
+        // State palette - the Designer's role colours, verbatim.
         let bandColor: UIColor =
             isCompleted ? UIColor(red: 0.08, green: 0.50, blue: 0.24, alpha: 1)      // green
             : isFailPath ? UIColor(red: 0.73, green: 0.11, blue: 0.11, alpha: 1)     // red
@@ -1978,7 +1978,7 @@ struct ARGuideSessionView: View {
         let img = UIGraphicsImageRenderer(size: size).image { ctx in
             let r = CGRect(origin: .zero, size: size)
 
-            // Solid dark surface — opaque, no alpha-sort flicker.
+            // Solid dark surface - opaque, no alpha-sort flicker.
             UIColor(red: 0.06, green: 0.08, blue: 0.13, alpha: 1.0).setFill()
             UIBezierPath(roundedRect: r, cornerRadius: 30).fill()
 
@@ -2042,7 +2042,7 @@ struct ARGuideSessionView: View {
                 return
             }
 
-            // ── Body — 25 pt floor, height already computed; truncates, never shrinks ──
+            // ── Body - 25 pt floor, height already computed; truncates, never shrinks ──
             (step.text as NSString).draw(with: layout.bodyRect,
                 options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine],
                 attributes: cardBodyAttrs(), context: nil)
@@ -2136,7 +2136,7 @@ struct ARGuideSessionView: View {
             iconButton("📷", hasEvidence ? "CAPTURED" : "PHOTO", rect: layout.camRect,
                        color: hasEvidence ? .systemGreen : UIColor.white.withAlphaComponent(0.85))
 
-            // Primary button — thumb-sized, 24 pt label.
+            // Primary button - thumb-sized, 24 pt label.
             let btnR = layout.primaryRect
             func primary(_ text: String, fill: UIColor, textColor: UIColor) {
                 fill.setFill()
@@ -2185,7 +2185,7 @@ struct ARGuideSessionView: View {
 
     /// Proximity auto-hide with hysteresis: under 0.35 m the pin tucks into a
     /// small dot (badge and ring fold away, 220 ms spring); past 0.5 m it
-    /// registers back. The bottom bar carries the step meanwhile — said once.
+    /// registers back. The bottom bar carries the step meanwhile - said once.
     private func updateTagTuck(step: GuideStep, dist: Float) {
         let tuck = tagTucked ? dist < 0.5 : dist < 0.35
         guard tuck != tagTucked, let pin = pinNodes[step.id] else { return }
@@ -2194,7 +2194,7 @@ struct ARGuideSessionView: View {
         if tuck && !tagTuckExplained {
             tagTuckExplained = true
             UserDefaults.standard.set(true, forKey: "tagAutoHideExplained")
-            showNotice("Tag tucked away while you're close — the bar below keeps the step.")
+            showNotice("Tag tucked away while you're close - the bar below keeps the step.")
         }
     }
 
@@ -2361,7 +2361,7 @@ struct ARGuideSessionView: View {
         distanceM  = dist
         updateTagTuck(step: step, dist: dist)
 
-        // A4: distance-aware panel scaling — beyond 1.5 m the current panel
+        // A4: distance-aware panel scaling - beyond 1.5 m the current panel
         // grows with distance (capped 2.2×) so type never drops below the
         // readable floor. Same principle as the tag-marker scaling.
         if let container = panelContainers[step.id] {
@@ -2369,20 +2369,20 @@ struct ARGuideSessionView: View {
             container.scale = SCNVector3(scale, scale, scale)
         }
 
-        // Do not auto-expand the 2D panel on arrival — user taps the mini card to open it
+        // Do not auto-expand the 2D panel on arrival - user taps the mini card to open it
 
         let sv        = arManager.sceneView
         let projected = sv.projectPoint(SCNVector3(targetW.x, targetW.y, targetW.z))
         var pt        = CGPoint(x: CGFloat(projected.x), y: CGFloat(projected.y))
         let behindCam = projected.z >= 1.0
-        // A point behind the camera projects MIRRORED — flip it back so the
+        // A point behind the camera projects MIRRORED - flip it back so the
         // chevron sits on the edge you actually have to turn towards.
         if behindCam {
             let b = UIScreen.main.bounds
             pt = CGPoint(x: b.width - pt.x, y: b.height - pt.y)
         }
         // Horizontal angle between the camera's forward and the pin: past
-        // 120° a chevron is misleading (any edge is "wrong") — say "behind".
+        // 120° a chevron is misleading (any edge is "wrong") - say "behind".
         let fwd = simd_normalize(simd_float3(-frame.camera.transform.columns.2.x, 0, -frame.camera.transform.columns.2.z))
         let to  = targetW - camPos
         let toH = simd_length(simd_float3(to.x, 0, to.z)) > 0.01 ? simd_normalize(simd_float3(to.x, 0, to.z)) : fwd
@@ -2459,8 +2459,8 @@ struct ARGuideSessionView: View {
            prereqIdx < progresses.count,
            !progresses[prereqIdx].isCompleted,
            prereqIdx != index {
-            // Explain the redirect — a silent jump reads as a glitch.
-            showNotice("\(candidate.displayTitle) needs \(sortedSteps[prereqIdx].displayTitle) first — taking you there")
+            // Explain the redirect - a silent jump reads as a glitch.
+            showNotice("\(candidate.displayTitle) needs \(sortedSteps[prereqIdx].displayTitle) first - taking you there")
             navigateTo(index: prereqIdx)
             return
         }
@@ -2498,7 +2498,7 @@ struct ARGuideSessionView: View {
         }
     }
 
-    /// A3 (2026.4.45): the eye toggle now governs the WHOLE step overlay set —
+    /// A3 (2026.4.45): the eye toggle now governs the WHOLE step overlay set -
     /// floating panels AND numbered pins. Default = current step only; the
     /// 👁 button shows everything for orientation. (The 3D ghost model was
     /// already current-step-only.) Focus is the default, context on demand.
@@ -2693,7 +2693,7 @@ struct ARGuideSessionView: View {
 
     /// Operator reported the step failed: record the event, persist, and route
     /// to the authored recovery branch (nextOnFailure). The step stays
-    /// NOT-completed — the recovery path decides what happens next.
+    /// NOT-completed - the recovery path decides what happens next.
     private func markFailed(at index: Int) {
         guard index < sortedSteps.count else { return }
         let step = sortedSteps[index]
@@ -2722,14 +2722,14 @@ struct ARGuideSessionView: View {
     private func attemptComplete(at index: Int) {
         guard index < sortedSteps.count else { return }
         let step = sortedSteps[index]
-        // K5: evidence photo first — completing without it is blocked.
+        // K5: evidence photo first - completing without it is blocked.
         // W1: validated steps capture their own evidence (the validation frame),
         // so the separate photo prompt only applies to evidence-only steps.
         // (Untrained steps use a manual Pass/Fail with no frame, so they still ask.)
         let validationSuppliesEvidence = step.needsValidation && step.validationTrained
         if step.needsEvidence && !validationSuppliesEvidence
             && progresses[index].evidencePhoto == nil && !progresses[index].isCompleted {
-            showNotice("📷 Evidence photo required — take it to complete this step")
+            showNotice("📷 Evidence photo required - take it to complete this step")
             evidencePickerStepIndex = index
             showEvidencePicker = true
             return
@@ -2791,7 +2791,7 @@ struct ARGuideSessionView: View {
         coneRefPrints = coneValidateTag.map(referencePrints(of:)) ?? []
         setValidationFocus(true)                                    // X2
         // W2: quick-shot steps get the Author's reference frame as a ghost
-        // overlay — align the live view to it, and the capture fires itself.
+        // overlay - align the live view to it, and the capture fires itself.
         if index < sortedSteps.count {
             let g = guide.id, sId = sortedSteps[index].id
             Task {
@@ -2835,7 +2835,7 @@ struct ARGuideSessionView: View {
         return arr.compactMap { ($0 as? String).flatMap { TagFeaturePrint(base64: $0) } }
     }
 
-    /// X1: escape hatch — after coneEscapeSeconds the shutter works without
+    /// X1: escape hatch - after coneEscapeSeconds the shutter works without
     /// alignment (the comparator still scores honestly; FAIL → dialog).
     private var coneEscapeOpen: Bool {
         guard let t0 = coneStartedAt else { return false }
@@ -2844,7 +2844,7 @@ struct ARGuideSessionView: View {
 
     /// X1: compare the operator's "I'm Here" pose with the author's reference
     /// pose. A large disagreement means ARKit re-localized onto something that
-    /// moved (typically the QR) — every pin is then off by that same offset.
+    /// moved (typically the QR) - every pin is then off by that same offset.
     /// We warn, log it for the author, and let image alignment carry validation.
     private func checkEnvironmentDrift() {
         guard let ref = referenceCameraPose,
@@ -2853,7 +2853,7 @@ struct ARGuideSessionView: View {
         let d = ARCoordinateFrame.poseDelta(ref, cur)
         guard d.metres > 0.5 || d.degrees > 25 else { return }
         environmentDrift = true
-        showNotice("⚠ Scene may have changed (QR moved?) — pins may be off; validation will use image alignment")
+        showNotice("⚠ Scene may have changed (QR moved?) - pins may be off; validation will use image alignment")
         if let lsId = liveSessionId {
             Task {
                 await SIBClient(settings: settings).pushGuideSessionEvent(
@@ -2865,7 +2865,7 @@ struct ARGuideSessionView: View {
         }
     }
 
-    /// X2: validation focus mode — everything that isn't the target gets out
+    /// X2: validation focus mode - everything that isn't the target gets out
     /// of the way: step pins/panels, the guidance arrow, feature-point dots.
     private func setValidationFocus(_ on: Bool) {
         SCNTransaction.begin(); SCNTransaction.animationDuration = 0.2
@@ -2887,7 +2887,7 @@ struct ARGuideSessionView: View {
     }
 
     /// Author-marked inspection region, padded 10 % exactly as OperatorModeView
-    /// and the server do (task #74 — one crop convention platform-wide).
+    /// and the server do (task #74 - one crop convention platform-wide).
     private func cropToROI(_ image: UIImage, roi: RegionOfInterest) -> UIImage {
         let pad: CGFloat = 0.10
         let size = image.size
@@ -2903,7 +2903,7 @@ struct ARGuideSessionView: View {
         return UIImage(cgImage: cropped, scale: image.scale, orientation: image.imageOrientation)
     }
 
-    /// W1: the validation frame doubles as the step's evidence photo — stored
+    /// W1: the validation frame doubles as the step's evidence photo - stored
     /// locally, rendered on the panel, and live-uploaded like any evidence.
     /// Called BEFORE scoring so a FAIL (or an override) still leaves the
     /// honest picture in the record.
@@ -2920,12 +2920,12 @@ struct ARGuideSessionView: View {
                     try await SIBClient(settings: settings).uploadLiveEvidence(
                         liveSessionId: lsId, stepId: stepId, jpegBase64: jpeg.base64EncodedString())
                     await MainActor.run { _ = uploadedEvidenceSteps.insert(stepId) }
-                } catch { /* offline — sign-off carries the photo */ }
+                } catch { /* offline - sign-off carries the photo */ }
             }
         }
     }
 
-    /// Cone-trained verdict — SAME rule as tag inspection (OperatorModeView):
+    /// Cone-trained verdict - SAME rule as tag inspection (OperatorModeView):
     /// on-device Vision feature-print match (tolerant of viewpoint) and server
     /// multi-reference SSIM (precise when the angle matches), final score =
     /// the better of the two, PASS at ≥ 0.60.
@@ -2963,7 +2963,7 @@ struct ARGuideSessionView: View {
 
         // No signal at all (offline + no feature prints) → operator decides.
         if serverUnavailable && tag == nil {
-            showNotice("System check unavailable — confirm the result manually")
+            showNotice("System check unavailable - confirm the result manually")
             manualValidationIndex = index
             return
         }
@@ -2972,7 +2972,7 @@ struct ARGuideSessionView: View {
         AppLog.info("validation", "fp=\(String(format: "%.3f", fpScore)) ssim=\(String(format: "%.3f", ssim)) → \(String(format: "%.3f", score))")
         if score >= stepPassThreshold {
             pushValidationEvent(index: index, mode: "system", result: "pass", score: score)
-            showNotice("✓ Validated PASS — score \(String(format: "%.2f", score))")
+            showNotice("✓ Validated PASS - score \(String(format: "%.2f", score))")
             markComplete(at: index)
             autoAdvance(from: index)
         } else {
@@ -2981,7 +2981,7 @@ struct ARGuideSessionView: View {
         }
     }
 
-    /// Capture the RAW camera frame (ARFrame.capturedImage — no SceneKit
+    /// Capture the RAW camera frame (ARFrame.capturedImage - no SceneKit
     /// artifacts by construction) and score it against the multi-angle
     /// pass-state via the step validate endpoint (cone-aware server-side).
     private func captureConeValidationFrame() {
@@ -2999,7 +2999,7 @@ struct ARGuideSessionView: View {
     /// Mirror of training's clean-capture path (see OperatorModeView #48):
     /// raw sensor buffer, rotated portrait, capped at 800 px.
     private func rawCameraImage(from frame: ARFrame) -> UIImage? {
-        // C: rotated to the SCREEN orientation (iPad landscape safe), ≤ 800 px —
+        // C: rotated to the SCREEN orientation (iPad landscape safe), ≤ 800 px -
         // the same helper the author used, so the ghost and the SSIM compare
         // see the frame the way it was trained.
         ARFrameImage.screenOriented(frame, maxPx: 800)
@@ -3017,7 +3017,7 @@ struct ARGuideSessionView: View {
                 jpegBase64: jpeg.base64EncodedString())
             if v.status == "PASS" {
                 pushValidationEvent(index: index, mode: "system", result: "pass", score: v.score)
-                showNotice("✓ Validated PASS — score \(String(format: "%.2f", v.score))")
+                showNotice("✓ Validated PASS - score \(String(format: "%.2f", v.score))")
                 markComplete(at: index)
                 autoAdvance(from: index)
             } else {
@@ -3025,7 +3025,7 @@ struct ARGuideSessionView: View {
                 validationFailInfo = ValidationFail(index: index, score: v.score)
             }
         } catch {
-            // Server unreachable or untrained (409) — fall back to manual so
+            // Server unreachable or untrained (409) - fall back to manual so
             // the operator is never stuck.
             manualValidationIndex = index
         }
@@ -3036,7 +3036,7 @@ struct ARGuideSessionView: View {
         progresses[index].complete()
         persistProgress()
         if progresses.allSatisfy({ $0.isCompleted }) { coach.show(.guideSignOff) }   // F1
-        // A4: a completion MOMENT — success haptic + green pulse on the panel.
+        // A4: a completion MOMENT - success haptic + green pulse on the panel.
         // Re-render textures so pill + card flip to their DONE (green) state.
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         if index < sortedSteps.count { refreshPanelTextures(stepId: sortedSteps[index].id) }
@@ -3046,7 +3046,7 @@ struct ARGuideSessionView: View {
                 .scale(to: 1.00, duration: 0.18),
             ]))
         }
-        // Dismiss any active hint that was about or pointing to this step —
+        // Dismiss any active hint that was about or pointing to this step -
         // it is now moot since the step has just been completed.
         if let hint = activeHint, index < sortedSteps.count {
             let completedId = sortedSteps[index].id
@@ -3095,7 +3095,7 @@ struct ARGuideSessionView: View {
 
     /// Start a repeating 5-second timer that drains the server's hint queue and
     /// shows the first pending hint as a banner in GuideContentPanel.
-    /// Safe to call multiple times — invalidates any existing timer first.
+    /// Safe to call multiple times - invalidates any existing timer first.
     private func startHintPolling(liveSessionId: String) {
         hintPollTimer?.invalidate()
         // 2 s (was 5): a wrong-part hint has to land while the wrong part is still in hand.
@@ -3115,7 +3115,7 @@ struct ARGuideSessionView: View {
                 }
                 if let first = deliverable.first, activeHint == nil, !isHintStale(first) {
                     // Cooldown: a hint for the step the user JUST dismissed a
-                    // hint on, within 30 s, is nagging — drop it.
+                    // hint on, within 30 s, is nagging - drop it.
                     if let at = lastHintDismissedAt, let dismissedStep = lastDismissedStepId,
                        first.stepId == dismissedStep, Date().timeIntervalSince(at) < 30 {
                         return
@@ -3169,7 +3169,7 @@ struct ARGuideSessionView: View {
         svc.$event.receive(on: RunLoop.main).compactMap { $0 }.sink { ev in
             switch ev {
             case .joined(let e):
-                showPresenceToast("\(e.name) joined\(e.site.map { " from \($0)" } ?? "") — they can see where you are",
+                showPresenceToast("\(e.name) joined\(e.site.map { " from \($0)" } ?? "") - they can see where you are",
                                   color: PresencePalette.color(role: e.role, userId: e.userId))
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
             case .left(_, let name):
@@ -3220,7 +3220,7 @@ struct ARGuideSessionView: View {
 
     // ── Stall detection ───────────────────────────────────────────────────────
 
-    /// Start the repeating stall check. One timer serves the whole session —
+    /// Start the repeating stall check. One timer serves the whole session -
     /// it re-reads `phase` on each tick rather than being restarted per step.
     /// Safe to call multiple times.
     private func startStallDetection(liveSessionId: String) {
@@ -3260,7 +3260,7 @@ struct ARGuideSessionView: View {
         guard let start = stallClockStart,
               Date().timeIntervalSince(start) >= stallThresholdSeconds else { return }
 
-        // Once per visit — re-armed by navigateTo when the Operator returns.
+        // Once per visit - re-armed by navigateTo when the Operator returns.
         let stepId = sortedSteps[idx].id
         guard !stallFiredSteps.contains(stepId) else { return }
         stallFiredSteps.insert(stepId)
@@ -3284,11 +3284,11 @@ struct ARGuideSessionView: View {
            let targetIdx = sortedSteps.firstIndex(where: { $0.id == targetId }) {
             navigateTo(index: targetIdx)
         } else if let next = nextSequentialIndex(after: index) {
-            // Sequential fallback skips failure-only steps — completing the
+            // Sequential fallback skips failure-only steps - completing the
             // happy-path terminal must not walk into "Tag Out of Service".
             navigateTo(index: next)
         }
-        // Terminal step: stay put — the panel shows Sign Off on next refresh.
+        // Terminal step: stay put - the panel shows Sign Off on next refresh.
     }
 
     // ── Evidence capture ──────────────────────────────────────────────────────
@@ -3415,7 +3415,7 @@ struct ARGuideSessionView: View {
         // Step must have at least one model and a placed world position (U4:
         // every slot is rendered; slots whose file isn't cached yet make the
         // step pending so the download completion re-attaches everything).
-        // AR OJT: the assembly slot is rendered once, live, by AssemblyNode —
+        // AR OJT: the assembly slot is rendered once, live, by AssemblyNode -
         // never as a per-step ghost copy.
         let slots = step.effectiveModels.filter { guide.assembly?.pose == nil || $0.slotId != "assembly" }
         guard !slots.isEmpty, let pos = step.worldPosition else {
@@ -3452,7 +3452,7 @@ struct ARGuideSessionView: View {
             Task {
                 // Load model on a background thread via SCNScene(url:).
                 // SCNScene(url:options:) loads USDZ natively on iOS 12+.
-                // (GLB requires the ModelIO–SceneKit bridge removed in iOS 26 — always prefer USDZ.)
+                // (GLB requires the ModelIO–SceneKit bridge removed in iOS 26 - always prefer USDZ.)
                 let builtNode: SCNNode? = await Task.detached(priority: .utility) { () -> SCNNode? in
                     guard let scene = try? SCNScene(url: glbURL, options: [
                         SCNSceneSource.LoadingOption.checkConsistency: false,
@@ -3474,7 +3474,7 @@ struct ARGuideSessionView: View {
                 }.value
 
                 guard let node = builtNode else { return }
-                // The operator may have moved on while this loaded — only
+                // The operator may have moved on while this loaded - only
                 // attach if the step is still the one being shown.
                 guard case .navigating(let idx) = phase, idx < sortedSteps.count,
                       sortedSteps[idx].id == stepId else { return }
@@ -3530,7 +3530,7 @@ extension ARGuideSessionView {
                     .font(.caption).foregroundStyle(.white.opacity(0.7))
                     .padding(.top, 6)
                 if environmentDrift {
-                    Text("Pins may be off — line up with the ghost")
+                    Text("Pins may be off - line up with the ghost")
                         .font(.caption2.bold()).foregroundStyle(.orange)
                         .padding(.top, 2)
                 }
@@ -3619,7 +3619,7 @@ struct GuideContentPanel: View {
     let canSkip:         Bool
     let allRequiredDone: Bool
     /// Terminal = the session can end here (happy end or failure dead-end).
-    /// Drives the Sign Off gate and disables Next — NOT the same as being
+    /// Drives the Sign Off gate and disables Next - NOT the same as being
     /// the highest sequence number.
     let isTerminal:      Bool
     let distanceM:       Float?
@@ -3633,7 +3633,7 @@ struct GuideContentPanel: View {
     let onEvidence:      () -> Void              // Phase 3
     let onMinimize:      () -> Void              // collapse back to mini nav card
     /// Pilot hardening: the authored recovery branch (nextOnFailure) is now
-    /// reachable — without this the failure path existed only on paper.
+    /// reachable - without this the failure path existed only on paper.
     let hasFailurePath:  Bool
     let onFail:          () -> Void
 
@@ -3696,7 +3696,7 @@ struct GuideContentPanel: View {
                 .buttonStyle(.plain)
                 .padding(.trailing, 4)
 
-                // Minimize — collapse back to mini nav card
+                // Minimize - collapse back to mini nav card
                 Button(action: onMinimize) {
                     Image(systemName: "chevron.down")
                         .font(.system(size: 16, weight: .semibold))
@@ -3735,7 +3735,7 @@ struct GuideContentPanel: View {
                             .padding(.horizontal, 16)
                     }
 
-                    // Reference link — authored in the Procedure Designer
+                    // Reference link - authored in the Procedure Designer
                     // (video, PDF, SOP page). Opens in Safari; the platform
                     // stores no copy of the target.
                     if let raw = step.linkUrl, let url = URL(string: raw),
@@ -3818,7 +3818,7 @@ struct GuideContentPanel: View {
 
                 if hasFailurePath && !isCompleted {
                     Button(action: onFail) {
-                        Label("Step failed — go to recovery", systemImage: "exclamationmark.triangle.fill")
+                        Label("Step failed - go to recovery", systemImage: "exclamationmark.triangle.fill")
                             .font(.caption.bold())
                             .foregroundStyle(.orange)
                     }
@@ -3883,7 +3883,7 @@ struct SessionSignOffView: View {
     let progresses:    [GuideStepProgress]
     let startedAt:     Date
     let liveSessionId: String?   // links sign-off to SSE stream; optional for backward compat
-    /// Steps whose evidence is already on the server — no base64 for these.
+    /// Steps whose evidence is already on the server - no base64 for these.
     var uploadedEvidenceSteps: Set<String> = []
     let onDone:        () -> Void
 
@@ -3895,7 +3895,7 @@ struct SessionSignOffView: View {
     @State private var error:       String? = nil
     // Pilot hardening
     @State private var showIncompleteConfirm = false
-    /// Set after a failed submit — offers "Save & sync later" so the record
+    /// Set after a failed submit - offers "Save & sync later" so the record
     /// (evidence photos included) survives a network outage.
     @State private var canQueue = false
 
@@ -3906,7 +3906,7 @@ struct SessionSignOffView: View {
     }
 
     /// PERF (freeze fix): the old computed `stepCompletions` JPEG-encoded and
-    /// base64'd EVERY evidence photo, and body referenced it — so SwiftUI
+    /// base64'd EVERY evidence photo, and body referenced it - so SwiftUI
     /// re-ran all those encodes on the main thread on every render (every
     /// keystroke in the name field). The UI only ever needs the COUNT; the
     /// heavy encode now happens once, off the main thread, inside submit().
@@ -3924,7 +3924,7 @@ struct SessionSignOffView: View {
                             .foregroundStyle(.indigo)
                         Text("Sign Off")
                             .font(.title2.bold())
-                        Text("\(guide.name) — \(anchor.assetId)")
+                        Text("\(guide.name) - \(anchor.assetId)")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                             .multilineTextAlignment(.center)
@@ -3966,7 +3966,7 @@ struct SessionSignOffView: View {
                             Button {
                                 Task {
                                     // Queue keeps photos: this record may drain
-                                    // much later, when live files could be gone —
+                                    // much later, when live files could be gone -
                                     // so include EVERY photo here (belt & braces;
                                     // the server still dedupes if files exist).
                                     let progressesCopy = progresses
@@ -3977,7 +3977,7 @@ struct SessionSignOffView: View {
                                     if PendingSessionQueue.enqueue(req) {
                                         onDone()
                                     } else {
-                                        error = "Could not save locally — please retry submission."
+                                        error = "Could not save locally - please retry submission."
                                     }
                                 }
                             } label: {
@@ -3992,7 +3992,7 @@ struct SessionSignOffView: View {
             }
             .onAppear {
                 // Prefill from the identity used at shift start (kiosk / UAM
-                // verified name) — the same name the usage log carries — and
+                // verified name) - the same name the usage log carries - and
                 // only then the free-text author name. Retyping invites
                 // inconsistent audit names ("Raj" / "raj k" / "RK"). Editable.
                 if operatorName.isEmpty {
@@ -4007,7 +4007,7 @@ struct SessionSignOffView: View {
                 Button("Submit anyway", role: .destructive) { Task { await submit() } }
                 Button("Go back", role: .cancel) { }
             } message: {
-                Text("Skipped branch steps are normal — but check you haven't missed required work before submitting.")
+                Text("Skipped branch steps are normal - but check you haven't missed required work before submitting.")
             }
             .navigationTitle("Sign Off")
             .navigationBarTitleDisplayMode(.inline)
@@ -4018,7 +4018,7 @@ struct SessionSignOffView: View {
                     } else {
                         Button("Submit") {
                             if completedCount < progresses.count {
-                                showIncompleteConfirm = true    // warn, don't block — branches skip steps legitimately
+                                showIncompleteConfirm = true    // warn, don't block - branches skip steps legitimately
                             } else {
                                 Task { await submit() }
                             }
@@ -4036,7 +4036,7 @@ struct SessionSignOffView: View {
 
     private func makeRequest(completionsOverride: [GuideStepCompletion]? = nil) async -> CreateARGuideSessionRequest {
         let iso = ISO8601DateFormatter()
-        // Build completions OFF the main thread — photo encoding is the
+        // Build completions OFF the main thread - photo encoding is the
         // expensive part, and only steps WITHOUT a live upload need it.
         let progressesCopy = progresses
         let uploaded       = uploadedEvidenceSteps
@@ -4074,7 +4074,7 @@ struct SessionSignOffView: View {
             onDone()
         } catch {
             self.error = "Submission failed: \(friendlyMessage(for: error))"
-            self.canQueue = true    // offer the offline path — never lose the record
+            self.canQueue = true    // offer the offline path - never lose the record
         }
         isSubmitting = false
     }
@@ -4103,12 +4103,12 @@ extension ARGuideSessionView {
         do { data = try await AssemblyModelCache.glb(modelId: asm.modelId, client: client) }
         catch {
             AppLog.warn("assembly", "GLB download failed for \(asm.modelId): \(AssemblyModelCache.reason(error))")
-            showNotice("Assembly model unavailable — \(AssemblyModelCache.reason(error))")
+            showNotice("Assembly model unavailable - \(AssemblyModelCache.reason(error))")
             return
         }
         let built: GLBAssembly? = await Task.detached(priority: .userInitiated) { try? GLBLoader.load(data: data) }.value
         guard let glb = built, !glb.parts.isEmpty else {
-            AppLog.warn("assembly", "GLB unreadable or has no named parts — falling back to per-step ghosts"); return
+            AppLog.warn("assembly", "GLB unreadable or has no named parts - falling back to per-step ghosts"); return
         }
         let node = AssemblyNode(assembly: glb)
         node.root.simdTransform = pose.transform
@@ -4216,7 +4216,7 @@ extension ARGuideSessionView {
         if scope == "guide" { hintsMutedGuide = true }
         else if case .navigating(let i) = phase, i < sortedSteps.count { hintsMutedStepId = sortedSteps[i].id }
         if let hint, activeHint?.id == hint.id { withAnimation(.easeOut(duration: 0.2)) { activeHint = nil; assistExpanded = false } }
-        showNotice(scope == "guide" ? "Hints muted for this guide — tap ✨ to turn on" : "Hints muted for this step — tap ✨ to turn on")
+        showNotice(scope == "guide" ? "Hints muted for this guide - tap ✨ to turn on" : "Hints muted for this step - tap ✨ to turn on")
         AppLog.info("ci", "hints muted scope=\(scope)")
     }
 
@@ -4245,7 +4245,7 @@ extension ARGuideSessionView {
     private func observeInteraction(_ kind: String, node: String? = nil) {
         guard liveSessionId != nil, case .navigating = phase else { return }
         obsBuffer.append(SessionObservation(t: Date().timeIntervalSince(obsStepStart), interaction: kind, node: node))
-        // A wrong tap or a validation attempt is what the engine reacts to — send it now, not at the next 5 s tick.
+        // A wrong tap or a validation attempt is what the engine reacts to - send it now, not at the next 5 s tick.
         if obsBuffer.count >= 30 || kind == "tap-wrong-part" || kind == "validate-attempt" { flushObservations(force: true) }
     }
 

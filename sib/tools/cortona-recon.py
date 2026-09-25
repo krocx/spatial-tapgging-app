@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-cortona-recon.py — structural reconnaissance of a Cortona3D RapidManual export
+cortona-recon.py - structural reconnaissance of a Cortona3D RapidManual export
 (.vmp project and/or published .htm folder) WITHOUT exposing its content.
 
 Produces a shareable JSON + Markdown report describing the *shape* of the data:
@@ -171,7 +171,7 @@ def main():
         with open(a.path, 'rb') as fh: analyse_bytes(os.path.basename(a.path), fh.read(), reports)
     os.makedirs(a.out, exist_ok=True)
     with open(os.path.join(a.out, 'report.json'), 'w') as f: json.dump(reports, f, indent=1)
-    md = ['# Cortona3D export — structural report', '', '_No content values included; names generalised (A=letter, 9=digit)._', '']
+    md = ['# Cortona3D export - structural report', '', '_No content values included; names generalised (A=letter, 9=digit)._', '']
     for r in reports:
         md.append('## %s  (%s)' % (r.get('file'), r.get('kind', r.get('sniff'))))
         for k, v in r.items():
@@ -180,7 +180,7 @@ def main():
             md.append('- **%s**: `%s`' % (k, v if not isinstance(v, (dict, list)) else json.dumps(v)))
         md.append('')
     with open(os.path.join(a.out, 'report.md'), 'w') as f: f.write('\n'.join(md))
-    print('wrote', os.path.join(a.out, 'report.md'), 'and report.json —', len(reports), 'entries')
+    print('wrote', os.path.join(a.out, 'report.md'), 'and report.json -', len(reports), 'entries')
 
 if __name__ == '__main__':
     main()

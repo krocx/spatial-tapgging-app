@@ -1,4 +1,4 @@
-# Xcode Project Setup — Phase 2A
+# Xcode Project Setup - Phase 2A
 ### Spatial Tagging App · iOS Native (Swift + ARKit)
 
 ---
@@ -6,13 +6,13 @@
 ## Prerequisites
 
 - Xcode 15 or later
-- iPhone running iOS 16+ (ARKit world tracking requires a physical device — the Simulator does not support ARKit)
+- iPhone running iOS 16+ (ARKit world tracking requires a physical device - the Simulator does not support ARKit)
 - Macbook running SIB (`npm run dev` in `sib/`)
 - Both on the same WiFi network
 
 ---
 
-## Step 1 — Create the Xcode Project
+## Step 1 - Create the Xcode Project
 
 1. Open Xcode → **File → New → Project**
 2. Choose **iOS → App**
@@ -29,7 +29,7 @@
 
 ---
 
-## Step 2 — Add Source Files
+## Step 2 - Add Source Files
 
 Delete the auto-generated `ContentView.swift` that Xcode creates. Then add all files from `SpatialTaggingApp/`:
 
@@ -63,16 +63,16 @@ SpatialTaggingApp/
 
 ---
 
-## Step 3 — Replace Info.plist
+## Step 3 - Replace Info.plist
 
 Xcode 15+ generates Info.plist entries in the project settings instead of a file. You have two options:
 
-### Option A — Use the provided Info.plist file (recommended)
+### Option A - Use the provided Info.plist file (recommended)
 
 1. In your project's Build Settings → Info.plist File, set the path to `SpatialTaggingApp/Resources/Info.plist`
 2. Copy `Resources/Info.plist` into your Xcode project
 
-### Option B — Add keys manually in Xcode UI
+### Option B - Add keys manually in Xcode UI
 
 In your Target → **Info** tab, add these keys:
 
@@ -86,33 +86,33 @@ In your Target → **Info** tab, add these keys:
 
 ---
 
-## Step 4 — Enable Capabilities
+## Step 4 - Enable Capabilities
 
 In your Target → **Signing & Capabilities** tab:
 
 1. Click **+ Capability**
-2. Add **Camera** — this appears as `NSCameraUsageDescription` in Info.plist
+2. Add **Camera** - this appears as `NSCameraUsageDescription` in Info.plist
 3. Add **ARKit** (or just ensure UIRequiredDeviceCapabilities includes `arkit`)
 
-> ARKit does **not** need a special entitlement — it is enabled by the Info.plist `UIRequiredDeviceCapabilities` entry and by importing ARKit in code.
+> ARKit does **not** need a special entitlement - it is enabled by the Info.plist `UIRequiredDeviceCapabilities` entry and by importing ARKit in code.
 
 ---
 
-## Step 5 — Deployment Target
+## Step 5 - Deployment Target
 
 In your Target → **General** tab:
 
 - Set **Minimum Deployments** to **iOS 16.0**
 
 This is required for:
-- `symbolEffect` (SwiftUI animations — iOS 17 note: if your device is iOS 16, remove `.symbolEffect(.pulse)` from `ScanStatusBanner.swift`)
+- `symbolEffect` (SwiftUI animations - iOS 17 note: if your device is iOS 16, remove `.symbolEffect(.pulse)` from `ScanStatusBanner.swift`)
 - `ARWorldTrackingConfiguration` full feature set
 
 > **iOS 17+ recommended** for `symbolEffect`. If targeting iOS 16, remove `.symbolEffect(.pulse)` from `ScanStatusBanner.swift` line 43.
 
 ---
 
-## Step 6 — Delete the Auto-Generated Entry Point
+## Step 6 - Delete the Auto-Generated Entry Point
 
 Xcode generates a default `SpatialTaggingApp.swift` with `@main`. Since our file provides `@main`:
 
@@ -121,9 +121,9 @@ Xcode generates a default `SpatialTaggingApp.swift` with `@main`. Since our file
 
 ---
 
-## Step 7 — Run on Device
+## Step 7 - Run on Device
 
-**ARKit requires a physical iPhone** — the Simulator will not work.
+**ARKit requires a physical iPhone** - the Simulator will not work.
 
 1. Connect your iPhone via USB
 2. Trust the development certificate on the iPhone
@@ -131,12 +131,12 @@ Xcode generates a default `SpatialTaggingApp.swift` with `@main`. Since our file
 4. Press **⌘R**
 
 On first launch:
-- The app will request Camera permission — tap **Allow**
+- The app will request Camera permission - tap **Allow**
 - You'll see the Mode Selection screen with a red "SIB not configured" dot
 
 ---
 
-## Step 8 — Configure SIB Connection
+## Step 8 - Configure SIB Connection
 
 ### On the Macbook:
 
@@ -163,7 +163,7 @@ SIB v0.2 running on 0.0.0.0:3001
 
 ---
 
-## Step 9 — Test QR Scanning
+## Step 9 - Test QR Scanning
 
 ### Generate a test QR code:
 
@@ -217,16 +217,16 @@ After setup, you can:
 ✅ See how many tags exist at each anchor (ready for Phase 2B author flow)  
 ✅ Enter placeholder Author/Operator views (to be replaced in Phase 2B/2C)  
 
-**Next: Phase 2B** — Tag creation + honeycomb pass-state capture within the Author mode view.
+**Next: Phase 2B** - Tag creation + honeycomb pass-state capture within the Author mode view.
 
 ---
 
-## Step 10 — Gemba walk Live Activity (G6, 2026.4.46) — one-time target setup
+## Step 10 - Gemba walk Live Activity (G6, 2026.4.46) - one-time target setup
 
 The Dynamic Island / Lock Screen companion for phone-down walking needs a
 **Widget Extension** target. The code is already in the repo; Xcode only needs
 the target and two file memberships. Without this step the app still builds
-and runs — `GembaLiveActivity` becomes a no-op.
+and runs - `GembaLiveActivity` becomes a no-op.
 
 1. **File → New → Target… → Widget Extension.** Product name `GembaWalkWidget`.
    Untick *Include Configuration App Intent*, tick *Include Live Activity*.
@@ -243,7 +243,7 @@ and runs — `GembaLiveActivity` becomes a no-op.
 5. The app's `Info.plist` already has `NSSupportsLiveActivities = YES`. The
    widget target's own Info.plist needs nothing extra.
 6. Build & run the **app** scheme on a device (Live Activities don't run in
-   the Simulator's Dynamic Island reliably). Start a Gemba walk as Operator —
+   the Simulator's Dynamic Island reliably). Start a Gemba walk as Operator -
    the island shows pin · distance · progress; lower the phone → "Raise your
    phone to update"; arrive → green tick + haptic.
 

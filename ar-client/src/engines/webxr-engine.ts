@@ -1,4 +1,4 @@
-// WebXR Engine — Android Chrome
+// WebXR Engine - Android Chrome
 // Uses the WebXR Device API for immersive-ar hit-testing.
 // Manages the XR session lifecycle and feeds pose data to ThreeRenderer.
 //
@@ -25,7 +25,7 @@ export class WebXREngine {
   private onHitTest: HitTestCallback | null = null;
 
   constructor(private readonly threeRenderer: ThreeRenderer) {
-    // Reticle — visual indicator of the detected surface plane
+    // Reticle - visual indicator of the detected surface plane
     const geo = new THREE.RingGeometry(0.05, 0.07, 32);
     geo.applyMatrix4(new THREE.Matrix4().makeRotationX(-Math.PI / 2));
     const mat = new THREE.MeshBasicMaterial({ color: 0x00aaff, side: THREE.DoubleSide });
@@ -86,7 +86,7 @@ export class WebXREngine {
     }
   }
 
-  // Returns the current reticle world position — call this to place an anchor.
+  // Returns the current reticle world position - call this to place an anchor.
   getCurrentHitPosition(): THREE.Vector3 | null {
     if (!this.reticle.visible) return null;
     return this.reticle.position.clone();

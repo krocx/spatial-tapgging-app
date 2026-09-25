@@ -1,6 +1,6 @@
-// mindmap.ws.ts — real-time collaboration channel for the Roadmap Mind-Mapper.
+// mindmap.ws.ts - real-time collaboration channel for the Roadmap Mind-Mapper.
 //
-// Native `ws` (no Socket.IO — minimal deps, per SIB preferences), attached to
+// Native `ws` (no Socket.IO - minimal deps, per SIB preferences), attached to
 // the existing HTTP(S) server via the `upgrade` event on path /mindmap/ws.
 //
 // Protocol (all frames are JSON MindmapWsEvent):
@@ -13,7 +13,7 @@
 // Persistence: mutations are applied to the store immediately (in-memory) and
 // flushed to disk on a short debounce so a burst of drags is one file write.
 //
-// Auth: mirrors apiKeyAuth — when SIB_API_KEY is set, clients must supply the
+// Auth: mirrors apiKeyAuth - when SIB_API_KEY is set, clients must supply the
 // key as ?key=... (browsers can't set headers on WebSocket connects).
 
 import { WebSocketServer, WebSocket } from 'ws';
@@ -77,7 +77,7 @@ export function attachMindmapWs(server: HttpServer): void {
     });
   });
 
-  // Heartbeat — drop dead connections so presence lists stay accurate.
+  // Heartbeat - drop dead connections so presence lists stay accurate.
   setInterval(() => {
     for (const room of rooms.values()) {
       for (const client of room) {
@@ -100,7 +100,7 @@ function handleConnection(socket: WebSocket, mapId: string, clientName: string):
   socket.on('pong', () => { client.alive = true; });
 
   // 1. Full state sync to the joining client. The stored map never carries
-  // publication state (it lives in the access store), so decorate it here —
+  // publication state (it lives in the access store), so decorate it here -
   // otherwise the client's Draft/Published chip reads `undefined` as published.
   const map = mindmapStore.findById(mapId);
   send(client, {
@@ -122,7 +122,7 @@ function handleConnection(socket: WebSocket, mapId: string, clientName: string):
     event.clientName = client.name;
     if (typeof event.ts !== 'number') event.ts = Date.now();
 
-    // Cursor traffic: ephemeral — relay to peers, never persisted.
+    // Cursor traffic: ephemeral - relay to peers, never persisted.
     if (event.type === 'cursor:move') {
       return broadcast(mapId, event, client.id);
     }
@@ -132,9 +132,9 @@ function handleConnection(socket: WebSocket, mapId: string, clientName: string):
     if (!current) return send(client, errorEvent(mapId, 'Map no longer exists'));
 
     const next = applyGraphEvent(current, event);
-    if (!next) return;                // stale or invalid — silently dropped
+    if (!next) return;                // stale or invalid - silently dropped
 
-    mindmapStore.save(next);          // JsonFileStore flushes synchronously — cheap at this scale
+    mindmapStore.save(next);          // JsonFileStore flushes synchronously - cheap at this scale
     scheduleAutoSnapshot(next);
     broadcast(mapId, event, client.id);
   });
@@ -143,7 +143,7 @@ function handleConnection(socket: WebSocket, mapId: string, clientName: string):
     room.delete(client);
     if (room.size === 0) {
       rooms.delete(mapId);
-      // Last collaborator left — snapshot the session's end state.
+      // Last collaborator left - snapshot the session's end state.
       const finalMap = mindmapStore.findById(mapId);
       if (finalMap && dirtySince.has(mapId)) {
         snapshotVersion(finalMap, 'collab session end');

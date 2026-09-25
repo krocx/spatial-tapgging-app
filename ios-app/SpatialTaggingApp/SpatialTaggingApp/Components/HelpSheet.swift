@@ -1,4 +1,4 @@
-// HelpSheet.swift — Phase 3 (Team Sharing)
+// HelpSheet.swift - Phase 3 (Team Sharing)
 //
 // Reusable context-aware help sheet.
 // Each major view passes a [HelpStep] array; this sheet renders them as
@@ -102,12 +102,12 @@ enum HelpContent {
         HelpStep(icon: "arrow.counterclockwise.circle.fill", title: "Continue Session",
                  detail: "Your last Author session is saved. Tap it to resume training where you left off."),
         HelpStep(icon: "qrcode", title: "Share Anchor QR",
-                 detail: "Tap 'Share Anchor QR' to generate a QR code with the embedded encryption key — share this with Operators for secure inspection."),
+                 detail: "Tap 'Share Anchor QR' to generate a QR code with the embedded encryption key - share this with Operators for secure inspection."),
     ]
 
     static let authorMode: [HelpStep] = [
         HelpStep(icon: "hand.tap.fill", title: "Place Tags",
-                 detail: "Tap any detected surface to place a tag marker. A placement sheet appears — fill in the tag label and type."),
+                 detail: "Tap any detected surface to place a tag marker. A placement sheet appears - fill in the tag label and type."),
         HelpStep(icon: "qrcode.viewfinder", title: "Scan QR (Optional)",
                  detail: "Scan the anchor QR code to lock accurate 3D positions. Tags placed without scanning use estimated positions; they auto-upgrade once the QR is scanned."),
         HelpStep(icon: "camera.viewfinder", title: "Train Each Tag",
@@ -115,7 +115,7 @@ enum HelpContent {
         HelpStep(icon: "checkmark.circle.fill", title: "Training Complete",
                  detail: "Tags show a green checkmark when trained. Progress is tracked in the training bar at the bottom."),
         HelpStep(icon: "qrcode", title: "Share QR with Team",
-                 detail: "Tap the QR icon in the top bar to generate an encrypted QR for Operators. Print or share this — it embeds the decryption key."),
+                 detail: "Tap the QR icon in the top bar to generate an encrypted QR for Operators. Print or share this - it embeds the decryption key."),
     ]
 
     static let operatorMode: [HelpStep] = [

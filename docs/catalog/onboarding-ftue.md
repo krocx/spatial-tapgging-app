@@ -17,5 +17,5 @@ arch: |
     TOUR --> ZERO
 ---
 Six per-workflow walkthroughs, a spotlight tour, and contextual ? help throughout the
-app. The design goal is that Operator Mode requires zero training — the author's
+app. The design goal is that Operator Mode requires zero training - the author's
 knowledge arrives through the phone.

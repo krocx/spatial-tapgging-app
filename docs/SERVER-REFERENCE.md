@@ -1,6 +1,6 @@
 # SIB Server Reference
 
-Technical reference for the Spatial Intelligence Backend (SIB) — environment variables, endpoints, and data layout. For deployment steps, see [RENDER-DEPLOYMENT.md](RENDER-DEPLOYMENT.md). For running it locally, see the [README](../README.md#running-the-sib-server-locally).
+Technical reference for the Spatial Intelligence Backend (SIB) - environment variables, endpoints, and data layout. For deployment steps, see [RENDER-DEPLOYMENT.md](RENDER-DEPLOYMENT.md). For running it locally, see the [README](../README.md#running-the-sib-server-locally).
 
 ---
 
@@ -20,7 +20,7 @@ Technical reference for the Spatial Intelligence Backend (SIB) — environment v
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/health` | Liveness check — no auth required |
+| `GET` | `/health` | Liveness check - no auth required |
 | `GET` | `/anchors` | List all anchors |
 | `POST` | `/anchors` | Create anchor (also generates canonical QR PNG) |
 | `DELETE` | `/anchors/:id` | Delete anchor, tags, QR image, and world map |
@@ -48,8 +48,8 @@ The server creates three sub-directories inside `SIB_DATA_DIR` (default `.sib-da
 | Directory | Contents |
 |---|---|
 | `anchors/` | Anchor and tag JSON (JsonFileStore) |
-| `qrimages/` | Canonical QR PNGs — `<anchorId>.png` |
-| `worldmaps/` | Serialised ARWorldMap binaries — `<anchorId>.worldmap` |
+| `qrimages/` | Canonical QR PNGs - `<anchorId>.png` |
+| `worldmaps/` | Serialised ARWorldMap binaries - `<anchorId>.worldmap` |
 
 ---
 
@@ -65,4 +65,4 @@ The server creates three sub-directories inside `SIB_DATA_DIR` (default `.sib-da
 | `Modes/AuthorModeView.swift` | Tag placement, training mode launcher, QR generator |
 | `Modes/OperatorModeView.swift` | Tag rendering, validate-all, `ValidationResultsView` |
 | `Modes/QRGeneratorView.swift` | Fetches canonical PNG from SIB; local fallback for offline use |
-| `Services/ARCoordinateFrame.swift` | `normalised()` — gravity-aligns the QR world transform for consistent tag placement |
+| `Services/ARCoordinateFrame.swift` | `normalised()` - gravity-aligns the QR world transform for consistent tag placement |

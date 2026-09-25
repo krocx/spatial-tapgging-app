@@ -1,4 +1,4 @@
-# Line-ending policy — keep text files LF everywhere, including Windows
+# Line-ending policy - keep text files LF everywhere, including Windows
 # checkouts (the internal SIB server). Overrides any local core.autocrlf.
 #
 # Why: the server serves some of these files verbatim at runtime (e.g.
@@ -8,7 +8,7 @@
 # Default: auto-detect text, normalize to LF in the repo
 * text=auto eol=lf
 
-# Source and content files — explicitly LF
+# Source and content files - explicitly LF
 *.ts    text eol=lf
 *.tsx   text eol=lf
 *.js    text eol=lf
@@ -29,7 +29,7 @@ Dockerfile     text eol=lf
 *.bat  text eol=crlf
 *.cmd  text eol=crlf
 
-# Binaries — never touch line endings
+# Binaries - never touch line endings
 *.png   binary
 *.jpg   binary
 *.jpeg  binary

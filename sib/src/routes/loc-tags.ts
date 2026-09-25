@@ -1,16 +1,16 @@
-// loc-tags.ts — Phase 2: Loc-Tag (Gemba audit walk) routes
+// loc-tags.ts - Phase 2: Loc-Tag (Gemba audit walk) routes
 //
 // Endpoints:
-//   POST   /loc-tags                    — Author: create a LocTag
-//   GET    /loc-tags?anchorId=xxx       — List LocTags for an anchor
-//   GET    /loc-tags/image/:filename    — Serve a reference or completion photo
-//   PATCH  /loc-tags/:id               — Author: update mutable fields of a LocTag
-//   DELETE /loc-tags/:id               — Author: remove a LocTag + its completions
-//   POST   /loc-tags/:id/completion     — Operator: submit completion record
-//   GET    /loc-tags/:id/completions    — List all completions for a LocTag
-//   POST   /loc-tags/:id/photos         — G3: append photos { photosBase64:[{base64, caption}] }
-//   DELETE /loc-tags/:id/photos/:file   — G3: remove one photo
-//   PUT    /loc-tags/:id/photos/:file/markup — G5: attach a marked-up copy { base64 }
+//   POST   /loc-tags                    - Author: create a LocTag
+//   GET    /loc-tags?anchorId=xxx       - List LocTags for an anchor
+//   GET    /loc-tags/image/:filename    - Serve a reference or completion photo
+//   PATCH  /loc-tags/:id               - Author: update mutable fields of a LocTag
+//   DELETE /loc-tags/:id               - Author: remove a LocTag + its completions
+//   POST   /loc-tags/:id/completion     - Operator: submit completion record
+//   GET    /loc-tags/:id/completions    - List all completions for a LocTag
+//   POST   /loc-tags/:id/photos         - G3: append photos { photosBase64:[{base64, caption}] }
+//   DELETE /loc-tags/:id/photos/:file   - G3: remove one photo
+//   PUT    /loc-tags/:id/photos/:file/markup - G5: attach a marked-up copy { base64 }
 //
 // G3 (2026.4.46): a finding can be logged against an Audit Reference Library
 // question (questionCode → area/question snapshot), carry a finding category
@@ -84,11 +84,11 @@ function unlinkQuiet(filename: string | undefined): void {
 
 const router = Router();
 
-// POST /loc-tags — Author creates a new LocTag
+// POST /loc-tags - Author creates a new LocTag
 router.post('/', async (req: Request, res: Response): Promise<void> => {
   const body = req.body as CreateLocTagRequest & { referenceImageBase64?: string };
 
-  // G3: resolve reference-list fields first — a bad question code must fail
+  // G3: resolve reference-list fields first - a bad question code must fail
   // before any image is written to disk.
   let fields;
   let incoming;
@@ -98,7 +98,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
   } catch (err) { fail(res, err); return; }
 
   const title = (body.title || '').trim() || defaultTitle(fields, '');
-  // description is optional — an empty string is valid. defectCategory is the
+  // description is optional - an empty string is valid. defectCategory is the
   // legacy taxonomy: required unless the finding is logged against a question.
   if (!body.anchorId || !title || (!body.defectCategory && !fields.questionCode && fields.referenceSource !== 'custom')) {
     res.status(400).json({ error: 'anchorId, title, and defectCategory (or questionCode / customQuestion) are required' });
@@ -114,7 +114,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
 
   let photos: LocTagPhoto[] = [];
   try {
-    // Legacy single photo first, then the G3 batch — capture order preserved.
+    // Legacy single photo first, then the G3 batch - capture order preserved.
     if (body.referenceImageBase64) {
       photos.push({ path: saveLocTagImage(body.anchorId, id, body.referenceImageBase64, 'ref'), capturedAt: now });
     }
@@ -159,7 +159,7 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
   res.status(201).json(resp);
 });
 
-// GET /loc-tags?anchorId=xxx — list all LocTags for an anchor, sorted by order
+// GET /loc-tags?anchorId=xxx - list all LocTags for an anchor, sorted by order
 router.get('/', (req: Request, res: Response): void => {
   const { anchorId } = req.query;
 
@@ -180,7 +180,7 @@ router.get('/', (req: Request, res: Response): void => {
   res.json(resp);
 });
 
-// GET /loc-tags/image/:filename — serve a reference or completion photo
+// GET /loc-tags/image/:filename - serve a reference or completion photo
 // (requires auth via the app-level apiKeyAuth middleware)
 router.get('/image/:filename', (req: Request, res: Response): void => {
   const filename = req.params.filename;
@@ -198,7 +198,7 @@ router.get('/image/:filename', (req: Request, res: Response): void => {
   res.sendFile(filePath);
 });
 
-// POST /loc-tags/:id/completion — Operator submits a completion record
+// POST /loc-tags/:id/completion - Operator submits a completion record
 router.post('/:id/completion', async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
   const locTag = locTagStore.findById(id);
@@ -239,13 +239,13 @@ router.post('/:id/completion', async (req: Request, res: Response): Promise<void
   };
 
   locTagCompletionStore.save(completion);
-  console.log(`[SIB] LocTag completion saved: ${compId} for locTag ${id} — ${body.status}`);
+  console.log(`[SIB] LocTag completion saved: ${compId} for locTag ${id} - ${body.status}`);
 
   const resp: ApiResponse<LocTagCompletion> = { data: completion, timestamp: now };
   res.status(201).json(resp);
 });
 
-// PATCH /loc-tags/:id — Author updates mutable fields of an existing LocTag
+// PATCH /loc-tags/:id - Author updates mutable fields of an existing LocTag
 router.patch('/:id', (req: Request, res: Response): void => {
   const { id } = req.params;
   const locTag = locTagStore.findById(id);
@@ -300,14 +300,14 @@ router.patch('/:id', (req: Request, res: Response): void => {
   res.json(resp);
 });
 
-// DELETE /loc-tags/completions — remove ALL Gemba Walk completion records
+// DELETE /loc-tags/completions - remove ALL Gemba Walk completion records
 router.delete('/completions', (_req: Request, res: Response): void => {
   const count = locTagCompletionStore.pruneWhere(() => true);
   console.log(`[SIB] Deleted all ${count} Gemba Walk completion(s)`);
   res.json({ deleted: count, timestamp: new Date().toISOString() });
 });
 
-// DELETE /loc-tags/completions/:id — remove a single Gemba Walk completion
+// DELETE /loc-tags/completions/:id - remove a single Gemba Walk completion
 router.delete('/completions/:id', (req: Request, res: Response): void => {
   const completion = locTagCompletionStore.findById(req.params.id);
   if (!completion) { res.status(404).json({ error: 'Completion not found' }); return; }
@@ -316,7 +316,7 @@ router.delete('/completions/:id', (req: Request, res: Response): void => {
   res.status(204).send();
 });
 
-// DELETE /loc-tags/:id — Author removes a LocTag
+// DELETE /loc-tags/:id - Author removes a LocTag
 router.delete('/:id', (req: Request, res: Response): void => {
   const { id } = req.params;
   const locTag = locTagStore.findById(id);
@@ -336,7 +336,7 @@ router.delete('/:id', (req: Request, res: Response): void => {
   res.status(204).send();
 });
 
-// GET /loc-tags/:id/completions — list all completions for a LocTag
+// GET /loc-tags/:id/completions - list all completions for a LocTag
 router.get('/:id/completions', (req: Request, res: Response): void => {
   const { id } = req.params;
 
@@ -354,7 +354,7 @@ router.get('/:id/completions', (req: Request, res: Response): void => {
 
 // ── G3: photos ────────────────────────────────────────────────────────────────
 
-// POST /loc-tags/:id/photos — append { photosBase64: [{ base64, caption? }] }
+// POST /loc-tags/:id/photos - append { photosBase64: [{ base64, caption? }] }
 router.post('/:id/photos', (req: Request, res: Response): void => {
   const locTag = locTagStore.findById(req.params.id);
   if (!locTag) { res.status(404).json({ error: `LocTag ${req.params.id} not found` }); return; }
@@ -370,7 +370,7 @@ router.post('/:id/photos', (req: Request, res: Response): void => {
   } catch (err) { fail(res, err); }
 });
 
-// DELETE /loc-tags/:id/photos/:filename — remove one photo (and its markup)
+// DELETE /loc-tags/:id/photos/:filename - remove one photo (and its markup)
 router.delete('/:id/photos/:filename', (req: Request, res: Response): void => {
   const locTag = locTagStore.findById(req.params.id);
   if (!locTag) { res.status(404).json({ error: `LocTag ${req.params.id} not found` }); return; }
@@ -385,7 +385,7 @@ router.delete('/:id/photos/:filename', (req: Request, res: Response): void => {
   res.json({ data: updated, timestamp: updated.updatedAt });
 });
 
-// PUT /loc-tags/:id/photos/:filename/markup — G5
+// PUT /loc-tags/:id/photos/:filename/markup - G5
 //   { base64, drawing? }  flattened JPEG + optional PKDrawing data (base64) so the
 //                         auditor can re-open and edit / clean up the strokes
 //   { clear: true }       remove the markup (original photo untouched)
@@ -420,7 +420,7 @@ router.put('/:id/photos/:filename/markup', (req: Request, res: Response): void =
 
 // ── R4: drift check on arrival ────────────────────────────────────────────────
 // POST /loc-tags/:id/compare { imageBase64 } → { data: { score, status, photos } }
-// Scores the operator's live view against the finding's own photo(s) — the
+// Scores the operator's live view against the finding's own photo(s) - the
 // same comparator step validation uses. No photo → 404 so the app skips the
 // check silently. Never stored, never logged (no images in logs).
 router.post('/:id/compare', async (req: Request, res: Response): Promise<void> => {

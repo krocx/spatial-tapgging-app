@@ -1,4 +1,4 @@
-// Three.js scene + renderer — shared by both WebXR and AR.js engines.
+// Three.js scene + renderer - shared by both WebXR and AR.js engines.
 // Owns the WebGLRenderer, scene graph, camera, and render loop.
 // AR engines attach their camera/pose updates here; never touch the DOM directly.
 
@@ -33,7 +33,7 @@ export class ThreeRenderer {
     // Scene
     this.scene = new THREE.Scene();
 
-    // Default ambient + directional light — enough for tag indicators
+    // Default ambient + directional light - enough for tag indicators
     const ambient = new THREE.AmbientLight(0xffffff, 0.6);
     const directional = new THREE.DirectionalLight(0xffffff, 0.8);
     directional.position.set(0, 10, 5);

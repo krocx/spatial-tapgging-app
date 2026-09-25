@@ -8,10 +8,10 @@ depends: [loto-event-log, loto-training]
 terms: [LOTO, Supervisor Override, Certification]
 spec: ILOTO.md
 api: |
-  GET /loto/quiz/admin — bank WITH answers (portal · admin key)
-  POST /loto/quiz/questions — add question (portal · admin key)
-  PATCH /loto/quiz/questions/:id — edit question (portal · admin key)
-  POST /loto/quiz/import — bulk replace bank, JSON/CSV (portal · admin key)
+  GET /loto/quiz/admin - bank WITH answers (portal · admin key)
+  POST /loto/quiz/questions - add question (portal · admin key)
+  PATCH /loto/quiz/questions/:id - edit question (portal · admin key)
+  POST /loto/quiz/import - bulk replace bank, JSON/CSV (portal · admin key)
 wireframe: portal
 arch: |
   flowchart LR
@@ -27,5 +27,5 @@ arch: |
 The EHS review surface: a live status board per control panel (per-point state,
 owner, serial), the audit trail with override events pinned first and evidence
 photos in the lightbox, the certification registry, and one-click CSV export of
-events and certifications. Read-only by design — the portal reviews the log, it
+events and certifications. Read-only by design - the portal reviews the log, it
 never writes it.

@@ -1,10 +1,10 @@
-// xr-panel.js — the XR kit's step card as an in-world panel (2026.4.46).
+// xr-panel.js - the XR kit's step card as an in-world panel (2026.4.46).
 //
 // Android Chrome shows the HTML overlay inside the AR session (WebXR
 // dom-overlay). Headset browsers (Meta Quest) don't: the DOM is simply not
 // drawn once the session is immersive, so the operator saw the model and no
 // step navigation. This panel is the same card drawn into a canvas texture on
-// a plane that lazily follows the head — readable on any WebXR device — with
+// a plane that lazily follows the head - readable on any WebXR device - with
 // hit-testable buttons for controller rays, hand pinches and screen taps.
 //
 // The DOM stays the source of truth: xr.html mirrors the visible card into
@@ -92,7 +92,7 @@ export class XRPanel {
     line(ctx, pad, 92, W - pad, 92, C.border);
 
     let y = 132;
-    // Hint (contextual intelligence) — above the step, with its own button.
+    // Hint (contextual intelligence) - above the step, with its own button.
     if (c.hint) {
       const lines = wrap(ctx, c.hint, '26px Arial', W - pad * 2 - 40);
       const hh = lines.length * 34 + 84;
@@ -124,7 +124,7 @@ export class XRPanel {
       y += 60;
     }
 
-    // Button rows — bottom-anchored.
+    // Button rows - bottom-anchored.
     const rows = c.rows.filter(r => r.buttons.length);
     let by = H - pad - 72;
     for (let r = rows.length - 1; r >= 0; r--) {

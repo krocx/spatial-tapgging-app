@@ -1,8 +1,8 @@
-// TagMarker — a virtual sticky note anchored in the AR scene.
+// TagMarker - a virtual sticky note anchored in the AR scene.
 //
 // The card is oriented ONCE at construction time to face the camera's position
 // at the moment of placement.  It does NOT re-orient each frame (no billboard),
-// so it behaves like a note stuck to a surface — it looks head-on when you face
+// so it behaves like a note stuck to a surface - it looks head-on when you face
 // it and slanted when you look at it from an angle.
 //
 // A gentle vertical bob and an off-screen direction arrow help the user locate
@@ -15,10 +15,10 @@
 
 import * as THREE from 'three';
 
-const NOTE_W   = 0.18;   // metres — card width
-const NOTE_H   = 0.12;   // metres — card height
-const PIN_H    = 0.06;   // metres — vertical pin below card
-const BOB_AMP  = 0.006;  // metres — bob amplitude
+const NOTE_W   = 0.18;   // metres - card width
+const NOTE_H   = 0.12;   // metres - card height
+const PIN_H    = 0.06;   // metres - vertical pin below card
+const BOB_AMP  = 0.006;  // metres - bob amplitude
 const BOB_FREQ = 1.4;    // Hz
 
 export class TagMarker {
@@ -34,7 +34,7 @@ export class TagMarker {
     position: THREE.Vector3,
     label: string,
     shortId: string,
-    /** Camera at the moment of placement — card faces this direction and stays. */
+    /** Camera at the moment of placement - card faces this direction and stays. */
     placementCamera?: THREE.Camera,
   ) {
     this.group        = new THREE.Group();
@@ -72,7 +72,7 @@ export class TagMarker {
     this.group.position.copy(position);
     scene.add(this.group);
 
-    // ── Orient card to face placement camera — set ONCE, never updated ────────
+    // ── Orient card to face placement camera - set ONCE, never updated ────────
     // This makes the tag look like it is stuck to a surface: you see it face-on
     // when you look toward it and edge-on when you look from the side.
     // PlaneGeometry faces +Z; lookAt makes +Z point toward the target.
@@ -83,7 +83,7 @@ export class TagMarker {
       const cardWorldPos = position.clone().add(
         new THREE.Vector3(0, NOTE_H / 2 + PIN_H, 0),
       );
-      // Compute look direction and apply directly — lookAt works in world space
+      // Compute look direction and apply directly - lookAt works in world space
       // but the card is a child of the group, so we must account for that.
       const lookTarget = camPos.clone();
       this.card.lookAt(lookTarget);
@@ -93,7 +93,7 @@ export class TagMarker {
     }
   }
 
-  // Call every frame — only animates the gentle bob, no rotation changes.
+  // Call every frame - only animates the gentle bob, no rotation changes.
   update(_camera: THREE.Camera, delta: number): void {
     this.t += delta;
     // Gentle vertical bob in the card's LOCAL position
@@ -138,7 +138,7 @@ export class TagMarker {
     canvas.height = H;
     const ctx = canvas.getContext('2d')!;
 
-    // Background — yellow sticky-note colour with rounded corners
+    // Background - yellow sticky-note colour with rounded corners
     const r = 18;
     ctx.clearRect(0, 0, W, H);
     this.roundRect(ctx, 0, 0, W, H, r, 'rgba(255, 240, 80, 0.93)');
@@ -151,13 +151,13 @@ export class TagMarker {
     ctx.shadowBlur    = 12;
     ctx.shadowOffsetY = 4;
 
-    // Tag icon (📌 emoji substitute — just a circle with cross)
+    // Tag icon (📌 emoji substitute - just a circle with cross)
     ctx.fillStyle   = '#fff';
     ctx.font        = 'bold 22px -apple-system, sans-serif';
     ctx.textBaseline = 'middle';
     ctx.fillText('🏷', 14, 22);
 
-    // Label text — top strip
+    // Label text - top strip
     ctx.shadowColor = 'transparent';
     ctx.fillStyle   = '#1a1a1a';
     ctx.font        = 'bold 20px -apple-system, sans-serif';
@@ -165,13 +165,13 @@ export class TagMarker {
     const truncated = label.length > 20 ? label.slice(0, 18) + '…' : label;
     ctx.fillText(truncated, 46, 22);
 
-    // Body — ID
+    // Body - ID
     ctx.fillStyle   = '#333';
     ctx.font        = '15px monospace';
     ctx.textBaseline = 'top';
     ctx.fillText(`ID: ${shortId}`, 16, 56);
 
-    // Body — "INSPECTION POINT" badge
+    // Body - "INSPECTION POINT" badge
     ctx.fillStyle = 'rgba(0,120,255,0.12)';
     this.roundRect(ctx, 14, 84, 160, 28, 6, 'rgba(0,100,220,0.12)');
     ctx.fillStyle = '#0055bb';

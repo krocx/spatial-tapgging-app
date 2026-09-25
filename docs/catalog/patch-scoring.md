@@ -23,5 +23,5 @@ arch: |
 ---
 Live frames are registered (aligned) against the reference before a worst-percentile
 patch-grid comparison with per-tag calibrated thresholds. Every check returns PASS or
-FAIL plus a 0–100% confidence score — no external vendor calls, all behind the
+FAIL plus a 0–100% confidence score - no external vendor calls, all behind the
 perception adapter so the model stays swappable.

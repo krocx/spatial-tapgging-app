@@ -1,4 +1,4 @@
-// SIB API Client — thin HTTP client for the SIB backend.
+// SIB API Client - thin HTTP client for the SIB backend.
 // Never contains business logic. All requests use canonical types from @spatial/shared.
 
 import type {
@@ -17,7 +17,7 @@ import type {
 } from '@spatial/shared';
 
 // Empty string = same origin. Vite's proxy forwards /anchors, /tags, /sessions,
-// /perception to SIB on localhost:3001 — so the iPhone never needs to reach the
+// /perception to SIB on localhost:3001 - so the iPhone never needs to reach the
 // Mac's port 3001 directly. Set VITE_SIB_URL in .env only if SIB is on a
 // separate host (e.g. staging server).
 const BASE_URL = import.meta.env.VITE_SIB_URL ?? '';

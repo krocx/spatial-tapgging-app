@@ -1,7 +1,7 @@
-// usage-log.ts — the AR OMS Usage Log (K2, 2026.4.45).
+// usage-log.ts - the AR OMS Usage Log (K2, 2026.4.45).
 //
 // Durable, per-step usage records keyed by liveSessionId, derived ENTIRELY
-// server-side from the live-session event stream — the iOS app sends nothing
+// server-side from the live-session event stream - the iOS app sends nothing
 // extra beyond the workContext at session open. LiveGuideSession stays
 // intentionally ephemeral (AI telemetry); this store is the system of record
 // for "who worked which Production # / guide, for how long, step by step".
@@ -49,7 +49,7 @@ export function usageOpen(
     steps:        [],
     // Any client may send this; only a non-empty string is a work context.
     ...(typeof req.workContext === 'string' && req.workContext.trim() ? { workContext: req.workContext.trim() } : {}),
-    // C: the configuration the chamber belongs to — derived here so every
+    // C: the configuration the chamber belongs to - derived here so every
     // client (any app build) is covered and the record can't lie.
     ...(() => {
       const cfgId = anchorStore.findById(live.anchorId)?.configId;
@@ -120,7 +120,7 @@ export function usageRecordEvent(
       break;
     case 'perception:result': {
       // Step-validation verdict (K4): attach to the newest entry for the
-      // step (open or just-closed) — the app may complete the step in the
+      // step (open or just-closed) - the app may complete the step in the
       // same breath as the verdict.
       const pl = (req.payload ?? {}) as { mode?: string; result?: string; score?: number; overridden?: boolean };
       if (pl.mode !== 'system' && pl.mode !== 'manual') return;
@@ -130,7 +130,7 @@ export function usageRecordEvent(
           rec.steps[i].validation = {
             mode: pl.mode, result: pl.result,
             ...(typeof pl.score === 'number' ? { score: pl.score } : {}),
-            // V3: FAIL that the operator chose to proceed past — recorded honestly.
+            // V3: FAIL that the operator chose to proceed past - recorded honestly.
             ...(pl.overridden === true ? { overridden: true } : {}),
           };
           break;
@@ -164,7 +164,7 @@ export function usageRecordEvent(
   omsUsageStore.save(rec);
 }
 
-/** Live evidence uploaded for a step — mark the newest matching entry so
+/** Live evidence uploaded for a step - mark the newest matching entry so
  *  the portal/export know without probing the filesystem. */
 export function usageMarkEvidence(liveSessionId: string, stepId: string): void {
   const rec = omsUsageStore.findById(liveSessionId);

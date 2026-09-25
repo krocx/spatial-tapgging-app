@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────────────────────
-   appliedx · SIB components — one implementation of every UI primitive, built
+   appliedx · SIB components - one implementation of every UI primitive, built
    only from tokens.css and shaped like the iPad app's kiosk, hubs and sheets.
    Class prefix `ax-`. Pages compose these; they do not restyle them. /brand.
    ───────────────────────────────────────────────────────────────────────────── */
@@ -56,7 +56,7 @@
 .ax-nav a:hover { color: var(--ax-ink); text-decoration: none; }
 .ax-nav a.is-on, .ax-nav a[aria-current="page"] { color: var(--ax-ink); border-bottom-color: var(--ax-blue); }
 
-/* ── Surfaces — the app's card: 8 % white, accent stroke, 18-pt corners ── */
+/* ── Surfaces - the app's card: 8 % white, accent stroke, 18-pt corners ── */
 .ax-card  { background: var(--ax-paper); border: var(--ax-hair); border-radius: var(--ax-r); padding: var(--ax-s4); }
 .ax-card--product { border-color: color-mix(in srgb, var(--ax-pc, var(--ax-blue)) 35%, transparent); }
 .ax-card--product.is-active { border-color: color-mix(in srgb, var(--ax-pc, var(--ax-blue)) 70%, transparent); border-width: 1.5px; }
@@ -72,7 +72,7 @@
 .ax-empty { border: 1px dashed var(--ax-rule); border-radius: var(--ax-r); padding: var(--ax-s6) var(--ax-s4); text-align: center; color: var(--ax-ink-3); }
 .ax-empty .ax-mark { font-size: 28px; color: var(--ax-ink-4); margin-bottom: var(--ax-s3); display: block; margin-inline: auto; }
 
-/* ── Buttons — the app's CTA: filled accent, 14-pt corners; secondary is 8 % white ── */
+/* ── Buttons - the app's CTA: filled accent, 14-pt corners; secondary is 8 % white ── */
 .ax-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--ax-s2); font: var(--ax-body-m); color: var(--ax-ink); background: var(--ax-paper);
   border: 1px solid transparent; border-radius: var(--ax-r-cta); padding: 10px 16px; cursor: pointer; text-decoration: none; white-space: nowrap;
   transition: background var(--ax-t) var(--ax-ease), border-color var(--ax-t) var(--ax-ease); }
@@ -90,7 +90,7 @@
 .ax-btn--block { width: 100%; max-width: 420px; padding: 14px 16px; font: var(--ax-label); }
 .ax-btn .ax-icon { width: 16px; height: 16px; }
 
-/* ── Chips — capsules, like "LAST USED" and the kiosk context chips ── */
+/* ── Chips - capsules, like "LAST USED" and the kiosk context chips ── */
 .ax-chip { display: inline-flex; align-items: center; gap: 6px; font: var(--ax-eyebrow); letter-spacing: var(--ax-tracking-eyebrow); text-transform: uppercase;
   border-radius: var(--ax-r-pill); padding: 3px 9px; color: var(--ax-ink-2); background: var(--ax-paper); border: 1px solid transparent; white-space: nowrap; }
 .ax-chip--ok   { background: var(--ax-ok-fill);   color: var(--ax-green); }
@@ -112,7 +112,7 @@
 [data-product="platform"] { --ax-pc: var(--ax-p-platform); }
 .ax-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--ax-pc, var(--ax-blue)); vertical-align: -1px; margin-right: 6px; }
 
-/* ── Forms — the app's field: 8 % white, 12-pt corners, hairline; placeholder at 35 % ── */
+/* ── Forms - the app's field: 8 % white, 12-pt corners, hairline; placeholder at 35 % ── */
 .ax-input, .ax-select, .ax-textarea { font: var(--ax-body); color: var(--ax-ink); background: var(--ax-paper); border: var(--ax-hair); border-radius: var(--ax-r-field);
   padding: 12px 14px; width: 100%; transition: border-color var(--ax-t) var(--ax-ease); }
 .ax-input::placeholder { color: var(--ax-ink-4); }
@@ -125,9 +125,9 @@
 .ax-check { display: inline-flex; align-items: center; gap: 8px; font: var(--ax-body); cursor: pointer; color: var(--ax-ink-2); }
 .ax-check input { width: 16px; height: 16px; accent-color: var(--ax-blue); margin: 0; }
 
-/* ── Tables — dense, hairline rows, numbers in mono and right-aligned ── */
+/* ── Tables - dense, hairline rows, numbers in mono and right-aligned ── */
 .ax-table { width: 100%; border-collapse: collapse; font: var(--ax-body); }
-.ax-table th { text-align: left; font: 600 13px/18px var(--ax-font); color: var(--ax-ink-2); padding: 10px 12px; border-bottom: var(--ax-hair); white-space: nowrap; }  /* sentence case — uppercase eyebrows are for section labels, never a row of headers */
+.ax-table th { text-align: left; font: 600 13px/18px var(--ax-font); color: var(--ax-ink-2); padding: 10px 12px; border-bottom: var(--ax-hair); white-space: nowrap; }  /* sentence case - uppercase eyebrows are for section labels, never a row of headers */
 .ax-table td { padding: 11px 12px; border-bottom: var(--ax-hair-2); vertical-align: middle; }
 .ax-table tr:hover td { background: var(--ax-paper-2); }
 .ax-table tr.is-selected td { background: var(--ax-blue-fill); }
@@ -146,7 +146,7 @@
 .ax-heat > i { flex: 1; min-width: 6px; background: var(--ax-blue); border-radius: 3px 3px 0 0; opacity: .9; cursor: pointer; }
 .ax-heat > i.is-hot { background: var(--ax-red); } .ax-heat > i.is-warm { background: var(--ax-orange); } .ax-heat > i.is-cool { background: var(--ax-green); }
 
-/* ── Notices · toasts — the app's tinted bands ── */
+/* ── Notices · toasts - the app's tinted bands ── */
 .ax-notice { display: flex; gap: var(--ax-s3); align-items: flex-start; border-radius: var(--ax-r-field); padding: var(--ax-s3) var(--ax-s4); background: var(--ax-paper); border-left: 3px solid var(--ax-blue); }
 .ax-notice--ok   { background: var(--ax-ok-fill);   border-left-color: var(--ax-green); }
 .ax-notice--warn { background: var(--ax-warn-fill); border-left-color: var(--ax-orange); }
@@ -155,13 +155,13 @@
 .ax-notice--ok .ax-icon { color: var(--ax-green); } .ax-notice--warn .ax-icon { color: var(--ax-orange); } .ax-notice--bad .ax-icon { color: var(--ax-red); }
 .ax-toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--ax-solid); border: var(--ax-hair); color: var(--ax-ink); font: var(--ax-body-m); padding: 10px 16px; border-radius: var(--ax-r-cta); z-index: 100; }
 
-/* ── Icons — SVG sprite (/portal/brand/icons.svg), SF-Symbols weight, currentColor. Never emoji. ── */
+/* ── Icons - SVG sprite (/portal/brand/icons.svg), SF-Symbols weight, currentColor. Never emoji. ── */
 .ax-icon { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; vertical-align: -.2em; flex: none; }
 .ax-icon--fill { fill: currentColor; stroke: none; }
 .ax-icon--sm { width: 14px; height: 14px; } .ax-icon--lg { width: 24px; height: 24px; } .ax-icon--xl { width: 30px; height: 30px; }
 .ax-icon-tile { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 12px; background: color-mix(in srgb, var(--ax-pc, var(--ax-blue)) 12%, transparent); color: var(--ax-pc, var(--ax-blue)); }
 
-/* ── Tabs · segmented — the app's segmented picker ── */
+/* ── Tabs · segmented - the app's segmented picker ── */
 .ax-tabs { display: flex; gap: 0; border-bottom: var(--ax-hair); }
 .ax-tabs > * { font: var(--ax-label-s); color: var(--ax-ink-2); padding: 8px 12px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; cursor: pointer; background: none; }
 .ax-tabs > .is-on { color: var(--ax-ink); border-bottom-color: var(--ax-blue); }
@@ -169,7 +169,7 @@
 .ax-seg > * { font: var(--ax-label-s); padding: 5px 12px; background: transparent; color: var(--ax-ink-2); border: 0; border-radius: 8px; cursor: pointer; }
 .ax-seg > .is-on { background: var(--ax-paper-3); color: var(--ax-ink); }
 
-/* ── Modal · sheet — the app's sheet: opaque charcoal, 18-pt corners ── */
+/* ── Modal · sheet - the app's sheet: opaque charcoal, 18-pt corners ── */
 .ax-scrim { position: fixed; inset: 0; background: var(--ax-scrim); display: flex; align-items: center; justify-content: center; padding: var(--ax-s5); z-index: 90; }
 .ax-modal { background: var(--ax-solid); border: var(--ax-hair); border-radius: var(--ax-r); padding: var(--ax-s5); width: min(560px, 100%); max-height: 88vh; overflow: auto; }
 
@@ -181,5 +181,5 @@
 .ax-section { margin-top: var(--ax-s6); }
 .ax-section > h2 { display: flex; align-items: center; gap: var(--ax-s2); padding-bottom: var(--ax-s2); border-bottom: var(--ax-hair); }
 
-/* ── Diagram frame — product colour bar, dark paper ── */
+/* ── Diagram frame - product colour bar, dark paper ── */
 .ax-diagram { background: var(--ax-paper-2); border: var(--ax-hair); border-left: 3px solid var(--ax-pc, var(--ax-blue)); border-radius: var(--ax-r-field); padding: var(--ax-s3); overflow-x: auto; }

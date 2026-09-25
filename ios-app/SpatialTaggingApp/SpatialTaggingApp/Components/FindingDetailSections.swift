@@ -1,4 +1,4 @@
-// FindingDetailSections.swift — G4: the read-only body of a Gemba finding,
+// FindingDetailSections.swift - G4: the read-only body of a Gemba finding,
 // shared by the Author peek sheet and the Operator completion sheet so the
 // two never drift. Reference question · category + risk · photos with
 // captions (each opens full-screen). Legacy findings (no question) show
@@ -32,7 +32,7 @@ struct FindingDetailSections: View {
                 } else {
                     if let fa = tag.focusAreaCode {
                         LabeledContent("Focus Area") {
-                            Text([fa, tag.focusAreaTitle].compactMap { $0 }.joined(separator: " — "))
+                            Text([fa, tag.focusAreaTitle].compactMap { $0 }.joined(separator: " - "))
                                 .foregroundStyle(.secondary).multilineTextAlignment(.trailing)
                         }
                     }
@@ -205,7 +205,7 @@ struct PhotoLightbox: View {
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            // Centred, never bottom-aligned — a 4:3 photo on a tall screen
+            // Centred, never bottom-aligned - a 4:3 photo on a tall screen
             // looked "clipped" when it sat on the bottom edge.
             if let image {
                 Image(uiImage: image).resizable().scaledToFit()

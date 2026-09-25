@@ -1,9 +1,9 @@
-// ObjectScanView.swift — B1 (2026.4.46): scan a chamber as an ARKit reference object.
+// ObjectScanView.swift - B1 (2026.4.46): scan a chamber as an ARKit reference object.
 //
 // Entirely on-device (ARObjectScanningConfiguration). The author frames the
 // chamber in a box, walks around it while ARKit gathers feature points, and
-// saves. The resulting ARReferenceObject — a sparse point cloud, not a mesh or
-// a photo — is exported and uploaded to SIB (`POST /anchors/:id/object`) so
+// saves. The resulting ARReferenceObject - a sparse point cloud, not a mesh or
+// a photo - is exported and uploaded to SIB (`POST /anchors/:id/object`) so
 // every device can detect this chamber offline later (B2: origin source).
 //
 //   1. Aim at the chamber, tap the surface it stands on → the box appears there
@@ -39,8 +39,8 @@ struct ObjectScanView: View {
     private var canSave: Bool { scanner.pointsInBox >= Self.minPoints && scanner.sidesSeen >= Self.minSides }
     private var coverageLabel: (String, Color) {
         switch (scanner.pointsInBox, scanner.sidesSeen) {
-        case (..<Self.minPoints, _):   return ("Sparse — keep walking around", .orange)
-        case (_, ..<Self.minSides):    return ("Walk around — seen from \(scanner.sidesSeen) of 6 sides", .yellow)
+        case (..<Self.minPoints, _):   return ("Sparse - keep walking around", .orange)
+        case (_, ..<Self.minSides):    return ("Walk around - seen from \(scanner.sidesSeen) of 6 sides", .yellow)
         default:                       return ("Good coverage · \(scanner.sidesSeen) of 6 sides", .green)
         }
     }
@@ -57,8 +57,8 @@ struct ObjectScanView: View {
                         .font(.title3.bold()).foregroundStyle(.white)
                     Text(scanner.hasBox
                          ? (mergeInto != nil
-                            ? "Same chamber, this camera. Walk all the way round — it merges into the existing scan."
-                            : "Keep the box on the chamber. Every side you see adds points — go all the way round.")
+                            ? "Same chamber, this camera. Walk all the way round - it merges into the existing scan."
+                            : "Keep the box on the chamber. Every side you see adds points - go all the way round.")
                          : "The scan box appears where you tap. Then size it with the sliders.")
                         .font(.footnote).foregroundStyle(.white.opacity(0.7)).multilineTextAlignment(.center)
                 }
@@ -155,7 +155,7 @@ final class ObjectScanner: NSObject, ObservableObject {
     @Published var hasBox = false
     @Published var pointsInBox = 0
     /// B1b: 60° azimuth sectors around the box the camera has looked from
-    /// while points were inside — "walked around" as a number (0–6).
+    /// while points were inside - "walked around" as a number (0–6).
     @Published var sidesSeen = 0
     private var sectorsSeen: Set<Int> = []
     /// Box size in metres (W, H, D). Published so the sliders bind to it.
@@ -279,10 +279,10 @@ final class ObjectScanner: NSObject, ObservableObject {
             sceneView.session.createReferenceObject(transform: boxTransform, center: center, extent: extent) { obj, err in
                 if let obj { cont.resume(returning: obj) }
                 else { cont.resume(throwing: err ?? NSError(domain: "ObjectScan", code: 1,
-                                    userInfo: [NSLocalizedDescriptionKey: "Couldn't build the reference object — walk around the chamber and try again."])) }
+                                    userInfo: [NSLocalizedDescriptionKey: "Couldn't build the reference object - walk around the chamber and try again."])) }
             }
         }
-        // B1b: merge INTO the existing object — ARKit aligns the new points to
+        // B1b: merge INTO the existing object - ARKit aligns the new points to
         // the receiver's frame, so calibrations made against it stay valid.
         let ref: ARReferenceObject
         if let existing = mergeInto {
@@ -352,13 +352,13 @@ struct ObjectScanARView: UIViewRepresentable {
 // ═════════════════════════════════════════════════════════════════════════════
 // B2e (2026.4.46): shared tracking UI for movable equipment
 //
-// The object is the frame — never its world map. Three pieces every AR
+// The object is the frame - never its world map. Three pieces every AR
 // surface that tracks a chamber shares:
 //   • ObjectFinderCard   "Point at the chamber" with a live elapsed timer so a
 //                        long search never looks frozen; after `choiceAfter`
 //                        seconds it offers an explicit fallback (never silent).
 //   • ObjectTrackPill    status at a glance; tap = manual re-align.
-//   • ObjectRealignToast "Chamber moved — re-aligned · Undo" after an
+//   • ObjectRealignToast "Chamber moved - re-aligned · Undo" after an
 //                        automatic re-base (pins never move silently).
 // ═════════════════════════════════════════════════════════════════════════════
 
@@ -371,7 +371,7 @@ struct ObjectFinderCard: View {
     var fallbackLabel: String = "Place from last known position"
     var onRescan: (() -> Void)? = nil        // author only
     var onCancel: (() -> Void)? = nil        // manual re-align in flight
-    /// B1b: the scan's provenance — after 10 s, a scan from a different iPhone
+    /// B1b: the scan's provenance - after 10 s, a scan from a different iPhone
     /// gets a "add a scan from this one" hint (recognition is camera-specific).
     var objectMeta: AnchorObjectMeta? = nil
 
@@ -379,7 +379,7 @@ struct ObjectFinderCard: View {
 
     private var crossDeviceHint: String? {
         guard let m = objectMeta, let on = m.scannedOn, !m.includesThisDevice else { return nil }
-        return "Scanned on a different iPhone (\(on)). Recognition is camera-specific — add a scan from this one: Anchor Hub → Object tracking → Improve scan on this device."
+        return "Scanned on a different iPhone (\(on)). Recognition is camera-specific - add a scan from this one: Anchor Hub → Object tracking → Improve scan on this device."
     }
 
     private var hint: String {
@@ -416,7 +416,7 @@ struct ObjectFinderCard: View {
 
                 if showChoice {
                     VStack(spacing: 8) {
-                        Text("Can't recognise the chamber yet. Still looking — or place the steps from where it was last seen?")
+                        Text("Can't recognise the chamber yet. Still looking - or place the steps from where it was last seen?")
                             .font(.caption.bold()).foregroundStyle(.orange)
                             .frame(maxWidth: .infinity, alignment: .leading)
                         HStack(spacing: 8) {
@@ -467,7 +467,7 @@ struct ObjectTrackPill: View {
         case .searching: return ("viewfinder", "Finding chamber…", .indigo)
         case .tracking:  return ("checkmark.circle.fill", "Tracking · chamber", .green)
         case .outOfView: return ("eye.slash", "Chamber out of view · last known", .white.opacity(0.7))
-        case .stale:     return ("exclamationmark.triangle.fill", "Chamber looks different — tap to re-align", .orange)
+        case .stale:     return ("exclamationmark.triangle.fill", "Chamber looks different - tap to re-align", .orange)
         }
     }
 
@@ -495,7 +495,7 @@ struct ObjectRealignToast: View {
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: "arrow.triangle.2.circlepath").font(.caption.bold())
-            Text("Chamber moved — steps re-aligned").font(.caption.bold())
+            Text("Chamber moved - steps re-aligned").font(.caption.bold())
             Button("Undo", action: onUndo)
                 .font(.caption.bold())
                 .padding(.horizontal, 10).padding(.vertical, 4)

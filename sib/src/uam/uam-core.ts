@@ -1,14 +1,14 @@
-// uam-core.ts — User Access Management, pure logic (no I/O, no stores).
+// uam-core.ts - User Access Management, pure logic (no I/O, no stores).
 //
 // Pre-SSO RBAC: identities live in a manually managed allow-list (the UAM
 // table in the portal); POST /uam/login identifies against it and issues an
-// HMAC-signed token. The token deliberately carries ONLY email + expiry —
+// HMAC-signed token. The token deliberately carries ONLY email + expiry -
 // role is re-read from the user store on every request, so a role change
 // (or removal from the list) takes effect immediately, not at token expiry.
 //
 // THE SSO SWAP POINT (with canViewRestricted's sibling in auth.ts): when
 // corporate OIDC + HYPR arrive, token issuing moves to the IdP and
-// verification moves to JWKS — every role rule below survives unchanged.
+// verification moves to JWKS - every role rule below survives unchanged.
 
 import crypto from 'crypto';
 import type { UamRole } from '@spatial/shared';

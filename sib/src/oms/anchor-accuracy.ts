@@ -1,9 +1,9 @@
-// anchor-accuracy.ts — Anchor Lab samples (2026.4.46).
+// anchor-accuracy.ts - Anchor Lab samples (2026.4.46).
 //
 // A tester marks where a tag's physical feature REALLY is; the app sends the
 // rendered-vs-physical error with the session's context (device, origin
 // source, relocalization / convergence times, light, approach angle). One
-// JSONL file per anchor under DATA_DIR/accuracy — append-only, tiny, no
+// JSONL file per anchor under DATA_DIR/accuracy - append-only, tiny, no
 // images, no keys. The summary is what the portal charts and what the
 // home-testing protocol compares run against run (docs/ANCHOR-LAB.md).
 
@@ -62,7 +62,7 @@ export function appendAccuracySample(sample: AnchorAccuracySample): void {
   fs.mkdirSync(ACCURACY_DIR, { recursive: true });
   const p = filePath(sample.anchorId!);
   fs.appendFileSync(p, JSON.stringify(sample) + '\n');
-  // Keep the file bounded — a lab that runs for months must not grow forever.
+  // Keep the file bounded - a lab that runs for months must not grow forever.
   const lines = fs.readFileSync(p, 'utf8').split('\n').filter(Boolean);
   if (lines.length > MAX_SAMPLES) fs.writeFileSync(p, lines.slice(-MAX_SAMPLES).join('\n') + '\n');
 }

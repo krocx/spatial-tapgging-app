@@ -1,28 +1,28 @@
-// ConeCaptureView.swift — v7 (19-zone flat face, close-packed training)
+// ConeCaptureView.swift - v7 (19-zone flat face, close-packed training)
 //
 // ── What changed from v6 ───────────────────────────────────────────────────────
 //  TrainingDomeGuide moved from 3D hemisphere to flat face disc (v3).
 //  computeCurrentCell() now uses face-plane Voronoi geometry rather than fixed
 //  elevation-angle fractions, so zone boundaries match the actual node positions.
-//  lockedDistanceM captured explicitly at startSweep() — used for all cell math.
+//  lockedDistanceM captured explicitly at startSweep() - used for all cell math.
 //  UX text updated: "slide across" instead of "walk around".
 //
 // ── UX flow ───────────────────────────────────────────────────────────────────
-//  .ready        Brief setup — guide spawned, transitions to .positioning
+//  .ready        Brief setup - guide spawned, transitions to .positioning
 //  .positioning  Ring appears, follows camera. Walk into position.
 //                  Pinch to resize aperture · "Start Training" to begin
 //  .sweeping     3D dome appears: 19 sphere nodes (white→yellow→green) in AR
 //                  Auto-capture on 0.35 s stable aim at a node (flash + haptic)
 //                  "Done Training" enabled after ≥14 nodes captured
 //  .uploading    All captured frames uploaded as multi-image CreatePassStateRequest
-//  .done         Success overlay — shows capture count + LiDAR status
+//  .done         Success overlay - shows capture count + LiDAR status
 //
 // ── Session architecture ──────────────────────────────────────────────────────
 //  Unchanged from v4: shares AuthorModeView's ARSession so cone apex lands at
 //  the physical tag location without any QR re-scan.
 //
 // ── Training image quality ────────────────────────────────────────────────────
-//  ARFrame.capturedImage (raw YCbCr CVPixelBuffer) — zero AR overlay
+//  ARFrame.capturedImage (raw YCbCr CVPixelBuffer) - zero AR overlay
 //  contamination. Multiple VNGenerateImageFeaturePrint embeddings stored in tag
 //  metadata so OperatorModeView can score against the best matching angle.
 
@@ -44,7 +44,7 @@ struct ConeCaptureView: View {
     /// every existing call site (which never mentions `state`) is unaffected.
     /// Pass `.fail` to recursively reuse this entire view to capture what the
     /// WRONG condition looks like (cable unplugged, valve closed, switch off)
-    /// — see the "Train Fail State" button in `successOverlay`.
+    /// - see the "Train Fail State" button in `successOverlay`.
     var state: PassStateKind = .pass
     /// #65: when training the Fail-state, the parent Pass-state capture
     /// passes its already-locked sphere distance here so both references
@@ -55,14 +55,14 @@ struct ConeCaptureView: View {
     /// V1 (AR OMS step validation): the caller already knows the subject's
     /// world position in the CURRENT session (e.g. a guide step's pin), so
     /// skip the anchor-relative metadata lookup entirely. Left `nil` for
-    /// every tag-training call site — zero behaviour change there.
+    /// every tag-training call site - zero behaviour change there.
     var forcedTagWorldPos: simd_float3? = nil
 
     @EnvironmentObject private var settings: AppSettings
     @EnvironmentObject private var appState:  AppState
     @Environment(\.dismiss) private var dismiss
 
-    // ── Own sceneView — shares parentArManager's session ──────────────────────
+    // ── Own sceneView - shares parentArManager's session ──────────────────────
     @StateObject private var svHolder = SceneViewHolder()
 
     // ── Phase ─────────────────────────────────────────────────────────────────
@@ -83,7 +83,7 @@ struct ConeCaptureView: View {
     @State private var distanceM:  Float = 0.3
     @State private var outOfRange: Bool  = false
 
-    // Inspection distance locked at startSweep() — used by computeCurrentCell()
+    // Inspection distance locked at startSweep() - used by computeCurrentCell()
     // to compute face-plane Voronoi boundaries that match the flat-face node layout.
     @State private var lockedDistanceM: Float = 0.3
 
@@ -92,7 +92,7 @@ struct ConeCaptureView: View {
     // disc closer to the tag than the Author's literal starting position.
     // `axis` points from the tag TOWARD the camera, so without this offset
     // faceCenter = tagPos + axis * currentDistanceM lands exactly on the
-    // camera — the Author starts out standing right inside the sphere
+    // camera - the Author starts out standing right inside the sphere
     // cluster instead of seeing it out in front of them. Pulling the disc
     // kForwardOffsetM closer to the tag (smaller distance along axis) moves
     // it into the Author's forward view instead.
@@ -101,8 +101,8 @@ struct ConeCaptureView: View {
     // Sphere placement uses a narrower "sweet spot" aperture than the full
     // acceptance cone (currentApertureDeg / cone_aperture_deg) so all 19
     // training spheres sit comfortably inside the cone's boundary instead of
-    // spreading out to its edge. The acceptance cone itself — used for the
-    // Operator standing-zone check — is untouched.
+    // spreading out to its edge. The acceptance cone itself - used for the
+    // Operator standing-zone check - is untouched.
     private static let kSweetSpotFactor: Float = 0.70
 
     // Aperture actually used for sphere geometry + cell detection during the
@@ -140,7 +140,7 @@ struct ConeCaptureView: View {
     // Author may optionally train a Fail-state reference (what the WRONG
     // condition looks like) and/or mark a region-of-interest crop so
     // validation focuses on just the inspected feature instead of the whole
-    // frame. Both are fully optional — skipping either leaves the tag exactly
+    // frame. Both are fully optional - skipping either leaves the tag exactly
     // as it behaved before this feature existed.
     @State private var showFailCapture: Bool = false
     @State private var showRoiPicker:   Bool = false
@@ -230,7 +230,7 @@ struct ConeCaptureView: View {
         }
         .onAppear {
             // One session, one renderer. The parent's ARSCNView keeps pulling
-            // frames while it is hidden behind this cover — two renderers on one
+            // frames while it is hidden behind this cover - two renderers on one
             // session is what retains ARFrames and starves the device. Pause the
             // parent's display link (not the AR session) while we own the screen.
             parentArManager.sceneView.pause(nil)
@@ -265,7 +265,7 @@ struct ConeCaptureView: View {
             outOfRange = g.isOutOfRange
 
         case .sweeping:
-            // Guide is locked — no camera update. Run sweep logic.
+            // Guide is locked - no camera update. Run sweep logic.
             updateSweepTick(frame: frame)
 
         default:
@@ -289,7 +289,7 @@ struct ConeCaptureView: View {
         currentHexCell = cell
         outOfConeZone  = cell == nil
 
-        // If in an already-captured cell or outside cone — reset hold timer
+        // If in an already-captured cell or outside cone - reset hold timer
         guard let idx = cell, !capturedCells.contains(idx) else {
             cellHoldStart     = nil
             sweepHoldProgress = 0
@@ -310,7 +310,7 @@ struct ConeCaptureView: View {
         }
     }
 
-    // ── Zone computation — flat face Voronoi (v7) ──────────────────────────────
+    // ── Zone computation - flat face Voronoi (v7) ──────────────────────────────
     //
     // Matches the TrainingDomeGuide v3 flat-face layout exactly.
     // Nodes are on the face disc at depth `lockedDistanceM`:
@@ -376,12 +376,12 @@ struct ConeCaptureView: View {
 
         // Voronoi boundary between inner and outer ring: halfway at (r1+r2)/2
         if faceR < (r1 + r2) / 2 {
-            // Zones 1–6 — inner ring, 6 sectors of 60 °
+            // Zones 1–6 - inner ring, 6 sectors of 60 °
             // +30 ° offset so node 1 (az=0°) is centred in its sector
             let sectorIdx = Int(((azDeg + 30).truncatingRemainder(dividingBy: 360)) / 60) % 6
             return 1 + sectorIdx
         } else {
-            // Zones 7–18 — outer ring, 12 sectors of 30 °
+            // Zones 7–18 - outer ring, 12 sectors of 30 °
             // +15 ° offset so node 7 (az=0°) is centred in its sector
             let sectorIdx = Int(((azDeg + 15).truncatingRemainder(dividingBy: 360)) / 30) % 12
             return 7 + sectorIdx
@@ -432,7 +432,7 @@ struct ConeCaptureView: View {
         coneUpWorld    = upDir
 
         // Lock the guide ring so the Author has a fixed visual cone reference,
-        // then fade it out — the sphere nodes alone guide the Author during sweep.
+        // then fade it out - the sphere nodes alone guide the Author during sweep.
         // The cone reappears in the success overlay so the Author can see what
         // region their training covered.
         guide?.lock()
@@ -445,7 +445,7 @@ struct ConeCaptureView: View {
         // faceCenter = tagPos + axis * d lands exactly ON the camera when
         // d == dist, and BEYOND the camera (behind the Author, away from
         // the tag) when d > dist. To actually pull the disc in front of
-        // the Author — between them and the tag, inside their view — d
+        // the Author - between them and the tag, inside their view - d
         // must be SMALLER than the raw distance, not larger. Floor it at
         // kMinDist so the disc never collapses onto the tag itself.
         let d: Float
@@ -461,14 +461,14 @@ struct ConeCaptureView: View {
         }
         lockedDistanceM = d
 
-        // Sweet-spot aperture for sphere placement — narrower than the full
+        // Sweet-spot aperture for sphere placement - narrower than the full
         // acceptance cone so all 19 nodes sit inside the boundary rather than
         // spreading out to its edge. currentApertureDeg (and the
         // cone_aperture_deg stored for Operator mode) is untouched.
         let placementApertureDeg = currentApertureDeg * Self.kSweetSpotFactor
         lockedApertureDeg = placementApertureDeg
 
-        // Spawn flat-face disc — 19 sphere nodes packed on the face plane so
+        // Spawn flat-face disc - 19 sphere nodes packed on the face plane so
         // adjacent spheres just touch.  Author holds at distance and slides.
         domeGuide?.cleanup()
         domeGuide = TrainingDomeGuide(
@@ -512,7 +512,7 @@ struct ConeCaptureView: View {
         // Build one PassStateImage per captured frame
         var psImages: [PassStateImage] = []
         var featurePrints: [TagFeaturePrint] = []
-        // PartCheck only: center-crop feature prints — sensitive to part presence/absence.
+        // PartCheck only: center-crop feature prints - sensitive to part presence/absence.
         // Stored separately from feature_prints so the full-frame metric is preserved
         // for other tag types.  See OperatorModeView.applyFeaturePrintValidation.
         var centerCropPrints: [TagFeaturePrint] = []
@@ -547,7 +547,7 @@ struct ConeCaptureView: View {
         }
 
         guard !psImages.isEmpty else {
-            uploadError = "No frames captured — please try again."
+            uploadError = "No frames captured - please try again."
             phase = .sweeping; return
         }
 
@@ -562,7 +562,7 @@ struct ConeCaptureView: View {
         }
 
         // Fail-state training is a second, independent reference for the SAME
-        // tag — geometry (cone quaternion/aperture/distance), depth, and the
+        // tag - geometry (cone quaternion/aperture/distance), depth, and the
         // primary feature-print keys were already written when the Pass-state
         // was trained, so skip all of that here and only stash the Fail-state's
         // own feature prints under parallel `fail_*` keys for the Operator's
@@ -587,7 +587,7 @@ struct ConeCaptureView: View {
             }
 
             // Fail-state capture reuses the same dome/cone guide as the Pass
-            // capture — bring the cone back for the success overlay and stop;
+            // capture - bring the cone back for the success overlay and stop;
             // none of the Pass-only geometry/depth metadata below applies.
             guide?.setVisible(true, animated: false)
             withAnimation { phase = .done }
@@ -614,7 +614,7 @@ struct ConeCaptureView: View {
             meta["cone_depth_height"]   = AnyCodable(d.height)
             meta["cone_depth_is_lidar"] = AnyCodable(d.isLiDAR)
         }
-        // Store all feature prints as a JSON array — OperatorModeView
+        // Store all feature prints as a JSON array - OperatorModeView
         // applyFeaturePrintValidation already iterates this array and picks
         // the best matching print. More prints = better multi-angle coverage.
         if !featurePrints.isEmpty {
@@ -807,8 +807,8 @@ struct ConeCaptureView: View {
     private var positioningHUD: some View {
         VStack(spacing: 12) {
             if outOfRange {
-                Label(distanceM < ConeARGuide.kMinDist ? "Too close — step back"
-                                                       : "Too far — step closer",
+                Label(distanceM < ConeARGuide.kMinDist ? "Too close - step back"
+                                                       : "Too far - step closer",
                       systemImage: "exclamationmark.triangle.fill")
                     .font(.caption.bold()).foregroundStyle(.orange)
                     .padding(.horizontal, 14).padding(.vertical, 7)
@@ -841,7 +841,7 @@ struct ConeCaptureView: View {
         .animation(.easeInOut(duration: 0.2), value: outOfRange)
     }
 
-    // ── Sweep HUD (minimal — 3D dome nodes drawn in AR scene via TrainingDomeGuide) ──
+    // ── Sweep HUD (minimal - 3D dome nodes drawn in AR scene via TrainingDomeGuide) ──
 
     private var sweepingHUD: some View {
         VStack(spacing: 12) {
@@ -866,7 +866,7 @@ struct ConeCaptureView: View {
             Text(capturedCells.isEmpty
                  ? "Hold distance · slowly slide across each sphere"
                  : capturedCells.count < minCaptures
-                 ? "Keep sliding — \(minCaptures - capturedCells.count) more zones needed"
+                 ? "Keep sliding - \(minCaptures - capturedCells.count) more zones needed"
                  : capturedCells.count < TrainingDomeGuide.nodeCount
                  ? "Tap Done or cover all 19 zones"
                  : "All 19 zones captured!")
@@ -947,7 +947,7 @@ struct ConeCaptureView: View {
                     .font(.system(size: 80)).foregroundStyle(tag.type.color)
                 Text(state == .fail ? "Fail Reference Trained!" : "Tag Trained!")
                     .font(.title.bold()).foregroundColor(.white)
-                Text("\"\(tag.label)\" — \(capturedFrames.count) angle\(capturedFrames.count == 1 ? "" : "s") captured across the cone.")
+                Text("\"\(tag.label)\" - \(capturedFrames.count) angle\(capturedFrames.count == 1 ? "" : "s") captured across the cone.")
                     .font(.subheadline).foregroundStyle(.white.opacity(0.75))
                     .multilineTextAlignment(.center).padding(.horizontal, 32)
                 Group {
@@ -958,13 +958,13 @@ struct ConeCaptureView: View {
                         Label("Estimated depth (no LiDAR)", systemImage: "camera.metering.center.weighted")
                             .foregroundStyle(.orange)
                     } else {
-                        Label("No depth — RGB + FP only", systemImage: "exclamationmark.triangle")
+                        Label("No depth - RGB + FP only", systemImage: "exclamationmark.triangle")
                             .foregroundStyle(.red)
                     }
                 }
                 .font(.caption.bold())
 
-                // Optional follow-up steps — only offered after training the
+                // Optional follow-up steps - only offered after training the
                 // PRIMARY Pass-state. Both are entirely skippable; skipping
                 // leaves the tag validating exactly as it did before this
                 // feature existed (full-frame, Pass-only).
@@ -1010,7 +1010,7 @@ struct ConeCaptureView: View {
             // distance through so the Fail-state dome matches it exactly.
             // The Fail-state capture is a SECOND instance of this view. In the
             // V1 guide-step flow the subject position came in as
-            // forcedTagWorldPos (the pin) — there is no QR lock and no tag
+            // forcedTagWorldPos (the pin) - there is no QR lock and no tag
             // metadata to fall back on, so without passing it through the
             // nested view's spawnGuide() bails every tick: no cone, and
             // "Start Training" does nothing (looked like a freeze).
@@ -1121,7 +1121,7 @@ private struct ConeSweepHint: View {
                 Image(systemName: "arrow.triangle.2.circlepath")
                     .font(.caption.bold())
                     .foregroundStyle(.yellow)
-                Text("Move slowly to aim at each zone — hold steady to capture")
+                Text("Move slowly to aim at each zone - hold steady to capture")
                     .font(.caption)
                     .foregroundStyle(.white.opacity(0.9))
                 Spacer(minLength: 0)

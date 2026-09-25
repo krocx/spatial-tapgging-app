@@ -1,6 +1,6 @@
-// brand.js — logo strip for every SIB web surface (portal, home, /platform, catalogue).
+// brand.js - logo strip for every SIB web surface (portal, home, /platform, catalogue).
 //
-// Applied Materials logo + the AppliedX team mark, top-right, on every page —
+// Applied Materials logo + the AppliedX team mark, top-right, on every page -
 // the same convention as our decks and the app. The image files are NOT in
 // the repo (brand assets stay deployment-local, like the deck template):
 //
@@ -9,7 +9,7 @@
 //
 // They're served at /platform-media/logo-*.png (deployment override first,
 // bundled sib/portal/platform-media/ second). Until a file exists the slot
-// shows a quiet dashed placeholder so nobody forgets — hover tells you where
+// shows a quiet dashed placeholder so nobody forgets - hover tells you where
 // to drop it. Pages opt in with an element carrying `data-brand-slot`; if a
 // page has none, the strip floats top-right.
 (function () {
@@ -17,12 +17,12 @@
     { file: 'logo-amat.png',     label: 'Applied Materials', h: 22 },
     { file: 'logo-appliedx.png', label: 'AppliedX',          h: 26 },
   ];
-  // The platform wordmark — "appliedx Connected Worker AR OMS Platform":
+  // The platform wordmark - "appliedx Connected Worker AR OMS Platform":
   // "applied" in AppliedX blue, "x" in AppliedX green, Roboto Regular (400),
   // exactly as the team writes it in decks. Any element carrying
   // `data-ax-wordmark` is rendered as the full name; add `data-short` for
   // just "appliedx". Roboto is fetched from Google Fonts when reachable and
-  // falls back to the system sans on the LAN — the colours carry the mark.
+  // falls back to the system sans on the LAN - the colours carry the mark.
   const AX_BLUE = '#66b3ff', AX_GREEN = '#35c635';
   const css = `
     .ax-wordmark { font-family:Roboto,-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif; font-weight:400; letter-spacing:-.01em; white-space:nowrap; }
@@ -65,12 +65,12 @@
       img.src = '/platform-media/' + l.file; img.alt = l.label; img.style.height = l.h + 'px';
       img.onerror = () => {
         const ph = document.createElement('span'); ph.className = 'ax-ph'; ph.textContent = l.label + ' logo';
-        ph.title = `Drop ${l.file} into DATA_DIR/platform/media/ on the server — it appears here on every page.`;
+        ph.title = `Drop ${l.file} into DATA_DIR/platform/media/ on the server - it appears here on every page.`;
         img.replaceWith(ph);
       };
       strip.appendChild(img);
     }
-    // Dock into a slot when one exists, float otherwise — and keep watching:
+    // Dock into a slot when one exists, float otherwise - and keep watching:
     // SPA surfaces (the roadmap) mount and unmount their slots as routes change.
     const place = () => {
       const slot = document.querySelector('[data-brand-slot]');
@@ -82,7 +82,7 @@
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', build); else build();
 
-  // SIB Compass — the shared navigator rides in with the brand strip so every
+  // SIB Compass - the shared navigator rides in with the brand strip so every
   // surface gets it from this one include (see compass.js).
   if (!document.querySelector('script[src="/portal/compass.js"]')) {
     const s = document.createElement('script'); s.src = '/portal/compass.js'; s.defer = true; document.head.appendChild(s);

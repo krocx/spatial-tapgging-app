@@ -1,15 +1,15 @@
-// tag-groups.ts — Inspection Sets (Tag Groups)
+// tag-groups.ts - Inspection Sets (Tag Groups)
 //
 // A TagGroup is a named collection of Tags attached to one Anchor.
 // Mirrors the AR Guide pattern: Author creates named Inspection Sets,
 // assigns Tags to them via groupId, and Operators select a set to inspect.
 //
 // Endpoints:
-//   POST   /tag-groups                      — Author: create a TagGroup
-//   GET    /tag-groups?anchorId=xxx         — list TagGroups for an anchor
-//   GET    /tag-groups/:id                  — get a single TagGroup
-//   PATCH  /tag-groups/:id                  — Author: rename / update description
-//   DELETE /tag-groups/:id                  — Author: delete group (tags lose groupId, not deleted)
+//   POST   /tag-groups                      - Author: create a TagGroup
+//   GET    /tag-groups?anchorId=xxx         - list TagGroups for an anchor
+//   GET    /tag-groups/:id                  - get a single TagGroup
+//   PATCH  /tag-groups/:id                  - Author: rename / update description
+//   DELETE /tag-groups/:id                  - Author: delete group (tags lose groupId, not deleted)
 
 import { Router, type Request, type Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
@@ -22,7 +22,7 @@ export const tagGroupStore = new JsonFileStore<TagGroup>('tag-groups');
 
 const router = Router();
 
-// POST /tag-groups — create an Inspection Set on an existing anchor
+// POST /tag-groups - create an Inspection Set on an existing anchor
 router.post('/', (req: Request, res: Response) => {
   const body = req.body as CreateTagGroupRequest;
 
@@ -61,7 +61,7 @@ router.post('/', (req: Request, res: Response) => {
   return res.status(201).json(response);
 });
 
-// GET /tag-groups?anchorId=xxx — list all Inspection Sets for an anchor
+// GET /tag-groups?anchorId=xxx - list all Inspection Sets for an anchor
 router.get('/', (req: Request, res: Response) => {
   const { anchorId } = req.query;
   let groups = tagGroupStore.findAll();
@@ -73,7 +73,7 @@ router.get('/', (req: Request, res: Response) => {
   return res.json({ data: groups, timestamp: new Date().toISOString() });
 });
 
-// GET /tag-groups/:id — get a single TagGroup
+// GET /tag-groups/:id - get a single TagGroup
 router.get('/:id', (req: Request, res: Response) => {
   const group = tagGroupStore.findById(req.params.id);
   if (!group) {
@@ -85,7 +85,7 @@ router.get('/:id', (req: Request, res: Response) => {
   return res.json({ data: group, timestamp: new Date().toISOString() });
 });
 
-// PATCH /tag-groups/:id — rename or update description
+// PATCH /tag-groups/:id - rename or update description
 router.patch('/:id', (req: Request, res: Response) => {
   const group = tagGroupStore.findById(req.params.id);
   if (!group) {
@@ -112,9 +112,9 @@ router.patch('/:id', (req: Request, res: Response) => {
   return res.status(200).json(response);
 });
 
-// DELETE /tag-groups/:id — delete the group record.
+// DELETE /tag-groups/:id - delete the group record.
 // Tags that belonged to this group lose their groupId (they become ungrouped)
-// but are NOT deleted — their pass-states and training data are preserved.
+// but are NOT deleted - their pass-states and training data are preserved.
 router.delete('/:id', (req: Request, res: Response) => {
   const group = tagGroupStore.findById(req.params.id);
   if (!group) {

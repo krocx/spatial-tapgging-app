@@ -1,4 +1,4 @@
-// QR Scanner — uses jsQR to detect a QR code from the live camera feed.
+// QR Scanner - uses jsQR to detect a QR code from the live camera feed.
 // Resolves with a QRAnchorContext once a valid code containing
 // { assetId, anchorId } is detected.
 //
@@ -72,7 +72,7 @@ export class QRScanner {
     this.animationId = requestAnimationFrame(() => this.tick());
   }
 
-  // Parse QR data — expects JSON { assetId, anchorId }
+  // Parse QR data - expects JSON { assetId, anchorId }
   private parseQR(raw: string): QRAnchorContext | null {
     try {
       const parsed = JSON.parse(raw);
@@ -80,7 +80,7 @@ export class QRScanner {
         return { assetId: parsed.assetId, anchorId: parsed.anchorId };
       }
     } catch {
-      // Not JSON — ignore
+      // Not JSON - ignore
     }
     return null;
   }
@@ -118,7 +118,7 @@ export class QRScanner {
   }
 }
 
-// Helper — generate a QR payload string for a given context.
+// Helper - generate a QR payload string for a given context.
 // Use this to create printable QR codes for physical assets.
 export function makeQRPayload(context: QRAnchorContext): string {
   return JSON.stringify(context);

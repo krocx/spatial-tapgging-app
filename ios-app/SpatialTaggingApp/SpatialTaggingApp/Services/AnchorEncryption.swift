@@ -1,11 +1,11 @@
-// AnchorEncryption.swift — Phase 2.5
+// AnchorEncryption.swift - Phase 2.5
 // Client-side AES-256-GCM encryption for pass-state images.
 //
 // Design:
 //  • Each anchor gets a unique 256-bit symmetric key generated once on the Author device.
 //  • The key is stored in the iOS Keychain (survives app restarts, not iCloud-synced).
 //  • The key is embedded in the QR code payload so any device that scans the QR can decrypt.
-//  • The SIB server only ever stores ciphertext — plaintext never leaves the Author's device.
+//  • The SIB server only ever stores ciphertext - plaintext never leaves the Author's device.
 //  • When the Operator device scans the QR it extracts the key, passes it in validate-all,
 //    and the SIB decrypts stored images in-memory for comparison.
 //
@@ -92,7 +92,7 @@ struct AnchorEncryption {
 
     private static let keychainService = "com.spatial.anchor-keys"
 
-    /// Public read-only Keychain lookup — returns nil if no key exists yet.
+    /// Public read-only Keychain lookup - returns nil if no key exists yet.
     /// Used by Operator mode on the same device to find a key without creating one.
     static func loadExistingKey(anchorId: String) -> SymmetricKey? {
         loadKey(anchorId: anchorId)

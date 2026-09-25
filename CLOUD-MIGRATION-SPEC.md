@@ -1,6 +1,6 @@
 # Cloud Migration & Enterprise Security Specification
-**Project:** Spatial Tagging App — SIB (Spatial Intelligence Backend)  
-**Status:** Active Roadmap — Phase 3 planning  
+**Project:** Spatial Tagging App - SIB (Spatial Intelligence Backend)  
+**Status:** Active Roadmap - Phase 3 planning  
 **Last Updated:** 2026-05-29  
 **Assumes:** Phase 2.5 complete (see §1 for what 2.5 delivers)
 
@@ -17,14 +17,14 @@ Phase 3 planning assumes the following are in production from Phase 2.5:
 | **API key auth** | `X-API-Key` header required on all SIB routes. Keys stored in Render environment variables. Separate keys for dev/prod environments. |
 | **Render deployment** | SIB containerised (Dockerfile). Persistent disk mounted at `/data/.sib-data/`. Data survives deploys and restarts. |
 | **Anchor readiness gate (G1)** | SIB enforces minimum trained-tag threshold before an anchor is visible to Operator mode. |
-| **In-app QR generator (G7)** | Authors generate and share anchor QR codes from within the iOS app — no CLI tools needed. QR payload includes `anchorId`, `assetId`, and the AES encryption key for that anchor. |
+| **In-app QR generator (G7)** | Authors generate and share anchor QR codes from within the iOS app - no CLI tools needed. QR payload includes `anchorId`, `assetId`, and the AES encryption key for that anchor. |
 | **All UX gaps closed** | G3 (offline UX), G4 (unpositioned tag indicator), G6 (session ID in UI) resolved. |
 | **Inspection logger** | Every `validate-all` call appends a structured record to `inspection-logs.json` on the persistent disk. |
 
 **Security posture after Phase 2.5:**
 - Data in transit: encrypted (TLS)
 - Pass-state images at rest: encrypted (AES-256-GCM, client-managed keys embedded in QR)
-- Metadata at rest (anchors, tags, logs): unencrypted JSON on Render persistent disk — Render infrastructure-level security applies
+- Metadata at rest (anchors, tags, logs): unencrypted JSON on Render persistent disk - Render infrastructure-level security applies
 - Authentication: shared API key per environment (not per-device identity)
 - **Suitable for:** internal team testing and client pilot trials
 - **Not yet suitable for:** multi-operator enterprise deployments, regulatory audit requirements, storing PII
@@ -50,10 +50,10 @@ Rayneo XR (same HTTPS + API key)
 
 | Limitation | Phase that resolves it |
 |---|---|
-| Shared API key — no per-device identity or audit trail | 3A |
-| JSON flat-files — no concurrent writes, no query | 3B |
-| Pass-state images on disk — no scalable object storage | 3D |
-| All data in one namespace — no multi-tenant isolation | 3C |
+| Shared API key - no per-device identity or audit trail | 3A |
+| JSON flat-files - no concurrent writes, no query | 3B |
+| Pass-state images on disk - no scalable object storage | 3D |
+| All data in one namespace - no multi-tenant isolation | 3C |
 | No web dashboard for inspection history | 3E |
 | No automated DB backups with point-in-time recovery | 3B |
 
@@ -61,17 +61,17 @@ Rayneo XR (same HTTPS + API key)
 
 ## 3. Phase 3 Migration Plan
 
-### Phase 3A — JWT Device Authentication (1–2 weeks)
+### Phase 3A - JWT Device Authentication (1–2 weeks)
 **Goal:** Replace shared API key with per-device identity. Every action is attributable to a specific enrolled device.
 
 **Prerequisites (all met by Phase 2.5):**
 - ✅ HTTPS enforced (JWT must never travel over plain HTTP)
-- ✅ iOS Keychain used for sensitive storage (API key already there — JWT goes same place)
-- ✅ SIB has working auth middleware (API key — upgrade to JWT verification)
+- ✅ iOS Keychain used for sensitive storage (API key already there - JWT goes same place)
+- ✅ SIB has working auth middleware (API key - upgrade to JWT verification)
 
 **Deliverables:**
-- `POST /auth/register-device` — enroll a new iOS or Rayneo device; returns a device ID
-- `POST /auth/token` — exchange device credentials for a short-lived JWT (15-minute access token + 30-day refresh token)
+- `POST /auth/register-device` - enroll a new iOS or Rayneo device; returns a device ID
+- `POST /auth/token` - exchange device credentials for a short-lived JWT (15-minute access token + 30-day refresh token)
 - JWT middleware replaces API key check on all routes
 - JWT claims: `{ deviceId, role: AUTHOR|OPERATOR, orgId, exp }`
 - iOS: store JWT in Keychain; auto-refresh before expiry
@@ -82,7 +82,7 @@ Rayneo XR (same HTTPS + API key)
 
 ---
 
-### Phase 3B — PostgreSQL Migration (2 weeks)
+### Phase 3B - PostgreSQL Migration (2 weeks)
 **Goal:** Replace JSON flat-files with a relational database. Enables concurrent writes, proper queries, and automated backups.
 
 **Prerequisites:**
@@ -119,7 +119,7 @@ audit_log           (id, occurred_at, org_id, device_id, role, action, resource_
 
 ---
 
-### Phase 3C — Multi-Tenant RBAC & Organisation Model (2–3 weeks)
+### Phase 3C - Multi-Tenant RBAC & Organisation Model (2–3 weeks)
 **Goal:** Support multiple independent customers on a single SIB instance. Data is strictly isolated between organisations.
 
 **Prerequisites:**
@@ -127,21 +127,21 @@ audit_log           (id, occurred_at, org_id, device_id, role, action, resource_
 - ✅ Phase 3A complete (JWT carries orgId claim)
 
 **Deliverables:**
-- Tenant provisioning: `POST /admin/orgs` — create an organisation
+- Tenant provisioning: `POST /admin/orgs` - create an organisation
 - Device-to-org binding enforced at JWT issuance
-- All DB queries scoped by `orgId` from JWT — cross-tenant access is impossible at query level
+- All DB queries scoped by `orgId` from JWT - cross-tenant access is impossible at query level
 - PostgreSQL Row Level Security (RLS) as second line of defence
 - Separate AES key namespaces per organisation (QR keys are already per-anchor; this adds per-org key management for future use)
 - Admin role: can manage devices and view all data within their org
 
 ---
 
-### Phase 3D — S3 Image Offload (1 week)
-**Goal:** Move encrypted image blobs from the Render persistent disk to object storage. This is a **scalability** move — images are already encrypted by Phase 2.5, so this phase adds no new security, only storage scale and redundancy.
+### Phase 3D - S3 Image Offload (1 week)
+**Goal:** Move encrypted image blobs from the Render persistent disk to object storage. This is a **scalability** move - images are already encrypted by Phase 2.5, so this phase adds no new security, only storage scale and redundancy.
 
 **Prerequisites:**
 - ✅ Phase 3B complete (pass_state_images table has storage_key column)
-- ✅ Images already AES-256 encrypted client-side (Phase 2.5) — safe to store anywhere
+- ✅ Images already AES-256 encrypted client-side (Phase 2.5) - safe to store anywhere
 - S3 bucket or Cloudflare R2 provisioned (see §5)
 
 **Deliverables:**
@@ -151,11 +151,11 @@ audit_log           (id, occurred_at, org_id, device_id, role, action, resource_
 - Backfill job: migrate existing blobs from disk to S3
 - Bucket policy: private, no public access, versioning enabled
 
-**Why Cloudflare R2 over AWS S3:** Zero egress cost. When Operator devices download reference images for comparison, egress from R2 is free. At scale this matters — a typical inspection downloads 7 reference images per tag × N tags per anchor.
+**Why Cloudflare R2 over AWS S3:** Zero egress cost. When Operator devices download reference images for comparison, egress from R2 is free. At scale this matters - a typical inspection downloads 7 reference images per tag × N tags per anchor.
 
 ---
 
-### Phase 3E — Web Dashboard (4–6 weeks)
+### Phase 3E - Web Dashboard (4–6 weeks)
 **Goal:** Browser-based UI for inspection history, audit logs, and anchor management. Replaces reading JSON files manually.
 
 **Prerequisites:**
@@ -186,15 +186,15 @@ audit_log           (id, occurred_at, org_id, device_id, role, action, resource_
 | SIB → Postgres | TLS enforced by Render | Phase 3B |
 | SIB → S3/R2 | HTTPS (enforced by provider) | Phase 3D |
 
-### Data at Rest — Images (Pass-State)
+### Data at Rest - Images (Pass-State)
 | Layer | Method | Key holder | Status |
 |---|---|---|---|
 | Application (client-side) | AES-256-GCM | Device/QR (you, not Render) | ✅ Phase 2.5 |
 | Disk / S3 | Provider-managed | Render / AWS / Cloudflare | Already present |
 
-**Key insight:** Because Phase 2.5 delivers client-side encryption, the server is a dumb encrypted-blob store. A full breach of the Render server, the Postgres database, or the S3 bucket exposes no readable images. The only way to decrypt is to have the AES key that lives in the QR code — which never touches the server.
+**Key insight:** Because Phase 2.5 delivers client-side encryption, the server is a dumb encrypted-blob store. A full breach of the Render server, the Postgres database, or the S3 bucket exposes no readable images. The only way to decrypt is to have the AES key that lives in the QR code - which never touches the server.
 
-### Data at Rest — Metadata (Tags, Anchors, Logs)
+### Data at Rest - Metadata (Tags, Anchors, Logs)
 | Layer | Method | Phase |
 |---|---|---|
 | Postgres | TLS + provider-managed disk encryption | 3B |
@@ -202,35 +202,35 @@ audit_log           (id, occurred_at, org_id, device_id, role, action, resource_
 
 ---
 
-## 5. Parallel Infra Checklist (For GIS — Run While Phase 2.5 Is in Development)
+## 5. Parallel Infra Checklist (For GIS - Run While Phase 2.5 Is in Development)
 
 Your team can prepare the cloud infrastructure now, independently of the app development work.
 
 ### Do Immediately (no code dependency)
 
-- [ ] **Create Render account** — set up an org workspace, invite team members with appropriate roles (Owner, Member)
-- [ ] **Reserve a custom domain** — e.g. `sib.yourcompany.com`. Register if needed. You will point DNS to Render when 2.5 is deployed.
-- [ ] **Plan disk sizing** — each anchor ≈ 50 MB encrypted pass-state images. Estimate your pilot anchor count × 50 MB, then add 3× headroom. Start with 10 GB Render disk.
-- [ ] **Generate API keys** — create two separate keys: `SIB_API_KEY_DEV` and `SIB_API_KEY_PROD`. Store securely (password manager). These go into Render environment variables when deploying.
-- [ ] **Set up two Render environments** — one Web Service for `dev` (internal testing) and one for `prod` (pilot use). Separate disks, separate API keys.
-- [ ] **Review Render's DPA** — if handling client data in pilots, sign Render's Data Processing Agreement. Available at render.com/dpa.
+- [ ] **Create Render account** - set up an org workspace, invite team members with appropriate roles (Owner, Member)
+- [ ] **Reserve a custom domain** - e.g. `sib.yourcompany.com`. Register if needed. You will point DNS to Render when 2.5 is deployed.
+- [ ] **Plan disk sizing** - each anchor ≈ 50 MB encrypted pass-state images. Estimate your pilot anchor count × 50 MB, then add 3× headroom. Start with 10 GB Render disk.
+- [ ] **Generate API keys** - create two separate keys: `SIB_API_KEY_DEV` and `SIB_API_KEY_PROD`. Store securely (password manager). These go into Render environment variables when deploying.
+- [ ] **Set up two Render environments** - one Web Service for `dev` (internal testing) and one for `prod` (pilot use). Separate disks, separate API keys.
+- [ ] **Review Render's DPA** - if handling client data in pilots, sign Render's Data Processing Agreement. Available at render.com/dpa.
 
 ### Prepare for Phase 3A (JWT Auth)
 
-- [ ] **Decide on JWT signing key rotation policy** — recommend 90-day rotation. Plan how you will rotate without revoking active devices mid-inspection.
-- [ ] **Document device onboarding process** — who is authorised to call `POST /auth/register-device`? How are new operator devices enrolled on a factory floor?
+- [ ] **Decide on JWT signing key rotation policy** - recommend 90-day rotation. Plan how you will rotate without revoking active devices mid-inspection.
+- [ ] **Document device onboarding process** - who is authorised to call `POST /auth/register-device`? How are new operator devices enrolled on a factory floor?
 
 ### Prepare for Phase 3B (Database)
 
-- [ ] **Provision Render Postgres** — Starter plan is fine for pilot scale. Note: Render Postgres is **separate** from the SIB web service; provision it now so it's ready.
-- [ ] **Enable automated backups** — confirm backup retention policy meets your needs (7 days on Starter, 35 days on Standard).
-- [ ] **Test connection from SIB** — before migration, confirm the SIB container can reach the Postgres instance via Render's private network.
+- [ ] **Provision Render Postgres** - Starter plan is fine for pilot scale. Note: Render Postgres is **separate** from the SIB web service; provision it now so it's ready.
+- [ ] **Enable automated backups** - confirm backup retention policy meets your needs (7 days on Starter, 35 days on Standard).
+- [ ] **Test connection from SIB** - before migration, confirm the SIB container can reach the Postgres instance via Render's private network.
 
 ### Prepare for Phase 3D (Image Storage)
 
-- [ ] **Choose: Cloudflare R2 or AWS S3** — R2 recommended for zero egress cost. Create the bucket, enable versioning, record the access keys.
-- [ ] **Set bucket policy** — private, no public access. Only the SIB service account can read/write.
-- [ ] **Estimate storage cost** — each encrypted image ≈ 200–500 KB. 7 images per tag × 20 tags per anchor × 50 anchors = ~350 MB. Well within R2 free tier (10 GB) for pilot scale.
+- [ ] **Choose: Cloudflare R2 or AWS S3** - R2 recommended for zero egress cost. Create the bucket, enable versioning, record the access keys.
+- [ ] **Set bucket policy** - private, no public access. Only the SIB service account can read/write.
+- [ ] **Estimate storage cost** - each encrypted image ≈ 200–500 KB. 7 images per tag × 20 tags per anchor × 50 anchors = ~350 MB. Well within R2 free tier (10 GB) for pilot scale.
 
 ---
 

@@ -1,4 +1,4 @@
-// collab.ts — WebSocket client for /mindmap/ws.
+// collab.ts - WebSocket client for /mindmap/ws.
 // Thin transport: connect, auto-reconnect with backoff, JSON frames in/out.
 // All state handling lives in the store's event handler (UI-free here).
 

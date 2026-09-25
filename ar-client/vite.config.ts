@@ -11,7 +11,7 @@ export default defineConfig({
       cert: fs.readFileSync('./localhost+1.pem'),
     },
     // Proxy SIB routes through Vite so the iPhone only needs one HTTPS
-    // connection — avoids mixed-content errors entirely.
+    // connection - avoids mixed-content errors entirely.
     proxy: {
       '/anchors':    'http://localhost:3001',
       '/tags':       'http://localhost:3001',

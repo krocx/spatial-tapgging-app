@@ -8,7 +8,7 @@ depends: [loto-event-log]
 terms: [LOTO]
 spec: ILOTO.md
 api: |
-  GET /loto/my?name= — cross-anchor locks + certification for one person (app · API key)
+  GET /loto/my?name= - cross-anchor locks + certification for one person (app · API key)
 wireframe: iloto
 arch: |
   flowchart LR
@@ -18,5 +18,5 @@ arch: |
     DER --> TILE["Hub tile turns red with live count - the shift-end nudge"]
 ---
 Every lock the user currently holds, across all panels, with a one-tap deep-link into
-the Remove flow. The hub tile turns red with a live count whenever locks are held —
+the Remove flow. The hub tile turns red with a live count whenever locks are held -
 the shift-end nudge that stops a lock being forgotten on a breaker overnight.

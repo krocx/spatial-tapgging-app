@@ -1,4 +1,4 @@
-// AR Client — main entry point
+// AR Client - main entry point
 // Bootstraps camera, then routes to Author or Operator mode after role selection + QR scan.
 
 import { ThreeRenderer } from './renderer/three-renderer.js';
@@ -67,7 +67,7 @@ async function main() {
   try {
     await startCamera();
   } catch {
-    setStatus('Camera access denied — please allow camera and reload');
+    setStatus('Camera access denied - please allow camera and reload');
     return;
   }
 
@@ -79,20 +79,20 @@ async function main() {
 
   // ── Role selection ──────────────────────────────────────────────────────────
   // DeviceOrientationEvent.requestPermission() MUST be called synchronously
-  // inside a tap handler on iOS — so we do it here, right in the click callback,
+  // inside a tap handler on iOS - so we do it here, right in the click callback,
   // before any awaits. We then pass the started engine into AuthorMode.
   let orientationEngine: DeviceOrientationEngine | null = null;
 
   const role = await new Promise<'author' | 'operator'>(resolve => {
     btnAuthor.addEventListener('click', async () => {
-      // Request motion permission immediately — this IS the user gesture
+      // Request motion permission immediately - this IS the user gesture
       const granted = await DeviceOrientationEngine.requestPermission();
       if (granted) {
         orientationEngine = new DeviceOrientationEngine(renderer.camera);
         orientationEngine.start();
         renderer.onUpdate(() => orientationEngine?.update());
       } else {
-        setStatus('Motion permission denied — honeycomb alignment may not work');
+        setStatus('Motion permission denied - honeycomb alignment may not work');
       }
       resolve('author');
     }, { once: true });
@@ -123,7 +123,7 @@ async function main() {
     // Operator mode uses it to reconstruct those positions in its own frame.
     const q = renderer.camera.quaternion;
     qrContext.scanQuaternion = { x: q.x, y: q.y, z: q.z, w: q.w };
-    setStatus(`Asset: ${qrContext.assetId} — Anchor: ${qrContext.anchorId.slice(0, 8)}…`);
+    setStatus(`Asset: ${qrContext.assetId} - Anchor: ${qrContext.anchorId.slice(0, 8)}…`);
   } catch (err) {
     setStatus(`QR scan failed: ${err instanceof Error ? err.message : String(err)}`);
     return;

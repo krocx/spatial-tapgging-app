@@ -1,14 +1,14 @@
-// ResumeCheckpointOverlay.swift — R2 (2026.4.46): the "welcome back" gate a
+// ResumeCheckpointOverlay.swift - R2 (2026.4.46): the "welcome back" gate a
 // Gemba walk shows after the app was in the background (or any ARKit
 // interruption). Nothing is trusted until the auditor has confirmed the
 // world once.
 //
-//   .relocalizing  — blurred AR, the last known finding's own photo as the
+//   .relocalizing  - blurred AR, the last known finding's own photo as the
 //                    landmark: "Stand where you saw #4 and point the phone at
 //                    it." ARKit relocalizes into the previous map meanwhile.
-//   .confirm       — tracking is back: one question over the pin —
+//   .confirm       - tracking is back: one question over the pin -
 //                    "Is #4 where the pin shows?"  Yes / No, re-align.
-//   timeout        — ~15 s without relocalizing → caller runs the full
+//   timeout        - ~15 s without relocalizing → caller runs the full
 //                    world-map re-localization (reference photo + I'm Here).
 //
 // Copy is deliberately calm and one-question-at-a-time (design philosophy:
@@ -40,7 +40,7 @@ struct ResumeCheckpointOverlay: View {
 
     var body: some View {
         ZStack {
-            // Only the relocalizing state hides the AR view — during confirm the
+            // Only the relocalizing state hides the AR view - during confirm the
             // auditor must SEE the pin to judge it.
             if case .relocalizing = state {
                 Rectangle().fill(.ultraThinMaterial).ignoresSafeArea()
@@ -52,7 +52,7 @@ struct ResumeCheckpointOverlay: View {
                     case .relocalizing:
                         Text("Welcome back")
                             .font(.title3.bold()).foregroundStyle(.white)
-                        Text("Stand where you saw \(stopLabel) and point the phone at it — we're finding your place.")
+                        Text("Stand where you saw \(stopLabel) and point the phone at it - we're finding your place.")
                             .font(.subheadline).foregroundStyle(.white.opacity(0.8))
                             .multilineTextAlignment(.center)
                         if let photo {

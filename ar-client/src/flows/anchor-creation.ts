@@ -2,7 +2,7 @@
 // Converts a Three.js world position (from WebXR hit-test or AR.js marker root)
 // into a SIB Anchor via the SIB API.
 //
-// Keeps all SIB API calls here — never in the AR engines.
+// Keeps all SIB API calls here - never in the AR engines.
 
 import * as THREE from 'three';
 import { createAnchor } from '../api/sib-client.js';

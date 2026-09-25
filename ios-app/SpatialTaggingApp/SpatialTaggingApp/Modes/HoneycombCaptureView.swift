@@ -1,18 +1,18 @@
-// HoneycombCaptureView.swift — Phase 2.5 (Training UX overhaul)
+// HoneycombCaptureView.swift - Phase 2.5 (Training UX overhaul)
 //
 // Changes from Phase 2B:
-//  G8:  Pre-training ready screen — live camera + static honeycomb diagram + Start button.
+//  G8:  Pre-training ready screen - live camera + static honeycomb diagram + Start button.
 //  G9:  Compass arrow + text direction hint ("Look upper-left") pointing to the next sphere.
 //  G10: Guide construction gated behind Start button tap, not the first ARKit frame.
 //       This is the orientation bug fix: when the user taps Start they are pointing the
 //       camera at the tag, so forward/right/up are correctly oriented for guide placement.
 //  G11: 2D HoneycombDiagram mini-map in top bar replaces the 7-dot strip.
-//  G13: Per-viewpoint retake window — 2.5 s thumbnail after each auto-capture with Retake.
+//  G13: Per-viewpoint retake window - 2.5 s thumbnail after each auto-capture with Retake.
 //
 // Architecture note (scalability):
 //  CapturedViewpoint is a value type that currently carries only an RGB JPEG + pose.
 //  When the platform moves to depth/3D capture, add optional fields here and in
-//  PassStateImage (e.g. depthMapBase64?: string on the SIB schema) — the UX and
+//  PassStateImage (e.g. depthMapBase64?: string on the SIB schema) - the UX and
 //  the 7-viewpoint walk-to-bubble paradigm remain unchanged.
 
 import SwiftUI
@@ -22,9 +22,9 @@ import simd
 // ── Training phase state machine ──────────────────────────────────────────────
 
 private enum TrainingPhase: Equatable {
-    case ready       // Pre-start briefing — AR running, guide NOT built yet
+    case ready       // Pre-start briefing - AR running, guide NOT built yet
     case capturing   // User is actively walking to spheres
-    case complete    // All 7 captured — awaiting Train Tag tap
+    case complete    // All 7 captured - awaiting Train Tag tap
 }
 
 // ── Main view ─────────────────────────────────────────────────────────────────
@@ -33,14 +33,14 @@ struct HoneycombCaptureView: View {
 
     let tag:             Tag
     let anchor:          Anchor
-    let parentArManager: ARSessionManager   // shared from AuthorModeView — same world frame
+    let parentArManager: ARSessionManager   // shared from AuthorModeView - same world frame
     let onTrained:       (String) -> Void
 
     @EnvironmentObject private var settings: AppSettings
     @EnvironmentObject private var appState:  AppState
     @Environment(\.dismiss)  private var dismiss
 
-    // ── Own sceneView — links to parentArManager's session in onAppear ─────────
+    // ── Own sceneView - links to parentArManager's session in onAppear ─────────
     @StateObject private var svHolder = SceneViewHolder()
 
     // ── SceneView holder ──────────────────────────────────────────────────────
@@ -55,7 +55,7 @@ struct HoneycombCaptureView: View {
         }()
     }
 
-    // ── Wrapper: no dismantleUIView — session owned by parentArManager ─────────
+    // ── Wrapper: no dismantleUIView - session owned by parentArManager ─────────
     private struct OwnSCNViewContainer: UIViewRepresentable {
         let sceneView: ARSCNView
         func makeUIView(context: Context) -> ARSCNView { sceneView }
@@ -73,7 +73,7 @@ struct HoneycombCaptureView: View {
     @State private var showSuccess  = false
     @State private var flashOpacity: Double = 0
 
-    // ── 3D guide — NOT built until user taps Start (G10 fix) ─────────────────
+    // ── 3D guide - NOT built until user taps Start (G10 fix) ─────────────────
     @State private var guide:     HoneycombARGuide? = nil
     @State private var guideReady = false
 
@@ -113,7 +113,7 @@ struct HoneycombCaptureView: View {
 
     var body: some View {
         ZStack {
-            // AR camera — own sceneView linked to parentArManager's session
+            // AR camera - own sceneView linked to parentArManager's session
             OwnSCNViewContainer(sceneView: svHolder.sceneView).ignoresSafeArea()
 
             // White capture flash
@@ -144,14 +144,14 @@ struct HoneycombCaptureView: View {
         .onDisappear {
             guide?.cleanup()
             retakeTask?.cancel()
-            // DO NOT pause the session — it belongs to parentArManager. Resume its renderer.
+            // DO NOT pause the session - it belongs to parentArManager. Resume its renderer.
             parentArManager.sceneView.play(nil)
         }
         .onReceive(ticker) { _ in tick() }
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    // MARK: — Ready screen (G8)
+    // MARK: - Ready screen (G8)
     // ══════════════════════════════════════════════════════════════════════════
 
     private var readyScreen: some View {
@@ -214,7 +214,7 @@ struct HoneycombCaptureView: View {
                         showLabels: true
                     )
 
-                    Text("7 capture positions — walk to each numbered sphere")
+                    Text("7 capture positions - walk to each numbered sphere")
                         .font(.caption)
                         .foregroundStyle(.white.opacity(0.50))
                 }
@@ -230,7 +230,7 @@ struct HoneycombCaptureView: View {
                             .font(.title3)
                             .foregroundStyle(anchorRedetected ? .green : .cyan)
                         Text(anchorRedetected
-                             ? "QR locked — tag position anchored ✓"
+                             ? "QR locked - tag position anchored ✓"
                              : "**Step 1:** Point camera at the **QR code** to lock position")
                             .font(.subheadline)
                             .foregroundStyle(.white)
@@ -273,7 +273,7 @@ struct HoneycombCaptureView: View {
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    // MARK: — Capturing overlay (G9 compass, G11 mini-map, G13 retake)
+    // MARK: - Capturing overlay (G9 compass, G11 mini-map, G13 retake)
     // ══════════════════════════════════════════════════════════════════════════
 
     private var capturingOverlay: some View {
@@ -282,7 +282,7 @@ struct HoneycombCaptureView: View {
 
             Spacer()
 
-            // G9: Compass + hint — only shown when not already in position
+            // G9: Compass + hint - only shown when not already in position
             if phase == .capturing && !inPosition && capturedViewpoints.count < 7 {
                 compassView
                     .padding(.bottom, 16)
@@ -296,7 +296,7 @@ struct HoneycombCaptureView: View {
         .animation(.easeInOut(duration: 0.25), value: inPosition)
     }
 
-    // ── Direction hint — text only when sphere is off-screen ─────────────────
+    // ── Direction hint - text only when sphere is off-screen ─────────────────
     // The 3D world-space arrow (HoneycombARGuide) handles visible direction.
     // This text overlay only shows when the sphere is behind the camera or
     // far outside the viewport, as an extra verbal cue.
@@ -375,7 +375,7 @@ struct HoneycombCaptureView: View {
             }
         }
 
-        // G13: Retake banner — shown briefly after each capture
+        // G13: Retake banner - shown briefly after each capture
         if showRetake, let img = retakeImage {
             retakeBanner(image: img)
                 .padding(.top, 16)
@@ -565,7 +565,7 @@ struct HoneycombCaptureView: View {
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    // MARK: — Ticker (20 fps)
+    // MARK: - Ticker (20 fps)
     // ══════════════════════════════════════════════════════════════════════════
 
     private func tick() {
@@ -611,7 +611,7 @@ struct HoneycombCaptureView: View {
         let nowIn  = dist < proximityThreshold
         if nowIn != inPosition {
             inPosition = nowIn
-            // Hide 3D arrow when in-position — proximity ring takes over as indicator
+            // Hide 3D arrow when in-position - proximity ring takes over as indicator
             g.setArrowVisible(!nowIn)
         }
 
@@ -628,7 +628,7 @@ struct HoneycombCaptureView: View {
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    // MARK: — G9: Compass computation
+    // MARK: - G9: Compass computation
     // ══════════════════════════════════════════════════════════════════════════
 
     private func updateCompass(frame: ARFrame, guide: HoneycombARGuide) {
@@ -646,7 +646,7 @@ struct HoneycombCaptureView: View {
         let inFront = tz < 0
 
         if !inFront {
-            // Target is behind camera — tell user to turn around
+            // Target is behind camera - tell user to turn around
             directionHint = "Turn around"
             compassAngle  = 180   // arrow points down = "behind you"
             sphereOnScreen = false
@@ -660,7 +660,7 @@ struct HoneycombCaptureView: View {
         //   tx = 0, ty < 0 → 180° (down)
         compassAngle = atan2(tx, ty) * 180.0 / .pi
 
-        // Text direction hint — only show when off-center enough to be useful
+        // Text direction hint - only show when off-center enough to be useful
         let threshold = 0.32
         var parts: [String] = []
         if      ty >  threshold { parts.append("up")    }
@@ -678,15 +678,15 @@ struct HoneycombCaptureView: View {
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    // MARK: — Actions
+    // MARK: - Actions
     // ══════════════════════════════════════════════════════════════════════════
 
     /// Called when the user taps Start on the ready screen.
-    /// Transitions to capturing — the guide will be built on the VERY NEXT tick,
+    /// Transitions to capturing - the guide will be built on the VERY NEXT tick,
     /// using whatever camera transform the user is holding right now (G10 fix).
     private func beginTraining() {
         // QR scanning is already disabled (parentArManager.disableQRScanning() was
-        // called in AuthorModeView.onAppear) — no action needed here.
+        // called in AuthorModeView.onAppear) - no action needed here.
         withAnimation(.easeInOut(duration: 0.35)) {
             phase = .capturing
         }
@@ -696,7 +696,7 @@ struct HoneycombCaptureView: View {
         guard capturedViewpoints.count == currentSlot, currentSlot < 7 else { return }
         guard let frame = svHolder.sceneView.session.currentFrame else { return }
 
-        // Use ARFrame.capturedImage (raw camera CVPixelBuffer) — guaranteed zero
+        // Use ARFrame.capturedImage (raw camera CVPixelBuffer) - guaranteed zero
         // AR overlay contamination.  snapshot() requires a SceneKit render pass
         // with all guide nodes hidden; ARFrame.capturedImage skips rendering
         // entirely and returns the pure sensor output.
@@ -786,7 +786,7 @@ struct HoneycombCaptureView: View {
             if let encrypted = try? AnchorEncryption.encrypt(imageBase64: vp.base64, using: encKey) {
                 payload = encrypted
             } else {
-                print("[HoneycombCapture] Encryption failed for viewpoint — using plaintext fallback")
+                print("[HoneycombCapture] Encryption failed for viewpoint - using plaintext fallback")
                 payload = vp.base64
             }
             return PassStateImage(
@@ -810,7 +810,7 @@ struct HoneycombCaptureView: View {
             // VNGenerateImageFeaturePrintRequest produces a viewpoint-invariant
             // semantic embedding for each training image.  Storing all 7 allows
             // the Operator device to find the closest match regardless of which
-            // angle they happen to be standing at — no position accuracy required.
+            // angle they happen to be standing at - no position accuracy required.
             //
             // Prints are stored as base64 strings in tag.metadata["feature_prints"]
             // via PATCH /tags/:id.  They are available to the Operator immediately
@@ -885,7 +885,7 @@ struct HoneycombCaptureView: View {
     // ── Raw camera capture (shared utility) ──────────────────────────────────
 
     /// Convert ARFrame.capturedImage (YCbCr CVPixelBuffer, landscape sensor)
-    /// to a portrait UIImage — no AR overlay contamination whatsoever.
+    /// to a portrait UIImage - no AR overlay contamination whatsoever.
     static func rawCameraImage(from frame: ARFrame) -> UIImage? {
         // C: rotated to the SCREEN orientation (iPad landscape safe), full size.
         ARFrameImage.screenOriented(frame, maxPx: .greatestFiniteMagnitude)
@@ -910,7 +910,7 @@ struct HoneycombCaptureView: View {
 // ── Internal model ────────────────────────────────────────────────────────────
 // CapturedViewpoint: deliberately minimal today.
 // When the platform adds depth/3D scan support, extend this struct with
-// optional depthMapBase64, confidenceMapBase64, etc. — the UX stays identical.
+// optional depthMapBase64, confidenceMapBase64, etc. - the UX stays identical.
 
 private struct CapturedViewpoint {
     let base64:   String    // AES-encrypted JPEG (plaintext before submitTraining encrypts it)

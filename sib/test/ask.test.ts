@@ -1,5 +1,5 @@
 /**
- * Ask SIB core tests — retrieval ranking, glossary attachment, context budget,
+ * Ask SIB core tests - retrieval ranking, glossary attachment, context budget,
  * prompt assembly. Pure fixtures; the live catalogue + LLM path are covered by
  * the stub-server e2e.
  */
@@ -17,7 +17,7 @@ const CAT: CatalogData = {
   platformVersion: 'v', generatedAt: 'now',
   areas: [
     { id: 'tags', name: 'Spatial Inspection', color: '#000', order: 1, flow: 'flowchart LR\nA-->B', body: '' },
-    { id: 'iloto', name: 'iLOTO — Lockout/Tagout', color: '#f00', order: 2, flow: 'flowchart LR\nA-->B', body: '' },
+    { id: 'iloto', name: 'iLOTO - Lockout/Tagout', color: '#f00', order: 2, flow: 'flowchart LR\nA-->B', body: '' },
   ],
   features: [
     feat('loto-event-log', 'Append-only LOTO audit log',
@@ -31,8 +31,8 @@ const CAT: CatalogData = {
   ],
   edges: [], trails: [],
   glossary: [
-    { term: 'LOTO — Lockout/Tagout', definition: 'OSHA procedure for hazardous energy.', section: 'iLOTO' },
-    { term: 'Try Test', definition: 'Attempt to start after locking — must not respond.', section: 'iLOTO' },
+    { term: 'LOTO - Lockout/Tagout', definition: 'OSHA procedure for hazardous energy.', section: 'iLOTO' },
+    { term: 'Try Test', definition: 'Attempt to start after locking - must not respond.', section: 'iLOTO' },
     { term: 'Batch Validation', definition: 'One scan, every answer.', section: 'Pillar 2' },
   ],
   acronyms: [],

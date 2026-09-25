@@ -1,4 +1,4 @@
-// AnchorDirectoryView.swift — Phase 3 (Team Sharing)
+// AnchorDirectoryView.swift - Phase 3 (Team Sharing)
 //
 // Entry point for both Author and Operator modes.
 // Authors and Operators pick an anchor from the live SIB list (or Authors create a new one).
@@ -93,7 +93,7 @@ struct AnchorDirectoryView: View {
         filtered.filter { settings.myAnchorIds.contains($0.id) }
     }
 
-    /// Author-mode: anchors not created on this device — shared team anchors,
+    /// Author-mode: anchors not created on this device - shared team anchors,
     /// legacy anchors, and anchors authored on another device.
     private var sharedAnchors: [Anchor] {
         filtered.filter { !settings.myAnchorIds.contains($0.id) }
@@ -102,7 +102,7 @@ struct AnchorDirectoryView: View {
     // ── C2: configuration-scoped authoring ───────────────────────────────────
     // An ME authors FOR a chamber configuration. The directory leads with the
     // chambers of that configuration; other chambers stay reachable (and can
-    // be assigned in a swipe); GembaWalk areas and iLOTO panels are neither —
+    // be assigned in a swipe); GembaWalk areas and iLOTO panels are neither -
     // they keep their own section so those products are untouched.
     private var configScoped: Bool {
         mode == .author && settings.isAuthoringShift && !settings.chamberConfigId.isEmpty
@@ -243,7 +243,7 @@ struct AnchorDirectoryView: View {
 
         // Create anchor sheet (Author only)
         // After creation, insert the anchor at the top of the list, then navigate
-        // directly to its AnchorHubView — the user can start a walk or AR session
+        // directly to its AnchorHubView - the user can start a walk or AR session
         // without having to tap the row again.
         .alert("Duplicate Anchor", isPresented: Binding(
             get: { anchorToDuplicate != nil },
@@ -256,18 +256,18 @@ struct AnchorDirectoryView: View {
             }
             .disabled(isDuplicating)
         } message: {
-            Text("Creates a new anchor (new QR code and key) with the same guides and 3D model kit. Steps arrive unplaced and untrained — scan the new tool's world map, place the pins, then publish.")
+            Text("Creates a new anchor (new QR code and key) with the same guides and 3D model kit. Steps arrive unplaced and untrained - scan the new tool's world map, place the pins, then publish.")
         }
         .sheet(isPresented: $showCreateSheet) {
             CreateAnchorSheet(fixedType: scope.fixedType) { newAnchor in
-                // Claim this anchor on the local device — this is what drives
+                // Claim this anchor on the local device - this is what drives
                 // the My Anchors / Shared split, independently of server state.
                 settings.myAnchorIds.insert(newAnchor.id)
                 anchors.insert(newAnchor, at: 0)
                 tagCounts[newAnchor.id] = 0
                 showCreateSheet = false
                 // Brief delay so the sheet finishes dismissing before NavigationStack
-                // pushes AnchorHubView — avoids a blank-screen flash on iOS 17+.
+                // pushes AnchorHubView - avoids a blank-screen flash on iOS 17+.
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
                     selectAnchor(newAnchor)
                 }
@@ -277,11 +277,11 @@ struct AnchorDirectoryView: View {
             .environmentObject(tour)
         }
 
-        // Help sheet (legacy reference) — kept for future use
+        // Help sheet (legacy reference) - kept for future use
         .sheet(isPresented: $showHelpSheet) {
             HelpSheet(steps: HelpContent.anchorDirectory)
         }
-        // FTUE / Help — context-aware walkthrough
+        // FTUE / Help - context-aware walkthrough
         .sheet(isPresented: $showOnboarding) {
             OnboardingSheet(context: mode == .author ? .author : .operatorMode)
         }
@@ -300,7 +300,7 @@ struct AnchorDirectoryView: View {
                 // ── Chambers of this configuration ───────────────────────────
                 Section {
                     if configChambers.isEmpty {
-                        Text("No chambers assigned to this configuration yet — tap + to add one, or swipe another chamber to assign it.")
+                        Text("No chambers assigned to this configuration yet - tap + to add one, or swipe another chamber to assign it.")
                             .font(.subheadline).foregroundStyle(.secondary)
                             .listRowBackground(Color.clear)
                     } else {
@@ -341,7 +341,7 @@ struct AnchorDirectoryView: View {
                 // ── My Anchors ──────────────────────────────────────────────────
                 Section {
                     if myAnchors.isEmpty {
-                        Text("No anchors yet — tap + to create one")
+                        Text("No anchors yet - tap + to create one")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                             .listRowBackground(Color.clear)
@@ -410,7 +410,7 @@ struct AnchorDirectoryView: View {
                 } label: {
                     Label("Delete", systemImage: "trash")
                 }
-                // U3: template copy — same guides/model kit on a new QR
+                // U3: template copy - same guides/model kit on a new QR
                 Button {
                     duplicateName   = "\(anchor.assetId) copy"
                     anchorToDuplicate = anchor
@@ -567,7 +567,7 @@ struct AnchorDirectoryView: View {
     }
 
     private func selectAnchor(_ anchor: Anchor) {
-        // Phase 3: navigate to AnchorHubView — hub owns tag loading and QR scan gate.
+        // Phase 3: navigate to AnchorHubView - hub owns tag loading and QR scan gate.
         // Pre-cache the encryption key if available (Keychain → SIB payload).
         if let kbKey = AnchorEncryption.loadExistingKey(anchorId: anchor.id) {
             appState.anchorEncryptionKey = kbKey
@@ -614,7 +614,7 @@ private struct AnchorDirectoryRow: View {
     var body: some View {
         Button(action: onSelect) {
             HStack(spacing: 14) {
-                // Tag count badge — orange for Gemba Walk anchors, blue for QR anchors (incl. legacy nil)
+                // Tag count badge - orange for Gemba Walk anchors, blue for QR anchors (incl. legacy nil)
                 ZStack {
                     Circle()
                         .fill(accent.opacity(0.12))
@@ -696,7 +696,7 @@ struct CreateAnchorSheet: View {
     @State private var isCreating = false
     @FocusState private var nameFocused: Bool
     @State private var createError: String? = nil
-    /// Phase 2: anchor type — QR (default) or Loc-Tag (Gemba walk, no QR required)
+    /// Phase 2: anchor type - QR (default) or Loc-Tag (Gemba walk, no QR required)
     @State private var selectedAnchorType: AnchorType = .qr
     // B2: how AR sessions find this chamber. 'worldMap' default; 'object'
     // means the author scans the chamber's shape right after creating it.
@@ -765,7 +765,7 @@ struct CreateAnchorSheet: View {
                          ? "A QR code is printed and mounted on the chamber. This chamber will be assigned to \(settings.chamberConfigLabel)."
                          : "A QR code is printed and mounted at the inspection point. AR sessions begin by scanning it.")
                 case .locTag:
-                    Text("Tap any surface in AR to place issue tags. No QR code needed — the space itself is the anchor.")
+                    Text("Tap any surface in AR to place issue tags. No QR code needed - the space itself is the anchor.")
                 case .loto:
                     Text("One anchor per control panel. A QR code is printed and mounted on the panel; Safe Off and LOTO points are placed against its world map.")
                 case .lab:
@@ -786,12 +786,12 @@ struct CreateAnchorSheet: View {
                     Text("How should the app find this chamber?")
                 } footer: {
                     Text(originObject
-                         ? "You'll scan the chamber once from the Anchor Hub (walk around it, ~1–2 min). Sessions then recognise it by shape — the QR stays the key, the world map is the fallback. Best for textured equipment; poor on flat or shiny panels."
+                         ? "You'll scan the chamber once from the Anchor Hub (walk around it, ~1–2 min). Sessions then recognise it by shape - the QR stays the key, the world map is the fallback. Best for textured equipment; poor on flat or shiny panels."
                          : "The first Author scan seals a world map of the chamber; later sessions match it. The QR is the key and a drift check. Works everywhere; needs a similar viewpoint to match.")
                 }
             }
 
-            // ── Name — the one thing the author must type; make it unmissable ──
+            // ── Name - the one thing the author must type; make it unmissable ──
             Section {
                 HStack(spacing: 10) {
                     Image(systemName: "mappin.and.ellipse")
@@ -814,8 +814,8 @@ struct CreateAnchorSheet: View {
                 .padding(.horizontal, 14).padding(.vertical, 12)
                 // The box is drawn entirely on the content, INSIDE the row, and
                 // the row itself draws nothing (clear background, zero insets,
-                // no separator). The list's own cell shape — which has a
-                // different corner radius and clipped the earlier stroke — is
+                // no separator). The list's own cell shape - which has a
+                // different corner radius and clipped the earlier stroke - is
                 // no longer part of the picture. The 20-pt outer padding
                 // matches the inset-grouped margin of the neighbouring rows.
                 .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
@@ -836,7 +836,7 @@ struct CreateAnchorSheet: View {
                 Text("Identifies the physical location this anchor covers. Type it here, then tap Continue.")
             }
 
-            // ── Anchor ID (QR-flow types — advanced option) ─────────────────────
+            // ── Anchor ID (QR-flow types - advanced option) ─────────────────────
             if selectedAnchorType != .locTag {
                 Section {
                     TextField("Leave blank to auto-generate", text: $anchorId)
@@ -1007,7 +1007,7 @@ struct CreateAnchorSheet: View {
                 )
                 anchor = try await client.createAnchor(req)
                 isCreating = false
-                // Skip step 2 — go directly to hub
+                // Skip step 2 - go directly to hub
                 dismiss()
                 onCreated(anchor)
 
@@ -1015,8 +1015,8 @@ struct CreateAnchorSheet: View {
                 // ── QR-flow anchor (QR + iLOTO) ──────────────────────────────
                 // Generate the anchor ID client-side so the encryption key can be
                 // derived before the SIB call. Physical QR embeds this key from day one.
-                // iLOTO anchors ride this exact flow — a control panel is a fixed,
-                // QR-labelled asset — differing only in the stamped anchorType,
+                // iLOTO anchors ride this exact flow - a control panel is a fixed,
+                // QR-labelled asset - differing only in the stamped anchorType,
                 // which routes them to the iLOTO hub.
                 let encKey = AnchorEncryption.getOrCreateKey(for: resolvedId)
                 let keyB64 = AnchorEncryption.base64(for: encKey)
@@ -1030,7 +1030,7 @@ struct CreateAnchorSheet: View {
                     id:            resolvedId,
                     assetId:       assetId.trimmingCharacters(in: .whitespaces),
                     encryptionKey: keyB64,
-                    qrSizeCm:      10.0,     // canonical size — stored in SIB, never changes
+                    qrSizeCm:      10.0,     // canonical size - stored in SIB, never changes
                     anchorType:    selectedAnchorType == .loto ? .loto : nil,
                     createdBy:     settings.authorName,
                     configId:      cfg,
@@ -1100,7 +1100,7 @@ extension HelpContent {
         HelpStep(icon: "plus.circle", title: "Create a New Anchor",
                  detail: "Authors tap + to create an anchor. Give it an asset ID matching the physical equipment. A unique QR code with an embedded encryption key is generated immediately."),
         HelpStep(icon: "qrcode.viewfinder", title: "QR Scan at Session Start",
-                 detail: "Tapping 'Enter AR Session' from the Anchor Hub always requires a QR scan first. This locks the 3D origin for the session — both Author and Operator modes use the same gate."),
+                 detail: "Tapping 'Enter AR Session' from the Anchor Hub always requires a QR scan first. This locks the 3D origin for the session - both Author and Operator modes use the same gate."),
         HelpStep(icon: "globe", title: "Web Portal",
                  detail: "Tap 'Anchor Directory Portal' to open the browser-based view on your Render server."),
     ]

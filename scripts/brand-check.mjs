@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// brand-check.mjs — the design system is self-enforcing:  npm run brand:check
+// brand-check.mjs - the design system is self-enforcing:  npm run brand:check
 //
 // Scans the GOVERNED files (pages that have adopted sib/portal/brand/) and
 // fails on anything that would drift them back to a generic look:
@@ -58,4 +58,4 @@ tok.forEach((l, i) => {
 });
 
 if (findings) { console.log(`\n✗ brand-check: ${findings} finding(s)`); process.exit(1); }
-console.log(`✓ brand-check: ${GOVERNED.length} governed file(s) + tokens — no drift`);
+console.log(`✓ brand-check: ${GOVERNED.length} governed file(s) + tokens - no drift`);

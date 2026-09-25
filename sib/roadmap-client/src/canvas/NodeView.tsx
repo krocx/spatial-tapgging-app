@@ -1,4 +1,4 @@
-// NodeView.tsx — one mind-map node: SIB-layer coloring, status badge,
+// NodeView.tsx - one mind-map node: SIB-layer coloring, status badge,
 // milestone diamond, notes indicator, drag-to-move (moves the whole selection),
 // connection handle, inline text editing. Long-press edits on touch.
 
@@ -20,10 +20,10 @@ interface Props {
   hiddenCount?: number;
 }
 
-/** Shape body for the node — one path per shape from shapePathD (geometry.ts),
+/** Shape body for the node - one path per shape from shapePathD (geometry.ts),
  *  the same source the SVG export draws from, so canvas and export agree.
  *  `h` is the content-derived card height (nodeHeight), not the constant.
- *  Cards are SOLID-FILLED in the layer's dark fill color (NODE_FILL_COLORS) —
+ *  Cards are SOLID-FILLED in the layer's dark fill color (NODE_FILL_COLORS) -
  *  see the doctrine note in colors.ts. */
 function ShapeOutline({ shape, h, fill, stroke, strokeWidth, filter }: {
   shape: MindmapNode['shape']; h: number; fill: string; stroke: string; strokeWidth: number; filter: string;
@@ -61,7 +61,7 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
 
   const color = NODE_COLORS[node.type] ?? NODE_COLORS.generic;
   const fill = NODE_FILL_COLORS[node.type] ?? NODE_FILL_COLORS.generic;
-  // Content-derived card height — see geometry.ts. Everything positioned
+  // Content-derived card height - see geometry.ts. Everything positioned
   // against the bottom edge uses `h`, not NODE_H.
   const h = nodeHeight(node);
 
@@ -149,7 +149,7 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
   // Server-derived step order (procedure maps only). Deriving it here as well
   // would let the number on the card drift from the number in the guide.
   const stepNumber = useStore(s => s.procedure?.order?.[node.id]);
-  // Step content glyphs — attached voice / image / model, so an authored step
+  // Step content glyphs - attached voice / image / model, so an authored step
   // is distinguishable from a bare one at a glance.
   const stepMeta = node.metadata?.step as
     { ttsText?: string; imageFile?: string; modelId?: string; models?: unknown[] } | undefined;
@@ -179,7 +179,7 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
       onPointerCancel={onPointerUp}
       onDoubleClick={e => { e.stopPropagation(); setEditing(node.id); }}
     >
-      {/* Native tooltip with the full title — only when the label truncated
+      {/* Native tooltip with the full title - only when the label truncated
           (>4 wrapped lines), and on the root g because the label itself has
           pointerEvents="none". */}
       {labelTruncated && <title>{node.text}</title>}
@@ -198,7 +198,7 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
           : selected ? 'drop-shadow(0 0 8px rgba(147,197,253,.65))' : 'drop-shadow(0 2px 5px rgba(0,0,0,.25))'}
       />
 
-      {/* Icon — left of the text, sized up from 0.58 after field feedback that
+      {/* Icon - left of the text, sized up from 0.58 after field feedback that
           it was unreadable at normal zoom */}
       {node.icon && ICON_PATHS[node.icon] && (
         <g transform={`translate(${node.shape === 'diamond' ? NODE_W / 2 - 9 : 10} ${node.shape === 'diamond' ? h - 24 : h / 2 - 9}) scale(0.75)`} pointerEvents="none">
@@ -206,7 +206,7 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
         </g>
       )}
 
-      {/* Collapse chevron — bottom edge, only when there are directed children */}
+      {/* Collapse chevron - bottom edge, only when there are directed children */}
       {collapsible && (
         <g
           transform={`translate(${NODE_W / 2} ${h + (node.shape === 'diamond' ? 14 : 8)})`}
@@ -231,7 +231,7 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
         </g>
       )}
 
-      {/* Link — opens in a new tab */}
+      {/* Link - opens in a new tab */}
       {node.link && (
         <g
           transform={`translate(${NODE_W - (node.status ? 26 : 12)} 10)`}
@@ -245,7 +245,7 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
         </g>
       )}
 
-      {/* Status badge — top-right. White ring, NOT the card fill: the dot's
+      {/* Status badge - top-right. White ring, NOT the card fill: the dot's
           own color can match the fill (done-green on a semantic card), so the
           ring is what keeps it legible on every fill. */}
       {node.status && (
@@ -255,7 +255,7 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
         </circle>
       )}
 
-      {/* Step number on a procedure map — DERIVED from the graph by the server,
+      {/* Step number on a procedure map - DERIVED from the graph by the server,
           never typed. Absent means the step is not reachable from the start. */}
       {stepNumber !== undefined && (
         <g transform="translate(-9 -9)" pointerEvents="none">
@@ -266,10 +266,10 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
         </g>
       )}
 
-      {/* Step content glyphs — voice / image / model, on a white pill riding
+      {/* Step content glyphs - voice / image / model, on a white pill riding
           the bottom edge. The pill matters on the night canvas: bare glyph
           text below the card sat on the dark background, tiny AND low-contrast
-          — the exact combination users reported as "icons too small to see".
+          - the exact combination users reported as "icons too small to see".
           Shifts left when a collapse chevron shares the bottom edge. */}
       {stepGlyphs.length > 0 && (() => {
         const slot = 20;
@@ -298,7 +298,7 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
         );
       })()}
 
-      {/* Issue bubble — top-right, riding the corner like a notification
+      {/* Issue bubble - top-right, riding the corner like a notification
           badge. Red when any error (blocks Send to guide library), amber for
           warnings only. Native tooltip lists every message; the drawer in
           ProcedureBar remains the full list. */}
@@ -319,7 +319,7 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
         );
       })()}
 
-      {/* Milestone diamond — floats above the top-left corner. Ringed in the
+      {/* Milestone diamond - floats above the top-left corner. Ringed in the
           card fill so it separates from the card on one side and gold stays
           gold against both canvas themes on the other. */}
       {node.milestone && (
@@ -328,7 +328,7 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
         </path>
       )}
 
-      {/* Review verdict — top-left inside the node, on a white chip so the
+      {/* Review verdict - top-left inside the node, on a white chip so the
           verdict color survives every card fill (red-on-blue etc. is mud). */}
       {node.review && (
         <g transform="translate(14 11)" pointerEvents="none">
@@ -341,7 +341,7 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
         </g>
       )}
 
-      {/* Comment count — bottom-left bubble */}
+      {/* Comment count - bottom-left bubble */}
       {(node.comments?.length ?? 0) > 0 && (
         <g transform={`translate(12 ${h - 9})`} pointerEvents="none">
           <rect x={-7} y={-8} width={20} height={13} rx={6.5} fill="#eef2f7" stroke="#cbd5e1" strokeWidth={0.8} />
@@ -351,7 +351,7 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
         </g>
       )}
 
-      {/* Notes indicator — bottom-right corner */}
+      {/* Notes indicator - bottom-right corner */}
       {node.notes && (
         <g transform={`translate(${NODE_W - 16} ${h - 14})`} opacity={0.75} pointerEvents="none">
           <rect width={9} height={10} rx={1.5} fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth={1.2} />
@@ -366,11 +366,11 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
             autoFocus
             className="node-editor"
             defaultValue={node.text}
-            // Caret at the end — the text reads normally; nothing looks "all
+            // Caret at the end - the text reads normally; nothing looks "all
             // selected". (Select-all on open was mistaken for a stuck highlight.)
             onFocus={e => { const n = e.target.value.length; e.target.setSelectionRange(n, n); }}
             onChange={e => {
-              // Autosave while typing (debounced) — no Enter required. The
+              // Autosave while typing (debounced) - no Enter required. The
               // editor stays open; blur/Enter merely close it. Matches how
               // people expect canvas tools to behave.
               const value = e.target.value;
@@ -411,7 +411,7 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
         );
       })()}
 
-      {/* Connection handle — right edge ring (auto endpoints, legacy flow) */}
+      {/* Connection handle - right edge ring (auto endpoints, legacy flow) */}
       <circle
         className="connect-handle"
         cx={NODE_W} cy={h / 2} r={7}
@@ -420,7 +420,7 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
         onPointerDown={startConnection}
       />
 
-      {/* Anchor ports — N/E/S/W points ON the shape outline. Dragging from
+      {/* Anchor ports - N/E/S/W points ON the shape outline. Dragging from
           one pins the edge's source side; dropping on one pins the target
           side. Shown on hover/selection, and always while a connection is
           being dragged (they are the drop targets). */}

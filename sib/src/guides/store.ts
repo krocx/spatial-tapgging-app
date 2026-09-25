@@ -1,4 +1,4 @@
-// store.ts — persistence and media helpers for Guides and GuideSteps.
+// store.ts - persistence and media helpers for Guides and GuideSteps.
 //
 // Extracted from routes/guides.ts so the ingestion service and the route layer
 // can share them without a circular import. routes/guides.ts re-exports
@@ -41,7 +41,7 @@ export function writeStepImageBuffer(guideId: string, stepId: string, buf: Buffe
 export function deleteStepImage(filename: string): void {
   try {
     fs.unlinkSync(path.join(STEP_IMG_DIR, filename));
-  } catch { /* not present — ignore */ }
+  } catch { /* not present - ignore */ }
 }
 
 /**

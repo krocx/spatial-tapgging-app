@@ -1,4 +1,4 @@
-// guide-session.sse.ts — Live guide session state stream (AI readiness, Phase 2 Step 1)
+// guide-session.sse.ts - Live guide session state stream (AI readiness, Phase 2 Step 1)
 //
 // Manages in-flight LiveGuideSession records and fans real-time step events out
 // to SSE observers (AI agents, dashboards) via Server-Sent Events.
@@ -100,7 +100,7 @@ export function openLiveSession(req: OpenLiveSessionRequest): LiveGuideSession {
   sessions.set(id, session);
   hintQueues.set(id, []);
   retryCounters.set(id, 0);
-  console.log(`[live-session] Opened ${id} — guide "${req.guideName}" by ${req.operatorName}`);
+  console.log(`[live-session] Opened ${id} - guide "${req.guideName}" by ${req.operatorName}`);
   return session;
 }
 
@@ -220,7 +220,7 @@ export function closeLiveSession(liveSessionId: string, linkedSessionId: string)
   session.events.push(event);
   broadcastToSubscribers(liveSessionId, event);
 
-  // Drain all SSE connections for this session — it's done.
+  // Drain all SSE connections for this session - it's done.
   const subs = subscribers.get(liveSessionId);
   if (subs) {
     for (const res of subs) {
@@ -243,7 +243,7 @@ export function closeLiveSession(liveSessionId: string, linkedSessionId: string)
 /**
  * Look up a live session by id. Returns undefined if not found.
  */
-/** Open (not yet submitted) live runs — for /stats and the Compass status dot. */
+/** Open (not yet submitted) live runs - for /stats and the Compass status dot. */
 export function liveRunCount(): number {
   let n = 0;
   for (const s of sessions.values()) if (!s.closedAt) n++;
@@ -330,7 +330,7 @@ function maybeGenerateHint(
 
   if (!adapter.shouldIntervene(ctx)) return;
 
-  // Run async — do not await; we never want this to slow down event pushes.
+  // Run async - do not await; we never want this to slow down event pushes.
   adapter.generateHint(ctx).then((hint) => {
     if (!hint) return;
     const queue = hintQueues.get(liveSessionId);
@@ -366,13 +366,13 @@ export function evaluateSignals(liveSessionId: string): void {
   const baseline = guideBaselines(session.guideId).steps.find(b => b.stepId === visit.stepId);
   const elapsedSec = Math.max(0, (Date.now() - Date.parse(visit.enteredAt)) / 1000);
   const mode = guideStore.findById(session.guideId)?.ciMode ?? 'normal';
-  // C3: signals retired on this step (low effectiveness / muted) never fire — except in demo mode.
+  // C3: signals retired on this step (low effectiveness / muted) never fire - except in demo mode.
   const retired = mode === 'demo' ? new Set<string>() : retiredSignals(session.guideId, visit.stepId);
   const signals = detectSignals({ visit, elapsedSec, baseline, step, alreadyFired: fired, mode }).filter(s => !retired.has(s.kind));
   if (!signals.length) return;
   for (const s of signals) fired.add(s.kind);
 
-  // Part names the step is about — display names from the model's extras are
+  // Part names the step is about - display names from the model's extras are
   // not stored server-side; fall back to the node names without the prefix.
   const partNames = (step.nodes ?? []).map(n => n.label ?? n.node.replace(/^cmp:/, '').replace(/_/g, ' ')).filter((v, i, a) => a.indexOf(v) === i);
 

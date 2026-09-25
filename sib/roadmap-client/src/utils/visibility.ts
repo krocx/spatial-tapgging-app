@@ -1,4 +1,4 @@
-// visibility.ts — collapsible-branch engine (pure).
+// visibility.ts - collapsible-branch engine (pure).
 //
 // Fixpoint rule: a node is HIDDEN iff it has at least one incoming directed
 // edge AND every directed parent is collapsed-with-hidden-children or itself

@@ -1,4 +1,4 @@
-// AppLog.swift — QA logging: the phone's log lines, shipped to SIB.
+// AppLog.swift - QA logging: the phone's log lines, shipped to SIB.
 //
 // A work iPhone can't hand over its console, so every line that matters is
 // also queued here and POSTed to `/logs` in small batches (every 5 s, or
@@ -87,7 +87,7 @@ final class AppLog {
         shared.log(.error, module, msg, c)
     }
 
-    /// QA Mode — debug lines are sent only while this is on. Persisted per
+    /// QA Mode - debug lines are sent only while this is on. Persisted per
     /// device with an expiry so a forgotten toggle turns itself off.
     static var qaMode: Bool {
         get {

@@ -8,9 +8,9 @@ depends: [loto-event-log]
 terms: [LOTO, Certification]
 spec: ILOTO.md
 api: |
-  GET /loto/quiz — question bank, answers stripped (app · API key)
-  POST /loto/quiz/submit — grade attempt, issue certification on pass (app · API key)
-  GET /loto/certifications — certification register (app, portal · API key)
+  GET /loto/quiz - question bank, answers stripped (app · API key)
+  POST /loto/quiz/submit - grade attempt, issue certification on pass (app · API key)
+  GET /loto/certifications - certification register (app, portal · API key)
 wireframe: iloto
 arch: |
   sequenceDiagram
@@ -28,7 +28,7 @@ arch: |
     Note over C: Portal edits the bank via /loto/quiz/admin - issued certs untouched
 ---
 A seeded 16-question OSHA 1910.147 bank, graded server-side (12/16 to pass), with
-missed questions reviewed against the correct answer and explanation — the
+missed questions reviewed against the correct answer and explanation - the
 explanations are the training. Passing issues an expiring certification that gates
 apply and remove; the portal edits the question bank with atomic JSON/CSV import, and
 editing never touches certifications already issued.

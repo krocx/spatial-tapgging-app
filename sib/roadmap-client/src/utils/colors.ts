@@ -1,16 +1,16 @@
-// colors.ts — SIB layer palette. Single source of truth for node styling.
+// colors.ts - SIB layer palette. Single source of truth for node styling.
 import type { MindmapNodeType, MindmapNodeStatus } from '@spatial/shared';
 
 export const NODE_COLORS: Record<MindmapNodeType, string> = {
-  tag: '#2f6fed',        // spatial layer — blue
-  perception: '#8b5cf6', // perception layer — purple
-  semantic: '#16a34a',   // semantic layer — green
-  reasoning: '#f59e0b',  // reasoning layer — orange
-  generic: '#64748b',    // generic — grey
+  tag: '#2f6fed',        // spatial layer - blue
+  perception: '#8b5cf6', // perception layer - purple
+  semantic: '#16a34a',   // semantic layer - green
+  reasoning: '#f59e0b',  // reasoning layer - orange
+  generic: '#64748b',    // generic - grey
 };
 
 /**
- * Card FILL palette — darkened variants of NODE_COLORS tuned so WHITE text
+ * Card FILL palette - darkened variants of NODE_COLORS tuned so WHITE text
  * passes WCAG AA (≥4.5:1) on every fill. Nodes are solid-filled (2026.4.45);
  * NODE_COLORS above stays the bright palette for edges, arrows, legends and
  * pickers.

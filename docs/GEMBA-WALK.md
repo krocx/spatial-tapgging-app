@@ -1,4 +1,4 @@
-# Gemba Walk — reference-list findings (2026.4.46)
+# Gemba Walk - reference-list findings (2026.4.46)
 
 > Proprietary & Confidential · Applied Materials · AppliedX
 
@@ -14,10 +14,10 @@ the slices as they land.
 | **Capture flow (iOS)** | Tap surface → Focus Area → Question → photos with captions → category + rating. Findings as collapsible floating panels. | **shipped** |
 | **Walk session** | Project ID, Org, BU, Area, Location header; session summary; portal report + xlsx. | **shipped** |
 | **Markup** | Draw on the captured photo (PencilKit); anchored 3D strokes later. | **shipped** |
-| **Multi-auditor** | Presence on a walk — several auditors, findings appear live for each other. | **shipped** |
+| **Multi-auditor** | Presence on a walk - several auditors, findings appear live for each other. | **shipped** |
 | **Phone-down walking** | Live Activity / Dynamic Island: next finding + distance + haptics; raise to relocalize. | **shipped** (needs widget target) |
 
-Walks never depend on a chamber or QR code — auditors walk and tag anywhere,
+Walks never depend on a chamber or QR code - auditors walk and tag anywhere,
 exactly as today.
 
 ---
@@ -27,18 +27,18 @@ exactly as today.
 ### What it is
 Three lists, served in one call:
 
-* **Focus areas** — numbered groups as auditors know them (`14 — 6S Audits`).
-* **Questions** — pre-defined prompts under a focus area, each with a code
-  (`P5142 — Concept Understanding`: *"Ask people to explain the 6S program to
+* **Focus areas** - numbered groups as auditors know them (`14 - 6S Audits`).
+* **Questions** - pre-defined prompts under a focus area, each with a code
+  (`P5142 - Concept Understanding`: *"Ask people to explain the 6S program to
   you in their own words…"*).
-* **Finding categories** — `Strength`, `OFI`, `NC` — and **risk ratings**
+* **Finding categories** - `Strength`, `OFI`, `NC` - and **risk ratings**
   `0 No risk · 1 Minor · 2 Medium · 3 High` (fixed vocabulary).
 
 Auditors *pick*; they never type a category. Findings store the question
 **code** and title they were logged against, so editing the library later
 never changes what was recorded (the same doctrine as the LOTO quiz bank vs
 issued certifications). Prefer **inactive** over delete when an item might
-come back — inactive items leave the picker but stay for history.
+come back - inactive items leave the picker but stay for history.
 
 ### Where it lives
 * Portal → **GembaWalks → 📚 Audit Library**. Add / edit / deactivate / delete
@@ -47,7 +47,7 @@ come back — inactive items leave the picker but stay for history.
 * Data: `SIB_DATA_DIR/gemba-focus-areas.json`, `gemba-questions.json`.
   Included in `/admin/backup`.
 * A fresh server seeds the 15 focus areas from the PowerApps tool (1 Quality
-  policy awareness … 15 Shipment Release and Controls) with no questions —
+  policy awareness … 15 Shipment Release and Controls) with no questions -
   questions come from the import. On an already-seeded server, startup adds
   any missing seed area by code and removes the four demo 6S questions from
   the first seed if nobody edited them. Titles and imported questions are
@@ -71,9 +71,9 @@ focus-area columns adds the area on its own. JSON in the shape of **⬇ Export**
 is also accepted.
 
 Modes:
-* **Append / update by code** (default, safe) — rows whose code already exists
+* **Append / update by code** (default, safe) - rows whose code already exists
   update that row; new codes are added; nothing is removed.
-* **Replace whole library** — wipes both lists first. Use for a clean
+* **Replace whole library** - wipes both lists first. Use for a clean
   re-load; findings keep their codes regardless.
 
 ### API
@@ -91,7 +91,7 @@ DELETE /gemba/library/questions/:id
 ```
 Codes are trimmed and upper-cased on the way in (`p5142` → `P5142`) and must
 be unique within their list. `version` is the newest `updatedAt` across both
-lists — clients cache the library by it.
+lists - clients cache the library by it.
 
 Code: `sib/src/gemba/library-core.ts` (validation, import plan, seed),
 `sib/src/routes/gemba-library.ts`, portal `gembaShowSub` / `loadGembaLibrary`
@@ -108,7 +108,7 @@ legacy fields:
 | Field | Source | Notes |
 |---|---|---|
 | `focusAreaCode`, `focusAreaTitle` | snapshot from the library | what the auditor chose |
-| `questionCode`, `questionTitle`, `questionText` | snapshot | title defaults to `CODE — Title` when the client sends none |
+| `questionCode`, `questionTitle`, `questionText` | snapshot | title defaults to `CODE - Title` when the client sends none |
 | `findingCategory` | `STRENGTH` / `OFI` / `NC` | |
 | `riskRating` | `0`–`3`, optional | |
 | `referenceSource` | `library` \| `custom` | `custom` = typed entry; `focusAreaTitle` / `questionText` hold the text, **no codes** |
@@ -119,8 +119,8 @@ Legacy findings (defect category + one photo) are untouched; the app's
 `allPhotos` accessor folds the single reference image into the same list.
 
 **Custom (free-text) entries.** When a question is not in the library the
-auditor types it. The finding keeps the *same* shape — a focus area (optional),
-the question / observation, the same Category (required) and Preliminary risk —
+auditor types it. The finding keeps the *same* shape - a focus area (optional),
+the question / observation, the same Category (required) and Preliminary risk -
 but `referenceSource: 'custom'` and no codes, so a report can never present it
 as a library item. Portal rows and the walk `.xlsx` (`Source` column:
 `library` / `custom` / `legacy`) make the distinction visible.
@@ -143,19 +143,19 @@ Code: `sib/src/gemba/finding-core.ts`, `routes/loc-tags.ts`; iOS
 
 **Author (log a finding).** Tap a surface → *Log Finding* sheet:
 
-1. **Focus Area** — searchable list (code, title, question count). The last
+1. **Focus Area** - searchable list (code, title, question count). The last
    chosen area is pre-selected on the next finding.
-2. **Question** — the area's questions with code, title and the prompt text;
+2. **Question** - the area's questions with code, title and the prompt text;
    the chosen prompt is shown under the row.
-3. **Category** — Strength / OFI / NC (segmented, required) and **Preliminary
+3. **Category** - Strength / OFI / NC (segmented, required) and **Preliminary
    risk** 0–3 (optional). Notes are free text.
-4. **Photos** — up to six; camera or library; each row has a caption
+4. **Photos** - up to six; camera or library; each row has a caption
    ("Area identifier · issue description"); drag to reorder; first photo is the
    thumbnail everywhere.
 
-The title is derived (`P5142 — Concept Understanding`). The **Custom entry**
+The title is derived (`P5142 - Concept Understanding`). The **Custom entry**
 toggle at the bottom swaps the two pickers for a typed focus area and
-question / observation — Category, risk, notes and photos stay identical, and
+question / observation - Category, risk, notes and photos stay identical, and
 the sheet is badged *Free text* so the auditor knows how it will be reported.
 It is also the automatic fallback when the server has no library yet.
 
@@ -164,7 +164,7 @@ its pin (`FindingPanel`): a pill (stop #, title, category chip, ring coloured by
 category) that expands on tap into a card (code, question, category + risk,
 notes, photo count, *Open ›*). Tapping the card collapses it; the *Open ›* band
 opens the peek (author) or completion (operator) sheet; tapping empty space
-collapses. Surface is a warm light "frosted" card with dark text — orange stays
+collapses. Surface is a warm light "frosted" card with dark text - orange stays
 the accent (badge, ring, chips, Open button). Operators see the
 non-target panels dimmed while navigating and may open any finding directly.
 
@@ -185,28 +185,28 @@ refreshed at walk start and when the sheet opens, 60 s debounce).
 the kiosk identity, not editable), Project ID, and Organization / BU / Area /
 Location pickers fed by the library's pick lists (**Other…** reveals a text
 field; last values are remembered per device). **Every** open walk on the
-space is listed first — the auditor's own as *Continue*, a colleague's as
-*Join* (see Walk together) — so a resumed session is never invisible because a different
+space is listed first - the auditor's own as *Continue*, a colleague's as
+*Join* (see Walk together) - so a resumed session is never invisible because a different
 person opened it. *Begin* always creates a walk: every header field is
 optional, so there is no "tag without a header" path any more. The only way to
 log without a walk is the offline fallback shown after a failed *Begin*; those
 findings (and any from older builds) are counted on the start sheet and, once a
-walk begins, offered for adoption — *Include N earlier findings in this walk?*
+walk begins, offered for adoption - *Include N earlier findings in this walk?*
 → `POST /gemba/walks/:id/adopt`. Every finding logged during the walk carries
 `walkId`. **Finish** → *Submit Walk & Save Map* uploads the
-world map, submits the walk and shows the **Session Summary** — header, counts
+world map, submits the walk and shows the **Session Summary** - header, counts
 by Strength / OFI / NC, max risk, photos, and the findings log.
 
 **In the portal.** GembaWalks → **🚶 Walk Sessions**: one row per walk (date,
 auditor + employee id, project, org/BU, area · location, space, findings with
 category chips and max risk, status). Filters: free text, auditor, status,
-and a **From / To** date window (default last 90 days, *All time* clears it —
+and a **From / To** date window (default last 90 days, *All time* clears it -
 the window is applied server-side so the list stays small); 50 rows a page
 with *Show more*. Expand for the findings with question text, notes and
 captioned photos. Submitted walks can be **reopened** (admin) to fix the
 header; deleting a walk detaches its findings but keeps them.
 
-**Excel export** — per walk (row button), **⬇ .xlsx (N shown)** for exactly
+**Excel export** - per walk (row button), **⬇ .xlsx (N shown)** for exactly
 the filtered table (≤ 200 walks), or **⬇ .xlsx (all)**. One workbook, three
 sheets, header row frozen:
 
@@ -214,7 +214,7 @@ sheets, header row frozen:
 |---|---|---|
 | **Summary** | walk | header fields, space, started/ended, counts by Strength / OFI / NC / uncategorised, max risk, photo count, notes |
 | **Findings** | finding | walk header repeated, stop #, focus area, question code / text, source, category, risk, notes, photo + markup counts, then **Photo 1 … Photo 6 embedded side by side, each with its caption in the next column** (marked-up copy when one exists) |
-| **Photos** | photo | walk header, stop #, question, category, photo #, caption, marked up, captured at, image — filter by caption or markup |
+| **Photos** | photo | walk header, stop #, question, category, photo #, caption, marked up, captured at, image - filter by caption or markup |
 
 `(file missing)` marks a photo whose file is gone from disk. Built by
 `buildWorkbookXlsx` in `oms/xlsx-lite.ts` (dependency-free; any number of
@@ -229,9 +229,9 @@ GET    /gemba/walks?anchorId=&auditorId=&status=open|submitted&from=YYYY-MM-DD&t
 GET    /gemba/walks/:id                { walk, findings }
 PATCH  /gemba/walks/:id                header / notes (submitted walks: notes only)
 POST   /gemba/walks/:id/submit         { notes? }
-POST   /gemba/walks/:id/adopt          { locTagIds? } — attach header-less findings on the space (never moves one from another walk)
+POST   /gemba/walks/:id/adopt          { locTagIds? } - attach header-less findings on the space (never moves one from another walk)
 POST   /gemba/walks/:id/reopen         (admin)
-DELETE /gemba/walks/:id                (admin) — findings detached, not deleted
+DELETE /gemba/walks/:id                (admin) - findings detached, not deleted
 GET    /gemba/walks/export.xlsx?walkId=  |  ?walkIds=a,b,c (≤200)  |  ?all=true     → Summary · Findings · Photos
 PUT    /gemba/library/lists/:kind      { values: string[] }   kind ∈ organization | bu | area | location
 ```
@@ -245,12 +245,12 @@ Data: `gemba-walks.json`, `gemba-lists.json`. Code: `sib/src/gemba/walk-core.ts`
 
 While logging a finding, tap a photo thumbnail (or the orange pencil on a photo
 in the author's peek sheet) to open **Mark up photo**: a PencilKit canvas over
-the image — finger or Apple Pencil, orange / red / white / black, thin or thick,
+the image - finger or Apple Pencil, orange / red / white / black, thin or thick,
 undo, clear. *Done* flattens the strokes onto a full-resolution copy; the draft
 keeps the strokes so the markup can be re-edited before saving. On save, each
 marked photo is sent with `PUT /loc-tags/:id/photos/:file/markup` after the
 finding exists (a failed markup never loses the finding). The original photo is
-untouched — `path` and `markupPath` live side by side — and every consumer
+untouched - `path` and `markupPath` live side by side - and every consumer
 (panel card, sheets, portal strips, walk Excel) shows the marked-up copy when
 present. Anchored 3D strokes in AR remain a later phase.
 
@@ -260,7 +260,7 @@ present. Anchored 3D strokes in AR remain a later phase.
 
 Several auditors can walk one space at once. The presence system from AR OMS
 (`PresenceService` + `PresenceLayer`) runs on the walk with surface
-`gembaWalk`; poses are camera transforms in the world-map frame — on a fresh
+`gembaWalk`; poses are camera transforms in the world-map frame - on a fresh
 walk that is the author's own frame, after the map is uploaded everyone who
 relocalises shares it. Poses are withheld while a device is still relocalising
 so nobody is drawn in the wrong place. Colleagues appear as the usual lens /
@@ -284,7 +284,7 @@ green with a success haptic; lowering the phone (ARKit tracking limited/lost)
 switches to *Raise your phone to update* keeping the last distance; raising it
 re-localises against the world map and updates resume; finishing shows *Gemba
 walk complete* for five minutes. Honest limit: ARKit cannot track a covered
-camera — this is "phone down between findings", not continuous tracking.
+camera - this is "phone down between findings", not continuous tracking.
 
 Setup: one-time Widget Extension target (`ios-app/XCODE-SETUP.md` step 10).
 Code: `Shared/GembaWalkActivity.swift` (attributes, both targets),
@@ -297,36 +297,36 @@ Code: `Shared/GembaWalkActivity.swift` (attributes, both targets),
 
 **The constraint.** iOS suspends the camera and ARKit whenever the app leaves
 the foreground; nothing can track in the background. On return ARKit used to
-reset its world origin, so pins respawned in the wrong place with no warning —
+reset its world origin, so pins respawned in the wrong place with no warning -
 unacceptable for an auditor in a cleanroom.
 
 **What happens now**
 
-* **Background** — the Live Activity flips to *Open SpatialTagging to
+* **Background** - the Live Activity flips to *Open SpatialTagging to
   continue · next #4 · last 3.2 m*, greyed. No fake live distance.
-* **Kill / restart** — completed findings, the current stop and the walk
+* **Kill / restart** - completed findings, the current stop and the walk
   id are stored per space on the device (`WalkProgressStore`, 12 h). Re-opening
   the walk shows *Continuing at #4 · 3 of 7 done* and starts navigation there.
-* **Return to foreground** — `ARSessionManager` now answers
+* **Return to foreground** - `ARSessionManager` now answers
   `sessionShouldAttemptRelocalization` with `true`, so ARKit keeps the previous
   map and tries to relocalize into it. Every interruption end bumps
   `resumeCount`; the walk view shows the **Welcome back** checkpoint: blurred AR,
   the last known finding's own photo (or the walk's reference photo) as the
   landmark, *Stand where you saw #4 and point the phone at it*. When tracking
-  returns to normal the view un-blurs with one question over the pin —
+  returns to normal the view un-blurs with one question over the pin -
   **Is #4 where the pin shows?** *Yes, continue* / *No, re-align*. No answer in
   15 s, or *No* → the full world-map re-localization (reference photo + I'm
   Here) and navigation continues at the same stop. Nothing is trusted (no
   auto-arrival, no drift check) while the checkpoint is up.
-* **Authors** — the same checkpoint; taps are ignored until confirmed, so
+* **Authors** - the same checkpoint; taps are ignored until confirmed, so
   no finding is placed into a drifted frame. *No, re-align* uses the space's
   uploaded map when there is one; on a fresh walk without a map the checkpoint
   keeps waiting with the landmark photo (the previous session is the only frame).
-* **Drift check on arrival** — the first time an operator reaches a finding,
+* **Drift check on arrival** - the first time an operator reaches a finding,
   the live view is scored against the finding's photo(s):
   `POST /loc-tags/:id/compare { imageBase64 }` → `{ score, status }` (the step-
   validation comparator, threshold 0.40 because the operator stands roughly
-  where the photo was taken). `FAIL` → *This doesn't look like #4 — Re-align /
+  where the photo was taken). `FAIL` → *This doesn't look like #4 - Re-align /
   Looks right* with a warning haptic. Once per finding; reset by a re-align.
   Never stored, never logged.
 

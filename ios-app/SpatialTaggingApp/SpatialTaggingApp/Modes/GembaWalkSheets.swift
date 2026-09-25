@@ -1,20 +1,20 @@
-// GembaWalkSheets.swift — G2/G8 (2026.4.46): the two sheets that bracket a
+// GembaWalkSheets.swift - G2/G8 (2026.4.46): the two sheets that bracket a
 // Gemba walk.
 //
-//   GembaWalkStartSheet   — the header the PowerApps tool collected before
+//   GembaWalkStartSheet   - the header the PowerApps tool collected before
 //                           the first finding: auditor (kiosk identity, fixed),
 //                           Project ID, Organization, BU, Area, Location. Pick
 //                           lists come from the Audit Library; "Other…" allows
 //                           a typed value. Last values remembered per device.
-//                           Lists every open walk on the space — yours to
+//                           Lists every open walk on the space - yours to
 //                           continue, a colleague's to join (G7). Begin always
 //                           creates a walk (every header field is optional) so
 //                           no finding is ever logged without a session; the
 //                           only exit without one is the offline fallback.
-//   GembaWalkSummarySheet — what the PowerApps "Session Summary" showed, plus
+//   GembaWalkSummarySheet - what the PowerApps "Session Summary" showed, plus
 //                           counts by category, max risk and the findings list.
 //
-// Both are plain SwiftUI forms — nothing here touches AR.
+// Both are plain SwiftUI forms - nothing here touches AR.
 
 import SwiftUI
 
@@ -106,7 +106,7 @@ struct GembaWalkStartSheet: View {
                 } header: {
                     Text(openWalks.isEmpty ? "New walk" : "…or start a new walk")
                 } footer: {
-                    Text("Space: \(anchor.assetId). All header fields are optional — the walk is still recorded as a session. Walks are never tied to a chamber QR — tag anywhere.")
+                    Text("Space: \(anchor.assetId). All header fields are optional - the walk is still recorded as a session. Walks are never tied to a chamber QR - tag anywhere.")
                 }
 
                 Section("Where") {
@@ -119,7 +119,7 @@ struct GembaWalkStartSheet: View {
                 if let error {
                     Section {
                         Label(error, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red).font(.caption)
-                        Button("Continue offline — attach findings to a walk later") { onOffline() }
+                        Button("Continue offline - attach findings to a walk later") { onOffline() }
                             .font(.caption)
                     } footer: {
                         Text("Findings still save to the space. Next time a walk begins here they are offered for inclusion.")
@@ -137,7 +137,7 @@ struct GembaWalkStartSheet: View {
             .task {
                 projectId = lastProject; organization = lastOrg; bu = lastBU; area = lastArea; location = lastLocation
                 await store.refresh(settings: settings)
-                // Every open walk on the space — own first, then colleagues'.
+                // Every open walk on the space - own first, then colleagues'.
                 if let walks = try? await SIBClient(settings: settings).fetchGembaWalks(anchorId: anchor.id, status: .open) {
                     openWalks = walks.sorted { (isMine($0) ? 0 : 1, $1.startedAt) < (isMine($1) ? 0 : 1, $0.startedAt) }
                 }
@@ -194,7 +194,7 @@ struct ListPickerRow: View {
                 get: { value },
                 set: { v in if v == "__other" { custom = true; value = "" } else { value = v } }
             )) {
-                Text("—").tag("")
+                Text("-").tag("")
                 ForEach(options, id: \.self) { Text($0).tag($0) }
                 Text("Other…").tag("__other")
             }
@@ -259,7 +259,7 @@ struct GembaWalkSummarySheet: View {
                     }
                 }
                 Section {
-                    Text("Thank you — the walk is on SIB. Reviewers see it under Portal › GembaWalks › Walk Sessions.")
+                    Text("Thank you - the walk is on SIB. Reviewers see it under Portal › GembaWalks › Walk Sessions.")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
             }

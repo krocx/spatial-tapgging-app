@@ -1,4 +1,4 @@
-// signals.test.ts — C2: deviations from the learned baseline become hints;
+// signals.test.ts - C2: deviations from the learned baseline become hints;
 // no baseline (or a thin one) means the dwell/attention signals stay quiet.
 
 import { test } from 'node:test';
@@ -28,14 +28,14 @@ test('dwell fires past the p90 of a trusted baseline, once', () => {
   assert.deepEqual(again.map(s => s.kind), []);
 });
 
-test('floors: a thin or absent baseline still coaches — 3 wrong taps, attention under 20 %', () => {
+test('floors: a thin or absent baseline still coaches - 3 wrong taps, attention under 20 %', () => {
   const thin: StepBaseline = { ...baseline, sessions: 2 };
   const r = detectSignals({ visit: visit(obs({ onTargetRatio: 0.1, wrongPartTaps: 3 })), elapsedSec: 500, baseline: thin, step: step(), alreadyFired: new Set() });
   assert.deepEqual(r.map(s => s.kind).sort(), ['attention-off', 'wrong-part']);
   const noBase = detectSignals({ visit: visit(obs({ wrongPartTaps: 2 })), elapsedSec: 500, step: step(), alreadyFired: new Set() });
   assert.deepEqual(noBase, []);                          // 2 taps is under the floor of 3
   const dwellQuiet = detectSignals({ visit: visit(obs()), elapsedSec: 500, baseline: thin, step: step(), alreadyFired: new Set() });
-  assert.deepEqual(dwellQuiet, []);                      // dwell has no floor — it needs a trusted baseline
+  assert.deepEqual(dwellQuiet, []);                      // dwell has no floor - it needs a trusted baseline
 });
 
 test('baselines only tighten: a noisy p90 never raises the wrong-part bar above the floor; a clean one lowers it to 2', () => {
@@ -49,7 +49,7 @@ test('baselines only tighten: a noisy p90 never raises the wrong-part bar above 
   assert.deepEqual(one, []);                             // never below 2
 });
 
-test('demo mode: floors only — baselines ignored', () => {
+test('demo mode: floors only - baselines ignored', () => {
   const clean: StepBaseline = { ...baseline, wrongPartTaps: { p50: 0, p90: 0 } };
   const two = detectSignals({ visit: visit(obs({ wrongPartTaps: 2 })), elapsedSec: 10, baseline: clean, step: step(), alreadyFired: new Set(), mode: 'demo' });
   assert.deepEqual(two, []);

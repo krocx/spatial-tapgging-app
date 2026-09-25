@@ -1,5 +1,5 @@
 /**
- * map-merge tests — D (2026.4.46): the guide is the source of truth, the map
+ * map-merge tests - D (2026.4.46): the guide is the source of truth, the map
  * keeps its presentation. Add / change / delete / layout kept / annotations
  * kept / edge ids reused.
  */

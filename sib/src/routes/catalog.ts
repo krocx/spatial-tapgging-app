@@ -1,5 +1,5 @@
 /**
- * Feature Catalogue routes — the docs-as-data surface.
+ * Feature Catalogue routes - the docs-as-data surface.
  *
  * GET /catalog/data      → full JSON graph (areas, features, edges, trails,
  *                          glossary). This is also the AI-grounding endpoint:
@@ -7,7 +7,7 @@
  *                          this, never the markdown directly.
  *                          ?format=json (default). ?format=toon is the reserved
  *                          seam for a token-lean serialization of the same
- *                          derived graph — implemented when a real AI consumer
+ *                          derived graph - implemented when a real AI consumer
  *                          exists, so no second format is ever hand-maintained.
  * GET /catalog/doc/:id   → the deep-dive spec markdown for a feature id
  *                          (resolved from its frontmatter `spec` field).
@@ -27,7 +27,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /**
  * Deployments differ in cwd and layout (repo checkout vs Docker /app vs a
- * service launched from sib/) — same candidate-path pattern as /wireframe
+ * service launched from sib/) - same candidate-path pattern as /wireframe
  * and the roadmap glossary, first hit wins.
  */
 function resolveDocsDir(): string | null {
@@ -58,7 +58,7 @@ router.get('/', (_req, res) => {
   res.sendFile(path.join(__dirname, '../../portal/catalog.html'));
 });
 
-// GET /catalog/schema/:name — B1 (2026.4.46): JSON Schemas under docs/schema/
+// GET /catalog/schema/:name - B1 (2026.4.46): JSON Schemas under docs/schema/
 // (e.g. guide-bundle). Public: a schema describes shape, never content.
 router.get('/schema/:name', (req, res) => {
   const name = String(req.params.name).replace(/[^a-z0-9-]/gi, '');
@@ -75,27 +75,27 @@ router.get('/data', (req, res) => {
     // Reserved: TOON is a generated OUTPUT encoding of this same graph, never a
     // second authored source. Wire it up when the AI consumer that wants it exists.
     return res.status(501).json({
-      error: 'format=toon is reserved but not yet implemented — use format=json',
+      error: 'format=toon is reserved but not yet implemented - use format=json',
     });
   }
   if (format !== 'json') {
-    return res.status(400).json({ error: `Unknown format "${format}" — use json` });
+    return res.status(400).json({ error: `Unknown format "${format}" - use json` });
   }
   try {
     const cat = readCatalog();
     if (!cat) return res.status(404).json({ error: 'Catalogue not available on this deployment' });
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     // IP-sensitivity: restricted features are redacted for callers without
-    // the secondary key — node stays in the graph, substance stripped.
+    // the secondary key - node stays in the graph, substance stripped.
     if (!canViewRestricted(req)) {
       return res.json({ ...cat.data, features: cat.data.features.map(redactFeature) });
     }
     return res.json(cat.data);
   } catch (err) {
     if (err instanceof CatalogParseError) {
-      // A broken catalogue fails loudly with the offending file named —
+      // A broken catalogue fails loudly with the offending file named -
       // half a graph would hide exactly the drift this system exists to catch.
-      return res.status(500).json({ error: `Catalogue source invalid — ${err.message}` });
+      return res.status(500).json({ error: `Catalogue source invalid - ${err.message}` });
     }
     throw err;
   }
@@ -107,13 +107,13 @@ router.get('/doc/:id', (req, res) => {
   const feature = cat.data.features.find(f => f.id === req.params.id);
   if (!feature) return res.status(404).json({ error: `Unknown feature id "${req.params.id}"` });
   if (feature.sensitivity === 'restricted' && !canViewRestricted(req)) {
-    return res.status(403).json({ error: 'Restricted — this spec requires the secondary IP key (X-IP-Key)' });
+    return res.status(403).json({ error: 'Restricted - this spec requires the secondary IP key (X-IP-Key)' });
   }
 
   // spec paths are relative to docs/ ("../README.md" reaches the repo root
-  // README and nothing beyond it — resolved paths must stay inside the repo).
+  // README and nothing beyond it - resolved paths must stay inside the repo).
   // An optional #anchor selects one heading's section instead of the whole
-  // file ("../README.md#3d-model-library") — used by features whose source of
+  // file ("../README.md#3d-model-library") - used by features whose source of
   // truth is a README section rather than a dedicated deep-dive doc.
   const [specPath, anchor] = feature.spec.split('#');
   const repoRoot = path.resolve(cat.docsDir, '..');
@@ -125,7 +125,7 @@ router.get('/doc/:id', (req, res) => {
     return res.status(404).json({ error: `Spec file not found on this deployment: ${specPath}` });
   }
   const full = fs.readFileSync(resolved, 'utf8');
-  // Anchor miss falls back to the full document — a renamed heading should
+  // Anchor miss falls back to the full document - a renamed heading should
   // degrade to "too much spec", never to an error (the drift checker catches
   // the rename at CI time anyway).
   const markdown = anchor ? (extractSection(full, anchor) ?? full) : full;

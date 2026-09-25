@@ -1,4 +1,4 @@
-// AuthorModeView.swift — Phase 3
+// AuthorModeView.swift - Phase 3
 // Full-screen AR Author mode: tap on any detected surface to place a tag.
 //
 // Phase 3 entry contract:
@@ -6,13 +6,13 @@
 //   • appState.anchorNormalisedTransform is already set by QRScanGateView.
 //   • appState.anchorEncryptionKey is already set by QRScanGateView.
 //
-// No QR scanning happens inside Author mode — the session origin was locked at entry.
+// No QR scanning happens inside Author mode - the session origin was locked at entry.
 //
 // Screen mapping (wireframe v2):
-//   Screen 6  — AR placement (this view, normal state)
-//   Screen 7  — AddTagSheet (Train now / Save & train later)
-//   Screen 8  — Tag list sheet (compact dark sheet, Train → navigates)
-//   Screen 9  — Tag navigation in AR (pulsing target, distance pill, Start training)
+//   Screen 6  - AR placement (this view, normal state)
+//   Screen 7  - AddTagSheet (Train now / Save & train later)
+//   Screen 8  - Tag list sheet (compact dark sheet, Train → navigates)
+//   Screen 9  - Tag navigation in AR (pulsing target, distance pill, Start training)
 
 import SwiftUI
 import ARKit
@@ -38,7 +38,7 @@ struct AuthorModeView: View {
     // sheet's content closure could occasionally be built from a stale
     // pre-update snapshot the first time it ever presented in this view's
     // lifecycle (handleTap is invoked from a UIKit gesture callback outside
-    // SwiftUI's normal render cycle) — AddTagSheet would receive
+    // SwiftUI's normal render cycle) - AddTagSheet would receive
     // placement == nil and show "No surface detected" even though a valid
     // raycast hit had just been captured. Closing and tapping again worked
     // because the second presentation no longer raced. Driving the sheet
@@ -63,7 +63,7 @@ struct AuthorModeView: View {
 
     // ── Contextual in-AR hint ─────────────────────────────────────────────────
     /// Animated tap hint (ARTapCoach). F1b (2026.4.46): shown on an empty
-    /// anchor, and otherwise once per person (employee ID) — so a returning
+    /// anchor, and otherwise once per person (employee ID) - so a returning
     /// anchor still teaches a new author. Dismissed on first tap or after 8 s.
     @State private var showTapHint = true
     private var tapHintSeen: Bool {
@@ -85,7 +85,7 @@ struct AuthorModeView: View {
 
     // ── AR marker registry ────────────────────────────────────────────────────
     @State private var persistedNodes: [String: SCNNode] = [:]
-    // G3 (2026.4.46): focus mode — show only the tag being worked on (the one
+    // G3 (2026.4.46): focus mode - show only the tag being worked on (the one
     // just placed, being trained, or navigated to). Default ON, per person.
     @State private var focusCurrentOnly: Bool = FocusPref.load(screen: "inspectionAuthor")
     @State private var focusTagId: String? = nil
@@ -102,7 +102,7 @@ struct AuthorModeView: View {
     // with zero position data.
     @State private var pendingTrainAfterReanchor = false
     // Guards against showing the auto-reanchor banner more than once per
-    // appearance — the user can dismiss it and we shouldn't re-show
+    // appearance - the user can dismiss it and we shouldn't re-show
     // immediately on the next anchor refinement tick.
     @State private var autoReanchorPromptShown = false
 
@@ -134,7 +134,7 @@ struct AuthorModeView: View {
             ARContainerView(arManager: arManager, onTap: handleTap)
                 .ignoresSafeArea()
                 .onAppear {
-                    // Always (re)create the focus ring — it may have been cleaned up.
+                    // Always (re)create the focus ring - it may have been cleaned up.
                     if focusRing == nil {
                         focusRing = ARFocusRing(sceneView: arManager.sceneView)
                     }
@@ -142,7 +142,7 @@ struct AuthorModeView: View {
                     // ── Returning from training fullScreenCover ────────────────
                     // When captureTag was set, onDisappear kept the session alive
                     // and did NOT clear activeARSession.  persistedNodes is already
-                    // populated and the session is still running — nothing to do.
+                    // populated and the session is still running - nothing to do.
                     guard persistedNodes.isEmpty else {
                         arManager.disableQRScanning()
                         return
@@ -190,7 +190,7 @@ struct AuthorModeView: View {
                     // session (svHolder.sceneView.session = parentArManager.sceneView.session),
                     // and onAppear skips re-setup when persistedNodes is non-empty.
                     guard captureTag == nil else { return }
-                    // True navigation away from Author mode — release the session.
+                    // True navigation away from Author mode - release the session.
                     stopPresence()
                     arManager.pauseSession()
                     appState.activeARSession = nil
@@ -204,7 +204,7 @@ struct AuthorModeView: View {
                     appState.anchorNormalisedTransform = t
                     presenceLayer?.worldFromShared = t
                     presenceLayer?.update(presenceOthers)
-                    // Retry marker placement now that the anchor is ready — tags
+                    // Retry marker placement now that the anchor is ready - tags
                     // that only had anchor_rel_x/y/z (no legacy pos_x/y/z) are
                     // skipped by showExistingMarkers() until toWorldSpace() can
                     // resolve, which requires this transform. Without this retry,
@@ -224,9 +224,9 @@ struct AuthorModeView: View {
                 // possibly stale anchor pose.
                 .onChange(of: arManager.isInterrupted) { interrupted in
                     if interrupted {
-                        infoMsg = "Session interrupted — placement paused."
+                        infoMsg = "Session interrupted - placement paused."
                     } else {
-                        infoMsg = "Tracking resumed — re-check tag positions before training."
+                        infoMsg = "Tracking resumed - re-check tag positions before training."
                         DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
                             if infoMsg?.hasPrefix("Tracking resumed") == true { infoMsg = nil }
                         }
@@ -257,7 +257,7 @@ struct AuthorModeView: View {
                 .animation(.easeInOut(duration: 0.3), value: networkErrorMsg != nil)
             }
 
-            // Info toast — explanatory, non-error (e.g. #70 redirect notice)
+            // Info toast - explanatory, non-error (e.g. #70 redirect notice)
             if let msg = infoMsg {
                 VStack {
                     Spacer().frame(height: 100)
@@ -279,7 +279,7 @@ struct AuthorModeView: View {
             }
 
             // Note: 3D focus ring (ARFocusRing) is rendered directly in the AR
-            // scene — no 2D overlay needed here.
+            // scene - no 2D overlay needed here.
 
             // ── Re-anchor banner ──────────────────────────────────────────────
             // Shown while the author needs to tap the tag's physical location
@@ -316,7 +316,7 @@ struct AuthorModeView: View {
                 .animation(.easeInOut(duration: 0.3), value: reanchorTag?.id)
             }
 
-            // Bottom panel — switches between placement and navigation mode
+            // Bottom panel - switches between placement and navigation mode
             VStack {
                 Spacer()
                 if navigatingToTag != nil {
@@ -326,7 +326,7 @@ struct AuthorModeView: View {
                 }
             }
 
-            // ── Tap hint — appears on first entry when anchor has no tags yet ──
+            // ── Tap hint - appears on first entry when anchor has no tags yet ──
             if showTapHint && (appState.activeTags.isEmpty || !tapHintSeen) && navigatingToTag == nil {
                 ARTapCoach(accent: .white) {
                     ARMomentStore.markSeen(.inspectionPlaceTag, employeeId: settings.employeeId)
@@ -342,7 +342,7 @@ struct AuthorModeView: View {
         }
 
         // ── Placement sheet (Screen 7) ─────────────────────────────────────────
-        // #62: .sheet(item:) — see PendingPlacement declaration for why.
+        // #62: .sheet(item:) - see PendingPlacement declaration for why.
         .sheet(item: $pendingPlacement, onDismiss: {
             if !tagSaved {
                 pendingNode?.removeFromParentNode()
@@ -435,7 +435,7 @@ struct AuthorModeView: View {
             OnboardingSheet(context: .author)
         }
 
-        // ── Training cover — routes by TagCaptureMode ──────────────────────────
+        // ── Training cover - routes by TagCaptureMode ──────────────────────────
         .onChange(of: captureTag?.id) { id in
             if let id { focusTagId = id; applyTagVisibility() }   // G3: training → current
         }
@@ -528,18 +528,18 @@ struct AuthorModeView: View {
         guard let anchor = appState.activeAnchor,
               let origin = appState.anchorNormalisedTransform else { return }
         let eligible = appState.sealedMapOrigin != nil || anchor.mapSealedAt == nil
-        guard eligible else { AppLog.info("qr", "Exit: frame is not the map frame — map not re-sealed"); return }
+        guard eligible else { AppLog.info("qr", "Exit: frame is not the map frame - map not re-sealed"); return }
         arManager.ensureOriginAnchor(fallback: origin)
         try? await Task.sleep(nanoseconds: 300_000_000)
         guard let mapData = await arManager.saveCurrentWorldMap() else { return }
         if let prior = WorldMapCache.localSize(.anchor(anchor.id)), prior > 0, mapData.count < prior / 2 {
-            AppLog.warn("qr", "Exit re-seal skipped — new map \(mapData.count / 1024) KB vs sealed \(prior / 1024) KB (tracking reset?)")
+            AppLog.warn("qr", "Exit re-seal skipped - new map \(mapData.count / 1024) KB vs sealed \(prior / 1024) KB (tracking reset?)")
             return
         }
         let client   = SIBClient(settings: settings)
         let sealedBy = !settings.uamUserName.isEmpty ? settings.uamUserName : settings.authorName
         let aid      = anchor.id
-        // Upload in the background — leaving Author mode must stay snappy.
+        // Upload in the background - leaving Author mode must stay snappy.
         Task {
             do {
                 try await client.uploadWorldMap(anchorId: aid, data: mapData)
@@ -557,11 +557,11 @@ struct AuthorModeView: View {
 
     private var topBar: some View {
         HStack(alignment: .center) {
-            // Done — exits session, saves state
+            // Done - exits session, saves state
             Button("Done") {
                 appState.saveLastAuthorSession()
                 // Trust layer: re-seal the map NOW, when it contains the tags
-                // and everything the author looked at — the gate sealed a
+                // and everything the author looked at - the gate sealed a
                 // seconds-old map at QR lock, which operators then failed to
                 // relocalize into. Same frame, same origin, richer map.
                 Task {
@@ -587,7 +587,7 @@ struct AuthorModeView: View {
 
             Spacer()
 
-            // G3: eye — only the current tag (default) vs all tags
+            // G3: eye - only the current tag (default) vs all tags
             Button {
                 focusCurrentOnly.toggle()
                 FocusPref.save(screen: "inspectionAuthor", value: focusCurrentOnly)
@@ -654,7 +654,7 @@ struct AuthorModeView: View {
                 .padding(.horizontal, 14)
                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
 
-                // FAB — places a tag using the focus ring's cached surface hit
+                // FAB - places a tag using the focus ring's cached surface hit
                 // (more precise than a fresh centre-screen raycast)
                 Button {
                     if let hitT = focusRing?.lastHitTransform {
@@ -775,7 +775,7 @@ struct AuthorModeView: View {
             // Header
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Tags — \(appState.activeAnchor?.assetId ?? "")")
+                    Text("Tags - \(appState.activeAnchor?.assetId ?? "")")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.white)
                     let trained = appState.trainedTagIds.count
@@ -913,7 +913,7 @@ struct AuthorModeView: View {
             Spacer()
 
             if isTrained && !hasPosition {
-                // Trained but position wiped — offer re-placement
+                // Trained but position wiped - offer re-placement
                 Button {
                     showTagList = false
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
@@ -1009,7 +1009,7 @@ struct AuthorModeView: View {
     /// tag.metadata) so training data is never lost in the process.
     private func restoreTagPosition(_ tag: Tag, at worldPos: simd_float3) {
         guard let rel = appState.toAnchorRelative(worldPos) else {
-            print("[Author] restoreTagPosition: anchorNormalisedTransform nil — cannot restore")
+            print("[Author] restoreTagPosition: anchorNormalisedTransform nil - cannot restore")
             return
         }
         // Add the node immediately for visual feedback.
@@ -1066,7 +1066,7 @@ struct AuthorModeView: View {
     /// Starts navigation mode toward a tag. If the tag has no AR marker yet
     /// (no recoverable position at all), route through the same automatic
     /// "tap to restore position" flow used by the re-anchor banner instead
-    /// of silently starting training with zero position data — that silent
+    /// of silently starting training with zero position data - that silent
     /// path was the root cause of tags that train successfully but never
     /// appear anywhere afterward.
     private func navigateToTag(_ tag: Tag) {
@@ -1079,7 +1079,7 @@ struct AuthorModeView: View {
             reanchorTag = tag
             // #70: explain the redirect so it doesn't read as the app
             // silently ignoring the "Train" tap or appearing broken.
-            infoMsg = "\"\(tag.label)\" lost its position — tap its location to restore it, then training will start automatically."
+            infoMsg = "\"\(tag.label)\" lost its position - tap its location to restore it, then training will start automatically."
             DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
                 if infoMsg?.hasPrefix("\"\(tag.label)\"") == true { infoMsg = nil }
             }
@@ -1218,7 +1218,7 @@ struct AuthorModeView: View {
 
     private func showExistingMarkers() {
         for tag in appState.activeTags {
-            // Idempotent — safe to call again on every anchor refinement tick
+            // Idempotent - safe to call again on every anchor refinement tick
             // without creating duplicate marker nodes.
             guard persistedNodes[tag.id] == nil else { continue }
             let worldPos: simd_float3
@@ -1244,7 +1244,7 @@ struct AuthorModeView: View {
         applyTagVisibility()   // G3
     }
 
-    /// G3: focus mode — with a current tag, every other marker is hidden;
+    /// G3: focus mode - with a current tag, every other marker is hidden;
     /// with none (fresh session), everything shows so the author can pick.
     private func applyTagVisibility() {
         let hideOthers = focusCurrentOnly && focusTagId != nil
@@ -1351,8 +1351,8 @@ struct AuthorModeView: View {
     /// By the time this runs, showExistingMarkers() + autoAnchorUnpositionedTags()
     /// have already placed markers for every tag that has anchor_rel_x/y/z or
     /// legacy pos_x/y/z. Any tag still missing from persistedNodes truly has no
-    /// position metadata at all — most likely created before the AddTagSheet
-    /// placement-required fix — and is the one case that still needs a single
+    /// position metadata at all - most likely created before the AddTagSheet
+    /// placement-required fix - and is the one case that still needs a single
     /// physical tap (we cannot invent a position that was never captured).
     @MainActor
     private func autoPromptForBrokenTags() {
@@ -1363,7 +1363,7 @@ struct AuthorModeView: View {
             tag.metadata["pos_x"] == nil
         }) else { return }
         autoReanchorPromptShown = true
-        print("[Author] '\(broken.label)' has no position metadata — auto-prompting for re-anchor")
+        print("[Author] '\(broken.label)' has no position metadata - auto-prompting for re-anchor")
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
             reanchorTag = broken
         }

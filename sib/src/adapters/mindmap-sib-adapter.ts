@@ -1,4 +1,4 @@
-// mindmap-sib-adapter.ts — bridge between the Roadmap Mind-Mapper and the
+// mindmap-sib-adapter.ts - bridge between the Roadmap Mind-Mapper and the
 // SIB ontology (anchors + tags).
 //
 // Import (read-only against SIB stores): anchors become `generic` nodes,
@@ -7,7 +7,7 @@
 // and exports can round-trip.
 //
 // Export: produces a DRAFT JSON scaffold of SIB tag entities from tag-typed
-// nodes. It deliberately does NOT write into the SIB stores — creating real
+// nodes. It deliberately does NOT write into the SIB stores - creating real
 // anchors/tags requires QR generation and spatial placement, which stays in
 // the authoring apps. The draft is for review / scripted ingestion.
 
@@ -30,7 +30,7 @@ export interface SibImportResult {
 }
 
 /**
- * Merge the SIB anchor/tag graph into a map's node/edge arrays (pure — caller
+ * Merge the SIB anchor/tag graph into a map's node/edge arrays (pure - caller
  * persists). Existing SIB-linked nodes are kept (and their positions
  * respected); only missing entities are added, laid out in columns to the
  * right of the current content.
@@ -150,7 +150,7 @@ export function buildSibDraft(map: Mindmap): SibDraftExport {
   return {
     generatedAt: new Date().toISOString(),
     sourceMap: { id: map.id, name: map.name },
-    note: 'Draft scaffold — review and create via the SIB authoring flow (tags need an anchorId and spatial placement).',
+    note: 'Draft scaffold - review and create via the SIB authoring flow (tags need an anchorId and spatial placement).',
     draftTags,
     linked,
   };

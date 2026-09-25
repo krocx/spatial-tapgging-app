@@ -1,5 +1,5 @@
 # Render Deployment Guide
-**SIB Server — spatial-tagging-app**
+**SIB Server - spatial-tagging-app**
 
 This guide takes you from a local codebase to a live SIB server on Render that your team can connect to from their iPhones. It also sets up the GitHub repository in a way that makes a future Bitbucket migration straightforward.
 
@@ -12,11 +12,11 @@ Before starting, make sure you have:
 - [Git](https://git-scm.com/downloads) installed on your Mac (`git --version` to check)
 - A [GitHub](https://github.com) account
 - A [Render](https://render.com) account (already have one ✓)
-- The [GitHub CLI](https://cli.github.com) (optional but speeds things up — `brew install gh`)
+- The [GitHub CLI](https://cli.github.com) (optional but speeds things up - `brew install gh`)
 
 ---
 
-## Part 1 — Push the Project to GitHub
+## Part 1 - Push the Project to GitHub
 
 ### 1.1 Create a new GitHub repository
 
@@ -24,9 +24,9 @@ Before starting, make sure you have:
 2. Fill in:
    - **Repository name:** `spatial-tagging-app`
    - **Visibility:** Private ← keep it private; this repo will contain your API key config
-   - **Do NOT** tick "Add a README", "Add .gitignore", or "Choose a license" — the repo must be empty so our first push doesn't conflict
+   - **Do NOT** tick "Add a README", "Add .gitignore", or "Choose a license" - the repo must be empty so our first push doesn't conflict
 3. Click **Create repository**
-4. GitHub will show you a page with a remote URL. Copy the **HTTPS** URL — it looks like:
+4. GitHub will show you a page with a remote URL. Copy the **HTTPS** URL - it looks like:
    ```
    https://github.com/YOUR-USERNAME/spatial-tagging-app.git
    ```
@@ -40,7 +40,7 @@ Open Terminal, `cd` into the project root, and run these commands one at a time:
 cd ~/Claude-Workspace/projects/spatial-tagging-app
 
 # Initialise a git repository with "main" as the default branch.
-# Using "main" here is intentional — both GitHub and Bitbucket default to "main",
+# Using "main" here is intentional - both GitHub and Bitbucket default to "main",
 # so this keeps migration seamless later.
 git init -b main
 
@@ -49,7 +49,7 @@ git init -b main
 git add .
 
 # First commit
-git commit -m "Initial commit — Phase 2.5 baseline"
+git commit -m "Initial commit - Phase 2.5 baseline"
 ```
 
 ### 1.3 Connect to GitHub and push
@@ -62,20 +62,20 @@ git remote add origin https://github.com/YOUR-USERNAME/spatial-tagging-app.git
 git push -u origin main
 ```
 
-When prompted, enter your GitHub username and a **Personal Access Token** (PAT) as the password — GitHub no longer accepts your account password over HTTPS. If you don't have a PAT:
+When prompted, enter your GitHub username and a **Personal Access Token** (PAT) as the password - GitHub no longer accepts your account password over HTTPS. If you don't have a PAT:
 
 1. Go to **GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)**
 2. Click **Generate new token (classic)**
 3. Give it a name (e.g. `spatial-tagging-deploy`), tick **repo** scope, and click **Generate token**
-4. Copy the token — you only see it once. Paste it as the password in Terminal.
+4. Copy the token - you only see it once. Paste it as the password in Terminal.
 
-> **Tip:** To avoid re-entering credentials every push, run `git config --global credential.helper osxkeychain` — macOS will remember the token in Keychain after the first successful push.
+> **Tip:** To avoid re-entering credentials every push, run `git config --global credential.helper osxkeychain` - macOS will remember the token in Keychain after the first successful push.
 
-After the push, reload your GitHub repo page — you should see all the project files.
+After the push, reload your GitHub repo page - you should see all the project files.
 
 ---
 
-## Part 2 — Deploy the SIB Server on Render
+## Part 2 - Deploy the SIB Server on Render
 
 Render reads our `Dockerfile` from the repo and builds + runs the container automatically.
 
@@ -96,14 +96,14 @@ Fill in the form exactly as follows:
 | **Name** | `sib-server` (or any name you like) |
 | **Region** | Choose the one closest to your team |
 | **Branch** | `main` |
-| **Root Directory** | *(leave blank)* — the build context must be the repo root |
+| **Root Directory** | *(leave blank)* - the build context must be the repo root |
 | **Runtime** | **Docker** |
 | **Dockerfile Path** | `sib/Dockerfile` ← click the pencil icon next to this field and set it |
 | **Instance Type** | **Starter** ($7/month) is fine for dev/testing |
 
 > **Why root directory must be blank:** The SIB server depends on `@spatial/shared`, a sibling package in the monorepo. Docker needs to see both `sib/` and `shared/` in the same build context. If Root Directory is set to `sib`, Docker can only see inside that folder and can't resolve the shared types.
 
-Leave everything else at its default. Scroll down to the **Environment Variables** section — do NOT click Deploy yet.
+Leave everything else at its default. Scroll down to the **Environment Variables** section - do NOT click Deploy yet.
 
 ### 2.3 Add environment variables
 
@@ -111,7 +111,7 @@ Click **Add Environment Variable** for each of the following:
 
 | Key | Value | Notes |
 |---|---|---|
-| `SIB_API_KEY` | A long random string you choose (e.g. 32+ characters) | This is the secret your iOS app sends in `X-API-Key`. Write it down — you'll enter it in the app's Settings screen. Example: `sk-sib-a8f3d2e1b4c7f9a0d3e6b2c5f8a1d4e7` |
+| `SIB_API_KEY` | A long random string you choose (e.g. 32+ characters) | This is the secret your iOS app sends in `X-API-Key`. Write it down - you'll enter it in the app's Settings screen. Example: `sk-sib-a8f3d2e1b4c7f9a0d3e6b2c5f8a1d4e7` |
 | `SIB_DATA_DIR` | `/data/.sib-data` | Tells SIB where to persist anchor + tag data on the Render disk |
 | `NODE_ENV` | `production` | Enables production optimisations |
 | `PORT` | `3001` | Must match what the Dockerfile exposes |
@@ -120,7 +120,7 @@ Click **Add Environment Variable** for each of the following:
 
 ### 2.4 Add a Persistent Disk
 
-Without a disk, Render's filesystem resets on every deploy — you'd lose all your anchors and tags. The disk keeps your data safe across deploys and restarts.
+Without a disk, Render's filesystem resets on every deploy - you'd lose all your anchors and tags. The disk keeps your data safe across deploys and restarts.
 
 1. Still on the Web Service creation page, scroll down to the **Disks** section
 2. Click **Add Disk**
@@ -149,11 +149,11 @@ At the top of the service page you'll see a URL like:
 https://sib-server.onrender.com
 ```
 
-Copy this — every team member needs to enter it in the iOS app Settings screen.
+Copy this - every team member needs to enter it in the iOS app Settings screen.
 
 ---
 
-## Part 3 — Connect the iOS App
+## Part 3 - Connect the iOS App
 
 Each person on the team does this on their own iPhone:
 
@@ -165,13 +165,13 @@ Each person on the team does this on their own iPhone:
    ```
    (no trailing slash)
 4. Set **API Key** to the `SIB_API_KEY` value you chose in step 2.3
-5. Tap **Save**, then tap **Test Connection** — you should see a green "Connected" banner
+5. Tap **Save**, then tap **Test Connection** - you should see a green "Connected" banner
 
 > **Note:** On Render's free/starter tier, the server may "spin down" after 15 minutes of inactivity and take ~30 seconds to wake up on the next request. The Test Connection button will wake it if needed. This is normal on the Starter plan.
 
 ---
 
-## Part 4 — Verify the Deployment
+## Part 4 - Verify the Deployment
 
 From Terminal (or any HTTP client), run a quick smoke test to confirm the server is live and auth is working:
 
@@ -181,16 +181,16 @@ curl https://sib-server.onrender.com/health
 # Expected: {"status":"ok","timestamp":"..."}
 
 curl -H "X-API-Key: YOUR_API_KEY" https://sib-server.onrender.com/anchors
-# Expected: [] (empty array — no anchors yet)
+# Expected: [] (empty array - no anchors yet)
 
-# Without the API key — should be rejected
+# Without the API key - should be rejected
 curl https://sib-server.onrender.com/anchors
 # Expected: 401 Unauthorized
 ```
 
 ---
 
-## Part 5 — Day-to-Day: Pushing Updates
+## Part 5 - Day-to-Day: Pushing Updates
 
 Whenever you make changes to the SIB server code and want to deploy them:
 
@@ -202,11 +202,11 @@ git commit -m "describe what changed"
 git push
 ```
 
-Render watches the `main` branch and automatically triggers a new build + deploy within about a minute of each push. Zero downtime — the old container keeps serving requests until the new one passes its health check.
+Render watches the `main` branch and automatically triggers a new build + deploy within about a minute of each push. Zero downtime - the old container keeps serving requests until the new one passes its health check.
 
 ---
 
-## Part 6 — Future Bitbucket Migration
+## Part 6 - Future Bitbucket Migration
 
 The repo is already set up to migrate cleanly. When the time comes:
 
@@ -234,7 +234,7 @@ git push bitbucket main
 1. In Render dashboard → your `sib-server` service → **Settings** → **Build & Deploy**
 2. Click **Disconnect** next to the GitHub repo
 3. Click **Connect** → choose Bitbucket → authorise → select the migrated repo
-4. Save — future pushes to Bitbucket will now trigger deploys
+4. Save - future pushes to Bitbucket will now trigger deploys
 
 ### 6.4 Remove GitHub remote (when ready)
 
@@ -243,7 +243,7 @@ git remote remove origin
 git remote rename bitbucket origin
 ```
 
-From this point, `git push` goes to Bitbucket. All history, branches, and tags carry over intact because we always used standard Git — no GitHub-specific features.
+From this point, `git push` goes to Bitbucket. All history, branches, and tags carry over intact because we always used standard Git - no GitHub-specific features.
 
 ---
 
@@ -270,10 +270,10 @@ The TypeScript compile step failed. Check the build logs for the exact error. Us
 The container started but the `/health` endpoint isn't responding. Check that `PORT=3001` is set in Environment variables and the Dockerfile `EXPOSE 3001` matches.
 
 **iOS app gets 401 Unauthorized**
-The API key in the app's Settings doesn't match `SIB_API_KEY` in Render. Re-check both — they must be character-for-character identical (no trailing spaces).
+The API key in the app's Settings doesn't match `SIB_API_KEY` in Render. Re-check both - they must be character-for-character identical (no trailing spaces).
 
 **Data disappears after a deploy**
 The Persistent Disk is not attached, or `SIB_DATA_DIR` isn't set to `/data/.sib-data`. Verify both in the Render dashboard.
 
 **"Service unavailable" on first request after inactivity**
-Normal on Starter plan — the server spun down. Wait 20–30 seconds and retry.
+Normal on Starter plan - the server spun down. Wait 20–30 seconds and retry.

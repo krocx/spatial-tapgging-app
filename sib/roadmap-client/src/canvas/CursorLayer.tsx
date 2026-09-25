@@ -1,4 +1,4 @@
-// CursorLayer.tsx — live peer cursors (world space). Stale cursors (>6 s
+// CursorLayer.tsx - live peer cursors (world space). Stale cursors (>6 s
 // without movement) fade out so ghosts don't linger after disconnects.
 
 import { useEffect, useState } from 'react';

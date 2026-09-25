@@ -1,15 +1,15 @@
-// copy.ts — U2 (2026.4.45): copy a guide onto another anchor.
+// copy.ts - U2 (2026.4.45): copy a guide onto another anchor.
 //
 // What travels: name/description, every step's text, voice, title, link,
 // completion/validation/evidence flags, branch links (re-pointed to the new
 // step ids), step media (file duplicated) and 3D model ASSIGNMENTS (slots
 // with scale/opacity; placement stripped).
 //
-// What deliberately does NOT travel — all of it belongs to the SOURCE
+// What deliberately does NOT travel - all of it belongs to the SOURCE
 // anchor's world map or to that anchor's Spatial Inspection tags:
 //   • pin positions (isPlaced=false; the author re-places on the new tool)
 //   • model placement (offsets / rotation)
-//   • validation training — single reference photos, cone tags, pass-states
+//   • validation training - single reference photos, cone tags, pass-states
 //     (validationTrainedAt/Mode/TagId cleared; the step shows "Train" again)
 //   • sharing list (the copy is visible to all technicians until re-shared)
 // The copy starts unpublished.
@@ -65,7 +65,7 @@ export function copyGuideToAnchor(source: Guide, opts: CopyGuideOptions): CopyGu
         const dest = stepImageFilename(guideId, newId);
         fs.copyFileSync(path.join(STEP_IMG_DIR, s.mediaPath), path.join(STEP_IMG_DIR, dest));
         mediaPath = dest;
-      } catch { mediaPath = undefined; /* missing file — copy without media */ }
+      } catch { mediaPath = undefined; /* missing file - copy without media */ }
     }
     const models = stripSlotPlacements(s.models);
     const first  = models?.[0];

@@ -1,4 +1,4 @@
-// routes/gemba-walks.ts — G2/G8 (2026.4.46): Gemba walk sessions.
+// routes/gemba-walks.ts - G2/G8 (2026.4.46): Gemba walk sessions.
 //
 //   POST   /gemba/walks                  { anchorId, auditorName, auditorId?, projectId?, organization?, bu?, area?, location? } → walk (open)
 //   GET    /gemba/walks?anchorId=&auditorId=&status=&from=&to=   → walks newest first, each with derived summary
@@ -10,7 +10,7 @@
 //   DELETE /gemba/walks/:id               → removes the walk; findings keep their data, lose walkId (admin)
 //
 // Findings attach by LocTag.walkId (set by the app at creation). The summary
-// is derived on every read — never stored — so it cannot drift.
+// is derived on every read - never stored - so it cannot drift.
 
 import { Router } from 'express';
 import type { Request, Response } from 'express';
@@ -79,10 +79,10 @@ router.get('/', (req: Request, res: Response): void => {
 //
 // Workbook: Summary (one row per walk: header + counts) · Findings (one row
 // per finding, ALL photos embedded side by side, caption beside each) ·
-// Photos (one row per photo — filter by caption / markup). Selection:
+// Photos (one row per photo - filter by caption / markup). Selection:
 // ?walkId= | ?walkIds=a,b,c (≤ 200, what the portal table shows) | ?all=true.
 
-const MAX_EXPORT_PHOTOS = 6;             // LOC_TAG_MAX_PHOTOS — columns are fixed
+const MAX_EXPORT_PHOTOS = 6;             // LOC_TAG_MAX_PHOTOS - columns are fixed
 const MAX_EXPORT_WALKS  = 200;
 
 const HEAD_COLS   = ['Walk date', 'Auditor', 'Employee ID', 'Project ID', 'Organization', 'BU', 'Area', 'Location', 'Space', 'Walk status'];
@@ -195,7 +195,7 @@ router.patch('/:id', (req: Request, res: Response): void => {
     const patch = validateWalkPatch(req.body);
     if (w.status === 'submitted') {
       const keys = Object.keys(patch).filter(k => k !== 'notes');
-      if (keys.length) throw new GembaValidationError(409, 'Walk is submitted — only notes can change (reopen to edit the header).');
+      if (keys.length) throw new GembaValidationError(409, 'Walk is submitted - only notes can change (reopen to edit the header).');
     }
     const updated = gembaWalkStore.update(w.id, patch as Partial<GembaWalk>)!;
     res.json({ data: withSummary(updated), timestamp: new Date().toISOString() });
@@ -210,12 +210,12 @@ router.post('/:id/submit', (req: Request, res: Response): void => {
     const now = new Date().toISOString();
     const updated = gembaWalkStore.update(w.id, { status: 'submitted', endedAt: w.endedAt ?? now, notes })!;
     const out = withSummary(updated);
-    console.log(`[SIB] Gemba walk submitted: ${w.id} — ${out.summary?.findings ?? 0} findings`);
+    console.log(`[SIB] Gemba walk submitted: ${w.id} - ${out.summary?.findings ?? 0} findings`);
     res.json({ data: out, timestamp: now });
   } catch (err) { fail(res, err); }
 });
 
-// POST /gemba/walks/:id/adopt { locTagIds?: string[] } — attach findings on
+// POST /gemba/walks/:id/adopt { locTagIds?: string[] } - attach findings on
 // the same space that have no walk (logged before a header existed) to this
 // walk. Default: all of them. Never moves a finding from another walk.
 router.post('/:id/adopt', (req: Request, res: Response): void => {

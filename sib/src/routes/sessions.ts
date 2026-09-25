@@ -23,7 +23,7 @@ export const sessionStore = new JsonFileStore<Session>('sessions');
 
 // ── Bounded retention ────────────────────────────────────────────────────────
 // Sessions are never deleted by the normal API flow (close only sets endTime),
-// so without pruning sessions.json — and the in-memory Map behind it — grows
+// so without pruning sessions.json - and the in-memory Map behind it - grows
 // forever (407 records and counting as of this writing, each holding a
 // growing `observations[]` array). Prune closed sessions older than the
 // retention window, and also prune sessions that were opened but never
@@ -58,7 +58,7 @@ setInterval(pruneOldSessions, PRUNE_INTERVAL_MS).unref();
 
 const router = Router();
 
-// POST /sessions — open a new session
+// POST /sessions - open a new session
 router.post('/', (req: Request, res: Response) => {
   const body = req.body as CreateSessionRequest;
 
@@ -91,7 +91,7 @@ router.post('/', (req: Request, res: Response) => {
   return res.status(201).json(response);
 });
 
-// GET /sessions — list all sessions
+// GET /sessions - list all sessions
 router.get('/', (_req: Request, res: Response) => {
   return res.json({
     data: sessionStore.findAll(),
@@ -99,7 +99,7 @@ router.get('/', (_req: Request, res: Response) => {
   });
 });
 
-// GET /sessions/:id — get a single session
+// GET /sessions/:id - get a single session
 router.get('/:id', (req: Request, res: Response) => {
   const session = sessionStore.findById(req.params.id);
   if (!session) {
@@ -111,7 +111,7 @@ router.get('/:id', (req: Request, res: Response) => {
   return res.json({ data: session, timestamp: new Date().toISOString() });
 });
 
-// PATCH /sessions/:id/close — close a session (legacy / backward-compat)
+// PATCH /sessions/:id/close - close a session (legacy / backward-compat)
 router.patch('/:id/close', (req: Request, res: Response) => {
   const session = sessionStore.update(req.params.id, {
     endTime: new Date().toISOString(),
@@ -128,7 +128,7 @@ router.patch('/:id/close', (req: Request, res: Response) => {
   return res.json({ data: session, timestamp: new Date().toISOString() });
 });
 
-// PATCH /sessions/:id/report — submit Phase 4 inspection report
+// PATCH /sessions/:id/report - submit Phase 4 inspection report
 // Called by the iOS app on "End Session": stores ownerName, anchorId, tagRecords,
 // overallStatus, endTime, and durationSeconds on the existing session record.
 router.patch('/:id/report', (req: Request, res: Response) => {
@@ -163,7 +163,7 @@ router.patch('/:id/report', (req: Request, res: Response) => {
   return res.json({ data: session, timestamp: now });
 });
 
-// POST /sessions/:id/evidence/:tagId — upload one evidence image
+// POST /sessions/:id/evidence/:tagId - upload one evidence image
 // Body: { anchorId, imageBase64, mimeType, capturedAt }
 // Stores the image as a file: EVIDENCE_DIR/AnchorID_TagID_YYYYMMDD_HHMMSS.jpg
 // Returns: { imagePath: "AnchorID_TagID_YYYYMMDD_HHMMSS.jpg" }
@@ -202,7 +202,7 @@ router.post('/:id/evidence/:tagId', (req: Request, res: Response) => {
   return res.status(201).json({ data: response, timestamp: new Date().toISOString() });
 });
 
-// GET /sessions/evidence/:filename — serve an evidence image
+// GET /sessions/evidence/:filename - serve an evidence image
 // Used by the portal to display evidence thumbnails.
 router.get('/evidence/:filename', (req: Request, res: Response) => {
   // Sanitise: allow only alphanumeric, dash, underscore, dot
@@ -221,7 +221,7 @@ router.get('/evidence/:filename', (req: Request, res: Response) => {
   return res.sendFile(filePath);
 });
 
-// DELETE /sessions/:id — remove a single inspection session record
+// DELETE /sessions/:id - remove a single inspection session record
 router.delete('/:id', (req: Request, res: Response): void => {
   const session = sessionStore.findById(req.params.id);
   if (!session) { res.status(404).json({ error: 'Session not found' }); return; }
@@ -230,7 +230,7 @@ router.delete('/:id', (req: Request, res: Response): void => {
   res.status(204).send();
 });
 
-// DELETE /sessions — remove ALL inspection session records
+// DELETE /sessions - remove ALL inspection session records
 router.delete('/', (_req: Request, res: Response): void => {
   const count = sessionStore.pruneWhere(() => true);
   console.log(`[SIB] Deleted all ${count} inspection session(s)`);

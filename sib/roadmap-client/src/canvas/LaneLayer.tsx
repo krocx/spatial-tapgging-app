@@ -1,4 +1,4 @@
-// LaneLayer.tsx — swimlane bands (Now / Next / Later …) rendered behind the
+// LaneLayer.tsx - swimlane bands (Now / Next / Later …) rendered behind the
 // graph in world space. Band backgrounds double as canvas (double-click still
 // creates nodes via the `lane-band` class check in CanvasStage); the header
 // pill is clickable and selects the lane for editing in the inspector.

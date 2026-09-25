@@ -1,4 +1,4 @@
-// cortona-fixture.ts — builds a synthetic Cortona3D published bundle whose
+// cortona-fixture.ts - builds a synthetic Cortona3D published bundle whose
 // structure mirrors the two office reconnaissance reports (PROTO schema,
 // command interface, ROUTE wiring, interactivity.xml, rwi). Content is
 // invented. Used by tests and by `npm run cortona:fixture` for manual runs.

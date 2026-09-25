@@ -8,9 +8,9 @@ depends: [gemba-walk-sessions, loc-tags, presence-coaching]
 terms: [Gemba Walk, ARWorldMap]
 spec: GEMBA-WALK.md
 api: |
-  POST /anchors/:id/presence — auditors on the same space share pose and surface gembaWalk (app · API key)
-  GET /anchors/:id/subscribe — loc-tags events refresh a colleague's findings and panels live (app · API key)
-  POST /loc-tags/:id/compare — arrival drift check: live frame vs the finding photo (app · API key)
+  POST /anchors/:id/presence - auditors on the same space share pose and surface gembaWalk (app · API key)
+  GET /anchors/:id/subscribe - loc-tags events refresh a colleague's findings and panels live (app · API key)
+  POST /loc-tags/:id/compare - arrival drift check: live frame vs the finding photo (app · API key)
 wireframe: gemba
 flow: |
   flowchart LR
@@ -23,7 +23,7 @@ flow: |
 Several auditors can walk one space at once and see each other and each other's
 findings as they are logged; operators can walk phone-down with the next stop on
 the lock screen and Dynamic Island. iOS suspends ARKit the moment the app
-leaves the foreground, so a checkpoint greets every return — the last good
+leaves the foreground, so a checkpoint greets every return - the last good
 finding photo as a landmark, confirm or re-align, a timeout into full
-relocalization — and progress survives a kill. On arrival at a finding a
+relocalization - and progress survives a kill. On arrival at a finding a
 similarity check against its photo prompts a re-align before anything is judged.

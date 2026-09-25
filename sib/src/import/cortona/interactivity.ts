@@ -1,4 +1,4 @@
-// interactivity.ts — read the two XML side files of a Cortona3D bundle.
+// interactivity.ts - read the two XML side files of a Cortona3D bundle.
 //
 //   <title>.interactivity.xml  (root SimulationInteractivity)
 //     Procedure[@id]/Item[@id]/…/Action[@id]   text carriers: Description, Comment, Text, tooltip
@@ -7,7 +7,7 @@
 //     SimulationInformation/Options/Value[@name,@type]        publish options (GLTF, X3D, UpRight…)
 //
 //   <title>.xml  (root rwi)  job/task index + bom/part{pnr,desc,qty,altpnr}.
-//     NOT a step source (0 steps in sample 2) — used for BOM enrichment only.
+//     NOT a step source (0 steps in sample 2) - used for BOM enrichment only.
 //
 // Text is returned as-is (plain); RTF/HTML bodies live in the VRML widget
 // parameters, not here, and are handled by richtext.ts.
@@ -17,7 +17,7 @@ import { htmlToText } from './widgets.js';
 
 /** One human work step from the <Procedure>/<Item> tree (the document's own
  *  step list). Its Actions are the animation SubSteps (Simulation tree) that
- *  play while the step is shown — several per work step in every real file. */
+ *  play while the step is shown - several per work step in every real file. */
 export interface WorkItem {
   id:         string;
   title?:     string;        // Item/Description (plain)
@@ -151,7 +151,7 @@ export function readRwi(xml: string): RwiIndex {
   const job = findAll(rwi, 'job')[0];
   const out: RwiIndex = { taskCount: findAll(rwi, 'task').length, stepCount: findAll(rwi, 'step').length, bom: [] };
   const jt = job ? child(job, 'title')?.text.trim() : undefined;
-  if (jt && !/^\d+$/.test(jt)) out.jobTitle = jt;           // rwi titles are often bare integers — never display those
+  if (jt && !/^\d+$/.test(jt)) out.jobTitle = jt;           // rwi titles are often bare integers - never display those
   for (const p of findAll(rwi, 'part')) {
     out.bom.push({
       partNumber:    child(p, 'pnr')?.text.trim() || undefined,

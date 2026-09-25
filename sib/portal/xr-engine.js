@@ -1,7 +1,7 @@
-// xr-engine.js — B3 (2026.4.46): the engine-neutral half of the WebXR kit.
+// xr-engine.js - B3 (2026.4.46): the engine-neutral half of the WebXR kit.
 //
 // Pure functions only (no DOM, no Three.js) so `sib/test/xr-engine.test.ts`
-// can pin them against UNITY-RUNTIME.md §4 — the same contract the iOS
+// can pin them against UNITY-RUNTIME.md §4 - the same contract the iOS
 // player (AssemblyState.swift / AssemblyNode.swift) implements:
 //
 //   state(k)  = fold(initialNodes) ⊕ deltas(step 0) ⊕ … ⊕ deltas(step k)   last write wins
@@ -49,7 +49,7 @@ export function stateAfter(initialNodes, steps, k) {
 
 /**
  * Turn one step's deltas into a playback schedule. Entries are sorted by
- * start time, then by hierarchy depth (parents first — `depthOf` is injected
+ * start time, then by hierarchy depth (parents first - `depthOf` is injected
  * by the renderer), then by array index. Times are already divided by speed.
  */
 export function scheduleStep(nodes, speed = DEFAULT_SPEED, depthOf = () => 0) {

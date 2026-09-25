@@ -1,4 +1,4 @@
-// FilterPanel.tsx — left overlay with view filters: SIB layers, statuses,
+// FilterPanel.tsx - left overlay with view filters: SIB layers, statuses,
 // and custom groups. Chips toggle on/off (multi-select); matching nodes stay
 // full-strength, everything else fades. Filters are per-viewer only.
 

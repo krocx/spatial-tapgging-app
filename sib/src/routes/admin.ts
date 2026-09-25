@@ -1,9 +1,9 @@
-// admin.ts — production-ops routes. Everything under /admin is gated by the
+// admin.ts - production-ops routes. Everything under /admin is gated by the
 // admin key (middleware/auth.ts isAdminRequest) on TOP of the API key.
 //
 // GET /admin/backup?scope=data|full → streamed .tar.gz of the data directory.
-//   data (default): the JSON stores only — small, take one weekly.
-//   full:           the entire data dir — evidence photos, world maps, models,
+//   data (default): the JSON stores only - small, take one weekly.
+//   full:           the entire data dir - evidence photos, world maps, models,
 //                   QR images, step images. Can be large; take before upgrades.
 //
 // Restore is DELIBERATELY not an endpoint: it is a documented manual procedure
@@ -53,10 +53,10 @@ router.get('/backup', (req: Request, res: Response): void => {
   tar.stdout.pipe(res);
   tar.stderr.on('data', d => console.warn(`[backup] tar: ${String(d).trim()}`));
   tar.on('error', err => {
-    // tar binary missing — old Windows. Fail loudly with the remedy.
+    // tar binary missing - old Windows. Fail loudly with the remedy.
     console.error('[backup] tar spawn failed:', err.message);
     if (!res.headersSent) {
-      res.status(500).json({ error: 'tar is not available on this server — install bsdtar or back up the data directory manually' });
+      res.status(500).json({ error: 'tar is not available on this server - install bsdtar or back up the data directory manually' });
     } else {
       res.destroy();
     }
@@ -69,11 +69,11 @@ router.get('/backup', (req: Request, res: Response): void => {
     logOpsEvent({ method: 'GET', path: '/admin/backup', outcome: 'allowed', ip: req.ip,
       detail: `backup ${scope} · ${(bytes / 1048576).toFixed(1)} MB · ${filename}` });
   });
-  // Client gave up mid-download — don't leave tar running.
+  // Client gave up mid-download - don't leave tar running.
   res.on('close', () => { if (tar.exitCode === null) tar.kill(); });
 });
 
-// GET /admin/events?limit=N — the ops log, newest first (admin-gated like
+// GET /admin/events?limit=N - the ops log, newest first (admin-gated like
 // everything under /admin). Render-logs-style feed for the portal viewer.
 router.get('/events', (req: Request, res: Response): void => {
   const limit = Number(req.query.limit) || 200;

@@ -1,8 +1,8 @@
-// auth.ts — Phase 2.5
+// auth.ts - Phase 2.5
 // API key middleware.  Every route except /health requires a valid X-API-Key header.
 //
 // Configuration:
-//   SIB_API_KEY env var — when set, all requests must supply this exact value.
+//   SIB_API_KEY env var - when set, all requests must supply this exact value.
 //   When NOT set (local dev without the env var), the middleware is a no-op
 //   so local npm run dev continues to work without any key.
 
@@ -13,7 +13,7 @@ import { verifyToken } from '../uam/uam-core.js';
 // Circular at module level, resolved at call time (same pattern as tag-emitter ↔ routes).
 import { uamUserStore, uamSecret, findUserByEmail } from '../routes/uam.js';
 
-/** The API key a request carries — X-API-Key header, or the `sib_key` cookie
+/** The API key a request carries - X-API-Key header, or the `sib_key` cookie
  *  set by the /unlock page (browsers can't add headers to page navigations). */
 export function providedApiKey(req: Request): string | undefined {
   const h = Array.isArray(req.headers['x-api-key'])
@@ -36,7 +36,7 @@ export function hasValidApiKey(req: Request): boolean {
 export function apiKeyAuth(req: Request, res: Response, next: NextFunction): void {
   const expectedKey = process.env.SIB_API_KEY?.trim();
 
-  // Dev mode — no key configured, allow everything
+  // Dev mode - no key configured, allow everything
   if (!expectedKey) { next(); return; }
 
   const provided = providedApiKey(req);
@@ -53,27 +53,27 @@ export function apiKeyAuth(req: Request, res: Response, next: NextFunction): voi
 }
 
 // ── Content gate (IP hardening) ──────────────────────────────────────────────
-// When SIB_API_KEY is set (internet-facing deployments), EVERY surface —
-// pages, docs, catalogue, stats, Ask SIB — requires the key. Browsers can't
+// When SIB_API_KEY is set (internet-facing deployments), EVERY surface -
+// pages, docs, catalogue, stats, Ask SIB - requires the key. Browsers can't
 // attach headers to page navigations, so the /unlock page stores the key in
 // an HttpOnly cookie that this gate also accepts. Internal deployments
 // (no key configured) are untouched.
 //
 // Public exceptions, deliberately tiny:
-//   /health  — Render's container probe
-//   /unlock  — the door itself (serves no data)
-//   /config  — auth-mode booleans only; platformVersion is stripped for
+//   /health  - Render's container probe
+//   /unlock  - the door itself (serves no data)
+//   /config  - auth-mode booleans only; platformVersion is stripped for
 //              unauthenticated callers in the route itself.
 
 export function contentGate(req: Request, res: Response, next: NextFunction): void {
-  if (!process.env.SIB_API_KEY?.trim()) { next(); return; }   // internal deployment — open
+  if (!process.env.SIB_API_KEY?.trim()) { next(); return; }   // internal deployment - open
   if (req.method === 'OPTIONS') { next(); return; }            // CORS preflight
   if (req.path === '/health' || req.path === '/unlock' || req.path === '/config') { next(); return; }
   if (hasValidApiKey(req)) { next(); return; }
 
   const wantsHtml = req.method === 'GET' && (req.headers.accept ?? '').includes('text/html');
   if (wantsHtml) {
-    // Same-origin paths only — never a redirect target an attacker controls.
+    // Same-origin paths only - never a redirect target an attacker controls.
     const target = req.originalUrl.startsWith('/') && !req.originalUrl.startsWith('//')
       ? req.originalUrl : '/';
     res.redirect(302, '/unlock?next=' + encodeURIComponent(target));
@@ -90,7 +90,7 @@ export function contentGate(req: Request, res: Response, next: NextFunction): vo
 // sib_user cookie (portal). The token asserts only the email; role is re-read
 // from the user store on EVERY request so role changes and removals take
 // effect immediately. SSO swap point: replace verifyToken with IdP JWT
-// validation — everything downstream is unchanged.
+// validation - everything downstream is unchanged.
 
 export const UAM_COOKIE = 'sib_user';
 
@@ -130,7 +130,7 @@ export function uamActor(req: Request): UamActor | undefined {
       : req.headers['x-admin-key'];
     if (provided === adminKey) return { kind: 'legacy-admin' };
   } else if (!uamIsActive()) {
-    // No admin key configured AND the allow-list is empty (UAM dormant) —
+    // No admin key configured AND the allow-list is empty (UAM dormant) -
     // management stays reachable so the first Owner can be added. The moment
     // users exist, anonymous callers stop being admin-equivalent: sign in as
     // Owner/Manager, or configure SIB_ADMIN_KEY.
@@ -155,19 +155,19 @@ export function requireRole(...roles: UamRole[]) {
 }
 
 // ── IP-sensitivity gate (secondary secret) ───────────────────────────────────
-// SIB_IP_KEY env var — when set, catalogue features marked
+// SIB_IP_KEY env var - when set, catalogue features marked
 // `sensitivity: restricted` are redacted (body/flows/api/spec stripped) for
 // anyone without the key, and their deep-dive docs return 403. When NOT set,
 // everything is visible (internal deployments unchanged).
 //
 // THE RBAC SWAP POINT: when SSO lands, this function's key comparison becomes
 // a role-claim check (e.g. req.user.roles.includes('ip-viewer')). Nothing
-// else in the codebase needs to change — every restricted-content decision
+// else in the codebase needs to change - every restricted-content decision
 // flows through here.
 
 export function canViewRestricted(req: Request): boolean {
   const key = process.env.SIB_IP_KEY?.trim();
-  if (!key) return true;                                   // gate off — open
+  if (!key) return true;                                   // gate off - open
   const h = Array.isArray(req.headers['x-ip-key'])
     ? req.headers['x-ip-key'][0]
     : req.headers['x-ip-key'];
@@ -179,12 +179,12 @@ export function canViewRestricted(req: Request): boolean {
 }
 
 // ── Admin gate (pilot hardening) ─────────────────────────────────────────────
-// SIB_ADMIN_KEY env var — when set, DESTRUCTIVE requests additionally require
+// SIB_ADMIN_KEY env var - when set, DESTRUCTIVE requests additionally require
 // a matching X-Admin-Key header. Destructive = any DELETE, plus the LOTO quiz
 // admin surface (answers + bank edits). When NOT set, this is a no-op so
 // local dev and single-team deployments behave exactly as before.
 //
-// This is deliberately a second shared secret, not per-user RBAC — the pilot
+// This is deliberately a second shared secret, not per-user RBAC - the pilot
 // risk it closes is an accidental cascade delete from a review-only browser
 // tab, not a malicious insider. Real RBAC arrives with SSO (roadmap:
 // Enterprise Platform pillar).
@@ -203,17 +203,17 @@ export function isAdminRequest(method: string, path: string): boolean {
 
 export function adminKeyAuth(req: Request, res: Response, next: NextFunction): void {
   if (!isAdminRequest(req.method, req.path)) { next(); return; }
-  // Log reads are polled by the portal — recording each one would flush the
+  // Log reads are polled by the portal - recording each one would flush the
   // (bounded) ops log of the events it exists for. Gate them, don't log them.
   const quiet = req.method === 'GET' && (req.path === '/logs' || req.path.startsWith('/logs/'));
 
   // UAM transition: a signed-in Owner or Manager passes the destructive gate
-  // by role — no shared admin key needed. Engineers/Technicians fall through
+  // by role - no shared admin key needed. Engineers/Technicians fall through
   // to the legacy key check (and normally fail it, which is the point).
   const user = currentUamUser(req);
   if (user && (user.role === 'owner' || user.role === 'manager')) {
     if (!quiet) logOpsEvent({ method: req.method, path: req.path, outcome: 'allowed', ip: req.ip,
-      detail: `by role — ${user.email} (${user.role})` });
+      detail: `by role - ${user.email} (${user.role})` });
     next();
     return;
   }
@@ -222,7 +222,7 @@ export function adminKeyAuth(req: Request, res: Response, next: NextFunction): v
   if (!adminKey) {
     if (uamIsActive()) {
       // Allow-list in force: destructive actions need an Owner/Manager
-      // session (handled above) — a signed-in Engineer/Technician or an
+      // session (handled above) - a signed-in Engineer/Technician or an
       // anonymous caller is refused even though no admin key is configured.
       logOpsEvent({ method: req.method, path: req.path, outcome: 'denied', ip: req.ip,
         detail: user ? `role ${user.role} insufficient` : 'no sign-in (UAM active, no admin key)' });
@@ -232,14 +232,14 @@ export function adminKeyAuth(req: Request, res: Response, next: NextFunction): v
       });
       return;
     }
-    // Gate not configured and UAM dormant — action proceeds, but the ops log
+    // Gate not configured and UAM dormant - action proceeds, but the ops log
     // still records it (historical gate-off behaviour).
     if (!quiet) logOpsEvent({ method: req.method, path: req.path, outcome: 'gate-off', ip: req.ip });
     next();
     return;
   }
 
-  // EventSource (portal live tail) cannot set headers — accept the admin
+  // EventSource (portal live tail) cannot set headers - accept the admin
   // key as a query parameter on that one read-only stream.
   const fromQuery = req.path === '/logs/tail' && typeof req.query.adminKey === 'string' ? req.query.adminKey : undefined;
   const provided = fromQuery ?? (Array.isArray(req.headers['x-admin-key'])

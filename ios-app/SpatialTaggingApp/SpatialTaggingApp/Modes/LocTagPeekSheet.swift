@@ -1,4 +1,4 @@
-// LocTagPeekSheet.swift — Phase 2 (Task #137)
+// LocTagPeekSheet.swift - Phase 2 (Task #137)
 // Read-only bottom sheet shown when the Author (or Operator) taps an existing
 // Loc-Tag pin in AR.  Displays the tag's details and offers Edit.
 //

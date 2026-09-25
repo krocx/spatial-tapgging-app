@@ -1,4 +1,4 @@
-// Perception Adapter Framework — Phase 1 stub
+// Perception Adapter Framework - Phase 1 stub
 // See /docs/perception-framework.md for full spec.
 //
 // All real adapters (Sodavision, Neurocle, foundation models) implement

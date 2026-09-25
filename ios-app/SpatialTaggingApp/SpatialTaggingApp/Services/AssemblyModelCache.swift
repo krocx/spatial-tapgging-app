@@ -2,7 +2,7 @@
 //  AssemblyModelCache.swift
 //  SpatialTaggingApp
 //
-//  AR OJT — on-disk cache for assembly GLBs (4–25 MB each). Author placement
+//  AR OJT - on-disk cache for assembly GLBs (4–25 MB each). Author placement
 //  and every operator run would otherwise re-download the same file; on a
 //  slow link that download is also the single most likely thing to fail, so
 //  failures here carry the real reason (HTTP status / transport error) for

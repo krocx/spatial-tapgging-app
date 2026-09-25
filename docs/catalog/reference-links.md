@@ -15,7 +15,7 @@ arch: |
     ING --> IOS["Reference button on the AR step panel - opens in Safari"]
     NOTE["Platform stores no copy - the link is the pointer of record"] -.-> URL
 ---
-Any http(s) URL — a video, a PDF, the SOP page — authored on a step in the Inspector,
+Any http(s) URL - a video, a PDF, the SOP page - authored on a step in the Inspector,
 carried through compile → export → ingest, and surfaced as a tappable "Reference"
 button on the iOS AR step panel (opens in Safari). The platform stores no copy; the
 link is the pointer of record.

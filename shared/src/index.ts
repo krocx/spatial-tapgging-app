@@ -1,5 +1,5 @@
 // ============================================================
-// SIB Canonical Types — v1.0
+// SIB Canonical Types - v1.0
 // Source of truth: /docs/schemas.md
 // All clients and adapters MUST use these types.
 // ============================================================
@@ -8,12 +8,12 @@
 
 /**
  * Discriminates between the two anchor placement mechanisms:
- *   QR       — classic flow: Author prints a QR code, scans it to place the anchor.
- *   LOC_TAG  — Gemba audit walk: Author taps any surface to place the anchor;
+ *   QR       - classic flow: Author prints a QR code, scans it to place the anchor.
+ *   LOC_TAG  - Gemba audit walk: Author taps any surface to place the anchor;
  *              an ARWorldMap is saved so Operators can re-localize without a QR.
  * Defaults to 'QR' when absent for backward-compatibility with existing anchors.
  */
-/** 'LAB' (2026.4.46): an Anchor Lab rig — a test bed for anchoring accuracy.
+/** 'LAB' (2026.4.46): an Anchor Lab rig - a test bed for anchoring accuracy.
  *  Lives only behind the Lab door; production directories never list it. */
 export type AnchorType = 'QR' | 'LOC_TAG' | 'LOTO' | 'LAB';
 
@@ -59,7 +59,7 @@ export type TagType =
   | 'INSTRUCTION'
   | 'WARNING'
   | 'MEASUREMENT'
-  // Phase 2 — cleanroom / industrial inspection
+  // Phase 2 - cleanroom / industrial inspection
   | 'PRESENCE_CHECK'
   | 'LANGUAGE_CHECK'
   | 'ROUTING_CHECK'
@@ -82,7 +82,7 @@ export interface Quaternion {
 }
 
 // ============================================================
-// Anchor — stable spatial reference point on an asset
+// Anchor - stable spatial reference point on an asset
 // ============================================================
 
 export interface Anchor {
@@ -97,19 +97,19 @@ export interface Anchor {
    * Generated on-device when the anchor is created; stored in SIB so that
    * any authorised device can retrieve the key and generate the full QR code
    * (with the key embedded) without needing the Author's Keychain.
-   * The physical printed QR embeds this key from day one — it never changes.
+   * The physical printed QR embeds this key from day one - it never changes.
    * Optional so legacy anchors without keys remain backward-compatible.
    */
   encryptionKey?: string;
   /**
    * Loc-Tag anchors are placed by surface hit-test rather than QR scan.
-   * Omitted for all existing anchors — treat absent as 'QR'.
+   * Omitted for all existing anchors - treat absent as 'QR'.
    */
   anchorType?: AnchorType;
   /**
    * Physical width of the printed QR code in centimetres.
-   * Stored once at anchor creation so every subsequent QR generation —
-   * in-app and in the portal — uses the same size, producing the same QR pixels.
+   * Stored once at anchor creation so every subsequent QR generation -
+   * in-app and in the portal - uses the same size, producing the same QR pixels.
    * ARKit uses this to compute accurate 6DOF pose from the QR corners.
    * Default: 10.0 cm.
    */
@@ -154,9 +154,9 @@ export interface Anchor {
   accuracy?: { n: number; medianMm: number; lastAt?: string; runs?: number };
   /**
    * B2 (2026.4.46): how AR sessions find this chamber's origin.
-   *   'worldMap' (default, absent) — sealed ARWorldMap; QR is the key + drift check.
-   *   'object'   — detected ARKit reference object; map kept as fallback.
-   * Doctrine: tags stay QR-relative and guide pins stay map-relative — the
+   *   'worldMap' (default, absent) - sealed ARWorldMap; QR is the key + drift check.
+   *   'object'   - detected ARKit reference object; map kept as fallback.
+   * Doctrine: tags stay QR-relative and guide pins stay map-relative - the
    * object supplies the frame through a stored calibration (see
    * AnchorObjectMeta.objectPoseInQR / guide meta objectPoseInMap).
    */
@@ -167,11 +167,11 @@ export interface Anchor {
 
 export type OriginSource = 'worldMap' | 'object';
 
-/** B1: meta stored beside `<anchorId>.arobject` — GET /anchors/:id/object/meta */
+/** B1: meta stored beside `<anchorId>.arobject` - GET /anchors/:id/object/meta */
 // ── Presence (P1, 2026.4.46): who is in front of this chamber right now ──────
 // In-memory on SIB (never persisted). Poses are expressed in the chamber's
-// shared frame (guide map / object frame), so two devices — even in front of
-// two physical units of the same chamber type — are directly comparable.
+// shared frame (guide map / object frame), so two devices - even in front of
+// two physical units of the same chamber type - are directly comparable.
 export type PresenceSurface = 'placeSteps' | 'author' | 'operator' | 'guide' | 'gembaWalk';
 
 export interface PresenceUpdate {
@@ -180,13 +180,13 @@ export interface PresenceUpdate {
   role?:     string;            // UAM role for the colour
   surface:   PresenceSurface;
   guideId?:  string;
-  /** Camera pose in the shared frame — 16 floats, column-major. */
+  /** Camera pose in the shared frame - 16 floats, column-major. */
   pose:      number[];
   /** What the person is working on (step id / tag id). */
   focusId?:  string;
   /** Free-text site label shown on the lens ("US", "Singapore"). */
   site?:     string;
-  /** Operator: the live guide session id — lets a coaching author address hints to it. */
+  /** Operator: the live guide session id - lets a coaching author address hints to it. */
   sessionId?: string;
 }
 
@@ -205,7 +205,7 @@ export interface AnchorObjectMeta {
   featurePoints?: number;
   sizeBytes?:     number;
   /**
-   * B2 calibration — the object anchor's pose expressed in the gravity-
+   * B2 calibration - the object anchor's pose expressed in the gravity-
    * normalised QR frame (column-major 4×4), captured by an Author session
    * that saw both. Sessions that detect the object derive the QR frame as
    * objectPose_now × inverse(objectPoseInQR); `anchor_rel` tags need no
@@ -227,7 +227,7 @@ export interface AnchorObjectMeta {
   shapeModelScale?: number;
 }
 
-// ── Anchor Lab (2026.4.46) — measured anchoring accuracy ──────────────────────
+// ── Anchor Lab (2026.4.46) - measured anchoring accuracy ──────────────────────
 // One sample = one tag whose PHYSICAL position the tester marked with the
 // crosshair after the session locked its origin. The error is the distance
 // between where the tag rendered and where the feature really is, so the
@@ -329,7 +329,7 @@ export interface AnchorAccuracySummary {
   runs?:      number;
 }
 
-/** C1: PATCH /anchors/:id — engineer+. configId null clears. */
+/** C1: PATCH /anchors/:id - engineer+. configId null clears. */
 export interface UpdateAnchorRequest {
   assetId?:      string;
   configId?:     string | null;
@@ -338,14 +338,14 @@ export interface UpdateAnchorRequest {
 }
 
 // ============================================================
-// ChamberConfig — a chamber/system configuration TYPE (C1, 2026.4.45)
+// ChamberConfig - a chamber/system configuration TYPE (C1, 2026.4.45)
 // ============================================================
 
 /**
  * Managed catalog (portal Admin). An ME authors against a configuration;
  * operators reach it through the chamber's QR (anchor.configId). Content
  * (guides, inspection sets, training) is still stored per anchor in this
- * phase — the config groups chambers and scopes the app's libraries.
+ * phase - the config groups chambers and scopes the app's libraries.
  */
 export interface ChamberConfig {
   id:           string;
@@ -375,11 +375,11 @@ export interface CreateAnchorRequest {
   metadata: Record<string, unknown>;
   /** Phase 3: encryption key generated at anchor creation time. */
   encryptionKey?: string;
-  /** Physical QR print size in cm — locked at creation. Default: 10.0. */
+  /** Physical QR print size in cm - locked at creation. Default: 10.0. */
   qrSizeCm?: number;
   /** Loc-Tag anchors omit the QR flow entirely. Default: 'QR'. */
   anchorType?: AnchorType;
-  /** Author name at creation time — used for per-user anchor filtering in the directory. */
+  /** Author name at creation time - used for per-user anchor filtering in the directory. */
   createdBy?: string;
   /** C1: chamber configuration this anchor belongs to (see Anchor.configId). */
   configId?: string;
@@ -388,7 +388,7 @@ export interface CreateAnchorRequest {
 }
 
 // ============================================================
-// Tag — semantic label attached to an anchor
+// Tag - semantic label attached to an anchor
 // ============================================================
 
 /**
@@ -396,7 +396,7 @@ export interface CreateAnchorRequest {
  * fractions (0.0–1.0) of image width/height, origin at top-left.
  * Optional. When absent, validation considers the entire frame (today's
  * behaviour, unchanged). When present, both training references and live
- * frames are cropped to this rectangle before similarity scoring — this is
+ * frames are cropped to this rectangle before similarity scoring - this is
  * what lets a tag focus on the specific feature being inspected (a cable,
  * a switch, a valve) instead of the whole scene.
  */
@@ -415,10 +415,10 @@ export interface Tag {
   expectedOutcome: string;
   checkDescription?: string;   // optional human-readable check instruction
   order?: number;              // optional step order within an anchor
-  /** Optional inspection-region crop — see RegionOfInterest. Backward-compatible. */
+  /** Optional inspection-region crop - see RegionOfInterest. Backward-compatible. */
   roi?: RegionOfInterest;
   /**
-   * Tag Groups — optional grouping of tags under a named Inspection Set.
+   * Tag Groups - optional grouping of tags under a named Inspection Set.
    * Absent on legacy tags (treat as ungrouped). When set, this tag belongs
    * to the TagGroup with this id.
    */
@@ -430,7 +430,7 @@ export interface Tag {
 
 export type CreateTagRequest = Omit<Tag, 'id' | 'createdAt' | 'updatedAt'>;
 
-/** Partial update — only supplied fields are written. */
+/** Partial update - only supplied fields are written. */
 export interface UpdateTagRequest {
   label?: string;
   expectedOutcome?: string;
@@ -438,12 +438,12 @@ export interface UpdateTagRequest {
   order?: number;
   /** Optional inspection-region crop. Set to null to clear an existing ROI. */
   roi?: RegionOfInterest | null;
-  /** Deep-merged into tag.metadata — existing keys are preserved. */
+  /** Deep-merged into tag.metadata - existing keys are preserved. */
   metadata?: Record<string, unknown>;
 }
 
 // ============================================================
-// TagGroup — named Inspection Set grouping Tags under an Anchor
+// TagGroup - named Inspection Set grouping Tags under an Anchor
 // ============================================================
 
 /**
@@ -475,14 +475,14 @@ export type UpdateTagGroupRequest = {
 };
 
 // ============================================================
-// Model3D — 3D asset library for AR Guide step ghost overlays
+// Model3D - 3D asset library for AR Guide step ghost overlays
 // ============================================================
 
 /**
  * Raw file format supplied by the Author on upload.
- * 'glb' / 'gltf' / 'usdz' — AR-ready, stored as-is and marked ready immediately.
- * 'obj' / 'fbx'            — Common interchange; server converts to GLB via Blender.
- * 'step' / 'iges'          — CAD formats; server converts via Blender + CAD importer
+ * 'glb' / 'gltf' / 'usdz' - AR-ready, stored as-is and marked ready immediately.
+ * 'obj' / 'fbx'            - Common interchange; server converts to GLB via Blender.
+ * 'step' / 'iges'          - CAD formats; server converts via Blender + CAD importer
  *                            (requires Blender with CAD addon on the server host).
  *                            If Blender is unavailable the record is marked 'failed'
  *                            with a helptext asking the Author to pre-export to GLB.
@@ -499,13 +499,13 @@ export type ModelStatus = 'uploading' | 'processing' | 'ready' | 'failed';
  * Multiple GuideSteps can reference the same model via modelId.
  *
  * Global library (v2): models are no longer anchored to a single anchor.
- *   anchorId  — legacy field, still set on models uploaded before the global library
- *   anchorIds — the anchor kit: list of anchor IDs that have this model assigned;
+ *   anchorId  - legacy field, still set on models uploaded before the global library
+ *   anchorIds - the anchor kit: list of anchor IDs that have this model assigned;
  *               GET /models?anchorId=xxx returns models where anchorIds.includes(anchorId)
  */
 export interface Model3D {
   id:               string;
-  anchorId?:        string;            // legacy — preserved for backward compatibility
+  anchorId?:        string;            // legacy - preserved for backward compatibility
   anchorIds?:       string[];          // kit membership: anchors this model is assigned to
   name:             string;             // display name (editable)
   originalFormat:   ModelFormat;
@@ -530,7 +530,7 @@ export type UpdateModel3DRequest = {
 };
 
 // ============================================================
-// Observation — normalised output from any AI perception model
+// Observation - normalised output from any AI perception model
 // ============================================================
 
 export interface BoundingBox {
@@ -557,7 +557,7 @@ export interface Observation {
 }
 
 // ============================================================
-// Procedure — ordered graph of inspection steps
+// Procedure - ordered graph of inspection steps
 // ============================================================
 
 export interface ProcedureStep {
@@ -579,7 +579,7 @@ export interface Procedure {
 export type CreateProcedureRequest = Omit<Procedure, 'id' | 'createdAt' | 'updatedAt'>;
 
 // ============================================================
-// Session — a single technician (or cobot) run
+// Session - a single technician (or cobot) run
 // ============================================================
 
 // ── Phase 4: Inspection reporting types ──────────────────────
@@ -600,7 +600,7 @@ export interface TagInspectionRecord {
 export interface SubmitReportRequest {
   ownerName:       string;
   anchorId:        string;
-  anchorName:      string;    // assetId — human-readable label
+  anchorName:      string;    // assetId - human-readable label
   endTime:         string;    // ISO 8601
   durationSeconds: number;
   tagRecords:      TagInspectionRecord[];
@@ -658,7 +658,7 @@ export interface ApiError {
 }
 
 // ============================================================
-// Author / Operator workflow types — v1.0
+// Author / Operator workflow types - v1.0
 // ============================================================
 
 // --- Pass-state training (Author mode) ---
@@ -682,7 +682,7 @@ export interface PassStateImage {
 /**
  * Which reference this set of images represents.
  * 'PASS' (the default, and the only kind that existed before this field was
- * added) trains the "correct" appearance. 'FAIL' is optional — an Author may
+ * added) trains the "correct" appearance. 'FAIL' is optional - an Author may
  * additionally train what the *wrong* state looks like (cable unplugged,
  * valve closed, switch off, part misoriented, etc.). When a tag has no FAIL
  * state trained, validation falls back to today's single-reference
@@ -731,7 +731,7 @@ export interface ValidateRequest {
   mimeType: 'image/jpeg';
 }
 
-// Batch validation — all tags for an anchor in a single call (Operator mode)
+// Batch validation - all tags for an anchor in a single call (Operator mode)
 
 export interface BatchValidateRequest {
   anchorId: string;
@@ -780,7 +780,7 @@ export interface AnchorValidationResult {
   /**
    * #67: set when the request had no encryptionKey at all (Operator scanned
    * the original physical QR instead of the app-generated one). Previously
-   * this was only a server console.warn — every tag would silently show
+   * this was only a server console.warn - every tag would silently show
    * ~0% confidence with no indication that the cause was a missing key
    * rather than an actual mismatch. Omitted when a key was supplied.
    */
@@ -818,7 +818,7 @@ export interface QRAnchorContext {
 // lists in the portal (CRUD + xlsx/CSV import, mirroring Import Guide).
 // ============================================================
 
-/** A numbered audit focus area, e.g. "14 — 6S Audits". */
+/** A numbered audit focus area, e.g. "14 - 6S Audits". */
 export interface GembaFocusArea {
   id: string;
   /** Short code as auditors know it ("14"). Unique, case-insensitive. */
@@ -845,25 +845,25 @@ export interface GembaQuestion {
   updatedAt: string;
 }
 
-/** Finding category — the Corporate Quality vocabulary (labels live in sib/src/gemba/library-core.ts;
+/** Finding category - the Corporate Quality vocabulary (labels live in sib/src/gemba/library-core.ts;
  *  this package is types-only at runtime). */
 export type GembaFindingCategory = 'STRENGTH' | 'OFI' | 'NC';
 
 /** Preliminary risk rating (optional on a finding): 0 none · 1 minor · 2 medium · 3 high. */
 export type GembaRiskRating = 0 | 1 | 2 | 3;
 
-/** GET /gemba/library — everything the app needs to run a walk, one call. */
+/** GET /gemba/library - everything the app needs to run a walk, one call. */
 export interface GembaLibrary {
   focusAreas: (GembaFocusArea & { questions: GembaQuestion[] })[];
   categories: { code: GembaFindingCategory; label: string }[];
   ratings: { value: GembaRiskRating; label: string }[];
   /** G2: walk-header pick lists (organization, bu, area, location). */
   lists: GembaLists;
-  /** Changes on every write — clients cache by it. */
+  /** Changes on every write - clients cache by it. */
   version: string;
 }
 
-/** POST /gemba/library/import — atomic; `mode: 'append'` upserts by code. */
+/** POST /gemba/library/import - atomic; `mode: 'append'` upserts by code. */
 export interface GembaLibraryImport {
   mode?: 'append' | 'replace';
   focusAreas: {
@@ -876,8 +876,8 @@ export interface GembaLibraryImport {
 // ============================================================
 // Gemba Walk session (G2, 2026.4.46)
 // ------------------------------------------------------------
-// The header the PowerApps tool collected before the first finding —
-// auditor, Project ID, Organization, BU, Area, Location — plus start/end
+// The header the PowerApps tool collected before the first finding -
+// auditor, Project ID, Organization, BU, Area, Location - plus start/end
 // and a summary. Findings (LocTag.walkId) attach to it; the portal reports
 // and exports per walk. Never tied to a chamber/QR: `anchorId` is the
 // walk-space anchor (world map) exactly as today.
@@ -888,7 +888,7 @@ export type GembaWalkStatus = 'open' | 'submitted';
 export interface GembaWalk {
   id: string;
   anchorId: string;
-  /** Kiosk identity — employee id when known. */
+  /** Kiosk identity - employee id when known. */
   auditorId?: string;
   auditorName: string;
   projectId?: string;
@@ -920,18 +920,18 @@ export interface GembaWalkSummary {
 export type StartGembaWalkRequest = Pick<GembaWalk,
   'anchorId' | 'auditorName' | 'auditorId' | 'projectId' | 'organization' | 'bu' | 'area' | 'location'>;
 
-/** Pick lists for the walk header — maintained beside the Audit Library. */
+/** Pick lists for the walk header - maintained beside the Audit Library. */
 export type GembaListKind = 'organization' | 'bu' | 'area' | 'location';
 export type GembaLists = Record<GembaListKind, string[]>;
 
 // ============================================================
-// Loc-Tag — Phase 2 Gemba audit walk types
+// Loc-Tag - Phase 2 Gemba audit walk types
 // ============================================================
 
 /**
  * A location-tagged defect or observation placed by tapping a surface
  * during an Author's Gemba audit walk. Unlike regular Tags, LocTags are
- * not tied to a QR anchor — the spatial reference is an ARWorldMap.
+ * not tied to a QR anchor - the spatial reference is an ARWorldMap.
  */
 /** One photo on a finding (G3). `path` is served by GET /loc-tags/image/:filename. */
 export interface LocTagPhoto {
@@ -962,7 +962,7 @@ export interface LocTag {
   order: number;
 
   // ── G3 (2026.4.46): reference-list finding ───────────────────────────────
-  // Snapshotted from the Audit Reference Library at log time — the library
+  // Snapshotted from the Audit Reference Library at log time - the library
   // can change later; the finding keeps what the auditor actually chose.
   focusAreaCode?: string;
   focusAreaTitle?: string;
@@ -975,7 +975,7 @@ export interface LocTag {
   /**
    * Where the focus area / question came from: 'library' = picked from the
    * Audit Reference Library (codes present); 'custom' = typed by the auditor
-   * (no codes — reports must show it as a custom entry). Absent on legacy
+   * (no codes - reports must show it as a custom entry). Absent on legacy
    * findings (defect category only).
    */
   referenceSource?: 'library' | 'custom';
@@ -988,7 +988,7 @@ export interface LocTag {
   updatedAt: string;
 }
 
-/** Upper bound on photos per finding — keeps a walk's upload bounded. */
+/** Upper bound on photos per finding - keeps a walk's upload bounded. */
 export type LocTagMaxPhotos = 6;
 
 export type CreateLocTagRequest = Omit<LocTag, 'id' | 'referenceImagePath' | 'createdAt' | 'updatedAt'
@@ -1026,7 +1026,7 @@ export type SubmitLocTagCompletionRequest =
     completionImageBase64?: string;
   };
 
-/** Summary of a LocTag's latest completion status — used in session reports. */
+/** Summary of a LocTag's latest completion status - used in session reports. */
 export interface LocTagSummary {
   locTagId:   string;
   title:      string;
@@ -1036,14 +1036,14 @@ export interface LocTagSummary {
 }
 
 // ============================================================
-// AR OMS — Phase 1: Guided work instruction types
+// AR OMS - Phase 1: Guided work instruction types
 // ============================================================
 
 /**
  * The media type of a step's attached asset.
- * 'image' — JPEG photo (MVP).
- * 'video' — MP4 short clip (Phase 2).
- * 'glb'   — 3D model (Phase 2).
+ * 'image' - JPEG photo (MVP).
+ * 'video' - MP4 short clip (Phase 2).
+ * 'glb'   - 3D model (Phase 2).
  */
 export type GuideStepMediaType = 'image' | 'video' | 'glb';
 
@@ -1051,7 +1051,7 @@ export type GuideStepMediaType = 'image' | 'video' | 'glb';
  * A single step within an AR Guide.
  * sequenceNumber is 1-based and determines display order.
  * ttsText defaults to `text` when absent (synthesised on-device).
- * mediaPath is the filename on the SIB step-image store — absent when no media is attached.
+ * mediaPath is the filename on the SIB step-image store - absent when no media is attached.
  * completionRequired: when true the Operator must tap the checkmark before advancing.
  */
 export interface GuideStep {
@@ -1061,11 +1061,11 @@ export interface GuideStep {
   sequenceNumber:     number;
   title?:             string;      // short display title (pill header + card header); falls back to "Step N"
   text:               string;      // description shown in the expanded floating panel
-  ttsText?:           string;      // override for voice synthesis — defaults to text
+  ttsText?:           string;      // override for voice synthesis - defaults to text
   mediaType?:         GuideStepMediaType;
   mediaPath?:         string;      // filename on SIB step-image store
   /**
-   * Reference link (video, PDF, SOP page — any http(s) URL). Shown as a
+   * Reference link (video, PDF, SOP page - any http(s) URL). Shown as a
    * tappable "Reference" button on the AR step panel; opens on the device.
    * Deliberately a link rather than embedded media: the platform stores no
    * copy, and the target can be any format the phone's browser can open.
@@ -1078,10 +1078,10 @@ export interface GuideStep {
   posZ?:              number;
   isPlaced:           boolean;     // true once Author has placed the pin in AR
   positionSource?:    'tap' | 'cad';  // 'tap' = Author placed; 'cad' = derived from cadPosition + Guide.assembly.pose
-  /** Pin location in the ASSEMBLY frame (metres) — centroid of the parts this
+  /** Pin location in the ASSEMBLY frame (metres) - centroid of the parts this
    *  step touches. posX/Y/Z are derived from it whenever the assembly pose is set. */
   cadPosition?:       [number, number, number];
-  // 3D model ghost overlay (Phase 2 — Model3D library)
+  // 3D model ghost overlay (Phase 2 - Model3D library)
   modelId?:           string;      // Model3D.id from anchor asset library
   modelScale?:        number;      // uniform scale factor applied to the model (default 1.0)
   modelOpacity?:      number;      // ghost overlay opacity 0.0–1.0 (default 0.45)
@@ -1089,14 +1089,14 @@ export interface GuideStep {
   modelOffsetY?:      number;
   modelOffsetZ?:      number;
   modelRotationY?:    number;      // Y-axis rotation in radians (Author-placed via AR placement UI)
-  /** Tilt (X) and roll (Z) in radians — 0 when absent. Set on device; a 180° X tilt = "upside down". */
+  /** Tilt (X) and roll (Z) in radians - 0 when absent. Set on device; a 180° X tilt = "upside down". */
   modelRotationX?:    number;
   modelRotationZ?:    number;
   /**
    * U4 (2026.4.45): up to GUIDE_STEP_MAX_MODELS 3D assets per step, each with
    * its own scale/opacity/placement (same slot doctrine as LotoPoint.models).
    * SERVER keeps the legacy single-model fields above MIRRORED to slot 1 in
-   * both directions — a write to `models` rewrites modelId/…; a legacy write
+   * both directions - a write to `models` rewrites modelId/…; a legacy write
    * (older app builds, compiler, imports) rewrites slot 1 and leaves other
    * slots alone. Readers should prefer `models` when present.
    */
@@ -1111,12 +1111,12 @@ export interface GuideStep {
   nodes?:             GuideStepNode[];
   /** Optional suggested camera for this step (model frame). */
   view?:              GuideStepView;
-  /** 2026.4.46: what the operator sees around this step's parts — 'installed'
+  /** 2026.4.46: what the operator sees around this step's parts - 'installed'
    *  (default: only what's built so far), 'ghost' (whole assembly faint, for
    *  orientation) or 'solid' (whole assembly opaque). The device toggle still
    *  overrides per step. */
   context?:           'installed' | 'ghost' | 'solid';
-  // Conditional task graph (Step 2 of AI-readiness) — all optional for backward compat
+  // Conditional task graph (Step 2 of AI-readiness) - all optional for backward compat
   nextOnSuccess?:     string;      // step ID to navigate to on completion; nil → sequenceNumber+1
   nextOnFailure?:     string;      // step ID to navigate to on failure/retry; nil → stay on step
   precondition?:      string;      // step ID that must be completed before this step is reachable
@@ -1132,8 +1132,8 @@ export interface GuideStep {
   validationTrainedAt?: string;
   /**
    * How the step was trained (V1, 2026.4.45). SERVER-owned:
-   *   'single' — one reference photo (PUT validation-ref); strict comparison.
-   *   'cone'   — multi-angle Spatial Inspection training (dome sweep) against
+   *   'single' - one reference photo (PUT validation-ref); strict comparison.
+   *   'cone'   - multi-angle Spatial Inspection training (dome sweep) against
    *              a hidden step-validation tag; the operator is guided into
    *              the cone and validated via POST /perception/validate.
    * Absent on steps trained before this field existed → treat as 'single'.
@@ -1150,11 +1150,11 @@ export interface GuideStep {
 
 export type CreateGuideStepRequest = {
   sequenceNumber:      number;
-  title?:              string;     // optional short title — falls back to "Step N" when absent
+  title?:              string;     // optional short title - falls back to "Step N" when absent
   text:                string;
   ttsText?:            string;
   mediaType?:          GuideStepMediaType;
-  /** Base64-encoded JPEG — stored server-side; mediaPath is returned in the response. */
+  /** Base64-encoded JPEG - stored server-side; mediaPath is returned in the response. */
   mediaBase64?:        string;
   linkUrl?:            string;
   completionRequired?: boolean;    // defaults to true when absent
@@ -1190,11 +1190,11 @@ export type UpdateGuideStepRequest = {
    *  the legacy modelId/… keys in the same body are ignored. A slot whose
    *  modelId changed (matched by slotId) has its placement dropped. */
   models?:             GuideStepModel[];
-  // Conditional task graph — null clears, undefined keeps existing
+  // Conditional task graph - null clears, undefined keeps existing
   nextOnSuccess?:      string | null;
   nextOnFailure?:      string | null;
   precondition?:       string | null;
-  /** Step validation (K4). validationTrainedAt is server-owned — not here. */
+  /** Step validation (K4). validationTrainedAt is server-owned - not here. */
   validationRequired?: boolean;
   /** K5: evidence photo mandatory before completion. */
   evidenceRequired?:   boolean;
@@ -1203,7 +1203,7 @@ export type UpdateGuideStepRequest = {
 /** One 3D asset on a guide step (U4). slotId is stable across edits so a
  *  slot's AR placement survives other slots being added or removed. Offsets
  *  are metres from the step's pin; rotation is Y-axis radians. The max-slots
- *  limit (3) is a VALUE — it lives as GUIDE_STEP_MAX_MODELS in
+ *  limit (3) is a VALUE - it lives as GUIDE_STEP_MAX_MODELS in
  *  sib/src/guides/step-models.ts and iOS AROMSModels.swift. */
 /** One node-level presentation delta inside a step (see GuideStep.nodes). */
 export interface GuideStepNode {
@@ -1225,7 +1225,7 @@ export interface GuideStepNode {
   /** Animation duration in seconds (source timing), if known. */
   durationSec?:  number;
   /** Start offset within the step's timeline, seconds (source timing). A step
-   *  may carry several deltas for the same node — they play in order. */
+   *  may carry several deltas for the same node - they play in order. */
   delaySec?:     number;
   /** Transient attention effect that leaves no state behind (Cortona "flash"). */
   effect?:       'flash';
@@ -1248,7 +1248,7 @@ export interface GuideStepView {
 
 /**
  * Where a guide's assembly model sits, in the ANCHOR frame (same frame as
- * GuideStep.posX/Y/Z). Set once per guide — every step with a `cadPosition`
+ * GuideStep.posX/Y/Z). Set once per guide - every step with a `cadPosition`
  * derives its pin from it, so the author places the assembly, not the steps.
  * `source` records how it was obtained; PartFrame will supply it live later.
  */
@@ -1278,10 +1278,10 @@ export interface GuideAssembly {
   /** Where the assembly + node data came from. */
   source?:       'cortona' | 'cad';
   /** 2026.4.46: 'empty' = build-up (everything hidden until a step installs
-   *  it — ingest hides the model's root nodes in the initial state);
+   *  it - ingest hides the model's root nodes in the initial state);
    *  'complete' = take-apart. Absent for imports that carry their own state. */
   start?:        'empty' | 'complete';
-  /** Playback speed multiplier for step animations (0.1–3; default 0.5 —
+  /** Playback speed multiplier for step animations (0.1–3; default 0.5 -
    *  source timings are authored for a desktop viewer and read too fast in AR). */
   animationSpeed?: number;
 }
@@ -1323,7 +1323,7 @@ export interface Guide {
   /**
    * Contextual-intelligence mode. `normal` (default): floors + baselines that
    * can only tighten them, retirement after 10 low-effect shows. `demo`:
-   * floors only — no baselines, no retirement — so a training / demo run
+   * floors only - no baselines, no retirement - so a training / demo run
    * behaves the same every time.
    */
   ciMode?:     'normal' | 'demo';
@@ -1352,7 +1352,7 @@ export type UpdateGuideRequest = {
   description?: string;
   published?:   boolean;
   /** Move the guide (and all its steps) to another anchor. Spatial placement
-   *  is cleared — positions belong to the old anchor's world map — and a
+   *  is cleared - positions belong to the old anchor's world map - and a
    *  published guide is unpublished until re-placed. */
   anchorId?:    string;
   /** Replace the sharing list (see Guide.sharedWith). [] = all technicians.
@@ -1370,26 +1370,26 @@ export type UpdateGuideRequest = {
 /**
  * Completion record for a single step within a GuideSession.
  *
- * evidencePhotoBase64 — iOS sends an optional JPEG encoded as base64. The server
+ * evidencePhotoBase64 - iOS sends an optional JPEG encoded as base64. The server
  * stores it to disk and replaces this field with evidencePhotoPath in the stored
  * record.  Both fields are optional so sessions without evidence decode cleanly.
  *
- * enteredAt — when the Operator first saw this step (set on step:entered event).
+ * enteredAt - when the Operator first saw this step (set on step:entered event).
  * Absent on sessions recorded before this field was added; consumers should treat
  * it as optional.
  */
 export interface GuideStepCompletion {
   stepId:               string;
-  enteredAt?:           string;   // ISO 8601 — when step first shown to Operator
+  enteredAt?:           string;   // ISO 8601 - when step first shown to Operator
   completedAt:          string;   // ISO 8601
   durationSeconds:      number;   // time from step entry to checkmark tap
-  evidencePhotoBase64?: string;   // request only — base64 JPEG; server strips on receipt
-  evidencePhotoPath?:   string;   // stored only — relative path set by server after save
+  evidencePhotoBase64?: string;   // request only - base64 JPEG; server strips on receipt
+  evidencePhotoPath?:   string;   // stored only - relative path set by server after save
 }
 
 /**
  * A GuideSession records one Operator's run through a Guide.
- * Created atomically at sign-off (not opened then closed — the entire session
+ * Created atomically at sign-off (not opened then closed - the entire session
  * is submitted in a single POST once the Operator taps Sign & Submit).
  */
 export interface GuideSession {
@@ -1398,7 +1398,7 @@ export interface GuideSession {
   anchorId:        string;
   guideName:       string;    // snapshot of guide name at session time
   anchorName:      string;    // snapshot of anchor assetId at session time
-  signedOffBy:     string;    // operatorName — from AppSettings.authorName on the device
+  signedOffBy:     string;    // operatorName - from AppSettings.authorName on the device
   startedAt:       string;    // when the AR session began
   completedAt:     string;    // when sign-off was tapped
   durationSeconds: number;
@@ -1423,19 +1423,19 @@ export type CreateGuideSessionRequest = {
 };
 
 // ============================================================
-// Live Guide Session — real-time step telemetry (AI readiness, Phase 2)
+// Live Guide Session - real-time step telemetry (AI readiness, Phase 2)
 // ============================================================
 
 /**
  * Event types emitted by the iOS app during an active guide session.
  * The server fans these out over SSE to any registered observer (AI agent, dashboard).
  *
- *   session:started   — Operator opened the guide; AR session initialising.
- *   step:entered      — Operator navigated to a step (first time or revisit).
- *   step:completed    — Operator tapped the checkmark on a step.
- *   step:retried      — Operator tapped "Previous" to go back to a step.
- *   perception:result — Live-frame validation result (future: fed by Operator mode).
- *   session:submitted — Sign-off submitted; links to GuideSession id.
+ *   session:started   - Operator opened the guide; AR session initialising.
+ *   step:entered      - Operator navigated to a step (first time or revisit).
+ *   step:completed    - Operator tapped the checkmark on a step.
+ *   step:retried      - Operator tapped "Previous" to go back to a step.
+ *   perception:result - Live-frame validation result (future: fed by Operator mode).
+ *   session:submitted - Sign-off submitted; links to GuideSession id.
  */
 export type GuideSessionEventType =
   | 'session:started'
@@ -1446,11 +1446,11 @@ export type GuideSessionEventType =
   | 'step:stalled'
   | 'perception:result'
   /** X1 (2026.4.45): the device re-localized into the saved world map but the
-   *  operator's "I'm Here" pose disagrees with the author's reference pose —
+   *  operator's "I'm Here" pose disagrees with the author's reference pose -
    *  typically the QR / a prominent object moved. Pins may be off; the app
    *  falls back to image alignment. payload: { distanceM, angleDeg }. */
   | 'environment:drift'
-  /** C2 UX: what the client did with an automatic hint — shown to the
+  /** C2 UX: what the client did with an automatic hint - shown to the
    *  operator, or dropped because hints were muted (step / guide / device).
    *  payload: { hintId, signal?, scope?: 'step' | 'guide' | 'device' }. */
   | 'hint:shown'
@@ -1458,13 +1458,13 @@ export type GuideSessionEventType =
   | 'session:submitted';
 
 export interface GuideSessionEvent {
-  id:               string;                 // uuidv4 — unique per event
+  id:               string;                 // uuidv4 - unique per event
   liveSessionId:    string;
   type:             GuideSessionEventType;
   ts:               string;                 // ISO 8601
   stepId?:          string;                 // present for step:* events
   stepIndex?:       number;                 // 0-based index in sorted step list
-  durationSeconds?: number;                 // step:completed — time on this step
+  durationSeconds?: number;                 // step:completed - time on this step
   payload?:         Record<string, unknown>; // event-specific extras (e.g. perception result)
 }
 
@@ -1472,7 +1472,7 @@ export interface GuideSessionEvent {
  * An in-flight guide session tracked in server memory while the Operator is active.
  * Created at session:started, closed and optionally linked at session:submitted.
  *
- * Not persisted to disk — intentionally ephemeral. The linked GuideSession
+ * Not persisted to disk - intentionally ephemeral. The linked GuideSession
  * (created at sign-off) is the durable record; LiveGuideSession carries the
  * real-time event log that makes AI intervention possible during the session.
  */
@@ -1487,7 +1487,7 @@ export interface LiveGuideSession {
   currentStepIndex: number;     // last known step index (0-based)
   events:           GuideSessionEvent[];
   linkedSessionId?: string;     // set when GuideSession sign-off POSTs with liveSessionId
-  closedAt?:        string;     // ISO 8601 — set on session:submitted
+  closedAt?:        string;     // ISO 8601 - set on session:submitted
 }
 
 export interface OpenLiveSessionRequest {
@@ -1497,7 +1497,7 @@ export interface OpenLiveSessionRequest {
   anchorName:   string;
   operatorName: string;
   /**
-   * Work context for the shift (2026.4.45) — labelled "Production #" in
+   * Work context for the shift (2026.4.45) - labelled "Production #" in
    * AR OMS (chamber/system); other products relabel it (GembaWalk: audit /
    * project name). Free text; lands in the usage log.
    */
@@ -1508,7 +1508,7 @@ export interface OpenLiveSessionRequest {
 }
 
 // ============================================================
-// AR OMS Usage Log — durable per-step timing per work context (2026.4.45)
+// AR OMS Usage Log - durable per-step timing per work context (2026.4.45)
 // ============================================================
 
 /** One step visit inside a usage-log session. */
@@ -1521,7 +1521,7 @@ export interface OmsUsageStepEntry {
   /** open = still on it (or session abandoned while on it). */
   outcome:          'open' | 'completed' | 'failed' | 'left';
   /** Step-validation verdict (K4): system = comparator score, manual = operator choice.
-   *  overridden (V3): the verdict was FAIL but the operator chose to proceed —
+   *  overridden (V3): the verdict was FAIL but the operator chose to proceed -
    *  the step completed anyway, with this honest mark in the audit trail. */
   validation?: { mode: 'system' | 'manual'; result: 'pass' | 'fail'; score?: number; overridden?: boolean };
   /** Live evidence photo uploaded for this step (served from the usage id). */
@@ -1534,7 +1534,7 @@ export interface OmsUsageStepEntry {
 }
 
 /**
- * Durable usage record, one per live guide session — the system of record
+ * Durable usage record, one per live guide session - the system of record
  * for "who worked on what, on which Production #, for how long, step by
  * step". Written server-side from the live-session event stream; survives
  * restarts (unlike LiveGuideSession, which is intentionally ephemeral).
@@ -1566,7 +1566,7 @@ export interface OmsUsageSession {
 
 // ── C1 (2026.4.46): contextual-intelligence observations ─────────────────────
 // A client streams a compact, ENGINE-NEUTRAL observation record (~1 Hz,
-// batched) while the operator is on a step. SIB — not the device — decides
+// batched) while the operator is on a step. SIB - not the device - decides
 // what it means: per-guide/per-step baselines are learned from these records
 // so guidance is measured against how people really do the step, never
 // against a hard-coded threshold. Nothing here is Apple-specific.
@@ -1622,7 +1622,7 @@ export interface StepObservationSummary {
   movingSec:       number;
 }
 
-/** Learned per-step baseline — what "normal" looks like on this step. */
+/** Learned per-step baseline - what "normal" looks like on this step. */
 export interface StepBaseline {
   stepId:           string;
   sessions:         number;         // completed visits contributing
@@ -1655,7 +1655,7 @@ export interface HintEffectiveness {
   helped:        number;            // shown hints after which the symptom eased
   /** helped / shown, 0–1; undefined until at least one hint was shown. */
   effectiveness?: number;
-  /** C3 rule: retired on this step (not fired) — low effectiveness or high mute rate. */
+  /** C3 rule: retired on this step (not fired) - low effectiveness or high mute rate. */
   retired:       boolean;
   reason?:       string;
 }
@@ -1672,7 +1672,7 @@ export interface StepIntelligence {
   lookAwayRate?:     number;        // step has a view: visits never aligned / visits with ≥ 20 samples
   validationFailRate?: number;
   leftRate?:         number;        // visits that ended 'left' or 'failed' / all visits
-  /** 0–100 — weighted sum of the rates above; the portal heat strip. */
+  /** 0–100 - weighted sum of the rates above; the portal heat strip. */
   heat:              number;
   /** What the engine currently needs on this step to fire (floors ∧ baseline). */
   triggers?:         { wrongTaps: number; attentionBelowPct: number; lookAwayAfterSec: number; dwellAfterSec?: number; mode: 'normal' | 'demo' };
@@ -1704,7 +1704,7 @@ export interface InsightsGuide {
 export interface GuideInsights {
   period:      { days: number; from: string; until: string };
   headline:    InsightsHeadline;
-  /** The same numbers for the period before — deltas are computed client-side. */
+  /** The same numbers for the period before - deltas are computed client-side. */
   previous:    InsightsHeadline;
   perDay:      InsightsDay[];
   perGuide:    InsightsGuide[];
@@ -1730,7 +1730,7 @@ export interface PushGuideSessionEventRequest {
 }
 
 /**
- * AIHint — a guidance intervention generated by an AIGuideAdapter and
+ * AIHint - a guidance intervention generated by an AIGuideAdapter and
  * delivered to the iOS Operator via GET /guide-sessions/live/:id/hints.
  *
  * Consumed once: the endpoint drains the queue so hints are not re-shown.
@@ -1740,7 +1740,7 @@ export interface AIHint {
   liveSessionId:  string;
   stepId?:        string;   // step the hint pertains to
   text:           string;   // human-readable guidance shown on iOS
-  /** Optional navigation action — follows nextOnFailure branch if set. */
+  /** Optional navigation action - follows nextOnFailure branch if set. */
   action?:        'navigate' | 'none';
   targetStepId?:  string;   // step to navigate to when action === 'navigate'
   /** Why the adapter fired: drives assist UX (stall auto-expands the card;
@@ -1761,14 +1761,14 @@ export interface AIHint {
 }
 
 // ============================================================
-// Instructions Import Tool — adapter-based guide import
+// Instructions Import Tool - adapter-based guide import
 // ============================================================
 
 /**
  * A single step in an imported guide.
  *
  * Graph links (nextOnSuccess, nextOnFailure, precondition) are expressed as
- * 1-based sequence numbers rather than UUIDs — the server resolves them to
+ * 1-based sequence numbers rather than UUIDs - the server resolves them to
  * real step IDs after all steps have been created.
  *
  * imageUrl, if provided, is downloaded at import time and stored in the SIB
@@ -1788,23 +1788,23 @@ export interface ImportedGuideStep {
   title?:               string;
   text:                 string;
   ttsText?:             string;
-  /** URL of the reference image — downloaded and stored locally at import time. */
+  /** URL of the reference image - downloaded and stored locally at import time. */
   imageUrl?:            string;
   /**
    * Filename in the SERVER-LOCAL designer image store (uploaded from the
-   * Procedure Designer via POST /mindmap/step-images). Copied — not
-   * downloaded — into the guide step-image store at ingest. Mutually
+   * Procedure Designer via POST /mindmap/step-images). Copied - not
+   * downloaded - into the guide step-image store at ingest. Mutually
    * exclusive with imageUrl; imageFile wins when both are present.
    */
   imageFile?:           string;
-  /** Reference link (any http(s) URL) — carried through to GuideStep.linkUrl. */
+  /** Reference link (any http(s) URL) - carried through to GuideStep.linkUrl. */
   linkUrl?:             string;
   completionRequired?:  boolean;   // defaults to true
   /** K5: evidence photo mandatory before this step can complete. */
   evidenceRequired?:    boolean;
   // 3D ghost overlay ASSIGNMENT (which model, how big, how transparent).
   // Deliberately excludes offsets/rotation: those are AR placement, owned by
-  // the device, and survive re-sync — see applyImportedGuide.
+  // the device, and survive re-sync - see applyImportedGuide.
   modelId?:             string;
   modelScale?:          number;
   modelOpacity?:        number;
@@ -1821,7 +1821,7 @@ export interface ImportedGuideStep {
   context?:             'installed' | 'ghost' | 'solid';
   /** Optional seconds of source timing for the step (e.g. Cortona SubStep.duration). */
   durationSec?:         number;
-  // Conditional task graph — expressed as sequence numbers; server resolves to UUIDs
+  // Conditional task graph - expressed as sequence numbers; server resolves to UUIDs
   nextOnSuccessSeq?:    number;
   nextOnFailureSeq?:    number;
   preconditionSeq?:     number;
@@ -1837,25 +1837,25 @@ export interface ImportedGuide {
   description?: string;
   steps:        ImportedGuideStep[];
   /** Assembly model + initial node state (AR OJT imports). Pose is never part
-   *  of an import — it is placed on device or inherited from the configuration. */
+   *  of an import - it is placed on device or inherited from the configuration. */
   assembly?:    Omit<GuideAssembly, 'pose'>;
 }
 
 /**
  * Request body for POST /guides/import.
- * sourceType defaults to 'manual' — pass 'mes' when routing through the MES adapter.
+ * sourceType defaults to 'manual' - pass 'mes' when routing through the MES adapter.
  */
 export interface ImportGuideRequest {
   anchorId:     string;
   createdBy:    string;
   sourceType?:  'manual' | 'mes' | 'rapidmanual';
-  /** Full ImportedGuide payload — passed through to the active adapter. */
+  /** Full ImportedGuide payload - passed through to the active adapter. */
   payload:      ImportedGuide;
 }
 
 /**
  * Response from POST /guides/import.
- * imageErrors lists any imageUrl values that failed to download — the guide
+ * imageErrors lists any imageUrl values that failed to download - the guide
  * and its steps are still created; affected steps simply have no mediaPath.
  */
 export interface ImportGuideResult {
@@ -1865,12 +1865,12 @@ export interface ImportGuideResult {
 }
 
 // ============================================================
-// iLOTO — spatial Lockout/Tagout (see docs/ILOTO.md)
+// iLOTO - spatial Lockout/Tagout (see docs/ILOTO.md)
 // ============================================================
 //
 // An anchor with anchorType 'LOTO' is one control panel. Authored LotoPoints
 // mark its circuit breakers (Safe Off, yellow) and switches (LOTO, red).
-// Every apply/remove is an APPEND-ONLY LotoEvent — status is always derived
+// Every apply/remove is an APPEND-ONLY LotoEvent - status is always derived
 // from the event log on read, never stored or edited. The app is the record
 // and verification aid; the physical lock is the safety control.
 
@@ -1882,7 +1882,7 @@ export type LotoPointKind = 'safeoff' | 'loto';
  * An authored isolation point on a control panel. Placement follows the
  * platform invariant: position is DEVICE-owned (set by the author standing at
  * the panel); the lock 3D asset is an assignment from the Model3D library.
- * Operators act only on authored points — ad-hoc points would destroy audit
+ * Operators act only on authored points - ad-hoc points would destroy audit
  * integrity.
  */
 export interface LotoPoint {
@@ -1893,7 +1893,7 @@ export interface LotoPoint {
   circuitId?:  string;        // free-form circuit reference for the LOTO map
   position:    Vector3;       // ARKit world space within the anchor's world map
   /**
-   * 3D asset slots — up to LOTO_MAX_MODELS per point (e.g. a lock, a tag,
+   * 3D asset slots - up to LOTO_MAX_MODELS per point (e.g. a lock, a tag,
    * and a hasp). Each slot carries its own device-owned placement; the
    * server clears a slot's placement when its modelId changes (placement
    * belongs to a shape, not a slot).
@@ -1944,14 +1944,14 @@ export type UpdateLotoPointRequest = Partial<
                 | 'modelOffsetX' | 'modelOffsetY' | 'modelOffsetZ' | 'modelRotationY' | 'modelRotationX' | 'modelRotationZ'>>;
 
 /**
- * Event types. 'override-remove' is the OSHA 1910.147 exception procedure —
+ * Event types. 'override-remove' is the OSHA 1910.147 exception procedure -
  * removing someone else's lock under documented conditions. It exists as a
  * DISTINCT type so audits surface overrides instantly; it is never a fallback
  * the UI reaches silently.
  */
 export type LotoEventType = 'apply' | 'remove' | 'override-remove';
 
-/** Supervisor override record — all three confirmations are the OSHA
+/** Supervisor override record - all three confirmations are the OSHA
  *  exception conditions and must be true for the server to accept. */
 export interface LotoOverride {
   supervisorName:          string;
@@ -1965,7 +1965,7 @@ export interface LotoOverride {
  * One append-only audit record. The checklist snapshot stores exactly what
  * was confirmed at the time, so audits stay truthful even if checklist
  * definitions evolve later. There are no update or delete routes for events,
- * by design — including for admins.
+ * by design - including for admins.
  */
 export interface LotoEvent {
   id:          string;
@@ -1981,7 +1981,7 @@ export interface LotoEvent {
   photoPath?:  string;
   override?:   LotoOverride;  // present iff type === 'override-remove'
   note?:       string;
-  /** A (2026.4.46): Test bay # — the raceway the panel sits in, entered at
+  /** A (2026.4.46): Test bay # - the raceway the panel sits in, entered at
    *  the iLOTO door on the device (free text, prefilled from last time). */
   testBay?:    string;
   createdAt:   string;
@@ -1993,7 +1993,7 @@ export type CreateLotoEventRequest =
     photoBase64?: string;
   };
 
-/** Derived on read from the event log — never stored. */
+/** Derived on read from the event log - never stored. */
 export interface LotoPointStatus {
   point:       LotoPoint;
   state:       'clear' | 'locked';
@@ -2026,7 +2026,7 @@ export interface MyLotoEntry {
 /**
  * One drawn flow line: an ordered polyline of world-space vertices (placed by
  * vertex-tap in AR, in the panel's QR-locked frame). `fedByPointId` links the
- * stroke to the Safe Off breaker that feeds it — the hook that makes the map
+ * stroke to the Safe Off breaker that feeds it - the hook that makes the map
  * STATUS-AWARE: when that breaker is locked out, the stroke renders
  * de-energized.
  */
@@ -2035,13 +2035,13 @@ export interface LotoMapStroke {
   points:        Vector3[];      // ≥ 2 vertices
   /** Circuit label shown on tap (matches LotoPoint.circuitId conventions). */
   circuitId?:    string;
-  /** Safe Off breaker point feeding this line — drives de-energized rendering. */
+  /** Safe Off breaker point feeding this line - drives de-energized rendering. */
   fedByPointId?: string;
 }
 
 /**
  * The panel's flow map. Versioned: every save creates version+1 (the previous
- * versions are kept — cheap, and EHS may ask "what did the map say then").
+ * versions are kept - cheap, and EHS may ask "what did the map say then").
  * GET returns the highest version.
  */
 export interface LotoMap {
@@ -2062,7 +2062,7 @@ export interface SaveLotoMapRequest {
 // ── Training / certification ────────────────────────────────────────────────
 
 /** Question bank record as STORED (seeded from OSHA 1910.147; editable data,
- *  not code). GET /loto/quiz strips correctIndex + explanation — grading
+ *  not code). GET /loto/quiz strips correctIndex + explanation - grading
  *  happens server-side only. */
 export interface LotoQuizQuestion {
   id:           string;
@@ -2121,7 +2121,7 @@ export * from './mindmap.js';
 //
 // This package's exports point at TypeScript SOURCE, so it is types-only at
 // runtime: `import type` is always safe (erased at compile), and bundled
-// clients are fine (vite compiles the source) — but a VALUE import from
+// clients are fine (vite compiles the source) - but a VALUE import from
 // compiled server code crashes in production with ERR_MODULE_NOT_FOUND,
 // because node cannot execute .ts. That is exactly how the first runtime
 // value import ever added here took down a Render deploy.
@@ -2129,11 +2129,11 @@ export * from './mindmap.js';
 // Rule: add types and interfaces to this package freely; add runtime values
 // to the workspace that executes them.
 
-// ─── UAM — User Access Management (RBAC ahead of SSO) ────────────────────────
+// ─── UAM - User Access Management (RBAC ahead of SSO) ────────────────────────
 // Pre-SSO identity: users are manually allow-listed by email + employee ID in
 // the portal's UAM table. POST /uam/login identifies against that list and
 // issues an HMAC-signed token. When corporate SSO (OIDC + HYPR) arrives, only
-// the token-issuing step changes — every role check stays.
+// the token-issuing step changes - every role check stays.
 
 /** Role ladder, most → least privileged. */
 export type UamRole = 'owner' | 'manager' | 'engineer' | 'technician';
@@ -2146,19 +2146,19 @@ export type UamRole = 'owner' | 'manager' | 'engineer' | 'technician';
  */
 export type SibProduct = 'aroms' | 'iloto' | 'gemba' | 'lab';
 // 'lab' (Anchor Lab door) is OPT-IN: unlike the others it is NOT implied by
-// an absent/empty products list — only users explicitly given it see the door.
-// NB: no value export here — @spatial/shared stays types-only at runtime
+// an absent/empty products list - only users explicitly given it see the door.
+// NB: no value export here - @spatial/shared stays types-only at runtime
 // (the Render-crash doctrine). Consumers keep their own whitelist array.
 
 export interface UamUser {
   id:         string;
-  /** Normalised (lowercase, trimmed) — the identity key. */
+  /** Normalised (lowercase, trimmed) - the identity key. */
   email:      string;
   employeeId: string;
   name:       string;
   role:       UamRole;
   /**
-   * Product entitlements. ABSENT/empty = all products (backward compatible —
+   * Product entitlements. ABSENT/empty = all products (backward compatible -
    * every pre-E1 user keeps full access until explicitly scoped).
    */
   products?:  SibProduct[];
@@ -2175,7 +2175,7 @@ export interface CreateUamUserRequest {
   products?:  SibProduct[];
 }
 
-/** Partial update — only supplied fields are written. */
+/** Partial update - only supplied fields are written. */
 export interface UpdateUamUserRequest {
   employeeId?: string;
   name?:       string;
@@ -2185,7 +2185,7 @@ export interface UpdateUamUserRequest {
 }
 
 export interface UamLoginRequest {
-  /** Omitted on the kiosk path — employeeId alone identifies the user. */
+  /** Omitted on the kiosk path - employeeId alone identifies the user. */
   email?:      string;
   /** Kiosk path sends ONLY this; when sent WITH email it must match. */
   employeeId?: string;

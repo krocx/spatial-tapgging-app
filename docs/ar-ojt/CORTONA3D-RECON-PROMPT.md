@@ -1,4 +1,4 @@
-# Prompt for the office Cowork — Cortona3D export structural findings
+# Prompt for the office Cowork - Cortona3D export structural findings
 
 Copy everything below the line into the office Cowork, with the folder that
 contains the `.vmp`, the `.htm` (+ its asset folder) and `recon/report.md`,
@@ -26,7 +26,7 @@ need to show an example, show the **skeleton with values replaced by their type*
 out and say "omitted (content)".
 
 Answer these questions in order, each with a short heading. Say "not present"
-or "could not determine" where that is the truth — do not guess.
+or "could not determine" where that is the truth - do not guess.
 
 1. **Container.** Is the `.vmp` a ZIP? List the entry types inside it (by
    extension) with counts and approximate sizes. Is there an obvious project
@@ -38,7 +38,7 @@ or "could not determine" where that is the truth — do not guess.
    steps (one per step? one master + per-step overrides?). Header line of one
    file (e.g. `#VRML V2.0 utf8`).
 
-3. **Part identity.** How are parts named in the geometry — VRML `DEF` names?
+3. **Part identity.** How are parts named in the geometry - VRML `DEF` names?
    Metadata nodes? Give the `DEF` name **pattern(s)** and say whether they look
    like CAD part numbers, internal IDs, or both. Is there a mapping table
    anywhere (XML/JSON) from internal ID → part number → display name? If so,
@@ -52,7 +52,7 @@ or "could not determine" where that is the truth — do not guess.
    declarations, are coordinates in millimetres or metres? Which axis is "up"
    (any `viewpoint`/`Viewpoint` orientation, or a documented convention)?
 
-6. **Animations — where do they live?** This is the most important question.
+6. **Animations - where do they live?** This is the most important question.
    Choose all that apply and give evidence (node/element/key names, counts):
    (a) VRML `PositionInterpolator` / `OrientationInterpolator` + `TimeSensor`
    + `ROUTE` statements inside the geometry file(s);
@@ -61,7 +61,7 @@ or "could not determine" where that is the truth — do not guess.
    names of one animation record, e.g. `{part:id, from:vec3, to:vec3, t:float}`);
    (d) an XML animation/step document (give element and attribute names);
    (e) something else.
-   For each mechanism, how is a part linked to its animation — by `DEF` name,
+   For each mechanism, how is a part linked to its animation - by `DEF` name,
    by numeric id, by node path?
 
 7. **Steps.** Which file defines the step sequence? Give the element/key names

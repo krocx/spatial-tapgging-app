@@ -1,10 +1,10 @@
-// KioskStartView.swift — shift start screen for shared (kiosk) iPads.
+// KioskStartView.swift - shift start screen for shared (kiosk) iPads.
 //
 // Identity only (A, 2026.4.46):
-//   1. Identify — employee ID; the server resolves name/email/role from the
+//   1. Identify - employee ID; the server resolves name/email/role from the
 //      allow-list (POST /uam/login, kiosk path).
 //   2. Engineers+ pick the hat they wear this shift (authoring / operating).
-// Work context is NOT asked here — the app cannot know which product the
+// Work context is NOT asked here - the app cannot know which product the
 // person will pick. Each product door on the home screen asks for its own
 // (Production #, chamber configuration, Test bay #, Project ID), prefilled
 // from local memory. "Not you?" switches accounts.
@@ -25,7 +25,7 @@ struct KioskStartView: View {
     @State private var isVerifying     = false
     @State private var errorText: String? = nil
 
-    /// Server link state — the gate owns the connection. The screen shows
+    /// Server link state - the gate owns the connection. The screen shows
     /// INSTANTLY at launch; fields unlock when the server answers. Render
     /// cold-starts can take ~30 s, so the probe retries before giving up.
     private enum Link { case connecting, ready, offline }
@@ -39,7 +39,7 @@ struct KioskStartView: View {
 
     private var identified: Bool { settings.uamSignedIn && !switchingUser }
 
-    /// Identified users only set a (local) Production # — no server needed
+    /// Identified users only set a (local) Production # - no server needed
     /// (the config list is fetched opportunistically; a stale list still works).
     private var needsServer: Bool { !identified }
 
@@ -56,13 +56,13 @@ struct KioskStartView: View {
                 if active {
                     link = .ready
                 } else {
-                    // UAM dormant on this server — the gate does not apply.
+                    // UAM dormant on this server - the gate does not apply.
                     link = .ready
                     onDone()
                 }
                 return
             } catch {
-                print("KIOSK connect attempt \(attempt) failed — \(error.localizedDescription)")
+                print("KIOSK connect attempt \(attempt) failed - \(error.localizedDescription)")
                 if attempt < 4 { try? await Task.sleep(nanoseconds: 4_000_000_000) }
             }
         }
@@ -89,7 +89,7 @@ struct KioskStartView: View {
                         .font(.largeTitle.bold()).foregroundColor(.white)
                     Text(!identified ? "Enter your employee ID to begin."
                          : canAuthor  ? "Are you authoring or operating this shift?"
-                         : "You're set — pick what you're doing on the next screen.")
+                         : "You're set - pick what you're doing on the next screen.")
                         .font(.subheadline).foregroundColor(.white.opacity(0.6))
                 }
 
@@ -116,7 +116,7 @@ struct KioskStartView: View {
                 }
                 .frame(maxWidth: 420)
 
-                // ── Server link status — only shown while it matters ──
+                // ── Server link status - only shown while it matters ──
                 if needsServer && link != .ready {
                     HStack(spacing: 8) {
                         if link == .connecting {
@@ -185,7 +185,7 @@ struct KioskStartView: View {
             .accessibilityLabel("Server settings")
         }
         .sheet(isPresented: $showSettings, onDismiss: {
-            // The server URL may have changed — re-probe from scratch so the
+            // The server URL may have changed - re-probe from scratch so the
             // link status (and the UAM-dormant auto-skip) reflect the new host.
             Task { await connect() }
         }) {
@@ -198,7 +198,7 @@ struct KioskStartView: View {
             intent = settings.shiftIntent == "author" ? "author" : "operate"
         }
         .task { await connect() }
-        .interactiveDismissDisabled()   // the gate is the point — no swipe-away
+        .interactiveDismissDisabled()   // the gate is the point - no swipe-away
     }
 
     private var beginDisabled: Bool {
@@ -212,7 +212,7 @@ struct KioskStartView: View {
     private func begin() {
         errorText = nil
 
-        // Already identified — record the hat; context comes at the product door.
+        // Already identified - record the hat; context comes at the product door.
         if identified {
             settings.shiftIntent = authoring ? "author" : "operate"
             onDone()
@@ -236,14 +236,14 @@ struct KioskStartView: View {
                 // engineers+ choose authoring/operating (default: last choice).
                 intent = (r.user.role == "technician") ? "operate"
                        : (settings.shiftIntent == "author" ? "author" : "operate")
-                // Technicians have nothing to choose — straight to the home page.
+                // Technicians have nothing to choose - straight to the home page.
                 if r.user.role == "technician" { settings.shiftIntent = "operate"; onDone() }
             } catch let SIBClientError.httpError(_, msg) {
                 isVerifying = false
                 errorText = msg
             } catch {
                 isVerifying = false
-                errorText = "Can't reach the server — check the connection and try again."
+                errorText = "Can't reach the server - check the connection and try again."
             }
         }
     }

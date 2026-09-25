@@ -19,18 +19,18 @@ enum TourStep: Int, CaseIterable {
     // Back on home screen
     case tapAuthor          //  5: spotlight on Author Mode button
     // Inside Author flow
-    case createAnchor       //  6: banner — tap + to create an anchor
-    case anchorQR           //  7: banner — explains QR purpose in CreateAnchorSheet step 2
-    case anchorHub          //  8: banner — welcome to Anchor Hub
+    case createAnchor       //  6: banner - tap + to create an anchor
+    case anchorQR           //  7: banner - explains QR purpose in CreateAnchorSheet step 2
+    case anchorHub          //  8: banner - welcome to Anchor Hub
     case shareQR            //  9: spotlight on Share button in QR card
-    case scanQRAuthor       // 10: banner — point camera at QR code
-    case placeTag           // 11: banner — tap surface to place tag
-    case trainTag           // 12: banner — tap Train on a placed tag
+    case scanQRAuthor       // 10: banner - point camera at QR code
+    case placeTag           // 11: banner - tap surface to place tag
+    case trainTag           // 12: banner - tap Train on a placed tag
     // Back to home → Operator
     case tapOperator        // 13: spotlight on Operator Mode button
     // Inside Operator flow
-    case scanQROperator     // 14: banner — scan anchor QR
-    case runInspection      // 15: banner — walk to tags + validate
+    case scanQROperator     // 14: banner - scan anchor QR
+    case runInspection      // 15: banner - walk to tags + validate
     // Finish
     case done               // 16: celebration card
 }
@@ -133,13 +133,13 @@ extension TourStep {
         case .testConnection:
             return "Tap Test Connection to verify the app\ncan reach your SIB server."
         case .saveSettings:
-            return "Before saving — scroll down to Identity and check your Author Name.\nWe detected it from your device; update it if needed.\nThen tap Save to apply and close."
+            return "Before saving - scroll down to Identity and check your Author Name.\nWe detected it from your device; update it if needed.\nThen tap Save to apply and close."
         case .tapAuthor:
             return "You're connected! Now let's explore\nhow Authors create inspection tags."
         case .createAnchor:
             return "Tap the + button to create a new anchor,\nor select an existing one to continue."
         case .anchorQR:
-            return "Print this QR and mount it permanently on the\nChamber or Component you'll be inspecting.\nShare it with Operators — they scan it every\nsession to lock the AR coordinate origin."
+            return "Print this QR and mount it permanently on the\nChamber or Component you'll be inspecting.\nShare it with Operators - they scan it every\nsession to lock the AR coordinate origin."
         case .anchorHub:
             return "This is your Anchor Hub - The control center for\none Physical Inspection (Ex: Chamber or Component).\nTags we create, QR Code and AR sessions all live here."
         case .shareQR:
@@ -155,7 +155,7 @@ extension TourStep {
         case .scanQROperator:
             return "Scan the same anchor QR code.\nFloating tag markers will appear in AR."
         case .runInspection:
-            return "Walk to each floating tag and step into\nthe cone — validation fires automatically."
+            return "Walk to each floating tag and step into\nthe cone - validation fires automatically."
         case .done:
             return "You've completed the full walkthrough.\nYou're ready to inspect for real."
         }
@@ -170,7 +170,7 @@ extension TourStep {
     }
 }
 
-// ── Preference key — publishes screen-space frames of spotlight targets ───────
+// ── Preference key - publishes screen-space frames of spotlight targets ───────
 
 struct TourFrameKey: PreferenceKey {
     static var defaultValue: [TourStep: CGRect] = [:]

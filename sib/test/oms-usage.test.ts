@@ -1,4 +1,4 @@
-// oms-usage.test.ts — AR OMS Usage Log (K2): event folding + filters.
+// oms-usage.test.ts - AR OMS Usage Log (K2): event folding + filters.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -52,7 +52,7 @@ test('moving on without completing closes the entry as left; sign-off link final
       operatorName: 'Tech Two', workContext: 'CH-09' });
   usageRecordEvent('L2', 'step:entered', { type: 'step:entered', stepId: 's1', stepIndex: 0 });
   usageRecordEvent('L2', 'step:entered', { type: 'step:entered', stepId: 's2', stepIndex: 1 });
-  // No session:submitted event (offline queue) — sign-off link must finalise.
+  // No session:submitted event (offline queue) - sign-off link must finalise.
   usageLinkSignOff('L2', 'signoff-123');
 
   const rec = omsUsageStore.findById('L2')!;
@@ -67,7 +67,7 @@ test('perception:result attaches a validation verdict to the matching step entry
     { guideId: 'g1', anchorId: 'a1', guideName: 'x', anchorName: 'y',
       operatorName: 'Tech Three', workContext: 'CH-11' });
   usageRecordEvent('L3', 'step:entered', { type: 'step:entered', stepId: 's1', stepIndex: 0 });
-  // System verdict arrives, then the completion — both target s1.
+  // System verdict arrives, then the completion - both target s1.
   usageRecordEvent('L3', 'perception:result', {
     type: 'perception:result', stepId: 's1',
     payload: { mode: 'system', result: 'pass', score: 0.87 },

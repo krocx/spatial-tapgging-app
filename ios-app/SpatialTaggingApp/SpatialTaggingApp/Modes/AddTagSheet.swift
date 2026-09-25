@@ -1,16 +1,16 @@
-// AddTagSheet.swift — Phase 3
+// AddTagSheet.swift - Phase 3
 // Compact dark bottom sheet for creating a new tag after AR tap-to-place.
 //
 // UX (wireframe Screen 7):
-//   • Capture mode chips — Honeycomb / Cone / OCR — drive the default tag type.
+//   • Capture mode chips - Honeycomb / Cone / OCR - drive the default tag type.
 //   • Quick suggestion chips filtered to the selected capture mode.
 //   • Label text field.
 //   • "Train now"       → saves tag then immediately launches the training capture.
 //   • "Save & train later" → saves tag then returns to AR for the next placement.
 //
 // Callbacks (replacing the old onCreated):
-//   onSaveAndTrain(Tag)  — parent upgrades marker, appends to state, opens capture.
-//   onSaveAndDefer(Tag)  — parent upgrades marker, appends to state, returns to AR.
+//   onSaveAndTrain(Tag)  - parent upgrades marker, appends to state, opens capture.
+//   onSaveAndDefer(Tag)  - parent upgrades marker, appends to state, returns to AR.
 
 import SwiftUI
 import simd
@@ -82,7 +82,7 @@ struct AddTagSheet: View {
         }
     }
 
-    // A tag must never be created with zero position data — that produces a
+    // A tag must never be created with zero position data - that produces a
     // tag that can never appear in Author or Operator mode without a manual
     // re-place. Block save entirely until a valid AR placement exists.
     private var canSave: Bool {
@@ -182,9 +182,9 @@ struct AddTagSheet: View {
                         if !focused { labelTouched = true }
                     }
 
-                // Inline hint — only shown after the user has left the field blank
+                // Inline hint - only shown after the user has left the field blank
                 if isEmptyAndTouched {
-                    Text("Required — enter a label for this tag")
+                    Text("Required - enter a label for this tag")
                         .font(.caption)
                         .foregroundStyle(.orange.opacity(0.85))
                         .padding(.horizontal, 16)
@@ -209,7 +209,7 @@ struct AddTagSheet: View {
                 .padding(.bottom, 8)
             }
 
-            // No placement captured — block save so a tag can never be created
+            // No placement captured - block save so a tag can never be created
             // with zero position metadata (the root cause of tags silently
             // never appearing in Author/Operator mode later).
             if placement == nil {
@@ -217,7 +217,7 @@ struct AddTagSheet: View {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .font(.caption)
                         .foregroundStyle(.orange)
-                    Text("No surface detected here — close this sheet and tap the spot again.")
+                    Text("No surface detected here - close this sheet and tap the spot again.")
                         .font(.caption)
                         .foregroundStyle(.orange)
                         .lineLimit(2)
@@ -326,11 +326,11 @@ struct AddTagSheet: View {
     // ── Save ──────────────────────────────────────────────────────────────────
 
     private func save(trainNow: Bool) async {
-        // Defense in depth — canSave already disables both buttons when
+        // Defense in depth - canSave already disables both buttons when
         // placement is nil, but never allow a zero-position tag to reach
         // the server even if this is somehow invoked another way.
         guard let pos = placement else {
-            saveError = "No surface detected — tap the spot again before saving."
+            saveError = "No surface detected - tap the spot again before saving."
             return
         }
 

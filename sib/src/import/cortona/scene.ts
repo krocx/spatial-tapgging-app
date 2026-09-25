@@ -1,4 +1,4 @@
-// scene.ts — turn the parsed VRML AST into a renderable scene graph.
+// scene.ts - turn the parsed VRML AST into a renderable scene graph.
 //
 // Cortona3D's published scene expresses the assembly as `ObjectVM` PROTO
 // instances (their own Transform-with-extras) plus standard `Transform`,
@@ -115,7 +115,7 @@ export function buildScene(scene: VrmlScene, opts: BuildSceneOptions = {}): Scen
     const appRef = nodeField(shape, 'appearance'); const app = appRef ? resolve(appRef) : null;
     const matRef = app ? nodeField(app, 'material') : null; let mat = matRef ? resolve(matRef) : null;
     // Some publications put an empty `Material {}` on the leaf shape and keep
-    // the real colour on the enclosing ObjectVM's `appearance` — inherit it.
+    // the real colour on the enclosing ObjectVM's `appearance` - inherit it.
     if ((!mat || !numField(mat, 'diffuseColor', []).length) && inheritedMat) mat = inheritedMat;
     if (mat) {
       const dc = numField(mat, 'diffuseColor', []); if (dc.length === 3) color = [dc[0], dc[1], dc[2]];
@@ -188,7 +188,7 @@ export function buildScene(scene: VrmlScene, opts: BuildSceneOptions = {}): Scen
     roots = [frame];
   }
 
-  // bbox over world-space positions — overall, and per DEF'd subtree (the
+  // bbox over world-space positions - overall, and per DEF'd subtree (the
   // per-node bounds give each imported step its pin: the centroid of the
   // parts it touches, in the assembly frame).
   const boundsByDef = new Map<string, { min: number[]; max: number[] }>();

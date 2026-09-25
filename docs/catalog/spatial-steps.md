@@ -8,9 +8,9 @@ depends: [qr-anchoring]
 terms: [AR Work Instructions, Anchor]
 spec: ../README.md#ar-work-instructions-ar-oms
 api: |
-  PATCH /guides/:id/steps/:stepId — persist AR pin position per step (app · API key)
-  POST /worldmap/guide/:guideId/upload — guide world map + reference photo (app · API key)
-  GET /worldmap/guide/:guideId — world map for operator relocalization (app · API key)
+  PATCH /guides/:id/steps/:stepId - persist AR pin position per step (app · API key)
+  POST /worldmap/guide/:guideId/upload - guide world map + reference photo (app · API key)
+  GET /worldmap/guide/:guideId - world map for operator relocalization (app · API key)
 wireframe: arguides
 arch: |
   flowchart LR
@@ -26,6 +26,6 @@ arch: |
     POS --> PANEL
     WMU --> RELOC
 ---
-Guide steps are pinned in 3D space with floating instruction panels — the operator is
+Guide steps are pinned in 3D space with floating instruction panels - the operator is
 physically guided to where the work happens, in order. Panels carry title,
 instruction, reference image, evidence camera and the step's Reference link.

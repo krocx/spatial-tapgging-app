@@ -1,4 +1,4 @@
-// procedure-parts.test.ts — 2026.4.46: parts per step in the Procedure Designer.
+// procedure-parts.test.ts - 2026.4.46: parts per step in the Procedure Designer.
 //
 // The designer stores only "which parts this step installs"; the compiler
 // turns that into per-step node deltas + an initial state, and the reverse
@@ -137,8 +137,8 @@ test('GLB part bounds from accessor min/max + node transforms; auto CAD pin at t
   const steps = [
     { id: 's1', nodes: [{ node: 'cmp:a', show: 'solid' }] },
     { id: 's2', nodes: [{ node: 'cmp:a' }, { node: 'grp' }] },
-    { id: 's3', nodes: [{ node: 'cmp:a' }], cadPosition: [0, 0, 0] },   // already pinned — untouched
-    { id: 's4' },                                                       // no parts — untouched
+    { id: 's3', nodes: [{ node: 'cmp:a' }], cadPosition: [0, 0, 0] },   // already pinned - untouched
+    { id: 's4' },                                                       // no parts - untouched
   ] as unknown as GuideStep[];
   const changed = autoCadPositions(guide, steps, () => b);
   assert.deepEqual(changed.map(s => s.id), ['s1', 's2']);

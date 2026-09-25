@@ -6,7 +6,7 @@
 <title>Learn · appliedx Connected Worker AR OMS Platform</title>
 <link rel="stylesheet" href="/portal/brand/brand.css">
 <style>
-  /* /learn — six five-minute reads over the Feature Catalogue. One journey answers
+  /* /learn - six five-minute reads over the Feature Catalogue. One journey answers
      one question; one stop is one screen: a line, a diagram, three sentences.
      Built only from the brand system (docs/BRAND.md → Portal patterns). */
   body { margin: 0; }
@@ -104,7 +104,7 @@ const AREA_ICON = { tags: 'qr', guides: 'steps', iloto: 'lockout', gemba: 'check
     loadMermaid();
     route();
   } catch (e) {
-    document.getElementById('ln-main').innerHTML = `<div class="ax-notice ax-notice--bad">${icon('alert')}<div>Learn isn't available on this deployment — ${esc(e.message)}</div></div>`;
+    document.getElementById('ln-main').innerHTML = `<div class="ax-notice ax-notice--bad">${icon('alert')}<div>Learn isn't available on this deployment - ${esc(e.message)}</div></div>`;
   }
   window.addEventListener('hashchange', route);
   document.addEventListener('keydown', e => {
@@ -155,7 +155,7 @@ function renderLanding() {
   document.getElementById('ln-main').innerHTML = `<div class="ln-hero">
       <div class="ax-eyebrow">Learn</div>
       <h1>Six five-minute reads.</h1>
-      <p>Each one answers a question you'll hear on the floor, in the order you'd meet it — one idea per screen, the platform's own diagrams, and a link to the Catalogue when you want the detail.${doneN ? ` <b>${doneN} of ${total} done.</b>` : ''}</p>
+      <p>Each one answers a question you'll hear on the floor, in the order you'd meet it - one idea per screen, the platform's own diagrams, and a link to the Catalogue when you want the detail.${doneN ? ` <b>${doneN} of ${total} done.</b>` : ''}</p>
     </div>
     <div class="ln-doors">${doors}</div>`;
 }
@@ -180,7 +180,7 @@ function renderStop(arriving) {
         <h1>${esc(s.title)}</h1>
         <p>${esc(s.text)}</p>
         ${s.try ? `<div class="ax-notice">${icon('bolt')}<div><b>Try it now</b><br>${esc(s.try)}</div></div>` : ''}
-        ${s.locked ? `<div class="ax-notice ax-notice--warn">${icon('lock-restricted')}<div>This feature's detail is restricted — unlock the Catalogue with the IP key to see its diagram.</div></div>` : ''}
+        ${s.locked ? `<div class="ax-notice ax-notice--warn">${icon('lock-restricted')}<div>This feature's detail is restricted - unlock the Catalogue with the IP key to see its diagram.</div></div>` : ''}
         <a class="ln-more" href="${esc(s.catalog)}">Read more in the Catalogue ${icon('next')}</a>
       </div>
       <div class="ax-card ax-diagram ln-diagram" id="ln-diagram">${s.diagram ? '' : '<span class="ax-muted">No diagram for this stop yet.</span>'}</div>
@@ -193,7 +193,7 @@ function renderStop(arriving) {
   if (s.diagram) drawDiagram(s.diagram, s.area);
 }
 
-// ── Quiz — recognition, not memory: three questions, immediate feedback ──────
+// ── Quiz - recognition, not memory: three questions, immediate feedback ──────
 let answers = [];
 function renderQuiz() {
   answers = journey.quiz.map(() => null);
@@ -232,9 +232,9 @@ function answer(qi, oi) {
     document.getElementById('ln-quiz-end').innerHTML = `<div class="ln-done ax-lockin">
         <span class="ax-mark ${score === 3 ? 'is-green' : ''}"><i></i><em></em></span>
         <h1>${score === 3 ? 'All three.' : score + ' of 3.'}</h1>
-        <p>${score === 3 ? 'You could explain this one to someone else now.' : 'Worth a second pass on the stops you missed — the marks above take you straight there.'}</p>
+        <p>${score === 3 ? 'You could explain this one to someone else now.' : 'Worth a second pass on the stops you missed - the marks above take you straight there.'}</p>
         <div class="ax-row" style="justify-content:center">
-          ${next ? `<a class="ax-btn ax-btn--primary" href="#${next.id}">Next: ${esc(next.name)} ${icon('next')}</a>` : `<a class="ax-btn ax-btn--primary" href="#">All six done — back to Learn ${icon('next')}</a>`}
+          ${next ? `<a class="ax-btn ax-btn--primary" href="#${next.id}">Next: ${esc(next.name)} ${icon('next')}</a>` : `<a class="ax-btn ax-btn--primary" href="#">All six done - back to Learn ${icon('next')}</a>`}
           <a class="ax-btn" href="/catalog">Open the Catalogue</a>
         </div>
       </div>`;
@@ -242,7 +242,7 @@ function answer(qi, oi) {
   }
 }
 
-// ── Diagrams — Mermaid, vendored, themed from the tokens at runtime ──────────
+// ── Diagrams - Mermaid, vendored, themed from the tokens at runtime ──────────
 let mermaidReady = false, seq = 0;
 function loadMermaid() {
   const s = document.createElement('script');

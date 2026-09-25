@@ -1,9 +1,9 @@
-// StepReadCard.swift — H2 (2026.4.46): read a step in full without leaving AR.
+// StepReadCard.swift - H2 (2026.4.46): read a step in full without leaving AR.
 //
 // Place Steps showed one truncated line of the active step; showing a tech
 // the instruction meant going back to the portal. This half-height sheet
-// keeps the camera live behind it and shows the whole step — title, text,
-// voice-over, image, flags, models, branches — with ‹ › to flip through the
+// keeps the camera live behind it and shows the whole step - title, text,
+// voice-over, image, flags, models, branches - with ‹ › to flip through the
 // guide. Read-only by design: editing stays in the Guide editor.
 
 import SwiftUI

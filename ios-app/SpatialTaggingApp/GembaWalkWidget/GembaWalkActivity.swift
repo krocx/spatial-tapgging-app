@@ -1,4 +1,4 @@
-// GembaWalkActivity.swift — G6 (2026.4.46): the Live Activity contract for a
+// GembaWalkActivity.swift - G6 (2026.4.46): the Live Activity contract for a
 // Gemba walk. The app and the widget extension are separate modules that
 // each compile their own copy of this file (both targets use synchronized
 // folders, so a shared membership is not available). KEEP THE TWO COPIES
@@ -14,7 +14,7 @@ import ActivityKit
 
 struct GembaWalkActivityAttributes: ActivityAttributes {
     public struct ContentState: Codable, Hashable {
-        /// Title of the finding being walked to ("P5142 — Concept Understanding").
+        /// Title of the finding being walked to ("P5142 - Concept Understanding").
         var nextTitle: String
         /// Category code for the accent (STRENGTH / OFI / NC) or nil.
         var category: String?
@@ -22,7 +22,7 @@ struct GembaWalkActivityAttributes: ActivityAttributes {
         var distanceM: Double?
         var done: Int
         var total: Int
-        /// navigate · arrived · paused (tracking lost — raise the phone) · done
+        /// navigate · arrived · paused (tracking lost - raise the phone) · done
         var phase: String
     }
 

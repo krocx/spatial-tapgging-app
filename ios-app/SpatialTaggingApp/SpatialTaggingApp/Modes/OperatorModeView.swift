@@ -1,6 +1,6 @@
-// OperatorModeView.swift — Phase 3
+// OperatorModeView.swift - Phase 3
 // Operator inspection flow:
-//   1. AR camera — tag markers visible (floating label + dot, show/hide toggle)
+//   1. AR camera - tag markers visible (floating label + dot, show/hide toggle)
 //   2. Adjust threshold slider (default 0.60, range 0.40–0.90)
 //   3. Tap "Inspect Now" → snapshot → POST /perception/validate-all
 //   4. Markers update to green (PASS) / red (FAIL) in AR
@@ -11,7 +11,7 @@
 //
 // Phase 3 entry contract:
 //   • appState.activeAnchor, activeTags, anchorNormalisedTransform are pre-set by QRScanGateView.
-//   • No QR scanning happens inside Operator mode — session origin is already locked.
+//   • No QR scanning happens inside Operator mode - session origin is already locked.
 
 import SwiftUI
 import ARKit
@@ -49,22 +49,22 @@ struct OperatorModeView: View {
 
     /// Shown instead of the live status card whenever the operator is near a
     /// cone-trained tag (cone guide visible) but hasn't yet aligned into its
-    /// zone — replaces the previous "nothing shown" gap with an explicit nudge
+    /// zone - replaces the previous "nothing shown" gap with an explicit nudge
     /// so a stale PASS/FAIL is never implied while they're still walking up.
     /// nil when no such tag is nearby (handled by the gizmo instead).
     @State private var approachHintText:     String? = nil
     @State private var approachHintTagLabel: String  = ""
 
     // ── #88: distance-based marker scaling ────────────────────────────────────
-    /// Below this distance the marker is at full (1.0×) scale — normal
+    /// Below this distance the marker is at full (1.0×) scale - normal
     /// walking-up/inspection range. Closer than this, it progressively shrinks.
     private let markerFullScaleDist: Float = 0.45
     /// Closer than this, the marker stops shrinking further (floor scale).
     private let markerMinScaleDist:  Float = 0.15
     private let markerMinScale:      CGFloat = 0.45
-    /// Closer than this, show the "too close — move back" hint.
+    /// Closer than this, show the "too close - move back" hint.
     private let tooCloseDist: Float = 0.18
-    /// Set when the operator is right up against the nearest tag — drives a
+    /// Set when the operator is right up against the nearest tag - drives a
     /// "move back a bit" hint so the AR marker (now shrunk) doesn't end up
     /// being mistaken for the reason they can't see the part clearly.
     @State private var tooCloseTagLabel: String? = nil
@@ -89,7 +89,7 @@ struct OperatorModeView: View {
     @State private var passPreviewTagId:  String?  = nil
     @State private var passPreviewLabel:  String   = ""
     /// Reference preview is only shown within this distance of a cone tag.
-    /// Beyond it, the gizmo (below) guides the operator instead — this single
+    /// Beyond it, the gizmo (below) guides the operator instead - this single
     /// threshold replaces the old dual 1.5 m / 2.0 m dead-zone that let a
     /// stale, previously-visited tag's image linger on screen.
     private let maxPreviewDistance: Float = 1.6
@@ -125,7 +125,7 @@ struct OperatorModeView: View {
     /// Server-side filename returned after evidence upload (AnchorID_TagID_YYYYMMDD_HHMMSS.jpg).
     @State private var tagImagePaths:       [String: String]              = [:]
 
-    /// FAIL 6-second timer — fires once after 6 s of persistent FAIL to show
+    /// FAIL 6-second timer - fires once after 6 s of persistent FAIL to show
     /// the Tag Inspected sheet. Cancelled immediately if PASS fires first.
     @State private var failTimerTask: Task<Void, Never>? = nil
 
@@ -135,11 +135,11 @@ struct OperatorModeView: View {
     @State private var sheetImage:  UIImage?           = nil
     @State private var sheetStatus: ValidationStatus?  = nil   // .pass or .fail
 
-    /// Retake photo overlay — operator dismissed sheet to re-frame the evidence shot.
+    /// Retake photo overlay - operator dismissed sheet to re-frame the evidence shot.
     @State private var showRetakeOverlay = false
     @State private var retakeTagId: String? = nil
 
-    /// Wall-clock session start — used for duration in the inspection report.
+    /// Wall-clock session start - used for duration in the inspection report.
     @State private var sessionStartTime: Date = Date()
 
     // ── Fullscreen image viewer (pinch-zoom) ────────────────────────────────────
@@ -173,7 +173,7 @@ struct OperatorModeView: View {
     // out a 30 s cooldown" behaviour. Per the desired UX flow, once the operator
     // is inside a tag's cone FOV the app must keep re-checking continuously so
     // that a state change (e.g. operator fixes a loose cable) is detected and
-    // shown as PASS immediately — without requiring the operator to back out of
+    // shown as PASS immediately - without requiring the operator to back out of
     // the zone, re-enter it, or press a button again.
     /// The tag currently being continuously validated (nil when not in any cone zone).
     @State private var liveLoopTagId: String? = nil
@@ -219,7 +219,7 @@ struct OperatorModeView: View {
     @State private var interruptionMsg: String? = nil
 
     // ── Diagnostic / debug state ──────────────────────────────────────────────
-    /// Bright sphere placed at the anchor QR world position — always visible when
+    /// Bright sphere placed at the anchor QR world position - always visible when
     /// anchorNormalisedTransform is set.  Lets the operator confirm AR is working
     /// and navigate to the anchor before looking for smaller tag markers.
     @State private var anchorDebugSphere: SCNNode? = nil
@@ -237,14 +237,14 @@ struct OperatorModeView: View {
     // ── Session-preserving AR container ──────────────────────────────────────
     // OwnSCNViewContainer intentionally omits dismantleUIView.  ARContainerView's
     // dismantleUIView calls session.pause(), which would pause the SHARED session
-    // handed off from QRScanGateView — corrupting the coordinate frame mid-inspection.
+    // handed off from QRScanGateView - corrupting the coordinate frame mid-inspection.
     // Lifecycle ownership: QRScanGateView starts the session; OperatorModeView.onDisappear
     // explicitly pauses it via arManager.pauseSession().
     private struct OwnSCNViewContainer: UIViewRepresentable {
         let sceneView: ARSCNView
         func makeUIView(context: Context) -> ARSCNView { sceneView }
         func updateUIView(_ uiView: ARSCNView, context: Context) {}
-        // Intentionally no dismantleUIView — session lifecycle owned by AppState.
+        // Intentionally no dismantleUIView - session lifecycle owned by AppState.
     }
 
     /// Fullscreen image viewer preserving iOS's native pinch-to-zoom behaviour.
@@ -327,7 +327,7 @@ struct OperatorModeView: View {
 
     var body: some View {
         ZStack {
-            // Live AR camera — uses OwnSCNViewContainer so the shared session is
+            // Live AR camera - uses OwnSCNViewContainer so the shared session is
             // never paused by a SwiftUI dismantleUIView call during inspection.
             OwnSCNViewContainer(sceneView: arManager.sceneView)
                 .ignoresSafeArea()
@@ -413,11 +413,11 @@ struct OperatorModeView: View {
             // ── Live Pass/Fail status card ──────────────────────────────────────
             // Replaces the old plain "In zone" / "Capturing…" badge. As soon as
             // the operator is in a tag's cone zone, the continuous live loop
-            // (startLiveLoop) is already running detection — this card makes
+            // (startLiveLoop) is already running detection - this card makes
             // that obvious by showing a real-time check/X for the tag currently
             // being inspected, sourced straight from autoInspectedResults.
             if phase != .validating, let label = tooCloseTagLabel {
-                // #88: right up against the tag — the shrunk marker alone
+                // #88: right up against the tag - the shrunk marker alone
                 // isn't enough feedback, tell them directly to step back.
                 VStack {
                     Spacer()
@@ -428,7 +428,7 @@ struct OperatorModeView: View {
                                 .font(.system(size: 26, weight: .semibold))
                                 .foregroundStyle(.orange)
                                 .symbolEffect(.pulse)
-                            Text("A little too close — step back a bit")
+                            Text("A little too close - step back a bit")
                                 .font(.caption.bold())
                                 .foregroundStyle(.orange)
                                 .multilineTextAlignment(.center)
@@ -452,7 +452,7 @@ struct OperatorModeView: View {
                     .transition(.scale.combined(with: .opacity))
                     .animation(.spring(response: 0.35, dampingFraction: 0.75), value: inConeZone)
             } else if phase != .validating, let hint = approachHintText {
-                // Near a cone tag but not yet aligned — guide them in instead
+                // Near a cone tag but not yet aligned - guide them in instead
                 // of showing nothing or a leftover PASS/FAIL.
                 VStack {
                     Spacer()
@@ -520,7 +520,7 @@ struct OperatorModeView: View {
 
             // ── "No tag nearby" gizmo ────────────────────────────────────────────
             // Shown instead of a (possibly stale) pass-reference preview whenever
-            // the operator isn't within range of any tag — points toward the
+            // the operator isn't within range of any tag - points toward the
             // nearest one so they know which way to walk.
             if phase == .idle, passPreviewImage == nil, let bearing = gizmoBearing {
                 VStack {
@@ -552,7 +552,7 @@ struct OperatorModeView: View {
                     HStack(spacing: 8) {
                         Image(systemName: saved.status == .pass ? "checkmark.circle.fill" : "xmark.circle.fill")
                             .foregroundStyle(saved.status == .pass ? .green : .red)
-                        Text("\(saved.status == .pass ? "Pass" : "Fail") image captured for \(saved.label) — saved")
+                        Text("\(saved.status == .pass ? "Pass" : "Fail") image captured for \(saved.label) - saved")
                             .font(.caption.bold())
                             .foregroundStyle(.white)
                             .lineLimit(2)
@@ -569,7 +569,7 @@ struct OperatorModeView: View {
 
             // ── Diagnostic toast (auto-hides after 3 s) ───────────────────────
             // Shows tag placement status immediately after appear so the operator
-            // knows whether markers were found and placed — no Xcode needed.
+            // knows whether markers were found and placed - no Xcode needed.
             if debugToastVisible, let msg = debugToastMessage {
                 VStack {
                     HStack(spacing: 8) {
@@ -620,7 +620,7 @@ struct OperatorModeView: View {
                         .background(.black.opacity(0.70), in: RoundedRectangle(cornerRadius: 12))
                         .contentShape(Rectangle())
                         .onTapGesture {
-                            fullScreenTitle = "Pass reference — \(passPreviewLabel)"
+                            fullScreenTitle = "Pass reference - \(passPreviewLabel)"
                             fullScreenImage = preview
                         }
 
@@ -647,7 +647,7 @@ struct OperatorModeView: View {
                             .background(.black.opacity(0.70), in: RoundedRectangle(cornerRadius: 12))
                             .contentShape(Rectangle())
                             .onTapGesture {
-                                fullScreenTitle = "\(capturedStatus == .pass ? "Pass" : "Fail") capture — \(passPreviewLabel)"
+                                fullScreenTitle = "\(capturedStatus == .pass ? "Pass" : "Fail") capture - \(passPreviewLabel)"
                                 fullScreenImage = captured
                             }
                         }
@@ -703,7 +703,7 @@ struct OperatorModeView: View {
                     .zIndex(11)
             }
 
-            // ── Anchor Lab (2026.4.46) — measure anchoring accuracy ──────────
+            // ── Anchor Lab (2026.4.46) - measure anchoring accuracy ──────────
             if settings.anchorLabEnabled, let anchorId = appState.activeAnchor?.id {
                 AnchorLabOverlay(
                     anchorId: anchorId,
@@ -728,7 +728,7 @@ struct OperatorModeView: View {
             if let existingSession = appState.activeARSession {
                 // ── Session continuity path ────────────────────────────────────
                 // Link to QRScanGateView's already-running session.  The live
-                // ARImageAnchor is still tracked — no QR re-scan needed.
+                // ARImageAnchor is still tracked - no QR re-scan needed.
                 arManager.linkToExistingSession(existingSession, mapOrigin: appState.sealedMapOrigin,
                                                 objectCalibration: appState.objectCalibration)
                 arManager.disableQRScanning()
@@ -746,7 +746,7 @@ struct OperatorModeView: View {
                 // ready), retry after 300 ms to guarantee visibility.
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.30) {
                     if tagMarkerNodes.isEmpty {
-                        print("[OperatorMode] ⚠️ Safety-net retry: no nodes placed yet — retrying placeTagMarkers()")
+                        print("[OperatorMode] ⚠️ Safety-net retry: no nodes placed yet - retrying placeTagMarkers()")
                         attemptInitialMarkerPlacement()
                     }
                 }
@@ -754,23 +754,23 @@ struct OperatorModeView: View {
                 // ── Fallback path ──────────────────────────────────────────────
                 // No shared session available (legacy / unusual entry).
                 // Start a fresh session and wait for QR re-lock via onChange below.
-                print("[OperatorMode] ⚠️ No activeARSession — starting fresh session (QR re-scan needed)")
+                print("[OperatorMode] ⚠️ No activeARSession - starting fresh session (QR re-scan needed)")
                 arManager.startSession()
-                // QR scanning stays enabled — onChange(lockedAnchorTransform) handles placement.
+                // QR scanning stays enabled - onChange(lockedAnchorTransform) handles placement.
             }
         }
         // #69: an interruption (phone call, Control Center, app switcher) freezes
         // the camera feed without tearing down the session. Cancel anything
         // in-flight scoring/training against a now-stale frame, and prompt the
-        // operator to re-verify alignment once tracking resumes — instead of
+        // operator to re-verify alignment once tracking resumes - instead of
         // silently trusting a result computed during/just after the interruption.
         .onChange(of: arManager.isInterrupted) { interrupted in
             if interrupted {
                 validationTask?.cancel()
                 stopLiveLoop()
-                interruptionMsg = "Session interrupted — paused inspection."
+                interruptionMsg = "Session interrupted - paused inspection."
             } else {
-                interruptionMsg = "Tracking resumed — tap Inspect All to re-verify alignment."
+                interruptionMsg = "Tracking resumed - tap Inspect All to re-verify alignment."
                 DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
                     if interruptionMsg?.hasPrefix("Tracking resumed") == true { interruptionMsg = nil }
                 }
@@ -785,7 +785,7 @@ struct OperatorModeView: View {
             anchorDebugSphere?.removeFromParentNode()
             anchorDebugSphere = nil
             arManager.pauseSession()
-            // Clear the shared session — this AR session is finished.
+            // Clear the shared session - this AR session is finished.
             appState.activeARSession = nil
         }
         // ── Anchor transform change: initial placement OR live refinement ─────
@@ -797,12 +797,12 @@ struct OperatorModeView: View {
             guard let t = newTransform else { return }
             appState.anchorNormalisedTransform = t
             if !anchorLocated {
-                // First valid transform arriving via QR re-scan (fallback path) —
+                // First valid transform arriving via QR re-scan (fallback path) -
                 // do full placement.
                 arManager.disableQRScanning()
                 attemptInitialMarkerPlacement()
             } else {
-                // Subsequent refinements from live ARImageAnchor tracking —
+                // Subsequent refinements from live ARImageAnchor tracking -
                 // smoothly reposition existing marker nodes and move debug sphere.
                 repositionTagMarkerNodes()
                 let col = t.columns.3
@@ -823,7 +823,7 @@ struct OperatorModeView: View {
         .onChange(of: showTagMarkers) { visible in
             tagMarkerNodes.values.forEach { $0.isHidden = !visible }
         }
-        // Summary sheet — slides up after "End Inspection"
+        // Summary sheet - slides up after "End Inspection"
         .sheet(isPresented: $showResults) {
             if let result = appState.lastValidationResult,
                let anchor = appState.activeAnchor {
@@ -1008,7 +1008,7 @@ struct OperatorModeView: View {
         }
     }
 
-    // ── Bottom panel — switches on phase ─────────────────────────────────────
+    // ── Bottom panel - switches on phase ─────────────────────────────────────
 
     @ViewBuilder
     private var bottomPanel: some View {
@@ -1231,7 +1231,7 @@ struct OperatorModeView: View {
 
     /// The on-screen indicator for requirement #1/#4: as soon as the operator
     /// is in a tag's cone zone, `startLiveLoop` is already continuously
-    /// re-validating it (no button press needed) — this card surfaces that
+    /// re-validating it (no button press needed) - this card surfaces that
     /// result live with a check/X, confidence, and tag label, replacing the
     /// old ambiguous "In zone" / "Capturing…" badge.
     @ViewBuilder
@@ -1255,7 +1255,7 @@ struct OperatorModeView: View {
                         Text(String(format: "%.0f%%", result.confidence * 100))
                             .font(.caption2.monospacedDigit())
                             .foregroundStyle(.white.opacity(0.7))
-                        // Phase 4: FAIL hint — shown while the 6s timer is counting down
+                        // Phase 4: FAIL hint - shown while the 6s timer is counting down
                         if result.status == .fail, failTimerTask != nil {
                             Text("Adjust & hold to correct,\nor wait for inspection note")
                                 .font(.system(size: 9, weight: .semibold))
@@ -1289,7 +1289,7 @@ struct OperatorModeView: View {
 
     // ── #84: expanded tag info card ───────────────────────────────────────────
 
-    /// Full info for a tapped tag — description, type, and (once inspected)
+    /// Full info for a tapped tag - description, type, and (once inspected)
     /// its current result. Collapses on a second tap of the same marker, a
     /// tap on a different marker, or a tap on empty space.
     @ViewBuilder
@@ -1365,12 +1365,12 @@ struct OperatorModeView: View {
     /// place all markers.  Guards against double-placement with the anchorLocated flag.
     private func attemptInitialMarkerPlacement() {
         guard let anchorT = appState.anchorNormalisedTransform else {
-            print("[OperatorMode] ⚠️ attemptInitialMarkerPlacement — anchorNormalisedTransform is nil, cannot place markers")
-            showDebugToast("⚠️ anchorTransform=NIL  tags=\(appState.activeTags.count)  — scan QR to locate anchor")
+            print("[OperatorMode] ⚠️ attemptInitialMarkerPlacement - anchorNormalisedTransform is nil, cannot place markers")
+            showDebugToast("⚠️ anchorTransform=NIL  tags=\(appState.activeTags.count)  - scan QR to locate anchor")
             return
         }
         guard !appState.activeTags.isEmpty else {
-            print("[OperatorMode] ⚠️ attemptInitialMarkerPlacement — activeTags is empty")
+            print("[OperatorMode] ⚠️ attemptInitialMarkerPlacement - activeTags is empty")
             showDebugToast("⚠️ activeTags=EMPTY  No tags loaded yet")
             return
         }
@@ -1388,14 +1388,14 @@ struct OperatorModeView: View {
 
         let placed  = tagMarkerNodes.count
         let total   = appState.activeTags.count
-        print("[OperatorMode] ✓ attemptInitialMarkerPlacement complete — \(placed)/\(total) markers placed")
+        print("[OperatorMode] ✓ attemptInitialMarkerPlacement complete - \(placed)/\(total) markers placed")
 
         if placed == 0 && total > 0,
            let firstSkipped = appState.activeTags.first(where: { tagMarkerNodes[$0.id] == nil }) {
             let keys = firstSkipped.metadata.keys.sorted().joined(separator: ",")
-            showDebugToast("⚠️ 0/\(total) placed — '\(firstSkipped.label)' keys: [\(keys)]")
+            showDebugToast("⚠️ 0/\(total) placed - '\(firstSkipped.label)' keys: [\(keys)]")
         } else {
-            showDebugToast("anchor=SET  tags=\(total)  placed=\(placed)  — look for cyan sphere at QR")
+            showDebugToast("anchor=SET  tags=\(total)  placed=\(placed)  - look for cyan sphere at QR")
         }
     }
 
@@ -1441,7 +1441,7 @@ struct OperatorModeView: View {
         tagMarkerNodes.values.forEach { $0.removeFromParentNode() }
         tagMarkerNodes.removeAll()
 
-        print("[OperatorMode] placeTagMarkers — \(appState.activeTags.count) tags, anchorTransform=\(appState.anchorNormalisedTransform != nil ? "set" : "NIL")")
+        print("[OperatorMode] placeTagMarkers - \(appState.activeTags.count) tags, anchorTransform=\(appState.anchorNormalisedTransform != nil ? "set" : "NIL")")
 
         for tag in appState.activeTags {
             let worldPos: simd_float3
@@ -1460,10 +1460,10 @@ struct OperatorModeView: View {
                 // anchor_rel was introduced.  Valid ONLY when session frames match
                 // (same ARWorldMap relocalized correctly).
                 worldPos = simd_float3(Float(x), Float(y), Float(z))
-                print("[OperatorMode]   ⚠️ tag '\(tag.label)': no anchor_rel — using legacy pos_xyz \(String(format: "(%.2f, %.2f, %.2f)", x, y, z))")
+                print("[OperatorMode]   ⚠️ tag '\(tag.label)': no anchor_rel - using legacy pos_xyz \(String(format: "(%.2f, %.2f, %.2f)", x, y, z))")
             } else {
                 let keys = tag.metadata.keys.sorted().joined(separator: ", ")
-                print("[OperatorMode]   ✗ tag '\(tag.label)': no position metadata — SKIPPED. Keys: [\(keys)]")
+                print("[OperatorMode]   ✗ tag '\(tag.label)': no position metadata - SKIPPED. Keys: [\(keys)]")
                 continue
             }
 
@@ -1473,14 +1473,14 @@ struct OperatorModeView: View {
             arManager.sceneView.scene.rootNode.addChildNode(node)
             tagMarkerNodes[tag.id] = node
         }
-        print("[OperatorMode] placeTagMarkers done — \(tagMarkerNodes.count) nodes in scene")
+        print("[OperatorMode] placeTagMarkers done - \(tagMarkerNodes.count) nodes in scene")
     }
 
     /// Smoothly reposition marker nodes when the live ARImageAnchor refines
     /// the anchor pose.  Called from onChange(lockedAnchorTransform) after
     /// initial placement is complete.
     ///
-    /// Cone guides are NOT rebuilt here — rebuilding during active inspection
+    /// Cone guides are NOT rebuilt here - rebuilding during active inspection
     /// would be disruptive.  The small per-frame anchor refinements (sub-mm)
     /// do not justify cone reconstruction; only the initial placement matters.
     private func repositionTagMarkerNodes() {
@@ -1564,7 +1564,7 @@ struct OperatorModeView: View {
 
     // ── AR marker factory ─────────────────────────────────────────────────────
 
-    /// Returns the UIColor for a tag type — used to colour uninspected markers so
+    /// Returns the UIColor for a tag type - used to colour uninspected markers so
     /// each type is visually distinct before inspection results arrive.
     private func uiColor(for type: TagType) -> UIColor {
         switch type {
@@ -1598,9 +1598,9 @@ struct OperatorModeView: View {
         case nil:      color = uiColor(for: tag.type)
         }
 
-        // ── Ring marker — 2.5× larger than original for easy visibility ─────────
+        // ── Ring marker - 2.5× larger than original for easy visibility ─────────
         // Torus ring (3.5 cm radius) + inner glow dot (1.5 cm radius).
-        // At 2 m the ring subtends ~2° — clearly visible without squinting.
+        // At 2 m the ring subtends ~2° - clearly visible without squinting.
         let ring    = SCNTorus(ringRadius: 0.035, pipeRadius: 0.010)
         let ringMat = SCNMaterial()
         ringMat.diffuse.contents  = color
@@ -1619,7 +1619,7 @@ struct OperatorModeView: View {
         dot.firstMaterial        = dotMat
         root.addChildNode(SCNNode(geometry: dot))
 
-        // Floating label — positioned above ring, always faces camera.
+        // Floating label - positioned above ring, always faces camera.
         // Accent bar uses the type color when uninspected so labels are visually
         // distinct before results arrive, and switches to the result color after.
         let accentColor = status == nil ? uiColor(for: tag.type) : color
@@ -1631,7 +1631,7 @@ struct OperatorModeView: View {
     }
 
     /// Renders tag name as a UIImage pill → SCNPlane texture with billboard constraint.
-    /// #84: slightly smaller than before (was 4.4 cm) — the pill is now a
+    /// #84: slightly smaller than before (was 4.4 cm) - the pill is now a
     /// compact "collapsed" label by design; full details live in the
     /// tap-to-expand SwiftUI card instead of being crammed into the 3D pill.
     private func makeLabelNode(text: String, color: UIColor) -> SCNNode {
@@ -1644,7 +1644,7 @@ struct OperatorModeView: View {
         let pMat  = SCNMaterial()
         pMat.diffuse.contents  = image
         pMat.isDoubleSided     = true
-        pMat.lightingModel     = .constant             // unlit — always legible
+        pMat.lightingModel     = .constant             // unlit - always legible
         plane.materials        = [pMat]
 
         let node = SCNNode(geometry: plane)
@@ -1653,7 +1653,7 @@ struct OperatorModeView: View {
     }
 
     /// Draws a dark pill with the tag label text, a status-coloured left bar,
-    /// and a small chevron on the right (#84) — a visible cue that the label
+    /// and a small chevron on the right (#84) - a visible cue that the label
     /// is tappable, since the interaction itself (tap to expand) isn't
     /// otherwise discoverable on a 3D AR marker.
     private func makeLabelImage(_ text: String, accentColor: UIColor) -> UIImage {
@@ -1716,13 +1716,13 @@ struct OperatorModeView: View {
 
     // ── Raw camera capture (zero AR artifacts) ───────────────────────────────
     //
-    // `sceneView.snapshot()` renders the *composited* AR scene — camera feed
+    // `sceneView.snapshot()` renders the *composited* AR scene - camera feed
     // PLUS every visible SceneKit overlay (cone guide mesh, glow rings, tag
     // marker spheres). Training (ConeCaptureView) deliberately avoids this:
     // it captures `ARFrame.capturedImage` directly and hides the cone guide
     // first, so the stored reference images are "zero AR artifacts" raw
     // camera frames. Validation was comparing those clean references against
-    // live snapshots that still had the cone/markers baked into the pixels —
+    // live snapshots that still had the cone/markers baked into the pixels -
     // which can tank SSIM/feature-print scores regardless of how well the
     // Operator is actually positioned. Mirror the training capture path here
     // so live and reference images are visually comparable.
@@ -1828,7 +1828,7 @@ struct OperatorModeView: View {
                                                  frame: currentFrame)
 
             // ── Feature print validation (primary metric) ─────────────────────
-            // For all visual tags — overrides SSIM if FP score is higher.
+            // For all visual tags - overrides SSIM if FP score is higher.
             validationStage = "Scoring features…"
             result = await applyFeaturePrintValidation(to: result, snapshot: snapshot)
 
@@ -1850,7 +1850,7 @@ struct OperatorModeView: View {
             phase = .reviewing
 
         } catch is CancellationError {
-            phase = .idle // #73: user tapped Cancel — not an error, no toast needed
+            phase = .idle // #73: user tapped Cancel - not an error, no toast needed
         } catch {
             if Task.isCancelled { phase = .idle; return } // URLError(.cancelled) from a cancelled Task
             validateError = friendlyMessage(for: error)
@@ -1880,11 +1880,11 @@ struct OperatorModeView: View {
 
             // ── Resolve tag world position: anchor_rel preferred, pos_xyz fallback ─
             // anchor_rel_x/y/z is session-independent (stored relative to gravity-
-            // aligned anchor frame) — always use this when available.
+            // aligned anchor frame) - always use this when available.
             // Legacy pos_x/y/z is the session-frame world position saved by older
             // Author sessions.  Converting via toAnchorRelative here gives the right
             // anchor-frame position IF the world frames match (same session or same
-            // ARWorldMap relocated correctly) — which is the case when the user just
+            // ARWorldMap relocated correctly) - which is the case when the user just
             // came through QRScanGateView with a successfully loaded WorldMap.
             let tagWorldPos: simd_float3
             if let rx = metaDouble(tag.metadata["anchor_rel_x"]),
@@ -1896,12 +1896,12 @@ struct OperatorModeView: View {
             } else if let px = metaDouble(tag.metadata["pos_x"]),
                       let py = metaDouble(tag.metadata["pos_y"]),
                       let pz = metaDouble(tag.metadata["pos_z"]) {
-                // Legacy fallback — use stored world-space position directly.
+                // Legacy fallback - use stored world-space position directly.
                 // Valid only when session world frames match.
                 tagWorldPos = simd_float3(Float(px), Float(py), Float(pz))
                 print("[OperatorMode] buildConeGuides '\(tag.label)': using pos_xyz fallback (no anchor_rel)")
             } else {
-                print("[OperatorMode] buildConeGuides '\(tag.label)': SKIPPED — no position metadata")
+                print("[OperatorMode] buildConeGuides '\(tag.label)': SKIPPED - no position metadata")
                 continue
             }
 
@@ -1945,7 +1945,7 @@ struct OperatorModeView: View {
             // When the Author also trained a Fail-state, the SIB has already
             // made a relative nearest-match PASS/FAIL decision (compareDualState)
             // that's more reliable than this client-side absolute-threshold
-            // alignment/depth blend — applying that blend here could flip an
+            // alignment/depth blend - applying that blend here could flip an
             // already-correct dual-state result. Leave those tags untouched.
             if tag.hasFailState == true { continue }
 
@@ -1959,7 +1959,7 @@ struct OperatorModeView: View {
                 alignFactor  = Double(max(0, 1 - angleDeg / 90))
                 print("[ConeValidation] tag=\(tr.tagLabel) angle=\(String(format:"%.1f",angleDeg))° factor=\(String(format:"%.2f",alignFactor))")
             } else {
-                alignFactor = 1.0   // no guide available — apply no penalty
+                alignFactor = 1.0   // no guide available - apply no penalty
             }
             score = score * alignFactor
 
@@ -2009,7 +2009,7 @@ struct OperatorModeView: View {
 
     /// Extracts a VNGenerateImageFeaturePrint embedding from the live snapshot and
     /// compares it against the 7 stored reference prints in each tag's metadata.
-    /// Overrides the SIB SSIM score when the feature print score is higher —
+    /// Overrides the SIB SSIM score when the feature print score is higher -
     /// giving the Operator credit for being at the right location even when they're
     /// not at an exact training viewpoint position.
     private func applyFeaturePrintValidation(
@@ -2020,7 +2020,7 @@ struct OperatorModeView: View {
         // Extract full-frame live feature print (used by most tag types)
         let livePrint = await TagFeaturePrint.extract(from: snapshot)
 
-        // Live camera frame — used below to normalise the PartCheck crop fraction
+        // Live camera frame - used below to normalise the PartCheck crop fraction
         // for the Operator's actual standing distance vs the distance trained at.
         let liveFrame = arManager.sceneView.session.currentFrame
 
@@ -2037,13 +2037,13 @@ struct OperatorModeView: View {
 
             // When a Fail-state was trained, the SIB's relative nearest-match
             // decision (compareDualState) is already authoritative for this
-            // tag — don't let an absolute-threshold feature-print comparison
+            // tag - don't let an absolute-threshold feature-print comparison
             // override it.
             if tag.hasFailState == true { continue }
 
             // ── Optional inspection-region crop ─────────────────────────────────
             // When the Author marked a ROI for this tag, feature prints should
-            // be extracted from just that region — not the whole frame — so
+            // be extracted from just that region - not the whole frame - so
             // the comparison focuses on the specific feature being inspected
             // (matches the server's ROI-aware SSIM/histogram cropping).
             let liveForTag: UIImage = tag.roi.map { cropToROI(snapshot, roi: $0) } ?? snapshot
@@ -2059,7 +2059,7 @@ struct OperatorModeView: View {
             // Why: a missing PS5 controller leaves only the couch surface in the
             // center of frame.  Full-frame SSIM / feature prints can still score
             // high because the background fills most of the image.  But the center
-            // crop at the right inspection distance is filled by the part itself —
+            // crop at the right inspection distance is filled by the part itself -
             // so its absence changes the crop dramatically.
             if tag.type == .partCheck,
                let ccAny = tag.metadata["part_check_center_fps"],
@@ -2072,13 +2072,13 @@ struct OperatorModeView: View {
                 // standing at during training (cone_dist_m). Apparent object
                 // size scales ~ 1/distance, so if the live Operator is farther
                 // away than training, the part now occupies a SMALLER fraction
-                // of the frame — comparing against a fixed 50 % crop pulls in
+                // of the frame - comparing against a fixed 50 % crop pulls in
                 // extra background and tanks the score. Scale the crop fraction
                 // by (trainingDistance / liveDistance) so the crop always
                 // isolates roughly the same real-world region regardless of
                 // exactly where the Operator is standing.
                 // An explicit Author-marked ROI is a more precise region than the
-                // distance-normalised heuristic crop below — prefer it when present.
+                // distance-normalised heuristic crop below - prefer it when present.
                 let cropSnapshot: UIImage
                 var trainingDist: Float = metaFloat(tag.metadata, key: "cone_dist_m") ?? 0.30
                 var liveDist: Float = trainingDist
@@ -2092,7 +2092,7 @@ struct OperatorModeView: View {
                     cropSnapshot = centerCrop(of: snapshot, fraction: adjustedFraction)
                 }
                 guard let cropPrint = await TagFeaturePrint.extract(from: cropSnapshot) else {
-                    print("[FeaturePrint][PartCheck] tag=\(tr.tagLabel) could not extract crop print — skipping")
+                    print("[FeaturePrint][PartCheck] tag=\(tr.tagLabel) could not extract crop print - skipping")
                     continue
                 }
 
@@ -2149,7 +2149,7 @@ struct OperatorModeView: View {
                   "ssim=\(String(format:"%.3f", tr.confidence)) " +
                   "max_dist=\(tagMaxDist.map { String(format:"%.3f", $0) } ?? "global")")
 
-            // Use the better of the two scores — SSIM works well when angle matches,
+            // Use the better of the two scores - SSIM works well when angle matches,
             // feature print works well when it doesn't
             guard fpScore > tr.confidence else { continue }
 
@@ -2176,7 +2176,7 @@ struct OperatorModeView: View {
     /// `tickProximity()`. `coneGuides[tagId].currentDistanceM` is NOT used here
     /// because Operator-mode cone guides are constructed locked (`isLocked = true`)
     /// and never receive `updateForCamera` calls, so that property stays frozen
-    /// at its default 0.30 — it would silently defeat this normalisation.
+    /// at its default 0.30 - it would silently defeat this normalisation.
     private func liveDistance(toTag tagId: String, frame: ARFrame?) -> Float? {
         guard let frame = frame, let markerNode = tagMarkerNodes[tagId] else { return nil }
         let cam = simd_float3(frame.camera.transform.columns.3.x,
@@ -2189,15 +2189,15 @@ struct OperatorModeView: View {
     // width/height on every side before cropping (image-comparator.ts,
     // ROI_PADDING_FRAC), so a live frame that's slightly rotated/shifted/
     // closer than the trained reference doesn't clip the part right at the
-    // ROI edge. This client-side crop was NOT applying that same padding —
+    // ROI edge. This client-side crop was NOT applying that same padding -
     // a real drift between what feeds client-side feature-print extraction
     // and what feeds the server's SSIM/histogram scoring for the same tag.
     // Keep this constant numerically identical to ROI_PADDING_FRAC in
     // sib/src/perception/image-comparator.ts if either ever changes.
     private let roiPaddingFrac: CGFloat = 0.10
 
-    /// Crops `image` to an Author-marked RegionOfInterest — normalised
-    /// (0.0–1.0) fractions of the image's width/height, origin top-left —
+    /// Crops `image` to an Author-marked RegionOfInterest - normalised
+    /// (0.0–1.0) fractions of the image's width/height, origin top-left -
     /// padded by `roiPaddingFrac` exactly as the server does. Mirrors the
     /// server's ROI cropping in image-comparator.ts so client-side
     /// feature-print extraction stays consistent with the server's SSIM/
@@ -2254,7 +2254,7 @@ struct OperatorModeView: View {
         guard !ocrTags.isEmpty else { return result }
         guard let uiImage = UIImage(data: jpeg), let cgImage = uiImage.cgImage else { return result }
 
-        // Run Vision OCR — accurate mode, language correction on
+        // Run Vision OCR - accurate mode, language correction on
         let detected: String = await withCheckedContinuation { cont in
             let req = VNRecognizeTextRequest { r, _ in
                 let obs  = r.results as? [VNRecognizedTextObservation] ?? []
@@ -2280,7 +2280,7 @@ struct OperatorModeView: View {
             let expected  = tag.expectedOutcome.trimmingCharacters(in: .whitespaces)
             guard !expected.isEmpty else { continue }
 
-            // Dual-state tags already have an authoritative SIB decision —
+            // Dual-state tags already have an authoritative SIB decision -
             // don't let an absolute-threshold OCR score override it.
             if tag.hasFailState == true { continue }
 
@@ -2332,7 +2332,7 @@ struct OperatorModeView: View {
         statusStreak.removeValue(forKey: tagId)   // clear hysteresis for a clean restart
     }
 
-    /// Called when the operator taps "Tag Inspected" — finalises evidence upload.
+    /// Called when the operator taps "Tag Inspected" - finalises evidence upload.
     private func handleConfirmFromSheet(tagId: String, status: ValidationStatus, note: String?) {
         showTagInspectedSheet = false
         sheetTagId = nil; sheetImage = nil; sheetStatus = nil
@@ -2382,7 +2382,7 @@ struct OperatorModeView: View {
     private func handleRetakeFromSheet(tagId: String) {
         showTagInspectedSheet = false
         sheetTagId = nil; sheetImage = nil; sheetStatus = nil
-        // Keep failTimerTask cancelled — loop stays paused during retake.
+        // Keep failTimerTask cancelled - loop stays paused during retake.
         retakeTagId       = tagId
         showRetakeOverlay = true
     }
@@ -2410,7 +2410,7 @@ struct OperatorModeView: View {
         }
     }
 
-    /// Operator cancelled the retake — reopen the sheet with the original image.
+    /// Operator cancelled the retake - reopen the sheet with the original image.
     private func cancelRetake() {
         guard let tagId = retakeTagId else { return }
         showRetakeOverlay = false
@@ -2431,7 +2431,7 @@ struct OperatorModeView: View {
     private func retakeCaptureOverlay(tagId: String) -> some View {
         let tagLabel = appState.activeTags.first(where: { $0.id == tagId })?.label ?? tagId
         ZStack {
-            // Top bar — instruction + cancel
+            // Top bar - instruction + cancel
             VStack {
                 HStack(alignment: .center) {
                     VStack(alignment: .leading, spacing: 2) {
@@ -2576,7 +2576,7 @@ struct OperatorModeView: View {
             }
 
             // Reset auto-inspect state for failed/pending tags so they can be re-inspected.
-            // Keep PASS results — those markers stay green and don't need re-inspection.
+            // Keep PASS results - those markers stay green and don't need re-inspection.
             for id in failIds {
                 autoInspectedResults.removeValue(forKey: id)
                 tagCooldowns.removeValue(forKey: id)     // allow immediate re-capture
@@ -2646,7 +2646,7 @@ struct OperatorModeView: View {
         phase                         = .idle
     }
 
-    // ── Proximity ticker — Disney UX ──────────────────────────────────────────
+    // ── Proximity ticker - Disney UX ──────────────────────────────────────────
     //
     // Distance zones per tag:
     //   > 2.0 m  → sphere only, gentle slow pulse        (discovery)
@@ -2686,7 +2686,7 @@ struct OperatorModeView: View {
             // #88: shrink the marker as the operator gets very close. The
             // ring/label are a fixed world-space size, so up close they fill
             // the screen and get in the way of the actual visual inspection.
-            // Scale only kicks in below `markerFullScaleDist` — at normal
+            // Scale only kicks in below `markerFullScaleDist` - at normal
             // walking/inspection distance the marker is unaffected.
             let scale = markerScale(forDistance: dist)
             if abs(CGFloat(markerNode.scale.x) - CGFloat(scale)) > 0.01 {
@@ -2697,7 +2697,7 @@ struct OperatorModeView: View {
             }
         }
 
-        // #88: "too close" hint — once the marker has shrunk to its floor
+        // #88: "too close" hint - once the marker has shrunk to its floor
         // scale, a literal physical step back is what actually helps (rather
         // than continuing to shrink the marker indefinitely).
         if closestDist < tooCloseDist, let nearId = closestTagId {
@@ -2706,7 +2706,7 @@ struct OperatorModeView: View {
             tooCloseTagLabel = nil
         }
 
-        // Alignment check for the nearest cone-trained tag — computed BEFORE
+        // Alignment check for the nearest cone-trained tag - computed BEFORE
         // the cone-visibility decision below, since whether the operator is
         // already aligned now determines whether the cone should still be
         // shown.
@@ -2721,7 +2721,7 @@ struct OperatorModeView: View {
         }
 
         // ── "Move into the tag" approach hint ───────────────────────────────
-        // Nearby cone-trained tag, cone guide visible, but not yet aligned —
+        // Nearby cone-trained tag, cone guide visible, but not yet aligned -
         // tell the operator what to do instead of showing nothing (or a stale
         // PASS/FAIL from a previous visit).
         if let nearId = closestTagId, coneGuides[nearId] != nil, closestDist < 1.0, !nowInZone {
@@ -2740,7 +2740,7 @@ struct OperatorModeView: View {
 
         // Show the cone for the nearest cone-trained tag while the operator is
         // approaching (within 1m) but NOT once they've actually achieved
-        // alignment — at that point the cone mesh has no more guidance value
+        // alignment - at that point the cone mesh has no more guidance value
         // and is just sitting in front of the camera, covering the exact part
         // the operator is there to inspect. It reappears immediately if they
         // drift back out of alignment.
@@ -2760,7 +2760,7 @@ struct OperatorModeView: View {
            closestDist < 1.0 {
             if nowInZone && !inConeZone {
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                // #89: reaching a zone is real progress — reset the idle clock
+                // #89: reaching a zone is real progress - reset the idle clock
                 // and clear any nudge that's currently showing.
                 lastProgressAt = Date()
                 idleNudgeText  = nil
@@ -2826,22 +2826,22 @@ struct OperatorModeView: View {
         }
 
         // ── #89: stuck/idle nudge ────────────────────────────────────────────
-        // Only relevant while still hunting for the first tag — once at least
+        // Only relevant while still hunting for the first tag - once at least
         // one tag has been inspected, the progress counter in bottomPanel
         // already tells the operator the app is working. Shown once per
         // session so it nudges, not nags.
         if !autoInspectedResults.isEmpty {
-            idleNudgeText = nil   // real progress made — stop nudging
+            idleNudgeText = nil   // real progress made - stop nudging
         } else if phase == .idle, !idleNudgeShown,
                   Date().timeIntervalSince(lastProgressAt) > idleNudgeDelaySecs {
-            idleNudgeText = "Still looking for the first tag? Walk toward one of the markers — I'll start checking as soon as you're close."
+            idleNudgeText = "Still looking for the first tag? Walk toward one of the markers - I'll start checking as soon as you're close."
             idleNudgeShown = true
         }
     }
 
     /// Yaw (radians) from the camera's forward direction to `targetWorldPos`,
     /// projected onto the camera's local horizontal plane. 0 = straight ahead,
-    /// positive = target is to the right, negative = to the left — matches the
+    /// positive = target is to the right, negative = to the left - matches the
     /// rotation convention used to spin the on-screen compass arrow. This is a
     /// pragmatic 2D compass rather than a true 3D AR-anchored gizmo node, since
     /// it only needs camera-space vectors already available every tick.
@@ -2880,7 +2880,7 @@ struct OperatorModeView: View {
                   let image = UIImage(data: data) else { return }
             passPreviewImage = image
         } catch {
-            // Non-fatal — preview is optional
+            // Non-fatal - preview is optional
             print("[PassPreview] Could not load for tag \(tag.id): \(error.localizedDescription)")
         }
     }
@@ -2889,7 +2889,7 @@ struct OperatorModeView: View {
 
     /// Starts a repeating validation loop for `tagId`, re-capturing and
     /// re-scoring roughly every `liveLoopIntervalSecs` for as long as the loop
-    /// keeps running. Idempotent — calling this again for the tag already being
+    /// keeps running. Idempotent - calling this again for the tag already being
     /// looped is a no-op so it's safe to call on every `tickProximity()` tick.
     private func startLiveLoop(forTag tagId: String) {
         guard liveLoopTagId != tagId else { return }
@@ -2959,7 +2959,7 @@ struct OperatorModeView: View {
         defer { isAutoInspecting = false }
 
         // Only bother updating the staging text while this tag has no
-        // committed result yet — once a PASS/FAIL is showing, the card no
+        // committed result yet - once a PASS/FAIL is showing, the card no
         // longer reads "Checking…" so the staging text isn't visible.
         let stillWaitingOnFirstResult = autoInspectedResults[tagId] == nil
         if isContinuous, stillWaitingOnFirstResult { liveLoopStage = "Lining up the shot…" }
@@ -2970,7 +2970,7 @@ struct OperatorModeView: View {
         guard let jpeg   = snapshot.jpegData(compressionQuality: 0.80),
               let anchor = appState.activeAnchor else { return }
 
-        // Brief shutter flash + haptic so operator knows capture happened —
+        // Brief shutter flash + haptic so operator knows capture happened -
         // only for the discrete (non-continuous) triggers; the continuous loop
         // re-captures multiple times a second and a repeated flash/buzz would
         // just be noise.
@@ -2991,7 +2991,7 @@ struct OperatorModeView: View {
             guard let s = try? await client.createSession(userId: "operator",
                                                            assetId: anchor.assetId) else {
                 if isContinuous, stillWaitingOnFirstResult {
-                    liveLoopStage = "Having trouble reaching the server — still trying…"
+                    liveLoopStage = "Having trouble reaching the server - still trying…"
                 }
                 return
             }
@@ -3048,7 +3048,7 @@ struct OperatorModeView: View {
             // Update the AR marker to PASS/FAIL immediately
             updateMarkersForResult(result)
 
-            // Haptic feedback on result — for the continuous loop, only fire
+            // Haptic feedback on result - for the continuous loop, only fire
             // when the committed status actually changed (e.g. operator just
             // fixed the issue and it flipped to PASS), not on every poll.
             if let tr = result.tagResults.first(where: { $0.tagId == tagId }),
@@ -3114,7 +3114,7 @@ struct OperatorModeView: View {
                     failTimerTask = Task {
                         try? await Task.sleep(nanoseconds: 6_000_000_000)
                         guard !Task.isCancelled else { return }
-                        // 6s of persistent FAIL — pause loop and show sheet
+                        // 6s of persistent FAIL - pause loop and show sheet
                         stopLiveLoop()
                         tagInspectionStates[capturedTagId] = .awaitingConfirmation
                         guard !showTagInspectedSheet else { return }  // don't interrupt another tag
@@ -3139,7 +3139,7 @@ struct OperatorModeView: View {
 
         } catch {
             if isContinuous, stillWaitingOnFirstResult {
-                liveLoopStage = "Having trouble reaching the server — still trying…"
+                liveLoopStage = "Having trouble reaching the server - still trying…"
             }
             print("[AutoInspect] Failed for tag \(tagId): \(error.localizedDescription)")
         }
@@ -3189,14 +3189,14 @@ struct OperatorModeView: View {
     // ── Photo library save (requirement #5) ───────────────────────────────────
 
     /// Saves `image` to the device's photo library. Requires
-    /// `NSPhotoLibraryAddUsageDescription` in Info.plist (add-only access —
+    /// `NSPhotoLibraryAddUsageDescription` in Info.plist (add-only access -
     /// the app never reads the existing library). Silently logs failures
     /// rather than surfacing an error UI, since this is a "nice to have"
     /// reference capture and shouldn't block or interrupt live inspection.
     private func saveImageToPhotoLibrary(_ image: UIImage) {
         PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
             guard status == .authorized || status == .limited else {
-                print("[AutoInspect] Photo library access not granted (status=\(status.rawValue)) — skipping save")
+                print("[AutoInspect] Photo library access not granted (status=\(status.rawValue)) - skipping save")
                 return
             }
             PHPhotoLibrary.shared().performChanges({

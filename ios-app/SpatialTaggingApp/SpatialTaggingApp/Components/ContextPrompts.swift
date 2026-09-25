@@ -132,7 +132,7 @@ struct ChamberConfigPickerSheet: View {
                             HStack { ProgressView().tint(.white); Text("Loading configurations…") }
                                 .font(.footnote).foregroundColor(.white.opacity(0.6))
                         } else if configs.isEmpty && !showNew {
-                            Text("No chamber configurations yet — add the first one below.")
+                            Text("No chamber configurations yet - add the first one below.")
                                 .font(.footnote).foregroundColor(.white.opacity(0.6))
                         } else {
                             ScrollView {

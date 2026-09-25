@@ -1,13 +1,16 @@
 # Changelog
 
 One section per platform version (see [docs/VERSIONING.md](docs/VERSIONING.md)),
-newest first. Written in the same PR as the change — if a teammate would notice
+newest first. Written in the same PR as the change - if a teammate would notice
 it, it gets a line.
 
-## 2026.4.46 — 2026-09-08
+## 2026.4.46 - 2026-09-08
 
 ### Fixed
-- **Anchors grid — cards no longer stretch to the tallest in the row.**
+- **No more em dashes.** Every "—" in user-facing text, docs, code strings
+  and comments is a plain hyphen now - 5,800 of them across web, server,
+  iOS and docs. Less to read past.
+- **Anchors grid - cards no longer stretch to the tallest in the row.**
   Opening one card's tag list stretched its neighbours, leaving blank paper
   under their buttons; cards now size to their content. The tag-list chevron
   is the sprite icon.
@@ -22,39 +25,39 @@ it, it gets a line.
   button whose icon had been stripped to a leading space (Export, Delete
   All, .xlsx, .csv across Anchors, Sessions, AR Guides, Guide Library,
   Models, iLOTO, Logs, Ops log, Intelligence) now carries a sprite icon.
-- **Portal — seven Edit / Delete buttons were empty.** When emoji left the
+- **Portal - seven Edit / Delete buttons were empty.** When emoji left the
   portal, the tag row's edit and delete, the chamber-config, Gemba area,
   walk, session and completion deletes were left as blank buttons; they
   now carry the sprite's edit / trash icons and a label where there is room.
-  Tag-row actions are always visible (they were hover-only — invisible on a
+  Tag-row actions are always visible (they were hover-only - invisible on a
   tablet). Import Guide's anchor list on Windows rendered white-on-white:
   native select popups now carry the dark scheme's colours explicitly.
 - **Portal legibility.** Secondary text uses the app's 0.7 tier (was 0.5),
   nothing renders under 0.78 rem (badges, chips, table notes were down to
   0.59 rem), ghost buttons have a visible edge and a quiet fill, small
   buttons are one step larger.
-- **Anchor Lab — Done is quick again.** Only the map serialisation (≈ 1 s)
+- **Anchor Lab - Done is quick again.** Only the map serialisation (≈ 1 s)
   happens before the summary; the 2 MB upload and the run record go on in
   the background while the summary is read (its Map row updates when the
   upload settles). Map growth has a switch on the rig page (on by default).
   The rig page's controls are back to standard size.
-- **Anchor Lab — portal badge for rigs with runs but no marks.** The *Lab*
+- **Anchor Lab - portal badge for rigs with runs but no marks.** The *Lab*
   badge (the only way into the Lab modal) appeared only once a rig had marks,
   so a rig with runs and 0 marks showed nothing. It now appears for runs too
   ("Lab · 2 runs · no marks") and reads as a button.
-- **Anchor Lab — run top bar and ghost layout.** Done wrapped onto two lines
+- **Anchor Lab - run top bar and ghost layout.** Done wrapped onto two lines
   with the third toggle; Done and the rig text are compact again, only the
   toggles are 44 pt. The ghost image widened the whole layout and pushed the
   status card off the left edge; it is now sized by the screen. The ghost
-  turns off and dims once tags are up ("Tags are placed — the ghost isn't
+  turns off and dims once tags are up ("Tags are placed - the ghost isn't
   needed now").
-- **Anchor Lab — the run record could be lost on a quick Done.** The summary
+- **Anchor Lab - the run record could be lost on a quick Done.** The summary
   appeared while the map-growth save was still running; dismissing it paused
   the session under that save and the record was never posted. Done now
   finishes the save (12 s bound), posts the record, then shows the summary.
 - **A relocalization timeout can no longer replace the frame under placed
   tags.** The 15 s "fall back to a fresh session" timer set at session start
-  could fire after a later interruption re-entered relocalizing — every tag
+  could fire after a later interruption re-entered relocalizing - every tag
   then sat ~10 cm off by the same amount. The timer is now bound to its own
   start; interruptions keep the map and simply relocalize.
 - **Seeing the QR on a relocalized map no longer resets tracking.**
@@ -65,12 +68,12 @@ it, it gets a line.
   also refuse a map under half the size of the one on record.
 - **Training cover no longer starves the device.** Cone / quick-shot capture
   opens its own AR view on the Author session while the Author view keeps
-  rendering underneath — two renderers on one session retained frames until
+  rendering underneath - two renderers on one session retained frames until
   iOS killed the app. The parent renderer now pauses (session untouched)
   while a capture view owns the screen and resumes on return.
-- **Lab rigs — no "QR moved?" note.** Rigs placed without a code seal at the
+- **Lab rigs - no "QR moved?" note.** Rigs placed without a code seal at the
   identity origin, so the gate no longer compares the live QR against it.
-- **Anchoring — tags no longer freeze on ARKit's first coarse alignment.**
+- **Anchoring - tags no longer freeze on ARKit's first coarse alignment.**
   The sealed origin was a fixed matrix and tags spawned the moment tracking
   turned normal, before relocalization had settled, so every session
   carried a small, viewpoint-dependent offset. The origin now travels
@@ -85,14 +88,14 @@ it, it gets a line.
   refines the anchor the world is re-based onto it, so pins, tags, cones
   and models are corrected together instead of drifting apart.
 - **Author mode re-seals the map on exit.** The gate sealed the world map
-  seconds after the QR lock — before any tag was placed or the equipment
-  looked at — so operators relocalized into an almost empty map and timed
+  seconds after the QR lock - before any tag was placed or the equipment
+  looked at - so operators relocalized into an almost empty map and timed
   out. Leaving Author mode now saves the map again (same frame, same
   origin anchor, everything the author looked at), the way Place Steps
   already does on Save. Only when the session's frame is the map's frame.
 - **QR gate no longer stalls on a sealed map.** Staring at a 10 cm code gives
   ARKit too little to match the map against, and every detection was refused
-  for 15 s. The gate now says "QR found — look around the chamber for a
+  for 15 s. The gate now says "QR found - look around the chamber for a
   moment", and after 6 s with the QR in view and no match it falls back to
   the QR origin instead of waiting out the timeout. Vision QR detection is
   throttled to ~8 Hz (the pose comes from ARImageAnchor anyway), leaving
@@ -107,7 +110,7 @@ it, it gets a line.
   chamber's code used to restart a fresh session; the session and its
   relocalized frame are now kept and only the wrong code's reference image
   is dropped.
-- **XR kit — model drift on Android.** The kit never pinned three.js's
+- **XR kit - model drift on Android.** The kit never pinned three.js's
   reference space, so the camera rendered in `local-floor` while hit-test
   poses were taken in `local`; ARCore keeps re-estimating the floor, so the
   two spaces moved apart during a session and the placed assembly slid.
@@ -116,14 +119,14 @@ it, it gets a line.
   the assembly follows every frame, so map corrections move the model with
   the world instead of away from it.
 - **Portal on Windows.** Modals, panels, popovers and the tour card were on
-  8 %-white paper — see-through over the page. Everything that floats is
+  8 %-white paper - see-through over the page. Everything that floats is
   now opaque (`--ax-solid`); native controls follow the dark scheme
   (`color-scheme: dark`, so `<select>` popups and date pickers stop
   rendering white); paragraphs no longer inherit the prose measure, which
   had pushed the home subtitle off-centre.
 - **Completion log** orders anchors and guides by their most recent
   session, newest first, like the Usage Log and Intelligence.
-- **Contextual intelligence — it now fires when it should.** Signals were
+- **Contextual intelligence - it now fires when it should.** Signals were
   purely baseline-relative, so a fresh guide (or one whose baseline was a
   tester's own wrong taps) never coached: the wrong-part cap was the past
   p90 (the more you tested, the higher it climbed), attention-off needed to
@@ -133,10 +136,10 @@ it, it gets a line.
   never later; retirement needs 10 low-effect shows (mute: 4 of 6); the app
   flushes a wrong tap / validation attempt immediately and polls hints every
   2 s (was 5). Tests updated for the new contract.
-- **AR guide session — chips no longer overlap the panel.** "Look from
+- **AR guide session - chips no longer overlap the panel.** "Look from
   here" and the part chip sit above the measured height of the bottom
   stack (assist + panel), whatever is expanded.
-- **Cortona import — findings from two real decks.** Leaf shapes with an
+- **Cortona import - findings from two real decks.** Leaf shapes with an
   empty `Material {}` now inherit the colour from their `ObjectVM`
   (greyscale imports); decks whose cameras look at the model upside-down are
   rotated so up is +Y (`__frame` root, views carried along, logged); part
@@ -156,10 +159,10 @@ it, it gets a line.
 - **Catalogue reads for everyone.** Internal build-phase codes (C1/C2/C3,
   B1–B3, G1–G8, R1–R5, M1/M2…) are gone from every catalogue card and the
   specs it serves (Contextual Intelligence, Connected Worker, Gemba Walk,
-  .tag format, Unity runtime) — sections are named by what they do.
+  .tag format, Unity runtime) - sections are named by what they do.
 - **Catalogue flow + architecture diagrams are readable.** Each diagram now
   wears its product's colour (node fill, borders, arrows, and a colour bar
-  on the box — the same colour as the product chip and the map), uses the
+  on the box - the same colour as the product chip and the map), uses the
   catalogue palette and font, renders at natural size with a larger type
   (scroll sideways in the panel when wider), and the enlarge view opens at
   reading size (≥ 1.4× natural, ≥ 760 px). The side panel is wider (520 px).
@@ -201,9 +204,9 @@ it, it gets a line.
   normals for such meshes, so SceneKit lit nothing. The converter now
   un-indexes and computes flat normals for any mesh without them before
   export. Re-run the conversion (Models → ↻ next to the USDZ badge) for models imported earlier.
-- **/platform on Windows — ghost text and a stage that didn't follow the
+- **/platform on Windows - ghost text and a stage that didn't follow the
   copy.** Root cause: the *document* scrolled long copy over full-viewport
-  `position:fixed` layers (stage, veil, 2D fallback) — the Chromium ghost-
+  `position:fixed` layers (stage, veil, 2D fallback) - the Chromium ghost-
   trail bug, worst in software raster, which is exactly where a laptop with
   WebGL off lands. The document no longer scrolls at all: the copy lives in
   its own scroller (`<main>`, fixed, overflow) and the stage sits behind it
@@ -213,14 +216,14 @@ it, it gets a line.
   sections on small laptops / 150 % zoom no longer push the chamber ahead of
   the text, and the last stop is always reachable; the dots and scroll map
   agree again.
-- **Feature Catalogue — the stack is a staircase.** When the disc lifts,
+- **Feature Catalogue - the stack is a staircase.** When the disc lifts,
   each floor turns so its product wedge sits one step (360°/7) further
-  around the spine than the floor below — a helix, so no wedge ever piles
+  around the spine than the floor below - a helix, so no wedge ever piles
   onto another and the eye climbs the stack floor by floor. The turn eases
   in with the lift (the wedges swing into place during the 2D→3D flight) and
   every dependency link follows its two floors' turns. Fly-to-feature and
   the preset framing account for it.
-- **Feature Catalogue — the unselected stack reads cleanly; the stack is
+- **Feature Catalogue - the unselected stack reads cleanly; the stack is
   alive.** Floors used to overlap in perspective before anything was selected
   (98 px apart against a 480 px disc). The disc now tightens by 24 % as it
   lifts, the gap grows to 150 and the Stack preset pitches steeper, so the
@@ -228,43 +231,43 @@ it, it gets a line.
   distance (never the selection or its neighbours); every floor casts a soft
   shadow on the one below (hidden in Under). **Idle motion**: after 4 s
   without input the stack drifts slowly, and it leans a few degrees with the
-  mouse — both Full-tier, 3D-only, paused while a flight or drag runs and
+  mouse - both Full-tier, 3D-only, paused while a flight or drag runs and
   when the tab is hidden, so Lite machines pay nothing.
-- **Feature Catalogue — a camera, not a slide.** Four presets (keys 1–4):
-  **Top** (the flat disc), **Stack**, **Side** (floors edge-on — cross-layer
+- **Feature Catalogue - a camera, not a slide.** Four presets (keys 1–4):
+  **Top** (the flat disc), **Stack**, **Side** (floors edge-on - cross-layer
   dependencies read as wiring between storeys) and **Under** (looking up the
   spine from SIB); smooth flights between them, each framed to fill the
   viewport. **Free camera**: horizontal drag orbits, vertical drag tilts from
   top-down to beneath the floor, shift-drag pans, wheel dollies. **The camera
   goes to the feature**: selecting a node in 3D swings its product wedge to
-  face you, dollies in, and makes its layer the floor you stand on — the
-  floors above lift away and the ones below drop back, both faded — while
+  face you, dollies in, and makes its layer the floor you stand on - the
+  floors above lift away and the ones below drop back, both faded - while
   its related nodes on other floors stay lit. Deselecting settles the floors
   back. `?cam=stack|side|under` in links; `?3d` still works.
-- **Feature Catalogue — persistent scene (smooth on Windows).** The map
+- **Feature Catalogue - persistent scene (smooth on Windows).** The map
   used to regenerate ~90 KB of SVG markup on every frame of the 2D→3D
-  rotation, every orbit step and every hover — the real reason a laptop iGPU
+  rotation, every orbit step and every hover - the real reason a laptop iGPU
   sat at 10–15 fps. The scene is now built once; rotation, orbit, hover,
   selection, focus and filters only update attributes (a few hundred writes
   per frame). The disc rotation is kept as designed, now at display rate on
   both platforms.
 - **Feature Catalogue frame rate on Windows.** Pan and zoom no longer
-  rebuild the SVG — they move the two top-level groups (a rebuild happens
+  rebuild the SVG - they move the two top-level groups (a rebuild happens
   only when the zoom crosses the label / focus thresholds); the 3D static
   layer is cached and rebuilt only when camera, filters or stats change; and
   an **effects tier** measures the first two seconds of frames and drops to
-  *Lite* (no breathing nodes, turning halos, ripples or frosted-glass blur —
+  *Lite* (no breathing nodes, turning halos, ripples or frosted-glass blur -
   each of which repaints the whole SVG every frame) when the median frame is
   over 20 ms. ✦ in the controls toggles Full / Lite and remembers it.
-- **Feature Catalogue on Windows — drag selected text, flow never showed.**
+- **Feature Catalogue on Windows - drag selected text, flow never showed.**
   Dragging the map over SVG labels started a native text selection on Windows
   Chromium and swallowed the pan, so the page looked frozen; the map now
   disables selection and native drag, claims the pointer on `pointerdown`,
   and recovers from `pointercancel` / lost capture. The dependency **flow
-  particles** were SMIL `animateMotion`, which stayed silent there — they are
+  particles** were SMIL `animateMotion`, which stayed silent there - they are
   now driven from the frame loop (`getPointAtLength`), identical on every
   platform.
-- **Feature Catalogue** — the live pulse (rim lines + ripples) steps aside
+- **Feature Catalogue** - the live pulse (rim lines + ripples) steps aside
   while a feature is in focus, so the relationship view is uncluttered.
 - **SIB Compass map was cramped; brand strip overlapped the Procedure
   Designer toolbar.** The map is now larger (up to 1180×780), hubs get
@@ -272,19 +275,19 @@ it, it gets a line.
   ≥150 px from its neighbours. `brand.js` docks the strip into a
   `[data-brand-slot]` when a surface provides one (Procedure Designer home
   corner and editor toolbar) instead of floating over it.
-- **Guide run wayfinding — arrow only when you can't see the pin (iOS)**.
+- **Guide run wayfinding - arrow only when you can't see the pin (iOS)**.
   The 3D floor arrow stayed up while the pin was plainly on screen, floating
   over the model. It now hides whenever the pin is in view (central 85 % of
   the screen, in front of the camera, after a 300 ms settle so edge-grazing
   doesn't flicker) and keeps the 0.5 m arrival rule. Behind-camera fix: a pin
-  behind you projects mirrored, so the edge chevron pointed the wrong way —
+  behind you projects mirrored, so the edge chevron pointed the wrong way -
   the point is now flipped back, and past 120° the chevron gives way to a
-  "Behind you — turn left/right · 1.2 m" pill so the technician takes the
+  "Behind you - turn left/right · 1.2 m" pill so the technician takes the
   short turn instead of chasing a chevron around the edge.
 - **Fail-state cone training froze on guide steps (iOS)**. The Fail-state
   capture is a second `ConeCaptureView` opened from the Pass-state success
   overlay. In the guide-step flow the subject position arrives as
-  `forcedTagWorldPos` (the step pin) — it was not passed to the nested view,
+  `forcedTagWorldPos` (the step pin) - it was not passed to the nested view,
   which then waited for a QR lock that object / sealed-map sessions never
   have: no cone, and Start Training did nothing. The pin now flows through,
   and `spawnGuide()` falls back to camera-forward instead of returning
@@ -295,33 +298,33 @@ it, it gets a line.
   state that draws nothing there (opacity 0 from an alpha-blend export, fully
   metallic PBR with no environment, flipped single-sided faces). New
   `Components/ModelNodeStyle.swift` (add to the Xcode target) normalises
-  materials once at load — applied in Place Steps, Place-in-AR and the
-  operator ghost — and `ARSessionManager` enables `environmentTexturing`
+  materials once at load - applied in Place Steps, Place-in-AR and the
+  operator ghost - and `ARSessionManager` enables `environmentTexturing`
   so PBR surfaces have something to reflect. A one-line diagnostic is
   printed per model (`[ModelNodeStyle] …`).
-- **Guide evidence written outside the data root (company server)** — the
+- **Guide evidence written outside the data root (company server)** - the
   Completion / Usage logs showed a broken thumbnail for a beat, then nothing,
   and the xlsx export had no photos. Root cause: two data roots. JSON stores,
   world maps and inspection evidence live under `SIB_DATA_DIR`; guide-session
   evidence, step-validation references and platform media used a separate
-  `DATA_DIR` that defaulted to `./data` — inside the git checkout when only
+  `DATA_DIR` that defaulted to `./data` - inside the git checkout when only
   `SIB_DATA_DIR` is set (the in-house server), so the photos were outside every
   backup and gone once the checkout was touched. `sib/src/data-dir.ts` now
   resolves one root (`DATA_DIR` → `SIB_DATA_DIR` → `./data`); readers also
   look in the legacy `./data` so surviving photos still display; a startup
   notice says when that folder still has files; `sib/data/` is gitignored;
   the portal hides evidence thumbnails until the blob has loaded.
-- **Object scan box edges** — the scan box was drawn with SceneKit's
+- **Object scan box edges** - the scan box was drawn with SceneKit's
   1 px `.lines` fill mode, which is hard to see and also draws the triangle
   diagonals across each face. Edges are now real tubes (thickness scales
   with the box: 2 % of its smallest side, min 4 mm) with corner beads.
-- **Procedure Designer never caught up with the guide (D)** — "Edit in
+- **Procedure Designer never caught up with the guide (D)** - "Edit in
   Designer" reopened the stored map as-is and only warned when the guide had
   moved on; a step added on iOS never reached the canvas, and sending from
   that canvas would have dropped it. Doctrine now: *the guide is the source
   of truth; the map is a view that keeps its presentation.* On open, when
   the guide is newer, the map is **refreshed from the guide** by per-node
-  provenance — content updated in place, new steps added beside their
+  provenance - content updated in place, new steps added beside their
   predecessor, removed steps dropped with their edges, layout / shapes /
   icons / comments / annotation nodes kept, role edges rebuilt (ids reused).
   Silent with a toast ("Updated from the guide · +1 step (NewStep)") when the
@@ -330,30 +333,30 @@ it, it gets a line.
   `POST /guides/:id/edit-map?mode=refresh|asis` (`conflict: true` when both
   sides changed). Unit tests (add / change / delete / layout kept /
   annotations kept / branch edges) + e2e. Roadmap client unchanged.
-- **Place Steps: eye did nothing once every step was placed (iOS)** — the
+- **Place Steps: eye did nothing once every step was placed (iOS)** - the
   "all placed" sentinel left no active step, so focus mode had nothing to
   focus on and showed everything. Focus now follows its own memory (last pin
   tapped or placed, else Step 1) and the eye works in every state. The action
   bar's rarer actions (*Copy models to other steps…*, *Clear all pins…*) moved
   into a ⋯ menu so Save / Done never wrap on a phone.
-- **Guide Library order (portal)** — newest-touched first at every level:
+- **Guide Library order (portal)** - newest-touched first at every level:
   guides inside a chamber, chambers inside a configuration, configurations
-  themselves (iOS step edits count — they bump the guide's `updatedAt`).
-- **Place Steps opened in the wrong frame — author pins never where they were
-  placed (A, iOS)** — Place Steps started a fresh ARKit session and drew the
+  themselves (iOS step edits count - they bump the guide's `updatedAt`).
+- **Place Steps opened in the wrong frame - author pins never where they were
+  placed (A, iOS)** - Place Steps started a fresh ARKit session and drew the
   saved pin coordinates (which belong to the original session's frame) in it,
   so pins landed wherever the new origin happened to be, and Save wrote those
-  positions back. Nothing to do with QR distance — the map was never loaded.
+  positions back. Nothing to do with QR distance - the map was never loaded.
   Place Steps now opens like the operator session: the guide map loads through
   `WorldMapCache`, the Step-1 ghost photo shows, and pins stay hidden until
-  ARKit reports the space matched — then they snap in by themselves (haptic),
+  ARKit reports the space matched - then they snap in by themselves (haptic),
   exactly like the operator session. If matching times out (15 s) the author chooses **Keep looking** or
-  **Re-place all pins in a fresh map** — never a silent wrong frame. Save/Done
+  **Re-place all pins in a fresh map** - never a silent wrong frame. Save/Done
   upload a map only when the session frame is the map's frame (extending it);
   in re-place mode, steps not re-placed have their stale position cleared so
   no pin can point into the old frame. Guides saved before maps existed get
   the same choice.
-- **Validation ghost rotated 90° on iPad Pro in landscape (C, iOS)** — five
+- **Validation ghost rotated 90° on iPad Pro in landscape (C, iOS)** - five
   capture sites rotated the sensor buffer with a hard-coded "screen is
   portrait" (`.oriented(.right)`), so references trained on a landscape iPad
   were sideways against the live view and the comparator scored rotated
@@ -363,17 +366,17 @@ it, it gets a line.
   both work in the same orientation. References already trained in landscape
   on an iPad need one re-train. New file `Services/ARFrameImage.swift` (add to
   the Xcode target).
-- **Place Steps: only one model could be adjusted (iOS)** — model slots were
+- **Place Steps: only one model could be adjusted (iOS)** - model slots were
   reachable only through the pin-drop chain, so a step whose pin was already
   placed (or whose 2nd/3rd model was added later in the editor) had no way to
   position the extra models, and re-tapping the pin restarted the chain from
   slot 1. Every placed step's tray chip now shows one ⬢1 / ⬢2 / ⬢3 button per
   model (indigo = positioned, orange = not yet); tapping it adjusts that slot
-  alone — loaded at its saved offsets, or at the pin if never positioned —
+  alone - loaded at its saved offsets, or at the pin if never positioned -
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
-- **/learn — six five-minute reads.** How the app knows where it is · how a
+- **/learn - six five-minute reads.** How the app knows where it is · how a
   procedure gets onto the machine · how a step is proved · how a walk becomes
   findings · how lockout is kept honest · how the platform runs. Each journey
   is a reading order of catalogue features (`docs/learn/journeys.json`): one
@@ -386,10 +389,10 @@ it, it gets a line.
   replaces Arial in `--ax-font`, self-hosted: `npm run brand:fonts` vendors
   the latin WOFF2 files (OFL-1.1) into `sib/portal/brand/fonts/`, declared
   with `local()` first; fallback is the system sans (SF / Segoe), never a
-  CDN — the checker now fails on any font loaded from one. Doctrine updated
+  CDN - the checker now fails on any font loaded from one. Doctrine updated
   in docs/BRAND.md and CLAUDE.md.
-- **Chambers page rebuilt as the fleet view.** A list — chamber ·
-  configuration · origin · tags (n · trained) · lab median · last activity —
+- **Chambers page rebuilt as the fleet view.** A list - chamber ·
+  configuration · origin · tags (n · trained) · lab median · last activity -
   in one card, sorted by last activity; a row opens the chamber in a detail
   panel beside the list (QR at print size with Print, origin state and
   Unseal, configuration, tag list with edit / delete, quiet Duplicate /
@@ -397,20 +400,20 @@ it, it gets a line.
   *Delete all* moved to Admin's danger zone. Toolbar: search, configuration
   filter, Lab-rigs switch. Keyboard: ↑ ↓ Enter Esc. The pattern and every
   decision behind it are recorded in docs/BRAND.md → Portal patterns.
-- **Anchor Lab — runs, map growth, ghost.** Every Done posts a run record
+- **Anchor Lab - runs, map growth, ghost.** Every Done posts a run record
   (`POST /anchors/:id/accuracy/runs`: label, type, device, marks, median /
   p90 / max, origin, relocalize / converge, corrections, interrupted, map
   size, map grew, ghost used); marks carry a `runId` so two "door · day" runs
   never merge. The portal's Lab view and the rig's History list runs newest
   first. A clean map-only run (locked, not interrupted, map ≥ 5 % larger)
-  saves its map back over the sealed one — Lab only, the measurement before
+  saves its map back over the sealed one - Lab only, the measurement before
   production gets the same. Save in placement stores a reference photo and
   pose (`PUT /anchors/:id/worldmap/photo`, `referenceCameraPose` in the meta,
   removed on unseal); a run can show it as a ghost (toggle, off by default,
   offered once after 8 s of relocalizing).
-- **Anchor Lab — tap to tag, clean runs.** Placing is the AR OMS gesture:
+- **Anchor Lab - tap to tag, clean runs.** Placing is the AR OMS gesture:
   tap a real feature, the pin drops with the pop / ring / haptic and is
-  *Tag N* — no code, no naming. A run shows only the tags by default; the
+  *Tag N* - no code, no naming. A run shows only the tags by default; the
   origin axes and the lab panel are toggles. To report drift, tap a tag and
   aim the orange 3-D ring (the tag-placing ring, recoloured), tap to mark;
   the mark stays as an orange dot with a hairline to the tag. The panel is
@@ -427,20 +430,20 @@ it, it gets a line.
   behind it. The QR path stays as *Place with the QR* for QR + map runs.
 - **Add-tag picker trimmed.** Cone and QuickShot only; OCR is shown but
   disabled ("soon"); Honeycomb is hidden (feature kept).
-- **Anchor Lab — anchoring accuracy as a number.** Settings → *Anchor Lab*
+- **Anchor Lab - anchoring accuracy as a number.** Settings → *Anchor Lab*
   adds a card in Operator mode with the session's lock report (origin
   source, relocalize / converge seconds, approach angle, light, QR vs
   origin) and a per-tag *Mark where it really is* tool: aim the crosshair
   at the physical feature, the LiDAR raycast gives the true point, the
   rendered-vs-physical error in mm is sent as an `AnchorAccuracySample`
-  (`POST /anchors/:id/accuracy` — numbers only, never images) with device,
+  (`POST /anchors/:id/accuracy` - numbers only, never images) with device,
   OS, app version and a free run label. Portal anchor cards show
   **Lab · n · median mm**; the Lab view charts error per mark over time
   (own SVG, colour per device, 10 / 25 mm bands) and buckets by device,
   origin and run; `GET`/`DELETE /anchors/:id/accuracy`. Home protocol:
   `docs/ar-ojt/ANCHOR-LAB.md`.
 - **Anchor Lab door.** A product door for the team assessing anchoring,
-  visible only to users explicitly entitled to `lab` (UAM products — not
+  visible only to users explicitly entitled to `lab` (UAM products - not
   implied by "all"). Rigs (anchors of type `LAB`, hidden from every
   production directory and from the portal grid unless *Lab rigs* is
   ticked) with Print QR, Place tags (the real Author flow), Run and
@@ -453,7 +456,7 @@ it, it gets a line.
 - **Per-step operator context.** In the Designer (parts block and Parts
   Studio) each step chooses what the operator sees around the parts being
   installed: *Installed only* (default), *Whole · ghost* (the whole assembly
-  as a faint outline — orientation without losing progress) or *Whole ·
+  as a faint outline - orientation without losing progress) or *Whole ·
   solid*, with "all steps" to apply it everywhere. The 3D preview shows the
   chosen context; `GuideStep.context` carries it (compiler, reverse compiler,
   ingest); on the iPad the step opens in that context and the cube button
@@ -462,12 +465,12 @@ it, it gets a line.
 ### Fixed
 - **XR kit on headsets: step navigation was invisible.** The card was an
   HTML overlay (WebXR `dom-overlay`), which Android Chrome draws inside the
-  session and Meta Quest Browser does not — on Quest you could place the
+  session and Meta Quest Browser does not - on Quest you could place the
   model and then saw no steps. When a session starts without a DOM overlay
   the same card is now drawn in the world (`xr-panel.js`: canvas texture on a
-  plane that lazily follows the head, ~1.1 m ahead) with the same buttons —
+  plane that lazily follows the head, ~1.1 m ahead) with the same buttons -
   Lock placement, Back / Replay / Show me / Next, Pass / Fail, hint "Got it",
-  End session — hit by controller ray, hand pinch or screen tap, with hover
+  End session - hit by controller ray, hand pinch or screen tap, with hover
   highlight and a short pointer ray. The DOM stays the source of truth (the
   panel mirrors it and clicks the matching button); sign-off leaves immersive
   mode so the HTML form shows. `?panel=1` forces the panel on Android for
@@ -482,7 +485,7 @@ it, it gets a line.
 - **Operator top bar on phones.** The icon cluster wrapped ("2 / 18" stacked
   vertically) and the title truncated mid-word. The bar now keeps Exit and
   the icons at their natural size, gives the title the remaining width, drops
-  the redundant "n / total" (the panel already says "Step 2 of 18" — the
+  the redundant "n / total" (the panel already says "Step 2 of 18" - the
   progress ring stays) and strips the Designer's "[Guide] " prefix.
 ### Fixed
 - **Build-up guides start empty.** A part no step installs was treated as a
@@ -498,14 +501,14 @@ it, it gets a line.
   picker opens full-screen as the *Parts Studio*: model large on the left,
   parts on the right, ◀ ▶ / ← → and a step strip along the bottom to walk the
   whole procedure without leaving the view (the model stays loaded). A ticked
-  group covers all its children and a ticked child overrides its group — the
+  group covers all its children and a ticked child overrides its group - the
   same rule in the preview, the tree, the compiler and on the iPad. Steps that
   list parts now get their CAD pin automatically at the centre of those parts
   (from the GLB's accessor bounds, no geometry decoding), so once the assembly
-  is placed on device every step is placed — Place Steps is no longer needed
+  is placed on device every step is placed - Place Steps is no longer needed
   for a designer-authored assembly guide. Reusable **part sets** ("Bolt set
   A") are saved on the map and applied to a step with one click. Fixes:
-  three.js strips `:` from node names — the preview now matches on the
+  three.js strips `:` from node names - the preview now matches on the
   original name; imported initial-hidden parts count as "later".
 - **Parts per step in the Procedure Designer + whole-assembly context on
   device.** A procedure map binds one assembly model (procedure bar: model +
@@ -517,7 +520,7 @@ it, it gets a line.
   derives per-step node deltas and the initial state; warnings for a step with
   no parts, a part listed twice, and parts without an assembly. Cortona3D
   presentation (motion, view, CAD pins) round-trips through the designer
-  verbatim — re-sending an imported guide no longer drops it. On the iPad every
+  verbatim - re-sending an imported guide no longer drops it. On the iPad every
   named GLB node is now a part (not only `cmp:*`), and the operator gets a
   "Show whole assembly" button that ghosts the not-yet-installed parts for
   orientation (per step). Rebuild the designer bundle on the Mac before pushing:
@@ -526,8 +529,8 @@ it, it gets a line.
   that the operator flips over between steps can now be shown flipped: every
   model slot carries `modelRotationX` / `modelRotationZ` (tilt / roll) beside
   the existing Y turn, persisted by the server, honoured by the operator's
-  ghost overlay and copied with the guide. Placing a model — Place Model,
-  per-step slot adjustment and Place Assembly — now uses one shared toolbar
+  ghost overlay and copied with the guide. Placing a model - Place Model,
+  per-step slot adjustment and Place Assembly - now uses one shared toolbar
   (`PlacementTools.swift`): pick **Move · Lift · Turn · Tilt · Scale** and
   only that gesture is live, so a pinch can no longer sneak a scale into a
   turn. Turn/Tilt snap softly to 15° with a live readout; quick actions
@@ -535,7 +538,7 @@ it, it gets a line.
   the nearest earlier step, re-based on this step's pin). One-time coach line
   on first use. Guide Library step rows show the orientation ("turn 180° ·
   tilt 90°") so an author can see which steps flip the part.
-- **Insights** — the leadership view under AR Guides Sessions. Headline
+- **Insights** - the leadership view under AR Guides Sessions. Headline
   tiles (runs, completion rate, typical run time, hints that helped, wrong
   parts per run) each with a sparkline and a delta against the previous
   period; runs-per-day bars with completions; the "hints that helped" line;
@@ -548,34 +551,34 @@ it, it gets a line.
   Intelligence everywhere and the four-point sparkle (the app's contextual
   hint mark) sits on every hints column, tile and chart. Two sprite
   additions: `sparkles`, `insights`.
-- **Portal home** — larger tiles with product-coloured icon tiles and
+- **Portal home** - larger tiles with product-coloured icon tiles and
   stat chips (the same family as the SIB home doors and the Roadmap home);
   the registration mark no longer sits before the wordmark in the header.
 - **Demo / training mode per guide.** `Guide.ciMode = 'demo'` (Guide Library
   → *Demo* button; `PATCH /guides/:id { ciMode }`): floors only, no
-  baselines, no retirement — every run coaches the same way. Intelligence
+  baselines, no retirement - every run coaches the same way. Intelligence
   shows an *Engine* line per step with what it currently needs to fire
   (wrong taps · attention % · look-away s · dwell s, and the mode).
-- **AR guide tag — tucks when you're close.** Under 0.35 m the 3D pin folds
+- **AR guide tag - tucks when you're close.** Under 0.35 m the 3D pin folds
   to a small dot (badge and ring fade, 220 ms); past 0.5 m it registers
   back. Explained once. The pin is sized to the part it marks (2.5 cm ring
   minimum, full size from ~9 cm parts). The eye button now cycles
   tag + panel → all steps → panel only → tag only → hidden, with a 1.5 s
   label; remembered per device.
-- **Intelligence — "why this number".** The heat chip on every step now
+- **Intelligence - "why this number".** The heat chip on every step now
   explains itself: hover or focus it for the weighted breakdown (each
   signal's rate × weight, the sum, the bands). Steps with fewer than 3
-  completed visits show heat as *provisional* in grey — in the chip, the
-  card edge and the strip — with a note on how far one visit moves the score.
-- **Design system — slice 2: the Portal.** `sib/portal/index.html` now runs on
+  completed visits show heat as *provisional* in grey - in the chip, the
+  card edge and the strip - with a note on how far one visit moves the score.
+- **Design system - slice 2: the Portal.** `sib/portal/index.html` now runs on
   `brand.css`: its palette is the app's tokens (charcoal page, 8 %-white
   cards, the iOS accents, product colours on the home tiles), every emoji
   (175 of them) is a sprite icon or plain text, the header carries the
   registration mark and the `appliedx` wordmark component, the Intelligence
   page is built from `.ax-card--product` / `.ax-tiles` / `.ax-heat` /
   `.ax-table` / `.ax-chip` / `.ax-bar`, and the portal joins the governed
-  list — `npm run brand:check` passes with it. No behaviour changes.
-- **Design system — slice 1.** SIB now has one look, written down once in
+  list - `npm run brand:check` passes with it. No behaviour changes.
+- **Design system - slice 1.** SIB now has one look, written down once in
   `sib/portal/brand/`, and it is the iPad app's look: tokens transcribed
   from the kiosk, hubs and sheets (charcoal gradient page, 8 %-white cards
   with accent strokes, white text in the app's opacity tiers, the iOS system
@@ -586,20 +589,20 @@ it, it gets a line.
   registration mark + lock-in motion, Arial (the company standard) at the
   app's text scale, and an icon sprite that replaces
   every emoji (`npm run brand:icons`, 96 icons). `/brand` is the living
-  brand guidelines site — chapters with a tracking side nav (principles,
+  brand guidelines site - chapters with a tracking side nav (principles,
   "same family" kiosk-beside-portal, wordmark with do/don't, colour, mark
   & motion, typography, components in use, the AR surface, icons, voice,
   rules, roadmap) rendered from that same CSS; `npm run brand:check` fails a
   governed page on any drift; `docs/BRAND.md` is the doctrine and
   `CLAUDE.md` states it for anyone generating pages in this repo. No
-  existing page changed yet — portal and catalogue migrate next.
+  existing page changed yet - portal and catalogue migrate next.
 - **Effectiveness loop + portal Intelligence page (C3).** Every automatic
-  hint is now scored by what happened after it — from the raw observation
+  hint is now scored by what happened after it - from the raw observation
   samples and the visit outcome (completed within the window, no more
   wrong-part taps, attention back on the part, viewpoint reached, validation
   passed). Per step and signal, over the last 50 visits, a hint that helps
   fewer than 30 % of the time (≥ 5 shown) or is muted half the time (≥ 4)
-  is **retired** on that step — C2 stops firing it — and comes back on its
+  is **retired** on that step - C2 stops firing it - and comes back on its
   own when newer runs improve; where LLM and template phrasings both have
   evidence and the LLM scores lower, the step falls back to the template.
   `GET /guide-sessions/intelligence/:guideId` returns per-step heat (left /
@@ -607,7 +610,7 @@ it, it gets a line.
   table and author-facing fix notes. Portal: AR Guides Sessions → **🧠
   Intelligence** (guide picker, heat strip, rate tiles, hint table with 🔕
   retired badges, notes). Tests `intelligence.test.ts`.
-- **XR assessment kit — `/xr?guide=<id>` (B3).** A guide runs in any WebXR
+- **XR assessment kit - `/xr?guide=<id>` (B3).** A guide runs in any WebXR
   browser (headset browser, Android Chrome) or as a desktop 3D preview with
   no game engine and no third-party tracking: own code on the vendored
   Three.js and the browser's WebXR API. It loads the Guide Bundle and the
@@ -617,10 +620,10 @@ it, it gets a line.
   timeline as the iPad (pure engine in `sib/portal/xr-engine.js`, tested
   against UNITY-RUNTIME §4), shows step text + part chips + viewpoint
   marker, takes manual Pass/Fail on validation steps, and posts the same
-  live session, step events, 1 Hz observations, hint polls and sign-off —
+  live session, step events, 1 Hz observations, hint polls and sign-off -
   so headset runs land in the Usage Log and baselines next to iPad runs.
   Portal Guide Library: **🥽 XR kit** link per guide. Catalogue `xr-kit`.
-- **.tag v1.1 — the frame, spelled out (B2).** Envelopes now carry
+- **.tag v1.1 - the frame, spelled out (B2).** Envelopes now carry
   `frame` (`kind: "qr"`, `markerId`, `markerSizeM`, sealed `anchorPose`,
   `originSource`) and assembly members repeat `spatial` + `type`, so a reader
   on any engine places every part from one envelope without ARKit. Additive:
@@ -628,9 +631,9 @@ it, it gets a line.
   `docs/schema/tag-envelope.schema.json` (`GET /catalog/schema/tag-envelope`);
   `npm run tag:verify -- envelope.json [--pubkey] [--sib url --key k]`
   verifies structure, determinism, canonical hash and Ed25519 signature
-  offline and re-hashes members against a live server — the reference a
+  offline and re-hashes members against a live server - the reference a
   C# / Kotlin / Rust reader is checked against.
-- **Contextual hints — spotlight + operator controls.** The step's parts
+- **Contextual hints - spotlight + operator controls.** The step's parts
   now glow (cyan pulse) with a leader line from the pin; "Show me" on a hint
   or tapping the part chip flashes the right parts while the rest ghosts for
   2.5 s; Replay is a labelled pill. Hints can be muted for this step (auto-
@@ -640,7 +643,7 @@ it, it gets a line.
   `hint:muted {scope}`) onto the visit's hint record for C3; the Usage Log
   strikes through muted hints. Imported step nodes carry a friendly `label`
   (object name → BOM description → part number) used by hints.
-- **Contextual intelligence C2 — deviations become hints.** After each
+- **Contextual intelligence C2 - deviations become hints.** After each
   observation batch SIB compares the current visit with the step's learned
   baseline and queues one hint per new deviation: `dwell` (past the p90),
   `attention-off` (below the p10), `wrong-part` (beyond the p90), `look-away`
@@ -650,19 +653,19 @@ it, it gets a line.
   with the template as fallback. Recorded on the visit for C3. iOS shows the
   reason per signal and opens the card for wrong-part / validate-retry. The
   LLM call moved to `ask/llm.ts`, shared with Ask SIB.
-- **Contextual intelligence C1 — observations + learned baselines.** The
+- **Contextual intelligence C1 - observations + learned baselines.** The
   operator session streams engine-neutral 1 Hz observations (attention
   target, distance/aim to the step target, look-from-here alignment,
   movement, interactions: tap-part / tap-wrong-part / replay / panel /
   validate-attempt / realign / look-aligned / stall) in 5-second batches to
   `POST /guide-sessions/live/:id/observations`. SIB rolls them into the usage
   record per visit (`OmsUsageStepEntry.observations`), keeps the raw samples
-  as JSONL, and learns per-guide/per-step baselines from completed visits —
+  as JSONL, and learns per-guide/per-step baselines from completed visits -
   dwell p50/p90, on-target ratio, wrong-part taps, replays, validation fail
-  rate, stall rate — at `GET /guide-sessions/baselines/:guideId`. Nothing
+  rate, stall rate - at `GET /guide-sessions/baselines/:guideId`. Nothing
   hard-coded. Spec `docs/CONTEXTUAL-INTELLIGENCE.md`; catalogue
   `contextual-intelligence`.
-- **Guide Bundle — the engine-neutral guide contract (B1).**
+- **Guide Bundle - the engine-neutral guide contract (B1).**
   `GET /guides/:id/bundle` returns one versioned JSON (`sib.guide-bundle/1`)
   with the guide, ordered steps, model manifest (GLB/USDZ URLs), the anchor
   and every frame it offers (QR marker size + sealed pose, anchor world map,
@@ -672,10 +675,10 @@ it, it gets a line.
   timeline). JSON Schema at `docs/schema/guide-bundle.schema.json`, served
   by `GET /catalog/schema/guide-bundle`; a test builds a bundle and checks it
   against the schema. Catalogue entry `guide-bundle`; UNITY-RUNTIME.md §0.
-- **Product doors — context per product, not at the kiosk (A).** The kiosk
+- **Product doors - context per product, not at the kiosk (A).** The kiosk
   asks for identity only (plus authoring/operating for engineers). The home
   screen asks "What are you working on?" with three doors: **AR OMS**
-  (Spatial Inspection + AR work instructions — operators enter a Production #
+  (Spatial Inspection + AR work instructions - operators enter a Production #
   then scan the chamber QR; authors pick the chamber configuration), **Gemba
   Audit** (Project ID stays at walk start) and **iLOTO** (new **Test bay #**,
   the raceway the panel sits in; stamped on every lock/tag event, shown in
@@ -703,20 +706,20 @@ it, it gets a line.
   timeout is 180 s, and failures show the real reason (404 = model deleted →
   re-import; network) with a Retry in Place Assembly.
 - **AR OJT: animation speed + author preview.** `Guide.assembly.animationSpeed`
-  (default 0.5× — Cortona timings are authored for a desktop viewer) with
+  (default 0.5× - Cortona timings are authored for a desktop viewer) with
   `PATCH /guides/:id { assemblyAnimationSpeed }`; Place Assembly gets a
   **Preview steps** toggle (◀ ▶ step through, ↻ replay) and a tortoise/hare
   speed slider saved with the guide; per-motion floor of 1.2 s. The
   per-step ghost copy of the assembly slot is never shown once the guide's
   assembly is placed (it duplicated the live assembly while it loaded);
   double-load guard on the operator side.
-- **AR OJT slices 2–4 (iOS) — the assembly in AR, one tap to place, steps
+- **AR OJT slices 2–4 (iOS) - the assembly in AR, one tap to place, steps
   drive the parts.** Own GLB→SceneKit loader (`Services/GLBLoader.swift`:
   node names + extras preserved, flat normals; USDZ export renamed nodes so
   per-part control was impossible), `AssemblyStateEngine` (cumulative part
   state from `initialNodes` + step deltas, replay-safe) and `AssemblyNode`
   (apply / play insert-remove-move animations / focus pulse / hit-test →
-  part info). Author: **Place Assembly in AR** in the guide editor — the
+  part info). Author: **Place Assembly in AR** in the guide editor - the
   ghost follows a reticle on the surface (bottom-centre of the geometry,
   facing the author); one tap saves the pose and every CAD step's pin
   follows; drag / twist / pinch to nudge; a fresh session uploads its world
@@ -726,7 +729,7 @@ it, it gets a line.
   part with a name + part-number chip, and a tap on any part shows what it
   is. Per-step ghost copies of the assembly slot are suppressed while the
   live assembly is shown.
-- **AR OJT slice 1 — one placement for the whole assembly (server/shared).**
+- **AR OJT slice 1 - one placement for the whole assembly (server/shared).**
   `Guide.assembly` (model, `pose`, `initialNodes`, `bounds`) and
   `GuideStep.cadPosition`; `PATCH /guides/:id { assemblyPose }` derives every
   CAD step's pin and assembly-slot offsets from a single pose (`null` clears
@@ -738,7 +741,7 @@ it, it gets a line.
 - **Cortona3D import validated on real publications (DITA WI, RWI, S1000D).**
   Guide steps now come from the document's own step list
   (`interactivity.xml` `<Procedure>/<Item>`), one per work item with the
-  animation sub-steps it plays merged into a single `nodes[]` presentation —
+  animation sub-steps it plays merged into a single `nodes[]` presentation -
   18 / 7 / 122 real steps instead of 61 / 59 / 671 animation atoms; set-up
   steps (`simulate FALSE`) are dropped; SubStep-per-step remains the fallback.
   Parametric geometry PROTOs (BOX, SPHERE, CYLNDR, TORUS, WASHER) are
@@ -753,7 +756,7 @@ it, it gets a line.
   extracted `solo+zip` bundle) and produces a draft guide plus the assembly
   as a GLB `Model3D`. Everything is our own code, dependency-free: a ZIP
   reader, a VRML97 parser that **keeps PROTO declarations and instances**
-  (the procedure — `Procedure → Step → SubStep → Set_* / SwitchOFF` — lives
+  (the procedure - `Procedure → Step → SubStep → Set_* / SwitchOFF` - lives
   entirely in proprietary PROTOs bound by `ROUTE`, which stock loaders drop
   silently), a scene builder (`ObjectVM`/`Transform`/`Switch` +
   `IndexedFaceSet`, content-hash mesh dedupe, VRML transform composition),
@@ -770,22 +773,22 @@ it, it gets a line.
   `ImportedGuideStep` (optional; older app builds ignore them). Portal:
   the Import Guide modal accepts `.htm`, shows a strict-mode toggle, opens a
   **content-free import log** (counts, PROTO names, publish options,
-  warnings — copy / download) and kicks off the usual browser-side GLB→USDZ
+  warnings - copy / download) and kicks off the usual browser-side GLB→USDZ
   conversion; Guide Preview lists the parts each step shows / hides / moves;
   step rows carry a 🧩 parts chip. Tests: synthetic bundle generator built
   from both reconnaissance reports' schemas (`sib/test/cortona-fixture.ts`),
   parser / bundle / importer / GLB / strict-mode / text tests.
-- **Feature Catalogue — live, touring, three views, shareable.** (1) **Live
+- **Feature Catalogue - live, touring, three views, shareable.** (1) **Live
   pulse**: each product wedge carries a line from `/stats` under its rim name
   (chambers, runs live / today, walks open, locks active, people on tools, QA
   devices, guides placed) and **ripples** while something is happening right
   now; the core beats faster while people are on tools (30 s refresh, quiet
   on failure). (2) **▶ Tour** (header) runs the first trail as a story: each
   stop flies the camera into focus with a caption card; ▶ Auto advances
-  every 9 s with a progress bar; Space / → next, ← back, Esc out — present it
+  every 9 s with a progress bar; Space / → next, ← back, Esc out - present it
   standing at the screen. (3) **Map · Grid · Timeline** views: Grid is cards
   by product; Timeline is columns by platform version with the current
-  release lit — "what shipped when" in one glance. (4) **Filters** for
+  release lit - "what shipped when" in one glance. (4) **Filters** for
   status (shipped / beta / planned) and version (✦ new in 2026.4.46 · since
   2026.4.45) apply to every view; the match count reads "N of 87". (5)
   **Navigation**: ← Back in the card panel walks the cards you visited;
@@ -794,31 +797,31 @@ it, it gets a line.
   search. (6) In 3D the SIB core now sits a full layer *below* the floor,
   painted first, so no product ever overlaps it; rim names are hard-fitted
   to their arc (`textLength`) so nothing clips at any angle.
-- **Feature Catalogue — Focus.** A quick look at one node's relationships
+- **Feature Catalogue - Focus.** A quick look at one node's relationships
   without the rest diluting it: **◎ Focus** (bottom-right when a feature is
   selected), key **F**, or a double-click pins focus and flies to the node;
   it also engages by itself once you are zoomed in (≥ 1.35×) on a selection.
   First-degree neighbours stay bright and labelled with flow on their links,
-  second-degree ghost in at 30 % for context, everything else — nodes,
-  edges, untouched product wedges / layers — recedes; **Esc** leaves. Rim
+  second-degree ghost in at 30 % for context, everything else - nodes,
+  edges, untouched product wedges / layers - recedes; **Esc** leaves. Rim
   names now size themselves to their arc (2D and, per frame, the
   foreshortened arc in 3D) instead of clipping.
-- **Feature Catalogue — 2D ⇄ 3D.** A `2D | 3D` switch (keys `2` / `3`)
+- **Feature Catalogue - 2D ⇄ 3D.** A `2D | 3D` switch (keys `2` / `3`)
   lifts each product wedge to its own layer along the SIB **spine**; the flat
   disc is the same picture seen from above, so the switch is one camera move
   (tilt + layer spacing, ~1.3 s, reduced-motion snaps). Layer order is
   computed: Platform Foundations is the floor, every other product ranks by
-  net dependency flow (providers low, consumers high) so links point upward —
+  net dependency flow (providers low, consumers high) so links point upward -
   today: Foundations → Spatial Inspection → Gemba → AR Work Instructions →
   Designer → iLOTO → Portal. In-layer edges stay flat; cross-layer edges rise
   between their layers and still light up with flow on hover / select;
   selecting a feature fades every layer it doesn't touch. Drag orbits the
   stack, scroll zooms, labels stay collision-free (nearest layer wins),
-  `#feature?3d` links open stacked. Pseudo-3D projection in the same SVG — no
+  `#feature?3d` links open stacked. Pseudo-3D projection in the same SVG - no
   WebGL, text stays crisp, every interaction unchanged.
-- **Feature Catalogue — "The Core".** The map now tells the SIB thesis by
+- **Feature Catalogue - "The Core".** The map now tells the SIB thesis by
   its shape: **SIB sits in the centre** as a glowing core (pulsing, with the
-  four ontology halos — spatial · perception · semantic · reasoning — turning
+  four ontology halos - spatial · perception · semantic · reasoning - turning
   slowly around it); products are clean **radar wedges** with their names
   set along the rim arc (never upside down, never on a node); faint **depth
   rings** read *foundations · core · surface*, so inner = what everything
@@ -826,14 +829,14 @@ it, it gets a line.
   a feature and **light flows** along its dependencies. Features stamped
   with the current version carry a green **new-this-release** tick (legend
   updated). Labels are collision-avoided (flip above, then yield) so nothing
-  overprints at any zoom. **Ignite** once per session — core lights, wedges
+  overprints at any zoom. **Ignite** once per session - core lights, wedges
   sweep in, nodes pop ring by ring (~2.5 s, any input skips, reduced-motion
   honoured). Header, panel, tooltip and zoom controls are frosted glass.
-- **Feature Catalogue map — sector layout, hover, zoom controls (slice A).** At 87 features the free force layout had product headings
+- **Feature Catalogue map - sector layout, hover, zoom controls (slice A).** At 87 features the free force layout had product headings
   landing on nodes and labels on labels. The map is now laid out by
   **sector**: each product area owns a wedge of the disc (width ∝ feature
   count), features sit on rings by dependency depth (foundations inward),
-  deterministic — no random start. A soft **territory** hull is drawn behind
+  deterministic - no random start. A soft **territory** hull is drawn behind
   each area's nodes and the heading is pinned *outside* the disc on the
   sector's bearing, so it can never sit on a node. **Semantic labels**: below
   0.9× zoom only the hovered, selected, neighbouring, searched and trail
@@ -845,7 +848,7 @@ it, it gets a line.
   browser. Header ⚡ replaced by the appliedx wordmark. Slices B (Grid /
   Timeline views, status + version filters) and C (panel history, related
   rail, keyboard, shareable view URLs) are proposed next.
-- **Platform wordmark — "appliedx Connected Worker AR OMS Platform".** The
+- **Platform wordmark - "appliedx Connected Worker AR OMS Platform".** The
   home page, portal header, catalogue, /platform and the long-form page now
   carry the team's wordmark the way it is written in decks: *applied* in
   AppliedX blue (#66b3ff), *x* in green (#35c635), Roboto Regular (fetched
@@ -853,57 +856,57 @@ it, it gets a line.
   with `data-ax-wordmark` so a page never hand-copies the colours; the ⚡ is
   gone from the home header.
 - **Feature Catalogue caught up to 2026.4.46.** Fifteen new cards for
-  everything shipped after the `.tag` emitter — kiosk shift start, usage log,
+  everything shipped after the `.tag` emitter - kiosk shift start, usage log,
   production-verified resume, step validation, chamber configurations, copy /
   duplicate / model slots, sealed world maps, object anchoring, presence &
   coaching, moment coach, device logs, SIB Compass, portal guided assistance,
-  the /platform story and the Gemba "walk together" set — each with API lines
+  the /platform story and the Gemba "walk together" set - each with API lines
   validated against the real routes and an architecture diagram. Existing
   cards (LocTags, walk sessions, ghost overlays, evidence, guide move) and
   the four area flows were updated; the deep dives live in the new
   `docs/CONNECTED-WORKER.md`; `docs/FEATURE-CATALOG.md` gains section 8.
-- **Gemba Walk — every photo in the Excel export, plus Summary and Photos
+- **Gemba Walk - every photo in the Excel export, plus Summary and Photos
   sheets.** Auditors expect the workbook to carry the evidence, not just the
   first picture. The walk export is now three sheets: **Summary** (one row per
-  walk — header, counts by category, max risk, photos, notes), **Findings**
+  walk - header, counts by category, max risk, photos, notes), **Findings**
   (one row per finding with *all six* photos embedded side by side, each
   caption beside its image, marked-up copy preferred) and **Photos** (one row
   per photo for filtering by caption / markup). `xlsx-lite` gained multi-sheet
   workbooks, any number of anchored images per row and columns beyond Z, still
   with zero dependencies. `?walkIds=a,b,c` exports a chosen set (≤ 200).
-- **Walk Sessions — filters that scale.** Auditor dropdown, **From / To** date
+- **Walk Sessions - filters that scale.** Auditor dropdown, **From / To** date
   window (default last 90 days, applied server-side via `GET /gemba/walks?from=&to=`,
   *All time* to clear), 50-row paging with *Show more*, and **⬇ .xlsx (N shown)**
   which exports exactly the filtered table.
-- **Gemba Walk — custom entries + no header-less walks.** Free-text findings
-  now collect exactly what library findings do — typed focus area + question /
-  observation, the same Finding Category (required) and Preliminary risk — and
+- **Gemba Walk - custom entries + no header-less walks.** Free-text findings
+  now collect exactly what library findings do - typed focus area + question /
+  observation, the same Finding Category (required) and Preliminary risk - and
   are stored with `referenceSource: 'custom'` and no codes, so the report is
   true: portal rows show a *Custom* badge, the walk `.xlsx` and CSV carry a
   `Source` column (`library` / `custom` / `legacy`). The start sheet lists
   **every** open walk on the space (yours → *Continue*, a colleague's →
   *Join*) instead of only the auditor's own; *Begin* always records a walk
-  (all header fields optional) — *Tag without a walk header* is gone, replaced
+  (all header fields optional) - *Tag without a walk header* is gone, replaced
   by an offline fallback that appears only after a failed *Begin*. Findings
   without a walk (offline / older builds) are counted on the start sheet and
   offered for inclusion once a walk begins (`POST /gemba/walks/:id/adopt`).
-- **Gemba Walk — Audit Reference Library (G1)**. The PowerApps Gemba Audit
+- **Gemba Walk - Audit Reference Library (G1)**. The PowerApps Gemba Audit
   tool bound its pickers to SharePoint reference lists (Focus Area → Question);
   auditors chose, never typed. That vocabulary now lives in SIB:
   `GET /gemba/library` serves focus areas with their questions plus the fixed
   finding categories (Strength / OFI / NC) and risk ratings (0–3) in one call;
   Corporate Quality maintains it under Portal → GembaWalks → **📚 Audit
   Library** (add / edit / deactivate / delete, admin-gated writes) or imports
-  the same Excel/CSV they already keep — choose file → preview → import,
+  the same Excel/CSV they already keep - choose file → preview → import,
   atomic, append-by-code or replace, mirroring Import Guide. Findings will
   record the question *code* so later library edits never rewrite history.
   Fresh servers seed the 15 focus areas from the PowerApps tool (no
-  questions — those come from the import); already-seeded servers gain the
+  questions - those come from the import); already-seeded servers gain the
   missing areas on restart and lose the four demo 6S questions if untouched. `sib/src/gemba/library-core.ts`, `routes/gemba-library.ts`,
   tests, `docs/GEMBA-WALK.md`, catalogue `audit-library`. Slices G2–G8
   (finding model, capture flow, walk sessions, markup, multi-auditor,
   phone-down navigation) are listed there and follow.
-- **Gemba Walk — reference-list findings (G3)**. A finding (`LocTag`) can now
+- **Gemba Walk - reference-list findings (G3)**. A finding (`LocTag`) can now
   be logged against an Audit Library question: `POST /loc-tags` takes
   `questionCode` and snapshots focus area + question (code, title, text) onto
   the finding, plus `findingCategory` (Strength / OFI / NC), optional
@@ -916,17 +919,17 @@ it, it gets a line.
   the new columns. iOS models + `SIBClient` (`fetchGembaLibrary`,
   `appendLocTagPhotos`, `deleteLocTagPhoto`, `uploadLocTagMarkup`) are in;
   the capture flow lands with G4. `sib/src/gemba/finding-core.ts`, tests.
-- **Gemba Walk — pick, don't type (G4, iOS)**. The finding sheet now runs
+- **Gemba Walk - pick, don't type (G4, iOS)**. The finding sheet now runs
   the Corporate Quality flow: **Focus Area → Question** (searchable pickers
   from the Audit Reference Library, last focus area remembered) → **Category**
   Strength / OFI / NC → optional **risk 0–3** → up to **six photos, each with
   a caption** (camera or library, reorderable). Free text only when the
   library is empty or the auditor flips the toggle. Every finding gets a
-  **floating panel** in AR — the AR OMS pill/card language: collapsed pill
+  **floating panel** in AR - the AR OMS pill/card language: collapsed pill
   (stop #, title, category chip) by default so the view stays clear; tap →
   card with code, question, risk, notes, photo count; tap the card to collapse,
   its **Open ›** band for the full sheet. Warm light surface, dark text, orange
-  accents (badge · ring · chips) — easier on the eye than orange-on-black. Operators see the same panels while walking (non-target ones dimmed)
+  accents (badge · ring · chips) - easier on the eye than orange-on-black. Operators see the same panels while walking (non-target ones dimmed)
   and can open any finding from its card. Peek / completion / edit sheets show
   the reference question, category, risk and a captioned photo strip with a
   lightbox; edit changes category, risk and captions. Library is cached on
@@ -935,9 +938,9 @@ it, it gets a line.
   `Modes/LocTagFormSheet.swift` (rewrite), `LocTagAuthorView`,
   `LocTagOperatorView`, `LocTagPeekSheet`, `LocTagOperatorSheet`,
   `LocTagEditSheet`.
-- **Gemba Walk — walk sessions, summary and Excel (G2 + G8)**. Starting a
-  walk now collects the header the PowerApps tool did — auditor (kiosk
-  identity), **Project ID, Organization, BU, Area, Location** — from pick
+- **Gemba Walk - walk sessions, summary and Excel (G2 + G8)**. Starting a
+  walk now collects the header the PowerApps tool did - auditor (kiosk
+  identity), **Project ID, Organization, BU, Area, Location** - from pick
   lists Corporate Quality maintains under Audit Library → *Walk header pick
   lists* ("Other…" allows a typed value; last values remembered; an open walk
   on the same space can be continued). Findings carry `walkId`; **Finish**
@@ -951,9 +954,9 @@ it, it gets a line.
   gains `openGembaWalks`. `sib/src/gemba/walk-core.ts`,
   `routes/gemba-walks.ts`, `oms/xlsx-lite.ts` (`buildTableXlsx`), iOS
   `Modes/GembaWalkSheets.swift`, tests.
-- **Gemba Walk — mark up the photo (G5, iOS)**. Tap a photo thumbnail while
+- **Gemba Walk - mark up the photo (G5, iOS)**. Tap a photo thumbnail while
   logging a finding (or the pencil on a photo in the peek sheet) to draw on
-  it — PencilKit, finger or Apple Pencil, orange / red / white / black, two
+  it - PencilKit, finger or Apple Pencil, orange / red / white / black, two
   widths, undo, clear. *Done* flattens the strokes onto a full-resolution copy
   stored beside the original (`markupPath`); the original is never changed.
   The floating panel, sheets, portal strips and the walk Excel all prefer the
@@ -963,31 +966,31 @@ it, it gets a line.
   removes the markup (`{ clear: true }`). `Components/PhotoMarkupView.swift`,
   `LocTagFormSheet`, `FindingDetailSections`,
   `PUT /loc-tags/:id/photos/:file/markup` (from G3).
-- **Gemba Walk — walk together (G7)**. Auditors on the same space see each
+- **Gemba Walk - walk together (G7)**. Auditors on the same space see each
   other: the presence lens / view cone / roster chip from AR OMS now run on
   Gemba walks (surface `gembaWalk`, poses in the shared world-map frame,
   withheld while relocalising). A finding saved, edited or deleted by a
-  colleague arrives live (`loc-tags` presence event) — its pin and floating
+  colleague arrives live (`loc-tags` presence event) - its pin and floating
   panel appear on everyone's device with a toast. `sse/presence.ts`,
   `PresenceService.findingsChanged`, `LocTagAuthorView` presence section.
-- **Gemba Walk — phone-down navigation (G6)**. Operators walk with the
+- **Gemba Walk - phone-down navigation (G6)**. Operators walk with the
   phone at their side: a **Live Activity** in the Dynamic Island / Lock
   Screen shows the next finding, distance and progress; arriving fires a
   haptic and a green tick; tracking lost (phone lowered) shows the last
-  distance and "Raise your phone to update" — raising re-localises and
+  distance and "Raise your phone to update" - raising re-localises and
   updates resume. Needs the `GembaWalkWidget` extension target (one-time,
   `ios-app/XCODE-SETUP.md` step 10); without it the calls are no-ops.
   `Shared/GembaWalkActivity.swift`, `Services/GembaLiveActivity.swift`,
   `GembaWalkWidget/`, `NSSupportsLiveActivities` in Info.plist.
-- **Gemba Walk — resume with a checkpoint (R1–R5)**. iOS suspends ARKit the
+- **Gemba Walk - resume with a checkpoint (R1–R5)**. iOS suspends ARKit the
   moment the app leaves the foreground, and ARKit used to RESET its world on
-  return — every pin respawned in the wrong place, silently. Now:
+  return - every pin respawned in the wrong place, silently. Now:
   *R1* the Live Activity switches to an honest posture in the background
   ("Open SpatialTagging to continue · next #4 · last 3.2 m"); *R3* completed
   findings, the current stop and the walk id are saved per space, so a cold
   restart offers "Continuing at #4" (12 h window); *R2* the AR session now
   keeps its map across interruptions (`sessionShouldAttemptRelocalization`)
-  and every return runs a **Welcome back** checkpoint — blurred view, the
+  and every return runs a **Welcome back** checkpoint - blurred view, the
   last known finding's own photo as the landmark, "stand where you saw #4",
   then one question over the pin: *Is #4 where the pin shows?* Yes / No,
   re-align; no answer in 15 s → full re-localization against the saved map
@@ -995,15 +998,15 @@ it, it gets a line.
   the same gate and cannot place a finding into an unconfirmed frame; *R4*
   on arrival at a finding the live view is compared with the finding's photo
   (`POST /loc-tags/:id/compare`, same comparator as step validation, loose
-  threshold) — low similarity shows "This doesn't look like #4 — Re-align /
+  threshold) - low similarity shows "This doesn't look like #4 - Re-align /
   Looks right" instead of a silent drift. `ARSessionManager` (`resumeCount`),
   `Components/ResumeCheckpointOverlay.swift`, `Services/WalkProgressStore.swift`,
   `LocTagOperatorView`, `LocTagAuthorView`, `GembaLiveActivity.background`.
-- **SIB Compass — one navigator on every web surface (N1)**. Each surface had
+- **SIB Compass - one navigator on every web surface (N1)**. Each surface had
   grown its own way home (⌂, ⚡, a text link, nothing) and the portal had no
   link to SIB home at all. `sib/portal/compass.js`, injected by `brand.js`
   (roadmap and wireframe now include it too): a brand-hex button bottom-right
-  opens a radial map — SIB in the centre, Portal / Admin / Platform / Roadmap /
+  opens a radial map - SIB in the centre, Portal / Admin / Platform / Roadmap /
   Catalogue / Wireframe around it, their stops fanning out; the current node
   is lit with the path from the centre drawn, and every node is one click,
   leaf to leaf. Live counts from `/stats` ride on the nodes (chambers, people
@@ -1014,21 +1017,21 @@ it, it gets a line.
   Recents keeps the last three places. Keys: `g g` map, `g h/p/m/r/c/w/a`,
   Esc. `/stats` gains `sessionsToday`, `liveRuns`, `qaDevices`. Reduced-motion
   respected; breadcrumb and leaves hide on narrow screens.
-- **Place Steps — confirm before moving on (iOS)**. A dropped pin no longer
+- **Place Steps - confirm before moving on (iOS)**. A dropped pin no longer
   auto-advances. The pin pops in with a green surface ring and a haptic, and
   a placement card takes over the bottom of the screen: step number and
   title, "Pinned · 42 cm away", **Re-tag** and **Confirm & next** (last step:
   *Confirm & finish*). While the card is up any tap on a surface moves the
   pin (tapping the pin itself confirms); the model chain and the advance run
   only after Confirm, so colleagues never see a half-placed pin. The confirm
-  bar replaces the action bar in the same slot and style — nothing new covers
+  bar replaces the action bar in the same slot and style - nothing new covers
   the chamber. ⏩ in the top tool row (next to the eye) toggles auto-advance
   (per device, off by default; yellow = on, toast on every change): with it
-  on there is no interim at all — drop and go, exactly the earlier flow.
+  on there is no interim at all - drop and go, exactly the earlier flow.
   One-time
   coach moment; `guide: pin placed / re-tagged / confirmed` lines in the QA
   log so hesitation shows in the timeline.
-- **QA logging — device logs on the server (L1–L3)**. A work iPhone can't
+- **QA logging - device logs on the server (L1–L3)**. A work iPhone can't
   hand over its console, so the app now ships its log lines to SIB. iOS
   `Services/AppLog.swift`: `info/warn/error` always, `debug` with **QA Mode**
   (Settings → Diagnostics; per device, auto-off after 24 h, orange QA badge on
@@ -1047,32 +1050,32 @@ it, it gets a line.
   same ghost-opacity slider as Place-in-AR: live on the node, saved with the
   slot on Confirm, so the value is chosen against the step's real background.
   Place Steps now shows each slot at its saved opacity instead of a fixed
-  preview value — what the author sees is what the operator gets.
-- **Roadmap — "From a photo" door (server-side vision)**. The whiteboard /
+  preview value - what the author sees is what the operator gets.
+- **Roadmap - "From a photo" door (server-side vision)**. The whiteboard /
   screenshot import was hidden in the ⋯ menu and, on the in-house server,
   waited two minutes before failing. It is now the third door on the Roadmap
   home page; the preview creates the draft as a **Roadmap** or a
   **Procedure** (arrows → *Next*, plain lines and lanes dropped). Extraction
-  always ran on the SIB server — the vision endpoint is now resolved
+  always ran on the SIB server - the vision endpoint is now resolved
   `SIB_VISION_URL` → `ASK_LLM_URL` → not configured, and
   `GET /mindmap/import-image/status` (key-free) lets the door say "Not set
   up on this server" up front. Ollama is one option, not a requirement: any
   OpenAI-compatible endpoint with `image_url` support works (vLLM, LM
   Studio, a company gateway). Setup in INTERNAL-SERVER-DEPLOY.md.
-- **Procedure Designer — issue bubbles on nodes (DS1)**. Compiler issues
+- **Procedure Designer - issue bubbles on nodes (DS1)**. Compiler issues
   now ride the card as a notification badge at the top-right corner: red
   with the error glyph when any error blocks *Send to guide library*, amber
   with the warning glyph otherwise, count inside, every message in the
-  tooltip. The issues drawer in the procedure bar is unchanged — the bubble
+  tooltip. The issues drawer in the procedure bar is unchanged - the bubble
   puts the same server-derived `issues[].nodeId` on the canvas.
-- **Procedure Designer — night node-properties pane (DS2)**. The Inspector
+- **Procedure Designer - night node-properties pane (DS2)**. The Inspector
   follows the canvas theme (`.editor-body.night .inspector`): black panel,
   dark inputs, dimmed chips, re-tinted review/active states. Procedure maps
   default to night, so the properties pane is black there; roadmap maps stay
   white unless flipped with the existing ☀/☾ toggle.
 - **AppliedX iconography (DS3)**. `utils/icons.ts` redrawn as one stroke set
   (24-grid, 2 px round strokes, `currentColor`) and extended from 20 to 60
-  icons — fab vocabulary first: chamber, wafer, gas line, breaker, torque,
+  icons - fab vocabulary first: chamber, wafer, gas line, breaker, torque,
   lockout, evidence, voice, ghost model, checklist, ME, technician, hazard,
   ESD, vacuum, clean, timer, Production #, spatial pin, scan. Every emoji
   in the Designer chrome (toolbar, map list, preview, procedure bar, node
@@ -1081,8 +1084,8 @@ it, it gets a line.
   generates `docs/ICONOGRAPHY.md` and the rendered sheet
   `docs/iconography.html` (day / night / on-card previews, where each icon
   is used) from `icons.ts`, and fails when a path has no meta or vice
-  versa — the library cannot drift from the code.
-- **Object scan robustness across devices (B1b)** — an ARKit reference
+  versa - the library cannot drift from the code.
+- **Object scan robustness across devices (B1b)** - an ARKit reference
   object is a sparse point cloud tied to the camera that captured it, so a
   scan from one iPhone can be slow to recognise on another. Four changes:
   (1) the Save gate now requires **≥ 600 points from ≥ 3 of 6 sides** (the
@@ -1090,13 +1093,13 @@ it, it gets a line.
   reads "Good coverage · 4 of 6 sides"); (2) Anchor Hub → Object tracking
   → **Improve scan on this device** scans the same chamber with the second
   iPhone and merges it into the existing object (`ARReferenceObject.merging`
-  — points land in the original's frame, so the QR/map calibrations stay
+  - points land in the original's frame, so the QR/map calibrations stay
   valid; `POST /anchors/:id/object?merge=1` keeps `objectPoseInQR`); (3)
-  provenance on the object meta — `scannedOn` (hardware id), `mergedFrom`,
-  `sides` — shown in Anchor Hub with an amber note when this iPhone did not
+  provenance on the object meta - `scannedOn` (hardware id), `mergedFrom`,
+  `sides` - shown in Anchor Hub with an amber note when this iPhone did not
   contribute; (4) the chamber finder shows, after 10 s, "Scanned on a
-  different iPhone — add a scan from this one" when that is the case.
-- **Multi-user co-authoring, slice 1 — presence in Place Steps (P1)** —
+  different iPhone - add a scan from this one" when that is the case.
+- **Multi-user co-authoring, slice 1 - presence in Place Steps (P1)** -
   two authors can work on the same guide at once and see each other in AR,
   even from different sites: because every device localises into the
   chamber's shared frame (sealed map / object), a colleague's camera pose is
@@ -1108,7 +1111,7 @@ it, it gets a line.
   `presence` / `presence:joined` / `presence:left`, entries dropped after
   30 s of silence; guide-step store writes are announced as `guide-steps`
   (edit echo). Nothing is persisted. iOS (`Services/PresenceService.swift`,
-  `Components/PresenceLayer.swift` — add both to the Xcode target): a
+  `Components/PresenceLayer.swift` - add both to the Xcode target): a
   world-locked **lens** (initials, name, site from the time zone) at the
   colleague's head, a translucent **view cone** and a pulsing **gaze dot**
   where their view meets the chamber, smoothed between updates; edge
@@ -1119,21 +1122,21 @@ it, it gets a line.
   pulse and "Name · just now"; a step both of you moved keeps yours ("yours
   wins on Save" note). **Soft lock:** the step a colleague is on shows their
   initials on its tray chip. Poses are shared only while the session frame
-  IS the guide map frame (relocalized / object-snapped) — never from a
+  IS the guide map frame (relocalized / object-snapped) - never from a
   private frame. Presence identity is per device (`employeeId@device`), so
   the same login on two iPhones is two people. Author mode (Spatial
   Inspection) and author-coaches-operator are the next slices.
-- **Object tracking, slice 5 — re-align UI in the inspection modes +
-  portal provenance (R1)** — Spatial Inspection Author / Operator and iLOTO
+- **Object tracking, slice 5 - re-align UI in the inspection modes +
+  portal provenance (R1)** - Spatial Inspection Author / Operator and iLOTO
   already inherited the chamber-movement watchdog from the QR gate but only
   gave a haptic; they now get the same `ObjectTrackOverlay` the guides
   have: tracking pill (tap = manual re-align with the timed finder),
-  "Chamber moved — re-aligned · Undo" toast, amber "looks different" state.
-  Portal: the chamber row's object badge now carries provenance — device it
+  "Chamber moved - re-aligned · Undo" toast, amber "looks different" state.
+  Portal: the chamber row's object badge now carries provenance - device it
   was scanned on (+ merged devices), sides covered, calibration state and
   shape-model state, with the full detail in the tooltip (`Anchor.objectInfo`,
   derived, read-only).
-- **Object tracking, slice 4 — shape model ghost (B3)** — a reference
+- **Object tracking, slice 4 - shape model ghost (B3)** - a reference
   object is an invisible point cloud, so "chamber recognised" had nothing on
   screen to prove *where* the app thinks the chamber is. Anchor Hub → Object
   tracking → **Shape model** picks a USDZ-ready model from the chamber's kit;
@@ -1143,13 +1146,13 @@ it, it gets a line.
   `shapeModelScale` in the reference object's frame (kept across merged
   scans, reset by a fresh re-scan). From then on the QR gate, Place Steps
   and the guide session show the model as an indigo ghost on the chamber
-  for ~6 s at every recognition and every B2e re-alignment, then fade it —
+  for ~6 s at every recognition and every B2e re-alignment, then fade it -
   a glance tells you the frame is right. Server: `PATCH
   /anchors/:id/object/meta` now takes `shapeModelId` (existing model id or
   null to clear), `shapeModelPose`, `shapeModelScale` alongside
   `objectPoseInQR`. New file `Components/ObjectShapeGhost.swift` (renderer,
-  picker, align view) — add to the Xcode target.
-- **Multi-user, slice 3 — an author coaches an operator (C1/C2)** — the
+  picker, align view) - add to the Xcode target.
+- **Multi-user, slice 3 - an author coaches an operator (C1/C2)** - the
   operator's guide session now publishes presence too (surface `guide`,
   pose in the guide-map frame once relocalized / object-snapped, current
   step as focus, and the live session id), so an author in Place Steps on
@@ -1165,37 +1168,37 @@ it, it gets a line.
   …" (person icon, cyan), a success haptic, and a pulsing ring + beam +
   "Priya: look here" label at the point for 20 s; coach hints bypass the
   stall/retry cool-downs. `PresenceUpdate.sessionId` added.
-- **Multi-user co-authoring, slice 2 — presence in Spatial Inspection Author
-  mode (P5)** — the same lens / view cone / gaze dot / edge arrows / roster
+- **Multi-user co-authoring, slice 2 - presence in Spatial Inspection Author
+  mode (P5)** - the same lens / view cone / gaze dot / edge arrows / roster
   chip / join toasts, now in Author mode. Poses are shared in the **QR
   frame** (tags are QR-relative): mine is `inverse(anchorPose) × camera`,
   a colleague's renders as `anchorPose × pose`, re-based live as the QR
-  pose refines — so two authors in front of two units of the same chamber
+  pose refines - so two authors in front of two units of the same chamber
   type line up when the chamber's shape is the origin. Edit echo rides the
   existing `.tag` feed: `changed` events name `member:<tagId>`, the view
   re-fetches and adds / moves / removes only those markers with a pulse
   and "Name · just now" (own writes are skipped by `updatedAt`). Frames
   never mix: Author/Operator presence only shows Author/Operator
   colleagues, Place Steps only people on the same guide.
-- **Object tracking, slice 3 — movable equipment (B2e, iOS)** — for
+- **Object tracking, slice 3 - movable equipment (B2e, iOS)** - for
   object-origin chambers the shape is now the **only** frame: the QR gate,
   Place Steps and the guide session start a fresh session (no
-  `initialWorldMap`) so a chamber that has moved — a gas line rolled to
-  today's bay — is never pinned to where the room map last saw it. The map
+  `initialWorldMap`) so a chamber that has moved - a gas line rolled to
+  today's bay - is never pinned to where the room map last saw it. The map
   is kept as an **explicit** fallback, never a silent one. Flow:
   *"Point at the chamber"* finder with a live **elapsed timer** (the wait
   never looks frozen); after 15 s it offers *Keep looking* / *Place from
   last known position* (guides: room map, amber "Approximate · from map"
   pill; gate: *Use the QR position*) and, for authors, *Re-scan the chamber*.
   **Auto re-align while working:** ARKit never moves an object anchor once
-  added, so `ARSessionManager` now runs a watchdog — every 8 s, when the
+  added, so `ARSessionManager` now runs a watchdog - every 8 s, when the
   chamber's expected position is on screen, it drops the anchor and lets
   ARKit detect again; ≤ 2 cm / 2° is ignored, a larger move confirmed by
   two agreeing detections re-bases the world (`setWorldOrigin` composes
-  across re-bases) with a haptic and *"Chamber moved — steps re-aligned ·
+  across re-bases) with a haptic and *"Chamber moved - steps re-aligned ·
   Undo"* (Undo suspends auto re-align until a manual one). Tap the
   tracking pill (*Tracking · chamber* / *out of view · last known* /
-  amber *looks different — tap to re-align*) for a manual re-align with the
+  amber *looks different - tap to re-align*) for a manual re-align with the
   same timed finder. Three failed re-detections with the chamber in view
   mark the shape stale (pins never jump); a re-scan from the finder voids
   the calibration until the next Save writes a fresh `objectPoseInMap`.
@@ -1206,11 +1209,11 @@ it, it gets a line.
   only; pill/toast on those surfaces is a follow-up). Shared UI lives in
   `ObjectScanView.swift` (`ObjectFinderCard`, `ObjectTrackPill`,
   `ObjectRealignToast`). No server change.
-- **Object tracking, slice 2 — the object as origin (B2)** — a chamber can
+- **Object tracking, slice 2 - the object as origin (B2)** - a chamber can
   now be found by its **shape**. `Anchor.originSource` = `worldMap` (default)
   or `object`, chosen when creating a chamber ("How should the app find this
   chamber?") or later in Anchor Hub → Object tracking. Doctrine unchanged
-  underneath: tags stay QR-relative and guide pins stay map-relative — the
+  underneath: tags stay QR-relative and guide pins stay map-relative - the
   object supplies the frame through a stored **calibration**:
   `objectPoseInQR` on the object meta (written by the first Author QR scan
   that also sees the object, `PATCH /anchors/:id/object/meta`) and
@@ -1221,57 +1224,57 @@ it, it gets a line.
   (priority **object › sealed map › live QR**, drift note when the QR moved,
   ≤ 6 s wait after the lock for the object); Place Steps and the guide
   session **re-base the world onto the map frame** the moment the object is
-  recognised (`ARSession.setWorldOrigin`) — pins exact, no feature-point
+  recognised (`ARSession.setWorldOrigin`) - pins exact, no feature-point
   matching, no QR needed for guides. The reference object is cached like
   maps (`ReferenceObjectCache`, offline-capable). Portal shows "◈ Origin:
   object". Server needs `npm run build`.
-- **Object tracking, slice 1 — scan & store (B1)** — an Author can now scan a
+- **Object tracking, slice 1 - scan & store (B1)** - an Author can now scan a
   chamber as an ARKit **reference object**, entirely on the iPad
   (`ARObjectScanningConfiguration`): tap the surface the chamber stands on,
   size the box (W · H · D sliders, drag to move), walk around it while the
   live count shows feature points inside the box, *Save object*. The exported
-  `.arobject` (a sparse point cloud — no mesh, no photo) is stored on SIB:
+  `.arobject` (a sparse point cloud - no mesh, no photo) is stored on SIB:
   `POST/GET/DELETE /anchors/:id/object` (streamed, 30 MB cap, engineer+, ops
   log) + `GET …/object/meta` (extent, center, points, who, when); removed with
   the anchor. `Anchor.objectScannedAt` is a derived read-only field. iOS:
   Anchor Hub → **Object tracking** section (scan / re-scan / remove, status
   row). Portal: **◈ Object scanned · date** badge with Remove. Nothing uses
-  the scan as an origin yet — that is B2. New file `Modes/ObjectScanView.swift`
+  the scan as an origin yet - that is B2. New file `Modes/ObjectScanView.swift`
   (add to the Xcode target).
-- **Read the step where it lives (H, iOS)** — Place Steps tray chips now
+- **Read the step where it lives (H, iOS)** - Place Steps tray chips now
   always show the **step number** (✓ placed and ⬢ models moved to small rim
   badges), so a 20-step guide is navigated by counting instead of reading
-  9-pt titles in a cleanroom. Tapping the step text in the action bar — or
-  holding any tray chip — opens a **Step card**: a half-height sheet with the
+  9-pt titles in a cleanroom. Tapping the step text in the action bar - or
+  holding any tray chip - opens a **Step card**: a half-height sheet with the
   full title, instruction, voice-over, photo, flags, models and branches,
   with ‹ › to flip through steps while the camera stays live behind it, so
   an author can show a technician the step without leaving AR. In the Guide
   editor, tapping a step's text expands the full instruction inline. New
   file `Components/StepReadCard.swift` (add to the Xcode target).
-- **Remove a saved world map (G1)** — `DELETE /anchors/:id/worldmap` unseals a
+- **Remove a saved world map (G1)** - `DELETE /anchors/:id/worldmap` unseals a
   chamber (map + origin removed; tags stay, they are QR-relative; the next
   Author scan seals a new map) and `DELETE /worldmap/guide/:id` resets a
   guide's map (map, reference photo and meta removed; **every step unplaced**
-  — pins only mean something inside the map they were placed in; training
+  - pins only mean something inside the map they were placed in; training
   and model assignments kept, model placements dropped). Engineer+, logged to
   the admin ops log. iOS: Anchor Hub ⋯ → *Unseal world map…*; Guide editor →
   *Reset map & pins…* (count in the confirm); Place Steps' *Re-place all pins*
   now deletes the old map so it can't linger. Portal: **Unseal** next to the
   sealed badge, **🗺 Reset map** in the Guide Library.
-- **Remove all at once (G2, iOS)** — Spatial Inspection tag list gains 🗑
+- **Remove all at once (G2, iOS)** - Spatial Inspection tag list gains 🗑
   *Delete all tags* (confirmed; existing bulk route); Place Steps gains a
   *Clear all pins* button (every step saved as unplaced on Save/Done; map
   kept).
-- **Show only the current one by default (G3, iOS)** — Place Steps' eye now
+- **Show only the current one by default (G3, iOS)** - Place Steps' eye now
   defaults to *only the active step*; Spatial Inspection author gets the same
   eye in its top bar, showing only the tag being worked on (just placed,
   being trained, or navigated to; everything shows until there is one).
   Tapping the eye shows all. Remembered per person (`FocusPref`).
-- **In-session FTUE for AR OMS (F1, iOS)** — the paged overview explained a
+- **In-session FTUE for AR OMS (F1, iOS)** - the paged overview explained a
   mode before the camera was up and was forgotten by the time a control
   mattered ("didn't know I could move a pin / expand the panel"). Now a
   **moment card** appears over the live AR view the first time a control
-  becomes relevant — one line, one glyph, *Got it* — never covering the camera
+  becomes relevant - one line, one glyph, *Got it* - never covering the camera
   or the AR panels. Place Steps: tap a pin to move it · drag/pinch/twist ·
   ⬢1 ⬢2 ⬢3 adjust any model later · seal vs camera training · eye/cube
   declutter · Save vs Done. Guide session: tap the pill to expand · ✓ ✕ 📷
@@ -1282,7 +1285,7 @@ it, it gets a line.
   control with its glyph), **Replay tips**, and the old overview. No flow,
   gate or layout changed. New file `Components/ARMomentCoach.swift` (add to
   the Xcode target).
-- **The pulsing "tap here" hand is back everywhere (F1b, iOS)** — the
+- **The pulsing "tap here" hand is back everywhere (F1b, iOS)** - the
   Spatial Inspection tap coach only appeared on an anchor with zero tags and
   never in AR OMS. It is now a shared `ARTapCoach`: Place Steps shows it for
   the first pin ("Tap any surface to place Step N") and once more when a pin
@@ -1290,13 +1293,13 @@ it, it gets a line.
   shows it on an empty anchor and otherwise once per person. Dismisses on the
   first tap or after 8 s; ? / Replay tips re-arm it. New file
   `Components/ARTapCoach.swift` (add to the Xcode target).
-- **Training feedback in Place Steps (T1, iOS)** — camera (quick-shot) and
+- **Training feedback in Place Steps (T1, iOS)** - camera (quick-shot) and
   cone training now show a centred toast: *Hold steady* (0.6 s, then the
   frame is read) → *Training…* → ✓ *Trained* (fades after 1.5 s; the seal
   chip remains as the record). Failures stay up with the reason and OK.
 
 ### Changed
-- **/platform rebuilt as "The Chamber" (PM1)** — the poster (five boxes,
+- **/platform rebuilt as "The Chamber" (PM1)** - the poster (five boxes,
   thirty bullets) is replaced by one stylised chamber that the platform
   happens to as you scroll, in the order a fab adopts it: *One chamber. One
   origin.* (with the optional recognised-by-shape beat) → *The WI lands where
@@ -1316,7 +1319,7 @@ it, it gets a line.
   (and `docs/archive/`). Three.js is the vendored r169 with a CDN fallback;
   no WebGL → quiet 2D fallback with the same copy. `/stats` gains
   `presenceNow` / `presenceAnchors`.
-- **One localization doctrine for every AR surface (B1)** — *the author's
+- **One localization doctrine for every AR surface (B1)** - *the author's
   world map is the origin; the QR is the key and a drift check.* AR Work
   Instructions already worked this way; Spatial Inspection placed tags from
   the live QR pose on every scan (±5–15 mm, tilt-noisy, and every tag moved
@@ -1330,10 +1333,10 @@ it, it gets a line.
   accuracy" note. **Operator scans never upload a map any more** (previously
   every scan overwrote the author's map, often with a fresh, unrelated frame).
   Unsealed anchors (every existing one) behave exactly as before until an
-  author scans them once — no data migration. Portal anchor cards show
+  author scans them once - no data migration. Portal anchor cards show
   **🗺 Map sealed · date** / **Map not sealed**; `Anchor.mapSealedAt` is a
   derived read-only field on `GET /anchors`.
-- **Shared world-map loader (iOS `WorldMapCache`)** — the QR gate, guide
+- **Shared world-map loader (iOS `WorldMapCache`)** - the QR gate, guide
   sessions and 3D-model placement load maps through one path: fetch the small
   meta first, reuse the local copy when `capturedAt` matches, otherwise
   download; offline degrades to the cached copy. Replaces the gate's
@@ -1348,10 +1351,10 @@ it, it gets a line.
   MARKETING_VERSION to match). Server needs `npm run build`; Xcode target must
   add `Services/WorldMapCache.swift`.
 
-## 2026.4.45 — 2026-09-01
+## 2026.4.45 - 2026-09-01
 
 ### Fixed
-- **Designer / Roadmap: "everything looks selected"** — a mouse drag or a
+- **Designer / Roadmap: "everything looks selected"** - a mouse drag or a
   double-click on the SVG canvas was a native text-selection gesture, so the
   browser highlighted every text node on the page (node labels, notes, the
   inspector) and the highlight survived pointer-up. The canvas and node cards
@@ -1362,30 +1365,30 @@ it, it gets a line.
   node reads normally. Roadmap bundle must be rebuilt (`npm run build:roadmap`).
 
 ### Added
-- **Place Steps focus toggle (U1, iOS)** — an eye button in the Place Steps
+- **Place Steps focus toggle (U1, iOS)** - an eye button in the Place Steps
   top bar hides every other step's pin, label and 3D model while one step is
   selected, so retraining or repositioning a pin in a dense guide isn't
   cluttered by its neighbours. Session-only; hidden pins are also skipped by
   tap hit-testing. Sign-off now prefills the operator name from the shift-start
-  (kiosk / UAM) identity — the same name the usage log carries — falling back
+  (kiosk / UAM) identity - the same name the usage log carries - falling back
   to the author name; the field stays editable.
-- **Multiple 3D models per step (U4)** — a guide step now carries up to three
+- **Multiple 3D models per step (U4)** - a guide step now carries up to three
   model slots (`GuideStep.models[]`, same slot doctrine as iLOTO points: each
   slot has its own scale, opacity and device-owned placement; a slot whose
   model changes loses its placement). The server mirrors slot 1 into the
   legacy `modelId/…` fields in both directions, so older app builds, the
   procedure compiler, imports and the portal keep working unchanged; moving a
   guide to another anchor strips slot placements like it strips pins.
-  `PATCH …/steps/:id { models }` (max 3, `[]` clears every model — the edit
+  `PATCH …/steps/:id { models }` (max 3, `[]` clears every model - the edit
   sheet can finally remove a model). iOS: the Edit Step sheet adds "Add another
   model" slots; Place Steps loads and adjusts each slot in turn after the pin
   drop (✕ skips a slot), a cube toggle hides the active step's models while
   the pin is repositioned, and **Copy models to…** stamps the active step's
-  models — at the same physical spot — onto any other placed steps (saved on
+  models - at the same physical spot - onto any other placed steps (saved on
   the next Save/Done, even when no pin moved). Operators see every slot.
   Portal step rows show a "🧊 N models" chip. Unit tests + e2e (mirroring,
   cap, placement drop, anchor move).
-- **Copy guide to anchor (U2)** — `POST /guides/:id/copy { anchorId, name? }`
+- **Copy guide to anchor (U2)** - `POST /guides/:id/copy { anchorId, name? }`
   clones a guide onto another anchor (or duplicates it on the same one as
   "<name> (copy)"): steps, titles, voice, links, step photos (file
   duplicated), branch links (re-pointed), completion / validation / evidence
@@ -1395,18 +1398,18 @@ it, it gets a line.
   until re-placed. Technicians can't copy. iOS: swipe "Copy to…" on a guide →
   anchor picker (optional new name) → banner. Portal: "⧉ Copy" in the Guide
   Library. Replaces re-importing a guide per anchor.
-- **Duplicate anchor (U3)** — `POST /anchors/:id/duplicate { assetId? }`
+- **Duplicate anchor (U3)** - `POST /anchors/:id/duplicate { assetId? }`
   creates a template copy: a NEW anchor (new id, new QR, its own encryption
-  key — never shared between tools) with the source's metadata
+  key - never shared between tools) with the source's metadata
   (`duplicatedFrom` stamped), anchor type, QR print size and 3D model kit
   membership, plus every guide copied via U2 (drafts, unplaced, untrained).
-  The world map, tags, loc-tags and LOTO points are not copied — they describe
+  The world map, tags, loc-tags and LOTO points are not copied - they describe
   the source's physical location; scan the new tool and re-place. Asset name
   defaults to "<name> copy" (uniqueness suffix as usual). iOS: swipe
   "Duplicate" in the Anchor Directory → name prompt → opens the new anchor's
   hub. Portal: "⧉ Duplicate" on the anchor row. Response carries
   `copied: { guides, steps, kitModels }`.
-- **Procedure Designer: multiple 3D models per step (U5)** — the Inspector's
+- **Procedure Designer: multiple 3D models per step (U5)** - the Inspector's
   "3D model" picker is now a slot list (up to 3, each with its own model and
   scale; "+ Add model" / ✕), stored as `metadata.step.models[]` with the
   legacy `modelId/modelScale/modelOpacity` keys mirrored to slot 1 so older
@@ -1417,34 +1420,34 @@ it, it gets a line.
   the reverse-compiler (Edit in Designer) surfaces every slot, assignment
   only. Unit tests for all three paths. Roadmap bundle must be rebuilt on
   the Mac (`npm run build:roadmap`) and committed.
-- **Never-stuck step validation (X1)** — the trained-stance gate (distance /
+- **Never-stuck step validation (X1)** - the trained-stance gate (distance /
   direction / aim to the pin) is now advisory. Auto-capture also fires on
   **image alignment**: every 0.5 s the live frame's Vision feature print is
   scored against the trained references (`feature_prints` / `fp_max_dist`,
-  ROI-cropped) and ≥ 0.60 counts as aligned — so a moved QR (every pin off)
+  ROI-cropped) and ≥ 0.60 counts as aligned - so a moved QR (every pin off)
   can't trap the operator. After 8 s the shutter becomes "Capture anyway"; the
   comparator still scores honestly (FAIL → Retry / Proceed anyway / Recovery).
   **Drift detection**: Place Steps now uploads the author's camera pose with
   the Step-1 reference photo (`referenceCameraPose` on the world-map upload,
   `GET /worldmap/guide/:id/meta`). At "I'm Here" the operator's pose is
   compared; > 0.5 m or > 25° yaw apart → in-app warning ("Scene may have
-  changed — pins may be off"), guidance switches to the ghost, and an
+  changed - pins may be off"), guidance switches to the ghost, and an
   `environment:drift` event lands on the usage-log session (`drift`, shown as
   a ⚠ chip in the portal) so the author knows to re-place steps.
-- **Chamber Configurations — role-aware shift start (C1–C3)** — a
+- **Chamber Configurations - role-aware shift start (C1–C3)** - a
   configuration is a chamber *type* ("Producer XP · Cfg A"); many physical
   chambers (anchors / QRs) share it. Server: `ChamberConfig` catalog
-  (`GET/POST /chamber-configs`, `PATCH/DELETE /:id` — engineer+; delete only
+  (`GET/POST /chamber-configs`, `PATCH/DELETE /:id` - engineer+; delete only
   when no chamber references it), `Anchor.configId`, `PATCH /anchors/:id
   { assetId?, configId? }`; duplicate keeps the configuration. Portal:
   Admin → 🏭 Chamber Configs page; anchor cards show the configuration with
   an inline assign dropdown; search matches config codes. iOS kiosk is now
   two steps: Employee ID → then, by role, **Technician**: Production / Slot #
-  (the configuration comes from the QR — nothing to pick); **Engineer+**:
+  (the configuration comes from the QR - nothing to pick); **Engineer+**:
   "I'm authoring" (pick the configuration; "+ New configuration" inline) or
   "I'm operating". Home chip shows the configuration when authoring, Prod #
   (+ resolved configuration · chamber) when operating. **Operator front
-  door: "Scan chamber QR"** (`ChamberScanView`) — the anchor's configuration
+  door: "Scan chamber QR"** (`ChamberScanView`) - the anchor's configuration
   is resolved from the scan; unassigned chambers and GembaWalk/iLOTO QRs are
   explained and rescan offered. "Browse areas & panels" keeps GembaWalk
   areas and iLOTO panels (not chambers) reachable exactly as before. Author
@@ -1452,14 +1455,14 @@ it, it gets a line.
   configuration, then "Other chambers" (swipe right → assign here), then
   areas & panels; unassigned chambers carry a "No configuration" hint; new
   QR anchors created in an authoring shift join the configuration. Content
-  (guides, inspection sets, training) stays per chamber in this phase —
+  (guides, inspection sets, training) stays per chamber in this phase -
   author on one, "Copy to anchor" to the rest, place per chamber.
-- **Chamber Configuration follow-ups (A–D)** — **B (iOS):** after "Scan
+- **Chamber Configuration follow-ups (A–D)** - **B (iOS):** after "Scan
   chamber QR", opening a guide no longer asks for a second scan of the same
   code: the app remembers the last scanned chamber (10 min) and, with the key
   in memory, starts the guide directly (it re-localizes on its own world
-  map). The gate still runs for tag inspections — there it *is* the
-  localization step — and now says "Scan the chamber QR to localize".
+  map). The gate still runs for tag inspections - there it *is* the
+  localization step - and now says "Scan the chamber QR to localize".
   **A (portal):** the Create Anchor dialog has a Chamber configuration
   select (remembers the last one). **C:** usage-log sessions record the
   chamber's configuration at open (`configId`, `configCode`, server-derived);
@@ -1467,12 +1470,12 @@ it, it gets a line.
   configuration filter; the usage .xlsx gains Configuration and Chamber
   columns. **D (portal):** the Guide Library is grouped configuration →
   chamber (unassigned chambers, then GembaWalk/iLOTO, at the end) and each
-  guide gets "⧉⧉ All N" — copy to every other chamber of the configuration
+  guide gets "⧉⧉ All N" - copy to every other chamber of the configuration
   as drafts, skipping chambers that already have a guide of that name.
-- **Portal guided assistance (P1)** — the portal's FTUE, in the iOS tour's
+- **Portal guided assistance (P1)** - the portal's FTUE, in the iOS tour's
   voice. (1) A 🧭 **Getting started** checklist (bottom-right) with five
-  milestones that turn green from live `/stats` data — configuration →
-  chamber + QR → guide → steps placed (phone) → first run — each a link into
+  milestones that turn green from live `/stats` data - configuration →
+  chamber + QR → guide → steps placed (phone) → first run - each a link into
   the right page, with a progress bar; it minimises itself once you're 3/5,
   celebrates and disappears at 5/5. (2) **Page tours**: a spotlight
   walkthrough of the controls that matter on Home, Chambers, Guide Library,
@@ -1483,7 +1486,7 @@ it, it gets a line.
   "Restart tours". Technicians never see it. `/stats` gains
   `chamberConfigs`, `chambersAssigned`, `guides`, `placedGuides`; the Guide
   Library toolbar gains a 🗺 Procedure Designer link.
-- **Brand strip + Connected Worker narrative** — every web surface (portal,
+- **Brand strip + Connected Worker narrative** - every web surface (portal,
   home, /platform, catalogue) shows the Applied Materials logo and the
   AppliedX mark top-right via `sib/portal/brand.js`; the images are
   deployment-local (`DATA_DIR/platform/media/logo-amat.png`,
@@ -1493,8 +1496,8 @@ it, it gets a line.
   leadership: eyebrow "Connected Worker AR OMS initiative", headline "Every
   technician's next move, right the first time", **Adaptive Guided Work
   Instructions** as the flagship (product renamed everywhere, incl. the
-  platform map and deck), a **Definition of winning** strip — Productivity ·
-  Velocity · Customer Trust (fewer quality escapes at customer sites) — with
+  platform map and deck), a **Definition of winning** strip - Productivity ·
+  Velocity · Customer Trust (fewer quality escapes at customer sites) - with
   what each is measured by, a **Why we're doing this** section (do-it-right-
   the-first-time · technicians working smarter · ready for semi-/fully-
   autonomous cleanrooms · spatial intelligence as the durable, device-
@@ -1502,18 +1505,18 @@ it, it gets a line.
   full-platform benchmark; no-display, monocular and binocular glasses each
   matched to use cases, FY27 POCs; fit & feasibility judged against the iPad
   baseline). Bundled pitch deck title slide rebuilt to match.
-- **/platform for leadership (M1–M2)** — M1: hero lead shortened to the
+- **/platform for leadership (M1–M2)** - M1: hero lead shortened to the
   promise; winning tiles carry the house metrics (TTC · SLH · re-work per run;
   CT · reduced downtime; Field NCs · Y7, Y8 · Q-reports) with "Today / POC
   target" hooks filled from `DATA_DIR/platform/media/metrics.json`; an
   explicit **ask** under the strip (one BU sponsor · one configuration · one
   measured POC, decision window from the same file); the impact section is
-  headlined "Ready for the autonomous cleanroom — starting with the
+  headlined "Ready for the autonomous cleanroom - starting with the
   technician"; industry evidence trimmed to three facts; platform-map eyebrow
   carries Connected Worker · AR OMS; "Adaptive Guided Work Instructions" wraps
-  to two lines on the map and deck. M2: a **guided reading path** — a 🧭
+  to two lines on the map and deck. M2: a **guided reading path** - a 🧭
   "Start here" pill and four spotlight stops (why → how we score → see it →
-  where are you?), once per browser, Esc/Skip anytime — and a **Connected
+  where are you?), once per browser, Esc/Skip anytime - and a **Connected
   Worker maturity self-assessment**: six pain-point questions (iOMS instruction
   accuracy per configuration, QFE critical-step sign-off, re-work vs CT,
   new-hire time-to-qualified 16+/12/8/≤4 weeks, ME issue visibility, customer
@@ -1521,38 +1524,38 @@ it, it gets a line.
   (Aware → Piloting → Operating → Autonomous-ready) with what it means, the
   biggest gap and the next rung, Share-with-AppliedX / email prefilled with
   the result. Anonymous pulse: `POST /platform/assess` (level, score, answers,
-  optional area label — nothing else, store capped at 5 000) and
+  optional area label - nothing else, store capped at 5 000) and
   `GET /platform/assess/summary`; shown on /platform and as an "areas
   assessed · avg level" tile on the home page. Questions and level copy can be
   replaced per deployment without a rebuild: drop `assessment.json` into
   `DATA_DIR/platform/media/` (format in `sib/portal/platform-media/README.txt`).
-- **Validation focus mode (X2, iOS)** — validation takes over the screen:
+- **Validation focus mode (X2, iOS)** - validation takes over the screen:
   step panels, pins, arrow, feature-point dots, the text panel, Prev/Next and
   the failed banner are hidden; what remains is the target ring, one guidance
   line under the top bar, the ghost as a corner thumbnail (spreads over the
-  live view only when you're close to aligned — ≥ 35 % match — or when
+  live view only when you're close to aligned - ≥ 35 % match - or when
   tapped), a shutter with a ring that fills as alignment improves, and a ✕.
   Everything returns when validation ends.
-- **Guided single-shot training + auto-capture (W1–W3)** — W1: a validated
+- **Guided single-shot training + auto-capture (W1–W3)** - W1: a validated
   step always yields evidence: "Require validation" locks "Require evidence
   photo" on (enforced server-side on PATCH), the validation frame becomes the
-  step's evidence photo (stored, rendered, live-uploaded — before scoring, so
+  step's evidence photo (stored, rendered, live-uploaded - before scoring, so
   a FAIL or an override keeps the honest picture), and the operator is never
   asked for a second photo; untrained (manual Pass/Fail) steps still ask.
   Switching a cone-trained step to single-photo mode now deletes the hidden
   tag and pass-states (no orphans). W2: 📷 **quick-shot** training in "Place
-  Steps in AR" — one raw frame from where the Author stands, plus the stance
+  Steps in AR" - one raw frame from where the Author stands, plus the stance
   (`cone_dist_m`, `shot_dir_*`), stored as a one-image pass-state on the
   hidden tag so scoring/decryption/operator flow are identical to cone. New
   `GET /guides/:id/steps/:stepId/validation-ref.jpg` serves the reference
   (decrypted in-memory) for the operator's **ghost overlay**: the live view
   is lined up with the Author's frame, guidance covers distance, line of
   sight and aim. The form-camera training (no stance) is retired from Edit
-  Step. W3: **dwell auto-capture** — 0.8 s steady in position fires the
+  Step. W3: **dwell auto-capture** - 0.8 s steady in position fires the
   capture (cone and quick-shot alike); the manual button remains.
   Fixed: placement-flow key pinning assigned a String to a `SymmetricKey`
-  (compile error) — now parses via `AnchorEncryption.key(fromBase64:)`.
-- **Platform story page (`/platform`)** — a marketing-friendly, interactive
+  (compile error) - now parses via `AnchorEncryption.key(fromBase64:)`.
+- **Platform story page (`/platform`)** - a marketing-friendly, interactive
   page for BU leadership: hero value proposition; "Why AR, why now" with
   sourced facts (PTC benchmark, Boeing/Iowa State, Volvo, Fujitsu, SIA/Oxford
   Economics workforce gap, ASML's AR support in the fab) beside "Where
@@ -1565,20 +1568,20 @@ it, it gets a line.
   gained `guidedRuns` and `validatedSteps` aggregates); momentum timeline
   with next milestones; and contact / demo-request `mailto:` links.
   `/platform.pptx` now serves a 9-slide native-shape pitch deck built from
-  the same content (title, why AR, five product slides, map, contact) —
+  the same content (title, why AR, five product slides, map, contact) -
   regenerate with `tools/platform-deck-build.py`. Capability-level only.
   Deployment-local overrides, outside git: `DATA_DIR/platform/deck.pptx`
   is served at `/platform.pptx` in place of the bundled deck (for a site's
   own template deck), and `DATA_DIR/platform/media/*.jpg` is served at
-  `/platform-media/` ahead of bundled files — so confidential decks and
+  `/platform-media/` ahead of bundled files - so confidential decks and
   real screenshots never need to be committed.
-- **Settings from the kiosk gate (iOS)** — the shift-start screen now has a
+- **Settings from the kiosk gate (iOS)** - the shift-start screen now has a
   ⚙️ button (top-right) opening the full Settings sheet, so a kiosk iPad can
   be repointed at a different server (and the connection tested) before any
   employee ID or Production # is entered. Closing the sheet re-runs the
-  server probe, so a changed URL takes effect immediately — including the
+  server probe, so a changed URL takes effect immediately - including the
   auto-skip when the new server has UAM dormant.
-- **Cone training for step validation (V1–V3)** — AR Work Instructions now
+- **Cone training for step validation (V1–V3)** - AR Work Instructions now
   use the full Spatial Inspection engine instead of a single reference photo.
   V1 (author): in "Place Steps in AR", every placed validation step carries a
   🛡 seal button that launches the existing multi-angle cone sweep, anchored
@@ -1591,120 +1594,120 @@ it, it gets a line.
   as "quick train". V2 (operator): completing a cone-trained step shows the
   training cone at the pin with live distance/aim guidance; when in position,
   a RAW camera frame (zero AR artifacts) is scored against ALL multi-angle
-  references (best-of, same comparator) — far more tolerant of operator
+  references (best-of, same comparator) - far more tolerant of operator
   viewpoint than the single-photo compare. V3 (override): the FAIL dialog
-  (system and manual) gains "Proceed anyway" — the step completes, but the
+  (system and manual) gains "Proceed anyway" - the step completes, but the
   usage log records `validation.overridden`, the portal badge shows
-  "FAIL · proceeded", and the Excel export prints "— operator proceeded".
+  "FAIL · proceeded", and the Excel export prints "- operator proceeded".
   Fixed: cone-trained step validation returned 0.00 FAIL on anchors with an
-  AES encryption key — ConeCaptureView encrypts every reference, and the
+  AES encryption key - ConeCaptureView encrypts every reference, and the
   cone-aware validate path fed the ciphertext straight to the comparator.
   The route now decrypts references in-memory using the key from the anchor
   record (plaintext never persisted). Fixed (2): the placement flow never
   pre-loaded the anchor's key, so ConeCaptureView fell back to a random
-  LOCAL key — references the server could never read (steps trained via
+  LOCAL key - references the server could never read (steps trained via
   the placement flow before this fix must be retrained). The placement flow
   now pins `appState.anchorEncryptionKey` to the anchor record's key, and
-  the server answers a distinct 409 "references unreadable — retrain" when
+  the server answers a distinct 409 "references unreadable - retrain" when
   no reference decodes, instead of a silent 0.00. Fixed (3): operator
-  scoring now matches the tag-inspection rule — on-device feature-print
+  scoring now matches the tag-inspection rule - on-device feature-print
   match (ROI-aware, calibrated `fp_max_dist`) combined with server SSIM as
-  `max(fp, ssim)`, PASS ≥ 0.60 — and "In position" is gated on the trained
+  `max(fp, ssim)`, PASS ≥ 0.60 - and "In position" is gated on the trained
   stance (`cone_dist_m` ±30 %) with closer/back guidance, so the live frame
   is comparable to the references the way the inspection flow guarantees.
-- **Validation authoring discoverability (B1+B2, iOS)** — the Add Step
+- **Validation authoring discoverability (B1+B2, iOS)** - the Add Step
   sheet now carries the same Validation section as Edit Step (Require
   evidence photo / Require validation; flags ride a patch-after-create,
   training itself still happens from the step's ✏️ Edit sheet), and step
   rows in the guide editor show status badges: green ✓-seal "Trained",
   orange seal "Train" (validation on but no reference yet), and a camera
-  "Evidence" chip — an at-a-glance training checklist before publishing.
+  "Evidence" chip - an at-a-glance training checklist before publishing.
   iOS-only; no server change.
-- **Completion Log Excel export** — the AR Guides Completions view now
+- **Completion Log Excel export** - the AR Guides Completions view now
   exports as `.xlsx` with evidence photos embedded per step row
   (`GET /guide-sessions/export.xlsx`, same `?all/anchorId/guideId` filters
   as the list), alongside the existing CSV. Each completed session also
   gets its own row-level **⬇ .xlsx** and **⬇ .csv** buttons
   (`GET /guide-sessions/:id/export.xlsx`) for per-session records/hand-off.
-  Export buttons across AR Guides are now labelled by format — **⬇ .xlsx**
-  (images embedded) vs **⬇ .csv** (no images) — and the completion-log
+  Export buttons across AR Guides are now labelled by format - **⬇ .xlsx**
+  (images embedded) vs **⬇ .csv** (no images) - and the completion-log
   buttons hide while the Usage Log view is active. The Usage Log export
   gained a final evidence-resolution fallback: the sign-off record's
   stored `evidencePhotoPath` is consulted when the photo is in neither
   the live-upload nor the conventional sign-off directory, so evidence
   recorded by any app/server era embeds. (`oms/xlsx-lite.ts` refactored
   into one shared workbook assembler for both logs.)
-- **Portal home redesign** — the portal now opens on a tile-grid Home
-  (approved mockup): seven color-coded tiles — Anchors, Inspection
+- **Portal home redesign** - the portal now opens on a tile-grid Home
+  (approved mockup): seven color-coded tiles - Anchors, Inspection
   Sessions, AR Guides Sessions (Completions / 📊 Usage Log sub-chips),
   Content Library (Guide Library + 3D Models), iLOTO, GembaWalks, and
-  Admin (👥 User Access / 📜 Ops Log / 💾 Backups as dedicated sub-pages) —
+  Admin (👥 User Access / 📜 Ops Log / 💾 Backups as dedicated sub-pages) -
   with live counts from /stats and the usage log, so Home doubles as a
   status glance. The 8-tab strip is retired; inside a section a slim ⌂ bar
   shows the section name and its sub-tabs. Navigation is HASH-ROUTED
   (#ar-guides/usage, #admin/uam …): the back button returns Home, refresh
   keeps your place, and views are bookmarkable/shareable. Panels themselves
-  are unchanged — every table, filter, export and modal works as before;
+  are unchanged - every table, filter, export and modal works as before;
   the Admin tile stays Owner/Manager-only (server gates unchanged).
-- **Live evidence — usage log becomes the system of record** — evidence
+- **Live evidence - usage log becomes the system of record** - evidence
   photos now upload THE MOMENT they are captured
   (`PUT /guide-sessions/live/:id/evidence/:stepId`, encoded off the main
   thread), stored once under the LIVE session id. The Usage Log shows them
-  immediately — including for interrupted sessions that never reach
+  immediately - including for interrupted sessions that never reach
   sign-off. Sign-off DEDUPES: when the live file exists it references it
   instead of storing a second copy (old app builds that still send base64
   are deduped server-side too), and the evidence endpoint resolves
   sign-off ids through the stored path, so the Completions tab keeps
   working unchanged. New builds skip photo re-upload at sign-off entirely.
   Excel export images enlarged to 240×180 (reviewable, rows sized to fit),
-  and the evidence lightbox gained a "⬇ Download JPEG" button — blob URLs
+  and the evidence lightbox gained a "⬇ Download JPEG" button - blob URLs
   carry no filename, which made direct saves look like an unknown format.
 ### Fixed
-- **Sign-off screen freeze** — `SessionSignOffView` had a computed property
+- **Sign-off screen freeze** - `SessionSignOffView` had a computed property
   that JPEG-encoded and base64'd EVERY evidence photo, referenced from
-  `body` — so SwiftUI re-ran all the encodes on the main thread on every
+  `body` - so SwiftUI re-ran all the encodes on the main thread on every
   render (every keystroke in the name field). The UI now uses a cheap
   completed-count; the heavy encoding happens once, off the main thread,
-  inside submit — and with live evidence upload, usually not at all.
+  inside submit - and with live evidence upload, usually not at all.
   The offline "Save & sync later" queue still embeds every photo (a queued
   record may drain much later), with server-side dedupe as the safety net.
 
-- **Usage Log: evidence photos + Excel export** — expanding a session in the
+- **Usage Log: evidence photos + Excel export** - expanding a session in the
   portal's Usage Log now shows the evidence photo captured at each step
   (thumbnail → lightbox, reusing the sessions-tab loader; steps without
   evidence show nothing). New "⬇ Excel" button downloads
   `GET /guide-sessions/usage/export.xlsx`: one row per step visit with the
   evidence photo EMBEDDED in the row's Evidence cell. Built by a new
-  dependency-free XLSX writer (`oms/xlsx-lite.ts` — STORED-zip + minimal
+  dependency-free XLSX writer (`oms/xlsx-lite.ts` - STORED-zip + minimal
   OOXML + drawingML anchors), keeping the no-new-runtime-dependencies
   doctrine; opens in Excel, Numbers and LibreOffice.
-- **AR pill refresh** — the minimized floating pill now follows the A1
+- **AR pill refresh** - the minimized floating pill now follows the A1
   design language: solid dark surface with a state-coloured ring and badge
   (step number, ✓ when done; blue current · green done · red recovery ·
   slate upcoming), 26pt title, larger audio/expand affordances, and a
   taller plane (0.07 m) to carry the bigger type. Pill and card textures
   re-render on completion and on step advance so state colours are always
   current.
-- **UAM product entitlements (E1)** — users can be scoped to platform
+- **UAM product entitlements (E1)** - users can be scoped to platform
   products (`aroms` / `iloto` / `gemba`). Absent/empty = ALL products, so
   every existing user keeps full access until explicitly scoped. The portal
   UAM table gains per-user product checkboxes (none checked = all, shown as
   "(all)"); the server whitelists + dedupes and `[]` clears back to all.
   On device, entitlements gate AUTHORING surfaces only: the anchor-creation
   picker offers Gemba Walk / iLOTO types only to entitled users, and the
-  AR Guides authoring entry requires `aroms` — operator flows stay governed
+  AR Guides authoring entry requires `aroms` - operator flows stay governed
   by session/guide assignment, keeping run-time delegation uniform across
   products. The kiosk work-context label follows the product: a GembaWalk-
   only user is asked for an "Audit / project name" instead of Production #.
-  `@spatial/shared` stays types-only at runtime (Render-crash doctrine) —
+  `@spatial/shared` stays types-only at runtime (Render-crash doctrine) -
   the whitelist array lives with each consumer.
-- **AR floating panels redesigned (A1/A4)** — the step panel now follows the
+- **AR floating panels redesigned (A1/A4)** - the step panel now follows the
   platform design doctrine: solid dark surface, colored state band in the
   Designer's role palette (blue in-progress · green done · red recovery ·
   slate upcoming) with a "Step N / M" progress pill, 34pt title, 25pt body,
   requirement chips (Required / 🤖 Validated / 👤 Manual check / 📷 Evidence),
   and thumb-sized action buttons. Sizing rule: width fixed at 0.30 m, the
-  body font NEVER shrinks — the panel's HEIGHT adapts to the text (growing
+  body font NEVER shrinks - the panel's HEIGHT adapts to the text (growing
   upward, away from the machine) up to a cap, beyond which the body
   truncates behind a "▼ More" control that expands it in place. Hit targets
   reposition with the layout. Non-current panels (visible via the 👁 toggle)
@@ -1713,17 +1716,17 @@ it, it gets a line.
   Delight pass: success haptic + green pulse on step completion, a session
   progress ring in the toolbar, and distance-aware panel scaling (beyond
   1.5 m the current panel grows up to 2.2× so type stays readable).
-- **AR overlays: focus by default + live ghost opacity (A2/A3)** — the
+- **AR overlays: focus by default + live ghost opacity (A2/A3)** - the
   operator's 👁 toggle now governs the WHOLE step overlay set: numbered pins
   AND floating panels for other steps are hidden by default (current step
   only; the 3D ghost was already current-only) and appear on demand for
   orientation. Authors adjust ghost-model opacity with a live slider inside
   the AR placement view (see the effect on the machine, saved with the
   placement), and the portal's Guide Library gains a 👻 per-step opacity
-  slider that saves directly — no editor round-trip. Usage Log also
+  slider that saves directly - no editor round-trip. Usage Log also
   reworked into a dense grouped table (one row per session, expandable
   per-step timing, validation badges inline).
-- **Step validation via Spatial Inspection (K4)** — a guide step can now
+- **Step validation via Spatial Inspection (K4)** - a guide step can now
   demand a validation verdict before it completes. The Author trains it
   in-app (capture a reference photo → Verify with a live test compare →
   publish with the guide; Retrain/Remove any time); the reference is scored
@@ -1734,26 +1737,26 @@ it, it gets a line.
   a trained step asks the Operator for a photo and returns a system PASS
   (auto-completes, score shown) or FAIL (Retry / take the recovery branch);
   an untrained-but-required step falls back to explicit manual Pass/Fail.
-  Every verdict — system score or manual choice — rides the live stream as
+  Every verdict - system score or manual choice - rides the live stream as
   `perception:result` and lands on the step's usage-log entry.
-- **Evidence-required steps (K5)** — Authors can mark a step "Require
+- **Evidence-required steps (K5)** - Authors can mark a step "Require
   evidence photo" (App editor toggle + Designer inspector checkbox, carried
   through the procedure compiler and reverse-compiler round-trip). Operators
-  cannot complete such a step until a photo is attached — the camera opens
+  cannot complete such a step until a photo is attached - the camera opens
   with a notice instead. Closes the parked post-pilot P1.
-- **Production-verified resume (K3)** — an interrupted guide run belongs to
+- **Production-verified resume (K3)** - an interrupted guide run belongs to
   its Production #: resume snapshots are stamped with the shift's work
   context, and picking one up on the SAME Production # works as before.
-  A snapshot from a different Production # gets an explicit prompt —
+  A snapshot from a different Production # gets an explicit prompt -
   "Switch & Resume" (moves the shift to that #) or "Start fresh on the
-  current #" — so work is never silently logged against the wrong system.
+  current #" - so work is never silently logged against the wrong system.
   Pre-K3 (unstamped) snapshots keep resuming normally.
-- **AR OMS Usage Log (K2)** — a durable, per-step usage record for every
+- **AR OMS Usage Log (K2)** - a durable, per-step usage record for every
   guide run, derived server-side from the live-session event stream: step
   enter/exit times, duration (operator-measured when available), outcome
   (completed / failed / left), session totals, operator identity (token-
   verified kiosk sign-in wins over client-typed fields) and the shift's
-  **work context** — labelled Production # in AR OMS; other products relabel
+  **work context** - labelled Production # in AR OMS; other products relabel
   it (GembaWalk: audit/project name). Survives restarts, unlike the
   intentionally-ephemeral live session. `GET /guide-sessions/usage`
   (?workContext= / ?guideId=) serves it; the portal's AR Guides tab gains a
@@ -1761,121 +1764,121 @@ it, it gets a line.
   timing tables. iOS sends workContext + identity when opening a live
   session. Offline sign-offs finalise the record at link time even when the
   submit event never arrived. 3 new tests (159 total).
-- **Kiosk shift start (K1)** — the iPad now opens on a shift screen when the
+- **Kiosk shift start (K1)** - the iPad now opens on a shift screen when the
   allow-list is active: the technician enters ONLY their employee ID (the
-  server resolves name/email/role — `POST /uam/login` gained an
+  server resolves name/email/role - `POST /uam/login` gained an
   employee-ID-only kiosk path; the email+ID Settings path is unchanged) plus
   the **Production #** (chamber/system) they'll work on. Both persist for
-  the shift and show in a home-screen chip — tap it to change the Production
+  the shift and show in a home-screen chip - tap it to change the Production
   # or switch technician between shifts. A 401 on the launch refresh
   (revoked access) reopens the gate. The gate is deterministic: it renders
   immediately whenever no shift is set and owns the server connection itself
   (connecting state, cold-start retries, Retry button, dormant-UAM
-  auto-skip) — it never waits on a network probe to appear. Known pre-SSO
+  auto-skip) - it never waits on a network probe to appear. Known pre-SSO
   trade-off, approved:
   employee ID alone authenticates on kiosk iPads until HYPR SSO lands; the
   allow-list remains the gate and the SSO swap point is unchanged.
-- **Canvas: precise connections, new shapes, self-loops** — edges now attach
+- **Canvas: precise connections, new shapes, self-loops** - edges now attach
   to the actual shape OUTLINE (diamonds/hexagons no longer show gaps where
   the old math hit the invisible bounding box), and every node gains four
   anchor ports (top/right/bottom/left, shown on hover): drag from a port to
-  pin the edge's start, drop on a port to pin its end — pinned ends stay put
+  pin the edge's start, drop on a port to pin its end - pinned ends stay put
   as nodes move, unpinned ends keep auto-adjusting. Curves leave pinned
   ports perpendicular to the side. Three new shapes: circle, parallelogram
   (flowchart input/output), cylinder (data/store). Self-connections are
   allowed (one loop per node), drawn as an arc leaving one port and
-  re-entering another. Curved is now the DEFAULT connector style — existing
+  re-entering another. Curved is now the DEFAULT connector style - existing
   maps flip once; picking Straight now persists explicitly. One geometry
   source (insideShape/shapePathD) drives the canvas, edge attachment and
   the SVG export, so they cannot drift. 2 new server tests (155 total).
-- **Solid-fill nodes** — designer cards are now solid-filled in a darkened
+- **Solid-fill nodes** - designer cards are now solid-filled in a darkened
   layer palette (`NODE_FILL_COLORS`, tuned so white text passes WCAG AA on
   every fill) with white labels and white/near-white ornaments; the left
-  color bar is gone — the fill IS the layer color. Selection and preview
+  color bar is gone - the fill IS the layer color. Selection and preview
   states became a light glow ring (a colored stroke vanishes on a colored
   fill); status dots keep a white ring, review verdicts sit on a white chip,
   the milestone diamond is ringed in the card fill, and the inline editor
   uses a dark scrim so editing never flashes white. SVG export matches.
   New doctrine (colors.ts): every future in-card ornament is designed
-  against the dark fills — the white-card rule is retired.
-- **Roadmap home redesign (S5)** — the map list is now a proper front door:
+  against the dark fills - the white-card rule is retired.
+- **Roadmap home redesign (S5)** - the map list is now a proper front door:
   a night-sky hero ("What will you build today?") with two glowing door
-  cards — 🗺 Roadmap (gold) and 🧩 Procedure (teal), matching the canvas
-  edge-role palette — that open an inline name field and create in place.
+  cards - 🗺 Roadmap (gold) and 🧩 Procedure (teal), matching the canvas
+  edge-role palette - that open an inline name field and create in place.
   Maps became a card gallery with kind badges (list API now returns `kind`),
   node/edge counts, relative updated time and the draft 🔒 badge. Import
   JSON / whiteboard photo / unlock-draft moved into a ⋯ menu; display name
-  and API key live in a corner 👤 chip. All previous behaviour is preserved —
+  and API key live in a corner 👤 chip. All previous behaviour is preserved -
   only the arrangement changed.
-- **Designer: issues drawer + autosaving node text (S5)** — the pre-flight
+- **Designer: issues drawer + autosaving node text (S5)** - the pre-flight
   warnings list no longer stacks inline: a count chip in the census row
-  toggles a scrollable drawer grouped into "Blocking — fix before sending"
-  and "Warnings — sending still allowed", so 20+ findings stay usable.
-  Node text now autosaves while typing (500 ms debounce) and on blur —
+  toggles a scrollable drawer grouped into "Blocking - fix before sending"
+  and "Warnings - sending still allowed", so 20+ findings stay usable.
+  Node text now autosaves while typing (500 ms debounce) and on blur -
   Enter is no longer required, and Escape simply closes the editor since
   nothing can be lost.
-- **iOS RBAC (S4, beta)** — the app joins UAM. Settings → Identity gains
+- **iOS RBAC (S4, beta)** - the app joins UAM. Settings → Identity gains
   Work Email + Employee ID and a "Verify Access" button: both must match the
   allow-list record; success caches the token + role (shown as a badge) and
   every request now carries X-User-Token, so per-user guide sharing and role
-  enforcement apply on device. Technicians see operator surfaces only —
+  enforcement apply on device. Technicians see operator surfaces only -
   Author Mode and the Continue-last-session card are hidden (and refused
   server-side regardless). On launch the app silently re-verifies: role
   changes propagate, revocation (401) clears the session, and offline keeps
   the cached role working. Transition note: a device that never verifies
   remains an unidentified legacy caller until the pilot enforces
   identified-only access.
-- **Per-user guide sharing (S3, beta)** — guides can be shared with specific
+- **Per-user guide sharing (S3, beta)** - guides can be shared with specific
   technicians. `Guide.sharedWith` holds allow-list emails (validated on
   write; unknown addresses are refused); the Guide Library gains a 👥 Share
   dialog listing technicians from UAM (new Engineer-readable
   `GET /uam/technicians`), with a share-count badge on the card. One
   visibility predicate gates the guide list, the single-guide read AND the
-  steps read — excluded technicians get 404, never confirmation. Empty/no
+  steps read - excluded technicians get 404, never confirmation. Empty/no
   list = visible to all technicians (existing guides unchanged); Engineer+
   always see everything; only Engineer+ may edit sharing. Verified live:
   share/normalize/unknown-email-400, per-role list contents, deep-link 404s,
   clear-to-everyone. 4 new unit tests.
-- **UAM — User Access Management, S1 server core (beta)** — RBAC ahead of
+- **UAM - User Access Management, S1 server core (beta)** - RBAC ahead of
   corporate SSO. A manually managed allow-list (email + employee ID + role)
   gates sign-in: `POST /uam/login` rejects anyone not in the table and issues
-  a 7-day HMAC token (cookie for the portal, header for iOS). Four roles —
-  Owner, Manager, Engineer, Technician — with server-enforced rules: Managers
+  a 7-day HMAC token (cookie for the portal, header for iOS). Four roles -
+  Owner, Manager, Engineer, Technician - with server-enforced rules: Managers
   manage everyone except Owner records and can never grant Owner; the last
   Owner can be neither demoted nor removed. Tokens carry identity only; the
   role is re-read per request, so changes and removals take effect
   immediately. Owners/Managers now pass the destructive-action gate by role
-  (legacy admin key still honoured — and acts as Owner for bootstrap: unlock
+  (legacy admin key still honoured - and acts as Owner for bootstrap: unlock
   admin, add yourself, roles take over). All logins and user-table changes
   land in the ops log. SSO swap point: token issuing only. 5 new unit tests
   + a 14-step live authorization matrix.
-  S2 — portal surface: with users in the list (`/config.uamActive`), the
+  S2 - portal surface: with users in the list (`/config.uamActive`), the
   portal shows an email sign-in before anything loads; the header gains an
   identity chip (name · role) with Sign out; the Admin page gains the 👥
   User Access Management table (add / edit role / remove, with server-refused
   changes snapping back); only Owners/Managers see the Admin tab, and their
-  session lifts the destructive-UI lock by role — no shared admin key needed
+  session lifts the destructive-UI lock by role - no shared admin key needed
   day-to-day. Empty list = login off (bootstrap unchanged).
   Field fix from first deploy: on servers WITHOUT SIB_ADMIN_KEY, the gate-off
   fallback made every caller admin-equivalent, so the sign-in screen never
   appeared and anonymous callers could act destructively once users existed.
-  The fallback now applies only while the allow-list is EMPTY — the moment
+  The fallback now applies only while the allow-list is EMPTY - the moment
   users exist, management and destructive actions require an Owner/Manager
   sign-in (or the configured admin key), and the portal always shows the
   sign-in screen when UAM is active.
-- **Operator pilot hardening (AR Work Instructions)** — six fixes from the
+- **Operator pilot hardening (AR Work Instructions)** - six fixes from the
   operator-POV UX review ahead of daily technician use: (1) the authored
-  failure branch is finally reachable — steps with a recovery path show
+  failure branch is finally reachable - steps with a recovery path show
   "Step failed → go to recovery", confirm, record a `step:failed` live event
   and route to `nextOnFailure` (previously the branch existed only on paper);
-  (2) session resume — step progress and evidence photos persist to the
+  (2) session resume - step progress and evidence photos persist to the
   device after every action, and an interrupted run (call, battery, wrong
   tap) offers "Resume previous run?" for up to 12 h instead of forcing a
-  redo; (3) offline sign-off queue — a failed submission offers "Save & sync
+  redo; (3) offline sign-off queue - a failed submission offers "Save & sync
   later"; the record (evidence included) uploads automatically next time the
   guide list opens with a connection, with a green confirmation banner;
   (4) operator name prefills from Settings identity; (5) submitting with
-  incomplete steps now warns with the count (warn not block — branch skips
+  incomplete steps now warns with the count (warn not block - branch skips
   are legitimate); (6) precondition redirects explain themselves with a
   toast instead of silently jumping. New: Services/GuideRunStore.swift;
   `step:failed` added to the shared event union. Follow-up from testing with
@@ -1883,8 +1886,8 @@ it, it gets a line.
   required steps on paths never taken (branch skips made it unreachable);
   (8) sequential auto-advance skips failure-only steps, so the happy-path
   terminal no longer walks into "Tag Out of Service"; (9) sign-off is
-  offered on ANY terminal step — the happy end and failure dead-ends alike.
-- **`.tag` live subscription (M2 — the continuous emitter)** — assembly
+  offered on ANY terminal step - the happy end and failure dead-ends alike.
+- **`.tag` live subscription (M2 - the continuous emitter)** - assembly
   envelopes' `subscribe.hints` now lead with a real SSE feed:
   `GET /anchors/:id/subscribe` sends `state` (contentVersion + payload hash)
   on connect and pushes `changed` events naming exactly which streams and
@@ -1893,49 +1896,49 @@ it, it gets a line.
   server side: a store-write bus on JsonFileStore (single hook point) with a
   400 ms debounce, recomputed only for anchors with live subscribers, plus a
   30 s safety sweep for binary artifacts; heartbeats keep proxies alive. Push
-  carries hashes and names only — never content. iOS gains `TagSubscription`
+  carries hashes and names only - never content. iOS gains `TagSubscription`
   (async SSE listener with auto-reconnect) in TagEnvelope.swift. Spec §7
-  updated — subscribe graduates from hints-only.
-- **Catalogue IP-sensitivity gate (secondary secret)** — features marked
+  updated - subscribe graduates from hints-only.
+- **Catalogue IP-sensitivity gate (secondary secret)** - features marked
   `sensitivity: restricted` in their frontmatter are redacted for anyone
   without the new `SIB_IP_KEY` env secret: /catalog/data strips body, flows,
   architecture, API lines and spec (node stays in the graph with a 🔒 chip +
   "Enter IP key" unlock), /catalog/doc returns 403, and Ask SIB excludes them
   from retrieval so it can't become a side-channel. Key travels as X-IP-Key
-  (stored like the API key). Deliberately separate from the admin key — IP
+  (stored like the API key). Deliberately separate from the admin key - IP
   viewers ≠ data admins. Gate off when the env var is unset, so internal
   deployments are unchanged. All restriction decisions flow through ONE
-  function (`canViewRestricted`) — the designated swap point when SSO/RBAC
+  function (`canViewRestricted`) - the designated swap point when SSO/RBAC
   arrives. First restricted entry: the .tag format feature below. The
-  browser-stored IP key expires after 7 days (shorter than the API key's 30 —
+  browser-stored IP key expires after 7 days (shorter than the API key's 30 -
   it protects more sensitive content), after which the 🔒 prompt returns.
   Field fix: selecting a locked card no longer strands the node on the cursor
   (the missing spec button threw mid-click, skipping the drag release).
-- **`.tag` virtual emitter v1 (beta)** — every tagged part and every chamber
+- **`.tag` virtual emitter v1 (beta)** - every tagged part and every chamber
   can now emit a signed, tamper-evident envelope (spec: docs/TAG-FORMAT.md,
   Proprietary & Confidential, patent pending). `GET /tags/:id/emit` yields a
   part envelope; `GET /anchors/:id/emit` yields the chamber assembly with a
-  member manifest hashing every part beneath it (Merkle-style tree — one
+  member manifest hashing every part beneath it (Merkle-style tree - one
   signature commits to the whole chamber's state). References + SHA-256 only,
   never inline payloads; deterministic emission (no timestamps or JSON
   numbers in the payload); Ed25519 issuer key auto-generated on first boot at
   `<data-dir>/tag-signing-key.json` (covered by data-scope backups). Zero new
-  dependencies — Node built-in crypto server-side, CryptoKit on device.
+  dependencies - Node built-in crypto server-side, CryptoKit on device.
   Conformance validator + 10 tests including emit→tamper→re-validate; iOS
   reference reader (TagEnvelope.swift) verifies, pins the issuer on first
   scan, and caches envelopes for offline in Documents/tags/. Subscribe is
   hints-only in v1; live per-chamber push lands in M2.
-- **Per-feature API reference in the catalogue** — 47 features now carry an
-  `api:` block ("METHOD /path — purpose (caller · auth tier)") rendered as an
+- **Per-feature API reference in the catalogue** - 47 features now carry an
+  `api:` block ("METHOD /path - purpose (caller · auth tier)") rendered as an
   API section on the /catalog card between Architecture and the spec, with
   method chips and auth-tier annotations (API key / admin key / public).
   127 endpoint lines cover the full surface: anchors, tags, perception,
   sessions, guides + live SSE, models, mindmap/procedure, worldmap, Gemba,
   iLOTO, quiz admin, ask, admin/backup. `catalog:check` extracts the real
   Express routes from `sib/src` and fails on any listed endpoint that doesn't
-  exist or any malformed line — the reference cannot silently drift from the
+  exist or any malformed line - the reference cannot silently drift from the
   code. UX-only features carry no API section rather than filler.
-- **Catalogue "Read the spec" now section-scoped** — spec paths can carry a
+- **Catalogue "Read the spec" now section-scoped** - spec paths can carry a
   heading anchor (`spec: ../README.md#3d-model-library`) and `/catalog/doc/:id`
   serves just that section instead of the whole file. The 11 features whose
   source of truth is a README section (model library, ghost overlays, the six
@@ -1943,10 +1946,10 @@ it, it gets a line.
   their section; features with dedicated deep-dive docs are unchanged.
   `catalog:check` validates anchors against real headings so a renamed README
   heading fails CI instead of silently degrading to full-file.
-- **Rename 3D models in the portal** — each card in the 3D Models tab gains a
+- **Rename 3D models in the portal** - each card in the 3D Models tab gains a
   ✏️ Rename action (display name only, via the existing `PATCH /models/:id`;
   files, kit assignments and step references untouched).
-- **Three.js vendored (supply-chain hardening)** — the portal's 3D preview and
+- **Three.js vendored (supply-chain hardening)** - the portal's 3D preview and
   browser GLB→USDZ converter no longer depend on unpkg at runtime:
   `npm run catalog:vendor` now also downloads Three.js r169 (core + GLTFLoader,
   USDZExporter, OrbitControls and their addon dependencies) into
@@ -1954,24 +1957,24 @@ it, it gets a line.
   copies, falling back to the CDN only when they're absent. Closes the last
   un-pinned third-party script on a page that holds an API key, and makes the
   converter work on networks that block CDNs.
-## 2026.4.42 — 2026-08-11
+## 2026.4.42 - 2026-08-11
 
 ### Added
-- **Full site lock-down for internet-facing deployments** — with `SIB_API_KEY`
+- **Full site lock-down for internet-facing deployments** - with `SIB_API_KEY`
   set, EVERY surface now requires the key: home, portal, roadmap, wireframe,
   catalogue (+data/spec endpoints), Ask SIB, /stats, QR print pages. Browsers
   unlock once via a minimal public `/unlock` page (validates the key, sets a
   30-day HttpOnly cookie, pre-fills the portal's stored key); apps and APIs
   keep using the `X-API-Key` header. Only `/health`, `/unlock`, and a reduced
-  `/config` (auth booleans only — `platformVersion` now requires auth) remain
+  `/config` (auth booleans only - `platformVersion` now requires auth) remain
   public. Internal deployments without the key are completely unchanged.
   Motivated by IP review: pre-filing material must not sit on public URLs.
-- **Backup & restore** — the missing production-readiness piece: admin-gated
+- **Backup & restore** - the missing production-readiness piece: admin-gated
   `GET /admin/backup?scope=data|full` streams a timestamped `.tar.gz` of the
   data directory (data = JSON stores, small, weekly habit; full = evidence
   photos, world maps, 3D models too, before upgrades), with ⬇ buttons in the
   portal's ⚙ Settings behind the 🔒 Admin unlock. Restore is a documented
-  stop → unpack → start procedure (INTERNAL-SERVER-DEPLOY.md) — deliberately
+  stop → unpack → start procedure (INTERNAL-SERVER-DEPLOY.md) - deliberately
   not an endpoint. Verified by an automated drill: back up, restore into a
   fresh directory, boot, data intact. All /admin/* paths now require the
   admin key, and the home page gains a 🛠 Admin & Backups tile that deep-links
@@ -1980,197 +1983,197 @@ it, it gets a line.
   ⚙ Settings (a bad insertion had landed it inside the anchor-card template),
   downloads show LIVE streamed progress ("42.3 MB received…") with locked
   buttons and inline success/failure status instead of a vanishing toast, and
-  a new **🗒 Ops log** (Render-logs-style) records every admin-gated action —
-  DELETEs, quiz admin, backups with size — as allowed/denied/gate-off with
+  a new **🗒 Ops log** (Render-logs-style) records every admin-gated action -
+  DELETEs, quiz admin, backups with size - as allowed/denied/gate-off with
   timestamp and IP, self-pruned to the newest 1,000, served by admin-gated
   `GET /admin/events` and viewable in Settings.
-- **Guide Preview in the portal** — ▶ Preview on any Guide Library row walks
+- **Guide Preview in the portal** - ▶ Preview on any Guide Library row walks
   the step sequence exactly as an operator would, no headset needed: a
   phone-frame modal with Complete ✓ / Failed ✗ / Skip traversal of the REAL
   branch graph (nextOnSuccess/nextOnFailure, requires-gate redirects shown
   explicitly), reference images, browser voice playback, reference links, and
   an exit summary listing steps never reached and failure branches never
-  exercised. A placement banner ("N of M placed — operators can't run this
+  exercised. A placement banner ("N of M placed - operators can't run this
   yet") keeps content review honest about runnability. Client-side only.
-- **Edit any guide in the Designer (round-trip)** — ✏️ Edit in Designer in the
+- **Edit any guide in the Designer (round-trip)** - ✏️ Edit in Designer in the
   Guide Library opens the guide's procedure map, GENERATING one (named
   "[Guide] <name>") via a new reverse-compiler when none exists: steps become
   nodes, nextOnSuccess/nextOnFailure/precondition become Next/On-failure/
   Requires edges, voice/images/models/links carry over, and per-node provenance
-  makes every re-sync an in-place update — AR placement always survives.
+  makes every re-sync an in-place update - AR placement always survives.
   Published-guide policy: content-only edits apply LIVE (operators just see
   better wording); structural edits require confirmation and unpublish until
   the new steps are placed. A stale flag warns when the guide changed
   elsewhere since the map last agreed with it. Designer supports
   /roadmap?map=<id> deep links.
-- **In-AR assist UI (fix + redesign)** — AI hints were fetched and logged but
+- **In-AR assist UI (fix + redesign)** - AI hints were fetched and logged but
   drawn inside the content panel, which is hidden by default: invisible in the
-  field. Assist is now its own overlay layer above the panel in every state —
+  field. Assist is now its own overlay layer above the panel in every state -
   a glanceable ✨ chip that expands into a card with the hint, a Recovery-step
   button (nextOnFailure), and Replay voice. Stall-triggered hints auto-expand
   (the operator is stuck); retry hints stay collapsed. One hint at a time, soft
   haptic on arrival, 30 s per-step cooldown after dismissal, auto-clear on step
   completion, and a "Hints this session" tray so dismissed hints are
   recoverable. Server: AIHint gains an optional `trigger` (stall/retry) so the
-  client knows why it fired — backward compatible.
-- **Ask SIB** (beta) — a docs-grounded assistant: 💬 drawer on /catalog (and a
+  client knows why it fired - backward compatible.
+- **Ask SIB** (beta) - a docs-grounded assistant: 💬 drawer on /catalog (and a
   home card) answering questions strictly from the Feature Catalogue and the
   dictionary, with cited features as permalink chips. Two tiers: retrieval
-  (keyword-ranked sources + definitions — works on every deployment) and
-  generation via any **OpenAI-compatible local model endpoint** — llama.cpp's
+  (keyword-ranked sources + definitions - works on every deployment) and
+  generation via any **OpenAI-compatible local model endpoint** - llama.cpp's
   llama-server or Ollama, chosen by `ASK_LLM_URL`/`ASK_LLM_MODEL` env vars, no
   code change. Public but rate-limited; grounding carries no site data; a down
   model degrades to retrieval with a note, never a hard failure.
-- **Portal pilot-hardening**: (1) **Admin gate** — set `SIB_ADMIN_KEY` and every
+- **Portal pilot-hardening**: (1) **Admin gate** - set `SIB_ADMIN_KEY` and every
   destructive action (all DELETEs, the LOTO quiz editor) requires unlocking
   🔒 Admin in the portal header; the server refuses without `X-Admin-Key`
   (the middleware is the guarantee, the hidden buttons are convenience), and
   deployments without the env var behave exactly as before. (2) **Filters +
-  pagination** — Sessions, Gemba and AR Guides tabs gain free-text search,
+  pagination** - Sessions, Gemba and AR Guides tabs gain free-text search,
   per-anchor and date-range filters, and show-more pagination (50 at a time),
-  so review stays usable as pilot data grows. (3) **Tablet layout** — nav
+  so review stays usable as pilot data grows. (3) **Tablet layout** - nav
   scrolls, tables scroll horizontally, bigger tap targets.
-- **Home page live pulse** — `/` now shows anchors, sessions this week, open
+- **Home page live pulse** - `/` now shows anchors, sessions this week, open
   Gemba findings and **active LOTO locks right now** (red when any are held),
   fed by a new public `GET /stats` that returns aggregate counts only.
-- **Catalogue durability + deep links** — `npm run catalog:vendor` downloads
+- **Catalogue durability + deep links** - `npm run catalog:vendor` downloads
   mermaid + marked into `sib/portal/vendor/` (loaded local-first, CDN
   fallback) so blocked CDNs can't blank the diagrams; `/catalog#feature-id`
   permalinks select the card on load (linkable from Slack/PRs/specs); the
   wireframe buttons deep-link to the right flow via `/wireframe#<flow>`.
-- **Visual Feature Catalogue** (`/catalog`) — docs-as-data: `docs/catalog/`
+- **Visual Feature Catalogue** (`/catalog`) - docs-as-data: `docs/catalog/`
   holds one YAML-frontmatter markdown file per feature (63 files, 7 area files
   with Mermaid flows, 3 role trails) as the canonical source;
   `GET /catalog/data` derives the full JSON graph from them live (also the
   future AI-grounding feed, with a reserved `?format=toon` seam) and
   `GET /catalog/doc/:id` serves each feature's deep-dive spec. The `/catalog`
-  page renders it all as a connected graph — area clusters, shipped/beta/
+  page renders it all as a connected graph - area clusters, shipped/beta/
   planned node styling, dependency edges, search, glossary hover definitions
   (glossary gained an iLOTO section), per-feature Mermaid flows, spec
   rendered in place, and three "start here" role trails for new team members.
   `npm run catalog:check` fails on any drift (dangling depends, unknown
   terms, missing specs) using the same rules as the endpoint;
   FEATURE-CATALOG.md is now explicitly a generated view of these files.
-- **Portal — AR Guides import UX overhaul**: import from **Excel (.xlsx)**
+- **Portal - AR Guides import UX overhaul**: import from **Excel (.xlsx)**
   with a downloadable template (columns: Step, Title, Instruction, Voice,
-  ImageURL, LinkURL, Optional, OnSuccess, OnFailure, Requires — header
+  ImageURL, LinkURL, Optional, OnSuccess, OnFailure, Requires - header
   order-free), or JSON file, or pasted JSON. A parse **preview** (step count,
   media, branches, per-step warnings) gates the Import button; after import
   the portal jumps to the Guide Library, expands the new guide and flashes
-  it — no more invisible imports. Guide Library gains an Import button, a
+  it - no more invisible imports. Guide Library gains an Import button, a
   live filter, and **⇄ Move to another anchor** (server moves the steps too,
-  clears their placement — positions belong to the old anchor's world map —
+  clears their placement - positions belong to the old anchor's world map -
   and unpublishes until re-placed).
-- **SIB Home page** — GET / is now a landing with cards for the Web Portal,
+- **SIB Home page** - GET / is now a landing with cards for the Web Portal,
   Roadmap & Procedure Designer, and the interactive App Wireframe (served at
   /wireframe), plus live server status and platform version.
-- **iLOTO — up to 3 3D assets per point**: points now hold model SLOTS (e.g.
+- **iLOTO - up to 3 3D assets per point**: points now hold model SLOTS (e.g.
   lock + tag + hasp), each with its own device-owned AR placement; unadjusted
   slots fan out slightly to avoid overlap. Server enforces the cap and strips
-  placement per-slot when that slot's model changes — other slots untouched.
+  placement per-slot when that slot's model changes - other slots untouched.
   Legacy single-model points keep working (lifted into one synthetic slot).
-- **Gemba Walk — minimized completion form**: arriving at a checkpoint now
+- **Gemba Walk - minimized completion form**: arriving at a checkpoint now
   opens the completion sheet at a compact height with the AR view visible AND
-  interactive behind it — drag up to expand. Dismissing no longer bounces it
+  interactive behind it - drag up to expand. Dismissing no longer bounces it
   straight back open; it re-arms only after walking away (>1 m).
-- **iLOTO — questionnaire editor + import**: the portal iLOTO tab gains a
-  Training questions section — add/edit/delete questions inline (radio marks
+- **iLOTO - questionnaire editor + import**: the portal iLOTO tab gains a
+  Training questions section - add/edit/delete questions inline (radio marks
   the correct answer), import from JSON or CSV (append or replace, validated
   ATOMICALLY server-side so a half-imported bank cannot exist), export JSON
   backup. New admin routes carry answers; the public quiz endpoint still
-  strips them. Editing never touches issued certifications — future takers
+  strips them. Editing never touches issued certifications - future takers
   face the current bank.
-- **iLOTO — model adjust gestures + reassignment**: drag / pinch / twist the
-  3D lock model in AR (H/V pan modes, scale, Y-rotation — the AR Work
+- **iLOTO - model adjust gestures + reassignment**: drag / pinch / twist the
+  3D lock model in AR (H/V pan modes, scale, Y-rotation - the AR Work
   Instructions gesture kit), saved as device-owned placement offsets on the
   point. Point detail gains a 3D model section for authors: assign, change or
   remove a model on EXISTING points; switching models resets placement
   server-side (a shape's placement dies with the shape), and "Adjust model in
   AR" jumps straight from the sheet into the gesture phase.
-- **iLOTO — 3D lock/tag models on points**: assign a lock or tag model from
+- **iLOTO - 3D lock/tag models on points**: assign a lock or tag model from
   the 3D Model library when placing a Safe Off / LOTO point; the marker then
-  renders the USDZ model GHOST (translucent) while the point is clear — "a
-  lock belongs here, this kind" — and SOLID the moment a lock is applied.
+  renders the USDZ model GHOST (translucent) while the point is clear - "a
+  lock belongs here, this kind" - and SOLID the moment a lock is applied.
   Models upgrade in place as USDZs download; the ring stays as tap affordance
   and state colour. Uses the existing library end-to-end: upload in the
   portal, assign to the anchor kit or mark General.
-- **iLOTO slice 4 — AR LOTO map**: draw the panel's electricity flow in AR by
+- **iLOTO slice 4 - AR LOTO map**: draw the panel's electricity flow in AR by
   tapping vertices along the conduit; starting a line on a Safe Off marker
-  links it to that breaker, making the map STATUS-AWARE — lock out the breaker
+  links it to that breaker, making the map STATUS-AWARE - lock out the breaker
   and its lines turn grey and pulse-free live, restore it and the teal flow
   pulse returns. Versioned saves (history kept), view/edit/delete home screen.
-- **iLOTO fix — QR-gated AR sessions**: every iLOTO AR surface (point
+- **iLOTO fix - QR-gated AR sessions**: every iLOTO AR surface (point
   authoring, status walk, map drawing) now starts with the mandatory panel-QR
   scan, exactly like AR Work Instructions: QR locks the session origin,
   ARWorldMap relocalizes (local → SIB → fresh), and the live session is
-  adopted without a frame reset — positions consistent across devices and
+  adopted without a frame reset - positions consistent across devices and
   sessions. Found in field testing: slice 2 sessions skipped the gate.
-- **Portal iLOTO tab** — EHS review surface: live status board for every
+- **Portal iLOTO tab** - EHS review surface: live status board for every
   control panel (per-point state, owner, serial), audit trail with override
   events pinned first and evidence photos in the lightbox, certification
   registry (valid / expired / failed), and one-click CSV export of events and
   certifications. Read-only by design.
-- **iLOTO slice 3** — the gate opens: training quiz UI (one question at a
+- **iLOTO slice 3** - the gate opens: training quiz UI (one question at a
   time, server-graded, failed attempts reviewed with the correct answer and
-  explanation — the explanations ARE the training), certification issuance
-  live with expiry; My LOTO view — every lock the user holds across all
+  explanation - the explanations ARE the training), certification issuance
+  live with expiry; My LOTO view - every lock the user holds across all
   panels with a one-tap deep-link into the Remove flow; hub My LOTO tile
   turns red with a live count when any locks are held (the shift-end nudge).
-- **iLOTO slice 2** — the working loop: AR point authoring (tap breakers/
+- **iLOTO slice 2** - the working loop: AR point authoring (tap breakers/
   switches to place yellow/red markers; panel ARWorldMap saved on author exit
   so every later session relocalizes), ordered Apply checklists (notify →
   shutdown → lock → photo → try test → serial) and Remove checklists with the
   supervisor-override form behind an explicit second decision, Check Status as
   list + AR walk (solid = locked, hollow = clear), and a point-detail sheet
   with the append-only event history and evidence photos. Server 4xx messages
-  surface verbatim — the client makes the right path easy; the server stays
+  surface verbatim - the client makes the right path easy; the server stays
   the referee.
-- **iLOTO slice 1** — spatial Lockout/Tagout foundation
+- **iLOTO slice 1** - spatial Lockout/Tagout foundation
   ([docs/ILOTO.md](docs/ILOTO.md)): 'LOTO' anchor type (one anchor per control
   panel, full QR + worldmap flow), authored isolation points (yellow Safe Off
   on breakers / red LOTO on switches), **append-only event log** with
-  server-enforced rules — per-kind checklists incl. the mandatory try test,
+  server-enforced rules - per-kind checklists incl. the mandatory try test,
   photo evidence on apply, one-lock-one-person removal, OSHA-exception
-  supervisor override as a distinct event type — derived status endpoints
+  supervisor override as a distinct event type - derived status endpoints
   (panel banner + cross-anchor My LOTO), seeded 16-question OSHA 1910.147
   training bank with server-side grading and expiring certifications, and the
   iOS iLOTO hub (status banner, six tiles, live certification gate). Apply/
   Remove flows, AR authoring, quiz UI and the AR LOTO map follow in slices 2–4.
-- **Preview mode** — ▶ Preview in the procedure bar walks the procedure as the
+- **Preview mode** - ▶ Preview in the procedure bar walks the procedure as the
   operator will experience it: phone-frame step card (title, instruction,
   reference image, voice playback via browser speech synthesis),
   Complete ✓ / Failed ✗ buttons that traverse the real edge graph, canvas
   highlight of the current step, requires-gate redirects, and an exit summary
   listing branches never exercised. Purely client-side; nothing is saved or sent.
-- Reference link per step — any http(s) URL (video, PDF, SOP page) authored in
+- Reference link per step - any http(s) URL (video, PDF, SOP page) authored in
   the Inspector, carried through compile → export → ingest, and shown as a
   tappable "Reference" button on the iOS AR step panel (opens in Safari; the
   platform stores no copy).
-- Auto-sizing nodes — cards wrap titles up to four lines and grow to fit
+- Auto-sizing nodes - cards wrap titles up to four lines and grow to fit
   instead of truncating at 20 characters; edge anchors, minimap, marquee,
   auto-layout, presentation bounds and SVG export all follow the real height.
-- Edge type switcher — select a connection on a procedure map and change
+- Edge type switcher - select a connection on a procedure map and change
   Next / On failure / Requires in the side panel (no more delete-and-redraw).
-- Canvas legend + role explainer — line swatches in the procedure bar census
+- Canvas legend + role explainer - line swatches in the procedure bar census
   and a ? panel explaining paths (Next / On failure) vs rules (Requires);
   RolePicker copy rewritten in operator language, Enter confirms Next.
 - Step content glyphs (voice / image / model) enlarged onto a white pill so
   they stay legible on the night canvas.
-- Procedure Designer slice 2 — step content authoring on the canvas: voice
+- Procedure Designer slice 2 - step content authoring on the canvas: voice
   script, optional-step toggle, reference images (uploaded to a content-addressed
   designer store, copied into the guide at export) and 3D model assignment with
   scale. Model semantics: canvas owns assignment, device owns AR placement;
   switching models clears stale placement.
-- Day/night canvas theme — procedure maps default to a dark canvas so an
+- Day/night canvas theme - procedure maps default to a dark canvas so an
   executable procedure is visually distinct from a planning roadmap; toggle in
   the toolbar, per-map-kind preference. Node cards stay white in both themes so
   nothing inside them can lose contrast.
-- **Procedure Designer** — `procedure` maps on the Roadmap canvas: role-typed
+- **Procedure Designer** - `procedure` maps on the Roadmap canvas: role-typed
   edges (Next / On failure / Requires) with a relationship picker, server-derived
   step numbers, pre-flight validation, and one-click send to the Guide Library as
   a draft. Re-sync updates steps in place and never overwrites AR placement.
   ([docs/PROCEDURE-DESIGNER.md](docs/PROCEDURE-DESIGNER.md))
-- Guide ingestion service (`sib/src/guides/ingest.ts`) — single create/upsert
+- Guide ingestion service (`sib/src/guides/ingest.ts`) - single create/upsert
   path shared by JSON import and procedure export, with spatial preservation as
   a tested invariant.
 - `step:stalled` live-session event + iOS dwell watchdog (90 s) feeding the AI
@@ -2193,10 +2196,10 @@ it, it gets a line.
 
 ### Fixed
 - Notes and voice-script edits silently lost when clicking from the field
-  straight onto the canvas — the panel unmounted before blur fired, so the
+  straight onto the canvas - the panel unmounted before blur fired, so the
   save-on-blur handler never ran (reported as "can't save notes unless we add
   a comment"). Fields now commit on blur AND on unmount, with a Saved ✓ tick.
-- Blank page when creating the first node on any map — React #310 caused by a
+- Blank page when creating the first node on any map - React #310 caused by a
   hook after an early return in `Minimap.tsx` (pre-existing; exposed during
   Procedure Designer testing).
 - `sanitizeEdge` / `saveMindmap` silently dropping new fields (`role`, `kind`,

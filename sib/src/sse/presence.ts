@@ -1,13 +1,13 @@
-// presence.ts — P1 (2026.4.46): who is in front of a chamber right now.
+// presence.ts - P1 (2026.4.46): who is in front of a chamber right now.
 //
 // Multi-user co-authoring rides on two things that already exist:
-//   • a SHARED FRAME — every device localises into the chamber's frame (sealed
+//   • a SHARED FRAME - every device localises into the chamber's frame (sealed
 //     map / object), so poses from two iPads are directly comparable even when
 //     they stand in front of two physical units of the same chamber type;
 //   • the per-anchor SSE feed (GET /anchors/:id/subscribe).
 //
 // Each device POSTs its camera pose ~2×/s; SIB keeps the latest entry per
-// user IN MEMORY (never persisted — it is not a record, it is a heartbeat)
+// user IN MEMORY (never persisted - it is not a record, it is a heartbeat)
 // and fans it out to the anchor's subscribers as `presence` events. Entries
 // that stop refreshing are dropped after STALE_MS with a `presence:left`.
 //
@@ -97,7 +97,7 @@ export function sweepPresence(now = Date.now()): number {
   return dropped;
 }
 
-/** People on tools right now (all anchors) + the anchors they are on — for /stats. */
+/** People on tools right now (all anchors) + the anchors they are on - for /stats. */
 export function presenceSummary(now = Date.now()): { people: number; anchors: string[] } {
   let people = 0; const anchors: string[] = [];
   for (const [anchorId, m] of byAnchor) {

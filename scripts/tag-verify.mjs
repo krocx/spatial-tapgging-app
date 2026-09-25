@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// tag-verify — verify a SIB .tag envelope offline (structure, determinism,
+// tag-verify - verify a SIB .tag envelope offline (structure, determinism,
 // canonical hash, Ed25519 signature) and, with --sib, resolve every stream
 // and member to check the committed SHA-256s against the live server.
 //
@@ -97,4 +97,4 @@ console.log(`issuer key  ${sig?.publicKey ?? '?'}`);
 if (p?.frame) console.log(`frame       qr ${p.frame.markerId}${p.frame.markerSizeM ? ` · ${p.frame.markerSizeM} m` : ''}${p.frame.anchorPose ? ' · sealed pose' : ''}`);
 console.log(`streams     ${(p?.streams ?? []).map(s => s.name).join(', ')}${p?.members ? `   members ${p.members.length}` : ''}`);
 if (errs.length) { console.log('\nNOT CONFORMANT'); for (const e of errs) console.log('  ✗ ' + e); process.exit(1); }
-console.log('\nOK — conformant' + (sib ? ' and consistent with ' + sib : ''));
+console.log('\nOK - conformant' + (sib ? ' and consistent with ' + sib : ''));

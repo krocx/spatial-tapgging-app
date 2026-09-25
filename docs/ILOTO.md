@@ -1,4 +1,4 @@
-# iLOTO — Spatial Lockout/Tagout
+# iLOTO - Spatial Lockout/Tagout
 
 Status: **approved design** (2026-08-12) · Slice 1 in build
 Regulatory frame: OSHA 29 CFR 1910.147 (control of hazardous energy)
@@ -15,7 +15,7 @@ SIB with photo evidence.
 
 **The stance that keeps this defensible:** the app is the *record and
 verification aid*; the physical lock is the safety control. UI copy never says
-"safe" — it says "recorded as isolated — verify physically." Status is always
+"safe" - it says "recorded as isolated - verify physically." Status is always
 derived from the event log, never edited.
 
 ## 2. Site semantics (decided 2026-08-12)
@@ -23,11 +23,11 @@ derived from the event log, never edited.
 | Term | Meaning | Lock | Checklist |
 |---|---|---|---|
 | **Safe Off** | Out-of-service / operational lock on a **circuit breaker**. Equipment stays down; nobody is working inside it. Independent of LOTO. | Yellow | Shortened: shutdown confirm → apply → photo → serial. No try-test mandate; affected-notification optional. |
-| **LOTO** | Personal danger lock on a **switch** — someone is working on the equipment. | Red | Full six-step: notify → shutdown → apply → photo → **try test** → serial. |
+| **LOTO** | Personal danger lock on a **switch** - someone is working on the equipment. | Red | Full six-step: notify → shutdown → apply → photo → **try test** → serial. |
 
 Decisions on the other forks:
 
-- **Removal**: strict same-person, plus a **supervisor override** flow —
+- **Removal**: strict same-person, plus a **supervisor override** flow -
   supervisor identity + the three OSHA exception confirmations (verified
   absent / contact attempted / will be informed before return) + free-text
   reason. Stored as its own event type; pinned in portal audits.
@@ -53,11 +53,11 @@ Mode selection → iLOTO → Anchor directory (loto anchors)
 ```
 
 The hub leads with a live status banner ("2 LOTO active · 1 safe off · last
-event 14:02") — the first question at a panel is always *what state is it in*.
+event 14:02") - the first question at a panel is always *what state is it in*.
 
 Cert gate: Safe Off and LOTO tiles are locked until the user holds a valid,
 unexpired certification; tapping routes to Training. Everything else stays
-open — an *affected* employee must be able to see state without being
+open - an *affected* employee must be able to see state without being
 authorized to change it.
 
 ## 4. Data model
@@ -65,7 +65,7 @@ authorized to change it.
 All records live in SIB `JsonFileStore`s. Identity = the app's author-name
 identity (same as guide sessions); treat as the acting user id.
 
-### LotoPoint — authored inventory
+### LotoPoint - authored inventory
 
 One per breaker/switch. Authored in AR via the existing tag-placement flow;
 **placement is device-owned** (same invariant as tags/steps everywhere).
@@ -76,10 +76,10 @@ position {x,y,z}, modelId?, modelScale?,        // lock 3D asset (Model3D librar
 createdBy, createdAt, updatedAt
 ```
 
-Operators act only on authored points — ad-hoc points would destroy audit
+Operators act only on authored points - ad-hoc points would destroy audit
 integrity.
 
-### LotoEvent — append-only, the source of truth
+### LotoEvent - append-only, the source of truth
 
 ```
 id, anchorId, pointId, type: 'apply' | 'remove' | 'override-remove',
@@ -94,19 +94,19 @@ note?, createdAt
 
 Rules enforced at POST (the server is the referee, not the client):
 
-1. `apply` — point must exist; point must have **no active lock** (v1);
+1. `apply` - point must exist; point must have **no active lock** (v1);
    required checklist keys for the point's kind must all be true
    (LOTO: `notifiedAffected, shutDown, tryTestNoStart`; Safe Off: `shutDown`);
    photo required for both kinds.
-2. `remove` — point must have an active lock; `userId` must equal the
+2. `remove` - point must have an active lock; `userId` must equal the
    applying user's id.
-3. `override-remove` — point must have an active lock; all three override
+3. `override-remove` - point must have an active lock; all three override
    confirmations true; supervisorName + reason non-empty.
 4. Events are never updated or deleted. No PATCH/DELETE routes exist.
 
 ### Derived status (never stored)
 
-For a point: latest event wins — `apply` → `locked` (with owner/since/serial);
+For a point: latest event wins - `apply` → `locked` (with owner/since/serial);
 `remove`/`override-remove` → `clear`. Panel status = aggregation. Endpoints
 compute this on read.
 
@@ -174,24 +174,24 @@ what was confirmed, per event, even if definitions evolve later.
 | 2 | Point authoring in AR (worldmap saved on author exit; markers relocalize), Apply/Remove ordered checklists with photo + try-test, supervisor override, Check Status AR walk + list, point detail with append-only history | **shipped** |
 | 3 | My LOTO cross-anchor view with remove deep-link + active-lock nudge on the hub tile, quiz UI (one question at a time, server-graded, miss review with explanations), cert issuance live | **shipped** |
 | 4 | AR LOTO map: vertex-drawn flow lines (snap-to-marker; first vertex on a Safe Off breaker links the stroke via fedByPointId), status-aware rendering (fed breaker locked → line grey/pulse-free; energized → teal with a travelling pulse), versioned saves, view/edit/delete home. Plus: ALL iLOTO AR sessions now QR-gated via QRScanGateView (origin locked from the panel QR, worldmap local→SIB→fresh, session adopted via linkToExistingSession). | **shipped** |
-| Portal | iLOTO tab: live status board per panel, audit trail with overrides pinned first, certification registry, events + certs CSV export. Read-only by design — the portal is where EHS reviews, not where locks change. | **shipped** |
+| Portal | iLOTO tab: live status board per panel, audit trail with overrides pinned first, certification registry, events + certs CSV export. Read-only by design - the portal is where EHS reviews, not where locks change. | **shipped** |
 
 Slice 2 implementation notes: the AR surface (`LotoARSessionView`) has two modes
-sharing one relocalization path — `.author(kind)` places markers and uploads the
+sharing one relocalization path - `.author(kind)` places markers and uploads the
 ARWorldMap on exit; `.status` renders solid (locked) / hollow (clear) markers
 and opens the same point-detail sheet the lists use. Apply/Remove UIs enforce
 checklist ORDER client-side (each confirm disabled until the previous one), but
-the server remains the referee — its 4xx messages are shown verbatim. The
+the server remains the referee - its 4xx messages are shown verbatim. The
 override path is behind an explicit "Supervisor override…" button, never a
 fallback. Lock 3D-model assignment (`modelId` on points) is schema-ready but
 UI-deferred until the lock assets are uploaded to the model library.
 
 ## 8. Deliberate non-goals (v1)
 
-- No claim of being the safety system of record — the physical lock is.
+- No claim of being the safety system of record - the physical lock is.
 - No group lockout UI (schema ready; see §2).
 - No editing or deleting events, by anyone, including admins.
-- No offline queueing — cleanroom connectivity is assumed; if that proves
+- No offline queueing - cleanroom connectivity is assumed; if that proves
   wrong, queued events need careful conflict rules (tracked as a risk, §9).
 
 ## 9. Open questions / risks
@@ -202,5 +202,5 @@ UI-deferred until the lock assets are uploaded to the model library.
 2. Identity strength: author-name identity is self-asserted. Acceptable for
    v1 audit trail; SSO/RBAC is the real fix (same open item as the
    Procedure Designer).
-3. Annual periodic-inspection workflow (1910.147(c)(6)) — a portal checklist
+3. Annual periodic-inspection workflow (1910.147(c)(6)) - a portal checklist
    for an uninvolved authorized employee. Not scheduled; candidate slice 5.

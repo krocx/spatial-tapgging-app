@@ -1,5 +1,5 @@
 // Generic in-memory store for Phase 1.
-// All data is lost on restart — intentional for rapid iteration.
+// All data is lost on restart - intentional for rapid iteration.
 // Replace with a persistent adapter (SQLite, Postgres) in Phase 2.
 
 export class InMemoryStore<T extends { id: string }> {

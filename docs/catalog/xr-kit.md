@@ -8,11 +8,11 @@ depends: [guide-bundle, live-telemetry, contextual-intelligence, evidence-signof
 terms: [Assembly Model, Anchor, Operator Mode]
 spec: ar-ojt/UNITY-RUNTIME.md
 api: |
-  GET /xr — the kit page; open as /xr?guide=<guideId> (browser · same gate as the portal)
-  GET /guides/:id/bundle — everything the page loads (any client · API key / token)
-  POST /guide-sessions/live — the kit opens a live session like the iPad (any client · API key / token)
-  POST /guide-sessions/live/:id/observations — 1 Hz attention / distance / alignment samples (any client · API key / token)
-  POST /guide-sessions — sign-off with step completions, linked to the live session (any client · API key / token)
+  GET /xr - the kit page; open as /xr?guide=<guideId> (browser · same gate as the portal)
+  GET /guides/:id/bundle - everything the page loads (any client · API key / token)
+  POST /guide-sessions/live - the kit opens a live session like the iPad (any client · API key / token)
+  POST /guide-sessions/live/:id/observations - 1 Hz attention / distance / alignment samples (any client · API key / token)
+  POST /guide-sessions - sign-off with step completions, linked to the live session (any client · API key / token)
 wireframe: portal
 arch: |
   flowchart LR
@@ -24,8 +24,8 @@ arch: |
     P -->|POST| L["live session · events<br/>observations · sign-off"]
     L --> U["Usage Log · baselines · hints"]
 ---
-A guide runs in any WebXR browser — a headset's browser, Android Chrome, or a
-desktop as a 3D preview — with **no game engine and no third-party tracking**:
+A guide runs in any WebXR browser - a headset's browser, Android Chrome, or a
+desktop as a 3D preview - with **no game engine and no third-party tracking**:
 the page is our own code on the vendored Three.js renderer and the browser's
 WebXR API. It loads the Guide Bundle, fetches the assembly GLB, and plays the
 same cumulative timeline the iPad plays (the pure part of the player lives in
@@ -46,7 +46,7 @@ session, posts step events, streams the same 1 Hz observations the iPad does
 viewpoint alignment, movement, taps on right and wrong parts, replays), polls
 the same hint queue, and signs off with per-step completions linked to the
 live session. So a headset run lands in the Usage Log next to iPad runs,
-feeds the same baselines, and can be compared step by step — which is the
+feeds the same baselines, and can be compared step by step - which is the
 evidence the TRL scorecard needs before any glasses decision.
 
 From the portal Guide Library each guide has an **🥽 XR kit** link. On a

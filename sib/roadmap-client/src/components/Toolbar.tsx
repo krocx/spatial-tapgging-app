@@ -1,4 +1,4 @@
-// Toolbar.tsx — top bar of the editor: back, map name, node-type palette,
+// Toolbar.tsx - top bar of the editor: back, map name, node-type palette,
 // layout / undo / redo / export / versions / save, presence + connection dot.
 
 import { useState } from 'react';
@@ -77,7 +77,7 @@ export function Toolbar(): JSX.Element | null {
 
   const pickType = (t: typeof NODE_TYPES[number]) => {
     setDefaultNodeType(t);
-    // Palette also retypes the current selection — fast recolor workflow.
+    // Palette also retypes the current selection - fast recolor workflow.
     for (const id of selectedNodeIds) setNodeType(id, t);
   };
 
@@ -87,18 +87,18 @@ export function Toolbar(): JSX.Element | null {
       <span className="map-name" title={map.name}>{map.name}</span>
       {dirty ? <span className="dirty-dot" title="Unsaved changes">●</span> : null}
 
-      {/* Publish state chip — click to toggle (draft-key holders only) */}
+      {/* Publish state chip - click to toggle (draft-key holders only) */}
       {map.published === false ? (
         <button
           className="pub-chip draft"
-          title="Draft — only draft-key holders can see this map. Click to publish for everyone."
+          title="Draft - only draft-key holders can see this map. Click to publish for everyone."
           onClick={() => { if (confirm('Publish this map? Everyone will be able to view and edit it.')) void publishMap(); }}
         >Draft <Icon name="lock" size={12} /></button>
       ) : null}
       {map.published === false && holdsDraftKey() ? (
         <button
           className="btn ghost share-key"
-          title="Copy this map's draft key — share it so a teammate can unlock the draft"
+          title="Copy this map's draft key - share it so a teammate can unlock the draft"
           onClick={() => {
             const key = getDraftKey(map.id);
             if (key) void navigator.clipboard.writeText(key);
@@ -108,12 +108,12 @@ export function Toolbar(): JSX.Element | null {
       {map.published !== false && holdsDraftKey() ? (
         <button
           className="pub-chip published"
-          title="Published — visible to everyone. Click to unpublish (back to draft)."
+          title="Published - visible to everyone. Click to unpublish (back to draft)."
           onClick={() => { if (confirm('Unpublish? Only draft-key holders will see it again.')) void unpublishMap(); }}
         >Published</button>
       ) : null}
 
-      <div className="palette" title="Node type — applies to new nodes and current selection">
+      <div className="palette" title="Node type - applies to new nodes and current selection">
         {NODE_TYPES.map(t => (
           <button
             key={t}
@@ -200,7 +200,7 @@ export function Toolbar(): JSX.Element | null {
 
       <div className="menu-wrap">
         <button className="btn" onClick={() => { const v = showLayout; closeMenus(); setShowLayout(!v); }}
-                title="Current layout mode — resets to Freeform when you move a node by hand">
+                title="Current layout mode - resets to Freeform when you move a node by hand">
           Layout: {layoutMode === 'hierarchical' ? 'Hierarchical' : layoutMode === 'grid' ? 'Grid' : 'Freeform'} ▾
         </button>
         {showLayout && (
@@ -233,7 +233,7 @@ export function Toolbar(): JSX.Element | null {
       <button
         className={`btn ${showGlossary ? 'btn-active' : ''}`}
         onClick={() => showGlossary ? closeGlossary() : openGlossary()}
-        title="Roadmap dictionary — every capability on the roadmap, defined"
+        title="Roadmap dictionary - every capability on the roadmap, defined"
       ><Icon name="book" size={15} /></button>
 
       <div className="menu-wrap">

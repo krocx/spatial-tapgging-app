@@ -1,22 +1,22 @@
-// image-comparator.ts — v5
+// image-comparator.ts - v5
 //
 // #83: before any metric runs, the live frame is coarsely re-aligned (small
 // integer pixel translation, search-bounded) onto each reference individually
-// — see "Coarse translation registration" below. This fixes viewpoint/
+// - see "Coarse translation registration" below. This fixes viewpoint/
 // parallax sensitivity at the source instead of only diluting it via
 // WORST_FRACTION.
 //
 // Three metrics combined for robust presence/absence detection:
 //
-//  1. ssim_full   — grayscale SSIM on full image, scored as one whole region
-//                   (overall structural context — not patch-graded; this term
+//  1. ssim_full   - grayscale SSIM on full image, scored as one whole region
+//                   (overall structural context - not patch-graded; this term
 //                   is meant to capture general scene match, not localize a
 //                   defect)
-//  2. color_tight — RGB histogram intersection on the inner 25 % crop, scored
+//  2. color_tight - RGB histogram intersection on the inner 25 % crop, scored
 //                   as a worst-percentile patch grid (TIGHT_GRID cells) rather
-//                   than one number over the whole crop — see "Patch-grid
+//                   than one number over the whole crop - see "Patch-grid
 //                   aggregation" below
-//  3. ssim_center — grayscale SSIM on the inner 50 % crop, also scored as a
+//  3. ssim_center - grayscale SSIM on the inner 50 % crop, also scored as a
 //                   worst-percentile patch grid (CENTER_GRID cells)
 //
 // combined = 0.25 × ssim_full + 0.50 × color_tight + 0.25 × ssim_center
@@ -25,7 +25,7 @@
 // Why patch-grid instead of whole-region averaging for #2 and #3?
 //   A single number averaged over an entire crop lets a small, localized
 //   change (a missing/rotated/swapped part) get diluted by everything around
-//   it that's unchanged — even within an already-tight ROI, the inspected
+//   it that's unchanged - even within an already-tight ROI, the inspected
 //   feature is rarely 100 % of the pixels. This was the root cause of
 //   dual-state confidence clustering near ~50 % even on visually clear
 //   pass/fail cases: simToPass and simToFail both landed high and nearly
@@ -36,7 +36,7 @@
 //
 // ROI-active tags use different inner sub-crop fractions, a wider/padded
 // crop, and different weights (see ROI_*_FRAC, ROI_PADDING_FRAC, and the
-// wFull/wColor/wCenter weights in scoreAgainstRefs) — the frame handed in is
+// wFull/wColor/wCenter weights in scoreAgainstRefs) - the frame handed in is
 // already a tight crop of the part, so re-applying the full-frame tuning
 // on top of it was double-zooming and amplifying capture noise, which is
 // what caused low validation scores on ROI-trained tags.
@@ -64,20 +64,20 @@ const BINS = 64;                             // histogram bins per colour channe
 
 // Inner sub-crop fractions for the "center" (SSIM) and "tight" (colour
 // histogram) metrics. These exist to zoom past an unchanged background that
-// would otherwise dilute the signal — but that's only true for a FULL-FRAME
+// would otherwise dilute the signal - but that's only true for a FULL-FRAME
 // capture. When an ROI is already active, the ROI crop has already done
 // that job: the frame handed to decodeFrame is already just the inspected
 // component (plus the padding margin below). Re-applying the same narrow
 // 25 %/50 % inner crop on top of an already-tight ROI crop was the root
-// cause of low ROI validation scores — it zoomed into a tiny sliver of the
+// cause of low ROI validation scores - it zoomed into a tiny sliver of the
 // part, making the colour-histogram metric (50 % of the score) extremely
 // sensitive to minor angle/distance/lighting drift between the trained
 // reference and a live capture. When ROI is active we use much wider inner
 // fractions so the metrics still see the whole part.
-const FULLFRAME_MED_FRAC   = 0.50; // inner 50 % — today's full-frame behaviour
-const FULLFRAME_TIGHT_FRAC = 0.25; // inner 25 % — today's full-frame behaviour
-const ROI_MED_FRAC   = 0.90; // inner 90 % — ROI crop already isolated the part
-const ROI_TIGHT_FRAC = 0.70; // inner 70 % — ROI crop already isolated the part
+const FULLFRAME_MED_FRAC   = 0.50; // inner 50 % - today's full-frame behaviour
+const FULLFRAME_TIGHT_FRAC = 0.25; // inner 25 % - today's full-frame behaviour
+const ROI_MED_FRAC   = 0.90; // inner 90 % - ROI crop already isolated the part
+const ROI_TIGHT_FRAC = 0.70; // inner 70 % - ROI crop already isolated the part
 
 // Padding added around an Author-drawn ROI before cropping, as a fraction of
 // the ROI's own width/height. Guards against the part being clipped by minor
@@ -95,7 +95,7 @@ function subCropBounds(frac: number): { start: number; end: number; w: number } 
 
 // ── Patch-grid aggregation ───────────────────────────────────────────────────
 // Whole-region averaging (one SSIM/histogram number over an entire crop)
-// dilutes a small, localized change — a missing/rotated/swapped part — against
+// dilutes a small, localized change - a missing/rotated/swapped part - against
 // a much larger area of unchanged background. That dilution is what was
 // causing simToPass and simToFail to land high and nearly equal (driving
 // dual-state confidence toward ~50%) even on test cases with a clearly
@@ -105,13 +105,13 @@ function subCropBounds(frac: number): { start: number; end: number; w: number } 
 // single bad region drag the score down instead of being smoothed away by
 // everything around it that still matches.
 const CENTER_GRID   = 4;    // 4×4 = 16 cells for the SSIM center-crop metric
-const TIGHT_GRID    = 2;    // 2×2 = 4 cells for the colour-histogram metric —
+const TIGHT_GRID    = 2;    // 2×2 = 4 cells for the colour-histogram metric -
                              // kept coarser than the SSIM grid because
                              // histogram intersection needs enough pixels per
                              // cell for BINS=64 to be meaningful; a finer grid
                              // here would add quantisation noise rather than
                              // real sensitivity.
-const WORST_FRACTION = 0.5;  // aggregate = average of the worst 50% of cells —
+const WORST_FRACTION = 0.5;  // aggregate = average of the worst 50% of cells -
                              // widened from 0.25 after field testing showed
                              // pure worst-quartile aggregation was intolerant
                              // of normal camera angle/distance drift: a single
@@ -130,7 +130,7 @@ const WORST_FRACTION = 0.5;  // aggregate = average of the worst 50% of cells �
 // problem is that a few pixels of camera shift between the trained reference
 // and a live capture shifts WHERE the part's edges land in the patch grid,
 // so cells that should compare "part vs part" end up comparing "part vs
-// background" at the boundary — that's what produced near-identical
+// background" at the boundary - that's what produced near-identical
 // combined scores (66% vs 68%) straddling the threshold on the same physical
 // setup. Correcting that shift before grid scoring addresses it at the
 // source instead of just softening the aggregation.
@@ -138,7 +138,7 @@ const WORST_FRACTION = 0.5;  // aggregate = average of the worst 50% of cells �
 // Search is done on a small downsampled grayscale grid (cheap exhaustive SSD
 // search), then the resulting integer (dx, dy) is applied to the live frame's
 // full-resolution gray/center/tight arrays before any metric is computed.
-// The search window is intentionally narrow (ALIGN_MAX_SHIFT_FRAC) — wide
+// The search window is intentionally narrow (ALIGN_MAX_SHIFT_FRAC) - wide
 // enough to absorb ordinary handheld camera jitter, far too narrow to let an
 // actually-missing/different part "find" a shift that fakes a match.
 const ALIGN_SEARCH_DS       = 32;   // downsampled side length used for the correlation search
@@ -198,7 +198,7 @@ function bestShift(refGray: Float32Array, liveGray: Float32Array, width: number)
   return { dx: Math.round(bestDx * scale), dy: Math.round(bestDy * scale) };
 }
 
-// Samples `arr` (a w×w array) shifted by (dx, dy), clamping at the border —
+// Samples `arr` (a w×w array) shifted by (dx, dy), clamping at the border -
 // equivalent to aligning `arr`'s content the way bestShift() measured it.
 function shift2D(arr: Float32Array, w: number, dx: number, dy: number): Float32Array {
   if (dx === 0 && dy === 0) return arr;
@@ -217,7 +217,7 @@ function shift2D(arr: Float32Array, w: number, dx: number, dy: number): Float32A
 }
 
 // Returns a copy of `live` with gray/center/tight content shifted to align
-// onto `ref`. centerW/tightW are unchanged — the shift is in shared
+// onto `ref`. centerW/tightW are unchanged - the shift is in shared
 // full-resolution pixel units, since center/tight are unscaled crops of the
 // same SIZE×SIZE canvas as gray (see decodeFrame).
 function alignLiveToRef(ref: DecodedFrame, live: DecodedFrame): DecodedFrame {
@@ -334,14 +334,14 @@ interface DecodedFrame {
 }
 
 // ── Reference-frame cache (SHA-256) ──────────────────────────────────────────
-// Reference (pass-state) frames are stable — cache them.
+// Reference (pass-state) frames are stable - cache them.
 // Live operator frames are NEVER cached: all camera JPEGs share the same JFIF
 // header prefix, causing cache-key collisions that would return stale pixels
 // and produce SSIM = 1.0 (100 % confidence) on every comparison.
 //
-// Bounded LRU — each decoded frame holds ~1.5MB of Float32Array data
+// Bounded LRU - each decoded frame holds ~1.5MB of Float32Array data
 // (gray + center + tight crops). Left unbounded, this cache grows forever as
-// new tags/anchors are trained and never releases memory — a slow leak that
+// new tags/anchors are trained and never releases memory - a slow leak that
 // was a contributing cause of the Render OOM ("ran out of memory, used over
 // 512MB"). Cap it and evict the least-recently-used entry on overflow.
 const REF_CACHE_MAX = 150; // ~150 × 1.5MB ≈ 225MB worst case, well under the 512MB instance limit
@@ -375,7 +375,7 @@ function refCacheKey(base64: string): string {
 
 // Optional normalised crop applied BEFORE the SIZE×SIZE resize. When present,
 // every metric below (full-frame SSIM, center-crop SSIM, tight-crop colour
-// histogram) operates only within this region instead of the whole frame —
+// histogram) operates only within this region instead of the whole frame -
 // this is what lets a tag focus on the specific feature being inspected
 // (a cable, a switch, a valve) rather than scoring the whole scene, where a
 // missing/changed part is diluted by an otherwise-unchanged background.
@@ -394,14 +394,14 @@ function roiKeySuffix(roi?: ComparatorRoi): string {
 
 // ── Bounded-concurrency decode pool ──────────────────────────────────────────
 // Jimp.read() decodes a JPEG into a full native-resolution RGBA bitmap BEFORE
-// resize(SIZE, SIZE) shrinks it down — for a multi-megapixel camera frame
+// resize(SIZE, SIZE) shrinks it down - for a multi-megapixel camera frame
 // that's tens of MB held momentarily per image, even though the final cached
 // DecodedFrame is tiny (~1.5MB of Float32Arrays). scoreAgainstRefs used to
 // kick off every reference decode in one unbounded Promise.all, and
 // compareDualState ran the Pass-side and Fail-side decode batches
 // *concurrently* on top of that. With a Fail-state trained, a single
 // validate-all call across N tags could trigger up to
-// N × 2 states × ~14 images = 28N simultaneous full-resolution JPEG decodes —
+// N × 2 states × ~14 images = 28N simultaneous full-resolution JPEG decodes -
 // easily enough to blow past the 512MB instance limit in a momentary spike,
 // even though every decoded frame is immediately downsized and (for
 // references) cached. mapWithConcurrency caps how many decodes are in flight
@@ -457,7 +457,7 @@ async function decodeFrame(base64: string, roi?: ComparatorRoi): Promise<Decoded
 
   // Resize preserving aspect ratio, then letterbox onto a neutral-gray
   // SIZE×SIZE canvas. A plain resize(SIZE, SIZE) stretches non-square crops
-  // — virtually all ROI crops, and many full-frame ones — into a square,
+  // - virtually all ROI crops, and many full-frame ones - into a square,
   // distorting the part's proportions before every downstream metric runs.
   // This was a secondary contributor to the low ROI scores.
   const srcW  = img.bitmap.width;
@@ -465,14 +465,14 @@ async function decodeFrame(base64: string, roi?: ComparatorRoi): Promise<Decoded
   const scale = Math.min(SIZE / srcW, SIZE / srcH);
   const fitW  = Math.max(1, Math.round(srcW * scale));
   const fitH  = Math.max(1, Math.round(srcH * scale));
-  img.resize(fitW, fitH);           // keep colour — do NOT greyscale yet
+  img.resize(fitW, fitH);           // keep colour - do NOT greyscale yet
 
   const canvas  = new Jimp(SIZE, SIZE, 0x808080ff);
   const offsetX = Math.floor((SIZE - fitW) / 2);
   const offsetY = Math.floor((SIZE - fitH) / 2);
   canvas.composite(img, offsetX, offsetY);
 
-  // Inner sub-crop bounds for the "center"/"tight" metrics — wider when an
+  // Inner sub-crop bounds for the "center"/"tight" metrics - wider when an
   // ROI is active, since the frame is already a tight crop of the part.
   const medFrac   = roi ? ROI_MED_FRAC   : FULLFRAME_MED_FRAC;
   const tightFrac = roi ? ROI_TIGHT_FRAC : FULLFRAME_TIGHT_FRAC;
@@ -528,7 +528,7 @@ async function decodeReference(base64: string, roi?: ComparatorRoi): Promise<Dec
   const cached = refCacheGet(key);
   if (cached) return cached;
 
-  // Another caller is already decoding this image — share its Promise.
+  // Another caller is already decoding this image - share its Promise.
   const pending = pendingDecodes.get(key);
   if (pending) return pending;
 
@@ -572,7 +572,7 @@ export interface CompareResult {
   }>;
 }
 
-// Shared scoring core — decodes the live frame once and every reference
+// Shared scoring core - decodes the live frame once and every reference
 // (cached), then returns the best (highest-combined-score) match. Used by
 // both the single-reference absolute-threshold path (compareAgainstPassState)
 // and the optional dual Pass/Fail nearest-match path (compareDualState).
@@ -600,11 +600,11 @@ async function scoreAgainstRefs(
   const details: CompareResult['details'] = [];
 
   // Composite weights. Full-frame default: 50 % weight on tight-crop colour
-  // — the key discriminator for part presence, since grayscale SSIM alone
+  // - the key discriminator for part presence, since grayscale SSIM alone
   // can't distinguish e.g. an amber part from silver metal (similar
   // luminance) but the colour histogram in the tight crop can.
   //
-  // When an ROI is active, the frame is already a tight crop of the part —
+  // When an ROI is active, the frame is already a tight crop of the part -
   // leaning so heavily on a colour histogram over an even-tighter inner
   // sub-crop (now widened, but still a crop of a crop) amplifies capture
   // noise (angle/distance/lighting drift) rather than detecting genuine
@@ -622,7 +622,7 @@ async function scoreAgainstRefs(
     }
 
     // #83: coarsely re-align the live frame onto THIS reference before
-    // scoring — each reference may have been trained from a slightly
+    // scoring - each reference may have been trained from a slightly
     // different stance, so the correction is computed per-reference rather
     // than once against a single "canonical" pose.
     const aligned = alignLiveToRef(ref, liveFrame);
@@ -650,7 +650,7 @@ export async function compareAgainstPassState(
   liveBase64: string,
   /** Optional per-call override; falls back to PASS_THRESHOLD env var → 0.60 */
   thresholdOverride?: number,
-  /** Optional inspection-region crop — see ComparatorRoi. Absent = full frame (unchanged). */
+  /** Optional inspection-region crop - see ComparatorRoi. Absent = full frame (unchanged). */
   roi?: ComparatorRoi,
 ): Promise<CompareResult & { status: 'PASS' | 'FAIL' }> {
   const threshold =
@@ -662,7 +662,7 @@ export async function compareAgainstPassState(
     return { score: 0, bestRefIndex: 0, details: [], status: 'FAIL' };
   }
 
-  // Live frame: always freshly decoded — never cached
+  // Live frame: always freshly decoded - never cached
   const liveFrame = await decodeFrame(liveBase64, roi);
   const { score, bestRefIndex, details } = await scoreAgainstRefs(referenceBase64s, liveFrame, roi);
 
@@ -690,7 +690,7 @@ export async function compareAgainstPassState(
 // the live frame is scored against BOTH the Pass and Fail reference sets,
 // and whichever it's more similar to wins. This is more robust than a single
 // absolute threshold because a real fail condition doesn't need to look
-// dramatically different from Pass in an absolute sense — it only needs to
+// dramatically different from Pass in an absolute sense - it only needs to
 // look more like the trained Fail example than the trained Pass example.
 //
 // Only called when failBase64s.length > 0; callers should fall back to
@@ -711,7 +711,7 @@ export async function compareDualState(
 ): Promise<DualCompareResult> {
   const liveFrame = await decodeFrame(liveBase64, roi);
 
-  // Sequential, not Promise.all — scoreAgainstRefs already decodes its own
+  // Sequential, not Promise.all - scoreAgainstRefs already decodes its own
   // reference batch with bounded concurrency (DECODE_CONCURRENCY); running
   // the Pass-side and Fail-side batches concurrently on top of that would
   // double the number of simultaneous full-resolution JPEG decodes for every

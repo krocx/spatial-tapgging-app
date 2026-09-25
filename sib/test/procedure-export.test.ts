@@ -1,14 +1,14 @@
-// procedure-export.test.ts — end-to-end tests for the Procedure Designer routes.
+// procedure-export.test.ts - end-to-end tests for the Procedure Designer routes.
 //
 // Boots the real Express app against a temp data dir and exercises
 // POST /mindmap/:id/procedure/validate and /export over HTTP, so route wiring,
-// error mapping and provenance persistence are all covered — not just the
+// error mapping and provenance persistence are all covered - not just the
 // compiler and ingestion units beneath them.
 //
 // The two cases that matter most:
-//   • 're-export preserves placement' — the invariant that makes re-syncing a
+//   • 're-export preserves placement' - the invariant that makes re-syncing a
 //     procedure safe.
-//   • the published-guide policy — content-only re-syncs apply LIVE (wording
+//   • the published-guide policy - content-only re-syncs apply LIVE (wording
 //     fixes reach operators immediately, placement untouched); structural
 //     re-syncs need explicit confirmation and unpublish until placed.
 

@@ -1,19 +1,19 @@
-// compass.js — SIB Compass: one persistent, spatial navigator on every SIB web
+// compass.js - SIB Compass: one persistent, spatial navigator on every SIB web
 // surface (home, portal, platform, catalogue, roadmap, wireframe).
 //
 // Why: each surface grew its own way home (⌂, ⚡, "SIB home", nothing). The
-// Compass gives every page the same three things — where am I, where can I
-// go, what's happening — without touching any page's own layout.
+// Compass gives every page the same three things - where am I, where can I
+// go, what's happening - without touching any page's own layout.
 //
 //   • Button, bottom-right (brand hex). Click / `?`-style shortcut `g g` opens.
 //     A dot on the button = a guide run is live right now.
-//   • Map: radial graph — SIB in the centre, six surfaces around it, their
+//   • Map: radial graph - SIB in the centre, six surfaces around it, their
 //     stops fanning out. Current node lit, path from centre drawn. Any node is
 //     one click, leaf to leaf. Live counts from /stats ride on the nodes.
-//   • Breadcrumb line: SIB › Portal › Admin › Device Logs — clickable.
-//   • "Where next?" — up to three chips from the same getting-started logic
+//   • Breadcrumb line: SIB › Portal › Admin › Device Logs - clickable.
+//   • "Where next?" - up to three chips from the same getting-started logic
 //     the portal uses (needs configs → guides → placement → today's log).
-//   • Recents — last three places (localStorage), one tap back.
+//   • Recents - last three places (localStorage), one tap back.
 //   • Keys: g h home · g p portal · g m platform · g r roadmap · g c catalogue
 //     · g w wireframe · g a admin · Esc closes.
 //
@@ -47,7 +47,7 @@
           { id: 'ops',     label: 'Ops Log',         href: '/portal#admin/ops' },
           { id: 'backup',  label: 'Backups',         href: '/portal#admin/backup' },
         ] },
-      { id: 'platform', label: 'Platform', href: '/platform', color: '#5eead4', key: 'm', hint: 'The Chamber — what SIB is',
+      { id: 'platform', label: 'Platform', href: '/platform', color: '#5eead4', key: 'm', hint: 'The Chamber - what SIB is',
         children: [
           { id: 'assess', label: 'Assessment',   href: '/platform#assess' },
           { id: 'long',   label: 'Long version', href: '/platform/long' },
@@ -151,13 +151,13 @@
     const style = document.createElement('style'); style.textContent = css; document.head.appendChild(style);
 
     btn = document.createElement('button');
-    btn.className = 'sibc-btn'; btn.title = 'SIB Compass — where am I, where next (g g)';
+    btn.className = 'sibc-btn'; btn.title = 'SIB Compass - where am I, where next (g g)';
     btn.setAttribute('aria-label', 'Open SIB Compass');
     btn.innerHTML = `<svg viewBox="0 0 28 28" fill="none"><path d="M14 3L24 9V19L14 25L4 19V9L14 3Z" stroke="#4f8ef7" stroke-width="1.6"/>
       <path d="M14 8l3.5 6L14 20l-3.5-6z" fill="#4f8ef7" fill-opacity=".85"/><circle cx="14" cy="14" r="1.6" fill="#0c101c"/></svg><span class="dot"></span>`;
     btn.onclick = toggle;
     document.body.appendChild(btn);
-    // The roadmap canvas keeps a hint bar along the bottom — sit above it.
+    // The roadmap canvas keeps a hint bar along the bottom - sit above it.
     if (location.pathname.startsWith('/roadmap')) { btn.style.bottom = '58px'; }
 
     const crumb = document.createElement('div'); crumb.className = 'sibc-crumb'; crumb.id = 'sibc-crumb';
@@ -193,9 +193,9 @@
       if (!r.ok) return;
       stats = await r.json();
       btn.classList.toggle('live', (stats.liveRuns || 0) > 0);
-      btn.title = (stats.liveRuns || 0) > 0 ? `SIB Compass — ${stats.liveRuns} guide run${stats.liveRuns === 1 ? '' : 's'} live now` : 'SIB Compass — where am I, where next (g g)';
+      btn.title = (stats.liveRuns || 0) > 0 ? `SIB Compass - ${stats.liveRuns} guide run${stats.liveRuns === 1 ? '' : 's'} live now` : 'SIB Compass - where am I, where next (g g)';
       if (veil.classList.contains('open')) renderMap();
-    } catch { /* offline / locked — the map still works without numbers */ }
+    } catch { /* offline / locked - the map still works without numbers */ }
   }
 
   // Live badges per node id: [count, tooltip, isLive]
@@ -217,7 +217,7 @@
     }
   }
 
-  // "Where next?" — the portal's getting-started ladder, condensed.
+  // "Where next?" - the portal's getting-started ladder, condensed.
   function whereNext() {
     if (!stats) return [];
     const out = [];
@@ -237,14 +237,14 @@
     const W = mapEl.clientWidth, H = mapEl.clientHeight;
     // Two ellipses: hubs on the inner one, their stops on the outer one. The
     // foot (where-next / recents) needs ~90 px, so the centre sits a little
-    // high. Radii use the WIDTH — a laptop is wide, use it.
+    // high. Radii use the WIDTH - a laptop is wide, use it.
     const cx = W / 2, cy = (H - 90) / 2 + 10;
     const rx1 = W * 0.26, ry1 = (H - 90) * 0.28;
     const rx2 = W * 0.47, ry2 = (H - 90) * 0.48;
     const hubs = TREE.children;
     const pos = { sib: [cx, cy] };
     // Each hub owns an angular SECTOR sized by how many stops it has, so
-    // Portal (7) gets the wide top arc and Wireframe (0) a sliver — leaves of
+    // Portal (7) gets the wide top arc and Wireframe (0) a sliver - leaves of
     // neighbouring hubs can never land on each other. Portal is centred at 12
     // o'clock; the rest follow clockwise.
     const weights = hubs.map(h => Math.max((h.children || []).length, 2.5));
@@ -316,7 +316,7 @@
     mapEl.innerHTML = html;
     mapEl.querySelector('.sibc-close').onclick = close;
     mapEl.querySelectorAll('a.sibc-node, a.chip').forEach(a => a.addEventListener('click', () => {
-      // Same-page hash links don't reload — close so the page is visible.
+      // Same-page hash links don't reload - close so the page is visible.
       if (a.getAttribute('href').split('#')[0] === location.pathname) setTimeout(close, 60);
     }));
     mapEl.classList.remove('settled');

@@ -1,13 +1,13 @@
-// Author Mode — create and train the pass state for a tag.
+// Author Mode - create and train the pass state for a tag.
 //
 // Flow:
 //   1. QR scan → get { assetId, anchorId }
 //   2. Open session in SIB
 //   3. Tap to place tag (hit-test or camera fallback)
 //   4. Honeycomb capture sphere appears around tag
-//   5. Move camera to each node — auto-capture when aligned
+//   5. Move camera to each node - auto-capture when aligned
 //   6. POST /perception/train with all images
-//   7. Done — show success
+//   7. Done - show success
 
 import * as THREE from 'three';
 import type { QRAnchorContext, PassStateImage, CameraPose } from '@spatial/shared';
@@ -115,7 +115,7 @@ export class AuthorMode {
       metadata: {
         sessionId: session.id,
         authorId:  USER_ID,
-        // QR-relative pose — used by Operator mode to place the spatial guide
+        // QR-relative pose - used by Operator mode to place the spatial guide
         qrRelativeRotation: { x: relQ.x, y: relQ.y, z: relQ.z, w: relQ.w },
         tagDistance:        tagDistance,
       },
@@ -152,7 +152,7 @@ export class AuthorMode {
     // renderer.start() was already called when reticle was shown
 
     this.cb.onStatus(
-      `Move around the tag — ${this.honeycomb.totalCount()} captures needed (0 done)`,
+      `Move around the tag - ${this.honeycomb.totalCount()} captures needed (0 done)`,
     );
 
     // Start per-frame alignment check
@@ -239,10 +239,10 @@ export class AuthorMode {
           const total = this.honeycomb.totalCount();
 
           if (this.honeycomb.isComplete()) {
-            this.cb.onStatus(`✓ All ${total} angles captured — submitting…`);
+            this.cb.onStatus(`✓ All ${total} angles captured - submitting…`);
             this.submitTraining(tagId, anchorId, assetId, sessionId);
           } else {
-            this.cb.onStatus(`✓ ${done}/${total} captured — aim at next glowing ring`);
+            this.cb.onStatus(`✓ ${done}/${total} captured - aim at next glowing ring`);
           }
 
         } else {
@@ -252,7 +252,7 @@ export class AuthorMode {
         }
 
       } else {
-        // No alignment — reset dwell
+        // No alignment - reset dwell
         this.dwellStart = -1;
         this.honeycomb.setDwellProgress(0);
 
@@ -261,7 +261,7 @@ export class AuthorMode {
           const done  = this.honeycomb.capturedCount();
           const total = this.honeycomb.totalCount();
           this.cb.onStatus(
-            `Aim crosshair at the glowing cyan ring — ${done}/${total} captured`,
+            `Aim crosshair at the glowing cyan ring - ${done}/${total} captured`,
           );
         }
       }
@@ -295,7 +295,7 @@ export class AuthorMode {
     return new Promise(resolve => {
       const btn = document.getElementById('btn-place-tag');
       const handler = () => {
-        // Use the reticle's current world position — where the user was aiming.
+        // Use the reticle's current world position - where the user was aiming.
         // Falls back to 1.5 m directly ahead if the reticle wasn't ready yet.
         const pos = this.reticle
           ? this.reticle.getPosition()

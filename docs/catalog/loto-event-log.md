@@ -8,8 +8,8 @@ depends: [iloto-anchors]
 terms: [LOTO, Try Test, Supervisor Override]
 spec: ILOTO.md
 api: |
-  GET /loto/events?anchorId= — immutable audit trail (portal · API key)
-  GET /loto/events/photo/:filename — event photo evidence (portal · API key)
+  GET /loto/events?anchorId= - immutable audit trail (portal · API key)
+  GET /loto/events/photo/:filename - event photo evidence (portal · API key)
 wireframe: iloto
 flow: |
   flowchart LR
@@ -36,7 +36,7 @@ arch: |
     W->>D: GET /loto/status | /loto/my | portal board
     D-->>W: Status = latest event wins - derived, never stored
 ---
-Apply, remove and override are events appended to a log with no edit or delete path —
+Apply, remove and override are events appended to a log with no edit or delete path -
 the server enforces per-kind checklists, the mandatory try test, photo evidence on
 apply, and one-lock-one-person removal. Status is always derived from the log, never
 stored; supervisor override is a distinct event type requiring three OSHA

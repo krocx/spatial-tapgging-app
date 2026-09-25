@@ -1,4 +1,4 @@
-// ARFrameImage.swift — C (2026.4.46): orient raw camera frames to the SCREEN.
+// ARFrameImage.swift - C (2026.4.46): orient raw camera frames to the SCREEN.
 //
 // ARFrame.capturedImage is always the sensor's landscape-right buffer. Every
 // capture site used to rotate it with a hard-coded `.oriented(.right)`, i.e.
@@ -7,7 +7,7 @@
 // lined up and the comparator scored rotated frames against each other.
 //
 // One rule now: rotate by the CURRENT interface orientation, so author and
-// operator captures are both "what the screen showed" — comparable as long
+// operator captures are both "what the screen showed" - comparable as long
 // as both work in the same orientation (the floor workflow).
 
 import ARKit
@@ -27,7 +27,7 @@ enum ARFrameImage {
                     .first(where: { $0.activationState == .foregroundActive })?
                     .interfaceOrientation ?? .portrait
                 switch io {
-                case .landscapeRight:      return .up      // home button right — sensor native
+                case .landscapeRight:      return .up      // home button right - sensor native
                 case .landscapeLeft:       return .down
                 case .portraitUpsideDown:  return .left
                 default:                   return .right   // portrait
@@ -38,7 +38,7 @@ enum ARFrameImage {
     }
 
     /// Raw sensor frame rotated to the screen, longest edge capped at `maxPx`.
-    /// Zero AR artifacts (no pins, panels or ghosts) — the same for every site.
+    /// Zero AR artifacts (no pins, panels or ghosts) - the same for every site.
     static func screenOriented(_ frame: ARFrame, maxPx: CGFloat = 800) -> UIImage? {
         let ci  = CIImage(cvPixelBuffer: frame.capturedImage).oriented(screenOrientation)
         let ctx = CIContext(options: [.useSoftwareRenderer: false])

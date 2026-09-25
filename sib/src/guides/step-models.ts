@@ -1,4 +1,4 @@
-// step-models.ts — U4 (2026.4.45): multiple 3D assets per guide step.
+// step-models.ts - U4 (2026.4.45): multiple 3D assets per guide step.
 //
 // Doctrine (mirrors sib/src/loto/loto-core.ts model slots):
 //   • A step holds up to GUIDE_STEP_MAX_MODELS slots, each its own model,

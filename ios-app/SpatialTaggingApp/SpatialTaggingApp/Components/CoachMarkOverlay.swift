@@ -2,9 +2,9 @@
 // Renders the guided-tour coach mark for a single TourStep.
 //
 // Three display modes chosen automatically:
-//   Welcome / Done   — full-screen dim + centred card (personalised greeting)
-//   Spotlight        — full-screen dim + Canvas cutout + floating coach bubble
-//   Banner           — bottom card with no dim (safe to use over AR views)
+//   Welcome / Done   - full-screen dim + centred card (personalised greeting)
+//   Spotlight        - full-screen dim + Canvas cutout + floating coach bubble
+//   Banner           - bottom card with no dim (safe to use over AR views)
 //
 // Usage (in each participating view):
 //   .overlay {
@@ -185,7 +185,7 @@ struct CoachMarkOverlay: View {
                     .frame(width: bubbleW)
                     .position(x: geo.size.width / 2, y: bubbleMidY)
 
-                // Skip link — always at bottom
+                // Skip link - always at bottom
                 Button("Skip tour") { onSkip() }
                     .font(.caption)
                     .foregroundColor(.white.opacity(0.38))
@@ -239,7 +239,7 @@ struct CoachMarkOverlay: View {
         )
     }
 
-    // ── Banner card (AR views — no dim) ───────────────────────────────────────
+    // ── Banner card (AR views - no dim) ───────────────────────────────────────
 
     private var bannerCard: some View {
         VStack {

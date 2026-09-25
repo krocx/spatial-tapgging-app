@@ -8,8 +8,8 @@ depends: [guide-ingestion, adapter-architecture]
 terms: [Instruction Import, Adapter]
 spec: SERVER-REFERENCE.md
 api: |
-  POST /guides/import — adapter-based instruction import, manual JSON today (portal · API key)
-  GET /guides/step-image/:filename — imported step image (app, portal · API key)
+  POST /guides/import - adapter-based instruction import, manual JSON today (portal · API key)
+  GET /guides/step-image/:filename - imported step image (app, portal · API key)
 wireframe: portal
 arch: |
   sequenceDiagram
@@ -30,6 +30,6 @@ arch: |
 ---
 `POST /guides/import` sits behind a pluggable instruction-source adapter; the portal
 front door accepts Excel (.xlsx, downloadable template, header order-free), JSON
-files or pasted JSON. A parse preview — step count, media, branches, per-step
-warnings — gates the Import button, and a successful import jumps to the Guide
+files or pasted JSON. A parse preview - step count, media, branches, per-step
+warnings - gates the Import button, and a successful import jumps to the Guide
 Library and flashes the new guide.

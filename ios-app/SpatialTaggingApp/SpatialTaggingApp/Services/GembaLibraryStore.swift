@@ -1,4 +1,4 @@
-// GembaLibraryStore.swift — G4: the Audit Reference Library on the phone.
+// GembaLibraryStore.swift - G4: the Audit Reference Library on the phone.
 //
 // One fetch per app launch (refreshed in the background on every walk start),
 // cached in UserDefaults by `version` so the picker opens instantly and still
@@ -30,7 +30,7 @@ final class GembaLibraryStore: ObservableObject {
 
     var isEmpty: Bool { library.focusAreas.isEmpty }
 
-    /// Refresh from SIB. Cheap to call often — skipped if fetched < 60 s ago
+    /// Refresh from SIB. Cheap to call often - skipped if fetched < 60 s ago
     /// unless `force`.
     func refresh(settings: AppSettings, force: Bool = false) async {
         if !force, let t = loadedAt, Date().timeIntervalSince(t) < 60 { return }

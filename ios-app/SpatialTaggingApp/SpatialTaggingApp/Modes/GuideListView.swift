@@ -1,4 +1,4 @@
-// GuideListView.swift — AR OMS Phase 1
+// GuideListView.swift - AR OMS Phase 1
 //
 // Entry point from AnchorHubView for the AR Guide feature.
 //
@@ -10,7 +10,7 @@
 // Operator mode:
 //   • Shows only published guides.
 //   • Steps are fetched in parallel with the guide list so placement status
-//     is known immediately — rows with unplaced steps show a ⚠ badge and
+//     is known immediately - rows with unplaced steps show a ⚠ badge and
 //     tapping them shows an alert instead of starting the session.
 //   • Tap a ready guide → QRScanGateView → ARGuideSessionView.
 
@@ -56,7 +56,7 @@ struct GuideListView: View {
         var id: String { guide.id }
     }
 
-    // All steps placed (or steps not yet loaded — optimistic)
+    // All steps placed (or steps not yet loaded - optimistic)
     private func isReady(_ guide: ARGuide) -> Bool {
         guard let steps = allSteps[guide.id], !steps.isEmpty else { return true }
         return steps.allSatisfy { $0.isPlaced }
@@ -118,7 +118,7 @@ struct GuideListView: View {
         .task { await loadGuides() }
         .sheet(item: $copySource) { source in
             CopyGuideToAnchorSheet(guide: source, currentAnchor: anchor) { copied, target in
-                syncedBanner = "Copied to \(target.assetId) as draft — place its steps there"
+                syncedBanner = "Copied to \(target.assetId) as draft - place its steps there"
                 if target.id == anchor.id { Task { await loadGuides() } }
                 Task {
                     try? await Task.sleep(nanoseconds: 5_000_000_000)
@@ -129,7 +129,7 @@ struct GuideListView: View {
             .environmentObject(settings)
         }
         // Pilot hardening: push any sign-offs that were saved offline. The
-        // guide list is the natural sync point — every run starts here.
+        // guide list is the natural sync point - every run starts here.
         .task {
             guard PendingSessionQueue.count > 0 else { return }
             let n = await PendingSessionQueue.drain(client: SIBClient(settings: settings))
@@ -235,11 +235,11 @@ struct GuideListView: View {
                 showUnplacedAlert  = true
                 return
             }
-            // Use cached steps — no second fetch needed
+            // Use cached steps - no second fetch needed
             pendingGuide = guide
             guideSteps   = allSteps[guide.id] ?? []
             // B: the operator just scanned THIS chamber's QR (front door) and
-            // the key is in memory — the guide re-localizes on its own world
+            // the key is in memory - the guide re-localizes on its own world
             // map, so a second scan of the same code adds nothing but friction.
             if appState.recentlyScanned(anchor.id), appState.anchorEncryptionKey != nil {
                 appState.activeAnchor = anchor
@@ -275,7 +275,7 @@ struct GuideListView: View {
             guides = loaded
 
             // Fetch steps for all guides in parallel so placement status is
-            // known immediately — avoids a second round-trip when Operator taps.
+            // known immediately - avoids a second round-trip when Operator taps.
             var stepsMap: [String: [GuideStep]] = [:]
             await withTaskGroup(of: (String, [GuideStep]).self) { group in
                 for g in loaded {
@@ -395,7 +395,7 @@ private struct GuideRow: View {
 //
 // Anchor picker for "Copy to…". The copy carries steps, media, model
 // assignments and flags; pins, model placement, validation training and
-// sharing stay with the source anchor's world map — the author re-places
+// sharing stay with the source anchor's world map - the author re-places
 // (and re-trains) on the new tool, then publishes.
 
 private struct CopyGuideToAnchorSheet: View {
@@ -420,7 +420,7 @@ private struct CopyGuideToAnchorSheet: View {
                 } header: {
                     Text("Copy \"\(guide.name)\" to…")
                 } footer: {
-                    Text("Steps, photos, 3D model assignments and validation settings are copied. Pin positions and validation training belong to this anchor's world map and are not — place the steps (and retrain) on the new tool, then publish.")
+                    Text("Steps, photos, 3D model assignments and validation settings are copied. Pin positions and validation training belong to this anchor's world map and are not - place the steps (and retrain) on the new tool, then publish.")
                 }
                 Section("Anchor") {
                     if isLoading {
@@ -438,7 +438,7 @@ private struct CopyGuideToAnchorSheet: View {
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(a.assetId).foregroundStyle(.primary)
                                         if a.id == currentAnchor.id {
-                                            Text("This anchor — duplicate here").font(.caption2).foregroundStyle(.secondary)
+                                            Text("This anchor - duplicate here").font(.caption2).foregroundStyle(.secondary)
                                         }
                                     }
                                     Spacer()

@@ -1,4 +1,4 @@
-// HoneycombHUD.swift — Phase 2B
+// HoneycombHUD.swift - Phase 2B
 // Draws a 7-cell honeycomb overlay showing viewpoint capture progress.
 //
 // Cell layout (pointy-top hexagons, indices):
@@ -35,7 +35,7 @@ struct HoneycombHUD: View {
                     drawHexBackground(in: ctx, center: center, index: i)
                 }
             }
-            // ── Icons (SwiftUI Image — supports colour / animation) ────────────
+            // ── Icons (SwiftUI Image - supports colour / animation) ────────────
             ForEach(0..<7, id: \.self) { i in
                 Image(systemName: symbol(for: i))
                     .font(.system(size: 11, weight: .bold))

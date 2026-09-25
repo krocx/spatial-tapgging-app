@@ -17,7 +17,7 @@ arch: |
     AR --> ADJ["Per-slot gestures: H/V pan, pinch, Y-rotate - saved as slot offsets"]
     LEG["Legacy single-model points"] -.lift into one synthetic slot.-> M
 ---
-Each point holds up to three model slots — lock, tag, hasp — rendered ghost while the
+Each point holds up to three model slots - lock, tag, hasp - rendered ghost while the
 point is clear and solid the moment a lock is applied, each with its own
 device-owned AR placement (pan / pinch / Y-rotate). Unadjusted slots fan out to avoid
 overlap; changing a slot's model resets that slot's placement server-side, and legacy

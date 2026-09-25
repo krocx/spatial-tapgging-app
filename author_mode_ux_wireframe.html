@@ -1,4 +1,4 @@
-<h2 class="sr-only">Author mode UX wireframe — 11 interactive screens showing the redesigned spatial tagging workflow</h2>
+<h2 class="sr-only">Author mode UX wireframe - 11 interactive screens showing the redesigned spatial tagging workflow</h2>
 <style>
 .pscr{display:flex;flex-direction:column;height:100%;background:#080810;color:#f0f0f8;font-size:13px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow:hidden;}
 .pnav{display:flex;justify-content:space-between;align-items:center;padding:10px 14px 8px;}
@@ -48,8 +48,8 @@
 <div style="font-family:var(--font-sans);padding:1rem 0;">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;gap:12px;flex-wrap:wrap;">
     <div>
-      <h3 style="font-size:16px;font-weight:500;margin:0;color:var(--color-text-primary);">Author mode — redesigned UX</h3>
-      <p style="font-size:13px;color:var(--color-text-secondary);margin:3px 0 0;">Screen <span id="snum">1</span> of 11 — <span id="slbl">Anchor directory</span></p>
+      <h3 style="font-size:16px;font-weight:500;margin:0;color:var(--color-text-primary);">Author mode - redesigned UX</h3>
+      <p style="font-size:13px;color:var(--color-text-secondary);margin:3px 0 0;">Screen <span id="snum">1</span> of 11 - <span id="slbl">Anchor directory</span></p>
     </div>
     <div style="display:flex;gap:8px;">
       <button onclick="pS()" id="bprev" style="font-size:13px;">← Prev</button>
@@ -89,9 +89,9 @@ const SC=[
   title:'Anchor directory',sub:'Author mode entry point',
   flow:'Mode selection → anchor directory → create new or open existing anchor',
   notes:[
-    ['ti-layout-list','All anchors listed with live training status — no need to enter AR just to check.'],
+    ['ti-layout-list','All anchors listed with live training status - no need to enter AR just to check.'],
     ['ti-shield-check','Green = all trained, orange = gaps. Author knows what needs attention before going on-site.'],
-    ['ti-world','Web portal shortcut — team members can pre-create anchors via browser before a site visit.'],
+    ['ti-world','Web portal shortcut - team members can pre-create anchors via browser before a site visit.'],
     ['ti-plus','"+ New" opens the 3-step anchor creation wizard.'],
   ],
   why:'Author now has a proper landing screen. No more dropping into AR blind.',
@@ -117,11 +117,11 @@ const SC=[
   </div>`
 },
 {
-  title:'New anchor — step 1',sub:'Name the anchor location',
+  title:'New anchor - step 1',sub:'Name the anchor location',
   flow:'Anchor directory → create new → step 1 → step 2',
   notes:[
     ['ti-pencil','Human-readable name used throughout the app and in the web portal.'],
-    ['ti-id','Anchor ID is auto-generated — author doesn\'t need to manage UUIDs.'],
+    ['ti-id','Anchor ID is auto-generated - author doesn\'t need to manage UUIDs.'],
     ['ti-info-circle','Info note sets the expectation: a QR code will define the physical origin in the next step.'],
   ],
   why:'Simple naming step, no confusion. Single call-to-action.',
@@ -146,15 +146,15 @@ const SC=[
   </div>`
 },
 {
-  title:'New anchor — step 2',sub:'Generate and place the QR anchor',
+  title:'New anchor - step 2',sub:'Generate and place the QR anchor',
   flow:'Step 1 → step 2 → step 3 (scan to lock)',
   notes:[
-    ['ti-qrcode','QR is generated immediately — author can print before going on-site.'],
+    ['ti-qrcode','QR is generated immediately - author can print before going on-site.'],
     ['ti-map-pin','Clear 3-step instructions explain the physical action required.'],
     ['ti-ruler','Print size selector ensures the QR is physically accurate for ARKit pose detection.'],
     ['ti-alert-triangle','This step is the key fix: QR must be physically placed BEFORE any tags are created.'],
   ],
-  why:'Core architectural fix — establishes physical origin before any AR work begins.',
+  why:'Core architectural fix - establishes physical origin before any AR work begins.',
   html:`<div class="pscr">
     <div class="pnav"><span class="pback">‹ Back</span><span class="ptitle">New anchor</span><span></span></div>
     <div class="step-row">
@@ -175,16 +175,16 @@ const SC=[
       </div>
     </div>
     <div class="pbtn gho" style="margin-top:4px;display:flex;justify-content:center;gap:8px;align-items:center;"><i class="ti ti-printer" style="font-size:14px;"></i>Print / Share QR</div>
-    <div class="pbtn pri" style="margin-top:4px;">I've placed it — Scan now →</div>
+    <div class="pbtn pri" style="margin-top:4px;">I've placed it - Scan now →</div>
   </div>`
 },
 {
-  title:'New anchor — step 3',sub:'Scan QR to lock the coordinate origin',
+  title:'New anchor - step 3',sub:'Scan QR to lock the coordinate origin',
   flow:'Step 2 → step 3 → anchor hub (origin locked)',
   notes:[
-    ['ti-lock','Scanning the QR captures its 6DOF world transform — all subsequent tags are stored relative to this.'],
+    ['ti-lock','Scanning the QR captures its 6DOF world transform - all subsequent tags are stored relative to this.'],
     ['ti-check','\"Origin locked\" confirmation shown with the anchor name before proceeding.'],
-    ['ti-player-skip-forward','\"Skip\" escape hatch exists for edge cases — author can scan later from the hub.'],
+    ['ti-player-skip-forward','\"Skip\" escape hatch exists for edge cases - author can scan later from the hub.'],
   ],
   why:'The QR scan here permanently defines the coordinate frame for every tag in this anchor.',
   html:`<div class="pscr">
@@ -203,7 +203,7 @@ const SC=[
     <div style="background:#11111c;padding:14px 13px 20px;">
       <div style="display:flex;align-items:center;gap:7px;margin-bottom:10px;"><span style="color:#3dd68c;font-size:12px;">●</span><span style="color:rgba(240,240,248,0.65);font-size:12px;">Pump-Station-A · origin set</span></div>
       <div class="pbtn pri" style="margin:0 0 6px;">Start placing tags →</div>
-      <div style="text-align:center;margin-top:6px;color:rgba(240,240,248,0.35);font-size:12px;">Skip — I'll scan later</div>
+      <div style="text-align:center;margin-top:6px;color:rgba(240,240,248,0.35);font-size:12px;">Skip - I'll scan later</div>
     </div>
   </div>`
 },
@@ -212,8 +212,8 @@ const SC=[
   flow:'Anchor directory → anchor hub → enter AR session',
   notes:[
     ['ti-layout-dashboard','One screen for everything: QR code, tags, training status, and session entry.'],
-    ['ti-player-play','"Enter AR session" always triggers a QR re-scan first — guarantees coordinate accuracy on every visit.'],
-    ['ti-circle-check','Trained/untrained status visible without entering AR — useful for remote planning.'],
+    ['ti-player-play','"Enter AR session" always triggers a QR re-scan first - guarantees coordinate accuracy on every visit.'],
+    ['ti-circle-check','Trained/untrained status visible without entering AR - useful for remote planning.'],
     ['ti-player-play-filled','Individual "Train →" taps on untrained tags start training from here (navigates to the tag in AR).'],
   ],
   why:'Central hub replaces the old "drop straight into AR" entry. Author sees what\'s done and what isn\'t.',
@@ -250,9 +250,9 @@ const SC=[
   title:'QR scan gate',sub:'Every AR session starts here',
   flow:'Anchor hub → QR scan gate → AR placement view',
   notes:[
-    ['ti-lock','QR scan runs at the start of every Author and Operator session — eliminates coordinate drift across devices.'],
+    ['ti-lock','QR scan runs at the start of every Author and Operator session - eliminates coordinate drift across devices.'],
     ['ti-device-mobile','Scanning re-derives the anchor transform for this specific device and environment conditions.'],
-    ['ti-qrcode','The QR payload also carries the encryption key — one scan unlocks both position and tag data.'],
+    ['ti-qrcode','The QR payload also carries the encryption key - one scan unlocks both position and tag data.'],
   ],
   why:'Enforces coordinate accuracy without burdening the author with manual calibration steps.',
   html:`<div class="pscr" style="position:relative;">
@@ -278,12 +278,12 @@ const SC=[
   title:'AR placement view',sub:'Place and manage tags in AR',
   flow:'QR scan gate → AR placement → tag details sheet',
   notes:[
-    ['ti-crosshair','Measure-style crosshair turns cyan when a surface is detected — tap to place exactly there.'],
+    ['ti-crosshair','Measure-style crosshair turns cyan when a surface is detected - tap to place exactly there.'],
     ['ti-circle-dashed','Existing tags shown as glowing rings at their stored anchor-relative positions.'],
     ['ti-list','\"Tag list\" button opens the train-later sheet without leaving the AR session.'],
     ['ti-circle-plus','"+" FAB places a new tag at the current crosshair surface point.'],
   ],
-  why:'Clean AR canvas — author sees all existing tags in correct positions and can add more.',
+  why:'Clean AR canvas - author sees all existing tags in correct positions and can add more.',
   html:`<div class="pscr" style="position:relative;">
     <div class="pnav" style="background:rgba(0,0,0,0.55);position:relative;z-index:2;">
       <span style="color:rgba(240,240,248,0.7);font-size:14px;">Done</span>
@@ -312,15 +312,15 @@ const SC=[
   </div>`
 },
 {
-  title:'Tag details sheet',sub:'Fill in details — train now or later',
+  title:'Tag details sheet',sub:'Fill in details - train now or later',
   flow:'AR placement → tag details → training flow OR back to AR placement',
   notes:[
-    ['ti-player-play','"Train now" is the primary action — best practice, keeps context fresh while author is at the location.'],
+    ['ti-player-play','"Train now" is the primary action - best practice, keeps context fresh while author is at the location.'],
     ['ti-bookmark','"Save & train later" stores the tag and returns author to AR to place the next one.'],
-    ['ti-map-pin','Position is already locked to anchor-relative coords at the moment of tap — no additional QR scan needed here.'],
+    ['ti-map-pin','Position is already locked to anchor-relative coords at the moment of tap - no additional QR scan needed here.'],
     ['ti-x','Cancel discards the pending marker and returns to the AR view.'],
   ],
-  why:'Addresses the "train now vs later" split. Position is stored regardless — training is optional at this point.',
+  why:'Addresses the "train now vs later" split. Position is stored regardless - training is optional at this point.',
   html:`<div class="pscr" style="position:relative;">
     <div class="ar-bg" style="height:190px;min-height:0;flex:0 0 190px;">
       <div class="ring" style="top:40%;left:35%;transform:translate(-50%,-50%);opacity:0.4;"></div>
@@ -352,8 +352,8 @@ const SC=[
   title:'Training flow',sub:'Existing honeycomb / cone / OCR capture UX',
   flow:'Tag details → training flow → back to AR placement view (not anchor hub)',
   notes:[
-    ['ti-refresh','No changes to HoneycombCaptureView, ConeCaptureView, or OCRCaptureView — existing UX is solid.'],
-    ['ti-arrow-back','On training complete, author returns to the AR placement view — not the hub — so they can place the next tag immediately.'],
+    ['ti-refresh','No changes to HoneycombCaptureView, ConeCaptureView, or OCRCaptureView - existing UX is solid.'],
+    ['ti-arrow-back','On training complete, author returns to the AR placement view - not the hub - so they can place the next tag immediately.'],
     ['ti-3d-cube-sphere','3D arrow guide already implemented: floats in world space pointing toward the next capture position.'],
   ],
   why:'Training UX is already well-designed. Only the entry and exit paths change.',
@@ -378,18 +378,18 @@ const SC=[
       <div style="width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:18px solid #22ddff;transform:rotate(45deg);margin-bottom:16px;opacity:0.8;"></div>
       <div style="color:rgba(240,240,248,0.55);font-size:12px;">Move to position 2</div>
       <div style="margin-top:10px;background:rgba(255,255,255,0.05);border-radius:20px;padding:4px 12px;">
-        <span style="color:rgba(240,240,248,0.3);font-size:10px;">Existing training UX — no changes</span>
+        <span style="color:rgba(240,240,248,0.3);font-size:10px;">Existing training UX - no changes</span>
       </div>
     </div>
   </div>`
 },
 {
-  title:'Tag list — train later',sub:'Sheet over AR, accessible from placement view',
+  title:'Tag list - train later',sub:'Sheet over AR, accessible from placement view',
   flow:'AR placement → tap "Tag list" → select "Train →" → tag navigation',
   notes:[
-    ['ti-list','Full tag list with training status — author sees at a glance what still needs training.'],
+    ['ti-list','Full tag list with training status - author sees at a glance what still needs training.'],
     ['ti-player-play','Tapping "Train →" closes the sheet and highlights that specific tag in the AR view.'],
-    ['ti-layers-intersect','Sheet overlays the AR view — author stays in the session context, no mode switching.'],
+    ['ti-layers-intersect','Sheet overlays the AR view - author stays in the session context, no mode switching.'],
   ],
   why:'Train-later workflow provides clear visibility without forcing the author to restart the whole flow.',
   html:`<div class="pscr" style="position:relative;">
@@ -400,7 +400,7 @@ const SC=[
     <div class="sheet" style="flex:1;">
       <div class="sh-hdl"></div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-        <div style="font-size:15px;font-weight:500;">Tags — Pump-Station-A</div>
+        <div style="font-size:15px;font-weight:500;">Tags - Pump-Station-A</div>
         <i class="ti ti-x" style="font-size:16px;color:rgba(240,240,248,0.45);"></i>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.07);">
@@ -423,11 +423,11 @@ const SC=[
   title:'Tag navigation in AR',sub:'Walk to the selected tag',
   flow:'Tag list → tag navigation → training flow',
   notes:[
-    ['ti-focus-2','Selected tag pulses brightly. All other tags are dimmed — no confusion about which one to go to.'],
-    ['ti-ruler','Distance pill updates in real time — gives the author a sense of how far to walk.'],
+    ['ti-focus-2','Selected tag pulses brightly. All other tags are dimmed - no confusion about which one to go to.'],
+    ['ti-ruler','Distance pill updates in real time - gives the author a sense of how far to walk.'],
     ['ti-player-play','"Start training" button appears only when the author is within training proximity of the tag.'],
   ],
-  why:'Solves the "where is this tag?" problem — AR navigation replaces verbal directions or guesswork.',
+  why:'Solves the "where is this tag?" problem - AR navigation replaces verbal directions or guesswork.',
   html:`<div class="pscr" style="position:relative;">
     <div class="pnav" style="background:rgba(0,0,0,0.55);position:relative;z-index:2;">
       <span class="pback">‹ Tag list</span><span class="ptitle">Valve Label</span><span></span>
@@ -448,7 +448,7 @@ const SC=[
     </div>
     <div style="background:#0a0a14;padding:12px 13px 16px;">
       <div class="pbtn pri" style="margin:0 0 5px;display:flex;justify-content:center;gap:8px;align-items:center;font-size:13px;padding:13px;"><i class="ti ti-player-play" style="font-size:12px;"></i>Start training</div>
-      <div style="text-align:center;color:#3dd68c;font-size:11px;margin-top:4px;">You're close enough — ready to train</div>
+      <div style="text-align:center;color:#3dd68c;font-size:11px;margin-top:4px;">You're close enough - ready to train</div>
     </div>
   </div>`
 }

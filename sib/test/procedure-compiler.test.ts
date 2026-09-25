@@ -1,4 +1,4 @@
-// procedure-compiler.test.ts — unit tests for the Procedure Designer compiler.
+// procedure-compiler.test.ts - unit tests for the Procedure Designer compiler.
 // Run: npm run test:sib   (node:test via tsx)
 //
 // The compiler is pure, so these tests need no stores, server or temp data dir.
@@ -6,7 +6,7 @@
 // Several cases below are deliberately the graph shapes that broke the Guide
 // Library graph renderer: a failure branch whose target is also the sequential
 // tail, nested forks, and a retry loop back to step 1. That last one is the
-// reason start detection ignores incoming `failure` edges — treating them as
+// reason start detection ignores incoming `failure` edges - treating them as
 // disqualifying reported a perfectly ordinary procedure as having no entry.
 
 import { test } from 'node:test';
@@ -44,7 +44,7 @@ test('linear procedure numbers steps in order', () => {
   assert.deepEqual(r.guide?.steps.map(s => s.title), ['Check', 'Inspect', 'Done']);
 });
 
-test('success skips ahead while failure detours — the shape that collapsed the portal graph', () => {
+test('success skips ahead while failure detours - the shape that collapsed the portal graph', () => {
   const r = compileProcedure(M(
     [N('a', 0, 0, 'Check oil', 'x'), N('b', 200, 0, 'Inspect hoses', 'x'),
      N('c', 100, 120, 'Top up oil', 'x'), N('d', 300, 0, 'Warm up', 'x')],

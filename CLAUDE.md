@@ -1,4 +1,4 @@
-# Working in this repo — design doctrine
+# Working in this repo - design doctrine
 
 SIB has one design system: `sib/portal/brand/` (doctrine in `docs/BRAND.md`,
 living guide at `/brand`). Anything that renders on a SIB web page follows it,

@@ -1,15 +1,15 @@
-// geometry.ts — node dimensions + edge endpoint math (pure, UI-free).
+// geometry.ts - node dimensions + edge endpoint math (pure, UI-free).
 //
 // Node HEIGHT is content-derived: the card grows to fit its wrapped title
 // (up to MAX_LINES) instead of truncating at 20 characters. Width stays fixed
-// so lanes and layouts keep their rhythm. Everything that measures a node —
-// edge anchors, minimap, marquee, export — must go through nodeHeight()/
+// so lanes and layouts keep their rhythm. Everything that measures a node -
+// edge anchors, minimap, marquee, export - must go through nodeHeight()/
 // nodeCenter() rather than the NODE_H constant, or arrows will pin to where
 // the node WOULD end at one line, not where it does.
 import type { MindmapNode } from '@spatial/shared';
 
 export const NODE_W = 160;
-/** Base (minimum) height — a card with a one- or two-line title. */
+/** Base (minimum) height - a card with a one- or two-line title. */
 export const NODE_H = 48;
 
 /** Text layout inside the card: ~13px font in a 160px card with padding. */
@@ -80,7 +80,7 @@ const DIA_OVER_X = 10;
 /** Hexagon end-cap depth. */
 const HEX_CAP = 14;
 
-/** Is (x, y) — in LOCAL coords, origin at the shape's center — inside? */
+/** Is (x, y) - in LOCAL coords, origin at the shape's center - inside? */
 function insideShape(shape: Shape, hw: number, hh: number, x: number, y: number): boolean {
   switch (shape) {
     case 'diamond':
@@ -116,7 +116,7 @@ function insideShape(shape: Shape, hw: number, hh: number, x: number, y: number)
  * `toward`, plus a 4px margin so arrowheads sit just off the outline.
  * Shape-aware: a diamond's edge attaches to the diamond, not its bounding
  * box (the old rectangle-only math left visible gaps on polygon shapes).
- * Implemented as a bisection on insideShape — one code path for all shapes.
+ * Implemented as a bisection on insideShape - one code path for all shapes.
  */
 export function borderPoint(n: MindmapNode, toward: Point): Point {
   const c = nodeCenter(n);
@@ -144,7 +144,7 @@ const PORT_DIR: Record<string, Point> = {
   top: { x: 0, y: -1 }, right: { x: 1, y: 0 }, bottom: { x: 0, y: 1 }, left: { x: -1, y: 0 },
 };
 
-/** Outward unit normal of a port — used to shape curves leaving that side. */
+/** Outward unit normal of a port - used to shape curves leaving that side. */
 export function portNormal(port: string): Point {
   return PORT_DIR[port] ?? { x: 1, y: 0 };
 }

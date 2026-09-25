@@ -1,15 +1,15 @@
-// ValidationResultsView.swift — Phase 2E
+// ValidationResultsView.swift - Phase 2E
 // Summary sheet shown after "End Inspection":
 //   • Overall anchor status (PASS / FAIL / PARTIAL)
 //   • Pass/fail/pending counts + progress bar
 //   • Per-tag rows: label · type · PASS/FAIL badge · confidence %
 //
 // Callbacks:
-//   onClose                 — dismiss sheet, return to AR reviewing view (see markers)
-//   onReInspect(failedOnly) — dismiss + reset markers for a new snapshot
+//   onClose                 - dismiss sheet, return to AR reviewing view (see markers)
+//   onReInspect(failedOnly) - dismiss + reset markers for a new snapshot
 //                             true  = only re-validate FAIL/PENDING tags (keep PASS green)
 //                             false = re-validate all tags from scratch
-//   onNewScan               — dismiss + start AnchorScanView for a different anchor
+//   onNewScan               - dismiss + start AnchorScanView for a different anchor
 
 import SwiftUI
 
@@ -31,7 +31,7 @@ struct ValidationResultsView: View {
     var body: some View {
         NavigationStack {
             List {
-                // #67: missing-encryption-key warning from the server — explains
+                // #67: missing-encryption-key warning from the server - explains
                 // a uniform ~0% confidence across every tag.
                 if let warning = result.warning {
                     Section {
@@ -52,11 +52,11 @@ struct ValidationResultsView: View {
             .navigationTitle("Inspection Results")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                // Left — go back to AR view (markers still coloured)
+                // Left - go back to AR view (markers still coloured)
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") { onClose() }
                 }
-                // Right — scan a different anchor
+                // Right - scan a different anchor
                 ToolbarItem(placement: .primaryAction) {
                     Button("New Scan") { onNewScan() }
                         .bold()
@@ -222,19 +222,19 @@ private struct TagResultRow: View {
     var note:            String?             = nil
 
     // #72: PENDING has exactly one cause today (no Pass reference trained
-    // yet for this tag) — tapping the row surfaces that explicitly instead
+    // yet for this tag) - tapping the row surfaces that explicitly instead
     // of leaving the operator with an unexplained "Not trained" dead end.
     @State private var showingRecoveryInfo = false
 
     private var isPending: Bool { tagResult.status == .pending }
     private var isPass:    Bool { tagResult.status == .pass    }
-    // #66: a decrypt failure is a pipeline error, not a real visual mismatch —
+    // #66: a decrypt failure is a pipeline error, not a real visual mismatch -
     // tapping the row explains that distinctly instead of leaving it looking
     // like an ordinary (and confusing) ~0% confidence FAIL.
     private var isDecryptFailure: Bool { tagResult.errorReason == "DECRYPT_FAILED" }
     private var isTappableForInfo: Bool { isPending || isDecryptFailure }
 
-    // Phase 4 — whether the operator explicitly confirmed this result via the sheet.
+    // Phase 4 - whether the operator explicitly confirmed this result via the sheet.
     private var isConfirmedPass: Bool { inspectionState == .inspectedPass }
     private var isConfirmedFail: Bool { inspectionState == .inspectedFail }
 
@@ -250,7 +250,7 @@ private struct TagResultRow: View {
                     .font(.subheadline.bold())
                     .lineLimit(1)
 
-                // Coloured type chip — mirrors AuthorTagRow visual style
+                // Coloured type chip - mirrors AuthorTagRow visual style
                 HStack(spacing: 4) {
                     Image(systemName: tagResult.tagType.iconName)
                         .font(.system(size: 9, weight: .semibold))
@@ -294,7 +294,7 @@ private struct TagResultRow: View {
             Button("OK", role: .cancel) {}
         } message: {
             if isDecryptFailure {
-                Text("\"\(tagResult.tagLabel)\"'s stored reference images couldn't be decrypted, so this isn't a real mismatch — it's a key problem. Make sure you scanned the app-generated QR (Author → QR icon) and that the part wasn't trained under a different key, then re-run this inspection.")
+                Text("\"\(tagResult.tagLabel)\"'s stored reference images couldn't be decrypted, so this isn't a real mismatch - it's a key problem. Make sure you scanned the app-generated QR (Author → QR icon) and that the part wasn't trained under a different key, then re-run this inspection.")
             } else {
                 Text("\"\(tagResult.tagLabel)\" has no Pass reference recorded yet, so it can't be validated. Switch to Author Mode and tap Train on this tag, then re-run this inspection.")
             }
@@ -312,10 +312,10 @@ private struct TagResultRow: View {
 
     @ViewBuilder
     private var statusBadge: some View {
-        // #66: check decrypt failure first — it overrides the FAIL badge with
+        // #66: check decrypt failure first - it overrides the FAIL badge with
         // a distinct one so it doesn't read as an ordinary visual mismatch.
         if isDecryptFailure {
-            Label("Couldn't verify — tap for details", systemImage: "lock.trianglebadge.exclamationmark")
+            Label("Couldn't verify - tap for details", systemImage: "lock.trianglebadge.exclamationmark")
                 .font(.caption)
                 .foregroundStyle(.orange)
         } else {
@@ -329,7 +329,7 @@ private struct TagResultRow: View {
                     .font(.caption.bold())
                     .foregroundStyle(.red)
             case .pending:
-                Label("Not trained — tap for details", systemImage: "clock")
+                Label("Not trained - tap for details", systemImage: "clock")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

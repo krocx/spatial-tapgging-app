@@ -8,8 +8,8 @@ depends: [check-ontology]
 terms: [Pass State, Train in App]
 spec: SIB-TRAINING-FEATURES.md
 api: |
-  POST /perception/train — encrypted multi-angle reference upload (app · API key)
-  GET /perception/pass-state/:tagId — training state + calibration (app · API key)
+  POST /perception/train - encrypted multi-angle reference upload (app · API key)
+  GET /perception/pass-state/:tagId - training state + calibration (app · API key)
 wireframe: author
 arch: |
   sequenceDiagram
@@ -28,4 +28,4 @@ arch: |
 Guided reference capture: a 19-zone cone dome or 7-point honeycomb hemisphere walks
 the author around the feature, recording angles with depth metadata. Tags are trained
 on both the correct state and the defect state (dual PASS/FAIL references) for sharper
-discrimination — on the shop floor, by the person who knows the part.
+discrimination - on the shop floor, by the person who knows the part.

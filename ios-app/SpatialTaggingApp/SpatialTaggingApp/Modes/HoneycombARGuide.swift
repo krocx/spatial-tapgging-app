@@ -1,4 +1,4 @@
-// HoneycombARGuide.swift — Phase 3 (3D world-space navigation arrow)
+// HoneycombARGuide.swift - Phase 3 (3D world-space navigation arrow)
 // Places 7 target sphere nodes in the AR world around the inspection point.
 // The user physically moves to each sphere; HoneycombCaptureView fires
 // auto-capture once the camera stays within proximityThreshold for holdDuration.
@@ -33,7 +33,7 @@ final class HoneycombARGuide {
     private var targetNodes: [SCNNode] = []   // parallel to targetPositions
 
     // 3D navigation arrow
-    private var arrowNode:   SCNNode?   // root — repositioned each update
+    private var arrowNode:   SCNNode?   // root - repositioned each update
     private var inspectionPoint: simd_float3 = .zero
 
     // ── Init ──────────────────────────────────────────────────────────────────
@@ -42,7 +42,7 @@ final class HoneycombARGuide {
     ///
     /// - Parameters:
     ///   - initialCameraTransform: The camera's 4×4 world transform at the moment
-    ///     the user taps Start — used to derive the hemisphere orientation axes.
+    ///     the user taps Start - used to derive the hemisphere orientation axes.
     ///   - inspectionPoint: Explicit world-space position of the tag being trained,
     ///     recovered from the anchor-relative metadata via the re-detected QR transform.
     ///     When nil, falls back to 0.5 m ahead of the camera (original behaviour).
@@ -91,7 +91,7 @@ final class HoneycombARGuide {
             // Reset then apply to avoid cumulative drift
             arrow.simdOrientation = simd_quatf(angle: angle, axis: simd_normalize(cross))
         } else if simd_dot(yAxis, dir) < 0 {
-            // Exactly antiparallel — flip 180° around X
+            // Exactly antiparallel - flip 180° around X
             arrow.simdOrientation = simd_quatf(angle: .pi, axis: simd_float3(1,0,0))
         } else {
             arrow.simdOrientation = simd_quatf(ix: 0, iy: 0, iz: 0, r: 1) // identity
@@ -117,14 +117,14 @@ final class HoneycombARGuide {
     }
 
     /// Temporarily hide / show all guide nodes so that a snapshot taken between
-    /// hide() and show() captures only the clean camera feed — no AR sphere
+    /// hide() and show() captures only the clean camera feed - no AR sphere
     /// artifacts in the training image.  Call hide before snapshot, show after.
     func setNodesHidden(_ hidden: Bool) {
         allNodes.forEach { $0.isHidden = hidden }
         arrowNode?.isHidden = hidden
     }
 
-    /// Hide the navigation arrow when the camera is already in position —
+    /// Hide the navigation arrow when the camera is already in position -
     /// the proximity ring replaces it as the capture indicator.
     func setArrowVisible(_ visible: Bool) {
         arrowNode?.isHidden = !visible
@@ -139,7 +139,7 @@ final class HoneycombARGuide {
         let right   = simd_float3( t.columns.0.x,  t.columns.0.y,  t.columns.0.z)
         let up      = simd_float3( t.columns.1.x,  t.columns.1.y,  t.columns.1.z)
 
-        // Inspection point — anchored to tag world position when available,
+        // Inspection point - anchored to tag world position when available,
         // otherwise 0.5 m ahead of the camera (fallback for new or unpositioned tags).
         let inspPt: simd_float3
         let back:   simd_float3     // direction from inspPt toward camera
@@ -193,7 +193,7 @@ final class HoneycombARGuide {
             allNodes.append(tNode)
         }
 
-        // 3D navigation arrow — starts hidden, shown on first update()
+        // 3D navigation arrow - starts hidden, shown on first update()
         let arrow = makeArrowNode()
         arrow.isHidden = true
         scene.rootNode.addChildNode(arrow)

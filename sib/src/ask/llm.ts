@@ -1,4 +1,4 @@
-// ask/llm.ts — the one OpenAI-compatible chat call SIB makes (Ask SIB and,
+// ask/llm.ts - the one OpenAI-compatible chat call SIB makes (Ask SIB and,
 // since C2, contextual hints). Runtime is an env-var decision: llama.cpp's
 // llama-server, Ollama or any /v1/chat/completions endpoint.
 //

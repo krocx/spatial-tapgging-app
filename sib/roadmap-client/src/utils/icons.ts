@@ -1,16 +1,16 @@
-// icons.ts — the AppliedX iconography set (single source of truth).
+// icons.ts - the AppliedX iconography set (single source of truth).
 //
 // Every icon is one stroke-style SVG path on a 24×24 grid: 2 px round strokes,
 // fill=none, drawn with stroke=currentColor so the same path reads on the dark
 // node cards (white), the light inspector (slate) and the night inspector.
-// No icon fonts, no emoji, no external requests — everything ships in the
+// No icon fonts, no emoji, no external requests - everything ships in the
 // bundle. `docs/iconography.html` + `docs/ICONOGRAPHY.md` are GENERATED from
 // this file (`npm run icons:doc`) so the library can never drift from the code.
 //
 // Groups:
-//   node   — pickable on a node in the Inspector (ICON_NAMES)
-//   step   — step-content glyphs on a procedure node (voice / image / model)
-//   ui     — chrome: toolbar, map list, panels, issues
+//   node   - pickable on a node in the Inspector (ICON_NAMES)
+//   step   - step-content glyphs on a procedure node (voice / image / model)
+//   ui     - chrome: toolbar, map list, panels, issues
 //
 // To add an icon: add a path + meta here, run `npm run icons:doc`, rebuild.
 
@@ -25,7 +25,7 @@ export interface IconMeta {
 }
 
 export const ICON_PATHS: Record<string, string> = {
-  // ── node — planning / roadmap ─────────────────────────────────────────────
+  // ── node - planning / roadmap ─────────────────────────────────────────────
   flag:      'M6 21V4h11l-2 3.5 2 3.5H6',
   star:      'M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.8-5.2 2.8 1-5.8L3.5 9.7l5.9-.9z',
   bolt:      'M13 2.5 5.5 13.5H11l-1 8 7.5-11h-5.5z',
@@ -47,7 +47,7 @@ export const ICON_PATHS: Record<string, string> = {
   user:      'M12 11.5a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4.5 20.5c0-3.5 3.4-5.5 7.5-5.5s7.5 2 7.5 5.5',
   clock:     'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zm0-13.5V12l3.5 2',
 
-  // ── node — fab / procedure vocabulary ─────────────────────────────────────
+  // ── node - fab / procedure vocabulary ─────────────────────────────────────
   chamber:   'M5 8.5h14M5 8.5v8.5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8.5M5 8.5 7 5h10l2 3.5M9 12.5h6M12 19v2.5',
   wafer:     'M12 20.5a8.5 8.5 0 1 0 0-17 8.5 8.5 0 0 0 0 17zM6 8.5h12M6 15.5h12M9 5v14M15 5v14',
   gasline:   'M2.5 9h4.5l2 3-2 3H2.5M21.5 9H17l-2 3 2 3h4.5M9 12h6M12 5.5V8m0 8v2.5M10 5.5h4m-4 13h4',

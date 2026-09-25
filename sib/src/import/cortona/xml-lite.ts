@@ -1,7 +1,7 @@
-// xml-lite.ts — tiny dependency-free XML reader for the Cortona3D side files.
+// xml-lite.ts - tiny dependency-free XML reader for the Cortona3D side files.
 // Builds a plain element tree; namespaces are stripped to local names; CDATA,
 // comments, PIs and the five predefined + numeric entities are handled.
-// Not a validating parser and not for untrusted input at scale — the inputs
+// Not a validating parser and not for untrusted input at scale - the inputs
 // here are ≤ a few MB of tool-generated XML.
 
 export interface XmlEl {
@@ -37,7 +37,7 @@ export function parseXml(src: string): XmlEl {
     if (src.startsWith('<!--', lt)) { const e = src.indexOf('-->', lt + 4); i = e < 0 ? n : e + 3; continue; }
     if (src.startsWith('<![CDATA[', lt)) { const e = src.indexOf(']]>', lt + 9); cur.text += src.slice(lt + 9, e < 0 ? n : e); i = e < 0 ? n : e + 3; continue; }
     if (src.startsWith('<?', lt)) { const e = src.indexOf('?>', lt + 2); i = e < 0 ? n : e + 2; continue; }
-    if (src.startsWith('<!', lt)) { // DOCTYPE etc. — skip to matching '>' (no internal subset support)
+    if (src.startsWith('<!', lt)) { // DOCTYPE etc. - skip to matching '>' (no internal subset support)
       let depth = 0; let j = lt;
       for (; j < n; j++) { if (src[j] === '[') depth++; else if (src[j] === ']') depth--; else if (src[j] === '>' && depth <= 0) break; }
       i = j + 1; continue;

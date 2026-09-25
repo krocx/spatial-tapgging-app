@@ -1,10 +1,10 @@
-// loto.test.ts — the safety-critical rules of iLOTO, tested against the pure
+// loto.test.ts - the safety-critical rules of iLOTO, tested against the pure
 // core (loto-core.ts) plus the seeded quiz bank's integrity.
 //
 // These are the rules an EHS audit will ask about:
 //   • checklist cannot be skipped (per kind, per direction)
 //   • one active lock per point (v1)
-//   • one lock, one person — removal only by the applier
+//   • one lock, one person - removal only by the applier
 //   • override requires all three OSHA exception confirmations
 //   • status is derived from the event log, latest event wins
 
@@ -162,7 +162,7 @@ test('remove: applier may remove with full checklist', () => {
   validateEvent(p, current, removeReq(p, 'kar'));   // must not throw
 });
 
-test('remove: anyone else is rejected 403 — one lock, one person', () => {
+test('remove: anyone else is rejected 403 - one lock, one person', () => {
   const p = P('a', 'loto');
   const current = derivePointStatus(p, [E('a', 'apply', 'kar')]);
   expectReject(403, () => validateEvent(p, current, removeReq(p, 'bob')), 'foreign removal');
@@ -297,7 +297,7 @@ test('quiz admin: import validation is all-or-nothing with named failures', () =
   catch (err) { assert.match((err as Error).message, /Question 2/); }
 });
 
-test('quiz: grading — pass at ratio, fail below, per-question feedback', () => {
+test('quiz: grading - pass at ratio, fail below, per-question feedback', () => {
   const qs = buildSeedQuestions('2026-01-01T00:00:00Z').slice(0, 10);
   const allRight = Object.fromEntries(qs.map(q => [q.id, q.correctIndex]));
   const perfect = gradeQuiz(qs, allRight, 0.8);

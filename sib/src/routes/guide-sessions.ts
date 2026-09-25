@@ -1,26 +1,26 @@
-// guide-sessions.ts — AR OMS Phase 3: Guide session sign-off routes + evidence
+// guide-sessions.ts - AR OMS Phase 3: Guide session sign-off routes + evidence
 //
-// A GuideSession is created atomically when the Operator taps "Sign & Submit" —
+// A GuideSession is created atomically when the Operator taps "Sign & Submit" -
 // there is no "open / close" lifecycle like inspection sessions. The entire
 // session record (step completions, duration, sign-off name) is submitted in
 // a single POST once the Operator finishes the guide.
 //
 // Endpoints (sign-off + history):
-//   POST /guide-sessions                          — Operator: submit completed session
-//   GET  /guide-sessions?all=true                 — list all sessions (portal)
-//   GET  /guide-sessions?anchorId=xxx             — list sessions for an anchor
-//   GET  /guide-sessions?guideId=xxx              — list sessions for a specific guide
-//   GET  /guide-sessions/:id                      — get a single session
-//   GET  /guide-sessions/:id/evidence/:stepId     — serve evidence photo for a step
-//   DELETE /guide-sessions/:id                    — remove a session + evidence
-//   DELETE /guide-sessions                        — remove ALL sessions + evidence
+//   POST /guide-sessions                          - Operator: submit completed session
+//   GET  /guide-sessions?all=true                 - list all sessions (portal)
+//   GET  /guide-sessions?anchorId=xxx             - list sessions for an anchor
+//   GET  /guide-sessions?guideId=xxx              - list sessions for a specific guide
+//   GET  /guide-sessions/:id                      - get a single session
+//   GET  /guide-sessions/:id/evidence/:stepId     - serve evidence photo for a step
+//   DELETE /guide-sessions/:id                    - remove a session + evidence
+//   DELETE /guide-sessions                        - remove ALL sessions + evidence
 //
-// Endpoints (live session-state stream — AI readiness Phase 2, Step 1):
-//   POST /guide-sessions/live                     — open a live session (returns liveSessionId)
-//   POST /guide-sessions/live/:id/events          — push a step event (iOS, fire-and-forget)
-//   GET  /guide-sessions/live/:id/stream          — SSE stream for observers (AI agents)
-//   GET  /guide-sessions/live/:id                 — current session snapshot (catch-up)
-//   GET  /guide-sessions/live/:id/hints           — AI hint poll; consume-once (Step 3)
+// Endpoints (live session-state stream - AI readiness Phase 2, Step 1):
+//   POST /guide-sessions/live                     - open a live session (returns liveSessionId)
+//   POST /guide-sessions/live/:id/events          - push a step event (iOS, fire-and-forget)
+//   GET  /guide-sessions/live/:id/stream          - SSE stream for observers (AI agents)
+//   GET  /guide-sessions/live/:id                 - current session snapshot (catch-up)
+//   GET  /guide-sessions/live/:id/hints           - AI hint poll; consume-once (Step 3)
 
 import { Router } from 'express';
 import { usageOpen, usageRecordEvent, usageLinkSignOff, listUsage, usageMarkEvidence } from '../oms/usage-log.js';
@@ -64,7 +64,7 @@ import {
 export const guideSessionStore = new JsonFileStore<GuideSession>('guide-sessions');
 
 // Evidence photos are stored under DATA_DIR/guide-session-evidence/{sessionId}/{stepId}.jpg
-// (DATA_DIR resolves to SIB_DATA_DIR when unset — see data-dir.ts).
+// (DATA_DIR resolves to SIB_DATA_DIR when unset - see data-dir.ts).
 const EVIDENCE_DIR   = path.join(DATA_DIR, 'guide-session-evidence');
 
 function ensureEvidenceDir(sessionId: string): string {
@@ -106,7 +106,7 @@ const router = Router();
 // These routes MUST be registered before the /:id wildcard routes below or
 // Express would try to match "live" as a session id.
 
-// POST /guide-sessions/live — open a live tracking session
+// POST /guide-sessions/live - open a live tracking session
 router.post('/live', (req: Request, res: Response): void => {
   const body = req.body as OpenLiveSessionRequest;
 
@@ -126,7 +126,7 @@ router.post('/live', (req: Request, res: Response): void => {
   res.status(201).json({ data: session, timestamp: new Date().toISOString() });
 });
 
-// POST /guide-sessions/live/:id/events — iOS pushes a step event (fire-and-forget)
+// POST /guide-sessions/live/:id/events - iOS pushes a step event (fire-and-forget)
 router.post('/live/:id/events', (req: Request, res: Response): void => {
   const body = req.body as PushGuideSessionEventRequest;
 
@@ -148,7 +148,7 @@ router.post('/live/:id/events', (req: Request, res: Response): void => {
   res.status(201).json({ data: event, timestamp: new Date().toISOString() });
 });
 
-// POST /guide-sessions/live/:id/observations — C1 (2026.4.46): a batch of
+// POST /guide-sessions/live/:id/observations - C1 (2026.4.46): a batch of
 // engine-neutral observations for the current step (attention, distance,
 // alignment, movement, interactions). Rolled up into the usage record and
 // appended raw to a per-session JSONL. Never images, never free text.
@@ -167,7 +167,7 @@ router.post('/live/:id/observations', (req: Request, res: Response): void => {
   res.status(summary ? 201 : 202).json({ data: summary ?? null, timestamp: new Date().toISOString() });
 });
 
-// GET /guide-sessions/live/:id/stream — SSE stream for AI agents / dashboards
+// GET /guide-sessions/live/:id/stream - SSE stream for AI agents / dashboards
 // Auth: when SIB_API_KEY is set, clients must provide it as ?key= (browsers
 // can't set headers on EventSource connections).
 router.get('/live/:id/stream', (req: Request, res: Response): void => {
@@ -178,10 +178,10 @@ router.get('/live/:id/stream', (req: Request, res: Response): void => {
       timestamp: new Date().toISOString(),
     });
   }
-  // subscribeSse takes ownership of `res` — do not call res.end() here.
+  // subscribeSse takes ownership of `res` - do not call res.end() here.
 });
 
-// GET /guide-sessions/live/:id — current session snapshot (catch-up for new observers)
+// GET /guide-sessions/live/:id - current session snapshot (catch-up for new observers)
 router.get('/live/:id', (req: Request, res: Response): void => {
   const session = getLiveSession(req.params.id);
   if (!session) {
@@ -194,12 +194,12 @@ router.get('/live/:id', (req: Request, res: Response): void => {
   res.json({ data: session, timestamp: new Date().toISOString() });
 });
 
-// GET /guide-sessions/live/:id/hints — AI hint poll (iOS, consume-once)
+// GET /guide-sessions/live/:id/hints - AI hint poll (iOS, consume-once)
 //
 // iOS calls this every ~5 s during an active guide session.
 // Returns all queued AI hints and clears the queue so hints are not re-shown.
-// Returns an empty array when no hints are pending — always 200.
-// PUT /guide-sessions/live/:id/evidence/:stepId — the operator's evidence
+// Returns an empty array when no hints are pending - always 200.
+// PUT /guide-sessions/live/:id/evidence/:stepId - the operator's evidence
 // photo, uploaded THE MOMENT it is captured. Stored under the LIVE session id
 // so it survives interruptions and is visible in the Usage Log immediately;
 // the sign-off later references this same file (no duplicate storage).
@@ -226,7 +226,7 @@ router.get('/live/:id/hints', (req: Request, res: Response): void => {
   res.json({ data: hints, timestamp: new Date().toISOString() });
 });
 
-// C1: POST /guide-sessions/live/:id/hints — a HUMAN hint from a coaching
+// C1: POST /guide-sessions/live/:id/hints - a HUMAN hint from a coaching
 // author (presence). Queued like an AI hint (same consume-once poll); the
 // chamber's SSE feed gets a `coach-hint` nudge so the operator fetches it at
 // once instead of waiting for the next 5 s poll.
@@ -250,7 +250,7 @@ router.post('/live/:id/hints', (req: Request, res: Response): void => {
 
 // ── Sign-off (durable record) ─────────────────────────────────────────────────
 
-// POST /guide-sessions — Operator submits a completed guide session
+// POST /guide-sessions - Operator submits a completed guide session
 router.post('/', (req: Request, res: Response): void => {
   const body = req.body as CreateGuideSessionRequest;
 
@@ -280,7 +280,7 @@ router.post('/', (req: Request, res: Response): void => {
     const { evidencePhotoBase64, ...rest } = completion as GuideStepCompletion & { evidencePhotoBase64?: string };
 
     // Live-evidence dedupe: when the photo was already uploaded during the
-    // session (under the LIVE session id), reference that file — whether or
+    // session (under the LIVE session id), reference that file - whether or
     // not the client also sent base64 (older builds do; new ones skip it).
     if (body.liveSessionId) {
       const liveFile = path.join(EVIDENCE_DIR, body.liveSessionId, `${completion.stepId}.jpg`);
@@ -324,7 +324,7 @@ router.post('/', (req: Request, res: Response): void => {
 
   guideSessionStore.save(session);
   console.log(
-    `[SIB] GuideSession created: ${session.id} — guide "${body.guideName}" ` +
+    `[SIB] GuideSession created: ${session.id} - guide "${body.guideName}" ` +
     `signed by ${body.signedOffBy} (${body.stepCompletions.length} steps, ${Math.round(body.durationSeconds)}s)`
   );
 
@@ -341,7 +341,7 @@ router.post('/', (req: Request, res: Response): void => {
 
 /** Map `${signOffSessionId}:${stepId}` → absolute evidence path, from the
  *  stored evidencePhotoPath on each sign-off record. Final fallback for the
- *  usage export — authoritative wherever the file actually landed. */
+ *  usage export - authoritative wherever the file actually landed. */
 function signOffEvidencePaths(): Map<string, string> {
   const m = new Map<string, string>();
   for (const s of guideSessionStore.findAll()) {
@@ -354,14 +354,14 @@ function signOffEvidencePaths(): Map<string, string> {
   return m;
 }
 
-// GET /guide-sessions/baselines/:guideId — C1: learned per-step baselines
+// GET /guide-sessions/baselines/:guideId - C1: learned per-step baselines
 // (dwell percentiles, on-target ratio, wrong-part taps, replays, validation
 // fail rate, stall rate) from completed visits in the usage log.
 router.get('/baselines/:guideId', (req: Request, res: Response): void => {
   res.json({ data: guideBaselines(req.params.guideId), timestamp: new Date().toISOString() });
 });
 
-// GET /guide-sessions/intelligence/:guideId — C3: per-step heat (stall /
+// GET /guide-sessions/intelligence/:guideId - C3: per-step heat (stall /
 // wrong-part / attention / look-away / validation / left rates), the hint
 // effectiveness table with retirements, and author-facing notes. 60 s cache.
 setIntelligenceStepLookup(guideId => guideStepStore.findAll().filter(s => s.guideId === guideId));
@@ -369,7 +369,7 @@ router.get('/intelligence/:guideId', (req: Request, res: Response): void => {
   res.json({ data: guideIntelligence(req.params.guideId, true), timestamp: new Date().toISOString() });
 });
 
-// GET /guide-sessions/insights?days=30&configId=&guideId= — the leadership
+// GET /guide-sessions/insights?days=30&configId=&guideId= - the leadership
 // view: headline numbers with the previous period, runs per day, per-guide
 // times and heat. Pure aggregation over the usage log (oms/insights.ts).
 router.get('/insights', (req: Request, res: Response): void => {
@@ -380,7 +380,7 @@ router.get('/insights', (req: Request, res: Response): void => {
   res.json({ data, timestamp: new Date().toISOString() });
 });
 
-// GET /guide-sessions/insights/export.xlsx — the same numbers as the page:
+// GET /guide-sessions/insights/export.xlsx - the same numbers as the page:
 // Summary (this period vs previous) · Per day · Per guide.
 router.get('/insights/export.xlsx', (req: Request, res: Response): void => {
   const days = [7, 30, 90].includes(Number(req.query.days)) ? Number(req.query.days) : 30;
@@ -407,8 +407,8 @@ router.get('/insights/export.xlsx', (req: Request, res: Response): void => {
   res.send(buf);
 });
 
-// GET /guide-sessions/usage/export.xlsx — Excel export with evidence photos
-// EMBEDDED per row (dependency-free writer — see oms/xlsx-lite.ts).
+// GET /guide-sessions/usage/export.xlsx - Excel export with evidence photos
+// EMBEDDED per row (dependency-free writer - see oms/xlsx-lite.ts).
 router.get('/usage/export.xlsx', (req: Request, res: Response): void => {
   const { workContext, guideId } = req.query;
   const data = listUsage({
@@ -421,7 +421,7 @@ router.get('/usage/export.xlsx', (req: Request, res: Response): void => {
   res.send(buf);
 });
 
-// GET /guide-sessions/usage — the AR OMS Usage Log (K2).
+// GET /guide-sessions/usage - the AR OMS Usage Log (K2).
 //   ?workContext=xxx → one Production # (or audit name)
 //   ?guideId=xxx     → one guide
 // Newest first. Per-step timing rows are embedded in each record.
@@ -434,7 +434,7 @@ router.get('/usage', (req: Request, res: Response): void => {
   res.json({ data, timestamp: new Date().toISOString() });
 });
 
-// GET /guide-sessions — list sessions (all, by anchor, or by guide)
+// GET /guide-sessions - list sessions (all, by anchor, or by guide)
 //   ?all=true       → return all sessions (portal overview)
 //   ?anchorId=xxx   → filter by anchor
 //   ?guideId=xxx    → filter by guide
@@ -470,7 +470,7 @@ router.get('/', (req: Request, res: Response): void => {
   res.json(resp);
 });
 
-// GET /guide-sessions/export.xlsx — Completion Log as Excel, evidence photos
+// GET /guide-sessions/export.xlsx - Completion Log as Excel, evidence photos
 // EMBEDDED per step row. Same filters as the list route (?all/anchorId/guideId).
 // NB: registered BEFORE '/:id' so "export.xlsx" is not swallowed as an id.
 router.get('/export.xlsx', (req: Request, res: Response): void => {
@@ -485,7 +485,7 @@ router.get('/export.xlsx', (req: Request, res: Response): void => {
   res.send(buf);
 });
 
-// GET /guide-sessions/:id/export.xlsx — one completed session as Excel with
+// GET /guide-sessions/:id/export.xlsx - one completed session as Excel with
 // its evidence photos embedded (per-session export for records/hand-off).
 router.get('/:id/export.xlsx', (req: Request, res: Response): void => {
   const session = guideSessionStore.findById(req.params.id);
@@ -502,9 +502,9 @@ router.get('/:id/export.xlsx', (req: Request, res: Response): void => {
   res.send(buf);
 });
 
-// GET /guide-sessions/:id — get a single session
+// GET /guide-sessions/:id - get a single session
 router.get('/:id', (req: Request, res: Response): void => {
-  // Prevent ":id" matching "evidence" sub-path — handled by full route
+  // Prevent ":id" matching "evidence" sub-path - handled by full route
   if (req.params.id === 'evidence') {
     res.status(400).json({ error: 'Invalid session id', timestamp: new Date().toISOString() });
     return;
@@ -520,14 +520,14 @@ router.get('/:id', (req: Request, res: Response): void => {
   res.json({ data: session, timestamp: new Date().toISOString() });
 });
 
-// GET /guide-sessions/:id/evidence/:stepId — serve evidence photo
+// GET /guide-sessions/:id/evidence/:stepId - serve evidence photo
 router.get('/:id/evidence/:stepId', (req: Request, res: Response): void => {
   const { id, stepId } = req.params;
   // resolveDataFile also looks in the pre-fix ./data root (data-dir.ts).
   let filepath = resolveDataFile('guide-session-evidence', id, `${stepId}.jpg`);
 
   // Fallback: a sign-off whose evidence lives under the LIVE session id
-  // (live-upload dedupe) — resolve via the stored evidencePhotoPath.
+  // (live-upload dedupe) - resolve via the stored evidencePhotoPath.
   if (!fs.existsSync(filepath)) {
     const session = guideSessionStore.findById(id);
     const rel = session?.stepCompletions.find(c => c.stepId === stepId)?.evidencePhotoPath;
@@ -549,7 +549,7 @@ router.get('/:id/evidence/:stepId', (req: Request, res: Response): void => {
   fs.createReadStream(filepath).pipe(res);
 });
 
-// DELETE /guide-sessions/:id — remove a single guide session + its evidence folder
+// DELETE /guide-sessions/:id - remove a single guide session + its evidence folder
 router.delete('/:id', (req: Request, res: Response): void => {
   const session = guideSessionStore.findById(req.params.id);
   if (!session) { res.status(404).json({ error: 'Guide session not found' }); return; }
@@ -560,7 +560,7 @@ router.delete('/:id', (req: Request, res: Response): void => {
   res.status(204).send();
 });
 
-// DELETE /guide-sessions — remove ALL guide sessions + all evidence folders
+// DELETE /guide-sessions - remove ALL guide sessions + all evidence folders
 router.delete('/', (_req: Request, res: Response): void => {
   const all = guideSessionStore.findAll();
   for (const s of all) {

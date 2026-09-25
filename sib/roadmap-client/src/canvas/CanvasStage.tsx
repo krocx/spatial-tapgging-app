@@ -1,9 +1,9 @@
-// CanvasStage.tsx — infinite SVG canvas.
+// CanvasStage.tsx - infinite SVG canvas.
 //   Pan:     space+drag, middle mouse, or two-finger drag (touch)
 //   Zoom:    wheel (to cursor), pinch (touch)
 //   Select:  background drag → marquee; shift extends
 //   Create:  double-click empty canvas; long-press on touch
-// Pure interaction layer — graph mutations go through store actions.
+// Pure interaction layer - graph mutations go through store actions.
 
 import { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import { useStore, noteMouseWorld, computeHighlight } from '../state/store.js';
@@ -85,7 +85,7 @@ export function CanvasStage(): JSX.Element {
   const onPointerDown = useCallback((e: React.PointerEvent) => {
     // A mouse drag on an SVG is a native text-selection gesture: without this
     // the browser highlights every text node on the page (labels, notes, the
-    // inspector) and the highlight survives pointer-up — the "everything looks
+    // inspector) and the highlight survives pointer-up - the "everything looks
     // selected" bug. Marquee/pan/pinch never want native selection.
     if (e.pointerType === 'mouse') e.preventDefault();
     window.getSelection?.()?.removeAllRanges();
@@ -240,7 +240,7 @@ export function CanvasStage(): JSX.Element {
         className="canvas-stage"
         style={{ cursor: panning ? 'grabbing' : spaceDown ? 'grab' : marquee ? 'crosshair' : 'default' }}
         onWheel={onWheel}
-        // Double/triple-click on the stage creates a node — never a word/line selection.
+        // Double/triple-click on the stage creates a node - never a word/line selection.
         onMouseDown={e => { if (e.detail > 1) e.preventDefault(); }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -261,14 +261,14 @@ export function CanvasStage(): JSX.Element {
                   orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z" fill="#2f6fed" />
           </marker>
-          {/* Parent-colored arrowheads — one marker per SIB layer color */}
+          {/* Parent-colored arrowheads - one marker per SIB layer color */}
           {Object.entries(NODE_COLORS).map(([type, color]) => (
             <marker key={type} id={`arrow-${type}`} viewBox="0 0 10 10" refX="9" refY="5"
                     markerWidth="7" markerHeight="7" orient="auto-start-reverse">
               <path d="M 0 0 L 10 5 L 0 10 z" fill={color} fillOpacity={0.85} />
             </marker>
           ))}
-          {/* Procedure relationship arrowheads — same palette as the Guide Library graph */}
+          {/* Procedure relationship arrowheads - same palette as the Guide Library graph */}
           {Object.entries(ROLE_COLORS).map(([role, color]) => (
             <marker key={role} id={`arrow-role-${role}`} viewBox="0 0 10 10" refX="9" refY="5"
                     markerWidth="7" markerHeight="7" orient="auto-start-reverse">

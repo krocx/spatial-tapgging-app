@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// brand-fonts.mjs — vendor Open Sans (the company's standard web font) into
-// sib/portal/brand/fonts/ so every SIB surface renders it with no internet —
+// brand-fonts.mjs - vendor Open Sans (the company's standard web font) into
+// sib/portal/brand/fonts/ so every SIB surface renders it with no internet -
 // the LAN server never fetches a font. Source: the fontsource build of
 // Google's Open Sans (OFL-1.1), latin subset, four weights. Run once on a
 // machine with internet, commit the files:
@@ -34,5 +34,5 @@ for (const f of FILES) {
     console.log(`  + ${f}`); ok++;
   } catch (e) { console.error(`  ✗ ${f}: ${e.message}`); }
 }
-console.log(ok === FILES.length ? '✓ Open Sans vendored — commit sib/portal/brand/fonts/' : `✗ ${FILES.length - ok} file(s) missing`);
+console.log(ok === FILES.length ? '✓ Open Sans vendored - commit sib/portal/brand/fonts/' : `✗ ${FILES.length - ok} file(s) missing`);
 process.exit(ok === FILES.length ? 0 : 1);

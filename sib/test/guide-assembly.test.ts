@@ -1,4 +1,4 @@
-// guide-assembly.test.ts — AR OJT slice 1: one assembly pose per guide, every
+// guide-assembly.test.ts - AR OJT slice 1: one assembly pose per guide, every
 // CAD-positioned step derives from it (pins + assembly slot offsets), the
 // chamber configuration can supply it with no author tap, and clearing it
 // un-places the steps again.

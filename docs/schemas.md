@@ -55,7 +55,7 @@
   "observations": [],
   "completedSteps": []
 }
-## Mindmap (Roadmap Mind-Mapper — /mindmap/*)
+## Mindmap (Roadmap Mind-Mapper - /mindmap/*)
 ## json
 {
   "id": "string",

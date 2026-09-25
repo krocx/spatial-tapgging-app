@@ -1,11 +1,11 @@
-// FindingPanelNode.swift — G4 (2026.4.46): the floating panel above a Gemba
+// FindingPanelNode.swift - G4 (2026.4.46): the floating panel above a Gemba
 // finding pin, so an auditor / operator can READ a finding from where they
 // stand instead of walking up and tapping every orange dot.
 //
 // Same design language as the AR OMS step panels (ARGuideSessionView):
-//   • a collapsed PILL by default — stop number, title, category chip — so the
+//   • a collapsed PILL by default - stop number, title, category chip - so the
 //     AR view is never blocked; tap to expand,
-//   • an expanded CARD — code, question, category + risk, notes, photo count —
+//   • an expanded CARD - code, question, category + risk, notes, photo count -
 //     tap it to open the full sheet.
 // World-anchored at scene root (never a child of the pulsing pin), full
 // billboard, opaque textures (no alpha-sort flicker). Textures are drawn with
@@ -85,7 +85,7 @@ enum FindingPanel {
 
     /// Resolve a hit-test result to (finding id, which part). Walks up parents.
     /// On the card, the bottom "Open ›" band is `.cardOpen`; anywhere else on
-    /// the card is `.card` (collapse). Uses the plane's local coordinates —
+    /// the card is `.card` (collapse). Uses the plane's local coordinates -
     /// the card plane is centred on its own origin, +y up.
     static func hit(_ result: SCNHitTestResult) -> (tagId: String, part: Part)? {
         var cur: SCNNode? = result.node
@@ -137,7 +137,7 @@ enum FindingPanel {
         case .none:     return UIColor.systemOrange
         }
     }
-    // Warm, light "frosted" surface with dark ink — easier on the eye than
+    // Warm, light "frosted" surface with dark ink - easier on the eye than
     // orange-on-black, and orange stays the Gemba identity as the accent.
     private static let surface  = UIColor(red: 0.985, green: 0.975, blue: 0.955, alpha: 1)
     private static let ink      = UIColor(red: 0.12, green: 0.12, blue: 0.14, alpha: 1)
@@ -171,7 +171,7 @@ enum FindingPanel {
             accent.setFill(); UIBezierPath(ovalIn: badgeR).fill()
             drawCentered("\(index + 1)", in: badgeR, font: UIFont.systemFont(ofSize: 32, weight: .heavy), color: .white, align: .center)
 
-            // Right chip: category (+ risk) or legacy defect category — soft tint, accent text
+            // Right chip: category (+ risk) or legacy defect category - soft tint, accent text
             let chipText: String = {
                 if let c = tag.findingCategory {
                     return tag.riskRating.map { "\(c.displayName) · \($0.shortName)" } ?? c.displayName

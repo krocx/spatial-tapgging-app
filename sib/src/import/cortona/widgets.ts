@@ -1,4 +1,4 @@
-// widgets.ts — annotation widgets (callouts / panels) and their body text.
+// widgets.ts - annotation widgets (callouts / panels) and their body text.
 //
 // In the published scene, callouts are PROTO instances (PanelImg*, PanelHtml*,
 // CalloutM*, VMTighten*, VMRope*, Set_Arrow*) that SubStep commands reveal

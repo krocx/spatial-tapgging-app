@@ -1,4 +1,4 @@
-// mindmap-api.ts — REST client for /mindmap/*. Mirrors the portal's auth model:
+// mindmap-api.ts - REST client for /mindmap/*. Mirrors the portal's auth model:
 // GET /config reports whether SIB_API_KEY is enforced; the key is kept in
 // localStorage and sent as X-API-Key on every request.
 
@@ -6,7 +6,7 @@ import type { Mindmap, MindmapSummary, MindmapVersion, MindmapNode, MindmapEdge,
 
 /**
  * Fetch a step image as an object URL. Needed because <img src> cannot carry
- * the X-API-Key header — we fetch with auth and hand back a blob URL instead.
+ * the X-API-Key header - we fetch with auth and hand back a blob URL instead.
  * Callers must URL.revokeObjectURL when done.
  */
 export async function fetchStepImageUrl(filename: string): Promise<string> {
@@ -32,7 +32,7 @@ export async function fetchModelGlbUrl(id: string): Promise<string> {
   return URL.createObjectURL(await res.blob());
 }
 
-/** GET /mindmap/import-image/status — vision endpoint configured on the server? */
+/** GET /mindmap/import-image/status - vision endpoint configured on the server? */
 export interface ImageImportStatus { configured: boolean; provider: string; model: string; host: string }
 
 export interface ImageImportResult {
@@ -134,7 +134,7 @@ export const mindmapApi = {
   save: async (body: SaveMindmapRequest): Promise<Mindmap> => {
     const saved = await request<Mindmap & { draftKey?: string }>(
       '/mindmap/save', { method: 'POST', body: JSON.stringify(body) }, body.id);
-    // Creation returns the draft key exactly once — keep it.
+    // Creation returns the draft key exactly once - keep it.
     if (saved.draftKey) storeDraftKey(saved.id, saved.draftKey);
     const { draftKey: _dk, ...map } = saved;
     return map;
@@ -165,9 +165,9 @@ export const mindmapApi = {
       body:   JSON.stringify({ image: base64 }),
     }),
 
-  /** Global 3D model library (SIB /models) — for the step model picker. */
+  /** Global 3D model library (SIB /models) - for the step model picker. */
   listModels: () => request<Model3D[]>('/models'),
-  /** Chambers (anchors) + configurations — the send-to-Guide-Library target picker. */
+  /** Chambers (anchors) + configurations - the send-to-Guide-Library target picker. */
   listAnchors: () => request<Anchor[]>('/anchors'),
   listChamberConfigs: () => request<ChamberConfig[]>('/chamber-configs'),
   /** 2026.4.46: part tree of a model's GLB (names + hierarchy) for the parts picker. */

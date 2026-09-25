@@ -1,11 +1,11 @@
-// LotoARSessionView.swift — iLOTO slice 2: the AR surface for a control panel.
+// LotoARSessionView.swift - iLOTO slice 2: the AR surface for a control panel.
 //
 // Two modes, one view:
-//   .author(kind) — EHS owner tags breakers/switches: tap a surface → place a
+//   .author(kind) - EHS owner tags breakers/switches: tap a surface → place a
 //                   yellow/red lock marker → name it → saved to SIB. On exit
 //                   the ARWorldMap is uploaded so every later session
 //                   relocalizes into the same coordinate frame.
-//   .status       — walk-around: markers for every point, coloured by kind,
+//   .status       - walk-around: markers for every point, coloured by kind,
 //                   solid when locked / translucent when clear. Tap → detail
 //                   sheet with contextual Apply / Remove (cert-gated).
 //
@@ -51,7 +51,7 @@ struct LotoARSessionView: View {
     @State private var showPointForm = false
     @State private var newLabel = ""
     @State private var newCircuit = ""
-    /// Models chosen at placement — up to lotoMaxModelSlots.
+    /// Models chosen at placement - up to lotoMaxModelSlots.
     @State private var newModelIds: [String] = []
     @State private var isSavingPoint = false
 
@@ -381,7 +381,7 @@ struct LotoARSessionView: View {
         // This view is ONLY presented after QRScanGateView locked the origin
         // from the physical QR on the panel and loaded the ARWorldMap
         // (local → SIB → fresh). Adopting that live session keeps the world
-        // frame and the locked ARImageAnchor — every marker position is
+        // frame and the locked ARImageAnchor - every marker position is
         // QR-anchored, consistent across devices and sessions. The fallback
         // below exists only for defensive robustness; it should never run in
         // the shipped flow (and says so loudly).
@@ -393,7 +393,7 @@ struct LotoARSessionView: View {
         } else {
             arManager.startSession()
             arManager.disableQRScanning()
-            showToast("⚠️ No QR-locked session — positions may not match other devices. Re-enter via the QR scan.")
+            showToast("⚠️ No QR-locked session - positions may not match other devices. Re-enter via the QR scan.")
         }
 
         let client = SIBClient(settings: settings)
@@ -497,12 +497,12 @@ struct LotoARSessionView: View {
     }
 
     /// Lock marker: small sphere on a ring, kind-coloured. Locked points are
-    /// solid + emissive; clear points are hollow/translucent — readable from
+    /// solid + emissive; clear points are hollow/translucent - readable from
     /// across the room, matching the hub's language.
     ///
     /// When the point has an assigned 3D lock/tag model (Model3D library) and
     /// its USDZ template has loaded, the model rides above the ring:
-    /// GHOST (translucent) while clear — "a lock belongs here, this kind" —
+    /// GHOST (translucent) while clear - "a lock belongs here, this kind" -
     /// and SOLID once applied. The ring stays regardless: it is the tap
     /// affordance and the state colour, model or not.
     private func makeLockMarker(kind: LotoPointKind, locked: Bool, point: LotoPoint? = nil) -> SCNNode {
@@ -604,7 +604,7 @@ struct LotoARSessionView: View {
         // Map editing: surface tap → next vertex of the current stroke.
         if isMapEditing {
             guard let pos = rayCastSurface(from: point, in: sv) else {
-                showToast("No surface found — move closer to the panel.")
+                showToast("No surface found - move closer to the panel.")
                 return
             }
             addMapVertex(pos, snappedTo: nil)
@@ -614,7 +614,7 @@ struct LotoARSessionView: View {
         // Author mode: surface tap → pending marker + form
         guard let kind = authorKind, !showPointForm else { return }
         guard let pos = rayCastSurface(from: point, in: sv) else {
-            showToast("No surface found — move closer to the panel.")
+            showToast("No surface found - move closer to the panel.")
             return
         }
         pendingPosition = pos
@@ -698,7 +698,7 @@ struct LotoARSessionView: View {
         guard let p = points.first(where: { $0.id == pointId }),
               let slot = p.modelSlots.first(where: { $0.slotId == slotId }),
               let modelNode = pointNodes[pointId]?.childNode(withName: "model-\(slotId)", recursively: false)
-        else { showToast("Model still loading — try again in a moment."); return }
+        else { showToast("Model still loading - try again in a moment."); return }
         adjustingPointId = pointId
         adjustingSlotId  = slotId
         adjScale    = Float(slot.modelScale ?? 1)
@@ -787,7 +787,7 @@ struct LotoARSessionView: View {
         isSavingAdjust = true
         // World → offsets relative to the marker (minus the 0.055 base perch).
         // The full slots array is sent back with only this slot's placement
-        // changed — other slots' placement travels untouched (slotIds stable).
+        // changed - other slots' placement travels untouched (slotIds stable).
         let local = root.simdConvertPosition(modelNode.simdWorldPosition, from: nil)
         var slots = point.modelSlots
         if let sIdx = slots.firstIndex(where: { $0.slotId == slotId }) {
@@ -822,7 +822,7 @@ struct LotoARSessionView: View {
             if p.kind == .safeoff { currentFedBy = p.id }
             currentCircuit = p.circuitId
             showToast(p.kind == .safeoff
-                      ? "Line starts at \(p.label) — it will grey out when that breaker is safe-off'd."
+                      ? "Line starts at \(p.label) - it will grey out when that breaker is safe-off'd."
                       : "Line starts at \(p.label).")
         }
         currentVertices.append(pos)
@@ -872,7 +872,7 @@ struct LotoARSessionView: View {
     //
     // Energized lines are emissive teal with a pulse travelling the polyline
     // (direction = drawing order, breaker → loads). A line whose feeding
-    // Safe Off breaker is LOCKED renders grey, translucent, pulse-free —
+    // Safe Off breaker is LOCKED renders grey, translucent, pulse-free -
     // de-energized at a glance. This is a VISUAL AID: the try test at the
     // panel remains the verification, and the hub says so.
 
@@ -910,7 +910,7 @@ struct LotoARSessionView: View {
         mat.emission.contents = color.withAlphaComponent(deEnergized ? 0.08 : 0.5)
         mat.lightingModel = .constant
 
-        // Vertex beads — visible feedback for every placed vertex.
+        // Vertex beads - visible feedback for every placed vertex.
         for p in pts {
             let bead = SCNNode(geometry: { let s = SCNSphere(radius: radius * 1.8); s.firstMaterial = mat; return s }())
             bead.simdPosition = p
@@ -931,7 +931,7 @@ struct LotoARSessionView: View {
             container.addChildNode(seg)
         }
 
-        // Flow pulse — only on committed, energized lines.
+        // Flow pulse - only on committed, energized lines.
         if !deEnergized && !inProgress {
             let pulse = SCNNode(geometry: {
                 let s = SCNSphere(radius: 0.009)
@@ -965,7 +965,7 @@ struct LotoARSessionView: View {
         // Newly assigned models whose USDZs aren't cached yet → fetch + upgrade.
         loadMissingTemplates(for: fresh.point)
         refreshMarker(for: fresh.point.id)
-        // A Safe Off apply/remove flips downstream lines live — the payoff
+        // A Safe Off apply/remove flips downstream lines live - the payoff
         // moment of the status-aware map.
         renderFlowMap()
         detailStatus = nil
@@ -991,7 +991,7 @@ struct LotoARSessionView: View {
 // MARK: - QR-gated entry flow
 // ════════════════════════════════════════════════════════════════════════════
 //
-// EVERY iLOTO AR session — authoring, status walk, map editing — starts with
+// EVERY iLOTO AR session - authoring, status walk, map editing - starts with
 // the mandatory QR scan, exactly like AR Work Instructions. The QR mounted on
 // the panel locks the session origin (a physical "I'm here" with a
 // millimetre-grade pose), then the ARWorldMap relocalizes the feature cloud,

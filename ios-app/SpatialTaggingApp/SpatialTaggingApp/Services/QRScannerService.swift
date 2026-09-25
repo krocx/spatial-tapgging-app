@@ -1,7 +1,7 @@
-// QRScannerService.swift — Phase 2A
+// QRScannerService.swift - Phase 2A
 // Detects QR codes in ARKit camera frames using Vision framework.
 // Requires STABILIZATION_FRAMES consecutive frames with the same payload
-// before firing onDetected — eliminates single-frame false positives.
+// before firing onDetected - eliminates single-frame false positives.
 
 import Vision
 import ARKit
@@ -97,7 +97,7 @@ final class QRScannerService {
         case .portraitUpsideDown: return .left
         case .landscapeLeft:      return .down
         case .landscapeRight:     return .up
-        default:                  return .right   // portrait — most common in cleanroom
+        default:                  return .right   // portrait - most common in cleanroom
         }
     }
 }

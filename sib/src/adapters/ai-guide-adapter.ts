@@ -1,8 +1,8 @@
-// ai-guide-adapter.ts — AI Dynamic Instructions adapter (Step 3, AI-readiness gap plan)
+// ai-guide-adapter.ts - AI Dynamic Instructions adapter (Step 3, AI-readiness gap plan)
 //
 // Mirrors the structure of perception-adapter.ts:
 //   • Define the AIGuideAdapter interface (the extension point)
-//   • Provide a StubAIGuideAdapter (fully self-contained — no LLM call, no cloud)
+//   • Provide a StubAIGuideAdapter (fully self-contained - no LLM call, no cloud)
 //   • Maintain a registry so a real LLM adapter can be swapped in without touching
 //     any of the surrounding infrastructure
 //
@@ -34,7 +34,7 @@ export interface AIGuideContext {
   /** Number of `step:retried` events on the current step so far. */
   retryCount:    number;
   /**
-   * True when this invocation was triggered by a `step:stalled` event — the
+   * True when this invocation was triggered by a `step:stalled` event - the
    * Operator has been sitting on the current step past the dwell threshold
    * without completing it. Distinct from retryCount: a stall means "no
    * progress and no attempts", a retry means "attempted and failed".
@@ -47,7 +47,7 @@ export interface AIGuideAdapter {
 
   /**
    * Return true if the adapter should generate a hint for this context.
-   * Called synchronously after every `step:retried` push — keep it fast.
+   * Called synchronously after every `step:retried` push - keep it fast.
    */
   shouldIntervene(ctx: AIGuideContext): boolean;
 
@@ -76,7 +76,7 @@ export class StubAIGuideAdapter implements AIGuideAdapter {
     if (!step) return null;
 
     // Build hint text: prefer the step's TTS script as it's authored guidance.
-    // Fall back to a nudge whose wording matches the trigger — a stalled
+    // Fall back to a nudge whose wording matches the trigger - a stalled
     // Operator hasn't failed at anything yet, so "retried N times" would be wrong.
     const stepLabel = step.title?.trim() || step.text.slice(0, 60);
     const fallback  = ctx.stalled
@@ -89,7 +89,7 @@ export class StubAIGuideAdapter implements AIGuideAdapter {
       liveSessionId: ctx.liveSession.id,
       stepId:        step.id,
       text:          hintText,
-      // Why we fired — iOS auto-expands the assist card on a stall (operator
+      // Why we fired - iOS auto-expands the assist card on a stall (operator
       // is stuck) but stays as a quiet chip on a retry (operator is busy).
       trigger:       ctx.stalled ? 'stall' : 'retry',
       ts:            new Date().toISOString(),

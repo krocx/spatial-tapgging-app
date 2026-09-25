@@ -8,7 +8,7 @@ depends: [home-page, presence-coaching, feature-catalogue]
 terms: [SIB]
 spec: CONNECTED-WORKER.md#platform-story-platform
 api: |
-  GET /stats — presenceNow / presenceAnchors light the fab grid (browser · public)
+  GET /stats - presenceNow / presenceAnchors light the fab grid (browser · public)
 flow: |
   flowchart LR
     H["One chamber. One origin."] --> W["The WI lands where the hands go"] --> V["SIB checks the work, not the checkbox"]

@@ -1,4 +1,4 @@
-// device-logs.ts — QA logging: what the phones (and this server) say, on disk.
+// device-logs.ts - QA logging: what the phones (and this server) say, on disk.
 //
 // A work iPhone cannot hand over its console, so the app ships its log lines
 // here in small batches (iOS `AppLog`). Lines are appended as JSONL under
@@ -6,10 +6,10 @@
 //   DATA_DIR/logs/YYYY-MM-DD/server.jsonl          (this process's console)
 // so a device and the server line up on one timeline. Rotation is by day,
 // retention LOG_RETENTION_DAYS (default 14). The folder lives inside the
-// data root — covered by the backup tarball, never in git.
+// data root - covered by the backup tarball, never in git.
 //
 // Levels: debug < info < warn < error. The app sends debug only with QA Mode
-// on; the server keeps whatever arrives. Nothing here is a system of record —
+// on; the server keeps whatever arrives. Nothing here is a system of record -
 // it is a trace for finding bugs, bounded and prunable.
 //
 // Redaction happens on the phone (keys, tokens, base64 blobs) and again here
@@ -151,7 +151,7 @@ export function appendLogs(batch: LogBatch, now = new Date()): number {
   return out.length;
 }
 
-// Device directory — last-seen meta so the portal can list devices without
+// Device directory - last-seen meta so the portal can list devices without
 // opening every file. Small JSON beside the day folders.
 interface DeviceMeta extends DeviceInfo { lastSeen: string; lines?: number }
 const DEVICES_FILE = path.join(LOGS_DIR, 'devices.json');

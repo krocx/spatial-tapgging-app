@@ -1,4 +1,4 @@
-# Connected Worker — platform capabilities added in 2026.4.45 → 2026.4.46
+# Connected Worker - platform capabilities added in 2026.4.45 → 2026.4.46
 
 The reference for everything the platform gained after the `.tag` emitter.
 Each section is the "deep dive" behind a Feature Catalogue card; the changelog
@@ -12,9 +12,9 @@ Proprietary & Confidential · Applied Materials.
 ## Kiosk shift start
 
 *2026.4.45 · iOS + server.* The iPad opens on a shift screen whenever the UAM
-allow-list is active. The technician enters **only an employee ID** — the
+allow-list is active. The technician enters **only an employee ID** - the
 server resolves name, email and role (`POST /uam/login` kiosk path; the
-email + ID Settings path is unchanged) — plus the **Production #** (the chamber
+email + ID Settings path is unchanged) - plus the **Production #** (the chamber
 or system they will work on). Both persist for the shift and sit in a home
 chip; tap it to change the Production # or switch technician. A 401 on the
 launch refresh (revoked access) reopens the gate. The gate is deterministic:
@@ -22,7 +22,7 @@ it renders as soon as no shift is set and owns the server connection itself
 (connecting state, cold-start retries, Retry, dormant-UAM auto-skip).
 
 With Chamber Configurations the gate became two steps: employee ID, then by
-role — **Technician**: Production / Slot # (the configuration comes from the
+role - **Technician**: Production / Slot # (the configuration comes from the
 chamber QR); **Engineer+**: "I'm authoring" (pick the configuration, "+ New
 configuration" inline) or "I'm operating". Known pre-SSO trade-off: the
 employee ID alone authenticates on kiosk iPads until corporate SSO lands; the
@@ -34,8 +34,8 @@ allow-list remains the gate and the SSO swap point is unchanged.
 guide run, derived server-side from the live-session event stream: step
 enter/exit times, duration, outcome (completed / failed / left), session
 totals, token-verified operator identity, the shift's **work context**
-(Production # in AR OMS; other products relabel it) and — since Chamber
-Configurations — the chamber's configuration at open. It survives restarts,
+(Production # in AR OMS; other products relabel it) and - since Chamber
+Configurations - the chamber's configuration at open. It survives restarts,
 unlike the intentionally ephemeral live session. `GET /guide-sessions/usage`
 (`?workContext=` / `?guideId=`) serves it; the portal's AR Guides tab has a
 📊 Usage Log view grouped by Production # with per-step timing tables, evidence
@@ -54,8 +54,8 @@ and environment drift (`environment:drift`) land on the same step entry.
 *2026.4.45 · iOS.* An interrupted guide run belongs to its Production #.
 Resume snapshots are stamped with the shift's work context; picking one up on
 the same Production # works silently. A snapshot from a different Production #
-gets an explicit prompt — **Switch & Resume** (moves the shift to that #) or
-**Start fresh on the current #** — so work is never logged against the wrong
+gets an explicit prompt - **Switch & Resume** (moves the shift to that #) or
+**Start fresh on the current #** - so work is never logged against the wrong
 system. Snapshots saved before Production # stamping resume as before. Pilot hardening in the
 same release: fail-branch action, offline sign-off queue, name prefill from the
 kiosk identity, incomplete-submit warning and redirect toast.
@@ -68,10 +68,10 @@ it completes, scored by the **same comparator engine** tag inspection uses
 combined as `max(fp, ssim)`, PASS ≥ 0.60).
 
 - **Training (Author).** Three modes, all inside "Place Steps in AR":
-  🛡 **cone** — the multi-angle sweep anchored at the step's pin, references
+  🛡 **cone** - the multi-angle sweep anchored at the step's pin, references
   stored as a pass-state under a hidden step-validation tag
   (`POST /guides/:id/steps/:stepId/validation-trained` stamps
-  `validationMode: 'cone'`); 📷 **quick-shot** — one raw frame plus the
+  `validationMode: 'cone'`); 📷 **quick-shot** - one raw frame plus the
   author's stance (`cone_dist_m`, `shot_dir_*`) as a one-image pass-state;
   and the original single reference photo
   (`PUT /guides/:id/steps/:stepId/validation-ref`, Verify with
@@ -84,11 +84,11 @@ combined as `max(fp, ssim)`, PASS ≥ 0.60).
   reference. **Dwell auto-capture** fires after 0.8 s steady; **image
   alignment** (feature-print ≥ 0.60 every 0.5 s) also fires it, so a moved
   QR cannot trap anyone; after 8 s the shutter becomes *Capture anyway*.
-  **Focus mode** hides panels, pins and arrows during validation — target
+  **Focus mode** hides panels, pins and arrows during validation - target
   ring, one guidance line, ghost thumbnail, filling shutter ring, ✕.
 - **Outcome.** PASS auto-completes with the score; FAIL offers Retry, the
   recovery branch, or **Proceed anyway** (usage log `validation.overridden`,
-  portal badge "FAIL · proceeded", Excel "— operator proceeded"). An
+  portal badge "FAIL · proceeded", Excel "- operator proceeded"). An
   untrained-but-required step falls back to manual Pass/Fail.
 - **Evidence.** A validated step always yields evidence: "Require
   validation" locks "Require evidence photo" on (server-enforced), the
@@ -99,7 +99,7 @@ combined as `max(fp, ssim)`, PASS ≥ 0.60).
 - **Drift.** Place Steps uploads the author's camera pose with the step-1
   reference photo (`referenceCameraPose`, `GET /worldmap/guide/:id/meta`).
   At "I'm Here" the operator's pose is compared: > 0.5 m or > 25° yaw →
-  "Scene may have changed — pins may be off", guidance switches to the ghost,
+  "Scene may have changed - pins may be off", guidance switches to the ghost,
   `environment:drift` is logged (⚠ chip in the portal).
 
 ## Chamber Configurations
@@ -107,36 +107,36 @@ combined as `max(fp, ssim)`, PASS ≥ 0.60).
 *2026.4.45 · server + portal + iOS.* A configuration is a chamber **type**
 ("Producer XP · Cfg A"); many physical chambers (anchors / QRs) share it.
 Server: `ChamberConfig` catalog (`GET/POST /chamber-configs`,
-`PATCH/DELETE /chamber-configs/:id` — engineer+; delete only when no chamber
+`PATCH/DELETE /chamber-configs/:id` - engineer+; delete only when no chamber
 references it), `Anchor.configId`, `PATCH /anchors/:id { assetId?, configId? }`.
 Portal: Admin → 🏭 Chamber Configs; anchor cards show the configuration with
 an inline assign dropdown; the Create Anchor dialog has a configuration select;
 the Guide Library is grouped configuration → chamber with **⧉⧉ All N** (copy a
 guide to every other chamber of the configuration as drafts, skipping chambers
 that already have one of that name). iOS: role-aware kiosk (above); the
-operator front door is **Scan chamber QR** (`ChamberScanView`) — the
+operator front door is **Scan chamber QR** (`ChamberScanView`) - the
 configuration resolves from the scan, unassigned chambers and GembaWalk / iLOTO
 QRs are explained; a chamber scanned in the last 10 min opens its guides
 without a second scan. The author directory during an authoring shift leads
 with that configuration's chambers. Content (guides, inspection sets, training)
-stays per chamber — author on one, copy to the rest, place per chamber.
+stays per chamber - author on one, copy to the rest, place per chamber.
 
 ## Copy guide · duplicate anchor · model slots
 
 *2026.4.45 · server + portal + iOS.*
 
-- **Copy guide to anchor** — `POST /guides/:id/copy { anchorId, name? }`
+- **Copy guide to anchor** - `POST /guides/:id/copy { anchorId, name? }`
   clones steps, titles, voice, links, step photos, branch links (re-pointed),
   completion / validation / evidence flags and 3D model assignments. Pin
   positions, model placement, validation training and the sharing list stay
   with the source anchor's world map; the copy is an unpublished draft until
   re-placed. iOS swipe "Copy to…"; portal "⧉ Copy".
-- **Duplicate anchor** — `POST /anchors/:id/duplicate { assetId? }` creates a
+- **Duplicate anchor** - `POST /anchors/:id/duplicate { assetId? }` creates a
   template copy: new id, new QR, its own encryption key, the source's
   metadata (`duplicatedFrom`), anchor type, QR print size and model kit, plus
   every guide copied as above. World map, tags, loc-tags and LOTO points are
-  not copied — they describe the source's physical location.
-- **Model slots** — a guide step carries up to three model slots
+  not copied - they describe the source's physical location.
+- **Model slots** - a guide step carries up to three model slots
   (`GuideStep.models[]`), each with its own scale, opacity and device-owned
   placement; slot 1 mirrors into the legacy `modelId` fields both ways so
   older builds, the compiler, imports and the portal keep working. Place
@@ -159,7 +159,7 @@ Portal shows **🗺 Map sealed · date**; `Anchor.mapSealedAt` is derived.
 `DELETE /anchors/:id/worldmap` unseals (map + meta);
 `DELETE /worldmap/guide/:id` resets a guide's map, photo, meta and un-places
 its steps. One shared loader (`WorldMapCache`) serves the QR gate, guide
-sessions and model placement — meta first, local copy reused when
+sessions and model placement - meta first, local copy reused when
 `capturedAt` matches, offline degrades to the cache. Place Steps relocalizes
 into the guide map too (ghost + "I'm Here", frozen pins until localized), so
 author pins land where they were.
@@ -170,7 +170,7 @@ author pins land where they were.
 changed. The sealed origin used to be a fixed matrix (`meta.anchorPose`) and
 tags were plain nodes at fixed world coordinates; ARKit's relocalization gives
 a **coarse first alignment** the moment tracking turns normal, then refines its
-map for a few seconds — but nothing we drew moved with it, and the tags had
+map for a few seconds - but nothing we drew moved with it, and the tags had
 already spawned.
 
 - **The origin lives in the map.** Sealing plants an `ARAnchor` named
@@ -182,7 +182,7 @@ already spawned.
 - **Convergence gate.** `originConfidence` goes *relocalizing → aligning →
   locked* only once the origin has been still (< 3 mm, < 0.3°) for 1.5 s with
   normal tracking; the QR gate shows *Aligning…* and holds the handoff so tags
-  spawn on the settled frame. An 8 s ceiling yields *approximate* — usable,
+  spawn on the settled frame. An 8 s ceiling yields *approximate* - usable,
   and it says so.
 - **The QR is a witness, never ignored.** While the map or object is the
   origin, the live QR's disagreement with it is published (`qrDiscrepancy`,
@@ -190,7 +190,7 @@ already spawned.
   and converge seconds, ambient light and approach angle.
 - **Anchor Lab** (Settings → *Anchor Lab*, Operator mode). A card shows the
   lock report; pick a tag, aim the crosshair at the **physical** feature it
-  was placed on, *Mark where it really is* — the LiDAR raycast gives the real
+  was placed on, *Mark where it really is* - the LiDAR raycast gives the real
   point, the error is the distance to where the tag rendered. Each mark is
   one `AnchorAccuracySample` (`POST /anchors/:id/accuracy`; numbers only,
   never an image) with the lock report, device, OS, app version and a free
@@ -203,22 +203,22 @@ already spawned.
 - **The Anchor Lab door.** A fourth product door for the team assessing
   anchoring, shown only to users explicitly entitled to `lab` (UAM
   products; unlike the others it is *not* implied by "all products").
-  Inside: **rigs** — anchors of type `LAB` that never appear in production
-  directories or the portal grid (a *Lab rigs* toggle reveals them) — each
-  with *Tap to tag* (no code: the rig's world map is the origin — tap a real
+  Inside: **rigs** - anchors of type `LAB` that never appear in production
+  directories or the portal grid (a *Lab rigs* toggle reveals them) - each
+  with *Tap to tag* (no code: the rig's world map is the origin - tap a real
   feature and the pin drops exactly as in AR OMS, named *Tag N*; Save seals
   the map with the origin anchor; re-opening relocalizes first so tags
   accumulate),
   *Place with the QR* (the full Author flow, secondary), *Run* and
   *History*. A run is one of two types operators meet in production:
-  **Map only** (relocalize into the sealed map, no code in view — what AR
-  work-instruction runs do) or **QR + map** (through the gate — what
+  **Map only** (relocalize into the sealed map, no code in view - what AR
+  work-instruction runs do) or **QR + map** (through the gate - what
   Spatial Inspection does), labelled from the protocol's chips (author
   spot, door, opposite side, evening, dim, second person, after move). The
   lean run view holds tags until the origin settles, keeps the screen clean
   (origin axes and the lab panel are toggles), and to report drift the
   tester taps a tag and aims the orange 3-D ring; every Done stores a run
-  record, a clean run grows the rig's map (Lab only — the measurement before
+  record, a clean run grows the rig's map (Lab only - the measurement before
   production gets it), and a ghost photo can be turned on to show where the
   map was made; it shows the lock report
   and the mark-truth tool, and ends in a summary: this run's median vs the
@@ -232,21 +232,21 @@ already spawned.
 
 - **Scan & store.** `ARObjectScanningConfiguration` on the iPad: tap the
   floor, size the box, walk around while the point count grows, *Save
-  object*. The `.arobject` (sparse point cloud — no mesh, no photo) is stored
+  object*. The `.arobject` (sparse point cloud - no mesh, no photo) is stored
   with `POST/GET/DELETE /anchors/:id/object` (30 MB cap) and
   `GET /anchors/:id/object/meta`. Save requires ≥ 600 points from ≥ 3 of 6
   sides; **Improve scan on this device** merges a second iPhone's scan
   (`?merge=1`) in the original frame; provenance (`scannedOn`, `mergedFrom`,
   `sides`) shows in Anchor Hub and the portal.
 - **Object as origin.** `Anchor.originSource` = `worldMap` | `object`.
-  Tags stay QR-relative and pins map-relative — the object supplies the frame
+  Tags stay QR-relative and pins map-relative - the object supplies the frame
   through stored calibrations: `objectPoseInQR` (object meta,
   `PATCH /anchors/:id/object/meta`) and `objectPoseInMap` (guide map meta,
   `PATCH /worldmap/guide/:id/meta`). The QR gate derives the frame with
   priority **object › sealed map › live QR**; Place Steps and guide sessions
   re-base the world onto the map frame the moment the object is recognised.
 - **Movable equipment.** A watchdog re-detects the object and, on a
-  real move (delta + hysteresis), re-aligns with a "Chamber moved —
+  real move (delta + hysteresis), re-aligns with a "Chamber moved -
   re-aligned · Undo" toast; a tracking pill offers manual re-align through a
   timed finder; object-only sessions can start without a QR. The same overlay
   runs in Spatial Inspection Author / Operator and iLOTO.
@@ -258,7 +258,7 @@ already spawned.
 ## Presence & coaching (multi-user)
 
 *2026.4.46 · iOS + server.* Because every device localises into the chamber's
-shared frame, a colleague's camera pose is directly comparable — no ARKit
+shared frame, a colleague's camera pose is directly comparable - no ARKit
 collaborative session. Server: in-memory heartbeat
 `POST /anchors/:id/presence` (~2×/s; UAM-signed names cannot be spoofed),
 `GET /anchors/:id/presence`, `DELETE /anchors/:id/presence/:userId`, fanned out
@@ -285,7 +285,7 @@ on the chamber feed makes the operator fetch it at once. The operator sees
 ## In-AR moment coach
 
 *2026.4.46 · iOS.* A **moment card** appears over the live AR view the first
-time a control becomes relevant — one line, one glyph, *Got it* — never
+time a control becomes relevant - one line, one glyph, *Got it* - never
 covering the camera or the AR panels. Place Steps: tap a pin to move it ·
 drag/pinch/twist · ⬢1 ⬢2 ⬢3 model slots · seal vs camera training · eye/cube
 declutter · Save vs Done. Guide session: tap the pill to expand · ✓ ✕ 📷 ·
@@ -306,14 +306,14 @@ at once, keys/tokens/base64 redacted before send, abnormal-exit marker on next
 launch. Server: `POST /logs` → JSONL per device per day under
 `DATA_DIR/logs/`, the server console mirrored to `server.jsonl`,
 `LOG_RETENTION_DAYS` (14) pruning, `GET /logs`, `GET /logs/devices`,
-`GET /logs/export.txt`, SSE `GET /logs/tail` — reads behind the admin gate.
+`GET /logs/export.txt`, SSE `GET /logs/tail` - reads behind the admin gate.
 Portal **Admin → Device Logs**: device / level / module / window / search,
 live tail, Copy last 200, Download .txt. Full doc: [QA-LOGGING.md](QA-LOGGING.md).
 
 ## SIB Compass
 
 *2026.4.46 · every web surface.* `sib/portal/compass.js`, injected by
-`brand.js`: a brand-hex button bottom-right opens a radial map — SIB in the
+`brand.js`: a brand-hex button bottom-right opens a radial map - SIB in the
 centre; Portal / Admin / Platform / Roadmap / Catalogue / Wireframe around it
 with their stops fanning out; the current node lit with the path drawn; every
 node one click. Live counts from `/stats` ride on the nodes (chambers, people
@@ -328,7 +328,7 @@ Keys: `g g` map, `g h/p/m/r/c/w/a`, Esc. Reduced motion respected.
 **Getting started** checklist with five milestones that turn green from live
 `/stats` (configuration → chamber + QR → guide → steps placed → first run),
 each a link into the right page; it minimises at 3/5 and celebrates at 5/5.
-**Page tours** — a spotlight walkthrough of the controls that matter on Home,
+**Page tours** - a spotlight walkthrough of the controls that matter on Home,
 Chambers, Guide Library, AR Guides and Admin, once per page per browser; ❔
 Show me replays. **Empty states become next steps.** A Guided assistance
 toggle in ⚙ Settings; technicians never see it. The portal itself opens on a

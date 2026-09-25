@@ -1,4 +1,4 @@
-// gemba-finding.test.ts — G3: reference-list fields on a finding.
+// gemba-finding.test.ts - G3: reference-list fields on a finding.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
@@ -48,7 +48,7 @@ test('applyCaptionEdits + defaultTitle', async () => {
   const out = applyCaptionEdits(photos, [{ path: 'a.jpg', caption: '' }, { path: 'b.jpg', caption: 'new' }, { path: 'zzz', caption: 'x' }]);
   assert.equal(out[0].caption, undefined); assert.equal(out[1].caption, 'new'); assert.equal(out.length, 2);
   assert.equal(applyCaptionEdits(photos, 'junk'), photos);
-  assert.equal(defaultTitle({ questionCode: 'P5142', questionTitle: 'Concept Understanding' }, 'x'), 'P5142 — Concept Understanding');
+  assert.equal(defaultTitle({ questionCode: 'P5142', questionTitle: 'Concept Understanding' }, 'x'), 'P5142 - Concept Understanding');
   assert.equal(defaultTitle({}, 'Fallback'), 'Fallback');
 });
 

@@ -1,16 +1,16 @@
-// models/glb-nodes.ts — the part tree of a GLB, read from its JSON chunk.
+// models/glb-nodes.ts - the part tree of a GLB, read from its JSON chunk.
 //
 // The Procedure Designer's parts picker needs node NAMES and hierarchy, not
 // pixels: a GLB is `12-byte header · JSON chunk · BIN chunk`, so the whole
 // tree comes from parsing the first chunk. No renderer, no GPU, no third-party
-// loader — the same node names the iOS assembly loader registers as parts.
+// loader - the same node names the iOS assembly loader registers as parts.
 //
 // Proprietary & Confidential · Applied Materials.
 
 export interface GlbPartNode {
   /** glTF node name (or `node<i>` when the exporter left it blank). */
   name:     string;
-  /** glTF node index — stable within the file. */
+  /** glTF node index - stable within the file. */
   index:    number;
   /** True when this node (not a descendant) carries a mesh. */
   mesh:     boolean;
@@ -21,7 +21,7 @@ export interface GlbPartNode {
 
 export interface GlbPartTree {
   roots:      GlbPartNode[];
-  /** Every node name, depth-first — the flat list the picker searches. */
+  /** Every node name, depth-first - the flat list the picker searches. */
   names:      string[];
   nodeCount:  number;
   meshCount:  number;
@@ -66,7 +66,7 @@ export function partTreeOf(gltf: Record<string, unknown>): GlbPartTree {
 
   const roots: GlbPartNode[] = [];
   for (const r of rootIx) { const n = build(r); if (n) roots.push(n); }
-  // Orphans (nodes in no scene) still count as parts — some exporters omit `scenes`.
+  // Orphans (nodes in no scene) still count as parts - some exporters omit `scenes`.
   for (let i = 0; i < nodesJ.length; i++) if (!seen.has(i)) { const n = build(i); if (n) roots.push(n); }
 
   return { roots, names, nodeCount: names.length, meshCount };
@@ -81,7 +81,7 @@ export function partTreeFromGlb(buf: Buffer): GlbPartTree {
 // glTF requires `min` / `max` on every POSITION accessor, so a part's bounding
 // box comes from the JSON chunk too: transform each mesh's 8 box corners by
 // the node's world matrix and union over the subtree. Good enough to put a
-// step pin at the centre of the parts it installs — no buffer decoding.
+// step pin at the centre of the parts it installs - no buffer decoding.
 
 export type Vec3 = [number, number, number];
 export interface Bounds { min: Vec3; max: Vec3 }

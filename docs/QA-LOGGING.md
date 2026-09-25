@@ -1,4 +1,4 @@
-# QA logging — device logs on the server
+# QA logging - device logs on the server
 
 **Why.** A work iPhone can't hand over its console. The app ships its log lines
 to SIB; you read them in the portal or download a text file. One timeline for
@@ -8,7 +8,7 @@ every phone and the server.
 
 - Every `AppLog.info / warn / error` line is queued and POSTed to `/logs` in
   batches (every 5 s or 50 lines). Errors flush immediately. Lines survive a
-  bad connection (retried) but not a crash — the next launch sends one
+  bad connection (retried) but not a crash - the next launch sends one
   `previous session ended abnormally` marker instead.
 - **QA Mode** (Settings → Diagnostics) adds `debug` lines: material dumps
   when a model loads, object-watchdog deltas, presence poses, every request
@@ -55,4 +55,4 @@ the device, last hour, level *debug +* → download → attach to the ticket.
   not a licence).
 - Perception internals stay out of `info`; `debug` may carry numbers, never
   format detail.
-- Not a system of record — bounded, prunable, for finding bugs only.
+- Not a system of record - bounded, prunable, for finding bugs only.

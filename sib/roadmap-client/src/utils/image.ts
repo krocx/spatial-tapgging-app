@@ -1,4 +1,4 @@
-// image.ts — client-side image preparation for whiteboard import.
+// image.ts - client-side image preparation for whiteboard import.
 // Downscales to a VLM-friendly size before upload: faster local inference,
 // smaller payloads, and photos straight off a phone camera stay usable.
 
@@ -20,7 +20,7 @@ export async function fileToDownscaledBase64(file: File): Promise<{ base64: stri
     canvas.height = Math.round(img.height * scale);
     canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-    // JPEG q0.85 — plenty for text/box recognition, keeps payloads small.
+    // JPEG q0.85 - plenty for text/box recognition, keeps payloads small.
     const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
     return { base64: dataUrl.split(',')[1], mimeType: 'image/jpeg' };
   } finally {

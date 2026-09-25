@@ -1,4 +1,4 @@
-// presence.test.ts — P1: validation, staleness sweep, join/left semantics.
+// presence.test.ts - P1: validation, staleness sweep, join/left semantics.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {

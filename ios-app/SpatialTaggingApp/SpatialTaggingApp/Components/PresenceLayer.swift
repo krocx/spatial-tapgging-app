@@ -1,7 +1,7 @@
-// PresenceLayer.swift — P1 (2026.4.46): colleagues in the AR view.
+// PresenceLayer.swift - P1 (2026.4.46): colleagues in the AR view.
 //
-// Not a humanoid. A "lens" — a small card at the colleague's head with their
-// initials, name and site — plus a translucent view cone showing where they
+// Not a humanoid. A "lens" - a small card at the colleague's head with their
+// initials, name and site - plus a translucent view cone showing where they
 // are looking, and a soft gaze dot where that view meets the chamber. The cone
 // IS the information ("she's looking at the gas inlet"); the card says who.
 //
@@ -10,7 +10,7 @@
 //   PresenceEdgeArrows   edge arrow + name when a colleague is off screen
 //   PresenceToast        "Priya joined from Singapore"
 //
-// Design philosophy: guided, discoverable, a little delightful — and never in
+// Design philosophy: guided, discoverable, a little delightful - and never in
 // the way: everything is small, semi-transparent and world-locked.
 
 import SwiftUI
@@ -242,7 +242,7 @@ final class PresenceLayer {
 
 // ── SwiftUI pieces ───────────────────────────────────────────────────────────
 
-/// "2 here · Priya (Singapore)" — tap for the list.
+/// "2 here · Priya (Singapore)" - tap for the list.
 struct PresenceRosterChip: View {
     let others: [PresenceEntry]
     let connected: Bool
@@ -376,7 +376,7 @@ struct PresenceToast: View {
     }
 }
 
-/// C2: the author's coaching panel — a message, quick phrases, and
+/// C2: the author's coaching panel - a message, quick phrases, and
 /// "Point here" (the next tap in AR sends a look-here marker).
 struct CoachPanel: View {
     let target: PresenceEntry
@@ -386,7 +386,7 @@ struct CoachPanel: View {
     let onClose: () -> Void
     @State private var text = ""
     @FocusState private var focused: Bool
-    private let quick = ["Wait for me", "Check the torque", "Photo before you proceed", "Good — carry on"]
+    private let quick = ["Wait for me", "Check the torque", "Photo before you proceed", "Good - carry on"]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -433,7 +433,7 @@ struct CoachPanel: View {
                 .disabled(text.trimmingCharacters(in: .whitespaces).isEmpty)
             }
             if pointerMode {
-                Text("Tap a spot on the chamber — \(target.name) sees a pulsing marker there with your name.")
+                Text("Tap a spot on the chamber - \(target.name) sees a pulsing marker there with your name.")
                     .font(.caption).foregroundStyle(.orange)
             }
         }

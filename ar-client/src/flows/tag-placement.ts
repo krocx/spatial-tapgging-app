@@ -32,7 +32,7 @@ export class TagPlacementFlow {
   private anchorFlow = new AnchorCreationFlow();
   private placedTags: PlacedTag[] = [];
 
-  // Tag indicator geometry — shared across all placed tags for memory efficiency
+  // Tag indicator geometry - shared across all placed tags for memory efficiency
   private static readonly INDICATOR_GEO = new THREE.SphereGeometry(0.04, 16, 12);
   private static readonly INDICATOR_MAT = new THREE.MeshStandardMaterial({
     color: 0x00aaff,

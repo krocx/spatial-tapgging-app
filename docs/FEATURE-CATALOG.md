@@ -1,14 +1,14 @@
-# Feature Catalog — appliedx Connected Worker AR OMS Platform
+# Feature Catalog - appliedx Connected Worker AR OMS Platform
 
 > **This table is now a human-readable VIEW.** The canonical, machine-readable
-> source is [docs/catalog/](catalog/README.md) — one YAML-frontmatter file per
+> source is [docs/catalog/](catalog/README.md) - one YAML-frontmatter file per
 > feature, rendered live at `/catalog`. When a feature ships or changes, update
 > its `docs/catalog/<id>.md` file **and** the row here in the same commit; the
 > drift checker treats disagreement between the two as a build failure.
 
 The canonical index of everything the platform does. One row per capability, with a
 status and a link to the deep documentation. **Update the relevant row in the same
-commit that ships or changes a feature** — that rule is what keeps this document
+commit that ships or changes a feature** - that rule is what keeps this document
 trustworthy where prose feature docs go stale.
 
 - **Status**: `Shipped` (in production use) · `Beta` (works, limited validation) ·
@@ -18,7 +18,7 @@ trustworthy where prose feature docs go stale.
   the versioning standard is adopted (see [VERSIONING.md](VERSIONING.md)).
 
 Audience-specific views (the leadership capability overview, release notes) are
-**generated from the platform, never hand-maintained in parallel** — this catalog and
+**generated from the platform, never hand-maintained in parallel** - this catalog and
 the linked docs are the single source of truth.
 
 ---
@@ -40,11 +40,11 @@ the linked docs are the single source of truth.
 | Inspection sessions + evidence | Per-tag results, retakes, evidence photos, session reports in the portal | Shipped | baseline | [APP-FEATURES](APP-FEATURES.md) |
 | AES-256-GCM at source | Reference imagery encrypted on device; key never leaves it; server stores no plaintext | Shipped | baseline | [README](../README.md) |
 
-## 2. Gemba Walk — audit rounds (iOS + SIB)
+## 2. Gemba Walk - audit rounds (iOS + SIB)
 
 | Feature | What it does | Status | Introduced | Docs |
 |---|---|---|---|---|
-| Markerless issue pinning (LocTags) | Tap any surface to drop a finding — no QR, no preparation | Shipped | baseline | [APP-FEATURES](APP-FEATURES.md) |
+| Markerless issue pinning (LocTags) | Tap any surface to drop a finding - no QR, no preparation | Shipped | baseline | [APP-FEATURES](APP-FEATURES.md) |
 | ARWorldMap spatial memory | Walks re-localize into the saved map so findings appear in their true positions | Shipped | baseline | [APP-FEATURES](APP-FEATURES.md) |
 | Photo-guided re-localization | Author's original viewpoint shown as a reference card, with "I'm here" override | Shipped | baseline | [APP-FEATURES](APP-FEATURES.md) |
 | Defect taxonomy + severity | Category and severity on every finding | Shipped | baseline | [APP-FEATURES](APP-FEATURES.md) |
@@ -61,7 +61,7 @@ the linked docs are the single source of truth.
 | Evidence capture + sign-off | Per-step photos; completion recorded with operator, timestamps, durations | Shipped | baseline | [README](../README.md) |
 | Conditional task graph | Steps branch on outcome (`nextOnSuccess`/`nextOnFailure`) and gate on prerequisites | Shipped | baseline | [PROCEDURE-DESIGNER](PROCEDURE-DESIGNER.md) §4 |
 | Instruction import (adapter) | `POST /guides/import` behind a pluggable adapter; manual JSON adapter shipped | Shipped | baseline | [SERVER-REFERENCE](SERVER-REFERENCE.md) |
-| MES connector | Production instruction-source adapter | Stub | — | [PROCEDURE-DESIGNER](PROCEDURE-DESIGNER.md) |
+| MES connector | Production instruction-source adapter | Stub | - | [PROCEDURE-DESIGNER](PROCEDURE-DESIGNER.md) |
 | Live session telemetry (SSE) | Seven event types streamed during a walk; observers see progress in real time | Shipped | baseline | [SERVER-REFERENCE](SERVER-REFERENCE.md) |
 | AI-assisted guidance | Adapter decides when to help; hints delivered via consume-once queue. Rule-based stub today, model-swappable by design | Shipped (stub adapter) | baseline | [README](../README.md) |
 | Stall detection | 90 s dwell on an incomplete step raises a hint automatically | Shipped | baseline | [README](../README.md) |
@@ -109,7 +109,7 @@ the linked docs are the single source of truth.
 | Auto-sizing nodes | Cards wrap titles up to 4 lines and grow to fit; all geometry (edges, minimap, layout, export) follows the real height | Shipped | 2026.4.42 | [roadmap-mindmapper](roadmap-mindmapper.md) |
 | Edge type switcher + legend | Change Next / On failure / Requires on a selected connection; census line-swatch legend + role explainer panel | Shipped | 2026.4.42 | [PROCEDURE-DESIGNER](PROCEDURE-DESIGNER.md) |
 
-## 6b. iLOTO — spatial Lockout/Tagout
+## 6b. iLOTO - spatial Lockout/Tagout
 
 | Feature | What it does | Status | Introduced | Docs |
 |---|---|---|---|---|
@@ -126,13 +126,13 @@ the linked docs are the single source of truth.
 
 | Feature | What it does | Status | Introduced | Docs |
 |---|---|---|---|---|
-| Guide import (xlsx/JSON) with preview | Excel template + header-flexible parse, pre-import validation preview, post-import jump-and-flash to the new guide | Shipped | 2026.4.42 | — |
-| Guide move-to-anchor | Reassign a guide (and steps) to another anchor; placement cleared, guide unpublished until re-placed | Shipped | 2026.4.42 | — |
-| SIB home page | Landing at / with cards for Portal, Roadmap/Procedure Designer, App Wireframe (/wireframe); live status + version | Shipped | 2026.4.42 | — |
-| Ask SIB | /ask + drawer on /catalog — docs-grounded Q&A citing features; retrieval everywhere, generation via any OpenAI-compatible local model (llama.cpp / Ollama) | Beta | 2026.4.42 | [catalog/README](catalog/README.md) |
-| Guide Preview (portal) | ▶ Preview walks the real branch graph in a phone frame — Complete/Failed/Skip, requires redirects, images, voice, coverage summary, placement banner | Shipped | 2026.4.42 | [PROCEDURE-DESIGNER](PROCEDURE-DESIGNER.md) |
+| Guide import (xlsx/JSON) with preview | Excel template + header-flexible parse, pre-import validation preview, post-import jump-and-flash to the new guide | Shipped | 2026.4.42 | - |
+| Guide move-to-anchor | Reassign a guide (and steps) to another anchor; placement cleared, guide unpublished until re-placed | Shipped | 2026.4.42 | - |
+| SIB home page | Landing at / with cards for Portal, Roadmap/Procedure Designer, App Wireframe (/wireframe); live status + version | Shipped | 2026.4.42 | - |
+| Ask SIB | /ask + drawer on /catalog - docs-grounded Q&A citing features; retrieval everywhere, generation via any OpenAI-compatible local model (llama.cpp / Ollama) | Beta | 2026.4.42 | [catalog/README](catalog/README.md) |
+| Guide Preview (portal) | ▶ Preview walks the real branch graph in a phone frame - Complete/Failed/Skip, requires redirects, images, voice, coverage summary, placement banner | Shipped | 2026.4.42 | [PROCEDURE-DESIGNER](PROCEDURE-DESIGNER.md) |
 | Backup & restore | Admin-gated `GET /admin/backup?scope=data\|full` streams a timestamped tar.gz of the data dir; portal Settings buttons; documented manual restore | Shipped | 2026.4.42 | [INTERNAL-SERVER-DEPLOY](INTERNAL-SERVER-DEPLOY.md) |
-| Visual Feature Catalogue | /catalog — connected graph of all features generated live from docs/catalog/ frontmatter: flows, dependencies, glossary hovers, role trails, spec deep-dives; drift-checked via `npm run catalog:check` | Shipped | 2026.4.42 | [catalog/README](catalog/README.md) |
+| Visual Feature Catalogue | /catalog - connected graph of all features generated live from docs/catalog/ frontmatter: flows, dependencies, glossary hovers, role trails, spec deep-dives; drift-checked via `npm run catalog:check` | Shipped | 2026.4.42 | [catalog/README](catalog/README.md) |
 
 ## 7. Platform foundations
 
@@ -140,12 +140,12 @@ the linked docs are the single source of truth.
 |---|---|---|---|---|
 | Self-hosted end to end | Render or on-prem (Windows + NSSM); no third party sees site data | Shipped | baseline | [WHY-RENDER](WHY-RENDER.md) / [INTERNAL-SERVER-DEPLOY](INTERNAL-SERVER-DEPLOY.md) |
 | No cloud AI dependency | Every intelligent feature local or behind an owned interface | Shipped | baseline | [README](../README.md) |
-| Adapter architecture | Perception, instruction sources, AI guidance, vision — all pluggable with working defaults | Shipped | baseline | [technical-architecture](technical-architecture.md) |
+| Adapter architecture | Perception, instruction sources, AI guidance, vision - all pluggable with working defaults | Shipped | baseline | [technical-architecture](technical-architecture.md) |
 | Shared TypeScript schema | One `@spatial/shared` package typed across server, portal and (mirrored) iOS | Shipped | baseline | [schemas](schemas.md) |
 | Guided onboarding (FTUE) | Six per-workflow walkthroughs + spotlight tour + contextual help | Shipped | baseline | [APP-FEATURES](APP-FEATURES.md) |
 | Guide ingestion service | Single create/upsert path for guides; spatial placement can never be overwritten by an import or canvas write | Shipped | baseline | [PROCEDURE-DESIGNER](PROCEDURE-DESIGNER.md) §8 |
 
-## 8. Connected Worker — shipped in 2026.4.45 → 2026.4.46
+## 8. Connected Worker - shipped in 2026.4.45 → 2026.4.46
 
 | Feature | What it does | Status | Introduced | Docs |
 |---|---|---|---|---|
@@ -165,7 +165,7 @@ the linked docs are the single source of truth.
 | Device logs (QA logging) | iPhone log lines shipped to SIB; QA Mode; portal live tail and export | Shipped | 2026.4.46 | [QA-LOGGING](QA-LOGGING.md) |
 | SIB Compass | One radial navigator with live counts on every web surface | Shipped | 2026.4.46 | [CONNECTED-WORKER](CONNECTED-WORKER.md#sib-compass) |
 | Platform story (/platform) | "The Chamber" scroll story with the Connected Worker ladder and self-assessment | Shipped | 2026.4.46 | [CONNECTED-WORKER](CONNECTED-WORKER.md#platform-story-platform) |
-| Gemba Walk — Audit Reference Library | Focus Areas → Questions, categories, ratings, pick lists; import from Excel/CSV | Shipped | 2026.4.46 | [GEMBA-WALK](GEMBA-WALK.md) |
-| Gemba Walk — findings, photos, markup | Reference or custom entries, Strength/OFI/NC, risk, six captioned photos, PencilKit markup, floating panels | Shipped | 2026.4.46 | [GEMBA-WALK](GEMBA-WALK.md) |
-| Gemba Walk — sessions + Excel | Walk header, continue/join, summary, three-sheet Excel with every photo, filtered export | Shipped | 2026.4.46 | [GEMBA-WALK](GEMBA-WALK.md) |
-| Gemba Walk — together, phone-down, checkpoint | Multi-auditor presence, Live Activity navigation, welcome-back checkpoint, drift check | Shipped | 2026.4.46 | [GEMBA-WALK](GEMBA-WALK.md) |
+| Gemba Walk - Audit Reference Library | Focus Areas → Questions, categories, ratings, pick lists; import from Excel/CSV | Shipped | 2026.4.46 | [GEMBA-WALK](GEMBA-WALK.md) |
+| Gemba Walk - findings, photos, markup | Reference or custom entries, Strength/OFI/NC, risk, six captioned photos, PencilKit markup, floating panels | Shipped | 2026.4.46 | [GEMBA-WALK](GEMBA-WALK.md) |
+| Gemba Walk - sessions + Excel | Walk header, continue/join, summary, three-sheet Excel with every photo, filtered export | Shipped | 2026.4.46 | [GEMBA-WALK](GEMBA-WALK.md) |
+| Gemba Walk - together, phone-down, checkpoint | Multi-auditor presence, Live Activity navigation, welcome-back checkpoint, drift check | Shipped | 2026.4.46 | [GEMBA-WALK](GEMBA-WALK.md) |

@@ -1,4 +1,4 @@
-// mindmap.model.ts — stores + pure graph logic for the Roadmap Mind-Mapper.
+// mindmap.model.ts - stores + pure graph logic for the Roadmap Mind-Mapper.
 //
 // Persistence follows the SIB convention: JsonFileStore → .sib-data/*.json.
 // All mutation logic lives here as pure functions so the WS layer and the
@@ -27,7 +27,7 @@ import { JsonFileStore } from '../stores/json-file-store.js';
 export const mindmapStore = new JsonFileStore<Mindmap>('mindmaps');
 export const mindmapVersionStore = new JsonFileStore<MindmapVersion>('mindmap-versions');
 
-// ── Access control (publish workflow — pre-RBAC) ───────────────────────────
+// ── Access control (publish workflow - pre-RBAC) ───────────────────────────
 // One record per map. Maps WITHOUT a record are treated as published
 // (backward compatibility: everything created before the publish feature
 // was already shared with the whole team).
@@ -64,7 +64,7 @@ export function isOwner(mapId: string, providedKey?: string): boolean {
   return !!access.draftKey && !!providedKey && providedKey === access.draftKey;
 }
 
-/** Max stored versions per map — oldest are pruned beyond this. */
+/** Max stored versions per map - oldest are pruned beyond this. */
 export const MAX_VERSIONS_PER_MAP = 50;
 
 // ── Graph helpers ──────────────────────────────────────────────────────────
@@ -121,7 +121,7 @@ export function sanitizeSettings(raw: unknown): MindmapSettings | null {
 /**
  * Apply a collaboration event to a map, mutating a *copy* and returning it.
  * Returns null when the event is stale (LWW: an equal-or-newer version of
- * the entity already exists) or malformed — callers skip persist + broadcast.
+ * the entity already exists) or malformed - callers skip persist + broadcast.
  */
 export function applyGraphEvent(map: Mindmap, event: MindmapWsEvent): Mindmap | null {
   // Clamp client clocks that are wildly ahead (>30 s) to server time so a
@@ -194,7 +194,7 @@ export function applyGraphEvent(map: Mindmap, event: MindmapWsEvent): Mindmap | 
       if (!edge) return null;
       if (next.edges.some(e => e.id === edge.id)) return null;
       // Both endpoints must exist; ignore duplicates. Self-loops (from === to)
-      // are allowed since 2026.4.45 — the duplicate check below caps a node
+      // are allowed since 2026.4.45 - the duplicate check below caps a node
       // at one loop.
       if (!next.nodes.some(n => n.id === edge.from) || !next.nodes.some(n => n.id === edge.to)) return null;
       if (next.edges.some(e => e.from === edge.from && e.to === edge.to)) return null;
@@ -249,7 +249,7 @@ const NODE_SHAPES = new Set(['rounded', 'rect', 'pill', 'diamond', 'hexagon', 'c
 const EDGE_PORTS = new Set(['top', 'right', 'bottom', 'left']);
 const MAX_COMMENTS_PER_NODE = 100;
 
-/** http(s) only — rejects javascript:, data:, file: and other schemes outright. */
+/** http(s) only - rejects javascript:, data:, file: and other schemes outright. */
 function sanitizeLink(raw: unknown): string | undefined {
   if (typeof raw !== 'string') return undefined;
   const link = raw.trim().slice(0, 500);
@@ -298,7 +298,7 @@ function sanitizeNode(raw: unknown, ts: number): MindmapNode | null {
 }
 
 /**
- * Sanitize full node/edge arrays (REST save + JSON import path — same rules
+ * Sanitize full node/edge arrays (REST save + JSON import path - same rules
  * as the WS path, so unsafe links/shapes can't sneak in via /mindmap/save).
  * Malformed entries are dropped; edges must reference surviving nodes.
  */
@@ -336,7 +336,7 @@ function sanitizeEdge(raw: unknown, ts: number): MindmapEdge | null {
     updatedAt: typeof e.updatedAt === 'number' ? Math.min(e.updatedAt, ts) : ts,
     ...(typeof e.label === 'string' && e.label.trim().length > 0 && { label: e.label.trim().slice(0, 200) }),
     // Procedure semantics. Must be whitelisted here or it is silently dropped
-    // on every save — this function rebuilds the edge from scratch.
+    // on every save - this function rebuilds the edge from scratch.
     ...(e.role === 'next' || e.role === 'failure' || e.role === 'requires'
       ? { role: e.role }
       : {}),
@@ -398,7 +398,7 @@ export function snapshotVersion(map: Mindmap, label: string): MindmapVersion {
   };
   mindmapVersionStore.save(version);
 
-  // Bounded retention — keep the newest MAX_VERSIONS_PER_MAP per map.
+  // Bounded retention - keep the newest MAX_VERSIONS_PER_MAP per map.
   const all = versionsNewestFirst(map.id);
   if (all.length > MAX_VERSIONS_PER_MAP) {
     const cutoff = new Set(all.slice(MAX_VERSIONS_PER_MAP).map(v => v.id));

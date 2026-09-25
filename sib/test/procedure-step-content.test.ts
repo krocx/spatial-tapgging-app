@@ -1,9 +1,9 @@
-// procedure-step-content.test.ts — slice 2: step content flows from canvas
+// procedure-step-content.test.ts - slice 2: step content flows from canvas
 // metadata through the compiler and ingestion into real GuideSteps.
 //
 // The cases that matter most are the model-semantics ones: assignment
 // (modelId/scale/opacity) may come from the canvas, placement
-// (offsets/rotationY) is device-owned — and switching models clears the old
+// (offsets/rotationY) is device-owned - and switching models clears the old
 // model's placement, because it belonged to a different object.
 
 import { test } from 'node:test';
@@ -21,7 +21,7 @@ const { applyImportedGuide } = await import('../src/guides/ingest.js');
 const { guideStepStore }     = await import('../src/guides/store.js');
 const { saveDesignerImage, DESIGNER_IMG_DIR } = await import('../src/procedure/designer-images.js');
 
-// Minimal valid JPEG (SOI + APP0 header + EOI) — enough for magic-byte checks.
+// Minimal valid JPEG (SOI + APP0 header + EOI) - enough for magic-byte checks.
 const TINY_JPEG = Buffer.from([
   0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00,
   0x01, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0xff, 0xd9,
@@ -97,7 +97,7 @@ test('ingest writes linkUrl onto the guide step and clears it when absent on re-
   assert.equal(first.steps[0].linkUrl, 'https://example.com/v');
 
   // Re-sync with the link removed on the canvas → cleared on the step
-  // (authoring-surface-owned, like text — unlike device-owned placement).
+  // (authoring-surface-owned, like text - unlike device-owned placement).
   const second = await applyImportedGuide(
     { name: 'GL', steps: [{ sequenceNumber: 1, title: 'A', text: 'x' }] },
     { anchorId: 'anchor-l', createdBy: 'K', guideId: first.guide.id,
@@ -157,7 +157,7 @@ test('canvas model assignment applies while device placement survives (same mode
   );
   const s = again.steps[0];
   assert.equal(s.modelScale, 2, 'assignment updated from canvas');
-  assert.equal(s.modelOffsetX, 0.1, 'placement survives — same model');
+  assert.equal(s.modelOffsetX, 0.1, 'placement survives - same model');
   assert.equal(s.modelRotationY, 1.0);
   assert.equal(s.isPlaced, true);
   assert.equal(s.posX, 1);

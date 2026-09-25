@@ -1,13 +1,13 @@
-// mindmap.routes.ts — REST surface for the Roadmap Mind-Mapper.
+// mindmap.routes.ts - REST surface for the Roadmap Mind-Mapper.
 // Mounted at /mindmap (behind apiKeyAuth) in app.ts.
 //
-//   POST   /mindmap/save                      — create / full-save a map (+version snapshot)
-//   GET    /mindmap/load/:id                  — load a map
-//   GET    /mindmap/list                      — list map summaries
-//   POST   /mindmap/export                    — { id, format: json|svg } → file download
-//   DELETE /mindmap/:id                       — delete map + its versions
-//   GET    /mindmap/:id/versions              — version history (metadata only)
-//   POST   /mindmap/:id/restore/:versionId    — restore a snapshot
+//   POST   /mindmap/save                      - create / full-save a map (+version snapshot)
+//   GET    /mindmap/load/:id                  - load a map
+//   GET    /mindmap/list                      - list map summaries
+//   POST   /mindmap/export                    - { id, format: json|svg } → file download
+//   DELETE /mindmap/:id                       - delete map + its versions
+//   GET    /mindmap/:id/versions              - version history (metadata only)
+//   POST   /mindmap/:id/restore/:versionId    - restore a snapshot
 
 import { Router, type Request, type Response } from 'express';
 import fs from 'fs';
@@ -44,7 +44,7 @@ import {
 
 /**
  * Persist a map without snapshotting a version. Used by the procedure export to
- * stamp step provenance onto nodes — bookkeeping, not an authored edit, so it
+ * stamp step provenance onto nodes - bookkeeping, not an authored edit, so it
  * should not consume a slot in the version history.
  */
 function saveMindmapRecord(map: Mindmap): void {
@@ -60,7 +60,7 @@ function draftKeyOf(req: Request): string | undefined {
   return v?.trim() || undefined;
 }
 
-/** X-Draft-Keys: "mapId1:key1,mapId2:key2" — used by /list. */
+/** X-Draft-Keys: "mapId1:key1,mapId2:key2" - used by /list. */
 function draftKeysOf(req: Request): Map<string, string> {
   const h = req.headers['x-draft-keys'];
   const v = Array.isArray(h) ? h[0] : h;
@@ -78,7 +78,7 @@ function fail(res: Response, err: unknown): Response {
     err instanceof ProcedureError     ? err.status :
     err instanceof DesignerImageError ? err.status : 500;
   const message = err instanceof Error ? err.message : 'Internal error';
-  // Procedure failures carry the pre-flight issue list — the client needs it to
+  // Procedure failures carry the pre-flight issue list - the client needs it to
   // point at the offending step rather than just showing a message.
   const issues = err instanceof ProcedureError && err.issues.length ? { issues: err.issues } : {};
   return res.status(status).json({ error: message, ...issues, timestamp: new Date().toISOString() });
@@ -111,7 +111,7 @@ router.get('/list', (req: Request, res: Response) => {
   catch (err) { return fail(res, err); }
 });
 
-// GET /mindmap/glossary — the roadmap dictionary (docs/roadmap-glossary.md),
+// GET /mindmap/glossary - the roadmap dictionary (docs/roadmap-glossary.md),
 // served at runtime so editing the markdown updates the tool with no rebuild.
 // Works from src (tsx), dist (compiled), and the Docker image (/app/docs).
 const __routesDir = path.dirname(fileURLToPath(import.meta.url));
@@ -129,7 +129,7 @@ router.get('/glossary', (_req: Request, res: Response) => {
     } catch { /* try next location */ }
   }
   return res.status(404).json({
-    error: 'Glossary not found — expected docs/roadmap-glossary.md alongside the SIB deployment',
+    error: 'Glossary not found - expected docs/roadmap-glossary.md alongside the SIB deployment',
     timestamp: new Date().toISOString(),
   });
 });
@@ -148,7 +148,7 @@ router.post('/export', (req: Request, res: Response) => {
   } catch (err) { return fail(res, err); }
 });
 
-// GET /mindmap/import-image/status — is a vision endpoint configured on THIS
+// GET /mindmap/import-image/status - is a vision endpoint configured on THIS
 // server? Lets the client show "not set up" instead of a two-minute timeout.
 // Key-free summary only (provider / model / host), never the API key.
 router.get('/import-image/status', (_req: Request, res: Response) => {
@@ -158,9 +158,9 @@ router.get('/import-image/status', (_req: Request, res: Response) => {
   })();
 });
 
-// POST /mindmap/import-image — { image: base64, mimeType } → PREVIEW graph
+// POST /mindmap/import-image - { image: base64, mimeType } → PREVIEW graph
 // (not persisted; the client creates a draft via /save if the user accepts).
-// Extraction runs on the locally configured vision model — see vision-adapter.ts.
+// Extraction runs on the locally configured vision model - see vision-adapter.ts.
 router.post('/import-image', (req: Request, res: Response) => {
   void (async () => {
     try {
@@ -169,7 +169,7 @@ router.post('/import-image', (req: Request, res: Response) => {
         throw new MindmapError(400, 'Missing required field: image (base64)');
       }
       if (image.length > 12_000_000) {
-        throw new MindmapError(413, 'Image too large — downscale to ~1280px before upload');
+        throw new MindmapError(413, 'Image too large - downscale to ~1280px before upload');
       }
       const mime = typeof mimeType === 'string' && /^image\/(png|jpe?g|webp)$/.test(mimeType)
         ? mimeType : 'image/jpeg';
@@ -184,7 +184,7 @@ router.post('/import-image', (req: Request, res: Response) => {
   })();
 });
 
-// POST /mindmap/unlock — { draftKey } → map summary; how teammates open a shared draft.
+// POST /mindmap/unlock - { draftKey } → map summary; how teammates open a shared draft.
 router.post('/unlock', (req: Request, res: Response) => {
   try {
     const { draftKey } = (req.body ?? {}) as { draftKey?: string };
@@ -193,7 +193,7 @@ router.post('/unlock', (req: Request, res: Response) => {
   } catch (err) { return fail(res, err); }
 });
 
-// POST /mindmap/:id/publish  |  /:id/unpublish — draft-key holder only.
+// POST /mindmap/:id/publish  |  /:id/unpublish - draft-key holder only.
 router.post('/:id/publish', (req: Request, res: Response) => {
   try { return ok<Mindmap>(res, publishMindmap(req.params.id, draftKeyOf(req), true)); }
   catch (err) { return fail(res, err); }
@@ -203,8 +203,8 @@ router.post('/:id/unpublish', (req: Request, res: Response) => {
   catch (err) { return fail(res, err); }
 });
 
-// POST /mindmap/:id/import-sib — merge SIB anchors/tags into the map.
-// Body: { anchorId?: string } — omit to import the full anchor/tag graph.
+// POST /mindmap/:id/import-sib - merge SIB anchors/tags into the map.
+// Body: { anchorId?: string } - omit to import the full anchor/tag graph.
 router.post('/:id/import-sib', (req: Request, res: Response) => {
   try {
     assertAccess(req.params.id, draftKeyOf(req));
@@ -219,7 +219,7 @@ router.post('/:id/import-sib', (req: Request, res: Response) => {
 // A `kind: 'procedure'` map compiles into an AR guide.
 // See docs/PROCEDURE-DESIGNER.md.
 
-// POST /mindmap/step-images — upload a step reference image (base64 JPEG).
+// POST /mindmap/step-images - upload a step reference image (base64 JPEG).
 // Content-addressed; the response filename goes into node.metadata.step.imageFile.
 // Registered BEFORE /:id routes so "step-images" is not read as a map id.
 router.post('/step-images', (req: Request, res: Response) => {
@@ -231,14 +231,14 @@ router.post('/step-images', (req: Request, res: Response) => {
   } catch (err) { return fail(res, err); }
 });
 
-// GET /mindmap/step-images/:filename — serve a designer image.
+// GET /mindmap/step-images/:filename - serve a designer image.
 router.get('/step-images/:filename', (req: Request, res: Response) => {
   const full = designerImagePath(req.params.filename);
   if (!full) return res.status(404).json({ error: 'Image not found', timestamp: new Date().toISOString() });
   return res.sendFile(full);
 });
 
-// POST /mindmap/:id/procedure/validate — pre-flight only; never writes.
+// POST /mindmap/:id/procedure/validate - pre-flight only; never writes.
 // Returns the census, derived step numbers, and any blocking/warning issues.
 router.post('/:id/procedure/validate', (req: Request, res: Response) => {
   try {
@@ -248,10 +248,10 @@ router.post('/:id/procedure/validate', (req: Request, res: Response) => {
   } catch (err) { return fail(res, err); }
 });
 
-// POST /mindmap/:id/procedure/export — send the procedure to the Guide Library.
+// POST /mindmap/:id/procedure/export - send the procedure to the Guide Library.
 //
 // Body: { anchorId?, createdBy, guideId?, confirmUnpublish? }
-// Creates a DRAFT guide with every new step unplaced — placement happens on
+// Creates a DRAFT guide with every new step unplaced - placement happens on
 // device and is never written from here.
 router.post('/:id/procedure/export', async (req: Request, res: Response) => {
   try {
@@ -281,7 +281,7 @@ router.post('/:id/procedure/export', async (req: Request, res: Response) => {
         const p = provenance[n.id];
         return p ? { ...n, metadata: { ...n.metadata, guide: p } } : n;
       }),
-      // Map and guide agree as of now — resets the stale-map warning that
+      // Map and guide agree as of now - resets the stale-map warning that
       // "Edit in Designer" shows when the guide changed elsewhere since.
       guideSync: { guideId: result.guideId, syncedAt: Date.now() },
       updatedAt: Date.now(),

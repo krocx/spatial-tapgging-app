@@ -1,4 +1,4 @@
-// WorldMapCache.swift — B1 (2026.4.46): one world-map loader for every AR surface.
+// WorldMapCache.swift - B1 (2026.4.46): one world-map loader for every AR surface.
 //
 // Doctrine: the AUTHOR's world map is the origin; the QR is the key and a drift
 // check. Spatial Inspection (anchor maps) and AR Work Instructions (guide maps)
@@ -118,7 +118,7 @@ enum WorldMapCache {
         let local     = loadLocal(scope)
         let localMeta = loadLocalMeta(scope)
 
-        // 1. Meta first — cheap, tells us whether the cache is current.
+        // 1. Meta first - cheap, tells us whether the cache is current.
         let remoteMeta: WorldMapMeta?
         do {
             switch scope {
@@ -127,7 +127,7 @@ enum WorldMapCache {
             }
         } catch {
             remoteMeta = nil
-            print("[WorldMapCache] \(scope.key): meta fetch failed (\(error.localizedDescription)) — using local copy if any")
+            print("[WorldMapCache] \(scope.key): meta fetch failed (\(error.localizedDescription)) - using local copy if any")
         }
 
         // 2. Cache hit: same capturedAt (or server has no meta and we have a map).
@@ -187,7 +187,7 @@ enum WorldMapCache {
 
     // ── Private ───────────────────────────────────────────────────────────────
 
-    /// Size of the locally cached map, if any — a cheap sanity check before a
+    /// Size of the locally cached map, if any - a cheap sanity check before a
     /// re-seal overwrites it.
     static func localSize(_ scope: Scope) -> Int? { loadLocal(scope)?.count }
 

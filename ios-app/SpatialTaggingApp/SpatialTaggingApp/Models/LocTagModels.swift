@@ -1,4 +1,4 @@
-// LocTagModels.swift — Phase 2: Loc-Tag (Gemba audit walk)
+// LocTagModels.swift - Phase 2: Loc-Tag (Gemba audit walk)
 //
 // Swift equivalents of the canonical types in shared/src/index.ts.
 // All raw values match the TypeScript string literals exactly so JSON
@@ -105,15 +105,15 @@ struct LocTag: Codable, Identifiable, Equatable {
     let severity:           Severity?
     let defectCategory:     DefectCategory
     let defectCategoryNote: String?
-    /// Filename on the SIB evidence store — fetch via GET /loc-tags/image/:filename.
+    /// Filename on the SIB evidence store - fetch via GET /loc-tags/image/:filename.
     /// G3: always mirrors `photos.first?.path`.
     let referenceImagePath: String?
     /// ARKit world-space position within the saved ARWorldMap.
     let position:           SIBVector3
-    /// Author-defined visit order — drives Operator navigation sequence.
+    /// Author-defined visit order - drives Operator navigation sequence.
     let order:              Int
 
-    // ── G3 (2026.4.46): reference-list finding — snapshot of what was chosen ──
+    // ── G3 (2026.4.46): reference-list finding - snapshot of what was chosen ──
     var focusAreaCode:      String?
     var focusAreaTitle:     String?
     var questionCode:       String?
@@ -121,7 +121,7 @@ struct LocTag: Codable, Identifiable, Equatable {
     var questionText:       String?
     var findingCategory:    GembaFindingCategory?
     var riskRating:         GembaRiskRating?
-    /// 'library' (picked, codes present) or 'custom' (typed — no codes). nil on legacy findings.
+    /// 'library' (picked, codes present) or 'custom' (typed - no codes). nil on legacy findings.
     var referenceSource:    String?
     var photos:             [LocTagPhoto]?
     /// G2: the walk session this finding belongs to.
@@ -132,7 +132,7 @@ struct LocTag: Codable, Identifiable, Equatable {
     var isCustomReference: Bool { referenceSource == "custom" }
     let updatedAt:          String
 
-    /// Every photo on the finding, oldest first — falls back to the legacy
+    /// Every photo on the finding, oldest first - falls back to the legacy
     /// single reference image for findings logged before G3.
     var allPhotos: [LocTagPhoto] {
         if let photos, !photos.isEmpty { return photos }
@@ -166,7 +166,7 @@ let locTagMaxPhotos = 6
 // MARK: - Audit Reference Library (G1)
 // ============================================================
 
-/// Finding category — Corporate Quality vocabulary. Mirrors `GembaFindingCategory`.
+/// Finding category - Corporate Quality vocabulary. Mirrors `GembaFindingCategory`.
 enum GembaFindingCategory: String, Codable, CaseIterable, Identifiable {
     var id: String { rawValue }
     case strength = "STRENGTH"
@@ -203,10 +203,10 @@ enum GembaRiskRating: Int, Codable, CaseIterable, Identifiable {
 
     var displayName: String {
         switch self {
-        case .noRisk: return "0 — No risk"
-        case .minor:  return "1 — Minor risk"
-        case .medium: return "2 — Medium risk"
-        case .high:   return "3 — High risk"
+        case .noRisk: return "0 - No risk"
+        case .minor:  return "1 - Minor risk"
+        case .medium: return "2 - Medium risk"
+        case .high:   return "3 - High risk"
         }
     }
     var shortName: String {
@@ -225,7 +225,7 @@ struct GembaFocusArea: Codable, Identifiable, Equatable {
     let active:    Bool
     var questions: [GembaQuestion]
 
-    var displayName: String { "\(code) — \(title)" }
+    var displayName: String { "\(code) - \(title)" }
 }
 
 /// A pre-defined question under a focus area. Mirrors `GembaQuestion`.
@@ -239,7 +239,7 @@ struct GembaQuestion: Codable, Identifiable, Equatable {
     let active:      Bool
 }
 
-/// GET /gemba/library — everything a walk needs, one call. Mirrors `GembaLibrary`.
+/// GET /gemba/library - everything a walk needs, one call. Mirrors `GembaLibrary`.
 struct GembaLibrary: Codable, Equatable {
     struct CategoryEntry: Codable, Equatable { let code: GembaFindingCategory; let label: String }
     struct RatingEntry:   Codable, Equatable { let value: GembaRiskRating; let label: String }
@@ -274,7 +274,7 @@ struct CreateLocTagRequest: Codable {
     // ── G3 ──
     /// The server resolves the code against the Audit Reference Library and snapshots area/question.
     var questionCode:         String?
-    /// Free-text alternative to questionCode — logged as a 'custom' reference.
+    /// Free-text alternative to questionCode - logged as a 'custom' reference.
     var customFocusArea:      String?
     var customQuestion:       String?
     var findingCategory:      GembaFindingCategory?
@@ -346,7 +346,7 @@ struct AppendLocTagPhotosRequest: Codable {
 // ============================================================
 
 /// An Operator's completion record for a single Loc-Tag visit.
-/// Multiple completions are allowed — the Operator can revisit a tag.
+/// Multiple completions are allowed - the Operator can revisit a tag.
 /// Mirrors `LocTagCompletion` in shared/src/index.ts.
 struct LocTagCompletion: Codable, Identifiable {
     let id:                  String
@@ -389,7 +389,7 @@ struct SubmitLocTagCompletionRequest: Codable {
     }
 }
 
-/// Summary of a LocTag's latest completion — used in session report uploads.
+/// Summary of a LocTag's latest completion - used in session report uploads.
 /// Mirrors `LocTagSummary` in shared/src/index.ts.
 struct LocTagSummary: Codable {
     let locTagId:     String
@@ -404,7 +404,7 @@ struct LocTagSummary: Codable {
 // ============================================================
 
 /// Request body for PATCH /loc-tags/:id.
-/// All fields are optional — only send what changed.
+/// All fields are optional - only send what changed.
 struct UpdateLocTagRequest: Codable {
     var title:              String?
     var description:        String?
@@ -449,7 +449,7 @@ struct UpdateLocTagRequest: Codable {
 
 /// Request body for POST /worldmap/upload.
 /// `referencePhotoBase64` is a JPEG snapshot taken at the moment the Author
-/// saved their first tag — gives Operators a visual landmark for where to
+/// saved their first tag - gives Operators a visual landmark for where to
 /// stand when re-localizing.  It is optional and non-fatal if absent.
 struct WorldMapUploadRequest: Codable {
     let anchorId:              String
@@ -490,7 +490,7 @@ struct GembaWalkSummary: Codable, Equatable {
     let photos:        Int
 }
 
-/// A walk session — the header collected before the first finding. Mirrors `GembaWalk`.
+/// A walk session - the header collected before the first finding. Mirrors `GembaWalk`.
 struct GembaWalk: Codable, Identifiable, Equatable {
     let id:           String
     let anchorId:     String

@@ -1,4 +1,4 @@
-// SpatialGuide — dashed gold lines from the estimated QR position to each tag.
+// SpatialGuide - dashed gold lines from the estimated QR position to each tag.
 //
 // Draws in the Three.js scene so operators get a spatial breadcrumb pointing
 // toward each tag from the QR code origin.
@@ -23,7 +23,7 @@ export class SpatialGuide {
     tagPositions: THREE.Vector3[],
     _tagLabels: string[] = [],
   ) {
-    // QR origin marker — small bright sphere
+    // QR origin marker - small bright sphere
     const qrDot = new THREE.Mesh(
       new THREE.SphereGeometry(0.025, 10, 8),
       new THREE.MeshBasicMaterial({ color: 0x00ffaa }),

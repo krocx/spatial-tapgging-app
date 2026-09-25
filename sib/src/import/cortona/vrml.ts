@@ -1,4 +1,4 @@
-// vrml.ts — VRML97 parser that KEEPS PROTO declarations and instances.
+// vrml.ts - VRML97 parser that KEEPS PROTO declarations and instances.
 //
 // Why our own: every stock VRML/X3D loader drops nodes it does not know, and
 // in a Cortona3D publication the entire procedure (Procedure → Step →
@@ -91,7 +91,7 @@ function tokenize(src: string): Tok[] {
       while (j < n && src.charCodeAt(j) >= 48 && src.charCodeAt(j) <= 57) j++;
       if (src[j] === '.') { j++; while (j < n && src.charCodeAt(j) >= 48 && src.charCodeAt(j) <= 57) j++; }
       if (j === start || (j === start + 1 && src[start] === '.')) {
-        // lone sign / dot — treat as identifier char to avoid infinite loop
+        // lone sign / dot - treat as identifier char to avoid infinite loop
         let k = i; while (k < n && !/[\s,{}\[\]"]/.test(src[k])) k++;
         toks.push({ t: 'id', v: src.slice(i, k), line }); i = k; continue;
       }
@@ -118,7 +118,7 @@ class Parser {
   private routeSink: VrmlRoute[] = [];
   constructor(private toks: Tok[]) {}
 
-  /** DEF names that contain spaces (Cortona part descriptions) — for USE / ROUTE matching. */
+  /** DEF names that contain spaces (Cortona part descriptions) - for USE / ROUTE matching. */
   private spacedDefs: string[] = [];
   private peek(o = 0): Tok | undefined { return this.toks[this.p + o]; }
   private next(): Tok { const t = this.toks[this.p++]; if (!t) throw new Error('vrml: unexpected end of input'); return t; }
@@ -231,7 +231,7 @@ class Parser {
       // Cortona writes DEF names straight from part descriptions, spaces
       // included ("DEF Callout_P/N_0022_HOUSING LIFT_e0c ObjectVM {"), which
       // VRML97 forbids but the viewer accepts. The name is everything up to
-      // the token that is followed by "{" — that token is the node type.
+      // the token that is followed by "{" - that token is the node type.
       while (typeTok.t === 'id' && !this.isSym('{')) {
         const nxt = this.peek();
         if (!nxt || nxt.t !== 'id') break;

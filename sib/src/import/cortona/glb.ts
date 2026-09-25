@@ -1,11 +1,11 @@
-// glb.ts — minimal glTF 2.0 binary writer for the imported assembly.
+// glb.ts - minimal glTF 2.0 binary writer for the imported assembly.
 //
 // One GLB, node hierarchy preserved, node names = `cmp:<DEF>` so guide steps
 // can address parts by name (CAD-CONTENT.md §2). Every node carries `extras`
 // with the source DEF, display name, objectID (when known from the procedure)
 // and part number / description (when known from DocItems). Meshes are
-// positions + indices only — glTF clients compute flat normals when NORMAL is
-// absent — with a baseColorFactor material per distinct colour/alpha.
+// positions + indices only - glTF clients compute flat normals when NORMAL is
+// absent - with a baseColorFactor material per distinct colour/alpha.
 //
 // Hidden-at-rest nodes (Switch choice not selected, ObjectVM whichChoice -1)
 // are still emitted; `extras.visible=false` records the initial state so the

@@ -1,4 +1,4 @@
-// SIBTypes.swift — Phase 2A
+// SIBTypes.swift - Phase 2A
 // Codable types mirroring shared/src/index.ts. Keep in sync with the TypeScript schema.
 
 import Foundation
@@ -19,7 +19,7 @@ enum TagType: String, Codable, CaseIterable, Identifiable {
     case instruction        = "INSTRUCTION"
     case warning            = "WARNING"
     case measurement        = "MEASUREMENT"
-    // Phase 2 — cleanroom
+    // Phase 2 - cleanroom
     case presenceCheck      = "PRESENCE_CHECK"
     case languageCheck      = "LANGUAGE_CHECK"
     case routingCheck       = "ROUTING_CHECK"
@@ -58,7 +58,7 @@ enum TagType: String, Codable, CaseIterable, Identifiable {
         }
     }
 
-    /// SwiftUI accent colour for each tag type — used for chips, AR markers and badges.
+    /// SwiftUI accent colour for each tag type - used for chips, AR markers and badges.
     var color: Color {
         switch self {
         case .inspectionPoint:    return .blue
@@ -85,7 +85,7 @@ enum TagType: String, Codable, CaseIterable, Identifiable {
     // Multi-anchor readiness: capture mode is a property of the tag TYPE, not
     // the anchor.  When multi-anchor is implemented, the anchor transform used
     // to convert stored quaternions/positions to world space will be looked up
-    // by tag.anchorId — no changes needed to this routing logic.
+    // by tag.anchorId - no changes needed to this routing logic.
 
     var captureMode: TagCaptureMode {
         switch self {
@@ -98,12 +98,12 @@ enum TagType: String, Codable, CaseIterable, Identifiable {
 
 /// Determines the training capture UX and validation strategy for a tag.
 enum TagCaptureMode {
-    /// 7-viewpoint AR honeycomb walk-around — multi-angle feature print coverage.
+    /// 7-viewpoint AR honeycomb walk-around - multi-angle feature print coverage.
     case honeycomb
     /// Single cone-guided capture with LiDAR depth + feature print.
     /// Operator aligns to the stored cone direction before inspection.
     case cone
-    /// OCR text extraction — no image comparison, text match only.
+    /// OCR text extraction - no image comparison, text match only.
     case ocr
 }
 
@@ -135,17 +135,17 @@ struct Anchor: Codable, Identifiable, Hashable {
     /// Used by AnchorHubView to regenerate the full QR on any authorised device.
     let encryptionKey: String?
     /// Physical QR print size in centimetres. Set once at anchor creation and
-    /// never changed — every QR generator reads this value so the QR is identical
+    /// never changed - every QR generator reads this value so the QR is identical
     /// on every device and in the portal. Nil = legacy anchor, default to 10.0.
     let qrSizeCm: Double?
     /// Phase 2 (Loc-Tag): distinguishes QR-scanned anchors from surface-tap anchors.
-    /// Nil / absent on legacy anchors — treat as .qr.
+    /// Nil / absent on legacy anchors - treat as .qr.
     let anchorType: AnchorType?
     /// Display name of the user who created this anchor (from their Author Name setting).
-    /// Nil on anchors created before author tracking — treated as "Shared" in the directory.
+    /// Nil on anchors created before author tracking - treated as "Shared" in the directory.
     let createdBy: String?
     /// C1: the Chamber Configuration (type) this chamber belongs to. Nil =
-    /// unassigned — legacy anchors and GembaWalk / iLOTO areas.
+    /// unassigned - legacy anchors and GembaWalk / iLOTO areas.
     let configId: String?
     /// B1 (derived, read-only): when the author sealed the world map. Nil = unsealed.
     let mapSealedAt: String?
@@ -161,7 +161,7 @@ struct Anchor: Codable, Identifiable, Hashable {
     /// Chamber anchors (QR-scanned tools) are the ones a configuration groups.
     var isChamber: Bool { anchorType == nil || anchorType == .qr }
 
-    // Hashable — use id only; metadata:[String:AnyCodable] is not natively Hashable.
+    // Hashable - use id only; metadata:[String:AnyCodable] is not natively Hashable.
     static func == (lhs: Anchor, rhs: Anchor) -> Bool { lhs.id == rhs.id }
     func hash(into hasher: inout Hasher) { hasher.combine(id) }
 }
@@ -195,7 +195,7 @@ struct AnchorObjectMeta: Codable, Equatable {
     }
 }
 
-/// "iPhone17,3" — the hardware identifier (stable, no user name in it).
+/// "iPhone17,3" - the hardware identifier (stable, no user name in it).
 enum DeviceModel {
     static let identifier: String = {
         var sys = utsname(); uname(&sys)
@@ -215,11 +215,11 @@ struct CreateAnchorRequest: Codable {
     /// Phase 3: base64-encoded AES-256-GCM key generated at anchor creation.
     /// Stored in SIB so any authorised device can retrieve + re-generate the full QR.
     let encryptionKey: String?
-    /// Physical QR print size in cm — set once, never changed.
+    /// Physical QR print size in cm - set once, never changed.
     let qrSizeCm: Double?
     /// Phase 2 (Loc-Tag): omit or pass nil/.qr for the default QR-scan flow.
     let anchorType: AnchorType?
-    /// Author name at creation time — used for per-user anchor filtering in the directory.
+    /// Author name at creation time - used for per-user anchor filtering in the directory.
     let createdBy: String?
     /// C1: chamber configuration this anchor belongs to.
     let configId: String?
@@ -274,7 +274,7 @@ struct ChamberConfig: Codable, Identifiable, Hashable {
 // ── Tag ───────────────────────────────────────────────────────────────────────
 
 /// Normalised inspection-region crop (fractions 0.0–1.0 of frame width/height,
-/// origin top-left). Optional — absent means full-frame validation, today's
+/// origin top-left). Optional - absent means full-frame validation, today's
 /// unchanged behaviour. When present, both training references and live
 /// frames are cropped to this rectangle before scoring, so a tag can focus on
 /// the specific feature being inspected (a cable, a switch, a valve) instead
@@ -297,7 +297,7 @@ struct Tag: Codable, Identifiable {
     /// Optional inspection-region crop. Nil = full-frame validation.
     let roi: RegionOfInterest?
     /// Tag Groups: optional Inspection Set membership.
-    /// Nil on legacy tags — they are treated as ungrouped.
+    /// Nil on legacy tags - they are treated as ungrouped.
     let groupId: String?
     let metadata: [String: AnyCodable]
     /// Server-computed: true when a pass-state exists for this tag.
@@ -305,7 +305,7 @@ struct Tag: Codable, Identifiable {
     let isTrained: Bool?
     /// Server-computed: true when an optional Fail-state has also been
     /// trained for this tag. Nil/false on tags trained before this feature
-    /// existed — the client should treat that as "no fail-state".
+    /// existed - the client should treat that as "no fail-state".
     let hasFailState: Bool?
     let createdAt: String
     let updatedAt: String
@@ -323,7 +323,7 @@ struct CreateTagRequest: Codable {
     let metadata: [String: AnyCodable]
 }
 
-/// Partial update — only non-nil fields are written by the server.
+/// Partial update - only non-nil fields are written by the server.
 /// metadata is deep-merged: existing tag metadata keys are preserved.
 struct UpdateTagRequest: Codable {
     let label:            String?
@@ -399,7 +399,7 @@ struct QRAnchorContext: Codable, Equatable {
     let assetId:       String
     let anchorId:      String
     /// Phase 2.5: base64-encoded AES-256-GCM key embedded in the QR by the Author.
-    /// Nil for legacy unencrypted anchors. Never sent to the SIB — lives only on scanning devices.
+    /// Nil for legacy unencrypted anchors. Never sent to the SIB - lives only on scanning devices.
     let encryptionKey: String?
     /// Physical width of the printed QR code in centimetres.
     /// Used by ARKit's PnP solver to compute accurate 6DOF pose from image corners.
@@ -413,7 +413,7 @@ struct QRAnchorContext: Codable, Equatable {
     // ── Canonical payload builder ─────────────────────────────────────────────
     // DO NOT use JSONEncoder to build QR payloads.  Swift's JSONEncoder routes
     // through a Dictionary internally on iOS, which does NOT preserve key
-    // insertion order — the key order varies between runs and OS versions,
+    // insertion order - the key order varies between runs and OS versions,
     // producing a different byte string (and therefore different QR pixels)
     // each time.  This function constructs the JSON string directly so the
     // key order is always: assetId → anchorId → encryptionKey? → qrSizeCm.
@@ -424,7 +424,7 @@ struct QRAnchorContext: Codable, Equatable {
         encryptionKey: String?,
         qrSizeCm:      Double
     ) -> String {
-        // Minimal escaping — assetIds are plain ASCII, anchorIds are UUIDs,
+        // Minimal escaping - assetIds are plain ASCII, anchorIds are UUIDs,
         // and encryptionKeys are base64 (A-Za-z0-9+/=).  None of these
         // contain backslashes or double-quotes, but we escape defensively.
         func esc(_ s: String) -> String {
@@ -438,7 +438,7 @@ struct QRAnchorContext: Codable, Equatable {
         if let key = encryptionKey {
             parts.append("\"encryptionKey\":\"\(esc(key))\"")
         }
-        // Emit whole numbers without a decimal to match JS JSON.stringify —
+        // Emit whole numbers without a decimal to match JS JSON.stringify -
         // e.g. 10.0 → "10", not "10.0"
         let sizeStr = qrSizeCm.truncatingRemainder(dividingBy: 1) == 0
             ? String(Int(qrSizeCm))
@@ -449,7 +449,7 @@ struct QRAnchorContext: Codable, Equatable {
 }
 
 // ── Anchor readiness (G1) ─────────────────────────────────────────────────────
-// Returned by GET /anchors/:id/readiness — used to gate Operator mode entry.
+// Returned by GET /anchors/:id/readiness - used to gate Operator mode entry.
 
 struct AnchorReadiness: Codable {
     let isReady:         Bool
@@ -467,8 +467,8 @@ struct CameraPose: Codable {
 }
 
 /// Which reference a set of training images represents. 'pass' (the default
-/// — and the only kind that existed before this case was added) trains the
-/// "correct" appearance. 'fail' is optional — an Author may additionally
+/// - and the only kind that existed before this case was added) trains the
+/// "correct" appearance. 'fail' is optional - an Author may additionally
 /// train what the *wrong* condition looks like (cable unplugged, valve
 /// closed, switch off, part misoriented). Tags with no fail-state trained
 /// validate exactly as they did before this feature existed.
@@ -562,13 +562,13 @@ struct AnchorValidationResult: Codable, Identifiable {
     let anchorId:   String
     let assetId:    String
     let sessionId:  String
-    var status:     AnchorStatus          // var — recomputed after OCR patching
-    var passCount:  Int                   // var — recomputed after OCR patching
-    var failCount:  Int                   // var — recomputed after OCR patching
+    var status:     AnchorStatus          // var - recomputed after OCR patching
+    var passCount:  Int                   // var - recomputed after OCR patching
+    var failCount:  Int                   // var - recomputed after OCR patching
     let totalCount: Int
-    var tagResults: [TagValidationSummary] // var — patched with OCR scores
+    var tagResults: [TagValidationSummary] // var - patched with OCR scores
     let evaluatedAt: String
-    // #67: set by the server when no encryptionKey was supplied — explains a
+    // #67: set by the server when no encryptionKey was supplied - explains a
     // uniform ~0% confidence across every tag as a missing-key condition
     // rather than the Operator scanning a part that genuinely fails every check.
     var warning: String? = nil
@@ -581,7 +581,7 @@ struct AnchorValidationResult: Codable, Identifiable {
 struct LastAuthorSession: Codable {
     let anchorId:     String
     let assetId:      String
-    let savedAt:      String     // ISO 8601 — shown in the "Continue" card
+    let savedAt:      String     // ISO 8601 - shown in the "Continue" card
     let trainedTagIds: [String]  // restored so progress bar is accurate
 }
 
@@ -635,7 +635,7 @@ struct AnyCodable: Codable {
         case let v as Double: try c.encode(v)
         case let v as Bool:   try c.encode(v)
         case let v as String: try c.encode(v)
-        // ── Array support — mirrors the decode branch above ────────────────────
+        // ── Array support - mirrors the decode branch above ────────────────────
         // Encodes [Any] as a JSON array by wrapping each element in AnyCodable.
         // Required so feature_prints round-trips correctly through UpdateTagRequest.
         case let v as [Any]:  try c.encode(v.map { AnyCodable($0) })

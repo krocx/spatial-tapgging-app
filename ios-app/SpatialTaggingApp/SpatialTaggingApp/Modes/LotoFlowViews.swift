@@ -1,7 +1,7 @@
-// LotoFlowViews.swift — iLOTO slice 2: the Apply and Remove checklist flows.
+// LotoFlowViews.swift - iLOTO slice 2: the Apply and Remove checklist flows.
 //
 // These mirror the server's rules (sib/src/loto/loto-core.ts) but the SERVER
-// is the referee — if this UI ever lets a step slip through, the POST returns
+// is the referee - if this UI ever lets a step slip through, the POST returns
 // a 4xx and we show that message verbatim. The UI's job is to make the right
 // path the easy path:
 //
@@ -9,7 +9,7 @@
 //                   → photo evidence → TRY TEST → serial → submit
 //   Safe Off apply: shut down → [apply lock] → photo → serial → submit
 //   Remove        : reverse checklist → photo (optional) → submit
-//   Override      : a separate, explicit flow — supervisor identity, reason,
+//   Override      : a separate, explicit flow - supervisor identity, reason,
 //                   and the three OSHA exception confirmations. Never a
 //                   fallback the UI reaches silently.
 //
@@ -37,7 +37,7 @@ enum LotoChecklists {
                       subtitle: "Everyone who operates or works near this equipment knows lockout is starting."),
                 .init(key: "shutDown", title: "Equipment shut down",
                       subtitle: "Normal stopping procedure completed; energy source isolated at this switch."),
-                .init(key: "tryTestNoStart", title: "Try test — no energization",
+                .init(key: "tryTestNoStart", title: "Try test - no energization",
                       subtitle: "Start attempted with the normal controls: nothing moved, nothing energized. Controls returned to off/neutral."),
             ]
         case .safeoff:
@@ -67,7 +67,7 @@ enum LotoChecklists {
         }
     }
 
-    /// The try test is separated visually in the LOTO apply flow — it comes
+    /// The try test is separated visually in the LOTO apply flow - it comes
     /// AFTER the physical lock + photo, matching the real sequence.
     static let tryTestKey = "tryTestNoStart"
 }
@@ -131,7 +131,7 @@ struct LotoApplyFlowView: View {
                 } header: {
                     Text("Before the lock")
                 } footer: {
-                    Text("Confirm in order — the order is the procedure.")
+                    Text("Confirm in order - the order is the procedure.")
                 }
 
                 // ── 2. Physical lock + photo evidence ───────────────────────
@@ -158,14 +158,14 @@ struct LotoApplyFlowView: View {
                     Text("Evidence (required)")
                 }
 
-                // ── 3. Try test (LOTO only) — after the lock is on ──────────
+                // ── 3. Try test (LOTO only) - after the lock is on ──────────
                 if let tryTest = tryTestItem {
                     Section {
                         checklistRow(item: tryTest, enabled: preLockDone && photo != nil)
                     } header: {
                         Text("Verification")
                     } footer: {
-                        Text("The step most often skipped in the field — and the one that catches a lock on the wrong isolator.")
+                        Text("The step most often skipped in the field - and the one that catches a lock on the wrong isolator.")
                     }
                 }
 
@@ -200,7 +200,7 @@ struct LotoApplyFlowView: View {
                     .listRowBackground(canSubmit ? accent.opacity(0.85) : Color(.systemGray4))
                     .foregroundStyle(canSubmit ? (point.kind == .loto ? Color.white : Color.black) : Color.secondary)
                 } footer: {
-                    Text("Recorded as isolated — verify physically before body contact. The lock protects; the app records.")
+                    Text("Recorded as isolated - verify physically before body contact. The lock protects; the app records.")
                 }
             }
             .navigationTitle("Apply \(point.kind.displayName)")
@@ -232,7 +232,7 @@ struct LotoApplyFlowView: View {
 
     private func submit() async {
         guard let img = photo, let base64 = lotoJpegBase64(img) else {
-            submitError = "Photo could not be processed — retake it."
+            submitError = "Photo could not be processed - retake it."
             return
         }
         isSubmitting = true
@@ -257,7 +257,7 @@ struct LotoApplyFlowView: View {
             dismiss()
         } catch {
             // Server messages are written for humans ("Checklist incomplete: …",
-            // "Point is already locked by …") — show them verbatim.
+            // "Point is already locked by …") - show them verbatim.
             submitError = error.localizedDescription
             isSubmitting = false
         }
@@ -283,7 +283,7 @@ struct LotoRemoveFlowView: View {
     @State private var isSubmitting = false
     @State private var submitError: String? = nil
 
-    // Override path — explicit, never a fallback.
+    // Override path - explicit, never a fallback.
     @State private var showOverrideForm = false
     @State private var supervisorName = ""
     @State private var overrideReason = ""
@@ -322,7 +322,7 @@ struct LotoRemoveFlowView: View {
                     // Not your lock: say so plainly, and make override a
                     // deliberate second decision.
                     Section {
-                        Label("This lock belongs to \(status.lockedByName ?? "another employee"). Only they may remove it — one lock, one person.",
+                        Label("This lock belongs to \(status.lockedByName ?? "another employee"). Only they may remove it - one lock, one person.",
                               systemImage: "person.fill.xmark")
                             .font(.subheadline)
                     } footer: {
@@ -411,7 +411,7 @@ struct LotoRemoveFlowView: View {
             .listRowBackground(allConfirmed ? Color.green.opacity(0.85) : Color(.systemGray4))
             .foregroundStyle(allConfirmed ? Color.white : Color.secondary)
         } footer: {
-            Text("The equipment may re-energize after this — be sure the area is clear before restoring power.")
+            Text("The equipment may re-energize after this - be sure the area is clear before restoring power.")
         }
     }
 
@@ -540,7 +540,7 @@ struct LotoPointHeaderRow: View {
     }
 }
 
-/// Checkbox-style toggle — checklist rows read as confirmations, not settings.
+/// Checkbox-style toggle - checklist rows read as confirmations, not settings.
 struct LotoCheckToggleStyle: ToggleStyle {
     let accent: Color
     func makeBody(configuration: Configuration) -> some View {

@@ -1,4 +1,4 @@
-// ImageImportPreview.tsx — modal shown after a whiteboard/screenshot has been
+// ImageImportPreview.tsx - modal shown after a whiteboard/screenshot has been
 // parsed by the local vision model: rendered graph preview, extraction stats,
 // warnings, editable name → "Create draft" or discard.
 
@@ -28,7 +28,7 @@ export function ImageImportPreview(): JSX.Element | null {
   return (
     <div className="modal-backdrop" onClick={discardImagePreview}>
       <div className="modal" onClick={e => e.stopPropagation()}>
-        <h3>Preview — extracted by {preview.model}</h3>
+        <h3>Preview - extracted by {preview.model}</h3>
         <p className="modal-stats">
           {preview.nodes.length} nodes · {preview.edges.length} edges
           {preview.lanes.length > 0 ? ` · ${preview.lanes.length} lanes` : ''}
@@ -73,7 +73,7 @@ export function ImageImportPreview(): JSX.Element | null {
           </button>
         </div>
         <p className="modal-hint">
-          Creates a private draft — tidy it up (Layout, Style, lanes), then publish when ready.
+          Creates a private draft - tidy it up (Layout, Style, lanes), then publish when ready.
         </p>
       </div>
     </div>

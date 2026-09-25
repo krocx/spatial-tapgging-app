@@ -1,16 +1,16 @@
-// ARMomentCoach.swift — F1 (2026.4.46): in-session FTUE for AR OMS.
+// ARMomentCoach.swift - F1 (2026.4.46): in-session FTUE for AR OMS.
 //
 // The paged OnboardingSheet explains a mode BEFORE the camera is up; people
 // forget it by the time a control matters. A "moment" is a single small card
 // that appears over the live AR view the first time a control becomes
-// relevant — first pin placed → "tap a pin to move it" — and never blocks
+// relevant - first pin placed → "tap a pin to move it" - and never blocks
 // the camera or the AR panels. One at a time; queued if another is showing.
 //
 // Memory is PER PERSON (employee ID), so a shared kiosk iPad still teaches
 // the next technician. The ? icon opens GestureCheatSheet: every control of
 // that screen with its glyph, plus "Replay tips" which re-arms the moments.
 //
-// Design philosophy: guided, exploratory, discoverable — the card teaches
+// Design philosophy: guided, exploratory, discoverable - the card teaches
 // one thing, in one line, and gets out of the way.
 
 import SwiftUI
@@ -22,7 +22,7 @@ enum ARMoment: String, CaseIterable {
     case placeMovePin, placeModelGestures, placeAdjustSlots, placeTrainStep, placeDeclutter, placeSaveVsDone, placeConfirmPin
     // Guide session (operator)
     case guideExpandPill, guidePanelButtons, guideOnePanel, guideValidation, guideHints, guideSignOff
-    // Spatial Inspection author — the pulsing hand (ARTapCoach), remembered per person
+    // Spatial Inspection author - the pulsing hand (ARTapCoach), remembered per person
     case inspectionPlaceTag
 
     enum Screen { case placeSteps, guideSession, inspectionAuthor }
@@ -79,13 +79,13 @@ enum ARMoment: String, CaseIterable {
     var detail: String {
         switch self {
         case .placeMovePin:
-            return "Tapping any placed pin makes that step active — your next tap on a surface re-places it."
+            return "Tapping any placed pin makes that step active - your next tap on a surface re-places it."
         case .placeConfirmPin:
             return "Nothing moves on until you Confirm. Tap anywhere else to move the pin first. ⏩ in the top bar (yellow = on) skips this pause and goes straight to the next step."
         case .placeModelGestures:
-            return "Pick Move, Lift, Turn, Tilt or Scale — only that gesture is live, so nothing changes by accident. Turn and Tilt snap to 15°; Flip 180° is one tap."
+            return "Pick Move, Lift, Turn, Tilt or Scale - only that gesture is live, so nothing changes by accident. Turn and Tilt snap to 15°; Flip 180° is one tap."
         case .placeAdjustSlots:
-            return "Tap ⬢1 ⬢2 ⬢3 under a step to position that model on its own — no need to re-drop the pin."
+            return "Tap ⬢1 ⬢2 ⬢3 under a step to position that model on its own - no need to re-drop the pin."
         case .placeTrainStep:
             return "Seal = cone sweep from several angles (most robust). Camera = one shot from where you stand."
         case .placeDeclutter:
@@ -99,11 +99,11 @@ enum ARMoment: String, CaseIterable {
         case .guideOnePanel:
             return "The eye toggle hides the other steps' panels so only the one you're on stays up."
         case .guideValidation:
-            return "Match the ghost photo — it captures by itself when aligned. Capture anyway appears after 8 s."
+            return "Match the ghost photo - it captures by itself when aligned. Capture anyway appears after 8 s."
         case .guideHints:
             return "The ✨ chip is an assist. Tap to read it; dismissed hints stay in the tray."
         case .guideSignOff:
-            return "Your name is prefilled from the shift login. Review, then sign — the log carries the evidence."
+            return "Your name is prefilled from the shift login. Review, then sign - the log carries the evidence."
         case .inspectionPlaceTag:
             return "Point at a flat surface and tap. A placement sheet opens for the label and type."
         }
@@ -219,7 +219,7 @@ struct GestureCheatSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     private var moments: [ARMoment] { ARMoment.allCases.filter { $0.screen == screen } }
-    private var title: String { screen == .placeSteps ? "Place Steps — controls" : "Guide session — controls" }
+    private var title: String { screen == .placeSteps ? "Place Steps - controls" : "Guide session - controls" }
 
     var body: some View {
         NavigationStack {

@@ -1,9 +1,9 @@
-// zip-lite.ts — minimal ZIP reader (stored + deflate), dependency-free.
+// zip-lite.ts - minimal ZIP reader (stored + deflate), dependency-free.
 //
 // Cortona3D's published bundle is a small ZIP carried as base64 inside the
 // .htm; its entries are ZIP-stored (method 0) with gzip payloads inside, or
 // ZIP-deflated (method 8). We only need the central directory + local headers.
-// No encryption, no ZIP64, no multi-disk — the findings reports confirm none
+// No encryption, no ZIP64, no multi-disk - the findings reports confirm none
 // of those appear; we fail loudly if they do.
 
 import zlib from 'zlib';

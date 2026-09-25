@@ -2,7 +2,7 @@
 //  AssemblyState.swift
 //  SpatialTaggingApp
 //
-//  AR OJT slice 2 — cumulative per-part state of an assembly across a guide.
+//  AR OJT slice 2 - cumulative per-part state of an assembly across a guide.
 //
 //  Pure model, no SceneKit: `initialNodes` (state before step 1) followed by
 //  each step's `nodes[]` deltas, applied in order; last state wins. Stepping
@@ -62,8 +62,8 @@ struct AssemblyStateEngine {
         return stepDeltas[index]
     }
 
-    /// Names of the parts a step is "about" — the ones it moves, else
-    /// highlights, else reveals — for focus pulsing and the look-here arrow.
+    /// Names of the parts a step is "about" - the ones it moves, else
+    /// highlights, else reveals - for focus pulsing and the look-here arrow.
     func focusParts(at index: Int) -> [String] {
         let d = deltas(at: index)
         let moving = d.filter { $0.animate != nil }.map(\.node)

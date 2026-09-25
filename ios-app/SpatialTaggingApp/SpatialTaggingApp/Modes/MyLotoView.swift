@@ -1,4 +1,4 @@
-// MyLotoView.swift — iLOTO slice 3: every lock I currently hold, across ALL
+// MyLotoView.swift - iLOTO slice 3: every lock I currently hold, across ALL
 // panels. The answer to the classic incident: a lock forgotten at shift end,
 // three buildings away from where you're standing.
 //

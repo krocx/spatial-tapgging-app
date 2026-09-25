@@ -8,11 +8,11 @@ depends: [anchor-directory, guide-library]
 terms: [Anchor, Anchor Portal]
 spec: CONNECTED-WORKER.md#chamber-configurations
 api: |
-  GET /chamber-configs — configuration catalog (app, portal · API key)
-  POST /chamber-configs — create a configuration (portal, app · API key)
-  PATCH /chamber-configs/:id — rename / edit (portal · API key)
-  DELETE /chamber-configs/:id — only when no chamber references it (portal · API key)
-  PATCH /anchors/:id — assign configuration (configId) or rename (portal, app · API key)
+  GET /chamber-configs - configuration catalog (app, portal · API key)
+  POST /chamber-configs - create a configuration (portal, app · API key)
+  PATCH /chamber-configs/:id - rename / edit (portal · API key)
+  DELETE /chamber-configs/:id - only when no chamber references it (portal · API key)
+  PATCH /anchors/:id - assign configuration (configId) or rename (portal, app · API key)
 wireframe: portal
 arch: |
   flowchart LR
@@ -25,8 +25,8 @@ arch: |
     UL["usage-log session: configId · configCode"] --> CFG
 ---
 A configuration is a chamber type; many physical chambers share it. Engineers
-author against a configuration, technicians never pick one — the chamber QR
-resolves it — and the Guide Library groups guides by configuration so one guide
+author against a configuration, technicians never pick one - the chamber QR
+resolves it - and the Guide Library groups guides by configuration so one guide
 can be copied to every chamber of that type in one click. Content still lives per
 chamber (author on one, copy to the rest, place per chamber); the configuration
 rides on every usage-log session so reports roll up by chamber type.

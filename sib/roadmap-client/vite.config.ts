@@ -1,4 +1,4 @@
-// vite.config.ts — Roadmap Mind-Mapper client.
+// vite.config.ts - Roadmap Mind-Mapper client.
 // Build output goes straight to sib/roadmap/, which app.ts serves at /roadmap
 // (same static-serving model as sib/portal). `npm run dev` proxies API + WS
 // to a locally running SIB on :3001.

@@ -8,12 +8,12 @@ depends: [sealed-worldmap, qr-anchoring]
 terms: [Anchor, ARWorldMap]
 spec: CONNECTED-WORKER.md#anchor-trust-layer-anchor-lab-measured-accuracy
 api: |
-  POST /anchors — anchorType LAB creates a lab rig (Lab door only) (app · API key)
-  POST /anchors/:id/accuracy — one measured mark (rendered-vs-physical mm + lock report + runType) (app · API key)
-  GET /anchors/:id/accuracy — samples + summary by device / origin / run (portal · API key)
-  DELETE /anchors/:id/accuracy — clear the lab record, marks and runs (portal · API key)
-  POST /anchors/:id/accuracy/runs — one run record, Start → Done (median, times, map growth, ghost) (app · API key)
-  PUT /anchors/:id/worldmap/photo — the reference photo where the map was sealed (Lab ghost) (app · API key)
+  POST /anchors - anchorType LAB creates a lab rig (Lab door only) (app · API key)
+  POST /anchors/:id/accuracy - one measured mark (rendered-vs-physical mm + lock report + runType) (app · API key)
+  GET /anchors/:id/accuracy - samples + summary by device / origin / run (portal · API key)
+  DELETE /anchors/:id/accuracy - clear the lab record, marks and runs (portal · API key)
+  POST /anchors/:id/accuracy/runs - one run record, Start → Done (median, times, map growth, ghost) (app · API key)
+  PUT /anchors/:id/worldmap/photo - the reference photo where the map was sealed (Lab ghost) (app · API key)
 wireframe: operator
 arch: |
   flowchart LR
@@ -37,4 +37,4 @@ compare on the same number. The Lab door (entitlement `lab`) gives that team its
 own rigs, runs and history without touching a production chamber. Every run is
 a record (median, relocalize/converge, corrections, map growth, ghost use), a
 clean run grows the rig's map, and a ghost photo helps a tester stand where
-the map was made — all measured in the Lab before production gets any of it.
+the map was made - all measured in the Lab before production gets any of it.

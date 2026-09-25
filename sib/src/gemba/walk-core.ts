@@ -1,7 +1,7 @@
-// gemba/walk-core.ts — G2: walk session validation + summary (pure).
+// gemba/walk-core.ts - G2: walk session validation + summary (pure).
 //
 // A walk is the header the PowerApps tool collected before the first
-// finding — who, Project ID, Organization, BU, Area, Location — plus start /
+// finding - who, Project ID, Organization, BU, Area, Location - plus start /
 // submit times. Findings reference it by `walkId`; the summary is derived on
 // read so it can never drift from the findings.
 

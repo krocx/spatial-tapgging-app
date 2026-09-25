@@ -8,13 +8,13 @@ depends: [shared-schema]
 terms: []
 spec: ../README.md#what-it-does
 api: |
-  POST /uam/login — identify against the allow-list, issue 7-day token + cookie (any · API key)
-  POST /uam/logout — clear the portal session cookie (portal · API key)
-  GET /uam/me — current identity with fresh role (any · API key)
-  GET /uam/users — allow-list table (portal · Owner/Manager)
-  POST /uam/users — add user with role (portal · Owner/Manager)
-  PATCH /uam/users/:id — edit user / change role, last-Owner guarded (portal · Owner/Manager)
-  DELETE /uam/users/:id — remove user, last-Owner guarded (portal · Owner/Manager)
+  POST /uam/login - identify against the allow-list, issue 7-day token + cookie (any · API key)
+  POST /uam/logout - clear the portal session cookie (portal · API key)
+  GET /uam/me - current identity with fresh role (any · API key)
+  GET /uam/users - allow-list table (portal · Owner/Manager)
+  POST /uam/users - add user with role (portal · Owner/Manager)
+  PATCH /uam/users/:id - edit user / change role, last-Owner guarded (portal · Owner/Manager)
+  DELETE /uam/users/:id - remove user, last-Owner guarded (portal · Owner/Manager)
 arch: |
   flowchart LR
     subgraph Clients
@@ -34,10 +34,10 @@ arch: |
 ---
 Role-based access ahead of corporate SSO: a manually managed allow-list
 (email + employee ID + role) governs who can sign in and what they can do.
-Four roles — Owner, Manager, Engineer, Technician — with server-enforced
+Four roles - Owner, Manager, Engineer, Technician - with server-enforced
 management rules: Managers run the user table but can never touch Owner
 records, and the last Owner can be neither demoted nor removed. Tokens carry
 only the identity; the role is re-read on every request, so a role change or
 removal takes effect immediately. The legacy admin key acts as Owner during
 bootstrap and transition. When SSO (OIDC + HYPR) arrives, only token issuing
-changes — every role rule survives.
+changes - every role rule survives.

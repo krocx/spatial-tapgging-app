@@ -48,7 +48,7 @@ A step references nodes, not positions:
 Presentation modes: `hidden`, `ghost` (translucent at installed pose),
 `solid`, `exploded` (offset along `axis` by `travel`), `insert` animation
 (exploded → installed, looping). Everything not listed inherits the previous
-step's state, so the author only edits deltas — the *cumulative* state is what
+step's state, so the author only edits deltas - the *cumulative* state is what
 the PartFrame tracker uses as its expected geometry for that step (see
 PART-FRAME.md §6).
 
@@ -62,8 +62,8 @@ Until PartFrame supplies the registration live, a guide carries **one**
 `bounds?`, `source`). The pose is in the anchor frame and comes from exactly
 one of: a single author tap on device (`tap`), the anchor's object scan
 (`object`), the chamber configuration's `defaultAssemblyPose` (`config`, no
-author involvement — inherited at import), or, later, the tracker
-(`partframe`). Every imported step carries `cadPosition` (assembly frame —
+author involvement - inherited at import), or, later, the tracker
+(`partframe`). Every imported step carries `cadPosition` (assembly frame -
 the centroid of the parts it moves, else highlights, else reveals, else
 touches); the server derives `posX/Y/Z`, `isPlaced`, `positionSource = 'cad'`
 and the `assembly` model-slot offsets from the pose (`sib/src/guides/assembly.ts`),
@@ -83,7 +83,7 @@ the assembly root (`AssemblyNode.setViewHint`), inverse-scaled so it reads the
 same at any placement scale. The operator session compares the device camera
 with it at 10 Hz (`viewAlignment`: metres to the viewpoint, degrees between
 forward vectors) and shows a chip until aligned (0.5 m / 30°, release at
-0.9 m / 45°). It is advisory only — nothing is gated on it.
+0.9 m / 45°). It is advisory only - nothing is gated on it.
 
 ## 4. Registration
 
@@ -91,8 +91,8 @@ Registration = PartFrame acquiring `.locked` on the base part. There is no
 author placement step for models. What remains authorable is the *base frame
 convention* (§2) which is set once per configuration, in CAD, not in AR.
 
-Tags remain for what they are good at — instructions, findings, LOTO points,
-validation references — and gain an optional `node` binding so a tag's pose is
+Tags remain for what they are good at - instructions, findings, LOTO points,
+validation references - and gain an optional `node` binding so a tag's pose is
 derived (`node` centroid + offset) instead of placed. A `.tag` emitted for such
 a part carries a `group` member per sub-assembly (kind `group`, v1.1).
 
@@ -106,7 +106,7 @@ Three reference sources, selectable per step:
    camera pose, compared against the live frame within the ROI of the target
    node. No author capture needed; works from day one of a new configuration.
 3. **Geometric** (LiDAR): expected surface of the installed component vs
-   measured depth in its ROI — "is there a ring there or not" — independent of
+   measured depth in its ROI - "is there a ring there or not" - independent of
    lighting and texture. Cheap and robust for presence/absence checks.
 
 The verdict combines what is available; the usage log records which sources

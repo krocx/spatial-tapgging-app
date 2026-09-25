@@ -1,16 +1,16 @@
-// instructions-source-adapter.ts — pluggable guide instruction source
+// instructions-source-adapter.ts - pluggable guide instruction source
 //
 // Architecture mirrors ai-guide-adapter.ts and perception-adapter.ts:
-//   • InstructionsSourceAdapter — interface every source must implement
-//   • ManualJsonAdapter          — pass-through; payload IS the ImportedGuide (for testing)
-//   • Registry                  — register / activate / list adapters at runtime
+//   • InstructionsSourceAdapter - interface every source must implement
+//   • ManualJsonAdapter          - pass-through; payload IS the ImportedGuide (for testing)
+//   • Registry                  - register / activate / list adapters at runtime
 //
 // Usage (manual / testing):
 //   POST /guides/import { anchorId, createdBy, payload: { name, steps: [...] } }
 //   → ManualJsonAdapter returns the payload directly
 //   → server creates Guide + GuideSteps, downloading any imageUrls
 //
-// Usage (MES production — future):
+// Usage (MES production - future):
 //   1. Implement MESAdapter that fetches a work order from iOMS REST API
 //      and normalises the response into ImportedGuide.
 //   2. registerInstructionsSourceAdapter(new MESAdapter())
@@ -22,7 +22,7 @@ import type { ImportedGuide } from '@spatial/shared';
 // ── Interface ─────────────────────────────────────────────────────────────────
 
 export interface InstructionsSourceAdapter {
-  /** Unique identifier — used by the registry and logged on import. */
+  /** Unique identifier - used by the registry and logged on import. */
   readonly name: string;
 
   /**
@@ -66,7 +66,7 @@ export function listInstructionsSourceAdapters(): string[] {
   return [...registry.keys()];
 }
 
-// ── ManualJsonAdapter — default (for testing) ─────────────────────────────────
+// ── ManualJsonAdapter - default (for testing) ─────────────────────────────────
 
 /**
  * The simplest possible adapter: the caller supplies the ImportedGuide
@@ -77,7 +77,7 @@ class ManualJsonAdapter implements InstructionsSourceAdapter {
   readonly name = 'manual';
 
   async fetchGuide(payload: unknown): Promise<ImportedGuide> {
-    // Validate minimal shape — the route layer already checks anchorId/createdBy
+    // Validate minimal shape - the route layer already checks anchorId/createdBy
     const p = payload as ImportedGuide;
     if (!p || typeof p.name !== 'string' || !Array.isArray(p.steps)) {
       throw new Error('ManualJsonAdapter: payload must be { name: string, steps: [...] }');

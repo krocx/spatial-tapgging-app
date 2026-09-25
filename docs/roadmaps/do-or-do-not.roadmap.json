@@ -13,7 +13,7 @@
       "icon": "star",
       "milestone": true,
       "review": "approved",
-      "notes": "North star: one AR platform — SIB as the spatial OS — serving Author Mode (create), Operator Mode (execute), and autonomous systems (cobots). AI-first principle: every pillar ships with an AI assist path, always behind SIB adapter interfaces (no vendor lock-in, local-first inference). Thin clients, thick backend; every front-end replaceable."
+      "notes": "North star: one AR platform - SIB as the spatial OS - serving Author Mode (create), Operator Mode (execute), and autonomous systems (cobots). AI-first principle: every pillar ships with an AI assist path, always behind SIB adapter interfaces (no vendor lock-in, local-first inference). Thin clients, thick backend; every front-end replaceable."
     },
     {
       "metadata": {},
@@ -25,7 +25,7 @@
       "type": "semantic",
       "shape": "pill",
       "icon": "doc",
-      "notes": "Author Mode: everything a process engineer needs to turn tribal knowledge into spatial, validated work instructions — manual first, AI-accelerated next, AI-generated later."
+      "notes": "Author Mode: everything a process engineer needs to turn tribal knowledge into spatial, validated work instructions - manual first, AI-accelerated next, AI-generated later."
     },
     {
       "metadata": {},
@@ -88,7 +88,7 @@
       "type": "semantic",
       "status": "planned",
       "icon": "wrench",
-      "notes": "Mobile-ready pipeline: decimation, LOD generation, Draco/meshopt compression, texture atlas baking — Blender headless jobs queued in SIB. Target: <5 MB overlays on-device at 60 fps."
+      "notes": "Mobile-ready pipeline: decimation, LOD generation, Draco/meshopt compression, texture atlas baking - Blender headless jobs queued in SIB. Target: <5 MB overlays on-device at 60 fps."
     },
     {
       "metadata": {},
@@ -137,7 +137,7 @@
       "type": "tag",
       "shape": "pill",
       "icon": "eye",
-      "notes": "Operator Mode: guided execution on whatever device the floor has — iPhone today, Android + glasses next, VisionOS later. The AR feature set (anchoring, tagging, tracking) lives here."
+      "notes": "Operator Mode: guided execution on whatever device the floor has - iPhone today, Android + glasses next, VisionOS later. The AR feature set (anchoring, tagging, tracking) lives here."
     },
     {
       "metadata": {},
@@ -238,7 +238,7 @@
       "type": "tag",
       "status": "planned",
       "icon": "chip",
-      "notes": "Android parity client (Kotlin + ARCore): cloud-free anchor hosting against SIB, same REST/WS contracts. Proves the thin-client thesis — no SIB changes required."
+      "notes": "Android parity client (Kotlin + ARCore): cloud-free anchor hosting against SIB, same REST/WS contracts. Proves the thin-client thesis - no SIB changes required."
     },
     {
       "metadata": {},
@@ -350,7 +350,7 @@
       "type": "perception",
       "status": "planned",
       "icon": "alert",
-      "notes": "AI defect classification mapped to the existing defect ontology (scratch/dent/burn + 6C categories). Trained from evidence-capture images — the data flywheel is already collecting."
+      "notes": "AI defect classification mapped to the existing defect ontology (scratch/dent/burn + 6C categories). Trained from evidence-capture images - the data flywheel is already collecting."
     },
     {
       "metadata": {},
@@ -387,7 +387,7 @@
       "status": "planned",
       "icon": "bulb",
       "milestone": true,
-      "notes": "MILESTONE, AI-FIRST. Operator verdicts + evidence become training signal: drift detection, auto-retrain proposals, champion/challenger evaluation — humans approve promotion (review workflow). Closes the perception loop."
+      "notes": "MILESTONE, AI-FIRST. Operator verdicts + evidence become training signal: drift detection, auto-retrain proposals, champion/challenger evaluation - humans approve promotion (review workflow). Closes the perception loop."
     },
     {
       "metadata": {},
@@ -400,7 +400,7 @@
       "shape": "pill",
       "icon": "layers",
       "review": "approved",
-      "notes": "SIB itself plus everything IT needs to say yes: identity, access control, auditability, data residency. Already self-hosted — no Azure, no SaaS, no lock-in."
+      "notes": "SIB itself plus everything IT needs to say yes: identity, access control, auditability, data residency. Already self-hosted - no Azure, no SaaS, no lock-in."
     },
     {
       "metadata": {},
@@ -453,7 +453,7 @@
       "status": "done",
       "icon": "star",
       "review": "approved",
-      "notes": "SHIPPED. This tool: collaborative mind-mapping/roadmapping on SIB — real-time WS collab, versioning, lanes, filters, comments, reviews, presentation mode. This very map lives in it."
+      "notes": "SHIPPED. This tool: collaborative mind-mapping/roadmapping on SIB - real-time WS collab, versioning, lanes, filters, comments, reviews, presentation mode. This very map lives in it."
     },
     {
       "metadata": {},
@@ -466,7 +466,7 @@
       "status": "done",
       "icon": "doc",
       "review": "approved",
-      "notes": "SHIPPED. Structured inspection logging (inspection-logger): who validated what, when, with what result — the seed of the full audit trail."
+      "notes": "SHIPPED. Structured inspection logging (inspection-logger): who validated what, when, with what result - the seed of the full audit trail."
     },
     {
       "metadata": {},
@@ -490,7 +490,7 @@
       "type": "generic",
       "status": "planned",
       "icon": "user",
-      "notes": "Corporate IdP federation via OIDC/SAML — self-hosted broker (e.g. Keycloak-class) so SIB stays cloud-free. JWT sessions replace shared API key; per-user identity flows into audit + collab presence."
+      "notes": "Corporate IdP federation via OIDC/SAML - self-hosted broker (e.g. Keycloak-class) so SIB stays cloud-free. JWT sessions replace shared API key; per-user identity flows into audit + collab presence."
     },
     {
       "metadata": {},
@@ -552,7 +552,7 @@
       "status": "done",
       "icon": "layers",
       "review": "approved",
-      "notes": "SHIPPED. Versioned JSON schemas (anchors/tags/observations/procedures/sessions) + adapter interfaces — the integration contract every external system codes against."
+      "notes": "SHIPPED. Versioned JSON schemas (anchors/tags/observations/procedures/sessions) + adapter interfaces - the integration contract every external system codes against."
     },
     {
       "metadata": {},
@@ -589,7 +589,7 @@
       "type": "reasoning",
       "status": "planned",
       "icon": "bulb",
-      "notes": "AI-FIRST. Cross-layer assistant over SIB data: \"why did line 3 fail more this week?\" — RAG over audit logs, inspections, MES context. Local inference, adapter-mounted, read-only start."
+      "notes": "AI-FIRST. Cross-layer assistant over SIB data: \"why did line 3 fail more this week?\" - RAG over audit logs, inspections, MES context. Local inference, adapter-mounted, read-only start."
     },
     {
       "metadata": {},
@@ -1019,19 +1019,19 @@
   "lanes": [
     {
       "id": "lane-now",
-      "name": "Now — shipped & building",
+      "name": "Now - shipped & building",
       "x": 0,
       "width": 580
     },
     {
       "id": "lane-next",
-      "name": "Next — 2–3 quarters",
+      "name": "Next - 2–3 quarters",
       "x": 580,
       "width": 580
     },
     {
       "id": "lane-later",
-      "name": "Later — platform bets",
+      "name": "Later - platform bets",
       "x": 1160,
       "width": 580
     }

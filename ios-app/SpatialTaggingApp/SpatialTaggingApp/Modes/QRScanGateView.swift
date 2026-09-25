@@ -1,4 +1,4 @@
-// QRScanGateView.swift — Phase 3 (+ ARWorldMap local + remote persistence)
+// QRScanGateView.swift - Phase 3 (+ ARWorldMap local + remote persistence)
 // Mandatory session initialiser shared by both Author and Operator modes.
 //
 // Role:
@@ -10,13 +10,13 @@
 //       4. Saves the ARWorldMap to LOCAL file (Documents/WorldMaps/{anchorId}.worldmap)
 //          AND uploads to SIB in the background for cross-device sync.
 //   • On startup, loads a saved ARWorldMap with this priority:
-//       1. LOCAL file — instant, offline-capable (no network needed)
-//       2. SIB server — cross-device authoritative backup (requires network)
-//       3. Fresh session — fallback when neither exists
+//       1. LOCAL file - instant, offline-capable (no network needed)
+//       2. SIB server - cross-device authoritative backup (requires network)
+//       3. Fresh session - fallback when neither exists
 //     Using a saved map lets ARKit relocalize into the ORIGINAL feature-point
 //     cloud so all tag positions match across sessions without requiring the user
 //     to "scan around" to rebuild the world map from scratch.
-//   • No "Skip" button — QR scan is mandatory to lock the session origin.
+//   • No "Skip" button - QR scan is mandatory to lock the session origin.
 //
 // Prerequisites:
 //   • appState.activeAnchor and appState.activeTags must already be set before
@@ -53,11 +53,11 @@ struct QRScanGateView: View {
     @State private var wrongQRTimeoutWorkItem: DispatchWorkItem? = nil
     private let wrongQRTimeoutSeconds: TimeInterval = 45
 
-    // ── SIBClient — used for world-map upload/download ────────────────────────
+    // ── SIBClient - used for world-map upload/download ────────────────────────
     private var sibClient: SIBClient { SIBClient(settings: settings) }
 
     // ── World map (B1, 2026.4.46) ─────────────────────────────────────────────
-    // Loaded through WorldMapCache — the same loader AR Work Instructions use
+    // Loaded through WorldMapCache - the same loader AR Work Instructions use
     // (meta-checked local copy → SIB → fresh session). Doctrine: the AUTHOR's
     // world map is the origin; the QR is the key and a drift check.
     //
@@ -95,7 +95,7 @@ struct QRScanGateView: View {
         case detected         // QR found, stabilising
         case locking          // verifying anchor match
         case aligning         // origin adopted, ARKit still settling the map (trust layer)
-        case locked           // success — short feedback before auto-proceed
+        case locked           // success - short feedback before auto-proceed
         case error(String)
     }
 
@@ -108,7 +108,7 @@ struct QRScanGateView: View {
         let sceneView: ARSCNView
         func makeUIView(context: Context) -> ARSCNView { sceneView }
         func updateUIView(_ uiView: ARSCNView, context: Context) {}
-        // Intentionally no dismantleUIView — session lifecycle is owned by AppState.
+        // Intentionally no dismantleUIView - session lifecycle is owned by AppState.
     }
 
     var body: some View {
@@ -180,9 +180,9 @@ struct QRScanGateView: View {
         .animation(.easeInOut(duration: 0.3), value: scanPhase == .locked)
         .onAppear {
             // WorldMap loading priority:
-            //   1. LOCAL file (Documents/WorldMaps/{anchorId}.worldmap) — instant, offline-capable
-            //   2. SIB server download — requires network, used when local is missing/stale
-            //   3. Fresh session (no relocalization) — fallback when neither is available
+            //   1. LOCAL file (Documents/WorldMaps/{anchorId}.worldmap) - instant, offline-capable
+            //   2. SIB server download - requires network, used when local is missing/stale
+            //   3. Fresh session (no relocalization) - fallback when neither is available
             //
             // Using a saved map lets ARKit relocalize into the ORIGINAL feature-point
             // cloud so all tag positions match regardless of the operator's starting
@@ -195,7 +195,7 @@ struct QRScanGateView: View {
                     arManager.startSession()
                     return
                 }
-                // B2: reference object (when the chamber has one) — detection runs
+                // B2: reference object (when the chamber has one) - detection runs
                 // in every configuration from here on. Always probed (cheap 404):
                 // the anchor record in AppState may predate a scan made this shift.
                 if appState.activeAnchor?.isChamber ?? false {
@@ -223,13 +223,13 @@ struct QRScanGateView: View {
                     // to where the room map last saw it. (Map kept for the seal.)
                     if appState.activeAnchor?.usesObjectOrigin == true,
                        objectBundle?.meta.objectPoseInQR != nil {
-                        AppLog.info("qr", "Object-origin chamber — fresh session, finding it by shape")
+                        AppLog.info("qr", "Object-origin chamber - fresh session, finding it by shape")
                         arManager.startSession()
                     } else if let b = bundle {
-                        AppLog.info("qr", "World map \(b.source == .local ? "from cache" : "downloaded") — sealed=\(b.isSealed) — relocalizing")
+                        AppLog.info("qr", "World map \(b.source == .local ? "from cache" : "downloaded") - sealed=\(b.isSealed) - relocalizing")
                         arManager.startSessionWithWorldMap(b.map)
                     } else {
-                        AppLog.info("qr", "No world map (local or remote) — starting fresh session")
+                        AppLog.info("qr", "No world map (local or remote) - starting fresh session")
                         arManager.startSession()
                     }
                 }
@@ -237,7 +237,7 @@ struct QRScanGateView: View {
         }
         .onDisappear {
             // Only pause if the session was NOT handed off to a successor view.
-            // After lockSession() appState.activeARSession is set — the session
+            // After lockSession() appState.activeARSession is set - the session
             // must stay running so AuthorModeView / OperatorModeView can link to it.
             // If the user cancelled before a lock, no handoff happened → pause now.
             if appState.activeARSession == nil {
@@ -245,13 +245,13 @@ struct QRScanGateView: View {
             } else {
                 arManager.stopObjectWatchdog()      // B2e: the mode view's manager owns it now
             }
-            // #63: this view is already gone one way or another — don't let a
+            // #63: this view is already gone one way or another - don't let a
             // pending auto-return fire onCancel() a second time later.
             wrongQRTimeoutWorkItem?.cancel()
             wrongQRTimeoutWorkItem = nil
         }
         .onChange(of: arManager.objectTransform) { t in
-            // B3: proof of recognition — the ghost lands on the chamber.
+            // B3: proof of recognition - the ghost lands on the chamber.
             if t != nil { shapeGhost?.update(objectTransform: t); shapeGhost?.flash() }
         }
         .onChange(of: arManager.scanState) { state in
@@ -300,7 +300,7 @@ struct QRScanGateView: View {
                     Image(systemName: "arrow.triangle.2.circlepath")
                         .foregroundStyle(.orange)
                     Text(arManager.qrWaitingForMap
-                         ? "QR found — look around the chamber for a moment so the map can match"
+                         ? "QR found - look around the chamber for a moment so the map can match"
                          : "Relocalizing… look around the anchor area")
                         .font(.subheadline)
                         .foregroundStyle(.white)
@@ -329,7 +329,7 @@ struct QRScanGateView: View {
                 }
             case .aligning:
                 ProgressView().tint(.green).scaleEffect(0.8)
-                Text("Aligning to the sealed map — hold the chamber in view")
+                Text("Aligning to the sealed map - hold the chamber in view")
                     .font(.subheadline).foregroundStyle(.white)
             case .locked:
                 if let note = originNote {
@@ -414,7 +414,7 @@ struct QRScanGateView: View {
     }
 
     /// Trust layer: shown between origin adoption and convergence. The tags
-    /// are deliberately NOT on screen yet — nothing to be wrong about.
+    /// are deliberately NOT on screen yet - nothing to be wrong about.
     private var aligningCard: some View {
         HStack(spacing: 14) {
             ZStack {
@@ -476,7 +476,7 @@ struct QRScanGateView: View {
         if let active = appState.activeAnchor,
            context.anchorId != active.id {
             arManager.resetScan()
-            scanPhase = .error("Wrong QR — this code belongs to a different anchor. Scan the QR for \(active.assetId).")
+            scanPhase = .error("Wrong QR - this code belongs to a different anchor. Scan the QR for \(active.assetId).")
             DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
                 if case .error = scanPhase { scanPhase = .waiting }
             }
@@ -491,7 +491,7 @@ struct QRScanGateView: View {
             return
         }
 
-        // Correct anchor — cancel any pending auto-return from an earlier
+        // Correct anchor - cancel any pending auto-return from an earlier
         // wrong-QR scan in this session.
         wrongQRTimeoutWorkItem?.cancel()
         wrongQRTimeoutWorkItem = nil
@@ -501,11 +501,11 @@ struct QRScanGateView: View {
             // QR has the key embedded (new-style QR)
             appState.anchorEncryptionKey = symKey
         } else {
-            // Legacy QR or same-device Author — try Keychain
+            // Legacy QR or same-device Author - try Keychain
             if let kbKey = AnchorEncryption.loadExistingKey(anchorId: context.anchorId) {
                 appState.anchorEncryptionKey = kbKey
             } else if mode == .author {
-                // Author on a new device — create a key for this anchor
+                // Author on a new device - create a key for this anchor
                 appState.anchorEncryptionKey = AnchorEncryption.getOrCreateKey(for: context.anchorId)
             }
         }
@@ -518,7 +518,7 @@ struct QRScanGateView: View {
                        && objectBundle?.meta.objectPoseInQR != nil
         if wantsObject && arManager.objectTransform == nil {
             // B2e: wait with a visible timer (never looks frozen). After 15 s the
-            // finder offers "Use the QR position" — the fallback is a choice.
+            // finder offers "Use the QR position" - the fallback is a choice.
             withAnimation { scanPhase = .locking }
             objectWaitStart    = Date()
             pendingLockContext = context
@@ -586,7 +586,7 @@ struct QRScanGateView: View {
             originPose = sealed
             arManager.adoptMapOrigin(sealed)
             appState.sealedMapOrigin = sealed
-            // Lab rigs placed without a code seal at the identity origin — the QR
+            // Lab rigs placed without a code seal at the identity origin - the QR
             // is not that frame's witness, so a "moved?" note would be noise.
             if let live = livePose, appState.activeAnchor?.anchorType != .lab {
                 let d = ARCoordinateFrame.poseDelta(sealed, live)
@@ -600,12 +600,12 @@ struct QRScanGateView: View {
             arManager.noteQROrigin()
             if appState.activeAnchor?.usesObjectOrigin == true, objectBundle != nil, objectNow == nil {
                 originNote = objectBundle?.meta.objectPoseInQR != nil
-                    ? "Chamber not recognised — using the QR position (approximate if the chamber moved)"
+                    ? "Chamber not recognised - using the QR position (approximate if the chamber moved)"
                     : (mapBundle?.isSealed == true
-                        ? "Chamber object not calibrated yet — using the sealed map / QR"
-                        : "Chamber object not calibrated yet — using the QR position")
+                        ? "Chamber object not calibrated yet - using the sealed map / QR"
+                        : "Chamber object not calibrated yet - using the QR position")
             } else if mapBundle?.isSealed == true {
-                originNote = "Couldn't match the sealed map — using the QR position (reduced accuracy)"
+                originNote = "Couldn't match the sealed map - using the QR position (reduced accuracy)"
             }
         }
         appState.anchorNormalisedTransform = originPose
@@ -634,7 +634,7 @@ struct QRScanGateView: View {
 
         // ── Seal the map (B1: AUTHOR only) ────────────────────────────────────
         // Upload map + origin pose when no map existed yet, or when this session
-        // relocalized into the existing map (same frame — extending it is safe).
+        // relocalized into the existing map (same frame - extending it is safe).
         // A timed-out session has a fresh frame: uploading would corrupt the
         // seal, so it is skipped. Operators never upload.
         let hadMap = mapBundle != nil
@@ -650,9 +650,9 @@ struct QRScanGateView: View {
                 try? await Task.sleep(nanoseconds: 300_000_000)
                 guard let mapData = await arManager.saveCurrentWorldMap() else { return }
                 // Guard the seal: a map far smaller than the one we relocalized
-                // into means tracking was reset underneath us — keep the old one.
+                // into means tracking was reset underneath us - keep the old one.
                 if let prior = mapBundle?.map.count, prior > 0, mapData.count < prior / 2 {
-                    AppLog.warn("qr", "Seal skipped — new map \(mapData.count / 1024) KB vs sealed \(prior / 1024) KB (tracking reset?)")
+                    AppLog.warn("qr", "Seal skipped - new map \(mapData.count / 1024) KB vs sealed \(prior / 1024) KB (tracking reset?)")
                     return
                 }
                 do {
@@ -689,7 +689,7 @@ struct QRScanGateView: View {
                 while arManager.originConfidence == .aligning || arManager.originConfidence == .relocalizing {
                     try? await Task.sleep(nanoseconds: 100_000_000)
                 }
-                // The anchor may have moved while we waited — adopt its final pose.
+                // The anchor may have moved while we waited - adopt its final pose.
                 if let refined = arManager.currentOriginPose {
                     arManager.adoptMapOrigin(refined)
                     appState.sealedMapOrigin = refined

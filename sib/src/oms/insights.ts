@@ -1,16 +1,16 @@
-// oms/insights.ts — the leadership view of the usage log (2026.4.46).
+// oms/insights.ts - the leadership view of the usage log (2026.4.46).
 //
 // Everything on the Insights page is DERIVED from the same event stream the
-// Usage Log and Intelligence read — nothing new is captured. `computeInsights`
+// Usage Log and Intelligence read - nothing new is captured. `computeInsights`
 // is pure (sessions in, numbers out) so it is unit-tested and cheap to cache.
 //
-//   headline   runs · completion rate · median run time · hints that helped —
+//   headline   runs · completion rate · median run time · hints that helped -
 //              each with the previous period for a delta
 //   perDay     runs and completions per calendar day (the period's spine)
 //   perGuide   runs, median / p90 run time, wrong taps per run, and a heat
 //              strip per step (the Intelligence heat, reused as-is)
-//   hintTrend  shown / helped per day — "the system is learning" chart
-//   wrongTrend wrong-part taps per run per day — the quality proxy
+//   hintTrend  shown / helped per day - "the system is learning" chart
+//   wrongTrend wrong-part taps per run per day - the quality proxy
 //
 // Proprietary & Confidential · Applied Materials.
 
@@ -74,7 +74,7 @@ export function computeInsights(
   const cur = scoped.filter(s => t(s) >= from && t(s) < until).sort((a, b) => a.startedAt.localeCompare(b.startedAt));
   const prev = scoped.filter(s => t(s) >= prevFrom && t(s) < from);
 
-  // Per day — every day of the period is present, so the chart has a spine.
+  // Per day - every day of the period is present, so the chart has a spine.
   const perDay: InsightsDay[] = [];
   const byDay = new Map<string, InsightsDay>();
   for (let i = 0; i < q.days; i++) {
@@ -92,7 +92,7 @@ export function computeInsights(
     }
   }
 
-  // Per guide — the Intelligence heat is reused so the two pages never disagree.
+  // Per guide - the Intelligence heat is reused so the two pages never disagree.
   const guideIds = [...new Set(cur.map(s => s.guideId))];
   const perGuide: InsightsGuide[] = guideIds.map(gid => {
     const runs = cur.filter(s => s.guideId === gid);
@@ -115,7 +115,7 @@ export function computeInsights(
   };
 }
 
-/** Longest single visit per step across runs — used nowhere yet; kept pure for tests. */
+/** Longest single visit per step across runs - used nowhere yet; kept pure for tests. */
 export function visitSeconds(v: OmsUsageStepEntry): number | undefined {
   if (typeof v.durationSeconds === 'number') return v.durationSeconds;
   return v.exitedAt ? Math.max(0, (Date.parse(v.exitedAt) - Date.parse(v.enteredAt)) / 1000) : undefined;

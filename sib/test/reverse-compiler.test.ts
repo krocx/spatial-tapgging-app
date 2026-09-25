@@ -1,5 +1,5 @@
 /**
- * Reverse-compiler tests — guide → procedure map, and the ROUND-TRIP fidelity
+ * Reverse-compiler tests - guide → procedure map, and the ROUND-TRIP fidelity
  * contract from the UX review: reverse-compile a guide, forward-compile the
  * result, and the steps must come back in the same order with the same
  * branches, content and provenance-matched ids.
@@ -73,7 +73,7 @@ test('branches: failure edge, requires drawn prerequisite → gated step, lanes 
   assert.equal(roleEdges('failure').length, 1);
   assert.equal(roleEdges('failure')[0].from, nodeByStep.get('s1')!.id);
   assert.equal(roleEdges('failure')[0].to,   nodeByStep.get('s2')!.id);
-  // requires: FROM prerequisite INTO gated step — forward compiler's direction.
+  // requires: FROM prerequisite INTO gated step - forward compiler's direction.
   assert.equal(roleEdges('requires').length, 1);
   assert.equal(roleEdges('requires')[0].from, nodeByStep.get('s1')!.id);
   assert.equal(roleEdges('requires')[0].to,   nodeByStep.get('s3')!.id);

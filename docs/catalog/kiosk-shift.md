@@ -8,8 +8,8 @@ depends: [uam, chamber-configs]
 terms: [RBAC, Operator Mode]
 spec: CONNECTED-WORKER.md#kiosk-shift-start
 api: |
-  POST /uam/login — employee-ID-only kiosk sign-in; server resolves name, email, role (app · public)
-  GET /uam/me — refresh identity on launch; 401 reopens the gate (app · API key)
+  POST /uam/login - employee-ID-only kiosk sign-in; server resolves name, email, role (app · public)
+  GET /uam/me - refresh identity on launch; 401 reopens the gate (app · API key)
 wireframe: operator
 arch: |
   flowchart LR
@@ -24,7 +24,7 @@ arch: |
     C & GA & LO --> U["context on every usage / event record"]
 ---
 A shared iPad opens on a shift screen: the technician types only an employee
-ID — the server resolves who they are and what they may do; engineers add
+ID - the server resolves who they are and what they may do; engineers add
 whether they author or operate this shift. Nothing else is asked there,
 because the app cannot know which product the person will pick. The home
 screen then offers three product doors, each asking only for its own context,

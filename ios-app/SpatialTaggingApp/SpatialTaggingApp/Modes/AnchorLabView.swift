@@ -1,22 +1,22 @@
-// AnchorLabView.swift — the Anchor Lab door (2026.4.46)
+// AnchorLabView.swift - the Anchor Lab door (2026.4.46)
 //
 // A playground for the team that has to believe the anchoring: rigs instead
 // of chambers, tags instead of procedures, and every run ends with a number.
 //
-//   AnchorLabHomeView   rigs (anchors of type LAB — never listed anywhere else)
+//   AnchorLabHomeView   rigs (anchors of type LAB - never listed anywhere else)
 //   LabRigView          one rig: Print QR · Place tags · Run · History
 //   LabRunView          lean AR: relocalize, tags appear on the settled frame,
 //                       mark truth per tag, run summary vs the rig's history
 //   LabHistoryView      the portal's Lab numbers, on the device
 //
 // Two run types, because operators meet both in production:
-//   Map only  relocalize into the rig's sealed map — no code in view at all
+//   Map only  relocalize into the rig's sealed map - no code in view at all
 //             (what AR work-instruction runs do)
 //   QR + map  through the QR gate (what Spatial Inspection does)
 //
 // Placing tags is tap-to-tag on the rig's own world map (no code); the QR
 // path (gate + AuthorModeView) remains for QR + map runs. A lab tag is a
-// real tag — same metadata, same seal, same trust layer. Nothing in here is
+// real tag - same metadata, same seal, same trust layer. Nothing in here is
 // a second implementation of anchoring; it is the product measured.
 //
 // Visible only to users explicitly entitled to `lab` (UAM products).
@@ -32,7 +32,7 @@ enum LabRunType: String, CaseIterable, Identifiable {
     case map = "map", qr = "qr"
     var id: String { rawValue }
     var title: String { self == .map ? "Map only" : "QR + map" }
-    var detail: String { self == .map ? "Relocalize into the sealed map — no code in view" : "Through the QR gate, like Spatial Inspection" }
+    var detail: String { self == .map ? "Relocalize into the sealed map - no code in view" : "Through the QR gate, like Spatial Inspection" }
 }
 
 /// The protocol's run labels (docs/ar-ojt/ANCHOR-LAB.md) as chips.
@@ -182,7 +182,7 @@ struct LabRigView: View {
 
     private var client: SIBClient { SIBClient(settings: settings) }
     private var placedTags: [Tag] { tags.filter { $0.metadata["anchor_rel_x"] != nil } }
-    /// Tags placed and the map sealed — the only state a run makes sense in.
+    /// Tags placed and the map sealed - the only state a run makes sense in.
     private var runReady: Bool { !placedTags.isEmpty && sealedAt != nil }
 
     var body: some View {
@@ -191,11 +191,11 @@ struct LabRigView: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(rig.assetId).font(.title3.bold())
-                        Text(sealedAt == nil ? "Map not sealed yet — tap to tag, then Save" : "Sealed \(shortDate(sealedAt!))")
+                        Text(sealedAt == nil ? "Map not sealed yet - tap to tag, then Save" : "Sealed \(shortDate(sealedAt!))")
                             .font(.caption).foregroundStyle(sealedAt == nil ? .orange : .secondary)
                     }
                     Spacer()
-                    // The code only matters for QR + map runs — no QR clutter otherwise.
+                    // The code only matters for QR + map runs - no QR clutter otherwise.
                     if runReady, runType == .qr {
                         Button { showQR = true } label: { Label("QR", systemImage: "qrcode") }.buttonStyle(.bordered)
                     }
@@ -217,7 +217,7 @@ struct LabRigView: View {
                     }
                 }
                 Text(runReady ? "Tap to tag again to add or remove tags; Save re-seals the map."
-                              : "No code needed: tap a physical feature you can find again — a hinge pin, a screw head, a corner. Three to five is plenty. Save seals the map, with everything you looked at, as the rig's frame.")
+                              : "No code needed: tap a physical feature you can find again - a hinge pin, a screw head, a corner. Three to five is plenty. Save seals the map, with everything you looked at, as the rig's frame.")
                     .font(.caption).foregroundStyle(.secondary)
             }
 
@@ -279,14 +279,14 @@ struct LabRigView: View {
                 showPlaceGate = false
                 appState.returnToLab = true
                 // ModeSelectionView closes the Lab cover, then enters Author
-                // mode — never swap the root view under a live cover.
+                // mode - never swap the root view under a live cover.
                 appState.labPendingMode = .author
             }, onCancel: { showPlaceGate = false })
             .environmentObject(settings).environmentObject(appState).environmentObject(tour)
         }
         // QR + map run: gate first, then the lean run view on the same session.
         .fullScreenCover(isPresented: $showRunGate, onDismiss: {
-            // Present the run only once the gate cover is fully gone —
+            // Present the run only once the gate cover is fully gone -
             // stacking covers mid-dismiss re-runs the run view's task.
             if pendingRun { pendingRun = false; showRun = true }
         }) {
@@ -417,7 +417,7 @@ struct LabRunView: View {
             // Ghost: the sealed-map photo over the camera, so the tester can
             // stand where the author stood. A 2-D overlay, nothing tracked.
             if showGhost, let g = ghost {
-                // Sized by the screen, never by the photo — a bare scaledToFill
+                // Sized by the screen, never by the photo - a bare scaledToFill
                 // image widens the whole ZStack and pushes the cards off-screen.
                 Color.clear
                     .overlay(Image(uiImage: g).resizable().scaledToFill())
@@ -454,7 +454,7 @@ struct LabRunView: View {
                         toggle("person.crop.rectangle", on: showGhost, dimmed: phase == .ready) {
                             if phase == .ready {
                                 showGhost = false
-                                show("Tags are placed — the ghost isn't needed now")
+                                show("Tags are placed - the ghost isn't needed now")
                             } else {
                                 showGhost.toggle(); if showGhost { ghostUsed = true; offerGhost = false }
                             }
@@ -487,7 +487,7 @@ struct LabRunView: View {
                         .padding(.horizontal, 24)
                     }
                     statusCard(icon: "arrow.triangle.2.circlepath", tint: .green,
-                               title: arManager.originConfidence == .aligning ? "Matched — settling the fit" : "Relocalizing…",
+                               title: arManager.originConfidence == .aligning ? "Matched - settling the fit" : "Relocalizing…",
                                text: arManager.originConfidence == .aligning ? "Hold the view a moment. Tags appear once the origin is still."
                                                                               : "Look at the rig from roughly where the tags were placed. No code needed.")
                 }
@@ -506,7 +506,7 @@ struct LabRunView: View {
                     if finishing {
                         hintPill("Finishing…", icon: "checkmark.circle", tint: .cyan)
                     } else if arManager.isRelocalizing {
-                        hintPill("Relocalizing — hold the rig in view", icon: "arrow.triangle.2.circlepath", tint: .orange)
+                        hintPill("Relocalizing - hold the rig in view", icon: "arrow.triangle.2.circlepath", tint: .orange)
                     } else if showLab {
                         labPanel
                     } else if let t = toast {
@@ -538,7 +538,7 @@ struct LabRunView: View {
 
     private var labPanel: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Lock report — two compact columns
+            // Lock report - two compact columns
             HStack(alignment: .top, spacing: 14) {
                 VStack(alignment: .leading, spacing: 2) {
                     labRow("Origin", sourceLabel, tint: sourceTint)
@@ -559,7 +559,7 @@ struct LabRunView: View {
             }
             Divider().overlay(Color.white.opacity(0.2))
             Text(armedTagId == nil ? "Tap a tag (or a chip), then aim the orange ring at its real feature"
-                                   : (ringTracking ? "Aim the orange ring at the feature, then tap — or Mark" : "Move closer until the ring finds the surface"))
+                                   : (ringTracking ? "Aim the orange ring at the feature, then tap - or Mark" : "Move closer until the ring finds the surface"))
                 .font(.subheadline).foregroundStyle(.white.opacity(0.8))
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
@@ -618,7 +618,7 @@ struct LabRunView: View {
         // The Lab measures millimetres: pins and truth marks must land on the
         // real surface, so the scene mesh is always on here (LiDAR devices).
         arManager.wantsSceneMesh = true
-        // Ghost photo (if the rig was sealed with one) — fetched in the background.
+        // Ghost photo (if the rig was sealed with one) - fetched in the background.
         if ghost == nil {
             let c = client, id = rig.id
             Task { if let d = try? await c.fetchLocTagReferencePhoto(anchorId: id), let img = UIImage(data: d) { ghost = img } }
@@ -627,7 +627,7 @@ struct LabRunView: View {
         case .qr:
             // The gate did the work: relocalized (or not), origin chosen, report filled.
             guard let session = appState.activeARSession, let o = appState.anchorNormalisedTransform else {
-                phase = .failed("The QR gate's session is gone — leave and start the run again."); return
+                phase = .failed("The QR gate's session is gone - leave and start the run again."); return
             }
             arManager.linkToExistingSession(session, mapOrigin: appState.sealedMapOrigin, objectCalibration: nil)
             arManager.disableQRScanning()
@@ -637,7 +637,7 @@ struct LabRunView: View {
         case .map:
             phase = .loading
             guard let bundle = await WorldMapCache.load(.anchor(rig.id), client: client), bundle.isSealed else {
-                phase = .failed("This rig has no sealed map yet. Place tags first — Save seals it."); return
+                phase = .failed("This rig has no sealed map yet. Place tags first - Save seals it."); return
             }
             sealedBytes = bundle.map.count
             arManager.startSessionWithWorldMap(bundle.map)
@@ -679,29 +679,29 @@ struct LabRunView: View {
     // ── Map growth (2): a clean run's map replaces the sealed one ─────────────
     //
     // The Lab is where this is measured before production gets it. Conditions
-    // are strict — relocalized, locked (not approximate), never interrupted,
-    // and the new map is at least 5 % larger — so a bad session can never
+    // are strict - relocalized, locked (not approximate), never interrupted,
+    // and the new map is at least 5 % larger - so a bad session can never
     // shrink or poison the rig's map.
     /// Serialise the map if this run may grow it. Needs the live session.
     /// Returns nil when the run isn't clean, growth is off, or the map didn't grow.
     private func grabMapIfClean() async -> Data? {
         guard UserDefaults.standard.object(forKey: "lab_map_growth") as? Bool ?? true else {
-            AppLog.info("lab", "map kept — growth is off for this device"); return nil
+            AppLog.info("lab", "map kept - growth is off for this device"); return nil
         }
         guard runType == .map, arManager.relocalizationOutcome == .succeeded, !interrupted,
               case .locked = arManager.originConfidence else {
-            AppLog.info("lab", "map kept — run not clean enough to grow it (interrupted: \(interrupted))"); return nil
+            AppLog.info("lab", "map kept - run not clean enough to grow it (interrupted: \(interrupted))"); return nil
         }
         guard let data = await arManager.saveCurrentWorldMap() else { return nil }
         mapKB = data.count / 1024
         guard data.count > Int(Double(sealedBytes) * 1.05) else {
-            AppLog.info("lab", "map kept — \(data.count / 1024) KB vs sealed \(sealedBytes / 1024) KB"); return nil
+            AppLog.info("lab", "map kept - \(data.count / 1024) KB vs sealed \(sealedBytes / 1024) KB"); return nil
         }
         grownPose = arManager.currentOriginPose ?? origin ?? matrix_identity_float4x4
         return data
     }
 
-    /// Upload the grown map — session-independent, runs behind the summary.
+    /// Upload the grown map - session-independent, runs behind the summary.
     private func uploadGrownMap(_ data: Data) async {
         let sealedBy = !settings.uamUserName.isEmpty ? settings.uamUserName : settings.authorName
         do {
@@ -733,7 +733,7 @@ struct LabRunView: View {
             mapGrew: mapGrew, mapKB: mapKB, ghostUsed: ghostUsed)
         do {
             try await client.postAnchorLabRun(anchorId: rig.id, run: run)
-            AppLog.info("lab", "run record stored: \(runLabel) · \(marks.count) marks · median \(q(0.5).map { String(format: "%.0f", $0) } ?? "—") mm")
+            AppLog.info("lab", "run record stored: \(runLabel) · \(marks.count) marks · median \(q(0.5).map { String(format: "%.0f", $0) } ?? "-") mm")
         } catch { AppLog.warn("lab", "run record upload failed: \(error.localizedDescription)") }
     }
 
@@ -750,7 +750,7 @@ struct LabRunView: View {
             arManager.sceneView.scene.rootNode.addChildNode(node)
             markerNodes[tag.id] = node
         }
-        // Origin axes — where the app thinks the rig's frame is. Hidden until
+        // Origin axes - where the app thinks the rig's frame is. Hidden until
         // the tester asks for them.
         axisNode?.removeFromParentNode()
         let axis = LabMarker.axis()
@@ -802,7 +802,7 @@ struct LabRunView: View {
         guard let rendered = markerNodes[tagId]?.simdWorldPosition else { show("Tag isn't placed yet"); return }
         guard let ring = truthRing, let t = ring.lastHitTransform,
               let cam = arManager.sceneView.session.currentFrame?.camera.transform else {
-            show("No surface under the ring — move closer"); return
+            show("No surface under the ring - move closer"); return
         }
         let hit    = simd_float3(t.columns.3.x, t.columns.3.y, t.columns.3.z)
         let camPos = simd_float3(cam.columns.3.x, cam.columns.3.y, cam.columns.3.z)
@@ -833,7 +833,7 @@ struct LabRunView: View {
         Task {
             var ok = true
             do { try await client.postAnchorAccuracy(anchorId: rig.id, sample: sample) }
-            catch { ok = false; show("Saved locally only — \(error.localizedDescription)") }
+            catch { ok = false; show("Saved locally only - \(error.localizedDescription)") }
             marks.append((label, mm, ok))
             sending = false
         }
@@ -955,7 +955,7 @@ struct LabRunView: View {
                 Section("This run · \(runType.title) · \(runLabel)") {
                     HStack { Text("Marks"); Spacer(); Text("\(marks.count) of \(tags.count)").foregroundStyle(.secondary) }
                     HStack { Text("Median error"); Spacer()
-                        Text(marks.isEmpty ? "—" : String(format: "%.0f mm", median)).font(.headline.monospacedDigit())
+                        Text(marks.isEmpty ? "-" : String(format: "%.0f mm", median)).font(.headline.monospacedDigit())
                             .foregroundStyle(median <= 10 ? .green : median <= 25 ? .orange : .red) }
                     if let s = report.relocalizeS { HStack { Text("Relocalize"); Spacer(); Text(String(format: "%.1f s", s)).foregroundStyle(.secondary) } }
                     if let s = report.convergeS   { HStack { Text("Converge");   Spacer(); Text(String(format: "%.1f s", s)).foregroundStyle(.secondary) } }
@@ -966,7 +966,7 @@ struct LabRunView: View {
                         if mapPending { ProgressView().controlSize(.small); Text("saving \(mapKB ?? 0) KB…").foregroundStyle(.secondary) }
                         else { Text(mapGrew ? "grew to \(mapKB ?? 0) KB" : (mapKB != nil ? "kept (\(mapKB!) KB)" : "kept"))
                             .foregroundStyle(mapGrew ? .green : .secondary) } }
-                    if interrupted { HStack { Text("Interrupted"); Spacer(); Text("yes — marks after it are suspect").foregroundStyle(.orange) } }
+                    if interrupted { HStack { Text("Interrupted"); Spacer(); Text("yes - marks after it are suspect").foregroundStyle(.orange) } }
                     if ghostUsed  { HStack { Text("Ghost");       Spacer(); Text("used").foregroundStyle(.secondary) } }
                 }
                 if !marks.isEmpty {
@@ -1090,7 +1090,7 @@ struct LabHistoryView: View {
 // ── Markers ───────────────────────────────────────────────────────────────────
 
 enum LabMarker {
-    /// The AR OMS pin — sphere, ring, numbered badge — in the Lab's cyan. The
+    /// The AR OMS pin - sphere, ring, numbered badge - in the Lab's cyan. The
     /// sphere's centre IS the tag position, which is what a truth mark is
     /// measured against.
     static func pin(number: Int) -> SCNNode {
@@ -1127,7 +1127,7 @@ enum LabMarker {
 
     /// AR OMS proximity tuck, verbatim: under 0.35 m the pin folds to a small
     /// dot (badge and ring fade, 220 ms); past 0.5 m it registers back. Up
-    /// close the tag must not hide the feature it marks — which is also what
+    /// close the tag must not hide the feature it marks - which is also what
     /// makes a drift mark honest: the tester sees the feature, not the tag.
     static func updateTuck(_ nodes: [String: SCNNode], camera: simd_float3, tucked: inout Set<String>) {
         for (id, pin) in nodes {
@@ -1187,7 +1187,7 @@ enum LabMarker {
         return SCNNode(geometry: s)
     }
 
-    /// Hairline between the truth mark and the tag — the error, drawn.
+    /// Hairline between the truth mark and the tag - the error, drawn.
     static func line(from a: simd_float3, to b: simd_float3) -> SCNNode {
         let d = b - a
         let len = simd_length(d)
@@ -1232,10 +1232,10 @@ enum LabMarker {
 // The Lab measures the world-map anchoring, so authoring should not depend on
 // the QR either: the rig is picked from the list (identity known), the map's
 // own frame is the origin, and Save seals the map with `sib-origin` in it.
-// Tap to tag — exactly the AR OMS Place Steps gesture: tap a real feature,
+// Tap to tag - exactly the AR OMS Place Steps gesture: tap a real feature,
 // the pin drops with the pop / ring / haptic, and it is "Tag N". Lab pins are
-// real tags (anchor_rel_* relative to the map origin), so every run type —
-// Map only or QR + map — reads them unchanged.
+// real tags (anchor_rel_* relative to the map origin), so every run type -
+// Map only or QR + map - reads them unchanged.
 
 struct LabPlaceView: View {
     let rig: Anchor
@@ -1294,7 +1294,7 @@ struct LabPlaceView: View {
                 card(icon: "camera.viewfinder", tint: .white, title: "Starting…", text: nil)
             case .relocalizing:
                 card(icon: "arrow.triangle.2.circlepath", tint: .green,
-                     title: arManager.originConfidence == .aligning ? "Matched — settling" : "Matching the rig's map…",
+                     title: arManager.originConfidence == .aligning ? "Matched - settling" : "Matching the rig's map…",
                      text: "Look at the rig from where you placed the tags. Existing tags appear once the fit is steady.")
             case .failed(let why):
                 VStack(spacing: 12) {
@@ -1307,7 +1307,7 @@ struct LabPlaceView: View {
             case .ready, .saving:
                 if showTapHint, tags.isEmpty {
                     ARTapCoach(title: "Tap any surface to place Tag 1",
-                               subtitle: "Point at a real feature — a hinge, a screw head, a corner",
+                               subtitle: "Point at a real feature - a hinge, a screw head, a corner",
                                accent: .cyan,
                                onDismiss: { withAnimation(.easeOut(duration: 0.3)) { showTapHint = false } })
                     .transition(.opacity)
@@ -1328,7 +1328,7 @@ struct LabPlaceView: View {
                             }.padding(.horizontal, 16)
                         }
                     }
-                    Text(arManager.isRelocalizing ? "Relocalizing — hold the rig in view"
+                    Text(arManager.isRelocalizing ? "Relocalizing - hold the rig in view"
                          : tags.isEmpty ? "Tap a real feature to place Tag 1"
                          : "Tap the next feature to place Tag \(nextNumber) · Save when done")
                         .font(.subheadline).foregroundStyle(.white)
@@ -1428,7 +1428,7 @@ struct LabPlaceView: View {
                 let c = h.worldTransform.columns.3; pos = simd_float3(c.x, c.y, c.z); break
             }
         }
-        guard let p = pos else { show("No surface there — tap a spot on the rig"); return }
+        guard let p = pos else { show("No surface there - tap a spot on the rig"); return }
         withAnimation { showTapHint = false }
         Task { await place(at: p) }
     }
@@ -1470,11 +1470,11 @@ struct LabPlaceView: View {
         phase = .saving
         arManager.ensureOriginAnchor(fallback: origin)
         try? await Task.sleep(nanoseconds: 300_000_000)
-        // Ghost: the camera as it is now, plus its pose — "stand here" for later runs.
+        // Ghost: the camera as it is now, plus its pose - "stand here" for later runs.
         let frame = arManager.sceneView.session.currentFrame
         let photo = frame.flatMap { ARFrameImage.screenOriented($0, maxPx: 1000)?.jpegData(compressionQuality: 0.7) }
         let camPose = frame?.camera.transform
-        guard let mapData = await arManager.saveCurrentWorldMap() else { show("Couldn't capture the map — move a little and try again"); phase = .ready; return }
+        guard let mapData = await arManager.saveCurrentWorldMap() else { show("Couldn't capture the map - move a little and try again"); phase = .ready; return }
         let sealedBy = !settings.uamUserName.isEmpty ? settings.uamUserName : settings.authorName
         do {
             try await client.uploadWorldMap(anchorId: rig.id, data: mapData)
@@ -1486,7 +1486,7 @@ struct LabPlaceView: View {
             leave()
         } catch {
             WorldMapCache.store(.anchor(rig.id), map: mapData, meta: WorldMapMeta())
-            show("Upload failed — kept on this device: \(error.localizedDescription)")
+            show("Upload failed - kept on this device: \(error.localizedDescription)")
             phase = .ready
         }
     }

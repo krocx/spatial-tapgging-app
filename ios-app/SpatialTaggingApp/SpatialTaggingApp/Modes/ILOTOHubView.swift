@@ -1,7 +1,7 @@
-// ILOTOHubView.swift — the iLOTO hub for a control-panel anchor (slice 1).
+// ILOTOHubView.swift - the iLOTO hub for a control-panel anchor (slice 1).
 //
 // Structure per docs/ILOTO.md §3:
-//   • Live status banner first — the first question at a panel is always
+//   • Live status banner first - the first question at a panel is always
 //     "what state is this in", before any menu.
 //   • Six tiles: Safe Off, LOTO (both certification-gated), Check Status,
 //     My LOTO, AR LOTO Map, My LOTO Training.
@@ -25,11 +25,11 @@ struct ILOTOHubView: View {
     @State private var loadError: String? = nil
     @State private var placeholder: PlaceholderInfo? = nil
     @State private var route: LotoHubRoute? = nil
-    /// Locks I hold anywhere (not just this panel) — the shift-end nudge.
+    /// Locks I hold anywhere (not just this panel) - the shift-end nudge.
     @State private var myLockCount = 0
 
     /// Cert gate: Safe Off and LOTO require a valid, unexpired certification.
-    /// Everything else stays open — an affected employee must be able to SEE
+    /// Everything else stays open - an affected employee must be able to SEE
     /// state without being authorized to change it.
     private var isCertified: Bool { certification?.isValid == true }
 
@@ -63,12 +63,12 @@ struct ILOTOHubView: View {
                 }
             }
 
-            // ── Safety stance — always visible, never says "safe" ──────────
+            // ── Safety stance - always visible, never says "safe" ──────────
             Section {
                 HStack(alignment: .top, spacing: 10) {
                     Image(systemName: "exclamationmark.shield.fill")
                         .foregroundStyle(.orange).font(.subheadline)
-                    Text("This app records and verifies. The physical lock — and your own try test — are the safety controls. Always verify at the panel before body contact.")
+                    Text("This app records and verifies. The physical lock - and your own try test - are the safety controls. Always verify at the panel before body contact.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
@@ -103,7 +103,7 @@ struct ILOTOHubView: View {
                 }
             }
             .environmentObject(settings)
-            // Status may have changed inside the flows — refresh on return.
+            // Status may have changed inside the flows - refresh on return.
             .onDisappear { Task { await load() } }
         }
     }
@@ -131,7 +131,7 @@ struct ILOTOHubView: View {
                 if isLoading { ProgressView() }
             }
 
-            // Status banner — derived server-side from the append-only log.
+            // Status banner - derived server-side from the append-only log.
             if let s = status {
                 HStack(spacing: 12) {
                     statusPill(count: s.lotoActive, label: "LOTO active",
@@ -155,7 +155,7 @@ struct ILOTOHubView: View {
                     Text("Certified · expires \(shortDate(cert.expiresAt))")
                         .font(.caption).foregroundStyle(.secondary)
                 } else {
-                    Text("Not certified — complete My LOTO Training to apply or remove locks")
+                    Text("Not certified - complete My LOTO Training to apply or remove locks")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
@@ -217,7 +217,7 @@ struct ILOTOHubView: View {
         return Button {
             if locked {
                 placeholder = .init(title: "\(title) is locked",
-                    message: "Applying or removing locks requires a valid LOTO certification. Complete My LOTO Training first — it takes a few minutes.")
+                    message: "Applying or removing locks requires a valid LOTO certification. Complete My LOTO Training first - it takes a few minutes.")
             } else {
                 action()
             }

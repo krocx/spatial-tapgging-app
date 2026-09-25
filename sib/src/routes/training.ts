@@ -1,9 +1,9 @@
-// Training & Validation routes — Author / Operator workflow
+// Training & Validation routes - Author / Operator workflow
 //
-// POST /perception/train        — Author submits pass-state images for a tag
-// POST /perception/validate     — Operator submits a live frame; SIB returns PASS/FAIL
-// POST /perception/validate-all — Operator validates all tags for an anchor in one call
-// GET  /perception/pass-state/:tagId — load pass-state for Operator mode
+// POST /perception/train        - Author submits pass-state images for a tag
+// POST /perception/validate     - Operator submits a live frame; SIB returns PASS/FAIL
+// POST /perception/validate-all - Operator validates all tags for an anchor in one call
+// GET  /perception/pass-state/:tagId - load pass-state for Operator mode
 
 import { createDecipheriv } from 'crypto';
 import { Router, type Request, type Response } from 'express';
@@ -75,7 +75,7 @@ router.post('/train', (req: Request, res: Response) => {
   const now = new Date().toISOString();
 
   // Optional: which reference this set of images represents. Defaults to
-  // 'PASS' — every existing Author client that never sends `state` keeps
+  // 'PASS' - every existing Author client that never sends `state` keeps
   // training the single Pass reference exactly as before. An Author may
   // additionally POST here with state: 'FAIL' to train what the *wrong*
   // condition looks like (cable unplugged, valve closed, switch off, etc.).
@@ -88,7 +88,7 @@ router.post('/train', (req: Request, res: Response) => {
     capturedAt: img.capturedAt ?? now,
   }));
 
-  // Upsert — replace any existing state of the SAME kind for this tag.
+  // Upsert - replace any existing state of the SAME kind for this tag.
   // Training a Fail-state never touches the tag's Pass-state, and vice versa.
   const existing = findPassStateByTag(body.tagId, state);
   const passState: PassState = {
@@ -102,7 +102,7 @@ router.post('/train', (req: Request, res: Response) => {
     updatedAt: now,
   };
 
-  // Re-training a tag fully replaces its honeycomb image set — drop the old
+  // Re-training a tag fully replaces its honeycomb image set - drop the old
   // image blobs from disk first so retraining a tag repeatedly doesn't leak
   // orphaned image files under .sib-data/pass-state-images/.
   if (existing) passStateStore.delete(existing.id);
@@ -110,7 +110,7 @@ router.post('/train', (req: Request, res: Response) => {
 
   // Fire-and-forget post-training reference-cache warm-up.
   // Waits 5 s before decoding so the Author's ROI PATCH (which typically
-  // arrives ~3 s after training) can land first — the ROI is baked into the
+  // arrives ~3 s after training) can land first - the ROI is baked into the
   // cache key, so we need to read it AFTER it's stored, not at training time.
   // For AES-256-GCM encrypted images this silently fails (no decryption key
   // available at training time); the first Operator inspection will pay the
@@ -125,7 +125,7 @@ router.post('/train', (req: Request, res: Response) => {
           await compareAgainstPassState(refs, refs[0], undefined, roi);
           console.log(`[warmup] Reference cache pre-warmed: tag=${body.tagId} images=${refs.length}`);
         } catch {
-          // Encrypted images, Jimp decode error, etc. — never affects the
+          // Encrypted images, Jimp decode error, etc. - never affects the
           // training response that has already been sent.
         }
       })();
@@ -168,7 +168,7 @@ router.post('/validate', async (req: Request, res: Response) => {
 
   const now = new Date().toISOString();
 
-  // Real comparison — SSIM + histogram intersection
+  // Real comparison - SSIM + histogram intersection
   let comparison: Awaited<ReturnType<typeof compareAgainstPassState>>;
   try {
     comparison = await compareAgainstPassState(
@@ -206,8 +206,8 @@ router.post('/validate', async (req: Request, res: Response) => {
 // POST /perception/validate-all
 // Validates every tag attached to an anchor against a single operator frame.
 // Optional body fields:
-//   threshold  — override global PASS_THRESHOLD (0.0–1.0, default 0.60)
-//   tagIds     — validate only this subset (for failed-only re-inspection)
+//   threshold  - override global PASS_THRESHOLD (0.0–1.0, default 0.60)
+//   tagIds     - validate only this subset (for failed-only re-inspection)
 // Returns an AnchorValidationResult with per-tag PASS/FAIL summaries.
 router.post('/validate-all', async (req: Request, res: Response) => {
   const body = req.body as BatchValidateRequest;
@@ -227,7 +227,7 @@ router.post('/validate-all', async (req: Request, res: Response) => {
       ? body.threshold
       : parseFloat(process.env.PASS_THRESHOLD ?? '0.60');
 
-  // All tags registered for this anchor — excluding hidden step-validation
+  // All tags registered for this anchor - excluding hidden step-validation
   // tags (V1): guide-step cone references are validated one-at-a-time by the
   // AR OMS flow, never as part of an anchor inspection sweep.
   let tags = tagStore.findAll().filter(t =>
@@ -278,7 +278,7 @@ router.post('/validate-all', async (req: Request, res: Response) => {
       try {
         return decryptImageBase64(enc, encryptionKey);
       } catch (decErr) {
-        // Decryption failed — likely wrong key or unencrypted legacy image.
+        // Decryption failed - likely wrong key or unencrypted legacy image.
         // Log clearly; falling back to the raw stored blob (SSIM will score ~0).
         console.error(
           `[SIB] Decryption failed for image[${i}] tag=${tagId}: ` +
@@ -295,7 +295,7 @@ router.post('/validate-all', async (req: Request, res: Response) => {
   // PENDING. Each tag comparison can itself trigger up to ~28 simultaneous
   // full-resolution JPEG decodes when a Fail-state is trained (see
   // image-comparator.ts), so letting every tag in the anchor run fully in
-  // parallel here on top of that was the multiplier behind the OOM crashes —
+  // parallel here on top of that was the multiplier behind the OOM crashes -
   // cap how many tags are compared at once instead.
   const TAG_VALIDATION_CONCURRENCY = 2;
   const tagResults: TagValidationSummary[] = await mapWithConcurrency(
@@ -313,7 +313,7 @@ router.post('/validate-all', async (req: Request, res: Response) => {
         };
       }
 
-      // Optional per-tag inspection-region crop — absent means full frame,
+      // Optional per-tag inspection-region crop - absent means full frame,
       // identical to today's behaviour.
       const roi: ComparatorRoi | undefined = tag.roi;
 
@@ -333,7 +333,7 @@ router.post('/validate-all', async (req: Request, res: Response) => {
             tagId:      tag.id,
             tagLabel:   tag.label,
             tagType:    tag.type,
-            // #66: a decrypt failure makes the comparison meaningless — force
+            // #66: a decrypt failure makes the comparison meaningless - force
             // FAIL with a distinct reason rather than trusting whatever score
             // the comparator happened to produce against still-encrypted bytes.
             status:        decryptFailed ? 'FAIL' : dual.status,
@@ -342,7 +342,7 @@ router.post('/validate-all', async (req: Request, res: Response) => {
             // For dual-state, dual.confidence is the normalised margin
             // (0.5–1.0, can show FAIL 71%) which confuses non-tech users
             // who expect higher % = more likely PASS.  Using simToPass gives
-            // FAIL 45% / PASS 71% — the direction is always intuitive.
+            // FAIL 45% / PASS 71% - the direction is always intuitive.
             confidence:    decryptFailed ? 0 : parseFloat(dual.simToPass.toFixed(4)),
             ...(decryptFailed ? { errorReason: 'DECRYPT_FAILED' as const } : {}),
           };
@@ -404,11 +404,11 @@ router.post('/validate-all', async (req: Request, res: Response) => {
     totalCount,
     tagResults,
     evaluatedAt: now,
-    // #67: previously this was only a server console.warn — the Operator had
+    // #67: previously this was only a server console.warn - the Operator had
     // no way to know a uniform ~0% confidence across every tag was caused by
     // a missing encryption key (wrong QR scanned) rather than real mismatches.
     ...(!encryptionKey ? {
-      warning: 'No encryption key received — scan the app-generated QR (Author → QR icon), ' +
+      warning: 'No encryption key received - scan the app-generated QR (Author → QR icon), ' +
                'not the original physical QR. Results below may show as FAIL with ~0% confidence.',
     } : {}),
   };
@@ -419,7 +419,7 @@ router.post('/validate-all', async (req: Request, res: Response) => {
     `→ ${anchorStatus} (${durationMs}ms)`,
   );
 
-  // Persist to inspection log (fire-and-forget — never blocks the response)
+  // Persist to inspection log (fire-and-forget - never blocks the response)
   try {
     logInspection({
       sessionId:     body.sessionId,

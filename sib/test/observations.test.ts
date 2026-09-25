@@ -1,4 +1,4 @@
-// observations.test.ts — C1: observation roll-ups and learned baselines are
+// observations.test.ts - C1: observation roll-ups and learned baselines are
 // pure functions of what the devices reported; nothing is hard-coded.
 
 import { test } from 'node:test';

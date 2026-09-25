@@ -1,4 +1,4 @@
-// ConeARGuide.swift — v3
+// ConeARGuide.swift - v3
 //
 // A live-tracking inspection cone that follows the Author's camera position
 // in real time.  The tag is at the apex; the ring (mouth) floats in front of
@@ -12,7 +12,7 @@
 //
 // ── Visual ────────────────────────────────────────────────────────────────────
 //  • Small pulsing dot at the tag (apex)
-//  • Solid semitransparent SCNCone surface — no shaky edge lines
+//  • Solid semitransparent SCNCone surface - no shaky edge lines
 //  • SCNTorus ring at the inspection distance (the "mouth")
 //  • Colours: cyan → green (aligned) → gold (locked)
 //
@@ -22,7 +22,7 @@
 //    cone surface is stable and much cleaner at arm's length.
 //  • Fix torus visibility bug: v2 scaled the torus NODE uniformly to set ring
 //    radius, which also scaled pipeRadius from 4mm → 0.26mm (invisible).
-//    v3 sets torusGeo.ringRadius directly each frame — pipeRadius stays 3.5mm.
+//    v3 sets torusGeo.ringRadius directly each frame - pipeRadius stays 3.5mm.
 //  • Fix orientNode degenerate case: the cross-product with world-Y was zero when
 //    coneWorldDirection ≈ (0,1,0) (vertical cone), causing a silent guard-return
 //    and leaving both ring and cone unoriented.  v3 handles all degenerate cases.
@@ -46,9 +46,9 @@ final class ConeARGuide {
 
     // ── Public constants ──────────────────────────────────────────────────────
 
-    static let kMinDist:      Float = 0.05   // 5 cm  — very close inspection
-    static let kMaxDist:      Float = 0.50   // 50 cm — far inspection limit
-    static let kDefaultApert: Float = 25     // degrees — default cone width
+    static let kMinDist:      Float = 0.05   // 5 cm  - very close inspection
+    static let kMaxDist:      Float = 0.50   // 50 cm - far inspection limit
+    static let kDefaultApert: Float = 25     // degrees - default cone width
     static let kMinApert:     Float = 10     // degrees
     static let kMaxApert:     Float = 45     // degrees
 
@@ -69,11 +69,11 @@ final class ConeARGuide {
     private var ringNode:   SCNNode   // SCNTorus ring at the mouth
     private var coneNode:   SCNNode   // SCNCone fill surface (semitransparent)
 
-    // Geometry instances — properties updated directly each frame (no node scaling)
+    // Geometry instances - properties updated directly each frame (no node scaling)
     private let torusGeo: SCNTorus
     private let coneGeo:  SCNCone
 
-    // ── Init — live tracking (Author / ConeCaptureView) ───────────────────────
+    // ── Init - live tracking (Author / ConeCaptureView) ───────────────────────
 
     init(sceneView: ARSCNView, tagWorldPosition: simd_float3) {
         self.sceneView        = sceneView
@@ -91,7 +91,7 @@ final class ConeARGuide {
         setConeColor(.systemCyan)
     }
 
-    /// Reconstructed from stored metadata — used in Operator mode (read-only, locked).
+    /// Reconstructed from stored metadata - used in Operator mode (read-only, locked).
     /// Converts the anchor-relative quaternion to world space and locks immediately.
     init(sceneView: ARSCNView,
          tagWorldPosition: simd_float3,
@@ -118,7 +118,7 @@ final class ConeARGuide {
         setConeColor(.systemYellow)
     }
 
-    // ── Factory — shared geometry setup ──────────────────────────────────────
+    // ── Factory - shared geometry setup ──────────────────────────────────────
 
     private static func makeGeometry() -> (SCNTorus, SCNCone) {
         // ── Torus ring ────────────────────────────────────────────────────────
@@ -127,15 +127,15 @@ final class ConeARGuide {
         //
         // IMPORTANT: SCNTorus() with no params may return a geometry with
         // firstMaterial == nil, so we must explicitly create and assign a
-        // material — do NOT rely on "?.lightingModel = .constant" (no-op if nil).
+        // material - do NOT rely on "?.lightingModel = .constant" (no-op if nil).
         let torus = SCNTorus()
-        torus.ringRadius       = 0.05   // placeholder — set each frame in updateGeometry
-        torus.pipeRadius       = 0.0035 // 3.5mm pipe — fixed, never scaled
+        torus.ringRadius       = 0.05   // placeholder - set each frame in updateGeometry
+        torus.pipeRadius       = 0.0035 // 3.5mm pipe - fixed, never scaled
         torus.ringSegmentCount = 36
         torus.pipeSegmentCount = 8
         let torusMat = SCNMaterial()
         torusMat.lightingModel = .constant
-        torus.firstMaterial    = torusMat   // explicit assign — not optional-chain
+        torus.firstMaterial    = torusMat   // explicit assign - not optional-chain
 
         // ── Cone fill ─────────────────────────────────────────────────────────
         // topRadius (at +Y) = ringRadius (wide base toward ring)
@@ -156,10 +156,10 @@ final class ConeARGuide {
         return (torus, cone)
     }
 
-    // ── Live update — called from ticker (20 fps) ─────────────────────────────
+    // ── Live update - called from ticker (20 fps) ─────────────────────────────
 
     /// Updates the ring position and direction to match the current camera position.
-    /// After locking, this only updates alignment colour — it no longer moves the cone.
+    /// After locking, this only updates alignment colour - it no longer moves the cone.
     func updateForCamera(cameraTransform t: simd_float4x4) {
         let camPos  = simd_float3(t.columns.3.x, t.columns.3.y, t.columns.3.z)
         let rawVec  = camPos - tagWorldPosition
@@ -171,13 +171,13 @@ final class ConeARGuide {
             isOutOfRange     = rawDist < Self.kMinDist * 0.9 || rawDist > Self.kMaxDist * 1.1
             updateGeometry()
         } else {
-            // Locked — only update alignment colour
+            // Locked - only update alignment colour
             let aligned = alignmentAngle(cameraTransform: t) < 25
             setConeColor(aligned ? .systemGreen : .systemCyan)
         }
     }
 
-    // ── Aperture control — called from pinch gesture ──────────────────────────
+    // ── Aperture control - called from pinch gesture ──────────────────────────
 
     func setAperture(_ degrees: Float) {
         apertureDeg = max(Self.kMinApert, min(Self.kMaxApert, degrees))
@@ -252,10 +252,10 @@ final class ConeARGuide {
         coneNode.removeFromParentNode()
     }
 
-    // ── Private — geometry ────────────────────────────────────────────────────
+    // ── Private - geometry ────────────────────────────────────────────────────
 
     private func build() {
-        // ── Apex dot — pulsing sphere at tag position ─────────────────────────
+        // ── Apex dot - pulsing sphere at tag position ─────────────────────────
         let dotGeo = SCNSphere(radius: 0.010)
         dotGeo.firstMaterial?.lightingModel = .constant
         centreNode = SCNNode(geometry: dotGeo)
@@ -280,7 +280,7 @@ final class ConeARGuide {
         let coneMidpt  = tagWorldPosition + coneWorldDirection * (dist / 2)
 
         // ── Torus ring ────────────────────────────────────────────────────────
-        // Update ringRadius DIRECTLY on the geometry — do NOT scale the node.
+        // Update ringRadius DIRECTLY on the geometry - do NOT scale the node.
         // Scaling would also shrink pipeRadius (3.5mm → ~0.26mm at typical distances),
         // making the ring completely invisible.
         torusGeo.ringRadius        = CGFloat(ringRadius)
@@ -309,12 +309,12 @@ final class ConeARGuide {
         let dot = simd_dot(simd_float3(0, 1, 0), y)
 
         if dot > 0.9999 {
-            // Already aligned with world +Y — identity quaternion
+            // Already aligned with world +Y - identity quaternion
             node.simdOrientation = simd_quatf(ix: 0, iy: 0, iz: 0, r: 1)
             return
         }
         if dot < -0.9999 {
-            // Anti-aligned with world -Y — 180° rotation around X axis
+            // Anti-aligned with world -Y - 180° rotation around X axis
             node.simdOrientation = simd_quatf(angle: .pi, axis: simd_float3(1, 0, 0))
             return
         }
@@ -325,14 +325,14 @@ final class ConeARGuide {
     }
 
     private func setConeColor(_ color: UIColor) {
-        // ── Ring — full brightness, strong emission glow ──────────────────────
+        // ── Ring - full brightness, strong emission glow ──────────────────────
         ringNode.geometry?.firstMaterial?.diffuse.contents  = color
         ringNode.geometry?.firstMaterial?.emission.contents = color.withAlphaComponent(0.7)
 
-        // ── Cone fill — clearly visible semitransparent surface ───────────────
+        // ── Cone fill - clearly visible semitransparent surface ───────────────
         // 65% opaque so the cone is easy to see in a bright AR scene.
         // Emission at 30% gives the surface a self-lit glow, matching the ring's
-        // visibility in varied lighting — same technique as the edge lines in v2
+        // visibility in varied lighting - same technique as the edge lines in v2
         // but now as a solid surface (no shaking, double-sided so inside renders).
         coneNode.geometry?.firstMaterial?.diffuse.contents  = color.withAlphaComponent(0.65)
         coneNode.geometry?.firstMaterial?.emission.contents = color.withAlphaComponent(0.30)

@@ -1,4 +1,4 @@
-// layout.ts — auto-layout algorithms (pure functions: graph in → positions out).
+// layout.ts - auto-layout algorithms (pure functions: graph in → positions out).
 //
 // hierarchical: layered left-to-right BFS from root nodes (in-degree 0 over
 //               directed edges). Disconnected components stack vertically.
@@ -19,7 +19,7 @@ export function autoLayout(map: Mindmap, mode: LayoutMode): MindmapNode[] {
 
 function gridLayout(nodes: MindmapNode[]): MindmapNode[] {
   const cols = Math.max(1, Math.ceil(Math.sqrt(nodes.length)));
-  // Rows advance by the tallest card in the previous row — nodes auto-size
+  // Rows advance by the tallest card in the previous row - nodes auto-size
   // to their text, so a fixed row pitch would overlap under long titles.
   const rowH: number[] = [];
   nodes.forEach((n, i) => {

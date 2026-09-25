@@ -1,6 +1,6 @@
 ---
 id: edge-roles
-name: Edge roles — switcher, legend, explainer
+name: Edge roles - switcher, legend, explainer
 area: designer
 status: shipped
 version: 2026.4.42
@@ -16,7 +16,7 @@ arch: |
     ROLE --> COMP["compiler.ts maps roles to nextOnSuccess / nextOnFailure / precondition"]
     EXPL["? panel - paths vs rules in operator language"] -.-> SW
 ---
-Connections on a procedure map are Next, On failure, or Requires — select one and
+Connections on a procedure map are Next, On failure, or Requires - select one and
 change its role in the side panel instead of delete-and-redraw. A census line-swatch
 legend and a ? explainer separate paths (Next / On failure) from rules (Requires),
 in operator language.

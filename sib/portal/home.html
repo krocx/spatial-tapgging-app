@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>appliedx Connected Worker AR OMS Platform — SIB</title>
+<title>appliedx Connected Worker AR OMS Platform - SIB</title>
 <style>
 :root{--bg:#0b1220;--card:#111a2e;--border:#22304b;--text:#e2e8f0;--muted:#7d8da3;--accent:#3b82f6;}
 *{box-sizing:border-box;}
@@ -36,7 +36,7 @@ a.card:hover{border-color:var(--accent);transform:translateY(-2px);}
   <h1><span data-ax-wordmark></span></h1>
   <p class="sub">Spatial tagging · AR work instructions · Gemba walks · iLOTO · one server</p>
 
-  <!-- Live site pulse — aggregate counts only, from GET /stats (public). -->
+  <!-- Live site pulse - aggregate counts only, from GET /stats (public). -->
   <div class="stats" id="stats" style="display:none">
     <div class="stat"><div class="sv" id="st-anchors">–</div><div class="sl">anchors</div></div>
     <div class="stat"><div class="sv" id="st-sessions">–</div><div class="sl">sessions · 7 days</div></div>
@@ -54,37 +54,37 @@ a.card:hover{border-color:var(--accent);transform:translateY(-2px);}
     <a class="card" href="/platform">
       <div class="ci">🛰</div>
       <p class="ct">Platform Map</p>
-      <p class="cd">The whole platform in one visual — four products, authoring &amp; content, governance, and the SIB backbone, with how we got here. Editable slide included.</p>
+      <p class="cd">The whole platform in one visual - four products, authoring &amp; content, governance, and the SIB backbone, with how we got here. Editable slide included.</p>
     </a>
     <a class="card" href="/roadmap">
       <div class="ci">🗺</div>
       <p class="ct">Roadmap &amp; Procedure Designer</p>
-      <p class="cd">Collaborative mind-map canvas for planning — and the night-mode Procedure Designer that compiles straight into AR work instructions.</p>
+      <p class="cd">Collaborative mind-map canvas for planning - and the night-mode Procedure Designer that compiles straight into AR work instructions.</p>
     </a>
     <a class="card" href="/wireframe">
       <div class="ci">📱</div>
       <p class="ct">App Wireframe</p>
-      <p class="cd">Interactive click-through of all seven app flows with design notes — the two-minute tour for new team members.</p>
+      <p class="cd">Interactive click-through of all seven app flows with design notes - the two-minute tour for new team members.</p>
     </a>
     <a class="card" href="/learn">
       <div class="ci">◎</div>
       <p class="ct">Learn</p>
-      <p class="cd">Six five-minute reads — how anchoring works, how a procedure reaches the machine, how a step is proved, walks, lockout, the platform. Start here if you're new.</p>
+      <p class="cd">Six five-minute reads - how anchoring works, how a procedure reaches the machine, how a step is proved, walks, lockout, the platform. Start here if you're new.</p>
     </a>
     <a class="card" href="/catalog">
       <div class="ci">🕸</div>
       <p class="ct">Feature Catalogue</p>
-      <p class="cd">Every feature as a connected graph — flows, dependencies and dictionary definitions, generated live from the docs — the detail behind every Learn stop.</p>
+      <p class="cd">Every feature as a connected graph - flows, dependencies and dictionary definitions, generated live from the docs - the detail behind every Learn stop.</p>
     </a>
     <a class="card" href="/portal#admin">
       <div class="ci">🛠</div>
       <p class="ct">Admin &amp; Backups</p>
-      <p class="cd">Dedicated admin page — unlock admin mode, download data or full backups, and watch the ops log of every admin action.</p>
+      <p class="cd">Dedicated admin page - unlock admin mode, download data or full backups, and watch the ops log of every admin action.</p>
     </a>
     <a class="card" href="/catalog#ask">
       <div class="ci">💬</div>
       <p class="ct">Ask SIB</p>
-      <p class="cd">Ask the platform anything — answers grounded in the Feature Catalogue and dictionary, with every feature cited and one click away.</p>
+      <p class="cd">Ask the platform anything - answers grounded in the Feature Catalogue and dictionary, with every feature cited and one click away.</p>
     </a>
   </div>
 
@@ -113,7 +113,7 @@ fetch('/stats').then(function(r){ return r.json(); }).then(function(st){
   if (st.activeLotoLocks > 0) document.getElementById('st-loto-card').classList.add('alert');
   document.getElementById('stats').style.display = 'flex';
 }).catch(function(){ /* strip stays hidden if stats are unavailable */ });
-// M2: Connected Worker maturity pulse — anonymous aggregate from /platform/assess/summary.
+// M2: Connected Worker maturity pulse - anonymous aggregate from /platform/assess/summary.
 fetch('/platform/assess/summary').then(function(r){ return r.json(); }).then(function(p){
   if (!p.count) return;
   document.getElementById('st-az').textContent   = p.count;

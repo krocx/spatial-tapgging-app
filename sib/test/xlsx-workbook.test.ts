@@ -1,4 +1,4 @@
-// xlsx-workbook.test.ts — G8: multi-sheet workbook with several images per row.
+// xlsx-workbook.test.ts - G8: multi-sheet workbook with several images per row.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 

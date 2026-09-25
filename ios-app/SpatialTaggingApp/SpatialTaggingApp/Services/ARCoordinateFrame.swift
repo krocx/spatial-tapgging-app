@@ -1,4 +1,4 @@
-// ARCoordinateFrame.swift — Phase 2.5
+// ARCoordinateFrame.swift - Phase 2.5
 //
 // Provides a gravity-aligned, scan-angle-independent coordinate frame for any
 // surface detected via QR scan.
@@ -7,7 +7,7 @@
 // ARKit's raw plane-hit transform has a stable Z (surface normal) but an
 // unstable X/Y that rotates with the device's scan angle.  If Author scans a
 // wall QR tilted 30° clockwise and Operator scans it straight-on, the X and Y
-// columns differ — so any world position derived in one session won't match
+// columns differ - so any world position derived in one session won't match
 // the same physical point in the other session.
 //
 // ── The fix ───────────────────────────────────────────────────────────────────
@@ -46,13 +46,13 @@ enum ARCoordinateFrame {
                                    raw.columns.3.y,
                                    raw.columns.3.z)
 
-        // Surface normal — Z column of the raw transform (may point either way
+        // Surface normal - Z column of the raw transform (may point either way
         // depending on plane orientation; normalise to unit length).
         let rawZ    = simd_normalize(simd_float3(raw.columns.2.x,
                                                   raw.columns.2.y,
                                                   raw.columns.2.z))
 
-        // ARKit world up — constant across all sessions because ARKit fuses
+        // ARKit world up - constant across all sessions because ARKit fuses
         // accelerometer + gyroscope to align Y with gravity.
         let worldUp = simd_float3(0, 1, 0)
 
@@ -61,7 +61,7 @@ enum ARCoordinateFrame {
         if abs(simd_dot(rawZ, worldUp)) > 0.85 {
 
             // Z = surface normal (already ≈ world up for floor, ≈ world down
-            //   for ceiling — keep as-is so +Z always means "away from surface").
+            //   for ceiling - keep as-is so +Z always means "away from surface").
             let newZ = rawZ
 
             // Y: project the raw QR's Y column onto the horizontal plane to get

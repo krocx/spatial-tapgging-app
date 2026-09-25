@@ -1,4 +1,4 @@
-// Inspector.tsx — right-hand panel for whatever is selected:
+// Inspector.tsx - right-hand panel for whatever is selected:
 //   node → text, layer type, status, milestone, notes, SIB link
 //   edge → label, direction toggle
 //   lane → name, width, remove
@@ -118,10 +118,10 @@ function BulkTypeRow(): JSX.Element {
 
 /**
  * Textarea that cannot lose your text. The old defaultValue+onBlur pattern
- * dropped edits whenever the panel UNMOUNTED before blur fired — click from
+ * dropped edits whenever the panel UNMOUNTED before blur fired - click from
  * the notes field straight onto the canvas and the selection change tears the
  * panel down without a blur event, silently discarding everything typed.
- * (Users noticed: "can't save notes unless we add a comment" — the comment box
+ * (Users noticed: "can't save notes unless we add a comment" - the comment box
  * only 'worked' because it kept the panel alive long enough to blur.)
  * Fix: track dirtiness in a ref, commit on blur AND on unmount.
  */
@@ -324,10 +324,10 @@ function NodePanel({ nodeId }: { nodeId: string }): JSX.Element | null {
  * and 3D model assignment. Renders only on `kind: 'procedure'` maps; writes to
  * node.metadata.step, which the compiler reads at export.
  *
- * Hooks are unconditional and the bail-out sits below them — the exact
+ * Hooks are unconditional and the bail-out sits below them - the exact
  * pattern whose violation in Minimap blanked the app (React #310).
  */
-/** U5: one model slot on a step (assignment only — placement is on device). */
+/** U5: one model slot on a step (assignment only - placement is on device). */
 interface StepModelSlot { slotId: string; modelId: string; modelScale?: number; modelOpacity?: number }
 const MAX_STEP_MODELS = 3;
 
@@ -366,7 +366,7 @@ function StepSection({ nodeId }: { nodeId: string }): JSX.Element | null {
 
   if (!isProcedure) return null;
 
-  /** Downscale to ≤1024px JPEG before upload — keeps the store and AR panels light. */
+  /** Downscale to ≤1024px JPEG before upload - keeps the store and AR panels light. */
   const attachImage = (file: File) => {
     setBusy('image');
     const img = new Image();
@@ -387,7 +387,7 @@ function StepSection({ nodeId }: { nodeId: string }): JSX.Element | null {
     img.src = URL.createObjectURL(file);
   };
 
-  // U5: slot list — `models` when present, else the legacy single fields
+  // U5: slot list - `models` when present, else the legacy single fields
   // lifted into slot 1 (maps authored before slots existed).
   const slots: StepModelSlot[] = step.models
     ?? (step.modelId
@@ -418,7 +418,7 @@ function StepSection({ nodeId }: { nodeId: string }): JSX.Element | null {
           key={`tts-${nodeId}`}
           initial={step.ttsText ?? ''}
           rows={2}
-          placeholder="Spoken instruction — defaults to the step text"
+          placeholder="Spoken instruction - defaults to the step text"
           onSave={v => patchStepMeta(nodeId, { ttsText: v.trim() || null })}
         />
       </label>
@@ -448,7 +448,7 @@ function StepSection({ nodeId }: { nodeId: string }): JSX.Element | null {
           checked={step.optional === true}
           onChange={e => patchStepMeta(nodeId, { optional: e.target.checked ? true : null })}
         />
-        Optional step <span className="step-check-hint">— operator may skip it</span>
+        Optional step <span className="step-check-hint">- operator may skip it</span>
       </label>
 
       <label className="step-check">
@@ -457,7 +457,7 @@ function StepSection({ nodeId }: { nodeId: string }): JSX.Element | null {
           checked={step.evidenceRequired === true}
           onChange={e => patchStepMeta(nodeId, { evidenceRequired: e.target.checked ? true : null })}
         />
-        Evidence photo required <span className="step-check-hint">— must be taken before completing</span>
+        Evidence photo required <span className="step-check-hint">- must be taken before completing</span>
       </label>
 
       <div className="inspector-field">Reference image
@@ -477,7 +477,7 @@ function StepSection({ nodeId }: { nodeId: string }): JSX.Element | null {
         </div>
       </div>
 
-      <div className="inspector-field">3D models <span className="step-check-hint">— up to {MAX_STEP_MODELS} per step</span>
+      <div className="inspector-field">3D models <span className="step-check-hint">- up to {MAX_STEP_MODELS} per step</span>
         {slots.map((sl, i) => {
           const m = models?.find(x => x.id === sl.modelId);
           return (
@@ -530,7 +530,7 @@ function StepSection({ nodeId }: { nodeId: string }): JSX.Element | null {
           </button>
         )}
         {models !== null && models.length === 0 && (
-          <span className="step-check-hint">No 3D models in the library yet — upload in the portal.</span>
+          <span className="step-check-hint">No 3D models in the library yet - upload in the portal.</span>
         )}
       </div>
 
@@ -539,13 +539,13 @@ function StepSection({ nodeId }: { nodeId: string }): JSX.Element | null {
 
       <p className="step-note">
         Position in AR (pin + model placement) is done on device after sending
-        to the Guide Library — never from the canvas.
+        to the Guide Library - never from the canvas.
       </p>
     </div>
   );
 }
 
-/** Contextual dictionary lookup — shows the glossary entry matching the node. */
+/** Contextual dictionary lookup - shows the glossary entry matching the node. */
 function DictionaryBlock({ nodeText }: { nodeText: string }): JSX.Element | null {
   const glossary = useStore(s => s.glossary);
   const openGlossary = useStore(s => s.openGlossary);
@@ -613,7 +613,7 @@ function CommentsSection({ nodeId }: { nodeId: string }): JSX.Element {
 const EDGE_ROLES: Array<{ role: MindmapEdgeRole; label: string; hint: string }> = [
   { role: 'next',     label: 'Next step',   hint: "The operator's path after completing this step" },
   { role: 'failure',  label: 'On failure',  hint: 'Recovery path taken if the step fails' },
-  { role: 'requires', label: 'Requires',    hint: "A rule, not a path — the target can't start until the source is done" },
+  { role: 'requires', label: 'Requires',    hint: "A rule, not a path - the target can't start until the source is done" },
 ];
 
 function EdgePanel({ edgeId }: { edgeId: string }): JSX.Element | null {
@@ -627,7 +627,7 @@ function EdgePanel({ edgeId }: { edgeId: string }): JSX.Element | null {
   return (
     <aside className="inspector">
       <h3>{isProcedure ? 'Connection' : 'Edge'}</h3>
-      {/* Role switcher — the answer to "why can't I change Next → On failure?"
+      {/* Role switcher - the answer to "why can't I change Next → On failure?"
           Pick the wrong type in the drop dialog and you fix it here instead of
           deleting and redrawing. Validation re-runs on every change, so a
           second Next out of the same step is flagged immediately. */}
@@ -650,7 +650,7 @@ function EdgePanel({ edgeId }: { edgeId: string }): JSX.Element | null {
             ))}
           </div>
           <span className="step-check-hint">
-            {EDGE_ROLES.find(r => r.role === edge.role)?.hint ?? 'No type set — this connection is ignored by the guide.'}
+            {EDGE_ROLES.find(r => r.role === edge.role)?.hint ?? 'No type set - this connection is ignored by the guide.'}
           </span>
         </label>
       )}
@@ -664,7 +664,7 @@ function EdgePanel({ edgeId }: { edgeId: string }): JSX.Element | null {
       </label>
       <label className="inspector-field">Direction
         <button className="btn" onClick={() => toggleEdgeType(edge.id)}>
-          {edge.type === 'directed' ? '→ Directed' : '— Undirected'}
+          {edge.type === 'directed' ? '→ Directed' : '- Undirected'}
         </button>
       </label>
       <p className="inspector-hint">Tip: double-click an edge on the canvas to flip its direction.</p>

@@ -6,7 +6,7 @@
 <title>appliedx Connected Worker AR OMS Platform · Platform map</title>
 <meta name="robots" content="noindex">
 <!--
-  /platform — "The Chamber" (PM1, 2026.4.46)
+  /platform - "The Chamber" (PM1, 2026.4.46)
 
   One stylised chamber; the platform happens to it, stop by stop, in the
   order a fab adopts it: origin → work instructions → validation → coaching
@@ -19,7 +19,7 @@
   (ladder questions). Three.js is vendored (/portal/vendor/three) with a CDN
   fallback; no WebGL → a quiet 2D fallback, the copy still reads.
 
-  Proprietary & Confidential · Applied Materials. Capability-level only —
+  Proprietary & Confidential · Applied Materials. Capability-level only -
   spatial data formats and validation methods are patent-pending and not
   described here.
 -->
@@ -31,13 +31,13 @@
      software raster, where a GPU-less laptop lands): the old frame's tiles
      are reused with the new scroll offset. So the copy lives in its own
      scroller (<main>) and the stage / veil / fallback are plain siblings
-     behind it — nothing fixed ever sits over scrolling content. */
+     behind it - nothing fixed ever sits over scrolling content. */
   html,body { height:100%; overflow:hidden; }
   html,body { margin:0; background:#070a1a; color:var(--ink); font-family:-apple-system,"SF Pro Display",Inter,system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
   a { color:inherit; }
   /* Windows/Chromium: text scrolling over a fixed WebGL canvas left stale
      tiles behind ("ghost text"). Give the copy its own composited layer and
-     keep the canvas opaque — no alpha blending path to mis-invalidate. */
+     keep the canvas opaque - no alpha blending path to mis-invalidate. */
   #stage { position:fixed; inset:0; z-index:0; }
   #stage canvas { display:block; width:100%; height:100%; touch-action:none; }
   .veil { position:fixed; inset:0; pointer-events:none; z-index:1; background:radial-gradient(1200px 700px at 50% 40%, rgba(129,140,248,.08), transparent 60%); }
@@ -144,7 +144,7 @@
     <div class="copy">
       <div class="eyebrow">Spatial Intelligence Backbone</div>
       <h2>One chamber. One origin.</h2>
-      <p>Scan the chamber once and every guide and spatial tag knows exactly where it lives — for every session, every shift, every technician. Reusable every day.</p>
+      <p>Scan the chamber once and every guide and spatial tag knows exactly where it lives - for every session, every shift, every technician. Reusable every day.</p>
       <p style="color:#aab1d6">And if the part moves, the WI moves with it: an optional thirty-second scan lets SIB know our parts by their shape.</p>
       <span class="hint">Millimetre-stable · offline · on-prem</span><span class="hint"><b>Drag</b> sideways to move the part</span><a class="more" href="/catalog#arworldmap-memory">In the catalogue →</a>
     </div>
@@ -167,7 +167,7 @@
     <div class="copy">
       <div class="eyebrow">Spatial Validation</div>
       <h2>SIB checks the work, not the checkbox.</h2>
-      <p>A cone of light brings the camera to the exact spot the ME trained. The verdict is on the part, with the evidence attached to the run — the QFE reviews by exception.</p>
+      <p>A cone of light brings the camera to the exact spot the ME trained. The verdict is on the part, with the evidence attached to the run - the QFE reviews by exception.</p>
       <span class="hint"><b>Tap</b> the spot to re-check</span><a class="more" href="/catalog#area-tags">In the catalogue →</a>
     </div>
   </section>
@@ -190,11 +190,11 @@
       <h2>Live session data.</h2>
       <p>Read from SIB as you look at it. Every glowing tool behind is someone on the platform right now.</p>
       <div class="hud" id="hud">
-        <div><div class="n live" id="h-now">—</div><div class="l">people on tools now</div></div>
-        <div><div class="n" id="h-anchors">—</div><div class="l">chambers mapped</div></div>
-        <div><div class="n" id="h-runs">—</div><div class="l">guided runs on record</div></div>
-        <div><div class="n" id="h-valid">—</div><div class="l">steps validated by SIB</div></div>
-        <div><div class="n" id="h-week">—</div><div class="l">sessions this week</div></div>
+        <div><div class="n live" id="h-now">-</div><div class="l">people on tools now</div></div>
+        <div><div class="n" id="h-anchors">-</div><div class="l">chambers mapped</div></div>
+        <div><div class="n" id="h-runs">-</div><div class="l">guided runs on record</div></div>
+        <div><div class="n" id="h-valid">-</div><div class="l">steps validated by SIB</div></div>
+        <div><div class="n" id="h-week">-</div><div class="l">sessions this week</div></div>
       </div>
       <a class="more" href="/portal#usage">Usage log →</a>
     </div>
@@ -205,7 +205,7 @@
     <div class="copy" style="max-width:760px">
       <div class="eyebrow">Device readiness</div>
       <h2>Built for iPad today. Getting ready for glasses tomorrow.</h2>
-      <p>The same content, unchanged, is what the FY27 device POCs run on. Each form factor earns its place against the iPad baseline — by use case, not by hype.</p>
+      <p>The same content, unchanged, is what the FY27 device POCs run on. Each form factor earns its place against the iPad baseline - by use case, not by hype.</p>
       <div class="devices" id="devices"></div>
       <a class="ghost-cta" style="margin-left:0" href="/platform/long#devices">Full device notes</a>
     </div>
@@ -224,7 +224,7 @@
         <button data-l="4">Level 4<small>Autonomous systems / cobot-ready</small></button>
       </div>
       <button class="cta" onclick="azOpen()">Start the assessment</button><a class="ghost-cta" href="/catalog">Explore the catalogue</a>
-      <p style="margin-top:26px;color:var(--dim);font-size:14px">Ready for the autonomous cleanroom — starting with the technician.</p>
+      <p style="margin-top:26px;color:var(--dim);font-size:14px">Ready for the autonomous cleanroom - starting with the technician.</p>
     </div>
   </section>
 </main>
@@ -240,7 +240,7 @@
       <div><div class="eyebrow" style="margin:0 0 4px">Connected Worker maturity</div><h3 style="margin:0;font-size:22px">Six questions, ninety seconds</h3></div>
       <button class="btn" onclick="azClose()">Close</button>
     </div>
-    <p style="font-size:14px;margin:10px 0 0">Answer for the area you know best — a bay, a BU, a product line. Nothing is stored about you; the anonymous level feeds a live pulse.</p>
+    <p style="font-size:14px;margin:10px 0 0">Answer for the area you know best - a bay, a BU, a product line. Nothing is stored about you; the anonymous level feeds a live pulse.</p>
     <div id="az-questions"></div>
     <div style="display:flex;gap:12px;align-items:center;margin-top:16px;flex-wrap:wrap">
       <input class="area" id="az-area" placeholder="Area / BU (optional, e.g. Etch · Bay 3)" maxlength="60" style="flex:1;min-width:220px">
@@ -292,7 +292,7 @@ addEventListener('keydown', e => {
 sections.forEach((sec, i) => { const d = document.createElement('i'); d.title = sec.querySelector('h1,h2')?.textContent || ''; d.onclick = () => sec.scrollIntoView({ behavior:'smooth' }); dots.appendChild(d); });
 let stage = 0, target = 0;
 // Stage follows the SECTION the reader is on, interpolated between section
-// tops — not the page fraction. Tall sections (small laptops, 150 % zoom)
+// tops - not the page fraction. Tall sections (small laptops, 150 % zoom)
 // used to push the 3D stage ahead of the copy so the text never matched the
 // chamber; and the last stop was unreachable when the page over-scrolled.
 function onScroll(){
@@ -309,7 +309,7 @@ function tickUI(){ dots.querySelectorAll('i').forEach((d,k)=> d.classList.toggle
 /* ───────────────── live data ───────────────── */
 async function loadStats(){
   try { const s = await (await fetch('/stats', { cache:'no-store' })).json();
-    const put = (id, v) => { document.getElementById(id).textContent = (v ?? '—').toLocaleString ? (v ?? '—').toLocaleString() : (v ?? '—'); };
+    const put = (id, v) => { document.getElementById(id).textContent = (v ?? '-').toLocaleString ? (v ?? '-').toLocaleString() : (v ?? '-'); };
     put('h-now', s.presenceNow ?? 0); put('h-anchors', s.anchors); put('h-valid', s.validatedSteps); put('h-runs', s.guidedRuns); put('h-week', s.sessionsThisWeek);
     window.__glowCount = Math.max(0, Math.min(12, s.presenceAnchors ?? 0));
   } catch {}
@@ -319,12 +319,12 @@ loadStats(); setInterval(loadStats, 8000);
   try { const m = await (await fetch('/platform-media/metrics.json', { cache:'no-store' })).json();
     const t = m?.productivity?.target; if (t) document.getElementById('num-wi').innerHTML = `<b>${t}</b><span>POC target · productivity</span>`; } catch {}
 })();
-(async () => {   // device readiness — override with /platform-media/trl.json ([{form,now,trl,note,best}])
+(async () => {   // device readiness - override with /platform-media/trl.json ([{form,now,trl,note,best}])
   let devs = [
     { form:'iPad / iPhone', now:true, trl:'Deployed', note:'Full platform, zero new hardware. The baseline every glass is measured against.', best:'every procedure · authoring · POC and pilot' },
     { form:'No-display glasses', trl:'FY27 POC', note:'Hands-free voice and camera. Step read-out, voice ✓, evidence from the eye line.', best:'two-hands work · evidence · safety call-outs' },
     { form:'Monocular display', trl:'FY27 POC', note:'Glanceable step and checklist in the corner of the eye; iPad stays in the pocket.', best:'sequential procedures · inspections' },
-    { form:'Binocular display', trl:'FY27 POC', note:'Full spatial overlays — ghosts and pins on the tool in true depth, hands-free.', best:'complex assemblies · alignment · training' },
+    { form:'Binocular display', trl:'FY27 POC', note:'Full spatial overlays - ghosts and pins on the tool in true depth, hands-free.', best:'complex assemblies · alignment · training' },
   ];
   try { const ov = await (await fetch('/platform-media/trl.json', { cache:'no-store' })).json(); if (Array.isArray(ov) && ov.length) devs = ov; } catch {}
   document.getElementById('devices').innerHTML = devs.map(d => `<div class="dev ${d.now?'now':''}"><b>${d.form}</b><small>${d.note}</small>${d.best?`<small style="margin-top:6px;color:#aab1d6">Best for: ${d.best}</small>`:''}<span class="trl">${d.trl}${d.trlLevel?` · TRL ${d.trlLevel}`:''}</span></div>`).join('');
@@ -360,7 +360,7 @@ key.shadow.camera.left = key.shadow.camera.bottom = -5; key.shadow.camera.right 
 scene.add(key);
 const rim = new THREE.DirectionalLight(0x818cf8, 1.0); rim.position.set(-6, 4, -6); scene.add(rim);
 const fill = new THREE.PointLight(0x22d3ee, 6, 12, 1.6); fill.position.set(-2.5, 1.2, 2.5); scene.add(fill);
-// Studio environment (procedural — no HDR file to ship): a dark room with two soft panels,
+// Studio environment (procedural - no HDR file to ship): a dark room with two soft panels,
 // baked through PMREM so brushed steel and clearcoat paint pick up real reflections.
 { const pm = new THREE.PMREMGenerator(renderer); pm.compileEquirectangularShader();
   const room = new THREE.Scene(); room.background = new THREE.Color(0x0a0e22);
@@ -376,7 +376,7 @@ const shadowCatcher = new THREE.Mesh(new THREE.CircleGeometry(6, 64), new THREE.
 shadowCatcher.rotation.x = -Math.PI/2; shadowCatcher.position.y = 0.001; shadowCatcher.receiveShadow = true; scene.add(shadowCatcher);
 const grid = new THREE.GridHelper(12, 24, 0x1e2a5a, 0x141b3d); grid.position.y = 0.002; grid.material.transparent = true; grid.material.opacity = .55; scene.add(grid);
 
-/* stylised chamber — inspired by our tools' silhouette, nothing traced */
+/* stylised chamber - inspired by our tools' silhouette, nothing traced */
 const PAINT = (c) => new THREE.MeshPhysicalMaterial({ color:c, roughness:.32, metalness:.05, clearcoat:.7, clearcoatRoughness:.25 });
 const STEELM = () => new THREE.MeshStandardMaterial({ color:0xb6bfd1, roughness:.28, metalness:.9 });
 const BRUSH  = () => new THREE.MeshStandardMaterial({ color:0x8f9bb3, roughness:.42, metalness:.85 });
@@ -400,7 +400,7 @@ const bolt = (x,y,z,parent=chamber) => { const b = cyl(0.022, 0.02, STEELM(), x,
 // pallet + levelling feet
 rbox(2.3, 0.08, 1.6, M(0xd4a017,{roughness:.9}), 0, 0.04, 0, 0.015);
 [[-0.85,-0.55],[0.85,-0.55],[-0.85,0.55],[0.85,0.55]].forEach(([x,z]) => { cyl(0.05, 0.16, STEELM(), x, 0.16, z); cyl(0.08, 0.02, RUBBER(), x, 0.09, z); });
-// base cabinet — clearcoat blue, seams, louvre, panel with handle, glowing HMI
+// base cabinet - clearcoat blue, seams, louvre, panel with handle, glowing HMI
 rbox(1.9, 1.0, 1.3, PAINT(0x2563eb), 0, 0.74, 0, 0.04);
 box(1.92, 0.012, 1.32, RUBBER(), 0, 0.99, 0);                   // top seam
 box(0.012, 0.9, 1.31, RUBBER(), 0.02, 0.74, 0);                 // door seam
@@ -413,7 +413,7 @@ for (let i=0;i<3;i++) box(0.12, 0.05, 0.014, M(0x1e3a8a), 0.32+i*0.13, 0.60, 0.6
 cyl(0.012, 0.16, STEELM(), 0.86, 0.72, 0.68, chamber, 0);        // door handle
 bolt(-0.82, 0.30, 0.66); bolt(0.82, 0.30, 0.66); bolt(-0.82, 0.95, 0.66); bolt(0.82, 0.95, 0.66);
 box(0.5, 0.012, 0.012, new THREE.MeshStandardMaterial({ color:0x5eead4, emissive:0x5eead4, emissiveIntensity:1.6 }), -0.5, 0.98, 0.665); // status LED strip
-// mid frame — dark enclosure, brushed columns with bolted plates, cream controller with breaker slots
+// mid frame - dark enclosure, brushed columns with bolted plates, cream controller with breaker slots
 rbox(1.7, 0.9, 1.1, M(0x2b3350,{roughness:.6, metalness:.3}), 0, 1.7, 0, 0.03);
 [[-0.75,-0.45],[0.75,-0.45],[-0.75,0.45],[0.75,0.45]].forEach(([x,z]) => { cyl(0.045, 1.6, BRUSH(), x, 2.0, z, chamber, 0, 8); box(0.16,0.06,0.16, BRUSH(), x, 1.27, z); bolt(x, 1.30, z+0.085); });
 rbox(0.6, 0.55, 0.45, CREAM(), -0.35, 1.55, 0.5, 0.02);
@@ -426,7 +426,7 @@ rbox(0.55, 0.12, 0.28, CREAM(), 1.15, 2.35, 0.2, 0.02);
 rbox(0.16, 0.5, 0.16, RUBBER(), 0.98, 2.3, -0.35, 0.02);
 cyl(0.045, 0.05, new THREE.MeshStandardMaterial({ color:0xef4444, emissive:0xef4444, emissiveIntensity:1.2, roughness:.3 }), 0.98, 2.62, -0.35);
 cyl(0.06, 0.02, M(0xfbbf24), 0.98, 2.585, -0.35);
-// head — cream octagonal drum with viewport, ring, cap and dome
+// head - cream octagonal drum with viewport, ring, cap and dome
 rbox(1.0, 0.9, 0.9, CREAM(), 0, 3.15, -0.05, 0.05);
 cyl(0.5, 1.0, CREAM(), 0, 3.6, -0.05, chamber, 0, 8);
 const ringBand = cyl(0.52, 0.06, BRUSH(), 0, 3.12, -0.05, chamber, 0, 8);
@@ -473,7 +473,7 @@ const axes = new THREE.AxesHelper(0.5); axes.position.copy(qr.position); chamber
 fader(qr, s => s>=0.85 && s<2.7); fader(originRing, s => s>=1.0 && s<1.9); fader(axes, s => s>=1.0 && s<1.9);
 const originLabel = sprite('Origin locked', { sub:'every session · every shift', w:300, h:80, stroke:'#818cf8' }); originLabel.position.set(0.75, 1.45, 1.05); chamber.add(originLabel); fader(originLabel, s => s>=1.0 && s<1.2);
 
-// spatial tags — the app's marker: horizontal ring + dot, ✓ when trained. QR-relative, so they
+// spatial tags - the app's marker: horizontal ring + dot, ✓ when trained. QR-relative, so they
 // belong to the origin stop: "every guide and spatial tag knows exactly where it lives".
 function tagMarker(color, trained, normal='z'){ const g = new THREE.Group();
   // ring lies flat ON the surface it is tagged to (front face → XY plane; top → XZ), dot at its centre
@@ -540,7 +540,7 @@ const lookRing = new THREE.Mesh(new THREE.TorusGeometry(0.12,0.012,12,48), new T
 const lookLabel = sprite('John: look here', { w:280, h:64, size:18, bg:'rgba(244,114,182,.92)' }); lookLabel.position.set(0.55, 2.35, 1.0); chamber.add(lookLabel);
 let lookUntil = 0;
 
-// fab (stage 5) — glow count follows /stats presenceAnchors
+// fab (stage 5) - glow count follows /stats presenceAnchors
 const fab = new THREE.Group(); fab.visible = false; scene.add(fab);
 const miniGeo = new THREE.BoxGeometry(0.9, 1.6, 0.7);
 const minis = [];
@@ -639,21 +639,21 @@ addEventListener('resize', () => { camera.aspect = innerWidth/innerHeight; camer
   // ({ questions:[{q,o:[4]}×6], levels:[{n,d,next}×4] }).
   let AZ_Q = [
     { q: 'How accurate are the work instructions technicians get in iOMS for the configuration in front of them?',
-      o: ['Generic — the technician works out the config differences', 'Mostly right, with known gaps per config', 'Config-specific, but updates lag the floor', 'Config-specific and current for every chamber'] },
+      o: ['Generic - the technician works out the config differences', 'Mostly right, with known gaps per config', 'Config-specific, but updates lag the floor', 'Config-specific and current for every chamber'] },
     { q: 'How does the QFE sign-off on a critical step really happen?',
-      o: ['Signed off later, often without a proper review', 'Reviewed when the QFE is free — usually not in the moment', 'Reviewed at the step, from photos', 'Validated at the step with evidence; QFE reviews by exception'] },
+      o: ['Signed off later, often without a proper review', 'Reviewed when the QFE is free - usually not in the moment', 'Reviewed at the step, from photos', 'Validated at the step with evidence; QFE reviews by exception'] },
     { q: 'How much is re-work eating into your cycle time (CT)?',
-      o: ['Re-work is routine and we don’t measure its CT hit', 'Frequent — a visible share of CT every week', 'Occasional, tracked per job', 'Rare, tracked per step, trending down'] },
+      o: ['Re-work is routine and we don’t measure its CT hit', 'Frequent - a visible share of CT every week', 'Occasional, tracked per job', 'Rare, tracked per step, trending down'] },
     { q: 'How long until a new hire is qualified for independent work on critical assemblies?',
       o: ['16 weeks or more', 'About 12 weeks', 'About 8 weeks', '4 weeks or less'] },
     { q: 'When a technician hits an issue in the cleanroom, how quickly can an ME see it and resolve it?',
-      o: ['Days — described second-hand in a meeting', 'Same shift, if the ME can come to the tool', 'Hours — photos and notes shared on the spot', 'Minutes — the ME sees the step, the evidence and the verdict live'] },
+      o: ['Days - described second-hand in a meeting', 'Same shift, if the ME can come to the tool', 'Hours - photos and notes shared on the spot', 'Minutes - the ME sees the step, the evidence and the verdict live'] },
     { q: 'When a customer change request lands, how fast does it reach every chamber of that configuration?',
-      o: ['Months — retraining and re-documentation', 'Weeks', 'Days', 'Minutes — publish once, every chamber updates'] },
+      o: ['Months - retraining and re-documentation', 'Weeks', 'Days', 'Minutes - publish once, every chamber updates'] },
   ];
   let AZ_LEVELS = [
-    { n: 'Digital instructions',            d: 'Instructions live on a screen beside the tool; QFE sign-off is a formality and re-work is unmeasured. The upside is largest here — and the first POC is the fastest way to see it.', next: 'Pick one procedure on one chamber and place it on the tool.' },
-    { n: 'Spatial & validated',             d: 'Config-specific instructions are placed on the chamber and critical steps are validated with evidence. The QFE loop is faster; the next lever is people.', next: 'Bring MEs into the session — presence and coaching on the tool.' },
+    { n: 'Digital instructions',            d: 'Instructions live on a screen beside the tool; QFE sign-off is a formality and re-work is unmeasured. The upside is largest here - and the first POC is the fastest way to see it.', next: 'Pick one procedure on one chamber and place it on the tool.' },
+    { n: 'Spatial & validated',             d: 'Config-specific instructions are placed on the chamber and critical steps are validated with evidence. The QFE loop is faster; the next lever is people.', next: 'Bring MEs into the session - presence and coaching on the tool.' },
     { n: 'Connected & coached',             d: 'Guided, evidenced work is part of the shift; MEs coach on the pin and new hires ramp on the tool. Change requests reach every chamber the day they land.', next: 'Hand the repetitive steps to automation and keep the technician supervising.' },
     { n: 'Autonomous systems / cobot-ready', d: 'Technicians supervise, intervene and validate with spatial context while cobots take the repetitive work; ramp is weeks, not months. You are the reference site for the FY27 device POCs.', next: 'Join the FY27 device POCs and the autonomous-cleanroom pilots.' },
   ];
@@ -687,11 +687,11 @@ addEventListener('resize', () => { camera.aspect = innerWidth/innerHeight; camer
       <h3 style="margin:0;color:#fff;font-size:24px">Level ${level} · ${L.n}</h3>
       <div class="az-ladder">${AZ_LEVELS.map((l, k) => `<div class="${k + 1 === level ? 'on' : ''}"><b>${k + 1}</b>${l.n}</div>`).join('')}</div>
       <p style="margin:10px 0 6px;color:#dbe2ff;font-size:15px">${L.d}</p>
-      <p style="margin:0 0 6px;color:#cbd5e1;font-size:14px"><b style="color:#fff">Biggest gap:</b> ${AZ_Q[weakest].q.replace(/\?$/, '')} — you answered “${AZ_Q[weakest].o[azAns[weakest]]}”.</p>
+      <p style="margin:0 0 6px;color:#cbd5e1;font-size:14px"><b style="color:#fff">Biggest gap:</b> ${AZ_Q[weakest].q.replace(/\?$/, '')} - you answered “${AZ_Q[weakest].o[azAns[weakest]]}”.</p>
       <p style="margin:0 0 14px;color:#cbd5e1;font-size:14px"><b style="color:#fff">Next rung:</b> ${L.next}</p>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <a class="btn p" target="_blank" href="https://teams.microsoft.com/l/chat/0/0?users=karthik_addagarla@amat.com">💬 Share with AppliedX (Level ${level})</a>
-        <a class="btn" href="mailto:karthik_addagarla@amat.com?subject=${encodeURIComponent(`Connected Worker readiness — Level ${level} · ${L.n}`)}&body=${encodeURIComponent(`Area: ${document.getElementById('az-area').value || '(not given)'}\nLevel ${level} · ${L.n}\nNext rung: ${L.next}\n`)}">✉️ Email</a>
+        <a class="btn" href="mailto:karthik_addagarla@amat.com?subject=${encodeURIComponent(`Connected Worker readiness - Level ${level} · ${L.n}`)}&body=${encodeURIComponent(`Area: ${document.getElementById('az-area').value || '(not given)'}\nLevel ${level} · ${L.n}\nNext rung: ${L.next}\n`)}">✉️ Email</a>
         <button class="btn" onclick="azReset()">Retake</button>
       </div>`;
     res.classList.add('on'); res.scrollIntoView({ block: 'nearest', behavior: 'smooth' });

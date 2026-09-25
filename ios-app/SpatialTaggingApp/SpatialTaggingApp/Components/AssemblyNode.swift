@@ -2,7 +2,7 @@
 //  AssemblyNode.swift
 //  SpatialTaggingApp
 //
-//  AR OJT slice 2 — the assembly in the scene: a registry of named parts and
+//  AR OJT slice 2 - the assembly in the scene: a registry of named parts and
 //  the operations the guide runtime needs on them.
 //
 //    apply(state:)                  jump to a cumulative PartState map (no animation)
@@ -14,7 +14,7 @@
 //  node opacity multiplies down the hierarchy, so a ghosted group would dim a
 //  child the step just made solid. Instead every explicit part state is
 //  applied to its subtree, parents before children, so a child's own state
-//  overrides its group's — the same semantics the source viewer has (a
+//  overrides its group's - the same semantics the source viewer has (a
 //  transparency command on "FULL BIKE" then a solid command on "STEM").
 //  Everything is SceneKit + simd; no third-party code.
 //
@@ -31,7 +31,7 @@ final class AssemblyNode {
     private(set) var parts: [String: SCNNode]
     private let rest: [String: simd_float4x4]
     /// Part names sorted parents-first (ancestor count), so a child's explicit
-    /// state is applied after — and therefore overrides — its group's.
+    /// state is applied after - and therefore overrides - its group's.
     private let depthOrder: [String]
     private let depthOf: [String: Int]
     /// The model's own colour / alpha per material (restored on reset).
@@ -114,7 +114,7 @@ final class AssemblyNode {
         SCNTransaction.commit()
     }
 
-    /// Play a step's deltas as a TIMELINE — each at its own offset, exactly as
+    /// Play a step's deltas as a TIMELINE - each at its own offset, exactly as
     /// the source viewer sequences them (fade in → flash → move → stays).
     /// Call after `apply(state: after index-1)`. Returns the total length so
     /// callers can schedule a replay loop; a later call cancels pending deltas.
@@ -224,7 +224,7 @@ final class AssemblyNode {
         node.runAction(.sequence([.repeat(.sequence([on, .wait(duration: half), off, .wait(duration: half)]), count: pulses), off]), forKey: "flash")
     }
 
-    /// State a part is currently shown with — its own, else inherited from
+    /// State a part is currently shown with - its own, else inherited from
     /// the nearest group above it that has one, else rest/solid.
     func effectiveState(of name: String) -> PartState {
         if let s = current[name] { return s }
@@ -310,7 +310,7 @@ final class AssemblyNode {
     }
 
     /// Tap feedback: a white rim that fades over 1.2 s. It never changes the
-    /// step focus — the step's parts keep their cyan breathing.
+    /// step focus - the step's parts keep their cyan breathing.
     func selectPulse(part name: String) {
         guard let node = parts[name] else { return }
         node.removeAction(forKey: "select-pulse")
@@ -425,12 +425,12 @@ final class AssemblyNode {
 
     func setViewHintHidden(_ hidden: Bool) { viewHintNode?.isHidden = hidden }
 
-    /// Remove scene-level helpers (leader line) — call before removing `root`.
+    /// Remove scene-level helpers (leader line) - call before removing `root`.
     func removeHelpers() { leaderNode?.removeFromParentNode(); leaderNode = nil }
 
     // MARK: - Hit test
 
-    /// The part a hit landed on (nearest `cmp:` ancestor), ignoring hidden ones —
+    /// The part a hit landed on (nearest `cmp:` ancestor), ignoring hidden ones -
     /// transparent geometry is still hit-testable.
     func partName(hit node: SCNNode) -> String? {
         var cur: SCNNode? = node

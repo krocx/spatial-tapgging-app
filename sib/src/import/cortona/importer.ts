@@ -1,4 +1,4 @@
-// importer.ts — published Cortona3D RapidManual .htm → ImportedGuide + assembly GLB.
+// importer.ts - published Cortona3D RapidManual .htm → ImportedGuide + assembly GLB.
 //
 // Pipeline (docs/ar-ojt/CORTONA3D-IMPORT.md, Stage 2):
 //   .htm ─▶ solo+zip bundle ─▶ VRML97 (PROTOs kept) ─▶ scene graph ─▶ GLB
@@ -10,7 +10,7 @@
 //   scene set-up and are never shown.
 //
 // The import log is CONTENT-FREE by construction: counts, PROTO type names,
-// publish option names, warnings — never step text, part numbers or ids.
+// publish option names, warnings - never step text, part numbers or ids.
 
 import type { ImportedGuide, ImportedGuideStep, GuideStepNode, GuideStepView } from '@spatial/shared';
 import { readCortonaBundle, type CortonaBundle } from './bundle.js';
@@ -66,7 +66,7 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
 
   const vrml  = parseVrml(bundle.vrmlText);
   const frame = frameCorrection(vrml);
-  if (frame.corrected) warnings.push(`cameras look at the model upside-down (mean camera-up Y = ${frame.cameraUpY.toFixed(2)}) — assembly rotated ${frame.angleDeg}° so up is +Y`);
+  if (frame.corrected) warnings.push(`cameras look at the model upside-down (mean camera-up Y = ${frame.cameraUpY.toFixed(2)}) - assembly rotated ${frame.angleDeg}° so up is +Y`);
   const scene = buildScene(vrml, { frame: frame.matrix });
   const widgets = collectWidgets(vrml);
   const widgetText = new Map<string, string | undefined>();
@@ -78,7 +78,7 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
     if (opts.strict) throw new Error(`cortona: ${msg}`);
     warnings.push(msg);
   }
-  if (!proc.substeps.length) warnings.push('no Procedure/Step/SubStep tree found — guide will have no steps');
+  if (!proc.substeps.length) warnings.push('no Procedure/Step/SubStep tree found - guide will have no steps');
   const hoses = Object.entries(proc.protos.counts).filter(([k]) => /^(HoseSplineFlow|VMHose|CableFlat|VMRope)\d*$/.test(k)).reduce((a, [, n]) => a + n, 0);
   if (hoses) warnings.push(`${hoses} procedural hose/cable/rope object(s) are not rendered in the assembly model`);
 
@@ -106,7 +106,7 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
     extras.set(def, e);
   }
 
-  // steps — one per work Item (document step) when the interactivity file has a
+  // steps - one per work Item (document step) when the interactivity file has a
   // Procedure tree; otherwise one per animation SubStep.
   let fromInter = 0, withTitle = 0, withText = 0, withView = 0, withCallouts = 0, unreferenced = 0;
   const shown = proc.substeps.filter(ss => !ss.setup);
@@ -158,18 +158,18 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
       const subs = wi.actionIds.map(id => bySubId.get(id)).filter((x): x is ExtractedSubStep => !!x);
       for (const ss of subs) referenced.add(ss.id!);
       // Section title: the document's top-level Item, unless that is a bare number
-      // (RWI numbers its steps) — then the Simulation Step's own title.
+      // (RWI numbers its steps) - then the Simulation Step's own title.
       const simStep = subs[0]?.stepId ? inter?.textById.get(subs[0].stepId)?.title : undefined;
       const candidates = [wi.path[0], simStep, subs[0]?.stepTitle].filter((x): x is string => !!x);
       const top = candidates.find(x => !/^[\d.\s]+$/.test(x));
       // Text: the Item's own Text/Comment, else the first Action/SubStep's, else the Step's.
       let leaf = wi.title; let text = wi.text ?? wi.comment ?? (subs[0] ? subStepText(subs[0], inter) : '');
-      // No Description but the Text opens with a short heading line (DITA/RWI <h3>) — promote it.
+      // No Description but the Text opens with a short heading line (DITA/RWI <h3>) - promote it.
       if ((!leaf || /^[\d.\s]+$/.test(leaf)) && text.includes('\n')) {
         const [first, ...rest] = text.split('\n'); const restText = rest.join('\n').trim();
         if (first.length <= 80 && restText) { leaf = leaf && !/^[\d.\s]+$/.test(leaf) ? leaf : first.trim(); text = restText; }
       }
-      const title = (top ? [`${wi.topIndex}. ${top}`, leaf && leaf !== top ? leaf : undefined] : [leaf ? `${wi.topIndex}. ${leaf}` : undefined]).filter(Boolean).join(' — ') || `Step ${wi.topIndex}`;
+      const title = (top ? [`${wi.topIndex}. ${top}`, leaf && leaf !== top ? leaf : undefined] : [leaf ? `${wi.topIndex}. ${leaf}` : undefined]).filter(Boolean).join(' - ') || `Step ${wi.topIndex}`;
       if (top || leaf) withTitle++; fromInter++;
       finish(title, text, subs);
     }
@@ -209,8 +209,8 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
   };
   if (scene.bbox) {
     const ext = log.scene.extentM!; const maxExt = Math.max(...ext);
-    if (maxExt > 50) warnings.push(`scene extent ${maxExt.toFixed(1)} m — units may be millimetres, not metres`);
-    if (maxExt < 0.01) warnings.push(`scene extent ${maxExt} m — model is tiny; check units`);
+    if (maxExt > 50) warnings.push(`scene extent ${maxExt.toFixed(1)} m - units may be millimetres, not metres`);
+    if (maxExt < 0.01) warnings.push(`scene extent ${maxExt} m - model is tiny; check units`);
   }
   if (rwi && rwi.stepCount === 0 && rwi.taskCount > 0) { /* expected: rwi is not a step source */ }
 
@@ -274,7 +274,7 @@ function subStepTitle(ss: ExtractedSubStep, inter: InteractivityIndex | null): s
   const stepIt = ss.stepId ? inter?.textById.get(ss.stepId) : undefined;
   const subTitle = it?.title ?? ss.title; const stepTitle = stepIt?.title ?? ss.stepTitle;
   return [stepTitle && `${ss.stepIndex}. ${stepTitle}`, subTitle && subTitle !== stepTitle ? subTitle : undefined]
-    .filter(Boolean).join(' — ') || `Step ${ss.stepIndex}.${ss.subIndex}`;
+    .filter(Boolean).join(' - ') || `Step ${ss.stepIndex}.${ss.subIndex}`;
 }
 function subStepText(ss: ExtractedSubStep, inter: InteractivityIndex | null): string {
   const it = ss.id ? inter?.textById.get(ss.id) : undefined;
@@ -286,7 +286,7 @@ function subStepText(ss: ExtractedSubStep, inter: InteractivityIndex | null): st
  *  deltas keep their own timing, offset by the sub-steps before it. A node may
  *  therefore appear several times in a step (fade in → flash → attach); the
  *  cumulative state engine applies them in order, the runtime plays them at
- *  their offsets — exactly what the source viewer does. */
+ *  their offsets - exactly what the source viewer does. */
 function mergeSubsteps(subs: ExtractedSubStep[]): { nodes: GuideStepNode[]; view?: GuideStepView; callouts: string[]; durationSec?: number } {
   const nodes: GuideStepNode[] = [];
   let view: GuideStepView | undefined; const callouts: string[] = []; let offset = 0;

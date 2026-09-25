@@ -1,5 +1,5 @@
 /**
- * UAM tests — role rules, token sign/verify, and the routes' invariants
+ * UAM tests - role rules, token sign/verify, and the routes' invariants
  * (allow-list login, employee-ID match, last-owner guard) via the stores.
  */
 import { test } from 'node:test';
@@ -40,13 +40,13 @@ test('tokens: round-trip, normalization, expiry, tamper', () => {
   const t = makeToken('  Karthik.ASVSRK@Gmail.com ', secret);
   assert.equal(verifyToken(t, secret), 'karthik.asvsrk@gmail.com');   // normalized identity
 
-  // expiry — verification fails one ms past TTL
+  // expiry - verification fails one ms past TTL
   const now = Date.now();
   const t2 = makeToken('a@b.com', secret, now);
   assert.equal(verifyToken(t2, secret, now + TOKEN_TTL_MS - 1), 'a@b.com');
   assert.equal(verifyToken(t2, secret, now + TOKEN_TTL_MS + 1), null);
 
-  // tamper — flip the email, keep the signature
+  // tamper - flip the email, keep the signature
   const [, exp, sig] = t2.split('|');
   const forged = `${Buffer.from('evil@b.com').toString('base64url')}|${exp}|${sig}`;
   assert.equal(verifyToken(forged, secret), null);
@@ -98,6 +98,6 @@ test('E1 products: whitelist + dedupe semantics (as the routes apply them)', () 
   });
   const u = uamUserStore.findById('u3')!;
   assert.deepEqual(u.products, ['gemba']);
-  // Unscoped user (no products field) — the "all products" default.
+  // Unscoped user (no products field) - the "all products" default.
   assert.equal(uamUserStore.findById('u1')!.products, undefined);
 });

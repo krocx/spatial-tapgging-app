@@ -1,4 +1,4 @@
-// ContentView.swift — Phase 2C root router
+// ContentView.swift - Phase 2C root router
 import SwiftUI
 
 struct ContentView: View {

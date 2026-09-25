@@ -1,4 +1,4 @@
-// Icon.tsx — inline SVG icon from the AppliedX set (utils/icons.ts).
+// Icon.tsx - inline SVG icon from the AppliedX set (utils/icons.ts).
 // Renders with stroke=currentColor so it inherits the surrounding text color;
 // pass `size` in px. Unknown names render nothing (never a broken glyph).
 

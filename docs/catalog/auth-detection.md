@@ -8,8 +8,8 @@ depends: []
 terms: [SIB]
 spec: SERVER-REFERENCE.md
 api: |
-  GET /config — auth-mode booleans the portal adapts to (browser · public)
-  POST /unlock — validate key, set 30-day HttpOnly cookie (browser · public)
+  GET /config - auth-mode booleans the portal adapts to (browser · public)
+  POST /unlock - validate key, set 30-day HttpOnly cookie (browser · public)
 arch: |
   sequenceDiagram
     participant P as Portal boot

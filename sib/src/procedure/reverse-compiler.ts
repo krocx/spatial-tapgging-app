@@ -1,4 +1,4 @@
-// reverse-compiler.ts — turns an existing Guide into a `kind: 'procedure'` map.
+// reverse-compiler.ts - turns an existing Guide into a `kind: 'procedure'` map.
 //
 // The other half of the round-trip: compiler.ts walks canvas edges into
 // sequenced steps; this walks sequenced steps back into canvas nodes + edges
@@ -10,13 +10,13 @@
 //
 // Fidelity rules (from the UX review):
 //   • every node carries metadata.guide = { guideId, stepId } provenance, so
-//     re-sync matches steps IN PLACE — placement and any fields the designer
+//     re-sync matches steps IN PLACE - placement and any fields the designer
 //     doesn't surface (posX/Y/Z, evidence, model offsets) survive untouched,
 //     because ingest only updates the content fields it is given.
 //   • implicit sequence order becomes EXPLICIT `next` edges. The forward
 //     compiler derives order purely from edges, so making the implicit chain
 //     visible is what guarantees the round-trip reproduces the same order.
-//   • requires edges are drawn FROM the prerequisite INTO the gated step —
+//   • requires edges are drawn FROM the prerequisite INTO the gated step -
 //     same direction the forward compiler expects.
 
 import { v4 as uuidv4 } from 'uuid';
@@ -105,7 +105,7 @@ export function guideToProcedureMap(guide: Guide, rawSteps: GuideStep[],
     if (s.view)        stepMeta.view        = s.view;
     if (s.context === 'ghost' || s.context === 'solid') stepMeta.context = s.context;
     if (s.cadPosition) stepMeta.cadPosition = s.cadPosition;
-    // U5: every slot (assignment only — placement never reaches the canvas).
+    // U5: every slot (assignment only - placement never reaches the canvas).
     const slots = effectiveStepModels(s);
     if (slots.length > 0) {
       stepMeta.models = slots.map(m => ({
@@ -126,7 +126,7 @@ export function guideToProcedureMap(guide: Guide, rawSteps: GuideStep[],
       type: 'generic',
       metadata: {
         step:  stepMeta,
-        // Provenance — the whole point. Re-sync updates these steps in place.
+        // Provenance - the whole point. Re-sync updates these steps in place.
         guide: { guideId: guide.id, stepId: s.id },
       },
       updatedAt: now,
@@ -183,7 +183,7 @@ export function toMindmapRecord(r: ReverseCompileResult, guide: Guide): Mindmap 
     anchorId: r.anchorId,
     ...(r.settings ? { settings: r.settings } : {}),
     // Stale-map detection: guide edits after this moment (iOS, portal) mean
-    // the map no longer reflects the guide — the UI warns before re-sync.
+    // the map no longer reflects the guide - the UI warns before re-sync.
     guideSync: { guideId: guide.id, syncedAt: now },
   };
 }

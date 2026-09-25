@@ -1,13 +1,13 @@
-// worldmap.ts — Phase 2: ARWorldMap upload/download for Loc-Tag anchors
+// worldmap.ts - Phase 2: ARWorldMap upload/download for Loc-Tag anchors
 //
 // ARWorldMap is a binary blob serialized by ARKit (NSKeyedArchiver).
 // We store it on disk as a raw binary file (not base64) to keep file I/O
 // efficient; the client sends/receives it as base64 over the REST API.
 //
 // Endpoints:
-//   POST  /worldmap/upload                        — Author saves map (+ optional reference photo)
-//   GET   /worldmap/:anchorId                     — Operator downloads map to re-localize
-//   GET   /worldmap/:anchorId/reference-photo     — Serve the reference photo (JPEG)
+//   POST  /worldmap/upload                        - Author saves map (+ optional reference photo)
+//   GET   /worldmap/:anchorId                     - Operator downloads map to re-localize
+//   GET   /worldmap/:anchorId/reference-photo     - Serve the reference photo (JPEG)
 
 import { Router } from 'express';
 import type { Request, Response } from 'express';
@@ -46,7 +46,7 @@ function guideRefPhotoPath(guideId: string): string {
 }
 
 /** X1: camera pose (column-major 4×4, 16 floats, world-map coords) at the
- *  moment the reference photo was taken — the operator's "I'm Here" pose is
+ *  moment the reference photo was taken - the operator's "I'm Here" pose is
  *  compared against it to detect a relocalization that latched onto a moved
  *  object (QR moved → every pin off). */
 function guideRefPosePath(guideId: string): string {
@@ -54,7 +54,7 @@ function guideRefPosePath(guideId: string): string {
 }
 
 /** B1 (2026.4.46): what the guide bundle reports about this guide's own
- *  world map — existence, reference photo, and the poses stored alongside. */
+ *  world map - existence, reference photo, and the poses stored alongside. */
 export function readGuideWorldMapInfo(guideId: string): {
   available: boolean; photo: boolean; referenceCameraPose?: number[]; objectPoseInMap?: number[];
 } {
@@ -195,9 +195,9 @@ router.post('/guide/:guideId/upload', (req: Request, res: Response): void => {
   }
 
   // X1: reference camera pose rides along with the photo (only when a photo
-  // was captured this save — the pose belongs to that frame). B1: the meta's
+  // was captured this save - the pose belongs to that frame). B1: the meta's
   // capturedAt is stamped on EVERY map save (pose kept from before when no new
-  // photo) — the app's WorldMapCache uses it to know when its copy is stale.
+  // photo) - the app's WorldMapCache uses it to know when its copy is stale.
   try {
     let meta: Record<string, unknown> = {};
     try {
@@ -209,7 +209,7 @@ router.post('/guide/:guideId/upload', (req: Request, res: Response): void => {
         && referenceCameraPose.length === 16 && referenceCameraPose.every(n => typeof n === 'number' && isFinite(n))) {
       meta.referenceCameraPose = referenceCameraPose;
     }
-    // B2: the detected object's pose in THIS map's frame — lets a session that
+    // B2: the detected object's pose in THIS map's frame - lets a session that
     // detects the object reach the map frame without relocalizing.
     if (Array.isArray(objectPoseInMap) && objectPoseInMap.length === 16
         && objectPoseInMap.every(n => typeof n === 'number' && isFinite(n))) {
@@ -228,7 +228,7 @@ router.post('/guide/:guideId/upload', (req: Request, res: Response): void => {
   res.status(201).json(resp);
 });
 
-// DELETE /worldmap/guide/:guideId — G1 (2026.4.46): reset map & pins.
+// DELETE /worldmap/guide/:guideId - G1 (2026.4.46): reset map & pins.
 // Pin positions only mean something inside the map they were placed in, so
 // every step of the guide is unplaced too (models keep their assignment,
 // device placement is dropped). Technicians can't.
@@ -266,7 +266,7 @@ router.delete('/guide/:guideId', (req: Request, res: Response): void => {
   res.json({ data: { guideId, removed, unplaced }, timestamp: now });
 });
 
-// PATCH /worldmap/guide/:guideId/meta — B2: { objectPoseInMap: number[16] }
+// PATCH /worldmap/guide/:guideId/meta - B2: { objectPoseInMap: number[16] }
 // Written by a Place Steps session that detected the object while in the
 // map's frame; capturedAt is NOT touched (the map itself didn't change).
 router.patch('/guide/:guideId/meta', (req: Request, res: Response): void => {
@@ -287,7 +287,7 @@ router.patch('/guide/:guideId/meta', (req: Request, res: Response): void => {
   res.json({ data: meta, timestamp: new Date().toISOString() });
 });
 
-// GET /worldmap/guide/:guideId/meta — X1: { referenceCameraPose?: number[16], capturedAt? }
+// GET /worldmap/guide/:guideId/meta - X1: { referenceCameraPose?: number[16], capturedAt? }
 router.get('/guide/:guideId/meta', (req: Request, res: Response): void => {
   const { guideId } = req.params;
   if (!isValidGuideId(guideId)) {

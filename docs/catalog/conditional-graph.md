@@ -8,7 +8,7 @@ depends: [spatial-steps]
 terms: [AR Work Instructions]
 spec: PROCEDURE-DESIGNER.md
 api: |
-  PATCH /guides/:id/steps/:stepId — nextOnSuccess / nextOnFailure / precondition (app, designer · API key)
+  PATCH /guides/:id/steps/:stepId - nextOnSuccess / nextOnFailure / precondition (app, designer · API key)
 wireframe: arguides
 flow: |
   flowchart LR

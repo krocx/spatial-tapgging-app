@@ -1,8 +1,8 @@
-// ARTapCoach.swift — F1b (2026.4.46): the pulsing "tap here" hand, shared.
+// ARTapCoach.swift - F1b (2026.4.46): the pulsing "tap here" hand, shared.
 //
 // Grew out of AuthorModeView's AuthorTapHint (Spatial Inspection FTUE).
 // Now one component for every surface where the first action is "tap a
-// surface": Spatial Inspection tags and AR OMS step pins. Non-blocking —
+// surface": Spatial Inspection tags and AR OMS step pins. Non-blocking -
 // the AR camera and surfaces stay fully interactive beneath it. Dismisses on
 // the first tap (the caller flips its flag) or after `autoDismissAfter`.
 //
@@ -29,7 +29,7 @@ struct ARTapCoach: View {
 
             VStack(spacing: 14) {
                 ZStack {
-                    // Outer ripple ring — expands and fades
+                    // Outer ripple ring - expands and fades
                     Circle()
                         .strokeBorder(accent.opacity(ripple ? 0 : 0.45), lineWidth: 1.5)
                         .frame(width: ripple ? 90 : 58, height: ripple ? 90 : 58)
@@ -37,7 +37,7 @@ struct ARTapCoach: View {
                     Circle()
                         .fill(accent.opacity(0.10))
                         .frame(width: 58, height: 58)
-                    // Hand — gentle press pulse
+                    // Hand - gentle press pulse
                     Image(systemName: "hand.tap.fill")
                         .font(.system(size: 30, weight: .semibold))
                         .foregroundStyle(accent)

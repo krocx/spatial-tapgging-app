@@ -1,4 +1,4 @@
-// GembaWalkLiveActivity.swift — G6 (2026.4.46): Dynamic Island + Lock Screen
+// GembaWalkLiveActivity.swift - G6 (2026.4.46): Dynamic Island + Lock Screen
 // presentation of a Gemba walk. Orange is the identity; compact view is one
 // glance: pin · distance · progress.
 //
@@ -91,7 +91,7 @@ struct GembaWalkLiveActivity: Widget {
         }
     }
     private func distance(_ s: GembaWalkActivityAttributes.ContentState) -> String {
-        guard let d = s.distanceM else { return "—" }
+        guard let d = s.distanceM else { return "-" }
         return d < 10 ? String(format: "%.1f m", d) : "\(Int(d.rounded())) m"
     }
 }

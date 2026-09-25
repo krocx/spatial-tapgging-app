@@ -1,4 +1,4 @@
-// useKeyboardShortcuts.ts — editor-wide keyboard handling.
+// useKeyboardShortcuts.ts - editor-wide keyboard handling.
 //   Delete/Backspace  remove selection        Enter   edit selected node
 //   Ctrl/Cmd+S        save                     Escape  deselect / stop editing
 //   Ctrl/Cmd+Z        undo                     Ctrl/Cmd+Y or Shift+Z  redo

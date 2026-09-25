@@ -1,4 +1,4 @@
-// QAModeBadge.swift — small "QA" pill shown top-right on every screen while
+// QAModeBadge.swift - small "QA" pill shown top-right on every screen while
 // QA Mode is on, so verbose logging is never left running by accident.
 // Tap it to open the explanation; QA Mode itself is toggled in Settings.
 

@@ -8,8 +8,8 @@ depends: [guide-lifecycle, model-library, cortona3d-import, step-validation]
 terms: [Assembly Model, Anchor]
 spec: ar-ojt/UNITY-RUNTIME.md
 api: |
-  GET /guides/:id/bundle — guide + ordered steps + model manifest (GLB URLs) + anchor frames + validation refs + playback conventions, one JSON (any client · same visibility as GET /guides/:id)
-  GET /catalog/schema/:name — JSON Schema by name, e.g. guide-bundle (any client · public)
+  GET /guides/:id/bundle - guide + ordered steps + model manifest (GLB URLs) + anchor frames + validation refs + playback conventions, one JSON (any client · same visibility as GET /guides/:id)
+  GET /catalog/schema/:name - JSON Schema by name, e.g. guide-bundle (any client · public)
 wireframe: portal
 arch: |
   flowchart LR

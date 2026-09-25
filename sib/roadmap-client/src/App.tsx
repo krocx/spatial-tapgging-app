@@ -1,4 +1,4 @@
-// App.tsx — shell: map list ⇄ editor. All state lives in the store.
+// App.tsx - shell: map list ⇄ editor. All state lives in the store.
 
 import { useState, useEffect } from 'react';
 import { useStore } from './state/store.js';
@@ -24,7 +24,7 @@ export default function App(): JSX.Element {
   const canvasTheme = useStore(s => s.canvasTheme);
   useKeyboardShortcuts();
 
-  // Deep link: /roadmap?map=<id> opens straight into that map — the portal's
+  // Deep link: /roadmap?map=<id> opens straight into that map - the portal's
   // "Edit in Designer" button lands here. Runs once; a bad id surfaces through
   // the store's normal error banner on the list view.
   useEffect(() => {
@@ -50,7 +50,7 @@ export default function App(): JSX.Element {
         {!presenting && <FilterPanel />}
         <CanvasStage />
         {!presenting && <GlossaryPanel />}
-        {/* Preview replaces the Inspector on the right while active — the
+        {/* Preview replaces the Inspector on the right while active - the
             walkthrough IS the selection during a rehearsal. */}
         {!presenting && !previewing && <Inspector />}
         {!presenting && <PreviewPanel />}
@@ -69,7 +69,7 @@ export default function App(): JSX.Element {
   );
 }
 
-/** Platform version from /config — the single source of truth is
+/** Platform version from /config - the single source of truth is
  *  PLATFORM_VERSION in sib/src/version.ts (see docs/VERSIONING.md). */
 function PlatformVersion(): JSX.Element | null {
   const [version, setVersion] = useState<string | null>(null);

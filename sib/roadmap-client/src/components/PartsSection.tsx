@@ -1,8 +1,8 @@
-// PartsSection.tsx — "Parts on this step" for procedure maps (2026.4.46).
+// PartsSection.tsx - "Parts on this step" for procedure maps (2026.4.46).
 //
 // The author thinks additively: which parts does THIS step install? The
 // section stores just that list (metadata.step.parts); the cumulative state
-// — installed earlier / this step / not yet — is derived from the compiled
+// - installed earlier / this step / not yet - is derived from the compiled
 // order and shown in the tree and the 3D preview, so the author sees the
 // assembly grow while clicking through steps. See docs/PROCEDURE-DESIGNER.md.
 //
@@ -24,7 +24,7 @@ import { useStore } from '../state/store.js';
 import { mindmapApi, type GlbPartNode, type GlbPartTree } from '../api/mindmap-api.js';
 import { AssemblyPreview, type PartState } from './AssemblyPreview.js';
 
-// One tree per model per session — the picker opens on every step.
+// One tree per model per session - the picker opens on every step.
 const treeCache = new Map<string, Promise<GlbPartTree>>();
 function loadTree(modelId: string): Promise<GlbPartTree> {
   let p = treeCache.get(modelId);
@@ -32,7 +32,7 @@ function loadTree(modelId: string): Promise<GlbPartTree> {
   return p;
 }
 
-/** Parts a step lists — `parts` when edited here, else the imported non-hidden nodes. */
+/** Parts a step lists - `parts` when edited here, else the imported non-hidden nodes. */
 export function partsOfStep(step: Record<string, unknown> | undefined): string[] {
   if (!step) return [];
   if (Array.isArray(step.parts)) return step.parts.filter((p): p is string => typeof p === 'string');
@@ -131,7 +131,7 @@ export function usePartsPicker(nodeId: string | null) {
       <div className="pt-context-seg" role="radiogroup">
         {([['installed', 'Installed only'], ['ghost', 'Whole · ghost'], ['solid', 'Whole · solid']] as [Ctx, string][]).map(([v, l]) => (
           <button key={v} role="radio" aria-checked={context === v} className={context === v ? 'on' : ''} onClick={() => setContext(v)}
-            title={v === 'installed' ? 'Only what has been built so far' : v === 'ghost' ? 'The whole assembly as a faint ghost — orientation without hiding progress' : 'The whole assembly opaque'}>{l}</button>
+            title={v === 'installed' ? 'Only what has been built so far' : v === 'ghost' ? 'The whole assembly as a faint ghost - orientation without hiding progress' : 'The whole assembly opaque'}>{l}</button>
         ))}
       </div>
       <button className="btn ghost pt-context-all" onClick={() => setContextAll(context)} title="Use this context on every step of the procedure">all steps</button>
@@ -162,7 +162,7 @@ export function usePartsPicker(nodeId: string | null) {
       {groups.map(g => {
         const all = g.parts.every(p => partSet.has(p));
         return (
-          <span key={g.name} className={`pt-group${all ? ' on' : ''}`} title={`${g.parts.length} part${g.parts.length === 1 ? '' : 's'} — click to ${all ? 'remove from' : 'add to'} this step`}>
+          <span key={g.name} className={`pt-group${all ? ' on' : ''}`} title={`${g.parts.length} part${g.parts.length === 1 ? '' : 's'} - click to ${all ? 'remove from' : 'add to'} this step`}>
             <button className="pt-group-apply" onClick={() => applyGroup(g)}>{g.name} <small>{g.parts.length}</small></button>
             <button className="pt-group-x" onClick={() => removeGroup(g.name)} title="Delete this part set">✕</button>
           </span>
@@ -192,7 +192,7 @@ export function usePartsPicker(nodeId: string | null) {
           {n.children.length > 0
             ? <button className="pt-twisty" onClick={() => toggleOpen(n.name)} title={isOpen ? 'Collapse' : 'Expand'}>{isOpen ? '▾' : '▸'}</button>
             : <span className="pt-twisty pt-leaf">·</span>}
-          <label className="pt-label" title={viaParent ? `${n.name} — included with its group` : n.name}>
+          <label className="pt-label" title={viaParent ? `${n.name} - included with its group` : n.name}>
             <input type="checkbox" checked={own || viaParent} onChange={() => toggle(n.name)} />
             <span className="pt-name">{n.name}</span>
           </label>
@@ -229,7 +229,7 @@ export function usePartsPicker(nodeId: string | null) {
   );
   const search = <input className="pt-search" placeholder="Find a part…" value={query} onChange={e => setQuery(e.target.value)} />;
   const summary = assembly ? (
-    <span className="step-check-hint"> — {parts.length} chosen · {earlier.size} {assembly.start === 'complete' ? 'removed' : 'installed'} earlier</span>
+    <span className="step-check-hint"> - {parts.length} chosen · {earlier.size} {assembly.start === 'complete' ? 'removed' : 'installed'} earlier</span>
   ) : null;
 
   return { assembly, modelId, tree, parts, earlier, states, partNames, parents, toggle, verb, chips, treeBlock, search, summary, groupsBlock, buildUp, contextBlock, context };
@@ -247,7 +247,7 @@ export function PartsSection({ nodeId }: { nodeId: string }): JSX.Element | null
     return (
       <div className="parts-section">
         <div className="inspector-field">Parts on this step
-          <span className="step-check-hint"> — choose the assembly model in the procedure bar first.</span>
+          <span className="step-check-hint"> - choose the assembly model in the procedure bar first.</span>
         </div>
       </div>
     );
@@ -321,7 +321,7 @@ export function PartsStudio(): JSX.Element | null {
       <div className="pt-modal-head">
         <div className="pt-nav">
           <button className="btn" onClick={prev} disabled={idx <= 0} title="Previous step (←)">◀</button>
-          <div className="pt-modal-title"><b>{title}</b> — parts this step {pk.verb}{pk.summary}</div>
+          <div className="pt-modal-title"><b>{title}</b> - parts this step {pk.verb}{pk.summary}</div>
           <button className="btn" onClick={next} disabled={idx < 0 || idx >= steps.length - 1} title="Next step (→)">▶</button>
         </div>
         <button className="btn" onClick={close}>Close ✕</button>
@@ -337,7 +337,7 @@ export function PartsStudio(): JSX.Element | null {
           <div className="pt-strip">
             {steps.map(s => (
               <button key={s.id} className={`pt-step${s.id === nodeId ? ' on' : ''}${s.parts === 0 ? ' empty' : ''}`}
-                onClick={() => goTo(s.id)} title={`${s.title} — ${s.parts} part${s.parts === 1 ? '' : 's'}`}>
+                onClick={() => goTo(s.id)} title={`${s.title} - ${s.parts} part${s.parts === 1 ? '' : 's'}`}>
                 <span className="pt-step-n">{s.seq}</span>
                 <span className="pt-step-t">{s.title}</span>
                 <span className="pt-step-c">{s.parts}</span>

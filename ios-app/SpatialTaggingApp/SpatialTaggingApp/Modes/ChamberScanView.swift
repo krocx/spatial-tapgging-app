@@ -1,8 +1,8 @@
-// ChamberScanView.swift — C3 (2026.4.45): the operator's front door.
+// ChamberScanView.swift - C3 (2026.4.45): the operator's front door.
 //
 // The operator never picks a chamber configuration. They scan the chamber's
 // QR; the anchor's `configId` resolves the configuration (and therefore the
-// Inspection and Guide libraries) — nothing to choose, nothing to get wrong.
+// Inspection and Guide libraries) - nothing to choose, nothing to get wrong.
 //
 //   scan QR ──► fetch anchor ──► chamber with a configuration? ──► AnchorHubView (operator)
 //                                 └─ unassigned / not a chamber ──► explain, rescan
@@ -38,7 +38,7 @@ struct ChamberScanView: View {
                         Text("Scan the chamber's QR code")
                             .font(.title3.bold()).foregroundStyle(.white)
                         Text(settings.productionNumber.isEmpty
-                             ? "The configuration comes from the QR — no need to pick it."
+                             ? "The configuration comes from the QR - no need to pick it."
                              : "Prod # \(settings.productionNumber) · the configuration comes from the QR")
                             .font(.footnote).foregroundStyle(.white.opacity(0.7))
                             .multilineTextAlignment(.center)
@@ -119,10 +119,10 @@ struct ChamberScanView: View {
                     return
                 }
                 guard let cfgId = anchor.configId else {
-                    phase = .blocked("\"\(anchor.assetId)\" isn't assigned to a chamber configuration yet — ask your ME to assign it in the portal.")
+                    phase = .blocked("\"\(anchor.assetId)\" isn't assigned to a chamber configuration yet - ask your ME to assign it in the portal.")
                     return
                 }
-                // Label for the home chip (best effort — the id is what matters).
+                // Label for the home chip (best effort - the id is what matters).
                 if let cfg = (try? await client.fetchChamberConfigs())?.first(where: { $0.id == cfgId }) {
                     configLabel = cfg.label
                 } else {

@@ -1,4 +1,4 @@
-# Spatial Tagging App — Project Status
+# Spatial Tagging App - Project Status
 > Last updated: 2026-05-24 | Phase 1 complete, Phase 2 planned
 
 ---
@@ -8,8 +8,8 @@
 A web-based AR inspection platform for industrial workflows.
 Two roles work in sequence on the same physical asset:
 
-- **Author** — Expert trains each inspection point (tag) once, from 8 angles.
-- **Operator** — Any operator scans, navigates to the tag, captures a frame, gets PASS/FAIL.
+- **Author** - Expert trains each inspection point (tag) once, from 8 angles.
+- **Operator** - Any operator scans, navigates to the tag, captures a frame, gets PASS/FAIL.
 
 No app install. Runs in iPhone Safari via HTTPS.
 
@@ -19,8 +19,8 @@ No app install. Runs in iPhone Safari via HTTPS.
 
 ```
 spatial-tagging-app/
-├── shared/          @spatial/shared — canonical TypeScript types
-├── sib/             @spatial/sib    — Express REST backend (SIB)
+├── shared/          @spatial/shared - canonical TypeScript types
+├── sib/             @spatial/sib    - Express REST backend (SIB)
 └── ar-client/       Vite + Three.js + WebAR frontend
 ```
 
@@ -29,10 +29,10 @@ spatial-tagging-app/
 ## How to Run
 
 ```bash
-# Terminal 1 — SIB backend (port 3001)
+# Terminal 1 - SIB backend (port 3001)
 cd sib && npm run dev
 
-# Terminal 2 — AR client (port 5173, HTTPS via mkcert)
+# Terminal 2 - AR client (port 5173, HTTPS via mkcert)
 cd ar-client && npm run dev
 
 # iPhone: https://<your-mac-ip>:5173
@@ -41,7 +41,7 @@ cd ar-client && npm run dev
 
 ---
 
-## Phase 1 — COMPLETE ✓
+## Phase 1 - COMPLETE ✓
 
 ### Features Shipped
 
@@ -115,16 +115,16 @@ All canonical types. Key additions:
 - Capture → POST /perception/validate → PASS/FAIL with real confidence %
 
 ### `ar-client/src/visualizations/`
-- `honeycomb-sphere.ts` — 8 Fibonacci nodes, billboard rings, dwell progress
-- `placement-reticle.ts` — green ring + laser line for tag placement
-- `tag-marker.ts` — sticky note in 3D, set-once orientation, bob animation
-- `spatial-guide.ts` — dashed gold lines from QR origin to each tag
+- `honeycomb-sphere.ts` - 8 Fibonacci nodes, billboard rings, dwell progress
+- `placement-reticle.ts` - green ring + laser line for tag placement
+- `tag-marker.ts` - sticky note in 3D, set-once orientation, bob animation
+- `spatial-guide.ts` - dashed gold lines from QR origin to each tag
 
 ### `ar-client/src/ui/tag-direction-arrow.ts`
 - CSS gold SVG triangle, screen-edge clamped, angle-computed from tag screen position
 
 ### `sib/src/perception/image-comparator.ts`
-- `compareAgainstPassState(referenceBase64s[], liveBase64)` — returns score + status
+- `compareAgainstPassState(referenceBase64s[], liveBase64)` - returns score + status
 - jimp@0.22 for image decode/resize/greyscale; pure JS, no native dependencies
 
 ### `sib/src/stores/json-file-store.ts`
@@ -132,13 +132,13 @@ All canonical types. Key additions:
 - Used by: anchors, tags, sessions, pass-states stores
 
 ### `sib/src/routes/training.ts`
-- POST /perception/train — stores multi-viewpoint pass state
-- POST /perception/validate — real SSIM+histogram comparison (no longer stubbed)
-- GET /perception/pass-state/:tagId — loads pass state for Operator mode
+- POST /perception/train - stores multi-viewpoint pass state
+- POST /perception/validate - real SSIM+histogram comparison (no longer stubbed)
+- GET /perception/pass-state/:tagId - loads pass state for Operator mode
 
 ---
 
-## Phase 2 — Planned
+## Phase 2 - Planned
 
 ### Goal: True Positional Tracking + Fleet Management
 
@@ -162,12 +162,12 @@ All canonical types. Key additions:
 
 ## Known Limitations (Phase 1)
 
-1. **No positional tracking** — camera stays at world origin; tags appear to "follow" as you move
-2. **Single device session** — no real-time sync between Author and Operator devices
-3. **Relative position accuracy** — depends on how similarly Author and Operator hold phone at QR
-4. **jimp requires `npm install`** — not auto-installed in sandbox; run manually in `/sib`
-5. **iOS 16+ pinch-zoom** — `user-scalable=no` ignored; fixed via `gesturestart` prevention
-6. **DeviceOrientationEvent** — not available on desktop; app works but orientation is identity
+1. **No positional tracking** - camera stays at world origin; tags appear to "follow" as you move
+2. **Single device session** - no real-time sync between Author and Operator devices
+3. **Relative position accuracy** - depends on how similarly Author and Operator hold phone at QR
+4. **jimp requires `npm install`** - not auto-installed in sandbox; run manually in `/sib`
+5. **iOS 16+ pinch-zoom** - `user-scalable=no` ignored; fixed via `gesturestart` prevention
+6. **DeviceOrientationEvent** - not available on desktop; app works but orientation is identity
 
 ---
 

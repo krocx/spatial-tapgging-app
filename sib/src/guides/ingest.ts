@@ -1,8 +1,8 @@
-// ingest.ts — the single path from an ImportedGuide to real Guide + GuideStep records.
+// ingest.ts - the single path from an ImportedGuide to real Guide + GuideStep records.
 //
 // Two callers today:
-//   • POST /guides/import                    — create a new draft guide from JSON/MES
-//   • POST /mindmap/:id/procedure/export     — create OR update from a procedure map
+//   • POST /guides/import                    - create a new draft guide from JSON/MES
+//   • POST /mindmap/:id/procedure/export     - create OR update from a procedure map
 //
 // and a third expected: a real MES connector, which syncs periodically and is
 // therefore an upsert by nature.
@@ -63,7 +63,7 @@ export interface ApplyImportedGuideResult {
   created:     number;
   updated:     number;
   removed:     number;
-  /** Steps still needing AR placement — the guide cannot be published until 0. */
+  /** Steps still needing AR placement - the guide cannot be published until 0. */
   unplaced:    number;
   /** Image URLs that failed to download. Non-fatal; the step is created without media. */
   imageErrors: string[];
@@ -73,11 +73,11 @@ export interface ApplyImportedGuideResult {
  * Fields owned by the device. Never written from an import or a canvas re-sync.
  *
  * The 3D model split is deliberate and worth being precise about:
- *   • ASSIGNMENT  (modelId / modelScale / modelOpacity) — which model, how big,
+ *   • ASSIGNMENT  (modelId / modelScale / modelOpacity) - which model, how big,
  *     how transparent. An authoring surface may set these, so an import that
  *     specifies a model wins; an import that is silent preserves the device's.
- *   • PLACEMENT   (modelOffset* / modelRotationY) — where the ghost sits in AR.
- *     Only the device can know this; imports never touch it — EXCEPT when the
+ *   • PLACEMENT   (modelOffset* / modelRotationY) - where the ghost sits in AR.
+ *     Only the device can know this; imports never touch it - EXCEPT when the
  *     import switches to a different model, in which case the old model's
  *     placement is meaningless and is cleared for a fresh AR placement.
  */
@@ -104,7 +104,7 @@ function carrySpatial(target: GuideStep, existing: GuideStep, importSetsModel: b
     target.modelRotationX = existing.modelRotationX;
     target.modelRotationZ = existing.modelRotationZ;
   }
-  // else: new model assigned from the canvas — placement starts fresh on device.
+  // else: new model assigned from the canvas - placement starts fresh on device.
 }
 
 export async function applyImportedGuide(
@@ -178,8 +178,8 @@ export async function applyImportedGuide(
   }
 
   // ── Images (parallel, non-fatal) ──────────────────────────────────────────
-  // Two sources: imageFile = server-local designer store (Procedure Designer —
-  // copied, no network), imageUrl = remote (JSON/MES import — downloaded).
+  // Two sources: imageFile = server-local designer store (Procedure Designer -
+  // copied, no network), imageUrl = remote (JSON/MES import - downloaded).
   // imageFile wins when both are present.
   const imageErrors: string[] = [];
   const imageBuffers = await Promise.all(
@@ -233,7 +233,7 @@ export async function applyImportedGuide(
       completionRequired: s.completionRequired ?? true,
       ...(s.evidenceRequired === true ? { evidenceRequired: true } : {}),
       // CAD-driven presentation (AR OJT): the import owns node deltas and the
-      // suggested view outright — they are authoring data, not placement.
+      // suggested view outright - they are authoring data, not placement.
       // A source that knows nothing about the assembly (older designer maps,
       // MES) must not wipe presentation an import authored earlier.
       ...(s.nodes && s.nodes.length ? { nodes: s.nodes }
@@ -251,7 +251,7 @@ export async function applyImportedGuide(
     };
 
     // Model ASSIGNMENT from the authoring surface (placement stays device-owned
-    // — see carrySpatial).
+    // - see carrySpatial).
     const importSetsModel = !!s.modelId;
     if (importSetsModel) {
       step.modelId      = s.modelId;
@@ -265,7 +265,7 @@ export async function applyImportedGuide(
 
     if (s.models) {
       // U5: the import owns the slot LIST (assignments); placement is still
-      // device-owned — a slot keeps its offsets when slotId + modelId match.
+      // device-owned - a slot keeps its offsets when slotId + modelId match.
       const prior = new Map((existing?.models ?? []).map(m => [m.slotId, m]));
       step.models = s.models.map(m => {
         const was = prior.get(m.slotId);
@@ -285,7 +285,7 @@ export async function applyImportedGuide(
       applySlotsToLegacy(step);
     } else {
       // U4: extra model slots (2..n) are device-authored and never come from a
-      // legacy import — carry them over, then mirror the (possibly new) slot 1.
+      // legacy import - carry them over, then mirror the (possibly new) slot 1.
       if (existing?.models) step.models = existing.models;
       applyLegacyToSlots(step);
     }
@@ -314,7 +314,7 @@ export async function applyImportedGuide(
   const unplaced = written.filter(s => !s.isPlaced).length;
 
   console.log(
-    `[SIB] Guide ${isUpsert ? 'updated' : 'created'} via ingest: ${guide.id} ("${guide.name}") — ` +
+    `[SIB] Guide ${isUpsert ? 'updated' : 'created'} via ingest: ${guide.id} ("${guide.name}") - ` +
     `${created} created, ${updated} updated, ${removed} removed, ${unplaced} unplaced` +
     (imageErrors.length ? ` (${imageErrors.length} image error(s))` : ''),
   );

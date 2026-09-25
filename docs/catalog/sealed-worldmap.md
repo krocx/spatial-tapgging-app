@@ -8,11 +8,11 @@ depends: [arworldmap-memory, qr-anchoring]
 terms: [ARWorldMap, Anchor, QR Spatial Anchoring]
 spec: CONNECTED-WORKER.md#sealed-world-maps-one-localization-doctrine
 api: |
-  POST /anchors/:id/worldmap/meta — seal: gravity-normalised QR pose in the map frame (app · API key)
-  GET /anchors/:id/worldmap/meta — sealed pose + capturedAt for the shared loader (app · API key)
-  DELETE /anchors/:id/worldmap — unseal: remove map + meta (app, portal · API key)
-  DELETE /worldmap/guide/:guideId — reset a guide's map, photo, meta; un-place its steps (app, portal · API key)
-  PATCH /worldmap/guide/:guideId/meta — capturedAt, referenceCameraPose, objectPoseInMap (app · API key)
+  POST /anchors/:id/worldmap/meta - seal: gravity-normalised QR pose in the map frame (app · API key)
+  GET /anchors/:id/worldmap/meta - sealed pose + capturedAt for the shared loader (app · API key)
+  DELETE /anchors/:id/worldmap - unseal: remove map + meta (app, portal · API key)
+  DELETE /worldmap/guide/:guideId - reset a guide's map, photo, meta; un-place its steps (app, portal · API key)
+  PATCH /worldmap/guide/:guideId/meta - capturedAt, referenceCameraPose, objectPoseInMap (app · API key)
 wireframe: author
 arch: |
   flowchart LR
@@ -28,5 +28,5 @@ author seals the map with the QR pose in that map's frame; operators relocalize
 into it and place tags from the author's pose, with the live QR only compared
 against it. Operator scans no longer overwrite the author's map, unsealed anchors
 behave exactly as before until an author scans them, and one shared loader
-serves the QR gate, guide sessions and model placement — meta first, local copy
+serves the QR gate, guide sessions and model placement - meta first, local copy
 reused, offline degrades to the cache.

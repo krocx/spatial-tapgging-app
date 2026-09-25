@@ -1,19 +1,19 @@
-// models.ts — 3D Model global asset library for AR Guide step ghost overlays
+// models.ts - 3D Model global asset library for AR Guide step ghost overlays
 //
 // Endpoints:
-//   POST   /models                    — Upload a 3D model file (binary body, params in query)
-//   GET    /models                    — List ALL models in the global library
-//   GET    /models?anchorId=xxx       — List models assigned to an anchor's kit
-//   GET    /models/:id                — Get single model metadata
-//   PATCH  /models/:id                — Update name / defaultScale
-//   DELETE /models/:id                — Delete model + stored files
-//   POST   /models/:id/kit            — Add or remove from an anchor's kit
+//   POST   /models                    - Upload a 3D model file (binary body, params in query)
+//   GET    /models                    - List ALL models in the global library
+//   GET    /models?anchorId=xxx       - List models assigned to an anchor's kit
+//   GET    /models/:id                - Get single model metadata
+//   PATCH  /models/:id                - Update name / defaultScale
+//   DELETE /models/:id                - Delete model + stored files
+//   POST   /models/:id/kit            - Add or remove from an anchor's kit
 //                                       Body: { action: 'add'|'remove', anchorId: string }
-//   GET    /models/:id/file.glb       — Serve the GLB file
-//   GET    /models/:id/file.usdz      — Serve the USDZ file (only if hasUSDZ=true)
+//   GET    /models/:id/file.glb       - Serve the GLB file
+//   GET    /models/:id/file.usdz      - Serve the USDZ file (only if hasUSDZ=true)
 //
 // Upload protocol:
-//   POST /models?name=MyPart&uploadedBy=Author   (anchorId optional — global upload)
+//   POST /models?name=MyPart&uploadedBy=Author   (anchorId optional - global upload)
 //   Content-Type: <mime for the file>   (e.g. model/gltf-binary, application/octet-stream)
 //   Body: raw binary file bytes
 //
@@ -92,7 +92,7 @@ const MIME_TO_FORMAT: Record<string, ModelFormat> = {
   'model/gltf+json':        'gltf',
   'model/vnd.usdz+zip':    'usdz',
   'model/usd':              'usdz',
-  'application/octet-stream': 'glb',   // fallback — refined by extension below
+  'application/octet-stream': 'glb',   // fallback - refined by extension below
 };
 
 const EXT_TO_FORMAT: Record<string, ModelFormat> = {
@@ -125,9 +125,9 @@ function detectFormat(contentType: string, filename: string): ModelFormat | null
 // and the converted USDZ (for iOS 26+ where SCNScene(url:) only loads USDZ).
 //
 // usdzStatus tracks the conversion state:
-//   'pending' — GLB ready, USDZ not yet received from browser
-//   'ready'   — USDZ received and stored; iOS app can download it
-//   'failed'  — Browser reported conversion error (set by browser after failure)
+//   'pending' - GLB ready, USDZ not yet received from browser
+//   'ready'   - USDZ received and stored; iOS app can download it
+//   'failed'  - Browser reported conversion error (set by browser after failure)
 
 // ── Blender conversion ────────────────────────────────────────────────────────
 
@@ -148,7 +148,7 @@ if ext == '.obj':
 elif ext == '.fbx':
     bpy.ops.import_scene.fbx(filepath=inp)
 elif ext in ('.step', '.stp', '.iges', '.igs'):
-    # Requires "Import CAD" / "STEP Importer" addon — raises AttributeError if missing.
+    # Requires "Import CAD" / "STEP Importer" addon - raises AttributeError if missing.
     try:
         bpy.ops.import_scene.step(filepath=inp)
     except AttributeError:
@@ -243,7 +243,7 @@ function runBlenderConversion(modelId: string, inputPath: string): void {
 const router = Router();
 
 // ── GET /models/:id/nodes ────────────────────────────────────────────────────
-// Part tree (names + hierarchy) from the GLB's JSON chunk — feeds the Procedure
+// Part tree (names + hierarchy) from the GLB's JSON chunk - feeds the Procedure
 // Designer parts picker. Cached per model id + file mtime; no rendering.
 const partTreeCache = new Map<string, { mtimeMs: number; tree: GlbPartTree }>();
 router.get('/:id/nodes', (req: Request, res: Response): void => {
@@ -298,7 +298,7 @@ router.get('/:id/file.usdz', (req: Request, res: Response): void => {
   res.sendFile(filePath);
 });
 
-// ── PUT /models/:id/file.usdz — receive USDZ from portal browser ─────────────
+// ── PUT /models/:id/file.usdz - receive USDZ from portal browser ─────────────
 // Called by the portal after in-browser GLB→USDZ conversion completes.
 // Stores the USDZ alongside the existing GLB and sets hasUSDZ=true + usdzStatus='ready'.
 router.put(
@@ -337,7 +337,7 @@ router.put(
   },
 );
 
-// ── POST /models — upload a 3D model file ────────────────────────────────────
+// ── POST /models - upload a 3D model file ────────────────────────────────────
 // Uses express.raw() applied at the route level so only this endpoint accepts binary bodies.
 router.post(
   '/',
@@ -397,14 +397,14 @@ router.post(
 
     // Save the file
     if (format === 'usdz') {
-      // USDZ: store as-is — already iOS-ready, no conversion needed.
+      // USDZ: store as-is - already iOS-ready, no conversion needed.
       fs.writeFileSync(path.join(MODELS_DIR, `${id}.usdz`), body);
       model.hasUSDZ    = true;
       model.usdzStatus = 'ready';
       model.status     = 'ready';
     } else if (format === 'glb' || format === 'gltf') {
       // GLB / GLTF: store as GLB. The portal browser converts to USDZ and
-      // uploads via PUT /models/:id/file.usdz — no server-side conversion.
+      // uploads via PUT /models/:id/file.usdz - no server-side conversion.
       const glbPath = path.join(MODELS_DIR, `${id}.glb`);
       fs.writeFileSync(glbPath, body);
       model.hasGLB     = true;
@@ -430,7 +430,7 @@ router.post(
         runBlenderConversion(id, origPath);
         console.log(`[SIB/models] Dispatched Blender conversion for ${id}`);
       } else {
-        // Blender not available — fail immediately with helpful message
+        // Blender not available - fail immediately with helpful message
         model3DStore.update(id, {
           status:         'failed' as ModelStatus,
           conversionError: `Blender is not installed on this server. `
@@ -438,7 +438,7 @@ router.post(
                          + `using FreeCAD, Blender, or CAD Exchanger, then re-upload the GLB.`,
           updatedAt: new Date().toISOString(),
         });
-        console.warn(`[SIB/models] No Blender — cannot convert ${format.toUpperCase()} ${id}`);
+        console.warn(`[SIB/models] No Blender - cannot convert ${format.toUpperCase()} ${id}`);
       }
     }
 
@@ -447,9 +447,9 @@ router.post(
   },
 );
 
-// ── GET /models — list all models, or filter by anchor kit ───────────────────
+// ── GET /models - list all models, or filter by anchor kit ───────────────────
 // Without anchorId: returns the full global library (for portal library view).
-// With ?anchorId=xxx: returns models assigned to that anchor's kit —
+// With ?anchorId=xxx: returns models assigned to that anchor's kit -
 //   matches anchorIds.includes(anchorId) OR legacy anchorId === anchorId.
 router.get('/', (req: Request, res: Response): void => {
   const { anchorId } = req.query;
@@ -457,7 +457,7 @@ router.get('/', (req: Request, res: Response): void => {
 
   if (anchorId && typeof anchorId === 'string') {
     // Anchor kit filter: include models assigned to this anchor OR any 'general' category model.
-    // 'general' models are shared across all anchors — no kit assignment needed.
+    // 'general' models are shared across all anchors - no kit assignment needed.
     models = models.filter(m =>
       m.category === 'general' ||
       (m.anchorIds ?? []).includes(anchorId) ||
@@ -469,14 +469,14 @@ router.get('/', (req: Request, res: Response): void => {
   res.json({ data: models, timestamp: new Date().toISOString() });
 });
 
-// ── GET /models/:id — single model metadata ───────────────────────────────────
+// ── GET /models/:id - single model metadata ───────────────────────────────────
 router.get('/:id', (req: Request, res: Response): void => {
   const model = model3DStore.findById(req.params.id);
   if (!model) { res.status(404).json({ error: 'Model not found' }); return; }
   res.json({ data: model, timestamp: new Date().toISOString() });
 });
 
-// ── PATCH /models/:id — update name / defaultScale ────────────────────────────
+// ── PATCH /models/:id - update name / defaultScale ────────────────────────────
 router.patch('/:id', (req: Request, res: Response): void => {
   const body  = req.body as UpdateModel3DRequest;
   const model = model3DStore.findById(req.params.id);
@@ -491,7 +491,7 @@ router.patch('/:id', (req: Request, res: Response): void => {
   res.json({ data: updated, timestamp: new Date().toISOString() });
 });
 
-// ── POST /models/:id/kit — add or remove model from an anchor's kit ──────────
+// ── POST /models/:id/kit - add or remove model from an anchor's kit ──────────
 // Body: { action: 'add' | 'remove', anchorId: string }
 router.post('/:id/kit', (req: Request, res: Response): void => {
   const { action, anchorId } = req.body as { action: 'add' | 'remove'; anchorId: string };

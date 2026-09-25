@@ -1,17 +1,17 @@
-// AnchorLabOverlay.swift — Anchor Lab (2026.4.46)
+// AnchorLabOverlay.swift - Anchor Lab (2026.4.46)
 //
 // "Is anchoring accurate?" answered with a number instead of a feeling.
 // Shown in Operator mode when Settings → Anchor Lab is on:
 //
-//   • Lock report — how THIS session found its origin: source (sealed map /
+//   • Lock report - how THIS session found its origin: source (sealed map /
 //     QR / object / approximate), relocalize + converge seconds, the live
 //     QR's disagreement with the origin (mm / °), ambient light, approach
 //     angle. All from ARSessionManager's trust layer.
-//   • Mark truth — pick a tag, aim the crosshair at the PHYSICAL feature the
+//   • Mark truth - pick a tag, aim the crosshair at the PHYSICAL feature the
 //     tag was placed on, tap Mark. The crosshair raycast (LiDAR mesh when the
 //     device has it) gives the real point; the error is the distance to where
-//     the tag rendered. Sent to SIB as one AnchorAccuracySample — numbers
-//     only, never an image — and charted per device / origin / run in the
+//     the tag rendered. Sent to SIB as one AnchorAccuracySample - numbers
+//     only, never an image - and charted per device / origin / run in the
 //     portal (docs/ANCHOR-LAB.md has the home protocol).
 //
 // Tester-facing, deliberately plain: a card on the trailing edge that
@@ -107,7 +107,7 @@ struct AnchorLabOverlay: View {
 
             Divider().overlay(Color.white.opacity(0.2))
 
-            // Run label — typed once, remembered (the Lab door passes a preset instead)
+            // Run label - typed once, remembered (the Lab door passes a preset instead)
             if presetRun == nil { HStack(spacing: 6) {
                 Image(systemName: "tag").font(.caption2).foregroundStyle(.white.opacity(0.6))
                 TextField("run label (door · evening · 2 m)", text: $run)
@@ -182,7 +182,7 @@ struct AnchorLabOverlay: View {
 
     private func mark(tagId: String) {
         guard let rendered = renderedPosition(tagId) else { toast = "Tag isn't placed yet"; return }
-        guard let p = probe() else { toast = "No surface under the crosshair — move closer"; return }
+        guard let p = probe() else { toast = "No surface under the crosshair - move closer"; return }
         let label = tags.first { $0.id == tagId }?.label ?? tagId
         let (sample, mm) = AnchorLabOverlay.makeSample(
             tagId: tagId, label: label, rendered: rendered, hit: p.hit, camera: p.camera,
@@ -196,7 +196,7 @@ struct AnchorLabOverlay: View {
         Task {
             var ok = true
             do { try await client.postAnchorAccuracy(anchorId: anchorId, sample: sample) }
-            catch { ok = false; toast = "Saved locally only — \(error.localizedDescription)" }
+            catch { ok = false; toast = "Saved locally only - \(error.localizedDescription)" }
             rows.append((label, mm, ok))
             onMark?(label, mm, ok)
             sending = false

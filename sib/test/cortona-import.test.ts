@@ -1,4 +1,4 @@
-// cortona-import.test.ts — Cortona3D RapidManual importer against the synthetic bundle.
+// cortona-import.test.ts - Cortona3D RapidManual importer against the synthetic bundle.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildHtm, buildBundleZip, buildVrml } from './cortona-fixture.js';
@@ -33,7 +33,7 @@ test('importer: one step per document work Item, merged sub-step deltas, set-up 
   const g = r.imported;
   assert.equal(g.name, 'Sample assembly');
   assert.equal(g.steps.length, 2, 'set-up step (simulate FALSE) is not a guide step');
-  assert.equal(g.steps[0].title, '1. Prepare — Remove cover');
+  assert.equal(g.steps[0].title, '1. Prepare - Remove cover');
   assert.equal(g.steps[0].text, 'Lift the cover straight up and set aside.');
   assert.equal(g.steps[0].durationSec, 2);
   // Deltas are a TIMELINE: several per node, chronological, with delaySec.
@@ -46,7 +46,7 @@ test('importer: one step per document work Item, merged sub-step deltas, set-up 
   assert.deepEqual(g.steps[0].view?.position, [0.5, 0.3, 1.2]);
   // work item 2 lays ss-2 + ss-3 out in sequence: insert (ends at rest) + solid on part 1;
   // rotation + colour on part 2; ss-3 deltas start after ss-2's 4 s; durations add.
-  assert.equal(g.steps[1].title, '2. Install ring — Lower the ring and lock it');
+  assert.equal(g.steps[1].title, '2. Install ring - Lower the ring and lock it');
   assert.equal(g.steps[1].durationSec, 7);
   const p1 = of(g.steps[1], 'cmp:PN_0190-10001_1'), p2 = of(g.steps[1], 'cmp:PN_0190-10002_1');
   const mv = p1.find(n => n.animate)!;

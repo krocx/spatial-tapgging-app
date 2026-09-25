@@ -1,9 +1,9 @@
-// SIBClient.swift — Phase 2A
+// SIBClient.swift - Phase 2A
 // async/await REST client for SIB v0.2. All network calls go through here.
 
 import Foundation
 import simd
-import UIKit   // UIImage — Gemba photo uploads (G3)
+import UIKit   // UIImage - Gemba photo uploads (G3)
 
 enum SIBClientError: LocalizedError {
     case notConfigured
@@ -33,7 +33,7 @@ enum SIBClientError: LocalizedError {
             return "That server address looks invalid. Check it in Settings."
         case .networkError(let e):
             if (e as? URLError)?.code == .timedOut {
-                return "Upload timed out — check your connection and try again."
+                return "Upload timed out - check your connection and try again."
             }
             return "Couldn't reach the server. Check your connection and try again."
         case .httpError(let c, _) where c >= 500:
@@ -53,7 +53,7 @@ enum SIBClientError: LocalizedError {
 func friendlyMessage(for error: Error) -> String {
     if let sibError = error as? SIBClientError { return sibError.userFacingMessage }
     if (error as? URLError)?.code == .timedOut {
-        return "Request timed out — check your connection and try again."
+        return "Request timed out - check your connection and try again."
     }
     return "Something went wrong: \(error.localizedDescription)"
 }
@@ -69,7 +69,7 @@ final class SIBClient {
         // #73: 20s default covers ordinary CRUD calls (tags, sessions) so a
         // dropped connection fails fast instead of hanging for a minute.
         // The few genuinely heavy operations (training upload, validate-all,
-        // world-map transfer) override this per-request below — see
+        // world-map transfer) override this per-request below - see
         // makeRequest(timeout:) and the explicit overrides in
         // trainPassState/validateAll/uploadWorldMap/fetchWorldMap.
         config.timeoutIntervalForRequest = 20
@@ -84,7 +84,7 @@ final class SIBClient {
 
     // ── Anchors ───────────────────────────────────────────────────────────────
 
-    /// List all anchors — used by AnchorDirectoryView.
+    /// List all anchors - used by AnchorDirectoryView.
     func fetchAnchors() async throws -> [Anchor] {
         try await get([Anchor].self, path: "/anchors")
     }
@@ -93,7 +93,7 @@ final class SIBClient {
         try await get(Anchor.self, path: "/anchors/\(id)")
     }
 
-    /// Phase 2.5 G1 — check whether an anchor has enough trained pass-states for Operator use.
+    /// Phase 2.5 G1 - check whether an anchor has enough trained pass-states for Operator use.
     func fetchAnchorReadiness(id: String) async throws -> AnchorReadiness {
         try await get(AnchorReadiness.self, path: "/anchors/\(id)/readiness")
     }
@@ -134,7 +134,7 @@ final class SIBClient {
         return try await patch(Anchor.self, path: "/anchors/\(anchorId)", body: Body(configId: configId))
     }
 
-    /// U3: duplicate an anchor as a template — new id/QR/key, same metadata,
+    /// U3: duplicate an anchor as a template - new id/QR/key, same metadata,
     /// model kit and every guide copied (drafts, unplaced, untrained). No
     /// world map, tags or LOTO points: the new tool gets scanned fresh.
     func duplicateAnchor(id: String, assetId: String? = nil) async throws -> Anchor {
@@ -176,7 +176,7 @@ final class SIBClient {
     }
 
     /// Download a previously stored ARWorldMap binary for an anchor.
-    /// Returns nil (does NOT throw) on 404 — meaning no map has been saved yet
+    /// Returns nil (does NOT throw) on 404 - meaning no map has been saved yet
     /// and the caller should start a fresh session instead.
     func fetchWorldMap(anchorId: String) async throws -> Data? {
         var req = try makeRequest(method: "GET", path: "/anchors/\(anchorId)/worldmap")
@@ -185,7 +185,7 @@ final class SIBClient {
         do { (data, response) = try await session.data(for: req) }
         catch { throw SIBClientError.networkError(error) }
         guard let http = response as? HTTPURLResponse else { return nil }
-        if http.statusCode == 404 { return nil }            // no map stored yet — normal first-session case
+        if http.statusCode == 404 { return nil }            // no map stored yet - normal first-session case
         if !(200...299).contains(http.statusCode) {
             throw SIBClientError.httpError(http.statusCode, "World map download failed (\(http.statusCode))")
         }
@@ -195,7 +195,7 @@ final class SIBClient {
     // ── Tags ──────────────────────────────────────────────────────────────────
 
     /// Fetch tags for an anchor, optionally filtered to a specific Inspection Set.
-    /// Single tag by id — unaffected by the hidden-tag list filter, so the
+    /// Single tag by id - unaffected by the hidden-tag list filter, so the
     /// AR OMS step-validation tag (feature prints, ROI, cone distance) is
     /// reachable for the operator scoring path.
     func fetchTag(id: String) async throws -> Tag {
@@ -247,7 +247,7 @@ final class SIBClient {
     func trainPassState(_ req: CreatePassStateRequest) async throws {
         struct R: Codable { let id: String }
         // #73: multi-image honeycomb upload is the largest payload the app
-        // sends — the 20s CRUD default isn't enough on a slow connection.
+        // sends - the 20s CRUD default isn't enough on a slow connection.
         _ = try await post(R.self, path: "/perception/train", body: req, timeout: 90)
     }
 
@@ -258,7 +258,7 @@ final class SIBClient {
     // ── Validation ────────────────────────────────────────────────────────────
 
     func validateAll(_ req: BatchValidateRequest) async throws -> AnchorValidationResult {
-        // #73: validate-all runs SSIM/patch-grid scoring across many tags —
+        // #73: validate-all runs SSIM/patch-grid scoring across many tags -
         // kept at the previous 60s budget rather than the new 20s CRUD default.
         try await post(AnchorValidationResult.self, path: "/perception/validate-all", body: req, timeout: 60)
     }
@@ -292,7 +292,7 @@ final class SIBClient {
     // ── Loc-Tags (Phase 2) ───────────────────────────────────────────────────
 
     /// Author: create a Loc-Tag during a Gemba audit walk.
-    /// Includes optional reference image (base64 JPEG) — use a 30s timeout for the upload.
+    /// Includes optional reference image (base64 JPEG) - use a 30s timeout for the upload.
     func createLocTag(_ req: CreateLocTagRequest) async throws -> LocTag {
         try await post(LocTag.self, path: "/loc-tags", body: req, timeout: 30)
     }
@@ -316,7 +316,7 @@ final class SIBClient {
     }
 
     /// Operator: submit a completion record for a Loc-Tag visit.
-    /// Includes optional completion photo — 30s timeout.
+    /// Includes optional completion photo - 30s timeout.
     func submitLocTagCompletion(
         locTagId: String,
         req: SubmitLocTagCompletionRequest
@@ -342,7 +342,7 @@ final class SIBClient {
         try await delete(path: "/loc-tags/\(id)")
     }
 
-    // ── Gemba Walk — G1 library + G3 photos (docs/GEMBA-WALK.md) ─────────────
+    // ── Gemba Walk - G1 library + G3 photos (docs/GEMBA-WALK.md) ─────────────
 
     /// The Audit Reference Library: focus areas → questions, categories, ratings.
     /// One call; cache by `version`.
@@ -420,7 +420,7 @@ final class SIBClient {
     }
 
     // ── iLOTO (docs/ILOTO.md) ────────────────────────────────────────────────
-    // Status is DERIVED by the server from the append-only event log — the
+    // Status is DERIVED by the server from the append-only event log - the
     // client never computes lock state locally.
 
     /// Author: define an isolation point (position placed in AR on device).
@@ -432,7 +432,7 @@ final class SIBClient {
         try await get([LotoPoint].self, path: "/loto/points?anchorId=\(anchorId)")
     }
 
-    /// Author: update a point — label/circuit, model assignment, or the AR
+    /// Author: update a point - label/circuit, model assignment, or the AR
     /// placement (offsets/rotation from the adjust gestures).
     func updateLotoPoint(id: String, req: UpdateLotoPointRequest) async throws -> LotoPoint {
         try await patch(LotoPoint.self, path: "/loto/points/\(id)", body: req)
@@ -445,7 +445,7 @@ final class SIBClient {
     }
 
     /// Record an apply / remove / override-remove. The server validates the
-    /// checklist, one-lock-one-person and override conditions — a 4xx means
+    /// checklist, one-lock-one-person and override conditions - a 4xx means
     /// the flow tried to skip a required step.
     func submitLotoEvent(_ req: CreateLotoEventRequest) async throws -> LotoEventResponse {
         try await post(LotoEventResponse.self, path: "/loto/events", body: req, timeout: 30)
@@ -480,7 +480,7 @@ final class SIBClient {
         return try await get([MyLotoEntry].self, path: "/loto/my?userId=\(encoded)")
     }
 
-    /// Training questions — answers withheld; grading is server-side.
+    /// Training questions - answers withheld; grading is server-side.
     func fetchLotoQuiz() async throws -> LotoQuizPayload {
         try await get(LotoQuizPayload.self, path: "/loto/quiz")
     }
@@ -528,7 +528,7 @@ final class SIBClient {
     }
 
     /// Download the reference photo for a Loc-Tag anchor.
-    /// Returns nil on 404 (no photo was saved — older anchors or Author skipped it).
+    /// Returns nil on 404 (no photo was saved - older anchors or Author skipped it).
     func fetchLocTagReferencePhoto(anchorId: String) async throws -> Data? {
         let req = try makeRequest(method: "GET", path: "/worldmap/\(anchorId)/reference-photo")
         let (data, response): (Data, URLResponse)
@@ -543,7 +543,7 @@ final class SIBClient {
     }
 
     /// Operator: download the ARWorldMap for an anchor to re-localize.
-    /// Returns nil on 404 (no map saved yet — fresh session).
+    /// Returns nil on 404 (no map saved yet - fresh session).
     /// The response is raw binary (application/octet-stream), not a JSON envelope.
     func fetchLocTagWorldMap(anchorId: String) async throws -> Data? {
         var req = try makeRequest(method: "GET", path: "/worldmap/\(anchorId)")
@@ -559,7 +559,7 @@ final class SIBClient {
         return data
     }
 
-    // ── AR OMS — Guides ──────────────────────────────────────────────────────
+    // ── AR OMS - Guides ──────────────────────────────────────────────────────
 
     /// Fetch guides for an anchor.
     /// `includeUnpublished: true` → Author view (all guides inc. drafts).
@@ -574,7 +574,7 @@ final class SIBClient {
         try await get(ARGuide.self, path: "/guides/\(id)")
     }
 
-    /// Author: create a new Guide (always starts as draft — published=false).
+    /// Author: create a new Guide (always starts as draft - published=false).
     func createGuide(_ req: CreateARGuideRequest) async throws -> ARGuide {
         try await post(ARGuide.self, path: "/guides", body: req)
     }
@@ -613,7 +613,7 @@ final class SIBClient {
                                          createdBy: settings.authorName.isEmpty ? nil : settings.authorName))
     }
 
-    // ── AR OMS — Steps ────────────────────────────────────────────────────────
+    // ── AR OMS - Steps ────────────────────────────────────────────────────────
 
     /// Fetch all steps for a guide, sorted by sequenceNumber (ascending).
     func fetchGuideSteps(guideId: String) async throws -> [GuideStep] {
@@ -638,7 +638,7 @@ final class SIBClient {
     }
 
     /// Fetch a step's attached image by its stored filename.
-    /// Returns raw JPEG Data — display via UIImage(data:).
+    /// Returns raw JPEG Data - display via UIImage(data:).
     func fetchGuideStepImage(filename: String) async throws -> Data {
         let req = try makeRequest(method: "GET", path: "/guides/step-image/\(filename)")
         let (data, response): (Data, URLResponse)
@@ -651,7 +651,7 @@ final class SIBClient {
         return data
     }
 
-    // ── AR OMS — Guide Sessions ───────────────────────────────────────────────
+    // ── AR OMS - Guide Sessions ───────────────────────────────────────────────
 
     /// Operator: submit a completed guide session atomically at sign-off.
     /// The entire session (step completions, duration, signed-off name) is sent in one call.
@@ -672,7 +672,7 @@ final class SIBClient {
     // ── Live Guide Session (AI readiness Step 1) ─────────────────────────────
 
     /// Open a live tracking session before the Operator starts the first step.
-    /// Returns the liveSessionId — store it in @State and pass to all subsequent
+    /// Returns the liveSessionId - store it in @State and pass to all subsequent
     /// event pushes and to the final sign-off request.
     func openLiveGuideSession(
         guideId:      String,
@@ -721,7 +721,7 @@ final class SIBClient {
 
     /// Poll for AI-generated hints for the current live session.
     /// Returns all pending hints and clears the server queue (consume-once).
-    /// Returns [] silently on any network or decode error — never throws.
+    /// Returns [] silently on any network or decode error - never throws.
     func fetchGuideHints(liveSessionId: String) async -> [AIHint] {
         struct Wrapper: Decodable { let data: [AIHint] }
         guard let wrapper = try? await get(Wrapper.self,
@@ -731,11 +731,11 @@ final class SIBClient {
         return wrapper.data
     }
 
-    // ── AR OMS — Guide Worldmaps ─────────────────────────────────────────────
+    // ── AR OMS - Guide Worldmaps ─────────────────────────────────────────────
 
     /// Author: upload the ARWorldMap captured during guide step placement.
     /// Also accepts an optional JPEG reference photo (base64) for Operator re-localization.
-    /// 90s timeout — ARWorldMap blobs can be large.
+    /// 90s timeout - ARWorldMap blobs can be large.
     func uploadGuideWorldMap(guideId: String, mapData: Data, referencePhotoData: Data? = nil,
                              referenceCameraPose: [Float]? = nil, objectPoseInMap: [Float]? = nil) async throws {
         struct Body: Encodable {
@@ -765,7 +765,7 @@ final class SIBClient {
         ARCoordinateFrame.transform(from: (try? await fetchGuideWorldMapMeta(guideId: guideId))?.referenceCameraPose)
     }
 
-    /// B1: guide map meta — `{ referenceCameraPose?, capturedAt? }`. Feeds WorldMapCache.
+    /// B1: guide map meta - `{ referenceCameraPose?, capturedAt? }`. Feeds WorldMapCache.
     func fetchGuideWorldMapMeta(guideId: String) async throws -> WorldMapMeta {
         try await get(WorldMapMeta.self, path: "/worldmap/guide/\(guideId)/meta")
     }
@@ -778,13 +778,13 @@ final class SIBClient {
         try await get(WorldMapMeta.self, path: "/anchors/\(anchorId)/worldmap/meta")
     }
 
-    /// G1: unseal — remove the anchor's map + sealed origin (tags stay).
+    /// G1: unseal - remove the anchor's map + sealed origin (tags stay).
     func deleteWorldMap(anchorId: String) async throws {
         _ = try await delete(path: "/anchors/\(anchorId)/worldmap")
         WorldMapCache.clear(.anchor(anchorId))
     }
 
-    /// G1: reset a guide's map — server also unplaces every step.
+    /// G1: reset a guide's map - server also unplaces every step.
     func deleteGuideWorldMap(guideId: String) async throws -> Int {
         struct R: Decodable { let unplaced: Int }
         let data = try await delete(path: "/worldmap/guide/\(guideId)")
@@ -833,7 +833,7 @@ final class SIBClient {
         catch SIBClientError.httpError(404, _) { return nil }
     }
 
-    /// The `.arobject` archive — nil on 404 (no scan yet).
+    /// The `.arobject` archive - nil on 404 (no scan yet).
     func fetchAnchorObject(anchorId: String) async throws -> Data? {
         var req = try makeRequest(method: "GET", path: "/anchors/\(anchorId)/object")
         req.timeoutInterval = 45
@@ -865,7 +865,7 @@ final class SIBClient {
         return try await patch(Anchor.self, path: "/anchors/\(anchorId)", body: Body(originSource: source))
     }
 
-    /// B2: guide-map calibration — the object's pose in the guide map frame.
+    /// B2: guide-map calibration - the object's pose in the guide map frame.
     func calibrateGuideObject(guideId: String, objectPoseInMap: simd_float4x4) async throws {
         struct Body: Encodable { let objectPoseInMap: [Float] }
         struct R: Decodable { let objectCalibratedAt: String? }
@@ -967,7 +967,7 @@ final class SIBClient {
         struct R: Decodable { let data: AnchorLabRun }
         _ = try await post(R.self, path: "/anchors/\(anchorId)/accuracy/runs", body: run, timeout: 10)
     }
-    /// Anchor Lab: the reference photo — where the author stood when the map
+    /// Anchor Lab: the reference photo - where the author stood when the map
     /// was sealed. Shown as a ghost during relocalization when asked for.
     func uploadWorldMapPhoto(anchorId: String, jpeg: Data) async throws {
         var req = try makeRequest(method: "PUT", path: "/anchors/\(anchorId)/worldmap/photo")
@@ -1004,7 +1004,7 @@ final class SIBClient {
         return req
     }
 
-    /// Author: seal the map — record the origin pose alongside the uploaded map.
+    /// Author: seal the map - record the origin pose alongside the uploaded map.
     func uploadWorldMapMeta(anchorId: String, anchorPose: simd_float4x4, sealedBy: String?,
                             referenceCameraPose: simd_float4x4? = nil) async throws -> WorldMapMeta {
         struct Body: Encodable { let anchorPose: [Float]; let capturedAt: String; let sealedBy: String?; let referenceCameraPose: [Float]? }
@@ -1053,14 +1053,14 @@ final class SIBClient {
         try await get([Model3D].self, path: "/models?anchorId=\(anchorId)")
     }
 
-    /// Fetch metadata for a single model — useful for polling conversion status.
+    /// Fetch metadata for a single model - useful for polling conversion status.
     func fetchModel(id: String) async throws -> Model3D {
         try await get(Model3D.self, path: "/models/\(id)")
     }
 
     /// Download the GLB binary for a model.
     /// Returns raw Data; caller is responsible for writing to a cache file.
-    /// 60s timeout — GLB files can be several MB.
+    /// 60s timeout - GLB files can be several MB.
     func downloadModelGLB(id: String) async throws -> Data {
         var req = try makeRequest(method: "GET", path: "/models/\(id)/file.glb")
         req.timeoutInterval = 180   // assembly GLBs reach 25 MB; slow links must not fail at 60 s
@@ -1077,7 +1077,7 @@ final class SIBClient {
 
     /// Download the USDZ binary for a model.
     /// Returns raw Data; caller writes to a cache file.
-    /// 30s timeout — USDZ is typically smaller than GLB.
+    /// 30s timeout - USDZ is typically smaller than GLB.
     func downloadModelUSDZ(id: String) async throws -> Data {
         var req = try makeRequest(method: "GET", path: "/models/\(id)/file.usdz")
         req.timeoutInterval = 30
@@ -1177,7 +1177,7 @@ final class SIBClient {
 
     /// W2: the trained reference frame (server-decrypted) for the operator's
     /// ghost-overlay alignment. Works for cone and quick-shot training.
-    /// Returns raw JPEG Data — display via UIImage(data:).
+    /// Returns raw JPEG Data - display via UIImage(data:).
     func fetchStepValidationRef(guideId: String, stepId: String) async throws -> Data {
         var req = try makeRequest(method: "GET", path: "/guides/\(guideId)/steps/\(stepId)/validation-ref.jpg")
         req.timeoutInterval = 30
@@ -1222,7 +1222,7 @@ final class SIBClient {
         let started = Date()
         do { (data, response) = try await session.data(for: request) }
         catch {
-            // Log batches go through their own path — never log the logger.
+            // Log batches go through their own path - never log the logger.
             if request.url?.path.hasSuffix("/logs") != true {
                 AppLog.warn("net", "\(request.httpMethod ?? "GET") \(request.url?.path ?? "?") transport error: \(error.localizedDescription)")
             }
@@ -1253,7 +1253,7 @@ final class SIBClient {
         guard let url = URL(string: raw) else { throw SIBClientError.invalidURL(raw) }
         var req = URLRequest(url: url)
         req.httpMethod = method
-        // Phase 2.5 — API key auth: send X-API-Key on every request.
+        // Phase 2.5 - API key auth: send X-API-Key on every request.
         // The SIB ignores this header when SIB_API_KEY env var is not set (local dev).
         let key = settings.apiKey.trimmingCharacters(in: .whitespaces)
         if !key.isEmpty {
@@ -1284,12 +1284,12 @@ final class SIBClient {
 
     /// Verify identity against the server's allow-list. Both email and
     /// employee ID must match the UAM record. Throws httpError(401, …) when
-    /// not listed / mismatched — callers surface the server's message.
+    /// not listed / mismatched - callers surface the server's message.
     func uamLogin(email: String, employeeId: String) async throws -> UamLoginResult {
         try await uamLoginRaw(body: ["email": email, "employeeId": employeeId])
     }
 
-    /// Live evidence upload — fire the moment the photo is captured so the
+    /// Live evidence upload - fire the moment the photo is captured so the
     /// Usage Log preserves it even if the session is later interrupted.
     func uploadLiveEvidence(liveSessionId: String, stepId: String, jpegBase64: String) async throws {
         var req = try makeRequest(method: "PUT",
@@ -1306,13 +1306,13 @@ final class SIBClient {
         try await uamLoginRaw(body: ["employeeId": employeeId])
     }
 
-    /// True when the server's allow-list has users (GET /config.uamActive) —
+    /// True when the server's allow-list has users (GET /config.uamActive) -
     /// the signal that the kiosk start screen must gate the app.
     func uamActive() async throws -> Bool {
         var req = try makeRequest(method: "GET", path: "/config")
         req.timeoutInterval = 10
         let (data, _) = try await session.data(for: req)
-        // NB: /config is FLAT (predates the {data:…} envelope convention) —
+        // NB: /config is FLAT (predates the {data:…} envelope convention) -
         // decode the top-level object directly.
         struct Cfg: Codable { let uamActive: Bool? }
         return (try JSONDecoder().decode(Cfg.self, from: data)).uamActive ?? false

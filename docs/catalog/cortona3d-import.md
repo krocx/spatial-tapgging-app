@@ -8,9 +8,9 @@ depends: [guide-import, guide-ingestion, model-library]
 terms: [Instruction Import, Assembly Model]
 spec: ar-ojt/CORTONA3D-IMPORT.md
 api: |
-  POST /guides/import/cortona — published RapidManual .htm (or bundle ZIP) → draft guide + assembly GLB (portal · API key)
-  PATCH /guides/:id — { assemblyPose } places the whole assembly once; null clears it (iOS · portal · API key)
-  PATCH /chamber-configs/:id — { defaultAssemblyPose } shared placement for every chamber of a configuration (portal · Engineer+)
+  POST /guides/import/cortona - published RapidManual .htm (or bundle ZIP) → draft guide + assembly GLB (portal · API key)
+  PATCH /guides/:id - { assemblyPose } places the whole assembly once; null clears it (iOS · portal · API key)
+  PATCH /chamber-configs/:id - { defaultAssemblyPose } shared placement for every chamber of a configuration (portal · Engineer+)
 wireframe: portal
 arch: |
   sequenceDiagram
@@ -35,7 +35,7 @@ arch: |
 ---
 Imports a published Cortona3D RapidManual procedure (the single-file `.htm`)
 directly into the Guide Library. The importer reads the embedded scene bundle
-with our own VRML97 parser — one that keeps PROTO declarations and instances,
+with our own VRML97 parser - one that keeps PROTO declarations and instances,
 because Cortona expresses the entire procedure (steps, substeps, show/hide,
 motion, camera) as proprietary PROTOs wired by ROUTEs that every stock loader
 drops silently. Output: a draft guide with one step per document work item (`<Procedure>/<Item>`

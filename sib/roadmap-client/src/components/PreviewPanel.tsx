@@ -1,12 +1,12 @@
-// PreviewPanel.tsx — the "run it before you ship it" walkthrough.
+// PreviewPanel.tsx - the "run it before you ship it" walkthrough.
 //
 // A phone-frame panel that simulates the operator's AR session step by step:
 // title, instruction body, reference image, voice playback (browser speech
-// synthesis — same text the device will speak), and Complete/Failed buttons
+// synthesis - same text the device will speak), and Complete/Failed buttons
 // that traverse the REAL edge graph. The canvas behind highlights the current
 // node (NodeView reads store.preview) and the camera follows the walk.
 //
-// Nothing here saves, sends or publishes — it is a rehearsal. Traversal rules
+// Nothing here saves, sends or publishes - it is a rehearsal. Traversal rules
 // live in store.previewGo and mirror the compiler + iOS runtime; this file is
 // presentation only.
 
@@ -80,7 +80,7 @@ export function PreviewPanel(): JSX.Element | null {
     return (
       <aside className="preview-panel">
         <div className="preview-head">
-          <span className="preview-title">Preview — complete</span>
+          <span className="preview-title">Preview - complete</span>
           <button className="preview-exit" onClick={exit}>✕</button>
         </div>
         <div className="preview-phone">
@@ -91,10 +91,10 @@ export function PreviewPanel(): JSX.Element | null {
               <>
                 <p className="preview-warn">Never visited on this run:</p>
                 <ul>
-                  {unvisited.map(([id, s]) => <li key={id}>Step {s} — {nameOf(id)}</li>)}
+                  {unvisited.map(([id, s]) => <li key={id}>Step {s} - {nameOf(id)}</li>)}
                 </ul>
                 <p className="preview-hint-text">
-                  Steps on failure branches only appear when you press ✗ — run
+                  Steps on failure branches only appear when you press ✗ - run
                   again and fail the branching step to rehearse the recovery path.
                 </p>
               </>
@@ -133,7 +133,7 @@ export function PreviewPanel(): JSX.Element | null {
             <div className="preview-blocked">
               <p><Icon name="blocked" size={14} /> This step requires <b>{blockedByName}</b> to be completed first.</p>
               <p className="preview-hint-text">
-                On device the operator is redirected to the prerequisite — same here.
+                On device the operator is redirected to the prerequisite - same here.
               </p>
               <button className="primary" onClick={jumpToReq}>Go to “{blockedByName}”</button>
             </div>
@@ -171,7 +171,7 @@ export function PreviewPanel(): JSX.Element | null {
           )}
         </div>
       )}
-      <p className="preview-footnote">Rehearsal only — nothing is saved or sent.</p>
+      <p className="preview-footnote">Rehearsal only - nothing is saved or sent.</p>
     </aside>
   );
 }

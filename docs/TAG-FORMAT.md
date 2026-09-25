@@ -1,11 +1,11 @@
-# The .tag Envelope Format — v1 (tag/1.0)
+# The .tag Envelope Format - v1 (tag/1.0)
 
-**PROPRIETARY & CONFIDENTIAL — Applied Materials. Patent pending.**
+**PROPRIETARY & CONFIDENTIAL - Applied Materials. Patent pending.**
 **Internal distribution only. Do not circulate externally prior to filing.**
 
 The `.tag` file is the platform's **virtual emitter**: a small, signed,
-tamper-evident envelope that gives a physical part — and the chamber it lives
-on — a portable spatial identity. It carries *references and hashes*, never
+tamper-evident envelope that gives a physical part - and the chamber it lives
+on - a portable spatial identity. It carries *references and hashes*, never
 heavy payloads; readers resolve the streams they need through authorised
 channels (our API), and can verify everything they receive against the
 envelope offline.
@@ -14,12 +14,12 @@ Layer map (see the .tag/.sib architecture deck):
 
 | Layer | Artifact | Governance |
 |---|---|---|
-| L1 | This envelope spec | Licensable in future — the "PDF of spatial identity" |
+| L1 | This envelope spec | Licensable in future - the "PDF of spatial identity" |
 | L2 | Reader Conformance Profile (§6) | Brand-governed certification |
 | L3 | `.sib` backend (stores, perception, relationships) | Proprietary. Never licensed. |
 
 First consumer: our own iOS app, offline and online (§7). Third parties only
-ever interact via API or future authorised channels — never by reading `.sib`
+ever interact via API or future authorised channels - never by reading `.sib`
 internals.
 
 ---
@@ -28,17 +28,17 @@ internals.
 
 Mirroring CAD part / part-assembly files:
 
-- **`kind: "part"`** — one tagged part on a chamber. Emitted at
+- **`kind: "part"`** - one tagged part on a chamber. Emitted at
   `GET /tags/:id/emit`. Subject = the part (label, type, owning `anchorId`),
   its spatial pose, and part-scoped streams.
-- **`kind: "assembly"`** — the chamber itself (an anchor). Emitted at
+- **`kind: "assembly"`** - the chamber itself (an anchor). Emitted at
   `GET /anchors/:id/emit`. Subject = the chamber, chamber-scoped streams, and
   a **member manifest**: one entry per part with the SHA-256 of that part's
   canonical payload. The assembly signature therefore commits to the exact
-  version of every part beneath it — a Merkle-style integrity tree. Change
+  version of every part beneath it - a Merkle-style integrity tree. Change
   any part → its hash changes → the assembly manifest is provably stale until
   re-emitted.
-- **`kind: "group"`** — *reserved* for TagGroup sub-assemblies (v1.1). Readers
+- **`kind: "group"`** - *reserved* for TagGroup sub-assemblies (v1.1). Readers
   MUST reject kinds they don't recognise.
 
 ## 2. Envelope structure
@@ -64,7 +64,7 @@ Mirroring CAD part / part-assembly files:
 
 **Determinism rules (normative):**
 - The payload carries **no emission timestamp**. `contentVersion` is the max
-  `updatedAt` of the committed content — identical content always produces
+  `updatedAt` of the committed content - identical content always produces
   identical bytes, hashes and signatures. Emissions are cacheable and
   independently reproducible.
 - The payload contains **no JSON numbers**. Floats (spatial coordinates)
@@ -128,7 +128,7 @@ A conformant reader:
 5. Treats `ref` URLs as authorised-channel-only (API key attached).
 6. Ignores unknown stream names; never writes back through `.tag`.
 
-Reference validator: `validateTagEnvelope()` in `tag-core.ts` — structure,
+Reference validator: `validateTagEnvelope()` in `tag-core.ts` - structure,
 determinism rules, and signature, returning human-readable violations.
 Exercised by `sib/test/tag-format.test.ts` including a full emit → validate →
 tamper → re-validate cycle.
@@ -146,8 +146,8 @@ streams whose hashes changed. Reference reader:
 reader MAY open the SSE feed at `GET /anchors/:id/subscribe` (the first
 `subscribe.hints` entry of every assembly envelope):
 
-- `event: state` on connect — current `contentVersion` + `payloadSha256`.
-- `event: changed` whenever the assembly envelope moves — carries the new
+- `event: state` on connect - current `contentVersion` + `payloadSha256`.
+- `event: changed` whenever the assembly envelope moves - carries the new
   `contentVersion`, `payloadSha256`, and a `changed` list naming exactly
   what moved (`stream:<name>` / `member:<tagId>`) so the reader re-fetches
   only the delta, then re-verifies each stream against its new hash.
@@ -156,14 +156,14 @@ reader MAY open the SSE feed at `GET /anchors/:id/subscribe` (the first
 Change detection is event-driven on the server (store-write bus, 400 ms
 debounce, per-anchor only while subscribers exist) plus a 30 s safety sweep
 for binary artifacts that bypass the JSON stores. Push carries **hashes and
-names only** — never content — so the subscribe channel grants nothing the
+names only** - never content - so the subscribe channel grants nothing the
 API key doesn't already grant. Reference listener: `TagSubscription` in
 `TagEnvelope.swift`.
 
-## 8a. tag/1.1 — the frame, spelled out (2026-09-21)
+## 8a. tag/1.1 - the frame, spelled out (2026-09-21)
 
-v1.1 is additive. Its purpose is that a reader on **any** engine — Unity,
-Android, WebXR, native — can place everything an envelope describes without
+v1.1 is additive. Its purpose is that a reader on **any** engine - Unity,
+Android, WebXR, native - can place everything an envelope describes without
 ARKit and without fetching each member:
 
 - `payload.frame` names the anchor frame every `spatial` value is expressed
@@ -184,7 +184,7 @@ Verifying outside SIB: `npm run tag:verify -- envelope.json [--pubkey <b64>]
 checks structure, determinism, the canonical hash and the Ed25519 signature,
 and with `--sib` re-hashes every member against the live server. It is the
 reference a C# / Kotlin / Rust reader is checked against: same canonical
-bytes, same hash, same signature — or it is not conformant.
+bytes, same hash, same signature - or it is not conformant.
 
 Reader notes per platform (standard libraries only):
 

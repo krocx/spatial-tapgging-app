@@ -17,4 +17,4 @@ arch: |
 ---
 Every intelligent feature is either local (on-device Vision, in-house SSIM, local
 Ollama vision) or behind an interface we own. If a vendor disappears tomorrow, an
-adapter changes — the platform doesn't.
+adapter changes - the platform doesn't.

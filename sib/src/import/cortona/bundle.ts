@@ -1,4 +1,4 @@
-// bundle.ts — extract the Cortona3D Solo scene bundle from a published .htm.
+// bundle.ts - extract the Cortona3D Solo scene bundle from a published .htm.
 //
 // A single-file RapidManual publication (SingleHTMLBundle=Yes) carries its
 // scene as an inline <script type="application/solo+zip"> whose body is a
@@ -9,7 +9,7 @@
 //   <title>.xml                the "rwi" job/task/BOM list (NOT a step source)
 //   *.svg                      web renderings of 2D CGM illustrations (optional)
 //
-// Everything is sniffed by magic bytes, never by extension — one archive
+// Everything is sniffed by magic bytes, never by extension - one archive
 // entry in the .vmp is XML wearing a .wrl extension, and we refuse to repeat
 // that mistake on the published side.
 

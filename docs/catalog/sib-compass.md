@@ -8,7 +8,7 @@ depends: [home-page, feature-catalogue]
 terms: [SIB]
 spec: CONNECTED-WORKER.md#sib-compass
 api: |
-  GET /stats — aggregate counts that ride on the map nodes (browser · public)
+  GET /stats - aggregate counts that ride on the map nodes (browser · public)
 flow: |
   flowchart LR
     B["brand-hex button bottom-right<br/>(pulses while a run is live)"] --> M["radial map: SIB centre → Portal · Admin · Platform · Roadmap · Catalogue · Wireframe → stops"]

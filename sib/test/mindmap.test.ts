@@ -1,4 +1,4 @@
-// mindmap.test.ts — unit tests for the Roadmap Mind-Mapper backend.
+// mindmap.test.ts - unit tests for the Roadmap Mind-Mapper backend.
 // Run: npm test --workspace=sib   (uses node:test via tsx; SIB_DATA_DIR is
 // pointed at a temp dir so tests never touch real .sib-data).
 
@@ -64,7 +64,7 @@ test('saveMindmap creates a map and a version snapshot', () => {
 
 test('saveMindmap rejects missing name and bad arrays', () => {
   assert.throws(() => create({ name: '  ', nodes: [], edges: [] }), MindmapError);
-  // @ts-expect-error — intentionally malformed
+  // @ts-expect-error - intentionally malformed
   assert.throws(() => create({ name: 'x', nodes: 'nope', edges: [] }), MindmapError);
 });
 
@@ -284,7 +284,7 @@ test('exportMindmap json and svg; rejects png server-side', () => {
   assert.equal(svg.contentType, 'image/svg+xml');
   assert.ok(svg.body.startsWith('<svg'));
   assert.ok(svg.body.includes('&lt;layer&gt;'));       // XML-escaped
-  // Directed edge — default edgeColor is 'parent', so the arrowhead carries
+  // Directed edge - default edgeColor is 'parent', so the arrowhead carries
   // the source node's layer color (node 'a' is perception).
   assert.ok(svg.body.includes('marker-end="url(#arrow-perception)"'));
 
@@ -426,7 +426,7 @@ test('collapsed, icon, shape, link sanitize correctly; unsafe links dropped', ()
   assert.equal(dirty.nodes[0].link, undefined);
   assert.equal(dirty.nodes[0].shape, undefined);
 
-  // 'rounded' is the default — not persisted
+  // 'rounded' is the default - not persisted
   const rounded = applyGraphEvent(dirty, event('node:update', map.id, node('n1', {
     shape: 'rounded', updatedAt: Date.now() + 100,
   })))!;
@@ -442,8 +442,8 @@ test('REST save sanitizes: unsafe links stripped, dangling edges dropped', () =>
     ],
     edges: [
       { id: 'e1', from: 'a', to: 'b', type: 'directed', updatedAt: 1 },
-      { id: 'e2', from: 'a', to: 'ghost', type: 'directed', updatedAt: 1 },   // dangling — dropped
-      { id: 'e3', from: 'b', to: 'b', type: 'directed', updatedAt: 1 },       // self-loop — kept (2026.4.45)
+      { id: 'e2', from: 'a', to: 'ghost', type: 'directed', updatedAt: 1 },   // dangling - dropped
+      { id: 'e3', from: 'b', to: 'b', type: 'directed', updatedAt: 1 },       // self-loop - kept (2026.4.45)
     ],
   });
   assert.equal(map.nodes.find(n => n.id === 'a')?.link, undefined);
@@ -529,7 +529,7 @@ test('saveMindmap preserves groups when request omits them', () => {
   assert.equal(resaved.groups?.length, 1, 'groups lost on group-less save');
 });
 
-// ── Vision adapter (image → graph, pure parsing — no model needed) ─────────
+// ── Vision adapter (image → graph, pure parsing - no model needed) ─────────
 
 test('visionConfig resolves SIB_VISION_URL → ASK_LLM_URL → not configured; status never leaks the key', async () => {
   const { visionConfig, visionStatus } = await import('../src/adapters/vision-adapter.js');

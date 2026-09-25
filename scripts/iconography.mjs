@@ -1,11 +1,11 @@
-// iconography.mjs — generate the AppliedX icon library from the code.
+// iconography.mjs - generate the AppliedX icon library from the code.
 //
 //   node scripts/iconography.mjs          (npm run icons:doc)
 //
 // Reads sib/roadmap-client/src/utils/icons.ts (ICON_PATHS + ICON_META) and
 // writes:
-//   docs/ICONOGRAPHY.md      — table: name · label · group · used in · path
-//   docs/iconography.html    — rendered sheet, day / night / on-card previews
+//   docs/ICONOGRAPHY.md      - table: name · label · group · used in · path
+//   docs/iconography.html    - rendered sheet, day / night / on-card previews
 //
 // The doc is generated, never hand-edited: the source of truth is icons.ts.
 // Also checks every path has meta and every meta has a path (exit 1 if not).
@@ -18,7 +18,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC  = join(ROOT, 'sib/roadmap-client/src/utils/icons.ts');
 const src  = readFileSync(SRC, 'utf8');
 
-// Tiny parser for the two object literals — keys are identifiers or quoted
+// Tiny parser for the two object literals - keys are identifiers or quoted
 // strings, path values are single-quoted strings, meta values are objects.
 function block(name) {
   const m = src.match(new RegExp(`export const ${name}[^=]*=\\s*\\{([\\s\\S]*?)\\n\\};`));
@@ -41,15 +41,15 @@ if (bad) process.exit(1);
 
 const names = Object.keys(paths);
 const groups = [
-  ['node', 'Node icons — pickable in the Inspector'],
-  ['step', 'Step content glyphs — procedure node pill'],
-  ['ui',   'UI chrome — toolbar, map list, panels, issues'],
+  ['node', 'Node icons - pickable in the Inspector'],
+  ['step', 'Step content glyphs - procedure node pill'],
+  ['ui',   'UI chrome - toolbar, map list, panels, issues'],
 ];
 const stamp = new Date().toISOString().slice(0, 10);
 
 // ── Markdown ────────────────────────────────────────────────────────────────
 let md = `# AppliedX iconography\n\n`;
-md += `Generated ${stamp} from \`sib/roadmap-client/src/utils/icons.ts\` by \`npm run icons:doc\` — do not edit by hand.\n\n`;
+md += `Generated ${stamp} from \`sib/roadmap-client/src/utils/icons.ts\` by \`npm run icons:doc\` - do not edit by hand.\n\n`;
 md += `${names.length} icons · 24×24 grid · 2 px round strokes · \`stroke=currentColor\`, \`fill=none\`. `;
 md += `Rendered in-app by \`components/Icon.tsx\`; node cards draw the same path in white at 0.75 scale. `;
 md += `Rendered sheet: [docs/iconography.html](iconography.html).\n\n`;

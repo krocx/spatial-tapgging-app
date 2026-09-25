@@ -117,7 +117,7 @@ struct ModelPreviewView: View {
     private func loadModel() async {
         await MainActor.run { loadState = .loading }
 
-        // iOS only renders USDZ via SCNScene(url:) — the ModelIO→SceneKit GLB bridge
+        // iOS only renders USDZ via SCNScene(url:) - the ModelIO→SceneKit GLB bridge
         // was removed in iOS 26. If hasUSDZ is false, the portal browser conversion
         // hasn't completed yet; show a clear message rather than a confusing error.
         guard model.hasUSDZ else {
@@ -154,7 +154,7 @@ struct ModelPreviewView: View {
             return
         }
 
-        // Parse on a background thread — SCNScene init can be slow for large models.
+        // Parse on a background thread - SCNScene init can be slow for large models.
         let scene: SCNScene? = await Task.detached(priority: .utility) {
             guard let sc = try? SCNScene(url: fileURL, options: [
                 SCNSceneSource.LoadingOption.checkConsistency: false,

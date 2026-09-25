@@ -1,4 +1,4 @@
-// routes/gemba-library.ts — Audit Reference Library (G1, 2026.4.46).
+// routes/gemba-library.ts - Audit Reference Library (G1, 2026.4.46).
 //
 //   GET    /gemba/library                       → { data: GembaLibrary }         (any API-key holder; iOS + portal)
 //   GET    /gemba/library/export.json           → GembaLibraryImport (re-importable, download)
@@ -38,7 +38,7 @@ if (gembaListStore.count() === 0) {
 }
 
 /** Restore the seed values for pick lists. Empty lists only by default (a
- *  cleared list is a mistake, never a choice — the app needs the values);
+ *  cleared list is a mistake, never a choice - the app needs the values);
  *  `all` overwrites every list with the seed. Returns the kinds touched. */
 export function restoreSeedLists(all = false): string[] {
   const now = new Date().toISOString();
@@ -49,7 +49,7 @@ export function restoreSeedLists(all = false): string[] {
   }
   return touched;
 }
-// Boot: an emptied list comes back on its own — nobody has to remember the seed.
+// Boot: an emptied list comes back on its own - nobody has to remember the seed.
 { const t = restoreSeedLists(); if (t.length) console.log(`[SIB] Gemba pick lists restored from seed: ${t.join(', ')}`); }
 
 export function readLists(): GembaLists {
@@ -58,7 +58,7 @@ export function readLists(): GembaLists {
   return out;
 }
 
-// Seed once, on an empty server — never over what Corporate Quality imported.
+// Seed once, on an empty server - never over what Corporate Quality imported.
 if (gembaFocusAreaStore.count() === 0) {
   applyImport(planImport(buildSeedLibrary(), [], []));
   console.log(`[SIB] Gemba library seeded: ${gembaFocusAreaStore.count()} focus areas`);
@@ -90,7 +90,7 @@ function fail(res: Response, err: unknown): void {
   res.status(500).json({ error: 'Internal error' });
 }
 
-/** Version = newest updatedAt across both stores — cheap, and changes on every write. */
+/** Version = newest updatedAt across both stores - cheap, and changes on every write. */
 function libraryVersion(): string {
   let v = '';
   for (const r of [...gembaFocusAreaStore.findAll(), ...gembaQuestionStore.findAll(), ...gembaListStore.findAll()]) if (r.updatedAt > v) v = r.updatedAt;
@@ -174,7 +174,7 @@ router.post('/import', (req: Request, res: Response): void => {
     const mode = body.mode === 'replace' ? 'replace' : 'append';
     const payload = Array.isArray(body.rows) ? rowsToImport(body.rows, mode) : { ...body, mode };
     const plan = planImport(payload, gembaFocusAreaStore.findAll(), gembaQuestionStore.findAll());
-    // Pick lists ride along in export.json — validate before anything is applied.
+    // Pick lists ride along in export.json - validate before anything is applied.
     const lists: Partial<Record<string, string[]>> = {};
     if (body.lists && typeof body.lists === 'object') {
       for (const [k, v] of Object.entries(body.lists as Record<string, unknown>)) {
@@ -271,18 +271,18 @@ router.delete('/questions/:id', (req: Request, res: Response): void => {
 
 // ── Walk-header pick lists (G2) ─────────────────────────────────────────────
 
-// PUT /gemba/library/lists/:kind  { values: string[] }  — whole-list replace (admin)
+// PUT /gemba/library/lists/:kind  { values: string[] }  - whole-list replace (admin)
 router.put('/lists/:kind', (req: Request, res: Response): void => {
   try {
     const kind = req.params.kind;
-    if (!isListKind(kind)) throw new GembaValidationError(400, `Unknown list "${kind}" — use ${GEMBA_LIST_KINDS.join(', ')}.`);
+    if (!isListKind(kind)) throw new GembaValidationError(400, `Unknown list "${kind}" - use ${GEMBA_LIST_KINDS.join(', ')}.`);
     const values = validateListValues((req.body as { values?: unknown })?.values);
     gembaListStore.save({ id: kind, values, updatedAt: new Date().toISOString() });
     res.json({ data: readLists(), timestamp: new Date().toISOString() });
   } catch (err) { fail(res, err); }
 });
 
-// POST /gemba/library/lists/restore?all=1 — bring the seed pick lists back
+// POST /gemba/library/lists/restore?all=1 - bring the seed pick lists back
 // (empty lists only unless all=1). Corporate Quality's own values are kept.
 router.post('/lists/restore', (req: Request, res: Response): void => {
   const all = req.query.all === '1' || req.query.all === 'true';

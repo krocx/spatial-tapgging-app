@@ -1,30 +1,30 @@
-// TrainingDomeGuide.swift — v3 (flat face, close-packed, no-gap)
+// TrainingDomeGuide.swift - v3 (flat face, close-packed, no-gap)
 //
-// Previous design: 3D hemisphere — nodes spread over a dome at different elevations
+// Previous design: 3D hemisphere - nodes spread over a dome at different elevations
 // (37.5 % and 75 % of apertureDeg).  This forced the Author to walk AROUND the
 // object.  Training images from widely different angles give low SSIM similarity
 // to inspection images, so scores were always 10–17 % regardless of zone count.
 //
-// New design (v3): all 19 nodes sit on the FLAT FACE of the cone — the disc
+// New design (v3): all 19 nodes sit on the FLAT FACE of the cone - the disc
 // perpendicular to the cone axis at distance `distanceM`.  The Author holds the
 // phone at the right distance and slowly SLIDES it laterally across the face.
 // This mirrors how Vuforia asks you to scan a target: slow, overlapping lateral
 // movements from a consistent distance.
 //
 // Layout (same 19-node count, completely different geometry):
-//   Node 0        — centre of face (on cone axis at distanceM)
-//   Nodes 1–6     — inner ring: r = faceRadius / 3 from face centre, 60 ° steps
-//   Nodes 7–18    — outer ring: r = faceRadius × 2/3 from face centre, 30 ° steps
+//   Node 0        - centre of face (on cone axis at distanceM)
+//   Nodes 1–6     - inner ring: r = faceRadius / 3 from face centre, 60 ° steps
+//   Nodes 7–18    - outer ring: r = faceRadius × 2/3 from face centre, 30 ° steps
 //
-// Sphere sizing — adjacent spheres just touch, no gap:
+// Sphere sizing - adjacent spheres just touch, no gap:
 //   faceRadius   = distanceM × tan(apertureDeg × π/180)
 //   sphereRadius = faceRadius / 6
 //   (verified: centre↔ring1 = r1, ring1 chord = r1, ring1↔ring2 = r1, ring2 chord ≈ r1)
 //
 // Visual states:
-//   Uncaptured — white sphere, 50 % opacity
-//   Current    — yellow sphere, grows 1.0× → 1.5× with holdProgress
-//   Captured   — green sphere + outer halo, full opacity
+//   Uncaptured - white sphere, 50 % opacity
+//   Current    - yellow sphere, grows 1.0× → 1.5× with holdProgress
+//   Captured   - green sphere + outer halo, full opacity
 //
 // Performance: updateState() caches the last (capturedCells, currentCell, holdBucket)
 // triple and skips SceneKit material updates when nothing has changed.
@@ -38,7 +38,7 @@ final class TrainingDomeGuide {
     // ── Constants ──────────────────────────────────────────────────────────────
     static let nodeCount: Int = 19
 
-    // Connector wire thickness — kept thin regardless of sphere size
+    // Connector wire thickness - kept thin regardless of sphere size
     private static let connRadius: CGFloat = 0.0008
 
     // ── Node references ────────────────────────────────────────────────────────
@@ -47,7 +47,7 @@ final class TrainingDomeGuide {
     private var haloNodes:   [SCNNode] = []
     private var connectors:  [SCNNode] = []
 
-    // ── State cache — avoids 20-Hz SceneKit material rebuilds ─────────────────
+    // ── State cache - avoids 20-Hz SceneKit material rebuilds ─────────────────
     private var lastCapturedCells: Set<Int> = []
     private var lastCurrentCell:   Int?     = nil
     private var lastHoldBucket:    Int      = -1
@@ -90,7 +90,7 @@ final class TrainingDomeGuide {
         }
     }
 
-    // ── Update — called at each sweep tick ────────────────────────────────────
+    // ── Update - called at each sweep tick ────────────────────────────────────
 
     func updateState(capturedCells: Set<Int>, currentCell: Int?, holdProgress: Double) {
         let holdBucket = Int(holdProgress * 20)
@@ -155,7 +155,7 @@ final class TrainingDomeGuide {
         connectors.removeAll()
     }
 
-    // ── Node positions — flat face disc ───────────────────────────────────────
+    // ── Node positions - flat face disc ───────────────────────────────────────
     //
     // All 19 nodes lie on the plane perpendicular to `axis` at depth `distanceM`.
     //
@@ -167,7 +167,7 @@ final class TrainingDomeGuide {
     // r2 = faceRadius×2/3 (outer ring, 2/3 of face radius from centre)
     //
     // This keeps ALL training viewpoints in the "looking straight at the object"
-    // direction with only small lateral offsets — so any inspection image taken
+    // direction with only small lateral offsets - so any inspection image taken
     // from within the cone has high SSIM similarity to at least one training image.
 
     static func nodePositions(tagPos:      simd_float3,
@@ -185,16 +185,16 @@ final class TrainingDomeGuide {
 
         let faceCenter = tagPos + axis * distanceM
 
-        // Node 0 — face centre (directly along cone axis)
+        // Node 0 - face centre (directly along cone axis)
         positions.append(faceCenter)
 
-        // Nodes 1–6 — inner ring, 6 × 60 ° azimuth steps
+        // Nodes 1–6 - inner ring, 6 × 60 ° azimuth steps
         for i in 0..<6 {
             let azRad = Float(i) * (.pi / 3)
             positions.append(faceCenter + r1 * (cos(azRad) * right + sin(azRad) * up))
         }
 
-        // Nodes 7–18 — outer ring, 12 × 30 ° azimuth steps
+        // Nodes 7–18 - outer ring, 12 × 30 ° azimuth steps
         for i in 0..<12 {
             let azRad = Float(i) * (.pi / 6)
             positions.append(faceCenter + r2 * (cos(azRad) * right + sin(azRad) * up))

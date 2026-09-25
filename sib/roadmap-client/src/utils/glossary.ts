@@ -1,4 +1,4 @@
-// glossary.ts — parses docs/roadmap-glossary.md into structured entries and
+// glossary.ts - parses docs/roadmap-glossary.md into structured entries and
 // fuzzy-matches roadmap nodes against them. No markdown library: the parser
 // handles exactly the shapes the glossary uses (## sections, "- **Term** …"
 // entries, the acronym table) and degrades gracefully on anything else.
@@ -19,7 +19,7 @@ export interface GlossaryData {
 
 const norm = (s: string) =>
   s.toLowerCase()
-    .replace(/[—–]/g, ' ')
+    .replace(/[-–]/g, ' ')
     .replace(/[^a-z0-9\s]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -27,10 +27,10 @@ const norm = (s: string) =>
 /** "AR Work Instructions / AR Guides (AR OMS)" → the individual name variants. */
 function aliasesOf(term: string): string[] {
   const out = new Set<string>();
-  // Pull parenthesized variants out, then split remaining on "/" and "—".
+  // Pull parenthesized variants out, then split remaining on "/" and "-".
   const parens = [...term.matchAll(/\(([^)]+)\)/g)].map(m => m[1]);
   const base = term.replace(/\([^)]*\)/g, ' ');
-  for (const part of [...base.split(/[/—]/), ...parens]) {
+  for (const part of [...base.split(/[/-]/), ...parens]) {
     const n = norm(part);
     if (n) out.add(n);
   }
@@ -48,7 +48,7 @@ export function parseGlossary(markdown: string): GlossaryData {
 
   // Normalize before parsing: strip BOM and carriage returns. Windows git
   // checkouts serve the file with CRLF, and `\r` is a line terminator in JS
-  // regex — leaving it in makes every `.+$` pattern fail silently.
+  // regex - leaving it in makes every `.+$` pattern fail silently.
   const normalized = markdown.replace(/^﻿/, '').replace(/\r/g, '');
 
   for (const line of normalized.split('\n')) {
@@ -61,14 +61,14 @@ export function parseGlossary(markdown: string): GlossaryData {
     }
     if (!current) continue;
 
-    // Entry bullets: "- **Term** ✅ *milestone* — definition"
+    // Entry bullets: "- **Term** ✅ *milestone* - definition"
     const entry = /^-\s+\*\*(.+?)\*\*\s*(.*)$/.exec(line);
     if (entry) {
       const term = entry[1].trim();
       // Everything after the em-dash is the definition; before it live the
       // status marker / milestone italics, which the renderer shows as-is.
       const rest = entry[2];
-      const dashAt = rest.indexOf('—');
+      const dashAt = rest.indexOf('-');
       const definition = (dashAt >= 0 ? rest.slice(dashAt + 1) : rest).trim();
       const prefix = dashAt >= 0 ? rest.slice(0, dashAt).trim() : '';
       current.entries.push({

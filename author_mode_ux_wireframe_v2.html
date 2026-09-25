@@ -1,4 +1,4 @@
-<h2 class="sr-only">Author mode UX wireframe v2 — 10 screens with revised QR and session flow</h2>
+<h2 class="sr-only">Author mode UX wireframe v2 - 10 screens with revised QR and session flow</h2>
 <style>
 .pscr{display:flex;flex-direction:column;height:100%;background:#080810;color:#f0f0f8;font-size:13px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow:hidden;}
 .pnav{display:flex;justify-content:space-between;align-items:center;padding:10px 14px 8px;}
@@ -46,9 +46,9 @@
 <div style="font-family:var(--font-sans);padding:1rem 0;">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;gap:12px;flex-wrap:wrap;">
     <div>
-      <div style="display:inline-block;background:var(--color-background-success);color:var(--color-text-success);font-size:11px;font-weight:500;padding:2px 8px;border-radius:4px;margin-bottom:5px;">v2 — updated</div>
-      <h3 style="font-size:16px;font-weight:500;margin:0;color:var(--color-text-primary);">Author mode — revised UX</h3>
-      <p style="font-size:13px;color:var(--color-text-secondary);margin:3px 0 0;">Screen <span id="snum">1</span> of 10 — <span id="slbl">Anchor directory</span></p>
+      <div style="display:inline-block;background:var(--color-background-success);color:var(--color-text-success);font-size:11px;font-weight:500;padding:2px 8px;border-radius:4px;margin-bottom:5px;">v2 - updated</div>
+      <h3 style="font-size:16px;font-weight:500;margin:0;color:var(--color-text-primary);">Author mode - revised UX</h3>
+      <p style="font-size:13px;color:var(--color-text-secondary);margin:3px 0 0;">Screen <span id="snum">1</span> of 10 - <span id="slbl">Anchor directory</span></p>
     </div>
     <div style="display:flex;gap:8px;">
       <button onclick="pS()" id="bprev" style="font-size:13px;">← Prev</button>
@@ -86,7 +86,7 @@ const SC=[
   flow:'Mode selection → anchor directory → create new OR open existing anchor',
   tag:'unchanged',
   notes:[
-    ['ti-layout-list','Lists all anchors with training status — no need to enter AR just to check progress.'],
+    ['ti-layout-list','Lists all anchors with training status - no need to enter AR just to check progress.'],
     ['ti-badge','Green = all trained, orange = gaps. Author plans their visit from this screen.'],
     ['ti-world','Web portal shortcut for team anchor management.'],
   ],
@@ -113,12 +113,12 @@ const SC=[
   </div>`
 },
 {
-  title:'New anchor — step 1 of 2',sub:'Name the anchor location',
+  title:'New anchor - step 1 of 2',sub:'Name the anchor location',
   flow:'Anchor directory → new anchor step 1 → step 2',
   tag:'revised',
   notes:[
-    ['ti-pencil','Wizard reduced to 2 steps — name then print QR. No initial scan step.'],
-    ['ti-key','Encryption key is generated now (on-device or server-side) and embedded in the QR in step 2. The key is also stored in SIB — QR never needs to change.'],
+    ['ti-pencil','Wizard reduced to 2 steps - name then print QR. No initial scan step.'],
+    ['ti-key','Encryption key is generated now (on-device or server-side) and embedded in the QR in step 2. The key is also stored in SIB - QR never needs to change.'],
   ],
   why:'2-step wizard keeps anchor creation fast. Key generation happens here, silently.',
   html:`<div class="pscr">
@@ -141,13 +141,13 @@ const SC=[
   </div>`
 },
 {
-  title:'New anchor — step 2 of 2',sub:'Print the QR and place it on-site',
+  title:'New anchor - step 2 of 2',sub:'Print the QR and place it on-site',
   flow:'Step 1 → step 2 → anchor hub (no initial scan needed)',
   tag:'revised',
   notes:[
-    ['ti-qrcode','QR already contains the encryption key — generated in step 1. This is the permanent QR, never replaced.'],
+    ['ti-qrcode','QR already contains the encryption key - generated in step 1. This is the permanent QR, never replaced.'],
     ['ti-map-pin','Author prints this, mounts it at the inspection point, then goes to the hub. No scan needed now.'],
-    ['ti-arrow-right','Tapping "Go to anchor" lands on the anchor hub immediately — scan happens when "Enter AR session" is tapped.'],
+    ['ti-arrow-right','Tapping "Go to anchor" lands on the anchor hub immediately - scan happens when "Enter AR session" is tapped.'],
   ],
   why:'Scan step removed from creation flow. The QR scan is deferred to session start, not anchor creation.',
   html:`<div class="pscr">
@@ -167,7 +167,7 @@ const SC=[
         <div class="qrbox" style="margin:0 auto;"><i class="ti ti-qrcode" style="font-size:50px;color:#111;"></i></div>
         <div style="display:flex;align-items:center;gap:5px;justify-content:center;margin-top:5px;">
           <i class="ti ti-lock" style="font-size:11px;color:#3dd68c;"></i>
-          <span style="color:#3dd68c;font-size:10px;">Key embedded — permanent QR</span>
+          <span style="color:#3dd68c;font-size:10px;">Key embedded - permanent QR</span>
         </div>
         <div style="color:rgba(240,240,248,0.35);font-size:11px;margin-top:2px;">Pump-Station-A · <select style="background:#1c1c2c;color:#f0f0f8;border:1px solid rgba(255,255,255,0.15);border-radius:6px;font-size:11px;padding:1px 4px;"><option>10 cm</option><option>8 cm</option><option>15 cm</option></select></div>
       </div>
@@ -177,16 +177,16 @@ const SC=[
   </div>`
 },
 {
-  title:'Anchor hub',sub:'Management center — no lock status shown yet',
+  title:'Anchor hub',sub:'Management center - no lock status shown yet',
   flow:'Anchor directory → anchor hub → enter AR session → QR scan gate',
   tag:'revised',
   notes:[
-    ['ti-layout-dashboard','Hub shows tag list and training status — but no "origin locked" indicator. The origin is locked per-session, not per-anchor.'],
-    ['ti-qrcode','"Share QR" always available — generates the full QR (with embedded key) from the stored SIB key.'],
-    ['ti-player-play','"Enter AR session" is the only path into AR — this is where the QR scan happens.'],
+    ['ti-layout-dashboard','Hub shows tag list and training status - but no "origin locked" indicator. The origin is locked per-session, not per-anchor.'],
+    ['ti-qrcode','"Share QR" always available - generates the full QR (with embedded key) from the stored SIB key.'],
+    ['ti-player-play','"Enter AR session" is the only path into AR - this is where the QR scan happens.'],
     ['ti-player-play-filled','Individual "Train →" taps also go through the QR scan gate before opening AR.'],
   ],
-  why:'Lock status removed from hub — it\'s a session concept, not an anchor concept. Cleaner mental model.',
+  why:'Lock status removed from hub - it\'s a session concept, not an anchor concept. Cleaner mental model.',
   html:`<div class="pscr">
     <div class="pnav"><span class="pback">‹ Anchors</span><span class="ptitle">Pump-Station-A</span><span class="pact">⋯</span></div>
     <div class="pcard" style="display:flex;gap:12px;align-items:center;margin-top:5px;">
@@ -217,13 +217,13 @@ const SC=[
   </div>`
 },
 {
-  title:'QR scan gate',sub:'Shared by Author and Operator — locks session origin',
+  title:'QR scan gate',sub:'Shared by Author and Operator - locks session origin',
   flow:'Anchor hub → QR scan gate → AR placement (Author) or AR inspection (Operator)',
   tag:'key screen',
   notes:[
     ['ti-lock','One scan locks the origin for the entire session. No further QR prompts for placing, training, or inspecting.'],
     ['ti-users','Identical screen for both Author and Operator. Same QR, same physical anchor, consistent experience.'],
-    ['ti-key','The key is read from the QR here — used to encrypt outgoing data (Author) or decrypt incoming data (Operator).'],
+    ['ti-key','The key is read from the QR here - used to encrypt outgoing data (Author) or decrypt incoming data (Operator).'],
     ['ti-refresh','Next visit = new session = new scan. Guarantees accuracy across different devices and sessions.'],
   ],
   why:'Single session-initialisation step. After this, the author/operator works freely with no further interruptions.',
@@ -250,15 +250,15 @@ const SC=[
   </div>`
 },
 {
-  title:'AR placement — session active',sub:'Place and manage tags with origin locked',
+  title:'AR placement - session active',sub:'Place and manage tags with origin locked',
   flow:'QR scan gate → AR placement → tag details sheet',
   tag:'unchanged',
   notes:[
-    ['ti-crosshair','Crosshair cyan = surface locked. Tap FAB to place a tag here — no further QR interaction needed.'],
-    ['ti-circle-dashed','Existing tags shown at their stored anchor-relative positions — correct because origin was just locked by QR scan.'],
+    ['ti-crosshair','Crosshair cyan = surface locked. Tap FAB to place a tag here - no further QR interaction needed.'],
+    ['ti-circle-dashed','Existing tags shown at their stored anchor-relative positions - correct because origin was just locked by QR scan.'],
     ['ti-list','"Tag list" opens the train-later sheet without leaving the session.'],
   ],
-  why:'Free-form AR work — no interruptions until the author taps Done or the session ends.',
+  why:'Free-form AR work - no interruptions until the author taps Done or the session ends.',
   html:`<div class="pscr" style="position:relative;">
     <div class="pnav" style="background:rgba(0,0,0,0.55);position:relative;z-index:2;">
       <span style="color:rgba(240,240,248,0.7);font-size:14px;">Done</span>
@@ -291,11 +291,11 @@ const SC=[
   flow:'AR placement → tag details → training flow OR back to AR placement',
   tag:'unchanged',
   notes:[
-    ['ti-player-play','"Train now" keeps context while the author is physically at the location — recommended path.'],
+    ['ti-player-play','"Train now" keeps context while the author is physically at the location - recommended path.'],
     ['ti-bookmark','"Save & train later" stores the tag and returns to AR immediately for the next placement.'],
-    ['ti-map-pin','Position already stored as anchor-relative at tap time — no re-scan needed.'],
+    ['ti-map-pin','Position already stored as anchor-relative at tap time - no re-scan needed.'],
   ],
-  why:'Split here is the right UX moment — immediately after placement, with context still fresh.',
+  why:'Split here is the right UX moment - immediately after placement, with context still fresh.',
   html:`<div class="pscr" style="position:relative;">
     <div class="ar-bg" style="height:190px;min-height:0;flex:0 0 190px;">
       <div class="ring" style="top:40%;left:35%;transform:translate(-50%,-50%);opacity:0.4;"></div>
@@ -324,13 +324,13 @@ const SC=[
   </div>`
 },
 {
-  title:'Tag list — train later',sub:'Sheet over AR, opens from "Tag list" button',
+  title:'Tag list - train later',sub:'Sheet over AR, opens from "Tag list" button',
   flow:'AR placement → tag list → tap "Train →" → tag navigation in AR',
   tag:'unchanged',
   notes:[
-    ['ti-list','Full status overview within the session — trained and untrained tags side by side.'],
+    ['ti-list','Full status overview within the session - trained and untrained tags side by side.'],
     ['ti-player-play','"Train →" closes the sheet and highlights that tag in the live AR view.'],
-    ['ti-layers-intersect','Stays within the session — no re-scan, no new session needed.'],
+    ['ti-layers-intersect','Stays within the session - no re-scan, no new session needed.'],
   ],
   why:'Train-later deferred from tag creation to here. No session restart required.',
   html:`<div class="pscr" style="position:relative;">
@@ -341,7 +341,7 @@ const SC=[
     <div class="sheet" style="flex:1;">
       <div class="sh-hdl"></div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-        <div style="font-size:15px;font-weight:500;">Tags — Pump-Station-A</div>
+        <div style="font-size:15px;font-weight:500;">Tags - Pump-Station-A</div>
         <i class="ti ti-x" style="font-size:16px;color:rgba(240,240,248,0.45);"></i>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.07);">
@@ -389,19 +389,19 @@ const SC=[
     </div>
     <div style="background:#0a0a14;padding:12px 13px 16px;">
       <div class="pbtn pri" style="margin:0 0 5px;display:flex;justify-content:center;gap:8px;align-items:center;font-size:13px;padding:13px;"><i class="ti ti-player-play" style="font-size:12px;"></i>Start training</div>
-      <div style="text-align:center;color:#3dd68c;font-size:11px;margin-top:4px;">You're close enough — ready to train</div>
+      <div style="text-align:center;color:#3dd68c;font-size:11px;margin-top:4px;">You're close enough - ready to train</div>
     </div>
   </div>`
 },
 {
-  title:'Operator mode — AR inspection',sub:'Same QR scan gate, then inspect',
+  title:'Operator mode - AR inspection',sub:'Same QR scan gate, then inspect',
   flow:'Operator selects anchor → QR scan gate (same screen) → operator AR view',
   tag:'operator',
   notes:[
     ['ti-users','Operator uses the exact same QR scan gate (screen 5). Consistent experience across both modes.'],
     ['ti-lock','Scan reads the encryption key → decrypts tag training data from SIB for this session.'],
     ['ti-circle-check','Tags shown at correct anchor-relative positions. Operator inspects, results reported to SIB.'],
-    ['ti-player-play','One scan per session — no further QR prompts during inspection of any tag.'],
+    ['ti-player-play','One scan per session - no further QR prompts during inspection of any tag.'],
   ],
   why:'Consistency: one mental model for all users. QR = session start. After that, free-form work.',
   html:`<div class="pscr" style="position:relative;">

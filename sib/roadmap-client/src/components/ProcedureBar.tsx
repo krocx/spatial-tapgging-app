@@ -1,9 +1,9 @@
-// ProcedureBar.tsx — pre-flight strip and the send action for procedure maps.
+// ProcedureBar.tsx - pre-flight strip and the send action for procedure maps.
 //
 // The census fields mirror the Guide Library graph header exactly (steps, next,
 // on failure, requires, lanes) so the same numbers mean the same thing in both
-// places. A single-lane graph is ambiguous on its own — it can mean "no
-// branches drawn" or "the layout is wrong" — and these counts settle it.
+// places. A single-lane graph is ambiguous on its own - it can mean "no
+// branches drawn" or "the layout is wrong" - and these counts settle it.
 //
 // Sending never publishes: every new step arrives unplaced, and placement only
 // happens on device. See docs/PROCEDURE-DESIGNER.md.
@@ -17,7 +17,7 @@ import { Icon } from './Icon.js';
 
 /**
  * 2026.4.46: which chamber the procedure is sent to. A new map has no anchor,
- * and nobody knows anchor ids by heart — list the chambers by name, grouped
+ * and nobody knows anchor ids by heart - list the chambers by name, grouped
  * by configuration, and remember the last choice.
  */
 function AnchorPicker({ value, onChange }: { value: string; onChange: (id: string) => void }): JSX.Element {
@@ -53,9 +53,9 @@ function AnchorPicker({ value, onChange }: { value: string; onChange: (id: strin
       value={value}
       disabled={anchors === null}
       onChange={e => { onChange(e.target.value); if (e.target.value) localStorage.setItem('procedure-anchor', e.target.value); }}
-      title="Which chamber this procedure belongs to — the guide is created on it"
+      title="Which chamber this procedure belongs to - the guide is created on it"
     >
-      <option value="">{anchors === null ? 'loading chambers…' : anchors.length ? 'Send to chamber…' : 'No chambers yet — create one in the portal'}</option>
+      <option value="">{anchors === null ? 'loading chambers…' : anchors.length ? 'Send to chamber…' : 'No chambers yet - create one in the portal'}</option>
       {[...groups.entries()].map(([label, list]) => (
         <optgroup key={label} label={label}>
           {list.map(a => <option key={a.id} value={a.id}>{a.assetId || a.id.slice(0, 8)}</option>)}
@@ -130,7 +130,7 @@ export function ProcedureBar(): JSX.Element | null {
 
   const [anchorId, setAnchorId] = useState('');
   const [showHelp, setShowHelp] = useState(false);
-  // Issues live in a collapsible drawer — 20+ warnings must never bury the
+  // Issues live in a collapsible drawer - 20+ warnings must never bury the
   // canvas. Collapsed by default; the count chip is the always-visible signal.
   const [showIssues, setShowIssues] = useState(false);
 
@@ -153,7 +153,7 @@ export function ProcedureBar(): JSX.Element | null {
           <>
             <span className="pc-stat">steps <b>{c.steps}</b></span>
             {/* Line swatches double as the canvas legend: solid green/red for
-                the two paths, dashed amber for the gate — same rendering as
+                the two paths, dashed amber for the gate - same rendering as
                 the edges themselves and the portal graph. */}
             <span className="pc-stat" style={{ color: ROLE_COLORS.next }}>
               <span className="pc-line" style={{ background: ROLE_COLORS.next }} />next <b>{c.next}</b>
@@ -194,7 +194,7 @@ export function ProcedureBar(): JSX.Element | null {
           <button
             onClick={startPreview}
             disabled={previewing || !procedure?.order || Object.keys(procedure.order).length === 0}
-            title="Walk through the procedure as the operator will experience it — nothing is saved or sent"
+            title="Walk through the procedure as the operator will experience it - nothing is saved or sent"
           >▶ Preview</button>
           <button
             className="primary"
@@ -213,13 +213,13 @@ export function ProcedureBar(): JSX.Element | null {
 
       {showHelp && (
         <div className="pc-help-panel" onClick={() => setShowHelp(false)}>
-          <p><b style={{ color: ROLE_COLORS.next }}>Next step</b> — the operator's path: where they
+          <p><b style={{ color: ROLE_COLORS.next }}>Next step</b> - the operator's path: where they
             go after completing a step. Every step (except the last) has exactly one.</p>
-          <p><b style={{ color: ROLE_COLORS.failure }}>On failure</b> — a recovery path, taken only
+          <p><b style={{ color: ROLE_COLORS.failure }}>On failure</b> - a recovery path, taken only
             if the step fails. Optional; can loop back to an earlier step.</p>
-          <p><b style={{ color: ROLE_COLORS.requires }}>Requires</b> — a rule, not a path. The step
+          <p><b style={{ color: ROLE_COLORS.requires }}>Requires</b> - a rule, not a path. The step
             it points at cannot start until the step it comes from is done. Nobody travels along
-            it — use it only when the dependency isn't already enforced by the Next chain.</p>
+            it - use it only when the dependency isn't already enforced by the Next chain.</p>
           <p className="pc-help-dismiss">Click to dismiss</p>
         </div>
       )}
@@ -228,7 +228,7 @@ export function ProcedureBar(): JSX.Element | null {
         <div className="procedure-issues-drawer">
           {errors.length > 0 && (
             <>
-              <div className="pid-group-label">Blocking — fix before sending</div>
+              <div className="pid-group-label">Blocking - fix before sending</div>
               <ul className="procedure-issues errors">
                 {errors.map((i, n) => (
                   <li key={n} onClick={() => i.nodeId && select(i.nodeId)}>
@@ -240,7 +240,7 @@ export function ProcedureBar(): JSX.Element | null {
           )}
           {warns.length > 0 && (
             <>
-              <div className="pid-group-label">Warnings — sending still allowed</div>
+              <div className="pid-group-label">Warnings - sending still allowed</div>
               <ul className="procedure-issues warnings">
                 {warns.map((i, n) => (
                   <li key={n} onClick={() => i.nodeId && select(i.nodeId)}>
@@ -266,7 +266,7 @@ export function ProcedureBar(): JSX.Element | null {
       {sent && (
         <div className="procedure-sent">
           <p>
-            <b>{sent.guideName}</b> updated — {sent.stepsCreated} created, {sent.stepsUpdated} updated
+            <b>{sent.guideName}</b> updated - {sent.stepsCreated} created, {sent.stepsUpdated} updated
             {sent.stepsRemoved > 0 && `, ${sent.stepsRemoved} removed`}.
           </p>
           {sent.stepsUnplaced > 0 && (

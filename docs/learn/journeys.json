@@ -1,5 +1,5 @@
 {
-  "$comment": "Learn journeys — /learn. Six five-minute reading orders, each answering one question. A stop is one screen: one feature from the catalogue (its diagram is rendered live), a title that states the idea in one line, at most three sentences, an optional 'try it now'. The catalogue stays the source of truth: every stop links to its feature card, and npm run catalog:check fails if a feature id here does not exist. Proprietary & Confidential · Applied Materials.",
+  "$comment": "Learn journeys - /learn. Six five-minute reading orders, each answering one question. A stop is one screen: one feature from the catalogue (its diagram is rendered live), a title that states the idea in one line, at most three sentences, an optional 'try it now'. The catalogue stays the source of truth: every stop links to its feature card, and npm run catalog:check fails if a feature id here does not exist. Proprietary & Confidential · Applied Materials.",
   "journeys": [
     {
       "id": "anchoring",
@@ -11,18 +11,18 @@
         {
           "feature": "qr-anchoring",
           "title": "A printed code is a coordinate system",
-          "text": "Print the chamber's QR at its exact size and stick it on the asset. Scanning it locks a six-degrees-of-freedom frame to the asset, gravity-normalised, so the angle you scan from never shifts a tag. Everything else — tags, steps, lockout points — hangs from that frame.",
+          "text": "Print the chamber's QR at its exact size and stick it on the asset. Scanning it locks a six-degrees-of-freedom frame to the asset, gravity-normalised, so the angle you scan from never shifts a tag. Everything else - tags, steps, lockout points - hangs from that frame.",
           "try": "Portal → Chambers → open one → Print QR. The print page embeds the true physical size."
         },
         {
           "feature": "sealed-worldmap",
           "title": "The author's map is the origin; the code is the key",
-          "text": "The first author scan seals the chamber's world map with the QR's pose recorded inside it. Every later session relocalizes into that map and places content from the author's pose, not from a fresh QR estimate. The live QR is only compared against the map — if it disagrees by more than a few centimetres, the app says so instead of trusting it."
+          "text": "The first author scan seals the chamber's world map with the QR's pose recorded inside it. Every later session relocalizes into that map and places content from the author's pose, not from a fresh QR estimate. The live QR is only compared against the map - if it disagrees by more than a few centimetres, the app says so instead of trusting it."
         },
         {
           "feature": "anchor-lab",
           "title": "The origin lives inside the map and settles before anything appears",
-          "text": "The origin is an ARKit anchor planted in the sealed map, so it keeps improving after relocalization and content follows it. Tags wait behind a convergence gate — still for 1.5 s, or eight seconds and then marked approximate — and small drifts re-base the whole scene. Anchor Lab turns 'it looks a bit off' into millimetres: testers mark where each tag really is, and the portal charts the error per device, origin source and run.",
+          "text": "The origin is an ARKit anchor planted in the sealed map, so it keeps improving after relocalization and content follows it. Tags wait behind a convergence gate - still for 1.5 s, or eight seconds and then marked approximate - and small drifts re-base the whole scene. Anchor Lab turns 'it looks a bit off' into millimetres: testers mark where each tag really is, and the portal charts the error per device, origin source and run.",
           "try": "Home → Anchor Lab → a rig → Start run. Tap a tag, aim the orange ring at the real feature, tap again."
         },
         {
@@ -38,15 +38,15 @@
         {
           "feature": "photo-relocalization",
           "title": "When the device is lost, show where the author stood",
-          "text": "Relocalization needs to see something it has seen before. When it struggles, the app shows the author's original viewpoint as a ghost — stand roughly here, look roughly there — and offers 'I'm here' rather than making the person guess. Guides, Gemba and the Lab all use the same idea."
+          "text": "Relocalization needs to see something it has seen before. When it struggles, the app shows the author's original viewpoint as a ghost - stand roughly here, look roughly there - and offers 'I'm here' rather than making the person guess. Guides, Gemba and the Lab all use the same idea."
         }
       ],
       "quiz": [
         {
           "q": "After an author seals a chamber, what does the QR code do in later sessions?",
           "options": [
-            "It is the origin — tags are placed from the live code",
-            "It is the key and a drift check — the map is the origin",
+            "It is the origin - tags are placed from the live code",
+            "It is the key and a drift check - the map is the origin",
             "Nothing; the code is only for printing"
           ],
           "answer": 1
@@ -75,7 +75,7 @@
       "id": "procedure",
       "area": "guides",
       "name": "How a procedure gets onto the machine",
-      "question": "From a flowchart or a spreadsheet to steps floating on the chamber — what happens in between?",
+      "question": "From a flowchart or a spreadsheet to steps floating on the chamber - what happens in between?",
       "minutes": 5,
       "stops": [
         {
@@ -87,7 +87,7 @@
         {
           "feature": "guide-import",
           "title": "…or import it from Excel, JSON or Cortona3D",
-          "text": "The Guide Library's Import accepts the Excel template (headers in any order), JSON, or a published Cortona3D RapidManual page. A preview — step count, media, branches, warnings — gates the Import button. Whatever the source, one ingestion path applies it, with one invariant: spatial placement is never overwritten."
+          "text": "The Guide Library's Import accepts the Excel template (headers in any order), JSON, or a published Cortona3D RapidManual page. A preview - step count, media, branches, warnings - gates the Import button. Whatever the source, one ingestion path applies it, with one invariant: spatial placement is never overwritten."
         },
         {
           "feature": "guide-library",
@@ -121,7 +121,7 @@
           "q": "You edit a procedure map after its steps were placed in AR. What happens to the pins?",
           "options": [
             "They are deleted and must be placed again",
-            "They are kept — re-sync never overwrites placement",
+            "They are kept - re-sync never overwrites placement",
             "They move to the new step numbers automatically"
           ],
           "answer": 1
@@ -139,7 +139,7 @@
           "q": "Copying a guide to another chamber copies…",
           "options": [
             "Everything, including pin positions",
-            "Content, models and branches — not the pins",
+            "Content, models and branches - not the pins",
             "Only the step titles"
           ],
           "answer": 1
@@ -156,12 +156,12 @@
         {
           "feature": "check-ontology",
           "title": "Every check is typed by what it checks",
-          "text": "Presence, language, routing, configuration, part. The type drives how the author is asked to capture it, how it is scored, and how the portal reports it — a label check reads text on device, a presence check compares images."
+          "text": "Presence, language, routing, configuration, part. The type drives how the author is asked to capture it, how it is scored, and how the portal reports it - a label check reads text on device, a presence check compares images."
         },
         {
           "feature": "training-capture",
           "title": "The author teaches the camera on the floor",
-          "text": "A guided cone sweep (19 zones with depth) or a one-frame quick-shot with the author's stance records what 'correct' looks like — and, for dual-state tags, what 'wrong' looks like too. Frames are encrypted on the device before upload; the server stores no plaintext image and holds the key only for the moment of a comparison."
+          "text": "A guided cone sweep (19 zones with depth) or a one-frame quick-shot with the author's stance records what 'correct' looks like - and, for dual-state tags, what 'wrong' looks like too. Frames are encrypted on the device before upload; the server stores no plaintext image and holds the key only for the moment of a comparison."
         },
         {
           "feature": "patch-scoring",
@@ -177,12 +177,12 @@
         {
           "feature": "evidence-signoff",
           "title": "The validation frame is the evidence",
-          "text": "Every validated step yields a photo — the frame that was judged — uploaded live, so nothing is lost if the run is interrupted. Authors can require an evidence photo on any step; the sign-off records who, when and how long."
+          "text": "Every validated step yields a photo - the frame that was judged - uploaded live, so nothing is lost if the run is interrupted. Authors can require an evidence photo on any step; the sign-off records who, when and how long."
         },
         {
           "feature": "usage-log",
           "title": "The server keeps the per-step record",
-          "text": "Seven event types stream from the device during a run. The server derives a durable per-step record from them — enter, exit, duration, outcome, overrides — with the shift's production number and chamber, so the log is the system of record, not the phone."
+          "text": "Seven event types stream from the device during a run. The server derives a durable per-step record from them - enter, exit, duration, outcome, overrides - with the shift's production number and chamber, so the log is the system of record, not the phone."
         },
         {
           "feature": "sessions-review",
@@ -196,7 +196,7 @@
           "q": "Where are reference images decrypted for comparison?",
           "options": [
             "In memory on the server, for the moment of comparison, with the key sent by the device",
-            "Never — they are compared encrypted",
+            "Never - they are compared encrypted",
             "In the portal"
           ],
           "answer": 0
@@ -231,7 +231,7 @@
         {
           "feature": "kiosk-shift",
           "title": "The shift starts with one thing: who you are",
-          "text": "A shared iPad asks only for an employee ID; the server resolves the role. Each product door then asks for its own context — Gemba asks for the project ID at walk start — and stamps it on every record."
+          "text": "A shared iPad asks only for an employee ID; the server resolves the role. Each product door then asks for its own context - Gemba asks for the project ID at walk start - and stamps it on every record."
         },
         {
           "feature": "loc-tags",
@@ -258,7 +258,7 @@
         {
           "feature": "resolution-tracking",
           "title": "Findings are tracked to closure",
-          "text": "Resolved, still present, or escalated — with completion photos on resolution. The next walk relocalizes and shows the open findings where they were."
+          "text": "Resolved, still present, or escalated - with completion photos on resolution. The next walk relocalizes and shows the open findings where they were."
         },
         {
           "feature": "gemba-walk-sessions",
@@ -271,7 +271,7 @@
           "q": "What does a Gemba finding need from the room before it can be placed?",
           "options": [
             "A printed QR on the wall",
-            "Nothing — any surface, the space remembers it",
+            "Nothing - any surface, the space remembers it",
             "A chamber configuration"
           ],
           "answer": 1
@@ -317,12 +317,12 @@
         {
           "feature": "loto-ar-flows",
           "title": "Every AR surface starts at the panel's code",
-          "text": "The scan at the panel is the you-are-here confirmation — there is no way around it. Authors tap breakers and switches to place points; operators run the ordered apply checklist: notify → shut down → lock → photo → try test → serial. Remove has its own, and override sits behind a second explicit decision."
+          "text": "The scan at the panel is the you-are-here confirmation - there is no way around it. Authors tap breakers and switches to place points; operators run the ordered apply checklist: notify → shut down → lock → photo → try test → serial. Remove has its own, and override sits behind a second explicit decision."
         },
         {
           "feature": "loto-model-slots",
           "title": "Locks are ghosts until they are real",
-          "text": "Each point holds up to three models — lock, tag, hasp — rendered ghost while the point is clear and solid the moment a lock is applied. The room shows the state; nobody reads a list."
+          "text": "Each point holds up to three models - lock, tag, hasp - rendered ghost while the point is clear and solid the moment a lock is applied. The room shows the state; nobody reads a list."
         },
         {
           "feature": "loto-event-log",
@@ -337,7 +337,7 @@
         {
           "feature": "portal-iloto",
           "title": "EHS reviews the board, not the phone",
-          "text": "A live status board per panel — point state, owner, serial — the audit trail with overrides pinned first, and the quiz editor. The evidence lives where the reviewer is."
+          "text": "A live status board per panel - point state, owner, serial - the audit trail with overrides pinned first, and the quiz editor. The evidence lives where the reviewer is."
         }
       ],
       "quiz": [
@@ -345,7 +345,7 @@
           "q": "Can an author place a LOTO point without scanning the panel's code?",
           "options": [
             "Yes, from the map",
-            "No — every iLOTO AR surface starts with the panel scan",
+            "No - every iLOTO AR surface starts with the panel scan",
             "Only engineers can"
           ],
           "answer": 1
@@ -363,7 +363,7 @@
           "q": "An applied lock's event was recorded with the wrong serial. What can be done?",
           "options": [
             "Edit the event in the portal",
-            "Nothing edits or deletes an event — a new event records the correction",
+            "Nothing edits or deletes an event - a new event records the correction",
             "Delete and re-apply"
           ],
           "answer": 1
@@ -380,7 +380,7 @@
         {
           "feature": "self-hosted",
           "title": "Everything runs on infrastructure we control",
-          "text": "Render for the pilot, on-prem Windows under NSSM for the site — one build, one data directory, no third party ever sees site data. Deployment is a documented ritual, not a hosted service."
+          "text": "Render for the pilot, on-prem Windows under NSSM for the site - one build, one data directory, no third party ever sees site data. Deployment is a documented ritual, not a hosted service."
         },
         {
           "feature": "no-cloud-ai",
@@ -390,29 +390,29 @@
         {
           "feature": "adapter-architecture",
           "title": "Anything external sits behind an adapter",
-          "text": "Perception models, instruction sources, AI guidance, vision stacks — each is an isolated, swappable module behind a stable interface. The MES connector is the production example: work orders flow in through the same import path as an Excel file."
+          "text": "Perception models, instruction sources, AI guidance, vision stacks - each is an isolated, swappable module behind a stable interface. The MES connector is the production example: work orders flow in through the same import path as an Excel file."
         },
         {
           "feature": "uam",
           "title": "Who can do what",
-          "text": "An allow-list of email, employee ID and role — technician, engineer, manager, owner — governs sign-in and every action, in the app and the portal, ahead of corporate SSO. Products are entitlements: a person sees only the doors they are given.",
+          "text": "An allow-list of email, employee ID and role - technician, engineer, manager, owner - governs sign-in and every action, in the app and the portal, ahead of corporate SSO. Products are entitlements: a person sees only the doors they are given.",
           "try": "Portal → Admin → User Access."
         },
         {
           "feature": "backup-restore",
           "title": "One click, one archive, before every upgrade",
-          "text": "Data (small, weekly) or Full (photos, maps, models — before upgrades), streamed with progress from the portal. Restore is deliberately manual: stop, unpack, start."
+          "text": "Data (small, weekly) or Full (photos, maps, models - before upgrades), streamed with progress from the portal. Restore is deliberately manual: stop, unpack, start."
         },
         {
           "feature": "device-logs",
           "title": "The iPad's console comes to the server",
-          "text": "The app ships its log lines to SIB — batched, redacted on both ends, per device and day — so a field problem can be read in the portal's Logs page without taking the device off the floor.",
+          "text": "The app ships its log lines to SIB - batched, redacted on both ends, per device and day - so a field problem can be read in the portal's Logs page without taking the device off the floor.",
           "try": "Settings → QA Mode on the iPad, then Portal → Admin → Device Logs."
         },
         {
           "feature": "versioning",
           "title": "One version stamp, one changelog, one catalogue",
-          "text": "The platform version is on every page and at /config — the first thing to check when a deployment looks stale. Every change is written into the changelog, and every feature has a catalogue card that this page links to."
+          "text": "The platform version is on every page and at /config - the first thing to check when a deployment looks stale. Every change is written into the changelog, and every feature has a catalogue card that this page links to."
         }
       ],
       "quiz": [
@@ -420,7 +420,7 @@
           "q": "A cloud AI vendor changes its pricing overnight. What stops working on the floor?",
           "options": [
             "Validation",
-            "Nothing — no floor feature depends on a cloud AI",
+            "Nothing - no floor feature depends on a cloud AI",
             "The portal"
           ],
           "answer": 1

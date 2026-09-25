@@ -10,7 +10,7 @@ export const tagStore = new JsonFileStore<Tag>('tags');
 
 const router = Router();
 
-// POST /tags — create a tag on an existing anchor
+// POST /tags - create a tag on an existing anchor
 router.post('/', (req: Request, res: Response) => {
   const body = req.body as CreateTagRequest;
 
@@ -56,14 +56,14 @@ router.post('/', (req: Request, res: Response) => {
   return res.status(201).json(response);
 });
 
-// GET /tags — list all tags (optionally filter by anchorId and/or groupId)
+// GET /tags - list all tags (optionally filter by anchorId and/or groupId)
 // Each tag is enriched with a server-computed `isTrained` boolean so clients
 // can display trained/untrained status without a separate readiness call.
 router.get('/', (req: Request, res: Response) => {
   const { anchorId, groupId, includeHidden } = req.query;
   let tags = tagStore.findAll();
   // V1 (2026.4.45): step-validation tags are infrastructure for AR OMS cone
-  // training — hidden from every tag list (app + portal) unless explicitly
+  // training - hidden from every tag list (app + portal) unless explicitly
   // requested. GET /tags/:id is unaffected, so direct lookups still work.
   if (includeHidden !== 'true') {
     tags = tags.filter((t) => !(t.metadata as Record<string, unknown> | undefined)?.step_validation);
@@ -81,13 +81,13 @@ router.get('/', (req: Request, res: Response) => {
     isTrained: hasPassStateForTag(tag.id, 'PASS'),
     // Optional: whether the Author additionally trained a Fail-state for
     // this tag. Absent/false on every tag trained before this feature
-    // existed — the client should treat it as "no fail-state" by default.
+    // existed - the client should treat it as "no fail-state" by default.
     hasFailState: hasPassStateForTag(tag.id, 'FAIL'),
   }));
   return res.json({ data: enriched, timestamp: new Date().toISOString() });
 });
 
-// ── GET /tags/:id/emit — the part-level .tag envelope ────────────────────────
+// ── GET /tags/:id/emit - the part-level .tag envelope ────────────────────────
 // Signed Ed25519 emission for one tagged part (spec: docs/TAG-FORMAT.md).
 // Registered BEFORE /:id so "emit" isn't swallowed by the param route.
 // ?download=1 sets a Content-Disposition so browsers save a .tag file.
@@ -104,7 +104,7 @@ router.get('/:id/emit', (req: Request, res: Response) => {
   return res.json(envelope);
 });
 
-// GET /tags/:id — get a single tag
+// GET /tags/:id - get a single tag
 router.get('/:id', (req: Request, res: Response) => {
   const tag = tagStore.findById(req.params.id);
   if (!tag) {
@@ -116,7 +116,7 @@ router.get('/:id', (req: Request, res: Response) => {
   return res.json({ data: tag, timestamp: new Date().toISOString() });
 });
 
-// PATCH /tags/:id — update mutable fields (label, expectedOutcome, checkDescription, order)
+// PATCH /tags/:id - update mutable fields (label, expectedOutcome, checkDescription, order)
 router.patch('/:id', (req: Request, res: Response) => {
   const tag = tagStore.findById(req.params.id);
   if (!tag) {
@@ -153,7 +153,7 @@ router.patch('/:id', (req: Request, res: Response) => {
   return res.status(200).json(response);
 });
 
-// DELETE /tags/:id — remove a single tag and its pass-state
+// DELETE /tags/:id - remove a single tag and its pass-state
 router.delete('/:id', (req: Request, res: Response) => {
   const tag = tagStore.findById(req.params.id);
   if (!tag) {
@@ -175,7 +175,7 @@ router.delete('/:id', (req: Request, res: Response) => {
   return res.status(200).json({ data: { id: req.params.id }, timestamp: new Date().toISOString() });
 });
 
-// DELETE /tags?anchorId=X — bulk-delete all tags (and pass-states) for an anchor
+// DELETE /tags?anchorId=X - bulk-delete all tags (and pass-states) for an anchor
 router.delete('/', (req: Request, res: Response) => {
   const { anchorId } = req.query;
   if (typeof anchorId !== 'string' || !anchorId) {

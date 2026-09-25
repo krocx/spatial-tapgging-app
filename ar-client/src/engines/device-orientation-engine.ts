@@ -27,7 +27,7 @@ export class DeviceOrientationEngine {
       const res = await DOE.requestPermission();
       return res === 'granted';
     }
-    // Android / desktop — no permission needed
+    // Android / desktop - no permission needed
     return true;
   }
 

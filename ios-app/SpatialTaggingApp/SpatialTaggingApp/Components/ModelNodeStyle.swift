@@ -1,10 +1,10 @@
-// ModelNodeStyle.swift — one place that makes a loaded USDZ render reliably
+// ModelNodeStyle.swift - one place that makes a loaded USDZ render reliably
 // in the AR scene at ANY node opacity, including 1.0.
 //
 // Why this exists (2026.4.46): authors reported a step model that showed at
 // 50 % opacity but vanished at 100 %. Below 1.0 SceneKit forces the node
 // through its transparent pass with a uniform alpha; at exactly 1.0 it trusts
-// the material as exported — and USDZ produced from GLB (browser
+// the material as exported - and USDZ produced from GLB (browser
 // USDZExporter, Blender) can carry material state that renders nothing in
 // that path: `opacity` 0 from an alpha-blend export, a metallic PBR surface
 // with no environment to reflect (pure black on a dark tool), or single-sided

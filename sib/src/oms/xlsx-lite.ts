@@ -1,4 +1,4 @@
-// xlsx-lite.ts — dependency-free XLSX writer for the Usage Log and the
+// xlsx-lite.ts - dependency-free XLSX writer for the Usage Log and the
 // Completion Log exports.
 //
 // Why hand-rolled: the export must EMBED evidence photos per row, which the
@@ -107,8 +107,8 @@ function cellNum(col: number, row: number, v: number): string {
 const EVIDENCE_DIR = path.join(DATA_DIR, 'guide-session-evidence');
 
 const EMU_PER_PX = 9525;
-const IMG_W = 240, IMG_H = 180;        // px in the sheet — large enough to review
-const IMG_ROW_HT = 140;                // pt — fits the 180px image
+const IMG_W = 240, IMG_H = 180;        // px in the sheet - large enough to review
+const IMG_ROW_HT = 140;                // pt - fits the 180px image
 
 /** One embedded JPEG: 0-based row + column of the drawing anchor. */
 interface Img { rowIdx: number; col: number; data: Buffer; }
@@ -120,7 +120,7 @@ interface SheetSpec {
   images:    Img[];
   /** Legacy single-column mode: images without `col` anchor here. */
   imgCol?:   number;
-  /** Freeze the header row (and `freezeCols` columns) — walk workbook. */
+  /** Freeze the header row (and `freezeCols` columns) - walk workbook. */
   freezeHeader?: boolean;
 }
 
@@ -212,9 +212,9 @@ const USAGE_COLS = ['Production #', 'Configuration', 'Chamber', 'Guide', 'Operat
                     'Step', 'Entered', 'Duration (s)', 'Outcome', 'Validation', 'Evidence'];
 
 /** Evidence photo for a usage step, in resolution order:
- *   1. live-upload dir (usage id — where new builds put it during the run)
+ *   1. live-upload dir (usage id - where new builds put it during the run)
  *   2. legacy sign-off dir (probed by convention)
- *   3. the sign-off record's stored evidencePhotoPath (authoritative — covers
+ *   3. the sign-off record's stored evidencePhotoPath (authoritative - covers
  *      sessions recorded before the live-upload convention, whichever dir the
  *      file actually landed in). Supplied by the route as `${signOffId}:${stepId}`. */
 function usageEvidencePath(
@@ -263,7 +263,7 @@ export function buildUsageXlsx(
     for (const e of u.steps) {
       const val = e.validation
         ? `${e.validation.mode} ${e.validation.result}${e.validation.score !== undefined ? ` (${e.validation.score})` : ''}`
-          + (e.validation.overridden ? ' — operator proceeded' : '')
+          + (e.validation.overridden ? ' - operator proceeded' : '')
         : '';
       const evi = usageEvidencePath(u.id, u.signOffSessionId, e.stepId, signOffPaths);
       const cells = base(r)
@@ -297,7 +297,7 @@ const SESSION_COLS = ['Guide', 'Anchor', 'Signed off by', 'Started', 'Signed off
 /** Build the Completion Log workbook from durable sign-off records: one row
  *  per completed step, evidence embedded straight from each record's stored
  *  evidencePhotoPath (the authoritative location, whichever dir the file
- *  landed in — live-upload or sign-off). */
+ *  landed in - live-upload or sign-off). */
 export function buildSessionsXlsx(sessions: GuideSession[]): Buffer {
   const images: Img[] = [];
   const rows: string[] = [];

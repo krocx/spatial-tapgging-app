@@ -8,9 +8,9 @@ depends: [spatial-steps]
 terms: [Evidence Capture]
 spec: ../README.md#ar-work-instructions-ar-oms
 api: |
-  POST /guide-sessions — sign-off with per-step completions + evidence (app · API key)
-  GET /guide-sessions — run history grouped for review (portal · API key)
-  GET /guide-sessions/:id/evidence/:stepId — step evidence photo (portal · API key)
+  POST /guide-sessions - sign-off with per-step completions + evidence (app · API key)
+  GET /guide-sessions - run history grouped for review (portal · API key)
+  GET /guide-sessions/:id/evidence/:stepId - step evidence photo (portal · API key)
 wireframe: portal
 arch: |
   sequenceDiagram
@@ -27,5 +27,5 @@ and durations. Authors can mark a step "Require evidence photo" (carried through
 the Procedure Designer round-trip) and the operator cannot complete it without
 one; validated steps supply the validation frame as their evidence. Photos upload
 live and the usage log is the system of record (see usage-log); sessions are
-reviewable in the portal with every photo and exportable to Excel — proof of work
+reviewable in the portal with every photo and exportable to Excel - proof of work
 as a by-product of doing the work, not an extra chore.

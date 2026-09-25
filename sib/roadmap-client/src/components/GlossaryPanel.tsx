@@ -1,4 +1,4 @@
-// GlossaryPanel.tsx — the in-app roadmap dictionary (📖): right-side panel
+// GlossaryPanel.tsx - the in-app roadmap dictionary (📖): right-side panel
 // grouped by section with search; can be opened focused on a specific term
 // (from the inspector's "Read more"), which scrolls to and highlights it.
 
@@ -68,7 +68,7 @@ export function GlossaryPanel(): JSX.Element | null {
       {!glossary && <p className="menu-note">Loading dictionary…</p>}
       {glossary && glossary.entries.length === 0 && (
         <p className="menu-note">
-          Dictionary unavailable — the server couldn't provide a readable
+          Dictionary unavailable - the server couldn't provide a readable
           <code> docs/roadmap-glossary.md</code>. Check <code>GET /mindmap/glossary</code>.
         </p>
       )}

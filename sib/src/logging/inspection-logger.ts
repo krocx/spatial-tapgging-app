@@ -5,8 +5,8 @@
 // each entry maps directly to a row in a future "inspection_sessions" DB table.
 //
 // Future web dashboard path:
-//   GET /admin/inspection-logs  — paginated list
-//   GET /admin/inspection-logs/:id — full detail with per-tag scores
+//   GET /admin/inspection-logs  - paginated list
+//   GET /admin/inspection-logs/:id - full detail with per-tag scores
 //
 // Data privacy note (roadmap):
 //   imageBase64 payloads are NOT stored in logs.  Only scores and metadata are
@@ -30,13 +30,13 @@ export interface InspectionTagResult {
 }
 
 export interface InspectionLogEntry {
-  id:            string;        // UUID — maps to PK in future DB
+  id:            string;        // UUID - maps to PK in future DB
   sessionId:     string;        // SIB session that triggered this inspection
   anchorId:      string;
   assetId:       string;
-  operatorIP:    string;        // request.ip — for audit trail
+  operatorIP:    string;        // request.ip - for audit trail
   threshold:     number;        // PASS threshold used for this run
-  startedAt:     string;        // ISO 8601 — when validate-all was called
+  startedAt:     string;        // ISO 8601 - when validate-all was called
   durationMs:    number;        // wall-clock time for the full comparison run
   overallStatus: AnchorStatus;
   passCount:     number;

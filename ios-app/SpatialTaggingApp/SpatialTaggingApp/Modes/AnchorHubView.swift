@@ -1,8 +1,8 @@
-// AnchorHubView.swift — Phase 3
+// AnchorHubView.swift - Phase 3
 // Anchor management screen shown between the Anchor Directory and an AR session.
 //
 // Role:
-//   • Shows the QR code for this anchor (with Share option) — no "origin locked" status.
+//   • Shows the QR code for this anchor (with Share option) - no "origin locked" status.
 //   • Lists tags with training status badges (green = trained, orange = untrained).
 //   • "Enter AR Session" button → presents QRScanGateView (mandatory QR scan).
 //   • Once the session is ready (QR locked), calls onSessionReady(anchor, tags).
@@ -55,7 +55,7 @@ struct AnchorHubView: View {
     @State private var showShapeAlign  = false
     @State private var shapeModelName: String? = nil
     @State private var showRemoveObjectConfirm = false
-    // B2: origin source — mirrors the server; picker PATCHes it.
+    // B2: origin source - mirrors the server; picker PATCHes it.
     @State private var originObject = false
     @State private var originNote: String? = nil
 
@@ -225,7 +225,7 @@ struct AnchorHubView: View {
                     Button {
                         appState.activeAnchor = anchor
                         appState.activeTags   = tags
-                        // Loc-Tag: no QR scan needed — go straight to the AR mode.
+                        // Loc-Tag: no QR scan needed - go straight to the AR mode.
                         onSessionReady(anchor, tags)
                     } label: {
                         HStack {
@@ -263,11 +263,11 @@ struct AnchorHubView: View {
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
-                // ? help button — always visible, shows walkthrough for this anchor type
+                // ? help button - always visible, shows walkthrough for this anchor type
                 Button { showOnboarding = true } label: {
                     Image(systemName: "questionmark.circle")
                 }
-                // QR share button — hidden for Loc-Tag anchors (no QR exists)
+                // QR share button - hidden for Loc-Tag anchors (no QR exists)
                 if anchor.anchorType != .locTag {
                     Button { showQRSheet = true } label: {
                         Image(systemName: "qrcode")
@@ -286,7 +286,7 @@ struct AnchorHubView: View {
             }
         }
         .confirmationDialog("Unseal the world map?", isPresented: $showUnsealConfirm, titleVisibility: .visible) {
-            Button("Unseal — tags stay", role: .destructive) { Task { await unsealMap() } }
+            Button("Unseal - tags stay", role: .destructive) { Task { await unsealMap() } }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Removes the saved map and its origin. Tags stay (they're QR-relative). Operators localize from the QR until an Author scans this chamber again, which seals a new map.")
@@ -496,7 +496,7 @@ struct AnchorHubView: View {
     @ViewBuilder
     private var qrGeneratorSheet: some View {
         // CANONICAL KEY SOURCE: use the key stored in SIB (anchor.encryptionKey)
-        // — this is set once at anchor creation and never changes, so every device
+        // - this is set once at anchor creation and never changes, so every device
         // and every open produces the exact same QR.  Fall back to Keychain only
         // for legacy anchors that pre-date Phase 3 key storage.
         let keyB64 = anchor.encryptionKey
@@ -530,13 +530,13 @@ struct AnchorHubView: View {
             try await client.deleteLocTag(id: tag.id)
             locTags.removeAll { $0.id == tag.id }
         } catch {
-            // Surface the error inline — can't show an alert from here easily so
+            // Surface the error inline - can't show an alert from here easily so
             // we append it to tagLoadError, which already has an error UI.
             tagLoadError = "Delete failed: \(friendlyMessage(for: error))"
         }
     }
 
-    // G1: unseal — the next Author scan (QR gate) seals a fresh map.
+    // G1: unseal - the next Author scan (QR gate) seals a fresh map.
     private func unsealMap() async {
         do {
             try await SIBClient(settings: settings).deleteWorldMap(anchorId: anchor.id)
@@ -546,7 +546,7 @@ struct AnchorHubView: View {
         }
     }
 
-    // ── Object tracking section (B1/B2/B1b) — split out: the hub body was too
+    // ── Object tracking section (B1/B2/B1b) - split out: the hub body was too
     // large for the type-checker.
     @ViewBuilder
     private var objectTrackingSection: some View {
@@ -567,11 +567,11 @@ struct AnchorHubView: View {
                         if let m = objectMeta {
                             Text(scanSummary(m))
                                 .font(.caption).foregroundStyle(.secondary)
-                            // B1b provenance — recognition is camera-specific.
+                            // B1b provenance - recognition is camera-specific.
                             Text(objectProvenance(m))
                                 .font(.caption).foregroundStyle(m.includesThisDevice ? Color.secondary : Color.orange)
                         } else {
-                            Text("Walk around it once — lets the app find this chamber without the QR")
+                            Text("Walk around it once - lets the app find this chamber without the QR")
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                     }
@@ -592,7 +592,7 @@ struct AnchorHubView: View {
                     }
                 }
                 .disabled(isLoadingMerge)
-                // B3: shape model — makes recognition visible (ghost on the metal).
+                // B3: shape model - makes recognition visible (ghost on the metal).
                 Button { showShapePicker = true } label: {
                     HStack(spacing: 8) {
                         Image(systemName: "cube.transparent.fill").foregroundStyle(.indigo)
@@ -627,9 +627,9 @@ struct AnchorHubView: View {
                         _ = try await SIBClient(settings: settings)
                             .setAnchorOriginSource(anchorId: anchor.id, source: v ? "object" : "worldMap")
                         originNote = v
-                            ? (objectMeta == nil ? "Origin: object — scan the chamber above to activate it."
+                            ? (objectMeta == nil ? "Origin: object - scan the chamber above to activate it."
                                : (objectMeta?.objectPoseInQR == nil
-                                  ? "Origin: object — scan the QR once in Author mode with the chamber in view to calibrate."
+                                  ? "Origin: object - scan the QR once in Author mode with the chamber in view to calibrate."
                                   : "Origin: object."))
                             : "Origin: world map."
                     } catch { originNote = friendlyMessage(for: error); originObject = !v }
@@ -639,14 +639,14 @@ struct AnchorHubView: View {
                 Text(n).font(.caption).foregroundStyle(.secondary)
             } else if originObject, let m = objectMeta {
                 Text(m.objectPoseInQR == nil
-                     ? "Not calibrated yet — scan the QR once in Author mode with the chamber in view."
-                     : "Calibrated \(m.calibratedAt?.prefix(10) ?? "") — sessions recognise this chamber by shape.")
+                     ? "Not calibrated yet - scan the QR once in Author mode with the chamber in view."
+                     : "Calibrated \(m.calibratedAt?.prefix(10) ?? "") - sessions recognise this chamber by shape.")
                     .font(.caption).foregroundStyle(m.objectPoseInQR == nil ? Color.orange : Color.secondary)
             }
         } header: {
             Text("Object tracking")
         } footer: {
-            Text("Entirely on-device. The scan is a sparse point cloud stored on your SIB — not a mesh or a photo. The QR stays the key; the world map stays the fallback.")
+            Text("Entirely on-device. The scan is a sparse point cloud stored on your SIB - not a mesh or a photo. The QR stays the key; the world map stays the fallback.")
         }
         .confirmationDialog("Remove the object scan?", isPresented: $showRemoveObjectConfirm, titleVisibility: .visible) {
             Button("Remove", role: .destructive) {
@@ -662,7 +662,7 @@ struct AnchorHubView: View {
     // ── B3 helpers ───────────────────────────────────────────────────────────
     private var shapeModelHint: String {
         guard objectMeta?.shapeModelId != nil else { return "Show the chamber's 3D model as a ghost when it is recognised" }
-        return objectMeta?.shapeModelPose == nil ? "Not aligned yet — align it once on the chamber" : "Aligned"
+        return objectMeta?.shapeModelPose == nil ? "Not aligned yet - align it once on the chamber" : "Aligned"
     }
     private var shapeModelHintColor: Color {
         (objectMeta?.shapeModelId != nil && objectMeta?.shapeModelPose == nil) ? Color.orange : Color.secondary
@@ -682,7 +682,7 @@ struct AnchorHubView: View {
         let merged = (m.mergedFrom ?? []).filter { $0 != m.scannedOn }
         var line = "Scanned on \(on == me ? "this iPhone (\(on))" : on)"
         if !merged.isEmpty { line += " · merged from \(merged.count) more" }
-        if !m.includesThisDevice { line += " — recognition may be slow on this iPhone; add a scan from it." }
+        if !m.includesThisDevice { line += " - recognition may be slow on this iPhone; add a scan from it." }
         return line
     }
 
@@ -703,7 +703,7 @@ struct AnchorHubView: View {
     }
 
     private func loadTags() async {
-        // QR anchors: tags are managed per Inspection Set — only load for Loc-Tag anchors.
+        // QR anchors: tags are managed per Inspection Set - only load for Loc-Tag anchors.
         guard anchor.anchorType == .locTag else { return }
         isLoadingTags = true
         tagLoadError  = nil
@@ -848,7 +848,7 @@ private struct QRKeyFetchView: View {
                 }
                 fetchedKeyB64 = k
             } else {
-                fetchError = "This anchor was created before Phase 3 — no encryption key stored in SIB. Ask the Author to share the QR from Author mode."
+                fetchError = "This anchor was created before Phase 3 - no encryption key stored in SIB. Ask the Author to share the QR from Author mode."
             }
         } catch {
             fetchError = "Could not retrieve anchor: \(error.localizedDescription)"

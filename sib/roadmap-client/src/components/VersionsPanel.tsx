@@ -1,4 +1,4 @@
-// VersionsPanel.tsx — dropdown listing version snapshots with one-click restore.
+// VersionsPanel.tsx - dropdown listing version snapshots with one-click restore.
 
 import { useEffect, useState } from 'react';
 import type { MindmapVersion } from '@spatial/shared';

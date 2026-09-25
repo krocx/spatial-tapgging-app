@@ -1,6 +1,6 @@
 # Archive
 
-Parked material — kept verbatim so it can be reused.
+Parked material - kept verbatim so it can be reused.
 
 | File | What | Parked |
 |---|---|---|

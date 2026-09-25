@@ -1,7 +1,7 @@
-// load-config.ts — optional local config-file loader for on-prem deployments.
+// load-config.ts - optional local config-file loader for on-prem deployments.
 //
 // Reads KEY=VALUE lines from a local .env-style file into process.env,
-// but ONLY if the key is not already set — real environment variables always win.
+// but ONLY if the key is not already set - real environment variables always win.
 //
 // On Render (and any cloud deployment) the file won't exist → this is a no-op.
 // On an air-gapped Windows/Linux server the file lives at:
@@ -34,5 +34,5 @@ if (fs.existsSync(cfg)) {
     if (k && !process.env[k]) process.env[k] = v;
   }
 } else {
-  console.log('[config] No config file found — using environment variables only.');
+  console.log('[config] No config file found - using environment variables only.');
 }

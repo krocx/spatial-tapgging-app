@@ -1,14 +1,14 @@
-// MapList.tsx — the home screen, redesigned (S5c, approved happy-path design).
+// MapList.tsx - the home screen, redesigned (S5c, approved happy-path design).
 //
 // Structure:
-//   HERO     — "What will you build today?" + the two doors: Roadmap (gold)
+//   HERO     - "What will you build today?" + the two doors: Roadmap (gold)
 //              and Procedure (teal). Clicking a door reveals its name field.
-//   GALLERY  — maps as cards with kind badge, counts and updated time.
-//   ⋯ MENU   — Import JSON / From image / Unlock draft, tucked away.
-//   IDENTITY — corner chip (display name + API key when required) instead of
+//   GALLERY  - maps as cards with kind badge, counts and updated time.
+//   ⋯ MENU   - Import JSON / From image / Unlock draft, tucked away.
+//   IDENTITY - corner chip (display name + API key when required) instead of
 //              a form as the opening act.
 //
-// All previous functionality is preserved — only the arrangement changed.
+// All previous functionality is preserved - only the arrangement changed.
 
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../state/store.js';
@@ -139,7 +139,7 @@ export function MapList(): JSX.Element {
           <div className="door-icon"><Icon name="procedure" size={34} strokeWidth={1.6} /></div>
           <h2>Procedure</h2>
           <p className="door-tag">Author the work</p>
-          <p className="door-desc">Draw steps with next / on-failure / requires — compile straight into an AR work-instruction guide.</p>
+          <p className="door-desc">Draw steps with next / on-failure / requires - compile straight into an AR work-instruction guide.</p>
           <p className="door-path">draw the steps → check &amp; preview → send to the floor</p>
           {door === 'procedure' && (
             <form className="door-create" onClick={e => e.stopPropagation()}
@@ -151,7 +151,7 @@ export function MapList(): JSX.Element {
           )}
         </div>
 
-        {/* Third door — photo → map. The extraction runs on the SIB server
+        {/* Third door - photo → map. The extraction runs on the SIB server
             (vision endpoint configured there, never on this device); when the
             server has none, say so here instead of a two-minute timeout. */}
         {(() => {
@@ -164,7 +164,7 @@ export function MapList(): JSX.Element {
               <div className="door-icon"><Icon name="photo" size={34} strokeWidth={1.6} /></div>
               <h2>From a photo</h2>
               <p className="door-tag">Start from what's on the wall</p>
-              <p className="door-desc">Snap a whiteboard, sticky wall or paper WI — SIB reads it into an editable roadmap or procedure.</p>
+              <p className="door-desc">Snap a whiteboard, sticky wall or paper WI - SIB reads it into an editable roadmap or procedure.</p>
               {probing && <p className="door-path">checking server…</p>}
               {ready && (
                 <p className="door-path">
@@ -172,7 +172,7 @@ export function MapList(): JSX.Element {
                 </p>
               )}
               {!ready && !probing && (
-                <p className="door-note">Not set up on this server — an admin sets <code>SIB_VISION_URL</code> (see INTERNAL-SERVER-DEPLOY.md).</p>
+                <p className="door-note">Not set up on this server - an admin sets <code>SIB_VISION_URL</code> (see INTERNAL-SERVER-DEPLOY.md).</p>
               )}
             </div>
           );
@@ -186,7 +186,7 @@ export function MapList(): JSX.Element {
       <section className="home-gallery">
         {maps.length > 0 && <h3 className="gallery-title">Your maps</h3>}
         {maps.length === 0 && (
-          <p className="menu-note">No maps yet — pick a door above and give it a name. Your work will appear here.</p>
+          <p className="menu-note">No maps yet - pick a door above and give it a name. Your work will appear here.</p>
         )}
         <div className="gallery-grid">
           {maps.map(m => (
@@ -197,7 +197,7 @@ export function MapList(): JSX.Element {
                     {m.kind === 'procedure' ? <><Icon name="procedure" size={13} /> Procedure</> : <><Icon name="map" size={13} /> Roadmap</>}
                   </span>
                   {m.published === false && (
-                    <span className="draft-badge" title="Draft — visible only to draft-key holders">Draft <Icon name="lock" size={11} /></span>
+                    <span className="draft-badge" title="Draft - visible only to draft-key holders">Draft <Icon name="lock" size={11} /></span>
                   )}
                 </div>
                 <span className="map-title">{m.name}</span>

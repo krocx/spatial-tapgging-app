@@ -1,14 +1,14 @@
 /**
- * Feature Catalogue — pure core.
+ * Feature Catalogue - pure core.
  *
- * Parses the canonical catalogue source (docs/catalog/*.md — YAML frontmatter
+ * Parses the canonical catalogue source (docs/catalog/*.md - YAML frontmatter
  * + short prose bodies) and the roadmap glossary into the JSON graph served at
  * GET /catalog/data. No I/O in this file: routes read the files, this module
  * turns text into data. That keeps every rule unit-testable without a server.
  *
  * Deliberately dependency-free: the frontmatter contract (docs/catalog/README.md)
- * is a small, fixed subset of YAML — scalars, inline arrays, and `|` block
- * literals — so a full YAML parser would be surface area without benefit.
+ * is a small, fixed subset of YAML - scalars, inline arrays, and `|` block
+ * literals - so a full YAML parser would be surface area without benefit.
  */
 
 export interface CatalogFeature {
@@ -23,11 +23,11 @@ export interface CatalogFeature {
   wireframe?: string;
   /** User-facing journey (mermaid). */
   flow?: string;
-  /** System architecture (mermaid) — real routes, modules and stores. */
+  /** System architecture (mermaid) - real routes, modules and stores. */
   arch?: string;
   /**
-   * Endpoints this feature exposes/consumes — one line each, authored as an
-   * `api: |` block: "METHOD /path — purpose (callers · auth tier)".
+   * Endpoints this feature exposes/consumes - one line each, authored as an
+   * `api: |` block: "METHOD /path - purpose (callers · auth tier)".
    * HTTP lines are validated against the real Express routes by the drift
    * checker; omitted entirely for UX-only features (no filler).
    */
@@ -35,10 +35,10 @@ export interface CatalogFeature {
   /**
    * IP-sensitivity marker. 'restricted' features are redacted from
    * /catalog/data (and excluded from Ask SIB retrieval) for callers without
-   * the secondary SIB_IP_KEY — see redactFeature() and canViewRestricted().
+   * the secondary SIB_IP_KEY - see redactFeature() and canViewRestricted().
    */
   sensitivity?: 'restricted';
-  /** Serialization flag set by redactFeature() — tells the UI to render the
+  /** Serialization flag set by redactFeature() - tells the UI to render the
    *  lock stub + unlock affordance. Never present on unredacted features. */
   locked?: boolean;
   body: string;
@@ -69,7 +69,7 @@ export interface CatalogData {
   generatedAt: string;
   areas: CatalogArea[];
   features: CatalogFeature[];
-  /** Derived from `depends` — edge from prerequisite to dependant. */
+  /** Derived from `depends` - edge from prerequisite to dependant. */
   edges: { from: string; to: string }[];
   trails: CatalogTrail[];
   glossary: GlossaryTerm[];
@@ -136,7 +136,7 @@ export function parseTrails(src: string): CatalogTrail[] {
 // ── Glossary ─────────────────────────────────────────────────────────────────
 
 /**
- * roadmap-glossary.md → term list. Terms are `- **Name** … — definition` bullets
+ * roadmap-glossary.md → term list. Terms are `- **Name** … - definition` bullets
  * grouped under `## Section` headings; acronyms live in the final table.
  */
 export function parseGlossary(src: string): { terms: GlossaryTerm[]; acronyms: GlossaryAcronym[] } {
@@ -149,7 +149,7 @@ export function parseGlossary(src: string): { terms: GlossaryTerm[]; acronyms: G
     const t = line.match(/^-\s+\*\*([^*]+)\*\*\s*(.*)$/);
     if (t) {
       // Strip status markers/emphasis from the leading part of the definition.
-      const definition = t[2].replace(/^[✅🔄▢\s]*(\*[^*]+\*)?\s*[—–-]\s*/u, '').trim();
+      const definition = t[2].replace(/^[✅🔄▢\s]*(\*[^*]+\*)?\s*[-–-]\s*/u, '').trim();
       terms.push({ term: t[1].trim(), definition, section });
       continue;
     }
@@ -183,7 +183,7 @@ export function resolveTerm(
 
 /**
  * The redacted view of a restricted feature for callers without the IP key.
- * The node keeps its place in the graph (id, name, area, status, depends —
+ * The node keeps its place in the graph (id, name, area, status, depends -
  * the map stays honest) but every substantive field is stripped: body, flows,
  * architecture, API surface, spec pointer, glossary terms.
  */
@@ -196,7 +196,7 @@ export function redactFeature(f: CatalogFeature): CatalogFeature {
     spec: 'restricted',
     sensitivity: 'restricted',
     locked: true,
-    body: 'Restricted — this feature’s details require the secondary IP key. '
+    body: 'Restricted - this feature’s details require the secondary IP key. '
         + 'Enter it below, or ask the platform owner for access.',
   };
 }
@@ -216,13 +216,13 @@ export function slugifyHeading(text: string): string {
 }
 
 /**
- * Extract one section of a markdown document by heading anchor — the heading
+ * Extract one section of a markdown document by heading anchor - the heading
  * line whose slug matches, through to (not including) the next heading of the
  * same or higher level. Fenced code blocks are skipped so `# comments` inside
  * them can't match. Returns null when no heading matches, so callers can fall
  * back to the whole document rather than serving nothing.
  *
- * Powers `spec: ../README.md#3d-model-library` — features without a dedicated
+ * Powers `spec: ../README.md#3d-model-library` - features without a dedicated
  * deep-dive doc link to just their section of the README instead of all of it.
  */
 export function extractSection(markdown: string, anchor: string): string | null {
@@ -256,7 +256,7 @@ export class CatalogParseError extends Error {
 
 /**
  * Build the full catalogue graph from raw file contents.
- * Throws CatalogParseError on structural problems — a broken catalogue should
+ * Throws CatalogParseError on structural problems - a broken catalogue should
  * fail loudly at the endpoint, not render half a graph.
  */
 export function buildCatalog(
@@ -309,7 +309,7 @@ export function buildCatalog(
     }
   }
 
-  // Referential integrity — same rules as the drift checker.
+  // Referential integrity - same rules as the drift checker.
   const ids = new Set(features.map(f => f.id));
   const dupes = features.map(f => f.id).filter((id, i, a) => a.indexOf(id) !== i);
   if (dupes.length) throw new CatalogParseError(dupes[0], 'duplicate feature id');

@@ -1,16 +1,16 @@
 /**
- * Ask SIB — pure core.
+ * Ask SIB - pure core.
  *
  * Docs-grounded Q&A over the Feature Catalogue. Two tiers:
- *   1. RETRIEVAL (always available): keyword scoring over features + glossary —
+ *   1. RETRIEVAL (always available): keyword scoring over features + glossary -
  *      the functions in this file. No model, no network, works on every deploy.
  *   2. GENERATION (when configured): the route feeds buildAskContext() to an
  *      OpenAI-compatible /v1/chat/completions endpoint. That protocol is the
- *      contract — llama.cpp's llama-server and Ollama both speak it, so the
+ *      contract - llama.cpp's llama-server and Ollama both speak it, so the
  *      runtime is an env-var decision (ASK_LLM_URL), never a code change.
  *
  * Grounding doctrine: answers come from docs/catalog + the glossary ONLY.
- * No site data (sessions, findings, locks) flows through here — that keeps
+ * No site data (sessions, findings, locks) flows through here - that keeps
  * /ask safely public, like /catalog itself.
  */
 
@@ -88,10 +88,10 @@ export function retrieve(cat: CatalogData, question: string, topN = 5): AskRetri
   }));
 
   // Glossary: terms named by the top features, plus terms literally asked
-  // about. Word-start matching only — a substring test let "log" match
+  // about. Word-start matching only - a substring test let "log" match
   // "Ontology", which is worse than no definition at all.
   // Ranked: a term the QUESTION names outranks one merely related via a top
-  // feature — otherwise glossary-file order decides and "Anchor" beats "LOTO"
+  // feature - otherwise glossary-file order decides and "Anchor" beats "LOTO"
   // on a LOTO question. Top-feature terms get a boost so the #1 source's
   // vocabulary wins over the #5 source's.
   const wordStart = (name: string, t: string) =>
@@ -120,7 +120,7 @@ export function retrieve(cat: CatalogData, question: string, topN = 5): AskRetri
   return { sources, glossary };
 }
 
-/** Context block for the generation tier — bounded, citable, nothing else. */
+/** Context block for the generation tier - bounded, citable, nothing else. */
 export function buildAskContext(cat: CatalogData, retrieval: AskRetrieval, budget = 7000): string {
   const parts: string[] = [];
   for (const s of retrieval.sources) {

@@ -8,15 +8,15 @@ depends: []
 terms: [CAD Import & Conversion, GLB / USDZ]
 spec: ../README.md#3d-model-library
 api: |
-  GET /models?anchorId= — anchor kit + all general models (app, portal · API key)
-  GET /models/:id — metadata incl. usdzStatus (app, portal · API key)
-  GET /models/:id/file.usdz — USDZ binary, preferred on device (app · API key)
-  GET /models/:id/file.glb — GLB binary fallback (app, portal · API key)
-  POST /models — upload GLB/USDZ/OBJ/FBX/STEP (portal · API key)
-  PUT /models/:id/file.usdz — browser converter write-back (portal · API key)
-  PATCH /models/:id — rename / default scale / category (portal · API key)
-  POST /models/:id/kit — assign to / remove from an anchor kit (portal · API key)
-  DELETE /models/:id — remove model + files (portal · admin key)
+  GET /models?anchorId= - anchor kit + all general models (app, portal · API key)
+  GET /models/:id - metadata incl. usdzStatus (app, portal · API key)
+  GET /models/:id/file.usdz - USDZ binary, preferred on device (app · API key)
+  GET /models/:id/file.glb - GLB binary fallback (app, portal · API key)
+  POST /models - upload GLB/USDZ/OBJ/FBX/STEP (portal · API key)
+  PUT /models/:id/file.usdz - browser converter write-back (portal · API key)
+  PATCH /models/:id - rename / default scale / category (portal · API key)
+  POST /models/:id/kit - assign to / remove from an anchor kit (portal · API key)
+  DELETE /models/:id - remove model + files (portal · admin key)
 wireframe: portal
 arch: |
   flowchart LR
@@ -44,4 +44,4 @@ convert via headless Blender where present, and GLB→USDZ runs in the browser
 (Three.js r169 USDZExporter, vendored locally with CDN fallback) so the server
 needs no native toolchain. Models are assigned
 per-anchor as kits or marked general, and an author-set real-world default scale
-pre-fills every picker — used by guide ghosts and iLOTO point slots alike.
+pre-fills every picker - used by guide ghosts and iLOTO point slots alike.

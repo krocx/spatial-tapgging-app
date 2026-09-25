@@ -8,16 +8,16 @@ depends: []
 terms: [SIB]
 spec: SERVER-REFERENCE.md
 api: |
-  GET /stats — aggregate pulse: anchors, sessions, findings, locks (browser · API key)
-  GET /config — server online + version badge (browser · public, version requires key)
+  GET /stats - aggregate pulse: anchors, sessions, findings, locks (browser · API key)
+  GET /config - server online + version badge (browser · public, version requires key)
 arch: |
   flowchart LR
     GET["GET / in app.ts"] --> HTML["sib/portal/home.html - static, no build step"]
     HTML --> CFG["fetch /config - status dot + platformVersion"]
     HTML --> CARDS["Cards: /portal, /roadmap, /wireframe, /catalog, Ask SIB, Admin (portal#admin)"]
 ---
-GET / is a landing page with a live site pulse — anchors, sessions this week,
+GET / is a landing page with a live site pulse - anchors, sessions this week,
 open Gemba findings and active LOTO locks (red when any are held), from the
-aggregate-only /stats endpoint (key-gated on internet-facing deployments) — plus cards for the Web Portal, the Roadmap & Procedure
+aggregate-only /stats endpoint (key-gated on internet-facing deployments) - plus cards for the Web Portal, the Roadmap & Procedure
 Designer, and the interactive App Wireframe at /wireframe, plus a live server status
 dot and the platform version. The front door for anyone handed a server URL.

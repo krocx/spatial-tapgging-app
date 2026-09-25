@@ -1,5 +1,5 @@
-// export.ts — client-side exports: SVG (vector), PNG (raster), JSON (schema).
-// Pure DOM/canvas — no dependency on React or the store.
+// export.ts - client-side exports: SVG (vector), PNG (raster), JSON (schema).
+// Pure DOM/canvas - no dependency on React or the store.
 
 import type { Mindmap } from '@spatial/shared';
 import { NODE_COLORS, NODE_FILL_COLORS } from './colors.js';

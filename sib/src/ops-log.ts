@@ -1,14 +1,14 @@
-// ops-log.ts — append-only record of admin & destructive actions.
+// ops-log.ts - append-only record of admin & destructive actions.
 //
 // The Render-logs-style trail for "who did what to the data": every request
 // that passes through the admin gate (DELETEs, /admin/*, quiz admin) is
 // recorded with its outcome, plus explicit events from the backup route.
-// Identity is the request IP until SSO lands — honest about its limits, but
+// Identity is the request IP until SSO lands - honest about its limits, but
 // "a DELETE hit /guides/x from 10.1.2.3 at 14:02 and was ALLOWED" already
 // answers most incident questions.
 //
 // Bounded: the store self-prunes to the newest MAX_EVENTS so it can never
-// grow into a disk problem — it is an ops aid, not the compliance log
+// grow into a disk problem - it is an ops aid, not the compliance log
 // (iLOTO's append-only event store remains untouchable and unpruned).
 
 import { v4 as uuidv4 } from 'uuid';

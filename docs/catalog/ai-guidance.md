@@ -8,7 +8,7 @@ depends: [live-telemetry, stall-detection, adapter-architecture]
 terms: [Adapter, AI Dynamic Instructions]
 spec: ../README.md#ar-work-instructions-ar-oms
 api: |
-  GET /guide-sessions/live/:id/hints — consume-once contextual hint queue (app · API key)
+  GET /guide-sessions/live/:id/hints - consume-once contextual hint queue (app · API key)
 arch: |
   sequenceDiagram
     participant M as guide-session.sse.ts
@@ -24,8 +24,8 @@ arch: |
 ---
 An adapter watches the live session stream and decides when to help; hints are
 delivered through a consume-once queue and surface in AR as a glanceable ✨ assist
-chip — auto-expanding into the full card only on a stall (the operator is stuck),
+chip - auto-expanding into the full card only on a stall (the operator is stuck),
 with recovery-step and replay-voice actions, a session hint tray, and a per-step
 cooldown. Hints auto-dismiss when their step completes.
-Today's adapter is rule-based (retries, stalls); the interface is the point — a
+Today's adapter is rule-based (retries, stalls); the interface is the point - a
 local model drops in without touching the client.

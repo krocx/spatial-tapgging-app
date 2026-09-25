@@ -1,28 +1,28 @@
-// mindmap.ts — Roadmap Mind-Mapper schema (SIB-hosted, /roadmap)
+// mindmap.ts - Roadmap Mind-Mapper schema (SIB-hosted, /roadmap)
 //
 // Shared between the SIB server (routes/ws/model) and the roadmap-client.
 // Follows the SIB layer ontology: node types map 1:1 onto SIB layers so a
 // mind-map can later be projected into anchors/tags/perception entities.
 
-// Type-only import — erased at compile time, so this does not create a runtime
+// Type-only import - erased at compile time, so this does not create a runtime
 // cycle with index.ts (which re-exports this module).
 import type { ImportedGuide, GuideStepNode } from './index.js';
 
 // --- Node ontology (SIB layers) ---
 
 export type MindmapNodeType =
-  | 'tag'         // blue    — spatial layer (anchors/tags)
-  | 'perception'  // purple  — perception layer (models, comparators)
-  | 'semantic'    // green   — semantic layer (meaning, ontology)
-  | 'reasoning'   // orange  — reasoning / orchestration layer
-  | 'generic';    // grey    — free-form
+  | 'tag'         // blue    - spatial layer (anchors/tags)
+  | 'perception'  // purple  - perception layer (models, comparators)
+  | 'semantic'    // green   - semantic layer (meaning, ontology)
+  | 'reasoning'   // orange  - reasoning / orchestration layer
+  | 'generic';    // grey    - free-form
 
 export type MindmapEdgeType = 'directed' | 'undirected';
 
 /**
  * Procedure semantics carried by an edge on a `kind: 'procedure'` map.
  *
- * Absent on roadmap maps and on legacy edges — an edge with no role is a plain
+ * Absent on roadmap maps and on legacy edges - an edge with no role is a plain
  * roadmap connection and is ignored by the procedure compiler. Deliberately
  * separate from MindmapEdgeType: that field controls arrow rendering, this one
  * controls what the edge *means* when compiled into a guide.
@@ -34,15 +34,15 @@ export type MindmapEdgeType = 'directed' | 'undirected';
 export type MindmapEdgeRole = 'next' | 'failure' | 'requires';
 
 /**
- * Map kind. Absent means 'roadmap' — every map created before the Procedure
+ * Map kind. Absent means 'roadmap' - every map created before the Procedure
  * Designer keeps working untouched.
  */
 export type MindmapKind = 'roadmap' | 'procedure';
 
-/** Roadmap execution status — rendered as a badge on the node. */
+/** Roadmap execution status - rendered as a badge on the node. */
 export type MindmapNodeStatus = 'planned' | 'in-progress' | 'done' | 'blocked';
 
-/** Review verdict — independent of execution status. */
+/** Review verdict - independent of execution status. */
 export type MindmapNodeReview = 'approved' | 'rejected' | 'needs-validation';
 
 /** Node outline shape. Default: 'rounded'. */
@@ -51,7 +51,7 @@ export type MindmapNodeShape =
   | 'circle' | 'parallelogram' | 'cylinder';
 
 /**
- * Edge anchor port — a side of the node the user explicitly pinned an edge
+ * Edge anchor port - a side of the node the user explicitly pinned an edge
  * end to. Absent = auto: the endpoint slides along the node outline toward
  * the peer (pre-ports behaviour, and still the default for handle-drawn
  * connections).
@@ -72,11 +72,11 @@ export interface MindmapNode {
   text: string;
   type: MindmapNodeType;
   metadata: Record<string, unknown>;
-  /** Last-write-wins clock — epoch ms of the last mutation. */
+  /** Last-write-wins clock - epoch ms of the last mutation. */
   updatedAt: number;
-  /** Roadmap status badge (optional — plain mind-map nodes have none). */
+  /** Roadmap status badge (optional - plain mind-map nodes have none). */
   status?: MindmapNodeStatus;
-  /** Milestone marker — rendered as a gold diamond. */
+  /** Milestone marker - rendered as a gold diamond. */
   milestone?: boolean;
   /** Free-form notes, edited in the inspector panel. */
   notes?: string;
@@ -85,19 +85,19 @@ export interface MindmapNode {
   /**
    * Collapse marker: when true, descendants reachable via *directed* edges
    * are hidden (fixpoint rule: a node hides only when ALL its directed
-   * parents are collapsed or hidden — alternate visible paths keep it shown).
+   * parents are collapsed or hidden - alternate visible paths keep it shown).
    */
   collapsed?: boolean;
   /** Icon name from the curated set (client validates; server caps length). */
   icon?: string;
   /** Outline shape (default 'rounded'). */
   shape?: MindmapNodeShape;
-  /** Hyperlink — http(s) only, opened via the ↗ affordance. */
+  /** Hyperlink - http(s) only, opened via the ↗ affordance. */
   link?: string;
   /**
    * Discussion thread. Server-side merge is append-safe: node:update events
    * union comments by id, and comment:add/comment:delete events mutate the
-   * thread directly — concurrent commenters never overwrite each other.
+   * thread directly - concurrent commenters never overwrite each other.
    */
   comments?: MindmapComment[];
 }
@@ -111,7 +111,7 @@ export interface MindmapEdge {
   /** Optional label rendered at the edge midpoint. */
   label?: string;
   /**
-   * Procedure semantics — only meaningful on `kind: 'procedure'` maps.
+   * Procedure semantics - only meaningful on `kind: 'procedure'` maps.
    * Absent on roadmap maps and on all pre-existing edges.
    */
   role?: MindmapEdgeRole;
@@ -123,8 +123,8 @@ export interface MindmapEdge {
 
 /**
  * Swimlane band. orientation 'column' (default): vertical band spanning a
- * world-space x range — e.g. Now / Next / Later. orientation 'row':
- * horizontal band spanning a y range — e.g. Why / What / How; for rows,
+ * world-space x range - e.g. Now / Next / Later. orientation 'row':
+ * horizontal band spanning a y range - e.g. Why / What / How; for rows,
  * `x` is the band's top y and `width` is its height (field reuse keeps the
  * wire format and stored data backward-compatible).
  */
@@ -137,7 +137,7 @@ export interface MindmapLane {
 }
 
 /**
- * Named node grouping — a saved selection usable as a view filter
+ * Named node grouping - a saved selection usable as a view filter
  * ("show only Perception-pipeline nodes"). Groups are map-level state,
  * replaced atomically via the `map:groups` WS event (like lanes).
  */
@@ -147,12 +147,12 @@ export interface MindmapGroup {
   nodeIds: string[];
 }
 
-/** Map-level visual style — shared by all viewers and honored by exports. */
+/** Map-level visual style - shared by all viewers and honored by exports. */
 export interface MindmapSettings {
   /** 'parent': edges take the source node's layer color. Default 'parent'. */
   edgeColor?: 'parent' | 'neutral';
   /**
-   * Default 'curved' (since 2026.4.45 — was 'straight'). 'straight' is now
+   * Default 'curved' (since 2026.4.45 - was 'straight'). 'straight' is now
    * stored explicitly so the choice survives the default flip.
    */
   edgeStyle?: 'straight' | 'curved';
@@ -168,11 +168,11 @@ export interface MindmapSettings {
 
 /** Assembly model bound to a procedure map. */
 export interface MindmapAssembly {
-  /** Model3D id (global library) — a GLB whose named nodes are the parts. */
+  /** Model3D id (global library) - a GLB whose named nodes are the parts. */
   modelId: string;
   /**
-   * 'empty' (default): the operator builds the assembly — parts start hidden
-   * and each step's parts become solid. 'complete': disassembly — everything
+   * 'empty' (default): the operator builds the assembly - parts start hidden
+   * and each step's parts become solid. 'complete': disassembly - everything
    * starts solid and each step's parts are removed (hidden).
    */
   start?: 'empty' | 'complete';
@@ -200,7 +200,7 @@ export interface Mindmap {
   edges: MindmapEdge[];
   /**
    * What this map is for. Absent = 'roadmap' (backward compatibility).
-   * A 'procedure' map compiles into an AR guide — see docs/PROCEDURE-DESIGNER.md.
+   * A 'procedure' map compiles into an AR guide - see docs/PROCEDURE-DESIGNER.md.
    */
   kind?: MindmapKind;
   /**
@@ -209,21 +209,21 @@ export interface Mindmap {
    */
   anchorId?: string;
   /**
-   * Guide round-trip bookkeeping — SERVER-OWNED, never sent by clients.
+   * Guide round-trip bookkeeping - SERVER-OWNED, never sent by clients.
    * Set when a map is generated from a guide ("Edit in Designer") and
    * refreshed on every successful procedure export. `syncedAt` older than
    * the guide's updatedAt means the guide changed elsewhere since this map
-   * last agreed with it — the UI warns before a re-sync overwrites that.
+   * last agreed with it - the UI warns before a re-sync overwrites that.
    */
   guideSync?: { guideId: string; syncedAt: number };
-  /** Swimlanes (optional — absent on plain mind-maps). */
+  /** Swimlanes (optional - absent on plain mind-maps). */
   lanes?: MindmapLane[];
   /** Named node groups (optional). */
   groups?: MindmapGroup[];
   /** Visual style (optional). */
   settings?: MindmapSettings;
   /**
-   * Publication state — decorated onto responses by the server from its
+   * Publication state - decorated onto responses by the server from its
    * access store; ignored when sent by clients. Absent = published
    * (backward compatibility with pre-publish maps).
    */
@@ -305,18 +305,18 @@ export type MindmapWsEventType =
   | 'map:lanes'     // full lanes array replace (rename/add/remove/resize)
   | 'map:groups'    // full groups array replace (create/rename/remove/membership)
   | 'map:settings'  // visual style replace (edge color/curve mode)
-  | 'comment:add'    // { nodeId, comment } — appended server-side (never lost to LWW)
+  | 'comment:add'    // { nodeId, comment } - appended server-side (never lost to LWW)
   | 'comment:delete' // { nodeId, commentId }
   | 'error';
 
 export interface MindmapWsEvent<T = unknown> {
   type: MindmapWsEventType;
   mapId: string;
-  /** Originating client session id — server fills this in on broadcast. */
+  /** Originating client session id - server fills this in on broadcast. */
   clientId?: string;
   /** Display name for cursors / presence. */
   clientName?: string;
-  /** Event emission time (epoch ms) — used for last-write-wins. */
+  /** Event emission time (epoch ms) - used for last-write-wins. */
   ts: number;
   payload: T;
 }
@@ -364,7 +364,7 @@ export interface ProcedureIssue {
   code:    string;
   /** Human-readable, shown verbatim in the pre-flight panel. */
   message: string;
-  /** Node this concerns, when applicable — the UI selects it on click. */
+  /** Node this concerns, when applicable - the UI selects it on click. */
   nodeId?: string;
 }
 
@@ -375,7 +375,7 @@ export interface ProcedureIssue {
 export interface ProcedureCompileResult {
   ok:      boolean;
   issues:  ProcedureIssue[];
-  /** Census shown in the pre-flight strip — mirrors the Guide Library graph header. */
+  /** Census shown in the pre-flight strip - mirrors the Guide Library graph header. */
   census:  {
     steps:        number;
     next:         number;
@@ -398,7 +398,7 @@ export interface ProcedureExportRequest {
   createdBy: string;
   /** Target an existing guide (re-sync). Omit to create a new draft guide. */
   guideId?:  string;
-  /** Required to proceed when the target guide is published — see §8 of the spec. */
+  /** Required to proceed when the target guide is published - see §8 of the spec. */
   confirmUnpublish?: boolean;
 }
 
