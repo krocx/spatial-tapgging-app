@@ -58,6 +58,7 @@
         ] },
       { id: 'catalog', label: 'Catalogue', href: '/catalog', color: '#c4b5fd', key: 'c', hint: 'Every feature, documented',
         children: [
+          { id: 'learn', label: 'Learn', href: '/learn' },
           { id: 'ask', label: 'Ask SIB', href: '/catalog#ask' },
         ] },
       { id: 'wireframe', label: 'Wireframe', href: '/wireframe', color: '#fb7185', key: 'w', hint: 'The app, flow by flow', children: [] },
@@ -72,6 +73,7 @@
     if (p.startsWith('/platform/long')) return ['sib', 'platform', 'long'];
     if (p.startsWith('/platform')) return h.startsWith('assess') ? ['sib', 'platform', 'assess'] : ['sib', 'platform'];
     if (p.startsWith('/roadmap')) return ['sib', 'roadmap'];
+    if (p.startsWith('/learn')) return ['sib', 'catalog', 'learn'];
     if (p.startsWith('/catalog')) return h.startsWith('ask') ? ['sib', 'catalog', 'ask'] : ['sib', 'catalog'];
     if (p.startsWith('/wireframe')) return ['sib', 'wireframe'];
     if (p.startsWith('/portal')) {

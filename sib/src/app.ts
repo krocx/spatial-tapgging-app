@@ -30,6 +30,7 @@ import modelRouter from './routes/models.js';
 import mindmapRouter from './routes/mindmap.routes.js';
 import lotoRouter, { lotoPointStore, lotoEventStore } from './routes/loto.js';
 import catalogRouter from './routes/catalog.js';
+import learnRouter from './routes/learn.js';
 import adminRouter from './routes/admin.js';
 import logsRouter from './routes/logs.js';
 import { captureServerConsole, pruneLogs, listLogDevices } from './logging/device-logs.js';
@@ -324,6 +325,8 @@ document.getElementById('f').addEventListener('submit', async function(ev){
   // GET /catalog/data     → JSON graph of docs/catalog/ (also the AI-grounding feed)
   // GET /catalog/doc/:id  → deep-dive spec markdown for a feature
   app.use('/catalog', catalogRouter);
+  // GET /learn — the five-minute reading orders over the same catalogue.
+  app.use('/learn', learnRouter);
 
   // --- Ask SIB (no auth — docs-grounded assistant; grounding is the catalogue
   // ONLY, so nothing sensitive can leak; rate-limited in the router) ---

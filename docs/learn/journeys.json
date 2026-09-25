@@ -1,0 +1,449 @@
+{
+  "$comment": "Learn journeys — /learn. Six five-minute reading orders, each answering one question. A stop is one screen: one feature from the catalogue (its diagram is rendered live), a title that states the idea in one line, at most three sentences, an optional 'try it now'. The catalogue stays the source of truth: every stop links to its feature card, and npm run catalog:check fails if a feature id here does not exist. Proprietary & Confidential · Applied Materials.",
+  "journeys": [
+    {
+      "id": "anchoring",
+      "area": "tags",
+      "name": "How the app knows where it is",
+      "question": "A tag appears on the exact bolt every time. What makes that true?",
+      "minutes": 5,
+      "stops": [
+        {
+          "feature": "qr-anchoring",
+          "title": "A printed code is a coordinate system",
+          "text": "Print the chamber's QR at its exact size and stick it on the asset. Scanning it locks a six-degrees-of-freedom frame to the asset, gravity-normalised, so the angle you scan from never shifts a tag. Everything else — tags, steps, lockout points — hangs from that frame.",
+          "try": "Portal → Chambers → open one → Print QR. The print page embeds the true physical size."
+        },
+        {
+          "feature": "sealed-worldmap",
+          "title": "The author's map is the origin; the code is the key",
+          "text": "The first author scan seals the chamber's world map with the QR's pose recorded inside it. Every later session relocalizes into that map and places content from the author's pose, not from a fresh QR estimate. The live QR is only compared against the map — if it disagrees by more than a few centimetres, the app says so instead of trusting it."
+        },
+        {
+          "feature": "anchor-lab",
+          "title": "The origin lives inside the map and settles before anything appears",
+          "text": "The origin is an ARKit anchor planted in the sealed map, so it keeps improving after relocalization and content follows it. Tags wait behind a convergence gate — still for 1.5 s, or eight seconds and then marked approximate — and small drifts re-base the whole scene. Anchor Lab turns 'it looks a bit off' into millimetres: testers mark where each tag really is, and the portal charts the error per device, origin source and run.",
+          "try": "Home → Anchor Lab → a rig → Start run. Tap a tag, aim the orange ring at the real feature, tap again."
+        },
+        {
+          "feature": "object-anchoring",
+          "title": "A chamber can also be found by its shape",
+          "text": "An author scans the equipment into an ARKit reference object on the iPad. A first QR scan that also sees the object records where the object sits in the QR frame; from then on the object itself can be the origin, with the map as fallback. This is how movable equipment stays anchored when the code and the map are not enough."
+        },
+        {
+          "feature": "arworldmap-memory",
+          "title": "Some spaces need no code at all",
+          "text": "Gemba walks use the device's saved memory of a space: it recognises a previously mapped area and restores findings in their true positions without any marker. That is the right trade for audit rounds, where preparation would kill the habit. Chambers keep the code, because a fab has many identical rooms and the map alone cannot tell them apart."
+        },
+        {
+          "feature": "photo-relocalization",
+          "title": "When the device is lost, show where the author stood",
+          "text": "Relocalization needs to see something it has seen before. When it struggles, the app shows the author's original viewpoint as a ghost — stand roughly here, look roughly there — and offers 'I'm here' rather than making the person guess. Guides, Gemba and the Lab all use the same idea."
+        }
+      ],
+      "quiz": [
+        {
+          "q": "After an author seals a chamber, what does the QR code do in later sessions?",
+          "options": [
+            "It is the origin — tags are placed from the live code",
+            "It is the key and a drift check — the map is the origin",
+            "Nothing; the code is only for printing"
+          ],
+          "answer": 1
+        },
+        {
+          "q": "Why do tags wait before appearing after relocalization?",
+          "options": [
+            "The server is still sending them",
+            "The origin anchor is still settling; placing early would freeze a coarse fit",
+            "To show the loading animation"
+          ],
+          "answer": 1
+        },
+        {
+          "q": "Which surface localizes without any printed code?",
+          "options": [
+            "AR Work Instructions",
+            "Gemba walk findings",
+            "iLOTO panels"
+          ],
+          "answer": 1
+        }
+      ]
+    },
+    {
+      "id": "procedure",
+      "area": "guides",
+      "name": "How a procedure gets onto the machine",
+      "question": "From a flowchart or a spreadsheet to steps floating on the chamber — what happens in between?",
+      "minutes": 5,
+      "stops": [
+        {
+          "feature": "procedure-maps",
+          "title": "Draw the procedure as a flowchart",
+          "text": "On the Designer canvas a procedure map is nodes and role-typed edges: Next, On failure, Requires. The server derives step numbers from the graph, validates it, and one click sends it to the Guide Library as a draft. Editing the map later re-syncs the steps and can never touch where they were placed in AR.",
+          "try": "Roadmap → New map → kind: procedure. Draw three nodes, connect them, Send to Guide Library."
+        },
+        {
+          "feature": "guide-import",
+          "title": "…or import it from Excel, JSON or Cortona3D",
+          "text": "The Guide Library's Import accepts the Excel template (headers in any order), JSON, or a published Cortona3D RapidManual page. A preview — step count, media, branches, warnings — gates the Import button. Whatever the source, one ingestion path applies it, with one invariant: spatial placement is never overwritten."
+        },
+        {
+          "feature": "guide-library",
+          "title": "The library is where a draft becomes a guide",
+          "text": "Every guide, from every source, lands here as a draft with its per-step placement status visible at a glance. Preview walks its real branch graph from a desk; Edit in Designer opens it on the canvas; Share limits it to named technicians.",
+          "try": "Portal → Guide Library → Preview any guide and press Failed on a step to see the branch."
+        },
+        {
+          "feature": "spatial-steps",
+          "title": "Place Steps pins each step in the chamber",
+          "text": "In the app, Place Steps relocalizes into the chamber's sealed map and the author taps the surface where each step happens. The pin and its floating instruction panel live in the map's frame, so an operator on any day, from any angle, is guided to the same spot in order."
+        },
+        {
+          "feature": "ghost-overlays",
+          "title": "A ghost shows how the part should sit",
+          "text": "A translucent 3D model at a step says 'the part goes here, like this'. Authors set scale, opacity, offset and rotation in AR with pan, pinch and turn; up to three models per step; models come from the shared library."
+        },
+        {
+          "feature": "guide-lifecycle",
+          "title": "Operators only ever see published guides",
+          "text": "Draft → placed → published. A guide is invisible on the floor until every step is placed and someone explicitly publishes it, so half-authored content can never leak onto a shift."
+        },
+        {
+          "feature": "guide-copy",
+          "title": "Author once, roll out to every chamber",
+          "text": "Copy a guide to another chamber and it arrives as a draft: the words, models and branches come along; the pins do not, because they belong to one physical chamber. Re-place, publish, done. Copy to all chambers of a configuration does it in one go."
+        }
+      ],
+      "quiz": [
+        {
+          "q": "You edit a procedure map after its steps were placed in AR. What happens to the pins?",
+          "options": [
+            "They are deleted and must be placed again",
+            "They are kept — re-sync never overwrites placement",
+            "They move to the new step numbers automatically"
+          ],
+          "answer": 1
+        },
+        {
+          "q": "When can an operator see a guide on the iPad?",
+          "options": [
+            "As soon as it is imported",
+            "Once every step is placed and it is published",
+            "Once it has a 3D model"
+          ],
+          "answer": 1
+        },
+        {
+          "q": "Copying a guide to another chamber copies…",
+          "options": [
+            "Everything, including pin positions",
+            "Content, models and branches — not the pins",
+            "Only the step titles"
+          ],
+          "answer": 1
+        }
+      ]
+    },
+    {
+      "id": "validation",
+      "area": "guides",
+      "name": "How the app proves a step was done",
+      "question": "The camera decides a torque check passed. Where does that judgement come from, and where does it go?",
+      "minutes": 6,
+      "stops": [
+        {
+          "feature": "check-ontology",
+          "title": "Every check is typed by what it checks",
+          "text": "Presence, language, routing, configuration, part. The type drives how the author is asked to capture it, how it is scored, and how the portal reports it — a label check reads text on device, a presence check compares images."
+        },
+        {
+          "feature": "training-capture",
+          "title": "The author teaches the camera on the floor",
+          "text": "A guided cone sweep (19 zones with depth) or a one-frame quick-shot with the author's stance records what 'correct' looks like — and, for dual-state tags, what 'wrong' looks like too. Frames are encrypted on the device before upload; the server stores no plaintext image and holds the key only for the moment of a comparison."
+        },
+        {
+          "feature": "patch-scoring",
+          "title": "Scoring aligns first, then judges the worst patch",
+          "text": "The live frame is registered against the reference, then compared as a grid of patches and judged on the worst percentile, so a missing washer fails even when the rest of the frame matches. Thresholds are calibrated per tag and every verdict carries a confidence. A region of interest lets the author say which part of the frame matters."
+        },
+        {
+          "feature": "step-validation",
+          "title": "A step can refuse to complete until the camera agrees",
+          "text": "The operator gets cone or ghost-frame guidance; the frame is captured automatically on dwell or alignment. A pass completes the step with its score; a fail offers retry, the recovery branch, or 'Proceed anyway' with an audit trail. After eight seconds 'Capture anyway' is always there, so a moved code can never trap someone.",
+          "try": "In any placed guide, open Place Steps → a step → Train. Then run it as an operator."
+        },
+        {
+          "feature": "evidence-signoff",
+          "title": "The validation frame is the evidence",
+          "text": "Every validated step yields a photo — the frame that was judged — uploaded live, so nothing is lost if the run is interrupted. Authors can require an evidence photo on any step; the sign-off records who, when and how long."
+        },
+        {
+          "feature": "usage-log",
+          "title": "The server keeps the per-step record",
+          "text": "Seven event types stream from the device during a run. The server derives a durable per-step record from them — enter, exit, duration, outcome, overrides — with the shift's production number and chamber, so the log is the system of record, not the phone."
+        },
+        {
+          "feature": "sessions-review",
+          "title": "Review it in the portal, export it to Excel",
+          "text": "Sessions, Gemba walks and guide runs are reviewed in one place with evidence photos in a lightbox, per-session and bulk Excel with the photos embedded.",
+          "try": "Portal → Sessions → AR Guides → open a run → .xlsx."
+        }
+      ],
+      "quiz": [
+        {
+          "q": "Where are reference images decrypted for comparison?",
+          "options": [
+            "In memory on the server, for the moment of comparison, with the key sent by the device",
+            "Never — they are compared encrypted",
+            "In the portal"
+          ],
+          "answer": 0
+        },
+        {
+          "q": "Why does scoring use the worst patch rather than the whole frame?",
+          "options": [
+            "It is faster",
+            "So one missing part fails even if the rest matches",
+            "To favour bright scenes"
+          ],
+          "answer": 1
+        },
+        {
+          "q": "A validation fails and the operator proceeds anyway. What happens?",
+          "options": [
+            "The step is marked passed",
+            "The override is logged with an audit trail and the frame is kept as evidence",
+            "The run is cancelled"
+          ],
+          "answer": 1
+        }
+      ]
+    },
+    {
+      "id": "gemba",
+      "area": "gemba",
+      "name": "How a walk becomes findings",
+      "question": "An auditor taps a wall and a finding exists. How does it get a vocabulary, a severity and a closure?",
+      "minutes": 5,
+      "stops": [
+        {
+          "feature": "kiosk-shift",
+          "title": "The shift starts with one thing: who you are",
+          "text": "A shared iPad asks only for an employee ID; the server resolves the role. Each product door then asks for its own context — Gemba asks for the project ID at walk start — and stamps it on every record."
+        },
+        {
+          "feature": "loc-tags",
+          "title": "Tap any surface to drop a finding",
+          "text": "No code, no preparation. The finding is pinned in the space's memory and logged in Corporate Quality's vocabulary: Focus Area → Question, Strength / OFI / NC, a risk rating, up to six captioned photos with markup. A floating panel follows it and never blocks the camera.",
+          "try": "Home → Gemba Walk → Start walk → tap a surface."
+        },
+        {
+          "feature": "audit-library",
+          "title": "The vocabulary is owned by Corporate Quality",
+          "text": "Focus areas, their pre-defined questions and the pick lists (organisation, BU, area, location) live in the Audit Library, editable in the portal and importable from the existing spreadsheet. Findings record the question code, so editing the library later never rewrites history.",
+          "try": "Portal → Gemba Walks → Audit Library."
+        },
+        {
+          "feature": "defect-taxonomy",
+          "title": "A category and a severity make findings trendable",
+          "text": "Every finding carries a category and a severity chosen at pin time. That is what turns a pile of photos into something a review can sort, filter and count."
+        },
+        {
+          "feature": "gemba-walk-together",
+          "title": "Walk together, walk phone-down, come back later",
+          "text": "Several auditors can walk one space and see each other's findings as they are logged. A Live Activity keeps the next checkpoint on the lock screen so nobody walks staring at a phone, and an interrupted walk resumes at the finding it stopped on."
+        },
+        {
+          "feature": "resolution-tracking",
+          "title": "Findings are tracked to closure",
+          "text": "Resolved, still present, or escalated — with completion photos on resolution. The next walk relocalizes and shows the open findings where they were."
+        },
+        {
+          "feature": "gemba-walk-sessions",
+          "title": "The walk is the unit the reviewer reads",
+          "text": "Who walked where, for which project, and what they found: one row per walk in the portal, findings by category, and an Excel per walk with the photos embedded."
+        }
+      ],
+      "quiz": [
+        {
+          "q": "What does a Gemba finding need from the room before it can be placed?",
+          "options": [
+            "A printed QR on the wall",
+            "Nothing — any surface, the space remembers it",
+            "A chamber configuration"
+          ],
+          "answer": 1
+        },
+        {
+          "q": "The Audit Library's question text is corrected after a walk. The old findings…",
+          "options": [
+            "Change to the new text",
+            "Keep their question code, so history is untouched",
+            "Are deleted"
+          ],
+          "answer": 1
+        },
+        {
+          "q": "Who maintains focus areas and pick lists?",
+          "options": [
+            "Each auditor on the iPad",
+            "Corporate Quality, in the portal",
+            "The server, automatically"
+          ],
+          "answer": 1
+        }
+      ]
+    },
+    {
+      "id": "iloto",
+      "area": "iloto",
+      "name": "How lockout is kept honest",
+      "question": "A lock on a breaker is a life-safety promise. How does the app make the promise checkable?",
+      "minutes": 5,
+      "stops": [
+        {
+          "feature": "iloto-anchors",
+          "title": "One panel, one anchor, one hub",
+          "text": "A LOTO anchor is a control panel with its own QR and world map. The iOS hub shows a live status banner and six tiles, behind a certification gate: no certificate, no apply."
+        },
+        {
+          "feature": "loto-training",
+          "title": "Certification is earned, and expires",
+          "text": "A 16-question OSHA 1910.147 bank graded on the server (12 of 16 to pass), missed questions reviewed against the explanation, a certificate with an expiry. The bank is editable by admins in the portal.",
+          "try": "Home → iLOTO → Training."
+        },
+        {
+          "feature": "loto-ar-flows",
+          "title": "Every AR surface starts at the panel's code",
+          "text": "The scan at the panel is the you-are-here confirmation — there is no way around it. Authors tap breakers and switches to place points; operators run the ordered apply checklist: notify → shut down → lock → photo → try test → serial. Remove has its own, and override sits behind a second explicit decision."
+        },
+        {
+          "feature": "loto-model-slots",
+          "title": "Locks are ghosts until they are real",
+          "text": "Each point holds up to three models — lock, tag, hasp — rendered ghost while the point is clear and solid the moment a lock is applied. The room shows the state; nobody reads a list."
+        },
+        {
+          "feature": "loto-event-log",
+          "title": "The log is append-only, and the server enforces the rules",
+          "text": "Apply, remove and override are events with no edit or delete path. Per-kind checklists, the mandatory try test, serial numbers and the override form are checked on the server; a violation comes back verbatim."
+        },
+        {
+          "feature": "my-loto",
+          "title": "Every lock you hold, everywhere",
+          "text": "My LOTO lists the user's active locks across all panels with one tap into Remove. The hub tile turns red with a count whenever a lock is held, so nobody leaves a shift with a lock on."
+        },
+        {
+          "feature": "portal-iloto",
+          "title": "EHS reviews the board, not the phone",
+          "text": "A live status board per panel — point state, owner, serial — the audit trail with overrides pinned first, and the quiz editor. The evidence lives where the reviewer is."
+        }
+      ],
+      "quiz": [
+        {
+          "q": "Can an author place a LOTO point without scanning the panel's code?",
+          "options": [
+            "Yes, from the map",
+            "No — every iLOTO AR surface starts with the panel scan",
+            "Only engineers can"
+          ],
+          "answer": 1
+        },
+        {
+          "q": "What is the passing score for LOTO certification?",
+          "options": [
+            "8 of 16",
+            "12 of 16",
+            "16 of 16"
+          ],
+          "answer": 1
+        },
+        {
+          "q": "An applied lock's event was recorded with the wrong serial. What can be done?",
+          "options": [
+            "Edit the event in the portal",
+            "Nothing edits or deletes an event — a new event records the correction",
+            "Delete and re-apply"
+          ],
+          "answer": 1
+        }
+      ]
+    },
+    {
+      "id": "platform",
+      "area": "platform",
+      "name": "How the platform runs",
+      "question": "Where does the data live, who can do what, and what happens when something breaks?",
+      "minutes": 5,
+      "stops": [
+        {
+          "feature": "self-hosted",
+          "title": "Everything runs on infrastructure we control",
+          "text": "Render for the pilot, on-prem Windows under NSSM for the site — one build, one data directory, no third party ever sees site data. Deployment is a documented ritual, not a hosted service."
+        },
+        {
+          "feature": "no-cloud-ai",
+          "title": "No intelligent feature depends on a cloud vendor",
+          "text": "On-device Vision, in-house image comparison, a local vision model for whiteboard photos. If a vendor disappears, nothing on the floor stops."
+        },
+        {
+          "feature": "adapter-architecture",
+          "title": "Anything external sits behind an adapter",
+          "text": "Perception models, instruction sources, AI guidance, vision stacks — each is an isolated, swappable module behind a stable interface. The MES connector is the production example: work orders flow in through the same import path as an Excel file."
+        },
+        {
+          "feature": "uam",
+          "title": "Who can do what",
+          "text": "An allow-list of email, employee ID and role — technician, engineer, manager, owner — governs sign-in and every action, in the app and the portal, ahead of corporate SSO. Products are entitlements: a person sees only the doors they are given.",
+          "try": "Portal → Admin → User Access."
+        },
+        {
+          "feature": "backup-restore",
+          "title": "One click, one archive, before every upgrade",
+          "text": "Data (small, weekly) or Full (photos, maps, models — before upgrades), streamed with progress from the portal. Restore is deliberately manual: stop, unpack, start."
+        },
+        {
+          "feature": "device-logs",
+          "title": "The iPad's console comes to the server",
+          "text": "The app ships its log lines to SIB — batched, redacted on both ends, per device and day — so a field problem can be read in the portal's Logs page without taking the device off the floor.",
+          "try": "Settings → QA Mode on the iPad, then Portal → Admin → Device Logs."
+        },
+        {
+          "feature": "versioning",
+          "title": "One version stamp, one changelog, one catalogue",
+          "text": "The platform version is on every page and at /config — the first thing to check when a deployment looks stale. Every change is written into the changelog, and every feature has a catalogue card that this page links to."
+        }
+      ],
+      "quiz": [
+        {
+          "q": "A cloud AI vendor changes its pricing overnight. What stops working on the floor?",
+          "options": [
+            "Validation",
+            "Nothing — no floor feature depends on a cloud AI",
+            "The portal"
+          ],
+          "answer": 1
+        },
+        {
+          "q": "Before upgrading the company server you should…",
+          "options": [
+            "Take a Full backup from the portal",
+            "Delete old sessions",
+            "Nothing, upgrades are automatic"
+          ],
+          "answer": 0
+        },
+        {
+          "q": "Where do you read an iPad's logs from a field problem?",
+          "options": [
+            "Xcode only",
+            "Portal → Admin → Device Logs, once QA Mode is on",
+            "The iPad's Settings app"
+          ],
+          "answer": 1
+        }
+      ]
+    }
+  ]
+}

@@ -23,6 +23,7 @@ const GOVERNED = [
   'sib/portal/brand/brand.css',
   'sib/portal/brand.html',
   'sib/portal/index.html',          // the portal (slice 2)
+  'sib/portal/learn.html',          // /learn (built on the system from day one)
 ];
 const TOKENS = 'sib/portal/brand/tokens.css';
 

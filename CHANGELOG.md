@@ -373,6 +373,15 @@ it, it gets a line.
   with Confirm returning to pin placement and Cancel restoring the model.
 
 ### Added
+- **/learn — six five-minute reads.** How the app knows where it is · how a
+  procedure gets onto the machine · how a step is proved · how a walk becomes
+  findings · how lockout is kept honest · how the platform runs. Each journey
+  is a reading order of catalogue features (`docs/learn/journeys.json`): one
+  idea per screen, three sentences, the feature's own diagram rendered live,
+  "try it now" where it applies, a link to the Catalogue card, and three
+  recognition questions at the end. Progress and scores stay in the browser.
+  Built on the brand system from day one (governed); `catalog:check` fails on
+  a stop that points at a missing feature. Linked from Home and the Compass.
 - **Open Sans on every SIB web surface.** The company's standard web font
   replaces Arial in `--ax-font`, self-hosted: `npm run brand:fonts` vendors
   the latin WOFF2 files (OFL-1.1) into `sib/portal/brand/fonts/`, declared

@@ -141,6 +141,31 @@ for (const a of data.areas) {
   if (!/flowchart/.test(a.flow)) errs.push(`area ${a.id}: flow is not a mermaid flowchart`);
 }
 
+// ── Learn journeys (docs/learn/journeys.json) ────────────────────────────────
+// Every stop must point at a real feature; a journey is 4–8 stops with three
+// quiz questions whose answer index is valid. Text stays a quick read.
+try {
+  const learn = JSON.parse(fs.readFileSync(path.join(docsDir, 'learn', 'journeys.json'), 'utf8'));
+  const ids = new Set(data.features.map(f => f.id));
+  const areaIds = new Set(data.areas.map(a => a.id));
+  const seen = new Set();
+  for (const j of learn.journeys ?? []) {
+    if (seen.has(j.id)) errs.push(`learn ${j.id}: duplicate journey id`); seen.add(j.id);
+    if (!areaIds.has(j.area)) errs.push(`learn ${j.id}: unknown area "${j.area}"`);
+    if (!Array.isArray(j.stops) || j.stops.length < 4 || j.stops.length > 8) errs.push(`learn ${j.id}: ${j.stops?.length ?? 0} stops (4–8)`);
+    for (const s of j.stops ?? []) {
+      if (!ids.has(s.feature)) errs.push(`learn ${j.id}: stop points at unknown feature "${s.feature}"`);
+      if (!s.title || !s.text) errs.push(`learn ${j.id}/${s.feature}: title and text are required`);
+      if ((s.text || '').split(/(?<=[.!?])\s+/).length > 4) errs.push(`learn ${j.id}/${s.feature}: more than four sentences — this is a quick read`);
+    }
+    if (!Array.isArray(j.quiz) || j.quiz.length !== 3) errs.push(`learn ${j.id}: exactly three quiz questions`);
+    for (const q of j.quiz ?? []) {
+      if (!Array.isArray(q.options) || q.options.length < 2 || q.answer < 0 || q.answer >= q.options.length) errs.push(`learn ${j.id}: quiz "${(q.q || '').slice(0, 40)}" has an invalid answer`);
+    }
+  }
+  console.log(`learn: ${(learn.journeys ?? []).length} journeys · ${(learn.journeys ?? []).reduce((n, j) => n + (j.stops?.length ?? 0), 0)} stops`);
+} catch (e) { errs.push(`learn: journeys.json unreadable — ${e.message}`); }
+
 // ── Report ───────────────────────────────────────────────────────────────────
 console.log(`catalogue: ${data.features.length} features · ${data.areas.length} areas · ` +
   `${data.edges.length} edges · ${data.trails.length} trails · ${data.glossary.length} glossary terms`);
