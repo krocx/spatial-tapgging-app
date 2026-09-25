@@ -595,6 +595,7 @@
     .usdz-status.pending    { background:var(--border); color:var(--muted); }
     .usdz-status.converting { background:var(--ax-warn-fill); color:var(--orange); }
     .usdz-status.failed     { background:var(--ax-bad-fill);  color:var(--red); }
+    .usdz-status.not-needed { background:var(--ax-paper-3); color:var(--ax-ink-2); }
     .model-error { font-size:0.78rem; color:var(--red); margin-bottom:8px; line-height:1.4; }
     .model-actions { display:flex; gap:6px; flex-wrap:wrap; }
     .model-actions a { font-size:0.78rem; font-weight:600; padding:4px 10px; border-radius:6px; background:var(--ax-blue-fill); color:var(--accent); text-decoration:none; }
@@ -4329,8 +4330,8 @@ function renderModels(models) {
     // Infer status for legacy records that predate usdzStatus field
     const s = m.usdzStatus ?? (m.hasUSDZ ? 'ready' : m.hasGLB ? 'pending' : null);
     if (!s) return '';
-    const labels = { ready: ' USDZ Ready', pending: '⏳ USDZ Pending', converting: '<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-refresh"/></svg> Converting USDZ…', failed: '<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-close"/></svg> USDZ Failed' };
-    const redo = m.hasGLB && s !== 'converting' ? ` <button class="btn-ghost" style="padding:0 4px;font-size:0.78rem" title="Re-convert USDZ from the GLB" onclick="reconvertUSDZ('${m.id}')">↻</button>` : '';
+    const labels = { 'not-needed': 'GLB on device', ready: ' USDZ Ready', pending: '⏳ USDZ Pending', converting: '<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-refresh"/></svg> Converting USDZ…', failed: '<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-close"/></svg> USDZ Failed' };
+    const redo = m.hasGLB && s !== 'converting' && s !== 'not-needed' ? ` <button class="btn-ghost" style="padding:0 4px;font-size:0.78rem" title="Re-convert USDZ from the GLB" onclick="reconvertUSDZ('${m.id}')">↻</button>` : '';
     return `<span class="usdz-status ${s}" id="usdz-badge-${m.id}">${labels[s] || s}</span>${redo}`;
   };
   // Re-run the browser-side GLB→USDZ conversion for a model that already has a GLB on the server.
@@ -4876,14 +4877,8 @@ async function submitImportCortona(anchorId, createdBy) {
     await loadGuideLibrary();
     const card = document.getElementById('gl-card-' + guide.id);
     if (card) { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); card.classList.add('gl-flash'); setTimeout(() => card.classList.remove('gl-flash'), 3200); toggleGuideSteps(guide.id, anchorId); }
-    // The GLB → USDZ conversion runs in this browser exactly as for an uploaded GLB
-    // (fetch the generated GLB back, convert with Three.js, PUT the USDZ).
-    if (typeof window.convertAndUploadUSDZ === 'function') {
-      fetch(`/models/${encodeURIComponent(model.id)}/file.glb`, { headers: { 'X-API-Key': apiKey() } })
-        .then(r => r.ok ? r.blob() : Promise.reject(new Error(`HTTP ${r.status}`)))
-        .then(blob => window.convertAndUploadUSDZ(model.id, blob))
-        .catch(e => console.warn('[Portal] USDZ conversion for imported assembly deferred:', e.message));
-    }
+    // No USDZ for an imported assembly: the app renders it from the GLB with
+    // per-part control, and a USDZ of a 2M-triangle model is hundreds of MB.
   } catch (e) {
     errEl.textContent = `Import failed: ${e.message}`; errEl.style.display = 'block';
   } finally {
@@ -7226,6 +7221,8 @@ window.convertAndUploadUSDZ = async function(modelId, file) {
     // Export to USDZ.
     const exporter    = new USDZExporter();
     const usdzBuffer  = await exporter.parseAsync(gltf.scene);
+    const mb = usdzBuffer.byteLength / 1048576;
+    if (mb > 500) throw new Error(`the USDZ would be ${Math.round(mb)} MB - too large to store; the app uses the GLB for models this size`);
 
     // Upload to server.
     const headers = { 'Content-Type': 'model/vnd.usdz+zip' };

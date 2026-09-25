@@ -515,7 +515,10 @@ export interface Model3D {
   conversionError?: string;             // populated on failure
   hasGLB:           boolean;            // true once .glb file is available
   hasUSDZ:          boolean;            // true once a .usdz file is available (browser-converted or original USDZ)
-  usdzStatus?:      'pending' | 'ready' | 'failed'; // USDZ conversion state; absent on legacy records → infer from hasUSDZ
+  /** USDZ conversion state; absent on legacy records → infer from hasUSDZ.
+   *  'not-needed': an imported assembly - the app renders it from the GLB
+   *  (per-part control); a USDZ would be 10x the size and is never read. */
+  usdzStatus?:      'pending' | 'ready' | 'failed' | 'not-needed';
   category?:        string;             // 'general' = visible to all anchors; other values are organizational labels
   defaultScale?:    number;             // Author-saved default scale (pre-fills model picker on iOS)
   uploadedBy?:      string;

@@ -7,6 +7,13 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Fixed
+- **No USDZ for imported assemblies.** After a Cortona import the portal
+  converted the 23 MB GLB to USDZ in the browser - un-indexed with flat
+  normals, over 250 MB - and the upload failed with "request entity too
+  large". The app renders assemblies from the GLB (per-part control) and
+  never reads that USDZ, so imported assemblies are now marked *GLB on
+  device* and skip conversion; the converter refuses a USDZ over 500 MB
+  with a plain message, and the upload limit is 600 MB for real cases.
 - **Cortona import uses a quarter of the memory.** The VRML tokenizer built
   one object and one string per number before parsing began - ~2 GB for a
   43 MB, 128-step publication, which killed a 512 MB Render instance. It now

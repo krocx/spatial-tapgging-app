@@ -74,7 +74,9 @@ export function registerGeneratedGlb(opts: { name: string; glb: Buffer; anchorId
     status:           'ready',
     hasGLB:           true,
     hasUSDZ:          false,
-    usdzStatus:       'pending',
+    // Assemblies are rendered from the GLB on device (per-part show/hide/animate);
+    // a USDZ of a 2M-triangle assembly is hundreds of MB and never read.
+    usdzStatus:       opts.category === 'cortona' ? 'not-needed' : 'pending',
     category:         opts.category?.trim() || undefined,
     uploadedBy:       opts.uploadedBy?.trim() || undefined,
     createdAt:        now,
@@ -304,7 +306,7 @@ router.get('/:id/file.usdz', (req: Request, res: Response): void => {
 router.put(
   '/:id/file.usdz',
   (req: Request, res: Response, next) => {
-    express.raw({ type: '*/*', limit: '250mb' })(req, res, next);
+    express.raw({ type: '*/*', limit: '600mb' })(req, res, next);
   },
   (req: Request, res: Response): void => {
     const model = model3DStore.findById(req.params.id);
