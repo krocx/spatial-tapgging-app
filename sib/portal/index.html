@@ -306,11 +306,6 @@
     .nav-tab:hover:not(.active) { color: var(--text); }
 
     /* ── AR OMS Usage Log (K2) - dense grouped table ── */
-    .usage-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
-    .usage-table th { text-align: left; padding: 10px 10px; font-size: 0.8rem; font-weight: 600; text-transform: none;
-      letter-spacing: 0; color: var(--ax-ink-2); border-bottom: 1px solid var(--border); white-space: nowrap; }
-    .usage-table td { padding: 10px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; line-height: 1.4; }
-    .usage-table .num { text-align: right; font-variant-numeric: tabular-nums; }
     .ul-group td { background: var(--ax-blue-fill); padding: 10px 12px; font-size: 0.9rem; }
     .ul-group-meta { float: right; color: var(--muted); font-size: 0.8rem; }
     .ul-row { cursor: pointer; }
@@ -347,15 +342,24 @@
     /* ── iLOTO panel ── */
     #iloto-panel { display: none; padding: 20px 24px 56px; }
     #iloto-panel.visible { display: block; }
-    #admin-panel { display: none; max-width: 860px; margin: 0 auto; }
+    #admin-panel { display: none; max-width: 960px; margin: 0 auto; padding: 20px 24px 56px; }
     #admin-panel.visible { display: block; }
-    .adm-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
-      padding: 16px 18px; margin-bottom: 14px; }
-    .adm-card h3 { margin: 0 0 6px; font-size: 0.92rem; }
-    .adm-lock-banner { display:flex; align-items:center; gap:10px; padding:10px 14px; border-radius:10px;
-      font-size:0.8rem; margin-bottom:14px; }
-    .adm-lock-banner.locked { background:var(--ax-bad-fill); border:1px solid var(--ax-bad-fill); color:var(--ax-red); }
-    .adm-lock-banner.unlocked { background:var(--ax-ok-fill); border:1px solid var(--ax-ok-fill); color:var(--ax-green); }
+    #admin-panel .card, .adm-card { background: var(--ax-paper); border: var(--ax-hair); border-radius: var(--ax-r); padding: 18px 20px; margin-bottom: 14px; }
+    #admin-panel .card h3, .adm-card h3 { margin: 0 0 6px; font: var(--ax-h3); display: flex; align-items: center; gap: 8px; }
+    #admin-panel .card > p, .adm-card > p { font: var(--ax-label-s); color: var(--ax-ink-2); margin: 0 0 12px; max-width: none; }
+    #admin-panel input:not([type=checkbox]), #admin-panel select { font: var(--ax-body); color: var(--ax-ink); background: var(--ax-paper); border: var(--ax-hair); border-radius: var(--ax-r-field); padding: 9px 12px; }
+    #admin-panel input:focus, #admin-panel select:focus { border-color: var(--ax-blue); outline: none; }
+    #uam-table table { width: 100%; border-collapse: collapse; font: var(--ax-body); }
+    #uam-table th { text-align: left; font: 600 13px/18px var(--ax-font); color: var(--ax-ink-2); padding: 10px 10px; border-bottom: var(--ax-hair); }
+    #uam-table td { padding: 10px; border-bottom: var(--ax-hair-2); vertical-align: middle; }
+    #uam-table select { padding: 6px 10px; }
+    .adm-lock-banner { display:flex; align-items:center; gap:10px; padding: 12px 16px; border-radius: var(--ax-r-field); font: var(--ax-body); margin-bottom: 14px; border-left: 3px solid transparent; }
+    .adm-lock-banner.locked { background:var(--ax-bad-fill); border-left-color: var(--ax-red); color:var(--ax-red); }
+    .adm-lock-banner.unlocked { background:var(--ax-ok-fill); border-left-color: var(--ax-green); color:var(--ax-green); }
+    .usage-table, .usage-steps { width: 100%; border-collapse: collapse; font: var(--ax-body); }
+    .usage-table th, .usage-steps th { text-align: left; padding: 10px; font: 600 13px/18px var(--ax-font); color: var(--ax-ink-2); border-bottom: var(--ax-hair); white-space: nowrap; }
+    .usage-table td, .usage-steps td { padding: 10px; border-bottom: var(--ax-hair-2); vertical-align: middle; }
+    .usage-table .num, .usage-steps .num { text-align: right; font-variant-numeric: tabular-nums; }
     .iloto-inner { max-width: 960px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
     .iloto-section-title { font-size: 0.8rem; font-weight: 700; letter-spacing: .04em;
       text-transform: uppercase; color: var(--muted); margin: 6px 0 0; }
@@ -378,27 +382,27 @@
     .iloto-table th { text-align: left; color: var(--muted); font-weight: 600;
       padding: 6px 8px; border-bottom: 1px solid var(--border); font-size: 0.78rem; }
     .iloto-table td { padding: 7px 8px; border-bottom: 1px solid var(--border); }
-    .sessions-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; max-width: 1120px; margin-left: auto; margin-right: auto; }
-    .sessions-list { display: flex; flex-direction: column; gap: 16px; max-width: 1120px; margin: 0 auto; }
+    .sessions-toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; max-width: 1360px; margin-left: auto; margin-right: auto; flex-wrap: wrap; }
+    .sessions-list { display: flex; flex-direction: column; gap: 14px; max-width: 1360px; margin: 0 auto; }
+    .sessions-panel-inner { padding: 20px 24px 56px; }
 
-    /* Anchor groups */
-    .anchor-group { background: var(--surface); border: 1px solid var(--border); border-radius: var(--ax-r); overflow: hidden; }
-    .ag-hdr { display: flex; align-items: center; gap: 10px; padding: 12px 16px; cursor: pointer; user-select: none; }
+    /* One card per chamber; the header is the summary line, the body is a table. */
+    .anchor-group { background: var(--ax-paper); border: var(--ax-hair); border-radius: var(--ax-r); overflow: hidden; }
+    .ag-hdr { display: flex; align-items: center; gap: 10px; padding: 14px 18px; cursor: pointer; user-select: none; }
     .ag-hdr:hover { background: var(--ax-paper-2); }
-    .ag-title { font-size: 0.88rem; font-weight: 700; flex: 1; }
-    .ag-chips { display: flex; gap: 5px; align-items: center; flex-shrink: 0; }
-    .ag-chevron { color: var(--muted); font-size: 0.78rem; transition: transform 0.2s; flex-shrink: 0; }
-    .ag-chevron.open { transform: rotate(180deg); }
-    .ag-body { display: none; border-top: 1px solid var(--border); }
+    .ag-title { font: var(--ax-body-m); flex: 1; }
+    .ag-chips { display: flex; gap: 6px; align-items: center; flex-shrink: 0; }
+    .ag-chevron { color: var(--ax-ink-3); display: inline-flex; transition: transform var(--ax-t) var(--ax-ease); flex-shrink: 0; transform: rotate(90deg); }
+    .ag-chevron.open { transform: rotate(-90deg); }
+    .ag-chevron .ax-icon { width: 16px; height: 16px; }
+    .ag-body { display: none; border-top: var(--ax-hair); }
     .ag-body.open { display: block; }
-    .ag-toolbar { display: flex; justify-content: flex-end; gap: 6px; padding: 7px 12px; background: var(--ax-paper-2); border-bottom: 1px solid var(--border); }
+    .ag-toolbar { display: flex; justify-content: flex-end; gap: 6px; padding: 8px 14px; border-bottom: var(--ax-hair-2); }
 
-    /* Sessions table */
     .sessions-tbl-wrap { overflow-x: auto; }
-    .sessions-tbl { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
-    .sessions-tbl thead tr { border-bottom: 1px solid var(--border); }
-    .sessions-tbl th { text-align: left; padding: 7px 11px; color: var(--muted); font-weight: 600; font-size: 0.78rem; letter-spacing: 0.02em; white-space: nowrap; }
-    .sessions-tbl td { padding: 8px 11px; border-bottom: 1px solid var(--ax-paper-2); vertical-align: middle; }
+    .sessions-tbl { width: 100%; border-collapse: collapse; font: var(--ax-body); }
+    .sessions-tbl th { text-align: left; font: 600 13px/18px var(--ax-font); color: var(--ax-ink-2); padding: 10px 14px; border-bottom: var(--ax-hair); white-space: nowrap; }
+    .sessions-tbl td { padding: 10px 14px; border-bottom: var(--ax-hair-2); vertical-align: middle; }
     .sessions-tbl tbody tr:last-child td { border-bottom: none; }
     .sessions-tbl tbody tr:hover td { background: var(--ax-paper-2); cursor: pointer; }
     .sessions-tbl .detail-tr:hover td { background: transparent; cursor: default; }
@@ -415,16 +419,14 @@
     #evidence-lightbox img { max-width: 100%; max-height: 90vh; border-radius: 10px; }
 
     /* Status badges */
-    .b-pass    { font-size: 0.78rem; font-weight: 700; padding: 2px 8px; border-radius: 100px; background: var(--ax-ok-fill); color: var(--green); }
-    .b-fail    { font-size: 0.78rem; font-weight: 700; padding: 2px 8px; border-radius: 100px; background: var(--ax-bad-fill); color: var(--red); }
-    .b-none    { font-size: 0.78rem; font-weight: 700; padding: 2px 8px; border-radius: 100px; background: var(--border); color: var(--muted); }
-    .b-fixed   { font-size: 0.78rem; font-weight: 700; padding: 1px 6px; border-radius: 100px; background: var(--ax-warn-fill); color: var(--orange); }
-
-    /* ── Gemba Walk completion status badges ── */
-    .b-resolved      { font-size:0.78rem;font-weight:700;padding:2px 8px;border-radius:100px;background:var(--ax-ok-fill);color:var(--green); }
-    .b-still-present { font-size:0.78rem;font-weight:700;padding:2px 8px;border-radius:100px;background:var(--ax-bad-fill);color:var(--red); }
-    .b-escalated     { font-size:0.78rem;font-weight:700;padding:2px 8px;border-radius:100px;background:var(--ax-warn-fill);color:var(--orange); }
-    .b-no-completion { font-size:0.78rem;font-weight:700;padding:2px 8px;border-radius:100px;background:var(--border);color:var(--muted); }
+    /* Status chips - the app's capsule, one meaning per colour */
+    .b-pass, .b-fail, .b-none, .b-fixed, .b-resolved, .b-still-present, .b-escalated, .b-no-completion {
+      display: inline-flex; align-items: center; gap: 5px; font: var(--ax-eyebrow); letter-spacing: var(--ax-tracking-eyebrow); text-transform: uppercase;
+      padding: 3px 9px; border-radius: var(--ax-r-pill); white-space: nowrap; }
+    .b-pass, .b-resolved            { background: var(--ax-ok-fill);   color: var(--ax-green); }
+    .b-fail, .b-still-present       { background: var(--ax-bad-fill);  color: var(--ax-red); }
+    .b-fixed, .b-escalated          { background: var(--ax-warn-fill); color: var(--ax-orange); }
+    .b-none, .b-no-completion       { background: var(--ax-paper-3);   color: var(--ax-ink-2); }
     .stop-badge { display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:var(--orange);color:var(--ax-ink);font-size:0.78rem;font-weight:700;flex-shrink:0; }
     .sev-low  { color:var(--green);font-weight:700;font-size:0.78rem; }
     .sev-med  { color:var(--orange);font-weight:700;font-size:0.78rem; }
@@ -659,11 +661,12 @@
     .gws-sub { display: block; color: var(--muted); font-size: 0.8rem; margin-top: 2px; }
     .gws-acts { display: flex; gap: 6px; justify-content: flex-end; white-space: nowrap; }
     .gws-foot { text-align: center; padding: 12px; color: var(--muted); font-size: 0.85rem; border-top: var(--ax-hair-2); }
+    .filter-bar { max-width: 1360px; gap: 8px; margin-bottom: 14px; }
     .filter-bar input[type="search"], .filter-bar input[type="date"], .filter-bar select {
-      background:var(--surface);border:1px solid var(--border);border-radius:8px;
-      color:var(--text);font-size:0.78rem;padding:6px 9px; }
-    .filter-bar input[type="search"] { flex:1;min-width:150px; }
-    .filter-bar .flt-lbl { font-size:0.78rem;color:var(--muted); }
+      font: var(--ax-body); color: var(--ax-ink); background: var(--ax-paper); border: var(--ax-hair); border-radius: var(--ax-r-field); padding: 9px 12px; }
+    .filter-bar input:focus, .filter-bar select:focus { border-color: var(--ax-blue); outline: none; }
+    .filter-bar input[type="search"] { flex:1; min-width: 220px; }
+    .filter-bar .flt-lbl { font: var(--ax-label-s); color: var(--ax-ink-3); }
     .show-more-row { text-align:center;padding:12px; }
 
     /* ── Tablet layout (floor iPads) ─────────────────────────────────────── */
@@ -820,10 +823,9 @@
 <!-- Phase 4: Sessions panel -->
 <div id="sessions-panel">
   <div class="sessions-toolbar">
-    <span style="font-size:0.78rem;color:var(--muted);flex:1">Grouped by anchor · most recent first</span>
+    <span class="ax-label-s ax-muted" style="flex:1">Grouped by anchor · most recent first</span>
     <button class="btn btn-ghost btn-sm" onclick="exportAllCSV()" title="Export all sessions as CSV"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Export All</button>
     <button class="btn btn-ghost btn-sm" onclick="loadSessions()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-refresh"/></svg> Refresh</button>
-    <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteAllSessions()" title="Delete all inspection sessions"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg> Delete All</button>
   </div>
   <div class="filter-bar">
     <input type="search" id="flt-sess-q" placeholder="Search operator, tag, anchor…" oninput="setFilter('sessions')">
@@ -838,10 +840,9 @@
 <div id="gemba-panel">
  <div id="gemba-walks-sub">
   <div class="sessions-toolbar">
-    <span style="font-size:0.78rem;color:var(--muted);flex:1">Gemba audit walk completions · grouped by anchor</span>
+    <span class="ax-label-s ax-muted" style="flex:1">Gemba audit walk completions · grouped by anchor</span>
     <button class="btn btn-ghost btn-sm" onclick="exportAllGembaCSV()" title="Export all walks as CSV"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Export All</button>
     <button class="btn btn-ghost btn-sm" onclick="loadGembaWalks()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-refresh"/></svg> Refresh</button>
-    <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteAllGembaCompletions()" title="Delete all Gemba Walk completion records"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg> Delete All</button>
   </div>
   <div class="filter-bar">
     <input type="search" id="flt-gemba-q" placeholder="Search finding, category, severity…" oninput="setFilter('gemba')">
@@ -877,7 +878,7 @@
       the library later never rewrites history. -->
  <div id="gemba-library-sub" style="display:none">
   <div class="sessions-toolbar">
-    <span style="font-size:0.78rem;color:var(--muted);flex:1">Focus areas → pre-defined questions · auditors pick, never type · maintained by Corporate Quality</span>
+    <span class="ax-label-s ax-muted" style="flex:1">Focus areas → pre-defined questions · auditors pick, never type · maintained by Corporate Quality</span>
     <button class="btn btn-sm" onclick="openGembaLibImport()" style="font-weight:600" title="Excel / CSV / JSON - same flow as Import Guide"> Import</button>
     <button class="btn btn-ghost btn-sm" onclick="gembaLibDownloadTemplate()" title="Column layout the import expects"> Excel template</button>
     <button class="btn btn-ghost btn-sm" onclick="gembaLibExport()" title="Re-importable JSON of the whole library"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Export</button>
@@ -963,14 +964,13 @@
 <!-- AR Guides Sessions panel -->
 <div id="ar-guides-panel">
   <div class="sessions-toolbar" id="ag-toolbar">
-    <span style="font-size:0.78rem;color:var(--muted);flex:1">AR Guide completions · grouped by anchor → guide</span>
+    <span class="ax-label-s ax-muted" style="flex:1">AR Guide completions · grouped by anchor → guide</span>
     <button class="btn btn-ghost btn-sm" id="usage-log-btn" onclick="toggleUsageLog()" title="Per-step timing per Production #" data-tour="usage-log"> Usage Log</button>
     <button class="btn btn-ghost btn-sm" id="usage-xlsx-btn" style="display:none" onclick="exportUsageXlsx()" title="Excel with evidence photos embedded per row"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> .xlsx</button>
     <button class="btn btn-ghost btn-sm" onclick="openImportGuideModal()" title="Import a guide from JSON or MES"> Import Guide</button>
     <button class="btn btn-ghost btn-sm" id="ag-xlsx-btn" onclick="exportARGuidesXlsx()" title="Excel with evidence photos embedded per step" data-tour="ag-export"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> .xlsx</button>
     <button class="btn btn-ghost btn-sm" id="ag-csv-btn" onclick="exportARGuidesCSV()" title="Export as CSV (no images)"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> .csv</button>
     <button class="btn btn-ghost btn-sm" onclick="loadARGuideSessions()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-refresh"/></svg> Refresh</button>
-    <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="deleteAllARGuideSessions()" title="Delete all AR Guide sessions"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg> Delete All</button>
   </div>
   <div class="filter-bar" id="ag-filters">
     <input type="search" id="flt-ag-q" placeholder="Search operator, guide, anchor…" oninput="setFilter('ag')">
@@ -1008,18 +1008,18 @@
       <strong>Technician</strong> (runs shared guides). With an empty list, login is off - add the first Owner to activate.
     </p>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-      <input id="uam-add-email" data-tour="uam-add" type="email" placeholder="email" style="flex:2;min-width:160px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.78rem">
-      <input id="uam-add-empid" placeholder="employee ID" style="flex:1;min-width:100px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.78rem">
-      <input id="uam-add-name" placeholder="name" style="flex:1;min-width:110px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.78rem">
-      <select id="uam-add-role" style="padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text);font-size:0.78rem">
+      <input id="uam-add-email" data-tour="uam-add" type="email" placeholder="email" style="flex:2;min-width:180px">
+      <input id="uam-add-empid" placeholder="employee ID" style="flex:1;min-width:120px">
+      <input id="uam-add-name" placeholder="name" style="flex:1;min-width:120px">
+      <select id="uam-add-role">
         <option value="technician">Technician</option>
         <option value="engineer">Engineer</option>
         <option value="manager">Manager</option>
         <option value="owner">Owner</option>
       </select>
-      <button class="btn btn-primary btn-sm" onclick="uamAddUser()">+ Add user</button>
+      <button class="ax-btn ax-btn--primary" onclick="uamAddUser()">+ Add user</button>
     </div>
-    <div id="uam-table" style="font-size:0.78rem;color:var(--muted)">Loading…</div>
+    <div id="uam-table" class="ax-label-s ax-muted"><span class="ax-mark is-loading"><i></i><em></em></span> Loading…</div>
   </div>
   <div class="adm-card admin-only" id="adm-backup-card">
     <h3><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-backup"/></svg> Backups</h3>
@@ -1037,6 +1037,12 @@
     <div class="ax-row">
       <span class="ax-label-s ax-muted" style="flex:1">Danger zone - removes every chamber, its tags and pass states. Take a backup first.</span>
       <button class="ax-btn ax-btn--outline ax-btn--sm" style="color:var(--ax-red)" onclick="deleteAllAnchors()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg> Delete all chambers</button>
+    </div>
+    <div class="ax-row" style="margin-top:10px">
+      <span class="ax-label-s ax-muted" style="flex:1">Records - inspection sessions, AR Guide runs, Gemba completions. Each asks for confirmation.</span>
+      <button class="ax-btn ax-btn--outline ax-btn--sm" style="color:var(--ax-red)" onclick="deleteAllSessions()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg> Inspection sessions</button>
+      <button class="ax-btn ax-btn--outline ax-btn--sm" style="color:var(--ax-red)" onclick="deleteAllARGuideSessions()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg> AR Guide runs</button>
+      <button class="ax-btn ax-btn--outline ax-btn--sm" style="color:var(--ax-red)" onclick="deleteAllGembaCompletions()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg> Gemba completions</button>
     </div>
   </div>
   <div class="card" id="adm-configs-card" style="display:none">
@@ -1058,7 +1064,7 @@
   <div class="adm-card admin-only" id="adm-logs-card" style="display:none">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
       <h3 style="margin:0"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-logs"/></svg> Device logs</h3>
-      <span style="font-size:0.78rem;color:var(--muted);flex:1">what each phone (and this server) reported - QA Mode on the device adds debug detail</span>
+      <span class="ax-label-s ax-muted" style="flex:1">what each phone (and this server) reported - QA Mode on the device adds debug detail</span>
       <button class="btn btn-ghost btn-sm" onclick="qaLogsLoad()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-refresh"/></svg> Refresh</button>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
@@ -1081,7 +1087,7 @@
   <div class="adm-card admin-only" id="adm-ops-card">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
       <h3 style="margin:0"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-doc"/></svg> Ops log</h3>
-      <span style="font-size:0.78rem;color:var(--muted);flex:1">every admin &amp; destructive action, newest first - allowed / denied / gate-off, with IP</span>
+      <span class="ax-label-s ax-muted" style="flex:1">every admin &amp; destructive action, newest first - allowed / denied / gate-off, with IP</span>
       <button class="btn btn-ghost btn-sm" onclick="loadOpsLog()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-refresh"/></svg> Refresh</button>
     </div>
     <div id="ops-log" style="max-height:420px;overflow-y:auto;font-family:var(--ax-mono);font-size:0.78rem;line-height:1.7;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--muted)">Loading…</div>
@@ -1187,7 +1193,7 @@
 <div id="iloto-panel">
   <div class="iloto-inner">
     <div class="sessions-toolbar" style="margin-bottom:0">
-      <span style="font-size:0.78rem;color:var(--muted);flex:1">
+      <span class="ax-label-s ax-muted" style="flex:1">
         Lockout/Tagout across all control panels · status is derived from the append-only event log
       </span>
       <button class="btn btn-ghost btn-sm" onclick="exportLotoEventsCSV()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Events CSV</button>
@@ -1747,29 +1753,29 @@ async function loadUamUsers() {
       el.innerHTML = '<em>No users yet - UAM login is dormant. Add yourself as Owner to activate it.</em>';
       return;
     }
-    el.innerHTML = `<table style="width:100%;border-collapse:collapse">
-      <tr style="text-align:left;color:var(--muted)">
-        <th style="padding:6px 8px">Email</th><th style="padding:6px 8px">Employee ID</th>
-        <th style="padding:6px 8px">Name</th><th style="padding:6px 8px">Role</th>
-        <th style="padding:6px 8px" title="Product access - none checked = all products">Products</th><th></th></tr>
-      ${j.data.map(u => `<tr style="border-top:1px solid var(--border)">
-        <td style="padding:6px 8px;color:var(--text)">${esc(u.email)}</td>
-        <td style="padding:6px 8px">${esc(u.employeeId)}</td>
-        <td style="padding:6px 8px">${esc(u.name)}</td>
-        <td style="padding:6px 8px">
-          <select onchange="uamSetRole('${u.id}', this.value, '${esc(u.email)}')" style="padding:4px 6px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);font-size:0.78rem">
+    el.innerHTML = `<table>
+      <tr>
+        <th>Email</th><th>Employee ID</th>
+        <th>Name</th><th>Role</th>
+        <th title="Product access - none checked = all products">Products</th><th></th></tr>
+      ${j.data.map(u => `<tr>
+        <td>${esc(u.email)}</td>
+        <td class="ax-id">${esc(u.employeeId)}</td>
+        <td>${esc(u.name)}</td>
+        <td>
+          <select onchange="uamSetRole('${u.id}', this.value, '${esc(u.email)}')">
             ${['technician','engineer','manager','owner'].map(rr =>
               `<option value="${rr}" ${u.role === rr ? 'selected' : ''}>${UAM_ROLE_LABEL[rr]}</option>`).join('')}
           </select></td>
-        <td style="padding:6px 8px;white-space:nowrap">
-          ${UAM_PRODUCTS.map(pr => `<label style="margin-right:8px;font-size:0.78rem;cursor:pointer" title="${pr.title}">
+        <td style="white-space:nowrap">
+          ${UAM_PRODUCTS.map(pr => `<label class="ax-check" style="margin-right:10px" title="${pr.title}">
             <input type="checkbox" ${((u.products && u.products.length) ? u.products.includes(pr.id) : false) ? 'checked' : ''}
                    onchange="uamSetProducts('${u.id}', this.closest('td'), '${esc(u.email)}')" data-product="${pr.id}"> ${pr.label}
           </label>`).join('')}
-          ${(!u.products || !u.products.length) ? '<span style="color:var(--muted);font-size:0.78rem">(all)</span>' : ''}
+          ${(!u.products || !u.products.length) ? '<span class="ax-label-s ax-muted">(all)</span>' : ''}
         </td>
-        <td style="padding:6px 8px;text-align:right">
-          <button class="btn btn-ghost btn-sm" style="color:var(--red)" onclick="uamRemoveUser('${u.id}','${esc(u.email)}')">Remove</button></td>
+        <td style="text-align:right">
+          <button class="ax-btn ax-btn--quiet ax-btn--sm" style="color:var(--ax-red)" onclick="uamRemoveUser('${u.id}','${esc(u.email)}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg> Remove</button></td>
       </tr>`).join('')}
     </table>`;
   } catch (e) {
@@ -6305,7 +6311,7 @@ function buildAnchorGroup(anchorKey, group, tagLabels) {
       <div class="ag-hdr" onclick="toggleAnchorGroup('${safeKey}')">
         <span class="ag-title">${esc(anchorName)}</span>
         <div class="ag-chips">${chipsHtml}</div>
-        <span class="ag-chevron${isOpen ? ' open' : ''}">▼</span>
+        <span class="ag-chevron${isOpen ? ' open' : ''}"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chevron"/></svg></span>
       </div>
       <div class="ag-body${isOpen ? ' open' : ''}" id="agb-${safeKey}">
         <div class="ag-toolbar">
@@ -6614,7 +6620,7 @@ function buildGembaGroup(anchorId, anchorName, locTags) {
       <div class="ag-hdr" onclick="toggleGembaGroup('${safe}','${esc(anchorId)}')">
         <span class="ag-title">${esc(anchorName)}</span>
         <div class="ag-chips">${chipsHtml}</div>
-        <span class="ag-chevron${isOpen ? ' open' : ''}">▼</span>
+        <span class="ag-chevron${isOpen ? ' open' : ''}"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chevron"/></svg></span>
       </div>
       <div class="ag-body${isOpen ? ' open' : ''}" id="ggb-${safe}">
         <div class="ag-toolbar">

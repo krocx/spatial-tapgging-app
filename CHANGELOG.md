@@ -383,7 +383,10 @@ it, it gets a line.
   Library is re-skinned in place - a card per chamber, a row per guide,
   state chips, the six everyday actions (Steps, Graph, Preview, Designer,
   Share, Publish) visible and the rest (XR kit, demo mode, move, copy, copy
-  to all, reset map, delete) in a menu. All three are governed.
+  to all, reset map, delete) in a menu. Sessions, AR Guides and Gemba
+  findings share the same chamber card, table and status chips; Admin's
+  cards, fields, lock banner and user table are on the system; every
+  "Delete all" now lives in Admin's danger zone, not on a list page.
 - **/learn - six five-minute reads.** How the app knows where it is · how a
   procedure gets onto the machine · how a step is proved · how a walk becomes
   findings · how lockout is kept honest · how the platform runs. Each journey
