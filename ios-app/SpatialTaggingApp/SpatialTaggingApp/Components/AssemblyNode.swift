@@ -67,7 +67,7 @@ final class AssemblyNode {
                 // = invisible, so it is installed once and only animated later.
                 m.shaderModifiers = [.fragment: AssemblyNode.rimShader]
                 m.setValue(NSValue(scnVector3: SCNVector3(0.2, 0.85, 1.0)), forKey: "rimColor")
-                m.setValue(NSNumber(value: 0), forKey: "rimIntensity")
+                m.setValue(NSNumber(value: Float(0)), forKey: "rimIntensity")
             }
         }
     }

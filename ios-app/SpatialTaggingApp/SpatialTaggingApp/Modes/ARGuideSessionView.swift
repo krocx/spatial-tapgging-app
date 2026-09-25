@@ -1483,9 +1483,10 @@ struct ARGuideSessionView: View {
             // loadStepImage (called from onAppear) may have finished before placePins()
             // created the panel containers, making its refreshPanelTextures() a no-op.
             // Flush any images already in the cache into the newly-created panels now.
-            for step in sortedSteps where stepImages[step.id] != nil {
-                refreshPanelTextures(stepId: step.id)
-            }
+            // Only the current step's card is rendered - a card texture is
+            // ~6 MB and a long guide has hundreds of steps; the others render
+            // when they become current (refreshPanelTextures on step change).
+            if let first = sortedSteps.first, stepImages[first.id] != nil { refreshPanelTextures(stepId: first.id) }
             // Apply initial panel visibility: show only step 0, hide the rest.
             updatePanelVisibility(currentIndex: 0)
             // Attach 3D ghost model overlay for the first step (if available)
@@ -1766,6 +1767,14 @@ struct ARGuideSessionView: View {
     /// Minimized pill - A1 refresh (512 × 120 pt ↔ 0.30 × 0.07 m).
     /// Same design language as the card: solid dark surface, a state-coloured
     /// badge (number, or ✓ when done), 26 pt title, audio + expand affordances.
+    /// World-space textures are drawn at a fixed pixel size, not the screen's
+    /// 3x scale: a 512-pt pill at 3x is 2.2 MB, and 128 steps of them (plus
+    /// SceneKit's GPU copy) is what got a 128-step guide killed for memory.
+    /// Pills 1x (0.25 MB), cards 2x (they are read up close, one at a time).
+    private static func textureFormat(scale: CGFloat) -> UIGraphicsImageRendererFormat {
+        let f = UIGraphicsImageRendererFormat.default(); f.scale = scale; f.opaque = true; return f
+    }
+
     private func renderPillTexture(step: GuideStep, index: Int) -> UIImage {
         let W: CGFloat = 512
         let H: CGFloat = 120
@@ -1783,7 +1792,7 @@ struct ARGuideSessionView: View {
             : isCurrent  ? UIColor(red: 0.11, green: 0.31, blue: 0.85, alpha: 1)
             : UIColor(red: 0.20, green: 0.26, blue: 0.33, alpha: 1)
 
-        return UIGraphicsImageRenderer(size: size).image { _ in
+        return UIGraphicsImageRenderer(size: size, format: Self.textureFormat(scale: 1)).image { _ in
             let r = CGRect(origin: .zero, size: size)
 
             // Solid dark surface (matches the card), state-coloured edge ring.
@@ -1976,7 +1985,7 @@ struct ARGuideSessionView: View {
             : isCurrent  ? "▶ IN PROGRESS"
             : "○ UPCOMING"
 
-        let img = UIGraphicsImageRenderer(size: size).image { ctx in
+        let img = UIGraphicsImageRenderer(size: size, format: Self.textureFormat(scale: 2)).image { ctx in
             let r = CGRect(origin: .zero, size: size)
 
             // Solid dark surface - opaque, no alpha-sort flicker.
@@ -2253,7 +2262,8 @@ struct ARGuideSessionView: View {
 
     private func makeNumberBadge(number: Int) -> SCNNode {
         let size: CGFloat = 128
-        let renderer = UIGraphicsImageRenderer(size: CGSize(width: size, height: size))
+        let fmt = UIGraphicsImageRendererFormat.default(); fmt.scale = 1
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: size, height: size), format: fmt)
         let img = renderer.image { _ in
             let r = CGRect(origin: .zero, size: CGSize(width: size, height: size))
             UIColor.systemIndigo.withAlphaComponent(0.9).setFill()
@@ -2513,6 +2523,12 @@ struct ARGuideSessionView: View {
             let all = pinVisibility == .all
             panelContainers[step.id]?.isHidden = !(all || (current && pinVisibility.showsPanel))
             pinNodes[step.id]?.isHidden        = !(all || (current && pinVisibility.showsTag))
+            // A card that is not on screen keeps no texture (~6 MB each); it is
+            // re-rendered the moment its step becomes current again.
+            if !current, let card = panelContainers[step.id]?.childNode(withName: "card_\(step.id)", recursively: true),
+               card.isHidden || panelContainers[step.id]?.isHidden == true {
+                card.geometry?.firstMaterial?.diffuse.contents = nil
+            }
         }
         SCNTransaction.commit()
         // A1: the newly-current step's textures must flip to the blue
@@ -3334,10 +3350,24 @@ struct ARGuideSessionView: View {
         let client = SIBClient(settings: settings)
         if let data = try? await client.fetchGuideStepImage(filename: filename),
            let img  = UIImage(data: data) {
-            stepImages[step.id] = img
-            // Refresh floating panel with the newly loaded image
-            refreshPanelTextures(stepId: step.id)
+            // Cache a panel-sized copy (≤ 768 px), never the camera-resolution original.
+            stepImages[step.id] = Self.downsample(img, maxPx: 768)
+            // Refresh floating panel with the newly loaded image - only if this
+            // step is the one on screen; the others render when they arrive.
+            if case .navigating(let i) = phase, i < sortedSteps.count, sortedSteps[i].id == step.id {
+                refreshPanelTextures(stepId: step.id)
+            }
         }
+    }
+
+    private static func downsample(_ image: UIImage, maxPx: CGFloat) -> UIImage {
+        let w = image.size.width * image.scale, h = image.size.height * image.scale
+        let longest = max(w, h)
+        guard longest > maxPx else { return image }
+        let k = maxPx / longest
+        let size = CGSize(width: (w * k).rounded(), height: (h * k).rounded())
+        let fmt = UIGraphicsImageRendererFormat.default(); fmt.scale = 1
+        return UIGraphicsImageRenderer(size: size, format: fmt).image { _ in image.draw(in: CGRect(origin: .zero, size: size)) }
     }
 
     // ── 3D Ghost Model Overlay ────────────────────────────────────────────────

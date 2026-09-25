@@ -7,6 +7,14 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Fixed
+- **Long guides no longer run out of memory on the phone.** Every placed
+  step got a floating panel with textures drawn at the screen's 3x scale -
+  2.2 MB per pill, ~15 MB per card - and a 128-step guide allocated them all
+  up front, twice (CPU and GPU), before the model even loaded. Pills now
+  render at 1x, cards at 2x and only for the step on screen; a card that
+  leaves the screen drops its texture; step reference images are cached at
+  panel size (≤ 768 px), not camera size. Roughly 1.5 GB less for the Bee
+  drone guide. Also silences the "rimIntensity int→float" console spam.
 - **No USDZ for imported assemblies.** After a Cortona import the portal
   converted the 23 MB GLB to USDZ in the browser - un-indexed with flat
   normals, over 250 MB - and the upload failed with "request entity too
