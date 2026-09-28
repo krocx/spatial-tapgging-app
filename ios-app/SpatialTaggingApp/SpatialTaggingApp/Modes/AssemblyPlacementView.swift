@@ -49,11 +49,19 @@ struct AssemblyPlacementView: View {
     /// The model's "which way is up" before yaw: a CAD export that arrives on
     /// its side or upside down is fixed here, once, by the author.
     @State private var upright: UprightOrientation = .asImported
+    /// The point of the model that sits on the tapped surface: bottom-centre
+    /// (default), the model's own origin, or the centre - the portal's
+    /// "origin" default on the model record.
+    @State private var originRule: String = "bottomCentre"
     private var size: simd_float3 { let (lo, hi) = upright.bounds(min: boundsMin, max: boundsMax); return hi - lo }
-    /// Bottom-centre after the upright rotation - what sits on the surface.
+    /// The anchor point after the upright rotation - what sits on the surface.
     private var bottomCentre: simd_float3 {
         let (lo, hi) = upright.bounds(min: boundsMin, max: boundsMax)
-        return simd_float3((lo.x + hi.x) / 2, lo.y, (lo.z + hi.z) / 2)
+        switch originRule {
+        case "modelOrigin": return .zero
+        case "centre":      return (lo + hi) / 2
+        default:            return simd_float3((lo.x + hi.x) / 2, lo.y, (lo.z + hi.z) / 2)
+        }
     }
     @State private var hadWorldMap = false
 
@@ -359,6 +367,14 @@ struct AssemblyPlacementView: View {
         assemblyNode = node
         arManager.sceneView.scene.rootNode.addChildNode(node.root)
 
+        // Model defaults from the portal preview (scale, which way is up, origin).
+        if let rec = try? await client.fetchModel(id: asm.modelId) {
+            if let o = rec.defaultOrigin { originRule = o }
+            if asm.pose == nil {
+                if let u = rec.defaultOrientation.flatMap({ UprightOrientation(rawValue: $0) }) { upright = u }
+                if let ds = rec.defaultScale, ds > 0 { scale = Float(ds) }
+            }
+        }
         // Existing pose → start in "placed" so the author can nudge.
         speed = asm.effectiveAnimationSpeed
         if let p = asm.pose {

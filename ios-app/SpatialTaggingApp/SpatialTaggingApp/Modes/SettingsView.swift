@@ -345,6 +345,22 @@ struct SettingsView: View {
                     Text("Automatic tips while running a guide (taking longer than usual, wrong part, viewpoint). Turning this off hides the tips on this device only; a colleague's coaching messages still show, and observations keep being recorded.")
                 }
 
+                // ── Assembly detail (testing) ──────────────────────────────────
+                Section {
+                    Picker(selection: $settings.assemblyDetail) {
+                        Text("Auto").tag("auto")
+                        Text("Full model").tag("100000000")
+                        Text("2.5 M triangles").tag("2500000")
+                        Text("1.2 M triangles").tag("1200000")
+                        Text("700 k triangles").tag("700000")
+                        Text("350 k triangles").tag("350000")
+                    } label: {
+                        Label("Assembly detail", systemImage: "cube")
+                    }
+                } footer: {
+                    Text("Auto picks the triangle budget from this device's memory (\(GLBLoadOptions.autoBudgetDescription)). A fixed budget is for testing: the server sends the matching reduced copy, or the full model. Takes effect the next time a guide opens.")
+                }
+
                 // ── Diagnostics (QA Mode + log export) ─────────────────────────
                 Section {
                     Toggle(isOn: $settings.lidarMeshEnabled) {

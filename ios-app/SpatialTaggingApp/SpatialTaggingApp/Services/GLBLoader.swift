@@ -79,9 +79,20 @@ struct GLBLoadOptions {
 
     /// Memory is the honest proxy: a world map, the camera and SceneKit share it.
     static func forThisDevice() -> GLBLoadOptions {
+        // Testing override from Settings › Assembly detail ("auto" or a budget).
+        if let forced = UserDefaults.standard.string(forKey: "assembly_detail"), let n = Int(forced), n > 0 {
+            return GLBLoadOptions(triangleBudget: n)
+        }
         let gb = Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824
         let budget = gb >= 12 ? 2_500_000 : gb >= 7.5 ? 1_200_000 : gb >= 5.5 ? 700_000 : 350_000
         return GLBLoadOptions(triangleBudget: budget)
+    }
+
+    /// What "auto" resolves to on this device, for the Settings footer.
+    static var autoBudgetDescription: String {
+        let gb = Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824
+        let budget = gb >= 12 ? 2_500_000 : gb >= 7.5 ? 1_200_000 : gb >= 5.5 ? 700_000 : 350_000
+        return String(format: "%.1f GB reported → %@ triangles", gb, budget >= 1_000_000 ? String(format: "%.1f M", Double(budget) / 1e6) : "\(budget / 1000) k")
     }
 }
 

@@ -1460,6 +1460,16 @@
       <div style="font-size:0.78rem;color:var(--muted);white-space:nowrap">
         H: <span id="preview-height-val" style="color:var(--text)">–</span>
       </div>
+      <label style="font-size:0.78rem;color:var(--muted);white-space:nowrap">Up
+        <select id="preview-orient" class="ax-input" style="font-size:0.78rem;padding:3px 6px;margin-left:4px" onchange="setPreviewOrientation(this.value)" title="Which way is up - Place Assembly starts from this">
+          <option value="asImported">as imported</option><option value="upsideDown">upside down</option>
+          <option value="tiltForward">tilt forward 90°</option><option value="tiltBack">tilt back 90°</option>
+          <option value="rollLeft">roll left 90°</option><option value="rollRight">roll right 90°</option>
+        </select></label>
+      <label style="font-size:0.78rem;color:var(--muted);white-space:nowrap">Origin
+        <select id="preview-origin" class="ax-input" style="font-size:0.78rem;padding:3px 6px;margin-left:4px" onchange="setPreviewOrigin(this.value)" title="The point of the model that sits on the tapped surface (the marker)">
+          <option value="bottomCentre">bottom centre</option><option value="modelOrigin">model origin</option><option value="centre">centre</option>
+        </select></label>
       <button onclick="saveDefaultScale()" style="font-size:0.78rem;font-weight:600;padding:5px 12px;border-radius:7px;background:var(--ax-ok-fill);color:var(--green);border:1px solid var(--ax-ok-fill);cursor:pointer;white-space:nowrap;flex-shrink:0"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-backup"/></svg> Save as default</button>
       <div style="font-size:0.78rem;padding:3px 9px;border-radius:6px;background:var(--ax-blue-fill);color:var(--ax-blue);border:1px solid var(--ax-blue-fill);white-space:nowrap"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-mark"/></svg> = 1.8 m person</div>
       <div style="font-size:0.78rem;color:var(--muted)">Orbit: drag · Zoom: scroll</div>
@@ -4389,8 +4399,14 @@ function renderModels(models) {
     if (m.hasUSDZ) downloadLinks.push(`<a href="/models/${m.id}/file.usdz" target="_blank" download><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> USDZ</a>`);
 
     // Default scale display
-    const scaleInfo = m.defaultScale != null
-      ? `<div style="font-size:0.78rem;color:var(--muted);margin-bottom:6px">Default scale: <span style="color:var(--accent);font-family:var(--ax-mono)">${m.defaultScale.toFixed(3)}×</span></div>` : '';
+    const orientLabel = { asImported: 'as imported', upsideDown: 'upside down', tiltForward: 'tilt forward', tiltBack: 'tilt back', rollLeft: 'roll left', rollRight: 'roll right' };
+    const originLabel = { bottomCentre: 'bottom centre', modelOrigin: 'model origin', centre: 'centre' };
+    const defaults = [];
+    if (m.defaultScale != null) defaults.push(`scale <span style="color:var(--accent);font-family:var(--ax-mono)">${m.defaultScale.toFixed(3)}×</span>`);
+    if (m.defaultOrientation && m.defaultOrientation !== 'asImported') defaults.push(`up: ${orientLabel[m.defaultOrientation] || m.defaultOrientation}`);
+    if (m.defaultOrigin && m.defaultOrigin !== 'bottomCentre') defaults.push(`origin: ${originLabel[m.defaultOrigin] || m.defaultOrigin}`);
+    const scaleInfo = defaults.length
+      ? `<div style="font-size:0.78rem;color:var(--muted);margin-bottom:6px">Defaults: ${defaults.join(' · ')}</div>` : '';
 
     // Category badge + toggle
     const catBadge = m.category === 'general' ? `<span class="category-badge"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-external"/></svg> General</span>` : '';
@@ -4401,6 +4417,11 @@ function renderModels(models) {
     const kitInfo = kitIds.length > 0
       ? `<div style="font-size:0.78rem;color:var(--muted);margin-bottom:6px"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-link"/></svg> ${kitIds.length} anchor${kitIds.length !== 1 ? 's' : ''} in kit</div>` : (m.category === 'general' ? '' : `<div style="font-size:0.78rem;color:var(--muted);margin-bottom:6px">Not assigned to any anchor</div>`);
 
+    // Which guides render this model - the reverse of the guide menu's "3D model".
+    const uses = m.usedBy || [];
+    const usedInfo = uses.length
+      ? `<div style="font-size:0.78rem;color:var(--muted);margin-bottom:6px"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-book"/></svg> Used by ${uses.slice(0, 3).map(u => `<a href="#" onclick="showGuideInLibrary('${u.guideId}','${u.anchorId}');return false" title="${u.as === 'assembly' ? 'the assembly of this guide' : 'a step model in this guide'}">${esc(u.name)}</a>`).join(', ')}${uses.length > 3 ? ` +${uses.length - 3} more` : ''}</div>`
+      : '';
     html += `<div class="model-card" id="model-card-${m.id}">
       <div class="model-card-hdr">
         <div class="model-icon ${cls}">${icon}</div>
@@ -4412,6 +4433,7 @@ function renderModels(models) {
       <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center">${statusBadge(m)}${usdzBadge(m)}${variantsBadge(m)}${catBadge}</div>
       ${m.status === 'failed' && m.conversionError ? `<div class="model-error">${esc(m.conversionError)}</div>` : ''}
       ${scaleInfo}
+      ${usedInfo}
       ${kitInfo}
       <div class="model-actions">
         ${downloadLinks.join('')}
@@ -4515,18 +4537,21 @@ function pollModelStatus(modelId) {
   }, 3000);
 }
 
-/** Save the current preview slider value as the model's defaultScale. */
+/** Save the preview's scale, orientation and origin as the model's defaults
+ *  (Place Assembly starts from them). */
 async function saveDefaultScale() {
   const modelId = window._previewModelId;
   if (!modelId) { toast('No model loaded'); return; }
   const logVal = document.getElementById('preview-scale-slider').value;
   const scale  = Math.pow(10, parseFloat(logVal));
+  const defaultOrientation = document.getElementById('preview-orient').value;
+  const defaultOrigin = document.getElementById('preview-origin').value;
   try {
     await apiFetch(`/models/${encodeURIComponent(modelId)}`, {
       method: 'PATCH',
-      body:   JSON.stringify({ defaultScale: scale }),
+      body:   JSON.stringify({ defaultScale: scale, defaultOrientation, defaultOrigin }),
     });
-    toast(`Default scale saved: ${scale.toFixed(3)}×`);
+    toast(`Defaults saved: ${scale.toFixed(3)}× · up: ${document.getElementById('preview-orient').selectedOptions[0].text} · origin: ${document.getElementById('preview-origin').selectedOptions[0].text}`);
     loadModels();   // refresh cards to show new default
   } catch (e) {
     toast(`Failed to save scale: ${e.message}`, true);
@@ -4877,6 +4902,21 @@ async function downloadGuideXlsxTemplate() {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Guide');
   XLSX.writeFile(wb, 'guide-import-template.xlsx');
+}
+
+/** Guide Library, scrolled to one guide and flashed. */
+async function showGuideInLibrary(guideId, anchorId) {
+  location.hash = '#content/guides';
+  await loadGuideLibrary();
+  const card = document.getElementById('gl-card-' + guideId);
+  if (card) { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); card.classList.add('gl-flash'); setTimeout(() => card.classList.remove('gl-flash'), 3200); if (anchorId) toggleGuideSteps(guideId, anchorId); }
+}
+/** Models page, scrolled to one model and flashed. */
+async function showModelCard(modelId) {
+  location.hash = '#content/models';
+  await loadModels();
+  const card = document.getElementById('model-card-' + modelId);
+  if (card) { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); card.classList.add('gl-flash'); setTimeout(() => card.classList.remove('gl-flash'), 3200); }
 }
 
 let importCortonaFile = null;
@@ -5688,9 +5728,21 @@ function renderGuideLibrary() {
 // Secondary guide actions - reachable, never shouting (the Chambers pattern).
 function openGuideMenu(ev, guideId, anchorId, configId, siblings, ciMode) {
   closeRowMenu();
+  const guide = (guideLibraryData[anchorId]?.guides || []).find(g => g.id === guideId);
+  const modelIds = new Set();
+  if (guide?.assembly?.modelId) modelIds.add(guide.assembly.modelId);
+  for (const st of (guideLibraryData[anchorId]?.steps?.[guideId] || [])) { for (const sl of (st.models || [])) if (sl.modelId) modelIds.add(sl.modelId); if (st.modelId) modelIds.add(st.modelId); }
+  const modelLinks = [...modelIds].map(id => {
+    const md = (typeof modelsData !== 'undefined' ? modelsData : []).find(x => x.id === id);
+    const label = md ? esc(md.name) : 'model ' + id.slice(0, 8) + '…';
+    return `<button onclick="showModelCard('${id}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-cube"/></svg> 3D model: ${label}${guide?.assembly?.modelId === id ? ' (assembly)' : ''}</button>`;
+  }).join('');
   const m = document.createElement('div');
   m.className = 'fleet-menu ax-solid ax-lockin';
   m.innerHTML = `
+    <a href="/anchors/${encodeURIComponent(anchorId)}/qrprint" target="_blank" rel="noopener" onclick="closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-qr"/></svg> Chamber QR code</a>
+    ${modelLinks}
+    <hr>
     <a href="/xr?guide=${guideId}" target="_blank" rel="noopener" onclick="closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-xr"/></svg> Open in XR kit</a>
     <button onclick="toggleGuideCiMode('${guideId}','${anchorId}','${ciMode}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-intelligence"/></svg> ${ciMode === 'demo' ? 'Demo mode off' : 'Demo mode on'}</button>
     <hr>
@@ -7226,6 +7278,52 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 // Module-private renderer state
 let _r = null, _s = null, _cam = null, _ctrl = null, _raf = null;
 let _node = null, _bbox = null, _obs = null;
+let _orient = 'asImported', _origin = 'bottomCentre', _marker = null, _rawModel = null;
+
+// Which way is up: the same six choices as the app's Place Assembly tilt
+// menu, applied to the model before it is re-seated on the floor.
+const _ORIENT_Q = {
+  asImported:  [0, 0, 0, 1],
+  upsideDown:  [1, 0, 0, 0],                                   // 180° about X
+  tiltForward: [Math.SQRT1_2, 0, 0, Math.SQRT1_2],             // +90° about X
+  tiltBack:    [-Math.SQRT1_2, 0, 0, Math.SQRT1_2],
+  rollLeft:    [0, 0, Math.SQRT1_2, Math.SQRT1_2],             // +90° about Z
+  rollRight:   [0, 0, -Math.SQRT1_2, Math.SQRT1_2],
+};
+
+/** Re-seat the (rotated) model on the floor and place the origin marker. */
+function _layoutPreview() {
+  if (!_node || !_rawModel) return;
+  const q = _ORIENT_Q[_orient] || _ORIENT_Q.asImported;
+  _rawModel.quaternion.set(q[0], q[1], q[2], q[3]);
+  _rawModel.position.set(0, 0, 0);
+  _bbox = new THREE.Box3().setFromObject(_rawModel);
+  const c = _bbox.getCenter(new THREE.Vector3());
+  _rawModel.position.set(-c.x, -_bbox.min.y, -c.z);
+  _bbox = new THREE.Box3().setFromObject(_rawModel);
+  // The origin marker: what lands on the tapped surface in AR.
+  const sz = _bbox.getSize(new THREE.Vector3());
+  let p;
+  if (_origin === 'modelOrigin') p = _rawModel.position.clone();
+  else if (_origin === 'centre') p = _bbox.getCenter(new THREE.Vector3());
+  else p = new THREE.Vector3((_bbox.min.x + _bbox.max.x) / 2, _bbox.min.y, (_bbox.min.z + _bbox.max.z) / 2);
+  if (!_marker) {
+    _marker = new THREE.Group();
+    const r = Math.max(0.01, Math.min(sz.x, sz.y, sz.z) * 0.03);
+    const dot = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 12), new THREE.MeshBasicMaterial({ color: 0xff9f0a }));
+    _marker.add(dot);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(r * 3, r * 0.35, 8, 32), new THREE.MeshBasicMaterial({ color: 0xff9f0a }));
+    ring.rotation.x = Math.PI / 2; _marker.add(ring);
+    _node.add(_marker);
+  }
+  _marker.position.copy(p);
+  _marker.scale.setScalar(1 / (_node.scale.x || 1));
+  const $height = document.getElementById('preview-height-val');
+  const sc = _node.scale.x || 1;
+  if ($height) $height.textContent = `${(sz.y * sc).toFixed(3)} m  (${(sz.x * sc).toFixed(3)} × ${(sz.z * sc).toFixed(3)} m)`;
+}
+window.setPreviewOrientation = function(v) { _orient = v; _layoutPreview(); };
+window.setPreviewOrigin      = function(v) { _origin = v; _layoutPreview(); };
 
 // Expose the currently-previewed model ID so the regular-script saveDefaultScale() can read it
 window._previewModelId = null;
@@ -7309,6 +7407,10 @@ window.openModelPreview = async function(modelId, modelName) {
 
   if (!$name) return;
   window._previewModelId = modelId;   // expose for saveDefaultScale()
+  const rec = (typeof modelsData !== 'undefined' ? modelsData : []).find(x => x.id === modelId);
+  _orient = rec?.defaultOrientation || 'asImported'; _origin = rec?.defaultOrigin || 'bottomCentre';
+  document.getElementById('preview-orient').value = _orient;
+  document.getElementById('preview-origin').value = _origin;
   $name.textContent   = modelName;
   $dims.textContent   = '–';
   $height.textContent = '–';
@@ -7336,6 +7438,7 @@ window.onPreviewScaleInput = function(logVal) {
   document.getElementById('preview-scale-val').textContent = scale.toFixed(3) + '×';
   if (_node) {
     _node.scale.setScalar(scale);
+    if (_marker) _marker.scale.setScalar(1 / scale);
     if (_bbox) {
       const sz = _bbox.getSize(new THREE.Vector3());
       const h  = (sz.y * scale).toFixed(3);
@@ -7454,16 +7557,13 @@ function _loadGLB(url) {
     const model = gltf.scene;
     model.traverse(c => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
 
-    // Centre on floor (bottom of bounding box → y = 0)
-    _bbox = new THREE.Box3().setFromObject(model);
-    const c  = _bbox.getCenter(new THREE.Vector3());
+    // A wrapper carries scale; the model inside carries orientation and is
+    // re-seated on the floor (bottom of bounding box → y = 0).
+    _rawModel = model; _marker = null;
+    _node = new THREE.Group(); _node.add(model);
+    _s.add(_node);
+    _layoutPreview();
     const sz = _bbox.getSize(new THREE.Vector3());
-    model.position.x -= c.x;
-    model.position.z -= c.z;
-    model.position.y -= _bbox.min.y;
-
-    _node = model;
-    _s.add(model);
 
     // Auto-fit camera
     const span = Math.max(sz.x, sz.y, sz.z, 1.8);
@@ -7495,8 +7595,11 @@ function _loadGLB(url) {
 function _dispose() {
   if (_raf)  { cancelAnimationFrame(_raf); _raf  = null; }
   if (_obs)  { _obs.disconnect();          _obs  = null; }
+  // Free GPU buffers: a 30 MB assembly's geometry and materials do not go
+  // away with the JS objects.
+  if (_s) _s.traverse(o => { if (o.geometry) o.geometry.dispose(); const mats = Array.isArray(o.material) ? o.material : (o.material ? [o.material] : []); for (const m of mats) m.dispose(); });
   if (_r)    { _r.dispose();               _r    = null; }
-  _s = null; _cam = null; _ctrl = null; _node = null; _bbox = null;
+  _s = null; _cam = null; _ctrl = null; _node = null; _bbox = null; _rawModel = null; _marker = null;
 }
 </script>
 <script src="/portal/brand.js"></script>

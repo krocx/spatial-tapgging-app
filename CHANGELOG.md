@@ -7,6 +7,23 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **Models page shows where a model is used.** Each card lists the guides
+  that render it (assembly or step slot), one click to the guide in the
+  Library. The Guide Library's row menu gained the chamber's QR code and
+  the guide's 3D model(s), one click to the model card.
+- **Model defaults: which way is up, and the origin.** The 3D preview has
+  "Up" (as imported, upside down, tilt forward/back, roll left/right) and
+  "Origin" (bottom centre, model origin, centre) next to the scale; the
+  orange marker shows what will sit on the tapped surface. "Save as
+  default" stores all three on the model, and Place Assembly starts from
+  them for a guide with no pose yet.
+- **Assembly detail override (Settings).** Auto, full model, 2.5 M, 1.2 M,
+  700 k or 350 k triangles, for testing what a device shows; the footer
+  says what Auto resolves to on this device. The server serves the
+  matching variant.
+- **SIB Compass on the brand system.** Tokens for every colour (product
+  hues on the hubs), Open Sans, no glass, no drop shadows, the sprite's
+  close icon; `compass.js` is now a governed file in `brand:check`.
 - **Hose animations play: a flipbook per motion.** Where a step moves a
   hose's control points (the Bee's seal flowing into its groove), the
   importer bakes the tube at 8 frames across the motion and writes them as

@@ -39,6 +39,7 @@ import { spawnSync, spawn } from 'child_process';
 import os            from 'os';
 import type {
   Model3D,
+  Guide,
   ModelFormat,
   ModelStatus,
   UpdateModel3DRequest,
@@ -50,6 +51,7 @@ import { pickVariant, variantPath, deleteVariants, type LadderResult } from '../
 import { enqueueVariants, getImportJob } from '../import/jobs.js';
 import { memoryLimitBytes } from '../memory.js';
 import { requireRole } from '../middleware/auth.js';
+import { guideStore, guideStepStore } from '../guides/store.js';
 
 // ── Storage ───────────────────────────────────────────────────────────────────
 
@@ -516,7 +518,22 @@ router.get('/', (req: Request, res: Response): void => {
   }
 
   models = models.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-  res.json({ data: models, timestamp: new Date().toISOString() });
+  // Which guides render each model: the assembly, or a step's model slot.
+  const usedBy = new Map<string, NonNullable<Model3D['usedBy']>>();
+  const add = (modelId: string, g: Guide, as: 'assembly' | 'step') => {
+    const l = usedBy.get(modelId) ?? [];
+    if (!l.some(u => u.guideId === g.id)) l.push({ guideId: g.id, name: g.name, anchorId: g.anchorId, as });
+    usedBy.set(modelId, l);
+  };
+  const guides = guideStore.findAll();
+  for (const g of guides) if (g.assembly?.modelId) add(g.assembly.modelId, g, 'assembly');
+  const guideById = new Map(guides.map(g => [g.id, g]));
+  for (const st of guideStepStore.findAll()) {
+    const g = guideById.get(st.guideId); if (!g) continue;
+    for (const slot of st.models ?? []) if (slot.modelId && slot.modelId !== g.assembly?.modelId) add(slot.modelId, g, 'step');
+    if (st.modelId && !(st.models?.length) && st.modelId !== g.assembly?.modelId) add(st.modelId, g, 'step');
+  }
+  res.json({ data: models.map(m => ({ ...m, usedBy: usedBy.get(m.id) ?? [] })), timestamp: new Date().toISOString() });
 });
 
 // ── GET /models/:id - single model metadata ───────────────────────────────────
@@ -535,6 +552,16 @@ router.patch('/:id', (req: Request, res: Response): void => {
   const patch: Partial<Model3D> = { updatedAt: new Date().toISOString() };
   if (body.name?.trim())                patch.name         = body.name.trim();
   if (body.defaultScale !== undefined)  patch.defaultScale = body.defaultScale;
+  const ORIENTATIONS = ['asImported', 'upsideDown', 'tiltForward', 'tiltBack', 'rollLeft', 'rollRight'];
+  const ORIGINS = ['bottomCentre', 'modelOrigin', 'centre'];
+  if (body.defaultOrientation !== undefined) {
+    if (!ORIENTATIONS.includes(body.defaultOrientation)) { res.status(400).json({ error: `defaultOrientation must be one of ${ORIENTATIONS.join(', ')}` }); return; }
+    patch.defaultOrientation = body.defaultOrientation;
+  }
+  if (body.defaultOrigin !== undefined) {
+    if (!ORIGINS.includes(body.defaultOrigin)) { res.status(400).json({ error: `defaultOrigin must be one of ${ORIGINS.join(', ')}` }); return; }
+    patch.defaultOrigin = body.defaultOrigin;
+  }
   if ('category' in body)               patch.category     = body.category?.trim() || undefined;
 
   const updated = model3DStore.update(req.params.id, patch);

@@ -26,6 +26,7 @@ const GOVERNED = [
   'sib/portal/learn.html',          // /learn (built on the system from day one)
   'sib/portal/home.html',           // the front door
   'sib/portal/catalog.html',        // the catalogue
+  'sib/portal/compass.js',          // the Compass (every surface)
 ];
 const TOKENS = 'sib/portal/brand/tokens.css';
 

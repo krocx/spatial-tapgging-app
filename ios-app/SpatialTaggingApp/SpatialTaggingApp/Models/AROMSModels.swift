@@ -70,6 +70,9 @@ struct Model3D: Codable, Identifiable, Equatable {
     let category:         String?
     /// Author-saved default scale - pre-fills the model scale slider in EditStepSheet.
     let defaultScale:     Double?
+    /// Portal preview defaults (which way is up, what sits on the surface); Place Assembly starts from them.
+    let defaultOrientation: String?
+    let defaultOrigin:      String?
     let uploadedBy:       String?
     let createdAt:        String
     let updatedAt:        String

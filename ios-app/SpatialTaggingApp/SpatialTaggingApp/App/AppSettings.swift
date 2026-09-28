@@ -114,6 +114,12 @@ final class AppSettings: ObservableObject {
     @Published var contextualHintsEnabled: Bool {
         didSet { UserDefaults.standard.set(contextualHintsEnabled, forKey: "contextual_hints_enabled") }
     }
+    /// Assembly detail override (testing): "auto" picks the triangle budget
+    /// from the device's memory; a number forces that budget (the server
+    /// serves the matching variant, the loader reduces to it otherwise).
+    @Published var assemblyDetail: String {
+        didSet { UserDefaults.standard.set(assemblyDetail, forKey: "assembly_detail") }
+    }
     /// Anchor Lab (2026.4.46): measure anchoring accuracy in Operator mode -
     /// HUD with the origin's lock report and a "mark where it really is"
     /// tool per tag. Tester-only; off by default.
@@ -239,6 +245,7 @@ final class AppSettings: ObservableObject {
         lastChamberAssetId = UserDefaults.standard.string(forKey: "last_chamber_asset")    ?? ""
         testBay            = UserDefaults.standard.string(forKey: "test_bay")             ?? ""
         contextualHintsEnabled = UserDefaults.standard.object(forKey: "contextual_hints_enabled") as? Bool ?? true
+        assemblyDetail     = UserDefaults.standard.string(forKey: "assembly_detail") ?? "auto"
         anchorLabEnabled   = UserDefaults.standard.bool(forKey: "anchor_lab_enabled")
         lidarMeshEnabled   = UserDefaults.standard.object(forKey: "lidar_mesh_enabled") as? Bool ?? false
         lastProduct        = UserDefaults.standard.string(forKey: "last_product")         ?? ""

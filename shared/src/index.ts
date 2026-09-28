@@ -503,6 +503,9 @@ export type ModelStatus = 'uploading' | 'processing' | 'ready' | 'failed';
  *   anchorIds - the anchor kit: list of anchor IDs that have this model assigned;
  *               GET /models?anchorId=xxx returns models where anchorIds.includes(anchorId)
  */
+export type ModelOrientation = 'asImported' | 'upsideDown' | 'tiltForward' | 'tiltBack' | 'rollLeft' | 'rollRight';
+export type ModelOrigin      = 'bottomCentre' | 'modelOrigin' | 'centre';
+
 export interface ModelVariant {
   budget:    number;   // triangles asked for
   triangles: number;   // triangles the variant draws
@@ -536,6 +539,14 @@ export interface Model3D {
   triangles?:       number;
   category?:        string;             // 'general' = visible to all anchors; other values are organizational labels
   defaultScale?:    number;             // Author-saved default scale (pre-fills model picker on iOS)
+  /** Which way is up, set once in the portal preview; Place Assembly starts
+   *  from it (the exporter's axis convention is not always the equipment's). */
+  defaultOrientation?: ModelOrientation;
+  /** The point of the model that goes on the tapped surface. */
+  defaultOrigin?:   ModelOrigin;
+  /** Guides that render this model (the assembly, or a step slot). Computed
+   *  on GET /models, never stored. */
+  usedBy?:          { guideId: string; name: string; anchorId: string; as: 'assembly' | 'step' }[];
   uploadedBy?:      string;
   createdAt:        string;
   updatedAt:        string;
@@ -544,6 +555,8 @@ export interface Model3D {
 export type UpdateModel3DRequest = {
   name?:         string;
   defaultScale?: number;    // persist the scale chosen in the portal 3D preview viewer
+  defaultOrientation?: ModelOrientation;
+  defaultOrigin?:      ModelOrigin;
   category?:     string;    // 'general' | other organizational label
 };
 
