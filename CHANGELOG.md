@@ -18,7 +18,8 @@ it, it gets a line.
   Guide Library") and the current pill is filled in its colour. Every stop
   now has a shortcut, printed on its pill: with the map open, the surface
   letter then a number (`p 3`) opens that stop; `g` then the letter still
-  works anywhere.
+  works anywhere. The map is drawn on a fixed stage and scaled to the
+  window, so the layout is identical on a laptop and a monitor.
 - **Models page shows where a model is used.** Each card lists the guides
   that render it (assembly or step slot), one click to the guide in the
   Library. The Guide Library's row menu gained the chamber's QR code and

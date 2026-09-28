@@ -124,11 +124,13 @@
   .sibc-veil{position:fixed;inset:0;z-index:9500;background:var(--ax-page);display:none;align-items:center;justify-content:center;opacity:0;transition:opacity .18s ease-out}
   .sibc-veil.open{display:flex}
   .sibc-veil.shown{opacity:1}
-  .sibc-map{position:relative;width:min(1180px,96vw);height:min(780px,88vh);color:var(--ax-ink);font-family:var(--ax-font);
+  .sibc-fold{width:calc(1180px * var(--k,1));height:calc(760px * var(--k,1));
     transform-origin:100% 100%;transform:perspective(1400px) rotateX(-14deg) rotateY(6deg) scale(.92);opacity:0;
     transition:transform .42s cubic-bezier(.2,.9,.25,1.15),opacity .25s ease-out}
-  .sibc-veil.shown .sibc-map{transform:none;opacity:1}
-  .sibc-veil.folding .sibc-map{transform:perspective(1400px) rotateX(-14deg) rotateY(6deg) scale(.9);opacity:0;transition-duration:.22s,.16s}
+  .sibc-veil.shown .sibc-fold{transform:none;opacity:1}
+  .sibc-veil.folding .sibc-fold{transform:perspective(1400px) rotateX(-14deg) rotateY(6deg) scale(.9);opacity:0;transition-duration:.22s,.16s}
+  /* The map is drawn on a fixed 1180 x 760 stage and scaled to the window, so the layout is the same everywhere. */
+  .sibc-map{position:relative;width:1180px;height:760px;transform-origin:0 0;transform:scale(var(--k,1));color:var(--ax-ink);font-family:var(--ax-font)}
   .sibc-veil.folding{opacity:0}
   .sibc-title{position:absolute;top:0;left:50%;transform:translateX(-50%);text-align:center;white-space:nowrap;z-index:1}
   .sibc-title .eyebrow{font:var(--ax-eyebrow);letter-spacing:.08em;text-transform:uppercase;color:var(--ax-ink-3)}
@@ -140,6 +142,11 @@
   .sibc-node{position:absolute;transform:translate(-50%,-50%) scale(.85);text-decoration:none;color:var(--ax-ink);text-align:center;opacity:0;
     transition:opacity .25s,transform .35s cubic-bezier(.2,.9,.3,1.3);transition-delay:var(--d,0s)}
   .sibc-map.settled .sibc-node{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  .sibc-node.al-l{transform:translate(0,-50%) scale(.85);text-align:left}
+  .sibc-node.al-r{transform:translate(-100%,-50%) scale(.85);text-align:right}
+  .sibc-map.settled .sibc-node.al-l{transform:translate(0,-50%) scale(1)}
+  .sibc-map.settled .sibc-node.al-r{transform:translate(-100%,-50%) scale(1)}
+  .sibc-node.leaf .pill{transform-origin:center}
   .sibc-map.settled .sibc-node.leaf.away{opacity:.55}
   .sibc-map.settled .sibc-node.leaf.away:hover{opacity:1}
   .sibc-node .youare{display:block;font:var(--ax-eyebrow);letter-spacing:.08em;text-transform:uppercase;color:var(--c,var(--ax-blue));margin-bottom:5px}
@@ -164,9 +171,9 @@
   .sibc-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center;font-size:11.5px;color:var(--ax-ink-2)}
   .sibc-row .chip{color:var(--ax-ink);text-decoration:none;border:var(--ax-hair);background:var(--ax-solid);border-radius:999px;padding:5px 10px;font-weight:600}
   .sibc-row .chip:hover{border-color:var(--ax-ink)}.sibc-row .chip.next{border-color:var(--ax-green);color:var(--ax-green)}
-  .sibc-keys{position:absolute;top:2px;left:34px;font-size:10.5px;color:var(--ax-ink-3);font-family:var(--ax-mono);max-width:38vw}
+  .sibc-keys{font-size:10.5px;color:var(--ax-ink-3);font-family:var(--ax-mono);margin-top:6px}
   .sibc-close{position:absolute;top:-8px;left:0;background:none;border:none;color:var(--ax-ink-2);font-size:20px;cursor:pointer}
-  @media (prefers-reduced-motion: reduce){.sibc-node,.sibc-btn,.sibc-node .pill,.sibc-map,.sibc-veil{transition:none;transform:none}.sibc-btn.live .dot,.sibc-node .live{animation:none}}
+  @media (prefers-reduced-motion: reduce){.sibc-node,.sibc-btn,.sibc-node .pill,.sibc-fold,.sibc-veil{transition:none;transform:none}.sibc-btn.live .dot,.sibc-node .live{animation:none}}
   @media (max-width:640px){.sibc-crumb{display:none}.sibc-node .hint{display:none}.sibc-node.leaf{display:none}}
   `;
 
@@ -202,8 +209,10 @@
 
     veil = document.createElement('div'); veil.className = 'sibc-veil';
     veil.addEventListener('click', e => { if (e.target === veil) close(); });
-    mapEl = document.createElement('div'); mapEl.className = 'sibc-map';
-    veil.appendChild(mapEl); document.body.appendChild(veil);
+    const fold = document.createElement('div'); fold.className = 'sibc-fold';
+    mapEl = document.createElement('div'); mapEl.className = 'sibc-map'; fold.appendChild(mapEl);
+    veil.appendChild(fold); document.body.appendChild(veil);
+    window.addEventListener('resize', () => { if (veil.classList.contains('open')) fitStage(); });
 
     document.addEventListener('keydown', onKey);
     window.addEventListener('hashchange', () => { renderCrumb(); remember(); if (veil.classList.contains('open')) renderMap(); });
@@ -280,54 +289,47 @@
   function renderMap() {
     const path = locate();
     const W = mapEl.clientWidth, H = mapEl.clientHeight;
-    const cx = W / 2, cy = H / 2 - 10;
-    const R = Math.max(150, Math.min(W * 0.20, (H - 260) * 0.36));
+    const cx = W / 2, cy = H / 2 + 8;
+    const R = Math.max(150, Math.min(W * 0.19, (H - 330) * 0.38));
     const pos = { sib: [cx, cy] };
+    const align = {};                                   // id → 'l' | 'r' (pill edge pinned to x) or undefined (centred)
     const hubs = HEX_ORDER.map(id => find(id)).filter(Boolean);
-    const vertex = {};
     hubs.forEach((h, i) => {
       const a = HEX_ANGLES[i] * Math.PI / 180;
-      vertex[h.id] = [cx + R * Math.cos(a), cy + R * Math.sin(a)];
-      pos[h.id] = vertex[h.id];
+      pos[h.id] = [cx + R * Math.cos(a), cy + R * Math.sin(a)];
     });
-    // Stops per corner. Distances scale with the hexagon so a laptop still fits.
-    const rowGap = Math.min(180, Math.max(120, W / 7)), colGap = 54, out = Math.max(120, R * 0.62), side = Math.max(210, R * 1.05);
+    // Provisional stop positions; rows are re-spaced from measured pill widths below.
+    const rowsOf = {};
+    const side = Math.max(200, R * 1.1), colGap = 46, rowH = 42;
     hubs.forEach((h, i) => {
       const kids = h.children || []; if (!kids.length) return;
-      const [vx, vy] = vertex[h.id];
+      const [vx, vy] = pos[h.id];
       const dir = HEX_ORDER[i];
       if (dir === 'portal' || dir === 'admin') {
-        // Row(s) above / below: at most 5 per row, extra rows further out.
-        const per = Math.min(5, kids.length);
-        const rows = Math.ceil(kids.length / per);
+        const per = kids.length > 5 ? Math.ceil(kids.length / 2) : kids.length;
+        rowsOf[h.id] = [];
         kids.forEach((k, j) => {
-          const row = Math.floor(j / per), inRow = row === rows - 1 ? kids.length - row * per : per;
-          const col = j - row * per;
-          const x = vx + (col - (inRow - 1) / 2) * rowGap;
-          const y = dir === 'portal' ? vy - out - row * 70 : vy + out + row * 70;
-          pos[k.id] = [x, y];
+          const row = Math.floor(j / per);
+          (rowsOf[h.id][row] ||= []).push(k.id);
+          pos[k.id] = [vx, dir === 'portal' ? vy - 64 - row * rowH : vy + 86 + row * rowH];
         });
       } else {
-        // Column beside the corner, centred on it, pushed outward.
         const right = dir === 'platform' || dir === 'roadmap';
         kids.forEach((k, j) => {
           pos[k.id] = [vx + (right ? side : -side), vy + (j - (kids.length - 1) / 2) * colGap];
+          align[k.id] = right ? 'l' : 'r';
         });
       }
     });
-    // Keep everything on the map.
-    for (const id in pos) { pos[id][0] = Math.min(W - 90, Math.max(90, pos[id][0])); pos[id][1] = Math.min(H - 130, Math.max(118, pos[id][1])); }
 
-    // Title: where you are, in the same words as every page's breadcrumb.
     const words = path.map((id, i) => i === 0 ? 'SIB Home' : (find(id)?.label || id));
     let html = `<svg id="sibc-edges"></svg><div class="sibc-title"><div class="eyebrow">SIB Compass</div>
-      <div class="where">${words.map((w, i) => (i ? '<i>›</i>' : '') + (i === words.length - 1 ? `<b>${w}</b>` : w)).join('')}</div>
-      <div class="sub">The dot is SIB Home; the six corners are its surfaces; their stops sit outside. Click any place, or type its key.</div></div>`;
+      <div class="where">${words.map((w, i) => (i ? '<i>›</i>' : '') + (i === words.length - 1 ? `<b>${w}</b>` : w)).join('')}</div></div>`;
     html += node(TREE, pos.sib, 'centre', path, 'var(--ax-blue)', true, 'g h');
-    hubs.forEach((h, i) => {
+    hubs.forEach(h => {
       const inHub = path.includes(h.id);
       html += node(h, pos[h.id], 'hub', path, h.color, inHub, `g ${KEY_OF[h.id]}`);
-      (h.children || []).forEach((k, j) => html += node(k, pos[k.id], 'leaf', path, h.color, inHub, `${KEY_OF[h.id]}${j + 1}`));
+      (h.children || []).forEach((k, j) => html += node(k, pos[k.id], 'leaf', path, h.color, inHub, `${KEY_OF[h.id]}${j + 1}`, align[k.id]));
     });
 
     const next = whereNext();
@@ -335,37 +337,50 @@
     html += `<div class="sibc-foot">
       ${next.length ? `<div class="sibc-row">Where next?${next.map(n => `<a class="chip next" href="${n.href}">${n.label}</a>`).join('')}</div>` : ''}
       ${rec.length ? `<div class="sibc-row">Recent${rec.map(r => `<a class="chip" href="${r.href}">${r.label}</a>`).join('')}</div>` : ''}
+      <div class="sibc-keys">Click any place, or type its key: g then a letter opens a surface · a letter then a number opens its stop · esc closes</div>
     </div>
-    <div class="sibc-keys">g then a letter opens a surface · a letter then a number opens its stop · esc closes</div>
     <button class="sibc-close" aria-label="Close"><svg class="ax-icon" style="width:18px;height:18px"><use href="/portal/brand/icons.svg#i-close"/></svg></button>`;
     mapEl.innerHTML = html;
     mapEl.querySelector('.sibc-close').onclick = close;
     mapEl.querySelectorAll('a.sibc-node, a.chip').forEach(a => a.addEventListener('click', () => {
       if (a.getAttribute('href').split('#')[0] === location.pathname) setTimeout(close, 60);
     }));
-    drawEdges(hubs, path);
+
+    // Second pass: space each row from the pills' real widths, centred on the corner.
+    const el = id => mapEl.querySelector(`a.sibc-node[data-id="${CSS.escape(id)}"]`);
+    const GAP = 12;
+    for (const hub in rowsOf) for (const row of rowsOf[hub]) {
+      const widths = row.map(id => el(id).querySelector('.pill').offsetWidth);
+      const total = widths.reduce((a, b) => a + b, 0) + GAP * (row.length - 1);
+      let x = Math.min(W - 24 - total, Math.max(24, pos[hub][0] - total / 2));
+      row.forEach((id, i) => { pos[id][0] = x + widths[i] / 2; el(id).style.left = pos[id][0] + 'px'; x += widths[i] + GAP; });
+    }
+    drawEdges(hubs, path, pos, align, el);
     mapEl.classList.remove('settled');
     requestAnimationFrame(() => requestAnimationFrame(() => mapEl.classList.add('settled')));
   }
 
-  /** Connectors measured against the rendered pills, so every line starts and
-   *  ends ON a pill's border - never through it, never short of it. */
-  function drawEdges(hubs, path) {
+  /** Connectors from layout geometry (offset sizes ignore the map's fold
+   *  transform), so every line starts and ends on a pill's border - never
+   *  through it, never short of it. */
+  function drawEdges(hubs, path, pos, align, el) {
     const svg = mapEl.querySelector('#sibc-edges'); if (!svg) return;
-    const W = mapEl.clientWidth, H = mapEl.clientHeight;
-    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-    const mr = mapEl.getBoundingClientRect();
+    svg.setAttribute('viewBox', `0 0 ${mapEl.clientWidth} ${mapEl.clientHeight}`);
     const box = {};
-    mapEl.querySelectorAll('a.sibc-node').forEach(a => {
-      const r = a.querySelector('.pill').getBoundingClientRect();
-      box[a.dataset.id] = { l: r.left - mr.left, t: r.top - mr.top, r: r.right - mr.left, b: r.bottom - mr.top };
-    });
+    for (const id in pos) {
+      const a = el(id); if (!a) continue;
+      const pill = a.querySelector('.pill');
+      const [x, y] = pos[id];
+      // The anchor is centred on (x, y) (or pinned by one edge); the pill sits inside it.
+      const left = align[id] === 'l' ? x : align[id] === 'r' ? x - a.offsetWidth : x - a.offsetWidth / 2;
+      const top = y - a.offsetHeight / 2;
+      box[id] = { l: left + pill.offsetLeft, t: top + pill.offsetTop, r: left + pill.offsetLeft + pill.offsetWidth, b: top + pill.offsetTop + pill.offsetHeight };
+    }
     const centre = b => [(b.l + b.r) / 2, (b.t + b.b) / 2];
-    // Point where the segment centre(a)→centre(b) leaves box a, padded 4 px.
-    const exit = (a, b) => {
+    const exit = (a, b) => {                              // where centre(a)→centre(b) leaves box a, padded 3 px
       const [ax, ay] = centre(a), [bx, by] = centre(b);
       const dx = bx - ax, dy = by - ay; if (!dx && !dy) return [ax, ay];
-      const hw = (a.r - a.l) / 2 + 4, hh = (a.b - a.t) / 2 + 4;
+      const hw = (a.r - a.l) / 2 + 3, hh = (a.b - a.t) / 2 + 3;
       const t = Math.min(dx ? hw / Math.abs(dx) : Infinity, dy ? hh / Math.abs(dy) : Infinity);
       return [ax + dx * t, ay + dy * t];
     };
@@ -376,9 +391,7 @@
     };
     const onPath = (a, b) => path.includes(a) && path.includes(b);
     let out = '';
-    // The hexagon itself: corner to corner, quiet.
-    for (let i = 0; i < hubs.length; i++) out += seg(hubs[i].id, hubs[(i + 1) % hubs.length].id, 'var(--ax-ink-4)', 1, .6);
-    // Spokes and stops; the path you are on is lit in the surface's colour.
+    for (let i = 0; i < hubs.length; i++) out += seg(hubs[i].id, hubs[(i + 1) % hubs.length].id, 'var(--ax-ink-4)', 1, .5);
     for (const h of hubs) {
       const hp = onPath('sib', h.id);
       if (hp) out += seg('sib', h.id, h.color, 10, .18);
@@ -392,7 +405,7 @@
     svg.innerHTML = out;
   }
 
-  function node(n, [x, y], kind, path, color, inHub, key) {
+  function node(n, [x, y], kind, path, color, inHub, key, al) {
     const here = path[path.length - 1] === n.id;
     const b = badge(n.id);
     const bHtml = b ? `<span class="n" title="${b[1]}">${b[0]}</span>${b[2] ? '<span class="live"></span>' : ''}` : '';
@@ -403,15 +416,20 @@
     const away = kind === 'leaf' && !inHub && !here ? ' away' : '';
     const delay = kind === 'centre' ? 0 : kind === 'hub' ? .08 : .16;
     const label = kind === 'centre' ? 'SIB Home' : n.label;
-    return `<a class="sibc-node ${kind}${here ? ' here' : ''}${away}" data-id="${n.id}" href="${n.href}" style="left:${x}px;top:${y}px;--d:${delay}s;--c:${color || 'var(--ax-blue)'}" title="${n.hint || n.label}">
+    return `<a class="sibc-node ${kind}${here ? ' here' : ''}${away}${al ? ' al-' + al : ''}" data-id="${n.id}" href="${n.href}" style="left:${x}px;top:${y}px;--d:${delay}s;--c:${color || 'var(--ax-blue)'}" title="${n.hint || n.label}">
       ${youare}<span class="pill">${mark}${swatch}${label}${bHtml}<kbd>${key}</kbd></span>${hint}</a>`;
   }
 
   let closing = null;
+  function fitStage() {
+    const k = Math.min(1, (window.innerWidth - 32) / 1180, (window.innerHeight - 32) / 760);
+    veil.style.setProperty('--k', k.toFixed(3));
+  }
   function open() {
     if (closing) { clearTimeout(closing); closing = null; }
     veil.classList.remove('folding');
-    veil.classList.add('open'); renderMap();
+    veil.classList.add('open');
+    fitStage(); renderMap();
     requestAnimationFrame(() => requestAnimationFrame(() => veil.classList.add('shown')));
   }
   function close() {
