@@ -21,10 +21,16 @@ it, it gets a line.
   "Not at the equipment? Place a demo copy here" lets a team in another
   site walk a guide authored elsewhere: aim the ring, tap a surface, and
   the whole authored scene (pins, panels, ghosts, assembly) appears there,
-  turned to face the operator. Nothing is saved back; presence and the
-  drift check stay off; a "Demo" chip stays in the top bar and the session
-  record carries `placement:demo`, shown as "demo" in the portal's usage
-  log.
+  turned to face the operator. Pinch to resize, twist to turn; the "Demo"
+  chip in the top bar opens a menu to move it to a new spot or reset size
+  and turn. Nothing is saved back; presence and the drift check stay off;
+  the session record carries `placement:demo`, shown as "demo" in the
+  portal's usage log. Outside a demo none of this exists: no gestures, no
+  menu, no transform.
+- **AR OMS ghost image off by default.** The author's reference photo no
+  longer covers the camera while the map is matching; after 8 s of
+  searching the card suggests it, and "Show ghost image" toggles it on and
+  off with the opacity slider. Same rule as the Anchor Lab.
 - **One surface rule across the app.** Anchor Lab, tag placement, guide
   step placement, iLOTO points and AR OMS all read the surface under a tap
   with the same query (`ARSurfaceHit.swift`): nearest surface wins. The

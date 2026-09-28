@@ -103,10 +103,13 @@ struct ARGuideSessionView: View {
     // ghosts, assembly) is shown there, rigidly moved and turned to face
     // them. Nothing is written back: positions, presence and drift checks
     // stay off, and the session record carries `placement:demo`.
-    @State private var demoFrame:   simd_float4x4? = nil
-    @State private var demoYaw:     Float          = 0
-    @State private var demoPicking: Bool           = false
-    @State private var demoRing:    ARFocusRing?   = nil
+    @State private var demoFrame:    simd_float4x4? = nil
+    @State private var demoYaw:      Float          = 0      // turn applied to the scene (radians about Y)
+    @State private var demoScale:    Float          = 1
+    @State private var demoTap:      simd_float3    = .zero
+    @State private var demoPicking:  Bool           = false
+    @State private var demoRing:     ARFocusRing?   = nil
+    @State private var demoGestures: DemoSceneGestures? = nil
     private var isDemo: Bool { demoFrame != nil }
     /// Authored (map-frame) point → where it is shown in this session.
     private func shown(_ p: simd_float3) -> simd_float3 {
@@ -114,6 +117,11 @@ struct ARGuideSessionView: View {
         let v = d * simd_float4(p, 1); return simd_float3(v.x, v.y, v.z)
     }
     @State private var ghostOpacity:            Double   = 0.38
+    /// The reference-photo ghost is off by default (it hides the room and,
+    /// in demo mode, the surface to tap). Offered after 8 s of searching,
+    /// like the Lab; the operator can switch it on and off at any time.
+    @State private var ghostShown:              Bool     = false
+    @State private var ghostOffered:            Bool     = false
 
     // ── Step reference photo cache ────────────────────────────────────────────
     @State private var stepImages: [String: UIImage] = [:]
@@ -414,6 +422,7 @@ struct ARGuideSessionView: View {
                     teardownAssembly()
                     stopPresence()
                     demoRing?.cleanup(); demoRing = nil
+                    demoGestures?.remove(); demoGestures = nil
                 }
                 .onChange(of: arManager.objectTransform) { objT in
                     // B3: ghost on the recognised chamber (fades after a few seconds).
@@ -466,8 +475,11 @@ struct ARGuideSessionView: View {
                     }
                 }
 
+            // Demo: choosing a new spot while already navigating.
+            if demoPicking, case .navigating = phase { demoPickingOverlay }
+
             // Ghost reference-photo overlay (re-localization phase only)
-            if case .relocalizing = phase, let img = referencePhoto {
+            if case .relocalizing = phase, ghostShown, !demoPicking, let img = referencePhoto {
                 Image(uiImage: img)
                     .resizable()
                     .scaledToFill()
@@ -515,7 +527,9 @@ struct ARGuideSessionView: View {
         .onReceive(navTicker) { _ in
             if demoPicking {
                 // ARKit may relocalize on its own while the operator is choosing a spot - the real position wins.
-                if case .relocalizing = phase { demoRing?.update(sceneView: arManager.sceneView) } else { endDemoPick() }
+                if case .relocalizing = phase { demoRing?.update(sceneView: arManager.sceneView) }
+                else if case .navigating = phase, isDemo { demoRing?.update(sceneView: arManager.sceneView) }
+                else { endDemoPick() }
             }
             if case .navigating(let index) = phase {
                 updateNavTelemetry(index: index)
@@ -963,11 +977,17 @@ struct ARGuideSessionView: View {
             HStack(spacing: 12) {
                 // Demo placement: say so the whole time - nothing here is at the authored position.
                 if case .navigating = phase, isDemo {
-                    Text("Demo")
-                        .font(.caption.bold()).foregroundStyle(.black)
-                        .padding(.horizontal, 9).padding(.vertical, 4)
-                        .background(Color.orange, in: Capsule())
-                        .accessibilityLabel("Demo placement - not the authored position")
+                    Menu {
+                        Button { beginDemoPick() } label: { Label("Move to a new spot", systemImage: "arrow.up.and.down.and.arrow.left.and.right") }
+                        Button { resetDemoSizeAndTurn() } label: { Label("Reset size and turn", systemImage: "arrow.counterclockwise") }
+                        Text("Pinch to resize · twist to turn · nothing is saved")
+                    } label: {
+                        Text("Demo")
+                            .font(.caption.bold()).foregroundStyle(.black)
+                            .padding(.horizontal, 9).padding(.vertical, 4)
+                            .background(Color.orange, in: Capsule())
+                    }
+                    .accessibilityLabel("Demo placement - not the authored position")
                 }
                 // B2e: chamber tracking status; tap = re-align by hand.
                 if case .navigating = phase, originViaObject || approximateFromMap {
@@ -1160,7 +1180,7 @@ struct ARGuideSessionView: View {
                 VStack(spacing: 4) {
                     Text("Go to the Starting Point")
                         .font(.title3.bold()).foregroundStyle(.white)
-                    Text(referencePhoto != nil
+                    Text(referencePhoto != nil && ghostShown
                          ? "Align the live view with the ghost image, then tap \"I'm Here\"."
                          : "Stand where the guide was set up, then tap \"I'm Here\".")
                         .font(.caption)
@@ -1185,13 +1205,23 @@ struct ARGuideSessionView: View {
                 }
 
                 if referencePhoto != nil {
+                    // Ghost photo: a toggle, nudged after 8 s of searching.
                     HStack(spacing: 10) {
-                        Image(systemName: "photo.fill")
-                            .font(.caption).foregroundStyle(.white.opacity(0.4))
-                        Slider(value: $ghostOpacity, in: 0.15...0.65)
-                            .tint(.indigo)
-                        Image(systemName: "eye.fill")
-                            .font(.caption).foregroundStyle(.white.opacity(0.4))
+                        Button {
+                            withAnimation(.easeOut(duration: 0.3)) { ghostShown.toggle() }
+                        } label: {
+                            Label(ghostShown ? "Hide ghost image" : "Show ghost image", systemImage: ghostShown ? "eye.slash" : "eye")
+                                .font(.caption.bold())
+                                .padding(.horizontal, 12).padding(.vertical, 8)
+                                .background(ghostShown ? Color.indigo.opacity(0.35) : Color.white.opacity(0.12), in: Capsule())
+                                .foregroundStyle(.white)
+                        }
+                        if ghostShown {
+                            Slider(value: $ghostOpacity, in: 0.15...0.65).tint(.indigo)
+                        } else if ghostOffered {
+                            Text("Can't find the spot? The author's photo can help.")
+                                .font(.caption2).foregroundStyle(.white.opacity(0.6))
+                        }
                     }
                 }
 
@@ -1513,7 +1543,9 @@ struct ARGuideSessionView: View {
                 phase = .relocalizing
                 showRelocalizingTimeout = false
                 Task {
-                    try? await Task.sleep(nanoseconds: 20_000_000_000)
+                    try? await Task.sleep(nanoseconds: 8_000_000_000)
+                    if case .relocalizing = phase { ghostOffered = true }
+                    try? await Task.sleep(nanoseconds: 12_000_000_000)
                     guard case .relocalizing = phase else { return }
                     showRelocalizingTimeout = true
                 }
@@ -1557,7 +1589,11 @@ struct ARGuideSessionView: View {
     }
 
     private func placeDemo(at point: CGPoint) {
-        guard case .relocalizing = phase else { endDemoPick(); return }
+        var wasNavigating = false, relocalizing = false
+        if case .navigating = phase { wasNavigating = true }
+        if case .relocalizing = phase { relocalizing = true }
+        // Reachable from the starting-point card, or from the Demo menu while already in a demo.
+        guard relocalizing || (wasNavigating && isDemo) else { endDemoPick(); return }
         let sv = arManager.sceneView
         guard let tap = sv.nearestSurfacePoint(at: point) else { showNotice("No surface there - aim the ring at a table or the floor"); return }
         guard let ref = demoReference() else { showNotice("This guide has nothing placed yet"); endDemoPick(); return }
@@ -1565,22 +1601,70 @@ struct ARGuideSessionView: View {
         let camPos = cam.map { simd_float3($0.x, $0.y, $0.z) } ?? tap
         // Turn the scene about the vertical axis so its authored front faces the operator.
         let faceYaw = atan2(camPos.x - tap.x, camPos.z - tap.z)
-        let theta = faceYaw - ref.yaw
-        var toOrigin = matrix_identity_float4x4; toOrigin.columns.3 = simd_float4(-ref.point, 1)
-        var toTap    = matrix_identity_float4x4; toTap.columns.3    = simd_float4(tap, 1)
-        let rot = simd_float4x4(simd_quatf(angle: theta, axis: simd_float3(0, 1, 0)))
-        demoFrame = toTap * rot * toOrigin
-        demoYaw   = theta
+        demoTap = tap
+        demoYaw = faceYaw - ref.yaw
+        if !wasNavigating { demoScale = 1 }
+        composeDemoFrame()
         endDemoPick()
-        AppLog.info("guide", String(format: "demo placement at tap · turned %.0f°", theta * 180 / .pi))
-        if let lsId = liveSessionId {
-            let client = SIBClient(settings: settings)
-            Task { await client.pushGuideSessionEvent(liveSessionId: lsId, event: PushGuideSessionEventRequest(
-                type: .placementDemo, stepId: nil, stepIndex: nil, durationSeconds: nil,
-                payload: ["reason": AnyCodable("not-at-equipment"), "turnedDeg": AnyCodable(Double(theta * 180 / .pi))])) }
+        AppLog.info("guide", String(format: "demo placement at tap · turned %.0f° · scale %.2f", demoYaw * 180 / .pi, demoScale))
+        if wasNavigating {
+            applyDemoFrame()
+            showNotice("Moved. Pinch to resize · twist to turn")
+        } else {
+            if let lsId = liveSessionId {
+                let client = SIBClient(settings: settings)
+                Task { await client.pushGuideSessionEvent(liveSessionId: lsId, event: PushGuideSessionEventRequest(
+                    type: .placementDemo, stepId: nil, stepIndex: nil, durationSeconds: nil,
+                    payload: ["reason": AnyCodable("not-at-equipment"), "turnedDeg": AnyCodable(Double(demoYaw * 180 / .pi))])) }
+            }
+            transitionToNavigating()
+            installDemoGestures()
+            showNotice("Demo placement - not the authored position. Pinch to resize · twist to turn · nothing is saved.")
         }
-        transitionToNavigating()
-        showNotice("Demo placement - not the authored position. Nothing is saved.")
+    }
+
+    /// D = T(tap) · R_y(yaw) · S(scale) · T(-reference): the authored scene,
+    /// moved as one body to the tapped point, turned and sized for the demo.
+    private func composeDemoFrame() {
+        guard let ref = demoReference() else { return }
+        var toOrigin = matrix_identity_float4x4; toOrigin.columns.3 = simd_float4(-ref.point, 1)
+        var toTap    = matrix_identity_float4x4; toTap.columns.3    = simd_float4(demoTap, 1)
+        let rot   = simd_float4x4(simd_quatf(angle: demoYaw, axis: simd_float3(0, 1, 0)))
+        let scale = simd_float4x4(diagonal: simd_float4(demoScale, demoScale, demoScale, 1))
+        demoFrame = toTap * rot * scale * toOrigin
+    }
+
+    /// Re-place everything already in the scene under the current demo frame.
+    private func applyDemoFrame() {
+        guard let d = demoFrame else { return }
+        for step in sortedSteps {
+            guard let pos = step.worldPosition, let pin = pinNodes[step.id] else { continue }
+            let p = shown(pos)
+            pin.simdPosition = p
+            panelContainers[step.id]?.simdPosition = simd_float3(p.x, p.y + 0.55, p.z)
+        }
+        if let asm = guide.assembly, let pose = asm.pose { assemblyNode?.root.simdTransform = d * pose.transform }
+        removeGhostOverlay()
+        if case .navigating(let i) = phase, i < sortedSteps.count { attachGhostOverlay(for: sortedSteps[i]) }
+    }
+
+    /// Pinch = size, twist = turn. Installed only in a demo; removed with the view.
+    private func installDemoGestures() {
+        guard demoGestures == nil else { return }
+        let g = DemoSceneGestures(view: arManager.sceneView)
+        g.onScale  = { factor in demoScale = min(5, max(0.1, demoScale * factor)); composeDemoFrame(); applyDemoFrame() }
+        g.onRotate = { delta in demoYaw -= delta; composeDemoFrame(); applyDemoFrame() }
+        demoGestures = g
+    }
+
+    private func resetDemoSizeAndTurn() {
+        guard let ref = demoReference() else { return }
+        let sv = arManager.sceneView
+        let cam = sv.session.currentFrame?.camera.transform.columns.3
+        let camPos = cam.map { simd_float3($0.x, $0.y, $0.z) } ?? demoTap
+        demoYaw = atan2(camPos.x - demoTap.x, camPos.z - demoTap.z) - ref.yaw
+        demoScale = 1
+        composeDemoFrame(); applyDemoFrame()
     }
 
     // ── Transition to navigating ──────────────────────────────────────────────
@@ -3601,6 +3685,7 @@ struct ARGuideSessionView: View {
             let slotId    = slot.slotId
             let scale     = Float(slot.modelScale     ?? 1.0)
             let opacity   = CGFloat(slot.modelOpacity ?? 0.45)
+            let demoScaleNow = demoScale
             let e0        = slot.eulerAngles
             let euler     = SCNVector3(e0.x, e0.y + demoYaw, e0.z)     // demo: turned with the scene
             let finalPos  = shown(simd_float3(
@@ -3624,7 +3709,7 @@ struct ARGuideSessionView: View {
                     let wrapper       = SCNNode()
                     wrapper.name      = "ghost_model_\(stepId)_\(slotId)"
                     children.forEach { wrapper.addChildNode($0.clone()) }
-                    wrapper.simdScale    = simd_float3(scale, scale, scale)
+                    wrapper.simdScale    = simd_float3(scale, scale, scale) * demoScaleNow
                     wrapper.simdPosition = finalPos
                     wrapper.eulerAngles  = euler
                     wrapper.opacity      = opacity
