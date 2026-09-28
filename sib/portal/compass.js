@@ -130,7 +130,7 @@
   .sibc-veil.shown .sibc-map{transform:none;opacity:1}
   .sibc-veil.folding .sibc-map{transform:perspective(1400px) rotateX(-14deg) rotateY(6deg) scale(.9);opacity:0;transition-duration:.22s,.16s}
   .sibc-veil.folding{opacity:0}
-  .sibc-title{position:absolute;top:0;left:50%;transform:translateX(-50%);text-align:center;white-space:nowrap}
+  .sibc-title{position:absolute;top:0;left:50%;transform:translateX(-50%);text-align:center;white-space:nowrap;z-index:1}
   .sibc-title .eyebrow{font:var(--ax-eyebrow);letter-spacing:.08em;text-transform:uppercase;color:var(--ax-ink-3)}
   .sibc-title .where{font:var(--ax-h3);color:var(--ax-ink);margin-top:2px}
   .sibc-title .where b{color:var(--ax-ink)}
@@ -143,7 +143,10 @@
   .sibc-map.settled .sibc-node.leaf.away{opacity:.55}
   .sibc-map.settled .sibc-node.leaf.away:hover{opacity:1}
   .sibc-node .youare{display:block;font:var(--ax-eyebrow);letter-spacing:.08em;text-transform:uppercase;color:var(--c,var(--ax-blue));margin-bottom:5px}
-  .sibc-node.here .pill{border:2px solid var(--c,var(--ax-blue));background:var(--ax-blue-fill);font-size:14px;padding:8px 14px}
+  .sibc-node.here .pill{border:2px solid var(--c,var(--ax-blue));background:var(--c,var(--ax-blue));color:var(--ax-on-accent);font-size:15px;font-weight:700;padding:9px 16px}
+  .sibc-node.here .pill .n{background:var(--ax-scrim)}
+  .sibc-node.here .pill .ax-mark{color:var(--ax-on-accent)}
+  .sibc-node.here .youare{font-size:12px}
   .sibc-node.here .pill .ax-mark{font-size:10px;margin-right:2px}
   .sibc-node .pill{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;border:var(--ax-hair);
     background:var(--ax-solid);font-size:13px;font-weight:600;white-space:nowrap;transition:transform .15s,border-color .15s}
@@ -151,13 +154,17 @@
   .sibc-node.leaf .pill{font-size:11.5px;font-weight:500;padding:5px 9px}
   .sibc-node.centre .pill{font-size:15px;padding:10px 16px;border-color:var(--ax-blue);background:var(--ax-blue-fill)}
   .sibc-node .n{font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px;background:var(--ax-paper-3)}
+  .sibc-node .sw{width:8px;height:8px;border-radius:50%;display:inline-block}
+  .sibc-node kbd{font:600 9.5px/1 var(--ax-mono);color:var(--ax-ink-3);border:1px solid var(--ax-rule);border-radius:4px;padding:2px 4px;margin-left:4px}
+  .sibc-node.here kbd{color:var(--ax-ink-2);border-color:var(--c,var(--ax-blue))}
+  .sibc-map.hubarmed .sibc-node.hub.armed .pill{border-color:var(--c);background:var(--ax-blue-fill)}
   .sibc-node .live{width:7px;height:7px;border-radius:50%;background:var(--ax-green);animation:sibc-pulse 1.6s ease-in-out infinite}
   .sibc-node .hint{display:block;font-size:10.5px;color:var(--ax-ink-2);margin-top:3px;font-weight:400}
   .sibc-foot{position:absolute;left:0;right:0;bottom:0;display:flex;flex-direction:column;gap:8px;align-items:center}
   .sibc-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center;font-size:11.5px;color:var(--ax-ink-2)}
   .sibc-row .chip{color:var(--ax-ink);text-decoration:none;border:var(--ax-hair);background:var(--ax-solid);border-radius:999px;padding:5px 10px;font-weight:600}
   .sibc-row .chip:hover{border-color:var(--ax-ink)}.sibc-row .chip.next{border-color:var(--ax-green);color:var(--ax-green)}
-  .sibc-keys{position:absolute;top:0;left:34px;font-size:10.5px;color:var(--ax-ink-3);font-family:var(--ax-mono)}
+  .sibc-keys{position:absolute;top:2px;left:34px;font-size:10.5px;color:var(--ax-ink-3);font-family:var(--ax-mono);max-width:38vw}
   .sibc-close{position:absolute;top:-8px;left:0;background:none;border:none;color:var(--ax-ink-2);font-size:20px;cursor:pointer}
   @media (prefers-reduced-motion: reduce){.sibc-node,.sibc-btn,.sibc-node .pill,.sibc-map,.sibc-veil{transition:none;transform:none}.sibc-btn.live .dot,.sibc-node .live{animation:none}}
   @media (max-width:640px){.sibc-crumb{display:none}.sibc-node .hint{display:none}.sibc-node.leaf{display:none}}
@@ -260,125 +267,144 @@
     return out.slice(0, 3);
   }
 
+  // ── The hexagon ───────────────────────────────────────────────────────────
+  // The Compass icon is a hexagon with a dot in the middle: the dot is SIB
+  // Home, the six corners are the six surfaces. The map draws exactly that.
+  // Each corner's stops sit outside the hexagon on its own side - a row above
+  // the top corner, a row below the bottom one, columns beside the side ones
+  // - so nothing overlaps and every connector is short and ends on a pill.
+  const HEX_ORDER = ['portal', 'platform', 'roadmap', 'admin', 'wireframe', 'catalog'];   // top, then clockwise
+  const HEX_ANGLES = [-90, -30, 30, 90, 150, 210];
+  const KEY_OF = { portal: 'p', platform: 'm', roadmap: 'r', admin: 'a', wireframe: 'w', catalog: 'c' };
+
   function renderMap() {
     const path = locate();
     const W = mapEl.clientWidth, H = mapEl.clientHeight;
-    // Two ellipses: hubs on the inner one, their stops on the outer one. The
-    // foot (where-next / recents) needs ~90 px, so the centre sits a little
-    // high. Radii use the WIDTH - a laptop is wide, use it.
-    const cx = W / 2, cy = (H - 90) / 2 + 10;
-    const rx1 = W * 0.26, ry1 = (H - 90) * 0.28;
-    const rx2 = W * 0.47, ry2 = (H - 90) * 0.48;
-    const hubs = TREE.children;
+    const cx = W / 2, cy = H / 2 - 10;
+    const R = Math.max(150, Math.min(W * 0.20, (H - 260) * 0.36));
     const pos = { sib: [cx, cy] };
-    // Each hub owns an angular SECTOR sized by how many stops it has, so
-    // Portal (7) gets the wide top arc and Wireframe (0) a sliver - leaves of
-    // neighbouring hubs can never land on each other. Portal is centred at 12
-    // o'clock; the rest follow clockwise.
-    const weights = hubs.map(h => Math.max((h.children || []).length, 2.5));
-    const total = weights.reduce((a, b) => a + b, 0);
-    let start = -Math.PI / 2 - (weights[0] / total) * Math.PI;   // Portal's sector straddles the top
+    const hubs = HEX_ORDER.map(id => find(id)).filter(Boolean);
+    const vertex = {};
     hubs.forEach((h, i) => {
-      const sector = (weights[i] / total) * Math.PI * 2;
-      const a = start + sector / 2;
-      pos[h.id] = [cx + rx1 * Math.cos(a), cy + ry1 * Math.sin(a)];
-      const kids = h.children || [];
-      const spread = kids.length <= 1 ? 0 : sector * 0.82;
-      kids.forEach((k, j) => {
-        const b = a + (kids.length === 1 ? 0 : (-spread / 2 + (j / (kids.length - 1)) * spread));
-        pos[k.id] = [cx + rx2 * Math.cos(b), cy + ry2 * Math.sin(b)];
-      });
-      start += sector;
+      const a = HEX_ANGLES[i] * Math.PI / 180;
+      vertex[h.id] = [cx + R * Math.cos(a), cy + R * Math.sin(a)];
+      pos[h.id] = vertex[h.id];
+    });
+    // Stops per corner. Distances scale with the hexagon so a laptop still fits.
+    const rowGap = Math.min(180, Math.max(120, W / 7)), colGap = 54, out = Math.max(120, R * 0.62), side = Math.max(210, R * 1.05);
+    hubs.forEach((h, i) => {
+      const kids = h.children || []; if (!kids.length) return;
+      const [vx, vy] = vertex[h.id];
+      const dir = HEX_ORDER[i];
+      if (dir === 'portal' || dir === 'admin') {
+        // Row(s) above / below: at most 5 per row, extra rows further out.
+        const per = Math.min(5, kids.length);
+        const rows = Math.ceil(kids.length / per);
+        kids.forEach((k, j) => {
+          const row = Math.floor(j / per), inRow = row === rows - 1 ? kids.length - row * per : per;
+          const col = j - row * per;
+          const x = vx + (col - (inRow - 1) / 2) * rowGap;
+          const y = dir === 'portal' ? vy - out - row * 70 : vy + out + row * 70;
+          pos[k.id] = [x, y];
+        });
+      } else {
+        // Column beside the corner, centred on it, pushed outward.
+        const right = dir === 'platform' || dir === 'roadmap';
+        kids.forEach((k, j) => {
+          pos[k.id] = [vx + (right ? side : -side), vy + (j - (kids.length - 1) / 2) * colGap];
+        });
+      }
+    });
+    // Keep everything on the map.
+    for (const id in pos) { pos[id][0] = Math.min(W - 90, Math.max(90, pos[id][0])); pos[id][1] = Math.min(H - 130, Math.max(118, pos[id][1])); }
+
+    // Title: where you are, in the same words as every page's breadcrumb.
+    const words = path.map((id, i) => i === 0 ? 'SIB Home' : (find(id)?.label || id));
+    let html = `<svg id="sibc-edges"></svg><div class="sibc-title"><div class="eyebrow">SIB Compass</div>
+      <div class="where">${words.map((w, i) => (i ? '<i>›</i>' : '') + (i === words.length - 1 ? `<b>${w}</b>` : w)).join('')}</div>
+      <div class="sub">The dot is SIB Home; the six corners are its surfaces; their stops sit outside. Click any place, or type its key.</div></div>`;
+    html += node(TREE, pos.sib, 'centre', path, 'var(--ax-blue)', true, 'g h');
+    hubs.forEach((h, i) => {
+      const inHub = path.includes(h.id);
+      html += node(h, pos[h.id], 'hub', path, h.color, inHub, `g ${KEY_OF[h.id]}`);
+      (h.children || []).forEach((k, j) => html += node(k, pos[k.id], 'leaf', path, h.color, inHub, `${KEY_OF[h.id]}${j + 1}`));
     });
 
-    // Relax: the ring puts 16 stops on one ellipse, which is tight on a
-    // laptop. A few hundred cheap push-apart passes guarantee no two nodes
-    // sit closer than MIN px (hubs move a third as much, so the ring shape
-    // survives); everything stays inside the map with a margin.
-    const MIN = 150, PAD = 70;
-    const ids = Object.keys(pos).filter(id => id !== 'sib');
-    const isHub = new Set(hubs.map(h => h.id));
-    for (let it = 0; it < 300; it++) {
-      for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) {
-        const a = pos[ids[i]], b = pos[ids[j]];
-        let dx = b[0] - a[0], dy = b[1] - a[1];
-        const d = Math.hypot(dx, dy) || 1;
-        if (d >= MIN) continue;
-        const push = (MIN - d) / 4; dx /= d; dy /= d;
-        const wa = isHub.has(ids[i]) ? 0.3 : 1, wb = isHub.has(ids[j]) ? 0.3 : 1;
-        a[0] -= dx * push * wa; a[1] -= dy * push * wa;
-        b[0] += dx * push * wb; b[1] += dy * push * wb;
-      }
-      for (const id of ids) {
-        pos[id][0] = Math.min(W - PAD, Math.max(PAD, pos[id][0]));
-        pos[id][1] = Math.min(H - 120, Math.max(PAD + 40, pos[id][1]));   // +40: the title line sits at the top
-      }
-    }
-
-    // Edges
-    let svg = `<svg viewBox="0 0 ${W} ${H}">`;
-    const onPath = (a, b) => path.includes(a) && path.includes(b);
-    for (const h of hubs) {
-      const hp = onPath('sib', h.id);
-      if (hp) svg += line(pos.sib, pos[h.id], h.color, 10, .18);
-      svg += line(pos.sib, pos[h.id], hp ? h.color : 'var(--ax-ink-4)', hp ? 3 : 1.2);
-      for (const k of h.children || []) {
-        const kp = onPath(h.id, k.id);
-        if (kp) svg += line(pos[h.id], pos[k.id], h.color, 10, .18);
-        svg += line(pos[h.id], pos[k.id], kp ? h.color : 'var(--ax-ink-4)', kp ? 3 : 1);
-      }
-    }
-    svg += '</svg>';
-
-    // Nodes
-    let html = svg;
-    // Title: where you are, in words, before the map has to be read.
-    const words = path.map(id => find(id)?.label || id);
-    html += `<div class="sibc-title"><div class="eyebrow">SIB Compass</div>
-      <div class="where">You are in ${words.map((w, i) => (i ? '<i>›</i>' : '') + (i === words.length - 1 ? `<b>${w}</b>` : w)).join('')}</div>
-      <div class="sub">Every place in SIB, one click away · the lit path is where you are</div></div>`;
-    html += node(TREE, pos.sib, 'centre', path);
-    for (const h of hubs) {
-      const inHub = path.includes(h.id);
-      html += node(h, pos[h.id], 'hub', path, h.color, inHub);
-      for (const k of h.children || []) html += node(k, pos[k.id], 'leaf', path, h.color, inHub);
-    }
-
-    // Foot: where next + recents
     const next = whereNext();
     const rec = recents().filter(r => r.href !== location.pathname + location.hash).slice(0, 3);
     html += `<div class="sibc-foot">
       ${next.length ? `<div class="sibc-row">Where next?${next.map(n => `<a class="chip next" href="${n.href}">${n.label}</a>`).join('')}</div>` : ''}
       ${rec.length ? `<div class="sibc-row">Recent${rec.map(r => `<a class="chip" href="${r.href}">${r.label}</a>`).join('')}</div>` : ''}
     </div>
-    <div class="sibc-keys">g h · g p · g m · g r · g c · g w · g a &nbsp; esc</div>
+    <div class="sibc-keys">g then a letter opens a surface · a letter then a number opens its stop · esc closes</div>
     <button class="sibc-close" aria-label="Close"><svg class="ax-icon" style="width:18px;height:18px"><use href="/portal/brand/icons.svg#i-close"/></svg></button>`;
     mapEl.innerHTML = html;
     mapEl.querySelector('.sibc-close').onclick = close;
     mapEl.querySelectorAll('a.sibc-node, a.chip').forEach(a => a.addEventListener('click', () => {
-      // Same-page hash links don't reload - close so the page is visible.
       if (a.getAttribute('href').split('#')[0] === location.pathname) setTimeout(close, 60);
     }));
+    drawEdges(hubs, path);
     mapEl.classList.remove('settled');
     requestAnimationFrame(() => requestAnimationFrame(() => mapEl.classList.add('settled')));
   }
-  function line([x1, y1], [x2, y2], stroke, w, opacity) {
-    return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${stroke}" stroke-width="${w}" stroke-linecap="round"${opacity ? ` stroke-opacity="${opacity}"` : ''}/>`;
+
+  /** Connectors measured against the rendered pills, so every line starts and
+   *  ends ON a pill's border - never through it, never short of it. */
+  function drawEdges(hubs, path) {
+    const svg = mapEl.querySelector('#sibc-edges'); if (!svg) return;
+    const W = mapEl.clientWidth, H = mapEl.clientHeight;
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    const mr = mapEl.getBoundingClientRect();
+    const box = {};
+    mapEl.querySelectorAll('a.sibc-node').forEach(a => {
+      const r = a.querySelector('.pill').getBoundingClientRect();
+      box[a.dataset.id] = { l: r.left - mr.left, t: r.top - mr.top, r: r.right - mr.left, b: r.bottom - mr.top };
+    });
+    const centre = b => [(b.l + b.r) / 2, (b.t + b.b) / 2];
+    // Point where the segment centre(a)→centre(b) leaves box a, padded 4 px.
+    const exit = (a, b) => {
+      const [ax, ay] = centre(a), [bx, by] = centre(b);
+      const dx = bx - ax, dy = by - ay; if (!dx && !dy) return [ax, ay];
+      const hw = (a.r - a.l) / 2 + 4, hh = (a.b - a.t) / 2 + 4;
+      const t = Math.min(dx ? hw / Math.abs(dx) : Infinity, dy ? hh / Math.abs(dy) : Infinity);
+      return [ax + dx * t, ay + dy * t];
+    };
+    const seg = (idA, idB, stroke, w, opacity) => {
+      const a = box[idA], b = box[idB]; if (!a || !b) return '';
+      const [x1, y1] = exit(a, b), [x2, y2] = exit(b, a);
+      return `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${stroke}" stroke-width="${w}" stroke-linecap="round"${opacity ? ` stroke-opacity="${opacity}"` : ''}/>`;
+    };
+    const onPath = (a, b) => path.includes(a) && path.includes(b);
+    let out = '';
+    // The hexagon itself: corner to corner, quiet.
+    for (let i = 0; i < hubs.length; i++) out += seg(hubs[i].id, hubs[(i + 1) % hubs.length].id, 'var(--ax-ink-4)', 1, .6);
+    // Spokes and stops; the path you are on is lit in the surface's colour.
+    for (const h of hubs) {
+      const hp = onPath('sib', h.id);
+      if (hp) out += seg('sib', h.id, h.color, 10, .18);
+      out += seg('sib', h.id, hp ? h.color : 'var(--ax-ink-4)', hp ? 3 : 1.2);
+      for (const k of h.children || []) {
+        const kp = onPath(h.id, k.id);
+        if (kp) out += seg(h.id, k.id, h.color, 10, .18);
+        out += seg(h.id, k.id, kp ? h.color : 'var(--ax-ink-4)', kp ? 3 : 1);
+      }
+    }
+    svg.innerHTML = out;
   }
-  function node(n, [x, y], kind, path, color, inHub) {
+
+  function node(n, [x, y], kind, path, color, inHub, key) {
     const here = path[path.length - 1] === n.id;
     const b = badge(n.id);
     const bHtml = b ? `<span class="n" title="${b[1]}">${b[0]}</span>${b[2] ? '<span class="live"></span>' : ''}` : '';
-    const swatch = kind === 'hub' ? `<span style="width:8px;height:8px;border-radius:50%;background:${color}"></span>` : '';
+    const swatch = kind === 'hub' ? `<span class="sw" style="background:${color}"></span>` : '';
     const hint = kind !== 'leaf' && n.hint && !here ? `<span class="hint">${n.hint}</span>` : '';
-    // "You are here": an eyebrow in the hub colour above the lit pill, with
-    // the registration mark - the one thing the map must make obvious.
     const youare = here ? `<span class="youare">You are here</span>` : '';
     const mark = here ? `<span class="ax-mark is-green"><i></i><em></em></span>` : '';
     const away = kind === 'leaf' && !inHub && !here ? ' away' : '';
     const delay = kind === 'centre' ? 0 : kind === 'hub' ? .08 : .16;
-    return `<a class="sibc-node ${kind}${here ? ' here' : ''}${away}" href="${n.href}" style="left:${x}px;top:${y}px;--d:${delay}s;--c:${color || 'var(--ax-blue)'}" title="${n.hint || n.label}">
-      ${youare}<span class="pill">${mark}${swatch}${n.label}${bHtml}</span>${hint}</a>`;
+    const label = kind === 'centre' ? 'SIB Home' : n.label;
+    return `<a class="sibc-node ${kind}${here ? ' here' : ''}${away}" data-id="${n.id}" href="${n.href}" style="left:${x}px;top:${y}px;--d:${delay}s;--c:${color || 'var(--ax-blue)'}" title="${n.hint || n.label}">
+      ${youare}<span class="pill">${mark}${swatch}${label}${bHtml}<kbd>${key}</kbd></span>${hint}</a>`;
   }
 
   let closing = null;
@@ -396,18 +422,34 @@
   }
   function toggle() { veil.classList.contains('open') ? close() : open(); }
 
-  // Keys: `g` then a letter; Esc closes. Ignored while typing.
-  let gArmed = 0;
+  // Keys. Anywhere: `g` then a letter opens a surface (`g g` the map).
+  // With the map open: a surface letter then a number opens that stop
+  // (`p 3` = the third stop of Portal, as printed on the pills); the letter
+  // alone opens the surface after a beat. Esc closes. Ignored while typing.
+  let gArmed = 0, hubArmed = null, hubTimer = null;
+  const HUB_HREF = { h: '/', p: '/portal#home', m: '/platform', r: '/roadmap', c: '/catalog', w: '/wireframe', a: '/portal#admin/uam' };
+  const HUB_ID = { p: 'portal', m: 'platform', r: 'roadmap', c: 'catalog', w: 'wireframe', a: 'admin' };
   function onKey(e) {
     const t = e.target; const typing = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable || t.tagName === 'SELECT');
     if (e.key === 'Escape' && veil.classList.contains('open')) { close(); return; }
     if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
     const now = Date.now();
+    const isOpen = veil.classList.contains('open');
+    if (isOpen && hubArmed && /^[1-9]$/.test(e.key)) {
+      clearTimeout(hubTimer); const hub = find(HUB_ID[hubArmed]); hubArmed = null; mapEl.classList.remove('hubarmed');
+      const stop = hub?.children?.[Number(e.key) - 1]; if (stop) location.href = stop.href; return;
+    }
+    if (isOpen && e.key in HUB_ID && !gArmed) {
+      clearTimeout(hubTimer); hubArmed = e.key;
+      mapEl.querySelectorAll('.sibc-node.hub').forEach(a => a.classList.toggle('armed', a.dataset.id === HUB_ID[e.key]));
+      mapEl.classList.add('hubarmed');
+      hubTimer = setTimeout(() => { if (hubArmed) { location.href = HUB_HREF[hubArmed]; hubArmed = null; } }, 900);
+      return;
+    }
     if (gArmed && now - gArmed < 1200) {
       gArmed = 0;
       if (e.key === 'g') { toggle(); return; }
-      const map = { h: '/', p: '/portal#home', m: '/platform', r: '/roadmap', c: '/catalog', w: '/wireframe', a: '/portal#admin/uam' };
-      if (e.key in map) { location.href = map[e.key]; return; }
+      if (e.key in HUB_HREF) { location.href = HUB_HREF[e.key]; return; }
     }
     if (e.key === 'g') { gArmed = now; }
   }

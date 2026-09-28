@@ -7,6 +7,18 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **SIB Compass is a hexagon.** The map now draws the Compass icon itself:
+  SIB Home is the dot in the centre, the six surfaces (Portal, Platform,
+  Roadmap, Admin, Wireframe, Catalog) are the corners, and each surface's
+  stops sit outside its corner - a row above Portal, a row below Admin,
+  columns beside the others. Connectors are measured against the rendered
+  pills so a line starts and ends on a border, catalogue style, and only
+  the path you are on is lit in its surface colour. The title reads the
+  full path in the same words as the page breadcrumb ("SIB Home › Portal ›
+  Guide Library") and the current pill is filled in its colour. Every stop
+  now has a shortcut, printed on its pill: with the map open, the surface
+  letter then a number (`p 3`) opens that stop; `g` then the letter still
+  works anywhere.
 - **Models page shows where a model is used.** Each card lists the guides
   that render it (assembly or step slot), one click to the guide in the
   Library. The Guide Library's row menu gained the chamber's QR code and
@@ -124,6 +136,9 @@ it, it gets a line.
   focus ring uses it too, so where the ring sits is where a tap lands.
 
 ### Fixed
+- **Wide tables no longer spill past their card.** User Access, Content
+  Catalogue, Usage Log, Fleet and iLOTO tables scroll inside the card on
+  narrow windows; the products column in User Access wraps.
 - **3D model tiles overflowed their text.** A long export filename ran into
   the next tile; the card and its text column now shrink and wrap
   (`min-width: 0`, `overflow-wrap: anywhere`), tiles are 300 px minimum.

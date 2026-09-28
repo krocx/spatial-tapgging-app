@@ -349,6 +349,11 @@
     #admin-panel .card > p, .adm-card > p { font: var(--ax-label-s); color: var(--ax-ink-2); margin: 0 0 12px; max-width: none; }
     #admin-panel input:not([type=checkbox]), #admin-panel select { font: var(--ax-body); color: var(--ax-ink); background: var(--ax-paper); border: var(--ax-hair); border-radius: var(--ax-r-field); padding: 9px 12px; }
     #admin-panel input:focus, #admin-panel select:focus { border-color: var(--ax-blue); outline: none; }
+    /* A table never runs past its card: the wrapper scrolls inside the card
+       on a narrow window (UAM, backups, ops log, device logs alike). */
+    /* Wide tables scroll inside their card instead of spilling past its tile. */
+    #uam-table, #cc-list, #usage-log-view, .fleet-list, .iloto-panel-card { overflow-x: auto; min-width: 0; }
+    .card, .adm-card, .ax-card { min-width: 0; }
     #uam-table table { width: 100%; border-collapse: collapse; font: var(--ax-body); }
     #uam-table th { text-align: left; font: 600 13px/18px var(--ax-font); color: var(--ax-ink-2); padding: 10px 10px; border-bottom: var(--ax-hair); white-space: nowrap; }
     #uam-table td { padding: 10px; border-bottom: var(--ax-hair-2); vertical-align: middle; }
@@ -1783,8 +1788,8 @@ async function loadUamUsers() {
             ${['technician','engineer','manager','owner'].map(rr =>
               `<option value="${rr}" ${u.role === rr ? 'selected' : ''}>${UAM_ROLE_LABEL[rr]}</option>`).join('')}
           </select></td>
-        <td style="white-space:nowrap">
-          ${UAM_PRODUCTS.map(pr => `<label class="ax-check" style="margin-right:10px" title="${pr.title}">
+        <td>
+          ${UAM_PRODUCTS.map(pr => `<label class="ax-check" style="margin-right:10px;white-space:nowrap;display:inline-flex" title="${pr.title}">
             <input type="checkbox" ${((u.products && u.products.length) ? u.products.includes(pr.id) : false) ? 'checked' : ''}
                    onchange="uamSetProducts('${u.id}', this.closest('td'), '${esc(u.email)}')" data-product="${pr.id}"> ${pr.label}
           </label>`).join('')}
