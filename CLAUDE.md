@@ -12,5 +12,6 @@ whoever or whatever writes the code.
 - **Never:** glass / `backdrop-filter`, drop shadows, a gradient written in a page (use `--ax-page` / `--ax-title`), a colour without a meaning, a hue the app doesn't have, `AppliedX` or a one-colour wordmark, the wordmark colours (`--ax-wm-*`) used for anything else, internal codes in user-facing text.
 - **Type:** Open Sans (the company's standard web font, self-hosted from `sib/portal/brand/fonts/` via `npm run brand:fonts`) at the token scale (`--ax-h1` … `--ax-body`), `--ax-mono` for identifiers and numbers. Never load a font from a CDN.
 - Before committing a page that uses the system, add it to `GOVERNED` in `scripts/brand-check.mjs` and run `npm run brand:check`.
+- Code architecture lives in `docs/ARCHITECTURE.md` (C4; rendered at `/architecture`). Levels 1-3 are hand-written; when a file or import changes run `npm run arch:graph` and commit `docs/architecture/` - `npm run arch:check` fails on drift.
 
 Other standing rules for this repo live in `docs/` (versioning, catalogue checker, IP sensitivity). When in doubt, propose before changing.

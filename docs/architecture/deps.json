@@ -1,0 +1,1161 @@
+{
+ "generatedBy": "scripts/arch-graph.mjs",
+ "sib": {
+  "adapters/ai-guide-adapter.ts": [],
+  "adapters/instructions-source-adapter.ts": [],
+  "adapters/mindmap-sib-adapter.ts": [
+   "routes/anchors.ts",
+   "routes/tags.ts"
+  ],
+  "adapters/perception-adapter.ts": [],
+  "adapters/vision-adapter.ts": [
+   "models/mindmap.model.ts"
+  ],
+  "app.ts": [
+   "data-dir.ts",
+   "guides/store.ts",
+   "logging/device-logs.ts",
+   "loto/loto-core.ts",
+   "middleware/auth.ts",
+   "oms/usage-log.ts",
+   "routes/admin.ts",
+   "routes/anchors.ts",
+   "routes/architecture.ts",
+   "routes/ask.ts",
+   "routes/catalog.ts",
+   "routes/chamber-configs.ts",
+   "routes/gemba-library.ts",
+   "routes/gemba-walks.ts",
+   "routes/guide-sessions.ts",
+   "routes/guides.ts",
+   "routes/learn.ts",
+   "routes/loc-tags.ts",
+   "routes/logs.ts",
+   "routes/loto.ts",
+   "routes/mindmap.routes.ts",
+   "routes/models.ts",
+   "routes/perception.ts",
+   "routes/sessions.ts",
+   "routes/tag-groups.ts",
+   "routes/tags.ts",
+   "routes/training.ts",
+   "routes/uam.ts",
+   "routes/worldmap.ts",
+   "sse/guide-session.sse.ts",
+   "sse/presence.ts",
+   "stores/json-file-store.ts",
+   "version.ts"
+  ],
+  "ask/ask-core.ts": [
+   "catalog/catalog-core.ts"
+  ],
+  "ask/llm.ts": [],
+  "catalog/catalog-core.ts": [],
+  "controllers/mindmap.controller.ts": [
+   "adapters/mindmap-sib-adapter.ts",
+   "models/mindmap.model.ts"
+  ],
+  "data-dir.ts": [],
+  "gemba/finding-core.ts": [
+   "gemba/library-core.ts"
+  ],
+  "gemba/library-core.ts": [],
+  "gemba/walk-core.ts": [
+   "gemba/library-core.ts"
+  ],
+  "guides/assembly.ts": [
+   "guides/step-models.ts",
+   "models/glb-nodes.ts"
+  ],
+  "guides/bundle.ts": [],
+  "guides/copy.ts": [
+   "guides/assembly.ts",
+   "guides/step-models.ts",
+   "guides/store.ts",
+   "routes/anchors.ts",
+   "routes/chamber-configs.ts"
+  ],
+  "guides/ingest.ts": [
+   "guides/assembly.ts",
+   "guides/step-models.ts",
+   "guides/store.ts",
+   "procedure/designer-images.ts",
+   "routes/anchors.ts",
+   "routes/chamber-configs.ts"
+  ],
+  "guides/step-models.ts": [],
+  "guides/store.ts": [
+   "stores/json-file-store.ts"
+  ],
+  "import/cortona/bundle.ts": [
+   "import/cortona/zip-lite.ts"
+  ],
+  "import/cortona/glb.ts": [
+   "import/cortona/scene.ts"
+  ],
+  "import/cortona/hose-frames.ts": [
+   "import/cortona/hose.ts",
+   "import/cortona/procedure.ts",
+   "import/cortona/scene.ts",
+   "import/cortona/vrml.ts"
+  ],
+  "import/cortona/hose.ts": [
+   "import/cortona/scene.ts",
+   "import/cortona/vrml.ts"
+  ],
+  "import/cortona/importer.ts": [
+   "import/cortona/bundle.ts",
+   "import/cortona/glb.ts",
+   "import/cortona/hose-frames.ts",
+   "import/cortona/interactivity.ts",
+   "import/cortona/procedure.ts",
+   "import/cortona/scene.ts",
+   "import/cortona/vrml.ts",
+   "import/cortona/widgets.ts"
+  ],
+  "import/cortona/interactivity.ts": [
+   "import/cortona/widgets.ts",
+   "import/cortona/xml-lite.ts"
+  ],
+  "import/cortona/primitives.ts": [],
+  "import/cortona/procedure.ts": [
+   "import/cortona/vrml.ts"
+  ],
+  "import/cortona/scene.ts": [
+   "import/cortona/hose.ts",
+   "import/cortona/primitives.ts",
+   "import/cortona/vrml.ts"
+  ],
+  "import/cortona/vrml.ts": [],
+  "import/cortona/widgets.ts": [
+   "import/cortona/vrml.ts"
+  ],
+  "import/cortona/xml-lite.ts": [],
+  "import/cortona/zip-lite.ts": [],
+  "import/jobs.ts": [
+   "import/cortona/importer.ts",
+   "memory.ts",
+   "models/variants.ts"
+  ],
+  "import/worker.ts": [
+   "import/cortona/importer.ts",
+   "models/reduce-clustering.ts",
+   "models/variants.ts"
+  ],
+  "index.ts": [
+   "app.ts",
+   "load-config.ts",
+   "perception/image-comparator.ts",
+   "ws/mindmap.ws.ts"
+  ],
+  "load-config.ts": [],
+  "logging/device-logs.ts": [
+   "data-dir.ts"
+  ],
+  "logging/inspection-logger.ts": [],
+  "loto/loto-core.ts": [],
+  "loto/quiz-seed.ts": [],
+  "memory.ts": [],
+  "middleware/auth.ts": [
+   "ops-log.ts",
+   "routes/uam.ts",
+   "uam/uam-core.ts"
+  ],
+  "models/glb-geometry.ts": [
+   "models/glb-nodes.ts"
+  ],
+  "models/glb-nodes.ts": [],
+  "models/mindmap.model.ts": [
+   "stores/json-file-store.ts"
+  ],
+  "models/reduce-clustering.ts": [
+   "models/glb-geometry.ts",
+   "models/variants.ts"
+  ],
+  "models/variants.ts": [
+   "memory.ts",
+   "models/glb-geometry.ts"
+  ],
+  "oms/anchor-accuracy.ts": [],
+  "oms/insights.ts": [
+   "oms/intelligence.ts"
+  ],
+  "oms/intelligence.ts": [
+   "data-dir.ts",
+   "guides/store.ts",
+   "oms/observations.ts",
+   "oms/signals.ts",
+   "oms/usage-log.ts"
+  ],
+  "oms/observations.ts": [
+   "data-dir.ts",
+   "oms/usage-log.ts"
+  ],
+  "oms/signals.ts": [
+   "ask/llm.ts"
+  ],
+  "oms/step-validation.ts": [
+   "data-dir.ts",
+   "perception/image-comparator.ts"
+  ],
+  "oms/usage-log.ts": [
+   "routes/anchors.ts",
+   "routes/chamber-configs.ts",
+   "stores/json-file-store.ts"
+  ],
+  "oms/xlsx-lite.ts": [
+   "data-dir.ts"
+  ],
+  "ops-log.ts": [
+   "stores/json-file-store.ts"
+  ],
+  "perception/image-comparator.ts": [],
+  "procedure/compiler.ts": [],
+  "procedure/designer-images.ts": [],
+  "procedure/export.ts": [
+   "guides/ingest.ts",
+   "guides/store.ts",
+   "procedure/compiler.ts"
+  ],
+  "procedure/map-merge.ts": [
+   "procedure/reverse-compiler.ts"
+  ],
+  "procedure/reverse-compiler.ts": [
+   "guides/step-models.ts"
+  ],
+  "routes/admin.ts": [
+   "ops-log.ts"
+  ],
+  "routes/anchors.ts": [
+   "guides/copy.ts",
+   "guides/store.ts",
+   "middleware/auth.ts",
+   "oms/anchor-accuracy.ts",
+   "ops-log.ts",
+   "routes/chamber-configs.ts",
+   "routes/models.ts",
+   "routes/tags.ts",
+   "sse/presence.ts",
+   "stores/json-file-store.ts",
+   "stores/pass-state-store.ts",
+   "tag/tag-emitter.ts",
+   "tag/tag-subscribe.ts"
+  ],
+  "routes/architecture.ts": [
+   "middleware/auth.ts",
+   "version.ts"
+  ],
+  "routes/ask.ts": [
+   "ask/ask-core.ts",
+   "ask/llm.ts",
+   "middleware/auth.ts",
+   "routes/catalog.ts"
+  ],
+  "routes/catalog.ts": [
+   "catalog/catalog-core.ts",
+   "middleware/auth.ts",
+   "version.ts"
+  ],
+  "routes/chamber-configs.ts": [
+   "guides/assembly.ts",
+   "middleware/auth.ts",
+   "routes/anchors.ts",
+   "stores/json-file-store.ts"
+  ],
+  "routes/gemba-library.ts": [
+   "gemba/library-core.ts",
+   "stores/json-file-store.ts"
+  ],
+  "routes/gemba-walks.ts": [
+   "gemba/library-core.ts",
+   "gemba/walk-core.ts",
+   "oms/xlsx-lite.ts",
+   "routes/anchors.ts",
+   "routes/loc-tags.ts",
+   "stores/json-file-store.ts"
+  ],
+  "routes/guide-sessions.ts": [
+   "data-dir.ts",
+   "middleware/auth.ts",
+   "oms/insights.ts",
+   "oms/intelligence.ts",
+   "oms/observations.ts",
+   "oms/usage-log.ts",
+   "oms/xlsx-lite.ts",
+   "routes/guides.ts",
+   "sse/guide-session.sse.ts",
+   "stores/json-file-store.ts",
+   "tag/tag-subscribe.ts"
+  ],
+  "routes/guides.ts": [
+   "adapters/instructions-source-adapter.ts",
+   "data-dir.ts",
+   "guides/assembly.ts",
+   "guides/bundle.ts",
+   "guides/copy.ts",
+   "guides/ingest.ts",
+   "guides/step-models.ts",
+   "guides/store.ts",
+   "import/jobs.ts",
+   "memory.ts",
+   "middleware/auth.ts",
+   "models/mindmap.model.ts",
+   "oms/step-validation.ts",
+   "perception/image-comparator.ts",
+   "procedure/designer-images.ts",
+   "procedure/export.ts",
+   "procedure/map-merge.ts",
+   "procedure/reverse-compiler.ts",
+   "routes/anchors.ts",
+   "routes/models.ts",
+   "routes/tags.ts",
+   "routes/training.ts",
+   "routes/uam.ts",
+   "routes/worldmap.ts",
+   "stores/pass-state-store.ts",
+   "uam/guide-visibility.ts",
+   "uam/uam-core.ts",
+   "ws/mindmap.ws.ts"
+  ],
+  "routes/learn.ts": [
+   "catalog/catalog-core.ts",
+   "middleware/auth.ts",
+   "routes/catalog.ts",
+   "version.ts"
+  ],
+  "routes/loc-tags.ts": [
+   "gemba/finding-core.ts",
+   "gemba/library-core.ts",
+   "perception/image-comparator.ts",
+   "routes/gemba-library.ts",
+   "stores/json-file-store.ts"
+  ],
+  "routes/logs.ts": [
+   "logging/device-logs.ts"
+  ],
+  "routes/loto.ts": [
+   "loto/loto-core.ts",
+   "loto/quiz-seed.ts",
+   "routes/anchors.ts",
+   "stores/json-file-store.ts"
+  ],
+  "routes/mindmap.routes.ts": [
+   "adapters/vision-adapter.ts",
+   "controllers/mindmap.controller.ts",
+   "models/mindmap.model.ts",
+   "procedure/designer-images.ts",
+   "procedure/export.ts",
+   "ws/mindmap.ws.ts"
+  ],
+  "routes/models.ts": [
+   "guides/store.ts",
+   "import/jobs.ts",
+   "memory.ts",
+   "middleware/auth.ts",
+   "models/glb-nodes.ts",
+   "models/variants.ts",
+   "stores/json-file-store.ts"
+  ],
+  "routes/perception.ts": [
+   "adapters/perception-adapter.ts",
+   "routes/sessions.ts"
+  ],
+  "routes/sessions.ts": [
+   "stores/json-file-store.ts"
+  ],
+  "routes/tag-groups.ts": [
+   "routes/anchors.ts",
+   "routes/tags.ts",
+   "stores/json-file-store.ts"
+  ],
+  "routes/tags.ts": [
+   "routes/anchors.ts",
+   "stores/json-file-store.ts",
+   "stores/pass-state-store.ts",
+   "tag/tag-emitter.ts"
+  ],
+  "routes/training.ts": [
+   "logging/inspection-logger.ts",
+   "perception/image-comparator.ts",
+   "routes/tags.ts",
+   "stores/pass-state-store.ts"
+  ],
+  "routes/uam.ts": [
+   "middleware/auth.ts",
+   "ops-log.ts",
+   "stores/json-file-store.ts",
+   "uam/uam-core.ts"
+  ],
+  "routes/worldmap.ts": [
+   "guides/store.ts",
+   "middleware/auth.ts",
+   "ops-log.ts"
+  ],
+  "sse/guide-session.sse.ts": [
+   "adapters/ai-guide-adapter.ts",
+   "guides/store.ts",
+   "oms/intelligence.ts",
+   "oms/observations.ts",
+   "oms/signals.ts",
+   "oms/usage-log.ts",
+   "routes/guides.ts"
+  ],
+  "sse/presence.ts": [
+   "stores/json-file-store.ts",
+   "tag/tag-subscribe.ts"
+  ],
+  "stores/in-memory-store.ts": [],
+  "stores/json-file-store.ts": [
+   "stores/in-memory-store.ts"
+  ],
+  "stores/pass-state-store.ts": [
+   "stores/json-file-store.ts"
+  ],
+  "tag/tag-core.ts": [],
+  "tag/tag-emitter.ts": [
+   "routes/anchors.ts",
+   "routes/guides.ts",
+   "routes/loc-tags.ts",
+   "routes/loto.ts",
+   "routes/models.ts",
+   "routes/sessions.ts",
+   "routes/tag-groups.ts",
+   "routes/tags.ts",
+   "stores/pass-state-store.ts",
+   "tag/tag-core.ts",
+   "version.ts"
+  ],
+  "tag/tag-subscribe.ts": [
+   "stores/json-file-store.ts",
+   "tag/tag-core.ts",
+   "tag/tag-emitter.ts"
+  ],
+  "uam/guide-visibility.ts": [
+   "uam/uam-core.ts"
+  ],
+  "uam/uam-core.ts": [],
+  "version.ts": [],
+  "ws/mindmap.ws.ts": [
+   "models/mindmap.model.ts"
+  ]
+ },
+ "app": {
+  "App/AppSettings.swift": [],
+  "App/AppVersion.swift": [
+   "Services/WorldMapCache.swift"
+  ],
+  "App/GuidedTourManager.swift": [],
+  "Components/ARContainerView.swift": [
+   "Services/ARSessionManager.swift"
+  ],
+  "Components/ARMomentCoach.swift": [
+   "App/GuidedTourManager.swift",
+   "Components/HelpSheet.swift"
+  ],
+  "Components/ARSurfaceHit.swift": [],
+  "Components/ARTapCoach.swift": [],
+  "Components/AnchorLabOverlay.swift": [
+   "App/AppVersion.swift",
+   "Components/CrosshairView.swift",
+   "Models/SIBTypes.swift",
+   "Services/ARSessionManager.swift",
+   "Services/AppLog.swift",
+   "Services/SIBClient.swift"
+  ],
+  "Components/AssemblyNode.swift": [
+   "Models/AROMSModels.swift",
+   "Services/AppLog.swift",
+   "Services/AssemblyState.swift",
+   "Services/GLBLoader.swift"
+  ],
+  "Components/CameraPickerView.swift": [
+   "Components/ARContainerView.swift"
+  ],
+  "Components/CoachMarkOverlay.swift": [
+   "App/GuidedTourManager.swift"
+  ],
+  "Components/ContextPrompts.swift": [
+   "App/AppSettings.swift",
+   "Models/SIBTypes.swift",
+   "Services/SIBClient.swift"
+  ],
+  "Components/CrosshairView.swift": [],
+  "Components/DemoSceneGestures.swift": [],
+  "Components/FindingDetailSections.swift": [
+   "App/AppSettings.swift",
+   "Components/FindingPanelNode.swift",
+   "Components/PhotoMarkupView.swift",
+   "Models/LocTagModels.swift",
+   "Services/AppLog.swift",
+   "Services/SIBClient.swift"
+  ],
+  "Components/FindingPanelNode.swift": [
+   "Models/LocTagModels.swift"
+  ],
+  "Components/HelpSheet.swift": [],
+  "Components/HoneycombDiagram.swift": [],
+  "Components/HoneycombHUD.swift": [],
+  "Components/ModelNodeStyle.swift": [
+   "Services/AppLog.swift"
+  ],
+  "Components/ObjectShapeGhost.swift": [
+   "App/AppSettings.swift",
+   "Components/ARContainerView.swift",
+   "Models/AROMSModels.swift",
+   "Models/SIBTypes.swift",
+   "Modes/ObjectScanView.swift",
+   "Services/ARSessionManager.swift",
+   "Services/SIBClient.swift",
+   "Services/WorldMapCache.swift"
+  ],
+  "Components/OnboardingSheet.swift": [],
+  "Components/PhotoMarkupView.swift": [
+   "Components/ARContainerView.swift",
+   "Services/AppLog.swift"
+  ],
+  "Components/PlacementTools.swift": [
+   "Components/ARContainerView.swift",
+   "Services/ARSessionManager.swift"
+  ],
+  "Components/PresenceLayer.swift": [
+   "Services/PresenceService.swift"
+  ],
+  "Components/QAModeBadge.swift": [
+   "Services/AppLog.swift"
+  ],
+  "Components/ResumeCheckpointOverlay.swift": [],
+  "Components/ScanStatusBanner.swift": [
+   "Models/AppState.swift"
+  ],
+  "Components/StepReadCard.swift": [
+   "App/AppSettings.swift",
+   "Models/AROMSModels.swift",
+   "Modes/KioskStartView.swift",
+   "Services/SIBClient.swift"
+  ],
+  "ContentView.swift": [
+   "Models/AppState.swift",
+   "Modes/AuthorModeView.swift",
+   "Modes/LocTagAuthorView.swift",
+   "Modes/LocTagOperatorView.swift",
+   "Modes/ModeSelectionView.swift",
+   "Modes/OperatorModeView.swift"
+  ],
+  "Models/AROMSModels.swift": [
+   "Models/SIBTypes.swift"
+  ],
+  "Models/AppState.swift": [
+   "Models/SIBTypes.swift",
+   "Services/ARCoordinateFrame.swift",
+   "Services/ARSessionManager.swift"
+  ],
+  "Models/InspectionSession.swift": [],
+  "Models/LocTagModels.swift": [
+   "Models/SIBTypes.swift"
+  ],
+  "Models/LotoModels.swift": [
+   "Models/SIBTypes.swift"
+  ],
+  "Models/SIBTypes.swift": [
+   "Models/LocTagModels.swift",
+   "Services/ARCoordinateFrame.swift"
+  ],
+  "Modes/ARFocusRing.swift": [],
+  "Modes/ARGuideSessionView.swift": [
+   "App/AppSettings.swift",
+   "Components/ARContainerView.swift",
+   "Components/ARMomentCoach.swift",
+   "Components/AssemblyNode.swift",
+   "Components/CameraPickerView.swift",
+   "Components/DemoSceneGestures.swift",
+   "Components/ModelNodeStyle.swift",
+   "Components/ObjectShapeGhost.swift",
+   "Components/OnboardingSheet.swift",
+   "Components/PresenceLayer.swift",
+   "Models/AROMSModels.swift",
+   "Models/AppState.swift",
+   "Models/SIBTypes.swift",
+   "Modes/ARFocusRing.swift",
+   "Modes/ConeARGuide.swift",
+   "Modes/KioskStartView.swift",
+   "Modes/ObjectScanView.swift",
+   "Services/ARCoordinateFrame.swift",
+   "Services/ARFrameImage.swift",
+   "Services/ARSessionManager.swift",
+   "Services/AppLog.swift",
+   "Services/AssemblyModelCache.swift",
+   "Services/AssemblyState.swift",
+   "Services/GLBLoader.swift",
+   "Services/GuideRunStore.swift",
+   "Services/PresenceService.swift",
+   "Services/SIBClient.swift",
+   "Services/TagFeaturePrint.swift",
+   "Services/WorldMapCache.swift"
+  ],
+  "Modes/AddTagSheet.swift": [
+   "App/AppSettings.swift",
+   "Models/AppState.swift",
+   "Models/SIBTypes.swift",
+   "Services/SIBClient.swift"
+  ],
+  "Modes/AnchorDirectoryView.swift": [
+   "App/AppSettings.swift",
+   "App/GuidedTourManager.swift",
+   "Components/CoachMarkOverlay.swift",
+   "Components/HelpSheet.swift",
+   "Components/OnboardingSheet.swift",
+   "Models/AppState.swift",
+   "Models/LocTagModels.swift",
+   "Models/SIBTypes.swift",
+   "Modes/AnchorHubView.swift",
+   "Modes/ILOTOHubView.swift",
+   "Modes/QRGeneratorView.swift",
+   "Services/AnchorEncryption.swift",
+   "Services/SIBClient.swift"
+  ],
+  "Modes/AnchorHubView.swift": [
+   "App/AppSettings.swift",
+   "App/GuidedTourManager.swift",
+   "Components/CoachMarkOverlay.swift",
+   "Components/ObjectShapeGhost.swift",
+   "Components/OnboardingSheet.swift",
+   "Models/AppState.swift",
+   "Models/LocTagModels.swift",
+   "Models/SIBTypes.swift",
+   "Modes/GuideListView.swift",
+   "Modes/LocTagEditSheet.swift",
+   "Modes/ObjectScanView.swift",
+   "Modes/QRGeneratorView.swift",
+   "Modes/QRScanGateView.swift",
+   "Modes/TagGroupListView.swift",
+   "Services/AnchorEncryption.swift",
+   "Services/SIBClient.swift",
+   "Services/WorldMapCache.swift"
+  ],
+  "Modes/AnchorLabView.swift": [
+   "App/AppSettings.swift",
+   "App/AppVersion.swift",
+   "App/GuidedTourManager.swift",
+   "Components/ARTapCoach.swift",
+   "Components/AnchorLabOverlay.swift",
+   "Components/PlacementTools.swift",
+   "Models/AppState.swift",
+   "Models/SIBTypes.swift",
+   "Modes/ARFocusRing.swift",
+   "Modes/ARGuideSessionView.swift",
+   "Modes/QRGeneratorView.swift",
+   "Modes/QRScanGateView.swift",
+   "Services/ARCoordinateFrame.swift",
+   "Services/ARFrameImage.swift",
+   "Services/ARSessionManager.swift",
+   "Services/AnchorEncryption.swift",
+   "Services/AppLog.swift",
+   "Services/SIBClient.swift",
+   "Services/WorldMapCache.swift"
+  ],
+  "Modes/AnchorScanView.swift": [
+   "App/AppSettings.swift",
+   "Components/ARContainerView.swift",
+   "Components/ScanStatusBanner.swift",
+   "Models/AppState.swift",
+   "Models/SIBTypes.swift",
+   "Services/ARSessionManager.swift",
+   "Services/AnchorEncryption.swift",
+   "Services/SIBClient.swift"
+  ],
+  "Modes/AssemblyPlacementView.swift": [
+   "App/AppSettings.swift",
+   "Components/AssemblyNode.swift",
+   "Components/PlacementTools.swift",
+   "Models/AROMSModels.swift",
+   "Modes/ARGuideSessionView.swift",
+   "Services/ARSessionManager.swift",
+   "Services/AppLog.swift",
+   "Services/AssemblyModelCache.swift",
+   "Services/AssemblyState.swift",
+   "Services/GLBLoader.swift",
+   "Services/SIBClient.swift",
+   "Services/WorldMapCache.swift"
+  ],
+  "Modes/AuthorModeView.swift": [
+   "App/AppSettings.swift",
+   "App/GuidedTourManager.swift",
+   "Components/ARContainerView.swift",
+   "Components/ARMomentCoach.swift",
+   "Components/ARTapCoach.swift",
+   "Components/CoachMarkOverlay.swift",
+   "Components/OnboardingSheet.swift",
+   "Components/PresenceLayer.swift",
+   "Models/AppState.swift",
+   "Models/SIBTypes.swift",
+   "Modes/ARFocusRing.swift",
+   "Modes/AddTagSheet.swift",
+   "Modes/ConeCaptureView.swift",
+   "Modes/EditTagSheet.swift",
+   "Modes/HoneycombCaptureView.swift",
+   "Modes/OCRCaptureView.swift",
+   "Modes/ObjectScanView.swift",
+   "Modes/QRGeneratorView.swift",
+   "Services/ARCoordinateFrame.swift",
+   "Services/ARSessionManager.swift",
+   "Services/AnchorEncryption.swift",
+   "Services/AppLog.swift",
+   "Services/PresenceService.swift",
+   "Services/SIBClient.swift",
+   "Services/WorldMapCache.swift"
+  ],
+  "Modes/ChamberScanView.swift": [
+   "App/AppSettings.swift",
+   "App/GuidedTourManager.swift",
+   "Components/ARContainerView.swift",
+   "Models/AppState.swift",
+   "Models/LocTagModels.swift",
+   "Models/SIBTypes.swift",
+   "Modes/ARGuideSessionView.swift",
+   "Modes/AnchorHubView.swift",
+   "Services/ARSessionManager.swift",
+   "Services/AnchorEncryption.swift",
+   "Services/SIBClient.swift"
+  ],
+  "Modes/ConeARGuide.swift": [],
+  "Modes/ConeCaptureView.swift": [
+   "App/AppSettings.swift",
+   "Models/AppState.swift",
+   "Models/SIBTypes.swift",
+   "Modes/ARGuideSessionView.swift",
+   "Modes/ConeARGuide.swift",
+   "Modes/ROIPickerView.swift",
+   "Modes/TrainingDomeGuide.swift",
+   "Services/ARCoordinateFrame.swift",
+   "Services/ARFrameImage.swift",
+   "Services/ARSessionManager.swift",
+   "Services/AnchorEncryption.swift",
+   "Services/AppLog.swift",
+   "Services/DepthCapture.swift",
+   "Services/SIBClient.swift",
+   "Services/TagFeaturePrint.swift"
+  ],
+  "Modes/EditTagSheet.swift": [
+   "App/AppSettings.swift",
+   "Models/AppState.swift",
+   "Models/SIBTypes.swift",
+   "Services/SIBClient.swift"
+  ],
+  "Modes/GembaWalkSheets.swift": [
+   "App/AppSettings.swift",
+   "Components/FindingPanelNode.swift",
+   "Models/LocTagModels.swift",
+   "Models/SIBTypes.swift",
+   "Services/AppLog.swift",
+   "Services/GembaLibraryStore.swift",
+   "Services/SIBClient.swift"
+  ],
+  "Modes/GuideEditorView.swift": [
+   "App/AppSettings.swift",
+   "App/GuidedTourManager.swift",
+   "Components/CameraPickerView.swift",
+   "Models/AROMSModels.swift",
+   "Models/AppState.swift",
+   "Models/SIBTypes.swift",
+   "Modes/AssemblyPlacementView.swift",
+   "Modes/GuideStepPlacementView.swift",
+   "Modes/ModelPreviewView.swift",
+   "Modes/QRScanGateView.swift",
+   "Services/SIBClient.swift"
+  ],
+  "Modes/GuideListView.swift": [
+   "App/AppSettings.swift",
+   "App/GuidedTourManager.swift",
+   "Models/AROMSModels.swift",
+   "Models/AppState.swift",
+   "Models/SIBTypes.swift",
+   "Modes/ARGuideSessionView.swift",
+   "Modes/GuideEditorView.swift",
+   "Modes/QRScanGateView.swift",
+   "Services/GuideRunStore.swift",
+   "Services/SIBClient.swift"
+  ],
+  "Modes/GuideStepPlacementView.swift": [
+   "App/AppSettings.swift",
+   "Components/ARMomentCoach.swift",
+   "Components/ARTapCoach.swift",
+   "Components/ModelNodeStyle.swift",
+   "Components/ObjectShapeGhost.swift",
+   "Components/PlacementTools.swift",
+   "Components/PresenceLayer.swift",
+   "Components/StepReadCard.swift",
+   "Models/AROMSModels.swift",
+   "Models/AppState.swift",
+   "Models/SIBTypes.swift",
+   "Modes/ARFocusRing.swift",
+   "Modes/ConeCaptureView.swift",
+   "Modes/ObjectScanView.swift",
+   "Services/ARCoordinateFrame.swift",
+   "Services/ARFrameImage.swift",
+   "Services/ARSessionManager.swift",
+   "Services/AnchorEncryption.swift",
+   "Services/AppLog.swift",
+   "Services/PresenceService.swift",
+   "Services/SIBClient.swift",
+   "Services/TagFeaturePrint.swift",
+   "Services/WorldMapCache.swift"
+  ],
+  "Modes/HoneycombARGuide.swift": [],
+  "Modes/HoneycombCaptureView.swift": [
+   "App/AppSettings.swift",
+   "Components/HoneycombDiagram.swift",
+   "Models/AppState.swift",
+   "Models/SIBTypes.swift",
+   "Modes/ConeCaptureView.swift",
+   "Modes/HoneycombARGuide.swift",
+   "Services/ARCoordinateFrame.swift",
+   "Services/ARFrameImage.swift",
+   "Services/ARSessionManager.swift",
+   "Services/AnchorEncryption.swift",
+   "Services/SIBClient.swift",
+   "Services/TagFeaturePrint.swift"
+  ],
+  "Modes/ILOTOHubView.swift": [
+   "App/AppSettings.swift",
+   "Models/LotoModels.swift",
+   "Models/SIBTypes.swift",
+   "Modes/LotoStatusViews.swift",
+   "Modes/LotoTrainingView.swift",
+   "Modes/MyLotoView.swift",
+   "Services/SIBClient.swift"
+  ],
+  "Modes/KioskStartView.swift": [
+   "App/AppSettings.swift",
+   "App/GuidedTourManager.swift",
+   "Models/AppState.swift",
+   "Modes/SettingsView.swift",
+   "Services/SIBClient.swift"
+  ],
+  "Modes/LocTagAuthorView.swift": [
+   "App/AppSettings.swift",
+   "Components/ARContainerView.swift",
+   "Components/FindingPanelNode.swift",
+   "Components/PresenceLayer.swift",
+   "Components/ResumeCheckpointOverlay.swift",
+   "Models/AppState.swift",
+   "Models/LocTagModels.swift",
+   "Models/SIBTypes.swift",
+   "Modes/ARFocusRing.swift",
+   "Modes/GembaWalkSheets.swift",
+   "Modes/LocTagFormSheet.swift",
+   "Modes/LocTagPeekSheet.swift",
+   "Services/ARSessionManager.swift",
+   "Services/AppLog.swift",
+   "Services/GembaLibraryStore.swift",
+   "Services/PresenceService.swift",
+   "Services/SIBClient.swift",
+   "Services/WalkProgressStore.swift"
+  ],
+  "Modes/LocTagEditSheet.swift": [
+   "App/AppSettings.swift",
+   "Models/LocTagModels.swift",
+   "Services/SIBClient.swift"
+  ],
+  "Modes/LocTagFormSheet.swift": [
+   "App/AppSettings.swift",
+   "Components/CameraPickerView.swift",
+   "Components/PhotoMarkupView.swift",
+   "Models/LocTagModels.swift",
+   "Models/SIBTypes.swift",
+   "Services/AppLog.swift",
+   "Services/GembaLibraryStore.swift",
+   "Services/SIBClient.swift"
+  ],
+  "Modes/LocTagOperatorSheet.swift": [
+   "App/AppSettings.swift",
+   "Components/CameraPickerView.swift",
+   "Components/FindingDetailSections.swift",
+   "Models/LocTagModels.swift",
+   "Models/SIBTypes.swift",
+   "Services/SIBClient.swift"
+  ],
+  "Modes/LocTagOperatorView.swift": [
+   "App/AppSettings.swift",
+   "Components/ARContainerView.swift",
+   "Components/FindingPanelNode.swift",
+   "Components/ResumeCheckpointOverlay.swift",
+   "Models/AppState.swift",
+   "Models/LocTagModels.swift",
+   "Modes/ARGuideSessionView.swift",
+   "Modes/LocTagOperatorSheet.swift",
+   "Services/ARFrameImage.swift",
+   "Services/ARSessionManager.swift",
+   "Services/AppLog.swift",
+   "Services/GembaLiveActivity.swift",
+   "Services/SIBClient.swift",
+   "Services/WalkProgressStore.swift"
+  ],
+  "Modes/LocTagPeekSheet.swift": [
+   "App/AppSettings.swift",
+   "Components/FindingDetailSections.swift",
+   "Models/AppState.swift",
+   "Models/LocTagModels.swift",
+   "Modes/LocTagEditSheet.swift"
+  ],
+  "Modes/LotoARSessionView.swift": [
+   "App/AppSettings.swift",
+   "App/GuidedTourManager.swift",
+   "Components/ARContainerView.swift",
+   "Models/AROMSModels.swift",
+   "Models/AppState.swift",
+   "Models/LotoModels.swift",
+   "Models/SIBTypes.swift",
+   "Modes/ARFocusRing.swift",
+   "Modes/LotoStatusViews.swift",
+   "Modes/ObjectScanView.swift",
+   "Modes/QRScanGateView.swift",
+   "Services/ARSessionManager.swift",
+   "Services/SIBClient.swift"
+  ],
+  "Modes/LotoFlowViews.swift": [
+   "App/AppSettings.swift",
+   "Components/CameraPickerView.swift",
+   "Models/LotoModels.swift",
+   "Models/SIBTypes.swift",
+   "Services/SIBClient.swift"
+  ],
+  "Modes/LotoStatusViews.swift": [
+   "App/AppSettings.swift",
+   "Models/AROMSModels.swift",
+   "Models/LotoModels.swift",
+   "Models/SIBTypes.swift",
+   "Modes/LotoARSessionView.swift",
+   "Modes/LotoFlowViews.swift",
+   "Services/SIBClient.swift"
+  ],
+  "Modes/LotoTrainingView.swift": [
+   "App/AppSettings.swift",
+   "Models/LotoModels.swift",
+   "Modes/ARGuideSessionView.swift",
+   "Modes/LotoFlowViews.swift",
+   "Services/SIBClient.swift"
+  ],
+  "Modes/ModeSelectionView.swift": [
+   "App/AppSettings.swift",
+   "App/GuidedTourManager.swift",
+   "Components/CoachMarkOverlay.swift",
+   "Components/ContextPrompts.swift",
+   "Components/OnboardingSheet.swift",
+   "Models/AppState.swift",
+   "Models/SIBTypes.swift",
+   "Modes/AnchorDirectoryView.swift",
+   "Modes/AnchorHubView.swift",
+   "Modes/AnchorLabView.swift",
+   "Modes/ChamberScanView.swift",
+   "Modes/ILOTOHubView.swift",
+   "Modes/KioskStartView.swift",
+   "Modes/QRGeneratorView.swift",
+   "Modes/SettingsView.swift",
+   "Services/AnchorEncryption.swift",
+   "Services/SIBClient.swift"
+  ],
+  "Modes/ModelARPlacementView.swift": [
+   "App/AppSettings.swift",
+   "Components/ModelNodeStyle.swift",
+   "Components/PlacementTools.swift",
+   "Models/AROMSModels.swift",
+   "Modes/ARGuideSessionView.swift",
+   "Services/ARSessionManager.swift",
+   "Services/SIBClient.swift",
+   "Services/WorldMapCache.swift"
+  ],
+  "Modes/ModelPreviewView.swift": [
+   "App/AppSettings.swift",
+   "Models/AROMSModels.swift",
+   "Services/SIBClient.swift"
+  ],
+  "Modes/MyLotoView.swift": [
+   "App/AppSettings.swift",
+   "Models/LotoModels.swift",
+   "Models/SIBTypes.swift",
+   "Modes/LotoFlowViews.swift",
+   "Services/SIBClient.swift"
+  ],
+  "Modes/OCRCaptureView.swift": [
+   "App/AppSettings.swift",
+   "Models/AppState.swift",
+   "Models/SIBTypes.swift",
+   "Modes/ARGuideSessionView.swift",
+   "Modes/ConeCaptureView.swift",
+   "Modes/HoneycombCaptureView.swift",
+   "Services/ARSessionManager.swift",
+   "Services/AnchorEncryption.swift",
+   "Services/SIBClient.swift"
+  ],
+  "Modes/ObjectScanView.swift": [
+   "App/AppSettings.swift",
+   "Models/SIBTypes.swift",
+   "Services/ARSessionManager.swift",
+   "Services/SIBClient.swift"
+  ],
+  "Modes/OperatorModeView.swift": [
+   "App/AppSettings.swift",
+   "App/GuidedTourManager.swift",
+   "Components/ARContainerView.swift",
+   "Components/AnchorLabOverlay.swift",
+   "Components/CoachMarkOverlay.swift",
+   "Components/OnboardingSheet.swift",
+   "Models/AppState.swift",
+   "Models/InspectionSession.swift",
+   "Models/SIBTypes.swift",
+   "Modes/ARGuideSessionView.swift",
+   "Modes/AnchorDirectoryView.swift",
+   "Modes/ConeARGuide.swift",
+   "Modes/ConeCaptureView.swift",
+   "Modes/ObjectScanView.swift",
+   "Modes/TagInspectedSheet.swift",
+   "Modes/ValidationResultsView.swift",
+   "Services/ARCoordinateFrame.swift",
+   "Services/ARFrameImage.swift",
+   "Services/ARSessionManager.swift",
+   "Services/AnchorEncryption.swift",
+   "Services/DepthCapture.swift",
+   "Services/InspectionDebugLog.swift",
+   "Services/SIBClient.swift",
+   "Services/TagFeaturePrint.swift"
+  ],
+  "Modes/QRGeneratorView.swift": [
+   "App/AppSettings.swift",
+   "Models/SIBTypes.swift",
+   "Services/SIBClient.swift"
+  ],
+  "Modes/QRScanGateView.swift": [
+   "App/AppSettings.swift",
+   "App/GuidedTourManager.swift",
+   "Components/CoachMarkOverlay.swift",
+   "Components/ObjectShapeGhost.swift",
+   "Models/AppState.swift",
+   "Models/SIBTypes.swift",
+   "Modes/ConeCaptureView.swift",
+   "Modes/ObjectScanView.swift",
+   "Services/ARCoordinateFrame.swift",
+   "Services/ARSessionManager.swift",
+   "Services/AnchorEncryption.swift",
+   "Services/AppLog.swift",
+   "Services/SIBClient.swift",
+   "Services/WorldMapCache.swift"
+  ],
+  "Modes/ROIPickerView.swift": [
+   "Models/SIBTypes.swift"
+  ],
+  "Modes/SettingsView.swift": [
+   "App/AppSettings.swift",
+   "App/AppVersion.swift",
+   "App/GuidedTourManager.swift",
+   "Components/CoachMarkOverlay.swift",
+   "Models/AppState.swift",
+   "Modes/QRGeneratorView.swift",
+   "Services/AppLog.swift",
+   "Services/InspectionDebugLog.swift",
+   "Services/SIBClient.swift"
+  ],
+  "Modes/TagGroupDetailView.swift": [
+   "App/AppSettings.swift",
+   "App/GuidedTourManager.swift",
+   "Models/AppState.swift",
+   "Models/SIBTypes.swift",
+   "Modes/QRScanGateView.swift",
+   "Services/SIBClient.swift"
+  ],
+  "Modes/TagGroupListView.swift": [
+   "App/AppSettings.swift",
+   "App/GuidedTourManager.swift",
+   "Models/AppState.swift",
+   "Models/SIBTypes.swift",
+   "Modes/TagGroupDetailView.swift",
+   "Services/SIBClient.swift"
+  ],
+  "Modes/TagInspectedSheet.swift": [
+   "Models/SIBTypes.swift"
+  ],
+  "Modes/TrainingDomeGuide.swift": [],
+  "Modes/ValidationResultsView.swift": [
+   "Models/AppState.swift",
+   "Models/InspectionSession.swift",
+   "Models/SIBTypes.swift"
+  ],
+  "Services/ARCoordinateFrame.swift": [],
+  "Services/ARFrameImage.swift": [],
+  "Services/ARSessionManager.swift": [
+   "Models/AppState.swift",
+   "Models/SIBTypes.swift",
+   "Services/ARCoordinateFrame.swift",
+   "Services/AppLog.swift",
+   "Services/QRScannerService.swift"
+  ],
+  "Services/AnchorEncryption.swift": [],
+  "Services/AppLog.swift": [
+   "App/AppSettings.swift",
+   "App/AppVersion.swift",
+   "Models/SIBTypes.swift"
+  ],
+  "Services/AssemblyModelCache.swift": [
+   "Services/SIBClient.swift"
+  ],
+  "Services/AssemblyState.swift": [
+   "Models/AROMSModels.swift"
+  ],
+  "Services/DepthCapture.swift": [],
+  "Services/GLBLoader.swift": [
+   "Services/AppLog.swift"
+  ],
+  "Services/GembaLibraryStore.swift": [
+   "App/AppSettings.swift",
+   "Models/LocTagModels.swift",
+   "Services/AppLog.swift",
+   "Services/SIBClient.swift"
+  ],
+  "Services/GembaLiveActivity.swift": [
+   "Services/AppLog.swift",
+   "Shared/GembaWalkActivity.swift"
+  ],
+  "Services/GuideRunStore.swift": [
+   "Models/AROMSModels.swift",
+   "Services/SIBClient.swift"
+  ],
+  "Services/InspectionDebugLog.swift": [],
+  "Services/PresenceService.swift": [
+   "App/AppSettings.swift",
+   "Services/ARCoordinateFrame.swift",
+   "Services/AppLog.swift",
+   "Services/SIBClient.swift"
+  ],
+  "Services/QRScannerService.swift": [
+   "Models/SIBTypes.swift"
+  ],
+  "Services/SIBClient.swift": [
+   "App/AppSettings.swift",
+   "Models/AROMSModels.swift",
+   "Models/InspectionSession.swift",
+   "Models/LocTagModels.swift",
+   "Models/LotoModels.swift",
+   "Models/SIBTypes.swift",
+   "Services/ARCoordinateFrame.swift",
+   "Services/AppLog.swift",
+   "Services/PresenceService.swift",
+   "Services/WorldMapCache.swift"
+  ],
+  "Services/TagEnvelope.swift": [],
+  "Services/TagFeaturePrint.swift": [],
+  "Services/WalkProgressStore.swift": [],
+  "Services/WorldMapCache.swift": [
+   "Models/SIBTypes.swift",
+   "Services/ARCoordinateFrame.swift",
+   "Services/SIBClient.swift"
+  ],
+  "Shared/GembaWalkActivity.swift": [],
+  "SpatialTaggingAppApp.swift": [
+   "App/AppSettings.swift",
+   "App/GuidedTourManager.swift",
+   "Components/QAModeBadge.swift",
+   "ContentView.swift",
+   "Models/AppState.swift",
+   "Services/AppLog.swift"
+  ]
+ }
+}

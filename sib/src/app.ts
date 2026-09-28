@@ -31,6 +31,7 @@ import mindmapRouter from './routes/mindmap.routes.js';
 import lotoRouter, { lotoPointStore, lotoEventStore } from './routes/loto.js';
 import catalogRouter from './routes/catalog.js';
 import learnRouter from './routes/learn.js';
+import architectureRouter from './routes/architecture.js';
 import adminRouter from './routes/admin.js';
 import logsRouter from './routes/logs.js';
 import { captureServerConsole, pruneLogs, listLogDevices } from './logging/device-logs.js';
@@ -327,6 +328,8 @@ document.getElementById('f').addEventListener('submit', async function(ev){
   app.use('/catalog', catalogRouter);
   // GET /learn - the five-minute reading orders over the same catalogue.
   app.use('/learn', learnRouter);
+  // GET /architecture - C4 code architecture; /architecture/data needs the IP key.
+  app.use('/architecture', architectureRouter);
 
   // --- Ask SIB (no auth - docs-grounded assistant; grounding is the catalogue
   // ONLY, so nothing sensitive can leak; rate-limited in the router) ---

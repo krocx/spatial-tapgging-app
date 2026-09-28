@@ -27,6 +27,7 @@ const GOVERNED = [
   'sib/portal/home.html',           // the front door
   'sib/portal/catalog.html',        // the catalogue
   'sib/portal/compass.js',          // the Compass (every surface)
+  'sib/portal/architecture.html',   // /architecture (C4)
 ];
 const TOKENS = 'sib/portal/brand/tokens.css';
 
@@ -40,7 +41,8 @@ const rules = [
   { name: 'backdrop-filter (glass)',     test: l => /backdrop-filter/.test(l) },
   { name: 'gradient on a surface',       test: l => /(?<!repeating-)(linear|radial)-gradient\(/.test(l) },
   { name: 'box-shadow not a token',      test: l => /box-shadow\s*:/.test(l) && !/var\(--ax-(ring|rim|shadow)\)|--ax-rim|0 0 0 1px var\(--ax-green\)|box-shadow\s*:\s*none/.test(l) },
-  { name: 'font-family not the brand',   test: l => /font-family\s*:/.test(l) && !/var\(--ax-(font|mono)\)/.test(l) },
+  // An @font-face that declares Open Sans itself (the export frame embeds the brand font) is the brand.
+  { name: 'font-family not the brand',   test: l => /font-family\s*:/.test(l) && !/var\(--ax-(font|mono)\)/.test(l) && !/@font-face\{font-family:'Open Sans'/.test(l) },
   { name: 'font loaded from a CDN',      test: l => /fonts\.googleapis\.com|fonts\.gstatic\.com|use\.typekit|fonts\.bunny/.test(l) },
   { name: 'border-radius not the app\'s', test: l => /border-radius\s*:/.test(l) && !/var\(--ax-r|50%|999px|100px|\b(18|14|12|10|8|6|4|3|2)px\b/.test(l) },
 ];

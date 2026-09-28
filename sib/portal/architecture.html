@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en" class="ax">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Architecture · appliedx Connected Worker AR OMS Platform</title>
+<link rel="stylesheet" href="/portal/brand/brand.css">
+<style>
+  /* /architecture - the C4 code architecture beneath the Feature Catalogue.
+     One level per tab: a diagram, its prose, a Download image button. The
+     image carries the Applied Materials header and the confidentiality line.
+     Built only from the brand system (docs/BRAND.md). */
+  body { margin: 0; }
+  .ar-header { display: flex; align-items: center; gap: var(--ax-s4); padding: var(--ax-s4) var(--ax-s5); border-bottom: var(--ax-hair); }
+  .ar-header .ax-nav { margin-left: var(--ax-s4); }
+  .ar-header .ax-chip { margin-left: auto; }
+  .ar-wrap { max-width: 1280px; margin: 0 auto; padding: var(--ax-s5) var(--ax-s5) var(--ax-s7); }
+  .ar-hero h1 { margin: 0 0 var(--ax-s2); }
+  .ar-hero p  { color: var(--ax-ink-2); margin: 0 0 var(--ax-s4); max-width: 820px; }
+  .ar-hero .ax-notice { margin-bottom: var(--ax-s4); max-width: 820px; }
+  .ax-tabs { margin-bottom: var(--ax-s4); overflow-x: auto; }
+  .ax-tabs > * { white-space: nowrap; }
+  .ar-section { display: grid; grid-template-columns: minmax(280px, 340px) minmax(0, 1fr); gap: var(--ax-s5); align-items: start; }
+  .ar-copy h2 { margin: 0 0 var(--ax-s3); font: var(--ax-h2); }
+  .ar-copy p, .ar-copy li { font: var(--ax-label-r); color: var(--ax-ink-2); }
+  .ar-copy code { font: var(--ax-num); color: var(--ax-ink); }
+  .ar-copy strong { color: var(--ax-ink); }
+  .ar-copy .ar-acts { display: flex; gap: var(--ax-s2); flex-wrap: wrap; margin-top: var(--ax-s4); }
+  .ar-diagram { padding: var(--ax-s4); overflow: auto; min-height: 320px; position: relative; }
+  .ar-diagram svg { max-width: none; height: auto; }
+  .ar-diagram.is-fit svg { width: 100%; max-width: 100% !important; }
+  .ar-diagram pre { font: var(--ax-num); color: var(--ax-ink-3); white-space: pre-wrap; margin: 0; }
+  .ar-fit { position: absolute; top: var(--ax-s3); right: var(--ax-s3); }
+  /* Level 4 file explorer */
+  .ar-files { margin-top: var(--ax-s4); display: grid; grid-template-columns: 1fr 1fr; gap: var(--ax-s4); }
+  .ar-files h3 { margin: 0 0 var(--ax-s2); font: var(--ax-label); }
+  .ar-files ul { list-style: none; margin: 0; padding: 0; max-height: 320px; overflow: auto; }
+  .ar-files li { font: var(--ax-num); color: var(--ax-ink-2); padding: 2px 0; }
+  .ar-files li b { color: var(--ax-ink); font-weight: 600; }
+  .ar-pick { display: flex; gap: var(--ax-s2); align-items: center; margin-top: var(--ax-s4); flex-wrap: wrap; }
+  .ar-pick .ax-input { min-width: 320px; }
+  @media (max-width: 900px) { .ar-section { grid-template-columns: 1fr; } .ar-files { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header class="ar-header">
+  <span class="ax-wordmark"><span class="ax-a">applied</span><span class="ax-x">x</span><span class="ax-rest">Connected Worker AR OMS Platform</span></span>
+  <nav class="ax-nav"><a href="/">Home</a><a href="/catalog">Catalogue</a><a href="/learn">Learn</a><a href="/architecture" aria-current="page">Architecture</a></nav>
+  <span class="ax-chip" id="ar-version"></span>
+  <span data-brand-slot style="display:flex;align-items:center;margin-left:12px"></span>
+</header>
+
+<main class="ar-wrap" id="ar-main">
+  <div class="ax-empty" style="border:0"><span class="ax-mark is-loading"><i></i><em></em></span>Loading…</div>
+</main>
+
+<script src="/portal/brand.js"></script>
+<script>
+// ── Access: the whole page is IP-sensitive. Same key and storage as /catalog. ──
+const IP_KEY_TTL_MS = 7 * 24 * 3600 * 1000;
+function ipHdrs(){
+  try {
+    const raw = localStorage.getItem('sib_ip_key'); if (!raw) return {};
+    const rec = raw[0] === '{' ? JSON.parse(raw) : { key: raw, savedAt: 0 };
+    if (!rec.key || Date.now() - (rec.savedAt || 0) > IP_KEY_TTL_MS) { localStorage.removeItem('sib_ip_key'); return {}; }
+    return { 'X-IP-Key': rec.key };
+  } catch { return {}; }
+}
+function ipUnlock(){
+  const k = prompt('IP key - unlocks the architecture (remembered for 7 days):');
+  if (k === null) return;
+  const v = k.trim();
+  if (!v) { localStorage.removeItem('sib_ip_key'); return; }
+  localStorage.setItem('sib_ip_key', JSON.stringify({ key: v, savedAt: Date.now() }));
+  location.reload();
+}
+
+// ── State ────────────────────────────────────────────────────────────────────
+let DATA = null, current = null, fit = true;
+const main = document.getElementById('ar-main');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function loadScript(src){ return new Promise((ok, no) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = no; document.head.appendChild(s); }); }
+let mermaidReady = false, markedReady = false, seq = 0;
+
+// Minimal markdown for the prose: paragraphs, bold, code, links. marked when
+// it is vendored, this fallback otherwise, so the page never depends on it.
+function md(src){
+  if (markedReady) return window.marked.parse(src);
+  return src.split(/\n{2,}/).map(p => '<p>' + esc(p)
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+    .replace(/\n/g, ' ') + '</p>').join('');
+}
+
+function mix(hex, bg, t){
+  const h = x => [1,3,5].map(i => parseInt(x.slice(i, i + 2), 16));
+  const a = h(hex), b = h(bg);
+  return '#' + a.map((v, i) => Math.round(v * t + b[i] * (1 - t)).toString(16).padStart(2, '0')).join('');
+}
+// Theme from tokens at render time (the page holds no colour of its own).
+// htmlLabels off: labels are SVG text, so the exported image needs no
+// foreignObject and rasterises the same in every browser.
+function themed(code){
+  const SOLID = cssVar('--ax-solid'), INK = cssVar('--ax-ink'), BG2 = cssVar('--ax-bg-2'), RULE = cssVar('--ax-paper-3');
+  const c = cssVar('--ax-blue');
+  const tv = { darkMode: true, background: SOLID, fontFamily: cssVar('--ax-font'), fontSize: '14px',
+    primaryColor: mix(c, SOLID, 0.22), primaryBorderColor: c, primaryTextColor: INK,
+    secondaryColor: BG2, secondaryBorderColor: RULE, secondaryTextColor: INK,
+    tertiaryColor: BG2, tertiaryBorderColor: RULE, tertiaryTextColor: INK,
+    lineColor: mix(c, INK, 0.55), textColor: INK, mainBkg: mix(c, SOLID, 0.22), nodeBorder: c,
+    clusterBkg: BG2, clusterBorder: RULE, edgeLabelBackground: SOLID, titleColor: INK };
+  const init = { theme: 'base', themeVariables: tv, flowchart: { htmlLabels: false, curve: 'basis', nodeSpacing: 30, rankSpacing: 44, padding: 10 } };
+  return '%%{init: ' + JSON.stringify(init) + '}%%\n' + code;
+}
+
+async function boot(){
+  try {
+    const r = await fetch('/architecture/data', { headers: ipHdrs() });
+    if (r.status === 403) {
+      main.innerHTML = `<div class="ar-hero"><div class="ax-eyebrow">Restricted</div><h1>Code architecture</h1>
+        <div class="ax-notice ax-notice--warn"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-lock-restricted"/></svg>
+        <div>This page describes how the platform is built and is restricted to the team. Enter the IP key to open it.</div></div>
+        <button class="ax-btn ax-btn--primary" onclick="ipUnlock()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-key"/></svg> Enter IP key</button></div>`;
+      return;
+    }
+    if (!r.ok) throw new Error((await r.json()).error || r.statusText);
+    DATA = await r.json();
+  } catch (e) {
+    main.innerHTML = '<h2>Architecture unavailable</h2><p class="ax-muted">' + esc(e.message) + '</p>'; return;
+  }
+  document.getElementById('ar-version').textContent = 'v' + DATA.version;
+  const lib = (local, cdn) => loadScript(local).catch(() => loadScript(cdn));
+  await Promise.allSettled([
+    lib('/portal/vendor/mermaid.min.js').then(() => { window.mermaid.initialize({ startOnLoad: false, securityLevel: 'loose', suppressErrorRendering: true }); mermaidReady = true; }),
+    lib('/portal/vendor/marked.min.js').then(() => markedReady = true),
+  ]);
+  // Generated level 4 becomes two more tabs after the hand-written ones.
+  if (DATA.generated.sib) DATA.sections.push({ id: 'code-sib', title: 'Level 4 · SIB code (generated)', md: 'Relative imports between `sib/src/` folders; the label is the number of imports. Regenerated by `npm run arch:graph`, checked by `npm run arch:check`.', mermaid: DATA.generated.sib, explorer: 'sib' });
+  if (DATA.generated.app) DATA.sections.push({ id: 'code-app', title: 'Level 4 · iOS code (generated)', md: 'Type references between `ios-app` folders; the label is the number of references. A `Components` to `Modes` edge is a smell: shared pieces should not know the screens.', mermaid: DATA.generated.app, explorer: 'app' });
+  current = (location.hash.slice(1) && DATA.sections.find(s => s.id === location.hash.slice(1))?.id) || DATA.sections[0].id;
+  render();
+}
+
+function render(){
+  const s = DATA.sections.find(x => x.id === current) || DATA.sections[0];
+  main.innerHTML = `
+    <div class="ar-hero">
+      <div class="ax-eyebrow">C4 · context, containers, components, code</div>
+      <h1>Code architecture</h1>
+      <p>${md(DATA.intro.split('\n\n')[0])}</p>
+    </div>
+    <nav class="ax-tabs" id="ar-tabs">${DATA.sections.map(x => `<button class="${x.id === s.id ? 'is-on' : ''}" data-id="${x.id}">${esc(x.title.replace(/ \(generated\)$/, ''))}</button>`).join('')}</nav>
+    <section class="ar-section">
+      <div class="ar-copy">
+        <h2>${esc(s.title)}</h2>
+        ${md(s.md)}
+        ${s.mermaid ? `<div class="ar-acts">
+          <button class="ax-btn ax-btn--primary" id="ar-png"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Download image (PNG)</button>
+          <button class="ax-btn" id="ar-svg"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> SVG</button>
+        </div>
+        <p class="ax-label-s ax-muted" style="margin-top:8px">Images carry the Applied Materials header and the confidentiality line. Share inside the company only.</p>` : ''}
+      </div>
+      <div>
+        ${s.mermaid ? `<div class="ax-card ar-diagram ${fit ? 'is-fit' : ''}" id="ar-diagram"><button class="ax-btn ar-fit" id="ar-fitbtn">${fit ? 'Natural size' : 'Fit width'}</button></div>` : ''}
+        ${s.explorer ? explorer(s.explorer) : ''}
+      </div>
+    </section>`;
+  main.querySelectorAll('#ar-tabs button').forEach(b => b.onclick = () => { current = b.dataset.id; location.hash = current; render(); });
+  if (s.mermaid) {
+    drawDiagram(s);
+    document.getElementById('ar-fitbtn').onclick = () => { fit = !fit; render(); };
+    document.getElementById('ar-png').onclick = () => exportImage(s, 'png');
+    document.getElementById('ar-svg').onclick = () => exportImage(s, 'svg');
+  }
+  if (s.explorer) wireExplorer(s.explorer);
+}
+
+async function drawDiagram(s){
+  const el = document.getElementById('ar-diagram');
+  const host = document.createElement('div'); el.appendChild(host);
+  if (!mermaidReady) { host.innerHTML = '<pre>' + esc(s.mermaid) + '</pre>'; return; }
+  try {
+    const { svg } = await window.mermaid.render('ar' + (++seq), themed(s.mermaid));
+    host.innerHTML = svg;
+  } catch (e) { host.innerHTML = '<pre>' + esc(s.mermaid) + '\n\n' + esc(e.message || e) + '</pre>'; }
+}
+
+// ── Level 4 explorer: pick a file, see both directions ──────────────────────
+function explorer(which){
+  const deps = DATA.generated.deps?.[which] || {};
+  const files = Object.keys(deps).sort();
+  return `<div class="ar-pick"><input class="ax-input" list="ar-files-${which}" id="ar-file" placeholder="Type a file name…"><datalist id="ar-files-${which}">${files.map(f => `<option value="${esc(f)}">`).join('')}</datalist>
+    <span class="ax-label-s ax-muted">${files.length} files</span></div>
+    <div class="ar-files" id="ar-explorer"></div>`;
+}
+function wireExplorer(which){
+  const deps = DATA.generated.deps?.[which] || {};
+  const input = document.getElementById('ar-file'), out = document.getElementById('ar-explorer');
+  const show = f => {
+    if (!deps[f]) { out.innerHTML = ''; return; }
+    const uses = deps[f], usedBy = Object.entries(deps).filter(([, t]) => t.includes(f)).map(([k]) => k).sort();
+    const li = a => a.length ? a.map(x => `<li><b>${esc(x.split('/').pop())}</b> <span class="ax-muted">${esc(x.includes('/') ? x.slice(0, x.lastIndexOf('/')) : '')}</span></li>`).join('') : '<li class="ax-muted">none</li>';
+    out.innerHTML = `<div><h3>${esc(f)} depends on (${uses.length})</h3><ul>${li(uses)}</ul></div><div><h3>Depended on by (${usedBy.length})</h3><ul>${li(usedBy)}</ul></div>`;
+  };
+  input.addEventListener('change', () => show(input.value.trim()));
+  input.addEventListener('input', () => { if (deps[input.value.trim()]) show(input.value.trim()); });
+}
+
+// ── Export: the diagram wrapped in a company frame, as SVG or PNG ────────────
+// Header: "Applied Materials" (the official logo file is used instead when
+// sib/portal/brand/applied-materials.svg exists) and the appliedx wordmark.
+// Footer: the confidentiality line, the level, the platform version and date.
+// Open Sans is embedded as data URIs so the image renders the same on any
+// machine; nothing is fetched from outside SIB.
+async function fontCss(){
+  const faces = [[400, 'open-sans-latin-400-normal'], [600, 'open-sans-latin-600-normal'], [700, 'open-sans-latin-700-normal']];
+  const parts = [];
+  for (const [w, name] of faces) {
+    try {
+      const r = await fetch(`/portal/brand/fonts/${name}.woff2`); if (!r.ok) continue;
+      const b = await r.blob(); const url = await new Promise(ok => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.readAsDataURL(b); });
+      parts.push(`@font-face{font-family:'Open Sans';font-weight:${w};src:url(${url}) format('woff2')}`);
+    } catch {}
+  }
+  return parts.join('');
+}
+async function logoDataUri(){
+  try { const r = await fetch('/portal/brand/applied-materials.svg'); if (!r.ok) return null;
+    const b = await r.blob(); return await new Promise(ok => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.readAsDataURL(b); }); } catch { return null; }
+}
+async function framedSvg(s){
+  const inner = document.querySelector('#ar-diagram svg'); if (!inner) throw new Error('No diagram rendered');
+  const vb = (inner.getAttribute('viewBox') || '').split(/\s+/).map(Number);
+  const dw = vb.length === 4 ? vb[2] : inner.getBoundingClientRect().width, dh = vb.length === 4 ? vb[3] : inner.getBoundingClientRect().height;
+  const PAD = 48, HEAD = 96, FOOT = 72;
+  const W = Math.max(960, Math.ceil(dw + PAD * 2)), H = Math.ceil(dh + HEAD + FOOT + PAD);
+  const BG = cssVar('--ax-bg'), INK = cssVar('--ax-ink'), INK3 = cssVar('--ax-ink-3'), RULE = cssVar('--ax-paper-3');
+  const WB = cssVar('--ax-wm-blue'), WG = cssVar('--ax-wm-green'), RED = cssVar('--ax-red');
+  const FONT = cssVar('--ax-font');
+  const logo = await logoDataUri();
+  const fonts = await fontCss();
+  const clone = inner.cloneNode(true);
+  clone.removeAttribute('style'); clone.setAttribute('width', dw); clone.setAttribute('height', dh);
+  clone.setAttribute('x', (W - dw) / 2); clone.setAttribute('y', HEAD + PAD / 2);
+  const date = new Date().toISOString().slice(0, 10);
+  const header = logo
+    ? `<image href="${logo}" x="${PAD}" y="28" height="40"/>`
+    : `<text x="${PAD}" y="58" font-size="26" font-weight="700" fill="${INK}" letter-spacing="-0.5">Applied Materials</text>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+  <style>${fonts} svg{--ax-font:${FONT}} text{font-family:var(--ax-font)}</style>
+  <rect width="${W}" height="${H}" fill="${BG}"/>
+  ${header}
+  <text x="${W - PAD}" y="50" text-anchor="end" font-size="22" font-weight="400"><tspan fill="${WB}">applied</tspan><tspan fill="${WG}">x</tspan><tspan fill="${INK3}" font-size="13" dx="10">Connected Worker AR OMS Platform</tspan></text>
+  <text x="${W - PAD}" y="72" text-anchor="end" font-size="13" fill="${INK3}">${esc(s.title)}</text>
+  <line x1="${PAD}" y1="${HEAD - 8}" x2="${W - PAD}" y2="${HEAD - 8}" stroke="${RULE}" stroke-width="1"/>
+  ${new XMLSerializer().serializeToString(clone)}
+  <line x1="${PAD}" y1="${H - FOOT + 8}" x2="${W - PAD}" y2="${H - FOOT + 8}" stroke="${RULE}" stroke-width="1"/>
+  <text x="${PAD}" y="${H - FOOT + 36}" font-size="14" font-weight="700" fill="${RED}">Applied Materials Strictly Confidential - restricted access</text>
+  <text x="${PAD}" y="${H - FOOT + 56}" font-size="12" fill="${INK3}">Do not forward outside Applied Materials. Code architecture · docs/ARCHITECTURE.md · SIB v${esc(DATA.version)} · ${date}</text>
+  <text x="${W - PAD}" y="${H - FOOT + 56}" text-anchor="end" font-size="12" fill="${INK3}">C4 model notation (c4model.com, CC BY 4.0) · rendered with Mermaid</text>
+</svg>`;
+  return { svg, W, H };
+}
+async function exportImage(s, kind){
+  const btn = document.getElementById(kind === 'png' ? 'ar-png' : 'ar-svg'); btn.disabled = true;
+  try {
+    const { svg, W, H } = await framedSvg(s);
+    const name = `sib-architecture-${s.id}-${new Date().toISOString().slice(0, 10)}`;
+    if (kind === 'svg') { save(new Blob([svg], { type: 'image/svg+xml' }), name + '.svg'); return; }
+    const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
+    const img = new Image();
+    await new Promise((ok, no) => { img.onload = ok; img.onerror = () => no(new Error('Could not rasterise the diagram')); img.src = url; });
+    const scale = 2, c = document.createElement('canvas'); c.width = W * scale; c.height = H * scale;
+    const ctx = c.getContext('2d'); ctx.scale(scale, scale); ctx.drawImage(img, 0, 0);
+    URL.revokeObjectURL(url);
+    c.toBlob(b => save(b, name + '.png'), 'image/png');
+  } catch (e) { alert(e.message || e); }
+  finally { btn.disabled = false; }
+}
+function save(blob, name){ const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); }
+
+window.addEventListener('hashchange', () => { if (DATA && DATA.sections.find(s => s.id === location.hash.slice(1))) { current = location.hash.slice(1); render(); } });
+boot();
+</script>
+</body>
+</html>

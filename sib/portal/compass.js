@@ -60,6 +60,7 @@
         children: [
           { id: 'learn', label: 'Learn', href: '/learn' },
           { id: 'ask', label: 'Ask SIB', href: '/catalog#ask' },
+          { id: 'architecture', label: 'Architecture', href: '/architecture' },
         ] },
       { id: 'wireframe', label: 'Wireframe', href: '/wireframe', color: 'var(--ax-p-tags)', key: 'w', hint: 'The app, flow by flow', children: [] },
     ],
@@ -74,6 +75,7 @@
     if (p.startsWith('/platform')) return h.startsWith('assess') ? ['sib', 'platform', 'assess'] : ['sib', 'platform'];
     if (p.startsWith('/roadmap')) return ['sib', 'roadmap'];
     if (p.startsWith('/learn')) return ['sib', 'catalog', 'learn'];
+    if (p.startsWith('/architecture')) return ['sib', 'catalog', 'architecture'];
     if (p.startsWith('/catalog')) return h.startsWith('ask') ? ['sib', 'catalog', 'ask'] : ['sib', 'catalog'];
     if (p.startsWith('/wireframe')) return ['sib', 'wireframe'];
     if (p.startsWith('/portal')) {

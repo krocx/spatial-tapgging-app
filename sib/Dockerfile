@@ -87,6 +87,7 @@ COPY sib/roadmap/ ./sib/roadmap/
 COPY docs/*.md ./docs/
 COPY docs/catalog/ ./docs/catalog/
 COPY docs/learn/   ./docs/learn/
+COPY docs/architecture/ ./docs/architecture/
 COPY docs/APP-WIREFRAME.html ./docs/APP-WIREFRAME.html
 COPY README.md ./README.md
 

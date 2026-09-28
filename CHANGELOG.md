@@ -7,6 +7,17 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **Code architecture page.** `/architecture` renders `docs/ARCHITECTURE.md`
+  as the C4 model beneath the Feature Catalogue: context, containers, one
+  component diagram each for SIB, the iOS app and the web surfaces, a
+  generated level 4 (imports between `sib/src` folders, type references
+  between `ios-app` folders, with a per-file explorer) and an ADR index of
+  the decisions that are not obvious from the code. `npm run arch:graph`
+  regenerates level 4 and `npm run arch:check` fails on drift, like the
+  catalogue. Every diagram downloads as a PNG or SVG with the Applied
+  Materials header, the appliedx wordmark, the strictly confidential line
+  and Open Sans embedded. The page is IP-restricted end to end. Compass
+  stop `c3`, catalogue entry `code-architecture`.
 - **SIB Compass is a hexagon.** The map now draws the Compass icon itself:
   SIB Home is the dot in the centre, the six surfaces (Portal, Platform,
   Roadmap, Admin, Wireframe, Catalog) are the corners, and each surface's
