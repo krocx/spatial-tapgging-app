@@ -20,6 +20,8 @@
   .ar-hero .ax-notice { margin-bottom: var(--ax-s4); max-width: 820px; }
   .ax-tabs { margin-bottom: var(--ax-s4); flex-wrap: wrap; }
   .ax-tabs > * { white-space: nowrap; }
+  .ax-tabs > .is-eng { color: var(--ax-ink-3); }
+  .ax-tabs > .is-eng.is-on { color: var(--ax-ink); }
   .ar-section { display: grid; grid-template-columns: minmax(280px, 340px) minmax(0, 1fr); gap: var(--ax-s5); align-items: start; }
   .ar-copy h2 { margin: 0 0 var(--ax-s3); font: var(--ax-h2); }
   .ar-copy p, .ar-copy li { font: var(--ax-label-r); color: var(--ax-ink-2); }
@@ -144,8 +146,8 @@ async function boot(){
   const l4 = DATA.sections.findIndex(x => x.title.startsWith('Level 4'));
   const l4md = l4 >= 0 ? DATA.sections[l4].md : '';
   const gen = [];
-  if (DATA.generated.sib) gen.push({ id: 'code-sib', title: 'Level 4 · SIB code', md: l4md + '\n\nThis graph: relative imports between `sib/src/` folders; the label is the number of imports.', mermaid: DATA.generated.sib, explorer: 'sib' });
-  if (DATA.generated.app) gen.push({ id: 'code-app', title: 'Level 4 · iOS code', md: l4md + '\n\nThis graph: type references between `ios-app` folders; the label is the number of references. A `Components` to `Modes` edge is a smell: shared pieces should not know the screens.', mermaid: DATA.generated.app, explorer: 'app' });
+  if (DATA.generated.sib) gen.push({ id: 'code-sib', title: 'Level 4 · SIB code', md: l4md + '\n\nThis graph: relative imports between `sib/src/` folders; the label is the number of imports.', mermaid: DATA.generated.sib, explorer: 'sib', audience: 'engineers' });
+  if (DATA.generated.app) gen.push({ id: 'code-app', title: 'Level 4 · iOS code', md: l4md + '\n\nThis graph: type references between `ios-app` folders; the label is the number of references. A `Components` to `Modes` edge is a smell: shared pieces should not know the screens.', mermaid: DATA.generated.app, explorer: 'app', audience: 'engineers' });
   if (gen.length) { if (l4 >= 0) DATA.sections.splice(l4, 1, ...gen); else DATA.sections.push(...gen); }
   current = (location.hash.slice(1) && DATA.sections.find(s => s.id === location.hash.slice(1))?.id) || DATA.sections[0].id;
   render();
@@ -159,9 +161,10 @@ function render(){
       <h1>Code architecture</h1>
       <p>${md(DATA.intro.split('\n\n')[0])}</p>
     </div>
-    <nav class="ax-tabs" id="ar-tabs">${DATA.sections.map(x => `<button class="${x.id === s.id ? 'is-on' : ''}" data-id="${x.id}">${esc(x.title)}</button>`).join('')}</nav>
+    <nav class="ax-tabs" id="ar-tabs">${DATA.sections.map(x => `<button class="${x.id === s.id ? 'is-on' : ''}${x.audience === 'engineers' ? ' is-eng' : ''}" data-id="${x.id}" title="${x.audience === 'engineers' ? 'For engineers' : 'For everyone'}">${esc(x.title)}</button>`).join('')}</nav>
     <section class="ar-section">
       <div class="ar-copy">
+        ${s.audience ? `<div class="ax-eyebrow" style="margin-bottom:6px">${s.audience === 'engineers' ? 'For engineers' : 'For everyone'}</div>` : ''}
         <h2>${esc(s.title)}</h2>
         ${md(s.md)}
         ${s.mermaid ? `<div class="ar-acts">

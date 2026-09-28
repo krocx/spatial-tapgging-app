@@ -30,7 +30,7 @@ function resolveDocsDir(): string | null {
   return candidates.find(p => fs.existsSync(path.join(p, 'ARCHITECTURE.md'))) ?? null;
 }
 
-export interface ArchSection { id: string; title: string; md: string; mermaid: string | null }
+export interface ArchSection { id: string; title: string; md: string; mermaid: string | null; audience: 'everyone' | 'engineers' | null }
 
 /** Split the markdown on `## ` headings; the first fenced mermaid block in a
  *  section is its diagram, the rest is prose. Exported for the test. */
@@ -43,9 +43,13 @@ export function splitArchitecture(src: string): { intro: string; sections: ArchS
     if (!cur) return;
     const body = cur.body.join('\n');
     const m = body.match(/```mermaid\n([\s\S]*?)```/);
-    const md = m ? body.replace(m[0], '').trim() : body.trim();
+    let md = m ? body.replace(m[0], '').trim() : body.trim();
+    // An opening `*For everyone.*` / `*For engineers.*` line is the audience marker.
+    const a = md.match(/^\*For (everyone|engineers)\.\*\s*/);
+    const audience = a ? (a[1] as 'everyone' | 'engineers') : null;
+    if (a) md = md.slice(a[0].length).trim();
     const id = cur.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    sections.push({ id, title: cur.title, md, mermaid: m ? m[1].trim() : null });
+    sections.push({ id, title: cur.title, md, mermaid: m ? m[1].trim() : null, audience });
   };
   for (const line of lines) {
     if (line.startsWith('## ')) { flush(); cur = { title: line.slice(3).trim(), body: [] }; continue; }

@@ -16,7 +16,10 @@ it, it gets a line.
   regenerates level 4 and `npm run arch:check` fails on drift, like the
   catalogue. Every diagram downloads as a PNG or SVG with the Applied
   Materials logo (`sib/portal/brand/applied-materials.png`), the appliedx
-  wordmark, the strictly confidential line and Open Sans embedded. The page is IP-restricted end to end. Compass
+  wordmark, the strictly confidential line and Open Sans embedded. Opens
+  with "The platform in one picture", a plain-language tab for leadership;
+  every tab is marked for everyone or for engineers. The page is
+  IP-restricted end to end. Compass
   stop `c3`, catalogue entry `code-architecture`.
 - **SIB Compass is a hexagon.** The map now draws the Compass icon itself:
   SIB Home is the dot in the centre, the six surfaces (Portal, Platform,

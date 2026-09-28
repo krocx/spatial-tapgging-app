@@ -16,7 +16,57 @@ C4 is published by Simon Brown under Creative Commons Attribution 4.0
 Mermaid (MIT), rendered from the vendored copy in `sib/portal/vendor/`.
 Nothing here loads from the internet.
 
+## The platform in one picture
+
+*For everyone.*
+
+A technician stands at a chamber with an iPad. The app recognises where it
+is, shows the work instruction as 3D parts on the real equipment, and
+records what was done. That is the product. Everything else on this page
+exists to make that moment reliable.
+
+```mermaid
+flowchart LR
+  T["Technician with an iPad<br/>sees the procedure on the real chamber"]
+  A["The appliedx app<br/>anchors, guides, records"]
+  S["SIB - the company's single source of truth<br/>procedures · 3D models · anchors · session records"]
+  W["The web portal<br/>authors publish, managers review, admins run it"]
+  C["CAD publications from Engineering<br/>imported once, sized for every device"]
+  H["One server the fab controls<br/>a Windows box in the fab, or a hosted instance - no cloud dependency"]
+  T --> A
+  A <--> S
+  W <--> S
+  C --> S
+  S --- H
+```
+
+Three things run: the app on the device, SIB on one server, and the web
+portal served by that same server. There is no third party in the loop:
+no cloud service, no vendor 3D or tracking engine on the device, nothing
+that needs a runtime licence. The 3D content comes from Engineering's existing CAD publications and is
+converted once; every device then receives a copy sized to what it can
+hold, so an older iPhone and a new iPad Pro open the same procedure.
+
+What this buys us. Records are ours and stay on our server. A new kind of
+device (a headset, a browser) is a new client of the same server, not a
+new platform. The heavy work (importing a 45 MB publication, building the
+size ladder) runs in a fenced-off worker so the server stays responsive
+for the people using it. And the whole thing runs on the hardware the fab
+already has.
+
+Limits today, said plainly. One server per site, with backup by copying
+files; access is by shared keys, not company single sign-on; records live
+in JSON files rather than a database. Each is right for today's volume
+and each is a planned swap behind a stable interface, not a rewrite. The
+Decisions section records why.
+
+Where to look next. Level 1 and 2 below are the same picture with a little
+more detail and are readable by anyone. Level 3 and 4 are for the
+engineering team. Decisions lists the choices we made deliberately and why.
+
 ## Level 1 · Context
+
+*For everyone.*
 
 Who uses the platform and what it depends on. SIB is the source of truth;
 every client talks to it over HTTPS and nothing talks to a client directly.
@@ -49,6 +99,8 @@ in AR on the same app and edit in the browser. Everything runs on one host
 the fab controls; there is no cloud service in the loop.
 
 ## Level 2 · Containers
+
+*For everyone.*
 
 What runs where, and what each container stores.
 
@@ -85,6 +137,8 @@ there is no database to operate. Static surfaces are plain HTML on the same
 origin, so one API key and one IP key cover everything.
 
 ## Level 3 · SIB server components
+
+*For engineers.*
 
 `sib/src/` by responsibility. Arrows are "calls" or "reads"; the generated
 level-4 graph below has the exact import edges.
@@ -147,6 +201,8 @@ the one place that spawns a thread; `jobs.ts` owns the queue and
 
 ## Level 3 · iOS app components
 
+*For engineers.*
+
 `ios-app/SpatialTaggingApp/` by folder. SwiftUI views live in `Modes/`,
 reusable AR and UI pieces in `Components/`, everything that talks to the
 network, disk or ARKit in `Services/`.
@@ -204,6 +260,8 @@ already sized. Views never touch SceneKit geometry directly.
 
 ## Level 3 · Web surfaces
 
+*For engineers.*
+
 ```mermaid
 flowchart LR
   subgraph BRAND["Brand system - sib/portal/brand/"]
@@ -241,6 +299,8 @@ backlog to adopt it.
 
 ## Level 4 · Code
 
+*For engineers.*
+
 Generated. `npm run arch:graph` scans `import` statements in `sib/src/` and
 type references across `ios-app/` Swift files and writes
 `docs/architecture/deps.json` plus two folder-level Mermaid graphs
@@ -253,6 +313,8 @@ Level 4 is never edited by hand. If a diagram at this level looks wrong,
 the code is wrong.
 
 ## Decisions (ADR index)
+
+*For engineers.*
 
 Short records of choices that are not obvious from the code. Each is a
 paragraph; the detail lives in the linked doc.
