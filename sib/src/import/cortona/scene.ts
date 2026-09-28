@@ -168,8 +168,10 @@ export function buildScene(scene: VrmlScene, opts: BuildSceneOptions = {}): Scen
     // ObjectVM may carry geometry directly (appearance + geometry fields)
     if (n.type === 'ObjectVM' && nodeField(n, 'geometry')) {
       const gRef = nodeField(n, 'geometry'); const g = gRef ? resolve(gRef) : null;
+      // shapeMesh also records which part owns the material - commands are
+      // routed at materials - so it runs for a hose too (its mesh comes later).
+      const m = shapeMesh(n, owner); if (m) sn.meshes.push(m);
       if (g && HOSE_TYPES.test(g.type)) hoseRequests.push({ owner: sn, geom: g, ownerDef: owner });
-      else { const m = shapeMesh(n, owner); if (m) sn.meshes.push(m); }
     }
 
     let which = -2; // -2 = not a switch

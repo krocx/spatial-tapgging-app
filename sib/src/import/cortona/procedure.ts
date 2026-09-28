@@ -76,6 +76,8 @@ export const HANDLED_PROTOS = new Set([
   'Set_diffuseColor', 'Set_Viewpoint', 'Set_Viewpoint2', 'Set_scale',
   // parametric geometry PROTOs rendered by scene.ts / primitives.ts
   'BOX', 'SPHERE', 'CYLNDR', 'TORUS', 'WASHER', 'BOXDUMMY',
+  // hose sweeps rebuilt as geometry by scene.ts / hose.ts
+  'HoseSplineFlow', 'HoseSplineFlow2',
 ]);
 // Known non-procedural PROTOs (annotation widgets, viewer chrome, sequencers,
 // sectioning tools, typed-field helpers). Counted, logged, not imported.
@@ -87,7 +89,7 @@ export const IGNORED_PROTO_PATTERNS: RegExp[] = [
   /^IndexedFaceSetWithEdges$/, /^Panel$/, /^HTMLText$/, /^TransformSensor$/, /^ViewportSensor$/,
   /^Set_ID$/,              // command that relabels a part's ID for the viewer HUD - no presentation effect
   /^Set_emissiveColor$/,   // highlight "flash" effect - transient, not a state change
-  /^HoseSplineFlow\d*$/, /^VMHose\d*$/, /^CableFlat\d*$/,   // procedural hose/cable/spring sweeps - not rendered; counted in the log
+  /^VMHose\d*$/, /^CableFlat\d*$/,   // procedural cable/rope sweeps - not rendered; counted in the log (HoseSplineFlow* is handled)
   /^(Animated)?Arrow\d*$/, /^VMDimension\d*$/,              // annotation widgets (arrows, dimension lines)
 ];
 

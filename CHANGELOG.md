@@ -16,7 +16,10 @@ it, it gets a line.
   to the owning part so it shows, hides and highlights with it. Static
   rest pose for now; the step's focus skips the geometry-less control
   points ("BoxDummy_100 +100" becomes the seal). Models imported before
-  this need a re-import to get their hoses.
+  this need a re-import to get their hoses. (First cut dropped the hoses'
+  material ownership, which left 434 transparency and colour commands
+  unrouted - the seal's own appear / flash / hide; fixed the same day, the
+  log's "unresolved routes" is back to 0.)
 - **Cortona import runs in a worker thread, one at a time.** `POST
   /guides/import/cortona` now answers `202 { jobId }` at once and the
   portal polls `GET /guides/import/jobs/:id` (queued · processing · done ·
