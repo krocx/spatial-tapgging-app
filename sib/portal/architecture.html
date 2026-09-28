@@ -209,8 +209,8 @@ function wireExplorer(which){
 }
 
 // ── Export: the diagram wrapped in a company frame, as SVG or PNG ────────────
-// Header: "Applied Materials" (the official logo file is used instead when
-// sib/portal/brand/applied-materials.svg exists) and the appliedx wordmark.
+// Header: the Applied Materials logo (sib/portal/brand/applied-materials.png,
+// the official file; a text fallback if it is missing) and the appliedx wordmark.
 // Footer: the confidentiality line, the level, the platform version and date.
 // Open Sans is embedded as data URIs so the image renders the same on any
 // machine; nothing is fetched from outside SIB.
@@ -227,8 +227,11 @@ async function fontCss(){
   return parts.join('');
 }
 async function logoDataUri(){
-  try { const r = await fetch('/portal/brand/applied-materials.svg'); if (!r.ok) return null;
-    const b = await r.blob(); return await new Promise(ok => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.readAsDataURL(b); }); } catch { return null; }
+  for (const f of ['applied-materials.svg', 'applied-materials.png']) {
+    try { const r = await fetch('/portal/brand/' + f); if (!r.ok) continue;
+      const b = await r.blob(); return await new Promise(ok => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.readAsDataURL(b); }); } catch {}
+  }
+  return null;
 }
 async function framedSvg(s){
   const inner = document.querySelector('#ar-diagram svg'); if (!inner) throw new Error('No diagram rendered');
@@ -246,7 +249,7 @@ async function framedSvg(s){
   clone.setAttribute('x', (W - dw) / 2); clone.setAttribute('y', HEAD + PAD / 2);
   const date = new Date().toISOString().slice(0, 10);
   const header = logo
-    ? `<image href="${logo}" x="${PAD}" y="28" height="40"/>`
+    ? `<image href="${logo}" x="${PAD}" y="24" height="44" width="141" preserveAspectRatio="xMinYMid meet"/>`
     : `<text x="${PAD}" y="58" font-size="26" font-weight="700" fill="${INK}" letter-spacing="-0.5">Applied Materials</text>`;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
   <style>${fonts} svg{--ax-font:${FONT}} text{font-family:var(--ax-font)}</style>

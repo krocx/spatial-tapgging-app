@@ -15,8 +15,8 @@ it, it gets a line.
   the decisions that are not obvious from the code. `npm run arch:graph`
   regenerates level 4 and `npm run arch:check` fails on drift, like the
   catalogue. Every diagram downloads as a PNG or SVG with the Applied
-  Materials header, the appliedx wordmark, the strictly confidential line
-  and Open Sans embedded. The page is IP-restricted end to end. Compass
+  Materials logo (`sib/portal/brand/applied-materials.png`), the appliedx
+  wordmark, the strictly confidential line and Open Sans embedded. The page is IP-restricted end to end. Compass
   stop `c3`, catalogue entry `code-architecture`.
 - **SIB Compass is a hexagon.** The map now draws the Compass icon itself:
   SIB Home is the dot in the centre, the six surfaces (Portal, Platform,
