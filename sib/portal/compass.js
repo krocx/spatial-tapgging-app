@@ -118,18 +118,37 @@
     color:var(--ax-ink-2);background:var(--ax-solid);border:var(--ax-hair);
     border-radius:999px;padding:8px 12px;display:flex;gap:6px;align-items:center;max-width:60vw;overflow:hidden;white-space:nowrap}
   .sibc-crumb a{color:var(--ax-ink-2);text-decoration:none}.sibc-crumb a:hover{color:var(--ax-ink)}.sibc-crumb b{color:var(--ax-ink);font-weight:600}.sibc-crumb i{opacity:.45;font-style:normal}
-  .sibc-veil{position:fixed;inset:0;z-index:9500;background:var(--ax-scrim);display:none;align-items:center;justify-content:center}
+  /* The map is its own place: an opaque charcoal page over the app, never a
+     see-through layer that fights the page underneath. It unfolds from the
+     Compass button (bottom right) and folds back into it. */
+  .sibc-veil{position:fixed;inset:0;z-index:9500;background:var(--ax-page);display:none;align-items:center;justify-content:center;opacity:0;transition:opacity .18s ease-out}
   .sibc-veil.open{display:flex}
-  .sibc-map{position:relative;width:min(1180px,96vw);height:min(780px,88vh);color:var(--ax-ink);font-family:var(--ax-font)}
+  .sibc-veil.shown{opacity:1}
+  .sibc-map{position:relative;width:min(1180px,96vw);height:min(780px,88vh);color:var(--ax-ink);font-family:var(--ax-font);
+    transform-origin:100% 100%;transform:perspective(1400px) rotateX(-14deg) rotateY(6deg) scale(.92);opacity:0;
+    transition:transform .42s cubic-bezier(.2,.9,.25,1.15),opacity .25s ease-out}
+  .sibc-veil.shown .sibc-map{transform:none;opacity:1}
+  .sibc-veil.folding .sibc-map{transform:perspective(1400px) rotateX(-14deg) rotateY(6deg) scale(.9);opacity:0;transition-duration:.22s,.16s}
+  .sibc-veil.folding{opacity:0}
+  .sibc-title{position:absolute;top:0;left:50%;transform:translateX(-50%);text-align:center;white-space:nowrap}
+  .sibc-title .eyebrow{font:var(--ax-eyebrow);letter-spacing:.08em;text-transform:uppercase;color:var(--ax-ink-3)}
+  .sibc-title .where{font:var(--ax-h3);color:var(--ax-ink);margin-top:2px}
+  .sibc-title .where b{color:var(--ax-ink)}
+  .sibc-title .where i{font-style:normal;color:var(--ax-ink-3);margin:0 6px}
+  .sibc-title .sub{font:var(--ax-label-s);color:var(--ax-ink-3);margin-top:2px}
   .sibc-map svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
-  .sibc-node{position:absolute;transform:translate(-50%,-50%);text-decoration:none;color:var(--ax-ink);text-align:center;opacity:0;
-    transition:opacity .25s,transform .35s cubic-bezier(.2,.9,.3,1.3)}
-  .sibc-map.settled .sibc-node{opacity:1}
+  .sibc-node{position:absolute;transform:translate(-50%,-50%) scale(.85);text-decoration:none;color:var(--ax-ink);text-align:center;opacity:0;
+    transition:opacity .25s,transform .35s cubic-bezier(.2,.9,.3,1.3);transition-delay:var(--d,0s)}
+  .sibc-map.settled .sibc-node{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  .sibc-map.settled .sibc-node.leaf.away{opacity:.55}
+  .sibc-map.settled .sibc-node.leaf.away:hover{opacity:1}
+  .sibc-node .youare{display:block;font:var(--ax-eyebrow);letter-spacing:.08em;text-transform:uppercase;color:var(--c,var(--ax-blue));margin-bottom:5px}
+  .sibc-node.here .pill{border:2px solid var(--c,var(--ax-blue));background:var(--ax-blue-fill);font-size:14px;padding:8px 14px}
+  .sibc-node.here .pill .ax-mark{font-size:10px;margin-right:2px}
   .sibc-node .pill{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;border:var(--ax-hair);
     background:var(--ax-solid);font-size:13px;font-weight:600;white-space:nowrap;transition:transform .15s,border-color .15s}
   .sibc-node:hover .pill{transform:scale(1.06);border-color:var(--ax-ink-3)}
   .sibc-node.leaf .pill{font-size:11.5px;font-weight:500;padding:5px 9px}
-  .sibc-node.here .pill{border-color:var(--ax-ink);box-shadow:var(--ax-ring)}
   .sibc-node.centre .pill{font-size:15px;padding:10px 16px;border-color:var(--ax-blue);background:var(--ax-blue-fill)}
   .sibc-node .n{font-size:10px;font-weight:700;padding:1px 6px;border-radius:999px;background:var(--ax-paper-3)}
   .sibc-node .live{width:7px;height:7px;border-radius:50%;background:var(--ax-green);animation:sibc-pulse 1.6s ease-in-out infinite}
@@ -140,7 +159,7 @@
   .sibc-row .chip:hover{border-color:var(--ax-ink)}.sibc-row .chip.next{border-color:var(--ax-green);color:var(--ax-green)}
   .sibc-keys{position:absolute;top:0;left:34px;font-size:10.5px;color:var(--ax-ink-3);font-family:var(--ax-mono)}
   .sibc-close{position:absolute;top:-8px;left:0;background:none;border:none;color:var(--ax-ink-2);font-size:20px;cursor:pointer}
-  @media (prefers-reduced-motion: reduce){.sibc-node,.sibc-btn,.sibc-node .pill{transition:none}.sibc-btn.live .dot,.sibc-node .live{animation:none}}
+  @media (prefers-reduced-motion: reduce){.sibc-node,.sibc-btn,.sibc-node .pill,.sibc-map,.sibc-veil{transition:none;transform:none}.sibc-btn.live .dot,.sibc-node .live{animation:none}}
   @media (max-width:640px){.sibc-crumb{display:none}.sibc-node .hint{display:none}.sibc-node.leaf{display:none}}
   `;
 
@@ -149,6 +168,14 @@
   let veil, mapEl, btn, stats = null;
 
   function build() {
+    // The Compass is drawn from the brand tokens and components on every
+    // surface. Pages not yet on the system (html without class "ax") don't
+    // load brand.css themselves - link it here so the map looks the same
+    // everywhere (tokens are :root variables and .ax-* classes; nothing in
+    // it restyles a legacy page).
+    if (!document.documentElement.classList.contains('ax') && !document.querySelector('link[href="/portal/brand/brand.css"]')) {
+      const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '/portal/brand/brand.css'; document.head.appendChild(l);
+    }
     const style = document.createElement('style'); style.textContent = css; document.head.appendChild(style);
 
     btn = document.createElement('button');
@@ -284,7 +311,7 @@
       }
       for (const id of ids) {
         pos[id][0] = Math.min(W - PAD, Math.max(PAD, pos[id][0]));
-        pos[id][1] = Math.min(H - 120, Math.max(PAD, pos[id][1]));
+        pos[id][1] = Math.min(H - 120, Math.max(PAD + 40, pos[id][1]));   // +40: the title line sits at the top
       }
     }
 
@@ -292,17 +319,29 @@
     let svg = `<svg viewBox="0 0 ${W} ${H}">`;
     const onPath = (a, b) => path.includes(a) && path.includes(b);
     for (const h of hubs) {
-      svg += line(pos.sib, pos[h.id], onPath('sib', h.id) ? h.color : 'var(--ax-ink-4)', onPath('sib', h.id) ? 2.5 : 1.2);
-      for (const k of h.children || []) svg += line(pos[h.id], pos[k.id], onPath(h.id, k.id) ? h.color : 'var(--ax-ink-4)', onPath(h.id, k.id) ? 2 : 1);
+      const hp = onPath('sib', h.id);
+      if (hp) svg += line(pos.sib, pos[h.id], h.color, 10, .18);
+      svg += line(pos.sib, pos[h.id], hp ? h.color : 'var(--ax-ink-4)', hp ? 3 : 1.2);
+      for (const k of h.children || []) {
+        const kp = onPath(h.id, k.id);
+        if (kp) svg += line(pos[h.id], pos[k.id], h.color, 10, .18);
+        svg += line(pos[h.id], pos[k.id], kp ? h.color : 'var(--ax-ink-4)', kp ? 3 : 1);
+      }
     }
     svg += '</svg>';
 
     // Nodes
     let html = svg;
+    // Title: where you are, in words, before the map has to be read.
+    const words = path.map(id => find(id)?.label || id);
+    html += `<div class="sibc-title"><div class="eyebrow">SIB Compass</div>
+      <div class="where">You are in ${words.map((w, i) => (i ? '<i>›</i>' : '') + (i === words.length - 1 ? `<b>${w}</b>` : w)).join('')}</div>
+      <div class="sub">Every place in SIB, one click away · the lit path is where you are</div></div>`;
     html += node(TREE, pos.sib, 'centre', path);
     for (const h of hubs) {
-      html += node(h, pos[h.id], 'hub', path, h.color);
-      for (const k of h.children || []) html += node(k, pos[k.id], 'leaf', path, h.color);
+      const inHub = path.includes(h.id);
+      html += node(h, pos[h.id], 'hub', path, h.color, inHub);
+      for (const k of h.children || []) html += node(k, pos[k.id], 'leaf', path, h.color, inHub);
     }
 
     // Foot: where next + recents
@@ -323,21 +362,38 @@
     mapEl.classList.remove('settled');
     requestAnimationFrame(() => requestAnimationFrame(() => mapEl.classList.add('settled')));
   }
-  function line([x1, y1], [x2, y2], stroke, w) {
-    return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${stroke}" stroke-width="${w}" stroke-linecap="round"/>`;
+  function line([x1, y1], [x2, y2], stroke, w, opacity) {
+    return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${stroke}" stroke-width="${w}" stroke-linecap="round"${opacity ? ` stroke-opacity="${opacity}"` : ''}/>`;
   }
-  function node(n, [x, y], kind, path, color) {
+  function node(n, [x, y], kind, path, color, inHub) {
     const here = path[path.length - 1] === n.id;
     const b = badge(n.id);
     const bHtml = b ? `<span class="n" title="${b[1]}">${b[0]}</span>${b[2] ? '<span class="live"></span>' : ''}` : '';
     const swatch = kind === 'hub' ? `<span style="width:8px;height:8px;border-radius:50%;background:${color}"></span>` : '';
-    const hint = kind !== 'leaf' && n.hint ? `<span class="hint">${here ? 'You are here' : n.hint}</span>` : '';
-    return `<a class="sibc-node ${kind}${here ? ' here' : ''}" href="${n.href}" style="left:${x}px;top:${y}px" title="${n.hint || n.label}">
-      <span class="pill">${swatch}${n.label}${bHtml}</span>${hint}</a>`;
+    const hint = kind !== 'leaf' && n.hint && !here ? `<span class="hint">${n.hint}</span>` : '';
+    // "You are here": an eyebrow in the hub colour above the lit pill, with
+    // the registration mark - the one thing the map must make obvious.
+    const youare = here ? `<span class="youare">You are here</span>` : '';
+    const mark = here ? `<span class="ax-mark is-green"><i></i><em></em></span>` : '';
+    const away = kind === 'leaf' && !inHub && !here ? ' away' : '';
+    const delay = kind === 'centre' ? 0 : kind === 'hub' ? .08 : .16;
+    return `<a class="sibc-node ${kind}${here ? ' here' : ''}${away}" href="${n.href}" style="left:${x}px;top:${y}px;--d:${delay}s;--c:${color || 'var(--ax-blue)'}" title="${n.hint || n.label}">
+      ${youare}<span class="pill">${mark}${swatch}${n.label}${bHtml}</span>${hint}</a>`;
   }
 
-  function open()  { veil.classList.add('open'); renderMap(); }
-  function close() { veil.classList.remove('open'); }
+  let closing = null;
+  function open() {
+    if (closing) { clearTimeout(closing); closing = null; }
+    veil.classList.remove('folding');
+    veil.classList.add('open'); renderMap();
+    requestAnimationFrame(() => requestAnimationFrame(() => veil.classList.add('shown')));
+  }
+  function close() {
+    if (!veil.classList.contains('open')) return;
+    veil.classList.add('folding'); veil.classList.remove('shown');
+    const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    closing = setTimeout(() => { veil.classList.remove('open', 'folding'); closing = null; }, reduce ? 0 : 230);
+  }
   function toggle() { veil.classList.contains('open') ? close() : open(); }
 
   // Keys: `g` then a letter; Esc closes. Ignored while typing.

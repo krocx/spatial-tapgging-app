@@ -21,9 +21,18 @@ it, it gets a line.
   700 k or 350 k triangles, for testing what a device shows; the footer
   says what Auto resolves to on this device. The server serves the
   matching variant.
-- **SIB Compass on the brand system.** Tokens for every colour (product
-  hues on the hubs), Open Sans, no glass, no drop shadows, the sprite's
-  close icon; `compass.js` is now a governed file in `brand:check`.
+- **SIB Compass, redesigned to answer "where am I".** The map is now its
+  own opaque charcoal page over the app (no see-through layer fighting the
+  page underneath); it unfolds from the Compass button and folds back into
+  it, nodes settling centre → hubs → stops, still under
+  `prefers-reduced-motion`. A title says in words where you are ("You are
+  in Portal › Chambers"), the current stop carries a "You are here" eyebrow
+  in its hub colour with the registration mark, the path from the centre is
+  lit in that colour with a halo, and the stops of other hubs step back to
+  55 % until hovered. Brand tokens throughout (product hues on the hubs,
+  Open Sans, no glass, no drop shadows, the sprite's close icon); the
+  Compass links brand.css itself on pages not yet on the system;
+  `compass.js` is a governed file in `brand:check`.
 - **Hose animations play: a flipbook per motion.** Where a step moves a
   hose's control points (the Bee's seal flowing into its groove), the
   importer bakes the tube at 8 frames across the motion and writes them as
@@ -115,6 +124,9 @@ it, it gets a line.
   focus ring uses it too, so where the ring sits is where a tap lands.
 
 ### Fixed
+- **3D model tiles overflowed their text.** A long export filename ran into
+  the next tile; the card and its text column now shrink and wrap
+  (`min-width: 0`, `overflow-wrap: anywhere`), tiles are 300 px minimum.
 - **Whole-assembly ghost rendered opaque.** Ghosting went through material
   transparency, which the assembly's PBR materials (with the rim shader)
   drew as solid. Ghost and fades now use node opacity, which SceneKit
