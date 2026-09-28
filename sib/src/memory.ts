@@ -26,8 +26,12 @@ const MB = 1048576;
 /** Headroom the main process keeps for the API, sessions and stores. */
 export const MAIN_PROCESS_RESERVE_BYTES = 160 * MB;
 
-/** Cortona import: ~9x the file plus a fixed floor. */
-export function importNeedBytes(fileBytes: number): number { return fileBytes * 9 + 60 * MB; }
+/** Cortona import: ~16x the file plus a fixed floor. Measured as the
+ *  process's peak resident size (what a container limit counts, garbage
+ *  included) on the Bee drone publication: 43 MB → ~700 MB with the parse
+ *  in a worker, hose sweeps and the variant ladder. The older 9x figure was
+ *  heap-in-use, which a cgroup does not care about. */
+export function importNeedBytes(fileBytes: number): number { return fileBytes * 16 + 60 * MB; }
 
 /** One variant of a model whose geometry (positions f32 + indices u32)
  *  occupies `geometryBytes`: the source stays resident, one output the same
@@ -43,9 +47,11 @@ export function checkWorkerMemory(needBytes: number, what: string, limitBytes = 
   const have = Math.max(0, limitBytes - MAIN_PROCESS_RESERVE_BYTES);
   const needMB = Math.round(needBytes / MB), haveMB = Math.round(have / MB);
   if (needBytes <= have) return { ok: true, needMB, haveMB };
+  const totalMB = Math.round(limitBytes / MB);
   return { ok: false, needMB, haveMB,
-    message: `${what} needs about ${needMB} MB of memory and this server can give it ${haveMB} MB. ` +
-             `Run it on the company server, or raise this instance's memory.` };
+    message: `${what} needs about ${needMB} MB of memory. This server has ${totalMB} MB in total and keeps ` +
+             `${Math.round(MAIN_PROCESS_RESERVE_BYTES / MB)} MB for the API, so a job may use ${haveMB} MB. ` +
+             `Run it on the company server, or move this instance to at least ${Math.ceil((needBytes + MAIN_PROCESS_RESERVE_BYTES) / (256 * MB)) * 256} MB.` };
 }
 
 /** Heap cap for a worker: everything the limit allows minus the reserve, never below 256 MB. */

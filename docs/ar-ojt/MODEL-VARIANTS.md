@@ -120,3 +120,15 @@ the same for every source the importer accepts (single-file `.htm`,
 multi-file publication zipped, a GLB uploaded directly) and for any future
 importer. What a new publication can change is the importer's input; the
 variant ladder never sees it.
+
+## Memory on Render (512 MB)
+
+The import guard refuses the Bee publication on Render: a 43 MB `.htm`
+peaks at ~700 MB resident (parse in the worker, hose sweeps, ladder), and a
+512 MB container keeps 160 MB for the API. That is the guard doing its
+job - before it, the same import took the whole Render service down. The
+numbers are measured, not conservative: `importNeedBytes` is 16x the file
+plus 60 MB. Publications of this size are imported on the company server
+(no limit) or on a Render instance of 1 GB or more; Render's free tier
+stays the portal and demo host. Smaller publications (the Motorcycle at
+22 MB scene, the Axle at 12 MB) fit.
