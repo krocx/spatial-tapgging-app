@@ -7,6 +7,16 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **Hose and seal sweeps are real geometry.** Cortona builds `HoseSplineFlow`
+  tubes at runtime along a spline through control-point objects; the
+  importer skipped them, so the Bee drone's O-ring seal and 46 other
+  cables and hoses were missing from the model and the seal step showed
+  nothing. The importer now transcribes the viewer's spine and sweeps a
+  circle of the wire diameter along it (`import/cortona/hose.ts`), attached
+  to the owning part so it shows, hides and highlights with it. Static
+  rest pose for now; the step's focus skips the geometry-less control
+  points ("BoxDummy_100 +100" becomes the seal). Models imported before
+  this need a re-import to get their hoses.
 - **Cortona import runs in a worker thread, one at a time.** `POST
   /guides/import/cortona` now answers `202 { jobId }` at once and the
   portal polls `GET /guides/import/jobs/:id` (queued · processing · done ·

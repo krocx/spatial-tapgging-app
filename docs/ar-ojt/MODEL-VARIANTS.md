@@ -105,6 +105,10 @@ the same census the device logs). Ladder built in 0.3 s:
 | 700 k | 651,097 | **389,641** | **183** | 6.9 MB |
 | 350 k | 309,444 | 186,759 | 180 | 3.3 MB |
 
+(Measured before hose sweeps were rebuilt; with the 47 tubes the census is
+2,160,884 and the 700 k variant is 389,090 unique triangles in 231
+primitives - the parity test carries the current numbers.)
+
 The 700 k row is exactly what the iPhone built for itself
 (`[GLBLoader] parts=719 meshes=183 tris=389641`), so the parity test in
 `sib/test/reduce-clustering.test.ts` asserts those two numbers. The test

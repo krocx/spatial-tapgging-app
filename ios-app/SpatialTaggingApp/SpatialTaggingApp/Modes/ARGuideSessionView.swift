@@ -4411,7 +4411,7 @@ extension ARGuideSessionView {
         assemblyContext = ctx == "ghost" || ctx == "solid"
         assemblyContextSolid = ctx == "solid"
         tagTucked = false
-        let focus = engine.focusParts(at: index)
+        let focus = node.visibleFocus(engine.focusParts(at: index))
         if let first = focus.first {
             let info = node.partInfo(first)
             partChip = (focus.count > 1 ? "\(info.title) +\(focus.count - 1)" : info.title, info.partNumber, false)
@@ -4508,7 +4508,7 @@ extension ARGuideSessionView {
     /// Spotlight the step's parts: right parts flash, the rest ghost briefly.
     private func locateStepParts() {
         guard let asm = assemblyNode, let eng = assemblyEngine else { return }
-        let focus = eng.focusParts(at: assemblyStepIndex)
+        let focus = asm.visibleFocus(eng.focusParts(at: assemblyStepIndex))
         guard !focus.isEmpty else { return }
         asm.spotlightFlash(parts: focus)
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
@@ -4554,7 +4554,7 @@ extension ARGuideSessionView {
         let step = sortedSteps[index]
         var target: simd_float3? = pinNodes[step.id].map { $0.simdWorldPosition }
         if target == nil, let asm = assemblyNode, let eng = assemblyEngine {
-            target = asm.worldCentre(of: eng.focusParts(at: index))
+            target = asm.worldCentre(of: asm.visibleFocus(eng.focusParts(at: index)))
         }
         if let tg = target {
             let d = tg - cam

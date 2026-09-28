@@ -204,8 +204,17 @@ changed versus the reconnaissance-based design:
 - **Parametric geometry PROTOs** (`BOX`, `SPHERE`, `CYLNDR`, `TORUS`,
   `WASHER`; `BOXDUMMY` hidden) are built at runtime by an embedded script from
   a few parameters - regenerated in `primitives.ts` so the GLB is complete.
-  Hose/cable/rope sweeps (`HoseSplineFlow*`, `VMHose*`, `CableFlat*`,
-  `VMRope*`) are not rendered; the log warns with a count.
+  Hose sweeps (`HoseSplineFlow`, `HoseSplineFlow2`) are rebuilt as geometry
+  (`hose.ts`, 2026-09-28): the viewer's `buildSpine()` Hermite through the
+  control-point objects (`BoxDummy` ObjectVMs), a circle of `WireDiameter`
+  swept along it, attached as the owning ObjectVM's mesh so it shows, hides
+  and highlights with it. Static: the rest pose of the control points. The
+  Bee drone's seal (101 control points, 1 mm wire) and its 46 other hoses
+  now exist in the model; the app's focus skips the geometry-less control
+  points so the operator is pointed at the tube. `VMHose*`, `CableFlat*`,
+  `VMRope*` are still counted only. Next: a flipbook of sampled frames for
+  the hoses whose control points move in a step (the seal insertion), so
+  the tube visibly flows into the groove.
 - Script nodes IS-bind `eventIn`/`eventOut` inside PROTO bodies (parser fix);
   side XML may carry a UTF-8 BOM; `Set_Viewpoint2` ≡ `Set_Viewpoint`;
   `Set_ID` / `Set_emissiveColor` / arrows / dimension lines are ignored

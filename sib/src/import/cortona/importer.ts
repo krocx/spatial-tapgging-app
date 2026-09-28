@@ -33,7 +33,9 @@ export interface CortonaImportLog {
   bundle:      { entries: number; inventory: { kind: string; bytes: number }[]; hasInteractivity: boolean; hasRwi: boolean; svgs: number };
   vrml:        { header: string; protosDeclared: number; routes: number };
   protos:      { handled: string[]; ignored: string[]; unknown: string[]; counts: Record<string, number> };
-  scene:       { nodes: number; defs: number; meshes: number; triangles: number; extentM?: [number, number, number] };
+  scene:       { nodes: number; defs: number; meshes: number; triangles: number; extentM?: [number, number, number];
+                 /** Hose / cable tubes rebuilt from their control points (hose.ts). */
+                 hoses?: { built: number; skipped: number; controlPoints: number } };
   procedure:   { steps: number; substeps: number; setupSubsteps: number; workItems: number; unreferencedSubsteps: number; stepSource: 'workItems' | 'substeps';
                  commands: Record<string, number>; unresolvedRoutes: number; withView: number; withCallouts: number };
   text:        { stepsWithTitle: number; stepsWithText: number; fromInteractivity: number };
@@ -80,8 +82,11 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
     warnings.push(msg);
   }
   if (!proc.substeps.length) warnings.push('no Procedure/Step/SubStep tree found - guide will have no steps');
-  const hoses = Object.entries(proc.protos.counts).filter(([k]) => /^(HoseSplineFlow|VMHose|CableFlat|VMRope)\d*$/.test(k)).reduce((a, [, n]) => a + n, 0);
-  if (hoses) warnings.push(`${hoses} procedural hose/cable/rope object(s) are not rendered in the assembly model`);
+  // Hose sweeps (HoseSplineFlow*) are rebuilt as geometry (hose.ts); the other
+  // procedural families are still counted only.
+  const otherSweeps = Object.entries(proc.protos.counts).filter(([k]) => /^(VMHose|CableFlat|VMRope)\d*$/.test(k)).reduce((a, [, n]) => a + n, 0);
+  if (otherSweeps) warnings.push(`${otherSweeps} procedural cable/rope object(s) (VMHose / CableFlat / VMRope) are not rendered in the assembly model`);
+  if (scene.hoses.skipped) warnings.push(`${scene.hoses.skipped} hose sweep(s) could not be rebuilt (control points not found)`);
 
   // rest poses for insert/remove classification
   const rest = new Map<string, number[]>();
@@ -200,7 +205,8 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
     vrml:   { header: vrml.header, protosDeclared: vrml.protos.size, routes: vrml.routes.length },
     protos: proc.protos,
     scene:  { nodes: countNodes(scene.roots), defs: scene.byDef.size, meshes: scene.meshCount, triangles: scene.triangleCount,
-              extentM: scene.bbox ? [0, 1, 2].map(a => round(scene.bbox!.max[a] - scene.bbox!.min[a])) as [number, number, number] : undefined },
+              extentM: scene.bbox ? [0, 1, 2].map(a => round(scene.bbox!.max[a] - scene.bbox!.min[a])) as [number, number, number] : undefined,
+              hoses: scene.hoses },
     procedure: { steps: proc.stepCount, substeps: proc.substeps.length, setupSubsteps, workItems: workItems.length, unreferencedSubsteps: unreferenced, stepSource,
                  commands: proc.commandCounts, unresolvedRoutes: proc.unresolvedRoutes, withView, withCallouts },
     text:   { stepsWithTitle: withTitle, stepsWithText: withText, fromInteractivity: fromInter },

@@ -13,6 +13,7 @@ import {
   numField, strField, boolField, nodeField, nodesField,
 } from './vrml.js';
 import { PRIMITIVE_TYPES, buildPrimitive } from './primitives.js';
+import { HOSE_TYPES, buildHose } from './hose.js';
 
 export interface SceneMesh {
   positions:    Float32Array;   // xyz triples
@@ -44,6 +45,8 @@ export interface SceneGraph {
   /** Material DEF → DEFs of the parts whose shapes use it. Cortona routes
    *  transparency / colour commands at MATERIALS; the runtime addresses parts. */
   materialOwners: Map<string, Set<string>>;
+  /** Hose / cable sweeps rebuilt as geometry (hose.ts): count and total control points. */
+  hoses: { built: number; skipped: number; controlPoints: number };
 }
 
 /** Node types treated as transform containers. Anything else is skipped as non-geometry. */
@@ -73,6 +76,8 @@ export function buildScene(scene: VrmlScene, opts: BuildSceneOptions = {}): Scen
     return 'fields' in n && n.fields ? n : null;
   };
   const materialOwners = new Map<string, Set<string>>();
+  /** Hose sweeps found during the build; resolved after world matrices exist. */
+  const hoseRequests: { owner: SceneNode; geom: VrmlNode; ownerDef?: string }[] = [];
 
   function shapeMesh(shape: VrmlNode, ownerDef?: string, inheritedMat?: VrmlNode | null): SceneMesh | null {
     // Record which part owns this shape's material (commands target materials).
@@ -162,7 +167,9 @@ export function buildScene(scene: VrmlScene, opts: BuildSceneOptions = {}): Scen
 
     // ObjectVM may carry geometry directly (appearance + geometry fields)
     if (n.type === 'ObjectVM' && nodeField(n, 'geometry')) {
-      const m = shapeMesh(n, owner); if (m) sn.meshes.push(m);
+      const gRef = nodeField(n, 'geometry'); const g = gRef ? resolve(gRef) : null;
+      if (g && HOSE_TYPES.test(g.type)) hoseRequests.push({ owner: sn, geom: g, ownerDef: owner });
+      else { const m = shapeMesh(n, owner); if (m) sn.meshes.push(m); }
     }
 
     let which = -2; // -2 = not a switch
@@ -186,6 +193,38 @@ export function buildScene(scene: VrmlScene, opts: BuildSceneOptions = {}): Scen
   if (opts.frame && !isIdentity(opts.frame)) {
     const frame: SceneNode = { id: '__frame', type: 'Transform', matrix: opts.frame, visible: true, meshes: [], children: roots, vrml: { type: 'Transform', fields: {} } as VrmlNode };
     roots = [frame];
+  }
+
+  // Hose / cable sweeps: the tube runs through control-point objects whose
+  // positions are only known once the whole tree (and its world matrices)
+  // exists. Built here, in the owner's frame, and attached as its mesh so it
+  // shows, hides and highlights with the owner like any other part.
+  const hoses = { built: 0, skipped: 0, controlPoints: 0 };
+  if (hoseRequests.length) {
+    const worldByNode = new Map<SceneNode, number[]>();
+    const walk = (node: SceneNode, m: number[]) => { worldByNode.set(node, m); for (const c of node.children) walk(c, mul(m, c.matrix)); };
+    for (const r of roots) walk(r, r.matrix);
+    const worldOf = (ref: VrmlNode | VrmlUse): number[] | null => {
+      const vn = resolve(ref); if (!vn) return null;
+      const sn = vn.def ? byDef.get(vn.def) : undefined;
+      if (sn) return worldByNode.get(sn) ?? null;
+      // Not in the built tree: chain through the ObjectVM `parent` field.
+      const pRef = nodeField(vn, 'parent'); const pw = pRef ? worldOf(pRef) : null;
+      return pw ? mul(pw, localMatrix(vn)) : null;
+    };
+    for (const h of hoseRequests) {
+      const ownerWorld = worldByNode.get(h.owner);
+      const tube = ownerWorld ? buildHose(h.geom, ownerWorld, worldOf) : null;
+      if (!tube) { hoses.skipped++; continue; }
+      // Colour from the owner's own appearance (the viewer copies it onto the tube).
+      let color: [number, number, number] = [0.8, 0.8, 0.8]; let transparency = 0;
+      const mat = ownMaterial(h.owner.vrml);
+      if (mat) { const dc = numField(mat, 'diffuseColor', []); if (dc.length === 3) color = [dc[0], dc[1], dc[2]]; const tr = numField(mat, 'transparency', []); if (tr.length === 1) transparency = tr[0]; }
+      const mesh: SceneMesh = { positions: Float32Array.from(tube.positions), indices: Uint32Array.from(tube.indices), color, transparency };
+      h.owner.meshes.push(mesh);
+      meshCount++; triangleCount += mesh.indices.length / 3;
+      hoses.built++; hoses.controlPoints += tube.controlPoints;
+    }
   }
 
   // bbox over world-space positions - overall, and per DEF'd subtree (the
@@ -215,7 +254,7 @@ export function buildScene(scene: VrmlScene, opts: BuildSceneOptions = {}): Scen
     for (const c of node.children) stack.push({ node: c, m: mul(m, c.matrix), defs: c.def ? [...defs, c.def] : defs });
   }
   for (const [d, b] of boundsByDef) if (!Number.isFinite(b.min[0])) boundsByDef.delete(d);
-  return { roots, byDef, meshCount, triangleCount, bbox: Number.isFinite(bbox.min[0]) ? bbox : null, boundsByDef, materialOwners };
+  return { roots, byDef, meshCount, triangleCount, bbox: Number.isFinite(bbox.min[0]) ? bbox : null, boundsByDef, materialOwners, hoses };
 }
 
 // ── Transforms ──────────────────────────────────────────────────────────────

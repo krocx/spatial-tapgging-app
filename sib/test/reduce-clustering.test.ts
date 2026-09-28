@@ -47,19 +47,23 @@ test('ladder on the synthetic import: nodes, extras and materials untouched', as
   assert.deepEqual(b.nodes, a.nodes); assert.deepEqual(b.materials, a.materials);
 });
 
-test('Bee drone parity with the device: 700 k budget → 389,641 unique triangles, 183 primitives', { skip: !fs.existsSync(BEE) && `no Bee publication at ${BEE}` }, async () => {
+// Reference numbers: the iPhone built the pre-hose GLB as parts=719 meshes=183
+// tris=389641 from a census of 2,131,258. With the 47 hose sweeps rebuilt as
+// geometry (hose.ts) the same algorithm gives 389,090 / 231 primitives from
+// 2,160,884 - the device, loading the same file, reproduces these exactly.
+test('Bee drone parity with the device: 700 k budget → 389,090 unique triangles, 231 primitives', { skip: !fs.existsSync(BEE) && `no Bee publication at ${BEE}` }, async () => {
   const { importCortonaBundle } = await import('../src/import/cortona/importer.js');
   const { buildLadder, meshReferences } = await import('../src/models/variants.js');
   const { clusteringReducer } = await import('../src/models/reduce-clustering.js');
   const { readGlb, readGeometry, geometrySummary } = await import('../src/models/glb-geometry.js');
   const glb = importCortonaBundle(fs.readFileSync(BEE), {}).glb;
   const doc = readGlb(glb);
-  assert.equal(geometrySummary(doc, meshReferences(doc.json)).triangles, 2_131_258, 'census = the device census');
+  assert.equal(geometrySummary(doc, meshReferences(doc.json)).triangles, 2_160_884, 'census = the device census');
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sib-bee-'));
   const r = buildLadder(glb, dir, 'bee', clusteringReducer, { ladder: [700_000] });
   const v = readGeometry(readGlb(fs.readFileSync(path.join(dir, 'bee.700000.glb'))));
-  assert.equal(v.stats.triangles, 389_641);
-  assert.equal(v.meshes.reduce((n, m) => n + m.primitives.length, 0), 183);
+  assert.equal(v.stats.triangles, 389_090);
+  assert.equal(v.meshes.reduce((n, m) => n + m.primitives.length, 0), 231);
   assert.equal(readGlb(fs.readFileSync(path.join(dir, 'bee.700000.glb'))).json.nodes && (readGlb(fs.readFileSync(path.join(dir, 'bee.700000.glb'))).json.nodes as unknown[]).length, 719);
   assert.ok(r.variants[0].bytes < glb.length / 3, 'a third of the download');
 });

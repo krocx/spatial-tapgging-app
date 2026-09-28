@@ -481,6 +481,25 @@ final class AssemblyNode {
     }
 
     /// Display info for a part from the GLB extras (part number, description).
+    /// The parts a step is about, minus invisible helpers: the control points
+    /// of a hose sweep (Cortona's BoxDummy objects) move in the timeline but
+    /// carry no geometry, and the operator should be pointed at the hose,
+    /// not at "BoxDummy_100 +100". Falls back to the full list when nothing
+    /// visible is left.
+    func visibleFocus(_ names: [String]) -> [String] {
+        let vis = names.filter { hasGeometry($0) }
+        return vis.isEmpty ? names : vis
+    }
+
+    private var geometryCache: [String: Bool] = [:]
+    func hasGeometry(_ name: String) -> Bool {
+        if let c = geometryCache[name] { return c }
+        var found = false
+        parts[name]?.enumerateHierarchy { n, stop in if n.geometry != nil { found = true; stop.pointee = true } }
+        geometryCache[name] = found
+        return found
+    }
+
     func partInfo(_ name: String) -> (title: String, partNumber: String?, description: String?) {
         let ex = extras[name] ?? [:]
         let bare = name.hasPrefix("cmp:") ? String(name.dropFirst(4)) : name
