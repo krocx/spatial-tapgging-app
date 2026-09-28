@@ -27,12 +27,15 @@
   .ar-copy strong { color: var(--ax-ink); }
   .ar-copy .ar-acts { display: flex; gap: var(--ax-s2); flex-wrap: wrap; margin-top: var(--ax-s4); }
   .ar-diagram { padding: var(--ax-s4); overflow: auto; min-height: 320px; position: relative; }
-  .ar-diagram svg { max-width: none; height: auto; }
-  .ar-diagram.is-fit svg { width: 100%; max-width: 100% !important; }
+  .ar-diagram svg { height: auto; }
+  .ar-diagram:not(.is-fit) svg { max-width: none !important; }
+  .ar-diagram.is-fit svg { width: 100% !important; max-width: 100% !important; }
   .ar-diagram pre { font: var(--ax-num); color: var(--ax-ink-3); white-space: pre-wrap; margin: 0; }
   .ar-fit { position: absolute; top: var(--ax-s3); right: var(--ax-s3); }
   /* Level 4 file explorer */
   .ar-files { margin-top: var(--ax-s4); display: grid; grid-template-columns: 1fr 1fr; gap: var(--ax-s4); }
+  .ar-files .ar-nbhd { grid-column: 1 / -1; min-height: 0; }
+  .ar-files .ar-nbhd svg { width: 100% !important; max-width: 100% !important; }
   .ar-files h3 { margin: 0 0 var(--ax-s2); font: var(--ax-label); }
   .ar-files ul { list-style: none; margin: 0; padding: 0; max-height: 320px; overflow: auto; }
   .ar-files li { font: var(--ax-num); color: var(--ax-ink-2); padding: 2px 0; }
@@ -188,6 +191,10 @@ async function drawDiagram(s){
   try {
     const { svg } = await window.mermaid.render('ar' + (++seq), themed(s.mermaid));
     host.innerHTML = svg;
+    // Mermaid emits width:100% + max-width:<natural>px; natural size means
+    // exactly that width, fit width means the panel's.
+    const node = host.querySelector('svg'), natural = parseFloat((node.style.maxWidth || '').replace('px', ''));
+    if (!fit && natural) node.style.width = natural + 'px';
   } catch (e) { host.innerHTML = '<pre>' + esc(s.mermaid) + '\n\n' + esc(e.message || e) + '</pre>'; }
 }
 
@@ -199,6 +206,21 @@ function explorer(which){
     <span class="ax-label-s ax-muted">${files.length} files</span></div>
     <div class="ar-files" id="ar-explorer"></div>`;
 }
+// The picked file in the middle, what it uses to the right, what uses it to
+// the left; capped so a hub file (SIBClient, app.ts) stays readable.
+async function neighbourhood(el, f, uses, usedBy){
+  const CAP = 14, nid = x => 'n' + x.replace(/[^A-Za-z0-9]/g, '_'), lbl = x => x.split('/').pop().replace(/"/g, '');
+  const trim = a => a.length > CAP ? a.slice(0, CAP) : a;
+  let code = 'flowchart LR\n';
+  for (const u of trim(usedBy)) code += `  ${nid(u)}["${lbl(u)}"] --> ${nid(f)}\n`;
+  if (usedBy.length > CAP) code += `  more_in["… ${usedBy.length - CAP} more"] --> ${nid(f)}\n`;
+  code += `  ${nid(f)}(["${lbl(f)}"])\n`;
+  for (const u of trim(uses)) code += `  ${nid(f)} --> ${nid(u)}["${lbl(u)}"]\n`;
+  if (uses.length > CAP) code += `  ${nid(f)} --> more_out["… ${uses.length - CAP} more"]\n`;
+  if (!mermaidReady) { el.innerHTML = '<pre>' + esc(code) + '</pre>'; return; }
+  try { const { svg } = await window.mermaid.render('nb' + (++seq), themed(code)); el.innerHTML = svg; }
+  catch (e) { el.innerHTML = '<pre>' + esc(e.message || e) + '</pre>'; }
+}
 function wireExplorer(which){
   const deps = DATA.generated.deps?.[which] || {};
   const input = document.getElementById('ar-file'), out = document.getElementById('ar-explorer');
@@ -206,7 +228,8 @@ function wireExplorer(which){
     if (!deps[f]) { out.innerHTML = ''; return; }
     const uses = deps[f], usedBy = Object.entries(deps).filter(([, t]) => t.includes(f)).map(([k]) => k).sort();
     const li = a => a.length ? a.map(x => `<li><b>${esc(x.split('/').pop())}</b> <span class="ax-muted">${esc(x.includes('/') ? x.slice(0, x.lastIndexOf('/')) : '')}</span></li>`).join('') : '<li class="ax-muted">none</li>';
-    out.innerHTML = `<div><h3>${esc(f)} depends on (${uses.length})</h3><ul>${li(uses)}</ul></div><div><h3>Depended on by (${usedBy.length})</h3><ul>${li(usedBy)}</ul></div>`;
+    out.innerHTML = `<div class="ax-card ar-diagram ar-nbhd"></div><div><h3>${esc(f)} depends on (${uses.length})</h3><ul>${li(uses)}</ul></div><div><h3>Depended on by (${usedBy.length})</h3><ul>${li(usedBy)}</ul></div>`;
+    neighbourhood(out.querySelector('.ar-nbhd'), f, uses, usedBy);
   };
   input.addEventListener('change', () => show(input.value.trim()));
   input.addEventListener('input', () => { if (deps[input.value.trim()]) show(input.value.trim()); });
