@@ -171,10 +171,16 @@ dedupe), `glb.ts` (glTF 2.0 binary writer, `cmp:<DEF>` nodes + extras),
 `procedure.ts` (Procedure → Step → SubStep → commands, ROUTE binding, PROTO
 classification handled / ignored / unknown), `widgets.ts` (callout widgets,
 RTF/HTML → text), `interactivity.ts` (`interactivity.xml`, `rwi`),
-`importer.ts` (orchestration + content-free log). Route:
-`POST /guides/import/cortona?anchorId&createdBy&strict&name` with the raw
-`.htm` body. Tests: `sib/test/cortona-import.test.ts` against
-`sib/test/cortona-fixture.ts` (synthetic bundle from both samples' schemas).
+`importer.ts` (orchestration + content-free log), `worker.ts` (the parse in
+its own thread). Route: `POST /guides/import/cortona?anchorId&createdBy&strict&name`
+with the raw `.htm` body answers `202 { jobId, status, position }`; the parse
+runs in a worker thread, one job at a time (`sib/src/import/jobs.ts`), and
+`GET /guides/import/jobs/:id` reports `queued | processing | done | failed`
+with the result (guide, steps, model, log, summary) or a plain error. A
+worker that runs out of memory fails its own job; the service stays up.
+Jobs are kept for an hour. Tests: `sib/test/cortona-import.test.ts` against
+`sib/test/cortona-fixture.ts` (synthetic bundle from both samples' schemas);
+`sib/test/import-jobs.test.ts` for the queue (needs `npm run build` first).
 
 ### Validated on three public Cortona3D demo publications (2026-09-18)
 

@@ -6,7 +6,24 @@ it, it gets a line.
 
 ## 2026.4.46 - 2026-09-08
 
+### Added
+- **Cortona import runs in a worker thread, one at a time.** `POST
+  /guides/import/cortona` now answers `202 { jobId }` at once and the
+  portal polls `GET /guides/import/jobs/:id` (queued · processing · done ·
+  failed, with the same result as before). The parse no longer blocks the
+  API for anyone else, and an import that runs out of memory fails that
+  job with a plain sentence instead of taking the whole service down.
+  Prerequisite 1 of server-side model variants (docs/ar-ojt/MODEL-VARIANTS.md).
+- **Anchor Lab: focus ring while placing tags.** The same AR OMS ring shows
+  which surface ARKit is reading at the screen centre, so the user sees
+  where a tap will land.
+
 ### Fixed
+- **Anchor Lab tags landed on the floor under the table.** The tap
+  preferred detected plane geometry, so when the table had no plane yet
+  the ray went through to the floor plane below. The nearest surface now
+  wins, reading the depth mesh on LiDAR devices - the same answer the ring
+  shows.
 - **"Could not download the assembly model - Network: cancelled" on first
   open of Place Assembly.** When the scan gate closes and the placement
   cover opens in the same beat, SwiftUI cancels and re-fires the view's

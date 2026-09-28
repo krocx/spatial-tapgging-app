@@ -2,7 +2,7 @@
 
 Proprietary & Confidential · Applied Materials
 
-Status: **draft for approval** · 2026-09-28 · nothing here is built yet.
+Status: **approved 2026-09-28** (ladder 2.5 M / 1.2 M / 700 k / 350 k) · prerequisite 1 built (`sib/src/import/jobs.ts`, `cortona/worker.ts`, `202 + poll`); 2 to 6 open.
 
 ## Why
 
@@ -22,8 +22,8 @@ client ask for the size it wants.
 
 1. **Reduce at import.** After `writeGlb` in the Cortona importer (and after
    any future GLB upload), produce fixed-size variants of the same model.
-   Proposed ladder, matching the device tiers the app already uses:
-   `full` (as imported), `1200k`, `700k`, `350k` triangles. A variant is only
+   Approved ladder, matching the device tiers the app already uses:
+   `full` (as imported), `2500k`, `1200k`, `700k`, `350k` triangles. A variant is only
    written when the source is larger than its budget; a 90 k model has only
    `full`.
 2. **Same algorithm as the device.** Port `GLBLoader.decimate` (vertex
@@ -39,7 +39,9 @@ client ask for the size it wants.
    parts breaks every step.
 4. **Store and serve.** `MODELS_DIR/<id>.glb` stays the full model.
    Variants live at `MODELS_DIR/<id>.<budget>.glb`. `Model3D` gains
-   `variants: { budget: number; triangles: number; bytes: number }[]`.
+   `variants: { budget: number; triangles: number; bytes: number; algorithm: string }[]`
+   (the algorithm name + version, so a reducer change re-derives variants and
+   a record says which geometry an operator saw).
    `GET /models/:id/file.glb?budget=700000` returns the smallest variant
    whose budget is at or above the request, or `full` when none is smaller
    than the source. No query string keeps today's behaviour exactly.

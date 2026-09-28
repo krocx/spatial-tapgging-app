@@ -1257,6 +1257,9 @@ struct LabPlaceView: View {
     @State private var started = false
     @State private var dirty = false
     @State private var tucked = Set<String>()
+    /// The AR OMS focus ring: shows the surface ARKit is reading at the screen
+    /// centre, so the user can see where a tap will land before tapping.
+    @State private var focusRing: ARFocusRing? = nil
     private let ticker = Timer.publish(every: 1.0 / 20.0, on: .main, in: .common).autoconnect()
 
     private var client: SIBClient { SIBClient(settings: settings) }
@@ -1348,7 +1351,9 @@ struct LabPlaceView: View {
         .onReceive(ticker) { _ in
             guard phase == .ready || phase == .saving, let cam = arManager.sceneView.session.currentFrame?.camera.transform else { return }
             LabMarker.updateTuck(nodes, camera: simd_float3(cam.columns.3.x, cam.columns.3.y, cam.columns.3.z), tucked: &tucked)
+            focusRing?.update(sceneView: arManager.sceneView)
         }
+        .onDisappear { focusRing?.cleanup(); focusRing = nil }
     }
 
     // ── Session ───────────────────────────────────────────────────────────────
@@ -1404,6 +1409,7 @@ struct LabPlaceView: View {
 
     private func becomeReady() {
         for (i, t) in tags.enumerated() { drawPin(t, number: i + 1) }
+        if focusRing == nil { focusRing = ARFocusRing(sceneView: arManager.sceneView) }
         phase = .ready
     }
 
@@ -1421,14 +1427,22 @@ struct LabPlaceView: View {
     private func handleTap(_ point: CGPoint) {
         guard phase == .ready, !placing, !arManager.isRelocalizing else { return }
         let sv = arManager.sceneView
-        var pos: simd_float3? = nil
-        for target in [ARRaycastQuery.Target.existingPlaneGeometry, .estimatedPlane] {
-            if let q = sv.raycastQuery(from: point, allowing: target, alignment: .any),
-               let h = sv.session.raycast(q).first {
-                let c = h.worldTransform.columns.3; pos = simd_float3(c.x, c.y, c.z); break
+        // Nearest surface wins. Preferring detected plane geometry first put
+        // a tap on a table onto the floor plane below it whenever the table
+        // itself had no plane yet (iPad Pro / iPhone 17 reports). The
+        // estimated-plane query reads the depth mesh on LiDAR devices and
+        // the ring on screen shows the same answer, so the two agree.
+        let camPos: simd_float3? = sv.session.currentFrame.map { simd_float3($0.camera.transform.columns.3.x, $0.camera.transform.columns.3.y, $0.camera.transform.columns.3.z) }
+        var best: (pos: simd_float3, dist: Float)? = nil
+        for target in [ARRaycastQuery.Target.estimatedPlane, .existingPlaneGeometry] {
+            guard let q = sv.raycastQuery(from: point, allowing: target, alignment: .any) else { continue }
+            for h in sv.session.raycast(q) {
+                let c = h.worldTransform.columns.3; let p = simd_float3(c.x, c.y, c.z)
+                let d = camPos.map { simd_distance($0, p) } ?? 0
+                if best == nil || d < best!.dist { best = (p, d) }
             }
         }
-        guard let p = pos else { show("No surface there - tap a spot on the rig"); return }
+        guard let p = best?.pos else { show("No surface there - tap a spot on the rig"); return }
         withAnimation { showTapHint = false }
         Task { await place(at: p) }
     }

@@ -17,7 +17,8 @@
 
 import express, { Router } from 'express';
 import type { Request, Response } from 'express';
-import { importCortonaBundle } from '../import/cortona/importer.js';
+import { enqueueCortonaImport, getImportJob, importQueueDepth } from '../import/jobs.js';
+
 import { registerGeneratedGlb } from './models.js';
 import { v4 as uuidv4 } from 'uuid';
 import fs   from 'fs';
@@ -34,6 +35,8 @@ import type {
   ImportGuideRequest,
   ImportGuideResult,
   ApiResponse,
+  ImportedGuide,
+  GuideStepNode,
 } from '@spatial/shared';
 import {
   getInstructionsSourceAdapter,
@@ -211,40 +214,46 @@ router.post(
       return;
     }
 
-    let result;
-    try {
-      result = importCortonaBundle(body, { strict: q.strict === '1' || q.strict === 'true', name: q.name?.trim() || undefined });
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error('[SIB] Cortona import failed:', msg);
-      res.status(422).json({ error: `Cortona3D import failed: ${msg}`, timestamp: new Date().toISOString() });
-      return;
-    }
-
-    const model = registerGeneratedGlb({
-      name: `${result.imported.name} - assembly`, glb: result.glb, anchorId, uploadedBy: createdBy,
-      category: 'cortona', originalFilename: (req.headers['x-filename'] as string | undefined)?.replace(/\.[^.]+$/, '') + '.glb',
-    });
-    for (const s of result.imported.steps) s.models = [{ slotId: 'assembly', modelId: model.id, modelOpacity: 1 }];
-    result.imported.assembly = {
-      modelId: model.id, source: 'cortona',
-      ...(result.initialNodes.length ? { initialNodes: result.initialNodes } : {}),
-      ...(result.bounds ? { bounds: result.bounds } : {}),
-    };
-
-    const applied = await applyImportedGuide(result.imported, { anchorId, createdBy });
-    const summary = { guideId: applied.guide.id, steps: applied.steps.length, modelId: model.id, glbBytes: result.glb.length };
-    console.log(`[SIB] Guide imported (cortona): ${applied.guide.id} - ${applied.steps.length} steps, model ${model.id}, ` +
-      `${result.log.procedure.commands ? Object.values(result.log.procedure.commands).reduce((a, b) => a + b, 0) : 0} commands` +
-      (result.log.warnings.length ? `, ${result.log.warnings.length} warning(s)` : ''));
-
-    const resp: ApiResponse<{ guide: Guide; steps: GuideStep[]; model: unknown; log: unknown; summary: typeof summary }> = {
-      data: { guide: applied.guide, steps: applied.steps, model, log: result.log, summary },
-      timestamp: new Date().toISOString(),
-    };
-    res.status(201).json(resp);
+    // The parse runs in a worker, one at a time (import/jobs.ts). The caller
+    // gets a job id now and polls GET /guides/import/jobs/:id; the finished
+    // job carries what this route used to answer with directly.
+    const opts = { strict: q.strict === '1' || q.strict === 'true', name: q.name?.trim() || undefined };
+    const originalFilename = (req.headers['x-filename'] as string | undefined)?.replace(/\.[^.]+$/, '') + '.glb';
+    const ab = new Uint8Array(body).slice().buffer as ArrayBuffer;   // own, transferable copy; the request body is released
+    const job = enqueueCortonaImport(ab, opts, async (r) => {
+      const imported = r.imported as ImportedGuide;
+      const log = r.log as { procedure: { commands?: Record<string, number> }; warnings: string[] };
+      const model = registerGeneratedGlb({
+        name: `${imported.name} - assembly`, glb: r.glb, anchorId, uploadedBy: createdBy, category: 'cortona', originalFilename,
+      });
+      for (const s of imported.steps) s.models = [{ slotId: 'assembly', modelId: model.id, modelOpacity: 1 }];
+      imported.assembly = {
+        modelId: model.id, source: 'cortona',
+        ...(r.initialNodes.length ? { initialNodes: r.initialNodes as GuideStepNode[] } : {}),
+        ...(r.bounds ? { bounds: r.bounds as { min: [number, number, number]; max: [number, number, number] } } : {}),
+      };
+      const applied = await applyImportedGuide(imported, { anchorId, createdBy });
+      const summary = { guideId: applied.guide.id, steps: applied.steps.length, modelId: model.id, glbBytes: r.glb.length };
+      console.log(`[SIB] Guide imported (cortona): ${applied.guide.id} - ${applied.steps.length} steps, model ${model.id}, ` +
+        `${log.procedure.commands ? Object.values(log.procedure.commands).reduce((a, b) => a + b, 0) : 0} commands` +
+        (log.warnings.length ? `, ${log.warnings.length} warning(s)` : ''));
+      const data: { guide: Guide; steps: GuideStep[]; model: unknown; log: unknown; summary: typeof summary } =
+        { guide: applied.guide, steps: applied.steps, model, log, summary };
+      return data;
+    }, memoryLimitBytes());
+    console.log(`[SIB] Cortona import queued: job ${job.id}, ${(body.length / 1048576).toFixed(1)} MB, queue depth ${importQueueDepth()}`);
+    res.status(202).json({ data: { jobId: job.id, status: job.status, position: job.position ?? 0 }, timestamp: new Date().toISOString() });
   },
 );
+
+// GET /guides/import/jobs/:id - poll an import. `status` is queued |
+// processing | done | failed; `result` (done) has guide, steps, model, log,
+// summary; `error` (failed) is a plain sentence. Jobs are kept for an hour.
+router.get('/import/jobs/:id', (req: Request, res: Response): void => {
+  const job = getImportJob(req.params.id);
+  if (!job) { res.status(404).json({ error: 'Import job not found (jobs are kept for an hour)', timestamp: new Date().toISOString() }); return; }
+  res.json({ data: job, timestamp: new Date().toISOString() });
+});
 
 // GET /guides/step-image/:filename - serve a step media image
 // IMPORTANT: must be registered BEFORE /:id routes to avoid "step-image" matching as an id.

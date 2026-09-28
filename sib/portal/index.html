@@ -4865,7 +4865,23 @@ async function submitImportCortona(anchorId, createdBy) {
       body: importCortonaFile,
     });
     if (!res.ok) { const err = await res.json().catch(() => ({ error: res.statusText })); throw new Error(err.error || `HTTP ${res.status}`); }
-    const { guide, steps, model, log, summary } = (await res.json()).data;
+    // The server answers 202 with a job id and parses in a worker; poll until
+    // it is done. (An older server answers 201 with the result directly.)
+    let data = (await res.json()).data;
+    if (res.status === 202 && data.jobId) {
+      const t0 = Date.now();
+      for (;;) {
+        await new Promise(r => setTimeout(r, 1500));
+        const jr = await fetch(`/guides/import/jobs/${data.jobId}`, { headers: { 'X-API-Key': apiKey() } });
+        if (!jr.ok) { const err = await jr.json().catch(() => ({ error: jr.statusText })); throw new Error(err.error || `HTTP ${jr.status}`); }
+        const job = (await jr.json()).data;
+        const secs = Math.round((Date.now() - t0) / 1000);
+        btn.textContent = job.status === 'queued' ? `Waiting (${job.position} ahead)…` : `Importing… ${secs}s`;
+        if (job.status === 'done')   { data = job.result; break; }
+        if (job.status === 'failed') throw new Error(job.error || 'import failed');
+      }
+    }
+    const { guide, steps, model, log, summary } = data;
     lastCortonaImportLog = { guideName: guide.name, ...summary, log };
     closeImportGuideModal();
     importCortonaFile = null;
