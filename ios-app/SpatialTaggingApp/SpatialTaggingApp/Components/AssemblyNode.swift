@@ -493,6 +493,7 @@ final class AssemblyNode {
     private func resetAll() {
         root.enumerateHierarchy { n, _ in
             if n.parent?.name == "view-hint" { return }          // the camera marker keeps its own look
+            if n.geometry != nil { n.opacity = 1 }
             for m in n.geometry?.materials ?? [] {
                 let id = ObjectIdentifier(m)
                 m.diffuse.contents = baseColor[id] ?? UIColor.lightGray
@@ -520,6 +521,10 @@ final class AssemblyNode {
             guard n.geometry != nil else { return }
             if p.show != .hidden { n.isHidden = false }
             else if instant { n.isHidden = true }
+            // Ghosting by node opacity: SceneKit blends it reliably for every
+            // material (the PBR + shader-modifier materials here rendered
+            // material transparency as opaque). Animatable, so fades still work.
+            n.opacity = alphaFactor
         }
         node.enumerateHierarchy { n, _ in
             for m in n.geometry?.materials ?? [] {

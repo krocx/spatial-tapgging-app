@@ -73,6 +73,11 @@ it, it gets a line.
   focus ring uses it too, so where the ring sits is where a tap lands.
 
 ### Fixed
+- **Whole-assembly ghost rendered opaque.** Ghosting went through material
+  transparency, which the assembly's PBR materials (with the rim shader)
+  drew as solid. Ghost and fades now use node opacity, which SceneKit
+  blends for every material. The context button cycles installed parts
+  only → whole assembly as ghost → whole assembly solid.
 - **Imported assemblies showed every part in AR from step 1.** The loader
   builds one SceneKit material per glTF material (one per colour, 54 for
   the Bee) and shared it across every part of that colour; hide, ghost and

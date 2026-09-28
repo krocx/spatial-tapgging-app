@@ -1033,19 +1033,24 @@ struct ARGuideSessionView: View {
 
                     // 2026.4.46: whole-assembly context (only when an assembly is loaded)
                     if assemblyNode != nil {
+                        // Cycle: installed parts only → whole assembly as ghost → whole assembly solid.
                         Button {
-                            assemblyContext.toggle()
+                            if !assemblyContext { assemblyContext = true; assemblyContextSolid = false }
+                            else if !assemblyContextSolid { assemblyContextSolid = true }
+                            else { assemblyContext = false; assemblyContextSolid = false }
                             replayAssemblyStep()
-                            let label = assemblyContext ? "Whole assembly shown" : "Installed parts only"
+                            let label = !assemblyContext ? "Installed parts only" : assemblyContextSolid ? "Whole assembly · solid" : "Whole assembly · ghost"
                             withAnimation(.easeOut(duration: 0.15)) { visibilityToast = label }
                             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { withAnimation { if visibilityToast == label { visibilityToast = nil } } }
                         } label: {
-                            Image(systemName: assemblyContext ? "cube.transparent.fill" : "cube.transparent")
+                            Image(systemName: !assemblyContext ? "cube.transparent" : assemblyContextSolid ? "cube.fill" : "cube.transparent.fill")
                                 .font(.system(size: 16))
                                 .foregroundStyle(assemblyContext ? Color.green : Color.white)
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel(assemblyContext ? "Whole assembly shown - tap to show installed parts only" : "Show whole assembly")
+                        .accessibilityLabel(!assemblyContext ? "Installed parts only - tap for the whole assembly as a ghost"
+                                            : assemblyContextSolid ? "Whole assembly solid - tap for installed parts only"
+                                            : "Whole assembly ghost - tap for solid")
                     }
 
                     // Visibility cycle: tag + panel → all steps → panel only → tag only → none
