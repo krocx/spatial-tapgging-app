@@ -11,9 +11,11 @@ it, it gets a line.
   SIB Home is the dot in the centre, the six surfaces (Portal, Platform,
   Roadmap, Admin, Wireframe, Catalog) are the corners, and each surface's
   stops sit outside its corner - a row above Portal, a row below Admin,
-  columns beside the others. Connectors are measured against the rendered
-  pills so a line starts and ends on a border, catalogue style, and only
-  the path you are on is lit in its surface colour. The title reads the
+  columns beside the others. Connectors are catalogue-style rails with a
+  stub to each stop, built from the pills' measured sizes so a line starts
+  and ends on a border and never crosses a pill; only the path you are on
+  is lit in its surface colour. Hubs no longer carry a second clickable
+  caption; the description is the tooltip. The title reads the
   full path in the same words as the page breadcrumb ("SIB Home › Portal ›
   Guide Library") and the current pill is filled in its colour. Every stop
   now has a shortcut, printed on its pill: with the map open, the surface

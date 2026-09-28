@@ -124,13 +124,13 @@
   .sibc-veil{position:fixed;inset:0;z-index:9500;background:var(--ax-page);display:none;align-items:center;justify-content:center;opacity:0;transition:opacity .18s ease-out}
   .sibc-veil.open{display:flex}
   .sibc-veil.shown{opacity:1}
-  .sibc-fold{width:calc(1180px * var(--k,1));height:calc(760px * var(--k,1));
+  .sibc-fold{width:calc(1180px * var(--k,1));height:calc(800px * var(--k,1));
     transform-origin:100% 100%;transform:perspective(1400px) rotateX(-14deg) rotateY(6deg) scale(.92);opacity:0;
     transition:transform .42s cubic-bezier(.2,.9,.25,1.15),opacity .25s ease-out}
   .sibc-veil.shown .sibc-fold{transform:none;opacity:1}
   .sibc-veil.folding .sibc-fold{transform:perspective(1400px) rotateX(-14deg) rotateY(6deg) scale(.9);opacity:0;transition-duration:.22s,.16s}
-  /* The map is drawn on a fixed 1180 x 760 stage and scaled to the window, so the layout is the same everywhere. */
-  .sibc-map{position:relative;width:1180px;height:760px;transform-origin:0 0;transform:scale(var(--k,1));color:var(--ax-ink);font-family:var(--ax-font)}
+  /* The map is drawn on a fixed 1180 x 800 stage and scaled to the window, so the layout is the same everywhere. */
+  .sibc-map{position:relative;width:1180px;height:800px;transform-origin:0 0;transform:scale(var(--k,1));color:var(--ax-ink);font-family:var(--ax-font)}
   .sibc-veil.folding{opacity:0}
   .sibc-title{position:absolute;top:0;left:50%;transform:translateX(-50%);text-align:center;white-space:nowrap;z-index:1}
   .sibc-title .eyebrow{font:var(--ax-eyebrow);letter-spacing:.08em;text-transform:uppercase;color:var(--ax-ink-3)}
@@ -289,37 +289,28 @@
   function renderMap() {
     const path = locate();
     const W = mapEl.clientWidth, H = mapEl.clientHeight;
-    const cx = W / 2, cy = H / 2 + 8;
-    const R = Math.max(150, Math.min(W * 0.19, (H - 330) * 0.38));
+    const cx = W / 2, cy = H / 2 - 10;
+    const R = 165;
     const pos = { sib: [cx, cy] };
     const align = {};                                   // id → 'l' | 'r' (pill edge pinned to x) or undefined (centred)
+    const side = {};                                    // hub id → 'up' | 'down' | 'left' | 'right' (where its stops sit)
     const hubs = HEX_ORDER.map(id => find(id)).filter(Boolean);
     hubs.forEach((h, i) => {
       const a = HEX_ANGLES[i] * Math.PI / 180;
       pos[h.id] = [cx + R * Math.cos(a), cy + R * Math.sin(a)];
+      side[h.id] = i === 0 ? 'up' : i === 3 ? 'down' : i < 3 ? 'right' : 'left';
     });
-    // Provisional stop positions; rows are re-spaced from measured pill widths below.
-    const rowsOf = {};
-    const side = Math.max(200, R * 1.1), colGap = 46, rowH = 42;
-    hubs.forEach((h, i) => {
+    // One row above Portal, one row below Admin, one column beside the others.
+    // Rows are spaced from the pills' measured widths in a second pass.
+    const reach = 205, colGap = 44, rowUp = 78, rowDown = 78;
+    hubs.forEach(h => {
       const kids = h.children || []; if (!kids.length) return;
       const [vx, vy] = pos[h.id];
-      const dir = HEX_ORDER[i];
-      if (dir === 'portal' || dir === 'admin') {
-        const per = kids.length > 5 ? Math.ceil(kids.length / 2) : kids.length;
-        rowsOf[h.id] = [];
-        kids.forEach((k, j) => {
-          const row = Math.floor(j / per);
-          (rowsOf[h.id][row] ||= []).push(k.id);
-          pos[k.id] = [vx, dir === 'portal' ? vy - 64 - row * rowH : vy + 86 + row * rowH];
-        });
-      } else {
-        const right = dir === 'platform' || dir === 'roadmap';
-        kids.forEach((k, j) => {
-          pos[k.id] = [vx + (right ? side : -side), vy + (j - (kids.length - 1) / 2) * colGap];
-          align[k.id] = right ? 'l' : 'r';
-        });
-      }
+      kids.forEach((k, j) => {
+        if (side[h.id] === 'up') pos[k.id] = [vx, vy - rowUp];
+        else if (side[h.id] === 'down') pos[k.id] = [vx, vy + rowDown];
+        else { const r = side[h.id] === 'right'; pos[k.id] = [vx + (r ? reach : -reach), vy + (j - (kids.length - 1) / 2) * colGap]; align[k.id] = r ? 'l' : 'r'; }
+      });
     });
 
     const words = path.map((id, i) => i === 0 ? 'SIB Home' : (find(id)?.label || id));
@@ -346,24 +337,27 @@
       if (a.getAttribute('href').split('#')[0] === location.pathname) setTimeout(close, 60);
     }));
 
-    // Second pass: space each row from the pills' real widths, centred on the corner.
+    // Second pass: space each row from the pills' real widths, centred on its corner.
     const el = id => mapEl.querySelector(`a.sibc-node[data-id="${CSS.escape(id)}"]`);
-    const GAP = 12;
-    for (const hub in rowsOf) for (const row of rowsOf[hub]) {
+    const GAP = 10;
+    for (const h of hubs) {
+      if (side[h.id] !== 'up' && side[h.id] !== 'down') continue;
+      const row = (h.children || []).map(k => k.id); if (!row.length) continue;
       const widths = row.map(id => el(id).querySelector('.pill').offsetWidth);
       const total = widths.reduce((a, b) => a + b, 0) + GAP * (row.length - 1);
-      let x = Math.min(W - 24 - total, Math.max(24, pos[hub][0] - total / 2));
+      let x = Math.min(W - 16 - total, Math.max(16, pos[h.id][0] - total / 2));
       row.forEach((id, i) => { pos[id][0] = x + widths[i] / 2; el(id).style.left = pos[id][0] + 'px'; x += widths[i] + GAP; });
     }
-    drawEdges(hubs, path, pos, align, el);
+    drawEdges(hubs, path, pos, align, side, el);
     mapEl.classList.remove('settled');
     requestAnimationFrame(() => requestAnimationFrame(() => mapEl.classList.add('settled')));
   }
 
-  /** Connectors from layout geometry (offset sizes ignore the map's fold
-   *  transform), so every line starts and ends on a pill's border - never
-   *  through it, never short of it. */
-  function drawEdges(hubs, path, pos, align, el) {
+  /** Connectors, catalogue style: a rail beside each corner with a stub to
+   *  every stop, all from layout geometry (offset sizes ignore the fold
+   *  transform), so lines start and end on pill borders and never cross a
+   *  pill. The path you are on is drawn again on top in its colour. */
+  function drawEdges(hubs, path, pos, align, side, el) {
     const svg = mapEl.querySelector('#sibc-edges'); if (!svg) return;
     svg.setAttribute('viewBox', `0 0 ${mapEl.clientWidth} ${mapEl.clientHeight}`);
     const box = {};
@@ -371,37 +365,57 @@
       const a = el(id); if (!a) continue;
       const pill = a.querySelector('.pill');
       const [x, y] = pos[id];
-      // The anchor is centred on (x, y) (or pinned by one edge); the pill sits inside it.
       const left = align[id] === 'l' ? x : align[id] === 'r' ? x - a.offsetWidth : x - a.offsetWidth / 2;
       const top = y - a.offsetHeight / 2;
       box[id] = { l: left + pill.offsetLeft, t: top + pill.offsetTop, r: left + pill.offsetLeft + pill.offsetWidth, b: top + pill.offsetTop + pill.offsetHeight };
     }
-    const centre = b => [(b.l + b.r) / 2, (b.t + b.b) / 2];
-    const exit = (a, b) => {                              // where centre(a)→centre(b) leaves box a, padded 3 px
-      const [ax, ay] = centre(a), [bx, by] = centre(b);
-      const dx = bx - ax, dy = by - ay; if (!dx && !dy) return [ax, ay];
+    const cxOf = b => (b.l + b.r) / 2, cyOf = b => (b.t + b.b) / 2;
+    const f = n => n.toFixed(1);
+    const stroke = (d, colour, w, op) => `<path d="${d}" fill="none" stroke="${colour}" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"${op ? ` stroke-opacity="${op}"` : ''}/>`;
+    const quiet = 'var(--ax-ink-4)';
+    let out = '';
+
+    // Hexagon: corner to corner, trimmed to the pill borders.
+    const exit = (a, b) => {
+      const ax = cxOf(a), ay = cyOf(a), dx = cxOf(b) - ax, dy = cyOf(b) - ay; if (!dx && !dy) return [ax, ay];
       const hw = (a.r - a.l) / 2 + 3, hh = (a.b - a.t) / 2 + 3;
       const t = Math.min(dx ? hw / Math.abs(dx) : Infinity, dy ? hh / Math.abs(dy) : Infinity);
       return [ax + dx * t, ay + dy * t];
     };
-    const seg = (idA, idB, stroke, w, opacity) => {
-      const a = box[idA], b = box[idB]; if (!a || !b) return '';
-      const [x1, y1] = exit(a, b), [x2, y2] = exit(b, a);
-      return `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="${stroke}" stroke-width="${w}" stroke-linecap="round"${opacity ? ` stroke-opacity="${opacity}"` : ''}/>`;
-    };
-    const onPath = (a, b) => path.includes(a) && path.includes(b);
-    let out = '';
-    for (let i = 0; i < hubs.length; i++) out += seg(hubs[i].id, hubs[(i + 1) % hubs.length].id, 'var(--ax-ink-4)', 1, .5);
+    const straight = (idA, idB) => { const a = box[idA], b = box[idB]; if (!a || !b) return ''; const [x1, y1] = exit(a, b), [x2, y2] = exit(b, a); return `M${f(x1)},${f(y1)}L${f(x2)},${f(y2)}`; };
+    for (let i = 0; i < hubs.length; i++) out += stroke(straight(hubs[i].id, hubs[(i + 1) % hubs.length].id), quiet, 1, .5);
+
+    // Spokes from the dot to each corner; stop rails beside each corner.
+    const lit = [];
     for (const h of hubs) {
-      const hp = onPath('sib', h.id);
-      if (hp) out += seg('sib', h.id, h.color, 10, .18);
-      out += seg('sib', h.id, hp ? h.color : 'var(--ax-ink-4)', hp ? 3 : 1.2);
-      for (const k of h.children || []) {
-        const kp = onPath(h.id, k.id);
-        if (kp) out += seg(h.id, k.id, h.color, 10, .18);
-        out += seg(h.id, k.id, kp ? h.color : 'var(--ax-ink-4)', kp ? 3 : 1);
+      const d = straight('sib', h.id);
+      out += stroke(d, quiet, 1.2);
+      if (path.includes(h.id)) lit.push([d, h.color]);
+      const hb = box[h.id]; const kids = (h.children || []).filter(k => box[k.id]); if (!kids.length) continue;
+      const s = side[h.id];
+      let rail = '', stubs = {};
+      if (s === 'up' || s === 'down') {
+        const hubY = s === 'up' ? hb.t - 3 : hb.b + 3;
+        const stopY = s === 'up' ? Math.max(...kids.map(k => box[k.id].b)) + 3 : Math.min(...kids.map(k => box[k.id].t)) - 3;
+        const ry = (hubY + stopY) / 2, hx = cxOf(hb);
+        const xs = kids.map(k => cxOf(box[k.id]));
+        rail = `M${f(hx)},${f(hubY)}L${f(hx)},${f(ry)}M${f(Math.min(hx, ...xs))},${f(ry)}L${f(Math.max(hx, ...xs))},${f(ry)}`;
+        kids.forEach(k => { const b = box[k.id], x = cxOf(b); stubs[k.id] = `M${f(x)},${f(ry)}L${f(x)},${f(s === 'up' ? b.b + 3 : b.t - 3)}`; });
+        kids.forEach(k => { if (path.includes(k.id)) { const b = box[k.id], x = cxOf(b); lit.push([`M${f(hx)},${f(hubY)}L${f(hx)},${f(ry)}L${f(x)},${f(ry)}L${f(x)},${f(s === 'up' ? b.b + 3 : b.t - 3)}`, h.color]); } });
+      } else {
+        const right = s === 'right';
+        const hubX = right ? hb.r + 3 : hb.l - 3;
+        const stopX = right ? Math.min(...kids.map(k => box[k.id].l)) - 3 : Math.max(...kids.map(k => box[k.id].r)) + 3;
+        const rx = (hubX + stopX) / 2, hy = cyOf(hb);
+        const ys = kids.map(k => cyOf(box[k.id]));
+        rail = `M${f(hubX)},${f(hy)}L${f(rx)},${f(hy)}M${f(rx)},${f(Math.min(hy, ...ys))}L${f(rx)},${f(Math.max(hy, ...ys))}`;
+        kids.forEach(k => { const b = box[k.id], y = cyOf(b); stubs[k.id] = `M${f(rx)},${f(y)}L${f(right ? b.l - 3 : b.r + 3)},${f(y)}`; });
+        kids.forEach(k => { if (path.includes(k.id)) { const b = box[k.id], y = cyOf(b); lit.push([`M${f(hubX)},${f(hy)}L${f(rx)},${f(hy)}L${f(rx)},${f(y)}L${f(right ? b.l - 3 : b.r + 3)},${f(y)}`, h.color]); } });
       }
+      out += stroke(rail, quiet, 1);
+      for (const id in stubs) out += stroke(stubs[id], quiet, 1);
     }
+    for (const [d, colour] of lit) out += stroke(d, colour, 10, .18) + stroke(d, colour, 2.5);
     svg.innerHTML = out;
   }
 
@@ -410,7 +424,7 @@
     const b = badge(n.id);
     const bHtml = b ? `<span class="n" title="${b[1]}">${b[0]}</span>${b[2] ? '<span class="live"></span>' : ''}` : '';
     const swatch = kind === 'hub' ? `<span class="sw" style="background:${color}"></span>` : '';
-    const hint = kind !== 'leaf' && n.hint && !here ? `<span class="hint">${n.hint}</span>` : '';
+    const hint = '';
     const youare = here ? `<span class="youare">You are here</span>` : '';
     const mark = here ? `<span class="ax-mark is-green"><i></i><em></em></span>` : '';
     const away = kind === 'leaf' && !inHub && !here ? ' away' : '';
@@ -422,7 +436,7 @@
 
   let closing = null;
   function fitStage() {
-    const k = Math.min(1, (window.innerWidth - 32) / 1180, (window.innerHeight - 32) / 760);
+    const k = Math.min(1, (window.innerWidth - 32) / 1180, (window.innerHeight - 32) / 800);
     veil.style.setProperty('--k', k.toFixed(3));
   }
   function open() {
