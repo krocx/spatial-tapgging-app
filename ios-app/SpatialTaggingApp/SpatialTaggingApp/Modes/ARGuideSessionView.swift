@@ -4600,7 +4600,11 @@ extension ARGuideSessionView {
         assemblyReplayTask?.cancel(); assemblyReplayTask = nil
         assemblyNode?.cancelPlayback()
         assemblyNode?.removeHelpers()
-        assemblyNode?.root.removeFromParentNode()
+        // Hide rather than detach: pulling 700+ nodes out of a scene whose
+        // render thread is still running logs one CullingSystem assertion per
+        // node. The scene belongs to this view's ARSessionManager and is
+        // released with it, so nothing leaks.
+        assemblyNode?.root.isHidden = true
         assemblyNode = nil; assemblyEngine = nil; partChip = nil; lookHint = nil
     }
 

@@ -102,7 +102,7 @@ struct AssemblyPlacementView: View {
             loadTask?.cancel()
             previewTask?.cancel()
             assemblyNode?.cancelPlayback()
-            assemblyNode?.root.removeFromParentNode()
+            assemblyNode?.root.isHidden = true      // see ARGuideSessionView.teardownAssembly
             arManager.pauseSession()
         }
     }
