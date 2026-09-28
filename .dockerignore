@@ -30,9 +30,12 @@ skills/
 #   /wireframe                                   → docs/APP-WIREFRAME.html
 #   /catalog/doc/:id specs pointing at ../README.md → root README.md
 #   /learn/data                                  → docs/learn/journeys.json
+#   /architecture/data                           → docs/ARCHITECTURE.md + docs/architecture/
 !docs/*.md
 !docs/catalog/*.md
 !docs/learn/*.json
+!docs/architecture/*.json
+!docs/architecture/*.mmd
 !docs/APP-WIREFRAME.html
 !README.md
 .git/
