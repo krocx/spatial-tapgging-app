@@ -35,6 +35,14 @@ enum AssemblyModelCache {
 
     static func evict(modelId: String) { try? FileManager.default.removeItem(at: url(modelId)) }
 
+    /// True when the error only says "the task was cancelled" - the caller went
+    /// away, nothing to show the user.
+    static func isCancellation(_ error: Error) -> Bool {
+        if error is CancellationError { return true }
+        if let e = error as? SIBClientError, case .networkError(let inner) = e { return (inner as? URLError)?.code == .cancelled }
+        return (error as? URLError)?.code == .cancelled
+    }
+
     /// Reason text for the UI from any thrown error.
     static func reason(_ error: Error) -> String {
         if let e = error as? SIBClientError {

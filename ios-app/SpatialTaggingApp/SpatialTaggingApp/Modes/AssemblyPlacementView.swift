@@ -38,7 +38,10 @@ struct AssemblyPlacementView: View {
 
     // Assembly
     @State private var assemblyNode: AssemblyNode? = nil
-    @State private var isLoading = false
+    /// The one in-flight load. It runs unstructured so SwiftUI cancelling and
+    /// re-firing `.task` (which it does when this cover is presented straight
+    /// after the scan gate closes) cannot cancel the download underneath it.
+    @State private var loadTask: Task<Void, Never>? = nil
     @State private var bottomCentre: simd_float3 = .zero
     @State private var size: simd_float3 = .zero
     @State private var hadWorldMap = false
@@ -82,9 +85,21 @@ struct AssemblyPlacementView: View {
         }
         .overlay(alignment: .top) { topBar }
         .overlay { if isSaving { savingOverlay } }
-        .task { await load() }
+        .task {
+            // A re-fired `.task` joins the running load instead of starting (or
+            // cancelling) one; a fresh load starts only when nothing is loaded
+            // and nothing is in flight.
+            if let running = loadTask, !running.isCancelled {
+                await running.value
+                if assemblyNode != nil || phase == .failed { return }
+            }
+            let t = Task { @MainActor in await load() }
+            loadTask = t
+            await t.value
+        }
         .onReceive(reticleTimer) { _ in if phase == .aiming { followReticle() } }
         .onDisappear {
+            loadTask?.cancel()
             previewTask?.cancel()
             assemblyNode?.cancelPlayback()
             assemblyNode?.root.removeFromParentNode()
@@ -263,13 +278,11 @@ struct AssemblyPlacementView: View {
     // MARK: - Load
 
     private func load() async {
-        // `.task` can fire again on the same view (SwiftUI re-appear after a
-        // cover/sheet cycle); a second load would leave the first node behind
-        // at its old pose - the "duplicate assembly" seen on re-aim.
-        guard assemblyNode == nil, !isLoading else {
-            AppLog.warn("assembly", "placement load() called again - ignored (node=\(assemblyNode != nil))"); return
+        // Single-flight is guaranteed by `loadTask`; this guard only protects
+        // against a load after the node exists (the "duplicate assembly" on re-aim).
+        guard assemblyNode == nil else {
+            AppLog.warn("assembly", "placement load() called with a node present - ignored"); return
         }
-        isLoading = true; defer { isLoading = false }
         let client = SIBClient(settings: settings)
         guard let asm = guide.assembly else { phase = .failed; errorText = "This guide has no assembly model."; return }
 
@@ -284,7 +297,13 @@ struct AssemblyPlacementView: View {
         status = "Downloading assembly…"
         let data: Data
         do { data = try await AssemblyModelCache.glb(modelId: asm.modelId, client: client) }
-        catch { phase = .failed; errorText = "Could not download the assembly model - \(AssemblyModelCache.reason(error))"; return }
+        catch {
+            // A cancelled load (view dismissed mid-download) is not a failure
+            // the author can act on - never show it as one.
+            if Task.isCancelled || AssemblyModelCache.isCancellation(error) { return }
+            phase = .failed; errorText = "Could not download the assembly model - \(AssemblyModelCache.reason(error))"; return
+        }
+        if Task.isCancelled { return }
         status = "Building assembly…"
         let opts: GLBLoadOptions = {
             var o = GLBLoadOptions.forThisDevice()

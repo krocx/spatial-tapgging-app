@@ -378,6 +378,10 @@ struct ARGuideSessionView: View {
                     arManager.disableQRScanning()
                 }
                 .onDisappear {
+                    // Stop the AR session first so the scene graph is quiet while
+                    // the arrow, panels, ghost and the (large) assembly are removed -
+                    // otherwise SceneKit logs one CullingSystem assertion per part.
+                    arManager.pauseSession()
                     stopSpeaking()
                     removeArrow()
                     stopHintPolling()
@@ -393,7 +397,6 @@ struct ARGuideSessionView: View {
                     removeGhostOverlay()
                     teardownAssembly()
                     stopPresence()
-                    arManager.pauseSession()
                 }
                 .onChange(of: arManager.objectTransform) { objT in
                     // B3: ghost on the recognised chamber (fades after a few seconds).
@@ -4134,6 +4137,7 @@ extension ARGuideSessionView {
         let data: Data
         do { data = try await AssemblyModelCache.glb(modelId: asm.modelId, client: client) }
         catch {
+            if Task.isCancelled || AssemblyModelCache.isCancellation(error) { return }
             AppLog.warn("assembly", "GLB download failed for \(asm.modelId): \(AssemblyModelCache.reason(error))")
             showNotice("Assembly model unavailable - \(AssemblyModelCache.reason(error))")
             return

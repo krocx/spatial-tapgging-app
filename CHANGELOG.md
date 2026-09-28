@@ -7,6 +7,18 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Fixed
+- **"Could not download the assembly model - Network: cancelled" on first
+  open of Place Assembly.** When the scan gate closes and the placement
+  cover opens in the same beat, SwiftUI cancels and re-fires the view's
+  load; the first download died with *cancelled* and was shown as a
+  failure while the second silently carried on under "Downloading
+  assembly…". Only on first use - after that the GLB is on disk and wins the
+  race. The load now runs in its own task that a re-fire joins instead of
+  cancelling, and a cancelled download is never reported as an error (same
+  in the operator session).
+- **Ending a session no longer logs ~700 SceneKit "CullingSystem"
+  assertions.** The AR session is paused before the arrow, panels, ghost
+  and the assembly are removed from the scene.
 - **Long guides no longer run out of memory on the phone.** Every placed
   step got a floating panel with textures drawn at the screen's 3x scale -
   2.2 MB per pill, ~15 MB per card - and a 128-step guide allocated them all
