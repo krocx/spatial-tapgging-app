@@ -212,9 +212,18 @@ changed versus the reconnaissance-based design:
   Bee drone's seal (101 control points, 1 mm wire) and its 46 other hoses
   now exist in the model; the app's focus skips the geometry-less control
   points so the operator is pointed at the tube. `VMHose*`, `CableFlat*`,
-  `VMRope*` are still counted only. Next: a flipbook of sampled frames for
-  the hoses whose control points move in a step (the seal insertion), so
-  the tube visibly flows into the groove.
+  `VMRope*` are still counted only.
+- **Hose flipbooks** (`hose-frames.ts`, 2026-09-28): where a sub-step moves
+  a hose's control points (the seal flowing into its groove), the tube is
+  baked at 8 frames across the motion window, each a child part
+  `<owner>#s<substep>f<k>` with the rest tube moved to `<owner>#rest`; the
+  sub-step's timeline shows frame k and hides frame k-1 at the same
+  instant, the last frame stays. Rigid visibility deltas only, so every
+  client plays it, and the players' 0.25 s visibility floor turns it into a
+  crossfade. Bee: 79 windows, 632 frames, +378 k triangles, GLB 24.9 →
+  30.6 MB, import time unchanged. The device's `setVisual` leaves a
+  descendant with its own state alone, so frames stay hidden while the
+  hose is shown.
 - Script nodes IS-bind `eventIn`/`eventOut` inside PROTO bodies (parser fix);
   side XML may carry a UTF-8 BOM; `Set_Viewpoint2` ≡ `Set_Viewpoint`;
   `Set_ID` / `Set_emissiveColor` / arrows / dimension lines are ignored

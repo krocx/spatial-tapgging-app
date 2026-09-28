@@ -46,6 +46,18 @@ export interface ExtractedSubStep {
   calloutDefs:  string[];
   /** objectIDs referenced by commands whose ROUTE did not resolve to a DEF */
   unresolved:   number;
+  /** Raw keyframed motions of parts in this sub-step (hose control points
+   *  need every key, not just first → last, to bake the tube's frames). */
+  motions:      SubstepMotion[];
+}
+
+export interface SubstepMotion {
+  def:      string;
+  field:    'translation' | 'rotation';
+  t0:       number;            // seconds into the sub-step
+  t1:       number;
+  key:      number[];          // fractions 0..1 (empty = evenly spaced)
+  keyValue: number[];          // 3 per key (translation) or 4 (axis-angle rotation)
 }
 
 export interface ProtoClassification {
@@ -154,7 +166,7 @@ export function extractProcedure(
         stepId: strField(step, 'id'), stepTitle: strField(step, 'title'), stepComment: strField(step, 'comment'),
         stepIndex: si + 1, subIndex: ki + 1, setup: boolField(step, 'simulate') === false,
         durationSec: dur.length && dur[0] > 0 ? dur[0] : undefined,
-        nodes: [], callouts: [], calloutDefs: [], unresolved: 0,
+        nodes: [], callouts: [], calloutDefs: [], unresolved: 0, motions: [],
       };
       // One delta per (part, time window): commands that share a window
       // (translation + rotation + centre of one motion) merge; commands at
@@ -200,6 +212,10 @@ export function extractProcedure(
             const g = nodeFor(def, t0, t1);
             if (objectID !== undefined && targets.length === 1) { g.sourceKey = String(objectID); out.objectIdByDef.set(def, objectID); }
             applyCommand(cmd, r.toField, g, fieldOr, t0, t1);
+            if ((cmd.type === 'Set_translation' || cmd.type === 'Set_rotation') && targets.length === 1) {
+              const kv = fieldOr(cmd, 'keyValue');
+              if (kv.length) ss.motions.push({ def, field: cmd.type === 'Set_translation' ? 'translation' : 'rotation', t0, t1, key: fieldOr(cmd, 'key'), keyValue: kv });
+            }
           }
         }
       }

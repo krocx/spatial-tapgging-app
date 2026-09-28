@@ -47,6 +47,39 @@ export interface SceneGraph {
   materialOwners: Map<string, Set<string>>;
   /** Hose / cable sweeps rebuilt as geometry (hose.ts): count and total control points. */
   hoses: { built: number; skipped: number; controlPoints: number };
+  /** The hoses themselves, for the frame baker (importer.ts / hose-frames.ts). */
+  hoseOwners: HoseOwner[];
+}
+
+export interface HoseOwner {
+  owner:    SceneNode;
+  geom:     VrmlNode;
+  /** DEFs of the control-point objects, in spine order. */
+  controls: string[];
+}
+
+/** Per-node overrides of the VRML `translation` / `rotation` fields (a
+ *  keyframe sampled at some time) for a world-matrix pass. */
+export type PoseOverrides = Map<string, { translation?: number[]; rotation?: number[] }>;
+
+/** World (assembly-frame) matrix of every node, with optional pose overrides. */
+export function worldMatrices(roots: SceneNode[], overrides?: PoseOverrides): Map<SceneNode, number[]> {
+  const out = new Map<SceneNode, number[]>();
+  const local = (n: SceneNode): number[] => {
+    const o = n.def ? overrides?.get(n.def) : undefined;
+    if (!o) return n.matrix;
+    const fields = { ...n.vrml.fields } as Record<string, unknown>;
+    if (o.translation) fields.translation = o.translation;
+    if (o.rotation) fields.rotation = o.rotation;
+    return localMatrix({ ...n.vrml, fields } as VrmlNode);
+  };
+  const walk = (n: SceneNode, parent: number[] | null) => {
+    const m = parent ? mul(parent, local(n)) : local(n);
+    out.set(n, m);
+    for (const c of n.children) walk(c, m);
+  };
+  for (const r of roots) walk(r, null);
+  return out;
 }
 
 /** Node types treated as transform containers. Anything else is skipped as non-geometry. */
@@ -202,10 +235,9 @@ export function buildScene(scene: VrmlScene, opts: BuildSceneOptions = {}): Scen
   // exists. Built here, in the owner's frame, and attached as its mesh so it
   // shows, hides and highlights with the owner like any other part.
   const hoses = { built: 0, skipped: 0, controlPoints: 0 };
+  const hoseOwners: HoseOwner[] = [];
   if (hoseRequests.length) {
-    const worldByNode = new Map<SceneNode, number[]>();
-    const walk = (node: SceneNode, m: number[]) => { worldByNode.set(node, m); for (const c of node.children) walk(c, mul(m, c.matrix)); };
-    for (const r of roots) walk(r, r.matrix);
+    const worldByNode = worldMatrices(roots);
     const worldOf = (ref: VrmlNode | VrmlUse): number[] | null => {
       const vn = resolve(ref); if (!vn) return null;
       const sn = vn.def ? byDef.get(vn.def) : undefined;
@@ -226,6 +258,8 @@ export function buildScene(scene: VrmlScene, opts: BuildSceneOptions = {}): Scen
       h.owner.meshes.push(mesh);
       meshCount++; triangleCount += mesh.indices.length / 3;
       hoses.built++; hoses.controlPoints += tube.controlPoints;
+      const controls = nodesField(h.geom, 'Objects').map(o => resolve(o)?.def).filter((d): d is string => !!d);
+      hoseOwners.push({ owner: h.owner, geom: h.geom, controls });
     }
   }
 
@@ -256,7 +290,7 @@ export function buildScene(scene: VrmlScene, opts: BuildSceneOptions = {}): Scen
     for (const c of node.children) stack.push({ node: c, m: mul(m, c.matrix), defs: c.def ? [...defs, c.def] : defs });
   }
   for (const [d, b] of boundsByDef) if (!Number.isFinite(b.min[0])) boundsByDef.delete(d);
-  return { roots, byDef, meshCount, triangleCount, bbox: Number.isFinite(bbox.min[0]) ? bbox : null, boundsByDef, materialOwners, hoses };
+  return { roots, byDef, meshCount, triangleCount, bbox: Number.isFinite(bbox.min[0]) ? bbox : null, boundsByDef, materialOwners, hoses, hoseOwners };
 }
 
 // ── Transforms ──────────────────────────────────────────────────────────────

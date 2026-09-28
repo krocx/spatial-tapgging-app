@@ -80,15 +80,26 @@ export function instanceWeightedTriangles(meshes: GlbMeshGeometry[], refs: Map<n
   return n;
 }
 
+/** Primitives under this many triangles are copied through unreduced: the
+ *  per-part floor from the architecture review. Clustering a 1,600-triangle
+ *  1 mm O-ring at the assembly's ratio flattened it to eight triangles; small
+ *  parts are cheap to keep and are the ones an operator has to find. */
+export const SMALL_PART_TRIANGLES = 5_000;
+
 export const clusteringReducer: Reducer = {
-  name: 'vertex-clustering/1',
+  name: 'vertex-clustering/2',
   reduce(meshes: GlbMeshGeometry[], budget: number, ctx: ReduceContext): GlbMeshGeometry[] {
     const source = instanceWeightedTriangles(meshes, ctx.meshRefs);
-    const ratio = source > budget ? budget / source : 1;
+    // Budget for the big parts = budget minus what the small ones keep.
+    let smallDrawn = 0, bigDrawn = 0;
+    for (const m of meshes) { const r = ctx.meshRefs.get(m.meshIndex) ?? 0; for (const p of m.primitives) { const t = (p.indices.length / 3) * r; if (p.indices.length / 3 < SMALL_PART_TRIANGLES) smallDrawn += t; else bigDrawn += t; } }
+    if (source <= budget) return meshes;
+    const ratio = bigDrawn > 0 ? Math.max(0.01, (budget - smallDrawn) / bigDrawn) : 1;
     if (ratio >= 1) return meshes;
     return meshes.map(m => ({
       meshIndex: m.meshIndex,
       primitives: m.primitives.map((p): GlbPrimitiveGeometry => {
+        if (p.indices.length / 3 < SMALL_PART_TRIANGLES || ctx.protectedMeshes.has(m.meshIndex)) return p;
         const r = decimate(p.positions, p.indices, ratio);
         return { positions: r.positions, indices: r.indices, ...(p.material !== undefined ? { material: p.material } : {}) };
       }),   // an emptied primitive stays in place; the writer drops it

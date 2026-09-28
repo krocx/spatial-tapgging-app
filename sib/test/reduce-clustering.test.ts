@@ -42,28 +42,32 @@ test('ladder on the synthetic import: nodes, extras and materials untouched', as
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sib-red-'));
   const r = buildLadder(glb, dir, 's', clusteringReducer, { ladder: [24] });
   assert.equal(r.variants.length, 1);
-  assert.equal(r.variants[0].algorithm, 'vertex-clustering/1');
+  assert.equal(r.variants[0].algorithm, 'vertex-clustering/2');
   const a = readGlbJson(glb), b = readGlbJson(fs.readFileSync(path.join(dir, 's.24.glb')));
   assert.deepEqual(b.nodes, a.nodes); assert.deepEqual(b.materials, a.materials);
 });
 
 // Reference numbers: the iPhone built the pre-hose GLB as parts=719 meshes=183
-// tris=389641 from a census of 2,131,258. With the 47 hose sweeps rebuilt as
-// geometry (hose.ts) the same algorithm gives 389,090 / 231 primitives from
-// 2,160,884 - the device, loading the same file, reproduces these exactly.
-test('Bee drone parity with the device: 700 k budget → 389,090 unique triangles, 231 primitives', { skip: !fs.existsSync(BEE) && `no Bee publication at ${BEE}` }, async () => {
+// tris=389641 from a census of 2,131,258 (vertex-clustering/1, no floor).
+// With the 47 hose sweeps, their 632 flipbook frames (hose-frames.ts) and the
+// per-part floor (vertex-clustering/2: primitives under 5,000 triangles are
+// kept), the census is 2,538,436 and the 700 k variant is 619,566 unique
+// triangles in 869 primitives, 689,535 drawn - under budget, small parts
+// intact. The device's loader has the same floor and reproduces these.
+test('Bee drone parity with the device: 700 k budget → 619,566 unique triangles, 869 primitives', { skip: !fs.existsSync(BEE) && `no Bee publication at ${BEE}` }, async () => {
   const { importCortonaBundle } = await import('../src/import/cortona/importer.js');
   const { buildLadder, meshReferences } = await import('../src/models/variants.js');
   const { clusteringReducer } = await import('../src/models/reduce-clustering.js');
   const { readGlb, readGeometry, geometrySummary } = await import('../src/models/glb-geometry.js');
   const glb = importCortonaBundle(fs.readFileSync(BEE), {}).glb;
   const doc = readGlb(glb);
-  assert.equal(geometrySummary(doc, meshReferences(doc.json)).triangles, 2_160_884, 'census = the device census');
+  assert.equal(geometrySummary(doc, meshReferences(doc.json)).triangles, 2_538_436, 'census = the device census');
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sib-bee-'));
   const r = buildLadder(glb, dir, 'bee', clusteringReducer, { ladder: [700_000] });
   const v = readGeometry(readGlb(fs.readFileSync(path.join(dir, 'bee.700000.glb'))));
-  assert.equal(v.stats.triangles, 389_090);
-  assert.equal(v.meshes.reduce((n, m) => n + m.primitives.length, 0), 231);
-  assert.equal(readGlb(fs.readFileSync(path.join(dir, 'bee.700000.glb'))).json.nodes && (readGlb(fs.readFileSync(path.join(dir, 'bee.700000.glb'))).json.nodes as unknown[]).length, 719);
-  assert.ok(r.variants[0].bytes < glb.length / 3, 'a third of the download');
+  assert.equal(v.stats.triangles, 619_566);
+  assert.equal(v.meshes.reduce((n, m) => n + m.primitives.length, 0), 869);
+  assert.ok(r.variants[0].triangles <= 700_000, 'drawn triangles within budget');
+  assert.equal((readGlb(fs.readFileSync(path.join(dir, 'bee.700000.glb'))).json.nodes as unknown[]).length, 719 + 47 + 632, 'parts + #rest + frames');
+  assert.ok(r.variants[0].bytes < glb.length / 2, 'well under half the download');
 });

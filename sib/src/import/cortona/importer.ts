@@ -17,6 +17,7 @@ import { readCortonaBundle, type CortonaBundle } from './bundle.js';
 import { parseVrml, numField, walkNodes } from './vrml.js';
 import { buildScene, axisAngle, mul, type SceneGraph } from './scene.js';
 import { writeGlb, type NodeExtras } from './glb.js';
+import { bakeHoseFrames, type HoseFrameStats } from './hose-frames.js';
 import { extractProcedure, classifyMotion, type ExtractedProcedure, type ExtractedSubStep } from './procedure.js';
 import { collectWidgets } from './widgets.js';
 import { readInteractivity, readRwi, type InteractivityIndex, type RwiIndex } from './interactivity.js';
@@ -35,7 +36,9 @@ export interface CortonaImportLog {
   protos:      { handled: string[]; ignored: string[]; unknown: string[]; counts: Record<string, number> };
   scene:       { nodes: number; defs: number; meshes: number; triangles: number; extentM?: [number, number, number];
                  /** Hose / cable tubes rebuilt from their control points (hose.ts). */
-                 hoses?: { built: number; skipped: number; controlPoints: number } };
+                 hoses?: { built: number; skipped: number; controlPoints: number };
+                 /** Flipbook frames baked for hoses that move in a sub-step (hose-frames.ts). */
+                 hoseFrames?: HoseFrameStats };
   procedure:   { steps: number; substeps: number; setupSubsteps: number; workItems: number; unreferencedSubsteps: number; stepSource: 'workItems' | 'substeps';
                  commands: Record<string, number>; unresolvedRoutes: number; withView: number; withCallouts: number };
   text:        { stepsWithTitle: number; stepsWithText: number; fromInteractivity: number };
@@ -127,6 +130,10 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
   let lastCad: [number, number, number] | undefined;
   // Initial state = parts the scene starts with hidden (Switch/whichChoice -1)
   // + the set-up step's deltas (parts moved to their exploded positions).
+  // Hose flipbooks: frames baked where a sub-step moves a hose's control
+  // points (hose-frames.ts). Must run before the steps are merged and the
+  // GLB is written - it adds nodes to the scene and deltas to the sub-steps.
+  const hoseFrames = bakeHoseFrames(scene, proc.substeps);
   const initialNodes: GuideStepNode[] = [];
   for (const [def, sn] of scene.byDef) if (!sn.visible && sn.meshes.length + sn.children.length > 0) initialNodes.push({ node: `cmp:${def}`, show: 'hidden' });
   for (const n of mergeSubsteps(proc.substeps.filter(ss => ss.setup)).nodes) initialNodes.push(pruneNode(n));
@@ -206,7 +213,7 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
     protos: proc.protos,
     scene:  { nodes: countNodes(scene.roots), defs: scene.byDef.size, meshes: scene.meshCount, triangles: scene.triangleCount,
               extentM: scene.bbox ? [0, 1, 2].map(a => round(scene.bbox!.max[a] - scene.bbox!.min[a])) as [number, number, number] : undefined,
-              hoses: scene.hoses },
+              hoses: scene.hoses, hoseFrames: hoseFrames.stats },
     procedure: { steps: proc.stepCount, substeps: proc.substeps.length, setupSubsteps, workItems: workItems.length, unreferencedSubsteps: unreferenced, stepSource,
                  commands: proc.commandCounts, unresolvedRoutes: proc.unresolvedRoutes, withView, withCallouts },
     text:   { stepsWithTitle: withTitle, stepsWithText: withText, fromInteractivity: fromInter },

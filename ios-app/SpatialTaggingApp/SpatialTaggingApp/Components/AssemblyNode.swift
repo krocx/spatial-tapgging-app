@@ -242,7 +242,12 @@ final class AssemblyNode {
             let settle = dur + (hideAfter ? 0.4 : 0) + 0.05
             DispatchQueue.main.asyncAfter(deadline: .now() + settle) { [weak self] in
                 guard let self, self.playGeneration == gen0, self.current[name]?.show == .hidden else { return }
-                node.enumerateHierarchy { n, _ in if n.geometry != nil { n.isHidden = true } }
+                func hide(_ n: SCNNode) {
+                    if n !== node, let nm = n.name, self.current[nm] != nil { return }
+                    if n.geometry != nil { n.isHidden = true }
+                    for c in n.childNodes { hide(c) }
+                }
+                hide(node)
             }
         }
     }
@@ -536,7 +541,15 @@ final class AssemblyNode {
         case .ghost:  alphaFactor = CGFloat(max(0.05, min(1, p.opacity)))
         case .solid:  alphaFactor = 1
         }
-        node.enumerateHierarchy { n, _ in
+        // A descendant part with its OWN current state keeps it: a hose's
+        // baked frames stay hidden while the hose is shown, a child a step
+        // showed stays visible under a group that is later ghosted.
+        func owned(_ n: SCNNode, _ body: (SCNNode) -> Void) {
+            if n !== node, let nm = n.name, current[nm] != nil { return }
+            body(n)
+            for c in n.childNodes { owned(c, body) }
+        }
+        owned(node) { n in
             guard n.geometry != nil else { return }
             if p.show != .hidden { n.isHidden = false }
             else if instant { n.isHidden = true }
@@ -545,7 +558,7 @@ final class AssemblyNode {
             // material transparency as opaque). Animatable, so fades still work.
             n.opacity = alphaFactor
         }
-        node.enumerateHierarchy { n, _ in
+        owned(node) { n in
             for m in n.geometry?.materials ?? [] {
                 let id = ObjectIdentifier(m)
                 m.transparency = (baseAlpha[id] ?? 1) * alphaFactor

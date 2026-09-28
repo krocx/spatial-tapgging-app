@@ -72,6 +72,8 @@ struct GLBLoadOptions {
     var triangleBudget: Int
     /// Up to this many triangles the model is un-indexed with flat normals (crisp CAD edges).
     var flatShadingUpTo: Int = 150_000
+    /// Primitives under this many triangles are never reduced (per-part floor; mirrors the server's reducer).
+    static let smallPartTriangles = 5_000
     /// 0…1 while parsing, building and (if needed) reducing.
     var progress: (@Sendable (Double) -> Void)? = nil
 
@@ -177,14 +179,26 @@ enum GLBLoader {
             if let attrs = p["attributes"] as? [String: Any], let pa = attrs["POSITION"] as? Int, pa < accessors.count { return (accessors[pa]["count"] as? Int ?? 0) / 3 }
             return 0
         }
+        // Small parts (under `smallPartTriangles`) are never reduced - the
+        // per-part floor, same as the server's reducer: a 1 mm O-ring or a
+        // bolt clustered at the assembly's ratio collapses to nothing, and
+        // those are the parts an operator has to find. The big parts share
+        // whatever budget is left.
+        var smallDrawn = 0, bigDrawn = 0
         for (mi, refs) in meshRefs where mi < meshesJ.count {
-            for p in meshesJ[mi]["primitives"] as? [[String: Any]] ?? [] where (p["mode"] as? Int ?? 4) == 4 { info.sourceTriangles += primTriangles(p) * refs }
+            for p in meshesJ[mi]["primitives"] as? [[String: Any]] ?? [] where (p["mode"] as? Int ?? 4) == 4 {
+                let t = primTriangles(p)
+                info.sourceTriangles += t * refs
+                if t < GLBLoadOptions.smallPartTriangles { smallDrawn += t * refs } else { bigDrawn += t * refs }
+            }
         }
         let flat = info.sourceTriangles <= options.flatShadingUpTo
         info.flatShaded = flat
-        // Reduction factor: keep everything under budget; every mesh is reduced
-        // by the same ratio so parts keep their relative detail.
-        let ratio = info.sourceTriangles > options.triangleBudget ? Double(options.triangleBudget) / Double(info.sourceTriangles) : 1
+        // Reduction factor for the big parts: keep everything under budget;
+        // every big mesh is reduced by the same ratio so parts keep their
+        // relative detail.
+        let ratio: Double = info.sourceTriangles > options.triangleBudget && bigDrawn > 0
+            ? max(0.01, Double(options.triangleBudget - smallDrawn) / Double(bigDrawn)) : 1
         var trianglesSoFar = 0
         options.progress?(0.05)
 
@@ -214,7 +228,7 @@ enum GLBLoader {
                     geo = flatGeometry(positions: positions, indices: indices)
                 } else {
                     var pos = positions, idx = indices
-                    if ratio < 1 { (pos, idx) = decimate(positions: pos, indices: idx, keep: ratio) }
+                    if ratio < 1, triCount >= GLBLoadOptions.smallPartTriangles { (pos, idx) = decimate(positions: pos, indices: idx, keep: ratio) }
                     triCount = idx.count / 3
                     guard triCount > 0 else { continue }
                     geo = indexedGeometry(positions: pos, indices: idx)

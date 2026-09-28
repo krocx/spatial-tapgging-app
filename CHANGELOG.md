@@ -7,6 +7,18 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **Hose animations play: a flipbook per motion.** Where a step moves a
+  hose's control points (the Bee's seal flowing into its groove), the
+  importer bakes the tube at 8 frames across the motion and writes them as
+  child parts with show/hide deltas, so the operator sees the seal travel
+  the way the publication shows it - on every client, with the rigid-part
+  contract unchanged. Bee: 79 motions, 632 frames, GLB 24.9 → 30.6 MB.
+- **Small parts are never reduced.** The server reducer and the device
+  loader keep every primitive under 5,000 triangles intact
+  (`vertex-clustering/2`); the assembly's big parts share the remaining
+  budget. The 1 mm O-ring that came through as eight flat triangles is a
+  tube again. Variants built before this carry `vertex-clustering/1`;
+  press ↻ on the Models page to rebuild them.
 - **Hose and seal sweeps are real geometry.** Cortona builds `HoseSplineFlow`
   tubes at runtime along a spline through control-point objects; the
   importer skipped them, so the Bee drone's O-ring seal and 46 other
