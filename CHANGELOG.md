@@ -45,6 +45,14 @@ it, it gets a line.
 - **Anchor Lab: focus ring while placing tags.** The same AR OMS ring shows
   which surface ARKit is reading at the screen centre, so the user sees
   where a tap will land.
+- **Place Assembly: which way is up.** A "Tilt" menu on the placement
+  toolbar sets the model upright as imported, upside down, tilted forward
+  or back 90°, or rolled left or right 90°; the model is re-seated so its
+  new bottom sits on the surface, and the choice is folded into the saved
+  pose rotation (yaw · upright), so operators, the server's CAD pins and
+  every other client just apply the quaternion. Reopening a placement
+  recovers the choice from the pose. "Flip 180°" (which only turned the
+  model round) is replaced by this menu on the assembly toolbar.
 - **Demo placement in AR OMS.** On the "Go to the Starting Point" card,
   "Not at the equipment? Place a demo copy here" lets a team in another
   site walk a guide authored elsewhere: aim the ring, tap a surface, and

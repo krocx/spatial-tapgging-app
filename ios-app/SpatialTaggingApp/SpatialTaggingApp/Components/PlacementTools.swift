@@ -213,6 +213,8 @@ struct PlacementToolbar: View {
     var onTurn90:       (() -> Void)?
     var onReset:        (() -> Void)?
     var onCopyPrevious: (() -> Void)?
+    /// Assembly placement: the "which way is up" menu, rendered as the first quick action.
+    var tiltMenu:       AnyView? = nil
 
     @AppStorage("placementToolsExplained") private var explained = false
 
@@ -251,8 +253,9 @@ struct PlacementToolbar: View {
                 .font(.caption.monospacedDigit()).foregroundStyle(.white.opacity(0.85))
 
             // Quick actions
-            if onFlip != nil || onTurn90 != nil || onReset != nil || onCopyPrevious != nil {
+            if onFlip != nil || onTurn90 != nil || onReset != nil || onCopyPrevious != nil || tiltMenu != nil {
                 HStack(spacing: 8) {
+                    if let m = tiltMenu   { m }
                     if let f = onFlip     { quick("Flip 180°", "arrow.up.arrow.down", f) }
                     if let t = onTurn90   { quick("Turn 90°", "rotate.right", t) }
                     if let r = onReset    { quick("Reset", "arrow.counterclockwise", r) }
@@ -272,5 +275,64 @@ struct PlacementToolbar: View {
                 .background(Color.white.opacity(0.12)).foregroundStyle(.white)
                 .clipShape(Capsule())
         }
+    }
+}
+
+// MARK: - Which way is up (assembly placement)
+
+/// A CAD export can arrive on its side or upside down (the exporter's axis
+/// convention, a fixture, a mistake). The author fixes it once here; the
+/// choice is folded into the saved pose rotation (yaw · upright), so every
+/// client just applies the quaternion. Ninety-degree steps only - a model
+/// stands on a surface, it does not lean.
+enum UprightOrientation: String, CaseIterable, Identifiable {
+    case asImported, upsideDown, tiltForward, tiltBack, rollLeft, rollRight
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .asImported:  return "Upright as imported"
+        case .upsideDown:  return "Upside down"
+        case .tiltForward: return "Tilt forward 90°"
+        case .tiltBack:    return "Tilt back 90°"
+        case .rollLeft:    return "Roll left 90°"
+        case .rollRight:   return "Roll right 90°"
+        }
+    }
+
+    var quaternion: simd_quatf {
+        let h = Float.pi / 2
+        switch self {
+        case .asImported:  return simd_quatf(ix: 0, iy: 0, iz: 0, r: 1)
+        case .upsideDown:  return simd_quatf(angle: .pi, axis: simd_float3(1, 0, 0))
+        case .tiltForward: return simd_quatf(angle: h,   axis: simd_float3(1, 0, 0))
+        case .tiltBack:    return simd_quatf(angle: -h,  axis: simd_float3(1, 0, 0))
+        case .rollLeft:    return simd_quatf(angle: h,   axis: simd_float3(0, 0, 1))
+        case .rollRight:   return simd_quatf(angle: -h,  axis: simd_float3(0, 0, 1))
+        }
+    }
+
+    func rotate(_ v: simd_float3) -> simd_float3 { simd_act(quaternion, v) }
+
+    /// Axis-aligned bounds of the rotated box.
+    func bounds(min lo: simd_float3, max hi: simd_float3) -> (simd_float3, simd_float3) {
+        var a = simd_float3(repeating: .greatestFiniteMagnitude), b = simd_float3(repeating: -.greatestFiniteMagnitude)
+        for x in [lo.x, hi.x] { for y in [lo.y, hi.y] { for z in [lo.z, hi.z] {
+            let r = rotate(simd_float3(x, y, z)); a = simd_min(a, r); b = simd_max(b, r)
+        } } }
+        return (a, b)
+    }
+
+    /// Split a saved rotation into (upright, yaw): the candidate whose removal
+    /// leaves a pure rotation about Y. Falls back to as-imported + best yaw.
+    static func decompose(_ q: simd_quatf) -> (UprightOrientation, Float) {
+        for u in allCases {
+            let r = simd_normalize(q * u.quaternion.inverse)
+            if abs(r.imag.x) < 0.02 && abs(r.imag.z) < 0.02 {
+                return (u, 2 * atan2(r.imag.y, r.real))
+            }
+        }
+        let yaw = atan2(2 * (q.real * q.imag.y + q.imag.x * q.imag.z), 1 - 2 * (q.imag.y * q.imag.y + q.imag.z * q.imag.z))
+        return (.asImported, yaw)
     }
 }

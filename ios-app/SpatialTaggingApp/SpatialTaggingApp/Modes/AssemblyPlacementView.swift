@@ -42,8 +42,19 @@ struct AssemblyPlacementView: View {
     /// re-firing `.task` (which it does when this cover is presented straight
     /// after the scan gate closes) cannot cancel the download underneath it.
     @State private var loadTask: Task<Void, Never>? = nil
-    @State private var bottomCentre: simd_float3 = .zero
-    @State private var size: simd_float3 = .zero
+    /// Bounds in the model's own frame; bottom-centre / size are derived per
+    /// orientation (an upside-down model stands on what was its top).
+    @State private var boundsMin: simd_float3 = .zero
+    @State private var boundsMax: simd_float3 = .zero
+    /// The model's "which way is up" before yaw: a CAD export that arrives on
+    /// its side or upside down is fixed here, once, by the author.
+    @State private var upright: UprightOrientation = .asImported
+    private var size: simd_float3 { let (lo, hi) = upright.bounds(min: boundsMin, max: boundsMax); return hi - lo }
+    /// Bottom-centre after the upright rotation - what sits on the surface.
+    private var bottomCentre: simd_float3 {
+        let (lo, hi) = upright.bounds(min: boundsMin, max: boundsMax)
+        return simd_float3((lo.x + hi.x) / 2, lo.y, (lo.z + hi.z) / 2)
+    }
     @State private var hadWorldMap = false
 
     // Pose (anchor frame)
@@ -126,6 +137,23 @@ struct AssemblyPlacementView: View {
         .background(.ultraThinMaterial.opacity(0.85))
     }
 
+    /// Which way is up. Each choice re-seats the model on the surface.
+    private var tiltMenu: some View {
+        Menu {
+            ForEach(UprightOrientation.allCases) { u in
+                Button { upright = u; dirty = true; applyPose() } label: {
+                    if u == upright { Label(u.label, systemImage: "checkmark") } else { Text(u.label) }
+                }
+            }
+        } label: {
+            Label(upright == .asImported ? "Tilt" : upright.label, systemImage: "arrow.up.arrow.down")
+                .font(.system(size: 12, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.8)
+                .frame(maxWidth: .infinity).padding(.vertical, 9)
+                .background(Color.white.opacity(upright == .asImported ? 0.10 : 0.22))
+                .foregroundStyle(.white).clipShape(Capsule())
+        }
+    }
+
     private var reticle: some View {
         VStack {
             Spacer()
@@ -151,8 +179,8 @@ struct AssemblyPlacementView: View {
                     tool: $tool, tools: [.move, .turn, .scale],
                     readout: String(format: "%.2f×", scale) + "  ·  turn \(PlacementMath.degrees(yaw))°"
                         + (size == .zero ? "" : String(format: "  ·  %.2f × %.2f × %.2f m", size.x * scale, size.y * scale, size.z * scale)),
-                    onFlip:   { yaw = PlacementMath.snap(yaw + .pi);     dirty = true; applyPose() },
-                    onTurn90: { yaw = PlacementMath.snap(yaw + .pi / 2); dirty = true; applyPose() }
+                    onTurn90: { yaw = PlacementMath.snap(yaw + .pi / 2); dirty = true; applyPose() },
+                    tiltMenu: AnyView(tiltMenu)
                 )
             }
 
@@ -323,8 +351,8 @@ struct AssemblyPlacementView: View {
         let node = AssemblyNode(assembly: glb)
         // Show the complete assembly, ghosted, while aiming.
         node.root.opacity = 0.6
-        if let b = asm.bounds { bottomCentre = b.bottomCentre; size = b.size }
-        else if let b = glb.bounds { bottomCentre = simd_float3((b.min.x + b.max.x) / 2, b.min.y, (b.min.z + b.max.z) / 2); size = b.max - b.min }
+        if let b = asm.bounds { boundsMin = simd_float3(Float(b.min[0]), Float(b.min[1]), Float(b.min[2])); boundsMax = simd_float3(Float(b.max[0]), Float(b.max[1]), Float(b.max[2])) }
+        else if let b = glb.bounds { boundsMin = b.min; boundsMax = b.max }
         // Never two assemblies in one scene: drop any stale root first.
         for stale in arManager.sceneView.scene.rootNode.childNodes where stale.name == "assembly" { stale.removeFromParentNode() }
         node.root.isHidden = true                 // shown by followReticle on the first surface hit / by applyPose
@@ -335,10 +363,11 @@ struct AssemblyPlacementView: View {
         speed = asm.effectiveAnimationSpeed
         if let p = asm.pose {
             scale = Float(p.scale ?? 1)
-            let q = p.simdRotation
-            yaw = atan2(2 * (q.real * q.imag.y + q.imag.x * q.imag.z), 1 - 2 * (q.imag.y * q.imag.y + q.imag.z * q.imag.z))
+            // The saved rotation is yaw · upright; recover both.
+            let (u, y) = UprightOrientation.decompose(p.simdRotation)
+            upright = u; yaw = y
             // pose.position is the model origin; recover the surface point (bottom-centre)
-            surfacePoint = p.simdPosition + rotateY(bottomCentre * scale, yaw)
+            surfacePoint = p.simdPosition + simd_act(p.simdRotation, bottomCentreInModel() * scale)
             applyPose()
             node.root.opacity = 1
             node.root.isHidden = false
@@ -370,13 +399,21 @@ struct AssemblyPlacementView: View {
         applyPose()
     }
 
-    /// Root transform from (surfacePoint, yaw, scale): bottom-centre on the surface.
+    /// Root transform from (surfacePoint, upright, yaw, scale): the rotated
+    /// bottom-centre on the surface. Rotation = yaw about Y · upright.
     private func applyPose() {
         guard let node = assemblyNode, let p = surfacePoint else { return }
-        let origin = p - rotateY(bottomCentre * scale, yaw)
+        let q = simd_quatf(angle: yaw, axis: simd_float3(0, 1, 0)) * upright.quaternion
+        let origin = p - simd_act(q, bottomCentreInModel() * scale)
         node.root.simdPosition = origin
-        node.root.eulerAngles = SCNVector3(0, yaw, 0)
+        node.root.simdOrientation = q
         node.root.simdScale = simd_float3(repeating: scale)
+    }
+
+    /// The point of the model (in its own frame) that lands on the surface.
+    private func bottomCentreInModel() -> simd_float3 {
+        // bottomCentre is expressed after the upright rotation; undo it.
+        simd_act(upright.quaternion.inverse, bottomCentre)
     }
 
     private func rotateY(_ v: simd_float3, _ a: Float) -> simd_float3 {
@@ -385,9 +422,9 @@ struct AssemblyPlacementView: View {
 
     private func currentPose() -> AssemblyPose? {
         guard let p = surfacePoint else { return nil }
-        let origin = p - rotateY(bottomCentre * scale, yaw)
-        return AssemblyPose(position: origin, rotation: simd_quatf(angle: yaw, axis: simd_float3(0, 1, 0)),
-                            scale: scale == 1 ? nil : Double(scale), source: "tap")
+        let q = simd_quatf(angle: yaw, axis: simd_float3(0, 1, 0)) * upright.quaternion
+        let origin = p - simd_act(q, bottomCentreInModel() * scale)
+        return AssemblyPose(position: origin, rotation: q, scale: scale == 1 ? nil : Double(scale), source: "tap")
     }
 
     // MARK: - Place / save
