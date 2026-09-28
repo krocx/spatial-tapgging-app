@@ -3,7 +3,12 @@
 // What travels: name/description, every step's text, voice, title, link,
 // completion/validation/evidence flags, branch links (re-pointed to the new
 // step ids), step media (file duplicated) and 3D model ASSIGNMENTS (slots
-// with scale/opacity; placement stripped).
+// with scale/opacity; placement stripped), and for an imported assembly the
+// assembly itself (model, initial state, bounds, speed) plus every step's part
+// timeline, suggested view and CAD pin - so the copy opens with "Place
+// Assembly in AR" exactly like the original. The assembly POSE travels only
+// when the copy stays on the same anchor; otherwise the target chamber's
+// configuration supplies it (zero-touch) or the author places it once.
 //
 // What deliberately does NOT travel - all of it belongs to the SOURCE
 // anchor's world map or to that anchor's Spatial Inspection tags:
@@ -20,6 +25,9 @@ import { v4 as uuidv4 } from 'uuid';
 import type { Guide, GuideStep } from '@spatial/shared';
 import { guideStore, guideStepStore, STEP_IMG_DIR, stepImageFilename } from './store.js';
 import { stripSlotPlacements } from './step-models.js';
+import { anchorStore } from '../routes/anchors.js';
+import { chamberConfigStore } from '../routes/chamber-configs.js';
+import { normalizeAssemblyPose } from './assembly.js';
 
 export interface CopyGuideOptions {
   targetAnchorId: string;
@@ -48,6 +56,16 @@ export function copyGuideToAnchor(source: Guide, opts: CopyGuideOptions): CopyGu
     createdAt:   now,
     updatedAt:   now,
   };
+  if (source.assembly) {
+    const { pose, ...rest } = source.assembly;
+    guide.assembly = { ...rest };
+    if (sameAnchor && pose) guide.assembly.pose = pose;
+    else {
+      const anchor = anchorStore.findById(opts.targetAnchorId);
+      const cfg = anchor?.configId ? chamberConfigStore.findById(anchor.configId) : undefined;
+      if (cfg?.defaultAssemblyPose) guide.assembly.pose = normalizeAssemblyPose({ ...cfg.defaultAssemblyPose, source: 'config' }, opts.createdBy);
+    }
+  }
 
   const srcSteps = guideStepStore.findAll()
     .filter(s => s.guideId === source.id)
@@ -82,6 +100,12 @@ export function copyGuideToAnchor(source: Guide, opts: CopyGuideOptions): CopyGu
       linkUrl:            s.linkUrl,
       completionRequired: s.completionRequired,
       isPlaced:           false,
+      // AR OJT: the part timeline, suggested view, context and CAD pin are
+      // content, not placement - they travel with the assembly.
+      ...(s.nodes?.length ? { nodes: s.nodes } : {}),
+      ...(s.view ? { view: s.view } : {}),
+      ...(s.context ? { context: s.context } : {}),
+      ...(s.cadPosition ? { cadPosition: s.cadPosition } : {}),
       // model assignment travels; placement does not (legacy fields mirror slot 1)
       models,
       modelId:            first?.modelId      ?? (models ? undefined : s.modelId),

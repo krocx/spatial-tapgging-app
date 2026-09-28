@@ -57,6 +57,20 @@ final class AssemblyNode {
         }
         depthOf = depth
         depthOrder = parts.keys.sorted { (depth[$0] ?? 0, $0) < (depth[$1] ?? 0, $1) }
+        // Every part gets its OWN materials. The loader builds one SCNMaterial
+        // per glTF material (one per colour - 54 for the Bee) and shares it
+        // across every part of that colour, and shares each SCNGeometry across
+        // its instances. Hide / ghost / highlight work by material transparency
+        // and colour, so with shared materials the last part written wins:
+        // one solid grey part made every hidden grey part visible, and the
+        // operator saw the whole drone at step 1.1.1. The geometry copy is
+        // shallow (buffers shared); only the material objects are duplicated.
+        root.enumerateHierarchy { n, _ in
+            guard let geo = n.geometry else { return }
+            let own = geo.copy() as! SCNGeometry
+            own.materials = geo.materials.map { $0.copy() as! SCNMaterial }
+            n.geometry = own
+        }
         root.enumerateHierarchy { n, _ in
             for m in n.geometry?.materials ?? [] {
                 let id = ObjectIdentifier(m)

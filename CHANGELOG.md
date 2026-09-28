@@ -65,6 +65,21 @@ it, it gets a line.
   focus ring uses it too, so where the ring sits is where a tap lands.
 
 ### Fixed
+- **Imported assemblies showed every part in AR from step 1.** The loader
+  builds one SceneKit material per glTF material (one per colour, 54 for
+  the Bee) and shared it across every part of that colour; hide, ghost and
+  highlight work by material transparency and colour, so the last part
+  written won and one solid grey part made every hidden grey part visible.
+  Every part now owns its materials (geometry buffers still shared), and
+  the initial state (4,000 deltas for the Bee) and each step's timeline
+  show exactly what the publication shows. Same fix covers highlight
+  colours bleeding onto other parts.
+- **Copying a guide lost the assembly.** The copy carried steps and model
+  slots but not `assembly` or the steps' part timelines, so the copy
+  offered only "Place Steps in AR". The assembly (model, initial state,
+  bounds, speed) and every step's timeline, suggested view, context and
+  CAD pin now travel; the pose travels within the same anchor, else the
+  target chamber's configuration supplies it or the author places once.
 - **Anchor Lab tags landed on the floor under the table.** The tap
   preferred detected plane geometry, so when the table had no plane yet
   the ray went through to the floor plane below. The nearest surface now
