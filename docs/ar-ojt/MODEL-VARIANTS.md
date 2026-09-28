@@ -2,7 +2,7 @@
 
 Proprietary & Confidential · Applied Materials
 
-Status: **approved 2026-09-28** (ladder 2.5 M / 1.2 M / 700 k / 350 k) · prerequisite 1 built (`sib/src/import/jobs.ts`, `cortona/worker.ts`, `202 + poll`); 2 to 6 open.
+Status: **approved 2026-09-28** (ladder 2.5 M / 1.2 M / 700 k / 350 k) · prerequisites 1 to 3 built (`sib/src/import/jobs.ts` + `cortona/worker.ts`, `sib/src/memory.ts`, `sib/src/models/glb-geometry.ts` + `variants.ts`); 4 to 6 open.
 
 ## Why
 

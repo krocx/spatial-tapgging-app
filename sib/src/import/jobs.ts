@@ -12,6 +12,7 @@
 import { Worker } from 'node:worker_threads';
 import { randomUUID } from 'node:crypto';
 import type { CortonaImportOptions } from './cortona/importer.js';
+import { workerHeapMb } from '../memory.js';
 
 export type JobStatus = 'queued' | 'processing' | 'done' | 'failed';
 
@@ -50,12 +51,6 @@ const jobs   = new Map<string, ImportJob>();
 const queue: Pending[] = [];
 let running: Pending | null = null;
 
-/** Memory the worker may use for its heap. Leaves room for the main process
- *  under the same cgroup limit; the route's 9x guard still runs first. */
-function workerHeapMb(limitBytes: number): number {
-  const mb = Math.floor(limitBytes / 1048576);
-  return Math.max(256, mb - 160);
-}
 
 export function enqueueCortonaImport(buffer: ArrayBuffer, opts: CortonaImportOptions,
                                      finish: Pending['finish'], limitBytes: number): ImportJob {

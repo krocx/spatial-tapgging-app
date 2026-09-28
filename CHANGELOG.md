@@ -14,6 +14,16 @@ it, it gets a line.
   API for anyone else, and an import that runs out of memory fails that
   job with a plain sentence instead of taking the whole service down.
   Prerequisite 1 of server-side model variants (docs/ar-ojt/MODEL-VARIANTS.md).
+- **Model variants, groundwork (prerequisites 2 and 3).** One memory
+  module (`sib/src/memory.ts`) for the import guard, the worker heap cap and
+  the per-variant rule (source + one variant, each written to disk before
+  the next); a server-side GLB geometry reader and writer
+  (`sib/src/models/glb-geometry.ts`: float32/uint8/16/32, byteStride,
+  unindexed primitives; nodes, names, extras and materials copied through
+  verbatim); and the ladder builder (`variants.ts`) with the approved
+  ladder, a plug-in reducer slot stamped with its algorithm version, and
+  `pickVariant` for the `?budget=` route. Nothing is served yet - the
+  reducer (prerequisite 4) comes next.
 - **Anchor Lab: focus ring while placing tags.** The same AR OMS ring shows
   which surface ARKit is reading at the screen centre, so the user sees
   where a tap will land.
