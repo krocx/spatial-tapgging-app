@@ -119,13 +119,27 @@ final class AssemblyNode {
         root.enumerateHierarchy { n, _ in n.removeAction(forKey: "flash") }   // resetAll clears emission
         SCNTransaction.begin(); SCNTransaction.animationDuration = 0
         resetAll()
+        var hidden = 0, ghost = 0, solid = 0, missing = 0
         for name in depthOrder {
-            guard let p = state[name], let node = parts[name] else { continue }
-            setVisual(node, state: p)
+            guard let p = state[name] else { continue }
+            guard let node = parts[name] else { missing += 1; continue }
+            setVisual(node, state: p, instant: true)
             setPose(node, name: name, position: p.position, rotation: p.rotation)
+            switch p.show { case .hidden: hidden += 1; case .ghost: ghost += 1; case .solid: solid += 1 }
         }
         current = state
         SCNTransaction.commit()
+        let unknown = state.keys.filter { parts[$0] == nil }.count
+        let shown = root.childNodes.reduce(0) { $0 + visibleMeshCount($1) }
+        AppLog.info("assembly", "state applied: \(hidden) hidden · \(ghost) ghost · \(solid) solid · \(unknown + missing) unknown names · \(shown) mesh nodes visible")
+    }
+
+    private func visibleMeshCount(_ n: SCNNode) -> Int {
+        if n.isHidden { return 0 }
+        var c = 0
+        if let g = n.geometry, (g.materials.first?.transparency ?? 1) > 0.01 { c += 1 }
+        for ch in n.childNodes { c += visibleMeshCount(ch) }
+        return c
     }
 
     /// Play a step's deltas as a TIMELINE - each at its own offset, exactly as
@@ -174,6 +188,7 @@ final class AssemblyNode {
     /// Apply one delta now, animated over `dur`.
     private func fire(_ d: GuideStepNode, duration dur: TimeInterval) {
         guard let node = parts[d.node] else { return }
+        let gen0 = playGeneration
         let from = d.from.flatMap(vec3), to = d.to.flatMap(vec3)
         let rFrom = d.rotationFrom.flatMap(vec4), rTo = d.rotationTo.flatMap(vec4)
         let hasMotion = to != nil || rTo != nil
@@ -222,6 +237,14 @@ final class AssemblyNode {
         if hasMotion { setPose(node, name: d.node, position: to, rotation: rTo) }
         SCNTransaction.commit()
         current[d.node] = target
+        if target.show == .hidden {
+            // The fade ran on transparency; once it is over, hide the nodes for real.
+            let settle = dur + (hideAfter ? 0.4 : 0) + 0.05
+            DispatchQueue.main.asyncAfter(deadline: .now() + settle) { [weak self] in
+                guard let self, self.playGeneration == gen0, self.current[name]?.show == .hidden else { return }
+                node.enumerateHierarchy { n, _ in if n.geometry != nil { n.isHidden = true } }
+            }
+        }
     }
 
     /// Cortona "flash": pulse the part's emission a few times, leave no state.
@@ -481,13 +504,22 @@ final class AssemblyNode {
         current = [:]
     }
 
-    /// Apply visibility + colour to the part's whole subtree (materials only).
-    private func setVisual(_ node: SCNNode, state p: PartState) {
+    /// Apply visibility + colour to the part's whole subtree. Visibility is
+    /// carried two ways so it cannot depend on one renderer detail: material
+    /// transparency (animatable, ghosts) AND `isHidden` on every mesh node
+    /// of the subtree (deterministic). `instant` hides now; otherwise the
+    /// caller is fading and the node is hidden when the fade ends.
+    private func setVisual(_ node: SCNNode, state p: PartState, instant: Bool = false) {
         let alphaFactor: CGFloat
         switch p.show {
         case .hidden: alphaFactor = 0
         case .ghost:  alphaFactor = CGFloat(max(0.05, min(1, p.opacity)))
         case .solid:  alphaFactor = 1
+        }
+        node.enumerateHierarchy { n, _ in
+            guard n.geometry != nil else { return }
+            if p.show != .hidden { n.isHidden = false }
+            else if instant { n.isHidden = true }
         }
         node.enumerateHierarchy { n, _ in
             for m in n.geometry?.materials ?? [] {
