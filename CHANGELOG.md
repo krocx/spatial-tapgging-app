@@ -22,8 +22,15 @@ it, it gets a line.
   unindexed primitives; nodes, names, extras and materials copied through
   verbatim); and the ladder builder (`variants.ts`) with the approved
   ladder, a plug-in reducer slot stamped with its algorithm version, and
-  `pickVariant` for the `?budget=` route. Nothing is served yet - the
-  reducer (prerequisite 4) comes next.
+  `pickVariant` for the `?budget=` route. Nothing is served yet.
+- **Model variants, the reducer (prerequisite 4).** The device's vertex
+  clustering ported line for line (`sib/src/models/reduce-clustering.ts`,
+  `vertex-clustering/1`), float32 where the app uses Float so cell
+  boundaries agree. Bee drone parity: the server's 700 k variant is
+  389,641 unique triangles in 183 primitives, exactly the iPhone's own
+  build; the whole ladder takes 0.3 s and the downloads are 9.4 / 6.9 /
+  3.3 MB against 23 MB. Still not served - the route and the app skip
+  path (prerequisite 6) follow the disk accounting (5).
 - **Anchor Lab: focus ring while placing tags.** The same AR OMS ring shows
   which surface ARKit is reading at the screen centre, so the user sees
   where a tap will land.

@@ -39,6 +39,25 @@ export interface Reducer {
 export interface ReduceContext {
   /** Mesh indices used by parts a step touches - never reduced below their floor. */
   protectedMeshes: Set<number>;
+  /** How many scene nodes reference each mesh - instances draw once per reference. */
+  meshRefs: Map<number, number>;
+}
+
+/** Node → mesh references, walking the default scene as the device does. */
+export function meshReferences(json: Record<string, unknown>): Map<number, number> {
+  const nodes = (json.nodes as Array<{ mesh?: number; children?: number[] }> | undefined) ?? [];
+  const scenes = (json.scenes as Array<{ nodes?: number[] }> | undefined) ?? [];
+  const sceneIx = typeof json.scene === 'number' ? json.scene : 0;
+  const roots = scenes[sceneIx]?.nodes ?? scenes[0]?.nodes ?? nodes.map((_, i) => i);
+  const refs = new Map<number, number>(); const seen = new Set<number>();
+  const walk = (i: number): void => {
+    if (seen.has(i) || i < 0 || i >= nodes.length) return; seen.add(i);
+    const n = nodes[i];
+    if (typeof n.mesh === 'number') refs.set(n.mesh, (refs.get(n.mesh) ?? 0) + 1);
+    for (const c of n.children ?? []) walk(c);
+  };
+  for (const r of roots) walk(r);
+  return refs;
 }
 
 /** Copies geometry through unchanged - for tests and for a model already under budget. */
@@ -74,7 +93,8 @@ export function buildLadder(
 ): LadderResult {
   const ladder = opts.ladder ?? VARIANT_LADDER;
   const doc = readGlb(glb);
-  const summary = geometrySummary(doc);
+  const refs = meshReferences(doc.json);
+  const summary = geometrySummary(doc, refs);
   const result: LadderResult = { variants: [], triangles: summary.triangles, skipped: [] };
   const steps = ladder.filter(b => b < summary.triangles);
   if (!steps.length) return result;
@@ -84,11 +104,11 @@ export function buildLadder(
 
   const { meshes, stats } = readGeometry(doc);
   if (stats.unsupported.length) console.warn(`[SIB/variants] ${modelId}: ${stats.unsupported.length} primitive(s) skipped: ${stats.unsupported.slice(0, 3).join('; ')}`);
-  const ctx: ReduceContext = { protectedMeshes: opts.protectedMeshes ?? new Set() };
+  const ctx: ReduceContext = { protectedMeshes: opts.protectedMeshes ?? new Set(), meshRefs: refs };
 
   for (const budget of steps) {
     const reduced = reducer.reduce(meshes, budget, ctx);
-    const triangles = reduced.reduce((n, m) => n + m.primitives.reduce((k, p) => k + p.indices.length / 3, 0), 0);
+    const triangles = reduced.reduce((n, m) => n + m.primitives.reduce((k, p) => k + p.indices.length / 3, 0) * (refs.get(m.meshIndex) ?? 0), 0);
     const out = writeGlbWithGeometry(doc, reduced);
     const file = variantPath(modelsDir, modelId, budget);
     fs.writeFileSync(file + '.tmp', out);

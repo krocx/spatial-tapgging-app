@@ -86,11 +86,12 @@ test('reader: uint16 indices, byteStride and unindexed primitives', async () => 
 test('ladder: builds only steps below the source, one file each, skipped with reason when memory is short', async () => {
   const { buildLadder, identityReducer, pickVariant, deleteVariants } = await import('../src/models/variants.js');
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sib-variants-'));
-  const glb = await sampleGlb();                       // 12 triangles
-  const r = buildLadder(glb, dir, 'm1', identityReducer, { ladder: [8, 4, 20] });
+  const glb = await sampleGlb();                       // 12 unique triangles, drawn by several instances
+  const r = buildLadder(glb, dir, 'm1', identityReducer, { ladder: [8, 4, 10_000] });
+  assert.ok(r.triangles > 12, 'census counts instances, as the device does');
   assert.deepEqual(r.variants.map(v => v.budget), [8, 4]);
   assert.ok(fs.existsSync(path.join(dir, 'm1.8.glb')) && fs.existsSync(path.join(dir, 'm1.4.glb')));
-  assert.ok(!fs.existsSync(path.join(dir, 'm1.20.glb')), 'no variant at or above the source');
+  assert.ok(!fs.existsSync(path.join(dir, 'm1.10000.glb')), 'no variant at or above the source');
   assert.equal(r.variants[0].algorithm, 'identity/1');
   assert.equal(pickVariant(r.variants, 6)?.budget, 8);
   assert.equal(pickVariant(r.variants, 3)?.budget, 4);

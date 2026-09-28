@@ -145,19 +145,20 @@ export function readGeometry(doc: GlbDocument): { meshes: GlbMeshGeometry[]; sta
 
 /** Cheap look at a GLB without decoding vertices: triangle count from the
  *  index accessors, geometry bytes from accessor sizes. */
-export function geometrySummary(doc: GlbDocument): { triangles: number; geometryBytes: number } {
+export function geometrySummary(doc: GlbDocument, meshRefs?: Map<number, number>): { triangles: number; geometryBytes: number } {
   const accs = (doc.json.accessors as Accessor[] | undefined) ?? [];
   const meshesJ = (doc.json.meshes as Array<{ primitives: Array<{ attributes: Record<string, number>; indices?: number; mode?: number }> }> | undefined) ?? [];
   let triangles = 0, bytes = 0;
   const seen = new Set<number>();
-  for (const m of meshesJ) for (const p of m.primitives ?? []) {
+  meshesJ.forEach((m, mi) => { for (const p of m.primitives ?? []) {
     if ((p.mode ?? 4) !== 4) continue;
     const pa = accs[p.attributes?.POSITION ?? -1];
     if (!pa) continue;
-    if (p.indices !== undefined) { const ia = accs[p.indices]; if (ia) { triangles += Math.floor(ia.count / 3); if (!seen.has(p.indices)) { seen.add(p.indices); bytes += ia.count * 4; } } }
-    else triangles += Math.floor(pa.count / 3);
+    const w = meshRefs ? (meshRefs.get(mi) ?? 0) : 1;     // instances draw once per reference
+    if (p.indices !== undefined) { const ia = accs[p.indices]; if (ia) { triangles += Math.floor(ia.count / 3) * w; if (!seen.has(p.indices)) { seen.add(p.indices); bytes += ia.count * 4; } } }
+    else triangles += Math.floor(pa.count / 3) * w;
     if (!seen.has(p.attributes.POSITION)) { seen.add(p.attributes.POSITION); bytes += pa.count * 12; }
-  }
+  } });
   return { triangles, geometryBytes: bytes };
 }
 
@@ -191,6 +192,7 @@ export function writeGlbWithGeometry(doc: GlbDocument, meshes: GlbMeshGeometry[]
       const isTri = ((p.mode as number | undefined) ?? 4) === 4 && (p.attributes as Record<string, number> | undefined)?.POSITION !== undefined;
       if (!isTri) return p;   // left as-is but its accessors are gone: drop it
       const pg = g.primitives[k++];
+      if (pg.indices.length < 3 || pg.positions.length < 9) return { mode: -1 };   // emptied by reduction: dropped below
       const pos = Buffer.from(pg.positions.buffer, pg.positions.byteOffset, pg.positions.byteLength);
       const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
       for (let i = 0; i < pg.positions.length; i += 3) for (let a = 0; a < 3; a++) {

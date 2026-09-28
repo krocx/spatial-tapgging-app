@@ -2,7 +2,7 @@
 
 Proprietary & Confidential · Applied Materials
 
-Status: **approved 2026-09-28** (ladder 2.5 M / 1.2 M / 700 k / 350 k) · prerequisites 1 to 3 built (`sib/src/import/jobs.ts` + `cortona/worker.ts`, `sib/src/memory.ts`, `sib/src/models/glb-geometry.ts` + `variants.ts`); 4 to 6 open.
+Status: **approved 2026-09-28** (ladder 2.5 M / 1.2 M / 700 k / 350 k) · prerequisites 1 to 4 built (`sib/src/import/jobs.ts` + `cortona/worker.ts`, `sib/src/memory.ts`, `sib/src/models/glb-geometry.ts` + `variants.ts` + `reduce-clustering.ts`); 5 and 6 open.
 
 ## Why
 
@@ -91,3 +91,28 @@ no GPU, runs on the company Windows server under nssm as today.
 - Approve `worker_threads` for import (prerequisite #1). This changes the
   import endpoint from synchronous to `202 + poll`, which the portal upload
   page already handles for USDZ conversion.
+
+## Measured (2026-09-28, Bee drone publication, 45 MB .htm)
+
+Server import 3.7 s → 23.2 MB GLB, 719 nodes, 190 primitives, 1,329,208
+unique triangles, 2,131,258 drawn (instances counted once per reference -
+the same census the device logs). Ladder built in 0.3 s:
+
+| Budget | Drawn triangles | Unique triangles | Primitives | File |
+|---|---|---|---|---|
+| full | 2,131,258 | 1,329,208 | 190 | 23.2 MB |
+| 1.2 M | 991,123 | 534,218 | 184 | 9.4 MB |
+| 700 k | 651,097 | **389,641** | **183** | 6.9 MB |
+| 350 k | 309,444 | 186,759 | 180 | 3.3 MB |
+
+The 700 k row is exactly what the iPhone built for itself
+(`[GLBLoader] parts=719 meshes=183 tris=389641`), so the parity test in
+`sib/test/reduce-clustering.test.ts` asserts those two numbers. The test
+runs when the publication is at `sib/test/fixtures/bee.htm` (git-ignored)
+or `SIB_BEE_HTM` points at it; otherwise it is skipped, never failed.
+
+The variant pipeline reads the stored GLB, not the Cortona bundle, so it is
+the same for every source the importer accepts (single-file `.htm`,
+multi-file publication zipped, a GLB uploaded directly) and for any future
+importer. What a new publication can change is the importer's input; the
+variant ladder never sees it.
