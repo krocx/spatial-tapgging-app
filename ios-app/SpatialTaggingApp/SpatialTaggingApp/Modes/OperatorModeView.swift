@@ -1342,21 +1342,16 @@ struct OperatorModeView: View {
     }
 
     // ── Anchor Lab: the real-world point under the crosshair ─────────────────
-    // Estimated-plane raycast from the screen centre; with LiDAR (scene mesh
-    // requested by the gate when the Lab is on) this hits the actual surface.
+    // Nearest surface under the screen centre (ARSurfaceHit.swift); with
+    // LiDAR the estimated-plane query reads the depth mesh, so this hits the
+    // actual surface, not a plane behind it.
     private func labProbe() -> (hit: simd_float3, camera: simd_float3)? {
         let view = arManager.sceneView
         let centre = CGPoint(x: view.bounds.midX, y: view.bounds.midY)
         guard let cam = view.session.currentFrame?.camera.transform else { return nil }
         let camPos = simd_float3(cam.columns.3.x, cam.columns.3.y, cam.columns.3.z)
-        for target in [ARRaycastQuery.Target.existingPlaneGeometry, .estimatedPlane] {
-            if let q = view.raycastQuery(from: centre, allowing: target, alignment: .any),
-               let hit = view.session.raycast(q).first {
-                let p = hit.worldTransform.columns.3
-                return (simd_float3(p.x, p.y, p.z), camPos)
-            }
-        }
-        return nil
+        guard let p = view.nearestSurfacePoint(at: centre) else { return nil }
+        return (p, camPos)
     }
 
     // ── AR marker placement ───────────────────────────────────────────────────

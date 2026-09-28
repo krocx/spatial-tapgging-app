@@ -1453,6 +1453,11 @@ export type GuideSessionEventType =
    *  typically the QR / a prominent object moved. Pins may be off; the app
    *  falls back to image alignment. payload: { distanceM, angleDeg }. */
   | 'environment:drift'
+  /** The operator was not at the equipment (another site, a demo) and placed
+   *  the whole authored scene on a surface by tap. Positions are not written
+   *  back; the record is marked so nobody reads it as a real walk.
+   *  payload: { reason, turnedDeg }. */
+  | 'placement:demo'
   /** C2 UX: what the client did with an automatic hint - shown to the
    *  operator, or dropped because hints were muted (step / guide / device).
    *  payload: { hintId, signal?, scope?: 'step' | 'guide' | 'device' }. */
@@ -1561,6 +1566,8 @@ export interface OmsUsageSession {
   signOffSessionId?:  string;
   /** X1: environment drift detected at re-localization (see 'environment:drift'). */
   drift?:             { distanceM: number; angleDeg: number; ts: string };
+  /** Set when the operator placed a demo copy of the scene by tap - not a real walk. */
+  demo?:              { ts: string; reason?: string };
   /** C: chamber configuration of the anchor at session open (server-derived). */
   configId?:          string;
   configCode?:        string;

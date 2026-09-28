@@ -17,6 +17,18 @@ it, it gets a line.
 - **Anchor Lab: focus ring while placing tags.** The same AR OMS ring shows
   which surface ARKit is reading at the screen centre, so the user sees
   where a tap will land.
+- **Demo placement in AR OMS.** On the "Go to the Starting Point" card,
+  "Not at the equipment? Place a demo copy here" lets a team in another
+  site walk a guide authored elsewhere: aim the ring, tap a surface, and
+  the whole authored scene (pins, panels, ghosts, assembly) appears there,
+  turned to face the operator. Nothing is saved back; presence and the
+  drift check stay off; a "Demo" chip stays in the top bar and the session
+  record carries `placement:demo`, shown as "demo" in the portal's usage
+  log.
+- **One surface rule across the app.** Anchor Lab, tag placement, guide
+  step placement, iLOTO points and AR OMS all read the surface under a tap
+  with the same query (`ARSurfaceHit.swift`): nearest surface wins. The
+  focus ring uses it too, so where the ring sits is where a tap lands.
 
 ### Fixed
 - **Anchor Lab tags landed on the floor under the table.** The tap

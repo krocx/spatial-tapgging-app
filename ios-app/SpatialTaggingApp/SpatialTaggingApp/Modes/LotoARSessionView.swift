@@ -627,16 +627,9 @@ struct LotoARSessionView: View {
         showPointForm = true
     }
 
+    /// Nearest surface under the point - the shared rule (ARSurfaceHit.swift).
     private func rayCastSurface(from point: CGPoint, in sv: ARSCNView) -> simd_float3? {
-        if let q = sv.raycastQuery(from: point, allowing: .existingPlaneGeometry, alignment: .any),
-           let h = sv.session.raycast(q).first {
-            let c = h.worldTransform.columns.3; return simd_float3(c.x, c.y, c.z)
-        }
-        if let q = sv.raycastQuery(from: point, allowing: .estimatedPlane, alignment: .any),
-           let h = sv.session.raycast(q).first {
-            let c = h.worldTransform.columns.3; return simd_float3(c.x, c.y, c.z)
-        }
-        return nil
+        sv.nearestSurfacePoint(at: point)
     }
 
     // ── Point persistence ───────────────────────────────────────────────────

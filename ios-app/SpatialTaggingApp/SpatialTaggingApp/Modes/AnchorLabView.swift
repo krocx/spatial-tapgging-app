@@ -1427,22 +1427,10 @@ struct LabPlaceView: View {
     private func handleTap(_ point: CGPoint) {
         guard phase == .ready, !placing, !arManager.isRelocalizing else { return }
         let sv = arManager.sceneView
-        // Nearest surface wins. Preferring detected plane geometry first put
-        // a tap on a table onto the floor plane below it whenever the table
-        // itself had no plane yet (iPad Pro / iPhone 17 reports). The
-        // estimated-plane query reads the depth mesh on LiDAR devices and
-        // the ring on screen shows the same answer, so the two agree.
-        let camPos: simd_float3? = sv.session.currentFrame.map { simd_float3($0.camera.transform.columns.3.x, $0.camera.transform.columns.3.y, $0.camera.transform.columns.3.z) }
-        var best: (pos: simd_float3, dist: Float)? = nil
-        for target in [ARRaycastQuery.Target.estimatedPlane, .existingPlaneGeometry] {
-            guard let q = sv.raycastQuery(from: point, allowing: target, alignment: .any) else { continue }
-            for h in sv.session.raycast(q) {
-                let c = h.worldTransform.columns.3; let p = simd_float3(c.x, c.y, c.z)
-                let d = camPos.map { simd_distance($0, p) } ?? 0
-                if best == nil || d < best!.dist { best = (p, d) }
-            }
-        }
-        guard let p = best?.pos else { show("No surface there - tap a spot on the rig"); return }
+        // Nearest surface wins - the shared rule (ARSurfaceHit.swift); the
+        // ring on screen reads the same query, so the two agree.
+        let best = sv.nearestSurfacePoint(at: point)
+        guard let p = best else { show("No surface there - tap a spot on the rig"); return }
         withAnimation { showTapHint = false }
         Task { await place(at: p) }
     }

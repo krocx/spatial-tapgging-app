@@ -619,6 +619,7 @@ enum GuideSessionEventType: String, Codable {
     case stepStalled     = "step:stalled"
     case perceptionResult = "perception:result"
     case environmentDrift = "environment:drift"   // X1: re-localization disagreed with the author's pose
+    case placementDemo    = "placement:demo"      // the operator placed a demo copy of the scene by tap - not the authored position
     case hintShown        = "hint:shown"          // C2 UX: automatic hint reached the operator
     case hintMuted        = "hint:muted"          // C2 UX: dropped because hints were muted (payload.scope)
     case sessionSubmitted = "session:submitted"

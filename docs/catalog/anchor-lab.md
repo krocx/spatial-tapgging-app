@@ -38,3 +38,11 @@ own rigs, runs and history without touching a production chamber. Every run is
 a record (median, relocalize/converge, corrections, map growth, ghost use), a
 clean run grows the rig's map, and a ghost photo helps a tester stand where
 the map was made - all measured in the Lab before production gets any of it.
+
+**One surface rule (2026.4.46).** Every tap or reticle read in AR - Lab,
+tag placement, guide step placement, iLOTO points, AR OMS - uses the same
+query (`ARSurfaceHit.swift`): the nearest surface to the camera across
+detected planes and estimated planes. On LiDAR devices the estimated-plane
+query reads the depth mesh, so a tap on a table lands on the table even
+before ARKit has classified it as a plane. The focus ring reads the same
+query, so where the ring sits is where the tap lands.

@@ -152,6 +152,11 @@ export function usageRecordEvent(
       }
       break;
     }
+    case 'placement:demo': {
+      const pl = (req.payload ?? {}) as { reason?: string };
+      rec.demo = { ts, ...(typeof pl.reason === 'string' ? { reason: pl.reason } : {}) };
+      break;
+    }
     case 'environment:drift': {
       const pl = (req.payload ?? {}) as { distanceM?: number; angleDeg?: number };
       if (typeof pl.distanceM !== 'number' || typeof pl.angleDeg !== 'number') return;

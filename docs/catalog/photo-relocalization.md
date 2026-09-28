@@ -26,3 +26,12 @@ arch: |
 When relocalization needs help, the author's original viewpoint is shown as a
 reference card - stand roughly here, look roughly there - with an explicit "I'm here"
 override for when the space has changed too much to match automatically.
+
+**Demo placement (2026.4.46).** When the operator is not at the equipment at
+all - a team in another site reviewing a guide authored elsewhere - the same
+card offers "Not at the equipment? Place a demo copy here". The focus ring
+shows the surface; one tap puts the whole authored scene there (pins, panels,
+ghosts, the assembly), moved rigidly and turned to face the operator. Nothing
+is written back: positions are untouched, presence and the drift check stay
+off, and the session record carries `placement:demo` so the portal shows it
+as a demo, never a real walk.

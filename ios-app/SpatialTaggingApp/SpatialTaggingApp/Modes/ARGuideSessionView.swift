@@ -97,6 +97,22 @@ struct ARGuideSessionView: View {
     @State private var referencePhoto:          UIImage? = nil
     @State private var userConfirmedRelocalize: Bool     = false
     @State private var showRelocalizingTimeout: Bool     = false
+    // ── Demo placement ────────────────────────────────────────────────────────
+    // The team in another site wants to walk a guide authored elsewhere. The
+    // operator taps a surface and the whole authored scene (pins, panels,
+    // ghosts, assembly) is shown there, rigidly moved and turned to face
+    // them. Nothing is written back: positions, presence and drift checks
+    // stay off, and the session record carries `placement:demo`.
+    @State private var demoFrame:   simd_float4x4? = nil
+    @State private var demoYaw:     Float          = 0
+    @State private var demoPicking: Bool           = false
+    @State private var demoRing:    ARFocusRing?   = nil
+    private var isDemo: Bool { demoFrame != nil }
+    /// Authored (map-frame) point → where it is shown in this session.
+    private func shown(_ p: simd_float3) -> simd_float3 {
+        guard let d = demoFrame else { return p }
+        let v = d * simd_float4(p, 1); return simd_float3(v.x, v.y, v.z)
+    }
     @State private var ghostOpacity:            Double   = 0.38
 
     // ── Step reference photo cache ────────────────────────────────────────────
@@ -397,6 +413,7 @@ struct ARGuideSessionView: View {
                     removeGhostOverlay()
                     teardownAssembly()
                     stopPresence()
+                    demoRing?.cleanup(); demoRing = nil
                 }
                 .onChange(of: arManager.objectTransform) { objT in
                     // B3: ghost on the recognised chamber (fades after a few seconds).
@@ -496,6 +513,10 @@ struct ARGuideSessionView: View {
             }
         }
         .onReceive(navTicker) { _ in
+            if demoPicking {
+                // ARKit may relocalize on its own while the operator is choosing a spot - the real position wins.
+                if case .relocalizing = phase { demoRing?.update(sceneView: arManager.sceneView) } else { endDemoPick() }
+            }
             if case .navigating(let index) = phase {
                 updateNavTelemetry(index: index)
                 if index < sortedSteps.count { presenceFocus.stepId = sortedSteps[index].id }
@@ -940,6 +961,14 @@ struct ARGuideSessionView: View {
                 .padding(.horizontal, 8)
 
             HStack(spacing: 12) {
+                // Demo placement: say so the whole time - nothing here is at the authored position.
+                if case .navigating = phase, isDemo {
+                    Text("Demo")
+                        .font(.caption.bold()).foregroundStyle(.black)
+                        .padding(.horizontal, 9).padding(.vertical, 4)
+                        .background(Color.orange, in: Capsule())
+                        .accessibilityLabel("Demo placement - not the authored position")
+                }
                 // B2e: chamber tracking status; tap = re-align by hand.
                 if case .navigating = phase, originViaObject || approximateFromMap {
                     ObjectTrackPill(state: arManager.objectTrackState, approximate: approximateFromMap) {
@@ -1098,7 +1127,33 @@ struct ARGuideSessionView: View {
         }
     }
 
+    @ViewBuilder
     private var mapRelocalizingOverlay: some View {
+        if demoPicking { demoPickingOverlay } else { mapRelocalizingCard }
+    }
+
+    /// Demo placement: the ring shows the surface; one tap puts the scene there.
+    private var demoPickingOverlay: some View {
+        VStack(spacing: 0) {
+            Spacer()
+            VStack(spacing: 12) {
+                Text("Place a demo copy")
+                    .font(.title3.bold()).foregroundStyle(.white)
+                Text("Aim the ring at the surface where the equipment would stand, then tap there. The whole guide appears at that spot, turned to face you. Nothing is saved.")
+                    .font(.caption).foregroundStyle(.white.opacity(0.7)).multilineTextAlignment(.center)
+                Button("Cancel") { endDemoPick() }
+                    .font(.subheadline).foregroundStyle(.white.opacity(0.85))
+                    .padding(.horizontal, 16).padding(.vertical, 9)
+                    .background(Color.white.opacity(0.12), in: Capsule())
+            }
+            .padding(20)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20))
+            .padding(.horizontal, 16)
+            .padding(.bottom, 48)
+        }
+    }
+
+    private var mapRelocalizingCard: some View {
         VStack(spacing: 0) {
             Spacer()
             VStack(spacing: 16) {
@@ -1152,6 +1207,14 @@ struct ARGuideSessionView: View {
                         .background(Color.indigo)
                         .foregroundStyle(.white)
                         .clipShape(RoundedRectangle(cornerRadius: 13))
+                }
+
+                // Not where the author was (another site, a demo): show the
+                // guide on any surface here instead. Positions are not saved.
+                Button { beginDemoPick() } label: {
+                    Text("Not at the equipment? Place a demo copy here")
+                        .font(.caption).foregroundStyle(.white.opacity(0.75))
+                        .frame(maxWidth: .infinity).padding(.vertical, 6)
                 }
             }
             .padding(20)
@@ -1462,6 +1525,64 @@ struct ARGuideSessionView: View {
         }
     }
 
+    // ── Demo placement ────────────────────────────────────────────────────────
+
+    private func beginDemoPick() {
+        demoPicking = true
+        if demoRing == nil { demoRing = ARFocusRing(sceneView: arManager.sceneView) }
+        AppLog.info("guide", "demo placement: picking a surface")
+    }
+
+    private func endDemoPick() {
+        demoPicking = false
+        demoRing?.cleanup(); demoRing = nil
+    }
+
+    /// Reference point of the authored scene and its facing: the assembly's
+    /// bottom-centre and yaw when there is one, else the first placed pin.
+    private func demoReference() -> (point: simd_float3, yaw: Float)? {
+        if let asm = guide.assembly, let p = asm.pose {
+            let q = p.simdRotation
+            let yaw = atan2(2 * (q.real * q.imag.y + q.imag.x * q.imag.z), 1 - 2 * (q.imag.y * q.imag.y + q.imag.z * q.imag.z))
+            var point = p.simdPosition
+            if let b = asm.bounds {
+                let bc = b.bottomCentre * Float(p.scale ?? 1)
+                let c = cos(yaw), s = sin(yaw)
+                point += simd_float3(c * bc.x + s * bc.z, bc.y, -s * bc.x + c * bc.z)
+            }
+            return (point, yaw)
+        }
+        if let first = sortedSteps.first(where: { $0.worldPosition != nil })?.worldPosition { return (first, 0) }
+        return nil
+    }
+
+    private func placeDemo(at point: CGPoint) {
+        guard case .relocalizing = phase else { endDemoPick(); return }
+        let sv = arManager.sceneView
+        guard let tap = sv.nearestSurfacePoint(at: point) else { showNotice("No surface there - aim the ring at a table or the floor"); return }
+        guard let ref = demoReference() else { showNotice("This guide has nothing placed yet"); endDemoPick(); return }
+        let cam = sv.session.currentFrame?.camera.transform.columns.3
+        let camPos = cam.map { simd_float3($0.x, $0.y, $0.z) } ?? tap
+        // Turn the scene about the vertical axis so its authored front faces the operator.
+        let faceYaw = atan2(camPos.x - tap.x, camPos.z - tap.z)
+        let theta = faceYaw - ref.yaw
+        var toOrigin = matrix_identity_float4x4; toOrigin.columns.3 = simd_float4(-ref.point, 1)
+        var toTap    = matrix_identity_float4x4; toTap.columns.3    = simd_float4(tap, 1)
+        let rot = simd_float4x4(simd_quatf(angle: theta, axis: simd_float3(0, 1, 0)))
+        demoFrame = toTap * rot * toOrigin
+        demoYaw   = theta
+        endDemoPick()
+        AppLog.info("guide", String(format: "demo placement at tap · turned %.0f°", theta * 180 / .pi))
+        if let lsId = liveSessionId {
+            let client = SIBClient(settings: settings)
+            Task { await client.pushGuideSessionEvent(liveSessionId: lsId, event: PushGuideSessionEventRequest(
+                type: .placementDemo, stepId: nil, stepIndex: nil, durationSeconds: nil,
+                payload: ["reason": AnyCodable("not-at-equipment"), "turnedDeg": AnyCodable(Double(theta * 180 / .pi))])) }
+        }
+        transitionToNavigating()
+        showNotice("Demo placement - not the authored position. Nothing is saved.")
+    }
+
     // ── Transition to navigating ──────────────────────────────────────────────
 
     private func transitionToNavigating() {
@@ -1504,7 +1625,7 @@ struct ARGuideSessionView: View {
             guard pinNodes[step.id] == nil,
                   let pos = step.worldPosition else { continue }
             let node = makeGuidePin(number: step.sequenceNumber, isActive: i == 0)
-            node.simdPosition = pos
+            node.simdPosition = shown(pos)
             arManager.sceneView.scene.rootNode.addChildNode(node)
             pinNodes[step.id] = node
             // Attach the 3D floating panel above this pin
@@ -1612,6 +1733,7 @@ struct ARGuideSessionView: View {
     // ── Panel hit-test tap handler ────────────────────────────────────────────
 
     private func handleARTap(at point: CGPoint) {
+        if demoPicking { placeDemo(at: point); return }
         // Only process taps during navigation
         guard case .navigating(let currentIndex) = phase else { return }
 
@@ -2364,10 +2486,11 @@ struct ARGuideSessionView: View {
               let frame = arManager.sceneView.session.currentFrame else { return }
 
         let step = sortedSteps[index]
-        guard let targetW = step.worldPosition else {
+        guard let authored = step.worldPosition else {
             if !showContentPanel { showContentPanel = true }
             return
         }
+        let targetW = shown(authored)
 
         let camCol = frame.camera.transform.columns.3
         let camPos = simd_float3(camCol.x, camCol.y, camCol.z)
@@ -2796,10 +2919,11 @@ struct ARGuideSessionView: View {
     /// distance/aim guidance until the operator captures.
     private func startConeValidation(at index: Int) {
         observeInteraction("validate-attempt")
-        guard let pos = sortedSteps[index].worldPosition else {
+        guard let authored = sortedSteps[index].worldPosition else {
             validationCameraIndex = index      // no pin? fall back to photo sheet
             return
         }
+        let pos = shown(authored)
         coneValidateGuide?.cleanup()
         coneReady         = false
         coneStatusText    = "Move toward the ring"
@@ -3477,12 +3601,13 @@ struct ARGuideSessionView: View {
             let slotId    = slot.slotId
             let scale     = Float(slot.modelScale     ?? 1.0)
             let opacity   = CGFloat(slot.modelOpacity ?? 0.45)
-            let euler     = slot.eulerAngles
-            let finalPos  = simd_float3(
+            let e0        = slot.eulerAngles
+            let euler     = SCNVector3(e0.x, e0.y + demoYaw, e0.z)     // demo: turned with the scene
+            let finalPos  = shown(simd_float3(
                 pos.x + Float(slot.modelOffsetX ?? 0),
                 pos.y + Float(slot.modelOffsetY ?? 0),
                 pos.z + Float(slot.modelOffsetZ ?? 0)
-            )
+            ))
             Task {
                 // Load model on a background thread via SCNScene(url:).
                 // SCNScene(url:options:) loads USDZ natively on iOS 12+.
@@ -4165,7 +4290,7 @@ extension ARGuideSessionView {
             showNotice("Assembly model could not be read on this device"); return
         }
         let node = AssemblyNode(assembly: glb)
-        node.root.simdTransform = pose.transform
+        node.root.simdTransform = (demoFrame ?? matrix_identity_float4x4) * pose.transform
         arManager.sceneView.scene.rootNode.addChildNode(node.root)
         let engine = AssemblyStateEngine(initial: asm.initialNodes, steps: sortedSteps)
         node.apply(state: engine.initialState())

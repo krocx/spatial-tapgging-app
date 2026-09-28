@@ -99,10 +99,8 @@ final class ARFocusRing {
         guard sceneView.bounds.width > 0, sceneView.bounds.height > 0 else { return }
         let center = CGPoint(x: sceneView.bounds.midX, y: sceneView.bounds.midY)
 
-        if let query = sceneView.raycastQuery(from: center,
-                                               allowing: .estimatedPlane,
-                                               alignment: .any),
-           let result = sceneView.session.raycast(query).first {
+        // Same rule as every tap (ARSurfaceHit.swift): nearest surface wins.
+        if let result = sceneView.nearestSurfaceHit(at: center) {
 
             // ── Surface found ──────────────────────────────────────────────
             lastHitTransform = result.worldTransform
