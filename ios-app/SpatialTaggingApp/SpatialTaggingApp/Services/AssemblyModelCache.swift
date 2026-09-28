@@ -20,20 +20,54 @@ enum AssemblyModelCache {
         return d
     }
 
-    private static func url(_ modelId: String) -> URL { dir.appendingPathComponent("\(modelId).glb") }
+    private static func url(_ modelId: String, budget: Int? = nil) -> URL {
+        dir.appendingPathComponent(budget.map { "\(modelId).\($0).glb" } ?? "\(modelId).glb")
+    }
 
     /// Cached bytes if present, else download (long timeout) and cache.
     /// Throws with a human-readable reason on failure.
     static func glb(modelId: String, client: SIBClient) async throws -> Data {
-        let u = url(modelId)
-        if let data = try? Data(contentsOf: u, options: .mappedIfSafe), data.count > 20 { return data }
-        let data = try await client.downloadModelGLB(id: modelId)
-        guard data.count > 20 else { throw AssemblyModelCacheError.empty }
-        try? data.write(to: u, options: .atomic)
-        return data
+        try await glb(modelId: modelId, budget: nil, client: client).data
     }
 
-    static func evict(modelId: String) { try? FileManager.default.removeItem(at: url(modelId)) }
+    /// The model sized for this device (docs/ar-ojt/MODEL-VARIANTS.md): asks
+    /// the server for `budget` triangles and caches whatever it answered with
+    /// under that budget, so the device downloads a reduced copy once and
+    /// never reduces it again. Without a budget, or against an older server,
+    /// this is the full model as before.
+    struct Fetched { let data: Data; let variantBudget: Int?; let triangles: Int? }
+    static func glb(modelId: String, budget: Int?, client: SIBClient) async throws -> Fetched {
+        let u = url(modelId, budget: budget)
+        if let data = try? Data(contentsOf: u, options: .mappedIfSafe), data.count > 20 {
+            let meta = readMeta(u)
+            return Fetched(data: data, variantBudget: meta.variantBudget, triangles: meta.triangles)
+        }
+        let dl = try await client.downloadModelGLB(id: modelId, budget: budget)
+        guard dl.data.count > 20 else { throw AssemblyModelCacheError.empty }
+        try? dl.data.write(to: u, options: .atomic)
+        writeMeta(u, variantBudget: dl.variantBudget, triangles: dl.triangles)
+        return Fetched(data: dl.data, variantBudget: dl.variantBudget, triangles: dl.triangles)
+    }
+
+    // Sidecar: which variant a cached file is, so a cache hit logs the same as a download.
+    private static func metaURL(_ u: URL) -> URL { u.appendingPathExtension("meta") }
+    private static func writeMeta(_ u: URL, variantBudget: Int?, triangles: Int?) {
+        let s = "\(variantBudget ?? -1) \(triangles ?? -1)"
+        try? s.data(using: .utf8)?.write(to: metaURL(u), options: .atomic)
+    }
+    private static func readMeta(_ u: URL) -> (variantBudget: Int?, triangles: Int?) {
+        guard let s = try? String(contentsOf: metaURL(u), encoding: .utf8) else { return (nil, nil) }
+        let parts = s.split(separator: " ").compactMap { Int($0) }
+        guard parts.count == 2 else { return (nil, nil) }
+        return (parts[0] >= 0 ? parts[0] : nil, parts[1] >= 0 ? parts[1] : nil)
+    }
+
+    static func evict(modelId: String) {
+        let fm = FileManager.default
+        for f in (try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? [] where f.lastPathComponent.hasPrefix(modelId + ".") {
+            try? fm.removeItem(at: f)
+        }
+    }
 
     /// True when the error only says "the task was cancelled" - the caller went
     /// away, nothing to show the user.

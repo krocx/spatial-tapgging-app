@@ -503,6 +503,14 @@ export type ModelStatus = 'uploading' | 'processing' | 'ready' | 'failed';
  *   anchorIds - the anchor kit: list of anchor IDs that have this model assigned;
  *               GET /models?anchorId=xxx returns models where anchorIds.includes(anchorId)
  */
+export interface ModelVariant {
+  budget:    number;   // triangles asked for
+  triangles: number;   // triangles the variant draws
+  bytes:     number;
+  algorithm: string;   // reducer name/version, e.g. "vertex-clustering/1"
+  builtAt:   string;
+}
+
 export interface Model3D {
   id:               string;
   anchorId?:        string;            // legacy - preserved for backward compatibility
@@ -519,6 +527,13 @@ export interface Model3D {
    *  'not-needed': an imported assembly - the app renders it from the GLB
    *  (per-part control); a USDZ would be 10x the size and is never read. */
   usdzStatus?:      'pending' | 'ready' | 'failed' | 'not-needed';
+  /** Reduced copies built once on the server (docs/ar-ojt/MODEL-VARIANTS.md).
+   *  `GET /models/:id/file.glb?budget=N` serves the smallest variant whose
+   *  budget is at or above N, else the full model. Absent on models imported
+   *  before variants existed; `POST /models/:id/variants` builds them. */
+  variants?:        ModelVariant[];
+  /** Triangles the full model draws (instances counted once per reference). */
+  triangles?:       number;
   category?:        string;             // 'general' = visible to all anchors; other values are organizational labels
   defaultScale?:    number;             // Author-saved default scale (pre-fills model picker on iOS)
   uploadedBy?:      string;

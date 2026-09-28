@@ -296,7 +296,12 @@ struct AssemblyPlacementView: View {
 
         status = "Downloading assembly…"
         let data: Data
-        do { data = try await AssemblyModelCache.glb(modelId: asm.modelId, client: client) }
+        let deviceBudget = GLBLoadOptions.forThisDevice().triangleBudget
+        do {
+            let f = try await AssemblyModelCache.glb(modelId: asm.modelId, budget: deviceBudget, client: client)
+            data = f.data
+            if let vb = f.variantBudget { AppLog.info("assembly", "server variant \(vb) (\(f.triangles ?? 0) tris) for budget \(deviceBudget)") }
+        }
         catch {
             // A cancelled load (view dismissed mid-download) is not a failure
             // the author can act on - never show it as one.

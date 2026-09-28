@@ -1062,17 +1062,37 @@ final class SIBClient {
     /// Returns raw Data; caller is responsible for writing to a cache file.
     /// 60s timeout - GLB files can be several MB.
     func downloadModelGLB(id: String) async throws -> Data {
-        var req = try makeRequest(method: "GET", path: "/models/\(id)/file.glb")
+        try await downloadModelGLB(id: id, budget: nil).data
+    }
+
+    /// What the server sent for a GLB request: the bytes, and when it served
+    /// a reduced variant (docs/ar-ojt/MODEL-VARIANTS.md), which budget it
+    /// was built for and how many triangles it draws. An older server sends
+    /// no headers and `variantBudget` is nil.
+    struct GLBDownload {
+        let data:          Data
+        let variantBudget: Int?
+        let triangles:     Int?
+    }
+
+    /// `budget` = triangles this device can draw; the server answers with the
+    /// smallest variant at or above it, else the full model.
+    func downloadModelGLB(id: String, budget: Int?) async throws -> GLBDownload {
+        let path = budget.map { "/models/\(id)/file.glb?budget=\($0)" } ?? "/models/\(id)/file.glb"
+        var req = try makeRequest(method: "GET", path: path)
         req.timeoutInterval = 180   // assembly GLBs reach 25 MB; slow links must not fail at 60 s
         let (data, response): (Data, URLResponse)
         do { (data, response) = try await session.data(for: req) }
         catch { throw SIBClientError.networkError(error) }
-        if let http = response as? HTTPURLResponse, !(200...299).contains(http.statusCode) {
+        guard let http = response as? HTTPURLResponse else { return GLBDownload(data: data, variantBudget: nil, triangles: nil) }
+        if !(200...299).contains(http.statusCode) {
             let msg = (try? JSONDecoder().decode(APIError.self, from: data))?.error
                 ?? "HTTP \(http.statusCode)"
             throw SIBClientError.httpError(http.statusCode, msg)
         }
-        return data
+        let vb = (http.value(forHTTPHeaderField: "X-SIB-Model-Variant")).flatMap(Int.init)
+        let tr = (http.value(forHTTPHeaderField: "X-SIB-Model-Triangles")).flatMap(Int.init)
+        return GLBDownload(data: data, variantBudget: vb, triangles: tr)
     }
 
     /// Download the USDZ binary for a model.

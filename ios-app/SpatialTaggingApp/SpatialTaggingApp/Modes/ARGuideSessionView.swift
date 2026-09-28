@@ -4345,7 +4345,16 @@ extension ARGuideSessionView {
         assemblyLoading = true; defer { assemblyLoading = false }
         let client = SIBClient(settings: settings)
         let data: Data
-        do { data = try await AssemblyModelCache.glb(modelId: asm.modelId, client: client) }
+        // Ask for the copy sized to this device; the server answers with the
+        // smallest variant at or above the budget (or the full model), and
+        // the loader then finds it under budget and builds it as-is.
+        let deviceBudget = GLBLoadOptions.forThisDevice().triangleBudget
+        do {
+            let f = try await AssemblyModelCache.glb(modelId: asm.modelId, budget: deviceBudget, client: client)
+            data = f.data
+            if let vb = f.variantBudget { AppLog.info("assembly", "server variant \(vb) (\(f.triangles ?? 0) tris) for budget \(deviceBudget)") }
+            else { AppLog.info("assembly", "full model from server (no variant) for budget \(deviceBudget)") }
+        }
         catch {
             if Task.isCancelled || AssemblyModelCache.isCancellation(error) { return }
             AppLog.warn("assembly", "GLB download failed for \(asm.modelId): \(AssemblyModelCache.reason(error))")

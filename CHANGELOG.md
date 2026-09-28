@@ -29,8 +29,19 @@ it, it gets a line.
   boundaries agree. Bee drone parity: the server's 700 k variant is
   389,641 unique triangles in 183 primitives, exactly the iPhone's own
   build; the whole ladder takes 0.3 s and the downloads are 9.4 / 6.9 /
-  3.3 MB against 23 MB. Still not served - the route and the app skip
-  path (prerequisite 6) follow the disk accounting (5).
+  3.3 MB against 23 MB.
+- **Model variants, served (prerequisites 5 and 6).** The ladder is built
+  in the import worker right after the GLB (Bee: 4.2 s for import and all
+  three variants), recorded on the model (`variants[]`, `triangles`), shown
+  on the Models page card with sizes and a rebuild button
+  (`POST /models/:id/variants`, same job queue), and deleted with the
+  model. `GET /models/:id/file.glb?budget=N` serves the smallest variant
+  at or above N (else the full model) with `X-SIB-Model-Variant` and
+  `X-SIB-Model-Triangles`. The app asks with its device budget, caches per
+  budget, and logs which copy it got; the loader finds it under budget and
+  builds it as-is, so the per-open census and reduction are gone. Older
+  servers ignore the query and the app reduces as before; models imported
+  before this have no variants until rebuilt.
 - **Anchor Lab: focus ring while placing tags.** The same AR OMS ring shows
   which surface ARKit is reading at the screen centre, so the user sees
   where a tap will land.

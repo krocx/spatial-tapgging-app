@@ -20,7 +20,7 @@ import type { Request, Response } from 'express';
 import { enqueueCortonaImport, getImportJob, importQueueDepth } from '../import/jobs.js';
 import { memoryLimitBytes, importNeedBytes, checkWorkerMemory } from '../memory.js';
 
-import { registerGeneratedGlb } from './models.js';
+import { registerGeneratedGlb, MODELS_DIR } from './models.js';
 import { v4 as uuidv4 } from 'uuid';
 import fs   from 'fs';
 import path from 'path';
@@ -206,10 +206,12 @@ router.post(
     const opts = { strict: q.strict === '1' || q.strict === 'true', name: q.name?.trim() || undefined };
     const originalFilename = (req.headers['x-filename'] as string | undefined)?.replace(/\.[^.]+$/, '') + '.glb';
     const ab = new Uint8Array(body).slice().buffer as ArrayBuffer;   // own, transferable copy; the request body is released
-    const job = enqueueCortonaImport(ab, opts, async (r) => {
+    const modelId = uuidv4();   // decided now so the worker can write the variants beside the GLB
+    const job = enqueueCortonaImport(ab, opts, modelId, MODELS_DIR, async (r) => {
       const imported = r.imported as ImportedGuide;
       const log = r.log as { procedure: { commands?: Record<string, number> }; warnings: string[] };
       const model = registerGeneratedGlb({
+        id: modelId, ladder: r.ladder,
         name: `${imported.name} - assembly`, glb: r.glb, anchorId, uploadedBy: createdBy, category: 'cortona', originalFilename,
       });
       for (const s of imported.steps) s.models = [{ slotId: 'assembly', modelId: model.id, modelOpacity: 1 }];
@@ -219,7 +221,8 @@ router.post(
         ...(r.bounds ? { bounds: r.bounds as { min: [number, number, number]; max: [number, number, number] } } : {}),
       };
       const applied = await applyImportedGuide(imported, { anchorId, createdBy });
-      const summary = { guideId: applied.guide.id, steps: applied.steps.length, modelId: model.id, glbBytes: r.glb.length };
+      const summary = { guideId: applied.guide.id, steps: applied.steps.length, modelId: model.id, glbBytes: r.glb.length,
+                        variants: r.ladder.variants.map(v => ({ budget: v.budget, triangles: v.triangles, bytes: v.bytes })), triangles: r.ladder.triangles };
       console.log(`[SIB] Guide imported (cortona): ${applied.guide.id} - ${applied.steps.length} steps, model ${model.id}, ` +
         `${log.procedure.commands ? Object.values(log.procedure.commands).reduce((a, b) => a + b, 0) : 0} commands` +
         (log.warnings.length ? `, ${log.warnings.length} warning(s)` : ''));

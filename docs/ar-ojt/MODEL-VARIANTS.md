@@ -2,7 +2,7 @@
 
 Proprietary & Confidential · Applied Materials
 
-Status: **approved 2026-09-28** (ladder 2.5 M / 1.2 M / 700 k / 350 k) · prerequisites 1 to 4 built (`sib/src/import/jobs.ts` + `cortona/worker.ts`, `sib/src/memory.ts`, `sib/src/models/glb-geometry.ts` + `variants.ts` + `reduce-clustering.ts`); 5 and 6 open.
+Status: **approved 2026-09-28** (ladder 2.5 M / 1.2 M / 700 k / 350 k) · **built end to end** (`sib/src/import/jobs.ts` + `worker.ts`, `sib/src/memory.ts`, `sib/src/models/glb-geometry.ts` + `variants.ts` + `reduce-clustering.ts`, `?budget=` on `GET /models/:id/file.glb`, `POST /models/:id/variants`, app `AssemblyModelCache` budget path). Verified over HTTP with the Bee publication: import 4.2 s including the ladder, 700 k request → 6.9 MB variant.
 
 ## Why
 

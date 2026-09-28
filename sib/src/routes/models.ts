@@ -46,22 +46,35 @@ import type {
 } from '@spatial/shared';
 import { JsonFileStore } from '../stores/json-file-store.js';
 import { partTreeFromGlb, type GlbPartTree } from '../models/glb-nodes.js';
+import { pickVariant, variantPath, deleteVariants, type LadderResult } from '../models/variants.js';
+import { enqueueVariants, getImportJob } from '../import/jobs.js';
+import { memoryLimitBytes } from '../memory.js';
+import { requireRole } from '../middleware/auth.js';
 
 // ── Storage ───────────────────────────────────────────────────────────────────
 
 export const model3DStore = new JsonFileStore<Model3D>('models-3d');
 
 const DATA_DIR    = process.env.SIB_DATA_DIR ?? path.join(process.cwd(), '.sib-data');
-const MODELS_DIR  = path.join(DATA_DIR, 'models-3d');
+export const MODELS_DIR  = path.join(DATA_DIR, 'models-3d');
 fs.mkdirSync(MODELS_DIR, { recursive: true });
+
+/** Apply a built ladder to the record: variants + drawn triangles. */
+export function recordVariants(model: Model3D, ladder: LadderResult): Model3D {
+  model.variants  = ladder.variants.map(v => ({ budget: v.budget, triangles: v.triangles, bytes: v.bytes, algorithm: v.algorithm, builtAt: v.builtAt }));
+  model.triangles = ladder.triangles;
+  model.updatedAt = new Date().toISOString();
+  model3DStore.save(model);
+  return model;
+}
 
 /**
  * Register a GLB produced server-side (e.g. the Cortona3D importer) as a
  * Model3D. Same storage doctrine as POST /models with a GLB body: GLB stored,
  * USDZ pending until the portal's browser-side converter uploads it.
  */
-export function registerGeneratedGlb(opts: { name: string; glb: Buffer; anchorId?: string; uploadedBy?: string; category?: string; originalFilename?: string }): Model3D {
-  const id = uuidv4(); const now = new Date().toISOString();
+export function registerGeneratedGlb(opts: { name: string; glb: Buffer; anchorId?: string; uploadedBy?: string; category?: string; originalFilename?: string; id?: string; ladder?: LadderResult }): Model3D {
+  const id = opts.id ?? uuidv4(); const now = new Date().toISOString();
   fs.writeFileSync(path.join(MODELS_DIR, `${id}.glb`), opts.glb);
   const model: Model3D = {
     id,
@@ -77,6 +90,7 @@ export function registerGeneratedGlb(opts: { name: string; glb: Buffer; anchorId
     // Assemblies are rendered from the GLB on device (per-part show/hide/animate);
     // a USDZ of a 2M-triangle assembly is hundreds of MB and never read.
     usdzStatus:       opts.category === 'cortona' ? 'not-needed' : 'pending',
+    ...(opts.ladder ? { variants: opts.ladder.variants, triangles: opts.ladder.triangles } : {}),
     category:         opts.category?.trim() || undefined,
     uploadedBy:       opts.uploadedBy?.trim() || undefined,
     createdAt:        now,
@@ -279,12 +293,46 @@ router.get('/:id/file.glb', (req: Request, res: Response): void => {
     });
     return;
   }
-  const filePath = path.join(MODELS_DIR, `${model.id}.glb`);
+  // ?budget=N (triangles the device can draw): the smallest variant whose
+  // budget is at or above N, else the full model. The headers tell the
+  // client what it got so it can skip its own census and reduction.
+  let filePath = path.join(MODELS_DIR, `${model.id}.glb`);
+  const budget = Number(req.query.budget);
+  let served: { budget: number; triangles: number } | null = null;
+  if (Number.isFinite(budget) && budget > 0 && model.variants?.length) {
+    const v = pickVariant(model.variants, budget);
+    if (v && fs.existsSync(variantPath(MODELS_DIR, model.id, v.budget))) { filePath = variantPath(MODELS_DIR, model.id, v.budget); served = { budget: v.budget, triangles: v.triangles }; }
+  }
   if (!fs.existsSync(filePath)) { res.status(404).json({ error: 'GLB file missing on disk' }); return; }
   res.setHeader('Content-Type', 'model/gltf-binary');
-  res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(model.name)}.glb"`);
+  res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(model.name)}${served ? '.' + served.budget : ''}.glb"`);
   res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.setHeader('Vary', 'Accept-Encoding');
+  if (served) { res.setHeader('X-SIB-Model-Variant', String(served.budget)); res.setHeader('X-SIB-Model-Triangles', String(served.triangles)); }
+  else if (typeof model.triangles === 'number') res.setHeader('X-SIB-Model-Triangles', String(model.triangles));
   res.sendFile(filePath);
+});
+
+// ── POST /models/:id/variants - (re)build the reduced copies ────────────────
+// A model imported before variants existed, or after a reducer change.
+// Runs in the job worker, one at a time; poll GET /guides/import/jobs/:id.
+router.post('/:id/variants', requireRole('owner', 'manager', 'engineer'), (req: Request, res: Response): void => {
+  const model = model3DStore.findById(req.params.id);
+  if (!model) { res.status(404).json({ error: 'Model not found' }); return; }
+  if (!model.hasGLB || !fs.existsSync(path.join(MODELS_DIR, `${model.id}.glb`))) { res.status(409).json({ error: 'This model has no GLB to reduce' }); return; }
+  const job = enqueueVariants(model.id, MODELS_DIR, async (r) => {
+    const fresh = model3DStore.findById(model.id);
+    if (!fresh) { deleteVariants(MODELS_DIR, model.id); return { variants: [] }; }   // deleted while reducing
+    return { variants: recordVariants(fresh, r.ladder).variants, skipped: r.ladder.skipped };
+  }, memoryLimitBytes());
+  res.status(202).json({ data: { jobId: job.id, status: job.status, position: job.position ?? 0 }, timestamp: new Date().toISOString() });
+});
+
+// GET /models/jobs/:id - same job record as the import poll, for the Models page.
+router.get('/jobs/:id', (req: Request, res: Response): void => {
+  const job = getImportJob(req.params.id);
+  if (!job) { res.status(404).json({ error: 'Job not found (jobs are kept for an hour)' }); return; }
+  res.json({ data: job, timestamp: new Date().toISOString() });
 });
 
 // ── GET /models/:id/file.usdz ────────────────────────────────────────────────
@@ -533,6 +581,8 @@ router.delete('/:id', (req: Request, res: Response): void => {
   tryUnlink(path.join(MODELS_DIR, `${model.id}.glb`));
   tryUnlink(path.join(MODELS_DIR, `${model.id}.usdz`));
   tryUnlink(path.join(MODELS_DIR, `${model.id}_original.${model.originalFormat}`));
+  deleteVariants(MODELS_DIR, model.id);
+  for (const v of model.variants ?? []) tryUnlink(variantPath(MODELS_DIR, model.id, v.budget));
 
   model3DStore.delete(model.id);
   console.log(`[SIB/models] Deleted model ${model.id} ("${model.name}")`);

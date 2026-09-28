@@ -4330,9 +4330,38 @@ function renderModels(models) {
     // Infer status for legacy records that predate usdzStatus field
     const s = m.usdzStatus ?? (m.hasUSDZ ? 'ready' : m.hasGLB ? 'pending' : null);
     if (!s) return '';
-    const labels = { 'not-needed': 'GLB on device', ready: ' USDZ Ready', pending: '⏳ USDZ Pending', converting: '<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-refresh"/></svg> Converting USDZ…', failed: '<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-close"/></svg> USDZ Failed' };
+    const labels = { 'not-needed': 'GLB on device', ready: 'USDZ ready', pending: 'USDZ pending', converting: '<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-refresh"/></svg> Converting USDZ…', failed: '<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-close"/></svg> USDZ Failed' };
     const redo = m.hasGLB && s !== 'converting' && s !== 'not-needed' ? ` <button class="btn-ghost" style="padding:0 4px;font-size:0.78rem" title="Re-convert USDZ from the GLB" onclick="reconvertUSDZ('${m.id}')">↻</button>` : '';
     return `<span class="usdz-status ${s}" id="usdz-badge-${m.id}">${labels[s] || s}</span>${redo}`;
+  };
+  // Reduced copies built on the server (docs/ar-ojt/MODEL-VARIANTS.md): what a
+  // device downloads instead of the full model, sized to its triangle budget.
+  const fmtTri = (n) => n >= 1e6 ? (n / 1e6).toFixed(1) + ' M' : n >= 1e3 ? Math.round(n / 1e3) + ' k' : String(n);
+  const variantsBadge = (m) => {
+    if (!m.hasGLB || m.status !== 'ready') return '';
+    const vs = m.variants || [];
+    const total = vs.reduce((a, v) => a + v.bytes, 0);
+    const title = vs.length
+      ? `Full model ${fmtTri(m.triangles || 0)} triangles · ` + vs.map(v => `${fmtTri(v.budget)}: ${fmtTri(v.triangles)} tri, ${formatBytes(v.bytes)}`).join(' · ') + ` · ${vs[0].algorithm}`
+      : (m.triangles ? `Full model ${fmtTri(m.triangles)} triangles - under every budget, no variants needed` : 'No reduced copies yet - devices reduce the full model themselves');
+    const label = vs.length ? `${vs.length} variant${vs.length > 1 ? 's' : ''} · ${formatBytes(total)}` : (m.triangles ? 'fits every device' : 'no variants');
+    return `<span class="ax-chip" id="variants-badge-${m.id}" title="${title}">${label}</span>` +
+      ` <button class="btn-ghost" style="padding:0 4px;font-size:0.78rem" title="Build (or rebuild) the reduced copies on the server" onclick="rebuildVariants('${m.id}')">↻</button>`;
+  };
+  window.rebuildVariants = async (modelId) => {
+    const badge = document.getElementById('variants-badge-' + modelId);
+    try {
+      const res = await apiFetch(`/models/${encodeURIComponent(modelId)}/variants`, { method: 'POST' });
+      const { jobId } = res.data;
+      const t0 = Date.now();
+      for (;;) {
+        await new Promise(r => setTimeout(r, 1500));
+        const job = (await apiFetch(`/models/jobs/${jobId}`)).data;
+        if (badge) badge.textContent = job.status === 'queued' ? `waiting (${job.position} ahead)…` : `reducing… ${Math.round((Date.now() - t0) / 1000)}s`;
+        if (job.status === 'done')   { toast('Reduced copies built.'); await loadModels(); return; }
+        if (job.status === 'failed') throw new Error(job.error || 'failed');
+      }
+    } catch (e) { toast('Could not build variants: ' + e.message); await loadModels(); }
   };
   // Re-run the browser-side GLB→USDZ conversion for a model that already has a GLB on the server.
   window.reconvertUSDZ = async (modelId) => {
@@ -4380,7 +4409,7 @@ function renderModels(models) {
           <div class="model-meta">${esc(m.originalFilename || '')} · ${formatBytes(m.fileSizeBytes)}</div>
         </div>
       </div>
-      <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center">${statusBadge(m)}${usdzBadge(m)}${catBadge}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;align-items:center">${statusBadge(m)}${usdzBadge(m)}${variantsBadge(m)}${catBadge}</div>
       ${m.status === 'failed' && m.conversionError ? `<div class="model-error">${esc(m.conversionError)}</div>` : ''}
       ${scaleInfo}
       ${kitInfo}
