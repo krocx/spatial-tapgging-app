@@ -153,6 +153,12 @@ it, it gets a line.
   focus ring uses it too, so where the ring sits is where a tap lands.
 
 ### Fixed
+- **Assembly context no longer looks exploded.** With the whole-assembly
+  context on (ghost or solid), parts the step has not installed yet were
+  drawn where the publication's set-up step had exploded them to. They are
+  now drawn at the model's assembled pose; the model file itself was
+  always assembled (checked on four publications: every insert ends at the
+  part's rest pose).
 - **Catalogue feature panel scrolls again.** The brand migration left a
   stray `-webkit-` token where the glass blur was removed, which made the
   panel's `overflow-y` invalid on every browser.

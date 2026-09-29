@@ -4463,12 +4463,19 @@ extension ARGuideSessionView {
     /// With "Show whole assembly" on, parts that are still hidden at this
     /// point in the guide render as a faint ghost so the operator can see
     /// where the piece they hold belongs. Everything else is untouched.
+    /// Context shows the parts the step has not installed yet as the finished
+    /// assembly. Those parts sit at the exploded positions the publication's
+    /// set-up step gave them (that is where they animate in from), so they are
+    /// drawn at their rest pose - the model's assembled pose - not at the
+    /// state's position, or the context looks like an exploded view.
     private func assemblyDisplayState(_ st: [String: PartState]) -> [String: PartState] {
         guard assemblyContext else { return st }
         var out = st
         for (name, p) in st where p.show == .hidden {
             var g = p
             if assemblyContextSolid { g.show = .solid; g.opacity = 1 } else { g.show = .ghost; g.opacity = 0.15 }
+            g.position = nil
+            g.rotation = nil
             out[name] = g
         }
         return out
