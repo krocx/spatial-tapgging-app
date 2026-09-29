@@ -173,7 +173,8 @@ router.post('/import', async (req: Request, res: Response): Promise<void> => {
 // POST /guides/import/cortona - import a published Cortona3D RapidManual .htm
 //
 // Body: the raw .htm (or the extracted solo+zip bundle). Query: anchorId,
-// createdBy, name?, strict? ("1" refuses unrecognised PROTO types).
+// createdBy, name?, strict? ("1" refuses unrecognised PROTO types),
+// restPose? (auto | published | final - which pose is the model's rest pose).
 // Registers the assembly as a Model3D (GLB; USDZ conversion is the portal's
 // browser-side job as for any GLB upload), assigns it to every step's
 // `assembly` slot, and persists the steps through the shared ingest path so
@@ -203,7 +204,8 @@ router.post(
     // The parse runs in a worker, one at a time (import/jobs.ts). The caller
     // gets a job id now and polls GET /guides/import/jobs/:id; the finished
     // job carries what this route used to answer with directly.
-    const opts = { strict: q.strict === '1' || q.strict === 'true', name: q.name?.trim() || undefined };
+    const restPose: 'auto' | 'published' | 'final' = q.restPose === 'published' || q.restPose === 'final' ? q.restPose : 'auto';
+    const opts = { strict: q.strict === '1' || q.strict === 'true', name: q.name?.trim() || undefined, restPose };
     const originalFilename = (req.headers['x-filename'] as string | undefined)?.replace(/\.[^.]+$/, '') + '.glb';
     const ab = new Uint8Array(body).slice().buffer as ArrayBuffer;   // own, transferable copy; the request body is released
     const modelId = uuidv4();   // decided now so the worker can write the variants beside the GLB

@@ -19,6 +19,7 @@ import { buildScene, axisAngle, mul, type SceneGraph } from './scene.js';
 import { writeGlb, type NodeExtras } from './glb.js';
 import { bakeHoseFrames, type HoseFrameStats } from './hose-frames.js';
 import { extractProcedure, classifyMotion, type ExtractedProcedure, type ExtractedSubStep } from './procedure.js';
+import { decideRestPose, applyRestPose, type RestPoseChoice, type RestPoseReport } from './rest-pose.js';
 import { collectWidgets } from './widgets.js';
 import { readInteractivity, readRwi, type InteractivityIndex, type RwiIndex } from './interactivity.js';
 
@@ -27,6 +28,9 @@ export interface CortonaImportOptions {
   strict?: boolean;
   /** Override the guide name (defaults to the procedure title or the bundle scene name). */
   name?: string;
+  /** Which pose is the model's rest pose: 'auto' rebases to the end state when
+   *  the publication's own pose is the exploded start (rest-pose.ts). */
+  restPose?: RestPoseChoice;
 }
 
 export interface CortonaImportLog {
@@ -46,6 +50,8 @@ export interface CortonaImportLog {
   publish:     Record<string, string>;
   /** Up-axis correction derived from the deck's cameras (see frameCorrection). */
   frame:       { corrected: boolean; cameraUpY: number; cameras: number; axis?: [number, number, number]; angleDeg?: number };
+  /** Which pose became the model's rest pose and why (see rest-pose.ts). */
+  restPose:    RestPoseReport;
   warnings:    string[];
   strict:      boolean;
 }
@@ -73,7 +79,7 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
   bundle.vrmlText = Buffer.alloc(0);   // the scene is parsed - let the 100+ MB of text go
   const frame = frameCorrection(vrml);
   if (frame.corrected) warnings.push(`cameras look at the model upside-down (mean camera-up Y = ${frame.cameraUpY.toFixed(2)}) - assembly rotated ${frame.angleDeg}° so up is +Y`);
-  const scene = buildScene(vrml, { frame: frame.matrix });
+  let scene = buildScene(vrml, { frame: frame.matrix });
   const widgets = collectWidgets(vrml);
   const widgetText = new Map<string, string | undefined>();
   for (const [def, w] of widgets) widgetText.set(def, w.text);
@@ -90,6 +96,16 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
   const otherSweeps = Object.entries(proc.protos.counts).filter(([k]) => /^(VMHose|CableFlat|VMRope)\d*$/.test(k)).reduce((a, [, n]) => a + n, 0);
   if (otherSweeps) warnings.push(`${otherSweeps} procedural cable/rope object(s) (VMHose / CableFlat / VMRope) are not rendered in the assembly model`);
   if (scene.hoses.skipped) warnings.push(`${scene.hoses.skipped} hose sweep(s) could not be rebuilt (control points not found)`);
+
+  // Rest pose: the .wrl's own pose, unless it is the exploded start of an
+  // assembly with no set-up step - then the end state is baked as rest and
+  // the initial state puts the parts back for step 1 (rest-pose.ts).
+  const restDecision = decideRestPose(scene, proc.substeps, opts.restPose ?? 'auto');
+  if (restDecision.rebase.size) {
+    applyRestPose(scene, restDecision.rebase);
+    scene = buildScene(vrml, { frame: frame.matrix });     // matrices, bounds and hoses agree with the new rest
+    warnings.push(`rest pose taken from the end state: ${restDecision.rebase.size} part(s) were published at their exploded start (${restDecision.report.reason})`);
+  }
 
   // rest poses for insert/remove classification
   const rest = new Map<string, number[]>();
@@ -136,6 +152,7 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
   const hoseFrames = bakeHoseFrames(scene, proc.substeps);
   const initialNodes: GuideStepNode[] = [];
   for (const [def, sn] of scene.byDef) if (!sn.visible && sn.meshes.length + sn.children.length > 0) initialNodes.push({ node: `cmp:${def}`, show: 'hidden' });
+  for (const n of restDecision.initialDeltas) initialNodes.push(pruneNode(n));   // rebased parts start where the publication put them
   for (const n of mergeSubsteps(proc.substeps.filter(ss => ss.setup)).nodes) initialNodes.push(pruneNode(n));
 
   const finish = (title: string, text: string, subs: ExtractedSubStep[]): ImportedGuideStep => {
@@ -220,6 +237,7 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
     parts:  { docItems: inter?.partByObjectID.size ?? 0, rwiBomRows: rwi?.bom.length ?? 0, nodesWithObjectId: proc.objectIdByDef.size, nodesWithPartNumber: nodesWithPart },
     publish, warnings, strict: !!opts.strict,
     frame: { corrected: frame.corrected, cameraUpY: round(frame.cameraUpY), cameras: frame.cameras, ...(frame.axis && { axis: frame.axis, angleDeg: frame.angleDeg }) },
+    restPose: restDecision.report,
   };
   if (scene.bbox) {
     const ext = log.scene.extentM!; const maxExt = Math.max(...ext);

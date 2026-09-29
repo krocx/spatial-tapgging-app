@@ -1132,6 +1132,12 @@
     </details>
 
     <div id="import-preview" style="display:none;border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:14px;font-size:0.78rem"></div>
+    <label id="import-cortona-rest-row" style="display:none;font-size:0.78rem;color:var(--muted);margin:-6px 0 10px;align-items:center;gap:6px">Model rest pose
+      <select id="import-cortona-rest" class="ax-select" style="font-size:0.78rem;padding:3px 8px">
+        <option value="auto">Auto - end state when the publication holds the exploded start</option>
+        <option value="published">As published</option>
+        <option value="final">After the last step</option>
+      </select></label>
     <label id="import-cortona-strict-row" style="display:none;font-size:0.78rem;color:var(--muted);margin:-6px 0 12px;align-items:center;gap:6px"><input type="checkbox" id="import-cortona-strict"> Strict - refuse the import if the publication uses 3D features we don't recognise (otherwise they are listed in the log)</label>
 
     <div style="display:flex;gap:10px;justify-content:flex-end">
@@ -4731,6 +4737,7 @@ function openImportGuideModal() {
   importParsedPayload = null;
   importCortonaFile = null;
   document.getElementById('import-cortona-strict-row').style.display = 'none';
+  document.getElementById('import-cortona-rest-row').style.display = 'none';
   document.getElementById('import-preview').style.display = 'none';
   document.getElementById('import-file-name').textContent = '';
   document.getElementById('import-payload-json').value = '';
@@ -4863,6 +4870,7 @@ async function importGuideFileChosen(event) {
   errEl.style.display = 'none';
   importCortonaFile = null;
   document.getElementById('import-cortona-strict-row').style.display = 'none';
+  document.getElementById('import-cortona-rest-row').style.display = 'none';
   if (/\.(htm|html|zip)$/i.test(file.name)) {
     // Cortona3D RapidManual publication - parsed on the server (VRML97 + PROTOs).
     importCortonaFile = file;
@@ -4873,6 +4881,7 @@ async function importGuideFileChosen(event) {
       `<span style="color:var(--muted)">Parsed on the server: assembly geometry → 3D model, procedure → steps with per-part show/hide/motion, callouts → step text, part numbers from the BOM.</span>` +
       `<div style="margin-top:6px;color:var(--ax-green)"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-check"/></svg> Ready to import</div>`;
     document.getElementById('import-cortona-strict-row').style.display = 'flex';
+    document.getElementById('import-cortona-rest-row').style.display = 'flex';
     const btn = document.getElementById('import-guide-submit'); btn.disabled = false; btn.style.opacity = '1';
     return;
   }
@@ -4935,9 +4944,10 @@ async function submitImportCortona(anchorId, createdBy) {
   const errEl = document.getElementById('import-guide-error');
   const btn = document.getElementById('import-guide-submit');
   const strict = document.getElementById('import-cortona-strict').checked ? '1' : '0';
+  const restPose = document.getElementById('import-cortona-rest').value || 'auto';
   btn.disabled = true; btn.textContent = 'Importing…';
   try {
-    const q = new URLSearchParams({ anchorId, createdBy, strict });
+    const q = new URLSearchParams({ anchorId, createdBy, strict, restPose });
     const res = await fetch(`/guides/import/cortona?${q}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/octet-stream', 'X-Filename': importCortonaFile.name, 'X-API-Key': apiKey(), 'X-Admin-Key': adminKeyStored() },
@@ -5000,6 +5010,7 @@ function showCortonaImportLog() {
     `protos ignored: ${L.protos.ignored.join(', ') || '-'}`,
     `protos UNKNOWN: ${L.protos.unknown.join(', ') || '-'}`,
     `publish: ${JSON.stringify(L.publish)}`,
+    `rest pose: ${L.restPose ? `${L.restPose.chosen === 'final' ? 'end state' : 'as published'} - ${L.restPose.reason} · extent published ${L.restPose.extentM.published} m · before step 1 ${L.restPose.extentM.initial} m · after last step ${L.restPose.extentM.final} m · ${L.restPose.movedParts} part(s) end elsewhere · ${L.restPose.rebased} rebased` : 'n/a (older server)'}`,
     `warnings: ${L.warnings.length ? '\n  - ' + L.warnings.join('\n  - ') : 'none'}`,
   ];
   const text = lines.join('\n');

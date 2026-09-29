@@ -10,6 +10,8 @@ export interface FixtureOptions {
   parts?: number;           // number of leaf parts (default 4)
   upsideDown?: boolean;     // every camera carries a π-about-X rotation (deck authored in a flipped frame)
   colourOnObjectVM?: boolean; // leaf Shape has an empty Material {}; the colour sits on ObjectVM.appearance
+  /** No set-up step; the parts are published at their exploded start (y = 0.6) and step 2 animates every one into place. */
+  publishedExploded?: boolean;
 }
 
 export function buildVrml(o: FixtureOptions = {}): string {
@@ -46,7 +48,7 @@ DEF BaseViewpoint1 Viewpoint { position 0.6 0.2 1.59 orientation ${o.upsideDown 
   DEF BASE_PLATE ObjectVM { name "Base plate" translation 0 0 0 children [ ${box(0)} ] }
 `;
   for (let i = 1; i <= parts; i++) {
-    scene += `  DEF PN_0190-1000${i}_1 ObjectVM { name "Part ${i}" ${o.colourOnObjectVM ? 'appearance Appearance { material Material { diffuseColor 0.9 0.1 0.1 } }' : ''} translation ${(0.1 * i).toFixed(3)} 0.06 0 children [ ${box(0)} ] }\n`;
+    scene += `  DEF PN_0190-1000${i}_1 ObjectVM { name "Part ${i}" ${o.colourOnObjectVM ? 'appearance Appearance { material Material { diffuseColor 0.9 0.1 0.1 } }' : ''} translation ${(0.1 * i).toFixed(3)} ${o.publishedExploded ? '0.60' : '0.06'} 0 children [ ${box(0)} ] }\n`;
   }
   scene += `  DEF CALLOUT_A CalloutM6 { translation 0.1 0.12 0 string "Torque to spec" whichChoice -1 }
   DEF PANEL_A PanelHtml9 { translation 0.3 0.12 0 htmlbody [ "<html><body><p>Check &amp; verify</p><p>seal seating</p></body></html>" ] whichChoice -1 }
@@ -67,7 +69,9 @@ ${o.unknownProto ? '  DEF MYSTERY MysteryWidget { foo "x" }\n' : ''}] }
   ];
   routes.pop(); // C3 has no route
   const s2 = [
-    cmd('C4', 'Set_translation', 'key [ 0 0.5 1 ] keyValue [ 0.1 0.30 0, 0.1 0.18 0, 0.1 0.06 0 ] period [ 0 0.5 ] objectID -106464992 attributeName "translation"', 'PN_0190-10001_1', 'translation'),
+    ...(o.publishedExploded
+      ? Array.from({ length: parts }, (_, k) => cmd(`C4_${k + 1}`, 'Set_translation', `key [ 0 1 ] keyValue [ ${(0.1 * (k + 1)).toFixed(3)} 0.60 0, ${(0.1 * (k + 1)).toFixed(3)} 0.06 0 ] period [ 0 0.5 ] objectID -${106464992 + k} attributeName "translation"`, `PN_0190-1000${k + 1}_1`, 'translation'))
+      : [cmd('C4', 'Set_translation', 'key [ 0 0.5 1 ] keyValue [ 0.1 0.30 0, 0.1 0.18 0, 0.1 0.06 0 ] period [ 0 0.5 ] objectID -106464992 attributeName "translation"', 'PN_0190-10001_1', 'translation')]),
     cmd('C5', 'SwitchOFF', 'key [ 0 ] keyValue [ 0 ] period [ 0 0.1 ] objectID -3001 attributeName "whichChoice"', 'CALLOUT_A', 'whichChoice'),
     cmd('C6', 'SwitchOFF', 'key [ 0 ] keyValue [ 0 ] objectID -106464992 attributeName "whichChoice"', 'PN_0190-10001_1', 'whichChoice'),
   ];
@@ -80,9 +84,9 @@ ${o.unknownProto ? '  DEF MYSTERY MysteryWidget { foo "x" }\n' : ''}] }
     cmd('C0', 'SwitchOFF', 'key [ 0 ] keyValue [ -1 ] objectID -2001 attributeName "whichChoice"', 'PN_0190-10002_1', 'whichChoice'),
   ];
   const proc = `DEF PROC Procedure { id "proc-1" title "Sample assembly" steps [
-    DEF ST0 Step { id "st-0" title "0" simulate FALSE substeps [
+${o.publishedExploded ? '' : `    DEF ST0 Step { id "st-0" title "0" simulate FALSE substeps [
 ${sub('ss-0', 'initial state', 0, s0.join('\n'))}
-    ] }
+    ] }`}
     DEF ST1 Step { id "st-1" title "Prepare" substeps [
 ${sub('ss-1', 'Remove cover', 2, s1.join('\n'))}
     ] }
@@ -91,7 +95,7 @@ ${sub('ss-2', 'Lower ring into place', 4, s2.join('\n'))}
 ${sub('ss-3', 'Rotate and lock', 3, s3.join('\n'))}
     ] }
   ] }
-DEF PLAYER protoSimulationPlayer { version_num 2 AllSubSteps [ USE SS_ss-0 USE SS_ss-1 USE SS_ss-2 USE SS_ss-3 ] }
+DEF PLAYER protoSimulationPlayer { version_num 2 AllSubSteps [ ${o.publishedExploded ? '' : 'USE SS_ss-0 '}USE SS_ss-1 USE SS_ss-2 USE SS_ss-3 ] }
 `;
   cmds.length;
   return protos + scene + proc + routes.join('\n') + '\n';

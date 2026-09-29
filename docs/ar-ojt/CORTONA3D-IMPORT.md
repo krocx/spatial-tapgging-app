@@ -271,6 +271,34 @@ in the log dialog) - it contains counts, PROTO type names, publish options
 and warnings, never text or part numbers. If `protos UNKNOWN` is non-empty,
 those names are the next thing to add to `procedure.ts`.
 
+### Rest pose - as published or after the last step (2026-09-29)
+
+A publication keeps its parts wherever the author left them in the `.wrl`.
+In the four demo publications that is the assembled product, and a set-up
+step (`simulate FALSE`) explodes the parts before step 1. The office decks
+imported on 2026-09-29 have no set-up step (`535 substeps (0 set-up)` in
+the log): the `.wrl` itself holds the exploded start and the 185 steps
+animate every part into place. The GLB is the rest pose, and Place
+Assembly, the Models and Designer previews and the whole-assembly context
+all show the rest pose, so those decks looked exploded everywhere except
+at the end of playback.
+
+`rest-pose.ts` measures three states by bounding extent over the parts
+still visible at the end: as published, before step 1 and after the last
+step. When the published pose is more than 10 % wider than the end state,
+the end pose of every part visible at the end is written into its `.wrl`
+fields and the scene is rebuilt (matrices, bounds, hoses all agree), and
+the initial state records the published pose for those parts so playback
+is unchanged - the deltas are absolute keyframes. Parts hidden at the end
+keep the published pose (nobody sees it; the context overlay draws hidden
+parts at rest). The choice and the numbers are in the import log
+(`rest pose:` line) and a warning names the rebased count. The import form
+has an override (Model rest pose: Auto / As published / After the last
+step) for a deck the heuristic reads wrong. Verified: the four demo
+publications stay as published (their published extent equals the end
+state); the fixture with `publishedExploded` is rebased, its motions
+classify as inserts, and `sib/test/rest-pose.test.ts` holds it.
+
 ### Office review of two real decks (2026-09-22) - what changed in the importer
 
 An office-side review of two Applied decks (kept there; only the patterns

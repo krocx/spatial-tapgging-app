@@ -153,6 +153,15 @@ it, it gets a line.
   focus ring uses it too, so where the ring sits is where a tap lands.
 
 ### Fixed
+- **Publications with no set-up step no longer import exploded.** When a
+  Cortona deck holds the exploded start in its `.wrl` and animates the parts
+  into place, the importer now bakes the end state as the model's rest pose
+  (the GLB is the assembled product) and records the published start as the
+  initial state, so playback is unchanged and Place Assembly, the previews
+  and the context overlay show the assembly. Chosen by measuring the
+  published extent against the end state; the import form has an override
+  (Model rest pose) and the import log a `rest pose:` line with the
+  numbers. Demo publications that were already assembled are untouched.
 - **Designer preview and part picker ignore playback-only nodes.** Hose
   flipbook frames (`#s<n>f<k>`) and rest tubes (`#rest`) are no longer
   listed as parts by `GET /models/:id/nodes`, and the Designer's assembly
