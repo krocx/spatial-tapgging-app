@@ -7,6 +7,15 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **Designer preview plays the step.** For imported guides the 3D preview
+  now shows the runtime state after the selected step (hidden, ghost, moved
+  parts and hose frames, as the app computes it) instead of the coarse
+  this / earlier / later reading, and "Play step" plays the step's deltas on
+  their own clock at 0.5x, 1x or 2x. `docs/PROCEDURE-DESIGNER.md` slice 3.6.
+  Rebuild the Designer bundle (`npm run build:roadmap`) to ship it.
+- **Import form explains the assembled-pose choice.** "Assembled pose" with
+  Auto recommended and a plain-words hint per option; the choice is written
+  to the import log as `assembled pose:`.
 - **Import logs are kept.** Every Cortona import saves its log (counts,
   PROTO names, options, rest-pose decision, warnings; never content) under
   `data/import-logs/<guideId>.json`. The guide's menu in the Guide Library

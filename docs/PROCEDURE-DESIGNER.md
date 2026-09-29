@@ -306,6 +306,31 @@ GLB's POSITION accessor `min`/`max` under the node transforms - no buffer
 decoding). With the assembly placed on device, `deriveStepsFromAssembly` then
 places every such step, so Place Steps is unnecessary for an assembly guide.
 
+### Slice 3.6 - the preview shows what the operator sees (2026-09-29)
+
+For an imported guide (steps carry `metadata.step.nodes`, the map carries
+`settings.assembly.initialNodes`) the preview no longer relies on the coarse
+this / earlier / later reading. `utils/assembly-state.ts` is a port of the
+app's `AssemblyState`: the initial state, then every step's deltas in order,
+last state wins, the end of a motion is the state. The preview applies that
+state after the selected step: hidden parts hidden (or ghost / solid by the
+step's operator context), moved parts at their `to` pose in the parent
+frame exactly as `AssemblyNode.setPose` does, a hose at the flipbook frame
+that is current, colour overrides applied; the this-step accent stays on top.
+An animation prop that a step shows and hides again (the Bee's
+`seal_O-ring_anim_7`) is therefore hidden after its step instead of resting
+under the drone, and the seal the step installs is where the operator sees
+it. Authored guides with parts lists only keep the previous reading.
+
+**Play step.** The bar gains ▶ Play step (0.5× / 1× / 2×): the step's deltas
+on their own clock from the state the step starts in - each delta at
+`delaySec`, motions eased from `from` to `to` over `durationSec`, show /
+hide instant, hose frames flipping on their timings - then the preview
+settles on the state after the step. Pure functions (`timeline`,
+`stateAt`), so the same clock can drive a scrubber later. Nothing renders on
+the server; the Designer bundle must be rebuilt (`npm run build:roadmap`)
+and committed.
+
 ### Slice 4 - shared sequencing
 
 Extract the lane/sequence algorithm into one module consumed by the designer, the

@@ -1,8 +1,12 @@
 // AssemblyPreview.tsx - the assembly as the operator will see it at this step.
 //
 // Runs entirely in the browser: three.js (the copy vendored for the portal,
-// resolved through the import map in index.html) loads the model's GLB, and
-// every part is tinted by its state at the selected step:
+// resolved through the import map in index.html) loads the model's GLB. For
+// an imported guide the parts are shown, hidden, ghosted and POSED by the
+// same rule the AR runtime uses (utils/assembly-state.ts: initial state plus
+// every step's deltas in order), and a step can be played on its own
+// timeline. On top of that, every part is tinted by its authoring state at
+// the selected step:
 //   this    parts this step installs - accent, the thing the author is editing
 //   before  installed on earlier steps - the model's own look
 //   after   not yet installed - hidden (or ghosted with the toggle)
@@ -14,6 +18,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { fetchModelGlbUrl } from '../api/mindmap-api.js';
+import { stateAt, timeline, type PartStateMap } from '../utils/assembly-state.js';
+import type { GuideStepNode } from '@spatial/shared';
 
 export type PartState = 'this' | 'before' | 'after' | 'base';
 
@@ -30,6 +36,10 @@ interface Props {
   unmentioned?: PartState;
   /** The step's operator context: how "later" parts render. Undefined = the local toggle decides. */
   context?: 'installed' | 'ghost' | 'solid';
+  /** Runtime state after the selected step (imported guides): show + pose per part. Wins over `states` for visibility. */
+  poses?: PartStateMap;
+  /** This step on its own clock: the state it starts from and its deltas. Enables Play. */
+  play?: { base: PartStateMap; deltas: GuideStepNode[] };
   onPick?: (name: string) => void;
   height?: number;
   /** Fill the parent instead of a fixed height (expanded view). */
@@ -50,17 +60,24 @@ interface Scene3 {
   raycaster: any; pointer: any; frame: number; disposed: boolean;
   /** Mesh → its own material (cloned once) so tints never leak between parts. */
   own: Map<any, any>;
+  /** Node → its rest transform (position, quaternion) so a pose can be replaced and restored. */
+  rest: Map<any, { p: any; q: any }>;
+  /** Playback clock, if a step is playing. */
+  playing: { start: number; raf: number } | null;
 }
 
 /** GLTFLoader sanitises node names (drops `:` `.` `/`), keeping the original in userData.name. */
 const partName = (o: any): string | undefined => (o?.userData?.name as string | undefined) ?? o?.name;
 
-export function AssemblyPreview({ modelId, partNames, states, onPick, height = 220, fill = false, onExpand, unmentioned = 'base', context }: Props): JSX.Element {
+export function AssemblyPreview({ modelId, partNames, states, onPick, height = 220, fill = false, onExpand, unmentioned = 'base', context, poses, play }: Props): JSX.Element {
   const hostRef  = useRef<HTMLDivElement | null>(null);
   const s3       = useRef<Scene3 | null>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [error, setError]   = useState<string | null>(null);
   const [ghostAfter, setGhostAfter] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const [speed, setSpeed] = useState(1);
+  const [clock, setClock] = useState<{ t: number; length: number } | null>(null);
   const onPickRef = useRef(onPick);
   onPickRef.current = onPick;
 
@@ -93,7 +110,7 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, height = 2
 
         const st: Scene3 = {
           THREE, renderer, scene, camera, controls, root: null,
-          raycaster: new THREE.Raycaster(), pointer: new THREE.Vector2(), frame: 0, disposed: false, own: new Map(),
+          raycaster: new THREE.Raycaster(), pointer: new THREE.Vector2(), frame: 0, disposed: false, own: new Map(), rest: new Map(), playing: null,
         };
         s3.current = st;
 
@@ -103,6 +120,7 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, height = 2
         if (cancelled) return;
         const root = gltf.scene;
         root.traverse((o: any) => {
+          if (partName(o)) st.rest.set(o, { p: o.position.clone(), q: o.quaternion.clone() });
           if (o.isMesh) {
             const mats = Array.isArray(o.material) ? o.material : [o.material];
             const cloned = mats.map((m: any) => m.clone());
@@ -170,68 +188,128 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, height = 2
     };
   }, [modelId, height, fill]);
 
-  // ── Tint by state whenever the selection changes ───────────────────────
-  useEffect(() => {
+  // ── Render a state: visibility, pose, tint ─────────────────────────────
+  // `poseMap` (runtime state) decides show/hide/ghost and transforms when the
+  // guide has deltas; otherwise the authoring states decide visibility as
+  // before. Tints always come from the authoring states.
+  const laterMode: 'hidden' | 'ghost' | 'solid' = context === 'ghost' ? 'ghost' : context === 'solid' ? 'solid' : context === 'installed' ? 'hidden' : (ghostAfter ? 'ghost' : 'hidden');
+  const renderState = (poseMap: PartStateMap | undefined) => {
     const st = s3.current;
     if (!st?.root || status !== 'ready') return;
     const { THREE } = st;
     const ACCENT = new THREE.Color(0x2f6fed);
     const GHOST  = 0.18;
-    // Step context wins over the local toggle: what the operator will see.
-    const laterMode: 'hidden' | 'ghost' | 'solid' = context === 'ghost' ? 'ghost' : context === 'solid' ? 'solid' : context === 'installed' ? 'hidden' : (ghostAfter ? 'ghost' : 'hidden');
-
-    // Nearest ancestor-or-self WITH A STATE decides a mesh: a selected group
-    // covers all its children; a selected child overrides its group.
     const stateOf = (o: any): PartState => {
       let p = o;
-      while (p) {
-        const n = partName(p);
-        if (n && partNames.has(n)) { const s = states.get(n); if (s) return s; }
-        p = p.parent;
-      }
+      while (p) { const n = partName(p); if (n && partNames.has(n)) { const s = states.get(n); if (s) return s; } p = p.parent; }
       return unmentioned;
     };
-    const thisBox = new THREE.Box3();
-    let anyThis = false;
-
-    // Hose flipbook frames (`#s<n>f<k>`) exist for playback only: the rest tube
-    // (`#rest`) is the hose here. Parts the model starts hidden (exploded
-    // spares) show only once a step mentions them.
     const playbackOnly = (o: any): boolean => { for (let p = o; p; p = p.parent) { const n = partName(p); if (n && /#s\d+f\d+$/.test(n)) return true; } return false; };
     const startsHidden = (o: any): boolean => { for (let p = o; p; p = p.parent) if (p.userData?.visible === false) return true; return false; };
-    const mentioned = (o: any): boolean => { for (let p = o; p; p = p.parent) { const n = partName(p); if (n && states.has(n)) return true; } return false; };
+    // Nearest ancestor-or-self with a runtime pose; hidden parents hide children.
+    const poseOf = (o: any) => {
+      if (!poseMap) return undefined;
+      let hiddenAbove = false, found: { show: string; opacity: number; color?: number[] } | undefined;
+      for (let p = o; p; p = p.parent) { const n = partName(p); if (!n) continue; const ps = poseMap.get(n); if (ps) { if (!found) found = ps; if (ps.show === 'hidden') hiddenAbove = true; } }
+      if (!found) return undefined;
+      return hiddenAbove ? { ...found, show: 'hidden' as const, opacity: 0 } : found;
+    };
+
+    // Transforms: every named node takes its runtime pose or its rest.
+    if (poseMap) {
+      for (const [o, r] of st.rest) {
+        const n = partName(o); const ps = n ? poseMap.get(n) : undefined;
+        if (ps?.position) o.position.set(ps.position[0], ps.position[1], ps.position[2]); else o.position.copy(r.p);
+        if (ps?.rotation) { const [x, y, z, a] = ps.rotation; const l = Math.hypot(x, y, z); o.quaternion.setFromAxisAngle(new THREE.Vector3(l ? x / l : 0, l ? y / l : 0, l ? z / l : 1), a); }
+        else o.quaternion.copy(r.q);
+      }
+    }
+
+    const thisBox = new THREE.Box3();
+    let anyThis = false;
     st.root.traverse((o: any) => {
       if (!o.isMesh) return;
       const base = st.own.get(o) ?? [];
       const mats = Array.isArray(o.material) ? o.material : [o.material];
       const state = stateOf(o);
-      o.visible = !(state === 'after' && laterMode === 'hidden');
-      if (playbackOnly(o) || (startsHidden(o) && !mentioned(o))) o.visible = false;
-      if (state === 'this') { thisBox.expandByObject(o); anyThis = true; }
+      const ps = poseOf(o);
+      let show: 'solid' | 'ghost' | 'hidden';
+      let ghostOpacity = GHOST;
+      if (ps) {
+        show = ps.show as typeof show;
+        if (show === 'ghost') ghostOpacity = ps.opacity;
+        // A hidden part in "whole assembly" context is drawn as the context asks.
+        if (show === 'hidden' && laterMode !== 'hidden' && !playbackOnly(o)) show = laterMode === 'ghost' ? 'ghost' : 'solid';
+      } else if (poseMap) {
+        // No runtime state at all: the model's own look, unless it starts hidden or is a frame.
+        show = playbackOnly(o) || (startsHidden(o)) ? (laterMode === 'hidden' || playbackOnly(o) ? 'hidden' : laterMode === 'ghost' ? 'ghost' : 'solid') : 'solid';
+      } else {
+        show = state === 'after' ? (laterMode === 'hidden' ? 'hidden' : laterMode === 'ghost' ? 'ghost' : 'solid') : 'solid';
+        if (playbackOnly(o) || (startsHidden(o) && !states.has(partName(o) ?? ''))) show = 'hidden';
+      }
+      o.visible = show !== 'hidden';
+      if (o.visible && state === 'this') { thisBox.expandByObject(o); anyThis = true; }
       mats.forEach((m: any, i: number) => {
         const b = base[i];
         if (!m || !b) return;
         if (m.color && b.color) m.color.copy(b.color);
         if (m.emissive && b.emissive) m.emissive.copy(b.emissive);
         m.opacity = b.opacity; m.transparent = b.transparent;
+        if (ps?.color && m.color) m.color.setRGB(ps.color[0], ps.color[1], ps.color[2]);
         if (state === 'this') {
           if (m.emissive) { m.emissive.copy(ACCENT); m.emissiveIntensity = 0.55; }
           else if (m.color) m.color.lerp(ACCENT, 0.6);
-        } else if (state === 'after' && laterMode === 'ghost') {
-          m.transparent = true; m.opacity = GHOST;
         }
+        if (show === 'ghost') { m.transparent = true; m.opacity = ghostOpacity; }
         m.needsUpdate = true;
       });
     });
-    // Re-centre the orbit on this step's parts so the author sees what they picked.
-    if (anyThis && !thisBox.isEmpty()) {
-      const c = thisBox.getCenter(new THREE.Vector3());
+    return { thisBox, anyThis };
+  };
+
+  // Settled state whenever the selection changes (and when playback ends).
+  useEffect(() => {
+    const st = s3.current;
+    if (!st?.root || status !== 'ready') return;
+    if (st.playing) { cancelAnimationFrame(st.playing.raf); st.playing = null; setPlaying(false); setClock(null); }
+    const r = renderState(poses);
+    if (r?.anyThis && !r.thisBox.isEmpty()) {
+      const { THREE } = st;
+      const c = r.thisBox.getCenter(new THREE.Vector3());
       const offset = st.camera.position.clone().sub(st.controls.target);
       st.controls.target.copy(c);
       st.camera.position.copy(c).add(offset);
       st.controls.update();
     }
-  }, [states, partNames, ghostAfter, status, unmentioned, context]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [states, partNames, ghostAfter, status, unmentioned, context, poses]);
+
+  // ── Play this step on its own clock ────────────────────────────────────
+  const stop = () => {
+    const st = s3.current;
+    if (st?.playing) { cancelAnimationFrame(st.playing.raf); st.playing = null; }
+    setPlaying(false); setClock(null);
+    renderState(poses);
+  };
+  const start = () => {
+    const st = s3.current;
+    if (!st?.root || !play) return;
+    if (st.playing) cancelAnimationFrame(st.playing.raf);
+    const tl = timeline(play.deltas);
+    const length = Math.max(tl.length, 0.3);
+    const t0 = performance.now();
+    setPlaying(true);
+    const tick = () => {
+      const now = performance.now();
+      const t = ((now - t0) / 1000) * speed;
+      renderState(stateAt(play.base, tl, Math.min(t, length)));
+      setClock({ t: Math.min(t, length), length });
+      if (t >= length + 0.6 / speed) { st.playing = null; setPlaying(false); setClock(null); renderState(poses); return; }
+      st.playing = { start: t0, raf: requestAnimationFrame(tick) };
+    };
+    st.playing = { start: t0, raf: requestAnimationFrame(tick) };
+  };
+  useEffect(() => () => { const st = s3.current; if (st?.playing) cancelAnimationFrame(st.playing.raf); }, []);
 
   // ── Click → part name (drag = orbit, so only short clicks pick) ────────
   useEffect(() => {
@@ -279,6 +357,15 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, height = 2
             : <button className={`asm-toggle-btn${ghostAfter ? ' on' : ''}`} onClick={() => setGhostAfter(v => !v)}>
                 {ghostAfter ? 'Later parts: ghost' : 'Later parts: hidden'}
               </button>}
+          {play && play.deltas.length > 0 && (
+            <span className="asm-play">
+              <button className={`asm-toggle-btn${playing ? ' on' : ''}`} onClick={playing ? stop : start} title="Play this step as the operator sees it">{playing ? '■ Stop' : '▶ Play step'}</button>
+              <select className="asm-speed" value={speed} onChange={e => setSpeed(Number(e.target.value))} title="Playback speed">
+                <option value={0.5}>0.5×</option><option value={1}>1×</option><option value={2}>2×</option>
+              </select>
+              {clock && <span className="asm-clock">{clock.t.toFixed(1)} / {clock.length.toFixed(1)} s</span>}
+            </span>
+          )}
           <span className="asm-hint">Click a part to add or remove it · drag to orbit</span>
         </div>
       )}

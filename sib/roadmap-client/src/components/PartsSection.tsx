@@ -23,6 +23,8 @@ import { useEffect, useMemo, useState, type JSX } from 'react';
 import { useStore } from '../state/store.js';
 import { mindmapApi, type GlbPartNode, type GlbPartTree } from '../api/mindmap-api.js';
 import { AssemblyPreview, type PartState } from './AssemblyPreview.js';
+import { stateAfter, deltasOf, type PartStateMap } from '../utils/assembly-state.js';
+import type { GuideStepNode } from '@spatial/shared';
 
 // One tree per model per session - the picker opens on every step.
 const treeCache = new Map<string, Promise<GlbPartTree>>();
@@ -115,6 +117,19 @@ export function usePartsPicker(nodeId: string | null) {
     }
     return { earlier, states, partNames: names };
   }, [tree, order, nodeId, mapNodes, partSet, assembly?.start, assembly?.initialNodes]);
+
+  // Runtime state (imported guides carry deltas): what the operator sees after
+  // this step, and this step on its own clock for Play. Authored guides with
+  // parts lists only keep the this/before/after view.
+  const { poses, play } = useMemo((): { poses?: PartStateMap; play?: { base: PartStateMap; deltas: GuideStepNode[] } } => {
+    if (!order || !mapNodes || !nodeId) return {};
+    const seqd = mapNodes.filter(n => order[n.id] !== undefined).sort((a, b) => (order[a.id] ?? 0) - (order[b.id] ?? 0));
+    const steps = seqd.map(n => deltasOf(n.metadata?.step as Record<string, unknown> | undefined));
+    if (!steps.some(d => d.length)) return {};
+    const idx = seqd.findIndex(n => n.id === nodeId);
+    if (idx < 0) return {};
+    return { poses: stateAfter(assembly?.initialNodes, steps, idx), play: { base: stateAfter(assembly?.initialNodes, steps, idx - 1), deltas: steps[idx] } };
+  }, [order, mapNodes, nodeId, assembly?.initialNodes]);
 
   const write = (next: string[]) => { if (nodeId) patchStepMeta(nodeId, { parts: next }); };
 
@@ -232,7 +247,7 @@ export function usePartsPicker(nodeId: string | null) {
     <span className="step-check-hint"> - {parts.length} chosen · {earlier.size} {assembly.start === 'complete' ? 'removed' : 'installed'} earlier</span>
   ) : null;
 
-  return { assembly, modelId, tree, parts, earlier, states, partNames, parents, toggle, verb, chips, treeBlock, search, summary, groupsBlock, buildUp, contextBlock, context };
+  return { assembly, modelId, tree, parts, earlier, states, partNames, parents, toggle, verb, chips, treeBlock, search, summary, groupsBlock, buildUp, contextBlock, context, poses, play };
 }
 
 // ── Inspector block ──────────────────────────────────────────────────────────
@@ -261,7 +276,7 @@ export function PartsSection({ nodeId }: { nodeId: string }): JSX.Element | null
       {groupsBlock}
       {pk.contextBlock}
       {showPreview && modelId && tree && !studioOpen && (
-        <AssemblyPreview modelId={modelId} partNames={partNames} states={states} parents={parents} unmentioned={pk.buildUp ? 'after' : 'base'} context={pk.context} onPick={toggle} onExpand={() => openStudio(nodeId)} />
+        <AssemblyPreview modelId={modelId} partNames={partNames} states={states} parents={parents} unmentioned={pk.buildUp ? 'after' : 'base'} context={pk.context} poses={pk.poses} play={pk.play} onPick={toggle} onExpand={() => openStudio(nodeId)} />
       )}
       <div className="pt-toolbar">
         {search}
@@ -330,7 +345,7 @@ export function PartsStudio(): JSX.Element | null {
         <div className="pt-modal-main">
           <div className="pt-modal-3d">
             {pk.tree && (
-              <AssemblyPreview modelId={pk.modelId} partNames={pk.partNames} states={pk.states} parents={pk.parents} unmentioned={pk.buildUp ? 'after' : 'base'} context={pk.context} onPick={pk.toggle} fill />
+              <AssemblyPreview modelId={pk.modelId} partNames={pk.partNames} states={pk.states} parents={pk.parents} unmentioned={pk.buildUp ? 'after' : 'base'} context={pk.context} poses={pk.poses} play={pk.play} onPick={pk.toggle} fill />
             )}
           </div>
           {/* Step strip: every step, its part count, click to jump. */}
