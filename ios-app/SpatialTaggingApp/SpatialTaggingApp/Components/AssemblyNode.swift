@@ -248,6 +248,7 @@ final class AssemblyNode {
                     for c in n.childNodes { hide(c) }
                 }
                 hide(node)
+                node.isHidden = true            // the whole subtree, children's own states included (see setVisual)
             }
         }
     }
@@ -549,6 +550,14 @@ final class AssemblyNode {
             body(n)
             for c in n.childNodes { owned(c, body) }
         }
+        // Hidden is different: a group that is hidden hides its whole subtree,
+        // whatever the children's own states say (a Switch that is off in the
+        // source shows nothing beneath it). Done on the part node itself, so
+        // showing the group again restores each child's own state - the
+        // hose owner hidden at the end of a step takes its baked frames with
+        // it instead of leaving the last frame floating (the O-ring seen
+        // under the drone).
+        if p.show == .hidden { if instant { node.isHidden = true } } else { node.isHidden = false }
         owned(node) { n in
             guard n.geometry != nil else { return }
             if p.show != .hidden { n.isHidden = false }

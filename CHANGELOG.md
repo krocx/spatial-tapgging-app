@@ -176,6 +176,13 @@ it, it gets a line.
   focus ring uses it too, so where the ring sits is where a tap lands.
 
 ### Fixed
+- **AR: a hidden group hides its baked hose frames.** A part's own state used
+  to override its parent's, so when the Bee's animation seal was hidden at
+  the end of step 1 its last flipbook frame stayed visible and floated under
+  the drone through every later step (the Designer, which hides the subtree,
+  showed it right). Hidden now hides the whole subtree on the part node;
+  showing the group again restores each child's own state. The
+  whole-assembly context also no longer draws hose frames as ghosts.
 - **Publications with no set-up step no longer import exploded.** When a
   Cortona deck holds the exploded start in its `.wrl` and animates the parts
   into place, the importer now bakes the end state as the model's rest pose

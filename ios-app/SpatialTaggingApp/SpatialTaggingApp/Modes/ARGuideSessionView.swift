@@ -4472,6 +4472,8 @@ extension ARGuideSessionView {
         guard assemblyContext else { return st }
         var out = st
         for (name, p) in st where p.show == .hidden {
+            // Baked hose frames are playback only - never part of the context.
+            if name.range(of: #"#s\d+f\d+$"#, options: .regularExpression) != nil { continue }
             var g = p
             if assemblyContextSolid { g.show = .solid; g.opacity = 1 } else { g.show = .ghost; g.opacity = 0.15 }
             g.position = nil
