@@ -73,6 +73,8 @@ struct Model3D: Codable, Identifiable, Equatable {
     /// Portal preview defaults (which way is up, what sits on the surface); Place Assembly starts from them.
     let defaultOrientation: String?
     let defaultOrigin:      String?
+    /// Bumped when the GLB changes in place on the server (assembled-pose switch); the cache is keyed on it.
+    let glbRevision:        Int?
     let uploadedBy:       String?
     let createdAt:        String
     let updatedAt:        String

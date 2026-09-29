@@ -294,7 +294,15 @@ keep the published pose (nobody sees it; the context overlay draws hidden
 parts at rest). The choice and the numbers are in the import log
 (`rest pose:` line) and a warning names the rebased count. The import form
 has an override (Model rest pose: Auto / As published / After the last
-step) for a deck the heuristic reads wrong. Verified: the four demo
+step) for a deck the heuristic reads wrong, and the choice can be changed
+after import from the guide's menu ("Assembled pose: …"):
+`POST /guides/:id/assembled-pose` (`models/assembled-pose.ts`) rewrites the
+node transforms in the GLB's JSON chunk by the runtime's own rule
+(translation and rotation replaced, scale kept), moves the former rest
+poses into the initial state tagged `sourceKey: rest-pose` (and back again
+on the reverse switch), bumps `Model3D.glbRevision` so the app's cache
+refetches, rebuilds the variant ladder in the worker and records the change
+in the import log. The source publication is not needed. Verified: the four demo
 publications stay as published (their published extent equals the end
 state); the fixture with `publishedExploded` is rebased, its motions
 classify as inserts, and `sib/test/rest-pose.test.ts` holds it.

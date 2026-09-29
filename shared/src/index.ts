@@ -537,6 +537,9 @@ export interface Model3D {
   variants?:        ModelVariant[];
   /** Triangles the full model draws (instances counted once per reference). */
   triangles?:       number;
+  /** Bumped whenever the GLB changes in place (assembled-pose switch), so a
+   *  device cache keyed on it never serves the previous file. Absent = 0. */
+  glbRevision?:     number;
   category?:        string;             // 'general' = visible to all anchors; other values are organizational labels
   defaultScale?:    number;             // Author-saved default scale (pre-fills model picker on iOS)
   /** Which way is up, set once in the portal preview; Place Assembly starts
@@ -1315,6 +1318,10 @@ export interface GuideAssembly {
   /** Playback speed multiplier for step animations (0.1–3; default 0.5 -
    *  source timings are authored for a desktop viewer and read too fast in AR). */
   animationSpeed?: number;
+  /** Which pose the model's rest pose is (Cortona imports): the pose the
+   *  publication saved, or the state after the last step. Switchable after
+   *  import with POST /guides/:id/assembled-pose. */
+  assembledPose?: 'published' | 'final';
 }
 
 export interface GuideStepModel {

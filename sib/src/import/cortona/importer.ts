@@ -66,6 +66,8 @@ export interface CortonaImportResult {
   bounds?: { min: [number, number, number]; max: [number, number, number] };
   /** Per-node metadata (DEF → objectID/part number) for callers that build tags. */
   extras:    Map<string, NodeExtras>;
+  /** Which pose the GLB's rest pose is (rest-pose.ts). */
+  assembledPose: 'published' | 'final';
 }
 
 const PUBLISH_KEYS = ['GLTF', 'X3D', 'UpRight', 'SingleHTMLBundle', 'VRMLProfile', 'CoordinateResolution', 'EnablePMI', 'KeepSurfaceEdges'];
@@ -247,7 +249,7 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
   if (rwi && rwi.stepCount === 0 && rwi.taskCount > 0) { /* expected: rwi is not a step source */ }
 
   const bounds = scene.bbox ? { min: scene.bbox.min.map(round5) as [number, number, number], max: scene.bbox.max.map(round5) as [number, number, number] } : undefined;
-  return { imported, glb, log, extras, initialNodes, bounds };
+  return { imported, glb, log, extras, initialNodes, bounds, assembledPose: restDecision.report.chosen };
 }
 
 /**

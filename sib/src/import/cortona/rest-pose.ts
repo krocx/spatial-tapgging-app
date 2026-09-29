@@ -173,7 +173,7 @@ export function decideRestPose(scene: SceneGraph, substeps: ExtractedSubStep[], 
     for (const [def, pose] of rebase) {
       const sn = scene.byDef.get(def)!;
       const p = publishedPose(sn);
-      const d: GuideStepNode = { node: `cmp:${def}` };
+      const d: GuideStepNode = { node: `cmp:${def}`, sourceKey: 'rest-pose' };   // assembled-pose.ts switches these back
       if (pose.translation) d.to = p.translation!.map(v => Math.round(v * 1e6) / 1e6) as GuideStepNode['to'];
       if (pose.rotation) d.rotationTo = p.rotation!.map(v => Math.round(v * 1e6) / 1e6) as GuideStepNode['rotationTo'];
       initialDeltas.push(d);

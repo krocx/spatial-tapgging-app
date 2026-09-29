@@ -17,7 +17,10 @@
 
 import express, { Router } from 'express';
 import type { Request, Response } from 'express';
-import { enqueueCortonaImport, getImportJob, importQueueDepth } from '../import/jobs.js';
+import { enqueueCortonaImport, enqueueVariants, getImportJob, importQueueDepth } from '../import/jobs.js';
+import { switchAssembledPose, type AssembledPose } from '../models/assembled-pose.js';
+import { recordVariants } from './models.js';
+import { requireRole } from '../middleware/auth.js';
 import { memoryLimitBytes, importNeedBytes, checkWorkerMemory } from '../memory.js';
 
 import { registerGeneratedGlb, MODELS_DIR } from './models.js';
@@ -27,6 +30,7 @@ import path from 'path';
 import { resolveDataFile, DATA_DIR } from '../data-dir.js';
 import type {
   Guide,
+  Model3D,
   GuideStep,
   CreateGuideRequest,
   UpdateGuideRequest,
@@ -248,6 +252,7 @@ router.post(
         modelId: model.id, source: 'cortona',
         ...(r.initialNodes.length ? { initialNodes: r.initialNodes as GuideStepNode[] } : {}),
         ...(r.bounds ? { bounds: r.bounds as { min: [number, number, number]; max: [number, number, number] } } : {}),
+        ...(r.assembledPose ? { assembledPose: r.assembledPose } : {}),
       };
       const applied = await applyImportedGuide(imported, { anchorId, createdBy });
       const summary = { guideId: applied.guide.id, steps: applied.steps.length, modelId: model.id, glbBytes: r.glb.length,
@@ -671,6 +676,44 @@ router.get('/:id/import-log', (req: Request, res: Response): void => {
   if (!rec) { res.status(404).json({ error: 'No import log is kept for this guide', timestamp: new Date().toISOString() }); return; }
   res.setHeader('Cache-Control', 'no-store');
   res.json({ data: rec, timestamp: new Date().toISOString() });
+});
+
+// POST /guides/:id/assembled-pose { pose: 'published' | 'final' } - switch an
+// imported assembly's rest pose after the fact (assembled-pose.ts): the GLB's
+// node transforms and the initial state are rewritten in place, the model's
+// glbRevision is bumped so device caches refetch, and the variant ladder is
+// rebuilt in the worker (202 job id in the answer). Engineer and above.
+router.post('/:id/assembled-pose', requireRole('owner', 'manager', 'engineer'), (req: Request, res: Response): void => {
+  const guide = guideStore.findById(req.params.id);
+  if (!guide) { res.status(404).json({ error: `Guide ${req.params.id} not found`, timestamp: new Date().toISOString() }); return; }
+  const pose = (req.body as { pose?: string })?.pose;
+  if (pose !== 'published' && pose !== 'final') { res.status(400).json({ error: "pose must be 'published' or 'final'", timestamp: new Date().toISOString() }); return; }
+  const asm = guide.assembly;
+  if (!asm?.modelId || asm.source !== 'cortona') { res.status(409).json({ error: 'Only an imported (Cortona3D) assembly has an assembled pose to switch', timestamp: new Date().toISOString() }); return; }
+  const model = model3DStore.findById(asm.modelId);
+  const glbPath = path.join(MODELS_DIR, `${asm.modelId}.glb`);
+  if (!model || !model.hasGLB || !fs.existsSync(glbPath)) { res.status(409).json({ error: 'The assembly model has no GLB on this server', timestamp: new Date().toISOString() }); return; }
+  try {
+    const steps = guideStepStore.findAll().filter(s => s.guideId === guide.id).sort((a, b) => a.sequenceNumber - b.sequenceNumber).map(s => s.nodes ?? []);
+    const r = switchAssembledPose(fs.readFileSync(glbPath), asm.initialNodes ?? [], steps, pose as AssembledPose);
+    let jobId: string | undefined;
+    if (r.changed) {
+      const tmp = `${glbPath}.tmp`; fs.writeFileSync(tmp, r.glb); fs.renameSync(tmp, glbPath);
+      model3DStore.update(model.id, { glbRevision: (model.glbRevision ?? 0) + 1, fileSizeBytes: r.glb.length, updatedAt: new Date().toISOString() } as Partial<Model3D>);
+      const job = enqueueVariants(model.id, MODELS_DIR, async (lr) => {
+        const fresh = model3DStore.findById(model.id);
+        return fresh ? { variants: recordVariants(fresh, lr.ladder).variants } : { variants: [] };
+      }, memoryLimitBytes());
+      jobId = job.id;
+    }
+    guideStore.update(guide.id, { assembly: { ...asm, initialNodes: r.initialNodes, assembledPose: pose as AssembledPose }, updatedAt: new Date().toISOString() } as Partial<Guide>);
+    const log = readImportLog(guide.id);
+    if (log) { const changes = ((log as unknown as { poseChanges?: unknown[] }).poseChanges ?? []); changes.push({ at: new Date().toISOString(), by: currentUamUser(req)?.email ?? 'admin key', pose, partsMoved: r.changed }); saveImportLog({ ...log, ...({ poseChanges: changes } as object) }); }
+    console.log(`[SIB] Assembled pose of guide ${guide.id} → ${pose}: ${r.changed} part(s) moved${jobId ? `, variants job ${jobId}` : ''}`);
+    res.json({ data: { pose, partsMoved: r.changed, glbRevision: (model.glbRevision ?? 0) + (r.changed ? 1 : 0), variantsJobId: jobId }, timestamp: new Date().toISOString() });
+  } catch (err) {
+    res.status(422).json({ error: `Could not switch the assembled pose: ${(err as Error).message}`, timestamp: new Date().toISOString() });
+  }
 });
 
 router.delete('/:id', (req: Request, res: Response): void => {

@@ -40,6 +40,7 @@ try {
       log: result.log,
       initialNodes: result.initialNodes,
       bounds: result.bounds,
+      assembledPose: result.assembledPose,
       ladder,
       glb,
     }, [glb]);

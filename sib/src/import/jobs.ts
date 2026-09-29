@@ -36,6 +36,7 @@ export interface CortonaWorkerResult {
   log:          unknown;
   initialNodes: unknown[];
   bounds?:      unknown;
+  assembledPose?: 'published' | 'final';
   ladder:       LadderResult;
   glb:          Buffer;
 }
@@ -121,12 +122,12 @@ function runWorker(input: WorkerInput, heapMb: number): Promise<unknown> {
       resourceLimits: { maxOldGenerationSizeMb: heapMb },
     });
     let settled = false;
-    worker.once('message', (m: { ok: boolean; error?: string; glb?: ArrayBuffer; imported?: unknown; log?: unknown; initialNodes?: unknown[]; bounds?: unknown; ladder?: LadderResult }) => {
+    worker.once('message', (m: { ok: boolean; error?: string; glb?: ArrayBuffer; imported?: unknown; log?: unknown; initialNodes?: unknown[]; bounds?: unknown; assembledPose?: 'published' | 'final'; ladder?: LadderResult }) => {
       settled = true;
       if (!m.ok) { reject(new Error(m.error ?? `${input.kind} failed`)); return; }
       const empty: LadderResult = { variants: [], triangles: 0, skipped: [] };
       if (input.kind === 'cortona') {
-        const r: CortonaWorkerResult = { imported: m.imported, log: m.log, initialNodes: m.initialNodes ?? [], bounds: m.bounds,
+        const r: CortonaWorkerResult = { imported: m.imported, log: m.log, initialNodes: m.initialNodes ?? [], bounds: m.bounds, assembledPose: m.assembledPose,
           ladder: m.ladder ?? empty, glb: Buffer.from(m.glb ?? new ArrayBuffer(0)) };
         resolve(r);
       } else {

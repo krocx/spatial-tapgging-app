@@ -5046,6 +5046,45 @@ function showCortonaImportLog(rec) {
   document.getElementById('cortona-log-pre').textContent = text;
   m.style.display = 'flex';
 }
+/** Switch an imported assembly between its two rest poses, in place (no re-import). */
+function openAssembledPose(guideId, anchorId) {
+  const guide = (guideLibraryData[anchorId]?.guides || []).find(g => g.id === guideId);
+  const current = guide?.assembly?.assembledPose === 'final' ? 'final' : 'published';
+  let m = document.getElementById('asm-pose-modal');
+  if (!m) {
+    m = document.createElement('div'); m.id = 'asm-pose-modal';
+    m.style.cssText = 'display:none;position:fixed;inset:0;background:var(--ax-scrim);z-index:9100;align-items:center;justify-content:center;';
+    document.body.appendChild(m);
+  }
+  const hint = {
+    published: 'The parts stay where the publication saved them. Right when the publication was saved assembled (most are).',
+    final: 'Every part still visible at the end moves to where the last step leaves it. For a publication saved at its exploded start. On an assembled one this also moves parts the procedure removes and sets aside.',
+  };
+  m.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px 26px;width:min(560px,94vw);position:relative">
+    <button onclick="document.getElementById('asm-pose-modal').style.display='none'" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-close"/></svg></button>
+    <h3 style="margin:0 0 4px;font-size:1rem;font-weight:700">Assembled pose</h3>
+    <p style="margin:0 0 12px;font-size:0.8rem;color:var(--muted)">Which pose the 3D model rests in. The steps play the same either way; this decides what Place Assembly, the previews and the whole-assembly context show. Switching rewrites the model in place and rebuilds its reduced copies; devices fetch the new file on their next open. Recorded in the import log.</p>
+    ${['published', 'final'].map(v => `<label style="display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;cursor:pointer;font-size:0.82rem">
+      <input type="radio" name="asm-pose" value="${v}" ${v === current ? 'checked' : ''} style="margin-top:3px">
+      <span><b>${v === 'final' ? 'After the last step' : 'As published'}</b>${v === current ? ' <span class="ax-chip" style="font-size:0.7rem">current</span>' : ''}<br><span style="color:var(--muted)">${hint[v]}</span></span></label>`).join('')}
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+      <button class="btn btn-ghost" onclick="document.getElementById('asm-pose-modal').style.display='none'">Cancel</button>
+      <button class="btn btn-primary" id="asm-pose-apply" onclick="applyAssembledPose('${guideId}','${anchorId}')">Apply</button>
+    </div></div>`;
+  m.style.display = 'flex';
+}
+async function applyAssembledPose(guideId, anchorId) {
+  const pose = document.querySelector('input[name="asm-pose"]:checked')?.value;
+  const btn = document.getElementById('asm-pose-apply'); if (!pose || !btn) return;
+  btn.disabled = true; btn.textContent = 'Switching…';
+  try {
+    const res = await apiFetch(`/guides/${guideId}/assembled-pose`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pose }) });
+    const d = res.data || res;
+    document.getElementById('asm-pose-modal').style.display = 'none';
+    toast(d.partsMoved ? `Assembled pose: ${pose === 'final' ? 'after the last step' : 'as published'} - ${d.partsMoved} part(s) moved; reduced copies rebuilding.` : `Assembled pose unchanged - the model already rests ${pose === 'final' ? 'after the last step' : 'as published'}.`, 5000);
+    if (typeof loadGuideLibrary === 'function') loadGuideLibrary();
+  } catch (e) { toast('Assembled pose: ' + e.message); btn.disabled = false; btn.textContent = 'Apply'; }
+}
 /** The importer log SIB kept for this guide (data/import-logs/<guideId>.json). */
 async function showSavedImportLog(guideId) {
   try {
@@ -5787,7 +5826,8 @@ function openGuideMenu(ev, guideId, anchorId, configId, siblings, ciMode) {
   m.innerHTML = `
     <a href="/anchors/${encodeURIComponent(anchorId)}/qrprint" target="_blank" rel="noopener" onclick="closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-qr"/></svg> Chamber QR code</a>
     ${modelLinks}
-    ${guide?.assembly?.source === 'cortona' ? `<button onclick="showSavedImportLog('${guideId}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-logs"/></svg> Import log</button>` : ''}
+    ${guide?.assembly?.source === 'cortona' ? `<button onclick="showSavedImportLog('${guideId}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-logs"/></svg> Import log</button>
+    <button onclick="openAssembledPose('${guideId}','${anchorId}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-cube"/></svg> Assembled pose: ${guide?.assembly?.assembledPose === 'final' ? 'after the last step' : 'as published'}…</button>` : ''}
     <hr>
     <a href="/xr?guide=${guideId}" target="_blank" rel="noopener" onclick="closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-xr"/></svg> Open in XR kit</a>
     <button onclick="toggleGuideCiMode('${guideId}','${anchorId}','${ciMode}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-intelligence"/></svg> ${ciMode === 'demo' ? 'Demo mode off' : 'Demo mode on'}</button>

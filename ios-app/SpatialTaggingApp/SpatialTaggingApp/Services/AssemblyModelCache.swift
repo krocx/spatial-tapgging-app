@@ -20,8 +20,39 @@ enum AssemblyModelCache {
         return d
     }
 
-    private static func url(_ modelId: String, budget: Int? = nil) -> URL {
-        dir.appendingPathComponent(budget.map { "\(modelId).\($0).glb" } ?? "\(modelId).glb")
+    private static func url(_ modelId: String, budget: Int? = nil, revision: Int? = nil) -> URL {
+        let rev = revision.map { ".r\($0)" } ?? ""
+        return dir.appendingPathComponent(budget.map { "\(modelId)\(rev).\($0).glb" } ?? "\(modelId)\(rev).glb")
+    }
+
+    /// The server's current GLB revision, or nil when it cannot be asked
+    /// (offline, older server) - then whatever is cached is used.
+    private static func currentRevision(modelId: String, client: SIBClient) async -> Int? {
+        (try? await client.fetchModel(id: modelId))?.glbRevision
+    }
+
+    /// Drop every cached file of this model that is not the given revision.
+    private static func evictOtherRevisions(modelId: String, keep: Int) {
+        let fm = FileManager.default
+        let keepTag = ".r\(keep)."
+        for f in (try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? [] {
+            let n = f.lastPathComponent
+            guard n.hasPrefix(modelId + ".") || n.hasPrefix(modelId + ".r") else { continue }
+            if !n.contains(keepTag) { try? fm.removeItem(at: f) }
+        }
+    }
+
+    /// Newest cached file for this model and budget, any revision (offline fallback).
+    private static func anyCached(modelId: String, budget: Int?) -> URL? {
+        let fm = FileManager.default
+        let suffix = budget.map { ".\($0).glb" } ?? ".glb"
+        let files = ((try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.contentModificationDateKey])) ?? [])
+            .filter { $0.lastPathComponent.hasPrefix(modelId + ".") && $0.lastPathComponent.hasSuffix(suffix) && !$0.lastPathComponent.hasSuffix(".meta") }
+        return files.max { a, b in
+            let da = (try? a.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+            let db = (try? b.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+            return da < db
+        }
     }
 
     /// Cached bytes if present, else download (long timeout) and cache.
@@ -37,15 +68,21 @@ enum AssemblyModelCache {
     /// this is the full model as before.
     struct Fetched { let data: Data; let variantBudget: Int?; let triangles: Int? }
     static func glb(modelId: String, budget: Int?, client: SIBClient) async throws -> Fetched {
-        let u = url(modelId, budget: budget)
+        // The cache is keyed on the server's GLB revision, so a model rewritten
+        // in place (assembled-pose switch) is fetched again rather than served
+        // from the old file. Unreachable server: the newest cached copy.
+        let revision = await currentRevision(modelId: modelId, client: client)
+        let u = revision.map { url(modelId, budget: budget, revision: $0) } ?? anyCached(modelId: modelId, budget: budget) ?? url(modelId, budget: budget)
         if let data = try? Data(contentsOf: u, options: .mappedIfSafe), data.count > 20 {
             let meta = readMeta(u)
             return Fetched(data: data, variantBudget: meta.variantBudget, triangles: meta.triangles)
         }
         let dl = try await client.downloadModelGLB(id: modelId, budget: budget)
         guard dl.data.count > 20 else { throw AssemblyModelCacheError.empty }
-        try? dl.data.write(to: u, options: .atomic)
-        writeMeta(u, variantBudget: dl.variantBudget, triangles: dl.triangles)
+        let target = url(modelId, budget: budget, revision: revision)
+        try? dl.data.write(to: target, options: .atomic)
+        writeMeta(target, variantBudget: dl.variantBudget, triangles: dl.triangles)
+        if let r = revision { evictOtherRevisions(modelId: modelId, keep: r) }
         return Fetched(data: dl.data, variantBudget: dl.variantBudget, triangles: dl.triangles)
     }
 

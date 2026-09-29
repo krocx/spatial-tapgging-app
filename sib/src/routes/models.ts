@@ -312,6 +312,7 @@ router.get('/:id/file.glb', (req: Request, res: Response): void => {
   res.setHeader('Vary', 'Accept-Encoding');
   if (served) { res.setHeader('X-SIB-Model-Variant', String(served.budget)); res.setHeader('X-SIB-Model-Triangles', String(served.triangles)); }
   else if (typeof model.triangles === 'number') res.setHeader('X-SIB-Model-Triangles', String(model.triangles));
+  res.setHeader('X-SIB-Model-Revision', String(model.glbRevision ?? 0));
   res.sendFile(filePath);
 });
 

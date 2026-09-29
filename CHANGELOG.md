@@ -7,6 +7,15 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **Assembled pose can be changed after import.** Guide menu → "Assembled
+  pose: …" switches an imported model between "as published" and "after the
+  last step" in place, with the same hints as the import form: the GLB's
+  node transforms and the initial state are rewritten by the runtime's own
+  rule, reduced copies are rebuilt, and the change is written to the import
+  log. No re-import, same guide, placed steps and sessions untouched. The
+  model record gains `glbRevision` and the app's assembly cache is keyed on
+  it, so a device fetches the rewritten file on its next open instead of
+  serving the old one (offline it uses the newest cached copy).
 - **Designer preview plays the step.** For imported guides the 3D preview
   now shows the runtime state after the selected step (hidden, ghost, moved
   parts and hose frames, as the app computes it) instead of the coarse

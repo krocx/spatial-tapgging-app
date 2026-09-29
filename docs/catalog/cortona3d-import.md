@@ -11,6 +11,7 @@ api: |
   POST /guides/import/cortona - published RapidManual .htm (or bundle ZIP) → 202 job; parsed in a worker, one at a time (portal · API key)
   GET /guides/import/jobs/:id - poll the import: queued | processing | done (guide, steps, model, log) | failed (portal · API key)
   GET /guides/:id/import-log - the importer log kept for the guide (counts, PROTOs, options, warnings); guide menu → Import log (portal · API key)
+  POST /guides/:id/assembled-pose - { pose: published | final } switches the model's rest pose in place, bumps glbRevision, rebuilds variants (portal · Engineer+)
   PATCH /guides/:id - { assemblyPose } places the whole assembly once; null clears it (iOS · portal · API key)
   PATCH /chamber-configs/:id - { defaultAssemblyPose } shared placement for every chamber of a configuration (portal · Engineer+)
 wireframe: portal
