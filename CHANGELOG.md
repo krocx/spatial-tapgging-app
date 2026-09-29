@@ -153,6 +153,11 @@ it, it gets a line.
   focus ring uses it too, so where the ring sits is where a tap lands.
 
 ### Fixed
+- **Portal 3D preview no longer draws hose flipbook frames.** The Models
+  and guide previews now honour the initial visibility the importer
+  records on every node, so the eight baked frames per hose motion (and
+  the spares the set-up step hides) are not all drawn at once as rings of
+  tubes; bounds and the origin marker come from the drawn geometry only.
 - **Assembly context no longer looks exploded.** With the whole-assembly
   context on (ghost or solid), parts the step has not installed yet were
   drawn where the publication's set-up step had exploded them to. They are

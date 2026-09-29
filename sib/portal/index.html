@@ -7307,10 +7307,10 @@ function _layoutPreview() {
   const q = _ORIENT_Q[_orient] || _ORIENT_Q.asImported;
   _rawModel.quaternion.set(q[0], q[1], q[2], q[3]);
   _rawModel.position.set(0, 0, 0);
-  _bbox = new THREE.Box3().setFromObject(_rawModel);
+  _bbox = _visibleBox(_rawModel);
   const c = _bbox.getCenter(new THREE.Vector3());
   _rawModel.position.set(-c.x, -_bbox.min.y, -c.z);
-  _bbox = new THREE.Box3().setFromObject(_rawModel);
+  _bbox = _visibleBox(_rawModel);
   // The origin marker: what lands on the tapped surface in AR.
   const sz = _bbox.getSize(new THREE.Vector3());
   let p;
@@ -7558,6 +7558,18 @@ function _initScene() {
 
 // ── GLB loading ───────────────────────────────────────────────────────────────
 
+/** Bounds of the drawn geometry only (hidden frames and spares excluded). */
+function _visibleBox(root) {
+  const box = new THREE.Box3();
+  root.updateWorldMatrix(true, true);
+  root.traverse(o => {
+    if (!o.isMesh || !o.geometry) return;
+    for (let p = o; p; p = p.parent) if (p.visible === false) return;
+    if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+    box.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld));
+  });
+  return box.isEmpty() ? new THREE.Box3().setFromObject(root) : box;
+}
 function _loadGLB(url) {
   const loader = new GLTFLoader();
   const key = _key();
@@ -7565,7 +7577,16 @@ function _loadGLB(url) {
 
   loader.load(url, (gltf) => {
     const model = gltf.scene;
-    model.traverse(c => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
+    // The importer records each part's initial visibility in glTF extras
+    // (`visible:false` = hidden until a step reveals it: exploded spares,
+    // hose flipbook frames). The preview shows the assembled model, so honour
+    // it - otherwise every baked frame of a hose sweep is drawn at once.
+    let hidden = 0;
+    model.traverse(c => {
+      if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; }
+      if (c.userData && c.userData.visible === false) { c.visible = false; hidden++; }
+    });
+    if (hidden) console.info(`[Portal] preview: ${hidden} initially hidden node(s) not drawn`);
 
     // A wrapper carries scale; the model inside carries orientation and is
     // re-seated on the floor (bottom of bounding box → y = 0).
