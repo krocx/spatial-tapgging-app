@@ -153,6 +153,9 @@ it, it gets a line.
   focus ring uses it too, so where the ring sits is where a tap lands.
 
 ### Fixed
+- **Catalogue feature panel scrolls again.** The brand migration left a
+  stray `-webkit-` token where the glass blur was removed, which made the
+  panel's `overflow-y` invalid on every browser.
 - **Wide tables no longer spill past their card.** User Access, Content
   Catalogue, Usage Log, Fleet and iLOTO tables scroll inside the card on
   narrow windows; the products column in User Access wraps.
