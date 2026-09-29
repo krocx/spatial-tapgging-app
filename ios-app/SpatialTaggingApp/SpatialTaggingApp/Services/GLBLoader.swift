@@ -74,6 +74,8 @@ struct GLBLoadOptions {
     var flatShadingUpTo: Int = 150_000
     /// Primitives under this many triangles are never reduced (per-part floor; mirrors the server's reducer).
     static let smallPartTriangles = 5_000
+    /// The least any reduced part keeps, however many times it is instanced.
+    static let minPartTriangles = 500
     /// 0…1 while parsing, building and (if needed) reducing.
     var progress: (@Sendable (Double) -> Void)? = nil
 
@@ -178,9 +180,18 @@ enum GLBLoader {
         // once per reference). Decides flat vs indexed and whether to reduce.
         let sceneIdx0   = json["scene"] as? Int ?? 0
         var meshRefs: [Int: Int] = [:]
+        // Hose flipbook frames (`<owner>#s<n>f<k>`) draw one at a time: only the
+        // first frame of each owner counts, or the frames eat the whole budget
+        // (server: variants.ts meshReferences, same rule).
+        var frameOwners = Set<String>()
         func census(_ i: Int, _ seen: inout Set<Int>) {
             guard i < nodesJ.count, !seen.contains(i) else { return }; seen.insert(i)
-            if let mi = nodesJ[i]["mesh"] as? Int { meshRefs[mi, default: 0] += 1 }
+            if let mi = nodesJ[i]["mesh"] as? Int {
+                if let name = nodesJ[i]["name"] as? String, let hash = name.range(of: #"#s\d+f\d+$"#, options: .regularExpression) {
+                    let owner = String(name[..<hash.lowerBound])
+                    if !frameOwners.contains(owner) { frameOwners.insert(owner); meshRefs[mi, default: 0] += 1 } else { meshRefs[mi, default: 0] += 0 }
+                } else { meshRefs[mi, default: 0] += 1 }
+            }
             for c in nodesJ[i]["children"] as? [Int] ?? [] { census(c, &seen) }
         }
         var seen = Set<Int>()
@@ -239,7 +250,13 @@ enum GLBLoader {
                     geo = flatGeometry(positions: positions, indices: indices)
                 } else {
                     var pos = positions, idx = indices
-                    if ratio < 1, triCount >= GLBLoadOptions.smallPartTriangles { (pos, idx) = decimate(positions: pos, indices: idx, keep: ratio) }
+                    if ratio < 1, triCount >= GLBLoadOptions.smallPartTriangles {
+                        // The floor is a minimum shared by a part's instances, never
+                        // fewer than minPartTriangles each (server: reduce-clustering.ts).
+                        let refs = max(1, meshRefs[mi] ?? 1)
+                        let minKeep = min(triCount, max(GLBLoadOptions.minPartTriangles, GLBLoadOptions.smallPartTriangles / refs))
+                        (pos, idx) = decimate(positions: pos, indices: idx, keep: max(ratio, Double(minKeep) / Double(triCount)))
+                    }
                     triCount = idx.count / 3
                     guard triCount > 0 else { continue }
                     geo = indexedGeometry(positions: pos, indices: idx)
@@ -401,6 +418,11 @@ enum GLBLoader {
         let ext = max(hi.x - lo.x, hi.y - lo.y, hi.z - lo.z, 1e-6)
         // Cells per axis from the target: a surface's triangle count grows with k².
         var k = max(4.0, (Double(target) * 0.9).squareRoot())
+        // Never coarser than the part's thinnest dimension, or a thin ring
+        // flattens to a sliver (server: reduce-clustering.ts, same rule).
+        let exts = [hi.x - lo.x, hi.y - lo.y, hi.z - lo.z].filter { $0 > 1e-6 }
+        let minExt = exts.min() ?? ext
+        k = max(k, Double(ext / (minExt * 0.5)))
         var best: ([simd_float3], [UInt32]) = (positions, indices)
         for _ in 0 ..< 6 {
             let cell = ext / Float(k)

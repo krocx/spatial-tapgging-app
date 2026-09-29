@@ -36,6 +36,14 @@ export function decimate(positions: Float32Array, indices: Uint32Array, keep: nu
   }
   const ext = f(Math.max(f(hx - lx), f(hy - ly), f(hz - lz), 1e-6));
   let k = Math.max(4.0, Math.sqrt(target * 0.9));
+  // A cell coarser than the part's thinnest dimension flattens it: a 1 mm
+  // seal ring clustered at 4 mm cells became a 276-triangle sliver at 61 %
+  // keep. Cells never exceed half the smallest non-zero extent (two cells
+  // across the thin axis), so thin parts reduce little or not at all rather
+  // than collapse. (Same rule on the device.)
+  const exts = [f(hx - lx), f(hy - ly), f(hz - lz)].filter(e => e > 1e-6);
+  const minExt = exts.length ? Math.min(...exts) : ext;
+  k = Math.max(k, f(ext / f(minExt * 0.5)));
   let best = { positions, indices };
 
   for (let pass = 0; pass < 6; pass++) {
@@ -83,11 +91,14 @@ export function instanceWeightedTriangles(meshes: GlbMeshGeometry[], refs: Map<n
 /** Primitives under this many triangles are copied through unreduced: the
  *  per-part floor from the architecture review. Clustering a 1,600-triangle
  *  1 mm O-ring at the assembly's ratio flattened it to eight triangles; small
- *  parts are cheap to keep and are the ones an operator has to find. */
+ *  parts are cheap to keep and are the ones an operator has to find. Also
+ *  the least a reduced part keeps (a big part never falls below it). */
 export const SMALL_PART_TRIANGLES = 5_000;
+/** The least any reduced part keeps, however many times it is instanced. */
+export const MIN_PART_TRIANGLES = 500;
 
 export const clusteringReducer: Reducer = {
-  name: 'vertex-clustering/2',
+  name: 'vertex-clustering/3',
   reduce(meshes: GlbMeshGeometry[], budget: number, ctx: ReduceContext): GlbMeshGeometry[] {
     const source = instanceWeightedTriangles(meshes, ctx.meshRefs);
     // Budget for the big parts = budget minus what the small ones keep.
@@ -99,8 +110,16 @@ export const clusteringReducer: Reducer = {
     return meshes.map(m => ({
       meshIndex: m.meshIndex,
       primitives: m.primitives.map((p): GlbPrimitiveGeometry => {
-        if (p.indices.length / 3 < SMALL_PART_TRIANGLES || ctx.protectedMeshes.has(m.meshIndex)) return p;
-        const r = decimate(p.positions, p.indices, ratio);
+        const tris = p.indices.length / 3;
+        if (tris < SMALL_PART_TRIANGLES || ctx.protectedMeshes.has(m.meshIndex)) return p;
+        // The floor is a minimum, not only a skip: a part just above it keeps
+        // at least the floor rather than falling to a sliver (the
+        // 8,000-triangle seal became 28 triangles at 700 k). The floor is
+        // shared by a part's instances (a screw drawn 20 times keeps 5,000
+        // triangles between them, never fewer than MIN_PART_TRIANGLES each).
+        const refs = Math.max(1, ctx.meshRefs.get(m.meshIndex) ?? 1);
+        const minKeep = Math.min(tris, Math.max(MIN_PART_TRIANGLES, SMALL_PART_TRIANGLES / refs));
+        const r = decimate(p.positions, p.indices, Math.max(ratio, minKeep / tris));
         return { positions: r.positions, indices: r.indices, ...(p.material !== undefined ? { material: p.material } : {}) };
       }),   // an emptied primitive stays in place; the writer drops it
     }));

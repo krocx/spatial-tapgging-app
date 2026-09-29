@@ -42,32 +42,39 @@ test('ladder on the synthetic import: nodes, extras and materials untouched', as
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sib-red-'));
   const r = buildLadder(glb, dir, 's', clusteringReducer, { ladder: [24] });
   assert.equal(r.variants.length, 1);
-  assert.equal(r.variants[0].algorithm, 'vertex-clustering/2');
+  assert.equal(r.variants[0].algorithm, 'vertex-clustering/3');
   const a = readGlbJson(glb), b = readGlbJson(fs.readFileSync(path.join(dir, 's.24.glb')));
   assert.deepEqual(b.nodes, a.nodes); assert.deepEqual(b.materials, a.materials);
 });
 
-// Reference numbers: the iPhone built the pre-hose GLB as parts=719 meshes=183
-// tris=389641 from a census of 2,131,258 (vertex-clustering/1, no floor).
-// With the 47 hose sweeps, their 632 flipbook frames (hose-frames.ts) and the
-// per-part floor (vertex-clustering/2: primitives under 5,000 triangles are
-// kept), the census is 2,538,436 and the 700 k variant is 619,566 unique
-// triangles in 869 primitives, 689,535 drawn - under budget, small parts
-// intact. The device's loader has the same floor and reproduces these.
-test('Bee drone parity with the device: 700 k budget → 619,566 unique triangles, 869 primitives', { skip: !fs.existsSync(BEE) && `no Bee publication at ${BEE}` }, async () => {
+// Reference numbers (vertex-clustering/3, 2026-09-29). Census counts each
+// hose's flipbook frames once (they draw one at a time): 2,190,510 drawn.
+// The floor is a minimum shared by a part's instances, and a cell is never
+// coarser than half a part's thinnest extent, so the 8,172-triangle seal
+// keeps 5,618 with its full 1.1 mm thickness instead of collapsing to 28.
+// The 700 k variant therefore lands a little over its label (715,485 drawn):
+// the label is the request, the floors are the promise. The device applies
+// the same three rules (GLBLoader.swift) and reproduces these.
+test('Bee drone parity with the device: 700 k budget → 857,112 unique triangles, 869 primitives, seal kept whole', { skip: !fs.existsSync(BEE) && `no Bee publication at ${BEE}` }, async () => {
   const { importCortonaBundle } = await import('../src/import/cortona/importer.js');
   const { buildLadder, meshReferences } = await import('../src/models/variants.js');
   const { clusteringReducer } = await import('../src/models/reduce-clustering.js');
   const { readGlb, readGeometry, geometrySummary } = await import('../src/models/glb-geometry.js');
   const glb = importCortonaBundle(fs.readFileSync(BEE), {}).glb;
   const doc = readGlb(glb);
-  assert.equal(geometrySummary(doc, meshReferences(doc.json)).triangles, 2_538_436, 'census = the device census');
+  assert.equal(geometrySummary(doc, meshReferences(doc.json)).triangles, 2_190_510, 'census = the device census (frames once per hose)');
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sib-bee-'));
   const r = buildLadder(glb, dir, 'bee', clusteringReducer, { ladder: [700_000] });
-  const v = readGeometry(readGlb(fs.readFileSync(path.join(dir, 'bee.700000.glb'))));
-  assert.equal(v.stats.triangles, 619_566);
+  const vd = readGlb(fs.readFileSync(path.join(dir, 'bee.700000.glb')));
+  const v = readGeometry(vd);
+  assert.equal(v.stats.triangles, 857_112);
   assert.equal(v.meshes.reduce((n, m) => n + m.primitives.length, 0), 869);
-  assert.ok(r.variants[0].triangles <= 700_000, 'drawn triangles within budget');
-  assert.equal((readGlb(fs.readFileSync(path.join(dir, 'bee.700000.glb'))).json.nodes as unknown[]).length, 719 + 47 + 632, 'parts + #rest + frames');
-  assert.ok(r.variants[0].bytes < glb.length / 2, 'well under half the download');
+  assert.equal(r.variants[0].triangles, 715_485, 'drawn: the floors put it just over the label');
+  const seal = (vd.json.nodes as Array<{ name?: string; mesh?: number }>).find(n => n.name === 'cmp:seal_cutted_5')!;
+  const sealPrim = v.meshes[seal.mesh!].primitives[0];
+  assert.equal(sealPrim.indices.length / 3, 5_618, 'the seal keeps its floor');
+  let lo = Infinity, hi = -Infinity; for (let i = 2; i < sealPrim.positions.length; i += 3) { lo = Math.min(lo, sealPrim.positions[i]); hi = Math.max(hi, sealPrim.positions[i]); }
+  assert.ok(hi - lo > 0.001, 'and its 1.1 mm thickness');
+  assert.equal((vd.json.nodes as unknown[]).length, 719 + 47 + 632, 'parts + #rest + frames');
+  assert.ok(r.variants[0].bytes < glb.length * 0.55, 'about half the download (the 632 hose frames are never reduced and dominate the file)');
 });

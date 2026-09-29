@@ -176,6 +176,18 @@ it, it gets a line.
   focus ring uses it too, so where the ring sits is where a tap lands.
 
 ### Fixed
+- **Reduced models no longer flatten seals and screws.** Three faults in
+  the reducer, on the server and on the device: the 632 baked hose frames
+  were counted in full against the budget although only one draws at a
+  time, which pushed the reduction ratio to its 1 % floor; the 5,000-triangle
+  floor only skipped parts below it, so an 8,172-triangle seal fell to 28
+  triangles; and the clustering cell could be coarser than a part's
+  thickness, which flattens any thin ring. Now frames count once per hose,
+  the floor is a minimum shared by a part's instances (never under 500
+  each), and a cell is never coarser than half the thinnest extent. The Bee's
+  seal keeps 5,618 triangles and its 1.1 mm thickness at every budget.
+  Reducer `vertex-clustering/3`; rebuild variants from the Models page, or
+  re-import. `docs/ar-ojt/MODEL-VARIANTS.md`.
 - **AR: a hidden group hides its baked hose frames.** A part's own state used
   to override its parent's, so when the Bee's animation seal was hidden at
   the end of step 1 its last flipbook frame stayed visible and floated under

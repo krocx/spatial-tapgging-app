@@ -43,17 +43,25 @@ export interface ReduceContext {
   meshRefs: Map<number, number>;
 }
 
-/** Node → mesh references, walking the default scene as the device does. */
+/** Node → mesh references, walking the default scene as the device does.
+ *  Hose flipbook frames (`<owner>#s<n>f<k>`) are drawn one at a time, so
+ *  only the first frame of each owner counts: the census is what is on
+ *  screen at once, not what is in the file. Without this the Bee's 632
+ *  frames ate the whole 700 k budget and every real part was cut to 1 %. */
 export function meshReferences(json: Record<string, unknown>): Map<number, number> {
-  const nodes = (json.nodes as Array<{ mesh?: number; children?: number[] }> | undefined) ?? [];
+  const nodes = (json.nodes as Array<{ name?: string; mesh?: number; children?: number[] }> | undefined) ?? [];
   const scenes = (json.scenes as Array<{ nodes?: number[] }> | undefined) ?? [];
   const sceneIx = typeof json.scene === 'number' ? json.scene : 0;
   const roots = scenes[sceneIx]?.nodes ?? scenes[0]?.nodes ?? nodes.map((_, i) => i);
-  const refs = new Map<number, number>(); const seen = new Set<number>();
+  const refs = new Map<number, number>(); const seen = new Set<number>(); const frameOwners = new Set<string>();
   const walk = (i: number): void => {
     if (seen.has(i) || i < 0 || i >= nodes.length) return; seen.add(i);
     const n = nodes[i];
-    if (typeof n.mesh === 'number') refs.set(n.mesh, (refs.get(n.mesh) ?? 0) + 1);
+    if (typeof n.mesh === 'number') {
+      const fm = n.name?.match(/^(.*)#s\d+f\d+$/);
+      if (fm) { if (!frameOwners.has(fm[1])) { frameOwners.add(fm[1]); refs.set(n.mesh, (refs.get(n.mesh) ?? 0) + 1); } else refs.set(n.mesh, refs.get(n.mesh) ?? 0); }
+      else refs.set(n.mesh, (refs.get(n.mesh) ?? 0) + 1);
+    }
     for (const c of n.children ?? []) walk(c);
   };
   for (const r of roots) walk(r);

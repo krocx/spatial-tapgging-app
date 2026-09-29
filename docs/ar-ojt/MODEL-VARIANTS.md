@@ -105,13 +105,22 @@ the same census the device logs). Ladder built in 0.3 s:
 | 700 k | 651,097 | **389,641** | **183** | 6.9 MB |
 | 350 k | 309,444 | 186,759 | 180 | 3.3 MB |
 
-(Measured before hose sweeps were rebuilt. With the 47 tubes, their 632
-flipbook frames and the per-part floor - `vertex-clustering/2`, primitives
-under 5,000 triangles are never reduced - the census is 2,538,436 and the
-700 k variant is 619,566 unique triangles in 869 primitives, 689,535
-drawn, 11.9 MB. The floor costs download size but keeps a 1 mm O-ring a
-tube instead of eight flat triangles. The parity test carries the current
-numbers; the device loader has the same floor.)
+(Measured before hose sweeps were rebuilt. Current numbers, `vertex-clustering/3`,
+2026-09-29: the census counts each hose's flipbook frames once, since they
+draw one at a time - 2,190,510 drawn for the Bee with its 47 tubes and 632
+frames. Three rules protect small and thin parts: primitives under 5,000
+triangles are never reduced; a reduced part keeps at least 5,000 triangles
+shared across its instances and never fewer than 500 each (a screw drawn
+20 times keeps 250 each, not 28); and the clustering cell is never coarser
+than half the part's thinnest extent, so a 1.1 mm seal ring keeps its
+thickness (8,172 → 5,618 triangles) instead of flattening to a 28-triangle
+sliver. The price is that a variant can land over its label: 700 k → 715,485
+drawn, 16.1 MB; 350 k → 489,254, 13.5 MB. The label is the request, the
+floors are the promise; a device whose budget is below what it receives
+reduces again with the same three rules and gets the same answer. The
+parity test carries the current numbers. Before /3 the 632 frames were
+counted in full against the budget, the ratio bottomed at 1 % and every
+real part above the floor collapsed - the thin O-ring seen in AR.)
 
 The 700 k row is exactly what the iPhone built for itself
 (`[GLBLoader] parts=719 meshes=183 tris=389641`), so the parity test in
