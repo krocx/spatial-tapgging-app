@@ -39,6 +39,10 @@ export function readGlbJson(buf: Buffer): Record<string, unknown> {
 }
 
 /** Build the part tree from parsed glTF JSON. Pure; safe on any input shape. */
+/** Nodes the importer adds for animation only: `<owner>#s<n>f<k>` (a baked
+ *  hose frame) and `<owner>#rest` (the owner's rest tube). */
+export function isPlaybackNode(name: string): boolean { return /#(s\d+f\d+|rest)$/.test(name); }
+
 export function partTreeOf(gltf: Record<string, unknown>): GlbPartTree {
   const nodesJ = Array.isArray(gltf.nodes) ? gltf.nodes as Array<Record<string, unknown>> : [];
   const scenes = Array.isArray(gltf.scenes) ? gltf.scenes as Array<{ nodes?: number[] }> : [];
@@ -54,6 +58,9 @@ export function partTreeOf(gltf: Record<string, unknown>): GlbPartTree {
     seen.add(i);
     const nj = nodesJ[i];
     const name = typeof nj.name === 'string' && nj.name.trim() ? nj.name : `node${i}`;
+    // Playback-only nodes (hose flipbook frames, the owner's rest tube) are not
+    // parts an author picks; they stay in the model for the players.
+    if (isPlaybackNode(name)) return null;
     const mesh = typeof nj.mesh === 'number';
     if (mesh) meshCount++;
     names.push(name);

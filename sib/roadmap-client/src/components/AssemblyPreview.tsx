@@ -113,8 +113,17 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, height = 2
         scene.add(root);
         st.root = root;
 
-        // Frame the whole assembly.
-        const box = new THREE.Box3().setFromObject(root);
+        // Frame the whole assembly (drawn geometry only: not the baked hose frames).
+        root.traverse((o: any) => { const n = partName(o); if (n && /#s\d+f\d+$/.test(n)) o.visible = false; });
+        const box = new THREE.Box3();
+        root.updateWorldMatrix(true, true);
+        root.traverse((o: any) => {
+          if (!o.isMesh || !o.geometry) return;
+          for (let p = o; p; p = p.parent) if (p.visible === false) return;
+          if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+          box.union(o.geometry.boundingBox.clone().applyMatrix4(o.matrixWorld));
+        });
+        if (box.isEmpty()) box.setFromObject(root);
         const size = box.getSize(new THREE.Vector3()).length() || 1;
         const centre = box.getCenter(new THREE.Vector3());
         controls.target.copy(centre);
@@ -185,12 +194,19 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, height = 2
     const thisBox = new THREE.Box3();
     let anyThis = false;
 
+    // Hose flipbook frames (`#s<n>f<k>`) exist for playback only: the rest tube
+    // (`#rest`) is the hose here. Parts the model starts hidden (exploded
+    // spares) show only once a step mentions them.
+    const playbackOnly = (o: any): boolean => { for (let p = o; p; p = p.parent) { const n = partName(p); if (n && /#s\d+f\d+$/.test(n)) return true; } return false; };
+    const startsHidden = (o: any): boolean => { for (let p = o; p; p = p.parent) if (p.userData?.visible === false) return true; return false; };
+    const mentioned = (o: any): boolean => { for (let p = o; p; p = p.parent) { const n = partName(p); if (n && states.has(n)) return true; } return false; };
     st.root.traverse((o: any) => {
       if (!o.isMesh) return;
       const base = st.own.get(o) ?? [];
       const mats = Array.isArray(o.material) ? o.material : [o.material];
       const state = stateOf(o);
       o.visible = !(state === 'after' && laterMode === 'hidden');
+      if (playbackOnly(o) || (startsHidden(o) && !mentioned(o))) o.visible = false;
       if (state === 'this') { thisBox.expandByObject(o); anyThis = true; }
       mats.forEach((m: any, i: number) => {
         const b = base[i];

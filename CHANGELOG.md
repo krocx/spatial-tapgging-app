@@ -153,6 +153,11 @@ it, it gets a line.
   focus ring uses it too, so where the ring sits is where a tap lands.
 
 ### Fixed
+- **Designer preview and part picker ignore playback-only nodes.** Hose
+  flipbook frames (`#s<n>f<k>`) and rest tubes (`#rest`) are no longer
+  listed as parts by `GET /models/:id/nodes`, and the Designer's assembly
+  preview never draws the frames; parts the model starts hidden are drawn
+  only once a step mentions them. Framing uses the drawn geometry.
 - **Portal 3D preview no longer draws hose flipbook frames.** The Models
   and guide previews now honour the initial visibility the importer
   records on every node, so the eight baked frames per hose motion (and
