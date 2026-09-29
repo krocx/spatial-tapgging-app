@@ -7,6 +7,11 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **Import logs are kept.** Every Cortona import saves its log (counts,
+  PROTO names, options, rest-pose decision, warnings; never content) under
+  `data/import-logs/<guideId>.json`. The guide's menu in the Guide Library
+  has "Import log", which opens the same log view with Copy and Download;
+  `GET /guides/:id/import-log` serves it. Deleted with the guide.
 - **Code architecture page.** `/architecture` renders `docs/ARCHITECTURE.md`
   as the C4 model beneath the Feature Catalogue: context, containers, one
   component diagram each for SIB, the iOS app and the web surfaces, a

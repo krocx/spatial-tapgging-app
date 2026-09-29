@@ -4993,12 +4993,13 @@ async function submitImportCortona(anchorId, createdBy) {
 
 let lastCortonaImportLog = null;
 /** Content-free import log (counts, PROTO names, warnings) - safe to copy into a ticket or send to the AppliedX team. */
-function showCortonaImportLog() {
-  if (!lastCortonaImportLog) return;
-  const L = lastCortonaImportLog.log;
+function showCortonaImportLog(rec) {
+  const R = rec || lastCortonaImportLog;
+  if (!R) return;
+  const L = R.log;
   const lines = [
-    `Cortona3D import log - ${new Date().toISOString()}`,
-    `guide ${lastCortonaImportLog.guideId} · ${lastCortonaImportLog.steps} steps · model ${lastCortonaImportLog.modelId} (${(lastCortonaImportLog.glbBytes/1048576).toFixed(2)} MB GLB)`,
+    `Cortona3D import log - ${R.importedAt || new Date().toISOString()}${R.guideName ? ` · ${R.guideName}` : ''}${R.importedBy ? ` · by ${R.importedBy}` : ''}`,
+    `guide ${R.guideId} · ${R.steps} steps · model ${R.modelId} (${(R.glbBytes/1048576).toFixed(2)} MB GLB)${R.sourceFilename ? ` · file ${R.sourceFilename}` : ''}${R.options ? ` · options ${JSON.stringify(R.options)}` : ''}`,
     `source: ${L.source.kind} ${(L.source.bytes/1048576).toFixed(1)} MB · bundle entries ${L.bundle.entries} (${L.bundle.inventory.map(e => e.kind).join(', ')}) · interactivity ${L.bundle.hasInteractivity} · rwi ${L.bundle.hasRwi} · svg ${L.bundle.svgs}`,
     `vrml: ${L.vrml.header} · ${L.vrml.protosDeclared} PROTOs declared · ${L.vrml.routes} ROUTEs`,
     `scene: ${L.scene.nodes} nodes · ${L.scene.defs} DEFs · ${L.scene.meshes} meshes · ${L.scene.triangles} triangles · extent ${L.scene.extentM ? L.scene.extentM.map(v => v.toFixed(3)).join(' × ') + ' m' : 'n/a'}`,
@@ -5032,10 +5033,20 @@ function showCortonaImportLog() {
   document.getElementById('cortona-log-pre').textContent = text;
   m.style.display = 'flex';
 }
+/** The importer log SIB kept for this guide (data/import-logs/<guideId>.json). */
+async function showSavedImportLog(guideId) {
+  try {
+    const r = await fetch(`/guides/${guideId}/import-log`, { headers: { 'X-API-Key': apiKey() } });
+    if (r.status === 404) { toast('No import log is kept for this guide (authored, copied, or imported before logs were kept)'); return; }
+    if (!r.ok) throw new Error((await r.json()).error || r.statusText);
+    showCortonaImportLog((await r.json()).data);
+  } catch (e) { toast('Import log: ' + e.message); }
+}
 function downloadCortonaImportLog() {
   const text = document.getElementById('cortona-log-pre')?.textContent || '';
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
-  a.download = `cortona-import-log-${Date.now()}.txt`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  const first = text.split('\n')[1] || ''; const gid = (first.match(/^guide (\S+)/) || [])[1] || Date.now();
+  a.download = `cortona-import-log-${gid}.txt`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 
 async function submitImportGuide() {
@@ -5763,6 +5774,7 @@ function openGuideMenu(ev, guideId, anchorId, configId, siblings, ciMode) {
   m.innerHTML = `
     <a href="/anchors/${encodeURIComponent(anchorId)}/qrprint" target="_blank" rel="noopener" onclick="closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-qr"/></svg> Chamber QR code</a>
     ${modelLinks}
+    ${guide?.assembly?.source === 'cortona' ? `<button onclick="showSavedImportLog('${guideId}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-logs"/></svg> Import log</button>` : ''}
     <hr>
     <a href="/xr?guide=${guideId}" target="_blank" rel="noopener" onclick="closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-xr"/></svg> Open in XR kit</a>
     <button onclick="toggleGuideCiMode('${guideId}','${anchorId}','${ciMode}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-intelligence"/></svg> ${ciMode === 'demo' ? 'Demo mode off' : 'Demo mode on'}</button>

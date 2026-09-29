@@ -24,7 +24,7 @@ import { registerGeneratedGlb, MODELS_DIR } from './models.js';
 import { v4 as uuidv4 } from 'uuid';
 import fs   from 'fs';
 import path from 'path';
-import { resolveDataFile } from '../data-dir.js';
+import { resolveDataFile, DATA_DIR } from '../data-dir.js';
 import type {
   Guide,
   GuideStep,
@@ -50,6 +50,33 @@ import {
   deleteStepImage,
 } from '../guides/store.js';
 import { applyImportedGuide } from '../guides/ingest.js';
+
+// ── Import logs ──────────────────────────────────────────────────────────────
+// One JSON per imported guide under DATA_DIR/import-logs/<guideId>.json: the
+// content-free importer log (counts, PROTO names, options, warnings) plus the
+// summary the import answered with. Kept for the life of the guide so the
+// log can be read again from the guide's menu; deleted with the guide.
+const IMPORT_LOG_DIR = path.join(DATA_DIR, 'import-logs');
+export interface ImportLogRecord {
+  guideId: string; guideName: string; importedAt: string; importedBy: string; anchorId: string;
+  source: 'cortona'; sourceFilename?: string; options: Record<string, unknown>;
+  modelId: string; steps: number; glbBytes: number; triangles?: number;
+  variants?: { budget: number; triangles: number; bytes: number }[];
+  log: unknown;
+}
+export function saveImportLog(rec: ImportLogRecord): void {
+  try { fs.mkdirSync(IMPORT_LOG_DIR, { recursive: true }); fs.writeFileSync(path.join(IMPORT_LOG_DIR, `${rec.guideId}.json`), JSON.stringify(rec, null, 1)); }
+  catch (err) { console.warn(`[SIB] import log not saved for ${rec.guideId}: ${(err as Error).message}`); }
+}
+export function readImportLog(guideId: string): ImportLogRecord | null {
+  const p = path.join(IMPORT_LOG_DIR, `${guideId}.json`);
+  if (!/^[A-Za-z0-9-]+$/.test(guideId) || !fs.existsSync(p)) return null;
+  try { return JSON.parse(fs.readFileSync(p, 'utf8')) as ImportLogRecord; } catch { return null; }
+}
+export function deleteImportLog(guideId: string): void {
+  const p = path.join(IMPORT_LOG_DIR, `${guideId}.json`);
+  if (/^[A-Za-z0-9-]+$/.test(guideId) && fs.existsSync(p)) { try { fs.unlinkSync(p); } catch { /* best effort */ } }
+}
 import { deriveStepsFromAssembly, normalizeAssemblyPose, validateAssemblyPose } from '../guides/assembly.js';
 import { copyGuideToAnchor } from '../guides/copy.js';
 import { guideVisibleTo } from '../uam/guide-visibility.js';
@@ -228,6 +255,11 @@ router.post(
       console.log(`[SIB] Guide imported (cortona): ${applied.guide.id} - ${applied.steps.length} steps, model ${model.id}, ` +
         `${log.procedure.commands ? Object.values(log.procedure.commands).reduce((a, b) => a + b, 0) : 0} commands` +
         (log.warnings.length ? `, ${log.warnings.length} warning(s)` : ''));
+      saveImportLog({
+        guideId: applied.guide.id, guideName: applied.guide.name, importedAt: new Date().toISOString(), importedBy: createdBy, anchorId,
+        source: 'cortona', sourceFilename: (req.headers['x-filename'] as string | undefined) || undefined, options: opts,
+        modelId: model.id, steps: applied.steps.length, glbBytes: r.glb.length, triangles: r.ladder.triangles, variants: summary.variants, log,
+      });
       const data: { guide: Guide; steps: GuideStep[]; model: unknown; log: unknown; summary: typeof summary } =
         { guide: applied.guide, steps: applied.steps, model, log, summary };
       return data;
@@ -629,6 +661,18 @@ router.post('/:id/copy', (req: Request, res: Response): void => {
 });
 
 // DELETE /guides/:id - cascade-delete guide + all its steps
+// GET /guides/:id/import-log - the importer log saved when the guide was
+// imported (404 for guides that were authored, copied or imported before
+// logs were kept). ?format=text answers the same lines the portal shows.
+router.get('/:id/import-log', (req: Request, res: Response): void => {
+  const guide = guideStore.findById(req.params.id);
+  if (!guide) { res.status(404).json({ error: `Guide ${req.params.id} not found`, timestamp: new Date().toISOString() }); return; }
+  const rec = readImportLog(guide.id);
+  if (!rec) { res.status(404).json({ error: 'No import log is kept for this guide', timestamp: new Date().toISOString() }); return; }
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({ data: rec, timestamp: new Date().toISOString() });
+});
+
 router.delete('/:id', (req: Request, res: Response): void => {
   const guide = guideStore.findById(req.params.id);
   if (!guide) {
@@ -639,6 +683,7 @@ router.delete('/:id', (req: Request, res: Response): void => {
     return;
   }
 
+  deleteImportLog(guide.id);
   const steps = guideStepStore.findAll().filter(s => s.guideId === req.params.id);
   for (const step of steps) {
     if (step.mediaPath) deleteStepImage(step.mediaPath);
