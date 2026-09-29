@@ -206,13 +206,13 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, height = 2
     };
     const playbackOnly = (o: any): boolean => { for (let p = o; p; p = p.parent) { const n = partName(p); if (n && /#s\d+f\d+$/.test(n)) return true; } return false; };
     const startsHidden = (o: any): boolean => { for (let p = o; p; p = p.parent) if (p.userData?.visible === false) return true; return false; };
-    // Nearest ancestor-or-self with a runtime pose; hidden parents hide children.
+    // Nearest ancestor-or-self with a runtime pose: a part's visibility is its
+    // own (the app's rule; the importer carries a hose owner's show/hide onto
+    // its tubes, so nothing needs the parent to hide the child).
     const poseOf = (o: any) => {
       if (!poseMap) return undefined;
-      let hiddenAbove = false, found: { show: string; opacity: number; color?: number[] } | undefined;
-      for (let p = o; p; p = p.parent) { const n = partName(p); if (!n) continue; const ps = poseMap.get(n); if (ps) { if (!found) found = ps; if (ps.show === 'hidden') hiddenAbove = true; } }
-      if (!found) return undefined;
-      return hiddenAbove ? { ...found, show: 'hidden' as const, opacity: 0 } : found;
+      for (let p = o; p; p = p.parent) { const n = partName(p); if (!n) continue; const ps = poseMap.get(n); if (ps) return ps; }
+      return undefined;
     };
 
     // Transforms: every named node takes its runtime pose or its rest.

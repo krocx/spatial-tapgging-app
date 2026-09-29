@@ -7653,16 +7653,18 @@ function _loadGLB(url) {
 
   loader.load(url, (gltf) => {
     const model = gltf.scene;
-    // The importer records each part's initial visibility in glTF extras
-    // (`visible:false` = hidden until a step reveals it: exploded spares,
-    // hose flipbook frames). The preview shows the assembled model, so honour
-    // it - otherwise every baked frame of a hose sweep is drawn at once.
+    // The model library shows the WHOLE model at rest, whatever a guide's
+    // initial state hides (in many publications most parts start hidden and
+    // the steps reveal them). Only the baked hose flipbook frames are left
+    // out - they are playback frames, and drawn together they look like
+    // rings of tubes; the rest tube stands for each hose.
     let hidden = 0;
     model.traverse(c => {
       if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; }
-      if (c.userData && c.userData.visible === false) { c.visible = false; hidden++; }
+      const nm = (c.userData && c.userData.name) || c.name || '';
+      if (/#s\d+f\d+$/.test(nm)) { c.visible = false; hidden++; }
     });
-    if (hidden) console.info(`[Portal] preview: ${hidden} initially hidden node(s) not drawn`);
+    if (hidden) console.info(`[Portal] preview: ${hidden} hose frame node(s) not drawn`);
 
     // A wrapper carries scale; the model inside carries orientation and is
     // re-seated on the floor (bottom of bounding box → y = 0).

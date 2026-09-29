@@ -21,7 +21,7 @@ import { buildHose } from './hose.js';
 
 export const FRAMES_PER_MOTION = 8;
 
-export interface HoseFrameStats { hoses: number; windows: number; frames: number; triangles: number }
+export interface HoseFrameStats { hoses: number; windows: number; frames: number; triangles: number; /** Owner show/hide deltas written for the tubes that stand in for it. */ carried?: number }
 
 const round = (x: number): number => Math.round(x * 1e4) / 1e4;
 
@@ -65,7 +65,7 @@ function slerpAxisAngle(a: number[], b: number[], t: number): number[] {
  * so the importer's initial state hides them).
  */
 export function bakeHoseFrames(scene: SceneGraph, substeps: ExtractedSubStep[], framesPerMotion = FRAMES_PER_MOTION): { frameNodes: string[]; stats: HoseFrameStats } {
-  const stats: HoseFrameStats = { hoses: 0, windows: 0, frames: 0, triangles: 0 };
+  const stats: HoseFrameStats = { hoses: 0, windows: 0, frames: 0, triangles: 0, carried: 0 };
   const frameNodes: string[] = [];
   if (!scene.hoseOwners.length) return { frameNodes, stats };
 
@@ -132,5 +132,42 @@ export function bakeHoseFrames(scene: SceneGraph, substeps: ExtractedSubStep[], 
       if (built) { lastShown.set(hi, prev); stats.windows++; stats.frames += built; }
     }
   });
+
+  // A part's visibility is its own: the players do not hide a child because
+  // its parent is hidden (a step may show a part under a group the
+  // publication never switches on). So when a step hides or shows a hose
+  // owner, the same delta is written for the tube that stands in for it at
+  // that moment - the current frame, else the rest tube - and a hide also
+  // covers every frame, so nothing of the hose is left behind.
+  const standIn = new Map<number, string>();               // hose index → node currently shown for it
+  for (let hi = 0; hi < scene.hoseOwners.length; hi++) if (restMoved.has(hi)) standIn.set(hi, `${scene.hoseOwners[hi].owner.def}#rest`);
+  const framesOf = new Map<number, string[]>();
+  for (let hi = 0; hi < scene.hoseOwners.length; hi++) {
+    const def = scene.hoseOwners[hi].owner.def; if (!def) continue;
+    framesOf.set(hi, scene.hoseOwners[hi].owner.children.filter(c => c.def && /#s\d+f\d+$/.test(c.def)).map(c => c.def!));
+  }
+  const ownerIndex = new Map<string, number>();
+  scene.hoseOwners.forEach((h, i) => { if (h.owner.def && restMoved.has(i)) ownerIndex.set(`cmp:${h.owner.def}`, i); });
+  let carried = 0;
+  for (const ss of substeps) {
+    const extra: GuideStepNode[] = [];
+    // Events in time order so the stand-in is right when the owner's delta fires.
+    const timed = ss.nodes.map((n, i) => ({ n, i })).sort((a, b) => (a.n.delaySec ?? 0) - (b.n.delaySec ?? 0) || a.i - b.i);
+    for (const { n } of timed) {
+      const frame = n.node.match(/^cmp:(.*)#s\d+f\d+$/);
+      if (frame && n.show === 'solid') { const hi = ownerIndex.get(`cmp:${frame[1]}`); if (hi !== undefined) standIn.set(hi, n.node.slice(4)); continue; }
+      const hi = ownerIndex.get(n.node); if (hi === undefined || !n.show) continue;
+      const at = { ...(n.delaySec !== undefined ? { delaySec: n.delaySec } : {}), ...(n.durationSec !== undefined ? { durationSec: n.durationSec } : {}) };
+      if (n.show === 'hidden') {
+        for (const f of framesOf.get(hi) ?? []) extra.push({ node: `cmp:${f}`, show: 'hidden', ...at });
+        extra.push({ node: `cmp:${scene.hoseOwners[hi].owner.def}#rest`, show: 'hidden', ...at });
+      } else {
+        const cur = standIn.get(hi); if (cur) extra.push({ node: `cmp:${cur}`, show: n.show, ...(n.opacity !== undefined ? { opacity: n.opacity } : {}), ...at });
+      }
+      carried += extra.length;
+    }
+    ss.nodes.push(...extra);
+  }
+  stats.carried = carried;
   return { frameNodes, stats };
 }

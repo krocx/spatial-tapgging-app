@@ -188,13 +188,16 @@ it, it gets a line.
   seal keeps 5,618 triangles and its 1.1 mm thickness at every budget.
   Reducer `vertex-clustering/3`; rebuild variants from the Models page, or
   re-import. `docs/ar-ojt/MODEL-VARIANTS.md`.
-- **AR: a hidden group hides its baked hose frames.** A part's own state used
-  to override its parent's, so when the Bee's animation seal was hidden at
-  the end of step 1 its last flipbook frame stayed visible and floated under
-  the drone through every later step (the Designer, which hides the subtree,
-  showed it right). Hidden now hides the whole subtree on the part node;
-  showing the group again restores each child's own state. The
-  whole-assembly context also no longer draws hose frames as ghosts.
+- **A part's visibility is its own, on every player.** A step may show a
+  part under a group the publication never switches on (three such parts
+  in the Bee; most of the model in the office decks), so a hidden parent
+  must not hide a child that has its own state. The app keeps that rule,
+  the Designer preview adopts it, and the one case that needed the parent
+  to win - a hose owner hidden at the end of a step leaving its last
+  flipbook frame floating under the drone - is now handled at import: the
+  owner's show/hide is written onto the tube standing in for it, and a hide
+  covers every frame (`hose-frames.ts`, `carried` in the log). The Models
+  page preview shows the whole model at rest again, frames excepted.
 - **Publications with no set-up step no longer import exploded.** When a
   Cortona deck holds the exploded start in its `.wrl` and animates the parts
   into place, the importer now bakes the end state as the model's rest pose
