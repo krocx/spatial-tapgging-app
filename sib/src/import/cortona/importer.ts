@@ -31,9 +31,10 @@ export interface CortonaImportOptions {
   /** Which pose is the model's rest pose: 'auto' rebases to the end state when
    *  the publication's own pose is the exploded start (rest-pose.ts). */
   restPose?: RestPoseChoice;
-  /** Units the publication was modelled in. 'auto' scales a model that is
-   *  implausibly small for equipment (under 0.1 m across) by 1,000, taking
-   *  it for millimetres; the others force a factor. */
+  /** Units the publication was modelled in. 'auto' keeps the file's units and
+   *  warns when the assembly is implausibly small or large for equipment
+   *  (the file carries no unit, and a wrong guess is worse than a warning:
+   *  an office deck at 34 mm would become 34 m); the others force a factor. */
   units?: UnitsChoice;
 }
 export type UnitsChoice = 'auto' | 'm' | 'mm' | 'cm' | 'in';
@@ -91,23 +92,26 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
   if (frame.corrected) warnings.push(`cameras look at the model upside-down (mean camera-up Y = ${frame.cameraUpY.toFixed(2)}) - assembly rotated ${frame.angleDeg}° so up is +Y`);
   let scene = buildScene(vrml, { frame: frame.matrix });
 
-  // Units. Cortona publishes in the CAD file's units; a millimetre model
-  // arrives 1,000 times too small. Measure the assembly as built and, when
-  // it is implausibly small for equipment, scale the whole scene by putting
-  // the factor on the synthetic root: every part keeps its own local frame,
-  // so the step deltas (parent-frame translations) stay valid as they are.
+  // Units. Cortona publishes in the CAD file's units and nothing in the file
+  // says which (NavigationInfo.avatarSize is the same constant in every deck).
+  // Measure the assembly as built; warn when it is implausible for equipment;
+  // scale only on the author's say-so, by putting the factor on the synthetic
+  // root so every part keeps its own local frame and the step deltas
+  // (parent-frame translations) stay valid as they are.
   const diag0 = scene.bbox ? Math.hypot(...[0, 1, 2].map(a => scene.bbox!.max[a] - scene.bbox!.min[a])) : 0;
   const unitsChoice: UnitsChoice = opts.units ?? 'auto';
   let unitFactor = 1, unitReason = 'as published';
   if (unitsChoice !== 'auto') { unitFactor = UNIT_FACTOR[unitsChoice]; unitReason = `${unitsChoice} (option)`; }
-  else if (diag0 > 0 && diag0 < 0.1) { unitFactor = 1000; unitReason = `the assembly is ${(diag0 * 1000).toFixed(1)} mm across as published - too small for equipment, taken as millimetres`; }
-  else if (diag0 > 50) unitReason = `the assembly is ${diag0.toFixed(0)} m across as published - larger than expected; left as is (set Units on the import form if it is wrong)`;
+  else if (diag0 > 0 && diag0 < 0.1) unitReason = `the assembly is ${(diag0 * 1000).toFixed(1)} mm across as published - small for equipment; left as is because the unit cannot be told from the file (x10 gives ${(diag0 * 10).toFixed(2)} m, x100 gives ${(diag0 * 100).toFixed(1)} m, x1000 gives ${(diag0 * 1000).toFixed(0)} m) - re-import with Units set if it is wrong`;
+  else if (diag0 > 50) unitReason = `the assembly is ${diag0.toFixed(0)} m across as published - large for equipment; left as is - re-import with Units set if it is wrong`;
   const unitsReport = { publishedExtentM: Math.round(diag0 * 1000) / 1000, factor: unitFactor, chosen: unitsChoice, reason: unitReason };
   let frameMatrix = frame.matrix;
   if (unitFactor !== 1) {
     frameMatrix = mul(scaleM(unitFactor, unitFactor, unitFactor), frame.matrix ?? [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]);
     scene = buildScene(vrml, { frame: frameMatrix });
     warnings.push(`assembly scaled by ${unitFactor} (${unitReason})`);
+  } else if (unitsChoice === 'auto' && diag0 > 0 && (diag0 < 0.1 || diag0 > 50)) {
+    warnings.push(`check the units: ${unitReason}`);
   }
   const widgets = collectWidgets(vrml);
   const widgetText = new Map<string, string | undefined>();

@@ -21,11 +21,13 @@ it, it gets a line.
   model on the floor, view re-framed) and Save as default. The preview
   opens at the model's saved default scale, and re-frames after every
   scale change so the model never leaves the view.
-- **Publications in millimetres import at the right size.** The importer
-  measures the assembly and scales one under 10 cm across by 1,000 (the
-  factor goes on the root, so step deltas are untouched); the import form
-  has a Units override (Auto / m / mm / cm / in) and the log a `units:`
-  line. An assembly over 50 m is warned about, not changed.
+- **Publications in other units.** The import form has a Units choice
+  (Auto / m / mm / cm / in): a chosen factor goes on the model's root, so
+  step deltas are untouched while bounds, pins and cameras scale. Auto
+  keeps the file's units and warns when the assembly is under 10 cm or
+  over 50 m across, quoting what x10, x100 and x1,000 would give, because
+  the file carries no unit and a wrong guess is worse than a warning. The
+  log has a `units:` line.
 - **Assembled pose can be changed after import.** Guide menu → "Assembled
   pose: …" switches an imported model between "as published" and "after the
   last step" in place, with the same hints as the import form: the GLB's
@@ -195,6 +197,15 @@ it, it gets a line.
   focus ring uses it too, so where the ring sits is where a tap lands.
 
 ### Fixed
+- **XR kit: parts settle where the step leaves them.** The kit's settled
+  state treated a hidden part that moves as shown, unlike the app and the
+  Designer (Cortona moves exploded parts into place before switching them
+  on), so extra parts appeared and the sequence looked wrong. It now uses
+  the app's rule, applies the state after the step once playback is over
+  (headset browsers throttle timers when the page is not in front), sets
+  the camera planes from the model's size so a small assembly is not
+  clipped when leaning in, and warns in the console when instances share a
+  part name.
 - **The app keeps one cached file per assembly model.** A new download
   (new revision, or another budget from the Settings override) replaces
   every other cached copy of that model instead of piling up beside it.

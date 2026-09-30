@@ -141,7 +141,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { DEFAULT_SPEED, GHOST_OPACITY, stateBefore, scheduleStep, scheduleLength, stepParts, originForSurface, attentionFor } from '/portal/xr-engine.js';
+import { DEFAULT_SPEED, GHOST_OPACITY, stateBefore, stateAfter, scheduleStep, scheduleLength, stepParts, originForSurface, attentionFor } from '/portal/xr-engine.js';
 import { XRPanel } from '/portal/xr-panel.js';
 
 // ── Config / auth ────────────────────────────────────────────────────────────
@@ -274,6 +274,15 @@ async function loadBundle() {
   const s = model.defaultScale ?? 1;
   assembly.add(root);
   modelBox = new THREE.Box3().setFromObject(root);
+  // Camera planes follow the model's size: a 3 cm assembly must not clip
+  // against a 1 cm near plane when the viewer leans in, and a 20 m one must
+  // not vanish past the far plane.
+  { const span = modelBox.getSize(new THREE.Vector3()).length() * (assembly.userData.scale ?? s ?? 1) || 1;
+    camera.near = Math.max(0.0005, span / 500); camera.far = Math.max(50, span * 60); camera.updateProjectionMatrix(); }
+  // Instances that share a DEF share a name; part control is by name, so only
+  // the last one answers. Say so in the console rather than silently.
+  { const seen = new Map(); root.traverse(o => { if (typeof o.name === 'string' && o.name.startsWith('cmp:')) seen.set(o.name, (seen.get(o.name) || 0) + 1); });
+    const dup = [...seen].filter(([, n]) => n > 1); if (dup.length) console.warn(`[xr] ${dup.length} part name(s) used by more than one node - only the last instance is controlled:`, dup.slice(0, 10)); }
   assemblyBounds = guide.assembly?.bounds || { min: modelBox.min.toArray(), max: modelBox.max.toArray() };
   assembly.userData.scale = guide.assembly?.pose?.scale ?? s;
   const referenced = new Set([...(guide.assembly?.initialNodes || []), ...steps.flatMap(s => s.nodes || [])].map(d => d.node));
@@ -324,7 +333,12 @@ function playStep(k) {
   for (const e of sched) {
     timers.push(setTimeout(() => { if (gen !== playGeneration) return; fire(e); }, e.startSec * 1000));
   }
-  return scheduleLength(sched);
+  const len = scheduleLength(sched);
+  // Settle on the state AFTER the step once playback is over, whatever the
+  // timers did (a headset browser throttles them when the page is not in
+  // front; a tween that never ran must not leave a part where it started).
+  timers.push(setTimeout(() => { if (gen !== playGeneration) return; tweens.clear(); applyState(stateAfter(guide.assembly?.initialNodes, steps, k)); }, len * 1000 + 300));
+  return len;
 }
 function fire(e) {
   const d = e.delta, p = parts.get(d.node); if (!p) return;

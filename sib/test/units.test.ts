@@ -16,24 +16,28 @@ test('a metre-sized publication is left alone', { skip }, async () => {
   assert.equal(r.log.units.chosen, 'auto');
 });
 
-test('a publication 1,000x too small is taken as millimetres and scaled up; deltas stay in the part frame', { skip }, async () => {
+test('a publication 1,000x too small is left as published with a units warning (the file carries no unit)', { skip }, async () => {
+  const { importCortonaBundle } = await import('../dist/import/cortona/importer.js');
+  const r = importCortonaBundle(buildHtm({ parts: 3, unitScale: 0.001 }));
+  assert.equal(r.log.units.factor, 1);
+  assert.ok(r.log.units.publishedExtentM < 0.001);
+  assert.ok(r.log.warnings.some(w => w.startsWith('check the units')), r.log.warnings.join(' | '));
+});
+
+test('Units = millimetres brings a millimetre publication back to metres: root scale, deltas untouched, cameras scaled', { skip }, async () => {
   const { importCortonaBundle } = await import('../dist/import/cortona/importer.js');
   const ref = importCortonaBundle(buildHtm({ parts: 3 }));
-  const r = importCortonaBundle(buildHtm({ parts: 3, unitScale: 0.001 }));
-  assert.equal(r.log.units.factor, 1000, r.log.units.reason);
-  assert.ok(r.log.units.publishedExtentM < 0.001);
+  const r = importCortonaBundle(buildHtm({ parts: 3, unitScale: 1000 }), { units: 'mm' });   // the same model written in millimetres
+  assert.equal(r.log.units.factor, 0.001);
   assert.ok(Math.abs(diag(r.bounds!) - diag(ref.bounds!)) < 1e-4, 'bounds back to the reference size');
-  assert.ok(r.log.warnings.some(w => w.includes('scaled by 1000')));
-  // The scale sits on the root; parts keep their local frame, so a step's
-  // translation delta is still the publication's own number (in mm here).
   const len = r.glb.readUInt32LE(12); const json = JSON.parse(r.glb.subarray(20, 20 + len).toString());
   const root = json.nodes[json.scenes[0].nodes[0]];
-  assert.ok(root.matrix && Math.abs(root.matrix[0] - 1000) < 1e-6, 'root carries the factor');
+  assert.ok(root.matrix && Math.abs(root.matrix[0] - 0.001) < 1e-9, 'root carries the factor');
   const mv = r.imported.steps.flatMap(s => s.nodes ?? []).find(n => n.to);
-  assert.ok(mv && Math.abs(mv.to![1] - 0.00006) < 1e-9, 'delta untouched (0.06 m as 0.00006 in the published units)');
-  // Cameras are world-space and are scaled with the assembly.
+  assert.ok(mv && Math.abs(mv.to![1] - 60) < 1e-6, 'delta untouched (60 mm, the publication\'s own number)');
   const rv = ref.imported.steps.find(s => s.view)!.view!, sv = r.imported.steps.find(s => s.view)!.view!;
-  assert.ok(Math.abs(rv.position![2] - sv.position![2]) < 1e-4, 'view position scaled');
+  assert.ok(Math.abs(sv.position![2] - rv.position![2]) < 1e-4, 'view position back in metres');
+  assert.ok(r.log.warnings.some(w => w.includes('scaled by 0.001')));
 });
 
 test('units option forces a factor', { skip }, async () => {

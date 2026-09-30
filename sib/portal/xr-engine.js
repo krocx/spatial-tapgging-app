@@ -21,12 +21,17 @@ export function hasMotion(d) {
   return Array.isArray(d.to) || Array.isArray(d.rotationTo);
 }
 
-/** Apply one delta to a state map (in place). Flash-only deltas change nothing. */
+/** Apply one delta to a state map (in place). Flash-only deltas change nothing.
+ *  Settled-state rule, the same as AssemblyState.swift and the Designer: a
+ *  `show` sets the state; `insert` implies solid; a motion on its own never
+ *  changes visibility (the player shows a hidden part WHILE it moves, and the
+ *  settled state hides it again - Cortona moves exploded parts into place
+ *  before it switches them on). */
 export function applyDelta(state, d) {
   const cur = state.get(d.node) || { show: undefined, opacity: undefined, color: undefined, position: null, rotation: null };
   let touched = false;
   if (d.show !== undefined) { cur.show = d.show; if (d.show === 'ghost') cur.opacity = d.opacity ?? GHOST_OPACITY; touched = true; }
-  else if (d.animate === 'insert' || (hasMotion(d) && cur.show === 'hidden')) { cur.show = 'solid'; touched = true; }
+  else if (d.animate === 'insert') { cur.show = 'solid'; touched = true; }
   if (Array.isArray(d.to))         { cur.position = d.to.slice(0, 3); touched = true; }
   if (Array.isArray(d.rotationTo)) { cur.rotation = d.rotationTo.slice(0, 4); touched = true; }
   if (Array.isArray(d.color))      { cur.color = d.color.slice(0, 3); touched = true; }

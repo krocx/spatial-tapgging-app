@@ -43,9 +43,12 @@ test('stateBefore folds initial nodes then steps cumulatively (last write wins)'
   assert.deepEqual(s3.get('cmp:A').position, [0, 1, 0]);
 });
 
-test('a motion on a hidden part reveals it (solid) even without animate', () => {
+test('a motion on a hidden part moves it but leaves it hidden in the settled state (the app rule)', () => {
   const s = E.stateBefore([{ node: 'cmp:X', show: 'hidden' }], [{ nodes: [{ node: 'cmp:X', to: [1, 0, 0] }] }], 1);
-  assert.equal(s.get('cmp:X').show, 'solid');
+  assert.equal(s.get('cmp:X').show, 'hidden');
+  assert.deepEqual(s.get('cmp:X').position, [1, 0, 0]);
+  const t = E.stateBefore([{ node: 'cmp:X', show: 'hidden' }], [{ nodes: [{ node: 'cmp:X', to: [1, 0, 0], animate: 'insert' }] }], 1);
+  assert.equal(t.get('cmp:X').show, 'solid');
 });
 
 test('scheduleStep applies speed, floors, and orders by time then depth', () => {
