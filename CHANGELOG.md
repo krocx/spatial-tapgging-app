@@ -195,6 +195,9 @@ it, it gets a line.
   focus ring uses it too, so where the ring sits is where a tap lands.
 
 ### Fixed
+- **The app keeps one cached file per assembly model.** A new download
+  (new revision, or another budget from the Settings override) replaces
+  every other cached copy of that model instead of piling up beside it.
 - **Assembly detail override is capped by device.** Settings › Assembly
   detail can ask for at most two ladder tiers above the device's automatic
   budget (a 4 GB phone tops out at 1.2 M; a 12 GB iPad has no cap); the

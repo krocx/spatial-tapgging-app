@@ -31,14 +31,16 @@ enum AssemblyModelCache {
         (try? await client.fetchModel(id: modelId))?.glbRevision
     }
 
-    /// Drop every cached file of this model that is not the given revision.
-    private static func evictOtherRevisions(modelId: String, keep: Int) {
+    /// One file per model: drop every cached copy of this model except the
+    /// one just written (other revisions, and other budgets from a Settings
+    /// override). A device keeps the copy it uses, never a collection.
+    private static func evictOthers(modelId: String, keep: URL) {
         let fm = FileManager.default
-        let keepTag = ".r\(keep)."
+        let keepName = keep.lastPathComponent
         for f in (try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil)) ?? [] {
             let n = f.lastPathComponent
-            guard n.hasPrefix(modelId + ".") || n.hasPrefix(modelId + ".r") else { continue }
-            if !n.contains(keepTag) { try? fm.removeItem(at: f) }
+            guard n.hasPrefix(modelId + ".") else { continue }
+            if n != keepName && n != keepName + ".meta" { try? fm.removeItem(at: f) }
         }
     }
 
@@ -82,7 +84,7 @@ enum AssemblyModelCache {
         let target = url(modelId, budget: budget, revision: revision)
         try? dl.data.write(to: target, options: .atomic)
         writeMeta(target, variantBudget: dl.variantBudget, triangles: dl.triangles)
-        if let r = revision { evictOtherRevisions(modelId: modelId, keep: r) }
+        evictOthers(modelId: modelId, keep: target)
         return Fetched(data: dl.data, variantBudget: dl.variantBudget, triangles: dl.triangles)
     }
 
