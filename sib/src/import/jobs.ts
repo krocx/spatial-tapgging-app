@@ -26,8 +26,16 @@ export interface ImportJob {
   endedAt?:   string;
   /** Position while queued (1 = next). */
   position?:  number;
-  /** Set when done: what the synchronous route used to answer with. */
+  /** Set when done: what the synchronous route used to answer with. Handed
+   *  over ONCE: the first successful poll after completion receives the
+   *  full result and the job keeps only its `summary` from then on, so a
+   *  busy import session does not hold guides, steps and logs in memory
+   *  for an hour each. Later polls see `status: done` and the summary. */
   result?:    unknown;
+  /** After the full result was collected: the small part of it (`summary`, if the result had one). */
+  summary?:   unknown;
+  /** True once the full result has been collected by a poll. */
+  collected?: boolean;
   error?:     string;
 }
 
@@ -84,6 +92,13 @@ export function getImportJob(id: string): ImportJob | undefined {
   if (!j) return undefined;
   if ((j.status === 'done' || j.status === 'failed') && j.endedAt &&
       Date.now() - Date.parse(j.endedAt) > RETENTION_MS) { jobs.delete(id); return undefined; }
+  if (j.status === 'done' && j.result !== undefined && !j.collected) {
+    // Hand the full result to this caller, keep only the summary.
+    const full = j.result;
+    const summary = full && typeof full === 'object' && 'summary' in (full as Record<string, unknown>) ? (full as { summary: unknown }).summary : undefined;
+    j.collected = true; j.summary = summary; j.result = summary !== undefined ? { summary } : undefined;
+    return { ...j, result: full };
+  }
   return j;
 }
 

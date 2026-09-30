@@ -5012,6 +5012,14 @@ async function submitImportCortona(anchorId, createdBy) {
         if (job.status === 'failed') throw new Error(job.error || 'import failed');
       }
     }
+    if (!data || !data.guide) {
+      // The server hands the full result to the first poll only; if this tab
+      // missed it, the guide exists all the same - point at it.
+      closeImportGuideModal(); importCortonaFile = null;
+      toast(data?.summary?.guideId ? `Imported - guide ${data.summary.guideId.slice(0, 8)}… is in the library (open its menu for the import log).` : 'Import finished - refresh the Guide Library.', 6000);
+      if (typeof loadGuideLibrary === 'function') loadGuideLibrary();
+      return;
+    }
     const { guide, steps, model, log, summary } = data;
     lastCortonaImportLog = { guideName: guide.name, ...summary, log };
     closeImportGuideModal();

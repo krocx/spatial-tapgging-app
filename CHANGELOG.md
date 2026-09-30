@@ -195,6 +195,10 @@ it, it gets a line.
   focus ring uses it too, so where the ring sits is where a tap lands.
 
 ### Fixed
+- **Finished import jobs no longer hold their payload for an hour.** The
+  full result (guide, steps, model, log) is handed to the first poll after
+  completion and the job keeps only its summary; a tab that missed that
+  poll is pointed at the guide in the library instead of failing.
 - **No font from the internet, on any page.** `brand.js` loaded Roboto from
   Google Fonts on the legacy pages (Wireframe, Platform); it now links the
   self-hosted Open Sans from the brand system instead, as the doctrine says.

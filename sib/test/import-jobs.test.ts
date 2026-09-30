@@ -19,14 +19,18 @@ test('import job: worker parses, main thread finishes, result pollable', { skip:
   const job = enqueueCortonaImport(ab, {}, 'm-' + Math.random().toString(36).slice(2), MODELS, async (r) => ({ glbBytes: r.glb.length, steps: (r.imported as { steps: unknown[] }).steps.length }), 2 * 1024 * 1024 * 1024);
   assert.ok(job.status === 'queued' || job.status === 'processing', job.status);   // an idle queue starts the job at once
   const t0 = Date.now();
-  while (getImportJob(job.id)?.status !== 'done' && getImportJob(job.id)?.status !== 'failed' && Date.now() - t0 < 30_000) {
-    await new Promise(r => setTimeout(r, 50));
+  let done = getImportJob(job.id)!;
+  while (done.status !== 'done' && done.status !== 'failed' && Date.now() - t0 < 30_000) {
+    await new Promise(r => setTimeout(r, 50)); done = getImportJob(job.id)!;
   }
-  const done = getImportJob(job.id)!;
   assert.equal(done.status, 'done', done.error);
   const res = done.result as { glbBytes: number; steps: number };
   assert.ok(res.glbBytes > 100 && res.steps > 0);
   assert.equal(done.error, undefined);
+  // The full result is handed over once; later polls see the status and no payload.
+  const again = getImportJob(job.id)!;
+  assert.equal(again.status, 'done');
+  assert.equal((again.result as { glbBytes?: number } | undefined)?.glbBytes, undefined, 'payload not held after collection');
 });
 
 test('import job: a parse error fails that job only', { skip: !distReady && 'run npm run build first' }, async () => {
