@@ -15,7 +15,7 @@
 import type { ImportedGuide, ImportedGuideStep, GuideStepNode, GuideStepView } from '@spatial/shared';
 import { readCortonaBundle, type CortonaBundle } from './bundle.js';
 import { parseVrml, numField, walkNodes } from './vrml.js';
-import { buildScene, axisAngle, mul, type SceneGraph } from './scene.js';
+import { buildScene, axisAngle, mul, scaleM, type SceneGraph } from './scene.js';
 import { writeGlb, type NodeExtras } from './glb.js';
 import { bakeHoseFrames, type HoseFrameStats } from './hose-frames.js';
 import { extractProcedure, classifyMotion, type ExtractedProcedure, type ExtractedSubStep } from './procedure.js';
@@ -31,7 +31,13 @@ export interface CortonaImportOptions {
   /** Which pose is the model's rest pose: 'auto' rebases to the end state when
    *  the publication's own pose is the exploded start (rest-pose.ts). */
   restPose?: RestPoseChoice;
+  /** Units the publication was modelled in. 'auto' scales a model that is
+   *  implausibly small for equipment (under 0.1 m across) by 1,000, taking
+   *  it for millimetres; the others force a factor. */
+  units?: UnitsChoice;
 }
+export type UnitsChoice = 'auto' | 'm' | 'mm' | 'cm' | 'in';
+const UNIT_FACTOR: Record<Exclude<UnitsChoice, 'auto'>, number> = { m: 1, mm: 0.001, cm: 0.01, in: 0.0254 };
 
 export interface CortonaImportLog {
   source:      { kind: 'htm' | 'zip'; bytes: number };
@@ -52,6 +58,8 @@ export interface CortonaImportLog {
   frame:       { corrected: boolean; cameraUpY: number; cameras: number; axis?: [number, number, number]; angleDeg?: number };
   /** Which pose became the model's rest pose and why (see rest-pose.ts). */
   restPose:    RestPoseReport;
+  /** Unit decision: the extent as published, the factor applied and why. */
+  units:       { publishedExtentM: number; factor: number; chosen: UnitsChoice; reason: string };
   warnings:    string[];
   strict:      boolean;
 }
@@ -82,6 +90,25 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
   const frame = frameCorrection(vrml);
   if (frame.corrected) warnings.push(`cameras look at the model upside-down (mean camera-up Y = ${frame.cameraUpY.toFixed(2)}) - assembly rotated ${frame.angleDeg}° so up is +Y`);
   let scene = buildScene(vrml, { frame: frame.matrix });
+
+  // Units. Cortona publishes in the CAD file's units; a millimetre model
+  // arrives 1,000 times too small. Measure the assembly as built and, when
+  // it is implausibly small for equipment, scale the whole scene by putting
+  // the factor on the synthetic root: every part keeps its own local frame,
+  // so the step deltas (parent-frame translations) stay valid as they are.
+  const diag0 = scene.bbox ? Math.hypot(...[0, 1, 2].map(a => scene.bbox!.max[a] - scene.bbox!.min[a])) : 0;
+  const unitsChoice: UnitsChoice = opts.units ?? 'auto';
+  let unitFactor = 1, unitReason = 'as published';
+  if (unitsChoice !== 'auto') { unitFactor = UNIT_FACTOR[unitsChoice]; unitReason = `${unitsChoice} (option)`; }
+  else if (diag0 > 0 && diag0 < 0.1) { unitFactor = 1000; unitReason = `the assembly is ${(diag0 * 1000).toFixed(1)} mm across as published - too small for equipment, taken as millimetres`; }
+  else if (diag0 > 50) unitReason = `the assembly is ${diag0.toFixed(0)} m across as published - larger than expected; left as is (set Units on the import form if it is wrong)`;
+  const unitsReport = { publishedExtentM: Math.round(diag0 * 1000) / 1000, factor: unitFactor, chosen: unitsChoice, reason: unitReason };
+  let frameMatrix = frame.matrix;
+  if (unitFactor !== 1) {
+    frameMatrix = mul(scaleM(unitFactor, unitFactor, unitFactor), frame.matrix ?? [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]);
+    scene = buildScene(vrml, { frame: frameMatrix });
+    warnings.push(`assembly scaled by ${unitFactor} (${unitReason})`);
+  }
   const widgets = collectWidgets(vrml);
   const widgetText = new Map<string, string | undefined>();
   for (const [def, w] of widgets) widgetText.set(def, w.text);
@@ -105,7 +132,7 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
   const restDecision = decideRestPose(scene, proc.substeps, opts.restPose ?? 'auto');
   if (restDecision.rebase.size) {
     applyRestPose(scene, restDecision.rebase);
-    scene = buildScene(vrml, { frame: frame.matrix });     // matrices, bounds and hoses agree with the new rest
+    scene = buildScene(vrml, { frame: frameMatrix });     // matrices, bounds and hoses agree with the new rest
     warnings.push(`rest pose taken from the end state: ${restDecision.rebase.size} part(s) were published at their exploded start (${restDecision.report.reason})`);
   }
 
@@ -178,7 +205,7 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
     for (const t of tiers) { cad = centroidOf(t.map(n => n.node.replace(/^cmp:/, '')), scene.boundsByDef); if (cad) break; }
     cad = cad ?? lastCad ?? assemblyCentre;
     if (cad) { step.cadPosition = cad; lastCad = cad; }
-    if (m.view) step.view = frame.corrected ? rotateView(m.view, frame.matrix!) : m.view;
+    if (m.view) step.view = scaleView(frame.corrected ? rotateView(m.view, frame.matrix!) : m.view, unitFactor);
     if (m.durationSec) step.durationSec = m.durationSec;
     steps.push(step);
     return step;
@@ -240,6 +267,7 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
     publish, warnings, strict: !!opts.strict,
     frame: { corrected: frame.corrected, cameraUpY: round(frame.cameraUpY), cameras: frame.cameras, ...(frame.axis && { axis: frame.axis, angleDeg: frame.angleDeg }) },
     restPose: restDecision.report,
+    units: unitsReport,
   };
   if (scene.bbox) {
     const ext = log.scene.extentM!; const maxExt = Math.max(...ext);
@@ -281,6 +309,16 @@ function frameCorrection(vrml: ReturnType<typeof parseVrml>): { corrected: boole
   const axis: [number, number, number] = [ax[0] / al, ax[1] / al, ax[2] / al];
   const angle = Math.acos(Math.max(-1, Math.min(1, un[1])));
   return { corrected: true, cameraUpY: un[1], cameras: ups.length, matrix: axisAngle([...axis, angle]), axis: axis.map(round) as [number, number, number], angleDeg: Math.round(angle * 180 / Math.PI) };
+}
+
+/** A step's camera in the scaled assembly frame (unit factor). */
+function scaleView(v: GuideStepView, k: number): GuideStepView {
+  if (k === 1) return v;
+  const sc = (p: [number, number, number]): [number, number, number] => [round5(p[0] * k), round5(p[1] * k), round5(p[2] * k)];
+  const out: GuideStepView = { ...v };
+  if (v.position) out.position = sc(v.position);
+  if (v.center) out.center = sc(v.center);
+  return out;
 }
 
 /** Carry a step's suggested camera into the corrected assembly frame. */

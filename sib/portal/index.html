@@ -1140,6 +1140,15 @@
           <option value="final">After the last step</option>
         </select></label>
       <span id="import-cortona-rest-hint" style="font-size:0.74rem;color:var(--muted);line-height:1.4"></span>
+      <label style="display:flex;align-items:center;gap:6px;margin-top:4px">Units
+        <select id="import-cortona-units" class="ax-select" style="font-size:0.78rem;padding:3px 8px">
+          <option value="auto">Auto (recommended)</option>
+          <option value="m">Metres</option>
+          <option value="mm">Millimetres</option>
+          <option value="cm">Centimetres</option>
+          <option value="in">Inches</option>
+        </select></label>
+      <span style="font-size:0.74rem;color:var(--muted);line-height:1.4">Auto measures the assembly: a model under 10 cm across is taken as millimetres and scaled by 1,000; the log says what was done. Pick a unit only when Auto reads a publication wrong.</span>
     </div>
     <label id="import-cortona-strict-row" style="display:none;font-size:0.78rem;color:var(--muted);margin:-6px 0 12px;align-items:center;gap:6px"><input type="checkbox" id="import-cortona-strict"> Strict - refuse the import if the publication uses 3D features we don't recognise (otherwise they are listed in the log)</label>
 
@@ -4958,9 +4967,10 @@ async function submitImportCortona(anchorId, createdBy) {
   const btn = document.getElementById('import-guide-submit');
   const strict = document.getElementById('import-cortona-strict').checked ? '1' : '0';
   const restPose = document.getElementById('import-cortona-rest').value || 'auto';
+  const units = document.getElementById('import-cortona-units').value || 'auto';
   btn.disabled = true; btn.textContent = 'Importing…';
   try {
-    const q = new URLSearchParams({ anchorId, createdBy, strict, restPose });
+    const q = new URLSearchParams({ anchorId, createdBy, strict, restPose, units });
     const res = await fetch(`/guides/import/cortona?${q}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/octet-stream', 'X-Filename': importCortonaFile.name, 'X-API-Key': apiKey(), 'X-Admin-Key': adminKeyStored() },
@@ -5024,6 +5034,7 @@ function showCortonaImportLog(rec) {
     `protos ignored: ${L.protos.ignored.join(', ') || '-'}`,
     `protos UNKNOWN: ${L.protos.unknown.join(', ') || '-'}`,
     `publish: ${JSON.stringify(L.publish)}`,
+    `units: ${L.units ? `${L.units.factor === 1 ? 'as published' : 'scaled by ' + L.units.factor} - ${L.units.reason} · extent as published ${L.units.publishedExtentM} m` : 'n/a (older server)'}`,
     `assembled pose: ${L.restPose ? `${L.restPose.chosen === 'final' ? 'after the last step' : 'as published'} - ${L.restPose.reason} · extent published ${L.restPose.extentM.published} m · before step 1 ${L.restPose.extentM.initial} m · after last step ${L.restPose.extentM.final} m · ${L.restPose.movedParts} part(s) end elsewhere · ${L.restPose.rebased} rebased` : 'n/a (older server)'}`,
     `warnings: ${L.warnings.length ? '\n  - ' + L.warnings.join('\n  - ') : 'none'}`,
   ];

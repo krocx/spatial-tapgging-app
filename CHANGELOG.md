@@ -7,6 +7,11 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **Publications in millimetres import at the right size.** The importer
+  measures the assembly and scales one under 10 cm across by 1,000 (the
+  factor goes on the root, so step deltas are untouched); the import form
+  has a Units override (Auto / m / mm / cm / in) and the log a `units:`
+  line. An assembly over 50 m is warned about, not changed.
 - **Assembled pose can be changed after import.** Guide menu → "Assembled
   pose: …" switches an imported model between "as published" and "after the
   last step" in place, with the same hints as the import form: the GLB's

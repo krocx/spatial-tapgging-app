@@ -271,6 +271,21 @@ in the log dialog) - it contains counts, PROTO type names, publish options
 and warnings, never text or part numbers. If `protos UNKNOWN` is non-empty,
 those names are the next thing to add to `procedure.ts`.
 
+### Units (2026-09-30)
+
+Cortona publishes in the CAD file's units, and the office decks arrived
+1,000 times too small (the Common Cathode Base Unit measured 34 mm across).
+The importer now measures the assembly as built and, when it is under 0.1 m
+across, scales it by 1,000 as millimetres; the factor sits on the synthetic
+root node, so every part keeps its own local frame and the step deltas
+(parent-frame translations) stay valid without change, while bounds, CAD
+pins and the step cameras (world-space) are scaled with it. A model over
+50 m across is only warned about, because the factor is not obvious (the
+Wheelchair demo reads 230 m). The import form has a Units override (Auto,
+metres, millimetres, centimetres, inches) beside Assembled pose; the log's
+`units:` line records the extent as published, the factor and the reason.
+`sib/test/units.test.ts` covers the three cases.
+
 ### Rest pose - as published or after the last step (2026-09-29)
 
 A publication keeps its parts wherever the author left them in the `.wrl`.

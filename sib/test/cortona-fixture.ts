@@ -12,10 +12,14 @@ export interface FixtureOptions {
   colourOnObjectVM?: boolean; // leaf Shape has an empty Material {}; the colour sits on ObjectVM.appearance
   /** No set-up step; the parts are published at their exploded start (y = 0.6) and step 2 animates every one into place. */
   publishedExploded?: boolean;
+  /** Multiply every coordinate (a publication in the wrong units: 0.001 = a metre model that reads as millimetres). */
+  unitScale?: number;
 }
 
 export function buildVrml(o: FixtureOptions = {}): string {
   const parts = o.parts ?? 4;
+  const U = o.unitScale ?? 1;
+  const u = (v: number) => +(v * U).toPrecision(6);
   const protos = `#VRML V2.0 utf8
 #	Created by RapidGenerator 9.9 (Import_MicroStation 9.9)
 PROTO ObjectVM [ exposedField SFInt32 whichChoice 0 exposedField SFNode appearance NULL exposedField SFNode geometry NULL
@@ -42,13 +46,13 @@ NavigationInfo { avatarSize [ 0.25, 1.6, 0.75 ] type [ "EXAMINE" ] }
 DEF BaseViewpoint1 Viewpoint { position 0.6 0.2 1.59 orientation ${o.upsideDown ? '1 0 0 3.1' : '0 1 0 0'} fieldOfView 0.785 description "start" }
 `;
   const box = (x: number) => `Shape { appearance Appearance { material Material { ${o.colourOnObjectVM ? '' : 'diffuseColor 0.7 0.72 0.75'} } }
-  geometry IndexedFaceSet { ccw TRUE creaseAngle 0.5 coord Coordinate { point [ ${x} 0 0, ${x + 0.05} 0 0, ${x + 0.05} 0.05 0, ${x} 0.05 0, ${x} 0 0.05, ${x + 0.05} 0 0.05, ${x + 0.05} 0.05 0.05, ${x} 0.05 0.05 ] }
+  geometry IndexedFaceSet { ccw TRUE creaseAngle 0.5 coord Coordinate { point [ ${u(x)} 0 0, ${u(x + 0.05)} 0 0, ${u(x + 0.05)} ${u(0.05)} 0, ${u(x)} ${u(0.05)} 0, ${u(x)} 0 ${u(0.05)}, ${u(x + 0.05)} 0 ${u(0.05)}, ${u(x + 0.05)} ${u(0.05)} ${u(0.05)}, ${u(x)} ${u(0.05)} ${u(0.05)} ] }
     coordIndex [ 0 1 2 3 -1, 4 5 6 7 -1, 0 1 5 4 -1, 2 3 7 6 -1, 1 2 6 5 -1, 0 3 7 4 -1 ] } }`;
   let scene = `DEF ASSEMBLY_ROOT ObjectVM { name "Assembly" translation 0 0 0 children [
   DEF BASE_PLATE ObjectVM { name "Base plate" translation 0 0 0 children [ ${box(0)} ] }
 `;
   for (let i = 1; i <= parts; i++) {
-    scene += `  DEF PN_0190-1000${i}_1 ObjectVM { name "Part ${i}" ${o.colourOnObjectVM ? 'appearance Appearance { material Material { diffuseColor 0.9 0.1 0.1 } }' : ''} translation ${(0.1 * i).toFixed(3)} ${o.publishedExploded ? '0.60' : '0.06'} 0 children [ ${box(0)} ] }\n`;
+    scene += `  DEF PN_0190-1000${i}_1 ObjectVM { name "Part ${i}" ${o.colourOnObjectVM ? 'appearance Appearance { material Material { diffuseColor 0.9 0.1 0.1 } }' : ''} translation ${u(0.1 * i)} ${u(o.publishedExploded ? 0.60 : 0.06)} 0 children [ ${box(0)} ] }\n`;
   }
   scene += `  DEF CALLOUT_A CalloutM6 { translation 0.1 0.12 0 string "Torque to spec" whichChoice -1 }
   DEF PANEL_A PanelHtml9 { translation 0.3 0.12 0 htmlbody [ "<html><body><p>Check &amp; verify</p><p>seal seating</p></body></html>" ] whichChoice -1 }
@@ -65,13 +69,13 @@ ${o.unknownProto ? '  DEF MYSTERY MysteryWidget { foo "x" }\n' : ''}] }
   const s1 = [
     cmd('C1', 'SwitchOFF', 'key [ 0 1 ] keyValue [ -1 -1 ] period [ 0 1 ] objectID -106464992 attributeName "whichChoice"', 'PN_0190-10001_1', 'whichChoice'),
     cmd('C2', 'Set_transparency', 'key [ 0 1 ] keyValue [ 0 0.7 ] period [ 0 1 ] objectID -2001 attributeName "transparency"', 'PN_0190-10002_1', 'transparency'),
-    cmd('C3', 'Set_Viewpoint', `position 0.5 0.3 1.2 orientation ${o.upsideDown ? '1 0 0 3.0' : '0 1 0 0.3'} fieldOfView 0.7`, '', ''),
+    cmd('C3', 'Set_Viewpoint', `position ${u(0.5)} ${u(0.3)} ${u(1.2)} orientation ${o.upsideDown ? '1 0 0 3.0' : '0 1 0 0.3'} fieldOfView 0.7`, '', ''),
   ];
   routes.pop(); // C3 has no route
   const s2 = [
     ...(o.publishedExploded
-      ? Array.from({ length: parts }, (_, k) => cmd(`C4_${k + 1}`, 'Set_translation', `key [ 0 1 ] keyValue [ ${(0.1 * (k + 1)).toFixed(3)} 0.60 0, ${(0.1 * (k + 1)).toFixed(3)} 0.06 0 ] period [ 0 0.5 ] objectID -${106464992 + k} attributeName "translation"`, `PN_0190-1000${k + 1}_1`, 'translation'))
-      : [cmd('C4', 'Set_translation', 'key [ 0 0.5 1 ] keyValue [ 0.1 0.30 0, 0.1 0.18 0, 0.1 0.06 0 ] period [ 0 0.5 ] objectID -106464992 attributeName "translation"', 'PN_0190-10001_1', 'translation')]),
+      ? Array.from({ length: parts }, (_, k) => cmd(`C4_${k + 1}`, 'Set_translation', `key [ 0 1 ] keyValue [ ${u(0.1 * (k + 1))} ${u(0.60)} 0, ${u(0.1 * (k + 1))} ${u(0.06)} 0 ] period [ 0 0.5 ] objectID -${106464992 + k} attributeName "translation"`, `PN_0190-1000${k + 1}_1`, 'translation'))
+      : [cmd('C4', 'Set_translation', `key [ 0 0.5 1 ] keyValue [ ${u(0.1)} ${u(0.30)} 0, ${u(0.1)} ${u(0.18)} 0, ${u(0.1)} ${u(0.06)} 0 ] period [ 0 0.5 ] objectID -106464992 attributeName "translation"`, 'PN_0190-10001_1', 'translation')]),
     cmd('C5', 'SwitchOFF', 'key [ 0 ] keyValue [ 0 ] period [ 0 0.1 ] objectID -3001 attributeName "whichChoice"', 'CALLOUT_A', 'whichChoice'),
     cmd('C6', 'SwitchOFF', 'key [ 0 ] keyValue [ 0 ] objectID -106464992 attributeName "whichChoice"', 'PN_0190-10001_1', 'whichChoice'),
   ];
