@@ -109,6 +109,7 @@
    "import/cortona/hose-frames.ts",
    "import/cortona/interactivity.ts",
    "import/cortona/procedure.ts",
+   "import/cortona/rest-pose.ts",
    "import/cortona/scene.ts",
    "import/cortona/vrml.ts",
    "import/cortona/widgets.ts"
@@ -119,6 +120,11 @@
   ],
   "import/cortona/primitives.ts": [],
   "import/cortona/procedure.ts": [
+   "import/cortona/vrml.ts"
+  ],
+  "import/cortona/rest-pose.ts": [
+   "import/cortona/procedure.ts",
+   "import/cortona/scene.ts",
    "import/cortona/vrml.ts"
   ],
   "import/cortona/scene.ts": [
@@ -160,6 +166,9 @@
    "ops-log.ts",
    "routes/uam.ts",
    "uam/uam-core.ts"
+  ],
+  "models/assembled-pose.ts": [
+   "models/glb-nodes.ts"
   ],
   "models/glb-geometry.ts": [
    "models/glb-nodes.ts"
@@ -299,6 +308,7 @@
    "import/jobs.ts",
    "memory.ts",
    "middleware/auth.ts",
+   "models/assembled-pose.ts",
    "models/mindmap.model.ts",
    "oms/step-validation.ts",
    "perception/image-comparator.ts",
