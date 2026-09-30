@@ -338,6 +338,10 @@
     /* Post-import highlight - the new guide announces itself */
     @keyframes glflash { 0%,60% { box-shadow: var(--ax-ring); } 100% { box-shadow: none; } }
     .gl-flash { animation: glflash 3.2s ease-out; }
+    /* A card the user was sent to (guide → its 3D model) stays marked until they click elsewhere:
+       on a long page the scroll can outlast a flash, and the mark is the answer to "which one?". */
+    .gl-pinned { box-shadow: var(--ax-ring); border-color: var(--ax-blue) !important; }
+    .gl-pinned::before { content: 'From the guide'; display: inline-block; font: var(--ax-eyebrow); letter-spacing: .08em; text-transform: uppercase; color: var(--ax-blue); margin-bottom: 6px; }
 
     /* ── iLOTO panel ── */
     #iloto-panel { display: none; padding: 20px 24px 56px; }
@@ -4956,7 +4960,13 @@ async function showModelCard(modelId) {
   location.hash = '#content/models';
   await loadModels();
   const card = document.getElementById('model-card-' + modelId);
-  if (card) { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); card.classList.add('gl-flash'); setTimeout(() => card.classList.remove('gl-flash'), 3200); }
+  if (!card) return;
+  document.querySelectorAll('.gl-pinned').forEach(c => c.classList.remove('gl-pinned'));
+  card.classList.add('gl-pinned');
+  card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  // The mark stays until the user clicks somewhere else (or opens another card).
+  const clear = (e) => { if (card.contains(e.target)) return; card.classList.remove('gl-pinned'); document.removeEventListener('pointerdown', clear, true); };
+  setTimeout(() => document.addEventListener('pointerdown', clear, true), 400);
 }
 
 let importCortonaFile = null;
@@ -5064,6 +5074,26 @@ function showCortonaImportLog(rec) {
     document.body.appendChild(m);
   }
   document.getElementById('cortona-log-pre').textContent = text;
+  m.style.display = 'flex';
+}
+/** QR that opens this guide's XR kit page on a headset browser (scan from the glasses). */
+async function showXrQr(guideId, name) {
+  let m = document.getElementById('xr-qr-modal');
+  if (!m) { m = document.createElement('div'); m.id = 'xr-qr-modal'; m.style.cssText = 'display:none;position:fixed;inset:0;background:var(--ax-scrim);z-index:9100;align-items:center;justify-content:center;'; m.addEventListener('click', e => { if (e.target === m) m.style.display = 'none'; }); document.body.appendChild(m); }
+  let url = `${location.origin}/xr?guide=${encodeURIComponent(guideId)}`;
+  try { const r = await fetch(`/guides/${guideId}/xr-qr.png?text=1`, { headers: { 'X-API-Key': apiKey() } }); if (r.ok) url = await r.text(); } catch {}
+  const src = `/guides/${guideId}/xr-qr.png?t=${Date.now()}`;
+  m.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px 26px;width:min(440px,94vw);text-align:center;position:relative">
+    <button onclick="document.getElementById('xr-qr-modal').style.display='none'" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-close"/></svg></button>
+    <div class="ax-eyebrow">XR kit · AR glasses</div>
+    <h3 style="margin:4px 0 12px;font-size:1rem;font-weight:700">${name || 'Guide'}</h3>
+    <img src="${src}" alt="QR code for the XR kit page" style="width:min(300px,70vw);height:auto;border-radius:12px;background:var(--ax-on-accent);padding:8px">
+    <p style="font-size:0.78rem;color:var(--muted);margin:12px 0 4px;word-break:break-all;font-family:var(--ax-mono)">${esc(url)}</p>
+    <p style="font-size:0.78rem;color:var(--muted);margin:0 0 12px">Scan from the glasses' browser or the phone paired to them. On an access-controlled server the site key is asked once, then the guide opens.</p>
+    <div style="display:flex;gap:8px;justify-content:center">
+      <a class="btn btn-ghost btn-sm" href="${src}" download="xr-${guideId.slice(0,8)}.png">Download PNG</a>
+      <button class="btn btn-ghost btn-sm" onclick="navigator.clipboard.writeText(${JSON.stringify(url)}).then(()=>toast('Link copied'))">Copy link</button>
+    </div></div>`;
   m.style.display = 'flex';
 }
 /** Switch an imported assembly between its two rest poses, in place (no re-import). */
@@ -5850,6 +5880,7 @@ function openGuideMenu(ev, guideId, anchorId, configId, siblings, ciMode) {
     <button onclick="openAssembledPose('${guideId}','${anchorId}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-cube"/></svg> Assembled pose: ${guide?.assembly?.assembledPose === 'final' ? 'after the last step' : 'as published'}…</button>` : ''}
     <hr>
     <a href="/xr?guide=${guideId}" target="_blank" rel="noopener" onclick="closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-xr"/></svg> Open in XR kit</a>
+    <button onclick="showXrQr('${guideId}','${esc((guide?.name || '').replace(/'/g, ''))}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-qr"/></svg> QR for AR glasses</button>
     <button onclick="toggleGuideCiMode('${guideId}','${anchorId}','${ciMode}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-intelligence"/></svg> ${ciMode === 'demo' ? 'Demo mode off' : 'Demo mode on'}</button>
     <hr>
     <button onclick="moveGuideToAnchor('${guideId}','${anchorId}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-move"/></svg> Move to another chamber</button>

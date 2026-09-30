@@ -11,6 +11,7 @@ api: |
   GET /guides - all guides across anchors (portal · API key)
   PATCH /guides/:id - publish / unpublish from the library (portal · API key)
   GET /guides/:id/steps - step list with placement status (portal · API key)
+  GET /guides/:id/xr-qr.png - QR of the guide's XR kit page for AR glasses; guide menu → QR for AR glasses (portal · API key)
 wireframe: portal
 arch: |
   flowchart LR

@@ -7,6 +7,13 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **QR for AR glasses.** Guide menu → "QR for AR glasses" shows a QR of the
+  guide's XR kit page (`/xr?guide=…`) with the link, Download PNG and Copy
+  link, so a headset browser opens the guide by scanning instead of typing;
+  an access-controlled server asks the site key once and comes back to it.
+- **The model a guide points to stays marked.** Guide menu → 3D model now
+  pins a "From the guide" mark on the model card until you click elsewhere,
+  instead of a flash that a long page could scroll past.
 - **3D model preview on the design system.** The footer is two rows that
   wrap as units, so nothing overlaps: Scale with a slider and a typed
   factor, the size readout; Up, Origin, Fit view (re-frames the camera at

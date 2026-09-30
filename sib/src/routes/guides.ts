@@ -25,6 +25,7 @@ import { memoryLimitBytes, importNeedBytes, checkWorkerMemory } from '../memory.
 
 import { registerGeneratedGlb, MODELS_DIR } from './models.js';
 import { v4 as uuidv4 } from 'uuid';
+import QRCode from 'qrcode';
 import fs   from 'fs';
 import path from 'path';
 import { resolveDataFile, DATA_DIR } from '../data-dir.js';
@@ -678,6 +679,23 @@ router.get('/:id/import-log', (req: Request, res: Response): void => {
   if (!rec) { res.status(404).json({ error: 'No import log is kept for this guide', timestamp: new Date().toISOString() }); return; }
   res.setHeader('Cache-Control', 'no-store');
   res.json({ data: rec, timestamp: new Date().toISOString() });
+});
+
+// GET /guides/:id/xr-qr.png - a QR of this guide's XR kit page
+// (https://<host>/xr?guide=<id>) for AR glasses and headset browsers, so
+// nobody types a URL on a wearable. A gated deployment lands on /unlock
+// first and comes back to the page. ?text=1 answers the URL instead.
+router.get('/:id/xr-qr.png', async (req: Request, res: Response): Promise<void> => {
+  const guide = guideStore.findById(req.params.id);
+  if (!guide) { res.status(404).json({ error: `Guide ${req.params.id} not found`, timestamp: new Date().toISOString() }); return; }
+  const proto = (req.headers['x-forwarded-proto'] as string | undefined)?.split(',')[0] || req.protocol;
+  const host = (req.headers['x-forwarded-host'] as string | undefined)?.split(',')[0] || req.headers.host || 'localhost';
+  const url = `${proto}://${host}/xr?guide=${encodeURIComponent(guide.id)}`;
+  if (req.query.text === '1') { res.type('text/plain').send(url); return; }
+  const png = await QRCode.toBuffer(url, { errorCorrectionLevel: 'M', type: 'png', width: 512, margin: 4, color: { dark: '#000000', light: '#ffffff' } });
+  res.setHeader('Content-Type', 'image/png');
+  res.setHeader('Cache-Control', 'no-store');
+  res.send(png);
 });
 
 // POST /guides/:id/assembled-pose { pose: 'published' | 'final' } - switch an
