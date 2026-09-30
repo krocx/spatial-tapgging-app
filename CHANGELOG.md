@@ -7,6 +7,13 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **3D model preview on the design system.** The footer is two rows that
+  wrap as units, so nothing overlaps: Scale with a slider and a typed
+  factor, the size readout; Up, Origin, Fit view (re-frames the camera at
+  the current scale), Reset (1x, up as imported, origin bottom centre,
+  model on the floor, view re-framed) and Save as default. The preview
+  opens at the model's saved default scale, and re-frames after every
+  scale change so the model never leaves the view.
 - **Publications in millimetres import at the right size.** The importer
   measures the assembly and scales one under 10 cm across by 1,000 (the
   factor goes on the root, so step deltas are untouched); the import form
