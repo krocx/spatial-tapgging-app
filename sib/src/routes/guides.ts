@@ -19,6 +19,8 @@ import express, { Router } from 'express';
 import type { Request, Response } from 'express';
 import { enqueueCortonaImport, enqueueVariants, getImportJob, importQueueDepth } from '../import/jobs.js';
 import { switchAssembledPose, type AssembledPose } from '../models/assembled-pose.js';
+import { readinessReport } from '../guides/readiness.js';
+import { readDeviceProfiles } from './devices.js';
 import { recordVariants } from './models.js';
 import { requireRole } from '../middleware/auth.js';
 import { memoryLimitBytes, importNeedBytes, checkWorkerMemory } from '../memory.js';
@@ -684,18 +686,34 @@ router.get('/:id/import-log', (req: Request, res: Response): void => {
 // GET /guides/:id/xr-qr.png - a QR of this guide's XR kit page
 // (https://<host>/xr?guide=<id>) for AR glasses and headset browsers, so
 // nobody types a URL on a wearable. A gated deployment lands on /unlock
-// first and comes back to the page. ?text=1 answers the URL instead.
+// first and comes back to the page. ?text=1 answers the URL instead;
+// ?profile=<device id> bakes a device profile into the link (readiness matrix).
 router.get('/:id/xr-qr.png', async (req: Request, res: Response): Promise<void> => {
   const guide = guideStore.findById(req.params.id);
   if (!guide) { res.status(404).json({ error: `Guide ${req.params.id} not found`, timestamp: new Date().toISOString() }); return; }
   const proto = (req.headers['x-forwarded-proto'] as string | undefined)?.split(',')[0] || req.protocol;
   const host = (req.headers['x-forwarded-host'] as string | undefined)?.split(',')[0] || req.headers.host || 'localhost';
-  const url = `${proto}://${host}/xr?guide=${encodeURIComponent(guide.id)}`;
+  const prof = typeof req.query.profile === 'string' && /^[a-z0-9-]+$/.test(req.query.profile) ? `&profile=${req.query.profile}` : '';
+  const url = `${proto}://${host}/xr?guide=${encodeURIComponent(guide.id)}${prof}`;
   if (req.query.text === '1') { res.type('text/plain').send(url); return; }
   const png = await QRCode.toBuffer(url, { errorCorrectionLevel: 'M', type: 'png', width: 512, margin: 4, color: { dark: '#000000', light: '#ffffff' } });
   res.setHeader('Content-Type', 'image/png');
   res.setHeader('Cache-Control', 'no-store');
   res.send(png);
+});
+
+// GET /guides/:id/readiness - which of this guide's steps each wearable can
+// deliver, and how (docs/ar-ojt/DEVICE-ADAPTIVE-INSTRUCTIONS.md): per step
+// the derived needs and, per device profile, native / adapted / assisted
+// with the reason; a summary per profile. ?profiles=a,b limits the columns.
+router.get('/:id/readiness', (req: Request, res: Response): void => {
+  const guide = guideStore.findById(req.params.id);
+  if (!guide) { res.status(404).json({ error: `Guide ${req.params.id} not found`, timestamp: new Date().toISOString() }); return; }
+  const want = typeof req.query.profiles === 'string' ? new Set(req.query.profiles.split(',').map(s => s.trim()).filter(Boolean)) : null;
+  const profiles = readDeviceProfiles().filter(p => !want || want.has(p.id));
+  const steps = guideStepStore.findAll().filter(s => s.guideId === guide.id).sort((a, b) => a.sequenceNumber - b.sequenceNumber);
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({ data: { guideId: guide.id, guideName: guide.name, ...readinessReport(steps, profiles) }, timestamp: new Date().toISOString() });
 });
 
 // POST /guides/:id/assembled-pose { pose: 'published' | 'final' } - switch an

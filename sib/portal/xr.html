@@ -65,6 +65,23 @@
     .hidden { display:none !important; }
     .chips { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
     .chip { font-size:12px; padding:3px 8px; border-radius:999px; background:rgba(34,211,238,.12); border:1px solid rgba(34,211,238,.35); color:var(--cyan); cursor:pointer; }
+    /* Text / spoken profile */
+    #textMode { position:fixed; inset:0; background:var(--bg); color:var(--text); display:flex; flex-direction:column; gap:14px; padding:18px 20px 22px; z-index:20; }
+    #textMode.hidden { display:none; }
+    #textMode .tm-top { display:flex; align-items:center; gap:10px; }
+    #textMode .tm-top .ghost { margin-left:auto; }
+    #textMode h1 { margin:8px 0 0; font-size:30px; line-height:1.2; }
+    #textMode p { margin:0; font-size:22px; line-height:1.45; }
+    #textMode .tm-where { color:var(--accent); }
+    #textMode .tm-parts { color:var(--muted); font-size:18px; }
+    #textMode .tm-nav { margin-top:auto; }
+    #textMode .tm-nav button { font-size:20px; padding:14px 18px; }
+    #textMode .tm-keys { font-size:13px; }
+    /* Even G2 class: monochrome green on black, few lines - the companion phone shows this page */
+    #textMode.mono { background:#000; color:#8cff8c; }
+    #textMode.mono .tm-where, #textMode.mono .tm-parts, #textMode.mono .pill, #textMode.mono .muted { color:#5fbf5f; }
+    #textMode.mono h1 { font-size:26px; }
+    #textMode.mono p { font-size:20px; }
   </style>
 </head>
 <body>
@@ -85,11 +102,26 @@
       <div class="row">
         <button class="primary grow" id="startAR" disabled>Start in AR</button>
         <button class="grow" id="startDesk" disabled>Desktop preview</button>
+        <button class="grow hidden" id="startText" disabled>Start (text)</button>
       </div>
       <div class="muted" id="capLine" style="margin-top:10px"></div>
     </div>
   </div>
 
+  <!-- Text / spoken profile: no model, one step per screen, paged with the keys a ring or trackpad sends -->
+  <div id="textMode" class="hidden">
+    <div class="tm-top"><span class="pill" id="tmPill">–</span><span class="pill" id="tmProfile">text</span><button class="ghost" id="tmExit" title="End session">✕</button></div>
+    <h1 id="tmTitle">–</h1>
+    <p id="tmText"></p>
+    <p class="tm-where" id="tmWhere"></p>
+    <p class="tm-parts" id="tmParts"></p>
+    <div class="row tm-nav">
+      <button id="tmPrev">‹ Back</button>
+      <button class="ghost" id="tmRepeat">Repeat</button>
+      <button class="primary grow" id="tmNext">Next ›</button>
+    </div>
+    <div class="muted tm-keys">← → to page · space next · R repeat<span id="tmVoice"></span></div>
+  </div>
   <div id="overlay" class="hidden">
     <div class="bar">
       <span class="title" id="topTitle">Guide</span>
@@ -155,6 +187,28 @@ async function api(path, init = {}) {
   if (r.status === 401) { $('gateKey').classList.remove('hidden'); throw new Error('unauthorised'); }
   if (!r.ok) throw new Error(`${path} → ${r.status}`);
   return r.headers.get('content-type')?.includes('json') ? r.json() : r;
+}
+// ── Device profile (docs/ar-ojt/DEVICE-ADAPTIVE-INSTRUCTIONS.md) ─────────────
+// ?profile=<id> wins; else the browser tells us the headset; else a full
+// browser profile. The profile decides the model budget, whether hose
+// flipbooks play, and whether the guide runs as text / spoken pages.
+function detectProfile() {
+  const ua = navigator.userAgent || '';
+  if (/OculusBrowser|Quest/i.test(ua)) return 'quest-3';
+  if (/Windows NT.*Edg\/.*(HoloLens|Mixed Reality)|HoloLens/i.test(ua)) return 'hololens-2';
+  if (/visionOS|Vision Pro/i.test(ua)) return 'vision-pro';
+  return null;
+}
+let profile = null;                 // DeviceProfile from /devices, or null = full browser
+let textMode = false;               // display text / none: pages, no model
+let reducedMode = false;            // overlay reduced: budget-sized model, no hose flipbooks
+async function loadProfile() {
+  const id = params.get('profile') || detectProfile();
+  if (!id) return;
+  try { const list = (await api('/devices')).data || []; profile = list.find(p => p.id === id) || null; } catch { profile = null; }
+  if (!profile) return;
+  textMode = profile.display === 'text' || profile.display === 'none';
+  reducedMode = profile.overlay === 'reduced';
 }
 function toast(msg, ms = 2200) {
   const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), ms);
@@ -238,9 +292,12 @@ async function loadBundle() {
   $('gateTitle').textContent = guide.name;
   $('gateText').textContent = `${steps.length} step${steps.length === 1 ? '' : 's'} · ${bundle.anchor?.assetId || 'anchor'}${bundle.anchor?.frames?.qr?.markerSizeM ? ` · QR ${Math.round(bundle.anchor.frames.qr.markerSizeM * 100)} cm` : ''}`;
   const model = (bundle.models || []).find(m => m.role === 'assembly' && m.glbUrl);
+  if (textMode) { $('gateText').textContent += ` · ${profile.name}: ${profile.display === 'none' ? 'spoken' : 'text'} pages, no model`; return; }
   if (!model) { $('gateText').textContent += ' · no assembly model on this guide - steps play as text only.'; return; }
-  $('gateText').textContent += ' · loading model…';
-  const buf = await (await fetch(model.glbUrl, { headers: hdr() })).arrayBuffer();
+  $('gateText').textContent += reducedMode ? ' · loading reduced model…' : ' · loading model…';
+  // A reduced profile asks for the smallest ladder step; the server answers with the variant at or above it.
+  const glbUrl = reducedMode ? model.glbUrl + (model.glbUrl.includes('?') ? '&' : '?') + 'budget=350000' : model.glbUrl;
+  const buf = await (await fetch(glbUrl, { headers: hdr() })).arrayBuffer();
   const gltf = await new Promise((ok, err) => new GLTFLoader().parse(buf, '', ok, err));
   const root = gltf.scene;
   // GLTFLoader sanitizes node names (strips ':' '.' '/' '[' ']'), so
@@ -317,6 +374,15 @@ function applyState(state) {
     // subtree, then a child's own state overrides - the iOS order.
     setPartOpacity(p, alpha, st.color);
   }
+  if (reducedMode) syncReducedHoses();
+}
+const isFrame = n => /#s\d+f\d+$/.test(n);
+/** Reduced overlay: hose flipbooks do not play - frames stay hidden and the rest tube shows whenever its owner does. */
+function syncReducedHoses() {
+  for (const [name, p] of parts) {
+    if (isFrame(name)) { setPartOpacity(p, 0); continue; }
+    if (name.endsWith('#rest')) { const owner = parts.get(name.slice(0, -5)); if (owner) setPartOpacity(p, currentAlpha(owner)); }
+  }
 }
 function tween(ms, fn, done) { const t = { t0: performance.now(), ms: Math.max(1, ms), fn, done }; tweens.add(t); return t; }
 function stepTweens(now) {
@@ -342,6 +408,7 @@ function playStep(k) {
 }
 function fire(e) {
   const d = e.delta, p = parts.get(d.node); if (!p) return;
+  if (reducedMode && (isFrame(d.node) || d.node.endsWith('#rest'))) return;   // no flipbooks on a reduced overlay
   const ms = e.durationSec * 1000;
   if (e.flash) {
     const mats = p.meshes.flatMap(m => m.userData.mats || []);
@@ -408,7 +475,7 @@ async function openLive() {
   try {
     const r = await api('/guide-sessions/live', { method: 'POST', body: JSON.stringify({
       guideId, anchorId: guide.anchorId, guideName: guide.name, anchorName: bundle.anchor?.assetId || '', operatorName: opName(),
-      workContext: `XR kit · ${frameKind}`,          // a string, like the iPad's Production #
+      workContext: `XR kit · ${frameKind}${profile ? ` · ${profile.id}` : ''}`,   // a string, like the iPad's Production #
     }) });
     live = r.data || r; sessionStartedAt = new Date().toISOString();
     await ev('session:started');
@@ -416,9 +483,62 @@ async function openLive() {
 }
 function validationFor(step) { return (bundle.validation || []).find(v => v.stepId === step.id); }
 
+// ── Text / spoken pages ──────────────────────────────────────────────────────
+// Where a step happens, in words, from its CAD pin against the assembly bounds.
+function whereWords(st) {
+  const p = st.cadPosition; const b = assemblyBounds || guide.assembly?.bounds; if (!p || !b) return '';
+  const rel = a => (p[a] - b.min[a]) / Math.max(1e-6, b.max[a] - b.min[a]);
+  const x = rel(0), y = rel(1), z = rel(2);
+  const w = [];
+  w.push(x < 0.33 ? 'left side' : x > 0.67 ? 'right side' : 'centre');
+  if (z < 0.33) w.push('towards the back'); else if (z > 0.67) w.push('towards the front');
+  w.push(y > 0.67 ? 'upper part' : y < 0.33 ? 'lower part' : 'mid height');
+  return w.join(', ');
+}
+function stepScript(st, names) {
+  const bits = [`Step ${idx + 1} of ${steps.length}. ${st.title || ''}.`, st.ttsText || st.text || ''];
+  const where = whereWords(st); if (where) bits.push(`Location: ${where}.`);
+  if (names.length) bits.push(`Parts: ${names.map(n => n.replace(/^cmp:/, '').replace(/[_-]+/g, ' ')).slice(0, 6).join(', ')}.`);
+  return bits.filter(Boolean).join(' ');
+}
+let speaking = null;
+function speak(text) {
+  if (!('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text); u.rate = 0.95; speaking = u; speechSynthesis.speak(u);
+}
+function renderTextStep(st, names) {
+  $('tmPill').textContent = `Step ${idx + 1} / ${steps.length}`;
+  $('tmTitle').textContent = st.title || `Step ${idx + 1}`;
+  $('tmText').textContent = st.text || '';
+  const where = whereWords(st); $('tmWhere').textContent = where ? `Where: ${where}` : '';
+  $('tmParts').textContent = names.length ? `Parts: ${names.slice(0, 6).map(n => n.replace(/^cmp:/, '').replace(/[_-]+/g, ' ')).join(' · ')}` : '';
+  $('tmPrev').disabled = idx === 0; $('tmNext').textContent = idx === steps.length - 1 ? 'Done ✓' : 'Next ›';
+  if (profile?.display === 'none') speak(stepScript(st, names));
+}
+function startText() {
+  localStorage.setItem('sib_xr_operator', opName());
+  $('gate').classList.add('hidden'); $('textMode').classList.remove('hidden');
+  $('textMode').classList.toggle('mono', profile?.display === 'text');
+  $('tmProfile').textContent = profile?.name || 'text';
+  placed = true; locked = true; frameKind = profile?.display === 'none' ? 'spoken' : 'text';
+  if (profile?.display === 'none' && 'speechSynthesis' in window) $('tmVoice').textContent = ' · steps are read aloud';
+  // Voice: "next", "back", "repeat" when the browser offers recognition (own APIs only).
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (SR && profile?.input?.includes('voice')) {
+    try {
+      const rec = new SR(); rec.continuous = true; rec.interimResults = false; rec.lang = 'en-US';
+      rec.onresult = e => { const t = (e.results[e.results.length - 1][0].transcript || '').trim().toLowerCase(); if (/\bnext\b|\bdone\b/.test(t)) completeStep(); else if (/\bback\b|\bprevious\b/.test(t)) { if (idx > 0) showStep(idx - 1); } else if (/\brepeat\b|\bagain\b/.test(t)) renderTextStep(steps[idx], stepParts(steps[idx])); };
+      rec.onend = () => { try { rec.start(); } catch {} };
+      rec.start(); $('tmVoice').textContent += ' · say "next", "back", "repeat"';
+    } catch {}
+  }
+  openLive().then(() => showStep(0));       // the session record says which profile ran it (workContext)
+}
 function showStep(k) {
   flushObservations();
   idx = k; const st = steps[k]; stepEnteredAt = performance.now();
+  if (textMode) { renderTextStep(st, stepParts(st)); ev('step:entered'); return; }
   $('stepPill').textContent = `Step ${k + 1} / ${steps.length}`;
   $('stepTitle').textContent = st.title || `Step ${k + 1}`;
   $('stepText').textContent = st.text || '';
@@ -449,7 +569,8 @@ function openSignoff() {
   flushObservations();
   // The sign-off form is HTML - on a headset it only shows once the immersive session ends.
   if (panelMode && xrSession) { toast('Leaving AR for sign-off'); xrSession.end(); }
-  applyState(stateBefore(guide.assembly?.initialNodes, steps, steps.length));
+  if (textMode) { $('textMode').classList.add('hidden'); speechSynthesis?.cancel?.(); }
+  else applyState(stateBefore(guide.assembly?.initialNodes, steps, steps.length));
   $('soName').value = opName();
   $('soSummary').textContent = `${completions.length} of ${steps.length} steps completed · ${Object.values(verdicts).filter(v => v === 'fail').length} failed validation · frame: ${frameKind}`;
   $('signoff').classList.remove('hidden');
@@ -696,6 +817,17 @@ renderer.setAnimationLoop((t, frame) => {
 $('keySave').onclick = () => { localStorage.setItem('sib_api_key', $('keyInput').value.trim()); location.reload(); };
 $('startAR').onclick = startAR;
 $('startDesk').onclick = startDesktop;
+$('startText').onclick = startText;
+$('tmNext').onclick = completeStep;
+$('tmPrev').onclick = () => { if (idx > 0) showStep(idx - 1); };
+$('tmRepeat').onclick = () => renderTextStep(steps[idx], stepParts(steps[idx]));
+$('tmExit').onclick = () => location.reload();
+window.addEventListener('keydown', e => {
+  if (!textMode || $('textMode').classList.contains('hidden')) return;
+  if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'Enter') { e.preventDefault(); completeStep(); }
+  else if (e.key === 'ArrowLeft') { e.preventDefault(); if (idx > 0) showStep(idx - 1); }
+  else if (e.key === 'r' || e.key === 'R') renderTextStep(steps[idx], stepParts(steps[idx]));
+});
 $('btnLock').onclick = lockPlacement;
 $('btnNext').onclick = completeStep;
 $('btnPrev').onclick = () => { if (idx > 0) showStep(idx - 1); };
@@ -727,7 +859,10 @@ function verdict(result) {
   $('capLine').textContent = xrOk
     ? 'WebXR AR available on this browser' + (navigator.xr && 'XRSession' in window ? '' : '')
     : 'No WebXR AR on this browser - desktop preview only (Quest / Android Chrome / a WebXR-capable headset browser is needed for the AR run).';
+  await loadProfile();
+  if (profile) $('capLine').textContent += ` · profile: ${profile.name}${params.get('profile') ? '' : ' (detected)'}`;
   try { await loadBundle(); } catch (e) { $('gateText').textContent = e.message === 'unauthorised' ? 'This server needs an API key.' : 'Could not load: ' + e.message; return; }
+  if (textMode) { $('startAR').classList.add('hidden'); $('startDesk').classList.add('hidden'); const b = $('startText'); b.classList.remove('hidden'); b.disabled = false; b.textContent = profile.display === 'none' ? 'Start (spoken)' : 'Start (text pages)'; return; }
   $('startAR').disabled = !xrOk; $('startDesk').disabled = false;
 })();
 </script>

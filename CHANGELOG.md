@@ -7,6 +7,20 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **Device readiness.** Guide menu → Device readiness shows, for every
+  step and every wearable profile (`docs/devices/*.md`: iPad, Quest 3,
+  HoloLens 2, Vision Pro, Rayneo X3 Pro, Even G2, Oakley Vanguard), whether
+  the step is native, adapted or assisted and why, with a deliverable
+  percentage per device, CSV export, and an open / QR link per device.
+  Needs are derived from each step (text, place, motion, parts, image,
+  hands busy); `step.needs` overrides. `GET /devices`,
+  `GET /guides/:id/readiness`. `docs/ar-ojt/DEVICE-ADAPTIVE-INSTRUCTIONS.md`.
+- **XR kit adapts to the device.** `?profile=<id>` (or detected for Quest,
+  HoloLens and Vision Pro): a reduced profile loads the 350 k variant and
+  skips hose flipbooks; a text profile shows one step per screen, paged
+  with arrows, space and R; a spoken profile reads each step aloud with
+  "next / back / repeat" by voice where the browser offers it. The
+  session's work context records the profile.
 - **QR for AR glasses.** Guide menu → "QR for AR glasses" shows a QR of the
   guide's XR kit page (`/xr?guide=…`) with the link, Download PNG and Copy
   link, so a headset browser opens the guide by scanning instead of typing;

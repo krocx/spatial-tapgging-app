@@ -1115,6 +1115,10 @@ export interface GuideStep {
   /** Pin location in the ASSEMBLY frame (metres) - centroid of the parts this
    *  step touches. posX/Y/Z are derived from it whenever the assembly pose is set. */
   cadPosition?:       [number, number, number];
+  /** Channels this step's meaning travels on, when an author has set them
+   *  (text · spatial · motion · part-id · media · hands-busy); otherwise
+   *  derived from the step (sib/src/guides/readiness.ts). */
+  needs?:             string[];
   // 3D model ghost overlay (Phase 2 - Model3D library)
   modelId?:           string;      // Model3D.id from anchor asset library
   modelScale?:        number;      // uniform scale factor applied to the model (default 1.0)

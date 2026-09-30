@@ -2,8 +2,21 @@
 
 Proprietary & Confidential · Applied Materials
 
-Status: **proposal, 2026-09-30** - not started. Backlog item "device-adaptive
-work instructions (AR glasses readiness)".
+Status: **approved and built, first slice, 2026-09-30.** Step needs
+(`sib/src/guides/readiness.ts`), device profiles (`docs/devices/*.md`,
+`GET /devices`), the readiness join (`GET /guides/:id/readiness`, guide
+menu → Device readiness, CSV) and the XR kit profile switch (`?profile=`
+or detected: reduced model without flipbooks; text pages; spoken pages
+with voice commands) are in. Authoring the needs in the Designer (chips)
+and the assessment itself are next.
+
+First numbers, Bee drone, 128 steps: iPad / Quest 3 / HoloLens 2 / Vision
+Pro 128 native; Rayneo X3 Pro 103 native, 25 adapted (the steps that play
+a hose flipbook); Even G2 and Oakley Vanguard 128 adapted (text or spoken,
+location in words from the CAD pin). No step is assisted because the Bee
+has no step images; a deck with photos will show assisted cells on the
+text and spoken devices. Treat these as the rule set's opinion, to be
+corrected on hardware.
 
 ## The question
 
@@ -79,12 +92,19 @@ on the server. No change to the app.
 
 ## Order of work
 
-1. Step needs at import + Designer chips (one day).
-2. Device profiles as files + readiness join + portal matrix (two days).
-3. XR kit profile switch: reduced model, text pages, spoken script (two to
-   three days, the spoken form last).
-4. Run the Bee through the matrix, walk the adapted steps on each device
-   class, record what held (the assessment itself).
-
-Decision needed before 1: which three devices are in the first assessment,
-so the profiles are written from hardware in hand rather than data sheets.
+1. Step needs, derived at request time from the step (done; `step.needs`
+   override honoured, Designer chips to come).
+2. Device profiles as files + readiness join + portal matrix (done).
+3. XR kit profile switch (done, first cut): `?profile=<id>` or detected
+   from the browser (Quest, HoloLens, Vision Pro). Reduced overlay asks the
+   server for the 350 k variant and does not play hose flipbooks (the rest
+   tube stands for each hose). Text profile: one step per screen, paged
+   with arrow keys, space and R (what a ring or trackpad sends), green
+   monochrome for the G2 class. Spoken profile: the same page read aloud
+   with the browser's own speech synthesis, "next / back / repeat" by
+   voice where the browser offers recognition. The session record carries
+   the profile in its work context.
+4. The assessment: devices in hand are Meta Quest 3, Rayneo X3 Pro, Even
+   Realities G2, Meta Oakley Vanguard, HoloLens 2, Apple Vision Pro. Start
+   with Quest 3, Rayneo X3 Pro and Even G2, which cover the three delivery
+   forms; correct the profiles and the rules from what holds.

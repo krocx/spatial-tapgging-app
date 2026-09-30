@@ -5084,6 +5084,36 @@ function showCortonaImportLog(rec) {
   document.getElementById('cortona-log-pre').textContent = text;
   m.style.display = 'flex';
 }
+/** Which steps each wearable can deliver, and how (docs/ar-ojt/DEVICE-ADAPTIVE-INSTRUCTIONS.md). */
+async function showReadiness(guideId) {
+  let m = document.getElementById('readiness-modal');
+  if (!m) { m = document.createElement('div'); m.id = 'readiness-modal'; m.style.cssText = 'display:none;position:fixed;inset:0;background:var(--ax-scrim);z-index:9100;align-items:center;justify-content:center;'; m.addEventListener('click', e => { if (e.target === m) m.style.display = 'none'; }); document.body.appendChild(m); }
+  m.innerHTML = `<div class="ax-card" style="background:var(--ax-solid);width:min(1100px,96vw);max-height:90vh;display:flex;flex-direction:column;gap:10px;position:relative"><div class="ax-empty" style="border:0"><span class="ax-mark is-loading"><i></i><em></em></span>Reading the guide…</div></div>`;
+  m.style.display = 'flex';
+  let R;
+  try { R = (await apiFetch(`/guides/${guideId}/readiness`)).data; }
+  catch (e) { m.querySelector('.ax-card').innerHTML = `<p class="ax-muted">Readiness: ${esc(e.message)}</p>`; return; }
+  const LEVEL = { native: ['Native', 'var(--ax-green)', 'var(--ax-ok-fill)'], adapted: ['Adapted', 'var(--ax-orange)', 'var(--ax-warn-fill)'], assisted: ['Assisted', 'var(--ax-red)', 'var(--ax-bad-fill)'] };
+  const NEED = { text: 'text', spatial: 'place on the tool', motion: 'motion', 'part-id': 'find a part', media: 'image', 'hands-busy': 'hands busy' };
+  const cell = (r) => { const [label, ink, fill] = LEVEL[r.level]; const why = r.needs.map(n => `${NEED[n.need] || n.need}: ${n.how}`).join('\n'); return `<td title="${esc(why)}" style="text-align:center"><span class="ax-chip" style="background:${fill};color:${ink};border-color:${fill}">${label}</span></td>`; };
+  const head = R.profiles.map(p => `<th style="text-align:center" title="${esc(p.notes || '')}">${esc(p.name)}<div class="ax-label-s ax-muted" style="font-weight:400">${esc(p.delivery === 'app' ? 'SIB app' : p.delivery === 'xrkit' ? 'XR kit' : p.delivery === 'companion-text' ? 'text via phone' : 'spoken')}${p.delivery !== 'app' ? ` · <a href="/xr?guide=${guideId}&profile=${p.id}" target="_blank" rel="noopener">open</a> · <a href="/guides/${guideId}/xr-qr.png?profile=${p.id}" target="_blank" rel="noopener" title="QR that opens this guide on this device">QR</a>` : ''}</div></th>`).join('');
+  const sum = R.profiles.map(p => { const c = R.summary[p.id]; return `<td style="text-align:center"><b class="preview-mono">${c.deliverable}%</b><div class="ax-label-s ax-muted">${c.native} native · ${c.adapted} adapted · ${c.assisted} assisted</div></td>`; }).join('');
+  const rows = R.steps.map(s => `<tr><td class="preview-mono ax-muted">${s.sequenceNumber}</td><td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(s.title)}">${esc(s.title)}</td><td class="ax-label-s ax-muted">${s.needs.map(n => NEED[n] || n).join(' · ')}</td>${R.profiles.map(p => cell(s.byProfile[p.id])).join('')}</tr>`).join('');
+  const csv = () => {
+    const lines = [['step', 'title', 'needs', ...R.profiles.map(p => p.name)].join(',')];
+    for (const s of R.steps) lines.push([s.sequenceNumber, JSON.stringify(s.title), JSON.stringify(s.needs.join(' ')), ...R.profiles.map(p => s.byProfile[p.id].level)].join(','));
+    lines.push(['deliverable %', '', '', ...R.profiles.map(p => R.summary[p.id].deliverable)].join(','));
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([lines.join('\n')], { type: 'text/csv' })); a.download = `readiness-${guideId.slice(0, 8)}.csv`; a.click();
+  };
+  m.querySelector('.ax-card').innerHTML = `
+    <button onclick="document.getElementById('readiness-modal').style.display='none'" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-close"/></svg></button>
+    <div><div class="ax-eyebrow">Device readiness</div><h3 style="margin:2px 0 0;font-size:1rem;font-weight:700">${esc(R.guideName)}</h3>
+    <p class="ax-label-s ax-muted" style="margin:4px 0 0;max-width:820px">Each step's needs (from its text, pin, motion, parts and image) joined with what each wearable can deliver. <b style="color:var(--ax-green)">Native</b>: as authored. <b style="color:var(--ax-orange)">Adapted</b>: delivered in a reduced form (text, spoken, reduced model). <b style="color:var(--ax-red)">Assisted</b>: the device cannot carry the step alone. Hover a cell for the reason. Profiles live in docs/devices.</p></div>
+    <div style="overflow:auto;min-height:0"><table class="ax-table" style="font-size:0.8rem"><thead><tr><th>#</th><th>Step</th><th>Needs</th>${head}</tr></thead>
+      <tbody><tr style="background:var(--ax-paper-2)"><td></td><td><b>Deliverable</b></td><td></td>${sum}</tr>${rows}</tbody></table></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end"><button class="ax-btn" id="readiness-csv"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Download CSV</button></div>`;
+  document.getElementById('readiness-csv').onclick = csv;
+}
 /** QR that opens this guide's XR kit page on a headset browser (scan from the glasses). */
 async function showXrQr(guideId, name) {
   let m = document.getElementById('xr-qr-modal');
@@ -5889,6 +5919,7 @@ function openGuideMenu(ev, guideId, anchorId, configId, siblings, ciMode) {
     <hr>
     <a href="/xr?guide=${guideId}" target="_blank" rel="noopener" onclick="closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-xr"/></svg> Open in XR kit</a>
     <button onclick="showXrQr('${guideId}','${esc((guide?.name || '').replace(/'/g, ''))}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-qr"/></svg> QR for AR glasses</button>
+    <button onclick="showReadiness('${guideId}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-xr"/></svg> Device readiness</button>
     <button onclick="toggleGuideCiMode('${guideId}','${anchorId}','${ciMode}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-intelligence"/></svg> ${ciMode === 'demo' ? 'Demo mode off' : 'Demo mode on'}</button>
     <hr>
     <button onclick="moveGuideToAnchor('${guideId}','${anchorId}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-move"/></svg> Move to another chamber</button>

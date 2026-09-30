@@ -24,6 +24,7 @@
    "routes/ask.ts",
    "routes/catalog.ts",
    "routes/chamber-configs.ts",
+   "routes/devices.ts",
    "routes/gemba-library.ts",
    "routes/gemba-walks.ts",
    "routes/guide-sessions.ts",
@@ -83,6 +84,7 @@
    "routes/anchors.ts",
    "routes/chamber-configs.ts"
   ],
+  "guides/readiness.ts": [],
   "guides/step-models.ts": [],
   "guides/store.ts": [
    "stores/json-file-store.ts"
@@ -271,6 +273,10 @@
    "routes/anchors.ts",
    "stores/json-file-store.ts"
   ],
+  "routes/devices.ts": [
+   "catalog/catalog-core.ts",
+   "guides/readiness.ts"
+  ],
   "routes/gemba-library.ts": [
    "gemba/library-core.ts",
    "stores/json-file-store.ts"
@@ -303,6 +309,7 @@
    "guides/bundle.ts",
    "guides/copy.ts",
    "guides/ingest.ts",
+   "guides/readiness.ts",
    "guides/step-models.ts",
    "guides/store.ts",
    "import/jobs.ts",
@@ -317,6 +324,7 @@
    "procedure/map-merge.ts",
    "procedure/reverse-compiler.ts",
    "routes/anchors.ts",
+   "routes/devices.ts",
    "routes/models.ts",
    "routes/tags.ts",
    "routes/training.ts",
