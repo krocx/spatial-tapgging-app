@@ -195,6 +195,9 @@ it, it gets a line.
   focus ring uses it too, so where the ring sits is where a tap lands.
 
 ### Fixed
+- **No font from the internet, on any page.** `brand.js` loaded Roboto from
+  Google Fonts on the legacy pages (Wireframe, Platform); it now links the
+  self-hosted Open Sans from the brand system instead, as the doctrine says.
 - **Reduced models no longer flatten seals and screws.** Three faults in
   the reducer, on the server and on the device: the 632 baked hose frames
   were counted in full against the budget although only one draws at a

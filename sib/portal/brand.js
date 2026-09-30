@@ -18,14 +18,15 @@
     { file: 'logo-appliedx.png', label: 'AppliedX',          h: 26 },
   ];
   // The platform wordmark - "appliedx Connected Worker AR OMS Platform":
-  // "applied" in AppliedX blue, "x" in AppliedX green, Roboto Regular (400),
-  // exactly as the team writes it in decks. Any element carrying
-  // `data-ax-wordmark` is rendered as the full name; add `data-short` for
-  // just "appliedx". Roboto is fetched from Google Fonts when reachable and
-  // falls back to the system sans on the LAN - the colours carry the mark.
+  // "applied" in appliedx blue, "x" in appliedx green, Regular (400), exactly
+  // as the team writes it in decks. Any element carrying `data-ax-wordmark`
+  // is rendered as the full name; add `data-short` for just "appliedx".
+  // Legacy pages set Open Sans (self-hosted by brand.css) with the system
+  // sans as fallback - no SIB surface ever loads a font from the internet
+  // (docs/BRAND.md). The colours carry the mark.
   const AX_BLUE = '#66b3ff', AX_GREEN = '#35c635';
   const css = `
-    .ax-wordmark { font-family:Roboto,-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif; font-weight:400; letter-spacing:-.01em; white-space:nowrap; }
+    .ax-wordmark { font-family:"Open Sans",-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif; font-weight:400; letter-spacing:-.01em; white-space:nowrap; }
     .ax-wordmark .ax-a { color:${AX_BLUE}; }
     .ax-wordmark .ax-x { color:${AX_GREEN}; }
     .ax-wordmark .ax-rest { margin-left:.28em; }
@@ -49,13 +50,12 @@
   }
   function build() {
     // Pages on the design system (html.ax) already carry the wordmark styles
-    // from brand/components.css and never load a web font; only the legacy
-    // pages get the inline CSS and the Roboto link until they migrate.
+    // from brand/components.css; legacy pages get the inline CSS and the
+    // self-hosted Open Sans faces (brand.css) until they migrate.
     const onSystem = document.documentElement.classList.contains('ax');
     const style = document.createElement('style'); style.textContent = (onSystem ? '' : css) + stripCss; document.head.appendChild(style);
-    if (!onSystem && !document.querySelector('link[href*="fonts.googleapis.com/css2?family=Roboto"]')) {
-      const l = document.createElement('link'); l.rel = 'stylesheet';
-      l.href = 'https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap';
+    if (!onSystem && !document.querySelector('link[href="/portal/brand/brand.css"]')) {
+      const l = document.createElement('link'); l.rel = 'stylesheet'; l.href = '/portal/brand/brand.css';
       document.head.appendChild(l);
     }
     renderWordmarks();
