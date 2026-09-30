@@ -81,13 +81,30 @@ struct GLBLoadOptions {
 
     /// Memory is the honest proxy: a world map, the camera and SceneKit share it.
     static func forThisDevice() -> GLBLoadOptions {
-        // Testing override from Settings › Assembly detail ("auto" or a budget).
-        if let forced = UserDefaults.standard.string(forKey: "assembly_detail"), let n = Int(forced), n > 0 {
-            return GLBLoadOptions(triangleBudget: n)
-        }
         let gb = Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824
-        let budget = gb >= 12 ? 2_500_000 : gb >= 7.5 ? 1_200_000 : gb >= 5.5 ? 700_000 : 350_000
-        return GLBLoadOptions(triangleBudget: budget)
+        let auto = gb >= 12 ? 2_500_000 : gb >= 7.5 ? 1_200_000 : gb >= 5.5 ? 700_000 : 350_000
+        // Testing override from Settings › Assembly detail ("auto" or a budget),
+        // capped at two tiers above this device's own so a 4 GB phone asked
+        // for "Full model" gets 1.2 M, not 2 M+ and a memory kill mid-guide.
+        if let forced = UserDefaults.standard.string(forKey: "assembly_detail"), let n = Int(forced), n > 0 {
+            return GLBLoadOptions(triangleBudget: min(n, overrideCap(auto: auto)))
+        }
+        return GLBLoadOptions(triangleBudget: auto)
+    }
+
+    /// The most a Settings override may ask for on this device: two ladder
+    /// tiers above the automatic budget (the top tier has no cap).
+    static func overrideCap(auto: Int) -> Int {
+        let ladder = [350_000, 700_000, 1_200_000, 2_500_000]
+        guard let i = ladder.firstIndex(of: auto) else { return auto }
+        return i + 2 < ladder.count ? ladder[i + 2] : Int.max
+    }
+    /// What the override is capped at here, for the Settings footer.
+    static var overrideCapDescription: String {
+        let gb = Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824
+        let auto = gb >= 12 ? 2_500_000 : gb >= 7.5 ? 1_200_000 : gb >= 5.5 ? 700_000 : 350_000
+        let cap = overrideCap(auto: auto)
+        return cap == Int.max ? "no cap on this device" : "capped at \(cap >= 1_000_000 ? String(format: "%.1f M", Double(cap) / 1e6) : "\(cap / 1000) k") on this device"
     }
 
     /// What "auto" resolves to on this device, for the Settings footer.

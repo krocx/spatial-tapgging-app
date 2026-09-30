@@ -358,7 +358,7 @@ struct SettingsView: View {
                         Label("Assembly detail", systemImage: "cube")
                     }
                 } footer: {
-                    Text("Auto picks the triangle budget from this device's memory (\(GLBLoadOptions.autoBudgetDescription)). A fixed budget is for testing: the server sends the matching reduced copy, or the full model. Takes effect the next time a guide opens.")
+                    Text("Auto picks the triangle budget from this device's memory (\(GLBLoadOptions.autoBudgetDescription)). A fixed budget is for testing: the server sends the matching reduced copy, or the full model. Overrides are \(GLBLoadOptions.overrideCapDescription) so a test cannot run the device out of memory. Takes effect the next time a guide opens.")
                 }
 
                 // ── Diagnostics (QA Mode + log export) ─────────────────────────

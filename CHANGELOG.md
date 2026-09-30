@@ -195,6 +195,10 @@ it, it gets a line.
   focus ring uses it too, so where the ring sits is where a tap lands.
 
 ### Fixed
+- **Assembly detail override is capped by device.** Settings › Assembly
+  detail can ask for at most two ladder tiers above the device's automatic
+  budget (a 4 GB phone tops out at 1.2 M; a 12 GB iPad has no cap); the
+  footer says what the cap is.
 - **Finished import jobs no longer hold their payload for an hour.** The
   full result (guide, steps, model, log) is handed to the first poll after
   completion and the job keeps only its summary; a tab that missed that
