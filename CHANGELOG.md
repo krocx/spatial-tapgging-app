@@ -7,6 +7,11 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **One headset dialog in the guide menu.** "Open in XR kit" and "QR for
+  AR glasses" are one item, "Open on a headset (XR kit)…": pick the device
+  (any browser, Quest 3, HoloLens 2, Vision Pro, Rayneo X3 Pro), and the
+  QR, the link and Open here all carry that profile. Glasses without a
+  browser are pointed to Device readiness.
 - **Device links: a headset opens a guide without the site key.** The QR
   from the guide menu and the readiness matrix now carries a single-use,
   ten-minute link bound to one guide (`POST /guides/:id/device-link`). The
