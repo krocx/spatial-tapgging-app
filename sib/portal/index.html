@@ -5096,7 +5096,7 @@ async function showReadiness(guideId) {
   const LEVEL = { native: ['Native', 'var(--ax-green)', 'var(--ax-ok-fill)'], adapted: ['Adapted', 'var(--ax-orange)', 'var(--ax-warn-fill)'], assisted: ['Assisted', 'var(--ax-red)', 'var(--ax-bad-fill)'] };
   const NEED = { text: 'text', spatial: 'place on the tool', motion: 'motion', 'part-id': 'find a part', media: 'image', 'hands-busy': 'hands busy' };
   const cell = (r) => { const [label, ink, fill] = LEVEL[r.level]; const why = r.needs.map(n => `${NEED[n.need] || n.need}: ${n.how}`).join('\n'); return `<td title="${esc(why)}" style="text-align:center"><span class="ax-chip" style="background:${fill};color:${ink};border-color:${fill}">${label}</span></td>`; };
-  const head = R.profiles.map(p => `<th style="text-align:center" title="${esc(p.notes || '')}">${esc(p.name)}<div class="ax-label-s ax-muted" style="font-weight:400">${esc(p.delivery === 'app' ? 'SIB app' : p.delivery === 'xrkit' ? 'XR kit' : p.delivery === 'companion-text' ? 'text via phone' : 'spoken')}${p.delivery !== 'app' ? ` · <a href="/xr?guide=${guideId}&profile=${p.id}" target="_blank" rel="noopener">open</a> · <a href="/guides/${guideId}/xr-qr.png?profile=${p.id}" target="_blank" rel="noopener" title="QR that opens this guide on this device">QR</a>` : ''}</div></th>`).join('');
+  const head = R.profiles.map(p => `<th style="text-align:center" title="${esc(p.notes || '')}">${esc(p.name)}<div class="ax-label-s ax-muted" style="font-weight:400">${esc(p.delivery === 'app' ? 'SIB app' : p.delivery === 'xrkit' ? 'XR kit' : p.delivery === 'companion-text' ? 'text via phone' : 'spoken')}${p.delivery === 'xrkit' ? ` · <a href="/xr?guide=${guideId}&profile=${p.id}" target="_blank" rel="noopener">open</a> · <a href="/guides/${guideId}/xr-qr.png?profile=${p.id}" target="_blank" rel="noopener" title="QR with a single-use link that opens this guide on the headset, no key to type">QR</a>` : p.delivery !== 'app' ? ` · <a href="/xr?guide=${guideId}&profile=${p.id}" target="_blank" rel="noopener" title="No camera or browser on these glasses: this page runs on the paired phone; the glasses need the maker's companion app to mirror it">open on the phone</a>` : ''}</div></th>`).join('');
   const sum = R.profiles.map(p => { const c = R.summary[p.id]; return `<td style="text-align:center"><b class="preview-mono">${c.deliverable}%</b><div class="ax-label-s ax-muted">${c.native} native · ${c.adapted} adapted · ${c.assisted} assisted</div></td>`; }).join('');
   const rows = R.steps.map(s => `<tr><td class="preview-mono ax-muted">${s.sequenceNumber}</td><td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(s.title)}">${esc(s.title)}</td><td class="ax-label-s ax-muted">${s.needs.map(n => NEED[n] || n).join(' · ')}</td>${R.profiles.map(p => cell(s.byProfile[p.id])).join('')}</tr>`).join('');
   const csv = () => {
@@ -5118,8 +5118,10 @@ async function showReadiness(guideId) {
 async function showXrQr(guideId, name) {
   let m = document.getElementById('xr-qr-modal');
   if (!m) { m = document.createElement('div'); m.id = 'xr-qr-modal'; m.style.cssText = 'display:none;position:fixed;inset:0;background:var(--ax-scrim);z-index:9100;align-items:center;justify-content:center;'; m.addEventListener('click', e => { if (e.target === m) m.style.display = 'none'; }); document.body.appendChild(m); }
-  let url = `${location.origin}/xr?guide=${encodeURIComponent(guideId)}`;
-  try { const r = await fetch(`/guides/${guideId}/xr-qr.png?text=1`, { headers: { 'X-API-Key': apiKey() } }); if (r.ok) url = await r.text(); } catch {}
+  // The QR carries a single-use link (ten minutes) that opens the guide on
+  // the headset without typing the site key; the copyable link is another one.
+  let url = `${location.origin}/xr?guide=${encodeURIComponent(guideId)}`, expires = '';
+  try { const r = await apiFetch(`/guides/${guideId}/device-link`, { method: 'POST', body: JSON.stringify({}) }); url = r.data.url; expires = new Date(r.data.expiresAt).toLocaleTimeString(); } catch {}
   const src = `/guides/${guideId}/xr-qr.png?t=${Date.now()}`;
   m.innerHTML = `<div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px 26px;width:min(440px,94vw);text-align:center;position:relative">
     <button onclick="document.getElementById('xr-qr-modal').style.display='none'" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-close"/></svg></button>
@@ -5127,7 +5129,7 @@ async function showXrQr(guideId, name) {
     <h3 style="margin:4px 0 12px;font-size:1rem;font-weight:700">${name || 'Guide'}</h3>
     <img src="${src}" alt="QR code for the XR kit page" style="width:min(300px,70vw);height:auto;border-radius:12px;background:var(--ax-on-accent);padding:8px">
     <p style="font-size:0.78rem;color:var(--muted);margin:12px 0 4px;word-break:break-all;font-family:var(--ax-mono)">${esc(url)}</p>
-    <p style="font-size:0.78rem;color:var(--muted);margin:0 0 12px">Scan from the glasses' browser or the phone paired to them. On an access-controlled server the site key is asked once, then the guide opens.</p>
+    <p style="font-size:0.78rem;color:var(--muted);margin:0 0 12px">Scan from the headset's browser. The QR and the link each open this guide once, within ten minutes${expires ? ` (until ${expires})` : ''}, with no site key to type; your name is carried over as the operator. Make a new one for the next headset.</p>
     <div style="display:flex;gap:8px;justify-content:center">
       <a class="btn btn-ghost btn-sm" href="${src}" download="xr-${guideId.slice(0,8)}.png">Download PNG</a>
       <button class="btn btn-ghost btn-sm" onclick="navigator.clipboard.writeText(${JSON.stringify(url)}).then(()=>toast('Link copied'))">Copy link</button>

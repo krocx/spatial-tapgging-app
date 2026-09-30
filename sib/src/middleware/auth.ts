@@ -6,6 +6,7 @@
 //   When NOT set (local dev without the env var), the middleware is a no-op
 //   so local npm run dev continues to work without any key.
 
+import { redeemDeviceLink } from './device-link.js';
 import type { Request, Response, NextFunction } from 'express';
 import type { UamRole, UamUser } from '@spatial/shared';
 import { logOpsEvent } from '../ops-log.js';
@@ -66,6 +67,28 @@ export function apiKeyAuth(req: Request, res: Response, next: NextFunction): voi
 //              unauthenticated callers in the route itself.
 
 export function contentGate(req: Request, res: Response, next: NextFunction): void {
+  // A device link (device-link.ts) opens one guide on a headset: redeem it
+  // once, set the access cookie, continue to the page without the token.
+  // Redeemed on open and locked deployments alike, so the operator hint
+  // carries over on the company server too.
+  if (req.method === 'GET' && req.path === '/xr' && typeof req.query.link === 'string' && typeof req.query.guide === 'string') {
+    const link = redeemDeviceLink(req.query.link, req.query.guide);
+    const q = new URLSearchParams(req.query as Record<string, string>); q.delete('link');
+    if (link) {
+      const key = process.env.SIB_API_KEY?.trim();
+      if (key) {
+        const secure = (req.headers['x-forwarded-proto'] === 'https') || req.secure;
+        res.setHeader('Set-Cookie', 'sib_key=' + encodeURIComponent(key) + '; Path=/; Max-Age=2592000; HttpOnly; SameSite=Lax' + (secure ? '; Secure' : ''));
+      }
+      if (link.issuedName && !q.get('operator')) q.set('operator', link.issuedName);
+      if (link.profile && !q.get('profile')) q.set('profile', link.profile);
+      res.redirect(302, '/xr?' + q.toString());
+      return;
+    }
+    // Dead link: fall through to the normal gate (which sends /unlock on a
+    // locked deployment) - the token is simply dropped from the URL.
+    if (!process.env.SIB_API_KEY?.trim() || hasValidApiKey(req)) { res.redirect(302, '/xr?' + q.toString() + (q.toString() ? '&' : '') + 'linkExpired=1'); return; }
+  }
   if (!process.env.SIB_API_KEY?.trim()) { next(); return; }   // internal deployment - open
   if (req.method === 'OPTIONS') { next(); return; }            // CORS preflight
   if (req.path === '/health' || req.path === '/unlock' || req.path === '/config') { next(); return; }

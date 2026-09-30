@@ -84,6 +84,24 @@ in the form the profile allows; a spoken profile turns the step into a
 short script (text, then the part names, then the check); a text profile
 paginates.
 
+## Getting onto the device
+
+**Headsets with a browser** (Quest 3, HoloLens 2, Vision Pro, Rayneo X3
+Pro): the QR from the guide menu or the readiness matrix. It carries a
+device link (`sib/src/middleware/device-link.ts`): single use, ten minutes,
+one guide, minted by the portal user. The content gate redeems it, sets
+the access cookie and continues to the page with the person's name as the
+operator hint, so nobody types the site key on a headset keyboard and the
+session is attributed. The key itself is never in the QR. When SSO comes,
+the same link is the shared-device path: HYPR runs on the phone that made
+the link, never on the headset.
+
+**Glasses without a browser or camera** (Even G2, Oakley Vanguard): the
+text and spoken pages run on the paired phone; the glasses need the
+maker's companion app to mirror them and forward ring, trackpad or voice.
+That bridge is phone-side work on the maker's SDK and is not built yet;
+the matrix marks these columns "open on the phone".
+
 ## What it does not need
 
 No new renderer per device: the XR kit already adapts to a browser, and

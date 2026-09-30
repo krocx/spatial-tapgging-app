@@ -854,7 +854,9 @@ function verdict(result) {
 
 // ── Boot ─────────────────────────────────────────────────────────────────────
 (async () => {
-  $('opName').value = localStorage.getItem('sib_xr_operator') || '';
+  // A device link carries the name of the person who made the QR in the portal.
+  $('opName').value = params.get('operator') || localStorage.getItem('sib_xr_operator') || '';
+  if (params.get('linkExpired')) toast('That QR link had expired or was already used - make a new one in the portal', 5000);
   const xrOk = !!navigator.xr && await navigator.xr.isSessionSupported?.('immersive-ar').catch(() => false);
   $('capLine').textContent = xrOk
     ? 'WebXR AR available on this browser' + (navigator.xr && 'XRSession' in window ? '' : '')

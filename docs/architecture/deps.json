@@ -165,10 +165,12 @@
   "loto/quiz-seed.ts": [],
   "memory.ts": [],
   "middleware/auth.ts": [
+   "middleware/device-link.ts",
    "ops-log.ts",
    "routes/uam.ts",
    "uam/uam-core.ts"
   ],
+  "middleware/device-link.ts": [],
   "models/assembled-pose.ts": [
    "models/glb-nodes.ts"
   ],
@@ -315,6 +317,7 @@
    "import/jobs.ts",
    "memory.ts",
    "middleware/auth.ts",
+   "middleware/device-link.ts",
    "models/assembled-pose.ts",
    "models/mindmap.model.ts",
    "oms/step-validation.ts",

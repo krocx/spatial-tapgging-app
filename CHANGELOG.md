@@ -7,6 +7,13 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **Device links: a headset opens a guide without the site key.** The QR
+  from the guide menu and the readiness matrix now carries a single-use,
+  ten-minute link bound to one guide (`POST /guides/:id/device-link`). The
+  content gate redeems it once, sets the access cookie and passes the
+  portal user's name as the operator hint; the key is never in the QR and a
+  used or expired link falls back to /unlock. Profiles without a browser
+  (Even G2, Oakley) get "open on the phone" instead of a QR.
 - **Device readiness.** Guide menu → Device readiness shows, for every
   step and every wearable profile (`docs/devices/*.md`: iPad, Quest 3,
   HoloLens 2, Vision Pro, Rayneo X3 Pro, Even G2, Oakley Vanguard), whether

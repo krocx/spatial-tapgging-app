@@ -21,6 +21,8 @@ import { enqueueCortonaImport, enqueueVariants, getImportJob, importQueueDepth }
 import { switchAssembledPose, type AssembledPose } from '../models/assembled-pose.js';
 import { readinessReport } from '../guides/readiness.js';
 import { readDeviceProfiles } from './devices.js';
+import { mintDeviceLink, LINK_TTL_MS } from '../middleware/device-link.js';
+import { uamActor } from '../middleware/auth.js';
 import { recordVariants } from './models.js';
 import { requireRole } from '../middleware/auth.js';
 import { memoryLimitBytes, importNeedBytes, checkWorkerMemory } from '../memory.js';
@@ -688,13 +690,40 @@ router.get('/:id/import-log', (req: Request, res: Response): void => {
 // nobody types a URL on a wearable. A gated deployment lands on /unlock
 // first and comes back to the page. ?text=1 answers the URL instead;
 // ?profile=<device id> bakes a device profile into the link (readiness matrix).
+/** Who is asking, for the link's audit trail and the operator hint on the headset. */
+function issuer(req: Request): { by: string; name?: string } {
+  const a = uamActor(req);
+  if (a?.kind === 'user') return { by: a.email, name: a.user.name || a.user.employeeId || a.email };
+  if (a?.kind === 'legacy-admin') return { by: 'admin key' };
+  return { by: 'portal' };
+}
+
+// POST /guides/:id/device-link { profile? } - a single-use, ten-minute link that
+// opens this guide on a headset without typing the site key (device-link.ts).
+router.post('/:id/device-link', (req: Request, res: Response): void => {
+  const guide = guideStore.findById(req.params.id);
+  if (!guide) { res.status(404).json({ error: `Guide ${req.params.id} not found`, timestamp: new Date().toISOString() }); return; }
+  const profile = typeof (req.body as { profile?: string })?.profile === 'string' && /^[a-z0-9-]+$/.test((req.body as { profile: string }).profile) ? (req.body as { profile: string }).profile : undefined;
+  const who = issuer(req);
+  const link = mintDeviceLink(guide.id, who.by, who.name, profile);
+  res.json({ data: { url: xrUrl(req, guide.id, profile, link.token), expiresAt: new Date(link.expiresAt).toISOString(), ttlSec: LINK_TTL_MS / 1000 }, timestamp: new Date().toISOString() });
+});
+
+function xrUrl(req: Request, guideId: string, profile?: string, token?: string): string {
+  const proto = (req.headers['x-forwarded-proto'] as string | undefined)?.split(',')[0] || req.protocol;
+  const host = (req.headers['x-forwarded-host'] as string | undefined)?.split(',')[0] || req.headers.host || 'localhost';
+  return `${proto}://${host}/xr?guide=${encodeURIComponent(guideId)}${profile ? `&profile=${profile}` : ''}${token ? `&link=${token}` : ''}`;
+}
+
 router.get('/:id/xr-qr.png', async (req: Request, res: Response): Promise<void> => {
   const guide = guideStore.findById(req.params.id);
   if (!guide) { res.status(404).json({ error: `Guide ${req.params.id} not found`, timestamp: new Date().toISOString() }); return; }
-  const proto = (req.headers['x-forwarded-proto'] as string | undefined)?.split(',')[0] || req.protocol;
-  const host = (req.headers['x-forwarded-host'] as string | undefined)?.split(',')[0] || req.headers.host || 'localhost';
-  const prof = typeof req.query.profile === 'string' && /^[a-z0-9-]+$/.test(req.query.profile) ? `&profile=${req.query.profile}` : '';
-  const url = `${proto}://${host}/xr?guide=${encodeURIComponent(guide.id)}${prof}`;
+  const profile = typeof req.query.profile === 'string' && /^[a-z0-9-]+$/.test(req.query.profile) ? req.query.profile : undefined;
+  // ?link=1: the QR carries a fresh single-use device link (default from the
+  // portal); ?link=0 answers the plain page URL.
+  let token: string | undefined;
+  if (req.query.link !== '0') { const who = issuer(req); token = mintDeviceLink(guide.id, who.by, who.name, profile).token; }
+  const url = xrUrl(req, guide.id, profile, token);
   if (req.query.text === '1') { res.type('text/plain').send(url); return; }
   const png = await QRCode.toBuffer(url, { errorCorrectionLevel: 'M', type: 'png', width: 512, margin: 4, color: { dark: '#000000', light: '#ffffff' } });
   res.setHeader('Content-Type', 'image/png');
