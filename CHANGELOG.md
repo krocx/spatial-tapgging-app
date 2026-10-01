@@ -7,6 +7,15 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **Coach.** The getting-started checklist and page tours grow into one
+  Coach card (bottom-right, never modal) opened by a bulb in the header on
+  every page: a Next step computed from live data (set-up milestones first,
+  then assemblies to place, steps to place, drafts to preview and publish,
+  nothing run yet), three "On this page" lines, Show me around (the
+  spotlight tour), "How do I…" with ten common tasks answered in one line
+  each and deep-linked, the set-up progress, "Don't open automatically" and
+  Turn off. First visits to a page open it once by themselves. Settings
+  carries the same switch and "Restart from the beginning".
 - **One Preview per guide.** In the library and on the home page, a guide
   with an assembly opens "Preview 3D": the XR kit in preview mode
   (`/xr?guide=&preview=1`), the real player on this screen with orbit,

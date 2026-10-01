@@ -153,7 +153,7 @@
     .modal { background: var(--ax-solid); border: 1px solid var(--border); border-radius: var(--ax-r); padding: 24px; width: 100%; max-width: 440px; }
     /* Anything that floats over other content is OPAQUE (the app's sheets are). 8 %-white paper
        is for cards on the page, never for a modal, menu, panel or popover. */
-    .overlay > *, [id$="-modal"] > div:first-child, #gs-panel, #tour-card, .heat-pop { background: var(--ax-solid) !important; }
+    .overlay > *, [id$="-modal"] > div:first-child, #coach, #tour-card, .heat-pop { background: var(--ax-solid) !important; }
     /* Native controls follow the dark scheme (select popups, date pickers, scrollbars on Windows). */
     html { color-scheme: dark; }
     /* Windows Chrome/Edge render the popup list with their own background and ignore the
@@ -746,13 +746,26 @@
     }
 
     /* ── P1: guided assistance (checklist + spotlight tours) ───────────── */
-    #gs-panel { position:fixed; right:18px; bottom:18px; width:340px; z-index:600; background:var(--surface);
-      border:1px solid var(--border); border-radius:14px; box-shadow:none; font-size:0.8rem; overflow:hidden; }
-    #gs-panel.min { width:auto; }
-    #gs-panel .gs-hdr { display:flex; align-items:center; gap:10px; padding:10px 14px; cursor:pointer; background:var(--ax-blue-fill); }
-    #gs-panel .gs-hdr b { flex:1; font-size:0.84rem; }
-    #gs-panel .gs-bar { height:5px; background:var(--border); border-radius:3px; margin:0 14px 8px; overflow:hidden; }
-    #gs-panel .gs-bar i { display:block; height:100%; background:var(--ax-title); transition:width .4s; }
+    #coach { position:fixed; right:18px; bottom:18px; width:360px; max-height: calc(100vh - 40px); overflow:auto; z-index:600; background:var(--surface);
+      border:1px solid var(--border); border-radius:14px; box-shadow:none; font-size:0.8rem; }
+    #coach .gs-hdr { display:flex; align-items:center; gap:10px; padding:10px 14px; cursor:pointer; background:var(--ax-blue-fill); position:sticky; top:0; }
+    #coach .gs-hdr b { flex:1; font-size:0.84rem; }
+    #coach .co-eyebrow { font-size:0.68rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin-bottom:3px; }
+    #coach .co-next { padding:10px 14px; cursor:pointer; border-left:3px solid var(--ax-blue); }
+    #coach .co-next:hover { background:var(--ax-paper-2); }
+    #coach .co-next .gs-t { font-weight:700; color:var(--text); } #coach .co-next .gs-d { color:var(--muted); margin-top:2px; line-height:1.4; }
+    #coach .co-go { display:inline-block; margin-top:6px; color:var(--accent); font-weight:700; }
+    #coach .co-block { padding:8px 14px 6px; border-top:1px solid var(--border); }
+    #coach .co-line { color:var(--text); padding:2px 0; line-height:1.4; }
+    #coach .co-line::before { content:'·'; color:var(--muted); margin-right:6px; }
+    #coach .co-row { display:flex; gap:12px; align-items:center; padding:8px 14px; border-top:1px solid var(--border); }
+    #coach .co-row a { color:var(--accent); cursor:pointer; font-weight:700; }
+    #coach .co-setup { margin-left:auto; color:var(--muted); cursor:help; }
+    #coach .co-howto { border-top:1px solid var(--border); }
+    #coach .co-h { padding:7px 14px; cursor:pointer; border-bottom:1px solid var(--border); }
+    #coach .co-h:hover { background:var(--ax-paper-2); }
+    #coach .co-h b { display:block; color:var(--text); } #coach .co-h span { color:var(--muted); line-height:1.4; }
+    #coach-btn.on { color: var(--accent); }
     .gs-item { display:flex; gap:10px; padding:9px 14px; border-top:1px solid var(--border); cursor:pointer; align-items:flex-start; }
     .gs-item:hover { background:var(--ax-paper-2); }
     .gs-item .gs-ck { width:20px; height:20px; border-radius:50%; border:2px solid var(--border); flex:none; display:flex; align-items:center; justify-content:center; font-size:11px; margin-top:1px; }
@@ -787,7 +800,7 @@
     <button class="btn btn-ghost btn-sm" id="uam-signout" onclick="uamLogout()" style="display:none">Sign out</button>
     <button class="btn btn-ghost btn-sm" id="admin-btn" onclick="toggleAdmin()" style="display:none" title="Destructive actions (delete, quiz editing) require the admin key"> Admin</button>
     <button class="btn btn-ghost btn-sm" onclick="showSettings()" data-tour="settings"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-gear"/></svg> Settings</button>
-    <button class="btn btn-ghost btn-sm" id="guide-help-btn" onclick="guideStartTour(true)" title="Show me around this page" style="display:none"> Show me</button>
+    <button class="btn btn-ghost btn-sm" id="coach-btn" onclick="coachToggle()" title="Coach" style="display:none" data-tour="coach-btn"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-bulb"/></svg> Coach</button>
     <button class="btn btn-primary btn-sm" onclick="openCreateModal()" data-tour="new-anchor">+ New chamber</button>
   </div>
 </header>
@@ -1366,10 +1379,10 @@
     <div class="field" style="margin-top:14px">
       <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
         <input type="checkbox" id="settings-guide" onchange="guideSetEnabled(this.checked)" style="width:auto">
-        Guided assistance
+        Coach
       </label>
-      <p style="font-size:0.78rem;color:var(--muted);margin:4px 0 0">Getting-started checklist and short page tours for new users. On by default.
-        <a href="#" onclick="guideReset();return false" style="color:var(--accent)">Restart tours</a></p>
+      <p style="font-size:0.78rem;color:var(--muted);margin:4px 0 0">The card that says what to do next on each page, with short tours and "How do I…" answers. On by default; the bulb in the header shows or hides it.
+        <a href="#" onclick="guideReset();return false" style="color:var(--accent)">Restart from the beginning</a></p>
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeSettings()">Cancel</button>
@@ -2966,8 +2979,8 @@ function guideEnabled()  { return localStorage.getItem(GUIDE_KEY.on) !== '0'; }
 function guideEligible() { return guideEnabled() && !(UAM_USER && UAM_USER.role === 'technician'); }
 function guideSetEnabled(on) {
   localStorage.setItem(GUIDE_KEY.on, on ? '1' : '0');
-  if (!on) { tourEnd(); document.getElementById('gs-panel')?.remove(); }
-  else { guideRefresh(); guideStartTour(false); }
+  if (!on) { tourEnd(); document.getElementById('coach')?.remove(); syncCoachButton(); }
+  else { localStorage.setItem(COACH_KEY.open, '1'); guideRefresh(); guideStartTour(false); }
 }
 function guideReset() {
   Object.keys(localStorage).filter(k => k.startsWith('sib.guide.')).forEach(k => localStorage.removeItem(k));
@@ -2975,10 +2988,57 @@ function guideReset() {
   closeSettings();
   guideRefresh();
   guideStartTour(true);
-  toast('Tours reset - welcome back to the start ');
+  localStorage.setItem(COACH_KEY.open, '1');
+  toast('Coach reset - welcome back to the start');
 }
 
-// ── 1. Getting-started checklist ─────────────────────────────────────────────
+// ── 1. The Coach ─────────────────────────────────────────────────────────────
+// One card, bottom-right, never modal. It knows the page and the live data:
+//   · Next step  - the first thing worth doing now (set-up milestones first,
+//                  then what this page's data says: assemblies to place,
+//                  drafts to publish, nothing run yet…)
+//   · On this page - three lines of what the page is for
+//   · Show me around - replays the spotlight tour
+//   · How do I…    - the ten common tasks, each a one-line answer that links
+// The bulb in the header opens and closes it on every page; first visits open
+// it by themselves (once per page) unless "Don't open automatically" is set.
+
+const COACH_KEY = { open: 'sib.guide.open', auto: 'sib.guide.auto', howto: 'sib.guide.howto' };
+let coachGuides = null;   // /guides/summary, refreshed with the stats
+
+const PAGE_HELP = {
+  home: ['Your own work first - the library for engineers, the week’s numbers for managers.', 'Every tile below says what it is for and carries a live count.', 'Switch the arrangement any time with "Show me the portal as".'],
+  anchors: ['One anchor per physical chamber, assigned to a configuration.', 'Print the QR and mount it - operators scan it to reach the chamber’s guides.', 'Unassigned chambers cannot be scanned into; fix that on the card.'],
+  'guide-library': ['Every work instruction, grouped by chamber: import, design, preview, share.', 'Badges say what is left: Draft, Place assembly on device, Published.', 'The … menu holds the rest - import log, headset QR, device readiness, copy, move.'],
+  models: ['The 3D models guides use, with their reduced variants per device budget.', 'Preview inspects a model; guides reference it from the library.', 'Rebuild variants after the reducer changes.'],
+  analytics: ['What the floor did with the content: runs, inspections, timing, hints.', 'Overview is the glance; each tab answers one question (see the bar).', 'Analytics on a guide in the library opens Insights filtered to it.'],
+  iloto: ['Lockout / tagout points per chamber and their state right now.', 'Who is certified, and the training questions they answered.', 'Events are the audit trail - nothing here is edited by hand.'],
+  gemba: ['Audit walks: sessions, findings by area, the audit library.', 'A finding stays open until its latest completion is RESOLVED.', 'Findings deep-link to the chamber they were raised on.'],
+  admin: ['Who can sign in, with role: owners and managers administer, engineers author, technicians run.', 'Chamber configurations are the catalogue chambers point at.', 'Ops log, device logs and backups live on their own tabs.'],
+};
+
+const HOWTO = [
+  ['Import a work instruction', 'Content Library → Import guide. Pick the chamber, choose Units if the file is in mm, Assembled pose if parts arrive exploded.', '#content/guides'],
+  ['Place an assembly on the tool', 'Open the guide on the iPad, tap once where the equipment stands. All steps follow. The badge turns to Assembly placed.', '#content/guides'],
+  ['Publish a guide', 'Publish in its row once you have previewed it. Unpublish takes it off the operators’ list without deleting it.', '#content/guides'],
+  ['Share with specific technicians', 'Share in the guide’s row. Technicians sign in on the kiosk with their employee ID and see what is shared with them.', '#content/guides'],
+  ['Open a guide on a headset', 'Guide … menu → Open on a headset (XR kit). Pick the device; scan the QR on it - single use, ten minutes, no key typed.', '#content/guides'],
+  ['Check which devices can run a guide', 'Guide … menu → Device readiness: every step against every wearable, with a CSV and "Add to scorecard".', '#content/guides'],
+  ['See how a guide is doing', 'Analytics in the guide’s row: runs, completion, median and p90 time, the hottest step.', '#analytics/insights'],
+  ['Score technology readiness', 'Readiness scorecard: pick the track, Score a criterion against its level texts, attach evidence. Managers confirm.', '/scorecard'],
+  ['Add a person', 'Admin → User Access → add by email and employee ID, choose the role.', '#admin/uam'],
+  ['Print a chamber QR', 'Anchors → the chamber card → Print / PDF at the stored size. The same QR serves authors and operators.', '#anchors'],
+];
+
+function coachOpen()  { return localStorage.getItem(COACH_KEY.open) === '1'; }
+function coachAuto()  { return localStorage.getItem(COACH_KEY.auto) !== '0'; }
+function coachSetOpen(on) { localStorage.setItem(COACH_KEY.open, on ? '1' : '0'); renderCoach(); }
+function coachToggle() {
+  if (!guideEnabled()) { guideSetEnabled(true); const cb = document.getElementById('settings-guide'); if (cb) cb.checked = true; coachSetOpen(true); return; }
+  coachSetOpen(!coachOpen());
+}
+function coachSetAuto(on) { localStorage.setItem(COACH_KEY.auto, on ? '1' : '0'); }
+function coachTurnOff() { guideSetEnabled(false); const cb = document.getElementById('settings-guide'); if (cb) cb.checked = false; toast('Coach is off - the bulb in the header brings it back'); }
 
 function guideMilestones(st) {
   st = st || {};
@@ -2991,56 +3051,93 @@ function guideMilestones(st) {
       d: 'One anchor per physical chamber, assigned to its configuration. The QR is what operators scan.' },
     { id: 'guide',   hash: '#content/guides',  done: (st.guides || 0) > 0,
       t: 'Build your first guide',
-      d: 'Import from Excel / JSON, or draw it in the Procedure Designer and send it to the library.' },
+      d: 'Import a publication, or draw it in the Procedure Designer and send it to the library.' },
     { id: 'place',   hash: '#content/guides',  done: (st.placedGuides || 0) > 0,
-      t: 'Place the steps in AR (on the phone)',
+      t: 'Place the steps in AR (on the iPad)',
       d: 'Open the guide in the iOS app → Place Steps in AR. This turns text into pins on the tool.' },
     { id: 'run',     hash: '#analytics/runs',  done: (st.guidedRuns || 0) > 0,
       t: 'Run it once and watch it land here',
-      d: 'A technician scans the chamber QR and runs the guide - the Completion and Usage logs fill in.' },
+      d: 'A technician scans the chamber QR and runs the guide - the runs and usage log fill in.' },
   ];
 }
 
-async function guideRefresh() {
-  if (!portalAuthed || !guideEligible()) { document.getElementById('gs-panel')?.remove(); return; }
-  try { guideStats = await (await fetch('/stats')).json(); } catch { /* keep last */ }
-  renderGettingStarted();
+/** The one thing worth doing now, from the live data. */
+function coachNextStep(page) {
+  const ms = guideMilestones(guideStats);
+  const open = ms.find(m => !m.done);
+  if (open) return { t: open.t, d: open.d, go: open.hash, label: 'Take me there' };
+  const gs = coachGuides || [];
+  const unplaced = gs.find(g => g.assembly === 'unplaced');
+  if (unplaced) return { t: `Place the ${unplaced.name} assembly`, d: 'On the iPad: open the guide, tap once where the equipment stands. Every step follows; the badge turns green here.', go: `#content/guides`, label: 'Show the guide', guide: unplaced };
+  const stepsUnplaced = gs.find(g => g.assembly === 'none' && g.steps > 0 && !g.placed);
+  if (stepsUnplaced) return { t: `Place the steps of ${stepsUnplaced.name}`, d: 'On the iPad: open the guide → Place Steps in AR, then pin each step on the tool.', go: '#content/guides', label: 'Show the guide', guide: stepsUnplaced };
+  const draft = gs.find(g => !g.published && (g.assembly !== 'unplaced'));
+  if (draft) return { t: `Preview ${draft.name}, then publish it`, d: 'Preview walks it as the operator will. Publish in its row puts it on the operators’ list.', go: '#content/guides', label: 'Show the guide', guide: draft };
+  if (page === 'analytics' && !(guideStats?.guidedRuns)) return { t: 'Nothing has run yet', d: 'Scan a chamber QR with the app and run a guide; the numbers appear here within a minute.', go: '#content/guides', label: 'Go to the library' };
+  if ((guideStats?.sessionsToday || 0) === 0 && (guideStats?.guidedRuns || 0) > 0) return { t: 'Quiet day so far', d: 'No runs today yet. Analytics shows the week; the scorecard is where learnings go.', go: '#analytics', label: 'Open Analytics' };
+  return { t: 'All set', d: 'Everything is placed and published. Check Analytics for the week, or score what you learned on the readiness scorecard.', go: '/scorecard', label: 'Open the scorecard' };
 }
 
-function renderGettingStarted() {
-  let panel = document.getElementById('gs-panel');
-  if (!guideEligible()) { panel?.remove(); return; }
+async function guideRefresh() {
+  if (!portalAuthed || !guideEligible()) { document.getElementById('coach')?.remove(); syncCoachButton(); return; }
+  try { guideStats = await (await fetch('/stats')).json(); } catch { /* keep last */ }
+  try { coachGuides = (await apiFetch('/guides/summary')).data || []; } catch { /* keep last */ }
+  renderCoach();
+}
+function syncCoachButton() {
+  const b = document.getElementById('coach-btn');
+  if (!b) return;
+  const eligible = portalAuthed && !(UAM_USER && UAM_USER.role === 'technician');
+  b.style.display = eligible ? '' : 'none';
+  b.classList.toggle('on', guideEnabled() && coachOpen());
+  b.title = !guideEnabled() ? 'Coach is off - click to turn it on' : coachOpen() ? 'Hide the Coach' : 'Show the Coach';
+}
+function coachPageKey() {
+  const raw = (location.hash || '#home').slice(1);
+  const [sec, sub] = raw.split('?')[0].split('/');
+  if (sec === 'content') return sub === 'models' ? 'models' : 'guide-library';
+  return PAGE_HELP[sec] ? sec : 'home';
+}
+
+function renderCoach() {
+  syncCoachButton();
+  let panel = document.getElementById('coach');
+  if (!guideEligible() || !coachOpen()) { panel?.remove(); return; }
+  if (!panel) { panel = document.createElement('div'); panel.id = 'coach'; document.body.appendChild(panel); }
+  const page = coachPageKey();
   const ms = guideMilestones(guideStats);
   const done = ms.filter(m => m.done).length;
-  if (done === ms.length) {
-    // Everything green: one celebratory moment, then get out of the way.
-    if (!localStorage.getItem(GUIDE_KEY.done)) {
-      localStorage.setItem(GUIDE_KEY.done, '1');
-      toast(' You’ve set up the whole loop - configuration → chamber → guide → placed → run. Nice work.');
-    }
-    panel?.remove(); return;
-  }
-  if (!panel) { panel = document.createElement('div'); panel.id = 'gs-panel'; document.body.appendChild(panel); }
-  const min = localStorage.getItem(GUIDE_KEY.min) === '1' || done >= 3 && localStorage.getItem(GUIDE_KEY.min) !== '0';
-  panel.classList.toggle('min', min);
-  const nextIdx = ms.findIndex(m => !m.done);
-  panel.innerHTML = ` <div class="gs-hdr" onclick="guideToggleMin()">
-      <span><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-compass"/></svg></span><b>Getting started</b>
-      <span style="color:var(--muted);font-size:0.78rem">${done} of ${ms.length}</span>
-      <span style="color:var(--muted)">${min ? '▴' : '▾'}</span>
+  const next = coachNextStep(page);
+  const sec = SECTIONS[(location.hash || '#home').slice(1).split('/')[0]];
+  const pageName = page === 'home' ? 'Home' : page === 'guide-library' ? 'Guide Library' : page === 'models' ? '3D Models' : (sec?.name || page);
+  const howto = localStorage.getItem(COACH_KEY.howto) === '1';
+  const goAttr = next.go.startsWith('/') ? `location.href='${next.go}'` : next.guide ? `showGuideInLibrary('${next.guide.id}','${next.guide.anchorId}')` : `location.hash='${next.go}'`;
+  panel.innerHTML = `
+    <div class="gs-hdr" onclick="coachSetOpen(false)" title="Hide - the bulb in the header brings it back">
+      <span><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-bulb"/></svg></span><b>Coach</b>
+      <span style="color:var(--muted);font-size:0.78rem">${esc(pageName)}</span>
+      <span style="color:var(--muted)">▾</span>
     </div>
-    ${min ? '' : ` <div class="gs-bar"><i style="width:${Math.round(done / ms.length * 100)}%"></i></div>
-    ${ms.map((m, i) => ` <div class="gs-item ${m.done ? 'done' : ''} ${i === nextIdx ? 'next' : ''}" onclick="location.hash='${m.hash}'">
-        <div class="gs-ck">${m.done ? '<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-check"/></svg>' : i + 1}</div>
-        <div><div class="gs-t">${m.t}</div><div class="gs-d">${m.d}</div></div>
-      </div>`).join('')}
-    <div class="gs-foot"><span>Turn this off any time in <svg class="ax-icon"><use href="/portal/brand/icons.svg#i-gear"/></svg> Settings.</span><a onclick="guideStartTour(true)">Show me this page</a></div>`}
-  `;
-}
-function guideToggleMin() {
-  const cur = document.getElementById('gs-panel')?.classList.contains('min');
-  localStorage.setItem(GUIDE_KEY.min, cur ? '0' : '1');
-  renderGettingStarted();
+    <div class="co-next" onclick="${goAttr}">
+      <div class="co-eyebrow">Next step</div>
+      <div class="gs-t">${esc(next.t)}</div>
+      <div class="gs-d">${esc(next.d)}</div>
+      <a class="co-go">${esc(next.label)} →</a>
+    </div>
+    <div class="co-block">
+      <div class="co-eyebrow">On this page</div>
+      ${(PAGE_HELP[page] || []).map(l => `<div class="co-line">${l}</div>`).join('')}
+    </div>
+    <div class="co-row">
+      ${PAGE_TOURS[guideCurrentPage()] ? `<a onclick="guideStartTour(true)">Show me around</a>` : ''}
+      <a onclick="localStorage.setItem('${COACH_KEY.howto}', '${howto ? '0' : '1'}');renderCoach()">How do I… ${howto ? '▴' : '▾'}</a>
+      <span class="co-setup" title="${ms.map(m => (m.done ? '✓ ' : '· ') + m.t).join('\n')}">${done === ms.length ? 'Set up ✓' : `Set up ${done} of ${ms.length}`}</span>
+    </div>
+    ${howto ? `<div class="co-howto">${HOWTO.map(([t, d, go]) => `<div class="co-h" onclick="${go.startsWith('/') ? `location.href='${go}'` : `location.hash='${go}'`}"><b>${t}</b><span>${d}</span></div>`).join('')}</div>` : ''}
+    <div class="gs-foot">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" ${coachAuto() ? '' : 'checked'} onchange="coachSetAuto(!this.checked)" style="width:auto;margin:0"> Don’t open automatically</label>
+      <a onclick="coachTurnOff()" style="margin-left:auto">Turn off</a>
+    </div>`;
 }
 
 // ── 2. Page tours ────────────────────────────────────────────────────────────
@@ -3050,6 +3147,8 @@ const PAGE_TOURS = {
   home: [
     { sel: null, h: 'Welcome to the appliedx Connected Worker AR OMS Platform ',
       p: 'This portal is where MEs set things up; technicians do their work in the AR app. Let’s take the 60-second tour - you can replay it from <svg class="ax-icon"><use href="/portal/brand/icons.svg#i-info"/></svg> Show me at any time.' },
+    { sel: '[data-tour="coach-btn"]', h: 'Your Coach',
+      p: 'The bulb opens the Coach on any page: the next thing worth doing, what the page is for, and "How do I…" answers. Hide it when you know your way; it never blocks the page.' },
     { sel: '[data-tour="home-switch"]', h: 'Arranged for you',
       p: 'Home puts your own work first - the library for engineers, this week\u2019s numbers for managers. Switch any time; the choice is remembered.' },
     { sel: '[data-tour="tile-anchors"]', h: 'Chambers live here',
@@ -3102,10 +3201,11 @@ function guideCurrentPage() {
 /** Called by the router after each page render (and by <svg class="ax-icon"><use href="/portal/brand/icons.svg#i-info"/></svg> / the checklist). */
 function guideStartTour(force) {
   const page = guideCurrentPage();
-  const helpBtn = document.getElementById('guide-help-btn');
-  if (helpBtn) helpBtn.style.display = (guideEligible() && page) ? '' : 'none';
+  syncCoachButton();
   if (!page || !guideEligible()) return;
   if (!force && localStorage.getItem(GUIDE_KEY.seen + page)) return;
+  // First visit to a page: the Coach opens by itself (unless told not to) and walks it.
+  if (!force && coachAuto() && !coachOpen()) coachSetOpen(true);
   // Give the page a beat to render before we look for targets.
   setTimeout(() => {
     // A step whose target is missing or hidden (the home hero's own tile leaves the grid) is skipped.
@@ -3154,7 +3254,7 @@ function tourNext() {
   if (tourIdx >= tourSteps.length - 1) {
     tourEnd();
     const page = guideCurrentPage();
-    if (page === 'home') setTimeout(() => toast('Explore freely - the  checklist keeps your place.'), 300);
+    if (page === 'home') setTimeout(() => toast('Explore freely - the Coach keeps your next step.'), 300);
     return;
   }
   tourIdx++; tourShow();
