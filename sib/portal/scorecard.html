@@ -56,14 +56,40 @@
   .sc-form .levels label b { display: block; font-family: var(--ax-mono); font-size: 16px; color: var(--ax-ink); }
   .sc-form .levels input { margin-right: 4px; }
   .sc-form .levels label.on { border-color: var(--ax-blue); background: var(--ax-blue-fill); }
-  .sc-form .ev-row { display: flex; gap: 6px; align-items: center; }
-  .sc-form .ev-row .ax-input { flex: 1; }
+  .sc-form .levels + .hint { margin-top: -4px; }
+  .sc-form .step { border-top: var(--ax-hair); padding-top: var(--ax-s3); }
+  .sc-form .step > .q { font: var(--ax-label); color: var(--ax-ink); margin: 0 0 6px; }
+  .sc-form .step > .q b { font-family: var(--ax-mono); color: var(--ax-blue); margin-right: 6px; }
+  .sc-form .hint { font: var(--ax-label-s); color: var(--ax-ink-3); }
+  .sc-form .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .sc-form .chips label { border: var(--ax-hair); border-radius: var(--ax-r-field); padding: 6px 10px; cursor: pointer; font: var(--ax-label-s); color: var(--ax-ink-2); flex: 1 1 180px; }
+  .sc-form .chips label b { display: block; color: var(--ax-ink); }
+  .sc-form .chips label.on { border-color: var(--ax-blue); background: var(--ax-blue-fill); }
+  .sc-form .chips input { position: absolute; opacity: 0; width: 0; height: 0; }
+  .sc-form .where { display: grid; grid-template-columns: 1fr 1fr; gap: var(--ax-s3); }
+  .sc-form .where label { display: block; font: var(--ax-label-s); color: var(--ax-ink-3); }
+  .sc-form .where .ax-select { width: 100%; margin-top: 4px; }
+  .sc-form .ev-row { display: grid; grid-template-columns: 130px 1fr 1fr 32px; gap: 6px; align-items: center; margin-top: 6px; }
+  .sc-form .ev-row .ax-input, .sc-form .ev-row .ax-select { width: 100%; min-width: 0; }
+  .sc-form .ev-row .x { background: none; border: 0; color: var(--ax-ink-3); cursor: pointer; padding: 0; display: flex; }
+  .sc-form .ev-quick { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .sc-form .ev-quick .ax-btn { font: var(--ax-label-s); padding: 4px 10px; }
+  .sc-form .ev-quick .ax-btn.added { color: var(--ax-green); border-color: var(--ax-green); }
+  .sc-form .step.needs { border-top-color: var(--ax-orange); }
+  .sc-form .step.needs > .q::after { content: ' · a 4 or 5 needs at least one'; color: var(--ax-orange); font: var(--ax-label-s); }
+  .sc-form .ax-textarea { width: 100%; box-sizing: border-box; }
   .sc-form .row { display: flex; gap: var(--ax-s3); align-items: center; flex-wrap: wrap; }
+  .sc-form .row .as { font: var(--ax-label-s); color: var(--ax-ink-3); }
+  .sc-howto { display: flex; gap: var(--ax-s4); align-items: flex-start; flex-wrap: wrap; margin-bottom: var(--ax-s4); }
+  .sc-howto .st { flex: 1 1 200px; font: var(--ax-label-s); color: var(--ax-ink-2); }
+  .sc-howto .st b { display: block; color: var(--ax-ink); font-family: var(--ax-mono); }
+  .sc-howto .st b::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ax-blue); margin-right: 8px; }
+  .hist-tools { display: flex; gap: var(--ax-s3); align-items: center; margin-bottom: var(--ax-s3); flex-wrap: wrap; }
   .sc-modal { position: fixed; inset: 0; background: var(--ax-scrim); z-index: 9100; display: none; align-items: center; justify-content: center; }
   .sc-modal.open { display: flex; }
   .sc-modal .ax-card { background: var(--ax-solid); width: min(760px, 94vw); max-height: 90vh; overflow: auto; position: relative; }
   .hist li { font: var(--ax-label-s); color: var(--ax-ink-2); padding: 4px 0; border-bottom: var(--ax-hair); }
-  @media (max-width: 900px) { .tr-top { grid-template-columns: 1fr; } .sc-form .levels { grid-template-columns: 1fr; } }
+  @media (max-width: 900px) { .tr-top { grid-template-columns: 1fr; } .sc-form .levels { grid-template-columns: 1fr; } .sc-form .where { grid-template-columns: 1fr; } .sc-form .ev-row { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -71,6 +97,7 @@
   <span class="ax-wordmark"><span class="ax-a">applied</span><span class="ax-x">x</span><span class="ax-rest">Connected Worker AR OMS Platform</span></span>
   <nav class="ax-nav"><a href="/">Home</a><a href="/portal#home">Portal</a><a href="/catalog">Catalogue</a><a href="/scorecard" aria-current="page">Scorecard</a></nav>
   <span class="ax-chip" id="sc-version"></span>
+  <span class="ax-chip" id="sc-me" style="margin-left:8px" title="Every score, lens and verdict is saved under this name"></span>
   <span data-brand-slot style="display:flex;align-items:center;margin-left:12px"></span>
 </header>
 
@@ -95,11 +122,20 @@ let DATA = null, quarter = null, tab = 'leadership';
 const WORDS = { 1: 'Concept', 2: 'Demo only', 3: 'Controlled', 4: 'In situ', 5: 'Proven' };
 const VERDICT_TEXT = { ADVANCE: 'Advance', CONTINUE: 'Continue', PARK: 'Parked', CLOSE: 'Closed' };
 const COLOR = { 'content-pipeline': 'var(--ax-green)', 'hardware-fit': 'var(--ax-blue)', 'ar-sdk': 'var(--ax-teal)' };
+const roleWord = r => ({ owner: 'Owner', manager: 'Manager', engineer: 'Engineer', technician: 'Technician' }[r] || r);
+const CONF_TEXT = { High: 'repeated on real content or devices; someone else could reproduce it', Medium: 'more than once in a controlled setting', Low: 'once, a demo, or hearsay (counts as 3 at most on the master sheet)' };
+const WHO_SCORES = 'Scoring is for Engineers and above, signed in by name; lens confirmation and the verdict are for Managers and above.';
+let GUIDES = null;
+async function guides() { if (!GUIDES) { try { GUIDES = (await api('/scorecard/guides')).data; } catch { GUIDES = []; } } return GUIDES; }
+const seenHowto = () => { try { return localStorage.getItem('sib_scorecard_howto') === '1'; } catch { return false; } };
 
 async function load(q) {
   const r = await api('/scorecard/data' + (q ? `?quarter=${encodeURIComponent(q)}` : ''));
   DATA = r.data; quarter = DATA.quarter;
   document.getElementById('sc-version').textContent = quarter;
+  const meEl = document.getElementById('sc-me');
+  meEl.textContent = DATA.me ? `${DATA.me.name} · ${roleWord(DATA.me.role)}` : 'Not signed in';
+  meEl.style.color = DATA.me ? '' : 'var(--ax-orange)';
   render();
 }
 function render() {
@@ -166,13 +202,13 @@ function track(t) {
       <div class="ax-label-s ax-muted">${esc(L.lens === 'L1' ? t.l1 : t.l2)}</div>
       <div class="big ${L.effective ? 's' + L.effective : ''}">${L.effective ?? '–'} <span class="ax-label-s ax-muted" style="font-family:var(--ax-font)">${L.effective ? (L.lens === 'L1' ? WORDS[L.effective] : ['', 'Does not exist', 'Scoped', 'In build', 'Shipped, gaps', 'Shipped, reused'][L.effective]) : ''} · ${esc(L.effectiveConfidence || '')}</span></div>
       <div class="rule">${L.suggested === null ? 'No criteria scored yet.' : `Suggested ${L.suggested}: ${esc(L.rule)}. ${L.scored} of ${L.of} criteria scored.`}${L.override ? `<br>Owner set ${L.override.score ?? 'confidence only'}${L.override.confidence ? ' · ' + L.override.confidence : ''}: "${esc(L.override.note)}" (${esc(L.override.by)}, ${L.override.at.slice(0, 10)})` : ''}</div>
-      <form data-lens="${L.lens}">
+      ${DATA.can.confirm ? `<form data-lens="${L.lens}">
         <span class="ax-label-s ax-muted">Owner:</span>
         <select class="ax-select" name="score"><option value="">suggested</option>${[1,2,3,4,5].map(n => `<option value="${n}">${n}</option>`).join('')}</select>
         <select class="ax-select" name="confidence"><option value="">confidence</option><option>High</option><option>Medium</option><option>Low</option></select>
         <input class="ax-input" name="note" placeholder="why (required when overriding)" style="flex:1;min-width:160px">
         <button class="ax-btn" type="submit">Confirm lens</button>
-      </form>
+      </form>` : ''}
     </div>`;
   const rows = t.criteria.map(k => {
     const e = latest[k.id];
@@ -183,26 +219,36 @@ function track(t) {
       <td class="ax-label-s">${e ? `${esc(e.confidence)}<br><span class="ax-muted">${esc(e.by)} · ${e.at.slice(0, 10)}${e.deviceId ? ' · ' + esc(e.deviceId) : ''}</span>` : '<span class="ax-muted">not scored</span>'}</td>
       <td class="ax-label-s">${e ? esc(e.comment) : ''}</td>
       <td class="ev">${e ? e.evidence.map(l => evLink(l)).join('<br>') : ''}</td>
-      <td><button class="ax-btn" data-score="${k.id}">Score</button></td>
+      <td>${DATA.can.score ? `<button class="ax-btn" data-score="${k.id}">Score</button>` : ''}</td>
     </tr>`;
   }).join('');
   const perDevice = t.perDevice ? `<div class="ax-card" style="margin-top:var(--ax-s4)"><div class="ax-eyebrow" style="margin-bottom:6px">Per device · hardware fit is scored per headset; the track lens takes the latest per criterion across devices</div>
     <table class="ax-table" style="font-size:0.82rem"><thead><tr><th>Device</th><th>Criteria scored</th><th>L1 suggested</th><th>L2 suggested</th></tr></thead><tbody>
     ${t.perDevice.map(d => `<tr><td>${esc(d.name)}</td><td>${d.scored}</td><td class="${d.L1.suggested ? 's' + d.L1.suggested : ''}" style="font-family:var(--ax-mono);font-weight:700">${d.L1.suggested ?? '–'}</td><td class="${d.L2.suggested ? 's' + d.L2.suggested : ''}" style="font-family:var(--ax-mono);font-weight:700">${d.L2.suggested ?? '–'}</td></tr>`).join('')}</tbody></table></div>` : '';
+  const scoredAny = Object.keys(latest).length > 0;
+  const howto = DATA.can.score && !seenHowto() ? `<div class="ax-card sc-howto" id="sc-howto">
+      <div class="st"><b>1 · Pick a criterion</b>Start with the one you have evidence for. Each row is a question about this track; Score opens it.</div>
+      <div class="st"><b>2 · Choose the level you saw</b>Five lines, 1 to 5. Between two? Take the lower and say what would move it up.</div>
+      <div class="st"><b>3 · Say how sure, and link proof</b>Confidence plus a link anyone can open: a guide's import log, a readiness report, a session. A 4 or 5 is refused without one.</div>
+      <div class="st"><b>4 · The lens follows</b>L1 and L2 above are worked out from the criteria; the track owner confirms them and records the master sheet's verdict. Saved under your name: ${esc(DATA.me.name)}.</div>
+      <button class="ax-btn" style="align-self:center" id="sc-howto-hide">Got it</button>
+    </div>` : DATA.can.score ? '' : `<div class="ax-notice" style="margin-bottom:var(--ax-s4)">${DATA.me ? `You are signed in as ${esc(DATA.me.name)} (${roleWord(DATA.me.role)}), reading only. ` : 'You are not signed in, so you are reading only. '}${WHO_SCORES}</div>`;
+  const emptyRow = scoredAny ? '' : `<tr><td colspan="7" class="ax-muted" style="text-align:center;padding:14px">No criteria scored for ${esc(quarter)} yet.${DATA.can.score ? ' Start with the one you have evidence for.' : ''}</td></tr>`;
   return `
+    ${howto}
     <div class="tr-top">${t.lenses.map(lensBox).join('')}</div>
     <div class="ax-card" style="margin-bottom:var(--ax-s4);display:flex;gap:var(--ax-s3);align-items:center;flex-wrap:wrap">
       <div><div class="ax-eyebrow">Master sheet verdict · ${esc(quarter)}</div>
       <div class="ld-verdict ${t.master ? 'v-' + t.master.verdict : 'v-none'}" style="font-size:22px;line-height:26px;margin:2px 0">${t.master ? VERDICT_TEXT[t.master.verdict] : 'Not recorded'}</div>
       <div class="ax-label-s ax-muted">${t.master ? `${esc(t.master.by)} · ${t.master.at.slice(0, 10)}${t.master.note ? ' · ' + esc(t.master.note) : ''}` : 'Record it here after each review so the team sees it next to the criteria.'}</div></div>
-      <form id="master-form" style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+      ${DATA.can.confirm ? `<form id="master-form" style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
         <select class="ax-select" name="verdict"><option value="">verdict</option>${['ADVANCE','CONTINUE','PARK','CLOSE'].map(v => `<option>${v}</option>`).join('')}</select>
         <input class="ax-input" name="weighted" type="number" step="0.01" min="1" max="5" placeholder="weighted" style="width:90px">
         <input class="ax-input" name="note" placeholder="note (re-entry trigger if PARK)" style="min-width:220px">
         <button class="ax-btn ax-btn--primary" type="submit">Record verdict</button>
-      </form>
+      </form>` : ''}
     </div>
-    <div class="ax-card"><table class="ax-table tr-table" style="font-size:0.84rem"><thead><tr><th>Lens</th><th>Criterion</th><th>Score</th><th>Confidence</th><th>Comment</th><th>Evidence</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div class="ax-card"><table class="ax-table tr-table" style="font-size:0.84rem"><thead><tr><th>Lens</th><th>Criterion</th><th>Score</th><th>Confidence</th><th>Comment</th><th>Evidence</th><th></th></tr></thead><tbody>${emptyRow}${rows}</tbody></table></div>
     ${perDevice}`;
 }
 function evLink(l) {
@@ -215,57 +261,103 @@ function evLink(l) {
   if (l.kind === 'link' && /^https?:\/\//.test(l.ref)) return `<a href="${r}" target="_blank" rel="noopener">${label || r}</a>`;
   return `<span>${esc(l.kind)} · ${label || r}</span>`;
 }
+let histWho = '';
 function history() {
-  const h = DATA.history;
-  if (!h.length) return `<div class="ax-empty">No scores entered for ${esc(quarter)} yet.</div>`;
+  const all = DATA.history;
+  if (!all.length) return `<div class="ax-empty">No scores entered for ${esc(quarter)} yet.</div>`;
+  const people = [...new Set(all.map(e => e.by))].sort();
+  const h = histWho ? all.filter(e => e.by === histWho) : all;
   const tname = id => (DATA.tracks.find(t => t.id === id) || {}).name || id;
   const cname = (tid, cid) => ((DATA.tracks.find(t => t.id === tid) || { criteria: [] }).criteria.find(k => k.id === cid) || {}).name || cid;
-  return `<div class="ax-card"><ul class="hist" style="list-style:none;margin:0;padding:0">${h.map(e => `<li><b>${esc(tname(e.trackId))}</b> · ${esc(cname(e.trackId, e.criterionId))}${e.deviceId ? ' · ' + esc(e.deviceId) : ''} → <b class="s${e.score}">${e.score}</b> ${esc(e.confidence)} · ${esc(e.by)} · ${e.at.replace('T', ' ').slice(0, 16)}${e.comment ? ' · ' + esc(e.comment) : ''} · ${e.evidence.length} evidence</li>`).join('')}</ul></div>`;
+  return `<div class="hist-tools"><span class="ax-label-s ax-muted">Entered by</span><select class="ax-select" id="hist-who"><option value="">everyone (${all.length})</option>${people.map(p => `<option value="${esc(p)}" ${p === histWho ? 'selected' : ''}>${esc(p)} (${all.filter(e => e.by === p).length})</option>`).join('')}</select><span class="ax-label-s ax-muted">Every save is kept; the latest per criterion is the current score.</span></div>
+  <div class="ax-card"><ul class="hist" style="list-style:none;margin:0;padding:0">${h.map(e => `<li><b>${esc(tname(e.trackId))}</b> · ${esc(cname(e.trackId, e.criterionId))}${e.deviceId ? ' · ' + esc(e.deviceId) : ''} → <b class="s${e.score}">${e.score}</b> ${esc(e.confidence)} · ${esc(e.by)} · ${e.at.replace('T', ' ').slice(0, 16)}${e.comment ? ' · ' + esc(e.comment) : ''} · ${e.evidence.length} evidence</li>`).join('')}</ul></div>`;
 }
 
 // ── Score a criterion ────────────────────────────────────────────────────
-function openScore(t, k) {
+// Four questions in order: which level, how sure, where seen, what proves it.
+const EV_HINT = { 'import-log': 'guide name or id (guide menu → Import log)', guide: 'guide name or id', readiness: 'guide name or id (guide menu → Device readiness)', session: 'session id from the Sessions page', model: 'model name or id from the Models page', link: 'https://…', file: 'SharePoint path or deck page' };
+async function openScore(t, k) {
   const m = document.getElementById('sc-modal');
-  const devices = t.id === 'hardware-fit' ? `<label class="ax-label-s">Device <select class="ax-select" name="deviceId"><option value="">choose…</option>${DATA.profiles.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select></label>` : '';
+  const gl = await guides();
   const pre = new URLSearchParams(location.hash.split('?')[1] || '');
+  const preGuide = pre.get('guide') || '';
+  const guideOpts = `<option value="">none</option>${gl.map(g => `<option value="${esc(g.id)}" ${g.id === preGuide ? 'selected' : ''}>${esc(g.name)}${g.published ? '' : ' (draft)'}</option>`).join('')}`;
+  const devices = t.id === 'hardware-fit' ? `<label>Device (required for this track)<select class="ax-select" name="deviceId"><option value="">choose…</option>${DATA.profiles.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select></label>` : '';
   m.innerHTML = `<div class="ax-card">
     <button class="ax-btn" style="position:absolute;top:12px;right:14px" id="sc-close"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-close"/></svg></button>
     <div class="ax-eyebrow">${esc(t.name)} · ${k.lens}</div>
     <h2 style="margin:2px 0 4px;font:var(--ax-h3)">${esc(k.name)}</h2>
-    <p class="ax-label-s ax-muted" style="margin:0 0 10px">${esc(k.question)} · Evidence expected: ${esc(k.evidence)}</p>
+    <p class="ax-label-s ax-muted" style="margin:0 0 10px">${esc(k.question)}</p>
     <form class="sc-form" id="score-form">
-      <div class="levels">${k.levels.map((text, i) => `<label><input type="radio" name="score" value="${i + 1}"><b>${i + 1}</b>${esc(text)}</label>`).join('')}</div>
-      <div class="row">
-        <label class="ax-label-s">Confidence <select class="ax-select" name="confidence"><option>High</option><option selected>Medium</option><option>Low</option></select></label>
-        ${devices}
-        <label class="ax-label-s">Guide id <input class="ax-input" name="guideId" value="${esc(pre.get('guide') || '')}" placeholder="optional" style="width:150px"></label>
-      </div>
-      <textarea class="ax-textarea" name="comment" rows="3" placeholder="What you saw, where, on which deck or device. Say what would move it one point."></textarea>
-      <div class="ax-label-s ax-muted">Evidence (a 4 or 5 needs at least one). Kinds: import-log / guide / readiness / session / model use a SIB id; link is a URL; file is a path or deck page.</div>
-      <div id="ev-rows">
-        <div class="ev-row"><select class="ax-select" name="ekind"><option>import-log</option><option>guide</option><option>readiness</option><option>session</option><option>model</option><option>link</option><option>file</option></select><input class="ax-input" name="eref" placeholder="id, URL or path"><input class="ax-input" name="elabel" placeholder="label (optional)" style="max-width:200px"></div>
-      </div>
-      <div class="row"><button class="ax-btn" type="button" id="ev-add">+ evidence</button><span style="flex:1"></span><button class="ax-btn ax-btn--primary" type="submit">Save score</button></div>
+      <div class="step" style="border-top:0;padding-top:0"><p class="q"><b>1</b>Which line matches what you saw?</p>
+        <div class="levels">${k.levels.map((text, i) => `<label><input type="radio" name="score" value="${i + 1}"><b>${i + 1}</b>${esc(text)}</label>`).join('')}</div>
+        <div class="hint">Between two? Pick the lower and say below what would move it up.</div></div>
+      <div class="step"><p class="q"><b>2</b>How sure are you?</p>
+        <div class="chips">${['High', 'Medium', 'Low'].map(c => `<label class="${c === 'Medium' ? 'on' : ''}"><input type="radio" name="confidence" value="${c}" ${c === 'Medium' ? 'checked' : ''}><b>${c}</b>${CONF_TEXT[c]}</label>`).join('')}</div></div>
+      <div class="step"><p class="q"><b>3</b>Where did you see it?</p>
+        <div class="where">${devices}<label>Guide<select class="ax-select" name="guideId">${guideOpts}</select></label></div>
+        <label class="hint" style="display:block;margin-top:8px">What you saw, and what would move it one point<textarea class="ax-textarea" name="comment" rows="3" style="margin-top:4px" placeholder="On which content or device, what happened, what is missing for the next level."></textarea></label></div>
+      <div class="step" id="ev-step"><p class="q"><b>4</b>Evidence: what can someone else open to check?</p>
+        <div class="hint">Usually ${esc(k.evidence)}.</div>
+        <div class="ev-quick" id="ev-quick"></div>
+        <div id="ev-rows"></div>
+        <div class="ev-quick"><button class="ax-btn" type="button" id="ev-add">+ add a link</button></div></div>
+      <div class="row"><span class="as">Saved as ${esc(DATA.me.name)} · ${roleWord(DATA.me.role)} · ${esc(quarter)}</span><span style="flex:1"></span><button class="ax-btn ax-btn--primary" type="submit" id="ev-save">Save score</button></div>
     </form></div>`;
   m.classList.add('open');
+  const f = document.getElementById('score-form');
+  const rows = document.getElementById('ev-rows');
+  const row = (kind = 'link', ref = '', label = '') => {
+    const d = document.createElement('div'); d.className = 'ev-row';
+    d.innerHTML = `<select class="ax-select" name="ekind">${Object.keys(EV_HINT).map(x => `<option ${x === kind ? 'selected' : ''}>${x}</option>`).join('')}</select><input class="ax-input" name="eref" placeholder="where it lives" value="${esc(ref)}"><input class="ax-input" name="elabel" placeholder="what it shows" value="${esc(label)}"><button class="x" type="button" title="remove"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-close"/></svg></button>`;
+    const sel = d.querySelector('[name=ekind]'), refIn = d.querySelector('[name=eref]');
+    const hint = () => { refIn.placeholder = EV_HINT[sel.value]; };
+    sel.onchange = hint; hint();
+    d.querySelector('.x').onclick = () => { d.remove(); quick(); check(); };
+    refIn.oninput = check;
+    rows.appendChild(d); check();
+    return d;
+  };
+  // One-click evidence from the chosen guide: no typing, the id is carried.
+  const quick = () => {
+    const q = document.getElementById('ev-quick'); const gid = f.guideId.value;
+    if (!gid) { q.innerHTML = '<span class="hint">Choose a guide above for one-click links to its import log, readiness report or the guide itself.</span>'; return; }
+    const g = gl.find(x => x.id === gid); const name = g ? g.name : gid;
+    const have = kind => [...rows.querySelectorAll('.ev-row')].some(r => r.querySelector('[name=ekind]').value === kind && r.querySelector('[name=eref]').value === gid);
+    q.innerHTML = [['import-log', 'its import log'], ['readiness', 'its readiness report'], ['guide', 'the guide itself']].map(([kind, text]) => `<button class="ax-btn ${have(kind) ? 'added' : ''}" type="button" data-q="${kind}">${have(kind) ? '<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-check"/></svg> ' : '+ '}${text}</button>`).join('');
+    q.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { if (!have(b.dataset.q)) row(b.dataset.q, gid, name); quick(); });
+  };
+  const evidence = () => [...rows.querySelectorAll('.ev-row')].map(r => ({ kind: r.querySelector('[name=ekind]').value, ref: r.querySelector('[name=eref]').value.trim(), label: r.querySelector('[name=elabel]').value.trim() })).filter(x => x.ref);
+  // The evidence rule shows up the moment a 4 or 5 is chosen, not at save.
+  const check = () => {
+    const score = Number(f.querySelector('input[name=score]:checked')?.value || 0);
+    const needs = score >= 4 && !evidence().length;
+    document.getElementById('ev-step').classList.toggle('needs', needs);
+    const save = document.getElementById('ev-save');
+    save.disabled = needs; save.title = needs ? 'A 4 or 5 needs at least one piece of evidence' : '';
+  };
+  f.guideId.onchange = quick; quick();
+  if (preGuide) row('readiness', preGuide, (gl.find(x => x.id === preGuide) || {}).name || ''); quick();
   document.getElementById('sc-close').onclick = () => m.classList.remove('open');
   m.onclick = e => { if (e.target === m) m.classList.remove('open'); };
-  m.querySelectorAll('.levels label').forEach(l => l.onclick = () => { m.querySelectorAll('.levels label').forEach(x => x.classList.remove('on')); l.classList.add('on'); });
-  document.getElementById('ev-add').onclick = () => { const row = document.querySelector('#ev-rows .ev-row').cloneNode(true); row.querySelectorAll('input').forEach(i => i.value = ''); document.getElementById('ev-rows').appendChild(row); };
-  document.getElementById('score-form').onsubmit = async e => {
+  m.querySelectorAll('.levels label').forEach(l => l.onclick = () => { m.querySelectorAll('.levels label').forEach(x => x.classList.remove('on')); l.classList.add('on'); check(); });
+  m.querySelectorAll('.chips label').forEach(l => l.onclick = () => { m.querySelectorAll('.chips label').forEach(x => x.classList.remove('on')); l.classList.add('on'); });
+  document.getElementById('ev-add').onclick = () => row().querySelector('[name=eref]').focus();
+  f.onsubmit = async e => {
     e.preventDefault();
-    const f = e.target;
     const score = f.querySelector('input[name=score]:checked')?.value;
-    if (!score) { toast('Pick a score'); return; }
-    const evidence = [...f.querySelectorAll('#ev-rows .ev-row')].map(r => ({ kind: r.querySelector('[name=ekind]').value, ref: r.querySelector('[name=eref]').value.trim(), label: r.querySelector('[name=elabel]').value.trim() })).filter(x => x.ref);
+    if (!score) { toast('Pick the level that matches what you saw (step 1)'); return; }
+    if (t.id === 'hardware-fit' && !f.deviceId.value) { toast('Choose the device you saw it on (step 3)'); return; }
     try {
-      await api('/scorecard/entries', { method: 'POST', body: JSON.stringify({ trackId: t.id, criterionId: k.id, quarter, score: Number(score), confidence: f.confidence.value, comment: f.comment.value, evidence, deviceId: f.deviceId?.value || undefined, guideId: f.guideId.value.trim() || undefined }) });
-      m.classList.remove('open'); toast('Score saved'); load(quarter);
+      await api('/scorecard/entries', { method: 'POST', body: JSON.stringify({ trackId: t.id, criterionId: k.id, quarter, score: Number(score), confidence: f.querySelector('input[name=confidence]:checked').value, comment: f.comment.value, evidence: evidence(), deviceId: f.deviceId?.value || undefined, guideId: f.guideId.value || undefined }) });
+      m.classList.remove('open'); toast(`Saved: ${esc(k.name)} = ${score}, under your name`); try { localStorage.setItem('sib_scorecard_howto', '1'); } catch {} load(quarter);
     } catch (err) { toast(err.message); }
   };
 }
 function wire() {
   main.querySelectorAll('[data-open]').forEach(b => b.onclick = () => { tab = b.dataset.open; render(); });
+  const hh = document.getElementById('sc-howto-hide'); if (hh) hh.onclick = () => { try { localStorage.setItem('sib_scorecard_howto', '1'); } catch {} render(); };
+  const hw = document.getElementById('hist-who'); if (hw) hw.onchange = () => { histWho = hw.value; render(); };
   const t = DATA.tracks.find(x => x.id === tab);
   if (!t) return;
   main.querySelectorAll('[data-score]').forEach(b => b.onclick = () => openScore(t, t.criteria.find(k => k.id === b.dataset.score)));

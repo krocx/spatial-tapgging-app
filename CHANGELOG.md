@@ -7,6 +7,17 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **Scorecard: named entries and a guided score form.** Every score, lens
+  and verdict is saved under a signed-in person: Engineer and above score
+  criteria, Manager and above confirm lenses and record the verdict; the
+  admin key and bare API key are refused for writes. The header shows who
+  is signed in, readers below the role see the page without forms, History
+  filters by person. The score form now asks four questions in order
+  (level, confidence with definitions, where seen with a guide picked by
+  name, evidence with one-click links to the guide's import log, readiness
+  report or the guide), disables Save on a 4 or 5 until evidence is
+  attached, and shows a how-to until the first save. Level texts say
+  "3D OMS content" instead of "office decks".
 - **Technology Readiness scorecard.** `/scorecard` (Compass `m 3`): the
   team scores criteria 1 to 5 with confidence and evidence links for
   Content Pipeline, Hardware Fit (per device) and AR SDK; a 4 or 5 is

@@ -45,7 +45,7 @@ per device profile.
 The lens score the criteria suggest is the lower of the rounded mean and
 the lowest criterion plus one, so one bad criterion drags the lens but does
 not alone decide it; the lens confidence is the lowest among its criteria.
-The track owner (Engineer and above) confirms or overrides with a written
+The track owner (Manager and above) confirms or overrides with a written
 reason; the export carries the effective value and the reasoning.
 
 The same five words as the master sheet apply. L1: 1 Concept, 2 Demo only,
@@ -84,9 +84,24 @@ its own; the decision is the master sheet's.
 
 ## Cadence and roles
 
-Anyone with portal access scores criteria; the evidence rule keeps that
-safe. One owner per track confirms lenses, writes the conclusion on the
-master sheet and records the verdict in SIB. Weekly during an assessment,
+Every write carries a name. Scoring a criterion needs a signed-in UAM user
+with the Engineer role or above; confirming a lens and recording the verdict
+need Manager or above. The admin key and the bare API key are refused for
+writes, since neither names a person; readers below those roles see the
+page without the forms and a line saying who may score. Each save is a new
+record stamped with the person and time, never edited; the History tab
+filters by person and the Excel export carries "Scored by" and "Captured
+by". One owner per track confirms lenses, writes the conclusion on the
+master sheet and records the verdict in SIB.
+
+The score form asks four questions in order: which level line matches what
+you saw (between two, take the lower and say what would move it up); how
+sure you are (High, Medium, Low with their definitions on the chips); where
+you saw it (device for Hardware Fit, a guide picked by name); and what
+someone else can open to check. Choosing a guide offers one-click links to
+its import log, readiness report or the guide itself; a 4 or 5 disables
+Save until one piece of evidence is attached. A short how-to sits above the
+criteria until the person has saved once. Weekly during an assessment,
 quarterly for the master review. Evidence beats opinion when entries
 disagree; the latest entry per criterion is the current one and the history
 is kept.

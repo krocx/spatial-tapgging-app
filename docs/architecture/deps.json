@@ -386,6 +386,7 @@
    "middleware/auth.ts",
    "oms/xlsx-lite.ts",
    "routes/devices.ts",
+   "routes/guides.ts",
    "scorecard/scorecard-core.ts",
    "stores/json-file-store.ts"
   ],

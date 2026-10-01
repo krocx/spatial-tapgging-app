@@ -9,9 +9,10 @@ terms: [SIB]
 spec: TRL-SCORECARD.md
 api: |
   GET /scorecard/data - tracks, criteria, latest scores, lens suggestions, overrides, master verdicts, leadership summary (browser · API key)
-  POST /scorecard/entries - score a criterion 1-5 with confidence, comment and evidence links; a 4 or 5 needs evidence (browser · API key)
-  POST /scorecard/lens - the track owner confirms or overrides a lens with a reason (portal · Engineer+)
-  POST /scorecard/master - record the master sheet's verdict for a track and quarter (portal · Engineer+)
+  POST /scorecard/entries - score a criterion 1-5 with confidence, comment and evidence links; a 4 or 5 needs evidence (portal · Engineer+, signed in by name)
+  GET /scorecard/guides - guide names and ids for the evidence picker (portal · API key)
+  POST /scorecard/lens - the track owner confirms or overrides a lens with a reason (portal · Manager+)
+  POST /scorecard/master - record the master sheet's verdict for a track and quarter (portal · Manager+)
   GET /scorecard/export.xlsx - the SIB block for the master workbook: lenses, criteria, evidence (browser · API key)
 wireframe: portal
 arch: |

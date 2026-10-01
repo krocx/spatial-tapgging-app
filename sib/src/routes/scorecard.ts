@@ -13,8 +13,12 @@
  * POST /scorecard/master               → record the master sheet's verdict for a track and quarter
  * GET  /scorecard/export.xlsx?quarter= → the workbook block for the master sheet
  *
- * Anyone with the API key reads and adds entries (the point is that the whole
- * team can); lens overrides and master verdicts are Engineer and above.
+ * GET  /scorecard/guides             → guide names and ids for the evidence picker
+ *
+ * Reading is open to anyone with portal access. Every write must carry a
+ * person's name: a signed-in UAM user, Engineer or above to score a
+ * criterion, Manager or above to confirm a lens or record the verdict. The
+ * admin key and the bare API key are refused for writes (they have no name).
  * Stores: data/scorecard-entries, scorecard-lens, scorecard-master (JSON).
  */
 import { Router, type Request, type Response } from 'express';
@@ -22,7 +26,9 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { v4 as uuidv4 } from 'uuid';
 import { JsonFileStore } from '../stores/json-file-store.js';
-import { requireRole, uamActor } from '../middleware/auth.js';
+import { uamActor } from '../middleware/auth.js';
+import type { UamRole } from '@spatial/shared';
+import { guideStore } from './guides.js';
 import { buildWorkbookXlsx, type TableRow } from '../oms/xlsx-lite.js';
 import { readDeviceProfiles } from './devices.js';
 import { TRACKS, latestByCriterion, suggestLens, masterOutcome, quarterOf, type Entry, type LensOverride, type MasterVerdict, type TrackId, type Lens, type Confidence, type Verdict, type EvidenceLink } from '../scorecard/scorecard-core.js';
@@ -34,7 +40,17 @@ const masterStore = new JsonFileStore<MasterVerdict & { id: string }>('scorecard
 
 const CONF: Confidence[] = ['High', 'Medium', 'Low'];
 const VERDICTS: Verdict[] = ['ADVANCE', 'CONTINUE', 'PARK', 'CLOSE'];
-const who = (req: Request): string => { const a = uamActor(req); return a?.kind === 'user' ? (a.user.name || a.email) : (a?.kind === 'legacy-admin' ? 'admin key' : 'team'); };
+const SCORERS: UamRole[] = ['owner', 'manager', 'engineer'];
+const OWNERS: UamRole[] = ['owner', 'manager'];
+const me = (req: Request): { name: string; role: UamRole } | null => { const a = uamActor(req); return a?.kind === 'user' ? { name: a.user.name || a.email, role: a.role } : null; };
+const who = (req: Request): string => me(req)?.name ?? 'unknown';
+/** A write needs a named, signed-in person with one of the roles. */
+const requireNamed = (roles: UamRole[], what: string) => (req: Request, res: Response, next: () => void) => {
+  const m = me(req);
+  if (!m) { res.status(401).json({ error: `Sign in to ${what}, so the entry carries your name`, timestamp: new Date().toISOString() }); return; }
+  if (!roles.includes(m.role)) { res.status(403).json({ error: `${what[0].toUpperCase()}${what.slice(1)} needs the ${roles[roles.length - 1][0].toUpperCase()}${roles[roles.length - 1].slice(1)} role or above`, timestamp: new Date().toISOString() }); return; }
+  next();
+};
 const isQuarter = (q: unknown): q is string => typeof q === 'string' && /^FY\d{2}-Q[1-4]$/.test(q);
 
 export function buildScorecard(quarter: string) {
@@ -72,10 +88,11 @@ router.get('/data', (req: Request, res: Response) => {
   const quarter = isQuarter(req.query.quarter) ? req.query.quarter : quarterOf();
   const quarters = [...new Set([quarterOf(), ...entryStore.findAll().map(e => e.quarter), ...masterStore.findAll().map(m => m.quarter)])].sort();
   res.setHeader('Cache-Control', 'no-store');
-  res.json({ data: { ...buildScorecard(quarter), quarters, history: entryStore.findAll().filter(e => e.quarter === quarter).sort((a, b) => a.at < b.at ? 1 : -1).slice(0, 200) }, timestamp: new Date().toISOString() });
+  const m = me(req);
+  res.json({ data: { ...buildScorecard(quarter), quarters, me: m, can: { score: !!m && SCORERS.includes(m.role), confirm: !!m && OWNERS.includes(m.role) }, history: entryStore.findAll().filter(e => e.quarter === quarter).sort((a, b) => a.at < b.at ? 1 : -1).slice(0, 200) }, timestamp: new Date().toISOString() });
 });
 
-router.post('/entries', (req: Request, res: Response) => {
+router.post('/entries', requireNamed(SCORERS, 'score a criterion'), (req: Request, res: Response) => {
   const b = req.body as Partial<Entry>;
   const track = TRACKS.find(t => t.id === b.trackId);
   const crit = track?.criteria.find(k => k.id === b.criterionId);
@@ -96,7 +113,7 @@ router.post('/entries', (req: Request, res: Response) => {
   res.status(201).json({ data: entry, timestamp: new Date().toISOString() });
 });
 
-router.post('/lens', requireRole('owner', 'manager', 'engineer'), (req: Request, res: Response) => {
+router.post('/lens', requireNamed(OWNERS, 'confirm a lens'), (req: Request, res: Response) => {
   const b = req.body as Partial<LensOverride>;
   if (!TRACKS.some(t => t.id === b.trackId) || (b.lens !== 'L1' && b.lens !== 'L2')) { res.status(400).json({ error: 'Unknown track or lens' }); return; }
   const score = b.score === undefined || b.score === null ? undefined : Number(b.score);
@@ -108,12 +125,19 @@ router.post('/lens', requireRole('owner', 'manager', 'engineer'), (req: Request,
   res.status(201).json({ data: o, timestamp: new Date().toISOString() });
 });
 
-router.post('/master', requireRole('owner', 'manager', 'engineer'), (req: Request, res: Response) => {
+router.post('/master', requireNamed(OWNERS, 'record the verdict'), (req: Request, res: Response) => {
   const b = req.body as Partial<MasterVerdict>;
   if (!TRACKS.some(t => t.id === b.trackId) || !VERDICTS.includes(b.verdict as Verdict)) { res.status(400).json({ error: 'Unknown track or verdict' }); return; }
   const m = { id: uuidv4(), trackId: b.trackId as TrackId, quarter: isQuarter(b.quarter) ? b.quarter : quarterOf(), verdict: b.verdict as Verdict, ...(typeof b.weighted === 'number' ? { weighted: b.weighted } : {}), ...(b.note ? { note: String(b.note).slice(0, 1000) } : {}), by: who(req), at: new Date().toISOString() };
   masterStore.save(m);
   res.status(201).json({ data: m, timestamp: new Date().toISOString() });
+});
+
+// Guide names for the evidence picker (anyone who can read the page).
+router.get('/guides', (_req: Request, res: Response) => {
+  const guides = guideStore.findAll().map(g => ({ id: g.id, name: g.name, published: !!g.published })).sort((a, b) => a.name.localeCompare(b.name));
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({ data: guides, timestamp: new Date().toISOString() });
 });
 
 // The workbook block for the master sheet: one row per track and lens in the
