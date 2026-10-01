@@ -166,7 +166,7 @@ runs / medium < 10 / high), retired hints. Cached 60 s.
 
 ### Portal
 
-AR Guides Sessions → **🧠 Intelligence**: guide picker (guides with runs),
+Analytics → **🧠 Intelligence**: guide picker (guides with runs),
 heat strip per step (click → the step card), per-step rate tiles, hint
 effectiveness table with 🔕 retired badges, and the fix notes. Read-only.
 

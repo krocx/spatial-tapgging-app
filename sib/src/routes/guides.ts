@@ -342,6 +342,25 @@ router.post('/', (req: Request, res: Response): void => {
 // GET /guides?anchorId=xxx - list guides for an anchor
 // ?all=true  → include drafts (Author view)
 // (default)  → published only (Operator view)
+// GET /guides/summary - one row per guide the library shows (anchor exists),
+// cheap enough for the portal home: status, placement and freshness, no steps.
+router.get('/summary', (_req: Request, res: Response): void => {
+  const anchors = new Map(anchorStore.findAll().map(a => [a.id, a.assetId || a.id]));
+  const steps = guideStepStore.findAll();
+  const rows = guideStore.findAll().filter(g => anchors.has(g.anchorId)).map(g => {
+    const st = steps.filter(s => s.guideId === g.id);
+    return {
+      id: g.id, name: g.name, anchorId: g.anchorId, anchor: anchors.get(g.anchorId)!,
+      published: !!g.published, updatedAt: g.updatedAt, steps: st.length,
+      placed: st.length > 0 && st.every(s => s.isPlaced),
+      assembly: g.assembly ? (g.assembly.pose ? 'placed' : 'unplaced') : 'none',
+      source: g.assembly?.source ?? null,
+    };
+  }).sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({ data: rows, timestamp: new Date().toISOString() });
+});
+
 router.get('/', (req: Request, res: Response): void => {
   const { anchorId, all } = req.query;
 

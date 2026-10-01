@@ -50,6 +50,6 @@ over the last 50 visits: shown ≥ 5 with effectiveness < 30 %, or mute rate
 ≥ 50 % over ≥ 4, retires the signal on that step - it is no longer sent - and
 it lifts by itself when newer runs improve; where both LLM and template
 phrasings have evidence and the LLM scores lower, the step uses the template.
-The portal's **🧠 Intelligence** page (AR Guides Sessions) shows per-step
+The portal's **🧠 Intelligence** page (Analytics) shows per-step
 heat, the rate tiles, the hint table with 🔕 retired badges, and notes that
 point authors at the content to fix rather than the hint.

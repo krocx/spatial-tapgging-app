@@ -255,11 +255,56 @@
     /* Portal home + section bar (2026.4.45 redesign) - nav-tabs retired */
     #portal-home { display:none; padding: 10px 32px 46px; }
     #portal-home.visible { display:block; }
-    .ph-hero { text-align:center; margin: 26px 0 10px; }
+    .sb-purpose { font-size: 0.78rem; color: var(--muted); margin-left: 4px; }
+    @media (max-width: 900px) { .sb-purpose { display:none; } }
+    /* Home (2026.4.46): a workday first, the map second. */
+    .ph-top { display:flex; align-items:flex-end; gap:18px; flex-wrap:wrap; max-width:1280px; margin: 22px auto 0; }
+    .ph-top h2 { font-size: clamp(21px, 3vw, 30px); font-weight:800; margin:0; color:var(--text); }
+    .ph-top .ph-why { color: var(--muted); font-size: 0.85rem; margin: 4px 0 0; }
+    .ph-eyebrow { font-size: 0.72rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+    .ph-switch { margin-left:auto; display:flex; align-items:center; gap:6px; font-size:0.78rem; color:var(--muted); }
+    .ph-switch button { font-size:0.78rem; font-weight:700; padding:5px 12px; border-radius:8px; border:1px solid var(--border); background:var(--ax-paper); color:var(--text); cursor:pointer; }
+    .ph-switch button.on { border-color: var(--accent); color: var(--accent); }
+    .ph-hero { max-width:1280px; margin: 16px auto 0; border-radius:18px; border: 2px solid var(--border); background: var(--ax-paper); padding: 22px 24px; }
+    .ph-hero.h-content { border-color: var(--ax-p-portal); } .ph-hero.h-analytics { border-color: var(--ax-p-guides); }
+    .ph-hero-head { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom: 14px; }
+    .ph-hero-head h3 { margin:0; font-size:1.25rem; font-weight:800; color:var(--text); }
+    .ph-hero-head .ph-why { margin:0; }
+    .ph-hero-head .acts { margin-left:auto; display:flex; gap:8px; flex-wrap:wrap; }
+    .ph-cols { display:grid; grid-template-columns: 1.4fr 1fr; gap:18px; }
+    @media (max-width: 900px) { .ph-cols { grid-template-columns: 1fr; } }
+    .ph-list { list-style:none; margin:0; padding:0; }
+    .ph-list li { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); font-size:0.86rem; }
+    .ph-list li:last-child { border-bottom:0; }
+    .ph-list li .nm { font-weight:700; color:var(--text); cursor:pointer; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .ph-list li .nm:hover { color: var(--accent); }
+    .ph-list li .meta, .ph-hero .meta { color:var(--muted); font-size:0.78rem; white-space:nowrap; }
+    .ph-list li .acts { margin-left:auto; display:flex; gap:4px; }
+    .ph-list li .acts button { font-size:0.74rem; padding:3px 9px; border-radius:7px; border:1px solid var(--border); background:transparent; color:var(--text); cursor:pointer; }
+    .ph-list li .acts button:hover { border-color: var(--accent); color: var(--accent); }
+    .ph-attn { display:flex; align-items:center; gap:8px; font-size:0.84rem; padding:8px 10px; border-radius:10px; background: color-mix(in srgb, var(--ax-orange) 12%, transparent); color:var(--text); margin-bottom:6px; cursor:pointer; }
+    .ph-attn b { font-family: var(--ax-mono); }
+    .ph-attn.ok { background: color-mix(in srgb, var(--ax-green) 12%, transparent); }
+    .ph-kpis { display:grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap:10px; }
+    .ph-kpi { border-radius:12px; padding:12px 14px 10px; background: var(--ax-paper-3); border-top: 3px solid var(--ac, var(--ax-blue)); cursor:pointer; }
+    .ph-kpi .v { font: 600 28px/32px var(--ax-mono); color:var(--text); }
+    .ph-kpi .l { font-size:0.76rem; color:var(--muted); }
+    .ph-kpi .d { font-size:0.74rem; margin-top:2px; min-height:16px; }
+    .ph-grid-label { max-width:1280px; margin: 26px auto 0; }
+    .ph-tile[hidden] { display:none; }
+    .t-analytics { --pc: var(--ax-p-guides); } .t-analytics:hover { border-color:var(--ax-p-guides); background: var(--ax-paper-3); }
+    .t-scorecard { --pc: var(--ax-teal); } .t-scorecard:hover { border-color:var(--ax-teal); background: var(--ax-paper-3); }
+    #analytics-overview { display:none; padding: 18px 24px; max-width:1280px; margin:0 auto; }
+    #analytics-overview.visible { display:block; }
+    .ao-tabs { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:10px; margin-top:10px; }
+    .ao-tab { border-radius:12px; border:1px solid var(--border); padding:12px 14px; cursor:pointer; background: var(--ax-paper); }
+    .ao-tab:hover { border-color: var(--accent); }
+    .ao-tab b { display:block; color:var(--text); font-size:0.9rem; }
+    .ao-tab span { font-size:0.78rem; color:var(--muted); }
     .ph-hero h2 { font-size: clamp(21px, 3vw, 30px); font-weight:800; margin:0 0 6px; color:var(--text); }
     .ph-hero p { color: var(--muted); font-size: 0.85rem; margin:0 auto; }
     .ph-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:18px;
-               max-width:1280px; margin: 26px auto 0; }
+               max-width:1280px; margin: 10px auto 0; }
     .ph-tile { border-radius:18px; padding: 24px 24px 20px; cursor:pointer; min-height: 200px;
                background: var(--ax-paper); border: 2px solid var(--border);
                transition: transform var(--ax-t) var(--ax-ease), background var(--ax-t) var(--ax-ease), border-color var(--ax-t) var(--ax-ease); }
@@ -752,62 +797,67 @@
 <div id="section-bar">
   <button class="sb-home" onclick="location.hash='#home'" title="Portal home"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-back"/></svg> Home</button>
   <span id="sb-name" class="sb-name"></span>
+  <span id="sb-purpose" class="sb-purpose"></span>
   <div id="sb-tabs" class="sb-tabs"></div>
 </div>
 
-<!-- Portal home - the tile grid landing (approved mockup) -->
+<!-- Portal home (2026.4.46): the person's workday first, then the map.
+     The role from sign-in picks the hero; "Show me the portal as" overrides
+     it and is remembered. Nothing is hidden by role - only ordered. -->
 <div id="portal-home">
-  <div class="ph-hero">
-    <h2>Where do you want to work?</h2>
-    <p>Live counts refresh with the platform - home doubles as a status glance.</p>
+  <div class="ph-top">
+    <div><div class="ph-eyebrow" id="ph-hello"></div><h2 id="ph-title">Where do you want to work?</h2><p class="ph-why" id="ph-why"></p></div>
+    <div class="ph-switch" id="ph-switch" data-tour="home-switch">Show me the portal as
+      <button data-view="engineer" onclick="setHomeView('engineer')">Engineer</button>
+      <button data-view="manager" onclick="setHomeView('manager')">Manager</button>
+      <button data-view="all" onclick="setHomeView('all')">Everything</button>
+    </div>
   </div>
-  <div class="ph-grid">
-    <div class="ph-tile t-anchors" onclick="location.hash='#anchors'" data-tour="tile-anchors">
-      <div class="ph-ico"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-link"/></svg></div><h3>Anchors</h3>
-      <div class="ph-sub">QR codes, tags &amp; training - the spatial backbone</div>
-      <div class="ph-stats" id="ph-stat-anchors"></div>
-    </div>
-    <div class="ph-tile t-inspect" onclick="location.hash='#sessions'">
-      <div class="ph-ico"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-search"/></svg></div><h3>Inspection Sessions</h3>
-      <div class="ph-sub">Spatial Inspection results - pass/fail, evidence, reports</div>
-      <div class="ph-stats" id="ph-stat-inspect"></div>
-    </div>
-    <div class="ph-tile t-arguides" onclick="location.hash='#ar-guides'" data-tour="tile-arguides">
-      <div class="ph-ico"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-checklist"/></svg></div><h3>AR Guides Sessions</h3>
-      <div class="ph-sub">Work-instruction runs by Production #</div>
-      <div class="ph-stats" id="ph-stat-arguides"></div>
-      <div class="ph-subnav">
-        <span class="ph-chip" onclick="event.stopPropagation();location.hash='#ar-guides/completions'">Completions</span>
-        <span class="ph-chip" onclick="event.stopPropagation();location.hash='#ar-guides/usage'"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chart"/></svg> Usage Log</span>
-      </div>
-    </div>
-    <div class="ph-tile t-content" onclick="location.hash='#content/guides'" data-tour="tile-content">
+  <div id="ph-hero"></div>
+  <div class="ph-eyebrow ph-grid-label" id="ph-grid-label">Everything on the platform</div>
+  <div class="ph-grid" id="ph-grid">
+    <div class="ph-tile t-content" data-sec="content" onclick="location.hash='#content/guides'" data-tour="tile-content">
       <div class="ph-ico"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-book"/></svg></div><h3>Content Library</h3>
-      <div class="ph-sub">Everything authors publish, in one place</div>
+      <div class="ph-sub">The work instructions and 3D models the floor runs. Import, design, preview, share.</div>
       <div class="ph-stats" id="ph-stat-content"></div>
       <div class="ph-subnav">
         <span class="ph-chip" onclick="event.stopPropagation();location.hash='#content/guides'">Guide Library</span>
         <span class="ph-chip" onclick="event.stopPropagation();location.hash='#content/models'">3D Models</span>
       </div>
     </div>
-    <div class="ph-tile t-iloto" onclick="location.hash='#iloto'">
-      <div class="ph-ico"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-lock-restricted"/></svg></div><h3>iLOTO</h3>
-      <div class="ph-sub">Lockout/Tagout points, certifications &amp; training questions</div>
-      <div class="ph-stats" id="ph-stat-iloto"></div>
-    </div>
-    <div class="ph-tile t-gemba" onclick="location.hash='#gemba'">
-      <div class="ph-ico"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-technician"/></svg></div><h3>GembaWalks</h3>
-      <div class="ph-sub">Audit walks - findings, defect categories, resolution</div>
-      <div class="ph-stats" id="ph-stat-gemba"></div>
+    <div class="ph-tile t-analytics" data-sec="analytics" onclick="location.hash='#analytics'" data-tour="tile-arguides">
+      <div class="ph-ico"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chart"/></svg></div><h3>Analytics</h3>
+      <div class="ph-sub">What the floor did with it: guide runs, inspections, step timing, where people struggle.</div>
+      <div class="ph-stats" id="ph-stat-arguides"></div>
       <div class="ph-subnav">
-        <span class="ph-chip" onclick="event.stopPropagation();location.hash='#gemba/sessions'"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-technician"/></svg> Walk Sessions</span>
-        <span class="ph-chip" onclick="event.stopPropagation();location.hash='#gemba/walks'"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-pin"/></svg> Findings</span>
-        <span class="ph-chip" onclick="event.stopPropagation();location.hash='#gemba/library'"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-book"/></svg> Audit Library</span>
+        <span class="ph-chip" onclick="event.stopPropagation();location.hash='#analytics/runs'">Guide runs</span>
+        <span class="ph-chip" onclick="event.stopPropagation();location.hash='#analytics/inspections'">Inspections</span>
+        <span class="ph-chip" onclick="event.stopPropagation();location.hash='#analytics/insights'">Insights</span>
       </div>
     </div>
-    <div class="ph-tile t-admin" onclick="location.hash='#admin/uam'" data-tour="tile-admin">
+    <div class="ph-tile t-anchors" data-sec="anchors" onclick="location.hash='#anchors'" data-tour="tile-anchors">
+      <div class="ph-ico"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-link"/></svg></div><h3>Anchors</h3>
+      <div class="ph-sub">The chambers and their QR codes - where every guide and inspection is pinned in space.</div>
+      <div class="ph-stats" id="ph-stat-anchors"></div>
+    </div>
+    <div class="ph-tile t-iloto" data-sec="iloto" onclick="location.hash='#iloto'">
+      <div class="ph-ico"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-lock-restricted"/></svg></div><h3>iLOTO</h3>
+      <div class="ph-sub">Lockout / tagout points, who is certified, what is locked right now.</div>
+      <div class="ph-stats" id="ph-stat-iloto"></div>
+    </div>
+    <div class="ph-tile t-gemba" data-sec="gemba" onclick="location.hash='#gemba'">
+      <div class="ph-ico"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-technician"/></svg></div><h3>GembaWalks</h3>
+      <div class="ph-sub">Audit walks: findings by area, what is still open, the audit library.</div>
+      <div class="ph-stats" id="ph-stat-gemba"></div>
+    </div>
+    <div class="ph-tile t-scorecard" data-sec="scorecard" onclick="location.href='/scorecard'">
+      <div class="ph-ico"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-checklist"/></svg></div><h3>Readiness scorecard</h3>
+      <div class="ph-sub">Where each technology track stands this quarter, with the evidence behind every score.</div>
+      <div class="ph-stats" id="ph-stat-scorecard"></div>
+    </div>
+    <div class="ph-tile t-admin" data-sec="admin" onclick="location.hash='#admin/uam'" data-tour="tile-admin">
       <div class="ph-ico"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-wrench"/></svg></div><h3>Admin</h3>
-      <div class="ph-sub">Platform operations - each on its own page</div>
+      <div class="ph-sub">Who gets in, chamber configurations, logs and backups.</div>
       <div class="ph-subnav">
         <span class="ph-chip" onclick="event.stopPropagation();location.hash='#admin/uam'"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-users"/></svg> User Access</span>
         <span class="ph-chip" onclick="event.stopPropagation();location.hash='#admin/configs'"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chamber"/></svg> Chamber Configs</span>
@@ -983,6 +1033,9 @@
 </div>
 
 <!-- AR Guides Sessions panel -->
+<!-- Analytics overview (2026.4.46): the one page that says how the floor is using the content. -->
+<div id="analytics-overview"></div>
+
 <div id="ar-guides-panel">
   <div class="sessions-toolbar" id="ag-toolbar">
     <span class="ax-label-s ax-muted" style="flex:1">AR Guide completions · grouped by anchor → guide</span>
@@ -2815,30 +2868,40 @@ let evidenceBlobCache = {};               // evidence URL → blob URL (avoids r
 // ── View switching ────────────────────────────────────────────────────────────
 
 // ── Hash router (2026.4.45 redesign) ──────────────────────────────────────────
-// URLs: #home · #anchors · #sessions · #ar-guides[/completions|/usage]
+// URLs: #home · #anchors · #analytics[/overview|/runs|/inspections|/usage|/intelligence|/insights]
 //       #content[/guides|/models] · #iloto · #gemba · #admin[/uam|/ops|/backup]
 // Back button returns Home, refresh keeps your place, links are shareable.
 // switchView() remains the internal panel renderer; the router drives it.
 
+// Every section carries a purpose line (shown in the section bar) and every
+// Analytics tab a one-line "what this answers" - the page explains itself.
 const SECTIONS = {
-  'anchors':   { name: 'Anchors',              color: 'var(--ax-p-tags)' },
-  'sessions':  { name: 'Inspection Sessions',  color: 'var(--ax-p-tags)' },
-  'ar-guides': { name: 'AR Guides Sessions',   color: 'var(--ax-p-guides)',
-                 tabs: [['completions', 'Completions', 'check'], ['usage', 'Usage Log', 'logs'], ['intelligence', 'Intelligence', 'intelligence'], ['insights', 'Insights', 'insights']], defaultSub: 'completions' },
-  'content':   { name: 'Content Library',      color: 'var(--ax-p-portal)',
+  'anchors':   { name: 'Anchors',              color: 'var(--ax-p-tags)', purpose: 'The chambers and their QR codes - where content is pinned in space.' },
+  'analytics': { name: 'Analytics',            color: 'var(--ax-p-guides)', purpose: 'What the floor did with the content, and where people struggle.',
+                 tabs: [['overview', 'Overview', 'chart'], ['runs', 'Guide runs', 'check'], ['inspections', 'Inspections', 'search'], ['usage', 'Usage log', 'logs'], ['intelligence', 'Intelligence', 'intelligence'], ['insights', 'Insights', 'insights']], defaultSub: 'overview',
+                 answers: { overview: 'How the content is being used this period, in one glance.', runs: 'Signed-off work-instruction runs with their evidence, by Production #.', inspections: 'Spatial inspection results: pass / fail, evidence, reports.', usage: 'Per-step timing and validation verdicts, by Production #.', intelligence: 'Which steps need help, and whether the hints helped.', insights: 'Trends over 7, 30 or 90 days, per configuration or guide.' } },
+  'content':   { name: 'Content Library',      color: 'var(--ax-p-portal)', purpose: 'The work instructions and 3D models the floor runs.',
                  tabs: [['guides', 'Guide Library', 'steps'], ['models', '3D Models', 'cube']], defaultSub: 'guides' },
-  'iloto':     { name: 'iLOTO',                color: 'var(--ax-p-iloto)' },
-  'gemba':     { name: 'GembaWalks',           color: 'var(--ax-p-gemba)',
+  'iloto':     { name: 'iLOTO',                color: 'var(--ax-p-iloto)', purpose: 'Lockout / tagout points, certifications, what is locked right now.' },
+  'gemba':     { name: 'GembaWalks',           color: 'var(--ax-p-gemba)', purpose: 'Audit walks: findings by area and what is still open.',
                  tabs: [['sessions', 'Walk Sessions', 'map'], ['walks', 'Findings by Area', 'pin'], ['library', 'Audit Library', 'book']], defaultSub: 'sessions' },
-  'admin':     { name: 'Admin',                color: 'var(--ax-p-platform)',
+  'admin':     { name: 'Admin',                color: 'var(--ax-p-platform)', purpose: 'Who gets in, chamber configurations, logs and backups.',
                  tabs: [['uam', 'User Access', 'users'], ['configs', 'Chamber Configs', 'chamber'], ['ops', 'Ops Log', 'logs'], ['logs', 'Device Logs', 'logs'], ['backup', 'Backups', 'backup']], defaultSub: 'uam' },
 };
+// Old links keep working: the two session sections became Analytics tabs.
+const SECTION_REDIRECTS = { 'sessions': 'analytics/inspections', 'ar-guides': { '': 'analytics/runs', completions: 'analytics/runs', usage: 'analytics/usage', intelligence: 'analytics/intelligence', insights: 'analytics/insights' } };
 let portalAuthed = false;   // router renders nothing until enterPortal succeeds
 
 function renderRoute() {
   if (!portalAuthed) return;
   const raw = (location.hash || '#home').slice(1);
-  let [sec, sub] = raw.split('/');
+  const [path, query] = raw.split('?');
+  let [sec, sub] = path.split('/');
+  const params = new URLSearchParams(query || '');
+  if (SECTION_REDIRECTS[sec]) {
+    const r = SECTION_REDIRECTS[sec]; const to = typeof r === 'string' ? r : (r[sub || ''] || r['']);
+    location.replace('#' + to + (query ? '?' + query : '')); return;
+  }
   if (!SECTIONS[sec]) sec = 'home';
   const home = document.getElementById('portal-home');
   const bar  = document.getElementById('section-bar');
@@ -2847,6 +2910,7 @@ function renderRoute() {
     switchView('home');
     home.classList.add('visible');
     bar.classList.remove('visible');
+    renderHome();
     loadHomeStats();
     guideStartTour(false);      // P1
     guideRefresh();
@@ -2858,7 +2922,11 @@ function renderRoute() {
   sub = sub || def.defaultSub;
 
   // Section → internal panel
-  if (sec === 'ar-guides')    { switchView('ar-guides'); setUsageView(sub === 'usage'); setIntelView(sub === 'intelligence'); setInsightsView(sub === 'insights'); }
+  if (sec === 'analytics') {
+    if (sub === 'overview') { switchView('analytics-overview'); }
+    else if (sub === 'inspections') { switchView('sessions'); }
+    else { switchView('ar-guides'); if (sub === 'insights' && params.has('guide')) insightsGuide = params.get('guide'); setUsageView(sub === 'usage'); setIntelView(sub === 'intelligence'); setInsightsView(sub === 'insights'); }
+  }
   else if (sec === 'content') { switchView(sub === 'models' ? 'models' : 'guide-library'); }
   else if (sec === 'admin')   { switchView('admin'); adminShowSub(sub); }
   else if (sec === 'gemba')   { switchView('gemba'); gembaShowSub(sub); }
@@ -2870,6 +2938,7 @@ function renderRoute() {
   const nameEl = document.getElementById('sb-name');
   nameEl.textContent = def.name;
   nameEl.style.color = def.color;
+  document.getElementById('sb-purpose').textContent = (def.answers && def.answers[sub]) || def.purpose || '';
   document.getElementById('sb-tabs').innerHTML = (def.tabs || []).map(([id, label, icon]) =>
     `<button class="sb-tab ${id === sub ? 'active' : ''}" onclick="location.hash='#${sec}/${id}'">${icon ? `<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-${icon}"/></svg> ` : ''}${label}</button>` ).join('');
 }
@@ -2926,7 +2995,7 @@ function guideMilestones(st) {
     { id: 'place',   hash: '#content/guides',  done: (st.placedGuides || 0) > 0,
       t: 'Place the steps in AR (on the phone)',
       d: 'Open the guide in the iOS app → Place Steps in AR. This turns text into pins on the tool.' },
-    { id: 'run',     hash: '#ar-guides',       done: (st.guidedRuns || 0) > 0,
+    { id: 'run',     hash: '#analytics/runs',  done: (st.guidedRuns || 0) > 0,
       t: 'Run it once and watch it land here',
       d: 'A technician scans the chamber QR and runs the guide - the Completion and Usage logs fill in.' },
   ];
@@ -2981,12 +3050,14 @@ const PAGE_TOURS = {
   home: [
     { sel: null, h: 'Welcome to the appliedx Connected Worker AR OMS Platform ',
       p: 'This portal is where MEs set things up; technicians do their work in the AR app. Let’s take the 60-second tour - you can replay it from <svg class="ax-icon"><use href="/portal/brand/icons.svg#i-info"/></svg> Show me at any time.' },
+    { sel: '[data-tour="home-switch"]', h: 'Arranged for you',
+      p: 'Home puts your own work first - the library for engineers, this week\u2019s numbers for managers. Switch any time; the choice is remembered.' },
     { sel: '[data-tour="tile-anchors"]', h: 'Chambers live here',
       p: 'Every physical chamber is an anchor with a printed QR. Create it, assign its configuration, print the code.' },
     { sel: '[data-tour="tile-content"]', h: 'Your guide library',
       p: 'Work instructions per chamber - import them, draw them in the Procedure Designer, preview them, copy them to sister chambers.' },
     { sel: '[data-tour="tile-arguides"]', h: 'See it come back',
-      p: 'Every guided run lands here: completions with evidence photos, and the usage log by Production #.' },
+      p: 'Analytics is where every guided run and inspection lands: completions with evidence, step timing, and where people struggle.' },
     { sel: '[data-tour="tile-admin"]', h: 'Admin - users and configurations',
       p: 'The allow-list of who can sign in, and the catalog of chamber configurations. Start there if you’re new.' },
   ],
@@ -3024,6 +3095,7 @@ function guideCurrentPage() {
   const raw = (location.hash || '#home').slice(1);
   const [sec, sub] = raw.split('/');
   if (sec === 'content') return sub === 'models' ? null : 'guide-library';
+  if (sec === 'analytics') return ['runs', 'usage'].includes((sub || '').split('?')[0]) ? 'ar-guides' : null;
   return PAGE_TOURS[sec] ? sec : null;
 }
 
@@ -3036,7 +3108,8 @@ function guideStartTour(force) {
   if (!force && localStorage.getItem(GUIDE_KEY.seen + page)) return;
   // Give the page a beat to render before we look for targets.
   setTimeout(() => {
-    tourSteps = PAGE_TOURS[page].filter(st => !st.sel || !st.optional || document.querySelector(st.sel));
+    // A step whose target is missing or hidden (the home hero's own tile leaves the grid) is skipped.
+    tourSteps = PAGE_TOURS[page].filter(st => { if (!st.sel) return true; const el = document.querySelector(st.sel); return !!el && !el.hidden && el.offsetParent !== null; });
     if (!tourSteps.length) return;
     localStorage.setItem(GUIDE_KEY.seen + page, '1');
     tourIdx = 0;
@@ -3270,7 +3343,7 @@ function renderInsights(d, configs) {
   <div class="ax-card ins-panel">
     <div class="ins-panel-h"><b><svg class="ax-icon" style="color:var(--ax-p-guides)"><use href="/portal/brand/icons.svg#i-intelligence"/></svg> Where people struggle</b><span class="ins-legend">per guide · heat by step, from Intelligence</span></div>
     ${d.perGuide.length ? `<table class="ax-table"><tr><th>Guide</th><th class="ax-num">Runs</th><th class="ax-num">Completed</th><th class="ax-num">Typical</th><th class="ax-num">Slowest tenth</th><th class="ax-num">Wrong parts / run</th><th>Heat by step</th><th>Hottest</th></tr>
-      ${d.perGuide.map(g => `<tr><td><b>${esc(g.name)}</b>${g.configCode ? ` <span class="ax-chip ax-chip--product ax-chip--text" data-product="guides">${esc(g.configCode)}</span>` : ''}</td><td class="ax-num">${g.runs}</td><td class="ax-num">${fmtPct(g.runs ? g.completed / g.runs : 0)}</td><td class="ax-num">${fmtSec(g.medianRunSec)}</td><td class="ax-num">${fmtSec(g.p90RunSec)}</td><td class="ax-num">${g.wrongTapsPerRun.toFixed(1)}</td><td>${heatStrip(g.heat)}</td><td>${g.hottestStep ? `<a class="ins-link" href="#ar-guides/intelligence" onclick="intelGuideId='${esc(g.guideId)}'">Step ${g.hottestStep} →</a>` : '–'}</td></tr>`).join('')}
+      ${d.perGuide.map(g => `<tr><td><b>${esc(g.name)}</b>${g.configCode ? ` <span class="ax-chip ax-chip--product ax-chip--text" data-product="guides">${esc(g.configCode)}</span>` : ''}</td><td class="ax-num">${g.runs}</td><td class="ax-num">${fmtPct(g.runs ? g.completed / g.runs : 0)}</td><td class="ax-num">${fmtSec(g.medianRunSec)}</td><td class="ax-num">${fmtSec(g.p90RunSec)}</td><td class="ax-num">${g.wrongTapsPerRun.toFixed(1)}</td><td>${heatStrip(g.heat)}</td><td>${g.hottestStep ? `<a class="ins-link" href="#analytics/intelligence" onclick="intelGuideId='${esc(g.guideId)}'">Step ${g.hottestStep} →</a>` : '–'}</td></tr>`).join('')}
     </table>` : '<div class="ax-empty"><span class="ax-mark"><i></i><em></em></span>No runs in this period.</div>'}
   </div>
   <div class="ins-foot">Generated ${new Date(d.generatedAt).toLocaleString()} · ${d.period.days}-day period · <a class="ins-link" href="#" onclick="exportInsightsPng();return false;"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Save as image</a> · <a class="ins-link" href="#" onclick="exportInsightsXlsx();return false;"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> .xlsx</a></div>`;
@@ -3865,7 +3938,7 @@ async function loadHomeStats() {
   try {
     const st = await (await fetch('/stats')).json();
     put('ph-stat-anchors', [`${st.anchors ?? '-'} anchors`]);
-    put('ph-stat-inspect', [`${st.sessionsThisWeek ?? '-'} this week`]);
+    homeStats = st;
     put('ph-stat-iloto',   [`${st.activeLotoLocks ?? 0} active lock${st.activeLotoLocks === 1 ? '' : 's'}`]);
     put('ph-stat-gemba',   [`${st.openGembaFindings ?? 0} open finding${st.openGembaFindings === 1 ? '' : 's'}`]);
   } catch { /* stats are decoration - tiles work without them */ }
@@ -3874,13 +3947,127 @@ async function loadHomeStats() {
     const today = new Date().toISOString().slice(0, 10);
     const todayCount = usage.filter(u => u.startedAt.slice(0, 10) === today).length;
     const open = usage.filter(u => !u.completed).length;
-    put('ph-stat-arguides', [`${todayCount} today`, open ? `${open} open` : '']);
+    put('ph-stat-arguides', [`${todayCount} run${todayCount === 1 ? '' : 's'} today`, open ? `${open} open` : '', homeStats ? `${homeStats.sessionsThisWeek ?? 0} inspection${homeStats.sessionsThisWeek === 1 ? '' : 's'} this week` : '']);
   } catch { /* ignore */ }
   try {
     const models = (await apiFetch('/models')).data || [];
-    put('ph-stat-content', [`${models.length} models`]);
+    put('ph-stat-content', [homeStats ? `${homeStats.guides ?? 0} guides` : '', `${models.length} models`]);
+  } catch { /* ignore */ }
+  try {
+    const sc = (await apiFetch('/scorecard/data')).data;
+    const verdicts = sc.tracks.filter(t => t.master).length;
+    put('ph-stat-scorecard', [sc.quarter, `${verdicts} of ${sc.tracks.length} verdicts`]);
   } catch { /* ignore */ }
 }
+let homeStats = null;
+
+// ── Home (2026.4.46): adaptive by role ──────────────────────────────────────
+// Engineers get the Content Library first; Managers and Owners get Analytics
+// first; everyone can switch, and the choice is remembered on this browser.
+// Nothing is hidden by role - the hero's own tile simply leaves the grid.
+const HOME_VIEW_KEY = 'sib.home.view';
+function homeView() {
+  const saved = localStorage.getItem(HOME_VIEW_KEY);
+  if (saved) return saved;
+  const r = UAM_USER?.role;
+  return r === 'manager' || r === 'owner' ? 'manager' : 'engineer';
+}
+function setHomeView(v) { localStorage.setItem(HOME_VIEW_KEY, v); renderHome(); }
+function renderHome() {
+  const v = homeView();
+  document.getElementById('ph-hello').textContent = UAM_USER ? `${UAM_USER.name} · ${UAM_ROLE_LABEL[UAM_USER.role] || UAM_USER.role}` : 'Portal';
+  document.querySelectorAll('#ph-switch button').forEach(b => b.classList.toggle('on', b.dataset.view === v));
+  const title = document.getElementById('ph-title'), why = document.getElementById('ph-why'), hero = document.getElementById('ph-hero');
+  const label = document.getElementById('ph-grid-label');
+  document.querySelectorAll('#ph-grid .ph-tile').forEach(t => { t.hidden = false; });
+  if (v === 'engineer') {
+    title.textContent = 'Your content';
+    why.textContent = 'Arranged for engineers: the library you author in first, then what the floor did with it.';
+    document.querySelector('#ph-grid [data-sec="content"]').hidden = true;
+    label.textContent = 'Also on the platform';
+    hero.style.display = ''; renderHeroContent(hero);
+  } else if (v === 'manager') {
+    title.textContent = 'How it is going';
+    why.textContent = 'Arranged for managers: what the floor did with the content this week, then the content itself.';
+    document.querySelector('#ph-grid [data-sec="analytics"]').hidden = true;
+    label.textContent = 'Also on the platform';
+    hero.style.display = ''; renderHeroAnalytics(hero, { compact: true });
+  } else {
+    title.textContent = 'Where do you want to work?';
+    why.textContent = 'Every section, with live counts. Pick a view above to put your own work first.';
+    label.textContent = 'Everything on the platform';
+    hero.style.display = 'none'; hero.innerHTML = '';
+  }
+}
+const fmtAgo = iso => { if (!iso) return ''; const d = (Date.now() - Date.parse(iso)) / 864e5; return d < 1 ? 'today' : d < 2 ? 'yesterday' : d < 30 ? `${Math.floor(d)} d ago` : `${Math.floor(d / 30)} mo ago`; };
+
+async function renderHeroContent(el) {
+  el.className = 'ph-hero h-content';
+  el.innerHTML = `<div class="ph-hero-head"><h3>Content Library</h3><p class="ph-why">Import a publication, design a procedure, preview it as the operator will, share it.</p>
+      <div class="acts"><button class="ax-btn ax-btn--primary ax-btn--sm" onclick="location.hash='#content/guides';setTimeout(openImportGuideModal,300)"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-upload"/></svg> Import guide</button>
+      <a class="ax-btn ax-btn--sm" href="/roadmap" target="_blank"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-procedure"/></svg> Procedure Designer</a>
+      <button class="ax-btn ax-btn--sm" onclick="location.hash='#content/guides'">Open the library</button></div></div>
+    <div class="ph-cols"><div><div class="ph-eyebrow" style="margin-bottom:6px">Recently updated</div><ul class="ph-list" id="ph-recent"><li class="meta">Loading…</li></ul></div>
+    <div><div class="ph-eyebrow" style="margin-bottom:6px">Needs you</div><div id="ph-needs"><div class="meta">Loading…</div></div></div></div>`;
+  try {
+    const gs = (await apiFetch('/guides/summary')).data || [];
+    const recent = gs.slice(0, 6);
+    document.getElementById('ph-recent').innerHTML = recent.length ? recent.map(g => `<li>
+        <span class="nm" onclick="showGuideInLibrary('${g.id}','${g.anchorId}')" title="${esc(g.anchor)}">${esc(g.name)}</span>
+        <span class="meta">${g.published ? 'published' : 'draft'} · ${g.steps} steps · ${fmtAgo(g.updatedAt)}</span>
+        <span class="acts"><button onclick="editGuideInDesigner('${g.id}')">Designer</button><button onclick="openGuidePreview('${g.id}')">Preview</button><button onclick="location.hash='#analytics/insights?guide=${g.id}'">Analytics</button></span></li>`).join('')
+      : '<li class="meta">No guides yet - import a publication or draw one in the Designer.</li>';
+    const unplaced = gs.filter(g => g.assembly === 'unplaced');
+    const drafts = gs.filter(g => !g.published);
+    const stepsUnplaced = gs.filter(g => g.assembly === 'none' && g.steps > 0 && !g.placed);
+    const rows = [];
+    if (unplaced.length) rows.push(`<div class="ph-attn" onclick="showGuideInLibrary('${unplaced[0].id}','${unplaced[0].anchorId}')"><b>${unplaced.length}</b> ${unplaced.length === 1 ? 'guide needs its assembly placed on the device' : 'guides need their assembly placed on the device'}</div>`);
+    if (stepsUnplaced.length) rows.push(`<div class="ph-attn" onclick="showGuideInLibrary('${stepsUnplaced[0].id}','${stepsUnplaced[0].anchorId}')"><b>${stepsUnplaced.length}</b> ${stepsUnplaced.length === 1 ? 'guide has steps not yet placed' : 'guides have steps not yet placed'}</div>`);
+    if (drafts.length) rows.push(`<div class="ph-attn" onclick="location.hash='#content/guides'"><b>${drafts.length}</b> ${drafts.length === 1 ? 'draft is not published yet' : 'drafts are not published yet'}</div>`);
+    document.getElementById('ph-needs').innerHTML = rows.length ? rows.join('') : '<div class="ph-attn ok"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-check"/></svg> Everything is placed and published.</div>';
+  } catch (e) { document.getElementById('ph-needs').innerHTML = `<div class="meta">${esc(e.message)}</div>`; }
+}
+
+async function renderHeroAnalytics(el, { compact = false } = {}) {
+  el.className = 'ph-hero h-analytics';
+  el.innerHTML = `<div class="ph-hero-head"><h3>${compact ? 'This week on the floor' : 'This week'}</h3><p class="ph-why">Work-instruction runs over the last 7 days against the 7 before, plus what is open elsewhere.</p>
+      <div class="acts">${compact ? `<button class="ax-btn ax-btn--primary ax-btn--sm" onclick="location.hash='#analytics'">Open Analytics</button>` : ''}<a class="ax-btn ax-btn--sm" href="/scorecard">Readiness scorecard</a></div></div>
+    <div class="ph-kpis" id="ph-kpis"><div class="meta">Loading…</div></div>
+    <div class="ph-cols" style="margin-top:16px"><div><div class="ph-eyebrow" style="margin-bottom:6px">Most run this week</div><ul class="ph-list" id="ph-top"><li class="meta">Loading…</li></ul></div>
+    <div><div class="ph-eyebrow" style="margin-bottom:6px">Open elsewhere</div><div id="ph-open"><div class="meta">Loading…</div></div></div></div>`;
+  try {
+    const [ins, st] = await Promise.all([apiFetch('/guide-sessions/insights?days=7'), fetch('/stats').then(r => r.json()).catch(() => null)]);
+    const d = ins.data, h = d.headline, p = d.previous;
+    const kpi = (v, l, dl, ac, go) => `<div class="ph-kpi" style="--ac:${ac}" onclick="location.hash='${go}'"><div class="v">${v}</div><div class="l">${l}</div><div class="d">${dl}</div></div>`;
+    const hold = insightsDays; insightsDays = 7;   // delta() words its comparison with the period length
+    document.getElementById('ph-kpis').innerHTML = [
+      kpi(h.runs, 'guide runs', delta(h.runs, p.runs), 'var(--ax-blue)', '#analytics/runs'),
+      kpi(fmtPct(h.completionRate), 'completed', delta(h.completionRate, p.completionRate, { fmt: x => `${Math.round(x * 100)} pts` }), 'var(--ax-green)', '#analytics/runs'),
+      kpi(fmtSec(h.medianRunSec), 'median run', delta(h.medianRunSec || 0, p.medianRunSec || 0, { invert: true, fmt: fmtSec }), 'var(--ax-teal)', '#analytics/insights'),
+      kpi(h.hintsShown ? fmtPct(h.hintEffectiveness) : '–', 'hints that helped', h.hintsShown ? `${h.hintsShown} shown` : 'no hints shown', 'var(--ax-orange)', '#analytics/intelligence'),
+    ].join('');
+    insightsDays = hold;
+    const top = d.perGuide.slice(0, 5);
+    document.getElementById('ph-top').innerHTML = top.length ? top.map(g => `<li><span class="nm" onclick="location.hash='#analytics/insights?guide=${g.guideId}'">${esc(g.name)}</span><span class="meta">${g.runs} run${g.runs === 1 ? '' : 's'} · ${fmtPct(g.runs ? g.completed / g.runs : 0)} · ${fmtSec(g.medianRunSec)}${g.hottestStep ? ` · hottest step ${g.hottestStep}` : ''}</span></li>`).join('') : '<li class="meta">No runs in the last 7 days.</li>';
+    const open = [];
+    if (st) {
+      open.push(`<div class="ph-attn ${st.sessionsThisWeek ? '' : 'ok'}" onclick="location.hash='#analytics/inspections'"><b>${st.sessionsThisWeek ?? 0}</b> inspection${st.sessionsThisWeek === 1 ? '' : 's'} this week</div>`);
+      open.push(`<div class="ph-attn ${st.openGembaFindings ? '' : 'ok'}" onclick="location.hash='#gemba/walks'"><b>${st.openGembaFindings ?? 0}</b> open Gemba finding${st.openGembaFindings === 1 ? '' : 's'}</div>`);
+      open.push(`<div class="ph-attn ${st.activeLotoLocks ? '' : 'ok'}" onclick="location.hash='#iloto'"><b>${st.activeLotoLocks ?? 0}</b> active lockout${st.activeLotoLocks === 1 ? '' : 's'}</div>`);
+      open.push(`<div class="ph-attn ok" onclick="location.hash='#content/guides'"><b>${st.placedGuides ?? 0}</b> of <b>${st.guides ?? 0}</b> guides fully placed</div>`);
+    }
+    document.getElementById('ph-open').innerHTML = open.join('') || '<div class="meta">Platform counts unavailable.</div>';
+  } catch (e) { document.getElementById('ph-kpis').innerHTML = `<div class="meta">${esc(e.message)}</div>`; }
+}
+
+// Analytics → Overview: the manager hero in full, then what each tab answers.
+function renderAnalyticsOverview() {
+  const el = document.getElementById('analytics-overview');
+  const def = SECTIONS.analytics;
+  el.innerHTML = `<div id="ao-hero"></div><div class="ph-eyebrow" style="margin-top:18px">Go deeper</div><div class="ao-tabs">${def.tabs.filter(([id]) => id !== 'overview').map(([id, name]) => `<div class="ao-tab" onclick="location.hash='#analytics/${id}'"><b>${name}</b><span>${def.answers[id]}</span></div>`).join('')}</div>`;
+  renderHeroAnalytics(document.getElementById('ao-hero'));
+}
+
 
 function switchView(view) {
   const anchorGrid    = document.getElementById('anchor-grid');
@@ -3892,8 +4079,10 @@ function switchView(view) {
   const modelsPanel   = document.getElementById('models-panel');
   const ilotoPanel    = document.getElementById('iloto-panel');
   const adminPanel    = document.getElementById('admin-panel');
+  const aoPanel       = document.getElementById('analytics-overview');
 
   // Hide everything, then selectively show
+  aoPanel.classList.remove('visible');
   sessPanel.classList.remove('visible');
   gembaPanel.classList.remove('visible');
   agPanel.classList.remove('visible');
@@ -3937,6 +4126,11 @@ function switchView(view) {
     toolbar.style.display    = 'none';
     adminPanel.classList.add('visible');
     renderAdminPanel();
+  } else if (view === 'analytics-overview') {
+    anchorGrid.style.display = 'none';
+    toolbar.style.display    = 'none';
+    aoPanel.classList.add('visible');
+    renderAnalyticsOverview();
   } else if (view === 'home') {
     anchorGrid.style.display = 'none';
     toolbar.style.display    = 'none';
@@ -5889,6 +6083,7 @@ function renderGuideLibrary() {
             <button class="ax-btn ax-btn--quiet ax-btn--sm" onclick="toggleGuideGraph('${guide.id}','${anchorId}')" id="gl-graph-toggle-${guide.id}"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-graph"/></svg> Graph</button>
             <button class="ax-btn ax-btn--quiet ax-btn--sm" title="Walk the step sequence as the operator will experience it - no headset needed" onclick="openGuidePreview('${guide.id}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-play"/></svg> Preview</button>
             <button class="ax-btn ax-btn--quiet ax-btn--sm" title="Edit this guide visually in the Procedure Designer" onclick="editGuideInDesigner('${guide.id}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-procedure"/></svg> Designer</button>
+            <button class="ax-btn ax-btn--quiet ax-btn--sm" title="Runs, completion, run time and the hottest step for this guide" onclick="location.hash='#analytics/insights?guide=${guide.id}'"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chart"/></svg> Analytics</button>
             <button class="ax-btn ax-btn--quiet ax-btn--sm" title="Choose which technicians can see and run this guide" onclick="openShareModal('${guide.id}','${anchorId}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-share"/></svg> Share${(guide.sharedWith && guide.sharedWith.length) ? ` (${guide.sharedWith.length})` : ''}</button>
             <button class="ax-btn ${guide.published ? 'ax-btn--quiet' : 'ax-btn--tint'} ax-btn--sm" onclick="togglePublishGuide('${guide.id}','${anchorId}',${guide.published})">${pubLabel}</button>
             <button class="ax-btn ax-btn--quiet ax-btn--sm" aria-label="More" onclick="openGuideMenu(event,'${guide.id}','${anchorId}','${cfg ? cfg.id : ''}',${siblings.length},'${guide.ciMode || 'normal'}')">⋯</button>

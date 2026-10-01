@@ -260,7 +260,7 @@ function evLink(l) {
   if (l.kind === 'import-log') return `<a href="/portal#content/guides" title="guide ${r}">import log · ${label || r.slice(0, 8)}</a>`;
   if (l.kind === 'guide') return `<a href="/portal#content/guides">guide · ${label || r.slice(0, 8)}</a>`;
   if (l.kind === 'readiness') return `<a href="/portal#content/guides">readiness · ${label || r.slice(0, 8)}</a>`;
-  if (l.kind === 'session') return `<a href="/portal#sessions">session · ${label || r.slice(0, 8)}</a>`;
+  if (l.kind === 'session') return `<a href="/portal#analytics/inspections">session · ${label || r.slice(0, 8)}</a>`;
   if (l.kind === 'model') return `<a href="/portal#content/models">model · ${label || r.slice(0, 8)}</a>`;
   if (l.kind === 'link' && /^https?:\/\//.test(l.ref)) return `<a href="${r}" target="_blank" rel="noopener">${label || r}</a>`;
   return `<span>${esc(l.kind)} · ${label || r}</span>`;

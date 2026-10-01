@@ -7,6 +7,23 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **Portal home arranged by role.** Home opens on the person's own work:
+  engineers get the Content Library first (recently updated guides with
+  Designer / Preview / Analytics, and a "Needs you" list: assemblies to
+  place, steps to place, drafts), managers and owners get this week on the
+  floor (runs, completion, median run, hints that helped, most-run guides,
+  what is open elsewhere). "Show me the portal as Engineer / Manager /
+  Everything" overrides the role and is remembered; a line under the title
+  says why the page is arranged that way. Every tile carries a one-line
+  purpose and a live count; the section bar shows the section's purpose and,
+  on Analytics, what the open tab answers.
+- **Analytics.** Inspection Sessions and AR Guides Sessions are one section:
+  Overview, Guide runs, Inspections, Usage log, Intelligence, Insights. Old
+  `#sessions` and `#ar-guides` links redirect. Each guide in the library has
+  an Analytics button that opens Insights filtered to that guide
+  (`#analytics/insights?guide=`). `GET /guides/summary` lists the library's
+  guides with status, placement and freshness for the home page. A Readiness
+  scorecard tile joins the home grid.
 - **Viewpoint toggle.** The recommended viewpoint (the blue camera marker
   from the publication's step view) can be switched off and on in the app
   (camera button in the session toolbar, next to tag visibility) and in the

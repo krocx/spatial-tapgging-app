@@ -30,11 +30,10 @@
     children: [
       { id: 'portal', label: 'Portal', href: '/portal#home', color: 'var(--ax-p-portal)', key: 'p', hint: 'Chambers, tags, guides, sessions',
         children: [
-          { id: 'anchors',   label: 'Chambers',        href: '/portal#anchors' },
-          { id: 'ar-guides', label: 'AR Guides',       href: '/portal#ar-guides' },
           { id: 'content',   label: 'Guide Library',   href: '/portal#content/guides' },
           { id: 'models',    label: '3D Models',       href: '/portal#content/models' },
-          { id: 'sessions',  label: 'Inspections',     href: '/portal#sessions' },
+          { id: 'analytics', label: 'Analytics',       href: '/portal#analytics' },
+          { id: 'anchors',   label: 'Chambers',        href: '/portal#anchors' },
           { id: 'iloto',     label: 'iLOTO',           href: '/portal#iloto' },
           { id: 'gemba',     label: 'Gemba',           href: '/portal#gemba/walks' },
           { id: 'gemba-library', label: 'Audit Library', href: '/portal#gemba/library' },
@@ -253,7 +252,7 @@
     switch (id) {
       case 'portal':    return s.anchors ? [s.anchors, 'chambers'] : null;
       case 'anchors':   return s.presenceNow ? [s.presenceNow, 'people on tools now', true] : null;
-      case 'ar-guides': return s.liveRuns ? [s.liveRuns, 'runs live now', true] : (s.sessionsToday ? [s.sessionsToday, 'runs today'] : null);
+      case 'analytics': return s.liveRuns ? [s.liveRuns, 'runs live now', true] : (s.sessionsToday ? [s.sessionsToday, 'runs today'] : null);
       case 'content':   return s.guides ? [s.guides, `guides · ${s.placedGuides || 0} placed`] : null;
       case 'gemba':     return s.openGembaFindings ? [s.openGembaFindings, 'open findings'] : null;
       case 'iloto':     return s.activeLotoLocks ? [s.activeLotoLocks, 'active locks'] : null;
@@ -273,8 +272,8 @@
     else if (!stats.anchors)              out.push({ label: 'Create the first chamber', href: '/portal#anchors' });
     else if (!stats.guides)               out.push({ label: 'Write a guide', href: '/roadmap' });
     else if ((stats.placedGuides || 0) < stats.guides) out.push({ label: 'Place steps on the iPad', href: '/portal#content/guides' });
-    if (stats.liveRuns)                   out.push({ label: `Watch ${stats.liveRuns} live run${stats.liveRuns === 1 ? '' : 's'}`, href: '/portal#ar-guides' });
-    else if (stats.sessionsToday)         out.push({ label: `Today's completion log (${stats.sessionsToday})`, href: '/portal#ar-guides/usage' });
+    if (stats.liveRuns)                   out.push({ label: `Watch ${stats.liveRuns} live run${stats.liveRuns === 1 ? '' : 's'}`, href: '/portal#analytics/runs' });
+    else if (stats.sessionsToday)         out.push({ label: `Today's completion log (${stats.sessionsToday})`, href: '/portal#analytics/usage' });
     if (stats.qaDevices)                  out.push({ label: 'Read QA device logs', href: '/portal#admin/logs' });
     if (stats.openGembaFindings)          out.push({ label: `${stats.openGembaFindings} open Gemba findings`, href: '/portal#gemba' });
     return out.slice(0, 3);
