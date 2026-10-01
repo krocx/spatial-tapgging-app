@@ -215,6 +215,8 @@ struct ARGuideSessionView: View {
     }
     @State private var pinVisibility: PinVisibility = PinVisibility(rawValue: UserDefaults.standard.integer(forKey: "guidePinVisibility")) ?? .tagAndPanel
     @State private var visibilityToast: String? = nil
+    /// Recommended viewpoint (blue camera marker from the publication's step view). A preference, kept on the device.
+    @State private var viewpointOn: Bool = UserDefaults.standard.object(forKey: "guideViewpointOn") as? Bool ?? true
     /// Proximity auto-hide: under 0.35 m the tag tucks into a dot; past 0.5 m it grows back.
     @State private var tagTucked: Bool = false
     @State private var tagTuckExplained: Bool = UserDefaults.standard.bool(forKey: "tagAutoHideExplained")
@@ -1069,6 +1071,25 @@ struct ARGuideSessionView: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Tag and panel visibility: \(pinVisibility.label). Tap to change.")
+
+                    // Recommended viewpoint on / off (only when an assembly with step views is loaded)
+                    if assemblyNode != nil {
+                        Button {
+                            viewpointOn.toggle()
+                            UserDefaults.standard.set(viewpointOn, forKey: "guideViewpointOn")
+                            assemblyNode?.setViewHintHidden(!viewpointOn)
+                            lookHint = nil; lookAlignedSince = nil
+                            observeInteraction(viewpointOn ? "viewpoint-on" : "viewpoint-off")
+                            withAnimation(.easeOut(duration: 0.15)) { visibilityToast = viewpointOn ? "Viewpoint on" : "Viewpoint off" }
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { withAnimation { if visibilityToast == (viewpointOn ? "Viewpoint on" : "Viewpoint off") { visibilityToast = nil } } }
+                        } label: {
+                            Image(systemName: "camera.viewfinder")
+                                .font(.system(size: 16))
+                                .foregroundStyle(viewpointOn ? Color.white : Color.white.opacity(0.45))
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(viewpointOn ? "Recommended viewpoint shown - tap to hide the blue camera marker" : "Recommended viewpoint hidden - tap to show it")
+                    }
                 }
 
                 // Help button - always visible; F1: controls cheat-sheet (overview inside)
@@ -2872,7 +2893,7 @@ struct ARGuideSessionView: View {
                     }
                     .buttonStyle(.plain)
                 }
-                if assemblyNode != nil, hint.signal == "look-away" {
+                if assemblyNode != nil, viewpointOn, hint.signal == "look-away" {
                     Button { assemblyNode?.setViewHintHidden(false); showNotice("Stand at the blue camera marker") } label: {
                         Label("Show viewpoint", systemImage: "camera.viewfinder")
                             .font(.footnote.bold())
@@ -4421,6 +4442,7 @@ extension ARGuideSessionView {
         node.focus(parts: focus, leaderFrom: pinNodes[sortedSteps[index].id]?.simdWorldPosition)
         if let pin = pinNodes[sortedSteps[index].id] { fitPin(pin, toPartRadius: node.extent(of: focus)) }
         node.setViewHint(sortedSteps[index].view)
+        if !viewpointOn { node.setViewHintHidden(true) }
         lookHint = nil; lookAlignedSince = nil
         replayAssemblyStep()
     }
@@ -4429,7 +4451,7 @@ extension ARGuideSessionView {
     /// 0.5 m and 30°; the chip turns green, then hides after 2 s and stays
     /// hidden until the operator drifts well away again (0.9 m / 45°).
     func updateLookHint() {
-        guard let node = assemblyNode, let frame = arManager.sceneView.session.currentFrame,
+        guard viewpointOn, let node = assemblyNode, let frame = arManager.sceneView.session.currentFrame,
               let a = node.viewAlignment(cameraTransform: frame.camera.transform) else {
             if lookHint != nil { lookHint = nil }; return
         }

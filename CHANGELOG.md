@@ -7,6 +7,12 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **Viewpoint toggle.** The recommended viewpoint (the blue camera marker
+  from the publication's step view) can be switched off and on in the app
+  (camera button in the session toolbar, next to tag visibility) and in the
+  XR kit (Viewpoint button in the step row). Off means the marker never
+  draws and the look-away hint stays quiet; the choice is remembered on the
+  device.
 - **Scorecard: named entries and a guided score form.** Every score, lens
   and verdict is saved under a signed-in person: Engineer and above score
   criteria, Manager and above confirm lenses and record the verdict; the
