@@ -3131,7 +3131,7 @@ function renderCoach() {
     <div class="co-row">
       ${PAGE_TOURS[guideCurrentPage()] ? `<a onclick="guideStartTour(true)">Show me around</a>` : ''}
       <a onclick="localStorage.setItem('${COACH_KEY.howto}', '${howto ? '0' : '1'}');renderCoach()">How do I… ${howto ? '▴' : '▾'}</a>
-      <span class="co-setup" title="${ms.map(m => (m.done ? '✓ ' : '· ') + m.t).join('\n')}">${done === ms.length ? 'Set up ✓' : `Set up ${done} of ${ms.length}`}</span>
+      <span class="co-setup" title="${ms.map(m => (m.done ? 'done - ' : 'to do - ') + m.t).join('\n')}">${done === ms.length ? 'Set up: complete' : `Set up ${done} of ${ms.length}`}</span>
     </div>
     ${howto ? `<div class="co-howto">${HOWTO.map(([t, d, go]) => `<div class="co-h" onclick="${go.startsWith('/') ? `location.href='${go}'` : `location.hash='${go}'`}"><b>${t}</b><span>${d}</span></div>`).join('')}</div>` : ''}
     <div class="gs-foot">
