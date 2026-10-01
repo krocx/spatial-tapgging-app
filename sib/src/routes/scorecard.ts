@@ -29,6 +29,7 @@ import { JsonFileStore } from '../stores/json-file-store.js';
 import { uamActor } from '../middleware/auth.js';
 import type { UamRole } from '@spatial/shared';
 import { guideStore } from './guides.js';
+import { anchorStore } from './anchors.js';
 import { buildWorkbookXlsx, type TableRow } from '../oms/xlsx-lite.js';
 import { readDeviceProfiles } from './devices.js';
 import { TRACKS, latestByCriterion, suggestLens, masterOutcome, quarterOf, quarterAfter, type Entry, type LensOverride, type MasterVerdict, type TrackId, type Lens, type Confidence, type Verdict, type EvidenceLink } from '../scorecard/scorecard-core.js';
@@ -135,9 +136,15 @@ router.post('/master', requireNamed(OWNERS, 'record the verdict'), (req: Request
   res.status(201).json({ data: m, timestamp: new Date().toISOString() });
 });
 
-// Guide names for the evidence picker (anyone who can read the page).
+// Guide names for the evidence picker (anyone who can read the page). Same
+// rule as the Guide Library: a guide is listed through its anchor, so guides
+// whose anchor is gone stay in the store (their logs and sessions still
+// resolve as evidence) but are not offered here. Anchor name disambiguates.
 router.get('/guides', (_req: Request, res: Response) => {
-  const guides = guideStore.findAll().map(g => ({ id: g.id, name: g.name, published: !!g.published })).sort((a, b) => a.name.localeCompare(b.name));
+  const anchors = new Map(anchorStore.findAll().map(a => [a.id, a.assetId || a.id]));
+  const guides = guideStore.findAll().filter(g => anchors.has(g.anchorId))
+    .map(g => ({ id: g.id, name: g.name, anchor: anchors.get(g.anchorId)!, published: !!g.published }))
+    .sort((a, b) => a.anchor.localeCompare(b.anchor) || a.name.localeCompare(b.name));
   res.setHeader('Cache-Control', 'no-store');
   res.json({ data: guides, timestamp: new Date().toISOString() });
 });

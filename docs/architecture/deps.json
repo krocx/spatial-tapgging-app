@@ -385,6 +385,7 @@
   "routes/scorecard.ts": [
    "middleware/auth.ts",
    "oms/xlsx-lite.ts",
+   "routes/anchors.ts",
    "routes/devices.ts",
    "routes/guides.ts",
    "scorecard/scorecard-core.ts",

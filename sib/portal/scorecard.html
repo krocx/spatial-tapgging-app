@@ -319,7 +319,8 @@ async function openScore(t, k) {
   const gl = await guides();
   const pre = new URLSearchParams(location.hash.split('?')[1] || '');
   const preGuide = pre.get('guide') || '';
-  const guideOpts = `<option value="">none</option>${gl.map(g => `<option value="${esc(g.id)}" ${g.id === preGuide ? 'selected' : ''}>${esc(g.name)}${g.published ? '' : ' (draft)'}</option>`).join('')}`;
+  const byAnchor = gl.reduce((m, g) => ((m[g.anchor] ||= []).push(g), m), {});
+  const guideOpts = `<option value="">none</option>${Object.entries(byAnchor).map(([anchor, gs]) => `<optgroup label="${esc(anchor)}">${gs.map(g => `<option value="${esc(g.id)}" ${g.id === preGuide ? 'selected' : ''}>${esc(g.name)}${g.published ? '' : ' (draft)'}</option>`).join('')}</optgroup>`).join('')}`;
   const devices = t.id === 'hardware-fit' ? `<label>Device (required for this track)<select class="ax-select" name="deviceId"><option value="">choose…</option>${DATA.profiles.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select></label>` : '';
   m.innerHTML = `<div class="ax-card">
     <button class="ax-btn" style="position:absolute;top:12px;right:14px" id="sc-close"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-close"/></svg></button>

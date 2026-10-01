@@ -19,7 +19,9 @@ it, it gets a line.
   attached, and shows a how-to until the first save. Level texts say
   "3D OMS content" and "work instruction" instead of "office decks" and
   "deck". The Rubric button opens a summary of lenses, confidence, evidence
-  and gates; the quarter picker offers this quarter and the next four.
+  and gates; the quarter picker offers this quarter and the next four. The
+  guide picker lists only guides the Guide Library shows (those whose
+  anchor still exists), grouped by anchor.
 - **Technology Readiness scorecard.** `/scorecard` (Compass `m 3`): the
   team scores criteria 1 to 5 with confidence and evidence links for
   Content Pipeline, Hardware Fit (per device) and AR SDK; a 4 or 5 is
