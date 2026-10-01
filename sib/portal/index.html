@@ -4897,6 +4897,7 @@ function renderModels(models) {
     </div>`;
   }
   grid.innerHTML = html;
+  applyPendingModelPin();
 }
 
 /** Upload a file to the global models library with progress reporting. */
@@ -5011,6 +5012,18 @@ async function saveDefaultScale() {
 }
 
 /** Rename a model - display name only; files, kit assignments and ids untouched. */
+async function renameGuide(guideId, anchorId) {
+  const guide = (guideLibraryData[anchorId]?.guides || []).find(g => g.id === guideId);
+  const input = prompt('New name for this guide:', guide?.name || '');
+  if (input === null) return;
+  const name = input.trim();
+  if (!name || name === guide?.name) return;
+  try {
+    await apiFetch(`/guides/${encodeURIComponent(guideId)}`, { method: 'PATCH', body: JSON.stringify({ name }) });
+    toast(`Renamed to "${name}"`);
+    await loadGuideLibrary();
+  } catch (e) { toast('Rename failed: ' + e.message); }
+}
 async function renameModel(modelId, currentName) {
   const input = prompt('New model name:', currentName);
   if (input === null) return;                       // cancelled
@@ -5367,14 +5380,22 @@ async function showGuideInLibrary(guideId, anchorId) {
   if (card) { card.scrollIntoView({ behavior: 'smooth', block: 'center' }); card.classList.add('gl-flash'); setTimeout(() => card.classList.remove('gl-flash'), 3200); if (anchorId) toggleGuideSteps(guideId, anchorId); }
 }
 /** Models page, scrolled to one model and flashed. */
-async function showModelCard(modelId) {
-  location.hash = '#content/models';
-  await loadModels();
-  const card = document.getElementById('model-card-' + modelId);
+// The route change re-renders the Models grid after we land, so the pin is
+// applied by renderModels() once the card exists - not here.
+let pendingModelPin = null;
+function showModelCard(modelId) {
+  pendingModelPin = modelId;
+  _modelFilter = 'all';                      // the card must be in the grid to be pinned
+  if (location.hash === '#content/models') loadModels(); else location.hash = '#content/models';
+}
+function applyPendingModelPin() {
+  if (!pendingModelPin) return;
+  const card = document.getElementById('model-card-' + pendingModelPin);
   if (!card) return;
+  pendingModelPin = null;
   document.querySelectorAll('.gl-pinned').forEach(c => c.classList.remove('gl-pinned'));
   card.classList.add('gl-pinned');
-  card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  setTimeout(() => card.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
   // The mark stays until the user clicks somewhere else (or opens another card).
   const clear = (e) => { if (card.contains(e.target)) return; card.classList.remove('gl-pinned'); document.removeEventListener('pointerdown', clear, true); };
   setTimeout(() => document.addEventListener('pointerdown', clear, true), 400);
@@ -6376,6 +6397,7 @@ function openGuideMenu(ev, guideId, anchorId, configId, siblings, ciMode) {
     <button onclick="toggleGuideSteps('${guideId}','${anchorId}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-steps"/></svg> ${stepsOpen ? 'Hide steps' : 'Steps'}</button>
     <button onclick="toggleGuideGraph('${guideId}','${anchorId}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-graph"/></svg> ${graphOpen ? 'Hide graph' : 'Graph'}</button>
     <button onclick="openShareModal('${guideId}','${anchorId}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-share"/></svg> Share with technicians${(guide?.sharedWith && guide.sharedWith.length) ? ` (${guide.sharedWith.length})` : ''}</button>
+    <button onclick="renameGuide('${guideId}','${anchorId}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-edit"/></svg> Rename…</button>
     <hr>
     <a href="/anchors/${encodeURIComponent(anchorId)}/qrprint" target="_blank" rel="noopener" onclick="closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-qr"/></svg> Chamber QR code</a>
     ${modelLinks}

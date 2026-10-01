@@ -347,7 +347,12 @@ async function loadBundle() {
   { const seen = new Map(); root.traverse(o => { if (typeof o.name === 'string' && o.name.startsWith('cmp:')) seen.set(o.name, (seen.get(o.name) || 0) + 1); });
     const dup = [...seen].filter(([, n]) => n > 1); if (dup.length) console.warn(`[xr] ${dup.length} part name(s) used by more than one node - only the last instance is controlled:`, dup.slice(0, 10)); }
   assemblyBounds = guide.assembly?.bounds || { min: modelBox.min.toArray(), max: modelBox.max.toArray() };
-  assembly.userData.scale = guide.assembly?.pose?.scale ?? s;
+  // Size comes from the model (the portal's saved scale), not from an iPad
+  // placement: that pose lives in the iPad's world map and its scale was a
+  // one-off nudge there. Only a pose authored in the QR frame (config) keeps
+  // its own scale - placeFromQR applies it.
+  assembly.userData.scale = s;
+  if (guide.assembly?.pose?.scale && guide.assembly.pose.scale !== s) console.info(`[xr] model scale ${s} (portal) used; the iPad placement carried ${guide.assembly.pose.scale}`);
   const referenced = new Set([...(guide.assembly?.initialNodes || []), ...steps.flatMap(s => s.nodes || [])].map(d => d.node));
   const missing = [...referenced].filter(n => !parts.has(n));
   $('gateText').textContent = $('gateText').textContent.replace(' · loading model…', ` · ${parts.size} parts`)

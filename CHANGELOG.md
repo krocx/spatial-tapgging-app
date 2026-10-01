@@ -303,6 +303,13 @@ it, it gets a line.
   focus ring uses it too, so where the ring sits is where a tap lands.
 
 ### Fixed
+- Guides can be renamed from the row menu (Rename…). "3D model: …" in the
+  guide menu now lands on the model card with the mark: the pin is applied
+  after the Models grid re-renders on arrival, and the filter resets to All
+  so the card is in the grid. The XR kit sizes the assembly from the model's
+  saved scale (the portal preview's Scale), as the app does; an iPad
+  placement's one-off scale no longer overrides it, except for a pose
+  authored in the QR frame.
 - **XR kit: parts settle where the step leaves them.** The kit's settled
   state treated a hidden part that moves as shown, unlike the app and the
   Designer (Cortona moves exploded parts into place before switching them
