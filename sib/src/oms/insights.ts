@@ -105,6 +105,7 @@ export function computeInsights(
       medianRunSec: pct(secs, 0.5), p90RunSec: pct(secs, 0.9),
       wrongTapsPerRun: runs.length ? runs.reduce((n, r) => n + wrongTaps(r), 0) / runs.length : 0,
       heat, hottestStep: heat.length ? heat.indexOf(Math.max(...heat)) + 1 : undefined,
+      lastRunAt: runs.map(r => r.startedAt).filter(Boolean).sort().pop(),
     };
   }).sort((a, b) => b.runs - a.runs);
 

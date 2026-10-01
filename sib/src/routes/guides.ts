@@ -347,14 +347,22 @@ router.post('/', (req: Request, res: Response): void => {
 router.get('/summary', (_req: Request, res: Response): void => {
   const anchors = new Map(anchorStore.findAll().map(a => [a.id, a.assetId || a.id]));
   const steps = guideStepStore.findAll();
+  const profiles = readDeviceProfiles();
   const rows = guideStore.findAll().filter(g => anchors.has(g.anchorId)).map(g => {
-    const st = steps.filter(s => s.guideId === g.id);
+    const st = steps.filter(s => s.guideId === g.id).sort((a, b) => a.sequenceNumber - b.sequenceNumber);
+    // Devices: how many wearables can carry every step (deliverable 100 %) or part of it.
+    let devices: { ready: number; partial: number; of: number } | null = null;
+    if (st.length && profiles.length) {
+      const r = readinessReport(st, profiles);
+      const vals = Object.values(r.summary);
+      devices = { ready: vals.filter(c => c.deliverable === 100).length, partial: vals.filter(c => c.deliverable > 0 && c.deliverable < 100).length, of: vals.length };
+    }
     return {
       id: g.id, name: g.name, anchorId: g.anchorId, anchor: anchors.get(g.anchorId)!,
       published: !!g.published, updatedAt: g.updatedAt, steps: st.length,
       placed: st.length > 0 && st.every(s => s.isPlaced),
       assembly: g.assembly ? (g.assembly.pose ? 'placed' : 'unplaced') : 'none',
-      source: g.assembly?.source ?? null,
+      source: g.assembly?.source ?? null, devices,
     };
   }).sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
   res.setHeader('Cache-Control', 'no-store');

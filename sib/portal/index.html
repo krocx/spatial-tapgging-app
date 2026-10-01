@@ -294,8 +294,18 @@
     .ph-tile[hidden] { display:none; }
     .t-analytics { --pc: var(--ax-p-guides); } .t-analytics:hover { border-color:var(--ax-p-guides); background: var(--ax-paper-3); }
     .t-scorecard { --pc: var(--ax-teal); } .t-scorecard:hover { border-color:var(--ax-teal); background: var(--ax-paper-3); }
-    #analytics-overview { display:none; padding: 18px 24px; max-width:1280px; margin:0 auto; }
-    #analytics-overview.visible { display:block; }
+    #analytics-overview, #analytics-guide { display:none; padding: 18px 24px; max-width:1280px; margin:0 auto; }
+    #analytics-overview.visible, #analytics-guide.visible { display:block; }
+    /* Guide Library cards (phase 2): name, a status rail you can read in a glance, three primary actions. */
+    .gl-guide-hdr { align-items:flex-start; }
+    .gl-guide-main { min-width:0; flex:1; display:flex; flex-direction:column; gap:6px; }
+    .gl-guide-name { max-width:none; }
+    .gl-rail { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+    .gl-rail .gl-badge { cursor:default; }
+    .gl-rail .gl-badge.is-link { cursor:pointer; }
+    .gl-rail .gl-badge.is-link:hover { background: var(--ax-paper-3); color: var(--ax-ink); }
+    .gl-rail .gl-badge-ok { color: var(--ax-green); }
+    .gl-guide-hdr .gl-acts { align-self:center; }
     .ao-tabs { display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:10px; margin-top:10px; }
     .ao-tab { border-radius:12px; border:1px solid var(--border); padding:12px 14px; cursor:pointer; background: var(--ax-paper); }
     .ao-tab:hover { border-color: var(--accent); }
@@ -1048,6 +1058,8 @@
 <!-- AR Guides Sessions panel -->
 <!-- Analytics overview (2026.4.46): the one page that says how the floor is using the content. -->
 <div id="analytics-overview"></div>
+<!-- Analytics → one guide: #analytics/guide/<id> -->
+<div id="analytics-guide"></div>
 
 <div id="ar-guides-panel">
   <div class="sessions-toolbar" id="ag-toolbar">
@@ -2909,7 +2921,7 @@ function renderRoute() {
   if (!portalAuthed) return;
   const raw = (location.hash || '#home').slice(1);
   const [path, query] = raw.split('?');
-  let [sec, sub] = path.split('/');
+  let [sec, sub, third] = path.split('/');
   const params = new URLSearchParams(query || '');
   if (SECTION_REDIRECTS[sec]) {
     const r = SECTION_REDIRECTS[sec]; const to = typeof r === 'string' ? r : (r[sub || ''] || r['']);
@@ -2937,6 +2949,7 @@ function renderRoute() {
   // Section → internal panel
   if (sec === 'analytics') {
     if (sub === 'overview') { switchView('analytics-overview'); }
+    else if (sub === 'guide' && third) { switchView('analytics-guide'); renderGuideAnalytics(third); }
     else if (sub === 'inspections') { switchView('sessions'); }
     else { switchView('ar-guides'); if (sub === 'insights' && params.has('guide')) insightsGuide = params.get('guide'); setUsageView(sub === 'usage'); setIntelView(sub === 'intelligence'); setInsightsView(sub === 'insights'); }
   }
@@ -2951,7 +2964,7 @@ function renderRoute() {
   const nameEl = document.getElementById('sb-name');
   nameEl.textContent = def.name;
   nameEl.style.color = def.color;
-  document.getElementById('sb-purpose').textContent = (def.answers && def.answers[sub]) || def.purpose || '';
+  document.getElementById('sb-purpose').textContent = sub === 'guide' ? 'One guide: its status, this period\u2019s numbers, every step and every device.' : ((def.answers && def.answers[sub]) || def.purpose || '');
   document.getElementById('sb-tabs').innerHTML = (def.tabs || []).map(([id, label, icon]) =>
     `<button class="sb-tab ${id === sub ? 'active' : ''}" onclick="location.hash='#${sec}/${id}'">${icon ? `<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-${icon}"/></svg> ` : ''}${label}</button>` ).join('');
 }
@@ -3009,7 +3022,7 @@ let coachGuides = null;   // /guides/summary, refreshed with the stats
 const PAGE_HELP = {
   home: ['Your own work first - the library for engineers, the week’s numbers for managers.', 'Every tile below says what it is for and carries a live count.', 'Switch the arrangement any time with "Show me the portal as".'],
   anchors: ['One anchor per physical chamber, assigned to a configuration.', 'Print the QR and mount it - operators scan it to reach the chamber’s guides.', 'Unassigned chambers cannot be scanned into; fix that on the card.'],
-  'guide-library': ['Every work instruction, grouped by chamber: import, design, preview, share.', 'Badges say what is left: Draft, Place assembly on device, Published.', 'The … menu holds the rest - import log, headset QR, device readiness, copy, move.'],
+  'guide-library': ['Every work instruction, grouped by chamber: import, design, preview, learn.', 'The chips on a row say where it stands: published, placed, devices ready, how it ran.', 'The … menu holds the rest - steps, graph, share, import log, headset QR, readiness, copy, move.'],
   models: ['The 3D models guides use, with their reduced variants per device budget.', 'Preview inspects a model; guides reference it from the library.', 'Rebuild variants after the reducer changes.'],
   analytics: ['What the floor did with the content: runs, inspections, timing, hints.', 'Overview is the glance; each tab answers one question (see the bar).', 'Analytics on a guide in the library opens Insights filtered to it.'],
   iloto: ['Lockout / tagout points per chamber and their state right now.', 'Who is certified, and the training questions they answered.', 'Events are the audit trail - nothing here is edited by hand.'],
@@ -3173,8 +3186,10 @@ const PAGE_TOURS = {
       p: 'Import from Excel, JSON or MES. Steps arrive as text; pins are placed on the phone afterwards.' },
     { sel: '[data-tour="gl-designer"]', h: 'Or draw it',
       p: 'The Procedure Designer is a canvas: steps as nodes, branches as arrows, models and voice per step. Send it to the library when it’s ready.' },
-    { sel: '.gl-guide-hdr', h: 'Everything a guide can do', optional: true,
-      p: 'Preview it like an operator, share it with specific technicians, copy it to every other chamber of the configuration with ⧉⧉ All.' },
+    { sel: '.gl-rail', h: 'Read the row', optional: true,
+      p: 'The chips say where a guide stands: published, assembly placed, which devices can carry it, how it ran in the last 30 days. Click a chip to go there.' },
+    { sel: '.gl-acts', h: 'Three things to do', optional: true,
+      p: 'Designer edits it, Preview walks it as the operator will, Analytics shows every step and device. Steps, graph, share and the rest live under \u22ef.' },
   ],
   'ar-guides': [
     { sel: '[data-tour="usage-log"]', h: 'Two views of the same work',
@@ -4115,7 +4130,7 @@ async function renderHeroContent(el) {
     document.getElementById('ph-recent').innerHTML = recent.length ? recent.map(g => `<li>
         <span class="nm" onclick="showGuideInLibrary('${g.id}','${g.anchorId}')" title="${esc(g.anchor)}">${esc(g.name)}</span>
         <span class="meta">${g.published ? 'published' : 'draft'} · ${g.steps} steps · ${fmtAgo(g.updatedAt)}</span>
-        <span class="acts"><button onclick="editGuideInDesigner('${g.id}')">Designer</button><button onclick="previewGuide('${g.id}', ${g.assembly !== 'none'})">${g.assembly !== 'none' ? 'Preview 3D' : 'Preview'}</button><button onclick="location.hash='#analytics/insights?guide=${g.id}'">Analytics</button></span></li>`).join('')
+        <span class="acts"><button onclick="editGuideInDesigner('${g.id}')">Designer</button><button onclick="previewGuide('${g.id}', ${g.assembly !== 'none'})">${g.assembly !== 'none' ? 'Preview 3D' : 'Preview'}</button><button onclick="location.hash='#analytics/guide/${g.id}'">Analytics</button></span></li>`).join('')
       : '<li class="meta">No guides yet - import a publication or draw one in the Designer.</li>';
     const unplaced = gs.filter(g => g.assembly === 'unplaced');
     const drafts = gs.filter(g => !g.published);
@@ -4148,7 +4163,7 @@ async function renderHeroAnalytics(el, { compact = false } = {}) {
     ].join('');
     insightsDays = hold;
     const top = d.perGuide.slice(0, 5);
-    document.getElementById('ph-top').innerHTML = top.length ? top.map(g => `<li><span class="nm" onclick="location.hash='#analytics/insights?guide=${g.guideId}'">${esc(g.name)}</span><span class="meta">${g.runs} run${g.runs === 1 ? '' : 's'} · ${fmtPct(g.runs ? g.completed / g.runs : 0)} · ${fmtSec(g.medianRunSec)}${g.hottestStep ? ` · hottest step ${g.hottestStep}` : ''}</span></li>`).join('') : '<li class="meta">No runs in the last 7 days.</li>';
+    document.getElementById('ph-top').innerHTML = top.length ? top.map(g => `<li><span class="nm" onclick="location.hash='#analytics/guide/${g.guideId}'">${esc(g.name)}</span><span class="meta">${g.runs} run${g.runs === 1 ? '' : 's'} · ${fmtPct(g.runs ? g.completed / g.runs : 0)} · ${fmtSec(g.medianRunSec)}${g.hottestStep ? ` · hottest step ${g.hottestStep}` : ''}</span></li>`).join('') : '<li class="meta">No runs in the last 7 days.</li>';
     const open = [];
     if (st) {
       open.push(`<div class="ph-attn ${st.sessionsThisWeek ? '' : 'ok'}" onclick="location.hash='#analytics/inspections'"><b>${st.sessionsThisWeek ?? 0}</b> inspection${st.sessionsThisWeek === 1 ? '' : 's'} this week</div>`);
@@ -4158,6 +4173,81 @@ async function renderHeroAnalytics(el, { compact = false } = {}) {
     }
     document.getElementById('ph-open').innerHTML = open.join('') || '<div class="meta">Platform counts unavailable.</div>';
   } catch (e) { document.getElementById('ph-kpis').innerHTML = `<div class="meta">${esc(e.message)}</div>`; }
+}
+
+
+// ── Analytics → one guide (2026.4.46) ──────────────────────────────────────
+// #analytics/guide/<id>: everything SIB knows about one work instruction on
+// one page - status, the period's numbers, every step's heat, every device's
+// readiness, and the evidence links the scorecard wants. Shareable URL.
+let guidePageDays = Number(localStorage.getItem('sib_insights_days') || 30);
+async function renderGuideAnalytics(guideId) {
+  const el = document.getElementById('analytics-guide');
+  el.innerHTML = '<div class="empty-state"><span class="ax-mark is-loading"><i></i><em></em></span> Gathering the numbers…</div>';
+  try {
+    const [g, sumR, insR, intelR, readR] = await Promise.all([
+      apiFetch(`/guides/${encodeURIComponent(guideId)}`),
+      apiFetch('/guides/summary'),
+      apiFetch(`/guide-sessions/insights?days=${guidePageDays}&guideId=${encodeURIComponent(guideId)}`),
+      apiFetch(`/guide-sessions/intelligence/${encodeURIComponent(guideId)}`).catch(() => ({ data: null })),
+      apiFetch(`/guides/${encodeURIComponent(guideId)}/readiness`).catch(() => ({ data: null })),
+    ]);
+    const guide = g.data, sum = (sumR.data || []).find(x => x.id === guideId), ins = insR.data, h = ins.headline, p = ins.previous;
+    const row = ins.perGuide.find(x => x.guideId === guideId);
+    const intel = intelR.data, read = readR.data;
+    const has3d = !!guide.assembly?.modelId;
+    const hold = insightsDays; insightsDays = guidePageDays;
+    const kpi = (v, l, d, ac) => `<div class="ax-card ins-tile" style="--ac:${ac}"><div class="ax-eyebrow">${l}</div><div class="ins-value">${v}</div><div class="ins-sub">${d}</div></div>`;
+    const kpis = [
+      kpi(h.runs, 'Runs', delta(h.runs, p.runs), 'var(--ax-blue)'),
+      kpi(fmtPct(h.completionRate), 'Completed', delta(h.completionRate, p.completionRate, { fmt: x => `${Math.round(x * 100)} pts` }), 'var(--ax-green)'),
+      kpi(fmtSec(h.medianRunSec), 'Median run', delta(h.medianRunSec || 0, p.medianRunSec || 0, { invert: true, fmt: fmtSec }), 'var(--ax-teal)'),
+      kpi(fmtSec(h.p90RunSec), 'p90 run', 'slowest tenth', 'var(--ax-teal)'),
+      kpi(row ? row.wrongTapsPerRun.toFixed(1) : '–', 'Wrong taps / run', row?.hottestStep ? `hottest: step ${row.hottestStep}` : '', 'var(--ax-orange)'),
+    ].join('');
+    insightsDays = hold;
+    const pills = [7, 30, 90].map(n => `<button class="ax-chip ax-chip--text ax-chip--interactive ${n === guidePageDays ? 'is-on' : ''}" onclick="guidePageDays=${n};renderGuideAnalytics('${guideId}')">${n} days</button>`).join('');
+    const chips = [
+      guide.published ? '<span class="gl-badge gl-badge-published">Published</span>' : '<span class="gl-badge gl-badge-draft">Draft</span>',
+      sum ? (sum.assembly === 'placed' ? '<span class="gl-badge gl-badge-published">Assembly placed</span>' : sum.assembly === 'unplaced' ? '<span class="gl-badge gl-badge-warn">Place assembly on device</span>' : (sum.placed ? '<span class="gl-badge gl-badge-published">Steps placed</span>' : sum.steps ? '<span class="gl-badge gl-badge-warn">Steps not placed</span>' : '')) : '',
+      sum?.devices ? `<span class="gl-badge">${sum.devices.ready} of ${sum.devices.of} devices ready</span>` : '',
+      sum ? `<span class="gl-badge">${sum.steps} steps</span>` : '',
+    ].join('');
+    const stepRows = (intel?.steps || []).filter(s => s.stepIndex !== undefined).sort((a, b) => a.stepIndex - b.stepIndex);
+    const stepsTable = stepRows.length ? `<table class="ax-table" style="font-size:0.82rem"><thead><tr><th>#</th><th>Step</th><th class="ax-num">Visits</th><th class="ax-num">Dwell p50</th><th class="ax-num">Wrong part</th><th>Heat</th><th>What the numbers say</th></tr></thead><tbody>
+      ${stepRows.map(s => `<tr><td class="ax-num">${s.stepIndex + 1}</td><td>${esc(s.title || '')}</td><td class="ax-num">${s.visits}</td><td class="ax-num">${s.dwellSec ? fmtSec(s.dwellSec.p50) : '–'}</td><td class="ax-num">${s.wrongPartRate !== undefined ? fmtPct(s.wrongPartRate) : '–'}</td><td><div class="ax-heat" style="height:18px;min-width:60px"><i class="${heatClass(s.heat)}" style="height:100%;width:${Math.max(4, s.heat)}%"></i></div></td><td class="ax-label-s ax-muted">${esc((s.notes || [])[0] || '')}</td></tr>`).join('')}</tbody></table>`
+      : '<div class="ax-empty">No step data yet - runs feed this table within a minute of finishing.</div>';
+    const devTable = read ? `<table class="ax-table" style="font-size:0.82rem"><thead><tr><th>Device</th><th class="ax-num">Can carry</th><th class="ax-num">Native</th><th class="ax-num">Adapted</th><th class="ax-num">Assisted</th></tr></thead><tbody>
+      ${read.profiles.map(pr => { const c = read.summary[pr.id]; return `<tr><td>${esc(pr.name)}</td><td class="ax-num" style="font-weight:700;color:${c.deliverable === 100 ? 'var(--ax-green)' : c.deliverable ? 'var(--ax-orange)' : 'var(--ax-red)'}">${c.deliverable} %</td><td class="ax-num">${c.native}</td><td class="ax-num">${c.adapted}</td><td class="ax-num">${c.assisted}</td></tr>`; }).join('')}</tbody></table>`
+      : '<div class="ax-empty">No readiness report - the guide has no steps yet.</div>';
+    el.innerHTML = `
+      <div class="ins-head" style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:14px">
+        <div style="min-width:0;flex:1"><div class="ax-eyebrow">${esc(sum?.anchor || '')} · one guide</div>
+          <h2 class="ins-title" style="margin:2px 0 6px">${esc(guide.name)}</h2>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">${chips}</div></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <button class="ax-btn ax-btn--sm" onclick="editGuideInDesigner('${guideId}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-procedure"/></svg> Designer</button>
+          <button class="ax-btn ax-btn--sm" onclick="previewGuide('${guideId}', ${has3d})"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-${has3d ? 'cube' : 'play'}"/></svg> ${has3d ? 'Preview 3D' : 'Preview'}</button>
+          <button class="ax-btn ax-btn--sm" onclick="showGuideInLibrary('${guideId}','${guide.anchorId}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-book"/></svg> In the library</button>
+          <a class="ax-btn ax-btn--sm" href="/scorecard#content-pipeline?guide=${guideId}" title="Score what you learned with this guide as evidence"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-checklist"/></svg> Add to scorecard</a>
+        </div>
+      </div>
+      <div class="ins-filters" style="margin-bottom:12px"><span class="ax-label-s ax-muted">Period</span>${pills}<span class="ax-label-s ax-muted" style="margin-left:auto">${row?.lastRunAt ? `last run ${fmtAgo(row.lastRunAt)}` : 'no runs in this period'}</span></div>
+      <div class="ins-tiles" style="margin-bottom:16px">${kpis}</div>
+      <div class="ins-grid">
+        <div class="ax-card"><div class="ax-eyebrow" style="margin-bottom:8px">Steps · where people slow down or tap the wrong part</div>${stepsTable}</div>
+        <div class="ax-card"><div class="ax-eyebrow" style="margin-bottom:8px">Devices · which wearables can carry this guide</div>${devTable}
+          <div class="ax-label-s ax-muted" style="margin-top:8px">Native: the step as authored · Adapted: text or reduced overlay · Assisted: needs the phone. <a class="ins-link" onclick="showReadiness('${guideId}')">Full matrix and CSV</a></div></div>
+      </div>
+      <div class="ax-card" style="margin-top:16px"><div class="ax-eyebrow" style="margin-bottom:6px">Evidence · what the scorecard can point at</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${guide.assembly?.source === 'cortona' ? `<button class="ax-btn ax-btn--sm" onclick="showSavedImportLog('${guideId}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-logs"/></svg> Import log</button>` : ''}
+          <button class="ax-btn ax-btn--sm" onclick="showReadiness('${guideId}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-xr"/></svg> Readiness report</button>
+          <button class="ax-btn ax-btn--sm" onclick="showXrQr('${guideId}','${esc((guide.name || '').replace(/'/g, ''))}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-qr"/></svg> Open on a headset</button>
+          <button class="ax-btn ax-btn--sm" onclick="location.hash='#analytics/runs'"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-check"/></svg> Signed-off runs</button>
+          <span class="ax-label-s ax-muted" style="align-self:center">Guide id <code>${guideId}</code></span>
+        </div></div>`;
+  } catch (e) { el.innerHTML = `<div class="empty-state">Could not load this guide - ${esc(e.message)}</div>`; }
 }
 
 // Analytics → Overview: the manager hero in full, then what each tab answers.
@@ -4180,9 +4270,11 @@ function switchView(view) {
   const ilotoPanel    = document.getElementById('iloto-panel');
   const adminPanel    = document.getElementById('admin-panel');
   const aoPanel       = document.getElementById('analytics-overview');
+  const agdPanel      = document.getElementById('analytics-guide');
 
   // Hide everything, then selectively show
   aoPanel.classList.remove('visible');
+  agdPanel.classList.remove('visible');
   sessPanel.classList.remove('visible');
   gembaPanel.classList.remove('visible');
   agPanel.classList.remove('visible');
@@ -4231,6 +4323,10 @@ function switchView(view) {
     toolbar.style.display    = 'none';
     aoPanel.classList.add('visible');
     renderAnalyticsOverview();
+  } else if (view === 'analytics-guide') {
+    anchorGrid.style.display = 'none';
+    toolbar.style.display    = 'none';
+    agdPanel.classList.add('visible');
   } else if (view === 'home') {
     anchorGrid.style.display = 'none';
     toolbar.style.display    = 'none';
@@ -6098,6 +6194,11 @@ async function loadGuideLibrary() {
       allAnchors.map(a => apiFetch(`/guides?anchorId=${encodeURIComponent(a.id)}&all=true`))
     );
 
+    // Status rail data: readiness per guide (summary) and the last 30 days of runs.
+    glExtras = { summary: new Map(), runs: new Map() };
+    try { for (const g of (await apiFetch('/guides/summary')).data || []) glExtras.summary.set(g.id, g); } catch { /* rail degrades */ }
+    try { for (const g of ((await apiFetch('/guide-sessions/insights?days=30')).data || {}).perGuide || []) glExtras.runs.set(g.guideId, g); } catch { /* rail degrades */ }
+
     let totalGuides = 0;
     results.forEach((r, i) => {
       const anchor = allAnchors[i];
@@ -6109,7 +6210,7 @@ async function loadGuideLibrary() {
     });
 
     if (!totalGuides) {
-      list.innerHTML = '<p style="color:var(--muted);padding:40px 0;text-align:center">No guides yet. Import one using the AR Guides tab or create steps in the iOS Guide Editor.</p>';
+      list.innerHTML = guideEmptyState('guides') || '<p style="color:var(--muted);padding:40px 0;text-align:center">No guides yet. Import a publication or draw one in the Procedure Designer.</p>';
       return;
     }
 
@@ -6119,6 +6220,7 @@ async function loadGuideLibrary() {
   }
 }
 
+let glExtras = { summary: new Map(), runs: new Map() };
 function renderGuideLibrary() {
   const list = document.getElementById('guide-library-list');
   let html = '';
@@ -6181,21 +6283,28 @@ function renderGuideLibrary() {
       const pubLabel   = guide.published ? 'Unpublish' : 'Publish';
       const pubColor   = guide.published ? 'color:var(--red)' : 'color:var(--ax-green)';
 
+      const sx = glExtras.summary.get(guide.id), rx = glExtras.runs.get(guide.id);
+      const devBadge = sx?.devices
+        ? `<span class="gl-badge is-link ${sx.devices.ready === sx.devices.of ? 'gl-badge-ok' : ''}" title="Which wearables can carry every step - click for the matrix" onclick="showReadiness('${guide.id}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-xr"/></svg> ${sx.devices.ready} of ${sx.devices.of} devices</span>` : '';
+      const runBadge = rx
+        ? `<span class="gl-badge is-link" title="Last 30 days - click for this guide's numbers" onclick="location.hash='#analytics/guide/${guide.id}'"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chart"/></svg> ${rx.runs} run${rx.runs === 1 ? '' : 's'} · ${fmtPct(rx.runs ? rx.completed / rx.runs : 0)} · last ${fmtAgo(rx.lastRunAt)}</span>`
+        : `<span class="gl-badge" title="No runs in the last 30 days">no runs in 30 d</span>`;
+
       html += `<div class="gl-guide-card${hasUnplaced ? ' unplaced' : ''}" id="gl-card-${guide.id}">
         <div class="gl-guide-hdr">
-          <span class="gl-guide-name" title="${esc(guide.name)}"> ${esc(guide.name)}</span>
-          ${pubBadge}${guide.ciMode === 'demo' ? '<span class="gl-badge gl-badge-warn" title="Contextual intelligence in demo mode: floors only, no baselines, no retirement">Demo mode</span>' : ''}${asmBadge}${warnBadge}${placePill}
+          <div class="gl-guide-main">
+            <span class="gl-guide-name" title="${esc(guide.name)}">${esc(guide.name)}</span>
+            <div class="gl-rail">${pubBadge}${asmBadge}${warnBadge}${placePill}${devBadge}${runBadge}${guide.ciMode === 'demo' ? '<span class="gl-badge gl-badge-warn" title="Contextual intelligence in demo mode: floors only, no baselines, no retirement">Demo mode</span>' : ''}</div>
+          </div>
           <div class="gl-acts">
-            <button class="ax-btn ax-btn--quiet ax-btn--sm" onclick="toggleGuideSteps('${guide.id}','${anchorId}')" id="gl-toggle-${guide.id}"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-steps"/></svg> Steps</button>
-            <button class="ax-btn ax-btn--quiet ax-btn--sm" onclick="toggleGuideGraph('${guide.id}','${anchorId}')" id="gl-graph-toggle-${guide.id}"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-graph"/></svg> Graph</button>
+            <button class="ax-btn ax-btn--quiet ax-btn--sm" title="Edit this guide visually in the Procedure Designer" onclick="editGuideInDesigner('${guide.id}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-procedure"/></svg> Designer</button>
             ${guide.assembly?.modelId
               ? `<button class="ax-btn ax-btn--quiet ax-btn--sm" title="Open the real player on this screen: orbit the assembly, play every step, click parts - nothing is recorded" onclick="previewGuide('${guide.id}', true)"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-cube"/></svg> Preview 3D</button>`
               : `<button class="ax-btn ax-btn--quiet ax-btn--sm" title="Walk the step sequence as the operator will see it on the phone - no headset needed" onclick="previewGuide('${guide.id}', false)"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-play"/></svg> Preview</button>`}
-            <button class="ax-btn ax-btn--quiet ax-btn--sm" title="Edit this guide visually in the Procedure Designer" onclick="editGuideInDesigner('${guide.id}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-procedure"/></svg> Designer</button>
-            <button class="ax-btn ax-btn--quiet ax-btn--sm" title="Runs, completion, run time and the hottest step for this guide" onclick="location.hash='#analytics/insights?guide=${guide.id}'"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chart"/></svg> Analytics</button>
-            <button class="ax-btn ax-btn--quiet ax-btn--sm" title="Choose which technicians can see and run this guide" onclick="openShareModal('${guide.id}','${anchorId}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-share"/></svg> Share${(guide.sharedWith && guide.sharedWith.length) ? ` (${guide.sharedWith.length})` : ''}</button>
+            <button class="ax-btn ax-btn--quiet ax-btn--sm" title="Runs, completion, every step's heat and every device's readiness" onclick="location.hash='#analytics/guide/${guide.id}'"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chart"/></svg> Analytics</button>
             <button class="ax-btn ${guide.published ? 'ax-btn--quiet' : 'ax-btn--tint'} ax-btn--sm" onclick="togglePublishGuide('${guide.id}','${anchorId}',${guide.published})">${pubLabel}</button>
-            <button class="ax-btn ax-btn--quiet ax-btn--sm" aria-label="More" onclick="openGuideMenu(event,'${guide.id}','${anchorId}','${cfg ? cfg.id : ''}',${siblings.length},'${guide.ciMode || 'normal'}')">⋯</button>
+            <button class="ax-btn ax-btn--quiet ax-btn--sm" aria-label="More" title="Steps, graph, share, headset, readiness, copy, move" onclick="openGuideMenu(event,'${guide.id}','${anchorId}','${cfg ? cfg.id : ''}',${siblings.length},'${guide.ciMode || 'normal'}')">⋯</button>
+            <span id="gl-toggle-${guide.id}" hidden></span><span id="gl-graph-toggle-${guide.id}" hidden></span>
           </div>
         </div>`;
 
@@ -6240,7 +6349,13 @@ function openGuideMenu(ev, guideId, anchorId, configId, siblings, ciMode) {
   }).join('');
   const m = document.createElement('div');
   m.className = 'fleet-menu ax-solid ax-lockin';
+  const stepsOpen = document.getElementById(`gl-steps-${guideId}`)?.classList.contains('open');
+  const graphOpen = document.getElementById(`gl-graph-${guideId}`)?.classList.contains('open');
   m.innerHTML = `
+    <button onclick="toggleGuideSteps('${guideId}','${anchorId}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-steps"/></svg> ${stepsOpen ? 'Hide steps' : 'Steps'}</button>
+    <button onclick="toggleGuideGraph('${guideId}','${anchorId}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-graph"/></svg> ${graphOpen ? 'Hide graph' : 'Graph'}</button>
+    <button onclick="openShareModal('${guideId}','${anchorId}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-share"/></svg> Share with technicians${(guide?.sharedWith && guide.sharedWith.length) ? ` (${guide.sharedWith.length})` : ''}</button>
+    <hr>
     <a href="/anchors/${encodeURIComponent(anchorId)}/qrprint" target="_blank" rel="noopener" onclick="closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-qr"/></svg> Chamber QR code</a>
     ${modelLinks}
     ${guide?.assembly?.source === 'cortona' ? `<button onclick="showSavedImportLog('${guideId}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-logs"/></svg> Import log</button>

@@ -7,6 +7,21 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **Guide Library cards (portal phase 2).** Each guide row is a name, a
+  status rail and three primary actions. The rail reads in a glance:
+  Published or Draft, assembly placed or to place, unplaced steps, how many
+  devices can carry every step (click for the matrix), and the last 30 days
+  (runs, completion, last run; click for the guide's page). Actions are
+  Designer, Preview / Preview 3D, Analytics, Publish; Steps, Graph, Share
+  and the rest live under the row menu. `GET /guides/summary` now carries
+  the per-guide device readiness; insights rows carry `lastRunAt`.
+- **One guide, one page.** `#analytics/guide/<id>`: status chips, the
+  period's runs, completion, median and p90 with deltas, wrong taps per run
+  and the hottest step, a per-step table (visits, dwell, wrong-part rate,
+  heat, the first note) and a per-device readiness table, with the evidence
+  buttons the scorecard wants (import log, readiness, headset, signed-off
+  runs, "Add to scorecard"). Reached from the row, the rail, Home and the
+  Analytics lists.
 - **Coach.** The getting-started checklist and page tours grow into one
   Coach card (bottom-right, never modal) opened by a bulb in the header on
   every page: a Next step computed from live data (set-up milestones first,
