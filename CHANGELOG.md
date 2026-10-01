@@ -17,7 +17,9 @@ it, it gets a line.
   name, evidence with one-click links to the guide's import log, readiness
   report or the guide), disables Save on a 4 or 5 until evidence is
   attached, and shows a how-to until the first save. Level texts say
-  "3D OMS content" instead of "office decks".
+  "3D OMS content" and "work instruction" instead of "office decks" and
+  "deck". The Rubric button opens a summary of lenses, confidence, evidence
+  and gates; the quarter picker offers this quarter and the next four.
 - **Technology Readiness scorecard.** `/scorecard` (Compass `m 3`): the
   team scores criteria 1 to 5 with confidence and evidence links for
   Content Pipeline, Hardware Fit (per device) and AR SDK; a 4 or 5 is

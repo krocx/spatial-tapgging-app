@@ -34,7 +34,7 @@ sees "Content Pipeline: CONTINUE as of 1 Oct" next to their work.
 A lens is not scored directly. Each track lists criteria under L1 and L2
 (`scorecard-core.ts`, the full rubric per criterion with the five level
 texts), and anyone on the team scores a criterion 1 to 5 against those
-texts, with a confidence (High: repeated on real decks, devices or shifts,
+texts, with a confidence (High: repeated on real work instructions, devices or shifts,
 reproducible by someone else · Medium: more than once in a controlled
 setting · Low: one run, a demo or hearsay) and evidence. Evidence is a link
 to what SIB holds (an import log, a guide, a readiness snapshot, a session,
@@ -60,7 +60,7 @@ without code changes), geometry fidelity (small and thin parts survive
 reduction), animation fidelity (motions, hoses and flipbooks as the viewer
 plays them), state fidelity (visibility and pose per step), units and pose
 (right size and assembled pose without manual fixing), metadata (part
-numbers, descriptions, text, views), scale and performance (largest deck,
+numbers, descriptions, text, views), scale and performance (largest work instruction,
 time, memory, host), diagnosability (every failure explained from the saved
 log). L2: import tool, variants and delivery, Designer preview, players.
 
@@ -110,4 +110,6 @@ is kept.
 
 `quarterOf()` labels entries FY27-Q1 and so on with the fiscal year starting
 in November (`FY_START_MONTH`); October 2026 is FY26-Q4. Change the constant
-if the calendar differs.
+if the calendar differs. The quarter picker offers this quarter, the next
+four and any quarter that already has data. The Rubric button on the page
+opens a summary of the lenses, confidence, evidence rule and gates.

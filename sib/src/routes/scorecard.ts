@@ -31,7 +31,7 @@ import type { UamRole } from '@spatial/shared';
 import { guideStore } from './guides.js';
 import { buildWorkbookXlsx, type TableRow } from '../oms/xlsx-lite.js';
 import { readDeviceProfiles } from './devices.js';
-import { TRACKS, latestByCriterion, suggestLens, masterOutcome, quarterOf, type Entry, type LensOverride, type MasterVerdict, type TrackId, type Lens, type Confidence, type Verdict, type EvidenceLink } from '../scorecard/scorecard-core.js';
+import { TRACKS, latestByCriterion, suggestLens, masterOutcome, quarterOf, quarterAfter, type Entry, type LensOverride, type MasterVerdict, type TrackId, type Lens, type Confidence, type Verdict, type EvidenceLink } from '../scorecard/scorecard-core.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const entryStore  = new JsonFileStore<Entry>('scorecard-entries');
@@ -86,7 +86,9 @@ router.get('/', (_req: Request, res: Response) => {
 
 router.get('/data', (req: Request, res: Response) => {
   const quarter = isQuarter(req.query.quarter) ? req.query.quarter : quarterOf();
-  const quarters = [...new Set([quarterOf(), ...entryStore.findAll().map(e => e.quarter), ...masterStore.findAll().map(m => m.quarter)])].sort();
+  // This quarter, the next four (so the FY27 reviews can be scored ahead), and any quarter with data.
+  const now = quarterOf();
+  const quarters = [...new Set([now, ...[1, 2, 3, 4].map(n => quarterAfter(now, n)), ...entryStore.findAll().map(e => e.quarter), ...masterStore.findAll().map(m => m.quarter)])].sort();
   res.setHeader('Cache-Control', 'no-store');
   const m = me(req);
   res.json({ data: { ...buildScorecard(quarter), quarters, me: m, can: { score: !!m && SCORERS.includes(m.role), confirm: !!m && OWNERS.includes(m.role) }, history: entryStore.findAll().filter(e => e.quarter === quarter).sort((a, b) => a.at < b.at ? 1 : -1).slice(0, 200) }, timestamp: new Date().toISOString() });

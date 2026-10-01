@@ -28,23 +28,23 @@ const c = (id: string, lens: Lens, name: string, question: string, evidence: str
 export const TRACKS: Track[] = [
   {
     id: 'content-pipeline', letter: 'C', name: 'Content Pipeline CAD→AR',
-    l1: 'Cortona / CAD publications become correct AR work instructions on real decks.',
+    l1: 'Cortona / CAD publications become correct AR work instructions on real work instructions.',
     l2: 'The SIB importer, variants, Designer and players that deliver them are shipped and stable.',
     criteria: [
       c('cp-format', 'L1', 'Format coverage', 'Do the publication variants we receive import without code changes?', 'Import logs: PROTOs handled / ignored / unknown; warnings',
-        ['One sample deck only', 'Demo decks only', '3D OMS content with known exceptions listed in the log', 'Every deck received this quarter imported; exceptions warned, none blocking', 'Every deck, including new exporter versions, with no new exceptions']),
+        ['One sample work instruction only', 'Demo work instructions only', '3D OMS content with known exceptions listed in the log', 'Every work instruction received this quarter imported; exceptions warned, none blocking', 'Every work instruction, including new exporter versions, with no new exceptions']),
       c('cp-geometry', 'L1', 'Geometry fidelity', 'Do small and thin parts survive reduction on every device budget?', 'Variant stats; before / after screenshots; seal and screw checks',
-        ['Parts collapse or vanish', 'Visible loss on most reduced models', 'Floors hold on demo decks', 'Floors hold on 3D OMS content at every budget', 'No fidelity complaint from a technician in situ']),
+        ['Parts collapse or vanish', 'Visible loss on most reduced models', 'Floors hold on demo work instructions', 'Floors hold on 3D OMS content at every budget', 'No fidelity complaint from a technician in situ']),
       c('cp-animation', 'L1', 'Animation fidelity', 'Do motions, hoses and flipbooks play as the source viewer plays them?', 'Designer Play step recording against the Cortona viewer',
-        ['Motions missing', 'Rigid motions only', 'Motions and hoses on demo decks', '3D OMS content matches the viewer step for step', 'Technicians confirm the sequence in situ']),
+        ['Motions missing', 'Rigid motions only', 'Motions and hoses on demo work instructions', '3D OMS content matches the viewer step for step', 'Technicians confirm the sequence in situ']),
       c('cp-state', 'L1', 'State fidelity', 'Are visibility and pose per step what the source shows?', 'Designer step walk; readiness snapshot; context overlay in AR',
-        ['Wrong parts shown', 'Right at the first steps only', 'Right on demo decks', 'Right on 3D OMS content, assembled pose correct on first import or one explicit choice', 'Right in situ across procedures']),
+        ['Wrong parts shown', 'Right at the first steps only', 'Right on demo work instructions', 'Right on 3D OMS content, assembled pose correct on first import or one explicit choice', 'Right in situ across procedures']),
       c('cp-units', 'L1', 'Units and pose', 'Is the model the right size and in the assembled pose without manual fixing?', 'Import log units and assembled-pose lines',
-        ['Wrong size, no way to fix', 'Fixable by re-import with guessing', 'Fixable with the Units / pose options', 'Correct or warned on every deck; one re-import at most', 'Correct first time on every deck']),
+        ['Wrong size, no way to fix', 'Fixable by re-import with guessing', 'Fixable with the Units / pose options', 'Correct or warned on every work instruction; one re-import at most', 'Correct first time on every work instruction']),
       c('cp-metadata', 'L1', 'Metadata', 'Do part numbers, descriptions, text and views carry through?', 'Import log parts and text counts; Designer part chips',
         ['Text only', 'Names only', 'Part numbers where the publication has them', 'BOM and descriptions on 3D OMS content', 'Everything the viewer shows, nothing more to author']),
-      c('cp-scale', 'L1', 'Scale and performance', 'How large a deck, how fast, on which host?', 'Import logs: size, time, memory; Render and company server',
-        ['Only tiny decks', 'Demo decks on the company server only', '3D OMS content on the company server; Render needs the larger tier', '3D OMS content on both hosts within the guard', 'Largest deck received, both hosts, with headroom']),
+      c('cp-scale', 'L1', 'Scale and performance', 'How large a work instruction, how fast, on which host?', 'Import logs: size, time, memory; Render and company server',
+        ['Only tiny work instructions', 'Demo work instructions on the company server only', '3D OMS content on the company server; Render needs the larger tier', '3D OMS content on both hosts within the guard', 'Largest work instruction received, both hosts, with headroom']),
       c('cp-diagnosability', 'L1', 'Diagnosability', 'Can every failure be explained from the saved log without the source file?', 'Issues resolved this quarter from logs alone',
         ['Needs the file and a developer', 'Needs the file', 'Most issues from the log', 'Every issue this quarter from the log', 'Authors fix their own imports from the log']),
       c('cp-sib-import', 'L2', 'Import tool', 'The importer and its options as a shipped capability.', 'Changelog; tests; company server runs', undefined),
@@ -163,6 +163,14 @@ export function masterOutcome(l: Record<'L1' | 'L2' | 'L3' | 'L4' | 'L5', number
 
 /** Quarter label for a date: FY27 runs Nov 2026 to Oct 2027 (Applied's fiscal year); adjust FY_START_MONTH if the calendar differs. */
 export const FY_START_MONTH = 11;   // November
+/** The quarter `n` steps after `q` (FY27-Q4 → FY28-Q1). */
+export function quarterAfter(q: string, n = 1): string {
+  const m = q.match(/^FY(\d{2})-Q([1-4])$/);
+  if (!m) return q;
+  let fy = Number(m[1]), qi = Number(m[2]) - 1 + n;
+  fy += Math.floor(qi / 4); qi = ((qi % 4) + 4) % 4;
+  return `FY${String(fy).padStart(2, '0')}-Q${qi + 1}`;
+}
 export function quarterOf(d = new Date()): string {
   const m = d.getUTCMonth() + 1, y = d.getUTCFullYear();
   const offset = (m - FY_START_MONTH + 12) % 12;         // months since FY start

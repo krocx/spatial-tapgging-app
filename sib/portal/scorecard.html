@@ -45,7 +45,10 @@
   .tr-lens form { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: var(--ax-s3); }
   .tr-table td, .tr-table th { vertical-align: top; }
   .tr-table .crit b { display: block; }
-  .tr-table .crit span { font: var(--ax-label-s); color: var(--ax-ink-3); }
+  .tr-table .crit span { display: block; font: var(--ax-label-s); color: var(--ax-ink-3); }
+  .rb h3 { margin: var(--ax-s3) 0 4px; font: var(--ax-h3); }
+  .rb p { margin: 0 0 6px; color: var(--ax-ink-2); }
+  .rb .ax-table td:first-child { font-family: var(--ax-mono); font-weight: 700; white-space: nowrap; }
   .tr-table .score { font-family: var(--ax-mono); font-size: 18px; font-weight: 700; text-align: center; width: 48px; }
   .s1, .s2 { color: var(--ax-red); } .s3 { color: var(--ax-orange); } .s4, .s5 { color: var(--ax-green); }
   .tr-table .ev a { font: var(--ax-label-s); }
@@ -147,13 +150,14 @@ function render() {
       <div class="sc-tools">
         <select class="ax-select" id="sc-quarter">${DATA.quarters.map(q => `<option value="${q}" ${q === quarter ? 'selected' : ''}>${q}</option>`).join('')}</select>
         <a class="ax-btn" href="/scorecard/export.xlsx?quarter=${encodeURIComponent(quarter)}"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Export to Excel</a>
-        <a class="ax-btn" href="/docs/TRL-SCORECARD.md" onclick="return false" title="docs/TRL-SCORECARD.md in the repo">Rubric</a>
+        <button class="ax-btn" id="sc-rubric" title="How lenses, confidence and gates work"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-book"/></svg> Rubric</button>
       </div>
     </div>
     <nav class="ax-tabs">${[['leadership', 'Leadership view'], ...DATA.tracks.map(x => [x.id, x.name]), ['history', 'History']].map(([id, name]) => `<button class="${tab === id ? 'is-on' : ''}" data-tab="${id}">${esc(name)}</button>`).join('')}</nav>
     ${tab === 'leadership' ? leadership() : tab === 'history' ? history() : track(t)}`;
   main.querySelectorAll('.ax-tabs button').forEach(b => b.onclick = () => { tab = b.dataset.tab; render(); });
   document.getElementById('sc-quarter').onchange = e => load(e.target.value);
+  document.getElementById('sc-rubric').onclick = openRubric;
   wire();
 }
 
@@ -273,9 +277,43 @@ function history() {
   <div class="ax-card"><ul class="hist" style="list-style:none;margin:0;padding:0">${h.map(e => `<li><b>${esc(tname(e.trackId))}</b> · ${esc(cname(e.trackId, e.criterionId))}${e.deviceId ? ' · ' + esc(e.deviceId) : ''} → <b class="s${e.score}">${e.score}</b> ${esc(e.confidence)} · ${esc(e.by)} · ${e.at.replace('T', ' ').slice(0, 16)}${e.comment ? ' · ' + esc(e.comment) : ''} · ${e.evidence.length} evidence</li>`).join('')}</ul></div>`;
 }
 
+// ── Rubric: how a score becomes a lens, and a lens a verdict ─────────────
+function openRubric() {
+  const m = document.getElementById('sc-modal');
+  const row = (a, b) => `<tr><td>${a}</td><td>${b}</td></tr>`;
+  m.innerHTML = `<div class="ax-card rb">
+    <button class="ax-btn" style="position:absolute;top:12px;right:14px" id="sc-close"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-close"/></svg></button>
+    <div class="ax-eyebrow">Technology readiness</div><h2 style="margin:2px 0 0;font:var(--ax-h3)">Rubric</h2>
+    <h3>Lenses</h3>
+    <p>Each track is judged through five lenses on the master sheet. SIB scores the first two from criteria; L3 to L5 are the track owner's call.</p>
+    <table class="ax-table" style="font-size:0.84rem"><tbody>
+      ${row('L1 · 30 %', 'Technology readiness: does it work? 1 Concept · 2 Demo only · 3 Repeatable in a controlled setting · 4 Works in situ · 5 Proven in situ')}
+      ${row('L2 · 25 %', 'SIB readiness: is the platform ready to deliver it? 1 Does not exist · 2 Scoped, not started · 3 In build · 4 Shipped with known gaps · 5 Shipped and reused')}
+      ${row('L3 · 20 %', 'WMO process readiness (master sheet)')}
+      ${row('L4 · 15 %', 'Automation impact (master sheet)')}
+      ${row('L5 · 10 %', '3D OMS dependency (master sheet)')}
+    </tbody></table>
+    <h3>From criteria to a lens</h3>
+    <p>Each criterion is scored 1 to 5 against its five level texts. The lens suggested is the lower of the rounded mean and the lowest criterion plus one, so one weak criterion drags the lens but does not alone decide it. The lens confidence is the lowest among its criteria. The track owner confirms or overrides with a written reason.</p>
+    <h3>Confidence</h3>
+    <table class="ax-table" style="font-size:0.84rem"><tbody>${['High', 'Medium', 'Low'].map(c => row(c, CONF_TEXT[c])).join('')}</tbody></table>
+    <h3>Evidence</h3>
+    <p>A 4 or 5 needs at least one link someone else can open: an import log, a guide, a readiness report, a session, a model, a URL or a file reference. A score without evidence is an opinion.</p>
+    <h3>Gates on the master sheet</h3>
+    <table class="ax-table" style="font-size:0.84rem"><tbody>
+      ${row('ADVANCE', 'weighted 3.80 or more')}${row('CONTINUE', '3.00 to 3.79')}${row('PARK', '2.50 to 2.99, with a named re-entry trigger')}${row('CLOSE', 'below 2.50')}
+      ${row('Vetoes', 'L4 at 1 or 2 closes the track · any lens at 1 parks it · any lens at 2 caps it at CONTINUE · a Low-confidence lens counts as at most 3 · fewer than five lenses scored gives no recommendation')}
+    </tbody></table>
+    <p class="ax-label-s ax-muted">Full text: docs/TRL-SCORECARD.md in the repo, and the Rubric sheet of the master workbook.</p>
+  </div>`;
+  m.classList.add('open');
+  document.getElementById('sc-close').onclick = () => m.classList.remove('open');
+  m.onclick = e => { if (e.target === m) m.classList.remove('open'); };
+}
+
 // ── Score a criterion ────────────────────────────────────────────────────
 // Four questions in order: which level, how sure, where seen, what proves it.
-const EV_HINT = { 'import-log': 'guide name or id (guide menu → Import log)', guide: 'guide name or id', readiness: 'guide name or id (guide menu → Device readiness)', session: 'session id from the Sessions page', model: 'model name or id from the Models page', link: 'https://…', file: 'SharePoint path or deck page' };
+const EV_HINT = { 'import-log': 'guide name or id (guide menu → Import log)', guide: 'guide name or id', readiness: 'guide name or id (guide menu → Device readiness)', session: 'session id from the Sessions page', model: 'model name or id from the Models page', link: 'https://…', file: 'SharePoint path or slide reference' };
 async function openScore(t, k) {
   const m = document.getElementById('sc-modal');
   const gl = await guides();
