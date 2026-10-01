@@ -72,9 +72,9 @@ battery). L2: the XR kit or app on this device, readiness and profiles.
 **AR SDK Exploration.** L1: anchoring and relocalisation (mm and seconds),
 tracking under motion, device coverage. L2: SIB integration.
 
-## Leadership view
+## Overview
 
-`/scorecard` opens on it: every track as a card with the master verdict and
+`/scorecard` opens on the Overview tab: every track as a card with the master verdict and
 its date, L1 and L2 with confidence, the open gaps (criteria at 1 or 2),
 how many criteria are scored and how much evidence is linked; the two
 tracks scored only in the master sheet appear with that status so the

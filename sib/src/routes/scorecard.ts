@@ -6,7 +6,7 @@
  * GET  /scorecard/data?quarter=FY27-Q1 → tracks, criteria, latest entry per
  *                                        criterion, lens suggestions, overrides,
  *                                        master verdicts, device profiles, the
- *                                        leadership summary
+ *                                        overview summary
  * POST /scorecard/entries              → add a score (criterion, 1-5,
  *                                        confidence, comment, evidence links)
  * POST /scorecard/lens                 → the track owner confirms / overrides a lens
@@ -189,6 +189,6 @@ router.get('/export.xlsx', (req: Request, res: Response) => {
   res.send(buf);
 });
 
-/** For the leadership view: what the master gate would say with the owner's L3-L5 (entered on the master sheet) - we only preview with SIB's L1/L2 and nulls. */
+/** For the Overview tab: what the master gate would say with the owner's L3-L5 (entered on the master sheet) - we only preview with SIB's L1/L2 and nulls. */
 export { masterOutcome };
 export default router;

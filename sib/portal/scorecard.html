@@ -8,7 +8,7 @@
 <style>
   /* /scorecard - the Technology Readiness scorecard SIB keeps for its tracks
      (docs/TRL-SCORECARD.md): the team scores criteria with evidence, the
-     track owner confirms the lens, leadership sees where every track stands.
+     track owner confirms the lens, the Overview shows where every track stands.
      Built only from the brand system. */
   body { margin: 0; }
   .sc-header { display: flex; align-items: center; gap: var(--ax-s4); padding: var(--ax-s4) var(--ax-s5); border-bottom: var(--ax-hair); }
@@ -20,7 +20,7 @@
   .sc-hero p { color: var(--ax-ink-2); margin: 4px 0 0; max-width: 820px; }
   .sc-hero .sc-tools { margin-left: auto; display: flex; gap: var(--ax-s2); align-items: center; }
   .ax-tabs { margin-bottom: var(--ax-s4); flex-wrap: wrap; }
-  /* Leadership */
+  /* Overview */
   .ld-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: var(--ax-s4); }
   .ld-card { border-left: 3px solid var(--ax-pc, var(--ax-blue)); }
   .ld-card h2 { margin: 0 0 2px; font: var(--ax-h3); }
@@ -153,7 +153,7 @@ function render() {
         <button class="ax-btn" id="sc-rubric" title="How lenses, confidence and gates work"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-book"/></svg> Rubric</button>
       </div>
     </div>
-    <nav class="ax-tabs">${[['leadership', 'Leadership view'], ...DATA.tracks.map(x => [x.id, x.name]), ['history', 'History']].map(([id, name]) => `<button class="${tab === id ? 'is-on' : ''}" data-tab="${id}">${esc(name)}</button>`).join('')}</nav>
+    <nav class="ax-tabs">${[['leadership', 'Overview'], ...DATA.tracks.map(x => [x.id, x.name]), ['history', 'History']].map(([id, name]) => `<button class="${tab === id ? 'is-on' : ''}" data-tab="${id}">${esc(name)}</button>`).join('')}</nav>
     ${tab === 'leadership' ? leadership() : tab === 'history' ? history() : track(t)}`;
   main.querySelectorAll('.ax-tabs button').forEach(b => b.onclick = () => { tab = b.dataset.tab; render(); });
   document.getElementById('sc-quarter').onchange = e => load(e.target.value);
@@ -161,7 +161,7 @@ function render() {
   wire();
 }
 
-// ── Leadership: where every track stands, and what changed ───────────────
+// ── Overview: where every track stands, and what changed ───────────────
 function leadership() {
   const inSib = DATA.tracks;
   const masterOnly = [['S', 'Spatial Intelligence Training'], ['I', 'Integrations']];

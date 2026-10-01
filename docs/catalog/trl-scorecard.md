@@ -8,7 +8,7 @@ depends: [device-readiness, feature-catalogue]
 terms: [SIB]
 spec: TRL-SCORECARD.md
 api: |
-  GET /scorecard/data - tracks, criteria, latest scores, lens suggestions, overrides, master verdicts, leadership summary (browser · API key)
+  GET /scorecard/data - tracks, criteria, latest scores, lens suggestions, overrides, master verdicts, overview summary (browser · API key)
   POST /scorecard/entries - score a criterion 1-5 with confidence, comment and evidence links; a 4 or 5 needs evidence (portal · Engineer+, signed in by name)
   GET /scorecard/guides - guide names and ids for the evidence picker (portal · API key)
   POST /scorecard/lens - the track owner confirms or overrides a lens with a reason (portal · Manager+)
@@ -21,7 +21,7 @@ arch: |
     S --> O["track owner confirms / overrides lens"]
     O --> X["export.xlsx - SIB Import · Criteria · Evidence"]
     X --> M["Master TRL workbook - L3-L5, weights, gates, vetoes, verdict"]
-    M --> V["verdict recorded back in SIB - leadership view"]
+    M --> V["verdict recorded back in SIB - Overview tab"]
     R["readiness matrix · import logs · sessions"] -.evidence.-> T
 ---
 How the programme scores its tracks, and SIB's part in it. SIB scores L1
@@ -31,5 +31,5 @@ confidence and evidence that links to what SIB already holds; the lens the
 criteria suggest is confirmed by the track owner and exported in the master
 workbook's column order. L3 to L5, the weights, gates and vetoes stay in the
 master sheet with the track owner, whose verdict is recorded back in SIB so
-the leadership view shows every track's standing, open gaps and evidence
+the Overview tab shows every track's standing, open gaps and evidence
 next to the criteria the team is scoring.
