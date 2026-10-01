@@ -771,7 +771,8 @@
     #coach .co-row { display:flex; gap:12px; align-items:center; padding:8px 14px; border-top:1px solid var(--border); }
     #coach .co-row a { color:var(--accent); cursor:pointer; font-weight:700; }
     #coach .co-setup { margin-left:auto; color:var(--muted); cursor:help; }
-    #coach .co-howto { border-top:1px solid var(--border); }
+    #coach .co-howto { border-top:1px solid var(--border); max-height: 40vh; overflow:auto; }
+    #coach.tour-hidden { display:none; }
     #coach .co-h { padding:7px 14px; cursor:pointer; border-bottom:1px solid var(--border); }
     #coach .co-h:hover { background:var(--ax-paper-2); }
     #coach .co-h b { display:block; color:var(--text); } #coach .co-h span { color:var(--muted); line-height:1.4; }
@@ -3031,17 +3032,36 @@ const PAGE_HELP = {
 };
 
 const HOWTO = [
-  ['Import a work instruction', 'Content Library → Import guide. Pick the chamber, choose Units if the file is in mm, Assembled pose if parts arrive exploded.', '#content/guides'],
-  ['Place an assembly on the tool', 'Open the guide on the iPad, tap once where the equipment stands. All steps follow. The badge turns to Assembly placed.', '#content/guides'],
-  ['Publish a guide', 'Publish in its row once you have previewed it. Unpublish takes it off the operators’ list without deleting it.', '#content/guides'],
-  ['Share with specific technicians', 'Share in the guide’s row. Technicians sign in on the kiosk with their employee ID and see what is shared with them.', '#content/guides'],
-  ['Open a guide on a headset', 'Guide … menu → Open on a headset (XR kit). Pick the device; scan the QR on it - single use, ten minutes, no key typed.', '#content/guides'],
-  ['Check which devices can run a guide', 'Guide … menu → Device readiness: every step against every wearable, with a CSV and "Add to scorecard".', '#content/guides'],
-  ['See how a guide is doing', 'Analytics in the guide’s row: runs, completion, median and p90 time, the hottest step.', '#analytics/insights'],
-  ['Score technology readiness', 'Readiness scorecard: pick the track, Score a criterion against its level texts, attach evidence. Managers confirm.', '/scorecard'],
-  ['Add a person', 'Admin → User Access → add by email and employee ID, choose the role.', '#admin/uam'],
-  ['Print a chamber QR', 'Anchors → the chamber card → Print / PDF at the stored size. The same QR serves authors and operators.', '#anchors'],
+  // [title, one-line answer, where it lives (hash or path), the control to spotlight once there]
+  ['Import a work instruction', 'Content Library → Import guide. Pick the chamber, choose Units if the file is in mm, Assembled pose if parts arrive exploded.', '#content/guides', '[data-tour="gl-import"]'],
+  ['Place an assembly on the tool', 'Open the guide on the iPad, tap once where the equipment stands. All steps follow. The badge turns to Assembly placed.', '#content/guides', '.gl-badge-warn, .gl-rail'],
+  ['Publish a guide', 'Publish in its row once you have previewed it. Unpublish takes it off the operators\u2019 list without deleting it.', '#content/guides', '.gl-acts .ax-btn--tint, .gl-acts'],
+  ['Share with specific technicians', 'Under the row\u2019s \u22ef menu → Share with technicians. Technicians sign in on the kiosk with their employee ID and see what is shared with them.', '#content/guides', '.gl-acts [aria-label="More"]'],
+  ['Open a guide on a headset', 'Under the row\u2019s \u22ef menu → Open on a headset (XR kit). Pick the device; scan the QR on it - single use, ten minutes, no key typed.', '#content/guides', '.gl-acts [aria-label="More"]'],
+  ['Check which devices can run a guide', 'The devices chip on the row, or \u22ef → Device readiness: every step against every wearable, with a CSV and "Add to scorecard".', '#content/guides', '.gl-rail .is-link, .gl-acts [aria-label="More"]'],
+  ['See how a guide is doing', 'Analytics in the guide\u2019s row: runs, completion, median and p90 time, every step\u2019s heat, every device\u2019s readiness.', '#content/guides', '.gl-acts button[title^="Runs"]'],
+  ['Score technology readiness', 'Readiness scorecard: pick the track, Score a criterion against its level texts, attach evidence. Managers confirm.', '/scorecard', null],
+  ['Add a person', 'Admin → User Access → add by email and employee ID, choose the role.', '#admin/uam', '[data-tour="uam-add"]'],
+  ['Print a chamber QR', 'Anchors → the chamber card → Print / PDF at the stored size. The same QR serves authors and operators.', '#anchors', '.anchor-card .card-actions, .anchor-card'],
 ];
+
+/** A "How do I…" answer acts: go to the page if needed, then spotlight the control. */
+function coachDo(i) {
+  const [t, d, go, sel] = HOWTO[i];
+  localStorage.setItem(COACH_KEY.howto, '0');
+  if (go.startsWith('/')) { location.href = go; return; }
+  const here = (location.hash || '#home').split('?')[0] === go;
+  if (!here) location.hash = go;
+  if (!sel) { renderCoach(); return; }
+  let tries = 0;
+  const find = () => {
+    const el = document.querySelector(sel);
+    if (el && el.offsetParent !== null) { tourSteps = [{ sel, h: t, p: d }]; tourIdx = 0; tourShow(); return; }
+    if (++tries < 30) setTimeout(find, 100); else { renderCoach(); toast('Nothing to point at here yet - ' + d, 5000); }
+  };
+  setTimeout(find, here ? 0 : 300);
+}
+
 
 function coachOpen()  { return localStorage.getItem(COACH_KEY.open) === '1'; }
 function coachAuto()  { return localStorage.getItem(COACH_KEY.auto) !== '0'; }
@@ -3146,7 +3166,7 @@ function renderCoach() {
       <a onclick="localStorage.setItem('${COACH_KEY.howto}', '${howto ? '0' : '1'}');renderCoach()">How do I… ${howto ? '▴' : '▾'}</a>
       <span class="co-setup" title="${ms.map(m => (m.done ? 'done - ' : 'to do - ') + m.t).join('\n')}">${done === ms.length ? 'Set up: complete' : `Set up ${done} of ${ms.length}`}</span>
     </div>
-    ${howto ? `<div class="co-howto">${HOWTO.map(([t, d, go]) => `<div class="co-h" onclick="${go.startsWith('/') ? `location.href='${go}'` : `location.hash='${go}'`}"><b>${t}</b><span>${d}</span></div>`).join('')}</div>` : ''}
+    ${howto ? `<div class="co-howto">${HOWTO.map(([t, d], i) => `<div class="co-h" onclick="coachDo(${i})"><b>${t}</b><span>${d}</span></div>`).join('')}</div>` : ''}
     <div class="gs-foot">
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" ${coachAuto() ? '' : 'checked'} onchange="coachSetAuto(!this.checked)" style="width:auto;margin:0"> Don’t open automatically</label>
       <a onclick="coachTurnOff()" style="margin-left:auto">Turn off</a>
@@ -3234,6 +3254,7 @@ function guideStartTour(force) {
 
 function tourShow(scroll = true) {
   tourEnd(true);
+  document.getElementById('coach')?.classList.add('tour-hidden');
   const st = tourSteps[tourIdx];
   if (!st) { tourEnd(); return; }
   const target = st.sel ? document.querySelector(st.sel) : null;
@@ -3277,7 +3298,7 @@ function tourNext() {
 function tourEnd(keepState) {
   ['tour-mask', 'tour-ring', 'tour-card'].forEach(id => document.getElementById(id)?.remove());
   window.removeEventListener('resize', tourReposition); window.removeEventListener('scroll', tourReposition, true);
-  if (!keepState) { tourSteps = []; tourIdx = 0; }
+  if (!keepState) { tourSteps = []; tourIdx = 0; document.getElementById('coach')?.classList.remove('tour-hidden'); }
 }
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.getElementById('tour-card')) tourEnd(); });
 
