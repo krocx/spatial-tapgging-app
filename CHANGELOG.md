@@ -7,6 +7,14 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **One Preview per guide.** In the library and on the home page, a guide
+  with an assembly opens "Preview 3D": the XR kit in preview mode
+  (`/xr?guide=&preview=1`), the real player on this screen with orbit,
+  Play, parts and Viewpoint, and nothing recorded - no live session, no
+  completion, no hints; the frame pill says so and the end of the guide
+  loops back to step 1. A guide of tags and photos keeps the phone-style
+  walk-through. The Designer's inline preview stays as the authoring
+  preview (backlog #12 folds it and the Models preview onto the XR engine).
 - **Portal home arranged by role.** Home opens on the person's own work:
   engineers get the Content Library first (recently updated guides with
   Designer / Preview / Analytics, and a "Needs you" list: assemblies to

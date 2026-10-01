@@ -180,6 +180,9 @@ import { XRPanel } from '/portal/xr-panel.js';
 // ── Config / auth ────────────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
 const params = new URLSearchParams(location.search);
+// Preview mode (portal → Preview on a guide with an assembly): the real player
+// on a desktop, nothing recorded - no live session, no completion, no hints.
+const PREVIEW = params.get('preview') === '1';
 const guideId = params.get('guide') || '';
 const apiKey = () => localStorage.getItem('sib_api_key') || '';
 const hdr = (extra = {}) => ({ ...(apiKey() ? { 'X-API-Key': apiKey() } : {}), ...extra });
@@ -475,6 +478,7 @@ async function ev(type, extra = {}) {
   try { await api(`/guide-sessions/live/${live.id}/events`, { method: 'POST', body: JSON.stringify({ type, stepId: steps[idx]?.id, stepIndex: idx >= 0 ? idx : undefined, ...extra }) }); } catch { /* fire-and-forget */ }
 }
 async function openLive() {
+  if (PREVIEW) { sessionStartedAt = new Date().toISOString(); return; }
   try {
     const r = await api('/guide-sessions/live', { method: 'POST', body: JSON.stringify({
       guideId, anchorId: guide.anchorId, guideName: guide.name, anchorName: bundle.anchor?.assetId || '', operatorName: opName(),
@@ -576,6 +580,7 @@ function openSignoff() {
   if (panelMode && xrSession) { toast('Leaving AR for sign-off'); xrSession.end(); }
   if (textMode) { $('textMode').classList.add('hidden'); speechSynthesis?.cancel?.(); }
   else applyState(stateBefore(guide.assembly?.initialNodes, steps, steps.length));
+  if (PREVIEW) { toast('End of the guide - this was a preview, nothing was recorded', 3000); setTimeout(() => showStep(0), 1500); return; }
   $('soName').value = opName();
   $('soSummary').textContent = `${completions.length} of ${steps.length} steps completed · ${Object.values(verdicts).filter(v => v === 'fail').length} failed validation · frame: ${frameKind}`;
   $('signoff').classList.remove('hidden');
@@ -734,7 +739,7 @@ function startDesktop() {
   const b = new THREE.Box3().setFromObject(assembly); const c = b.getCenter(new THREE.Vector3()); const size = b.getSize(new THREE.Vector3()).length() || 1;
   camera.position.copy(c).add(new THREE.Vector3(size * 0.6, size * 0.4, size * 0.9)); controls.target.copy(c); controls.update();
   placed = true; locked = true; frameKind = 'desktop';
-  $('framePill').textContent = 'desktop preview'; $('framePill').className = 'pill';
+  $('framePill').textContent = PREVIEW ? 'preview · nothing is recorded' : 'desktop preview'; $('framePill').className = 'pill';
   // A click at the end of an orbit drag is not a tap on a part.
   let down = null;
   canvas.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; });
@@ -842,7 +847,7 @@ $('btnView').onclick = () => { localStorage.setItem('sib_xr_viewpoint', viewpoin
 $('btnPass').onclick = () => verdict('pass');
 $('btnFail').onclick = () => verdict('fail');
 $('hintOk').onclick = () => $('hintCard').classList.add('hidden');
-$('btnExit').onclick = () => { if (xrSession) xrSession.end(); else location.reload(); };
+$('btnExit').onclick = () => { if (xrSession) xrSession.end(); else if (PREVIEW && window.opener) window.close(); else location.reload(); };
 $('soCancel').onclick = () => $('signoff').classList.add('hidden');
 $('soSubmit').onclick = submit;
 $('partChips').onclick = e => { const n = e.target?.dataset?.node; if (n) { pulseParts([n]); observeInteraction('tap-part', n); } };
@@ -872,6 +877,7 @@ function verdict(result) {
   try { await loadBundle(); } catch (e) { $('gateText').textContent = e.message === 'unauthorised' ? 'This server needs an API key.' : 'Could not load: ' + e.message; return; }
   if (textMode) { $('startAR').classList.add('hidden'); $('startDesk').classList.add('hidden'); const b = $('startText'); b.classList.remove('hidden'); b.disabled = false; b.textContent = profile.display === 'none' ? 'Start (spoken)' : 'Start (text pages)'; return; }
   $('startAR').disabled = !xrOk; $('startDesk').disabled = false;
+  if (PREVIEW) startDesktop();   // straight in: the portal asked for a look, not a run
 })();
 </script>
 </body>

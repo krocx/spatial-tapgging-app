@@ -4015,7 +4015,7 @@ async function renderHeroContent(el) {
     document.getElementById('ph-recent').innerHTML = recent.length ? recent.map(g => `<li>
         <span class="nm" onclick="showGuideInLibrary('${g.id}','${g.anchorId}')" title="${esc(g.anchor)}">${esc(g.name)}</span>
         <span class="meta">${g.published ? 'published' : 'draft'} · ${g.steps} steps · ${fmtAgo(g.updatedAt)}</span>
-        <span class="acts"><button onclick="editGuideInDesigner('${g.id}')">Designer</button><button onclick="openGuidePreview('${g.id}')">Preview</button><button onclick="location.hash='#analytics/insights?guide=${g.id}'">Analytics</button></span></li>`).join('')
+        <span class="acts"><button onclick="editGuideInDesigner('${g.id}')">Designer</button><button onclick="previewGuide('${g.id}', ${g.assembly !== 'none'})">${g.assembly !== 'none' ? 'Preview 3D' : 'Preview'}</button><button onclick="location.hash='#analytics/insights?guide=${g.id}'">Analytics</button></span></li>`).join('')
       : '<li class="meta">No guides yet - import a publication or draw one in the Designer.</li>';
     const unplaced = gs.filter(g => g.assembly === 'unplaced');
     const drafts = gs.filter(g => !g.published);
@@ -5617,6 +5617,13 @@ async function loadOpsLog() {
 let gp = null;                       // preview state
 const gpImgCache = {};               // mediaPath → object URL
 
+/** One Preview, two players: a guide with an assembly opens the XR kit in
+ *  preview mode (the real player, on this screen, nothing recorded); a guide
+ *  of tags and photos opens the phone-style walk-through. */
+function previewGuide(guideId, has3d) {
+  if (has3d) { window.open(`/xr?guide=${encodeURIComponent(guideId)}&preview=1`, '_blank', 'noopener'); return; }
+  openGuidePreview(guideId);
+}
 async function openGuidePreview(guideId) {
   try {
     const guide = (await apiFetch(`/guides/${encodeURIComponent(guideId)}`)).data;
@@ -6081,7 +6088,9 @@ function renderGuideLibrary() {
           <div class="gl-acts">
             <button class="ax-btn ax-btn--quiet ax-btn--sm" onclick="toggleGuideSteps('${guide.id}','${anchorId}')" id="gl-toggle-${guide.id}"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-steps"/></svg> Steps</button>
             <button class="ax-btn ax-btn--quiet ax-btn--sm" onclick="toggleGuideGraph('${guide.id}','${anchorId}')" id="gl-graph-toggle-${guide.id}"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-graph"/></svg> Graph</button>
-            <button class="ax-btn ax-btn--quiet ax-btn--sm" title="Walk the step sequence as the operator will experience it - no headset needed" onclick="openGuidePreview('${guide.id}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-play"/></svg> Preview</button>
+            ${guide.assembly?.modelId
+              ? `<button class="ax-btn ax-btn--quiet ax-btn--sm" title="Open the real player on this screen: orbit the assembly, play every step, click parts - nothing is recorded" onclick="previewGuide('${guide.id}', true)"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-cube"/></svg> Preview 3D</button>`
+              : `<button class="ax-btn ax-btn--quiet ax-btn--sm" title="Walk the step sequence as the operator will see it on the phone - no headset needed" onclick="previewGuide('${guide.id}', false)"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-play"/></svg> Preview</button>`}
             <button class="ax-btn ax-btn--quiet ax-btn--sm" title="Edit this guide visually in the Procedure Designer" onclick="editGuideInDesigner('${guide.id}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-procedure"/></svg> Designer</button>
             <button class="ax-btn ax-btn--quiet ax-btn--sm" title="Runs, completion, run time and the hottest step for this guide" onclick="location.hash='#analytics/insights?guide=${guide.id}'"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chart"/></svg> Analytics</button>
             <button class="ax-btn ax-btn--quiet ax-btn--sm" title="Choose which technicians can see and run this guide" onclick="openShareModal('${guide.id}','${anchorId}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-share"/></svg> Share${(guide.sharedWith && guide.sharedWith.length) ? ` (${guide.sharedWith.length})` : ''}</button>
