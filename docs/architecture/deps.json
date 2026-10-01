@@ -36,6 +36,7 @@
    "routes/mindmap.routes.ts",
    "routes/models.ts",
    "routes/perception.ts",
+   "routes/scorecard.ts",
    "routes/sessions.ts",
    "routes/tag-groups.ts",
    "routes/tags.ts",
@@ -381,6 +382,13 @@
    "adapters/perception-adapter.ts",
    "routes/sessions.ts"
   ],
+  "routes/scorecard.ts": [
+   "middleware/auth.ts",
+   "oms/xlsx-lite.ts",
+   "routes/devices.ts",
+   "scorecard/scorecard-core.ts",
+   "stores/json-file-store.ts"
+  ],
   "routes/sessions.ts": [
    "stores/json-file-store.ts"
   ],
@@ -412,6 +420,7 @@
    "middleware/auth.ts",
    "ops-log.ts"
   ],
+  "scorecard/scorecard-core.ts": [],
   "sse/guide-session.sse.ts": [
    "adapters/ai-guide-adapter.ts",
    "guides/store.ts",

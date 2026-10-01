@@ -5111,7 +5111,7 @@ async function showReadiness(guideId) {
     <p class="ax-label-s ax-muted" style="margin:4px 0 0;max-width:820px">Each step's needs (from its text, pin, motion, parts and image) joined with what each wearable can deliver. <b style="color:var(--ax-green)">Native</b>: as authored. <b style="color:var(--ax-orange)">Adapted</b>: delivered in a reduced form (text, spoken, reduced model). <b style="color:var(--ax-red)">Assisted</b>: the device cannot carry the step alone. Hover a cell for the reason. Profiles live in docs/devices.</p></div>
     <div style="overflow:auto;min-height:0"><table class="ax-table" style="font-size:0.8rem"><thead><tr><th>#</th><th>Step</th><th>Needs</th>${head}</tr></thead>
       <tbody><tr style="background:var(--ax-paper-2)"><td></td><td><b>Deliverable</b></td><td></td>${sum}</tr>${rows}</tbody></table></div>
-    <div style="display:flex;gap:8px;justify-content:flex-end"><button class="ax-btn" id="readiness-csv"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Download CSV</button></div>`;
+    <div style="display:flex;gap:8px;justify-content:flex-end"><a class="ax-btn" href="/scorecard#hardware-fit?guide=${guideId}" title="Score what you saw on a device, with this guide as evidence"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chart"/></svg> Add to scorecard</a><button class="ax-btn" id="readiness-csv"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Download CSV</button></div>`;
   document.getElementById('readiness-csv').onclick = csv;
 }
 /** QR that opens this guide's XR kit page on a headset browser (scan from the glasses). */

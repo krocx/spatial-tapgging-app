@@ -17,7 +17,8 @@ flowchart LR
   F_oms["oms · 8 files"]
   F_perception["perception · 1 files"]
   F_procedure["procedure · 5 files"]
-  F_routes["routes · 24 files"]
+  F_routes["routes · 25 files"]
+  F_scorecard["scorecard · 1 files"]
   F_sse["sse · 2 files"]
   F_stores["stores · 3 files"]
   F_tag["tag · 3 files"]
@@ -29,7 +30,7 @@ flowchart LR
   F__ -->|1| F_middleware
   F__ -->|1| F_oms
   F__ -->|1| F_perception
-  F__ -->|24| F_routes
+  F__ -->|25| F_routes
   F__ -->|2| F_sse
   F__ -->|2| F_stores
   F__ -->|1| F_ws
@@ -68,13 +69,14 @@ flowchart LR
   F_routes -->|2| F_import
   F_routes -->|2| F_logging
   F_routes -->|2| F_loto
-  F_routes -->|12| F_middleware
+  F_routes -->|13| F_middleware
   F_routes -->|5| F_models
-  F_routes -->|8| F_oms
+  F_routes -->|9| F_oms
   F_routes -->|3| F_perception
   F_routes -->|6| F_procedure
+  F_routes -->|1| F_scorecard
   F_routes -->|2| F_sse
-  F_routes -->|16| F_stores
+  F_routes -->|17| F_stores
   F_routes -->|4| F_tag
   F_routes -->|3| F_uam
   F_routes -->|2| F_ws

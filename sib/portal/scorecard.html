@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en" class="ax">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scorecard · appliedx Connected Worker AR OMS Platform</title>
+<link rel="stylesheet" href="/portal/brand/brand.css">
+<style>
+  /* /scorecard - the Technology Readiness scorecard SIB keeps for its tracks
+     (docs/TRL-SCORECARD.md): the team scores criteria with evidence, the
+     track owner confirms the lens, leadership sees where every track stands.
+     Built only from the brand system. */
+  body { margin: 0; }
+  .sc-header { display: flex; align-items: center; gap: var(--ax-s4); padding: var(--ax-s4) var(--ax-s5); border-bottom: var(--ax-hair); }
+  .sc-header .ax-nav { margin-left: var(--ax-s4); }
+  .sc-header .ax-chip { margin-left: auto; }
+  .sc-wrap { max-width: 1320px; margin: 0 auto; padding: var(--ax-s5) var(--ax-s5) var(--ax-s7); }
+  .sc-hero { display: flex; align-items: flex-end; gap: var(--ax-s4); flex-wrap: wrap; margin-bottom: var(--ax-s4); }
+  .sc-hero h1 { margin: 0; }
+  .sc-hero p { color: var(--ax-ink-2); margin: 4px 0 0; max-width: 820px; }
+  .sc-hero .sc-tools { margin-left: auto; display: flex; gap: var(--ax-s2); align-items: center; }
+  .ax-tabs { margin-bottom: var(--ax-s4); flex-wrap: wrap; }
+  /* Leadership */
+  .ld-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: var(--ax-s4); }
+  .ld-card { border-left: 3px solid var(--ax-pc, var(--ax-blue)); }
+  .ld-card h2 { margin: 0 0 2px; font: var(--ax-h3); }
+  .ld-card .ld-verdict { font: var(--ax-h2); font-size: 26px; line-height: 30px; margin: 6px 0 2px; }
+  .ld-card .ld-meta { font: var(--ax-label-s); color: var(--ax-ink-3); }
+  .ld-lens { display: grid; grid-template-columns: 1fr 1fr; gap: var(--ax-s3); margin-top: var(--ax-s3); }
+  .ld-lens .ax-tile { padding: 10px 12px; }
+  .ld-lens .ax-tile b { font: var(--ax-h2); font-size: 28px; line-height: 32px; font-family: var(--ax-mono); }
+  .ld-lens .ax-tile span { display: block; font: var(--ax-label-s); color: var(--ax-ink-3); }
+  .ld-gaps { margin-top: var(--ax-s3); font: var(--ax-label-s); color: var(--ax-ink-2); }
+  .ld-gaps b { color: var(--ax-orange); }
+  .ld-strip { display: flex; gap: var(--ax-s3); flex-wrap: wrap; margin-bottom: var(--ax-s4); }
+  .ld-strip .ax-tile { flex: 1 1 180px; padding: 10px 12px; }
+  .ld-strip .ax-tile b { font: var(--ax-h2); font-size: 24px; font-family: var(--ax-mono); }
+  .ld-strip .ax-tile span { display: block; font: var(--ax-label-s); color: var(--ax-ink-3); }
+  .v-ADVANCE { color: var(--ax-green); } .v-CONTINUE { color: var(--ax-orange); } .v-PARK { color: var(--ax-orange); } .v-CLOSE { color: var(--ax-red); } .v-none { color: var(--ax-ink-3); }
+  /* Track */
+  .tr-top { display: grid; grid-template-columns: 1fr 1fr; gap: var(--ax-s4); margin-bottom: var(--ax-s4); }
+  .tr-lens h3 { margin: 0 0 4px; font: var(--ax-h3); }
+  .tr-lens .big { font: var(--ax-h2); font-size: 34px; line-height: 38px; font-family: var(--ax-mono); }
+  .tr-lens .rule { font: var(--ax-label-s); color: var(--ax-ink-3); margin-top: 4px; }
+  .tr-lens form { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: var(--ax-s3); }
+  .tr-table td, .tr-table th { vertical-align: top; }
+  .tr-table .crit b { display: block; }
+  .tr-table .crit span { font: var(--ax-label-s); color: var(--ax-ink-3); }
+  .tr-table .score { font-family: var(--ax-mono); font-size: 18px; font-weight: 700; text-align: center; width: 48px; }
+  .s1, .s2 { color: var(--ax-red); } .s3 { color: var(--ax-orange); } .s4, .s5 { color: var(--ax-green); }
+  .tr-table .ev a { font: var(--ax-label-s); }
+  /* Entry form */
+  .sc-form { display: grid; grid-template-columns: 1fr; gap: var(--ax-s3); }
+  .sc-form .levels { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .sc-form .levels label { border: var(--ax-hair); border-radius: var(--ax-r-field); padding: 8px; cursor: pointer; font: var(--ax-label-s); color: var(--ax-ink-2); }
+  .sc-form .levels label b { display: block; font-family: var(--ax-mono); font-size: 16px; color: var(--ax-ink); }
+  .sc-form .levels input { margin-right: 4px; }
+  .sc-form .levels label.on { border-color: var(--ax-blue); background: var(--ax-blue-fill); }
+  .sc-form .ev-row { display: flex; gap: 6px; align-items: center; }
+  .sc-form .ev-row .ax-input { flex: 1; }
+  .sc-form .row { display: flex; gap: var(--ax-s3); align-items: center; flex-wrap: wrap; }
+  .sc-modal { position: fixed; inset: 0; background: var(--ax-scrim); z-index: 9100; display: none; align-items: center; justify-content: center; }
+  .sc-modal.open { display: flex; }
+  .sc-modal .ax-card { background: var(--ax-solid); width: min(760px, 94vw); max-height: 90vh; overflow: auto; position: relative; }
+  .hist li { font: var(--ax-label-s); color: var(--ax-ink-2); padding: 4px 0; border-bottom: var(--ax-hair); }
+  @media (max-width: 900px) { .tr-top { grid-template-columns: 1fr; } .sc-form .levels { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header class="sc-header">
+  <span class="ax-wordmark"><span class="ax-a">applied</span><span class="ax-x">x</span><span class="ax-rest">Connected Worker AR OMS Platform</span></span>
+  <nav class="ax-nav"><a href="/">Home</a><a href="/portal#home">Portal</a><a href="/catalog">Catalogue</a><a href="/scorecard" aria-current="page">Scorecard</a></nav>
+  <span class="ax-chip" id="sc-version"></span>
+  <span data-brand-slot style="display:flex;align-items:center;margin-left:12px"></span>
+</header>
+
+<main class="sc-wrap" id="sc-main">
+  <div class="ax-empty" style="border:0"><span class="ax-mark is-loading"><i></i><em></em></span>Loading…</div>
+</main>
+<div class="sc-modal" id="sc-modal"></div>
+
+<script src="/portal/brand.js"></script>
+<script>
+const main = document.getElementById('sc-main');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const apiKey = () => localStorage.getItem('sib_api_key') || '';
+async function api(path, init = {}) {
+  const r = await fetch(path, { ...init, headers: { ...(apiKey() ? { 'X-API-Key': apiKey() } : {}), ...(init.body ? { 'Content-Type': 'application/json' } : {}), ...(init.headers || {}) } });
+  if (!r.ok) { let e = r.statusText; try { e = (await r.json()).error || e; } catch {} throw new Error(e); }
+  return r.json();
+}
+function toast(msg) { let t = document.getElementById('sc-toast'); if (!t) { t = document.createElement('div'); t.id = 'sc-toast'; t.className = 'ax-notice'; t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9200;max-width:90vw'; document.body.appendChild(t); } t.textContent = msg; t.style.display = 'flex'; clearTimeout(t._h); t._h = setTimeout(() => t.style.display = 'none', 3500); }
+
+let DATA = null, quarter = null, tab = 'leadership';
+const WORDS = { 1: 'Concept', 2: 'Demo only', 3: 'Controlled', 4: 'In situ', 5: 'Proven' };
+const VERDICT_TEXT = { ADVANCE: 'Advance', CONTINUE: 'Continue', PARK: 'Parked', CLOSE: 'Closed' };
+const COLOR = { 'content-pipeline': 'var(--ax-green)', 'hardware-fit': 'var(--ax-blue)', 'ar-sdk': 'var(--ax-teal)' };
+
+async function load(q) {
+  const r = await api('/scorecard/data' + (q ? `?quarter=${encodeURIComponent(q)}` : ''));
+  DATA = r.data; quarter = DATA.quarter;
+  document.getElementById('sc-version').textContent = quarter;
+  render();
+}
+function render() {
+  const t = tab === 'leadership' ? null : DATA.tracks.find(x => x.id === tab);
+  main.innerHTML = `
+    <div class="sc-hero">
+      <div><div class="ax-eyebrow">Technology readiness · ${esc(quarter)}</div><h1>Scorecard</h1>
+      <p>SIB scores the lenses it has evidence for: L1 (does it work) and L2 (is SIB ready) for Content Pipeline, Hardware Fit and AR SDK. Each lens comes from criteria scored 1 to 5 with a confidence and evidence that links to what SIB holds. L3 to L5 and the verdict live on the master sheet; the verdict is recorded here so everyone sees it.</p></div>
+      <div class="sc-tools">
+        <select class="ax-select" id="sc-quarter">${DATA.quarters.map(q => `<option value="${q}" ${q === quarter ? 'selected' : ''}>${q}</option>`).join('')}</select>
+        <a class="ax-btn" href="/scorecard/export.xlsx?quarter=${encodeURIComponent(quarter)}"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Export to Excel</a>
+        <a class="ax-btn" href="/docs/TRL-SCORECARD.md" onclick="return false" title="docs/TRL-SCORECARD.md in the repo">Rubric</a>
+      </div>
+    </div>
+    <nav class="ax-tabs">${[['leadership', 'Leadership view'], ...DATA.tracks.map(x => [x.id, x.name]), ['history', 'History']].map(([id, name]) => `<button class="${tab === id ? 'is-on' : ''}" data-tab="${id}">${esc(name)}</button>`).join('')}</nav>
+    ${tab === 'leadership' ? leadership() : tab === 'history' ? history() : track(t)}`;
+  main.querySelectorAll('.ax-tabs button').forEach(b => b.onclick = () => { tab = b.dataset.tab; render(); });
+  document.getElementById('sc-quarter').onchange = e => load(e.target.value);
+  wire();
+}
+
+// ── Leadership: where every track stands, and what changed ───────────────
+function leadership() {
+  const inSib = DATA.tracks;
+  const masterOnly = [['S', 'Spatial Intelligence Training'], ['I', 'Integrations']];
+  const entriesThisQ = inSib.reduce((n, t) => n + t.entries, 0);
+  const evidence = inSib.reduce((n, t) => n + t.evidenceCount, 0);
+  const gaps = inSib.reduce((n, t) => n + t.openGaps.length, 0);
+  const verdicts = inSib.filter(t => t.master).length;
+  const lensVal = (t, L) => { const l = t.lenses.find(x => x.lens === L); return l.effective ?? null; };
+  return `
+    <div class="ld-strip">
+      <div class="ax-tile"><b>${inSib.length + masterOnly.length}</b><span>tracks · ${inSib.length} scored in SIB, ${masterOnly.length} on the master sheet only</span></div>
+      <div class="ax-tile"><b>${entriesThisQ}</b><span>scores entered this quarter</span></div>
+      <div class="ax-tile"><b>${evidence}</b><span>pieces of evidence linked</span></div>
+      <div class="ax-tile"><b class="${gaps ? 'v-PARK' : ''}">${gaps}</b><span>criteria at 1 or 2 (open gaps)</span></div>
+      <div class="ax-tile"><b>${verdicts} / ${inSib.length}</b><span>master verdicts recorded this quarter</span></div>
+    </div>
+    <div class="ld-grid">
+      ${inSib.map(t => `
+        <div class="ax-card ld-card" style="--ax-pc:${COLOR[t.id]}">
+          <div class="ax-eyebrow">Track ${t.letter}</div>
+          <h2>${esc(t.name)}</h2>
+          <div class="ld-verdict ${t.master ? 'v-' + t.master.verdict : 'v-none'}">${t.master ? VERDICT_TEXT[t.master.verdict] : 'No verdict yet'}</div>
+          <div class="ld-meta">${t.master ? `master sheet · ${esc(t.master.by)} · ${t.master.at.slice(0, 10)}${t.master.weighted ? ` · weighted ${t.master.weighted.toFixed(2)}` : ''}${t.master.note ? ` · ${esc(t.master.note)}` : ''}` : 'record the master sheet\'s verdict from the track tab'}</div>
+          <div class="ld-lens">
+            <div class="ax-tile"><b class="${lensVal(t, 'L1') ? 's' + lensVal(t, 'L1') : ''}">${lensVal(t, 'L1') ?? '–'}</b><span>L1 technology · ${esc(t.lenses[0].effectiveConfidence || 'no confidence yet')}</span></div>
+            <div class="ax-tile"><b class="${lensVal(t, 'L2') ? 's' + lensVal(t, 'L2') : ''}">${lensVal(t, 'L2') ?? '–'}</b><span>L2 SiB · ${esc(t.lenses[1].effectiveConfidence || 'no confidence yet')}</span></div>
+          </div>
+          <div class="ld-gaps">${t.openGaps.length ? `<b>${t.openGaps.length} gap${t.openGaps.length === 1 ? '' : 's'}:</b> ${t.openGaps.map(g => `${esc(g.name)} (${g.score})`).join(' · ')}` : `${t.lenses[0].scored + t.lenses[1].scored} of ${t.criteria.length} criteria scored · ${t.evidenceCount} evidence links`}</div>
+          <div style="margin-top:10px"><button class="ax-btn" data-open="${t.id}">Open track</button></div>
+        </div>`).join('')}
+      ${masterOnly.map(([l, n]) => `<div class="ax-card ld-card" style="--ax-pc:var(--ax-ink-4)"><div class="ax-eyebrow">Track ${l}</div><h2>${n}</h2><div class="ld-verdict v-none">On the master sheet</div><div class="ld-meta">Scored by its owner outside SIB; no SIB evidence source yet.</div></div>`).join('')}
+    </div>
+    <p class="ax-label-s ax-muted" style="margin-top:var(--ax-s4)">Lens scores shown are the owner's confirmed value when there is one, else the value the criteria suggest (the lower of the rounded mean and the lowest criterion plus one). The verdict is the master sheet's, recorded here after each review. Gates and vetoes live in the master rubric.</p>`;
+}
+
+// ── Track: lenses, criteria, scores with evidence ───────────────────────
+function track(t) {
+  const latest = t.latest;
+  const lensBox = L => `
+    <div class="ax-card tr-lens" style="--ax-pc:${COLOR[t.id]}">
+      <h3>${L.lens} · ${L.lens === 'L1' ? 'Technology readiness' : 'SiB readiness'}</h3>
+      <div class="ax-label-s ax-muted">${esc(L.lens === 'L1' ? t.l1 : t.l2)}</div>
+      <div class="big ${L.effective ? 's' + L.effective : ''}">${L.effective ?? '–'} <span class="ax-label-s ax-muted" style="font-family:var(--ax-font)">${L.effective ? (L.lens === 'L1' ? WORDS[L.effective] : ['', 'Does not exist', 'Scoped', 'In build', 'Shipped, gaps', 'Shipped, reused'][L.effective]) : ''} · ${esc(L.effectiveConfidence || '')}</span></div>
+      <div class="rule">${L.suggested === null ? 'No criteria scored yet.' : `Suggested ${L.suggested}: ${esc(L.rule)}. ${L.scored} of ${L.of} criteria scored.`}${L.override ? `<br>Owner set ${L.override.score ?? 'confidence only'}${L.override.confidence ? ' · ' + L.override.confidence : ''}: "${esc(L.override.note)}" (${esc(L.override.by)}, ${L.override.at.slice(0, 10)})` : ''}</div>
+      <form data-lens="${L.lens}">
+        <span class="ax-label-s ax-muted">Owner:</span>
+        <select class="ax-select" name="score"><option value="">suggested</option>${[1,2,3,4,5].map(n => `<option value="${n}">${n}</option>`).join('')}</select>
+        <select class="ax-select" name="confidence"><option value="">confidence</option><option>High</option><option>Medium</option><option>Low</option></select>
+        <input class="ax-input" name="note" placeholder="why (required when overriding)" style="flex:1;min-width:160px">
+        <button class="ax-btn" type="submit">Confirm lens</button>
+      </form>
+    </div>`;
+  const rows = t.criteria.map(k => {
+    const e = latest[k.id];
+    return `<tr>
+      <td class="ax-label-s ax-muted">${k.lens}</td>
+      <td class="crit"><b>${esc(k.name)}</b><span>${esc(k.question)}</span><span>Evidence: ${esc(k.evidence)}</span></td>
+      <td class="score ${e ? 's' + e.score : ''}">${e ? e.score : '–'}</td>
+      <td class="ax-label-s">${e ? `${esc(e.confidence)}<br><span class="ax-muted">${esc(e.by)} · ${e.at.slice(0, 10)}${e.deviceId ? ' · ' + esc(e.deviceId) : ''}</span>` : '<span class="ax-muted">not scored</span>'}</td>
+      <td class="ax-label-s">${e ? esc(e.comment) : ''}</td>
+      <td class="ev">${e ? e.evidence.map(l => evLink(l)).join('<br>') : ''}</td>
+      <td><button class="ax-btn" data-score="${k.id}">Score</button></td>
+    </tr>`;
+  }).join('');
+  const perDevice = t.perDevice ? `<div class="ax-card" style="margin-top:var(--ax-s4)"><div class="ax-eyebrow" style="margin-bottom:6px">Per device · hardware fit is scored per headset; the track lens takes the latest per criterion across devices</div>
+    <table class="ax-table" style="font-size:0.82rem"><thead><tr><th>Device</th><th>Criteria scored</th><th>L1 suggested</th><th>L2 suggested</th></tr></thead><tbody>
+    ${t.perDevice.map(d => `<tr><td>${esc(d.name)}</td><td>${d.scored}</td><td class="${d.L1.suggested ? 's' + d.L1.suggested : ''}" style="font-family:var(--ax-mono);font-weight:700">${d.L1.suggested ?? '–'}</td><td class="${d.L2.suggested ? 's' + d.L2.suggested : ''}" style="font-family:var(--ax-mono);font-weight:700">${d.L2.suggested ?? '–'}</td></tr>`).join('')}</tbody></table></div>` : '';
+  return `
+    <div class="tr-top">${t.lenses.map(lensBox).join('')}</div>
+    <div class="ax-card" style="margin-bottom:var(--ax-s4);display:flex;gap:var(--ax-s3);align-items:center;flex-wrap:wrap">
+      <div><div class="ax-eyebrow">Master sheet verdict · ${esc(quarter)}</div>
+      <div class="ld-verdict ${t.master ? 'v-' + t.master.verdict : 'v-none'}" style="font-size:22px;line-height:26px;margin:2px 0">${t.master ? VERDICT_TEXT[t.master.verdict] : 'Not recorded'}</div>
+      <div class="ax-label-s ax-muted">${t.master ? `${esc(t.master.by)} · ${t.master.at.slice(0, 10)}${t.master.note ? ' · ' + esc(t.master.note) : ''}` : 'Record it here after each review so the team sees it next to the criteria.'}</div></div>
+      <form id="master-form" style="margin-left:auto;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <select class="ax-select" name="verdict"><option value="">verdict</option>${['ADVANCE','CONTINUE','PARK','CLOSE'].map(v => `<option>${v}</option>`).join('')}</select>
+        <input class="ax-input" name="weighted" type="number" step="0.01" min="1" max="5" placeholder="weighted" style="width:90px">
+        <input class="ax-input" name="note" placeholder="note (re-entry trigger if PARK)" style="min-width:220px">
+        <button class="ax-btn ax-btn--primary" type="submit">Record verdict</button>
+      </form>
+    </div>
+    <div class="ax-card"><table class="ax-table tr-table" style="font-size:0.84rem"><thead><tr><th>Lens</th><th>Criterion</th><th>Score</th><th>Confidence</th><th>Comment</th><th>Evidence</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
+    ${perDevice}`;
+}
+function evLink(l) {
+  const r = esc(l.ref), label = esc(l.label || '');
+  if (l.kind === 'import-log') return `<a href="/portal#content/guides" title="guide ${r}">import log · ${label || r.slice(0, 8)}</a>`;
+  if (l.kind === 'guide') return `<a href="/portal#content/guides">guide · ${label || r.slice(0, 8)}</a>`;
+  if (l.kind === 'readiness') return `<a href="/portal#content/guides">readiness · ${label || r.slice(0, 8)}</a>`;
+  if (l.kind === 'session') return `<a href="/portal#sessions">session · ${label || r.slice(0, 8)}</a>`;
+  if (l.kind === 'model') return `<a href="/portal#content/models">model · ${label || r.slice(0, 8)}</a>`;
+  if (l.kind === 'link' && /^https?:\/\//.test(l.ref)) return `<a href="${r}" target="_blank" rel="noopener">${label || r}</a>`;
+  return `<span>${esc(l.kind)} · ${label || r}</span>`;
+}
+function history() {
+  const h = DATA.history;
+  if (!h.length) return `<div class="ax-empty">No scores entered for ${esc(quarter)} yet.</div>`;
+  const tname = id => (DATA.tracks.find(t => t.id === id) || {}).name || id;
+  const cname = (tid, cid) => ((DATA.tracks.find(t => t.id === tid) || { criteria: [] }).criteria.find(k => k.id === cid) || {}).name || cid;
+  return `<div class="ax-card"><ul class="hist" style="list-style:none;margin:0;padding:0">${h.map(e => `<li><b>${esc(tname(e.trackId))}</b> · ${esc(cname(e.trackId, e.criterionId))}${e.deviceId ? ' · ' + esc(e.deviceId) : ''} → <b class="s${e.score}">${e.score}</b> ${esc(e.confidence)} · ${esc(e.by)} · ${e.at.replace('T', ' ').slice(0, 16)}${e.comment ? ' · ' + esc(e.comment) : ''} · ${e.evidence.length} evidence</li>`).join('')}</ul></div>`;
+}
+
+// ── Score a criterion ────────────────────────────────────────────────────
+function openScore(t, k) {
+  const m = document.getElementById('sc-modal');
+  const devices = t.id === 'hardware-fit' ? `<label class="ax-label-s">Device <select class="ax-select" name="deviceId"><option value="">choose…</option>${DATA.profiles.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select></label>` : '';
+  const pre = new URLSearchParams(location.hash.split('?')[1] || '');
+  m.innerHTML = `<div class="ax-card">
+    <button class="ax-btn" style="position:absolute;top:12px;right:14px" id="sc-close"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-close"/></svg></button>
+    <div class="ax-eyebrow">${esc(t.name)} · ${k.lens}</div>
+    <h2 style="margin:2px 0 4px;font:var(--ax-h3)">${esc(k.name)}</h2>
+    <p class="ax-label-s ax-muted" style="margin:0 0 10px">${esc(k.question)} · Evidence expected: ${esc(k.evidence)}</p>
+    <form class="sc-form" id="score-form">
+      <div class="levels">${k.levels.map((text, i) => `<label><input type="radio" name="score" value="${i + 1}"><b>${i + 1}</b>${esc(text)}</label>`).join('')}</div>
+      <div class="row">
+        <label class="ax-label-s">Confidence <select class="ax-select" name="confidence"><option>High</option><option selected>Medium</option><option>Low</option></select></label>
+        ${devices}
+        <label class="ax-label-s">Guide id <input class="ax-input" name="guideId" value="${esc(pre.get('guide') || '')}" placeholder="optional" style="width:150px"></label>
+      </div>
+      <textarea class="ax-textarea" name="comment" rows="3" placeholder="What you saw, where, on which deck or device. Say what would move it one point."></textarea>
+      <div class="ax-label-s ax-muted">Evidence (a 4 or 5 needs at least one). Kinds: import-log / guide / readiness / session / model use a SIB id; link is a URL; file is a path or deck page.</div>
+      <div id="ev-rows">
+        <div class="ev-row"><select class="ax-select" name="ekind"><option>import-log</option><option>guide</option><option>readiness</option><option>session</option><option>model</option><option>link</option><option>file</option></select><input class="ax-input" name="eref" placeholder="id, URL or path"><input class="ax-input" name="elabel" placeholder="label (optional)" style="max-width:200px"></div>
+      </div>
+      <div class="row"><button class="ax-btn" type="button" id="ev-add">+ evidence</button><span style="flex:1"></span><button class="ax-btn ax-btn--primary" type="submit">Save score</button></div>
+    </form></div>`;
+  m.classList.add('open');
+  document.getElementById('sc-close').onclick = () => m.classList.remove('open');
+  m.onclick = e => { if (e.target === m) m.classList.remove('open'); };
+  m.querySelectorAll('.levels label').forEach(l => l.onclick = () => { m.querySelectorAll('.levels label').forEach(x => x.classList.remove('on')); l.classList.add('on'); });
+  document.getElementById('ev-add').onclick = () => { const row = document.querySelector('#ev-rows .ev-row').cloneNode(true); row.querySelectorAll('input').forEach(i => i.value = ''); document.getElementById('ev-rows').appendChild(row); };
+  document.getElementById('score-form').onsubmit = async e => {
+    e.preventDefault();
+    const f = e.target;
+    const score = f.querySelector('input[name=score]:checked')?.value;
+    if (!score) { toast('Pick a score'); return; }
+    const evidence = [...f.querySelectorAll('#ev-rows .ev-row')].map(r => ({ kind: r.querySelector('[name=ekind]').value, ref: r.querySelector('[name=eref]').value.trim(), label: r.querySelector('[name=elabel]').value.trim() })).filter(x => x.ref);
+    try {
+      await api('/scorecard/entries', { method: 'POST', body: JSON.stringify({ trackId: t.id, criterionId: k.id, quarter, score: Number(score), confidence: f.confidence.value, comment: f.comment.value, evidence, deviceId: f.deviceId?.value || undefined, guideId: f.guideId.value.trim() || undefined }) });
+      m.classList.remove('open'); toast('Score saved'); load(quarter);
+    } catch (err) { toast(err.message); }
+  };
+}
+function wire() {
+  main.querySelectorAll('[data-open]').forEach(b => b.onclick = () => { tab = b.dataset.open; render(); });
+  const t = DATA.tracks.find(x => x.id === tab);
+  if (!t) return;
+  main.querySelectorAll('[data-score]').forEach(b => b.onclick = () => openScore(t, t.criteria.find(k => k.id === b.dataset.score)));
+  main.querySelectorAll('form[data-lens]').forEach(f => f.onsubmit = async e => {
+    e.preventDefault();
+    try { await api('/scorecard/lens', { method: 'POST', body: JSON.stringify({ trackId: t.id, lens: f.dataset.lens, quarter, score: f.score.value ? Number(f.score.value) : undefined, confidence: f.confidence.value || undefined, note: f.note.value }) }); toast('Lens confirmed'); load(quarter); }
+    catch (err) { toast(err.message); }
+  });
+  const mf = document.getElementById('master-form');
+  if (mf) mf.onsubmit = async e => {
+    e.preventDefault();
+    if (!mf.verdict.value) { toast('Pick a verdict'); return; }
+    try { await api('/scorecard/master', { method: 'POST', body: JSON.stringify({ trackId: t.id, quarter, verdict: mf.verdict.value, weighted: mf.weighted.value ? Number(mf.weighted.value) : undefined, note: mf.note.value }) }); toast('Verdict recorded'); load(quarter); }
+    catch (err) { toast(err.message); }
+  };
+}
+// Deep link: /scorecard#hardware-fit?guide=…  (from the readiness matrix)
+const h = location.hash.slice(1).split('?')[0];
+if (h && ['content-pipeline', 'hardware-fit', 'ar-sdk', 'history'].includes(h)) tab = h;
+load();
+</script>
+</body>
+</html>

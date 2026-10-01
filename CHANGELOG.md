@@ -7,6 +7,16 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **Technology Readiness scorecard.** `/scorecard` (Compass `m 3`): the
+  team scores criteria 1 to 5 with confidence and evidence links for
+  Content Pipeline, Hardware Fit (per device) and AR SDK; a 4 or 5 is
+  refused without evidence. The lens score the criteria suggest (lower of
+  the rounded mean and the lowest criterion plus one) is confirmed or
+  overridden by the track owner; the master sheet's verdict is recorded
+  back; a leadership view shows every track's standing, lenses, open gaps
+  and evidence; Export to Excel produces the block for the master workbook
+  (SIB Import, Criteria, Evidence sheets). Readiness matrix → Add to
+  scorecard. `docs/TRL-SCORECARD.md`.
 - **One headset dialog in the guide menu.** "Open in XR kit" and "QR for
   AR glasses" are one item, "Open on a headset (XR kit)…": pick the device
   (any browser, Quest 3, HoloLens 2, Vision Pro, Rayneo X3 Pro), and the

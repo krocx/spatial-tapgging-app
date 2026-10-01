@@ -28,6 +28,7 @@ const GOVERNED = [
   'sib/portal/catalog.html',        // the catalogue
   'sib/portal/compass.js',          // the Compass (every surface)
   'sib/portal/architecture.html',   // /architecture (C4)
+  'sib/portal/scorecard.html',      // /scorecard (TRL)
 ];
 const TOKENS = 'sib/portal/brand/tokens.css';
 
