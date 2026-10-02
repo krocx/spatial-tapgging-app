@@ -17,6 +17,7 @@
    "logging/device-logs.ts",
    "loto/loto-core.ts",
    "middleware/auth.ts",
+   "middleware/device-link.ts",
    "oms/usage-log.ts",
    "routes/admin.ts",
    "routes/anchors.ts",

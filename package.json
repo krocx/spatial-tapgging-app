@@ -6,7 +6,8 @@
     "shared",
     "sib",
     "ar-client",
-    "sib/roadmap-client"
+    "sib/roadmap-client",
+    "sib/g2-client"
   ],
   "scripts": {
     "dev:sib": "npm run dev --workspace=@spatial/sib",
@@ -24,7 +25,8 @@
     "arch:graph": "node scripts/arch-graph.mjs",
     "arch:check": "node scripts/arch-graph.mjs --check",
     "build": "npm run build --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "build:g2": "npm run build --workspace=@spatial/g2-client"
   },
   "engines": {
     "node": ">=20.0.0",

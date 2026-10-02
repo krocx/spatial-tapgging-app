@@ -44,6 +44,7 @@ import { sessionStore } from './routes/sessions.js';
 import { locTagStore, locTagCompletionStore } from './routes/loc-tags.js';
 import { derivePointStatus } from './loto/loto-core.js';
 import { apiKeyAuth, adminKeyAuth, contentGate, hasValidApiKey } from './middleware/auth.js';
+import { redeemDeviceCode } from './middleware/device-link.js';
 // NOT from @spatial/shared: that package is types-only at runtime - its exports
 // point at .ts source, which a compiled server cannot load. See sib/src/version.ts.
 import { PLATFORM_VERSION } from './version.js';
@@ -178,6 +179,28 @@ document.getElementById('f').addEventListener('submit', async function(ev){
   app.get('/xr', (_req, res) => {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.sendFile(path.join(__dirname, '../portal/xr.html'));
+  });
+  // SIB on G2 - the Even Realities companion page (source sib/g2-client/,
+  // bundle committed under sib/portal/g2/). Public like /xr: it holds no
+  // data; the guide arrives through a device code (device-link.ts).
+  app.use('/g2', express.static(path.join(__dirname, '../portal/g2'), { index: 'index.html', maxAge: '1h' }));
+  app.get('/g2', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.sendFile(path.join(__dirname, '../portal/g2/index.html'));
+  });
+  // POST /g2/redeem { code } → { token, guideId, operator, expiresAt }. Ten
+  // tries a minute per address: a code is 32^6 and lives ten minutes.
+  const redeemHits = new Map<string, number[]>();
+  app.post('/g2/redeem', express.json(), (req, res) => {
+    const ip = (req.headers['x-forwarded-for'] as string | undefined)?.split(',')[0]?.trim() || req.ip || 'unknown';
+    const now = Date.now(); const hits = (redeemHits.get(ip) || []).filter(t => now - t < 60_000);
+    if (hits.length >= 10) { res.status(429).json({ error: 'Too many tries - wait a minute', timestamp: new Date().toISOString() }); return; }
+    hits.push(now); redeemHits.set(ip, hits);
+    const code = typeof (req.body as { code?: string })?.code === 'string' ? (req.body as { code: string }).code : '';
+    const t = redeemDeviceCode(code);
+    if (!t) { res.status(404).json({ error: 'That code is not live - codes last ten minutes and work once. Make a new one in the portal.', timestamp: new Date().toISOString() }); return; }
+    const guide = guideStore.findById(t.guideId);
+    res.json({ data: { token: t.token, guideId: t.guideId, guideName: guide?.name || t.guideId, operator: t.operator || null, expiresAt: new Date(t.expiresAt).toISOString() }, timestamp: new Date().toISOString() });
   });
   // Screenshot / clip slots for the /platform product cards. Drop files
   // named wi-1.jpg, sv-2.jpg … into sib/portal/platform-media/ and they

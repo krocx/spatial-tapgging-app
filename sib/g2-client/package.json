@@ -1,0 +1,17 @@
+{
+  "name": "@spatial/g2-client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "SIB on G2 - the Even Realities companion page: work-instruction steps on the glasses, driven from the temple or the R1 ring.",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "vite": "^8.0.14",
+    "@evenrealities/even_hub_sdk": "latest"
+  }
+}

@@ -5528,7 +5528,7 @@ async function showReadiness(guideId) {
   const LEVEL = { native: ['Native', 'var(--ax-green)', 'var(--ax-ok-fill)'], adapted: ['Adapted', 'var(--ax-orange)', 'var(--ax-warn-fill)'], assisted: ['Assisted', 'var(--ax-red)', 'var(--ax-bad-fill)'] };
   const NEED = { text: 'text', spatial: 'place on the tool', motion: 'motion', 'part-id': 'find a part', media: 'image', 'hands-busy': 'hands busy' };
   const cell = (r) => { const [label, ink, fill] = LEVEL[r.level]; const why = r.needs.map(n => `${NEED[n.need] || n.need}: ${n.how}`).join('\n'); return `<td title="${esc(why)}" style="text-align:center"><span class="ax-chip" style="background:${fill};color:${ink};border-color:${fill}">${label}</span></td>`; };
-  const head = R.profiles.map(p => `<th style="text-align:center" title="${esc(p.notes || '')}">${esc(p.name)}<div class="ax-label-s ax-muted" style="font-weight:400">${esc(p.delivery === 'app' ? 'SIB app' : p.delivery === 'xrkit' ? 'XR kit' : p.delivery === 'companion-text' ? 'text via phone' : 'spoken')}${p.delivery === 'xrkit' ? ` · <a href="/xr?guide=${guideId}&profile=${p.id}" target="_blank" rel="noopener">open</a> · <a href="/guides/${guideId}/xr-qr.png?profile=${p.id}" target="_blank" rel="noopener" title="QR with a single-use link that opens this guide on the headset, no key to type">QR</a>` : p.delivery !== 'app' ? ` · <a href="/xr?guide=${guideId}&profile=${p.id}" target="_blank" rel="noopener" title="No camera or browser on these glasses: this page runs on the paired phone; the glasses need the maker's companion app to mirror it">open on the phone</a>` : ''}</div></th>`).join('');
+  const head = R.profiles.map(p => `<th style="text-align:center" title="${esc(p.notes || '')}">${esc(p.name)}<div class="ax-label-s ax-muted" style="font-weight:400">${esc(p.delivery === 'app' ? 'SIB app' : p.delivery === 'xrkit' ? 'XR kit' : p.delivery === 'companion-text' ? 'text via phone' : 'spoken')}${p.delivery === 'xrkit' ? ` · <a href="/xr?guide=${guideId}&profile=${p.id}" target="_blank" rel="noopener">open</a> · <a href="/guides/${guideId}/xr-qr.png?profile=${p.id}" target="_blank" rel="noopener" title="QR with a single-use link that opens this guide on the headset, no key to type">QR</a>` : p.id === 'even-g2' ? ` · <a href="#" onclick="document.getElementById('readiness-modal').style.display='none';showXrQr('${guideId}', '${esc((R.guideName || '').replace(/'/g, ''))}');return false" title="SIB on G2 in the Even app: a six-character code opens this guide on the glasses">Even app + code</a>` : p.delivery !== 'app' ? ` · <a href="/xr?guide=${guideId}&profile=${p.id}" target="_blank" rel="noopener" title="No camera or browser on these glasses: this page runs on the paired phone; the glasses need the maker's companion app to mirror it">open on the phone</a>` : ''}</div></th>`).join('');
   const sum = R.profiles.map(p => { const c = R.summary[p.id]; return `<td style="text-align:center"><b class="preview-mono">${c.deliverable}%</b><div class="ax-label-s ax-muted">${c.native} native · ${c.adapted} adapted · ${c.assisted} assisted</div></td>`; }).join('');
   const rows = R.steps.map(s => `<tr><td class="preview-mono ax-muted">${s.sequenceNumber}</td><td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(s.title)}">${esc(s.title)}</td><td class="ax-label-s ax-muted">${s.needs.map(n => NEED[n] || n).join(' · ')}</td>${R.profiles.map(p => cell(s.byProfile[p.id])).join('')}</tr>`).join('');
   const csv = () => {
@@ -5557,9 +5557,12 @@ async function showXrQr(guideId, name) {
   // QR (a single-use link, no site key on the headset) or open it here.
   let profiles = [];
   try { profiles = ((await apiFetch('/devices')).data || []).filter(p => p.delivery === 'xrkit'); } catch {}
-  const choices = [{ id: '', name: 'Any browser (detects Quest, HoloLens, Vision Pro)', notes: 'Full model; the kit recognises the headset from its browser.' }, ...profiles];
+  const choices = [{ id: '', name: 'Any browser (detects Quest, HoloLens, Vision Pro)', notes: 'Full model; the kit recognises the headset from its browser.' }, ...profiles,
+    { id: 'even-g2', name: 'Even Realities G2 (SIB on G2 in the Even app)', notes: 'Text steps on the glasses, driven from the temple or the R1 ring; the phone shows the same page. A six-character code instead of a QR.', companion: true }];
   let current = '';
   const render = async () => {
+    const chosenC = choices.find(c => c.id === current);
+    if (chosenC?.companion) { await renderCompanion(); return; }
     const q = current ? `&profile=${current}` : '';
     let url = `${location.origin}/xr?guide=${encodeURIComponent(guideId)}${q}`, expires = '';
     try { const r = await apiFetch(`/guides/${guideId}/device-link`, { method: 'POST', body: JSON.stringify(current ? { profile: current } : {}) }); url = r.data.url; expires = new Date(r.data.expiresAt).toLocaleTimeString(); } catch {}
@@ -5573,7 +5576,7 @@ async function showXrQr(guideId, name) {
         <div>
           <div class="ax-label-s ax-muted" style="margin-bottom:6px">Device</div>
           ${choices.map(c => `<label style="display:flex;gap:8px;align-items:flex-start;padding:6px 8px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;cursor:pointer;font-size:0.82rem"><input type="radio" name="xr-dev" value="${c.id}" ${c.id === current ? 'checked' : ''} style="margin-top:3px"><span><b>${esc(c.name)}</b><br><span class="ax-muted">${esc(c.notes || '')}</span></span></label>`).join('')}
-          <p class="ax-label-s ax-muted" style="margin:8px 0 0">Glasses without a browser (Even G2, Oakley) are not here: see Device readiness for what they get.</p>
+          <p class="ax-label-s ax-muted" style="margin:8px 0 0">Oakley Vanguard (no display) is not here yet: see Device readiness for what it gets.</p>
         </div>
         <div style="text-align:center">
           <img src="${src}" alt="QR code for the XR kit page" style="width:min(240px,60vw);height:auto;border-radius:12px;background:var(--ax-on-accent);padding:8px">
@@ -5586,6 +5589,38 @@ async function showXrQr(guideId, name) {
         <a class="ax-btn" href="/xr?guide=${guideId}${q}" target="_blank" rel="noopener"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-external"/></svg> Open here</a>
         <a class="ax-btn" href="${src}" download="xr-${guideId.slice(0,8)}${current ? '-' + current : ''}.png"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Download QR</a>
         <button class="ax-btn ax-btn--primary" onclick="navigator.clipboard.writeText(${JSON.stringify(url)}).then(()=>toast('Link copied'))"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-copy"/></svg> Copy link</button>
+      </div>`;
+    m.querySelectorAll('input[name="xr-dev"]').forEach(r => r.onchange = () => { current = r.value; render(); });
+  };
+  // Glasses without a browser or camera: the companion page in the maker's
+  // app takes a short code, not a QR, and gets a device token for this guide.
+  const renderCompanion = async () => {
+    let code = '', expires = '', companionUrl = `${location.origin}/g2`;
+    try { const r = await apiFetch(`/guides/${guideId}/device-code`, { method: 'POST', body: '{}' }); code = r.data.code; companionUrl = r.data.companionUrl; expires = new Date(r.data.expiresAt).toLocaleTimeString(); } catch (e) { toast(e.message); }
+    m.querySelector('.ax-card').innerHTML = `
+      <button onclick="document.getElementById('xr-qr-modal').style.display='none'" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-close"/></svg></button>
+      <div class="ax-eyebrow">SIB on G2 · open on Even Realities glasses</div>
+      <h3 style="margin:2px 0 10px;font-size:1rem;font-weight:700">${esc(name || 'Guide')}</h3>
+      <div style="display:grid;grid-template-columns:1fr auto;gap:16px;align-items:start">
+        <div>
+          <div class="ax-label-s ax-muted" style="margin-bottom:6px">Device</div>
+          ${choices.map(c => `<label style="display:flex;gap:8px;align-items:flex-start;padding:6px 8px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;cursor:pointer;font-size:0.82rem"><input type="radio" name="xr-dev" value="${c.id}" ${c.id === current ? 'checked' : ''} style="margin-top:3px"><span><b>${esc(c.name)}</b><br><span class="ax-muted">${esc(c.notes || '')}</span></span></label>`).join('')}
+        </div>
+        <div style="text-align:center;min-width:200px">
+          <div class="ax-label-s ax-muted">Code</div>
+          <div style="font:700 40px/48px var(--ax-mono);letter-spacing:.08em;color:var(--text);margin:4px 0">${esc(code || '–')}</div>
+          <p class="ax-label-s ax-muted" style="margin:4px 0 0">one use · until ${esc(expires || 'ten minutes')}</p>
+        </div>
+      </div>
+      <ol style="font-size:0.82rem;color:var(--text);margin:12px 0 4px;padding-left:20px;line-height:1.5">
+        <li>On the phone paired with the glasses, open the Even Realities app → Even Hub → <b>SIB on G2</b> (or scan the app QR from <span style="font-family:var(--ax-mono)">evenhub qr</span> while testing).</li>
+        <li>Enter the server <span style="font-family:var(--ax-mono)">${esc(companionUrl.replace(/\/g2$/, ''))}</span> once, then this code.</li>
+        <li>The first step appears on the glasses. Press for next, double press for back, long press to repeat; swipe to scroll a long step.</li>
+      </ol>
+      <p style="font-size:0.78rem;color:var(--muted);margin:0 0 12px">The code opens this guide once and carries your name as the operator; the site key never leaves the server. The run is recorded like any other.</p>
+      <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
+        <a class="ax-btn" href="/g2" target="_blank" rel="noopener"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-external"/></svg> Open the companion here</a>
+        <button class="ax-btn ax-btn--primary" onclick="navigator.clipboard.writeText(${JSON.stringify(code)}).then(()=>toast('Code copied'))"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-copy"/></svg> Copy code</button>
       </div>`;
     m.querySelectorAll('input[name="xr-dev"]').forEach(r => r.onchange = () => { current = r.value; render(); });
   };

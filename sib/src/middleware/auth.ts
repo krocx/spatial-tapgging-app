@@ -6,7 +6,7 @@
 //   When NOT set (local dev without the env var), the middleware is a no-op
 //   so local npm run dev continues to work without any key.
 
-import { redeemDeviceLink } from './device-link.js';
+import { redeemDeviceLink, deviceTokenFor, deviceTokenAllows } from './device-link.js';
 import type { Request, Response, NextFunction } from 'express';
 import type { UamRole, UamUser } from '@spatial/shared';
 import { logOpsEvent } from '../ops-log.js';
@@ -43,6 +43,9 @@ export function apiKeyAuth(req: Request, res: Response, next: NextFunction): voi
   const provided = providedApiKey(req);
 
   if (!provided || provided !== expectedKey) {
+    // Even G2 companion: a device token for one guide (device-link.ts).
+    const h = req.headers['x-device-token']; const tok = typeof h === 'string' ? deviceTokenFor(h) : null;
+    if (tok && deviceTokenAllows(tok, req.method, req.path)) { next(); return; }
     res.status(401).json({
       error: 'Unauthorized: missing or invalid X-API-Key header',
       timestamp: new Date().toISOString(),
@@ -91,8 +94,12 @@ export function contentGate(req: Request, res: Response, next: NextFunction): vo
   }
   if (!process.env.SIB_API_KEY?.trim()) { next(); return; }   // internal deployment - open
   if (req.method === 'OPTIONS') { next(); return; }            // CORS preflight
-  if (req.path === '/health' || req.path === '/unlock' || req.path === '/config') { next(); return; }
+  if (req.path === '/health' || req.path === '/unlock' || req.path === '/config' || req.path === '/g2/redeem' || req.path === '/g2' || req.path.startsWith('/g2/')) { next(); return; }
   if (hasValidApiKey(req)) { next(); return; }
+  // A device token (device-link.ts): the Even G2 companion's bearer for one
+  // guide's bundle and the session endpoints. Nothing else.
+  { const h = req.headers['x-device-token']; const tok = typeof h === 'string' ? deviceTokenFor(h) : null;
+    if (tok && deviceTokenAllows(tok, req.method, req.path)) { next(); return; } }
 
   const wantsHtml = req.method === 'GET' && (req.headers.accept ?? '').includes('text/html');
   if (wantsHtml) {

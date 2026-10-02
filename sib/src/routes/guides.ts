@@ -21,7 +21,7 @@ import { enqueueCortonaImport, enqueueVariants, getImportJob, importQueueDepth }
 import { switchAssembledPose, type AssembledPose } from '../models/assembled-pose.js';
 import { readinessReport } from '../guides/readiness.js';
 import { readDeviceProfiles } from './devices.js';
-import { mintDeviceLink, LINK_TTL_MS } from '../middleware/device-link.js';
+import { mintDeviceLink, LINK_TTL_MS, mintDeviceCode, formatCode, CODE_TTL_MS } from '../middleware/device-link.js';
 import { uamActor } from '../middleware/auth.js';
 import { recordVariants } from './models.js';
 import { requireRole } from '../middleware/auth.js';
@@ -734,6 +734,19 @@ router.post('/:id/device-link', (req: Request, res: Response): void => {
   const who = issuer(req);
   const link = mintDeviceLink(guide.id, who.by, who.name, profile);
   res.json({ data: { url: xrUrl(req, guide.id, profile, link.token), expiresAt: new Date(link.expiresAt).toISOString(), ttlSec: LINK_TTL_MS / 1000 }, timestamp: new Date().toISOString() });
+});
+
+// POST /guides/:id/device-code - a six-character code for the Even G2
+// companion (SIB on G2): ten minutes, single use, one guide. The companion
+// exchanges it at POST /g2/redeem for a device token (device-link.ts).
+router.post('/:id/device-code', (req: Request, res: Response): void => {
+  const guide = guideStore.findById(req.params.id);
+  if (!guide) { res.status(404).json({ error: `Guide ${req.params.id} not found`, timestamp: new Date().toISOString() }); return; }
+  const who = issuer(req);
+  const c = mintDeviceCode(guide.id, who.by, who.name);
+  const proto = (req.headers['x-forwarded-proto'] as string | undefined)?.split(',')[0] || req.protocol;
+  const host = (req.headers['x-forwarded-host'] as string | undefined)?.split(',')[0] || req.headers.host || 'localhost';
+  res.json({ data: { code: formatCode(c.code), companionUrl: `${proto}://${host}/g2`, expiresAt: new Date(c.expiresAt).toISOString(), ttlSec: CODE_TTL_MS / 1000 }, timestamp: new Date().toISOString() });
 });
 
 function xrUrl(req: Request, guideId: string, profile?: string, token?: string): string {

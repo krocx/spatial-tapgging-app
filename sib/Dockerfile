@@ -18,6 +18,7 @@ COPY shared/package.json ./shared/
 COPY sib/package.json    ./sib/
 COPY ar-client/package.json ./ar-client/
 COPY sib/roadmap-client/package.json ./sib/roadmap-client/
+COPY sib/g2-client/package.json ./sib/g2-client/
 
 # Install all workspace deps (dev deps included for TypeScript compilation).
 RUN npm ci
@@ -66,6 +67,7 @@ COPY shared/package.json ./shared/
 COPY sib/package.json    ./sib/
 COPY ar-client/package.json ./ar-client/
 COPY sib/roadmap-client/package.json ./sib/roadmap-client/
+COPY sib/g2-client/package.json ./sib/g2-client/
 RUN npm ci --omit=dev
 
 # Copy compiled sib output from builder.

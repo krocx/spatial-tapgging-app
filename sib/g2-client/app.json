@@ -1,0 +1,12 @@
+{
+  "package_id": "com.appliedx.sib.g2",
+  "name": "SIB on G2",
+  "version": "0.1.0",
+  "edition": "202601",
+  "min_sdk_version": "0.0.14",
+  "entrypoint": "index.html",
+  "permissions": [
+    { "name": "network", "desc": "Fetches the work instruction and records the run on your SIB server.", "whitelist": ["https://sib-server.onrender.com", "http://localhost:3001"] }
+  ],
+  "supported_languages": ["en"]
+}

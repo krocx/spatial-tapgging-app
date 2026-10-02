@@ -7,6 +7,26 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **SIB on G2 - work instructions on Even Realities glasses.** A new
+  companion app (`sib/g2-client/`, Even Hub SDK, served at `/g2`) runs in
+  the Even Realities phone app and pages one text screen per step to the
+  G2: number and title, the instruction, where on the tool in words, the
+  parts, how to answer a check. Press next, double press back, long press
+  repeat, swipe scrolls; the contextual menu carries Pass / Fail / First
+  step / End guide. The phone mirrors the page with Next / Back / Repeat,
+  Pass / Fail, battery and wearing state, then the sign-off. Runs are
+  recorded like XR kit runs (work context `Even G2 · companion`). Since the
+  glasses have no camera and the phone must not type a key, the portal's
+  "Open on a headset" dialog gains an Even Realities G2 choice that mints a
+  six-character code (`POST /guides/:id/device-code`: ten minutes, single
+  use, one guide); the companion exchanges it at `POST /g2/redeem` for a
+  device token scoped to that guide's bundle and the session endpoints
+  (`X-Device-Token`, twelve hours), accepted by the content and API gates.
+  The readiness matrix's Even G2 column links to the dialog. Docs:
+  docs/ar-ojt/EVEN-G2.md (what the G2 can carry, the flow, the development
+  loop with `evenhub qr`), catalogue entry sib-on-g2. Build on the Mac:
+  `npm install` (new workspace, commit the lockfile), `npm run build:g2`,
+  commit `sib/portal/g2/`.
 - **Guide Library cards (portal phase 2).** Each guide row is a name, a
   status rail and three primary actions. The rail reads in a glance:
   Published or Draft, assembly placed or to place, unplaced steps, how many
