@@ -7,6 +7,11 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **Housekeeping: orphaned guides.** Admin → Backups lists guides whose
+  chamber was deleted (they never show in the library but keep steps,
+  images and import logs on disk) with their counts, and deletes them one
+  by one or all at once, each behind a confirmation. `GET /guides/orphans`
+  (Owner / Manager).
 - **Designer: what a step needs from a device.** Under each step the
   Inspector shows the readiness derivation as chips (Text, Place on the
   tool, Motion, Find parts, Image, Hands busy) with a reason on hover; the

@@ -343,6 +343,21 @@ router.post('/', (req: Request, res: Response): void => {
 // GET /guides?anchorId=xxx - list guides for an anchor
 // ?all=true  → include drafts (Author view)
 // (default)  → published only (Operator view)
+// GET /guides/orphans - guides whose chamber (anchor) was deleted: the library
+// never lists them, yet they keep steps, images and logs on disk. Owner /
+// Manager housekeeping; each is removed with DELETE /guides/:id.
+router.get('/orphans', requireRole('owner', 'manager'), (_req: Request, res: Response): void => {
+  const anchors = new Set(anchorStore.findAll().map(a => a.id));
+  const steps = guideStepStore.findAll();
+  const rows = guideStore.findAll().filter(g => !anchors.has(g.anchorId)).map(g => ({
+    id: g.id, name: g.name, anchorId: g.anchorId, published: !!g.published, updatedAt: g.updatedAt,
+    steps: steps.filter(s => s.guideId === g.id).length, images: steps.filter(s => s.guideId === g.id && s.mediaPath).length,
+    modelId: g.assembly?.modelId ?? null,
+  })).sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+  res.setHeader('Cache-Control', 'no-store');
+  res.json({ data: rows, timestamp: new Date().toISOString() });
+});
+
 // GET /guides/summary - one row per guide the library shows (anchor exists),
 // cheap enough for the portal home: status, placement and freshness, no steps.
 router.get('/summary', (_req: Request, res: Response): void => {

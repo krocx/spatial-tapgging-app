@@ -1139,6 +1139,12 @@
     <div id="bk-status" style="display:none;margin-top:12px;font-size:0.78rem;font-family:var(--ax-mono);color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px"></div>
     <hr style="border:0;border-top:var(--ax-hair);margin:16px 0 12px">
     <div class="ax-row">
+      <span class="ax-label-s ax-muted" style="flex:1"><b style="color:var(--text)">Housekeeping</b> - guides whose chamber was deleted stay on disk (steps, images, import logs) but never appear in the library.</span>
+      <button class="ax-btn ax-btn--sm" onclick="loadOrphanGuides()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-search"/></svg> Find orphaned guides</button>
+    </div>
+    <div id="orphan-guides" style="margin-top:8px"></div>
+    <hr style="border:0;border-top:var(--ax-hair);margin:16px 0 12px">
+    <div class="ax-row">
       <span class="ax-label-s ax-muted" style="flex:1">Danger zone - removes every chamber, its tags and pass states. Take a backup first.</span>
       <button class="ax-btn ax-btn--outline ax-btn--sm" style="color:var(--ax-red)" onclick="deleteAllAnchors()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg> Delete all chambers</button>
     </div>
@@ -3608,6 +3614,29 @@ function renderIntelligence(gi) {
 }
 
 /** Admin sub-pages: one card per route (unlock banner always visible). */
+// Housekeeping: guides left behind when their chamber was deleted.
+async function loadOrphanGuides() {
+  const el = document.getElementById('orphan-guides');
+  el.innerHTML = '<span class="ax-label-s ax-muted">Looking…</span>';
+  try {
+    const rows = (await apiFetch('/guides/orphans')).data || [];
+    if (!rows.length) { el.innerHTML = '<span class="ax-label-s ax-muted">None - every guide belongs to a chamber that exists.</span>'; return; }
+    el.innerHTML = `<table class="ax-table" style="font-size:0.8rem"><thead><tr><th>Guide</th><th class="ax-num">Steps</th><th class="ax-num">Images</th><th>Last change</th><th></th></tr></thead><tbody>
+      ${rows.map(r => `<tr><td><b>${esc(r.name)}</b><br><span class="ax-muted" style="font-family:var(--ax-mono);font-size:0.72rem">${esc(r.id)} · chamber ${esc(r.anchorId.slice(0, 8))}… gone</span></td><td class="ax-num">${r.steps}</td><td class="ax-num">${r.images}</td><td>${r.updatedAt ? new Date(r.updatedAt).toLocaleDateString() : '–'}</td>
+        <td><button class="ax-btn ax-btn--quiet ax-btn--sm" style="color:var(--ax-red)" onclick="deleteOrphanGuide('${r.id}','${jsEsc(r.name)}')"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg> Delete</button></td></tr>`).join('')}</tbody></table>
+      <div class="ax-row" style="margin-top:8px"><span class="ax-label-s ax-muted" style="flex:1">${rows.length} orphaned guide${rows.length === 1 ? '' : 's'}. Deleting removes steps, step images and the import log; the 3D model stays in the Models page.</span>
+      <button class="ax-btn ax-btn--outline ax-btn--sm" style="color:var(--ax-red)" onclick="deleteAllOrphanGuides(${rows.length})">Delete all ${rows.length}</button></div>`;
+  } catch (e) { el.innerHTML = `<span class="ax-label-s" style="color:var(--red)">${esc(e.message)}</span>`; }
+}
+async function deleteOrphanGuide(id, name) {
+  if (!confirm(`Delete the orphaned guide "${name}" and its steps, images and import log?`)) return;
+  try { await apiFetch(`/guides/${encodeURIComponent(id)}`, { method: 'DELETE' }); toast('Deleted'); loadOrphanGuides(); } catch (e) { toast(e.message); }
+}
+async function deleteAllOrphanGuides(n) {
+  if (!confirm(`Delete all ${n} orphaned guides? Their steps, images and import logs go with them.`)) return;
+  try { const rows = (await apiFetch('/guides/orphans')).data || []; for (const r of rows) await apiFetch(`/guides/${encodeURIComponent(r.id)}`, { method: 'DELETE' }); toast(`Deleted ${rows.length}`); loadOrphanGuides(); } catch (e) { toast(e.message); }
+}
+
 function adminShowSub(sub) {
   const map = { uam: 'uam-card', configs: 'adm-configs-card', ops: 'adm-ops-card', logs: 'adm-logs-card', backup: 'adm-backup-card' };
   for (const [k, id] of Object.entries(map)) {
