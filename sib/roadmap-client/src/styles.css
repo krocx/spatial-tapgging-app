@@ -553,10 +553,13 @@ input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 .pt-name-btn { cursor: pointer; flex: 1; }
 .pt-name-btn:hover { color: #1d4ed8; text-decoration: underline; }
 .pt-name-btn.is-focus { color: #b45309; font-weight: 700; }
-.pt-focus { border: 1px solid #fcd34d; background: #fffbeb; border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
+.pt-focus { border: 1px solid #fcd34d; background: #fffbeb; border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; flex: 0 0 auto; }
 .pt-focus-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.pt-focus-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #92400e; }
-.pt-focus-meta { font-size: 11px; color: #78350f; flex: 1; min-width: 0; }
+.pt-focus-dot { width: 10px; height: 10px; border-radius: 50%; background: #f59e0b; flex: 0 0 auto; }
+.pt-focus-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #92400e; font-size: 13px; }
+.pt-focus-meta { display: flex; flex-wrap: wrap; gap: 6px; font-size: 11px; color: #78350f; }
+.pt-focus-meta span { background: #fef3c7; border-radius: 999px; padding: 2px 8px; }
+.pt-focus-meta span.ok { background: #dcfce7; color: #166534; } .pt-focus-meta span.off { background: #e2e8f0; color: #475569; }
 .pt-focus-x { border: 0; background: transparent; cursor: pointer; color: #92400e; }
 .pt-focus-acts { display: flex; flex-wrap: wrap; gap: 6px; }
 .pt-focus-acts .btn.on { background: #fde68a; }
@@ -627,8 +630,29 @@ input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 .pt-context-all { font-size: 11px; padding: 2px 8px; }
 .asm-ctx { color: #1e40af; }
 .pt-modal-3d .asm-preview { height: 100%; }
-.pt-modal-side { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-left: 1px solid var(--border); min-height: 0; overflow: hidden; }
-.pt-modal-side .pt-tree { max-height: none; flex: 1; min-height: 0; font-size: 13px; }
+.pt-modal-side { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-left: 1px solid var(--border); min-height: 0; overflow: auto; background: #f8fafc; }
+.pt-modal-side .pt-tree { max-height: none; flex: 1; min-height: 120px; font-size: 13px; overflow: auto; }
+.pt-tabs { display: flex; gap: 4px; padding: 3px; border-radius: 10px; background: #e2e8f0; flex: 0 0 auto; }
+.pt-tabs button { flex: 1; border: 0; background: transparent; border-radius: 8px; padding: 7px 10px; font-size: 12.5px; font-weight: 600; color: #475569; cursor: pointer; }
+.pt-tabs button.on { background: #fff; color: #0f172a; box-shadow: 0 1px 2px rgba(15,23,42,.08); }
+.pt-card { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; flex: 0 0 auto; }
+.pt-card-grow { flex: 1 1 auto; min-height: 220px; }
+.pt-card-title { font-size: 12.5px; font-weight: 700; color: #0f172a; display: flex; align-items: baseline; gap: 8px; }
+.pt-card-sub { font-size: 11px; font-weight: 400; color: var(--muted); }
+.pt-card-acts { display: flex; gap: 6px; justify-content: flex-end; flex-wrap: wrap; }
+.pt-note { font-size: 11.5px; color: #334155; background: #f1f5f9; border-radius: 8px; padding: 6px 8px; line-height: 1.4; }
+.pt-note.warn { background: #fffbeb; color: #78350f; }
+.pt-chips-scroll { overflow: auto; max-height: 100%; flex: 1; min-height: 0; }
+.pt-chip { cursor: pointer; }
+.pt-chip.is-focus { background: #fde68a; color: #92400e; }
+.pt-fam-list { display: flex; flex-direction: column; gap: 2px; max-height: 40vh; overflow: auto; }
+.pt-fam { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 8px; font-size: 12px; cursor: pointer; }
+.pt-fam:hover { background: #f1f5f9; }
+.pt-fam input[type=color] { width: 28px; height: 22px; border: 0; padding: 0; background: none; cursor: pointer; border-radius: 6px; }
+.pt-fam-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; }
+.pt-fam-meta { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.pt-modal .asm-preview-bar { padding-left: 170px; }
+.pt-modal .asm-preview-fill .asm-hint { flex-basis: auto; }
 .pt-modal-side .pt-row { padding: 5px 8px 5px 0; }
 .pt-modal-side .pt-chip { font-size: 12px; }
 

@@ -23,6 +23,7 @@ import { useEffect, useMemo, useState, type JSX } from 'react';
 import { useStore } from '../state/store.js';
 import { mindmapApi, type GlbPartNode, type GlbPartTree } from '../api/mindmap-api.js';
 import { AssemblyPreview, type PartState } from './AssemblyPreview.js';
+import { ColoursPanel } from './ColoursPanel.js';
 import { stateAfter, deltasOf, type PartStateMap } from '../utils/assembly-state.js';
 import type { GuideStepNode } from '@spatial/shared';
 
@@ -179,9 +180,14 @@ export function usePartsPicker(nodeId: string | null) {
   const focusBlock = focus ? (
     <div className="pt-focus">
       <div className="pt-focus-head">
-        <b className="pt-focus-name" title={focus}>{focus}</b>
-        <span className="pt-focus-meta">{focusInfo?.where ? `${focusInfo.where} · ` : ''}{focusInfo && focusInfo.sizeMm.some(v => v) ? `${focusInfo.sizeMm.join(' × ')} mm` : ''}{focusInfo ? ` · ${focusInfo.visible ? 'visible on this step' : 'hidden on this step'}` : ''}</span>
+        <span className="pt-focus-dot" />
+        <b className="pt-focus-name" title={focus}>{focus.replace(/^cmp:/, '')}</b>
         <button className="pt-focus-x" onClick={() => { focusOn(null); setIsolate(false); }} title="Clear">✕</button>
+      </div>
+      <div className="pt-focus-meta">
+        {focusInfo?.where && <span>{focusInfo.where}</span>}
+        {focusInfo && focusInfo.sizeMm.some(v => v) && <span>{focusInfo.sizeMm.join(' × ')} mm</span>}
+        {focusInfo && <span className={focusInfo.visible ? 'ok' : 'off'}>{focusInfo.visible ? 'visible on this step' : 'hidden on this step'}</span>}
       </div>
       <div className="pt-focus-acts">
         <button className="btn ghost" onClick={() => toggle(focus)}>{partSet.has(focus) ? `Remove from step` : `Add to step`}</button>
@@ -260,13 +266,13 @@ export function usePartsPicker(nodeId: string | null) {
   const chips = parts.length > 0 ? (
     <div className="pt-chips">
       {parts.map(p => (
-        <span key={p} className="pt-chip" title={p}>
-          <span className="pt-chip-name">{p}</span>
-          <button onClick={() => toggle(p)} title="Remove from this step">✕</button>
+        <span key={p} className={`pt-chip${focus === p ? ' is-focus' : ''}`} title={p} onClick={() => focusOn(p)}>
+          <span className="pt-chip-name">{p.replace(/^cmp:/, '')}</span>
+          <button onClick={e => { e.stopPropagation(); toggle(p); }} title="Remove from this step">✕</button>
         </span>
       ))}
     </div>
-  ) : null;
+  ) : <span className="step-check-hint">No parts on this step yet - double-click one in the 3D view, or tick it in the tree.</span>;
   const treeBlock = (
     <>
       {treeErr && <span className="step-check-hint">Couldn't read the model's parts: {treeErr}</span>}
@@ -331,6 +337,8 @@ export function PartsSection({ nodeId }: { nodeId: string }): JSX.Element | null
 
 export function PartsStudio(): JSX.Element | null {
   const nodeId   = useStore(s => s.partsStudioNodeId);
+  const [tab, setTab] = useState<'parts' | 'chosen' | 'colours'>('parts');
+  const [reload, setReload] = useState(0);
   const close    = useStore(s => s.closePartsStudio);
   const open     = useStore(s => s.openPartsStudio);
   const select   = useStore(s => s.select);
@@ -384,7 +392,7 @@ export function PartsStudio(): JSX.Element | null {
         <div className="pt-modal-main">
           <div className="pt-modal-3d">
             {pk.tree && (
-              <AssemblyPreview modelId={pk.modelId} partNames={pk.partNames} states={pk.states} parents={pk.parents} unmentioned={pk.buildUp ? 'after' : 'base'} context={pk.context} poses={pk.poses} play={pk.play} onPick={pk.toggle} onFocus={pk.focusOn} focus={pk.focus} isolate={pk.isolate} onFocusInfo={pk.setFocusInfo} fill />
+              <AssemblyPreview key={reload} modelId={pk.modelId} partNames={pk.partNames} states={pk.states} parents={pk.parents} unmentioned={pk.buildUp ? 'after' : 'base'} context={pk.context} poses={pk.poses} play={pk.play} onPick={pk.toggle} onFocus={pk.focusOn} focus={pk.focus} isolate={pk.isolate} onFocusInfo={pk.setFocusInfo} fill />
             )}
           </div>
           {/* Step strip: every step, its part count, click to jump. */}
@@ -401,12 +409,28 @@ export function PartsStudio(): JSX.Element | null {
           </div>
         </div>
         <div className="pt-modal-side">
+          <div className="pt-tabs" role="tablist">
+            {([['parts', 'Parts'], ['chosen', `Chosen · ${pk.parts.length}`], ['colours', 'Colours']] as const).map(([id, label]) => (
+              <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? 'on' : ''} onClick={() => setTab(id)}>{label}</button>
+            ))}
+          </div>
           {pk.focusBlock}
-          {pk.contextBlock}
-          {pk.chips}
-          {pk.groupsBlock}
-          {pk.search}
-          {pk.treeBlock}
+          {tab === 'parts' && (<>
+            <div className="pt-card pt-card-grow">
+              <div className="pt-card-title">All parts <span className="pt-card-sub">click a name to find it · tick to add</span></div>
+              {pk.search}
+              {pk.treeBlock}
+            </div>
+            <div className="pt-card">{pk.contextBlock}</div>
+          </>)}
+          {tab === 'chosen' && (<>
+            <div className="pt-card pt-card-grow">
+              <div className="pt-card-title">Parts this step {pk.verb} <span className="pt-card-sub">{pk.parts.length}</span></div>
+              <div className="pt-chips-scroll">{pk.chips}</div>
+            </div>
+            <div className="pt-card"><div className="pt-card-title">Part sets <span className="pt-card-sub">reusable groups</span></div>{pk.groupsBlock}</div>
+          </>)}
+          {tab === 'colours' && <ColoursPanel modelId={pk.modelId} onApplied={() => setReload(r => r + 1)} />}
         </div>
       </div>
     </div>

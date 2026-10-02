@@ -94,6 +94,12 @@ export async function fetchAuthRequired(): Promise<boolean> {
   }
 }
 
+export interface ModelColours {
+  modelId: string; greyscale: boolean; textured: boolean; materials: number; greyMaterials: number; parts: number; hasOriginal: boolean;
+  families: Array<{ family: string; kind: 'fastener' | 'seal' | 'body'; parts: number; suggested: [number, number, number]; applied: [number, number, number] | null }>;
+  applied: { byFamily: Record<string, [number, number, number]>; parts: number; appliedAt: string } | null;
+}
+
 async function request<T>(path: string, init: RequestInit = {}, mapId?: string): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -172,6 +178,10 @@ export const mindmapApi = {
   listChamberConfigs: () => request<ChamberConfig[]>('/chamber-configs'),
   /** 2026.4.46: part tree of a model's GLB (names + hierarchy) for the parts picker. */
   modelNodes: (id: string) => request<GlbPartTree>(`/models/${encodeURIComponent(id)}/nodes`),
+  /** Colour for grey exports (models/colour.ts): analysis, apply by family, reset. */
+  modelColours: (id: string) => request<ModelColours>(`/models/${encodeURIComponent(id)}/colours`),
+  applyModelColours: (id: string, byFamily: Record<string, [number, number, number]>) => request<{ recoloured: number; variantsJobId: string }>(`/models/${encodeURIComponent(id)}/colours`, { method: 'POST', body: JSON.stringify({ byFamily }) }),
+  resetModelColours: (id: string) => request<{ reset: boolean }>(`/models/${encodeURIComponent(id)}/colours`, { method: 'DELETE' }),
 
   glossary: () => request<{ markdown: string; updatedAt: number }>('/mindmap/glossary'),
   importImageStatus: () => request<ImageImportStatus>('/mindmap/import-image/status'),

@@ -7,6 +7,12 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **3D Studio side panel.** Three tabs - Parts (search, tree, operator
+  context), Chosen (this step's parts as clickable chips, scrolling), and
+  Colours (the grey-export colouring, per family with a picker, Apply and
+  Reset, the model reloads in place) - in cards on a scrolling panel. The
+  focus card stacks name, where, size and visibility as chips. The hint bar
+  clears the Compass pill. Rebuild the Designer (`npm run build:roadmap`).
 - **Colour for grey 3D exports.** Colours on a model card analyses the
   export (is it greyscale, which part families), suggests a stable palette
   (fasteners light neutral, seals and hoses the accent, bodies a muted hue
