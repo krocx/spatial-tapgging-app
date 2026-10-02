@@ -7,6 +7,20 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **Wireframe v5 - the current app and workflows, with a coach.** /wireframe
+  is rebuilt around what ships today: AR OMS for the technician (chambers,
+  QR gate, guide pick with Production #, one-tap assembly placement with the
+  viewpoint marker, the step view with the green rim and context chips, a
+  hint, validation with the cone, sign-off), Spatial Inspection authoring
+  and inspecting, Gemba, iLOTO, the Procedure Designer with the Inspector's
+  needs chips and the 3D Studio, the portal (role home, library cards, the
+  guide page, readiness matrix, Open on a headset, Analytics, scorecard)
+  and the glasses (XR kit on Quest, SIB on G2, spoken Vanguard). Every
+  screen carries a coach: why you see it, what to do next (with the primary
+  action as a link) and what is worth knowing; "Walk me through this flow"
+  plays a flow end to end. Keys: ← → screens, W walk-through, 1-8 flows.
+  Renders for now; screenshots to follow. Light text on the dark mocks is
+  ink again. Old deep links (#arguides, #procdes) still land.
 - **Platform map: the leadership story.** Two new stops and a rewritten
   one. "From the 3D OMS to the AR OMS": the company's own publications
   import in one step and come out as the instruction on the tool, with the
