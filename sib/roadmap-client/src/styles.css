@@ -131,7 +131,7 @@ button { font: inherit; }
 }
 .modal {
   width: min(680px, 100%); max-height: 90vh; overflow-y: auto;
-  background: var(--panel); border-radius: var(--ax-r);
+  background: var(--ax-solid); border-radius: var(--ax-r);   /* sheets float: opaque */
   padding: 20px; display: flex; flex-direction: column; gap: 12px;
   box-shadow: none;
 }
@@ -286,7 +286,8 @@ button { font: inherit; }
 
 .search-wrap { position: relative; }
 .search-input { width: 150px; padding: 6px 10px; font-size: 13px; }
-.search-results { left: 0; right: auto; min-width: 220px; }
+.search-results { left: 0; right: auto; min-width: 260px; max-height: 50vh; overflow: auto; }
+.search-results button { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .search-results button { display: flex; justify-content: flex-start; align-items: center; gap: 8px; }
 .swatch-dot { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
 
@@ -351,7 +352,7 @@ button { font: inherit; }
 .menu {
   position: absolute; top: calc(100% + 6px); right: 0; z-index: 30;
   min-width: 180px;
-  background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+  background: var(--ax-solid); border: 1px solid var(--border); border-radius: 10px;   /* menus float over the canvas: opaque */
   box-shadow: none;
   padding: 4px; display: flex; flex-direction: column;
 }
