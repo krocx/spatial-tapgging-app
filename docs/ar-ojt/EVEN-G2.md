@@ -24,10 +24,12 @@ possible later for a step photo).
 1. In the portal, a guide's ⋯ menu → Open on a headset → Even Realities G2.
    The portal mints a **code**: six characters without look-alikes, shown as
    `ABC-123`, ten minutes, single use, one guide, carrying the issuer's name
-   as the operator.
-2. On the phone paired with the glasses, the technician opens **SIB on G2**
-   in the Even Realities app (Even Hub tab), enters the SIB server once and
-   the code.
+   as the operator - and a **QR** of `<server>/g2/?server=<server>&code=ABC-123`.
+2. On the phone paired with the glasses: Even Realities app → Even Hub →
+   Scan QR → the QR. SIB on G2 opens from the server with the server and
+   code filled in; the technician taps Open the guide. Without a Scan QR
+   button (Developer Mode off) they open SIB on G2 from the Even Hub list
+   and type the code.
 3. `POST /g2/redeem { code }` answers a **device token**: a bearer the
    content gate and the API gate accept for twelve hours, sent as
    `X-Device-Token`, and only for that guide's bundle and steps and the

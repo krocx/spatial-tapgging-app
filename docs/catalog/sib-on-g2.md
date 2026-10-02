@@ -8,7 +8,9 @@ depends: [device-readiness, guide-library, xr-kit]
 terms: [SIB]
 spec: ar-ojt/EVEN-G2.md
 api: |
-  POST /guides/:id/device-code - a six-character code, ten minutes, single use, one guide; opens it in SIB on G2 (portal · API key)
+  POST /guides/:id/g2-code - a six-character code (ten minutes, single use, one guide) and the URL its QR carries: <server>/g2/?server=&code= (portal · API key)
+  GET /guides/:id/g2-qr.png - ?code= draws that URL as a QR for the Even app's Scan QR or the phone camera (portal · API key)
+  POST /guides/:id/device-code - the code alone (portal · API key)
   POST /g2/redeem - { code } → a device token for that guide's bundle and the session endpoints, twelve hours, sent as X-Device-Token (Even app · public, 10 tries a minute)
   GET /g2 - the companion page (sib/g2-client/, bundle under sib/portal/g2/) (Even app · public)
 wireframe: portal

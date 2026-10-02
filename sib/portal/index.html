@@ -5599,8 +5599,9 @@ async function showXrQr(guideId, name) {
   // Glasses without a browser or camera: the companion page in the maker's
   // app takes a short code, not a QR, and gets a device token for this guide.
   const renderCompanion = async () => {
-    let code = '', expires = '', companionUrl = `${location.origin}/g2`;
-    try { const r = await apiFetch(`/guides/${guideId}/device-code`, { method: 'POST', body: '{}' }); code = r.data.code; companionUrl = r.data.companionUrl; expires = new Date(r.data.expiresAt).toLocaleTimeString(); } catch (e) { toast(e.message); }
+    let code = '', expires = '', companionUrl = `${location.origin}/g2`, qrUrl = '';
+    try { const r = await apiFetch(`/guides/${guideId}/g2-code`, { method: 'POST', body: '{}' }); code = r.data.code; companionUrl = r.data.companionUrl; qrUrl = r.data.url; expires = new Date(r.data.expiresAt).toLocaleTimeString(); } catch (e) { toast(e.message); }
+    const qrSrc = code ? `/guides/${guideId}/g2-qr.png?code=${encodeURIComponent(code)}` : '';
     m.querySelector('.ax-card').innerHTML = `
       <button onclick="document.getElementById('xr-qr-modal').style.display='none'" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-close"/></svg></button>
       <div class="ax-eyebrow">SIB on G2 · open on Even Realities glasses</div>
@@ -5611,19 +5612,21 @@ async function showXrQr(guideId, name) {
           <div class="xr-dev-list">${choices.map(c => `<label style="display:flex;gap:8px;align-items:flex-start;padding:6px 8px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;cursor:pointer;font-size:0.8rem;line-height:1.35"><input type="radio" name="xr-dev" value="${c.id}" ${c.id === current ? 'checked' : ''} style="margin-top:3px"><span><b>${esc(c.name)}</b><br><span class="ax-muted">${esc(c.notes || '')}</span></span></label>`).join('')}</div>
         </div>
         <div style="text-align:center;min-width:200px;position:sticky;top:0">
-          <div class="ax-label-s ax-muted">Code</div>
-          <div style="font:700 40px/48px var(--ax-mono);letter-spacing:.08em;color:var(--text);margin:4px 0">${esc(code || '–')}</div>
+          ${qrSrc ? `<img src="${qrSrc}" alt="QR that opens SIB on G2 with this code" style="width:min(220px,60vw);height:auto;border-radius:12px;background:var(--ax-on-accent);padding:8px">` : ''}
+          <div class="ax-label-s ax-muted" style="margin-top:6px">Code</div>
+          <div style="font:700 34px/40px var(--ax-mono);letter-spacing:.08em;color:var(--text);margin:2px 0">${esc(code || '–')}</div>
           <p class="ax-label-s ax-muted" style="margin:4px 0 0">one use · until ${esc(expires || 'ten minutes')}</p>
         </div>
       </div>
       <ol style="font-size:0.82rem;color:var(--text);margin:12px 0 4px;padding-left:20px;line-height:1.5">
-        <li>On the phone paired with the glasses, open the Even Realities app → Even Hub → <b>SIB on G2</b> (or scan the app QR from <span style="font-family:var(--ax-mono)">evenhub qr</span> while testing).</li>
-        <li>Enter the server <span style="font-family:var(--ax-mono)">${esc(companionUrl.replace(/\/g2$/, ''))}</span> once, then this code.</li>
+        <li>On the phone paired with the glasses: Even Realities app → Even Hub → <b>Scan QR</b> → this QR. SIB on G2 opens with the server and code filled in; tap <b>Open the guide</b>.</li>
+        <li>No Scan QR button? Open <b>SIB on G2</b> from the Even Hub list and type the code; the server is <span style="font-family:var(--ax-mono)">${esc(companionUrl.replace(/\/g2$/, ''))}</span>.</li>
         <li>The first step appears on the glasses. Press for next, double press for back, long press to repeat; swipe to scroll a long step.</li>
       </ol>
       <p style="font-size:0.78rem;color:var(--muted);margin:0 0 12px">The code opens this guide once and carries your name as the operator; the site key never leaves the server. The run is recorded like any other.</p>
       <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
-        <a class="ax-btn" href="/g2" target="_blank" rel="noopener"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-external"/></svg> Open the companion here</a>
+        <a class="ax-btn" href="${qrUrl || '/g2'}" target="_blank" rel="noopener"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-external"/></svg> Open the companion here</a>
+        ${qrSrc ? `<a class="ax-btn" href="${qrSrc}" download="g2-${guideId.slice(0, 8)}.png"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Download QR</a>` : ''}
         <button class="ax-btn ax-btn--primary" onclick="navigator.clipboard.writeText(${JSON.stringify(code)}).then(()=>toast('Code copied'))"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-copy"/></svg> Copy code</button>
       </div>`;
     m.querySelectorAll('input[name="xr-dev"]').forEach(r => r.onchange = () => { current = r.value; render(); });

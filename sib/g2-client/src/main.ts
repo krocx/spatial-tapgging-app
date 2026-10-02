@@ -41,6 +41,10 @@ function renderStatus() {
 }
 
 // ── Screen 1: connect ────────────────────────────────────────────────────────
+// A QR from the portal lands here as /g2/?server=<origin>&code=ABC-123.
+const scanned = (() => { const q = new URLSearchParams(location.search); const server = (q.get('server') || '').replace(/\/+$/, ''); const code = (q.get('code') || '').toUpperCase(); return server && code ? { server, code } : null; })();
+if (scanned) saveServer(scanned.server);
+
 function renderConnect(err = '') {
   const server = loadServer();
   const rec = recent();
@@ -54,8 +58,8 @@ function renderConnect(err = '') {
     </div>
     <div class="card">
       <div class="label">Code from the portal</div>
-      <input id="code" class="code" inputmode="latin" autocapitalize="characters" autocorrect="off" maxlength="7" placeholder="ABC-123">
-      <div class="muted" style="margin-top:6px">Portal → guide → Open on a headset → Even Realities G2. One use, ten minutes.</div>
+      <input id="code" class="code" inputmode="latin" autocapitalize="characters" autocorrect="off" maxlength="7" placeholder="ABC-123" value="${esc(scanned?.code || '')}">
+      <div class="muted" style="margin-top:6px">${scanned ? 'Scanned from the portal - tap Open the guide.' : 'Portal → guide → Open on a headset → Even Realities G2. One use, ten minutes.'}</div>
       <div class="err" id="err">${esc(err)}</div>
       <button class="primary" id="go" style="width:100%">Open the guide</button>
     </div>

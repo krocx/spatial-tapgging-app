@@ -7,6 +7,12 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **SIB on G2 by QR.** The Even Realities G2 choice in "Open on a headset"
+  shows a QR beside the code: it carries the server's own companion URL
+  with the server and code filled in (`/g2/?server=&code=`), so the Even
+  app's Scan QR (or the phone camera) opens SIB on G2 ready to tap Open the
+  guide. `POST /guides/:id/g2-code`, `GET /guides/:id/g2-qr.png?code=`;
+  Download QR.
 - **Spoken work instructions on Meta Oakley Vanguard.** "Open on a headset"
   lists glasses without a display (Oakley Vanguard) with a QR for the
   paired phone: the XR kit's spoken profile reads each step through the

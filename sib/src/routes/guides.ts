@@ -771,6 +771,34 @@ router.get('/:id/xr-qr.png', async (req: Request, res: Response): Promise<void> 
   res.send(png);
 });
 
+// POST /guides/:id/g2-code  → { code, url, companionUrl, expiresAt } - one code,
+// and the URL a QR carries so the Even app's Scan QR (or the phone camera)
+// opens SIB on G2 with server and code filled in: <origin>/g2/?server=&code=.
+// GET /guides/:id/g2-qr.png?code=ABC-123 draws that URL (no new code).
+function g2Url(req: Request, code: string): { origin: string; url: string } {
+  const proto = (req.headers['x-forwarded-proto'] as string | undefined)?.split(',')[0] || req.protocol;
+  const host = (req.headers['x-forwarded-host'] as string | undefined)?.split(',')[0] || req.headers.host || 'localhost';
+  const origin = `${proto}://${host}`;
+  return { origin, url: `${origin}/g2/?server=${encodeURIComponent(origin)}&code=${encodeURIComponent(code)}` };
+}
+router.post('/:id/g2-code', (req: Request, res: Response): void => {
+  const guide = guideStore.findById(req.params.id);
+  if (!guide) { res.status(404).json({ error: `Guide ${req.params.id} not found`, timestamp: new Date().toISOString() }); return; }
+  const who = issuer(req);
+  const c = mintDeviceCode(guide.id, who.by, who.name);
+  const code = formatCode(c.code); const { origin, url } = g2Url(req, code);
+  res.json({ data: { code, url, companionUrl: `${origin}/g2`, expiresAt: new Date(c.expiresAt).toISOString(), ttlSec: CODE_TTL_MS / 1000 }, timestamp: new Date().toISOString() });
+});
+router.get('/:id/g2-qr.png', async (req: Request, res: Response): Promise<void> => {
+  const guide = guideStore.findById(req.params.id);
+  if (!guide) { res.status(404).json({ error: `Guide ${req.params.id} not found`, timestamp: new Date().toISOString() }); return; }
+  const code = typeof req.query.code === 'string' ? req.query.code.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 7) : '';
+  if (!code) { res.status(400).json({ error: 'code required', timestamp: new Date().toISOString() }); return; }
+  const png = await QRCode.toBuffer(g2Url(req, code).url, { errorCorrectionLevel: 'M', type: 'png', width: 512, margin: 4, color: { dark: '#000000', light: '#ffffff' } });
+  res.setHeader('Content-Type', 'image/png'); res.setHeader('Cache-Control', 'no-store');
+  res.send(png);
+});
+
 // GET /guides/:id/readiness - which of this guide's steps each wearable can
 // deliver, and how (docs/ar-ojt/DEVICE-ADAPTIVE-INSTRUCTIONS.md): per step
 // the derived needs and, per device profile, native / adapted / assisted
