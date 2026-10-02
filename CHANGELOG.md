@@ -7,6 +7,10 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **/wireframe on the brand system.** The app flow wireframe's page chrome
+  and phone mocks read the app's own tokens: charcoal page and bezel,
+  paper cards, iOS accents by meaning, no glass or shadows. Governed by
+  brand-check. The last legacy surface; the brand migration is complete.
 - **Housekeeping: orphaned guides.** Admin → Backups lists guides whose
   chamber was deleted (they never show in the library but keep steps,
   images and import logs on disk) with their counts, and deletes them one
