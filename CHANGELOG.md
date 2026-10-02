@@ -7,6 +7,12 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **Go anywhere (⌘K).** One box in the portal header (and ⌘K / Ctrl-K on
+  any page) reaches every section and tab with its purpose, every guide
+  (open in the library, or straight to Analytics, Designer, Preview),
+  every 3D model, the actions (Import guide, New chamber, Settings, Coach)
+  and the Coach's "How do I…" answers. Typing filters, ↑ ↓ move, Enter
+  goes, Esc closes.
 - **/wireframe on the brand system.** The app flow wireframe's page chrome
   and phone mocks read the app's own tokens: charcoal page and bezel,
   paper cards, iOS accents by meaning, no glass or shadows. Governed by

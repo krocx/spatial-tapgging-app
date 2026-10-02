@@ -256,6 +256,26 @@
     #portal-home { display:none; padding: 10px 32px 46px; }
     #portal-home.visible { display:block; }
     .sb-purpose { font-size: 0.78rem; color: var(--muted); margin-left: 4px; }
+    /* Go anywhere (⌘K) */
+    #palette { display:none; position:fixed; inset:0; background:var(--ax-scrim); z-index:9300; align-items:flex-start; justify-content:center; padding-top:12vh; }
+    .pal-card { width:min(680px, 94vw); max-height:70vh; display:flex; flex-direction:column; overflow:hidden; padding:0; }
+    .pal-top { display:flex; align-items:center; gap:10px; padding:12px 16px; border-bottom:var(--ax-hair); }
+    .pal-top .ax-icon { color:var(--ax-ink-3); }
+    .pal-input { flex:1; font:var(--ax-label); color:var(--ax-ink); background:none; border:0; outline:none; }
+    .pal-input::placeholder { color:var(--ax-ink-4); }
+    .pal-key { font:var(--ax-eyebrow); color:var(--ax-ink-3); border:var(--ax-hair); border-radius:6px; padding:1px 6px; }
+    .pal-list { overflow:auto; flex:1; min-height:0; }
+    .pal-row { display:flex; align-items:center; gap:12px; padding:9px 16px; cursor:pointer; border-bottom:var(--ax-hair-2); }
+    .pal-row.on { background:var(--ax-blue-fill); }
+    .pal-kind { font:var(--ax-eyebrow); letter-spacing:var(--ax-tracking-eyebrow); text-transform:uppercase; color:var(--ax-ink-3); width:64px; flex:0 0 auto; }
+    .pal-main { flex:1; min-width:0; display:flex; flex-direction:column; }
+    .pal-main b { font:var(--ax-body-m); color:var(--ax-ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .pal-main span { font:var(--ax-label-s); color:var(--ax-ink-3); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .pal-more { display:flex; gap:4px; }
+    .pal-more button { font:var(--ax-label-s); padding:3px 9px; border-radius:8px; border:var(--ax-hair); background:var(--ax-paper); color:var(--ax-ink-2); cursor:pointer; }
+    .pal-more button:hover { background:var(--ax-paper-3); color:var(--ax-ink); }
+    .pal-empty { padding:18px 16px; color:var(--ax-ink-3); font:var(--ax-label-s); }
+    .pal-foot { padding:8px 16px; font:var(--ax-label-s); color:var(--ax-ink-4); border-top:var(--ax-hair); }
     .xr-dev-list { max-height: 52vh; overflow: auto; padding-right: 4px; }
     .xr-dev-list label b { display: block; }
     .xr-dev-list label .ax-muted { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -815,6 +835,7 @@
     <button class="btn btn-ghost btn-sm" id="uam-signout" onclick="uamLogout()" style="display:none">Sign out</button>
     <button class="btn btn-ghost btn-sm" id="admin-btn" onclick="toggleAdmin()" style="display:none" title="Destructive actions (delete, quiz editing) require the admin key"> Admin</button>
     <button class="btn btn-ghost btn-sm" onclick="showSettings()" data-tour="settings"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-gear"/></svg> Settings</button>
+    <button class="btn btn-ghost btn-sm" id="palette-btn" onclick="openPalette()" title="Go anywhere (⌘K)" style="display:none"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-search"/></svg> Go to… <span class="pal-key" style="margin-left:4px">⌘K</span></button>
     <button class="btn btn-ghost btn-sm" id="coach-btn" onclick="coachToggle()" title="Coach" style="display:none" data-tour="coach-btn"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-bulb"/></svg> Coach</button>
     <button class="btn btn-primary btn-sm" onclick="openCreateModal()" data-tour="new-anchor">+ New chamber</button>
   </div>
@@ -3129,6 +3150,7 @@ async function guideRefresh() {
   renderCoach();
 }
 function syncCoachButton() {
+  const pb = document.getElementById('palette-btn'); if (pb) pb.style.display = portalAuthed ? '' : 'none';
   const b = document.getElementById('coach-btn');
   if (!b) return;
   const eligible = portalAuthed && !(UAM_USER && UAM_USER.role === 'technician');
@@ -4130,6 +4152,79 @@ async function loadHomeStats() {
   } catch { /* ignore */ }
 }
 let homeStats = null;
+
+
+// ── Go anywhere (2026.4.46): ⌘K / Ctrl-K ─────────────────────────────────
+// One box that reaches every page, tab, guide, model and "How do I…" answer.
+// Typing filters; ↑ ↓ move; Enter goes; Esc closes. Guides and models are
+// read once per opening (cheap summaries), everything else is static.
+const PALETTE_STATIC = () => [
+  ...Object.entries(SECTIONS).flatMap(([id, def]) => [
+    { kind: 'page', title: def.name, sub: def.purpose || '', go: () => { location.hash = '#' + id; } },
+    ...((def.tabs || []).map(([tid, label]) => ({ kind: 'page', title: `${def.name} · ${label}`, sub: (def.answers && def.answers[tid]) || '', go: () => { location.hash = `#${id}/${tid}`; } }))),
+  ]),
+  { kind: 'page', title: 'Home', sub: 'Your work first', go: () => { location.hash = '#home'; } },
+  { kind: 'page', title: 'Readiness scorecard', sub: 'Where each track stands this quarter', go: () => { location.href = '/scorecard'; } },
+  { kind: 'page', title: 'Catalogue', sub: 'Every feature, its status and its spec', go: () => { location.href = '/catalog'; } },
+  { kind: 'page', title: 'Architecture', sub: 'The C4 picture of SIB', go: () => { location.href = '/architecture'; } },
+  { kind: 'page', title: 'Procedure Designer', sub: 'Draw a procedure, send it to the library', go: () => { window.open('/roadmap', '_blank', 'noopener'); } },
+  { kind: 'action', title: 'Import guide', sub: 'A Cortona publication, Excel or JSON', go: () => { location.hash = '#content/guides'; setTimeout(openImportGuideModal, 300); } },
+  { kind: 'action', title: 'New chamber', sub: 'Register a chamber and print its QR', go: () => openCreateModal() },
+  { kind: 'action', title: 'Settings', sub: 'Server, key, coach', go: () => showSettings() },
+  { kind: 'action', title: 'Coach', sub: 'What to do next on this page', go: () => { if (!coachOpen()) coachToggle(); } },
+  ...HOWTO.map(([t, d], i) => ({ kind: 'howto', title: `How do I ${t.charAt(0).toLowerCase()}${t.slice(1)}?`, sub: d, go: () => coachDo(i) })),
+];
+let paletteItems = [], paletteIdx = 0;
+function openPalette() {
+  let m = document.getElementById('palette');
+  if (!m) {
+    m = document.createElement('div'); m.id = 'palette';
+    m.innerHTML = `<div class="pal-card ax-solid"><div class="pal-top"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-search"/></svg><input id="pal-q" class="pal-input" placeholder="Go to a page, a guide, a model, or ask how to…" autocomplete="off"><span class="pal-key">esc</span></div><div id="pal-list" class="pal-list"></div><div class="pal-foot">↑ ↓ move · Enter go · ⌘K opens this anywhere</div></div>`;
+    m.addEventListener('click', e => { if (e.target === m) closePalette(); });
+    document.body.appendChild(m);
+    document.getElementById('pal-q').addEventListener('input', renderPalette);
+    document.getElementById('pal-q').addEventListener('keydown', e => {
+      if (e.key === 'ArrowDown') { paletteIdx = Math.min(paletteIdx + 1, paletteItems.length - 1); e.preventDefault(); renderPaletteList(); }
+      else if (e.key === 'ArrowUp') { paletteIdx = Math.max(paletteIdx - 1, 0); e.preventDefault(); renderPaletteList(); }
+      else if (e.key === 'Enter') { const it = paletteItems[paletteIdx]; if (it) { closePalette(); it.go(); } }
+      else if (e.key === 'Escape') closePalette();
+    });
+  }
+  m.style.display = 'flex';
+  const q = document.getElementById('pal-q'); q.value = ''; q.focus();
+  paletteDynamic = null; renderPalette();
+  Promise.all([apiFetch('/guides/summary').catch(() => ({ data: [] })), apiFetch('/models').catch(() => ({ data: [] }))]).then(([g, mo]) => {
+    paletteDynamic = [
+      ...((g.data || []).map(x => ({ kind: 'guide', title: x.name, sub: `${x.anchor} · ${x.published ? 'published' : 'draft'} · ${x.steps} steps`, go: () => showGuideInLibrary(x.id, x.anchorId),
+        more: [['Analytics', () => { location.hash = '#analytics/guide/' + x.id; }], ['Designer', () => editGuideInDesigner(x.id)], ['Preview', () => previewGuide(x.id, x.assembly !== 'none')]] }))),
+      ...((mo.data || []).map(x => ({ kind: 'model', title: x.name, sub: `3D model · ${x.status}${x.triangles ? ` · ${(x.triangles / 1e6).toFixed(1)} M tris` : ''}`, go: () => showModelCard(x.id) }))),
+    ];
+    if (document.getElementById('palette')?.style.display !== 'none') renderPalette();
+  });
+}
+let paletteDynamic = null;
+function closePalette() { const m = document.getElementById('palette'); if (m) m.style.display = 'none'; }
+function renderPalette() {
+  const q = (document.getElementById('pal-q')?.value || '').trim().toLowerCase();
+  const all = [...PALETTE_STATIC(), ...(paletteDynamic || [])];
+  const score = it => { const t = it.title.toLowerCase(), s = (it.sub || '').toLowerCase(); if (!q) return it.kind === 'page' ? 2 : it.kind === 'guide' ? 1 : 0; if (t.startsWith(q)) return 5; if (t.includes(q)) return 4; if (q.split(/\s+/).every(w => t.includes(w) || s.includes(w))) return 2; return 0; };
+  paletteItems = all.map(it => ({ it, s: score(it) })).filter(x => x.s > 0).sort((a, b) => b.s - a.s).slice(0, 14).map(x => x.it);
+  paletteIdx = 0; renderPaletteList();
+}
+function renderPaletteList() {
+  const list = document.getElementById('pal-list'); if (!list) return;
+  const KIND = { page: 'Page', action: 'Action', howto: 'How do I', guide: 'Guide', model: 'Model' };
+  list.innerHTML = paletteItems.length ? paletteItems.map((it, i) => `<div class="pal-row${i === paletteIdx ? ' on' : ''}" data-i="${i}">
+      <span class="pal-kind">${KIND[it.kind] || it.kind}</span><span class="pal-main"><b>${esc(it.title)}</b><span>${esc(it.sub || '')}</span></span>
+      ${it.more ? `<span class="pal-more">${it.more.map(([l], j) => `<button data-i="${i}" data-j="${j}">${l}</button>`).join('')}</span>` : ''}</div>`).join('')
+    : `<div class="pal-empty">Nothing matches${paletteDynamic ? '' : ' yet - guides and models are loading'}.</div>`;
+  list.querySelectorAll('.pal-row').forEach(r => { r.onmouseenter = () => { paletteIdx = Number(r.dataset.i); list.querySelectorAll('.pal-row').forEach(x => x.classList.toggle('on', x === r)); }; r.onclick = e => { if (e.target.tagName === 'BUTTON') return; closePalette(); paletteItems[Number(r.dataset.i)].go(); }; });
+  list.querySelectorAll('.pal-more button').forEach(b => b.onclick = e => { e.stopPropagation(); const it = paletteItems[Number(b.dataset.i)]; closePalette(); it.more[Number(b.dataset.j)][1](); });
+  const on = list.querySelector('.pal-row.on'); if (on) on.scrollIntoView({ block: 'nearest' });
+}
+window.addEventListener('keydown', e => {
+  if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); if (!portalAuthed) return; const m = document.getElementById('palette'); if (m && m.style.display !== 'none') closePalette(); else openPalette(); }
+});
 
 // ── Home (2026.4.46): adaptive by role ──────────────────────────────────────
 // Engineers get the Content Library first; Managers and Owners get Analytics
