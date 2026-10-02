@@ -7,6 +7,14 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **Colour for grey 3D exports.** Colours on a model card analyses the
+  export (is it greyscale, which part families), suggests a stable palette
+  (fasteners light neutral, seals and hoses the accent, bodies a muted hue
+  from the family name), lets any family be overridden with a colour picker,
+  and applies it into the GLB itself: own material per part, own mesh where
+  one is shared, the original kept as `<id>.orig.glb` for Reset, revision
+  bumped, reduced copies rebuilt. App, XR kit and Designer show the same
+  colours. `GET/POST/DELETE /models/:id/colours`. Textures are untouched.
 - **Designer 3D Studio: find a part, then hide or show it.** A click on a
   part in the 3D view or on its name in the tree identifies it: lit orange,
   camera turned to it, and a focus card with where it sits (left side,

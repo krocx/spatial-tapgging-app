@@ -4899,6 +4899,7 @@ function renderModels(models) {
         ${catToggle}
         <a href="#" onclick="openKitModal('${m.id}', ${JSON.stringify(kitIds).replace(/"/g, '&quot;')}); return false" style="background:var(--ax-blue-fill);color:var(--accent)"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-link"/></svg> Assign</a>
         <a href="#" onclick="renameModel('${m.id}','${jsEsc(m.name)}'); return false" style="background:var(--ax-blue-fill);color:var(--accent)"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-edit"/></svg> Rename</a>
+        ${m.hasGLB && m.status === 'ready' ? `<a href="#" onclick="openModelColours('${m.id}','${jsEsc(m.name)}'); return false" style="background:var(--ax-warn-fill);color:var(--ax-orange)" title="Colour a grey export so parts can be told apart on a headset"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-sparkles"/></svg> ${m.colours ? 'Colours (applied)' : 'Colours'}</a>` : ''}
         <a href="#" onclick="deleteModel('${m.id}'); return false" style="background:var(--ax-bad-fill);color:var(--red)"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-trash"/></svg> Delete</a>
       </div>
     </div>`;
@@ -5034,6 +5035,48 @@ async function renameGuide(guideId, anchorId) {
     await loadGuideLibrary();
   } catch (e) { toast('Rename failed: ' + e.message); }
 }
+// ── Colour a grey export (models/colour.ts) ─────────────────────────────────
+// One family (BOLT_M6_01, _02 …) = one colour. Auto picks a stable palette:
+// fasteners light neutral, seals and hoses the accent, bodies a muted hue
+// from the family name. The author can override any family, apply, reset.
+const rgbHex = c => '#' + c.map(v => Math.round(v * 255).toString(16).padStart(2, '0')).join('');
+const hexRgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255);
+async function openModelColours(modelId, name) {
+  let m = document.getElementById('colours-modal');
+  if (!m) { m = document.createElement('div'); m.id = 'colours-modal'; m.style.cssText = 'display:none;position:fixed;inset:0;background:var(--ax-scrim);z-index:9100;align-items:center;justify-content:center;'; m.addEventListener('click', e => { if (e.target === m) m.style.display = 'none'; }); document.body.appendChild(m); }
+  m.innerHTML = `<div class="ax-card" style="background:var(--ax-solid);width:min(640px,94vw);max-height:90vh;overflow:auto;position:relative"><div class="ax-empty" style="border:0"><span class="ax-mark is-loading"><i></i><em></em></span>Reading materials…</div></div>`;
+  m.style.display = 'flex';
+  let d;
+  try { d = (await apiFetch(`/models/${encodeURIComponent(modelId)}/colours`)).data; } catch (e) { m.querySelector('.ax-card').innerHTML = `<div class="ax-empty">${esc(e.message)}</div>`; return; }
+  const overrides = {};
+  const render = () => {
+    const kindWord = { fastener: 'fastener', seal: 'seal / hose', body: 'body' };
+    m.querySelector('.ax-card').innerHTML = `
+      <button onclick="document.getElementById('colours-modal').style.display='none'" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-close"/></svg></button>
+      <div class="ax-eyebrow">3D model · colours</div>
+      <h3 style="margin:2px 0 8px;font-size:1rem;font-weight:700">${esc(name)}</h3>
+      <div class="ax-notice" style="margin-bottom:10px">${d.applied ? `Coloured on ${new Date(d.applied.appliedAt).toLocaleDateString()} (${d.applied.parts} parts). The export is kept; Reset brings it back.` : d.greyscale ? `This export is grey: ${d.greyMaterials} of ${d.materials} materials have no colour, so parts are hard to tell apart on a headset. Auto colour gives each part family a colour of its own.` : d.textured ? 'This model carries textures; colouring is for grey exports and is left off here.' : `This model already has colour (${d.materials - d.greyMaterials} of ${d.materials} materials). Colouring is for grey exports; you can still recolour by family.`}</div>
+      <div class="ax-label-s ax-muted" style="margin-bottom:6px">${d.families.length} families · ${d.parts} parts · fasteners stay a light neutral, seals and hoses take the accent, bodies a muted hue from the name</div>
+      <div style="max-height:44vh;overflow:auto;border:1px solid var(--border);border-radius:10px">
+        <table class="ax-table" style="font-size:0.82rem"><thead><tr><th></th><th>Family</th><th>Kind</th><th class="ax-num">Parts</th><th>Colour</th></tr></thead><tbody>
+        ${d.families.map(f => { const c = overrides[f.family] || f.applied || f.suggested; return `<tr><td><span style="display:inline-block;width:16px;height:16px;border-radius:4px;background:${rgbHex(c)};border:1px solid var(--border)"></span></td><td style="font-family:var(--ax-mono)">${esc(f.family)}</td><td class="ax-muted">${kindWord[f.kind]}</td><td class="ax-num">${f.parts}</td><td><input type="color" value="${rgbHex(c)}" data-fam="${esc(f.family)}" style="width:44px;height:26px;border:0;background:none;padding:0;cursor:pointer" title="Override this family"> ${overrides[f.family] ? '<span class="ax-label-s ax-muted">changed</span>' : ''}</td></tr>`; }).join('')}
+        </tbody></table></div>
+      <p class="ax-label-s ax-muted" style="margin:10px 0">The colour is written into the model itself, so the app, the XR kit and the Designer all show it; the reduced copies are rebuilt afterwards (a minute or two). Textures are not touched.</p>
+      <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
+        ${d.hasOriginal ? `<button class="ax-btn" id="col-reset"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-undo"/></svg> Reset to the export</button>` : ''}
+        <button class="ax-btn ax-btn--primary" id="col-apply"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-sparkles"/></svg> ${d.applied ? 'Apply changes' : 'Auto colour'}</button>
+      </div>`;
+    m.querySelectorAll('input[type=color][data-fam]').forEach(i => i.onchange = () => { overrides[i.dataset.fam] = hexRgb(i.value); render(); });
+    document.getElementById('col-apply').onclick = async () => {
+      const byFamily = { ...Object.fromEntries(d.families.filter(f => f.applied).map(f => [f.family, f.applied])), ...overrides };
+      try { const r = (await apiFetch(`/models/${encodeURIComponent(modelId)}/colours`, { method: 'POST', body: JSON.stringify({ byFamily }) })).data; toast(`Coloured ${r.recoloured} parts - reduced copies rebuilding`); m.style.display = 'none'; loadModels(); }
+      catch (e) { toast(e.message); }
+    };
+    const rs = document.getElementById('col-reset'); if (rs) rs.onclick = async () => { if (!confirm('Put the original export back? The reduced copies are rebuilt.')) return; try { await apiFetch(`/models/${encodeURIComponent(modelId)}/colours`, { method: 'DELETE' }); toast('Back to the export'); m.style.display = 'none'; loadModels(); } catch (e) { toast(e.message); } };
+  };
+  render();
+}
+
 async function renameModel(modelId, currentName) {
   const input = prompt('New model name:', currentName);
   if (input === null) return;                       // cancelled

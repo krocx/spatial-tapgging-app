@@ -13,6 +13,9 @@ api: |
   GET /models/:id/file.usdz - USDZ binary, preferred on device (app · API key)
   GET /models/:id/file.glb?budget=N - GLB; with a triangle budget, the smallest server-built variant at or above it, else the full model; X-SIB-Model-Variant / X-SIB-Model-Triangles headers (app, portal · API key)
   POST /models/:id/variants - (re)build the reduced copies in the job worker; poll GET /models/jobs/:id (portal · Engineer+)
+  GET /models/:id/colours - is the export grey; part families with current and suggested colours (portal · API key)
+  POST /models/:id/colours - { byFamily? } colour the GLB itself: auto palette per family, overrides win; export kept as <id>.orig.glb; variants rebuilt (portal · Engineer+)
+  DELETE /models/:id/colours - back to the original export (portal · Engineer+)
   POST /models - upload GLB/USDZ/OBJ/FBX/STEP (portal · API key)
   PUT /models/:id/file.usdz - browser converter write-back (portal · API key)
   PATCH /models/:id - rename / default scale / category (portal · API key)
@@ -56,3 +59,13 @@ draw and downloads a file that already fits - the Bee drone is 6.9 MB at
 skipped. The Models page shows the variants and their sizes on each card
 with a rebuild button; variants are deleted with the model. Full detail:
 docs/ar-ojt/MODEL-VARIANTS.md.
+
+**Colour for grey exports** (2026.4.46, `models/colour.ts`). Some publications
+leave every part the same grey. Colours on a model card analyses the export:
+parts are grouped into families by name (BOLT_M6_01 and _02 are one family),
+fasteners stay a light neutral, seals and hoses take the accent, bodies take a
+muted industrial hue chosen from the family name so the same deck colours the
+same way everywhere; any family can be overridden. Apply writes the colour
+into the GLB (own material per part, own mesh where a mesh is shared), keeps
+the export for Reset, bumps the revision so devices refetch, and rebuilds the
+reduced copies. App, XR kit and Designer all show it. Textures are left alone.

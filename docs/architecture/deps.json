@@ -176,6 +176,9 @@
   "models/assembled-pose.ts": [
    "models/glb-nodes.ts"
   ],
+  "models/colour.ts": [
+   "models/glb-nodes.ts"
+  ],
   "models/glb-geometry.ts": [
    "models/glb-nodes.ts"
   ],
@@ -375,6 +378,7 @@
    "import/jobs.ts",
    "memory.ts",
    "middleware/auth.ts",
+   "models/colour.ts",
    "models/glb-nodes.ts",
    "models/variants.ts",
    "stores/json-file-store.ts"

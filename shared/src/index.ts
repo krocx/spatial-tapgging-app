@@ -546,6 +546,9 @@ export interface Model3D {
    *  The file is in metres after import; defaultScale multiplies on top and should stay 1
    *  unless the real tool is a different size. Shown in the preview so the two never stack. */
   importUnits?:     { factor: number; chosen: string; publishedExtentM: number };
+  /** Colour applied to a grey export (models/colour.ts): per family, the colour every part of
+   *  that family wears in the GLB. The original GLB is kept as <id>.orig.glb for Reset. */
+  colours?:         { byFamily: Record<string, [number, number, number]>; parts: number; appliedAt: string; by?: string };
   /** Which way is up, set once in the portal preview; Place Assembly starts
    *  from it (the exporter's axis convention is not always the equipment's). */
   defaultOrientation?: ModelOrientation;

@@ -47,6 +47,8 @@ import type {
 } from '@spatial/shared';
 import { JsonFileStore } from '../stores/json-file-store.js';
 import { partTreeFromGlb, type GlbPartTree } from '../models/glb-nodes.js';
+import { analyseColours, autoMap, applyColours, type RGB } from '../models/colour.js';
+import { currentUamUser } from '../middleware/auth.js';
 import { pickVariant, variantPath, deleteVariants, type LadderResult } from '../models/variants.js';
 import { enqueueVariants, getImportJob } from '../import/jobs.js';
 import { memoryLimitBytes } from '../memory.js';
@@ -316,6 +318,63 @@ router.get('/:id/file.glb', (req: Request, res: Response): void => {
   else if (typeof model.triangles === 'number') res.setHeader('X-SIB-Model-Triangles', String(model.triangles));
   res.setHeader('X-SIB-Model-Revision', String(model.glbRevision ?? 0));
   res.sendFile(filePath);
+});
+
+// ── Colour for grey exports (models/colour.ts) ──────────────────────────────
+// GET  /models/:id/colours              - is it greyscale; families with current and suggested colours
+// POST /models/:id/colours { byFamily? } - recolour the GLB (auto palette, family overrides win), keep
+//                                          the original beside it, bump glbRevision, rebuild variants
+// DELETE /models/:id/colours            - back to the original GLB
+const origPath = (id: string) => path.join(MODELS_DIR, `${id}.orig.glb`);
+const okRgb = (v: unknown): v is RGB => Array.isArray(v) && v.length === 3 && v.every(x => typeof x === 'number' && x >= 0 && x <= 1);
+router.get('/:id/colours', (req: Request, res: Response): void => {
+  const model = model3DStore.findById(req.params.id);
+  if (!model) { res.status(404).json({ error: 'Model not found' }); return; }
+  const filePath = path.join(MODELS_DIR, `${model.id}.glb`);
+  if (!model.hasGLB || !fs.existsSync(filePath)) { res.status(409).json({ error: 'GLB not available for this model' }); return; }
+  try {
+    // Analyse the original when a colouring is applied, so the suggestion does not drift.
+    const src = fs.existsSync(origPath(model.id)) ? origPath(model.id) : filePath;
+    const a = analyseColours(fs.readFileSync(src));
+    const applied = model.colours?.byFamily ?? null;
+    res.json({ data: { modelId: model.id, greyscale: a.greyscale, textured: a.textured, materials: a.materials, greyMaterials: a.greyMaterials,
+      families: a.families.map(f => ({ ...f, applied: applied?.[f.family] ?? null })), parts: a.parts.length, applied: model.colours ?? null, hasOriginal: fs.existsSync(origPath(model.id)) }, timestamp: new Date().toISOString() });
+  } catch (err) { res.status(422).json({ error: `Could not read the model's materials: ${(err as Error).message}` }); }
+});
+router.post('/:id/colours', requireRole('owner', 'manager', 'engineer'), (req: Request, res: Response): void => {
+  const model = model3DStore.findById(req.params.id);
+  if (!model) { res.status(404).json({ error: 'Model not found' }); return; }
+  const filePath = path.join(MODELS_DIR, `${model.id}.glb`);
+  if (!model.hasGLB || !fs.existsSync(filePath)) { res.status(409).json({ error: 'GLB not available for this model' }); return; }
+  const body = (req.body ?? {}) as { byFamily?: Record<string, unknown> };
+  const overrides: Record<string, RGB> = {};
+  for (const [k, v] of Object.entries(body.byFamily ?? {})) { if (!okRgb(v)) { res.status(400).json({ error: `byFamily.${k} must be [r, g, b] in 0..1` }); return; } overrides[k] = v; }
+  try {
+    if (!fs.existsSync(origPath(model.id))) fs.copyFileSync(filePath, origPath(model.id));   // keep the export once
+    const original = fs.readFileSync(origPath(model.id));
+    const a = analyseColours(original);
+    const map = autoMap(a, overrides);
+    const r = applyColours(original, map);
+    const tmp = `${filePath}.tmp`; fs.writeFileSync(tmp, r.glb); fs.renameSync(tmp, filePath);
+    partTreeCache.delete(model.id);
+    const byFamily: Record<string, RGB> = {}; for (const f of a.families) byFamily[f.family] = overrides[f.family] ?? f.suggested;
+    const colours = { byFamily, parts: r.recoloured, appliedAt: new Date().toISOString(), by: currentUamUser(req)?.email ?? 'admin key' };
+    model3DStore.update(model.id, { colours, glbRevision: (model.glbRevision ?? 0) + 1, fileSizeBytes: r.glb.length, updatedAt: new Date().toISOString() } as Partial<Model3D>);
+    const job = enqueueVariants(model.id, MODELS_DIR, async (lr) => { const fresh = model3DStore.findById(model.id); return fresh ? { variants: recordVariants(fresh, lr.ladder).variants } : { variants: [] }; }, memoryLimitBytes());
+    console.log(`[SIB/models] Coloured "${model.name}": ${r.recoloured} part(s), ${r.materialsAdded} material(s), ${r.meshesCloned} mesh clone(s); variants job ${job.id}`);
+    res.json({ data: { recoloured: r.recoloured, materialsAdded: r.materialsAdded, meshesCloned: r.meshesCloned, byFamily, glbRevision: (model.glbRevision ?? 0) + 1, variantsJobId: job.id }, timestamp: new Date().toISOString() });
+  } catch (err) { res.status(422).json({ error: `Could not colour the model: ${(err as Error).message}` }); }
+});
+router.delete('/:id/colours', requireRole('owner', 'manager', 'engineer'), (req: Request, res: Response): void => {
+  const model = model3DStore.findById(req.params.id);
+  if (!model) { res.status(404).json({ error: 'Model not found' }); return; }
+  const filePath = path.join(MODELS_DIR, `${model.id}.glb`);
+  if (!fs.existsSync(origPath(model.id))) { res.status(409).json({ error: 'No colouring to remove - the model is its original export' }); return; }
+  fs.copyFileSync(origPath(model.id), filePath); fs.unlinkSync(origPath(model.id));
+  partTreeCache.delete(model.id);
+  model3DStore.update(model.id, { colours: undefined, glbRevision: (model.glbRevision ?? 0) + 1, fileSizeBytes: fs.statSync(filePath).size, updatedAt: new Date().toISOString() } as Partial<Model3D>);
+  const job = enqueueVariants(model.id, MODELS_DIR, async (lr) => { const fresh = model3DStore.findById(model.id); return fresh ? { variants: recordVariants(fresh, lr.ladder).variants } : { variants: [] }; }, memoryLimitBytes());
+  res.json({ data: { reset: true, glbRevision: (model.glbRevision ?? 0) + 1, variantsJobId: job.id }, timestamp: new Date().toISOString() });
 });
 
 // ── POST /models/:id/variants - (re)build the reduced copies ────────────────
@@ -613,6 +672,7 @@ router.delete('/:id', (req: Request, res: Response): void => {
   tryUnlink(path.join(MODELS_DIR, `${model.id}_original.${model.originalFormat}`));
   deleteVariants(MODELS_DIR, model.id);
   for (const v of model.variants ?? []) tryUnlink(variantPath(MODELS_DIR, model.id, v.budget));
+  tryUnlink(origPath(model.id));
 
   model3DStore.delete(model.id);
   console.log(`[SIB/models] Deleted model ${model.id} ("${model.name}")`);
