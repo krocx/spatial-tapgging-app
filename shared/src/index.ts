@@ -542,6 +542,10 @@ export interface Model3D {
   glbRevision?:     number;
   category?:        string;             // 'general' = visible to all anchors; other values are organizational labels
   defaultScale?:    number;             // Author-saved default scale (pre-fills model picker on iOS)
+  /** Cortona import: the unit conversion already baked into the GLB (factor 0.001 = mm → m).
+   *  The file is in metres after import; defaultScale multiplies on top and should stay 1
+   *  unless the real tool is a different size. Shown in the preview so the two never stack. */
+  importUnits?:     { factor: number; chosen: string; publishedExtentM: number };
   /** Which way is up, set once in the portal preview; Place Assembly starts
    *  from it (the exporter's axis convention is not always the equipment's). */
   defaultOrientation?: ModelOrientation;

@@ -338,6 +338,14 @@ it, it gets a line.
   focus ring uses it too, so where the ring sits is where a tap lands.
 
 ### Fixed
+- **Import scale cannot stack.** A Cortona import records the unit
+  conversion it baked into the GLB on the model (`importUnits`: factor,
+  chosen units, published extent) and sets the model's Scale to 1, since
+  the file is true size after import. The model card and the preview say
+  "Imported at ×0.001 (mm → metres)"; saving a Scale equal to that factor
+  asks for confirmation because it would apply the conversion twice (the
+  ETCH deck symptom: only nuts and bolts visible). Existing models: set the
+  Scale back to 1 in the preview.
 - Guides can be renamed from the row menu (Rename…). "3D model: …" in the
   guide menu now lands on the model card with the mark: the pin is applied
   after the Models grid re-renders on arrival, and the filter resets to All

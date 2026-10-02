@@ -249,9 +249,10 @@ router.post(
     const modelId = uuidv4();   // decided now so the worker can write the variants beside the GLB
     const job = enqueueCortonaImport(ab, opts, modelId, MODELS_DIR, async (r) => {
       const imported = r.imported as ImportedGuide;
-      const log = r.log as { procedure: { commands?: Record<string, number> }; warnings: string[] };
+      const log = r.log as { procedure: { commands?: Record<string, number> }; warnings: string[]; units?: { factor: number; chosen: string; publishedExtentM: number } };
       const model = registerGeneratedGlb({
         id: modelId, ladder: r.ladder,
+        ...(log.units ? { importUnits: { factor: log.units.factor, chosen: log.units.chosen, publishedExtentM: log.units.publishedExtentM } } : {}),
         name: `${imported.name} - assembly`, glb: r.glb, anchorId, uploadedBy: createdBy, category: 'cortona', originalFilename,
       });
       for (const s of imported.steps) s.models = [{ slotId: 'assembly', modelId: model.id, modelOpacity: 1 }];

@@ -75,7 +75,7 @@ export function recordVariants(model: Model3D, ladder: LadderResult): Model3D {
  * Model3D. Same storage doctrine as POST /models with a GLB body: GLB stored,
  * USDZ pending until the portal's browser-side converter uploads it.
  */
-export function registerGeneratedGlb(opts: { name: string; glb: Buffer; anchorId?: string; uploadedBy?: string; category?: string; originalFilename?: string; id?: string; ladder?: LadderResult }): Model3D {
+export function registerGeneratedGlb(opts: { name: string; glb: Buffer; anchorId?: string; uploadedBy?: string; category?: string; originalFilename?: string; id?: string; ladder?: LadderResult; importUnits?: Model3D['importUnits'] }): Model3D {
   const id = opts.id ?? uuidv4(); const now = new Date().toISOString();
   fs.writeFileSync(path.join(MODELS_DIR, `${id}.glb`), opts.glb);
   const model: Model3D = {
@@ -93,6 +93,8 @@ export function registerGeneratedGlb(opts: { name: string; glb: Buffer; anchorId
     // a USDZ of a 2M-triangle assembly is hundreds of MB and never read.
     usdzStatus:       opts.category === 'cortona' ? 'not-needed' : 'pending',
     ...(opts.ladder ? { variants: opts.ladder.variants, triangles: opts.ladder.triangles } : {}),
+    // An imported assembly is in metres already (the unit factor is in the GLB): scale 1, and say so.
+    ...(opts.importUnits ? { importUnits: opts.importUnits, defaultScale: 1 } : {}),
     category:         opts.category?.trim() || undefined,
     uploadedBy:       opts.uploadedBy?.trim() || undefined,
     createdAt:        now,

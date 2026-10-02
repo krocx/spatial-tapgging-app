@@ -1580,6 +1580,7 @@
         <span class="ax-label-s ax-muted">×</span>
         <span class="ax-label-s ax-muted preview-size">H <span id="preview-height-val" class="preview-mono">–</span></span>
       </div>
+      <div class="preview-row ax-label-s ax-muted" id="preview-units" style="display:none"></div>
       <div class="preview-row">
         <label class="ax-label-s ax-muted">Up
           <select id="preview-orient" class="ax-select preview-sel" onchange="setPreviewOrientation(this.value)" title="Which way is up - Place Assembly starts from this">
@@ -4858,7 +4859,9 @@ function renderModels(models) {
     const orientLabel = { asImported: 'as imported', upsideDown: 'upside down', tiltForward: 'tilt forward', tiltBack: 'tilt back', rollLeft: 'roll left', rollRight: 'roll right' };
     const originLabel = { bottomCentre: 'bottom centre', modelOrigin: 'model origin', centre: 'centre' };
     const defaults = [];
-    if (m.defaultScale != null) defaults.push(`scale <span style="color:var(--accent);font-family:var(--ax-mono)">${m.defaultScale.toFixed(3)}×</span>`);
+    if (m.importUnits && m.importUnits.factor !== 1) defaults.push(`imported at <span style="font-family:var(--ax-mono)">×${m.importUnits.factor}</span> (${esc(m.importUnits.chosen)} → m)`);
+    if (m.defaultScale != null && !(m.importUnits && m.defaultScale === 1)) defaults.push(`scale <span style="color:var(--accent);font-family:var(--ax-mono)">${m.defaultScale.toFixed(3)}×</span>`);
+    if (m.importUnits && m.defaultScale != null && m.defaultScale !== 1 && Math.abs(m.defaultScale - m.importUnits.factor) < 1e-9) defaults.push(`<span style="color:var(--ax-orange)">scale repeats the unit conversion - the model will be ${m.importUnits.factor}× too small</span>`);
     if (m.defaultOrientation && m.defaultOrientation !== 'asImported') defaults.push(`up: ${orientLabel[m.defaultOrientation] || m.defaultOrientation}`);
     if (m.defaultOrigin && m.defaultOrigin !== 'bottomCentre') defaults.push(`origin: ${originLabel[m.defaultOrigin] || m.defaultOrigin}`);
     const scaleInfo = defaults.length
@@ -5003,6 +5006,9 @@ async function saveDefaultScale() {
   const scale  = Math.pow(10, parseFloat(logVal));
   const defaultOrientation = document.getElementById('preview-orient').value;
   const defaultOrigin = document.getElementById('preview-origin').value;
+  const rec = (typeof modelsData !== 'undefined' ? modelsData : []).find(x => x.id === modelId);
+  if (rec?.importUnits && rec.importUnits.factor !== 1 && Math.abs(scale - rec.importUnits.factor) < 1e-9
+      && !confirm(`This model was imported at ×${rec.importUnits.factor} already (${rec.importUnits.chosen} → metres). Saving scale ${scale} would apply that conversion twice and make it ${rec.importUnits.factor}× too small on the device.\n\nSave anyway?`)) return;
   try {
     await apiFetch(`/models/${encodeURIComponent(modelId)}`, {
       method: 'PATCH',
@@ -8119,6 +8125,13 @@ window.openModelPreview = async function(modelId, modelName) {
   $height.textContent = '–';
   // Start from the saved default scale, so what the author sees is what Place Assembly starts with.
   const startScale = rec?.defaultScale > 0 ? rec.defaultScale : 1;
+  // An imported assembly already carries its unit conversion: say so, so the scale here is not used to repeat it.
+  const $units = document.getElementById('preview-units');
+  if ($units) {
+    if (rec?.importUnits && rec.importUnits.factor !== 1) { $units.style.display = ''; $units.innerHTML = `Imported at <span class="preview-mono">×${rec.importUnits.factor}</span> (${esc(rec.importUnits.chosen)} → metres): the file is already true size. Scale here multiplies on top - leave it at 1 unless the real tool differs.`; }
+    else if (rec?.importUnits) { $units.style.display = ''; $units.textContent = 'Imported as published (metres). Scale here multiplies on top.'; }
+    else { $units.style.display = 'none'; $units.textContent = ''; }
+  }
   $slider.value = String(Math.log10(startScale));
   const $scaleIn = document.getElementById('preview-scale-input'); if ($scaleIn) $scaleIn.value = startScale >= 10 ? startScale.toFixed(1) : startScale.toFixed(3);
   $loading.style.display = 'flex';
