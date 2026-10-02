@@ -5641,8 +5641,9 @@ async function showXrQr(guideId, name) {
       <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
         <a class="ax-btn" href="/xr?guide=${guideId}${q}" target="_blank" rel="noopener"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-external"/></svg> Open here</a>
         <a class="ax-btn" href="${src}" download="xr-${guideId.slice(0,8)}${current ? '-' + current : ''}.png"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Download QR</a>
-        <button class="ax-btn ax-btn--primary" onclick="navigator.clipboard.writeText(${JSON.stringify(url)}).then(()=>toast('Link copied'))"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-copy"/></svg> Copy link</button>
+        <button class="ax-btn ax-btn--primary" id="xr-copy"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-copy"/></svg> Copy link</button>
       </div>`;
+    m.querySelector('#xr-copy').onclick = () => navigator.clipboard.writeText(url).then(() => toast('Link copied'), () => toast('Could not copy - select the link text instead'));
     m.querySelectorAll('input[name="xr-dev"]').forEach(r => r.onchange = () => { current = r.value; render(); });
   };
   // Glasses without a browser or camera: the companion page in the maker's
@@ -5676,8 +5677,9 @@ async function showXrQr(guideId, name) {
       <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
         <a class="ax-btn" href="${qrUrl || '/g2'}" target="_blank" rel="noopener"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-external"/></svg> Open the companion here</a>
         ${qrSrc ? `<a class="ax-btn" href="${qrSrc}" download="g2-${guideId.slice(0, 8)}.png"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Download QR</a>` : ''}
-        <button class="ax-btn ax-btn--primary" onclick="navigator.clipboard.writeText(${JSON.stringify(code)}).then(()=>toast('Code copied'))"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-copy"/></svg> Copy code</button>
+        <button class="ax-btn ax-btn--primary" id="g2-copy"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-copy"/></svg> Copy code</button>
       </div>`;
+    m.querySelector('#g2-copy').onclick = () => navigator.clipboard.writeText(code).then(() => toast('Code copied'), () => toast('Could not copy'));
     m.querySelectorAll('input[name="xr-dev"]').forEach(r => r.onchange = () => { current = r.value; render(); });
   };
   render();
@@ -6490,7 +6492,7 @@ function openGuideMenu(ev, guideId, anchorId, configId, siblings, ciMode) {
     <button onclick="openShareModal('${guideId}','${anchorId}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-share"/></svg> Share with technicians${(guide?.sharedWith && guide.sharedWith.length) ? ` (${guide.sharedWith.length})` : ''}</button>
     <button onclick="renameGuide('${guideId}','${anchorId}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-edit"/></svg> Rename…</button>
     <hr>
-    <a href="/anchors/${encodeURIComponent(anchorId)}/qrprint" target="_blank" rel="noopener" onclick="closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-qr"/></svg> Chamber QR code</a>
+    <a href="/anchors/${encodeURIComponent(anchorId)}/qrprint" target="_blank" rel="noopener" onclick="closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-qr"/></svg> Guides QR Anchor</a>
     ${modelLinks}
     ${guide?.assembly?.source === 'cortona' ? `<button onclick="showSavedImportLog('${guideId}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-logs"/></svg> Import log</button>
     <button onclick="openAssembledPose('${guideId}','${anchorId}');closeRowMenu()"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-cube"/></svg> Assembled pose: ${guide?.assembly?.assembledPose === 'final' ? 'after the last step' : 'as published'}…</button>` : ''}
