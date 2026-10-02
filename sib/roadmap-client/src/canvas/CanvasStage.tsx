@@ -251,15 +251,15 @@ export function CanvasStage(): JSX.Element {
         <defs>
           <pattern id="dot-grid" width={gridSize} height={gridSize} patternUnits="userSpaceOnUse"
                    x={camera.x % gridSize} y={camera.y % gridSize}>
-            <circle cx={1} cy={1} r={1} fill={night ? '#233047' : '#d3dce6'} />
+            <circle cx={1} cy={1} r={1} fill={night ? 'var(--ax-rule)' : 'var(--ax-rule)'} />
           </pattern>
           <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7"
                   orient="auto-start-reverse">
-            <path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8" />
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--ax-ink-3)" />
           </marker>
           <marker id="arrow-selected" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7"
                   orient="auto-start-reverse">
-            <path d="M 0 0 L 10 5 L 0 10 z" fill="#2f6fed" />
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--ax-blue)" />
           </marker>
           {/* Parent-colored arrowheads - one marker per SIB layer color */}
           {Object.entries(NODE_COLORS).map(([type, color]) => (
@@ -297,7 +297,7 @@ export function CanvasStage(): JSX.Element {
               x1={(pendingPort ? portPoint(pendingSource, pendingPort) : nodeCenter(pendingSource)).x}
               y1={(pendingPort ? portPoint(pendingSource, pendingPort) : nodeCenter(pendingSource)).y}
               x2={mouseWorld.x} y2={mouseWorld.y}
-              stroke="#2f6fed" strokeWidth={1.5} strokeDasharray="6 4" pointerEvents="none"
+              stroke="var(--ax-blue)" strokeWidth={1.5} strokeDasharray="6 4" pointerEvents="none"
             />
           )}
 
@@ -317,7 +317,7 @@ export function CanvasStage(): JSX.Element {
             <rect
               x={Math.min(marquee.x0, marquee.x1)} y={Math.min(marquee.y0, marquee.y1)}
               width={Math.abs(marquee.x1 - marquee.x0)} height={Math.abs(marquee.y1 - marquee.y0)}
-              fill="rgba(47,111,237,0.08)" stroke="#2f6fed" strokeWidth={1 / camera.scale}
+              fill="var(--ax-blue-fill)" stroke="var(--ax-blue)" strokeWidth={1 / camera.scale}
               strokeDasharray={`${4 / camera.scale} ${3 / camera.scale}`} pointerEvents="none"
             />
           )}

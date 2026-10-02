@@ -30,6 +30,7 @@ const GOVERNED = [
   'sib/portal/architecture.html',   // /architecture (C4)
   'sib/portal/scorecard.html',      // /scorecard (TRL)
   'sib/roadmap-client/src/studio.css', // the Designer's 3D Studio (first Designer surface on the system)
+  'sib/roadmap-client/src/styles.css', // the Designer (tokens only since 2026.4.46)
 ];
 const TOKENS = 'sib/portal/brand/tokens.css';
 

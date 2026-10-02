@@ -2,11 +2,12 @@
 import type { MindmapNodeType, MindmapNodeStatus } from '@spatial/shared';
 
 export const NODE_COLORS: Record<MindmapNodeType, string> = {
-  tag: '#2f6fed',        // spatial layer - blue
-  perception: '#8b5cf6', // perception layer - purple
-  semantic: '#16a34a',   // semantic layer - green
-  reasoning: '#f59e0b',  // reasoning layer - orange
-  generic: '#64748b',    // generic - grey
+  // Mirrors sib/portal/brand/tokens.css (literals: the PNG / SVG export draws them).
+  tag: '#0A84FF',        // spatial layer   - --ax-blue
+  perception: '#BF5AF2', // perception      - --ax-purple
+  semantic: '#30D158',   // semantic        - --ax-green
+  reasoning: '#FF9F0A',  // reasoning       - --ax-orange
+  generic: '#8E8E93',    // generic         - --ax-grey
 };
 
 /**
@@ -20,11 +21,11 @@ export const NODE_COLORS: Record<MindmapNodeType, string> = {
  * a dark-on-dark badge; never assume a white card again.
  */
 export const NODE_FILL_COLORS: Record<MindmapNodeType, string> = {
-  tag: '#2557c9',        // darkened spatial blue
-  perception: '#6d3fd6', // darkened perception purple
-  semantic: '#15803d',   // darkened semantic green
-  reasoning: '#b45309',  // darkened reasoning orange (white text passes here; #f59e0b does not)
-  generic: '#475569',    // darkened grey
+  tag: '#0B5FC0',        // darkened --ax-blue
+  perception: '#7A3BB0', // darkened --ax-purple
+  semantic: '#1E8A3C',   // darkened --ax-green
+  reasoning: '#A86300',  // darkened --ax-orange (white text passes here; #FF9F0A does not)
+  generic: '#4A4A50',    // darkened --ax-grey
 };
 
 export const NODE_TYPE_LABELS: Record<MindmapNodeType, string> = {
@@ -38,10 +39,10 @@ export const NODE_TYPE_LABELS: Record<MindmapNodeType, string> = {
 export const NODE_TYPES: MindmapNodeType[] = ['tag', 'perception', 'semantic', 'reasoning', 'generic'];
 
 export const STATUS_COLORS: Record<MindmapNodeStatus, string> = {
-  planned: '#94a3b8',
-  'in-progress': '#2563eb',
-  done: '#16a34a',
-  blocked: '#dc2626',
+  planned: '#8E8E93',       // --ax-grey
+  'in-progress': '#0A84FF', // --ax-blue
+  done: '#30D158',          // --ax-green
+  blocked: '#FF453A',       // --ax-red
 };
 
 export const STATUS_LABELS: Record<MindmapNodeStatus, string> = {

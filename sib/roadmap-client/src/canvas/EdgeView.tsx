@@ -64,9 +64,9 @@ export function selfLoopGeometry(n: MindmapNode, fromPort?: string, toPort?: str
  * there - same colour, same meaning, no translation step.
  */
 export const ROLE_COLORS: Record<string, string> = {
-  next:     '#4ade80',   // green  - success path
-  failure:  '#f87171',   // red    - recovery path
-  requires: '#fbbf24',   // amber  - prerequisite
+  next:     'var(--ax-green)',   // green  - success path
+  failure:  'var(--ax-red)',   // red    - recovery path
+  requires: 'var(--ax-orange)',   // amber  - prerequisite
 };
 
 export const ROLE_LABELS: Record<string, string> = {
@@ -76,8 +76,8 @@ export const ROLE_LABELS: Record<string, string> = {
 };
 
 export function edgeColorFor(source: MindmapNode | undefined, neutral: boolean): string {
-  if (neutral || !source) return '#94a3b8';
-  return NODE_COLORS[source.type] ?? '#94a3b8';
+  if (neutral || !source) return 'var(--ax-ink-3)';
+  return NODE_COLORS[source.type] ?? 'var(--ax-ink-3)';
 }
 
 export function EdgeView({ edge, dimmed = false }: { edge: MindmapEdge; dimmed?: boolean }): JSX.Element | null {
@@ -97,7 +97,7 @@ export function EdgeView({ edge, dimmed = false }: { edge: MindmapEdge; dimmed?:
   // the source node's layer colour.
   const role = edge.role;
   const color = selected
-    ? '#2f6fed'
+    ? 'var(--ax-blue)'
     : role ? ROLE_COLORS[role] : edgeColorFor(a, neutral);
   const markerId = selected
     ? 'arrow-selected'

@@ -69,7 +69,7 @@ export function FilterPanel(): JSX.Element | null {
             className={`chip ${filters.statuses.includes('none') ? 'active' : ''}`}
             onClick={() => toggleStatusFilter('none')}
           >
-            <span className="swatch-dot" style={{ background: '#e2e8f0' }} />
+            <span className="swatch-dot" style={{ background: 'var(--ax-rule)' }} />
             No status
             <span className="chip-count">{statusCount('none')}</span>
           </button>
@@ -93,7 +93,7 @@ export function FilterPanel(): JSX.Element | null {
                 }}
                 title="Click to filter · double-click to rename"
               >
-                <span className="swatch-dot" style={{ background: '#0891b2' }} />
+                <span className="swatch-dot" style={{ background: 'var(--ax-teal)' }} />
                 {g.name}
                 <span className="chip-count">{g.nodeIds.length}</span>
               </button>

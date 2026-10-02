@@ -32,16 +32,16 @@ export class ErrorBoundary extends Component<Props, State> {
         justifyContent: 'center', minHeight: '60vh', gap: 12, padding: 24,
         textAlign: 'center', fontFamily: 'system-ui, sans-serif',
       }}>
-        <h2 style={{ margin: 0, fontSize: '1.1rem', color: '#0f172a' }}>
+        <h2 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--ax-ink)' }}>
           Something went wrong rendering the canvas
         </h2>
-        <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b', maxWidth: 480 }}>
+        <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--ax-ink-3)', maxWidth: 480 }}>
           Your map is saved on the server - nothing is lost. Reload to continue.
           If this keeps happening, screenshot the message below and report it.
         </p>
         <code style={{
-          fontSize: '0.75rem', color: '#991b1b', background: '#fef2f2',
-          border: '1px solid #fecaca', borderRadius: 8, padding: '8px 12px',
+          fontSize: '0.75rem', color: 'var(--ax-red)', background: 'var(--ax-bad-fill)',
+          border: '1px solid var(--ax-bad-fill)', borderRadius: 8, padding: '8px 12px',
           maxWidth: 560, overflowWrap: 'anywhere',
         }}>
           {this.state.error.message}
@@ -50,7 +50,7 @@ export class ErrorBoundary extends Component<Props, State> {
           onClick={() => location.reload()}
           style={{
             marginTop: 4, padding: '8px 20px', fontSize: '0.85rem',
-            background: '#2f6fed', color: '#fff', border: 'none',
+            background: 'var(--ax-blue)', color: 'var(--ax-ink)', border: 'none',
             borderRadius: 8, cursor: 'pointer',
           }}
         >

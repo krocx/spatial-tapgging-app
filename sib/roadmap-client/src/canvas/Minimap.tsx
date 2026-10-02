@@ -67,7 +67,7 @@ export function Minimap(): JSX.Element | null {
     >
       <rect width={MM_W} height={MM_H} rx={8}
             fill={night ? 'rgba(15,23,42,0.92)' : 'rgba(255,255,255,0.92)'}
-            stroke={night ? '#334155' : '#e2e8f0'} />
+            stroke={night ? 'var(--ax-ink-2)' : 'var(--ax-rule)'} />
       {(map.lanes ?? []).map((l, i) => {
         const a = toMini(l.x, minY);
         return (
@@ -84,7 +84,7 @@ export function Minimap(): JSX.Element | null {
         );
       })}
       <rect x={vp0.x} y={vp0.y} width={vpW} height={vpH}
-            fill="none" stroke="#2f6fed" strokeWidth={1.5} rx={2} />
+            fill="none" stroke="var(--ax-blue)" strokeWidth={1.5} rx={2} />
     </svg>
   );
 }

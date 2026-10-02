@@ -7,6 +7,15 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **The Procedure Designer on the brand system.** The whole Designer now
+  reads its colours from `/portal/brand/tokens.css`: charcoal page, 8 %-white
+  panels and cards, white text in the app's opacity tiers, Open Sans, the
+  layer palette in the app's hues (blue, purple, green, orange, grey) with
+  darkened card fills so white labels keep contrast, status and review in
+  the app's meanings, no shadows, no gradients. The day / night switch is
+  gone: one look, like the app. The PNG / SVG export draws on charcoal.
+  `styles.css` joins `studio.css` under brand-check. Rebuild the Designer
+  (`npm run build:roadmap`).
 - **3D Studio on the brand system.** The Designer's Studio is the first
   Designer surface on `sib/portal/brand/`: charcoal page and stage, the
   wordmark and step navigation in the header, the step strip as capsules

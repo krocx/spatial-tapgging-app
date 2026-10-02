@@ -191,7 +191,7 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
         shape={node.shape}
         h={h}
         fill={fill}
-        stroke={previewCurrent ? '#a5b4fc' : selected ? '#93c5fd' : 'rgba(255,255,255,0.22)'}
+        stroke={previewCurrent ? 'var(--ax-indigo)' : selected ? 'var(--ax-cyan)' : 'rgba(255,255,255,0.22)'}
         strokeWidth={previewCurrent ? 3.5 : selected ? 3 : 1}
         filter={previewCurrent
           ? 'drop-shadow(0 0 10px rgba(99,102,241,.7))'
@@ -214,15 +214,15 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
           onPointerDown={e => e.stopPropagation()}
           onClick={e => { e.stopPropagation(); toggleCollapse(node.id); }}
         >
-          <circle r={8} fill="#ffffff" stroke="#cbd5e1" strokeWidth={1.2} />
+          <circle r={8} fill="var(--ax-ink)" stroke="var(--ax-ink-4)" strokeWidth={1.2} />
           <path
             d={node.collapsed ? 'M -3 -1 L 0 2.5 L 3 -1' : 'M -3 1.5 L 0 -2 L 3 1.5'}
-            fill="none" stroke="#475569" strokeWidth={1.6} strokeLinecap="round"
+            fill="none" stroke="var(--ax-ink-2)" strokeWidth={1.6} strokeLinecap="round"
           />
           {node.collapsed && hiddenCount > 0 && (
             <g transform="translate(13 0)">
-              <rect x={-3} y={-7} width={hiddenCount > 9 ? 26 : 20} height={14} rx={7} fill="#2f6fed" />
-              <text x={hiddenCount > 9 ? 10 : 7} y={3.5} textAnchor="middle" style={{ fontSize: 9, fontWeight: 700 }} fill="#fff">
+              <rect x={-3} y={-7} width={hiddenCount > 9 ? 26 : 20} height={14} rx={7} fill="var(--ax-blue)" />
+              <text x={hiddenCount > 9 ? 10 : 7} y={3.5} textAnchor="middle" style={{ fontSize: 9, fontWeight: 700 }} fill="var(--ax-ink)">
                 +{hiddenCount}
               </text>
             </g>
@@ -240,7 +240,7 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
           onClick={e => { e.stopPropagation(); window.open(node.link, '_blank', 'noopener'); }}
         >
           <circle r={7} fill="rgba(255,255,255,0.2)" stroke="rgba(255,255,255,0.5)" strokeWidth={0.8} />
-          <path d="M -2 2 L 2 -2 M 0 -2 L 2 -2 L 2 0" fill="none" stroke="#ffffff" strokeWidth={1.4} strokeLinecap="round" />
+          <path d="M -2 2 L 2 -2 M 0 -2 L 2 -2 L 2 0" fill="none" stroke="var(--ax-ink)" strokeWidth={1.4} strokeLinecap="round" />
           <title>{node.link}</title>
         </g>
       )}
@@ -259,8 +259,8 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
           never typed. Absent means the step is not reachable from the start. */}
       {stepNumber !== undefined && (
         <g transform="translate(-9 -9)" pointerEvents="none">
-          <circle cx={0} cy={0} r={11} fill="#4f46e5" stroke="#ffffff" strokeWidth={2} />
-          <text x={0} y={4} textAnchor="middle" style={{ fontSize: 11, fontWeight: 700 }} fill="#ffffff">
+          <circle cx={0} cy={0} r={11} fill="var(--ax-indigo)" stroke="var(--ax-ink)" strokeWidth={2} />
+          <text x={0} y={4} textAnchor="middle" style={{ fontSize: 11, fontWeight: 700 }} fill="var(--ax-ink)">
             {stepNumber}
           </text>
         </g>
@@ -279,16 +279,16 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
         return (
           <g transform={`translate(${cx} ${h - 2})`} pointerEvents="none">
             <rect x={-pillW / 2} y={-4} width={pillW} height={21} rx={10.5}
-                  fill="#ffffff" stroke="#cbd5e1" strokeWidth={1} />
+                  fill="var(--ax-ink)" stroke="var(--ax-ink-4)" strokeWidth={1} />
             {stepGlyphs.map(g => {
               const gx = x; x += slot + (g.count ? 12 : 0);
               return (
                 <g key={g.icon} transform={`translate(${gx} -1)`}>
                   <g transform="scale(0.62)">
-                    <path d={ICON_PATHS[g.icon]} fill="none" stroke="#334155" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
+                    <path d={ICON_PATHS[g.icon]} fill="none" stroke="var(--ax-ink-2)" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
                   </g>
                   {g.count && (
-                    <text x={16} y={11} style={{ fontSize: 9.5, fontWeight: 700 }} fill="#334155">×{g.count}</text>
+                    <text x={16} y={11} style={{ fontSize: 9.5, fontWeight: 700 }} fill="var(--ax-ink-2)">×{g.count}</text>
                   )}
                   <title>{g.title}</title>
                 </g>
@@ -305,15 +305,15 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
       {issues.length > 0 && (() => {
         const n = issues.length;
         const w = n > 9 ? 38 : 32;
-        const color = issueErrors > 0 ? '#dc2626' : '#f59e0b';
+        const color = issueErrors > 0 ? 'var(--ax-red)' : 'var(--ax-orange)';
         return (
           <g transform={`translate(${NODE_W - 4} -6)`} pointerEvents="all">
-            <rect x={-w + 4} y={-9} width={w} height={18} rx={9} fill={color} stroke="#ffffff" strokeWidth={2}
+            <rect x={-w + 4} y={-9} width={w} height={18} rx={9} fill={color} stroke="var(--ax-ink)" strokeWidth={2}
                   style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,.35))' }} />
             <g transform={`translate(${-w + 8} -6) scale(0.5)`}>
-              <path d={ICON_PATHS[issueErrors > 0 ? 'error' : 'warning']} fill="none" stroke="#ffffff" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" />
+              <path d={ICON_PATHS[issueErrors > 0 ? 'error' : 'warning']} fill="none" stroke="var(--ax-ink)" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round" />
             </g>
-            <text x={-w + 27} y={3.5} textAnchor="middle" style={{ fontSize: 10, fontWeight: 700 }} fill="#ffffff">{n > 9 ? '9+' : n}</text>
+            <text x={-w + 27} y={3.5} textAnchor="middle" style={{ fontSize: 10, fontWeight: 700 }} fill="var(--ax-ink)">{n > 9 ? '9+' : n}</text>
             <title>{issues.map(i => `${i.level === 'error' ? 'Error' : 'Warning'}: ${i.message}`).join('\n')}</title>
           </g>
         );
@@ -323,7 +323,7 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
           card fill so it separates from the card on one side and gold stays
           gold against both canvas themes on the other. */}
       {node.milestone && (
-        <path d={`M 16 -8 l 7 8 l -7 8 l -7 -8 z`} fill="#eab308" stroke={fill} strokeWidth={1.5}>
+        <path d={`M 16 -8 l 7 8 l -7 8 l -7 -8 z`} fill="var(--ax-yellow)" stroke={fill} strokeWidth={1.5}>
           <title>Milestone</title>
         </path>
       )}
@@ -334,7 +334,7 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
         <g transform="translate(14 11)" pointerEvents="none">
           <circle r={8} fill="rgba(255,255,255,0.95)" />
           <text y={4} textAnchor="middle" style={{ fontSize: 11, fontWeight: 700 }}
-                fill={node.review === 'approved' ? '#16a34a' : node.review === 'rejected' ? '#dc2626' : '#d97706'}>
+                fill={node.review === 'approved' ? 'var(--ax-green)' : node.review === 'rejected' ? 'var(--ax-red)' : 'var(--ax-orange)'}>
             {node.review === 'approved' ? '✓' : node.review === 'rejected' ? '✗' : '?'}
           </text>
           <title>{node.review}</title>
@@ -344,8 +344,8 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
       {/* Comment count - bottom-left bubble */}
       {(node.comments?.length ?? 0) > 0 && (
         <g transform={`translate(12 ${h - 9})`} pointerEvents="none">
-          <rect x={-7} y={-8} width={20} height={13} rx={6.5} fill="#eef2f7" stroke="#cbd5e1" strokeWidth={0.8} />
-          <text x={3} y={2.5} textAnchor="middle" style={{ fontSize: 9, fontWeight: 600 }} fill="#475569">
+          <rect x={-7} y={-8} width={20} height={13} rx={6.5} fill="var(--ax-paper)" stroke="var(--ax-ink-4)" strokeWidth={0.8} />
+          <text x={3} y={2.5} textAnchor="middle" style={{ fontSize: 9, fontWeight: 600 }} fill="var(--ax-ink-2)">
             {node.comments!.length > 99 ? '99' : node.comments!.length}
           </text>
         </g>
@@ -415,7 +415,7 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
       <circle
         className="connect-handle"
         cx={NODE_W} cy={h / 2} r={7}
-        fill="#ffffff" stroke={color} strokeWidth={2}
+        fill="var(--ax-ink)" stroke={color} strokeWidth={2}
         style={{ cursor: 'crosshair', opacity: selected || pendingEdgeFrom ? 1 : undefined }}
         onPointerDown={startConnection}
       />
@@ -437,7 +437,7 @@ export function NodeView({ node, onConnectDrop, dimmed = false, collapsible = fa
             onPointerUp={e => dropOnPort(e, port)}
           >
             <circle r={9} fill="transparent" />
-            <circle className="node-port-dot" r={4.5} fill="#ffffff" stroke={color} strokeWidth={2} />
+            <circle className="node-port-dot" r={4.5} fill="var(--ax-ink)" stroke={color} strokeWidth={2} />
             <title>{`Connect from ${port}`}</title>
           </g>
         );

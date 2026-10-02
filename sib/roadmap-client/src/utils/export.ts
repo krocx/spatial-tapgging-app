@@ -31,7 +31,7 @@ export function buildSvg(map: Mindmap): string {
     if (a.id === b.id) {
       const loop = selfLoopGeometry(a, e.fromPort, e.toPort);
       const loopLabel = e.label
-        ? `<text x="${loop.mid.x}" y="${loop.mid.y - 6}" text-anchor="middle" font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="11" fill="#475569" stroke="#ffffff" stroke-width="3" paint-order="stroke">${esc(e.label)}</text>`
+        ? `<text x="${loop.mid.x}" y="${loop.mid.y - 6}" text-anchor="middle" font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="11" fill="#B3B3B3" stroke="#1F1F1F" stroke-width="3" paint-order="stroke">${esc(e.label)}</text>`
         : '';
       return `<path d="${loop.d}" fill="none" stroke="${color}" stroke-opacity="${neutral ? 1 : 0.75}" stroke-width="1.5"${marker}/>${loopLabel}`;
     }
@@ -39,7 +39,7 @@ export function buildSvg(map: Mindmap): string {
     const p2 = e.toPort ? portPoint(b, e.toPort) : borderPoint(b, e.fromPort ? portPoint(a, e.fromPort) : nodeCenter(a));
     const mid = edgeMidpoint(p1, p2, curved, e.fromPort, e.toPort);
     const label = e.label
-      ? `<text x="${mid.x}" y="${mid.y - 6}" text-anchor="middle" font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="11" fill="#475569" stroke="#ffffff" stroke-width="3" paint-order="stroke">${esc(e.label)}</text>`
+      ? `<text x="${mid.x}" y="${mid.y - 6}" text-anchor="middle" font-family="-apple-system, Helvetica, Arial, sans-serif" font-size="11" fill="#B3B3B3" stroke="#1F1F1F" stroke-width="3" paint-order="stroke">${esc(e.label)}</text>`
       : '';
     return `<path d="${edgePath(p1, p2, curved, e.fromPort, e.toPort)}" fill="none" stroke="${color}" stroke-opacity="${neutral ? 1 : 0.75}" stroke-width="1.5"${marker}/>${label}`;
   }).join('\n');
@@ -63,11 +63,11 @@ export function buildSvg(map: Mindmap): string {
 
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${minX} ${minY} ${w} ${h}" width="${w}" height="${h}">`,
-    `<defs><marker id="rm-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#94a3b8"/></marker>${
+    `<defs><marker id="rm-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#8E8E93"/></marker>${
       Object.entries(NODE_COLORS).map(([type, color]) =>
         `<marker id="rm-arrow-${type}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="${color}" fill-opacity="0.85"/></marker>`).join('')
     }</defs>`,
-    `<rect x="${minX}" y="${minY}" width="${w}" height="${h}" fill="#f8fafc"/>`,
+    `<rect x="${minX}" y="${minY}" width="${w}" height="${h}" fill="#1F1F1F"/>`,
     `<title>${esc(map.name)}</title>`,
     edgeMarkup,
     nodeMarkup,

@@ -21,8 +21,8 @@ export function LaneLayer(): JSX.Element | null {
   // unselected labels lighten. Selected-label accents stay as-is (readable on both).
   const bandA    = night ? 'rgba(148,163,184,0.07)' : null;
   const bandB    = night ? 'rgba(148,163,184,0.035)' : null;
-  const sepColor = night ? '#2b3a55' : '#dbe3ec';
-  const idle     = night ? '#7d8da3' : '#94a3b8';
+  const sepColor = night ? 'var(--ax-rule)' : 'var(--ax-rule)';
+  const idle     = night ? 'var(--ax-ink-3)' : 'var(--ax-ink-3)';
 
   // Headers pin to the visible viewport edge: columns near the top, rows near the left.
   const headerY = (12 - camera.y) / camera.scale + 28 / camera.scale;
@@ -51,7 +51,7 @@ export function LaneLayer(): JSX.Element | null {
             textAnchor="middle"
             fontSize={fontSize}
             fontWeight={600}
-            fill={selectedLaneId === lane.id ? '#2f6fed' : idle}
+            fill={selectedLaneId === lane.id ? 'var(--ax-blue)' : idle}
             style={{ cursor: 'pointer', userSelect: 'none' }}
             onPointerDown={e => { e.stopPropagation(); selectLane(lane.id); }}
           >
@@ -78,7 +78,7 @@ export function LaneLayer(): JSX.Element | null {
             x={headerX} y={lane.x + lane.width / 2}
             fontSize={fontSize}
             fontWeight={600}
-            fill={selectedLaneId === lane.id ? '#16a34a' : idle}
+            fill={selectedLaneId === lane.id ? 'var(--ax-green)' : idle}
             style={{ cursor: 'pointer', userSelect: 'none' }}
             onPointerDown={e => { e.stopPropagation(); selectLane(lane.id); }}
           >
