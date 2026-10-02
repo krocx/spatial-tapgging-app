@@ -25,6 +25,8 @@
 .ax-studio .st-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 380px; }
 .ax-studio .st-stage { min-width: 0; min-height: 0; padding: var(--ax-s3); display: flex; }
 .ax-studio .st-side { display: flex; flex-direction: column; gap: var(--ax-s3); padding: var(--ax-s3); border-left: var(--ax-hair); min-height: 0; overflow: auto; scrollbar-width: thin; }
+.ax-studio .st-side > * { flex-shrink: 0; }
+.ax-studio .st-side > .pt-card-grow { flex-shrink: 1; }
 .ax-studio .st-tabs { width: 100%; }
 .ax-studio .st-tabs > * { flex: 1; text-align: center; }
 
@@ -58,8 +60,8 @@
 .ax-studio .asm-focus-more { font: var(--ax-eyebrow); color: var(--ax-orange); }
 
 /* ── Panel cards ─────────────────────────────────────────────────────────── */
-.ax-studio .pt-card { display: flex; flex-direction: column; gap: var(--ax-s2); padding: var(--ax-s3) var(--ax-s4); flex: 0 0 auto; }
-.ax-studio .pt-card-grow { flex: 1 1 auto; min-height: 240px; }
+.ax-studio .pt-card { display: flex; flex-direction: column; gap: var(--ax-s2); padding: var(--ax-s3) var(--ax-s4); flex: 0 0 auto; min-height: 0; overflow: hidden; }
+.ax-studio .pt-card-grow { flex: 1 1 260px; min-height: 260px; }
 .ax-studio .pt-card-title { font: var(--ax-body-m); color: var(--ax-ink); display: flex; align-items: baseline; gap: var(--ax-s2); }
 .ax-studio .pt-card-sub { font: var(--ax-label-s); color: var(--ax-ink-3); }
 .ax-studio .pt-card-acts { display: flex; gap: var(--ax-s2); justify-content: flex-end; flex-wrap: wrap; }
@@ -124,7 +126,7 @@
 /* Search, tree */
 .ax-studio .pt-search { font: var(--ax-body); color: var(--ax-ink); background: var(--ax-paper); border: var(--ax-hair); border-radius: var(--ax-r-field); padding: 8px 12px; }
 .ax-studio .pt-search::placeholder { color: var(--ax-ink-4); }
-.ax-studio .pt-tree { flex: 1; min-height: 160px; overflow: auto; border: var(--ax-hair); border-radius: var(--ax-r-field); background: var(--ax-paper-2); font: var(--ax-label-s); scrollbar-width: thin; }
+.ax-studio .pt-tree { flex: 1 1 auto; min-height: 0; overflow: auto; border: var(--ax-hair); border-radius: var(--ax-r-field); background: var(--ax-paper-2); font: var(--ax-label-s); scrollbar-width: thin; }
 .ax-studio .pt-row { display: flex; align-items: center; gap: var(--ax-s1); padding: 5px 8px 5px 0; min-width: 0; color: var(--ax-ink); }
 .ax-studio .pt-row:hover { background: var(--ax-paper-3); }
 .ax-studio .pt-row.is-this { background: var(--ax-ok-fill); }

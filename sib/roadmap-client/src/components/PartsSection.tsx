@@ -267,7 +267,7 @@ export function usePartsPicker(nodeId: string | null) {
     const add = raw.startsWith('+'); const name = add ? raw.slice(1) : raw;
     setFocusList(prev => add ? (prev.includes(name) ? prev.filter(p => p !== name) : [...prev, name]) : (prev.length === 1 && prev[0] === name ? [] : [name]));
     setOpen(prev => { const n = new Set(prev); let a = parents.get(name); while (a) { n.add(a); a = parents.get(a); } return n; });
-    setTimeout(() => document.querySelector(`[data-part="${CSS.escape(name)}"]`)?.scrollIntoView({ block: 'nearest' }), 50);
+    setTimeout(() => { const el = document.querySelector<HTMLElement>(`[data-part="${CSS.escape(name)}"]`); const box = el?.closest<HTMLElement>('.pt-tree'); if (el && box) box.scrollTop = Math.max(0, el.offsetTop - box.clientHeight / 2); }, 50);
   };
   const focusFamily = (fam: string) => {
     if (!colours?.partFamilies) return;
