@@ -369,3 +369,15 @@ drop out, the part stays even if the step hides it) and Clear. Double-click
 in the 3D view still adds or removes the part. Hide / Show on an imported
 step writes a `show` entry in the step's deltas, which the app, the XR kit
 and this preview all read; on an authored step it is the parts list.
+
+## Adjusting how a part appears in AR (3D Studio)
+
+The focus card is the control: **Colour…** colours the selection either
+*from this step on* (a `color` delta on the step; the app and the XR kit apply
+it, last one wins through the procedure) or in the *whole model* (written into
+the GLB for every step and every player); **Hide on this step** and **Hide in
+whole guide** (the assembly's initial state) decide where it appears; Isolate
+and Spotlight are view-only. Everything is undoable with ⌘Z / ⇧⌘Z (Undo /
+Redo in the header), settings included. The **?** opens the coach, which
+reads the state (nothing chosen, one part, several, a check step) and says
+the next useful thing with the actions named.

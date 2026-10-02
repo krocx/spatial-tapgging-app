@@ -347,23 +347,26 @@ router.post('/:id/colours', requireRole('owner', 'manager', 'engineer'), (req: R
   if (!model) { res.status(404).json({ error: 'Model not found' }); return; }
   const filePath = path.join(MODELS_DIR, `${model.id}.glb`);
   if (!model.hasGLB || !fs.existsSync(filePath)) { res.status(409).json({ error: 'GLB not available for this model' }); return; }
-  const body = (req.body ?? {}) as { byFamily?: Record<string, unknown> };
+  const body = (req.body ?? {}) as { byFamily?: Record<string, unknown>; byPart?: Record<string, unknown> };
   const overrides: Record<string, RGB> = {};
   for (const [k, v] of Object.entries(body.byFamily ?? {})) { if (!okRgb(v)) { res.status(400).json({ error: `byFamily.${k} must be [r, g, b] in 0..1` }); return; } overrides[k] = v; }
+  // Per-part colours win over the family: merged with what is already applied (null clears one).
+  const byPart: Record<string, RGB> = { ...(model.colours?.byPart ?? {}) };
+  for (const [k, v] of Object.entries(body.byPart ?? {})) { if (v === null) { delete byPart[k]; continue; } if (!okRgb(v)) { res.status(400).json({ error: `byPart.${k} must be [r, g, b] in 0..1 or null` }); return; } byPart[k] = v; }
   try {
     if (!fs.existsSync(origPath(model.id))) fs.copyFileSync(filePath, origPath(model.id));   // keep the export once
     const original = fs.readFileSync(origPath(model.id));
     const a = analyseColours(original);
-    const map = autoMap(a, overrides);
+    const map = autoMap(a, overrides); Object.assign(map, byPart);
     const r = applyColours(original, map);
     const tmp = `${filePath}.tmp`; fs.writeFileSync(tmp, r.glb); fs.renameSync(tmp, filePath);
     partTreeCache.delete(model.id);
     const byFamily: Record<string, RGB> = {}; for (const f of a.families) byFamily[f.family] = overrides[f.family] ?? f.suggested;
-    const colours = { byFamily, parts: r.recoloured, appliedAt: new Date().toISOString(), by: currentUamUser(req)?.email ?? 'admin key' };
+    const colours = { byFamily, ...(Object.keys(byPart).length ? { byPart } : {}), parts: r.recoloured, appliedAt: new Date().toISOString(), by: currentUamUser(req)?.email ?? 'admin key' };
     model3DStore.update(model.id, { colours, glbRevision: (model.glbRevision ?? 0) + 1, fileSizeBytes: r.glb.length, updatedAt: new Date().toISOString() } as Partial<Model3D>);
     const job = enqueueVariants(model.id, MODELS_DIR, async (lr) => { const fresh = model3DStore.findById(model.id); return fresh ? { variants: recordVariants(fresh, lr.ladder).variants } : { variants: [] }; }, memoryLimitBytes());
     console.log(`[SIB/models] Coloured "${model.name}": ${r.recoloured} part(s), ${r.materialsAdded} material(s), ${r.meshesCloned} mesh clone(s); variants job ${job.id}`);
-    res.json({ data: { recoloured: r.recoloured, materialsAdded: r.materialsAdded, meshesCloned: r.meshesCloned, byFamily, glbRevision: (model.glbRevision ?? 0) + 1, variantsJobId: job.id }, timestamp: new Date().toISOString() });
+    res.json({ data: { recoloured: r.recoloured, materialsAdded: r.materialsAdded, meshesCloned: r.meshesCloned, byFamily, byPart, glbRevision: (model.glbRevision ?? 0) + 1, variantsJobId: job.id }, timestamp: new Date().toISOString() });
   } catch (err) { res.status(422).json({ error: `Could not colour the model: ${(err as Error).message}` }); }
 });
 router.delete('/:id/colours', requireRole('owner', 'manager', 'engineer'), (req: Request, res: Response): void => {

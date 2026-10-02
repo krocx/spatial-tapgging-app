@@ -95,6 +95,24 @@
 .ax-studio .pt-mini:hover { color: var(--ax-cyan); }
 .ax-studio .pt-name-btn.is-hover { color: var(--ax-cyan); }
 
+/* Colour popover on the focus card, and the coach */
+.ax-studio .pt-colour-pop { display: flex; flex-direction: column; gap: var(--ax-s2); padding-top: var(--ax-s2); border-top: var(--ax-hair); }
+.ax-studio .pt-colour-scope { display: inline-flex; background: var(--ax-paper); border-radius: 10px; padding: 2px; align-self: flex-start; }
+.ax-studio .pt-colour-scope button { font: var(--ax-label-s); padding: 5px 12px; background: none; color: var(--ax-ink-2); border: 0; border-radius: 8px; cursor: pointer; }
+.ax-studio .pt-colour-scope button.on { background: var(--ax-paper-3); color: var(--ax-ink); }
+.ax-studio .pt-swatches { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ax-studio .pt-swatch-btn { width: 26px; height: 26px; border-radius: 8px; border: 1px solid var(--ax-rule); cursor: pointer; padding: 0; }
+.ax-studio .pt-swatch-btn:hover { box-shadow: var(--ax-ring); }
+.ax-studio .pt-swatch-custom { background: var(--ax-paper-3); display: inline-flex; align-items: center; justify-content: center; overflow: hidden; }
+.ax-studio .pt-swatch-custom input { width: 40px; height: 40px; border: 0; padding: 0; background: none; cursor: pointer; }
+.ax-studio .pt-note.ok { background: var(--ax-ok-fill); color: var(--ax-green); }
+.ax-studio .pt-coach { border-color: var(--ax-cyan); gap: var(--ax-s2); }
+.ax-studio .pt-coach-head { display: flex; align-items: center; gap: var(--ax-s2); font: var(--ax-body-m); color: var(--ax-ink); }
+.ax-studio .pt-coach-head b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ax-studio .pt-coach-body { font: var(--ax-label-s); color: var(--ax-ink-2); line-height: 1.5; }
+.ax-studio .pt-coach-body b { color: var(--ax-ink); }
+.ax-studio .pt-coach-keys { font: var(--ax-label-s); font-size: 11px; color: var(--ax-ink-3); font-family: var(--ax-mono); }
+
 /* Buttons inside the panel take the system's quiet / tinted forms */
 .ax-studio .btn { font: var(--ax-label-s); color: var(--ax-ink-2); background: var(--ax-paper); border: var(--ax-hair); border-radius: 10px; padding: 6px 12px; cursor: pointer; }
 .ax-studio .btn:hover { background: var(--ax-paper-3); color: var(--ax-ink); }

@@ -183,7 +183,7 @@ export const mindmapApi = {
   modelColours: (id: string) => request<ModelColours>(`/models/${encodeURIComponent(id)}/colours`),
   model: (id: string) => request<{ id: string; name: string; partLabels?: Record<string, string> }>(`/models/${encodeURIComponent(id)}`),
   setPartLabels: (id: string, partLabels: Record<string, string>) => request<{ id: string; partLabels?: Record<string, string> }>(`/models/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ partLabels }) }),
-  applyModelColours: (id: string, byFamily: Record<string, [number, number, number]>) => request<{ recoloured: number; variantsJobId: string }>(`/models/${encodeURIComponent(id)}/colours`, { method: 'POST', body: JSON.stringify({ byFamily }) }),
+  applyModelColours: (id: string, byFamily: Record<string, [number, number, number]>, byPart?: Record<string, [number, number, number] | null>) => request<{ recoloured: number; variantsJobId: string }>(`/models/${encodeURIComponent(id)}/colours`, { method: 'POST', body: JSON.stringify({ byFamily, ...(byPart ? { byPart } : {}) }) }),
   resetModelColours: (id: string) => request<{ reset: boolean }>(`/models/${encodeURIComponent(id)}/colours`, { method: 'DELETE' }),
 
   glossary: () => request<{ markdown: string; updatedAt: number }>('/mindmap/glossary'),

@@ -116,7 +116,9 @@ function stepNodesOf(meta: StepMeta, start: 'empty' | 'complete'): GuideStepNode
   if (!meta.parts) return meta.nodes;
   const show: GuideStepNode['show'] = start === 'complete' ? 'hidden' : 'solid';
   const imported = new Map((meta.nodes ?? []).map(n => [n.node, n]));
-  return meta.parts.map(name => ({ ...(imported.get(name) ?? {}), node: name, show }));
+  const listed = new Set(meta.parts);
+  // Parts the step installs, plus any Studio deltas on other parts (a colour, a hide) that the app must still apply.
+  return [...meta.parts.map(name => ({ ...(imported.get(name) ?? {}), node: name, show })), ...(meta.nodes ?? []).filter(n => !listed.has(n.node))];
 }
 
 const MAX_STEP_MODELS = 3;

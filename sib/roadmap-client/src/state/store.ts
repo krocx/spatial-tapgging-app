@@ -38,6 +38,8 @@ interface HistoryEntry {
   edges: MindmapEdge[];
   lanes?: MindmapLane[];
   groups?: MindmapGroup[];
+  /** Settings travel with history since 2026.4.46 (the Studio's whole-guide hide lives in settings.assembly). */
+  settings?: MindmapSettings;
 }
 
 /** 'none' matches nodes without a status. */
@@ -245,7 +247,7 @@ interface Actions {
   presentationGoto(step: number): void;
 
   // Style settings + publish workflow
-  updateSettings(patch: Partial<MindmapSettings>): void;
+  updateSettings(patch: Partial<MindmapSettings>, opts?: { history?: boolean }): void;
   publishMap(): Promise<void>;
   unpublishMap(): Promise<void>;
   unlockDraft(draftKey: string): Promise<void>;
@@ -299,6 +301,7 @@ export const useStore = create<State & Actions>((set, get) => {
       edges: structuredClone(map.edges),
       lanes: map.lanes ? structuredClone(map.lanes) : undefined,
       groups: map.groups ? structuredClone(map.groups) : undefined,
+      settings: structuredClone(map.settings),
     };
     set({ undoStack: [...undoStack.slice(-HISTORY_LIMIT + 1), entry], redoStack: [] });
   }
@@ -944,9 +947,10 @@ export const useStore = create<State & Actions>((set, get) => {
 
     // ── Style settings (map-level, synced, no undo entry - it's cosmetic) ─
 
-    updateSettings(patch) {
+    updateSettings(patch, opts) {
       const { map } = get();
       if (!map) return;
+      if (opts?.history) pushHistory();      // content-bearing settings (the assembly's initial state) are undoable
       const settings: MindmapSettings = { ...map.settings, ...patch };
       // Defaults stay implicit - drop keys set back to their default value.
       // edgeStyle: default flipped to 'curved' in 2026.4.45, so 'straight'
@@ -1343,11 +1347,12 @@ export const useStore = create<State & Actions>((set, get) => {
         edges: structuredClone(map.edges),
         lanes: map.lanes ? structuredClone(map.lanes) : undefined,
         groups: map.groups ? structuredClone(map.groups) : undefined,
+        settings: structuredClone(map.settings),
       };
       set({
         undoStack: undoStack.slice(0, -1),
         redoStack: [...get().redoStack, current],
-        map: { ...map, nodes: entry.nodes, edges: entry.edges, lanes: entry.lanes, groups: entry.groups, updatedAt: Date.now() },
+        map: { ...map, nodes: entry.nodes, edges: entry.edges, lanes: entry.lanes, groups: entry.groups, settings: entry.settings ?? map.settings, updatedAt: Date.now() },
         dirty: true,
       });
       // Undo/redo re-syncs peers via a full REST save (server broadcasts map:sync).
@@ -1363,11 +1368,12 @@ export const useStore = create<State & Actions>((set, get) => {
         edges: structuredClone(map.edges),
         lanes: map.lanes ? structuredClone(map.lanes) : undefined,
         groups: map.groups ? structuredClone(map.groups) : undefined,
+        settings: structuredClone(map.settings),
       };
       set({
         redoStack: redoStack.slice(0, -1),
         undoStack: [...get().undoStack, current],
-        map: { ...map, nodes: entry.nodes, edges: entry.edges, lanes: entry.lanes, groups: entry.groups, updatedAt: Date.now() },
+        map: { ...map, nodes: entry.nodes, edges: entry.edges, lanes: entry.lanes, groups: entry.groups, settings: entry.settings ?? map.settings, updatedAt: Date.now() },
         dirty: true,
       });
       void get().save('redo');

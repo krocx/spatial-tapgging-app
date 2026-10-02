@@ -548,7 +548,7 @@ export interface Model3D {
   importUnits?:     { factor: number; chosen: string; publishedExtentM: number };
   /** Colour applied to a grey export (models/colour.ts): per family, the colour every part of
    *  that family wears in the GLB. The original GLB is kept as <id>.orig.glb for Reset. */
-  colours?:         { byFamily: Record<string, [number, number, number]>; parts: number; appliedAt: string; by?: string };
+  colours?:         { byFamily: Record<string, [number, number, number]>; byPart?: Record<string, [number, number, number]>; parts: number; appliedAt: string; by?: string };
   /** Names people can read, per CAD part name ("cmp:CLOSED_SHELL__545670_2b" → "Differential housing").
    *  Shown in the Designer, the readiness report and the text / spoken forms; the CAD name stays for traceability. */
   partLabels?:      Record<string, string>;

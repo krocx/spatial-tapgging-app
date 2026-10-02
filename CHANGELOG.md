@@ -7,6 +7,14 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **3D Studio: adjust a part for AR from one card.** Colour… colours the
+  selection from this step on (a `color` delta the app and XR kit apply) or
+  in the whole model (per-part override, `byPart`, written into the GLB);
+  swatches are the app's hues plus a picker, Clear removes. Hide in whole
+  guide writes the assembly's initial state. Undo / Redo in the header and
+  ⌘Z / ⇧⌘Z, with settings now part of history. The ? is a contextual coach:
+  it reads what is selected and says what to do next, with the keys. The
+  compiler keeps Studio deltas on parts a step does not install.
 - **3D Studio: the part is the mark.** Selecting a part keeps it in colour
   with an orange rim while everything else greys out (spotlight, switchable);
   its name sits beside it on a leader line instead of a mark on top; hover
