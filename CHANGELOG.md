@@ -7,6 +7,19 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **Platform map: the leadership story.** Two new stops and a rewritten
+  one. "From the 3D OMS to the AR OMS": the company's own publications
+  import in one step and come out as the instruction on the tool, with the
+  numbers (2.2 M triangles → 715 k on the iPad, 490 k on glasses, no
+  re-authoring) and the 3D Studio. "Next-generation XR · device
+  readiness": one instruction on the iPad, the XR kit headsets, RayNeo,
+  Even G2 and Oakley Vanguard, measured per step by the readiness matrix
+  and the quarterly scorecard; the device list is the real one. "Why SIB
+  leads": every piece that matters is written in-house - importer,
+  reducer, spatial backbone, validation, XR engine, analytics - with no
+  third-party AR engine or vendor cloud, so the spatial intelligence stays
+  when the hardware changes. The 3D stage follows named beats so the added
+  stops share their neighbour's scene. The wordmark is the brand's.
 - **Go anywhere (⌘K).** One box in the portal header (and ⌘K / Ctrl-K on
   any page) reaches every section and tab with its purpose, every guide
   (open in the library, or straight to Analytics, Designer, Preview),
