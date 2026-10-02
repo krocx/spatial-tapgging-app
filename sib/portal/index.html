@@ -256,6 +256,10 @@
     #portal-home { display:none; padding: 10px 32px 46px; }
     #portal-home.visible { display:block; }
     .sb-purpose { font-size: 0.78rem; color: var(--muted); margin-left: 4px; }
+    .xr-dev-list { max-height: 52vh; overflow: auto; padding-right: 4px; }
+    .xr-dev-list label b { display: block; }
+    .xr-dev-list label .ax-muted { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    @media (max-width: 640px) { .xr-dlg [style*="grid-template-columns:minmax(0,1fr) auto"] { grid-template-columns: 1fr !important; } .xr-dev-list { max-height: 36vh; } }
     @media (max-width: 900px) { .sb-purpose { display:none; } }
     /* Home (2026.4.46): a workday first, the map second. */
     .ph-top { display:flex; align-items:flex-end; gap:18px; flex-wrap:wrap; max-width:1280px; margin: 22px auto 0; }
@@ -5550,7 +5554,7 @@ async function showReadiness(guideId) {
 async function showXrQr(guideId, name) {
   let m = document.getElementById('xr-qr-modal');
   if (!m) { m = document.createElement('div'); m.id = 'xr-qr-modal'; m.style.cssText = 'display:none;position:fixed;inset:0;background:var(--ax-scrim);z-index:9100;align-items:center;justify-content:center;'; m.addEventListener('click', e => { if (e.target === m) m.style.display = 'none'; }); document.body.appendChild(m); }
-  m.innerHTML = `<div class="ax-card" style="background:var(--ax-solid);width:min(560px,94vw);position:relative"><div class="ax-empty" style="border:0"><span class="ax-mark is-loading"><i></i><em></em></span>Loading…</div></div>`;
+  m.innerHTML = `<div class="ax-card xr-dlg" style="background:var(--ax-solid);width:min(720px,94vw);max-height:92vh;overflow:auto;position:relative"><div class="ax-empty" style="border:0"><span class="ax-mark is-loading"><i></i><em></em></span>Loading…</div></div>`;
   m.style.display = 'flex';
   // Headsets with a browser run the XR kit; the profile decides the model
   // budget and the form of each step. One dialog: pick the device, get its
@@ -5572,13 +5576,13 @@ async function showXrQr(guideId, name) {
       <button onclick="document.getElementById('xr-qr-modal').style.display='none'" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-close"/></svg></button>
       <div class="ax-eyebrow">XR kit · open on a headset</div>
       <h3 style="margin:2px 0 10px;font-size:1rem;font-weight:700">${esc(name || 'Guide')}</h3>
-      <div style="display:grid;grid-template-columns:1fr auto;gap:16px;align-items:start">
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:start">
         <div>
           <div class="ax-label-s ax-muted" style="margin-bottom:6px">Device</div>
-          ${choices.map(c => `<label style="display:flex;gap:8px;align-items:flex-start;padding:6px 8px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;cursor:pointer;font-size:0.82rem"><input type="radio" name="xr-dev" value="${c.id}" ${c.id === current ? 'checked' : ''} style="margin-top:3px"><span><b>${esc(c.name)}</b><br><span class="ax-muted">${esc(c.notes || '')}</span></span></label>`).join('')}
+          <div class="xr-dev-list">${choices.map(c => `<label style="display:flex;gap:8px;align-items:flex-start;padding:6px 8px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;cursor:pointer;font-size:0.8rem;line-height:1.35"><input type="radio" name="xr-dev" value="${c.id}" ${c.id === current ? 'checked' : ''} style="margin-top:3px"><span><b>${esc(c.name)}</b><br><span class="ax-muted">${esc(c.notes || '')}</span></span></label>`).join('')}</div>
           <p class="ax-label-s ax-muted" style="margin:8px 0 0">Headsets with a browser get the XR kit; glasses without a display get the spoken form on the phone; the G2 gets its companion.</p>
         </div>
-        <div style="text-align:center">
+        <div style="text-align:center;position:sticky;top:0">
           <img src="${src}" alt="QR code for the XR kit page" style="width:min(240px,60vw);height:auto;border-radius:12px;background:var(--ax-on-accent);padding:8px">
           <p class="ax-label-s ax-muted" style="margin:8px 0 0">${esc(chosen.name.split(' (')[0])}</p>
         </div>
@@ -5601,12 +5605,12 @@ async function showXrQr(guideId, name) {
       <button onclick="document.getElementById('xr-qr-modal').style.display='none'" style="position:absolute;top:12px;right:14px;background:none;border:none;color:var(--muted);font-size:1.3rem;cursor:pointer"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-close"/></svg></button>
       <div class="ax-eyebrow">SIB on G2 · open on Even Realities glasses</div>
       <h3 style="margin:2px 0 10px;font-size:1rem;font-weight:700">${esc(name || 'Guide')}</h3>
-      <div style="display:grid;grid-template-columns:1fr auto;gap:16px;align-items:start">
+      <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:start">
         <div>
           <div class="ax-label-s ax-muted" style="margin-bottom:6px">Device</div>
-          ${choices.map(c => `<label style="display:flex;gap:8px;align-items:flex-start;padding:6px 8px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;cursor:pointer;font-size:0.82rem"><input type="radio" name="xr-dev" value="${c.id}" ${c.id === current ? 'checked' : ''} style="margin-top:3px"><span><b>${esc(c.name)}</b><br><span class="ax-muted">${esc(c.notes || '')}</span></span></label>`).join('')}
+          <div class="xr-dev-list">${choices.map(c => `<label style="display:flex;gap:8px;align-items:flex-start;padding:6px 8px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;cursor:pointer;font-size:0.8rem;line-height:1.35"><input type="radio" name="xr-dev" value="${c.id}" ${c.id === current ? 'checked' : ''} style="margin-top:3px"><span><b>${esc(c.name)}</b><br><span class="ax-muted">${esc(c.notes || '')}</span></span></label>`).join('')}</div>
         </div>
-        <div style="text-align:center;min-width:200px">
+        <div style="text-align:center;min-width:200px;position:sticky;top:0">
           <div class="ax-label-s ax-muted">Code</div>
           <div style="font:700 40px/48px var(--ax-mono);letter-spacing:.08em;color:var(--text);margin:4px 0">${esc(code || '–')}</div>
           <p class="ax-label-s ax-muted" style="margin:4px 0 0">one use · until ${esc(expires || 'ten minutes')}</p>
