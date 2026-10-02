@@ -31,6 +31,10 @@ export class Glasses {
   private bridge: Bridge | null = null;
   private menuWithCheck = false;
   private lastText = '';
+  private created = false;
+  /** For the phone's status line: what the bridge last said and sent. */
+  debug = { page: '', event: '' };
+  onDebug: () => void = () => {};
   onVerb: (v: Verb) => void = () => {};
   onMenu: (id: MenuId) => void = () => {};
   onStatus: (s: GlassesStatus) => void = () => {};
@@ -41,6 +45,8 @@ export class Glasses {
     if (!bridge) { this.onStatus({ connected: false }); return false; }
     this.bridge = bridge;
     bridge.onEvenHubEvent(ev => {
+      try { const o = ev as Record<string, unknown>; this.debug.event = Object.keys(o).filter(k => o[k] !== undefined).map(k => `${k}:${JSON.stringify(o[k]).slice(0, 60)}`).join(' ') || 'empty'; } catch { this.debug.event = 'event'; }
+      this.onDebug();
       const t = ev.textEvent;
       if (t) {
         switch (t.eventType) {
@@ -73,10 +79,17 @@ export class Glasses {
   async show(text: string, withCheck = false): Promise<void> {
     if (!this.bridge) return;
     const content = text.slice(0, 1000);
-    if (this.lastText === '') {
+    if (!this.created) {
       const main = new TextContainerProperty({ xPosition: 0, yPosition: 0, width: 576, height: 288, borderWidth: 0, borderColor: 5, paddingLength: 4, ...MAIN, content, isEventCapture: 1 });
-      const r = await this.bridge.createStartUpPageContainer(new CreateStartUpPageContainer({ containerTotalNum: 1, textObject: [main], menuObject: this.menu(withCheck) }));
-      if (r !== 0) console.error('[g2] createStartUpPageContainer', r);
+      let r = await this.bridge.createStartUpPageContainer(new CreateStartUpPageContainer({ containerTotalNum: 1, textObject: [main], menuObject: this.menu(withCheck) }));
+      if (r !== 0) {
+        // An older Even app may refuse the menu (SDK 0.0.14 feature): try the bare page.
+        console.error('[g2] createStartUpPageContainer with menu', r);
+        r = await this.bridge.createStartUpPageContainer(new CreateStartUpPageContainer({ containerTotalNum: 1, textObject: [main] }));
+      }
+      this.debug.page = r === 0 ? 'page created' : `page failed (${r})`; this.onDebug();
+      if (r !== 0) { console.error('[g2] createStartUpPageContainer', r); return; }
+      this.created = true;
     } else if (withCheck !== this.menuWithCheck) {
       const main = new TextContainerProperty({ xPosition: 0, yPosition: 0, width: 576, height: 288, borderWidth: 0, borderColor: 5, paddingLength: 4, ...MAIN, content, isEventCapture: 1 });
       await this.bridge.rebuildPageContainer({ containerTotalNum: 1, textObject: [main], menuObject: this.menu(withCheck) });

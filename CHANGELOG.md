@@ -7,6 +7,15 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **Spoken work instructions on Meta Oakley Vanguard.** "Open on a headset"
+  lists glasses without a display (Oakley Vanguard) with a QR for the
+  paired phone: the XR kit's spoken profile reads each step through the
+  glasses as the phone's Bluetooth audio and hears "next", "back", "repeat"
+  and, on a check step, "pass" or "fail" through their microphones; "next"
+  on an unanswered check is refused aloud. No maker SDK: Meta's toolkit is
+  for the camera and comes later. SIB on G2 shows the bridge's page result
+  and the last event it received on the phone's status line, and falls back
+  to a page without the contextual menu on an older Even app.
 - **SIB on G2 - work instructions on Even Realities glasses.** A new
   companion app (`sib/g2-client/`, Even Hub SDK, served at `/g2`) runs in
   the Even Realities phone app and pages one text screen per step to the

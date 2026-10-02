@@ -17,6 +17,7 @@ function toast(msg: string, ms = 2500) { let t = document.querySelector<HTMLElem
 const glasses = new Glasses();
 let status: GlassesStatus = { connected: false };
 glasses.onStatus = s => { status = s; renderStatus(); };
+glasses.onDebug = renderStatus;
 
 // ── Run state ────────────────────────────────────────────────────────────────
 let session: Session | null = loadSession();
@@ -36,7 +37,7 @@ const checkRequired = (st: PageStep) => !!st.validation?.required;
 
 function renderStatus() {
   const el = document.getElementById('g2-status'); if (!el) return;
-  el.innerHTML = `<span class="dot ${status.connected ? 'on' : ''}"></span>${status.connected ? `Glasses connected${status.model ? ' · ' + esc(status.model) : ''}${status.battery !== undefined ? ` · ${status.battery} %` : ''}${status.wearing === false ? ' · not worn' : ''}` : 'Glasses not connected - open this page from the Even app; the phone can still drive the run'}`;
+  el.innerHTML = `<span class="dot ${status.connected ? 'on' : ''}"></span>${status.connected ? `Glasses connected${status.model ? ' · ' + esc(status.model) : ''}${status.battery !== undefined ? ` · ${status.battery} %` : ''}${status.wearing === false ? ' · not worn' : ''}${glasses.debug.page ? ' · ' + esc(glasses.debug.page) : ''}${glasses.debug.event ? `<br><span class="muted">last event: ${esc(glasses.debug.event)}</span>` : ''}` : 'Glasses not connected - open this page from the Even app; the phone can still drive the run'}`;
 }
 
 // ── Screen 1: connect ────────────────────────────────────────────────────────

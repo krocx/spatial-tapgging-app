@@ -298,7 +298,7 @@ async function loadBundle() {
   $('gateTitle').textContent = guide.name;
   $('gateText').textContent = `${steps.length} step${steps.length === 1 ? '' : 's'} · ${bundle.anchor?.assetId || 'anchor'}${bundle.anchor?.frames?.qr?.markerSizeM ? ` · QR ${Math.round(bundle.anchor.frames.qr.markerSizeM * 100)} cm` : ''}`;
   const model = (bundle.models || []).find(m => m.role === 'assembly' && m.glbUrl);
-  if (textMode) { $('gateText').textContent += ` · ${profile.name}: ${profile.display === 'none' ? 'spoken' : 'text'} pages, no model`; return; }
+  if (textMode) { $('gateText').textContent += ` · ${profile.name}: ${profile.display === 'none' ? 'spoken steps - connect the glasses as this phone\u2019s Bluetooth audio first' : 'text pages'}, no model`; return; }
   if (!model) { $('gateText').textContent += ' · no assembly model on this guide - steps play as text only.'; return; }
   $('gateText').textContent += reducedMode ? ' · loading reduced model…' : ' · loading model…';
   // A reduced profile asks for the smallest ladder step; the server answers with the variant at or above it.
@@ -540,9 +540,17 @@ function startText() {
   if (SR && profile?.input?.includes('voice')) {
     try {
       const rec = new SR(); rec.continuous = true; rec.interimResults = false; rec.lang = 'en-US';
-      rec.onresult = e => { const t = (e.results[e.results.length - 1][0].transcript || '').trim().toLowerCase(); if (/\bnext\b|\bdone\b/.test(t)) completeStep(); else if (/\bback\b|\bprevious\b/.test(t)) { if (idx > 0) showStep(idx - 1); } else if (/\brepeat\b|\bagain\b/.test(t)) renderTextStep(steps[idx], stepParts(steps[idx])); };
+      rec.onresult = e => {
+        const t = (e.results[e.results.length - 1][0].transcript || '').trim().toLowerCase();
+        const v = validationFor(steps[idx]);
+        if (/\bnext\b|\bdone\b/.test(t)) { if (v && !verdicts[steps[idx].id]) speak('Say pass or fail first.'); else completeStep(); }
+        else if (/\bback\b|\bprevious\b/.test(t)) { if (idx > 0) showStep(idx - 1); }
+        else if (/\brepeat\b|\bagain\b/.test(t)) renderTextStep(steps[idx], stepParts(steps[idx]));
+        else if (v && /\bpass\b|\bokay\b|\bgood\b/.test(t)) { verdict('pass'); speak('Pass recorded. Say next.'); }
+        else if (v && /\bfail\b|\bfailed\b/.test(t)) { verdict('fail'); speak('Fail recorded. Say next to continue.'); }
+      };
       rec.onend = () => { try { rec.start(); } catch {} };
-      rec.start(); $('tmVoice').textContent += ' · say "next", "back", "repeat"';
+      rec.start(); $('tmVoice').textContent += ' · say "next", "back", "repeat", and "pass" or "fail" on a check';
     } catch {}
   }
   openLive().then(() => showStep(0));       // the session record says which profile ran it (workContext)

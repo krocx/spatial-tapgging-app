@@ -5556,7 +5556,7 @@ async function showXrQr(guideId, name) {
   // budget and the form of each step. One dialog: pick the device, get its
   // QR (a single-use link, no site key on the headset) or open it here.
   let profiles = [];
-  try { profiles = ((await apiFetch('/devices')).data || []).filter(p => p.delivery === 'xrkit'); } catch {}
+  try { profiles = ((await apiFetch('/devices')).data || []).filter(p => p.delivery === 'xrkit' || p.delivery === 'spoken').map(p => p.delivery === 'spoken' ? { ...p, name: `${p.name} (spoken, on the paired phone)`, notes: 'No display: the steps are read aloud through the glasses as the phone\u2019s Bluetooth audio, and "next", "back", "repeat", "pass", "fail" are heard through their microphones. Scan the QR with the phone, with the glasses connected as its audio device.' } : p); } catch {}
   const choices = [{ id: '', name: 'Any browser (detects Quest, HoloLens, Vision Pro)', notes: 'Full model; the kit recognises the headset from its browser.' }, ...profiles,
     { id: 'even-g2', name: 'Even Realities G2 (SIB on G2 in the Even app)', notes: 'Text steps on the glasses, driven from the temple or the R1 ring; the phone shows the same page. A six-character code instead of a QR.', companion: true }];
   let current = '';
@@ -5576,7 +5576,7 @@ async function showXrQr(guideId, name) {
         <div>
           <div class="ax-label-s ax-muted" style="margin-bottom:6px">Device</div>
           ${choices.map(c => `<label style="display:flex;gap:8px;align-items:flex-start;padding:6px 8px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;cursor:pointer;font-size:0.82rem"><input type="radio" name="xr-dev" value="${c.id}" ${c.id === current ? 'checked' : ''} style="margin-top:3px"><span><b>${esc(c.name)}</b><br><span class="ax-muted">${esc(c.notes || '')}</span></span></label>`).join('')}
-          <p class="ax-label-s ax-muted" style="margin:8px 0 0">Oakley Vanguard (no display) is not here yet: see Device readiness for what it gets.</p>
+          <p class="ax-label-s ax-muted" style="margin:8px 0 0">Headsets with a browser get the XR kit; glasses without a display get the spoken form on the phone; the G2 gets its companion.</p>
         </div>
         <div style="text-align:center">
           <img src="${src}" alt="QR code for the XR kit page" style="width:min(240px,60vw);height:auto;border-radius:12px;background:var(--ax-on-accent);padding:8px">
