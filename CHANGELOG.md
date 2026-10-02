@@ -7,6 +7,14 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **Designer 3D Studio: find a part, then hide or show it.** A click on a
+  part in the 3D view or on its name in the tree identifies it: lit orange,
+  camera turned to it, and a focus card with where it sits (left side,
+  upper part), its size in mm and whether it is visible on this step, with
+  Add / Remove from step, Hide / Show on this step (an imported step gets a
+  `show` delta the app and XR kit follow; an authored step edits its parts
+  list), Isolate and Clear. Double-click still adds or removes. Rebuild the
+  Designer (`npm run build:roadmap`).
 - **SIB on G2 by QR.** The Even Realities G2 choice in "Open on a headset"
   shows a QR beside the code: it carries the server's own companion URL
   with the server and code filled in (`/g2/?server=&code=`), so the Even

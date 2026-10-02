@@ -347,3 +347,15 @@ three real callers before it is frozen.
    against several assets - or stay one-to-one?
 3. Does the draft-key model suffice for "who may send to the Guide Library", or does
    this need real permissions ahead of SSO/RBAC?
+
+## Finding a part (3D Studio, 2026.4.46)
+
+A single click on a part in the 3D view, or on its name in the tree,
+*identifies* it: the part lights orange, the camera turns to it, and a focus
+card names it, says where it sits ("left side, upper part"), its size in
+millimetres, and whether it is visible on this step. From the card: Add to /
+Remove from step, Hide / Show on this step, Isolate (only this part; others
+drop out, the part stays even if the step hides it) and Clear. Double-click
+in the 3D view still adds or removes the part. Hide / Show on an imported
+step writes a `show` entry in the step's deltas, which the app, the XR kit
+and this preview all read; on an authored step it is the parts list.

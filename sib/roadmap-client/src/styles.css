@@ -547,9 +547,19 @@ input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 .pt-row.is-after  .pt-name { color: #94a3b8; }
 .pt-twisty { width: 16px; border: 0; background: transparent; cursor: pointer; color: var(--muted); font-size: 11px; padding: 0; text-align: center; }
 .pt-leaf { cursor: default; }
-.pt-label { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1; cursor: pointer; }
+.pt-label { display: flex; align-items: center; gap: 6px; min-width: 0; flex: 0 0 auto; cursor: pointer; }
 .pt-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pt-tag { font-size: 10px; color: #475569; background: #e2e8f0; border-radius: 999px; padding: 1px 6px; }
+.pt-name-btn { cursor: pointer; flex: 1; }
+.pt-name-btn:hover { color: #1d4ed8; text-decoration: underline; }
+.pt-name-btn.is-focus { color: #b45309; font-weight: 700; }
+.pt-focus { border: 1px solid #fcd34d; background: #fffbeb; border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
+.pt-focus-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.pt-focus-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #92400e; }
+.pt-focus-meta { font-size: 11px; color: #78350f; flex: 1; min-width: 0; }
+.pt-focus-x { border: 0; background: transparent; cursor: pointer; color: #92400e; }
+.pt-focus-acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.pt-focus-acts .btn.on { background: #fde68a; }
 .pt-tag-after { color: #94a3b8; background: #f1f5f9; }
 .asm-preview { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: #f8fafc; }
 .asm-preview-canvas { width: 100%; cursor: grab; }

@@ -78,6 +78,10 @@ export function usePartsPicker(nodeId: string | null) {
   const [treeErr, setTreeErr] = useState<string | null>(null);
   const [query, setQuery]   = useState('');
   const [open, setOpen]     = useState<Set<string>>(() => new Set());
+  // Identify a part: lit in the 3D view, described (where, size), and acted on from one card.
+  const [focus, setFocus]   = useState<string | null>(null);
+  const [isolate, setIsolate] = useState(false);
+  const [focusInfo, setFocusInfo] = useState<{ name: string; where: string; sizeMm: [number, number, number]; visible: boolean } | null>(null);
 
   const modelId = assembly?.modelId;
   useEffect(() => {
@@ -154,6 +158,39 @@ export function usePartsPicker(nodeId: string | null) {
   );
   const toggle = (name: string) => write(partSet.has(name) ? parts.filter(p => p !== name) : [...parts, name]);
 
+  // Hide / show a part on THIS step. An imported step carries deltas (`nodes`):
+  // its visibility is a `show` entry there, so the app, the XR kit and this
+  // preview all read the same thing. An authored step lists `parts`: hide is
+  // "not on this step", show is "on this step".
+  const hasDeltas = Array.isArray(stepMeta?.nodes);
+  const setShown = (name: string, shown: boolean) => {
+    if (!nodeId) return;
+    if (hasDeltas) {
+      const nodes = (stepMeta!.nodes as Array<Record<string, unknown>>).map(n => ({ ...n }));
+      const i = nodes.findIndex(n => n.node === name);
+      if (i >= 0) nodes[i].show = shown ? 'solid' : 'hidden'; else nodes.push({ node: name, show: shown ? 'solid' : 'hidden' });
+      patchStepMeta(nodeId, { nodes });
+    } else write(shown ? (partSet.has(name) ? parts : [...parts, name]) : parts.filter(p => p !== name));
+  };
+  const focusOn = (name: string | null) => {
+    setFocus(name);
+    if (name) setOpen(prev => { const n = new Set(prev); let a = parents.get(name); while (a) { n.add(a); a = parents.get(a); } return n; });
+  };
+  const focusBlock = focus ? (
+    <div className="pt-focus">
+      <div className="pt-focus-head">
+        <b className="pt-focus-name" title={focus}>{focus}</b>
+        <span className="pt-focus-meta">{focusInfo?.where ? `${focusInfo.where} · ` : ''}{focusInfo && focusInfo.sizeMm.some(v => v) ? `${focusInfo.sizeMm.join(' × ')} mm` : ''}{focusInfo ? ` · ${focusInfo.visible ? 'visible on this step' : 'hidden on this step'}` : ''}</span>
+        <button className="pt-focus-x" onClick={() => { focusOn(null); setIsolate(false); }} title="Clear">✕</button>
+      </div>
+      <div className="pt-focus-acts">
+        <button className="btn ghost" onClick={() => toggle(focus)}>{partSet.has(focus) ? `Remove from step` : `Add to step`}</button>
+        <button className="btn ghost" onClick={() => setShown(focus, !(focusInfo?.visible ?? true))} title={hasDeltas ? 'Writes a show / hide for this part on this step (the app and the XR kit follow it)' : 'Authored step: on or off this step\u2019s parts list'}>{(focusInfo?.visible ?? true) ? 'Hide on this step' : 'Show on this step'}</button>
+        <button className={`btn ghost${isolate ? ' on' : ''}`} onClick={() => setIsolate(v => !v)} title="Show only this part">{isolate ? 'Show all' : 'Isolate'}</button>
+      </div>
+    </div>
+  ) : null;
+
   // Named groups (map-level): apply adds the group's parts; save captures this step's list.
   const updateSettings = useStore(s => s.updateSettings);
   const groups = assembly?.groups ?? [];
@@ -209,8 +246,8 @@ export function usePartsPicker(nodeId: string | null) {
             : <span className="pt-twisty pt-leaf">·</span>}
           <label className="pt-label" title={viaParent ? `${n.name} - included with its group` : n.name}>
             <input type="checkbox" checked={own || viaParent} onChange={() => toggle(n.name)} />
-            <span className="pt-name">{n.name}</span>
           </label>
+          <span className={`pt-name pt-name-btn${focus === n.name ? ' is-focus' : ''}`} title="Click to find this part in the 3D view" onClick={() => focusOn(focus === n.name ? null : n.name)}>{n.name}</span>
           {n.children.length > 0 && own && <span className="pt-tag pt-tag-group">group</span>}
           {eff === 'before' && <span className="pt-tag">earlier</span>}
           {eff === 'after'  && <span className="pt-tag pt-tag-after">later</span>}
@@ -247,7 +284,8 @@ export function usePartsPicker(nodeId: string | null) {
     <span className="step-check-hint"> - {parts.length} chosen · {earlier.size} {assembly.start === 'complete' ? 'removed' : 'installed'} earlier</span>
   ) : null;
 
-  return { assembly, modelId, tree, parts, earlier, states, partNames, parents, toggle, verb, chips, treeBlock, search, summary, groupsBlock, buildUp, contextBlock, context, poses, play };
+  return { assembly, modelId, tree, parts, earlier, states, partNames, parents, toggle, verb, chips, treeBlock, search, summary, groupsBlock, buildUp, contextBlock, context, poses, play,
+    focus, isolate, focusOn, setFocusInfo, focusBlock };
 }
 
 // ── Inspector block ──────────────────────────────────────────────────────────
@@ -276,8 +314,9 @@ export function PartsSection({ nodeId }: { nodeId: string }): JSX.Element | null
       {groupsBlock}
       {pk.contextBlock}
       {showPreview && modelId && tree && !studioOpen && (
-        <AssemblyPreview modelId={modelId} partNames={partNames} states={states} parents={parents} unmentioned={pk.buildUp ? 'after' : 'base'} context={pk.context} poses={pk.poses} play={pk.play} onPick={toggle} onExpand={() => openStudio(nodeId)} />
+        <AssemblyPreview modelId={modelId} partNames={partNames} states={states} parents={parents} unmentioned={pk.buildUp ? 'after' : 'base'} context={pk.context} poses={pk.poses} play={pk.play} onPick={toggle} onFocus={pk.focusOn} focus={pk.focus} isolate={pk.isolate} onFocusInfo={pk.setFocusInfo} onExpand={() => openStudio(nodeId)} />
       )}
+      {pk.focusBlock}
       <div className="pt-toolbar">
         {search}
         <button className="btn ghost" onClick={() => setShowPreview(v => !v)}>{showPreview ? 'Hide 3D' : 'Show 3D'}</button>
@@ -345,7 +384,7 @@ export function PartsStudio(): JSX.Element | null {
         <div className="pt-modal-main">
           <div className="pt-modal-3d">
             {pk.tree && (
-              <AssemblyPreview modelId={pk.modelId} partNames={pk.partNames} states={pk.states} parents={pk.parents} unmentioned={pk.buildUp ? 'after' : 'base'} context={pk.context} poses={pk.poses} play={pk.play} onPick={pk.toggle} fill />
+              <AssemblyPreview modelId={pk.modelId} partNames={pk.partNames} states={pk.states} parents={pk.parents} unmentioned={pk.buildUp ? 'after' : 'base'} context={pk.context} poses={pk.poses} play={pk.play} onPick={pk.toggle} onFocus={pk.focusOn} focus={pk.focus} isolate={pk.isolate} onFocusInfo={pk.setFocusInfo} fill />
             )}
           </div>
           {/* Step strip: every step, its part count, click to jump. */}
@@ -362,6 +401,7 @@ export function PartsStudio(): JSX.Element | null {
           </div>
         </div>
         <div className="pt-modal-side">
+          {pk.focusBlock}
           {pk.contextBlock}
           {pk.chips}
           {pk.groupsBlock}

@@ -41,6 +41,13 @@ interface Props {
   /** This step on its own clock: the state it starts from and its deltas. Enables Play. */
   play?: { base: PartStateMap; deltas: GuideStepNode[] };
   onPick?: (name: string) => void;
+  /** Identify: a single click names the part (the Studio's focus card); double click = onPick. */
+  onFocus?: (name: string) => void;
+  /** The focused part: lit orange, camera turned to it, and described through onFocusInfo. */
+  focus?: string | null;
+  /** Show only the focused part (and its children). */
+  isolate?: boolean;
+  onFocusInfo?: (info: { name: string; where: string; sizeMm: [number, number, number]; visible: boolean } | null) => void;
   height?: number;
   /** Fill the parent instead of a fixed height (expanded view). */
   fill?: boolean;
@@ -69,7 +76,7 @@ interface Scene3 {
 /** GLTFLoader sanitises node names (drops `:` `.` `/`), keeping the original in userData.name. */
 const partName = (o: any): string | undefined => (o?.userData?.name as string | undefined) ?? o?.name;
 
-export function AssemblyPreview({ modelId, partNames, states, onPick, height = 220, fill = false, onExpand, unmentioned = 'base', context, poses, play }: Props): JSX.Element {
+export function AssemblyPreview({ modelId, partNames, states, onPick, onFocus, focus = null, isolate = false, onFocusInfo, height = 220, fill = false, onExpand, unmentioned = 'base', context, poses, play }: Props): JSX.Element {
   const hostRef  = useRef<HTMLDivElement | null>(null);
   const s3       = useRef<Scene3 | null>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -227,6 +234,9 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, height = 2
 
     const thisBox = new THREE.Box3();
     let anyThis = false;
+    const FOCUS = new THREE.Color(0xff9f0a);
+    const inFocus = (o: any): boolean => { if (!focus) return false; for (let p = o; p; p = p.parent) if (partName(p) === focus) return true; return false; };
+    const focusBox = new THREE.Box3(); let focusVisible = false, focusAny = false;
     st.root.traverse((o: any) => {
       if (!o.isMesh) return;
       const base = st.own.get(o) ?? [];
@@ -247,6 +257,9 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, height = 2
         show = state === 'after' ? (laterMode === 'hidden' ? 'hidden' : laterMode === 'ghost' ? 'ghost' : 'solid') : 'solid';
         if (playbackOnly(o) || (startsHidden(o) && !states.has(partName(o) ?? ''))) show = 'hidden';
       }
+      const focused = inFocus(o);
+      if (isolate && focus && !focused) show = 'hidden';
+      if (focused) { focusAny = true; focusBox.expandByObject(o); if (show !== 'hidden') focusVisible = true; if (isolate && show === 'hidden') show = 'ghost'; }
       o.visible = show !== 'hidden';
       if (o.visible && state === 'this') { thisBox.expandByObject(o); anyThis = true; }
       mats.forEach((m: any, i: number) => {
@@ -261,10 +274,24 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, height = 2
           else if (m.color) m.color.lerp(ACCENT, 0.6);
         }
         if (show === 'ghost') { m.transparent = true; m.opacity = ghostOpacity; }
+        if (focused) { if (m.emissive) { m.emissive.copy(FOCUS); m.emissiveIntensity = 0.9; } else if (m.color) m.color.lerp(FOCUS, 0.7); }
         m.needsUpdate = true;
       });
     });
-    return { thisBox, anyThis };
+    // Describe the focused part: where it sits against the whole, and its size.
+    if (onFocusInfo) {
+      if (focus && focusAny && !focusBox.isEmpty()) {
+        const all = new THREE.Box3().setFromObject(st.root);
+        const c = focusBox.getCenter(new THREE.Vector3()); const sz = focusBox.getSize(new THREE.Vector3());
+        const rel = (v: number, lo: number, hi: number) => (v - lo) / Math.max(1e-9, hi - lo);
+        const x = rel(c.x, all.min.x, all.max.x), y = rel(c.y, all.min.y, all.max.y), z = rel(c.z, all.min.z, all.max.z);
+        const w: string[] = [x < 0.33 ? 'left side' : x > 0.67 ? 'right side' : 'centre'];
+        if (z < 0.33) w.push('towards the back'); else if (z > 0.67) w.push('towards the front');
+        w.push(y > 0.67 ? 'upper part' : y < 0.33 ? 'lower part' : 'mid height');
+        onFocusInfo({ name: focus, where: w.join(', '), sizeMm: [Math.round(sz.x * 1000), Math.round(sz.y * 1000), Math.round(sz.z * 1000)], visible: focusVisible });
+      } else onFocusInfo(focus ? { name: focus, where: '', sizeMm: [0, 0, 0], visible: false } : null);
+    }
+    return { thisBox, anyThis, focusBox: focusAny ? focusBox : null };
   };
 
   // Settled state whenever the selection changes (and when playback ends).
@@ -273,16 +300,18 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, height = 2
     if (!st?.root || status !== 'ready') return;
     if (st.playing) { cancelAnimationFrame(st.playing.raf); st.playing = null; setPlaying(false); setClock(null); }
     const r = renderState(poses);
-    if (r?.anyThis && !r.thisBox.isEmpty()) {
+    // The camera turns to the focused part when there is one, else to this step's parts.
+    const box = r?.focusBox && !r.focusBox.isEmpty() ? r.focusBox : (r?.anyThis && !r.thisBox.isEmpty() ? r.thisBox : null);
+    if (box) {
       const { THREE } = st;
-      const c = r.thisBox.getCenter(new THREE.Vector3());
+      const c = box.getCenter(new THREE.Vector3());
       const offset = st.camera.position.clone().sub(st.controls.target);
       st.controls.target.copy(c);
       st.camera.position.copy(c).add(offset);
       st.controls.update();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [states, partNames, ghostAfter, status, unmentioned, context, poses]);
+  }, [states, partNames, ghostAfter, status, unmentioned, context, poses, focus, isolate]);
 
   // ── Play this step on its own clock ────────────────────────────────────
   const stop = () => {
@@ -311,11 +340,13 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, height = 2
   };
   useEffect(() => () => { const st = s3.current; if (st?.playing) cancelAnimationFrame(st.playing.raf); }, []);
 
-  // ── Click → part name (drag = orbit, so only short clicks pick) ────────
+  // ── Click → identify the part; double click → add / remove (drag = orbit) ──
+  const onFocusRef = useRef(onFocus); onFocusRef.current = onFocus;
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
     let down: { x: number; y: number; t: number } | null = null;
+    let lastUp: { name: string; t: number } | null = null;
     const onDown = (e: PointerEvent) => { down = { x: e.clientX, y: e.clientY, t: Date.now() }; };
     const onUp = (e: PointerEvent) => {
       const st = s3.current;
@@ -333,7 +364,11 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, height = 2
       let p = hit;
       while (p && !(partName(p) && partNames.has(partName(p)!))) p = p.parent;
       const n = p ? partName(p) : undefined;
-      if (n) onPickRef.current?.(n);
+      if (!n) return;
+      const now = Date.now();
+      if (lastUp && lastUp.name === n && now - lastUp.t < 350) { lastUp = null; onPickRef.current?.(n); return; }
+      lastUp = { name: n, t: now };
+      if (onFocusRef.current) onFocusRef.current(n); else onPickRef.current?.(n);
     };
     host.addEventListener('pointerdown', onDown);
     host.addEventListener('pointerup', onUp);
@@ -366,7 +401,7 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, height = 2
               {clock && <span className="asm-clock">{clock.t.toFixed(1)} / {clock.length.toFixed(1)} s</span>}
             </span>
           )}
-          <span className="asm-hint">Click a part to add or remove it · drag to orbit</span>
+          <span className="asm-hint">{onFocus ? 'Click a part to identify it · double-click to add or remove it · drag to orbit' : 'Click a part to add or remove it · drag to orbit'}</span>
         </div>
       )}
     </div>
