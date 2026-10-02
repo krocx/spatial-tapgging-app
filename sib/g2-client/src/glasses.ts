@@ -14,6 +14,8 @@ import {
   TextContainerProperty,
   TextContainerUpgrade,
   CreateStartUpPageContainer,
+  MenuContainerProperty,
+  MenuItemProperty,
   OsEventTypeList,
 } from '@evenrealities/even_hub_sdk';
 
@@ -72,7 +74,8 @@ export class Glasses {
 
   private menu(withCheck: boolean) {
     const items = [...(withCheck ? [{ itemName: 'Pass', itemID: MENU.PASS }, { itemName: 'Fail', itemID: MENU.FAIL }] : []), { itemName: 'First step', itemID: MENU.FIRST }, { itemName: 'End guide', itemID: MENU.END }];
-    return { menuItems: items };
+    // The SDK wants its own classes here (they carry toJson for the bridge payload).
+    return new MenuContainerProperty({ menuItems: items.map(i => new MenuItemProperty(i)) });
   }
 
   /** First page: creates the container. Later pages: in-place upgrade, or a rebuild when the menu changes. */
