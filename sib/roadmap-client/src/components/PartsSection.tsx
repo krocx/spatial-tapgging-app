@@ -291,7 +291,7 @@ export function usePartsPicker(nodeId: string | null) {
   ) : null;
 
   return { assembly, modelId, tree, parts, earlier, states, partNames, parents, toggle, verb, chips, treeBlock, search, summary, groupsBlock, buildUp, contextBlock, context, poses, play,
-    focus, isolate, focusOn, setFocusInfo, focusBlock };
+    focus, isolate, setIsolate, focusOn, setFocusInfo, focusBlock, toggleShown: () => { if (focus) setShown(focus, !(focusInfo?.visible ?? true)); } };
 }
 
 // ── Inspector block ──────────────────────────────────────────────────────────
@@ -369,6 +369,8 @@ export function PartsStudio(): JSX.Element | null {
       if (e.key === 'Escape') close();
       else if (e.key === 'ArrowLeft') prev();
       else if (e.key === 'ArrowRight') next();
+      else if ((e.key === 'i' || e.key === 'I') && pk.focus) pk.setIsolate(v => !v);
+      else if ((e.key === 'h' || e.key === 'H') && pk.focus) pk.toggleShown();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -379,59 +381,55 @@ export function PartsStudio(): JSX.Element | null {
   const title = cur ? `Step ${cur.seq} · ${cur.title}` : (mapNodes?.find(n => n.id === nodeId)?.text ?? 'Step');
 
   return (
-    <div className="pt-modal" role="dialog" aria-label="Parts studio">
-      <div className="pt-modal-head">
-        <div className="pt-nav">
-          <button className="btn" onClick={prev} disabled={idx <= 0} title="Previous step (←)">◀</button>
-          <div className="pt-modal-title"><b>{title}</b> - parts this step {pk.verb}{pk.summary}</div>
-          <button className="btn" onClick={next} disabled={idx < 0 || idx >= steps.length - 1} title="Next step (→)">▶</button>
+    <div className="pt-modal ax-studio" role="dialog" aria-label="3D Studio">
+      <header className="st-head">
+        <span className="ax-wordmark"><span className="ax-a">applied</span><span className="ax-x">x</span><span className="ax-rest">3D Studio</span></span>
+        <div className="st-nav">
+          <button className="ax-btn ax-btn--quiet ax-btn--sm" onClick={prev} disabled={idx <= 0} title="Previous step (←)">◀</button>
+          <div className="st-title"><span className="ax-eyebrow">Step {cur ? cur.seq : '·'} of {steps.length || '·'}</span><b>{cur ? cur.title : title}</b><span className="ax-label-s ax-muted">parts this step {pk.verb}{pk.summary}</span></div>
+          <button className="ax-btn ax-btn--quiet ax-btn--sm" onClick={next} disabled={idx < 0 || idx >= steps.length - 1} title="Next step (→)">▶</button>
         </div>
-        <button className="btn" onClick={close}>Close ✕</button>
+        <button className="ax-btn ax-btn--sm" onClick={close}>Close</button>
+      </header>
+      <div className="st-strip">
+        {steps.map(s => (
+          <button key={s.id} className={`ax-chip ax-chip--text ax-chip--interactive st-step${s.id === nodeId ? ' is-on' : ''}${s.parts === 0 ? ' is-empty' : ''}`}
+            onClick={() => goTo(s.id)} title={`${s.title} - ${s.parts} part${s.parts === 1 ? '' : 's'}`}>
+            <span className="st-step-n">{s.seq}</span><span className="st-step-t">{s.title}</span><span className="st-step-c">{s.parts}</span>
+          </button>
+        ))}
+        {steps.length === 0 && <span className="ax-label-s ax-muted">Connect the steps with Next edges to walk them here.</span>}
       </div>
-      <div className="pt-modal-body">
-        <div className="pt-modal-main">
-          <div className="pt-modal-3d">
-            {pk.tree && (
-              <AssemblyPreview key={reload} modelId={pk.modelId} partNames={pk.partNames} states={pk.states} parents={pk.parents} unmentioned={pk.buildUp ? 'after' : 'base'} context={pk.context} poses={pk.poses} play={pk.play} onPick={pk.toggle} onFocus={pk.focusOn} focus={pk.focus} isolate={pk.isolate} onFocusInfo={pk.setFocusInfo} fill />
-            )}
-          </div>
-          {/* Step strip: every step, its part count, click to jump. */}
-          <div className="pt-strip">
-            {steps.map(s => (
-              <button key={s.id} className={`pt-step${s.id === nodeId ? ' on' : ''}${s.parts === 0 ? ' empty' : ''}`}
-                onClick={() => goTo(s.id)} title={`${s.title} - ${s.parts} part${s.parts === 1 ? '' : 's'}`}>
-                <span className="pt-step-n">{s.seq}</span>
-                <span className="pt-step-t">{s.title}</span>
-                <span className="pt-step-c">{s.parts}</span>
-              </button>
-            ))}
-            {steps.length === 0 && <span className="step-check-hint">Connect the steps with Next edges to walk them here.</span>}
-          </div>
+      <div className="st-body">
+        <div className="st-stage">
+          {pk.tree && (
+            <AssemblyPreview key={reload} modelId={pk.modelId} partNames={pk.partNames} states={pk.states} parents={pk.parents} unmentioned={pk.buildUp ? 'after' : 'base'} context={pk.context} poses={pk.poses} play={pk.play} onPick={pk.toggle} onFocus={pk.focusOn} focus={pk.focus} isolate={pk.isolate} onFocusInfo={pk.setFocusInfo} fill />
+          )}
         </div>
-        <div className="pt-modal-side">
-          <div className="pt-tabs" role="tablist">
+        <aside className="st-side">
+          {pk.focusBlock}
+          <div className="ax-seg st-tabs" role="tablist">
             {([['parts', 'Parts'], ['chosen', `Chosen · ${pk.parts.length}`], ['colours', 'Colours']] as const).map(([id, label]) => (
-              <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? 'on' : ''} onClick={() => setTab(id)}>{label}</button>
+              <button key={id} role="tab" aria-selected={tab === id} className={tab === id ? 'is-on' : ''} onClick={() => setTab(id)}>{label}</button>
             ))}
           </div>
-          {pk.focusBlock}
           {tab === 'parts' && (<>
-            <div className="pt-card pt-card-grow">
+            <div className="ax-card pt-card pt-card-grow">
               <div className="pt-card-title">All parts <span className="pt-card-sub">click a name to find it · tick to add</span></div>
               {pk.search}
               {pk.treeBlock}
             </div>
-            <div className="pt-card">{pk.contextBlock}</div>
+            <div className="ax-card pt-card">{pk.contextBlock}</div>
           </>)}
           {tab === 'chosen' && (<>
-            <div className="pt-card pt-card-grow">
+            <div className="ax-card pt-card pt-card-grow">
               <div className="pt-card-title">Parts this step {pk.verb} <span className="pt-card-sub">{pk.parts.length}</span></div>
               <div className="pt-chips-scroll">{pk.chips}</div>
             </div>
-            <div className="pt-card"><div className="pt-card-title">Part sets <span className="pt-card-sub">reusable groups</span></div>{pk.groupsBlock}</div>
+            <div className="ax-card pt-card"><div className="pt-card-title">Part sets <span className="pt-card-sub">reusable groups</span></div>{pk.groupsBlock}</div>
           </>)}
           {tab === 'colours' && <ColoursPanel modelId={pk.modelId} onApplied={() => setReload(r => r + 1)} />}
-        </div>
+        </aside>
       </div>
     </div>
   );

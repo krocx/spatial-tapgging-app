@@ -1,0 +1,133 @@
+/* studio.css - the Procedure Designer's 3D Studio on the SIB brand system.
+   Tokens only (sib/portal/brand/tokens.css); scoped to .ax-studio so the rest
+   of the Designer keeps its look until it migrates (docs/BRAND.md, backlog #2).
+   Governed by scripts/brand-check.mjs. */
+
+.ax-studio { background: var(--ax-page); color: var(--ax-ink); font: var(--ax-body); }
+.ax-studio * { box-sizing: border-box; }
+
+/* ── Header: wordmark · step navigation · close ─────────────────────────── */
+.ax-studio .st-head { display: flex; align-items: center; gap: var(--ax-s4); padding: var(--ax-s3) var(--ax-s5); border-bottom: var(--ax-hair); }
+.ax-studio .st-nav { display: flex; align-items: center; gap: var(--ax-s3); flex: 1; min-width: 0; justify-content: center; }
+.ax-studio .st-title { display: flex; flex-direction: column; align-items: center; min-width: 0; text-align: center; }
+.ax-studio .st-title b { font: var(--ax-h3); color: var(--ax-ink); max-width: 60vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── Step strip: capsules, the current one in the Designer's indigo ─────── */
+.ax-studio .st-strip { display: flex; gap: var(--ax-s2); overflow-x: auto; padding: var(--ax-s2) var(--ax-s5); border-bottom: var(--ax-hair); scrollbar-width: thin; }
+.ax-studio .st-step { flex: 0 0 auto; max-width: 240px; gap: var(--ax-s2); }
+.ax-studio .st-step.is-on { background: var(--ax-indigo-fill); color: var(--ax-indigo); border-color: var(--ax-indigo); }
+.ax-studio .st-step.is-empty:not(.is-on) { color: var(--ax-ink-4); }
+.ax-studio .st-step-n { font: var(--ax-num); }
+.ax-studio .st-step-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ax-studio .st-step-c { font: var(--ax-eyebrow); color: var(--ax-ink-3); }
+
+/* ── Body: the stage and the panel ───────────────────────────────────────── */
+.ax-studio .st-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 380px; }
+.ax-studio .st-stage { min-width: 0; min-height: 0; padding: var(--ax-s3); display: flex; }
+.ax-studio .st-side { display: flex; flex-direction: column; gap: var(--ax-s3); padding: var(--ax-s3); border-left: var(--ax-hair); min-height: 0; overflow: auto; scrollbar-width: thin; }
+.ax-studio .st-tabs { width: 100%; }
+.ax-studio .st-tabs > * { flex: 1; text-align: center; }
+
+/* ── The 3D view ─────────────────────────────────────────────────────────── */
+.ax-studio .asm-preview { flex: 1; display: flex; flex-direction: column; min-height: 0; border: var(--ax-hair); border-radius: var(--ax-r); overflow: hidden; background: var(--ax-bg-2); }
+.ax-studio .asm-preview-stage { position: relative; flex: 1; min-height: 0; }
+.ax-studio .asm-preview-canvas { height: 100%; cursor: grab; }
+.ax-studio .asm-preview-note { padding: var(--ax-s4); color: var(--ax-ink-3); }
+.ax-studio .asm-preview-err { color: var(--ax-red); }
+.ax-studio .asm-preview-bar { display: flex; flex-wrap: wrap; gap: var(--ax-s3); align-items: center; padding: var(--ax-s2) var(--ax-s4); padding-left: 190px; border-top: var(--ax-hair); background: var(--ax-paper-2); font: var(--ax-label-s); color: var(--ax-ink-2); }
+.ax-studio .asm-legend { display: inline-flex; align-items: center; gap: 6px; }
+.ax-studio .asm-sw { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.ax-studio .asm-sw-this { background: var(--ax-green); box-shadow: var(--ax-rim); }
+.ax-studio .asm-sw-before { background: var(--ax-ink-2); }
+.ax-studio .asm-sw-after { background: var(--ax-ink-4); }
+.ax-studio .asm-ctx { color: var(--ax-ink-3); }
+.ax-studio .asm-toggle-btn { font: var(--ax-label-s); padding: 6px 12px; border-radius: 10px; border: var(--ax-hair); background: var(--ax-paper); color: var(--ax-ink); cursor: pointer; }
+.ax-studio .asm-toggle-btn:hover { background: var(--ax-paper-3); }
+.ax-studio .asm-toggle-btn.on { background: var(--ax-blue); border-color: var(--ax-blue); color: var(--ax-on-accent); }
+.ax-studio .asm-play { display: inline-flex; align-items: center; gap: var(--ax-s2); }
+.ax-studio .asm-play .asm-toggle-btn { font: var(--ax-body-m); padding: 8px 16px; border-radius: var(--ax-r-cta); background: var(--ax-blue); border-color: var(--ax-blue); color: var(--ax-on-accent); }
+.ax-studio .asm-speed { font: var(--ax-label-s); color: var(--ax-ink); background: var(--ax-paper); border: var(--ax-hair); border-radius: var(--ax-r-pill); padding: 4px 10px; }
+.ax-studio .asm-clock { font: var(--ax-num); color: var(--ax-ink-2); }
+.ax-studio .asm-hint { margin-left: auto; color: var(--ax-ink-3); flex-basis: auto; }
+.ax-studio .asm-expand { display: none; }
+/* The registration mark rides on the focused part. */
+.ax-studio .asm-focus-mark { position: absolute; left: 0; top: 0; font-size: 44px; color: var(--ax-orange); pointer-events: none; }
+.ax-studio .asm-focus-label { position: absolute; left: 1.15em; top: 50%; transform: translateY(-50%); font: var(--ax-label-s); font-family: var(--ax-mono); color: var(--ax-orange); background: var(--ax-solid); border: 1px solid var(--ax-orange); border-radius: var(--ax-r-pill); padding: 2px 10px; white-space: nowrap; }
+
+/* ── Panel cards ─────────────────────────────────────────────────────────── */
+.ax-studio .pt-card { display: flex; flex-direction: column; gap: var(--ax-s2); padding: var(--ax-s3) var(--ax-s4); flex: 0 0 auto; }
+.ax-studio .pt-card-grow { flex: 1 1 auto; min-height: 240px; }
+.ax-studio .pt-card-title { font: var(--ax-body-m); color: var(--ax-ink); display: flex; align-items: baseline; gap: var(--ax-s2); }
+.ax-studio .pt-card-sub { font: var(--ax-label-s); color: var(--ax-ink-3); }
+.ax-studio .pt-card-acts { display: flex; gap: var(--ax-s2); justify-content: flex-end; flex-wrap: wrap; }
+.ax-studio .pt-note { font: var(--ax-label-s); color: var(--ax-ink-2); background: var(--ax-paper-2); border-radius: var(--ax-r-field); padding: var(--ax-s2) var(--ax-s3); }
+.ax-studio .pt-note.warn { background: var(--ax-warn-fill); color: var(--ax-orange); }
+.ax-studio .step-check-hint { font: var(--ax-label-s); color: var(--ax-ink-3); }
+
+/* Focus card: the part in hand, orange stroke */
+.ax-studio .pt-focus { background: var(--ax-paper); border: 1px solid var(--ax-orange); border-radius: var(--ax-r); padding: var(--ax-s3) var(--ax-s4); display: flex; flex-direction: column; gap: var(--ax-s2); flex: 0 0 auto; }
+.ax-studio .pt-focus-head { display: flex; align-items: center; gap: var(--ax-s2); }
+.ax-studio .pt-focus-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--ax-orange); }
+.ax-studio .pt-focus-name { flex: 1; min-width: 0; font: var(--ax-body-m); font-family: var(--ax-mono); color: var(--ax-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ax-studio .pt-focus-x { border: 0; background: none; color: var(--ax-ink-3); cursor: pointer; font: var(--ax-label-s); }
+.ax-studio .pt-focus-meta { display: flex; flex-wrap: wrap; gap: 6px; }
+.ax-studio .pt-focus-meta span { font: var(--ax-label-s); color: var(--ax-ink-2); background: var(--ax-paper-2); border-radius: var(--ax-r-pill); padding: 2px 10px; }
+.ax-studio .pt-focus-meta span.ok { background: var(--ax-ok-fill); color: var(--ax-green); }
+.ax-studio .pt-focus-meta span.off { background: var(--ax-paper-3); color: var(--ax-ink-3); }
+.ax-studio .pt-focus-acts { display: flex; flex-wrap: wrap; gap: var(--ax-s2); }
+
+/* Buttons inside the panel take the system's quiet / tinted forms */
+.ax-studio .btn { font: var(--ax-label-s); color: var(--ax-ink-2); background: var(--ax-paper); border: var(--ax-hair); border-radius: 10px; padding: 6px 12px; cursor: pointer; }
+.ax-studio .btn:hover { background: var(--ax-paper-3); color: var(--ax-ink); }
+.ax-studio .btn.primary { background: var(--ax-blue); border-color: var(--ax-blue); color: var(--ax-on-accent); }
+.ax-studio .btn.on { background: var(--ax-blue-fill); border-color: var(--ax-blue); color: var(--ax-cyan); }
+.ax-studio .btn:disabled { color: var(--ax-grey); background: var(--ax-paper-2); cursor: default; }
+.ax-studio .pt-focus-acts .btn:nth-child(2) { background: var(--ax-blue-fill); color: var(--ax-cyan); border-color: transparent; }
+
+/* Search, tree */
+.ax-studio .pt-search { font: var(--ax-body); color: var(--ax-ink); background: var(--ax-paper); border: var(--ax-hair); border-radius: var(--ax-r-field); padding: 8px 12px; }
+.ax-studio .pt-search::placeholder { color: var(--ax-ink-4); }
+.ax-studio .pt-tree { flex: 1; min-height: 160px; overflow: auto; border: var(--ax-hair); border-radius: var(--ax-r-field); background: var(--ax-paper-2); font: var(--ax-label-s); scrollbar-width: thin; }
+.ax-studio .pt-row { display: flex; align-items: center; gap: var(--ax-s1); padding: 5px 8px 5px 0; min-width: 0; color: var(--ax-ink); }
+.ax-studio .pt-row:hover { background: var(--ax-paper-3); }
+.ax-studio .pt-row.is-this { background: var(--ax-ok-fill); }
+.ax-studio .pt-row.is-before .pt-name { color: var(--ax-ink-2); }
+.ax-studio .pt-row.is-after .pt-name { color: var(--ax-ink-4); }
+.ax-studio .pt-row.via-parent .pt-name { color: var(--ax-cyan); }
+.ax-studio .pt-twisty { width: 16px; border: 0; background: none; color: var(--ax-ink-3); cursor: pointer; font: var(--ax-label-s); padding: 0; text-align: center; }
+.ax-studio .pt-label input { accent-color: var(--ax-blue); }
+.ax-studio .pt-name { font-family: var(--ax-mono); font-size: 12px; }
+.ax-studio .pt-name-btn:hover { color: var(--ax-cyan); text-decoration: none; }
+.ax-studio .pt-name-btn.is-focus { color: var(--ax-orange); }
+.ax-studio .pt-tag { font: var(--ax-eyebrow); letter-spacing: var(--ax-tracking-eyebrow); text-transform: uppercase; color: var(--ax-ink-3); background: var(--ax-paper-2); border-radius: var(--ax-r-pill); padding: 1px 8px; }
+.ax-studio .pt-tag-after { color: var(--ax-ink-4); }
+.ax-studio .pt-tag-group { color: var(--ax-cyan); background: var(--ax-blue-fill); }
+
+/* Chips (chosen parts), part sets, context */
+.ax-studio .pt-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ax-studio .pt-chips-scroll { overflow: auto; flex: 1; min-height: 0; scrollbar-width: thin; }
+.ax-studio .pt-chip { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; font: var(--ax-label-s); font-family: var(--ax-mono); font-size: 12px; padding: 3px 6px 3px 10px; border-radius: var(--ax-r-pill); background: var(--ax-ok-fill); color: var(--ax-green); cursor: pointer; }
+.ax-studio .pt-chip:hover { background: var(--ax-paper-3); color: var(--ax-ink); }
+.ax-studio .pt-chip.is-focus { background: var(--ax-warn-fill); color: var(--ax-orange); }
+.ax-studio .pt-chip button { border: 0; background: none; color: inherit; cursor: pointer; padding: 0 4px; }
+.ax-studio .pt-groups { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ax-studio .pt-group { display: inline-flex; align-items: stretch; border: var(--ax-hair); border-radius: var(--ax-r-pill); overflow: hidden; font: var(--ax-label-s); background: var(--ax-paper); color: var(--ax-ink-2); }
+.ax-studio .pt-group.on { background: var(--ax-blue-fill); border-color: var(--ax-blue); color: var(--ax-cyan); }
+.ax-studio .pt-group-apply { border: 0; background: none; color: inherit; cursor: pointer; padding: 3px 10px; }
+.ax-studio .pt-group-x { border: 0; border-left: var(--ax-hair); background: none; color: var(--ax-ink-3); cursor: pointer; padding: 0 8px; }
+.ax-studio .pt-group-x:hover { color: var(--ax-red); }
+.ax-studio .pt-context { display: flex; flex-wrap: wrap; align-items: center; gap: var(--ax-s2); font: var(--ax-label-s); }
+.ax-studio .pt-context-label { color: var(--ax-ink-3); }
+.ax-studio .pt-context-seg { display: inline-flex; background: var(--ax-paper); border-radius: 10px; padding: 2px; border: 0; }
+.ax-studio .pt-context-seg button { font: var(--ax-label-s); padding: 5px 12px; background: none; color: var(--ax-ink-2); border: 0; border-radius: 8px; cursor: pointer; }
+.ax-studio .pt-context-seg button.on { background: var(--ax-paper-3); color: var(--ax-ink); }
+
+/* Colour families */
+.ax-studio .pt-fam-list { display: flex; flex-direction: column; gap: 2px; max-height: 40vh; overflow: auto; scrollbar-width: thin; }
+.ax-studio .pt-fam { display: flex; align-items: center; gap: var(--ax-s2); padding: 5px 8px; border-radius: var(--ax-r-field); font: var(--ax-label-s); cursor: pointer; color: var(--ax-ink); }
+.ax-studio .pt-fam:hover { background: var(--ax-paper-3); }
+.ax-studio .pt-fam input[type=color] { width: 28px; height: 22px; border: 0; padding: 0; background: none; border-radius: 6px; cursor: pointer; }
+.ax-studio .pt-fam-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--ax-mono); font-size: 12px; }
+.ax-studio .pt-fam-meta { color: var(--ax-ink-3); white-space: nowrap; }
+
+@media (max-width: 900px) { .ax-studio .st-body { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; } .ax-studio .st-side { border-left: 0; border-top: var(--ax-hair); max-height: 45vh; } }

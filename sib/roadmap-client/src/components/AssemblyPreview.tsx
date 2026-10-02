@@ -71,13 +71,24 @@ interface Scene3 {
   rest: Map<any, { p: any; q: any }>;
   /** Playback clock, if a step is playing. */
   playing: { start: number; raf: number } | null;
+  /** Rim-light: materials of this step's parts (green breathes) and of the focused part (orange, steady). */
+  rim: any[]; rimFocus: any[];
+  /** World centre of the focused part, for the registration mark overlay. */
+  focusCentre: any | null;
 }
+
+/** A brand token as a three.js colour - the scene follows tokens.css, never a literal. */
+const tokenColor = (THREE: Three, name: string, fallback: string) => {
+  const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  return new THREE.Color(v || fallback);
+};
 
 /** GLTFLoader sanitises node names (drops `:` `.` `/`), keeping the original in userData.name. */
 const partName = (o: any): string | undefined => (o?.userData?.name as string | undefined) ?? o?.name;
 
 export function AssemblyPreview({ modelId, partNames, states, onPick, onFocus, focus = null, isolate = false, onFocusInfo, height = 220, fill = false, onExpand, unmentioned = 'base', context, poses, play }: Props): JSX.Element {
   const hostRef  = useRef<HTMLDivElement | null>(null);
+  const markRef  = useRef<HTMLSpanElement | null>(null);
   const s3       = useRef<Scene3 | null>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [error, setError]   = useState<string | null>(null);
@@ -102,22 +113,26 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, onFocus, f
         const { OrbitControls } = await import(/* @vite-ignore */ ORBIT_SPEC);
         if (cancelled) return;
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
         renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
         const H = () => (fill ? host.clientHeight : height);
         renderer.setSize(host.clientWidth, H());
         host.appendChild(renderer.domElement);
 
         const scene = new THREE.Scene();
+        // The app's charcoal, from the tokens: the model reads as it does in AR, not on white.
+        scene.background = tokenColor(THREE, '--ax-bg-2', '#1f1f1f');
         const camera = new THREE.PerspectiveCamera(40, host.clientWidth / H(), 0.01, 1000);
-        scene.add(new THREE.HemisphereLight(0xffffff, 0x8899aa, 1.1));
-        const key = new THREE.DirectionalLight(0xffffff, 1.4); key.position.set(3, 5, 4); scene.add(key);
+        scene.add(new THREE.HemisphereLight(0xffffff, 0x334455, 1.3));
+        const key = new THREE.DirectionalLight(0xffffff, 1.6); key.position.set(3, 5, 4); scene.add(key);
+        const fill2 = new THREE.DirectionalLight(0xffffff, 0.5); fill2.position.set(-4, 2, -3); scene.add(fill2);
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
 
         const st: Scene3 = {
           THREE, renderer, scene, camera, controls, root: null,
           raycaster: new THREE.Raycaster(), pointer: new THREE.Vector2(), frame: 0, disposed: false, own: new Map(), rest: new Map(), playing: null,
+          rim: [], rimFocus: [], focusCentre: null,
         };
         s3.current = st;
 
@@ -155,9 +170,25 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, onFocus, f
         camera.position.copy(centre).add(new THREE.Vector3(size * 0.6, size * 0.45, size * 0.9));
         camera.near = size / 200; camera.far = size * 20; camera.updateProjectionMatrix();
 
+        const GREEN = tokenColor(THREE, '--ax-green', '#30d158');
+        const mark = markRef.current;
         const loop = () => {
           if (st.disposed) return;
           controls.update();
+          // Rim-light: the parts to look at breathe green (the app's AR highlight); the focused part burns orange, steady.
+          const k = 0.45 + 0.35 * (Math.sin(performance.now() / 420) * 0.5 + 0.5);
+          for (const m of st.rim) if (m.emissive) { m.emissive.copy(GREEN); m.emissiveIntensity = k; }
+          // The registration mark follows the focused part on screen.
+          if (mark) {
+            if (st.focusCentre) {
+              const p = st.focusCentre.clone().project(camera);
+              const r = renderer.domElement.getBoundingClientRect();
+              const x = (p.x * 0.5 + 0.5) * r.width, y = (-p.y * 0.5 + 0.5) * r.height;
+              const on = p.z < 1 && x >= 0 && y >= 0 && x <= r.width && y <= r.height;
+              mark.style.display = on ? '' : 'none';
+              mark.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%)`;
+            } else mark.style.display = 'none';
+          }
           renderer.render(scene, camera);
           st.frame = requestAnimationFrame(loop);
         };
@@ -204,8 +235,9 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, onFocus, f
     const st = s3.current;
     if (!st?.root || status !== 'ready') return;
     const { THREE } = st;
-    const ACCENT = new THREE.Color(0x2f6fed);
-    const GHOST  = 0.18;
+    const FOCUS_C = tokenColor(THREE, '--ax-orange', '#ff9f0a');
+    const GHOST  = 0.22;
+    st.rim = []; st.rimFocus = [];
     const stateOf = (o: any): PartState => {
       let p = o;
       while (p) { const n = partName(p); if (n && partNames.has(n)) { const s = states.get(n); if (s) return s; } p = p.parent; }
@@ -234,7 +266,7 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, onFocus, f
 
     const thisBox = new THREE.Box3();
     let anyThis = false;
-    const FOCUS = new THREE.Color(0xff9f0a);
+    const FOCUS = FOCUS_C;
     const inFocus = (o: any): boolean => { if (!focus) return false; for (let p = o; p; p = p.parent) if (partName(p) === focus) return true; return false; };
     const focusBox = new THREE.Box3(); let focusVisible = false, focusAny = false;
     st.root.traverse((o: any) => {
@@ -269,15 +301,13 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, onFocus, f
         if (m.emissive && b.emissive) m.emissive.copy(b.emissive);
         m.opacity = b.opacity; m.transparent = b.transparent;
         if (ps?.color && m.color) m.color.setRGB(ps.color[0], ps.color[1], ps.color[2]);
-        if (state === 'this') {
-          if (m.emissive) { m.emissive.copy(ACCENT); m.emissiveIntensity = 0.55; }
-          else if (m.color) m.color.lerp(ACCENT, 0.6);
-        }
+        if (state === 'this' && !focused && m.emissive) st.rim.push(m);     // green rim, animated in the loop
         if (show === 'ghost') { m.transparent = true; m.opacity = ghostOpacity; }
-        if (focused) { if (m.emissive) { m.emissive.copy(FOCUS); m.emissiveIntensity = 0.9; } else if (m.color) m.color.lerp(FOCUS, 0.7); }
+        if (focused) { if (m.emissive) { m.emissive.copy(FOCUS); m.emissiveIntensity = 0.85; } else if (m.color) m.color.lerp(FOCUS, 0.7); }
         m.needsUpdate = true;
       });
     });
+    st.focusCentre = focus && focusAny && !focusBox.isEmpty() ? focusBox.getCenter(new THREE.Vector3()) : null;
     // Describe the focused part: where it sits against the whole, and its size.
     if (onFocusInfo) {
       if (focus && focusAny && !focusBox.isEmpty()) {
@@ -340,6 +370,23 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, onFocus, f
   };
   useEffect(() => () => { const st = s3.current; if (st?.playing) cancelAnimationFrame(st.playing.raf); }, []);
 
+  /** Frame the visible geometry (F). */
+  const fitView = () => {
+    const st = s3.current; if (!st?.root) return;
+    const { THREE } = st; const box = new THREE.Box3();
+    st.root.updateWorldMatrix(true, true);
+    st.root.traverse((o: any) => { if (!o.isMesh || !o.visible) return; for (let p = o; p; p = p.parent) if (p.visible === false) return; box.expandByObject(o); });
+    if (box.isEmpty()) return;
+    const size = box.getSize(new THREE.Vector3()).length() || 1; const c = box.getCenter(new THREE.Vector3());
+    const dir = st.camera.position.clone().sub(st.controls.target).normalize();
+    st.controls.target.copy(c); st.camera.position.copy(c).add(dir.multiplyScalar(size * 1.1)); st.controls.update();
+  };
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { const t = e.target as HTMLElement | null; if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) return; if (e.key === 'f' || e.key === 'F') fitView(); };
+    window.addEventListener('keydown', onKey); return () => window.removeEventListener('keydown', onKey);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ── Click → identify the part; double click → add / remove (drag = orbit) ──
   const onFocusRef = useRef(onFocus); onFocusRef.current = onFocus;
   useEffect(() => {
@@ -377,7 +424,10 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, onFocus, f
 
   return (
     <div className={`asm-preview${fill ? ' asm-preview-fill' : ''}`}>
-      <div ref={hostRef} className="asm-preview-canvas" style={fill ? undefined : { height }} />
+      <div className="asm-preview-stage" style={fill ? undefined : { height }}>
+        <div ref={hostRef} className="asm-preview-canvas" style={fill ? undefined : { height }} />
+        <span ref={markRef} className="ax-mark asm-focus-mark" style={{ display: 'none' }} aria-hidden="true"><i></i><em></em>{focus && <b className="asm-focus-label">{focus.replace(/^cmp:/, '')}</b>}</span>
+      </div>
       {onExpand && status === 'ready' && (
         <button className="asm-expand" onClick={onExpand} title="Open large">⤢</button>
       )}
@@ -387,6 +437,8 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, onFocus, f
         <div className="asm-preview-bar">
           <span className="asm-legend"><i className="asm-sw asm-sw-this" /> this step</span>
           <span className="asm-legend"><i className="asm-sw asm-sw-before" /> installed earlier</span>
+          <span className="asm-legend"><i className="asm-sw asm-sw-after" /> later</span>
+          <button className="asm-toggle-btn" onClick={fitView} title="Fit the view (F)">Fit</button>
           {context
             ? <span className="asm-legend asm-ctx">Step context: {context === 'installed' ? 'installed only' : context === 'ghost' ? 'whole assembly, ghost' : 'whole assembly, solid'}</span>
             : <button className={`asm-toggle-btn${ghostAfter ? ' on' : ''}`} onClick={() => setGhostAfter(v => !v)}>

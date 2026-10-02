@@ -7,6 +7,18 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **3D Studio on the brand system.** The Designer's Studio is the first
+  Designer surface on `sib/portal/brand/`: charcoal page and stage, the
+  wordmark and step navigation in the header, the step strip as capsules
+  (current in the Designer's indigo), 8 %-white cards on the panel with a
+  capsule tab control, the focus card with an orange stroke. In the view,
+  the parts this step installs breathe the green rim-light (the app's AR
+  highlight), later parts ghost at the app's tier, and the focused part is
+  marked by the registration mark riding it on screen with its name in
+  mono. Fit (F), Isolate (I) and Hide / Show (H) on the keyboard. The
+  Inspector's small preview shares the stage. `studio.css` is tokens only
+  and governed by brand-check. Rebuild the Designer (`npm run
+  build:roadmap`).
 - **3D Studio side panel.** Three tabs - Parts (search, tree, operator
   context), Chosen (this step's parts as clickable chips, scrolling), and
   Colours (the grey-export colouring, per family with a picker, Apply and

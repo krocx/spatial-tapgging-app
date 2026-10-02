@@ -22,8 +22,8 @@ export function ColoursPanel({ modelId, onApplied }: { modelId: string; onApplie
   const load = () => { setErr(null); mindmapApi.modelColours(modelId).then(d => { setData(d); setOverrides({}); }).catch(e => setErr((e as Error).message)); };
   useEffect(load, [modelId]);
 
-  if (err) return <div className="pt-card"><div className="pt-card-title">Colours</div><span className="step-check-hint">{err}</span></div>;
-  if (!data) return <div className="pt-card"><div className="pt-card-title">Colours</div><span className="step-check-hint">Reading materials…</span></div>;
+  if (err) return <div className="ax-card pt-card"><div className="pt-card-title">Colours</div><span className="step-check-hint">{err}</span></div>;
+  if (!data) return <div className="ax-card pt-card"><div className="pt-card-title">Colours</div><span className="step-check-hint">Reading materials…</span></div>;
 
   const colourOf = (f: ModelColours['families'][number]): RGB => overrides[f.family] ?? f.applied ?? f.suggested;
   const apply = async () => {
@@ -47,7 +47,7 @@ export function ColoursPanel({ modelId, onApplied }: { modelId: string; onApplie
     : data.textured ? 'Textured model - colouring is for grey exports.' : `Already coloured (${data.materials - data.greyMaterials} of ${data.materials} materials). You can still recolour by family.`;
 
   return (
-    <div className="pt-card pt-colours">
+    <div className="ax-card pt-card pt-colours">
       <div className="pt-card-title">Colours <span className="pt-card-sub">{data.families.length} families · {data.parts} parts</span></div>
       <div className={`pt-note${data.greyscale && !data.applied ? ' warn' : ''}`}>{note}</div>
       <div className="pt-fam-list">

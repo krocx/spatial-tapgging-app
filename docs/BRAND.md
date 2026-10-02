@@ -158,7 +158,10 @@ registration mark marks loading and empty; the wordmark is the only
 flourish.
 
 Adoption order: Chambers (shipped) → Guide Library → Sessions → the Lab
-modal → Admin pages.
+modal → Admin pages. The Procedure Designer migrates surface by surface,
+starting with the 3D Studio (`sib/roadmap-client/src/studio.css`, governed):
+charcoal stage, green rim-light on the parts to look at, the registration
+mark riding the focused part, 8 %-white cards on a 380 px panel.
 
 ## Migration plan
 

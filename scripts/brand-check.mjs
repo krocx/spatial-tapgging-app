@@ -29,6 +29,7 @@ const GOVERNED = [
   'sib/portal/compass.js',          // the Compass (every surface)
   'sib/portal/architecture.html',   // /architecture (C4)
   'sib/portal/scorecard.html',      // /scorecard (TRL)
+  'sib/roadmap-client/src/studio.css', // the Designer's 3D Studio (first Designer surface on the system)
 ];
 const TOKENS = 'sib/portal/brand/tokens.css';
 

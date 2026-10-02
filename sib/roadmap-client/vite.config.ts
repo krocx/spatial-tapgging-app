@@ -19,6 +19,8 @@ export default defineConfig({
     proxy: {
       '/mindmap': { target: 'http://localhost:3001', ws: true },
       '/config': { target: 'http://localhost:3001' },
+      '/portal': { target: 'http://localhost:3001' },
+      '/models': { target: 'http://localhost:3001' },
     },
   },
 });
