@@ -113,7 +113,10 @@ on the server. No change to the app.
 ## Order of work
 
 1. Step needs, derived at request time from the step (done; `step.needs`
-   override honoured, Designer chips to come).
+   override honoured). The Designer's Inspector shows the derivation as
+   chips under each step ("What this step needs from a device") and lets
+   the author correct it; the compiler carries the override into
+   `GuideStep.needs` (done, 2026.4.46).
 2. Device profiles as files + readiness join + portal matrix (done).
 3. XR kit profile switch (done, first cut): `?profile=<id>` or detected
    from the browser (Quest, HoloLens, Vision Pro). Reduced overlay asks the

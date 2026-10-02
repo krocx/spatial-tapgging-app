@@ -7,6 +7,13 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **Designer: what a step needs from a device.** Under each step the
+  Inspector shows the readiness derivation as chips (Text, Place on the
+  tool, Motion, Find parts, Image, Hands busy) with a reason on hover; the
+  author toggles them to correct it, a dashed border marks a change from
+  the derivation, reset returns to it. Stored as `metadata.step.needs`,
+  carried by the compiler and the import into `GuideStep.needs`, honoured
+  by the readiness matrix. Rebuild the Designer.
 - **3D Studio: adjust a part for AR from one card.** Colour… colours the
   selection from this step on (a `color` delta the app and XR kit apply) or
   in the whole model (per-part override, `byPart`, written into the GLB);

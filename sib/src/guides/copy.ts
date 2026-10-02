@@ -105,6 +105,7 @@ export function copyGuideToAnchor(source: Guide, opts: CopyGuideOptions): CopyGu
       ...(s.nodes?.length ? { nodes: s.nodes } : {}),
       ...(s.view ? { view: s.view } : {}),
       ...(s.context ? { context: s.context } : {}),
+      ...(s.needs ? { needs: s.needs } : {}),
       ...(s.cadPosition ? { cadPosition: s.cadPosition } : {}),
       // model assignment travels; placement does not (legacy fields mirror slot 1)
       models,

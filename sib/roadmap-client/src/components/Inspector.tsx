@@ -15,6 +15,7 @@ import {
 } from '../utils/colors.js';
 import { ICON_NAMES, ICON_META } from '../utils/icons.js';
 import { Icon } from './Icon.js';
+import { NeedsSection } from './NeedsSection.js';
 import { PartsSection } from './PartsSection.js';
 import { matchGlossary } from '../utils/glossary.js';
 import { renderInline } from './GlossaryPanel.js';
@@ -536,6 +537,9 @@ function StepSection({ nodeId }: { nodeId: string }): JSX.Element | null {
 
       {/* 2026.4.46: which parts of the map's assembly this step installs. */}
       <PartsSection nodeId={nodeId} />
+
+      {/* 2026.4.46: what the step needs from a device (readiness), derived and correctable. */}
+      <NeedsSection nodeId={nodeId} />
 
       <p className="step-note">
         Position in AR (pin + model placement) is done on device after sending

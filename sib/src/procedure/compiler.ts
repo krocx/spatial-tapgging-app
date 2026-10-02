@@ -82,6 +82,8 @@ interface StepMeta {
   cadPosition?:  [number, number, number];
   /** Operator context around this step's parts (see GuideStep.context). */
   context?:      'installed' | 'ghost' | 'solid';
+  /** Author's override of the derived step needs (readiness.ts STEP_NEEDS). */
+  needs?:        string[];
 }
 
 const MAX_STEP_PARTS = 200;
@@ -165,6 +167,7 @@ function stepMetaOf(node: MindmapNode): StepMeta {
     nodes:        nodesOf(m.nodes),
     view:         m.view && typeof m.view === 'object' ? m.view as GuideStepView : undefined,
     context:      m.context === 'ghost' || m.context === 'solid' ? m.context : undefined,
+    needs:        Array.isArray(m.needs) && m.needs.every(x => typeof x === 'string') && m.needs.length ? (m.needs as string[]) : undefined,
     cadPosition:  Array.isArray(m.cadPosition) && m.cadPosition.length === 3 && m.cadPosition.every(x => typeof x === 'number')
                     ? m.cadPosition as [number, number, number] : undefined,
   };
@@ -417,6 +420,7 @@ export function compileProcedure(map: Mindmap): ProcedureCompileResult {
     if (stepNodes?.length) step.nodes = stepNodes;
     if (meta.view)         step.view = meta.view;
     if (meta.context)      step.context = meta.context;
+    if (meta.needs)        step.needs = meta.needs;
     if (meta.cadPosition)  step.cadPosition = meta.cadPosition;
     if (nextId   && seqOf.has(nextId))   step.nextOnSuccessSeq = seqOf.get(nextId);
     if (failId   && seqOf.has(failId))   step.nextOnFailureSeq = seqOf.get(failId);

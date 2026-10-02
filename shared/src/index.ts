@@ -1882,6 +1882,8 @@ export interface ImportedGuideStep {
   nodes?:               GuideStepNode[];
   view?:                GuideStepView;
   context?:             'installed' | 'ghost' | 'solid';
+  /** Author's override of the derived step needs (readiness). */
+  needs?:               string[];
   /** Optional seconds of source timing for the step (e.g. Cortona SubStep.duration). */
   durationSec?:         number;
   // Conditional task graph - expressed as sequence numbers; server resolves to UUIDs

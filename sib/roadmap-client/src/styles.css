@@ -960,3 +960,11 @@ input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 .editor-body.night .inspector .sib-link code { background: var(--ax-paper); color: var(--ax-ink); }
 .editor-body.night .inspector .swatch.active { border-color: var(--ax-ink); }
 .editor-body.night .inspector .step-image-preview { border: 1px solid var(--border); }
+
+/* ── Inspector: what a step needs from a device (2026.4.46) ───── */
+.needs-section { display: flex; flex-direction: column; gap: 6px; }
+.needs-chips { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.needs-chip { font-size: 11.5px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--panel); color: var(--muted); cursor: pointer; }
+.needs-chip.on { background: var(--ax-blue-fill); border-color: var(--ax-blue); color: var(--ax-cyan); }
+.needs-chip.changed { border-style: dashed; }
+.needs-reset { font-size: 11px; padding: 2px 8px; }
