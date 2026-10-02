@@ -95,7 +95,8 @@ async function startRun() {
   showStep(0);
 }
 
-function pageFor(k: number) { return composePage(steps[k], k, steps.length, bounds()); }
+const labels = () => (bundle?.models || []).find(m => m.role === 'assembly')?.partLabels || {};
+function pageFor(k: number) { return composePage(steps[k], k, steps.length, bounds(), labels()); }
 
 async function showStep(k: number) {
   if (!session || !bundle) return;

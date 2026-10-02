@@ -50,9 +50,12 @@
 .ax-studio .asm-clock { font: var(--ax-num); color: var(--ax-ink-2); }
 .ax-studio .asm-hint { margin-left: auto; color: var(--ax-ink-3); flex-basis: auto; }
 .ax-studio .asm-expand { display: none; }
-/* The registration mark rides on the focused part. */
-.ax-studio .asm-focus-mark { position: absolute; left: 0; top: 0; font-size: 44px; color: var(--ax-orange); pointer-events: none; }
-.ax-studio .asm-focus-label { position: absolute; left: 1.15em; top: 50%; transform: translateY(-50%); font: var(--ax-label-s); font-family: var(--ax-mono); color: var(--ax-orange); background: var(--ax-solid); border: 1px solid var(--ax-orange); border-radius: var(--ax-r-pill); padding: 2px 10px; white-space: nowrap; }
+/* The focused part is the mark (full colour + orange rim while the rest greys); its name sits beside it with a leader. */
+.ax-studio .asm-lead { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.ax-studio .asm-lead line { stroke: var(--ax-orange); stroke-width: 1.5; }
+.ax-studio .asm-focus-label { position: absolute; left: 0; top: 0; display: inline-flex; align-items: center; gap: var(--ax-s2); font: var(--ax-label-s); color: var(--ax-ink); background: var(--ax-solid); border: 1px solid var(--ax-orange); border-radius: var(--ax-r-pill); padding: 4px 12px; white-space: nowrap; pointer-events: none; max-width: 320px; }
+.ax-studio .asm-focus-name { overflow: hidden; text-overflow: ellipsis; }
+.ax-studio .asm-focus-more { font: var(--ax-eyebrow); color: var(--ax-orange); }
 
 /* ── Panel cards ─────────────────────────────────────────────────────────── */
 .ax-studio .pt-card { display: flex; flex-direction: column; gap: var(--ax-s2); padding: var(--ax-s3) var(--ax-s4); flex: 0 0 auto; }
@@ -75,6 +78,22 @@
 .ax-studio .pt-focus-meta span.ok { background: var(--ax-ok-fill); color: var(--ax-green); }
 .ax-studio .pt-focus-meta span.off { background: var(--ax-paper-3); color: var(--ax-ink-3); }
 .ax-studio .pt-focus-acts { display: flex; flex-wrap: wrap; gap: var(--ax-s2); }
+
+/* Focus card extras: rename, CAD name, breadcrumb, family chip */
+.ax-studio .pt-focus-rename { border: 0; background: none; color: var(--ax-cyan); cursor: pointer; font: var(--ax-label-s); padding: 0 4px; }
+.ax-studio .pt-focus-cad { font: var(--ax-label-s); font-family: var(--ax-mono); font-size: 11px; color: var(--ax-ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ax-studio .pt-focus-crumb { display: flex; flex-wrap: wrap; gap: 2px; font: var(--ax-label-s); color: var(--ax-ink-3); }
+.ax-studio .pt-focus-crumb button { border: 0; background: none; color: var(--ax-ink-3); cursor: pointer; font: inherit; padding: 0; }
+.ax-studio .pt-focus-crumb button:hover { color: var(--ax-cyan); }
+.ax-studio .pt-focus-crumb button::after { content: ' › '; color: var(--ax-ink-4); }
+.ax-studio .pt-focus-meta span.fam { background: var(--ax-blue-fill); color: var(--ax-cyan); cursor: pointer; font-family: var(--ax-mono); }
+/* View controls and the family list */
+.ax-studio .pt-view { display: flex; gap: var(--ax-s2); flex-wrap: wrap; }
+.ax-studio .pt-fam-row { background: var(--ax-paper-2); }
+.ax-studio .pt-swatch { width: 12px; height: 12px; border-radius: 4px; background: var(--ax-paper-3); flex: 0 0 auto; }
+.ax-studio .pt-mini { border: 0; background: none; color: var(--ax-ink-3); cursor: pointer; font: var(--ax-eyebrow); letter-spacing: var(--ax-tracking-eyebrow); text-transform: uppercase; padding: 0 4px; }
+.ax-studio .pt-mini:hover { color: var(--ax-cyan); }
+.ax-studio .pt-name-btn.is-hover { color: var(--ax-cyan); }
 
 /* Buttons inside the panel take the system's quiet / tinted forms */
 .ax-studio .btn { font: var(--ax-label-s); color: var(--ax-ink-2); background: var(--ax-paper); border: var(--ax-hair); border-radius: 10px; padding: 6px 12px; cursor: pointer; }

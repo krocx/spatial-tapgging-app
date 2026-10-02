@@ -351,9 +351,19 @@ three real callers before it is frozen.
 ## Finding a part (3D Studio, 2026.4.46)
 
 A single click on a part in the 3D view, or on its name in the tree,
-*identifies* it: the part lights orange, the camera turns to it, and a focus
-card names it, says where it sits ("left side, upper part"), its size in
-millimetres, and whether it is visible on this step. From the card: Add to /
+*identifies* it: the part keeps its colour with an orange rim while everything
+else greys out (spotlight; switchable), the camera turns to it, its name sits
+beside it on a leader line, and a focus card names it, shows its CAD name and
+parent chain, says where it sits ("left side, upper part"), its size in
+millimetres, its family, and whether it is visible on this step. Shift-click
+builds a selection; the card then acts on all of it. Hovering gives a faint
+rim first. Parts can be given names people read (Rename on the card, or a
+whole family at once from the By-family list); they are stored on the model
+(`partLabels`), shown everywhere in the Designer and spoken / paged on the
+glasses, with the CAD name kept underneath. "By family" lists parts grouped
+(BOLT_M6_01 and _02 together) with add-all / remove-all; "Colour by family"
+tints the view only. Keys: F fit, Z frame the selection, I isolate, H hide /
+show, Esc clear then close; double-click on empty space fits the view. From the card: Add to /
 Remove from step, Hide / Show on this step, Isolate (only this part; others
 drop out, the part stays even if the step hides it) and Clear. Double-click
 in the 3D view still adds or removes the part. Hide / Show on an imported

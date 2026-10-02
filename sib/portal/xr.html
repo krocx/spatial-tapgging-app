@@ -507,10 +507,12 @@ function whereWords(st) {
   w.push(y > 0.67 ? 'upper part' : y < 0.33 ? 'lower part' : 'mid height');
   return w.join(', ');
 }
+// A part's readable name (Model3D.partLabels, carried in the bundle), else the CAD name tidied.
+const labelOf = n => ((bundle?.models || []).find(m => m.role === 'assembly')?.partLabels || {})[n] || n.replace(/^cmp:/, '').replace(/[_-]+/g, ' ');
 function stepScript(st, names) {
   const bits = [`Step ${idx + 1} of ${steps.length}. ${st.title || ''}.`, st.ttsText || st.text || ''];
   const where = whereWords(st); if (where) bits.push(`Location: ${where}.`);
-  if (names.length) bits.push(`Parts: ${names.map(n => n.replace(/^cmp:/, '').replace(/[_-]+/g, ' ')).slice(0, 6).join(', ')}.`);
+  if (names.length) bits.push(`Parts: ${names.map(labelOf).slice(0, 6).join(', ')}.`);
   return bits.filter(Boolean).join(' ');
 }
 let speaking = null;
@@ -524,7 +526,7 @@ function renderTextStep(st, names) {
   $('tmTitle').textContent = st.title || `Step ${idx + 1}`;
   $('tmText').textContent = st.text || '';
   const where = whereWords(st); $('tmWhere').textContent = where ? `Where: ${where}` : '';
-  $('tmParts').textContent = names.length ? `Parts: ${names.slice(0, 6).map(n => n.replace(/^cmp:/, '').replace(/[_-]+/g, ' ')).join(' · ')}` : '';
+  $('tmParts').textContent = names.length ? `Parts: ${names.slice(0, 6).map(labelOf).join(' · ')}` : '';
   $('tmPrev').disabled = idx === 0; $('tmNext').textContent = idx === steps.length - 1 ? 'Done ✓' : 'Next ›';
   if (profile?.display === 'none') speak(stepScript(st, names));
 }

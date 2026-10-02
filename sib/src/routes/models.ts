@@ -337,8 +337,9 @@ router.get('/:id/colours', (req: Request, res: Response): void => {
     const src = fs.existsSync(origPath(model.id)) ? origPath(model.id) : filePath;
     const a = analyseColours(fs.readFileSync(src));
     const applied = model.colours?.byFamily ?? null;
+    const partFamilies: Record<string, string> = {}; for (const p of a.parts) partFamilies[p.name] = p.family;
     res.json({ data: { modelId: model.id, greyscale: a.greyscale, textured: a.textured, materials: a.materials, greyMaterials: a.greyMaterials,
-      families: a.families.map(f => ({ ...f, applied: applied?.[f.family] ?? null })), parts: a.parts.length, applied: model.colours ?? null, hasOriginal: fs.existsSync(origPath(model.id)) }, timestamp: new Date().toISOString() });
+      families: a.families.map(f => ({ ...f, applied: applied?.[f.family] ?? null })), parts: a.parts.length, partFamilies, applied: model.colours ?? null, hasOriginal: fs.existsSync(origPath(model.id)) }, timestamp: new Date().toISOString() });
   } catch (err) { res.status(422).json({ error: `Could not read the model's materials: ${(err as Error).message}` }); }
 });
 router.post('/:id/colours', requireRole('owner', 'manager', 'engineer'), (req: Request, res: Response): void => {
@@ -614,6 +615,12 @@ router.patch('/:id', (req: Request, res: Response): void => {
   const patch: Partial<Model3D> = { updatedAt: new Date().toISOString() };
   if (body.name?.trim())                patch.name         = body.name.trim();
   if (body.defaultScale !== undefined)  patch.defaultScale = body.defaultScale;
+  if (body.partLabels !== undefined) {
+    if (typeof body.partLabels !== 'object' || body.partLabels === null) { res.status(400).json({ error: 'partLabels must be an object of part name → label' }); return; }
+    const next: Record<string, string> = { ...(model.partLabels ?? {}) };
+    for (const [k, v] of Object.entries(body.partLabels)) { if (typeof v !== 'string') continue; const t = v.trim().slice(0, 80); if (t) next[k] = t; else delete next[k]; }
+    patch.partLabels = next;
+  }
   const ORIENTATIONS = ['asImported', 'upsideDown', 'tiltForward', 'tiltBack', 'rollLeft', 'rollRight'];
   const ORIGINS = ['bottomCentre', 'modelOrigin', 'centre'];
   if (body.defaultOrientation !== undefined) {

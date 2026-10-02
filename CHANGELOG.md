@@ -7,6 +7,19 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **3D Studio: the part is the mark.** Selecting a part keeps it in colour
+  with an orange rim while everything else greys out (spotlight, switchable);
+  its name sits beside it on a leader line instead of a mark on top; hover
+  rims the part under the pointer; shift-click builds a selection the focus
+  card acts on as one. The card adds the CAD name, the parent chain
+  (clickable), the family (click to select the whole family) and Rename.
+  **Names people read**: `partLabels` on the model (PATCH /models/:id),
+  carried in the guide bundle and used by the XR kit's text and spoken forms
+  and by SIB on G2; the Designer shows them everywhere with the CAD name
+  underneath. **By family** lists parts grouped with add-all / remove-all
+  and a family rename; **Colour by family** tints the view without touching
+  the model. F fit, Z frame, I isolate, H hide / show, Esc clears, double-
+  click on empty space fits. Rebuild the Designer and SIB on G2.
 - **The Procedure Designer on the brand system.** The whole Designer now
   reads its colours from `/portal/brand/tokens.css`: charcoal page, 8 %-white
   panels and cards, white text in the app's opacity tiers, Open Sans, the

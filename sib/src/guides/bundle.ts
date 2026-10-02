@@ -26,6 +26,8 @@ export interface BundleModel {
   glbUrl?:       string;
   usdzUrl?:      string;
   defaultScale?: number;
+  /** Readable names per CAD part (Model3D.partLabels) for text and spoken forms. */
+  partLabels?:   Record<string, string>;
   fileSizeBytes: number;
 }
 
@@ -107,6 +109,7 @@ export function buildGuideBundle(guide: Guide, steps: GuideStep[], look: BundleL
       ...(m.hasGLB && { glbUrl: `/models/${m.id}/file.glb` }),
       ...(m.hasUSDZ && { usdzUrl: `/models/${m.id}/file.usdz` }),
       ...(m.defaultScale !== undefined && { defaultScale: m.defaultScale }),
+      ...(m.partLabels && Object.keys(m.partLabels).length && { partLabels: m.partLabels }),
     });
   };
   push(guide.assembly?.modelId, 'assembly');

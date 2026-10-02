@@ -16,7 +16,7 @@
 //
 // The GPU here is the author's laptop - nothing renders on the server.
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { fetchModelGlbUrl } from '../api/mindmap-api.js';
 import { stateAt, timeline, type PartStateMap } from '../utils/assembly-state.js';
 import type { GuideStepNode } from '@spatial/shared';
@@ -43,11 +43,19 @@ interface Props {
   onPick?: (name: string) => void;
   /** Identify: a single click names the part (the Studio's focus card); double click = onPick. */
   onFocus?: (name: string) => void;
-  /** The focused part: lit orange, camera turned to it, and described through onFocusInfo. */
-  focus?: string | null;
-  /** Show only the focused part (and its children). */
+  /** The focused part(s): kept in full colour with an orange rim while everything else greys out
+   *  (spotlight); the camera turns to them; described through onFocusInfo. */
+  focus?: string | string[] | null;
+  /** Spotlight off: focused parts still rim orange but the rest keeps its colour. */
+  spotlight?: boolean;
+  /** Show only the focused part(s) (and their children). */
   isolate?: boolean;
-  onFocusInfo?: (info: { name: string; where: string; sizeMm: [number, number, number]; visible: boolean } | null) => void;
+  /** Display name for the label capsule (falls back to the CAD name). */
+  focusLabel?: string;
+  /** View-time tint per part (e.g. by family) - changes nothing in the model. */
+  colourBy?: Map<string, [number, number, number]> | null;
+  onHover?: (name: string | null) => void;
+  onFocusInfo?: (info: { name: string; where: string; sizeMm: [number, number, number]; visible: boolean; parents: string[] } | null) => void;
   height?: number;
   /** Fill the parent instead of a fixed height (expanded view). */
   fill?: boolean;
@@ -73,8 +81,11 @@ interface Scene3 {
   playing: { start: number; raf: number } | null;
   /** Rim-light: materials of this step's parts (green breathes) and of the focused part (orange, steady). */
   rim: any[]; rimFocus: any[];
-  /** World centre of the focused part, for the registration mark overlay. */
-  focusCentre: any | null;
+  /** World box of the focused part(s), for the label capsule and its leader line. */
+  focusBox: any | null;
+  /** name → meshes, for cheap hover highlighting. */
+  meshesOf: Map<string, any[]>;
+  hover: string | null;
 }
 
 /** A brand token as a three.js colour - the scene follows tokens.css, never a literal. */
@@ -86,9 +97,12 @@ const tokenColor = (THREE: Three, name: string, fallback: string) => {
 /** GLTFLoader sanitises node names (drops `:` `.` `/`), keeping the original in userData.name. */
 const partName = (o: any): string | undefined => (o?.userData?.name as string | undefined) ?? o?.name;
 
-export function AssemblyPreview({ modelId, partNames, states, onPick, onFocus, focus = null, isolate = false, onFocusInfo, height = 220, fill = false, onExpand, unmentioned = 'base', context, poses, play }: Props): JSX.Element {
+export function AssemblyPreview({ modelId, partNames, states, onPick, onFocus, focus = null, spotlight = true, isolate = false, focusLabel, colourBy = null, onHover, onFocusInfo, height = 220, fill = false, onExpand, unmentioned = 'base', context, poses, play }: Props): JSX.Element {
   const hostRef  = useRef<HTMLDivElement | null>(null);
-  const markRef  = useRef<HTMLSpanElement | null>(null);
+  const labelRef = useRef<HTMLDivElement | null>(null);
+  const leadRef  = useRef<SVGLineElement | null>(null);
+  const focusSet = useMemo(() => new Set(focus ? (Array.isArray(focus) ? focus : [focus]) : []), [focus]);
+  const primaryFocus = focusSet.size ? [...focusSet][0] : null;
   const s3       = useRef<Scene3 | null>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [error, setError]   = useState<string | null>(null);
@@ -132,7 +146,7 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, onFocus, f
         const st: Scene3 = {
           THREE, renderer, scene, camera, controls, root: null,
           raycaster: new THREE.Raycaster(), pointer: new THREE.Vector2(), frame: 0, disposed: false, own: new Map(), rest: new Map(), playing: null,
-          rim: [], rimFocus: [], focusCentre: null,
+          rim: [], rimFocus: [], focusBox: null, meshesOf: new Map(), hover: null,
         };
         s3.current = st;
 
@@ -144,6 +158,8 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, onFocus, f
         root.traverse((o: any) => {
           if (partName(o)) st.rest.set(o, { p: o.position.clone(), q: o.quaternion.clone() });
           if (o.isMesh) {
+            // Every named ancestor owns this mesh (hover lights a part with all its children).
+            for (let p = o; p; p = p.parent) { const n = partName(p); if (n && partNames.has(n)) { const l = st.meshesOf.get(n) ?? []; l.push(o); st.meshesOf.set(n, l); } }
             const mats = Array.isArray(o.material) ? o.material : [o.material];
             const cloned = mats.map((m: any) => m.clone());
             o.material = Array.isArray(o.material) ? cloned : cloned[0];
@@ -171,23 +187,37 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, onFocus, f
         camera.near = size / 200; camera.far = size * 20; camera.updateProjectionMatrix();
 
         const GREEN = tokenColor(THREE, '--ax-green', '#30d158');
-        const mark = markRef.current;
+        const corner = new THREE.Vector3();
         const loop = () => {
           if (st.disposed) return;
           controls.update();
           // Rim-light: the parts to look at breathe green (the app's AR highlight); the focused part burns orange, steady.
           const k = 0.45 + 0.35 * (Math.sin(performance.now() / 420) * 0.5 + 0.5);
           for (const m of st.rim) if (m.emissive) { m.emissive.copy(GREEN); m.emissiveIntensity = k; }
-          // The registration mark follows the focused part on screen.
-          if (mark) {
-            if (st.focusCentre) {
-              const p = st.focusCentre.clone().project(camera);
+          // The label capsule sits beside the focused part, outside its screen box, with a leader to its edge.
+          const label = labelRef.current, lead = leadRef.current;
+          if (label && lead) {
+            if (st.focusBox && !st.focusBox.isEmpty()) {
               const r = renderer.domElement.getBoundingClientRect();
-              const x = (p.x * 0.5 + 0.5) * r.width, y = (-p.y * 0.5 + 0.5) * r.height;
-              const on = p.z < 1 && x >= 0 && y >= 0 && x <= r.width && y <= r.height;
-              mark.style.display = on ? '' : 'none';
-              mark.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%)`;
-            } else mark.style.display = 'none';
+              let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity, behind = false;
+              for (let i = 0; i < 8; i++) {
+                corner.set(i & 1 ? st.focusBox.max.x : st.focusBox.min.x, i & 2 ? st.focusBox.max.y : st.focusBox.min.y, i & 4 ? st.focusBox.max.z : st.focusBox.min.z).project(camera);
+                if (corner.z > 1) behind = true;
+                const x = (corner.x * 0.5 + 0.5) * r.width, y = (-corner.y * 0.5 + 0.5) * r.height;
+                minX = Math.min(minX, x); maxX = Math.max(maxX, x); minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+              }
+              const on = !behind && maxX > 0 && maxY > 0 && minX < r.width && minY < r.height;
+              label.style.display = on ? '' : 'none'; lead.style.display = on ? '' : 'none';
+              if (on) {
+                const lw = label.offsetWidth || 120, lh = label.offsetHeight || 28, gap = 18;
+                const cy = Math.min(Math.max((minY + maxY) / 2, lh / 2 + 4), r.height - lh / 2 - 4);
+                const right = maxX + gap + lw < r.width - 8;
+                const lx = right ? maxX + gap : Math.max(8, minX - gap - lw);
+                label.style.transform = `translate(${lx}px, ${cy - lh / 2}px)`;
+                lead.setAttribute('x1', String(right ? lx : lx + lw)); lead.setAttribute('y1', String(cy));
+                lead.setAttribute('x2', String(right ? maxX : minX)); lead.setAttribute('y2', String((minY + maxY) / 2));
+              }
+            } else { label.style.display = 'none'; lead.style.display = 'none'; }
           }
           renderer.render(scene, camera);
           st.frame = requestAnimationFrame(loop);
@@ -267,7 +297,9 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, onFocus, f
     const thisBox = new THREE.Box3();
     let anyThis = false;
     const FOCUS = FOCUS_C;
-    const inFocus = (o: any): boolean => { if (!focus) return false; for (let p = o; p; p = p.parent) if (partName(p) === focus) return true; return false; };
+    const inFocus = (o: any): boolean => { if (!focusSet.size) return false; for (let p = o; p; p = p.parent) { const n = partName(p); if (n && focusSet.has(n)) return true; } return false; };
+    const tintOf = (o: any): [number, number, number] | undefined => { if (!colourBy) return undefined; for (let p = o; p; p = p.parent) { const n = partName(p); if (n && colourBy.has(n)) return colourBy.get(n); } return undefined; };
+    const dim = spotlight && focusSet.size > 0;
     const focusBox = new THREE.Box3(); let focusVisible = false, focusAny = false;
     st.root.traverse((o: any) => {
       if (!o.isMesh) return;
@@ -290,7 +322,7 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, onFocus, f
         if (playbackOnly(o) || (startsHidden(o) && !states.has(partName(o) ?? ''))) show = 'hidden';
       }
       const focused = inFocus(o);
-      if (isolate && focus && !focused) show = 'hidden';
+      if (isolate && focusSet.size && !focused) show = 'hidden';
       if (focused) { focusAny = true; focusBox.expandByObject(o); if (show !== 'hidden') focusVisible = true; if (isolate && show === 'hidden') show = 'ghost'; }
       o.visible = show !== 'hidden';
       if (o.visible && state === 'this') { thisBox.expandByObject(o); anyThis = true; }
@@ -301,16 +333,21 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, onFocus, f
         if (m.emissive && b.emissive) m.emissive.copy(b.emissive);
         m.opacity = b.opacity; m.transparent = b.transparent;
         if (ps?.color && m.color) m.color.setRGB(ps.color[0], ps.color[1], ps.color[2]);
+        const tint = tintOf(o); if (tint && m.color) m.color.setRGB(tint[0], tint[1], tint[2]);
         if (state === 'this' && !focused && m.emissive) st.rim.push(m);     // green rim, animated in the loop
         if (show === 'ghost') { m.transparent = true; m.opacity = ghostOpacity; }
-        if (focused) { if (m.emissive) { m.emissive.copy(FOCUS); m.emissiveIntensity = 0.85; } else if (m.color) m.color.lerp(FOCUS, 0.7); }
+        // Spotlight: everything that is not in focus drops to a desaturated grey at the app's 50 % tier.
+        if (dim && !focused && m.color) { const l = 0.3 * m.color.r + 0.59 * m.color.g + 0.11 * m.color.b; const c0 = m.color.clone(); m.color.setRGB(l, l, l).multiplyScalar(0.55).lerp(c0, 0.15); }
+        if (focused) { if (m.emissive) { m.emissive.copy(FOCUS); m.emissiveIntensity = 0.6; } else if (m.color) m.color.lerp(FOCUS, 0.4); }
         m.needsUpdate = true;
       });
     });
-    st.focusCentre = focus && focusAny && !focusBox.isEmpty() ? focusBox.getCenter(new THREE.Vector3()) : null;
-    // Describe the focused part: where it sits against the whole, and its size.
+    st.focusBox = focusSet.size && focusAny && !focusBox.isEmpty() ? focusBox.clone() : null;
+    // Describe the focused part: where it sits against the whole, its size, its parents.
     if (onFocusInfo) {
-      if (focus && focusAny && !focusBox.isEmpty()) {
+      if (primaryFocus && focusAny && !focusBox.isEmpty()) {
+        const parentsOf: string[] = []; let found = false;
+        st.root.traverse((o: any) => { if (found || partName(o) !== primaryFocus) return; found = true; for (let p = o.parent; p; p = p.parent) { const n = partName(p); if (n && partNames.has(n)) parentsOf.unshift(n); } });
         const all = new THREE.Box3().setFromObject(st.root);
         const c = focusBox.getCenter(new THREE.Vector3()); const sz = focusBox.getSize(new THREE.Vector3());
         const rel = (v: number, lo: number, hi: number) => (v - lo) / Math.max(1e-9, hi - lo);
@@ -318,8 +355,8 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, onFocus, f
         const w: string[] = [x < 0.33 ? 'left side' : x > 0.67 ? 'right side' : 'centre'];
         if (z < 0.33) w.push('towards the back'); else if (z > 0.67) w.push('towards the front');
         w.push(y > 0.67 ? 'upper part' : y < 0.33 ? 'lower part' : 'mid height');
-        onFocusInfo({ name: focus, where: w.join(', '), sizeMm: [Math.round(sz.x * 1000), Math.round(sz.y * 1000), Math.round(sz.z * 1000)], visible: focusVisible });
-      } else onFocusInfo(focus ? { name: focus, where: '', sizeMm: [0, 0, 0], visible: false } : null);
+        onFocusInfo({ name: primaryFocus, where: w.join(', '), sizeMm: [Math.round(sz.x * 1000), Math.round(sz.y * 1000), Math.round(sz.z * 1000)], visible: focusVisible, parents: parentsOf });
+      } else onFocusInfo(primaryFocus ? { name: primaryFocus, where: '', sizeMm: [0, 0, 0], visible: false, parents: [] } : null);
     }
     return { thisBox, anyThis, focusBox: focusAny ? focusBox : null };
   };
@@ -341,7 +378,7 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, onFocus, f
       st.controls.update();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [states, partNames, ghostAfter, status, unmentioned, context, poses, focus, isolate]);
+  }, [states, partNames, ghostAfter, status, unmentioned, context, poses, focusSet, spotlight, isolate, colourBy]);
 
   // ── Play this step on its own clock ────────────────────────────────────
   const stop = () => {
@@ -381,11 +418,49 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, onFocus, f
     const dir = st.camera.position.clone().sub(st.controls.target).normalize();
     st.controls.target.copy(c); st.camera.position.copy(c).add(dir.multiplyScalar(size * 1.1)); st.controls.update();
   };
+  /** Frame the focused part (Z). */
+  const frameFocus = () => {
+    const st = s3.current; if (!st?.root || !st.focusBox) return;
+    const { THREE } = st; const size = st.focusBox.getSize(new THREE.Vector3()).length() || 0.1; const c = st.focusBox.getCenter(new THREE.Vector3());
+    const dir = st.camera.position.clone().sub(st.controls.target).normalize();
+    st.controls.target.copy(c); st.camera.position.copy(c).add(dir.multiplyScalar(size * 2.2)); st.controls.update();
+  };
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { const t = e.target as HTMLElement | null; if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) return; if (e.key === 'f' || e.key === 'F') fitView(); };
+    const onKey = (e: KeyboardEvent) => { const t = e.target as HTMLElement | null; if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) return; if (e.key === 'f' || e.key === 'F') fitView(); if (e.key === 'z' || e.key === 'Z') frameFocus(); };
     window.addEventListener('keydown', onKey); return () => window.removeEventListener('keydown', onKey);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Hover: a faint rim on the part under the pointer, so you know what a click will pick.
+  const onHoverRef = useRef(onHover); onHoverRef.current = onHover;
+  useEffect(() => {
+    const host = hostRef.current; if (!host) return;
+    let last = 0;
+    const setHover = (name: string | null) => {
+      const st = s3.current; if (!st) return;
+      if (st.hover === name) return;
+      const { THREE } = st; const HOVER = tokenColor(THREE, '--ax-cyan', '#64d2ff');
+      const clear = (n: string) => { for (const o of st.meshesOf.get(n) ?? []) { if (focusSet.has(n)) continue; const mats = Array.isArray(o.material) ? o.material : [o.material]; const base = st.own.get(o) ?? []; mats.forEach((m: any, i: number) => { if (m?.emissive && base[i]?.emissive && !st.rim.includes(m)) { m.emissive.copy(base[i].emissive); m.emissiveIntensity = 1; } }); } };
+      if (st.hover) clear(st.hover);
+      st.hover = name;
+      if (name && !focusSet.has(name)) for (const o of st.meshesOf.get(name) ?? []) { const mats = Array.isArray(o.material) ? o.material : [o.material]; mats.forEach((m: any) => { if (m?.emissive && !st.rim.includes(m)) { m.emissive.copy(HOVER); m.emissiveIntensity = 0.25; } }); }
+      host.style.cursor = name ? 'pointer' : 'grab';
+      onHoverRef.current?.(name);
+    };
+    const onMove = (e: PointerEvent) => {
+      const now = performance.now(); if (now - last < 70) return; last = now;
+      const st = s3.current; if (!st?.root || e.buttons) return;
+      const r = st.renderer.domElement.getBoundingClientRect();
+      st.pointer.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+      st.raycaster.setFromCamera(st.pointer, st.camera);
+      const hit = st.raycaster.intersectObject(st.root, true).filter((h: any) => h.object.visible)[0]?.object;
+      let p = hit; while (p && !(partName(p) && partNames.has(partName(p)!))) p = p.parent;
+      setHover(p ? partName(p)! : null);
+    };
+    const onLeave = () => setHover(null);
+    host.addEventListener('pointermove', onMove); host.addEventListener('pointerleave', onLeave);
+    return () => { host.removeEventListener('pointermove', onMove); host.removeEventListener('pointerleave', onLeave); };
+  }, [partNames, focusSet]);
 
   // ── Click → identify the part; double click → add / remove (drag = orbit) ──
   const onFocusRef = useRef(onFocus); onFocusRef.current = onFocus;
@@ -407,7 +482,14 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, onFocus, f
       st.raycaster.setFromCamera(st.pointer, st.camera);
       const hits = st.raycaster.intersectObject(st.root, true).filter((h: any) => h.object.visible);
       const hit = hits[0]?.object;
-      if (!hit) return;
+      if (!hit) {
+        // Empty space: a second quick click fits the view; a single one clears the focus.
+        const now2 = Date.now();
+        if (lastUp && lastUp.name === '' && now2 - lastUp.t < 350) { lastUp = null; fitView(); return; }
+        lastUp = { name: '', t: now2 };
+        onFocusRef.current?.('');
+        return;
+      }
       let p = hit;
       while (p && !(partName(p) && partNames.has(partName(p)!))) p = p.parent;
       const n = p ? partName(p) : undefined;
@@ -415,7 +497,7 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, onFocus, f
       const now = Date.now();
       if (lastUp && lastUp.name === n && now - lastUp.t < 350) { lastUp = null; onPickRef.current?.(n); return; }
       lastUp = { name: n, t: now };
-      if (onFocusRef.current) onFocusRef.current(n); else onPickRef.current?.(n);
+      if (onFocusRef.current) onFocusRef.current(e.shiftKey ? '+' + n : n); else onPickRef.current?.(n);
     };
     host.addEventListener('pointerdown', onDown);
     host.addEventListener('pointerup', onUp);
@@ -426,7 +508,11 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, onFocus, f
     <div className={`asm-preview${fill ? ' asm-preview-fill' : ''}`}>
       <div className="asm-preview-stage" style={fill ? undefined : { height }}>
         <div ref={hostRef} className="asm-preview-canvas" style={fill ? undefined : { height }} />
-        <span ref={markRef} className="ax-mark asm-focus-mark" style={{ display: 'none' }} aria-hidden="true"><i></i><em></em>{focus && <b className="asm-focus-label">{focus.replace(/^cmp:/, '')}</b>}</span>
+        <svg className="asm-lead" aria-hidden="true"><line ref={leadRef} style={{ display: 'none' }} /></svg>
+        <div ref={labelRef} className="asm-focus-label" style={{ display: 'none' }} aria-hidden="true">
+          <span className="asm-focus-name">{focusLabel || (primaryFocus ? primaryFocus.replace(/^cmp:/, '') : '')}</span>
+          {focusSet.size > 1 && <span className="asm-focus-more">+{focusSet.size - 1}</span>}
+        </div>
       </div>
       {onExpand && status === 'ready' && (
         <button className="asm-expand" onClick={onExpand} title="Open large">⤢</button>
@@ -438,7 +524,8 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, onFocus, f
           <span className="asm-legend"><i className="asm-sw asm-sw-this" /> this step</span>
           <span className="asm-legend"><i className="asm-sw asm-sw-before" /> installed earlier</span>
           <span className="asm-legend"><i className="asm-sw asm-sw-after" /> later</span>
-          <button className="asm-toggle-btn" onClick={fitView} title="Fit the view (F)">Fit</button>
+          <button className="asm-toggle-btn" onClick={fitView} title="Fit the view (F) · double-click empty space">Fit</button>
+          {focusSet.size > 0 && <button className="asm-toggle-btn" onClick={frameFocus} title="Frame the focused part (Z)">Frame</button>}
           {context
             ? <span className="asm-legend asm-ctx">Step context: {context === 'installed' ? 'installed only' : context === 'ghost' ? 'whole assembly, ghost' : 'whole assembly, solid'}</span>
             : <button className={`asm-toggle-btn${ghostAfter ? ' on' : ''}`} onClick={() => setGhostAfter(v => !v)}>
@@ -453,7 +540,7 @@ export function AssemblyPreview({ modelId, partNames, states, onPick, onFocus, f
               {clock && <span className="asm-clock">{clock.t.toFixed(1)} / {clock.length.toFixed(1)} s</span>}
             </span>
           )}
-          <span className="asm-hint">{onFocus ? 'Click a part to identify it · double-click to add or remove it · drag to orbit' : 'Click a part to add or remove it · drag to orbit'}</span>
+          <span className="asm-hint">{onFocus ? 'Click a part to find it · shift-click adds to the selection · double-click adds or removes it from the step · drag to orbit' : 'Click a part to add or remove it · drag to orbit'}</span>
         </div>
       )}
     </div>

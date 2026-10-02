@@ -97,6 +97,7 @@ export async function fetchAuthRequired(): Promise<boolean> {
 export interface ModelColours {
   modelId: string; greyscale: boolean; textured: boolean; materials: number; greyMaterials: number; parts: number; hasOriginal: boolean;
   families: Array<{ family: string; kind: 'fastener' | 'seal' | 'body'; parts: number; suggested: [number, number, number]; applied: [number, number, number] | null }>;
+  partFamilies?: Record<string, string>;
   applied: { byFamily: Record<string, [number, number, number]>; parts: number; appliedAt: string } | null;
 }
 
@@ -180,6 +181,8 @@ export const mindmapApi = {
   modelNodes: (id: string) => request<GlbPartTree>(`/models/${encodeURIComponent(id)}/nodes`),
   /** Colour for grey exports (models/colour.ts): analysis, apply by family, reset. */
   modelColours: (id: string) => request<ModelColours>(`/models/${encodeURIComponent(id)}/colours`),
+  model: (id: string) => request<{ id: string; name: string; partLabels?: Record<string, string> }>(`/models/${encodeURIComponent(id)}`),
+  setPartLabels: (id: string, partLabels: Record<string, string>) => request<{ id: string; partLabels?: Record<string, string> }>(`/models/${encodeURIComponent(id)}`, { method: 'PATCH', body: JSON.stringify({ partLabels }) }),
   applyModelColours: (id: string, byFamily: Record<string, [number, number, number]>) => request<{ recoloured: number; variantsJobId: string }>(`/models/${encodeURIComponent(id)}/colours`, { method: 'POST', body: JSON.stringify({ byFamily }) }),
   resetModelColours: (id: string) => request<{ reset: boolean }>(`/models/${encodeURIComponent(id)}/colours`, { method: 'DELETE' }),
 

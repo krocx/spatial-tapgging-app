@@ -549,6 +549,9 @@ export interface Model3D {
   /** Colour applied to a grey export (models/colour.ts): per family, the colour every part of
    *  that family wears in the GLB. The original GLB is kept as <id>.orig.glb for Reset. */
   colours?:         { byFamily: Record<string, [number, number, number]>; parts: number; appliedAt: string; by?: string };
+  /** Names people can read, per CAD part name ("cmp:CLOSED_SHELL__545670_2b" → "Differential housing").
+   *  Shown in the Designer, the readiness report and the text / spoken forms; the CAD name stays for traceability. */
+  partLabels?:      Record<string, string>;
   /** Which way is up, set once in the portal preview; Place Assembly starts
    *  from it (the exporter's axis convention is not always the equipment's). */
   defaultOrientation?: ModelOrientation;
@@ -565,6 +568,8 @@ export interface Model3D {
 export type UpdateModel3DRequest = {
   name?:         string;
   defaultScale?: number;    // persist the scale chosen in the portal 3D preview viewer
+  /** Merge into the model's partLabels; an empty string removes a label. */
+  partLabels?:   Record<string, string>;
   defaultOrientation?: ModelOrientation;
   defaultOrigin?:      ModelOrigin;
   category?:     string;    // 'general' | other organizational label

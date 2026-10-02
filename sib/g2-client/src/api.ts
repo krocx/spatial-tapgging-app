@@ -42,6 +42,7 @@ export interface Bundle {
   guide: { id: string; name: string; anchorId: string; assembly?: { bounds?: { min: number[]; max: number[] } } };
   steps: Array<{ id: string; sequenceNumber: number; title?: string; text?: string; cadPosition?: number[]; nodes?: unknown[] }>;
   anchor?: { assetId?: string };
+  models?: Array<{ id: string; role: string; partLabels?: Record<string, string> }>;
   validation?: Array<{ stepId: string; required: boolean; mode: string }>;
 }
 export async function fetchBundle(s: Session): Promise<Bundle> {

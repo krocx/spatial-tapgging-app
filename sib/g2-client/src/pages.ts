@@ -59,11 +59,11 @@ function clean(s: string): string {
 export interface Page { text: string; overflow: boolean }
 
 /** One step → one page. `index` is 0-based; `total` the step count. */
-export function composePage(step: PageStep, index: number, total: number, bounds?: Bounds | null): Page {
+export function composePage(step: PageStep, index: number, total: number, bounds?: Bounds | null, labels: Record<string, string> = {}): Page {
   const head = `${index + 1}/${total}  ${clean(step.title || `Step ${index + 1}`)}`;
   const body = clean(step.text || '');
   const where = whereWords(step, bounds);
-  const parts = stepParts(step).slice(0, 6).map(partLabel);
+  const parts = stepParts(step).slice(0, 6).map(n => labels[n] || partLabel(n));
   const tail: string[] = [];
   if (where) tail.push(`Where: ${where}`);
   if (parts.length) tail.push(`Parts: ${parts.join(' - ')}`);

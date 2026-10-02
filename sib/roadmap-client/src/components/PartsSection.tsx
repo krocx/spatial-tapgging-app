@@ -21,7 +21,7 @@
 
 import { useEffect, useMemo, useState, type JSX } from 'react';
 import { useStore } from '../state/store.js';
-import { mindmapApi, type GlbPartNode, type GlbPartTree } from '../api/mindmap-api.js';
+import { mindmapApi, type GlbPartNode, type GlbPartTree, type ModelColours } from '../api/mindmap-api.js';
 import { AssemblyPreview, type PartState } from './AssemblyPreview.js';
 import { ColoursPanel } from './ColoursPanel.js';
 import { stateAfter, deltasOf, type PartStateMap } from '../utils/assembly-state.js';
@@ -79,10 +79,19 @@ export function usePartsPicker(nodeId: string | null) {
   const [treeErr, setTreeErr] = useState<string | null>(null);
   const [query, setQuery]   = useState('');
   const [open, setOpen]     = useState<Set<string>>(() => new Set());
-  // Identify a part: lit in the 3D view, described (where, size), and acted on from one card.
-  const [focus, setFocus]   = useState<string | null>(null);
+  // Identify parts: lit in the 3D view with everything else greyed (spotlight), described
+  // (where, size, parents) and acted on from one card. Shift-click builds a selection.
+  const [focusList, setFocusList] = useState<string[]>([]);
+  const focus = focusList[0] ?? null;
   const [isolate, setIsolate] = useState(false);
-  const [focusInfo, setFocusInfo] = useState<{ name: string; where: string; sizeMm: [number, number, number]; visible: boolean } | null>(null);
+  const [spotlight, setSpotlight] = useState(true);
+  const [focusInfo, setFocusInfo] = useState<{ name: string; where: string; sizeMm: [number, number, number]; visible: boolean; parents: string[] } | null>(null);
+  // Families (from the colour analysis): view-time tint and the grouped tree. Labels: readable names.
+  const [colours, setColours] = useState<ModelColours | null>(null);
+  const [colourByFamily, setColourByFamily] = useState(false);
+  const [groupByFamily, setGroupByFamily] = useState(false);
+  const [labels, setLabels] = useState<Record<string, string>>({});
+  const [hover, setHover] = useState<string | null>(null);
 
   const modelId = assembly?.modelId;
   useEffect(() => {
@@ -90,8 +99,34 @@ export function usePartsPicker(nodeId: string | null) {
     let live = true;
     setTree(null); setTreeErr(null);
     loadTree(modelId).then(t => { if (live) setTree(t); }).catch(e => { if (live) setTreeErr((e as Error).message); });
+    mindmapApi.modelColours(modelId).then(c => { if (live) setColours(c); }).catch(() => { /* families optional */ });
+    mindmapApi.model(modelId).then(m => { if (live) setLabels(m.partLabels ?? {}); }).catch(() => { /* labels optional */ });
     return () => { live = false; };
   }, [modelId]);
+  const label = (n: string) => labels[n] || n.replace(/^cmp:/, '');
+  const familyOf = (n: string) => colours?.partFamilies?.[n];
+  const familyColour = (f: string): [number, number, number] | undefined => { const fam = colours?.families.find(x => x.family === f); return fam ? (fam.applied ?? fam.suggested) : undefined; };
+  const colourBy = useMemo(() => {
+    if (!colourByFamily || !colours?.partFamilies) return null;
+    const m = new Map<string, [number, number, number]>();
+    for (const [part, fam] of Object.entries(colours.partFamilies)) { const c = familyColour(fam); if (c) m.set(part, c); }
+    return m;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [colourByFamily, colours]);
+  const renameLabel = async (name: string) => {
+    if (!modelId) return;
+    const next = window.prompt(`A name people will read for\n${name}\n(leave empty to go back to the CAD name)`, labels[name] ?? '');
+    if (next === null) return;
+    try { const m = await mindmapApi.setPartLabels(modelId, { [name]: next.trim() }); setLabels(m.partLabels ?? {}); } catch (e) { window.alert((e as Error).message); }
+  };
+  const renameFamily = async (fam: string) => {
+    if (!modelId || !colours?.partFamilies) return;
+    const members = Object.entries(colours.partFamilies).filter(([, f]) => f === fam).map(([n]) => n);
+    const next = window.prompt(`A name for all ${members.length} parts of "${fam}"\n(leave empty to clear)`, labels[members[0]] ?? '');
+    if (next === null) return;
+    const patch: Record<string, string> = {}; for (const n of members) patch[n] = next.trim();
+    try { const m = await mindmapApi.setPartLabels(modelId, patch); setLabels(m.partLabels ?? {}); } catch (e) { window.alert((e as Error).message); }
+  };
 
   const parts = useMemo(() => partsOfStep(stepMeta), [stepMeta]);
   const partSet = useMemo(() => new Set(parts), [parts]);
@@ -164,35 +199,52 @@ export function usePartsPicker(nodeId: string | null) {
   // preview all read the same thing. An authored step lists `parts`: hide is
   // "not on this step", show is "on this step".
   const hasDeltas = Array.isArray(stepMeta?.nodes);
-  const setShown = (name: string, shown: boolean) => {
+  const setShownMany = (names: string[], shown: boolean) => {
     if (!nodeId) return;
     if (hasDeltas) {
       const nodes = (stepMeta!.nodes as Array<Record<string, unknown>>).map(n => ({ ...n }));
-      const i = nodes.findIndex(n => n.node === name);
-      if (i >= 0) nodes[i].show = shown ? 'solid' : 'hidden'; else nodes.push({ node: name, show: shown ? 'solid' : 'hidden' });
+      for (const name of names) { const i = nodes.findIndex(n => n.node === name); if (i >= 0) nodes[i].show = shown ? 'solid' : 'hidden'; else nodes.push({ node: name, show: shown ? 'solid' : 'hidden' }); }
       patchStepMeta(nodeId, { nodes });
-    } else write(shown ? (partSet.has(name) ? parts : [...parts, name]) : parts.filter(p => p !== name));
+    } else write(shown ? [...parts, ...names.filter(n => !partSet.has(n))] : parts.filter(p => !names.includes(p)));
   };
-  const focusOn = (name: string | null) => {
-    setFocus(name);
-    if (name) setOpen(prev => { const n = new Set(prev); let a = parents.get(name); while (a) { n.add(a); a = parents.get(a); } return n; });
+  const setShown = (name: string, shown: boolean) => setShownMany([name], shown);
+  // '' clears, '+name' adds to the selection (shift-click), a name replaces it; a second click on the same part clears.
+  const focusOn = (raw: string | null) => {
+    if (!raw) { setFocusList([]); return; }
+    const add = raw.startsWith('+'); const name = add ? raw.slice(1) : raw;
+    setFocusList(prev => add ? (prev.includes(name) ? prev.filter(p => p !== name) : [...prev, name]) : (prev.length === 1 && prev[0] === name ? [] : [name]));
+    setOpen(prev => { const n = new Set(prev); let a = parents.get(name); while (a) { n.add(a); a = parents.get(a); } return n; });
+    setTimeout(() => document.querySelector(`[data-part="${CSS.escape(name)}"]`)?.scrollIntoView({ block: 'nearest' }), 50);
   };
+  const focusFamily = (fam: string) => {
+    if (!colours?.partFamilies) return;
+    const members = Object.entries(colours.partFamilies).filter(([, f]) => f === fam).map(([n]) => n);
+    setFocusList(members);
+  };
+  const many = focusList.length > 1;
+  const allOn = focusList.length > 0 && focusList.every(n => partSet.has(n));
   const focusBlock = focus ? (
     <div className="pt-focus">
       <div className="pt-focus-head">
         <span className="pt-focus-dot" />
-        <b className="pt-focus-name" title={focus}>{focus.replace(/^cmp:/, '')}</b>
-        <button className="pt-focus-x" onClick={() => { focusOn(null); setIsolate(false); }} title="Clear">✕</button>
+        <b className="pt-focus-name" title={focus}>{many ? `${focusList.length} parts` : label(focus)}</b>
+        {!many && <button className="pt-focus-rename" onClick={() => renameLabel(focus)} title="Give this part a name people will read">rename</button>}
+        <button className="pt-focus-x" onClick={() => { focusOn(null); setIsolate(false); }} title="Clear (Esc)">✕</button>
       </div>
+      {!many && labels[focus] && <div className="pt-focus-cad" title="CAD name">{focus.replace(/^cmp:/, '')}</div>}
+      {!many && focusInfo && focusInfo.parents.length > 0 && <div className="pt-focus-crumb">{focusInfo.parents.map(p => <button key={p} onClick={() => focusOn(p)} title={p}>{label(p)}</button>)}</div>}
       <div className="pt-focus-meta">
-        {focusInfo?.where && <span>{focusInfo.where}</span>}
-        {focusInfo && focusInfo.sizeMm.some(v => v) && <span>{focusInfo.sizeMm.join(' × ')} mm</span>}
-        {focusInfo && <span className={focusInfo.visible ? 'ok' : 'off'}>{focusInfo.visible ? 'visible on this step' : 'hidden on this step'}</span>}
+        {!many && focusInfo?.where && <span>{focusInfo.where}</span>}
+        {!many && focusInfo && focusInfo.sizeMm.some(v => v) && <span>{focusInfo.sizeMm.join(' × ')} mm</span>}
+        {!many && familyOf(focus) && <span className="fam" onClick={() => focusFamily(familyOf(focus)!)} title="Select the whole family">{familyOf(focus)} · {Object.values(colours?.partFamilies ?? {}).filter(f => f === familyOf(focus)).length}</span>}
+        {!many && focusInfo && <span className={focusInfo.visible ? 'ok' : 'off'}>{focusInfo.visible ? 'visible on this step' : 'hidden on this step'}</span>}
+        {many && <span>{focusList.map(label).slice(0, 4).join(' · ')}{focusList.length > 4 ? ` · +${focusList.length - 4}` : ''}</span>}
       </div>
       <div className="pt-focus-acts">
-        <button className="btn ghost" onClick={() => toggle(focus)}>{partSet.has(focus) ? `Remove from step` : `Add to step`}</button>
-        <button className="btn ghost" onClick={() => setShown(focus, !(focusInfo?.visible ?? true))} title={hasDeltas ? 'Writes a show / hide for this part on this step (the app and the XR kit follow it)' : 'Authored step: on or off this step\u2019s parts list'}>{(focusInfo?.visible ?? true) ? 'Hide on this step' : 'Show on this step'}</button>
-        <button className={`btn ghost${isolate ? ' on' : ''}`} onClick={() => setIsolate(v => !v)} title="Show only this part">{isolate ? 'Show all' : 'Isolate'}</button>
+        <button className="btn ghost" onClick={() => write(allOn ? parts.filter(p => !focusList.includes(p)) : [...parts, ...focusList.filter(p => !partSet.has(p))])}>{allOn ? 'Remove from step' : 'Add to step'}</button>
+        <button className="btn ghost" onClick={() => setShownMany(focusList, !(focusInfo?.visible ?? true))} title={hasDeltas ? 'Writes a show / hide for these parts on this step (the app and the XR kit follow it)' : 'Authored step: on or off this step\u2019s parts list'}>{(focusInfo?.visible ?? true) ? 'Hide on this step' : 'Show on this step'}</button>
+        <button className={`btn ghost${isolate ? ' on' : ''}`} onClick={() => setIsolate(v => !v)} title="Show only the selection (I)">{isolate ? 'Show all' : 'Isolate'}</button>
+        <button className={`btn ghost${spotlight ? ' on' : ''}`} onClick={() => setSpotlight(v => !v)} title="Grey out everything else">{spotlight ? 'Spotlight on' : 'Spotlight off'}</button>
       </div>
     </div>
   ) : null;
@@ -232,7 +284,7 @@ export function usePartsPicker(nodeId: string | null) {
   const toggleOpen = (name: string) => setOpen(prev => { const n = new Set(prev); if (n.has(name)) n.delete(name); else n.add(name); return n; });
 
   const q = query.trim().toLowerCase();
-  const matches = (n: GlbPartNode): boolean => !q || n.name.toLowerCase().includes(q) || n.children.some(matches);
+  const matches = (n: GlbPartNode): boolean => !q || n.name.toLowerCase().includes(q) || (labels[n.name] || '').toLowerCase().includes(q) || n.children.some(matches);
   const verb = assembly?.start === 'complete' ? 'removes' : 'installs';
   // Build-up starts empty: a part no step installs is simply not there yet.
   const buildUp = !!assembly && assembly.start !== 'complete';
@@ -253,7 +305,7 @@ export function usePartsPicker(nodeId: string | null) {
           <label className="pt-label" title={viaParent ? `${n.name} - included with its group` : n.name}>
             <input type="checkbox" checked={own || viaParent} onChange={() => toggle(n.name)} />
           </label>
-          <span className={`pt-name pt-name-btn${focus === n.name ? ' is-focus' : ''}`} title="Click to find this part in the 3D view" onClick={() => focusOn(focus === n.name ? null : n.name)}>{n.name}</span>
+          <span className={`pt-name pt-name-btn${focusList.includes(n.name) ? ' is-focus' : ''}${hover === n.name ? ' is-hover' : ''}`} data-part={n.name} title={labels[n.name] ? `${labels[n.name]} - ${n.name} - click to find it` : 'Click to find this part in the 3D view · shift-click adds to the selection'} onClick={e => focusOn((e.shiftKey ? '+' : '') + n.name)}>{label(n.name)}</span>
           {n.children.length > 0 && own && <span className="pt-tag pt-tag-group">group</span>}
           {eff === 'before' && <span className="pt-tag">earlier</span>}
           {eff === 'after'  && <span className="pt-tag pt-tag-after">later</span>}
@@ -266,18 +318,51 @@ export function usePartsPicker(nodeId: string | null) {
   const chips = parts.length > 0 ? (
     <div className="pt-chips">
       {parts.map(p => (
-        <span key={p} className={`pt-chip${focus === p ? ' is-focus' : ''}`} title={p} onClick={() => focusOn(p)}>
-          <span className="pt-chip-name">{p.replace(/^cmp:/, '')}</span>
+        <span key={p} className={`pt-chip${focusList.includes(p) ? ' is-focus' : ''}`} title={p} onClick={e => focusOn((e.shiftKey ? '+' : '') + p)}>
+          <span className="pt-chip-name">{label(p)}</span>
           <button onClick={e => { e.stopPropagation(); toggle(p); }} title="Remove from this step">✕</button>
         </span>
       ))}
     </div>
   ) : <span className="step-check-hint">No parts on this step yet - double-click one in the 3D view, or tick it in the tree.</span>;
+  const familyBlock = colours?.partFamilies ? (() => {
+    const groups = new Map<string, string[]>();
+    for (const [part, fam] of Object.entries(colours.partFamilies)) { if (q && !part.toLowerCase().includes(q) && !fam.includes(q) && !(labels[part] || '').toLowerCase().includes(q)) continue; (groups.get(fam) ?? groups.set(fam, []).get(fam)!).push(part); }
+    const rows = [...groups.entries()].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]));
+    return (
+      <div className="pt-tree pt-fams">
+        {rows.map(([fam, members]) => {
+          const c = familyColour(fam); const isOpen = open.has('fam:' + fam) || !!q;
+          const on = members.every(m => partSet.has(m)); const anyFocus = members.some(m => focusList.includes(m));
+          return (
+            <div key={fam} className="pt-node">
+              <div className={`pt-row pt-fam-row${anyFocus ? ' is-this' : ''}`}>
+                <button className="pt-twisty" onClick={() => toggleOpen('fam:' + fam)}>{isOpen ? '▾' : '▸'}</button>
+                <span className="pt-swatch" style={c ? { background: `rgb(${Math.round(c[0] * 255)} ${Math.round(c[1] * 255)} ${Math.round(c[2] * 255)})` } : undefined} />
+                <span className="pt-name pt-name-btn" onClick={() => focusFamily(fam)} title="Select every part of this family">{labels[members[0]] && members.every(m => labels[m] === labels[members[0]]) ? labels[members[0]] : fam}</span>
+                <span className="pt-tag">{members.length}</span>
+                <button className="pt-mini" onClick={() => renameFamily(fam)} title="Name the whole family">name</button>
+                <button className="pt-mini" onClick={() => write(on ? parts.filter(p => !members.includes(p)) : [...parts, ...members.filter(m => !partSet.has(m))])} title={on ? 'Remove all from this step' : 'Add all to this step'}>{on ? 'remove all' : 'add all'}</button>
+              </div>
+              {isOpen && members.map(m => (
+                <div key={m} className={`pt-row${partSet.has(m) ? ' is-this' : ''}`} style={{ paddingLeft: 26 }}>
+                  <label className="pt-label"><input type="checkbox" checked={partSet.has(m) || effectiveState(m, states, parents) === 'this'} onChange={() => toggle(m)} /></label>
+                  <span className={`pt-name pt-name-btn${focusList.includes(m) ? ' is-focus' : ''}${hover === m ? ' is-hover' : ''}`} data-part={m} title={m} onClick={e => focusOn((e.shiftKey ? '+' : '') + m)}>{label(m)}</span>
+                </div>
+              ))}
+            </div>
+          );
+        })}
+        {rows.length === 0 && <span className="step-check-hint">No part matches.</span>}
+      </div>
+    );
+  })() : null;
   const treeBlock = (
     <>
       {treeErr && <span className="step-check-hint">Couldn't read the model's parts: {treeErr}</span>}
       {!tree && !treeErr && modelId && <span className="step-check-hint">Reading parts…</span>}
-      {tree && (
+      {tree && groupByFamily && familyBlock}
+      {tree && !groupByFamily && (
         <div className="pt-tree">
           {tree.roots.map(r => renderNode(r, 0))}
           {tree.nodeCount === 0 && <span className="step-check-hint">This model has no named parts.</span>}
@@ -285,13 +370,20 @@ export function usePartsPicker(nodeId: string | null) {
       )}
     </>
   );
+  const viewControls = (
+    <div className="pt-view">
+      <button className={`btn ghost${groupByFamily ? ' on' : ''}`} onClick={() => setGroupByFamily(v => !v)} disabled={!colours?.partFamilies} title="List parts by family (BOLT_M6_01 and _02 together) instead of the CAD tree">By family</button>
+      <button className={`btn ghost${colourByFamily ? ' on' : ''}`} onClick={() => setColourByFamily(v => !v)} disabled={!colours?.partFamilies} title="Tint each family in the view only - the model is not changed">Colour by family</button>
+    </div>
+  );
   const search = <input className="pt-search" placeholder="Find a part…" value={query} onChange={e => setQuery(e.target.value)} />;
   const summary = assembly ? (
     <span className="step-check-hint"> - {parts.length} chosen · {earlier.size} {assembly.start === 'complete' ? 'removed' : 'installed'} earlier</span>
   ) : null;
 
   return { assembly, modelId, tree, parts, earlier, states, partNames, parents, toggle, verb, chips, treeBlock, search, summary, groupsBlock, buildUp, contextBlock, context, poses, play,
-    focus, isolate, setIsolate, focusOn, setFocusInfo, focusBlock, toggleShown: () => { if (focus) setShown(focus, !(focusInfo?.visible ?? true)); } };
+    focus, focusList, isolate, setIsolate, spotlight, focusOn, setFocusInfo, focusBlock, viewControls, colourBy, labels, setHover, focusLabel: focus ? label(focus) : undefined,
+    toggleShown: () => { if (focusList.length) setShownMany(focusList, !(focusInfo?.visible ?? true)); } };
 }
 
 // ── Inspector block ──────────────────────────────────────────────────────────
@@ -320,7 +412,7 @@ export function PartsSection({ nodeId }: { nodeId: string }): JSX.Element | null
       {groupsBlock}
       {pk.contextBlock}
       {showPreview && modelId && tree && !studioOpen && (
-        <AssemblyPreview modelId={modelId} partNames={partNames} states={states} parents={parents} unmentioned={pk.buildUp ? 'after' : 'base'} context={pk.context} poses={pk.poses} play={pk.play} onPick={toggle} onFocus={pk.focusOn} focus={pk.focus} isolate={pk.isolate} onFocusInfo={pk.setFocusInfo} onExpand={() => openStudio(nodeId)} />
+        <AssemblyPreview modelId={modelId} partNames={partNames} states={states} parents={parents} unmentioned={pk.buildUp ? 'after' : 'base'} context={pk.context} poses={pk.poses} play={pk.play} onPick={toggle} onFocus={pk.focusOn} focus={pk.focusList} spotlight={pk.spotlight} isolate={pk.isolate} focusLabel={pk.focusLabel} colourBy={pk.colourBy} onHover={pk.setHover} onFocusInfo={pk.setFocusInfo} onExpand={() => openStudio(nodeId)} />
       )}
       {pk.focusBlock}
       <div className="pt-toolbar">
@@ -366,7 +458,7 @@ export function PartsStudio(): JSX.Element | null {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null;
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
-      if (e.key === 'Escape') close();
+      if (e.key === 'Escape') { if (pk.focusList.length) pk.focusOn(null); else close(); }
       else if (e.key === 'ArrowLeft') prev();
       else if (e.key === 'ArrowRight') next();
       else if ((e.key === 'i' || e.key === 'I') && pk.focus) pk.setIsolate(v => !v);
@@ -389,6 +481,7 @@ export function PartsStudio(): JSX.Element | null {
           <div className="st-title"><span className="ax-eyebrow">Step {cur ? cur.seq : '·'} of {steps.length || '·'}</span><b>{cur ? cur.title : title}</b><span className="ax-label-s ax-muted">parts this step {pk.verb}{pk.summary}</span></div>
           <button className="ax-btn ax-btn--quiet ax-btn--sm" onClick={next} disabled={idx < 0 || idx >= steps.length - 1} title="Next step (→)">▶</button>
         </div>
+        <button className="ax-btn ax-btn--quiet ax-btn--sm" title="Keys: ← → steps · click find · shift-click add to selection · double-click add / remove from step · F fit · Z frame · I isolate · H hide / show · Esc clear, then close" aria-label="Keyboard help">?</button>
         <button className="ax-btn ax-btn--sm" onClick={close}>Close</button>
       </header>
       <div className="st-strip">
@@ -403,7 +496,7 @@ export function PartsStudio(): JSX.Element | null {
       <div className="st-body">
         <div className="st-stage">
           {pk.tree && (
-            <AssemblyPreview key={reload} modelId={pk.modelId} partNames={pk.partNames} states={pk.states} parents={pk.parents} unmentioned={pk.buildUp ? 'after' : 'base'} context={pk.context} poses={pk.poses} play={pk.play} onPick={pk.toggle} onFocus={pk.focusOn} focus={pk.focus} isolate={pk.isolate} onFocusInfo={pk.setFocusInfo} fill />
+            <AssemblyPreview key={reload} modelId={pk.modelId} partNames={pk.partNames} states={pk.states} parents={pk.parents} unmentioned={pk.buildUp ? 'after' : 'base'} context={pk.context} poses={pk.poses} play={pk.play} onPick={pk.toggle} onFocus={pk.focusOn} focus={pk.focusList} spotlight={pk.spotlight} isolate={pk.isolate} focusLabel={pk.focusLabel} colourBy={pk.colourBy} onHover={pk.setHover} onFocusInfo={pk.setFocusInfo} fill />
           )}
         </div>
         <aside className="st-side">
@@ -417,6 +510,7 @@ export function PartsStudio(): JSX.Element | null {
             <div className="ax-card pt-card pt-card-grow">
               <div className="pt-card-title">All parts <span className="pt-card-sub">click a name to find it · tick to add</span></div>
               {pk.search}
+              {pk.viewControls}
               {pk.treeBlock}
             </div>
             <div className="ax-card pt-card">{pk.contextBlock}</div>
