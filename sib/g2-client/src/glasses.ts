@@ -14,6 +14,7 @@ import {
   TextContainerProperty,
   TextContainerUpgrade,
   CreateStartUpPageContainer,
+  RebuildPageContainer,
   MenuContainerProperty,
   MenuItemProperty,
   OsEventTypeList,
@@ -95,7 +96,7 @@ export class Glasses {
       this.created = true;
     } else if (withCheck !== this.menuWithCheck) {
       const main = new TextContainerProperty({ xPosition: 0, yPosition: 0, width: 576, height: 288, borderWidth: 0, borderColor: 5, paddingLength: 4, ...MAIN, content, isEventCapture: 1 });
-      await this.bridge.rebuildPageContainer({ containerTotalNum: 1, textObject: [main], menuObject: this.menu(withCheck) });
+      await this.bridge.rebuildPageContainer(new RebuildPageContainer({ containerTotalNum: 1, textObject: [main], menuObject: this.menu(withCheck) }));
     } else {
       await this.bridge.textContainerUpgrade(new TextContainerUpgrade({ ...MAIN, content }));
     }
