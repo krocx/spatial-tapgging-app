@@ -49,8 +49,8 @@
   --ax-title:      linear-gradient(90deg, var(--ax-blue), var(--ax-cyan));   /* the kiosk headline */
 
   /* ── The appliedx wordmark - official colours, never anything else ── */
-  --ax-wm-blue:    #66B3FF;   /* "applied" */
-  --ax-wm-green:   #35C635;   /* "x"       */
+  --ax-wm-blue:    #4495BC;   /* "applied" */
+  --ax-wm-green:   #7AB800;   /* "x"       */
 
   /* ── Status - follows the app ── */
   --ax-ok:         var(--ax-green);

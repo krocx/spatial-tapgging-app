@@ -7,6 +7,8 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **Wordmark colours.** `applied` is now 4495BC and `x` 7AB800 everywhere
+  (tokens, brand.js, platform map, iOS home).
 - **Run a demo without the chamber (iOS).** Operator mode no longer dead-ends
   at the QR scan when there is no chamber in the room: the front door offers
   "No chamber here? Run a demo" (a picker of every ready guide, grouped by

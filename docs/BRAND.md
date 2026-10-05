@@ -36,8 +36,8 @@ of that, four signatures make a SIB page unmistakably ours:
   ease). Nothing fades or slides.
 * **The rim-light** - in AR, green breathes around the part to look at, the
   same highlight the iPad app draws on the 3D model.
-* **The wordmark** - `appliedx`, lowercase, *applied* in `66B3FF` and *x* in
-  `35C635`, regular weight, on every surface; those two colours belong to the
+* **The wordmark** - `appliedx`, lowercase, *applied* in `4495BC` and *x* in
+  `7AB800`, regular weight, on every surface; those two colours belong to the
   wordmark alone.
 
 ## Colour - the app's palette, transcribed
@@ -54,7 +54,7 @@ of that, four signatures make a SIB page unmistakably ours:
 | `--ax-orange` | `FF9F0A` | `.orange` | Gemba Audit · checking / attention |
 | `--ax-red` | `FF453A` | `.red` | iLOTO · failure · destructive |
 | `--ax-indigo` / `--ax-teal` | `5E5CE6` / `40C8E0` | `.indigo` / `.teal` | Procedure Designer · hub features |
-| `--ax-wm-blue` / `--ax-wm-green` | `66B3FF` / `35C635` | the wordmark | *applied* / *x* only |
+| `--ax-wm-blue` / `--ax-wm-green` | `4495BC` / `7AB800` | the wordmark | *applied* / *x* only |
 
 Status follows the app: green verified, orange attention, red failure. A
 colour is never decoration - every hue has one meaning, and there is no hue

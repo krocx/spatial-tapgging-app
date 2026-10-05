@@ -24,7 +24,7 @@
   // Legacy pages set Open Sans (self-hosted by brand.css) with the system
   // sans as fallback - no SIB surface ever loads a font from the internet
   // (docs/BRAND.md). The colours carry the mark.
-  const AX_BLUE = '#66b3ff', AX_GREEN = '#35c635';
+  const AX_BLUE = '#4495bc', AX_GREEN = '#7ab800';
   const css = `
     .ax-wordmark { font-family:"Open Sans",-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif; font-weight:400; letter-spacing:-.01em; white-space:nowrap; }
     .ax-wordmark .ax-a { color:${AX_BLUE}; }

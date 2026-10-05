@@ -10,11 +10,8 @@ import SwiftUI
 struct AppliedXWordmark: View {
     var size: CGFloat = 28
 
-    // Trial (2026-10): 4495BC / 7AB800 on the app home page. If kept, move
-    // the pair into --ax-wm-blue / --ax-wm-green (tokens.css + BRAND.md) so
-    // the portal wordmark matches; the wordmark has one pair of colours.
-    static let blue  = Color(red: 0x44 / 255, green: 0x95 / 255, blue: 0xBC / 255)
-    static let green = Color(red: 0x7A / 255, green: 0xB8 / 255, blue: 0x00 / 255)
+    static let blue  = Color(red: 0x44 / 255, green: 0x95 / 255, blue: 0xBC / 255)   // --ax-wm-blue  4495BC
+    static let green = Color(red: 0x7A / 255, green: 0xB8 / 255, blue: 0x00 / 255)   // --ax-wm-green 7AB800
 
     var body: some View {
         (Text("applied").foregroundColor(Self.blue) + Text("x").foregroundColor(Self.green))
