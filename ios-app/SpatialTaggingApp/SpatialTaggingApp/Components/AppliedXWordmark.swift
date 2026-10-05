@@ -14,7 +14,7 @@ struct AppliedXWordmark: View {
     static let green = Color(red: 0x7A / 255, green: 0xB8 / 255, blue: 0x00 / 255)   // --ax-wm-green 7AB800
 
     var body: some View {
-        (Text("applied").foregroundColor(Self.blue) + Text("x").foregroundColor(Self.green))
+        Text("\(Text("applied").foregroundColor(Self.blue))\(Text("x").foregroundColor(Self.green))")
             .font(.system(size: size, weight: .regular))
             .kerning(-size * 0.01)
             .accessibilityLabel("applied x")
