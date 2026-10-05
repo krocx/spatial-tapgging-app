@@ -7,6 +7,9 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **Import log: parts the steps address but the model lacks.** Named with
+  the node's VRML type and the chain of nodes above it in the file, so a
+  renderer that cannot find them is explained by the log.
 - **Wordmark colours.** `applied` is now 4495BC and `x` 7AB800 everywhere
   (tokens, brand.js, platform map, iOS home).
 - **Run a demo without the chamber (iOS).** Operator mode no longer dead-ends

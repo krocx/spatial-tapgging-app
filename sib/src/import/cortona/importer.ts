@@ -14,7 +14,7 @@
 
 import type { ImportedGuide, ImportedGuideStep, GuideStepNode, GuideStepView } from '@spatial/shared';
 import { readCortonaBundle, type CortonaBundle } from './bundle.js';
-import { parseVrml, numField, walkNodes } from './vrml.js';
+import { parseVrml, numField, walkNodes, type VrmlNode } from './vrml.js';
 import { buildScene, axisAngle, mul, scaleM, type SceneGraph } from './scene.js';
 import { writeGlb, type NodeExtras } from './glb.js';
 import { bakeHoseFrames, type HoseFrameStats } from './hose-frames.js';
@@ -251,6 +251,25 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
   const imported: ImportedGuide = { name, description: proc.comment?.trim() || undefined, steps };
 
   const glb = writeGlb(scene, extras);
+
+  // Parts the steps address that the model never built: say which and where
+  // they sit in the file (the chain of node types above them), so a renderer
+  // that cannot find them is explained by the log, not by guesswork.
+  {
+    const referencedDefs = new Set([...initialNodes, ...steps.flatMap(st => st.nodes ?? [])].map(n => n.node.replace(/^cmp:/, '')));
+    const missingDefs = [...referencedDefs].filter(d => !scene.byDef.has(d));
+    if (missingDefs.length) {
+      const parentOf = new Map<VrmlNode, VrmlNode | null>();
+      walkNodes(vrml.nodes, (n, parent) => { if (!parentOf.has(n)) parentOf.set(n, parent); });
+      const where = (def: string): string => {
+        const n = vrml.defs.get(def); if (!n) return 'not DEF\'d in the scene (PROTO body or Script field)';
+        if (!parentOf.has(n)) return `${n.type} · not reachable from the scene roots`;
+        const chain: string[] = []; for (let p = parentOf.get(n); p; p = parentOf.get(p) ?? null) chain.push(p.type + (p.def ? `(${p.def})` : ''));
+        return `${n.type} · under ${chain.slice(0, 4).join(' < ') || 'root'}`;
+      };
+      warnings.push(`${missingDefs.length} part(s) the steps address are not in the model: ${missingDefs.slice(0, 12).map(d => `${d} [${where(d)}]`).join('; ')}${missingDefs.length > 12 ? '; …' : ''}`);
+    }
+  }
 
   const publish: Record<string, string> = {};
   for (const k of PUBLISH_KEYS) if (inter?.publishOptions[k] !== undefined) publish[k] = inter.publishOptions[k];
