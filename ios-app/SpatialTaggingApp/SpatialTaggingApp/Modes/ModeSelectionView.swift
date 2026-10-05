@@ -57,10 +57,7 @@ struct ModeSelectionView: View {
                 // Header
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Image(systemName: "qrcode.viewfinder")
-                            .font(.system(size: 36, weight: .bold))
-                            .foregroundStyle(LinearGradient(colors: [.blue, .cyan],
-                                                           startPoint: .top, endPoint: .bottom))
+                        AppliedXWordmark(size: 30)
                         Spacer()
                         Button { showOnboarding = true } label: {
                             Image(systemName: "questionmark.circle")

@@ -82,6 +82,13 @@ final class SIBClient {
         _ = try await get([Anchor].self, path: "/anchors")
     }
 
+    /// GET /config - the server's platform version (only sent to callers with
+    /// a valid key; nil when the key is wrong or the server predates it).
+    struct ServerConfig: Decodable { let platformVersion: String? }
+    func fetchServerConfig() async throws -> ServerConfig {
+        try await get(ServerConfig.self, path: "/config")
+    }
+
     // ── Anchors ───────────────────────────────────────────────────────────────
 
     /// List all anchors - used by AnchorDirectoryView.

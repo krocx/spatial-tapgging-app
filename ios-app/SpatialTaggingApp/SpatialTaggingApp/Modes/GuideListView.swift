@@ -53,8 +53,10 @@ struct GuideListView: View {
     private struct GuideSessionInput: Identifiable {
         let guide: ARGuide
         let steps: [GuideStep]
+        var demo:  Bool = false
         var id: String { guide.id }
     }
+    @State private var demoRequested = false
 
     // All steps placed (or steps not yet loaded - optimistic)
     private func isReady(_ guide: ARGuide) -> Bool {
@@ -174,8 +176,9 @@ struct GuideListView: View {
         // ── Operator: QR scan gate ────────────────────────────────────────────
         .fullScreenCover(isPresented: $showScanGate, onDismiss: {
             guard let guide = pendingGuide, !guideSteps.isEmpty else { return }
+            let demo = demoRequested; demoRequested = false
             DispatchQueue.main.async {
-                sessionInput = GuideSessionInput(guide: guide, steps: guideSteps)
+                sessionInput = GuideSessionInput(guide: guide, steps: guideSteps, demo: demo)
             }
         }) {
             QRScanGateView(
@@ -183,6 +186,12 @@ struct GuideListView: View {
                 onSessionReady: { showScanGate = false },
                 onCancel: {
                     pendingGuide = nil
+                    showScanGate = false
+                },
+                onDemo: {
+                    // Demo exit: no origin, no key - the session places the scene by tap.
+                    appState.activeAnchor = anchor
+                    demoRequested = true
                     showScanGate = false
                 }
             )
@@ -195,7 +204,8 @@ struct GuideListView: View {
             ARGuideSessionView(
                 anchor: anchor,
                 guide:  input.guide,
-                steps:  input.steps
+                steps:  input.steps,
+                startInDemo: input.demo
             )
             .environmentObject(settings)
             .environmentObject(appState)

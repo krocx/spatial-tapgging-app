@@ -27,6 +27,14 @@ struct ChamberScanView: View {
     @State private var hubAnchor: Anchor? = nil
     @State private var configLabel: String = ""
 
+    // Demo entry (2026.4.46): no chamber here → pick a guide, place it by tap.
+    private struct DemoRun: Identifiable {
+        let anchor: Anchor; let guide: ARGuide; let steps: [GuideStep]
+        var id: String { guide.id }
+    }
+    @State private var showDemoPicker = false
+    @State private var demoRun: DemoRun? = nil
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -53,8 +61,19 @@ struct ChamberScanView: View {
                     Group {
                         switch phase {
                         case .scanning:
-                            Label(scanHint, systemImage: "qrcode.viewfinder")
-                                .font(.subheadline).foregroundStyle(.white.opacity(0.85))
+                            VStack(spacing: 12) {
+                                Label(scanHint, systemImage: "qrcode.viewfinder")
+                                    .font(.subheadline).foregroundStyle(.white.opacity(0.85))
+                                if settings.demoPlacementEnabled {
+                                    Button { showDemoPicker = true } label: {
+                                        Label("No chamber here? Run a demo", systemImage: "hand.tap")
+                                            .font(.footnote).foregroundStyle(.white.opacity(0.8))
+                                            .padding(.horizontal, 14).padding(.vertical, 8)
+                                            .background(Color.white.opacity(0.12), in: Capsule())
+                                    }
+                                    .accessibilityHint("Pick a guide and place it where you tap. The run is marked as a demo.")
+                                }
+                            }
                         case .resolving:
                             HStack { ProgressView().tint(.white); Text("Looking up chamber…") }
                                 .font(.subheadline).foregroundStyle(.white)
@@ -93,6 +112,24 @@ struct ChamberScanView: View {
                 .environmentObject(appState)
                 .environmentObject(tour)
             }
+        }
+        // Demo: guide picker → AR session in demo placement (no QR, no map).
+        .sheet(isPresented: $showDemoPicker) {
+            DemoGuidePickerView(
+                onPick: { anchor, guide, steps in
+                    showDemoPicker = false
+                    appState.activeAnchor = anchor
+                    arManager.pauseSession()
+                    DispatchQueue.main.async { demoRun = DemoRun(anchor: anchor, guide: guide, steps: steps) }
+                },
+                onCancel: { showDemoPicker = false }
+            )
+            .environmentObject(settings)
+        }
+        .fullScreenCover(item: $demoRun, onDismiss: { arManager.resetScan(); arManager.startSession() }) { run in
+            ARGuideSessionView(anchor: run.anchor, guide: run.guide, steps: run.steps, startInDemo: true)
+                .environmentObject(settings)
+                .environmentObject(appState)
         }
         .onAppear { arManager.startSession() }
         .onDisappear { if appState.activeARSession == nil { arManager.pauseSession() } }

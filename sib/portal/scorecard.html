@@ -185,7 +185,7 @@ function transition() {
         <div class="ld-lens">
           <div class="ax-tile"><b>${pct(d.coverage)}</b><span>of steps delivered${d.nativeShare !== null ? ` · ${pct(d.nativeShare)} as authored` : ''}</span></div>
           <div class="ax-tile"><b>${d.l1 ?? '–'}<span style="font:var(--ax-label-s);font-family:var(--ax-font)"> / </span>${d.l2 ?? '–'}</b><span>L1 / L2${d.confidence ? ` · ${esc(d.confidence)}` : ''} · ${d.scored} of ${d.of} criteria</span></div>
-          <div class="ax-tile"><b>${d.evidencedRuns}</b><span>evidenced runs of ${d.runs}</span></div>
+          <div class="ax-tile"><b>${d.evidencedRuns}</b><span>evidenced runs of ${d.runs}${d.demoRuns ? ` · ${d.demoRuns} demo` : ''}</span></div>
           <div class="ax-tile"><b>${d.blockers.length}</b><span>${d.blockers.length === 1 ? 'blocker' : 'blockers'}${d.blockers.length ? ': ' + esc(d.blockers.map(b => `${b.name} (${b.score})`).join(', ')) : ''}</span></div>
         </div>
         <div class="ld-gaps"><b>What moves it:</b> ${esc(d.moves)}</div>

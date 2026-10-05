@@ -234,9 +234,14 @@ body:meta('Chambers','AR OMS · Karthik')+'<div class="bscroll"><div class="smoc
 acts:[{l:'Scan the chamber QR',to:'oms-qr',p:true},{l:'Open CORTONAIMPORTTESTS',to:'oms-guides'}]};
 S['oms-qr']={t:'QR gate',s:'One chamber, one origin',dk:true,
 why:'The printed QR is the chamber\'s identity and its origin. SIB relocalises into the sealed world map first, then confirms the QR; the content lands within millimetres every session.',
-next:'Point at the QR. A wrong chamber is refused with a red banner; the right one locks in green.',tips:['Encryption key never in the QR','Object scan: parts found by shape when the QR is hidden'],
-body:'<div class="arbg">'+arTop('','CORTONAIMPORTTESTS','relocalising · world map 2 of 2',pill('&#x25C9; AR OMS'))+'<div class="qrf"><div class="co tl"></div><div class="co tr"></div><div class="co bl"></div><div class="co br"></div></div><div class="scard"><div class="si">&#x25A6;</div><div class="sm">Point at the chamber QR</div></div></div>',
-acts:[{l:'QR confirmed → guides',to:'oms-guides',p:true},{l:'Wrong chamber (refused)',to:'oms-qr'}]};
+next:'Point at the QR. A wrong chamber is refused with a red banner; the right one locks in green. No chamber in the room? "Run a demo" places the guide where you tap.',tips:['Encryption key never in the QR','Object scan: parts found by shape when the QR is hidden','Demo exit can be switched off in Settings for production shifts'],
+body:'<div class="arbg">'+arTop('','CORTONAIMPORTTESTS','relocalising · world map 2 of 2',pill('&#x25C9; AR OMS'))+'<div class="qrf"><div class="co tl"></div><div class="co tr"></div><div class="co bl"></div><div class="co br"></div></div><div class="scard"><div class="si">&#x25A6;</div><div class="sm">Point at the chamber QR</div><div class="sm" style="margin-top:8px;font-size:10.5px;opacity:.75;border:1px solid var(--ax-rule);border-radius:999px;padding:4px 10px;display:inline-block;">No chamber here? Run a demo</div></div></div>',
+acts:[{l:'QR confirmed → guides',to:'oms-guides',p:true},{l:'Wrong chamber (refused)',to:'oms-qr'},{l:'No chamber here → run a demo',to:'oms-demo'}]};
+S['oms-demo']={t:'Run a demo',s:'The guide where you tap',dk:true,
+why:'A demo audience or a team at another site has no chamber and no QR. The picker lists every ready guide across chambers; the chosen guide appears where the person taps, turned to face them, and runs end to end. The record is marked demo and never counts as a real run.',
+next:'Pick the guide, aim the ring at a table or the floor, tap. Pinch to resize, twist to turn.',tips:['Full run, sign-off included - marked demo','Demo runs never lift a scorecard verdict','Settings → Running guides → Demo placement'],
+body:meta('Run a demo','every chamber · published guides')+'<div class="bscroll"><div style="background:var(--ax-ok-fill);border-radius:9px;padding:9px 11px;font-size:11px;margin-bottom:10px;">The guide appears where you tap and faces you. Nothing is written to a chamber.</div><div class="smock">&#x1F50D; Guide or chamber</div>'+sec('CORTONAIMPORTTESTS')+list([row('&#x25A3;','var(--ax-ok-fill)','Axle Assembly Work Instructions','7 steps · 3D model'),row('&#x25A3;','var(--ax-ok-fill)','Bee Assembly (V.04.04)','128 steps · 3D model')])+sec('ETCH-CATHODE-01')+list([row('&#x2630;','var(--ax-paper-3)','Cathode swap','12 steps')])+'</div>'+cta('&#x261D; Tap to place the demo','Pinch to resize · twist to turn'),
+acts:[{l:'Axle Assembly → tap to place',to:'oms-step',p:true}]};
 S['oms-guides']={t:'Guides on this chamber',s:'Pick the work instruction',dk:true,
 why:'Only published guides shared with you appear. A guide with an assembly says whether the assembly is placed; the first run on a new chamber places it with one tap.',
 next:'Tap the guide. Enter the Production # so the run is attributed.',tips:['Production # = work context','Draft guides never reach technicians'],
@@ -419,7 +424,7 @@ acts:[{l:'"next" → … → sign-off',to:'oms-signoff',f:'aroms',p:true}]};
 
 // ── flows ───────────────────────────────────────────────────────────────────
 var F = {
-  aroms:    ['start','oms-chambers','oms-qr','oms-guides','oms-place','oms-step','oms-hint','oms-validate','oms-signoff'],
+  aroms:    ['start','oms-chambers','oms-qr','oms-demo','oms-guides','oms-place','oms-step','oms-hint','oms-validate','oms-signoff'],
   author:   ['start','si-dir','si-hub','si-ar','si-addtag','si-capture','si-roi','si-taglist'],
   operator: ['start','si-hub-op','si-ar-op','si-results'],
   gemba:    ['start','gemba-walk','gemba-finding'],

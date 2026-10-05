@@ -109,6 +109,70 @@ struct SettingsView: View {
     // Tour frame capture
     @State private var tourFrames: [TourStep: CGRect] = [:]
 
+    /// Advanced rows (diagnostics, logs) stay folded unless a tester opens them.
+    @State private var showAdvanced = false
+    /// The connected server's platform version (GET /config, key required).
+    @State private var serverVersion: String? = nil
+    private var stackLine: String {
+        "SIB \(serverVersion ?? "(not connected)") · Swift · ARKit · CryptoKit"
+    }
+    private func loadServerVersion() async {
+        guard settings.isConfigured else { serverVersion = nil; return }
+        serverVersion = (try? await SIBClient(settings: settings).fetchServerConfig())?.platformVersion
+    }
+
+    // ── Test connection (inside the Server section) ───────────────────────────
+    private var testConnectionButton: some View {
+        Button {
+                guard !isTesting else { return }
+                isTesting = true; testResult = nil
+                let temp = AppSettings()
+                temp.sibBaseURL = draftURL
+                temp.apiKey     = draftApiKey
+                let client = SIBClient(settings: temp)
+                Task {
+                    do {
+                        try await client.testConnection()
+                        testResult = .success(())
+                        serverVersion = (try? await client.fetchServerConfig())?.platformVersion
+                        // Tour: auto-advance when connection succeeds
+                        tour.advancePast(.testConnection)
+                    } catch {
+                        testResult = .failure(error)
+                    }
+                    isTesting = false
+                }
+            } label: {
+                HStack {
+                    if isTesting {
+                        ProgressView().scaleEffect(0.8); Text("Testing…")
+                    } else {
+                        Image(systemName: "network"); Text("Test Connection")
+                    }
+                    Spacer()
+                    if let r = testResult {
+                        switch r {
+                        case .success:
+                            Label("Connected", systemImage: "checkmark.circle.fill")
+                                .foregroundColor(.green).font(.subheadline)
+                        case .failure(let e):
+                            Label(e.localizedDescription, systemImage: "xmark.circle.fill")
+                                .foregroundColor(.red).font(.caption).lineLimit(1)
+                        }
+                    }
+                }
+            }
+            .disabled(isTesting || draftURL.trimmingCharacters(in: .whitespaces).isEmpty)
+            .background(
+                GeometryReader { geo in
+                    Color.clear.preference(
+                        key: TourFrameKey.self,
+                        value: [.testConnection: geo.frame(in: .global)]
+                    )
+                }
+            )
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -175,14 +239,7 @@ struct SettingsView: View {
                                 }
                             }
                     }
-                } header: {
-                    Text("SIB Server URL")
-                } footer: {
-                    Text("Local dev: http://192.168.1.x:3001 (same WiFi). Production: your Render HTTPS URL.")
-                }
-
-                // ── API Key ────────────────────────────────────────────────────
-                Section {
+                    // API key (X-API-Key)
                     HStack {
                         Image(systemName: "key.fill").foregroundColor(.secondary).frame(width: 22)
                         Group {
@@ -202,10 +259,11 @@ struct SettingsView: View {
                         }
                         .buttonStyle(.plain)
                     }
+                    testConnectionButton
                 } header: {
-                    Text("API Key (X-API-Key)")
+                    Text("Server")
                 } footer: {
-                    Text("Set in Render → Environment → SIB_API_KEY. Leave blank when running locally without a key.")
+                    Text("Local dev: http://192.168.1.x:3001 (same WiFi). Production: your Render HTTPS URL with its API key; the company server needs no key.")
                 }
 
                 // ── Identity ──────────────────────────────────────────────────
@@ -280,73 +338,23 @@ struct SettingsView: View {
                         Label("Show Shared Anchors", systemImage: "person.2.fill")
                     }
                 } header: {
-                    Text("Identity")
+                    Text("You")
                 } footer: {
                     Text("Auto-detected from your device name - update it here if needed. This name tags every anchor you create and determines what appears under \"My Anchors\" in the directory.")
                 }
 
-                // ── Test Connection ────────────────────────────────────────────
+                // ── Running guides ─────────────────────────────────────────────
                 Section {
-                    Button {
-                        guard !isTesting else { return }
-                        isTesting = true; testResult = nil
-                        let temp = AppSettings()
-                        temp.sibBaseURL = draftURL
-                        temp.apiKey     = draftApiKey
-                        let client = SIBClient(settings: temp)
-                        Task {
-                            do {
-                                try await client.testConnection()
-                                testResult = .success(())
-                                // Tour: auto-advance when connection succeeds
-                                tour.advancePast(.testConnection)
-                            } catch {
-                                testResult = .failure(error)
-                            }
-                            isTesting = false
-                        }
-                    } label: {
-                        HStack {
-                            if isTesting {
-                                ProgressView().scaleEffect(0.8); Text("Testing…")
-                            } else {
-                                Image(systemName: "network"); Text("Test Connection")
-                            }
-                            Spacer()
-                            if let r = testResult {
-                                switch r {
-                                case .success:
-                                    Label("Connected", systemImage: "checkmark.circle.fill")
-                                        .foregroundColor(.green).font(.subheadline)
-                                case .failure(let e):
-                                    Label(e.localizedDescription, systemImage: "xmark.circle.fill")
-                                        .foregroundColor(.red).font(.caption).lineLimit(1)
-                                }
-                            }
-                        }
+                    Toggle(isOn: $settings.demoPlacementEnabled) {
+                        Label("Demo placement", systemImage: "hand.tap")
                     }
-                    .disabled(isTesting || draftURL.trimmingCharacters(in: .whitespaces).isEmpty)
-                    .background(
-                        GeometryReader { geo in
-                            Color.clear.preference(
-                                key: TourFrameKey.self,
-                                value: [.testConnection: geo.frame(in: .global)]
-                            )
-                        }
-                    )
-                }
-
-                // ── Contextual hints (C2 UX) ───────────────────────────────────
-                Section {
+                    Text("Lets a person run a guide without the chamber's QR: the scene appears where they tap and the record is marked as a demo. Turn off for production shifts.")
+                        .font(.caption).foregroundStyle(.secondary)
                     Toggle(isOn: $settings.contextualHintsEnabled) {
                         Label("Contextual hints", systemImage: "sparkles")
                     }
-                } footer: {
-                    Text("Automatic tips while running a guide (taking longer than usual, wrong part, viewpoint). Turning this off hides the tips on this device only; a colleague's coaching messages still show, and observations keep being recorded.")
-                }
-
-                // ── Assembly detail (testing) ──────────────────────────────────
-                Section {
+                    Text("Automatic tips while running a guide (taking longer than usual, wrong part, viewpoint). Off hides the tips on this device only; coaching messages still show and observations are still recorded.")
+                        .font(.caption).foregroundStyle(.secondary)
                     Picker(selection: $settings.assemblyDetail) {
                         Text("Auto").tag("auto")
                         Text("Full model").tag("100000000")
@@ -357,11 +365,23 @@ struct SettingsView: View {
                     } label: {
                         Label("Assembly detail", systemImage: "cube")
                     }
+                } header: {
+                    Text("Running guides")
                 } footer: {
                     Text("Auto picks the triangle budget from this device's memory (\(GLBLoadOptions.autoBudgetDescription)). A fixed budget is for testing: the server sends the matching reduced copy, or the full model. Overrides are \(GLBLoadOptions.overrideCapDescription) so a test cannot run the device out of memory. Takes effect the next time a guide opens.")
                 }
 
-                // ── Diagnostics (QA Mode + log export) ─────────────────────────
+                // ── Advanced (diagnostics + inspection logs, collapsed) ────────
+                Section {
+                    Toggle(isOn: $showAdvanced.animation()) {
+                        Label("Show advanced", systemImage: "wrench.and.screwdriver")
+                    }
+                } header: {
+                    Text("Advanced")
+                } footer: {
+                    Text(showAdvanced ? "" : "Diagnostics, QA logging and inspection log export. For testers.")
+                }
+                if showAdvanced {
                 Section {
                     Toggle(isOn: $settings.lidarMeshEnabled) {
                         Label("LiDAR scene mesh", systemImage: "cube.transparent")
@@ -412,6 +432,7 @@ struct SettingsView: View {
                             .font(.caption).foregroundStyle(.secondary)
                     }
                 }
+                }
 
                 // ── Introduction (FTUE) ────────────────────────────────────────
                 Section {
@@ -441,16 +462,12 @@ struct SettingsView: View {
                             Label("Reset guided tour", systemImage: "arrow.counterclockwise")
                         }
                     }
+                    LabeledContent("App", value: AppVersion.current)
+                    LabeledContent("Stack", value: stackLine)
                 } header: {
-                    Text("Introduction")
+                    Text("About")
                 } footer: {
                     Text("The guided tour walks you through the full app flow step by step. Mode walkthroughs appear when first entering Author or Operator mode. Tap ? in any mode to replay at any time.")
-                }
-
-                // ── App Info ───────────────────────────────────────────────────
-                Section("App Info") {
-                    LabeledContent("Version", value: AppVersion.current)
-                    LabeledContent("Stack",   value: "Swift + ARKit + CryptoKit + SIB v0.3")
                 }
             }
             .navigationTitle("Settings")
@@ -498,6 +515,7 @@ struct SettingsView: View {
                 // Reflect active preset based on current URL
                 activePreset = ServerPreset.allCases.first { $0.url == draftURL }
             }
+            .task { await loadServerVersion() }
             .sheet(isPresented: $showShareSheet) {
                 ShareSheet(items: exportURLs)
             }

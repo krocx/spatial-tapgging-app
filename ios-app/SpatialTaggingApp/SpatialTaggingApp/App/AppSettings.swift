@@ -109,6 +109,12 @@ final class AppSettings: ObservableObject {
     @Published var testBay: String {
         didSet { UserDefaults.standard.set(testBay, forKey: "test_bay") }
     }
+    /// Demo placement (2026.4.46): run a guide without the chamber's QR -
+    /// the scene appears where the person taps, the record is marked demo.
+    /// On by default for pilots; off for production shifts.
+    @Published var demoPlacementEnabled: Bool {
+        didSet { UserDefaults.standard.set(demoPlacementEnabled, forKey: "demo_placement_enabled") }
+    }
     /// C2 UX: automatic contextual hints (device-wide). Observations and the
     /// server's hint log continue regardless - this is the UI only.
     @Published var contextualHintsEnabled: Bool {
@@ -245,6 +251,7 @@ final class AppSettings: ObservableObject {
         lastChamberAssetId = UserDefaults.standard.string(forKey: "last_chamber_asset")    ?? ""
         testBay            = UserDefaults.standard.string(forKey: "test_bay")             ?? ""
         contextualHintsEnabled = UserDefaults.standard.object(forKey: "contextual_hints_enabled") as? Bool ?? true
+        demoPlacementEnabled   = UserDefaults.standard.object(forKey: "demo_placement_enabled") as? Bool ?? true
         assemblyDetail     = UserDefaults.standard.string(forKey: "assembly_detail") ?? "auto"
         anchorLabEnabled   = UserDefaults.standard.bool(forKey: "anchor_lab_enabled")
         lidarMeshEnabled   = UserDefaults.standard.object(forKey: "lidar_mesh_enabled") as? Bool ?? false

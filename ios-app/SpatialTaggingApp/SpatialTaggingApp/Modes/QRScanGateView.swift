@@ -34,6 +34,10 @@ struct QRScanGateView: View {
     let mode: AppMode                       // .author or .operator
     let onSessionReady: () -> Void          // called once QR locked + anchor set
     let onCancel: () -> Void
+    /// Demo exit (2026.4.46): when set and demo placement is allowed, the
+    /// gate offers "Run a demo here instead" while it is still scanning. Only
+    /// the AR Work Instructions gate passes it; inspection gates never skip.
+    var onDemo: (() -> Void)? = nil
 
     @EnvironmentObject private var settings: AppSettings
     @EnvironmentObject private var appState:  AppState
@@ -130,6 +134,17 @@ struct QRScanGateView: View {
                 if scanPhase == .waiting || scanPhase == .detected {
                     qrFrameGuide
                         .transition(.opacity)
+                    if let onDemo, settings.demoPlacementEnabled {
+                        Button(action: onDemo) {
+                            Label("Run a demo here instead", systemImage: "hand.tap")
+                                .font(.footnote).foregroundStyle(.white.opacity(0.8))
+                                .padding(.horizontal, 14).padding(.vertical, 9)
+                                .background(Color.white.opacity(0.12), in: Capsule())
+                        }
+                        .padding(.top, 14)
+                        .accessibilityHint("Place the guide where you tap. The run is marked as a demo.")
+                        .transition(.opacity)
+                    }
                 }
 
                 // ── B2e: chamber finder (object-origin, after the QR lock) ─────

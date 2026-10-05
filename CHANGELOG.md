@@ -7,6 +7,19 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **Run a demo without the chamber (iOS).** Operator mode no longer dead-ends
+  at the QR scan when there is no chamber in the room: the front door offers
+  "No chamber here? Run a demo" (a picker of every ready guide, grouped by
+  chamber) and the guide's QR gate offers "Run a demo here instead". Either
+  opens the session straight into tap-to-place: no world map, no wait; the
+  whole scene appears where the person taps and runs end to end. The record
+  is marked demo; the scorecard counts demo runs apart so they never lift a
+  verdict. Settings → Running guides → Demo placement switches it off.
+- **Settings, regrouped (iOS).** Five sections instead of ten: Server (URL,
+  key, test), You, Running guides, Advanced (folded), About. The Stack line
+  now shows the connected server's platform version.
+- **Wordmark on the home screen (iOS).** The QR glyph top-left is replaced by
+  the appliedx wordmark in the brand colours.
 - **Glasses transition on the scorecard.** The scorecard opens on the
   question leadership asks: are the work instructions ready to move from the
   iPad to AR glasses? Per device: steps delivered, L1 and L2, evidenced runs,

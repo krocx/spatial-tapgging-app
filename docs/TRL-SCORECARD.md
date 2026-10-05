@@ -83,7 +83,8 @@ For each device profile the page shows the share of published steps the
 device delivers (as authored or adapted, from the readiness report; steps a
 device cannot carry count against it), the Hardware Fit lenses L1 and L2
 with their confidence, the runs recorded on that device this quarter (from
-the usage log) and how many of them link to evidence, and the blockers
+the usage log; demo placements are counted apart and never lift a verdict)
+and how many of them link to evidence, and the blockers
 (Hardware Fit criteria at 1 or 2). A headline card above the devices sums
 up: devices ready, devices scored, published guides in the picture, and the
 two foundation verdicts (Content Pipeline, AR SDK) that any pilot depends

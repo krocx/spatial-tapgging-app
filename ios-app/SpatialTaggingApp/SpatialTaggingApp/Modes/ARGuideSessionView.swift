@@ -31,6 +31,10 @@ struct ARGuideSessionView: View {
     let anchor: Anchor
     let guide:  ARGuide
     let steps:  [GuideStep]   // sorted by sequenceNumber, pre-fetched by GuideListView
+    /// Demo entry (2026.4.46): opened without the chamber's QR. No world map,
+    /// no relocalisation - the surface picker opens at once and the whole
+    /// scene appears where the person taps. The record is marked demo.
+    var startInDemo: Bool = false
 
     @EnvironmentObject private var settings: AppSettings
     @EnvironmentObject private var appState:  AppState
@@ -1183,11 +1187,11 @@ struct ARGuideSessionView: View {
         VStack(spacing: 0) {
             Spacer()
             VStack(spacing: 12) {
-                Text("Place a demo copy")
+                Text(startInDemo && !isDemo ? "Demo: place the guide" : "Place a demo copy")
                     .font(.title3.bold()).foregroundStyle(.white)
-                Text("Aim the ring at the surface where the equipment would stand, then tap there. The whole guide appears at that spot, turned to face you. Nothing is saved.")
+                Text("Aim the ring at the surface where the equipment would stand, then tap there. The whole guide appears at that spot, turned to face you. Nothing is saved to the chamber.")
                     .font(.caption).foregroundStyle(.white.opacity(0.7)).multilineTextAlignment(.center)
-                Button("Cancel") { endDemoPick() }
+                Button("Cancel") { if startInDemo && !isDemo { dismiss() } else { endDemoPick() } }
                     .font(.subheadline).foregroundStyle(.white.opacity(0.85))
                     .padding(.horizontal, 16).padding(.vertical, 9)
                     .background(Color.white.opacity(0.12), in: Capsule())
@@ -1490,7 +1494,7 @@ struct ARGuideSessionView: View {
             // B2: chamber object → detection runs alongside the map; must be set
             // before the session starts.
             var objectLoaded = false
-            if anchor.objectScannedAt != nil {
+            if anchor.objectScannedAt != nil, !startInDemo {
                 let ob = await ReferenceObjectCache.load(anchorId: anchor.id, client: client)
                 arManager.setReferenceObject(ob?.archive, name: anchor.id)
                 objectLoaded = ob != nil
@@ -1502,14 +1506,16 @@ struct ARGuideSessionView: View {
                     shapeGhost = g
                 }
             }
-            async let mapFetch   = WorldMapCache.load(.guide(guide.id), client: client)
-            async let photoFetch = client.fetchGuideWorldMapPhoto(guideId: guide.id)
-            let (bundle, photoData) = try await (mapFetch, photoFetch)
-            let mapData = bundle?.map
-            referenceCameraPose = bundle?.meta.referenceCameraPoseTransform
-            objectPoseInMap     = bundle?.meta.objectPoseInMapTransform
-
-            if let pd = photoData { referencePhoto = UIImage(data: pd) }
+            var mapData: Data? = nil
+            if !startInDemo {
+                async let mapFetch   = WorldMapCache.load(.guide(guide.id), client: client)
+                async let photoFetch = client.fetchGuideWorldMapPhoto(guideId: guide.id)
+                let (bundle, photoData) = try await (mapFetch, photoFetch)
+                mapData = bundle?.map
+                referenceCameraPose = bundle?.meta.referenceCameraPoseTransform
+                objectPoseInMap     = bundle?.meta.objectPoseInMapTransform
+                if let pd = photoData { referencePhoto = UIImage(data: pd) }
+            }
 
             // Open live session for real-time telemetry (fire-and-forget - AR session
             // continues normally if this fails).
@@ -1556,7 +1562,13 @@ struct ARGuideSessionView: View {
             // object is the only frame. No initialWorldMap: if the chamber has
             // moved since the author placed the steps, the room map would pin
             // them to the old spot. The map is kept only as an EXPLICIT fallback.
-            if anchor.usesObjectOrigin, objectLoaded, objectPoseInMap != nil {
+            if startInDemo {
+                // Demo entry: plain session, straight to the surface picker.
+                arManager.startSession()
+                arManager.disableQRScanning()
+                phase = .relocalizing
+                beginDemoPick()
+            } else if anchor.usesObjectOrigin, objectLoaded, objectPoseInMap != nil {
                 objectOnlyFrame       = true
                 fallbackMapData       = mapData
                 objectSearchStartedAt = Date()
@@ -1641,7 +1653,7 @@ struct ARGuideSessionView: View {
                 let client = SIBClient(settings: settings)
                 Task { await client.pushGuideSessionEvent(liveSessionId: lsId, event: PushGuideSessionEventRequest(
                     type: .placementDemo, stepId: nil, stepIndex: nil, durationSeconds: nil,
-                    payload: ["reason": AnyCodable("not-at-equipment"), "turnedDeg": AnyCodable(Double(demoYaw * 180 / .pi))])) }
+                    payload: ["reason": AnyCodable(startInDemo ? "demo-entry" : "not-at-equipment"), "turnedDeg": AnyCodable(Double(demoYaw * 180 / .pi))])) }
             }
             transitionToNavigating()
             installDemoGestures()

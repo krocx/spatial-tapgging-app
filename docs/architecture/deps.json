@@ -502,6 +502,7 @@
    "Services/AppLog.swift",
    "Services/SIBClient.swift"
   ],
+  "Components/AppliedXWordmark.swift": [],
   "Components/AssemblyNode.swift": [
    "Models/AROMSModels.swift",
    "Services/AppLog.swift",
@@ -748,11 +749,13 @@
    "App/AppSettings.swift",
    "App/GuidedTourManager.swift",
    "Components/ARContainerView.swift",
+   "Models/AROMSModels.swift",
    "Models/AppState.swift",
    "Models/LocTagModels.swift",
    "Models/SIBTypes.swift",
    "Modes/ARGuideSessionView.swift",
    "Modes/AnchorHubView.swift",
+   "Modes/DemoGuidePickerView.swift",
    "Services/ARSessionManager.swift",
    "Services/AnchorEncryption.swift",
    "Services/SIBClient.swift"
@@ -774,6 +777,12 @@
    "Services/DepthCapture.swift",
    "Services/SIBClient.swift",
    "Services/TagFeaturePrint.swift"
+  ],
+  "Modes/DemoGuidePickerView.swift": [
+   "App/AppSettings.swift",
+   "Models/AROMSModels.swift",
+   "Models/SIBTypes.swift",
+   "Services/SIBClient.swift"
   ],
   "Modes/EditTagSheet.swift": [
    "App/AppSettings.swift",
@@ -978,6 +987,7 @@
   "Modes/ModeSelectionView.swift": [
    "App/AppSettings.swift",
    "App/GuidedTourManager.swift",
+   "Components/AppliedXWordmark.swift",
    "Components/CoachMarkOverlay.swift",
    "Components/ContextPrompts.swift",
    "Components/OnboardingSheet.swift",

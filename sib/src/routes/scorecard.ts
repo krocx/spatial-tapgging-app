@@ -99,13 +99,17 @@ export function buildTransition(quarter: string) {
     for (const p of profiles) { const c = r.summary[p.id]; if (!c) continue; cov[p.id].native += c.native; cov[p.id].adapted += c.adapted; cov[p.id].assisted += c.assisted; cov[p.id].total += c.total; }
   }
   // Runs per device from the usage log's work context (XR kit · … · <profile>, Even G2 · companion); everything else ran on the iPad.
-  const usage = omsUsageStore.findAll();
-  const runsOf = (p: { id: string; delivery: string }) => usage.filter(u => {
+  // Demo placements (scene placed by tap, not at the equipment) are counted apart: a demo never lifts a verdict.
+  const all = omsUsageStore.findAll();
+  const usage = all.filter(u => !u.demo);
+  const demoOf = (p: { id: string; delivery: string }) => all.filter(u => u.demo && runFilter(p)(u)).length;
+  const runFilter = (p: { id: string; delivery: string }) => (u: typeof all[number]) => {
     const wc = (u.workContext || '').toLowerCase();
     if (p.id === 'even-g2') return wc.startsWith('even g2');
     if (p.delivery === 'app') return !wc.startsWith('xr kit') && !wc.startsWith('even g2');
     return wc.startsWith('xr kit') && wc.includes(p.id);
-  });
+  };
+  const runsOf = (p: { id: string; delivery: string }) => usage.filter(runFilter(p));
   const devices = profiles.map(p => {
     const latest = latestByCriterion(entries, 'hardware-fit', quarter, p.id);
     const l1 = suggestLens(hw, 'L1', latest), l2 = suggestLens(hw, 'L2', latest);
@@ -115,7 +119,7 @@ export function buildTransition(quarter: string) {
     const both = [l1.confidence, l2.confidence].filter(Boolean) as Confidence[];
     const conf: Confidence | null = both.length ? (both.includes('Low') ? 'Low' : both.includes('Medium') ? 'Medium' : 'High') : null;
     const v = transitionVerdict({ coverage, nativeShare, l1: l1.suggested, l2: l2.suggested, confidence: conf, runs: runs.length, evidencedRuns, blockers });
-    return { id: p.id, name: p.name, delivery: p.delivery, display: p.display, overlay: p.overlay, coverage, nativeShare, steps: c.total, guides: guides.length, l1: l1.suggested, l2: l2.suggested, confidence: conf, scored: latest.size, of: hw.criteria.length, runs: runs.length, evidencedRuns, blockers, ...v };
+    return { id: p.id, name: p.name, delivery: p.delivery, display: p.display, overlay: p.overlay, coverage, nativeShare, steps: c.total, guides: guides.length, l1: l1.suggested, l2: l2.suggested, confidence: conf, scored: latest.size, of: hw.criteria.length, runs: runs.length, demoRuns: demoOf(p), evidencedRuns, blockers, ...v };
   });
   const order: Record<string, number> = { 'READY FOR PILOT': 0, 'ASSESSING': 1, 'NOT YET': 2, 'NOT SCORED': 3 };
   devices.sort((a, b) => order[a.verdict] - order[b.verdict] || (b.coverage ?? 0) - (a.coverage ?? 0));
