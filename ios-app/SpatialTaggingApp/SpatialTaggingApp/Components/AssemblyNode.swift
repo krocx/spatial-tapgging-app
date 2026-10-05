@@ -41,6 +41,11 @@ final class AssemblyNode {
     private var focused: Set<String> = []
     let extras: [String: [String: Any]]
     let bounds: (min: simd_float3, max: simd_float3)?
+    /// Mesh nodes the model starts hidden (`extras.visible=false` on the
+    /// node or an ancestor - a Cortona Switch the publication left off).
+    /// They rest hidden, the Studio's rule, whether or not the importer
+    /// named them in initialNodes; a step's own state still shows them.
+    private var hiddenAtRest: Set<SCNNode> = []
 
     init(assembly: GLBAssembly) {
         root = assembly.root
@@ -56,6 +61,12 @@ final class AssemblyNode {
             depth[name] = d
         }
         depthOf = depth
+        var hidden0: Set<SCNNode> = []
+        for (name, node) in assembly.parts where (assembly.extras[name]?["visible"] as? Bool) == false {
+            node.enumerateHierarchy { n, _ in if n.geometry != nil { hidden0.insert(n) } }
+        }
+        hiddenAtRest = hidden0
+        for n in hidden0 { n.isHidden = true }
         depthOrder = parts.keys.sorted { (depth[$0] ?? 0, $0) < (depth[$1] ?? 0, $1) }
         // Every part gets its OWN materials. The loader builds one SCNMaterial
         // per glTF material (one per colour - 54 for the Bee) and shares it
@@ -517,7 +528,7 @@ final class AssemblyNode {
     private func resetAll() {
         root.enumerateHierarchy { n, _ in
             if n.parent?.name == "view-hint" { return }          // the camera marker keeps its own look
-            if n.geometry != nil { n.opacity = 1 }
+            if n.geometry != nil { n.opacity = 1; n.isHidden = hiddenAtRest.contains(n) }
             for m in n.geometry?.materials ?? [] {
                 let id = ObjectIdentifier(m)
                 m.diffuse.contents = baseColor[id] ?? UIColor.lightGray

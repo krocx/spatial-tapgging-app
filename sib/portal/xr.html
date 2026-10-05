@@ -340,12 +340,23 @@ async function loadBundle() {
     }
   });
   const depthOf = o => { let d = 0, c = o; while (c && c !== root) { d++; c = c.parent; } return d; };
+  // Rest visibility comes from the model itself: a node the publication
+  // starts hidden (Cortona Switch, `extras.visible=false` on it or an
+  // ancestor) rests hidden - the Studio's rule, so the three renderers agree
+  // whether or not the importer named that node in initialNodes.
+  const startsHidden = o => { for (let q = o; q && q !== root; q = q.parent) if (q.userData?.visible === false) return true; return false; };
+  root.traverse(o => { if (o.isMesh) { o.userData.hidden0 = startsHidden(o); if (o.userData.hidden0) for (const mat of o.userData.mats || []) { mat.opacity = 0; mat.visible = false; } } });
   root.traverse(o => {
     if (typeof o.name === 'string' && o.name.startsWith('cmp:')) {
       const meshes = []; o.traverse(m => { if (m.isMesh) meshes.push(m); });
       const bb = new THREE.Box3().setFromObject(o); const center = bb.isEmpty() ? new THREE.Vector3() : bb.getCenter(new THREE.Vector3());
       o.updateMatrixWorld();
-      parts.set(o.name, { obj: o, rest: { pos: o.position.clone(), quat: o.quaternion.clone() }, meshes, depth: depthOf(o), centerLocal: o.parent ? o.parent.worldToLocal(center.clone()) : center, displayName: o.userData?.displayName || o.userData?.def || o.name.slice(4) });
+      const inst = { obj: o, rest: { pos: o.position.clone(), quat: o.quaternion.clone() } };
+      const prev = parts.get(o.name);
+      // A re-used part (VRML USE) is several nodes with one name: state and
+      // playback address all of them, so a hidden screw hides every screw.
+      if (prev) { prev.insts.push(inst); prev.meshes.push(...meshes); return; }
+      parts.set(o.name, { obj: o, rest: inst.rest, insts: [inst], meshes, depth: depthOf(o), centerLocal: o.parent ? o.parent.worldToLocal(center.clone()) : center, displayName: o.userData?.displayName || o.userData?.def || o.name.slice(4) });
     }
   });
   const s = model.defaultScale ?? 1;
@@ -359,7 +370,7 @@ async function loadBundle() {
   // Instances that share a DEF share a name; part control is by name, so only
   // the last one answers. Say so in the console rather than silently.
   { const seen = new Map(); root.traverse(o => { if (typeof o.name === 'string' && o.name.startsWith('cmp:')) seen.set(o.name, (seen.get(o.name) || 0) + 1); });
-    const dup = [...seen].filter(([, n]) => n > 1); if (dup.length) console.warn(`[xr] ${dup.length} part name(s) used by more than one node - only the last instance is controlled:`, dup.slice(0, 10)); }
+    const dup = [...seen].filter(([, n]) => n > 1); if (dup.length) console.info(`[xr] ${dup.length} part name(s) used by more than one node - every instance follows that name:`, dup.slice(0, 10)); }
   assemblyBounds = guide.assembly?.bounds || { min: modelBox.min.toArray(), max: modelBox.max.toArray() };
   // Size comes from the model (the portal's saved scale), not from an iPad
   // placement: that pose lives in the iPad's world map and its scale was a
@@ -387,13 +398,19 @@ function setPartOpacity(p, alpha, colorArr) {
     if (!mat.userData.baseColor) mat.userData.baseColor = mat.color.clone();
   }
 }
+/** Rest look: solid unless the model starts the mesh hidden. */
+function restPart(p) {
+  for (const m of p.meshes) { const alpha = m.userData.hidden0 ? 0 : 1; for (const mat of m.userData.mats || []) { mat.opacity = alpha; mat.visible = alpha > 0; mat.depthWrite = alpha > 0.95; if (mat.userData.baseColor) mat.color.copy(mat.userData.baseColor); } }
+}
+const setPartPos = (p, v) => { for (const i of p.insts) i.obj.position.copy(v); };
+const setPartQuat = (p, q) => { for (const i of p.insts) i.obj.quaternion.copy(q); };
 function applyState(state) {
-  for (const p of parts.values()) { p.obj.position.copy(p.rest.pos); p.obj.quaternion.copy(p.rest.quat); setPartOpacity(p, 1); }
+  for (const p of parts.values()) { for (const i of p.insts) { i.obj.position.copy(i.rest.pos); i.obj.quaternion.copy(i.rest.quat); } restPart(p); }
   const ordered = [...state.entries()].filter(([n]) => parts.has(n)).sort((a, b) => partDepth(a[0]) - partDepth(b[0]));
   for (const [name, st] of ordered) {
     const p = parts.get(name);
-    if (st.position) p.obj.position.fromArray(st.position);
-    if (st.rotation) p.obj.quaternion.setFromAxisAngle(new THREE.Vector3(st.rotation[0], st.rotation[1], st.rotation[2]).normalize(), st.rotation[3]);
+    if (st.position) setPartPos(p, new THREE.Vector3().fromArray(st.position));
+    if (st.rotation) setPartQuat(p, new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(st.rotation[0], st.rotation[1], st.rotation[2]).normalize(), st.rotation[3]));
     const alpha = st.show === 'hidden' ? 0 : st.show === 'ghost' ? (st.opacity ?? GHOST_OPACITY) : 1;
     // Parents first (sorted by depth above): a group's state paints its whole
     // subtree, then a child's own state overrides - the iOS order.
@@ -447,9 +464,10 @@ function fire(e) {
     const toPos = d.to ? new THREE.Vector3().fromArray(d.to) : fromPos.clone();
     const q0 = d.rotationFrom ? new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(...d.rotationFrom.slice(0, 3)).normalize(), d.rotationFrom[3]) : p.obj.quaternion.clone();
     const q1 = d.rotationTo ? new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(...d.rotationTo.slice(0, 3)).normalize(), d.rotationTo[3]) : q0.clone();
-    p.obj.position.copy(fromPos); p.obj.quaternion.copy(q0);
+    setPartPos(p, fromPos); setPartQuat(p, q0);
     const revealTo = e.hideAfterMotion ? Math.max(a0, 1) : targetAlpha;
-    tween(ms, k => { p.obj.position.lerpVectors(fromPos, toPos, k); p.obj.quaternion.slerpQuaternions(q0, q1, k); setPartOpacity(p, a0 + (revealTo - a0) * Math.min(1, k * 3), d.color); },
+    const pv = new THREE.Vector3(), qv = new THREE.Quaternion();
+    tween(ms, k => { setPartPos(p, pv.lerpVectors(fromPos, toPos, k)); setPartQuat(p, qv.slerpQuaternions(q0, q1, k)); setPartOpacity(p, a0 + (revealTo - a0) * Math.min(1, k * 3), d.color); },
       () => { if (e.hideAfterMotion) tween(250, k => setPartOpacity(p, revealTo * (1 - k), d.color)); });
     return;
   }

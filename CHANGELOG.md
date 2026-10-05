@@ -482,6 +482,12 @@ it, it gets a line.
   focus ring uses it too, so where the ring sits is where a tap lands.
 
 ### Fixed
+- **Parts the publication starts hidden showed in the XR kit and on the
+  iPad.** The importer marks them `extras.visible=false` on every node, but
+  only named nodes got an initialNodes delta; the Studio honoured the flag,
+  the runtimes reset every part to visible. Both runtimes now rest those
+  meshes hidden, and the XR kit drives every instance of a re-used part
+  (VRML USE), not only the last one. Three renderers, one picture.
 - **Import scale cannot stack.** A Cortona import records the unit
   conversion it baked into the GLB on the model (`importUnits`: factor,
   chosen units, published extent) and sets the model's Scale to 1, since
