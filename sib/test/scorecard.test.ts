@@ -1,7 +1,7 @@
 // scorecard.test.ts - lens suggestion, the master gate preview and quarters (scorecard/scorecard-core.ts).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { TRACKS, latestByCriterion, suggestLens, masterOutcome, quarterOf, quarterAfter, type Entry } from '../src/scorecard/scorecard-core.js';
+import { TRACKS, latestByCriterion, suggestLens, masterOutcome, quarterOf, quarterAfter, transitionVerdict, type Entry } from '../src/scorecard/scorecard-core.js';
 
 const E = (criterionId: string, score: Entry['score'], confidence: Entry['confidence'], at: string, deviceId?: string): Entry =>
   ({ id: criterionId + at, trackId: 'content-pipeline', criterionId, quarter: 'FY27-Q1', score, confidence, comment: '', evidence: [], by: 't', at, ...(deviceId ? { deviceId } : {}) });
@@ -36,4 +36,14 @@ test('quarterAfter rolls the fiscal year', () => {
   assert.equal(quarterAfter('FY26-Q4', 1), 'FY27-Q1');
   assert.equal(quarterAfter('FY26-Q4', 4), 'FY27-Q4');
   assert.equal(quarterAfter('FY27-Q2', 3), 'FY28-Q1');
+});
+
+test('glasses transition: the stated rule, per device', () => {
+  const base = { coverage: 0.95, nativeShare: 0.8, l1: 4, l2: 4, confidence: 'High' as const, runs: 8, evidencedRuns: 6, blockers: [] };
+  assert.equal(transitionVerdict(base).verdict, 'READY FOR PILOT');
+  assert.equal(transitionVerdict({ ...base, evidencedRuns: 2 }).verdict, 'ASSESSING');
+  assert.equal(transitionVerdict({ ...base, coverage: 0.5 }).verdict, 'NOT YET');
+  assert.equal(transitionVerdict({ ...base, l1: 2, blockers: [{ criterionId: 'hw-environment', name: 'Environment', score: 2 }] }).verdict, 'NOT YET');
+  assert.match(transitionVerdict({ ...base, l1: 2, blockers: [{ criterionId: 'hw-environment', name: 'Environment', score: 2 }] }).moves, /Environment/);
+  assert.equal(transitionVerdict({ ...base, l1: null, l2: null }).verdict, 'NOT SCORED');
 });

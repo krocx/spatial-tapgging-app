@@ -388,7 +388,10 @@
    "routes/sessions.ts"
   ],
   "routes/scorecard.ts": [
+   "guides/readiness.ts",
+   "guides/store.ts",
    "middleware/auth.ts",
+   "oms/usage-log.ts",
    "oms/xlsx-lite.ts",
    "routes/anchors.ts",
    "routes/devices.ts",

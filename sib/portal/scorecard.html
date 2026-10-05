@@ -121,7 +121,7 @@ async function api(path, init = {}) {
 }
 function toast(msg) { let t = document.getElementById('sc-toast'); if (!t) { t = document.createElement('div'); t.id = 'sc-toast'; t.className = 'ax-notice'; t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9200;max-width:90vw'; document.body.appendChild(t); } t.textContent = msg; t.style.display = 'flex'; clearTimeout(t._h); t._h = setTimeout(() => t.style.display = 'none', 3500); }
 
-let DATA = null, quarter = null, tab = 'leadership';
+let DATA = null, quarter = null, tab = 'transition';
 const WORDS = { 1: 'Concept', 2: 'Demo only', 3: 'Controlled', 4: 'In situ', 5: 'Proven' };
 const VERDICT_TEXT = { ADVANCE: 'Advance', CONTINUE: 'Continue', PARK: 'Parked', CLOSE: 'Closed' };
 const COLOR = { 'content-pipeline': 'var(--ax-green)', 'hardware-fit': 'var(--ax-blue)', 'ar-sdk': 'var(--ax-teal)' };
@@ -153,8 +153,8 @@ function render() {
         <button class="ax-btn" id="sc-rubric" title="How lenses, confidence and gates work"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-book"/></svg> Rubric</button>
       </div>
     </div>
-    <nav class="ax-tabs">${[['leadership', 'Overview'], ...DATA.tracks.map(x => [x.id, x.name]), ['history', 'History']].map(([id, name]) => `<button class="${tab === id ? 'is-on' : ''}" data-tab="${id}">${esc(name)}</button>`).join('')}</nav>
-    ${tab === 'leadership' ? leadership() : tab === 'history' ? history() : track(t)}`;
+    <nav class="ax-tabs">${[['transition', 'Glasses transition'], ['leadership', 'Overview'], ...DATA.tracks.map(x => [x.id, x.name]), ['history', 'History']].map(([id, name]) => `<button class="${tab === id ? 'is-on' : ''}" data-tab="${id}">${esc(name)}</button>`).join('')}</nav>
+    ${tab === 'transition' ? transition() : tab === 'leadership' ? leadership() : tab === 'history' ? history() : track(t)}`;
   main.querySelectorAll('.ax-tabs button').forEach(b => b.onclick = () => { tab = b.dataset.tab; render(); });
   document.getElementById('sc-quarter').onchange = e => load(e.target.value);
   document.getElementById('sc-rubric').onclick = openRubric;
@@ -162,6 +162,37 @@ function render() {
 }
 
 // ── Overview: where every track stands, and what changed ───────────────
+// ── Glasses transition: the leadership question, answered per device by a stated rule ──
+const TV = { 'READY FOR PILOT': ['Ready for pilot', 'v-ADVANCE'], 'ASSESSING': ['Assessing', 'v-CONTINUE'], 'NOT YET': ['Not yet', 'v-CLOSE'], 'NOT SCORED': ['Not scored', 'v-none'] };
+function transition() {
+  const T = DATA.transition; if (!T) return '<div class="ax-empty">No transition data.</div>';
+  const pct = v => v === null || v === undefined ? '–' : `${Math.round(v * 100)} %`;
+  const c = T.counts;
+  const line = `${c.ready} ${c.ready === 1 ? 'device' : 'devices'} ready for pilot · ${c.assessing} assessing · ${c.notYet} not yet · ${c.notScored} not scored`;
+  const found = T.foundation.map(f => `<span class="ax-chip ax-chip--text">${esc(f.name)}: <b class="${f.verdict ? 'v-' + f.verdict : 'v-none'}" style="margin-left:4px">${f.verdict ? VERDICT_TEXT[f.verdict] : 'not recorded'}</b></span>`).join(' ');
+  return `
+    <div class="ax-card" style="margin-bottom:var(--ax-s4)">
+      <div class="ax-eyebrow">Are we ready for the AR glasses transition? · ${esc(T.quarter)}</div>
+      <div style="font:var(--ax-h2);margin:4px 0 6px">${line}</div>
+      <div class="ax-label-s ax-muted">Measured over ${T.publishedGuides} published work ${T.publishedGuides === 1 ? 'instruction' : 'instructions'}. Foundation: ${found || '–'}. A device is <b>ready for pilot</b> when L1 and L2 are ${T.rule.READY.minLens} or better, ${Math.round(T.rule.READY.minCoverage * 100)} % of the published steps are delivered on it (as authored or adapted) and it has ${T.rule.READY.minRuns} evidenced runs; <b>assessing</b> when scored with ${Math.round(T.rule.ASSESSING.minCoverage * 100)} % or more delivered; <b>not yet</b> when a lens is at 1 or 2 or coverage is below that; <b>not scored</b> until someone scores it. No dates are promised here.</div>
+    </div>
+    <div class="ld-grid">
+      ${T.devices.map(d => `<div class="ax-card ld-card" style="--ax-pc:${d.verdict === 'READY FOR PILOT' ? 'var(--ax-green)' : d.verdict === 'ASSESSING' ? 'var(--ax-orange)' : d.verdict === 'NOT YET' ? 'var(--ax-red)' : 'var(--ax-ink-4)'}">
+        <div class="ax-eyebrow">${esc(d.delivery === 'app' ? 'SIB app' : d.display === 'none' ? 'spoken' : d.display === 'text' ? 'text pages' : d.overlay === 'reduced' ? 'reduced model · XR kit' : 'full model · XR kit')}</div>
+        <h2>${esc(d.name)}</h2>
+        <div class="ld-verdict ${TV[d.verdict][1]}">${TV[d.verdict][0]}</div>
+        <div class="ld-meta">${esc(d.because)}</div>
+        <div class="ld-lens">
+          <div class="ax-tile"><b>${pct(d.coverage)}</b><span>of steps delivered${d.nativeShare !== null ? ` · ${pct(d.nativeShare)} as authored` : ''}</span></div>
+          <div class="ax-tile"><b>${d.l1 ?? '–'}<span style="font:var(--ax-label-s);font-family:var(--ax-font)"> / </span>${d.l2 ?? '–'}</b><span>L1 / L2${d.confidence ? ` · ${esc(d.confidence)}` : ''} · ${d.scored} of ${d.of} criteria</span></div>
+          <div class="ax-tile"><b>${d.evidencedRuns}</b><span>evidenced runs of ${d.runs}</span></div>
+          <div class="ax-tile"><b>${d.blockers.length}</b><span>${d.blockers.length === 1 ? 'blocker' : 'blockers'}${d.blockers.length ? ': ' + esc(d.blockers.map(b => `${b.name} (${b.score})`).join(', ')) : ''}</span></div>
+        </div>
+        <div class="ld-gaps"><b>What moves it:</b> ${esc(d.moves)}</div>
+        <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">${DATA.can.score ? `<button class="ax-btn ax-btn--sm" data-open="hardware-fit" data-device="${esc(d.id)}">Score this device</button>` : ''}<a class="ax-btn ax-btn--sm" href="/portal#analytics/runs" title="The runs recorded on this device">Runs</a></div>
+      </div>`).join('')}
+    </div>`;
+}
 function leadership() {
   const inSib = DATA.tracks;
   const masterOnly = [['S', 'Spatial Intelligence Training'], ['I', 'Integrations']];
@@ -319,9 +350,10 @@ async function openScore(t, k) {
   const gl = await guides();
   const pre = new URLSearchParams(location.hash.split('?')[1] || '');
   const preGuide = pre.get('guide') || '';
+  const preDevice = pre.get('device') || '';
   const byAnchor = gl.reduce((m, g) => ((m[g.anchor] ||= []).push(g), m), {});
   const guideOpts = `<option value="">none</option>${Object.entries(byAnchor).map(([anchor, gs]) => `<optgroup label="${esc(anchor)}">${gs.map(g => `<option value="${esc(g.id)}" ${g.id === preGuide ? 'selected' : ''}>${esc(g.name)}${g.published ? '' : ' (draft)'}</option>`).join('')}</optgroup>`).join('')}`;
-  const devices = t.id === 'hardware-fit' ? `<label>Device (required for this track)<select class="ax-select" name="deviceId"><option value="">choose…</option>${DATA.profiles.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select></label>` : '';
+  const devices = t.id === 'hardware-fit' ? `<label>Device (required for this track)<select class="ax-select" name="deviceId"><option value="">choose…</option>${DATA.profiles.map(p => `<option value="${p.id}" ${p.id === preDevice ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></label>` : '';
   m.innerHTML = `<div class="ax-card">
     <button class="ax-btn" style="position:absolute;top:12px;right:14px" id="sc-close"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-close"/></svg></button>
     <div class="ax-eyebrow">${esc(t.name)} · ${k.lens}</div>
@@ -394,7 +426,7 @@ async function openScore(t, k) {
   };
 }
 function wire() {
-  main.querySelectorAll('[data-open]').forEach(b => b.onclick = () => { tab = b.dataset.open; render(); });
+  main.querySelectorAll('[data-open]').forEach(b => b.onclick = () => { tab = b.dataset.open; if (b.dataset.device) location.hash = `#${tab}?device=${encodeURIComponent(b.dataset.device)}`; render(); });
   const hh = document.getElementById('sc-howto-hide'); if (hh) hh.onclick = () => { try { localStorage.setItem('sib_scorecard_howto', '1'); } catch {} render(); };
   const hw = document.getElementById('hist-who'); if (hw) hw.onchange = () => { histWho = hw.value; render(); };
   const t = DATA.tracks.find(x => x.id === tab);
@@ -415,7 +447,7 @@ function wire() {
 }
 // Deep link: /scorecard#hardware-fit?guide=…  (from the readiness matrix)
 const h = location.hash.slice(1).split('?')[0];
-if (h && ['content-pipeline', 'hardware-fit', 'ar-sdk', 'history'].includes(h)) tab = h;
+if (h && ['transition', 'leadership', 'content-pipeline', 'hardware-fit', 'ar-sdk', 'history'].includes(h)) tab = h;
 load();
 </script>
 </body>

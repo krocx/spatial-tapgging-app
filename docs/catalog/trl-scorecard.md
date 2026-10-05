@@ -8,12 +8,12 @@ depends: [device-readiness, feature-catalogue]
 terms: [SIB]
 spec: TRL-SCORECARD.md
 api: |
-  GET /scorecard/data - tracks, criteria, latest scores, lens suggestions, overrides, master verdicts, overview summary (browser · API key)
+  GET /scorecard/data - tracks, criteria, latest scores, lens suggestions, overrides, master verdicts, overview summary, glasses transition per device (browser · API key)
   POST /scorecard/entries - score a criterion 1-5 with confidence, comment and evidence links; a 4 or 5 needs evidence (portal · Engineer+, signed in by name)
   GET /scorecard/guides - guide names and ids for the evidence picker (portal · API key)
   POST /scorecard/lens - the track owner confirms or overrides a lens with a reason (portal · Manager+)
   POST /scorecard/master - record the master sheet's verdict for a track and quarter (portal · Manager+)
-  GET /scorecard/export.xlsx - the SIB block for the master workbook: lenses, criteria, evidence (browser · API key)
+  GET /scorecard/export.xlsx - the SIB block for the master workbook: glasses transition, lenses, criteria, evidence (browser · API key)
 wireframe: portal
 arch: |
   flowchart LR
@@ -23,6 +23,7 @@ arch: |
     X --> M["Master TRL workbook - L3-L5, weights, gates, vetoes, verdict"]
     M --> V["verdict recorded back in SIB - Overview tab"]
     R["readiness matrix · import logs · sessions"] -.evidence.-> T
+    R --> G["Glasses transition: per device<br/>coverage · L1 L2 · evidenced runs · blockers → verdict by rule"]
 ---
 How the programme scores its tracks, and SIB's part in it. SIB scores L1
 (does it work) and L2 (is SIB ready) for Content Pipeline, Hardware Fit and
@@ -32,4 +33,6 @@ criteria suggest is confirmed by the track owner and exported in the master
 workbook's column order. L3 to L5, the weights, gates and vetoes stay in the
 master sheet with the track owner, whose verdict is recorded back in SIB so
 the Overview tab shows every track's standing, open gaps and evidence
-next to the criteria the team is scoring.
+next to the criteria the team is scoring. The first tab answers the
+leadership question directly: per device, by a stated rule, whether the
+work instructions are ready to move from the iPad to AR glasses.

@@ -7,6 +7,12 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **Glasses transition on the scorecard.** The scorecard opens on the
+  question leadership asks: are the work instructions ready to move from the
+  iPad to AR glasses? Per device: steps delivered, L1 and L2, evidenced runs,
+  blockers and a verdict by a stated rule (READY FOR PILOT, ASSESSING, NOT
+  YET, NOT SCORED) with what moves it. The same table is a sheet of the
+  Excel export and a block on the master workbook's Dashboard.
 - **Open on a headset by form, not brand.** The dialog offers the forms of
   delivery - full model in a headset browser (Quest 3, HoloLens 2, Vision
   Pro, any WebXR browser), reduced model for small glasses (RayNeo), text

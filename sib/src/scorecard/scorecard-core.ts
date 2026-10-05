@@ -177,3 +177,42 @@ export function quarterOf(d = new Date()): string {
   const fy = (m >= FY_START_MONTH ? y + 1 : y) % 100;
   return `FY${fy}-Q${Math.floor(offset / 3) + 1}`;
 }
+
+// ── Glasses transition (2026.4.46) ───────────────────────────────────────────
+// The leadership question "are we ready for the AR glasses transition?",
+// answered per device by a stated rule over four things SIB holds: coverage
+// (what share of the published procedures' steps the device delivers as
+// authored or adapted), the Hardware Fit lenses for the device, the runs
+// recorded on it, and the criteria scored 1 or 2. No date promises, no
+// claims about an unscored device.
+export type TransitionVerdict = 'READY FOR PILOT' | 'ASSESSING' | 'NOT YET' | 'NOT SCORED';
+export interface TransitionInput {
+  coverage: number | null;        // 0..1 (native + adapted) over all steps of published guides; null = no guides
+  nativeShare: number | null;     // 0..1
+  l1: number | null; l2: number | null; confidence: Confidence | null;
+  runs: number; evidencedRuns: number;
+  blockers: Array<{ criterionId: string; name: string; score: number }>;
+}
+export const TRANSITION_RULE = {
+  READY: { minLens: 4, minCoverage: 0.9, minRuns: 5 },
+  ASSESSING: { minCoverage: 0.6 },
+};
+export function transitionVerdict(i: TransitionInput): { verdict: TransitionVerdict; because: string; moves: string } {
+  const R = TRANSITION_RULE;
+  if (i.l1 === null && i.l2 === null) return { verdict: 'NOT SCORED', because: 'No Hardware Fit criteria scored for this device.', moves: 'Score Delivery first: does the guide open on it from the QR?' };
+  const low = i.blockers.slice().sort((a, b) => a.score - b.score)[0];
+  if ((i.l1 !== null && i.l1 <= 2) || (i.l2 !== null && i.l2 <= 2)) {
+    return { verdict: 'NOT YET', because: `A lens at ${Math.min(i.l1 ?? 9, i.l2 ?? 9)}${low ? `: ${low.name} scored ${low.score}` : ''}.`, moves: low ? `Move ${low.name} from ${low.score} to 3 or better, with evidence.` : 'Raise the lowest criterion to 3 with evidence.' };
+  }
+  const cov = i.coverage ?? 0;
+  if ((i.l1 ?? 0) >= R.READY.minLens && (i.l2 ?? 0) >= R.READY.minLens && cov >= R.READY.minCoverage && i.evidencedRuns >= R.READY.minRuns) {
+    return { verdict: 'READY FOR PILOT', because: `L1 ${i.l1} · L2 ${i.l2} · ${Math.round(cov * 100)} % of steps delivered · ${i.evidencedRuns} evidenced runs.`, moves: low ? `Keep ${low.name} (${low.score}) in view during the pilot.` : 'Pilot on one procedure, one chamber, one shift.' };
+  }
+  const gaps: string[] = [];
+  if ((i.l1 ?? 0) < R.READY.minLens) gaps.push(`L1 to ${R.READY.minLens} (now ${i.l1 ?? '–'})`);
+  if ((i.l2 ?? 0) < R.READY.minLens) gaps.push(`L2 to ${R.READY.minLens} (now ${i.l2 ?? '–'})`);
+  if (cov < R.READY.minCoverage) gaps.push(`coverage to ${Math.round(R.READY.minCoverage * 100)} % (now ${Math.round(cov * 100)} %)`);
+  if (i.evidencedRuns < R.READY.minRuns) gaps.push(`${R.READY.minRuns} evidenced runs (now ${i.evidencedRuns})`);
+  if (cov >= R.ASSESSING.minCoverage) return { verdict: 'ASSESSING', because: `Scored, ${Math.round(cov * 100)} % of steps delivered, ${i.evidencedRuns} evidenced runs.`, moves: `Needs ${gaps.join(', ')}${low ? `; lowest: ${low.name} at ${low.score}` : ''}.` };
+  return { verdict: 'NOT YET', because: `Only ${Math.round(cov * 100)} % of the published steps are delivered on this device.`, moves: `Coverage first: ${gaps.find(g => g.startsWith('coverage')) || 'author for this form'}${low ? `; ${low.name} at ${low.score}` : ''}.` };
+}

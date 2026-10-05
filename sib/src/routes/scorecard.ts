@@ -32,7 +32,10 @@ import { guideStore } from './guides.js';
 import { anchorStore } from './anchors.js';
 import { buildWorkbookXlsx, type TableRow } from '../oms/xlsx-lite.js';
 import { readDeviceProfiles } from './devices.js';
-import { TRACKS, latestByCriterion, suggestLens, masterOutcome, quarterOf, quarterAfter, type Entry, type LensOverride, type MasterVerdict, type TrackId, type Lens, type Confidence, type Verdict, type EvidenceLink } from '../scorecard/scorecard-core.js';
+import { guideStepStore } from '../guides/store.js';
+import { omsUsageStore } from '../oms/usage-log.js';
+import { readinessReport } from '../guides/readiness.js';
+import { TRACKS, latestByCriterion, suggestLens, masterOutcome, quarterOf, quarterAfter, transitionVerdict, TRANSITION_RULE, type Entry, type LensOverride, type MasterVerdict, type TrackId, type Lens, type Confidence, type Verdict, type EvidenceLink } from '../scorecard/scorecard-core.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const entryStore  = new JsonFileStore<Entry>('scorecard-entries');
@@ -78,6 +81,49 @@ export function buildScorecard(quarter: string) {
   return { quarter, tracks, profiles, generatedAt: new Date().toISOString() };
 }
 
+/** The glasses-transition view: one row per device, by the stated rule (scorecard-core.ts). */
+export function buildTransition(quarter: string) {
+  const profiles = readDeviceProfiles();
+  const entries = entryStore.findAll();
+  const hw = TRACKS.find(t => t.id === 'hardware-fit')!;
+  // Coverage across the published guides the library shows (their anchor exists).
+  const anchors = new Set(anchorStore.findAll().map(a => a.id));
+  const guides = guideStore.findAll().filter(g => g.published && anchors.has(g.anchorId));
+  const steps = guideStepStore.findAll();
+  const cov: Record<string, { native: number; adapted: number; assisted: number; total: number }> = {};
+  for (const p of profiles) cov[p.id] = { native: 0, adapted: 0, assisted: 0, total: 0 };
+  for (const g of guides) {
+    const st = steps.filter(s => s.guideId === g.id).sort((a, b) => a.sequenceNumber - b.sequenceNumber);
+    if (!st.length) continue;
+    const r = readinessReport(st, profiles);
+    for (const p of profiles) { const c = r.summary[p.id]; if (!c) continue; cov[p.id].native += c.native; cov[p.id].adapted += c.adapted; cov[p.id].assisted += c.assisted; cov[p.id].total += c.total; }
+  }
+  // Runs per device from the usage log's work context (XR kit · … · <profile>, Even G2 · companion); everything else ran on the iPad.
+  const usage = omsUsageStore.findAll();
+  const runsOf = (p: { id: string; delivery: string }) => usage.filter(u => {
+    const wc = (u.workContext || '').toLowerCase();
+    if (p.id === 'even-g2') return wc.startsWith('even g2');
+    if (p.delivery === 'app') return !wc.startsWith('xr kit') && !wc.startsWith('even g2');
+    return wc.startsWith('xr kit') && wc.includes(p.id);
+  });
+  const devices = profiles.map(p => {
+    const latest = latestByCriterion(entries, 'hardware-fit', quarter, p.id);
+    const l1 = suggestLens(hw, 'L1', latest), l2 = suggestLens(hw, 'L2', latest);
+    const c = cov[p.id]; const coverage = c.total ? (c.native + c.adapted) / c.total : null; const nativeShare = c.total ? c.native / c.total : null;
+    const runs = runsOf(p); const evidencedRuns = runs.filter(u => u.completed && u.steps.some(e => e.evidence || e.validation)).length;
+    const blockers = hw.criteria.filter(k => { const e = latest.get(k.id); return e && e.score <= 2; }).map(k => ({ criterionId: k.id, name: k.name, score: latest.get(k.id)!.score }));
+    const both = [l1.confidence, l2.confidence].filter(Boolean) as Confidence[];
+    const conf: Confidence | null = both.length ? (both.includes('Low') ? 'Low' : both.includes('Medium') ? 'Medium' : 'High') : null;
+    const v = transitionVerdict({ coverage, nativeShare, l1: l1.suggested, l2: l2.suggested, confidence: conf, runs: runs.length, evidencedRuns, blockers });
+    return { id: p.id, name: p.name, delivery: p.delivery, display: p.display, overlay: p.overlay, coverage, nativeShare, steps: c.total, guides: guides.length, l1: l1.suggested, l2: l2.suggested, confidence: conf, scored: latest.size, of: hw.criteria.length, runs: runs.length, evidencedRuns, blockers, ...v };
+  });
+  const order: Record<string, number> = { 'READY FOR PILOT': 0, 'ASSESSING': 1, 'NOT YET': 2, 'NOT SCORED': 3 };
+  devices.sort((a, b) => order[a.verdict] - order[b.verdict] || (b.coverage ?? 0) - (a.coverage ?? 0));
+  const counts = { ready: devices.filter(d => d.verdict === 'READY FOR PILOT').length, assessing: devices.filter(d => d.verdict === 'ASSESSING').length, notYet: devices.filter(d => d.verdict === 'NOT YET').length, notScored: devices.filter(d => d.verdict === 'NOT SCORED').length };
+  const foundation = ['content-pipeline', 'ar-sdk'].map(id => { const m = masterStore.findAll().filter(x => x.trackId === id && x.quarter === quarter).sort((a, b) => a.at < b.at ? 1 : -1)[0] ?? null; return { trackId: id, name: TRACKS.find(t => t.id === id)!.name, verdict: m?.verdict ?? null, at: m?.at ?? null }; });
+  return { quarter, rule: TRANSITION_RULE, publishedGuides: guides.length, devices, counts, foundation };
+}
+
 const router = Router();
 
 router.get('/', (_req: Request, res: Response) => {
@@ -92,7 +138,7 @@ router.get('/data', (req: Request, res: Response) => {
   const quarters = [...new Set([now, ...[1, 2, 3, 4].map(n => quarterAfter(now, n)), ...entryStore.findAll().map(e => e.quarter), ...masterStore.findAll().map(m => m.quarter)])].sort();
   res.setHeader('Cache-Control', 'no-store');
   const m = me(req);
-  res.json({ data: { ...buildScorecard(quarter), quarters, me: m, can: { score: !!m && SCORERS.includes(m.role), confirm: !!m && OWNERS.includes(m.role) }, history: entryStore.findAll().filter(e => e.quarter === quarter).sort((a, b) => a.at < b.at ? 1 : -1).slice(0, 200) }, timestamp: new Date().toISOString() });
+  res.json({ data: { ...buildScorecard(quarter), transition: buildTransition(quarter), quarters, me: m, can: { score: !!m && SCORERS.includes(m.role), confirm: !!m && OWNERS.includes(m.role) }, history: entryStore.findAll().filter(e => e.quarter === quarter).sort((a, b) => a.at < b.at ? 1 : -1).slice(0, 200) }, timestamp: new Date().toISOString() });
 });
 
 router.post('/entries', requireNamed(SCORERS, 'score a criterion'), (req: Request, res: Response) => {
@@ -179,7 +225,10 @@ router.get('/export.xlsx', (req: Request, res: Response) => {
       critRows.push({ cells: [t.name, k.lens, k.name, e?.score ?? '', e?.confidence ?? '', e?.comment ?? '', e ? e.evidence.map(l => `${l.kind} ${l.ref}`).join('; ') : '', e?.by ?? '', e?.at.slice(0, 10) ?? ''] });
     }
   }
+  const tr = buildTransition(quarter);
+  const trRows: TableRow[] = tr.devices.map(d => ({ cells: [d.name, d.verdict, d.coverage === null ? '' : Math.round(d.coverage * 100) + ' %', d.nativeShare === null ? '' : Math.round(d.nativeShare * 100) + ' %', d.l1 ?? '', d.l2 ?? '', d.confidence ?? '', d.runs, d.evidencedRuns, d.blockers.map(b => `${b.name} (${b.score})`).join('; '), d.because, d.moves] }));
   const buf = buildWorkbookXlsx([
+    { name: 'Glasses transition', headers: ['Device', 'Verdict', 'Steps delivered', 'Native', 'L1', 'L2', 'Confidence', 'Runs', 'Evidenced runs', 'Blockers', 'Because', 'What moves it'], rows: trRows, colWidths: [24, 16, 14, 10, 5, 5, 11, 7, 13, 40, 50, 60], freezeHeader: true },
     { name: 'SIB Import', headers: ['Track', 'Quarter', 'Lens', 'Score', 'Confidence', 'Evidence refs', 'Suggested from criteria', 'Owner note'], rows: lensRows, colWidths: [26, 10, 7, 7, 11, 24, 60, 50], freezeHeader: true },
     { name: 'Criteria', headers: ['Track', 'Lens', 'Criterion', 'Score', 'Confidence', 'Comment', 'Evidence', 'Scored by', 'Date'], rows: critRows, colWidths: [26, 6, 28, 7, 11, 50, 50, 16, 11], freezeHeader: true },
     { name: 'Evidence', headers: ['Ref', 'Track', 'Quarter', 'Lens', 'What the evidence is', 'Where it lives (SIB id / link)', 'Confidence', 'Captured by', 'Date'], rows: evRows, colWidths: [9, 26, 10, 7, 50, 50, 11, 16, 11], freezeHeader: true },

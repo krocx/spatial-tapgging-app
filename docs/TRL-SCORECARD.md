@@ -72,9 +72,45 @@ battery). L2: the XR kit or app on this device, readiness and profiles.
 **AR SDK Exploration.** L1: anchoring and relocalisation (mm and seconds),
 tracking under motion, device coverage. L2: SIB integration.
 
+## Glasses transition
+
+`/scorecard` opens on the question leadership asks: are we ready to move the
+work instructions from the iPad to AR glasses? The tab answers it per
+device, by a rule the page states rather than an opinion, and promises no
+date.
+
+For each device profile the page shows the share of published steps the
+device delivers (as authored or adapted, from the readiness report; steps a
+device cannot carry count against it), the Hardware Fit lenses L1 and L2
+with their confidence, the runs recorded on that device this quarter (from
+the usage log) and how many of them link to evidence, and the blockers
+(Hardware Fit criteria at 1 or 2). A headline card above the devices sums
+up: devices ready, devices scored, published guides in the picture, and the
+two foundation verdicts (Content Pipeline, AR SDK) that any pilot depends
+on.
+
+The verdict per device:
+
+- **READY FOR PILOT** - L1 and L2 at 4 or better, at least 90 % of the
+  published steps delivered, at least 5 evidenced runs, no blocker.
+- **ASSESSING** - scored, no blocker, at least 60 % of the steps delivered;
+  the card says what moves it (the lens, the coverage or the runs that are
+  short).
+- **NOT YET** - a lens at 1 or 2 (the lowest criterion is named), or less
+  than 60 % of the steps delivered.
+- **NOT SCORED** - no Hardware Fit criterion scored for the device this
+  quarter; "Score this device" opens the score form with the device chosen.
+
+The thresholds live in one place (`TRANSITION_RULE` in
+`sib/src/scorecard/scorecard-core.ts`) and are printed on the tab, so the
+reader sees the bar and the numbers side by side. The same table is the
+"Glasses transition" sheet of the Excel export and a block on the master
+workbook's Dashboard (devices ready, devices assessing), so the quarterly
+review reads the same answer in both places.
+
 ## Overview
 
-`/scorecard` opens on the Overview tab: every track as a card with the master verdict and
+The Overview tab: every track as a card with the master verdict and
 its date, L1 and L2 with confidence, the open gaps (criteria at 1 or 2),
 how many criteria are scored and how much evidence is linked; the two
 tracks scored only in the master sheet appear with that status so the
