@@ -131,3 +131,15 @@ on the server. No change to the app.
    Realities G2, Meta Oakley Vanguard, HoloLens 2, Apple Vision Pro. Start
    with Quest 3, Rayneo X3 Pro and Even G2, which cover the three delivery
    forms; correct the profiles and the rules from what holds.
+
+## Forms, not brands (2026.4.46)
+
+A device profile decides two things: the **form** a step is delivered in
+(full model, reduced model, text pages, spoken) and the device's name for
+the record. "Open on a headset" therefore offers the forms, each listing the
+devices it covers; one link serves every device of a form, and the XR kit
+recognises the device from its browser and records it. A link made for one
+device opened on another of the same form runs the same way and is recorded
+as the device it ran on (the kit says so in one line); a link asking for a
+different form runs as the link asks. The readiness matrix keeps a column
+per device - readiness is per device - with the form named under each.

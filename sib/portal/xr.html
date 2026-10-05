@@ -206,10 +206,24 @@ function detectProfile() {
 let profile = null;                 // DeviceProfile from /devices, or null = full browser
 let textMode = false;               // display text / none: pages, no model
 let reducedMode = false;            // overlay reduced: budget-sized model, no hose flipbooks
+// The form of delivery is what a profile decides (full model, reduced model,
+// text pages, spoken); the device name is for the record. A link made for one
+// device of a form opened on another device of the same form keeps the form
+// and records the device the browser says it is.
+const formOf = p => !p ? 'full' : p.display === 'none' ? 'spoken' : p.display === 'text' ? 'text' : p.overlay === 'reduced' ? 'reduced' : 'full';
+let profileNote = '';
 async function loadProfile() {
-  const id = params.get('profile') || detectProfile();
+  const asked = params.get('profile'), detected = detectProfile();
+  const id = asked || detected;
   if (!id) return;
-  try { const list = (await api('/devices')).data || []; profile = list.find(p => p.id === id) || null; } catch { profile = null; }
+  let list = [];
+  try { list = (await api('/devices')).data || []; } catch { list = []; }
+  profile = list.find(p => p.id === id) || null;
+  if (asked && detected && asked !== detected) {
+    const det = list.find(p => p.id === detected);
+    if (det && formOf(det) === formOf(profile)) { profile = det; profileNote = `This link was made for ${asked.replace(/-/g, ' ')}; you are on a ${det.name}. Same form, so it runs the same way - recorded as ${det.name}.`; }
+    else if (det) profileNote = `This link asks for the ${formOf(profile)} form; your ${det.name} would normally get the ${formOf(det)} form. Running as the link asks.`;
+  }
   if (!profile) return;
   textMode = profile.display === 'text' || profile.display === 'none';
   reducedMode = profile.overlay === 'reduced';
@@ -888,7 +902,8 @@ function verdict(result) {
     ? 'WebXR AR available on this browser' + (navigator.xr && 'XRSession' in window ? '' : '')
     : 'No WebXR AR on this browser - desktop preview only (Quest / Android Chrome / a WebXR-capable headset browser is needed for the AR run).';
   await loadProfile();
-  if (profile) $('capLine').textContent += ` · profile: ${profile.name}${params.get('profile') ? '' : ' (detected)'}`;
+  if (profile) $('capLine').textContent += ` · ${profile.name}${params.get('profile') && params.get('profile') === profile.id ? '' : ' (detected)'} · ${formOf(profile)} form`;
+  if (profileNote) { $('capLine').textContent += ` · ${profileNote}`; toast(profileNote, 6000); }
   try { await loadBundle(); } catch (e) { $('gateText').textContent = e.message === 'unauthorised' ? 'This server needs an API key.' : 'Could not load: ' + e.message; return; }
   if (textMode) { $('startAR').classList.add('hidden'); $('startDesk').classList.add('hidden'); const b = $('startText'); b.classList.remove('hidden'); b.disabled = false; b.textContent = profile.display === 'none' ? 'Start (spoken)' : 'Start (text pages)'; return; }
   $('startAR').disabled = !xrOk; $('startDesk').disabled = false;

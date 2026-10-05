@@ -7,6 +7,16 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **Open on a headset by form, not brand.** The dialog offers the forms of
+  delivery - full model in a headset browser (Quest 3, HoloLens 2, Vision
+  Pro, any WebXR browser), reduced model for small glasses (RayNeo), text
+  pages (Even G2), spoken (Oakley Vanguard) - each listing the devices it
+  covers, derived from the profiles. One link per form; the XR kit
+  recognises the device and records it. A link made for one device opened
+  on another of the same form runs the same and is recorded truthfully,
+  with a one-line note. The readiness matrix names the form under each
+  device column and has one "Open on a headset" button instead of per-device
+  links.
 - **Wireframe v5 - the current app and workflows, with a coach.** /wireframe
   is rebuilt around what ships today: AR OMS for the technician (chambers,
   QR gate, guide pick with Production #, one-tap assembly placement with the

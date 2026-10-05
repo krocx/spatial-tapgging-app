@@ -5705,7 +5705,10 @@ async function showReadiness(guideId) {
   const LEVEL = { native: ['Native', 'var(--ax-green)', 'var(--ax-ok-fill)'], adapted: ['Adapted', 'var(--ax-orange)', 'var(--ax-warn-fill)'], assisted: ['Assisted', 'var(--ax-red)', 'var(--ax-bad-fill)'] };
   const NEED = { text: 'text', spatial: 'place on the tool', motion: 'motion', 'part-id': 'find a part', media: 'image', 'hands-busy': 'hands busy' };
   const cell = (r) => { const [label, ink, fill] = LEVEL[r.level]; const why = r.needs.map(n => `${NEED[n.need] || n.need}: ${n.how}`).join('\n'); return `<td title="${esc(why)}" style="text-align:center"><span class="ax-chip" style="background:${fill};color:${ink};border-color:${fill}">${label}</span></td>`; };
-  const head = R.profiles.map(p => `<th style="text-align:center" title="${esc(p.notes || '')}">${esc(p.name)}<div class="ax-label-s ax-muted" style="font-weight:400">${esc(p.delivery === 'app' ? 'SIB app' : p.delivery === 'xrkit' ? 'XR kit' : p.delivery === 'companion-text' ? 'text via phone' : 'spoken')}${p.delivery === 'xrkit' ? ` · <a href="/xr?guide=${guideId}&profile=${p.id}" target="_blank" rel="noopener">open</a> · <a href="/guides/${guideId}/xr-qr.png?profile=${p.id}" target="_blank" rel="noopener" title="QR with a single-use link that opens this guide on the headset, no key to type">QR</a>` : p.id === 'even-g2' ? ` · <a href="#" onclick="document.getElementById('readiness-modal').style.display='none';showXrQr('${guideId}', '${esc((R.guideName || '').replace(/'/g, ''))}');return false" title="SIB on G2 in the Even app: a six-character code opens this guide on the glasses">Even app + code</a>` : p.delivery !== 'app' ? ` · <a href="/xr?guide=${guideId}&profile=${p.id}" target="_blank" rel="noopener" title="No camera or browser on these glasses: this page runs on the paired phone; the glasses need the maker's companion app to mirror it">open on the phone</a>` : ''}</div></th>`).join('');
+  // A column per device (readiness is per device); the header names the form it is delivered in. One way in per form: the headset dialog.
+  const formOf = p => p.delivery === 'app' ? 'app' : p.display === 'none' ? 'spoken' : p.display === 'text' ? 'text' : p.overlay === 'reduced' ? 'reduced' : 'full';
+  const FORM = { app: 'SIB app', full: 'full model · XR kit', reduced: 'reduced model · XR kit', text: 'text pages · SIB on G2', spoken: 'spoken · phone' };
+  const head = R.profiles.map(p => `<th style="text-align:center" title="${esc(p.notes || '')}">${esc(p.name)}<div class="ax-label-s ax-muted" style="font-weight:400">${FORM[formOf(p)]}</div></th>`).join('');
   const sum = R.profiles.map(p => { const c = R.summary[p.id]; return `<td style="text-align:center"><b class="preview-mono">${c.deliverable}%</b><div class="ax-label-s ax-muted">${c.native} native · ${c.adapted} adapted · ${c.assisted} assisted</div></td>`; }).join('');
   const rows = R.steps.map(s => `<tr><td class="preview-mono ax-muted">${s.sequenceNumber}</td><td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(s.title)}">${esc(s.title)}</td><td class="ax-label-s ax-muted">${s.needs.map(n => NEED[n] || n).join(' · ')}</td>${R.profiles.map(p => cell(s.byProfile[p.id])).join('')}</tr>`).join('');
   const csv = () => {
@@ -5720,7 +5723,7 @@ async function showReadiness(guideId) {
     <p class="ax-label-s ax-muted" style="margin:4px 0 0;max-width:820px">Each step's needs (from its text, pin, motion, parts and image) joined with what each wearable can deliver. <b style="color:var(--ax-green)">Native</b>: as authored. <b style="color:var(--ax-orange)">Adapted</b>: delivered in a reduced form (text, spoken, reduced model). <b style="color:var(--ax-red)">Assisted</b>: the device cannot carry the step alone. Hover a cell for the reason. Profiles live in docs/devices.</p></div>
     <div style="overflow:auto;min-height:0"><table class="ax-table" style="font-size:0.8rem"><thead><tr><th>#</th><th>Step</th><th>Needs</th>${head}</tr></thead>
       <tbody><tr style="background:var(--ax-paper-2)"><td></td><td><b>Deliverable</b></td><td></td>${sum}</tr>${rows}</tbody></table></div>
-    <div style="display:flex;gap:8px;justify-content:flex-end"><a class="ax-btn" href="/scorecard#hardware-fit?guide=${guideId}" title="Score what you saw on a device, with this guide as evidence"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chart"/></svg> Add to scorecard</a><button class="ax-btn" id="readiness-csv"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Download CSV</button></div>`;
+    <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap"><button class="ax-btn" onclick="document.getElementById('readiness-modal').style.display='none';showXrQr('${guideId}', '${esc((R.guideName || '').replace(/'/g, ''))}')" title="Pick the form of delivery and get the link, QR or code"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-xr"/></svg> Open on a headset</button><a class="ax-btn" href="/scorecard#hardware-fit?guide=${guideId}" title="Score what you saw on a device, with this guide as evidence"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chart"/></svg> Add to scorecard</a><button class="ax-btn" id="readiness-csv"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Download CSV</button></div>`;
   document.getElementById('readiness-csv').onclick = csv;
 }
 /** QR that opens this guide's XR kit page on a headset browser (scan from the glasses). */
@@ -5732,10 +5735,21 @@ async function showXrQr(guideId, name) {
   // Headsets with a browser run the XR kit; the profile decides the model
   // budget and the form of each step. One dialog: pick the device, get its
   // QR (a single-use link, no site key on the headset) or open it here.
+  // The choice is the FORM of delivery, not the brand: a link decides the
+  // model budget and the shape of each step; the device is detected and
+  // recorded as what it is. Forms come from the profiles, so a new device
+  // file slots in without a change here.
   let profiles = [];
-  try { profiles = ((await apiFetch('/devices')).data || []).filter(p => p.delivery === 'xrkit' || p.delivery === 'spoken').map(p => p.delivery === 'spoken' ? { ...p, name: `${p.name} (spoken, on the paired phone)`, notes: 'No display: the steps are read aloud through the glasses as the phone\u2019s Bluetooth audio, and "next", "back", "repeat", "pass", "fail" are heard through their microphones. Scan the QR with the phone, with the glasses connected as its audio device.' } : p); } catch {}
-  const choices = [{ id: '', name: 'Any browser (detects Quest, HoloLens, Vision Pro)', notes: 'Full model; the kit recognises the headset from its browser.' }, ...profiles,
-    { id: 'even-g2', name: 'Even Realities G2 (SIB on G2 in the Even app)', notes: 'Text steps on the glasses, driven from the temple or the R1 ring; the phone shows the same page. A six-character code instead of a QR.', companion: true }];
+  try { profiles = (await apiFetch('/devices')).data || []; } catch {}
+  const formOf = p => p.display === 'none' ? 'spoken' : p.display === 'text' ? 'text' : p.overlay === 'reduced' ? 'reduced' : 'full';
+  const names = f => profiles.filter(p => p.delivery !== 'app' && formOf(p) === f).map(p => p.name);
+  const list = (arr, more) => arr.length ? arr.join(', ') + (more ? ' ' + more : '') : '';
+  const choices = [
+    { id: '', form: 'full', name: 'Full model · headset browser', devices: list(names('full'), 'and any WebXR browser'), notes: 'The whole model in the headset\u2019s browser through the XR kit, anchored by the chamber QR. One link for all of them: the kit recognises the device and records it.' },
+    ...(names('reduced').length ? [{ id: profiles.find(p => formOf(p) === 'reduced').id, form: 'reduced', name: 'Reduced model · small glasses', devices: list(names('reduced')), notes: 'Waveguide glasses with a small field of view and little GPU: the reduced model, no hose animation, images small.' }] : []),
+    ...(names('text').length ? [{ id: 'even-g2', form: 'text', name: 'Text pages · glasses with a text display', devices: list(names('text')), notes: 'One page per step on the glasses through SIB on G2 in the Even app, driven from the temple or the ring. A six-character code and its QR instead of a headset link.', companion: true }] : []),
+    ...(names('spoken').length ? [{ id: profiles.find(p => formOf(p) === 'spoken').id, form: 'spoken', name: 'Spoken · glasses without a display', devices: list(names('spoken')), notes: 'The paired phone reads each step through the glasses as Bluetooth audio and hears next, back, repeat, pass and fail. Scan with the phone, glasses connected as its audio.' }] : []),
+  ];
   let current = '';
   const render = async () => {
     const chosenC = choices.find(c => c.id === current);
@@ -5752,16 +5766,16 @@ async function showXrQr(guideId, name) {
       <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:start">
         <div>
           <div class="ax-label-s ax-muted" style="margin-bottom:6px">Device</div>
-          <div class="xr-dev-list">${choices.map(c => `<label style="display:flex;gap:8px;align-items:flex-start;padding:6px 8px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;cursor:pointer;font-size:0.8rem;line-height:1.35"><input type="radio" name="xr-dev" value="${c.id}" ${c.id === current ? 'checked' : ''} style="margin-top:3px"><span><b>${esc(c.name)}</b><br><span class="ax-muted">${esc(c.notes || '')}</span></span></label>`).join('')}</div>
-          <p class="ax-label-s ax-muted" style="margin:8px 0 0">Headsets with a browser get the XR kit; glasses without a display get the spoken form on the phone; the G2 gets its companion.</p>
+          <div class="xr-dev-list">${choices.map(c => `<label style="display:flex;gap:8px;align-items:flex-start;padding:6px 8px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;cursor:pointer;font-size:0.8rem;line-height:1.35"><input type="radio" name="xr-dev" value="${c.id}" ${c.id === current ? 'checked' : ''} style="margin-top:3px"><span><b>${esc(c.name)}</b>${c.devices ? `<br><span style="color:var(--ax-cyan)">${esc(c.devices)}</span>` : ''}<br><span class="ax-muted">${esc(c.notes || '')}</span></span></label>`).join('')}</div>
+          <p class="ax-label-s ax-muted" style="margin:8px 0 0">Pick the form, not the brand: a link decides how the steps are delivered; the device is recognised and recorded as what it is. A link made for one device opened on another of the same form works the same.</p>
         </div>
         <div style="text-align:center;position:sticky;top:0">
           <img src="${src}" alt="QR code for the XR kit page" style="width:min(240px,60vw);height:auto;border-radius:12px;background:var(--ax-on-accent);padding:8px">
-          <p class="ax-label-s ax-muted" style="margin:8px 0 0">${esc(chosen.name.split(' (')[0])}</p>
+          <p class="ax-label-s ax-muted" style="margin:8px 0 0">${esc(chosen.name)}</p>
         </div>
       </div>
       <p style="font-size:0.78rem;color:var(--muted);margin:10px 0 4px;word-break:break-all;font-family:var(--ax-mono)">${esc(url)}</p>
-      <p style="font-size:0.78rem;color:var(--muted);margin:0 0 12px">Scan from the headset's browser. The QR and the link each open this guide once, within ten minutes${expires ? ` (until ${expires})` : ''}, with no site key to type; your name is carried over as the operator. Make a new one for the next headset.</p>
+      <p style="font-size:0.78rem;color:var(--muted);margin:0 0 12px">${chosen.form === 'spoken' ? 'Scan with the paired phone, glasses connected as its audio.' : 'Scan from the headset\u2019s browser.'} The QR and the link each open this guide once, within ten minutes${expires ? ` (until ${expires})` : ''}, with no site key to type; your name is carried over as the operator. Make a new one for the next device.</p>
       <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
         <a class="ax-btn" href="/xr?guide=${guideId}${q}" target="_blank" rel="noopener"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-external"/></svg> Open here</a>
         <a class="ax-btn" href="${src}" download="xr-${guideId.slice(0,8)}${current ? '-' + current : ''}.png"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-download"/></svg> Download QR</a>
@@ -5783,7 +5797,7 @@ async function showXrQr(guideId, name) {
       <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:start">
         <div>
           <div class="ax-label-s ax-muted" style="margin-bottom:6px">Device</div>
-          <div class="xr-dev-list">${choices.map(c => `<label style="display:flex;gap:8px;align-items:flex-start;padding:6px 8px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;cursor:pointer;font-size:0.8rem;line-height:1.35"><input type="radio" name="xr-dev" value="${c.id}" ${c.id === current ? 'checked' : ''} style="margin-top:3px"><span><b>${esc(c.name)}</b><br><span class="ax-muted">${esc(c.notes || '')}</span></span></label>`).join('')}</div>
+          <div class="xr-dev-list">${choices.map(c => `<label style="display:flex;gap:8px;align-items:flex-start;padding:6px 8px;border:1px solid var(--border);border-radius:10px;margin-bottom:6px;cursor:pointer;font-size:0.8rem;line-height:1.35"><input type="radio" name="xr-dev" value="${c.id}" ${c.id === current ? 'checked' : ''} style="margin-top:3px"><span><b>${esc(c.name)}</b>${c.devices ? `<br><span style="color:var(--ax-cyan)">${esc(c.devices)}</span>` : ''}<br><span class="ax-muted">${esc(c.notes || '')}</span></span></label>`).join('')}</div>
         </div>
         <div style="text-align:center;min-width:200px;position:sticky;top:0">
           ${qrSrc ? `<img src="${qrSrc}" alt="QR that opens SIB on G2 with this code" style="width:min(220px,60vw);height:auto;border-radius:12px;background:var(--ax-on-accent);padding:8px">` : ''}
