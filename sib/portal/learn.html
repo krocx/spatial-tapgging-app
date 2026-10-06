@@ -35,6 +35,10 @@
   .ln-door .ln-meta { margin-top: 6px; }
   .ln-door.is-done { border-color: color-mix(in srgb, var(--ax-green) 50%, transparent); }
 
+  .ln-shelf { margin-top: var(--ax-s6); padding-top: var(--ax-s5); border-top: var(--ax-hair); }
+  .ln-shelf > p { color: var(--ax-ink-3); font: var(--ax-label-r); margin: var(--ax-s1) 0 var(--ax-s4); }
+  .ln-see .ax-icon-tile { flex: none; }
+
   /* Journey */
   .ln-top { display: flex; align-items: center; gap: var(--ax-s3); margin-bottom: var(--ax-s5); }
   .ln-top .ln-name { font: var(--ax-label); }
@@ -167,8 +171,23 @@ function renderLanding() {
       <p>The platform makes our existing work instructions ready for spatial computing devices. It puts the right instruction exactly where the work happens, on the equipment itself, so technicians stay in the strike zone and get guided assistance the moment they need it. It is device-agnostic, built for the next generation of spatial computing hardware, and developed fully in-house by the <span class="ax-wordmark" style="font:inherit;display:inline"><span class="ax-a">applied</span><span class="ax-x">x</span></span> Immersive Tech team for WMO, as part of the Connected Worker initiative.</p>
       <p>This is a research and development initiative: capabilities are added as the technology matures, so come back to this space regularly to learn the platform's core components, and use the <a href="/catalog">Catalogue</a> for the complete map of everything it does.${doneN ? ` <b>${doneN} of ${total} journeys done.</b>` : ''}</p>
     </div>
-    <div class="ln-doors">${doors}</div>`;
+    <div class="ln-doors">${doors}</div>
+    <div class="ln-shelf">
+      <div class="ax-eyebrow">See it drawn</div>
+      <p>The same platform in pictures, one idea per page, for people who do not read code.</p>
+      <div class="ln-doors">${SEE.map(x => `<a class="ax-door ln-door ln-see" data-product="${x.area}" href="${x.href}">
+        <span class="ax-icon-tile">${icon(x.icon)}</span>
+        <div style="min-width:0"><b>${esc(x.name)}</b><span class="ln-q">${esc(x.question)}</span></div>
+        <span class="ax-chev">${icon('chevron')}</span></a>`).join('')}</div>
+    </div>`;
 }
+// The explain pages (docs/explain, served at /explain) - the platform drawn, per docs/POSITIONING.md.
+const SEE = [
+  { name: 'Three containers',          question: 'What travels, what stays, what a reader opens: .tag, .sib, the Guide Bundle.', href: '/containers',                   area: 'platform', icon: 'layers' },
+  { name: 'Spatial Intelligence',      question: 'Where is the device, what is it looking at, how is the work going.',           href: '/explain/spatial-intelligence', area: 'tags',     icon: 'intelligence' },
+  { name: 'Life of a work instruction', question: 'From its source of record to a signed-off run, every lane, eight stages.',    href: '/explain/lifecycle',            area: 'guides',   icon: 'procedure' },
+  { name: 'Spatial readiness',          question: 'A draft framework: people, processes, validation, integration.',              href: '/explain/readiness',            area: 'platform', icon: 'chart' },
+];
 
 // ── One stop ─────────────────────────────────────────────────────────────────
 function renderStop(arriving) {

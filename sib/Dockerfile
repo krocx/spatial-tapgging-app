@@ -85,6 +85,7 @@ COPY sib/roadmap/ ./sib/roadmap/
 #   docs/*.md            → /mindmap/glossary + /catalog/doc/:id spec deep-dives
 #   docs/catalog/        → /catalog/data (the feature-catalogue source files)
 #   APP-WIREFRAME.html   → /wireframe
+#   CONTAINERS.html, explain/ → /containers, /explain
 #   README.md            → catalogue specs that point at ../README.md
 COPY docs/*.md ./docs/
 COPY docs/catalog/ ./docs/catalog/
@@ -92,6 +93,8 @@ COPY docs/learn/   ./docs/learn/
 COPY docs/architecture/ ./docs/architecture/
 COPY docs/devices/ ./docs/devices/
 COPY docs/APP-WIREFRAME.html ./docs/APP-WIREFRAME.html
+COPY docs/CONTAINERS.html ./docs/CONTAINERS.html
+COPY docs/explain/ ./docs/explain/
 COPY README.md ./README.md
 
 # Persistent data directory - mount a Render disk at /data.

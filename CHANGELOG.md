@@ -14,7 +14,8 @@ it, it gets a line.
   with what to watch), and a Spatial readiness framework (people, processes,
   validation, integration; measured today vs horizon, no numbers invented;
   marked draft for feedback). The containers page joins them. All on the
-  brand system and governed; home-page door "Explain".
+  brand system and governed; reached from Learn's "See it drawn" shelf (the
+  home page keeps its doors for places you go to work).
 - **docs/POSITIONING.md.** The three principles every page and catalogue
   description follows: sources not formats (Cortona is one PoC lane, live
   pull from MES is the destination), Walks not audits, readiness as
