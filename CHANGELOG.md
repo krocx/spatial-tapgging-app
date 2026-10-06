@@ -7,6 +7,14 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **Explain pages: shared chrome.** Every page now says what its colours
+  mean (a legend under the header), offers the same quick access (Learn ·
+  Containers · Spatial Intelligence · Lifecycle · Readiness · All), carries
+  Ask SIB as a drawer (catalogue-grounded, sources open in the Catalogue),
+  and has a **Reader mode** (press R): paper and ink, monochrome, meaning
+  kept in the border weight and the legend - the first test of the reading
+  surface for the articles to come. The palette is the `[data-reader]`
+  surface in tokens.css. The Compass lists Explain under the Catalogue.
 - **Explain pages (`/explain`).** The platform drawn for Manufacturing
   Engineers, TPMs and leadership: Spatial Intelligence (frames, perception,
   contextual intelligence, evidence as four matrices), the Life of a work

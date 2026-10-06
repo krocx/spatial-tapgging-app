@@ -34,6 +34,7 @@ const GOVERNED = [
   'docs/APP-WIREFRAME.html',           // /wireframe - the app mock, on the app's own tokens
   'docs/CONTAINERS.html',              // /containers - the three containers as matrices
   'docs/explain/explain.css',          // /explain - the explain pages' shared sheet
+  'docs/explain/explain.js',           // /explain - nav, reader mode, Ask SIB
   'docs/explain/index.html',
   'docs/explain/spatial-intelligence.html',
   'docs/explain/lifecycle.html',

@@ -59,6 +59,7 @@
       { id: 'catalog', label: 'Catalogue', href: '/catalog', color: 'var(--ax-teal)', key: 'c', hint: 'Every feature, documented',
         children: [
           { id: 'learn', label: 'Learn', href: '/learn' },
+          { id: 'explain', label: 'Explain', href: '/explain' },
           { id: 'ask', label: 'Ask SIB', href: '/catalog#ask' },
           { id: 'architecture', label: 'Architecture', href: '/architecture' },
         ] },
@@ -75,6 +76,7 @@
     if (p.startsWith('/platform')) return h.startsWith('assess') ? ['sib', 'platform', 'assess'] : ['sib', 'platform'];
     if (p.startsWith('/roadmap')) return ['sib', 'roadmap'];
     if (p.startsWith('/learn')) return ['sib', 'catalog', 'learn'];
+    if (p.startsWith('/explain') || p.startsWith('/containers')) return ['sib', 'catalog', 'explain'];
     if (p.startsWith('/architecture')) return ['sib', 'catalog', 'architecture'];
     if (p.startsWith('/scorecard')) return ['sib', 'platform', 'scorecard'];
     if (p.startsWith('/catalog')) return h.startsWith('ask') ? ['sib', 'catalog', 'ask'] : ['sib', 'catalog'];

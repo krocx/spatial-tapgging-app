@@ -6,6 +6,7 @@
 <title>SIB · Three containers</title>
 <link rel="stylesheet" href="/portal/brand/tokens.css">
 <link rel="stylesheet" href="/portal/brand/components.css">
+<link rel="stylesheet" href="/explain/explain.css">
 <style>
   *{box-sizing:border-box}
   html,body{margin:0;background:var(--ax-page);min-height:100%;color:var(--ax-ink);font:14px/1.45 var(--ax-font)}
@@ -79,6 +80,7 @@
     <span class="ax-wordmark" style="font-size:26px"><span class="ax-a">applied</span><span class="ax-x">x</span></span>
     <h1>Three containers</h1>
     <div class="sub">what travels, what stays, what a reader opens · drawn as the key-value lattices they are</div>
+    <nav data-explain-nav></nav>
     <div class="conf">Proprietary &amp; Confidential · Applied Materials · patent pending</div>
   </header>
 
@@ -201,7 +203,9 @@
     <div class="rule"><b>What a change does</b>Edit a step in the Designer → the store changes → the chamber's <code>contentVersion</code> and its member hashes change → every cached envelope reads as stale → the next bundle carries the new deltas. Nothing is edited in place downstream.</div>
   </div>
 
-  <footer>Served at /containers · Sources: docs/TAG-FORMAT.md · sib/src/guides/bundle.ts · docs/schema/*.json · docs/SERVER-REFERENCE.md · docs/CONNECTED-WORKER.md. Internal distribution only.</footer>
+  <footer>Served at /containers · also on <a href="/learn">Learn</a> · Sources: docs/TAG-FORMAT.md · sib/src/guides/bundle.ts · docs/schema/*.json · docs/SERVER-REFERENCE.md · docs/CONNECTED-WORKER.md. Internal distribution only.</footer>
 </div>
+<script src="/portal/brand.js"></script>
+<script src="/explain/explain.js"></script>
 </body>
 </html>

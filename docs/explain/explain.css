@@ -83,3 +83,40 @@ footer a{color:var(--ax-ink-3)}
 .door span{color:var(--ax-ink-3);font-size:12.5px}
 
 @media (max-width:1180px){.grid,.rules,.doors{grid-template-columns:1fr}.flow{grid-template-columns:1fr !important}.arrow{transform:rotate(90deg)}}
+
+/* ── Shared chrome (explain.js) ─────────────────────────────────────────── */
+header nav a.home{color:var(--ax-ink-2)}
+.ex-reader{margin-left:auto;font:var(--ax-label-s);color:var(--ax-ink-2);background:var(--ax-paper);border:1px solid var(--ax-rule);border-radius:var(--ax-r-pill);padding:4px 12px;cursor:pointer}
+.ex-reader:hover{background:var(--ax-paper-3)}
+.ex-reader + .conf{margin-left:0}
+
+/* Reader mode: paper, monochrome. The palette is the `[data-reader]` surface in
+   tokens.css; nothing here is restyled. The grayscale filter removes hue so
+   meaning rests on border weight + the legend. */
+html[data-reader] body{background:var(--ax-paper-2)}
+html[data-reader] .page{filter:grayscale(1)}
+html[data-reader] .cell{border-left-width:4px}
+html[data-reader] .conf{color:var(--ax-ink-2);border-color:var(--ax-ink-3)}
+html[data-reader] .ax-wordmark .ax-a,html[data-reader] .ax-wordmark .ax-x{color:var(--ax-ink)}
+
+/* Ask SIB drawer */
+.ex-ask-fab{position:fixed;left:18px;bottom:18px;z-index:40;display:inline-flex;align-items:center;gap:8px;font:var(--ax-label);color:var(--ax-on-accent);background:var(--ax-blue);border:0;border-radius:var(--ax-r-pill);padding:10px 16px;cursor:pointer}
+.ex-ask{position:fixed;left:18px;bottom:68px;z-index:40;width:min(420px,calc(100vw - 36px));max-height:min(70vh,640px);display:none;flex-direction:column;background:var(--ax-solid);border:1px solid var(--ax-rule);border-radius:var(--ax-r)}
+.ex-ask.open{display:flex}
+.ex-ask-top{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--ax-rule)}
+.ex-ask-top b{font-size:14px}
+.ex-ask-tier{font-size:11px;color:var(--ax-ink-3)}
+.ex-ask-x{margin-left:auto;background:transparent;border:0;color:var(--ax-ink-3);cursor:pointer;padding:4px}
+.ex-ask-body{padding:12px 14px;overflow:auto;font-size:13px;line-height:1.5;flex:1}
+.ex-ask-hint{color:var(--ax-ink-3);font-size:12px;margin:6px 0}
+.ex-ask-presets{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.ex-ask-presets .ax-chip{cursor:pointer}
+.ex-q{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ax-ink-4);margin:12px 0 2px}
+.ex-a{color:var(--ax-ink-2)}
+.ex-md p{margin:0 0 8px}
+.ex-ask-src{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.ex-hit{margin:6px 0;color:var(--ax-ink-3);font-size:12px}
+.ex-hit b{color:var(--ax-ink)}
+.ex-err{color:var(--ax-red)}
+.ex-ask-form{display:flex;gap:8px;padding:10px 14px;border-top:1px solid var(--ax-rule)}
+.ex-ask-form .ax-input{flex:1}

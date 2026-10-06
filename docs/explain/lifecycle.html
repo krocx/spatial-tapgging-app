@@ -39,11 +39,20 @@
     <span class="ax-wordmark" style="font-size:26px"><span class="ax-a">applied</span><span class="ax-x">x</span></span>
     <h1>Life of a work instruction</h1>
     <div class="sub">from its source of record to a signed-off run - the sources as lanes, the stages as a strip, one row for what can go wrong</div>
-    <nav><a href="/explain">Explain</a><a href="/containers">Containers</a><a href="/explain/spatial-intelligence">Spatial Intelligence</a><a class="on" href="/explain/lifecycle">Lifecycle</a><a href="/explain/readiness">Readiness</a></nav>
+    <nav data-explain-nav></nav>
     <div class="conf">Proprietary &amp; Confidential · Applied Materials</div>
   </header>
 
   <p class="lead">A work instruction is born somewhere else. SIB's job is to take it from <b>its source</b>, make it spatial, deliver it to whatever the person is holding or wearing, and keep the proof. Today the sources are the formats the proof-of-concept exercised; the destination is <b>live pull from the source of record</b>, converted and adapted to AR with no publish-and-import loop. The stages after import are the same for every lane, which is the point.</p>
+
+  <div class="legend">
+    <span><i style="background:var(--ax-green)"></i>lane ships · the everyday path</span>
+    <span><i style="background:var(--ax-blue)"></i>lane shipped for the PoC · under review</span>
+    <span><i style="border:1px dashed var(--ax-ink-3);background:transparent"></i>destination · designed, not shipped</span>
+    <span><i style="background:var(--ax-blue)"></i>in · what enters a stage</span>
+    <span><i style="background:var(--ax-green)"></i>out · what leaves it</span>
+    <span><i style="background:var(--ax-orange)"></i>watch · where it goes wrong</span>
+  </div>
 
   <!-- Lanes -->
   <section class="box blue">
@@ -144,5 +153,7 @@
 
   <footer>Sources: docs/PROCEDURE-DESIGNER.md · docs/devices/README.md · docs/CONNECTED-WORKER.md · docs/TRL-SCORECARD.md · docs/catalog/guide-import.md · docs/catalog/cortona3d-import.md · follows docs/POSITIONING.md. Internal distribution only.</footer>
 </div>
+<script src="/portal/brand.js"></script>
+<script src="/explain/explain.js"></script>
 </body>
 </html>

@@ -124,6 +124,26 @@
   --ax-rule:    rgba(255, 255, 255, .22);
 }
 
+/* Reader surface - paper and ink, for reading (the explain pages' Reader mode,
+   the articles to come). The same tokens, re-pointed; pages add a grayscale
+   filter so meaning rests on border weight and legend, not hue. */
+[data-reader] {
+  --ax-bg:      #F4F2EC;
+  --ax-bg-2:    #ECE9E1;
+  --ax-page:    #F4F2EC;
+  --ax-solid:   #FBFAF7;
+  --ax-paper:   rgba(0, 0, 0, .05);
+  --ax-paper-2: rgba(0, 0, 0, .03);
+  --ax-paper-3: rgba(0, 0, 0, .09);
+  --ax-rule:    rgba(0, 0, 0, .18);
+  --ax-rule-2:  rgba(0, 0, 0, .08);
+  --ax-ink:     rgba(0, 0, 0, .92);
+  --ax-ink-2:   rgba(0, 0, 0, .72);
+  --ax-ink-3:   rgba(0, 0, 0, .55);
+  --ax-ink-4:   rgba(0, 0, 0, .35);
+  --ax-on-accent: #FFFFFF;
+}
+
 @media (prefers-reduced-motion: reduce) {
   :root { --ax-t: 1ms; --ax-t-slow: 1ms; }
 }
