@@ -236,7 +236,7 @@ document.getElementById('f').addEventListener('submit', async function(ev){
   app.get(['/explain', '/explain/:page'], (req, res) => {
     const raw = (req.params as { page?: string }).page ?? 'index';
     if (!/^[a-z0-9-]+(\.css|\.js)?$/.test(raw)) { res.status(404).json({ error: 'Unknown explain page' }); return; }
-    const hit = explainFile(raw.endsWith('.css') ? raw : `${raw}.html`);
+    const hit = explainFile(/\.(css|js)$/.test(raw) ? raw : `${raw}.html`);
     if (!hit) { res.status(404).json({ error: 'Explain page not available on this deployment' }); return; }
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.sendFile(hit);
