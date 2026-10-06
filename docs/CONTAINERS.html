@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SIB · Three containers</title>
+<link rel="stylesheet" href="/portal/brand/tokens.css">
+<link rel="stylesheet" href="/portal/brand/components.css">
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--ax-page);min-height:100%;color:var(--ax-ink);font:14px/1.45 var(--ax-font)}
+  .page{max-width:1480px;margin:0 auto;padding:28px 32px 56px}
+  header{display:flex;align-items:baseline;gap:18px;flex-wrap:wrap}
+  header h1{font-size:18px;font-weight:600;margin:0}
+  header .sub{color:var(--ax-ink-3);font-size:13px}
+  .conf{margin-left:auto;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ax-orange);border:1px solid var(--ax-orange);border-radius:var(--ax-r-pill);padding:4px 10px}
+
+  /* flow strip */
+  .flow{display:grid;grid-template-columns:1fr auto 1fr auto 1fr auto 1fr;align-items:center;gap:8px;margin:26px 0 10px}
+  .node{background:var(--ax-paper);border:1px solid var(--ax-rule);border-radius:var(--ax-r-cta);padding:12px 14px}
+  .node b{display:block;font-size:13px}
+  .node span{color:var(--ax-ink-3);font-size:12px}
+  .node.hot{border-color:var(--ax-blue)}
+  .node.sib{border-color:var(--ax-teal)}
+  .node.gb{border-color:var(--ax-purple)}
+  .arrow{color:var(--ax-ink-4);font-size:22px;line-height:1;text-align:center}
+  .arrow small{display:block;font-size:10px;color:var(--ax-ink-3);letter-spacing:.04em}
+
+  /* legend */
+  .legend{display:flex;gap:14px;flex-wrap:wrap;margin:14px 0 22px;color:var(--ax-ink-3);font-size:12px}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+
+  /* containers */
+  .containers{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;align-items:start}
+  @media (max-width:1180px){.containers{grid-template-columns:1fr}}
+  .box{background:var(--ax-paper-2);border:1px solid var(--ax-rule);border-radius:var(--ax-r);overflow:hidden}
+  .box .head{padding:16px 18px 12px;border-bottom:1px solid var(--ax-rule);display:flex;align-items:flex-start;gap:12px}
+  .box .head .ext{font:600 20px/1 var(--ax-mono);padding:10px 12px;border-radius:var(--ax-r-field);background:var(--ax-bg);border:1px solid var(--ax-rule)}
+  .box.tag .head .ext{color:var(--ax-blue);border-color:var(--ax-blue)}
+  .box.sib .head .ext{color:var(--ax-teal);border-color:var(--ax-teal)}
+  .box.gb  .head .ext{color:var(--ax-purple);border-color:var(--ax-purple)}
+  .box .head h2{margin:0;font-size:15px;font-weight:600}
+  .box .head p{margin:3px 0 0;color:var(--ax-ink-3);font-size:12.5px}
+  .box .layer{margin-left:auto;font-size:11px;color:var(--ax-ink-3);text-align:right;white-space:nowrap}
+  .box .layer b{display:block;color:var(--ax-ink-2);font-weight:600}
+
+  /* the matrix */
+  .matrix{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;padding:14px}
+  .cell{border-radius:var(--ax-r-field);padding:9px 10px;min-height:74px;background:var(--ax-paper);border-left:3px solid var(--ax-grey);display:flex;flex-direction:column;gap:2px}
+  .cell .k{font:600 11.5px/1.2 var(--ax-mono);color:var(--ax-ink);word-break:break-word}
+  .cell .v{font-size:11px;color:var(--ax-ink-3);line-height:1.3}
+  .cell.id{border-left-color:var(--ax-blue)}       /* identity */
+  .cell.sp{border-left-color:var(--ax-green)}      /* spatial · verified */
+  .cell.rf{border-left-color:var(--ax-orange)}     /* references · needs a channel */
+  .cell.in{border-left-color:var(--ax-grey)}       /* integrity · signatures · hashes */
+  .cell.ct{border-left-color:var(--ax-purple)}     /* content · steps · models */
+  .cell.pe{border-left-color:var(--ax-teal)}       /* perception · learning */
+  .cell.rd{border-left-color:var(--ax-red)}        /* never leaves · keys */
+  .c2{grid-column:span 2}.c3{grid-column:span 3}.c4{grid-column:span 4}.c6{grid-column:span 6}
+  .cell.dim{opacity:.55;border-left-style:dashed}
+
+  .foot{padding:10px 14px 14px;display:flex;gap:6px;flex-wrap:wrap;border-top:1px solid var(--ax-rule)}
+  .chip{font-size:11px;border-radius:var(--ax-r-pill);padding:3px 9px;border:1px solid var(--ax-rule);color:var(--ax-ink-2)}
+  .chip.ok{border-color:var(--ax-green);color:var(--ax-green)}
+  .chip.no{border-color:var(--ax-red);color:var(--ax-red)}
+  .chip.who{border-color:var(--ax-blue);color:var(--ax-blue)}
+
+  .rules{margin-top:22px;display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  @media (max-width:1180px){.rules{grid-template-columns:1fr}}
+  .rule{background:var(--ax-paper-2);border:1px solid var(--ax-rule);border-radius:var(--ax-r-cta);padding:14px 16px;font-size:12.5px;color:var(--ax-ink-2)}
+  .rule b{display:block;color:var(--ax-ink);margin-bottom:4px;font-size:13px}
+  .rule code{font-family:var(--ax-mono);font-size:11px;color:var(--ax-ink)}
+  footer{margin-top:22px;color:var(--ax-ink-4);font-size:11px}
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <span class="ax-wordmark" style="font-size:26px"><span class="ax-a">applied</span><span class="ax-x">x</span></span>
+    <h1>Three containers</h1>
+    <div class="sub">what travels, what stays, what a reader opens · drawn as the key-value lattices they are</div>
+    <div class="conf">Proprietary &amp; Confidential · Applied Materials · patent pending</div>
+  </header>
+
+  <div class="flow">
+    <div class="node"><b>Equipment · people</b><span>chamber with a printed QR · iPad in the hand · glasses on the face</span></div>
+    <div class="arrow">→<small>scan</small></div>
+    <div class="node hot"><b>.tag envelope</b><span>spatial identity, signed, a few KB · travels, caches, verifies offline</span></div>
+    <div class="arrow">⇄<small>API · key</small></div>
+    <div class="node sib"><b>.sib store</b><span>the backend container · stores, perception, relationships · never leaves</span></div>
+    <div class="arrow">→<small>build</small></div>
+    <div class="node gb"><b>Guide Bundle</b><span>one JSON a reader runs: steps, models, frames, rules · iPad, XR kit, G2, Unity</span></div>
+  </div>
+
+  <div class="legend">
+    <span><i style="background:var(--ax-blue)"></i>identity</span>
+    <span><i style="background:var(--ax-green)"></i>spatial · verified</span>
+    <span><i style="background:var(--ax-orange)"></i>reference · resolved through the API</span>
+    <span><i style="background:var(--ax-grey)"></i>integrity · hash · signature</span>
+    <span><i style="background:var(--ax-purple)"></i>content · steps · models</span>
+    <span><i style="background:var(--ax-teal)"></i>perception · learning</span>
+    <span><i style="background:var(--ax-red)"></i>keys · never embedded</span>
+    <span style="margin-left:auto">cell width = how much of the container it is · dashed = optional</span>
+  </div>
+
+  <div class="containers">
+
+    <!-- .tag -->
+    <section class="box tag">
+      <div class="head">
+        <div class="ext">.tag</div>
+        <div><h2>Envelope · tag/1.1</h2><p>A part or a chamber, made portable. References and hashes only - never a payload. Same content, same bytes, same signature, every time.</p></div>
+        <div class="layer"><b>L1</b>licensable later</div>
+      </div>
+      <div class="matrix">
+        <div class="cell id c2"><span class="k">format · kind</span><span class="v">tag/1.1 · part | assembly (group reserved)</span></div>
+        <div class="cell id c2"><span class="k">subject</span><span class="v">id · label · anchorId · assetId · type</span></div>
+        <div class="cell id c2"><span class="k">issuer</span><span class="v">platform SIB · platform version</span></div>
+
+        <div class="cell sp c2 dim"><span class="k">spatial</span><span class="v">x y z as fixed 6-decimal strings - no floats</span></div>
+        <div class="cell sp c4 dim"><span class="k">frame</span><span class="v">kind qr · markerId · markerSizeM · anchorPose [16] · originSource (qr | object)</span></div>
+
+        <div class="cell rf c3"><span class="k">streams[]</span><span class="v">name · ref (relative URL) · sha256 · contentVersion<br>part: checkpoint · training · group<br>assembly: anchor · worldmap · guides · models · loto · gemba · inspections</span></div>
+        <div class="cell in c3 dim"><span class="k">members[]</span><span class="v">assembly only: one row per part - tagId · ref · sha256 of that part's canonical payload. A Merkle tree: change a part, the chamber's manifest is provably stale.</span></div>
+
+        <div class="cell rf c2"><span class="k">subscribe</span><span class="v">hints[] - where live change feeds live (SSE per chamber)</span></div>
+        <div class="cell in c2"><span class="k">contentVersion</span><span class="v">max updatedAt of committed content - the only clock</span></div>
+        <div class="cell in c2"><span class="k">signature</span><span class="v">Ed25519 · raw public key · raw sig, over the canonical payload</span></div>
+
+        <div class="cell rd c6"><span class="k">not here, ever</span><span class="v">anchor AES keys · emission timestamps · JSON numbers · absolute URLs · nulls. An envelope alone grants no data: refs resolve only against an authorised SIB with a key.</span></div>
+      </div>
+      <div class="foot">
+        <span class="chip who">reads: iOS app (offline + online)</span><span class="chip who">future: conformant readers (L2)</span>
+        <span class="chip ok">verify offline</span><span class="chip ok">cacheable</span><span class="chip ok">trust-on-first-scan, pin</span><span class="chip no">never written back</span>
+      </div>
+    </section>
+
+    <!-- .sib -->
+    <section class="box sib">
+      <div class="head">
+        <div class="ext">.sib</div>
+        <div><h2>Store · SIB_DATA_DIR</h2><p>The backend container. Everything the envelope points at, everything the system learns, every relationship. Reached only through the API; third parties never read it.</p></div>
+        <div class="layer"><b>L3</b>proprietary · never licensed</div>
+      </div>
+      <div class="matrix">
+        <div class="cell id c2"><span class="k">anchors/</span><span class="v">chamber records · tags · tag groups · configId · originSource</span></div>
+        <div class="cell id c2"><span class="k">qrimages/</span><span class="v">the canonical QR PNG per chamber (ECC M, fixed mask)</span></div>
+        <div class="cell id c2"><span class="k">uam · roles</span><span class="v">who may author, score, confirm · device tokens (G2)</span></div>
+
+        <div class="cell sp c3"><span class="k">worldmaps/</span><span class="v">sealed ARWorldMap per chamber + meta: anchorPose, capturedAt · guide world maps + reference photo + referenceCameraPose · objectPoseInMap</span></div>
+        <div class="cell sp c3"><span class="k">objects/</span><span class="v">scanned .arobject per chamber (sparse point cloud, never a mesh or photo) · calibration objectPoseInQR</span></div>
+
+        <div class="cell ct c3"><span class="k">models/</span><span class="v">GLB + USDZ · reduced variants (triangle ladder) · colours (byFamily, byPart, .orig) · partLabels · importUnits · defaultScale</span></div>
+        <div class="cell ct c3"><span class="k">guides · steps</span><span class="v">per-step deltas (show · ghost · move · colour) · initialNodes · assembly pose · needs · view · validation mode · ciMode</span></div>
+
+        <div class="cell pe c2"><span class="k">pass-states</span><span class="v">perception training per tag - the "what good looks like" references</span></div>
+        <div class="cell pe c2"><span class="k">usage log · hints</span><span class="v">every run: timing, evidence, drift, demo, hints shown / muted</span></div>
+        <div class="cell pe c2"><span class="k">scorecard · lab</span><span class="v">criteria scores, lenses, verdicts · anchor accuracy runs in mm</span></div>
+
+        <div class="cell in c3"><span class="k">tag-signing-key.json</span><span class="v">the Ed25519 issuer pair - generated on first boot, rotation = delete + restart + re-pin</span></div>
+        <div class="cell rd c3"><span class="k">anchor AES keys</span><span class="v">in the printed QR and the device Keychain - the store only ever sees them stripped from an emitted anchor</span></div>
+      </div>
+      <div class="foot">
+        <span class="chip who">reads/writes: SIB server only</span><span class="chip who">surfaces: portal · Designer · scorecard · XR kit · G2</span>
+        <span class="chip ok">backed up as one tree</span><span class="chip no">never emitted</span><span class="chip no">never described outward</span>
+      </div>
+    </section>
+
+    <!-- Guide Bundle -->
+    <section class="box gb">
+      <div class="head">
+        <div class="ext">.guide</div>
+        <div><h2>Guide Bundle · sib.guide-bundle/1</h2><p>One versioned JSON a reader runs on any engine. Built on request from the store; URLs are relative, so the reader's own key opens them.</p></div>
+        <div class="layer"><b>contract</b>schema in docs/schema</div>
+      </div>
+      <div class="matrix">
+        <div class="cell id c2"><span class="k">schema · generatedAt</span><span class="v">sib.guide-bundle/1 - bumped only on a breaking change</span></div>
+        <div class="cell id c4"><span class="k">guide</span><span class="v">id · name · published · assembly {modelId, pose, bounds, initialNodes} · ciMode</span></div>
+
+        <div class="cell ct c6"><span class="k">steps[]</span><span class="v">ordered · title · text · nodes[] deltas {node, show, opacity, to, rotationTo, color, animate, delaySec, durationSec} · needs · view (camera) · cadPosition · nextOnSuccess · validation</span></div>
+
+        <div class="cell ct c3"><span class="k">models[]</span><span class="v">role assembly | step · glbUrl (+ ?budget= ladder) · usdzUrl · defaultScale · partLabels</span></div>
+        <div class="cell sp c3"><span class="k">anchor.frames</span><span class="v">qr {markerSizeM, anchorPose} · worldMap {url, sealedAt} · guideWorldMap {url, photoUrl, referenceCameraPose, objectPoseInMap} · object {url, calibrated, objectPoseInQR}</span></div>
+
+        <div class="cell pe c2"><span class="k">validation[]</span><span class="v">per step: required · mode single | cone | none · referenceUrl · verdictUrl</span></div>
+        <div class="cell in c2"><span class="k">playback.conventions</span><span class="v">m · Y-up · right-handed · axis-angle rad · xyzw · column-major 16 · cumulative last-write-wins</span></div>
+        <div class="cell rf c2"><span class="k">links</span><span class="v">self · guide · steps · liveSession (telemetry, hints, sign-off)</span></div>
+
+        <div class="cell rd c6"><span class="k">not here</span><span class="v">no geometry bytes, no world-map bytes, no photos - only where to fetch them with a key. No AES keys. Nothing a reader needs to know about how .sib is built.</span></div>
+      </div>
+      <div class="foot">
+        <span class="chip who">reads: iPad app</span><span class="chip who">XR kit (WebXR)</span><span class="chip who">Even G2 companion</span><span class="chip who">Unity / AR Foundation</span>
+        <span class="chip ok">engine-neutral</span><span class="chip ok">additive changes safe</span><span class="chip no">read-only</span>
+      </div>
+    </section>
+  </div>
+
+  <div class="rules">
+    <div class="rule"><b>One direction of trust</b>The envelope proves <em>what</em> (hashes, signature); the store holds <em>everything</em>; the bundle says <em>how to run it</em>. A reader can verify a <code>.tag</code> with no network, but cannot obtain a single byte of content without an authorised channel.</div>
+    <div class="rule"><b>Same frame, three places</b><code>anchorPose</code> in the envelope, the sealed map's meta in the store, and <code>anchor.frames</code> in the bundle are the same origin written three ways - so a pin placed on the iPad lands on the headset within millimetres.</div>
+    <div class="rule"><b>What a change does</b>Edit a step in the Designer → the store changes → the chamber's <code>contentVersion</code> and its member hashes change → every cached envelope reads as stale → the next bundle carries the new deltas. Nothing is edited in place downstream.</div>
+  </div>
+
+  <footer>Served at /containers · Sources: docs/TAG-FORMAT.md · sib/src/guides/bundle.ts · docs/schema/*.json · docs/SERVER-REFERENCE.md · docs/CONNECTED-WORKER.md. Internal distribution only.</footer>
+</div>
+</body>
+</html>

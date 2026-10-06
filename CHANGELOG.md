@@ -7,6 +7,11 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **Three containers (`/containers`).** The `.tag` envelope, the `.sib`
+  store and the Guide Bundle drawn as the key-value lattices they are: a cell
+  per key, width by weight, colour by purpose, and a "not here, ever" row
+  per container. One flow strip above, three cross-container rules below.
+  Door on the home page; internal distribution (it describes the formats).
 - **Import log: parts the steps address but the model lacks.** Named with
   the node's VRML type and the chain of nodes above it in the file, so a
   renderer that cannot find them is explained by the log.

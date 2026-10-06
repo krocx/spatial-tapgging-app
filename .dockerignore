@@ -28,6 +28,7 @@ skills/
 #   /catalog/doc/:id spec deep-dives             → all top-level docs/*.md
 #   /catalog/data                                → docs/catalog/*.md
 #   /wireframe                                   → docs/APP-WIREFRAME.html
+#   /containers                                  → docs/CONTAINERS.html
 #   /catalog/doc/:id specs pointing at ../README.md → root README.md
 #   /learn/data                                  → docs/learn/journeys.json
 #   /architecture/data                           → docs/ARCHITECTURE.md + docs/architecture/
@@ -39,6 +40,7 @@ skills/
 !docs/architecture/*.mmd
 !docs/devices/*.md
 !docs/APP-WIREFRAME.html
+!docs/CONTAINERS.html
 !README.md
 .git/
 .gitignore

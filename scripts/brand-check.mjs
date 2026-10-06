@@ -32,6 +32,7 @@ const GOVERNED = [
   'sib/roadmap-client/src/studio.css', // the Designer's 3D Studio (first Designer surface on the system)
   'sib/roadmap-client/src/styles.css', // the Designer (tokens only since 2026.4.46)
   'docs/APP-WIREFRAME.html',           // /wireframe - the app mock, on the app's own tokens
+  'docs/CONTAINERS.html',              // /containers - the three containers as matrices
 ];
 const TOKENS = 'sib/portal/brand/tokens.css';
 

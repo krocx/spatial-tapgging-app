@@ -223,6 +223,18 @@ document.getElementById('f').addEventListener('submit', async function(ev){
     res.setHeader('Content-Disposition', 'attachment; filename="AR-Operations-Platform.pptx"');
     res.sendFile(p);
   });
+  // GET /containers → the three data containers (.tag · .sib · Guide Bundle) as matrices (docs/CONTAINERS.html)
+  app.get('/containers', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    const candidates = [
+      path.join(__dirname, '../../docs/CONTAINERS.html'),
+      path.join(process.cwd(), 'docs/CONTAINERS.html'),
+      path.join(process.cwd(), '../docs/CONTAINERS.html'),
+    ];
+    const hit = candidates.find(p => fs.existsSync(p));
+    if (!hit) { res.status(404).json({ error: 'Containers page not available on this deployment' }); return; }
+    res.sendFile(hit);
+  });
   app.get('/wireframe', (_req, res) => {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     // Deployments differ in cwd and layout (repo checkout vs Docker /app vs
