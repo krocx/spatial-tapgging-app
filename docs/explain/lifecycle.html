@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SIB · Life of a work instruction</title>
+<link rel="stylesheet" href="/portal/brand/tokens.css">
+<link rel="stylesheet" href="/portal/brand/components.css">
+<link rel="stylesheet" href="/explain/explain.css">
+<style>
+  .lanes{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin:6px 0 0}
+  .lane{border-radius:var(--ax-r-field);padding:10px 11px;background:var(--ax-paper);border-top:3px solid var(--ax-grey);min-height:88px}
+  .lane b{display:block;font:600 12px/1.2 var(--ax-mono)}
+  .lane span{display:block;font-size:11px;color:var(--ax-ink-3);margin-top:3px;line-height:1.3}
+  .lane.now{border-top-color:var(--ax-green)}
+  .lane.poc{border-top-color:var(--ax-blue)}
+  .lane.hz{border:1px dashed var(--ax-rule);border-top:3px dashed var(--ax-grey);background:transparent}
+  .lane .tag{display:inline-block;margin-top:6px;font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:var(--ax-ink-3);border:1px solid var(--ax-rule);border-radius:var(--ax-r-pill);padding:1px 7px}
+  .lane.poc .tag{color:var(--ax-blue);border-color:var(--ax-blue)}
+  .lane.now .tag{color:var(--ax-green);border-color:var(--ax-green)}
+  .converge{text-align:center;color:var(--ax-ink-4);font-size:20px;margin:2px 0 -4px}
+  .converge small{display:block;font-size:10px;color:var(--ax-ink-3);letter-spacing:.04em}
+  .stages{display:grid;grid-template-columns:repeat(8,1fr);gap:6px}
+  .stage{background:var(--ax-paper-2);border:1px solid var(--ax-rule);border-radius:var(--ax-r-cta);overflow:hidden;display:flex;flex-direction:column;min-width:0}
+  .stage .t{padding:9px 10px 7px;border-bottom:1px solid var(--ax-rule);display:flex;gap:8px;align-items:baseline}
+  .stage .t i{font:600 11px/1 var(--ax-mono);color:var(--ax-ink-3)}
+  .stage .t b{font-size:12.5px}
+  .stage .row{padding:7px 10px;border-bottom:1px solid var(--ax-rule-2);font-size:11px;color:var(--ax-ink-3);line-height:1.3;min-height:58px}
+  .stage .row:last-child{border-bottom:0}
+  .stage .row em{display:block;font-style:normal;font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:var(--ax-ink-4);margin-bottom:2px}
+  .stage .row.in em{color:var(--ax-blue)}.stage .row.out em{color:var(--ax-green)}.stage .row.who em{color:var(--ax-ink-3)}.stage .row.watch em{color:var(--ax-orange)}
+  .stage.hz{border-style:dashed}
+  @media (max-width:1180px){.lanes,.stages{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <span class="ax-wordmark" style="font-size:26px"><span class="ax-a">applied</span><span class="ax-x">x</span></span>
+    <h1>Life of a work instruction</h1>
+    <div class="sub">from its source of record to a signed-off run - the sources as lanes, the stages as a strip, one row for what can go wrong</div>
+    <nav><a href="/explain">Explain</a><a href="/containers">Containers</a><a href="/explain/spatial-intelligence">Spatial Intelligence</a><a class="on" href="/explain/lifecycle">Lifecycle</a><a href="/explain/readiness">Readiness</a></nav>
+    <div class="conf">Proprietary &amp; Confidential · Applied Materials</div>
+  </header>
+
+  <p class="lead">A work instruction is born somewhere else. SIB's job is to take it from <b>its source</b>, make it spatial, deliver it to whatever the person is holding or wearing, and keep the proof. Today the sources are the formats the proof-of-concept exercised; the destination is <b>live pull from the source of record</b>, converted and adapted to AR with no publish-and-import loop. The stages after import are the same for every lane, which is the point.</p>
+
+  <!-- Lanes -->
+  <section class="box blue">
+    <div class="head">
+      <div class="ext">Sources</div>
+      <div><h2>Where a work instruction comes from</h2><p>Seven lanes, one import step. Green ships and is the everyday path; blue shipped for the proof-of-concept and is under review; dashed is the destination architecture.</p></div>
+      <div class="layer"><b>principle</b>sources, not formats</div>
+    </div>
+    <div style="padding:14px">
+      <div class="lanes">
+        <div class="lane now"><b>Procedure Designer</b><span>authored here: steps, parts, colours, needs - sent to the library</span><i class="tag">ships</i></div>
+        <div class="lane now"><b>Excel / JSON</b><span>a sheet or a file in the guide schema - the template is downloadable</span><i class="tag">ships</i></div>
+        <div class="lane now"><b>iPad Guide Editor</b><span>authored on the chamber, steps placed in AR as they are written</span><i class="tag">ships</i></div>
+        <div class="lane poc"><b>Cortona publication</b><span>a 3D-OMS export (.htm): steps, parts, per-step presentation - exercised for the PoC</span><i class="tag">PoC · under review</i></div>
+        <div class="lane hz"><b>PDF</b><span>not a work-instruction format here today; next in line to review for conversion</span><i class="tag">next</i></div>
+        <div class="lane hz"><b>MES · live</b><span>the source of record, pulled in real time: JSON steps, image URLs, 3D-model APIs</span><i class="tag">destination</i></div>
+        <div class="lane hz"><b>auto-adapt</b><span>conversion to AR without an import loop: parts matched, needs inferred, forms derived</span><i class="tag">destination</i></div>
+      </div>
+      <div class="converge">↓<small>all lanes converge on one step</small></div>
+    </div>
+  </section>
+
+  <!-- Stages -->
+  <section class="box green" style="margin-top:18px">
+    <div class="head">
+      <div class="ext">Stages</div>
+      <div><h2>What happens to it, in order</h2><p>Each stage: what enters, what leaves, who touches it, and what to watch - the row an engineer reads when something looks wrong three stages later.</p></div>
+      <div class="layer"><b>one shape</b>whatever the source</div>
+    </div>
+    <div style="padding:14px">
+      <div class="stages">
+        <div class="stage">
+          <div class="t"><i>1</i><b>Import</b></div>
+          <div class="row in"><em>in</em>the source file or feed · anchor it belongs to</div>
+          <div class="row out"><em>out</em>a draft guide + steps · a 3D model with named parts · an import log</div>
+          <div class="row who"><em>who</em>ME · Author</div>
+          <div class="row watch"><em>watch</em>units (mm published as m) · rest pose taken from the end state · parts the source starts hidden · parts a label carries</div>
+        </div>
+        <div class="stage">
+          <div class="t"><i>2</i><b>Shape it</b></div>
+          <div class="row in"><em>in</em>the draft, in the Procedure Designer's 3D Studio</div>
+          <div class="row out"><em>out</em>colours by family or part · parts hidden for the guide · needs per step (hands, a photo, a reading) · order and text</div>
+          <div class="row who"><em>who</em>Author · ME</div>
+          <div class="row watch"><em>watch</em>a grey model stays grey until coloured · a step with 54 parts needs a focus · needs decide the device forms later</div>
+        </div>
+        <div class="stage">
+          <div class="t"><i>3</i><b>Place it</b></div>
+          <div class="row in"><em>in</em>the assembly model + the chamber's frame</div>
+          <div class="row out"><em>out</em>one placement per chamber (tap, object or config) · every step follows it · scale from the model</div>
+          <div class="row who"><em>who</em>Author, on the iPad at the chamber</div>
+          <div class="row watch"><em>watch</em>a placement in the iPad's world map is not the model's scale · an unplaced assembly blocks the run</div>
+        </div>
+        <div class="stage">
+          <div class="t"><i>4</i><b>Publish</b></div>
+          <div class="row in"><em>in</em>a draft only authors see</div>
+          <div class="row out"><em>out</em>a published guide in the library · the Guide Bundle any reader can fetch</div>
+          <div class="row who"><em>who</em>Author</div>
+          <div class="row watch"><em>watch</em>drafts never reach technicians · publishing changes the chamber's content version, so cached envelopes read stale</div>
+        </div>
+        <div class="stage">
+          <div class="t"><i>5</i><b>Readiness</b></div>
+          <div class="row in"><em>in</em>the steps' needs × the device profiles</div>
+          <div class="row out"><em>out</em>per device: steps delivered as authored, adapted, assisted, or not at all · per form: full model · reduced · text · spoken</div>
+          <div class="row who"><em>who</em>ME · TPM</div>
+          <div class="row watch"><em>watch</em>a photo step cannot run on glasses without a camera · a text form drops the 3D entirely - say so before the shift</div>
+        </div>
+        <div class="stage">
+          <div class="t"><i>6</i><b>Run</b></div>
+          <div class="row in"><em>in</em>the Guide Bundle + the chamber's frame (QR · sealed map · object)</div>
+          <div class="row out"><em>out</em>a run: iPad · headset browser · small glasses (text) · spoken · hints when this visit differs from normal</div>
+          <div class="row who"><em>who</em>Technician · Operator</div>
+          <div class="row watch"><em>watch</em>a demo placement is marked and never counts · drift between QR and map is logged, not hidden</div>
+        </div>
+        <div class="stage">
+          <div class="t"><i>7</i><b>Evidence</b></div>
+          <div class="row in"><em>in</em>the run as it happened</div>
+          <div class="row out"><em>out</em>sign-off · per-step timing · validation verdicts · optional evidence photo · hints shown or muted</div>
+          <div class="row who"><em>who</em>the person who did the work, by name</div>
+          <div class="row watch"><em>watch</em>numbers always, images only on request · a fail proceeded past is stored as overridden</div>
+        </div>
+        <div class="stage">
+          <div class="t"><i>8</i><b>Learn · judge</b></div>
+          <div class="row in"><em>in</em>completed runs</div>
+          <div class="row out"><em>out</em>baselines and heat per step for authors · hints that retire when they do not help · the scorecard: readiness per device by a stated rule</div>
+          <div class="row who"><em>who</em>Author · Engineer+ scores · Manager+ confirms</div>
+          <div class="row watch"><em>watch</em>a verdict needs evidenced runs, not demos · the rule is printed next to the numbers</div>
+        </div>
+      </div>
+    </div>
+    <div class="foot"><span class="chip ok">stages 1-8 ship today</span><span class="chip who">Designer · Portal · iPad · XR kit · G2 · Scorecard</span><span class="chip hz">stage 1 from MES live is the destination</span></div>
+  </section>
+
+  <div class="rules">
+    <div class="rule"><b>Why the lanes converge</b>If every source produced its own kind of guide, every device would need every converter. One import step means the Studio, the readiness matrix, the runtimes and the scorecard never know or care where a guide came from. Adding a source is one lane, not eight changes.</div>
+    <div class="rule"><b>Why Cortona is one lane</b>It exercised the hardest case - a full 3D publication with hidden parts, exploded starts and callouts - and that is exactly why the import step is under review now. It was a proof-of-concept task. It does not scale across the organisation and was never meant to be the spine.</div>
+    <div class="rule"><b>What live pull changes</b>Nothing after stage 1. The source of record is read when the shift starts, converted and adapted on the way in; shaping, placing, readiness, running and evidence stay as they are. That is why the stages are drawn as one strip for every lane.</div>
+  </div>
+
+  <footer>Sources: docs/PROCEDURE-DESIGNER.md · docs/devices/README.md · docs/CONNECTED-WORKER.md · docs/TRL-SCORECARD.md · docs/catalog/guide-import.md · docs/catalog/cortona3d-import.md · follows docs/POSITIONING.md. Internal distribution only.</footer>
+</div>
+</body>
+</html>

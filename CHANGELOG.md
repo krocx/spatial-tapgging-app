@@ -7,6 +7,18 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **Explain pages (`/explain`).** The platform drawn for Manufacturing
+  Engineers, TPMs and leadership: Spatial Intelligence (frames, perception,
+  contextual intelligence, evidence as four matrices), the Life of a work
+  instruction (sources as lanes converging on one import step, eight stages
+  with what to watch), and a Spatial readiness framework (people, processes,
+  validation, integration; measured today vs horizon, no numbers invented;
+  marked draft for feedback). The containers page joins them. All on the
+  brand system and governed; home-page door "Explain".
+- **docs/POSITIONING.md.** The three principles every page and catalogue
+  description follows: sources not formats (Cortona is one PoC lane, live
+  pull from MES is the destination), Walks not audits, readiness as
+  ecosystem readiness (guided people · automated tasks · AI).
 - **Three containers (`/containers`).** The `.tag` envelope, the `.sib`
   store and the Guide Bundle drawn as the key-value lattices they are: a cell
   per key, width by weight, colour by purpose, and a "not here, ever" row

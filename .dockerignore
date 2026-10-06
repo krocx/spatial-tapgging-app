@@ -29,6 +29,7 @@ skills/
 #   /catalog/data                                → docs/catalog/*.md
 #   /wireframe                                   → docs/APP-WIREFRAME.html
 #   /containers                                  → docs/CONTAINERS.html
+#   /explain, /explain/:page                     → docs/explain/*
 #   /catalog/doc/:id specs pointing at ../README.md → root README.md
 #   /learn/data                                  → docs/learn/journeys.json
 #   /architecture/data                           → docs/ARCHITECTURE.md + docs/architecture/
@@ -41,6 +42,8 @@ skills/
 !docs/devices/*.md
 !docs/APP-WIREFRAME.html
 !docs/CONTAINERS.html
+!docs/explain/*.html
+!docs/explain/*.css
 !README.md
 .git/
 .gitignore

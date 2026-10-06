@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SIB · Spatial readiness</title>
+<link rel="stylesheet" href="/portal/brand/tokens.css">
+<link rel="stylesheet" href="/portal/brand/components.css">
+<link rel="stylesheet" href="/explain/explain.css">
+<style>
+  .draft{display:inline-block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--ax-blue);border:1px dashed var(--ax-blue);border-radius:var(--ax-r-pill);padding:4px 10px;margin-left:8px}
+  .fw{display:grid;grid-template-columns:150px repeat(3,1fr);gap:6px;padding:14px}
+  .fw .h{font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ax-ink-3);padding:4px 10px}
+  .fw .dim{display:flex;flex-direction:column;justify-content:center;gap:3px;border-radius:var(--ax-r-field);padding:10px;background:var(--ax-paper);border-left:3px solid var(--ax-grey)}
+  .fw .dim b{font-size:13px}.fw .dim span{font-size:11px;color:var(--ax-ink-3);line-height:1.3}
+  .fw .dim.people{border-left-color:var(--ax-blue)}.fw .dim.process{border-left-color:var(--ax-purple)}.fw .dim.valid{border-left-color:var(--ax-green)}.fw .dim.integ{border-left-color:var(--ax-orange)}
+  .fw .cell{min-height:96px}
+  .fw .cell .src{margin-top:auto;font-size:10px;color:var(--ax-ink-4)}
+  .fw .cell .src a{color:var(--ax-ink-3)}
+  .lanes2{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:14px}
+  .ask{background:var(--ax-paper-2);border:1px solid var(--ax-rule);border-radius:var(--ax-r);padding:16px 18px;margin-top:18px}
+  .ask h2{margin:0 0 6px;font-size:15px}
+  .ask ol{margin:8px 0 0 18px;padding:0;color:var(--ax-ink-2);font-size:13px;line-height:1.55}
+  @media (max-width:1180px){.fw{grid-template-columns:1fr}.fw .h{display:none}.lanes2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <span class="ax-wordmark" style="font-size:26px"><span class="ax-a">applied</span><span class="ax-x">x</span></span>
+    <h1>Spatial readiness <span class="draft">draft framework · for feedback</span></h1>
+    <div class="sub">one snapshot that says how ready WMO business processes are for spatial computing - people, processes, validation, integration</div>
+    <nav><a href="/explain">Explain</a><a href="/containers">Containers</a><a href="/explain/spatial-intelligence">Spatial Intelligence</a><a href="/explain/lifecycle">Lifecycle</a><a class="on" href="/explain/readiness">Readiness</a></nav>
+    <div class="conf">Proprietary &amp; Confidential · Applied Materials</div>
+  </header>
+
+  <p class="lead">The question is not "how many work instructions are on glasses". It is <b>how ready the business is for the future of work</b>: are the people, the processes and our own proof in place, and is the spatial work joined up with the automation and AI arriving alongside it. Some work moves to a headset; some moves to a robot; some stays on an iPad with better guidance. This page proposes four dimensions to read that in one glance, states what SIB can already measure for each, and draws the rest as horizon. <b>No numbers are shown here on purpose</b>: the measured ones live on the scorecard and analytics pages, and the unmeasured ones are not invented.</p>
+
+  <!-- the three lanes of the transition -->
+  <section class="box orange">
+    <div class="head">
+      <div class="ext">Transition</div>
+      <div><h2>Three lanes, one connected worker</h2><p>Where a business process can go. Readiness is measured across all three, not along the first alone.</p></div>
+      <div class="layer"><b>principle</b>readiness is ecosystem readiness</div>
+    </div>
+    <div class="lanes2">
+      <div class="node green"><b>Guided people</b><span>a technician with an iPad, a headset or small glasses - instructions on the equipment, a verdict when the step asks for one, hints only when the visit differs from normal. <b style="display:inline;color:var(--ax-green)">SIB today.</b></span></div>
+      <div class="node orange hz"><b>Automated tasks</b><span>AMRs and cobots on gas-line checks, leak checks and other physical automation already being invested in - the same chamber, the same frame, the same evidence trail. <b style="display:inline;color:var(--ax-orange)">Horizon: integration points named as they land.</b></span></div>
+      <div class="node teal"><b>AI as part of the whole</b><span>inside SIB today: Ask SIB grounded in the catalogue, hint phrasing with a template fallback, learned baselines per step. <b style="display:inline;color:var(--ax-teal)">Horizon: conversion and adaptation of instructions from their source.</b></span></div>
+    </div>
+  </section>
+
+  <!-- the framework -->
+  <section class="box blue" style="margin-top:18px">
+    <div class="head">
+      <div class="ext">Framework</div>
+      <div><h2>Four dimensions, three columns</h2><p>Left to right: what the dimension means, what SIB measures today and where that number is read, and what the horizon holds. Dashed cells are not measured yet and say so.</p></div>
+      <div class="layer"><b>status</b>a proposal to gather feedback on</div>
+    </div>
+    <div class="fw">
+      <div class="h"></div><div class="h">what it means</div><div class="h">measured in SIB today · where it is read</div><div class="h">horizon</div>
+
+      <div class="dim people"><b>People</b><span>who is ready to do the work and to judge it</span></div>
+      <div class="cell id"><span class="k">roles · training · sign-off</span><span class="v">the roles that may author, run, score and confirm · the training a role has completed · a named person on every record</span></div>
+      <div class="cell id"><span class="k">today</span><span class="v">named roles in UAM (owner · manager · engineer · technician) · every scorecard entry and every sign-off carries a name · iLOTO certification per technician with a validity date · in-app walkthroughs and the coach per person</span><span class="src">read at: Portal → Admin · Scorecard → History · iLOTO</span></div>
+      <div class="cell id hz"><span class="k">certification paths</span><span class="v">a path per role from first walkthrough to signing off alone, with the spatial skills named (placing, re-aligning, validating) · readiness per site, not per device</span></div>
+
+      <div class="dim process"><b>Processes</b><span>which business processes have a spatial form, and from what source</span></div>
+      <div class="cell ct"><span class="k">source · shape · delivery</span><span class="v">a work instruction with a source of record · shaped and published · delivered on each device form as authored, adapted or assisted · Walks and LOTO points with a place</span></div>
+      <div class="cell ct"><span class="k">today</span><span class="v">published guides per chamber with their import log (source, units, rest pose) · steps delivered per device form - full model · reduced · text · spoken · Walk libraries and iLOTO points placed on chambers and panels</span><span class="src">read at: Portal → Content · Guide → Readiness · Scorecard → Glasses transition</span></div>
+      <div class="cell ct hz"><span class="k">live from the source</span><span class="v">work instructions pulled from MES at shift start and adapted on the way in · the share of processes with a source of record rather than an exported copy</span></div>
+
+      <div class="dim valid"><b>Validation</b><span>our own proof that the spatial form works where it matters</span></div>
+      <div class="cell sp"><span class="k">runs · accuracy · verdicts</span><span class="v">runs with evidence someone else can open · anchoring accuracy in millimetres · a readiness verdict per device by a rule that is printed next to the numbers</span></div>
+      <div class="cell sp"><span class="k">today</span><span class="v">every run recorded with timing, verdicts and evidence · demo placements counted apart and never lifting a verdict · Anchor Lab runs ending in mm · per device: READY FOR PILOT · ASSESSING · NOT YET by stated thresholds</span><span class="src">read at: Analytics → Runs · Scorecard → Glasses transition · Anchors → Lab</span></div>
+      <div class="cell sp hz"><span class="k">pilots with a bar</span><span class="v">a floor pilot per process with its pass bar agreed before it starts · the same rule, applied to robots' task evidence when that lane lands</span></div>
+
+      <div class="dim integ"><b>Integration</b><span>is the spatial work joined up with automation and AI, or an island</span></div>
+      <div class="cell rf"><span class="k">touchpoints</span><span class="v">the systems a chamber's work talks to: MES for the instruction, automation for the tasks a robot takes, AI for conversion, adaptation and guidance</span></div>
+      <div class="cell rf"><span class="k">today</span><span class="v">AI inside SIB: Ask SIB (catalogue-grounded), hint phrasing with a template fallback, learned baselines · the Guide Bundle and the .tag envelope as the open contracts any system reads</span><span class="src">read at: Catalogue → Ask SIB · Analytics → Intelligence · /containers</span></div>
+      <div class="cell rf hz"><span class="k">automation · MES</span><span class="v">AMR and cobot tasks that share the chamber's frame and evidence trail · MES as the source of record · each touchpoint named here as it lands, with nothing counted before it does</span></div>
+    </div>
+    <div class="foot"><span class="chip ok">measured columns link to live pages</span><span class="chip hz">horizon columns name, never count</span><span class="chip no">no demo counts as a run</span></div>
+  </section>
+
+  <div class="ask">
+    <h2>What we would like feedback on</h2>
+    <ol>
+      <li>Are these the four dimensions leadership would read, or is there a vocabulary already in use for the smart-factory transition that this should match?</li>
+      <li>For Integration, which automation touchpoints should be named first - gas-line checks, leak checks, or something already in flight on the floor?</li>
+      <li>What is the right cadence for the snapshot - quarterly with the TRL review, or monthly as pilots begin?</li>
+      <li>Which single process should be the first "pilot with a bar", so Validation has a real line to clear?</li>
+    </ol>
+  </div>
+
+  <div class="rules">
+    <div class="rule"><b>Why no numbers here</b>A snapshot that leadership trusts has one source per number. The measured dimensions already have their pages (the scorecard, analytics, the lab); linking to them keeps one truth. The unmeasured ones are drawn as horizon so the picture is complete without being inflated.</div>
+    <div class="rule"><b>Why glasses are one lane</b>Not every work instruction belongs on a face. Some belong to a robot; some are best on an iPad with a sharper verdict. Measuring readiness along the glasses lane alone would reward the wrong thing.</div>
+    <div class="rule"><b>What stays true to today</b>Everything in the middle column ships and is read on a live page. The scorecard's Glasses transition tab is the Validation row made concrete for one lane; this framework is the frame around it.</div>
+  </div>
+
+  <footer>Sources: docs/TRL-SCORECARD.md · docs/devices/README.md · docs/CONTEXTUAL-INTELLIGENCE.md · docs/ILOTO.md · docs/GEMBA-WALK.md · follows docs/POSITIONING.md. Internal distribution only.</footer>
+</div>
+</body>
+</html>

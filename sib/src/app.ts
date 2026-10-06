@@ -223,6 +223,24 @@ document.getElementById('f').addEventListener('submit', async function(ev){
     res.setHeader('Content-Disposition', 'attachment; filename="AR-Operations-Platform.pptx"');
     res.sendFile(p);
   });
+  // GET /explain, /explain/:page → the explain pages (docs/explain/*.html + explain.css):
+  // the platform drawn for non-developers, per docs/POSITIONING.md. Read-only docs surface.
+  const explainFile = (name: string): string | undefined => {
+    const candidates = [
+      path.join(__dirname, '../../docs/explain', name),
+      path.join(process.cwd(), 'docs/explain', name),
+      path.join(process.cwd(), '../docs/explain', name),
+    ];
+    return candidates.find(p => fs.existsSync(p));
+  };
+  app.get(['/explain', '/explain/:page'], (req, res) => {
+    const raw = (req.params as { page?: string }).page ?? 'index';
+    if (!/^[a-z0-9-]+(\.css)?$/.test(raw)) { res.status(404).json({ error: 'Unknown explain page' }); return; }
+    const hit = explainFile(raw.endsWith('.css') ? raw : `${raw}.html`);
+    if (!hit) { res.status(404).json({ error: 'Explain page not available on this deployment' }); return; }
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.sendFile(hit);
+  });
   // GET /containers → the three data containers (.tag · .sib · Guide Bundle) as matrices (docs/CONTAINERS.html)
   app.get('/containers', (_req, res) => {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');

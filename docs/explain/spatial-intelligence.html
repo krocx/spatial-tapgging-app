@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SIB · Spatial Intelligence</title>
+<link rel="stylesheet" href="/portal/brand/tokens.css">
+<link rel="stylesheet" href="/portal/brand/components.css">
+<link rel="stylesheet" href="/explain/explain.css">
+</head>
+<body>
+<div class="page">
+  <header>
+    <span class="ax-wordmark" style="font-size:26px"><span class="ax-a">applied</span><span class="ax-x">x</span></span>
+    <h1>Spatial Intelligence</h1>
+    <div class="sub">the three questions a camera cannot answer alone, and the four layers that answer them</div>
+    <nav><a href="/explain">Explain</a><a href="/containers">Containers</a><a class="on" href="/explain/spatial-intelligence">Spatial Intelligence</a><a href="/explain/lifecycle">Lifecycle</a><a href="/explain/readiness">Readiness</a></nav>
+    <div class="conf">Proprietary &amp; Confidential · Applied Materials</div>
+  </header>
+
+  <p class="lead">A phone or a headset sees pixels. To put an instruction on the right bolt, SIB has to know <b>where the device is</b>, <b>what it is looking at</b>, and <b>how the work is going</b>. The device is a sensor; SIB is the judge. Any client that sends the same small observations gets the same intelligence back, which is why the iPad, a headset browser and a pair of glasses behave the same.</p>
+
+  <div class="flow" style="grid-template-columns:1fr auto 1fr auto 1fr">
+    <div class="node blue"><b>Device · a sensor</b><span>camera pose · what the view centre lands on · taps · a JPEG when a step asks for proof</span></div>
+    <div class="arrow">→<small>~1 Hz · numbers</small></div>
+    <div class="node teal"><b>SIB · the judge</b><span>frames, references, baselines, signals, effectiveness · the same answer for every client</span></div>
+    <div class="arrow">→<small>hint · verdict · frame</small></div>
+    <div class="node green"><b>Person · the work</b><span>the pin lands within millimetres · a hint only when this visit differs from normal · a verdict they can check</span></div>
+  </div>
+
+  <div class="legend">
+    <span><i style="background:var(--ax-green)"></i>spatial · verified</span>
+    <span><i style="background:var(--ax-teal)"></i>perception · learning</span>
+    <span><i style="background:var(--ax-blue)"></i>identity · people</span>
+    <span><i style="background:var(--ax-grey)"></i>rule · threshold · record</span>
+    <span><i style="background:var(--ax-red)"></i>never</span>
+    <span style="margin-left:auto">cell width = how much of the layer it is · dashed = optional · "horizon" = designed, not shipped</span>
+  </div>
+
+  <div class="grid" style="grid-template-columns:1fr">
+
+    <!-- Layer 1 -->
+    <section class="box green">
+      <div class="head">
+        <div class="ext">1 · Where</div>
+        <div><h2>Frames: the origin</h2><p>Every pin, tag and panel is stored relative to one origin per chamber. Three ways to find it, in a fixed order of trust, each checking the next.</p></div>
+        <div class="layer"><b>priority</b>object › sealed map › live QR</div>
+      </div>
+      <div class="matrix c12">
+        <div class="cell sp c3"><span class="k">printed QR</span><span class="v">the chamber's identity and the fallback frame · pose + marker size · also carries the chamber's key to the device, never to the server record</span></div>
+        <div class="cell sp c3"><span class="k">sealed world map</span><span class="v">an author walked the room once; ARKit relocalises into that feature cloud · origin = sealed pose · QR only checked for drift</span></div>
+        <div class="cell sp c3"><span class="k">scanned object</span><span class="v">the chamber's own shape (sparse point cloud, not a mesh, not a photo) · frame from calibration · survives a moved chamber · re-aligns with Undo</span></div>
+        <div class="cell sp c3 dim"><span class="k">demo tap</span><span class="v">no chamber in the room: the whole scene lands where you tap, turned to face you · marked demo, never a run</span></div>
+
+        <div class="cell in c4"><span class="k">drift check</span><span class="v">sealed pose vs live QR: more than 5 cm or 10° → "QR moved? using the sealed map" · logged on the run, never silent</span></div>
+        <div class="cell in c4"><span class="k">settling</span><span class="v">after a lock the pins wait for the origin anchor to converge (≤ 8 s) so they spawn on the final fit, not the first guess</span></div>
+        <div class="cell in c4"><span class="k">accuracy, measured</span><span class="v">Anchor Lab: rigs and runs that end in millimetres - rendered vs physical, per origin kind · numbers only</span></div>
+      </div>
+      <div class="foot"><span class="chip ok">one frame, three readings</span><span class="chip ok">iPad · headset · glasses see the same origin</span><span class="chip no">a demo never saves a position</span></div>
+    </section>
+
+    <!-- Layer 2 -->
+    <section class="box teal">
+      <div class="head">
+        <div class="ext">2 · What</div>
+        <div><h2>Perception: references and verdicts</h2><p>An author shows the system what good looks like at each tag; later a live frame is scored against it. Layered on purpose: SIB does the generic part, the device does what needs its sensors.</p></div>
+        <div class="layer"><b>split</b>server: image · device: Vision + LiDAR</div>
+      </div>
+      <div class="matrix c12">
+        <div class="cell pe c3"><span class="k">references (training)</span><span class="v">single photo, or a Cone sweep (14-19 images across a dome + LiDAR depth) · encrypted with the chamber's key before they are stored</span></div>
+        <div class="cell pe c3"><span class="k">server score</span><span class="v">SSIM + colour histogram - the only scoring SIB does itself; it never sees a feature print or a depth map, only JPEGs</span></div>
+        <div class="cell pe c3"><span class="k">device score</span><span class="v">Apple Vision feature prints, distance to the nearest reference · cone alignment from camera angle · 60 % image / 40 % depth when depth was trained</span></div>
+        <div class="cell pe c3"><span class="k">by check type</span><span class="v">part check: a centre-crop print is authoritative (can flip the verdict) · language check: live OCR matched word by word · others: generic</span></div>
+
+        <div class="cell in c4"><span class="k">per-tag threshold</span><span class="v">not one global cut-off: each tag's bar comes from the spread of its own references (max pairwise distance × 2.5, floor 0.8)</span></div>
+        <div class="cell in c4"><span class="k">readiness before a run</span><span class="v">a chamber whose tags are not all trained shows the operator an orange or red banner before the inspection starts</span></div>
+        <div class="cell in c4"><span class="k">verdict, recorded honestly</span><span class="v">pass · fail · a fail the operator chose to proceed past is stored as overridden, not hidden</span></div>
+      </div>
+      <div class="foot"><span class="chip ok">what good looks like, per tag</span><span class="chip ok">a verdict anyone can re-check</span><span class="chip no">no model trained on faces or people</span></div>
+    </section>
+
+    <!-- Layer 3 -->
+    <section class="box purple">
+      <div class="head">
+        <div class="ext">3 · How</div>
+        <div><h2>Contextual intelligence: normal, deviation, hint</h2><p>Nothing is scripted. What "normal" looks like on a step is learned from completed visits; a deviation from it is the signal; a hint is phrased, shown, and then judged by what happened next.</p></div>
+        <div class="layer"><b>loop</b>observe → baseline → signal → hint → score → retire</div>
+      </div>
+      <div class="matrix c12">
+        <div class="cell pe c3"><span class="k">observations</span><span class="v">attention (target · assembly · pin · panel · away) · distance and aim error to the step's part · aligned to the viewpoint · moving · taps (right / wrong part) · replays</span></div>
+        <div class="cell pe c3"><span class="k">baseline per step</span><span class="v">from completed visits: dwell p50 / p90, on-target ratio p10, wrong-part taps p90 · one session is a baseline; it sharpens with use</span></div>
+        <div class="cell pe c3"><span class="k">signals</span><span class="v">dwell · attention-off · wrong-part · look-away · validate-retry · fire only when this visit crosses the step's own percentiles; floors stop a two-visit baseline firing on noise</span></div>
+        <div class="cell pe c3"><span class="k">the hint</span><span class="v">quotes the baseline and the part's real name · "Show me" spotlights the right parts · muteable per step, per guide, per device · human coach hints are never muted</span></div>
+
+        <div class="cell in c4"><span class="k">effectiveness</span><span class="v">each hint scored by what followed: completed sooner · no more wrong taps · attention back on target · reached the viewpoint · passed · rolled over the last 50 visits</span></div>
+        <div class="cell in c4"><span class="k">retirement</span><span class="v">shown ≥ 5 with effectiveness &lt; 0.3 → retired on that step · mute rate ≥ 0.5 → retired (people said no) · lifts by itself when newer visits score better</span></div>
+        <div class="cell in c4"><span class="k">heat and notes for authors</span><span class="v">per step: a 0-100 heat from left / failed / wrong part / stalled / attention off · plain-language notes only when ≥ 3 visits stand behind them</span></div>
+      </div>
+      <div class="foot"><span class="chip ok">learned, not configured</span><span class="chip ok">same JSON from any client</span><span class="chip hz">glasses as a sensor: same contract, G2 text today</span></div>
+    </section>
+
+    <!-- Layer 4 -->
+    <section class="box grey">
+      <div class="head">
+        <div class="ext">4 · Proof</div>
+        <div><h2>Evidence: what is kept, what never is</h2><p>Trust on the floor comes from knowing exactly what a device records. Numbers almost everywhere; images only where a step asks for proof, encrypted, and never from the observation stream.</p></div>
+        <div class="layer"><b>rule</b>numbers always · images only on request</div>
+      </div>
+      <div class="matrix c12">
+        <div class="cell in c3"><span class="k">the run</span><span class="v">who (named shift), which chamber, which guide · per step: time, hints shown or muted, validation result, evidence yes / no · drift · demo flag</span></div>
+        <div class="cell in c3"><span class="k">evidence photo</span><span class="v">optional, one per step, taken on purpose by the person · part of the sign-off · stored for the record, not for training</span></div>
+        <div class="cell in c3"><span class="k">accuracy runs</span><span class="v">Anchor Lab marks: rendered-vs-physical error in millimetres, per tag, per origin kind · numbers only</span></div>
+        <div class="cell id c3"><span class="k">presence</span><span class="v">who is on which step right now, for a colleague's coaching message · session-scoped, gone when the run ends</span></div>
+
+        <div class="cell rd c12"><span class="k">never</span><span class="v">no images in the observation stream · no free text from the device · no identity beyond the live session · no faces · training references encrypted with the chamber's key · the server never holds that key · a demo placement never counts as a run or lifts a verdict</span></div>
+      </div>
+      <div class="foot"><span class="chip who">reads: Analytics · Intelligence · Scorecard</span><span class="chip ok">exportable, small, durable</span><span class="chip no">nothing leaves the site</span></div>
+    </section>
+  </div>
+
+  <div class="rules">
+    <div class="rule"><b>Why three readings of one frame</b>A printed code can be moved, a room can be rearranged, a chamber can be wheeled out. Each origin kind fails differently, so each checks the next: the object re-bases the map, the map checks the QR, the QR is always there. The pin stays where the author put it.</div>
+    <div class="rule"><b>Why the device scores too</b>SIB keeps the generic comparison so every client gets a verdict; the device adds what needs its sensors (feature prints, depth, OCR) so the verdict is sharper where the hardware allows. A pair of glasses without LiDAR still gets a verdict - a plainer one.</div>
+    <div class="rule"><b>Why hints retire</b>A hint that does not change what happens next is noise, and noise is muted. Scoring every hint by its consequence, and retiring the ones that fail, is how guidance gets quieter and better with use rather than louder.</div>
+  </div>
+
+  <footer>Sources: docs/CONNECTED-WORKER.md · docs/SIB-TRAINING-FEATURES.md · docs/CONTEXTUAL-INTELLIGENCE.md · docs/TAG-FORMAT.md · <a href="/explain">all explain pages</a> follow docs/POSITIONING.md. Internal distribution only.</footer>
+</div>
+</body>
+</html>

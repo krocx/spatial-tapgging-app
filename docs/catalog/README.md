@@ -64,3 +64,9 @@ a teammate would actually need. No marketing language.
 
 [FEATURE-CATALOG.md](../FEATURE-CATALOG.md) remains the human table-of-record view;
 it now carries a "generated view" header and must agree with these files.
+
+## How features are described
+
+Descriptions follow [docs/POSITIONING.md](../POSITIONING.md): sources not
+formats, Walks not audits, readiness as ecosystem readiness. The explain
+pages (`/explain`) draw the platform for non-developers on the same rules.

@@ -33,6 +33,11 @@ const GOVERNED = [
   'sib/roadmap-client/src/styles.css', // the Designer (tokens only since 2026.4.46)
   'docs/APP-WIREFRAME.html',           // /wireframe - the app mock, on the app's own tokens
   'docs/CONTAINERS.html',              // /containers - the three containers as matrices
+  'docs/explain/explain.css',          // /explain - the explain pages' shared sheet
+  'docs/explain/index.html',
+  'docs/explain/spatial-intelligence.html',
+  'docs/explain/lifecycle.html',
+  'docs/explain/readiness.html',
 ];
 const TOKENS = 'sib/portal/brand/tokens.css';
 
