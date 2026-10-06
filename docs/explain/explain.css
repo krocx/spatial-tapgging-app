@@ -88,7 +88,6 @@ footer a{color:var(--ax-ink-3)}
 header nav a.home{color:var(--ax-ink-2)}
 .ex-reader{margin-left:auto;font:var(--ax-label-s);color:var(--ax-ink-2);background:var(--ax-paper);border:1px solid var(--ax-rule);border-radius:var(--ax-r-pill);padding:4px 12px;cursor:pointer}
 .ex-reader:hover{background:var(--ax-paper-3)}
-.ex-reader + .conf{margin-left:0}
 
 /* Reader mode: paper, monochrome. The palette is the `[data-reader]` surface in
    tokens.css; nothing here is restyled. The grayscale filter removes hue so
@@ -100,8 +99,11 @@ html[data-reader] .conf{color:var(--ax-ink-2);border-color:var(--ax-ink-3)}
 html[data-reader] .ax-wordmark .ax-a,html[data-reader] .ax-wordmark .ax-x{color:var(--ax-ink)}
 
 /* Ask SIB drawer */
-.ex-ask-fab{position:fixed;left:18px;bottom:18px;z-index:40;display:inline-flex;align-items:center;gap:8px;font:var(--ax-label);color:var(--ax-on-accent);background:var(--ax-blue);border:0;border-radius:var(--ax-r-pill);padding:10px 16px;cursor:pointer}
-.ex-ask{position:fixed;left:18px;bottom:68px;z-index:40;width:min(420px,calc(100vw - 36px));max-height:min(70vh,640px);display:none;flex-direction:column;background:var(--ax-solid);border:1px solid var(--ax-rule);border-radius:var(--ax-r)}
+.ex-ask-fab{display:inline-flex;align-items:center;gap:6px;font:var(--ax-label-s);color:var(--ax-on-accent);background:var(--ax-blue);border:0;border-radius:var(--ax-r-pill);padding:5px 12px;cursor:pointer}
+.ex-ask-fab .ax-icon{width:14px;height:14px}
+.ex-ask-fab + .conf{margin-left:0}
+.ex-reader + .ex-ask-fab{margin-left:8px}
+.ex-ask{position:fixed;right:18px;top:18px;z-index:40;width:min(420px,calc(100vw - 36px));max-height:min(80vh,720px);display:none;flex-direction:column;background:var(--ax-solid);border:1px solid var(--ax-rule);border-radius:var(--ax-r)}
 .ex-ask.open{display:flex}
 .ex-ask-top{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--ax-rule)}
 .ex-ask-top b{font-size:14px}

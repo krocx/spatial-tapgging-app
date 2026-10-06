@@ -67,7 +67,11 @@
       <div class="ex-ask-presets">${['What is a sealed world map?', 'How does a hint retire?', 'What does the Guide Bundle carry?', 'Which devices are ready for pilot?'].map(q => `<button type="button" class="ax-chip" data-q="${esc(q)}">${esc(q)}</button>`).join('')}</div>
     </div>
     <form class="ex-ask-form" id="exAskForm"><input class="ax-input" id="exAskInput" placeholder="Ask…" autocomplete="off"><button class="ax-btn ax-btn--primary" type="submit">Ask</button></form>`;
-  document.body.append(fab, drawer);
+  // The Compass owns the bottom corners (button right, breadcrumb left), so
+  // Ask lives in the header next to Reader and opens as a right-hand panel.
+  const readerBtn = document.querySelector('[data-reader-toggle]');
+  if (readerBtn) readerBtn.insertAdjacentElement('afterend', fab); else (header || document.body).appendChild(fab);
+  document.body.append(drawer);
   const open = () => { drawer.classList.add('open'); document.getElementById('exAskInput').focus(); };
   const close = () => drawer.classList.remove('open');
   fab.addEventListener('click', () => drawer.classList.contains('open') ? close() : open());
