@@ -91,10 +91,13 @@ export const HANDLED_PROTOS = new Set([
   // hose sweeps rebuilt as geometry by scene.ts / hose.ts
   'HoseSplineFlow', 'HoseSplineFlow2',
 ]);
+// Annotation PROTOs whose `Objects` field carries real parts (scene.ts
+// descends it): the label is not drawn, the parts are. Listed as handled.
+export const ANNOTATION_PROTO_PATTERNS: RegExp[] = [/^CalloutM\d*$/, /^CalloutImg\d*$/, /^PanelImg\d*$/, /^PanelHtml\d*$/];
 // Known non-procedural PROTOs (annotation widgets, viewer chrome, sequencers,
 // sectioning tools, typed-field helpers). Counted, logged, not imported.
 export const IGNORED_PROTO_PATTERNS: RegExp[] = [
-  /^PanelImg\d*$/, /^PanelHtml\d*$/, /^CalloutM\d*$/, /^VMTighten\d*$/, /^VMRope\d*$/, /^Set_Arrow\d*$/,
+  /^VMTighten\d*$/, /^VMRope\d*$/, /^Set_Arrow\d*$/,
   /^VMSectionPlane$/, /^ClippingPlane(Canceller)?$/, /^CompositeTexture3D$/, /^Loupe\d*$/, /^ScreenedShape$/,
   /^IntegerSequencer$/, /^Layer3D$/, /^OrthographicViewpoint$/, /^Transform2D$/, /^Viewpoint3$/, /^WorldInfo\d*$/,
   /^(Old)?AxesPanel$/, /^Slider$/, /^Button$/, /^protoSimulationPlayer$/, /^protoSF\w+$/, /^protoMF\w+$/,
@@ -110,7 +113,7 @@ export function classifyProtos(scene: VrmlScene): ProtoClassification {
   walkNodes(scene.nodes, n => { if (scene.protos.has(n.type)) counts[n.type] = (counts[n.type] ?? 0) + 1; });
   const handled: string[] = [], ignored: string[] = [], unknown: string[] = [];
   for (const name of scene.protos.keys()) {
-    if (HANDLED_PROTOS.has(name)) handled.push(name);
+    if (HANDLED_PROTOS.has(name) || ANNOTATION_PROTO_PATTERNS.some(re => re.test(name))) handled.push(name);
     else if (IGNORED_PROTO_PATTERNS.some(re => re.test(name))) ignored.push(name);
     else if ((counts[name] ?? 0) > 0) unknown.push(name);   // declared AND instantiated
   }

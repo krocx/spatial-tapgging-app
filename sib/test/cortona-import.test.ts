@@ -75,7 +75,7 @@ test('importer: one step per document work Item, merged sub-step deltas, set-up 
   assert.equal(L.parts.docItems, 2); assert.equal(L.parts.nodesWithPartNumber, 2); assert.equal(L.parts.rwiBomRows, 2);
   assert.equal(L.publish.GLTF, 'No');
   assert.deepEqual(L.protos.unknown, []);
-  assert.ok(L.protos.ignored.includes('CalloutM6') && L.protos.handled.includes('SubStep'));
+  assert.ok(L.protos.handled.includes('CalloutM6') && L.protos.handled.includes('SubStep'));
   assert.ok(!JSON.stringify(L).includes('Torque') && !JSON.stringify(L).includes('0190-10001'));
   // extras carry part numbers for the GLB
   assert.equal(r.extras.get('PN_0190-10001_1')?.partNumber, '0190-10001');

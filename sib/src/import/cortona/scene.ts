@@ -84,6 +84,11 @@ export function worldMatrices(roots: SceneNode[], overrides?: PoseOverrides): Ma
 
 /** Node types treated as transform containers. Anything else is skipped as non-geometry. */
 const CONTAINER_TYPES = new Set(['Transform', 'Group', 'Switch', 'ObjectVM', 'Collision', 'Billboard', 'Anchor']);
+/** Cortona annotation PROTOs (CalloutM4/5/6, CalloutImg2, PanelImg7/8/9, PanelHtml7/8/9…).
+ *  The label itself is a 2-D widget, but its `Objects` field holds REAL parts
+ *  (an ObjectVM may carry a whole screw set there, or hand one to its
+ *  `geometry` field), so the field is descended like `children`. */
+const ANNOTATION_TYPES = /^(Callout|Panel)/;
 const MESH_TYPES      = new Set(['IndexedFaceSet', 'IndexedFaceSetWithEdges']);
 
 export interface BuildSceneOptions {
@@ -196,7 +201,21 @@ export function buildScene(scene: VrmlScene, opts: BuildSceneOptions = {}): Scen
       const m = shapeMesh(n, owner, inheritedMat); if (m) sn.meshes.push(m);
       return sn;
     }
+    if (ANNOTATION_TYPES.test(n.type)) {
+      // A label: nothing to draw, but the parts it carries are the model's.
+      for (const k of nodesField(n, 'Objects')) {
+        if ('use' in k) continue;                    // a reference to a part built where it lives
+        const kn = resolve(k); if (!kn) continue;
+        const c = build(kn, inheritedVisible, owner, mat); if (c) sn.children.push(c);
+      }
+      return sn.children.length ? sn : null;
+    }
     if (!CONTAINER_TYPES.has(n.type)) return null; // PROTO widgets / sensors / scripts: skipped
+
+    let which = -2; // -2 = not a switch
+    if (n.type === 'Switch' || n.type === 'ObjectVM') {
+      const w = numField(n, 'whichChoice', []); if (w.length) which = w[0];
+    }
 
     // ObjectVM may carry geometry directly (appearance + geometry fields)
     if (n.type === 'ObjectVM' && nodeField(n, 'geometry')) {
@@ -205,11 +224,11 @@ export function buildScene(scene: VrmlScene, opts: BuildSceneOptions = {}): Scen
       // routed at materials - so it runs for a hose too (its mesh comes later).
       const m = shapeMesh(n, owner); if (m) sn.meshes.push(m);
       if (g && HOSE_TYPES.test(g.type)) hoseRequests.push({ owner: sn, geom: g, ownerDef: owner });
-    }
-
-    let which = -2; // -2 = not a switch
-    if (n.type === 'Switch' || n.type === 'ObjectVM') {
-      const w = numField(n, 'whichChoice', []); if (w.length) which = w[0];
+      // A callout handed to `geometry`: the parts inside it sit in this
+      // ObjectVM's frame and follow its Switch (whichChoice -1 hides them).
+      if (g && ANNOTATION_TYPES.test(g.type)) {
+        const c = build(g, inheritedVisible && which !== -1, owner, mat); if (c) sn.children.push(c);
+      }
     }
     const kids = n.type === 'Switch' ? nodesField(n, 'choice') : nodesField(n, 'children');
     kids.forEach((k, i) => {

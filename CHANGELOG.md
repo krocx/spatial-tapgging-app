@@ -485,6 +485,14 @@ it, it gets a line.
   focus ring uses it too, so where the ring sits is where a tap lands.
 
 ### Fixed
+- **Parts inside a callout were never built.** Cortona publications hand a
+  label (CalloutM4/5/6, CalloutImg, PanelImg, PanelHtml) to an ObjectVM's
+  `geometry` field and define real parts - whole screw sets - in the label's
+  `Objects` field. The scene builder stopped at the label, so those parts were
+  absent from the model and their hide commands had no target; the fasteners
+  showed at every step on the XR kit and the iPad. The builder now descends
+  `Objects` (parts defined there; references stay where they live) in the
+  owner's frame and Switch. Found with the CMP2 / CHAMBER / CATHODE files.
 - **Parts the publication starts hidden showed in the XR kit and on the
   iPad.** The importer marks them `extras.visible=false` on every node, but
   only named nodes got an initialNodes delta; the Studio honoured the flag,
