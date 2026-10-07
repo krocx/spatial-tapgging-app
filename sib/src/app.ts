@@ -43,7 +43,7 @@ import askRouter from './routes/ask.js';
 import { sessionStore } from './routes/sessions.js';
 import { locTagStore, locTagCompletionStore } from './routes/loc-tags.js';
 import { derivePointStatus } from './loto/loto-core.js';
-import { apiKeyAuth, adminKeyAuth, contentGate, hasValidApiKey } from './middleware/auth.js';
+import { apiKeyAuth, adminKeyAuth, contentGate, hasValidApiKey, canViewRestricted } from './middleware/auth.js';
 import { redeemDeviceCode } from './middleware/device-link.js';
 // NOT from @spatial/shared: that package is types-only at runtime - its exports
 // point at .ts source, which a compiled server cannot load. See sib/src/version.ts.
@@ -233,17 +233,33 @@ document.getElementById('f').addEventListener('submit', async function(ev){
     ];
     return candidates.find(p => fs.existsSync(p));
   };
+  // Pages that describe how SIB works inside (the data containers, the
+  // perception layer) are IP-sensitive: they open only with the IP key
+  // (header or the sib_ip_key cookie the locked page sets), like /architecture.
+  const RESTRICTED_EXPLAIN = new Set(['containers', 'spatial-intelligence']);
   app.get(['/explain', '/explain/:page'], (req, res) => {
     const raw = (req.params as { page?: string }).page ?? 'index';
     if (!/^[a-z0-9-]+(\.css|\.js)?$/.test(raw)) { res.status(404).json({ error: 'Unknown explain page' }); return; }
+    if (raw === 'locked') { res.status(404).json({ error: 'Unknown explain page' }); return; }
+    if (RESTRICTED_EXPLAIN.has(raw) && !canViewRestricted(req)) {
+      const locked = explainFile('locked.html');
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      if (locked) res.status(403).sendFile(locked); else res.status(403).json({ error: 'restricted', hint: 'This page needs the IP key' });
+      return;
+    }
     const hit = explainFile(/\.(css|js)$/.test(raw) ? raw : `${raw}.html`);
     if (!hit) { res.status(404).json({ error: 'Explain page not available on this deployment' }); return; }
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.sendFile(hit);
   });
   // GET /containers → the three data containers (.tag · .sib · Guide Bundle) as matrices (docs/CONTAINERS.html)
-  app.get('/containers', (_req, res) => {
+  app.get('/containers', (req, res) => {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    if (!canViewRestricted(req)) {
+      const locked = explainFile('locked.html');
+      if (locked) res.status(403).sendFile(locked); else res.status(403).json({ error: 'restricted', hint: 'This page needs the IP key' });
+      return;
+    }
     const candidates = [
       path.join(__dirname, '../../docs/CONTAINERS.html'),
       path.join(process.cwd(), 'docs/CONTAINERS.html'),

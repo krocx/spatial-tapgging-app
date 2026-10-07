@@ -74,6 +74,15 @@ labelled.
 This table is a framework to gather feedback on, not a scorecard yet. It is
 drawn on `/explain/readiness` exactly that way.
 
+## Sensitivity
+
+Pages that describe how SIB works inside - the data containers, the
+perception layer - are IP-sensitive and open only with the IP key
+(`canViewRestricted`), like the Architecture and the restricted Catalogue
+entries. Pages that position (Lifecycle, Readiness) are open on the server.
+Exact tunables (thresholds, blends, counts) stay out of every explain page;
+the behaviour is described, the numbers live in the code and the specs.
+
 ## Where this applies
 
 - `/explain/*` pages and `/containers`.

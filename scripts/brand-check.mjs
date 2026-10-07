@@ -39,6 +39,7 @@ const GOVERNED = [
   'docs/explain/spatial-intelligence.html',
   'docs/explain/lifecycle.html',
   'docs/explain/readiness.html',
+  'docs/explain/locked.html',
 ];
 const TOKENS = 'sib/portal/brand/tokens.css';
 

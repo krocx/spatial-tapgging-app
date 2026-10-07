@@ -511,6 +511,16 @@ it, it gets a line.
   focus ring uses it too, so where the ring sits is where a tap lands.
 
 ### Fixed
+- **Restricted explain pages behind the IP key.** `/containers` and
+  `/explain/spatial-intelligence` describe the data containers and the
+  perception layer (patent pending); they were served without a key. They
+  now return the locked page unless the IP key is present (header, or the
+  `sib_ip_key` cookie the locked page and the Architecture unlock set), the
+  same gate as `/architecture` and the restricted Catalogue entries. The
+  Spatial Intelligence page also drops exact tunables (thresholds, blends,
+  retirement counts) - a reader does not need them and a screenshot travels.
+  Lifecycle, Readiness and the index stay open. Learn and the index mark the
+  two locked doors.
 - **Parts inside a callout were never built.** Cortona publications hand a
   label (CalloutM4/5/6, CalloutImg, PanelImg, PanelHtml) to an ObjectVM's
   `geometry` field and define real parts - whole screw sets - in the label's

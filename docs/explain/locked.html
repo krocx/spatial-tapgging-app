@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SIB · Restricted</title>
+<link rel="stylesheet" href="/portal/brand/tokens.css">
+<link rel="stylesheet" href="/portal/brand/components.css">
+<link rel="stylesheet" href="/explain/explain.css">
+<style>
+  .lock{max-width:560px;margin:12vh auto 0;background:var(--ax-paper-2);border:1px solid var(--ax-rule);border-radius:var(--ax-r);padding:26px 28px}
+  .lock h1{margin:10px 0 6px;font-size:20px}
+  .lock p{color:var(--ax-ink-2);font-size:13.5px;margin:0 0 14px}
+  .lock form{display:flex;gap:8px}
+  .lock .ax-input{flex:1}
+  .lock .err{color:var(--ax-red);font-size:12px;margin-top:8px;min-height:16px}
+  .lock .ax-icon{width:28px;height:28px;color:var(--ax-orange)}
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <span class="ax-wordmark" style="font-size:26px"><span class="ax-a">applied</span><span class="ax-x">x</span></span>
+    <h1>Explain</h1>
+    <nav data-explain-nav></nav>
+    <div class="conf">Proprietary &amp; Confidential · Applied Materials</div>
+  </header>
+  <div class="lock">
+    <svg class="ax-icon"><use href="/portal/brand/icons.svg#i-lock"/></svg>
+    <h1>This page describes how SIB works inside</h1>
+    <p>The data containers and the perception layer are IP-sensitive (patent pending). They open with the IP key, the same one that unlocks the Architecture and the restricted Catalogue entries. Remembered on this browser for 7 days.</p>
+    <form id="lockForm"><input class="ax-input" id="lockKey" type="password" placeholder="IP key" autocomplete="off"><button class="ax-btn ax-btn--primary" type="submit">Unlock</button></form>
+    <div class="err" id="lockErr"></div>
+    <p style="margin-top:14px;font-size:12px;color:var(--ax-ink-3)">No key? The <a href="/explain/lifecycle" style="color:var(--ax-ink-2)">Lifecycle</a> and <a href="/explain/readiness" style="color:var(--ax-ink-2)">Readiness</a> pages are open to everyone on this server.</p>
+  </div>
+</div>
+<script src="/portal/brand.js"></script>
+<script src="/explain/explain.js"></script>
+<script>
+document.getElementById('lockForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const k = document.getElementById('lockKey').value.trim(); if (!k) return;
+  // Probe with the header first so a wrong key is told, not silently stored.
+  const r = await fetch('/architecture/data', { headers: { 'X-IP-Key': k } }).catch(() => null);
+  if (!r || r.status === 403) { document.getElementById('lockErr').textContent = 'That key does not match.'; return; }
+  const secure = location.protocol === 'https:' ? '; Secure' : '';
+  document.cookie = 'sib_ip_key=' + encodeURIComponent(k) + '; Path=/; Max-Age=604800; SameSite=Lax' + secure;
+  try { localStorage.setItem('sib_ip_key', JSON.stringify({ key: k, savedAt: Date.now() })); } catch {}
+  location.reload();
+});
+</script>
+</body>
+</html>

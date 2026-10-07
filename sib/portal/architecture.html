@@ -77,6 +77,8 @@ function ipUnlock(){
   const v = k.trim();
   if (!v) { localStorage.removeItem('sib_ip_key'); return; }
   localStorage.setItem('sib_ip_key', JSON.stringify({ key: v, savedAt: Date.now() }));
+  // Cookie too, so the restricted explain pages (/containers, /explain/spatial-intelligence) open with the same unlock.
+  document.cookie = 'sib_ip_key=' + encodeURIComponent(v) + '; Path=/; Max-Age=604800; SameSite=Lax' + (location.protocol === 'https:' ? '; Secure' : '');
   location.reload();
 }
 
