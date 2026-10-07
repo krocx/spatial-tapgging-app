@@ -3,6 +3,7 @@ id: roi
 name: Region of interest (ROI)
 area: tags
 status: shipped
+sensitivity: restricted
 version: baseline
 depends: [training-capture]
 terms: [Pass State]

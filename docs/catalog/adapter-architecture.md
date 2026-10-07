@@ -3,6 +3,7 @@ id: adapter-architecture
 name: Adapter architecture
 area: platform
 status: shipped
+sensitivity: restricted
 version: baseline
 depends: []
 terms: [Adapter]

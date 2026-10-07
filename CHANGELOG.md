@@ -511,6 +511,15 @@ it, it gets a line.
   focus ring uses it too, so where the ring sits is where a tap lands.
 
 ### Fixed
+- **Sensitivity sweep of the open docs.** Ten more catalogue features are
+  marked `restricted`, so their bodies, APIs and deep-dive docs need the IP
+  key like the .tag format and the code architecture: training capture,
+  patch scoring, ROI, step validation, sealed world maps, object anchoring,
+  Anchor Lab, contextual intelligence, the adapter architecture and the
+  shared schema - everything that describes how anchoring or perception
+  works inside. Names, areas, status and dependencies stay visible so the
+  Catalogue map is complete; Learn journeys unaffected. The Changelog is not
+  served by the server.
 - **Restricted explain pages behind the IP key.** `/containers` and
   `/explain/spatial-intelligence` describe the data containers and the
   perception layer (patent pending); they were served without a key. They

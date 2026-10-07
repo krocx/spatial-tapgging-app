@@ -3,6 +3,7 @@ id: contextual-intelligence
 name: Contextual intelligence - observations, baselines, signal hints, effectiveness loop
 area: guides
 status: shipped
+sensitivity: restricted
 version: 2026.4.46
 depends: [usage-log, live-telemetry, ai-guidance]
 terms: [Operator Mode]

@@ -3,6 +3,7 @@ id: sealed-worldmap
 name: Sealed world maps (one localization doctrine)
 area: tags
 status: shipped
+sensitivity: restricted
 version: 2026.4.46
 depends: [arworldmap-memory, qr-anchoring]
 terms: [ARWorldMap, Anchor, QR Spatial Anchoring]

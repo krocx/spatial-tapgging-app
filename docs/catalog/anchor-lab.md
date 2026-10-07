@@ -3,6 +3,7 @@ id: anchor-lab
 name: Anchor trust layer & Anchor Lab
 area: tags
 status: beta
+sensitivity: restricted
 version: 2026.4.46
 depends: [sealed-worldmap, qr-anchoring]
 terms: [Anchor, ARWorldMap]

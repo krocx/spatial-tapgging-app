@@ -3,6 +3,7 @@ id: object-anchoring
 name: Object anchoring - scan, origin, movable equipment
 area: tags
 status: beta
+sensitivity: restricted
 version: 2026.4.46
 depends: [sealed-worldmap, model-library]
 terms: [Object Anchoring, Anchor, ARWorldMap]

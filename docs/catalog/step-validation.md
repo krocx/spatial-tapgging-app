@@ -3,6 +3,7 @@ id: step-validation
 name: Step validation - cone, quick-shot, never-stuck
 area: guides
 status: shipped
+sensitivity: restricted
 version: 2026.4.45
 depends: [spatial-steps, patch-scoring, training-capture, usage-log]
 terms: [SSIM Validation, Train in App, Evidence Capture, Pass State]

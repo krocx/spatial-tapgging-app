@@ -3,6 +3,7 @@ id: training-capture
 name: Multi-angle training capture
 area: tags
 status: shipped
+sensitivity: restricted
 version: baseline
 depends: [check-ontology]
 terms: [Pass State, Train in App]

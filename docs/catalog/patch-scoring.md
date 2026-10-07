@@ -3,6 +3,7 @@ id: patch-scoring
 name: Patch-grid scoring with confidence
 area: tags
 status: shipped
+sensitivity: restricted
 version: baseline
 depends: [training-capture, roi]
 terms: [SSIM Validation, Perception Layer]

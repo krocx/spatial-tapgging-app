@@ -3,6 +3,7 @@ id: shared-schema
 name: Shared TypeScript schema
 area: platform
 status: shipped
+sensitivity: restricted
 version: baseline
 depends: []
 terms: [SIB]
