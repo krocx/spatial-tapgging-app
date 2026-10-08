@@ -57,6 +57,12 @@ const requireNamed = (roles: UamRole[], what: string) => (req: Request, res: Res
 };
 const isQuarter = (q: unknown): q is string => typeof q === 'string' && /^FY\d{2}-Q[1-4]$/.test(q);
 
+/** POC Portfolio gate: has anyone scored one of these tracks since `sinceIso`? */
+export function scorecardTouchedSince(trackIds: string[], sinceIso: string): boolean {
+  if (!trackIds.length) return true;
+  return entryStore.findAll().some(e => trackIds.includes(e.trackId) && e.at >= sinceIso);
+}
+
 export function buildScorecard(quarter: string) {
   const entries = entryStore.findAll();
   const profiles = readDeviceProfiles();

@@ -34,6 +34,7 @@ import learnRouter from './routes/learn.js';
 import architectureRouter from './routes/architecture.js';
 import devicesRouter from './routes/devices.js';
 import scorecardRouter from './routes/scorecard.js';
+import portfolioRouter from './routes/portfolio.js';
 import adminRouter from './routes/admin.js';
 import logsRouter from './routes/logs.js';
 import { captureServerConsole, pruneLogs, listLogDevices } from './logging/device-logs.js';
@@ -405,6 +406,8 @@ document.getElementById('f').addEventListener('submit', async function(ev){
   app.use('/devices', devicesRouter);
   // Technology Readiness scorecard SIB keeps for its tracks (docs/TRL-SCORECARD.md).
   app.use('/scorecard', scorecardRouter);
+  // POC Portfolio - every BU, every use-case, where each stands (docs/POC-PORTFOLIO.md).
+  app.use('/portfolio', portfolioRouter);
 
   // --- Ask SIB (no auth - docs-grounded assistant; grounding is the catalogue
   // ONLY, so nothing sensitive can leak; rate-limited in the router) ---

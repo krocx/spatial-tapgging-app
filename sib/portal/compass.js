@@ -51,6 +51,7 @@
           { id: 'assess', label: 'Assessment',   href: '/platform#assess' },
           { id: 'long',   label: 'Long version', href: '/platform/long' },
           { id: 'scorecard', label: 'Scorecard', href: '/scorecard' },
+          { id: 'portfolio', label: 'POC Portfolio', href: '/portfolio' },
         ] },
       { id: 'roadmap', label: 'Roadmap', href: '/roadmap', color: 'var(--ax-p-designer)', key: 'r', hint: 'Roadmaps & Procedure Designer',
         children: [
@@ -79,6 +80,7 @@
     if (p.startsWith('/explain') || p.startsWith('/containers')) return ['sib', 'catalog', 'explain'];
     if (p.startsWith('/architecture')) return ['sib', 'catalog', 'architecture'];
     if (p.startsWith('/scorecard')) return ['sib', 'platform', 'scorecard'];
+    if (p.startsWith('/portfolio')) return ['sib', 'platform', 'portfolio'];
     if (p.startsWith('/catalog')) return h.startsWith('ask') ? ['sib', 'catalog', 'ask'] : ['sib', 'catalog'];
     if (p.startsWith('/wireframe')) return ['sib', 'wireframe'];
     if (p.startsWith('/portal')) {

@@ -2260,3 +2260,70 @@ export interface UamLoginResponse {
   token: string;
   user:  UamUser;
 }
+
+// ── POC Portfolio (docs/POC-PORTFOLIO.md) ─────────────────────────────────────
+// One record per use-case (a programme a BU runs with us), with numbered
+// POCs under it. Status, bottlenecks and learnings are append-only, named and
+// dated. Readiness numbers are never stored here - they are read from SIB.
+
+export type UseCaseStage = 'identified' | 'scoping' | 'agreed' | 'active' | 'pilot' | 'adopted' | 'parked';
+export type PocStage     = 'planned' | 'in-progress' | 'completed';
+export type PocExit      = 'next-poc' | 'pilot' | 'parked';
+export type Health       = 'green' | 'amber' | 'red';
+export type BottleneckSeverity = 'low' | 'medium' | 'high';
+
+export interface PortfolioEntry {
+  id:   string;
+  at:   string;            // ISO
+  by:   string;            // UAM user name
+  text: string;
+}
+
+export interface Bottleneck extends PortfolioEntry {
+  owner:            string;
+  severity:         BottleneckSeverity;
+  /** The sponsor must decide something for this to move. Surfaces first on the overview. */
+  needsLeadership:  boolean;
+  resolvedAt?:      string;
+  resolvedBy?:      string;
+  resolution?:      string;
+}
+
+export interface Poc {
+  id:              string;
+  number:          number;              // POC-1, POC-2 …
+  name:            string;
+  scope?:          string;              // what is in, what is out
+  definitionOfDone?: string;            // the scope completed as planned - measurable
+  stage:           PocStage;
+  startedAt?:      string;
+  completedAt?:    string;
+  exit?:           PocExit;
+  exitReason?:     string;              // parked: technology / HW / SW not available …
+  /** Scorecard tracks this POC should move; the completion gate checks for entries since startedAt. */
+  tracks:          string[];
+  status:          PortfolioEntry[];    // append-only
+  bottlenecks:     Bottleneck[];
+  learnings:       PortfolioEntry[];    // every learning is a metric
+  nextMilestone?:  { text: string; due: string };
+}
+
+export interface UseCase {
+  id:          string;
+  bu:          string;                  // MDP · ETCH · DDP …
+  name:        string;
+  question:    string;                  // the business question, in the BU's words
+  process?:    string;                  // chamber / product / process name
+  sponsor?:    string;
+  meContact?:  string;
+  stage:       UseCaseStage;
+  health:      Health;
+  healthReason?: string;
+  anchorIds:   string[];                // chambers in SIB
+  guideIds:    string[];                // guides in SIB
+  pocs:        Poc[];
+  createdAt:   string;
+  createdBy:   string;
+  updatedAt:   string;
+  updatedBy:   string;
+}

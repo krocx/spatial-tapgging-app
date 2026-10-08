@@ -7,6 +7,20 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **POC Portfolio (`/portfolio`).** Every BU, every use-case, where each
+  stands: a use-case (the business question in the BU's words, sponsor, ME,
+  chambers and guides in SIB) with numbered POCs under it, each with a scope,
+  a definition of done (the scope completed as planned - every learning is a
+  metric), tracks, a next milestone and an exit (next POC · pilot · parked
+  with the reason). Status, bottlenecks and learnings are append-only, named
+  and dated; a bottleneck flagged "needs leadership" puts the use-case first.
+  Stage gates stop status inflating; health is separate from stage; a record
+  with no entry in seven days shows stale. The one-pager reads readiness from
+  SIB (guides, device forms, runs, verdicts, lenses) and never stores it.
+  Excel and PowerPoint exports are the weekly steering and monthly
+  leadership packs. Seeded with MDP FD10, ETCH Cathode and ETCH ESC. Owner
+  everything; Manager+ stage, scope, DoD, health, exits; Engineer+ notes.
+  Home door, Compass, Catalogue entry, docs/POC-PORTFOLIO.md.
 - **Explain pages: shared chrome.** Every page now says what its colours
   mean (a legend under the header), offers the same quick access (Learn ·
   Containers · Spatial Intelligence · Lifecycle · Readiness · All), carries

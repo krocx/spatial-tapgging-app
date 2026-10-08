@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en" class="ax">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>POC Portfolio · appliedx Connected Worker AR OMS Platform</title>
+<link rel="stylesheet" href="/portal/brand/brand.css">
+<style>
+  /* /portfolio - every BU, every use-case, where each stands (docs/POC-PORTFOLIO.md).
+     Overview for the sponsor's thirty seconds; a one-pager per use-case for
+     the steering committee. Built only from the brand system. */
+  body { margin: 0; }
+  .pf-header { display: flex; align-items: center; gap: var(--ax-s4); padding: var(--ax-s4) var(--ax-s5); border-bottom: var(--ax-hair); }
+  .pf-header .ax-nav { margin-left: var(--ax-s4); }
+  .pf-header .ax-chip { margin-left: auto; }
+  .pf-wrap { max-width: 1320px; margin: 0 auto; padding: var(--ax-s5) var(--ax-s5) var(--ax-s7); }
+  .pf-hero { display: flex; align-items: flex-end; gap: var(--ax-s4); flex-wrap: wrap; margin-bottom: var(--ax-s4); }
+  .pf-hero h1 { margin: 0; }
+  .pf-hero p { color: var(--ax-ink-2); margin: 4px 0 0; max-width: 820px; }
+  .pf-hero .pf-tools { margin-left: auto; display: flex; gap: var(--ax-s2); align-items: center; flex-wrap: wrap; }
+  .pf-strip { display: flex; gap: var(--ax-s3); flex-wrap: wrap; margin-bottom: var(--ax-s4); }
+  .pf-strip .ax-tile { flex: 1 1 150px; padding: 10px 12px; }
+  .pf-strip .ax-tile b { font: var(--ax-h2); font-size: 24px; font-family: var(--ax-mono); display: block; }
+  .pf-strip .ax-tile span { display: block; font: var(--ax-label-s); color: var(--ax-ink-3); }
+  .pf-strip .ax-tile.is-bad b { color: var(--ax-red); }
+  .pf-filters { display: flex; gap: var(--ax-s2); align-items: center; flex-wrap: wrap; margin-bottom: var(--ax-s3); }
+  .pf-filters .ax-select { min-width: 140px; }
+  .pf-table td, .pf-table th { vertical-align: top; }
+  .pf-table tr { cursor: pointer; }
+  .pf-table .uc b { display: block; }
+  .pf-table .uc span { font: var(--ax-label-s); color: var(--ax-ink-3); }
+  .pf-dots { display: inline-flex; gap: 4px; vertical-align: middle; margin-left: 6px; }
+  .pf-dots i { width: 9px; height: 9px; border-radius: 50%; border: 1px solid var(--ax-ink-4); display: inline-block; }
+  .pf-dots i.ip { background: var(--ax-blue); border-color: var(--ax-blue); }
+  .pf-dots i.done { background: var(--ax-green); border-color: var(--ax-green); }
+  .pf-dots i.parked { background: var(--ax-grey); border-color: var(--ax-grey); }
+  .h-green { color: var(--ax-green); } .h-amber { color: var(--ax-orange); } .h-red { color: var(--ax-red); }
+  .pf-health { font-weight: 600; }
+  .pf-stale { color: var(--ax-red); }
+  .pf-decision { color: var(--ax-red); font-weight: 600; }
+  /* one-pager */
+  .pf-back { display: inline-flex; align-items: center; gap: 6px; margin-bottom: var(--ax-s3); }
+  .pf-head { display: flex; gap: var(--ax-s4); align-items: flex-start; flex-wrap: wrap; margin-bottom: var(--ax-s4); }
+  .pf-head .meta { font: var(--ax-label-s); color: var(--ax-ink-3); margin-top: 4px; }
+  .pf-head .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .pf-head .edit { margin-left: auto; display: flex; gap: var(--ax-s2); flex-wrap: wrap; }
+  .pf-grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: var(--ax-s4); align-items: start; }
+  .pf-q { font: var(--ax-body-m); color: var(--ax-ink-2); margin: 0 0 var(--ax-s4); }
+  .pf-timeline { display: flex; gap: var(--ax-s2); flex-wrap: wrap; margin-bottom: var(--ax-s4); }
+  .pf-poc { flex: 1 1 180px; border: var(--ax-hair); border-radius: var(--ax-r-field); padding: 10px 12px; cursor: pointer; background: var(--ax-paper-2); }
+  .pf-poc.on { border-color: var(--ax-blue); background: var(--ax-blue-fill); }
+  .pf-poc b { display: block; font-family: var(--ax-mono); font-size: 12px; color: var(--ax-ink-3); }
+  .pf-poc span { display: block; font: var(--ax-label); }
+  .pf-poc em { font: var(--ax-label-s); color: var(--ax-ink-3); font-style: normal; }
+  .pf-sec { margin-bottom: var(--ax-s4); }
+  .pf-sec h3 { margin: 0 0 6px; font: var(--ax-label); display: flex; align-items: center; gap: 8px; }
+  .pf-sec h3 .ax-btn { margin-left: auto; }
+  .pf-sec p { margin: 0; color: var(--ax-ink-2); white-space: pre-wrap; }
+  .pf-sec .missing { color: var(--ax-orange); font: var(--ax-label-s); }
+  .pf-log li { list-style: none; padding: 6px 0; border-bottom: var(--ax-hair-2); font: var(--ax-label-r); color: var(--ax-ink-2); }
+  .pf-log { margin: 0; padding: 0; }
+  .pf-log li b { color: var(--ax-ink-3); font-family: var(--ax-mono); font-weight: 400; margin-right: 8px; font-size: 12px; }
+  .pf-log li.dec { border-left: 3px solid var(--ax-red); padding-left: 8px; }
+  .pf-log li.res { opacity: .6; }
+  .pf-ready .ax-tile { margin-bottom: var(--ax-s2); }
+  .pf-ready .ax-tile .ax-value { font-size: 20px; line-height: 26px; }
+  .pf-ready .row { display: flex; justify-content: space-between; font: var(--ax-label-s); color: var(--ax-ink-2); padding: 4px 0; border-bottom: var(--ax-hair-2); }
+  .pf-ready .row b { color: var(--ax-ink); font-weight: 600; }
+  .pf-ready h4 { margin: var(--ax-s3) 0 4px; font: var(--ax-label-s); color: var(--ax-ink-3); text-transform: uppercase; letter-spacing: .06em; }
+  .pf-ready a { color: var(--ax-ink-2); }
+  .pf-modal { position: fixed; inset: 0; background: var(--ax-scrim); z-index: 9100; display: none; align-items: center; justify-content: center; }
+  .pf-modal.open { display: flex; }
+  .pf-modal .ax-card { background: var(--ax-solid); width: min(680px, 94vw); max-height: 90vh; overflow: auto; position: relative; }
+  .pf-form label { display: block; font: var(--ax-label-s); color: var(--ax-ink-3); margin-top: var(--ax-s3); }
+  .pf-form .ax-input, .pf-form .ax-select, .pf-form .ax-textarea { width: 100%; box-sizing: border-box; margin-top: 4px; }
+  .pf-form .row { display: flex; gap: var(--ax-s3); align-items: center; margin-top: var(--ax-s4); }
+  .pf-form .row .as { font: var(--ax-label-s); color: var(--ax-ink-3); }
+  .pf-form .two { display: grid; grid-template-columns: 1fr 1fr; gap: var(--ax-s3); }
+  .pf-form .hint { font: var(--ax-label-s); color: var(--ax-ink-3); margin-top: 4px; }
+  .pf-form .check { display: flex; align-items: center; gap: 8px; margin-top: var(--ax-s3); font: var(--ax-label-r); color: var(--ax-ink-2); }
+  @media (max-width: 960px) { .pf-grid { grid-template-columns: 1fr; } .pf-form .two { grid-template-columns: 1fr; } }
+  @media print { .pf-header, .pf-tools, .pf-back, .edit, .ax-btn, #sibc-btn, .sibc-crumb { display: none !important; } .pf-wrap { padding: 0; } }
+</style>
+</head>
+<body>
+<header class="pf-header">
+  <span class="ax-wordmark"><span class="ax-a">applied</span><span class="ax-x">x</span><span class="ax-rest">Connected Worker AR OMS Platform</span></span>
+  <nav class="ax-nav"><a href="/">Home</a><a href="/portal#home">Portal</a><a href="/scorecard">Scorecard</a><a href="/portfolio" aria-current="page">POC Portfolio</a></nav>
+  <span class="ax-chip" id="pf-me" title="Every entry is saved under this name"></span>
+  <span data-brand-slot style="display:flex;align-items:center;margin-left:12px"></span>
+</header>
+
+<main class="pf-wrap" id="pf-main">
+  <div class="ax-empty" style="border:0"><span class="ax-mark is-loading"><i></i><em></em></span>Loading…</div>
+</main>
+<div class="pf-modal" id="pf-modal"></div>
+
+<script src="/portal/brand.js"></script>
+<script>
+const main = document.getElementById('pf-main');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const apiKey = () => localStorage.getItem('sib_api_key') || '';
+async function api(path, init = {}) {
+  const r = await fetch(path, { ...init, headers: { ...(apiKey() ? { 'X-API-Key': apiKey() } : {}), ...(init.body ? { 'Content-Type': 'application/json' } : {}), ...(init.headers || {}) } });
+  if (!r.ok) { let e = r.statusText; try { e = (await r.json()).error || e; } catch {} throw new Error(e); }
+  return r.json();
+}
+function toast(msg) { let t = document.getElementById('pf-toast'); if (!t) { t = document.createElement('div'); t.id = 'pf-toast'; t.className = 'ax-notice'; t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9200;max-width:min(560px,90vw)'; document.body.appendChild(t); } t.textContent = msg; t.style.display = 'block'; clearTimeout(t._h); t._h = setTimeout(() => { t.style.display = 'none'; }, 3200); }
+const icon = n => `<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-${n}"/></svg>`;
+const d = iso => iso ? iso.slice(0, 10) : '';
+const roleWord = r => ({ owner: 'Owner', manager: 'Manager', engineer: 'Engineer', technician: 'Technician' }[r] || r);
+
+let DATA = null, filters = { bu: '', stage: '' };
+const stageLabel = s => (DATA.stages.find(x => x.id === s) || {}).label || s;
+const pocStageLabel = s => (DATA.pocStages.find(x => x.id === s) || {}).label || s;
+const exitLabel = e => e ? ((DATA.exits.find(x => x.id === e) || {}).label || e) : '';
+const WHO = 'Managers and above edit stage, scope, definition of done, health and exits; Engineers and above add status notes, bottlenecks and learnings. Every entry carries a name and a date.';
+
+async function load() {
+  try { const r = await api('/portfolio/data'); DATA = r.data; } catch (e) { main.innerHTML = `<div class="ax-notice">${esc(e.message)}</div>`; return; }
+  document.getElementById('pf-me').textContent = DATA.me ? `${DATA.me.name} · ${roleWord(DATA.me.role)}` : 'Not signed in · read only';
+  route();
+}
+function route() {
+  const id = location.hash.slice(1);
+  if (id) renderUseCase(id); else renderOverview();
+}
+window.addEventListener('hashchange', route);
+
+// ── Overview ──────────────────────────────────────────────────────────────────
+function renderOverview() {
+  const s = DATA.summary;
+  const rows = DATA.rows.filter(r => (!filters.bu || r.bu === filters.bu) && (!filters.stage || r.stage === filters.stage));
+  const dots = r => `<span class="pf-dots" title="${esc(r.pocs.map(p => `POC-${p.number} ${pocStageLabel(p.stage)}`).join(' · '))}">${r.pocs.map(p => `<i class="${p.stage === 'in-progress' ? 'ip' : p.stage === 'completed' ? (p.exit === 'parked' ? 'parked' : 'done') : ''}"></i>`).join('')}</span>`;
+  main.innerHTML = `
+    <div class="pf-hero">
+      <div><div class="ax-eyebrow">POC Portfolio</div><h1>Every BU, every use-case, where each stands</h1>
+        <p>What the steering committee reads weekly and leadership monthly: which business units run a POC with us, what each is trying to prove, where it is, and what needs a decision. Readiness numbers are read from SIB, never typed. ${esc(WHO)}</p></div>
+      <div class="pf-tools">
+        ${DATA.can.edit ? `<button class="ax-btn ax-btn--primary" id="pf-new">${icon('edit')} New use-case</button>` : ''}
+        <a class="ax-btn" href="/portfolio/export.xlsx">${icon('download')} Excel</a>
+        <a class="ax-btn" href="/portfolio/export.pptx">${icon('download')} PowerPoint</a>
+      </div>
+    </div>
+    <div class="pf-strip">
+      <div class="ax-tile"><b>${s.bus.length}</b><span>BUs engaged · ${esc(s.bus.join(' · '))}</span></div>
+      <div class="ax-tile"><b>${s.useCases}</b><span>use-cases · ${DATA.stages.filter(x => s.byStage[x.id]).map(x => `${s.byStage[x.id]} ${x.label.toLowerCase()}`).join(' · ') || 'none yet'}</span></div>
+      <div class="ax-tile"><b>${s.pocsInProgress}<span style="display:inline;font:var(--ax-label-s);color:var(--ax-ink-3)"> / ${s.pocsTotal}</span></b><span>POCs in progress · ${s.pocsCompleted} completed</span></div>
+      <div class="ax-tile ${s.decisions ? 'is-bad' : ''}"><b>${s.decisions}</b><span>decisions waiting on leadership</span></div>
+      <div class="ax-tile ${s.stale ? 'is-bad' : ''}"><b>${s.stale}</b><span>stale (no entry in ${DATA.staleDays} days) · oldest ${s.oldestUpdateDays} d</span></div>
+    </div>
+    <div class="pf-filters">
+      <select class="ax-select" id="f-bu"><option value="">All BUs</option>${s.bus.map(b => `<option ${filters.bu === b ? 'selected' : ''}>${esc(b)}</option>`).join('')}</select>
+      <select class="ax-select" id="f-stage"><option value="">All stages</option>${DATA.stages.map(x => `<option value="${x.id}" ${filters.stage === x.id ? 'selected' : ''}>${esc(x.label)}</option>`).join('')}</select>
+      <span class="ax-label-s ax-muted">Order: decisions waiting first, then health, then the stalest.</span>
+    </div>
+    ${rows.length ? `<table class="ax-table pf-table"><thead><tr><th>BU</th><th>Use-case</th><th>Current POC</th><th>Stage</th><th>Health</th><th>Next milestone</th><th>Decisions</th><th>Updated</th></tr></thead><tbody>
+      ${rows.map(r => `<tr data-id="${esc(r.id)}">
+        <td><b>${esc(r.bu)}</b></td>
+        <td class="uc"><b>${esc(r.name)}</b><span>${esc(r.process || '')}${r.inSib ? '' : ' · not started in SIB'}</span></td>
+        <td>${r.currentPoc ? `POC-${r.currentPoc.number} · ${esc(r.currentPoc.name)}<br><span class="ax-label-s ax-muted">${esc(pocStageLabel(r.currentPoc.stage))}${r.currentPoc.exit ? ' · ' + esc(exitLabel(r.currentPoc.exit)) : ''}</span>` : '<span class="ax-muted">no POC yet</span>'}${dots(r)}</td>
+        <td>${esc(stageLabel(r.stage))}</td>
+        <td class="pf-health h-${r.health}" title="${esc(r.healthReason || '')}">${r.health.toUpperCase()}</td>
+        <td>${r.currentPoc?.nextMilestone ? `${esc(r.currentPoc.nextMilestone.text)}<br><span class="ax-label-s ax-muted">${esc(r.currentPoc.nextMilestone.due)}</span>` : '<span class="ax-muted">-</span>'}</td>
+        <td class="${r.decisions ? 'pf-decision' : 'ax-muted'}">${r.decisions || '-'}${r.bottlenecks ? `<br><span class="ax-label-s ax-muted">${r.bottlenecks} open</span>` : ''}</td>
+        <td class="${r.stale ? 'pf-stale' : ''}">${r.daysSince === 0 ? 'today' : r.daysSince + ' d ago'}${r.stale ? '<br><span class="ax-label-s">stale</span>' : ''}</td>
+      </tr>`).join('')}</tbody></table>` : `<div class="ax-empty"><span class="ax-mark"><i></i><em></em></span>No use-cases match.</div>`}`;
+  document.getElementById('f-bu').onchange = e => { filters.bu = e.target.value; renderOverview(); };
+  document.getElementById('f-stage').onchange = e => { filters.stage = e.target.value; renderOverview(); };
+  main.querySelectorAll('tr[data-id]').forEach(tr => tr.onclick = () => { location.hash = tr.dataset.id; });
+  const nb = document.getElementById('pf-new'); if (nb) nb.onclick = () => useCaseForm(null);
+}
+
+// ── One-pager ─────────────────────────────────────────────────────────────────
+let UC = null, RD = null, pocSel = null;
+async function renderUseCase(id) {
+  let r; try { r = await api('/portfolio/usecases/' + encodeURIComponent(id)); } catch (e) { main.innerHTML = `<div class="ax-notice">${esc(e.message)}</div><a class="ax-btn pf-back" href="#">Back</a>`; return; }
+  UC = r.data.useCase; RD = r.data.readiness;
+  const pocs = [...UC.pocs].sort((a, b) => a.number - b.number);
+  if (!pocSel || !pocs.some(p => p.id === pocSel)) pocSel = (pocs.find(p => p.stage === 'in-progress') || pocs.find(p => p.stage === 'planned') || pocs[pocs.length - 1] || {}).id || null;
+  const p = pocs.find(x => x.id === pocSel);
+  const canE = DATA.can.edit, canN = DATA.can.note;
+  const trackName = t => (DATA.tracks.find(x => x.id === t) || {}).name || t;
+  const open = p ? p.bottlenecks.filter(b => !b.resolvedAt) : [], resolved = p ? p.bottlenecks.filter(b => b.resolvedAt) : [];
+  const gateNote = p ? (p.stage === 'planned' ? (p.scope && p.definitionOfDone ? '' : 'Needs scope and definition of done before it can start.') : p.stage === 'in-progress' ? [!p.learnings.length && 'a learning', !p.exit && 'an exit', p.tracks.length && !RD.pocs[p.id]?.scorecardTouched && 'a scorecard entry on its tracks'].filter(Boolean).join(', ') && `To complete: ${[!p.learnings.length && 'a learning', !p.exit && 'an exit', p.tracks.length && !RD.pocs[p.id]?.scorecardTouched && 'a scorecard entry on its tracks'].filter(Boolean).join(', ')}.` : '') : '';
+  main.innerHTML = `
+    <a class="ax-btn pf-back" href="#">${icon('chevron')} All use-cases</a>
+    <div class="pf-head">
+      <div style="min-width:0">
+        <div class="ax-eyebrow">${esc(UC.bu)} · ${esc(stageLabel(UC.stage))}</div>
+        <h1 style="margin:0">${esc(UC.name)}</h1>
+        <div class="meta">${UC.process ? `Process: ${esc(UC.process)} · ` : ''}Sponsor: ${esc(UC.sponsor || '-')} · ME: ${esc(UC.meContact || '-')} · updated ${d(UC.updatedAt)} by ${esc(UC.updatedBy)}</div>
+        <div class="chips"><span class="ax-chip ${UC.health === 'green' ? 'ax-chip--ok' : UC.health === 'amber' ? 'ax-chip--warn' : 'ax-chip--bad'}" title="${esc(UC.healthReason || '')}">Health ${UC.health}</span>${UC.healthReason ? `<span class="ax-label-s ax-muted">${esc(UC.healthReason)}</span>` : ''}${RD.inSib ? '' : '<span class="ax-chip">not started in SIB</span>'}</div>
+      </div>
+      <div class="edit">
+        ${canE ? `<button class="ax-btn" id="uc-edit">${icon('edit')} Edit use-case</button><button class="ax-btn" id="poc-add">${icon('edit')} Add POC</button>` : ''}
+        <button class="ax-btn" onclick="window.print()">${icon('doc')} Print</button>
+      </div>
+    </div>
+    <div class="pf-grid">
+      <div>
+        <p class="pf-q">${esc(UC.question)}</p>
+        <div class="pf-timeline">${pocs.map(x => `<div class="pf-poc ${x.id === pocSel ? 'on' : ''}" data-poc="${esc(x.id)}"><b>POC-${x.number}</b><span>${esc(x.name)}</span><em>${esc(pocStageLabel(x.stage))}${x.exit ? ' · ' + esc(exitLabel(x.exit)) : ''}${x.nextMilestone ? ' · next ' + esc(x.nextMilestone.due) : ''}</em></div>`).join('') || '<div class="ax-empty">No POC yet.</div>'}</div>
+        ${p ? `
+        <div class="pf-sec"><h3>POC-${p.number} · ${esc(p.name)} <span class="ax-chip">${esc(pocStageLabel(p.stage))}</span>${canE ? `<button class="ax-btn ax-btn--sm" id="poc-edit">Edit POC</button>` : ''}</h3>
+          ${gateNote ? `<div class="missing">${esc(gateNote)}</div>` : ''}
+          <div class="ax-label-s ax-muted" style="margin-top:4px">Tracks: ${p.tracks.map(trackName).map(esc).join(', ') || 'none'}${p.startedAt ? ` · started ${d(p.startedAt)}` : ''}${p.completedAt ? ` · completed ${d(p.completedAt)}` : ''}${p.exit ? ` · exit: ${esc(exitLabel(p.exit))}${p.exitReason ? ' - ' + esc(p.exitReason) : ''}` : ''}</div></div>
+        <div class="pf-sec"><h3>Definition of done</h3><p>${p.definitionOfDone ? esc(p.definitionOfDone) : '<span class="missing">Not written yet.</span>'}</p></div>
+        <div class="pf-sec"><h3>Scope</h3><p>${p.scope ? esc(p.scope) : '<span class="missing">Not written yet.</span>'}</p></div>
+        <div class="pf-sec"><h3>Next milestone</h3><p>${p.nextMilestone ? `${esc(p.nextMilestone.text)} · <b>${esc(p.nextMilestone.due)}</b>` : '<span class="missing">None set.</span>'}</p></div>
+        <div class="pf-sec"><h3>Status ${canN ? `<button class="ax-btn ax-btn--sm" id="st-add">Add status</button>` : ''}</h3>
+          <ul class="pf-log">${[...p.status].reverse().map(e => `<li><b>${d(e.at)} · ${esc(e.by)}</b>${esc(e.text)}</li>`).join('') || '<li class="ax-muted">No status entry yet.</li>'}</ul></div>
+        <div class="pf-sec"><h3>Bottlenecks and decisions ${canN ? `<button class="ax-btn ax-btn--sm" id="bn-add">Add bottleneck</button>` : ''}</h3>
+          <ul class="pf-log">${open.map(b => `<li class="${b.needsLeadership ? 'dec' : ''}"><b>${d(b.at)} · ${esc(b.by)}</b>${b.needsLeadership ? '<span class="pf-decision">Decision needed · </span>' : ''}${esc(b.text)} <span class="ax-label-s ax-muted">owner ${esc(b.owner)} · ${esc(b.severity)}</span>${canN ? ` <button class="ax-btn ax-btn--sm" data-resolve="${esc(b.id)}">Resolve</button>` : ''}</li>`).join('')}${resolved.map(b => `<li class="res"><b>${d(b.at)} · ${esc(b.by)}</b>${esc(b.text)} <span class="ax-label-s">resolved ${d(b.resolvedAt)} by ${esc(b.resolvedBy)}: ${esc(b.resolution)}</span></li>`).join('')}${p.bottlenecks.length ? '' : '<li class="ax-muted">None.</li>'}</ul></div>
+        <div class="pf-sec"><h3>Learnings · every learning is a metric ${canN ? `<button class="ax-btn ax-btn--sm" id="ln-add">Add learning</button>` : ''}</h3>
+          <ul class="pf-log">${[...p.learnings].reverse().map(e => `<li><b>${d(e.at)} · ${esc(e.by)}</b>${esc(e.text)}</li>`).join('') || '<li class="ax-muted">None yet.</li>'}</ul></div>` : ''}
+      </div>
+      <aside class="pf-ready ax-card">
+        <div class="ax-eyebrow">Readiness · read from SIB · ${esc(RD.quarter)}</div>
+        ${RD.inSib ? `
+        <div class="ax-tile"><div class="ax-eyebrow">Published guides</div><div class="ax-value">${RD.published}<span class="ax-label-s ax-muted"> of ${RD.guides.length} linked</span></div></div>
+        <div class="ax-tile"><div class="ax-eyebrow">Runs · completed · evidenced</div><div class="ax-value">${RD.runs} · ${RD.completed} · ${RD.evidenced}</div>${RD.demoRuns ? `<div class="ax-label-s ax-muted">${RD.demoRuns} demo run${RD.demoRuns === 1 ? '' : 's'} counted apart</div>` : ''}</div>
+        <h4>Guides</h4>${RD.guides.map(g => `<div class="row"><span><a href="/portal#analytics/guide/${esc(g.id)}">${esc(g.name)}</a> <span class="ax-muted">· ${esc(g.anchor)} · ${g.steps} steps${g.published ? '' : ' · draft'}</span></span></div>`).join('') || '<div class="row ax-muted">none linked</div>'}` : `<div class="ax-notice" style="margin-top:8px">Not started in SIB yet. Link a chamber or a guide (Edit use-case) and this block fills itself.</div>`}
+        <h4>Devices · platform-wide</h4>${RD.devices.map(x => `<div class="row"><span>${esc(x.name)}</span><b>${esc(x.verdict)}${x.coverage !== null ? ` · ${Math.round(x.coverage * 100)} %` : ''}</b></div>`).join('')}
+        <h4>Scorecard lenses</h4>${RD.tracks.map(t => `<div class="row"><span><a href="/scorecard#${esc(t.id)}">${esc(t.name)}</a></span><b>L1 ${t.L1 ?? '-'} · L2 ${t.L2 ?? '-'}${t.verdict ? ` · ${esc(t.verdict)}` : ''}</b></div>`).join('')}
+        <div class="ax-label-s ax-muted" style="margin-top:10px">Device verdicts and lenses are the platform's for the quarter; guides and runs are this use-case's.</div>
+      </aside>
+    </div>`;
+  main.querySelectorAll('[data-poc]').forEach(el => el.onclick = () => { pocSel = el.dataset.poc; renderUseCase(UC.id); });
+  const b = id => document.getElementById(id);
+  if (b('uc-edit')) b('uc-edit').onclick = () => useCaseForm(UC);
+  if (b('poc-add')) b('poc-add').onclick = () => pocForm(null);
+  if (b('poc-edit')) b('poc-edit').onclick = () => pocForm(p);
+  if (b('st-add')) b('st-add').onclick = () => entryForm('status', 'Status note', 'What happened since the last entry, in plain words.');
+  if (b('ln-add')) b('ln-add').onclick = () => entryForm('learnings', 'Learning', 'What we learned, as a metric where possible: a number, a time, a rate.');
+  if (b('bn-add')) b('bn-add').onclick = () => bottleneckForm();
+  main.querySelectorAll('[data-resolve]').forEach(x => x.onclick = () => resolveForm(x.dataset.resolve));
+}
+
+// ── Forms ─────────────────────────────────────────────────────────────────────
+const modal = document.getElementById('pf-modal');
+function openModal(html, onSubmit) {
+  modal.innerHTML = `<div class="ax-card"><button class="ax-btn" style="position:absolute;top:12px;right:14px" id="pf-close">${icon('close')}</button>${html}</div>`;
+  modal.classList.add('open');
+  const close = () => modal.classList.remove('open');
+  document.getElementById('pf-close').onclick = close; modal.onclick = e => { if (e.target === modal) close(); };
+  const f = modal.querySelector('form'); if (f) f.onsubmit = async e => { e.preventDefault(); try { await onSubmit(f); close(); } catch (err) { toast(err.message); } };
+}
+const as = () => `<span class="as">Saved as ${esc(DATA.me?.name || '')} · ${roleWord(DATA.me?.role || '')}</span>`;
+const sel = (name, opts, cur, blank) => `<select class="ax-select" name="${name}">${blank ? `<option value="">${esc(blank)}</option>` : ''}${opts.map(o => `<option value="${esc(o.id)}" ${o.id === cur ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}</select>`;
+
+function useCaseForm(u) {
+  const anchors = DATA.anchors, guides = DATA.guides;
+  openModal(`<div class="ax-eyebrow">${u ? 'Edit use-case' : 'New use-case'}</div><h2 style="margin:2px 0 4px;font:var(--ax-h3)">${u ? esc(u.name) : 'A programme a BU runs with us'}</h2>
+    <form class="pf-form">
+      <div class="two"><label>BU<input class="ax-input" name="bu" value="${esc(u?.bu || '')}" placeholder="MDP · ETCH · DDP" required></label><label>Process / chamber<input class="ax-input" name="process" value="${esc(u?.process || '')}"></label></div>
+      <label>Use-case name<input class="ax-input" name="name" value="${esc(u?.name || '')}" required></label>
+      <label>Business question, in the BU's words<textarea class="ax-textarea" name="question" rows="3" required>${esc(u?.question || '')}</textarea></label>
+      <div class="two"><label>Sponsor<input class="ax-input" name="sponsor" value="${esc(u?.sponsor || '')}"></label><label>ME contact<input class="ax-input" name="meContact" value="${esc(u?.meContact || '')}"></label></div>
+      ${u ? `<div class="two"><label>Stage${sel('stage', DATA.stages, u.stage)}<div class="hint">Active needs a POC in progress; Pilot needs a completed POC with exit "move to pilot".</div></label>
+      <label>Health${sel('health', DATA.health.map(h => ({ id: h, label: h })), u.health)}<input class="ax-input" name="healthReason" value="${esc(u.healthReason || '')}" placeholder="Reason (needed for amber or red)" style="margin-top:6px"></label></div>` : ''}
+      <label>Chambers in SIB<select class="ax-select" name="anchorIds" multiple size="4">${anchors.map(a => `<option value="${esc(a.id)}" ${u?.anchorIds?.includes(a.id) ? 'selected' : ''}>${esc(a.assetId)}</option>`).join('')}</select><div class="hint">Every published guide on a linked chamber counts for this use-case.</div></label>
+      <label>Guides in SIB<select class="ax-select" name="guideIds" multiple size="5">${guides.map(g => `<option value="${esc(g.id)}" ${u?.guideIds?.includes(g.id) ? 'selected' : ''}>${esc(g.name)}${g.published ? '' : ' (draft)'}</option>`).join('')}</select></label>
+      <div class="row">${as()}<span style="flex:1"></span><button class="ax-btn ax-btn--primary" type="submit">${u ? 'Save' : 'Create'}</button></div>
+    </form>`, async f => {
+      const body = { bu: f.bu.value, process: f.process.value, name: f.name.value, question: f.question.value, sponsor: f.sponsor.value, meContact: f.meContact.value,
+        anchorIds: [...f.anchorIds.selectedOptions].map(o => o.value), guideIds: [...f.guideIds.selectedOptions].map(o => o.value) };
+      if (u) { body.stage = f.stage.value; body.health = f.health.value; body.healthReason = f.healthReason.value; await api('/portfolio/usecases/' + u.id, { method: 'PATCH', body: JSON.stringify(body) }); toast('Saved'); await load(); }
+      else { const r = await api('/portfolio/usecases', { method: 'POST', body: JSON.stringify(body) }); toast('Created'); await load(); location.hash = r.data.id; }
+    });
+}
+function pocForm(p) {
+  openModal(`<div class="ax-eyebrow">${p ? `Edit POC-${p.number}` : 'Add a POC'}</div><h2 style="margin:2px 0 4px;font:var(--ax-h3)">${p ? esc(p.name) : esc(UC.name)}</h2>
+    <form class="pf-form">
+      <label>Name<input class="ax-input" name="name" value="${esc(p?.name || '')}" required></label>
+      <label>Scope - what is in, what is out<textarea class="ax-textarea" name="scope" rows="3">${esc(p?.scope || '')}</textarea></label>
+      <label>Definition of done - the scope completed as planned, measurable<textarea class="ax-textarea" name="definitionOfDone" rows="3">${esc(p?.definitionOfDone || '')}</textarea></label>
+      <label>Scorecard tracks this POC should move<select class="ax-select" name="tracks" multiple size="3">${DATA.tracks.map(t => `<option value="${esc(t.id)}" ${p?.tracks?.includes(t.id) ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}</select><div class="hint">Completing the POC needs a scorecard entry on one of these since it started.</div></label>
+      <div class="two"><label>Next milestone<input class="ax-input" name="msText" value="${esc(p?.nextMilestone?.text || '')}" placeholder="The one thing that moves next"></label><label>Due<input class="ax-input" name="msDue" type="date" value="${esc(p?.nextMilestone?.due || '')}"></label></div>
+      ${p ? `<div class="two"><label>Stage${sel('stage', DATA.pocStages, p.stage)}<div class="hint">Start needs scope + definition of done. Complete needs a learning, an exit and a scorecard entry.</div></label>
+      <label>Exit${sel('exit', DATA.exits, p.exit || '', 'not decided')}<input class="ax-input" name="exitReason" value="${esc(p.exitReason || '')}" placeholder="Parked: the reason (technology · HW · SW not available)" style="margin-top:6px"></label></div>` : ''}
+      <div class="row">${as()}<span style="flex:1"></span><button class="ax-btn ax-btn--primary" type="submit">${p ? 'Save' : 'Add'}</button></div>
+    </form>`, async f => {
+      const body = { name: f.name.value, scope: f.scope.value, definitionOfDone: f.definitionOfDone.value, tracks: [...f.tracks.selectedOptions].map(o => o.value) };
+      body.nextMilestone = f.msText.value.trim() ? { text: f.msText.value, due: f.msDue.value } : null;
+      if (p) { body.exit = f.exit.value || null; body.exitReason = f.exitReason.value; if (f.stage.value !== p.stage) body.stage = f.stage.value;
+        await api(`/portfolio/usecases/${UC.id}/pocs/${p.id}`, { method: 'PATCH', body: JSON.stringify(body) }); toast('Saved'); }
+      else { const r = await api(`/portfolio/usecases/${UC.id}/pocs`, { method: 'POST', body: JSON.stringify(body) }); pocSel = r.data.id; toast('POC added'); }
+      await load();
+    });
+}
+function entryForm(kind, title, hint) {
+  const p = UC.pocs.find(x => x.id === pocSel);
+  openModal(`<div class="ax-eyebrow">${esc(title)} · POC-${p.number}</div><h2 style="margin:2px 0 4px;font:var(--ax-h3)">${esc(p.name)}</h2>
+    <form class="pf-form"><label>${esc(title)}<textarea class="ax-textarea" name="text" rows="4" required placeholder="${esc(hint)}"></textarea></label>
+    <div class="row">${as()}<span style="flex:1"></span><button class="ax-btn ax-btn--primary" type="submit">Add</button></div></form>`,
+    async f => { await api(`/portfolio/usecases/${UC.id}/pocs/${p.id}/${kind}`, { method: 'POST', body: JSON.stringify({ text: f.text.value }) }); toast('Added'); await load(); });
+}
+function bottleneckForm() {
+  const p = UC.pocs.find(x => x.id === pocSel);
+  openModal(`<div class="ax-eyebrow">Bottleneck · POC-${p.number}</div><h2 style="margin:2px 0 4px;font:var(--ax-h3)">${esc(p.name)}</h2>
+    <form class="pf-form"><label>What is blocking, in plain words<textarea class="ax-textarea" name="text" rows="3" required></textarea></label>
+    <div class="two"><label>Owner<input class="ax-input" name="owner" required placeholder="Who moves it"></label><label>Severity${sel('severity', [{ id: 'low', label: 'Low' }, { id: 'medium', label: 'Medium' }, { id: 'high', label: 'High' }], 'medium')}</label></div>
+    <label class="check"><input type="checkbox" name="needsLeadership"> Needs a leadership decision - surfaces first on the overview</label>
+    <div class="row">${as()}<span style="flex:1"></span><button class="ax-btn ax-btn--primary" type="submit">Add</button></div></form>`,
+    async f => { await api(`/portfolio/usecases/${UC.id}/pocs/${p.id}/bottlenecks`, { method: 'POST', body: JSON.stringify({ text: f.text.value, owner: f.owner.value, severity: f.severity.value, needsLeadership: f.needsLeadership.checked }) }); toast('Added'); await load(); });
+}
+function resolveForm(bid) {
+  const p = UC.pocs.find(x => x.id === pocSel); const b = p.bottlenecks.find(x => x.id === bid);
+  openModal(`<div class="ax-eyebrow">Resolve bottleneck</div><p class="ax-body" style="margin:4px 0 0">${esc(b.text)}</p>
+    <form class="pf-form"><label>How it was resolved<textarea class="ax-textarea" name="resolution" rows="3" required></textarea></label>
+    <div class="row">${as()}<span style="flex:1"></span><button class="ax-btn ax-btn--primary" type="submit">Resolve</button></div></form>`,
+    async f => { await api(`/portfolio/usecases/${UC.id}/pocs/${p.id}/bottlenecks/${bid}`, { method: 'PATCH', body: JSON.stringify({ resolution: f.resolution.value }) }); toast('Resolved'); await load(); });
+}
+
+load();
+</script>
+</body>
+</html>
