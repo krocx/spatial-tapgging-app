@@ -14,8 +14,8 @@
 // page has none, the strip floats top-right.
 (function () {
   const LOGOS = [
-    { file: 'logo-amat.png',     label: 'Applied Materials', h: 22 },
-    { file: 'logo-appliedx.png', label: 'AppliedX',          h: 26 },
+    { file: 'logo-amat.png',     label: 'Applied Materials', h: 34 },
+    { file: 'logo-appliedx.png', label: 'AppliedX',          h: 40 },
   ];
   // The platform wordmark - "appliedx Connected Worker AR OMS Platform":
   // "applied" in appliedx blue, "x" in appliedx green, Regular (400), exactly
@@ -32,7 +32,7 @@
     .ax-wordmark .ax-rest { margin-left:.28em; }
   `;
   const stripCss = `
-    .ax-brand { display:flex; align-items:center; gap:14px; }
+    .ax-brand { display:flex; align-items:center; gap:18px; }
     .ax-brand.float { position:fixed; top:10px; right:16px; z-index:50; }
     .ax-brand img { display:block; width:auto; object-fit:contain; opacity:.95; }
     .ax-brand .ax-ph { display:inline-flex; align-items:center; justify-content:center; height:24px; min-width:96px; padding:0 8px;
