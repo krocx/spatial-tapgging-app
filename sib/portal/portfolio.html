@@ -84,7 +84,7 @@
   .pf-view button.on { background: var(--ax-blue); color: var(--ax-on-accent); }
   .pf-map { background: var(--ax-paper-2); border: var(--ax-hair); border-radius: var(--ax-r); padding: var(--ax-s3) var(--ax-s3) var(--ax-s2); margin-bottom: var(--ax-s4); overflow-x: auto; }
   .pf-map svg { display: block; width: 100%; height: auto; font-family: var(--ax-font); }
-  .pf-map .col { fill: var(--ax-ink-3); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+  .pf-map .col { fill: var(--ax-ink-3); font-size: 10px; letter-spacing: .04em; text-transform: uppercase; }
   .pf-map .col.poc { fill: var(--ax-ink-2); }
   .pf-map .grid { stroke: var(--ax-rule-2); stroke-width: 1; }
   .pf-map .line { fill: none; stroke-width: 4; stroke-linecap: round; }
@@ -177,6 +177,7 @@ const BU_COLORS = ['var(--ax-blue)', 'var(--ax-teal)', 'var(--ax-purple)', 'var(
 const buColor = bu => BU_COLORS[Math.max(0, DATA.summary.bus.indexOf(bu)) % BU_COLORS.length];
 const STAGE_ORDER = ['identified', 'scoping', 'agreed', 'active', 'pilot', 'adopted'];
 const stageLabel = s => (DATA.stages.find(x => x.id === s) || {}).label || s;
+const healthLabel = h => (DATA.healthLabel || {})[h] || h;
 const pocStageLabel = s => (DATA.pocStages.find(x => x.id === s) || {}).label || s;
 const exitLabel = e => e ? ((DATA.exits.find(x => x.id === e) || {}).label || e) : '';
 const WHO = 'Managers and above edit stage, scope, definition of done, health and exits; Engineers and above add status notes, bottlenecks and learnings. Every entry carries a name and a date.';
@@ -228,7 +229,7 @@ function renderOverview() {
         <td class="uc"><b>${esc(r.name)}</b><span>${esc(r.process || '')}${r.inSib ? '' : ' · not started in SIB'}</span></td>
         <td>${r.currentPoc ? `POC-${r.currentPoc.number} · ${esc(r.currentPoc.name)}<br><span class="ax-label-s ax-muted">${esc(pocStageLabel(r.currentPoc.stage))}${r.currentPoc.exit ? ' · ' + esc(exitLabel(r.currentPoc.exit)) : ''}</span>` : '<span class="ax-muted">no POC yet</span>'}${dots(r)}</td>
         <td>${esc(stageLabel(r.stage))}</td>
-        <td class="pf-health h-${r.health}" title="${esc(r.healthReason || '')}">${r.health.toUpperCase()}</td>
+        <td class="pf-health h-${r.health}" title="${esc(r.healthReason || '')}">${esc(healthLabel(r.health))}</td>
         <td>${r.currentPoc?.nextMilestone ? `${esc(r.currentPoc.nextMilestone.text)}<br><span class="ax-label-s ax-muted">${esc(r.currentPoc.nextMilestone.due)}</span>` : '<span class="ax-muted">-</span>'}</td>
         <td class="${r.decisions ? 'pf-decision' : 'ax-muted'}">${r.decisions || '-'}${r.bottlenecks ? `<br><span class="ax-label-s ax-muted">${r.bottlenecks} open</span>` : ''}</td>
         <td class="${r.stale ? 'pf-stale' : ''}">${r.daysSince === 0 ? 'today' : r.daysSince + ' d ago'}${r.stale ? '<br><span class="ax-label-s">stale</span>' : ''}</td>
@@ -245,13 +246,16 @@ function renderOverview() {
 function railMap(rows) {
   if (!rows.length) return `<div class="ax-empty"><span class="ax-mark"><i></i><em></em></span>No use-cases match.</div>`;
   const maxPoc = Math.max(3, ...rows.map(r => r.pocs.length));
-  const cols = [['identified', 'Identified'], ['scoping', 'Scoping'], ['agreed', 'Agreed'], ...Array.from({ length: maxPoc }, (_, i) => [`poc${i + 1}`, `POC-${i + 1}`]), ['pilot', 'Pilot'], ['adopted', 'Adopted']];
-  const L = 250, CW = 118, RH = 78, TOP = 44, PAD = 112;
+  const cols = [['identified', 'HVP identified'], ['scoping', 'Scoping · HVP review'], ['agreed', 'DoD · scope locked'], ...Array.from({ length: maxPoc }, (_, i) => [`poc${i + 1}`, `POC-${i + 1}`]), ['pilot', 'Pilot'], ['adopted', 'Scaled']];
+  const L = 250, CW = 124, RH = 78, TOP = 66, PAD = 112;
   const W = L + cols.length * CW + PAD, H = TOP + rows.length * RH + 30;
   const cx = i => L + i * CW + CW / 2;
   const idx = id => cols.findIndex(c => c[0] === id);
   let out = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="POC portfolio rail map">`;
-  cols.forEach((c, i) => { out += `<text class="col ${c[0].startsWith('poc') ? 'poc' : ''}" x="${cx(i)}" y="22" text-anchor="middle">${esc(c[1])}</text><line class="grid" x1="${cx(i)}" y1="${TOP - 8}" x2="${cx(i)}" y2="${H - 24}"/>`; });
+  // Framework phase band (docs/POSITIONING.md § Framework): High Value Problem → XR proposal → DVS proof → WMO success
+  const phases = [['High Value Problem', 0, 1], ['XR proposal', 2, 2], ['DVS proof', 3, 2 + maxPoc], ['WMO success', 3 + maxPoc, cols.length - 1]];
+  for (const [name, a, b] of phases) { const x = cx(a) - CW / 2 + 3, w = cx(b) + CW / 2 - 3 - x; out += `<rect x="${x}" y="6" width="${w}" height="20" rx="10" fill="var(--ax-blue-fill)"/><text class="col" x="${x + w / 2}" y="20" text-anchor="middle" style="fill:var(--ax-blue)">${esc(name)}</text>`; }
+  cols.forEach((c, i) => { out += `<text class="col ${c[0].startsWith('poc') ? 'poc' : ''}" x="${cx(i)}" y="46" text-anchor="middle">${esc(c[1])}</text><line class="grid" x1="${cx(i)}" y1="${TOP - 8}" x2="${cx(i)}" y2="${H - 24}"/>`; });
   rows.forEach((r, ri) => {
     const y = TOP + ri * RH + RH / 2, color = buColor(r.bu);
     const stageIdx = STAGE_ORDER.indexOf(r.stage);
@@ -263,8 +267,8 @@ function railMap(rows) {
     pocs.forEach((p, i) => { if (p.stage === 'in-progress' || p.stage === 'completed') hereCol = Math.max(hereCol, idx(`poc${i + 1}`)); });
     const parked = r.stage === 'parked';
     const endCol = cols.length - 1;
-    out += `<rect class="row-hit" data-id="${esc(r.id)}" x="0" y="${y - RH / 2}" width="${W}" height="${RH}" rx="10"><title>${esc(r.name)} · ${esc(stageLabel(r.stage))} · health ${r.health}${r.currentPoc ? ` · POC-${r.currentPoc.number} ${esc(r.currentPoc.name)}` : ''}</title></rect>`;
-    out += `<text class="name" x="14" y="${y - 4}">${esc(r.name.length > 34 ? r.name.slice(0, 33) + '…' : r.name)}</text><text class="bu" x="14" y="${y + 13}">${esc(r.bu)}${r.process ? ' · ' + esc(r.process) : ''} · <tspan class="h-${r.health}" style="fill:${r.health === 'green' ? 'var(--ax-green)' : r.health === 'amber' ? 'var(--ax-orange)' : 'var(--ax-red)'}">${r.health}</tspan></text>`;
+    out += `<rect class="row-hit" data-id="${esc(r.id)}" x="0" y="${y - RH / 2}" width="${W}" height="${RH}" rx="10"><title>${esc(r.name)} · ${esc(stageLabel(r.stage))} · ${esc(healthLabel(r.health))}${r.currentPoc ? ` · POC-${r.currentPoc.number} ${esc(r.currentPoc.name)}` : ''}</title></rect>`;
+    out += `<text class="name" x="14" y="${y - 4}">${esc(r.name.length > 34 ? r.name.slice(0, 33) + '…' : r.name)}</text><text class="bu" x="14" y="${y + 13}">${esc(r.bu)}${r.process ? ' · ' + esc(r.process) : ''} · <tspan class="h-${r.health}" style="fill:${r.health === 'green' ? 'var(--ax-green)' : r.health === 'amber' ? 'var(--ax-orange)' : 'var(--ax-red)'}">${esc(healthLabel(r.health))}</tspan></text>`;
     // travelled line + ahead line
     out += `<line class="line" x1="${cx(0)}" y1="${y}" x2="${cx(hereCol)}" y2="${y}" style="stroke:${color}"/>`;
     if (!parked && hereCol < endCol) out += `<line class="line ahead" x1="${cx(hereCol)}" y1="${y}" x2="${cx(endCol)}" y2="${y}" style="stroke:${color}"/>`;
@@ -306,7 +310,7 @@ async function renderUseCase(id) {
         <div class="ax-eyebrow">${esc(UC.bu)} · ${esc(stageLabel(UC.stage))}</div>
         <h1 style="margin:0">${esc(UC.name)}</h1>
         <div class="meta">${UC.process ? `Process: ${esc(UC.process)} · ` : ''}Sponsor: ${esc(UC.sponsor || '-')} · ME: ${esc(UC.meContact || '-')} · updated ${d(UC.updatedAt)} by ${esc(UC.updatedBy)}</div>
-        <div class="chips"><span class="ax-chip ${UC.health === 'green' ? 'ax-chip--ok' : UC.health === 'amber' ? 'ax-chip--warn' : 'ax-chip--bad'}" title="${esc(UC.healthReason || '')}">Health ${UC.health}</span>${UC.healthReason ? `<span class="ax-label-s ax-muted">${esc(UC.healthReason)}</span>` : ''}${RD.inSib ? '' : '<span class="ax-chip">not started in SIB</span>'}</div>
+        <div class="chips"><span class="ax-chip ${UC.health === 'green' ? 'ax-chip--ok' : UC.health === 'amber' ? 'ax-chip--warn' : 'ax-chip--bad'}" title="${esc(UC.healthReason || '')}">${esc(healthLabel(UC.health))}</span>${UC.healthReason ? `<span class="ax-label-s ax-muted">${esc(UC.healthReason)}</span>` : ''}${RD.inSib ? '' : '<span class="ax-chip">not started in SIB</span>'}</div>
       </div>
       <div class="edit">
         ${canE ? `<button class="ax-btn" id="uc-edit">${icon('edit')} Edit use-case</button><button class="ax-btn" id="poc-add">${icon('edit')} Add POC</button>` : ''}
@@ -396,7 +400,7 @@ function useCaseForm(u) {
       <label>Business question, in the BU's words<textarea class="ax-textarea" name="question" rows="3" required>${esc(u?.question || '')}</textarea></label>
       <div class="two"><label>Sponsor<input class="ax-input" name="sponsor" value="${esc(u?.sponsor || '')}"></label><label>ME contact<input class="ax-input" name="meContact" value="${esc(u?.meContact || '')}"></label></div>
       ${u ? `<div class="two"><label>Stage${sel('stage', DATA.stages, u.stage)}<div class="hint">Active needs a POC in progress; Pilot needs a completed POC with exit "move to pilot".</div></label>
-      <label>Health${sel('health', DATA.health.map(h => ({ id: h, label: h })), u.health)}<input class="ax-input" name="healthReason" value="${esc(u.healthReason || '')}" placeholder="Reason (needed for amber or red)" style="margin-top:6px"></label></div>` : ''}
+      <label>Health${sel('health', DATA.health.map(h => ({ id: h, label: healthLabel(h) })), u.health)}<input class="ax-input" name="healthReason" value="${esc(u.healthReason || '')}" placeholder="Reason (needed for amber or red)" style="margin-top:6px"></label></div>` : ''}
       <label>Chambers in SIB<select class="ax-select" name="anchorIds" multiple size="4">${anchors.map(a => `<option value="${esc(a.id)}" ${u?.anchorIds?.includes(a.id) ? 'selected' : ''}>${esc(a.assetId)}</option>`).join('')}</select><div class="hint">Every published guide on a linked chamber counts for this use-case.</div></label>
       <label>Guides in SIB<select class="ax-select" name="guideIds" multiple size="5">${guides.map(g => `<option value="${esc(g.id)}" ${u?.guideIds?.includes(g.id) ? 'selected' : ''}>${esc(g.name)}${g.published ? '' : ' (draft)'}</option>`).join('')}</select></label>
       <div class="row">${as()}<span style="flex:1"></span><button class="ax-btn ax-btn--primary" type="submit">${u ? 'Save' : 'Create'}</button></div>

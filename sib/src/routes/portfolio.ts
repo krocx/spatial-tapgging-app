@@ -39,7 +39,7 @@ import { buildWorkbookXlsx, type TableRow } from '../oms/xlsx-lite.js';
 import { buildScorecard, buildTransition, scorecardTouchedSince } from './scorecard.js';
 import { quarterOf, TRACKS } from '../scorecard/scorecard-core.js';
 import { readCatalog } from './catalog.js';
-import { USECASE_STAGES, POC_STAGES, EXITS, HEALTH, STALE_DAYS, pocGate, useCaseGate, currentPoc, sortForOverview, summary, lastActivity, daysSince, openDecisions, openBottlenecks, seedUseCases, stageLabel, pocStageLabel, exitLabel } from '../portfolio/portfolio-core.js';
+import { USECASE_STAGES, POC_STAGES, EXITS, HEALTH, HEALTH_LABEL, healthLabel, STALE_DAYS, pocGate, useCaseGate, currentPoc, sortForOverview, summary, lastActivity, daysSince, openDecisions, openBottlenecks, seedUseCases, stageLabel, pocStageLabel, exitLabel } from '../portfolio/portfolio-core.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const useCaseStore = new JsonFileStore<UseCase>('portfolio-usecases');
@@ -131,7 +131,7 @@ router.get('/data', (req: Request, res: Response) => {
   res.setHeader('Cache-Control', 'no-store');
   res.json({ data: {
     summary: summary(list), rows: list.map(overviewRow),
-    stages: USECASE_STAGES, pocStages: POC_STAGES, exits: EXITS, health: HEALTH, staleDays: STALE_DAYS,
+    stages: USECASE_STAGES, pocStages: POC_STAGES, exits: EXITS, health: HEALTH, healthLabel: HEALTH_LABEL, staleDays: STALE_DAYS,
     tracks: TRACKS.map(t => ({ id: t.id, name: t.name })),
     features: (readCatalog()?.data.features ?? []).map(f => ({ id: f.id, name: f.name, status: f.status, area: f.area })).sort((a, b) => a.name.localeCompare(b.name)),
     anchors: anchorStore.findAll().filter(a => a.anchorType === undefined || a.anchorType === 'QR').map(a => ({ id: a.id, assetId: a.assetId })),
@@ -263,7 +263,7 @@ router.get('/export.xlsx', (_req: Request, res: Response) => {
   const port: TableRow[] = [], pocs: TableRow[] = [], status: TableRow[] = [], bott: TableRow[] = [], ready: TableRow[] = [];
   for (const u of list) {
     const r = overviewRow(u); const rd = readinessFor(u);
-    port.push({ cells: [u.bu, u.name, u.process ?? '', stageLabel(u.stage), u.health, u.healthReason ?? '', r.currentPoc ? `POC-${r.currentPoc.number} ${r.currentPoc.name} (${pocStageLabel(r.currentPoc.stage)})` : '', r.currentPoc?.nextMilestone ? `${r.currentPoc.nextMilestone.text} · ${r.currentPoc.nextMilestone.due}` : '', r.decisions, r.bottlenecks, d(r.lastActivity), r.daysSince, u.sponsor ?? '', u.meContact ?? ''] });
+    port.push({ cells: [u.bu, u.name, u.process ?? '', stageLabel(u.stage), healthLabel(u.health), u.healthReason ?? '', r.currentPoc ? `POC-${r.currentPoc.number} ${r.currentPoc.name} (${pocStageLabel(r.currentPoc.stage)})` : '', r.currentPoc?.nextMilestone ? `${r.currentPoc.nextMilestone.text} · ${r.currentPoc.nextMilestone.due}` : '', r.decisions, r.bottlenecks, d(r.lastActivity), r.daysSince, u.sponsor ?? '', u.meContact ?? ''] });
     for (const p of [...u.pocs].sort((a, b) => a.number - b.number)) {
       pocs.push({ cells: [u.bu, u.name, `POC-${p.number}`, p.name, pocStageLabel(p.stage), p.scope ?? '', p.definitionOfDone ?? '', p.tracks.map(t => TRACKS.find(x => x.id === t)?.name ?? t).join(', '), d(p.startedAt), d(p.completedAt), exitLabel(p.exit), p.exitReason ?? '', p.nextMilestone ? `${p.nextMilestone.text} · ${p.nextMilestone.due}` : '', p.learnings.map(l => `${d(l.at)} ${l.by}: ${l.text}`).join('\n')] });
       for (const s of p.status) status.push({ cells: [u.bu, u.name, `POC-${p.number}`, d(s.at), s.by, s.text] });
@@ -314,19 +314,22 @@ router.get('/export.pptx', async (_req: Request, res: Response) => {
     const s = base('POC PORTFOLIO  ·  OVERVIEW', `${sm.bus.length} BUs · ${sm.useCases} use-cases · ${sm.pocsInProgress} POCs in progress · ${sm.pocsCompleted} completed · ${sm.decisions} decision${sm.decisions === 1 ? '' : 's'} waiting on leadership`,
       'Decisions waiting first, then health, then the stalest. Readiness numbers read from SIB at export time.');
     const rows = [[H('BU'), H('Use-case'), H('Current POC'), H('Stage'), H('Health'), H('Next milestone'), H('Decisions'), H('Updated')],
-      ...list.map(u => { const r = overviewRow(u); return [L(u.bu), C(u.name), C(r.currentPoc ? `POC-${r.currentPoc.number} · ${r.currentPoc.name} (${pocStageLabel(r.currentPoc.stage)})` : '-'), C(stageLabel(u.stage)), C(u.health.toUpperCase(), { bold: true, color: HC[u.health] }), C(r.currentPoc?.nextMilestone ? `${r.currentPoc.nextMilestone.text} · ${r.currentPoc.nextMilestone.due}` : '-'), C(r.decisions ? String(r.decisions) : '-', { align: 'center', bold: !!r.decisions, color: r.decisions ? 'C0392B' : INK }), C(`${d(r.lastActivity)}${r.stale ? ' · stale' : ''}`, { color: r.stale ? 'C0392B' : INK })]; })];
+      ...list.map(u => { const r = overviewRow(u); return [L(u.bu), C(u.name), C(r.currentPoc ? `POC-${r.currentPoc.number} · ${r.currentPoc.name} (${pocStageLabel(r.currentPoc.stage)})` : '-'), C(stageLabel(u.stage)), C(healthLabel(u.health), { bold: true, color: HC[u.health] }), C(r.currentPoc?.nextMilestone ? `${r.currentPoc.nextMilestone.text} · ${r.currentPoc.nextMilestone.due}` : '-'), C(r.decisions ? String(r.decisions) : '-', { align: 'center', bold: !!r.decisions, color: r.decisions ? 'C0392B' : INK }), C(`${d(r.lastActivity)}${r.stale ? ' · stale' : ''}`, { color: r.stale ? 'C0392B' : INK })]; })];
     s.addTable(rows, { ...TBL, x: 0.5, y: 1.4, w: 12.33, colW: [0.8, 3.3, 3.1, 0.9, 0.8, 2.2, 0.75, 0.48] });
   }
   // Rail map slide: one line per use-case, a station per stage, filled when the gate evidence exists.
   {
     const s = base('POC PORTFOLIO  ·  RAIL MAP', 'Where each use-case is on the line, and what is ahead', 'Filled = gate evidence exists · outline = ahead · ring = you are here · n/m under a POC = platform capability already in place (Catalogue) · flag = decision waiting on leadership');
     const maxPoc = Math.max(3, ...list.map(u => u.pocs.length));
-    const cols = ['Identified', 'Scoping', 'Agreed', ...Array.from({ length: maxPoc }, (_, i) => `POC-${i + 1}`), 'Pilot', 'Adopted'];
+    const cols = ['HVP identified', 'Scoping · HVP review', 'DoD · scope locked', ...Array.from({ length: maxPoc }, (_, i) => `POC-${i + 1}`), 'Pilot', 'Scaled'];
     const LX = 0.5, LW = 3.0, X0 = LX + LW, CW = (12.83 - X0 - 0.9) / cols.length, Y0 = 1.55, RH = Math.min(0.9, (6.9 - Y0 - 0.3) / Math.max(1, list.length));
     const cx = (i: number) => X0 + i * CW + CW / 2;
     const PAL = ['4495BC', '64B5C4', 'A27BC9', 'E0A100', '6C7BD9', '7AB800'];
     const bus = [...new Set(list.map(u => u.bu))].sort();
-    cols.forEach((c, i) => s.addText(c, { x: cx(i) - CW / 2, y: Y0 - 0.3, w: CW, h: 0.25, fontFace: F, fontSize: 8.5, color: INK3, bold: true, align: 'center', charSpacing: 1 }));
+    cols.forEach((c, i) => s.addText(c, { x: cx(i) - CW / 2, y: Y0 - 0.3, w: CW, h: 0.25, fontFace: F, fontSize: 7.5, color: INK3, bold: true, align: 'center', fit: 'shrink' }));
+    // Framework phase band above the columns (docs/POSITIONING.md § Framework)
+    const phases: [string, number, number][] = [['HIGH VALUE PROBLEM', 0, 1], ['XR PROPOSAL', 2, 2], ['DVS PROOF', 3, 2 + maxPoc], ['WMO SUCCESS', 3 + maxPoc, cols.length - 1]];
+    for (const [name, a, b] of phases) { const x = cx(a) - CW / 2 + 0.04, w = cx(b) + CW / 2 - 0.04 - x; s.addShape(pres.ShapeType.rect, { x, y: Y0 - 0.62, w, h: 0.24, fill: { color: TINT }, line: { color: TINT } }); s.addText(name, { x, y: Y0 - 0.62, w, h: 0.24, fontFace: F, fontSize: 7.5, color: BLUE, bold: true, align: 'center', charSpacing: 1.5 }); }
     const SO = ['identified', 'scoping', 'agreed', 'active', 'pilot', 'adopted'];
     list.forEach((u, ri) => {
       const y = Y0 + ri * RH + RH / 2; const color = PAL[Math.max(0, bus.indexOf(u.bu)) % PAL.length];
@@ -334,7 +337,7 @@ router.get('/export.pptx', async (_req: Request, res: Response) => {
       let here = u.stage === 'adopted' ? cols.length - 1 : u.stage === 'pilot' ? cols.length - 2 : (u.stage === 'identified' ? 0 : u.stage === 'scoping' ? 1 : 2);
       pocs.forEach((p, i) => { if (p.stage !== 'planned') here = Math.max(here, 3 + i); });
       s.addText(u.name, { x: LX, y: y - 0.3, w: LW - 0.1, h: 0.3, fontFace: F, fontSize: 10, color: NAVY, bold: true, fit: 'shrink' });
-      s.addText(`${u.bu}${u.process ? ' · ' + u.process : ''} · health ${u.health}${u.stage === 'parked' ? ' · parked' : ''}`, { x: LX, y: y, w: LW - 0.1, h: 0.25, fontFace: F, fontSize: 8.5, color: HC[u.health] });
+      s.addText(`${u.bu}${u.process ? ' · ' + u.process : ''} · ${healthLabel(u.health)}${u.stage === 'parked' ? ' · parked' : ''}`, { x: LX, y: y, w: LW - 0.1, h: 0.25, fontFace: F, fontSize: 8.5, color: HC[u.health] });
       s.addShape(pres.ShapeType.line, { x: cx(0), y, w: cx(here) - cx(0), h: 0, line: { color, width: 3 } });
       if (u.stage !== 'parked' && here < cols.length - 1) s.addShape(pres.ShapeType.line, { x: cx(here), y, w: cx(cols.length - 1) - cx(here), h: 0, line: { color, width: 1, dashType: 'sysDot' } });
       cols.forEach((c, i) => {
@@ -355,7 +358,7 @@ router.get('/export.pptx', async (_req: Request, res: Response) => {
   // One slide per use-case
   for (const u of list) {
     const rd = readinessFor(u); const r = overviewRow(u);
-    const s = base(`${u.bu}  ·  ${stageLabel(u.stage).toUpperCase()}  ·  HEALTH ${u.health.toUpperCase()}`, u.name, `${u.process ? `Process: ${u.process} · ` : ''}Sponsor: ${u.sponsor || '-'} · ME: ${u.meContact || '-'} · updated ${d(r.lastActivity)} by ${u.updatedBy}`);
+    const s = base(`${u.bu}  ·  ${stageLabel(u.stage).toUpperCase()}  ·  ${healthLabel(u.health).toUpperCase()}`, u.name, `${u.process ? `Process: ${u.process} · ` : ''}Sponsor: ${u.sponsor || '-'} · ME: ${u.meContact || '-'} · updated ${d(r.lastActivity)} by ${u.updatedBy}`);
     s.addText('BUSINESS QUESTION', { x: 0.5, y: 1.35, w: 6, h: 0.22, fontFace: F, fontSize: 8.5, color: BLUE, bold: true, charSpacing: 1.5 });
     s.addText(u.question, { x: 0.5, y: 1.55, w: 7.6, h: 1.0, fontFace: F, fontSize: 10, color: INK, valign: 'top' });
     const pocRows = [[H('POC'), H('Stage'), H('Definition of done'), H('Exit'), H('Next milestone')],

@@ -27,8 +27,9 @@ use-case first on the overview.
 
 ## Stages and gates
 
-Use-case: Identified → Scoping → Agreed → Active → Pilot → Adopted, or
-Parked. POC: Planned → In progress → Completed. Status cannot inflate:
+Use-case: HVP identified → Scoping / HVP review → DoD / scope locked → POC
+active → Pilot → Scaled, or Parked (the framework's phases: High Value
+Problem → XR proposal → DVS proof → WMO success; see POSITIONING.md). POC: Planned → In progress → Completed. Status cannot inflate:
 
 - A POC starts only with its scope and definition of done written.
 - A POC completes only with at least one learning, an exit, and - when it
@@ -39,7 +40,7 @@ Parked. POC: Planned → In progress → Completed. Status cannot inflate:
   done. Starting a POC moves an earlier-stage use-case to Active by itself;
   completing one with exit "pilot" moves it to Pilot.
 
-**Health** (green · amber · red, with a reason for amber or red) is separate
+**Health** (on track · at risk · off track, with a reason when not on track) is separate
 from stage and set by a Manager: a POC can be in progress and in trouble.
 
 ## The visuals

@@ -7,6 +7,13 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **POC Portfolio speaks the programme's framework.** Health is said in
+  words - on track · at risk · off track (colours kept). Stages read as the
+  framework's phases: HVP identified · Scoping / HVP review · DoD / scope
+  locked · POC active · Pilot · Scaled, with a phase band over the rail map
+  (High Value Problem → XR proposal → DVS proof → WMO success) on the page
+  and the slide. The framework itself is written down, internal, in
+  docs/POSITIONING.md.
 - **POC Portfolio: the rail map, gate rings and the constellation.** The
   overview is a metro-style map: one line per use-case, a station per stage,
   filled only when gate evidence exists, a pulsing ring for "you are here",

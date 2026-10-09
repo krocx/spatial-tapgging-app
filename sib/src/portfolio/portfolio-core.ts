@@ -13,15 +13,25 @@
  */
 import type { UseCase, Poc, PocStage, UseCaseStage, PocExit, Health, PortfolioEntry, Bottleneck } from '@spatial/shared';
 
-export const USECASE_STAGES: { id: UseCaseStage; label: string }[] = [
-  { id: 'identified', label: 'Identified' }, { id: 'scoping', label: 'Scoping' }, { id: 'agreed', label: 'Agreed' },
-  { id: 'active', label: 'Active' }, { id: 'pilot', label: 'Pilot' }, { id: 'adopted', label: 'Adopted' }, { id: 'parked', label: 'Parked' },
+/** Stage ids are stable; the labels follow the programme's framework (docs/POSITIONING.md § Framework):
+ *  High Value Problem → Solution scoping / XR proposal → DVS proof (the POCs) → WMO success. */
+export const USECASE_STAGES: { id: UseCaseStage; label: string; phase: string }[] = [
+  { id: 'identified', label: 'HVP identified',        phase: 'High Value Problem' },
+  { id: 'scoping',    label: 'Scoping · HVP review',  phase: 'High Value Problem' },
+  { id: 'agreed',     label: 'DoD · scope locked',    phase: 'XR proposal' },
+  { id: 'active',     label: 'POC active',            phase: 'DVS proof' },
+  { id: 'pilot',      label: 'Pilot',                 phase: 'WMO success' },
+  { id: 'adopted',    label: 'Scaled',                phase: 'WMO success' },
+  { id: 'parked',     label: 'Parked',                phase: 'Exit' },
 ];
+/** Health is said in words, not colours: on track · at risk · off track. The ids keep the colour tokens. */
+export const HEALTH_LABEL: Record<Health, string> = { green: 'On track', amber: 'At risk', red: 'Off track' };
+export const healthLabel = (h: Health) => HEALTH_LABEL[h] ?? h;
 export const POC_STAGES: { id: PocStage; label: string }[] = [
   { id: 'planned', label: 'Planned' }, { id: 'in-progress', label: 'In progress' }, { id: 'completed', label: 'Completed' },
 ];
 export const EXITS: { id: PocExit; label: string }[] = [
-  { id: 'next-poc', label: 'Next POC' }, { id: 'pilot', label: 'Move to pilot' }, { id: 'parked', label: 'Parked in the backlog' },
+  { id: 'next-poc', label: 'Next POC' }, { id: 'pilot', label: 'Move to pilot' }, { id: 'parked', label: 'Parked (exit)' },
 ];
 export const HEALTH: Health[] = ['green', 'amber', 'red'];
 /** Weekly steering committee: a record older than this is stale on the overview. */
