@@ -97,6 +97,7 @@
   .pf-map .here-dot { }
   .pf-map .name { fill: var(--ax-ink); font-size: 13px; font-weight: 600; }
   .pf-map .bu { fill: var(--ax-ink-3); font-size: 11px; }
+  .pf-map .bu-tag { font-size: 11px; font-weight: 700; letter-spacing: .06em; }
   .pf-map .small { fill: var(--ax-ink-3); font-size: 10.5px; }
   .pf-map .cap { fill: var(--ax-ink-2); font-size: 10.5px; font-family: var(--ax-mono); }
   .pf-map .row-hit { fill: transparent; cursor: pointer; }
@@ -254,7 +255,7 @@ function railMap(rows) {
   if (!rows.length) return `<div class="ax-empty"><span class="ax-mark"><i></i><em></em></span>No use-cases match.</div>`;
   const maxPoc = Math.max(3, ...rows.map(r => r.pocs.length));
   const cols = [['identified', 'HVP identified'], ['scoping', 'Scoping · HVP review'], ['agreed', 'DoD · scope locked'], ...Array.from({ length: maxPoc }, (_, i) => [`poc${i + 1}`, `POC-${i + 1}`]), ['pilot', 'Pilot'], ['adopted', 'Ready to proliferate']];
-  const L = 250, CW = 132, RH = 78, TOP = 66, PAD = 112;
+  const BUW = 64, L = 250 + BUW, CW = 132, RH = 78, TOP = 66, PAD = 112;
   const W = L + cols.length * CW + PAD, H = TOP + rows.length * RH + 30;
   const cx = i => L + i * CW + CW / 2;
   const idx = id => cols.findIndex(c => c[0] === id);
@@ -275,7 +276,9 @@ function railMap(rows) {
     const parked = r.stage === 'parked';
     const endCol = cols.length - 1;
     out += `<rect class="row-hit" data-id="${esc(r.id)}" x="0" y="${y - RH / 2}" width="${W}" height="${RH}" rx="10"><title>${esc(r.name)} · ${esc(stageLabel(r.stage))} · ${esc(healthLabel(r.health))}${r.currentPoc ? ` · POC-${r.currentPoc.number} ${esc(r.currentPoc.name)}` : ''}</title></rect>`;
-    out += `<text class="name" x="14" y="${y - 4}">${esc(r.name.length > 34 ? r.name.slice(0, 33) + '…' : r.name)}</text><text class="bu" x="14" y="${y + 13}">${esc(r.bu)}${r.process ? ' · ' + esc(r.process) : ''} · <tspan class="h-${r.health}" style="fill:${r.health === 'green' ? 'var(--ax-green)' : r.health === 'amber' ? 'var(--ax-orange)' : 'var(--ax-red)'}">${esc(healthLabel(r.health))}</tspan></text>`;
+    // BU first, as its own column in the line's colour - the same first glance as the table
+    out += `<rect x="10" y="${y - 13}" width="${BUW - 12}" height="26" rx="13" fill="${color}" opacity=".18"/><text class="bu-tag" x="${10 + (BUW - 12) / 2}" y="${y + 4}" text-anchor="middle" style="fill:${color}">${esc(r.bu)}</text>`;
+    out += `<text class="name" x="${BUW + 10}" y="${y - 4}">${esc(r.name.length > 32 ? r.name.slice(0, 31) + '…' : r.name)}</text><text class="bu" x="${BUW + 10}" y="${y + 13}">${r.process ? esc(r.process) + ' · ' : ''}<tspan class="h-${r.health}" style="fill:${r.health === 'green' ? 'var(--ax-green)' : r.health === 'amber' ? 'var(--ax-orange)' : 'var(--ax-red)'}">${esc(healthLabel(r.health))}</tspan></text>`;
     // travelled line + ahead line
     out += `<line class="line" x1="${cx(0)}" y1="${y}" x2="${cx(hereCol)}" y2="${y}" style="stroke:${color}"/>`;
     if (!parked && hereCol < endCol) out += `<line class="line ahead" x1="${cx(hereCol)}" y1="${y}" x2="${cx(endCol)}" y2="${y}" style="stroke:${color}"/>`;
