@@ -554,6 +554,18 @@ it, it gets a line.
   focus ring uses it too, so where the ring sits is where a tap lands.
 
 ### Fixed
+- **Cortona import: parts the timeline introduces later no longer show at
+  step 1.** The importer seeded "hidden at start" only from the published
+  `whichChoice` snapshot - the author's current presentation, with nearly
+  everything switched on - which the Cortona player never shows; it plays
+  the timeline. A part whose first event introduces it (an install motion,
+  a switch-on, a fade in from invisible) is now seeded hidden until that
+  step; a part whose first event hides, ghosts or removes it stays visible
+  from the start. The import log says how many were seeded from the
+  timeline. Diagnosed with the office review of CHAMBER / CATHODE (772
+  parts visible entering step 1 where the player shows about 200).
+- **POC Portfolio funnel vs map.** The tiles count use-cases at a stage now
+  and say how many have passed through it, so they read with the map.
 - **Sensitivity sweep of the open docs.** Ten more catalogue features are
   marked `restricted`, so their bodies, APIs and deep-dive docs need the IP
   key like the .tag format and the code architecture: training capture,

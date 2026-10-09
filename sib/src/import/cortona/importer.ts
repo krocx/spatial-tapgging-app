@@ -45,7 +45,7 @@ export interface CortonaImportLog {
   bundle:      { entries: number; inventory: { kind: string; bytes: number }[]; hasInteractivity: boolean; hasRwi: boolean; svgs: number };
   vrml:        { header: string; protosDeclared: number; routes: number };
   protos:      { handled: string[]; ignored: string[]; unknown: string[]; counts: Record<string, number> };
-  scene:       { nodes: number; defs: number; meshes: number; triangles: number; extentM?: [number, number, number];
+  scene:       { nodes: number; defs: number; meshes: number; triangles: number; timelineHidden: number; extentM?: [number, number, number];
                  /** Hose / cable tubes rebuilt from their control points (hose.ts). */
                  hoses?: { built: number; skipped: number; controlPoints: number };
                  /** Flipbook frames baked for hoses that move in a sub-step (hose-frames.ts). */
@@ -187,6 +187,23 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
   for (const [def, sn] of scene.byDef) if (!sn.visible && sn.meshes.length + sn.children.length > 0) initialNodes.push({ node: `cmp:${def}`, show: 'hidden' });
   for (const n of restDecision.initialDeltas) initialNodes.push(pruneNode(n));   // rebased parts start where the publication put them
   for (const n of mergeSubsteps(proc.substeps.filter(ss => ss.setup)).nodes) initialNodes.push(pruneNode(n));
+  // Timeline-seeded visibility. The Cortona player never shows the published
+  // whichChoice snapshot (the author's current presentation, nearly everything
+  // switched on); it plays the timeline from the start. So a part whose FIRST
+  // event introduces it - an install motion, a switch-on, a fade in from
+  // invisible - is invisible until that step. A part whose first event hides,
+  // ghosts or removes it was visible from the start and is left alone.
+  const seededHidden = new Set(initialNodes.filter(n => n.show === 'hidden').map(n => n.node));
+  const firstEvent = new Map<string, GuideStepNode>();
+  for (const ss of [...proc.substeps].filter(ss => !ss.setup).sort((a, b) => a.stepIndex - b.stepIndex || a.subIndex - b.subIndex))
+    for (const g of [...ss.nodes].sort((a, b) => (a.delaySec ?? 0) - (b.delaySec ?? 0))) if (!firstEvent.has(g.node)) firstEvent.set(g.node, g);
+  let timelineHidden = 0;
+  for (const [node, g] of firstEvent) {
+    if (seededHidden.has(node)) continue;
+    const introduces = g.animate === 'insert' || (g.animate === 'move' && g.show !== 'hidden') || g.reveal === true;
+    if (!introduces) continue;
+    initialNodes.push({ node, show: 'hidden' }); seededHidden.add(node); timelineHidden++;
+  }
 
   const finish = (title: string, text: string, subs: ExtractedSubStep[]): ImportedGuideStep => {
     const m = mergeSubsteps(subs);
@@ -280,7 +297,7 @@ export function importCortonaBundle(input: Buffer, opts: CortonaImportOptions = 
     bundle: { entries: bundle.inventory.length, inventory: bundle.inventory.map(e => ({ kind: e.kind, bytes: e.bytes })), hasInteractivity: !!bundle.interactivity, hasRwi: !!bundle.rwi, svgs: Object.keys(bundle.svgs).length },
     vrml:   { header: vrml.header, protosDeclared: vrml.protos.size, routes: vrml.routes.length },
     protos: proc.protos,
-    scene:  { nodes: countNodes(scene.roots), defs: scene.byDef.size, meshes: scene.meshCount, triangles: scene.triangleCount,
+    scene:  { nodes: countNodes(scene.roots), defs: scene.byDef.size, meshes: scene.meshCount, triangles: scene.triangleCount, timelineHidden,
               extentM: scene.bbox ? [0, 1, 2].map(a => round(scene.bbox!.max[a] - scene.bbox!.min[a])) as [number, number, number] : undefined,
               hoses: scene.hoses, hoseFrames: hoseFrames.stats },
     procedure: { steps: proc.stepCount, substeps: proc.substeps.length, setupSubsteps, workItems: workItems.length, unreferencedSubsteps: unreferenced, stepSource,

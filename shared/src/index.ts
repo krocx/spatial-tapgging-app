@@ -1279,6 +1279,9 @@ export interface GuideStepNode {
   delaySec?:     number;
   /** Transient attention effect that leaves no state behind (Cortona "flash"). */
   effect?:       'flash';
+  /** Importer-internal (never stored): the command turned the part ON - a SwitchOFF that switches on, a
+   *  transparency fade from invisible. Used to seed the initial state from the timeline. */
+  reveal?:       boolean;
   /** Stable source key (Cortona3D objectID) for cross-checking. */
   sourceKey?:    string;
   /** Human name for the part (source object name → BOM description → part

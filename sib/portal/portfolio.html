@@ -109,7 +109,8 @@
   .pf-funnel div { background: var(--ax-paper); border-radius: var(--ax-r-field); padding: 8px 10px; text-align: center; border-top: 3px solid var(--ax-rule); }
   .pf-funnel div.has { border-top-color: var(--ax-blue); }
   .pf-funnel b { display: block; font: var(--ax-h3); font-family: var(--ax-mono); }
-  .pf-funnel span { font: var(--ax-label-s); color: var(--ax-ink-3); }
+  .pf-funnel span { font: var(--ax-label-s); color: var(--ax-ink-3); display: block; }
+  .pf-funnel em { font: var(--ax-label-s); font-style: normal; color: var(--ax-ink-4); }
   /* rings + constellation */
   .pf-rings { display: flex; gap: var(--ax-s3); flex-wrap: wrap; align-items: flex-start; margin-bottom: var(--ax-s4); }
   .pf-ring { text-align: center; cursor: pointer; padding: 8px; border-radius: var(--ax-r-field); border: 1px solid transparent; min-width: 120px; }
@@ -221,12 +222,12 @@ function renderOverview() {
       <div class="ax-tile ${s.decisions ? 'is-bad' : ''}"><b>${s.decisions}</b><span>decisions waiting on leadership</span></div>
       <div class="ax-tile ${s.stale ? 'is-bad' : ''}"><b>${s.stale}</b><span>stale (no entry in ${DATA.staleDays} days) · oldest ${s.oldestUpdateDays} d</span></div>
     </div>
-    <div class="pf-funnel">${DATA.stages.map(x => `<div class="${s.byStage[x.id] ? 'has' : ''}"><b>${s.byStage[x.id] || 0}</b><span>${esc(x.label)}</span></div>`).join('')}</div>
+    <div class="pf-funnel">${DATA.stages.map((x, i) => { const passed = x.id === 'parked' ? 0 : DATA.rows.filter(r => r.stage !== 'parked' && STAGE_ORDER.indexOf(r.stage) > STAGE_ORDER.indexOf(x.id)).length; return `<div class="${s.byStage[x.id] ? 'has' : ''}" title="${s.byStage[x.id] || 0} use-case(s) at this stage now · ${passed} passed through it"><b>${s.byStage[x.id] || 0}</b><span>${esc(x.label)}</span>${passed ? `<em>${passed} passed</em>` : ''}</div>`; }).join('')}</div>
     <div class="pf-filters">
       <span class="pf-view"><button class="${view === 'map' ? 'on' : ''}" data-view="map">Map</button><button class="${view === 'table' ? 'on' : ''}" data-view="table">Table</button></span>
       <select class="ax-select" id="f-bu"><option value="">All BUs</option>${s.bus.map(b => `<option ${filters.bu === b ? 'selected' : ''}>${esc(b)}</option>`).join('')}</select>
       <select class="ax-select" id="f-stage"><option value="">All stages</option>${DATA.stages.map(x => `<option value="${x.id}" ${filters.stage === x.id ? 'selected' : ''}>${esc(x.label)}</option>`).join('')}</select>
-      <span class="ax-label-s ax-muted">Order: decisions waiting first, then health, then the stalest.</span>
+      <span class="ax-label-s ax-muted">Order: decisions waiting first, then health, then the stalest. Tiles count use-cases at a stage now; the map fills every station a line has passed.</span>
     </div>
     ${view === 'map' ? railMap(rows) : ''}
     ${rows.length && view === 'table' ? `<table class="ax-table pf-table"><thead><tr><th>BU</th><th>Use-case</th><th>Current POC</th><th>Stage</th><th>Health</th><th>Next milestone</th><th>Decisions</th><th>Updated</th></tr></thead><tbody>

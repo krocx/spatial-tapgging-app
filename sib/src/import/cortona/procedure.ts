@@ -243,12 +243,14 @@ function applyCommand(cmd: VrmlNode, toField: string, g: GuideStepNode, fieldOr:
       const vals = seq.length ? seq : fieldOr(cmd, 'keyValue');
       const last = vals.length ? vals[vals.length - 1] : -1;
       g.show = last < 0 ? 'hidden' : 'solid';
-      if (g.show === 'solid') delete g.opacity;
+      if (g.show === 'solid') { delete g.opacity; g.reveal = true; }
       return;
     }
     case 'Set_transparency': {
       const keyValue = fieldOr(cmd, 'keyValue');          // default [0,1] = fade OUT
       const last = keyValue.length ? keyValue[keyValue.length - 1] : 1;
+      const first = keyValue.length ? keyValue[0] : 0;
+      if (first >= 0.99 && last < 0.99) g.reveal = true;   // fade IN from invisible: the part is introduced here
       if (last >= 0.99) g.show = 'hidden';
       else if (last > 0.01) { g.show = 'ghost'; g.opacity = round(1 - last); }
       else { g.show = 'solid'; delete g.opacity; }
