@@ -6,6 +6,6 @@ readiness). A new headset is a new file, not a release.
 
 Fields: `id` (kebab-case, stable), `name`, `display` (full | small | text |
 none), `overlay` (3d | reduced | none), `input` ([touch, voice, ring,
-trackpad, gaze, hands, controller, mouse]), `delivery` (app | xrkit |
+trackpad, gaze, hands, controller, mouse, buttons]), `delivery` (app | xrkit |
 companion-text | spoken), `notes`. See
 docs/ar-ojt/DEVICE-ADAPTIVE-INSTRUCTIONS.md for the rules that use them.

@@ -82,6 +82,13 @@
     #textMode.mono .tm-where, #textMode.mono .tm-parts, #textMode.mono .pill, #textMode.mono .muted { color:#5fbf5f; }
     #textMode.mono h1 { font-size:26px; }
     #textMode.mono p { font-size:20px; }
+    /* RealWear HMT-1: monocular WVGA read at arm's length - larger type, high contrast, keys hidden, buttons as spoken words */
+    #textMode.hmt { padding:14px 18px 16px; gap:10px; }
+    #textMode.hmt h1 { font-size:32px; }
+    #textMode.hmt p { font-size:24px; line-height:1.35; }
+    #textMode.hmt .tm-parts { font-size:20px; }
+    #textMode.hmt .tm-nav button { font-size:24px; padding:16px 22px; }
+    #textMode.hmt .tm-keys { font-size:16px; }
   </style>
 </head>
 <body>
@@ -120,7 +127,7 @@
       <button class="ghost" id="tmRepeat">Repeat</button>
       <button class="primary grow" id="tmNext">Next ›</button>
     </div>
-    <div class="muted tm-keys">← → to page · space next · R repeat<span id="tmVoice"></span></div>
+    <div class="muted tm-keys"><span id="tmKeys">← → to page · space next · R repeat</span><span id="tmVoice"></span></div>
   </div>
   <div id="overlay" class="hidden">
     <div class="bar">
@@ -201,6 +208,7 @@ function detectProfile() {
   if (/OculusBrowser|Quest/i.test(ua)) return 'quest-3';
   if (/Windows NT.*Edg\/.*(HoloLens|Mixed Reality)|HoloLens/i.test(ua)) return 'hololens-2';
   if (/visionOS|Vision Pro/i.test(ua)) return 'vision-pro';
+  if (/RealWear|HMT-1|T1100G|T21G/i.test(ua)) return 'realwear-hmt-1';
   return null;
 }
 let profile = null;                 // DeviceProfile from /devices, or null = full browser
@@ -559,13 +567,18 @@ function renderTextStep(st, names) {
   $('tmText').textContent = st.text || '';
   const where = whereWords(st); $('tmWhere').textContent = where ? `Where: ${where}` : '';
   $('tmParts').textContent = names.length ? `Parts: ${names.slice(0, 6).map(labelOf).join(' · ')}` : '';
-  $('tmPrev').disabled = idx === 0; $('tmNext').textContent = idx === steps.length - 1 ? 'Done ✓' : 'Next ›';
+  $('tmPrev').disabled = idx === 0; $('tmNext').textContent = profile?.id === 'realwear-hmt-1' ? (idx === steps.length - 1 ? 'Done' : 'Next') : (idx === steps.length - 1 ? 'Done ✓' : 'Next ›');
   if (profile?.display === 'none') speak(stepScript(st, names));
 }
 function startText() {
   localStorage.setItem('sib_xr_operator', opName());
   $('gate').classList.add('hidden'); $('textMode').classList.remove('hidden');
   $('textMode').classList.toggle('mono', profile?.display === 'text');
+  // Monocular, voice-driven (RealWear): bigger type at arm's length, plain spoken
+  // words on the buttons (WearHF turns visible button text into commands), no key hints.
+  const hmt = profile?.id === 'realwear-hmt-1';
+  $('textMode').classList.toggle('hmt', hmt);
+  if (hmt) { $('tmKeys').textContent = ''; $('tmPrev').textContent = 'Back'; $('tmRepeat').textContent = 'Repeat'; $('tmExit').textContent = 'Exit'; $('tmVoice').textContent = ' · say "Next", "Back", "Repeat" - and "Pass" or "Fail" on a check'; }
   $('tmProfile').textContent = profile?.name || 'text';
   placed = true; locked = true; frameKind = profile?.display === 'none' ? 'spoken' : 'text';
   if (profile?.display === 'none' && 'speechSynthesis' in window) $('tmVoice').textContent = ' · steps are read aloud';

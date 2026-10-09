@@ -7,6 +7,14 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **RealWear HMT-1 runs work instructions through the XR kit.** A device
+  profile (monocular text display, voice and buttons, no WebXR) puts it in
+  the text form: one step per screen, read at arm's length; the kit
+  recognises the device from its browser and lands there without a profile
+  parameter. The buttons read Next, Back, Repeat so WearHF makes them voice
+  commands; a check takes "pass" or "fail". "Open on a headset" offers it in
+  the text form; the readiness matrix and the Glasses transition carry a row
+  for it.
 - **POC Portfolio: DVS check and red team.** Each use-case carries the DVS
   check - what is differentiated, what is valuable to WMO, what makes it
   sustainable - shown as three cells on the one-pager and required before

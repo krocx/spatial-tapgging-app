@@ -29,7 +29,7 @@ export interface DeviceProfile {
   /** 3D overlay on the tool: full model, a reduced model (small field of view, no hoses), or none. */
   overlay: '3d' | 'reduced' | 'none';
   /** How the technician drives it. */
-  input: ('touch' | 'voice' | 'ring' | 'trackpad' | 'gaze' | 'hands' | 'controller' | 'mouse')[];
+  input: ('touch' | 'voice' | 'ring' | 'trackpad' | 'gaze' | 'hands' | 'controller' | 'mouse' | 'buttons')[];
   /** How a guide reaches it. */
   delivery: 'app' | 'xrkit' | 'companion-text' | 'spoken';
   notes?: string;
