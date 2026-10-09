@@ -11,7 +11,7 @@
  *   • The seed: the use-cases the programme runs today, so the page never
  *     opens empty.
  */
-import type { UseCase, Poc, PocStage, UseCaseStage, PocExit, Health } from '@spatial/shared';
+import type { UseCase, Poc, PocStage, UseCaseStage, PocExit, Health, PortfolioEntry, Bottleneck } from '@spatial/shared';
 
 export const USECASE_STAGES: { id: UseCaseStage; label: string }[] = [
   { id: 'identified', label: 'Identified' }, { id: 'scoping', label: 'Scoping' }, { id: 'agreed', label: 'Agreed' },
@@ -115,29 +115,45 @@ export function summary(list: UseCase[], now = new Date()) {
 
 // ── Seed: the use-cases the programme runs today ─────────────────────────────
 export function seedUseCases(at: string, by: string): UseCase[] {
-  const poc = (number: number, name: string, scope: string, dod: string, tracks: string[], stage: PocStage = 'planned'): Poc =>
-    ({ id: `poc-${number}-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 24)}`, number, name, scope, definitionOfDone: dod, stage, tracks, status: [], bottlenecks: [], learnings: [], ...(stage === 'in-progress' ? { startedAt: at } : {}) });
+  const poc = (number: number, name: string, scope: string, dod: string, tracks: string[], features: string[], stage: PocStage = 'planned', extra: Partial<Poc> = {}): Poc =>
+    ({ id: `poc-${number}-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 24)}`, number, name, scope, definitionOfDone: dod, stage, tracks, features, status: [], bottlenecks: [], learnings: [], ...(stage === 'in-progress' ? { startedAt: at } : {}), ...extra });
+  const e = (text: string): PortfolioEntry => ({ id: `seed-${Math.random().toString(36).slice(2, 8)}`, at, by, text });
+  const bn = (text: string, owner: string, severity: Bottleneck['severity'], needsLeadership: boolean): Bottleneck => ({ ...e(text), owner, severity, needsLeadership });
   const base = (id: string, bu: string, name: string, question: string, process: string, stage: UseCaseStage, pocs: Poc[]): UseCase =>
     ({ id, bu, name, question, process, stage, health: 'green', anchorIds: [], guideIds: [], pocs, createdAt: at, createdBy: by, updatedAt: at, updatedBy: by });
   return [
     base('mdp-fd10-wi', 'MDP', 'FD10 WI: the future of Connected Worker work instructions',
       'Which work instructions are still technician-driven after automation, AMRs, cobots, physical AI and agentic AI - and how those instructions adapt to the technician, showing the future of the Smart Worker and the factory of the future.',
       'FD10', 'active', [
-        poc(1, 'AR work instructions on glasses', 'Show how AR work instructions will be presented when glasses are ready: the FD10 instructions imported, placed on the equipment, delivered per device form on the devices held today.', 'The FD10 instructions run end to end on the iPad and on at least one headset class, with device readiness scored on the scorecard.', ['content-pipeline', 'hardware-fit'], 'in-progress'),
-        poc(2, 'Adaptive to the technician performing the task', 'Instructions that adapt to how the technician performs the task, rather than the static, pre-programmed instructions used for decades.', 'Baselines learned per step from real visits; at least one adaptation (pace, order or detail) demonstrated and measured against the static version.', ['content-pipeline']),
-        poc(3, 'Contextual intelligence: guide, detect, assist', 'Instructions with contextual intelligence that guide the technician as they work, auto-detect a task done correctly and validated, or done incorrectly, and assist until it is fixed.', 'Auto-recognition of task done / done wrong demonstrated on the iPad benchmark with measured precision and recall, and the assist loop closed on at least one step.', ['content-pipeline', 'ar-sdk']),
+        poc(1, 'AR work instructions on glasses', 'Show how AR work instructions will be presented when glasses are ready: the FD10 instructions imported, placed on the equipment, delivered per device form on the devices held today.', 'The FD10 instructions run end to end on the iPad and on at least one headset class, with device readiness scored on the scorecard.', ['content-pipeline', 'hardware-fit'],
+          ['guide-import', 'cortona3d-import', 'guide-library', 'spatial-steps', 'ghost-overlays', 'sealed-worldmap', 'qr-anchoring', 'device-readiness', 'guide-bundle', 'xr-kit', 'sib-on-g2', 'voice-scripts', 'trl-scorecard'], 'in-progress',
+          { nextMilestone: { text: 'FD10 use-case 1 selected with the MEs; its instructions on the iPad and on Quest 3 through the XR kit', due: '2026-12-15' },
+            status: [e('Platform in place: import, placement, device forms, XR kit and the Even G2 companion all ship. Waiting on the FD10 use-case selection to load real content.')],
+            bottlenecks: [bn('FY27 resource request: 1x AR Developer + 1x SIB DevOps (contractors, 2 years, Bangalore) - every device beyond the iPad and the production server depend on it', 'XR Product Owner', 'high', true)] }),
+        poc(2, 'Adaptive to the technician performing the task', 'Instructions that adapt to how the technician performs the task, rather than the static, pre-programmed instructions used for decades.', 'Baselines learned per step from real visits; at least one adaptation (pace, order or detail) demonstrated and measured against the static version.', ['content-pipeline'],
+          ['contextual-intelligence', 'live-telemetry', 'usage-log', 'ai-guidance', 'ar-moment-coach', 'stall-detection', 'presence-coaching', 'adaptive-instructions']),
+        poc(3, 'Contextual intelligence: guide, detect, assist', 'Instructions with contextual intelligence that guide the technician as they work, auto-detect a task done correctly and validated, or done incorrectly, and assist until it is fixed.', 'Auto-recognition of task done / done wrong demonstrated on the iPad benchmark with measured precision and recall, and the assist loop closed on at least one step.', ['content-pipeline', 'ar-sdk'],
+          ['contextual-intelligence', 'step-validation', 'training-capture', 'patch-scoring', 'ai-guidance', 'auto-recognition', 'adaptive-instructions']),
       ]),
     base('etch-cathode-3doms', 'ETCH', 'Cathode: 3D OMS to spatial computing devices',
       'How a 3D OMS publication is imported and auto-converted for spatial computing devices, so the content the BU already has reaches the technician without being re-authored.',
       'Cathode', 'active', [
-        poc(1, 'Manual import and device readiness', 'Import the Cathode 3D OMS publication manually; check the result on each device form; fix the import where the model or the steps differ from the source.', 'The Cathode publication imports with parts, steps and hidden-at-start state faithful to the source, previews on the XR kit, and has a readiness verdict per device on the scorecard.', ['content-pipeline', 'hardware-fit'], 'in-progress'),
-        poc(2, 'Dynamic import from MES', 'Pull the instructions from MES and adapt them to the device in real time, so MEs never import by hand.', 'One Cathode process pulled live from MES through the GIS-enabled API, adapted per device form, run on the floor with no manual import step.', ['content-pipeline']),
+        poc(1, 'Manual import and device readiness', 'Import the Cathode 3D OMS publication manually; check the result on each device form; fix the import where the model or the steps differ from the source.', 'The Cathode publication imports with parts, steps and hidden-at-start state faithful to the source, previews on the XR kit, and has a readiness verdict per device on the scorecard.', ['content-pipeline', 'hardware-fit'],
+          ['cortona3d-import', 'model-library', 'guide-library', 'spatial-steps', 'guide-preview-portal', 'device-readiness', 'xr-kit', 'trl-scorecard'], 'in-progress',
+          { nextMilestone: { text: 'Cathode re-imported with parts inside callouts present; Preview 3D and the Studio show the same picture', due: '2026-11-15' },
+            status: [e('Import under review: units and rest pose fixed; parts the publication starts hidden now rest hidden on every renderer; parts defined inside callouts added to the model. Re-import pending verification.')],
+            bottlenecks: [bn('Loose fasteners still visible in Preview 3D after re-import - confirm the callout fix on the CATHODE file and compare with the Studio', 'XR Product Owner', 'medium', false)] }),
+        poc(2, 'Dynamic import from MES', 'Pull the instructions from MES and adapt them to the device in real time, so MEs never import by hand.', 'One Cathode process pulled live from MES through the GIS-enabled API, adapted per device form, run on the floor with no manual import step.', ['content-pipeline'],
+          ['mes-connector', 'guide-ingestion', 'guide-bundle', 'device-readiness', 'xr-kit']),
       ]),
     base('etch-esc-json-cad', 'ETCH', 'ESC: JSON work instructions attached to CAD (.JT)',
       'The non-3D-OMS path: import the instructions as JSON and attach each instruction or step to the imported CAD (.JT) model, for content that has no 3D OMS publication.',
       'ESC', 'scoping', [
-        poc(1, 'Manual import and device readiness (JSON + CAD)', 'Import the ESC instructions as JSON, attach each step to the imported .JT model, check the result on each device form.', 'ESC steps attached to the CAD model, previewed on the XR kit, with a readiness verdict per device on the scorecard.', ['content-pipeline', 'hardware-fit']),
-        poc(2, 'Dynamic import from MES (JSON + CAD)', 'Pull the ESC instructions from MES and attach them to the CAD model automatically, adapted per device.', 'One ESC process pulled live from MES, attached to its CAD model and run on the floor without a manual import step.', ['content-pipeline']),
+        poc(1, 'Manual import and device readiness (JSON + CAD)', 'Import the ESC instructions as JSON, attach each step to the imported .JT model, check the result on each device form.', 'ESC steps attached to the CAD model, previewed on the XR kit, with a readiness verdict per device on the scorecard.', ['content-pipeline', 'hardware-fit'],
+          ['guide-import', 'cad-jt-import', 'model-library', 'spatial-steps', 'guide-preview-portal', 'device-readiness', 'xr-kit'], 'planned',
+          { nextMilestone: { text: 'ESC JSON template agreed with the ME; first .JT received for conversion', due: '2026-12-01' } }),
+        poc(2, 'Dynamic import from MES (JSON + CAD)', 'Pull the ESC instructions from MES and attach them to the CAD model automatically, adapted per device.', 'One ESC process pulled live from MES, attached to its CAD model and run on the floor without a manual import step.', ['content-pipeline'],
+          ['mes-connector', 'cad-jt-import', 'guide-ingestion', 'device-readiness']),
       ]),
   ];
 }

@@ -15,7 +15,8 @@ the health, and the chambers and guides in SIB it touches. Numbered
 **POCs** sit under it. Each POC has a scope (what is in, what is out), a
 **definition of done** - the scope completed as planned, measurable; there
 is no pass or fail, every learning is a metric - the scorecard tracks it
-should move, a next milestone with a date, and, when it closes, an **exit**:
+should move, the Catalogue features it depends on (its "platform capability
+in place"), a next milestone with a date, and, when it closes, an **exit**:
 next POC, move to pilot, or parked with the reason (technology, hardware or
 software not available).
 
@@ -40,6 +41,35 @@ Parked. POC: Planned → In progress → Completed. Status cannot inflate:
 
 **Health** (green · amber · red, with a reason for amber or red) is separate
 from stage and set by a Manager: a POC can be in progress and in trouble.
+
+## The visuals
+
+The page's primary object is a shape, not a text record; the words are one
+tap away.
+
+**The rail map (overview).** One line per use-case in its BU's colour; a
+station per stage across: Identified · Scoping · Agreed · POC-1 … POC-n ·
+Pilot · Adopted, with Parked as a siding. A station is filled only when its
+gate evidence exists (scope and definition of done for Agreed, a POC in
+progress for Active, learnings + exit + scorecard entry for a completed
+POC); the current position is a pulsing ring; what is ahead is an outline on
+a dotted line. Under each POC station, **n/m**: platform capability already
+in place, read from the Catalogue's status of the features the POC depends
+on (shipped and beta count; planned is the gap). A flag at a station is a
+decision waiting on leadership. A funnel strip above counts use-cases per
+stage. The table is one toggle away for filtering.
+
+**The gate ring (per POC, on the one-pager).** Four segments that fill only
+when the thing exists - scope, definition of done, learnings, exit with the
+scorecard entry. Four filled is completed; there is no typed percentage. The
+selected POC's ring is large and labelled; the others sit small on the line.
+
+**The readiness constellation (per use-case).** One dot per device profile
+coloured by its verdict, with guides, runs and evidenced runs beside it,
+read from SIB.
+
+The PowerPoint export carries the rail map as a slide drawn from the same
+data.
 
 ## The two views
 

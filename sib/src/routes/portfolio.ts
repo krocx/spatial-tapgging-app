@@ -38,6 +38,7 @@ import { omsUsageStore } from '../oms/usage-log.js';
 import { buildWorkbookXlsx, type TableRow } from '../oms/xlsx-lite.js';
 import { buildScorecard, buildTransition, scorecardTouchedSince } from './scorecard.js';
 import { quarterOf, TRACKS } from '../scorecard/scorecard-core.js';
+import { readCatalog } from './catalog.js';
 import { USECASE_STAGES, POC_STAGES, EXITS, HEALTH, STALE_DAYS, pocGate, useCaseGate, currentPoc, sortForOverview, summary, lastActivity, daysSince, openDecisions, openBottlenecks, seedUseCases, stageLabel, pocStageLabel, exitLabel } from '../portfolio/portfolio-core.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -63,6 +64,17 @@ function ensureSeeded(): void {
   if (useCaseStore.findAll().length) return;
   for (const u of seedUseCases(now(), 'seed')) useCaseStore.save(u);
   console.log('[SIB] POC Portfolio seeded with the programme\'s use-cases');
+}
+
+// ── Platform capability in place (from the Catalogue) ───────────────────────
+// "Shipped" and "beta" are in use; "planned" and unknown ids are the gap. The
+// POC's dependency list is the honest "what we already have behind it".
+type Cap = { inPlace: number; total: number; features: { id: string; name: string; status: string; inPlace: boolean }[] };
+function capabilityFor(p: { features?: string[] }): Cap {
+  const cat = readCatalog();
+  const byId = new Map((cat?.data.features ?? []).map(f => [f.id, f]));
+  const features = (p.features ?? []).map(id => { const f = byId.get(id); const status = f?.status ?? 'unknown'; return { id, name: f?.name ?? id, status, inPlace: status === 'shipped' || status === 'beta' }; });
+  return { inPlace: features.filter(f => f.inPlace).length, total: features.length, features };
 }
 
 // ── Live readiness block ─────────────────────────────────────────────────────
@@ -91,7 +103,7 @@ export function readinessFor(u: UseCase, quarter = quarterOf()) {
     demoRuns: runsAll.length - runs.length,
     devices: tr.devices.map(d => ({ id: d.id, name: d.name, verdict: d.verdict, coverage: d.coverage })),
     tracks,
-    pocs: Object.fromEntries(u.pocs.map(p => [p.id, { scorecardTouched: p.startedAt ? scorecardTouchedSince(p.tracks, p.startedAt) : false }])),
+    pocs: Object.fromEntries(u.pocs.map(p => [p.id, { scorecardTouched: p.startedAt ? scorecardTouchedSince(p.tracks, p.startedAt) : false, capability: capabilityFor(p) }])),
     inSib: guideIds.length > 0 || u.anchorIds.length > 0,
   };
 }
@@ -99,8 +111,8 @@ export function readinessFor(u: UseCase, quarter = quarterOf()) {
 const overviewRow = (u: UseCase) => {
   const p = currentPoc(u); const last = lastActivity(u); const days = daysSince(last) ?? 0;
   return { id: u.id, bu: u.bu, name: u.name, process: u.process, stage: u.stage, health: u.health, healthReason: u.healthReason, sponsor: u.sponsor, meContact: u.meContact,
-    currentPoc: p ? { id: p.id, number: p.number, name: p.name, stage: p.stage, exit: p.exit, nextMilestone: p.nextMilestone } : null,
-    pocs: u.pocs.map(x => ({ number: x.number, stage: x.stage, exit: x.exit })).sort((a, b) => a.number - b.number),
+    currentPoc: p ? { id: p.id, number: p.number, name: p.name, stage: p.stage, exit: p.exit, nextMilestone: p.nextMilestone, capability: (c => ({ inPlace: c.inPlace, total: c.total }))(capabilityFor(p)) } : null,
+    pocs: u.pocs.map(x => { const c = capabilityFor(x); const gate = [!!x.scope?.trim(), !!x.definitionOfDone?.trim(), x.learnings.length > 0, !!x.exit && (x.tracks.length ? (x.startedAt ? scorecardTouchedSince(x.tracks, x.startedAt) : false) : true)]; return { id: x.id, number: x.number, name: x.name, stage: x.stage, exit: x.exit, gate, inPlace: c.inPlace, total: c.total, decisions: x.bottlenecks.filter(b => b.needsLeadership && !b.resolvedAt).length, nextMilestone: x.nextMilestone }; }).sort((a, b) => a.number - b.number),
     decisions: openDecisions(u).length, bottlenecks: openBottlenecks(u).length,
     lastActivity: last, daysSince: days, stale: days > STALE_DAYS, inSib: u.anchorIds.length + u.guideIds.length > 0 };
 };
@@ -121,6 +133,7 @@ router.get('/data', (req: Request, res: Response) => {
     summary: summary(list), rows: list.map(overviewRow),
     stages: USECASE_STAGES, pocStages: POC_STAGES, exits: EXITS, health: HEALTH, staleDays: STALE_DAYS,
     tracks: TRACKS.map(t => ({ id: t.id, name: t.name })),
+    features: (readCatalog()?.data.features ?? []).map(f => ({ id: f.id, name: f.name, status: f.status, area: f.area })).sort((a, b) => a.name.localeCompare(b.name)),
     anchors: anchorStore.findAll().filter(a => a.anchorType === undefined || a.anchorType === 'QR').map(a => ({ id: a.id, assetId: a.assetId })),
     guides: guideStore.findAll().map(g => ({ id: g.id, name: g.name, anchorId: g.anchorId, published: g.published })),
     me: m, can: { edit: !!m && MANAGERS.includes(m.role), note: !!m && ENGINEERS.includes(m.role) },
@@ -130,6 +143,7 @@ router.get('/data', (req: Request, res: Response) => {
 router.get('/usecases/:id', (req: Request, res: Response) => {
   ensureSeeded();
   const u = useCaseStore.findById(req.params.id); if (!u) return gone(res, 'Use-case');
+  for (const p of u.pocs) p.features ??= [];
   res.setHeader('Cache-Control', 'no-store');
   res.json({ data: { useCase: u, readiness: readinessFor(u), row: overviewRow(u) }, timestamp: now() });
 });
@@ -171,7 +185,7 @@ router.post('/usecases/:id/pocs', requireNamed(MANAGERS, 'add a POC'), (req: Req
   const number = Number.isInteger(b.number) && b.number > 0 ? b.number : (Math.max(0, ...u.pocs.map(p => p.number)) + 1);
   if (u.pocs.some(p => p.number === number)) return bad(res, `POC-${number} already exists`);
   const p: Poc = { id: uuidv4(), number, name, scope: str(b.scope), definitionOfDone: str(b.definitionOfDone), stage: 'planned',
-    tracks: (strs(b.tracks) ?? []).filter(t => TRACKS.some(x => x.id === t)), status: [], bottlenecks: [], learnings: [] };
+    tracks: (strs(b.tracks) ?? []).filter(t => TRACKS.some(x => x.id === t)), features: strs(b.features) ?? [], status: [], bottlenecks: [], learnings: [] };
   u.pocs.push(p); touch(u, me(req)!.name);
   res.status(201).json({ data: p, timestamp: now() });
 });
@@ -187,6 +201,7 @@ router.patch('/usecases/:id/pocs/:pid', requireNamed(MANAGERS, 'edit a POC'), (r
   const b = req.body ?? {};
   for (const k of ['name', 'scope', 'definitionOfDone', 'exitReason'] as const) { const v = str(b[k], k === 'name' ? 160 : 4000); if (v !== undefined) p[k] = v; }
   if (b.tracks !== undefined) p.tracks = (strs(b.tracks) ?? []).filter(t => TRACKS.some(x => x.id === t));
+  if (b.features !== undefined) p.features = strs(b.features) ?? [];
   if (b.exit !== undefined) { if (b.exit !== null && !EXITS.some(e => e.id === b.exit)) return bad(res, 'Unknown exit'); p.exit = (b.exit ?? undefined) as PocExit | undefined; }
   if (b.nextMilestone !== undefined) {
     if (b.nextMilestone === null) delete p.nextMilestone;
@@ -301,6 +316,41 @@ router.get('/export.pptx', async (_req: Request, res: Response) => {
     const rows = [[H('BU'), H('Use-case'), H('Current POC'), H('Stage'), H('Health'), H('Next milestone'), H('Decisions'), H('Updated')],
       ...list.map(u => { const r = overviewRow(u); return [L(u.bu), C(u.name), C(r.currentPoc ? `POC-${r.currentPoc.number} · ${r.currentPoc.name} (${pocStageLabel(r.currentPoc.stage)})` : '-'), C(stageLabel(u.stage)), C(u.health.toUpperCase(), { bold: true, color: HC[u.health] }), C(r.currentPoc?.nextMilestone ? `${r.currentPoc.nextMilestone.text} · ${r.currentPoc.nextMilestone.due}` : '-'), C(r.decisions ? String(r.decisions) : '-', { align: 'center', bold: !!r.decisions, color: r.decisions ? 'C0392B' : INK }), C(`${d(r.lastActivity)}${r.stale ? ' · stale' : ''}`, { color: r.stale ? 'C0392B' : INK })]; })];
     s.addTable(rows, { ...TBL, x: 0.5, y: 1.4, w: 12.33, colW: [0.8, 3.3, 3.1, 0.9, 0.8, 2.2, 0.75, 0.48] });
+  }
+  // Rail map slide: one line per use-case, a station per stage, filled when the gate evidence exists.
+  {
+    const s = base('POC PORTFOLIO  ·  RAIL MAP', 'Where each use-case is on the line, and what is ahead', 'Filled = gate evidence exists · outline = ahead · ring = you are here · n/m under a POC = platform capability already in place (Catalogue) · flag = decision waiting on leadership');
+    const maxPoc = Math.max(3, ...list.map(u => u.pocs.length));
+    const cols = ['Identified', 'Scoping', 'Agreed', ...Array.from({ length: maxPoc }, (_, i) => `POC-${i + 1}`), 'Pilot', 'Adopted'];
+    const LX = 0.5, LW = 3.0, X0 = LX + LW, CW = (12.83 - X0 - 0.9) / cols.length, Y0 = 1.55, RH = Math.min(0.9, (6.9 - Y0 - 0.3) / Math.max(1, list.length));
+    const cx = (i: number) => X0 + i * CW + CW / 2;
+    const PAL = ['4495BC', '64B5C4', 'A27BC9', 'E0A100', '6C7BD9', '7AB800'];
+    const bus = [...new Set(list.map(u => u.bu))].sort();
+    cols.forEach((c, i) => s.addText(c, { x: cx(i) - CW / 2, y: Y0 - 0.3, w: CW, h: 0.25, fontFace: F, fontSize: 8.5, color: INK3, bold: true, align: 'center', charSpacing: 1 }));
+    const SO = ['identified', 'scoping', 'agreed', 'active', 'pilot', 'adopted'];
+    list.forEach((u, ri) => {
+      const y = Y0 + ri * RH + RH / 2; const color = PAL[Math.max(0, bus.indexOf(u.bu)) % PAL.length];
+      const si = SO.indexOf(u.stage); const pocs = [...u.pocs].sort((a, b) => a.number - b.number);
+      let here = u.stage === 'adopted' ? cols.length - 1 : u.stage === 'pilot' ? cols.length - 2 : (u.stage === 'identified' ? 0 : u.stage === 'scoping' ? 1 : 2);
+      pocs.forEach((p, i) => { if (p.stage !== 'planned') here = Math.max(here, 3 + i); });
+      s.addText(u.name, { x: LX, y: y - 0.3, w: LW - 0.1, h: 0.3, fontFace: F, fontSize: 10, color: NAVY, bold: true, fit: 'shrink' });
+      s.addText(`${u.bu}${u.process ? ' · ' + u.process : ''} · health ${u.health}${u.stage === 'parked' ? ' · parked' : ''}`, { x: LX, y: y, w: LW - 0.1, h: 0.25, fontFace: F, fontSize: 8.5, color: HC[u.health] });
+      s.addShape(pres.ShapeType.line, { x: cx(0), y, w: cx(here) - cx(0), h: 0, line: { color, width: 3 } });
+      if (u.stage !== 'parked' && here < cols.length - 1) s.addShape(pres.ShapeType.line, { x: cx(here), y, w: cx(cols.length - 1) - cx(here), h: 0, line: { color, width: 1, dashType: 'sysDot' } });
+      cols.forEach((c, i) => {
+        let done = false, sub = '', cap = '', flag = false;
+        if (i <= 2) done = si >= i; else if (i < 3 + maxPoc) { const p = pocs[i - 3]; if (!p) return; done = p.stage === 'completed'; sub = p.stage === 'in-progress' ? 'in progress' : p.stage === 'completed' ? (exitLabel(p.exit).toLowerCase() || 'done') : 'planned'; const cp = capabilityFor(p); if (cp.total) cap = `${cp.inPlace}/${cp.total}`; flag = p.bottlenecks.some(b => b.needsLeadership && !b.resolvedAt); }
+        else done = c === 'Pilot' ? si >= 4 : si >= 5;
+        const r = i === here && u.stage !== 'parked' ? 0.11 : 0.075;
+        if (i === here && u.stage !== 'parked') s.addShape(pres.ShapeType.ellipse, { x: cx(i) - 0.17, y: y - 0.17, w: 0.34, h: 0.34, fill: { color: WHITE }, line: { color, width: 1.5 } });
+        s.addShape(pres.ShapeType.ellipse, { x: cx(i) - r, y: y - r, w: 2 * r, h: 2 * r, fill: { color: done || i === here ? color : WHITE }, line: { color, width: 1.5 } });
+        if (sub) s.addText(sub, { x: cx(i) - CW / 2, y: y - 0.42, w: CW, h: 0.2, fontFace: F, fontSize: 7.5, color: INK3, align: 'center' });
+        if (cap) s.addText(cap, { x: cx(i) - CW / 2, y: y + 0.17, w: CW, h: 0.2, fontFace: F, fontSize: 8, color: INK2, align: 'center', bold: true });
+        if (flag) { s.addShape(pres.ShapeType.rect, { x: cx(i) + 0.15, y: y - 0.33, w: 0.025, h: 0.3, fill: { color: 'C0392B' }, line: { color: 'C0392B' } }); s.addShape(pres.ShapeType.triangle, { x: cx(i) + 0.175, y: y - 0.33, w: 0.16, h: 0.13, fill: { color: 'C0392B' }, line: { color: 'C0392B' }, rotate: 90 }); }
+      });
+      const cp = currentPoc(u);
+      if (cp?.nextMilestone) s.addText(`next ${cp.nextMilestone.due}`, { x: 12.83 - 1.1, y: y - 0.12, w: 1.1, h: 0.25, fontFace: F, fontSize: 8, color: INK2, align: 'right' });
+    });
   }
   // One slide per use-case
   for (const u of list) {

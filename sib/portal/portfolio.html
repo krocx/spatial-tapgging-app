@@ -78,7 +78,68 @@
   .pf-form .two { display: grid; grid-template-columns: 1fr 1fr; gap: var(--ax-s3); }
   .pf-form .hint { font: var(--ax-label-s); color: var(--ax-ink-3); margin-top: 4px; }
   .pf-form .check { display: flex; align-items: center; gap: 8px; margin-top: var(--ax-s3); font: var(--ax-label-r); color: var(--ax-ink-2); }
-  @media (max-width: 960px) { .pf-grid { grid-template-columns: 1fr; } .pf-form .two { grid-template-columns: 1fr; } }
+  /* rail map */
+  .pf-view { display: inline-flex; border: var(--ax-hair); border-radius: var(--ax-r-pill); overflow: hidden; }
+  .pf-view button { background: transparent; border: 0; color: var(--ax-ink-3); font: var(--ax-label-s); padding: 6px 12px; cursor: pointer; }
+  .pf-view button.on { background: var(--ax-blue); color: var(--ax-on-accent); }
+  .pf-map { background: var(--ax-paper-2); border: var(--ax-hair); border-radius: var(--ax-r); padding: var(--ax-s3) var(--ax-s3) var(--ax-s2); margin-bottom: var(--ax-s4); overflow-x: auto; }
+  .pf-map svg { display: block; width: 100%; height: auto; font-family: var(--ax-font); }
+  .pf-map .col { fill: var(--ax-ink-3); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+  .pf-map .col.poc { fill: var(--ax-ink-2); }
+  .pf-map .grid { stroke: var(--ax-rule-2); stroke-width: 1; }
+  .pf-map .line { fill: none; stroke-width: 4; stroke-linecap: round; }
+  .pf-map .line.ahead { stroke-dasharray: 2 7; stroke-width: 2; opacity: .55; }
+  .pf-map .line.siding { stroke-dasharray: 6 5; stroke-width: 2; }
+  .pf-map .st { stroke-width: 2.5; }
+  .pf-map .st.ahead { fill: var(--ax-solid); }
+  .pf-map .st.done { }
+  .pf-map .here { fill: none; stroke-width: 2; }
+  .pf-map .here-dot { }
+  .pf-map .name { fill: var(--ax-ink); font-size: 13px; font-weight: 600; }
+  .pf-map .bu { fill: var(--ax-ink-3); font-size: 11px; }
+  .pf-map .small { fill: var(--ax-ink-3); font-size: 10.5px; }
+  .pf-map .cap { fill: var(--ax-ink-2); font-size: 10.5px; font-family: var(--ax-mono); }
+  .pf-map .row-hit { fill: transparent; cursor: pointer; }
+  .pf-map .row-hit:hover { fill: var(--ax-paper-2); }
+  .pf-map .flag { fill: var(--ax-red); }
+  .pf-map .flag text { fill: var(--ax-on-accent); font-size: 10px; font-weight: 700; }
+  .pf-map .pulse { animation: pf-pulse 1600ms var(--ax-ease) infinite alternate; transform-origin: center; transform-box: fill-box; }
+  @keyframes pf-pulse { from { opacity: .35; } to { opacity: 1; } }
+  .pf-funnel { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-bottom: var(--ax-s4); }
+  .pf-funnel div { background: var(--ax-paper); border-radius: var(--ax-r-field); padding: 8px 10px; text-align: center; border-top: 3px solid var(--ax-rule); }
+  .pf-funnel div.has { border-top-color: var(--ax-blue); }
+  .pf-funnel b { display: block; font: var(--ax-h3); font-family: var(--ax-mono); }
+  .pf-funnel span { font: var(--ax-label-s); color: var(--ax-ink-3); }
+  /* rings + constellation */
+  .pf-rings { display: flex; gap: var(--ax-s3); flex-wrap: wrap; align-items: flex-start; margin-bottom: var(--ax-s4); }
+  .pf-ring { text-align: center; cursor: pointer; padding: 8px; border-radius: var(--ax-r-field); border: 1px solid transparent; min-width: 120px; }
+  .pf-ring.on { border-color: var(--ax-blue); background: var(--ax-blue-fill); }
+  .pf-ring svg { display: block; margin: 0 auto 4px; }
+  .pf-ring .seg { fill: none; stroke: var(--ax-rule); stroke-width: 7; stroke-linecap: butt; }
+  .pf-ring .seg.ok { stroke: var(--ax-green); }
+  .pf-ring .seg.ip { stroke: var(--ax-blue); }
+  .pf-ring .num { fill: var(--ax-ink); font: 600 15px var(--ax-mono); }
+  .pf-ring .lbl { fill: var(--ax-ink-3); font-size: 9px; }
+  .pf-ring b { display: block; font: var(--ax-label-s); color: var(--ax-ink); }
+  .pf-ring span { display: block; font: var(--ax-label-s); color: var(--ax-ink-3); }
+  .pf-ring.on b { white-space: normal; }
+  .pf-gates { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin-top: 4px; }
+  .pf-gates i { display: inline-flex; align-items: center; gap: 4px; font: var(--ax-label-s); font-style: normal; color: var(--ax-ink-3); }
+  .pf-gates i::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--ax-rule); }
+  .pf-gates i.ok { color: var(--ax-ink-2); } .pf-gates i.ok::before { background: var(--ax-green); }
+  .pf-const { display: flex; gap: var(--ax-s4); flex-wrap: wrap; align-items: center; background: var(--ax-paper); border-radius: var(--ax-r-field); padding: 10px 14px; margin-bottom: var(--ax-s4); }
+  .pf-const .dev { display: inline-flex; align-items: center; gap: 6px; font: var(--ax-label-s); color: var(--ax-ink-2); }
+  .pf-const .dev i { width: 10px; height: 10px; border-radius: 50%; background: var(--ax-rule); border: 1px solid var(--ax-ink-4); }
+  .pf-const .dev i.READY { background: var(--ax-green); border-color: var(--ax-green); } .pf-const .dev i.ASSESSING { background: var(--ax-orange); border-color: var(--ax-orange); } .pf-const .dev i.NOTYET { background: var(--ax-red); border-color: var(--ax-red); }
+  .pf-const .k { font: var(--ax-label-s); color: var(--ax-ink-3); }
+  .pf-const .n { font: var(--ax-label); font-family: var(--ax-mono); }
+  .pf-cap { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .pf-cap a { font: var(--ax-label-s); color: var(--ax-ink-2); border: var(--ax-hair); border-radius: var(--ax-r-pill); padding: 2px 9px; text-decoration: none; }
+  .pf-cap a.ok { border-color: var(--ax-green); color: var(--ax-green); }
+  .pf-cap a.gap { border-style: dashed; color: var(--ax-ink-3); }
+  details.pf-more { margin-top: 4px; }
+  details.pf-more summary { cursor: pointer; font: var(--ax-label-s); color: var(--ax-ink-3); }
+  @media (max-width: 960px) { .pf-grid { grid-template-columns: 1fr; } .pf-form .two { grid-template-columns: 1fr; } .pf-funnel { grid-template-columns: repeat(4, 1fr); } }
   @media print { .pf-header, .pf-tools, .pf-back, .edit, .ax-btn, #sibc-btn, .sibc-crumb { display: none !important; } .pf-wrap { padding: 0; } }
 </style>
 </head>
@@ -111,6 +172,10 @@ const d = iso => iso ? iso.slice(0, 10) : '';
 const roleWord = r => ({ owner: 'Owner', manager: 'Manager', engineer: 'Engineer', technician: 'Technician' }[r] || r);
 
 let DATA = null, filters = { bu: '', stage: '' };
+let view = localStorage.getItem('sib.portfolio.view') || 'map';
+const BU_COLORS = ['var(--ax-blue)', 'var(--ax-teal)', 'var(--ax-purple)', 'var(--ax-orange)', 'var(--ax-indigo)', 'var(--ax-green)'];
+const buColor = bu => BU_COLORS[Math.max(0, DATA.summary.bus.indexOf(bu)) % BU_COLORS.length];
+const STAGE_ORDER = ['identified', 'scoping', 'agreed', 'active', 'pilot', 'adopted'];
 const stageLabel = s => (DATA.stages.find(x => x.id === s) || {}).label || s;
 const pocStageLabel = s => (DATA.pocStages.find(x => x.id === s) || {}).label || s;
 const exitLabel = e => e ? ((DATA.exits.find(x => x.id === e) || {}).label || e) : '';
@@ -149,12 +214,15 @@ function renderOverview() {
       <div class="ax-tile ${s.decisions ? 'is-bad' : ''}"><b>${s.decisions}</b><span>decisions waiting on leadership</span></div>
       <div class="ax-tile ${s.stale ? 'is-bad' : ''}"><b>${s.stale}</b><span>stale (no entry in ${DATA.staleDays} days) · oldest ${s.oldestUpdateDays} d</span></div>
     </div>
+    <div class="pf-funnel">${DATA.stages.map(x => `<div class="${s.byStage[x.id] ? 'has' : ''}"><b>${s.byStage[x.id] || 0}</b><span>${esc(x.label)}</span></div>`).join('')}</div>
     <div class="pf-filters">
+      <span class="pf-view"><button class="${view === 'map' ? 'on' : ''}" data-view="map">Map</button><button class="${view === 'table' ? 'on' : ''}" data-view="table">Table</button></span>
       <select class="ax-select" id="f-bu"><option value="">All BUs</option>${s.bus.map(b => `<option ${filters.bu === b ? 'selected' : ''}>${esc(b)}</option>`).join('')}</select>
       <select class="ax-select" id="f-stage"><option value="">All stages</option>${DATA.stages.map(x => `<option value="${x.id}" ${filters.stage === x.id ? 'selected' : ''}>${esc(x.label)}</option>`).join('')}</select>
       <span class="ax-label-s ax-muted">Order: decisions waiting first, then health, then the stalest.</span>
     </div>
-    ${rows.length ? `<table class="ax-table pf-table"><thead><tr><th>BU</th><th>Use-case</th><th>Current POC</th><th>Stage</th><th>Health</th><th>Next milestone</th><th>Decisions</th><th>Updated</th></tr></thead><tbody>
+    ${view === 'map' ? railMap(rows) : ''}
+    ${rows.length && view === 'table' ? `<table class="ax-table pf-table"><thead><tr><th>BU</th><th>Use-case</th><th>Current POC</th><th>Stage</th><th>Health</th><th>Next milestone</th><th>Decisions</th><th>Updated</th></tr></thead><tbody>
       ${rows.map(r => `<tr data-id="${esc(r.id)}">
         <td><b>${esc(r.bu)}</b></td>
         <td class="uc"><b>${esc(r.name)}</b><span>${esc(r.process || '')}${r.inSib ? '' : ' · not started in SIB'}</span></td>
@@ -164,11 +232,59 @@ function renderOverview() {
         <td>${r.currentPoc?.nextMilestone ? `${esc(r.currentPoc.nextMilestone.text)}<br><span class="ax-label-s ax-muted">${esc(r.currentPoc.nextMilestone.due)}</span>` : '<span class="ax-muted">-</span>'}</td>
         <td class="${r.decisions ? 'pf-decision' : 'ax-muted'}">${r.decisions || '-'}${r.bottlenecks ? `<br><span class="ax-label-s ax-muted">${r.bottlenecks} open</span>` : ''}</td>
         <td class="${r.stale ? 'pf-stale' : ''}">${r.daysSince === 0 ? 'today' : r.daysSince + ' d ago'}${r.stale ? '<br><span class="ax-label-s">stale</span>' : ''}</td>
-      </tr>`).join('')}</tbody></table>` : `<div class="ax-empty"><span class="ax-mark"><i></i><em></em></span>No use-cases match.</div>`}`;
+      </tr>`).join('')}</tbody></table>` : (view === 'table' ? `<div class="ax-empty"><span class="ax-mark"><i></i><em></em></span>No use-cases match.</div>` : '')}`;
+  main.querySelectorAll('[data-view]').forEach(b => b.onclick = () => { view = b.dataset.view; localStorage.setItem('sib.portfolio.view', view); renderOverview(); });
+  main.querySelectorAll('.row-hit, .row-go').forEach(el => el.onclick = () => { location.hash = el.dataset.id; });
   document.getElementById('f-bu').onchange = e => { filters.bu = e.target.value; renderOverview(); };
   document.getElementById('f-stage').onchange = e => { filters.stage = e.target.value; renderOverview(); };
   main.querySelectorAll('tr[data-id]').forEach(tr => tr.onclick = () => { location.hash = tr.dataset.id; });
   const nb = document.getElementById('pf-new'); if (nb) nb.onclick = () => useCaseForm(null);
+}
+
+// ── Rail map: one line per use-case, a station per stage, filled when the gate evidence exists ──
+function railMap(rows) {
+  if (!rows.length) return `<div class="ax-empty"><span class="ax-mark"><i></i><em></em></span>No use-cases match.</div>`;
+  const maxPoc = Math.max(3, ...rows.map(r => r.pocs.length));
+  const cols = [['identified', 'Identified'], ['scoping', 'Scoping'], ['agreed', 'Agreed'], ...Array.from({ length: maxPoc }, (_, i) => [`poc${i + 1}`, `POC-${i + 1}`]), ['pilot', 'Pilot'], ['adopted', 'Adopted']];
+  const L = 250, CW = 118, RH = 78, TOP = 44, PAD = 112;
+  const W = L + cols.length * CW + PAD, H = TOP + rows.length * RH + 30;
+  const cx = i => L + i * CW + CW / 2;
+  const idx = id => cols.findIndex(c => c[0] === id);
+  let out = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="POC portfolio rail map">`;
+  cols.forEach((c, i) => { out += `<text class="col ${c[0].startsWith('poc') ? 'poc' : ''}" x="${cx(i)}" y="22" text-anchor="middle">${esc(c[1])}</text><line class="grid" x1="${cx(i)}" y1="${TOP - 8}" x2="${cx(i)}" y2="${H - 24}"/>`; });
+  rows.forEach((r, ri) => {
+    const y = TOP + ri * RH + RH / 2, color = buColor(r.bu);
+    const stageIdx = STAGE_ORDER.indexOf(r.stage);
+    // stations reached on the pre-POC stretch
+    const reached = { identified: stageIdx >= 0, scoping: stageIdx >= 1, agreed: stageIdx >= 2 };
+    const pocs = r.pocs; const n = pocs.length;
+    // furthest point of the line: last completed poc, or the in-progress one, or 'agreed'
+    let hereCol = r.stage === 'adopted' ? idx('adopted') : r.stage === 'pilot' ? idx('pilot') : idx(r.stage === 'identified' ? 'identified' : r.stage === 'scoping' ? 'scoping' : 'agreed');
+    pocs.forEach((p, i) => { if (p.stage === 'in-progress' || p.stage === 'completed') hereCol = Math.max(hereCol, idx(`poc${i + 1}`)); });
+    const parked = r.stage === 'parked';
+    const endCol = cols.length - 1;
+    out += `<rect class="row-hit" data-id="${esc(r.id)}" x="0" y="${y - RH / 2}" width="${W}" height="${RH}" rx="10"><title>${esc(r.name)} · ${esc(stageLabel(r.stage))} · health ${r.health}${r.currentPoc ? ` · POC-${r.currentPoc.number} ${esc(r.currentPoc.name)}` : ''}</title></rect>`;
+    out += `<text class="name" x="14" y="${y - 4}">${esc(r.name.length > 34 ? r.name.slice(0, 33) + '…' : r.name)}</text><text class="bu" x="14" y="${y + 13}">${esc(r.bu)}${r.process ? ' · ' + esc(r.process) : ''} · <tspan class="h-${r.health}" style="fill:${r.health === 'green' ? 'var(--ax-green)' : r.health === 'amber' ? 'var(--ax-orange)' : 'var(--ax-red)'}">${r.health}</tspan></text>`;
+    // travelled line + ahead line
+    out += `<line class="line" x1="${cx(0)}" y1="${y}" x2="${cx(hereCol)}" y2="${y}" style="stroke:${color}"/>`;
+    if (!parked && hereCol < endCol) out += `<line class="line ahead" x1="${cx(hereCol)}" y1="${y}" x2="${cx(endCol)}" y2="${y}" style="stroke:${color}"/>`;
+    if (parked) out += `<path class="line siding" d="M ${cx(hereCol)} ${y} q 20 0 28 18 h 40" style="stroke:${color}"/><text class="small" x="${cx(hereCol) + 72}" y="${y + 22}">parked</text>`;
+    // stations
+    cols.forEach((c, i) => {
+      const x = cx(i); let done = false, here = i === hereCol && !parked, label = '', sub = '';
+      if (c[0] in reached) done = reached[c[0]];
+      else if (c[0].startsWith('poc')) { const p = pocs[Number(c[0].slice(3)) - 1]; if (!p) { out += `<circle class="st ahead" cx="${x}" cy="${y}" r="4" style="stroke:var(--ax-rule)"/>`; return; } done = p.stage === 'completed'; label = p.total ? `${p.inPlace}/${p.total}` : ''; sub = p.stage === 'in-progress' ? 'in progress' : p.stage === 'completed' ? (p.exit ? exitLabel(p.exit).toLowerCase() : 'done') : 'planned'; if (p.decisions) out += `<g class="flag" transform="translate(${x + 10},${y - 34})"><rect x="0" y="0" width="2" height="24" rx="1"/><polygon points="2,0 20,5 2,10"/><title>${p.decisions} decision${p.decisions === 1 ? '' : 's'} waiting on leadership</title></g>`; }
+      else done = c[0] === 'pilot' ? stageIdx >= 4 : stageIdx >= 5;
+      if (here) out += `<circle class="here pulse" cx="${x}" cy="${y}" r="13" style="stroke:${color}"/><circle class="here-dot" cx="${x}" cy="${y}" r="6" style="fill:${color}"/>`;
+      else if (done) out += `<circle class="st done" cx="${x}" cy="${y}" r="7" style="fill:${color};stroke:${color}"/>`;
+      else out += `<circle class="st ahead" cx="${x}" cy="${y}" r="7" style="stroke:${color}"/>`;
+      if (label) out += `<text class="cap" x="${x}" y="${y + 26}" text-anchor="middle">${esc(label)}</text>`;
+      if (sub) out += `<text class="small" x="${x}" y="${y - 18}" text-anchor="middle">${esc(sub)}</text>`;
+    });
+    if (r.currentPoc?.nextMilestone) out += `<text class="small" x="${W - 12}" y="${y - 4}" text-anchor="end">next</text><text class="cap" x="${W - 12}" y="${y + 12}" text-anchor="end">${esc(r.currentPoc.nextMilestone.due)}</text>`;
+  });
+  out += `<text class="small" x="14" y="${H - 6}">filled = gate evidence exists · outline = ahead · ring = you are here · n/m under a POC = platform capability in place (Catalogue) · flag = decision waiting on leadership</text></svg>`;
+  return `<div class="pf-map">${out}</div>`;
 }
 
 // ── One-pager ─────────────────────────────────────────────────────────────────
@@ -200,14 +316,21 @@ async function renderUseCase(id) {
     <div class="pf-grid">
       <div>
         <p class="pf-q">${esc(UC.question)}</p>
-        <div class="pf-timeline">${pocs.map(x => `<div class="pf-poc ${x.id === pocSel ? 'on' : ''}" data-poc="${esc(x.id)}"><b>POC-${x.number}</b><span>${esc(x.name)}</span><em>${esc(pocStageLabel(x.stage))}${x.exit ? ' · ' + esc(exitLabel(x.exit)) : ''}${x.nextMilestone ? ' · next ' + esc(x.nextMilestone.due) : ''}</em></div>`).join('') || '<div class="ax-empty">No POC yet.</div>'}</div>
+        <div class="pf-const">
+          <span class="k">Readiness · read from SIB</span>
+          ${RD.devices.map(x => `<span class="dev" title="${esc(x.name)}: ${esc(x.verdict)}"><i class="${x.verdict === 'READY FOR PILOT' ? 'READY' : x.verdict === 'ASSESSING' ? 'ASSESSING' : x.verdict === 'NOT YET' ? 'NOTYET' : ''}"></i>${esc(x.name.replace(' (SIB app)', ''))}</span>`).join('')}
+          <span class="k" style="margin-left:auto">guides <span class="n">${RD.published}</span> · runs <span class="n">${RD.runs}</span> · evidenced <span class="n">${RD.evidenced}</span></span>
+        </div>
+        <div class="pf-rings">${pocs.map(x => gateRing(x, x.id === pocSel)).join('') || '<div class="ax-empty">No POC yet.</div>'}</div>
         ${p ? `
         <div class="pf-sec"><h3>POC-${p.number} · ${esc(p.name)} <span class="ax-chip">${esc(pocStageLabel(p.stage))}</span>${canE ? `<button class="ax-btn ax-btn--sm" id="poc-edit">Edit POC</button>` : ''}</h3>
           ${gateNote ? `<div class="missing">${esc(gateNote)}</div>` : ''}
           <div class="ax-label-s ax-muted" style="margin-top:4px">Tracks: ${p.tracks.map(trackName).map(esc).join(', ') || 'none'}${p.startedAt ? ` · started ${d(p.startedAt)}` : ''}${p.completedAt ? ` · completed ${d(p.completedAt)}` : ''}${p.exit ? ` · exit: ${esc(exitLabel(p.exit))}${p.exitReason ? ' - ' + esc(p.exitReason) : ''}` : ''}</div></div>
-        <div class="pf-sec"><h3>Definition of done</h3><p>${p.definitionOfDone ? esc(p.definitionOfDone) : '<span class="missing">Not written yet.</span>'}</p></div>
-        <div class="pf-sec"><h3>Scope</h3><p>${p.scope ? esc(p.scope) : '<span class="missing">Not written yet.</span>'}</p></div>
+        <div class="pf-sec"><h3>Platform capability in place <span class="ax-chip">${RD.pocs[p.id]?.capability?.inPlace ?? 0} of ${RD.pocs[p.id]?.capability?.total ?? 0}</span></h3>
+          <div class="pf-cap">${(RD.pocs[p.id]?.capability?.features || []).map(f => `<a class="${f.inPlace ? 'ok' : 'gap'}" href="/catalog#${encodeURIComponent(f.id)}" title="${esc(f.status)}">${esc(f.name)}</a>`).join('') || '<span class="missing">No features linked yet (Edit POC).</span>'}</div></div>
         <div class="pf-sec"><h3>Next milestone</h3><p>${p.nextMilestone ? `${esc(p.nextMilestone.text)} · <b>${esc(p.nextMilestone.due)}</b>` : '<span class="missing">None set.</span>'}</p></div>
+        <div class="pf-sec"><h3>Definition of done</h3><p>${p.definitionOfDone ? esc(p.definitionOfDone) : '<span class="missing">Not written yet.</span>'}</p>
+          <details class="pf-more"><summary>Scope - what is in, what is out</summary><p style="margin-top:6px">${p.scope ? esc(p.scope) : '<span class="missing">Not written yet.</span>'}</p></details></div>
         <div class="pf-sec"><h3>Status ${canN ? `<button class="ax-btn ax-btn--sm" id="st-add">Add status</button>` : ''}</h3>
           <ul class="pf-log">${[...p.status].reverse().map(e => `<li><b>${d(e.at)} · ${esc(e.by)}</b>${esc(e.text)}</li>`).join('') || '<li class="ax-muted">No status entry yet.</li>'}</ul></div>
         <div class="pf-sec"><h3>Bottlenecks and decisions ${canN ? `<button class="ax-btn ax-btn--sm" id="bn-add">Add bottleneck</button>` : ''}</h3>
@@ -227,6 +350,7 @@ async function renderUseCase(id) {
       </aside>
     </div>`;
   main.querySelectorAll('[data-poc]').forEach(el => el.onclick = () => { pocSel = el.dataset.poc; renderUseCase(UC.id); });
+  const sel = main.querySelector('.pf-ring.on'); if (sel) sel.classList.add('ax-lockin');
   const b = id => document.getElementById(id);
   if (b('uc-edit')) b('uc-edit').onclick = () => useCaseForm(UC);
   if (b('poc-add')) b('poc-add').onclick = () => pocForm(null);
@@ -235,6 +359,20 @@ async function renderUseCase(id) {
   if (b('ln-add')) b('ln-add').onclick = () => entryForm('learnings', 'Learning', 'What we learned, as a metric where possible: a number, a time, a rate.');
   if (b('bn-add')) b('bn-add').onclick = () => bottleneckForm();
   main.querySelectorAll('[data-resolve]').forEach(x => x.onclick = () => resolveForm(x.dataset.resolve));
+}
+
+/** The gate ring: four segments that fill only when the thing exists - scope, definition of done, learnings, exit + scorecard. */
+function gateRing(p, on) {
+  const touched = !!RD.pocs[p.id]?.scorecardTouched;
+  const gates = [['Scope', !!(p.scope || '').trim()], ['Definition of done', !!(p.definitionOfDone || '').trim()], ['Learnings', p.learnings.length > 0], ['Exit + scorecard', !!p.exit && (p.tracks.length ? touched : true)]];
+  const R = on ? 34 : 22, C = 2 * Math.PI * R, seg = C / 4, gap = 3, size = (R + 8) * 2;
+  const arcs = gates.map(([, ok], i) => `<circle class="seg ${ok ? 'ok' : (p.stage === 'in-progress' && i === 2 ? '' : '')}" r="${R}" cx="${size / 2}" cy="${size / 2}" stroke-dasharray="${seg - gap} ${C - seg + gap}" stroke-dashoffset="${-(i * seg) + C / 4}"/>`).join('');
+  const cap = RD.pocs[p.id]?.capability;
+  return `<div class="pf-ring ${on ? 'on' : ''}" data-poc="${esc(p.id)}" title="${esc(p.name)} · ${esc(pocStageLabel(p.stage))}">
+    <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${arcs}<text class="num" x="${size / 2}" y="${size / 2 + 5}" text-anchor="middle">${p.number}</text></svg>
+    <b>${on ? esc(p.name) : 'POC-' + p.number}</b><span>${esc(pocStageLabel(p.stage))}${p.exit ? ' · ' + esc(exitLabel(p.exit)) : ''}${cap && cap.total ? ` · ${cap.inPlace}/${cap.total} in place` : ''}</span>
+    ${on ? `<div class="pf-gates">${gates.map(([l, ok]) => `<i class="${ok ? 'ok' : ''}">${esc(l)}</i>`).join('')}</div>` : ''}
+  </div>`;
 }
 
 // ── Forms ─────────────────────────────────────────────────────────────────────
@@ -275,13 +413,14 @@ function pocForm(p) {
       <label>Name<input class="ax-input" name="name" value="${esc(p?.name || '')}" required></label>
       <label>Scope - what is in, what is out<textarea class="ax-textarea" name="scope" rows="3">${esc(p?.scope || '')}</textarea></label>
       <label>Definition of done - the scope completed as planned, measurable<textarea class="ax-textarea" name="definitionOfDone" rows="3">${esc(p?.definitionOfDone || '')}</textarea></label>
+      <label>Platform capabilities this POC depends on (Catalogue)<select class="ax-select" name="features" multiple size="6">${DATA.features.map(f => `<option value="${esc(f.id)}" ${p?.features?.includes(f.id) ? 'selected' : ''}>${esc(f.name)} · ${esc(f.status)}</option>`).join('')}</select><div class="hint">Shipped and beta count as in place; planned is the gap. This is the "n of m" on the map.</div></label>
       <label>Scorecard tracks this POC should move<select class="ax-select" name="tracks" multiple size="3">${DATA.tracks.map(t => `<option value="${esc(t.id)}" ${p?.tracks?.includes(t.id) ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}</select><div class="hint">Completing the POC needs a scorecard entry on one of these since it started.</div></label>
       <div class="two"><label>Next milestone<input class="ax-input" name="msText" value="${esc(p?.nextMilestone?.text || '')}" placeholder="The one thing that moves next"></label><label>Due<input class="ax-input" name="msDue" type="date" value="${esc(p?.nextMilestone?.due || '')}"></label></div>
       ${p ? `<div class="two"><label>Stage${sel('stage', DATA.pocStages, p.stage)}<div class="hint">Start needs scope + definition of done. Complete needs a learning, an exit and a scorecard entry.</div></label>
       <label>Exit${sel('exit', DATA.exits, p.exit || '', 'not decided')}<input class="ax-input" name="exitReason" value="${esc(p.exitReason || '')}" placeholder="Parked: the reason (technology · HW · SW not available)" style="margin-top:6px"></label></div>` : ''}
       <div class="row">${as()}<span style="flex:1"></span><button class="ax-btn ax-btn--primary" type="submit">${p ? 'Save' : 'Add'}</button></div>
     </form>`, async f => {
-      const body = { name: f.name.value, scope: f.scope.value, definitionOfDone: f.definitionOfDone.value, tracks: [...f.tracks.selectedOptions].map(o => o.value) };
+      const body = { name: f.name.value, scope: f.scope.value, definitionOfDone: f.definitionOfDone.value, tracks: [...f.tracks.selectedOptions].map(o => o.value), features: [...f.features.selectedOptions].map(o => o.value) };
       body.nextMilestone = f.msText.value.trim() ? { text: f.msText.value, due: f.msDue.value } : null;
       if (p) { body.exit = f.exit.value || null; body.exitReason = f.exitReason.value; if (f.stage.value !== p.stage) body.stage = f.stage.value;
         await api(`/portfolio/usecases/${UC.id}/pocs/${p.id}`, { method: 'PATCH', body: JSON.stringify(body) }); toast('Saved'); }

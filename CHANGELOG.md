@@ -7,6 +7,20 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **POC Portfolio: the rail map, gate rings and the constellation.** The
+  overview is a metro-style map: one line per use-case, a station per stage,
+  filled only when gate evidence exists, a pulsing ring for "you are here",
+  a flag for a decision waiting on leadership, and under each POC the
+  platform capability already in place (n/m from the Catalogue's feature
+  status - shipped and beta count, planned is the gap). A funnel strip above;
+  the table one toggle away. On the one-pager each POC is a four-segment gate
+  ring (scope · definition of done · learnings · exit + scorecard) and the
+  readiness block becomes a device constellation. Three Catalogue entries
+  added as planned research so the gaps are named: adaptive instructions,
+  auto-recognition of a task done, CAD (.JT) import. The seed carries the
+  programme's real open items (resource request as a decision waiting,
+  Cathode import verification as a bottleneck, first milestones). The
+  PowerPoint export gains the map as a slide.
 - **POC Portfolio (`/portfolio`).** Every BU, every use-case, where each
   stands: a use-case (the business question in the BU's words, sponsor, ME,
   chambers and guides in SIB) with numbered POCs under it, each with a scope,

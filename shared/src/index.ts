@@ -2302,6 +2302,8 @@ export interface Poc {
   exitReason?:     string;              // parked: technology / HW / SW not available …
   /** Scorecard tracks this POC should move; the completion gate checks for entries since startedAt. */
   tracks:          string[];
+  /** Catalogue feature ids the POC depends on: "platform capability in place" is read from their status. */
+  features:        string[];
   status:          PortfolioEntry[];    // append-only
   bottlenecks:     Bottleneck[];
   learnings:       PortfolioEntry[];    // every learning is a metric

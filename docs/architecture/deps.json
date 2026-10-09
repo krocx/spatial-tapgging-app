@@ -397,6 +397,7 @@
    "oms/xlsx-lite.ts",
    "portfolio/portfolio-core.ts",
    "routes/anchors.ts",
+   "routes/catalog.ts",
    "routes/devices.ts",
    "routes/scorecard.ts",
    "scorecard/scorecard-core.ts",

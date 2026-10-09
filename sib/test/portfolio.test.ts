@@ -5,7 +5,7 @@ import type { UseCase, Poc } from '@spatial/shared';
 import { pocGate, useCaseGate, sortForOverview, summary, currentPoc, seedUseCases, lastActivity, STALE_DAYS } from '../src/portfolio/portfolio-core.js';
 
 const at = '2026-10-01T00:00:00.000Z';
-const poc = (over: Partial<Poc> = {}): Poc => ({ id: 'p1', number: 1, name: 'POC-1', stage: 'planned', tracks: ['content-pipeline'], status: [], bottlenecks: [], learnings: [], ...over });
+const poc = (over: Partial<Poc> = {}): Poc => ({ id: 'p1', number: 1, name: 'POC-1', stage: 'planned', tracks: ['content-pipeline'], features: [], status: [], bottlenecks: [], learnings: [], ...over });
 const uc = (over: Partial<UseCase> = {}): UseCase => ({ id: 'u', bu: 'MDP', name: 'x', question: 'q', stage: 'identified', health: 'green', anchorIds: [], guideIds: [], pocs: [], createdAt: at, createdBy: 't', updatedAt: at, updatedBy: 't', ...over });
 
 test('a POC starts only with scope and definition of done', () => {
