@@ -39,7 +39,7 @@ import { buildWorkbookXlsx, type TableRow } from '../oms/xlsx-lite.js';
 import { buildScorecard, buildTransition, scorecardTouchedSince } from './scorecard.js';
 import { quarterOf, TRACKS } from '../scorecard/scorecard-core.js';
 import { readCatalog } from './catalog.js';
-import { USECASE_STAGES, POC_STAGES, EXITS, HEALTH, HEALTH_LABEL, healthLabel, STALE_DAYS, pocGate, useCaseGate, currentPoc, sortForOverview, summary, lastActivity, daysSince, openDecisions, openBottlenecks, seedUseCases, stageLabel, pocStageLabel, exitLabel } from '../portfolio/portfolio-core.js';
+import { USECASE_STAGES, POC_STAGES, EXITS, HEALTH, HEALTH_LABEL, healthLabel, dvsComplete, STALE_DAYS, pocGate, useCaseGate, currentPoc, sortForOverview, summary, lastActivity, daysSince, openDecisions, openBottlenecks, seedUseCases, stageLabel, pocStageLabel, exitLabel } from '../portfolio/portfolio-core.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const useCaseStore = new JsonFileStore<UseCase>('portfolio-usecases');
@@ -114,7 +114,7 @@ const overviewRow = (u: UseCase) => {
     currentPoc: p ? { id: p.id, number: p.number, name: p.name, stage: p.stage, exit: p.exit, nextMilestone: p.nextMilestone, capability: (c => ({ inPlace: c.inPlace, total: c.total }))(capabilityFor(p)) } : null,
     pocs: u.pocs.map(x => { const c = capabilityFor(x); const gate = [!!x.scope?.trim(), !!x.definitionOfDone?.trim(), x.learnings.length > 0, !!x.exit && (x.tracks.length ? (x.startedAt ? scorecardTouchedSince(x.tracks, x.startedAt) : false) : true)]; return { id: x.id, number: x.number, name: x.name, stage: x.stage, exit: x.exit, gate, inPlace: c.inPlace, total: c.total, decisions: x.bottlenecks.filter(b => b.needsLeadership && !b.resolvedAt).length, nextMilestone: x.nextMilestone }; }).sort((a, b) => a.number - b.number),
     decisions: openDecisions(u).length, bottlenecks: openBottlenecks(u).length,
-    lastActivity: last, daysSince: days, stale: days > STALE_DAYS, inSib: u.anchorIds.length + u.guideIds.length > 0 };
+    lastActivity: last, daysSince: days, stale: days > STALE_DAYS, inSib: u.anchorIds.length + u.guideIds.length > 0, dvs: dvsComplete(u) };
 };
 
 const router = Router();
@@ -157,6 +157,7 @@ router.post('/usecases', requireNamed(MANAGERS, 'create a use-case'), (req: Requ
   if (!bu || !name || !question) return bad(res, 'bu, name and question are required');
   const u: UseCase = { id: uuidv4(), bu, name, question, process: str(b.process, 120), sponsor: str(b.sponsor, 120), meContact: str(b.meContact, 120),
     stage: 'identified', health: 'green', anchorIds: strs(b.anchorIds) ?? [], guideIds: strs(b.guideIds) ?? [], pocs: [],
+    dvs: b.dvs && typeof b.dvs === 'object' ? { differentiated: str(b.dvs.differentiated), valuable: str(b.dvs.valuable), sustainable: str(b.dvs.sustainable) } : undefined,
     createdAt: now(), createdBy: me(req)!.name, updatedAt: now(), updatedBy: me(req)!.name };
   useCaseStore.save(u);
   res.status(201).json({ data: u, timestamp: now() });
@@ -166,6 +167,7 @@ router.patch('/usecases/:id', requireNamed(MANAGERS, 'edit a use-case'), (req: R
   const u = useCaseStore.findById(req.params.id); if (!u) return gone(res, 'Use-case');
   const b = req.body ?? {};
   for (const k of ['bu', 'name', 'question', 'process', 'sponsor', 'meContact', 'healthReason'] as const) { const v = str(b[k], k === 'question' ? 4000 : 160); if (v !== undefined) (u as unknown as Record<string, unknown>)[k] = v; }
+  if (b.dvs !== undefined && typeof b.dvs === 'object' && b.dvs) { u.dvs = { ...(u.dvs ?? {}) }; for (const k of ['differentiated', 'valuable', 'sustainable'] as const) { const v = str((b.dvs as Record<string, unknown>)[k]); if (v !== undefined) u.dvs[k] = v; } }
   if (b.anchorIds !== undefined) u.anchorIds = strs(b.anchorIds) ?? [];
   if (b.guideIds !== undefined) u.guideIds = strs(b.guideIds) ?? [];
   if (b.health !== undefined) { if (!HEALTH.includes(b.health)) return bad(res, 'health must be green, amber or red'); if (b.health !== 'green' && !str(b.healthReason) && !u.healthReason) return bad(res, 'Amber or red needs a reason'); u.health = b.health as Health; }
@@ -227,6 +229,12 @@ router.post('/usecases/:id/pocs/:pid/status', requireNamed(ENGINEERS, 'add a sta
   const e = entry(req, text); f.p.status.push(e); touch(f.u, me(req)!.name);
   res.status(201).json({ data: e, timestamp: now() });
 });
+router.post('/usecases/:id/pocs/:pid/redteam', requireNamed(ENGINEERS, 'add a red-team entry'), (req: Request, res: Response) => {
+  const f = findPoc(req, res); if (!f) return;
+  const text = str(req.body?.text); if (!text) return bad(res, 'text is required');
+  const e = entry(req, text); (f.p.redTeam ??= []).push(e); touch(f.u, me(req)!.name);
+  res.status(201).json({ data: e, timestamp: now() });
+});
 router.post('/usecases/:id/pocs/:pid/learnings', requireNamed(ENGINEERS, 'add a learning'), (req: Request, res: Response) => {
   const f = findPoc(req, res); if (!f) return;
   const text = str(req.body?.text); if (!text) return bad(res, 'text is required');
@@ -263,17 +271,17 @@ router.get('/export.xlsx', (_req: Request, res: Response) => {
   const port: TableRow[] = [], pocs: TableRow[] = [], status: TableRow[] = [], bott: TableRow[] = [], ready: TableRow[] = [];
   for (const u of list) {
     const r = overviewRow(u); const rd = readinessFor(u);
-    port.push({ cells: [u.bu, u.name, u.process ?? '', stageLabel(u.stage), healthLabel(u.health), u.healthReason ?? '', r.currentPoc ? `POC-${r.currentPoc.number} ${r.currentPoc.name} (${pocStageLabel(r.currentPoc.stage)})` : '', r.currentPoc?.nextMilestone ? `${r.currentPoc.nextMilestone.text} · ${r.currentPoc.nextMilestone.due}` : '', r.decisions, r.bottlenecks, d(r.lastActivity), r.daysSince, u.sponsor ?? '', u.meContact ?? ''] });
+    port.push({ cells: [u.bu, u.name, u.process ?? '', stageLabel(u.stage), healthLabel(u.health), u.healthReason ?? '', r.currentPoc ? `POC-${r.currentPoc.number} ${r.currentPoc.name} (${pocStageLabel(r.currentPoc.stage)})` : '', r.currentPoc?.nextMilestone ? `${r.currentPoc.nextMilestone.text} · ${r.currentPoc.nextMilestone.due}` : '', r.decisions, r.bottlenecks, d(r.lastActivity), r.daysSince, u.sponsor ?? '', u.meContact ?? '', u.dvs?.differentiated ?? '', u.dvs?.valuable ?? '', u.dvs?.sustainable ?? ''] });
     for (const p of [...u.pocs].sort((a, b) => a.number - b.number)) {
-      pocs.push({ cells: [u.bu, u.name, `POC-${p.number}`, p.name, pocStageLabel(p.stage), p.scope ?? '', p.definitionOfDone ?? '', p.tracks.map(t => TRACKS.find(x => x.id === t)?.name ?? t).join(', '), d(p.startedAt), d(p.completedAt), exitLabel(p.exit), p.exitReason ?? '', p.nextMilestone ? `${p.nextMilestone.text} · ${p.nextMilestone.due}` : '', p.learnings.map(l => `${d(l.at)} ${l.by}: ${l.text}`).join('\n')] });
+      pocs.push({ cells: [u.bu, u.name, `POC-${p.number}`, p.name, pocStageLabel(p.stage), p.scope ?? '', p.definitionOfDone ?? '', p.tracks.map(t => TRACKS.find(x => x.id === t)?.name ?? t).join(', '), d(p.startedAt), d(p.completedAt), exitLabel(p.exit), p.exitReason ?? '', p.nextMilestone ? `${p.nextMilestone.text} · ${p.nextMilestone.due}` : '', p.learnings.map(l => `${d(l.at)} ${l.by}: ${l.text}`).join('\n'), (p.redTeam ?? []).map(l => `${d(l.at)} ${l.by}: ${l.text}`).join('\n')] });
       for (const s of p.status) status.push({ cells: [u.bu, u.name, `POC-${p.number}`, d(s.at), s.by, s.text] });
       for (const b of p.bottlenecks) bott.push({ cells: [u.bu, u.name, `POC-${p.number}`, d(b.at), b.by, b.text, b.owner, b.severity, b.needsLeadership ? 'yes' : '', b.resolvedAt ? `${d(b.resolvedAt)} ${b.resolvedBy}: ${b.resolution}` : 'open'] });
     }
     ready.push({ cells: [u.bu, u.name, rd.inSib ? 'yes' : 'not started in SIB', rd.published, rd.guides.length, rd.runs, rd.completed, rd.evidenced, rd.demoRuns, rd.devices.map(x => `${x.name}: ${x.verdict}`).join('; '), rd.tracks.map(t => `${t.name}: L1 ${t.L1 ?? '-'} · L2 ${t.L2 ?? '-'}${t.verdict ? ` · ${t.verdict}` : ''}`).join('; '), rd.quarter] });
   }
   const buf = buildWorkbookXlsx([
-    { name: 'Portfolio', headers: ['BU', 'Use-case', 'Process', 'Stage', 'Health', 'Health reason', 'Current POC', 'Next milestone', 'Decisions waiting', 'Open bottlenecks', 'Last activity', 'Days since', 'Sponsor', 'ME'], rows: port, colWidths: [8, 40, 12, 11, 8, 30, 40, 36, 10, 10, 12, 8, 18, 18], freezeHeader: true },
-    { name: 'POCs', headers: ['BU', 'Use-case', 'POC', 'Name', 'Stage', 'Scope', 'Definition of done', 'Tracks', 'Started', 'Completed', 'Exit', 'Exit reason', 'Next milestone', 'Learnings'], rows: pocs, colWidths: [8, 36, 7, 34, 11, 50, 50, 26, 11, 11, 16, 30, 36, 60], freezeHeader: true },
+    { name: 'Portfolio', headers: ['BU', 'Use-case', 'Process', 'Stage', 'Health', 'Health reason', 'Current POC', 'Next milestone', 'Decisions waiting', 'Open bottlenecks', 'Last activity', 'Days since', 'Sponsor', 'ME', 'DVS · differentiated', 'DVS · valuable', 'DVS · sustainable'], rows: port, colWidths: [8, 40, 12, 18, 10, 30, 40, 36, 10, 10, 12, 8, 18, 18, 50, 50, 50], freezeHeader: true },
+    { name: 'POCs', headers: ['BU', 'Use-case', 'POC', 'Name', 'Stage', 'Scope', 'Definition of done', 'Tracks', 'Started', 'Completed', 'Exit', 'Exit reason', 'Next milestone', 'Learnings', 'Red team: what would make this fail'], rows: pocs, colWidths: [8, 36, 7, 34, 11, 50, 50, 26, 11, 11, 16, 30, 36, 60, 60], freezeHeader: true },
     { name: 'Status log', headers: ['BU', 'Use-case', 'POC', 'Date', 'By', 'Status'], rows: status, colWidths: [8, 36, 7, 11, 18, 90], freezeHeader: true },
     { name: 'Bottlenecks', headers: ['BU', 'Use-case', 'POC', 'Raised', 'By', 'Bottleneck', 'Owner', 'Severity', 'Needs leadership', 'Resolution'], rows: bott, colWidths: [8, 36, 7, 11, 18, 60, 18, 9, 10, 50], freezeHeader: true },
     { name: 'Readiness', headers: ['BU', 'Use-case', 'In SIB', 'Published guides', 'Guides linked', 'Runs', 'Completed', 'Evidenced', 'Demo runs', 'Device verdicts', 'Scorecard lenses', 'Quarter'], rows: ready, colWidths: [8, 36, 14, 10, 10, 7, 10, 10, 9, 60, 70, 9], freezeHeader: true },
@@ -321,7 +329,7 @@ router.get('/export.pptx', async (_req: Request, res: Response) => {
   {
     const s = base('POC PORTFOLIO  ·  RAIL MAP', 'Where each use-case is on the line, and what is ahead', 'Filled = gate evidence exists · outline = ahead · ring = you are here · n/m under a POC = platform capability already in place (Catalogue) · flag = decision waiting on leadership');
     const maxPoc = Math.max(3, ...list.map(u => u.pocs.length));
-    const cols = ['HVP identified', 'Scoping · HVP review', 'DoD · scope locked', ...Array.from({ length: maxPoc }, (_, i) => `POC-${i + 1}`), 'Pilot', 'Scaled'];
+    const cols = ['HVP identified', 'Scoping · HVP review', 'DoD · scope locked', ...Array.from({ length: maxPoc }, (_, i) => `POC-${i + 1}`), 'Pilot', 'Ready to proliferate'];
     const LX = 0.5, LW = 3.0, X0 = LX + LW, CW = (12.83 - X0 - 0.9) / cols.length, Y0 = 1.55, RH = Math.min(0.9, (6.9 - Y0 - 0.3) / Math.max(1, list.length));
     const cx = (i: number) => X0 + i * CW + CW / 2;
     const PAL = ['4495BC', '64B5C4', 'A27BC9', 'E0A100', '6C7BD9', '7AB800'];
@@ -360,7 +368,8 @@ router.get('/export.pptx', async (_req: Request, res: Response) => {
     const rd = readinessFor(u); const r = overviewRow(u);
     const s = base(`${u.bu}  ·  ${stageLabel(u.stage).toUpperCase()}  ·  ${healthLabel(u.health).toUpperCase()}`, u.name, `${u.process ? `Process: ${u.process} · ` : ''}Sponsor: ${u.sponsor || '-'} · ME: ${u.meContact || '-'} · updated ${d(r.lastActivity)} by ${u.updatedBy}`);
     s.addText('BUSINESS QUESTION', { x: 0.5, y: 1.35, w: 6, h: 0.22, fontFace: F, fontSize: 8.5, color: BLUE, bold: true, charSpacing: 1.5 });
-    s.addText(u.question, { x: 0.5, y: 1.55, w: 7.6, h: 1.0, fontFace: F, fontSize: 10, color: INK, valign: 'top' });
+    s.addText(u.question, { x: 0.5, y: 1.55, w: 7.6, h: 0.62, fontFace: F, fontSize: 10, color: INK, valign: 'top' });
+    s.addText([{ text: 'DVS  ', options: { bold: true, color: BLUE } }, { text: u.dvs?.differentiated ? `Differentiated: ${u.dvs.differentiated}  ·  Valuable: ${u.dvs.valuable ?? '-'}  ·  Sustainable: ${u.dvs.sustainable ?? '-'}` : 'not written yet', options: { color: INK2 } }], { x: 0.5, y: 2.15, w: 7.6, h: 0.48, fontFace: F, fontSize: 8, valign: 'top' });
     const pocRows = [[H('POC'), H('Stage'), H('Definition of done'), H('Exit'), H('Next milestone')],
       ...[...u.pocs].sort((a, b) => a.number - b.number).map(p => [L(`POC-${p.number} ${p.name}`), C(pocStageLabel(p.stage)), C(p.definitionOfDone || '-'), C(exitLabel(p.exit) + (p.exitReason ? ` - ${p.exitReason}` : '')), C(p.nextMilestone ? `${p.nextMilestone.text} · ${p.nextMilestone.due}` : '-')])];
     s.addTable(pocRows, { ...TBL, x: 0.5, y: 2.65, w: 7.6, colW: [2.1, 0.9, 2.6, 1.0, 1.0] });

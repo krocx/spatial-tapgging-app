@@ -65,12 +65,15 @@ its phases, so a use-case is read the way leadership reads a product:
 | High Value Problem (HVP) · opportunity identification | the BU's problem, in its words, and why it matters (the TAM / SAM of its work instructions: automated vs technician-driven) | HVP identified · Scoping / HVP review |
 | Solution scoping · XR proposal | the approach, the scope, what is in and out, the definition of done and the exit written before work starts | DoD / scope locked |
 | Differentiated · Valuable · Sustainable (DVS) proof | the POCs: each proves one claim with a learning as a metric; alternate-technology analysis (the device and SDK harness), architecture decomposition, design for lifetime value (device-agnostic contracts) and the AIx strategy (AI that accelerates every BU's R&D) all land here | POC-1 … POC-n |
-| WMO success | success metrics, the definition of done met, and the exit: scale (pilot, adopt) or park with the reason | Pilot · Scaled · Parked |
+| WMO success | success metrics, the definition of done met, and the exit: scale (pilot, adopt) or park with the reason | Pilot · Ready to proliferate · Parked |
 
 Health is said in words - on track · at risk · off track - and is separate
-from stage. The product scorecard is the TRL scorecard; the red-team
-analysis is a standing ask on every POC's learnings ("what would make this
-fail").
+from stage. The **DVS check** (differentiated · valuable to WMO · sustainable)
+is written on the use-case and gates DoD · scope locked. The product
+scorecard is the TRL scorecard. The **red team** is a standing entry on every
+POC: "what would make this fail", answered and dated like a learning.
+"Ready to proliferate" is the stage after a pilot: planned for everyday
+production use.
 
 ## The lifecycle lanes
 

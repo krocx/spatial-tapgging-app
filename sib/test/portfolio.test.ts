@@ -29,10 +29,13 @@ test('a POC completes only with a learning, an exit and a scorecard entry on its
 
 test('use-case stages follow the POCs', () => {
   assert.equal(useCaseGate(uc(), 'active').ok, false);
-  assert.equal(useCaseGate(uc({ pocs: [poc({ stage: 'in-progress' })] }), 'active').ok, true);
   assert.equal(useCaseGate(uc({ pocs: [poc({ stage: 'completed', exit: 'next-poc' })] }), 'pilot').ok, false);
   assert.equal(useCaseGate(uc({ pocs: [poc({ stage: 'completed', exit: 'pilot' })] }), 'pilot').ok, true);
-  assert.equal(useCaseGate(uc({ pocs: [poc({ scope: 's', definitionOfDone: 'd' })] }), 'agreed').ok, true);
+  const dvs = { differentiated: 'd', valuable: 'v', sustainable: 's' };
+  assert.equal(useCaseGate(uc({ pocs: [poc({ scope: 's', definitionOfDone: 'd' })] }), 'agreed').ok, false);           // DVS missing
+  assert.equal(useCaseGate(uc({ dvs, pocs: [poc({ scope: 's', definitionOfDone: 'd' })] }), 'agreed').ok, true);
+  assert.equal(useCaseGate(uc({ pocs: [poc({ stage: 'in-progress' })] }), 'active').ok, false);                        // DVS missing
+  assert.equal(useCaseGate(uc({ dvs, pocs: [poc({ stage: 'in-progress' })] }), 'active').ok, true);
 });
 
 test('overview order: decisions waiting, then red, then the stalest; summary counts', () => {
@@ -53,6 +56,6 @@ test('current POC is the one in progress, else the next planned, else the last; 
   const seed = seedUseCases(at, 'seed');
   assert.equal(seed.length, 3);
   assert.deepEqual([...new Set(seed.map(s => s.bu))].sort(), ['ETCH', 'MDP']);
-  for (const s of seed) for (const p of s.pocs) { assert.ok(p.scope && p.definitionOfDone, `${s.id} POC-${p.number} has scope + DoD`); assert.ok(p.tracks.length); }
+  for (const s of seed) { assert.ok(s.dvs?.differentiated && s.dvs?.valuable && s.dvs?.sustainable, `${s.id} has a DVS draft`); for (const p of s.pocs) { assert.ok(p.scope && p.definitionOfDone, `${s.id} POC-${p.number} has scope + DoD`); assert.ok(p.tracks.length); } }
   assert.equal(seed.flatMap(s => s.pocs).filter(p => p.stage === 'in-progress').length, 2);
 });

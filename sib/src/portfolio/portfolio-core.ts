@@ -21,7 +21,7 @@ export const USECASE_STAGES: { id: UseCaseStage; label: string; phase: string }[
   { id: 'agreed',     label: 'DoD · scope locked',    phase: 'XR proposal' },
   { id: 'active',     label: 'POC active',            phase: 'DVS proof' },
   { id: 'pilot',      label: 'Pilot',                 phase: 'WMO success' },
-  { id: 'adopted',    label: 'Scaled',                phase: 'WMO success' },
+  { id: 'adopted',    label: 'Ready to proliferate',  phase: 'WMO success' },
   { id: 'parked',     label: 'Parked',                phase: 'Exit' },
 ];
 /** Health is said in words, not colours: on track · at risk · off track. The ids keep the colour tokens. */
@@ -73,9 +73,12 @@ export function pocGate(poc: Poc, target: PocStage, scorecardTouched: boolean): 
 export function useCaseGate(u: UseCase, target: UseCaseStage): { ok: true } | { ok: false; why: string } {
   if (target === 'active' && !u.pocs.some(p => p.stage === 'in-progress')) return { ok: false, why: 'Active means a POC is in progress - start one first' };
   if (target === 'pilot' && !u.pocs.some(p => p.stage === 'completed' && p.exit === 'pilot')) return { ok: false, why: 'Pilot follows a completed POC whose exit is "move to pilot"' };
-  if (target === 'agreed' && !u.pocs.some(p => p.scope?.trim() && p.definitionOfDone?.trim())) return { ok: false, why: 'Agreed means at least one POC has its scope and definition of done' };
+  if (target === 'agreed' && !u.pocs.some(p => p.scope?.trim() && p.definitionOfDone?.trim())) return { ok: false, why: 'DoD · scope locked means at least one POC has its scope and definition of done' };
+  if ((target === 'agreed' || target === 'active') && !dvsComplete(u)) return { ok: false, why: 'The DVS check is written first: what is differentiated, what is valuable to WMO, what makes it sustainable' };
   return { ok: true };
 }
+
+export const dvsComplete = (u: UseCase) => !!(u.dvs?.differentiated?.trim() && u.dvs?.valuable?.trim() && u.dvs?.sustainable?.trim());
 
 export function daysSince(iso: string | undefined, now = new Date()): number | null {
   if (!iso) return null;
@@ -86,7 +89,7 @@ export function daysSince(iso: string | undefined, now = new Date()): number | n
 /** Latest activity on a use-case: the newest status, bottleneck or learning entry, or its updatedAt. */
 export function lastActivity(u: UseCase): string {
   let last = u.updatedAt;
-  for (const p of u.pocs) for (const e of [...p.status, ...p.bottlenecks, ...p.learnings]) if (e.at > last) last = e.at;
+  for (const p of u.pocs) for (const e of [...p.status, ...p.bottlenecks, ...p.learnings, ...(p.redTeam ?? [])]) if (e.at > last) last = e.at;
   return last;
 }
 
@@ -129,8 +132,8 @@ export function seedUseCases(at: string, by: string): UseCase[] {
     ({ id: `poc-${number}-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 24)}`, number, name, scope, definitionOfDone: dod, stage, tracks, features, status: [], bottlenecks: [], learnings: [], ...(stage === 'in-progress' ? { startedAt: at } : {}), ...extra });
   const e = (text: string): PortfolioEntry => ({ id: `seed-${Math.random().toString(36).slice(2, 8)}`, at, by, text });
   const bn = (text: string, owner: string, severity: Bottleneck['severity'], needsLeadership: boolean): Bottleneck => ({ ...e(text), owner, severity, needsLeadership });
-  const base = (id: string, bu: string, name: string, question: string, process: string, stage: UseCaseStage, pocs: Poc[]): UseCase =>
-    ({ id, bu, name, question, process, stage, health: 'green', anchorIds: [], guideIds: [], pocs, createdAt: at, createdBy: by, updatedAt: at, updatedBy: by });
+  const base = (id: string, bu: string, name: string, question: string, process: string, stage: UseCaseStage, pocs: Poc[], dvs?: UseCase['dvs']): UseCase =>
+    ({ id, bu, name, question, process, stage, health: 'green', anchorIds: [], guideIds: [], dvs, pocs, createdAt: at, createdBy: by, updatedAt: at, updatedBy: by });
   return [
     base('mdp-fd10-wi', 'MDP', 'FD10 WI: the future of Connected Worker work instructions',
       'Which work instructions are still technician-driven after automation, AMRs, cobots, physical AI and agentic AI - and how those instructions adapt to the technician, showing the future of the Smart Worker and the factory of the future.',
@@ -144,7 +147,9 @@ export function seedUseCases(at: string, by: string): UseCase[] {
           ['contextual-intelligence', 'live-telemetry', 'usage-log', 'ai-guidance', 'ar-moment-coach', 'stall-detection', 'presence-coaching', 'adaptive-instructions']),
         poc(3, 'Contextual intelligence: guide, detect, assist', 'Instructions with contextual intelligence that guide the technician as they work, auto-detect a task done correctly and validated, or done incorrectly, and assist until it is fixed.', 'Auto-recognition of task done / done wrong demonstrated on the iPad benchmark with measured precision and recall, and the assist loop closed on at least one step.', ['content-pipeline', 'ar-sdk'],
           ['contextual-intelligence', 'step-validation', 'training-capture', 'patch-scoring', 'ai-guidance', 'auto-recognition', 'adaptive-instructions']),
-      ]),
+      ], { differentiated: 'Draft - instructions that adapt to the technician and judge the step as it is done, where every alternative shows a static, pre-programmed instruction on a display.',
+           valuable: 'Draft - only the technician-driven half of FD10 steps is made spatial; the automated half is left to AMRs, cobots and AI, so the investment lands where a person still does the work.',
+           sustainable: 'Draft - one engine-neutral Guide Bundle and a device-agnostic backend: new glasses and SDKs are evaluated against one harness, nothing is rewritten per device.' }),
     base('etch-cathode-3doms', 'ETCH', 'Cathode: 3D OMS to spatial computing devices',
       'How a 3D OMS publication is imported and auto-converted for spatial computing devices, so the content the BU already has reaches the technician without being re-authored.',
       'Cathode', 'active', [
@@ -155,7 +160,9 @@ export function seedUseCases(at: string, by: string): UseCase[] {
             bottlenecks: [bn('Loose fasteners still visible in Preview 3D after re-import - confirm the callout fix on the CATHODE file and compare with the Studio', 'XR Product Owner', 'medium', false)] }),
         poc(2, 'Dynamic import from MES', 'Pull the instructions from MES and adapt them to the device in real time, so MEs never import by hand.', 'One Cathode process pulled live from MES through the GIS-enabled API, adapted per device form, run on the floor with no manual import step.', ['content-pipeline'],
           ['mes-connector', 'guide-ingestion', 'guide-bundle', 'device-readiness', 'xr-kit']),
-      ]),
+      ], { differentiated: 'Draft - the 3D OMS content the BU already owns reaches the technician on any device without re-authoring; the import keeps parts, steps and hidden-at-start state faithful to the source.',
+           valuable: 'Draft - no new content cost for ETCH; a readiness verdict per device before any hardware is bought.',
+           sustainable: 'Draft - POC-2 removes the manual import: instructions pulled from the source of record and adapted per device, so content stays current without an ME in the loop.' }),
     base('etch-esc-json-cad', 'ETCH', 'ESC: JSON work instructions attached to CAD (.JT)',
       'The non-3D-OMS path: import the instructions as JSON and attach each instruction or step to the imported CAD (.JT) model, for content that has no 3D OMS publication.',
       'ESC', 'scoping', [
@@ -164,6 +171,8 @@ export function seedUseCases(at: string, by: string): UseCase[] {
           { nextMilestone: { text: 'ESC JSON template agreed with the ME; first .JT received for conversion', due: '2026-12-01' } }),
         poc(2, 'Dynamic import from MES (JSON + CAD)', 'Pull the ESC instructions from MES and attach them to the CAD model automatically, adapted per device.', 'One ESC process pulled live from MES, attached to its CAD model and run on the floor without a manual import step.', ['content-pipeline'],
           ['mes-connector', 'cad-jt-import', 'guide-ingestion', 'device-readiness']),
-      ]),
+      ], { differentiated: 'Draft - a path for content that has no 3D OMS publication: JSON instructions attached to the CAD model itself.',
+           valuable: 'Draft - opens spatial instructions to every ESC process that was never published in 3D OMS.',
+           sustainable: 'Draft - the same bundle, readiness and runtime as the 3D OMS path; only the import lane differs.' }),
   ];
 }

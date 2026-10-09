@@ -20,7 +20,8 @@ in place"), a next milestone with a date, and, when it closes, an **exit**:
 next POC, move to pilot, or parked with the reason (technology, hardware or
 software not available).
 
-Status notes, bottlenecks and learnings are append-only: every entry carries
+Status notes, bottlenecks, learnings and red-team entries ("what would make
+this fail", a standing ask on every POC) are append-only: every entry carries
 a name and a date, nothing is overwritten. A bottleneck has an owner, a
 severity and a "needs leadership decision" flag; an open flag puts the
 use-case first on the overview.
@@ -28,9 +29,12 @@ use-case first on the overview.
 ## Stages and gates
 
 Use-case: HVP identified → Scoping / HVP review → DoD / scope locked → POC
-active → Pilot → Scaled, or Parked (the framework's phases: High Value
+active → Pilot → Ready to proliferate, or Parked (the framework's phases: High Value
 Problem → XR proposal → DVS proof → WMO success; see POSITIONING.md). POC: Planned → In progress → Completed. Status cannot inflate:
 
+- DoD · scope locked (and POC active) need the DVS check written on the
+  use-case: what is differentiated, what is valuable to WMO, what makes it
+  sustainable.
 - A POC starts only with its scope and definition of done written.
 - A POC completes only with at least one learning, an exit, and - when it
   names scorecard tracks - a scorecard entry on one of them since it

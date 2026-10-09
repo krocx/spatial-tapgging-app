@@ -127,6 +127,12 @@
   .pf-gates i { display: inline-flex; align-items: center; gap: 4px; font: var(--ax-label-s); font-style: normal; color: var(--ax-ink-3); }
   .pf-gates i::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--ax-rule); }
   .pf-gates i.ok { color: var(--ax-ink-2); } .pf-gates i.ok::before { background: var(--ax-green); }
+  .pf-dvs { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--ax-s2); margin-bottom: var(--ax-s3); }
+  .pf-dvs div { background: var(--ax-paper); border-radius: var(--ax-r-field); padding: 10px 12px; border-top: 3px solid var(--ax-blue); }
+  .pf-dvs div.missing { border-top-color: var(--ax-orange); }
+  .pf-dvs b { display: block; font: var(--ax-label-s); color: var(--ax-ink-3); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 4px; }
+  .pf-dvs span { font: var(--ax-label-s); color: var(--ax-ink-2); }
+  .pf-dvs div.missing span { color: var(--ax-orange); }
   .pf-const { display: flex; gap: var(--ax-s4); flex-wrap: wrap; align-items: center; background: var(--ax-paper); border-radius: var(--ax-r-field); padding: 10px 14px; margin-bottom: var(--ax-s4); }
   .pf-const .dev { display: inline-flex; align-items: center; gap: 6px; font: var(--ax-label-s); color: var(--ax-ink-2); }
   .pf-const .dev i { width: 10px; height: 10px; border-radius: 50%; background: var(--ax-rule); border: 1px solid var(--ax-ink-4); }
@@ -139,7 +145,7 @@
   .pf-cap a.gap { border-style: dashed; color: var(--ax-ink-3); }
   details.pf-more { margin-top: 4px; }
   details.pf-more summary { cursor: pointer; font: var(--ax-label-s); color: var(--ax-ink-3); }
-  @media (max-width: 960px) { .pf-grid { grid-template-columns: 1fr; } .pf-form .two { grid-template-columns: 1fr; } .pf-funnel { grid-template-columns: repeat(4, 1fr); } }
+  @media (max-width: 960px) { .pf-grid { grid-template-columns: 1fr; } .pf-form .two { grid-template-columns: 1fr; } .pf-funnel { grid-template-columns: repeat(4, 1fr); } .pf-dvs { grid-template-columns: 1fr; } }
   @media print { .pf-header, .pf-tools, .pf-back, .edit, .ax-btn, #sibc-btn, .sibc-crumb { display: none !important; } .pf-wrap { padding: 0; } }
 </style>
 </head>
@@ -246,8 +252,8 @@ function renderOverview() {
 function railMap(rows) {
   if (!rows.length) return `<div class="ax-empty"><span class="ax-mark"><i></i><em></em></span>No use-cases match.</div>`;
   const maxPoc = Math.max(3, ...rows.map(r => r.pocs.length));
-  const cols = [['identified', 'HVP identified'], ['scoping', 'Scoping · HVP review'], ['agreed', 'DoD · scope locked'], ...Array.from({ length: maxPoc }, (_, i) => [`poc${i + 1}`, `POC-${i + 1}`]), ['pilot', 'Pilot'], ['adopted', 'Scaled']];
-  const L = 250, CW = 124, RH = 78, TOP = 66, PAD = 112;
+  const cols = [['identified', 'HVP identified'], ['scoping', 'Scoping · HVP review'], ['agreed', 'DoD · scope locked'], ...Array.from({ length: maxPoc }, (_, i) => [`poc${i + 1}`, `POC-${i + 1}`]), ['pilot', 'Pilot'], ['adopted', 'Ready to proliferate']];
+  const L = 250, CW = 132, RH = 78, TOP = 66, PAD = 112;
   const W = L + cols.length * CW + PAD, H = TOP + rows.length * RH + 30;
   const cx = i => L + i * CW + CW / 2;
   const idx = id => cols.findIndex(c => c[0] === id);
@@ -320,6 +326,7 @@ async function renderUseCase(id) {
     <div class="pf-grid">
       <div>
         <p class="pf-q">${esc(UC.question)}</p>
+        <div class="pf-dvs">${[['Differentiated', UC.dvs?.differentiated], ['Valuable to WMO', UC.dvs?.valuable], ['Sustainable', UC.dvs?.sustainable]].map(([k, v]) => `<div class="${v ? '' : 'missing'}"><b>${k}</b><span>${v ? esc(v) : 'Not written yet - needed at DoD · scope locked'}</span></div>`).join('')}</div>
         <div class="pf-const">
           <span class="k">Readiness · read from SIB</span>
           ${RD.devices.map(x => `<span class="dev" title="${esc(x.name)}: ${esc(x.verdict)}"><i class="${x.verdict === 'READY FOR PILOT' ? 'READY' : x.verdict === 'ASSESSING' ? 'ASSESSING' : x.verdict === 'NOT YET' ? 'NOTYET' : ''}"></i>${esc(x.name.replace(' (SIB app)', ''))}</span>`).join('')}
@@ -340,7 +347,9 @@ async function renderUseCase(id) {
         <div class="pf-sec"><h3>Bottlenecks and decisions ${canN ? `<button class="ax-btn ax-btn--sm" id="bn-add">Add bottleneck</button>` : ''}</h3>
           <ul class="pf-log">${open.map(b => `<li class="${b.needsLeadership ? 'dec' : ''}"><b>${d(b.at)} · ${esc(b.by)}</b>${b.needsLeadership ? '<span class="pf-decision">Decision needed · </span>' : ''}${esc(b.text)} <span class="ax-label-s ax-muted">owner ${esc(b.owner)} · ${esc(b.severity)}</span>${canN ? ` <button class="ax-btn ax-btn--sm" data-resolve="${esc(b.id)}">Resolve</button>` : ''}</li>`).join('')}${resolved.map(b => `<li class="res"><b>${d(b.at)} · ${esc(b.by)}</b>${esc(b.text)} <span class="ax-label-s">resolved ${d(b.resolvedAt)} by ${esc(b.resolvedBy)}: ${esc(b.resolution)}</span></li>`).join('')}${p.bottlenecks.length ? '' : '<li class="ax-muted">None.</li>'}</ul></div>
         <div class="pf-sec"><h3>Learnings · every learning is a metric ${canN ? `<button class="ax-btn ax-btn--sm" id="ln-add">Add learning</button>` : ''}</h3>
-          <ul class="pf-log">${[...p.learnings].reverse().map(e => `<li><b>${d(e.at)} · ${esc(e.by)}</b>${esc(e.text)}</li>`).join('') || '<li class="ax-muted">None yet.</li>'}</ul></div>` : ''}
+          <ul class="pf-log">${[...p.learnings].reverse().map(e => `<li><b>${d(e.at)} · ${esc(e.by)}</b>${esc(e.text)}</li>`).join('') || '<li class="ax-muted">None yet.</li>'}</ul></div>
+        <div class="pf-sec"><h3>Red team · what would make this fail ${canN ? `<button class="ax-btn ax-btn--sm" id="rt-add">Add</button>` : ''}</h3>
+          <ul class="pf-log">${[...(p.redTeam || [])].reverse().map(e => `<li><b>${d(e.at)} · ${esc(e.by)}</b>${esc(e.text)}</li>`).join('') || '<li class="ax-muted">Standing ask on every POC - nobody has answered it yet.</li>'}</ul></div>` : ''}
       </div>
       <aside class="pf-ready ax-card">
         <div class="ax-eyebrow">Readiness · read from SIB · ${esc(RD.quarter)}</div>
@@ -361,6 +370,7 @@ async function renderUseCase(id) {
   if (b('poc-edit')) b('poc-edit').onclick = () => pocForm(p);
   if (b('st-add')) b('st-add').onclick = () => entryForm('status', 'Status note', 'What happened since the last entry, in plain words.');
   if (b('ln-add')) b('ln-add').onclick = () => entryForm('learnings', 'Learning', 'What we learned, as a metric where possible: a number, a time, a rate.');
+  if (b('rt-add')) b('rt-add').onclick = () => entryForm('redteam', 'Red team', 'What would make this POC fail, and what we do about it.');
   if (b('bn-add')) b('bn-add').onclick = () => bottleneckForm();
   main.querySelectorAll('[data-resolve]').forEach(x => x.onclick = () => resolveForm(x.dataset.resolve));
 }
@@ -399,13 +409,16 @@ function useCaseForm(u) {
       <label>Use-case name<input class="ax-input" name="name" value="${esc(u?.name || '')}" required></label>
       <label>Business question, in the BU's words<textarea class="ax-textarea" name="question" rows="3" required>${esc(u?.question || '')}</textarea></label>
       <div class="two"><label>Sponsor<input class="ax-input" name="sponsor" value="${esc(u?.sponsor || '')}"></label><label>ME contact<input class="ax-input" name="meContact" value="${esc(u?.meContact || '')}"></label></div>
+      <label>DVS · what is differentiated<textarea class="ax-textarea" name="dvsD" rows="2">${esc(u?.dvs?.differentiated || '')}</textarea></label>
+      <label>DVS · what is valuable to WMO<textarea class="ax-textarea" name="dvsV" rows="2">${esc(u?.dvs?.valuable || '')}</textarea></label>
+      <label>DVS · what makes it sustainable<textarea class="ax-textarea" name="dvsS" rows="2">${esc(u?.dvs?.sustainable || '')}</textarea><div class="hint">All three are needed before DoD · scope locked.</div></label>
       ${u ? `<div class="two"><label>Stage${sel('stage', DATA.stages, u.stage)}<div class="hint">Active needs a POC in progress; Pilot needs a completed POC with exit "move to pilot".</div></label>
       <label>Health${sel('health', DATA.health.map(h => ({ id: h, label: healthLabel(h) })), u.health)}<input class="ax-input" name="healthReason" value="${esc(u.healthReason || '')}" placeholder="Reason (needed for amber or red)" style="margin-top:6px"></label></div>` : ''}
       <label>Chambers in SIB<select class="ax-select" name="anchorIds" multiple size="4">${anchors.map(a => `<option value="${esc(a.id)}" ${u?.anchorIds?.includes(a.id) ? 'selected' : ''}>${esc(a.assetId)}</option>`).join('')}</select><div class="hint">Every published guide on a linked chamber counts for this use-case.</div></label>
       <label>Guides in SIB<select class="ax-select" name="guideIds" multiple size="5">${guides.map(g => `<option value="${esc(g.id)}" ${u?.guideIds?.includes(g.id) ? 'selected' : ''}>${esc(g.name)}${g.published ? '' : ' (draft)'}</option>`).join('')}</select></label>
       <div class="row">${as()}<span style="flex:1"></span><button class="ax-btn ax-btn--primary" type="submit">${u ? 'Save' : 'Create'}</button></div>
     </form>`, async f => {
-      const body = { bu: f.bu.value, process: f.process.value, name: f.name.value, question: f.question.value, sponsor: f.sponsor.value, meContact: f.meContact.value,
+      const body = { bu: f.bu.value, process: f.process.value, name: f.name.value, question: f.question.value, sponsor: f.sponsor.value, meContact: f.meContact.value, dvs: { differentiated: f.dvsD.value, valuable: f.dvsV.value, sustainable: f.dvsS.value },
         anchorIds: [...f.anchorIds.selectedOptions].map(o => o.value), guideIds: [...f.guideIds.selectedOptions].map(o => o.value) };
       if (u) { body.stage = f.stage.value; body.health = f.health.value; body.healthReason = f.healthReason.value; await api('/portfolio/usecases/' + u.id, { method: 'PATCH', body: JSON.stringify(body) }); toast('Saved'); await load(); }
       else { const r = await api('/portfolio/usecases', { method: 'POST', body: JSON.stringify(body) }); toast('Created'); await load(); location.hash = r.data.id; }

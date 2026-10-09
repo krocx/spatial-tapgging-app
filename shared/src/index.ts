@@ -2307,8 +2307,13 @@ export interface Poc {
   status:          PortfolioEntry[];    // append-only
   bottlenecks:     Bottleneck[];
   learnings:       PortfolioEntry[];    // every learning is a metric
+  /** Red team: "what would make this fail" - a standing ask on every POC. */
+  redTeam?:        PortfolioEntry[];
   nextMilestone?:  { text: string; due: string };
 }
+
+/** The DVS check, written at "DoD · scope locked": what is differentiated, valuable to WMO, sustainable. */
+export interface DvsCheck { differentiated?: string; valuable?: string; sustainable?: string }
 
 export interface UseCase {
   id:          string;
@@ -2323,6 +2328,7 @@ export interface UseCase {
   healthReason?: string;
   anchorIds:   string[];                // chambers in SIB
   guideIds:    string[];                // guides in SIB
+  dvs?:        DvsCheck;
   pocs:        Poc[];
   createdAt:   string;
   createdBy:   string;

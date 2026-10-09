@@ -7,6 +7,14 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **POC Portfolio: DVS check and red team.** Each use-case carries the DVS
+  check - what is differentiated, what is valuable to WMO, what makes it
+  sustainable - shown as three cells on the one-pager and required before
+  DoD · scope locked and POC active. Each POC carries a standing red-team
+  entry, "what would make this fail", dated and named like a learning. The
+  last stage reads "Ready to proliferate" (everyday production use after a
+  pilot). Both in the Excel and PowerPoint exports. The seed carries DVS
+  drafts in the programme's own words, marked Draft, to be edited.
 - **POC Portfolio speaks the programme's framework.** Health is said in
   words - on track · at risk · off track (colours kept). Stages read as the
   framework's phases: HVP identified · Scoping / HVP review · DoD / scope
