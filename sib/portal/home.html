@@ -24,6 +24,18 @@
   .hm-doors b { margin-bottom: 2px; }
   .hm-doors span { display: block; font: var(--ax-label-s); color: var(--ax-ink-3); }
   .hm-doors .ax-chev { align-self: center; }
+  .hm-who { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: var(--ax-s2); }
+  .hm-who .ax-chip { cursor: pointer; background: var(--ax-paper); color: var(--ax-ink-2); border: 1px solid transparent; }
+  .hm-who .ax-chip:hover { background: var(--ax-paper-3); }
+  .hm-who .ax-chip.on { background: var(--ax-blue-fill); color: var(--ax-blue); border-color: var(--ax-blue); }
+  .hm-hint { min-height: 20px; font: var(--ax-label-r); color: var(--ax-ink-2); margin: 0 0 var(--ax-s4) !important; }
+  .hm-group { margin-bottom: var(--ax-s5); }
+  .hm-group-h { display: flex; align-items: baseline; gap: var(--ax-s3); margin-bottom: var(--ax-s3); }
+  .hm-group-h span { font: var(--ax-label-s); color: var(--ax-ink-3); }
+  .hm-doors .ax-door.is-dim { opacity: .45; }
+  .hm-doors .ax-door.is-lit { border-color: var(--ax-blue); }
+  .hm-more { display: flex; gap: var(--ax-s3); flex-wrap: wrap; align-items: center; margin-top: var(--ax-s2); font: var(--ax-label-s); }
+  .hm-more a { color: var(--ax-ink-2); }
   .hm-foot { display: flex; gap: var(--ax-s4); flex-wrap: wrap; align-items: center; margin-top: var(--ax-s7); font: var(--ax-label-s); color: var(--ax-ink-3); }
   .hm-foot a { color: var(--ax-ink-3); }
   .hm-foot .ax-mark { font-size: 12px; margin-right: 6px; }
@@ -40,7 +52,17 @@
   <div class="hm-hero">
     <div class="ax-eyebrow">SIB · Spatial Intelligence Backbone</div>
     <h1><span class="ax-wordmark"><span class="ax-a">applied</span><span class="ax-x">x</span></span> Connected Worker AR OMS Platform</h1>
-    <p>Spatial inspection, AR work instructions, Gemba walks and iLOTO on one self-hosted server - the right instruction, check and record exactly where the work happens.</p>
+    <p>The platform makes our work instructions ready for spatial computing: the right instruction, check and record exactly where the work happens - on an iPad today, on headsets and glasses as they arrive. Spatial inspection, AR work instructions, Walks and iLOTO on one self-hosted backbone, built in-house for WMO.</p>
+    <div class="hm-who">
+      <span class="ax-label-s ax-muted">I'm here as</span>
+      <button class="ax-chip" data-who="leadership">Leadership</button>
+      <button class="ax-chip" data-who="ops">Operations manager</button>
+      <button class="ax-chip" data-who="me">Manufacturing engineer</button>
+      <button class="ax-chip" data-who="tech">Technician</button>
+      <button class="ax-chip" data-who="tpm">TPM</button>
+      <button class="ax-chip" data-who="" title="Show everything equally">Everyone</button>
+    </div>
+    <p class="hm-hint" id="hm-hint"></p>
   </div>
 
   <!-- Live site pulse - aggregate counts only, from GET /stats (public). -->
@@ -52,52 +74,71 @@
     <a class="ax-tile" id="st-az-card" href="/platform#assess" style="display:none"><div class="ax-eyebrow" id="st-az-l">Areas assessed</div><div class="ax-value" id="st-az">-</div></a>
   </div>
 
-  <div class="hm-doors">
-    <a class="ax-door" href="/learn" data-product="platform">
-      <span class="ax-icon-tile"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-book"/></svg></span>
-      <div style="min-width:0"><b>Learn</b><span>Six five-minute reads on how the platform works. Start here if you're new.</span></div>
-      <span class="ax-chev"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chevron"/></svg></span>
-    </a>
-    <a class="ax-door" href="/portal" data-product="portal">
-      <span class="ax-icon-tile"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-home"/></svg></span>
-      <div style="min-width:0"><b>Portal</b><span>Chambers, sessions, AR Guides and the Guide Library, Gemba walks, 3D models, iLOTO status and audit.</span></div>
-      <span class="ax-chev"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chevron"/></svg></span>
-    </a>
-    <a class="ax-door" href="/catalog" data-product="platform">
-      <span class="ax-icon-tile"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-graph"/></svg></span>
-      <div style="min-width:0"><b>Feature Catalogue</b><span>Every feature as a connected map - flows, dependencies and definitions, generated from the docs. The detail behind every Learn stop.</span></div>
-      <span class="ax-chev"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chevron"/></svg></span>
-    </a>
-    <a class="ax-door" href="/roadmap" data-product="designer">
-      <span class="ax-icon-tile"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-procedure"/></svg></span>
-      <div style="min-width:0"><b>Roadmap &amp; Procedure Designer</b><span>The collaborative canvas for planning, and the Procedure Designer that compiles straight into AR work instructions.</span></div>
-      <span class="ax-chev"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chevron"/></svg></span>
-    </a>
-    <a class="ax-door" href="/platform" data-product="platform">
-      <span class="ax-icon-tile"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-map"/></svg></span>
-      <div style="min-width:0"><b>Platform story</b><span>The whole platform in one visual - four products, content, governance and the SIB backbone, in the order a fab adopts it.</span></div>
-      <span class="ax-chev"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chevron"/></svg></span>
-    </a>
-    <a class="ax-door" href="/portfolio" data-product="platform">
-      <span class="ax-icon-tile"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-flag"/></svg></span>
-      <div style="min-width:0"><b>POC Portfolio</b><span>Every BU, every use-case, where each stands - the weekly steering view and the monthly leadership report, with readiness read from SIB.</span></div>
-      <span class="ax-chev"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chevron"/></svg></span>
-    </a>
-    <a class="ax-door" href="/wireframe" data-product="tags">
-      <span class="ax-icon-tile"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-scan"/></svg></span>
-      <div style="min-width:0"><b>App wireframe</b><span>A click-through of all seven app flows with design notes - the two-minute tour of the iPad app.</span></div>
-      <span class="ax-chev"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chevron"/></svg></span>
-    </a>
-    <a class="ax-door" href="/catalog#ask" data-product="platform">
-      <span class="ax-icon-tile"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-sparkles"/></svg></span>
-      <div style="min-width:0"><b>Ask SIB</b><span>Ask the platform anything - answers grounded in the Catalogue, every feature cited and one click away.</span></div>
-      <span class="ax-chev"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chevron"/></svg></span>
-    </a>
-    <a class="ax-door" href="/portal#admin" data-product="portal">
-      <span class="ax-icon-tile"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-wrench"/></svg></span>
-      <div style="min-width:0"><b>Admin &amp; backups</b><span>User access, chamber configurations, backups, the ops log and device logs.</span></div>
-      <span class="ax-chev"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chevron"/></svg></span>
-    </a>
+  <section class="hm-group">
+    <div class="hm-group-h"><div class="ax-eyebrow">Understand</div><span>What the platform is and how it works - start here if you are new.</span></div>
+    <div class="hm-doors">
+      <a class="ax-door" href="/learn" data-product="platform" data-door="learn">
+        <span class="ax-icon-tile"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-book"/></svg></span>
+        <div style="min-width:0"><b>Learn</b><span>Six five-minute reads, the platform drawn for non-developers, and the iPad app flow by flow.</span></div>
+        <span class="ax-chev"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chevron"/></svg></span>
+      </a>
+      <a class="ax-door" href="/platform" data-product="platform" data-door="platform">
+        <span class="ax-icon-tile"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-map"/></svg></span>
+        <div style="min-width:0"><b>Platform map</b><span>The whole platform in one picture - four products, content, governance and the SIB backbone, in the order a fab adopts it.</span></div>
+        <span class="ax-chev"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chevron"/></svg></span>
+      </a>
+      <a class="ax-door" href="/catalog" data-product="platform" data-door="catalog">
+        <span class="ax-icon-tile"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-graph"/></svg></span>
+        <div style="min-width:0"><b>Feature Catalogue &amp; Ask SIB</b><span>Every feature as a connected map with its status and spec - and a question box grounded in it, every answer cited.</span></div>
+        <span class="ax-chev"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chevron"/></svg></span>
+      </a>
+    </div>
+  </section>
+
+  <section class="hm-group">
+    <div class="hm-group-h"><div class="ax-eyebrow">Work</div><span>Where chambers, instructions, walks and locks are made and run.</span></div>
+    <div class="hm-doors">
+      <a class="ax-door" href="/portal" data-product="portal" data-door="portal">
+        <span class="ax-icon-tile"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-home"/></svg></span>
+        <div style="min-width:0"><b>Portal</b><span>Chambers, the Guide Library and 3D models, sessions and analytics, Walks, iLOTO - and Admin for user access, configurations and backups.</span></div>
+        <span class="ax-chev"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chevron"/></svg></span>
+      </a>
+      <a class="ax-door" href="/roadmap" data-product="designer" data-door="designer">
+        <span class="ax-icon-tile"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-procedure"/></svg></span>
+        <div style="min-width:0"><b>Roadmap &amp; Procedure Designer</b><span>The collaborative canvas for planning, and the Procedure Designer with its 3D Studio that compiles straight into AR work instructions.</span></div>
+        <span class="ax-chev"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chevron"/></svg></span>
+      </a>
+    </div>
+  </section>
+
+  <section class="hm-group">
+    <div class="hm-group-h"><div class="ax-eyebrow">Govern</div><span>Where the programme is steered: use-cases, readiness, the architecture.</span></div>
+    <div class="hm-doors">
+      <a class="ax-door" href="/portfolio" data-product="platform" data-door="portfolio">
+        <span class="ax-icon-tile"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-flag"/></svg></span>
+        <div style="min-width:0"><b>POC Portfolio</b><span>Every BU, every use-case, where each stands - the weekly steering view and the monthly leadership report, with readiness read from SIB.</span></div>
+        <span class="ax-chev"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chevron"/></svg></span>
+      </a>
+      <a class="ax-door" href="/scorecard" data-product="platform" data-door="scorecard">
+        <span class="ax-icon-tile"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chart"/></svg></span>
+        <div style="min-width:0"><b>Readiness Scorecard</b><span>Are we ready for the glasses transition? Per device, by a stated rule, scored by named engineers with evidence.</span></div>
+        <span class="ax-chev"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chevron"/></svg></span>
+      </a>
+      <a class="ax-door" href="/architecture" data-product="platform" data-door="architecture">
+        <span class="ax-icon-tile"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-lock"/></svg></span>
+        <div style="min-width:0"><b>Architecture</b><span>The C4 picture of SIB, generated from the code. Opens with the IP key.</span></div>
+        <span class="ax-chev"><svg class="ax-icon"><use href="/portal/brand/icons.svg#i-chevron"/></svg></span>
+      </a>
+    </div>
+  </section>
+
+  <div class="hm-more">
+    <span class="ax-label-s ax-muted">Also:</span>
+    <a href="/wireframe">App wireframe</a>
+    <a href="/explain">Explain pages</a>
+    <a href="/catalog#ask">Ask SIB</a>
+    <a href="/portal#admin">Admin &amp; backups</a>
+    <a href="/brand">Brand</a>
   </div>
 
   <div class="hm-foot">
@@ -131,6 +172,33 @@ fetch('/platform/assess/summary').then(function(r){ return r.json(); }).then(fun
   document.getElementById('st-az-l').textContent = 'Areas assessed · avg level ' + p.avgLevel;
   document.getElementById('st-az-card').style.display = '';
 }).catch(function(){});
+</script>
+<script>
+// "I'm here as…" - highlights the doors that matter for that person and says
+// where to start. Never navigates, never hides; remembered on this browser.
+(function () {
+  var WHO = {
+    leadership: { doors: ['portfolio', 'scorecard', 'platform'], hint: 'Start with the POC Portfolio (every BU, where each stands), then the Readiness Scorecard. The Platform map is the five-minute picture.' },
+    ops:        { doors: ['portal', 'portfolio', 'learn'],       hint: 'The Portal is where chambers, runs and findings live. The Portfolio shows which use-cases are active on your floor; Learn explains the rest.' },
+    me:         { doors: ['designer', 'portal', 'learn'],        hint: 'Bring a work instruction in through the Portal, shape it in the Procedure Designer\u2019s 3D Studio, check its readiness per device. Learn has the life of a work instruction drawn out.' },
+    tech:       { doors: ['portal', 'learn'],                    hint: 'On the floor you use the iPad app; here, the Portal shows your runs and Learn shows how the app works, flow by flow.' },
+    tpm:        { doors: ['portfolio', 'catalog', 'scorecard'],  hint: 'The Portfolio for use-cases and POC gates, the Catalogue for every feature\u2019s status and spec, the Scorecard for readiness by device.' }
+  };
+  var chips = document.querySelectorAll('.hm-who [data-who]'), hint = document.getElementById('hm-hint');
+  function apply(who) {
+    var cfg = WHO[who];
+    chips.forEach(function (c) { c.classList.toggle('on', c.getAttribute('data-who') === (who || '')); });
+    document.querySelectorAll('.hm-doors .ax-door').forEach(function (d) {
+      var lit = !!cfg && cfg.doors.indexOf(d.getAttribute('data-door')) >= 0;
+      d.classList.toggle('is-lit', lit); d.classList.toggle('is-dim', !!cfg && !lit);
+    });
+    hint.textContent = cfg ? cfg.hint : '';
+    try { if (who) localStorage.setItem('sib.home.who', who); else localStorage.removeItem('sib.home.who'); } catch (e) {}
+  }
+  chips.forEach(function (c) { c.addEventListener('click', function () { apply(c.getAttribute('data-who')); }); });
+  var saved = null; try { saved = localStorage.getItem('sib.home.who'); } catch (e) {}
+  apply(saved && WHO[saved] ? saved : '');
+})();
 </script>
 <script src="/portal/brand.js"></script>
 </body>

@@ -7,6 +7,20 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **Home page for every visitor.** An introduction in the hero and an
+  "I'm here as…" row (Leadership · Operations manager · Manufacturing engineer
+  · Technician · TPM) that lights the doors that matter and says where to
+  start - never navigates, never hides; remembered on the browser. The doors
+  are grouped: Understand (Learn, Platform map, Catalogue & Ask SIB), Work
+  (Portal with Admin inside it, Roadmap & Designer), Govern (POC Portfolio,
+  Readiness Scorecard, Architecture). The wireframe, explain pages, Ask SIB,
+  Admin and Brand are one line of secondary links.
+- **Web lock for Render (`SIB_WEB_LOCK`).** With the site key still required
+  for everything, browser pages now also need a signed-in UAM session of the
+  listed emails; `/unlock` asks for the key, then the sign-in. API calls
+  with the key in a header - the iOS app - and the device surfaces `/xr` and
+  `/g2` are unaffected, so the team keeps testing off-network while the
+  pages are one person's. Unset = no web lock (the company server).
 - **RealWear HMT-1 runs work instructions through the XR kit.** A device
   profile (monocular text display, voice and buttons, no WebXR) puts it in
   the text form: one step per screen, read at arm's length; the kit

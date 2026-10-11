@@ -95,7 +95,23 @@ export function contentGate(req: Request, res: Response, next: NextFunction): vo
   if (!process.env.SIB_API_KEY?.trim()) { next(); return; }   // internal deployment - open
   if (req.method === 'OPTIONS') { next(); return; }            // CORS preflight
   if (req.path === '/health' || req.path === '/unlock' || req.path === '/config' || req.path === '/g2/redeem' || req.path === '/g2' || req.path.startsWith('/g2/')) { next(); return; }
-  if (hasValidApiKey(req)) { next(); return; }
+  if (hasValidApiKey(req)) {
+    // Web lock (SIB_WEB_LOCK = allowed emails, comma-separated): a BROWSER page
+    // also needs a signed-in UAM session for one of those people. API calls
+    // with the key in a header (the iOS app, scripts) and the device surfaces
+    // (/xr - headset browsers, /g2 - the companion) are untouched, so the team
+    // keeps testing off-network while the pages are one person's.
+    const lock = webLockEmails();
+    const wantsHtml = req.method === 'GET' && (req.headers.accept ?? '').includes('text/html');
+    const headerKey = typeof req.headers['x-api-key'] === 'string';
+    const device = req.path === '/xr' || req.path.startsWith('/xr/') || req.path === '/xr.html';
+    if (lock.length && wantsHtml && !headerKey && !device && !webLockAllows(req, lock)) {
+      const target = req.originalUrl.startsWith('/') && !req.originalUrl.startsWith('//') ? req.originalUrl : '/';
+      res.redirect(302, '/unlock?who=1&next=' + encodeURIComponent(target));
+      return;
+    }
+    next(); return;
+  }
   // A device token (device-link.ts): the Even G2 companion's bearer for one
   // guide's bundle and the session endpoints. Nothing else.
   { const h = req.headers['x-device-token']; const tok = typeof h === 'string' ? deviceTokenFor(h) : null;
@@ -113,6 +129,16 @@ export function contentGate(req: Request, res: Response, next: NextFunction): vo
     error: 'Unauthorized: missing or invalid X-API-Key header',
     timestamp: new Date().toISOString(),
   });
+}
+
+/** SIB_WEB_LOCK: the emails whose signed-in session may open browser pages on this deployment (empty = no web lock). */
+export function webLockEmails(): string[] {
+  return (process.env.SIB_WEB_LOCK ?? '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+}
+export function webLockAllows(req: Request, lock = webLockEmails()): boolean {
+  if (!lock.length) return true;
+  const u = currentUamUser(req);
+  return !!u && lock.includes(u.email.toLowerCase());
 }
 
 // ── UAM identity (RBAC ahead of SSO) ─────────────────────────────────────────

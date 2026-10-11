@@ -113,6 +113,7 @@ Click **Add Environment Variable** for each of the following:
 |---|---|---|
 | `SIB_API_KEY` | A long random string you choose (e.g. 32+ characters) | This is the secret your iOS app sends in `X-API-Key`. Write it down - you'll enter it in the app's Settings screen. Example: `sk-sib-a8f3d2e1b4c7f9a0d3e6b2c5f8a1d4e7` |
 | `SIB_DATA_DIR` | `/data/.sib-data` | Tells SIB where to persist anchor + tag data on the Render disk |
+| `SIB_WEB_LOCK` | `you@appliedmaterials.com` | Optional. Web lock: browser pages open only for a signed-in UAM session of these emails (comma-separated), on top of the site key. API calls with the key in a header (the iOS app) and the device surfaces (`/xr`, `/g2`) are unaffected. |
 | `NODE_ENV` | `production` | Enables production optimisations |
 | `PORT` | `3001` | Must match what the Dockerfile exposes |
 

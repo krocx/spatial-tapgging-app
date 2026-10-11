@@ -10,6 +10,7 @@ Technical reference for the Spatial Intelligence Backend (SIB) - environment var
 |---|---|---|
 | `SIB_API_KEY` | *(none)* | Required in production. All requests must include `X-API-Key: <value>`. Unset = no auth (local dev). |
 | `SIB_DATA_DIR` | `.sib-data/` | Directory for persisted JSON data. Set to `/data/.sib-data` on Render. |
+| `SIB_WEB_LOCK` | unset | Comma-separated emails. When set with `SIB_API_KEY`, browser pages need a signed-in UAM session of one of them; header-keyed API calls and `/xr`, `/g2` do not. |
 | `PORT` | `3001` | HTTP port the server listens on. |
 | `NODE_ENV` | `development` | Set to `production` on Render. |
 | `PASS_THRESHOLD` | `0.60` | SSIM+histogram combined threshold for PASS verdict. Range 0.40–0.90. |

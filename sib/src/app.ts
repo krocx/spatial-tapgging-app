@@ -44,7 +44,7 @@ import askRouter from './routes/ask.js';
 import { sessionStore } from './routes/sessions.js';
 import { locTagStore, locTagCompletionStore } from './routes/loc-tags.js';
 import { derivePointStatus } from './loto/loto-core.js';
-import { apiKeyAuth, adminKeyAuth, contentGate, hasValidApiKey, canViewRestricted } from './middleware/auth.js';
+import { apiKeyAuth, adminKeyAuth, contentGate, hasValidApiKey, canViewRestricted, webLockEmails } from './middleware/auth.js';
 import { redeemDeviceCode } from './middleware/device-link.js';
 // NOT from @spatial/shared: that package is types-only at runtime - its exports
 // point at .ts source, which a compiled server cannot load. See sib/src/version.ts.
@@ -76,6 +76,7 @@ export function createApp(): express.Express {
   // --- /unlock - the only public page. Serves no data; sets the access cookie.
   app.get('/unlock', (_req, res) => {
     res.setHeader('Cache-Control', 'no-store');
+    const webLock = webLockEmails().length > 0;
     res.send(`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>SIB - Access</title>
 <style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
@@ -87,10 +88,18 @@ background:#0b1220;color:#e2e8f0;font-size:14px;outline:none}input:focus{border-
 button{width:100%;margin-top:12px;padding:10px;border:none;border-radius:9px;background:#3b82f6;
 color:#fff;font-size:14px;font-weight:700;cursor:pointer}
 .err{color:#ef4444;font-size:12px;margin-top:10px;display:none}</style></head><body>
-<div class="card"><h1>&#9889; SIB</h1><p>This deployment is access-controlled. Enter the site key to continue.</p>
+<div class="card"><h1>&#9889; SIB</h1><p id="p">This deployment is access-controlled. Enter the site key to continue.</p>
 <form id="f"><input id="k" type="password" placeholder="Site key" autocomplete="off" autofocus>
-<button type="submit">Unlock</button><div class="err" id="e">Invalid key.</div></form></div>
+<button type="submit">Unlock</button><div class="err" id="e">Invalid key.</div></form>
+<form id="w" style="display:none"><input id="em" type="email" placeholder="Work email" autocomplete="username"><input id="id" type="password" placeholder="Employee ID" autocomplete="current-password" style="margin-top:8px">
+<button type="submit">Sign in</button><div class="err" id="we">Not allowed on this deployment.</div></form></div>
 <script>
+var who = ${webLock ? 'true' : 'false'};
+var params = new URLSearchParams(location.search);
+var next = params.get('next') || '/'; if (next.indexOf('/') !== 0 || next.indexOf('//') === 0) next = '/';
+function showWho(){ document.getElementById('f').style.display='none'; document.getElementById('w').style.display='block';
+  document.getElementById('p').textContent='The pages on this deployment open for named people only. Sign in with your work email and employee ID.'; document.getElementById('em').focus(); }
+if (params.get('who') === '1') showWho();
 document.getElementById('f').addEventListener('submit', async function(ev){
   ev.preventDefault();
   var k = document.getElementById('k').value.trim();
@@ -99,12 +108,20 @@ document.getElementById('f').addEventListener('submit', async function(ev){
     body: JSON.stringify({ key: k }) });
   if (r.ok) {
     try { localStorage.setItem('sib_api_key', k); } catch(_){}
-    var next = new URLSearchParams(location.search).get('next') || '/';
-    if (next.indexOf('/') !== 0 || next.indexOf('//') === 0) next = '/';
+    if (who) { showWho(); return; }
     location.href = next;
   } else {
     document.getElementById('e').style.display = 'block';
   }
+});
+document.getElementById('w').addEventListener('submit', async function(ev){
+  ev.preventDefault();
+  var r = await fetch('/uam/login', { method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ email: document.getElementById('em').value.trim(), employeeId: document.getElementById('id').value.trim() }) });
+  if (!r.ok) { document.getElementById('we').style.display = 'block'; return; }
+  var chk = await fetch(next, { headers: { 'Accept': 'text/html' }, redirect: 'manual' });
+  if (chk.type === 'opaqueredirect' || chk.status === 0 || chk.status === 302) { document.getElementById('we').style.display = 'block'; return; }
+  location.href = next;
 });
 </script></body></html>`);
   });
