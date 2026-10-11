@@ -7,6 +7,26 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **Play the chamber, rebuilt (`/platform/chamber`).** The one page that
+  shows the AR OMS rather than explaining it. A technician in cleanroom PPE
+  (gown, hood, bump cap, mask, goggles, gloves, bootie covers) stands at a
+  chamber drawn as a chamber (process module, lid and showerhead, focus
+  ring, slit valve, gas panel and lines, foreline, controller), with the AR
+  glasses worn over the hood. Seven beats on a play rail - arrive, scan (the
+  sweep and the origin brackets), pin (Step 3 on the focus ring with the
+  ghost of the correct result), validate (the cone of light, the verdict
+  with evidence), coach (the ME's "look here" on the slit valve), through
+  the eye (the same step as Quest 3, RayNeo X3 Pro, RealWear HMT-1 and
+  Oakley Vanguard deliver it, each in its own window - full model, 30°
+  reduced window, one text page by voice, spoken - and the iPad as the
+  companion to every one of them), live (the cleanroom's chambers lit from
+  `/stats`). Play / pause, click a beat, arrow keys, drag to turn; nothing
+  depends on scroll, so the Windows ghosting class of bugs is gone. All
+  geometry is the page's own on the vendored Three.js, nothing from a real
+  import; every colour comes from the brand tokens at runtime; the brand
+  header is the only chrome; governed by brand-check. No WebGL or reduced
+  motion shows the seven beats as a storyboard. The maturity ladder and
+  assessment now live only on `/platform`.
 - **The devices, by eye (`/devices/gallery`).** The wearables SIB delivers
   on, as cards grouped by what sits in front of the eye: handheld (iPad),
   binocular full headset (Quest 3, HoloLens 2, Vision Pro), binocular glasses
