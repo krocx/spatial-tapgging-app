@@ -25,17 +25,37 @@
   .pl-map { background: var(--ax-paper-2); border: var(--ax-hair); border-radius: var(--ax-r); padding: var(--ax-s3); margin-bottom: var(--ax-s3); }
   .pl-legend { display: flex; gap: var(--ax-s4); flex-wrap: wrap; font: var(--ax-label-s); color: var(--ax-ink-3); margin-bottom: var(--ax-s6); }
   .pl-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; border: 1.5px solid var(--ax-rule); }
-  .pl-stops { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: var(--ax-s4); margin-bottom: var(--ax-s6); }
-  .pl-stop { border-left: 3px solid var(--ax-pc, var(--ax-blue)); }
-  .pl-stop .ax-eyebrow { color: var(--ax-pc, var(--ax-blue)); }
-  .pl-stop h2 { margin: 2px 0 6px; font: var(--ax-h3); }
-  .pl-stop p { margin: 0 0 8px; color: var(--ax-ink-2); }
-  .pl-stop .pl-note { font: var(--ax-label-s); color: var(--ax-ink-3); }
-  .pl-stop .pl-links { display: flex; gap: var(--ax-s3); flex-wrap: wrap; margin-top: 8px; font: var(--ax-label-s); }
-  .pl-stop .pl-links a { color: var(--ax-ink-2); }
-  .pl-stop .ax-tiles { margin: 8px 0; }
-  .pl-stop .ax-tile { padding: 8px 10px; }
-  .pl-stop .ax-tile .ax-value { font-size: 20px; line-height: 24px; }
+  .pl-journey { margin-bottom: var(--ax-s6); }
+  .pl-journey-h { display: flex; align-items: baseline; gap: var(--ax-s3); margin-bottom: var(--ax-s3); }
+  .pl-rail { list-style: none; margin: 0 0 var(--ax-s4); padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); row-gap: var(--ax-s4); }
+  .pl-st { position: relative; padding: 48px 10px 0; text-align: center; cursor: pointer; }
+  .pl-st::before { content: ""; position: absolute; top: 34px; left: 0; right: 0; height: 2px; background: var(--ax-rule); }
+  .pl-st.is-col1::before { left: 50%; }
+  .pl-st.is-turn-down::after { content: ""; position: absolute; right: -1px; top: 34px; bottom: calc(-1 * var(--ax-s4) - 34px); width: 2px; background: var(--ax-rule); }
+  .pl-st .pl-node { position: absolute; top: 20px; left: calc(50% - 15px); width: 30px; height: 30px; border-radius: 50%; background: var(--ax-solid); border: 2px solid var(--ax-pc, var(--ax-blue)); color: var(--ax-pc, var(--ax-blue)); font: 600 13px var(--ax-mono); display: flex; align-items: center; justify-content: center; z-index: 1; }
+  .pl-st.on .pl-node { background: var(--ax-pc, var(--ax-blue)); color: var(--ax-on-accent); outline: 2px solid var(--ax-blue); outline-offset: 3px; }
+  .pl-st b { display: block; font: var(--ax-label); color: var(--ax-ink); }
+  .pl-st span { display: block; font: var(--ax-label-s); color: var(--ax-ink-3); margin-top: 2px; }
+  .pl-st:hover b, .pl-st.on b { color: var(--ax-pc, var(--ax-blue)); }
+  .pl-detail { border-left: 3px solid var(--ax-pc, var(--ax-blue)); display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--ax-s4); align-items: start; }
+  .pl-detail .ax-eyebrow { color: var(--ax-pc, var(--ax-blue)); }
+  .pl-detail h2 { margin: 2px 0 6px; font: var(--ax-h2); }
+  .pl-detail p { margin: 0 0 8px; color: var(--ax-ink-2); max-width: 760px; }
+  .pl-detail .pl-note { font: var(--ax-label-s); color: var(--ax-ink-3); }
+  .pl-detail .pl-links { display: flex; gap: var(--ax-s3); flex-wrap: wrap; margin-top: 10px; font: var(--ax-label-s); }
+  .pl-detail .pl-links a { color: var(--ax-ink-2); }
+  .pl-detail .pl-nav { display: flex; gap: var(--ax-s2); }
+  .pl-detail .ax-tiles { margin: 8px 0; }
+  .pl-detail .ax-tile { padding: 8px 12px; min-width: 110px; }
+  .pl-detail .ax-tile .ax-value { font-size: 22px; line-height: 26px; }
+  @media (max-width: 760px) {
+    .pl-rail { grid-template-columns: 1fr; row-gap: 0; }
+    .pl-st { text-align: left; padding: 6px 0 14px 44px; }
+    .pl-st::before, .pl-st.is-col1::before { top: 0; bottom: 0; left: 14px; right: auto; width: 2px; height: auto; }
+    .pl-st.is-turn-down::after { display: none; }
+    .pl-st .pl-node { left: 0; top: 4px; }
+    .pl-detail { grid-template-columns: 1fr; }
+  }
   .pl-ladder { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--ax-s3); margin: var(--ax-s3) 0; }
   .pl-ladder button { text-align: left; background: var(--ax-paper); border: 1px solid var(--ax-rule); border-radius: var(--ax-r-field); padding: 12px 14px; color: var(--ax-ink); cursor: pointer; font: var(--ax-body); }
   .pl-ladder button b { display: block; font-family: var(--ax-mono); color: var(--ax-ink-3); font-size: 12px; margin-bottom: 2px; }
@@ -54,7 +74,7 @@
   .az-res { display: none; margin-top: var(--ax-s4); border-top: var(--ax-hair); padding-top: var(--ax-s4); }
   .az-res.on { display: block; }
   @media (max-width: 900px) { .pl-ladder { grid-template-columns: 1fr 1fr; } .az-opts { grid-template-columns: 1fr; } }
-  @media print { .pl-header, .pl-tools, #sibc-btn, .sibc-crumb { display: none !important; } }
+  @media print { .pl-header, .pl-tools, .pl-nav, #sibc-btn, .sibc-crumb { display: none !important; } }
 </style>
 </head>
 <body>
@@ -89,57 +109,12 @@
     <span><i style="border-style:dashed"></i>destination, not shipped</span>
   </div>
 
-  <div class="ax-eyebrow" style="margin-bottom:var(--ax-s3)">In the order a cleanroom adopts it</div>
-  <div class="pl-stops">
-    <div class="ax-card pl-stop" style="--ax-pc:var(--ax-green)">
-      <div class="ax-eyebrow">1 · Spatial Intelligence Backbone</div><h2>One chamber. One origin.</h2>
-      <p>Scan the chamber once and every guide and spatial tag knows exactly where it lives - every session, every shift, every technician. If the part moves, the instruction moves with it: a thirty-second scan lets SIB know a chamber by its shape.</p>
-      <div class="pl-note">Millimetre-stable · offline · on-prem</div>
-      <div class="pl-links"><a href="/explain/spatial-intelligence">How it works (IP key)</a><a href="/catalog#sealed-worldmap">In the catalogue</a></div>
-    </div>
-    <div class="ax-card pl-stop" style="--ax-pc:var(--ax-p-guides)">
-      <div class="ax-eyebrow">2 · AR OMS · adaptive guided work instructions</div><h2>The instruction lands where the hands go.</h2>
-      <p>Each step pinned on the chamber, a ghost of the correct result, a recovery path when something isn't right. Authored on the tool by the ME in minutes, or imported from the content the company already has; logged per Production #.</p>
-      <div class="pl-note">First-time-right, measured · one procedure, one chamber</div>
-      <div class="pl-links"><a href="/explain/lifecycle">Life of a work instruction</a><a href="/catalog#spatial-steps">In the catalogue</a></div>
-    </div>
-    <div class="ax-card pl-stop" style="--ax-pc:var(--ax-p-tags)">
-      <div class="ax-eyebrow">3 · Spatial validation</div><h2>SIB checks the work, not the checkbox.</h2>
-      <p>A cone of light brings the camera to the exact spot the ME trained. The verdict is on the part, with the evidence attached to the run - the QFE reviews by exception.</p>
-      <div class="pl-links"><a href="/catalog#step-validation">In the catalogue</a></div>
-    </div>
-    <div class="ax-card pl-stop" style="--ax-pc:var(--ax-cyan)">
-      <div class="ax-eyebrow">4 · Presence &amp; coaching</div><h2>The ME and the technician, on the same pin.</h2>
-      <p>The ME sees which step the technician is on and where they are looking, and sends a "look here" that lands on the metal. New hires learn on the tool, not in a classroom. Hints arrive only when a visit differs from what is normal on that step.</p>
-      <div class="pl-note">Responsible by design: presence is per session, announced, never recorded.</div>
-      <div class="pl-links"><a href="/catalog#presence-coaching">In the catalogue</a><a href="/catalog#contextual-intelligence">Contextual intelligence</a></div>
-    </div>
-    <div class="ax-card pl-stop" style="--ax-pc:var(--ax-blue)">
-      <div class="ax-eyebrow">5 · Live from this server</div><h2>Read from SIB as you look at it.</h2>
-      <div class="ax-tiles" id="pl-live">
-        <div class="ax-tile"><div class="ax-eyebrow">On tools now</div><div class="ax-value" id="lv-people">-</div></div>
-        <div class="ax-tile"><div class="ax-eyebrow">Chambers mapped</div><div class="ax-value" id="lv-anchors">-</div></div>
-        <div class="ax-tile"><div class="ax-eyebrow">Guided runs</div><div class="ax-value" id="lv-runs">-</div></div>
-        <div class="ax-tile"><div class="ax-eyebrow">Steps validated</div><div class="ax-value" id="lv-valid">-</div></div>
-      </div>
-      <div class="pl-links"><a href="/portal#analytics/runs">Usage log</a><a href="/portal#analytics">Analytics</a></div>
-    </div>
-    <div class="ax-card pl-stop" style="--ax-pc:var(--ax-p-designer)">
-      <div class="ax-eyebrow">6 · From the 3D OMS to the AR OMS</div><h2>The content you already have becomes the instruction on the tool.</h2>
-      <p>A 3D OMS publication - every part, every motion, every view - imports in one step and comes out as an AR work instruction. Nothing is re-authored. The ME adjusts it in the 3D Studio: find a part, colour it, hide it, say what the operator sees. Excel, JSON and the Designer are the other lanes today; live pull from MES is the destination.</p>
-      <div class="pl-links"><a href="/explain/lifecycle">The lanes, drawn</a><a href="/roadmap">Procedure Designer</a><a href="/catalog#cortona3d-import">In the catalogue</a></div>
-    </div>
-    <div class="ax-card pl-stop" style="--ax-pc:var(--ax-teal)">
-      <div class="ax-eyebrow">7 · Next-generation XR · device readiness</div><h2>One instruction. Every device. Measured, not assumed.</h2>
-      <p>The same guide runs on the iPad, in the browser of a Quest, HoloLens or Vision Pro through the XR kit, reduced on waveguide glasses, as text on Even G2 and RealWear, and read aloud on Oakley. SIB derives what each step needs and says, per device, whether it is delivered as authored, adapted, or not at all - before any hardware is bought.</p>
-      <div class="pl-links"><a href="/scorecard#transition">Glasses transition</a><a href="/devices/gallery">The devices, by eye</a><a href="/catalog#device-readiness">In the catalogue</a></div>
-    </div>
-    <div class="ax-card pl-stop" style="--ax-pc:var(--ax-grey)">
-      <div class="ax-eyebrow">8 · Why SIB leads</div><h2>The spatial intelligence is ours. The hardware is a choice.</h2>
-      <p>Every piece that matters is written by Applied Materials: the importer, the reducer that fits content to a device, the backbone that gives a chamber one origin, the validation that checks the work, the kits that deliver it. When the headset changes - and it will - the origins, pins, validations, run history and learnings stay where they are.</p>
-      <div class="pl-note">Protected by design: the spatial data formats and validation methods are patent-pending and never leave the company's servers.</div>
-      <div class="pl-links"><a href="/architecture">How it is built (IP key)</a><a href="/scorecard">The readiness scorecard</a><a href="/portfolio">The POC portfolio</a></div>
-    </div>
+  <!-- The journey: eight stations on one rail, in the order a cleanroom
+       adopts them. The rail is read in ten seconds; a station opens the depth. -->
+  <div class="pl-journey">
+    <div class="pl-journey-h"><div class="ax-eyebrow">In the order a cleanroom adopts it</div><span class="ax-label-s ax-muted">Tap a station · arrow keys move along the rail</span></div>
+    <ol class="pl-rail" id="pl-rail"></ol>
+    <div class="ax-card pl-detail" id="pl-detail"></div>
   </div>
 
   <div class="ax-card" id="assess">
@@ -168,13 +143,67 @@
 <script src="/portal/platform-map.js"></script>
 <script>
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+// The journey: eight stations, in the order a cleanroom adopts them.
+const STOPS = [
+  { eyebrow: 'Spatial Intelligence Backbone', title: 'One chamber. One origin.', short: 'scan once, every pin knows where it lives', color: 'var(--ax-green)',
+    body: 'Scan the chamber once and every guide and spatial tag knows exactly where it lives - every session, every shift, every technician. If the part moves, the instruction moves with it: a thirty-second scan lets SIB know a chamber by its shape.',
+    note: 'Millimetre-stable · offline · on-prem', links: [['How it works (IP key)', '/explain/spatial-intelligence'], ['In the catalogue', '/catalog#sealed-worldmap']] },
+  { eyebrow: 'AR OMS · adaptive guided work instructions', title: 'The instruction lands where the hands go.', short: 'each step pinned on the chamber', color: 'var(--ax-p-guides)',
+    body: 'Each step pinned on the chamber, a ghost of the correct result, a recovery path when something isn’t right. Authored on the tool by the ME in minutes, or imported from the content the company already has; logged per Production #.',
+    note: 'First-time-right, measured · one procedure, one chamber', links: [['Life of a work instruction', '/explain/lifecycle'], ['In the catalogue', '/catalog#spatial-steps']] },
+  { eyebrow: 'Spatial validation', title: 'SIB checks the work, not the checkbox.', short: 'the verdict is on the part, with evidence', color: 'var(--ax-p-tags)',
+    body: 'A cone of light brings the camera to the exact spot the ME trained. The verdict is on the part, with the evidence attached to the run - the QFE reviews by exception.',
+    links: [['In the catalogue', '/catalog#step-validation']] },
+  { eyebrow: 'Presence & coaching', title: 'The ME and the technician, on the same pin.', short: '"look here" lands on the metal', color: 'var(--ax-cyan)',
+    body: 'The ME sees which step the technician is on and where they are looking, and sends a "look here" that lands on the metal. New hires learn on the tool, not in a classroom. Hints arrive only when a visit differs from what is normal on that step.',
+    note: 'Responsible by design: presence is per session, announced, never recorded.', links: [['In the catalogue', '/catalog#presence-coaching'], ['Contextual intelligence', '/catalog#contextual-intelligence']] },
+  { eyebrow: 'Live from this server', title: 'Read from SIB as you look at it.', short: 'chambers, runs, validations - now', color: 'var(--ax-blue)', live: true,
+    body: 'Every number on this page is read from this server as you open it; nothing here is a slide.',
+    links: [['Usage log', '/portal#analytics/runs'], ['Analytics', '/portal#analytics']] },
+  { eyebrow: 'From the 3D OMS to the AR OMS', title: 'The content you already have becomes the instruction on the tool.', short: 'imported in one step, nothing re-authored', color: 'var(--ax-p-designer)',
+    body: 'A 3D OMS publication - every part, every motion, every view - imports in one step and comes out as an AR work instruction. Nothing is re-authored. The ME adjusts it in the 3D Studio: find a part, colour it, hide it, say what the operator sees. Excel, JSON and the Designer are the other lanes today; live pull from MES is the destination.',
+    links: [['The lanes, drawn', '/explain/lifecycle'], ['Procedure Designer', '/roadmap'], ['In the catalogue', '/catalog#cortona3d-import']] },
+  { eyebrow: 'Next-generation XR · device readiness', title: 'One instruction. Every device. Measured, not assumed.', short: 'per device: as authored, adapted, or not', color: 'var(--ax-teal)',
+    body: 'The same guide runs on the iPad, in the browser of a Quest, HoloLens or Vision Pro through the XR kit, reduced on waveguide glasses, as text on Even G2 and RealWear, and read aloud on Oakley. SIB derives what each step needs and says, per device, whether it is delivered as authored, adapted, or not at all - before any hardware is bought.',
+    links: [['Glasses transition', '/scorecard#transition'], ['The devices, by eye', '/devices/gallery'], ['In the catalogue', '/catalog#device-readiness']] },
+  { eyebrow: 'Why SIB leads', title: 'The spatial intelligence is ours. The hardware is a choice.', short: 'written in-house; the headset can change', color: 'var(--ax-grey)',
+    body: 'Every piece that matters is written by Applied Materials: the importer, the reducer that fits content to a device, the backbone that gives a chamber one origin, the validation that checks the work, the kits that deliver it. When the headset changes - and it will - the origins, pins, validations, run history and learnings stay where they are.',
+    note: 'Protected by design: the spatial data formats and validation methods are patent-pending and never leave the company’s servers.', links: [['How it is built (IP key)', '/architecture'], ['The readiness scorecard', '/scorecard'], ['The POC portfolio', '/portfolio']] },
+];
+let STATS = null, stop = 0;
+function railHtml() {
+  return STOPS.map((st, i) => {
+    const col = i < 4 ? i + 1 : 8 - i; // the second row runs right to left, so the rail is one line
+    return `<li class="pl-st ${stop === i ? 'on' : ''} is-col${col} ${i === 3 ? 'is-turn-down' : ''}" style="--ax-pc:${st.color};grid-column:${col};grid-row:${i < 4 ? 1 : 2}" data-i="${i}" tabindex="0" role="button" aria-pressed="${stop === i}"><span class="pl-node">${i + 1}</span><b>${esc(st.title)}</b><span>${esc(st.short)}</span></li>`;
+  }).join('');
+}
+function detailHtml() {
+  const st = STOPS[stop];
+  const live = st.live ? `<div class="ax-tiles">
+      <div class="ax-tile"><div class="ax-eyebrow">On tools now</div><div class="ax-value">${esc(STATS?.presenceNow ?? '-')}</div></div>
+      <div class="ax-tile"><div class="ax-eyebrow">Chambers mapped</div><div class="ax-value">${esc(STATS?.anchors ?? '-')}</div></div>
+      <div class="ax-tile"><div class="ax-eyebrow">Guided runs</div><div class="ax-value">${esc(STATS?.guidedRuns ?? '-')}</div></div>
+      <div class="ax-tile"><div class="ax-eyebrow">Steps validated</div><div class="ax-value">${esc(STATS?.validatedSteps ?? '-')}</div></div></div>` : '';
+  return `<div><div class="ax-eyebrow">Station ${stop + 1} of ${STOPS.length} · ${esc(st.eyebrow)}</div><h2>${esc(st.title)}</h2>${live}<p>${esc(st.body)}</p>${st.note ? `<div class="pl-note">${esc(st.note)}</div>` : ''}
+    <div class="pl-links">${st.links.map(([t, h]) => `<a href="${esc(h)}">${esc(t)}</a>`).join('')}</div></div>
+    <div class="pl-nav"><button class="ax-btn" id="pl-prev" ${stop === 0 ? 'disabled' : ''}>Back</button><button class="ax-btn ax-btn--primary" id="pl-next" ${stop === STOPS.length - 1 ? 'disabled' : ''}>Next station</button></div>`;
+}
+function renderJourney() {
+  const rail = document.getElementById('pl-rail'), det = document.getElementById('pl-detail');
+  rail.innerHTML = railHtml(); det.innerHTML = detailHtml(); det.style.setProperty('--ax-pc', STOPS[stop].color);
+  rail.querySelectorAll('[data-i]').forEach(li => { li.onclick = () => go(Number(li.dataset.i)); li.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(Number(li.dataset.i)); } }; });
+  document.getElementById('pl-prev').onclick = () => go(stop - 1);
+  document.getElementById('pl-next').onclick = () => go(stop + 1);
+}
+function go(i) { if (i < 0 || i >= STOPS.length) return; stop = i; renderJourney(); }
+document.addEventListener('keydown', e => { if (e.target.closest('input,textarea,.az-modal')) return; if (e.key === 'ArrowRight') go(stop + 1); if (e.key === 'ArrowLeft') go(stop - 1); });
+renderJourney();
+
 // The drawing, with live numbers when /stats answers.
 fetch('/stats').then(r => r.json()).then(st => {
+  STATS = st;
+  if (STOPS[stop].live) renderJourney();
   mountPlatformMap(document.getElementById('pl-map'), { stats: { anchors: st.anchors, guidedRuns: st.guidedRuns, validatedSteps: st.validatedSteps, peopleNow: st.presenceNow } });
-  document.getElementById('lv-people').textContent = st.presenceNow ?? 0;
-  document.getElementById('lv-anchors').textContent = st.anchors ?? 0;
-  document.getElementById('lv-runs').textContent = st.guidedRuns ?? 0;
-  document.getElementById('lv-valid').textContent = st.validatedSteps ?? 0;
 }).catch(() => mountPlatformMap(document.getElementById('pl-map'), {}));
 
 // ── Connected Worker maturity: ladder + self-assessment (M2). Wording can be

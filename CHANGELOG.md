@@ -30,7 +30,10 @@ it, it gets a line.
   alongside and the eight devices fanning out by delivery form; every element
   clicks through to the surface that owns it. The eight stops follow as cards
   in the order a cleanroom adopts them, each linked to the explain page or catalogue
-  entry; the Connected Worker maturity ladder and the six-question
+  entry (now a journey: eight numbered stations on one serpentine rail, a
+  line each, with the selected station's depth in a panel beneath - Back /
+  Next station, arrow keys; the live tiles sit in station 5); the Connected
+  Worker maturity ladder and the six-question
   self-assessment stay (same `POST /platform/assess`, same override file),
   on brand components. No canvas, no scroll choreography: it renders the same
   on a GPU-less laptop, in Reader mode and in print. The animated 3D chamber
