@@ -32,6 +32,7 @@ const GOVERNED = [
   'sib/portal/portfolio.html',      // /portfolio (POC Portfolio)
   'sib/portal/platform.html',       // /platform (the platform in one picture)
   'sib/portal/platform-map.js',     // the drawing (home hero + /platform)
+  'sib/portal/devices.html',        // /devices/gallery (the devices, by eye)
   'sib/roadmap-client/src/studio.css', // the Designer's 3D Studio (first Designer surface on the system)
   'sib/roadmap-client/src/styles.css', // the Designer (tokens only since 2026.4.46)
   'docs/APP-WIREFRAME.html',           // /wireframe - the app mock, on the app's own tokens

@@ -426,7 +426,16 @@ document.getElementById('w').addEventListener('submit', async function(ev){
   app.use('/learn', learnRouter);
   // GET /architecture - C4 code architecture; /architecture/data needs the IP key.
   app.use('/architecture', architectureRouter);
-  // GET /devices - wearable profiles (docs/devices/*.md) for the readiness matrix.
+  // GET /devices - wearable profiles (docs/devices/*.md) for the readiness matrix;
+  // GET /devices/gallery - the same profiles as cards, grouped by eye class.
+  // Device pictures: DATA_DIR/devices/media/<file> (outside git) first, then
+  // sib/portal/devices-media/ - a profile names its file in `image`.
+  app.use('/devices-media', express.static(path.join(DATA_DIR, 'devices', 'media')));
+  app.use('/devices-media', express.static(path.join(__dirname, '../portal/devices-media')));
+  app.get('/devices/gallery', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-cache');
+    res.sendFile(path.join(__dirname, '../portal/devices.html'));
+  });
   app.use('/devices', devicesRouter);
   // Technology Readiness scorecard SIB keeps for its tracks (docs/TRL-SCORECARD.md).
   app.use('/scorecard', scorecardRouter);

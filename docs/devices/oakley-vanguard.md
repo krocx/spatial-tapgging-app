@@ -6,6 +6,19 @@ overlay: none
 input: [voice]
 delivery: spoken
 notes: No display. Steps read aloud, questions answered by voice; part names and locations spoken from the CAD pin.
+class: no-display
+what: Sports glasses with a camera, open-ear speakers and microphones and no display at all; the paired phone does the work.
+displaySpec: none
+fov: camera 122 degrees ultrawide, 12 MP
+weight: about 66 g
+battery: up to 9 hours (Meta), 36 h more from the case
+cleanroom: Open-ear speakers leave hearing free; wraparound frame; IP67; the camera is the opportunity for evidence photos (backlog).
+poc: XR kit spoken profile on the paired phone: steps read aloud, pass / fail by voice.
+officialUrl: https://www.meta.com/ai-glasses/oakley-meta-vanguard/
+specSource: Meta product page and reviews, read 2026-10-11
+image: 
+imageCredit: 
+imageCreditUrl: 
 ---
 Meta Oakley Vanguard: what it can deliver for a work instruction and how it is driven.
 `display` is what the device shows (full, small, text or none), `overlay`

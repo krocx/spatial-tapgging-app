@@ -9,3 +9,17 @@ none), `overlay` (3d | reduced | none), `input` ([touch, voice, ring,
 trackpad, gaze, hands, controller, mouse, buttons]), `delivery` (app | xrkit |
 companion-text | spoken), `notes`. See
 docs/ar-ojt/DEVICE-ADAPTIVE-INSTRUCTIONS.md for the rules that use them.
+
+The device gallery (`/devices/gallery`) reads the same files and adds, all
+optional: `class` (handheld | binocular-headset | binocular-glasses |
+monocular | no-display - the grouping by eye), `what` (one plain sentence),
+`displaySpec`, `fov`, `weight`, `battery`, `cleanroom` (what matters on the
+floor), `poc` (how SIB runs it), `officialUrl` (the maker's page, the "Learn
+more" link), `specSource` (where the figures came from and when they were
+read - the card prints it, so nothing is unsourced), and the picture:
+`image` (a file name served from `/devices-media/`: put it in
+`DATA_DIR/devices/media/` on the server, outside git, or in
+`sib/portal/devices-media/`; use the maker's press image only if its usage
+terms allow it, and say so in the credit),
+`imageCredit` and `imageCreditUrl` (printed under the picture). Without an
+image the card shows the class icon.

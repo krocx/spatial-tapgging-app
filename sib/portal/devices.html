@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en" class="ax">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Devices · appliedx Connected Worker AR OMS Platform</title>
+<link rel="stylesheet" href="/portal/brand/brand.css">
+<style>
+  /* /devices/gallery - the wearables SIB delivers on, as cards grouped by eye
+     class, read from the same docs/devices/*.md profiles the readiness matrix
+     uses (so a new headset is still one file, not a release). Every figure on
+     a card names its source and the date it was read; a picture appears only
+     when the profile names one, with its credit printed under it. */
+  body { margin: 0; }
+  .dv-header { display: flex; align-items: center; gap: var(--ax-s4); padding: var(--ax-s4) var(--ax-s5); border-bottom: var(--ax-hair); }
+  .dv-header .ax-nav { margin-left: var(--ax-s4); }
+  .dv-wrap { max-width: 1240px; margin: 0 auto; padding: var(--ax-s5) var(--ax-s5) var(--ax-s7); }
+  .dv-hero { display: flex; align-items: flex-end; gap: var(--ax-s4); flex-wrap: wrap; margin-bottom: var(--ax-s5); }
+  .dv-hero h1 { margin: 0; }
+  .dv-hero p { color: var(--ax-ink-2); margin: 4px 0 0; max-width: 820px; }
+  .dv-hero .dv-tools { margin-left: auto; display: flex; gap: var(--ax-s2); flex-wrap: wrap; }
+  .dv-classes { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: var(--ax-s5); }
+  .dv-classes .ax-chip { cursor: pointer; text-transform: none; letter-spacing: 0; font: var(--ax-label-s); background: var(--ax-paper); color: var(--ax-ink-2); border: 1px solid transparent; }
+  .dv-classes .ax-chip.on { background: var(--ax-blue-fill); color: var(--ax-blue); border-color: var(--ax-blue); }
+  .dv-group { margin-bottom: var(--ax-s6); }
+  .dv-group-h { display: flex; align-items: baseline; gap: var(--ax-s3); margin-bottom: var(--ax-s3); }
+  .dv-group-h h2 { margin: 0; font: var(--ax-h3); }
+  .dv-group-h span { font: var(--ax-label-s); color: var(--ax-ink-3); }
+  .dv-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: var(--ax-s4); }
+  .dv-card { border-left: 3px solid var(--ax-pc, var(--ax-blue)); scroll-margin-top: 80px; }
+  .dv-card.is-lit { outline: 2px solid var(--ax-blue); }
+  .dv-top { display: flex; gap: var(--ax-s3); align-items: flex-start; }
+  .dv-pic { flex: none; width: 120px; height: 90px; border-radius: var(--ax-r-field); background: var(--ax-paper-2); border: var(--ax-hair); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  .dv-pic img { width: 100%; height: 100%; object-fit: cover; }
+  .dv-pic .ax-icon { width: 36px; height: 36px; color: var(--ax-pc, var(--ax-blue)); }
+  .dv-top h3 { margin: 2px 0 4px; font: var(--ax-h3); }
+  .dv-top p { margin: 0; color: var(--ax-ink-2); }
+  .dv-credit { font: var(--ax-label-s); color: var(--ax-ink-3); margin: 4px 0 0; }
+  .dv-credit a { color: var(--ax-ink-3); }
+  .dv-form { display: flex; gap: 6px; flex-wrap: wrap; margin: var(--ax-s3) 0; }
+  .dv-spec { display: grid; grid-template-columns: 110px 1fr; gap: 4px 10px; margin: var(--ax-s3) 0; font: var(--ax-label-r); }
+  .dv-spec dt { color: var(--ax-ink-3); margin: 0; }
+  .dv-spec dd { margin: 0; color: var(--ax-ink); }
+  .dv-poc { background: var(--ax-paper-2); border-radius: var(--ax-r-field); padding: 8px 10px; margin: var(--ax-s3) 0; font: var(--ax-label-r); }
+  .dv-poc b { color: var(--ax-green); }
+  .dv-floor { font: var(--ax-label-r); color: var(--ax-ink-2); margin: 0 0 var(--ax-s3); }
+  .dv-links { display: flex; gap: var(--ax-s3); flex-wrap: wrap; align-items: center; font: var(--ax-label-s); }
+  .dv-links a { color: var(--ax-ink-2); display: inline-flex; align-items: center; gap: 4px; }
+  .dv-links .ax-icon { width: 12px; height: 12px; }
+  .dv-src { margin-left: auto; color: var(--ax-ink-3); }
+  @media (max-width: 600px) { .dv-cards { grid-template-columns: 1fr; } .dv-spec { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header class="dv-header">
+  <span class="ax-wordmark"><span class="ax-a">applied</span><span class="ax-x">x</span><span class="ax-rest">Connected Worker AR OMS Platform</span></span>
+  <nav class="ax-nav"><a href="/">Home</a><a href="/platform">Platform map</a><a href="/devices/gallery" aria-current="page">Devices</a><a href="/scorecard#transition">Glasses transition</a></nav>
+  <span data-brand-slot style="display:flex;align-items:center;margin-left:auto"></span>
+</header>
+
+<main class="dv-wrap">
+  <div class="dv-hero">
+    <div><div class="ax-eyebrow">Delivered on</div><h1>The devices, by eye</h1>
+      <p>One work instruction, every device, measured not assumed. The same guide runs on the iPad, in a headset's browser through the XR kit, reduced on waveguide glasses, as text on a monocular display and read aloud where there is no display at all. Grouped here by what sits in front of the eye, because that is what decides what a step can carry.</p></div>
+    <div class="dv-tools">
+      <a class="ax-btn" href="/scorecard#transition">Readiness per device</a>
+      <a class="ax-btn" href="/catalog#device-readiness">In the catalogue</a>
+    </div>
+  </div>
+
+  <div class="dv-classes" id="dv-classes"></div>
+  <div id="dv-groups"><div class="ax-empty">Reading the device profiles…</div></div>
+</main>
+
+<script>
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const icon = n => `<svg class="ax-icon"><use href="/portal/brand/icons.svg#i-${n}"/></svg>`;
+// The eye classes, in the order the drawing shows them. Labels and blurbs
+// mirror DEVICE_CLASSES in sib/src/guides/readiness.ts.
+const CLASSES = [
+  { id: 'handheld',          label: 'Handheld',                blurb: 'Held or on a stand; the chamber seen through the camera on a screen.', color: 'var(--ax-blue)',   icon: 'scan' },
+  { id: 'binocular-headset', label: 'Binocular, full headset', blurb: 'Both eyes, a full 3D model on the chamber; the heaviest and the most capable.', color: 'var(--ax-green)', icon: 'xr' },
+  { id: 'binocular-glasses', label: 'Binocular glasses',       blurb: 'Both eyes, a small window in each lens; light enough for a shift, reduced content.', color: 'var(--ax-teal)', icon: 'eye' },
+  { id: 'monocular',         label: 'Monocular',               blurb: 'One small display below one eye; text and voice, the real view untouched.', color: 'var(--ax-orange)', icon: 'step-image' },
+  { id: 'no-display',        label: 'No display',              blurb: 'Nothing to look at; steps are heard and answered by voice.', color: 'var(--ax-purple)', icon: 'voice' },
+];
+const FORM = { display: { full: 'full display', small: 'small display', text: 'text display', none: 'no display' },
+  overlay: { '3d': 'full model on the tool', reduced: 'reduced model', none: 'no model' },
+  delivery: { app: 'SIB app', xrkit: 'XR kit in the browser', 'companion-text': 'companion app, text pages', spoken: 'spoken' } };
+let profiles = [], filter = '';
+
+function card(p, cls) {
+  const i = p.info || {};
+  const pic = i.image
+    ? `<div class="dv-pic"><img src="/devices-media/${encodeURIComponent(i.image)}" alt="${esc(p.name)}" loading="lazy"></div>`
+    : `<div class="dv-pic">${icon(cls.icon)}</div>`;
+  const credit = i.image && i.imageCredit ? `<div class="dv-credit">Image: ${i.imageCreditUrl ? `<a href="${esc(i.imageCreditUrl)}" target="_blank" rel="noopener">${esc(i.imageCredit)}</a>` : esc(i.imageCredit)}</div>` : '';
+  const spec = [['Display', i.displaySpec], ['Field of view', i.fov], ['Weight', i.weight], ['Battery', i.battery]].filter(x => x[1]);
+  return `<div class="ax-card dv-card" id="${esc(p.id)}" style="--ax-pc:${cls.color}">
+    <div class="dv-top">${pic}<div style="min-width:0"><div class="ax-eyebrow">${esc(cls.label)}</div><h3>${esc(p.name)}</h3>${i.what ? `<p>${esc(i.what)}</p>` : ''}${credit}</div></div>
+    <div class="dv-form"><span class="ax-chip">${esc(FORM.display[p.display] || p.display)}</span><span class="ax-chip">${esc(FORM.overlay[p.overlay] || p.overlay)}</span><span class="ax-chip">${esc(FORM.delivery[p.delivery] || p.delivery)}</span>${(p.input || []).map(x => `<span class="ax-chip">${esc(x)}</span>`).join('')}</div>
+    ${spec.length ? `<dl class="dv-spec">${spec.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>` : ''}
+    ${i.poc ? `<div class="dv-poc"><b>In the POC:</b> ${esc(i.poc)}</div>` : ''}
+    ${i.cleanroom ? `<p class="dv-floor"><b>On the floor:</b> ${esc(i.cleanroom)}</p>` : ''}
+    ${p.notes && !i.poc ? `<p class="dv-floor" style="color:var(--ax-ink-3)">${esc(p.notes)}</p>` : ''}
+    <div class="dv-links">
+      ${i.officialUrl ? `<a href="${esc(i.officialUrl)}" target="_blank" rel="noopener">Learn more at the maker ${icon('external')}</a>` : ''}
+      <a href="/scorecard#transition">Readiness</a>
+      ${i.specSource ? `<span class="dv-src">Figures: ${esc(i.specSource)}</span>` : ''}
+    </div></div>`;
+}
+function render() {
+  document.getElementById('dv-classes').innerHTML = [{ id: '', label: 'All' }, ...CLASSES].map(c => `<button class="ax-chip ${filter === c.id ? 'on' : ''}" data-c="${c.id}">${esc(c.label)}</button>`).join('');
+  document.querySelectorAll('#dv-classes [data-c]').forEach(b => b.onclick = () => { filter = b.dataset.c; render(); });
+  const groups = CLASSES.filter(c => !filter || c.id === filter).map(c => {
+    const list = profiles.filter(p => (p.class || 'binocular-headset') === c.id);
+    if (!list.length) return '';
+    return `<section class="dv-group"><div class="dv-group-h"><h2>${esc(c.label)}</h2><span>${esc(c.blurb)}</span></div><div class="dv-cards">${list.map(p => card(p, c)).join('')}</div></section>`;
+  }).join('');
+  document.getElementById('dv-groups').innerHTML = groups || '<div class="ax-empty">No device profiles yet. Add one file under docs/devices/.</div>';
+  if (location.hash) { const h = location.hash.slice(1); if (CLASSES.some(c => c.id === h) && filter !== h) { filter = h; return render(); } const el = document.getElementById(h); if (el) { el.classList.add('is-lit'); el.scrollIntoView({ block: 'start' }); } }
+}
+fetch('/devices').then(r => r.json()).then(j => { profiles = j.data || []; render(); })
+  .catch(() => { document.getElementById('dv-groups').innerHTML = '<div class="ax-empty">The device profiles could not be read.</div>'; });
+window.addEventListener('hashchange', () => { document.querySelectorAll('.dv-card.is-lit').forEach(e => e.classList.remove('is-lit')); render(); });
+</script>
+<script src="/portal/brand.js"></script>
+</body>
+</html>

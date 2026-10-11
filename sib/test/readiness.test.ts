@@ -50,4 +50,10 @@ test('report: per-step levels and a deliverable percentage per profile', () => {
 test('profiles parse from frontmatter and reject bad fields', () => {
   assert.ok(profileFrom({ id: 'a', name: 'A', display: 'text', overlay: 'none', input: ['ring'], delivery: 'companion-text' }));
   assert.equal(profileFrom({ id: 'a', name: 'A', display: 'huge', overlay: 'none', input: [], delivery: 'app' }), null);
+  // gallery fields: class only when known, info only when something is filled, blanks dropped
+  const g = profileFrom({ id: 'g', name: 'G', display: 'text', overlay: 'none', input: ['ring'], delivery: 'companion-text', class: 'binocular-glasses', fov: '27.5 degrees', image: '', officialUrl: 'https://example.com/g' })!;
+  assert.equal(g.class, 'binocular-glasses');
+  assert.deepEqual(g.info, { fov: '27.5 degrees', officialUrl: 'https://example.com/g' });
+  const u = profileFrom({ id: 'u', name: 'U', display: 'text', overlay: 'none', input: [], delivery: 'app', class: 'trinocular' })!;
+  assert.equal(u.class, undefined); assert.equal(u.info, undefined);
 });

@@ -30,21 +30,23 @@
     { name: 'Procedure Designer', go: '/roadmap' },
     { name: 'MES · live',         go: '/explain/lifecycle', horizon: true },
   ];
-  const DEVICES = [
-    { name: 'iPad',        form: 'app',     go: '/wireframe' },
-    { name: 'Quest 3',     form: 'full',    go: '/devices' },
-    { name: 'HoloLens 2',  form: 'full',    go: '/devices' },
-    { name: 'Vision Pro',  form: 'full',    go: '/devices' },
-    { name: 'RayNeo X3',   form: 'reduced', go: '/devices' },
-    { name: 'Even G2',     form: 'text',    go: '/devices' },
-    { name: 'RealWear',    form: 'text',    go: '/devices' },
-    { name: 'Oakley',      form: 'spoken',  go: '/devices' },
+  const DEVICES = [ // grouped by eye class, the gallery's order (/devices/gallery)
+    { name: 'iPad',        form: 'app',     cls: 'handheld',          go: '/devices/gallery#ipad' },
+    { name: 'Quest 3',     form: 'full',    cls: 'binocular-headset', go: '/devices/gallery#quest-3' },
+    { name: 'HoloLens 2',  form: 'full',    cls: 'binocular-headset', go: '/devices/gallery#hololens-2' },
+    { name: 'Vision Pro',  form: 'full',    cls: 'binocular-headset', go: '/devices/gallery#vision-pro' },
+    { name: 'RayNeo X3',   form: 'reduced', cls: 'binocular-glasses', go: '/devices/gallery#rayneo-x3-pro' },
+    { name: 'Even G2',     form: 'text',    cls: 'binocular-glasses', go: '/devices/gallery#even-g2' },
+    { name: 'RealWear',    form: 'text',    cls: 'monocular',         go: '/devices/gallery#realwear-hmt-1' },
+    { name: 'Oakley',      form: 'spoken',  cls: 'no-display',        go: '/devices/gallery#oakley-vanguard' },
   ];
-  const CLASSES = [ // the compact drawing shows the device classes, not the devices
-    { name: 'iPad',            form: 'app',     go: '/wireframe' },
-    { name: 'Headsets',        form: 'full',    go: '/devices' },
-    { name: 'Glasses',         form: 'reduced', go: '/devices' },
-    { name: 'Text · spoken',   form: 'text',    go: '/devices' },
+  const CLASS_LABEL = { handheld: 'Handheld', 'binocular-headset': 'Binocular · headset', 'binocular-glasses': 'Binocular · glasses', monocular: 'Monocular', 'no-display': 'No display' };
+  const CLASSES = [ // the compact drawing shows the eye classes, not the devices
+    { name: 'Handheld',    form: 'app',     go: '/devices/gallery#handheld' },
+    { name: 'Headsets',    form: 'full',    go: '/devices/gallery#binocular-headset' },
+    { name: 'Glasses',     form: 'reduced', go: '/devices/gallery#binocular-glasses' },
+    { name: 'Monocular',   form: 'text',    go: '/devices/gallery#monocular' },
+    { name: 'No display',  form: 'spoken',  go: '/devices/gallery#no-display' },
   ];
   const GOVERN = [
     { name: 'Feature Catalogue', go: '/catalog' },
@@ -87,7 +89,7 @@
   }
 
   function fullSvg(st) {
-    const W = 960, H = 620, cx = 480, cy = 250, coreW = 320, coreH = 150;
+    const W = 960, H = 640, cx = 480, cy = 250, coreW = 320, coreH = 150;
     let s = `<svg class="pm" viewBox="0 0 ${W} ${H}" role="img" aria-label="The platform in one picture: SIB in the centre, four products around it, content lanes feeding in, devices fanning out, governance alongside">`;
     // sources (left lanes into the core)
     const sx = 40, sy0 = cy - 51;
@@ -107,10 +109,18 @@
     PRODUCTS.forEach((p, i) => { s += pad(p, pads[i][0], pads[i][1], pw, ph, cx, cy, coreW); });
     // devices (fan below)
     const dy = H - 70, dw = (W - 80) / DEVICES.length;
-    s += `<text class="pm-lane-h" x="40" y="${dy - 36}">Delivered on</text>`;
+    s += `<text class="pm-lane-h" x="40" y="${dy - 68}">Delivered on</text>`;
+    // eye-class brackets over each run of devices
+    let gi = 0;
+    while (gi < DEVICES.length) {
+      let gj = gi; while (gj + 1 < DEVICES.length && DEVICES[gj + 1].cls === DEVICES[gi].cls) gj++;
+      const x0 = 40 + dw * gi + 8, x1 = 40 + dw * (gj + 1) - 8, xm = (x0 + x1) / 2;
+      s += `<g data-go="/devices/gallery#${DEVICES[gi].cls}" class="pm-cls"><path class="pm-bracket" d="M ${x0} ${dy - 24} L ${x0} ${dy - 30} L ${x1} ${dy - 30} L ${x1} ${dy - 24}"/><text x="${xm}" y="${dy - 36}" text-anchor="middle">${esc(CLASS_LABEL[DEVICES[gi].cls])}</text></g>`;
+      gi = gj + 1;
+    }
     DEVICES.forEach((d, i) => {
       const x = 40 + dw * i + dw / 2;
-      s += `<path class="pm-fan" d="M ${cx} ${cy + coreH / 2} C ${cx} ${cy + coreH / 2 + 90}, ${x} ${dy - 80}, ${x} ${dy - 14}"/>`;
+      s += `<path class="pm-fan" d="M ${cx} ${cy + coreH / 2} C ${cx} ${cy + coreH / 2 + 90}, ${x} ${dy - 100}, ${x} ${dy - 32}"/>`;
       s += pill('pm-dev pm-' + d.form, d.go, x - dw / 2 + 6, dy, dw - 12, 28, d.name);
       s += `<text class="pm-dev-s" x="${x}" y="${dy + 34}" text-anchor="middle">${FORM_LABEL[d.form]}</text>`;
     });
@@ -158,6 +168,9 @@
     .pm .pm-fan { fill:none; stroke:var(--ax-rule); stroke-width:1; }
     .pm .pm-dev.pm-app rect { stroke:var(--ax-blue); } .pm .pm-dev.pm-full rect { stroke:var(--ax-green); } .pm .pm-dev.pm-reduced rect { stroke:var(--ax-teal); } .pm .pm-dev.pm-text rect { stroke:var(--ax-orange); } .pm .pm-dev.pm-spoken rect { stroke:var(--ax-purple); }
     .pm .pm-dev-s { font-size:9.5px; fill:var(--ax-ink-3); }
+    .pm .pm-bracket { fill:none; stroke:var(--ax-rule); stroke-width:1; }
+    .pm .pm-cls text { font-size:9.5px; letter-spacing:.04em; text-transform:uppercase; fill:var(--ax-ink-3); }
+    .pm .pm-cls:hover text { fill:var(--ax-ink); }
     .pm .pm-num { font:600 18px var(--ax-mono); fill:var(--ax-ink); }
     .pm .pm-num-l { font-size:9.5px; fill:var(--ax-ink-3); }
     .pm .pm-foot { font-size:11px; fill:var(--ax-ink-3); }

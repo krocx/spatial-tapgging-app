@@ -33,6 +33,23 @@ export interface DeviceProfile {
   /** How a guide reaches it. */
   delivery: 'app' | 'xrkit' | 'companion-text' | 'spoken';
   notes?: string;
+  /** Eye class for the gallery's grouping (docs/devices/README.md). */
+  class?: DeviceClass;
+  /** The gallery's plain-language card (/devices/gallery); every field optional, nothing invented. */
+  info?: DeviceInfo;
+}
+
+export type DeviceClass = 'handheld' | 'binocular-headset' | 'binocular-glasses' | 'monocular' | 'no-display';
+export const DEVICE_CLASSES: { id: DeviceClass; label: string; blurb: string }[] = [
+  { id: 'handheld',          label: 'Handheld',                 blurb: 'Held or on a stand; the chamber seen through the camera on a screen.' },
+  { id: 'binocular-headset', label: 'Binocular, full headset',  blurb: 'Both eyes, a full 3D model on the chamber; the heaviest and the most capable.' },
+  { id: 'binocular-glasses', label: 'Binocular glasses',        blurb: 'Both eyes, a small window in each lens; light enough for a shift, reduced content.' },
+  { id: 'monocular',         label: 'Monocular',                blurb: 'One small display below one eye; text and voice, the real view untouched.' },
+  { id: 'no-display',        label: 'No display',               blurb: 'Nothing to look at; steps are heard and answered by voice.' },
+];
+export interface DeviceInfo {
+  what?: string; displaySpec?: string; fov?: string; weight?: string; battery?: string; cleanroom?: string; poc?: string;
+  officialUrl?: string; specSource?: string; image?: string; imageCredit?: string; imageCreditUrl?: string;
 }
 
 // ── Step needs ──────────────────────────────────────────────────────────────
@@ -130,6 +147,13 @@ export function profileFrom(fm: Record<string, string | string[]>): DeviceProfil
   const input = Array.isArray(fm.input) ? (fm.input as string[]) : typeof fm.input === 'string' ? [fm.input] : [];
   if (!id || !name || !display || !overlay || !delivery) return null;
   if (!DISPLAYS.includes(display) || !OVERLAYS.includes(overlay) || !DELIVERIES.includes(delivery)) return null;
+  const cls = s('class');
+  const info: DeviceInfo = {};
+  for (const k of ['what', 'displaySpec', 'fov', 'weight', 'battery', 'cleanroom', 'poc', 'officialUrl', 'specSource', 'image', 'imageCredit', 'imageCreditUrl'] as const) {
+    const v = s(k); if (v && v.trim()) info[k] = v.trim();
+  }
   return { id, name, display: display as DeviceProfile['display'], overlay: overlay as DeviceProfile['overlay'],
-    input: input as DeviceProfile['input'], delivery: delivery as DeviceProfile['delivery'], ...(s('notes') ? { notes: s('notes') } : {}) };
+    input: input as DeviceProfile['input'], delivery: delivery as DeviceProfile['delivery'], ...(s('notes') ? { notes: s('notes') } : {}),
+    ...(cls && DEVICE_CLASSES.some(c => c.id === cls) ? { class: cls as DeviceClass } : {}),
+    ...(Object.keys(info).length ? { info } : {}) };
 }

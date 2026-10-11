@@ -7,6 +7,22 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **The devices, by eye (`/devices/gallery`).** The wearables SIB delivers
+  on, as cards grouped by what sits in front of the eye: handheld (iPad),
+  binocular full headset (Quest 3, HoloLens 2, Vision Pro), binocular glasses
+  (RayNeo X3 Pro, Even G2), monocular (RealWear HMT-1), no display (Oakley
+  Vanguard). Each card: what the device is in one sentence, its delivery form
+  chips, display, field of view, weight and battery from the maker's
+  published figures with the source and the date they were read printed on
+  the card, what matters on the floor, how SIB runs it in the POC, "Learn
+  more at the maker" and its readiness row. Read from the same
+  `docs/devices/*.md` profiles the readiness matrix uses (new optional
+  fields; `GET /devices` unchanged), so a new headset is still one file. A
+  picture appears when a profile names one under `/devices-media/`
+  (`DATA_DIR/devices/media/` first, outside git) with its credit linked
+  under it; otherwise the class icon. The platform drawing's device pills
+  now carry eye-class brackets and open the card; the compact drawing shows
+  the five classes.
 - **Platform map, rebuilt as one picture.** `/platform` is now a governed,
   static page: one drawing (`platform-map.js`) with SIB in the centre carrying
   the live numbers, the four products around it, content lanes feeding in

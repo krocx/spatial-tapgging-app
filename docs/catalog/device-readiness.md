@@ -9,6 +9,7 @@ terms: [SIB]
 spec: ar-ojt/DEVICE-ADAPTIVE-INSTRUCTIONS.md
 api: |
   GET /devices - wearable profiles from docs/devices/*.md (browser · API key)
+  GET /devices/gallery - the devices as cards grouped by eye class (handheld · binocular headset · binocular glasses · monocular · no display): what each is, display, field of view, weight, battery, what matters on the floor, how SIB runs it, the maker's page, the source and date of every figure, a picture with its credit when the profile names one (browser)
   GET /guides/:id/readiness - per step: derived needs and, per profile, native / adapted / assisted with the reason; summary per profile (portal · API key)
   GET /guides/:id/xr-qr.png - ?profile=<id> bakes a device profile into the XR kit link; the QR carries a single-use device link (portal · API key)
   POST /guides/:id/device-link - { profile? } mints a single-use, ten-minute link that opens the guide on a headset without the site key (portal · API key)
