@@ -74,7 +74,7 @@
   function pad(p, x, y, w, h, cx, cy, coreW, coreH) {
     const left = x < cx, above = y < cy;
     let link;
-    if (coreH) { // compact: pad sits above/below the core, so the link drops vertically onto its edge
+    if (coreH) { // the pad sits above/below the core, so the link drops vertically onto its edge
       const ex = left ? x + w / 2 - 30 : x - w / 2 + 30, ey = above ? y + h / 2 : y - h / 2, kx = left ? cx - coreW / 2 + 40 : cx + coreW / 2 - 40, ky = above ? cy - coreH / 2 : cy + coreH / 2;
       link = `M ${ex} ${ey} C ${ex} ${(ey + ky) / 2}, ${kx} ${(ey + ky) / 2}, ${kx} ${ky}`;
     } else {
@@ -106,7 +106,7 @@
     // the core, then the four pads
     s += core(cx, cy, coreW, coreH, st, false);
     const pw = 210, ph = 64, pads = [[cx - 250, cy - 160], [cx + 250, cy - 160], [cx - 250, cy + 160], [cx + 250, cy + 160]];
-    PRODUCTS.forEach((p, i) => { s += pad(p, pads[i][0], pads[i][1], pw, ph, cx, cy, coreW); });
+    PRODUCTS.forEach((p, i) => { s += pad(p, pads[i][0], pads[i][1], pw, ph, cx, cy, coreW, coreH); });
     // devices (fan below)
     const dy = H - 70, dw = (W - 80) / DEVICES.length;
     s += `<text class="pm-lane-h" x="40" y="${dy - 68}">Delivered on</text>`;
