@@ -7,8 +7,23 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
-- **Home page for every visitor.** An introduction in the hero and an
-  "I'm here as…" row (Leadership · Operations manager · Manufacturing engineer
+- **Platform map, rebuilt as one picture.** `/platform` is now a governed,
+  static page: one drawing (`platform-map.js`) with SIB in the centre carrying
+  the live numbers, the four products around it, content lanes feeding in
+  (3D OMS · Excel/JSON · Designer · MES live as the destination), governance
+  alongside and the eight devices fanning out by delivery form; every element
+  clicks through to the surface that owns it. The eight stops follow as cards
+  in the order a fab adopts them, each linked to the explain page or catalogue
+  entry; the Connected Worker maturity ladder and the six-question
+  self-assessment stay (same `POST /platform/assess`, same override file),
+  on brand components. No canvas, no scroll choreography: it renders the same
+  on a GPU-less laptop, in Reader mode and in print. The animated 3D chamber
+  moved to `/platform/chamber` ("Play the chamber"); `/platform/long` is
+  unchanged. The home hero shows the compact version of the same drawing
+  (four device classes instead of eight devices) so the two never drift; the
+  persona row reads "Show me the view for" in sentence case.
+- **Home page for every visitor.** An introduction in the hero and a
+  "Show me the view for…" row (Leadership · Operations manager · Manufacturing engineer
   · Technician · TPM) that lights the doors that matter and says where to
   start - never navigates, never hides; remembered on the browser. The doors
   are grouped: Understand (Learn, Platform map, Catalogue & Ask SIB), Work

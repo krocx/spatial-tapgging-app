@@ -275,7 +275,7 @@ flowchart LR
     CAT["catalog.html /catalog"]
     LEARN["learn.html /learn"]
     ARCH["architecture.html /architecture"]
-    PLAT["platform.html · xr.html"]
+    PLAT["platform.html · platform-map.js · platform-chamber.html · xr.html"]
     ROAD["roadmap-client /roadmap<br/>Procedure Designer"]
     WIRE["APP-WIREFRAME.html /wireframe"]
   end

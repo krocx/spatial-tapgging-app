@@ -179,9 +179,16 @@ document.getElementById('w').addEventListener('submit', async function(ev){
     res.setHeader('Cache-Control', 'no-cache');
     res.sendFile(path.join(__dirname, '../portal/platform-long.html'));
   });
+  // GET /platform - PM2 (2026.4.46): the platform in one picture, static and
+  // governed (platform-map.js, shared with the home hero). The animated 3D
+  // chamber it replaced stays reachable as "Play the chamber".
   app.get('/platform', (_req, res) => {
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.sendFile(path.join(__dirname, '../portal/platform.html'));
+  });
+  app.get('/platform/chamber', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.sendFile(path.join(__dirname, '../portal/platform-chamber.html'));
   });
   // GET /xr?guide=<id> - B3 (2026.4.46): the WebXR assessment kit. Own code on
   // vendored Three.js + the browser's WebXR API; loads the Guide Bundle and
