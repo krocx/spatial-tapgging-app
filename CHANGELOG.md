@@ -13,7 +13,7 @@ it, it gets a line.
   (3D OMS · Excel/JSON · Designer · MES live as the destination), governance
   alongside and the eight devices fanning out by delivery form; every element
   clicks through to the surface that owns it. The eight stops follow as cards
-  in the order a fab adopts them, each linked to the explain page or catalogue
+  in the order a cleanroom adopts them, each linked to the explain page or catalogue
   entry; the Connected Worker maturity ladder and the six-question
   self-assessment stay (same `POST /platform/assess`, same override file),
   on brand components. No canvas, no scroll choreography: it renders the same
