@@ -7,6 +7,23 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
+- **Play the chamber, told as a story (`/platform/chamber`).** One hero,
+  one step, six plot stages on a three-band rail (Beginning · Middle ·
+  Conclusion): a technician in her third week on a night shift, the chamber
+  down, the ME in another building; the paper instruction says "seat it
+  flat" and the chamber does not say where flat is; SIB recognises the
+  chamber, the step lands on the ring with its ghost, the first seat comes
+  back amber, the ME sees her view and sends "look here" onto the valve
+  side; she reseats, the cone sweeps green, the beacon turns; nobody walks
+  the cleanroom and the night lifts to morning; the resolution is the same
+  step through every wearable with the iPad as the companion, and the
+  cleanroom live from this server. The technician walks in, reaches,
+  hesitates and reseats; the chamber beacon and controller carry its state;
+  the ME appears as an inset of his screen; lighting goes from night to
+  morning. Captions are one narrative line per stage; the feature names
+  live in the links beneath. Machines without a usable GPU (software
+  renderer, or under 20 fps in the first second) are not played at all:
+  they get the six-panel storyboard and a note to reach the appliedx team.
 - **Play the chamber, rebuilt (`/platform/chamber`).** The one page that
   shows the AR OMS rather than explaining it. A technician in cleanroom PPE
   (gown, hood, bump cap, mask, goggles, gloves, bootie covers) stands at a

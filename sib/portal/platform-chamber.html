@@ -68,10 +68,21 @@
   /* the rail */
   .pc-rail { position: fixed; left: var(--ax-s5); right: var(--ax-s5); bottom: var(--ax-s4); z-index: 4; background: var(--ax-solid); border: var(--ax-hair); border-radius: var(--ax-r); padding: 10px 14px; display: flex; align-items: center; gap: var(--ax-s3); }
   .pc-rail .pc-play { flex: none; min-width: 72px; }
-  .pc-rail .pc-beats { flex: 1; display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+  .pc-rail .pc-beats { flex: 1; display: grid; grid-template-columns: 2fr 2fr 2fr; gap: 10px; }
+  .pc-band-h { font: var(--ax-eyebrow); letter-spacing: var(--ax-tracking-eyebrow); text-transform: uppercase; color: var(--ax-pc); margin-bottom: 4px; }
+  .pc-band-st { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .pc-rail .pc-beat .pc-n { display: inline-flex; width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--ax-pc); color: var(--ax-pc); font: 600 10px var(--ax-mono); align-items: center; justify-content: center; margin-right: 6px; vertical-align: -4px; }
+  .pc-rail .pc-beat.on .pc-n { background: var(--ax-pc); color: var(--ax-on-accent); }
+  .pc-me { position: fixed; top: 84px; right: var(--ax-s5); z-index: 3; display: none; width: 300px; border-left: 3px solid var(--ax-orange); }
+  .pc-me.on { display: block; }
+  .pc-me .ax-eyebrow { color: var(--ax-orange); }
+  .pc-me-row { margin-top: 8px; }
+  .pc-me .ax-chip { text-transform: none; letter-spacing: 0; font: var(--ax-label-s); background: var(--ax-solid); border: 1px solid var(--ax-pc, var(--ax-rule)); color: var(--ax-ink); }
+  .pc-me .pc-me-send { --ax-pc: var(--ax-orange); animation: pc-send 1.2s ease-in-out infinite; }
+  @keyframes pc-send { 0%, 100% { outline: 0 solid transparent; } 50% { outline: 3px solid var(--ax-rule); } }
   .pc-rail .pc-beat { position: relative; background: none; border: 0; color: var(--ax-ink-3); font: var(--ax-label-s); text-align: left; padding: 6px 0 0; cursor: pointer; }
   .pc-rail .pc-beat .bar { display: block; height: 3px; border-radius: 2px; background: var(--ax-rule); overflow: hidden; margin-bottom: 6px; }
-  .pc-rail .pc-beat .bar i { display: block; height: 100%; width: 0; background: var(--ax-blue); }
+  .pc-rail .pc-beat .bar i { display: block; height: 100%; width: 0; background: var(--ax-pc, var(--ax-blue)); }
   .pc-rail .pc-beat.on { color: var(--ax-ink); }
   .pc-rail .pc-beat .ax-mark { font-size: 10px; margin-right: 6px; }
   .pc-rail .pc-hint { flex: none; font: var(--ax-label-s); color: var(--ax-ink-3); white-space: nowrap; }
@@ -87,8 +98,9 @@
   @media (max-width: 760px) {
     .pc-cap { left: var(--ax-s4); right: var(--ax-s4); bottom: 140px; max-width: none; }
     .pc-cap h2 { font: var(--ax-h2); }
-    .pc-rail .pc-beats { grid-template-columns: repeat(7, 1fr); }
     .pc-rail .pc-beat span.n { display: none; }
+    .pc-band-h { display: none; }
+    .pc-me { display: none !important; }
     .pc-rail .pc-hint { display: none; }
     .pc-live { display: none !important; }
   }
@@ -104,10 +116,15 @@
 <div id="stage"></div>
 
 <div class="pc-cap" id="pc-cap"></div>
-<div class="pc-pin" id="pin-step" style="--ax-pc:var(--ax-green)"><span class="ax-chip"><span class="ax-mark"><i></i></span><span id="pin-step-t">Step 3 · Replace the focus ring</span></span></div>
+<div class="pc-pin" id="pin-step" style="--ax-pc:var(--ax-green)"><span class="ax-chip"><span class="ax-mark"><i></i></span><span id="pin-step-t">Step 3 · Seat the focus ring</span></span></div>
 <div class="pc-pin" id="pin-me" style="--ax-pc:var(--ax-orange)"><span class="ax-chip"><span class="ax-mark"><i></i></span>ME · look here</span></div>
 <div class="pc-pin" id="pin-ok" style="--ax-pc:var(--ax-green)"><span class="ax-chip"><svg class="ax-icon" style="width:14px;height:14px"><use href="/portal/brand/icons.svg#i-check"/></svg>Verified · evidence attached</span></div>
 <div class="pc-pin" id="pin-origin" style="--ax-pc:var(--ax-green)"><span class="ax-chip"><span class="ax-mark"><i></i></span>Origin · this chamber</span></div>
+<div class="pc-pin" id="pin-amber" style="--ax-pc:var(--ax-orange)"><span class="ax-chip"><span class="ax-mark"><i></i></span>Check · gap uneven on the valve side</span></div>
+<div class="pc-pin" id="pin-down" style="--ax-pc:var(--ax-orange)"><span class="ax-chip">Chamber · down for PM</span></div>
+<div class="pc-pin" id="pin-ready" style="--ax-pc:var(--ax-green)"><span class="ax-chip">Chamber · ready</span></div>
+<div class="pc-pin" id="pin-paper" style="--ax-pc:var(--ax-grey)"><span class="ax-chip">Paper OMS · Step 3 · "seat the ring flat"</span></div>
+<div class="pc-me ax-card" id="pc-me"></div>
 <div class="pc-eye" id="pc-eye"><div class="sc" id="sc-t"></div><div class="sc" id="sc-b"></div><div class="sc" id="sc-l"></div><div class="sc" id="sc-r"></div><div class="win" id="eye-win"></div></div>
 <div class="pc-live ax-tiles" id="pc-live">
   <div class="ax-tile"><div class="ax-eyebrow">On tools now</div><div class="ax-value" id="lv-people">-</div></div>
@@ -119,7 +136,7 @@
 <div class="pc-rail" id="pc-rail">
   <button class="ax-btn pc-play" id="pc-play" title="Play / pause (space)">Pause</button>
   <div class="pc-beats" id="pc-beats"></div>
-  <span class="pc-hint">drag to turn · arrows jump</span>
+  <span class="pc-hint">drag to turn · arrows move a stage</span>
 </div>
 
 <div class="pc-board" id="pc-board"><div class="grid" id="pc-board-grid"></div></div>
@@ -162,6 +179,7 @@ const M = {
   cone:   new THREE.MeshBasicMaterial({ color: C.blue, transparent: true, opacity: .16, depthWrite: false, side: THREE.DoubleSide }),
   sweep:  new THREE.MeshBasicMaterial({ color: C.green, transparent: true, opacity: .22, depthWrite: false, side: THREE.DoubleSide }),
   ok:     new THREE.MeshStandardMaterial({ color: C.green, emissive: C.green, emissiveIntensity: .5, roughness: .4 }),
+  warn:   new THREE.MeshStandardMaterial({ color: C.orange, emissive: C.orange, emissiveIntensity: .5, roughness: .4 }),
   pad:    new THREE.MeshStandardMaterial({ color: C.solid, roughness: .5, metalness: .4 }),
 };
 const rim = (geo, col, at) => { const l = new THREE.LineSegments(new THREE.EdgesGeometry(geo, 20), new THREE.LineBasicMaterial({ color: col })); if (at) l.position.copy(at); return l; };
@@ -170,16 +188,37 @@ const rim = (geo, col, at) => { const l = new THREE.LineSegments(new THREE.Edges
 const hasGL = (() => { try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch { return false; } })();
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-const BEATS = [
-  { id: 'arrive',   name: 'Arrive',    dur: 8,  color: 'var(--ax-blue)',   eyebrow: 'One chamber · one technician', title: 'The work happens here.', cap: 'A technician in cleanroom PPE at a chamber. The instruction has to meet them on the metal, through whatever they can wear with that PPE.', links: [['The platform map', '/platform']] },
-  { id: 'scan',     name: 'Scan',      dur: 9,  color: 'var(--ax-green)',  eyebrow: 'Spatial Intelligence Backbone', title: 'Scan once. One origin.', cap: 'A thirty-second scan lets SIB know this chamber by its shape. From then on every pin, every guide, every verdict knows where it lives.', links: [['How it works (IP key)', '/explain/spatial-intelligence']] },
-  { id: 'pin',      name: 'Pin',       dur: 9,  color: 'var(--ax-green)',  eyebrow: 'AR OMS · adaptive guided work instructions', title: 'The step lands on the part.', cap: 'Step 3 pins to the focus ring. The ghost shows the correct result before the hands move.', links: [['Life of a work instruction', '/explain/lifecycle']] },
-  { id: 'validate', name: 'Validate',  dur: 9,  color: 'var(--ax-blue)',   eyebrow: 'Spatial validation', title: 'SIB checks the work, not the checkbox.', cap: 'A cone of light brings the camera to the spot the ME trained. The verdict lands on the part with the evidence attached to the run.', links: [['In the catalogue', '/catalog#step-validation']] },
-  { id: 'coach',    name: 'Coach',     dur: 8,  color: 'var(--ax-orange)', eyebrow: 'Presence & coaching', title: '"Look here" lands on the metal.', cap: 'The ME sees the step and the view, and sends a pin that arrives on the slit valve. Per session, announced, never recorded.', links: [['In the catalogue', '/catalog#presence-coaching']] },
-  { id: 'eye',      name: 'Wearables', dur: 25, color: 'var(--ax-teal)',   eyebrow: 'Next-generation XR · through the eye', title: 'One step. Every device.', cap: 'The same step, as each wearable delivers it. The glasses have to fit over the hood and the mask; the iPad stays the reference and the companion to any of them.', links: [['The devices, by eye', '/devices/gallery'], ['Glasses transition', '/scorecard#transition']] },
-  { id: 'live',     name: 'Live',      dur: 9,  color: 'var(--ax-blue)',   eyebrow: 'Live from this server', title: 'Not a slide. A cleanroom.', cap: 'Every number is read from this server as you watch. The hardware is a choice; the origins, pins, validations and learnings stay.', links: [['The POC portfolio', '/portfolio'], ['The readiness scorecard', '/scorecard']] },
+// The story, in the six stages of a plot (exposition → inciting incident →
+// rising action → climax → falling action → resolution), in three bands.
+// One hero: a technician in her third week, on the step that caused re-work
+// before. The features appear because the story needs them.
+const BANDS = [{ id: 'beginning', name: 'Beginning', color: 'var(--ax-green)' }, { id: 'middle', name: 'Middle', color: 'var(--ax-blue)' }, { id: 'conclusion', name: 'Conclusion', color: 'var(--ax-orange)' }];
+const STAGES = [
+  { id: 'exposition', band: 0, name: 'Exposition',        line: 'Third week on the tool. The chamber is down. Everyone who knows this step is somewhere else.', cap: 'Night shift. A chamber is down for a PM. The ME is in another building, the QFE at the far end of the cleanroom. She gowns up: hood, mask, the glasses over the hood.', links: [['The devices, by eye', '/devices/gallery']] },
+  { id: 'inciting',   band: 0, name: 'Inciting incident', line: 'The instruction says "seat it flat". The chamber does not say where flat is.', cap: 'Step 3: seat the focus ring. The step that caused the re-work last time. She looks at the ring and stops.', links: [['Why instructions need a place', '/explain/lifecycle']] },
+  { id: 'rising',     band: 1, name: 'Rising action',     line: 'SIB knows this chamber. The step lands on the ring. The first seat comes back amber.', cap: 'A scan, and the chamber is recognised by its shape. Step 3 pins to the ring; the ghost shows what right looks like. She seats it; the check says the gap is uneven. Across the cleanroom the ME sees her view and sends "look here".', links: [['Spatial Intelligence Backbone', '/explain/spatial-intelligence'], ['Spatial validation', '/catalog#step-validation'], ['Presence & coaching', '/catalog#presence-coaching']] },
+  { id: 'climax',     band: 1, name: 'Climax',            line: 'Right, the first time it mattered.', cap: 'She reseats the ring on the valve side. The cone sweeps again. Green: verified, evidence attached. The beacon turns.', links: [['Spatial validation', '/catalog#step-validation']] },
+  { id: 'falling',    band: 2, name: 'Falling action',    line: 'Nobody walks the cleanroom.', cap: 'The run closes itself: evidence per Production #. The QFE reviews by exception from a desk. The ME never left Building 2. The night lifts toward morning.', links: [['The usage log', '/portal#analytics/runs'], ['The readiness scorecard', '/scorecard']] },
+  { id: 'resolution', band: 2, name: 'Resolution',        line: 'One chamber. One origin. Every device.', cap: 'Next shift, the same step, on whatever the next technician wears: glasses over the hood, a monocular for the voice-only bay, spoken for hands in the chamber, the shift lead’s iPad as the companion. And the cleanroom, live from this server.', links: [['The devices, by eye', '/devices/gallery'], ['Glasses transition', '/scorecard#transition'], ['The POC portfolio', '/portfolio']] },
 ];
-// Beat 6 frames: the device forms from docs/devices, in the gallery's order.
+// Moments are the animation units inside the stages (durations in seconds).
+const MOMENTS = [
+  { id: 'walk',    stage: 0, dur: 8,  cam: [[2.6, 1.9, 5.2], [-1.0, 1.1, 1.2]] },
+  { id: 'gown',    stage: 0, dur: 5,  cam: [[-.2, 1.8, 3.6], [-1.2, 1.4, .9]] },
+  { id: 'paper',   stage: 1, dur: 5,  cam: [[1.4, 2.2, 3.4], [-.4, 1.5, .4]] },
+  { id: 'hesitate',stage: 1, dur: 5,  cam: [[-.3, 2.0, 3.8], [-.9, 1.4, .6]] },
+  { id: 'scan',    stage: 2, dur: 7,  cam: [[2.8, 2.6, 3.4], [0, 1.2, 0]] },
+  { id: 'pin',     stage: 2, dur: 7,  cam: [[1.5, 2.5, 1.9], [0, 1.7, 0]] },
+  { id: 'amber',   stage: 2, dur: 8,  cam: [[.9, 2.3, 2.6], [0, 1.6, .2]] },
+  { id: 'lookhere',stage: 2, dur: 8,  cam: [[2.4, 1.9, 2.8], [-.2, 1.4, .5]] },
+  { id: 'reseat',  stage: 3, dur: 5,  cam: [[.9, 2.3, 2.6], [0, 1.6, .2]] },
+  { id: 'green',   stage: 3, dur: 6,  cam: [[1.6, 2.2, 2.4], [0, 1.6, .1]] },
+  { id: 'close',   stage: 4, dur: 6,  cam: [[1.4, 2.0, 4.2], [-.3, 1.2, .3]] },
+  { id: 'morning', stage: 4, dur: 5,  cam: [[3.2, 2.4, 4.6], [0, 1.2, .2]] },
+  { id: 'eyes',    stage: 5, dur: 22, cam: null },
+  { id: 'live',    stage: 5, dur: 8,  cam: [[0, 12, 16], [0, 0, 0]] },
+];
+// Resolution frames: the device forms from docs/devices, in the gallery's order.
 const EYES = [
   { id: 'quest-3',        name: 'Quest 3 · binocular headset',  form: 'full',    color: 'var(--ax-green)',  win: [.08, .06, .10, .06], text: 'full model on the tool, as authored' },
   { id: 'rayneo-x3-pro',  name: 'RayNeo X3 Pro · glasses',      form: 'reduced', color: 'var(--ax-teal)',   win: [.30, .33, .36, .33], text: 'reduced model in a 30° window' },
@@ -187,7 +226,7 @@ const EYES = [
   { id: 'oakley-vanguard',name: 'Oakley Vanguard · no display', form: 'spoken',  color: 'var(--ax-purple)', win: [.34, .30, .34, .30], text: 'read aloud; pass or fail by voice' },
   { id: 'ipad',           name: 'iPad · the companion',         form: 'app',     color: 'var(--ax-blue)',   win: [.14, .24, .12, .24], text: 'the reference player - and the companion to every wearable' },
 ];
-const TOTAL = BEATS.reduce((a, b) => a + b.dur, 0);
+const TOTAL = MOMENTS.reduce((a, m) => a + m.dur, 0);
 
 // Software rendering (no GPU, or a GPU the browser will not use) plays this at
 // a few frames a second and looks broken, so it is not played at all: the
@@ -202,7 +241,7 @@ function storyboard(why) {
   document.body.classList.add('board');
   const NOTE = { nogl: 'This browser has no WebGL, so the story is shown as a storyboard.', reduced: 'Reduced motion is on, so the story is shown as a storyboard.', gpu: 'This animation needs a GPU, and this computer would play it at a few frames a second, so it is shown as a storyboard instead. To see it played, or on a wearable or a tablet, reach out to the appliedx team.' }[why];
   $('pc-board').classList.add('on');
-  $('pc-board-grid').innerHTML = BEATS.map((b, i) => `<div class="ax-card" style="--ax-pc:${b.color}"><div class="ax-eyebrow">${i + 1} · ${esc(b.eyebrow)}</div><h3>${esc(b.title)}</h3><p>${esc(b.cap)}</p>${i === 5 ? `<p style="margin-top:8px">${EYES.map(e => esc(e.name.split(' · ')[0]) + ': ' + esc(e.text)).join(' · ')}</p>` : ''}</div>`).join('')
+  $('pc-board-grid').innerHTML = STAGES.map((st, i) => { const band = BANDS[st.band]; return `<div class="ax-card" style="--ax-pc:${band.color}"><div class="ax-eyebrow">${esc(band.name)} · ${i + 1} · ${esc(st.name)}</div><h3>${esc(st.line)}</h3><p>${esc(st.cap)}</p>${i === 5 ? `<p style="margin-top:8px">${EYES.map(e => esc(e.name.split(' · ')[0]) + ': ' + esc(e.text)).join(' · ')}</p>` : ''}</div>`; }).join('')
     + `<div class="ax-notice" style="grid-column:1/-1">${esc(NOTE)} <a href="/platform">The platform map</a> carries the same story as one picture.</div>`;
 }
 
@@ -259,7 +298,7 @@ function play() {
   add(chamber, cyl(.04, .04, 1.3, M.metal2, -.55, 1.55, -.55));
   add(chamber, box(.5, .06, .06, M.metal2, -.3, 2.2, -.55));
   // status beacon
-  add(chamber, cyl(.04, .04, .1, M.ok, .9, 2.0, .7));
+  const beacon = add(chamber, cyl(.04, .04, .1, M.warn, .9, 2.0, .7));
   // origin marker (registration brackets on the floor)
   const origin = new THREE.Group(); origin.visible = false; scene.add(origin);
   { const s = 1.25, a = .3, pts = [];
@@ -306,45 +345,50 @@ function play() {
   fleet.visible = false; scene.add(fleet);
   const lit = new THREE.InstancedMesh(new THREE.BoxGeometry(2.06, 1.46, 1.76), new THREE.MeshBasicMaterial({ color: C.green, transparent: true, opacity: .18 }), 40); lit.visible = false; scene.add(lit);
 
-  // ── Camera keyframes per beat ([position], [target]) ──────────────────────
-  const CAMS = [
-    [[1.2, 1.9, 4.6], [-.5, 1.2, .4]], [[2.8, 2.6, 3.4], [0, 1.2, 0]], [[1.5, 2.5, 1.9], [0, 1.7, 0]], [[.9, 2.3, 2.6], [0, 1.6, .2]],
-    [[2.4, 1.9, 2.8], [-.2, 1.4, .5]], null /* POV */, [[0, 12, 16], [0, 0, 0]],
-  ];
+  // ── Camera ────────────────────────────────────────────────────────────────
   const POV = [[-1.52, 1.78, .9], [0, 1.7, 0]];
   const ease = t => t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
   const V = a => new THREE.Vector3(...a);
-  let camFrom = [V(CAMS[0][0]), V(CAMS[0][1])], camTo = camFrom, camT = 1, yaw = 0, yawV = 0;
-  function aimAt(i) { const k = i === 5 ? POV : CAMS[i]; camFrom = [camera.position.clone(), look.clone()]; camTo = [V(k[0]), V(k[1])]; camT = 0; }
-  const look = V(CAMS[0][1]);
+  const look = V(MOMENTS[0].cam[1]);
+  camera.position.copy(V(MOMENTS[0].cam[0]));
+  let camFrom = [V(MOMENTS[0].cam[0]), look.clone()], camTo = camFrom, camT = 1, yaw = 0;
+  function aimAt(k) { camFrom = [camera.position.clone(), look.clone()]; camTo = [V(k[0]), V(k[1])]; camT = 0; }
 
-  // ── UI ────────────────────────────────────────────────────────────────────
+  // ── UI: the rail (three bands, six stages), the caption, the pins ─────────
   const capEl = $('pc-cap'), beatsEl = $('pc-beats'), playBtn = $('pc-play');
-  beatsEl.innerHTML = BEATS.map((b, i) => `<button class="pc-beat" data-i="${i}" title="${esc(b.title)}"><span class="bar"><i></i></span><span class="ax-mark"><i></i></span><span class="n">${esc(b.name)}</span></button>`).join('');
-  const beatBtns = [...beatsEl.children]; beatBtns.forEach(b => b.onclick = () => seek(Number(b.dataset.i)));
+  beatsEl.innerHTML = BANDS.map((band, bi) => `<div class="pc-band" style="--ax-pc:${band.color}"><div class="pc-band-h">${esc(band.name)}</div><div class="pc-band-st">${STAGES.map((st, i) => st.band === bi ? `<button class="pc-beat" data-i="${i}" title="${esc(st.line)}"><span class="bar"><i></i></span><span class="pc-n">${i + 1}</span><span class="n">${esc(st.name)}</span></button>` : '').join('')}</div></div>`).join('');
+  const beatBtns = [...beatsEl.querySelectorAll('.pc-beat')]; beatBtns.forEach(b => b.onclick = () => seekStage(Number(b.dataset.i)));
   const bars = beatBtns.map(b => b.querySelector('.bar i'));
-  let t = 0, playing = true, last = performance.now(), cur = -1, eyeIdx = -1, stats = null;
-  const starts = []; { let a = 0; for (const b of BEATS) { starts.push(a); a += b.dur; } }
-  function seek(i) { t = starts[i]; enter(i); }
+  let t = 0, playing = true, last = performance.now(), cur = -1, curStage = -1, eyeIdx = -1, stats = null;
+  const starts = []; { let a = 0; for (const m of MOMENTS) { starts.push(a); a += m.dur; } }
+  const stageStart = STAGES.map((_, i) => starts[MOMENTS.findIndex(m => m.stage === i)]);
+  const stageDur = STAGES.map((_, i) => MOMENTS.filter(m => m.stage === i).reduce((a, m) => a + m.dur, 0));
+  function seekStage(i) { t = stageStart[i]; }
   function setPlaying(p) { playing = p; playBtn.textContent = p ? 'Pause' : 'Play'; playBtn.title = p ? 'Pause (space)' : 'Play (space)'; }
   playBtn.onclick = () => setPlaying(!playing); setPlaying(true);
-  document.addEventListener('keydown', e => { if (e.key === ' ') { e.preventDefault(); setPlaying(!playing); } if (e.key === 'ArrowRight') seek((cur + 1) % BEATS.length); if (e.key === 'ArrowLeft') seek((cur + BEATS.length - 1) % BEATS.length); });
-  // drag to turn (adds a yaw on top of the keyframe, except in POV)
+  document.addEventListener('keydown', e => { if (e.key === ' ') { e.preventDefault(); setPlaying(!playing); } if (e.key === 'ArrowRight') seekStage((curStage + 1) % STAGES.length); if (e.key === 'ArrowLeft') seekStage((curStage + STAGES.length - 1) % STAGES.length); });
   let drag = null; const cv = renderer.domElement;
   cv.addEventListener('pointerdown', e => { drag = e.clientX; cv.setPointerCapture(e.pointerId); });
-  cv.addEventListener('pointermove', e => { if (drag === null) return; yawV = (e.clientX - drag) * .006; yaw += yawV; drag = e.clientX; });
+  cv.addEventListener('pointermove', e => { if (drag === null) return; yaw += (e.clientX - drag) * .006; drag = e.clientX; });
   cv.addEventListener('pointerup', () => { drag = null; });
   addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; fitFov(); renderer.setSize(innerWidth, innerHeight); if (eyeIdx >= 0) eye(EYES[eyeIdx]); });
 
-  function caption(b, extra) {
-    capEl.style.setProperty('--ax-pc', b.color);
-    capEl.innerHTML = `<div class="ax-eyebrow">${esc(b.eyebrow)}</div><h2>${esc(b.title)}</h2><p>${esc(extra || b.cap)}</p><div class="pc-links">${b.links.map(([n, h]) => `<a href="${esc(h)}">${esc(n)}</a>`).join('')}</div>`;
+  function caption(i, extra) {
+    const st = STAGES[i], band = BANDS[st.band];
+    capEl.style.setProperty('--ax-pc', band.color);
+    capEl.innerHTML = `<div class="ax-eyebrow">${esc(band.name)} · ${esc(st.name)}</div><h2>${esc(st.line)}</h2><p>${esc(extra || st.cap)}</p><div class="pc-links">${st.links.map(([n, h]) => `<a href="${esc(h)}">${esc(n)}</a>`).join('')}</div>`;
   }
-  const pins = { step: $('pin-step'), me: $('pin-me'), ok: $('pin-ok'), origin: $('pin-origin') };
-  const pinAt = { step: new THREE.Vector3(.5, 1.75, 0), me: new THREE.Vector3(0, 1.5, .72), ok: new THREE.Vector3(-.5, 1.75, 0), origin: new THREE.Vector3(1.25, .05, 1.25) };
+  const pins = { step: $('pin-step'), me: $('pin-me'), ok: $('pin-ok'), origin: $('pin-origin'), amber: $('pin-amber'), down: $('pin-down'), ready: $('pin-ready'), paper: $('pin-paper') };
+  const pinAt = { step: V([.5, 1.75, 0]), me: V([0, 1.56, .74]), ok: V([-.5, 1.75, 0]), origin: V([1.25, .05, 1.25]), amber: V([-.5, 1.75, .1]), down: V([-.75, 1.36, .9]), ready: V([-.75, 1.36, .9]), paper: V([-1.1, 1.75, 1.1]) };
   function showPins(list) { for (const k in pins) pins[k].classList.toggle('on', list.includes(k)); }
   function projectPins() {
     for (const k in pins) { if (!pins[k].classList.contains('on')) continue; const v = pinAt[k].clone().project(camera); const vis = v.z < 1; pins[k].style.left = ((v.x + 1) / 2 * innerWidth) + 'px'; pins[k].style.top = ((1 - v.y) / 2 * innerHeight) + 'px'; pins[k].style.visibility = vis ? 'visible' : 'hidden'; }
+  }
+  const meEl = $('pc-me');
+  function meInset(state) { // the ME across the cleanroom, seeing her view
+    if (!state) { meEl.classList.remove('on'); return; }
+    meEl.classList.add('on');
+    meEl.innerHTML = `<div class="ax-eyebrow">ME · Building 2 · sees her view</div><div class="pc-me-row"><span class="ax-chip" style="--ax-pc:var(--ax-orange)">Step 3 · check: gap uneven</span></div><div class="pc-me-row">${state === 'send' ? '<span class="ax-chip pc-me-send">look here → valve side</span>' : '<span class="ax-label-s ax-muted">watching · per session, announced, never recorded</span>'}</div>`;
   }
   const eyeEl = $('pc-eye'), win = $('eye-win');
   function eye(e) {
@@ -359,49 +403,82 @@ function play() {
     Object.assign(win.style, { top: top + 'px', right: right + 'px', bottom: bottom + 'px', left: left + 'px' });
     win.className = 'win' + (e.form === 'text' || e.form === 'spoken' ? ' page' : '') + (e.form === 'app' ? ' ipad-frame' : '');
     const tag = `<div class="tag"><span class="ax-chip">${esc(e.name)} · ${esc(e.text)}</span></div>`;
-    if (e.form === 'text') win.innerHTML = tag + `<div class="ax-eyebrow">Step 3 of 12</div><div class="mono">Replace the focus ring.</div><p>Lift the old ring at the two notches. Seat the new ring flat; the gap to the pedestal is even all round.</p><div class="keys"><span>say "next"</span><span>say "back"</span><span>say "repeat"</span></div>`;
-    else if (e.form === 'spoken') win.innerHTML = tag + `<div class="ax-eyebrow">Spoken · step 3 of 12</div><div class="wave">${'<i></i>'.repeat(14)}</div><p>"Replace the focus ring. Lift at the two notches, seat the new ring flat. Say pass or fail."</p><div class="keys"><span>"next"</span><span>"pass"</span><span>"fail"</span></div>`;
+    if (e.form === 'text') win.innerHTML = tag + `<div class="ax-eyebrow">Step 3 of 12</div><div class="mono">Seat the focus ring.</div><p>Lift the old ring at the two notches. Seat the new ring flat; the gap to the pedestal is even all round.</p><div class="keys"><span>say "next"</span><span>say "back"</span><span>say "repeat"</span></div>`;
+    else if (e.form === 'spoken') win.innerHTML = tag + `<div class="ax-eyebrow">Spoken · step 3 of 12</div><div class="wave">${'<i></i>'.repeat(14)}</div><p>"Seat the focus ring. Lift at the two notches, seat the new ring flat. Say pass or fail."</p><div class="keys"><span>"next"</span><span>"pass"</span><span>"fail"</span></div>`;
     else win.innerHTML = tag;
   }
 
+  // ── The actors' rest state, then what each moment turns on ───────────────
+  const TECH_HOME = V([-1.7, 0, .9]), TECH_FAR = V([-4.6, 0, 3.2]);
+  const hemi = scene.children.find(o => o.isHemisphereLight);
+  function night(q) { // 0 = night shift, 1 = morning
+    hemi.intensity = .7 + .4 * q; key.intensity = .9 + .5 * q; fill.intensity = .5 - .2 * q;
+    renderer.toneMappingExposure = 1.0 + .15 * q; scene.fog.near = 10 + 6 * q; renderer.setClearColor(q < .5 ? C.bg : shade(C.bg, .02 * q), 1);
+  }
+  function reset() {
+    origin.visible = sweepRing.visible = sweepPlane.visible = ghost.visible = pinBox.visible = meBox.visible = cone.visible = false;
+    focusRing.material = M.metal2; beacon.material = M.warn; chamber.visible = true; fleet.visible = lit.visible = false; tech.visible = true;
+    tech.position.copy(TECH_HOME); tech.lookAt(0, 0, .1); head.rotation.set(0, 0, 0); armR.rotation.set(-1.35, 0, -.22); armL.rotation.set(-1.05, 0, .18);
+    wear('glasses'); eye(null); eyeIdx = -1; meInset(null); $('pc-live').classList.remove('on'); showPins([]); night(0);
+  }
   function enter(i) {
-    cur = i; const b = BEATS[i];
-    beatBtns.forEach((x, k) => x.classList.toggle('on', k === i));
-    caption(b);
-    aimAt(i);
-    // reset the actors; each beat turns on what it needs
-    origin.visible = i >= 1; sweepRing.visible = sweepPlane.visible = false;
-    ghost.visible = pinBox.visible = i === 2 || i === 3 || i === 5; meBox.visible = i === 4; cone.visible = false;
-    focusRing.material = i >= 4 ? M.ok : M.metal2;
-    tech.visible = i !== 5 && i !== 6; chamber.visible = true; fleet.visible = lit.visible = i === 6;
-    $('pc-live').classList.toggle('on', i === 6);
-    eye(null); eyeIdx = -1;
-    wear(i === 6 ? 'none' : 'glasses');
-    if (i === 6) wearFleet();
-    showPins(i === 1 ? ['origin'] : i === 2 ? ['step'] : i === 3 ? ['step'] : i === 4 ? ['step', 'me'] : []);
+    cur = i; const m = MOMENTS[i];
+    if (m.stage !== curStage) { curStage = m.stage; beatBtns.forEach((x, k) => x.classList.toggle('on', k === curStage)); caption(curStage); }
+    if (m.cam) aimAt(m.cam); else aimAt(POV);
+    reset();
+    switch (m.id) {
+      case 'walk': tech.position.copy(TECH_FAR); showPins(['down']); break;
+      case 'gown': showPins(['down']); break;
+      case 'paper': showPins(['paper', 'down']); armR.rotation.set(-.6, 0, -.22); break;
+      case 'hesitate': showPins(['paper']); armR.rotation.set(-.6, 0, -.22); head.rotation.set(.25, 0, 0); break;
+      case 'scan': break;
+      case 'pin': origin.visible = true; ghost.visible = pinBox.visible = true; showPins(['step']); break;
+      case 'amber': origin.visible = true; pinBox.visible = true; showPins(['step']); armR.rotation.set(-1.5, 0, -.22); break;
+      case 'lookhere': origin.visible = true; pinBox.visible = true; focusRing.material = M.warn; showPins(['amber']); meInset('watch'); break;
+      case 'reseat': origin.visible = true; pinBox.visible = true; focusRing.material = M.warn; meBox.visible = true; showPins(['me']); armR.rotation.set(-1.55, 0, -.1); break;
+      case 'green': origin.visible = true; pinBox.visible = true; focusRing.material = M.warn; showPins([]); break;
+      case 'close': origin.visible = true; focusRing.material = M.ok; beacon.material = M.ok; showPins(['ok', 'ready']); break;
+      case 'morning': origin.visible = true; focusRing.material = M.ok; beacon.material = M.ok; showPins(['ready']); night(1); break;
+      case 'eyes': tech.visible = false; origin.visible = true; focusRing.material = M.ok; beacon.material = M.ok; night(1); break;
+      case 'live': tech.visible = false; fleet.visible = lit.visible = true; beacon.material = M.ok; night(1); $('pc-live').classList.add('on'); wearFleet(); break;
+    }
   }
   function wearFleet() {
     const n = Math.min(fleet.count, Math.max(0, Number(stats?.presenceAnchors ?? stats?.presenceNow ?? 0)));
     const mt = new THREE.Matrix4(); for (let k = 0; k < n; k++) { fleet.getMatrixAt(k, mt); lit.setMatrixAt(k, mt); } lit.count = n; lit.instanceMatrix.needsUpdate = true;
   }
+  function coneAt(active) {
+    cone.visible = active; if (!active) return;
+    const from = V(POV[0]), to = V([0, 1.72, 0]); const d = to.clone().sub(from);
+    cone.position.copy(from).addScaledVector(d, .5); cone.scale.set(1, d.length(), 1); cone.quaternion.setFromUnitVectors(V([0, -1, 0]), d.clone().normalize()); M.cone.opacity = .1 + .08 * Math.sin(performance.now() / 150);
+  }
+  const now = () => performance.now();
   function step(dt) {
     if (playing) t = (t + dt) % TOTAL;
-    let i = BEATS.length - 1; for (let k = 0; k < BEATS.length; k++) if (t < starts[k] + BEATS[k].dur) { i = k; break; }
+    let i = MOMENTS.length - 1; for (let k = 0; k < MOMENTS.length; k++) if (t < starts[k] + MOMENTS[k].dur) { i = k; break; }
     if (i !== cur) enter(i);
-    const p = (t - starts[i]) / BEATS[i].dur;
-    bars.forEach((bar, k) => bar.style.width = (k < i ? 100 : k === i ? p * 100 : 0) + '%');
-    // beat behaviour
-    if (i === 1) { const q = Math.min(1, p / .7); sweepRing.visible = q < 1; sweepRing.scale.setScalar(.2 + q * 4.2); M.sweep.opacity = .25 * (1 - q); sweepPlane.visible = q < 1; sweepPlane.position.x = -1.6 + q * 3.2; origin.visible = p > .55; showPins(p > .6 ? ['origin'] : []); }
-    if (i === 2) { ghost.position.y = 1.705 + .25 * Math.min(1, p * 1.6) + .03 * Math.sin(performance.now() / 300); }
-    if (i === 3) { cone.visible = p > .1 && p < .72; if (cone.visible) { const from = new THREE.Vector3(-1.52, 1.78, .9), to = new THREE.Vector3(0, 1.72, 0); const d = to.clone().sub(from); cone.position.copy(from).addScaledVector(d, .5); cone.scale.set(1, d.length(), 1); cone.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), d.clone().normalize()); M.cone.opacity = .1 + .08 * Math.sin(performance.now() / 150); }
-      if (p > .72) { focusRing.material = M.ok; ghost.visible = false; showPins(['ok']); } }
-    if (i === 4) { meBox.scale.setScalar(1 + .06 * Math.sin(performance.now() / 180)); }
-    if (i === 5) { const k = Math.min(EYES.length - 1, Math.floor(p * EYES.length)); if (k !== eyeIdx) { eyeIdx = k; const e = EYES[k]; eye(e); caption(BEATS[5], e.name + ': ' + e.text + '.'); ghost.visible = pinBox.visible = e.form === 'full' || e.form === 'reduced' || e.form === 'app'; showPins(ghost.visible ? ['step'] : []); } }
-    if (i === 6) { lit.visible = true; }
+    const m = MOMENTS[i], p = (t - starts[i]) / m.dur;
+    const sp = (t - stageStart[curStage]) / stageDur[curStage];
+    bars.forEach((bar, k) => bar.style.width = (k < curStage ? 100 : k === curStage ? sp * 100 : 0) + '%');
+    switch (m.id) {
+      case 'walk': { const q = ease(Math.min(1, p / .85)); tech.position.lerpVectors(TECH_FAR, TECH_HOME, q); tech.lookAt(0, 0, .1); tech.position.y = q < 1 ? Math.abs(Math.sin(now() / 160)) * .02 : 0; armR.rotation.x = q < 1 ? -.2 + .25 * Math.sin(now() / 160) : -.6; armL.rotation.x = q < 1 ? -.2 - .25 * Math.sin(now() / 160) : -.6; break; }
+      case 'gown': armR.rotation.x = -.6 + .1 * Math.sin(now() / 400); head.rotation.y = .15 * Math.sin(now() / 900); break;
+      case 'hesitate': head.rotation.y = .2 * Math.sin(now() / 700); break;
+      case 'scan': { const q = Math.min(1, p / .7); sweepRing.visible = q < 1; sweepRing.scale.setScalar(.2 + q * 4.2); M.sweep.opacity = .25 * (1 - q); sweepPlane.visible = q < 1; sweepPlane.position.x = -1.6 + q * 3.2; origin.visible = p > .55; showPins(p > .6 ? ['origin'] : []); head.rotation.y = -.3 + .6 * q; break; }
+      case 'pin': ghost.position.y = 1.705 + .25 * Math.min(1, p * 1.6) + .03 * Math.sin(now() / 300); break;
+      case 'amber': { armR.rotation.x = -1.5 + .12 * Math.sin(now() / 500); coneAt(p > .35 && p < .75); if (p >= .75) { focusRing.material = M.warn; showPins(['amber']); } break; }
+      case 'lookhere': { if (p > .4) { meInset('send'); meBox.visible = true; meBox.scale.setScalar(1 + .06 * Math.sin(now() / 180)); showPins(['amber', 'me']); } break; }
+      case 'reseat': armR.rotation.x = -1.55 + .18 * Math.sin(now() / 350); armR.rotation.z = -.1 - .1 * Math.sin(now() / 350); meBox.scale.setScalar(1 + .04 * Math.sin(now() / 180)); break;
+      case 'green': { coneAt(p < .5); if (p >= .5) { focusRing.material = M.ok; beacon.material = M.ok; showPins(['ok']); } break; }
+      case 'close': break;
+      case 'morning': night(Math.min(1, p * 1.5)); break;
+      case 'eyes': { const k = Math.min(EYES.length - 1, Math.floor(p * EYES.length)); if (k !== eyeIdx) { eyeIdx = k; const e = EYES[k]; eye(e); caption(5, e.name + ': ' + e.text + '.'); ghost.visible = pinBox.visible = e.form === 'full' || e.form === 'reduced' || e.form === 'app'; showPins(ghost.visible ? ['step'] : []); } break; }
+      case 'live': break;
+    }
     // camera
-    camT = Math.min(1, camT + dt / 2.2); const e = ease(camT);
+    camT = Math.min(1, camT + dt / 2.4); const e = ease(camT);
     const pos = camFrom[0].clone().lerp(camTo[0], e); look.copy(camFrom[1]).lerp(camTo[1], e);
-    if (i !== 5) { yaw += (drag === null ? -.02 * dt : 0) + 0; const r = pos.clone().sub(look); r.applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw); pos.copy(look).add(r); }
+    if (m.id !== 'eyes') { if (drag === null) yaw += -.015 * dt; const r = pos.clone().sub(look); r.applyAxisAngle(V([0, 1, 0]), yaw); pos.copy(look).add(r); }
     camera.position.copy(pos); camera.lookAt(look);
     projectPins();
     renderer.render(scene, camera);
@@ -418,7 +495,7 @@ function play() {
 
   fetch('/stats').then(r => r.json()).then(s => { stats = s;
     $('lv-people').textContent = s.presenceNow ?? 0; $('lv-anchors').textContent = s.anchors ?? 0; $('lv-runs').textContent = s.guidedRuns ?? 0; $('lv-valid').textContent = s.validatedSteps ?? 0;
-    if (cur === 6) wearFleet(); }).catch(() => {});
+    if (MOMENTS[cur]?.id === 'live') wearFleet(); }).catch(() => {});
 }
 </script>
 <script src="/portal/brand.js"></script>
