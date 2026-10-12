@@ -7,24 +7,27 @@ it, it gets a line.
 ## 2026.4.46 - 2026-09-08
 
 ### Added
-- **Play the chamber, told as a story (`/platform/chamber`).** One hero,
-  one step, six stages on the rail (Night shift · The step · The check ·
-  Right · Morning · Every device; written on the classic plot arc, which
-  stays off the screen): a technician in her third week on a night shift, the chamber
-  down, the ME in another building; the paper instruction says "seat it
-  flat" and the chamber does not say where flat is; SIB recognises the
-  chamber, the step lands on the ring with its ghost, the first seat comes
-  back amber, the ME sees her view and sends "look here" onto the valve
-  side; she reseats, the cone sweeps green, the beacon turns; nobody walks
-  the cleanroom and the night lifts to morning; the resolution is the same
-  step through every wearable with the iPad as the companion, and the
-  cleanroom live from this server. The technician walks in, reaches,
-  hesitates and reseats; the chamber beacon and controller carry its state;
-  the ME appears as an inset of his screen; lighting goes from night to
-  morning. Captions are one narrative line per stage; the feature names
-  live in the links beneath. Machines without a usable GPU (software
-  renderer, or under 20 fps in the first second) are not played at all:
-  they get the six-panel storyboard and a note to reach the appliedx team.
+- **Play the chamber, told as a story (`/platform/chamber`).** One
+  technician on a complex task, any shift, any tenure, in eight stages on
+  the rail: before (The task: the instructions on a tablet ten steps away,
+  twelve trips; The slip: the same task on a slightly different
+  configuration, the part misaligned and nobody knows; On hold: the lead
+  says ask the ME, the ME is unreachable, the chamber waits), with AR OMS
+  (Right where he is: the step lands on the part in his glasses; Guided and
+  checked: the cone, the amber verdict on the offset notch in seconds; Help
+  where he is: the ME joins by presence, "look here", green, evidence
+  attached, the work continues in front of him), connected (One connected
+  worker: MES work order and Production #, vision and quality evidence, UAM
+  roles, the iPad as companion; outcomes in words: caught early, fewer
+  workmanship and quality issues, shorter cycle time, for new hires and
+  senior hands alike) and ahead (a cobot on the gas-line check and an AMR
+  bringing the part on the same origin; the cleanroom live from this
+  server). The technician walks to the tablet and back with a trip counter,
+  the ring tilts red when misaligned, the lead and the ME appear as inset
+  cards, lighting opens up when AR OMS arrives. Captions are one narrative
+  line per stage; feature names live in the links beneath. Machines without
+  a usable GPU are not played at all: they get the storyboard and a note to
+  reach the appliedx team.
 - **Play the chamber, rebuilt (`/platform/chamber`).** The one page that
   shows the AR OMS rather than explaining it. A technician in cleanroom PPE
   (gown, hood, bump cap, mask, goggles, gloves, bootie covers) stands at a

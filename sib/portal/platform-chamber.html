@@ -68,14 +68,18 @@
   /* the rail */
   .pc-rail { position: fixed; left: var(--ax-s5); right: var(--ax-s5); bottom: var(--ax-s4); z-index: 4; background: var(--ax-solid); border: var(--ax-hair); border-radius: var(--ax-r); padding: 10px 14px; display: flex; align-items: center; gap: var(--ax-s3); }
   .pc-rail .pc-play { flex: none; min-width: 72px; }
-  .pc-rail .pc-beats { flex: 1; display: grid; grid-template-columns: 2fr 2fr 2fr; gap: 10px; }
-  .pc-band-st { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .pc-rail .pc-beats { flex: 1; display: grid; grid-template-columns: 3fr 3fr 2fr; gap: 10px; }
+  .pc-band-st { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 6px; }
   .pc-rail .pc-beat .pc-n { display: inline-flex; width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--ax-pc); color: var(--ax-pc); font: 600 10px var(--ax-mono); align-items: center; justify-content: center; margin-right: 6px; vertical-align: -4px; }
   .pc-rail .pc-beat.on .pc-n { background: var(--ax-pc); color: var(--ax-on-accent); }
   .pc-me { position: fixed; top: 84px; right: var(--ax-s5); z-index: 3; display: none; width: 300px; border-left: 3px solid var(--ax-orange); }
   .pc-me.on { display: block; }
   .pc-me .ax-eyebrow { color: var(--ax-orange); }
   .pc-me-row { margin-top: 8px; }
+  .pc-lead { top: 190px; border-left-color: var(--ax-grey); }
+  .pc-lead .ax-eyebrow { color: var(--ax-ink-3); }
+  .pc-me.is-off { border-left-color: var(--ax-red); } .pc-me.is-off .ax-eyebrow { color: var(--ax-red); }
+  .pc-me.is-on { border-left-color: var(--ax-green); } .pc-me.is-on .ax-eyebrow { color: var(--ax-green); }
   .pc-me .ax-chip { text-transform: none; letter-spacing: 0; font: var(--ax-label-s); background: var(--ax-solid); border: 1px solid var(--ax-pc, var(--ax-rule)); color: var(--ax-ink); }
   .pc-me .pc-me-send { --ax-pc: var(--ax-orange); animation: pc-send 1.2s ease-in-out infinite; }
   @keyframes pc-send { 0%, 100% { outline: 0 solid transparent; } 50% { outline: 3px solid var(--ax-rule); } }
@@ -115,14 +119,25 @@
 
 <div class="pc-cap" id="pc-cap"></div>
 <div class="pc-pin" id="pin-step" style="--ax-pc:var(--ax-green)"><span class="ax-chip"><span class="ax-mark"><i></i></span><span id="pin-step-t">Step 3 · Seat the focus ring</span></span></div>
-<div class="pc-pin" id="pin-me" style="--ax-pc:var(--ax-orange)"><span class="ax-chip"><span class="ax-mark"><i></i></span>ME · look here</span></div>
+<div class="pc-pin" id="pin-me" style="--ax-pc:var(--ax-orange)"><span class="ax-chip"><span class="ax-mark"><i></i></span>ME · look here · the notch</span></div>
 <div class="pc-pin" id="pin-ok" style="--ax-pc:var(--ax-green)"><span class="ax-chip"><svg class="ax-icon" style="width:14px;height:14px"><use href="/portal/brand/icons.svg#i-check"/></svg>Verified · evidence attached</span></div>
 <div class="pc-pin" id="pin-origin" style="--ax-pc:var(--ax-green)"><span class="ax-chip"><span class="ax-mark"><i></i></span>Origin · this chamber</span></div>
-<div class="pc-pin" id="pin-amber" style="--ax-pc:var(--ax-orange)"><span class="ax-chip"><span class="ax-mark"><i></i></span>Check · gap uneven on the valve side</span></div>
+<div class="pc-pin" id="pin-amber" style="--ax-pc:var(--ax-orange)"><span class="ax-chip"><span class="ax-mark"><i></i></span>Check · offset notch · not seated</span></div>
 <div class="pc-pin" id="pin-down" style="--ax-pc:var(--ax-orange)"><span class="ax-chip">Chamber · down for PM</span></div>
 <div class="pc-pin" id="pin-ready" style="--ax-pc:var(--ax-green)"><span class="ax-chip">Chamber · ready</span></div>
-<div class="pc-pin" id="pin-paper" style="--ax-pc:var(--ax-grey)"><span class="ax-chip">Paper OMS · Step 3 · "seat the ring flat"</span></div>
+<div class="pc-pin" id="pin-paper" style="--ax-pc:var(--ax-grey)"><span class="ax-chip">Tablet · Step 3 · "seat the ring"</span></div>
+<div class="pc-pin" id="pin-trip" style="--ax-pc:var(--ax-orange)"><span class="ax-chip"><span id="pin-trip-t">Trip 1 of 12</span></span></div>
+<div class="pc-pin" id="pin-bad" style="--ax-pc:var(--ax-red)"><span class="ax-chip"><span class="ax-mark"><i></i></span>Part misaligned · nobody knows yet</span></div>
+<div class="pc-pin" id="pin-hold" style="--ax-pc:var(--ax-red)"><span class="ax-chip">Work on hold</span></div>
+<div class="pc-pin" id="pin-mes" style="--ax-pc:var(--ax-blue)"><span class="ax-chip">MES · work order · Production #</span></div>
+<div class="pc-pin" id="pin-vision" style="--ax-pc:var(--ax-blue)"><span class="ax-chip">Vision & quality · evidence per step</span></div>
+<div class="pc-pin" id="pin-uam" style="--ax-pc:var(--ax-blue)"><span class="ax-chip">UAM · roles · who scored, who confirmed</span></div>
+<div class="pc-pin" id="pin-ipad" style="--ax-pc:var(--ax-blue)"><span class="ax-chip">iPad · the companion</span></div>
+<div class="pc-pin" id="pin-sib" style="--ax-pc:var(--ax-green)"><span class="ax-chip"><span class="ax-mark"><i></i></span>SIB · one origin per chamber</span></div>
+<div class="pc-pin" id="pin-cobot" style="--ax-pc:var(--ax-teal)"><span class="ax-chip">Cobot · the gas-line check, same origin</span></div>
+<div class="pc-pin" id="pin-amr" style="--ax-pc:var(--ax-teal)"><span class="ax-chip">AMR · brings the part to the pin</span></div>
 <div class="pc-me ax-card" id="pc-me"></div>
+<div class="pc-me pc-lead ax-card" id="pc-lead"></div>
 <div class="pc-eye" id="pc-eye"><div class="sc" id="sc-t"></div><div class="sc" id="sc-b"></div><div class="sc" id="sc-l"></div><div class="sc" id="sc-r"></div><div class="win" id="eye-win"></div></div>
 <div class="pc-live ax-tiles" id="pc-live">
   <div class="ax-tile"><div class="ax-eyebrow">On tools now</div><div class="ax-value" id="lv-people">-</div></div>
@@ -178,6 +193,7 @@ const M = {
   sweep:  new THREE.MeshBasicMaterial({ color: C.green, transparent: true, opacity: .22, depthWrite: false, side: THREE.DoubleSide }),
   ok:     new THREE.MeshStandardMaterial({ color: C.green, emissive: C.green, emissiveIntensity: .5, roughness: .4 }),
   warn:   new THREE.MeshStandardMaterial({ color: C.orange, emissive: C.orange, emissiveIntensity: .5, roughness: .4 }),
+  bad:    new THREE.MeshStandardMaterial({ color: C.red, emissive: C.red, emissiveIntensity: .35, roughness: .4 }),
   pad:    new THREE.MeshStandardMaterial({ color: C.solid, roughness: .5, metalness: .4 }),
 };
 const rim = (geo, col, at) => { const l = new THREE.LineSegments(new THREE.EdgesGeometry(geo, 20), new THREE.LineBasicMaterial({ color: col })); if (at) l.position.copy(at); return l; };
@@ -186,44 +202,40 @@ const rim = (geo, col, at) => { const l = new THREE.LineSegments(new THREE.Edges
 const hasGL = (() => { try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch { return false; } })();
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-// The story, built on the six stages of a plot (exposition → inciting incident →
-// rising action → climax → falling action → resolution) in three bands. The
-// stage names are a writing tool, not a label: the page shows plain names.
-// One hero: a technician in her third week, on the step that caused re-work
-// before. The features appear because the story needs them.
-const BANDS = [{ id: 'beginning', name: 'Beginning', color: 'var(--ax-green)' }, { id: 'middle', name: 'Middle', color: 'var(--ax-blue)' }, { id: 'conclusion', name: 'Conclusion', color: 'var(--ax-orange)' }];
+// The story: before → with AR OMS → connected → ahead. One technician on a
+// complex task, any shift, any tenure. Written on the classic plot arc; the
+// page shows plain names only. The features appear because the story needs
+// them. Outcomes are said in words, never invented numbers.
+const BANDS = [{ id: 'before', color: 'var(--ax-orange)' }, { id: 'with', color: 'var(--ax-green)' }, { id: 'connected', color: 'var(--ax-blue)' }];
 const STAGES = [
-  { id: 'exposition', band: 0, name: 'Night shift',        line: 'Third week on the tool. The chamber is down. Everyone who knows this step is somewhere else.', cap: 'Night shift. A chamber is down for a PM. The ME is in another building, the QFE at the far end of the cleanroom. She gowns up: hood, mask, the glasses over the hood.', links: [['The devices, by eye', '/devices/gallery']] },
-  { id: 'inciting',   band: 0, name: 'The step', line: 'The instruction says "seat it flat". The chamber does not say where flat is.', cap: 'Step 3: seat the focus ring. The step that caused the re-work last time. She looks at the ring and stops.', links: [['Why instructions need a place', '/explain/lifecycle']] },
-  { id: 'rising',     band: 1, name: 'The check',     line: 'SIB knows this chamber. The step lands on the ring. The first seat comes back amber.', cap: 'A scan, and the chamber is recognised by its shape. Step 3 pins to the ring; the ghost shows what right looks like. She seats it; the check says the gap is uneven. Across the cleanroom the ME sees her view and sends "look here".', links: [['Spatial Intelligence Backbone', '/explain/spatial-intelligence'], ['Spatial validation', '/catalog#step-validation'], ['Presence & coaching', '/catalog#presence-coaching']] },
-  { id: 'climax',     band: 1, name: 'Right',            line: 'Right, the first time it mattered.', cap: 'She reseats the ring on the valve side. The cone sweeps again. Green: verified, evidence attached. The beacon turns.', links: [['Spatial validation', '/catalog#step-validation']] },
-  { id: 'falling',    band: 2, name: 'Morning',    line: 'Nobody walks the cleanroom.', cap: 'The run closes itself: evidence per Production #. The QFE reviews by exception from a desk. The ME never left Building 2. The night lifts toward morning.', links: [['The usage log', '/portal#analytics/runs'], ['The readiness scorecard', '/scorecard']] },
-  { id: 'resolution', band: 2, name: 'Every device',        line: 'One chamber. One origin. Every device.', cap: 'Next shift, the same step, on whatever the next technician wears: glasses over the hood, a monocular for the voice-only bay, spoken for hands in the chamber, the shift lead’s iPad as the companion. And the cleanroom, live from this server.', links: [['The devices, by eye', '/devices/gallery'], ['Glasses transition', '/scorecard#transition'], ['The POC portfolio', '/portfolio']] },
+  { id: 'task',      band: 0, name: 'The task',        line: 'A complex task. The instructions are on a tablet, ten steps away.', cap: 'A technician on a chamber PM. Every instruction means a walk to the tablet and back: read, do, walk, mark it done. Twelve steps, twelve trips.', links: [['Why instructions need a place', '/explain/lifecycle']] },
+  { id: 'slip',      band: 0, name: 'The slip',        line: 'He has done this a hundred times. This configuration is slightly different.', cap: 'Complacency, not carelessness. The focus ring on this configuration seats with an offset notch. He seats it the usual way. The part is misaligned, and nothing tells him.', links: [['Spatial validation', '/catalog#step-validation']] },
+  { id: 'hold',      band: 0, name: 'On hold',         line: 'The lead says ask the ME. The ME is not available. The chamber waits.', cap: 'Workmanship, a defective part from the vendor, or an instruction that was never clear: he cannot tell which. The ME is at a desk in another building, and today, unreachable. The work stops.', links: [['Presence & coaching', '/catalog#presence-coaching']] },
+  { id: 'where',     band: 1, name: 'Right where he is', line: 'With AR OMS the step lands on the part, in his glasses, where his hands are.', cap: 'SIB knows this chamber by its shape. Step 3 pins to the focus ring with a ghost of the correct result for this configuration. No walk, no tablet, no marking done by hand.', links: [['Spatial Intelligence Backbone', '/explain/spatial-intelligence'], ['The devices, by eye', '/devices/gallery']] },
+  { id: 'guided',    band: 1, name: 'Guided and checked', line: 'As he does it, it is checked. The misalignment is caught in seconds, not in test.', cap: 'A cone of light brings the camera to the spot the ME trained. The seat comes back amber: the offset notch. He is warned on the part, before the next step.', links: [['Spatial validation', '/catalog#step-validation']] },
+  { id: 'help',      band: 1, name: 'Help where he is', line: 'He needs the ME. The ME joins from the desk, sees what he sees, and they fix it together.', cap: 'Presence: the ME sees his step and his view, sends "look here" onto the notch, and confirms the part is good. He reseats it; green, evidence attached. The rest of the work continues in front of him, validated as he goes.', links: [['Presence & coaching', '/catalog#presence-coaching'], ['The usage log', '/portal#analytics/runs']] },
+  { id: 'connected', band: 2, name: 'One connected worker', line: 'AR OMS is not a tool on its own. It is the worker’s side of the connected factory.', cap: 'The work order and Production # from MES, evidence to the vision and quality systems, roles from UAM, the iPad as the companion. Caught early, fixed where it happened, recorded without a form: fewer workmanship issues, fewer quality escapes, shorter cycle time - for new hires and senior hands alike.', links: [['The platform map', '/platform'], ['The readiness scorecard', '/scorecard']] },
+  { id: 'ahead',     band: 2, name: 'Ahead',            line: 'The same origin, the same instructions - for people, cobots and AMRs.', cap: 'A chamber that knows where it is can guide a cobot on the gas-line check and receive the part from an AMR the same way it guides a technician. Not every instruction moves to glasses; some move to a robot. And the cleanroom, live from this server.', links: [['The readiness framework', '/explain/readiness'], ['The POC portfolio', '/portfolio']] },
 ];
-// Moments are the animation units inside the stages (durations in seconds).
 const MOMENTS = [
-  { id: 'walk',    stage: 0, dur: 8,  cam: [[2.6, 1.9, 5.2], [-1.0, 1.1, 1.2]] },
-  { id: 'gown',    stage: 0, dur: 5,  cam: [[-.2, 1.8, 3.6], [-1.2, 1.4, .9]] },
-  { id: 'paper',   stage: 1, dur: 5,  cam: [[1.4, 2.2, 3.4], [-.4, 1.5, .4]] },
-  { id: 'hesitate',stage: 1, dur: 5,  cam: [[-.3, 2.0, 3.8], [-.9, 1.4, .6]] },
-  { id: 'scan',    stage: 2, dur: 7,  cam: [[2.8, 2.6, 3.4], [0, 1.2, 0]] },
-  { id: 'pin',     stage: 2, dur: 7,  cam: [[1.5, 2.5, 1.9], [0, 1.7, 0]] },
-  { id: 'amber',   stage: 2, dur: 8,  cam: [[.9, 2.3, 2.6], [0, 1.6, .2]] },
-  { id: 'lookhere',stage: 2, dur: 8,  cam: [[2.4, 1.9, 2.8], [-.2, 1.4, .5]] },
-  { id: 'reseat',  stage: 3, dur: 5,  cam: [[.9, 2.3, 2.6], [0, 1.6, .2]] },
-  { id: 'green',   stage: 3, dur: 6,  cam: [[1.6, 2.2, 2.4], [0, 1.6, .1]] },
-  { id: 'close',   stage: 4, dur: 6,  cam: [[1.4, 2.0, 4.2], [-.3, 1.2, .3]] },
-  { id: 'morning', stage: 4, dur: 5,  cam: [[3.2, 2.4, 4.6], [0, 1.2, .2]] },
-  { id: 'eyes',    stage: 5, dur: 22, cam: null },
-  { id: 'live',    stage: 5, dur: 8,  cam: [[0, 12, 16], [0, 0, 0]] },
+  { id: 'walk1',   stage: 0, dur: 7,  cam: [[1.4, 2.0, 6.0], [-1.6, 1.1, 1.4]] },
+  { id: 'walk2',   stage: 0, dur: 7,  cam: [[-1.2, 2.2, 5.6], [-2.4, 1.1, 1.4]] },
+  { id: 'assume',  stage: 1, dur: 5,  cam: [[1.4, 2.2, 3.4], [-.4, 1.5, .4]] },
+  { id: 'misalign',stage: 1, dur: 6,  cam: [[1.3, 2.5, 2.0], [0, 1.7, 0]] },
+  { id: 'lead',    stage: 2, dur: 5,  cam: [[-.3, 2.0, 3.8], [-.9, 1.4, .6]] },
+  { id: 'nome',    stage: 2, dur: 6,  cam: [[2.6, 2.4, 4.4], [-.4, 1.2, .4]] },
+  { id: 'scan',    stage: 3, dur: 6,  cam: [[2.8, 2.6, 3.4], [0, 1.2, 0]] },
+  { id: 'pov',     stage: 3, dur: 7,  cam: null },
+  { id: 'check',   stage: 4, dur: 10, cam: [[.9, 2.3, 2.6], [0, 1.6, .2]] },
+  { id: 'join',    stage: 5, dur: 7,  cam: [[2.4, 1.9, 2.8], [-.2, 1.4, .5]] },
+  { id: 'fix',     stage: 5, dur: 7,  cam: [[1.6, 2.2, 2.4], [0, 1.6, .1]] },
+  { id: 'systems', stage: 6, dur: 13, cam: [[3.4, 2.8, 4.8], [0, 1.4, 0]] },
+  { id: 'robots',  stage: 7, dur: 9,  cam: [[-3.2, 2.2, 4.6], [.4, 1.1, 0]] },
+  { id: 'live',    stage: 7, dur: 7,  cam: [[0, 12, 16], [0, 0, 0]] },
 ];
-// Resolution frames: the device forms from docs/devices, in the gallery's order.
+// The glasses, through the eye (stage 4): the form from docs/devices.
 const EYES = [
-  { id: 'quest-3',        name: 'Quest 3 · binocular headset',  form: 'full',    color: 'var(--ax-green)',  win: [.08, .06, .10, .06], text: 'full model on the tool, as authored' },
-  { id: 'rayneo-x3-pro',  name: 'RayNeo X3 Pro · glasses',      form: 'reduced', color: 'var(--ax-teal)',   win: [.30, .33, .36, .33], text: 'reduced model in a 30° window' },
-  { id: 'realwear-hmt-1', name: 'RealWear HMT-1 · monocular',   form: 'text',    color: 'var(--ax-orange)', win: [.50, .06, .16, .58], text: 'one step per screen, by voice' },
-  { id: 'oakley-vanguard',name: 'Oakley Vanguard · no display', form: 'spoken',  color: 'var(--ax-purple)', win: [.34, .30, .34, .30], text: 'read aloud; pass or fail by voice' },
-  { id: 'ipad',           name: 'iPad · the companion',         form: 'app',     color: 'var(--ax-blue)',   win: [.14, .24, .12, .24], text: 'the reference player - and the companion to every wearable' },
+  { id: 'rayneo-x3-pro', name: 'Through the glasses', form: 'reduced', color: 'var(--ax-teal)', win: [.26, .30, .30, .30], text: 'the step on the part, where the hands are' },
 ];
 const TOTAL = MOMENTS.reduce((a, m) => a + m.dur, 0);
 
@@ -240,7 +252,7 @@ function storyboard(why) {
   document.body.classList.add('board');
   const NOTE = { nogl: 'This browser has no WebGL, so the story is shown as a storyboard.', reduced: 'Reduced motion is on, so the story is shown as a storyboard.', gpu: 'This animation needs a GPU, and this computer would play it at a few frames a second, so it is shown as a storyboard instead. To see it played, or on a wearable or a tablet, reach out to the appliedx team.' }[why];
   $('pc-board').classList.add('on');
-  $('pc-board-grid').innerHTML = STAGES.map((st, i) => { const band = BANDS[st.band]; return `<div class="ax-card" style="--ax-pc:${band.color}"><div class="ax-eyebrow">${i + 1} · ${esc(st.name)}</div><h3>${esc(st.line)}</h3><p>${esc(st.cap)}</p>${i === 5 ? `<p style="margin-top:8px">${EYES.map(e => esc(e.name.split(' · ')[0]) + ': ' + esc(e.text)).join(' · ')}</p>` : ''}</div>`; }).join('')
+  $('pc-board-grid').innerHTML = STAGES.map((st, i) => { const band = BANDS[st.band]; return `<div class="ax-card" style="--ax-pc:${band.color}"><div class="ax-eyebrow">${i + 1} · ${esc(st.name)}</div><h3>${esc(st.line)}</h3><p>${esc(st.cap)}</p></div>`; }).join('')
     + `<div class="ax-notice" style="grid-column:1/-1">${esc(NOTE)} <a href="/platform">The platform map</a> carries the same story as one picture.</div>`;
 }
 
@@ -338,6 +350,21 @@ function play() {
   const ipad = new THREE.Group(); ipad.position.set(.04, -.62, .1); ipad.rotation.set(.55, 0, 0); ipad.add(box(.26, .19, .012, M.dark, 0, 0, 0)); ipad.add(box(.23, .16, .004, M.screen, 0, 0, .007)); ipad.add(rim(new THREE.BoxGeometry(.26, .19, .012), C.blue)); ipad.visible = false; armL.add(ipad);
   function wear(k) { for (const d in dev) dev[d].visible = d === k; ipad.visible = k === 'ipad'; }
 
+  // the tablet cart, ten steps away (the "before")
+  const cart = new THREE.Group(); cart.position.set(-4.6, 0, 2.4); cart.rotation.y = .6; scene.add(cart);
+  cart.add(box(.6, .04, .45, M.metal2, 0, .95, 0)); cart.add(box(.6, .04, .45, M.metal2, 0, .3, 0));
+  for (const [x, z] of [[-.27, -.2], [.27, -.2], [-.27, .2], [.27, .2]]) cart.add(cyl(.015, .015, .95, M.metal2, x, .5, z, 8));
+  { const tb = box(.34, .24, .012, M.dark, 0, 1.08, -.08); tb.rotation.x = -.5; cart.add(tb); const sc = box(.31, .21, .004, M.screen, 0, 1.085, -.072); sc.rotation.x = -.5; cart.add(sc); }
+  // a cobot on a plinth at the gas panel side, and an AMR (the "ahead")
+  const cobot = new THREE.Group(); cobot.position.set(2.3, 0, -.9); cobot.visible = false; scene.add(cobot);
+  cobot.add(box(.5, .9, .5, M.frame, 0, .45, 0)); cobot.add(cyl(.12, .14, .16, M.pad, 0, .98, 0));
+  const j1 = new THREE.Group(); j1.position.set(0, 1.06, 0); cobot.add(j1); j1.add(cyl(.06, .06, .6, M.metal, 0, .3, 0, 16)); j1.add(new THREE.Mesh(new THREE.SphereGeometry(.08, 16, 12), M.pad)).position.y = .6;
+  const j2 = new THREE.Group(); j2.position.set(0, .6, 0); j1.add(j2); j2.add(cyl(.05, .05, .55, M.metal, 0, .27, 0, 16)); j2.add(new THREE.Mesh(new THREE.SphereGeometry(.07, 16, 12), M.pad)).position.y = .55;
+  const j3 = new THREE.Group(); j3.position.set(0, .55, 0); j2.add(j3); j3.add(cyl(.035, .03, .22, M.metal2, 0, .1, 0, 12)); j3.add(box(.08, .04, .06, M.pad, 0, .22, 0));
+  j1.rotation.z = -.9; j2.rotation.z = 1.5; j3.rotation.z = -.4;
+  const amr = new THREE.Group(); amr.visible = false; scene.add(amr);
+  amr.add(box(.9, .22, .6, M.frame, 0, .2, 0)); amr.add(box(.5, .2, .4, M.pad, 0, .41, 0)); for (const [x, z] of [[-.3, -.33], [.3, -.33], [-.3, .33], [.3, .33]]) { const w = cyl(.09, .09, .06, M.dark, x, .09, z, 16); w.rotation.x = Math.PI / 2; amr.add(w); }
+  { const l = cyl(.03, .03, .06, M.ok, .4, .34, 0, 8); amr.add(l); }
   // many chambers for the live beat
   const fleet = new THREE.InstancedMesh(new THREE.BoxGeometry(2, 1.4, 1.7), M.frame, 40);
   { const mt = new THREE.Matrix4(); let n = 0; for (let r = -2; r <= 2; r++) for (let c = -4; c <= 4; c++) { if (r === 0 && c === 0) continue; if (n >= 40) break; mt.makeTranslation(c * 3.4, .7, r * 3.6); fleet.setMatrixAt(n++, mt); } fleet.count = n; }
@@ -377,8 +404,9 @@ function play() {
     capEl.style.setProperty('--ax-pc', band.color);
     capEl.innerHTML = `<div class="ax-eyebrow">${i + 1} of ${STAGES.length} · ${esc(st.name)}</div><h2>${esc(st.line)}</h2><p>${esc(extra || st.cap)}</p><div class="pc-links">${st.links.map(([n, h]) => `<a href="${esc(h)}">${esc(n)}</a>`).join('')}</div>`;
   }
-  const pins = { step: $('pin-step'), me: $('pin-me'), ok: $('pin-ok'), origin: $('pin-origin'), amber: $('pin-amber'), down: $('pin-down'), ready: $('pin-ready'), paper: $('pin-paper') };
-  const pinAt = { step: V([.5, 1.75, 0]), me: V([0, 1.56, .74]), ok: V([-.5, 1.75, 0]), origin: V([1.25, .05, 1.25]), amber: V([-.5, 1.75, .1]), down: V([-.75, 1.36, .9]), ready: V([-.75, 1.36, .9]), paper: V([-1.1, 1.75, 1.1]) };
+  const pins = {}; for (const k of ['step', 'me', 'ok', 'origin', 'amber', 'down', 'ready', 'paper', 'trip', 'bad', 'hold', 'mes', 'vision', 'uam', 'ipad', 'sib', 'cobot', 'amr']) pins[k] = $('pin-' + k);
+  const pinAt = { step: V([.5, 1.75, 0]), me: V([.3, 1.8, .3]), ok: V([-.5, 1.75, 0]), origin: V([1.25, .05, 1.25]), amber: V([-.5, 1.75, .1]), down: V([-.75, 1.36, .9]), ready: V([-.75, 1.36, .9]),
+    paper: V([-4.6, 1.3, 2.4]), trip: V([-2.9, .3, 1.5]), bad: V([.3, 1.8, .2]), hold: V([-.75, 1.36, .9]), mes: V([-1.3, 2.3, -.4]), vision: V([1.6, 2.4, .8]), uam: V([-1.6, .6, 1.4]), ipad: V([1.9, .9, 1.4]), sib: V([0, .35, 1.3]), cobot: V([2.3, 2.2, -.9]), amr: V([2.0, .6, -2.2]) };
   function showPins(list) { for (const k in pins) pins[k].classList.toggle('on', list.includes(k)); }
   function projectPins() {
     for (const k in pins) { if (!pins[k].classList.contains('on')) continue; const v = pinAt[k].clone().project(camera); const vis = v.z < 1; pins[k].style.left = ((v.x + 1) / 2 * innerWidth) + 'px'; pins[k].style.top = ((1 - v.y) / 2 * innerHeight) + 'px'; pins[k].style.visibility = vis ? 'visible' : 'hidden'; }
@@ -402,44 +430,51 @@ function play() {
     Object.assign(win.style, { top: top + 'px', right: right + 'px', bottom: bottom + 'px', left: left + 'px' });
     win.className = 'win' + (e.form === 'text' || e.form === 'spoken' ? ' page' : '') + (e.form === 'app' ? ' ipad-frame' : '');
     const tag = `<div class="tag"><span class="ax-chip">${esc(e.name)} · ${esc(e.text)}</span></div>`;
+    win.style.borderRadius = e.form === 'reduced' ? '18px' : '';
     if (e.form === 'text') win.innerHTML = tag + `<div class="ax-eyebrow">Step 3 of 12</div><div class="mono">Seat the focus ring.</div><p>Lift the old ring at the two notches. Seat the new ring flat; the gap to the pedestal is even all round.</p><div class="keys"><span>say "next"</span><span>say "back"</span><span>say "repeat"</span></div>`;
     else if (e.form === 'spoken') win.innerHTML = tag + `<div class="ax-eyebrow">Spoken · step 3 of 12</div><div class="wave">${'<i></i>'.repeat(14)}</div><p>"Seat the focus ring. Lift at the two notches, seat the new ring flat. Say pass or fail."</p><div class="keys"><span>"next"</span><span>"pass"</span><span>"fail"</span></div>`;
     else win.innerHTML = tag;
   }
 
   // ── The actors' rest state, then what each moment turns on ───────────────
-  const TECH_HOME = V([-1.7, 0, .9]), TECH_FAR = V([-4.6, 0, 3.2]);
+  const TECH_HOME = V([-1.7, 0, .9]), TECH_CART = V([-3.9, 0, 2.0]);
   const hemi = scene.children.find(o => o.isHemisphereLight);
-  function night(q) { // 0 = night shift, 1 = morning
-    hemi.intensity = .7 + .4 * q; key.intensity = .9 + .5 * q; fill.intensity = .5 - .2 * q;
-    renderer.toneMappingExposure = 1.0 + .15 * q; scene.fog.near = 10 + 6 * q; renderer.setClearColor(q < .5 ? C.bg : shade(C.bg, .02 * q), 1);
+  function light(q) { // 0 = before (flat, dim), 1 = with AR OMS (open)
+    hemi.intensity = .7 + .4 * q; key.intensity = .9 + .5 * q; fill.intensity = .5 - .2 * q; renderer.toneMappingExposure = 1.0 + .15 * q; scene.fog.near = 10 + 6 * q;
   }
   function reset() {
     origin.visible = sweepRing.visible = sweepPlane.visible = ghost.visible = pinBox.visible = meBox.visible = cone.visible = false;
-    focusRing.material = M.metal2; beacon.material = M.warn; chamber.visible = true; fleet.visible = lit.visible = false; tech.visible = true;
+    focusRing.material = M.metal2; focusRing.rotation.set(Math.PI / 2, 0, 0); focusRing.position.y = 1.705; beacon.material = M.warn;
+    chamber.visible = cart.visible = true; cobot.visible = amr.visible = fleet.visible = lit.visible = false; tech.visible = true;
     tech.position.copy(TECH_HOME); tech.lookAt(0, 0, .1); head.rotation.set(0, 0, 0); armR.rotation.set(-1.35, 0, -.22); armL.rotation.set(-1.05, 0, .18);
-    wear('glasses'); eye(null); eyeIdx = -1; meInset(null); $('pc-live').classList.remove('on'); showPins([]); night(0);
+    wear('glasses'); eye(null); eyeIdx = -1; inset('me', null); inset('lead', null); $('pc-live').classList.remove('on'); showPins([]); light(0);
   }
+  const insets = { me: $('pc-me'), lead: $('pc-lead') };
+  function inset(which, html, cls) { const el = insets[which]; el.className = 'pc-me ax-card' + (which === 'lead' ? ' pc-lead' : '') + (cls ? ' ' + cls : '') + (html ? ' on' : ''); el.innerHTML = html || ''; }
+  const ME_OFF = `<div class="ax-eyebrow">ME · Building 2</div><div class="pc-me-row"><span class="ax-chip" style="--ax-pc:var(--ax-red)">not available</span></div><div class="pc-me-row"><span class="ax-label-s ax-muted">at a desk, in a meeting, on another tool - the chamber waits</span></div>`;
+  const LEAD = `<div class="ax-eyebrow">Lead</div><div class="pc-me-row"><span class="ax-label-s">"Could be the part, could be the seat. Ask the ME."</span></div>`;
+  const ME_WATCH = `<div class="ax-eyebrow">ME · Building 2 · joined by presence</div><div class="pc-me-row"><span class="ax-chip" style="--ax-pc:var(--ax-orange)">Step 3 · amber · offset notch</span></div><div class="pc-me-row"><span class="ax-label-s ax-muted">sees his step and his view · per session, announced, never recorded</span></div>`;
+  const ME_SEND = `<div class="ax-eyebrow">ME · Building 2 · joined by presence</div><div class="pc-me-row"><span class="ax-chip pc-me-send">look here → the notch</span></div><div class="pc-me-row"><span class="ax-label-s ax-muted">"Part is good. Turn it to the notch and seat it."</span></div>`;
+  const ME_DONE = `<div class="ax-eyebrow">ME · Building 2</div><div class="pc-me-row"><span class="ax-chip" style="--ax-pc:var(--ax-green)">Step 3 · verified · evidence attached</span></div><div class="pc-me-row"><span class="ax-label-s ax-muted">back to the desk; the rest of the work continues in front of him</span></div>`;
   function enter(i) {
     cur = i; const m = MOMENTS[i];
     if (m.stage !== curStage) { curStage = m.stage; beatBtns.forEach((x, k) => x.classList.toggle('on', k === curStage)); caption(curStage); }
     if (m.cam) aimAt(m.cam); else aimAt(POV);
     reset();
     switch (m.id) {
-      case 'walk': tech.position.copy(TECH_FAR); showPins(['down']); break;
-      case 'gown': showPins(['down']); break;
-      case 'paper': showPins(['paper', 'down']); armR.rotation.set(-.6, 0, -.22); break;
-      case 'hesitate': showPins(['paper']); armR.rotation.set(-.6, 0, -.22); head.rotation.set(.25, 0, 0); break;
-      case 'scan': break;
-      case 'pin': origin.visible = true; ghost.visible = pinBox.visible = true; showPins(['step']); break;
-      case 'amber': origin.visible = true; pinBox.visible = true; showPins(['step']); armR.rotation.set(-1.5, 0, -.22); break;
-      case 'lookhere': origin.visible = true; pinBox.visible = true; focusRing.material = M.warn; showPins(['amber']); meInset('watch'); break;
-      case 'reseat': origin.visible = true; pinBox.visible = true; focusRing.material = M.warn; meBox.visible = true; showPins(['me']); armR.rotation.set(-1.55, 0, -.1); break;
-      case 'green': origin.visible = true; pinBox.visible = true; focusRing.material = M.warn; showPins([]); break;
-      case 'close': origin.visible = true; focusRing.material = M.ok; beacon.material = M.ok; showPins(['ok', 'ready']); break;
-      case 'morning': origin.visible = true; focusRing.material = M.ok; beacon.material = M.ok; showPins(['ready']); night(1); break;
-      case 'eyes': tech.visible = false; origin.visible = true; focusRing.material = M.ok; beacon.material = M.ok; night(1); break;
-      case 'live': tech.visible = false; fleet.visible = lit.visible = true; beacon.material = M.ok; night(1); $('pc-live').classList.add('on'); wearFleet(); break;
+      case 'walk1': case 'walk2': showPins(['paper', 'trip']); break;
+      case 'assume': showPins(['paper']); armR.rotation.set(-1.5, 0, -.22); head.rotation.set(-.15, .5, 0); break;
+      case 'misalign': focusRing.rotation.set(Math.PI / 2 + .1, 0, .06); focusRing.position.y = 1.73; focusRing.material = M.bad; showPins(['bad']); armR.rotation.set(-1.5, 0, -.22); break;
+      case 'lead': focusRing.rotation.set(Math.PI / 2 + .1, 0, .06); focusRing.position.y = 1.73; focusRing.material = M.bad; showPins(['bad']); inset('lead', LEAD); head.rotation.set(0, -.6, 0); armR.rotation.set(-.4, 0, -.22); break;
+      case 'nome': focusRing.rotation.set(Math.PI / 2 + .1, 0, .06); focusRing.position.y = 1.73; focusRing.material = M.bad; showPins(['bad', 'hold']); inset('lead', LEAD); inset('me', ME_OFF, 'is-off'); armR.rotation.set(-.4, 0, -.22); armL.rotation.set(-.4, 0, .18); break;
+      case 'scan': cart.visible = false; light(1); break;
+      case 'pov': cart.visible = false; light(1); tech.visible = false; origin.visible = true; ghost.visible = pinBox.visible = true; showPins(['step']); break;
+      case 'check': cart.visible = false; light(1); origin.visible = true; pinBox.visible = true; showPins(['step']); armR.rotation.set(-1.5, 0, -.22); break;
+      case 'join': cart.visible = false; light(1); origin.visible = true; pinBox.visible = true; focusRing.material = M.warn; showPins(['amber']); inset('me', ME_WATCH, 'is-on'); break;
+      case 'fix': cart.visible = false; light(1); origin.visible = true; pinBox.visible = true; focusRing.material = M.warn; meBox.visible = true; showPins(['me']); inset('me', ME_SEND, 'is-on'); armR.rotation.set(-1.55, 0, -.1); break;
+      case 'systems': cart.visible = false; light(1); origin.visible = true; focusRing.material = M.ok; beacon.material = M.ok; wear('glasses'); showPins(['sib', 'mes', 'vision', 'uam', 'ipad']); break;
+      case 'robots': cart.visible = false; light(1); origin.visible = true; focusRing.material = M.ok; beacon.material = M.ok; cobot.visible = amr.visible = true; amr.position.set(-6, 0, -2.2); showPins(['cobot', 'amr']); break;
+      case 'live': cart.visible = false; light(1); tech.visible = false; fleet.visible = lit.visible = true; beacon.material = M.ok; $('pc-live').classList.add('on'); wearFleet(); break;
     }
   }
   function wearFleet() {
@@ -452,6 +487,11 @@ function play() {
     cone.position.copy(from).addScaledVector(d, .5); cone.scale.set(1, d.length(), 1); cone.quaternion.setFromUnitVectors(V([0, -1, 0]), d.clone().normalize()); M.cone.opacity = .1 + .08 * Math.sin(performance.now() / 150);
   }
   const now = () => performance.now();
+  function walkBetween(p, a, b) { // out and back, legs swinging; p 0..1 = one round trip
+    const q = p < .5 ? ease(p * 2) : ease(2 - p * 2); tech.position.lerpVectors(a, b, q); tech.lookAt(p < .5 ? b.x : a.x, 0, p < .5 ? b.z : a.z);
+    const moving = p > .04 && p < .46 || p > .54 && p < .96; tech.position.y = moving ? Math.abs(Math.sin(now() / 150)) * .02 : 0;
+    armR.rotation.x = moving ? -.2 + .3 * Math.sin(now() / 150) : -.6; armL.rotation.x = moving ? -.2 - .3 * Math.sin(now() / 150) : -.6;
+  }
   function step(dt) {
     if (playing) t = (t + dt) % TOTAL;
     let i = MOMENTS.length - 1; for (let k = 0; k < MOMENTS.length; k++) if (t < starts[k] + MOMENTS[k].dur) { i = k; break; }
@@ -460,24 +500,24 @@ function play() {
     const sp = (t - stageStart[curStage]) / stageDur[curStage];
     bars.forEach((bar, k) => bar.style.width = (k < curStage ? 100 : k === curStage ? sp * 100 : 0) + '%');
     switch (m.id) {
-      case 'walk': { const q = ease(Math.min(1, p / .85)); tech.position.lerpVectors(TECH_FAR, TECH_HOME, q); tech.lookAt(0, 0, .1); tech.position.y = q < 1 ? Math.abs(Math.sin(now() / 160)) * .02 : 0; armR.rotation.x = q < 1 ? -.2 + .25 * Math.sin(now() / 160) : -.6; armL.rotation.x = q < 1 ? -.2 - .25 * Math.sin(now() / 160) : -.6; break; }
-      case 'gown': armR.rotation.x = -.6 + .1 * Math.sin(now() / 400); head.rotation.y = .15 * Math.sin(now() / 900); break;
-      case 'hesitate': head.rotation.y = .2 * Math.sin(now() / 700); break;
+      case 'walk1': case 'walk2': { const trip = m.id === 'walk1' ? 1 : 2; const q = (p * 1.5) % 1; walkBetween(q, TECH_HOME, TECH_CART); const n = Math.min(12, (trip - 1) * 2 + 1 + Math.floor(p * 1.5)); $('pin-trip-t').textContent = `Trip ${n} of 12`; break; }
+      case 'assume': armR.rotation.x = -1.5 + .1 * Math.sin(now() / 500); break;
+      case 'misalign': focusRing.rotation.z = .06 + .01 * Math.sin(now() / 400); break;
+      case 'lead': head.rotation.y = -.6 + .1 * Math.sin(now() / 800); break;
+      case 'nome': break;
       case 'scan': { const q = Math.min(1, p / .7); sweepRing.visible = q < 1; sweepRing.scale.setScalar(.2 + q * 4.2); M.sweep.opacity = .25 * (1 - q); sweepPlane.visible = q < 1; sweepPlane.position.x = -1.6 + q * 3.2; origin.visible = p > .55; showPins(p > .6 ? ['origin'] : []); head.rotation.y = -.3 + .6 * q; break; }
-      case 'pin': ghost.position.y = 1.705 + .25 * Math.min(1, p * 1.6) + .03 * Math.sin(now() / 300); break;
-      case 'amber': { armR.rotation.x = -1.5 + .12 * Math.sin(now() / 500); coneAt(p > .35 && p < .75); if (p >= .75) { focusRing.material = M.warn; showPins(['amber']); } break; }
-      case 'lookhere': { if (p > .4) { meInset('send'); meBox.visible = true; meBox.scale.setScalar(1 + .06 * Math.sin(now() / 180)); showPins(['amber', 'me']); } break; }
-      case 'reseat': armR.rotation.x = -1.55 + .18 * Math.sin(now() / 350); armR.rotation.z = -.1 - .1 * Math.sin(now() / 350); meBox.scale.setScalar(1 + .04 * Math.sin(now() / 180)); break;
-      case 'green': { coneAt(p < .5); if (p >= .5) { focusRing.material = M.ok; beacon.material = M.ok; showPins(['ok']); } break; }
-      case 'close': break;
-      case 'morning': night(Math.min(1, p * 1.5)); break;
-      case 'eyes': { const k = Math.min(EYES.length - 1, Math.floor(p * EYES.length)); if (k !== eyeIdx) { eyeIdx = k; const e = EYES[k]; eye(e); caption(5, e.name + ': ' + e.text + '.'); ghost.visible = pinBox.visible = e.form === 'full' || e.form === 'reduced' || e.form === 'app'; showPins(ghost.visible ? ['step'] : []); } break; }
+      case 'pov': { if (eyeIdx < 0) { eyeIdx = 0; eye(EYES[0]); } ghost.position.y = 1.705 + .25 * Math.min(1, p * 1.6) + .03 * Math.sin(now() / 300); break; }
+      case 'check': { armR.rotation.x = -1.5 + .12 * Math.sin(now() / 500); ghost.visible = p < .35; coneAt(p > .35 && p < .7); if (p >= .7) { focusRing.material = M.warn; focusRing.rotation.z = .05; showPins(['amber']); } break; }
+      case 'join': focusRing.rotation.z = .05; break;
+      case 'fix': { armR.rotation.x = -1.55 + .18 * Math.sin(now() / 350); meBox.scale.setScalar(1 + .05 * Math.sin(now() / 180)); if (p > .45) { focusRing.rotation.z = .05 * Math.max(0, 1 - (p - .45) * 4); } coneAt(p > .6 && p < .85); if (p >= .85) { focusRing.material = M.ok; beacon.material = M.ok; meBox.visible = false; showPins(['ok']); inset('me', ME_DONE, 'is-on'); } break; }
+      case 'systems': { const k = Math.min(5, Math.floor(p * 6)); showPins(['sib', 'mes', 'vision', 'uam', 'ipad'].slice(0, k + 1)); break; }
+      case 'robots': { amr.position.x = -6 + 10 * Math.min(1, p / .9); amr.position.z = -2.2; j1.rotation.z = -.9 + .25 * Math.sin(now() / 900); j2.rotation.z = 1.5 - .3 * Math.sin(now() / 900); break; }
       case 'live': break;
     }
     // camera
     camT = Math.min(1, camT + dt / 2.4); const e = ease(camT);
     const pos = camFrom[0].clone().lerp(camTo[0], e); look.copy(camFrom[1]).lerp(camTo[1], e);
-    if (m.id !== 'eyes') { if (drag === null) yaw += -.015 * dt; const r = pos.clone().sub(look); r.applyAxisAngle(V([0, 1, 0]), yaw); pos.copy(look).add(r); }
+    if (m.id !== 'pov') { if (drag === null) yaw += -.015 * dt; const r = pos.clone().sub(look); r.applyAxisAngle(V([0, 1, 0]), yaw); pos.copy(look).add(r); }
     camera.position.copy(pos); camera.lookAt(look);
     projectPins();
     renderer.render(scene, camera);
