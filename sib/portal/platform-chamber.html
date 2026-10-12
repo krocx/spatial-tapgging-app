@@ -36,7 +36,9 @@
   .pc-cap .pc-links { margin-top: 10px; display: flex; gap: var(--ax-s3); flex-wrap: wrap; pointer-events: auto; font: var(--ax-label-s); }
   .pc-cap .pc-links a { color: var(--ax-ink-2); }
   /* pins projected from the scene */
-  .pc-pin { position: fixed; z-index: 2; transform: translate(-50%, -120%); pointer-events: none; display: none; }
+  .pc-pin { position: fixed; z-index: 2; transform: translate(-50%, -100%); pointer-events: none; display: none; }
+  .pc-leads { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+  .pc-leads line { stroke-width: 1.5; }
   .pc-pin.on { display: inline-flex; }
   .pc-pin .ax-chip { background: var(--ax-solid); border: 1px solid var(--ax-pc, var(--ax-blue)); color: var(--ax-ink); text-transform: none; letter-spacing: 0; font: var(--ax-label-s); gap: 6px; }
   .pc-pin .ax-mark { color: var(--ax-pc, var(--ax-blue)); font-size: 12px; }
@@ -135,9 +137,10 @@
 <div class="pc-pin" id="pin-ipad" style="--ax-pc:var(--ax-blue)"><span class="ax-chip">iPad · the companion</span></div>
 <div class="pc-pin" id="pin-sib" style="--ax-pc:var(--ax-green)"><span class="ax-chip"><span class="ax-mark"><i></i></span>SIB · one origin per chamber</span></div>
 <div class="pc-pin" id="pin-cobot" style="--ax-pc:var(--ax-teal)"><span class="ax-chip">Cobot · the gas-line check, same origin</span></div>
-<div class="pc-pin" id="pin-amr" style="--ax-pc:var(--ax-teal)"><span class="ax-chip">AMR · brings the part to the pin</span></div>
+<div class="pc-pin" id="pin-amr" style="--ax-pc:var(--ax-teal)"><span class="ax-chip">AMR · brings the next part to the chamber</span></div>
 <div class="pc-me ax-card" id="pc-me"></div>
 <div class="pc-me pc-lead ax-card" id="pc-lead"></div>
+<svg class="pc-leads" id="pc-leads"></svg>
 <div class="pc-eye" id="pc-eye"><div class="sc" id="sc-t"></div><div class="sc" id="sc-b"></div><div class="sc" id="sc-l"></div><div class="sc" id="sc-r"></div><div class="win" id="eye-win"></div></div>
 <div class="pc-live ax-tiles" id="pc-live">
   <div class="ax-tile"><div class="ax-eyebrow">On tools now</div><div class="ax-value" id="lv-people">-</div></div>
@@ -179,9 +182,13 @@ function tok(name) {
 const C = { bg: tok('--ax-bg'), bg2: tok('--ax-bg-2'), solid: tok('--ax-solid'), ink: tok('--ax-ink'), grey: tok('--ax-grey'), blue: tok('--ax-blue'), cyan: tok('--ax-cyan'), green: tok('--ax-green'), orange: tok('--ax-orange'), red: tok('--ax-red'), teal: tok('--ax-teal'), purple: tok('--ax-purple') };
 const shade = (c, l) => c.clone().offsetHSL(0, 0, l);
 const M = {
-  frame:  new THREE.MeshStandardMaterial({ color: shade(C.bg2, .04), roughness: .75, metalness: .25 }),
-  metal:  new THREE.MeshStandardMaterial({ color: shade(C.grey, .08), roughness: .35, metalness: .7 }),
-  metal2: new THREE.MeshStandardMaterial({ color: shade(C.grey, -.12), roughness: .45, metalness: .6 }),
+  frame:  new THREE.MeshStandardMaterial({ color: C.blue.clone().offsetHSL(0, -.45, -.33), roughness: .7, metalness: .3 }),   // the chamber reads blue against the charcoal
+  metal:  new THREE.MeshStandardMaterial({ color: C.blue.clone().offsetHSL(0, -.3, -.12), roughness: .35, metalness: .7 }),
+  metal2: new THREE.MeshStandardMaterial({ color: C.blue.clone().offsetHSL(0, -.35, -.25), roughness: .45, metalness: .6 }),
+  steel:  new THREE.MeshStandardMaterial({ color: shade(C.grey, .08), roughness: .35, metalness: .7 }),   // the cart, the robots' joints
+  bot:    new THREE.MeshStandardMaterial({ color: C.teal, roughness: .5, metalness: .3 }),                  // cobot and AMR bodies
+  botDark:new THREE.MeshStandardMaterial({ color: C.teal.clone().offsetHSL(0, -.2, -.3), roughness: .6, metalness: .3 }),
+  off:    new THREE.MeshStandardMaterial({ color: shade(C.bg2, .06), roughness: .6 }),                     // an unlit stack-light segment
   dark:   new THREE.MeshStandardMaterial({ color: C.bg, roughness: .6, metalness: .3 }),
   gown:   new THREE.MeshStandardMaterial({ color: shade(C.ink, -.06), roughness: .9 }),
   mask:   new THREE.MeshStandardMaterial({ color: shade(C.cyan, .2), roughness: .9 }),
@@ -230,7 +237,7 @@ const MOMENTS = [
   { id: 'join',    stage: 5, dur: 7,  cam: [[2.4, 1.9, 2.8], [-.2, 1.4, .5]] },
   { id: 'fix',     stage: 5, dur: 7,  cam: [[1.6, 2.2, 2.4], [0, 1.6, .1]] },
   { id: 'systems', stage: 6, dur: 13, cam: [[3.4, 2.8, 4.8], [0, 1.4, 0]] },
-  { id: 'robots',  stage: 7, dur: 9,  cam: [[-3.2, 2.2, 4.6], [.4, 1.1, 0]] },
+  { id: 'robots',  stage: 7, dur: 11, cam: [[3.4, 2.3, 5.2], [.9, 1.2, .5]] },
   { id: 'live',    stage: 7, dur: 7,  cam: [[0, 12, 16], [0, 0, 0]] },
 ];
 // The glasses, through the eye (stage 4): the form from docs/devices.
@@ -309,7 +316,9 @@ function play() {
   add(chamber, cyl(.04, .04, 1.3, M.metal2, -.55, 1.55, -.55));
   add(chamber, box(.5, .06, .06, M.metal2, -.3, 2.2, -.55));
   // status beacon
-  const beacon = add(chamber, cyl(.04, .04, .1, M.warn, .9, 2.0, .7));
+  add(chamber, cyl(.02, .02, .55, M.steel, .92, 1.23, .78, 8));                      // stack-light post on the deck
+  const stackSeg = { bad: add(chamber, cyl(.05, .05, .08, M.off, .92, 1.62, .78, 16)), warn: add(chamber, cyl(.05, .05, .08, M.off, .92, 1.54, .78, 16)), ok: add(chamber, cyl(.05, .05, .08, M.off, .92, 1.46, .78, 16)) };
+  function stack(state) { for (const k in stackSeg) stackSeg[k].material = k === state ? M[k] : M.off; }
   // origin marker (registration brackets on the floor)
   const origin = new THREE.Group(); origin.visible = false; scene.add(origin);
   { const s = 1.25, a = .3, pts = [];
@@ -344,7 +353,7 @@ function play() {
   const dev = {};
   dev.headset = new THREE.Group(); { const b = box(.28, .13, .12, M.dark, 0, .0, .16); dev.headset.add(b); dev.headset.add(rim(new THREE.BoxGeometry(.28, .13, .12), C.green, b.position)); const s = new THREE.Mesh(new THREE.TorusGeometry(.16, .015, 8, 32), M.dark); s.rotation.x = Math.PI / 2; s.position.y = .02; dev.headset.add(s); }
   dev.glasses = new THREE.Group(); { dev.glasses.add(box(.25, .035, .02, M.dark, 0, .02, .145)); for (const sx of [-1, 1]) { const l = box(.085, .06, .012, M.pad, sx * .06, .005, .15); dev.glasses.add(l); dev.glasses.add(rim(new THREE.BoxGeometry(.085, .06, .012), C.teal, l.position)); } for (const sx of [-1, 1]) dev.glasses.add(box(.02, .02, .16, M.dark, sx * .125, .02, .07)); }
-  dev.mono = new THREE.Group(); { dev.mono.add(box(.26, .03, .03, M.dark, 0, .07, .1)); dev.mono.add(cyl(.012, .012, .16, M.dark, .13, .02, .12, 8)).rotation.x = Math.PI / 2; const d = box(.05, .035, .02, M.pad, .09, -.04, .17); dev.mono.add(d); dev.mono.add(rim(new THREE.BoxGeometry(.05, .035, .02), C.orange, d.position)); dev.mono.add(box(.04, .05, .05, M.dark, .16, .03, .0)); }
+  dev.mono = new THREE.Group(); { dev.mono.add(box(.26, .03, .03, M.dark, 0, .07, .1)); { const bm = cyl(.012, .012, .16, M.dark, .13, .02, .12, 8); bm.rotation.x = Math.PI / 2; dev.mono.add(bm); } const d = box(.05, .035, .02, M.pad, .09, -.04, .17); dev.mono.add(d); dev.mono.add(rim(new THREE.BoxGeometry(.05, .035, .02), C.orange, d.position)); dev.mono.add(box(.04, .05, .05, M.dark, .16, .03, .0)); }
   dev.none = new THREE.Group(); { const b = box(.27, .045, .025, M.dark, 0, .02, .14); dev.none.add(b); dev.none.add(rim(new THREE.BoxGeometry(.27, .045, .025), C.purple, b.position)); for (const sx of [-1, 1]) dev.none.add(box(.02, .02, .16, M.dark, sx * .135, .02, .07)); }
   for (const k in dev) { dev[k].visible = false; head.add(dev[k]); }
   const ipad = new THREE.Group(); ipad.position.set(.04, -.62, .1); ipad.rotation.set(.55, 0, 0); ipad.add(box(.26, .19, .012, M.dark, 0, 0, 0)); ipad.add(box(.23, .16, .004, M.screen, 0, 0, .007)); ipad.add(rim(new THREE.BoxGeometry(.26, .19, .012), C.blue)); ipad.visible = false; armL.add(ipad);
@@ -352,19 +361,33 @@ function play() {
 
   // the tablet cart, ten steps away (the "before")
   const cart = new THREE.Group(); cart.position.set(-4.6, 0, 2.4); cart.rotation.y = .6; scene.add(cart);
-  cart.add(box(.6, .04, .45, M.metal2, 0, .95, 0)); cart.add(box(.6, .04, .45, M.metal2, 0, .3, 0));
-  for (const [x, z] of [[-.27, -.2], [.27, -.2], [-.27, .2], [.27, .2]]) cart.add(cyl(.015, .015, .95, M.metal2, x, .5, z, 8));
+  cart.add(box(.6, .04, .45, M.steel, 0, .95, 0)); cart.add(box(.6, .04, .45, M.steel, 0, .3, 0));
+  for (const [x, z] of [[-.27, -.2], [.27, -.2], [-.27, .2], [.27, .2]]) cart.add(cyl(.015, .015, .95, M.steel, x, .5, z, 8));
   { const tb = box(.34, .24, .012, M.dark, 0, 1.08, -.08); tb.rotation.x = -.5; cart.add(tb); const sc = box(.31, .21, .004, M.screen, 0, 1.085, -.072); sc.rotation.x = -.5; cart.add(sc); }
   // a cobot on a plinth at the gas panel side, and an AMR (the "ahead")
-  const cobot = new THREE.Group(); cobot.position.set(2.3, 0, -.9); cobot.visible = false; scene.add(cobot);
-  cobot.add(box(.5, .9, .5, M.frame, 0, .45, 0)); cobot.add(cyl(.12, .14, .16, M.pad, 0, .98, 0));
-  const j1 = new THREE.Group(); j1.position.set(0, 1.06, 0); cobot.add(j1); j1.add(cyl(.06, .06, .6, M.metal, 0, .3, 0, 16)); j1.add(new THREE.Mesh(new THREE.SphereGeometry(.08, 16, 12), M.pad)).position.y = .6;
-  const j2 = new THREE.Group(); j2.position.set(0, .6, 0); j1.add(j2); j2.add(cyl(.05, .05, .55, M.metal, 0, .27, 0, 16)); j2.add(new THREE.Mesh(new THREE.SphereGeometry(.07, 16, 12), M.pad)).position.y = .55;
-  const j3 = new THREE.Group(); j3.position.set(0, .55, 0); j2.add(j3); j3.add(cyl(.035, .03, .22, M.metal2, 0, .1, 0, 12)); j3.add(box(.08, .04, .06, M.pad, 0, .22, 0));
-  j1.rotation.z = -.9; j2.rotation.z = 1.5; j3.rotation.z = -.4;
+  // the cobot stands beside the gas panel; its arm is solved to the fittings
+  const cobot = new THREE.Group(); cobot.position.set(2.15, 0, -.3); cobot.rotation.y = Math.PI; cobot.visible = false; scene.add(cobot);
+  cobot.add(box(.46, .9, .46, M.botDark, 0, .45, 0)); cobot.add(cyl(.12, .14, .16, M.bot, 0, .98, 0));
+  const L1 = .6, L2 = .55;
+  const j1 = new THREE.Group(); j1.position.set(0, 1.06, 0); cobot.add(j1); j1.add(cyl(.05, .055, L1, M.bot, 0, L1 / 2, 0, 16)); { const k = new THREE.Mesh(new THREE.SphereGeometry(.07, 16, 12), M.steel); k.position.y = L1; j1.add(k); }
+  const j2 = new THREE.Group(); j2.position.set(0, L1, 0); j1.add(j2); j2.add(cyl(.045, .05, L2, M.bot, 0, L2 / 2, 0, 16)); { const k = new THREE.Mesh(new THREE.SphereGeometry(.06, 16, 12), M.steel); k.position.y = L2; j2.add(k); }
+  const j3 = new THREE.Group(); j3.position.set(0, L2, 0); j2.add(j3); j3.add(cyl(.03, .025, .16, M.steel, 0, .08, 0, 12)); j3.add(box(.07, .035, .05, M.pad, 0, .17, 0));
+  const tool = new THREE.Object3D(); tool.position.y = .2; j3.add(tool);
+  // two-link IK in the arm's plane: reach world point (wx, wy) with the wrist pointing down
+  function reach(wx, wy) {
+    const dx = (cobot.position.x - wx), dy = wy - 1.06, d = Math.min(L1 + L2 - .01, Math.hypot(dx, dy)); // local +x points at the chamber (group turned by PI)
+    const a = Math.atan2(dx, dy), cosB = (L1 * L1 + d * d - L2 * L2) / (2 * L1 * d), cosC = (L1 * L1 + L2 * L2 - d * d) / (2 * L1 * L2);
+    const b = Math.acos(Math.max(-1, Math.min(1, cosB))), c = Math.acos(Math.max(-1, Math.min(1, cosC)));
+    const t1 = a - b, t2 = Math.PI - c, t3 = Math.PI - t1 - t2; // from vertical, bending toward the chamber; the wrist ends pointing down
+    j1.rotation.z = -t1; j2.rotation.z = -t2; j3.rotation.z = -t3;
+  }
+  const FITTINGS = [[1.2, 1.93], [1.3, 1.93], [1.4, 1.93], [1.5, 1.93]]; // wrist targets: the tool tip sits .2 below
+  reach(1.35, 1.9);
+  // the AMR drives in and parks at the chamber's front with the part on its deck
   const amr = new THREE.Group(); amr.visible = false; scene.add(amr);
-  amr.add(box(.9, .22, .6, M.frame, 0, .2, 0)); amr.add(box(.5, .2, .4, M.pad, 0, .41, 0)); for (const [x, z] of [[-.3, -.33], [.3, -.33], [-.3, .33], [.3, .33]]) { const w = cyl(.09, .09, .06, M.dark, x, .09, z, 16); w.rotation.x = Math.PI / 2; amr.add(w); }
-  { const l = cyl(.03, .03, .06, M.ok, .4, .34, 0, 8); amr.add(l); }
+  amr.add(box(.9, .22, .6, M.botDark, 0, .2, 0)); amr.add(box(.6, .18, .45, M.bot, 0, .4, 0)); for (const [x, z] of [[-.3, -.33], [.3, -.33], [-.3, .33], [.3, .33]]) { const w = cyl(.09, .09, .06, M.dark, x, .09, z, 16); w.rotation.x = Math.PI / 2; amr.add(w); }
+  { const l = cyl(.03, .03, .06, M.ok, .4, .52, 0, 8); amr.add(l); const part = new THREE.Mesh(new THREE.TorusGeometry(.2, .03, 12, 48), M.steel); part.rotation.x = Math.PI / 2; part.position.y = .52; amr.add(part); }
+  const AMR_FROM = new THREE.Vector3(-7, 0, 2.6), AMR_TO = new THREE.Vector3(1.0, 0, 2.0);
   // many chambers for the live beat
   const fleet = new THREE.InstancedMesh(new THREE.BoxGeometry(2, 1.4, 1.7), M.frame, 40);
   { const mt = new THREE.Matrix4(); let n = 0; for (let r = -2; r <= 2; r++) for (let c = -4; c <= 4; c++) { if (r === 0 && c === 0) continue; if (n >= 40) break; mt.makeTranslation(c * 3.4, .7, r * 3.6); fleet.setMatrixAt(n++, mt); } fleet.count = n; }
@@ -406,10 +429,19 @@ function play() {
   }
   const pins = {}; for (const k of ['step', 'me', 'ok', 'origin', 'amber', 'down', 'ready', 'paper', 'trip', 'bad', 'hold', 'mes', 'vision', 'uam', 'ipad', 'sib', 'cobot', 'amr']) pins[k] = $('pin-' + k);
   const pinAt = { step: V([.5, 1.75, 0]), me: V([.3, 1.8, .3]), ok: V([-.5, 1.75, 0]), origin: V([1.25, .05, 1.25]), amber: V([-.5, 1.75, .1]), down: V([-.75, 1.36, .9]), ready: V([-.75, 1.36, .9]),
-    paper: V([-4.6, 1.3, 2.4]), trip: V([-2.9, .3, 1.5]), bad: V([.3, 1.8, .2]), hold: V([-.75, 1.36, .9]), mes: V([-1.3, 2.3, -.4]), vision: V([1.6, 2.4, .8]), uam: V([-1.6, .6, 1.4]), ipad: V([1.9, .9, 1.4]), sib: V([0, .35, 1.3]), cobot: V([2.3, 2.2, -.9]), amr: V([2.0, .6, -2.2]) };
+    paper: V([-4.6, 1.3, 2.4]), trip: () => tech.position.clone().add(V([0, .25, 0])), bad: V([.3, 1.8, .2]), hold: V([-.75, 1.36, .9]), mes: V([-.75, 1.36, .9]), vision: V([.4, 1.9, .3]), uam: () => tech.position.clone().add(V([0, 1.95, 0])), ipad: () => armL.localToWorld(V([.04, -.62, .1])), sib: V([1.25, .05, 1.25]), cobot: () => tool.getWorldPosition(new THREE.Vector3()), amr: () => amr.position.clone().add(V([0, .55, 0])) };
+  const leads = $('pc-leads');
   function showPins(list) { for (const k in pins) pins[k].classList.toggle('on', list.includes(k)); }
-  function projectPins() {
-    for (const k in pins) { if (!pins[k].classList.contains('on')) continue; const v = pinAt[k].clone().project(camera); const vis = v.z < 1; pins[k].style.left = ((v.x + 1) / 2 * innerWidth) + 'px'; pins[k].style.top = ((1 - v.y) / 2 * innerHeight) + 'px'; pins[k].style.visibility = vis ? 'visible' : 'hidden'; }
+  function projectPins() { // each bubble sits above its anchor with a leader line down to a dot on the part
+    let svg = '';
+    for (const k in pins) {
+      if (!pins[k].classList.contains('on')) continue;
+      const w = (typeof pinAt[k] === 'function' ? pinAt[k]() : pinAt[k].clone()), v = w.project(camera); const vis = v.z < 1;
+      const x = (v.x + 1) / 2 * innerWidth, y = (1 - v.y) / 2 * innerHeight, lift = 44;
+      pins[k].style.left = x + 'px'; pins[k].style.top = (y - lift) + 'px'; pins[k].style.visibility = vis ? 'visible' : 'hidden';
+      if (vis) { const col = getComputedStyle(pins[k].firstElementChild).borderColor; svg += `<line x1="${x}" y1="${y - lift + 2}" x2="${x}" y2="${y}" stroke="${col}"/><circle cx="${x}" cy="${y}" r="3.5" fill="${col}"/>`; }
+    }
+    leads.innerHTML = svg;
   }
   const meEl = $('pc-me');
   function meInset(state) { // the ME across the cleanroom, seeing her view
@@ -444,7 +476,7 @@ function play() {
   }
   function reset() {
     origin.visible = sweepRing.visible = sweepPlane.visible = ghost.visible = pinBox.visible = meBox.visible = cone.visible = false;
-    focusRing.material = M.metal2; focusRing.rotation.set(Math.PI / 2, 0, 0); focusRing.position.y = 1.705; beacon.material = M.warn;
+    focusRing.material = M.metal2; focusRing.rotation.set(Math.PI / 2, 0, 0); focusRing.position.y = 1.705; stack('warn');
     chamber.visible = cart.visible = true; cobot.visible = amr.visible = fleet.visible = lit.visible = false; tech.visible = true;
     tech.position.copy(TECH_HOME); tech.lookAt(0, 0, .1); head.rotation.set(0, 0, 0); armR.rotation.set(-1.35, 0, -.22); armL.rotation.set(-1.05, 0, .18);
     wear('glasses'); eye(null); eyeIdx = -1; inset('me', null); inset('lead', null); $('pc-live').classList.remove('on'); showPins([]); light(0);
@@ -460,21 +492,21 @@ function play() {
     cur = i; const m = MOMENTS[i];
     if (m.stage !== curStage) { curStage = m.stage; beatBtns.forEach((x, k) => x.classList.toggle('on', k === curStage)); caption(curStage); }
     if (m.cam) aimAt(m.cam); else aimAt(POV);
-    reset();
+    yaw = 0; reset();
     switch (m.id) {
       case 'walk1': case 'walk2': showPins(['paper', 'trip']); break;
       case 'assume': showPins(['paper']); armR.rotation.set(-1.5, 0, -.22); head.rotation.set(-.15, .5, 0); break;
-      case 'misalign': focusRing.rotation.set(Math.PI / 2 + .1, 0, .06); focusRing.position.y = 1.73; focusRing.material = M.bad; showPins(['bad']); armR.rotation.set(-1.5, 0, -.22); break;
-      case 'lead': focusRing.rotation.set(Math.PI / 2 + .1, 0, .06); focusRing.position.y = 1.73; focusRing.material = M.bad; showPins(['bad']); inset('lead', LEAD); head.rotation.set(0, -.6, 0); armR.rotation.set(-.4, 0, -.22); break;
-      case 'nome': focusRing.rotation.set(Math.PI / 2 + .1, 0, .06); focusRing.position.y = 1.73; focusRing.material = M.bad; showPins(['bad', 'hold']); inset('lead', LEAD); inset('me', ME_OFF, 'is-off'); armR.rotation.set(-.4, 0, -.22); armL.rotation.set(-.4, 0, .18); break;
+      case 'misalign': focusRing.rotation.set(Math.PI / 2 + .1, 0, .06); focusRing.position.y = 1.73; focusRing.material = M.bad; stack('bad'); showPins(['bad']); armR.rotation.set(-1.5, 0, -.22); break;
+      case 'lead': focusRing.rotation.set(Math.PI / 2 + .1, 0, .06); focusRing.position.y = 1.73; focusRing.material = M.bad; stack('bad'); showPins(['bad']); inset('lead', LEAD); head.rotation.set(0, -.6, 0); armR.rotation.set(-.4, 0, -.22); break;
+      case 'nome': focusRing.rotation.set(Math.PI / 2 + .1, 0, .06); focusRing.position.y = 1.73; focusRing.material = M.bad; stack('bad'); showPins(['bad', 'hold']); inset('lead', LEAD); inset('me', ME_OFF, 'is-off'); armR.rotation.set(-.4, 0, -.22); armL.rotation.set(-.4, 0, .18); break;
       case 'scan': cart.visible = false; light(1); break;
       case 'pov': cart.visible = false; light(1); tech.visible = false; origin.visible = true; ghost.visible = pinBox.visible = true; showPins(['step']); break;
       case 'check': cart.visible = false; light(1); origin.visible = true; pinBox.visible = true; showPins(['step']); armR.rotation.set(-1.5, 0, -.22); break;
       case 'join': cart.visible = false; light(1); origin.visible = true; pinBox.visible = true; focusRing.material = M.warn; showPins(['amber']); inset('me', ME_WATCH, 'is-on'); break;
       case 'fix': cart.visible = false; light(1); origin.visible = true; pinBox.visible = true; focusRing.material = M.warn; meBox.visible = true; showPins(['me']); inset('me', ME_SEND, 'is-on'); armR.rotation.set(-1.55, 0, -.1); break;
-      case 'systems': cart.visible = false; light(1); origin.visible = true; focusRing.material = M.ok; beacon.material = M.ok; wear('glasses'); showPins(['sib', 'mes', 'vision', 'uam', 'ipad']); break;
-      case 'robots': cart.visible = false; light(1); origin.visible = true; focusRing.material = M.ok; beacon.material = M.ok; cobot.visible = amr.visible = true; amr.position.set(-6, 0, -2.2); showPins(['cobot', 'amr']); break;
-      case 'live': cart.visible = false; light(1); tech.visible = false; fleet.visible = lit.visible = true; beacon.material = M.ok; $('pc-live').classList.add('on'); wearFleet(); break;
+      case 'systems': cart.visible = false; light(1); origin.visible = true; focusRing.material = M.ok; stack('ok'); wear('glasses'); showPins(['sib', 'mes', 'vision', 'uam', 'ipad']); break;
+      case 'robots': cart.visible = false; light(1); origin.visible = true; focusRing.material = M.ok; stack('ok'); cobot.visible = amr.visible = true; amr.position.copy(AMR_FROM); amr.rotation.y = 0; showPins(['cobot']); head.rotation.set(0, -.5, 0); break;
+      case 'live': cart.visible = false; light(1); tech.visible = false; fleet.visible = lit.visible = true; stack('ok'); $('pc-live').classList.add('on'); wearFleet(); break;
     }
   }
   function wearFleet() {
@@ -509,15 +541,16 @@ function play() {
       case 'pov': { if (eyeIdx < 0) { eyeIdx = 0; eye(EYES[0]); } ghost.position.y = 1.705 + .25 * Math.min(1, p * 1.6) + .03 * Math.sin(now() / 300); break; }
       case 'check': { armR.rotation.x = -1.5 + .12 * Math.sin(now() / 500); ghost.visible = p < .35; coneAt(p > .35 && p < .7); if (p >= .7) { focusRing.material = M.warn; focusRing.rotation.z = .05; showPins(['amber']); } break; }
       case 'join': focusRing.rotation.z = .05; break;
-      case 'fix': { armR.rotation.x = -1.55 + .18 * Math.sin(now() / 350); meBox.scale.setScalar(1 + .05 * Math.sin(now() / 180)); if (p > .45) { focusRing.rotation.z = .05 * Math.max(0, 1 - (p - .45) * 4); } coneAt(p > .6 && p < .85); if (p >= .85) { focusRing.material = M.ok; beacon.material = M.ok; meBox.visible = false; showPins(['ok']); inset('me', ME_DONE, 'is-on'); } break; }
+      case 'fix': { armR.rotation.x = -1.55 + .18 * Math.sin(now() / 350); meBox.scale.setScalar(1 + .05 * Math.sin(now() / 180)); if (p > .45) { focusRing.rotation.z = .05 * Math.max(0, 1 - (p - .45) * 4); } coneAt(p > .6 && p < .85); if (p >= .85) { focusRing.material = M.ok; stack('ok'); meBox.visible = false; showPins(['ok']); inset('me', ME_DONE, 'is-on'); } break; }
       case 'systems': { const k = Math.min(5, Math.floor(p * 6)); showPins(['sib', 'mes', 'vision', 'uam', 'ipad'].slice(0, k + 1)); break; }
-      case 'robots': { amr.position.x = -6 + 10 * Math.min(1, p / .9); amr.position.z = -2.2; j1.rotation.z = -.9 + .25 * Math.sin(now() / 900); j2.rotation.z = 1.5 - .3 * Math.sin(now() / 900); break; }
+      case 'robots': { const q = ease(Math.min(1, p / .6)); amr.position.lerpVectors(AMR_FROM, AMR_TO, q); if (p > .25) showPins(['cobot', 'amr']);
+        const f = FITTINGS[Math.floor((p * 8) % 4)], dip = .06 * Math.max(0, Math.sin(p * 8 * Math.PI)); reach(f[0], f[1] + .08 - dip); break; }
       case 'live': break;
     }
     // camera
     camT = Math.min(1, camT + dt / 2.4); const e = ease(camT);
     const pos = camFrom[0].clone().lerp(camTo[0], e); look.copy(camFrom[1]).lerp(camTo[1], e);
-    if (m.id !== 'pov') { if (drag === null) yaw += -.015 * dt; const r = pos.clone().sub(look); r.applyAxisAngle(V([0, 1, 0]), yaw); pos.copy(look).add(r); }
+    if (m.id !== 'pov') { if (drag === null) yaw *= Math.max(0, 1 - dt * .8); const r = pos.clone().sub(look); r.applyAxisAngle(V([0, 1, 0]), yaw); pos.copy(look).add(r); }
     camera.position.copy(pos); camera.lookAt(look);
     projectPins();
     renderer.render(scene, camera);

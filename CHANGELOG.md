@@ -24,7 +24,17 @@ it, it gets a line.
   bringing the part on the same origin; the cleanroom live from this
   server). The technician walks to the tablet and back with a trip counter,
   the ring tilts red when misaligned, the lead and the ME appear as inset
-  cards, lighting opens up when AR OMS arrives. Captions are one narrative
+  cards, lighting opens up when AR OMS arrives. Every in-scene bubble is
+  tied to its object by a leader line and a dot, and follows it (the trip
+  counter follows the technician, the AMR's bubble follows the AMR, the
+  cobot's follows its tool). The chamber is drawn in the app's blue, the
+  cobot and AMR in teal so they stand out; the status light is a stack light
+  on a post at the deck corner (red · amber · green), not a floating
+  cylinder. In "Ahead" the cobot stands at the gas panel and its arm is
+  solved to the fittings, tapping each in turn, while the AMR drives in and
+  parks at the chamber front with the next part on its deck. The camera no
+  longer rotates on its own; drag still turns the scene and eases back
+  square at the next moment. Captions are one narrative
   line per stage; feature names live in the links beneath. Machines without
   a usable GPU are not played at all: they get the storyboard and a note to
   reach the appliedx team.
