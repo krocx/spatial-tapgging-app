@@ -69,7 +69,6 @@
   .pc-rail { position: fixed; left: var(--ax-s5); right: var(--ax-s5); bottom: var(--ax-s4); z-index: 4; background: var(--ax-solid); border: var(--ax-hair); border-radius: var(--ax-r); padding: 10px 14px; display: flex; align-items: center; gap: var(--ax-s3); }
   .pc-rail .pc-play { flex: none; min-width: 72px; }
   .pc-rail .pc-beats { flex: 1; display: grid; grid-template-columns: 2fr 2fr 2fr; gap: 10px; }
-  .pc-band-h { font: var(--ax-eyebrow); letter-spacing: var(--ax-tracking-eyebrow); text-transform: uppercase; color: var(--ax-pc); margin-bottom: 4px; }
   .pc-band-st { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
   .pc-rail .pc-beat .pc-n { display: inline-flex; width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--ax-pc); color: var(--ax-pc); font: 600 10px var(--ax-mono); align-items: center; justify-content: center; margin-right: 6px; vertical-align: -4px; }
   .pc-rail .pc-beat.on .pc-n { background: var(--ax-pc); color: var(--ax-on-accent); }
@@ -99,7 +98,6 @@
     .pc-cap { left: var(--ax-s4); right: var(--ax-s4); bottom: 140px; max-width: none; }
     .pc-cap h2 { font: var(--ax-h2); }
     .pc-rail .pc-beat span.n { display: none; }
-    .pc-band-h { display: none; }
     .pc-me { display: none !important; }
     .pc-rail .pc-hint { display: none; }
     .pc-live { display: none !important; }
@@ -188,18 +186,19 @@ const rim = (geo, col, at) => { const l = new THREE.LineSegments(new THREE.Edges
 const hasGL = (() => { try { const c = document.createElement('canvas'); return !!(c.getContext('webgl2') || c.getContext('webgl')); } catch { return false; } })();
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-// The story, in the six stages of a plot (exposition → inciting incident →
-// rising action → climax → falling action → resolution), in three bands.
+// The story, built on the six stages of a plot (exposition → inciting incident →
+// rising action → climax → falling action → resolution) in three bands. The
+// stage names are a writing tool, not a label: the page shows plain names.
 // One hero: a technician in her third week, on the step that caused re-work
 // before. The features appear because the story needs them.
 const BANDS = [{ id: 'beginning', name: 'Beginning', color: 'var(--ax-green)' }, { id: 'middle', name: 'Middle', color: 'var(--ax-blue)' }, { id: 'conclusion', name: 'Conclusion', color: 'var(--ax-orange)' }];
 const STAGES = [
-  { id: 'exposition', band: 0, name: 'Exposition',        line: 'Third week on the tool. The chamber is down. Everyone who knows this step is somewhere else.', cap: 'Night shift. A chamber is down for a PM. The ME is in another building, the QFE at the far end of the cleanroom. She gowns up: hood, mask, the glasses over the hood.', links: [['The devices, by eye', '/devices/gallery']] },
-  { id: 'inciting',   band: 0, name: 'Inciting incident', line: 'The instruction says "seat it flat". The chamber does not say where flat is.', cap: 'Step 3: seat the focus ring. The step that caused the re-work last time. She looks at the ring and stops.', links: [['Why instructions need a place', '/explain/lifecycle']] },
-  { id: 'rising',     band: 1, name: 'Rising action',     line: 'SIB knows this chamber. The step lands on the ring. The first seat comes back amber.', cap: 'A scan, and the chamber is recognised by its shape. Step 3 pins to the ring; the ghost shows what right looks like. She seats it; the check says the gap is uneven. Across the cleanroom the ME sees her view and sends "look here".', links: [['Spatial Intelligence Backbone', '/explain/spatial-intelligence'], ['Spatial validation', '/catalog#step-validation'], ['Presence & coaching', '/catalog#presence-coaching']] },
-  { id: 'climax',     band: 1, name: 'Climax',            line: 'Right, the first time it mattered.', cap: 'She reseats the ring on the valve side. The cone sweeps again. Green: verified, evidence attached. The beacon turns.', links: [['Spatial validation', '/catalog#step-validation']] },
-  { id: 'falling',    band: 2, name: 'Falling action',    line: 'Nobody walks the cleanroom.', cap: 'The run closes itself: evidence per Production #. The QFE reviews by exception from a desk. The ME never left Building 2. The night lifts toward morning.', links: [['The usage log', '/portal#analytics/runs'], ['The readiness scorecard', '/scorecard']] },
-  { id: 'resolution', band: 2, name: 'Resolution',        line: 'One chamber. One origin. Every device.', cap: 'Next shift, the same step, on whatever the next technician wears: glasses over the hood, a monocular for the voice-only bay, spoken for hands in the chamber, the shift lead’s iPad as the companion. And the cleanroom, live from this server.', links: [['The devices, by eye', '/devices/gallery'], ['Glasses transition', '/scorecard#transition'], ['The POC portfolio', '/portfolio']] },
+  { id: 'exposition', band: 0, name: 'Night shift',        line: 'Third week on the tool. The chamber is down. Everyone who knows this step is somewhere else.', cap: 'Night shift. A chamber is down for a PM. The ME is in another building, the QFE at the far end of the cleanroom. She gowns up: hood, mask, the glasses over the hood.', links: [['The devices, by eye', '/devices/gallery']] },
+  { id: 'inciting',   band: 0, name: 'The step', line: 'The instruction says "seat it flat". The chamber does not say where flat is.', cap: 'Step 3: seat the focus ring. The step that caused the re-work last time. She looks at the ring and stops.', links: [['Why instructions need a place', '/explain/lifecycle']] },
+  { id: 'rising',     band: 1, name: 'The check',     line: 'SIB knows this chamber. The step lands on the ring. The first seat comes back amber.', cap: 'A scan, and the chamber is recognised by its shape. Step 3 pins to the ring; the ghost shows what right looks like. She seats it; the check says the gap is uneven. Across the cleanroom the ME sees her view and sends "look here".', links: [['Spatial Intelligence Backbone', '/explain/spatial-intelligence'], ['Spatial validation', '/catalog#step-validation'], ['Presence & coaching', '/catalog#presence-coaching']] },
+  { id: 'climax',     band: 1, name: 'Right',            line: 'Right, the first time it mattered.', cap: 'She reseats the ring on the valve side. The cone sweeps again. Green: verified, evidence attached. The beacon turns.', links: [['Spatial validation', '/catalog#step-validation']] },
+  { id: 'falling',    band: 2, name: 'Morning',    line: 'Nobody walks the cleanroom.', cap: 'The run closes itself: evidence per Production #. The QFE reviews by exception from a desk. The ME never left Building 2. The night lifts toward morning.', links: [['The usage log', '/portal#analytics/runs'], ['The readiness scorecard', '/scorecard']] },
+  { id: 'resolution', band: 2, name: 'Every device',        line: 'One chamber. One origin. Every device.', cap: 'Next shift, the same step, on whatever the next technician wears: glasses over the hood, a monocular for the voice-only bay, spoken for hands in the chamber, the shift lead’s iPad as the companion. And the cleanroom, live from this server.', links: [['The devices, by eye', '/devices/gallery'], ['Glasses transition', '/scorecard#transition'], ['The POC portfolio', '/portfolio']] },
 ];
 // Moments are the animation units inside the stages (durations in seconds).
 const MOMENTS = [
@@ -241,7 +240,7 @@ function storyboard(why) {
   document.body.classList.add('board');
   const NOTE = { nogl: 'This browser has no WebGL, so the story is shown as a storyboard.', reduced: 'Reduced motion is on, so the story is shown as a storyboard.', gpu: 'This animation needs a GPU, and this computer would play it at a few frames a second, so it is shown as a storyboard instead. To see it played, or on a wearable or a tablet, reach out to the appliedx team.' }[why];
   $('pc-board').classList.add('on');
-  $('pc-board-grid').innerHTML = STAGES.map((st, i) => { const band = BANDS[st.band]; return `<div class="ax-card" style="--ax-pc:${band.color}"><div class="ax-eyebrow">${esc(band.name)} · ${i + 1} · ${esc(st.name)}</div><h3>${esc(st.line)}</h3><p>${esc(st.cap)}</p>${i === 5 ? `<p style="margin-top:8px">${EYES.map(e => esc(e.name.split(' · ')[0]) + ': ' + esc(e.text)).join(' · ')}</p>` : ''}</div>`; }).join('')
+  $('pc-board-grid').innerHTML = STAGES.map((st, i) => { const band = BANDS[st.band]; return `<div class="ax-card" style="--ax-pc:${band.color}"><div class="ax-eyebrow">${i + 1} · ${esc(st.name)}</div><h3>${esc(st.line)}</h3><p>${esc(st.cap)}</p>${i === 5 ? `<p style="margin-top:8px">${EYES.map(e => esc(e.name.split(' · ')[0]) + ': ' + esc(e.text)).join(' · ')}</p>` : ''}</div>`; }).join('')
     + `<div class="ax-notice" style="grid-column:1/-1">${esc(NOTE)} <a href="/platform">The platform map</a> carries the same story as one picture.</div>`;
 }
 
@@ -356,7 +355,7 @@ function play() {
 
   // ── UI: the rail (three bands, six stages), the caption, the pins ─────────
   const capEl = $('pc-cap'), beatsEl = $('pc-beats'), playBtn = $('pc-play');
-  beatsEl.innerHTML = BANDS.map((band, bi) => `<div class="pc-band" style="--ax-pc:${band.color}"><div class="pc-band-h">${esc(band.name)}</div><div class="pc-band-st">${STAGES.map((st, i) => st.band === bi ? `<button class="pc-beat" data-i="${i}" title="${esc(st.line)}"><span class="bar"><i></i></span><span class="pc-n">${i + 1}</span><span class="n">${esc(st.name)}</span></button>` : '').join('')}</div></div>`).join('');
+  beatsEl.innerHTML = BANDS.map((band, bi) => `<div class="pc-band" style="--ax-pc:${band.color}"><div class="pc-band-st">${STAGES.map((st, i) => st.band === bi ? `<button class="pc-beat" data-i="${i}" title="${esc(st.line)}"><span class="bar"><i></i></span><span class="pc-n">${i + 1}</span><span class="n">${esc(st.name)}</span></button>` : '').join('')}</div></div>`).join('');
   const beatBtns = [...beatsEl.querySelectorAll('.pc-beat')]; beatBtns.forEach(b => b.onclick = () => seekStage(Number(b.dataset.i)));
   const bars = beatBtns.map(b => b.querySelector('.bar i'));
   let t = 0, playing = true, last = performance.now(), cur = -1, curStage = -1, eyeIdx = -1, stats = null;
@@ -376,7 +375,7 @@ function play() {
   function caption(i, extra) {
     const st = STAGES[i], band = BANDS[st.band];
     capEl.style.setProperty('--ax-pc', band.color);
-    capEl.innerHTML = `<div class="ax-eyebrow">${esc(band.name)} · ${esc(st.name)}</div><h2>${esc(st.line)}</h2><p>${esc(extra || st.cap)}</p><div class="pc-links">${st.links.map(([n, h]) => `<a href="${esc(h)}">${esc(n)}</a>`).join('')}</div>`;
+    capEl.innerHTML = `<div class="ax-eyebrow">${i + 1} of ${STAGES.length} · ${esc(st.name)}</div><h2>${esc(st.line)}</h2><p>${esc(extra || st.cap)}</p><div class="pc-links">${st.links.map(([n, h]) => `<a href="${esc(h)}">${esc(n)}</a>`).join('')}</div>`;
   }
   const pins = { step: $('pin-step'), me: $('pin-me'), ok: $('pin-ok'), origin: $('pin-origin'), amber: $('pin-amber'), down: $('pin-down'), ready: $('pin-ready'), paper: $('pin-paper') };
   const pinAt = { step: V([.5, 1.75, 0]), me: V([0, 1.56, .74]), ok: V([-.5, 1.75, 0]), origin: V([1.25, .05, 1.25]), amber: V([-.5, 1.75, .1]), down: V([-.75, 1.36, .9]), ready: V([-.75, 1.36, .9]), paper: V([-1.1, 1.75, 1.1]) };

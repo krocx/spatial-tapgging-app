@@ -8,8 +8,9 @@ it, it gets a line.
 
 ### Added
 - **Play the chamber, told as a story (`/platform/chamber`).** One hero,
-  one step, six plot stages on a three-band rail (Beginning · Middle ·
-  Conclusion): a technician in her third week on a night shift, the chamber
+  one step, six stages on the rail (Night shift · The step · The check ·
+  Right · Morning · Every device; written on the classic plot arc, which
+  stays off the screen): a technician in her third week on a night shift, the chamber
   down, the ME in another building; the paper instruction says "seat it
   flat" and the chamber does not say where flat is; SIB recognises the
   chamber, the step lands on the ring with its ghost, the first seat comes
