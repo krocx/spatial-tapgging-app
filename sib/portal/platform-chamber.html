@@ -189,13 +189,21 @@ const EYES = [
 ];
 const TOTAL = BEATS.reduce((a, b) => a + b.dur, 0);
 
-if (!hasGL || reduced) { storyboard(); } else { play(); }
+// Software rendering (no GPU, or a GPU the browser will not use) plays this at
+// a few frames a second and looks broken, so it is not played at all: the
+// storyboard and a note take its place. Detected two ways: the renderer name
+// the browser reports, and the measured frame time over the first second.
+function softwareRenderer() {
+  try { const c = document.createElement('canvas'); const gl = c.getContext('webgl2') || c.getContext('webgl'); const x = gl.getExtension('WEBGL_debug_renderer_info'); const r = x ? gl.getParameter(x.UNMASKED_RENDERER_WEBGL) : ''; return /swiftshader|llvmpipe|software|microsoft basic render/i.test(r); } catch { return false; }
+}
+if (!hasGL || reduced) storyboard(hasGL ? 'reduced' : 'nogl'); else if (softwareRenderer()) storyboard('gpu'); else play();
 
-function storyboard() {
+function storyboard(why) {
   document.body.classList.add('board');
+  const NOTE = { nogl: 'This browser has no WebGL, so the story is shown as a storyboard.', reduced: 'Reduced motion is on, so the story is shown as a storyboard.', gpu: 'This animation needs a GPU, and this computer would play it at a few frames a second, so it is shown as a storyboard instead. To see it played, or on a wearable or a tablet, reach out to the appliedx team.' }[why];
   $('pc-board').classList.add('on');
   $('pc-board-grid').innerHTML = BEATS.map((b, i) => `<div class="ax-card" style="--ax-pc:${b.color}"><div class="ax-eyebrow">${i + 1} · ${esc(b.eyebrow)}</div><h3>${esc(b.title)}</h3><p>${esc(b.cap)}</p>${i === 5 ? `<p style="margin-top:8px">${EYES.map(e => esc(e.name.split(' · ')[0]) + ': ' + esc(e.text)).join(' · ')}</p>` : ''}</div>`).join('')
-    + `<div class="ax-notice" style="grid-column:1/-1">${hasGL ? 'Reduced motion is on, so the story is shown as a storyboard.' : 'This browser has no WebGL, so the story is shown as a storyboard.'} <a href="/platform">The platform map</a> carries the same story as one picture.</div>`;
+    + `<div class="ax-notice" style="grid-column:1/-1">${esc(NOTE)} <a href="/platform">The platform map</a> carries the same story as one picture.</div>`;
 }
 
 function play() {
@@ -398,7 +406,14 @@ function play() {
     projectPins();
     renderer.render(scene, camera);
   }
-  function loop(now) { const dt = Math.min(.1, (now - last) / 1000); last = now; step(dt); requestAnimationFrame(loop); }
+  // First-second frame-time check: a machine that cannot hold 20 fps on this
+  // scene is handed the storyboard rather than a slideshow.
+  let frames = 0, slow = 0, checked = false;
+  function loop(now) {
+    const dt = Math.min(.1, (now - last) / 1000); last = now; step(dt);
+    if (!checked) { frames++; if (dt > .05) slow++; if (frames >= 40) { checked = true; if (slow > frames * .6) { renderer.dispose(); stage.innerHTML = ''; storyboard('gpu'); return; } } }
+    requestAnimationFrame(loop);
+  }
   enter(0); requestAnimationFrame(loop);
 
   fetch('/stats').then(r => r.json()).then(s => { stats = s;
